@@ -1,0 +1,11 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: max
+    paths:
+        - app
+        - database
+    # tests/ are intentionally excluded: PHPStan cannot resolve Pest's $this
+    # binding inside it()/test() closures. Test correctness is covered by Pest.
+    ignoreErrors: []

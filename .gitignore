@@ -44,3 +44,9 @@ _ide_helper.php
 _ide_helper_models.php
 .phpstorm.meta.php
 /public/fonts-manifest.dev.json
+
+# Octane/FrankenPHP runtime artifacts dropped at the project root
+# (anchored so source under docker/frankenphp/ is NOT ignored)
+/caddy/
+/frankenphp
+/public/frankenphp-worker.php
