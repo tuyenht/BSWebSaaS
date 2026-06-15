@@ -35,3 +35,12 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# --- Local additions (Laravel standard caches/helpers; additive, nothing removed) ---
+/.phpunit.cache
+.phpunit.result.cache
+/storage/pail
+_ide_helper.php
+_ide_helper_models.php
+.phpstorm.meta.php
+/public/fonts-manifest.dev.json
