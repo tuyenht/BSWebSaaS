@@ -1,0 +1,37 @@
+# Claude Code local (personal) settings
+.claude/settings.local.json
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Laravel / PHP
+/vendor/
+/node_modules/
+/public/build/
+/public/hot
+/public/storage
+/storage/*.key
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/logs/*
+/bootstrap/cache/*
+composer.phar
+auth.json
+
+# Build tools / FE
+/.vite/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
