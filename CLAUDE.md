@@ -82,6 +82,7 @@
 
 ## 5. Coding standards
 
+- **Cấu trúc Modular Monolith:** mỗi bounded context = `app/Modules/<Context>/` (PSR-4 `App\Modules\<Context>`). Ranh giới ép bằng **arch test** (hướng phụ thuộc acyclic; **Tenancy** là nền, phụ thuộc 0 module khác); interface contract CHỈ ở điểm swap/external (`app/Modules/Shared/Contracts`). Migration tập trung, đánh số theo tier FK. Đóng-gói Composer **hoãn Phase 3** (eject ≈ 80% là data ETL per-tenant, không phải di chuyển code). Chi tiết: `docs/design.md` Mục 22.1.
 - Laravel conventions chuẩn; Eloquent + Form Request validation; Action/Service cho logic nghiệp vụ.
 - MỌI action qua **Policy** (RBAC); MỌI chuyển trạng thái workflow qua **engine** (không hard-code).
 - N+1 = cấm (eager load); tuân **Query Budget** (mục 6).
@@ -94,7 +95,7 @@
 
 - `Larastan` (max level) · `Pest` (unit + feature) · `Infection` (mutation) · `Rector`
 - **Query Budget test** — assert số query tối đa/route hot (bắt N+1)
-- **Arch test** — "mọi model tenant dùng BelongsToSite", "mọi action qua policy", "mọi transition qua engine"
+- **Arch test** — "mọi model tenant dùng BelongsToSite", "mọi action qua policy", "mọi transition qua engine", "ranh giới module — hướng phụ thuộc acyclic, Tenancy là nền"
 - `Lighthouse CI` + `axe` (storefront: LCP mobile p75 ≤1.5s, JS ≤30KB)
 - **Gate #1 concurrency test** (mục 2) — bắt buộc xanh từ Phase 0
 

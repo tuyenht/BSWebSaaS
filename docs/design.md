@@ -516,6 +516,26 @@ content_workflow_log(id, site_id, entry_id, locale NULL, transition_key, from_st
 - **License bản export = WHMCS Software Licensing addon** (Bảo Sơn đang vận hành, 368 license BSWeb-, đã xác nhận bản quyền hợp lệ). Bind domain; không phép → trang trắng câm; đổi domain qua Reissue. *(ADR-13)*
 - Định giá Standalone Export theo từng khách; mẫu license agreement cần luật sư (gắn câu #3).
 
+### 22.1 Cấu trúc thư mục (Modular Monolith) + diễn giải ADR-12 *(chốt v2.8 — normative)*
+
+**Diễn giải ADR-12 "package-first":** = **ranh-giới-module-first**, KHÔNG tách Composer package ngày-1. Giai đoạn phát triển = **Modular Monolith** (CLAUDE.md §9): mỗi bounded context là một thư mục `app/Modules/<Context>/` (PSR-4 `App\Modules\<Context>`, một autoload root duy nhất). Đóng-gói thành Composer package **hoãn tới Phase 3** (khi dựng exporter) và khi đó là thao tác **cơ học** vì ranh giới đã sạch.
+
+**Cây thư mục — SaaS (đang phát triển):**
+```
+app/Modules/
+  Tenancy/      # 🔴 nền Gate #1: Site resolver · BelongsToSite · RLS · SET LOCAL · Octane reset · Entitlement
+  Cms/ Commerce/ Media/ Rbac/ Taxonomy/ Forms/ …   # thêm module = thêm thư mục
+  Shared/Contracts/   # interface liên-module CHỈ ở điểm swap/external (DomainProvisioner, WHMCS, AI)
+database/migrations/  # TẬP TRUNG, đánh số theo tier FK (core 1xxx · content 2xxx · commerce 3xxx)
+tests/Arch/           # ép HƯỚNG phụ thuộc acyclic; Tenancy phụ thuộc 0 module khác
+```
+
+**Cây thư mục — bản export (Phase 3, N=1):** exporter dời `app/Modules/*` (đã bật theo entitlement) → `packages/*`, swap driver (DB/cache/storage), chèn License middleware (WHMCS, ADR-13). `BelongsToSite` vẫn chạy (site_id cố định); RLS thành tùy chọn (N=1).
+
+**Cơ chế ranh giới (chốt):** ép bằng **arch test** (`tests/Arch/ModuleBoundariesTest.php` — hướng phụ thuộc acyclic, `Tenancy` là nền) + **interface contract CHỈ ở điểm swap/external** (KHÔNG ép interface mọi cạnh nội bộ → tránh trừu-tượng-sớm). FK/pivot **xuyên module được phép** (đồ thị quan hệ là MỘT — `entry_taxonomies`/`product_taxonomies`); chủ sở hữu pivot = module `Taxonomy`.
+
+**Eject là gì (định khung lại):** ~**80% công sức = rút dữ liệu per-tenant (ETL `site_id=X`) + driver-swap + hạ RLS→N=1 + license**; chỉ ~20% là di chuyển code → tất cả thuộc **Phase 3**. ⇒ KHÔNG tối ưu cấu trúc code sớm cho eject.
+
 ## 23. Đặc thù Việt Nam *(Mục 33)*
 
 - **Cụm liên hệ nhanh nổi** (Zalo OA + hotline click-to-call + Messenger + back-to-top) — **nạp facade** để không giết INP. Cấu hình ở `site_settings.contact_widgets`.
@@ -799,3 +819,9 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 ---
 
 *Hết v2.7 — Thiết kế ĐÓNG BĂNG HOÀN TOÀN. 16 ADR, R1–R24, lược đồ DB đầy đủ + quy ước nền tảng normative (D1–D15), qua 3 vòng phản biện + 2 audit DB + review bảo mật. Mọi rủi ro thiết kế đã được xử lý; rủi ro còn lại thuộc về khâu DỰNG. **ĐÓNG YÊU CẦU — khởi công An Vinh ngay** (CLAUDE.md + skeleton + Phase 0, issue #1 = Gate #1). Bản lịch sử: `ke-hoach-tong-the-saas-website-platform.md` (v1.30).*
+
+- **v2.8:** **chốt cấu trúc thư mục (Mục 22.1, normative) sau 3 vòng audit hội đồng cấp cao.** Diễn giải ADR-12 "package-first" = **ranh-giới-module-first** (Modular Monolith `app/Modules/<Context>/`), **KHÔNG** tách Composer package ngày-1 — đóng-gói hoãn tới **Phase 3** (exporter). Ranh giới ép bằng **arch test** (hướng phụ thuộc acyclic; `Tenancy` là nền, phụ thuộc 0 module) + **interface contract CHỈ ở điểm swap/external** (không trừu-tượng-sớm). Định khung lại **eject ≈ 80% = data ETL per-tenant + driver-swap + hạ RLS→N=1**, ~20% di chuyển code. Skeleton: `app/Modules/` + `Shared/Contracts/` + `tests/Arch/ModuleBoundariesTest.php` (3 assertion thật, xanh vacuous, cắn khi class vi phạm). **Vẫn DỪNG trước Gate #1.**
+
+---
+
+*Hết v2.8 — Bổ sung tầng "cấu trúc code" (Mục 22.1) lên trên thiết kế dữ liệu đã đóng băng. Không lật bất kỳ quyết định v2.7 nào. Modular Monolith + arch-enforced boundaries; đóng-gói/eject thuộc Phase 3. Sẵn sàng cho prompt Gate #1.*
