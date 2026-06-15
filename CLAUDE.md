@@ -47,6 +47,7 @@
    - Hook Octane `RequestReceived`/`RequestTerminated` xóa singleton "site hiện tại".
    - **Concurrency test** bắn xen kẽ site A/B qua cùng worker pool → KHÔNG lẫn dữ liệu.
    - Kiểm cả gotcha **PgBouncer transaction-mode + prepared statements** (D14).
+   - **App chạy bằng role `app_user` (NOSUPERUSER/NOBYPASSRLS)** — superuser/owner bỏ qua RLS kể cả FORCE → "an toàn giả". Migration chạy role đặc quyền (`pgsql_admin`). Policy **fail-closed** + `FORCE ROW LEVEL SECURITY`.
 3. **KHÔNG lộ dữ liệu chéo tenant.** Search qua **tenant tokens** (key ký nhúng site_id), không chỉ filter ở app.
 4. **KHÔNG lộ `bigint id` thô** ra URL/API → public qua **slug** (content) / **code** (order) / **ulid** (media).
 5. **Upload an toàn:** whitelist MIME + blocklist đuôi nguy hiểm (`.php .phar .phtml`…) + **sniff magic-bytes** (không tin đuôi/header) + **sanitize SVG** + lưu R2 ngoài web-root.
@@ -103,16 +104,17 @@
 
 ## 7. Commands
 
-> _(Cập nhật khi skeleton xong. Dự kiến:)_
+> Không có PHP trên host — chạy MỌI lệnh qua Docker (`docker compose run --rm --no-deps app …`).
 ```bash
-# Dev
-./vendor/bin/sail up            # hoặc docker compose up (PG17 + Valkey + FrankenPHP)
-php artisan octane:start --watch
+docker compose up -d                       # PG17 + PgBouncer + Valkey + FrankenPHP/Octane + Horizon
 
-# Test & QA (chạy TRƯỚC khi commit)
-./vendor/bin/pest
-./vendor/bin/phpstan analyse    # Larastan max
-./vendor/bin/rector --dry-run
+# 🔴 Migration chạy bằng role ĐẶC QUYỀN (pgsql_admin), KHÔNG phải app_user runtime:
+docker compose run --rm --no-deps app php artisan migrate --database=pgsql_admin --force
+
+# Test & QA (chạy TRƯỚC khi commit) — test chạy trên PostgreSQL thật, role app_user:
+docker compose run --rm --no-deps app vendor/bin/pest
+docker compose run --rm --no-deps app vendor/bin/phpstan analyse --memory-limit=1G   # Larastan max
+docker compose run --rm --no-deps app vendor/bin/pint --test
 ```
 
 ---

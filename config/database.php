@@ -84,14 +84,33 @@ return [
             ]) : [],
         ],
 
+        // Gate #1: RUNTIME connection. Uses app_user (NOSUPERUSER/NOBYPASSRLS) via
+        // PgBouncer so Row-Level Security is actually enforced.
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
             'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
+            'username' => env('DB_USERNAME', 'app_user'),
             'password' => env('DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
+        // Gate #1: privileged DDL/migration connection. Superuser/owner, DIRECT to
+        // Postgres (bypasses PgBouncer). Run: php artisan migrate --database=pgsql_admin
+        'pgsql_admin' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_ADMIN_URL'),
+            'host' => env('DB_ADMIN_HOST', 'postgres'),
+            'port' => env('DB_ADMIN_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'laravel'),
+            'username' => env('DB_ADMIN_USERNAME', 'bsweb'),
+            'password' => env('DB_ADMIN_PASSWORD', ''),
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,

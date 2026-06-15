@@ -41,14 +41,18 @@ jobs:
           --health-retries 12
 
     env:
-      # Override .env so migrate runs against the real PostgreSQL service
-      # (CI talks to Postgres directly; PgBouncer is a runtime concern).
+      # CI talks to Postgres directly (no PgBouncer). RUNTIME/tests connect as the
+      # restricted app_user so RLS is enforced; migrations use the privileged role.
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
       DB_DATABASE: bswebsaas
-      DB_USERNAME: bsweb
-      DB_PASSWORD: secret
+      DB_USERNAME: app_user
+      DB_PASSWORD: app_secret
+      DB_ADMIN_HOST: 127.0.0.1
+      DB_ADMIN_PORT: 5432
+      DB_ADMIN_USERNAME: bsweb
+      DB_ADMIN_PASSWORD: secret
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: 6379
       CACHE_STORE: redis
@@ -81,8 +85,8 @@ jobs:
           cp .env.example .env
           php artisan key:generate
 
-      - name: Migrate (PostgreSQL + extensions)
-        run: php artisan migrate --force
+      - name: Migrate (PostgreSQL + extensions + restricted app role)
+        run: php artisan migrate --database=pgsql_admin --force
 
       - name: Pint (code style)
         run: vendor/bin/pint --test
