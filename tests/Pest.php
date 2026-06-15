@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
-uses(TestCase::class)->in('Feature', 'Arch');
+uses(TestCase::class)->in('Feature', 'Arch', 'Concurrency');
 
 /*
 |--------------------------------------------------------------------------
@@ -25,4 +25,31 @@ function countQueries(Closure $callback): int
         DB::disableQueryLog();
         DB::flushQueryLog();
     }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Tenancy seed helper (Gate #1)
+|--------------------------------------------------------------------------
+| Seeds one tenant + sites A(1)/B(2) + domains a.test/b.test via the PRIVILEGED
+| admin connection (so RLS does not block setup). Assertions then run on the
+| default app_user connection.
+*/
+function seedTenancy(): void
+{
+    $admin = DB::connection('pgsql_admin');
+    $admin->statement('truncate tenant_probes, domains, sites, tenants restart identity cascade');
+
+    $admin->table('tenants')->insert([
+        'ulid' => 'TENANT0000000000000000001', 'name' => 'T1', 'settings' => '{}',
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $admin->table('sites')->insert([
+        ['ulid' => 'SITEA000000000000000000001', 'tenant_id' => 1, 'name' => 'A', 'status' => 'active', 'default_locale' => 'vi', 'created_at' => now(), 'updated_at' => now()],
+        ['ulid' => 'SITEB000000000000000000001', 'tenant_id' => 1, 'name' => 'B', 'status' => 'active', 'default_locale' => 'vi', 'created_at' => now(), 'updated_at' => now()],
+    ]);
+    $admin->table('domains')->insert([
+        ['site_id' => 1, 'hostname' => 'a.test', 'kind' => 'subdomain', 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 2, 'hostname' => 'b.test', 'kind' => 'subdomain', 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
 }
