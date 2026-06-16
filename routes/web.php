@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 // ── Platform plane (Bảo Sơn operator) — dedicated host, NO tenant context ──────
 Route::domain((string) config('tenancy.platform_host'))
-    ->middleware(['web', 'auth', 'platform'])
+    ->middleware(['web', 'auth', 'platform', '2fa'])
     ->group(function (): void {
         Route::get('/', function () {
             $user = Auth::user();
@@ -45,6 +45,9 @@ Route::middleware([SetCurrentSite::class, 'site.active'])
         ]))->name('storefront.home');
     });
 
-// Auth redirect target (stub until the login UI lands in P1).
+// Auth + 2FA-setup redirect targets (stubs until the UIs land in P1).
 Route::get('/login', fn () => response()->json(['message' => 'Authentication required.'], 401))
     ->name('login');
+
+Route::get('/two-factor/setup', fn () => response()->json(['message' => 'Two-factor authentication setup required.'], 423))
+    ->name('two-factor.setup');

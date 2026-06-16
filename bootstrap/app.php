@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Identity\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
 use App\Modules\Tenancy\Http\Middleware\EnsureModuleEnabled;
 use App\Modules\Tenancy\Http\Middleware\EnsureSiteActive;
@@ -21,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'site.active' => EnsureSiteActive::class,
             'module' => EnsureModuleEnabled::class,
             'platform' => EnsurePlatformAccess::class,
+            '2fa' => EnsureTwoFactorEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -60,8 +60,16 @@ it('forbids a non-operator on the platform plane', function () {
     $this->actingAs($user)->getJson('http://platform.bswebsaas.test/')->assertForbidden();
 });
 
-it('serves the platform plane to a super_admin operator', function () {
-    $user = User::factory()->create();
+it('sends a platform operator without 2FA to the setup flow', function () {
+    $user = User::factory()->create(['two_factor_confirmed_at' => null]);
+    app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
+
+    $this->actingAs($user)->get('http://platform.bswebsaas.test/')
+        ->assertRedirect('http://platform.bswebsaas.test/two-factor/setup');
+});
+
+it('serves the platform plane to a super_admin operator with 2FA', function () {
+    $user = User::factory()->create(['two_factor_confirmed_at' => now()]);
     app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
 
     $this->actingAs($user)->getJson('http://platform.bswebsaas.test/')
