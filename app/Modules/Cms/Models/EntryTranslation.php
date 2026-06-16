@@ -15,6 +15,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $title
  * @property string $slug
  * @property array<string, mixed> $body
+ * @property string|null $seo_title
+ * @property string|null $seo_description
  * @property string $status
  */
 class EntryTranslation extends Model

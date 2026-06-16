@@ -1,6 +1,9 @@
 <?php
 
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -71,4 +74,32 @@ function truncateRbac(): void
 
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     app(TeamContext::class)->forget();
+}
+
+/*
+|--------------------------------------------------------------------------
+| Storefront content seed helper (P1.3)
+|--------------------------------------------------------------------------
+| Seeds one published `page` (Page-JSON hero) + its home route inside the given
+| site's context, so storefront render tests have real content to resolve.
+*/
+function seedHomepage(int $site, string $title = 'Home', string $path = '/'): void
+{
+    app(Tenancy::class)->enter($site, function () use ($title, $path) {
+        $entry = Entry::query()->create([
+            'type' => 'page',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+
+        $entry->translations()->create([
+            'locale' => 'vi',
+            'title' => $title,
+            'slug' => 'home',
+            'status' => 'published',
+            'body' => ['blocks' => [['type' => 'hero', 'props' => ['heading' => $title]]]],
+        ]);
+
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => $path, 'entry_id' => $entry->id]);
+    });
 }

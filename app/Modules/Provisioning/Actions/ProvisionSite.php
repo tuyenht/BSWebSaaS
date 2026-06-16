@@ -3,6 +3,8 @@
 namespace App\Modules\Provisioning\Actions;
 
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Models\Permission;
@@ -105,6 +107,8 @@ final class ProvisionSite
             }
 
             $owner->assignRole('owner');
+
+            $this->seedHomepage($data, $owner);
         });
 
         $this->registrar->forgetCachedPermissions();
@@ -120,5 +124,42 @@ final class ProvisionSite
         ]);
 
         return $site->refresh();
+    }
+
+    /**
+     * Seed a live published homepage so a provisioned site is immediately reachable
+     * (the seed of "site sống <10 phút"). Idempotent on the home route.
+     */
+    private function seedHomepage(ProvisionSiteData $data, User $owner): void
+    {
+        if (SiteRoute::query()->where('path', '/')->exists()) {
+            return;
+        }
+
+        $entry = Entry::query()->create([
+            'type' => 'page',
+            'status' => 'published',
+            'author_id' => $owner->id,
+            'published_at' => now(),
+        ]);
+
+        $entry->translations()->create([
+            'locale' => $data->defaultLocale,
+            'title' => $data->siteName,
+            'slug' => 'home',
+            'status' => 'published',
+            'body' => ['blocks' => [
+                ['type' => 'hero', 'props' => [
+                    'heading' => $data->siteName,
+                    'subheading' => 'Chào mừng đến với '.$data->siteName,
+                ]],
+            ]],
+        ]);
+
+        SiteRoute::query()->create([
+            'locale' => $data->defaultLocale,
+            'path' => '/',
+            'entry_id' => $entry->id,
+        ]);
     }
 }

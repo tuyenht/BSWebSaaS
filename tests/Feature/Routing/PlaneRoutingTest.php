@@ -21,19 +21,23 @@ beforeEach(function () {
 
 // ── Storefront ────────────────────────────────────────────────────────────────
 it('serves the storefront on a tenant host within its context', function () {
-    $this->getJson('http://a.test/')->assertOk()->assertJson(['plane' => 'storefront', 'site_id' => 1]);
-    $this->getJson('http://b.test/')->assertOk()->assertJson(['plane' => 'storefront', 'site_id' => 2]);
+    seedHomepage(1, 'A home');
+    seedHomepage(2, 'B home');
+
+    expect($this->get('http://a.test/')->assertOk()->getContent())->toContain('A home');
+    expect($this->get('http://b.test/')->assertOk()->getContent())->toContain('B home');
 });
 
 it('404s the storefront on an unknown host', function () {
-    $this->getJson('http://nope.test/')->assertNotFound();
+    $this->get('http://nope.test/')->assertNotFound();
 });
 
 it('refuses a suspended site', function () {
+    seedHomepage(1, 'A home');
     DB::connection('pgsql_admin')->table('sites')->where('id', 2)->update(['status' => 'suspended']);
 
-    $this->getJson('http://a.test/')->assertOk();
-    $this->getJson('http://b.test/')->assertForbidden();
+    $this->get('http://a.test/')->assertOk();
+    $this->get('http://b.test/')->assertForbidden();
 });
 
 // ── Tenant admin ────────────────────────────────────────────────────────────────

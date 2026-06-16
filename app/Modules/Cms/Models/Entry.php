@@ -18,6 +18,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $site_id
  * @property string $type
  * @property string $status
+ * @property string|null $template_override
+ * @property int|null $author_id
  * @property array<string, mixed> $meta
  */
 class Entry extends Model
