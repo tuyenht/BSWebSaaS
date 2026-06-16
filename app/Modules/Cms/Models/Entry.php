@@ -51,6 +51,7 @@ class Entry extends Model
         return [
             'published_at' => 'datetime',
             'position' => 'integer',
+            'author_id' => 'integer',
             'meta' => 'array',
         ];
     }

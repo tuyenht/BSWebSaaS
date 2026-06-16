@@ -29,7 +29,13 @@ final class StorefrontController
         $locale = $this->defaultLocale();
 
         $content = $this->resolver->resolve($locale, $path);
-        abort_if($content === null, 404);
+
+        if ($content === null) {
+            $redirect = $this->resolver->redirect($locale, $path);
+            abort_if($redirect === null, 404);
+
+            return redirect()->to($redirect->to_path, $redirect->status_code);
+        }
 
         $html = $this->renderer->render(
             $content->entry->type,
