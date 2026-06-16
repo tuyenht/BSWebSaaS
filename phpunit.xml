@@ -27,6 +27,11 @@
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <!-- Deterministic pepper + cheap Argon params keep the hashing tests fast. -->
+        <env name="AUTH_PASSWORD_PEPPER" value="test-only-pepper-not-a-secret"/>
+        <env name="ARGON_MEMORY" value="1024"/>
+        <env name="ARGON_TIME" value="1"/>
+        <env name="ARGON_THREADS" value="1"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <!-- Gate #1 tests run on REAL PostgreSQL (RLS cannot be proven on sqlite).
