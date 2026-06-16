@@ -1,0 +1,82 @@
+<?php
+
+use App\Modules\Identity\Models\User;
+use App\Modules\Provisioning\Actions\ProvisionSite;
+use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\Domain;
+use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteModule;
+use Illuminate\Support\Facades\DB;
+
+/*
+ * P0.6 — ProvisionSite is the SaaS control-plane primitive: it builds An Vinh (and
+ * every future site) end-to-end and idempotently. It exercises all three defense
+ * layers (global identity/site → per-site entitlement + RBAC under tenant context).
+ */
+
+beforeEach(function () {
+    DB::connection('pgsql_admin')->statement(
+        'truncate tenant_probes, site_profile_translations, site_profiles, site_settings,
+         site_locales, site_modules, content_sections, domains, sites, tenants,
+         tenant_users, users restart identity cascade'
+    );
+    truncateRbac();
+});
+
+function provisionAnVinh(): Site
+{
+    return app(ProvisionSite::class)->handle(new ProvisionSiteData(
+        tenantName: 'An Vinh',
+        siteName: 'An Vinh',
+        hostname: 'anvinh.test',
+        ownerEmail: 'owner@anvinh.test',
+        ownerName: 'An Vinh Owner',
+        ownerPassword: 'a-strong-password',
+        locales: ['vi', 'zh-Hans'],
+        modules: ['cms', 'media'],
+    ));
+}
+
+it('provisions a full, active site stack', function () {
+    $site = provisionAnVinh();
+    $tenancy = app(Tenancy::class);
+
+    expect($site->status)->toBe('active')
+        ->and(Domain::query()->where('hostname', 'anvinh.test')->where('site_id', $site->id)->exists())->toBeTrue()
+        ->and($tenancy->enter($site->id, fn () => SiteModule::query()->where('enabled', true)->pluck('module_key')->sort()->values()->all()))->toBe(['cms', 'media'])
+        ->and($tenancy->enter($site->id, fn () => SiteLocale::query()->where('is_default', true)->pluck('locale')->all()))->toBe(['vi']);
+
+    // Owner can manage content within the site (owner role = all tenant permissions).
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    expect($tenancy->enter($site->id, fn () => $owner->fresh()->can('entries.publish')))->toBeTrue();
+});
+
+it('is idempotent — re-running provisions nothing new', function () {
+    $first = provisionAnVinh();
+    $second = provisionAnVinh();
+
+    expect($second->id)->toBe($first->id)
+        ->and(Site::query()->count())->toBe(1)
+        ->and(Domain::query()->where('hostname', 'anvinh.test')->count())->toBe(1)
+        ->and(User::query()->where('email', 'owner@anvinh.test')->count())->toBe(1);
+});
+
+it('isolates the provisioned site from another tenant', function () {
+    provisionAnVinh();
+    $other = app(ProvisionSite::class)->handle(new ProvisionSiteData(
+        tenantName: 'Other Co',
+        siteName: 'Other',
+        hostname: 'other.test',
+        ownerEmail: 'owner@other.test',
+        ownerName: 'Other Owner',
+        ownerPassword: 'another-password',
+    ));
+
+    $tenancy = app(Tenancy::class);
+    $anVinhOwner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    // An Vinh's owner has NO authority on the other site.
+    expect($tenancy->enter($other->id, fn () => $anVinhOwner->fresh()->can('entries.publish')))->toBeFalse();
+});

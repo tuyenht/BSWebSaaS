@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Modules\Provisioning\Providers;
+
+use App\Modules\Provisioning\Console\ProvisionSiteCommand;
+use Illuminate\Support\ServiceProvider;
+
+final class ProvisioningServiceProvider extends ServiceProvider
+{
+    public function boot(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                ProvisionSiteCommand::class,
+            ]);
+        }
+    }
+}
