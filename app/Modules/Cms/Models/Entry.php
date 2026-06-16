@@ -40,6 +40,12 @@ class Entry extends Model
 
     public function translationFor(string $locale): ?EntryTranslation
     {
+        // Use the eager-loaded relation when present (avoids an N+1 in any caller that
+        // already loaded translations); otherwise query the single locale.
+        if ($this->relationLoaded('translations')) {
+            return $this->translations->firstWhere('locale', $locale);
+        }
+
         return $this->translations()->where('locale', $locale)->first();
     }
 

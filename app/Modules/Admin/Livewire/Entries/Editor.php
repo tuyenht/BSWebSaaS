@@ -3,14 +3,17 @@
 namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Cms\Actions\PublishEntry;
+use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
@@ -37,6 +40,8 @@ final class Editor extends Component
 
     public ?string $ulid = null;
 
+    /** Server-resolved from the site's default locale; never client-set. */
+    #[Locked]
     public string $locale = 'vi';
 
     public string $title = '';
@@ -46,10 +51,13 @@ final class Editor extends Component
     /** @var list<array<string, mixed>> */
     public array $blocks = [];
 
+    #[Locked]
     public ?string $status = null;
 
     public function mount(?string $ulid = null): void
     {
+        $this->locale = app(SiteLocale::class)->default();
+
         if ($ulid === null) {
             $this->authorize('create', Entry::class);
 
@@ -125,7 +133,11 @@ final class Editor extends Component
     {
         $entry = $this->persist();
 
-        $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
+        try {
+            $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
+        } catch (RouteConflictException) {
+            $this->addError('slug', 'Đường dẫn này đã được dùng cho trang khác.');
+        }
     }
 
     public function render(): View

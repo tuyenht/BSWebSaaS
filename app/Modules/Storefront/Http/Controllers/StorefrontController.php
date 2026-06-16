@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Cms\Routing\RouteResolver;
-use App\Modules\Tenancy\Context\CurrentSite;
-use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Theme\Rendering\PageRenderer;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Public storefront: resolve (locale, path) → published content within the current
- * site (RLS-isolated), render it to SSR HTML through the theme. No content = 404.
+ * site (RLS-isolated), render it to SSR HTML through the theme. A missed path falls
+ * back to a 301 (slug history) and otherwise 404s. The inbound path is lower-cased to
+ * match the all-lowercase slug/route invariant, so case-variant links still resolve.
  * Runs inside the tenant context established by SetCurrentSite.
  */
 final class StorefrontController
@@ -21,12 +22,13 @@ final class StorefrontController
     public function __construct(
         private readonly RouteResolver $resolver,
         private readonly PageRenderer $renderer,
+        private readonly SiteLocale $locale,
     ) {}
 
     public function __invoke(Request $request): Response
     {
-        $path = '/'.ltrim($request->path(), '/');
-        $locale = $this->defaultLocale();
+        $path = strtolower('/'.ltrim($request->path(), '/'));
+        $locale = $this->locale->default();
 
         $content = $this->resolver->resolve($locale, $path);
 
@@ -49,13 +51,5 @@ final class StorefrontController
         );
 
         return response($html);
-    }
-
-    private function defaultLocale(): string
-    {
-        $siteId = app(CurrentSite::class)->id();
-        $locale = Site::query()->whereKey($siteId)->value('default_locale');
-
-        return is_string($locale) && $locale !== '' ? $locale : 'vi';
     }
 }

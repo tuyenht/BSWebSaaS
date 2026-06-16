@@ -42,6 +42,12 @@ final class PublishEntry
         }
 
         if ($gate->allows('submit', $entry)) {
+            // Never demote a live page: a submitter without publish rights must not be
+            // able to take a published entry offline by re-submitting it.
+            if ($entry->status === 'published') {
+                return 'published';
+            }
+
             $entry->update(['status' => 'pending']);
             $translation->update(['status' => 'pending']);
 

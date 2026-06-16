@@ -7,10 +7,11 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * The dynamic admin menu (design.md §15.2/§366): the content_sections enabled for the
- * current site ∩ the user's permissions — entitlement (layer #1) then RBAC (layer #2).
- * content_sections is BelongsToSite, so the query is auto-scoped to the current site
- * and fail-closed (no site / no user → empty menu).
+ * The dynamic admin menu (design.md §15.2/§366): the content_sections provisioned for
+ * the current site ∩ the user's permissions. content_sections is BelongsToSite, so the
+ * query is auto-scoped to the current site and fail-closed (no site / no user → empty
+ * menu). NOTE: this gates on section provisioning + RBAC; joining the module-level
+ * entitlement (site_modules.enabled) is a follow-up.
  */
 final class AdminNav
 {

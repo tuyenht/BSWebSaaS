@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 /*
@@ -196,4 +197,50 @@ it('forbids an author from editing another author\'s page (scope own)', function
     });
 
     $this->actingAs($author)->get("http://a.test/admin/pages/{$ulid}/edit")->assertForbidden();
+});
+
+it('persists under the site default locale, not a hardcoded vi', function () {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    // Flip site 1 to a non-vi default locale (privileged connection — bypasses RLS).
+    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['default_locale' => 'en']);
+
+    $tenancy->enter(1, function () use ($editor) {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('title', 'About us')
+            ->set('slug', 'about-us')
+            ->call('addBlock', 'hero')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $entry = Entry::query()->where('type', 'page')->first();
+        expect($entry->translationFor('en'))->not->toBeNull()
+            ->and($entry->translations()->where('locale', 'vi')->exists())->toBeFalse();
+    });
+});
+
+it('rejects a slug already owned by another page with a friendly error (no 500)', function () {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor) {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'entries.publish']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('title', 'Liên hệ')->set('slug', 'lien-he')->call('addBlock', 'hero')
+            ->call('publish')->assertHasNoErrors()->assertSet('status', 'published');
+
+        // A second page claiming the same slug → friendly slug error, not a DB 500.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('title', 'Liên hệ 2')->set('slug', 'lien-he')->call('addBlock', 'hero')
+            ->call('publish')->assertHasErrors('slug');
+
+        expect(SiteRoute::query()->where('path', '/lien-he')->count())->toBe(1);
+    });
 });

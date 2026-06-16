@@ -130,3 +130,60 @@ it('serves the 301 from the storefront and 404s an unmapped path', function () {
     $this->get('http://a.test/ve-chung-toi')->assertOk();
     $this->get('http://a.test/khong-ton-tai')->assertNotFound();
 });
+
+it('does not let a submit-only actor unpublish an already-published page', function () {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+    $author = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor, $author) {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+
+        $page = makeDraftPage($author, 'gioi-thieu');
+        app(PublishEntry::class)->handle($page->fresh(), 'vi', $editor->fresh());
+        expect($page->fresh()->status)->toBe('published');
+
+        // The author (submit only) re-submits the live page → it must stay published.
+        $status = app(PublishEntry::class)->handle($page->fresh(), 'vi', $author->fresh());
+
+        expect($status)->toBe('published')
+            ->and($page->fresh()->status)->toBe('published');
+    });
+});
+
+it('collapses a repeated rename into a single-hop 301 chain (A→B→C)', function () {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor) {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        $page = makeDraftPage($editor, 'a');
+        $publish = app(PublishEntry::class);
+        $publish->handle($page->fresh(), 'vi', $editor->fresh());
+
+        $page->translationFor('vi')->update(['slug' => 'b']);
+        $publish->handle($page->fresh(), 'vi', $editor->fresh());
+
+        $page->translationFor('vi')->update(['slug' => 'c']);
+        $publish->handle($page->fresh(), 'vi', $editor->fresh());
+
+        // /a redirects straight to /c (single hop), not /a→/b→/c.
+        expect(Redirect::query()->where('from_path', '/a')->value('to_path'))->toBe('/c')
+            ->and(Redirect::query()->where('from_path', '/b')->value('to_path'))->toBe('/c')
+            ->and(SiteRoute::query()->where('entry_id', $page->id)->value('path'))->toBe('/c');
+    });
+});
+
+it('resolves a case-variant inbound path on the storefront', function () {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor) {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        $page = makeDraftPage($editor, 'gioi-thieu', 'Giới thiệu', ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'GT']]]]);
+        app(PublishEntry::class)->handle($page->fresh(), 'vi', $editor->fresh());
+    });
+
+    $this->get('http://a.test/GIOI-THIEU')->assertOk();
+});

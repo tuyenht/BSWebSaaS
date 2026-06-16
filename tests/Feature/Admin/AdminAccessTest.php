@@ -98,3 +98,19 @@ it('logs out and returns to the tenant login', function () {
 
     $this->assertGuest();
 });
+
+it('rate-limits repeated failed logins (brute-force guard)', function () {
+    foreach (range(1, 5) as $ignored) {
+        Livewire::test(Login::class)
+            ->set('email', 'owner@anvinh.test')->set('password', 'wrong-password')
+            ->call('login')->assertHasErrors('email');
+    }
+
+    // 6th attempt is throttled — blocked even with the CORRECT password.
+    Livewire::test(Login::class)
+        ->set('email', 'owner@anvinh.test')->set('password', 'a-strong-password')
+        ->call('login')
+        ->assertHasErrors('email');
+
+    $this->assertGuest();
+});
