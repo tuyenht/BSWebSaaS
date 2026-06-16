@@ -1,8 +1,11 @@
 <?php
 
+use App\Modules\Admin\Livewire\Dashboard;
+use App\Modules\Admin\Livewire\Entries\Editor;
+use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
+use App\Modules\Admin\Livewire\Login;
 use App\Modules\Identity\Models\User;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
-use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -26,14 +29,31 @@ Route::domain((string) config('tenancy.platform_host'))
         })->name('platform.dashboard');
     });
 
-// ── Tenant admin plane — /admin on the tenant's own domain (auth + tenant context) ─
+// ── Tenant admin — login (guest, tenant context) ──────────────────────────────
+Route::prefix('admin')
+    ->middleware(['web', SetCurrentSite::class, 'site.active'])
+    ->group(function (): void {
+        Route::get('/login', Login::class)->name('admin.login');
+    });
+
+// ── Tenant admin plane — protected (auth + tenant context) ─────────────────────
 Route::prefix('admin')
     ->middleware(['web', SetCurrentSite::class, 'site.active', 'auth'])
     ->group(function (): void {
-        Route::get('/', fn () => response()->json([
-            'plane' => 'admin',
-            'site_id' => app(CurrentSite::class)->id(),
-        ]))->name('admin.dashboard');
+        Route::get('/', Dashboard::class)->name('admin.dashboard');
+
+        // Pages CRUD (W4). Addressed by ulid (D2: never the raw bigint id).
+        Route::get('/pages', EntriesIndex::class)->name('admin.entries.index');
+        Route::get('/pages/create', Editor::class)->name('admin.entries.create');
+        Route::get('/pages/{ulid}/edit', Editor::class)->name('admin.entries.edit');
+
+        Route::post('/logout', function () {
+            Auth::logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+
+            return redirect()->route('admin.login');
+        })->name('admin.logout');
     });
 
 // ── Auth + 2FA-setup redirect targets (stubs until P1 UIs; precede the catch-all) ─

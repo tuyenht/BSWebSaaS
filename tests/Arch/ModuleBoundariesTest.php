@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+
 /*
  * Module boundary invariants (CLAUDE.md §6 — "ranh giới module"; design.md Mục 22.1).
  *
@@ -34,3 +36,10 @@ arch('feature modules do not depend on Tenancy internals (only its public surfac
 arch('Shared namespace holds interfaces only')
     ->expect('App\\Modules\\Shared\\Contracts')
     ->toBeInterfaces();
+
+// Every admin entry component authorizes through a policy (structural promotion of
+// ArchTest #2 "every action through Policy"): each carries the trait that exposes
+// $this->authorize(), and the behavioural tests prove the calls actually gate.
+arch('admin entry components authorize through a policy')
+    ->expect('App\\Modules\\Admin\\Livewire\\Entries')
+    ->toUse(AuthorizesRequests::class);

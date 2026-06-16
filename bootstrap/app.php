@@ -24,6 +24,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'platform' => EnsurePlatformAccess::class,
             '2fa' => EnsureTwoFactorEnabled::class,
         ]);
+
+        // Guests on the tenant admin plane land on the admin login; elsewhere the
+        // platform/global login (P0.8 stub until its UI).
+        $middleware->redirectGuestsTo(
+            fn (Request $request): string => $request->is('admin', 'admin/*') ? route('admin.login') : route('login'),
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

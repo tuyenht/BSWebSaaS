@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Providers\AdminServiceProvider;
 use App\Modules\Cms\Providers\CmsServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
 use App\Modules\Provisioning\Providers\ProvisioningServiceProvider;
@@ -18,4 +19,5 @@ return [
     ProvisioningServiceProvider::class,
     ThemeServiceProvider::class,
     CmsServiceProvider::class,
+    AdminServiceProvider::class,
 ];
