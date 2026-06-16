@@ -1,0 +1,33 @@
+<?php
+
+namespace App\Modules\Tenancy\Models;
+
+use App\Modules\Tenancy\Concerns\BelongsToSite;
+use Illuminate\Database\Eloquent\Model;
+
+/**
+ * Dynamic content-type registry / admin nav section (page|post + templates). Seeded
+ * per-site by ProvisionSite; drives which "kinds" of content a site manages.
+ *
+ * @property int $site_id
+ * @property string $key
+ * @property string $label
+ * @property string|null $entry_type
+ * @property array<string, mixed> $meta
+ */
+class ContentSection extends Model
+{
+    use BelongsToSite;
+
+    protected $guarded = [];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'meta' => 'array',
+        ];
+    }
+}

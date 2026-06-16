@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Tenancy\Http\Middleware\EnsureModuleEnabled;
+use App\Modules\Tenancy\Http\Middleware\EnsureSiteActive;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -12,7 +14,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Defense layer #1 (entitlement). Apply after SetCurrentSite has resolved
+        // the tenant: 'site.active' gates lifecycle, 'module:<key>' gates modules.
+        $middleware->alias([
+            'site.active' => EnsureSiteActive::class,
+            'module' => EnsureModuleEnabled::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
