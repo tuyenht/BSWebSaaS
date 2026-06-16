@@ -4,6 +4,7 @@ use App\Modules\Admin\Livewire\Login;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -70,10 +71,11 @@ it('shows the dashboard shell and the dynamic "Trang" nav to the owner', functio
         ->assertSee('Trang');
 });
 
-it('hides the "Trang" nav from a user without entries.view (entitlement ∩ RBAC)', function () {
-    $stranger = User::factory()->create();
+it('hides the "Trang" nav from a member without entries.view (entitlement ∩ RBAC)', function () {
+    $member = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($member, 'media-only', ['media.view']));
 
-    $this->actingAs($stranger)->get('http://anvinh.test/admin')
+    $this->actingAs($member)->get('http://anvinh.test/admin')
         ->assertOk()
         ->assertSee('Bảng điều khiển')
         ->assertDontSee('Trang');
