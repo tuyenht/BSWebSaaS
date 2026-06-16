@@ -22,7 +22,9 @@ it('enforces RLS + FORCE on every table that has a site_id column', function () 
           --   • roles / model_has_roles / model_has_permissions — RBAC authz metadata
           --     resolved during auth (outside any tenant tx), scoped IN-APP by the
           --     spatie team key (= site_id); platform rows use sentinel site_id 0.
-          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions')
+          --   • audit_logs — append-only platform trail; best-effort writes may have
+          --     no tenant context, operators need cross-site visibility.
+          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions', 'audit_logs')
           and exists (
             select 1 from information_schema.columns col
             where col.table_schema = 'public'
@@ -49,7 +51,9 @@ it('has at least one isolation policy on every tenant table', function () {
           --   • roles / model_has_roles / model_has_permissions — RBAC authz metadata
           --     resolved during auth (outside any tenant tx), scoped IN-APP by the
           --     spatie team key (= site_id); platform rows use sentinel site_id 0.
-          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions')
+          --   • audit_logs — append-only platform trail; best-effort writes may have
+          --     no tenant context, operators need cross-site visibility.
+          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions', 'audit_logs')
           and exists (
             select 1 from information_schema.columns col
             where col.table_schema = 'public'
