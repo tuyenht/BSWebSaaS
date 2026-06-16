@@ -177,10 +177,12 @@ it('lists only the current site pages', function () {
     });
 });
 
-it('forbids a user without entries.view from the page list', function () {
-    $stranger = User::factory()->create();
+it('forbids a member without entries.view from the page list', function () {
+    $tenancy = app(Tenancy::class);
+    $member = User::factory()->create();
+    $tenancy->enter(1, fn () => grantRole($member, 'media-only', ['media.view']));
 
-    $this->actingAs($stranger)->get('http://a.test/admin/pages')->assertForbidden();
+    $this->actingAs($member)->get('http://a.test/admin/pages')->assertForbidden();
 });
 
 it('forbids an author from editing another author\'s page (scope own)', function () {

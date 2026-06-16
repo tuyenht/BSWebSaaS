@@ -3,6 +3,7 @@
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -45,8 +46,9 @@ it('redirects an unauthenticated visitor on the admin plane to the tenant login'
     $this->get('http://a.test/admin')->assertRedirect('http://a.test/admin/login');
 });
 
-it('serves the admin shell to an authenticated user in tenant context', function () {
+it('serves the admin shell to a site member in tenant context', function () {
     $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
     $this->actingAs($user)->get('http://a.test/admin')
         ->assertOk()

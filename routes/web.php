@@ -36,9 +36,9 @@ Route::prefix('admin')
         Route::get('/login', Login::class)->name('admin.login');
     });
 
-// ── Tenant admin plane — protected (auth + tenant context) ─────────────────────
+// ── Tenant admin plane — protected (auth + tenant context + site membership) ───
 Route::prefix('admin')
-    ->middleware(['web', SetCurrentSite::class, 'site.active', 'auth'])
+    ->middleware(['web', SetCurrentSite::class, 'site.active', 'auth', 'tenant.member'])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
 
