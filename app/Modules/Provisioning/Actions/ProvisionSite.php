@@ -148,10 +148,17 @@ final class ProvisionSite
             'title' => $data->siteName,
             'slug' => 'home',
             'status' => 'published',
+            // A composed homepage: components sourced from different objects.
             'body' => ['blocks' => [
                 ['type' => 'hero', 'props' => [
                     'heading' => $data->siteName,
                     'subheading' => 'Chào mừng đến với '.$data->siteName,
+                ]],
+                ['type' => 'latest_posts', 'props' => ['heading' => 'Tin mới nhất', 'limit' => 3]],
+                ['type' => 'cta', 'props' => [
+                    'heading' => 'Liên hệ '.$data->siteName,
+                    'button_label' => 'Liên hệ ngay',
+                    'button_url' => '/lien-he',
                 ]],
             ]],
         ]);

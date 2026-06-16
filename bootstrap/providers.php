@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Providers\CmsServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
 use App\Modules\Provisioning\Providers\ProvisioningServiceProvider;
 use App\Modules\Rbac\Providers\RbacServiceProvider;
@@ -16,4 +17,5 @@ return [
     RbacServiceProvider::class,
     ProvisioningServiceProvider::class,
     ThemeServiceProvider::class,
+    CmsServiceProvider::class,
 ];
