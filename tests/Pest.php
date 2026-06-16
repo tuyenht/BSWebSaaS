@@ -1,6 +1,8 @@
 <?php
 
+use App\Modules\Rbac\Context\TeamContext;
 use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 uses(TestCase::class)->in('Feature', 'Arch', 'Concurrency');
@@ -52,4 +54,21 @@ function seedTenancy(): void
         ['site_id' => 1, 'hostname' => 'a.test', 'kind' => 'subdomain', 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
         ['site_id' => 2, 'hostname' => 'b.test', 'kind' => 'subdomain', 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
     ]);
+}
+
+/*
+|--------------------------------------------------------------------------
+| RBAC reset helper (P0.3)
+|--------------------------------------------------------------------------
+| Clears the (global, non-RLS) authz tables + spatie cache + team-context
+| override so each RBAC test starts from a deterministic, leak-free state.
+*/
+function truncateRbac(): void
+{
+    DB::connection('pgsql_admin')->statement(
+        'truncate roles, permissions, model_has_roles, model_has_permissions, role_has_permissions restart identity cascade'
+    );
+
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+    app(TeamContext::class)->forget();
 }

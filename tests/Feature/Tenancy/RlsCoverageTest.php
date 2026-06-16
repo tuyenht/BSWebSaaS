@@ -16,10 +16,13 @@ it('enforces RLS + FORCE on every table that has a site_id column', function () 
         join pg_namespace n on n.oid = c.relnamespace
         where n.nspname = 'public'
           and c.relkind = 'r'
-          -- 'domains' legitimately has a site_id FK but is GLOBAL (no RLS): the host
-          -- resolver must read it BEFORE any tenant context exists. It is the single
-          -- documented exception.
-          and c.relname <> 'domains'
+          -- GLOBAL tables that legitimately carry a site_id column but are NOT
+          -- RLS-protected (documented exceptions):
+          --   • domains — the host resolver reads it BEFORE any tenant context exists.
+          --   • roles / model_has_roles / model_has_permissions — RBAC authz metadata
+          --     resolved during auth (outside any tenant tx), scoped IN-APP by the
+          --     spatie team key (= site_id); platform rows use sentinel site_id 0.
+          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions')
           and exists (
             select 1 from information_schema.columns col
             where col.table_schema = 'public'
@@ -40,10 +43,13 @@ it('has at least one isolation policy on every tenant table', function () {
         join pg_namespace n on n.oid = c.relnamespace
         where n.nspname = 'public'
           and c.relkind = 'r'
-          -- 'domains' legitimately has a site_id FK but is GLOBAL (no RLS): the host
-          -- resolver must read it BEFORE any tenant context exists. It is the single
-          -- documented exception.
-          and c.relname <> 'domains'
+          -- GLOBAL tables that legitimately carry a site_id column but are NOT
+          -- RLS-protected (documented exceptions):
+          --   • domains — the host resolver reads it BEFORE any tenant context exists.
+          --   • roles / model_has_roles / model_has_permissions — RBAC authz metadata
+          --     resolved during auth (outside any tenant tx), scoped IN-APP by the
+          --     spatie team key (= site_id); platform rows use sentinel site_id 0.
+          and c.relname not in ('domains', 'roles', 'model_has_roles', 'model_has_permissions')
           and exists (
             select 1 from information_schema.columns col
             where col.table_schema = 'public'

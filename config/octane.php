@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Rbac\Listeners\FlushRbacTeamContext;
 use App\Modules\Tenancy\Listeners\FlushTenancyContext;
 use Laravel\Octane\Contracts\OperationTerminated;
 use Laravel\Octane\Events\RequestHandled;
@@ -84,6 +85,7 @@ return [
         RequestTerminated::class => [
             // FlushUploadedFiles::class,
             FlushTenancyContext::class,
+            FlushRbacTeamContext::class,
         ],
 
         TaskReceived::class => [
@@ -93,6 +95,7 @@ return [
 
         TaskTerminated::class => [
             FlushTenancyContext::class,
+            FlushRbacTeamContext::class,
         ],
 
         TickReceived::class => [
@@ -102,6 +105,7 @@ return [
 
         TickTerminated::class => [
             FlushTenancyContext::class,
+            FlushRbacTeamContext::class,
         ],
 
         OperationTerminated::class => [
