@@ -19,9 +19,19 @@ final class PlatformAccess
 
     public function isSuperAdmin(User $user): bool
     {
-        // A fresh relationship query (not $user->hasRole, which would reuse a roles
-        // relation already eager-loaded at the tenant team by spatie's own gate check).
-        return $this->onPlatform(static fn (): bool => $user->roles()->where('name', 'super_admin')->exists());
+        return $this->hasAnyPlatformRole($user, ['super_admin']);
+    }
+
+    /**
+     * Does the user hold any of these roles at platform scope? Uses a fresh
+     * relationship query (not $user->hasRole, which would reuse a roles relation
+     * already eager-loaded at a tenant team by spatie's own gate check).
+     *
+     * @param  list<string>  $roles
+     */
+    public function hasAnyPlatformRole(User $user, array $roles): bool
+    {
+        return $this->onPlatform(static fn (): bool => $user->roles()->whereIn('name', $roles)->exists());
     }
 
     /**

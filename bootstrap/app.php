@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
 use App\Modules\Tenancy\Http\Middleware\EnsureModuleEnabled;
 use App\Modules\Tenancy\Http\Middleware\EnsureSiteActive;
 use Illuminate\Foundation\Application;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'site.active' => EnsureSiteActive::class,
             'module' => EnsureModuleEnabled::class,
+            'platform' => EnsurePlatformAccess::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -1,5 +1,5 @@
 <?php
 
-it('returns a successful response for the home page', function () {
-    $this->get('/')->assertStatus(200);
+it('exposes the health check endpoint', function () {
+    $this->get('/up')->assertOk();
 });
