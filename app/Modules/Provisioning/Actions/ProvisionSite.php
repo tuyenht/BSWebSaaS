@@ -11,6 +11,7 @@ use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteLocale;
@@ -95,6 +96,14 @@ final class ProvisionSite
             foreach ($data->modules as $module) {
                 SiteModule::query()->firstOrCreate(['module_key' => $module], ['enabled' => true]);
             }
+
+            // Baseline admin nav section: "Trang" (pages). The dynamic menu (AdminNav)
+            // surfaces it ∩ the user's entries.* permissions. More sections (post
+            // collections) are added per content type as they ship.
+            ContentSection::query()->firstOrCreate(
+                ['key' => 'pages'],
+                ['label' => 'Trang', 'entry_type' => 'page', 'permission_prefix' => 'entries', 'sort_order' => 0],
+            );
 
             foreach (PermissionRegistry::tenantRoleTemplates() as $name => $spec) {
                 $role = Role::findOrCreate($name, PermissionRegistry::GUARD);

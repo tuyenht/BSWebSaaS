@@ -3,13 +3,15 @@
 namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 
 /**
  * Resolves a request (locale, path) to publishable content within the CURRENT site
  * (all queries auto-scoped by BelongsToSite + RLS). Returns null when there is no
  * route, the entry is not published, or the locale is not published — the caller
- * then 404s. Visibility rule: entry.status=published AND translation.status=published.
+ * then looks for a 301 (slug history) and otherwise 404s. Visibility rule:
+ * entry.status=published AND translation.status=published.
  */
 final class RouteResolver
 {
@@ -44,5 +46,17 @@ final class RouteResolver
         }
 
         return new ResolvedContent($entry, $translation);
+    }
+
+    /**
+     * A 301/302 mapping for a path that no longer resolves (the slug moved). Checked
+     * only after resolve() misses, so live content always wins over its own history.
+     */
+    public function redirect(string $locale, string $path): ?Redirect
+    {
+        return Redirect::query()
+            ->where('locale', $locale)
+            ->where('from_path', $path)
+            ->first();
     }
 }

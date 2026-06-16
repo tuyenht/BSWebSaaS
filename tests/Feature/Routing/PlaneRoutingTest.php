@@ -41,16 +41,16 @@ it('refuses a suspended site', function () {
 });
 
 // ── Tenant admin ────────────────────────────────────────────────────────────────
-it('redirects an unauthenticated visitor on the admin plane to login', function () {
-    $this->get('http://a.test/admin')->assertRedirect('http://a.test/login');
+it('redirects an unauthenticated visitor on the admin plane to the tenant login', function () {
+    $this->get('http://a.test/admin')->assertRedirect('http://a.test/admin/login');
 });
 
-it('serves the admin plane to an authenticated user in tenant context', function () {
+it('serves the admin shell to an authenticated user in tenant context', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->getJson('http://a.test/admin')
+    $this->actingAs($user)->get('http://a.test/admin')
         ->assertOk()
-        ->assertJson(['plane' => 'admin', 'site_id' => 1]);
+        ->assertSee('Bảng điều khiển');
 });
 
 // ── Platform ────────────────────────────────────────────────────────────────────

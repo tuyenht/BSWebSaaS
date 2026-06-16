@@ -2,7 +2,10 @@
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
@@ -74,6 +77,25 @@ function truncateRbac(): void
 
     app(PermissionRegistrar::class)->forgetCachedPermissions();
     app(TeamContext::class)->forget();
+}
+
+/*
+|--------------------------------------------------------------------------
+| Tenant role grant helper (P0.3 / W3)
+|--------------------------------------------------------------------------
+| Create a tenant role carrying the given permissions in the CURRENT site context
+| and assign it to the user (mirrors how ProvisionSite instantiates role templates).
+| Call inside Tenancy::enter so the spatie team (= site_id) + RLS are the right site.
+*/
+
+/**
+ * @param  list<string>  $permissions
+ */
+function grantRole(User $user, string $name, array $permissions): void
+{
+    $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
+    $role->syncPermissions($permissions);
+    $user->assignRole($role);
 }
 
 /*
