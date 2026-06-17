@@ -43,3 +43,24 @@ it('resolves the layout via the override → type → theme chain', function () 
         ->and($resolver->layoutFor('post'))->toBe('theme::layouts.post')
         ->and($resolver->layoutFor('page', 'landing'))->toBe('theme::layouts.landing');
 });
+
+it('renders a post on the post layout (title heading + blocks)', function () {
+    $html = app(PageRenderer::class)->render('post', null, 'Bài 1', [
+        'blocks' => [['type' => 'richtext', 'props' => ['heading' => 'Mở đầu', 'paragraphs' => ['Đoạn 1']]]],
+    ], ['description' => 'SEO bài 1']);
+
+    expect($html)->toContain('<title>Bài 1</title>')
+        ->toContain('class="post__title">Bài 1')
+        ->toContain('Mở đầu')
+        ->toContain('Đoạn 1');
+});
+
+it('threads a per-category detail_template through to the layout', function () {
+    // The category template ('page', an existing layout) must beat the 'post' type:
+    // proves PageRenderer forwards $categoryTemplate to TemplateResolver::layoutFor.
+    $html = app(PageRenderer::class)->render('post', null, 'X', [
+        'blocks' => [['type' => 'hero', 'props' => ['heading' => 'Y']]],
+    ], [], 'page');
+
+    expect($html)->toContain('<main>')->not->toContain('class="post"');
+});
