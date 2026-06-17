@@ -40,6 +40,17 @@ class Entry extends Model
     }
 
     /**
+     * Canonical routes (one per locale). Lets callers link an entry without recomposing
+     * its path (the post-list components read the stored path).
+     *
+     * @return HasMany<SiteRoute, $this>
+     */
+    public function routes(): HasMany
+    {
+        return $this->hasMany(SiteRoute::class);
+    }
+
+    /**
      * @return BelongsToMany<Taxonomy, $this>
      */
     public function taxonomies(): BelongsToMany

@@ -4,7 +4,13 @@
     @endif
     <ul class="latest-posts__list">
         @foreach ($posts as $post)
-            <li class="latest-posts__item">{{ $post['title'] ?? '' }}</li>
+            <li class="latest-posts__item">
+                @if (! empty($post['url']))
+                    <a href="{{ $post['url'] }}">{{ $post['title'] ?? '' }}</a>
+                @else
+                    {{ $post['title'] ?? '' }}
+                @endif
+            </li>
         @endforeach
     </ul>
 </section>

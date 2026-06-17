@@ -47,18 +47,31 @@ final class StorefrontController
 
         return $resolved instanceof ResolvedCategory
             ? $this->renderCategory($resolved, $locale)
-            : $this->renderEntry($resolved);
+            : $this->renderEntry($resolved, $locale);
     }
 
-    private function renderEntry(ResolvedContent $content): Response
+    private function renderEntry(ResolvedContent $content, string $locale): Response
     {
         $entry = $content->entry;
 
-        // A post's layout can be set per primary category (detail_template); pages don't
-        // pay for the lookup. The Cms lookup lives here so Theme stays Cms-agnostic.
-        $categoryTemplate = $entry->type === 'post'
-            ? $entry->taxonomies()->first()?->detail_template
-            : null;
+        $categoryTemplate = null;
+        $extra = [];
+
+        // A post is shown under its primary category: the category drives its layout
+        // (detail_template) and a breadcrumb back to the category list. Pages skip this.
+        // The Cms lookup lives here so the Theme module stays Cms-agnostic.
+        if ($entry->type === 'post') {
+            $category = $entry->taxonomies()->first();
+            $categoryTemplate = $category?->detail_template;
+
+            $categoryTranslation = $category?->translationFor($locale);
+            if ($categoryTranslation !== null) {
+                $extra['category'] = [
+                    'name' => $categoryTranslation->name,
+                    'url' => '/'.trim($categoryTranslation->slug, '/'),
+                ];
+            }
+        }
 
         $html = $this->renderer->render(
             $entry->type,
@@ -70,6 +83,7 @@ final class StorefrontController
                 'description' => $content->translation->seo_description,
             ],
             $categoryTemplate,
+            $extra,
         );
 
         return response($html);
