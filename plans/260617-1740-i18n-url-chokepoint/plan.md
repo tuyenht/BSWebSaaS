@@ -1,6 +1,6 @@
 # Plan — i18n URL chokepoint + default-locale source-of-truth
 
-**Status:** APPROVED — baseline menu đã commit (`aa90f99`); **sẵn sàng khởi C1** (Pest đỏ trước). Điểm khởi C1 = `aa90f99`.
+**Status:** HOÀN TẤT — C1–C6 done (C1 `e9a91d4` → C6 `cf5f4ed`), C5 skipped (thỏa ở baseline `aa90f99`). Lớp i18n-URL đóng chuỗi 2026-06-18.
 **Branch:** main · **Owner:** Tuyền (đạo diễn/reviewer); agent thực thi · **Created:** 2026-06-17
 **Design nguồn:** `docs/design.md` §10 (ADR-11, v2.10) + `CLAUDE.md` §4. Verdict trước: cụm menu model-B = **GIỮ** (20/20 Pest xanh); cụm i18n = **GIỮ nền + BUILD lớp URL**.
 
