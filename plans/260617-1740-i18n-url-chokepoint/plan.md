@@ -48,3 +48,6 @@ GIỮ nền i18n single-locale đang đúng, **DỰNG lớp URL i18n** theo chi�
 - URL phát: `StorefrontController.php:80,129` (ghép tay) · `MenuResolver.php:110-114,150-153,247` (route.path thô) · `post.blade.php:18` (breadcrumb) · write-side qua `RouteSync.php:30,77`+`PathBuilder`. Sitemap/robots: CHƯA có.
 - Call-site An Vinh: `ProvisionSiteCommand.php:40-48` (locales bỏ trống → `['vi']`); `StorefrontRenderTest.php:29-39` helper (→`['vi']`). DTO default `ProvisionSiteData.php:24` = `['vi']`.
 - site_locales hiện chỉ `unique(site_id, locale)` (`migration 0004:31`) — THIẾU partial-unique.
+
+## Deferred notes
+- **C3 — RỦI RO TƯƠNG LAI THẤP:** slug nội dung trùng langcode chưa-bật (vd category slug `ko`) sẽ đổi nghĩa khi locale đó được bật. Xử lý đúng chỗ = validation lúc tạo/sửa slug (cấm slug trùng langcode), thuộc feature quản-lý-locale (`locales.manage`) đã defer. KHÔNG xử ở guard C3.

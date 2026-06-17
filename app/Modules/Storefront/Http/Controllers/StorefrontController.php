@@ -37,8 +37,14 @@ final class StorefrontController
 
     public function __invoke(Request $request): Response
     {
-        $path = strtolower('/'.ltrim($request->path(), '/'));
-        $locale = $this->locale->default();
+        $requestPath = strtolower('/'.ltrim($request->path(), '/'));
+        $default = $this->locale->default();
+
+        [$locale, $path, $redirectTo] = $this->localeContext($requestPath, $default);
+
+        if ($redirectTo !== null) {
+            return redirect()->to($redirectTo, 301);
+        }
 
         $resolved = $this->resolver->resolve($locale, $path);
 
@@ -49,13 +55,56 @@ final class StorefrontController
             return redirect()->to($redirect->to_path, $redirect->status_code);
         }
 
-        // Header navigation for the active locale (single-locale storefront → locale is the
-        // site default; the resolver's per-locale + default-locale fallback is forward-ready).
-        $menu = $this->nav->resolve('primary', $locale, $locale, $path);
+        // Header navigation for the active locale; active-state matches the (prefixed) request
+        // path. A missing per-locale assignment falls back to the default-locale menu.
+        $menu = $this->nav->resolve('primary', $locale, $default, $requestPath);
 
         return $resolved instanceof ResolvedCategory
             ? $this->renderCategory($resolved, $locale, $menu)
             : $this->renderEntry($resolved, $locale, $menu);
+    }
+
+    /**
+     * Resolve the request's locale + UNPREFIXED content path from the URL (design.md §10/ADR-11).
+     * The site's current default locale is unprefixed, so a /{default}/… request is a canonical
+     * violation → 301 to the clean path. A langcode-shaped first segment that is an ENABLED
+     * non-default locale selects that locale (the remainder is its content path). Anything else
+     * — no prefix, or a langcode-shaped segment that is not an enabled locale — resolves as a
+     * default-locale path, so an unknown/disabled locale prefix simply 404s on the route miss
+     * (no soft-fallback to the default).
+     *
+     * @return array{0: string, 1: string, 2: string|null} [locale, contentPath, redirectTo]
+     */
+    private function localeContext(string $path, string $default): array
+    {
+        $segments = explode('/', trim($path, '/'));
+        $first = $segments[0];
+
+        if ($first === '' || ! $this->looksLikeLocale($first)) {
+            return [$default, $path, null];
+        }
+
+        if ($first === $default) {
+            $rest = '/'.implode('/', array_slice($segments, 1));   // /{default}/x → /x ; /{default} → /
+
+            return [$default, $path, $rest];
+        }
+
+        if ($this->locale->isEnabled($first)) {
+            return [$first, '/'.implode('/', array_slice($segments, 1)), null];
+        }
+
+        return [$default, $path, null];   // langcode-shaped but not enabled → 404 via route miss
+    }
+
+    /**
+     * A path segment shaped like a BCP-47 langcode — `en`, `vi`, `zh-hans`, `pt-br` (the path is
+     * already lower-cased). Broad SHAPE match only; isEnabled() decides whether it is a real,
+     * enabled locale. The 2-letter base excludes ordinary content slugs (e.g. `tin-tuc`).
+     */
+    private function looksLikeLocale(string $segment): bool
+    {
+        return preg_match('/^[a-z]{2}(-[a-z0-9]{2,8})?$/', $segment) === 1;
     }
 
     /**

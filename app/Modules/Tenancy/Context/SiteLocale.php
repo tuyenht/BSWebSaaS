@@ -38,6 +38,19 @@ final class SiteLocale
         return $this->memo[$siteId] ??= $this->resolve($siteId);
     }
 
+    /**
+     * Whether a locale is enabled for the current site (storefront prefix guard, §10/ADR-11).
+     * Fail-closed: no site context → false.
+     */
+    public function isEnabled(string $locale): bool
+    {
+        if (! $this->current->hasId()) {
+            return false;
+        }
+
+        return SiteLocaleModel::query()->where('locale', $locale)->where('enabled', true)->exists();
+    }
+
     private function resolve(int $siteId): string
     {
         $default = SiteLocaleModel::query()->where('is_default', true)->value('locale');
