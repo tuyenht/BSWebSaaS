@@ -8,7 +8,8 @@ use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 
 /**
- * Keeps an entry's canonical route in sync with its slug (design.md §213). On a slug
+ * Keeps an entry's canonical route in sync with its slug (design.md §213). The path is
+ * composed by PathBuilder (page = flat, post = category-prefixed). On a slug/category
  * change it moves the route and records a 301 from the old path ("lịch sử 301"); it
  * also repoints any redirect that pointed AT the old path (so repeated renames stay a
  * single hop, not a chain) and drops a redirect FROM the new path (so an A→B→A rename
@@ -18,13 +19,12 @@ use App\Modules\Cms\Models\SiteRoute;
  */
 final class RouteSync
 {
-    /** The conventional home slug maps to the site root (matches ProvisionSite + seedHomepage). */
-    public const HOME_SLUG = 'home';
+    public function __construct(private readonly PathBuilder $paths) {}
 
-    /** Upsert the route for an entry+locale at the slug-derived path; returns that path. */
+    /** Upsert the route for an entry+locale at the composed path; returns that path. */
     public function sync(Entry $entry, string $locale, string $slug): string
     {
-        $path = $this->pathForSlug($slug);
+        $path = $this->paths->forEntry($entry, $locale, $slug);
 
         $this->assertNoCollision($entry, $locale, $path);
 
@@ -61,13 +61,6 @@ final class RouteSync
         }
 
         return $path;
-    }
-
-    public function pathForSlug(string $slug): string
-    {
-        $slug = trim($slug, '/');
-
-        return ($slug === '' || $slug === self::HOME_SLUG) ? '/' : '/'.$slug;
     }
 
     /** A path is owned by exactly one entry; reject a clash with a different entry's route. */
