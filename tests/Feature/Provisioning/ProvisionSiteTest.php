@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Identity\Models\User;
@@ -97,6 +98,17 @@ it('seeds the posts section + category idempotently', function () {
         expect(ContentSection::query()->where('key', 'posts')->count())->toBe(1)
             ->and(Taxonomy::query()->where('vocabulary', 'post_cat')->count())->toBe(1)
             ->and(TaxonomyTranslation::query()->where('slug', 'tin-tuc')->count())->toBe(1);
+    });
+});
+
+it('routes the seeded category at /tin-tuc', function () {
+    $site = provisionAnVinh();
+    $tenancy = app(Tenancy::class);
+
+    $tenancy->enter($site->id, function () {
+        $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
+
+        expect(SiteRoute::query()->where('taxonomy_id', $category->id)->value('path'))->toBe('/tin-tuc');
     });
 });
 
