@@ -14,5 +14,8 @@ it('resolves the layout via the override → category → type → theme chain',
         ->and($resolver->layoutFor('post', null, 'news_detail'))->toBe('theme::layouts.news_detail')
         ->and($resolver->layoutFor('page', 'landing'))->toBe('theme::layouts.landing')
         // override beats category beats type.
-        ->and($resolver->layoutFor('post', 'special', 'news_detail'))->toBe('theme::layouts.special');
+        ->and($resolver->layoutFor('post', 'special', 'news_detail'))->toBe('theme::layouts.special')
+        // category type + its list_template.
+        ->and($resolver->layoutFor('category'))->toBe('theme::layouts.category')
+        ->and($resolver->layoutFor('category', null, 'news_list'))->toBe('theme::layouts.news_list');
 });

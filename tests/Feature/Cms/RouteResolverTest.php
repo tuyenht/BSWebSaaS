@@ -2,7 +2,10 @@
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\RouteResolver;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\QueryException;
 
@@ -65,5 +68,19 @@ it('enforces the single-target route constraint (D3)', function () {
     app(Tenancy::class)->enter(1, function () {
         expect(fn () => SiteRoute::create(['locale' => 'vi', 'path' => '/orphan']))
             ->toThrow(QueryException::class);
+    });
+});
+
+it('resolves a category list route to a ResolvedCategory', function () {
+    app(Tenancy::class)->enter(1, function () {
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
+        app(RouteSync::class)->syncTaxonomy($category, 'vi', 'tin-tuc');
+
+        $resolved = app(RouteResolver::class)->resolve('vi', '/tin-tuc');
+
+        expect($resolved)->toBeInstanceOf(ResolvedCategory::class)
+            ->and($resolved->taxonomy->id)->toBe($category->id)
+            ->and($resolved->translation->name)->toBe('Tin tức');
     });
 });

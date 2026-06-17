@@ -22,6 +22,7 @@ final class TemplateResolver
 
         return match ($type) {
             'post' => 'theme::layouts.post',
+            'category' => 'theme::layouts.category',
             default => 'theme::layouts.page',
         };
     }

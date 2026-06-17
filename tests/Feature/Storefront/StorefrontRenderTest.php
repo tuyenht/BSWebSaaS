@@ -90,6 +90,44 @@ it('renders a published post at its category path within budget', function () {
     expect($count)->toBeLessThanOrEqual(11);
 });
 
+it('renders a category list page of its published posts within budget', function () {
+    provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+
+    app(Tenancy::class)->enter($site->id, function () {
+        $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
+        $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+        foreach (['Bài một' => 'bai-mot', 'Bài hai' => 'bai-hai'] as $title => $slug) {
+            $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id]);
+            $post->translations()->create([
+                'locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []],
+            ]);
+            $post->assignCategories([$category->id]);
+            app(PublishEntry::class)->handle($post->fresh(), 'vi', $owner->fresh());
+        }
+    });
+
+    $count = countQueries(function () {
+        $html = $this->get('http://anvinh.test/tin-tuc')->assertOk()->getContent();
+
+        expect($html)->toContain('<title>Tin tức</title>')
+            ->toContain('class="category__title">Tin tức')
+            ->toContain('href="/tin-tuc/bai-mot">Bài một')
+            ->toContain('href="/tin-tuc/bai-hai">Bài hai');
+    });
+
+    expect($count)->toBeLessThanOrEqual(12); // resolve + paginate (count+items) + eager translations
+});
+
+it('renders an empty category list when it has no posts', function () {
+    provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
+
+    $html = $this->get('http://anvinh.test/tin-tuc')->assertOk()->getContent();
+
+    expect($html)->toContain('Tin tức')->toContain('Chưa có bài viết nào.');
+});
+
 it('isolates rendered content between provisioned sites', function () {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
     provision('Other Co', 'other.test', 'owner@other.test');
