@@ -31,6 +31,15 @@ final class PathBuilder
         return $prefix.'/'.$slug;
     }
 
+    /**
+     * A taxonomy's canonical path: flat `/slug` built from its localized slug (the
+     * category-list page, e.g. `/tin-tuc`). Nested-category chains are a later step.
+     */
+    public function forTaxonomy(string $slug): string
+    {
+        return '/'.trim($slug, '/');
+    }
+
     private function categoryPrefix(Entry $entry, string $locale): string
     {
         $category = $entry->taxonomies()->first();
