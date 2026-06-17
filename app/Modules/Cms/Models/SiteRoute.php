@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $locale
  * @property string $path
  * @property int|null $entry_id
+ * @property int|null $taxonomy_id
  */
 class SiteRoute extends Model
 {
@@ -29,5 +30,13 @@ class SiteRoute extends Model
     public function entry(): BelongsTo
     {
         return $this->belongsTo(Entry::class);
+    }
+
+    /**
+     * @return BelongsTo<Taxonomy, $this>
+     */
+    public function taxonomy(): BelongsTo
+    {
+        return $this->belongsTo(Taxonomy::class);
     }
 }
