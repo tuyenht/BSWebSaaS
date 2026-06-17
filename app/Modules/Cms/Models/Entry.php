@@ -5,6 +5,7 @@ namespace App\Modules\Cms\Models;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -38,6 +39,16 @@ class Entry extends Model
         return $this->hasMany(EntryTranslation::class);
     }
 
+    /**
+     * @return BelongsToMany<Taxonomy, $this>
+     */
+    public function taxonomies(): BelongsToMany
+    {
+        return $this->belongsToMany(Taxonomy::class, 'entry_taxonomies')
+            ->withPivot('position')
+            ->orderByPivot('position');
+    }
+
     public function translationFor(string $locale): ?EntryTranslation
     {
         // Use the eager-loaded relation when present (avoids an N+1 in any caller that
@@ -47,6 +58,23 @@ class Entry extends Model
         }
 
         return $this->translations()->where('locale', $locale)->first();
+    }
+
+    /**
+     * Sync the entry's categories (entry_taxonomies). Stamps site_id on each pivot row
+     * (the pivot is RLS-protected; attach() does not auto-fill it) and uses array order
+     * as the pivot position — index 0 is the primary category used for routing.
+     *
+     * @param  list<int>  $taxonomyIds
+     */
+    public function assignCategories(array $taxonomyIds): void
+    {
+        $payload = [];
+        foreach ($taxonomyIds as $position => $id) {
+            $payload[$id] = ['position' => $position, 'site_id' => $this->site_id];
+        }
+
+        $this->taxonomies()->sync($payload);
     }
 
     /**
