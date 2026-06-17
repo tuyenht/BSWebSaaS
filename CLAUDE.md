@@ -115,7 +115,16 @@ docker compose run --rm --no-deps app php artisan migrate --database=pgsql_admin
 docker compose run --rm --no-deps app vendor/bin/pest
 docker compose run --rm --no-deps app vendor/bin/phpstan analyse --memory-limit=1G   # Larastan max
 docker compose run --rm --no-deps app vendor/bin/pint --test
+
+# 🔁 Sau khi SỬA CODE PHP — Octane (worker mode) giữ code CŨ trong RAM.
+# Dùng `exec` (vào server ĐANG CHẠY), KHÔNG phải `run --rm` (tạo container mới → reload vô nghĩa):
+docker compose exec app php artisan octane:reload     # reload mềm workers → trình duyệt thấy code mới
+docker compose restart horizon                        # sau khi sửa Job/Listener/Mailable (queue nền)
 ```
+
+> ⚙ **Khi nào CẦN reload:** chỉ khi (a) bạn tự MỞ TRÌNH DUYỆT ngó storefront/admin — Octane giữ code trong RAM → `octane:reload`; hoặc (b) đổi code chạy NỀN (Job/Listener/Mailable) → `restart horizon`.
+> **KHÔNG cần reload cho:** Pest/PHPStan/Pint/migrate/seed — mỗi `run --rm` là tiến trình MỚI, luôn thấy code mới nhất. Đây là lý do ở Phase 0 (chủ yếu code + Pest) bạn hiếm khi phải đụng server.
+> Đã `config:cache`/`route:cache` mà đổi `.env`/route → phải `config:clear`/`route:clear`. (Tùy chọn dev: thêm `--watch` vào `octane:start` để tự reload — cần cài chokidar trong image.)
 
 ---
 
