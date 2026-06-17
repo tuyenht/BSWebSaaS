@@ -122,10 +122,11 @@ docker compose run --rm --no-deps app vendor/bin/pint --test
 ## 8. Workflow mỗi issue
 
 1. Đọc mục liên quan trong `docs/design.md` (tham chiếu trong issue).
-2. **Viết test trước** (hoặc song song) — mô tả hành vi đúng + bất biến bảo mật.
-3. Implement tối thiểu để xanh test.
-4. Chạy guardrail (mục 6) → phải xanh.
-5. Commit nhỏ, mô tả rõ. PR (nếu dùng) một việc.
+2. **Phân loại Autonomy Gate (§10.1)** → ACT hay COUNCIL. Với issue COUNCIL-class hoặc không tầm thường: **nói lại hiểu + liệt kê edge case + nêu giả định ngầm**, chờ duyệt rồi mới sang bước 3.
+3. **Viết test trước** (hoặc song song) — mô tả hành vi đúng + bất biến bảo mật.
+4. Implement tối thiểu để xanh test.
+5. Chạy guardrail (mục 6) → phải xanh.
+6. Commit nhỏ, mô tả rõ. PR (nếu dùng) một việc.
 
 > **THỨ TỰ PHASE 0:** issue #1 = **Gate #1** (cô lập tenant) → PHẢI xanh trước. Rồi mới: content engine (`post` + content_sections) → menu/banner/media → RBAC 3 tầng + cổng-đăng-theo-quyền → cụm liên hệ + form anti-spam → SEO/CWV gate.
 
@@ -140,3 +141,55 @@ docker compose run --rm --no-deps app vendor/bin/pint --test
 - ❌ Query thiếu `site_id`; bỏ qua RLS; lộ bigint id thô.
 - ❌ Tự nâng major version; thêm dependency nặng không bàn.
 - ❌ Reverb/realtime ở GĐ1 (YAGNI); microservices (đây là Modular Monolith).
+
+---
+
+## 10. Quy trình ra quyết định & chuẩn chất lượng (Decision Protocol)
+
+> Lớp meta-process điều phối vibe-coding. Tôi (Tuyền) là đạo diễn + senior reviewer; agent thực thi.
+> Slash command tương ứng ở `.claude/commands/bs/` (`/bs:spec` `/bs:audit` `/bs:next` `/bs:ship` `/bs:review`)
+> chỉ là trigger — luật nằm ở đây.
+
+### 10.1 🚦 Autonomy Gate — phân loại MỌI yêu cầu TRƯỚC khi làm
+
+- **ACT (tự động làm, KHÔNG hỏi, báo cáo sau):** việc KHÔNG đụng schema/contract/kiến trúc.
+  Gồm: refactor giữ nguyên behavior · viết/sửa test · fix bug tầng app · fix Larastan/Pint/Rector ·
+  code theo contract đã chốt · tài liệu · task đã nằm trong plan/issue đã duyệt.
+- **COUNCIL (propose-first — DỪNG, chờ tôi duyệt):** bất cứ việc nào đụng tới →
+  **DB schema / migration / index / quan hệ bảng** · quy ước **D1–D15** (§3) · **16 ADR** ·
+  bất biến bảo mật **§2** · ranh giới module / module-contract (§5) ·
+  quyết định ảnh hưởng **nhiều tenant / nhiều module / về sau**.
+  → KHÔNG tự thực thi. Chạy Council (10.2) → chờ tôi xác nhận.
+- Nghi ngờ thuộc nhóm nào → **mặc định COUNCIL**.
+
+### 10.2 ⚖ Council Protocol (khi Gate trả COUNCIL, hoặc tôi gọi `/bs:audit`, `/bs:next`)
+
+- Triệu tập **2–4 vai trò chuyên gia LIÊN QUAN** (chỉ vai trò thật sự cần: Laravel · DBA/Postgres ·
+  DevOps/SRE · Security · Frontend…).
+- Mỗi vai trò nêu **1 phương án + trade-off chính** — súc tích, KHÔNG diễn kịch.
+- Tranh biện tập trung vào **điểm xung đột** → hội tụ về **1 khuyến nghị duy nhất**.
+- Nêu rõ phương án **bị loại + lý do** (1 câu/phương án).
+- Output ưu tiên bảng/gạch đầu dòng. KHÔNG thực thi tới khi tôi chốt.
+
+### 10.3 💎 Diamond++ = ĐỦ checklist (không phải khẩu hiệu)
+
+Một thay đổi chỉ "xong" khi đạt ĐỦ. Phần lớn đã có cổng tự động ở §2/§3/§6 — mục này là danh sách rà cuối:
+
+1. **Đúng + đủ edge case** — có test mô tả hành vi + bất biến bảo mật.
+2. **Bảo mật §2** — multi-tenant, RLS fail-closed, không lộ dữ liệu chéo, không lộ bigint thô, upload sniff magic-bytes.
+3. **DB §3** — D1–D15 (tiền integer, timestamptz, citext, CHECK-enum, FK/soft-delete, decrement nguyên tử…).
+4. **Hiệu năng** — Query Budget (§6), KHÔNG N+1; storefront đạt **LCP mobile p75 ≤1.5s, JS ≤30KB** (§6).
+5. **SEO** (storefront — Lighthouse/axe §6 KHÔNG đo những thứ này): SSR thật bằng **Blade** (KHÔNG render-chỉ-client) ·
+   HTML ngữ nghĩa + heading đúng cấp · meta title/description + canonical + OG tags · JSON-LD khi phù hợp ·
+   sitemap.xml + robots.txt · pagination rel=prev/next · breadcrumb.
+6. **UX cho người không rành CN** — mỗi màn hình có: empty state · loading state · lỗi bằng **ngôn ngữ đời thường**
+   (KHÔNG lỗi kỹ thuật) · không ngõ cụt · mobile-first · tương phản WCAG AA (axe §6 đã đo phần a11y máy kiểm được).
+7. **CI §6 xanh** — Larastan max · Pest · Infection · Rector · Pint · Query Budget · Arch test · Gate #1.
+8. **Reversible** — migration expand-contract · `CREATE INDEX CONCURRENTLY` · có đường lùi an toàn.
+
+→ Task chạm storefront/UI: **tự đo Lighthouse + axe và DÁN kết quả** trước khi báo done. Chưa xanh = chưa được báo done.
+
+### 10.4 Định nghĩa "DONE" (cho mọi task có code)
+
+Agent chỉ được báo hoàn thành khi đã **tự chạy guardrail §6 và dán output thật** (không mô tả suông).
+Nếu đỏ → tự sửa và chạy lại đến khi tất cả xanh. Tóm tắt của agent KHÔNG thay được bằng chứng đã chạy.
