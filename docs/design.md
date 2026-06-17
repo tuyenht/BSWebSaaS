@@ -1,7 +1,7 @@
-# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.7)
+# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.9)
 
 **Chủ dự án:** Hoàng Thanh Tuyền (Senior Tech Lead, Bảo Sơn) · tuyenht@gmail.com · 0962 04 6262
-**Trạng thái:** v2.7 — Audit DB lượt 2 (data-type/locale/concurrency): D11-D15 + sửa TOC. ĐÓNG BĂNG. (chuẩn bị ĐÓNG YÊU CẦU, chuyển triển khai)
+**Trạng thái:** v2.9 — chốt scope khi dựng An Vinh thật: menu model-B từ Phase 1 + locale theo site (An Vinh vi/en/ja). Thiết kế ĐÓNG BĂNG (không lật v2.7/v2.8); đang triển khai An Vinh.
 **Nguồn:** hợp nhất từ tài liệu khởi tạo v1.0→v1.30 (41 mục + 14 ADR) + khảo sát 5 website thật + schema t5g.
 **Bản lịch sử (đầy đủ quá trình tranh luận):** `ke-hoach-tong-the-saas-website-platform.md` (v1.30).
 
@@ -84,7 +84,7 @@
 | GĐ | Phạm vi | Thanh toán | Ghi chú |
 |---|---|---|---|
 | **GĐ1 (MVP)** | Website giới thiệu công ty/sản phẩm + danh mục + giỏ hàng + đặt hàng; CMS đa loại nội dung; SEO/AEO; đa ngôn ngữ; AI sinh theme/trang; admin phân quyền + workflow | **COD + VietQR** (KHÔNG cổng online) | Triển khai **An Vinh** (B2B cơ khí) đầu tiên |
-| **GĐ2** | Mở rộng commerce, thêm locale (zh-Hant), tối ưu theo số đo, headless-ready | + cổng online khi cần | Đo-rồi-mở |
+| **GĐ2** | Mở rộng commerce, thêm locale theo nhu cầu khách, tối ưu theo số đo, headless-ready | + cổng online khi cần | Đo-rồi-mở |
 | **GĐ3** | Standalone Export bản hoàn chỉnh, marketplace theme, tính năng nâng cao | Webhook/API mở | — |
 
 **Không làm GĐ1:** cổng thanh toán online, microservices, tách DB per-tenant mặc định, tenant tự định nghĩa content type (kiến trúc đã sẵn — bật sau).
@@ -238,7 +238,7 @@ product_taxonomies(product_id, taxonomy_id)    -- typed pivot
 - **Config nhỏ** (settings, menu label, banner creative) = JSONB-per-locale `{"vi":…,"en":…}` (chấp nhận vì là config/creative, không phải nội dung dài).
 - **URL** prefix `/{locale}`, slug **bản địa hóa** qua bảng `routes`.
 - **Hiển thị/Index theo locale:** một locale chỉ hiện/được-index khi `entry.status=published` VÀ `entry_translation.status=published`; thiếu → fallback gốc hoặc ẩn (cấu hình). hreflang chỉ trỏ locale đã publish.
-- **GĐ1:** vi (gốc) + zh-Hans; zh-Hant GĐ3.
+- **Locale theo site** (sống ở `site_locales`, KHÔNG pin bộ locale cứng vào phase — i18n lõi **locale-agnostic**). **An Vinh** (site tham chiếu): **vi/en/ja, default vi**. *(zh-Hans/zh-Hant = roadmap nền tảng tương lai — hỗ trợ khi có khách thị trường Trung; KHÔNG còn là ví dụ locale Phase 1.)*
 
 ```sql
 site_locales(site_id, locale, is_default, enabled)
@@ -300,14 +300,15 @@ mediables(media_id, mediable_type, mediable_id, site_id, collection)            
 **Menu (động, kiểu WordPress):**
 ```sql
 menus(id, site_id, name, handle, locales JSONB NULL, meta JSONB)        -- locales: ['vi','en'] | null=all
-menu_assignments(site_id, region_key, locale, menu_id)                  -- gán per (region theme khai báo × locale)
+menu_assignments(site_id, region_key, locale, menu_id)                  -- gán per (region × locale); UNIQUE(site_id, region_key, locale); menu_id FK→menus ON DELETE CASCADE; CHECK menu_id cùng site_id
 menu_items(id, site_id, menu_id, parent_id, position,
            link_type,                  -- 'entry'|'taxonomy'|'dynamic'|'url'
            routable_type NULL, routable_id NULL, url NULL, dynamic_key NULL,
            meta JSONB)                 -- icon, css_class, target, rel, description, megamenu, điều kiện hiển thị
 menu_item_translations(menu_item_id, site_id, locale, label)           -- rỗng → title đã dịch của routable
 ```
-- **i18n menu:** 2 mô hình admin chọn — (A) menu dùng chung + nhãn dịch (mặc định), (B) menu riêng mỗi ngôn ngữ — qua `menus.locales` + `menu_assignments(region, locale, menu_id)`.
+- **i18n menu:** 2 mô hình admin chọn — (A) menu dùng chung + nhãn dịch (mặc định), (B) menu riêng mỗi ngôn ngữ — qua `menus.locales` + `menu_assignments(region, locale, menu_id)`. **Model-B bật từ Phase 1** — yêu cầu thật của **An Vinh** (site tham chiếu): admin tạo nhiều menu kiểu WordPress, gán per (region × locale).
+- **Resolver theo ASSIGNMENT (KHÔNG theo `handle`):** tra `menu_assignments` đúng (region, locale); thiếu assignment cho (region, locale) → **fallback menu của default-locale** (KHÔNG trả nav rỗng).
 - **Vị trí menu = region do theme khai báo** (primary/top/footer/mobile…), không enum cứng.
 - **Link mọi loại**; URL tự bản địa hóa qua `routes`. Builder **kéo-thả React island** (DB chỉ parent_id+position).
 - **Hiệu năng:** batch resolve URL+nhãn + **cache menu đã-resolve per (site, region, locale)** chống N+1.
@@ -635,9 +636,9 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 
 **Phase 1 — An Vinh chạy thật (MVP):**
 5. Content engine `entries` (page/post) + `entry_translations` + content-type registry + content_sections.
-6. Taxonomy (ltree) + routes + i18n lõi (vi + zh-Hans).
+6. Taxonomy (ltree) + routes + i18n lõi (**locale theo site**; An Vinh vi/en/ja, default vi).
 7. Theme + Page Builder (Section Library + Page JSON + iframe preview) + template-theo-category.
-8. Menu (region + builder) + Banner/zone + Media (R2 + imgproxy + images.bsweb.vn).
+8. Menu (**model-B: assignment per region×locale + builder**) + Banner/zone + Media (R2 + imgproxy + images.bsweb.vn).
 9. Settings + site_profiles (NAP + footer pháp lý + Bộ Công Thương) + cụm liên hệ nhanh (Zalo/hotline/Messenger facade).
 10. RBAC 3 tầng + cổng-đăng-theo-quyền (workflow Tầng 1); SEO/AEO + CWV gate; form báo giá/gọi lại.
 
@@ -655,7 +656,7 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 | 4 | Tên thương mại + domain (placeholder "NovaSite"; image CDN dự kiến images.bsweb.vn) | CHƯA | Không chặn |
 | 5 | Khung giá per-site + gói Agency | 🟢 **ĐỊNH HƯỚNG (giá cụ thể tính sau — KHÔNG chặn):** **rẻ hơn Sapo / Haravan + đối thủ**, khớp khả năng chi trả khách VN. Khung Free/Pro/Business/Enterprise (Phụ lục E1) chỉ là điểm khởi đầu tham khảo; chốt số khi gần ra mắt | Không chặn |
 | 6 | Mô hình phát triển | ✅ Solo + AI (Claude Code) | — |
-| 7 | Ngôn ngữ | ✅ vi (gốc) + zh-Hans GĐ1; zh-Hant GĐ3 | — |
+| 7 | Ngôn ngữ | ✅ **Locale theo site** (An Vinh vi/en/ja, default vi); zh-Hans/zh-Hant = roadmap tương lai (khi có khách TQ) | — |
 | 8 | Standalone Export | ✅ định giá per khách + WHMCS licensing (mẫu agreement gộp #3) | — |
 
 **Còn lại để đóng yêu cầu:** #1 (core CMS — schema t5g đã xác nhận import khả thi) và #3 (luật sư) — **đều xử lý SONG SONG được khi đã bắt đầu code** (không chặn dựng local + An Vinh). Câu #2 (hạ tầng) đã chốt (ADR-15). #4, #5 không chặn.
@@ -678,7 +679,7 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 | 08 | AI sinh JSON theo schema, **validate server-side bằng PHP** (không Zod nguồn sự thật) | Chốt |
 | 09 | Octane + **FrankenPHP** worker mode chính, **RoadRunner fallback** | Chốt |
 | 10 | Meilisearch + Scout, index theo (loại × locale), filter site_id | Chốt |
-| 11 | Chuỗi UI lai (file ⊕ DB override); **nội dung dịch = bảng dịch `*_translations`** (không JSONB/không nhân bản); URL prefix + slug bản địa hóa qua routes | Chốt (revise) |
+| 11 | Chuỗi UI lai (file ⊕ DB override); **nội dung dịch = bảng dịch `*_translations`** (không JSONB/không nhân bản); URL prefix + slug bản địa hóa qua routes. **Menu = model-B bật từ Phase 1** (menu riêng mỗi (region×locale) qua `menu_assignments`, resolve theo assignment + fallback default-locale) — yêu cầu thật của site tham chiếu (An Vinh), không đầu cơ | Chốt (revise) |
 | 12 | Standalone Export — package-first monorepo, exporter, single-tenant = N=1, driver-swap | Chốt |
 | 13 | License bản export = **WHMCS Software Licensing addon** (368 license, bản quyền hợp lệ); bind domain, không phép → trang trắng | Chốt |
 | 14 | **Mô hình Hybrid:** `entries` + type + registry (không migration) + `meta JSONB` (không EAV); taxonomy dùng chung (ltree + typed pivots); i18n bảng dịch; commerce typed riêng. Cột entries.type ∈ {page, post}; product = bảng riêng (commerce typed); khác biệt loại nội dung qua category + template (Mục 8) | Chốt (mở rộng) |
@@ -825,3 +826,9 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 ---
 
 *Hết v2.8 — Bổ sung tầng "cấu trúc code" (Mục 22.1) lên trên thiết kế dữ liệu đã đóng băng. Không lật bất kỳ quyết định v2.7 nào. Modular Monolith + arch-enforced boundaries; đóng-gói/eject thuộc Phase 3. Sẵn sàng cho prompt Gate #1.*
+
+- **v2.9:** **chốt scope khi dựng An Vinh thật — KHÔNG mở lại thiết kế** (chốt phạm vi + sửa lệch locale phát hiện khi dựng An Vinh thật; không lật quyết định nào của v2.7/v2.8). (1) **Menu = model-B bật từ Phase 1** (Mục 13): An Vinh là site tham chiếu — admin tạo nhiều menu kiểu WordPress, gán per (region × locale) qua `menu_assignments`; **resolver theo assignment** (KHÔNG theo `handle`), thiếu (region, locale) → **fallback menu default-locale** (không nav rỗng). Bật sớm vì là yêu cầu thật của site tham chiếu, không đầu cơ. (2) **Locale theo site** — sống ở `site_locales`, i18n lõi giữ **locale-agnostic** (không pin bộ locale cứng vào phase): **An Vinh = vi/en/ja, default vi**; **zh-Hans/zh-Hant → roadmap nền tảng tương lai** (hỗ trợ khi có khách thị trường Trung), KHÔNG còn là ví dụ locale Phase 1. (3) **Ràng buộc toàn vẹn `menu_assignments`:** `UNIQUE(site_id, region_key, locale)` + `menu_id` FK→`menus` ON DELETE CASCADE + `menu_id` phải cùng `site_id` với assignment. Cập nhật ADR-11 (Phụ lục A) + Mục 32 Phase 1.
+
+---
+
+*Hết v2.9 — Chốt phạm vi khi khởi dựng An Vinh: menu model-B từ Phase 1 + locale theo site (An Vinh vi/en/ja, zh-Hans/zh-Hant → roadmap). Không lật bất kỳ quyết định thiết kế nào của v2.7/v2.8.*
