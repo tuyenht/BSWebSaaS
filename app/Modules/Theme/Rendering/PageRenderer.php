@@ -47,8 +47,9 @@ final class PageRenderer
      * @param  list<array{title: string, url: string}>  $posts
      * @param  array{prevUrl?: string|null, nextUrl?: string|null}  $pagination
      * @param  array{title?: string|null, description?: string|null}  $seo
+     * @param  array<string, mixed>  $extra  extra layout vars (e.g. the resolved nav menu)
      */
-    public function renderCategory(?string $listTemplate, string $title, array $posts, array $pagination = [], array $seo = []): string
+    public function renderCategory(?string $listTemplate, string $title, array $posts, array $pagination = [], array $seo = [], array $extra = []): string
     {
         $layout = $this->templates->layoutFor('category', null, $listTemplate);
 
@@ -59,6 +60,6 @@ final class PageRenderer
             'tokens' => $this->theme->tokens(),
             'posts' => $posts,
             'pagination' => $pagination,
-        ])->render();
+        ] + $extra)->render();
     }
 }

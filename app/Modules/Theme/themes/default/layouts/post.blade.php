@@ -11,6 +11,7 @@
     <style>:root{@foreach (($tokens ?? []) as $name => $value)--{{ $name }}:{{ $value }};@endforeach}</style>
 </head>
 <body>
+    @include('theme::partials.header', ['menu' => $menu ?? []])
     <article class="post">
         @isset($category)
             <nav class="post__breadcrumb" aria-label="Breadcrumb">

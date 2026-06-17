@@ -5,6 +5,9 @@ namespace App\Modules\Provisioning\Actions;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuAssignment;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
@@ -114,7 +117,11 @@ final class ProvisionSite
             );
 
             // Default "Tin tức" post collection: a post_cat taxonomy + its nav section.
-            $this->seedNews($data->defaultLocale);
+            $news = $this->seedNews($data->defaultLocale);
+
+            // Default storefront navigation: a "primary" menu (home + news), bound to the
+            // primary region for the default locale (model-B; EN/JA menus arrive with content).
+            $this->seedMenu($data->defaultLocale, $news);
 
             foreach (PermissionRegistry::tenantRoleTemplates() as $name => $spec) {
                 $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
@@ -196,7 +203,7 @@ final class ProvisionSite
      * the unique (site_id, key); the taxonomy (which has no natural unique key) on its
      * localized slug. Runs inside the tenant context so site_id is stamped + RLS-scoped.
      */
-    private function seedNews(string $locale): void
+    private function seedNews(string $locale): Taxonomy
     {
         $category = $this->firstOrCreateNewsCategory($locale);
 
@@ -221,6 +228,41 @@ final class ProvisionSite
                 // A page already owns this path; leave it.
             }
         }
+
+        return $category;
+    }
+
+    /**
+     * Seed the default storefront navigation: a "primary" menu with Trang chủ (home — a
+     * dynamic link → '/') + Tin tức (the news category), bound to the 'primary' region for
+     * the default locale. An Vinh is model-B (a menu per language) — EN/JA menus + their
+     * assignments arrive with that content. Idempotent: the menu is anchored on its handle,
+     * each item on its target, the assignment on (region, locale). Runs inside the tenant
+     * context so site_id is stamped + RLS-scoped; items are same-site by composite FK.
+     */
+    private function seedMenu(string $locale, Taxonomy $news): void
+    {
+        $menu = Menu::query()->firstOrCreate(
+            ['handle' => 'main-'.$locale],
+            ['name' => 'Menu chính', 'locales' => null],
+        );
+
+        $home = MenuItem::query()->firstOrCreate(
+            ['menu_id' => $menu->id, 'link_type' => 'dynamic', 'dynamic_key' => 'home'],
+            ['position' => 0],
+        );
+        $home->translations()->firstOrCreate(['locale' => $locale], ['label' => 'Trang chủ']);
+
+        $newsItem = MenuItem::query()->firstOrCreate(
+            ['menu_id' => $menu->id, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $news->id],
+            ['position' => 1],
+        );
+        $newsItem->translations()->firstOrCreate(['locale' => $locale], ['label' => 'Tin tức']);
+
+        MenuAssignment::query()->firstOrCreate(
+            ['region_key' => 'primary', 'locale' => $locale],
+            ['menu_id' => $menu->id],
+        );
     }
 
     /** The post category, looked up by its localized slug (taxonomies have no unique key). */

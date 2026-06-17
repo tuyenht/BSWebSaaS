@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
 /*
  * Per-site configuration (design.md §13/§14). ALL tenant tables (have site_id) →
  * RLS + FORCE + fail-closed policy, auto-verified by RlsCoverageTest.
- *   • site_locales        — enabled locales per site (i18n; vi default + zh-Hans GĐ1)
+ *   • site_locales        — enabled locales per site (i18n; vi default + en + ja, An Vinh GĐ1)
  *   • site_settings       — grouped key/value JSONB config (general|seo|scripts|…)
  *   • site_profiles       — NAP / LocalBusiness identity (1 row per site)
  *   • site_profile_translations — localized brand/address/description per locale

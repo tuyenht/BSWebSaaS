@@ -6,7 +6,7 @@ use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Enabled locales for a site (i18n). GĐ1: vi (default) + zh-Hans.
+ * Enabled locales for a site (i18n). GĐ1 (An Vinh reference site): vi (default) + en + ja.
  *
  * @property int $site_id
  * @property string $locale

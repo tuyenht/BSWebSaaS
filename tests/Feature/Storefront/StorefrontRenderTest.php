@@ -48,6 +48,18 @@ it('renders the provisioned An Vinh homepage as SSR HTML', function () {
         ->toContain('An Vinh');
 });
 
+it('renders the seeded primary nav on the storefront home', function () {
+    provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
+
+    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+
+    expect($html)->toContain('aria-label="Điều hướng chính"')
+        ->toContain('href="/tin-tuc"')          // the news category link
+        ->toContain('Tin tức')
+        ->toContain('Trang chủ')                // the home link label
+        ->toContain('aria-current="page"');     // home is the current path → marked active
+});
+
 it('404s an unknown path on a real site', function () {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
@@ -88,8 +100,8 @@ it('renders a published post at its category path within budget', function () {
             ->toContain('href="/tin-tuc"');
     });
 
-    // Home budget (10) + the primary-category lookup (detail_template + breadcrumb name).
-    expect($count)->toBeLessThanOrEqual(12);
+    // Home budget (10) + category lookup (2) + the resolved nav menu (4).
+    expect($count)->toBeLessThanOrEqual(16);
 });
 
 it('renders a category list page of its published posts within budget', function () {
@@ -119,7 +131,7 @@ it('renders a category list page of its published posts within budget', function
             ->toContain('href="/tin-tuc/bai-hai">Bài hai');
     });
 
-    expect($count)->toBeLessThanOrEqual(12); // resolve + paginate (count+items) + eager translations
+    expect($count)->toBeLessThanOrEqual(16); // resolve + paginate (count+items) + eager translations + nav (4)
 });
 
 it('renders an empty category list when it has no posts', function () {

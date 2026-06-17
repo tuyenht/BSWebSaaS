@@ -1,5 +1,8 @@
 <?php
 
+use App\Modules\Cms\Models\Menu;
+use App\Modules\Cms\Models\MenuAssignment;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
@@ -38,7 +41,7 @@ function provisionAnVinh(): Site
         ownerEmail: 'owner@anvinh.test',
         ownerName: 'An Vinh Owner',
         ownerPassword: 'a-strong-password',
-        locales: ['vi', 'zh-Hans'],
+        locales: ['vi', 'en', 'ja'],
         modules: ['cms', 'media'],
     ));
 }
@@ -50,7 +53,8 @@ it('provisions a full, active site stack', function () {
     expect($site->status)->toBe('active')
         ->and(Domain::query()->where('hostname', 'anvinh.test')->where('site_id', $site->id)->exists())->toBeTrue()
         ->and($tenancy->enter($site->id, fn () => SiteModule::query()->where('enabled', true)->pluck('module_key')->sort()->values()->all()))->toBe(['cms', 'media'])
-        ->and($tenancy->enter($site->id, fn () => SiteLocale::query()->where('is_default', true)->pluck('locale')->all()))->toBe(['vi']);
+        ->and($tenancy->enter($site->id, fn () => SiteLocale::query()->where('is_default', true)->pluck('locale')->all()))->toBe(['vi'])
+        ->and($tenancy->enter($site->id, fn () => SiteLocale::query()->orderBy('locale')->pluck('locale')->all()))->toBe(['en', 'ja', 'vi']);
 
     // Owner can manage content within the site (owner role = all tenant permissions).
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
@@ -109,6 +113,39 @@ it('routes the seeded category at /tin-tuc', function () {
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
 
         expect(SiteRoute::query()->where('taxonomy_id', $category->id)->value('path'))->toBe('/tin-tuc');
+    });
+});
+
+it('seeds a primary menu (home + tin-tuc) assigned for the default locale', function () {
+    $site = provisionAnVinh();
+    $tenancy = app(Tenancy::class);
+
+    $tenancy->enter($site->id, function () {
+        $menu = Menu::query()->where('handle', 'main-vi')->first();
+        expect($menu)->not->toBeNull();
+
+        $assignment = MenuAssignment::query()->where('region_key', 'primary')->where('locale', 'vi')->first();
+        expect($assignment)->not->toBeNull()
+            ->and($assignment->menu_id)->toBe($menu->id);
+
+        $home = MenuItem::query()->where('menu_id', $menu->id)->where('link_type', 'dynamic')->where('dynamic_key', 'home')->first();
+        $news = MenuItem::query()->where('menu_id', $menu->id)->where('link_type', 'taxonomy')->first();
+        expect($home)->not->toBeNull()
+            ->and($home->translationFor('vi')->label)->toBe('Trang chủ')
+            ->and($news)->not->toBeNull()
+            ->and($news->translationFor('vi')->label)->toBe('Tin tức');
+    });
+});
+
+it('seeds the menu idempotently', function () {
+    $site = provisionAnVinh();
+    provisionAnVinh();
+    $tenancy = app(Tenancy::class);
+
+    $tenancy->enter($site->id, function () {
+        expect(Menu::query()->count())->toBe(1)
+            ->and(MenuAssignment::query()->where('region_key', 'primary')->where('locale', 'vi')->count())->toBe(1)
+            ->and(MenuItem::query()->count())->toBe(2);
     });
 });
 

@@ -11,6 +11,7 @@
     <style>:root{@foreach (($tokens ?? []) as $name => $value)--{{ $name }}:{{ $value }};@endforeach}</style>
 </head>
 <body>
+    @include('theme::partials.header', ['menu' => $menu ?? []])
     {{-- $sections is pre-rendered, per-block Blade-escaped HTML (BlockRenderer). --}}
     <main>{!! $sections !!}</main>
 </body>

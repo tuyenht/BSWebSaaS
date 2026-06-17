@@ -4,8 +4,10 @@ namespace App\Modules\Cms\Providers;
 
 use App\Modules\Cms\Components\LatestPostsComponent;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Policies\EntryPolicy;
 use App\Modules\Theme\Components\ComponentRegistry;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,6 +20,14 @@ final class CmsServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        // Stable morph aliases for the menu_items.routable target (D3) → 'entry'/'taxonomy'
+        // in storage instead of a FQCN. Non-enforcing: other polymorphic users (audit,
+        // spatie) keep their default class-name behaviour rather than being forced into a map.
+        Relation::morphMap([
+            'entry' => Entry::class,
+            'taxonomy' => Taxonomy::class,
+        ]);
+
         $this->app->make(ComponentRegistry::class)->register('latest_posts', new LatestPostsComponent);
 
         Gate::policy(Entry::class, EntryPolicy::class);

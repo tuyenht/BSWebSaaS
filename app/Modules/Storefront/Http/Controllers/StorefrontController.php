@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Http\Controllers;
 
+use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\RouteResolver;
@@ -29,6 +30,7 @@ final class StorefrontController
         private readonly RouteResolver $resolver,
         private readonly PageRenderer $renderer,
         private readonly SiteLocale $locale,
+        private readonly MenuResolver $nav,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -45,12 +47,19 @@ final class StorefrontController
             return redirect()->to($redirect->to_path, $redirect->status_code);
         }
 
+        // Header navigation for the active locale (single-locale storefront → locale is the
+        // site default; the resolver's per-locale + default-locale fallback is forward-ready).
+        $menu = $this->nav->resolve('primary', $locale, $locale, $path);
+
         return $resolved instanceof ResolvedCategory
-            ? $this->renderCategory($resolved, $locale)
-            : $this->renderEntry($resolved, $locale);
+            ? $this->renderCategory($resolved, $locale, $menu)
+            : $this->renderEntry($resolved, $locale, $menu);
     }
 
-    private function renderEntry(ResolvedContent $content, string $locale): Response
+    /**
+     * @param  list<array<string, mixed>>  $menu  resolved nav tree (header chrome)
+     */
+    private function renderEntry(ResolvedContent $content, string $locale, array $menu): Response
     {
         $entry = $content->entry;
 
@@ -73,6 +82,8 @@ final class StorefrontController
             }
         }
 
+        $extra['menu'] = $menu;
+
         $html = $this->renderer->render(
             $entry->type,
             $entry->template_override,
@@ -89,7 +100,10 @@ final class StorefrontController
         return response($html);
     }
 
-    private function renderCategory(ResolvedCategory $resolved, string $locale): Response
+    /**
+     * @param  list<array<string, mixed>>  $menu  resolved nav tree (header chrome)
+     */
+    private function renderCategory(ResolvedCategory $resolved, string $locale, array $menu): Response
     {
         $categorySlug = trim($resolved->translation->slug, '/');
 
@@ -125,6 +139,7 @@ final class StorefrontController
                 'nextUrl' => $paginator->nextPageUrl(),
             ],
             ['title' => $resolved->translation->name],
+            ['menu' => $menu],
         );
 
         return response($html);

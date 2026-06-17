@@ -17,6 +17,7 @@
     <style>:root{@foreach (($tokens ?? []) as $name => $value)--{{ $name }}:{{ $value }};@endforeach}</style>
 </head>
 <body>
+    @include('theme::partials.header', ['menu' => $menu ?? []])
     <main class="category">
         <h1 class="category__title">{{ $title }}</h1>
 

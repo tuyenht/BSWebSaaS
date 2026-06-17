@@ -12,7 +12,7 @@ beforeEach(function () {
 });
 
 it('renders the storefront home within its query budget', function () {
-    $budget = 10; // host→site, site-active, default locale, route + entry + translation
+    $budget = 11; // + nav: one assignment lookup (miss → empty menu) on top of the page resolve
 
     $count = countQueries(fn () => $this->get('http://a.test/')->assertOk());
 
