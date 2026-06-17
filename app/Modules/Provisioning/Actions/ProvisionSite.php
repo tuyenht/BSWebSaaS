@@ -5,6 +5,8 @@ namespace App\Modules\Provisioning\Actions;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Models\Permission;
@@ -32,6 +34,9 @@ use Spatie\Permission\PermissionRegistrar;
  */
 final class ProvisionSite
 {
+    /** Localized slug of the default post category seeded for every site. */
+    private const NEWS_SLUG = 'tin-tuc';
+
     public function __construct(
         private readonly Tenancy $tenancy,
         private readonly PermissionRegistrar $registrar,
@@ -105,6 +110,9 @@ final class ProvisionSite
                 ['label' => 'Trang', 'entry_type' => 'page', 'permission_prefix' => 'entries', 'sort_order' => 0],
             );
 
+            // Default "Tin tức" post collection: a post_cat taxonomy + its nav section.
+            $this->seedNews($data->defaultLocale);
+
             foreach (PermissionRegistry::tenantRoleTemplates() as $name => $spec) {
                 $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
                 $role->forceFill(['level' => $spec['level'], 'is_system' => true])->save();
@@ -177,5 +185,49 @@ final class ProvisionSite
             'path' => '/',
             'entry_id' => $entry->id,
         ]);
+    }
+
+    /**
+     * Seed the default "Tin tức" (news) post collection: a post_cat taxonomy + the admin
+     * nav section bound to it (entry_type=post). Idempotent — the section is anchored on
+     * the unique (site_id, key); the taxonomy (which has no natural unique key) on its
+     * localized slug. Runs inside the tenant context so site_id is stamped + RLS-scoped.
+     */
+    private function seedNews(string $locale): void
+    {
+        $category = $this->firstOrCreateNewsCategory($locale);
+
+        ContentSection::query()->firstOrCreate(
+            ['key' => 'posts'],
+            [
+                'label' => 'Tin tức',
+                'entry_type' => 'post',
+                'taxonomy_id' => $category->id,
+                'permission_prefix' => 'entries',
+                'sort_order' => 1,
+            ],
+        );
+    }
+
+    /** The post category, looked up by its localized slug (taxonomies have no unique key). */
+    private function firstOrCreateNewsCategory(string $locale): Taxonomy
+    {
+        $existing = TaxonomyTranslation::query()
+            ->where('locale', $locale)
+            ->where('slug', self::NEWS_SLUG)
+            ->first();
+
+        if ($existing !== null) {
+            return Taxonomy::query()->findOrFail($existing->taxonomy_id);
+        }
+
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $category->translations()->create([
+            'locale' => $locale,
+            'name' => 'Tin tức',
+            'slug' => self::NEWS_SLUG,
+        ]);
+
+        return $category;
     }
 }
