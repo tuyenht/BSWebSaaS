@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\PathBuilder;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -23,6 +24,8 @@ final class MenuResolver
 {
     /** Nesting cap — also the cycle guard for a malformed parent_id chain. */
     private const MAX_DEPTH = 5;
+
+    public function __construct(private readonly PathBuilder $paths) {}
 
     /**
      * @return list<array<string, mixed>> nodes: {label, url, active, attrs, children}
@@ -108,15 +111,21 @@ final class MenuResolver
         $urls = [];
         foreach ($items as $item) {
             $urls[$item->id] = match ($item->link_type) {
-                'entry' => $item->routable_id !== null ? ($byEntry[$item->routable_id] ?? null) : null,
-                'taxonomy' => $item->routable_id !== null ? ($byTaxonomy[$item->routable_id] ?? null) : null,
-                'url' => $this->sanitizeUrl($item->url),
-                'dynamic' => $this->resolveDynamic($item->dynamic_key),
+                'entry' => $this->internalUrl($item->routable_id !== null ? ($byEntry[$item->routable_id] ?? null) : null, $locale),
+                'taxonomy' => $this->internalUrl($item->routable_id !== null ? ($byTaxonomy[$item->routable_id] ?? null) : null, $locale),
+                'url' => $this->sanitizeUrl($item->url),   // external link — never locale-prefixed
+                'dynamic' => $this->internalUrl($this->resolveDynamic($item->dynamic_key), $locale),
                 default => null,
             };
         }
 
         return $urls;
+    }
+
+    /** Apply the locale prefix to an internal (site-relative) path via the single chokepoint. */
+    private function internalUrl(?string $path, string $locale): ?string
+    {
+        return $path === null ? null : $this->paths->publicUrl($path, $locale);
     }
 
     /**

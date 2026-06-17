@@ -3,6 +3,7 @@
 namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Tenancy\Context\SiteLocale;
 
 /**
  * Composes an entry's canonical URL path (design.md §213: "path = danh mục + slug").
@@ -16,6 +17,25 @@ final class PathBuilder
 {
     /** Conventional home slug → site root (matches ProvisionSite + seedHomepage). */
     public const HOME_SLUG = 'home';
+
+    public function __construct(private readonly SiteLocale $siteLocale) {}
+
+    /**
+     * Overlay the locale prefix on an UNPREFIXED, site-relative path (design.md §10/ADR-11):
+     * the single chokepoint for locale-prefixing. The site's CURRENT default locale (read
+     * dynamically — no hardcoded 'vi') stays unprefixed; every other locale is prefixed
+     * `/{locale}`, with the home path `/` becoming `/{locale}` (no trailing slash).
+     */
+    public function publicUrl(string $path, string $locale): string
+    {
+        if ($locale === $this->siteLocale->default()) {
+            return $path;
+        }
+
+        $path = '/'.ltrim($path, '/');
+
+        return $path === '/' ? '/'.$locale : '/'.$locale.$path;
+    }
 
     public function forEntry(Entry $entry, string $locale, string $slug): string
     {

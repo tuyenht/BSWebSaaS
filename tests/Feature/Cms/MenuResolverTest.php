@@ -204,3 +204,24 @@ it('resolves the whole tree within a fixed query budget (no N+1)', function () {
         expect($count)->toBeLessThanOrEqual(5);   // menu + items + translations + routes
     });
 });
+
+it('prefixes resolved URLs for a non-default-locale menu (via PathBuilder)', function () {
+    $ids = seedNavFixture();   // vi menu + news taxonomy + vi route /tin-tuc
+
+    $tree = app(Tenancy::class)->enter(1, function () use ($ids) {
+        // An 'en' menu for the same news category: en route + en assignment. Site default
+        // stays 'vi', so the resolved 'en' URLs must be /en-prefixed (through publicUrl).
+        SiteRoute::query()->create(['locale' => 'en', 'path' => '/tin-tuc', 'taxonomy_id' => $ids['news']]);
+        $menu = Menu::query()->create(['handle' => 'main-en', 'name' => 'Menu EN']);
+        $home = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'dynamic', 'dynamic_key' => 'home', 'position' => 0]);
+        $home->translations()->create(['locale' => 'en', 'label' => 'Home']);
+        $news = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $ids['news'], 'position' => 1]);
+        $news->translations()->create(['locale' => 'en', 'label' => 'News']);
+        MenuAssignment::query()->create(['region_key' => 'primary', 'locale' => 'en', 'menu_id' => $menu->id]);
+
+        return app(MenuResolver::class)->resolve('primary', 'en', 'vi', '/en');
+    });
+
+    expect(collect($tree)->firstWhere('label', 'News')['url'])->toBe('/en/tin-tuc')
+        ->and(collect($tree)->firstWhere('label', 'Home')['url'])->toBe('/en');
+});

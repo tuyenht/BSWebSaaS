@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Storefront\Http\Controllers;
 
 use App\Modules\Cms\Navigation\MenuResolver;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\RouteResolver;
@@ -31,6 +32,7 @@ final class StorefrontController
         private readonly PageRenderer $renderer,
         private readonly SiteLocale $locale,
         private readonly MenuResolver $nav,
+        private readonly PathBuilder $paths,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -77,7 +79,7 @@ final class StorefrontController
             if ($categoryTranslation !== null) {
                 $extra['category'] = [
                     'name' => $categoryTranslation->name,
-                    'url' => '/'.trim($categoryTranslation->slug, '/'),
+                    'url' => $this->paths->publicUrl('/'.trim($categoryTranslation->slug, '/'), $locale),
                 ];
             }
         }
@@ -126,7 +128,7 @@ final class StorefrontController
             }
             $posts[] = [
                 'title' => $translation->title,
-                'url' => '/'.$categorySlug.'/'.trim($translation->slug, '/'),
+                'url' => $this->paths->publicUrl('/'.$categorySlug.'/'.trim($translation->slug, '/'), $locale),
             ];
         }
 
