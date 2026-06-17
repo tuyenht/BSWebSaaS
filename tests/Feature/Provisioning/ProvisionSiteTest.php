@@ -1,9 +1,12 @@
 <?php
 
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteLocale;
@@ -61,6 +64,40 @@ it('is idempotent — re-running provisions nothing new', function () {
         ->and(Site::query()->count())->toBe(1)
         ->and(Domain::query()->where('hostname', 'anvinh.test')->count())->toBe(1)
         ->and(User::query()->where('email', 'owner@anvinh.test')->count())->toBe(1);
+});
+
+it('seeds a "posts" nav section bound to a tin-tuc post category', function () {
+    $site = provisionAnVinh();
+    $tenancy = app(Tenancy::class);
+
+    $tenancy->enter($site->id, function () {
+        $section = ContentSection::query()->where('key', 'posts')->first();
+        $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
+
+        expect($section)->not->toBeNull()
+            ->and($section->entry_type)->toBe('post')
+            ->and($section->permission_prefix)->toBe('entries')
+            ->and($section->sort_order)->toBe(1)
+            ->and($category)->not->toBeNull()
+            ->and($section->taxonomy_id)->toBe($category->id);
+
+        $translation = $category->translationFor('vi');
+        expect($translation)->not->toBeNull()
+            ->and($translation->slug)->toBe('tin-tuc')
+            ->and($translation->name)->toBe('Tin tức');
+    });
+});
+
+it('seeds the posts section + category idempotently', function () {
+    $site = provisionAnVinh();
+    provisionAnVinh();
+    $tenancy = app(Tenancy::class);
+
+    $tenancy->enter($site->id, function () {
+        expect(ContentSection::query()->where('key', 'posts')->count())->toBe(1)
+            ->and(Taxonomy::query()->where('vocabulary', 'post_cat')->count())->toBe(1)
+            ->and(TaxonomyTranslation::query()->where('slug', 'tin-tuc')->count())->toBe(1);
+    });
 });
 
 it('isolates the provisioned site from another tenant', function () {
