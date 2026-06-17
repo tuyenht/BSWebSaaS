@@ -141,7 +141,7 @@ tenants(id BIGINT PK, ulid, name, status, plan_id NULL, owner_user_id, settings 
 users(id BIGINT PK, ulid, name, email UNIQUE, password, two_factor_secret NULL, ... , created_at, updated_at)   -- TOÀN CỤC, KHÔNG site_id
 tenant_users(tenant_id, user_id, created_at, UNIQUE(tenant_id, user_id))                                        -- thành viên tenant
 sites(id BIGINT PK, ulid, tenant_id, name, status,             -- status: provisioning|active|suspended|archived
-      default_locale, theme_id NULL, created_at, updated_at, deleted_at NULL)
+      theme_id NULL, created_at, updated_at, deleted_at NULL)   -- default-locale: site_locales.is_default (§10/ADR-11)
 domains(id BIGINT PK, site_id, hostname UNIQUE, kind, is_primary, ssl_status, verified_at NULL, created_at, updated_at)
        -- kind: subdomain|custom ; is_primary: 1 domain chính/site (cho canonical + redirect)
 ```

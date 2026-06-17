@@ -25,8 +25,8 @@ beforeEach(function () {
     $admin->statement('truncate tenant_probes, domains, sites, tenants restart identity cascade');
     $admin->table('tenants')->insert(['ulid' => 'TENANT0000000000000000001', 'name' => 'T1', 'settings' => '{}', 'created_at' => now(), 'updated_at' => now()]);
     $admin->table('sites')->insert([
-        ['ulid' => 'SITEA000000000000000000001', 'tenant_id' => 1, 'name' => 'A', 'status' => 'active', 'default_locale' => 'vi', 'created_at' => now(), 'updated_at' => now()],
-        ['ulid' => 'SITEB000000000000000000001', 'tenant_id' => 1, 'name' => 'B', 'status' => 'active', 'default_locale' => 'vi', 'created_at' => now(), 'updated_at' => now()],
+        ['ulid' => 'SITEA000000000000000000001', 'tenant_id' => 1, 'name' => 'A', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+        ['ulid' => 'SITEB000000000000000000001', 'tenant_id' => 1, 'name' => 'B', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
     ]);
     // Seed canary rows as the privileged role (bypasses RLS for setup only).
     $admin->table('tenant_probes')->insert([

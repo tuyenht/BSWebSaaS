@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\DB;
  * setup → runtime fallback). Built CONCURRENTLY so it never locks the live table — which
  * means it CANNOT run inside a transaction ($withinTransaction = false).
  *
- * Expand-only: sites.default_locale stays as a legacy mirror, dropped in a later contract
- * migration once no runtime reader remains.
+ * Expand-only: sites.default_locale stayed as a legacy mirror, dropped in the contract
+ * migration (0007) once no runtime reader remained.
  */
 return new class extends Migration
 {

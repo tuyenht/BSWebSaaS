@@ -8,7 +8,7 @@
 GIỮ nền i18n single-locale đang đúng, **DỰNG lớp URL i18n** theo chiến lược v2.10 (default-locale unprefixed/mutable, non-default `/{locale}`), kiểu **chokepoint-first**. Nguồn sự thật default = `site_locales.is_default` (bỏ `sites.default_locale`).
 
 ## Hướng tiếp cận
-- **1 nguồn sự thật:** `site_locales.is_default` (partial-unique 1/site). `sites.default_locale` → mirror tạm, drop ở Commit 6 (gated).
+- **1 nguồn sự thật:** `site_locales.is_default` (partial-unique 1/site). `sites.default_locale` → mirror tạm, **dropped ở Commit 6** (`0007`, backfill-reversible).
 - **1 builder render-side:** `PathBuilder::publicUrl(unprefixed_path, locale)` chồng prefix theo default ĐỘNG. Mọi nơi phát URL đi qua nó; arch-test cấm ghép `/{locale}` thủ công.
 - **TDD:** Pest đỏ trước mỗi commit · migration expand-contract + `down()` · StorefrontRenderTest cũ GIỮ xanh · Query Budget không tăng (default memoized) · Diamond++ dán Lighthouse/axe khi báo done · RLS + BelongsToSite.
 

@@ -62,7 +62,6 @@ final class ProvisionSite
                 'tenant_id' => $tenant->id,
                 'name' => $data->siteName,
                 'status' => 'provisioning',
-                'default_locale' => $data->defaultLocale,
             ]);
             Domain::query()->create([
                 'site_id' => $site->id,

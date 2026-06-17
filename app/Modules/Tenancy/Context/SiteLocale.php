@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
  * Resolves the current site's default locale — the single source the storefront and the
  * admin both read, so the read/write/render paths never disagree on which translation a
  * site means. Source of truth = `site_locales.is_default` (per-site, MUTABLE — design.md
- * §10/ADR-11); `sites.default_locale` is a legacy mirror and is NOT read here.
+ * §10/ADR-11); `sites.default_locale` was a legacy mirror, dropped in the contract migration.
  *
  * Memoized per-site for the request. Registered scoped (TenancyServiceProvider) so the
  * memo is flushed between Octane operations and never leaks a stale default across

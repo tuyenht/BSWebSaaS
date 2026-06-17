@@ -17,7 +17,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $tenant_id
  * @property string $name
  * @property string $status
- * @property string $default_locale
  */
 final class Site extends Model
 {

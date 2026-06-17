@@ -53,8 +53,8 @@ function seedTenancy(): void
         'created_at' => now(), 'updated_at' => now(),
     ]);
     $admin->table('sites')->insert([
-        ['ulid' => 'SITEA000000000000000000001', 'tenant_id' => 1, 'name' => 'A', 'status' => 'active', 'default_locale' => 'vi', 'created_at' => now(), 'updated_at' => now()],
-        ['ulid' => 'SITEB000000000000000000001', 'tenant_id' => 1, 'name' => 'B', 'status' => 'active', 'default_locale' => 'vi', 'created_at' => now(), 'updated_at' => now()],
+        ['ulid' => 'SITEA000000000000000000001', 'tenant_id' => 1, 'name' => 'A', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
+        ['ulid' => 'SITEB000000000000000000001', 'tenant_id' => 1, 'name' => 'B', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
     ]);
     $admin->table('domains')->insert([
         ['site_id' => 1, 'hostname' => 'a.test', 'kind' => 'subdomain', 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],

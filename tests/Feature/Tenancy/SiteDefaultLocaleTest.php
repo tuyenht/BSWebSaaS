@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 /*
  * C1 — default-locale source of truth = site_locales.is_default (design.md §10/ADR-11).
- * SiteLocale::default() reads ONLY site_locales.is_default (NOT sites.default_locale),
+ * SiteLocale::default() reads from site_locales.is_default (the sole source of truth),
  * memoized per-site for the request; a missing default falls back to the first enabled
  * locale then 'vi' with a warning. A partial-unique (one default/site) enforces the
  * invariant at the DB. Seeding uses the privileged connection (RLS bypass for setup).
@@ -37,13 +37,11 @@ function setSiteLocales(int $site, array $rows): void
     }
 }
 
-it('reads the default from site_locales.is_default, not sites.default_locale', function () {
+it('reads the default from site_locales.is_default', function () {
     setSiteLocales(1, [
         ['locale' => 'en', 'is_default' => true],
         ['locale' => 'vi', 'is_default' => false],
     ]);
-    // Decoy: the legacy column says 'vi' — it must be ignored.
-    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['default_locale' => 'vi']);
 
     $locale = app(Tenancy::class)->enter(1, fn () => app(SiteLocale::class)->default());
 
