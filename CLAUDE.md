@@ -1,7 +1,7 @@
 # CLAUDE.md — Nền tảng SaaS Website Builder (Bảo Sơn)
 
 > File này được Claude Code **tự động nạp** vào context. Đây là **quy ước + guardrail BẮT BUỘC**.
-> **Thiết kế đầy đủ ở `docs/design.md` (v2.9)** — đọc mục liên quan khi cần (KHÔNG nạp toàn bộ, file dài).
+> **Thiết kế đầy đủ ở `docs/design.md` (v2.10)** — đọc mục liên quan khi cần (KHÔNG nạp toàn bộ, file dài).
 > Mọi quyết định kiến trúc theo **16 ADR** trong `docs/design.md` (Phụ lục A).
 
 ---
@@ -75,7 +75,7 @@
 
 - **Content = `entries` + 3 trục:** `entries.type` ∈ {`page`, `post`} (VẬT LÝ); `category` (taxonomy, `ltree`) = nhóm; template = hiển thị (gán theo category). **`product` = bảng RIÊNG** (commerce typed), KHÔNG trong entries.
 - Các "loại" (tin/dịch vụ/dự án/tuyển dụng…) đều là `post`, khác nhau bằng **category + template + meta**. KHÔNG đẻ type mới tùy tiện.
-- **i18n = bảng dịch `*_translations`** (KHÔNG JSONB cho nội dung dài, KHÔNG nhân bản hàng). URL prefix `/{locale}` + slug bản địa hóa qua bảng `routes`.
+- **i18n = bảng dịch `*_translations`** (KHÔNG JSONB cho nội dung dài, KHÔNG nhân bản hàng). **URL:** default-locale (per-site, **mutable**) KHÔNG prefix · non-default `/{locale}` · `/{default}/..→301` · dựng qua **PathBuilder duy nhất**. Slug bản địa hóa qua `routes`.
 - **Menu = model-B:** resolve qua `menu_assignments` (region×locale), **KHÔNG theo `handle`**; fallback menu **default-locale** khi thiếu (chi tiết `design.md` §13).
 - **Taxonomy** dùng chung (`ltree` + **typed pivots** `entry_taxonomies`/`product_taxonomies`).
 - **RBAC** = spatie/laravel-permission + teams (team=site_id) + `role.level` (phân cấp) + scope own/any. **Module động + Entitlement** (site_modules/content_sections). **Workflow** 2 tầng (permission-driven mặc định + state-machine data-driven tùy chọn).

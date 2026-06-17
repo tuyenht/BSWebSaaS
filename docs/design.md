@@ -1,7 +1,7 @@
-# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.9)
+# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.10)
 
 **Chủ dự án:** Hoàng Thanh Tuyền (Senior Tech Lead, Bảo Sơn) · tuyenht@gmail.com · 0962 04 6262
-**Trạng thái:** v2.9 — chốt scope khi dựng An Vinh thật: menu model-B từ Phase 1 + locale theo site (An Vinh vi/en/ja). Thiết kế ĐÓNG BĂNG (không lật v2.7/v2.8); đang triển khai An Vinh.
+**Trạng thái:** v2.10 — tinh chỉnh ADR-11: URL i18n (default unprefixed/mutable, non-default prefixed) + vòng đời default-locale. Lõi thiết kế ĐÓNG BĂNG; đang triển khai An Vinh.
 **Nguồn:** hợp nhất từ tài liệu khởi tạo v1.0→v1.30 (41 mục + 14 ADR) + khảo sát 5 website thật + schema t5g.
 **Bản lịch sử (đầy đủ quá trình tranh luận):** `ke-hoach-tong-the-saas-website-platform.md` (v1.30).
 
@@ -236,12 +236,19 @@ product_taxonomies(product_id, taxonomy_id)    -- typed pivot
 - **Chuỗi UI** = lai: file defaults (vi/en/...) ⊕ DB `translation_overrides` (admin chỉnh).
 - **Nội dung dịch** = **bảng dịch `*_translations`** (entries/taxonomies/products…) — quản lý tiến độ dịch/workflow/AI per-locale sạch; cache trung hòa JOIN. *(KHÔNG JSONB cho nội dung dài, KHÔNG nhân bản hàng.)*
 - **Config nhỏ** (settings, menu label, banner creative) = JSONB-per-locale `{"vi":…,"en":…}` (chấp nhận vì là config/creative, không phải nội dung dài).
-- **URL** prefix `/{locale}`, slug **bản địa hóa** qua bảng `routes`.
-- **Hiển thị/Index theo locale:** một locale chỉ hiện/được-index khi `entry.status=published` VÀ `entry_translation.status=published`; thiếu → fallback gốc hoặc ẩn (cấu hình). hreflang chỉ trỏ locale đã publish.
+- **URL i18n = prefix CÓ ĐIỀU KIỆN:** locale **default-hiện-tại của site** KHÔNG chèn langcode (`/gioi-thieu`); locale còn lại prefix `/{locale}` (`/en/about`, `/ja/…`). "Default" = **per-site** (đọc `site_locales.is_default`) + **MUTABLE** (admin đổi được) — KHÔNG hardcode `vi`, KHÔNG đông cứng trạng thái default vào URL lưu trữ.
+- **`routes.path` lưu path nội dung KHÔNG kèm prefix** (path danh mục + slug); `UNIQUE(site_id, locale, path)` giữ nguyên — prefix locale chỉ áp **lúc build/match**, không lưu.
+- **PathBuilder DUY NHẤT:** `locale == site.currentDefault → "/"+path`, ngược lại `→ "/{locale}/"+path`. MỌI URL (menu, breadcrumb, sitemap, hreflang, canonical, 301) đi qua đây — **arch test:** không nơi nào tự ghép prefix.
+- **Canonical-guard đọc `is_default` TẠI request:** URL không đúng dạng-theo-default-hiện-tại → **301** (`/{default}/path → /path`; `/{default} → /`). Đọc động nên **đổi default tự sinh 301 đúng, KHÔNG cần migration URL**.
+- **Prefix locale lạ / chưa enable → 404** (KHÔNG soft-fallback → tránh trang ma trùng nội dung).
+- **Hiển thị/Index theo locale:** một locale chỉ hiện/được-index khi `entry.status=published` VÀ `entry_translation.status=published`; thiếu → fallback gốc hoặc ẩn (cấu hình). hreflang chỉ trỏ locale đã publish — **dạng:** default unprefixed + non-default prefixed + `x-default → default`.
 - **Locale theo site** (sống ở `site_locales`, KHÔNG pin bộ locale cứng vào phase — i18n lõi **locale-agnostic**). **An Vinh** (site tham chiếu): **vi/en/ja, default vi**. *(zh-Hans/zh-Hant = roadmap nền tảng tương lai — hỗ trợ khi có khách thị trường Trung; KHÔNG còn là ví dụ locale Phase 1.)*
+- **Quản lý ngôn ngữ (default MUTABLE)** — quyền **`locales.manage`** (thêm/bật-tắt locale + đặt default), gate qua RBAC hiện có:
+  - **Ràng buộc:** đúng **1 default/site** (partial unique — xem schema `site_locales`); default mới phải đang `enabled`; **cấm tắt/xóa default hiện tại khi chưa gán default khác**.
+  - **Đổi default = high-impact:** kéo theo **mass 301 + recrawl** → khi đổi phải regenerate sitemap + bump `lastmod` + tag-bust cache URL/menu của site; **cảnh báo admin trước khi xác nhận**.
 
 ```sql
-site_locales(site_id, locale, is_default, enabled)
+site_locales(site_id, locale, is_default, enabled)   -- partial UNIQUE(site_id) WHERE is_default=true → đúng 1 default/site; default phải enabled
 translation_overrides(site_id, locale, key, value)
 routes(id, site_id, locale, path, entry_id NULL, product_id NULL, taxonomy_id NULL, UNIQUE(site_id, locale, path), CHECK(num_nonnull(entry_id,product_id,taxonomy_id)=1))   -- TYPED (D3): đúng-một đích + ON DELETE CASCADE; sửa slug → tạo 301
 ```
@@ -349,7 +356,7 @@ site_settings(site_id, group, key, value JSONB, UNIQUE(site_id, group, key))   -
 
 ### 15.1 RBAC — nhóm + phân cấp + tùy chỉnh
 - **spatie/laravel-permission + teams** (`team_id = site_id`). 2 phạm vi: **Platform** (Bảo Sơn: super_admin/support/billing) và **Tenant** (per site: owner/admin/editor/author/contributor/viewer + role tùy chỉnh).
-- **Permission hạt nhỏ** (`resource.action`) theo registry: `entries.create/edit/delete/submit/review/approve/publish`, `products.*`, `orders.*`, `media.*`, `settings.manage`, `users.invite/manage`, `roles.manage`, `domains.manage`…
+- **Permission hạt nhỏ** (`resource.action`) theo registry: `entries.create/edit/delete/submit/review/approve/publish`, `products.*`, `orders.*`, `media.*`, `settings.manage`, `users.invite/manage`, `roles.manage`, `domains.manage`, `locales.manage`…
 - **Phân cấp `role.level`:** chỉ gán role cấp thấp hơn mình; chỉ cấp quyền mình ĐANG có; chỉ quản user cấp thấp hơn → không leo thang.
 - **Scope own/any:** `entries.edit.own` vs `.any` (author sửa bài mình, editor sửa tất cả). Đa site/1 user (agency) qua team.
 
@@ -679,7 +686,7 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 | 08 | AI sinh JSON theo schema, **validate server-side bằng PHP** (không Zod nguồn sự thật) | Chốt |
 | 09 | Octane + **FrankenPHP** worker mode chính, **RoadRunner fallback** | Chốt |
 | 10 | Meilisearch + Scout, index theo (loại × locale), filter site_id | Chốt |
-| 11 | Chuỗi UI lai (file ⊕ DB override); **nội dung dịch = bảng dịch `*_translations`** (không JSONB/không nhân bản); URL prefix + slug bản địa hóa qua routes. **Menu = model-B bật từ Phase 1** (menu riêng mỗi (region×locale) qua `menu_assignments`, resolve theo assignment + fallback default-locale) — yêu cầu thật của site tham chiếu (An Vinh), không đầu cơ | Chốt (revise) |
+| 11 | Chuỗi UI lai (file ⊕ DB override); **nội dung dịch = bảng dịch `*_translations`** (không JSONB/không nhân bản); URL + slug bản địa hóa qua routes. **Menu = model-B bật từ Phase 1** (menu riêng mỗi (region×locale) qua `menu_assignments`, resolve theo assignment + fallback default-locale) — yêu cầu thật của site tham chiếu (An Vinh), không đầu cơ. **URL i18n:** default-locale (per-site, **mutable**) unprefixed + non-default `/{locale}`; **PathBuilder duy nhất** + canonical-guard đọc default động (`/{default}/..→301`, không cần migration URL) | Chốt (revise) |
 | 12 | Standalone Export — package-first monorepo, exporter, single-tenant = N=1, driver-swap | Chốt |
 | 13 | License bản export = **WHMCS Software Licensing addon** (368 license, bản quyền hợp lệ); bind domain, không phép → trang trắng | Chốt |
 | 14 | **Mô hình Hybrid:** `entries` + type + registry (không migration) + `meta JSONB` (không EAV); taxonomy dùng chung (ltree + typed pivots); i18n bảng dịch; commerce typed riêng. Cột entries.type ∈ {page, post}; product = bảng riêng (commerce typed); khác biệt loại nội dung qua category + template (Mục 8) | Chốt (mở rộng) |
@@ -832,3 +839,9 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 ---
 
 *Hết v2.9 — Chốt phạm vi khi khởi dựng An Vinh: menu model-B từ Phase 1 + locale theo site (An Vinh vi/en/ja, zh-Hans/zh-Hant → roadmap). Không lật bất kỳ quyết định thiết kế nào của v2.7/v2.8.*
+
+- **v2.10:** **tinh chỉnh ADR-11 — URL i18n + default-locale mutable. KHÔNG mở lại thiết kế lõi** (lõi i18n bảng-dịch + `routes` typed + RLS giữ nguyên; đây là tinh chỉnh chiến lược URL phát hiện khi nối storefront đa-locale). (1) **Prefix CÓ ĐIỀU KIỆN:** locale default-hiện-tại của site KHÔNG chèn langcode (`/gioi-thieu`), non-default prefix `/{locale}`. "Default" = per-site (`site_locales.is_default`), **MUTABLE** — không hardcode `vi`, không đông cứng default vào URL. (2) **Canonical-guard đọc `is_default` động** (`/{default}/path → 301 /path`, `/{default} → 301 /`) → đổi default tự sinh 301 đúng, **KHÔNG cần migration URL**. **PathBuilder duy nhất** cho mọi URL (menu/breadcrumb/sitemap/hreflang/canonical/301) + arch-test cấm ghép prefix tay; `routes.path` vẫn lưu path không-prefix; prefix locale lạ/chưa enable → **404**; **hreflang** default-unprefixed + non-default-prefixed + `x-default→default`. (3) **Default mutable** (quyền `locales.manage`): đúng 1 default/site (partial unique), default mới phải `enabled`, cấm tắt/xóa default hiện tại khi chưa có default thay thế; **đổi default = high-impact** (mass 301 + recrawl → regenerate sitemap + bump `lastmod` + tag-bust cache, cảnh báo admin). Cập nhật §10 + ADR-11 (Phụ lục A) + registry quyền (RBAC).
+
+---
+
+*Hết v2.10 — Tinh chỉnh chiến lược URL i18n (default unprefixed/mutable, non-default prefixed) + vòng đời default-locale. Lõi thiết kế (bảng-dịch, routes typed, RLS) KHÔNG đổi.*
