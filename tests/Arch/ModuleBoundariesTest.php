@@ -43,3 +43,38 @@ arch('Shared namespace holds interfaces only')
 arch('admin entry components authorize through a policy')
     ->expect('App\\Modules\\Admin\\Livewire\\Entries')
     ->toUse(AuthorizesRequests::class);
+
+// Theme is pure presentation: it renders primitives (PageRenderer::render(type, …)) and
+// must reach into NO content/delivery/orchestration module — that is what lets any module
+// register components into Theme's shared registry without forming a cycle.
+arch('Theme module is content-agnostic')
+    ->expect('App\\Modules\\Theme')
+    ->not->toUse([
+        'App\\Modules\\Cms',
+        'App\\Modules\\Storefront',
+        'App\\Modules\\Admin',
+        'App\\Modules\\Provisioning',
+        'App\\Modules\\Rbac',
+        'App\\Modules\\Identity',
+        'App\\Modules\\Audit',
+    ]);
+
+// Cms is the content layer — it must not reach up into its consumers (the two delivery
+// planes + the provisioning orchestrator); they depend on Cms, never the reverse.
+arch('Cms module does not depend on its consumers')
+    ->expect('App\\Modules\\Cms')
+    ->not->toUse([
+        'App\\Modules\\Storefront',
+        'App\\Modules\\Admin',
+        'App\\Modules\\Provisioning',
+    ]);
+
+// Identity sits below Rbac (Rbac builds roles/permissions on top of the user).
+arch('Identity module does not depend on Rbac')
+    ->expect('App\\Modules\\Identity')
+    ->not->toUse('App\\Modules\\Rbac');
+
+// The two public delivery planes are independent: the storefront never reaches into admin.
+arch('Storefront module does not depend on Admin')
+    ->expect('App\\Modules\\Storefront')
+    ->not->toUse('App\\Modules\\Admin');
