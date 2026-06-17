@@ -29,17 +29,18 @@ final class LatestPostsComponent implements Component
         $posts = Entry::query()
             ->where('type', 'post')
             ->where('status', 'published')
+            ->with(['translations', 'routes'])
             ->orderByDesc('published_at')
             ->limit(max(1, $limit))
             ->get()
             ->map(function (Entry $entry) use ($locale): array {
-                $translation = $entry->translations()->where('locale', $locale)->first();
+                $translation = $entry->translationFor($locale);
+                $route = $entry->routes->firstWhere('locale', $locale);
 
-                if ($translation === null) {
-                    return ['title' => '', 'slug' => ''];
-                }
-
-                return ['title' => $translation->title, 'slug' => $translation->slug];
+                return [
+                    'title' => $translation !== null ? $translation->title : '',
+                    'url' => $route !== null ? $route->path : '',
+                ];
             })
             ->all();
 

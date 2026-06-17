@@ -83,11 +83,13 @@ it('renders a published post at its category path within budget', function () {
         expect($html)->toContain('<title>Bài viết đầu tiên</title>')
             ->toContain('class="post__title">Bài viết đầu tiên')
             ->toContain('Chào')
-            ->toContain('Nội dung bài viết');
+            ->toContain('Nội dung bài viết')
+            ->toContain('class="post__breadcrumb"')
+            ->toContain('href="/tin-tuc"');
     });
 
-    // Home budget (10) + one primary-category detail_template lookup.
-    expect($count)->toBeLessThanOrEqual(11);
+    // Home budget (10) + the primary-category lookup (detail_template + breadcrumb name).
+    expect($count)->toBeLessThanOrEqual(12);
 });
 
 it('renders a category list page of its published posts within budget', function () {

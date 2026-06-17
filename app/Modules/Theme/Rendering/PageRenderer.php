@@ -24,8 +24,9 @@ final class PageRenderer
      * @param  array<string, mixed>  $body  the Page-JSON body
      * @param  array{title?: string|null, description?: string|null}  $seo
      * @param  string|null  $categoryTemplate  per-category layout name (override → category → type)
+     * @param  array<string, mixed>  $extra  extra layout vars (e.g. a post's category breadcrumb)
      */
-    public function render(string $type, ?string $templateOverride, string $title, array $body, array $seo = [], ?string $categoryTemplate = null): string
+    public function render(string $type, ?string $templateOverride, string $title, array $body, array $seo = [], ?string $categoryTemplate = null, array $extra = []): string
     {
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
 
@@ -35,7 +36,7 @@ final class PageRenderer
             'seoDescription' => $seo['description'] ?? null,
             'tokens' => $this->theme->tokens(),
             'sections' => $this->blocks->render($body),
-        ])->render();
+        ] + $extra)->render();
     }
 
     /**

@@ -1,6 +1,8 @@
 <?php
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Rendering\BlockRenderer;
@@ -38,6 +40,26 @@ it('renders a data-bound component sourced from another object (latest posts)', 
         expect($html)->toContain('Tin moi')
             ->toContain('Bai moi nhat')
             ->toContain('Bai cu hon');
+    });
+});
+
+it('links each latest post to its canonical route', function () {
+    app(Tenancy::class)->enter(1, function () {
+        $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
+
+        $post = Entry::create(['type' => 'post', 'status' => 'published', 'published_at' => now()]);
+        $post->translations()->create([
+            'locale' => 'vi', 'title' => 'Bai co route', 'slug' => 'bai-co-route', 'status' => 'published', 'body' => ['blocks' => []],
+        ]);
+        $post->assignCategories([$category->id]);
+        app(RouteSync::class)->sync($post->fresh(), 'vi', 'bai-co-route');
+
+        $html = app(BlockRenderer::class)->render(['blocks' => [
+            ['type' => 'latest_posts', 'props' => ['heading' => 'Tin moi', 'limit' => 5]],
+        ]]);
+
+        expect($html)->toContain('href="/tin-tuc/bai-co-route"')->toContain('Bai co route');
     });
 });
 
