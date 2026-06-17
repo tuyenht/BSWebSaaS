@@ -39,15 +39,24 @@ final class StorefrontController
             return redirect()->to($redirect->to_path, $redirect->status_code);
         }
 
+        $entry = $content->entry;
+
+        // A post's layout can be set per primary category (detail_template); pages don't
+        // pay for the lookup. The Cms lookup lives here so Theme stays Cms-agnostic.
+        $categoryTemplate = $entry->type === 'post'
+            ? $entry->taxonomies()->first()?->detail_template
+            : null;
+
         $html = $this->renderer->render(
-            $content->entry->type,
-            $content->entry->template_override,
+            $entry->type,
+            $entry->template_override,
             $content->translation->title,
             $content->translation->body,
             [
                 'title' => $content->translation->seo_title,
                 'description' => $content->translation->seo_description,
             ],
+            $categoryTemplate,
         );
 
         return response($html);

@@ -23,10 +23,11 @@ final class PageRenderer
     /**
      * @param  array<string, mixed>  $body  the Page-JSON body
      * @param  array{title?: string|null, description?: string|null}  $seo
+     * @param  string|null  $categoryTemplate  per-category layout name (override → category → type)
      */
-    public function render(string $type, ?string $templateOverride, string $title, array $body, array $seo = []): string
+    public function render(string $type, ?string $templateOverride, string $title, array $body, array $seo = [], ?string $categoryTemplate = null): string
     {
-        $layout = $this->templates->layoutFor($type, $templateOverride);
+        $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
 
         return $this->views->make($layout, [
             'title' => $title,
