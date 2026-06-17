@@ -205,8 +205,13 @@ it('persists under the site default locale, not a hardcoded vi', function () {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    // Flip site 1 to a non-vi default locale (privileged connection — bypasses RLS).
-    DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['default_locale' => 'en']);
+    // Flip site 1's default to 'en' via the source of truth (site_locales.is_default).
+    // Clear the old default first so the partial-unique (one default/site) is never violated.
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('site_locales')->where('site_id', 1)->update(['is_default' => false]);
+    $admin->table('site_locales')->insert([
+        'site_id' => 1, 'locale' => 'en', 'is_default' => true, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
+    ]);
 
     $tenancy->enter(1, function () use ($editor) {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);

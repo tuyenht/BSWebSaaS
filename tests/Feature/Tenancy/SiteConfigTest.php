@@ -45,8 +45,8 @@ it('stores a localized site profile within its site', function () {
 it('records enabled locales per site', function () {
     $tenancy = app(Tenancy::class);
 
+    // seedTenancy already provisions the default 'vi' locale per site; add a second one.
     $tenancy->enter(1, function () {
-        SiteLocale::create(['locale' => 'vi', 'is_default' => true, 'enabled' => true]);
         SiteLocale::create(['locale' => 'zh-Hans', 'is_default' => false, 'enabled' => true]);
     });
 

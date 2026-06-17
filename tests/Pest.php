@@ -60,6 +60,12 @@ function seedTenancy(): void
         ['site_id' => 1, 'hostname' => 'a.test', 'kind' => 'subdomain', 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
         ['site_id' => 2, 'hostname' => 'b.test', 'kind' => 'subdomain', 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
     ]);
+    // Default-locale source of truth (site_locales.is_default): one vi default per site, so
+    // SiteLocale::default() resolves without hitting the fallback path.
+    $admin->table('site_locales')->insert([
+        ['site_id' => 1, 'locale' => 'vi', 'is_default' => true, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 2, 'locale' => 'vi', 'is_default' => true, 'enabled' => true, 'created_at' => now(), 'updated_at' => now()],
+    ]);
 }
 
 /*

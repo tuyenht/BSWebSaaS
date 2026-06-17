@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Providers;
 
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -17,6 +18,10 @@ final class TenancyServiceProvider extends ServiceProvider
         // Scoped → Octane flushes it between operations (defense layer #3, with the
         // explicit FlushTenancyContext listener as backup).
         $this->app->scoped(CurrentSite::class);
+
+        // SiteLocale memoizes the per-site default for the request; scoped so the memo is
+        // flushed between operations and never leaks a stale default across requests.
+        $this->app->scoped(SiteLocale::class);
     }
 
     public function boot(): void
