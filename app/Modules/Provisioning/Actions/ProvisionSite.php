@@ -3,10 +3,12 @@
 namespace App\Modules\Provisioning\Actions;
 
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Models\Permission;
@@ -40,6 +42,7 @@ final class ProvisionSite
     public function __construct(
         private readonly Tenancy $tenancy,
         private readonly PermissionRegistrar $registrar,
+        private readonly RouteSync $routes,
     ) {}
 
     public function handle(ProvisionSiteData $data): Site
@@ -207,6 +210,17 @@ final class ProvisionSite
                 'sort_order' => 1,
             ],
         );
+
+        // Give the category a storefront list route (/tin-tuc). Best-effort: never break
+        // genesis if an existing page already owns that path (category admin resolves later).
+        $translation = $category->translationFor($locale);
+        if ($translation !== null) {
+            try {
+                $this->routes->syncTaxonomy($category, $locale, $translation->slug);
+            } catch (RouteConflictException) {
+                // A page already owns this path; leave it.
+            }
+        }
     }
 
     /** The post category, looked up by its localized slug (taxonomies have no unique key). */
