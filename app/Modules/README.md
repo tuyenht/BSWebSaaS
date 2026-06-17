@@ -25,6 +25,50 @@
 - FK/pivot **xuyên module được phép** (đồ thị quan hệ là MỘT — vd `entry_taxonomies`,
   `product_taxonomies`). Chủ sở hữu pivot = module `Taxonomy`.
 
+## Tầng phụ thuộc (acyclic — đồ thị thực tế)
+
+Phụ thuộc chỉ trỏ **lên trên**. `Tenancy` là nền (Gate #1), `Shared` chỉ chứa interface.
+
+```
+Shared            (chỉ interface — seam liên-module duy nhất)
+  └─ Tenancy      (RLS + BelongsToSite; nền — chỉ phụ thuộc Shared)
+       ├─ Theme       (trình bày; KHÔNG biết content)
+       ├─ Identity    (user + hashing)
+       │    ├─ Rbac   (role/permission trên nền user)
+       │    └─ Audit
+       └─ Cms         (content: entries/taxonomy/routing; dùng registry của Theme)
+            ├─ Storefront   (mặt phẳng public)
+            └─ Admin        (mặt phẳng admin)
+       └─ Provisioning (genesis — ráp mọi module theo từng site)
+```
+
+Cạnh được arch test ép (ngoài "Tenancy không dùng module tính năng nào"):
+
+- **Theme content-agnostic**: chỉ render primitive (`PageRenderer::render(type,…)`), KHÔNG
+  chạm Cms/Storefront/Admin/Provisioning/Identity/Rbac/Audit → mọi module nạp component vào
+  registry của Theme mà không tạo chu trình.
+- **Cms** không trỏ lên consumer của nó (Storefront/Admin/Provisioning).
+- **Identity** nằm dưới **Rbac**; **Storefront** độc lập với **Admin**.
+- Module tính năng không chạm thẳng `Tenancy\Models` (dùng bề mặt công khai: trait
+  `BelongsToSite`, context `Tenancy`/`SiteLocale`). Ngoại lệ: shell `Admin` + orchestrator
+  `Provisioning` được đọc model registry của Tenancy (vd `ContentSection`).
+
+## Hợp đồng đăng ký module
+
+Mỗi module công bố bề mặt qua **ServiceProvider** (khai ở `bootstrap/providers.php`). 5 điểm
+mở rộng, đều **idempotent + additive**:
+
+| Bề mặt | Cách đăng ký | Ví dụ |
+|---|---|---|
+| **Component** (block storefront) | `app(ComponentRegistry::class)->register($type, $component)` trong `boot()`; registry CHÍNH LÀ allow-list render + validate (BlockRenderer + ValidPageJson dùng chung) | `CmsServiceProvider` đăng ký `latest_posts` (`LatestPostsComponent`) |
+| **Permission** | khai trong `Rbac\Registry\PermissionRegistry` (catalog + role template); `ProvisionSite` vật chất hóa theo từng site | `entries.*`, `media.*` |
+| **Section (nav)** | một dòng `content_sections` (key/label/`entry_type`/`permission_prefix`/`taxonomy_id`/template), seed bởi `ProvisionSite` | `pages`, `posts` (Tin tức) |
+| **Nav item** | tự suy ra: `Admin\Navigation\AdminNav` liệt kê `content_sections` ∩ quyền `{permission_prefix}.view` của user | link "Tin tức" |
+| **Route** | `routes/web.php`, một trong 3 mặt phẳng (platform host · `/admin` · storefront `Route::fallback`) — mỗi mặt phẳng mang middleware riêng (tenant context · `site.active` · `auth` · `tenant.member`) | `admin.entries.*`, catch-all storefront |
+
+Theme tự khai namespace `theme::` (`View::addNamespace`) + các section tĩnh; module khác nạp
+component data-bound vào CÙNG registry singleton đó.
+
 ## Migration
 
 - **Tập trung** ở `database/migrations/`, đánh số theo tier FK: core `1xxx` · content `2xxx`
