@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Http\Controllers;
 
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\ResolvedCategory;
@@ -55,13 +56,18 @@ final class StorefrontController
             return redirect()->to($redirect->to_path, $redirect->status_code);
         }
 
-        // Header navigation for the active locale; active-state matches the (prefixed) request
-        // path. A missing per-locale assignment falls back to the default-locale menu.
-        $menu = $this->nav->resolve('primary', $locale, $default, $requestPath);
+        // Page chrome for the active locale: header nav (active-state matches the prefixed request
+        // path; a missing per-locale assignment falls back to the default-locale menu), the
+        // <html lang>, and the hreflang alternates.
+        $chrome = [
+            'menu' => $this->nav->resolve('primary', $locale, $default, $requestPath),
+            'lang' => $locale,
+            'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
+        ];
 
         return $resolved instanceof ResolvedCategory
-            ? $this->renderCategory($resolved, $locale, $menu)
-            : $this->renderEntry($resolved, $locale, $menu);
+            ? $this->renderCategory($resolved, $locale, $chrome)
+            : $this->renderEntry($resolved, $locale, $chrome);
     }
 
     /**
@@ -108,14 +114,14 @@ final class StorefrontController
     }
 
     /**
-     * @param  list<array<string, mixed>>  $menu  resolved nav tree (header chrome)
+     * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
-    private function renderEntry(ResolvedContent $content, string $locale, array $menu): Response
+    private function renderEntry(ResolvedContent $content, string $locale, array $chrome): Response
     {
         $entry = $content->entry;
 
         $categoryTemplate = null;
-        $extra = [];
+        $extra = $chrome;
 
         // A post is shown under its primary category: the category drives its layout
         // (detail_template) and a breadcrumb back to the category list. Pages skip this.
@@ -132,8 +138,6 @@ final class StorefrontController
                 ];
             }
         }
-
-        $extra['menu'] = $menu;
 
         $html = $this->renderer->render(
             $entry->type,
@@ -152,9 +156,9 @@ final class StorefrontController
     }
 
     /**
-     * @param  list<array<string, mixed>>  $menu  resolved nav tree (header chrome)
+     * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
-    private function renderCategory(ResolvedCategory $resolved, string $locale, array $menu): Response
+    private function renderCategory(ResolvedCategory $resolved, string $locale, array $chrome): Response
     {
         $categorySlug = trim($resolved->translation->slug, '/');
 
@@ -190,9 +194,75 @@ final class StorefrontController
                 'nextUrl' => $paginator->nextPageUrl(),
             ],
             ['title' => $resolved->translation->name],
-            ['menu' => $menu],
+            $chrome,
         );
 
         return response($html);
+    }
+
+    /**
+     * hreflang alternates for the resolved content (design.md §10/§18): one entry per locale the
+     * content is PUBLISHED in (self from the in-hand path; other locales from their stored route),
+     * plus x-default → the site default. Every URL is absolute + locale-prefixed via publicUrl.
+     *
+     * @return list<array{hreflang: string, href: string}>
+     */
+    private function hreflangFor(ResolvedContent|ResolvedCategory $resolved, string $locale, string $default, string $path): array
+    {
+        if ($resolved instanceof ResolvedContent) {
+            $entry = $resolved->entry;
+            $others = [];
+            foreach ($entry->translations as $translation) {
+                if ($translation->status === 'published' && $translation->locale !== $locale) {
+                    $others[] = $translation->locale;
+                }
+            }
+            $paths = $this->publishedPaths($locale, $path, 'entry_id', $entry->id, $others);
+        } else {
+            $taxonomy = $resolved->taxonomy;
+            $others = [];
+            foreach ($taxonomy->translations as $translation) {
+                if ($translation->locale !== $locale) {
+                    $others[] = $translation->locale;
+                }
+            }
+            $paths = $this->publishedPaths($locale, $path, 'taxonomy_id', $taxonomy->id, $others);
+        }
+
+        $alternates = [];
+        foreach ($paths as $altLocale => $altPath) {
+            $alternates[] = ['hreflang' => $altLocale, 'href' => url($this->paths->publicUrl($altPath, $altLocale))];
+        }
+        if (isset($paths[$default])) {
+            $alternates[] = ['hreflang' => 'x-default', 'href' => url($this->paths->publicUrl($paths[$default], $default))];
+        }
+
+        return $alternates;
+    }
+
+    /**
+     * Map each available locale → its UNPREFIXED content path: the self locale from the in-hand
+     * path (no query); other locales from one batched route lookup (so the hot single-locale path
+     * adds no query). A locale with a translation but no route is omitted (unreachable).
+     *
+     * @param  list<string>  $otherLocales
+     * @return array<string, string>
+     */
+    private function publishedPaths(string $selfLocale, string $selfPath, string $routeColumn, int $routableId, array $otherLocales): array
+    {
+        $paths = [$selfLocale => $selfPath];
+
+        if ($otherLocales !== []) {
+            $routes = SiteRoute::query()
+                ->where($routeColumn, $routableId)
+                ->whereIn('locale', $otherLocales)
+                ->get(['locale', 'path']);
+
+            foreach ($routes as $route) {
+                $paths[$route->locale] = $route->path;
+            }
+        }
+
+        return $paths;
     }
 }

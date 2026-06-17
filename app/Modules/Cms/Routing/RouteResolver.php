@@ -3,6 +3,7 @@
 namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -52,19 +53,21 @@ final class RouteResolver
 
     private function resolveEntry(int $entryId, string $locale): ?ResolvedContent
     {
+        // Eager-load every PUBLISHED translation (not just the current locale) so the storefront
+        // can build hreflang alternates without an extra query — net-zero vs the single-locale
+        // load it replaces.
         $entry = Entry::query()
             ->whereKey($entryId)
             ->where('status', 'published')
+            ->with('translations')
             ->first();
 
         if ($entry === null) {
             return null;
         }
 
-        $translation = $entry->translations()
-            ->where('locale', $locale)
-            ->where('status', 'published')
-            ->first();
+        $translation = $entry->translations
+            ->first(fn (EntryTranslation $candidate) => $candidate->locale === $locale && $candidate->status === 'published');
 
         if ($translation === null) {
             return null;
@@ -75,7 +78,9 @@ final class RouteResolver
 
     private function resolveCategory(int $taxonomyId, string $locale): ?ResolvedCategory
     {
-        $taxonomy = Taxonomy::query()->whereKey($taxonomyId)->first();
+        // Eager-load all translations (for hreflang alternates) — net-zero vs the lazy
+        // translationFor() it replaces.
+        $taxonomy = Taxonomy::query()->whereKey($taxonomyId)->with('translations')->first();
 
         if ($taxonomy === null) {
             return null;

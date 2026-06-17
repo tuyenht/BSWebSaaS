@@ -51,3 +51,4 @@ GIỮ nền i18n single-locale đang đúng, **DỰNG lớp URL i18n** theo chi�
 
 ## Deferred notes
 - **C3 — RỦI RO TƯƠNG LAI THẤP:** slug nội dung trùng langcode chưa-bật (vd category slug `ko`) sẽ đổi nghĩa khi locale đó được bật. Xử lý đúng chỗ = validation lúc tạo/sửa slug (cấm slug trùng langcode), thuộc feature quản-lý-locale (`locales.manage`) đã defer. KHÔNG xử ở guard C3.
+- **Locale case-sensitivity:** prefix match hiện lowercase request path → locale dạng có script-subtag hoa (`zh-Hans`) sẽ không match. Xử đúng: chuẩn hóa locale về canonical BCP-47 (language thường + script hoa, vd `zh-Hans`); KHI SO KHỚP prefix thì case-insensitive (lowercase cả 2 vế); KHI LƯU + XUẤT (hreflang, html lang, URL) giữ dạng canonical. Thuộc feature `locales.manage` đã defer. Ngoài scope An Vinh vi/en/ja (toàn thường).
