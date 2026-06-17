@@ -64,3 +64,22 @@ it('threads a per-category detail_template through to the layout', function () {
 
     expect($html)->toContain('<main>')->not->toContain('class="post"');
 });
+
+it('renders a category list page with posts + pagination links', function () {
+    $html = app(PageRenderer::class)->renderCategory(null, 'Tin tức', [
+        ['title' => 'Bài 1', 'url' => '/tin-tuc/bai-1'],
+        ['title' => 'Bài 2', 'url' => '/tin-tuc/bai-2'],
+    ], ['prevUrl' => null, 'nextUrl' => '/tin-tuc?page=2']);
+
+    expect($html)->toContain('<title>Tin tức</title>')
+        ->toContain('class="category__title">Tin tức')
+        ->toContain('href="/tin-tuc/bai-1">Bài 1')
+        ->toContain('rel="next" href="/tin-tuc?page=2"')
+        ->not->toContain('Chưa có bài viết');
+});
+
+it('shows an empty state when a category has no posts', function () {
+    $html = app(PageRenderer::class)->renderCategory(null, 'Tin tức', []);
+
+    expect($html)->toContain('Chưa có bài viết nào.')->not->toContain('class="category__list"');
+});

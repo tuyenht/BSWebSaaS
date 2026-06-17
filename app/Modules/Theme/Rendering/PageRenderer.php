@@ -37,4 +37,27 @@ final class PageRenderer
             'sections' => $this->blocks->render($body),
         ])->render();
     }
+
+    /**
+     * Render a category-list page: title + the (already-resolved) posts list + simple
+     * prev/next pagination, on the category layout (taxonomy list_template → category →
+     * theme). Like render(), takes primitives so Theme stays independent of Cms.
+     *
+     * @param  list<array{title: string, url: string}>  $posts
+     * @param  array{prevUrl?: string|null, nextUrl?: string|null}  $pagination
+     * @param  array{title?: string|null, description?: string|null}  $seo
+     */
+    public function renderCategory(?string $listTemplate, string $title, array $posts, array $pagination = [], array $seo = []): string
+    {
+        $layout = $this->templates->layoutFor('category', null, $listTemplate);
+
+        return $this->views->make($layout, [
+            'title' => $title,
+            'seoTitle' => $seo['title'] ?? $title,
+            'seoDescription' => $seo['description'] ?? null,
+            'tokens' => $this->theme->tokens(),
+            'posts' => $posts,
+            'pagination' => $pagination,
+        ])->render();
+    }
 }
