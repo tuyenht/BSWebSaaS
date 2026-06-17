@@ -76,8 +76,8 @@ final class Editor extends Component
             // New entry: take the type (and a default category for posts) from the
             // content_section the admin came from (?section=…); default to a page.
             $contentSection = $this->resolveSection($section ?? request()->query('section'));
-            $this->type = $contentSection?->entry_type ?? 'page';
-            $this->categoryId = $this->type === 'post' && $contentSection?->taxonomy_id !== null
+            $this->type = $contentSection !== null ? ($contentSection->entry_type ?? 'page') : 'page';
+            $this->categoryId = $this->type === 'post' && $contentSection !== null && $contentSection->taxonomy_id !== null
                 ? (int) $contentSection->taxonomy_id
                 : null;
 
@@ -256,15 +256,21 @@ final class Editor extends Component
      */
     private function availableCategories(): array
     {
-        return Taxonomy::query()
+        $categories = Taxonomy::query()
             ->where('vocabulary', 'post_cat')
             ->with('translations:id,taxonomy_id,locale,name,slug')
             ->get()
-            ->map(fn (Taxonomy $taxonomy): array => [
-                'id' => $taxonomy->id,
-                'name' => $taxonomy->translationFor($this->locale)?->name ?? '(không tên)',
-            ])
+            ->map(function (Taxonomy $taxonomy): array {
+                $translation = $taxonomy->translationFor($this->locale);
+
+                return [
+                    'id' => $taxonomy->id,
+                    'name' => $translation !== null ? $translation->name : '(không tên)',
+                ];
+            })
             ->all();
+
+        return array_values($categories);
     }
 
     private function resolveOrFail(string $ulid): Entry
