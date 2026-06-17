@@ -5,24 +5,29 @@ namespace App\Modules\Admin\Livewire\Entries;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * The page editor: a block-list builder over the shared ComponentRegistry (add /
- * reorder / remove / edit props). Save persists a draft + its Page-JSON body
- * (validated server-side against the registry allow-list — ValidPageJson); Publish
- * runs the Tầng-1 workflow (PublishEntry). Every mutation authorizes through
- * EntryPolicy (create / update own|any). The entry is addressed by ulid, never its
- * raw id. Puck drag-drop + revisions are a deliberate later step.
+ * The content editor: a block-list builder over the shared ComponentRegistry (add /
+ * reorder / remove / edit props). It serves both entry types — a `page` (flat URL) and
+ * a `post` (URL prefixed by its primary category, so posts need a category picker). The
+ * type is resolved server-side (from the content_section on create, from the entry on
+ * edit) and #[Locked] so the client can't flip it. Save persists a draft + its Page-JSON
+ * body (validated against the registry allow-list — ValidPageJson, D1: posts reuse the
+ * block-list); Publish runs the Tầng-1 workflow (PublishEntry). Every mutation authorizes
+ * through EntryPolicy. The entry is addressed by ulid, never its raw id.
  */
 #[Layout('admin::layouts.app')]
 final class Editor extends Component
@@ -40,6 +45,10 @@ final class Editor extends Component
 
     public ?string $ulid = null;
 
+    /** Entry type (page|post); server-resolved, never client-set. */
+    #[Locked]
+    public string $type = 'page';
+
     /** Server-resolved from the site's default locale; never client-set. */
     #[Locked]
     public string $locale = 'vi';
@@ -48,18 +57,29 @@ final class Editor extends Component
 
     public string $slug = '';
 
+    /** Primary category id (posts only; index 0 of entry_taxonomies drives the URL). */
+    public ?int $categoryId = null;
+
     /** @var list<array<string, mixed>> */
     public array $blocks = [];
 
     #[Locked]
     public ?string $status = null;
 
-    public function mount(?string $ulid = null): void
+    public function mount(?string $ulid = null, ?string $section = null): void
     {
         $this->locale = app(SiteLocale::class)->default();
 
         if ($ulid === null) {
             $this->authorize('create', Entry::class);
+
+            // New entry: take the type (and a default category for posts) from the
+            // content_section the admin came from (?section=…); default to a page.
+            $contentSection = $this->resolveSection($section ?? request()->query('section'));
+            $this->type = $contentSection?->entry_type ?? 'page';
+            $this->categoryId = $this->type === 'post' && $contentSection?->taxonomy_id !== null
+                ? (int) $contentSection->taxonomy_id
+                : null;
 
             return;
         }
@@ -68,6 +88,7 @@ final class Editor extends Component
         $this->authorize('update', $entry);
 
         $this->ulid = $entry->ulid;
+        $this->type = $entry->type;
         $this->status = $entry->status;
 
         $translation = $entry->translationFor($this->locale);
@@ -75,6 +96,10 @@ final class Editor extends Component
             $this->title = $translation->title;
             $this->slug = $translation->slug;
             $this->blocks = $this->normalizeBlocks($translation->body['blocks'] ?? []);
+        }
+
+        if ($this->type === 'post') {
+            $this->categoryId = $entry->taxonomies()->first()?->id;
         }
     }
 
@@ -136,7 +161,7 @@ final class Editor extends Component
         try {
             $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
         } catch (RouteConflictException) {
-            $this->addError('slug', 'Đường dẫn này đã được dùng cho trang khác.');
+            $this->addError('slug', 'Đường dẫn này đã được dùng cho nội dung khác.');
         }
     }
 
@@ -144,6 +169,7 @@ final class Editor extends Component
     {
         return view('admin::livewire.entries.editor', [
             'availableTypes' => app(ComponentRegistry::class)->types(),
+            'categories' => $this->type === 'post' ? $this->availableCategories() : [],
         ]);
     }
 
@@ -152,11 +178,18 @@ final class Editor extends Component
      */
     protected function rules(): array
     {
-        return [
+        $rules = [
             'title' => ['required', 'string', 'max:200'],
             'slug' => ['required', 'string', 'max:200', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'blocks' => [app(ValidPageJson::class)],
         ];
+
+        // A post's URL is its category slug + post slug, so a post must have a category.
+        if ($this->type === 'post') {
+            $rules['categoryId'] = ['required', 'integer', Rule::exists('taxonomies', 'id')->where('vocabulary', 'post_cat')];
+        }
+
+        return $rules;
     }
 
     /**
@@ -166,10 +199,12 @@ final class Editor extends Component
     {
         return [
             'slug.regex' => 'Đường dẫn chỉ gồm chữ thường, số và dấu gạch nối.',
+            'categoryId.required' => 'Vui lòng chọn danh mục cho bài viết.',
+            'categoryId.exists' => 'Danh mục không hợp lệ.',
         ];
     }
 
-    /** Validate + persist the entry and its translation; returns the entry. */
+    /** Validate + persist the entry and its translation (+ category for posts); returns it. */
     private function persist(): Entry
     {
         $this->validate();
@@ -177,7 +212,7 @@ final class Editor extends Component
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
             $entry = Entry::query()->create([
-                'type' => 'page',
+                'type' => $this->type,
                 'status' => 'draft',
                 'author_id' => $this->user()->id,
             ]);
@@ -198,7 +233,38 @@ final class Editor extends Component
             ],
         );
 
+        if ($this->type === 'post') {
+            $entry->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);
+        }
+
         return $entry;
+    }
+
+    private function resolveSection(?string $key): ?ContentSection
+    {
+        if ($key === null || $key === '') {
+            return null;
+        }
+
+        return ContentSection::query()->where('key', $key)->first();
+    }
+
+    /**
+     * Post categories (post_cat) for the picker, mapped to id + localized name.
+     *
+     * @return list<array{id: int, name: string}>
+     */
+    private function availableCategories(): array
+    {
+        return Taxonomy::query()
+            ->where('vocabulary', 'post_cat')
+            ->with('translations:id,taxonomy_id,locale,name,slug')
+            ->get()
+            ->map(fn (Taxonomy $taxonomy): array => [
+                'id' => $taxonomy->id,
+                'name' => $taxonomy->translationFor($this->locale)?->name ?? '(không tên)',
+            ])
+            ->all();
     }
 
     private function resolveOrFail(string $ulid): Entry

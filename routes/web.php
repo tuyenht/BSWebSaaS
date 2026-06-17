@@ -42,10 +42,11 @@ Route::prefix('admin')
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
 
-        // Pages CRUD (W4). Addressed by ulid (D2: never the raw bigint id).
-        Route::get('/pages', EntriesIndex::class)->name('admin.entries.index');
-        Route::get('/pages/create', Editor::class)->name('admin.entries.create');
-        Route::get('/pages/{ulid}/edit', Editor::class)->name('admin.entries.edit');
+        // Content CRUD (W4 + post collections). One section-driven set of routes for
+        // every entry type (?section=… picks the type); addressed by ulid (D2).
+        Route::get('/content', EntriesIndex::class)->name('admin.entries.index');
+        Route::get('/content/create', Editor::class)->name('admin.entries.create');
+        Route::get('/content/{ulid}/edit', Editor::class)->name('admin.entries.edit');
 
         Route::post('/logout', function () {
             Auth::logout();

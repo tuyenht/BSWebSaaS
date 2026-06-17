@@ -182,7 +182,7 @@ it('forbids a member without entries.view from the page list', function () {
     $member = User::factory()->create();
     $tenancy->enter(1, fn () => grantRole($member, 'media-only', ['media.view']));
 
-    $this->actingAs($member)->get('http://a.test/admin/pages')->assertForbidden();
+    $this->actingAs($member)->get('http://a.test/admin/content')->assertForbidden();
 });
 
 it('forbids an author from editing another author\'s page (scope own)', function () {
@@ -198,7 +198,7 @@ it('forbids an author from editing another author\'s page (scope own)', function
         return $page->ulid;
     });
 
-    $this->actingAs($author)->get("http://a.test/admin/pages/{$ulid}/edit")->assertForbidden();
+    $this->actingAs($author)->get("http://a.test/admin/content/{$ulid}/edit")->assertForbidden();
 });
 
 it('persists under the site default locale, not a hardcoded vi', function () {

@@ -1,5 +1,6 @@
+@php($noun = $type === 'post' ? 'bài viết' : 'trang')
 <div class="entry-editor">
-    <h1>{{ $ulid ? 'Sửa trang' : 'Tạo trang' }}</h1>
+    <h1>{{ $ulid ? 'Sửa' : 'Tạo' }} {{ $noun }}</h1>
 
     @if ($status)
         <p class="entry-status">Trạng thái: <strong>{{ $status }}</strong></p>
@@ -18,6 +19,18 @@
         <input type="text" wire:model="slug">
     </label>
     @error('slug') <p class="error">{{ $message }}</p> @enderror
+
+    @if ($type === 'post')
+        <label>Danh mục
+            <select wire:model="categoryId">
+                <option value="">— Chọn danh mục —</option>
+                @foreach ($categories as $category)
+                    <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
+                @endforeach
+            </select>
+        </label>
+        @error('categoryId') <p class="error">{{ $message }}</p> @enderror
+    @endif
 
     <section class="blocks">
         <h2>Khối nội dung</h2>
