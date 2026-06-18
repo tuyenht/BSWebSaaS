@@ -104,7 +104,7 @@ final class StorefrontController
     }
 
     /**
-     * A path segment shaped like a BCP-47 langcode — `en`, `vi`, `zh-hans`, `pt-br` (the path is
+     * A path segment shaped like a BCP-47 langcode — `en`, `vi`, `pt-br` (the path is
      * already lower-cased). Broad SHAPE match only; isEnabled() decides whether it is a real,
      * enabled locale. The 2-letter base excludes ordinary content slugs (e.g. `tin-tuc`).
      */
