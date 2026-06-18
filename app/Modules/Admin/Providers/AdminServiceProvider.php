@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Providers;
 
+use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
@@ -33,6 +34,7 @@ final class AdminServiceProvider extends ServiceProvider
 
         Livewire::component('admin.login', Login::class);
         Livewire::component('admin.dashboard', Dashboard::class);
+        Livewire::component('admin.component-gallery', ComponentGallery::class);
         Livewire::component('admin.entries.index', EntriesIndex::class);
         Livewire::component('admin.entries.editor', Editor::class);
 
