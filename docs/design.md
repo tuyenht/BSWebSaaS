@@ -363,7 +363,7 @@ site_settings(site_id, group, key, value JSONB, UNIQUE(site_id, group, key))   -
 
 ```sql
 permissions(id, name, guard)
-roles(id, name, guard, site_id NULL, level, is_system, forked_from_role_id NULL)  -- site_id NULL = platform; level = phân cấp; forked_from_role_id: NULL = kế thừa role-template theo site_type LIVE, set = đã COPY-ON-WRITE bản site-riêng (§15.2); cột APP-thêm additive, KHÔNG sửa schema spatie core, KHÔNG phá team-scoping
+roles(id, name, guard, site_id NULL, level, is_system, forked_from_role_id NULL)  -- site_id 0 = platform sentinel (cột nullable); level = phân cấp; forked_from_role_id: NULL = kế thừa role-template theo site_type LIVE, set = đã COPY-ON-WRITE bản site-riêng (§15.2); cột APP-thêm additive, KHÔNG sửa schema spatie core, KHÔNG phá team-scoping
 role_has_permissions(role_id, permission_id)
 model_has_roles(role_id, model_type, model_id, site_id)
 model_has_permissions(...)                                     -- quyền trực tiếp per user (ngoại lệ cá nhân)
