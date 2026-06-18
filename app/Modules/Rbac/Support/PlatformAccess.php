@@ -35,6 +35,15 @@ final class PlatformAccess
     }
 
     /**
+     * Does the user hold this permission at PLATFORM scope (team 0), regardless of the active
+     * tenant? For platform-only gates whose permission never lives in a tenant team.
+     */
+    public function can(User $user, string $permission): bool
+    {
+        return $this->onPlatform(static fn (): bool => $user->hasPermissionTo($permission));
+    }
+
+    /**
      * Run a callback with the team context forced to platform scope, then restore.
      *
      * @template TReturn

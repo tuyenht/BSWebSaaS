@@ -21,10 +21,23 @@ final class RbacServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // A platform super_admin short-circuits every gate, in any tenant context.
         Gate::before(function (mixed $user, string $ability): ?bool {
-            if ($user instanceof User && app(PlatformAccess::class)->isSuperAdmin($user)) {
+            if (! $user instanceof User) {
+                return null;
+            }
+
+            $platform = app(PlatformAccess::class);
+
+            // A platform super_admin short-circuits every gate, in any tenant context.
+            if ($platform->isSuperAdmin($user)) {
                 return true;
+            }
+
+            // Catalog writes are platform-only (design.md §15.2 / §2): site_types is global/no-RLS,
+            // so the app layer is the sole guard. Resolve the permission in platform scope (it lives
+            // at team 0), independent of the active tenant. Deny → null so resolution ends in a denial.
+            if ($ability === 'platform.site_types.manage') {
+                return $platform->can($user, $ability) ? true : null;
             }
 
             return null;

@@ -6,6 +6,7 @@ namespace App\Modules\Tenancy\Models;
 
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int $tenant_id
  * @property string $name
  * @property string $status
+ * @property int|null $site_type_id
  */
 final class Site extends Model
 {
@@ -29,5 +31,15 @@ final class Site extends Model
     public function domains(): HasMany
     {
         return $this->hasMany(Domain::class);
+    }
+
+    /**
+     * Functional shape: its module set + role templates (design.md §15.2).
+     *
+     * @return BelongsTo<SiteType, $this>
+     */
+    public function siteType(): BelongsTo
+    {
+        return $this->belongsTo(SiteType::class);
     }
 }

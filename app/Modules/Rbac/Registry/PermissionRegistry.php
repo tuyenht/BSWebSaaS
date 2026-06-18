@@ -47,6 +47,7 @@ final class PermissionRegistry
         'platform.sites.view',
         'platform.sites.manage',
         'platform.entitlements.manage',
+        'platform.site_types.manage',
         'platform.themes.manage',
         'platform.billing.manage',
         'platform.users.manage',
@@ -80,12 +81,27 @@ final class PermissionRegistry
     }
 
     /**
-     * Tenant role templates, instantiated per-site by ProvisionSite (team = site_id).
-     * '*' resolves to every TENANT permission (never platform permissions).
+     * Tenant role templates for a site_type, instantiated per-site by ProvisionSite (team = site_id).
+     * Keyed by site_type (design.md §15.2); GĐ1 ships only `corporate`. An unknown type yields an
+     * empty set so a caller never silently inherits the wrong shape. '*' = every TENANT permission
+     * (never platform permissions).
      *
      * @return array<string, array{level: int, permissions: list<string>|'*'}>
      */
-    public static function tenantRoleTemplates(): array
+    public static function tenantRoleTemplates(string $siteType): array
+    {
+        return match ($siteType) {
+            'corporate' => self::corporateRoleTemplates(),
+            default => [],
+        };
+    }
+
+    /**
+     * The `corporate` functional shape — the six baseline tenant roles (An Vinh = B2B cơ khí).
+     *
+     * @return array<string, array{level: int, permissions: list<string>|'*'}>
+     */
+    private static function corporateRoleTemplates(): array
     {
         return [
             'owner' => ['level' => 90, 'permissions' => '*'],

@@ -28,7 +28,7 @@ beforeEach(function () {
 /** Materialize a tenant role template (canonical level + perms) inside $site's team. */
 function templateRole(int $site, string $name): Role
 {
-    $tpl = PermissionRegistry::tenantRoleTemplates()[$name];
+    $tpl = PermissionRegistry::tenantRoleTemplates('corporate')[$name];
     $perms = $tpl['permissions'] === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $tpl['permissions'];
 
     return app(Tenancy::class)->enter($site, function () use ($name, $tpl, $perms) {

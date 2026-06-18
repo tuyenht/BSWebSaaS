@@ -25,6 +25,7 @@ use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
 use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Tenancy\Models\SiteType;
 use App\Modules\Tenancy\Models\Tenant;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -73,6 +74,14 @@ final class ProvisionSite
             $site = $domain->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
         }
 
+        // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
+        // re-run also backfills a site provisioned before the type axis existed.
+        $siteType = SiteType::query()->where('key', 'corporate')->firstOrFail();
+        if ($site->site_type_id !== $siteType->id) {
+            $site->forceFill(['site_type_id' => $siteType->id])->save();
+        }
+        $siteTypeKey = $siteType->key;
+
         $owner = User::query()->firstWhere('email', $data->ownerEmail) ?? User::query()->create([
             'name' => $data->ownerName,
             'email' => $data->ownerEmail,
@@ -88,7 +97,7 @@ final class ProvisionSite
         }
 
         // 2) Per-site setup INSIDE the tenant context (RLS + spatie team = this site).
-        $this->tenancy->enter($site->id, function () use ($data, $owner): void {
+        $this->tenancy->enter($site->id, function () use ($data, $owner, $siteTypeKey): void {
             foreach ($data->locales as $locale) {
                 SiteLocale::query()->firstOrCreate(
                     ['locale' => $locale],
@@ -122,7 +131,7 @@ final class ProvisionSite
             // primary region for the default locale (model-B; EN/JA menus arrive with content).
             $this->seedMenu($data->defaultLocale, $news);
 
-            foreach (PermissionRegistry::tenantRoleTemplates() as $name => $spec) {
+            foreach (PermissionRegistry::tenantRoleTemplates($siteTypeKey) as $name => $spec) {
                 $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
                 $role->forceFill(['level' => $spec['level'], 'is_system' => true])->save();
 
