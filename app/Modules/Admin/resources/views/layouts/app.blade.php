@@ -7,13 +7,21 @@
     @livewireStyles
 </head>
 <body class="admin-shell min-h-full bg-body font-sans text-base text-gray-700 antialiased">
+@php
+    $brandName = config('admin.brand.name');
+    $brandTagline = config('admin.brand.tagline');
+    $brandInitials = collect(explode(' ', (string) $brandName))
+        ->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))
+        ->take(2)
+        ->implode('');
+@endphp
 <div x-data="{ open: false, collapsed: false }" class="min-h-screen">
 
     {{-- Mobile overlay --}}
     <div x-show="open" x-transition.opacity @click="open = false" x-cloak
          class="fixed inset-0 z-30 bg-gray-900/40 lg:hidden"></div>
 
-    {{-- Sidebar (Velzon dark) --}}
+    {{-- Sidebar (Velzon dark vertical) --}}
     <aside
         class="fixed inset-y-0 left-0 z-40 flex w-[var(--spacing-sidebar)] flex-col bg-admin-primary text-[#abb9e8] transition-all duration-200"
         :class="{
@@ -22,17 +30,20 @@
             'translate-x-0': open,
             '-translate-x-full lg:translate-x-0': !open
         }">
-        {{-- Brand --}}
-        <div class="flex h-[var(--spacing-header)] shrink-0 items-center px-5">
-            <a href="{{ route('admin.dashboard') }}" wire:navigate
-               class="flex items-center gap-2.5 font-semibold text-white">
-                <span class="grid size-8 shrink-0 place-items-center rounded bg-white/10 font-bold">BS</span>
-                <span x-show="!collapsed" class="text-lg tracking-tight">Quản trị</span>
+        {{-- Brand (from config — white-label safe) --}}
+        <div class="flex h-[var(--spacing-header)] shrink-0 items-center px-4">
+            <a href="{{ route('admin.dashboard') }}" wire:navigate class="flex items-center gap-2.5 text-white">
+                <span class="grid size-9 shrink-0 place-items-center rounded bg-white/10 text-sm font-bold">{{ $brandInitials }}</span>
+                <span x-show="!collapsed" class="flex flex-col leading-tight">
+                    <span class="text-base font-semibold tracking-tight">{{ $brandName }}</span>
+                    <span class="text-[11px] text-white/55">{{ $brandTagline }}</span>
+                </span>
             </a>
         </div>
 
-        {{-- Nav (dashboard + dynamic, RBAC/tenant-scoped, content_sections) --}}
-        <nav class="flex-1 overflow-y-auto px-3 py-4">
+        {{-- Nav: Velzon grouped visual on the dynamic, RBAC/tenant-scoped $navItems --}}
+        <nav class="flex-1 overflow-y-auto px-3 py-3">
+            <p x-show="!collapsed" class="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">Menu</p>
             <ul class="space-y-1">
                 <li>
                     <a href="{{ route('admin.dashboard') }}" wire:navigate
@@ -62,17 +73,24 @@
          :class="collapsed ? 'lg:pl-[var(--spacing-sidebar-collapsed)]' : 'lg:pl-[var(--spacing-sidebar)]'">
 
         {{-- Topbar --}}
-        <header class="sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-2 border-b border-gray-300 bg-white px-4 shadow-card">
-            {{-- Open sidebar on mobile --}}
+        <header class="sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-gray-300 bg-white px-4 shadow-card">
             <button type="button" @click="open = true" aria-label="Mở menu"
                     class="grid size-9 place-items-center rounded text-gray-600 transition-colors hover:bg-gray-100 lg:hidden">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
-            {{-- Collapse sidebar on desktop --}}
             <button type="button" @click="collapsed = !collapsed" aria-label="Thu gọn menu"
                     class="hidden size-9 place-items-center rounded text-gray-600 transition-colors hover:bg-gray-100 lg:grid">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
+
+            {{-- Search --}}
+            <div class="relative hidden sm:block">
+                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <x-admin::icon name="search" class="size-4" />
+                </span>
+                <input type="search" placeholder="Tìm kiếm..."
+                       class="w-56 rounded border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 placeholder:text-gray-400 transition-colors focus:border-admin-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-admin-primary/20 lg:w-72">
+            </div>
 
             {{-- User menu --}}
             <div class="ms-auto" x-data="{ userOpen: false }">
@@ -103,6 +121,11 @@
         <main class="flex-1 p-4 lg:p-6">
             {{ $slot }}
         </main>
+
+        {{-- Footer --}}
+        <footer class="border-t border-gray-200 px-4 py-4 text-center text-xs text-gray-500 lg:text-start">
+            {{ now()->year }} &copy; {{ $brandName }}. Bảo lưu mọi quyền.
+        </footer>
     </div>
 </div>
 @livewireScripts
