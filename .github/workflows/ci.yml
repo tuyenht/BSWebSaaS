@@ -96,3 +96,24 @@ jobs:
 
       - name: Pest (unit · feature · arch · query-budget)
         run: vendor/bin/pest
+
+  frontend:
+    name: Frontend build (Vite + Tailwind)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # NOTE: `npm install` (not `npm ci`) until a lockfile is committed. The repo has no
+      # package-lock.json yet; the dev machine uses pnpm. Upgrade to a frozen-lockfile
+      # install once the package-manager + lockfile are settled (see ADR open item).
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build assets (Vite + Tailwind 4)
+        run: npm run build
