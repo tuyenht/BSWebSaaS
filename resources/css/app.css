@@ -1,9 +1,62 @@
 @import 'tailwindcss';
 
+/* Scan Blade across the modular monolith so module utility classes aren't purged. */
+@source '../../app/Modules/**/*.blade.php';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ | Admin design tokens — sourced from the Velzon Admin design system (read from its
+ | SCSS _variables.scss). Velzon ships as Bootstrap; we adopt only its visual language
+ | as Tailwind 4 theme tokens. No Bootstrap, no Velzon CSS/JS is imported.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    /* Typography (Velzon uses Poppins; compact 13px base) */
+    --font-sans: 'Poppins', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --text-base: 0.8125rem; /* 13px — Velzon compact admin scale (adjust to 0.875rem/14px if preferred) */
+
+    /* Brand / semantic colors */
+    --color-primary: #405189;   /* indigo — also the dark-sidebar background */
+    --color-secondary: #3577f1;
+    --color-success: #0ab39c;
+    --color-info: #299cdb;
+    --color-warning: #f7b84b;
+    --color-danger: #f06548;
+    --color-light: #f3f6f9;
+    --color-dark: #212529;
+
+    /* Extended palette */
+    --color-purple: #6559cc;
+    --color-pink: #f672a7;
+    --color-orange: #f1963b;
+    --color-teal: #02a8b5;
+
+    /* Gray scale (Velzon) */
+    --color-gray-100: #f3f6f9;
+    --color-gray-200: #eff2f7;
+    --color-gray-300: #e9ebec;
+    --color-gray-400: #ced4da;
+    --color-gray-500: #adb5bd;
+    --color-gray-600: #878a99;
+    --color-gray-700: #495057;
+    --color-gray-800: #343a40;
+    --color-gray-900: #212529;
+
+    /* Surfaces */
+    --color-body: #f3f3f9;   /* admin page background */
+    --color-border: #e9ebec;
+
+    /* Subtle card shadow (Velzon) */
+    --shadow-card: 0 1px 2px rgb(56 65 74 / 0.15);
+
+    /* Admin layout dimensions */
+    --spacing-sidebar: 250px;
+    --spacing-sidebar-collapsed: 70px;
+    --spacing-header: 70px;
+}
+
+/* Hide Alpine-controlled elements until Alpine initializes (avoids first-paint flash). */
+[x-cloak] {
+    display: none !important;
 }

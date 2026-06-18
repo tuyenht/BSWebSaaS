@@ -10,6 +10,7 @@ use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -26,6 +27,9 @@ final class AdminServiceProvider extends ServiceProvider
     public function boot(): void
     {
         View::addNamespace('admin', $this->app->basePath('app/Modules/Admin/resources/views'));
+
+        // Admin UI primitives as anonymous Blade components: <x-admin::icon />, etc.
+        Blade::anonymousComponentPath($this->app->basePath('app/Modules/Admin/resources/views/components'), 'admin');
 
         Livewire::component('admin.login', Login::class);
         Livewire::component('admin.dashboard', Dashboard::class);
