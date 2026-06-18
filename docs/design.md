@@ -138,9 +138,10 @@
 ```sql
 -- BẢNG TENANCY LÕI (khóa của toàn hệ — định nghĩa rõ)
 tenants(id BIGINT PK, ulid, name, status, plan_id NULL, owner_user_id, settings JSONB, created_at, updated_at, deleted_at NULL)
-users(id BIGINT PK, ulid, name, email UNIQUE, password, two_factor_secret NULL, ... , created_at, updated_at)   -- TOÀN CỤC, KHÔNG site_id
+users(id BIGINT PK, ulid, name, email UNIQUE, password, two_factor_secret NULL, admin_locale, ... , created_at, updated_at)   -- TOÀN CỤC; admin_locale = ngôn ngữ MENU admin (độc lập locale nội dung site, §15.2)
 tenant_users(tenant_id, user_id, created_at, UNIQUE(tenant_id, user_id))                                        -- thành viên tenant
 sites(id BIGINT PK, ulid, tenant_id, name, status,             -- status: provisioning|active|suspended|archived
+      site_type_id NULL FK→site_types,                         -- hình-dạng-chức-năng: bộ module + role-template theo loại (§15.2), kế thừa LIVE
       theme_id NULL, created_at, updated_at, deleted_at NULL)   -- default-locale: site_locales.is_default (§10/ADR-11)
 domains(id BIGINT PK, site_id, hostname UNIQUE, kind, is_primary, ssl_status, verified_at NULL, created_at, updated_at)
        -- kind: subdomain|custom ; is_primary: 1 domain chính/site (cho canonical + redirect)
@@ -357,12 +358,12 @@ site_settings(site_id, group, key, value JSONB, UNIQUE(site_id, group, key))   -
 ### 15.1 RBAC — nhóm + phân cấp + tùy chỉnh
 - **spatie/laravel-permission + teams** (`team_id = site_id`). 2 phạm vi: **Platform** (Bảo Sơn: super_admin/support/billing) và **Tenant** (per site: owner/admin/editor/author/contributor/viewer + role tùy chỉnh).
 - **Permission hạt nhỏ** (`resource.action`) theo registry: `entries.create/edit/delete/submit/review/approve/publish`, `products.*`, `orders.*`, `media.*`, `settings.manage`, `users.invite/manage`, `roles.manage`, `domains.manage`, `locales.manage`…
-- **Phân cấp `role.level`:** chỉ gán role cấp thấp hơn mình; chỉ cấp quyền mình ĐANG có; chỉ quản user cấp thấp hơn → không leo thang.
+- **Phân cấp `role.level` (chokepoint chống leo thang — gán/sửa/fork role ĐỀU qua 1 service gác):** guard `grant ≤ self` — chỉ gán role cấp thấp hơn, chỉ cấp quyền mình ĐANG có, chỉ quản user cấp thấp hơn, **trong cùng team (= site_id)**. Visibility-scope: admin chỉ THẤY + GÁN module/quyền site mình ĐƯỢC CẤP. (Provisioning system-level bỏ qua guard.)
 - **Scope own/any:** `entries.edit.own` vs `.any` (author sửa bài mình, editor sửa tất cả). Đa site/1 user (agency) qua team.
 
 ```sql
 permissions(id, name, guard)
-roles(id, name, guard, site_id NULL, level, is_system)         -- site_id NULL = platform; level = phân cấp
+roles(id, name, guard, site_id NULL, level, is_system, forked_from_role_id NULL)  -- site_id NULL = platform; level = phân cấp; forked_from_role_id: NULL = kế thừa role-template theo site_type LIVE, set = đã COPY-ON-WRITE bản site-riêng (§15.2); cột APP-thêm additive, KHÔNG sửa schema spatie core, KHÔNG phá team-scoping
 role_has_permissions(role_id, permission_id)
 model_has_roles(role_id, model_type, model_id, site_id)
 model_has_permissions(...)                                     -- quyền trực tiếp per user (ngoại lệ cá nhân)
@@ -370,12 +371,19 @@ model_has_permissions(...)                                     -- quyền trực
 
 ### 15.2 Module động + Entitlement (kích hoạt theo site)
 - **Module chức năng** (platform-defined: Media/Menu/Users/Settings/Contact/Products/Orders/Quảng cáo…) + **Content section** (per-site: Tin tức/Dự án/Mạng lưới… = view của `post` lọc theo category, có sub-item Thêm/Danh sách/Nhóm).
+- **Catalog module mặc định (code registry B1, key snake_case D7, label {vi,en,ja}):** `dashboard` · `posts`(list/create/categories/tags) · `pages`(list/create) · `media`(GĐ3) · `contacts` · `menus` · `banners` · `users`(list/create) · `roles` · `settings` · `trash` · `profile`. Mỗi module = key + label{vi,en,ja} + permission_prefix + sort_order + icon + cờ `needs_tier3`. (Tái dùng tên Banner/roles — KHÔNG đẻ tên mới.)
+- **`site_type` (hình-dạng-chức-năng — KHÔNG copy/preset):** mỗi loại (`corporate`/`product_commerce`/`news`…) định nghĩa (a) bộ **module** + (b) bộ **role-template** của loại; `site.site_type_id` trỏ tới loại + **KẾ THỪA LIVE** (sửa loại → mọi site loại đó theo, KHÔNG nhân bản). GĐ1 chỉ `corporate` (An Vinh = B2B cơ khí); cấu trúc thêm loại sau.
 - **Entitlement:** Bảo Sơn **bật module/section per site** theo gói/hợp đồng (nguồn = plans + Pennant + override).
-- **Menu admin ĐỘNG** = (module/section đã bật cho site) ∩ (quyền user). *(Đúng cơ chế `Modules` tree của t5g, nâng lên đa tenant.)*
+- **3 trục TÁCH BẠCH "site được module nào":** **`site_type`** = bộ-chức-năng-theo-loại (GĐ1) · **`plan`** = giới-hạn-theo-tiền/bậc thương mại (DEFER, billing) · **`site_modules`** = lớp **override per-site** (Bảo Sơn cấp THÊM module riêng cho 1 site — additive delta; type vẫn áp, override CỘNG thêm). 3 trục không giành nhau.
+- **Role-template theo loại = CODE REGISTRY keyed by `site_type`** (mở rộng `PermissionRegistry::tenantRoleTemplates`, **KHÔNG bảng `role_templates`**): role định sẵn + quyền mặc định mỗi role, đặc thù loại. Site kế thừa LIVE tới khi admin sửa 1 role → **COPY-ON-WRITE PER-ROLE**: chỉ role đó materialize thành row `roles`(is_system=false, `forked_from_role_id` set); role khác vẫn kế thừa loại LIVE; sau fork, cập nhật template KHÔNG còn lan tới role đã fork. Fork PHẢI trong trần quyền loại (grant≤self — tiện lợi, không phải đường vòng).
+- **Ghi catalog = PLATFORM-ONLY:** `site_types` (và catalog module) chỉ ghi ở **operator/platform plane**; tenant/admin site **READ-ONLY**. Vì global KHÔNG RLS → KHÔNG có lớp DB chặn ghi chéo-tenant → **policy/gate tầng app PHẢI chặn** tenant mutate catalog; **cơ chế chặn cụ thể (permission + gate) chốt khi dựng guard tầng-2**. GĐ1: seed/registry, chưa có UI quản-lý-loại (DEFER).
+- **Menu admin ĐỘNG** = (`site_type`.module ∪ `site_modules` override, đã bật) ∩ (quyền user `Gate::allows`), render nhãn theo `users.admin_locale`. Admin chỉ thấy module thuộc LOẠI site mình + override được cấp; không thấy catalog/loại khác.
 
 ```sql
 site_modules(site_id, module_key, enabled, settings JSONB)
 content_sections(id, site_id, key, label, icon, sort_order, entry_type, taxonomy_id NULL, list_template NULL, detail_template NULL, permission_prefix, meta JSONB)
+site_types(id BIGINT PK, key UNIQUE, label JSONB{vi,en,ja}, meta JSONB)   -- GLOBAL catalog platform-writable-only (KHÔNG site_id/RLS — D6); bộ module + role-template của loại nguồn ở CODE registry, tham chiếu qua key
+-- Migration EXPAND-SAFE + reversible: site_types tạo TRƯỚC; sites.site_type_id + roles.forked_from_role_id = nullable additive; backfill 2 site → corporate. down() drop 2 cột FK TRƯỚC rồi drop site_types (đúng thứ tự FK); KHÔNG backfill ngược type (cột mới, khác C6).
 ```
 
 ### 15.3 Phân cấp phân quyền ĐỘNG 3 tầng
@@ -387,6 +395,10 @@ content_sections(id, site_id, key, label, icon, sort_order, entry_type, taxonomy
 | **3. Nhân viên KH** | Staff | Thao tác theo quyền; sub-delegate nếu có `roles.manage` + cấp thấp hơn | ⊆ quyền người cấp |
 
 **Bất biến:** quyền hiệu dụng ⊆ entitlement; chỉ cấp quyền mình có cho cấp thấp hơn. 2 ranh giới chặn leo thang (entitlement + level).
+
+**Cấp quyền mặc định (2-cấp):** (1) Bảo Sơn→admin website: tạo site → admin website **tự động** nhận TRỌN quyền của LOẠI (không phân quyền tay) = TRẦN của admin; Bảo Sơn cấp thêm module override nếu cần. (2) Admin website→user/nhóm: delegate xuống, trần = quyền admin đó (grant≤self, team-scoped team=site_id; KHÔNG so level toàn cục).
+**Guard (xương sống, gate-first):** `role.level` hiện INERT (chỉ ghi, chưa so) → guard `grant≤self` + visibility-scope dựng TRƯỚC mọi màn gán-role/tạo-override/fork-role; Pest-red chặn leo thang (gán ≤ quyền mình OK, vượt → reject; không thấy quyền chưa cấp; fork không vượt trần loại) TRƯỚC User/Role CRUD.
+**DEFERRED (ghi, GĐ1 KHÔNG xử):** (1) màn cho Bảo Sơn THẤY site/role nào đã fork để push thay đổi critical thủ công; (2) reconcile khi TRẦN quyền của loại đổi sau khi site đã fork.
 
 ### 15.4 Workflow duyệt bài — 2 tầng
 - **TẦNG 1 — Permission-driven (mặc định, KHÔNG cần cấu hình):** có `entries.publish` → **đăng thẳng** (admin + role/user được cấp); không có → lưu **pending**, người có publish/approve duyệt. Admin phân quyền **theo nhóm HOẶC theo user cụ thể**.
@@ -405,9 +417,9 @@ content_workflow_log(id, site_id, entry_id, locale NULL, transition_key, from_st
 | Nhóm | Bảng chính |
 |---|---|
 | **Platform** | tenants, users, tenant_users, plans, subscriptions, invoices, feature_flags(Pennant), announcements, audit_logs, ai_credit_ledgers |
-| **RBAC** | permissions, roles(site_id, level), role_has_permissions, model_has_roles(site_id), model_has_permissions |
+| **RBAC** | permissions, roles(site_id, level, forked_from_role_id), role_has_permissions, model_has_roles(site_id), model_has_permissions |
 | **Workflow** | workflows, workflow_states, workflow_transitions, content_workflow_log |
-| **Module/Menu động** | site_modules, content_sections |
+| **Module/Menu động** | site_types(global catalog), site_modules, content_sections |
 | **Sites** | sites, domains, site_locales, site_profiles, site_profile_translations, site_settings |
 | **Content** | entries(type ∈ {page, post} — page lưu Page-JSON layout ở entry_translations.body), entry_translations, entry_revisions · *(product = bảng riêng, Commerce)* |
 | **Taxonomy** | taxonomies(ltree, templates), taxonomy_translations, entry_taxonomies, product_taxonomies |
@@ -448,7 +460,7 @@ content_workflow_log(id, site_id, entry_id, locale NULL, transition_key, from_st
 > - **D4a · FK cascade:** con thuộc cha **ON DELETE CASCADE** (entry→translations/revisions; product→variants/images; order→items; taxonomy→pivot). Tham chiếu "mềm" (cover_media_id, logo_media_id…) **ON DELETE SET NULL**. Xóa **site** → cascade toàn bộ dữ liệu site (hoặc soft-delete site rồi purge job).
 > - **D4b · Soft-delete (thống nhất):** chỉ các thực thể cần "Thùng rác/khôi phục" mới có **`deleted_at`** (entries, products, media, sites, tenants). Còn lại **hard-delete**. `status=archived` ≠ xóa (là trạng thái nội dung). **RLS + global scope PHẢI kèm `deleted_at IS NULL`.**
 > - **D3 · Polymorphic vs typed (nhất quán):** **typed FK** cho đồ thị nội dung lõi (entry↔taxonomy) + **`routes`** (`entry_id`/`product_id`/`taxonomy_id` nullable + CHECK đúng-một + CASCADE). **Polymorphic** chỉ cho đính-kèm-mềm (`mediables`/`menu_items` target/`reviews`) — bắt buộc index `(type,id)` + **observer dọn mồ côi khi xóa cha** + job quét định kỳ.
-> - **D6 · Bảng MIỄN RLS (global, KHÔNG `site_id`):** `tenants`, `users`, `tenant_users`, `permissions`, `plans`, `library_assets`, `provinces`, `wards`, `themes`/`theme_versions` (catalog), Pennant/Pulse/jobs hệ thống. **Mọi bảng khác = có `site_id` + RLS.** (Danh mục này là một phần kiểm thử bảo mật — arch test khẳng định.)
+> - **D6 · Bảng MIỄN RLS (global, KHÔNG `site_id`):** `tenants`, `users`, `tenant_users`, `permissions`, `plans`, `site_types`, `library_assets`, `provinces`, `wards`, `themes`/`theme_versions` (catalog), Pennant/Pulse/jobs hệ thống. **Mọi bảng khác = có `site_id` + RLS.** (Bất biến do `RlsCoverageTest` khẳng định bằng HEURISTIC "có cột `site_id` ⇒ buộc RLS+FORCE+policy"; bảng global không `site_id` như `site_types` tự động ngoài phạm vi — không cần allowlist.) **Lưu ý GHI:** global-no-RLS ⇒ KHÔNG có lớp DB chặn ghi chéo-tenant → catalog platform (`plans`/`site_types`/`themes`…) phải **PLATFORM-WRITABLE-ONLY qua policy/gate, tenant READ-ONLY**.
 > - **D7 · Đặt tên:** snake_case; **KHÔNG dùng từ khóa SQL** làm tên cột → `"order"` đổi **`sort_order`** (workflow_states, content_sections). FK = `{entity}_id`. Boolean = `is_`/`has_`.
 > - **D8 · Thứ tự per-context:** sắp xếp chung ở thực thể (`entries.position`); sắp xếp **trong từng category** → cột `position` trên **pivot** `entry_taxonomies(entry_id, taxonomy_id, position)`.
 > - **D9 · Timestamps:** mọi bảng có `created_at`, `updated_at`; bảng soft-delete thêm `deleted_at`. Audit chi tiết → Audit service (Mục 29), không nhồi vào bảng nghiệp vụ.
