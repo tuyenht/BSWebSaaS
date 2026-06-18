@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Antigravity font system (SSOT): --font-stack + --vz-* typography tokens, self-hosted. */
+@import './fonts.css';
+
 /* Scan module Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -15,7 +18,7 @@
  */
 @theme {
     /* Typography — SSOT is fonts.css --font-stack (Inter + on-demand CJK). */
-    --font-sans: var(--font-stack, 'Poppins', ui-sans-serif, system-ui, sans-serif);
+    --font-sans: var(--font-stack, ui-sans-serif, system-ui, sans-serif);
     --text-base: var(--vz-body-font-size, 0.875rem); /* 14px, single-sourced */
 
     /* Admin brand — fixed platform identity, separate from per-site storefront brand. */
