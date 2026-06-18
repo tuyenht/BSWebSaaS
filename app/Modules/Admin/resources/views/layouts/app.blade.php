@@ -6,7 +6,7 @@
     <title>{{ $title ?? 'Quản trị' }}</title>
     @livewireStyles
 </head>
-<body class="min-h-full bg-body font-sans text-base text-gray-700 antialiased">
+<body class="admin-shell min-h-full bg-body font-sans text-base text-gray-700 antialiased">
 <div x-data="{ open: false, collapsed: false }" class="min-h-screen">
 
     {{-- Mobile overlay --}}
@@ -15,7 +15,7 @@
 
     {{-- Sidebar (Velzon dark) --}}
     <aside
-        class="fixed inset-y-0 left-0 z-40 flex w-[var(--spacing-sidebar)] flex-col bg-primary text-[#abb9e8] transition-all duration-200"
+        class="fixed inset-y-0 left-0 z-40 flex w-[var(--spacing-sidebar)] flex-col bg-admin-primary text-[#abb9e8] transition-all duration-200"
         :class="{
             'lg:w-[var(--spacing-sidebar-collapsed)]': collapsed,
             'lg:w-[var(--spacing-sidebar)]': !collapsed,
@@ -79,7 +79,7 @@
                 <div class="relative">
                     <button type="button" @click="userOpen = !userOpen"
                             class="flex items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-gray-100">
-                        <span class="grid size-8 place-items-center rounded-full bg-primary/10 font-semibold text-primary">
+                        <span class="grid size-8 place-items-center rounded-full bg-admin-primary/10 font-semibold text-admin-primary">
                             {{ \Illuminate\Support\Str::of(auth()->user()?->name ?? 'U')->substr(0, 1)->upper() }}
                         </span>
                         <span class="hidden text-sm font-medium text-gray-700 sm:block">{{ auth()->user()?->name ?? 'Tài khoản' }}</span>
