@@ -22,7 +22,7 @@
 ## ADR-A3 — i18n / FONT (LOCKED)
 
 ### Fact đính chính
-- **An Vinh = vi/en/ja, default vi** (KHÔNG zh-Hans). *Verified:* `ProvisionSiteData::$defaultLocale='vi'`, `$locales=['vi']`; `design.md §10` đã ghi vi/en/ja; zh-Hans/zh-Hant = **roadmap nền tảng tương lai**. → KHÔNG có bug seed (zh-Hans chỉ ở test fixture generic + docs roadmap).
+- **An Vinh = vi/en/ja, default vi** (KHÔNG zh-Hans). *Verified (live repo, re-check đầy đủ):* fixture `provisionAnVinh()` = `['vi','en','ja']` (assert `['en','ja','vi']`); `SiteLocale` docblock = "vi + en + ja"; `design.md §10` = vi/en/ja. **Fix đã có sẵn trong live** (snapshot cũ từng là `['vi','zh-Hans']` — đã được sửa trước khi clone). Không test i18n/hreflang nào dựa zh-Hans (machinery hreflang dùng vi+en). zh-Hans còn lại đều hợp lệ: roadmap docs, generic `SiteConfigTest` machinery, comment BCP-47 ví dụ.
 - `design.md` "vi+zh-Hans" = **i18n-platform** (tầng nền tảng), KHÔNG phải ngôn ngữ client. Không nhầm 2 tầng.
 
 ### Hai trục độc lập
@@ -65,4 +65,4 @@
 - [ ] **fonts.css comment** hiện ghi "An Vinh storefront zh-Hans" → SAI theo ADR-A3 (An Vinh không có zh content; zh = UI-only). Sửa comment khi đụng fonts.
 - [ ] **CI gate** (GĐ7): thêm `npm ci && npm run build` (hiện CI chỉ pint/phpstan/pest — không build frontend → CSS/Vite không được verify).
 - [ ] **Switcher style** — chốt khi build (rec: endonym).
-- [x] ~~Seed An Vinh zh-Hans bug~~ — verified KHÔNG có (default vi). Không cần sửa provisioning.
+- [x] **Seed An Vinh zh-Hans** — live repo ĐÃ fix sẵn (`provisionAnVinh()`=vi/en/ja; docblock + §10 đồng bộ). Không cần sửa provisioning. (Lần check trước của tôi phán "no bug" là do verify thiếu — may đúng kết quả vì live đã fix.)
