@@ -398,7 +398,7 @@ site_types(id BIGINT PK, key UNIQUE, label JSONB{vi,en,ja}, meta JSONB)   -- GLO
 
 **Cấp quyền mặc định (2-cấp):** (1) Bảo Sơn→admin website: tạo site → admin website **tự động** nhận TRỌN quyền của LOẠI (không phân quyền tay) = TRẦN của admin; Bảo Sơn cấp thêm module override nếu cần. (2) Admin website→user/nhóm: delegate xuống, trần = quyền admin đó (grant≤self, team-scoped team=site_id; KHÔNG so level toàn cục).
 **Guard (xương sống, gate-first):** `role.level` hiện INERT (chỉ ghi, chưa so) → guard `grant≤self` + visibility-scope dựng TRƯỚC mọi màn gán-role/tạo-override/fork-role; Pest-red chặn leo thang (gán ≤ quyền mình OK, vượt → reject; không thấy quyền chưa cấp; fork không vượt trần loại) TRƯỚC User/Role CRUD.
-**DEFERRED (ghi, GĐ1 KHÔNG xử):** (1) màn cho Bảo Sơn THẤY site/role nào đã fork để push thay đổi critical thủ công; (2) reconcile khi TRẦN quyền của loại đổi sau khi site đã fork.
+**DEFERRED (ghi, GĐ1 KHÔNG xử):** (1) màn cho Bảo Sơn THẤY site/role nào đã fork để push thay đổi critical thủ công; (2) reconcile khi TRẦN quyền của loại đổi sau khi site đã fork; (3) test cô lập perm-filter của `assignableRoles` (role level-thấp mang perm actor-không-có → KHÔNG assignable) — bất khả biểu diễn với 6 template monotonic (level ⊇ perm), viết khi fork/role-template đặc thù ra đời.
 
 ### 15.4 Workflow duyệt bài — 2 tầng
 - **TẦNG 1 — Permission-driven (mặc định, KHÔNG cần cấu hình):** có `entries.publish` → **đăng thẳng** (admin + role/user được cấp); không có → lưu **pending**, người có publish/approve duyệt. Admin phân quyền **theo nhóm HOẶC theo user cụ thể**.
