@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
@@ -41,6 +42,9 @@ Route::prefix('admin')
     ->middleware(['web', SetCurrentSite::class, 'site.active', 'auth', 'tenant.member'])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
+
+        // Dev-only design-system showcase (component mount() aborts in production).
+        Route::get('/_gallery', ComponentGallery::class)->name('admin.gallery');
 
         // Content CRUD (W4 + post collections). One section-driven set of routes for
         // every entry type (?section=… picks the type); addressed by ulid (D2).

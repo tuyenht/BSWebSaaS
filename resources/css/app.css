@@ -1,9 +1,70 @@
 @import 'tailwindcss';
 
+/* Antigravity font system (SSOT): --font-stack + --vz-* typography tokens, self-hosted. */
+@import './fonts.css';
+
+/* Scan module Blade + framework/runtime views so utility classes aren't purged. */
+@source '../../app/Modules/**/*.blade.php';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ | Admin design tokens — the Velzon visual language expressed as Tailwind 4 tokens
+ | (design source only; no Bootstrap/SCSS imported). Brand semantics are admin-namespaced
+ | (--color-admin-*) so they NEVER leak into the storefront's per-site --color-primary
+ | (ThemeResolver). Typography is single-sourced from the Antigravity font system
+ | (resources/css/fonts.css, imported in Phase 3): --font-stack + --vz-* tokens, with
+ | body size = --vz-body-font-size (14px). Fallbacks keep this file valid before Phase 3.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    /* Typography — SSOT is fonts.css --font-stack (Inter + on-demand CJK). */
+    --font-sans: var(--font-stack, ui-sans-serif, system-ui, sans-serif);
+    --text-base: var(--vz-body-font-size, 0.875rem); /* 14px, single-sourced */
+
+    /* Admin brand — fixed platform identity, separate from per-site storefront brand. */
+    --color-admin-primary: #405189;
+    --color-admin-secondary: #3577f1;
+    --color-admin-success: #0ab39c;
+    --color-admin-info: #299cdb;
+    --color-admin-warning: #f7b84b;
+    --color-admin-danger: #f06548;
+    --color-admin-light: #f3f6f9;
+    --color-admin-dark: #212529;
+
+    /* Velzon gray scale (neutral). */
+    --color-gray-100: #f3f6f9;
+    --color-gray-200: #eff2f7;
+    --color-gray-300: #e9ebec;
+    --color-gray-400: #ced4da;
+    --color-gray-500: #adb5bd;
+    --color-gray-600: #878a99;
+    --color-gray-700: #495057;
+    --color-gray-800: #343a40;
+    --color-gray-900: #212529;
+
+    /* Admin page background — dedup: single-sourced from fonts.css --vz-body-bg. */
+    --color-body: var(--vz-body-bg, #f3f3f9);
+
+    /* Subtle card shadow (Velzon). */
+    --shadow-card: 0 1px 2px rgb(56 65 74 / 0.15);
+
+    /* Admin layout dimensions. */
+    --spacing-sidebar: 250px;
+    --spacing-sidebar-collapsed: 70px;
+    --spacing-header: 70px;
+}
+
+/* Dense-table font sizes (Velzon fs-* scale, sourced from fonts.css). */
+@layer utilities {
+    .fs-12 {
+        font-size: var(--vz-font-12, 0.75rem);
+    }
+    .fs-13 {
+        font-size: var(--vz-font-13, 0.8125rem);
+    }
+}
+
+/* Hide Alpine-controlled elements until Alpine initializes (avoids first-paint flash). */
+[x-cloak] {
+    display: none !important;
 }

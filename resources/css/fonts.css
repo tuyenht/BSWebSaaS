@@ -1,0 +1,120 @@
+/* =========================================================================
+   GLOBAL FONT SYSTEM (self-hosted, zero third-party CDN)
+   Single Source of Truth = --font-stack. Imported first by app.css.
+   Admin chrome ships Inter only (Latin + Vietnamese + Cyrillic).
+   CJK (zh/ja/ko) faces are deferred — see the OPEN ITEM note below.
+   ========================================================================= */
+
+/* ---------- Latin + Vietnamese + Cyrillic — NORMAL (Inter) ---------- */
+@font-face {
+    font-family: "Inter";
+    src: local("Inter"), url("/fonts/Inter-roman.woff2") format("woff2");
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0100-024F, U+0300-036F, U+1E00-1EFF, U+20AB, U+0400-04FF, U+0500-052F;
+    ascent-override: 90%;
+    descent-override: 22%;
+    line-gap-override: 0%;
+    size-adjust: 105%;
+}
+
+/* ---------- Latin + Vietnamese + Cyrillic — ITALIC (Inter) ---------- */
+@font-face {
+    font-family: "Inter";
+    src: local("Inter"), url("/fonts/Inter-italic.woff2") format("woff2");
+    font-style: italic;
+    font-weight: 100 900;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0100-024F, U+0300-036F, U+1E00-1EFF, U+20AB, U+0400-04FF, U+0500-052F;
+    ascent-override: 90%;
+    descent-override: 22%;
+    line-gap-override: 0%;
+    size-adjust: 105%;
+}
+
+/*
+ | OPEN ITEM — CJK self-host (deferred; not needed for the vi/en admin chrome).
+ | Required before An Vinh's storefront ships its live zh-Hans locale. When adding:
+ |   1. Locale-gate per page (embed exactly ONE CJK face for the active locale) and fix
+ |      the source overlap: Noto JP and SC both claimed U+4E00-9FFF (Han) — that is
+ |      ambiguous / causes double-download. Split the Han range per locale.
+ |   2. Subset NotoSansSC, serve from R2/CDN with font-display:optional + preload + CORS.
+ |   3. SC first; defer JP/KR.
+ | Until then zh/ja/ko fall back to the OS CJK font (still zero third-party CDN).
+ */
+
+:root {
+    /* Single Source of Truth — change the UI font here only. */
+    --font-stack: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+
+    --ui-weight: 400;
+    --ui-heading-weight: 700;
+
+    /* Body */
+    --vz-body-font-family: var(--font-stack);
+    --vz-body-font-size: 0.875rem; /* 14px */
+    --vz-body-font-weight: 400;
+    --vz-body-line-height: 1.5;
+    --vz-body-color: #212529;
+    --vz-body-bg: #f3f3f9;
+
+    /* Font families — all reference --font-stack */
+    --vz-font-family-primary: var(--font-stack);
+    --vz-font-family-secondary: var(--font-stack);
+    --vz-headings-font-family: var(--font-stack);
+
+    /* Weights */
+    --vz-font-weight-light: 300;
+    --vz-font-weight-normal: 400;
+    --vz-font-weight-medium: 500;
+    --vz-font-weight-semibold: 600;
+    --vz-font-weight-bold: 700;
+
+    /* Sizes — Velzon fs-10 .. fs-48 utility scale */
+    --vz-font-10: 0.625rem;
+    --vz-font-11: 0.6875rem;
+    --vz-font-12: 0.75rem;
+    --vz-font-13: 0.8125rem;
+    --vz-font-14: 0.875rem;
+    --vz-font-15: 0.9375rem;
+    --vz-font-16: 1rem;
+    --vz-font-17: 1.0625rem;
+    --vz-font-18: 1.125rem;
+    --vz-font-19: 1.1875rem;
+    --vz-font-20: 1.25rem;
+    --vz-font-21: 1.3125rem;
+    --vz-font-22: 1.375rem;
+    --vz-font-23: 1.4375rem;
+    --vz-font-24: 1.5rem;
+    --vz-font-36: 2.25rem;
+    --vz-font-48: 3rem;
+
+    /* Headings */
+    --vz-headings-color: #495057;
+    --vz-headings-font-weight: 500;
+    --vz-headings-line-height: 1.2;
+}
+
+html,
+body {
+    font-family: var(--font-stack);
+    font-synthesis: none; /* never fake bold/italic */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* CJK heading weight bumps (apply once CJK faces are added). */
+:lang(ja),
+html[lang|="ja"],
+:lang(ko),
+html[lang|="ko"] {
+    --ui-heading-weight: 750;
+}
+
+:lang(zh),
+:lang(zh-Hans),
+html[lang|="zh"] {
+    --ui-heading-weight: 800;
+}
