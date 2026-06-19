@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use Illuminate\Support\Facades\Auth;
@@ -24,7 +25,7 @@ final class TwoFactorChallenge extends Component
     public function mount(): mixed
     {
         if (! session()->has('2fa.user_id')) {
-            return $this->redirectRoute('admin.login', navigate: false);
+            return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
         return null;
@@ -39,7 +40,7 @@ final class TwoFactorChallenge extends Component
         if (! $user instanceof User || $user->two_factor_confirmed_at === null) {
             session()->forget('2fa.user_id');
 
-            return $this->redirectRoute('admin.login', navigate: false);
+            return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
         $service = app(TwoFactorService::class);
@@ -59,7 +60,7 @@ final class TwoFactorChallenge extends Component
         Auth::login($user);
         session()->regenerate();
 
-        return $this->redirectRoute('admin.dashboard', navigate: false);
+        return $this->redirectRoute(AdminPlane::prefix().'.dashboard', navigate: false);
     }
 
     public function render(): View

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -71,12 +72,12 @@ final class Login extends Component
         session()->put('2fa.user_id', $user->getAuthIdentifier());
 
         if ($user instanceof User && $user->two_factor_confirmed_at !== null) {
-            return $this->redirectRoute('admin.two-factor.challenge', navigate: false);
+            return $this->redirectRoute(AdminPlane::prefix().'.two-factor.challenge', navigate: false);
         }
 
         app(\App\Modules\Admin\Support\EmailOtp::class)->send($user);
 
-        return $this->redirectRoute('admin.otp.challenge', navigate: false);
+        return $this->redirectRoute(AdminPlane::prefix().'.otp.challenge', navigate: false);
     }
 
     public function render(): View

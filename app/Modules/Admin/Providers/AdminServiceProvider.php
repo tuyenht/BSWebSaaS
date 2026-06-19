@@ -15,7 +15,7 @@ use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Navigation\AdminNav;
-use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
+use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -110,6 +110,6 @@ final class AdminServiceProvider extends ServiceProvider
         // the admin is on the tenant's own domain). Auth stays at the component/page
         // level: the guest login and the authed admin share this single route.
         Livewire::setUpdateRoute(fn (array $handle) => Route::post('/livewire/update', $handle)
-            ->middleware(['web', SetCurrentSite::class, 'site.active']));
+            ->middleware(['web', ResolveLivewireContext::class]));
     }
 }

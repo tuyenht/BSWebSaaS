@@ -47,9 +47,11 @@
                     </div>
                 </div>
             </div>
-            <div class="auth-forgot-link">
-                <a href="{{ route('admin.password.request') }}">{{ __('auth.forgot_password') }}</a>
-            </div>
+            @unless (\App\Modules\Admin\Support\AdminPlane::isPlatform())
+                <div class="auth-forgot-link">
+                    <a href="{{ route('admin.password.request') }}">{{ __('auth.forgot_password') }}</a>
+                </div>
+            @endunless
         </div>
 
         {{-- Error banner (auth failure / rate limit are attached to the email field) --}}
@@ -71,6 +73,7 @@
         </button>
     </form>
 
+    @unless (\App\Modules\Admin\Support\AdminPlane::isPlatform())
     {{-- Divider --}}
     <div class="auth-divider">
         <div class="auth-divider-line"></div>
@@ -104,4 +107,5 @@
             <span>Facebook</span>
         </a>
     </div>
+    @endunless
 </div>

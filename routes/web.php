@@ -26,18 +26,31 @@ use Illuminate\Support\Facades\Route;
  * storefront catch-all is LAST so the platform/admin/login routes win first.
  */
 
-// ── Platform plane (Bảo Sơn operator) — dedicated host, NO tenant context ──────
+// ── Platform plane (Bảo Sơn operator) — dedicated host (PLATFORM_HOST), NO tenant context ──
+// Guest: login + 2-step challenges (reused tenant components, plane-aware via AdminPlane).
 Route::domain((string) config('tenancy.platform_host'))
-    ->middleware(['web', 'auth', 'platform', '2fa'])
+    ->middleware(['web', SetLocale::class])
     ->group(function (): void {
-        Route::get('/', function () {
-            $user = Auth::user();
+        Route::get('/login', Login::class)->name('platform.login');
+        Route::get('/otp/challenge', EmailOtpChallenge::class)->name('platform.otp.challenge');
+        Route::get('/two-factor/challenge', TwoFactorChallenge::class)->name('platform.two-factor.challenge');
+    });
 
-            return response()->json([
-                'plane' => 'platform',
-                'operator' => $user instanceof User ? $user->email : null,
-            ]);
-        })->name('platform.dashboard');
+// Protected: platform operators only (EnsurePlatformAccess). 2FA is enforced at login
+// (TOTP or email-OTP), so the TOTP-enrollment ' 2fa' gate is not layered here.
+Route::domain((string) config('tenancy.platform_host'))
+    ->middleware(['web', 'auth', 'platform', SetLocale::class])
+    ->group(function (): void {
+        Route::get('/', fn () => redirect()->route('platform.settings.email'))->name('platform.dashboard');
+        Route::get('/settings/email', EmailSettings::class)->defaults('scope', 'platform')->name('platform.settings.email');
+
+        Route::post('/logout', function () {
+            Auth::logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+
+            return redirect()->route('platform.login');
+        })->name('platform.logout');
     });
 
 // ── Tenant admin — login (guest, tenant context) ──────────────────────────────
@@ -53,7 +66,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         // OAuth2 redirect endpoints (social login + email-sender connect). Guest-reachable
         // (login needs them pre-auth); the 'email' purpose enforces auth in OAuthController.
         Route::get('/oauth/{provider}/start', [OAuthController::class, 'start'])->name('admin.oauth.start');
-        Route::get('/oauth/callback', [OAuthController::class, 'callback'])->name('admin.oauth.callback');
+        // Social-login session completes here (origin host) via a single-use token from the
+        // centralized callback — see the global oauth.callback route below.
+        Route::get('/oauth/finish', [OAuthController::class, 'finish'])->name('admin.oauth.finish');
 
         // Email verification link target (signed, no auth — verification happens BEFORE the
         // email+password login is allowed to complete).
@@ -91,8 +106,11 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/', Dashboard::class)->name('admin.dashboard');
         Route::get('/settings', fn () => redirect()->route('admin.settings.security'))->name('admin.settings');
         Route::get('/settings/security', Settings::class)->name('admin.settings.security');
-        Route::get('/settings/email', EmailSettings::class)->name('admin.settings.email');
-        Route::get('/settings/social', SocialSettings::class)->name('admin.settings.social');
+        // Site-wide settings — only roles with `settings.manage` (owner/admin/super_admin).
+        // The Livewire components ALSO guard in boot() because the livewire/update endpoint
+        // does not pass through this route middleware.
+        Route::get('/settings/email', EmailSettings::class)->middleware('can:settings.manage')->name('admin.settings.email');
+        Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
 
         // Dev-only design-system showcase (component mount() aborts in production).
         Route::get('/_gallery', ComponentGallery::class)->name('admin.gallery');
@@ -111,6 +129,13 @@ Route::prefix(config('admin.prefix', 'admin'))
             return redirect()->route('admin.login');
         })->name('admin.logout');
     });
+
+// Centralized OAuth2 callback — the ONE canonical redirect URI (project main domain) shared
+// by all tenants + the platform. No tenant context: the controller resolves the origin from
+// single-use state, enters that tenant, then stores (email) or bounces back to log in (social).
+Route::get('/oauth/callback', [OAuthController::class, 'callback'])
+    ->middleware('web')
+    ->name('oauth.callback');
 
 // ── Auth + 2FA-setup redirect targets (stubs until P1 UIs; precede the catch-all) ─
 Route::get('/login', fn () => response()->json(['message' => 'Authentication required.'], 401))
