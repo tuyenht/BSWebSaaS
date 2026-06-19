@@ -50,3 +50,6 @@ _ide_helper_models.php
 /caddy/
 /frankenphp
 /public/frankenphp-worker.php
+
+# Local planning + review artifacts (specs, screenshots, council reports) — not app source
+/plans/
