@@ -1,13 +1,13 @@
 <?php
 
-use App\Modules\Admin\Livewire\ComponentGallery;
-use App\Modules\Admin\Livewire\Dashboard;
-use App\Modules\Admin\Livewire\Entries\Editor;
-use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Middleware\SetLocale;
+use App\Modules\Admin\Livewire\ComponentGallery;
+use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\EmailSettings;
+use App\Modules\Admin\Livewire\Entries\Editor;
+use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\ResetPassword;
@@ -18,6 +18,8 @@ use App\Modules\Admin\Support\Locales;
 use App\Modules\Identity\Models\User;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
+use Illuminate\Auth\Events\Verified;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -72,8 +74,8 @@ Route::prefix(config('admin.prefix', 'admin'))
 
         // Email verification link target (signed, no auth — verification happens BEFORE the
         // email+password login is allowed to complete).
-        Route::get('/email/verify/{id}/{hash}', function (\Illuminate\Http\Request $request, string $id, string $hash) {
-            $user = \App\Modules\Identity\Models\User::find($id);
+        Route::get('/email/verify/{id}/{hash}', function (Request $request, string $id, string $hash) {
+            $user = User::find($id);
 
             if (! $request->hasValidSignature() || ! $user || ! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
                 abort(403);
@@ -81,7 +83,7 @@ Route::prefix(config('admin.prefix', 'admin'))
 
             if (! $user->hasVerifiedEmail()) {
                 $user->markEmailAsVerified();
-                event(new \Illuminate\Auth\Events\Verified($user));
+                event(new Verified($user));
             }
 
             return redirect()->route('admin.login')->with('status', __('auth.email_verified'));

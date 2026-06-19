@@ -2,12 +2,13 @@
 
 namespace App\Modules\Admin\Providers;
 
+use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
-use App\Modules\Admin\Livewire\Entries\Editor;
-use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\EmailSettings;
+use App\Modules\Admin\Livewire\Entries\Editor;
+use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\ResetPassword;
@@ -15,7 +16,6 @@ use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Navigation\AdminNav;
-use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\View\View as ViewContract;
@@ -93,7 +93,7 @@ final class AdminServiceProvider extends ServiceProvider
                 (int) ($config['port'] ?? 587),
                 ($config['encryption'] ?? null) === 'ssl',
             );
-            $transport->setAuthenticators([new XOAuth2Authenticator()]);
+            $transport->setAuthenticators([new XOAuth2Authenticator]);
             $transport->setUsername((string) ($config['username'] ?? ''));
             $transport->setPassword((string) ($config['access_token'] ?? ''));
 

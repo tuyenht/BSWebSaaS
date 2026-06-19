@@ -3,6 +3,8 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Support\AdminPlane;
+use App\Modules\Admin\Support\EmailOtp;
+use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -59,7 +61,7 @@ final class Login extends Component
         // Email must be verified before an email+password login completes. We send a fresh
         // verification link (via the resolved mailer) and stop here.
         if ($user instanceof User && ! $user->hasVerifiedEmail()) {
-            app(\App\Modules\Admin\Support\TenantMailer::class)->apply();
+            app(TenantMailer::class)->apply();
             $user->sendEmailVerificationNotification();
             $this->addError('email', __('auth.email_unverified'));
 
@@ -75,7 +77,7 @@ final class Login extends Component
             return $this->redirectRoute(AdminPlane::prefix().'.two-factor.challenge', navigate: false);
         }
 
-        app(\App\Modules\Admin\Support\EmailOtp::class)->send($user);
+        app(EmailOtp::class)->send($user);
 
         return $this->redirectRoute(AdminPlane::prefix().'.otp.challenge', navigate: false);
     }

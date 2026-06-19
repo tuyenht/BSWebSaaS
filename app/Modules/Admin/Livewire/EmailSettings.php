@@ -3,10 +3,10 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Support\PlatformSettings;
-use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\TenantMailer;
+use App\Modules\Rbac\Support\PlatformAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\Gate;
