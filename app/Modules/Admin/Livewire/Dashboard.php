@@ -16,6 +16,6 @@ final class Dashboard extends Component
 {
     public function render(): View
     {
-        return view('admin::livewire.dashboard');
+        return view('admin::livewire.dashboard')->title(__('admin.dashboard'));
     }
 }

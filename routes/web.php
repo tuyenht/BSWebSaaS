@@ -4,7 +4,17 @@ use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
+use App\Modules\Admin\Http\Controllers\OAuthController;
+use App\Modules\Admin\Http\Middleware\SetLocale;
+use App\Modules\Admin\Livewire\EmailOtpChallenge;
+use App\Modules\Admin\Livewire\EmailSettings;
+use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\ResetPassword;
+use App\Modules\Admin\Livewire\Settings;
+use App\Modules\Admin\Livewire\SocialSettings;
+use App\Modules\Admin\Livewire\TwoFactorChallenge;
+use App\Modules\Admin\Support\Locales;
 use App\Modules\Identity\Models\User;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
@@ -31,17 +41,58 @@ Route::domain((string) config('tenancy.platform_host'))
     });
 
 // ── Tenant admin — login (guest, tenant context) ──────────────────────────────
-Route::prefix('admin')
-    ->middleware(['web', SetCurrentSite::class, 'site.active'])
+Route::prefix(config('admin.prefix', 'admin'))
+    ->middleware(['web', SetCurrentSite::class, 'site.active', SetLocale::class])
     ->group(function (): void {
         Route::get('/login', Login::class)->name('admin.login');
+        Route::get('/forgot-password', ForgotPassword::class)->name('admin.password.request');
+        Route::get('/reset-password', ResetPassword::class)->name('admin.password.reset');
+        Route::get('/two-factor/challenge', TwoFactorChallenge::class)->name('admin.two-factor.challenge');
+        Route::get('/otp/challenge', EmailOtpChallenge::class)->name('admin.otp.challenge');
+
+        // OAuth2 redirect endpoints (social login + email-sender connect). Guest-reachable
+        // (login needs them pre-auth); the 'email' purpose enforces auth in OAuthController.
+        Route::get('/oauth/{provider}/start', [OAuthController::class, 'start'])->name('admin.oauth.start');
+        Route::get('/oauth/callback', [OAuthController::class, 'callback'])->name('admin.oauth.callback');
+
+        // Email verification link target (signed, no auth — verification happens BEFORE the
+        // email+password login is allowed to complete).
+        Route::get('/email/verify/{id}/{hash}', function (\Illuminate\Http\Request $request, string $id, string $hash) {
+            $user = \App\Modules\Identity\Models\User::find($id);
+
+            if (! $request->hasValidSignature() || ! $user || ! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
+                abort(403);
+            }
+
+            if (! $user->hasVerifiedEmail()) {
+                $user->markEmailAsVerified();
+                event(new \Illuminate\Auth\Events\Verified($user));
+            }
+
+            return redirect()->route('admin.login')->with('status', __('auth.email_verified'));
+        })->name('admin.verification.verify');
+
+        // Switch UI locale (the language switcher links here). Session-scoped, applied
+        // by SetLocale; only accepts codes that have a lang/{code}.json file on disk.
+        Route::get('/locale', function () {
+            $set = (string) request('set');
+            if (in_array($set, Locales::codes(), true)) {
+                session(['locale' => $set]);
+            }
+
+            return back(fallback: route('admin.login'));
+        })->name('admin.locale');
     });
 
 // ── Tenant admin plane — protected (auth + tenant context + site membership) ───
-Route::prefix('admin')
-    ->middleware(['web', SetCurrentSite::class, 'site.active', 'auth', 'tenant.member'])
+Route::prefix(config('admin.prefix', 'admin'))
+    ->middleware(['web', SetCurrentSite::class, 'site.active', 'auth', 'tenant.member', SetLocale::class])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
+        Route::get('/settings', fn () => redirect()->route('admin.settings.security'))->name('admin.settings');
+        Route::get('/settings/security', Settings::class)->name('admin.settings.security');
+        Route::get('/settings/email', EmailSettings::class)->name('admin.settings.email');
+        Route::get('/settings/social', SocialSettings::class)->name('admin.settings.social');
 
         // Dev-only design-system showcase (component mount() aborts in production).
         Route::get('/_gallery', ComponentGallery::class)->name('admin.gallery');

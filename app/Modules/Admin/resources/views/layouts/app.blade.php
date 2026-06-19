@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? 'Quản trị' }}</title>
+    <title>{{ $title ?? __('admin.dashboard') }} — {{ config('admin.brand.name') }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
@@ -44,7 +44,7 @@
 
         {{-- Nav: Velzon grouped visual on the dynamic, RBAC/tenant-scoped $navItems --}}
         <nav class="flex-1 overflow-y-auto px-3 py-3">
-            <p x-show="!collapsed" class="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">Menu</p>
+            <p x-show="!collapsed" class="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{{ __('admin.menu') }}</p>
             <ul class="space-y-1">
                 <li>
                     <a href="{{ route('admin.dashboard') }}" wire:navigate
@@ -53,7 +53,7 @@
                            'bg-white/15 text-white' => request()->routeIs('admin.dashboard'),
                        ])>
                         <x-admin::icon name="dashboard" class="size-5 shrink-0" />
-                        <span x-show="!collapsed">Bảng điều khiển</span>
+                        <span x-show="!collapsed">{{ __('admin.dashboard') }}</span>
                     </a>
                 </li>
                 @foreach ($navItems as $item)
@@ -65,6 +65,16 @@
                         </a>
                     </li>
                 @endforeach
+                <li>
+                    <a href="{{ route('admin.settings') }}" wire:navigate
+                       @class([
+                           'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
+                           'bg-white/15 text-white' => request()->routeIs('admin.settings*'),
+                       ])>
+                        <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M10.4 3.5h3.2l.5 2.4 1.9.8 2.1-1.3 2.2 2.2-1.3 2.1.8 1.9 2.4.5v3.2l-2.4.5-.8 1.9 1.3 2.1-2.2 2.2-2.1-1.3-1.9.8-.5 2.4h-3.2l-.5-2.4-1.9-.8-2.1 1.3-2.2-2.2 1.3-2.1-.8-1.9L2 13.6v-3.2l2.4-.5.8-1.9-1.3-2.1 2.2-2.2 2.1 1.3 1.9-.8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        <span x-show="!collapsed">{{ __('admin.settings') }}</span>
+                    </a>
+                </li>
             </ul>
         </nav>
     </aside>
@@ -75,11 +85,11 @@
 
         {{-- Topbar --}}
         <header class="sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-gray-300 bg-white px-4 shadow-card">
-            <button type="button" @click="open = true" aria-label="Mở menu"
+            <button type="button" @click="open = true" aria-label="{{ __('admin.open_menu') }}"
                     class="grid size-9 place-items-center rounded text-gray-600 transition-colors hover:bg-gray-100 lg:hidden">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
-            <button type="button" @click="collapsed = !collapsed" aria-label="Thu gọn menu"
+            <button type="button" @click="collapsed = !collapsed" aria-label="{{ __('admin.collapse_menu') }}"
                     class="hidden size-9 place-items-center rounded text-gray-600 transition-colors hover:bg-gray-100 lg:grid">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
@@ -89,7 +99,7 @@
                 <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                     <x-admin::icon name="search" class="size-4" />
                 </span>
-                <input type="search" placeholder="Tìm kiếm..."
+                <input type="search" aria-label="{{ __('admin.search') }}" placeholder="{{ __('admin.search_placeholder') }}"
                        class="w-56 rounded border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm text-gray-700 placeholder:text-gray-400 transition-colors focus:border-admin-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-admin-primary/20 lg:w-72">
             </div>
 
@@ -101,7 +111,7 @@
                         <span class="grid size-8 place-items-center rounded-full bg-admin-primary/10 font-semibold text-admin-primary">
                             {{ \Illuminate\Support\Str::of(auth()->user()?->name ?? 'U')->substr(0, 1)->upper() }}
                         </span>
-                        <span class="hidden text-sm font-medium text-gray-700 sm:block">{{ auth()->user()?->name ?? 'Tài khoản' }}</span>
+                        <span class="hidden text-sm font-medium text-gray-700 sm:block">{{ auth()->user()?->name ?? __('admin.account') }}</span>
                     </button>
                     <div x-show="userOpen" @click.outside="userOpen = false" x-transition x-cloak
                          class="absolute end-0 mt-1 w-48 rounded-md border border-gray-200 bg-white py-1 shadow-card">
@@ -110,7 +120,7 @@
                             <button type="submit"
                                     class="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100">
                                 <x-admin::icon name="logout" class="size-4" />
-                                Đăng xuất
+                                {{ __('admin.logout') }}
                             </button>
                         </form>
                     </div>
@@ -125,7 +135,10 @@
 
         {{-- Footer --}}
         <footer class="border-t border-gray-200 px-4 py-4 text-center text-xs text-gray-500 lg:text-start">
-            {{ now()->year }} &copy; {{ $brandName }}. Bảo lưu mọi quyền.
+            &copy; {{ now()->year }}
+            <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
+               class="font-medium text-gray-600 transition-colors hover:text-admin-primary hover:underline">{{ config('admin.brand.company') }}</a>.
+            {{ __('auth.rights') }}
         </footer>
     </div>
 </div>
