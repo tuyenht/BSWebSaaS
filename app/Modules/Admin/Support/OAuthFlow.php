@@ -28,7 +28,27 @@ final class OAuthFlow
         return $cfg;
     }
 
-    public function authorizeUrl(string $provider, string $purpose, string $clientId, string $redirectUri, string $state): string
+    /**
+     * The ONE canonical redirect URI registered with every provider — on the project's
+     * main domain, shared by every tenant + the platform (the callback resolves the origin
+     * from state). Config-driven (OAUTH_CALLBACK_URL); defaults to the platform host.
+     */
+    public static function callbackUrl(): string
+    {
+        $url = (string) config('admin.oauth_callback_url', '');
+        if ($url !== '') {
+            return rtrim($url, '/');
+        }
+
+        $host = (string) config('tenancy.platform_host', '');
+        if ($host !== '') {
+            return 'https://'.$host.'/oauth/callback';
+        }
+
+        return route('oauth.callback');
+    }
+
+    public function authorizeUrl(string $provider, string $purpose, string $clientId, string $redirectUri, string $state, ?string $codeChallenge = null): string
     {
         $cfg = $this->provider($provider);
         $scopes = $cfg['scopes'][$purpose] ?? $cfg['scopes']['login'] ?? [];
@@ -41,19 +61,31 @@ final class OAuthFlow
             'state' => $state,
         ], $cfg['authorize_params'] ?? []);
 
+        // PKCE (S256) — binds this authorization request to the token exchange below.
+        if ($codeChallenge !== null) {
+            $params['code_challenge'] = $codeChallenge;
+            $params['code_challenge_method'] = 'S256';
+        }
+
         return $cfg['authorize_url'].'?'.http_build_query($params);
     }
 
     /**
      * @return array<string, mixed>
      */
-    public function exchangeCode(string $provider, string $code, string $clientId, string $clientSecret, string $redirectUri): array
+    public function exchangeCode(string $provider, string $code, string $clientId, string $clientSecret, string $redirectUri, ?string $codeVerifier = null): array
     {
-        return $this->tokenRequest($provider, $clientId, $clientSecret, [
+        $payload = [
             'grant_type' => 'authorization_code',
             'code' => $code,
             'redirect_uri' => $redirectUri,
-        ]);
+        ];
+
+        if ($codeVerifier !== null && $codeVerifier !== '') {
+            $payload['code_verifier'] = $codeVerifier;
+        }
+
+        return $this->tokenRequest($provider, $clientId, $clientSecret, $payload);
     }
 
     /**

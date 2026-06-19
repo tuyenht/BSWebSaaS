@@ -9,30 +9,44 @@ use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SocialAuth;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * OAuth2 redirect endpoints shared by social login and email-sender connect. One pair of
- * routes ({provider}/start + callback); the session-stored `purpose` decides the callback
- * branch. Lives on the guest tenant-context group (login must reach it pre-auth); the
- * 'email' purpose enforces auth in-controller.
+ * Centralized OAuth2 — social login + email-sender connect. ONE canonical redirect URI
+ * (OAuthFlow::callbackUrl(), on the project's main domain) is registered with each provider
+ * and shared by EVERY tenant — so an operator registers it once, not per-site.
  *
- * Security: CSRF-style `state` is generated per attempt and verified on return; social
- * login NEVER auto-provisions — the provider-verified email must already be a member of
- * THIS site (a role on the current team) or a platform operator.
+ * Flow: start() runs on the tenant host, stashes the ORIGIN host in a single-use, 10-min
+ * server-side `state` (cache → cross-host safe), and sends the canonical redirect URI. The
+ * central callback() resolves the origin → its site → enters that tenant's context to read
+ * its OAuth app + exchange the code, then:
+ *   - email   → stores the refresh token in that tenant's email config;
+ *   - login   → (session lives on the origin host) bounces back to {origin}/oauth/finish
+ *               with a single-use token; finish() logs the user in there.
+ *
+ * Security: state + login token are single-use (Cache::pull); social login NEVER auto-
+ * provisions — the provider-verified email must already be a member of the origin site.
  */
 final class OAuthController
 {
+    private const STATE_TTL = 600;
+
+    private const LOGIN_TTL = 120;
+
     public function __construct(
         private readonly OAuthFlow $flow,
         private readonly SocialAuth $social,
         private readonly SettingsRepository $tenant,
         private readonly PlatformSettings $platform,
         private readonly PlatformAccess $platformAccess,
+        private readonly Tenancy $tenancy,
     ) {}
 
     public function start(Request $request, string $provider): RedirectResponse
@@ -41,82 +55,72 @@ final class OAuthController
         $cfg = config("oauth.providers.$provider");
 
         if (! is_array($cfg) || ! in_array($purpose, $cfg['supports'] ?? [], true)) {
-            return $this->fail($purpose, __('admin.oauth_provider_not_configured'));
+            return $this->failLocal($purpose, __('admin.oauth_provider_not_configured'));
         }
 
         if ($purpose === 'email' && ! Auth::check()) {
             return redirect()->route('admin.login');
         }
 
+        // start runs on the tenant host (tenant context resolved) — its OAuth app lives there.
         [$clientId, $clientSecret] = $this->creds($provider, $purpose);
         if ($clientId === null || $clientSecret === null) {
-            return $this->fail($purpose, __('admin.oauth_provider_not_configured'));
+            return $this->failLocal($purpose, __('admin.oauth_provider_not_configured'));
         }
 
         $state = Str::random(40);
-        session(['oauth' => ['state' => $state, 'provider' => $provider, 'purpose' => $purpose]]);
+        $verifier = Str::random(64);
+        Cache::put('oauth-state:'.$state, [
+            'origin' => $request->getSchemeAndHttpHost(),
+            'provider' => $provider,
+            'purpose' => $purpose,
+            'verifier' => $verifier,
+        ], self::STATE_TTL);
 
         return redirect()->away(
-            $this->flow->authorizeUrl($provider, $purpose, $clientId, route('admin.oauth.callback'), $state),
+            $this->flow->authorizeUrl($provider, $purpose, $clientId, OAuthFlow::callbackUrl(), $state, $this->pkceChallenge($verifier)),
         );
     }
 
     public function callback(Request $request): RedirectResponse
     {
-        $sess = session('oauth');
-        session()->forget('oauth');
+        $state = $request->query('state');
+        $data = is_string($state) ? Cache::pull('oauth-state:'.$state) : null;
 
-        if (! is_array($sess) || ! is_string($request->query('state')) || ! hash_equals((string) ($sess['state'] ?? ''), (string) $request->query('state'))) {
-            return $this->fail('login', __('admin.oauth_state_mismatch'));
+        if (! is_array($data)) {
+            return redirect()->route('admin.login')->withErrors(['oauth' => __('admin.oauth_state_mismatch')]);
         }
 
-        $provider = (string) $sess['provider'];
-        $purpose = (string) $sess['purpose'];
+        $origin = (string) ($data['origin'] ?? '');
+        $provider = (string) ($data['provider'] ?? '');
+        $purpose = (string) ($data['purpose'] ?? 'login');
+        $verifier = (string) ($data['verifier'] ?? '');
+        $host = (string) (parse_url($origin, PHP_URL_HOST) ?: '');
 
         if ($request->query('error') !== null || ! is_string($request->query('code'))) {
-            return $this->fail($purpose, __('admin.oauth_failed'));
+            return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
         }
 
-        [$clientId, $clientSecret] = $this->creds($provider, $purpose);
-        if ($clientId === null || $clientSecret === null) {
-            return $this->fail($purpose, __('admin.oauth_provider_not_configured'));
+        $domain = Domain::query()->where('hostname', $host)->first();
+        if ($domain === null) {
+            return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
         }
 
-        try {
-            $tokens = $this->flow->exchangeCode($provider, (string) $request->query('code'), $clientId, $clientSecret, route('admin.oauth.callback'));
-            $info = $this->flow->userInfo($provider, (string) ($tokens['access_token'] ?? ''));
-        } catch (Throwable $e) {
-            report($e);
-
-            return $this->fail($purpose, __('admin.oauth_failed'));
-        }
-
-        return $purpose === 'email'
-            ? $this->finishEmail($provider, $tokens, $info)
-            : $this->finishLogin($request, $provider, $info);
+        // Re-enter the originating tenant's context to read its app + store/verify.
+        return $this->tenancy->enter(
+            $domain->site_id,
+            fn (): RedirectResponse => $this->complete($request, $origin, $provider, $purpose, $verifier),
+        );
     }
 
-    /**
-     * @param  array<string, mixed>  $info
-     */
-    private function finishLogin(Request $request, string $provider, array $info): RedirectResponse
+    public function finish(Request $request): RedirectResponse
     {
-        $field = (string) config("oauth.providers.$provider.email_field", 'email');
-        $email = $info[$field] ?? null;
+        $token = $request->query('token');
+        $userId = is_string($token) ? Cache::pull('oauth-login:'.$token) : null;
+        $user = $userId !== null ? User::find($userId) : null;
 
-        // Trust only provider-verified emails (Google/MS expose email_verified).
-        if (! is_string($email) || $email === '' || ($info['email_verified'] ?? true) === false) {
-            return $this->fail('login', __('admin.oauth_failed'));
-        }
-
-        $user = User::query()->where('email', $email)->first();
         if (! $user instanceof User) {
-            return redirect()->route('admin.login')->withErrors(['email' => __('admin.oauth_login_no_account')]);
-        }
-
-        // Membership: a role on the current site (spatie team = site_id) or platform operator.
-        if (! $this->platformAccess->isSuperAdmin($user) && ! $user->roles()->exists()) {
-            return redirect()->route('admin.login')->withErrors(['email' => __('admin.oauth_login_not_member')]);
+            return redirect()->route('admin.login')->withErrors(['email' => __('admin.oauth_failed')]);
         }
 
         Auth::login($user);
@@ -125,21 +129,71 @@ final class OAuthController
         return redirect()->intended(route('admin.dashboard'));
     }
 
+    private function complete(Request $request, string $origin, string $provider, string $purpose, string $verifier): RedirectResponse
+    {
+        [$clientId, $clientSecret] = $this->creds($provider, $purpose);
+        if ($clientId === null || $clientSecret === null) {
+            return $this->failTo($origin, $purpose, __('admin.oauth_provider_not_configured'));
+        }
+
+        try {
+            $tokens = $this->flow->exchangeCode($provider, (string) $request->query('code'), $clientId, $clientSecret, OAuthFlow::callbackUrl(), $verifier);
+            $info = $this->flow->userInfo($provider, (string) ($tokens['access_token'] ?? ''));
+        } catch (Throwable $e) {
+            report($e);
+
+            return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
+        }
+
+        return $purpose === 'email'
+            ? $this->finishEmail($origin, $provider, $tokens, $info)
+            : $this->finishLogin($origin, $provider, $info);
+    }
+
+    /**
+     * @param  array<string, mixed>  $info
+     */
+    private function finishLogin(string $origin, string $provider, array $info): RedirectResponse
+    {
+        $field = (string) config("oauth.providers.$provider.email_field", 'email');
+        $email = $info[$field] ?? null;
+
+        // Require the provider to ASSERT a verified email (default-deny if absent) — closes
+        // takeover via a provider that doesn't verify ownership (e.g. Facebook's /me email).
+        if (! is_string($email) || $email === '' || ($info['email_verified'] ?? false) !== true) {
+            return $this->failTo($origin, 'login', __('admin.oauth_failed'));
+        }
+
+        $user = User::query()->where('email', $email)->first();
+        if (! $user instanceof User) {
+            return $this->failTo($origin, 'login', __('admin.oauth_login_no_account'));
+        }
+
+        // We are inside the origin site's tenant context — membership = a role there.
+        if (! $this->platformAccess->isSuperAdmin($user) && ! $user->roles()->exists()) {
+            return $this->failTo($origin, 'login', __('admin.oauth_login_not_member'));
+        }
+
+        // The session lives on the origin host, not here — bounce with a single-use token.
+        $token = Str::random(48);
+        Cache::put('oauth-login:'.$token, $user->getAuthIdentifier(), self::LOGIN_TTL);
+
+        return redirect()->away($this->originPath($origin, 'oauth/finish').'?token='.$token);
+    }
+
     /**
      * @param  array<string, mixed>  $tokens
      * @param  array<string, mixed>  $info
      */
-    private function finishEmail(string $provider, array $tokens, array $info): RedirectResponse
+    private function finishEmail(string $origin, string $provider, array $tokens, array $info): RedirectResponse
     {
         $refresh = $tokens['refresh_token'] ?? null;
         if (! is_string($refresh) || $refresh === '') {
-            // No refresh token = we could not send later. Most often the app wasn't granted
-            // offline access — surface it instead of silently "connecting".
-            return redirect()->route('admin.settings.email')->withErrors(['oauth' => __('admin.oauth_no_refresh_token')]);
+            return redirect()->away($this->originPath($origin, 'settings/email').'?oauth_error='.urlencode(__('admin.oauth_no_refresh_token')));
         }
 
         $field = (string) config("oauth.providers.$provider.email_field", 'email');
-        $connectedEmail = is_string($info[$field] ?? null) ? $info[$field] : (Auth::user()?->email);
+        $connectedEmail = is_string($info[$field] ?? null) ? $info[$field] : null;
 
         $cfg = $this->tenant->get('email') ?? [];
         $cfg['method'] = 'oauth2';
@@ -151,13 +205,10 @@ final class OAuthController
         $cfg['from_address'] = $cfg['from_address'] ?? $connectedEmail;
         $this->tenant->put('email', 'config', $cfg);
 
-        return redirect()->route('admin.settings.email')->with('status', __('admin.oauth_connected_ok'));
+        return redirect()->away($this->originPath($origin, 'settings/email').'?oauth=connected');
     }
 
     /**
-     * Resolve the OAuth app credentials for a (provider, purpose). Login creds live in the
-     * social group; email creds live alongside the email config (tenant → platform).
-     *
      * @return array{0: ?string, 1: ?string}
      */
     private function creds(string $provider, string $purpose): array
@@ -180,7 +231,26 @@ final class OAuthController
         ];
     }
 
-    private function fail(string $purpose, string $message): RedirectResponse
+    private function pkceChallenge(string $verifier): string
+    {
+        return rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+    }
+
+    private function originPath(string $origin, string $path): string
+    {
+        $prefix = trim((string) config('admin.prefix', 'admin'), '/');
+
+        return rtrim($origin, '/').'/'.$prefix.'/'.ltrim($path, '/');
+    }
+
+    private function failTo(string $origin, string $purpose, string $message): RedirectResponse
+    {
+        $path = $purpose === 'email' ? 'settings/email' : 'login';
+
+        return redirect()->away($this->originPath($origin, $path).'?oauth_error='.urlencode($message));
+    }
+
+    private function failLocal(string $purpose, string $message): RedirectResponse
     {
         $route = $purpose === 'email' && Auth::check() ? 'admin.settings.email' : 'admin.login';
 

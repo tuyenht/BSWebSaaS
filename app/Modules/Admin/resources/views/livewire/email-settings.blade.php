@@ -1,4 +1,4 @@
-<x-admin::settings-shell active="email">
+<x-admin::settings-shell :active="$scope === 'platform' ? 'system-email' : 'email'">
     {{-- Flash + OAuth-connect errors --}}
     @if (session('status'))
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success">{{ session('status') }}</div>
@@ -6,7 +6,18 @@
     @error('oauth')
         <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger">{{ $message }}</div>
     @enderror
+    @if (request('oauth_error'))
+        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger">{{ request('oauth_error') }}</div>
+    @endif
+    @if (request('oauth') === 'connected')
+        <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success">{{ __('admin.oauth_connected_ok') }}</div>
+    @endif
 
+    @if ($scope === 'platform')
+        <div class="rounded border border-admin-warning/40 bg-admin-warning/10 px-4 py-3 text-sm text-admin-warning">{{ __('admin.system_default_warning') }}</div>
+    @endif
+
+    @if ($scope !== 'platform')
     {{-- Delivery status (hybrid: tenant override → platform default → log) --}}
     <div class="overflow-hidden rounded-md border border-gray-200 bg-white shadow-card">
         <div class="border-b border-gray-200 px-5 py-3">
@@ -27,6 +38,8 @@
         </div>
     </div>
 
+    @endif
+
     {{-- Configuration form --}}
     <form wire:submit="save" class="overflow-hidden rounded-md border border-gray-200 bg-white shadow-card">
         <div class="border-b border-gray-200 px-5 py-3">
@@ -34,6 +47,7 @@
             <p class="mt-0.5 text-xs text-gray-500">{{ __('admin.email_settings_desc') }}</p>
         </div>
         <div class="space-y-5 p-5">
+            @if ($scope !== 'platform')
             {{-- Method selector --}}
             <div class="inline-flex rounded-md border border-gray-200 p-0.5">
                 <label @class(['cursor-pointer rounded px-3 py-1.5 text-sm font-medium transition-colors', 'bg-admin-primary text-white' => $method === 'smtp_password', 'text-gray-600 hover:bg-gray-100' => $method !== 'smtp_password'])>
@@ -43,6 +57,8 @@
                     <input type="radio" wire:model.live="method" value="oauth2" class="sr-only">{{ __('admin.email_method_oauth2') }}
                 </label>
             </div>
+
+            @endif
 
             @if ($method === 'smtp_password')
                 <div class="grid gap-4 sm:grid-cols-2">
@@ -84,6 +100,29 @@
                             <p class="mt-1 text-xs text-gray-500">{{ __('admin.leave_blank_keep') }}</p>
                         @endif
                     </div>
+                </div>
+
+                {{-- Setup guide (provider console link reflects the selected provider) --}}
+                <div class="space-y-2 rounded border border-admin-info/30 bg-admin-info/5 p-4 text-sm">
+                    <p class="font-semibold text-gray-700">{{ __('admin.oauth_setup_guide') }}
+                        <a href="{{ config('oauth.providers.'.$oauthProvider.'.console_url') }}" target="_blank" rel="noopener noreferrer" class="ms-1 font-medium text-admin-primary hover:underline">{{ __('admin.oauth_open_console', ['provider' => ucfirst($oauthProvider)]) }} ↗</a>
+                    </p>
+                    <ol class="list-decimal space-y-1 pl-5 text-gray-600">
+                        <li>{{ __('admin.oauth_guide_step1') }}</li>
+                        <li>{{ __('admin.oauth_guide_step2') }}</li>
+                        <li>{{ __('admin.oauth_guide_step3') }}</li>
+                        <li>{{ __('admin.oauth_guide_connect') }}</li>
+                    </ol>
+                    <label class="block pt-1 text-xs font-medium text-gray-600">{{ __('admin.redirect_uri') }}</label>
+                    <div class="flex items-center gap-2" x-data="{ copied: false }">
+                        <input type="text" readonly value="{{ \App\Modules\Admin\Support\OAuthFlow::callbackUrl() }}"
+                               class="block w-full select-all rounded border border-gray-300 bg-white px-3 py-2 font-mono text-xs text-gray-700">
+                        <x-admin::button type="button" variant="soft" size="sm"
+                                         x-on:click="navigator.clipboard.writeText('{{ \App\Modules\Admin\Support\OAuthFlow::callbackUrl() }}'); copied = true; setTimeout(() => copied = false, 1500)">
+                            <span x-show="!copied">{{ __('admin.copy') }}</span><span x-show="copied" x-cloak>{{ __('admin.copied') }}</span>
+                        </x-admin::button>
+                    </div>
+                    <p class="text-xs text-gray-500">{{ __('admin.oauth_redirect_uri_shared') }}</p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3 rounded border border-gray-200 bg-gray-50 px-4 py-3">

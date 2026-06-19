@@ -3,11 +3,13 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Support\PlatformSettings;
+use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\TenantMailer;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Routing\Redirector;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -15,17 +17,23 @@ use Livewire\Component;
 use Throwable;
 
 /**
- * Tenant email-sender settings. Edits THIS site's override; when empty, mail falls back to
- * the platform default (hybrid — see TenantMailer). Two methods: SMTP password, or OAuth2
- * (Google/Microsoft/Yahoo) where the refresh token is obtained via the OAuth connect flow.
+ * Email-sender settings, scoped:
+ *  - scope=site (default): THIS tenant's override; empty → falls back to the platform
+ *    default (hybrid, see TenantMailer). Gated by `settings.manage` (owner/admin).
+ *  - scope=platform: the SYSTEM default every tenant inherits (platform_settings). Restricted
+ *    to super_admin — the "highest admin" surface — and SMTP-password only (the platform
+ *    default sender). Guarded server-side in mount() AND save() (never trusts the public prop).
  *
- * Secrets are write-only: stored values are never sent to the browser — a "stored" flag is
- * shown and a blank field on save keeps the existing secret. All secrets persist AES-256-GCM
- * encrypted via SecretCipher.
+ * Secrets are write-only (a "stored" flag is shown; blank-on-save keeps the value) and
+ * persist AES-256-GCM encrypted via SecretCipher.
  */
 #[Layout('admin::layouts.app')]
 final class EmailSettings extends Component
 {
+    public string $scope = 'site';
+
+    public bool $isSuperAdmin = false;
+
     public string $method = 'smtp_password';
 
     public string $smtpHost = '';
@@ -60,11 +68,29 @@ final class EmailSettings extends Component
 
     public ?string $testResult = null;
 
-    public function mount(): void
+    public function boot(): void
     {
-        $cfg = app(SettingsRepository::class)->get('email');
-        $this->hasOverride = ! empty($cfg);
-        $this->platformConfigured = app(PlatformSettings::class)->get('email') !== null;
+        // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so
+        // re-check the baseline site-settings permission on every request.
+        abort_unless(Gate::allows('settings.manage'), 403);
+    }
+
+    public function mount(string $scope = 'site'): void
+    {
+        $this->scope = $scope === 'platform' ? 'platform' : 'site';
+        $this->isSuperAdmin = $this->checkSuperAdmin();
+
+        // The system (platform) default is super_admin-only.
+        if ($this->scope === 'platform') {
+            abort_unless($this->isSuperAdmin, 403);
+        }
+
+        $cfg = $this->configRepo()->get('email');
+
+        if ($this->scope === 'site') {
+            $this->hasOverride = ! empty($cfg);
+            $this->platformConfigured = app(PlatformSettings::class)->get('email') !== null;
+        }
 
         if (empty($cfg)) {
             return;
@@ -90,9 +116,16 @@ final class EmailSettings extends Component
 
     public function save(): void
     {
+        // Platform scope mutates global config → re-verify super_admin server-side (the
+        // public $scope/$isSuperAdmin props are hydrated from the client, never trusted).
+        if ($this->scope === 'platform') {
+            abort_unless($this->checkSuperAdmin(), 403);
+            $this->method = 'smtp_password';
+        }
+
         $this->validate($this->rules());
 
-        $repo = app(SettingsRepository::class);
+        $repo = $this->configRepo();
         $existing = $repo->get('email') ?? [];
 
         $cfg = [
@@ -113,7 +146,6 @@ final class EmailSettings extends Component
                 'username' => $this->smtpUsername,
                 'password' => $password,
             ];
-            // Keep any previously-connected oauth block so switching back doesn't re-auth.
             if (isset($existing['oauth'])) {
                 $cfg['oauth'] = $existing['oauth'];
             }
@@ -135,12 +167,17 @@ final class EmailSettings extends Component
         $repo->put('email', 'config', $cfg);
 
         $this->reset('smtpPassword', 'oauthClientSecret');
-        $this->mount();
+        $this->mount($this->scope);
         session()->flash('status', __('admin.saved'));
     }
 
     public function connect(): RedirectResponse|Redirector
     {
+        // OAuth connect (3-legged) is tenant-scoped only for now.
+        if ($this->scope === 'platform') {
+            return redirect()->route('admin.settings.system.email');
+        }
+
         $this->save();
 
         return redirect()->route('admin.oauth.start', ['provider' => $this->oauthProvider, 'purpose' => 'email']);
@@ -148,6 +185,11 @@ final class EmailSettings extends Component
 
     public function clearOverride(): void
     {
+        // Only a tenant override can be cleared — never the system default.
+        if ($this->scope === 'platform') {
+            return;
+        }
+
         app(SettingsRepository::class)->put('email', 'config', []);
         $this->reset();
         $this->mount();
@@ -157,8 +199,7 @@ final class EmailSettings extends Component
     public function sendTest(): void
     {
         $this->testResult = null;
-        $user = auth()->user();
-        $to = $user?->email;
+        $to = auth()->user()?->email;
 
         if (! $to) {
             return;
@@ -179,6 +220,20 @@ final class EmailSettings extends Component
             report($e);
             $this->testResult = 'error';
         }
+    }
+
+    private function checkSuperAdmin(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && app(PlatformAccess::class)->isSuperAdmin($user);
+    }
+
+    private function configRepo(): SettingsRepository|PlatformSettings
+    {
+        return $this->scope === 'platform'
+            ? app(PlatformSettings::class)
+            : app(SettingsRepository::class);
     }
 
     /**
@@ -204,6 +259,10 @@ final class EmailSettings extends Component
 
     public function render(): View
     {
-        return view('admin::livewire.email-settings')->title(__('admin.email_settings'));
+        $platform = $this->scope === 'platform';
+
+        return view('admin::livewire.email-settings')
+            ->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app')
+            ->title($platform ? __('admin.system_email') : __('admin.email_settings'));
     }
 }

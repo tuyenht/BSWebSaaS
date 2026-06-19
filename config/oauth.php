@@ -17,6 +17,7 @@ return [
     'providers' => [
         'google' => [
             'label' => 'Google',
+            'console_url' => 'https://console.cloud.google.com/apis/credentials',
             'authorize_url' => 'https://accounts.google.com/o/oauth2/v2/auth',
             'token_url' => 'https://oauth2.googleapis.com/token',
             'userinfo_url' => 'https://openidconnect.googleapis.com/v1/userinfo',
@@ -34,6 +35,7 @@ return [
         ],
         'microsoft' => [
             'label' => 'Microsoft',
+            'console_url' => 'https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade',
             'authorize_url' => 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
             'token_url' => 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
             'userinfo_url' => 'https://graph.microsoft.com/oidc/userinfo',
@@ -50,6 +52,7 @@ return [
         ],
         'yahoo' => [
             'label' => 'Yahoo',
+            'console_url' => 'https://developer.yahoo.com/apps/',
             'authorize_url' => 'https://api.login.yahoo.com/oauth2/request_auth',
             'token_url' => 'https://api.login.yahoo.com/oauth2/get_token',
             'userinfo_url' => 'https://api.login.yahoo.com/openid/v1/userinfo',
@@ -67,6 +70,7 @@ return [
         ],
         'facebook' => [
             'label' => 'Facebook',
+            'console_url' => 'https://developers.facebook.com/apps/',
             'authorize_url' => 'https://www.facebook.com/v19.0/dialog/oauth',
             'token_url' => 'https://graph.facebook.com/v19.0/oauth/access_token',
             'userinfo_url' => 'https://graph.facebook.com/me?fields=id,name,email',

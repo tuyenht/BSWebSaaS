@@ -1,25 +1,40 @@
 @props(['active' => ''])
 @php
-    $nav = [[
-        'group' => __('admin.settings_account'),
-        'items' => [
-            ['key' => 'security', 'route' => 'admin.settings.security', 'label' => __('admin.security')],
-        ],
-    ]];
+    if (\App\Modules\Admin\Support\AdminPlane::isPlatform()) {
+        // Platform (system) console — super_admin-only system defaults.
+        $nav = [[
+            'group' => __('admin.settings_system'),
+            'items' => array_values(array_filter([
+                Route::has('platform.settings.email') ? ['key' => 'system-email', 'route' => 'platform.settings.email', 'label' => __('admin.system_email')] : null,
+                Route::has('platform.settings.social') ? ['key' => 'system-social', 'route' => 'platform.settings.social', 'label' => __('admin.system_social')] : null,
+            ])),
+        ]];
+    } else {
+        $nav = [[
+            'group' => __('admin.settings_account'),
+            'items' => [
+                ['key' => 'security', 'route' => 'admin.settings.security', 'label' => __('admin.security')],
+            ],
+        ]];
 
-    $workspace = [];
-    if (Route::has('admin.settings.email')) {
-        $workspace[] = ['key' => 'email', 'route' => 'admin.settings.email', 'label' => __('admin.email_settings')];
-    }
-    if (Route::has('admin.settings.social')) {
-        $workspace[] = ['key' => 'social', 'route' => 'admin.settings.social', 'label' => __('admin.social_login')];
-    }
-    if ($workspace !== []) {
-        $nav[] = ['group' => __('admin.settings_workspace'), 'items' => $workspace];
+        // Site-wide settings appear only for roles holding `settings.manage` (owner/admin/
+        // super_admin). A normal member sees only the "My Account" group.
+        $workspace = [];
+        if (\Illuminate\Support\Facades\Gate::allows('settings.manage')) {
+            if (Route::has('admin.settings.email')) {
+                $workspace[] = ['key' => 'email', 'route' => 'admin.settings.email', 'label' => __('admin.email_settings')];
+            }
+            if (Route::has('admin.settings.social')) {
+                $workspace[] = ['key' => 'social', 'route' => 'admin.settings.social', 'label' => __('admin.social_login')];
+            }
+        }
+        if ($workspace !== []) {
+            $nav[] = ['group' => __('admin.settings_workspace'), 'items' => $workspace];
+        }
     }
 @endphp
 <div class="mx-auto max-w-5xl">
-    <h1 class="mb-5 text-lg font-semibold text-gray-800">{{ __('admin.settings') }}</h1>
+    <h1 class="mb-5 text-lg font-semibold text-gray-800">{{ \App\Modules\Admin\Support\AdminPlane::isPlatform() ? __('admin.settings_system') : __('admin.settings') }}</h1>
 
     <div class="grid gap-6 lg:grid-cols-[210px_1fr]">
         {{-- Section nav: vertical on desktop, horizontally scrollable on mobile --}}

@@ -2,8 +2,10 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -27,6 +29,13 @@ final class SocialSettings extends Component
 
     /** @var array<string, bool> */
     public array $secretSet = [];
+
+    public function boot(): void
+    {
+        // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so
+        // re-check the site-settings permission on every request (mount + every action).
+        abort_unless(Gate::allows('settings.manage'), 403);
+    }
 
     public function mount(): void
     {
@@ -72,7 +81,7 @@ final class SocialSettings extends Component
     public function render(): View
     {
         return view('admin::livewire.social-settings', [
-            'redirectUri' => route('admin.oauth.callback'),
+            'redirectUri' => OAuthFlow::callbackUrl(),
         ])->title(__('admin.social_login'));
     }
 }

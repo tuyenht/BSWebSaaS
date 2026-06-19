@@ -20,4 +20,10 @@ return [
     // credentials in site_settings. AES-256-GCM via SecretCipher; rotating it invalidates
     // all stored secrets by design.
     'encryption_key' => env('SETTINGS_ENCRYPTION_KEY'),
+
+    // The single canonical OAuth redirect URI registered with each provider (Google/MS/
+    // Yahoo/Facebook), on the project's MAIN domain — shared by all tenants + the platform.
+    // Defaults to https://{PLATFORM_HOST}/oauth/callback when unset. The callback resolves
+    // which tenant initiated from signed state, so one URI covers every site.
+    'oauth_callback_url' => env('OAUTH_CALLBACK_URL'),
 ];

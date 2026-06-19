@@ -2,6 +2,9 @@
     @if (session('status'))
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success">{{ session('status') }}</div>
     @endif
+    @if (request('oauth_error'))
+        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger">{{ request('oauth_error') }}</div>
+    @endif
 
     <div class="overflow-hidden rounded-md border border-gray-200 bg-white shadow-card">
         <div class="border-b border-gray-200 px-5 py-3">
@@ -20,6 +23,12 @@
                 </x-admin::button>
             </div>
             <p class="text-xs text-gray-500">{{ __('admin.redirect_uri_hint') }}</p>
+            <ol class="list-decimal space-y-1 pl-5 text-xs text-gray-600">
+                <li>{{ __('admin.oauth_guide_step1') }}</li>
+                <li>{{ __('admin.oauth_guide_step2') }}</li>
+                <li>{{ __('admin.oauth_guide_step3') }}</li>
+            </ol>
+            <p class="text-xs text-gray-500">{{ __('admin.oauth_redirect_uri_shared') }}</p>
         </div>
     </div>
 
@@ -27,7 +36,9 @@
         <form wire:submit="save('{{ $provider }}')" wire:key="social-{{ $provider }}"
               class="overflow-hidden rounded-md border border-gray-200 bg-white shadow-card">
             <div class="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-                <h3 class="text-sm font-semibold text-gray-700">{{ ucfirst($provider) }}</h3>
+                <h3 class="text-sm font-semibold text-gray-700">{{ ucfirst($provider) }}
+                    <a href="{{ config('oauth.providers.'.$provider.'.console_url') }}" target="_blank" rel="noopener noreferrer" class="ms-1 text-xs font-medium text-admin-primary hover:underline">{{ __('admin.oauth_open_console', ['provider' => ucfirst($provider)]) }} ↗</a>
+                </h3>
                 <label class="inline-flex cursor-pointer items-center gap-2">
                     <input type="checkbox" wire:model="forms.{{ $provider }}.enabled" class="h-4 w-4 rounded border-gray-300 text-admin-primary focus:ring-admin-primary/30">
                     <span class="text-sm text-gray-600">{{ __('admin.enabled') }}</span>
