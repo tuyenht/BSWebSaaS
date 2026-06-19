@@ -23,7 +23,7 @@ it('lets a site member into the admin shell', function () {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
-    $this->actingAs($user)->get('http://a.test/admin')->assertOk()->assertSee('Bảng điều khiển');
+    $this->actingAs($user)->get('http://a.test/admin')->assertOk()->assertSee(__('admin.dashboard'));
 });
 
 it('forbids an authenticated non-member', function () {
