@@ -92,7 +92,12 @@ class LangCheck extends Command
     {
         $json = json_decode((string) file_get_contents($file), true);
 
-        return is_array($json) ? $json : [];
+        if (! is_array($json)) {
+            return [];
+        }
+
+        /** @var array<string, string> $json */
+        return $json;
     }
 
     /**
@@ -109,7 +114,7 @@ class LangCheck extends Command
     private function duplicateKeys(string $file): array
     {
         preg_match_all('/^\s*"([^"]+)"\s*:/m', (string) file_get_contents($file), $m);
-        $counts = array_count_values($m[1] ?? []);
+        $counts = array_count_values($m[1]);
 
         return array_keys(array_filter($counts, static fn (int $c): bool => $c > 1));
     }

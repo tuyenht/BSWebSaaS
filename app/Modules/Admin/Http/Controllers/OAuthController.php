@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
@@ -54,7 +55,7 @@ final class OAuthController
         $purpose = $request->query('purpose') === 'email' ? 'email' : 'login';
         $cfg = config("oauth.providers.$provider");
 
-        if (! is_array($cfg) || ! in_array($purpose, $cfg['supports'] ?? [], true)) {
+        if (! is_array($cfg) || ! in_array($purpose, Cast::arr($cfg['supports'] ?? null), true)) {
             return $this->failLocal($purpose, __('admin.oauth_provider_not_configured'));
         }
 
@@ -91,10 +92,10 @@ final class OAuthController
             return redirect()->route('admin.login')->withErrors(['oauth' => __('admin.oauth_state_mismatch')]);
         }
 
-        $origin = (string) ($data['origin'] ?? '');
-        $provider = (string) ($data['provider'] ?? '');
-        $purpose = (string) ($data['purpose'] ?? 'login');
-        $verifier = (string) ($data['verifier'] ?? '');
+        $origin = Cast::string($data['origin'] ?? null);
+        $provider = Cast::string($data['provider'] ?? null);
+        $purpose = Cast::string($data['purpose'] ?? null, 'login');
+        $verifier = Cast::string($data['verifier'] ?? null);
         $host = (string) (parse_url($origin, PHP_URL_HOST) ?: '');
 
         if ($request->query('error') !== null || ! is_string($request->query('code'))) {
@@ -138,7 +139,7 @@ final class OAuthController
 
         try {
             $tokens = $this->flow->exchangeCode($provider, (string) $request->query('code'), $clientId, $clientSecret, OAuthFlow::callbackUrl(), $verifier);
-            $info = $this->flow->userInfo($provider, (string) ($tokens['access_token'] ?? ''));
+            $info = $this->flow->userInfo($provider, Cast::string($tokens['access_token'] ?? null));
         } catch (Throwable $e) {
             report($e);
 
@@ -155,7 +156,7 @@ final class OAuthController
      */
     private function finishLogin(string $origin, string $provider, array $info): RedirectResponse
     {
-        $field = (string) config("oauth.providers.$provider.email_field", 'email');
+        $field = Cast::string(config("oauth.providers.$provider.email_field"), 'email');
         $email = $info[$field] ?? null;
 
         // Require the provider to ASSERT a verified email (default-deny if absent) — closes
@@ -192,12 +193,12 @@ final class OAuthController
             return redirect()->away($this->originPath($origin, 'settings/email').'?oauth_error='.urlencode(__('admin.oauth_no_refresh_token')));
         }
 
-        $field = (string) config("oauth.providers.$provider.email_field", 'email');
+        $field = Cast::string(config("oauth.providers.$provider.email_field"), 'email');
         $connectedEmail = is_string($info[$field] ?? null) ? $info[$field] : null;
 
         $cfg = $this->tenant->get('email') ?? [];
         $cfg['method'] = 'oauth2';
-        $cfg['oauth'] = array_merge($cfg['oauth'] ?? [], [
+        $cfg['oauth'] = array_merge(Cast::arr($cfg['oauth'] ?? null), [
             'provider' => $provider,
             'refresh_token' => SecretCipher::encrypt($refresh),
             'email' => $connectedEmail,
@@ -218,16 +219,16 @@ final class OAuthController
 
             return [
                 is_string($cfg['client_id'] ?? null) ? $cfg['client_id'] : null,
-                isset($cfg['client_secret']) ? SecretCipher::decrypt($cfg['client_secret']) : null,
+                is_string($cfg['client_secret'] ?? null) ? SecretCipher::decrypt($cfg['client_secret']) : null,
             ];
         }
 
         $email = $this->tenant->get('email') ?? $this->platform->get('email') ?? [];
-        $oauth = $email['oauth'] ?? [];
+        $oauth = Cast::arr($email['oauth'] ?? null);
 
         return [
             is_string($oauth['client_id'] ?? null) ? $oauth['client_id'] : null,
-            isset($oauth['client_secret']) ? SecretCipher::decrypt($oauth['client_secret']) : null,
+            is_string($oauth['client_secret'] ?? null) ? SecretCipher::decrypt($oauth['client_secret']) : null,
         ];
     }
 
@@ -238,7 +239,7 @@ final class OAuthController
 
     private function originPath(string $origin, string $path): string
     {
-        $prefix = trim((string) config('admin.prefix', 'admin'), '/');
+        $prefix = trim(Cast::string(config('admin.prefix'), 'admin'), '/');
 
         return rtrim($origin, '/').'/'.$prefix.'/'.ltrim($path, '/');
     }

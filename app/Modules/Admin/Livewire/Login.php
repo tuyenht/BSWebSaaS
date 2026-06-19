@@ -58,9 +58,15 @@ final class Login extends Component
 
         $user = Auth::getProvider()->retrieveByCredentials($credentials);
 
+        if (! $user instanceof User) {
+            $this->addError('email', __('auth.invalid_credentials'));
+
+            return null;
+        }
+
         // Email must be verified before an email+password login completes. We send a fresh
         // verification link (via the resolved mailer) and stop here.
-        if ($user instanceof User && ! $user->hasVerifiedEmail()) {
+        if (! $user->hasVerifiedEmail()) {
             app(TenantMailer::class)->apply();
             $user->sendEmailVerificationNotification();
             $this->addError('email', __('auth.email_unverified'));
@@ -73,7 +79,7 @@ final class Login extends Component
         // here — Auth::login happens only after the challenge passes.
         session()->put('2fa.user_id', $user->getAuthIdentifier());
 
-        if ($user instanceof User && $user->two_factor_confirmed_at !== null) {
+        if ($user->two_factor_confirmed_at !== null) {
             return $this->redirectRoute(AdminPlane::prefix().'.two-factor.challenge', navigate: false);
         }
 
@@ -84,6 +90,9 @@ final class Login extends Component
 
     public function render(): View
     {
-        return view('admin::livewire.login')->title(__('auth.welcome'));
+        $view = view('admin::livewire.login');
+        $view->title(__('auth.welcome'));
+
+        return $view;
     }
 }

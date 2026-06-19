@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Notifications;
 
+use App\Modules\Admin\Support\Cast;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -28,7 +29,7 @@ final class EmailOtpNotification extends Notification
     {
         return (new MailMessage)
             ->subject(__('auth.otp_email_subject'))
-            ->greeting(config('admin.brand.name'))
+            ->greeting(Cast::string(config('admin.brand.name')))
             ->line(__('auth.otp_email_intro'))
             ->line('# '.$this->code)
             ->line(__('auth.otp_email_outro', ['minutes' => $this->minutes]));

@@ -25,7 +25,7 @@ final class SecretCipher
 
     private static function cipher(): Encrypter
     {
-        $configured = (string) config('admin.encryption_key', '');
+        $configured = Cast::string(config('admin.encryption_key'));
 
         $key = str_starts_with($configured, 'base64:')
             ? (base64_decode(substr($configured, 7), true) ?: '')

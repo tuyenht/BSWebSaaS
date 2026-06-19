@@ -2,6 +2,9 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\Cast;
+use App\Modules\Identity\Models\User;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Support\Facades\Password;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -25,8 +28,8 @@ final class ResetPassword extends Component
 
     public function mount(): void
     {
-        $this->token = (string) request('token', '');
-        $this->email = (string) request('email', '');
+        $this->token = Cast::string(request('token'));
+        $this->email = Cast::string(request('email'));
     }
 
     public function resetPassword(): mixed
@@ -44,8 +47,10 @@ final class ResetPassword extends Component
                 'password_confirmation' => $this->password_confirmation,
                 'token' => $this->token,
             ],
-            function ($user, string $password): void {
-                $user->forceFill(['password' => $password])->save();
+            function (CanResetPassword $user, string $password): void {
+                if ($user instanceof User) {
+                    $user->forceFill(['password' => $password])->save();
+                }
             },
         );
 
@@ -62,6 +67,9 @@ final class ResetPassword extends Component
 
     public function render(): View
     {
-        return view('admin::livewire.reset-password')->title(__('auth.reset_title'));
+        $view = view('admin::livewire.reset-password');
+        $view->title(__('auth.reset_title'));
+
+        return $view;
     }
 }

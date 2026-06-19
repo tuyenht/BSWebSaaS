@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
@@ -44,7 +45,7 @@ final class SocialSettings extends Component
         foreach ($this->providers as $provider) {
             $cfg = $repo->get('oauth_social', $provider) ?? [];
             $this->forms[$provider] = [
-                'client_id' => (string) ($cfg['client_id'] ?? ''),
+                'client_id' => Cast::string($cfg['client_id'] ?? null),
                 'client_secret' => '',
                 'enabled' => (bool) ($cfg['enabled'] ?? false),
             ];
@@ -80,8 +81,11 @@ final class SocialSettings extends Component
 
     public function render(): View
     {
-        return view('admin::livewire.social-settings', [
+        $view = view('admin::livewire.social-settings', [
             'redirectUri' => OAuthFlow::callbackUrl(),
-        ])->title(__('admin.social_login'));
+        ]);
+        $view->title(__('admin.social_login'));
+
+        return $view;
     }
 }

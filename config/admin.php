@@ -26,4 +26,13 @@ return [
     // Defaults to https://{PLATFORM_HOST}/oauth/callback when unset. The callback resolves
     // which tenant initiated from signed state, so one URI covers every site.
     'oauth_callback_url' => env('OAUTH_CALLBACK_URL'),
+
+    // Genesis platform super_admin (the Bảo Sơn operator) seeded as the FIRST account.
+    // env-sourced so credentials never live in the repo (it is public); with no password
+    // set the seeder generates a random one and the operator claims it via password-reset.
+    'super_admin' => [
+        'email' => env('SUPER_ADMIN_EMAIL', 'admin@baoson.net'),
+        'name' => env('SUPER_ADMIN_NAME', 'Bảo Sơn Operator'),
+        'password' => env('SUPER_ADMIN_PASSWORD', ''),
+    ],
 ];

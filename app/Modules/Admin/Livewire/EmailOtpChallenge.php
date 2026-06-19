@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Support\AdminPlane;
+use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -43,7 +44,7 @@ final class EmailOtpChallenge extends Component
             return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
-        $rlKey = 'email-otp-verify:'.$user->getAuthIdentifier();
+        $rlKey = 'email-otp-verify:'.Cast::string($user->getAuthIdentifier());
         if (RateLimiter::tooManyAttempts($rlKey, 5)) {
             // Hard cap: burn the code so it can't be brute-forced — a fresh one is required.
             app(EmailOtp::class)->invalidate($user);
@@ -83,6 +84,9 @@ final class EmailOtpChallenge extends Component
 
     public function render(): View
     {
-        return view('admin::livewire.email-otp-challenge')->title(__('auth.otp_title'));
+        $view = view('admin::livewire.email-otp-challenge');
+        $view->title(__('auth.otp_title'));
+
+        return $view;
     }
 }

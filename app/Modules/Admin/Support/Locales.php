@@ -15,10 +15,10 @@ final class Locales
     public static function available(): array
     {
         $files = glob(lang_path('*.json')) ?: [];
-        $codes = array_values(array_map(
+        $codes = array_map(
             static fn (string $path): string => basename($path, '.json'),
             $files,
-        ));
+        );
 
         $order = (array) config('locales.order', []);
         usort($codes, static function (string $a, string $b) use ($order): int {
@@ -56,7 +56,7 @@ final class Locales
 
         if (class_exists(\Locale::class)) {
             $native = \Locale::getDisplayLanguage($code, $code);
-            if (is_string($native) && $native !== '' && $native !== $code) {
+            if (is_string($native) && $native !== $code) {
                 return ucfirst($native);
             }
         }

@@ -83,6 +83,9 @@ final class Settings extends Component
 
     public function render(): View
     {
-        return view('admin::livewire.settings')->title(__('admin.settings'));
+        $view = view('admin::livewire.settings');
+        $view->title(__('admin.settings'));
+
+        return $view;
     }
 }

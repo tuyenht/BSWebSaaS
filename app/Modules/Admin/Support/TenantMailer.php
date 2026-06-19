@@ -71,10 +71,15 @@ final class TenantMailer
             return false;
         }
 
-        return match ($cfg['method'] ?? 'smtp_password') {
-            'smtp_password' => ! empty($cfg['smtp']['host']) && ! empty($cfg['smtp']['username']),
-            default => ! empty($cfg['oauth']['provider']) && ! empty($cfg['oauth']['refresh_token']),
-        };
+        if (($cfg['method'] ?? 'smtp_password') === 'smtp_password') {
+            $smtp = Cast::arr($cfg['smtp'] ?? null);
+
+            return ! empty($smtp['host']) && ! empty($smtp['username']);
+        }
+
+        $oauth = Cast::arr($cfg['oauth'] ?? null);
+
+        return ! empty($oauth['provider']) && ! empty($oauth['refresh_token']);
     }
 
     /**
@@ -82,17 +87,17 @@ final class TenantMailer
      */
     private function applySmtpPassword(array $cfg): bool
     {
-        $smtp = $cfg['smtp'] ?? [];
+        $smtp = Cast::arr($cfg['smtp'] ?? null);
         $from = $cfg['from_address'] ?? ($smtp['username'] ?? null);
 
         config([
             'mail.default' => 'smtp',
             'mail.mailers.smtp.transport' => 'smtp',
             'mail.mailers.smtp.host' => $smtp['host'] ?? null,
-            'mail.mailers.smtp.port' => (int) ($smtp['port'] ?? 587),
+            'mail.mailers.smtp.port' => Cast::int($smtp['port'] ?? null, 587),
             'mail.mailers.smtp.encryption' => $smtp['encryption'] ?? 'tls',
             'mail.mailers.smtp.username' => $smtp['username'] ?? null,
-            'mail.mailers.smtp.password' => isset($smtp['password']) ? SecretCipher::decrypt($smtp['password']) : null,
+            'mail.mailers.smtp.password' => is_string($smtp['password'] ?? null) ? SecretCipher::decrypt($smtp['password']) : null,
             'mail.from.address' => $from,
             'mail.from.name' => $cfg['from_name'] ?? config('admin.brand.name'),
         ]);
@@ -105,11 +110,11 @@ final class TenantMailer
      */
     private function applyOAuth2(array $cfg): bool
     {
-        $oauth = $cfg['oauth'] ?? [];
+        $oauth = Cast::arr($cfg['oauth'] ?? null);
         $provider = $oauth['provider'] ?? null;
         $refreshEnc = $oauth['refresh_token'] ?? null;
         $clientId = $oauth['client_id'] ?? null;
-        $clientSecret = isset($oauth['client_secret']) ? SecretCipher::decrypt($oauth['client_secret']) : null;
+        $clientSecret = is_string($oauth['client_secret'] ?? null) ? SecretCipher::decrypt($oauth['client_secret']) : null;
 
         $providerCfg = is_string($provider) ? config("oauth.providers.$provider") : null;
         if (! is_array($providerCfg) || ! is_string($refreshEnc) || ! is_string($clientId) || $clientSecret === null) {
@@ -121,14 +126,14 @@ final class TenantMailer
             return false;
         }
 
-        $smtp = $providerCfg['smtp'] ?? [];
+        $smtp = Cast::arr($providerCfg['smtp'] ?? null);
         $username = $oauth['email'] ?? ($cfg['from_address'] ?? null);
 
         config([
             'mail.default' => 'admin_xoauth2',
             'mail.mailers.admin_xoauth2.transport' => 'admin_xoauth2',
             'mail.mailers.admin_xoauth2.host' => $smtp['host'] ?? null,
-            'mail.mailers.admin_xoauth2.port' => (int) ($smtp['port'] ?? 587),
+            'mail.mailers.admin_xoauth2.port' => Cast::int($smtp['port'] ?? null, 587),
             'mail.mailers.admin_xoauth2.encryption' => $smtp['encryption'] ?? 'tls',
             'mail.mailers.admin_xoauth2.username' => $username,
             'mail.mailers.admin_xoauth2.access_token' => $accessToken,
@@ -180,7 +185,7 @@ final class TenantMailer
                 return null;
             }
 
-            Cache::put($cacheKey, $access, max(60, (int) ($tokens['expires_in'] ?? 3600) - 60));
+            Cache::put($cacheKey, $access, max(60, Cast::int($tokens['expires_in'] ?? null, 3600) - 60));
 
             return $access;
         } finally {

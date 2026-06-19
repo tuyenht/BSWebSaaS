@@ -38,7 +38,7 @@ final class EmailOtp
             return false;
         }
 
-        if (! hash_equals((string) $record['hash'], hash('sha256', trim($code)))) {
+        if (! hash_equals(Cast::string($record['hash']), hash('sha256', trim($code)))) {
             return false;
         }
 
@@ -60,11 +60,11 @@ final class EmailOtp
     {
         $record = Cache::get($this->key($user));
 
-        return ! is_array($record) || (time() - (int) ($record['sent_at'] ?? 0)) >= self::RESEND_COOLDOWN;
+        return ! is_array($record) || (time() - Cast::int($record['sent_at'] ?? null, 0)) >= self::RESEND_COOLDOWN;
     }
 
     private function key(User $user): string
     {
-        return 'email-otp:'.$user->getAuthIdentifier();
+        return 'email-otp:'.Cast::string($user->getAuthIdentifier());
     }
 }

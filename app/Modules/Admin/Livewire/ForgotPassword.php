@@ -35,6 +35,9 @@ final class ForgotPassword extends Component
 
     public function render(): View
     {
-        return view('admin::livewire.forgot-password')->title(__('auth.forgot_title'));
+        $view = view('admin::livewire.forgot-password');
+        $view->title(__('auth.forgot_title'));
+
+        return $view;
     }
 }

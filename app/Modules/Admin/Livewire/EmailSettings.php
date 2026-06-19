@@ -2,13 +2,14 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Rbac\Support\PlatformAccess;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Routing\Redirector;
+use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
@@ -96,22 +97,23 @@ final class EmailSettings extends Component
             return;
         }
 
-        $this->method = (string) ($cfg['method'] ?? 'smtp_password');
-        $this->fromAddress = (string) ($cfg['from_address'] ?? '');
-        $this->fromName = (string) ($cfg['from_name'] ?? '');
+        $this->method = Cast::string($cfg['method'] ?? null, 'smtp_password');
+        $this->fromAddress = Cast::string($cfg['from_address'] ?? null);
+        $this->fromName = Cast::string($cfg['from_name'] ?? null);
 
-        $smtp = $cfg['smtp'] ?? [];
-        $this->smtpHost = (string) ($smtp['host'] ?? '');
-        $this->smtpPort = (int) ($smtp['port'] ?? 587);
-        $this->smtpEncryption = (string) ($smtp['encryption'] ?? 'tls');
-        $this->smtpUsername = (string) ($smtp['username'] ?? '');
+        $smtp = Cast::arr($cfg['smtp'] ?? null);
+        $this->smtpHost = Cast::string($smtp['host'] ?? null);
+        $this->smtpPort = Cast::int($smtp['port'] ?? null, 587);
+        $this->smtpEncryption = Cast::string($smtp['encryption'] ?? null, 'tls');
+        $this->smtpUsername = Cast::string($smtp['username'] ?? null);
         $this->smtpPasswordSet = ! empty($smtp['password']);
 
-        $oauth = $cfg['oauth'] ?? [];
-        $this->oauthProvider = (string) ($oauth['provider'] ?? 'google');
-        $this->oauthClientId = (string) ($oauth['client_id'] ?? '');
+        $oauth = Cast::arr($cfg['oauth'] ?? null);
+        $this->oauthProvider = Cast::string($oauth['provider'] ?? null, 'google');
+        $this->oauthClientId = Cast::string($oauth['client_id'] ?? null);
         $this->oauthSecretSet = ! empty($oauth['client_secret']);
-        $this->oauthConnectedEmail = is_string($oauth['email'] ?? null) && ! empty($oauth['refresh_token']) ? $oauth['email'] : null;
+        $connectedEmail = $oauth['email'] ?? null;
+        $this->oauthConnectedEmail = is_string($connectedEmail) && ! empty($oauth['refresh_token']) ? $connectedEmail : null;
     }
 
     public function save(): void
@@ -135,9 +137,10 @@ final class EmailSettings extends Component
         ];
 
         if ($this->method === 'smtp_password') {
+            $existingSmtp = Cast::arr($existing['smtp'] ?? null);
             $password = $this->smtpPassword !== ''
                 ? SecretCipher::encrypt($this->smtpPassword)
-                : ($existing['smtp']['password'] ?? null);
+                : ($existingSmtp['password'] ?? null);
 
             $cfg['smtp'] = [
                 'host' => $this->smtpHost,
@@ -150,11 +153,12 @@ final class EmailSettings extends Component
                 $cfg['oauth'] = $existing['oauth'];
             }
         } else {
+            $existingOauth = Cast::arr($existing['oauth'] ?? null);
             $secret = $this->oauthClientSecret !== ''
                 ? SecretCipher::encrypt($this->oauthClientSecret)
-                : ($existing['oauth']['client_secret'] ?? null);
+                : ($existingOauth['client_secret'] ?? null);
 
-            $cfg['oauth'] = array_merge($existing['oauth'] ?? [], [
+            $cfg['oauth'] = array_merge($existingOauth, [
                 'provider' => $this->oauthProvider,
                 'client_id' => $this->oauthClientId,
                 'client_secret' => $secret,
@@ -171,7 +175,7 @@ final class EmailSettings extends Component
         session()->flash('status', __('admin.saved'));
     }
 
-    public function connect(): RedirectResponse|Redirector
+    public function connect(): RedirectResponse
     {
         // OAuth connect (3-legged) is tenant-scoped only for now.
         if ($this->scope === 'platform') {
@@ -212,7 +216,7 @@ final class EmailSettings extends Component
         }
 
         try {
-            Mail::raw(__('admin.test_email_body'), function ($message) use ($to): void {
+            Mail::raw(__('admin.test_email_body'), function (Message $message) use ($to): void {
                 $message->to($to)->subject(__('admin.test_email_subject'));
             });
             $this->testResult = 'ok';
@@ -261,8 +265,10 @@ final class EmailSettings extends Component
     {
         $platform = $this->scope === 'platform';
 
-        return view('admin::livewire.email-settings')
-            ->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app')
-            ->title($platform ? __('admin.system_email') : __('admin.email_settings'));
+        $view = view('admin::livewire.email-settings');
+        $view->layout($platform ? 'admin::layouts.platform' : 'admin::layouts.app');
+        $view->title($platform ? __('admin.system_email') : __('admin.email_settings'));
+
+        return $view;
     }
 }

@@ -46,7 +46,8 @@ final class SocialAuth
     public function clientSecret(string $provider): ?string
     {
         $cfg = $this->config($provider);
+        $secret = $cfg['client_secret'] ?? null;
 
-        return isset($cfg['client_secret']) ? SecretCipher::decrypt($cfg['client_secret']) : null;
+        return is_string($secret) ? SecretCipher::decrypt($secret) : null;
     }
 }

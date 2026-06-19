@@ -14,6 +14,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class SetLocale
 {
+    /**
+     * @param  Closure(Request): Response  $next
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $locale = $request->session()->get('locale');

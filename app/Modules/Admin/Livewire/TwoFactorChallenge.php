@@ -65,6 +65,9 @@ final class TwoFactorChallenge extends Component
 
     public function render(): View
     {
-        return view('admin::livewire.two-factor-challenge')->title(__('auth.two_factor_title'));
+        $view = view('admin::livewire.two-factor-challenge');
+        $view->title(__('auth.two_factor_title'));
+
+        return $view;
     }
 }

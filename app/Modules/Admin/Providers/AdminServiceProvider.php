@@ -16,8 +16,11 @@ use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Navigation\AdminNav;
+use App\Modules\Admin\Support\Cast;
+use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Auth;
@@ -61,25 +64,29 @@ final class AdminServiceProvider extends ServiceProvider
 
         // Branded, i18n password-reset email pointing at the tenant admin reset page
         // (resolved under the current tenant host + admin prefix at send time).
-        ResetPasswordNotification::toMailUsing(fn ($notifiable, string $token): MailMessage => (new MailMessage)
-            ->subject(__('auth.reset_email_subject'))
-            ->greeting(config('admin.brand.name'))
-            ->line(__('auth.reset_email_intro'))
-            ->action(__('auth.reset_password'), route('admin.password.reset', [
-                'token' => $token,
-                'email' => $notifiable->getEmailForPasswordReset(),
-            ]))
-            ->line(__('auth.reset_email_outro')));
+        ResetPasswordNotification::toMailUsing(function (mixed $notifiable, string $token): MailMessage {
+            $email = $notifiable instanceof CanResetPassword ? $notifiable->getEmailForPasswordReset() : '';
+
+            return (new MailMessage)
+                ->subject(__('auth.reset_email_subject'))
+                ->greeting(Cast::string(config('admin.brand.name')))
+                ->line(__('auth.reset_email_intro'))
+                ->action(__('auth.reset_password'), route('admin.password.reset', [
+                    'token' => $token,
+                    'email' => $email,
+                ]))
+                ->line(__('auth.reset_email_outro'));
+        });
 
         // Branded, i18n email-verification link (signed; verified BEFORE login completes).
-        VerifyEmail::createUrlUsing(fn ($notifiable): string => URL::temporarySignedRoute(
+        VerifyEmail::createUrlUsing(fn (User $notifiable): string => URL::temporarySignedRoute(
             'admin.verification.verify',
-            now()->addMinutes((int) config('auth.verification.expire', 60)),
+            now()->addMinutes(Cast::int(config('auth.verification.expire'), 60)),
             ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())],
         ));
-        VerifyEmail::toMailUsing(fn ($notifiable, string $url): MailMessage => (new MailMessage)
+        VerifyEmail::toMailUsing(fn (mixed $notifiable, string $url): MailMessage => (new MailMessage)
             ->subject(__('auth.verify_email_subject'))
-            ->greeting(config('admin.brand.name'))
+            ->greeting(Cast::string(config('admin.brand.name')))
             ->line(__('auth.verify_email_intro'))
             ->action(__('auth.verify_email_action'), $url)
             ->line(__('auth.verify_email_outro')));
@@ -89,13 +96,13 @@ final class AdminServiceProvider extends ServiceProvider
         // config at apply time; under XOAUTH2 the access token IS the SMTP password.
         Mail::extend('admin_xoauth2', function (array $config) {
             $transport = new EsmtpTransport(
-                (string) ($config['host'] ?? ''),
-                (int) ($config['port'] ?? 587),
+                Cast::string($config['host'] ?? null),
+                Cast::int($config['port'] ?? null, 587),
                 ($config['encryption'] ?? null) === 'ssl',
             );
             $transport->setAuthenticators([new XOAuth2Authenticator]);
-            $transport->setUsername((string) ($config['username'] ?? ''));
-            $transport->setPassword((string) ($config['access_token'] ?? ''));
+            $transport->setUsername(Cast::string($config['username'] ?? null));
+            $transport->setPassword(Cast::string($config['access_token'] ?? null));
 
             return $transport;
         });
