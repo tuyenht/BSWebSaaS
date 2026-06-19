@@ -2,9 +2,9 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -37,29 +37,50 @@ final class Login extends Component
         $key = 'admin-login:'.sha1(Str::lower($this->email).'|'.(string) request()->ip());
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
-            $this->addError('email', 'Quá nhiều lần thử. Vui lòng thử lại sau '.RateLimiter::availableIn($key).' giây.');
+            $this->addError('email', __('auth.too_many_attempts', ['seconds' => RateLimiter::availableIn($key)]));
 
             return null;
         }
 
-        if (! Auth::attempt(['email' => $this->email, 'password' => $this->password])) {
+        $credentials = ['email' => $this->email, 'password' => $this->password];
+
+        if (! Auth::validate($credentials)) {
             RateLimiter::hit($key, self::DECAY_SECONDS);
-            $this->addError('email', 'Thông tin đăng nhập không đúng.');
+            $this->addError('email', __('auth.invalid_credentials'));
 
             return null;
         }
 
         RateLimiter::clear($key);
 
-        // Prevent session fixation. The Session facade resolves the store from the
-        // container, so it works both under the web stack and in Livewire unit tests.
-        Session::regenerate();
+        $user = Auth::getProvider()->retrieveByCredentials($credentials);
 
-        return $this->redirectRoute('admin.dashboard', navigate: false);
+        // Email must be verified before an email+password login completes. We send a fresh
+        // verification link (via the resolved mailer) and stop here.
+        if ($user instanceof User && ! $user->hasVerifiedEmail()) {
+            app(\App\Modules\Admin\Support\TenantMailer::class)->apply();
+            $user->sendEmailVerificationNotification();
+            $this->addError('email', __('auth.email_unverified'));
+
+            return null;
+        }
+
+        // Second factor is mandatory: the authenticator app when enrolled, otherwise a
+        // one-time code emailed to the (verified) address. The user is NOT authenticated
+        // here — Auth::login happens only after the challenge passes.
+        session()->put('2fa.user_id', $user->getAuthIdentifier());
+
+        if ($user instanceof User && $user->two_factor_confirmed_at !== null) {
+            return $this->redirectRoute('admin.two-factor.challenge', navigate: false);
+        }
+
+        app(\App\Modules\Admin\Support\EmailOtp::class)->send($user);
+
+        return $this->redirectRoute('admin.otp.challenge', navigate: false);
     }
 
     public function render(): View
     {
-        return view('admin::livewire.login');
+        return view('admin::livewire.login')->title(__('auth.welcome'));
     }
 }
