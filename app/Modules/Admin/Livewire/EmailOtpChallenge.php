@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +26,7 @@ final class EmailOtpChallenge extends Component
     public function mount(): mixed
     {
         if (! session()->has('2fa.user_id')) {
-            return $this->redirectRoute('admin.login', navigate: false);
+            return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
         return null;
@@ -39,12 +40,14 @@ final class EmailOtpChallenge extends Component
         if (! $user instanceof User) {
             session()->forget('2fa.user_id');
 
-            return $this->redirectRoute('admin.login', navigate: false);
+            return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
         $rlKey = 'email-otp-verify:'.$user->getAuthIdentifier();
         if (RateLimiter::tooManyAttempts($rlKey, 5)) {
-            $this->addError('code', __('auth.too_many_attempts', ['seconds' => RateLimiter::availableIn($rlKey)]));
+            // Hard cap: burn the code so it can't be brute-forced — a fresh one is required.
+            app(EmailOtp::class)->invalidate($user);
+            $this->addError('code', __('auth.otp_locked'));
 
             return null;
         }
@@ -61,7 +64,7 @@ final class EmailOtpChallenge extends Component
         Auth::login($user);
         session()->regenerate();
 
-        return $this->redirectRoute('admin.dashboard', navigate: false);
+        return $this->redirectRoute(AdminPlane::prefix().'.dashboard', navigate: false);
     }
 
     public function resend(): void

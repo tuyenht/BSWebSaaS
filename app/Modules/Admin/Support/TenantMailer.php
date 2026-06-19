@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Support;
 
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -148,21 +149,42 @@ final class TenantMailer
             return $cached;
         }
 
+        // Serialize concurrent refreshes so parallel sends don't stampede the token endpoint
+        // or race each other's writes.
+        $lock = Cache::lock($cacheKey.':lock', 15);
+
         try {
-            $tokens = app(OAuthFlow::class)->refreshToken($provider, $refreshToken, $clientId, $clientSecret);
-        } catch (Throwable $e) {
-            report($e);
+            $lock->block(8);
+        } catch (LockTimeoutException) {
+            $cached = Cache::get($cacheKey);
 
-            return null;
+            return is_string($cached) ? $cached : null;
         }
 
-        $access = $tokens['access_token'] ?? null;
-        if (! is_string($access) || $access === '') {
-            return null;
+        try {
+            $cached = Cache::get($cacheKey); // a peer may have refreshed while we waited
+            if (is_string($cached)) {
+                return $cached;
+            }
+
+            try {
+                $tokens = app(OAuthFlow::class)->refreshToken($provider, $refreshToken, $clientId, $clientSecret);
+            } catch (Throwable $e) {
+                report($e);
+
+                return null;
+            }
+
+            $access = $tokens['access_token'] ?? null;
+            if (! is_string($access) || $access === '') {
+                return null;
+            }
+
+            Cache::put($cacheKey, $access, max(60, (int) ($tokens['expires_in'] ?? 3600) - 60));
+
+            return $access;
+        } finally {
+            $lock->release();
         }
-
-        Cache::put($cacheKey, $access, max(60, (int) ($tokens['expires_in'] ?? 3600) - 60));
-
-        return $access;
     }
 }

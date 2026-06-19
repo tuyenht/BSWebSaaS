@@ -47,6 +47,15 @@ final class EmailOtp
         return true;
     }
 
+    /**
+     * Burn the active code (e.g. after too many wrong attempts) so it can't be brute-forced;
+     * the user must request a fresh one.
+     */
+    public function invalidate(User $user): void
+    {
+        Cache::forget($this->key($user));
+    }
+
     public function canResend(User $user): bool
     {
         $record = Cache::get($this->key($user));
