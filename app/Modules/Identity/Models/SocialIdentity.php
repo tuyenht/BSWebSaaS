@@ -18,7 +18,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class SocialIdentity extends Model
 {
-    protected $guarded = [];
+    /** @var list<string> */
+    protected $fillable = ['user_id', 'provider', 'sub', 'email'];
 
     /**
      * @return BelongsTo<User, $this>

@@ -29,6 +29,13 @@ final class Settings extends Component
 
     public bool $showRecovery = false;
 
+    public function boot(): void
+    {
+        // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so re-assert
+        // an authenticated session on every request (each action also scopes to auth()->user()).
+        abort_unless(auth()->check(), 403);
+    }
+
     public function startTwoFactor(): void
     {
         $user = auth()->user();
