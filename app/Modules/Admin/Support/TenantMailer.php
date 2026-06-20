@@ -74,7 +74,9 @@ final class TenantMailer
         if (($cfg['method'] ?? 'smtp_password') === 'smtp_password') {
             $smtp = Cast::arr($cfg['smtp'] ?? null);
 
-            return ! empty($smtp['host']) && ! empty($smtp['username']);
+            // A blank password is not a usable credential — fall through (tenant → platform → log)
+            // rather than attempting SMTP auth (or decrypting an empty payload) and failing the send.
+            return ! empty($smtp['host']) && ! empty($smtp['username']) && ! empty($smtp['password']);
         }
 
         $oauth = Cast::arr($cfg['oauth'] ?? null);
