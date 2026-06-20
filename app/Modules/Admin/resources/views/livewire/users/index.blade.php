@@ -9,6 +9,12 @@
         </div>
     @endif
 
+    @if (session('error'))
+        <div class="mb-4 rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-2 text-sm text-admin-danger">
+            {{ session('error') }}
+        </div>
+    @endif
+
     {{-- Add an existing account to this site --}}
     <div class="mb-6 rounded-lg border border-gray-200 bg-white p-4 shadow-card">
         <h2 class="mb-3 text-sm font-semibold text-gray-700">{{ __('admin.add_member') }}</h2>

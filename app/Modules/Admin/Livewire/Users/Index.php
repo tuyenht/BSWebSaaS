@@ -9,6 +9,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -83,20 +84,21 @@ final class Index extends Component
             return;
         }
 
-        $current = $target->roles()->get();
-
         try {
-            // Assign first so the member never momentarily drops below membership, then strip
-            // the previously-held roles so the selected role is authoritative (one role/site).
-            app(AssignRole::class)->handle($actor, $target, $role);
+            // Atomic: assign first (so the member never drops below membership), then strip the
+            // other roles so the selection is authoritative. A failed revoke (e.g. a role above
+            // the actor) rolls the assign back instead of leaving a mixed two-role state.
+            DB::transaction(function () use ($actor, $target, $role): void {
+                app(AssignRole::class)->handle($actor, $target, $role);
 
-            foreach ($current as $existing) {
-                if ($existing instanceof Role && $existing->getKey() !== $role->getKey()) {
-                    app(RevokeRole::class)->handle($actor, $target, $existing);
+                foreach ($target->roles()->get() as $existing) {
+                    if ($existing instanceof Role && $existing->getKey() !== $role->getKey()) {
+                        app(RevokeRole::class)->handle($actor, $target, $existing);
+                    }
                 }
-            }
+            });
         } catch (AuthorizationException) {
-            $this->addError('inviteRole', __('admin.role_change_denied'));
+            session()->flash('error', __('admin.role_change_denied'));
 
             return;
         }
@@ -114,13 +116,17 @@ final class Index extends Component
         }
 
         try {
-            foreach ($target->roles()->get() as $role) {
-                if ($role instanceof Role) {
-                    app(RevokeRole::class)->handle($actor, $target, $role);
+            // Atomic: all of the member's roles are revoked or none — a role above the actor
+            // (which can't be stripped) rolls the whole removal back instead of half-removing.
+            DB::transaction(function () use ($actor, $target): void {
+                foreach ($target->roles()->get() as $role) {
+                    if ($role instanceof Role) {
+                        app(RevokeRole::class)->handle($actor, $target, $role);
+                    }
                 }
-            }
+            });
         } catch (AuthorizationException) {
-            $this->addError('inviteEmail', __('admin.member_remove_denied'));
+            session()->flash('error', __('admin.member_remove_denied'));
 
             return;
         }
