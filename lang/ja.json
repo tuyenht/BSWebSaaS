@@ -140,5 +140,22 @@
     "admin.oauth_guide_step3": "クライアントIDとシークレットをここに貼り付けて保存します。",
     "admin.oauth_guide_connect": "「接続」をクリックして送信を承認します（オフラインアクセスを付与）。",
     "admin.oauth_open_console": ":provider コンソールを開く",
-    "admin.oauth_redirect_uri_shared": "このURIをプロバイダーごとに1回登録すれば全サイトで使えます。"
+    "admin.oauth_redirect_uri_shared": "このURIをプロバイダーごとに1回登録すれば全サイトで使えます。",
+    "admin.users": "ユーザー",
+    "admin.add_member": "メンバーを追加",
+    "admin.email": "メール",
+    "admin.role": "ロール",
+    "admin.select_role": "ロールを選択",
+    "admin.change_role": "ロールを変更",
+    "admin.name": "名前",
+    "admin.actions": "操作",
+    "admin.remove": "削除",
+    "admin.no_members": "メンバーがいません。",
+    "admin.member_added": "メンバーを追加しました。",
+    "admin.member_removed": "メンバーを削除しました。",
+    "admin.member_remove_confirm": "このメンバーをサイトから削除しますか？",
+    "admin.member_remove_denied": "このメンバーを削除できません。",
+    "admin.role_change_denied": "そのロールを割り当てできません。",
+    "admin.user_not_found": "そのメールのアカウントはありません。",
+    "admin.role_not_found": "ロールが見つかりません。"
 }
