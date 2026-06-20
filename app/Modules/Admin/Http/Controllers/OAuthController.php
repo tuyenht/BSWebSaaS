@@ -8,6 +8,7 @@ use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SocialAuth;
+use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -52,14 +53,19 @@ final class OAuthController
 
     public function start(Request $request, string $provider): RedirectResponse
     {
-        $purpose = $request->query('purpose') === 'email' ? 'email' : 'login';
+        $purpose = match ($request->query('purpose')) {
+            'email' => 'email',
+            'connect' => 'connect',
+            default => 'login',
+        };
         $cfg = config("oauth.providers.$provider");
 
         if (! is_array($cfg) || ! in_array($purpose, Cast::arr($cfg['supports'] ?? null), true)) {
             return $this->failLocal($purpose, __('admin.oauth_provider_not_configured'));
         }
 
-        if ($purpose === 'email' && ! Auth::check()) {
+        // 'email' (sender connect) and 'connect' (social link) act on the current account.
+        if (in_array($purpose, ['email', 'connect'], true) && ! Auth::check()) {
             return redirect()->route('admin.login');
         }
 
@@ -76,6 +82,7 @@ final class OAuthController
             'provider' => $provider,
             'purpose' => $purpose,
             'verifier' => $verifier,
+            'user_id' => Auth::id(),
         ], self::STATE_TTL);
 
         return redirect()->away(
@@ -96,6 +103,7 @@ final class OAuthController
         $provider = Cast::string($data['provider'] ?? null);
         $purpose = Cast::string($data['purpose'] ?? null, 'login');
         $verifier = Cast::string($data['verifier'] ?? null);
+        $userId = Cast::int($data['user_id'] ?? null);
         $host = (string) (parse_url($origin, PHP_URL_HOST) ?: '');
 
         if ($request->query('error') !== null || ! is_string($request->query('code'))) {
@@ -110,7 +118,7 @@ final class OAuthController
         // Re-enter the originating tenant's context to read its app + store/verify.
         return $this->tenancy->enter(
             $domain->site_id,
-            fn (): RedirectResponse => $this->complete($request, $origin, $provider, $purpose, $verifier),
+            fn (): RedirectResponse => $this->complete($request, $origin, $provider, $purpose, $verifier, $userId),
         );
     }
 
@@ -130,7 +138,7 @@ final class OAuthController
         return redirect()->intended(route('admin.dashboard'));
     }
 
-    private function complete(Request $request, string $origin, string $provider, string $purpose, string $verifier): RedirectResponse
+    private function complete(Request $request, string $origin, string $provider, string $purpose, string $verifier, int $userId): RedirectResponse
     {
         [$clientId, $clientSecret] = $this->creds($provider, $purpose);
         if ($clientId === null || $clientSecret === null) {
@@ -146,9 +154,11 @@ final class OAuthController
             return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
         }
 
-        return $purpose === 'email'
-            ? $this->finishEmail($origin, $provider, $tokens, $info)
-            : $this->finishLogin($origin, $provider, $info);
+        return match ($purpose) {
+            'email' => $this->finishEmail($origin, $provider, $tokens, $info),
+            'connect' => $this->finishConnect($origin, $provider, $info, $userId),
+            default => $this->finishLogin($origin, $provider, $info),
+        };
     }
 
     /**
@@ -156,11 +166,25 @@ final class OAuthController
      */
     private function finishLogin(string $origin, string $provider, array $info): RedirectResponse
     {
+        $sub = Cast::string($info[$this->subjectField($provider)] ?? null);
+
+        // Fast path: a previously-established (provider, sub) link. The link was created by an
+        // AUTHENTICATED connect (or an earlier verified-email login), so it is itself the proof
+        // of ownership — no email_verified needed, which is what lets Facebook/MS/Yahoo work.
+        if ($sub !== '') {
+            $linked = SocialIdentity::query()->where('provider', $provider)->where('sub', $sub)->first();
+            if ($linked !== null) {
+                $user = User::find($linked->user_id);
+                if ($user instanceof User && $this->memberOfOrigin($user)) {
+                    return $this->bounceLogin($origin, $user);
+                }
+            }
+        }
+
+        // Email path: the provider must ASSERT a verified email (default-deny if absent) — closes
+        // takeover via a provider that doesn't verify ownership (e.g. Facebook's /me email).
         $field = Cast::string(config("oauth.providers.$provider.email_field"), 'email');
         $email = $info[$field] ?? null;
-
-        // Require the provider to ASSERT a verified email (default-deny if absent) — closes
-        // takeover via a provider that doesn't verify ownership (e.g. Facebook's /me email).
         if (! is_string($email) || $email === '' || ($info['email_verified'] ?? false) !== true) {
             return $this->failTo($origin, 'login', __('admin.oauth_failed'));
         }
@@ -171,15 +195,19 @@ final class OAuthController
         }
 
         // We are inside the origin site's tenant context — membership = a role there.
-        if (! $this->platformAccess->isSuperAdmin($user) && ! $user->roles()->exists()) {
+        if (! $this->memberOfOrigin($user)) {
             return $this->failTo($origin, 'login', __('admin.oauth_login_not_member'));
         }
 
-        // The session lives on the origin host, not here — bounce with a single-use token.
-        $token = Str::random(48);
-        Cache::put('oauth-login:'.$token, $user->getAuthIdentifier(), self::LOGIN_TTL);
+        // Remember this verified identity so next time the fast path matches by sub.
+        if ($sub !== '') {
+            SocialIdentity::query()->firstOrCreate(
+                ['provider' => $provider, 'sub' => $sub],
+                ['user_id' => $user->getKey(), 'email' => $email],
+            );
+        }
 
-        return redirect()->away($this->originPath($origin, 'oauth/finish').'?token='.$token);
+        return $this->bounceLogin($origin, $user);
     }
 
     /**
@@ -210,11 +238,62 @@ final class OAuthController
     }
 
     /**
+     * Link the authenticated member's account to this provider identity (sub). The member was
+     * authenticated on the ORIGIN host when they started connect; their id rode along in the
+     * single-use state (the callback host has no session), so it is trustworthy here.
+     *
+     * @param  array<string, mixed>  $info
+     */
+    private function finishConnect(string $origin, string $provider, array $info, int $userId): RedirectResponse
+    {
+        $user = User::find($userId);
+        $sub = Cast::string($info[$this->subjectField($provider)] ?? null);
+
+        if (! $user instanceof User || $sub === '') {
+            return $this->failTo($origin, 'connect', __('admin.oauth_failed'));
+        }
+
+        // A provider identity belongs to only ONE account — fail with a clear message rather
+        // than letting the (provider, sub) unique index throw.
+        $owner = SocialIdentity::query()->where('provider', $provider)->where('sub', $sub)->first();
+        if ($owner !== null && $owner->user_id !== $user->getKey()) {
+            return $this->failTo($origin, 'connect', __('admin.social_already_linked'));
+        }
+
+        SocialIdentity::query()->updateOrCreate(
+            ['user_id' => $user->getKey(), 'provider' => $provider],
+            ['sub' => $sub, 'email' => Cast::stringOrNull($info['email'] ?? null)],
+        );
+
+        return redirect()->away($this->originPath($origin, 'settings/security').'?oauth=connected');
+    }
+
+    private function subjectField(string $provider): string
+    {
+        return Cast::string(config("oauth.providers.$provider.subject_field"), 'sub');
+    }
+
+    /** Inside the origin site's tenant context — membership = a role there (or a platform op). */
+    private function memberOfOrigin(User $user): bool
+    {
+        return $this->platformAccess->isSuperAdmin($user) || $user->roles()->exists();
+    }
+
+    /** The session lives on the origin host — bounce there with a single-use login token. */
+    private function bounceLogin(string $origin, User $user): RedirectResponse
+    {
+        $token = Str::random(48);
+        Cache::put('oauth-login:'.$token, $user->getAuthIdentifier(), self::LOGIN_TTL);
+
+        return redirect()->away($this->originPath($origin, 'oauth/finish').'?token='.$token);
+    }
+
+    /**
      * @return array{0: ?string, 1: ?string}
      */
     private function creds(string $provider, string $purpose): array
     {
-        if ($purpose === 'login') {
+        if ($purpose === 'login' || $purpose === 'connect') {
             $cfg = $this->social->config($provider) ?? [];
 
             return [
@@ -246,14 +325,22 @@ final class OAuthController
 
     private function failTo(string $origin, string $purpose, string $message): RedirectResponse
     {
-        $path = $purpose === 'email' ? 'settings/email' : 'login';
+        $path = match ($purpose) {
+            'email' => 'settings/email',
+            'connect' => 'settings/security',
+            default => 'login',
+        };
 
         return redirect()->away($this->originPath($origin, $path).'?oauth_error='.urlencode($message));
     }
 
     private function failLocal(string $purpose, string $message): RedirectResponse
     {
-        $route = $purpose === 'email' && Auth::check() ? 'admin.settings.email' : 'admin.login';
+        $route = match (true) {
+            $purpose === 'email' && Auth::check() => 'admin.settings.email',
+            $purpose === 'connect' && Auth::check() => 'admin.settings.security',
+            default => 'admin.login',
+        };
 
         return redirect()->route($route)->withErrors(['oauth' => $message]);
     }

@@ -30,8 +30,9 @@ return [
             'token_auth' => 'body',
             'token_method' => 'post',
             'smtp' => ['host' => 'smtp.gmail.com', 'port' => 587, 'encryption' => 'tls'],
-            'supports' => ['login', 'email'],
+            'supports' => ['login', 'email', 'connect'],
             'email_field' => 'email',
+            'subject_field' => 'sub',
         ],
         'microsoft' => [
             'label' => 'Microsoft',
@@ -47,8 +48,9 @@ return [
             'token_auth' => 'body',
             'token_method' => 'post',
             'smtp' => ['host' => 'smtp.office365.com', 'port' => 587, 'encryption' => 'tls'],
-            'supports' => ['login', 'email'],
+            'supports' => ['login', 'email', 'connect'],
             'email_field' => 'email',
+            'subject_field' => 'sub',
         ],
         'yahoo' => [
             'label' => 'Yahoo',
@@ -65,8 +67,9 @@ return [
             'token_auth' => 'basic',
             'token_method' => 'post',
             'smtp' => ['host' => 'smtp.mail.yahoo.com', 'port' => 465, 'encryption' => 'ssl'],
-            'supports' => ['login', 'email'],
+            'supports' => ['login', 'email', 'connect'],
             'email_field' => 'email',
+            'subject_field' => 'sub',
         ],
         'facebook' => [
             'label' => 'Facebook',
@@ -80,8 +83,9 @@ return [
             'authorize_params' => [],
             'token_auth' => 'body',
             'token_method' => 'get',
-            'supports' => ['login'],
+            'supports' => ['login', 'connect'],
             'email_field' => 'email',
+            'subject_field' => 'id',
         ],
     ],
 ];

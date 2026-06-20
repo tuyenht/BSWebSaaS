@@ -157,5 +157,9 @@
     "admin.member_remove_denied": "您无法移除该成员。",
     "admin.role_change_denied": "您无法分配该角色。",
     "admin.user_not_found": "没有使用该邮箱的账户。",
-    "admin.role_not_found": "未找到角色。"
+    "admin.role_not_found": "未找到角色。",
+    "admin.connected_accounts": "已关联账户",
+    "admin.disconnect": "解除关联",
+    "admin.social_disconnect_confirm": "解除该提供商的关联？",
+    "admin.social_already_linked": "该账户已关联到其他用户。"
 }

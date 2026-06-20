@@ -40,4 +40,35 @@
             @endif
         </div>
     </div>
+
+    {{-- Connected accounts (social sign-in) --}}
+    <div class="mt-6 overflow-hidden rounded-md border border-gray-200 bg-white shadow-card">
+        <div class="border-b border-gray-200 px-5 py-3">
+            <h2 class="text-[15px] font-semibold text-gray-700">{{ __('admin.connected_accounts') }}</h2>
+        </div>
+        <div class="divide-y divide-gray-100">
+            @foreach ($socialProviders as $key => $label)
+                <div class="flex items-center justify-between px-5 py-3">
+                    <div>
+                        <p class="text-sm font-medium text-gray-700">{{ $label }}</p>
+                        @if ($connected->has($key))
+                            <p class="text-xs text-gray-500">{{ __('admin.oauth_connected_as', ['email' => $connected[$key] ?: '—']) }}</p>
+                        @else
+                            <p class="text-xs text-gray-400">{{ __('admin.oauth_not_connected') }}</p>
+                        @endif
+                    </div>
+                    @if ($connected->has($key))
+                        <x-admin::button color="danger" variant="soft" wire:click="disconnect('{{ $key }}')" wire:confirm="{{ __('admin.social_disconnect_confirm') }}">
+                            {{ __('admin.disconnect') }}
+                        </x-admin::button>
+                    @else
+                        <a href="{{ route('admin.oauth.start', ['provider' => $key]) }}?purpose=connect"
+                           class="rounded bg-admin-primary px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-admin-primary/90">
+                            {{ __('admin.oauth_connect') }}
+                        </a>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    </div>
 </x-admin::settings-shell>

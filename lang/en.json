@@ -157,5 +157,9 @@
     "admin.member_remove_denied": "You can't remove this member.",
     "admin.role_change_denied": "You can't assign that role.",
     "admin.user_not_found": "No account with that email.",
-    "admin.role_not_found": "Role not found."
+    "admin.role_not_found": "Role not found.",
+    "admin.connected_accounts": "Connected accounts",
+    "admin.disconnect": "Disconnect",
+    "admin.social_disconnect_confirm": "Disconnect this provider?",
+    "admin.social_already_linked": "This account is already linked to another user."
 }

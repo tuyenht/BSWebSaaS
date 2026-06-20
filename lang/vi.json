@@ -157,5 +157,9 @@
     "admin.member_remove_denied": "Bạn không thể gỡ thành viên này.",
     "admin.role_change_denied": "Bạn không thể gán vai trò đó.",
     "admin.user_not_found": "Không có tài khoản với email này.",
-    "admin.role_not_found": "Không tìm thấy vai trò."
+    "admin.role_not_found": "Không tìm thấy vai trò.",
+    "admin.connected_accounts": "Tài khoản liên kết",
+    "admin.disconnect": "Gỡ liên kết",
+    "admin.social_disconnect_confirm": "Gỡ liên kết provider này?",
+    "admin.social_already_linked": "Tài khoản này đã liên kết với người dùng khác."
 }
