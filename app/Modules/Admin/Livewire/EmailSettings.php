@@ -179,7 +179,7 @@ final class EmailSettings extends Component
     {
         // OAuth connect (3-legged) is tenant-scoped only for now.
         if ($this->scope === 'platform') {
-            return redirect()->route('admin.settings.system.email');
+            return redirect()->route('platform.settings.email');
         }
 
         $this->save();

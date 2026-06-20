@@ -83,7 +83,12 @@ final class Login extends Component
             return $this->redirectRoute(AdminPlane::prefix().'.two-factor.challenge', navigate: false);
         }
 
-        app(EmailOtp::class)->send($user);
+        // Only (re)send a code when one isn't already outstanding — a valid credential check
+        // must not flood the address with OTP emails (cost / nuisance vector). The existing
+        // code stays usable; the cooldown bounds sends per identity regardless of source IP.
+        if (app(EmailOtp::class)->canResend($user)) {
+            app(EmailOtp::class)->send($user);
+        }
 
         return $this->redirectRoute(AdminPlane::prefix().'.otp.challenge', navigate: false);
     }
