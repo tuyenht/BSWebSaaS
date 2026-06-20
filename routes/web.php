@@ -14,6 +14,7 @@ use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
+use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Identity\Models\User;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
@@ -113,6 +114,10 @@ Route::prefix(config('admin.prefix', 'admin'))
         // does not pass through this route middleware.
         Route::get('/settings/email', EmailSettings::class)->middleware('can:settings.manage')->name('admin.settings.email');
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
+
+        // Site members + their roles (owner/admin). Add/change/remove routes through the guarded
+        // AssignRole/RevokeRole actions, so the role hierarchy is enforced server-side.
+        Route::get('/users', UsersIndex::class)->middleware('can:users.manage')->name('admin.users.index');
 
         // Dev-only design-system showcase (component mount() aborts in production).
         Route::get('/_gallery', ComponentGallery::class)->name('admin.gallery');

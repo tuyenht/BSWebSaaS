@@ -140,5 +140,22 @@
     "admin.oauth_guide_step3": "Dán Client ID & Secret vào đây rồi Lưu.",
     "admin.oauth_guide_connect": "Bấm Kết nối để cấp quyền gửi mail (cấp quyền offline).",
     "admin.oauth_open_console": "Mở console :provider",
-    "admin.oauth_redirect_uri_shared": "Đăng ký 1 URI này cho mỗi provider — dùng chung cho mọi website."
+    "admin.oauth_redirect_uri_shared": "Đăng ký 1 URI này cho mỗi provider — dùng chung cho mọi website.",
+    "admin.users": "Người dùng",
+    "admin.add_member": "Thêm thành viên",
+    "admin.email": "Email",
+    "admin.role": "Vai trò",
+    "admin.select_role": "Chọn vai trò",
+    "admin.change_role": "Đổi vai trò",
+    "admin.name": "Tên",
+    "admin.actions": "Thao tác",
+    "admin.remove": "Gỡ",
+    "admin.no_members": "Chưa có thành viên.",
+    "admin.member_added": "Đã thêm thành viên.",
+    "admin.member_removed": "Đã gỡ thành viên.",
+    "admin.member_remove_confirm": "Gỡ thành viên này khỏi website?",
+    "admin.member_remove_denied": "Bạn không thể gỡ thành viên này.",
+    "admin.role_change_denied": "Bạn không thể gán vai trò đó.",
+    "admin.user_not_found": "Không có tài khoản với email này.",
+    "admin.role_not_found": "Không tìm thấy vai trò."
 }

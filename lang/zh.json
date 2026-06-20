@@ -140,5 +140,22 @@
     "admin.oauth_guide_step3": "将客户端 ID 和密钥粘贴到此处，然后保存。",
     "admin.oauth_guide_connect": "点击“连接”以授权发送（授予离线访问权限）。",
     "admin.oauth_open_console": "打开 :provider 控制台",
-    "admin.oauth_redirect_uri_shared": "每个提供商只需注册这一个 URI — 适用于所有网站。"
+    "admin.oauth_redirect_uri_shared": "每个提供商只需注册这一个 URI — 适用于所有网站。",
+    "admin.users": "用户",
+    "admin.add_member": "添加成员",
+    "admin.email": "邮箱",
+    "admin.role": "角色",
+    "admin.select_role": "选择角色",
+    "admin.change_role": "更改角色",
+    "admin.name": "姓名",
+    "admin.actions": "操作",
+    "admin.remove": "移除",
+    "admin.no_members": "暂无成员。",
+    "admin.member_added": "已添加成员。",
+    "admin.member_removed": "已移除成员。",
+    "admin.member_remove_confirm": "将该成员从网站移除？",
+    "admin.member_remove_denied": "您无法移除该成员。",
+    "admin.role_change_denied": "您无法分配该角色。",
+    "admin.user_not_found": "没有使用该邮箱的账户。",
+    "admin.role_not_found": "未找到角色。"
 }

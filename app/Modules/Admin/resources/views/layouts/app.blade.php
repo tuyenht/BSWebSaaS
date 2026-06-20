@@ -65,6 +65,18 @@
                         </a>
                     </li>
                 @endforeach
+                @can('users.manage')
+                    <li>
+                        <a href="{{ route('admin.users.index') }}" wire:navigate
+                           @class([
+                               'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
+                               'bg-white/15 text-white' => request()->routeIs('admin.users*'),
+                           ])>
+                            <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M21 19v-1.5a3.5 3.5 0 0 0-2.6-3.4M14.5 4.4a3.5 3.5 0 0 1 0 6.2M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg>
+                            <span x-show="!collapsed">{{ __('admin.users') }}</span>
+                        </a>
+                    </li>
+                @endcan
                 <li>
                     <a href="{{ route('admin.settings') }}" wire:navigate
                        @class([

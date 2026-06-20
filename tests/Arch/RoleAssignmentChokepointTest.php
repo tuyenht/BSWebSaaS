@@ -4,15 +4,16 @@ use Symfony\Component\Finder\Finder;
 
 /*
  * Chokepoint guard (design.md §15.3, §2): every role MUTATION in app code must route through
- * the guarded AssignRole action — a stray assignRole/removeRole/syncRoles would bypass the
- * role.level escalation guard. Only the action itself + the two verified system callers
- * (bootstrap, provisioning) may mutate roles directly. Adding a fourth caller fails this test.
+ * a guarded role action (AssignRole / RevokeRole) — a stray assignRole/removeRole/syncRoles
+ * would bypass the role.level escalation guard. Only those actions + the two verified system
+ * callers (bootstrap, provisioning) may mutate roles directly. Adding another caller fails this test.
  */
 
-it('routes every role mutation through the AssignRole chokepoint', function () {
+it('routes every role mutation through a guarded role action', function () {
     $allowed = [
-        'app/Modules/Rbac/Actions/AssignRole.php',           // the guarded chokepoint
-        'app/Modules/Rbac/Console/BootstrapSuperAdmin.php',  // system bootstrap (verified)
+        'app/Modules/Rbac/Actions/AssignRole.php',            // guarded grant chokepoint
+        'app/Modules/Rbac/Actions/RevokeRole.php',            // guarded revoke chokepoint
+        'app/Modules/Rbac/Console/BootstrapSuperAdmin.php',   // system bootstrap (verified)
         'app/Modules/Provisioning/Actions/ProvisionSite.php', // system provisioning (verified)
     ];
 

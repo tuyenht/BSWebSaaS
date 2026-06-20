@@ -140,5 +140,22 @@
     "admin.oauth_guide_step3": "Paste the Client ID & Secret here, then Save.",
     "admin.oauth_guide_connect": "Click Connect to authorize sending (grants offline access).",
     "admin.oauth_open_console": "Open :provider console",
-    "admin.oauth_redirect_uri_shared": "Register this one URI per provider — it works for every site."
+    "admin.oauth_redirect_uri_shared": "Register this one URI per provider — it works for every site.",
+    "admin.users": "Users",
+    "admin.add_member": "Add member",
+    "admin.email": "Email",
+    "admin.role": "Role",
+    "admin.select_role": "Select a role",
+    "admin.change_role": "Change role",
+    "admin.name": "Name",
+    "admin.actions": "Actions",
+    "admin.remove": "Remove",
+    "admin.no_members": "No members yet.",
+    "admin.member_added": "Member added.",
+    "admin.member_removed": "Member removed.",
+    "admin.member_remove_confirm": "Remove this member from the site?",
+    "admin.member_remove_denied": "You can't remove this member.",
+    "admin.role_change_denied": "You can't assign that role.",
+    "admin.user_not_found": "No account with that email.",
+    "admin.role_not_found": "Role not found."
 }

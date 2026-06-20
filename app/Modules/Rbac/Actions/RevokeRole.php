@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Modules\Rbac\Actions;
+
+use App\Modules\Audit\Facades\Audit;
+use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Support\RoleHierarchyGuard;
+
+/**
+ * The single user-facing path to revoke a role — the mirror of AssignRole. Enforces the same
+ * hierarchy guard (you may only revoke a role you could grant: strictly below your own level,
+ * within the permissions you hold, same team), so revocation can't strip a peer/superior or be
+ * used to escalate. System callers (provisioning, bootstrap) mutate roles directly and bypass this.
+ */
+final class RevokeRole
+{
+    public function __construct(private readonly RoleHierarchyGuard $guard) {}
+
+    public function handle(User $actor, User $target, Role $role): void
+    {
+        $this->guard->assertCanGrant($actor, $role);
+
+        $target->removeRole($role);
+
+        Audit::record('rbac.role.revoked', [
+            'auditable_type' => $target::class,
+            'auditable_id' => $target->getKey(),
+            'meta' => ['role' => $role->name, 'role_id' => $role->getKey()],
+        ]);
+    }
+}

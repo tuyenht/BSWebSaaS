@@ -15,6 +15,7 @@ use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
+use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Identity\Models\User;
@@ -61,6 +62,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.component-gallery', ComponentGallery::class);
         Livewire::component('admin.entries.index', EntriesIndex::class);
         Livewire::component('admin.entries.editor', Editor::class);
+        Livewire::component('admin.users.index', UsersIndex::class);
 
         // Branded, i18n password-reset email pointing at the tenant admin reset page
         // (resolved under the current tenant host + admin prefix at send time).
