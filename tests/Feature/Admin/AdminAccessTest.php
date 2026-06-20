@@ -1,11 +1,11 @@
 <?php
 
+use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Livewire\Livewire;
@@ -41,15 +41,17 @@ it('redirects an admin-plane guest to the tenant login', function () {
     $this->get('http://anvinh.test/admin')->assertRedirect('http://anvinh.test/admin/login');
 });
 
-it('logs the owner in through the Livewire login', function () {
+it('accepts the owner credentials and challenges for the mandatory second factor', function () {
     Livewire::test(Login::class)
         ->set('email', 'owner@anvinh.test')
         ->set('password', 'a-strong-password')
         ->call('login')
         ->assertHasNoErrors()
-        ->assertRedirect(route('admin.dashboard'));
+        ->assertRedirect(route('admin.otp.challenge'));
 
-    $this->assertAuthenticated();
+    // Mandatory second factor: not authenticated until the emailed OTP is verified.
+    $this->assertGuest();
+    expect(session('2fa.user_id'))->not->toBeNull();
 });
 
 it('rejects bad credentials without authenticating', function () {
@@ -67,7 +69,7 @@ it('shows the dashboard shell and the dynamic "Trang" nav to the owner', functio
 
     $this->actingAs($owner)->get('http://anvinh.test/admin')
         ->assertOk()
-        ->assertSee('Bảng điều khiển')
+        ->assertSee(__('admin.dashboard'))
         ->assertSee('Trang');
 });
 
@@ -77,15 +79,15 @@ it('hides the "Trang" nav from a member without entries.view (entitlement ∩ RB
 
     $this->actingAs($member)->get('http://anvinh.test/admin')
         ->assertOk()
-        ->assertSee('Bảng điều khiển')
+        ->assertSee(__('admin.dashboard'))
         ->assertDontSee('Trang');
 });
 
-it('routes Livewire updates through the tenant-context middleware', function () {
+it('routes Livewire updates through the plane-aware tenant-context middleware', function () {
     $route = Route::getRoutes()->getByName('livewire.update');
 
     expect($route)->not->toBeNull()
-        ->and($route->gatherMiddleware())->toContain(SetCurrentSite::class)
+        ->and($route->gatherMiddleware())->toContain(ResolveLivewireContext::class)
         ->and(app('livewire')->getUpdateUri())->toBe('/livewire/update');
 });
 

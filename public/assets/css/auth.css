@@ -1,0 +1,838 @@
+/* ============================================================================
+   AUTH LOGIN — BaoSon Custom Design (Golden Standard)
+   ============================================================================
+   Source: baoson-platform-core (http://localhost:8000/bsadm/login)
+   
+   This file is SELF-CONTAINED — works WITHOUT Tailwind or Bootstrap.
+   Import into ANY framework project for consistent auth page styling.
+   
+   Usage:
+     <link rel="stylesheet" href="/css/auth.css">           (HTML/PHP/Blade/EJS)
+     import '/public/css/auth.css';                          (React/Next.js)
+     @import url('/css/auth.css');                            (Vue/Nuxt)
+   ============================================================================ */
+
+/* Import Global Font System — NOW at assets/css/fonts.css
+   When deployed: both auth.css and fonts.css go to same public/assets/css/ dir
+   so the import becomes: @import './fonts.css';
+   THIS IMPORT IS A PLACEHOLDER — actual path depends on deployment structure */
+/* Font system (Antigravity Inter + --font-stack + --vz-* tokens) is provided
+   globally via app.css on auth pages; the separate fonts.css import is omitted. */
+
+/* ---- Base reset for auth pages ---- */
+.auth-page {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-size: 14px;
+  line-height: 1.5;
+  /* font-smoothing + text-rendering now in fonts.css (global) */
+}
+
+.auth-page *,
+.auth-page *::before,
+.auth-page *::after {
+  box-sizing: border-box;
+}
+
+/* ============================================================================
+   ANIMATED GRADIENT BACKGROUND
+   ============================================================================ */
+@keyframes auth-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.auth-bg {
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 32px;
+  background: linear-gradient(to bottom right, #0369a1, #2563eb, #1e293b);
+  /* sky-700, blue-600, slate-800 */
+  background-size: 200% 200%;
+  animation: auth-gradient 12s ease infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .auth-bg {
+    padding: 16px;
+  }
+}
+
+/* ---- Decorative Blur Orbs ---- */
+@keyframes auth-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes auth-bounce {
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-25px);
+  }
+}
+
+.auth-orb-1 {
+  position: absolute;
+  top: 80px;
+  left: 80px;
+  width: 256px;
+  height: 256px;
+  background: rgba(34, 211, 238, 0.2);
+  /* cyan-400/20 */
+  border-radius: 9999px;
+  filter: blur(48px);
+  /* blur-3xl */
+  animation: auth-pulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.auth-orb-2 {
+  position: absolute;
+  bottom: 80px;
+  right: 80px;
+  width: 384px;
+  height: 384px;
+  background: rgba(59, 130, 246, 0.1);
+  /* blue-500/10 */
+  border-radius: 9999px;
+  filter: blur(48px);
+  animation: auth-bounce 12s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ============================================================================
+   MAIN CONTENT CONTAINER
+   ============================================================================ */
+.auth-main {
+  position: relative;
+  width: 100%;
+  max-width: 384px;
+  /* max-w-sm */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 10;
+  transition: all 500ms;
+}
+
+@media (min-width: 768px) {
+  .auth-main {
+    max-width: 392px;
+    /* Golden Standard: 392px (NOT 448px) */
+  }
+}
+
+/* ============================================================================
+   LOGO
+   ============================================================================ */
+.auth-logo-wrap {
+  margin-bottom: 16px;
+  transition: transform 500ms;
+}
+
+.auth-logo-wrap:hover {
+  transform: scale(1.05);
+}
+
+@media (min-width: 768px) {
+  .auth-logo-wrap {
+    margin-bottom: 28px;
+    /* Golden Standard: 28px (NOT 32px) */
+  }
+}
+
+.auth-logo-wrap a {
+  display: inline-block;
+}
+
+.auth-logo {
+  max-height: 58px;
+  /* Never exceed 58px — scale DOWN only, never UP beyond intrinsic size */
+  width: auto;
+  height: auto;
+  filter: drop-shadow(0 25px 25px rgba(0, 0, 0, 0.15));
+}
+
+/* ============================================================================
+   GLASS CARD
+   ============================================================================ */
+.auth-glass {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 24px;
+  /* p-6 mobile */
+  border-radius: 21px;
+  /* Golden Standard: 21px */
+  width: 100%;
+  position: relative;
+  transition: all 500ms;
+}
+
+@media (min-width: 768px) {
+  .auth-glass {
+    padding: 35px;
+    /* Golden Standard: 35px */
+  }
+}
+
+/* ============================================================================
+   TITLE — Gradient Text
+   ============================================================================ */
+.auth-title {
+  font-size: 22px;
+  /* Golden Standard: 22px (NOT 26px) */
+  line-height: 26px;
+  /* Golden Standard: 26px */
+  font-weight: 750;
+  /* Variable font: 750 = between bold(700) and extrabold(800) */
+  background: linear-gradient(to right, #1d4ed8, #334155);
+  /* blue-700 → slate-700 */
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  letter-spacing: -0.025em;
+  /* tracking-tight */
+  margin-bottom: 21px;
+  /* Golden Standard: 21px (NOT 24px) */
+}
+
+/* ============================================================================
+   FORM
+   ============================================================================ */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* Golden Standard: 14px (NOT 16px) */
+}
+
+/* ---- Input Group ---- */
+.auth-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5.25px;
+  /* Golden Standard: 5.25px (NOT 6px) */
+}
+
+.auth-label {
+  display: block;
+  font-size: 14px;
+  /* Golden Standard: 14px (label.text-base override) */
+  line-height: 21px;
+  font-weight: 600;
+  /* semibold */
+  color: #334155;
+  /* slate-700 */
+  margin-left: 4px;
+}
+
+.auth-input-wrap {
+  position: relative;
+}
+
+/* Left Icon */
+.auth-input-icon {
+  position: absolute;
+  left: 14px;
+  /* left-3.5 */
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  /* slate-400 */
+  transition: color 200ms;
+  pointer-events: none;
+}
+
+.auth-input-wrap:focus-within .auth-input-icon {
+  color: #2563eb;
+  /* blue-600 */
+}
+
+.auth-input-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Input field */
+.auth-input {
+  width: 100%;
+  padding: 10.5px 38.5px;
+  /* Golden Standard: 10.5px TB, 38.5px LR (NOT 44px) */
+  background: #f8fafc;
+  /* slate-50 */
+  border: 1px solid #e2e8f0;
+  /* slate-200 */
+  border-radius: 10.5px;
+  /* Golden Standard: 10.5px (NOT 12px) */
+  color: #0f172a;
+  /* slate-900 */
+  font-size: 15px;
+  font-weight: 500;
+  font-family: inherit;
+  outline: none;
+  transition: all 200ms;
+  line-height: 22.5px;
+  /* Golden Standard */
+}
+
+.auth-input::placeholder {
+  color: #94a3b8;
+  /* slate-400 */
+}
+
+.auth-input:focus {
+  background: #ffffff;
+  border-color: #2563eb;
+  /* blue-600 */
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+  /* ring-4 ring-blue-600/10 */
+}
+
+.auth-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f1f5f9;
+  /* slate-100 */
+}
+
+.auth-input--no-icon-left {
+  padding-left: 12px;
+}
+
+.auth-input--no-action-right {
+  padding-right: 12px;
+}
+
+/* Right action area (@ symbol or eye toggle) */
+.auth-input-action {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+.auth-at-symbol {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 600;
+  user-select: none;
+}
+
+.auth-eye-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 200ms;
+  padding: 0;
+}
+
+.auth-eye-btn:hover {
+  color: #2563eb;
+  background: #eff6ff;
+  /* blue-50 */
+}
+
+.auth-eye-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ---- Forgot Password ---- */
+.auth-forgot-link {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 7px;
+  /* Golden Standard: 7px (NOT 8px) */
+}
+
+.auth-forgot-link a {
+  font-size: 12.25px;
+  /* Golden Standard: 12.25px (NOT 14px) */
+  font-weight: 500;
+  color: #2563eb;
+  text-decoration: none;
+  transition: color 200ms;
+}
+
+.auth-forgot-link a:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+/* ---- Alert ---- */
+.auth-alert {
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+  transition: all 300ms;
+}
+
+.auth-alert--error {
+  background: #fef2f2;
+  /* red-50 */
+  color: #991b1b;
+  /* red-800 */
+}
+
+.auth-alert--success {
+  background: #f0fdf4;
+  /* green-50 */
+  color: #166534;
+  /* green-800 */
+}
+
+/* ---- Submit Button ---- */
+.auth-submit {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  font-family: inherit;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 200ms;
+  margin-top: 0;
+  /* Golden Standard: 0 (gap manages spacing) */
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.2);
+}
+
+@media (min-width: 768px) {
+  .auth-submit {
+    padding: 12.25px 16px;
+    /* Golden Standard: 12.25px (NOT 14px) */
+    margin-top: 0;
+    /* Golden Standard: 0 (gap manages spacing) */
+  }
+}
+
+.auth-submit:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-2px);
+}
+
+.auth-submit:disabled {
+  background: #1d4ed8;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: wait;
+  transform: scale(0.98);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.auth-submit svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Spinner */
+.auth-spinner {
+  animation: auth-spin 1s linear infinite;
+  width: 20px;
+  height: 20px;
+}
+
+@keyframes auth-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================================
+   DIVIDER
+   ============================================================================ */
+.auth-divider {
+  position: relative;
+  margin: 21px 0;
+  /* Golden Standard: 21px (NOT 24px) */
+}
+
+.auth-divider-line {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+}
+
+.auth-divider-line::after {
+  content: '';
+  width: 100%;
+  border-top: 1px solid #f1f5f9;
+  /* slate-100 */
+}
+
+.auth-divider-text {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.auth-divider-text span {
+  background: #ffffff;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #94a3b8;
+  /* slate-400 */
+}
+
+/* ============================================================================
+   SOCIAL BUTTONS
+   ============================================================================ */
+.auth-social-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10.5px;
+  /* Golden Standard: 10.5px (NOT 12px) */
+}
+
+.auth-social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 7px 14px;
+  /* Golden Standard: 7px 14px (NOT 10px 16px) */
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: all 200ms;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+}
+
+.auth-social-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.auth-social-btn:disabled,
+.auth-social-btn.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.auth-social-btn svg {
+  width: 18px;
+  height: 18px;
+  /* Golden Standard: 18px (NOT 20px) */
+  flex-shrink: 0;
+}
+
+.auth-social-btn span {
+  font-size: 12.25px;
+  /* Golden Standard: 12.25px (NOT 14px) */
+  font-weight: 500;
+  color: #475569;
+  /* slate-600 */
+  transition: color 200ms;
+  text-transform: capitalize;
+}
+
+.auth-social-btn:hover span {
+  color: #0f172a;
+  /* slate-900 */
+}
+
+/* ============================================================================
+   LANGUAGE SWITCHER
+   ============================================================================ */
+.auth-lang {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+  z-index: 50;
+}
+
+@media (min-width: 768px) {
+  .auth-lang {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    width: auto;
+    margin-bottom: 24px;
+  }
+}
+
+.auth-lang-pill {
+  display: flex;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.3);
+  /* slate-900/30 */
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  padding: 4px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+@media (min-width: 768px) {
+  .auth-lang-pill {
+    padding: 6px;
+  }
+}
+
+.auth-lang-btn {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 300ms ease-out;
+  font-family: inherit;
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  .auth-lang-btn {
+    width: 32px;
+    height: 32px;
+    /* Golden Standard: 32px (NOT 36px) */
+    font-size: 12px;
+  }
+}
+
+.auth-lang-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.auth-lang-btn--active {
+  background: #ffffff;
+  color: #1d4ed8;
+  /* blue-700 */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transform: scale(1.05);
+}
+
+.auth-lang-btn--active:hover {
+  background: #ffffff;
+  color: #1d4ed8;
+}
+
+/* Tooltip (desktop only) */
+.auth-lang-tooltip {
+  position: absolute;
+  top: 140%;
+  left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  color: #1e293b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  visibility: hidden;
+  transition: all 300ms;
+  pointer-events: none;
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .auth-lang-tooltip {
+    display: block;
+  }
+}
+
+/* Tooltip arrow */
+.auth-lang-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.95);
+}
+
+.auth-lang-btn:hover .auth-lang-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ============================================================================
+   FOOTER
+   ============================================================================ */
+.auth-footer {
+  margin-top: 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+@media (min-width: 768px) {
+  .auth-footer {
+    margin-top: 32px;
+  }
+}
+
+.auth-footer a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 200ms;
+}
+
+.auth-footer a:hover {
+  color: #ffffff;
+}
+
+/* ============================================================================
+   SOCIALITE WARNING
+   ============================================================================ */
+.auth-socialite-warning {
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: #fffbeb;
+  /* amber-50 */
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #92400e;
+  /* amber-800 */
+}
+
+/* ============================================================================
+   TAILWIND UTILITY ALIASES — For React/Next.js compatibility
+   ============================================================================
+   React/Next.js components (LoginForm.tsx, AuthLayout.tsx) use Tailwind utility
+   classes + these CUSTOM classes. These aliases ensure compatibility even when:
+   - Tailwind hasn't been configured with these extensions in globals.css
+   - Project uses auth.css as standalone (non-Tailwind)
+   
+   NOTE: For Tailwind projects, these can also be defined in globals.css.
+   Having them here as fallback ensures they always work.
+   ============================================================================ */
+
+/* Gradient animation utility — used by AuthLayout.tsx */
+@keyframes gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 12s ease infinite;
+}
+
+/* Glass card utility — used by LoginForm.tsx */
+.glass {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 35px !important;
+  /* Golden Standard: 35px */
+  border-radius: 21px !important;
+  /* Golden Standard: 21px */
+}
+
+/* ---- Golden Standard Input Overrides ---- */
+/* Tailwind py-3 = 12px, but Golden Standard = 10.5px */
+input[type="email"],
+input[type="password"] {
+  padding-top: 10.5px !important;
+  padding-bottom: 10.5px !important;
+  line-height: 22.5px !important;
+}
+
+/* Tailwind text-3xl = 30px, but Golden Standard = 22px */
+h2.text-3xl {
+  font-size: 22px !important;
+  line-height: 26px !important;
+  font-weight: 800 !important;
+}
+
+/* Tailwind text-base = 16px, but Golden Standard = 14px */
+label.text-base {
+  font-size: 14px !important;
+  line-height: 21px !important;
+}

@@ -17,6 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind the Caddy TLS terminator (staging): trust forwarded headers so the app
+        // detects HTTPS and generates correct absolute URLs / redirects.
+        $middleware->trustProxies(at: '*');
+
         // Defense layer #1 (entitlement). Apply after SetCurrentSite has resolved
         // the tenant: 'site.active' gates lifecycle, 'module:<key>' gates modules.
         $middleware->alias([
@@ -29,9 +33,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Guests on the tenant admin plane land on the admin login; elsewhere the
         // platform/global login (P0.8 stub until its UI).
-        $middleware->redirectGuestsTo(
-            fn (Request $request): string => $request->is('admin', 'admin/*') ? route('admin.login') : route('login'),
-        );
+        $middleware->redirectGuestsTo(function (Request $request): string {
+            $prefix = (string) config('admin.prefix', 'admin');
+
+            return $request->is($prefix, $prefix.'/*') ? route('admin.login') : route('login');
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

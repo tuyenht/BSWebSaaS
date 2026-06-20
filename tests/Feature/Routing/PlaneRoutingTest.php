@@ -52,7 +52,7 @@ it('serves the admin shell to a site member in tenant context', function () {
 
     $this->actingAs($user)->get('http://a.test/admin')
         ->assertOk()
-        ->assertSee('Bảng điều khiển');
+        ->assertSee(__('admin.dashboard'));
 });
 
 // ── Platform ────────────────────────────────────────────────────────────────────
@@ -66,19 +66,21 @@ it('forbids a non-operator on the platform plane', function () {
     $this->actingAs($user)->getJson('http://platform.bswebsaas.test/')->assertForbidden();
 });
 
-it('sends a platform operator without 2FA to the setup flow', function () {
-    $user = User::factory()->create(['two_factor_confirmed_at' => null]);
+it('lands an authenticated platform operator on the System Email console', function () {
+    $user = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
 
+    // 2FA is enforced at login (TOTP or email-OTP), not by a console middleware gate; the
+    // platform root lands the operator on the System Email console (the platform default).
     $this->actingAs($user)->get('http://platform.bswebsaas.test/')
-        ->assertRedirect('http://platform.bswebsaas.test/two-factor/setup');
+        ->assertRedirect(route('platform.settings.email'));
 });
 
-it('serves the platform plane to a super_admin operator with 2FA', function () {
+it('serves the System Email console to a super_admin operator', function () {
     $user = User::factory()->create(['two_factor_confirmed_at' => now()]);
     app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
 
-    $this->actingAs($user)->getJson('http://platform.bswebsaas.test/')
+    $this->actingAs($user)->get(route('platform.settings.email'))
         ->assertOk()
-        ->assertJson(['plane' => 'platform', 'operator' => $user->email]);
+        ->assertSee(__('admin.system_email'));
 });

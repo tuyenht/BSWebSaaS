@@ -5,6 +5,8 @@ namespace App\Modules\Identity\Models;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Models\Tenant;
 use Database\Factories\UserFactory;
+use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -25,13 +27,14 @@ use Spatie\Permission\Traits\HasRoles;
  * @property list<string>|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
  */
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory;
 
     use HasRoles;
     use HasUlidColumn;
+    use MustVerifyEmailTrait;
     use Notifiable;
 
     protected $guarded = [];

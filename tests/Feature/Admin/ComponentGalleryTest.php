@@ -57,8 +57,8 @@ it('renders the shell brand (from config), search and footer', function () {
         ->assertOk()
         ->assertSee(config('admin.brand.name'))
         ->assertSee(config('admin.brand.tagline'))
-        ->assertSee('Tìm kiếm...')
-        ->assertSee('Bảo lưu mọi quyền');
+        ->assertSee(__('admin.search_placeholder'))
+        ->assertSee(__('auth.rights'));
 });
 
 it('renders button + badge variants with Velzon-mirrored admin tokens', function () {

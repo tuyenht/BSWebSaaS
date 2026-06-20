@@ -1,4 +1,4 @@
 <div class="dashboard">
-    <h1>Bảng điều khiển</h1>
-    <p>Chào mừng trở lại{{ auth()->user()?->name ? ', '.auth()->user()->name : '' }}.</p>
+    <h1>{{ __('admin.dashboard') }}</h1>
+    <p>{{ __('admin.welcome') }}{{ auth()->user()?->name ? ' '.auth()->user()->name : '' }}</p>
 </div>
