@@ -20,6 +20,12 @@ final class SecretCipher
 
     public static function decrypt(string $payload): string
     {
+        // An empty stored secret means "not set" — decrypt to empty instead of throwing on an
+        // unparseable payload, so blank/optional credentials never crash their callers.
+        if ($payload === '') {
+            return '';
+        }
+
         return self::cipher()->decryptString($payload);
     }
 
