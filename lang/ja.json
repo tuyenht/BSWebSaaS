@@ -157,5 +157,9 @@
     "admin.member_remove_denied": "このメンバーを削除できません。",
     "admin.role_change_denied": "そのロールを割り当てできません。",
     "admin.user_not_found": "そのメールのアカウントはありません。",
-    "admin.role_not_found": "ロールが見つかりません。"
+    "admin.role_not_found": "ロールが見つかりません。",
+    "admin.connected_accounts": "連携アカウント",
+    "admin.disconnect": "連携解除",
+    "admin.social_disconnect_confirm": "この連携を解除しますか？",
+    "admin.social_already_linked": "このアカウントは既に別のユーザーに連携されています。"
 }

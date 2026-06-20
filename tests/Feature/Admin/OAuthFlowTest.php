@@ -29,6 +29,11 @@ it('requires authentication to start an email-sender connect', function () {
         ->assertRedirectContains('/admin/login');
 });
 
+it('requires authentication to start a social account connect', function () {
+    $this->get('http://a.test/admin/oauth/google/start?purpose=connect')
+        ->assertRedirectContains('/admin/login');
+});
+
 it('sends a configured social-login start to the provider with a PKCE-bound state', function () {
     // SecretCipher needs a dedicated key; the test env does not set one.
     config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\Cast;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use Illuminate\View\View;
@@ -27,6 +28,13 @@ final class Settings extends Component
     public array $recoveryCodes = [];
 
     public bool $showRecovery = false;
+
+    public function boot(): void
+    {
+        // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so re-assert
+        // an authenticated session on every request (each action also scopes to auth()->user()).
+        abort_unless(auth()->check(), 403);
+    }
 
     public function startTwoFactor(): void
     {
@@ -81,9 +89,35 @@ final class Settings extends Component
         $this->reset('showRecovery', 'recoveryCodes', 'tfaSecret', 'tfaQr', 'tfaCode');
     }
 
+    public function disconnect(string $provider): void
+    {
+        $user = auth()->user();
+        if ($user instanceof User) {
+            $user->socialIdentities()->where('provider', $provider)->delete();
+        }
+    }
+
     public function render(): View
     {
-        $view = view('admin::livewire.settings');
+        $user = auth()->user();
+
+        // Providers that support social connect, as [key => label].
+        $providers = [];
+        foreach (Cast::arr(config('oauth.providers')) as $key => $cfg) {
+            $cfg = Cast::arr($cfg);
+            if (in_array('connect', Cast::strings($cfg['supports'] ?? null), true)) {
+                $providers[Cast::string($key)] = Cast::string($cfg['label'] ?? null, Cast::string($key));
+            }
+        }
+
+        $connected = $user instanceof User
+            ? $user->socialIdentities()->pluck('email', 'provider')
+            : collect();
+
+        $view = view('admin::livewire.settings', [
+            'socialProviders' => $providers,
+            'connected' => $connected,
+        ]);
         $view->title(__('admin.settings'));
 
         return $view;
