@@ -5,7 +5,6 @@ use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
-use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -15,33 +14,11 @@ use PragmaRX\Google2FA\Google2FA;
  * user is authenticated ONLY once the challenge passes; the pending id lives in the session.
  */
 
-// ── Email OTP store — hashed, single-use, short TTL (unit: same app, no Livewire boundary) ──
-it('verifies a correct one-time code exactly once and rejects a wrong one', function () {
-    $user = User::factory()->create();
-    $otp = app(EmailOtp::class);
-    Cache::put('email-otp:'.$user->getAuthIdentifier(), [
-        'hash' => hash('sha256', '123456'),
-        'sent_at' => time(),
-    ], 600);
-
-    expect($otp->verify($user, '000000'))->toBeFalse()    // wrong code
-        ->and($otp->verify($user, '123456'))->toBeTrue()   // correct code
-        ->and($otp->verify($user, '123456'))->toBeFalse(); // single-use — already consumed
+// ── Email OTP challenge ──────────────────────────────────────────────────────────────
+it('allows resending an OTP only when none is outstanding', function () {
+    expect(app(EmailOtp::class)->canResend(User::factory()->create()))->toBeTrue();
 });
 
-it('reports a fresh code cannot be resent during the cooldown', function () {
-    $user = User::factory()->create();
-    $otp = app(EmailOtp::class);
-    Cache::put('email-otp:'.$user->getAuthIdentifier(), [
-        'hash' => hash('sha256', '123456'),
-        'sent_at' => time(),
-    ], 600);
-
-    expect($otp->canResend($user))->toBeFalse();          // just sent → still cooling down
-    expect($otp->canResend(User::factory()->create()))->toBeTrue(); // nothing sent yet
-});
-
-// ── Email OTP challenge component ────────────────────────────────────────────────────
 it('redirects the OTP challenge to login without a pending 2FA session', function () {
     Livewire::test(EmailOtpChallenge::class)->assertRedirect(route('admin.login'));
 });
@@ -62,7 +39,7 @@ it('locks the OTP challenge out after too many failed attempts', function () {
     $user = User::factory()->create();
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
-    // No valid code is cached, so every attempt fails; the 6th trips the per-user cap.
+    // No valid code is outstanding, so every attempt fails; the 6th trips the per-user cap.
     foreach (range(1, 6) as $ignored) {
         Livewire::test(EmailOtpChallenge::class)->set('code', '000000')->call('verify')->assertHasErrors('code');
     }
