@@ -1,0 +1,41 @@
+<?php
+
+use App\Modules\Admin\Livewire\Login;
+use App\Modules\Identity\Models\User;
+use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Support\Facades\Notification;
+use Livewire\Livewire;
+
+/*
+ * Email+password login is gated on a verified email (default-deny): an unverified account
+ * cannot complete login — a fresh verification link is sent and the user stays guest. A
+ * verified account proceeds to the mandatory second factor instead.
+ */
+
+it('blocks an unverified account at login and sends a fresh verification link', function () {
+    Notification::fake();
+    $user = User::factory()->unverified()->create();
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'password')
+        ->call('login')
+        ->assertHasErrors('email');
+
+    $this->assertGuest();
+    Notification::assertSentTo($user, VerifyEmail::class);
+});
+
+it('lets a verified account proceed to the mandatory second factor', function () {
+    $user = User::factory()->create(); // verified by default
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'password')
+        ->call('login')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('admin.otp.challenge'));
+
+    $this->assertGuest();
+    expect(session('2fa.user_id'))->not->toBeNull();
+});
