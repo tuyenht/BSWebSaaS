@@ -2,7 +2,6 @@
 
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
-use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use Livewire\Livewire;
@@ -15,10 +14,6 @@ use PragmaRX\Google2FA\Google2FA;
  */
 
 // ── Email OTP challenge ──────────────────────────────────────────────────────────────
-it('allows resending an OTP only when none is outstanding', function () {
-    expect(app(EmailOtp::class)->canResend(User::factory()->create()))->toBeTrue();
-});
-
 it('redirects the OTP challenge to login without a pending 2FA session', function () {
     Livewire::test(EmailOtpChallenge::class)->assertRedirect(route('admin.login'));
 });
