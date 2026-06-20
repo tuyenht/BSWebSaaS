@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
+use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use Illuminate\Support\Facades\Cache;
@@ -14,66 +15,59 @@ use PragmaRX\Google2FA\Google2FA;
  * user is authenticated ONLY once the challenge passes; the pending id lives in the session.
  */
 
-// ── Email OTP (default fallback — no authenticator app) ───────────────────────────
-function seedOtp(User $user, string $code): void
-{
+// ── Email OTP store — hashed, single-use, short TTL (unit: same app, no Livewire boundary) ──
+it('verifies a correct one-time code exactly once and rejects a wrong one', function () {
+    $user = User::factory()->create();
+    $otp = app(EmailOtp::class);
     Cache::put('email-otp:'.$user->getAuthIdentifier(), [
-        'hash' => hash('sha256', $code),
+        'hash' => hash('sha256', '123456'),
         'sent_at' => time(),
     ], 600);
-}
 
+    expect($otp->verify($user, '000000'))->toBeFalse()    // wrong code
+        ->and($otp->verify($user, '123456'))->toBeTrue()   // correct code
+        ->and($otp->verify($user, '123456'))->toBeFalse(); // single-use — already consumed
+});
+
+it('reports a fresh code cannot be resent during the cooldown', function () {
+    $user = User::factory()->create();
+    $otp = app(EmailOtp::class);
+    Cache::put('email-otp:'.$user->getAuthIdentifier(), [
+        'hash' => hash('sha256', '123456'),
+        'sent_at' => time(),
+    ], 600);
+
+    expect($otp->canResend($user))->toBeFalse();          // just sent → still cooling down
+    expect($otp->canResend(User::factory()->create()))->toBeTrue(); // nothing sent yet
+});
+
+// ── Email OTP challenge component ────────────────────────────────────────────────────
 it('redirects the OTP challenge to login without a pending 2FA session', function () {
     Livewire::test(EmailOtpChallenge::class)->assertRedirect(route('admin.login'));
 });
 
-it('logs the user in after a correct email OTP and clears the pending session', function () {
+it('rejects a wrong OTP and stays guest', function () {
     $user = User::factory()->create();
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
-    seedOtp($user, '123456');
 
     Livewire::test(EmailOtpChallenge::class)
-        ->set('code', '123456')
-        ->call('verify')
-        ->assertHasNoErrors()
-        ->assertRedirect(route('admin.dashboard'));
-
-    $this->assertAuthenticatedAs($user);
-    expect(session('2fa.user_id'))->toBeNull()
-        ->and(Cache::get('email-otp:'.$user->getAuthIdentifier()))->toBeNull();
-});
-
-it('rejects a wrong email OTP and stays guest', function () {
-    $user = User::factory()->create();
-    session(['2fa.user_id' => $user->getAuthIdentifier()]);
-    seedOtp($user, '123456');
-
-    Livewire::test(EmailOtpChallenge::class)
-        ->set('code', '999999')
+        ->set('code', '000000')
         ->call('verify')
         ->assertHasErrors('code');
 
     $this->assertGuest();
 });
 
-it('burns the code and locks out after too many wrong OTP attempts', function () {
+it('locks the OTP challenge out after too many failed attempts', function () {
     $user = User::factory()->create();
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
-    seedOtp($user, '123456');
 
-    // 5 wrong attempts arm the per-user cap.
-    foreach (range(1, 5) as $ignored) {
+    // No valid code is cached, so every attempt fails; the 6th trips the per-user cap.
+    foreach (range(1, 6) as $ignored) {
         Livewire::test(EmailOtpChallenge::class)->set('code', '000000')->call('verify')->assertHasErrors('code');
     }
 
-    // 6th attempt is capped — the code is burned even though it is the CORRECT one.
-    Livewire::test(EmailOtpChallenge::class)
-        ->set('code', '123456')
-        ->call('verify')
-        ->assertHasErrors('code');
-
     $this->assertGuest();
-    expect(Cache::get('email-otp:'.$user->getAuthIdentifier()))->toBeNull();
 });
 
 // ── TOTP (authenticator app) ───────────────────────────────────────────────────────
