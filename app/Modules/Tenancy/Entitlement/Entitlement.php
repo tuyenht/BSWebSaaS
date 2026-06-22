@@ -5,6 +5,7 @@ namespace App\Modules\Tenancy\Entitlement;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteModule;
+use App\Modules\Tenancy\Registry\ModuleCatalog;
 
 /**
  * Defense-in-depth layer #1 (design.md §15.2): what the current site is entitled to,
@@ -21,6 +22,33 @@ final class Entitlement
             ->where('module_key', $moduleKey)
             ->where('enabled', true)
             ->exists();
+    }
+
+    /**
+     * The module keys the current site may surface in the admin nav: the keys its
+     * site_type grants (design.md §15.2) ∪ any enabled per-site site_modules override.
+     * Fail-closed: no resolved site → no entitlement.
+     *
+     * @return list<string>
+     */
+    public function entitledModuleKeys(): array
+    {
+        $current = app(CurrentSite::class);
+
+        if (! $current->hasId()) {
+            return [];
+        }
+
+        $typeKey = Site::query()->whereKey($current->id())->with('siteType')->first()?->siteType?->key;
+
+        $fromType = is_string($typeKey) ? ModuleCatalog::modulesFor($typeKey) : [];
+
+        // BelongsToSite auto-scopes the override query to the current site — it never
+        // leaks another tenant's enabled modules.
+        /** @var list<string> $fromOverride */
+        $fromOverride = SiteModule::query()->where('enabled', true)->pluck('module_key')->all();
+
+        return array_values(array_unique([...$fromType, ...$fromOverride]));
     }
 
     public function siteIsActive(): bool

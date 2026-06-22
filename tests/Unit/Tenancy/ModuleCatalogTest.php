@@ -51,3 +51,46 @@ it('maps the corporate site_type to a module set drawn from the catalog', functi
     expect($corporate)->not->toBeEmpty()
         ->and(array_diff($corporate, $catalogKeys))->toBe([]); // ⊆ catalog
 });
+
+/*
+ * Increment-3 additive nav contract: the catalog also carries the render structure —
+ * a `route` (a feature module's admin route, or null for content slots / unbuilt
+ * modules) and a `nav_permission` (the nav-visibility gate, or null = always visible).
+ * permission_prefix is retained (asserted above) — it is a separate axis.
+ */
+
+it('gives every module a route slot and a nav_permission that resolves to a real permission', function () {
+    $permissions = PermissionRegistry::permissions();
+
+    foreach (ModuleCatalog::all() as $module) {
+        expect($module)->toHaveKeys(['route', 'nav_permission']);
+
+        if (is_string($module['route'])) {
+            expect($module['route'])->toStartWith('admin.');
+        }
+
+        // No orphan nav gate: a non-null nav_permission must be a real permission.
+        if (is_string($module['nav_permission'])) {
+            expect($permissions)->toContain($module['nav_permission']);
+        }
+    }
+});
+
+it('routes only the built feature modules; content slots (posts/pages) and unbuilt modules are route=null', function () {
+    $routes = collect(ModuleCatalog::all())->pluck('route', 'key')->all();
+
+    expect($routes['dashboard'])->toBe('admin.dashboard')
+        ->and($routes['users'])->toBe('admin.users.index')
+        ->and($routes['settings'])->toBe('admin.settings')
+        ->and($routes['posts'])->toBeNull()   // content slot — filled by content_sections
+        ->and($routes['pages'])->toBeNull()   // content slot
+        ->and($routes['media'])->toBeNull();  // unbuilt feature module
+});
+
+it('gates users on users.manage and leaves dashboard/settings always-visible (null nav_permission)', function () {
+    $navPermission = collect(ModuleCatalog::all())->pluck('nav_permission', 'key')->all();
+
+    expect($navPermission['users'])->toBe('users.manage')
+        ->and($navPermission['dashboard'])->toBeNull()
+        ->and($navPermission['settings'])->toBeNull();
+});
