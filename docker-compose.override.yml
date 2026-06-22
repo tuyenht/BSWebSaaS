@@ -1,7 +1,6 @@
 services:
   caddy:
     image: caddy:2
-    container_name: bsweb_dev_caddy
     restart: unless-stopped
     depends_on:
       - app
