@@ -18,6 +18,7 @@ use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Identity\Models\User;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
+use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
@@ -150,6 +151,12 @@ Route::get('/login', fn () => response()->json(['message' => 'Authentication req
 
 Route::get('/two-factor/setup', fn () => response()->json(['message' => 'Two-factor authentication setup required.'], 423))
     ->name('two-factor.setup');
+
+// ── Caddy on_demand_tls ask-endpoint (infra). KHÔNG auth, KHÔNG tenant context:
+//    Caddy nội bộ gọi để hỏi "có nên xin cert cho host này?". Fail-closed, chỉ kiểm
+//    domains table. Để trong nhóm web mặc định — các middleware web (ShareErrors…)
+//    phụ thuộc session nên không strip; tần suất gọi cực thấp (chỉ lúc cấp cert). ─
+Route::get('/caddy/ask', CaddyAskController::class)->name('caddy.ask');
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a
 //    defined route; resolves dynamic content for any other path (404 if none). ─────

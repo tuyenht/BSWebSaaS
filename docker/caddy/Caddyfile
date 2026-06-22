@@ -1,0 +1,21 @@
+{
+	email tuyenht@gmail.com
+	on_demand_tls {
+		ask http://app:80/caddy/ask
+	}
+}
+
+# Platform console — cert MANAGED riêng, KHÔNG phụ thuộc ask-endpoint (fail-safe).
+website.baoson.net {
+	encode zstd gzip
+	reverse_proxy app:80
+}
+
+# Tenant subdomain + custom domain — cert on demand, gated bởi /caddy/ask (domains table).
+:443 {
+	tls {
+		on_demand
+	}
+	encode zstd gzip
+	reverse_proxy app:80
+}

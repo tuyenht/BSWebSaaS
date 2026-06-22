@@ -17,6 +17,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Base domains (subdomain provisioning)
+    |--------------------------------------------------------------------------
+    |
+    | base_domains — danh sách base hợp lệ; thêm 'bsweb.com' về sau chỉ sửa env,
+    | không sửa code. primary_base — base ghép cho site tạo mới
+    | (slug => {slug}.{primary_base}). trim + array_values: chống khoảng trắng
+    | trong "baoson.net, bsweb.com" và re-index sạch.
+    */
+
+    'base_domains' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('BASE_DOMAINS', 'baoson.net'))
+    ))),
+
+    'primary_base' => env('PRIMARY_BASE', 'baoson.net'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Platform console host (Bảo Sơn operator plane)
     |--------------------------------------------------------------------------
     |
