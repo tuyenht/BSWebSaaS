@@ -26,7 +26,7 @@
         <div class="auth-lang">
             <div class="auth-lang-pill">
                 @foreach ($locales as $l)
-                    <a href="{{ route('admin.locale', ['set' => $l['code']]) }}"
+                    <a href="{{ \App\Modules\Admin\Support\AdminPlane::route('locale', ['set' => $l['code']]) }}"
                        @class(['auth-lang-btn', 'auth-lang-btn--active' => $l['active']])>
                         {{ strtoupper($l['code']) }}
                         <span class="auth-lang-tooltip">{{ $l['label'] }}</span>
@@ -37,7 +37,7 @@
 
         <main class="auth-main">
             <div class="auth-logo-wrap">
-                <a href="{{ route('admin.login') }}" aria-label="{{ $brandName }}">
+                <a href="{{ \App\Modules\Admin\Support\AdminPlane::route('login') }}" aria-label="{{ $brandName }}">
                     <img src="{{ asset('assets/images/logo-light.png') }}" alt="{{ $brandName }}" class="auth-logo">
                 </a>
             </div>

@@ -42,6 +42,6 @@
         </button>
     </div>
     <div style="text-align:center;margin-top:10px">
-        <a href="{{ route('admin.login') }}" style="color:#64748b;font-size:13px;text-decoration:none">← {{ __('auth.back_to_login') }}</a>
+        <a href="{{ \App\Modules\Admin\Support\AdminPlane::route('login') }}" style="color:#64748b;font-size:13px;text-decoration:none">← {{ __('auth.back_to_login') }}</a>
     </div>
 </div>

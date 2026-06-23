@@ -38,6 +38,17 @@ Route::domain((string) config('tenancy.platform_host'))
         Route::get('/login', Login::class)->name('platform.login');
         Route::get('/otp/challenge', EmailOtpChallenge::class)->name('platform.otp.challenge');
         Route::get('/two-factor/challenge', TwoFactorChallenge::class)->name('platform.two-factor.challenge');
+
+        // Switch UI locale on the platform console — mirrors admin.locale so the shared auth
+        // layout's language switcher (AdminPlane::route('locale')) resolves on this plane too.
+        Route::get('/locale', function () {
+            $set = (string) request('set');
+            if (in_array($set, Locales::codes(), true)) {
+                session(['locale' => $set]);
+            }
+
+            return back(fallback: route('platform.login'));
+        })->name('platform.locale');
     });
 
 // Protected: platform operators only (EnsurePlatformAccess). 2FA is enforced at login
