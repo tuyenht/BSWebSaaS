@@ -53,3 +53,8 @@ _ide_helper_models.php
 
 # Local planning + review artifacts (specs, screenshots, council reports) — not app source
 /plans/
+
+# Per-host Docker override — each environment keeps its own (untracked). The committed
+# stacks are docker-compose.yml (dev, project bsweb-dev) + docker-compose.prod.yml
+# (prod, project bsweb-prod, selected via COMPOSE_FILE in the prod host's .env).
+docker-compose.override.yml

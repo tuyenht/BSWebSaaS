@@ -1,0 +1,132 @@
+name: bsweb-prod
+
+# Production stack (project bsweb-prod) — a COMPLETE, self-contained compose file, NOT
+# an overlay on docker-compose.yml. The prod host selects it with COMPOSE_FILE in its
+# (gitignored) .env:  COMPOSE_FILE=docker-compose.prod.yml  → `docker compose up -d`.
+# So both checkouts carry the SAME committed compose files; only the per-host .env
+# differs (which file + secrets), and `git pull` on prod never conflicts.
+#
+# Isolation vs dev: own project name, network, container names (bsweb_prod_*) and
+# volumes (*_prod). Postgres/Valkey/PgBouncer are internal-only (expose, never published
+# to the host); ONLY Caddy takes the public 80/443. Runtime image is shared with dev
+# (env-agnostic PHP/FrankenPHP) — prod CODE + DATA are isolated by the bind mount + this
+# project's own volumes/DB. Secrets come from ./.env via ${...}, never written here.
+
+services:
+  app:
+    image: bsweb/app:dev
+    container_name: bsweb_prod_app
+    restart: unless-stopped
+    command: >-
+      php artisan octane:start
+      --server=frankenphp
+      --host=0.0.0.0
+      --port=80
+      --admin-port=2019
+      --workers=4
+      --max-requests=500
+    expose:
+      - "80"
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+
+  horizon:
+    image: bsweb/app:dev
+    container_name: bsweb_prod_horizon
+    restart: unless-stopped
+    command: php artisan horizon
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: bsweb_prod_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-bswebsaas}
+      POSTGRES_USER: ${DB_ADMIN_USERNAME:-bsweb}
+      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?set DB_ADMIN_PASSWORD in prod/.env}
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_ADMIN_USERNAME:-bsweb} -d ${DB_DATABASE:-bswebsaas}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: bsweb_prod_pgbouncer
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      # app_user — its password is set BY the migration to pgsql.password (= DB_PASSWORD),
+      # so pgbouncer must present the SAME value. Single source: prod/.env.
+      DB_USER: ${DB_USERNAME:-app_user}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in prod/.env}
+      DB_NAME: ${DB_DATABASE:-bswebsaas}
+      # D14: transaction pooling — Gate #1 proves tenant/prepared-statement isolation.
+      POOL_MODE: transaction
+      AUTH_TYPE: scram-sha-256
+      MAX_CLIENT_CONN: "1000"
+      DEFAULT_POOL_SIZE: "25"
+      MAX_PREPARED_STATEMENTS: "200"
+      LISTEN_PORT: "6432"
+    expose:
+      - "6432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  valkey:
+    image: valkey/valkey:8.1-alpine
+    container_name: bsweb_prod_valkey
+    restart: unless-stopped
+    # appendonly ON for prod — sessions, cache and the queue live here; survive a restart.
+    command: valkey-server --save 60 1 --appendonly yes
+    expose:
+      - "6379"
+    volumes:
+      - valkeydata_prod:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data_prod:/data
+      - caddy_config_prod:/config
+
+volumes:
+  pgdata_prod:
+  valkeydata_prod:
+  caddy_data_prod:
+  caddy_config_prod:
