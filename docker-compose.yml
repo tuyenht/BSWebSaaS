@@ -1,5 +1,14 @@
 name: bsweb-dev
 
+# Dev sandbox stack (project bsweb-dev). The production stack lives in
+# docker-compose.prod.yml (project bsweb-prod) and is selected on the prod host via
+# COMPOSE_FILE in its .env — these two never share a project, network, volume or DB.
+#
+# All host port mappings bind 127.0.0.1 ONLY: on a public server the DB / Valkey /
+# Octane-admin must never be reachable from the internet (the creds here are weak and
+# committed). Reach them from the server itself, or tunnel over SSH. Inter-container
+# traffic uses service names (postgres/pgbouncer/valkey), unaffected by this binding.
+
 services:
   app:
     build:
@@ -17,8 +26,8 @@ services:
       --workers=4
       --max-requests=500
     ports:
-      - "8080:80"
-      - "2019:2019"
+      - "127.0.0.1:8080:80"
+      - "127.0.0.1:2019:2019"
     volumes:
       - ./:/app
     env_file:
@@ -56,7 +65,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bsweb -d bswebsaas"]
       interval: 5s
@@ -82,7 +91,7 @@ services:
       MAX_PREPARED_STATEMENTS: "200"
       LISTEN_PORT: "6432"
     ports:
-      - "6432:6432"
+      - "127.0.0.1:6432:6432"
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,7 +102,7 @@ services:
     restart: unless-stopped
     command: valkey-server --save 60 1 --appendonly no
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - valkeydata:/data
     healthcheck:
