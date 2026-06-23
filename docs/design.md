@@ -603,6 +603,7 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 
 - **Subdomain wildcard** mặc định + **custom domain qua Cloudflare for SaaS** (SSL tự động).
 - **Chống SEO spam-network 15k subdomain** (R17): subdomain demo/chưa-thật để `noindex`; chỉ index khi lên domain thật + nội dung thật.
+- **DEFERRED (ghi, GĐ1 KHÔNG xử): per-host session cookie name.** Cô lập session theo host bằng cookie name riêng (bs_<hash(host)>_session) đã thử và BỎ — config('session.cookie') runtime là no-op dưới Octane (SessionManager cache tên cookie lúc build store, không đọc lại config mỗi request; verified curl + --force-recreate). Nếu làm lại khi custom domain go-live: dùng session store / $request->session()->setName() đúng thời điểm, KHÔNG config() runtime. Hiện SESSION_DOMAIN=null (cookie host-only) đã cô lập chéo-host — xem Mục 29, Mục 5.
 
 ## 29. Bảo mật (defense-in-depth) *(Mục 5, 15)*
 
