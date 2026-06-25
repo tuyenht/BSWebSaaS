@@ -18,12 +18,28 @@ final class LatestPostsComponent implements Component
     }
 
     /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function schema(): array
+    {
+        // `locale` is server-resolved (site default), not author-set → not in the schema.
+        return [
+            'heading' => ['type' => 'text'],
+            'limit' => ['type' => 'int', 'default' => 3],
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $props  supports: heading, limit, locale
      * @return array<string, mixed>
      */
     public function data(array $props): array
     {
-        $limit = is_int($props['limit'] ?? null) ? $props['limit'] : 3;
+        // Livewire number inputs hydrate as strings, so coerce rather than is_int-reject
+        // (which would silently pin the limit to the default). Clamp to 1..50: author-tunable
+        // but bounded, so a careless/forged value can't issue an unbounded query.
+        $rawLimit = $props['limit'] ?? 3;
+        $limit = is_numeric($rawLimit) ? min(50, max(1, (int) $rawLimit)) : 3;
         $locale = is_string($props['locale'] ?? null) ? $props['locale'] : 'vi';
 
         $posts = Entry::query()
@@ -31,7 +47,7 @@ final class LatestPostsComponent implements Component
             ->where('status', 'published')
             ->with(['translations', 'routes'])
             ->orderByDesc('published_at')
-            ->limit(max(1, $limit))
+            ->limit($limit)
             ->get()
             ->map(function (Entry $entry) use ($locale): array {
                 $translation = $entry->translationFor($locale);

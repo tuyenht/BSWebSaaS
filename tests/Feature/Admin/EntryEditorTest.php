@@ -251,3 +251,100 @@ it('rejects a slug already owned by another page with a friendly error (no 500)'
         expect(SiteRoute::query()->where('path', '/lien-he')->count())->toBe(1);
     });
 });
+
+it('seeds list-typed props as empty arrays from the section schema (fixes paragraphs/items)', function () {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor) {
+        grantRole($editor, 'editor', ['entries.create']);
+
+        $component = Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->call('addBlock', 'richtext')
+            ->call('addBlock', 'features');
+
+        $blocks = $component->get('blocks');
+
+        // richtext renders paragraphs[], never the old 'body' key (latent-bug fix).
+        expect($blocks[0]['props'])->toHaveKey('paragraphs')
+            ->and($blocks[0]['props']['paragraphs'])->toBe([])
+            ->and($blocks[0]['props'])->not->toHaveKey('body')
+            // features now seeds items[] (was missing → unauthorable).
+            ->and($blocks[1]['props']['items'])->toBe([]);
+    });
+});
+
+it('adds, reorders and removes items within a list prop (repeater)', function () {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor) {
+        grantRole($editor, 'editor', ['entries.create']);
+
+        $component = Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->call('addBlock', 'features')
+            ->call('addItem', 0, 'items')
+            ->call('addItem', 0, 'items');
+
+        // each new item is built from the list's item schema {title, text}
+        expect($component->get('blocks.0.props.items'))->toHaveCount(2)
+            ->and($component->get('blocks.0.props.items.0'))->toHaveKeys(['title', 'text']);
+
+        $component->set('blocks.0.props.items.0.title', 'A')
+            ->set('blocks.0.props.items.1.title', 'B')
+            ->call('moveItemUp', 0, 'items', 1);
+        expect(array_column($component->get('blocks.0.props.items'), 'title'))->toBe(['B', 'A']);
+
+        $component->call('removeItem', 0, 'items', 0);
+        expect(array_column($component->get('blocks.0.props.items'), 'title'))->toBe(['A']);
+    });
+});
+
+it('round-trips nested list props through save', function () {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor) {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('title', 'Dịch vụ')
+            ->set('slug', 'dich-vu')
+            ->call('addBlock', 'features')
+            ->call('addItem', 0, 'items')
+            ->set('blocks.0.props.items.0.title', 'Bảo ôn')
+            ->set('blocks.0.props.items.0.text', 'Cách nhiệt đường ống')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $entry = Entry::query()->where('type', 'page')->first();
+        $items = $entry->translationFor('vi')->body['blocks'][0]['props']['items'];
+        expect($items[0]['title'])->toBe('Bảo ôn')
+            ->and($items[0]['text'])->toBe('Cách nhiệt đường ống');
+    });
+});
+
+it('adds items to a scalar list prop and round-trips them (richtext paragraphs)', function () {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor) {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('title', 'Giới thiệu')
+            ->set('slug', 'gioi-thieu')
+            ->call('addBlock', 'richtext')
+            ->call('addItem', 0, 'paragraphs')
+            ->set('blocks.0.props.paragraphs.0', 'Đoạn văn đầu tiên.')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $entry = Entry::query()->where('type', 'page')->first();
+        expect($entry->translationFor('vi')->body['blocks'][0]['props']['paragraphs'])->toBe(['Đoạn văn đầu tiên.']);
+    });
+});

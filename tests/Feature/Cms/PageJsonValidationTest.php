@@ -2,6 +2,7 @@
 
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\SectionComponent;
 use Illuminate\Support\Facades\Validator;
 
 /*
@@ -16,6 +17,38 @@ use Illuminate\Support\Facades\Validator;
 function validateBlocks(array $blocks): Illuminate\Validation\Validator
 {
     return Validator::make(['blocks' => $blocks], ['blocks' => [app(ValidPageJson::class)]]);
+}
+
+/**
+ * Register an ad-hoc block whose declared schema drives validation — lets us assert that
+ * URL-safety follows the schema's type:url, independent of the prop NAME.
+ *
+ * @param  array<string, array<string, mixed>>  $schema
+ */
+function registerSchemaBlock(string $type, array $schema): void
+{
+    app(ComponentRegistry::class)->register($type, new SectionComponent('theme::noop', $schema));
+}
+
+/**
+ * True when $key is declared `type:url` inside any list `of` field-map in the schema
+ * (handles object lists + nesting) — used by the sink sentinel for $item['…'] sinks.
+ *
+ * @param  array<array-key, mixed>  $schema
+ */
+function schemaHasUrlField(array $schema, string $key): bool
+{
+    foreach ($schema as $spec) {
+        if (! is_array($spec) || ($spec['type'] ?? null) !== 'list' || ! is_array($spec['of'] ?? null)) {
+            continue;
+        }
+        $of = $spec['of'];
+        if (($of[$key]['type'] ?? null) === 'url' || schemaHasUrlField($of, $key)) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 it('passes a page composed only of registered components', function () {
@@ -78,4 +111,72 @@ it('rejects a body with too many blocks', function () {
 
 it('rejects an oversized body', function () {
     expect(validateBlocks([['type' => 'hero', 'props' => ['heading' => str_repeat('x', 300_000)]]])->fails())->toBeTrue();
+});
+
+it('rejects a dangerous scheme in a typed-url prop regardless of its NAME (schema-driven)', function () {
+    // §2 invariant: URL-safety must follow the schema's type:url, NOT a hand-maintained key
+    // list. A url prop named 'link' (not in url/href/src/*_url) must STILL be sniffed.
+    registerSchemaBlock('test_link', ['link' => ['type' => 'url']]);
+
+    expect(validateBlocks([['type' => 'test_link', 'props' => ['link' => 'javascript:alert(1)']]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'test_link', 'props' => ['link' => 'JaVaScRiPt:alert(1)']]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'test_link', 'props' => ['link' => 'https://example.test/ok']]])->passes())->toBeTrue();
+});
+
+it('sniffs typed-url props nested 2+ levels deep via the schema walk (object lists + scalar url lists)', function () {
+    registerSchemaBlock('test_deep', [
+        'rows' => ['type' => 'list', 'of' => [
+            'cta_link' => ['type' => 'url'],
+            'subs' => ['type' => 'list', 'of' => ['type' => 'url']],
+        ]],
+    ]);
+
+    expect(validateBlocks([['type' => 'test_deep', 'props' => ['rows' => [['cta_link' => 'javascript:alert(1)']]]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'test_deep', 'props' => ['rows' => [['subs' => ['vbscript:msgbox(1)']]]]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'test_deep', 'props' => ['rows' => [['cta_link' => '/ok', 'subs' => ['https://x.test']]]]]])->passes())->toBeTrue();
+});
+
+it('rejects a non-string value under a typed-url prop (no render-time TypeError/500)', function () {
+    registerSchemaBlock('test_arr', ['cta_url' => ['type' => 'url']]);
+
+    expect(validateBlocks([['type' => 'test_arr', 'props' => ['cta_url' => ['javascript:alert(1)']]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'test_arr', 'props' => ['cta_url' => 42]]])->fails())->toBeTrue();
+});
+
+it('treats url-encoded and protocol-relative URLs as non-XSS (documented: not a §2 scheme violation)', function () {
+    // Browsers do not percent-decode the scheme position, so %6a%61… is an inert relative URL;
+    // // is external navigation (open-redirect surface) by a trusted tenant admin, not script
+    // execution. Both pass the §2 (no script-scheme) guard by design.
+    registerSchemaBlock('test_doc', ['link' => ['type' => 'url']]);
+
+    expect(validateBlocks([['type' => 'test_doc', 'props' => ['link' => '%6a%61vascript:alert(1)']]])->passes())->toBeTrue()
+        ->and(validateBlocks([['type' => 'test_doc', 'props' => ['link' => '//evil.example']]])->passes())->toBeTrue();
+});
+
+it('every author href/src sink in a section partial is a schema-declared url prop (drift sentinel)', function () {
+    // Behind the schema-driven validator: a sink may only render a prop the schema types `url`,
+    // so validation (which walks type:url) covers every sink. A future partial that adds an
+    // href/src over a non-url-typed key fails HERE at CI time, before it can ship a bypass.
+    $registry = app(ComponentRegistry::class);
+
+    foreach (glob(base_path('app/Modules/Theme/themes/default/sections/*.blade.php')) as $file) {
+        $type = basename($file, '.blade.php');
+        if (! $registry->has($type)) {
+            continue;
+        }
+        $schema = $registry->get($type)->schema();
+        $blade = (string) file_get_contents($file);
+
+        // Top-level author sinks: href/src reading $props['KEY'] must be schema type:url.
+        preg_match_all('/(?:href|src)\s*=\s*["\']\{\{[^}]*\$props\[[\'"](\w+)[\'"]\]/', $blade, $top);
+        foreach ($top[1] as $key) {
+            expect($schema[$key]['type'] ?? null)->toBe('url', "{$type}.blade: \$props['{$key}'] feeds href/src but isn't type:url in the schema");
+        }
+
+        // List-item author sinks: href/src reading $item['KEY'] must be a type:url list field.
+        preg_match_all('/(?:href|src)\s*=\s*["\']\{\{[^}]*\$item\[[\'"](\w+)[\'"]\]/', $blade, $item);
+        foreach ($item[1] as $key) {
+            expect(schemaHasUrlField($schema, $key))->toBeTrue("{$type}.blade: \$item['{$key}'] feeds href/src but isn't a type:url list field");
+        }
+    }
 });

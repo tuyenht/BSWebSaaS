@@ -15,16 +15,45 @@ use Illuminate\Support\ServiceProvider;
  */
 final class ThemeServiceProvider extends ServiceProvider
 {
-    /** Static, content-only components shipped by the theme. */
-    private const STATIC_SECTIONS = ['hero', 'richtext', 'features', 'cta'];
+    /**
+     * Static, content-only components shipped by the theme, each with its §E7 prop
+     * schema (typed props → drives the editor, repeater, defaults and validation).
+     * The keys are the section types; adding one here extends render + edit + validate.
+     *
+     * @var array<string, array<string, array<string, mixed>>>
+     */
+    private const SECTION_SCHEMAS = [
+        'hero' => [
+            'heading' => ['type' => 'text'],
+            'subheading' => ['type' => 'text'],
+            'cta_label' => ['type' => 'text'],
+            'cta_url' => ['type' => 'url'],
+        ],
+        'richtext' => [
+            'heading' => ['type' => 'text'],
+            'paragraphs' => ['type' => 'list', 'of' => ['type' => 'textarea']],
+        ],
+        'features' => [
+            'heading' => ['type' => 'text'],
+            'items' => ['type' => 'list', 'of' => [
+                'title' => ['type' => 'text'],
+                'text' => ['type' => 'textarea'],
+            ]],
+        ],
+        'cta' => [
+            'heading' => ['type' => 'text'],
+            'button_label' => ['type' => 'text'],
+            'button_url' => ['type' => 'url'],
+        ],
+    ];
 
     public function register(): void
     {
         $this->app->singleton(ComponentRegistry::class, function (): ComponentRegistry {
             $registry = new ComponentRegistry;
 
-            foreach (self::STATIC_SECTIONS as $type) {
-                $registry->register($type, new SectionComponent("theme::sections.{$type}"));
+            foreach (self::SECTION_SCHEMAS as $type => $schema) {
+                $registry->register($type, new SectionComponent("theme::sections.{$type}", $schema));
             }
 
             return $registry;

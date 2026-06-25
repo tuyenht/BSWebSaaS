@@ -76,3 +76,69 @@ it('renders a homepage composed of several components', function () {
             ->toContain('class="cta"');
     });
 });
+
+it('every registered component declares a typed prop schema (§E7)', function () {
+    $registry = app(ComponentRegistry::class);
+
+    foreach ($registry->types() as $type) {
+        $schema = $registry->get($type)->schema();
+        expect($schema)->toBeArray();
+
+        foreach ($schema as $prop => $spec) {
+            expect($spec)->toBeArray()->toHaveKey('type');
+            expect(['text', 'textarea', 'url', 'int', 'list'])->toContain($spec['type']);
+
+            // A repeater (list) must declare its item shape so the editor can build new items.
+            if ($spec['type'] === 'list') {
+                expect($spec)->toHaveKey('of');
+            }
+        }
+    }
+});
+
+it('renders a features block from its items[] schema shape', function () {
+    app(Tenancy::class)->enter(1, function () {
+        $html = app(BlockRenderer::class)->render(['blocks' => [
+            ['type' => 'features', 'props' => [
+                'heading' => 'Dich vu',
+                'items' => [
+                    ['title' => 'Bao on', 'text' => 'Cach nhiet duong ong'],
+                    ['title' => 'Gian giao', 'text' => 'Lap dung'],
+                ],
+            ]],
+        ]]);
+
+        expect($html)->toContain('Dich vu')
+            ->toContain('Bao on')->toContain('Cach nhiet duong ong')
+            ->toContain('Gian giao');
+    });
+});
+
+it('renders a richtext block from its paragraphs[] schema shape', function () {
+    app(Tenancy::class)->enter(1, function () {
+        $html = app(BlockRenderer::class)->render(['blocks' => [
+            ['type' => 'richtext', 'props' => ['heading' => 'Ve chung toi', 'paragraphs' => ['Doan mot.', 'Doan hai.']]],
+        ]]);
+
+        expect($html)->toContain('Ve chung toi')
+            ->toContain('Doan mot.')->toContain('Doan hai.');
+    });
+});
+
+it('coerces a string limit from the editor and honours it (int prop round-trip)', function () {
+    app(Tenancy::class)->enter(1, function () {
+        foreach (range(1, 4) as $i) {
+            $post = Entry::create(['type' => 'post', 'status' => 'published', 'published_at' => now()->subDays($i)]);
+            $post->translations()->create([
+                'locale' => 'vi', 'title' => "Bai {$i}", 'slug' => "bai-{$i}", 'status' => 'published', 'body' => ['html' => 'x'],
+            ]);
+        }
+
+        // Livewire number inputs arrive as strings; the component must coerce, not fall back to 3.
+        $html = app(BlockRenderer::class)->render(['blocks' => [
+            ['type' => 'latest_posts', 'props' => ['heading' => 'Tin', 'limit' => '2']],
+        ]]);
+
+        expect(substr_count($html, 'latest-posts__item'))->toBe(2);
+    });
+});
