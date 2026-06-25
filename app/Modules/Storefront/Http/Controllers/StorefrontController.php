@@ -66,8 +66,8 @@ final class StorefrontController
         ];
 
         return $resolved instanceof ResolvedCategory
-            ? $this->renderCategory($resolved, $locale, $chrome)
-            : $this->renderEntry($resolved, $locale, $chrome);
+            ? $this->renderCategory($resolved, $locale, $path, $chrome)
+            : $this->renderEntry($resolved, $locale, $path, $chrome);
     }
 
     /**
@@ -116,12 +116,15 @@ final class StorefrontController
     /**
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
-    private function renderEntry(ResolvedContent $content, string $locale, array $chrome): Response
+    private function renderEntry(ResolvedContent $content, string $locale, string $path, array $chrome): Response
     {
         $entry = $content->entry;
 
         $categoryTemplate = null;
         $extra = $chrome;
+        $canonical = url($this->paths->publicUrl($path, $locale));
+        $extra['canonical'] = $canonical;
+        $extra['ogType'] = $entry->type === 'post' ? 'article' : 'website';
 
         // A post is shown under its primary category: the category drives its layout
         // (detail_template) and a breadcrumb back to the category list. Pages skip this.
@@ -132,9 +135,17 @@ final class StorefrontController
 
             $categoryTranslation = $category?->translationFor($locale);
             if ($categoryTranslation !== null) {
+                $categoryUrl = $this->paths->publicUrl('/'.trim($categoryTranslation->slug, '/'), $locale);
                 $extra['category'] = [
                     'name' => $categoryTranslation->name,
-                    'url' => $this->paths->publicUrl('/'.trim($categoryTranslation->slug, '/'), $locale),
+                    'url' => $categoryUrl,
+                ];
+                // BreadcrumbList trail (Home → category → self) for the shared head's JSON-LD;
+                // mirrors the on-page post breadcrumb.
+                $extra['breadcrumb'] = [
+                    $this->homeCrumb($locale),
+                    ['name' => $categoryTranslation->name, 'url' => url($categoryUrl)],
+                    ['name' => $content->translation->title, 'url' => $canonical],
                 ];
             }
         }
@@ -158,7 +169,7 @@ final class StorefrontController
     /**
      * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
      */
-    private function renderCategory(ResolvedCategory $resolved, string $locale, array $chrome): Response
+    private function renderCategory(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
     {
         $categorySlug = trim($resolved->translation->slug, '/');
 
@@ -185,6 +196,20 @@ final class StorefrontController
             ];
         }
 
+        // Each paginated page self-canonicals (with ?page=N) — rel=prev/next signals the series;
+        // canonicaling page-N→page-1 would drop the deeper pages from the index.
+        $canonical = url($this->paths->publicUrl($path, $locale));
+        if ($paginator->currentPage() > 1) {
+            $canonical .= '?page='.$paginator->currentPage();
+        }
+        $extra = $chrome;
+        $extra['canonical'] = $canonical;
+        $extra['ogType'] = 'website';
+        $extra['breadcrumb'] = [
+            $this->homeCrumb($locale),
+            ['name' => $resolved->translation->name, 'url' => $canonical],
+        ];
+
         $html = $this->renderer->renderCategory(
             $resolved->taxonomy->list_template,
             $resolved->translation->name,
@@ -194,7 +219,7 @@ final class StorefrontController
                 'nextUrl' => $paginator->nextPageUrl(),
             ],
             ['title' => $resolved->translation->name],
-            $chrome,
+            $extra,
         );
 
         return response($html);
@@ -264,5 +289,15 @@ final class StorefrontController
         }
 
         return $paths;
+    }
+
+    /**
+     * The Home crumb shared by every breadcrumb trail — an absolute, locale-correct URL.
+     *
+     * @return array{name: string, url: string}
+     */
+    private function homeCrumb(string $locale): array
+    {
+        return ['name' => 'Trang chủ', 'url' => url($this->paths->publicUrl('/', $locale))];
     }
 }
