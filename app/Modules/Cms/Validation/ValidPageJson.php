@@ -12,11 +12,11 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * BOTH render and validation with no second list to maintain (the DRY invariant).
  *
  * Validates a bare list of blocks ([{type, props}, …]): each type must be registered
- * (an unknown "block lạ" is rejected), props must be an object, URL props must use a
- * safe scheme (no javascript:/data:/vbscript: — stored-XSS guard, since props are
- * author-controlled and rendered into href/src), and the body is capped in count +
- * size (storefront DoS / CWV guard). Per-prop schemas (full JSON-Schema) remain a
- * deliberate later step.
+ * (an unknown "block lạ" is rejected), props must be an object, and every prop the block's
+ * §E7 schema types as `url` — at any depth, through list `of` — must use a safe scheme
+ * (no javascript:/data:/vbscript: — stored-XSS guard, since url props render into href/src).
+ * URL-safety is SCHEMA-DRIVEN (by declared type, not prop name), so it cannot drift from the
+ * sinks. The body is also capped in count + size (storefront DoS / CWV guard).
  */
 final class ValidPageJson implements ValidationRule
 {
@@ -75,20 +75,67 @@ final class ValidPageJson implements ValidationRule
                 return;
             }
 
-            foreach ($block['props'] as $key => $propValue) {
-                if (is_string($key) && $this->isUrlProp($key) && is_string($propValue) && ! $this->isSafeUrl($propValue)) {
-                    $fail("Liên kết trong khối \"{$type}\" không hợp lệ.");
+            if (! $this->urlPropsSafe($block['props'], $this->registry->get($type)->schema())) {
+                $fail("Liên kết trong khối \"{$type}\" không hợp lệ.");
 
-                    return;
-                }
+                return;
             }
         }
     }
 
-    /** A prop whose value lands in an href/src sink (url, href, src, *_url). */
-    private function isUrlProp(string $key): bool
+    /**
+     * Schema-driven URL safety: walk the block's declared §E7 schema and check every prop
+     * the schema types as `url` (at any depth, through list `of`) with isSafeUrl — so safety
+     * follows the declared TYPE, not the prop name. Props absent from the schema are never
+     * rendered into a sink (the section-schema sink test enforces that), so they need no check.
+     */
+    private function urlPropsSafe(mixed $data, mixed $schema): bool
     {
-        return $key === 'url' || $key === 'href' || $key === 'src' || str_ends_with($key, '_url');
+        if (! is_array($schema)) {
+            return true;
+        }
+
+        foreach ($schema as $prop => $spec) {
+            $value = is_array($data) ? ($data[$prop] ?? null) : null;
+
+            if (! $this->valueSafeForSpec($value, $spec)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** Check one value against its schema spec — `url` leaves are scheme-checked; lists recurse. */
+    private function valueSafeForSpec(mixed $value, mixed $spec): bool
+    {
+        if (! is_array($spec)) {
+            return true;
+        }
+
+        if (($spec['type'] ?? null) === 'url') {
+            // A url prop, if present, must be a safe string; a non-string would also crash the
+            // e()'d href render (TypeError), so reject it here too.
+            return $value === null || (is_string($value) && $this->isSafeUrl($value));
+        }
+
+        if (($spec['type'] ?? null) === 'list') {
+            $of = $spec['of'] ?? null;
+            if (! is_array($of) || ! is_array($value)) {
+                return true;
+            }
+
+            // Scalar list: `of` IS the item spec. Object list: `of` is a field-map → recurse.
+            $scalarOf = isset($of['type']) && is_string($of['type']);
+            foreach ($value as $item) {
+                if (! ($scalarOf ? $this->valueSafeForSpec($item, $of) : $this->urlPropsSafe($item, $of))) {
+                    return false;
+                }
+            }
+        }
+
+        // text / textarea / int → Blade-escaped, never a url sink → safe.
+        return true;
     }
 
     /** Reject dangerous URL schemes; whitespace/control chars are stripped to defeat obfuscation. */

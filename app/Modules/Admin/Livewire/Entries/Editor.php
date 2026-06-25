@@ -34,15 +34,6 @@ final class Editor extends Component
 {
     use AuthorizesRequests;
 
-    /** Sensible starting props per known type, so a freshly added block is editable. */
-    private const DEFAULT_PROPS = [
-        'hero' => ['heading' => '', 'subheading' => ''],
-        'richtext' => ['body' => ''],
-        'features' => ['heading' => ''],
-        'cta' => ['heading' => '', 'button_label' => '', 'button_url' => ''],
-        'latest_posts' => ['heading' => '', 'limit' => 3],
-    ];
-
     public ?string $ulid = null;
 
     /** Entry type (page|post); server-resolved, never client-set. */
@@ -112,7 +103,7 @@ final class Editor extends Component
         }
 
         $this->resetErrorBag('blocks');
-        $this->blocks[] = ['type' => $type, 'props' => self::DEFAULT_PROPS[$type] ?? []];
+        $this->blocks[] = ['type' => $type, 'props' => $this->defaultProps($type)];
     }
 
     public function removeBlock(int $index): void
@@ -148,6 +139,43 @@ final class Editor extends Component
         $this->blocks = $blocks;
     }
 
+    /** Append a blank item (shaped by the list's `of` schema) to a list-typed prop. */
+    public function addItem(int $index, string $key): void
+    {
+        $list = $this->resolveList($index, $key);
+        if ($list === null) {
+            return;
+        }
+
+        // Clear a stale save-time error so it doesn't linger over valid edits (mirrors addBlock).
+        $this->resetErrorBag('blocks');
+        $items = $list['items'];
+        $items[] = $list['blank'];
+        $this->putItems($index, $key, $items);
+    }
+
+    public function removeItem(int $index, string $key, int $itemIndex): void
+    {
+        $list = $this->resolveList($index, $key);
+        if ($list === null || ! array_key_exists($itemIndex, $list['items'])) {
+            return;
+        }
+
+        $items = $list['items'];
+        array_splice($items, $itemIndex, 1);
+        $this->putItems($index, $key, $items);
+    }
+
+    public function moveItemUp(int $index, string $key, int $itemIndex): void
+    {
+        $this->swapItems($index, $key, $itemIndex, $itemIndex - 1);
+    }
+
+    public function moveItemDown(int $index, string $key, int $itemIndex): void
+    {
+        $this->swapItems($index, $key, $itemIndex, $itemIndex + 1);
+    }
+
     public function save(): void
     {
         $this->persist();
@@ -169,6 +197,7 @@ final class Editor extends Component
     {
         return view('admin::livewire.entries.editor', [
             'availableTypes' => app(ComponentRegistry::class)->types(),
+            'schemas' => $this->schemas(),
             'categories' => $this->type === 'post' ? $this->availableCategories() : [],
         ]);
     }
@@ -284,6 +313,133 @@ final class Editor extends Component
         abort_unless($user instanceof User, 403);
 
         return $user;
+    }
+
+    /**
+     * Resolve a list-typed prop: its current items (re-indexed) + a blank item template
+     * shaped by the schema `of`. Returns null when #index.$key isn't an authorable list.
+     *
+     * @return array{items: array<int, mixed>, blank: mixed}|null
+     */
+    private function resolveList(int $index, string $key): ?array
+    {
+        if (! array_key_exists($index, $this->blocks)) {
+            return null;
+        }
+
+        $type = $this->blocks[$index]['type'] ?? null;
+        $registry = app(ComponentRegistry::class);
+        if (! is_string($type) || ! $registry->has($type)) {
+            return null;
+        }
+
+        $spec = $registry->get($type)->schema()[$key] ?? null;
+        if (! is_array($spec) || ($spec['type'] ?? null) !== 'list') {
+            return null;
+        }
+
+        $props = $this->blocks[$index]['props'] ?? null;
+        $current = is_array($props) ? ($props[$key] ?? null) : null;
+
+        return [
+            'items' => is_array($current) ? array_values($current) : [],
+            'blank' => $this->blankFromOf($spec['of'] ?? null),
+        ];
+    }
+
+    /** A blank item value for a list's `of` schema (a scalar default, or a field map). */
+    private function blankFromOf(mixed $of): mixed
+    {
+        if (! is_array($of)) {
+            return '';
+        }
+
+        return isset($of['type']) && is_string($of['type'])
+            ? $this->defaultForSpec($of)
+            : $this->defaultsFromSchema($of);
+    }
+
+    /**
+     * Write items back into a block's list prop (copy-narrow-reassign for static safety).
+     *
+     * @param  array<int, mixed>  $items
+     */
+    private function putItems(int $index, string $key, array $items): void
+    {
+        $blocks = $this->blocks;
+        $block = $blocks[$index];
+        $props = is_array($block['props'] ?? null) ? $block['props'] : [];
+        $props[$key] = $items;
+        $block['props'] = $props;
+        $blocks[$index] = $block;
+        $this->blocks = $blocks;
+    }
+
+    private function swapItems(int $index, string $key, int $a, int $b): void
+    {
+        $list = $this->resolveList($index, $key);
+        if ($list === null || ! array_key_exists($a, $list['items']) || ! array_key_exists($b, $list['items'])) {
+            return;
+        }
+
+        $items = $list['items'];
+        [$items[$a], $items[$b]] = [$items[$b], $items[$a]];
+        $this->putItems($index, $key, $items);
+    }
+
+    /**
+     * Starter props for a freshly added block, derived from its §E7 schema.
+     *
+     * @return array<string, mixed>
+     */
+    private function defaultProps(string $type): array
+    {
+        $registry = app(ComponentRegistry::class);
+
+        return $registry->has($type) ? $this->defaultsFromSchema($registry->get($type)->schema()) : [];
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $schema
+     * @return array<string, mixed>
+     */
+    private function defaultsFromSchema(array $schema): array
+    {
+        $props = [];
+        foreach ($schema as $prop => $spec) {
+            $props[(string) $prop] = $this->defaultForSpec($spec);
+        }
+
+        return $props;
+    }
+
+    /** A prop's starter value from its spec (array with a `type`); safe default otherwise. */
+    private function defaultForSpec(mixed $spec): mixed
+    {
+        $type = is_array($spec) ? ($spec['type'] ?? 'text') : 'text';
+        $default = is_array($spec) ? ($spec['default'] ?? null) : null;
+
+        return match ($type) {
+            'list' => [],
+            'int' => $default ?? 0,
+            default => $default ?? '',
+        };
+    }
+
+    /**
+     * Every registered type's §E7 schema, for the editor view to render inputs/repeaters.
+     *
+     * @return array<string, array<string, array<string, mixed>>>
+     */
+    private function schemas(): array
+    {
+        $registry = app(ComponentRegistry::class);
+        $schemas = [];
+        foreach ($registry->types() as $type) {
+            $schemas[$type] = $registry->get($type)->schema();
+        }
+
+        return $schemas;
     }
 
     /**

@@ -10,11 +10,25 @@ use App\Modules\Shared\Contracts\Component;
  */
 final class SectionComponent implements Component
 {
-    public function __construct(private readonly string $view) {}
+    /**
+     * @param  array<string, array<string, mixed>>  $schema  §E7 typed prop schema
+     */
+    public function __construct(
+        private readonly string $view,
+        private readonly array $schema = [],
+    ) {}
 
     public function view(): string
     {
         return $this->view;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function schema(): array
+    {
+        return $this->schema;
     }
 
     /**
