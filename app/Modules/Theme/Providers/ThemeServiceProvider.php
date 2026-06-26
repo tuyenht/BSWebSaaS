@@ -74,6 +74,8 @@ final class ThemeServiceProvider extends ServiceProvider
 
     private function activeThemePath(): string
     {
-        return $this->app->basePath('app/Modules/Theme/themes/default');
+        // Bundled theme assets live at the repo-root `themes/<name>/` (presentation, not
+        // PSR-4 code); the Theme module here is the engine that renders them via `theme::`.
+        return $this->app->basePath('themes/default');
     }
 }
