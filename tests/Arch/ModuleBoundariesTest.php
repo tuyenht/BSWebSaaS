@@ -12,24 +12,35 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
  * class lands. Add a module's namespace to the lists below as it is built.
  */
 
-$featureModules = [
-    'App\\Modules\\Cms',
-    'App\\Modules\\Commerce',
-    'App\\Modules\\Media',
-    'App\\Modules\\Rbac',
-    'App\\Modules\\Taxonomy',
-    'App\\Modules\\Forms',
-];
+// Auto-discover module namespaces from the filesystem so these boundary rules never go stale
+// as modules land (the previous hand-kept list both named unbuilt modules and silently omitted
+// built ones). Tenancy is the base; Shared is the interface seam.
+// Resolved relative to this file (not app_path()) because arch rules are collected before the
+// application container is booted.
+$modulesPath = __DIR__.'/../../app/Modules';
+$modules = collect(scandir($modulesPath) ?: [])
+    ->filter(fn (string $entry): bool => $entry !== '.' && $entry !== '..' && is_dir("{$modulesPath}/{$entry}"))
+    ->values();
 
-// Tenancy is foundational — it may not reach into any feature module.
+$namespacesExcept = fn (array $keep): array => $modules
+    ->reject(fn (string $module): bool => in_array($module, $keep, true))
+    ->map(fn (string $module): string => "App\\Modules\\{$module}")
+    ->all();
+
+// Tenancy is foundational (Gate #1) — it may depend on NO other module (only the Shared seam).
 arch('Tenancy module depends on no feature module')
     ->expect('App\\Modules\\Tenancy')
-    ->not->toUse($featureModules);
+    ->not->toUse($namespacesExcept(['Tenancy', 'Shared']));
 
-// Feature modules must not reach into another feature module's internals;
-// cross-module coupling at swap/external points goes through Shared\Contracts.
-arch('feature modules do not depend on Tenancy internals (only its public surface)')
-    ->expect($featureModules)
+// Direct readers of Tenancy\Models are the documented exceptions (app/Modules/README.md): the
+// Admin shell + Provisioning orchestrator read its model registry (e.g. ContentSection), and
+// Identity owns the core User<->Tenant relation. Theme is listed PROVISIONALLY — it currently
+// reads SiteSetting for per-site theme tokens and is under review to move behind a Shared
+// contract; until that is decided it is named here so the rule mirrors reality. Every other
+// module must reach tenancy only through its public surface (BelongsToSite trait, Tenancy /
+// SiteLocale context).
+arch('feature modules reach tenancy through its public surface, not its models')
+    ->expect($namespacesExcept(['Tenancy', 'Shared', 'Admin', 'Provisioning', 'Identity', 'Theme']))
     ->not->toUse('App\\Modules\\Tenancy\\Models');
 
 // Shared contracts are the only sanctioned cross-module interface seam.
