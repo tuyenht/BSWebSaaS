@@ -2,7 +2,7 @@
 
 > File này được Claude Code **tự động nạp** vào context. Đây là **quy ước + guardrail BẮT BUỘC**.
 > **Thiết kế đầy đủ ở `docs/design.md` (v2.10)** — đọc mục liên quan khi cần (KHÔNG nạp toàn bộ, file dài).
-> Mọi quyết định kiến trúc theo **16 ADR** trong `docs/design.md` (Phụ lục A).
+> Mọi quyết định kiến trúc theo **17 ADR** trong `docs/design.md` (Phụ lục A).
 
 ---
 
@@ -30,7 +30,7 @@
 | Admin UI | Livewire 4 + React island (Inertia v2) chỉ cho builder | |
 | Storefront | **Blade SSR + Alpine islands** (JS ≤ 30KB) | |
 | Build FE | Vite 7 + Tailwind 4 | công cụ build, KHÔNG thay Laravel |
-| Storage | Cloudflare **R2** + imgproxy | |
+| Storage | Cloudflare **R2** (private) + **Worker/cf.image** serving (imgproxy = L4 cold) | ADR-17 |
 | AI | Laravel AI SDK → Anthropic (sonnet-4-6 / haiku-4-5) | |
 | Test/QA | Pest 4 + Infection + Larastan (max) + Rector + Lighthouse CI + axe | |
 
@@ -49,7 +49,7 @@
    - Kiểm cả gotcha **PgBouncer transaction-mode + prepared statements** (D14).
    - **App chạy bằng role `app_user` (NOSUPERUSER/NOBYPASSRLS)** — superuser/owner bỏ qua RLS kể cả FORCE → "an toàn giả". Migration chạy role đặc quyền (`pgsql_admin`). Policy **fail-closed** + `FORCE ROW LEVEL SECURITY`.
 3. **KHÔNG lộ dữ liệu chéo tenant.** Search qua **tenant tokens** (key ký nhúng site_id), không chỉ filter ở app.
-4. **KHÔNG lộ `bigint id` thô** ra URL/API → public qua **slug** (content) / **code** (order) / **ulid** (media).
+4. **KHÔNG lộ `bigint id` thô** ra URL/API → public qua **slug** (content) / **code** (order) / **content-hash key** (media, ADR-17: `{slug}-{SHA-256[:12]}`, chống enumerate).
 5. **Upload an toàn:** whitelist MIME + blocklist đuôi nguy hiểm (`.php .phar .phtml`…) + **sniff magic-bytes** (không tin đuôi/header) + **sanitize SVG** + lưu R2 ngoài web-root.
 6. **Hash mật khẩu = Argon2id** + global pepper (KHÔNG derive pepper từ email). Audit qua Audit service (best-effort).
 7. **Defense-in-depth:** Entitlement (site được dùng module gì) → RBAC (user làm được gì) → RLS (dữ liệu thấy được gì).
