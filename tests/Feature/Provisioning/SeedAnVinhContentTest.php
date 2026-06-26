@@ -52,14 +52,38 @@ it('seeds the du-an category, sectors, projects, route and nav', function () {
         // 5 sector children under du-an.
         expect(Taxonomy::query()->where('vocabulary', 'sector')->where('parent_id', $duAn->id)->count())->toBe(5);
 
-        // 9 published project posts, each routed under /du-an/{slug}.
-        expect(Entry::query()->where('type', 'post')->where('status', 'published')->count())->toBe(9);
+        // 9 published project posts under du-an, each routed under /du-an/{slug}.
+        expect($duAn->entries()->where('entries.type', 'post')->count())->toBe(9);
         expect(SiteRoute::query()->where('path', '/du-an')->exists())->toBeTrue();
         expect(SiteRoute::query()->where('path', 'like', '/du-an/%')->count())->toBe(9);
 
         // Admin nav section + storefront menu item.
         expect(ContentSection::query()->where('key', 'projects')->exists())->toBeTrue();
         expect(MenuItem::query()->where('routable_type', 'taxonomy')->where('routable_id', $duAn->id)->exists())->toBeTrue();
+    });
+});
+
+it('seeds dich-vu services as posts with detail routes and glyph featured images', function () {
+    $site = seedAnVinhSite();
+
+    app(Tenancy::class)->enter($site->id, function () {
+        app(SeedAnVinhContent::class)->handle();
+
+        $dichVuTranslation = TaxonomyTranslation::query()->where('slug', 'dich-vu')->first();
+        expect($dichVuTranslation)->not->toBeNull();
+        $dichVu = Taxonomy::query()->findOrFail($dichVuTranslation->taxonomy_id);
+        expect($dichVu->vocabulary)->toBe('post_cat');
+
+        // 5 service-posts, each routed at /dich-vu/{slug} (its own detail page).
+        expect(SiteRoute::query()->where('path', 'like', '/dich-vu/%')->count())->toBe(5);
+
+        // A service carries a glyph key as its featured image (rendered as an inline SVG icon).
+        $service = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'cho-thue-xe-nang'))->first();
+        expect($service)->not->toBeNull();
+        expect($service->meta['image_url'])->toBe('truck');
+
+        expect(ContentSection::query()->where('key', 'services')->exists())->toBeTrue();
+        expect(MenuItem::query()->where('routable_type', 'taxonomy')->where('routable_id', $dichVu->id)->exists())->toBeTrue();
     });
 });
 
@@ -70,9 +94,10 @@ it('is idempotent (re-run does not duplicate)', function () {
         app(SeedAnVinhContent::class)->handle();
         app(SeedAnVinhContent::class)->handle();   // second run
 
-        expect(Entry::query()->where('type', 'post')->count())->toBe(9);
+        expect(Entry::query()->where('type', 'post')->count())->toBe(14); // 9 projects + 5 services
         expect(Taxonomy::query()->where('vocabulary', 'sector')->count())->toBe(5);
-        expect(Taxonomy::query()->where('vocabulary', 'post_cat')->count())->toBe(2); // tin-tuc + du-an
+        expect(Taxonomy::query()->where('vocabulary', 'post_cat')->count())->toBe(3); // tin-tuc + du-an + dich-vu
         expect(SiteRoute::query()->where('path', 'like', '/du-an/%')->count())->toBe(9);
+        expect(SiteRoute::query()->where('path', 'like', '/dich-vu/%')->count())->toBe(5);
     });
 });

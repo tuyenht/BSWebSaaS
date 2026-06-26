@@ -52,6 +52,17 @@ final class SeedAnVinhContent
         ['title' => 'Điện – Đạm Brunei', 'slug' => 'dien-dam-brunei', 'sector' => 'phan-bon'],
     ];
 
+    private const SERVICES_SLUG = 'dich-vu';
+
+    /** @var list<array{title: string, slug: string, image: string, outcome: string}> An Vinh services (§6); image = a curated glyph key */
+    private const SERVICES = [
+        ['title' => 'Bảo ôn – cách nhiệt vật tư', 'slug' => 'bao-on-cach-nhiet-vat-tu', 'image' => 'shield', 'outcome' => 'Vật tư bảo ôn, cách nhiệt công nghiệp.'],
+        ['title' => 'Cách nhiệt & giàn giáo', 'slug' => 'cach-nhiet-gian-giao', 'image' => 'box', 'outcome' => 'Thi công cách nhiệt kèm lắp dựng giàn giáo.'],
+        ['title' => 'Nhân lực O&M nhà máy', 'slug' => 'nhan-luc-om-nha-may', 'image' => 'users', 'outcome' => 'Cung ứng nhân lực vận hành & bảo trì nhà máy.'],
+        ['title' => 'Thiết bị & vật tư thay thế', 'slug' => 'thiet-bi-vat-tu-thay-the', 'image' => 'cog', 'outcome' => 'Cung cấp thiết bị, vật tư thay thế công nghiệp.'],
+        ['title' => 'Cho thuê xe nâng', 'slug' => 'cho-thue-xe-nang', 'image' => 'truck', 'outcome' => 'Dịch vụ cho thuê xe nâng các tải trọng.'],
+    ];
+
     public function __construct(private readonly RouteSync $routes) {}
 
     public function handle(): void
@@ -83,10 +94,42 @@ final class SeedAnVinhContent
 
         foreach (self::PROJECTS as $project) {
             // Every project's sector is one of self::SECTORS (enforced by Larastan), so the lookup always hits.
-            $this->firstOrCreateProject($locale, $project, $category, $sectors[$project['sector']]);
+            $this->firstOrCreatePost($locale, $project['title'], $project['slug'], self::OUTCOME, '', $category, $sectors[$project['sector']]);
         }
 
-        $this->addMenuItem($locale, $category);
+        $this->addMenuItem($locale, $category, 'Dự án', 2);
+
+        $this->seedServices($locale);
+    }
+
+    /**
+     * Services are POSTS (title / featured image / description) with a detail page — the homepage
+     * shows them data-bound via entry_grid(taxonomy_slug='dich-vu'), each card linking to
+     * /dich-vu/{slug}. Featured image here is a curated glyph key (rendered as an inline SVG icon).
+     */
+    private function seedServices(string $locale): void
+    {
+        $category = $this->firstOrCreateTaxonomy($locale, self::SERVICES_SLUG, 'Dịch vụ', 'post_cat');
+
+        ContentSection::query()->firstOrCreate(
+            ['key' => 'services'],
+            ['label' => 'Dịch vụ', 'entry_type' => 'post', 'taxonomy_id' => $category->id, 'permission_prefix' => 'entries', 'sort_order' => 1],
+        );
+
+        $translation = $category->translationFor($locale);
+        if ($translation !== null) {
+            try {
+                $this->routes->syncTaxonomy($category, $locale, $translation->slug);
+            } catch (RouteConflictException) {
+                // A page already owns this path; leave it.
+            }
+        }
+
+        foreach (self::SERVICES as $service) {
+            $this->firstOrCreatePost($locale, $service['title'], $service['slug'], $service['outcome'], $service['image'], $category, null);
+        }
+
+        $this->addMenuItem($locale, $category, 'Dịch vụ', 1);
     }
 
     /** Looked up by localized slug (taxonomies have no natural unique key). */
@@ -104,12 +147,12 @@ final class SeedAnVinhContent
     }
 
     /**
-     * @param  array{title: string, slug: string, sector: string}  $project
+     * Create a published post (project / service…) under a category, optionally with a sector, and
+     * route it at /{category}/{slug}. The featured image (a glyph key OR a URL) → meta['image_url'].
      */
-    private function firstOrCreateProject(string $locale, array $project, Taxonomy $category, Taxonomy $sector): void
+    private function firstOrCreatePost(string $locale, string $title, string $slug, string $excerpt, string $image, Taxonomy $category, ?Taxonomy $sector): void
     {
-        $exists = EntryTranslation::query()->where('locale', $locale)->where('slug', $project['slug'])->exists();
-        if ($exists) {
+        if (EntryTranslation::query()->where('locale', $locale)->where('slug', $slug)->exists()) {
             return;
         }
 
@@ -117,28 +160,32 @@ final class SeedAnVinhContent
             'type' => 'post',
             'status' => 'published',
             'published_at' => now(),
-            'meta' => ['image_url' => ''],   // pre-optimized R2 image lands at T6 (Option C)
+            'meta' => ['image_url' => $image],   // featured image: a glyph key OR a URL (Option C)
         ]);
         $entry->translations()->create([
             'locale' => $locale,
-            'title' => $project['title'],
-            'slug' => $project['slug'],
+            'title' => $title,
+            'slug' => $slug,
             'status' => 'published',
-            'excerpt' => self::OUTCOME,
-            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => [self::OUTCOME]]]]],
+            'excerpt' => $excerpt,
+            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => [$excerpt]]]]],
         ]);
 
-        // du-an is the PRIMARY category (pos 0) → routes at /du-an/{slug}; the sector is secondary.
-        $entry->assignCategories([$category->id, $sector->id]);
+        // The category is PRIMARY (pos 0) → routes at /{category}/{slug}; the sector (if any) is secondary.
+        $ids = [$category->id];
+        if ($sector !== null) {
+            $ids[] = $sector->id;
+        }
+        $entry->assignCategories($ids);
 
         try {
-            $this->routes->sync($entry, $locale, $project['slug']);
+            $this->routes->sync($entry, $locale, $slug);
         } catch (RouteConflictException) {
             // A page already owns this path; leave it.
         }
     }
 
-    private function addMenuItem(string $locale, Taxonomy $category): void
+    private function addMenuItem(string $locale, Taxonomy $category, string $label, int $position): void
     {
         $menu = Menu::query()->where('handle', 'main-'.$locale)->first();
         if ($menu === null) {
@@ -147,8 +194,8 @@ final class SeedAnVinhContent
 
         $item = MenuItem::query()->firstOrCreate(
             ['menu_id' => $menu->id, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $category->id],
-            ['position' => 2],
+            ['position' => $position],
         );
-        $item->translations()->firstOrCreate(['locale' => $locale], ['label' => 'Dự án']);
+        $item->translations()->firstOrCreate(['locale' => $locale], ['label' => $label]);
     }
 }
