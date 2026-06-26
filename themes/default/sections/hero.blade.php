@@ -1,5 +1,7 @@
 <section class="hero">
-    <h1>{{ $props['heading'] ?? '' }}</h1>
+    @if (! empty($props['heading']))
+        <h1>{{ $props['heading'] }}</h1>
+    @endif
     @if (! empty($props['subheading']))
         <p class="hero__subheading">{{ $props['subheading'] }}</p>
     @endif

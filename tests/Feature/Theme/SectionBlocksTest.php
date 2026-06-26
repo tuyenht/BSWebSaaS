@@ -118,6 +118,15 @@ it('renders the hero unchanged when no second CTA is set (render-neutral)', func
     expect($html)->toContain('href="/lien-he">Liên hệ')->not->toContain('hero__cta--secondary');
 });
 
+it('guards the hero h1 against an empty heading (no empty <h1>)', function () {
+    // An empty <h1></h1> is an axe violation; emit the h1 only when there is a heading.
+    $withHeading = View::make('theme::sections.hero', ['props' => ['heading' => 'An Vinh']])->render();
+    $noHeading = View::make('theme::sections.hero', ['props' => ['cta_label' => 'X', 'cta_url' => '/x']])->render();
+
+    expect($withHeading)->toContain('<h1>An Vinh</h1>');
+    expect($noHeading)->not->toContain('<h1');
+});
+
 it('does not link a partner logo that has a url but no name (a11y: no name-less link)', function () {
     $props = ['logos' => [['image_url' => 'https://cdn.example/p.png', 'url' => 'https://p.test']]];
 

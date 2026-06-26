@@ -132,10 +132,14 @@ final class ValidPageJson implements ValidationRule
                     return false;
                 }
             }
+
+            return true;
         }
 
-        // text / textarea / int → Blade-escaped, never a url sink → safe.
-        return true;
+        // text / textarea / int → rendered through e(); a non-scalar (array/object) would crash
+        // htmlspecialchars() at render (TypeError → 500s the published page), so the boundary that
+        // distrusts the wire payload rejects it here too. null = an absent prop, which is fine.
+        return $value === null || is_scalar($value);
     }
 
     /** Reject dangerous URL schemes; whitespace/control chars are stripped to defeat obfuscation. */
