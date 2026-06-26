@@ -28,6 +28,8 @@ final class ThemeServiceProvider extends ServiceProvider
             'subheading' => ['type' => 'text'],
             'cta_label' => ['type' => 'text'],
             'cta_url' => ['type' => 'url'],
+            'cta2_label' => ['type' => 'text'],
+            'cta2_url' => ['type' => 'url'],
         ],
         'richtext' => [
             'heading' => ['type' => 'text'],
@@ -46,6 +48,14 @@ final class ThemeServiceProvider extends ServiceProvider
             'image_url' => ['type' => 'url'],
             'cta_label' => ['type' => 'text'],
             'cta_url' => ['type' => 'url'],
+        ],
+        'partners' => [
+            'heading' => ['type' => 'text'],
+            'logos' => ['type' => 'list', 'of' => [
+                'image_url' => ['type' => 'url'],
+                'name' => ['type' => 'text'],
+                'url' => ['type' => 'url'],
+            ]],
         ],
         'cta' => [
             'heading' => ['type' => 'text'],

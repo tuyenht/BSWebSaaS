@@ -180,3 +180,11 @@ it('every author href/src sink in a section partial is a schema-declared url pro
         }
     }
 });
+
+it('rejects a dangerous URL scheme inside a partners logo item (list recursion)', function () {
+    // §2: ValidPageJson recurses into the logos[] list, so an item's url/image_url is sniffed
+    // for script schemes — the stored-XSS guard reaches array-item URLs, not just scalar props.
+    expect(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['url' => 'javascript:alert(1)']]]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 'javascript:alert(1)']]]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 'https://cdn.test/p.png', 'url' => '/ok']]]]])->passes())->toBeTrue();
+});

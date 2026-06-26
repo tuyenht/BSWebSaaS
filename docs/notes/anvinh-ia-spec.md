@@ -53,7 +53,7 @@ Current 5: `hero, cta, richtext, features, latest_posts`.
 
 **Add:**
 - `services` — array prop `items[]: {icon,title,text,url}` (SectionComponent + partial).
-- `partners` — array prop `logos[]: {image,name,url}` (SectionComponent + partial).
+- `partners` — array prop `logos[]: {image_url,name,url}` (SectionComponent + partial).
 - `about` — `heading, paragraphs[], image_url, cta_*` (or compose richtext+image).
 - `entry_grid` — **data-bound** (like `latest_posts`, NOT extending it — F1): props `{heading,
   taxonomy_slug, limit}`; queries published posts in a taxonomy under RLS, eager-loads `routes`

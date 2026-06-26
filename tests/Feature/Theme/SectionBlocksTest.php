@@ -60,3 +60,60 @@ it('renders no icon for an unknown glyph key (no injection surface)', function (
 
     expect($html)->not->toContain('<svg')->not->toContain('<img');
 });
+
+it('registers the partners block with url-typed logo list fields', function () {
+    $registry = app(ComponentRegistry::class);
+
+    expect($registry->has('partners'))->toBeTrue();
+    $logos = $registry->get('partners')->schema()['logos'];
+    expect($logos['type'])->toBe('list');
+    expect($logos['of']['image_url']['type'])->toBe('url');
+    expect($logos['of']['url']['type'])->toBe('url');
+});
+
+it('renders the partners block as a logo grid, linking a logo only when it has a url', function () {
+    $props = ['heading' => 'Đối tác', 'logos' => [
+        ['image_url' => 'https://cdn.example/p1.png', 'name' => 'Đối tác Một', 'url' => 'https://p1.test'],
+        ['image_url' => 'https://cdn.example/p2.png', 'name' => 'Đối tác Hai'],   // no url → image only
+    ]];
+
+    $html = View::make('theme::sections.partners', ['props' => $props])->render();
+
+    expect($html)
+        ->toContain('Đối tác')
+        ->toContain('src="https://cdn.example/p1.png"')->toContain('alt="Đối tác Một"')
+        ->toContain('href="https://p1.test"')
+        ->toContain('src="https://cdn.example/p2.png"')->toContain('alt="Đối tác Hai"');
+    // exactly one anchor: the linked logo. The url-less logo renders bare (no dead href).
+    expect(substr_count($html, '<a '))->toBe(1);
+});
+
+it('skips a partner logo that has no image_url (no empty <img>)', function () {
+    $props = ['logos' => [['name' => 'Không ảnh', 'url' => '/x']]];
+
+    $html = View::make('theme::sections.partners', ['props' => $props])->render();
+
+    expect($html)->not->toContain('<img')->not->toContain('src=""');
+});
+
+it('renders a hero second CTA when cta2 props are set', function () {
+    $props = [
+        'heading' => 'An Vinh',
+        'cta_label' => 'Yêu cầu báo giá', 'cta_url' => '/lien-he',
+        'cta2_label' => 'Xem dịch vụ', 'cta2_url' => '/dich-vu',
+    ];
+
+    $html = View::make('theme::sections.hero', ['props' => $props])->render();
+
+    expect($html)
+        ->toContain('href="/lien-he">Yêu cầu báo giá')
+        ->toContain('href="/dich-vu">Xem dịch vụ');
+});
+
+it('renders the hero unchanged when no second CTA is set (render-neutral)', function () {
+    $props = ['heading' => 'An Vinh', 'cta_label' => 'Liên hệ', 'cta_url' => '/lien-he'];
+
+    $html = View::make('theme::sections.hero', ['props' => $props])->render();
+
+    expect($html)->toContain('href="/lien-he">Liên hệ')->not->toContain('hero__cta--secondary');
+});
