@@ -7,9 +7,10 @@
             @php($item = (array) $item)
             @continue(empty($item['image_url']))
             {{-- Logo = pre-optimized image (Option C R2); width/height reserve space (no CLS).
-                 Linked only when the partner has a url (no dead href); item skipped if it has no image. --}}
+                 Item skipped if it has no image. Linked only when it has BOTH a url and a name —
+                 the name is the link's accessible text (alt), so a linked logo is never name-less. --}}
             <li class="partners__item">
-                @if (! empty($item['url']))
+                @if (! empty($item['url']) && ! empty($item['name']))
                     <a class="partners__link" href="{{ $item['url'] }}">
                         <img class="partners__logo" src="{{ $item['image_url'] }}" alt="{{ $item['name'] ?? '' }}" width="160" height="80" loading="lazy">
                     </a>
