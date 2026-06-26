@@ -123,7 +123,7 @@
 | Storefront UI | **Blade SSR + Alpine.js islands** (JS ≤30KB) | CWV, SEO, nhẹ *(ADR-02)* |
 | Admin UI | **Livewire 4/Volt** + **React island** (chỉ builder canvas, qua Inertia v2) | Năng suất + builder phong phú *(ADR-02)* |
 | Build | **Vite 7 + Tailwind 4** | — |
-| Media | **Cloudflare R2** + **imgproxy** + **spatie/medialibrary** | Zero egress, transform on-demand |
+| Media | **Cloudflare R2** (private) + **Worker/cf.image** serving + custom `App\Modules\Media` (imgproxy = L4 cold) | ADR-17 (supersede §12) |
 | Search | **Meilisearch + Scout** | Nhanh, gõ tiếng Việt tốt |
 | AI | **Laravel AI SDK → Anthropic** (claude-sonnet-4-6 / claude-haiku-4-5) | Provider-agnostic qua interface riêng |
 | Editor builder | **Puck** (MIT React editor — chỉ admin) | Cần spike parity preview iframe |
@@ -277,6 +277,8 @@ payments(id, site_id, order_id, method, amount, status, reference, paid_at, raw_
 - **Tồn kho & toàn vẹn commerce (D15):** `CHECK(stock >= 0)` + **decrement nguyên tử** chống oversell (`UPDATE … SET stock=stock-:q WHERE stock >= :q` hoặc lock dòng trong transaction) — KHÔNG đọc-rồi-ghi. Payment/webhook **idempotent** (SePay — đã có). Unique: `products` UNIQUE(site_id, sku); `product_variants` UNIQUE(product_id, sku); `taxonomy_translations.slug` UNIQUE per (site, vocabulary, locale); `coupon_redemptions` UNIQUE(coupon_id, order_id).
 
 ## 12. Media + Image CDN *(Mục 41)*
+
+> **⚠ SUPERSEDED bởi ADR-17 (toàn mục).** Kiến trúc dưới đây — imgproxy-primary · key `sites/{site_id}/media/{ulid}` · serving-qua-token · spatie/medialibrary · `images.bsweb.vn` — **đã thay** bởi **ADR-17**: R2 private + **Cloudflare Worker/cf.image** · key content-hash `{tenant}/{collection}/{slug}-{hash}` · media công khai · lib custom `App\Modules\Media` · `files.baoson.net`; imgproxy → L4 cold. **Mọi ref imgproxy-primary / images.bsweb.vn / spatie-medialibrary / ulid-media-key ở các mục khác (§3 stack, §4, §18, §32) cũng theo ADR-17.** Giữ mục này làm bối cảnh lịch sử. Epic: `docs/notes/media-system-epic.md`.
 
 - **Lưu trữ:** **Cloudflare R2** bản gốc, key prefix `sites/{site_id}/media/{ulid}.{ext}` (cô lập vật lý); tài nguyên dùng chung ở `shared/library/{ulid}`. Chỉ lưu **bản gốc**; mọi size/format sinh **on-demand qua imgproxy** + cache CDN.
 - **Cô lập 3 lớp** (không load nhầm): RLS `media.site_id` + storage prefix + serving qua token (site_id không bao giờ ở URL).
@@ -686,7 +688,7 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 
 # PHỤ LỤC
 
-## A. Chỉ mục 16 ADR (trạng thái cuối)
+## A. Chỉ mục 17 ADR (trạng thái cuối)
 
 | ADR | Quyết định | Trạng thái |
 |---|---|---|
@@ -706,6 +708,7 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 | 14 | **Mô hình Hybrid:** `entries` + type + registry (không migration) + `meta JSONB` (không EAV); taxonomy dùng chung (ltree + typed pivots); i18n bảng dịch; commerce typed riêng. Cột entries.type ∈ {page, post}; product = bảng riêng (commerce typed); khác biệt loại nội dung qua category + template (Mục 8) | Chốt (mở rộng) |
 | 15 | **Mục tiêu hạ tầng/triển khai:** Phase 0–1 deploy trên **Laravel Cloud (region Singapore)** + **Cloudflare** (CDN/WAF/edge VN Hà Nội+HCM) + **R2** (media). Lý do: **zero-ops** + sinh ra cho Laravel/Octane/FrankenPHP + **rẻ ở quy mô nhỏ** nhờ scale-to-zero (dev ≈ $0-10/th, +An Vinh ≈ $15-30/th) → tập trung dựng sản phẩm. Giữ code **portable** (driver-swap, không phụ thuộc primitive độc quyền) để **chuyển sang CloudFly.vn (VPS VN tự quản + Laravel Forge) khi lên quy mô** (rẻ hơn ở scale lớn, đổi lại nhận ops). Dev local Docker; CI GitHub Actions. Đánh đổi: origin Singapore (bù bằng Cloudflare edge VN); lock-in (bù bằng portability); tự quản Postgres hoãn tới giai đoạn scale | Chốt (v2.2) |
 | 16 | **ID & key strategy:** PK = **`bigint` identity** khắp nơi (FK 8-byte → index composite `(site_id,…)` gọn/nhanh); thực thể lộ ra ngoài thêm cột **`ulid`** (public id, chống enumerate, sortable). **KHÔNG lộ bigint id thô** ra URL/API (public qua slug/code/ulid). Bảng pivot chỉ bigint. UUIDv7 là lựa chọn thay thế nếu ưu tiên đơn giản hóa export hơn độ gọn index (Mục 17 D2) | Chốt (v2.5) |
+| 17 | **Media — Storage + Serving (supersede §12):** R2 **private** (bucket `bswebsaas-media`, chỉ Worker đọc qua binding), 1 master WebP/ảnh; key content-addressed `{tenant}/{collection}/{slug}-{hash}.{ext}` (`tenant` = **`Site.slug`** citext-unique sinh-từ-name lúc provision, bất biến — thêm ở PR-1; `hash` = SHA-256[:12] nội dung, tính 1 lần lúc upload → dedup + cache-bust) thay `sites/{site_id}/media/{ulid}`; serving qua **Cloudflare Worker** (cf.image format=auto + width-whitelist + raw-master fallback) thay imgproxy-primary (imgproxy → **L4 cold-standby**, ngoài path chính); **resolver đa-driver** `media.driver ∈ {cloudflare, imgproxy, static}` (switch = 1 env), **KHÔNG cột `url`** (derive lúc render); lib **custom** `App\Modules\Media` thay spatie/medialibrary; domain `files.baoson.net`; resilience L0–L4 (bỏ L5). Media công khai (không token); cô lập tenant qua prefix `{tenant}` + RLS `media_assets.site_id` FORCE fail-closed. ⚠ PR-1 upload-safety BẮT BUỘC §2.5 (sniff magic-bytes + MIME whitelist + sanitize SVG). Epic: `docs/notes/media-system-epic.md` | Chốt (supersede §12) |
 
 ## B. Sổ rủi ro R1–R24 (chính)
 
