@@ -159,6 +159,17 @@ it('omits contact link/iframe markup for empty fields', function () {
     expect($html)->toContain('Liên hệ')->not->toContain('<a ')->not->toContain('<iframe');
 });
 
+it('sandboxes the contact map iframe and names it even when the heading is empty', function () {
+    $html = View::make('theme::sections.contact', ['props' => [
+        'heading' => '',   // empty (not null) → title must still carry an accessible name
+        'map_embed' => 'https://maps.example/e',
+    ]])->render();
+
+    expect($html)
+        ->toContain('sandbox="allow-scripts allow-same-origin allow-popups"')   // no top-nav / forms
+        ->toContain('title="Bản đồ"')->not->toContain('title=""');              // a11y fallback name
+});
+
 it('does not link a partner logo that has a url but no name (a11y: no name-less link)', function () {
     $props = ['logos' => [['image_url' => 'https://cdn.example/p.png', 'url' => 'https://p.test']]];
 

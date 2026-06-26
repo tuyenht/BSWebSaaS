@@ -15,6 +15,6 @@
     @endif
     @if (! empty($props['map_embed']))
         {{-- Tenant's own map embed URL (scheme-checked at save); lazy + fixed box reserves space (no CLS). --}}
-        <iframe class="contact__map" src="{{ $props['map_embed'] }}" title="{{ $props['heading'] ?? 'Bản đồ' }}" width="600" height="450" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        <iframe class="contact__map" src="{{ $props['map_embed'] }}" title="{{ ($props['heading'] ?? '') ?: 'Bản đồ' }}" width="600" height="450" loading="lazy" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
     @endif
 </section>

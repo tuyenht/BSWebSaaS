@@ -48,6 +48,15 @@ it('renders the provisioned An Vinh homepage as SSR HTML', function () {
         ->toContain('An Vinh');
 });
 
+it('renders the auto-seeded contact page at /lien-he so the homepage CTA resolves (not 404)', function () {
+    provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
+
+    // The CTA button_url=/lien-he must resolve through StorefrontController → BlockRenderer → layout.
+    $html = $this->get('http://anvinh.test/lien-he')->assertOk()->getContent();
+
+    expect($html)->toContain('<section class="contact">')->toContain('Liên hệ An Vinh');
+});
+
 it('renders the seeded primary nav on the storefront home', function () {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
