@@ -3,8 +3,9 @@
 /* Antigravity font system (SSOT): --font-stack + --vz-* typography tokens, self-hosted. */
 @import './fonts.css';
 
-/* Scan module Blade + framework/runtime views so utility classes aren't purged. */
+/* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
+@source '../../themes/**/*.blade.php';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 

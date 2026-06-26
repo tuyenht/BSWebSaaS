@@ -71,7 +71,7 @@ it('registers the partners block with url-typed logo list fields', function () {
     expect($logos['of']['url']['type'])->toBe('url');
 });
 
-it('renders the partners block as a logo grid, linking a logo only when it has a url', function () {
+it('renders the partners block as a logo grid, linking a logo only when it has both a url and a name', function () {
     $props = ['heading' => 'Đối tác', 'logos' => [
         ['image_url' => 'https://cdn.example/p1.png', 'name' => 'Đối tác Một', 'url' => 'https://p1.test'],
         ['image_url' => 'https://cdn.example/p2.png', 'name' => 'Đối tác Hai'],   // no url → image only
@@ -116,4 +116,19 @@ it('renders the hero unchanged when no second CTA is set (render-neutral)', func
     $html = View::make('theme::sections.hero', ['props' => $props])->render();
 
     expect($html)->toContain('href="/lien-he">Liên hệ')->not->toContain('hero__cta--secondary');
+});
+
+it('does not link a partner logo that has a url but no name (a11y: no name-less link)', function () {
+    $props = ['logos' => [['image_url' => 'https://cdn.example/p.png', 'url' => 'https://p.test']]];
+
+    $html = View::make('theme::sections.partners', ['props' => $props])->render();
+
+    // image renders, but no anchor — a linked logo must carry an accessible name (alt from name).
+    expect($html)->toContain('src="https://cdn.example/p.png"')->not->toContain('<a ');
+});
+
+it('scans bundled theme blades for Tailwind classes so storefront utilities are not purged', function () {
+    // Regression guard: the bundled theme lives at top-level themes/; the Tailwind @source must
+    // cover it, else moving views out of app/Modules/ silently purges their utility classes.
+    expect(file_get_contents(base_path('resources/css/app.css')))->toContain("@source '../../themes/");
 });

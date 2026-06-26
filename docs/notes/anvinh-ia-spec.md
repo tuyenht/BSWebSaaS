@@ -52,7 +52,7 @@
 Current 5: `hero, cta, richtext, features, latest_posts`.
 
 **Add:**
-- `services` — array prop `items[]: {icon,title,text,url}` (SectionComponent + partial).
+- `services` — **data-bound** via `entry_grid` (taxonomy `dich-vu`), NOT a static repeater: each service = a `post` (title + smart `image_url` + excerpt + detail page). Shipped T3.
 - `partners` — array prop `logos[]: {image_url,name,url}` (SectionComponent + partial).
 - `about` — `heading, paragraphs[], image_url, cta_*` (or compose richtext+image).
 - `entry_grid` — **data-bound** (like `latest_posts`, NOT extending it — F1): props `{heading,
