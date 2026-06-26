@@ -154,9 +154,11 @@ it('treats url-encoded and protocol-relative URLs as non-XSS (documented: not a 
 });
 
 it('every author href/src sink in a section partial is a schema-declared url prop (drift sentinel)', function () {
-    // Behind the schema-driven validator: a sink may only render a prop the schema types `url`,
-    // so validation (which walks type:url) covers every sink. A future partial that adds an
-    // href/src over a non-url-typed key fails HERE at CI time, before it can ship a bypass.
+    // The schema-driven validator scheme-checks props it types `url`. This sentinel keeps the
+    // statically-visible SINKS in lockstep: `{{ $props['k'] }}` / `{{ $item['k'] }}` in an href/src
+    // must be a type:url prop. It cannot see alias vars or non-href/src URL attributes, so it ALSO
+    // forbids `{!! !!}` in section partials — every author value must render through e(), the
+    // assumption the rest of the URL-safety story rests on.
     $registry = app(ComponentRegistry::class);
 
     foreach (glob(base_path('themes/default/sections/*.blade.php')) as $file) {
@@ -166,6 +168,9 @@ it('every author href/src sink in a section partial is a schema-declared url pro
         }
         $schema = $registry->get($type)->schema();
         $blade = (string) file_get_contents($file);
+
+        // No unescaped output in a section partial — author props must always render through e().
+        expect(str_contains($blade, '{!!'))->toBeFalse("{$type}.blade: section partials must not use {!! !!} (unescaped author output)");
 
         // Top-level author sinks: href/src reading $props['KEY'] must be schema type:url.
         preg_match_all('/(?:href|src)\s*=\s*["\']\{\{[^}]*\$props\[[\'"](\w+)[\'"]\]/', $blade, $top);
@@ -187,4 +192,14 @@ it('rejects a dangerous URL scheme inside a partners logo item (list recursion)'
     expect(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['url' => 'javascript:alert(1)']]]]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 'javascript:alert(1)']]]]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 'https://cdn.test/p.png', 'url' => '/ok']]]]])->passes())->toBeTrue();
+});
+
+it('rejects a non-scalar value under a text/textarea prop (no render-time TypeError/500)', function () {
+    // ADR-08 boundary completeness: a text prop renders through e(); a non-scalar (array) would
+    // crash htmlspecialchars and 500 the published page, so the wire-payload guard rejects it —
+    // at top level, inside an object-list item, and inside a scalar list.
+    expect(validateBlocks([['type' => 'hero', 'props' => ['heading' => ['x']]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => '/ok.png', 'name' => ['x']]]]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'richtext', 'props' => ['paragraphs' => [['nested']]]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'hero', 'props' => ['heading' => 'Tiêu đề hợp lệ']]])->passes())->toBeTrue();
 });
