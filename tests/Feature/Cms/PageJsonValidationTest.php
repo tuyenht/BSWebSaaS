@@ -203,3 +203,11 @@ it('rejects a non-scalar value under a text/textarea prop (no render-time TypeEr
         ->and(validateBlocks([['type' => 'richtext', 'props' => ['paragraphs' => [['nested']]]]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'hero', 'props' => ['heading' => 'Tiêu đề hợp lệ']]])->passes())->toBeTrue();
 });
+
+it('rejects a dangerous URL scheme in a contact phone/email/map prop', function () {
+    // phone/email render into tel:/mailto: hrefs and map_embed into an iframe src — all type:url.
+    expect(validateBlocks([['type' => 'contact', 'props' => ['phone' => 'javascript:alert(1)']]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'contact', 'props' => ['email' => 'javascript:alert(1)']]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'contact', 'props' => ['map_embed' => 'data:text/html,<script>']]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'contact', 'props' => ['phone' => '0901234567', 'email' => 'a@b.test', 'map_embed' => 'https://maps.example/e']]])->passes())->toBeTrue();
+});

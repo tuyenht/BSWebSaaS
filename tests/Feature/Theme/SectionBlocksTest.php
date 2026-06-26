@@ -127,6 +127,38 @@ it('guards the hero h1 against an empty heading (no empty <h1>)', function () {
     expect($noHeading)->not->toContain('<h1');
 });
 
+it('registers the contact block with url-typed phone/email/map sinks', function () {
+    $contact = app(ComponentRegistry::class)->get('contact')->schema();
+
+    expect($contact['phone']['type'])->toBe('url');
+    expect($contact['email']['type'])->toBe('url');
+    expect($contact['map_embed']['type'])->toBe('url');
+});
+
+it('renders the contact block with click-to-call/mail and a lazy map iframe', function () {
+    $props = [
+        'heading' => 'Liên hệ An Vinh',
+        'address' => 'Khu CN, Hải Phòng',
+        'phone' => '0901234567',
+        'email' => 'lienhe@anvinh.test',
+        'map_embed' => 'https://maps.example/embed?x=1',
+    ];
+
+    $html = View::make('theme::sections.contact', ['props' => $props])->render();
+
+    expect($html)
+        ->toContain('Liên hệ An Vinh')->toContain('Khu CN, Hải Phòng')
+        ->toContain('href="tel:0901234567"')
+        ->toContain('href="mailto:lienhe@anvinh.test"')
+        ->toContain('src="https://maps.example/embed?x=1"')->toContain('loading="lazy"');
+});
+
+it('omits contact link/iframe markup for empty fields', function () {
+    $html = View::make('theme::sections.contact', ['props' => ['heading' => 'Liên hệ']])->render();
+
+    expect($html)->toContain('Liên hệ')->not->toContain('<a ')->not->toContain('<iframe');
+});
+
 it('does not link a partner logo that has a url but no name (a11y: no name-less link)', function () {
     $props = ['logos' => [['image_url' => 'https://cdn.example/p.png', 'url' => 'https://p.test']]];
 
