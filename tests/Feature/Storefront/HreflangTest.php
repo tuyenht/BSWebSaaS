@@ -98,16 +98,17 @@ it('emits reciprocal hreflang from the en view (back to vi + self en)', function
 it('omits hreflang for a locale the page is not published in', function () {
     $site = provisionBilingual();   // 'en' enabled site-wide
     app(Tenancy::class)->enter($site->id, function () {
-        // A page published in vi ONLY (no en translation/route).
+        // A page published in vi ONLY (no en translation/route). Uses /chinh-sach because
+        // /lien-he is now an auto-provisioned contact route (would collide on the unique path).
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
-        $entry->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ', 'slug' => 'lien-he', 'status' => 'published', 'body' => ['blocks' => []]]);
-        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/lien-he', 'entry_id' => $entry->id]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Chính sách', 'slug' => 'chinh-sach', 'status' => 'published', 'body' => ['blocks' => []]]);
+        SiteRoute::query()->create(['locale' => 'vi', 'path' => '/chinh-sach', 'entry_id' => $entry->id]);
     });
 
-    $html = $this->get('http://anvinh.test/lien-he')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.test/chinh-sach')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('hreflang="vi" href="http://anvinh.test/lien-he"')
+        ->toContain('hreflang="vi" href="http://anvinh.test/chinh-sach"')
         ->toContain('hreflang="x-default"')
         ->not->toContain('hreflang="en"');   // page has no en translation → no en hreflang
 });

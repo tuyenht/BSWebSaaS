@@ -144,6 +144,7 @@ final class ProvisionSite
             $owner->assignRole('owner');
 
             $this->seedHomepage($data, $owner);
+            $this->seedContactPage($data, $owner);
         });
 
         $this->registrar->forgetCachedPermissions();
@@ -201,6 +202,43 @@ final class ProvisionSite
         SiteRoute::query()->create([
             'locale' => $data->defaultLocale,
             'path' => '/',
+            'entry_id' => $entry->id,
+        ]);
+    }
+
+    /**
+     * Seed a published contact page at /lien-he so the homepage CTA (button_url '/lien-he')
+     * resolves on every provisioned site. Generic by default (owner fills NAP via the editor);
+     * a site's real NAP is seeded later. Idempotent on the contact route.
+     */
+    private function seedContactPage(ProvisionSiteData $data, User $owner): void
+    {
+        if (SiteRoute::query()->where('path', '/lien-he')->exists()) {
+            return;
+        }
+
+        $entry = Entry::query()->create([
+            'type' => 'page',
+            'status' => 'published',
+            'author_id' => $owner->id,
+            'published_at' => now(),
+        ]);
+
+        $entry->translations()->create([
+            'locale' => $data->defaultLocale,
+            'title' => 'Liên hệ',
+            'slug' => 'lien-he',
+            'status' => 'published',
+            'body' => ['blocks' => [
+                ['type' => 'contact', 'props' => [
+                    'heading' => 'Liên hệ '.$data->siteName,
+                ]],
+            ]],
+        ]);
+
+        SiteRoute::query()->create([
+            'locale' => $data->defaultLocale,
+            'path' => '/lien-he',
             'entry_id' => $entry->id,
         ]);
     }

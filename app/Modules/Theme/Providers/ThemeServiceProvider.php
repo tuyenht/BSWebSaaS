@@ -62,6 +62,13 @@ final class ThemeServiceProvider extends ServiceProvider
             'button_label' => ['type' => 'text'],
             'button_url' => ['type' => 'url'],
         ],
+        'contact' => [
+            'heading' => ['type' => 'text'],
+            'address' => ['type' => 'textarea'],
+            'phone' => ['type' => 'url'],
+            'email' => ['type' => 'url'],
+            'map_embed' => ['type' => 'url'],
+        ],
     ];
 
     public function register(): void

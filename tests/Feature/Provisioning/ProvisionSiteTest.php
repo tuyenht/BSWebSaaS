@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuAssignment;
 use App\Modules\Cms\Models\MenuItem;
@@ -165,4 +166,21 @@ it('isolates the provisioned site from another tenant', function () {
 
     // An Vinh's owner has NO authority on the other site.
     expect($tenancy->enter($other->id, fn () => $anVinhOwner->fresh()->can('entries.publish')))->toBeFalse();
+});
+
+it('seeds a contact page routed at /lien-he so the homepage CTA resolves', function () {
+    $site = provisionAnVinh();
+    $tenancy = app(Tenancy::class);
+
+    $tenancy->enter($site->id, function () {
+        $route = SiteRoute::query()->where('path', '/lien-he')->first();
+        expect($route)->not->toBeNull();
+
+        $entry = Entry::query()->find($route->entry_id);
+        expect($entry->type)->toBe('page');
+
+        $tr = $entry->translations()->where('locale', 'vi')->first();
+        expect($tr->slug)->toBe('lien-he')
+            ->and($tr->body['blocks'][0]['type'])->toBe('contact');
+    });
 });
