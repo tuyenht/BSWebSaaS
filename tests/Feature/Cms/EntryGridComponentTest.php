@@ -112,3 +112,36 @@ it('isolates the grid between sites (RLS)', function () {
         expect(app(EntryGridComponent::class)->data(['taxonomy_slug' => 'du-an', 'locale' => 'vi'])['items'])->toBe([]);
     });
 });
+
+it('resolves the grid in a fixed query count as cards scale (no N+1)', function () {
+    $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
+
+    app(Tenancy::class)->enter($site->id, function () {
+        $owner = User::query()->firstWhere('email', 'owner@grid.test');
+
+        $cat = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
+        $cat->translations()->create(['locale' => 'vi', 'name' => 'Dự án', 'slug' => 'du-an']);
+        $sector = Taxonomy::query()->create(['vocabulary' => 'sector', 'parent_id' => $cat->id, 'position' => 0]);
+        $sector->translations()->create(['locale' => 'vi', 'name' => 'Nhiệt điện', 'slug' => 'nhiet-dien']);
+
+        // Three published cards — each with a sector + image + excerpt. If the sector/translation/
+        // route lookups were not eager-loaded, the query count would grow per card.
+        foreach (['Dự án A' => 'du-an-a', 'Dự án B' => 'du-an-b', 'Dự án C' => 'du-an-c'] as $title => $slug) {
+            $p = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id, 'meta' => ['image_url' => 'https://cdn.example/x.avif']]);
+            $p->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'excerpt' => 'Outcome', 'body' => ['blocks' => []]]);
+            $p->assignCategories([$cat->id, $sector->id]);
+            app(PublishEntry::class)->handle($p->fresh(), 'vi', $owner->fresh());
+        }
+
+        $component = app(EntryGridComponent::class);
+        $result = null;
+        $count = countQueries(function () use ($component, &$result) {
+            $result = $component->data(['taxonomy_slug' => 'du-an', 'limit' => 6, 'locale' => 'vi']);
+        });
+
+        expect($result['items'])->toHaveCount(3);
+        // Fixed handful (resolve + entries + eager translations/routes/sectors/sector-translations).
+        // An N+1 over the cards would push this well past the bound.
+        expect($count)->toBeLessThanOrEqual(7);
+    });
+});
