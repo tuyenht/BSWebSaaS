@@ -548,6 +548,7 @@ app/Modules/
   Shared/Contracts/   # interface liên-module CHỈ ở điểm swap/external (DomainProvisioner, WHMCS, AI)
 database/migrations/  # TẬP TRUNG, đánh số theo tier FK (core 1xxx · content 2xxx · commerce 3xxx)
 tests/Arch/           # ép HƯỚNG phụ thuộc acyclic; Tenancy phụ thuộc 0 module khác
+themes/<name>/        # asset trình bày bundled theme (Blade layouts/partials/sections) — KHÔNG PSR-4; engine ở Modules/Theme
 ```
 
 **Cây thư mục — bản export (Phase 3, N=1):** exporter dời `app/Modules/*` (đã bật theo entitlement) → `packages/*`, swap driver (DB/cache/storage), chèn License middleware (WHMCS, ADR-13). `BelongsToSite` vẫn chạy (site_id cố định); RLS thành tùy chọn (N=1).

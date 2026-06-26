@@ -159,7 +159,7 @@ it('every author href/src sink in a section partial is a schema-declared url pro
     // href/src over a non-url-typed key fails HERE at CI time, before it can ship a bypass.
     $registry = app(ComponentRegistry::class);
 
-    foreach (glob(base_path('app/Modules/Theme/themes/default/sections/*.blade.php')) as $file) {
+    foreach (glob(base_path('themes/default/sections/*.blade.php')) as $file) {
         $type = basename($file, '.blade.php');
         if (! $registry->has($type)) {
             continue;

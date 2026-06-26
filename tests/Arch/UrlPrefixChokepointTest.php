@@ -14,7 +14,7 @@ it('builds locale-prefixed URLs only through PathBuilder::publicUrl', function (
         base_path('app/Modules/Storefront/Http/Controllers/StorefrontController.php'),
         base_path('app/Modules/Cms/Navigation/MenuResolver.php'),
     ];
-    foreach (File::allFiles(base_path('app/Modules/Theme/themes/default')) as $file) {
+    foreach (File::allFiles(base_path('themes/default')) as $file) {
         if (str_ends_with($file->getFilename(), '.blade.php')) {
             $targets[] = $file->getPathname();
         }
