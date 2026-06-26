@@ -3,6 +3,7 @@
 namespace App\Modules\Provisioning\Providers;
 
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;
+use App\Modules\Provisioning\Console\SeedAnVinhContentCommand;
 use Illuminate\Support\ServiceProvider;
 
 final class ProvisioningServiceProvider extends ServiceProvider
@@ -12,6 +13,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ProvisionSiteCommand::class,
+                SeedAnVinhContentCommand::class,
             ]);
         }
     }

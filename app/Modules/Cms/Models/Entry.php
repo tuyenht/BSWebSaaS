@@ -60,6 +60,20 @@ class Entry extends Model
             ->orderByPivot('position');
     }
 
+    /**
+     * The entry's sector terms only (the `sector` vocabulary) — eager-loadable for a card
+     * badge without pulling every category. A project carries one; ordered by pivot position.
+     *
+     * @return BelongsToMany<Taxonomy, $this>
+     */
+    public function sectors(): BelongsToMany
+    {
+        return $this->belongsToMany(Taxonomy::class, 'entry_taxonomies')
+            ->where('taxonomies.vocabulary', 'sector')
+            ->withPivot('position')
+            ->orderByPivot('position');
+    }
+
     public function translationFor(string $locale): ?EntryTranslation
     {
         // Use the eager-loaded relation when present (avoids an N+1 in any caller that

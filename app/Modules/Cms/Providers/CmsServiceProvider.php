@@ -2,6 +2,7 @@
 
 namespace App\Modules\Cms\Providers;
 
+use App\Modules\Cms\Components\EntryGridComponent;
 use App\Modules\Cms\Components\LatestPostsComponent;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
@@ -28,7 +29,9 @@ final class CmsServiceProvider extends ServiceProvider
             'taxonomy' => Taxonomy::class,
         ]);
 
-        $this->app->make(ComponentRegistry::class)->register('latest_posts', new LatestPostsComponent);
+        $registry = $this->app->make(ComponentRegistry::class);
+        $registry->register('latest_posts', new LatestPostsComponent);
+        $registry->register('entry_grid', new EntryGridComponent);
 
         Gate::policy(Entry::class, EntryPolicy::class);
     }
