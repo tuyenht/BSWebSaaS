@@ -64,3 +64,31 @@ it('renders a project detail with breadcrumb JSON-LD', function () {
         ->toContain('"@type":"BreadcrumbList"')      // inherited from the PR-A shared head
         ->toContain('"name":"Dự án"');
 });
+
+it('lists the services at /dich-vu within budget', function () {
+    seedAnVinhStorefront();
+
+    $count = countQueries(function () {
+        $html = $this->get('http://anvinh.test/dich-vu')->assertOk()->getContent();
+
+        expect($html)
+            ->toContain('class="category__title">Dịch vụ')
+            ->toContain('Cho thuê xe nâng')
+            ->toContain('href="/dich-vu/cho-thue-xe-nang"');
+    });
+
+    expect($count)->toBeLessThanOrEqual(17);   // same shape as /du-an; nav batched, not per-item
+});
+
+it('renders a service detail page (click → detail) with breadcrumb', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/dich-vu/cho-thue-xe-nang')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('<title>Cho thuê xe nâng</title>')
+        ->toContain('class="post__breadcrumb"')
+        ->toContain('href="/dich-vu"')               // breadcrumb back to the services category
+        ->toContain('"@type":"BreadcrumbList"')
+        ->toContain('"name":"Dịch vụ"');
+});

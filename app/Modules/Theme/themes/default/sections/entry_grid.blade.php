@@ -11,8 +11,14 @@
             @foreach ($items as $card)
                 <li class="entry-grid__card">
                     @if (! empty($card['image']))
-                        {{-- Explicit width/height reserve space (no CLS); below-fold grid → lazy. --}}
-                        <img class="entry-grid__image" src="{{ $card['image'] }}" alt="{{ $card['title'] ?? '' }}" width="480" height="320" loading="lazy">
+                        {{-- Featured image is smart: a path/URL value renders as <img> (CLS-safe via
+                             width/height; lazy), otherwise it is a curated glyph key (e.g. a service
+                             icon). Same image_url concept across post-type content. --}}
+                        @if (\Illuminate\Support\Str::contains((string) $card['image'], ['/', '.', ':']))
+                            <img class="entry-grid__image" src="{{ $card['image'] }}" alt="{{ $card['title'] ?? '' }}" width="480" height="320" loading="lazy">
+                        @else
+                            @include('theme::partials.icon', ['name' => $card['image']])
+                        @endif
                     @endif
                     <h3 class="entry-grid__title">
                         @if (! empty($card['url']))

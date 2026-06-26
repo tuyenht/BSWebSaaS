@@ -40,6 +40,13 @@ final class ThemeServiceProvider extends ServiceProvider
                 'text' => ['type' => 'textarea'],
             ]],
         ],
+        'about' => [
+            'heading' => ['type' => 'text'],
+            'paragraphs' => ['type' => 'list', 'of' => ['type' => 'textarea']],
+            'image_url' => ['type' => 'url'],
+            'cta_label' => ['type' => 'text'],
+            'cta_url' => ['type' => 'url'],
+        ],
         'cta' => [
             'heading' => ['type' => 'text'],
             'button_label' => ['type' => 'text'],
