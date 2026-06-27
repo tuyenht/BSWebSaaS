@@ -9,7 +9,7 @@
 
 ## 0. Kiến trúc chốt (toàn cảnh để Claude Code nắm trước khi làm)
 
-- **Storage:** R2 `bswebsaas-media` (location apac, **PRIVATE** — chỉ Worker đọc qua binding). Lưu **một master WebP** mỗi ảnh.
+- **Storage:** R2 `baoson-media` (location apac, **PRIVATE** — chỉ Worker đọc qua binding). Lưu **một master WebP** mỗi ảnh.
 - **Key (SEO + content-addressed):** `{tenant}/{collection}/{slug}-{hash}.{ext}`
   - `tenant` = slug tenant ổn định (cô lập trong bucket dùng chung).
   - `collection` = enum **thô, cố-định-lúc-upload** (`products|projects|team|content|general`) — **KHÁC** ltree category (cái sửa được, ở DB).
@@ -167,7 +167,7 @@ return [
         'base' => env('MEDIA_IMGPROXY_BASE'),                       // vd https://img.baoson.net
         'key'  => env('IMGPROXY_KEY'),                              // hex
         'salt' => env('IMGPROXY_SALT'),                             // hex
-        'source_bucket' => env('MEDIA_SOURCE_BUCKET', 's3://bswebsaas-media'),
+        'source_bucket' => env('MEDIA_SOURCE_BUCKET', 's3://baoson-media'),
     ],
     'widths'  => [320, 640, 960, 1280, 1600, 2048],                 // whitelist responsive
 ];
@@ -222,10 +222,10 @@ class MediaUrlResolver
 `wrangler.jsonc`:
 ```jsonc
 {
-  "name": "bswebsaas-media",
+  "name": "baoson-media",
   "main": "src/index.js",
   "compatibility_date": "2026-06-01",
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "bswebsaas-media" }],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "baoson-media" }],
   "routes": [{ "pattern": "files.baoson.net/*", "zone_name": "baoson.net" }]
 }
 ```
@@ -288,13 +288,13 @@ async function serveRaw(env, key) {
 
 ## PR-4 — rclone R2→B2 (L3 resilience + chống mất data)
 
-**Prereq:** tạo bucket B2 `bswebsaas-media-backup`; remote `r2` và `b2` (đều S3-compatible) trong `rclone.conf`.
+**Prereq:** tạo bucket B2 `baoson-media-backup`; remote `r2` và `b2` (đều S3-compatible) trong `rclone.conf`.
 
 Script `scripts/media-backup.sh`:
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-rclone sync r2:bswebsaas-media b2:bswebsaas-media-backup \
+rclone sync r2:baoson-media b2:baoson-media-backup \
   --fast-list --transfers 16 --checkers 32 \
   --log-file /var/log/media-backup.log --log-level INFO
 ```

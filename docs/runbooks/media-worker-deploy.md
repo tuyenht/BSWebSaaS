@@ -1,61 +1,71 @@
 # Runbook — Deploy the media serving Worker (ADR-17, PR-3)
 
-> One-time platform setup. Touches **LIVE `files.baoson.net`** (currently an R2 public custom
-> domain). Run the steps **in order** — step 3 (remove public domain) MUST precede step 4 (Worker
-> route), the epic forbids public+private coexistence. Code: `deploy/media-worker/`.
+> One-time platform setup. Touches **LIVE `files.baoson.net`** (currently the public custom domain
+> of the existing `baoson-media` R2 bucket). Run the steps **in order** — step 2 (make the bucket
+> private) MUST precede step 3 (Worker route); the epic forbids public+private coexistence.
+> Code: `deploy/media-worker/`. Bucket: existing `baoson-media`.
 
-## 0. Prereqs (on your machine, creds stay with you)
+## 0. Auth (creds stay with you — pick ONE)
+
+**Easiest + safest for a one-time setup — OAuth, nothing stored:**
 ```bash
-npm i -g wrangler                 # or: npx wrangler ...
-wrangler login                    # browser OAuth — preferred (no token in any file)
-# OR a SCOPED token (NOT the Global API Key):
-#   export CLOUDFLARE_API_TOKEN=...   # perms: Account>Workers Scripts:Edit + Workers R2 Storage:Edit + Zone:baoson.net
+npm i -g wrangler        # or use npx wrangler ...
+wrangler login           # opens a browser, scoped to this session, no token to manage
 ```
-⚠ **Do NOT use the Global API Key** (full-account god-mode). If it was shared anywhere, rotate it.
 
-## 1. Create the PRIVATE R2 bucket
-```bash
-wrangler r2 bucket create bswebsaas-media
-```
-Leave it **private** — do NOT attach a public custom domain (the Worker is the only reader).
+**If you prefer an API token (e.g. for later CI/automation) — a SCOPED token, NOT the Global Key:**
+Cloudflare dashboard → **My Profile → API Tokens → Create Token → Custom token**, with:
+- Permissions:
+  - **Account › Workers Scripts › Edit**   (deploy the Worker)
+  - **Account › Workers R2 Storage › Edit** (bucket + object ops)
+  - **Zone › Workers Routes › Edit**        (the `files.baoson.net/*` route)
+- Account Resources: Include → your account
+- Zone Resources: Include → Specific zone → **baoson.net**
 
-## 2. (carry the temp images over — optional, for the An Vinh launch)
-The 4 temp images currently live in the OLD public bucket `baoson-media` at `sites/1/media/*`.
-They are throwaway under the new scheme; re-keying + seeding happens in a later step. You may skip
-this now and seed real keys later.
+Then: `export CLOUDFLARE_API_TOKEN=<the token>` before running wrangler.
 
-## 3. 🔴 Remove the public custom domain on `files.baoson.net`
+> ⚠ **NEVER use the Global API Key** — it is full-account god-mode (every zone, DNS, billing,
+> delete-anything); one mistake or leak = whole-account blast radius. Cloudflare officially
+> recommends scoped tokens. If the Global Key was shared/typed anywhere, **rotate it** (My Profile
+> → API Tokens → Global API Key → Roll).
+
+## 1. Use the existing `baoson-media` bucket (nothing to create)
+`baoson-media` already exists and already holds the temp images (`sites/1/media/*`). No
+`wrangler r2 bucket create`. It only needs to become **private** (step 2) — the Worker becomes its
+sole reader. The existing objects stay and keep serving (via the Worker); they are re-keyed to the
+content-hash scheme when the launch is seeded.
+
+## 2. 🔴 Make `baoson-media` private — remove its public custom domain
 Dashboard → R2 → `baoson-media` → Settings → Public access / Custom domains → **remove**
-`files.baoson.net`. (This frees the hostname for the Worker route; until removed, the route in
-step 4 conflicts.) Brief window where `files.baoson.net` 404s — fine, no live page uses it yet.
+`files.baoson.net`. (Frees the hostname for the Worker route in step 3; the Worker then becomes the
+bucket's only reader.) Brief window where `files.baoson.net` 404s — fine, no live page uses it yet.
 
-## 4. Deploy the Worker (creates the route + R2 binding)
+## 3. Deploy the Worker (creates the route + R2 binding)
 ```bash
 cd deploy/media-worker
 wrangler deploy
 ```
-This binds `bswebsaas-media` as `MEDIA` and routes `files.baoson.net/*` to the Worker.
+This binds `baoson-media` as `MEDIA` and routes `files.baoson.net/*` to the Worker.
 
-## 5. Enable Image Transformations on the zone
+## 4. Enable Image Transformations on the zone
 Dashboard → `baoson.net` → **Speed → Optimization → Image Transformations → Enable** (covers
 `cf.image`; free tier ~5k unique transforms/mo — ample for An Vinh). Without it, `?w=` still works
 but returns the raw master (no resize).
 
-## 6. Verify
+## 5. Verify (an existing temp image already in the bucket)
 ```bash
-wrangler r2 object put bswebsaas-media/test/probe.webp --file=<any.webp>
-curl -I https://files.baoson.net/test/probe.webp           # 200 raw master
-curl -I "https://files.baoson.net/test/probe.webp?w=640"   # 200 transformed (smaller)
-curl -I "https://files.baoson.net/test/probe.webp?w=999"   # 400 invalid width (whitelist)
-wrangler r2 object delete bswebsaas-media/test/probe.webp
+curl -I https://files.baoson.net/sites/1/media/about-bao-on.jpg            # 200 raw master (via Worker)
+curl -I "https://files.baoson.net/sites/1/media/about-bao-on.jpg?w=640"    # 200 transformed (smaller)
+curl -I "https://files.baoson.net/sites/1/media/about-bao-on.jpg?w=999"    # 400 invalid width (whitelist)
 ```
 
-## 7. Rollback
+## 6. Rollback
 ```bash
-wrangler delete                   # remove the Worker (frees the route)
+wrangler delete                  # remove the Worker (frees the route)
 ```
-Then re-attach `files.baoson.net` as the `baoson-media` public custom domain (step 3 reversed).
+Then re-attach `files.baoson.net` as the `baoson-media` public custom domain (step 2 reversed).
 
 ## After this runbook
-Tell the session "Worker deployed" → it re-keys the brand images to `{tenant}/{collection}/{slug}-{hash}.webp`
-on `bswebsaas-media`, wires the keys into An Vinh content (via the resolver), and seeds the launch.
+Tell the session **"Worker deployed"** → it re-keys the brand images to
+`{tenant}/{collection}/{slug}-{hash}.webp` on `baoson-media`, wires the keys into An Vinh content
+(via the resolver), and seeds the launch.
