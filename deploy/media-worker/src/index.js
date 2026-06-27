@@ -1,4 +1,4 @@
-// Media serving plane (ADR-17). The ONLY public reader of the private R2 bucket `bswebsaas-media`.
+// Media serving plane (ADR-17). The ONLY public reader of the private R2 bucket `baoson-media`.
 // - GET /{key}        → raw master from R2 (canonical / L2 fallback)
 // - GET /{key}?w=320  → cf.image transform (format=auto), source = the raw master, then edge-cached
 // - GET /__origin/{key} → internal raw path that feeds cf.image (breaks the transform→fetch loop)
