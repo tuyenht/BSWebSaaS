@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Components;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Contracts\Component;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -16,6 +17,11 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class EntryGridComponent implements Component
 {
+    /** Cards display ~480px wide; 640 (the next width on the Worker whitelist) keeps them crisp on retina. */
+    private const CARD_WIDTH = 640;
+
+    public function __construct(private readonly MediaUrlResolver $media) {}
+
     public function view(): string
     {
         return 'theme::sections.entry_grid';
@@ -77,7 +83,7 @@ final class EntryGridComponent implements Component
                 return [
                     'title' => $translation !== null ? $translation->title : '',
                     'url' => $route !== null ? $route->path : '',
-                    'image' => $image,
+                    'image' => $this->resolveImage($image),
                     'short_outcome' => $translation !== null ? ($translation->excerpt ?? '') : '',
                     'sector' => $sectorTranslation !== null ? $sectorTranslation->name : '',
                 ];
@@ -85,5 +91,21 @@ final class EntryGridComponent implements Component
             ->all();
 
         return ['props' => $props, 'items' => $items];
+    }
+
+    /**
+     * A card image is one of three shapes: a content-hash storage KEY (no scheme, has a slash) →
+     * derive a width-sized Worker URL via the resolver (single switch point, no domain stored); a
+     * glyph key (no slash) → leave it for the blade to render as an inline icon; an absolute URL
+     * (has a scheme) → leave it as-is. Forged values degrade safely: a key-shaped string just
+     * becomes a same-origin media URL (the Worker 404s a non-existent key — never an open redirect).
+     */
+    private function resolveImage(string $image): string
+    {
+        if ($image === '' || str_contains($image, '://') || ! str_contains($image, '/')) {
+            return $image;
+        }
+
+        return $this->media->url($image, self::CARD_WIDTH);
     }
 }

@@ -145,3 +145,35 @@ it('resolves the grid in a fixed query count as cards scale (no N+1)', function 
         expect($count)->toBeLessThanOrEqual(7);
     });
 });
+
+it('resolves a media storage key to a width-sized URL; leaves glyphs and absolute URLs untouched', function () {
+    config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'https://files.test']);
+    $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
+
+    app(Tenancy::class)->enter($site->id, function () {
+        $owner = User::query()->firstWhere('email', 'owner@grid.test');
+
+        $cat = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
+        $cat->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm', 'slug' => 'san-pham']);
+
+        // image_url variants: a content-hash STORAGE KEY (no scheme) must become a sized Worker URL;
+        // a glyph key (no slash) and an absolute URL must pass through unchanged.
+        $cases = [
+            ['Trục CNC', 'truc-cnc', 'an-vinh/san-pham/sp-truc-cnc-92f8d329e8dc.jpg'],
+            ['Dịch vụ', 'dv-glyph', 'cog'],
+            ['Ngoài', 'ngoai', 'https://cdn.example/x.avif'],
+        ];
+        foreach ($cases as [$title, $slug, $image]) {
+            $e = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $owner->id, 'meta' => ['image_url' => $image]]);
+            $e->translations()->create(['locale' => 'vi', 'title' => $title, 'slug' => $slug, 'status' => 'draft', 'excerpt' => '', 'body' => ['blocks' => []]]);
+            $e->assignCategories([$cat->id]);
+            app(PublishEntry::class)->handle($e->fresh(), 'vi', $owner->fresh());
+        }
+
+        $byTitle = collect(app(EntryGridComponent::class)->data(['taxonomy_slug' => 'san-pham', 'limit' => 6, 'locale' => 'vi'])['items'])->keyBy('title');
+
+        expect($byTitle['Trục CNC']['image'])->toBe('https://files.test/an-vinh/san-pham/sp-truc-cnc-92f8d329e8dc.jpg?w=640');
+        expect($byTitle['Dịch vụ']['image'])->toBe('cog');                       // glyph → icon, untouched
+        expect($byTitle['Ngoài']['image'])->toBe('https://cdn.example/x.avif');  // absolute URL untouched
+    });
+});
