@@ -19,7 +19,7 @@ beforeEach(function () {
         'media.imgproxy.base' => 'https://img.test',
         'media.imgproxy.key' => bin2hex('secret-key'),
         'media.imgproxy.salt' => bin2hex('secret-salt'),
-        'media.imgproxy.source_bucket' => 's3://bswebsaas-media',
+        'media.imgproxy.source_bucket' => 's3://baoson-media',
     ]);
 });
 
@@ -45,7 +45,7 @@ it('imgproxy driver: an HMAC-signed URL carrying the processing path', function 
     $url = mediaUrl('an-vinh/content/logo-abc123.webp', 640);
 
     expect($url)->toStartWith('https://img.test/')
-        ->toContain('/rs:fit:640:0/plain/s3://bswebsaas-media/an-vinh/content/logo-abc123.webp@webp');
+        ->toContain('/rs:fit:640:0/plain/s3://baoson-media/an-vinh/content/logo-abc123.webp@webp');
 
     $sig = explode('/', str_replace('https://img.test/', '', $url))[0];
     expect($sig)->toMatch('/^[A-Za-z0-9_-]+$/')->not->toBe('');   // urlsafe base64, no padding

@@ -17,7 +17,7 @@ return [
         'base' => env('MEDIA_IMGPROXY_BASE'),
         'key' => env('IMGPROXY_KEY'),
         'salt' => env('IMGPROXY_SALT'),
-        'source_bucket' => env('MEDIA_SOURCE_BUCKET', 's3://bswebsaas-media'),
+        'source_bucket' => env('MEDIA_SOURCE_BUCKET', 's3://baoson-media'),
     ],
 
     // Responsive width whitelist (the Worker rejects widths outside this set). Drives srcset (PR-6).
