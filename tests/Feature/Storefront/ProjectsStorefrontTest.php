@@ -8,10 +8,11 @@ use App\Modules\Tenancy\Models\Site;
 use Illuminate\Support\Facades\DB;
 
 /*
- * The seeded An Vinh "Dự án" collection is reachable on the storefront: a paginated list at
- * /du-an and each project at /du-an/{slug}, via the generic renderer (no entry_grid needed for
- * these pages — that block drives the homepage). Project detail inherits the BreadcrumbList
- * JSON-LD from the shared SEO head.
+ * Cơ Khí Chính Xác An Vinh storefront — collection and page smoke tests.
+ * Verifies that the seeded content is reachable via HTTP and renders correctly:
+ * category lists (/san-pham, /du-an, /dich-vu, /tin-tuc), new pages (/gioi-thieu, /doi-tac),
+ * home body (entry_grid cards with resolved media URLs), contact NAP, and detail pages
+ * with breadcrumb JSON-LD. All within the Query Budget (N+1 invariant).
  */
 
 beforeEach(function () {
@@ -42,26 +43,26 @@ it('lists the projects at /du-an within budget', function () {
 
         expect($html)
             ->toContain('class="category__title">Dự án')
-            ->toContain('Formosa Hà Tĩnh')
-            ->toContain('href="/du-an/formosa-ha-tinh"');
+            ->toContain('Dây chuyền lắp ráp tự động')
+            ->toContain('href="/du-an/day-chuyen-lap-rap-tu-dong"');
     });
 
-    // 17 = the tin-tuc list baseline (16) + 1 fixed query for the richer An Vinh nav (3 items
-    // vs 2). NOT an N+1: MenuResolver batches route/title lookups and renderCategory eager-loads
-    // translations, so 9 projects add the same +1 that 2 would (an N+1 would add ~9).
+    // MenuResolver batches route+title lookups regardless of item count; the An Vinh nav
+    // (7 items including entry-type links for /gioi-thieu and /doi-tac) still costs the
+    // same 1 batched route query as the original 3-item nav → budget unchanged at 17.
     expect($count)->toBeLessThanOrEqual(17);
 });
 
 it('renders a project detail with breadcrumb JSON-LD', function () {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/du-an/formosa-ha-tinh')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.test/du-an/day-chuyen-lap-rap-tu-dong')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<title>Formosa Hà Tĩnh</title>')
+        ->toContain('<title>Dây chuyền lắp ráp tự động</title>')
         ->toContain('class="post__breadcrumb"')
-        ->toContain('href="/du-an"')                 // breadcrumb back to the category
-        ->toContain('"@type":"BreadcrumbList"')      // inherited from the PR-A shared head
+        ->toContain('href="/du-an"')
+        ->toContain('"@type":"BreadcrumbList"')
         ->toContain('"name":"Dự án"');
 });
 
@@ -73,22 +74,104 @@ it('lists the services at /dich-vu within budget', function () {
 
         expect($html)
             ->toContain('class="category__title">Dịch vụ')
-            ->toContain('Cho thuê xe nâng')
-            ->toContain('href="/dich-vu/cho-thue-xe-nang"');
+            ->toContain('Thiết kế Jig')
+            ->toContain('href="/dich-vu/thiet-ke-jig-do-ga"');
     });
 
-    expect($count)->toBeLessThanOrEqual(17);   // same shape as /du-an; nav batched, not per-item
+    expect($count)->toBeLessThanOrEqual(17);
 });
 
-it('renders a service detail page (click → detail) with breadcrumb', function () {
+it('renders a service detail page with breadcrumb', function () {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/dich-vu/cho-thue-xe-nang')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.test/dich-vu/thiet-ke-jig-do-ga')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<title>Cho thuê xe nâng</title>')
+        ->toContain('<title>Thiết kế Jig &amp; Đồ gá</title>')
         ->toContain('class="post__breadcrumb"')
-        ->toContain('href="/dich-vu"')               // breadcrumb back to the services category
+        ->toContain('href="/dich-vu"')
         ->toContain('"@type":"BreadcrumbList"')
         ->toContain('"name":"Dịch vụ"');
+});
+
+it('lists the products at /san-pham', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/san-pham')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('class="category__title">Sản phẩm')
+        ->toContain('Trục máy CNC')
+        ->toContain('href="/san-pham/truc-may-cnc"');
+});
+
+it('renders a product detail page with breadcrumb', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/san-pham/truc-may-cnc')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('<title>Trục máy CNC</title>')
+        ->toContain('class="post__breadcrumb"')
+        ->toContain('href="/san-pham"')
+        ->toContain('"name":"Sản phẩm"');
+});
+
+it('renders /gioi-thieu with about content', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/gioi-thieu')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('<title>Giới thiệu</title>')
+        ->toContain('ISO 9001:2015')
+        ->toContain('Tầm Nhìn');   // 'Tầm Nhìn' in body
+});
+
+it('renders /doi-tac with partner names and testimonials', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/doi-tac')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('<title>Đối tác</title>')
+        ->toContain('VinFast')
+        ->toContain('Hutchinson')
+        ->toContain('Vinmanutech');
+});
+
+it('renders /lien-he with real NAP', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/lien-he')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('0915 66 83 83')
+        ->toContain('quybv@ckanvinh.vn');
+});
+
+it('renders the home page with An Vinh heading and resolved media URLs in entry_grid cards', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+
+    // Hero heading
+    expect($html)->toContain('Cơ Khí Chính Xác An Vinh');
+
+    // entry_grid renders card images via MediaUrlResolver (key has / → resolved to ?w= URL)
+    // EntryGridComponent::CARD_WIDTH = 640 → ?w=640 appended by cloudflare driver
+    expect($html)->toContain('?w=');
+
+    // At least one product name visible in the products entry_grid
+    expect($html)->toContain('Trục máy CNC');
+});
+
+it('news posts are listed at /tin-tuc', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/tin-tuc')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('class="category__title">Tin tức')
+        ->toContain('An Vinh tổ chức team building 2024');
 });

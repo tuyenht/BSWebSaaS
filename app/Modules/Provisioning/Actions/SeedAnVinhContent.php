@@ -7,129 +7,536 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteProfile;
 
 /**
- * Bootstrap An Vinh's project content — kept OUT of the generic ProvisionSite so the other
- * 10k tenants stay clean: the "Dự án" (du-an) post category, its industrial sector terms, the
- * real project references (§6), the storefront route, and the nav item. Idempotent — anchored
- * on each localized slug (taxonomies/entries have no natural key), safe to re-run on dev + prod.
+ * Bootstrap Cơ Khí Chính Xác An Vinh's content — kept OUT of the generic ProvisionSite so
+ * other tenants stay clean. Seeds: san-pham (6 products, 3 sub-cats), du-an (6 projects),
+ * dich-vu (4 services), tin-tuc (6 news posts under the existing ProvisionSite category),
+ * updates the home and contact page bodies, creates /gioi-thieu and /doi-tac pages, updates
+ * the main nav, and sets the brand/NAP on SiteProfile.
  *
- * Bootstrap stubs only: real per-project text + pre-optimized R2 images land with the WP seed
- * (Stream-4 T6/T8). Runs INSIDE the tenant context (the caller enters it) so site_id is stamped
- * and RLS-scoped.
+ * Idempotent — anchored on localized slug (taxonomies/entries) or route path (pages).
+ * Runs INSIDE the tenant context (caller enters it) so site_id is stamped and RLS-scoped.
+ * card image_url = raw R2 key (EntryGridComponent resolves at render); page section
+ * image_url = pre-resolved URL via MediaUrlResolver (blade renders src directly).
  */
 final class SeedAnVinhContent
 {
+    // R2 storage keys (from key-map.json — verbatim paths, never hard-coded base URLs)
+    private const KEY_ABOUT = 'an-vinh/content/about-doi-ngu-8a67c0ddf763.jpg';
+
+    // Storefront collection taxonomy slugs
+    private const PRODUCTS_SLUG = 'san-pham';
+
     private const PROJECTS_SLUG = 'du-an';
-
-    /** A generic, true-for-every-reference outcome line; replaced by real WP copy at T8. */
-    private const OUTCOME = 'Cung cấp giải pháp cách nhiệt – bảo ôn công nghiệp.';
-
-    /** @var array<string, string> sector slug => display name */
-    private const SECTORS = [
-        'nhiet-dien' => 'Nhiệt điện',
-        'loc-hoa-dau' => 'Lọc hóa dầu',
-        'xi-mang' => 'Xi măng',
-        'phan-bon' => 'Phân bón',
-        'thep' => 'Thép',
-    ];
-
-    /** @var list<array{title: string, slug: string, sector: string}> real An Vinh projects (§6) */
-    private const PROJECTS = [
-        ['title' => 'Formosa Hà Tĩnh', 'slug' => 'formosa-ha-tinh', 'sector' => 'thep'],
-        ['title' => 'Nhiệt điện Mông Dương 1', 'slug' => 'nhiet-dien-mong-duong-1', 'sector' => 'nhiet-dien'],
-        ['title' => 'Lọc hóa dầu Nghi Sơn', 'slug' => 'loc-hoa-dau-nghi-son', 'sector' => 'loc-hoa-dau'],
-        ['title' => 'Xi măng Xuân Thành', 'slug' => 'xi-mang-xuan-thanh', 'sector' => 'xi-mang'],
-        ['title' => 'Nhiệt điện Sông Hậu 1', 'slug' => 'nhiet-dien-song-hau-1', 'sector' => 'nhiet-dien'],
-        ['title' => 'Nhà máy phân bón Brunei', 'slug' => 'nha-may-phan-bon-brunei', 'sector' => 'phan-bon'],
-        ['title' => 'Nhiệt điện Vũng Áng II', 'slug' => 'nhiet-dien-vung-ang-ii', 'sector' => 'nhiet-dien'],
-        ['title' => 'Vận hành & bảo trì Vũng Áng II', 'slug' => 'van-hanh-bao-tri-vung-ang-ii', 'sector' => 'nhiet-dien'],
-        ['title' => 'Điện – Đạm Brunei', 'slug' => 'dien-dam-brunei', 'sector' => 'phan-bon'],
-    ];
 
     private const SERVICES_SLUG = 'dich-vu';
 
-    /** @var list<array{title: string, slug: string, image: string, outcome: string}> An Vinh services (§6); image = a curated glyph key */
-    private const SERVICES = [
-        ['title' => 'Bảo ôn – cách nhiệt vật tư', 'slug' => 'bao-on-cach-nhiet-vat-tu', 'image' => 'shield', 'outcome' => 'Vật tư bảo ôn, cách nhiệt công nghiệp.'],
-        ['title' => 'Cách nhiệt & giàn giáo', 'slug' => 'cach-nhiet-gian-giao', 'image' => 'box', 'outcome' => 'Thi công cách nhiệt kèm lắp dựng giàn giáo.'],
-        ['title' => 'Nhân lực O&M nhà máy', 'slug' => 'nhan-luc-om-nha-may', 'image' => 'users', 'outcome' => 'Cung ứng nhân lực vận hành & bảo trì nhà máy.'],
-        ['title' => 'Thiết bị & vật tư thay thế', 'slug' => 'thiet-bi-vat-tu-thay-the', 'image' => 'cog', 'outcome' => 'Cung cấp thiết bị, vật tư thay thế công nghiệp.'],
-        ['title' => 'Cho thuê xe nâng', 'slug' => 'cho-thue-xe-nang', 'image' => 'truck', 'outcome' => 'Dịch vụ cho thuê xe nâng các tải trọng.'],
+    private const NEWS_SLUG = 'tin-tuc';  // created by ProvisionSite; we reuse it
+
+    // Product sub-categories (vocabulary = 'product_cat', children of san-pham)
+    /** @var array<string, string> slug => display name */
+    private const PRODUCT_CATS = [
+        'do-ga' => 'Đồ gá',
+        'khuon-mau' => 'Khuôn mẫu',
+        'chi-tiet-may' => 'Chi tiết máy',
     ];
 
-    public function __construct(private readonly RouteSync $routes) {}
+    /** @var list<array{title: string, slug: string, excerpt: string, specs: list<string>, image: string, sub_cat: string}> */
+    private const PRODUCTS = [
+        [
+            'title' => 'Jig kiểm cụm Taplo cho xe VF7',
+            'slug' => 'jig-kiem-tap-lo-vf7',
+            'excerpt' => 'Đồ gá kiểm tra và lắp ráp cụm taplo cho dòng xe VinFast VF7, đảm bảo độ chính xác và ổn định trong quá trình sản xuất hàng loạt.',
+            'specs' => ['Vật liệu: Thép SKD11, Nhôm A6061', 'Độ chính xác: ±0.05mm', 'Ứng dụng: Kiểm tra, lắp ráp ô tô'],
+            'image' => 'an-vinh/san-pham/sp-jig-kiem-taplo-vf7-eb4aaa11d402.jpg',
+            'sub_cat' => 'do-ga',
+        ],
+        [
+            'title' => 'Máy tự động nắn sửa sản phẩm',
+            'slug' => 'may-tu-dong-nan-sua-san-pham',
+            'excerpt' => 'Hệ thống tự động sử dụng robot để nắn sửa các chi tiết kim loại sau quá trình dập, tăng năng suất và giảm thiểu sai sót do con người.',
+            'specs' => ['Robot sử dụng: Fanuc / Yaskawa', 'Chu kỳ: 15 giây/sản phẩm', 'Nguồn điện: 380V / 3 pha'],
+            'image' => 'an-vinh/san-pham/sp-may-tu-dong-nan-sua-21bb061f368c.jpg',
+            'sub_cat' => 'do-ga',
+        ],
+        [
+            'title' => 'Jig hàn Frame Comp',
+            'slug' => 'jig-han-frame-comp',
+            'excerpt' => 'Đồ gá chuyên dụng cho việc hàn khung xe, định vị chính xác các chi tiết, đảm bảo mối hàn chắc chắn và đúng vị trí kỹ thuật.',
+            'specs' => ['Loại kẹp: Kẹp khí nén', 'Vật liệu chính: Thép SS400', 'Số điểm định vị: 24'],
+            'image' => 'an-vinh/san-pham/sp-jig-han-frame-comp-ea7c4c84a448.jpg',
+            'sub_cat' => 'do-ga',
+        ],
+        [
+            'title' => 'Khuôn dập bình xăng',
+            'slug' => 'khuon-dap-binh-xang',
+            'excerpt' => 'Khuôn dập liên hoàn cho sản phẩm bình xăng xe máy, sử dụng vật liệu thép chất lượng cao cho tuổi thọ và độ bền vượt trội.',
+            'specs' => ['Loại khuôn: Khuôn dập liên hoàn', 'Vật liệu: DC53, SKD11', 'Lực dập: 200 tấn'],
+            'image' => 'an-vinh/san-pham/sp-khuon-dap-binh-xang-a6767195d059.jpg',
+            'sub_cat' => 'khuon-mau',
+        ],
+        [
+            'title' => 'Khuôn đúc áp lực cao',
+            'slug' => 'khuon-duc-ap-luc-cao',
+            'excerpt' => 'Khuôn đúc nhôm áp lực cao, thiết kế tối ưu dòng chảy kim loại, đảm bảo sản phẩm có độ đặc và bề mặt hoàn hảo.',
+            'specs' => ['Vật liệu: SKD61, DAC', 'Số lần đúc: > 100,000 shots', 'Máy đúc: 500-800 tấn'],
+            'image' => 'an-vinh/san-pham/sp-khuon-duc-ap-luc-cao-a9c4665a7a78.jpg',
+            'sub_cat' => 'khuon-mau',
+        ],
+        [
+            'title' => 'Trục máy CNC',
+            'slug' => 'truc-may-cnc',
+            'excerpt' => 'Gia công các loại trục, vít me cho máy CNC với độ chính xác cao, vật liệu được nhiệt luyện để tăng độ cứng và chống mài mòn.',
+            'specs' => ['Vật liệu: Thép S45C, SCM440', 'Độ cứng: 58-62 HRC', 'Dung sai: ±0.005mm'],
+            'image' => 'an-vinh/san-pham/sp-truc-may-cnc-92f8d329e8dc.jpg',
+            'sub_cat' => 'chi-tiet-may',
+        ],
+    ];
+
+    /** @var list<array{title: string, slug: string, excerpt: string, image: string}> */
+    private const PROJECTS = [
+        [
+            'title' => 'Dây chuyền lắp ráp tự động',
+            'slug' => 'day-chuyen-lap-rap-tu-dong',
+            'excerpt' => 'Thiết kế và thi công hệ thống dây chuyền lắp ráp linh kiện điện tử, tăng năng suất 200%.',
+            'image' => 'an-vinh/du-an/da-day-chuyen-lap-rap-tu-dong-5a538d6e5aeb.jpg',
+        ],
+        [
+            'title' => 'Hệ thống Jig hàn robot',
+            'slug' => 'he-thong-jig-han-robot',
+            'excerpt' => 'Phát triển hệ thống đồ gá hàn cho robot, ứng dụng trong ngành công nghiệp ô tô.',
+            'image' => 'an-vinh/du-an/da-he-thong-jig-han-robot-ea70bfe9ad6e.jpg',
+        ],
+        [
+            'title' => 'Khuôn mẫu cho sản phẩm gia dụng',
+            'slug' => 'khuon-mau-san-pham-gia-dung',
+            'excerpt' => 'Chế tạo loạt khuôn ép nhựa cho các sản phẩm gia dụng phức tạp, đáp ứng tiêu chuẩn xuất khẩu.',
+            'image' => 'an-vinh/du-an/da-khuon-mau-san-pham-gia-dung-d7511f57e318.jpg',
+        ],
+        [
+            'title' => 'Đồ gá kiểm tra thân vỏ xe',
+            'slug' => 'do-ga-kiem-tra-than-vo-xe',
+            'excerpt' => 'Sản xuất đồ gá kiểm tra kích thước 3D cho thân vỏ ô tô, đảm bảo độ chính xác tuyệt đối.',
+            'image' => 'an-vinh/du-an/da-do-ga-kiem-tra-than-vo-xe-eb4aaa11d402.jpg',
+        ],
+        [
+            'title' => 'Gia công chi tiết hàng không',
+            'slug' => 'gia-cong-chi-tiet-hang-khong',
+            'excerpt' => 'Tham gia dự án gia công các chi tiết cơ khí phức tạp cho ngành hàng không vũ trụ.',
+            'image' => 'an-vinh/du-an/da-gia-cong-chi-tiet-hang-khong-0d124f8aedb0.jpg',
+        ],
+        [
+            'title' => 'Cải tiến dây chuyền sản xuất',
+            'slug' => 'cai-tien-day-chuyen-san-xuat',
+            'excerpt' => 'Tư vấn và thực hiện cải tiến, tối ưu hóa dây chuyền sản xuất cho các đối tác lớn trong và ngoài nước.',
+            'image' => 'an-vinh/du-an/da-cai-tien-day-chuyen-san-xuat-5df673ca28cb.jpg',
+        ],
+    ];
+
+    /** @var list<array{title: string, slug: string, excerpt: string, image: string}> */
+    private const SERVICES = [
+        [
+            'title' => 'Thiết kế Jig & Đồ gá',
+            'slug' => 'thiet-ke-jig-do-ga',
+            'excerpt' => 'Cung cấp các thiết kế đồ gá tối ưu, đảm bảo độ chính xác cao và công năng vượt trội cho dây chuyền.',
+            'image' => 'cog',
+        ],
+        [
+            'title' => 'Gia công Phay & Tiện CNC',
+            'slug' => 'gia-cong-phay-tien-cnc',
+            'excerpt' => 'Gia công phay, tiện CNC trên các vật liệu đa dạng, đáp ứng nhanh nhu cầu khách hàng, tăng năng suất sản xuất.',
+            'image' => 'box',
+        ],
+        [
+            'title' => 'Hàn & Lắp ráp cơ khí',
+            'slug' => 'han-lap-rap-co-khi',
+            'excerpt' => 'Thực hiện đa dạng các phương pháp hàn và lắp ráp cụm chi tiết với độ chính xác và thẩm mỹ cao.',
+            'image' => 'users',
+        ],
+        [
+            'title' => 'Sản xuất chi tiết máy & OEM',
+            'slug' => 'san-xuat-chi-tiet-may-oem',
+            'excerpt' => 'Sản xuất các chi tiết máy, linh kiện thay thế theo yêu cầu bản vẽ kỹ thuật, đảm bảo chất lượng và tiến độ.',
+            'image' => 'shield',
+        ],
+    ];
+
+    /** @var list<array{title: string, slug: string, excerpt: string, image: string}> */
+    private const NEWS = [
+        [
+            'title' => 'An Vinh tổ chức team building 2024',
+            'slug' => 'an-vinh-to-chuc-team-building-2024',
+            'excerpt' => 'Hoạt động team building thường niên nhằm gắn kết tinh thần đồng đội và tái tạo năng lượng cho toàn thể cán bộ nhân viên.',
+            'image' => 'an-vinh/tin-tuc/tt-team-building-2024-5a967c5f98dd.jpg',
+        ],
+        [
+            'title' => 'Xu hướng tự động hóa trong ngành cơ khí chế tạo',
+            'slug' => 'xu-huong-tu-dong-hoa-nganh-co-khi',
+            'excerpt' => 'Tự động hóa và robot đang thay đổi bộ mặt của ngành cơ khí, mang lại hiệu suất và độ chính xác chưa từng có.',
+            'image' => 'an-vinh/tin-tuc/tt-xu-huong-tu-dong-hoa-da1937fa07b9.jpg',
+        ],
+        [
+            'title' => 'Khánh thành nhà máy số 3 tại Thạch Thất',
+            'slug' => 'khanh-thanh-nha-may-so-3',
+            'excerpt' => 'Việc đưa vào hoạt động nhà máy số 3 giúp An Vinh nâng cao năng lực sản xuất, đáp ứng các đơn hàng lớn.',
+            'image' => 'an-vinh/tin-tuc/tt-khanh-thanh-nha-may-3-0c3d5ec2283d.jpg',
+        ],
+        [
+            'title' => 'Ứng dụng vật liệu mới trong chế tạo khuôn mẫu',
+            'slug' => 'ung-dung-vat-lieu-moi-khuon-mau',
+            'excerpt' => 'Các loại thép công cụ thế hệ mới giúp tăng tuổi thọ khuôn và cải thiện chất lượng bề mặt sản phẩm.',
+            'image' => 'an-vinh/tin-tuc/tt-vat-lieu-moi-khuon-mau-50967199a1d4.jpg',
+        ],
+        [
+            'title' => 'Đào tạo an toàn lao động định kỳ',
+            'slug' => 'dao-tao-an-toan-lao-dong',
+            'excerpt' => 'Tổ chức khóa đào tạo về an toàn lao động và phòng chống cháy nổ cho toàn bộ nhân viên nhà máy.',
+            'image' => 'an-vinh/tin-tuc/tt-dao-tao-an-toan-lao-dong-9d12273c8e3c.jpg',
+        ],
+        [
+            'title' => 'Công nghệ in 3D kim loại và tương lai của ngành',
+            'slug' => 'cong-nghe-in-3d-kim-loai',
+            'excerpt' => 'In 3D kim loại mở ra những khả năng mới trong việc tạo mẫu nhanh và sản xuất các chi tiết phức tạp.',
+            'image' => 'an-vinh/tin-tuc/tt-cong-nghe-in-3d-kim-loai-d9bca24bd3dc.jpg',
+        ],
+    ];
+
+    public function __construct(
+        private readonly RouteSync $routes,
+        private readonly MediaUrlResolver $media,
+    ) {}
 
     public function handle(): void
     {
         $defaultLocale = SiteLocale::query()->where('is_default', true)->value('locale');
         $locale = is_string($defaultLocale) ? $defaultLocale : 'vi';
 
-        $category = $this->firstOrCreateTaxonomy($locale, self::PROJECTS_SLUG, 'Dự án', 'post_cat');
+        $this->seedProducts($locale);
+        $this->seedProjects($locale);
+        $this->seedServices($locale);
+        $this->seedNews($locale);
+        $this->updateHomePage($locale);
+        $this->updateContactPage($locale);
+        $this->createGioiThieuPage($locale);
+        $this->createDoiTacPage($locale);
+        $this->updateBrandNAP($locale);
+    }
+
+    private function seedProducts(string $locale): void
+    {
+        $sanPham = $this->firstOrCreateTaxonomy($locale, self::PRODUCTS_SLUG, 'Sản phẩm', 'post_cat');
+
+        ContentSection::query()->firstOrCreate(
+            ['key' => 'products'],
+            ['label' => 'Sản phẩm', 'entry_type' => 'post', 'taxonomy_id' => $sanPham->id, 'permission_prefix' => 'entries', 'sort_order' => 3],
+        );
+
+        $this->syncTaxonomyRoute($sanPham, $locale);
+
+        $subCats = [];
+        foreach (self::PRODUCT_CATS as $slug => $name) {
+            $subCats[$slug] = $this->firstOrCreateTaxonomy($locale, $slug, $name, 'product_cat', $sanPham->id);
+        }
+
+        foreach (self::PRODUCTS as $product) {
+            $blocks = [
+                ['type' => 'richtext', 'props' => ['heading' => $product['title'], 'paragraphs' => [$product['excerpt']]]],
+                ['type' => 'richtext', 'props' => ['heading' => 'Thông số kỹ thuật', 'paragraphs' => $product['specs']]],
+            ];
+            $this->firstOrCreatePost(
+                $locale,
+                $product['title'],
+                $product['slug'],
+                $product['excerpt'],
+                $product['image'],
+                [$sanPham->id, $subCats[$product['sub_cat']]->id],
+                $blocks,
+            );
+        }
+
+        $this->addMenuTaxonomyItem($locale, $sanPham, 'Sản phẩm', 4);
+    }
+
+    private function seedProjects(string $locale): void
+    {
+        $duAn = $this->firstOrCreateTaxonomy($locale, self::PROJECTS_SLUG, 'Dự án', 'post_cat');
 
         ContentSection::query()->firstOrCreate(
             ['key' => 'projects'],
-            ['label' => 'Dự án', 'entry_type' => 'post', 'taxonomy_id' => $category->id, 'permission_prefix' => 'entries', 'sort_order' => 2],
+            ['label' => 'Dự án', 'entry_type' => 'post', 'taxonomy_id' => $duAn->id, 'permission_prefix' => 'entries', 'sort_order' => 5],
         );
 
-        // Storefront list route (/du-an). Best-effort: never fail if a page owns the path.
-        $translation = $category->translationFor($locale);
-        if ($translation !== null) {
-            try {
-                $this->routes->syncTaxonomy($category, $locale, $translation->slug);
-            } catch (RouteConflictException) {
-                // A page already owns this path; leave it.
-            }
-        }
-
-        $sectors = [];
-        foreach (self::SECTORS as $slug => $name) {
-            $sectors[$slug] = $this->firstOrCreateTaxonomy($locale, $slug, $name, 'sector', $category->id);
-        }
+        $this->syncTaxonomyRoute($duAn, $locale);
 
         foreach (self::PROJECTS as $project) {
-            // Every project's sector is one of self::SECTORS (enforced by Larastan), so the lookup always hits.
-            $this->firstOrCreatePost($locale, $project['title'], $project['slug'], self::OUTCOME, '', $category, $sectors[$project['sector']]);
+            $this->firstOrCreatePost(
+                $locale,
+                $project['title'],
+                $project['slug'],
+                $project['excerpt'],
+                $project['image'],
+                [$duAn->id],
+            );
         }
 
-        $this->addMenuItem($locale, $category, 'Dự án', 2);
-
-        $this->seedServices($locale);
+        $this->addMenuTaxonomyItem($locale, $duAn, 'Dự án', 5);
     }
 
-    /**
-     * Services are POSTS (title / featured image / description) with a detail page — the homepage
-     * shows them data-bound via entry_grid(taxonomy_slug='dich-vu'), each card linking to
-     * /dich-vu/{slug}. Featured image here is a curated glyph key (rendered as an inline SVG icon).
-     */
     private function seedServices(string $locale): void
     {
-        $category = $this->firstOrCreateTaxonomy($locale, self::SERVICES_SLUG, 'Dịch vụ', 'post_cat');
+        $dichVu = $this->firstOrCreateTaxonomy($locale, self::SERVICES_SLUG, 'Dịch vụ', 'post_cat');
 
         ContentSection::query()->firstOrCreate(
             ['key' => 'services'],
-            ['label' => 'Dịch vụ', 'entry_type' => 'post', 'taxonomy_id' => $category->id, 'permission_prefix' => 'entries', 'sort_order' => 1],
+            ['label' => 'Dịch vụ', 'entry_type' => 'post', 'taxonomy_id' => $dichVu->id, 'permission_prefix' => 'entries', 'sort_order' => 2],
         );
 
-        $translation = $category->translationFor($locale);
-        if ($translation !== null) {
-            try {
-                $this->routes->syncTaxonomy($category, $locale, $translation->slug);
-            } catch (RouteConflictException) {
-                // A page already owns this path; leave it.
-            }
-        }
+        $this->syncTaxonomyRoute($dichVu, $locale);
 
         foreach (self::SERVICES as $service) {
-            $this->firstOrCreatePost($locale, $service['title'], $service['slug'], $service['outcome'], $service['image'], $category, null);
+            $this->firstOrCreatePost(
+                $locale,
+                $service['title'],
+                $service['slug'],
+                $service['excerpt'],
+                $service['image'],
+                [$dichVu->id],
+            );
         }
 
-        $this->addMenuItem($locale, $category, 'Dịch vụ', 1);
+        $this->addMenuTaxonomyItem($locale, $dichVu, 'Dịch vụ', 3);
+    }
+
+    /**
+     * Seeds 6 news posts under the EXISTING 'tin-tuc' taxonomy seeded by ProvisionSite.
+     * Does NOT create a new taxonomy — ProvisionSite owns that (its ContentSection key='posts').
+     */
+    private function seedNews(string $locale): void
+    {
+        $existing = TaxonomyTranslation::query()->where('locale', $locale)->where('slug', self::NEWS_SLUG)->first();
+        if ($existing === null) {
+            return; // ProvisionSite must have run first; no-op is safer than creating a duplicate
+        }
+
+        /** @var Taxonomy $tinTuc */
+        $tinTuc = Taxonomy::query()->findOrFail($existing->taxonomy_id);
+
+        foreach (self::NEWS as $news) {
+            $this->firstOrCreatePost(
+                $locale,
+                $news['title'],
+                $news['slug'],
+                $news['excerpt'],
+                $news['image'],
+                [$tinTuc->id],
+            );
+        }
+    }
+
+    /**
+     * Replaces the generic ProvisionSite home body with the An Vinh assembly.
+     * hero schema has no image_url prop → bg image is a gap (noted in caller report).
+     * About and page section images are PRE-RESOLVED via MediaUrlResolver so the blade
+     * can render src directly (no resolver at render time for page sections).
+     */
+    private function updateHomePage(string $locale): void
+    {
+        $aboutUrl = $this->media->url(self::KEY_ABOUT, 800);
+
+        $blocks = [
+            ['type' => 'hero', 'props' => [
+                'heading' => 'Cơ Khí Chính Xác An Vinh',
+                'subheading' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
+                'cta_label' => 'Liên hệ ngay',
+                'cta_url' => '/lien-he',
+            ]],
+            ['type' => 'about', 'props' => [
+                'heading' => 'Chế Tác Tinh Hoa - Nâng Tầm Chính Xác',
+                'paragraphs' => [
+                    'Là đơn vị hàng đầu trong lĩnh vực cơ khí chính xác tại Việt Nam, An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.',
+                    'Với đội ngũ kỹ sư dày dạn kinh nghiệm, hệ thống máy móc CNC hiện đại nhập khẩu từ Nhật Bản và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước.',
+                ],
+                'image_url' => $aboutUrl,
+                'cta_label' => 'Tìm hiểu thêm',
+                'cta_url' => '/gioi-thieu',
+            ]],
+            ['type' => 'entry_grid', 'props' => ['heading' => 'Dịch vụ của chúng tôi', 'taxonomy_slug' => 'dich-vu', 'limit' => 4]],
+            ['type' => 'entry_grid', 'props' => ['heading' => 'Sản phẩm tiêu biểu', 'taxonomy_slug' => 'san-pham', 'limit' => 6]],
+            ['type' => 'entry_grid', 'props' => ['heading' => 'Dự án nổi bật', 'taxonomy_slug' => 'du-an', 'limit' => 6]],
+            ['type' => 'entry_grid', 'props' => ['heading' => 'Tin tức mới nhất', 'taxonomy_slug' => 'tin-tuc', 'limit' => 3]],
+            // Partner logos are placeholders in the demo, so a logo-grid would render empty (the
+            // partners section skips logo-less items). Show the real names as a text strip instead.
+            ['type' => 'richtext', 'props' => [
+                'heading' => 'Đối tác tiêu biểu',
+                'paragraphs' => ['VinFast · Festo · Hutchinson · Weldcom · SMC · DGP · Yamaguchi · Palfinger'],
+            ]],
+            ['type' => 'cta', 'props' => [
+                'heading' => 'Liên hệ với chúng tôi ngay hôm nay',
+                'button_label' => 'Liên hệ ngay',
+                'button_url' => '/lien-he',
+            ]],
+            ['type' => 'contact', 'props' => [
+                'heading' => 'Liên hệ Cơ Khí Chính Xác An Vinh',
+                'address' => 'Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội',
+                'phone' => '0915 66 83 83',
+                'email' => 'quybv@ckanvinh.vn',
+            ]],
+        ];
+
+        $this->upsertPage($locale, 'Cơ Khí Chính Xác An Vinh', 'home', '/', $blocks);
+    }
+
+    /**
+     * Replaces the generic contact body with the real An Vinh NAP + factory list (§6).
+     */
+    private function updateContactPage(string $locale): void
+    {
+        $blocks = [
+            ['type' => 'contact', 'props' => [
+                'heading' => 'Liên hệ Cơ Khí Chính Xác An Vinh',
+                'address' => 'Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội',
+                'phone' => '0915 66 83 83',
+                'email' => 'quybv@ckanvinh.vn',
+                'map_embed' => 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d931.2534936!2d105.8579!3d21.2994!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2svn!4v1700000000',
+            ]],
+            ['type' => 'richtext', 'props' => [
+                'heading' => 'Hệ Thống Nhà Máy',
+                'paragraphs' => [
+                    'Nhà máy 1 — Lắp ráp & sản xuất hàn, dập — 2.000m² — Đường 418, thôn Xuân Sơn, xã Trung Giã, TP Hà Nội',
+                    'Nhà máy 2 — Lắp ráp — 500m² — Đường QL3, thôn Hương Ninh, xã Trung Giã, TP Hà Nội',
+                    'Nhà máy 3 — Gia công — 1.800m² — Đội 6, thôn Ngũ Sơn, xã Thạch Thất, TP Hà Nội',
+                ],
+            ]],
+        ];
+
+        $entryId = $this->upsertPage($locale, 'Liên hệ', 'lien-he', '/lien-he', $blocks);
+        $this->addMenuEntryItem($locale, $entryId, 'Liên hệ', 7);
+    }
+
+    /**
+     * Creates /gioi-thieu with the full company intro (§5.2), vision/mission (§5.4),
+     * 6 core values (§5.5), and ISO 9001:2015 certification (§5.6). Adds nav item.
+     */
+    private function createGioiThieuPage(string $locale): void
+    {
+        $aboutUrl = $this->media->url(self::KEY_ABOUT, 800);
+
+        $blocks = [
+            ['type' => 'about', 'props' => [
+                'heading' => 'Về An Vinh - Chế Tác Tinh Hoa, Kiến Tạo Tương Lai',
+                'paragraphs' => [
+                    'Là đơn vị hàng đầu trong lĩnh vực cơ khí chính xác tại Việt Nam, An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.',
+                    'Với đội ngũ kỹ sư dày dạn kinh nghiệm, hệ thống máy móc CNC hiện đại nhập khẩu từ Nhật Bản và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước.',
+                ],
+                'image_url' => $aboutUrl,
+                'cta_label' => 'Liên hệ hợp tác',
+                'cta_url' => '/lien-he',
+            ]],
+            ['type' => 'richtext', 'props' => [
+                'heading' => 'Định Hướng Phát Triển',
+                'paragraphs' => ['An Vinh không ngừng vươn tới những tiêu chuẩn cao hơn, kiến tạo giá trị bền vững cho khách hàng và xã hội.'],
+            ]],
+            ['type' => 'richtext', 'props' => [
+                'heading' => 'Tầm Nhìn',
+                'paragraphs' => ['Trở thành công ty gia công cơ khí chính xác, thiết kế đồ gá, khuôn mẫu hàng đầu Việt Nam với trang thiết bị hiện đại, tiên tiến. Cung cấp sản phẩm, dịch vụ chất lượng tốt nhất, giá cả cạnh tranh, thoả mãn mọi nhu cầu của khách hàng.'],
+            ]],
+            ['type' => 'richtext', 'props' => [
+                'heading' => 'Sứ Mệnh',
+                'paragraphs' => ['Thiết kế, thi công và sản xuất những sản phẩm có chất lượng tốt, an toàn, đảm bảo tiến độ và hiệu quả kinh tế. Phát huy cao nhất năng lực đội ngũ và nâng cao chất lượng đời sống vật chất, tinh thần cho toàn thể cán bộ nhân viên.'],
+            ]],
+            ['type' => 'richtext', 'props' => [
+                'heading' => 'Giá Trị Cốt Lõi',
+                'paragraphs' => [
+                    'Uy Tín — Luôn nỗ lực hết mình để đảm bảo chất lượng hoàn hảo và cam kết đúng tiến độ.',
+                    'Sáng Tạo — Không ngừng sáng tạo nhằm tạo sự khác biệt và mang đậm bản sắc riêng.',
+                    'Trách Nhiệm — Luôn làm việc tận tụy và có trách nhiệm với những gì đã cam kết.',
+                    'Hiệu Quả — Cải tiến liên tục kỹ năng để phục vụ khách hàng với hiệu suất cao nhất.',
+                    'Khách Hàng Là Trọng Tâm — Lấy sự hài lòng của khách hàng làm thước đo cho thành công.',
+                    'Chia Sẻ Thành Công — Đồng hành cùng sự phát triển của khách hàng và cộng đồng.',
+                ],
+            ]],
+            ['type' => 'richtext', 'props' => [
+                'heading' => 'Cam Kết Chất Lượng Theo Tiêu Chuẩn Quốc Tế',
+                'paragraphs' => ['An Vinh tự hào được đánh giá và chứng nhận phù hợp với các yêu cầu của tiêu chuẩn quốc tế ISO 9001:2015 cho Hệ thống Quản lý Chất lượng. Đây là minh chứng cho cam kết không ngừng của chúng tôi trong việc cung cấp những sản phẩm và dịch vụ đạt chuẩn mực cao nhất, từ khâu thiết kế, sản xuất đến kiểm định, mang lại sự an tâm tuyệt đối cho khách hàng.'],
+            ]],
+        ];
+
+        $entryId = $this->upsertPage($locale, 'Giới thiệu', 'gioi-thieu', '/gioi-thieu', $blocks);
+        $this->addMenuEntryItem($locale, $entryId, 'Giới thiệu', 2);
+    }
+
+    /**
+     * Creates /doi-tac listing the 10 real partner names (§7) and 2 testimonials (§8.B).
+     * No placeholder logo URLs — text only (logos not available in demo).
+     */
+    private function createDoiTacPage(string $locale): void
+    {
+        $blocks = [
+            ['type' => 'richtext', 'props' => [
+                'heading' => 'Đối Tác Của Chúng Tôi',
+                'paragraphs' => [
+                    'VinFast',
+                    'Festo',
+                    'Hutchinson',
+                    'Weldcom',
+                    'SMC',
+                    'DGP',
+                    'Yamaguchi',
+                    'Mitsuboshi',
+                    'Palfinger',
+                    'Vinmanutech',
+                ],
+            ]],
+            ['type' => 'richtext', 'props' => [
+                'heading' => 'Khách Hàng Nói Về Chúng Tôi',
+                'paragraphs' => [
+                    '"An Vinh đã chứng tỏ là một đối tác đáng tin cậy. Các sản phẩm đồ gá của họ có độ chính xác cao, giúp dây chuyền sản xuất của chúng tôi hoạt động ổn định và hiệu quả hơn." — Trưởng phòng Kỹ thuật, VinFast',
+                    '"Chúng tôi đánh giá cao sự chuyên nghiệp và khả năng đáp ứng nhanh chóng các yêu cầu kỹ thuật phức tạp từ An Vinh. Chất lượng khuôn mẫu vượt ngoài mong đợi." — Giám đốc Sản xuất, Hutchinson',
+                ],
+            ]],
+        ];
+
+        $entryId = $this->upsertPage($locale, 'Đối tác', 'doi-tac', '/doi-tac', $blocks);
+        $this->addMenuEntryItem($locale, $entryId, 'Đối tác', 6);
+    }
+
+    /**
+     * Stamps the real An Vinh brand name, legal name, and NAP on the existing SiteProfile
+     * (created blank by ProvisionSite). Also upserts the localized brand_name translation.
+     */
+    private function updateBrandNAP(string $locale): void
+    {
+        $profile = SiteProfile::query()->firstOrCreate([], []);
+
+        $profile->fill([
+            'brand_name' => 'Cơ Khí Chính Xác An Vinh',
+            'legal_name' => 'CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH',
+            'tax_code' => '0108649706',
+            'business_license_no' => '0108649706',
+            'phone' => '0915 66 83 83',
+            'hotline' => '0915 66 83 83',
+            'email' => 'quybv@ckanvinh.vn',
+            'address_line' => 'Thôn Xuân Sơn',
+            'ward' => 'Xã Trung Giã',
+            'province' => 'TP Hà Nội',
+        ])->save();
+
+        $profile->translations()->updateOrCreate(
+            ['locale' => $locale],
+            [
+                'brand_name' => 'Cơ Khí Chính Xác An Vinh',
+                'short_description' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
+            ],
+        );
     }
 
     /** Looked up by localized slug (taxonomies have no natural unique key). */
@@ -147,11 +554,23 @@ final class SeedAnVinhContent
     }
 
     /**
-     * Create a published post (project / service…) under a category, optionally with a sector, and
-     * route it at /{category}/{slug}. The featured image (a glyph key OR a URL) → meta['image_url'].
+     * Create a published post (product / project / service / news) under the given categories.
+     * The first category ID is the primary one (drives routing). If $blocks is empty, falls back
+     * to a single richtext block from $excerpt. Card image: raw R2 key stored in meta['image_url']
+     * (EntryGridComponent resolves it at render time via MediaUrlResolver).
+     *
+     * @param  list<int>  $categoryIds  first = primary category (prefix for routing)
+     * @param  list<array<string, mixed>>  $blocks  body blocks; falls back to a richtext from $excerpt
      */
-    private function firstOrCreatePost(string $locale, string $title, string $slug, string $excerpt, string $image, Taxonomy $category, ?Taxonomy $sector): void
-    {
+    private function firstOrCreatePost(
+        string $locale,
+        string $title,
+        string $slug,
+        string $excerpt,
+        string $image,
+        array $categoryIds,
+        array $blocks = [],
+    ): void {
         if (EntryTranslation::query()->where('locale', $locale)->where('slug', $slug)->exists()) {
             return;
         }
@@ -160,23 +579,23 @@ final class SeedAnVinhContent
             'type' => 'post',
             'status' => 'published',
             'published_at' => now(),
-            'meta' => ['image_url' => $image],   // featured image: a glyph key OR a URL (Option C)
+            'meta' => ['image_url' => $image],
         ]);
+
+        $body = $blocks !== []
+            ? ['blocks' => $blocks]
+            : ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => [$excerpt]]]]];
+
         $entry->translations()->create([
             'locale' => $locale,
             'title' => $title,
             'slug' => $slug,
             'status' => 'published',
             'excerpt' => $excerpt,
-            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['paragraphs' => [$excerpt]]]]],
+            'body' => $body,
         ]);
 
-        // The category is PRIMARY (pos 0) → routes at /{category}/{slug}; the sector (if any) is secondary.
-        $ids = [$category->id];
-        if ($sector !== null) {
-            $ids[] = $sector->id;
-        }
-        $entry->assignCategories($ids);
+        $entry->assignCategories($categoryIds);
 
         try {
             $this->routes->sync($entry, $locale, $slug);
@@ -185,7 +604,62 @@ final class SeedAnVinhContent
         }
     }
 
-    private function addMenuItem(string $locale, Taxonomy $category, string $label, int $position): void
+    /**
+     * Create the page + route at $path if missing, else refresh its body (title preserved on
+     * update). Correct on a fresh site (dev — ProvisionSite already made /lien-he) AND on a site
+     * provisioned before the contact page existed (prod av1 had only / + /tin-tuc, so a plain
+     * "update" would have silently no-op'd and left the CTA dangling). Returns the entry ID so the
+     * caller can wire a menu item idempotently.
+     *
+     * @param  list<array<string, mixed>>  $blocks
+     */
+    private function upsertPage(string $locale, string $title, string $slug, string $path, array $blocks): int
+    {
+        $route = SiteRoute::query()->where('path', $path)->first();
+
+        if ($route !== null && $route->entry_id !== null) {
+            $entry = Entry::query()->find($route->entry_id);
+            $entry?->translationFor($locale)?->update(['body' => ['blocks' => $blocks]]);
+
+            return $route->entry_id;
+        }
+
+        $entry = Entry::query()->create([
+            'type' => 'page',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+        $entry->translations()->create([
+            'locale' => $locale,
+            'title' => $title,
+            'slug' => $slug,
+            'status' => 'published',
+            'body' => ['blocks' => $blocks],
+        ]);
+        SiteRoute::query()->create([
+            'locale' => $locale,
+            'path' => $path,
+            'entry_id' => $entry->id,
+        ]);
+
+        return $entry->id;
+    }
+
+    /** Sync a taxonomy's storefront list route (/{slug}). Best-effort. */
+    private function syncTaxonomyRoute(Taxonomy $category, string $locale): void
+    {
+        $translation = $category->translationFor($locale);
+        if ($translation !== null) {
+            try {
+                $this->routes->syncTaxonomy($category, $locale, $translation->slug);
+            } catch (RouteConflictException) {
+                // A page already owns this path; leave it.
+            }
+        }
+    }
+
+    /** Add a taxonomy-link menu item (idempotent; anchored on routable_id). */
+    private function addMenuTaxonomyItem(string $locale, Taxonomy $category, string $label, int $position): void
     {
         $menu = Menu::query()->where('handle', 'main-'.$locale)->first();
         if ($menu === null) {
@@ -194,6 +668,21 @@ final class SeedAnVinhContent
 
         $item = MenuItem::query()->firstOrCreate(
             ['menu_id' => $menu->id, 'link_type' => 'taxonomy', 'routable_type' => 'taxonomy', 'routable_id' => $category->id],
+            ['position' => $position],
+        );
+        $item->translations()->firstOrCreate(['locale' => $locale], ['label' => $label]);
+    }
+
+    /** Add an entry-link menu item (idempotent; anchored on routable_id). */
+    private function addMenuEntryItem(string $locale, int $entryId, string $label, int $position): void
+    {
+        $menu = Menu::query()->where('handle', 'main-'.$locale)->first();
+        if ($menu === null) {
+            return;
+        }
+
+        $item = MenuItem::query()->firstOrCreate(
+            ['menu_id' => $menu->id, 'link_type' => 'entry', 'routable_type' => 'entry', 'routable_id' => $entryId],
             ['position' => $position],
         );
         $item->translations()->firstOrCreate(['locale' => $locale], ['label' => $label]);
