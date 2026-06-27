@@ -182,3 +182,25 @@ it('news posts are listed at /tin-tuc', function () {
         ->toContain('class="category__title">Tin tức')
         ->toContain('An Vinh tổ chức team building 2024');
 });
+
+it('emits og:image from brand setting on the home page', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+
+    // SeedAnVinhContent writes og_image (KEY_ABOUT at w=1280) to the brand site setting;
+    // head.blade.php emits <meta property="og:image"> when data_get($brand,'og_image') is set.
+    expect($html)->toContain('<meta property="og:image" content="http');
+});
+
+it('category list /san-pham has non-empty meta description via brand fallback', function () {
+    seedAnVinhStorefront();
+
+    $html = $this->get('http://anvinh.test/san-pham')->assertOk()->getContent();
+
+    // renderCategory passes no seo description; the head partial falls back to brand.description.
+    // The tag must exist and its content must not be empty.
+    expect($html)
+        ->toContain('<meta name="description" content="')
+        ->not->toContain('<meta name="description" content="">');
+});

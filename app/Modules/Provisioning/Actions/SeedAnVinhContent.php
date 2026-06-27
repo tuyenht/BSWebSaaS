@@ -343,6 +343,20 @@ final class SeedAnVinhContent
                 [$tinTuc->id],
             );
         }
+
+        // Reposition the tin-tuc nav item to the end of the An Vinh menu (after the 6 An Vinh-specific
+        // sections at positions 2–7). ProvisionSite seeds it at position 1 (right after Trang chủ),
+        // but the desired order is: Trang chủ · Giới thiệu · Dịch vụ · Sản phẩm · Dự án · Đối tác ·
+        // Liên hệ · Tin tức. Idempotent: a re-run sets position to 8 again.
+        $menu = Menu::query()->where('handle', 'main-'.$locale)->first();
+        if ($menu !== null) {
+            MenuItem::query()
+                ->where('menu_id', $menu->id)
+                ->where('link_type', 'taxonomy')
+                ->where('routable_type', 'taxonomy')
+                ->where('routable_id', $tinTuc->id)
+                ->update(['position' => 8]);
+        }
     }
 
     /**
@@ -541,14 +555,17 @@ final class SeedAnVinhContent
             ],
         );
 
-        // Storefront header brand: name + the logo's resolved URL (raw master — a small transparent
-        // PNG, no transform). Stored in settings (not a column) so the header shows a logo for a
-        // tenant that has one and just the nav for one that doesn't.
+        // Storefront header brand: name + logo URL + short description + og:image.
+        // description → meta description fallback for pages with no per-page description (e.g.
+        // category lists). og_image → og:image tag emitted by the shared head partial.
+        // 1280 is a whitelisted width (snapWidth snaps to it); the Cloudflare Worker serves it.
         SiteSetting::query()->updateOrCreate(
             ['group_name' => 'general', 'key' => 'brand'],
             ['value' => [
                 'name' => 'Cơ Khí Chính Xác An Vinh',
                 'logo' => $this->media->url(self::KEY_LOGO),
+                'description' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
+                'og_image' => $this->media->url(self::KEY_ABOUT, 1280),
             ]],
         );
     }

@@ -17,6 +17,7 @@ use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Identity\Models\User;
+use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
@@ -168,6 +169,18 @@ Route::get('/two-factor/setup', fn () => response()->json(['message' => 'Two-fac
 //    domains table. Để trong nhóm web mặc định — các middleware web (ShareErrors…)
 //    phụ thuộc session nên không strip; tần suất gọi cực thấp (chỉ lúc cấp cert). ─
 Route::get('/caddy/ask', CaddyAskController::class)->name('caddy.ask');
+
+// ── Per-tenant sitemap + robots (same middleware as storefront; registered BEFORE the
+//    fallback so these explicit routes win). public/robots.txt is deleted; this route
+//    emits the dynamic per-host Sitemap: line instead. ─────────────────────────────
+Route::get('/sitemap.xml', SitemapController::class)
+    ->middleware([SetCurrentSite::class, 'site.active']);
+
+Route::get('/robots.txt', function (Request $request) {
+    $sitemap = $request->getScheme().'://'.$request->getHost().'/sitemap.xml';
+
+    return response("User-agent: *\nDisallow:\nSitemap: {$sitemap}", 200, ['Content-Type' => 'text/plain']);
+})->middleware([SetCurrentSite::class, 'site.active']);
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a
 //    defined route; resolves dynamic content for any other path (404 if none). ─────

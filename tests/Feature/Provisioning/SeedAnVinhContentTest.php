@@ -357,6 +357,30 @@ it('is idempotent (re-run does not duplicate)', function () {
     });
 });
 
+it('repositions the tin-tuc menu item to position 8 (after all An Vinh sections)', function () {
+    $site = seedPrecisionSite();
+
+    app(Tenancy::class)->enter($site->id, function () {
+        app(SeedAnVinhContent::class)->handle();
+
+        // ProvisionSite seeds tin-tuc at position 1 (right after Trang chủ at 0).
+        // SeedAnVinhContent must move it to position 8 so the final left→right order is:
+        // Trang chủ(0) · Giới thiệu(2) · Dịch vụ(3) · Sản phẩm(4) · Dự án(5) · Đối tác(6) · Liên hệ(7) · Tin tức(8)
+        $tinTucTranslation = TaxonomyTranslation::query()->where('slug', 'tin-tuc')->first();
+        expect($tinTucTranslation)->not->toBeNull();
+        $tinTuc = Taxonomy::query()->findOrFail($tinTucTranslation->taxonomy_id);
+
+        $item = MenuItem::query()
+            ->where('link_type', 'taxonomy')
+            ->where('routable_type', 'taxonomy')
+            ->where('routable_id', $tinTuc->id)
+            ->first();
+
+        expect($item)->not->toBeNull();
+        expect($item->position)->toBe(8);
+    });
+});
+
 it('creates the contact page when the site predates /lien-he (prod av1 parity)', function () {
     $site = seedPrecisionSite();
 

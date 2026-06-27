@@ -8,23 +8,36 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ $seoTitle }}</title>
-@if (! empty($seoDescription))
-    <meta name="description" content="{{ $seoDescription }}">
+@php
+    // Brand description fallback: category-list and other pages without a per-page description
+    // (seoDescription = null/empty) fall back to the tenant's brand short description so the
+    // <meta name="description"> is never empty. $brand is injected via $chrome on every request
+    // and adds no new query here.
+    $effectiveDescription = ! empty($seoDescription)
+        ? $seoDescription
+        : data_get($brand ?? null, 'description', '');
+    $ogImage = data_get($brand ?? null, 'og_image', '');
+@endphp
+@if (! empty($effectiveDescription))
+    <meta name="description" content="{{ $effectiveDescription }}">
 @endif
 @if (! empty($canonical))
     <link rel="canonical" href="{{ $canonical }}">
 @endif
 
-{{-- Open Graph — title/description/type/url/locale. og:image waits for the Media module. --}}
+{{-- Open Graph — title/description/type/url/locale/image. --}}
 <meta property="og:title" content="{{ $seoTitle }}">
-@if (! empty($seoDescription))
-    <meta property="og:description" content="{{ $seoDescription }}">
+@if (! empty($effectiveDescription))
+    <meta property="og:description" content="{{ $effectiveDescription }}">
 @endif
 <meta property="og:type" content="{{ $ogType ?? 'website' }}">
 @if (! empty($canonical))
     <meta property="og:url" content="{{ $canonical }}">
 @endif
 <meta property="og:locale" content="{{ $lang ?? 'vi' }}">
+@if (! empty($ogImage))
+    <meta property="og:image" content="{{ $ogImage }}">
+@endif
 
 @if (! empty($pagination['prevUrl']))
     <link rel="prev" href="{{ $pagination['prevUrl'] }}">
