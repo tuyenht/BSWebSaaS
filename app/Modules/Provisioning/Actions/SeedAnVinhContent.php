@@ -617,7 +617,19 @@ final class SeedAnVinhContent
         array $categoryIds,
         array $blocks = [],
     ): void {
-        if (EntryTranslation::query()->where('locale', $locale)->where('slug', $slug)->exists()) {
+        $existing = EntryTranslation::query()->where('locale', $locale)->where('slug', $slug)->first();
+        if ($existing !== null) {
+            // Re-seed: the post's text is admin-owned, but the featured image is canonical here — so
+            // refresh just it, so a re-curated photo (new content-hash key) reaches existing posts.
+            $entry = Entry::query()->find($existing->entry_id);
+            if ($entry !== null) {
+                $meta = $entry->meta;
+                if (data_get($meta, 'image_url') !== $image) {
+                    $meta['image_url'] = $image;
+                    $entry->update(['meta' => $meta]);
+                }
+            }
+
             return;
         }
 

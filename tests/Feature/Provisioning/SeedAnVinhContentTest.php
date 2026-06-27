@@ -406,3 +406,21 @@ it('creates the contact page when the site predates /lien-he (prod av1 parity)',
         expect(MenuItem::query()->where('routable_type', 'entry')->where('routable_id', $route->entry_id)->exists())->toBeTrue();
     });
 });
+
+it('re-seed refreshes an existing post featured image (re-curated photo reaches live posts)', function () {
+    $site = seedPrecisionSite();
+
+    app(Tenancy::class)->enter($site->id, function () {
+        app(SeedAnVinhContent::class)->handle();
+
+        // A post already exists with a stale image (the prod state before a re-curation re-seed).
+        $product = Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'truc-may-cnc'))->firstOrFail();
+        $product->update(['meta' => ['image_url' => 'an-vinh/san-pham/STALE-000000000000.jpg']]);
+
+        app(SeedAnVinhContent::class)->handle();   // re-seed
+
+        // The featured image is refreshed to the canonical curated key (firstOrCreatePost updates it
+        // on an existing post instead of skipping) — so a swapped photo actually reaches prod.
+        expect($product->fresh()->meta['image_url'])->toStartWith('an-vinh/san-pham/sp-truc-may-cnc-');
+    });
+});
