@@ -1,3 +1,9 @@
+{{--
+    About section. The about__image is the above-fold LCP candidate on inner pages (gioi-thieu,
+    home scroll-area) so it uses loading="eager" and fetchpriority="high" — the browser fetches
+    it at the highest priority without waiting for lazy thresholds. width/height reserve space
+    (no CLS). alt is the section heading (meaningful descriptive text, not empty).
+--}}
 <section class="about">
     <div class="about__body">
         @if (! empty($props['heading']))
@@ -11,7 +17,13 @@
         @endif
     </div>
     @if (! empty($props['image_url']))
-        {{-- Option C image URL; width/height reserve space (no CLS). --}}
-        <img class="about__image" src="{{ $props['image_url'] }}" alt="{{ $props['heading'] ?? '' }}" width="640" height="480" loading="lazy">
+        {{-- Option C image URL; loading="eager" + fetchpriority="high" for LCP. --}}
+        <img class="about__image"
+             src="{{ $props['image_url'] }}"
+             alt="{{ $props['heading'] ?? '' }}"
+             width="640"
+             height="480"
+             loading="eager"
+             fetchpriority="high">
     @endif
 </section>

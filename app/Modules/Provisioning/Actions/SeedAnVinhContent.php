@@ -32,7 +32,9 @@ use App\Modules\Tenancy\Models\SiteSetting;
 final class SeedAnVinhContent
 {
     // R2 storage keys (from key-map.json — verbatim paths, never hard-coded base URLs)
-    private const KEY_ABOUT = 'an-vinh/content/about-doi-ngu-8a67c0ddf763.jpg';
+    private const KEY_ABOUT = 'an-vinh/content/about-doi-ngu-a7b78a0a6ff7.jpg';
+
+    private const KEY_HERO = 'an-vinh/hero/hero-home-7ca90eafe212.jpg';
 
     private const KEY_LOGO = 'an-vinh/brand/logo-e76d7cb1dfe4.png';
 
@@ -60,7 +62,7 @@ final class SeedAnVinhContent
             'slug' => 'jig-kiem-tap-lo-vf7',
             'excerpt' => 'Đồ gá kiểm tra và lắp ráp cụm taplo cho dòng xe VinFast VF7, đảm bảo độ chính xác và ổn định trong quá trình sản xuất hàng loạt.',
             'specs' => ['Vật liệu: Thép SKD11, Nhôm A6061', 'Độ chính xác: ±0.05mm', 'Ứng dụng: Kiểm tra, lắp ráp ô tô'],
-            'image' => 'an-vinh/san-pham/sp-jig-kiem-taplo-vf7-eb4aaa11d402.jpg',
+            'image' => 'an-vinh/san-pham/sp-jig-kiem-taplo-vf7-b2897cdd401e.jpg',
             'sub_cat' => 'do-ga',
         ],
         [
@@ -68,7 +70,7 @@ final class SeedAnVinhContent
             'slug' => 'may-tu-dong-nan-sua-san-pham',
             'excerpt' => 'Hệ thống tự động sử dụng robot để nắn sửa các chi tiết kim loại sau quá trình dập, tăng năng suất và giảm thiểu sai sót do con người.',
             'specs' => ['Robot sử dụng: Fanuc / Yaskawa', 'Chu kỳ: 15 giây/sản phẩm', 'Nguồn điện: 380V / 3 pha'],
-            'image' => 'an-vinh/san-pham/sp-may-tu-dong-nan-sua-21bb061f368c.jpg',
+            'image' => 'an-vinh/san-pham/sp-may-tu-dong-nan-sua-d2e8cabcfba6.jpg',
             'sub_cat' => 'do-ga',
         ],
         [
@@ -76,7 +78,7 @@ final class SeedAnVinhContent
             'slug' => 'jig-han-frame-comp',
             'excerpt' => 'Đồ gá chuyên dụng cho việc hàn khung xe, định vị chính xác các chi tiết, đảm bảo mối hàn chắc chắn và đúng vị trí kỹ thuật.',
             'specs' => ['Loại kẹp: Kẹp khí nén', 'Vật liệu chính: Thép SS400', 'Số điểm định vị: 24'],
-            'image' => 'an-vinh/san-pham/sp-jig-han-frame-comp-ea7c4c84a448.jpg',
+            'image' => 'an-vinh/san-pham/sp-jig-han-frame-comp-bcd2a076a0ed.jpg',
             'sub_cat' => 'do-ga',
         ],
         [
@@ -84,7 +86,7 @@ final class SeedAnVinhContent
             'slug' => 'khuon-dap-binh-xang',
             'excerpt' => 'Khuôn dập liên hoàn cho sản phẩm bình xăng xe máy, sử dụng vật liệu thép chất lượng cao cho tuổi thọ và độ bền vượt trội.',
             'specs' => ['Loại khuôn: Khuôn dập liên hoàn', 'Vật liệu: DC53, SKD11', 'Lực dập: 200 tấn'],
-            'image' => 'an-vinh/san-pham/sp-khuon-dap-binh-xang-a6767195d059.jpg',
+            'image' => 'an-vinh/san-pham/sp-khuon-dap-binh-xang-e992548adeed.jpg',
             'sub_cat' => 'khuon-mau',
         ],
         [
@@ -92,7 +94,7 @@ final class SeedAnVinhContent
             'slug' => 'khuon-duc-ap-luc-cao',
             'excerpt' => 'Khuôn đúc nhôm áp lực cao, thiết kế tối ưu dòng chảy kim loại, đảm bảo sản phẩm có độ đặc và bề mặt hoàn hảo.',
             'specs' => ['Vật liệu: SKD61, DAC', 'Số lần đúc: > 100,000 shots', 'Máy đúc: 500-800 tấn'],
-            'image' => 'an-vinh/san-pham/sp-khuon-duc-ap-luc-cao-a9c4665a7a78.jpg',
+            'image' => 'an-vinh/san-pham/sp-khuon-duc-ap-luc-cao-ed70e2dd620b.jpg',
             'sub_cat' => 'khuon-mau',
         ],
         [
@@ -100,7 +102,7 @@ final class SeedAnVinhContent
             'slug' => 'truc-may-cnc',
             'excerpt' => 'Gia công các loại trục, vít me cho máy CNC với độ chính xác cao, vật liệu được nhiệt luyện để tăng độ cứng và chống mài mòn.',
             'specs' => ['Vật liệu: Thép S45C, SCM440', 'Độ cứng: 58-62 HRC', 'Dung sai: ±0.005mm'],
-            'image' => 'an-vinh/san-pham/sp-truc-may-cnc-92f8d329e8dc.jpg',
+            'image' => 'an-vinh/san-pham/sp-truc-may-cnc-3e982930d535.jpg',
             'sub_cat' => 'chi-tiet-may',
         ],
     ];
@@ -111,37 +113,37 @@ final class SeedAnVinhContent
             'title' => 'Dây chuyền lắp ráp tự động',
             'slug' => 'day-chuyen-lap-rap-tu-dong',
             'excerpt' => 'Thiết kế và thi công hệ thống dây chuyền lắp ráp linh kiện điện tử, tăng năng suất 200%.',
-            'image' => 'an-vinh/du-an/da-day-chuyen-lap-rap-tu-dong-5a538d6e5aeb.jpg',
+            'image' => 'an-vinh/du-an/da-day-chuyen-lap-rap-tu-dong-0bec2c6d066c.jpg',
         ],
         [
             'title' => 'Hệ thống Jig hàn robot',
             'slug' => 'he-thong-jig-han-robot',
             'excerpt' => 'Phát triển hệ thống đồ gá hàn cho robot, ứng dụng trong ngành công nghiệp ô tô.',
-            'image' => 'an-vinh/du-an/da-he-thong-jig-han-robot-ea70bfe9ad6e.jpg',
+            'image' => 'an-vinh/du-an/da-he-thong-jig-han-robot-eedb8ed77afb.jpg',
         ],
         [
             'title' => 'Khuôn mẫu cho sản phẩm gia dụng',
             'slug' => 'khuon-mau-san-pham-gia-dung',
             'excerpt' => 'Chế tạo loạt khuôn ép nhựa cho các sản phẩm gia dụng phức tạp, đáp ứng tiêu chuẩn xuất khẩu.',
-            'image' => 'an-vinh/du-an/da-khuon-mau-san-pham-gia-dung-d7511f57e318.jpg',
+            'image' => 'an-vinh/du-an/da-khuon-mau-san-pham-gia-dung-c9da111cbfb7.jpg',
         ],
         [
             'title' => 'Đồ gá kiểm tra thân vỏ xe',
             'slug' => 'do-ga-kiem-tra-than-vo-xe',
             'excerpt' => 'Sản xuất đồ gá kiểm tra kích thước 3D cho thân vỏ ô tô, đảm bảo độ chính xác tuyệt đối.',
-            'image' => 'an-vinh/du-an/da-do-ga-kiem-tra-than-vo-xe-eb4aaa11d402.jpg',
+            'image' => 'an-vinh/du-an/da-do-ga-kiem-tra-than-vo-xe-420ed0bd4bb3.jpg',
         ],
         [
             'title' => 'Gia công chi tiết hàng không',
             'slug' => 'gia-cong-chi-tiet-hang-khong',
             'excerpt' => 'Tham gia dự án gia công các chi tiết cơ khí phức tạp cho ngành hàng không vũ trụ.',
-            'image' => 'an-vinh/du-an/da-gia-cong-chi-tiet-hang-khong-0d124f8aedb0.jpg',
+            'image' => 'an-vinh/du-an/da-gia-cong-chi-tiet-hang-khong-ae396a44dff9.jpg',
         ],
         [
             'title' => 'Cải tiến dây chuyền sản xuất',
             'slug' => 'cai-tien-day-chuyen-san-xuat',
             'excerpt' => 'Tư vấn và thực hiện cải tiến, tối ưu hóa dây chuyền sản xuất cho các đối tác lớn trong và ngoài nước.',
-            'image' => 'an-vinh/du-an/da-cai-tien-day-chuyen-san-xuat-5df673ca28cb.jpg',
+            'image' => 'an-vinh/du-an/da-cai-tien-day-chuyen-san-xuat-0df18b440a22.jpg',
         ],
     ];
 
@@ -179,37 +181,37 @@ final class SeedAnVinhContent
             'title' => 'An Vinh tổ chức team building 2024',
             'slug' => 'an-vinh-to-chuc-team-building-2024',
             'excerpt' => 'Hoạt động team building thường niên nhằm gắn kết tinh thần đồng đội và tái tạo năng lượng cho toàn thể cán bộ nhân viên.',
-            'image' => 'an-vinh/tin-tuc/tt-team-building-2024-5a967c5f98dd.jpg',
+            'image' => 'an-vinh/tin-tuc/tt-team-building-2024-d0f883162905.jpg',
         ],
         [
             'title' => 'Xu hướng tự động hóa trong ngành cơ khí chế tạo',
             'slug' => 'xu-huong-tu-dong-hoa-nganh-co-khi',
             'excerpt' => 'Tự động hóa và robot đang thay đổi bộ mặt của ngành cơ khí, mang lại hiệu suất và độ chính xác chưa từng có.',
-            'image' => 'an-vinh/tin-tuc/tt-xu-huong-tu-dong-hoa-da1937fa07b9.jpg',
+            'image' => 'an-vinh/tin-tuc/tt-xu-huong-tu-dong-hoa-e435190fc7d2.jpg',
         ],
         [
             'title' => 'Khánh thành nhà máy số 3 tại Thạch Thất',
             'slug' => 'khanh-thanh-nha-may-so-3',
             'excerpt' => 'Việc đưa vào hoạt động nhà máy số 3 giúp An Vinh nâng cao năng lực sản xuất, đáp ứng các đơn hàng lớn.',
-            'image' => 'an-vinh/tin-tuc/tt-khanh-thanh-nha-may-3-0c3d5ec2283d.jpg',
+            'image' => 'an-vinh/tin-tuc/tt-khanh-thanh-nha-may-3-222228314bc5.jpg',
         ],
         [
             'title' => 'Ứng dụng vật liệu mới trong chế tạo khuôn mẫu',
             'slug' => 'ung-dung-vat-lieu-moi-khuon-mau',
             'excerpt' => 'Các loại thép công cụ thế hệ mới giúp tăng tuổi thọ khuôn và cải thiện chất lượng bề mặt sản phẩm.',
-            'image' => 'an-vinh/tin-tuc/tt-vat-lieu-moi-khuon-mau-50967199a1d4.jpg',
+            'image' => 'an-vinh/tin-tuc/tt-vat-lieu-moi-khuon-mau-5bd3cd43bc3c.jpg',
         ],
         [
             'title' => 'Đào tạo an toàn lao động định kỳ',
             'slug' => 'dao-tao-an-toan-lao-dong',
             'excerpt' => 'Tổ chức khóa đào tạo về an toàn lao động và phòng chống cháy nổ cho toàn bộ nhân viên nhà máy.',
-            'image' => 'an-vinh/tin-tuc/tt-dao-tao-an-toan-lao-dong-9d12273c8e3c.jpg',
+            'image' => 'an-vinh/tin-tuc/tt-dao-tao-an-toan-lao-dong-2932ad3f6de8.jpg',
         ],
         [
             'title' => 'Công nghệ in 3D kim loại và tương lai của ngành',
             'slug' => 'cong-nghe-in-3d-kim-loai',
             'excerpt' => 'In 3D kim loại mở ra những khả năng mới trong việc tạo mẫu nhanh và sản xuất các chi tiết phức tạp.',
-            'image' => 'an-vinh/tin-tuc/tt-cong-nghe-in-3d-kim-loai-d9bca24bd3dc.jpg',
+            'image' => 'an-vinh/tin-tuc/tt-cong-nghe-in-3d-kim-loai-a707a16fb5fb.jpg',
         ],
     ];
 
@@ -368,6 +370,10 @@ final class SeedAnVinhContent
     private function updateHomePage(string $locale): void
     {
         $aboutUrl = $this->media->url(self::KEY_ABOUT, 960);
+        // Hero background: 1600px — snapped by MediaUrlResolver to the nearest
+        // whitelisted width. Pre-resolved so the blade renders src directly (no
+        // resolver at render-time for page-section props).
+        $heroUrl = $this->media->url(self::KEY_HERO, 1600);
 
         $blocks = [
             ['type' => 'hero', 'props' => [
@@ -375,6 +381,7 @@ final class SeedAnVinhContent
                 'subheading' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
                 'cta_label' => 'Liên hệ ngay',
                 'cta_url' => '/lien-he',
+                'image_url' => $heroUrl,
             ]],
             ['type' => 'about', 'props' => [
                 'heading' => 'Chế Tác Tinh Hoa - Nâng Tầm Chính Xác',
@@ -555,17 +562,25 @@ final class SeedAnVinhContent
             ],
         );
 
-        // Storefront header brand: name + logo URL + short description + og:image.
-        // description → meta description fallback for pages with no per-page description (e.g.
-        // category lists). og_image → og:image tag emitted by the shared head partial.
-        // 1280 is a whitelisted width (snapWidth snaps to it); the Cloudflare Worker serves it.
+        // Storefront brand setting: name, logo, SEO defaults, and NAP.
+        // - name: displayed in the header logo aria-label and footer copyright
+        // - legal_name: full legal name shown in the footer company block
+        // - description: meta description fallback for pages without a per-page description
+        // - og_image: fallback og:image; per-entry images override this in StorefrontController
+        // - address/phone/email/license: NAP for the footer; conditional — tenants without
+        //   these keys get a minimal footer so no An Vinh content leaks to other tenants
         SiteSetting::query()->updateOrCreate(
             ['group_name' => 'general', 'key' => 'brand'],
             ['value' => [
                 'name' => 'Cơ Khí Chính Xác An Vinh',
+                'legal_name' => 'Công ty TNHH TM & DV Thiết Kế Gia Công Cơ Khí An Vinh',
                 'logo' => $this->media->url(self::KEY_LOGO),
                 'description' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
                 'og_image' => $this->media->url(self::KEY_ABOUT, 1280),
+                'address' => 'Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội',
+                'phone' => '0915 66 83 83',
+                'email' => 'quybv@ckanvinh.vn',
+                'license' => '0108649706',
             ]],
         );
     }

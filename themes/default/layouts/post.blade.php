@@ -16,5 +16,6 @@
              bodies reuse the block-list Page-JSON (D1), so they render exactly like a page. --}}
         <div class="post__body">{!! $sections !!}</div>
     </article>
+    @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
 </body>
 </html>

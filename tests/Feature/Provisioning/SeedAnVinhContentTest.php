@@ -70,7 +70,7 @@ it('seeds san-pham with 3 sub-categories and 6 products', function () {
             ->whereHas('translations', fn ($q) => $q->where('slug', 'truc-may-cnc'))
             ->first();
         expect($product)->not->toBeNull();
-        expect($product->meta['image_url'])->toBe('an-vinh/san-pham/sp-truc-may-cnc-92f8d329e8dc.jpg');
+        expect($product->meta['image_url'])->toStartWith('an-vinh/san-pham/sp-truc-may-cnc-');  // slug + content-hash; the hash changes when the photo is re-curated
         $productTranslation = $product->translationFor('vi');
         expect($productTranslation)->not->toBeNull();
         $bodyBlocks = $productTranslation->body['blocks'] ?? [];
@@ -107,7 +107,7 @@ it('seeds du-an with 6 projects, route, and no sectors', function () {
             ->whereHas('translations', fn ($q) => $q->where('slug', 'day-chuyen-lap-rap-tu-dong'))
             ->first();
         expect($project)->not->toBeNull();
-        expect($project->meta['image_url'])->toBe('an-vinh/du-an/da-day-chuyen-lap-rap-tu-dong-5a538d6e5aeb.jpg');
+        expect($project->meta['image_url'])->toStartWith('an-vinh/du-an/da-day-chuyen-lap-rap-tu-dong-');
 
         expect(ContentSection::query()->where('key', 'projects')->exists())->toBeTrue();
         expect(MenuItem::query()->where('routable_type', 'taxonomy')->where('routable_id', $duAn->id)->exists())->toBeTrue();
@@ -166,7 +166,7 @@ it('seeds 6 tin-tuc news posts under the ProvisionSite news category', function 
             ->whereHas('translations', fn ($q) => $q->where('slug', 'an-vinh-to-chuc-team-building-2024'))
             ->first();
         expect($newsPost)->not->toBeNull();
-        expect($newsPost->meta['image_url'])->toBe('an-vinh/tin-tuc/tt-team-building-2024-5a967c5f98dd.jpg');
+        expect($newsPost->meta['image_url'])->toStartWith('an-vinh/tin-tuc/tt-team-building-2024-');
     });
 });
 

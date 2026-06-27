@@ -1,9 +1,7 @@
 {{--
-    Shared storefront <head>: the SSR SEO baseline for every layout — canonical + Open Graph,
-    plus an optional BreadcrumbList JSON-LD. Included inside each layout's <head>, so it
-    inherits the layout's view data. Every value comes from already-resolved request data, so
-    the head adds no queries. JSON-LD is encoded server-side with tag-hex escaping to stay safe
-    inside the <script> element.
+    Shared storefront <head>: SSR SEO baseline — canonical, Open Graph, optional BreadcrumbList
+    JSON-LD, hreflang alternates, design-token CSS variables, storefront stylesheet. Included
+    inside each layout's <head>; inherits layout view data. Adds no DB queries.
 --}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,7 +14,14 @@
     $effectiveDescription = ! empty($seoDescription)
         ? $seoDescription
         : data_get($brand ?? null, 'description', '');
-    $ogImage = data_get($brand ?? null, 'og_image', '');
+
+    // Per-entry ogImage (set by StorefrontController for posts with a featured image) takes
+    // priority over the site-wide brand og_image. Falls back to brand when not set.
+    /** @var string|null $ogImage */
+    $passedOgImage = $ogImage ?? null;
+    $effectiveOgImage = ! empty($passedOgImage)
+        ? $passedOgImage
+        : data_get($brand ?? null, 'og_image', '');
 @endphp
 @if (! empty($effectiveDescription))
     <meta name="description" content="{{ $effectiveDescription }}">
@@ -35,8 +40,8 @@
     <meta property="og:url" content="{{ $canonical }}">
 @endif
 <meta property="og:locale" content="{{ $lang ?? 'vi' }}">
-@if (! empty($ogImage))
-    <meta property="og:image" content="{{ $ogImage }}">
+@if (! empty($effectiveOgImage))
+    <meta property="og:image" content="{{ $effectiveOgImage }}">
 @endif
 
 @if (! empty($pagination['prevUrl']))
@@ -50,17 +55,25 @@
 @endforeach
 
 @if (! empty($breadcrumb))
-    <script type="application/ld+json">{!! json_encode([
-        '@context' => 'https://schema.org',
-        '@type' => 'BreadcrumbList',
-        'itemListElement' => collect($breadcrumb)->values()->map(fn ($crumb, $i) => [
-            '@type' => 'ListItem',
-            'position' => $i + 1,
-            'name' => $crumb['name'],
-            'item' => $crumb['url'],
-        ])->all(),
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) !!}</script>
+    @php
+        // Build inside @php so Blade does not scan '@context' / '@type' as directives.
+        // JSON_HEX_TAG escapes < and > to < / > — safe for inline <script>.
+        $breadcrumbLd = json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'BreadcrumbList',
+            'itemListElement' => collect($breadcrumb)->values()->map(fn ($crumb, $i) => [
+                '@type' => 'ListItem',
+                'position' => $i + 1,
+                'name' => $crumb['name'],
+                'item' => $crumb['url'],
+            ])->all(),
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+    @endphp
+    <script type="application/ld+json">{!! $breadcrumbLd !!}</script>
 @endif
 
 {{-- Per-site design tokens over the shared template (values are sanitized server-side). --}}
 <style>:root{@foreach (($tokens ?? []) as $name => $value)--{{ $name }}:{{ $value }};@endforeach}</style>
+
+{{-- Storefront stylesheet (Vite-managed; faked in tests via withoutVite()). --}}
+@vite(['resources/css/storefront.css'])

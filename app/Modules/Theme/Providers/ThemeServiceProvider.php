@@ -26,6 +26,7 @@ final class ThemeServiceProvider extends ServiceProvider
         'hero' => [
             'heading' => ['type' => 'text'],
             'subheading' => ['type' => 'text'],
+            'image_url' => ['type' => 'url'],
             'cta_label' => ['type' => 'text'],
             'cta_url' => ['type' => 'url'],
             'cta2_label' => ['type' => 'text'],

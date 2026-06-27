@@ -118,13 +118,14 @@ it('renders the hero unchanged when no second CTA is set (render-neutral)', func
     expect($html)->toContain('href="/lien-he">Liên hệ')->not->toContain('hero__cta--secondary');
 });
 
-it('guards the hero h1 against an empty heading (no empty <h1>)', function () {
-    // An empty <h1></h1> is an axe violation; emit the h1 only when there is a heading.
+it('guards the hero heading against an empty element (no empty heading tag)', function () {
+    // The hero uses <h2> so the layout's <h1 class="page__title"> is the sole h1 per page.
+    // An empty <h2></h2> is an axe violation; the heading is omitted when not set.
     $withHeading = View::make('theme::sections.hero', ['props' => ['heading' => 'An Vinh']])->render();
     $noHeading = View::make('theme::sections.hero', ['props' => ['cta_label' => 'X', 'cta_url' => '/x']])->render();
 
-    expect($withHeading)->toContain('<h1>An Vinh</h1>');
-    expect($noHeading)->not->toContain('<h1');
+    expect($withHeading)->toContain('<h2 class="hero__heading">An Vinh</h2>');
+    expect($noHeading)->not->toContain('<h2');
 });
 
 it('registers the contact block with url-typed phone/email/map sinks', function () {

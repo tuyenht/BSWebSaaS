@@ -31,5 +31,6 @@
             <p class="category__empty">Chưa có bài viết nào.</p>
         @endif
     </main>
+    @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
 </body>
 </html>

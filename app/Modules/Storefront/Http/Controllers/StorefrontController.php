@@ -10,6 +10,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\RouteResolver;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\PageRenderer;
@@ -35,6 +36,7 @@ final class StorefrontController
         private readonly SiteLocale $locale,
         private readonly MenuResolver $nav,
         private readonly PathBuilder $paths,
+        private readonly MediaUrlResolver $media,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -145,6 +147,15 @@ final class StorefrontController
         $canonical = url($this->paths->publicUrl($path, $locale));
         $extra['canonical'] = $canonical;
         $extra['ogType'] = $entry->type === 'post' ? 'article' : 'website';
+
+        // Featured image for og:image — posts carry meta['image_url'] as a raw R2 key.
+        // Resolve at 1280 (whitelisted width; Cloudflare Worker serves it via cf.image).
+        // Pages without a featured image omit $extra['ogImage'] so head.blade.php
+        // falls back to the site-wide brand og_image automatically.
+        $metaImageKey = data_get($entry->meta, 'image_url');
+        if (is_string($metaImageKey) && $metaImageKey !== '') {
+            $extra['ogImage'] = $this->media->url($metaImageKey, 1280);
+        }
 
         // A post is shown under its primary category: the category drives its layout
         // (detail_template) and a breadcrumb back to the category list. Pages skip this.
