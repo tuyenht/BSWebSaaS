@@ -392,7 +392,7 @@ final class SeedAnVinhContent
             ]],
         ];
 
-        $this->upsertPage($locale, 'Cơ Khí Chính Xác An Vinh', 'home', '/', $blocks);
+        $this->upsertPage($locale, 'Cơ Khí Chính Xác An Vinh', 'home', '/', 'Cơ Khí Chính Xác An Vinh — thiết kế, gia công đồ gá, jig, khuôn mẫu và chi tiết máy CNC độ chính xác cao tại Việt Nam, đạt chuẩn ISO 9001:2015.', $blocks);
     }
 
     /**
@@ -406,7 +406,7 @@ final class SeedAnVinhContent
                 'address' => 'Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội',
                 'phone' => '0915 66 83 83',
                 'email' => 'quybv@ckanvinh.vn',
-                'map_embed' => 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d931.2534936!2d105.8579!3d21.2994!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2svn!4v1700000000',
+                'map_embed' => 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12503.468002335805!2d105.85833024594946!3d21.29902948043917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351dc82e015dad%3A0xc3a6d44da6b27bb9!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2s!4v1762317872785!5m2!1svi!2s',
             ]],
             ['type' => 'richtext', 'props' => [
                 'heading' => 'Hệ Thống Nhà Máy',
@@ -418,7 +418,7 @@ final class SeedAnVinhContent
             ]],
         ];
 
-        $entryId = $this->upsertPage($locale, 'Liên hệ', 'lien-he', '/lien-he', $blocks);
+        $entryId = $this->upsertPage($locale, 'Liên hệ', 'lien-he', '/lien-he', 'Liên hệ Cơ Khí Chính Xác An Vinh — hotline 0915 66 83 83, email quybv@ckanvinh.vn, hệ thống 3 nhà máy tại Hà Nội.', $blocks);
         $this->addMenuEntryItem($locale, $entryId, 'Liên hệ', 7);
     }
 
@@ -470,7 +470,7 @@ final class SeedAnVinhContent
             ]],
         ];
 
-        $entryId = $this->upsertPage($locale, 'Giới thiệu', 'gioi-thieu', '/gioi-thieu', $blocks);
+        $entryId = $this->upsertPage($locale, 'Giới thiệu', 'gioi-thieu', '/gioi-thieu', 'Giới thiệu Cơ Khí Chính Xác An Vinh — đơn vị hàng đầu thiết kế, gia công cơ khí chính xác, đồ gá, khuôn mẫu, đạt chuẩn ISO 9001:2015.', $blocks);
         $this->addMenuEntryItem($locale, $entryId, 'Giới thiệu', 2);
     }
 
@@ -505,7 +505,7 @@ final class SeedAnVinhContent
             ]],
         ];
 
-        $entryId = $this->upsertPage($locale, 'Đối tác', 'doi-tac', '/doi-tac', $blocks);
+        $entryId = $this->upsertPage($locale, 'Đối tác', 'doi-tac', '/doi-tac', 'Đối tác của Cơ Khí Chính Xác An Vinh — VinFast, Festo, Hutchinson, SMC và nhiều thương hiệu công nghiệp hàng đầu.', $blocks);
         $this->addMenuEntryItem($locale, $entryId, 'Đối tác', 6);
     }
 
@@ -592,6 +592,7 @@ final class SeedAnVinhContent
             'slug' => $slug,
             'status' => 'published',
             'excerpt' => $excerpt,
+            'seo_description' => $excerpt,
             'body' => $body,
         ]);
 
@@ -613,13 +614,13 @@ final class SeedAnVinhContent
      *
      * @param  list<array<string, mixed>>  $blocks
      */
-    private function upsertPage(string $locale, string $title, string $slug, string $path, array $blocks): int
+    private function upsertPage(string $locale, string $title, string $slug, string $path, string $description, array $blocks): int
     {
         $route = SiteRoute::query()->where('path', $path)->first();
 
         if ($route !== null && $route->entry_id !== null) {
             $entry = Entry::query()->find($route->entry_id);
-            $entry?->translationFor($locale)?->update(['body' => ['blocks' => $blocks]]);
+            $entry?->translationFor($locale)?->update(['body' => ['blocks' => $blocks], 'seo_description' => $description]);
 
             return $route->entry_id;
         }
@@ -634,6 +635,7 @@ final class SeedAnVinhContent
             'title' => $title,
             'slug' => $slug,
             'status' => 'published',
+            'seo_description' => $description,
             'body' => ['blocks' => $blocks],
         ]);
         SiteRoute::query()->create([

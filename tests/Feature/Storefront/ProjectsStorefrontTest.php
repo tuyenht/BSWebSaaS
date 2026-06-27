@@ -124,6 +124,7 @@ it('renders /gioi-thieu with about content', function () {
 
     expect($html)
         ->toContain('<title>Giới thiệu</title>')
+        ->toContain('<meta name="description" content="Giới thiệu Cơ Khí Chính Xác An Vinh')  // §5: page has a real meta description, not empty
         ->toContain('ISO 9001:2015')
         ->toContain('Tầm Nhìn');   // 'Tầm Nhìn' in body
 });
