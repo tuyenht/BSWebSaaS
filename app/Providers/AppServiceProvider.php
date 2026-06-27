@@ -24,7 +24,8 @@ class AppServiceProvider extends ServiceProvider
         // trusted from arbitrary proxies (trustProxies is narrowed for spoofing safety). When the
         // site is configured for https, force https URL generation so canonical / og:url / @vite
         // asset URLs are https and never mixed-content-blocked on the page.
-        if (str_starts_with((string) config('app.url'), 'https://')) {
+        $appUrl = config('app.url');
+        if (is_string($appUrl) && str_starts_with($appUrl, 'https://')) {
             URL::forceScheme('https');
         }
     }
