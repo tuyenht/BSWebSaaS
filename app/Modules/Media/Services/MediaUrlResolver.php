@@ -24,7 +24,30 @@ final class MediaUrlResolver
     {
         $url = $this->base('cloudflare').'/'.ltrim($key, '/');
 
-        return $width !== null ? $url.'?w='.$width : $url;
+        return $width !== null ? $url.'?w='.$this->snapWidth($width) : $url;
+    }
+
+    /**
+     * Snap a requested width up to the nearest whitelisted one (capped at the max). The Worker
+     * rejects any non-whitelisted ?w with a 400 (anti resize-DoS) BEFORE the raw-master fallback,
+     * so a caller must never mint a URL it would refuse — that ships a hard-broken image
+     * (e.g. a pre-resolved ?w=800 on the about block → 400 on the home + about pages).
+     */
+    private function snapWidth(int $width): int
+    {
+        $configured = config('media.widths');
+        $allowed = is_array($configured) ? array_values(array_filter($configured, 'is_int')) : [];
+        if ($allowed === []) {
+            return $width;
+        }
+        sort($allowed);
+        foreach ($allowed as $w) {
+            if ($width <= $w) {
+                return $w;
+            }
+        }
+
+        return (int) end($allowed);
     }
 
     /** imgproxy: an HMAC-signed processing URL (verify format vs the imgproxy version at PR-5). */

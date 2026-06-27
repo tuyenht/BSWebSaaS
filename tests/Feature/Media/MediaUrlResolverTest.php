@@ -24,12 +24,16 @@ beforeEach(function () {
 });
 
 it('cloudflare driver: raw URL with no width, ?w when a width is given', function () {
-    config(['media.driver' => 'cloudflare']);
+    config(['media.driver' => 'cloudflare', 'media.widths' => [320, 640, 960, 1280, 1600, 2048]]);
 
     expect(mediaUrl('an-vinh/content/logo-abc123.webp'))
         ->toBe('https://files.test/an-vinh/content/logo-abc123.webp');
+    expect(mediaUrl('an-vinh/content/logo-abc123.webp', 640))
+        ->toBe('https://files.test/an-vinh/content/logo-abc123.webp?w=640');
+    // A non-whitelisted width snaps UP to the nearest the Worker accepts (800 → 960), so a
+    // pre-resolved URL can never be one the Worker rejects with a 400.
     expect(mediaUrl('an-vinh/content/logo-abc123.webp', 800))
-        ->toBe('https://files.test/an-vinh/content/logo-abc123.webp?w=800');
+        ->toBe('https://files.test/an-vinh/content/logo-abc123.webp?w=960');
 });
 
 it('static driver: always the raw master, width is ignored', function () {

@@ -353,7 +353,7 @@ final class SeedAnVinhContent
      */
     private function updateHomePage(string $locale): void
     {
-        $aboutUrl = $this->media->url(self::KEY_ABOUT, 800);
+        $aboutUrl = $this->media->url(self::KEY_ABOUT, 960);
 
         $blocks = [
             ['type' => 'hero', 'props' => [
@@ -431,7 +431,7 @@ final class SeedAnVinhContent
      */
     private function createGioiThieuPage(string $locale): void
     {
-        $aboutUrl = $this->media->url(self::KEY_ABOUT, 800);
+        $aboutUrl = $this->media->url(self::KEY_ABOUT, 960);
 
         $blocks = [
             ['type' => 'about', 'props' => [
