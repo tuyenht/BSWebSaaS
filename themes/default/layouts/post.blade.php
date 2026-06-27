@@ -4,7 +4,7 @@
 @include('theme::partials.head')
 </head>
 <body>
-    @include('theme::partials.header', ['menu' => $menu ?? []])
+    @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
     <article class="post">
         @isset($category)
             <nav class="post__breadcrumb" aria-label="Breadcrumb">

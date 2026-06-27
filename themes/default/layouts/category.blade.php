@@ -4,7 +4,7 @@
 @include('theme::partials.head')
 </head>
 <body>
-    @include('theme::partials.header', ['menu' => $menu ?? []])
+    @include('theme::partials.header', ['menu' => $menu ?? [], 'brand' => $brand ?? null])
     <main class="category">
         <h1 class="category__title">{{ $title }}</h1>
 

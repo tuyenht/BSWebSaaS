@@ -11,6 +11,7 @@ use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\PageRenderer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -63,11 +64,30 @@ final class StorefrontController
             'menu' => $this->nav->resolve('primary', $locale, $default, $requestPath),
             'lang' => $locale,
             'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
+            'brand' => $this->brand(),
         ];
 
         return $resolved instanceof ResolvedCategory
             ? $this->renderCategory($resolved, $locale, $path, $chrome)
             : $this->renderEntry($resolved, $locale, $path, $chrome);
+    }
+
+    /**
+     * The tenant's storefront brand (name + logo URL) from the 'brand' site setting, or null when
+     * unset — so the header shows a logo for a site that has one and just the nav for one that
+     * doesn't. RLS-scoped to the active site.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function brand(): ?array
+    {
+        $value = SiteSetting::query()->where('key', 'brand')->value('value');
+        if (! is_array($value)) {
+            return null;
+        }
+
+        /** @var array<string, mixed> $value */
+        return $value;
     }
 
     /**

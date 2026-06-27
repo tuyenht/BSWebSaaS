@@ -49,8 +49,9 @@ it('lists the projects at /du-an within budget', function () {
 
     // MenuResolver batches route+title lookups regardless of item count; the An Vinh nav
     // (7 items including entry-type links for /gioi-thieu and /doi-tac) still costs the
-    // same 1 batched route query as the original 3-item nav → budget unchanged at 17.
-    expect($count)->toBeLessThanOrEqual(17);
+    // same 1 batched route query as the original 3-item nav. The header brand logo adds one
+    // small per-page lookup (the 'brand' site setting) on every storefront route → budget 18.
+    expect($count)->toBeLessThanOrEqual(18);
 });
 
 it('renders a project detail with breadcrumb JSON-LD', function () {
@@ -165,6 +166,9 @@ it('renders the home page with An Vinh heading and resolved media URLs in entry_
 
     // At least one product name visible in the products entry_grid
     expect($html)->toContain('Trục máy CNC');
+
+    // Header carries the brand logo (server-resolved from the 'brand' site setting)
+    expect($html)->toContain('site-header__logo')->toContain('an-vinh/brand/logo-');
 });
 
 it('news posts are listed at /tin-tuc', function () {

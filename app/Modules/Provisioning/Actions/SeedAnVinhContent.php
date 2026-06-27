@@ -15,6 +15,7 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteProfile;
+use App\Modules\Tenancy\Models\SiteSetting;
 
 /**
  * Bootstrap Cơ Khí Chính Xác An Vinh's content — kept OUT of the generic ProvisionSite so
@@ -32,6 +33,8 @@ final class SeedAnVinhContent
 {
     // R2 storage keys (from key-map.json — verbatim paths, never hard-coded base URLs)
     private const KEY_ABOUT = 'an-vinh/content/about-doi-ngu-8a67c0ddf763.jpg';
+
+    private const KEY_LOGO = 'an-vinh/brand/logo-e76d7cb1dfe4.png';
 
     // Storefront collection taxonomy slugs
     private const PRODUCTS_SLUG = 'san-pham';
@@ -536,6 +539,17 @@ final class SeedAnVinhContent
                 'brand_name' => 'Cơ Khí Chính Xác An Vinh',
                 'short_description' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
             ],
+        );
+
+        // Storefront header brand: name + the logo's resolved URL (raw master — a small transparent
+        // PNG, no transform). Stored in settings (not a column) so the header shows a logo for a
+        // tenant that has one and just the nav for one that doesn't.
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'general', 'key' => 'brand'],
+            ['value' => [
+                'name' => 'Cơ Khí Chính Xác An Vinh',
+                'logo' => $this->media->url(self::KEY_LOGO),
+            ]],
         );
     }
 

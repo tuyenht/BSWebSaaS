@@ -140,7 +140,7 @@ it('renders a category list page of its published posts within budget', function
             ->toContain('href="/tin-tuc/bai-hai">Bài hai');
     });
 
-    expect($count)->toBeLessThanOrEqual(16); // resolve + paginate (count+items) + eager translations + nav (4)
+    expect($count)->toBeLessThanOrEqual(17); // resolve + paginate (count+items) + eager translations + nav (4) + brand setting (1)
 });
 
 it('renders an empty category list when it has no posts', function () {
