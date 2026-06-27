@@ -25,6 +25,7 @@ auth.json
 
 # Build tools / FE
 /.vite/
+/.wrangler/
 npm-debug.log
 yarn-error.log
 pnpm-debug.log

@@ -1,6 +1,6 @@
 // Media serving plane (ADR-17). The ONLY public reader of the private R2 bucket `baoson-media`.
 // - GET /{key}        → raw master from R2 (canonical / L2 fallback)
-// - GET /{key}?w=320  → cf.image transform (format=auto), source = the raw master, then edge-cached
+// - GET /{key}?w=320  → cf.image transform to the client's best format (avif/webp/jpeg), edge-cached
 // - GET /__origin/{key} → internal raw path that feeds cf.image (breaks the transform→fetch loop)
 // Width is whitelisted (anti resize-DoS). A transform failure degrades to the raw master (image never
 // disappears). The key is content-addressed ({tenant}/{collection}/{slug}-{hash}.ext) so the immutable
@@ -9,6 +9,14 @@
 const ALLOWED_WIDTHS = new Set([320, 640, 960, 1280, 1600, 2048]);
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
 const ORIGIN_PREFIX = '/__origin/'; // internal raw path — source for cf.image, avoids a fetch loop
+
+// cf.image format:'auto' does not negotiate reliably inside a Worker subrequest, so pick the output
+// format explicitly from the client's Accept header (avif > webp > jpeg fallback).
+function pickFormat(accept) {
+  if (accept.includes('image/avif')) return 'avif';
+  if (accept.includes('image/webp')) return 'webp';
+  return 'jpeg';
+}
 
 export default {
   async fetch(request, env) {
@@ -31,16 +39,19 @@ export default {
     // (b) No width → the raw master (canonical / L2 fallback).
     if (width === null) return serveRaw(env, key);
 
-    // (c) Width → transform via cf.image, sourced from the internal raw path, format negotiated.
+    // (c) Width → transform via cf.image to the client's best format, sourced from the internal raw
+    // path. Format is an explicit transform param (not 'auto'), so Cloudflare's image cache splits
+    // per format; the Vary below keeps browsers/proxies from mixing avif/webp/jpeg variants.
+    const format = pickFormat(request.headers.get('Accept') || '');
     const originUrl = `${url.origin}${ORIGIN_PREFIX}${encodeURIComponent(key)}`;
     const resp = await fetch(originUrl, {
-      cf: { image: { width, format: 'auto', fit: 'scale-down' } },
-      headers: { Accept: request.headers.get('Accept') || '' },
+      cf: { image: { width, format, fit: 'scale-down' } },
     });
     if (!resp.ok) return serveRaw(env, key); // transform failed → L2: serve the master, image survives
 
     const headers = new Headers(resp.headers);
     headers.set('Cache-Control', CACHE_CONTROL);
+    headers.set('Vary', 'Accept');
     return new Response(resp.body, { status: resp.status, headers });
   },
 };
