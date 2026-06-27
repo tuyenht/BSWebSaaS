@@ -1,0 +1,10 @@
+{
+  // Cloudflare Worker = the media serving plane (ADR-17). Reads the PRIVATE R2 bucket via binding,
+  // runs cf.image transforms on ?w, falls back to the raw master. Deploy: see
+  // docs/runbooks/media-worker-deploy.md.
+  "name": "bswebsaas-media",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-01",
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "bswebsaas-media" }],
+  "routes": [{ "pattern": "files.baoson.net/*", "zone_name": "baoson.net" }]
+}
