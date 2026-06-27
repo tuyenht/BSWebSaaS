@@ -1,0 +1,60 @@
+<?php
+
+namespace App\Modules\Media\Services;
+
+/**
+ * Derives the public URL for a stored media key from config('media.driver') — the single switch
+ * point (ADR-17 L0). The storage key (content-hash {tenant}/{collection}/{slug}-{hash}.{ext}) is
+ * the source of truth; URLs are NEVER stored on a row, so flipping the driver (one env) re-points
+ * every image without a migration.
+ */
+final class MediaUrlResolver
+{
+    public function url(string $key, ?int $width = null): string
+    {
+        return match (config('media.driver')) {
+            'imgproxy' => $this->imgproxy($key, $width),
+            'static' => $this->base('cloudflare').'/'.ltrim($key, '/'),   // raw master, no transform
+            default => $this->cloudflare($key, $width),
+        };
+    }
+
+    /** Cloudflare Worker: it reads ?w and runs cf.image; no width → the raw master (canonical / L2). */
+    private function cloudflare(string $key, ?int $width): string
+    {
+        $url = $this->base('cloudflare').'/'.ltrim($key, '/');
+
+        return $width !== null ? $url.'?w='.$width : $url;
+    }
+
+    /** imgproxy: an HMAC-signed processing URL (verify format vs the imgproxy version at PR-5). */
+    private function imgproxy(string $key, ?int $width): string
+    {
+        $resize = 'rs:fit:'.($width ?? 2048).':0';
+        $source = rtrim($this->stringConfig('media.imgproxy.source_bucket'), '/').'/'.ltrim($key, '/');
+        $path = "/{$resize}/plain/{$source}@webp";
+
+        $signature = hash_hmac(
+            'sha256',
+            pack('H*', $this->stringConfig('media.imgproxy.salt')).$path,
+            pack('H*', $this->stringConfig('media.imgproxy.key')),
+            true,
+        );
+        $signature = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
+
+        return $this->base('imgproxy')."/{$signature}{$path}";
+    }
+
+    private function base(string $driver): string
+    {
+        return rtrim($this->stringConfig("media.{$driver}.base"), '/');
+    }
+
+    /** config() returns mixed; a media URL part must be a string (empty when unset/misconfigured). */
+    private function stringConfig(string $key): string
+    {
+        $value = config($key);
+
+        return is_string($value) ? $value : '';
+    }
+}
