@@ -59,3 +59,6 @@ _ide_helper_models.php
 # stacks are docker-compose.yml (dev, project bsweb-dev) + docker-compose.prod.yml
 # (prod, project bsweb-prod, selected via COMPOSE_FILE in the prod host's .env).
 docker-compose.override.yml
+
+# Local DB-backup staging (dumps ship to R2, never committed)
+/db-backups/
