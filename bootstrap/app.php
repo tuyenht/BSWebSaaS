@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AddSecurityHeaders;
 use App\Modules\Identity\Http\Middleware\EnsureTwoFactorEnabled;
 use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
 use App\Modules\Rbac\Http\Middleware\EnsureTenantMember;
@@ -17,9 +18,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Behind the Caddy TLS terminator (staging): trust forwarded headers so the app
-        // detects HTTPS and generates correct absolute URLs / redirects.
-        $middleware->trustProxies(at: '*');
+        // Trust only the in-process FrankenPHP/Caddy terminator (loopback). The previous
+        // '*' (trust-all) allowed any client to spoof X-Forwarded-* headers. Restricting
+        // to 127.0.0.1 / ::1 preserves X-Forwarded-Proto so canonical and sitemap URLs
+        // continue to render as https when Caddy sets the header from the loopback address.
+        $middleware->trustProxies(at: ['127.0.0.1', '::1']);
+
+        // Append security headers to every web response. Placement at the end of the
+        // web group means headers are applied after routing but before the response
+        // leaves the pipeline, and they survive any earlier post-processing middleware.
+        $middleware->web(append: [AddSecurityHeaders::class]);
 
         // Defense layer #1 (entitlement). Apply after SetCurrentSite has resolved
         // the tenant: 'site.active' gates lifecycle, 'module:<key>' gates modules.

@@ -1,0 +1,107 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * Adds HTTP security headers to every web response on both planes.
+ *
+ * Five baseline headers apply unconditionally (storefront + admin + platform):
+ *   Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options,
+ *   Referrer-Policy, Permissions-Policy.
+ *
+ * Content-Security-Policy is plane-specific:
+ *   Storefront (pure Blade SSR, known origins) — strict allow-list CSP applied.
+ *   Admin + platform (Livewire 4 / Alpine.js) — CSP omitted entirely.
+ *   Livewire hydration and Alpine reactivity require 'unsafe-eval'; shipping a
+ *   strict CSP on those planes would break the admin UI. Omitting CSP there is
+ *   acceptable because access is gated behind authentication and the five
+ *   baseline headers still protect against the most common framing / sniffing
+ *   attacks.
+ *
+ * Plane detection: a request is NOT on the storefront plane when it targets the
+ * dedicated platform console host OR when its URL path starts with the
+ * configured admin prefix.
+ */
+final class AddSecurityHeaders
+{
+    /**
+     * @param  Closure(Request): Response  $next
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        $response = $next($request);
+
+        // ── Five baseline headers (every web response, both planes) ─────────
+        $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+        $response->headers->set('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+
+        // ── Content-Security-Policy: storefront plane only ───────────────────
+        if ($this->isStorefrontPlane($request)) {
+            $response->headers->set('Content-Security-Policy', $this->storefrontCsp());
+        }
+
+        return $response;
+    }
+
+    /**
+     * Returns true when the request belongs to the storefront plane.
+     *
+     * A request is NOT storefront when:
+     *   – it targets the dedicated platform console host, or
+     *   – its path falls under the configured admin URL prefix.
+     */
+    private function isStorefrontPlane(Request $request): bool
+    {
+        $rawHost = config('tenancy.platform_host');
+        if ($request->getHost() === (is_string($rawHost) ? $rawHost : '')) {
+            return false;
+        }
+
+        $rawPrefix = config('admin.prefix', 'admin');
+        $adminPrefix = trim(is_string($rawPrefix) ? $rawPrefix : 'admin', '/');
+
+        if ($request->is($adminPrefix, $adminPrefix.'/*')) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * The strict Content-Security-Policy applied to storefront responses only.
+     *
+     * Origin inventory:
+     *   default-src 'self'             – same-origin baseline for everything
+     *   img-src      files.baoson.net  – R2 CDN (media images served via CF Worker)
+     *                data:             – inline SVG data URIs and favicons
+     *   style-src    'unsafe-inline'   – Blade renders a <style>:root{} token block;
+     *                                    no external stylesheet dependencies
+     *   script-src   'self'            – only /build/* Vite assets, no third-party JS
+     *   frame-src    google.com        – Google Maps embed on /lien-he (contact page)
+     *   font-src     'self'            – self-hosted web fonts
+     *   base-uri     'self'            – prevent base-tag injection attacks
+     *   form-action  'self'            – constrain POST submission targets
+     */
+    private function storefrontCsp(): string
+    {
+        return implode('; ', [
+            "default-src 'self'",
+            "img-src 'self' https://files.baoson.net data:",
+            "style-src 'self' 'unsafe-inline'",
+            "script-src 'self'",
+            'frame-src https://www.google.com',
+            "font-src 'self'",
+            "base-uri 'self'",
+            "form-action 'self'",
+        ]);
+    }
+}
