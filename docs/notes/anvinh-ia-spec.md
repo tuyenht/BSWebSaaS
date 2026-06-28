@@ -1,5 +1,7 @@
 # An Vinh — IA & Build Spec (Stream 4)
 
+> Reconciled to precision-mechanical 2026-06-28 (precision pivot).
+
 > **STEP 1 freeze.** IA + content model are CHỐT (frozen). Build approach (§4–§5) **CHỐT 24/06**
 > (COUNCIL F1–F5; **F3=C**, **F5 DROP**). Tenant: `av1.baoson.net` (prod site #1). Date: 2026-06-24.
 > Evidence: `plans/reports/anvinh-ia-capture-260624-1402-demo-and-wp-report.md` (+ `…-shots/`)
@@ -34,7 +36,7 @@
 | 1 | hero | exists (+2nd CTA) | mixed; CTAs "Yêu cầu báo giá" + "Xem dịch vụ" |
 | 2 | about | NEW | mixed: text + image |
 | 3 | services | NEW (repeater) | 4-col; card = icon/title/desc/link |
-| 4 | projects (du-an) | NEW `entry_grid` (data-bound) | image-grid by sector; card = image/title/short-outcome |
+| 4 | projects (du-an) | NEW `entry_grid` (data-bound) | image-grid (entry_grid, taxonomy du-an); card = image/title/excerpt |
 | 5 | partners | NEW (repeater) | logo grid |
 | 6 | latest_posts (news) | exists | img/date/title |
 | 7 | cta band | exists | |
@@ -42,14 +44,15 @@
 
 **Footer:** brand · services list · quick links · contact NAP · social.
 
-**Card fields (frozen):** service = `icon,title,desc,link` · project = `image,title,short_outcome,sector` · news = `image,date,title` (latest_posts handles).
+**Card fields (frozen):** service = `icon,title,desc,link` · project = `image,title,excerpt` · news = `image,date,title` (latest_posts handles).
 
 **Dropped vs brief:** `stats` counter band (no evidence on either site — demo only shows factory-area cards). `gallery` = a page route, not a homepage block.
 
 ## 3. Collections / taxonomy
 
-- **du-an** (project = `entries.type=post`; taxonomy `du-an` with sector children: nhiệt điện, lọc
-  hóa dầu, xi măng, phân bón, thép). Storefront list `/du-an` + detail `/du-an/{slug}`.
+- **du-an** (project = `entries.type=post`; taxonomy `du-an`, vocabulary `post_cat`). **6 projects
+  attach directly — no sector sub-categories** (sector taxonomy = DEFERRED, T2 backlog
+  [[t2-readiness-audit-findings]]). Storefront list `/du-an` + detail `/du-an/{slug}`.
 - **tin-tuc** (exists).
 - **san-pham** (product = `entries.type=post`; taxonomy `san-pham`, vocabulary `post_cat`, with sub-cats
   `do-ga` / `khuon-mau` / `chi-tiet-may`, vocabulary `product_cat`). Storefront list `/san-pham` + detail
@@ -93,18 +96,27 @@ pipeline, no rewire of image props. `design.md §374` stays **GĐ3** (**F5 DROP*
 - **Constraint (b) — tracked-debt exit:** the real Media module (R2 + imgproxy + upload-safety
   R24; `design.md §12` L279-302) **must be built before** any tenant self-service image upload
   **or** before An Vinh needs to self-manage content. R24 opens then.
+- **Shipped state (28/06):** above-fold images currently ship as **JPEG (~190KB)** on R2; the
+  AVIF/WebP + responsive-widths optimization is **pending debt** (handoff B1 / CWV) — i.e. the §7
+  AVIF gate is **NOT yet met**.
 
-## 6. Seed content (real, from WP)
+## 6. Seed content (shipped — precision-mechanical, từ SeedAnVinhContent)
 
-- **Services (5):** bảo ôn/cách nhiệt vật tư · cách nhiệt + giàn giáo · nhân lực O&M nhà máy ·
-  thiết bị/vật tư thay thế · cho thuê xe nâng.
-- **Projects (9):** Formosa Hà Tĩnh · Mông Dương 1 · Nghi Sơn (lọc hóa dầu) · Xuân Thành (xi măng) ·
-  Sông Hậu 1 · Brunei (phân bón) · Vũng Áng II · Vũng Áng II O&M · Brunei Điện-Đạm. Sectors → taxonomy.
+- **Services (4)** [taxonomy `dich-vu`, vocab post_cat]: Thiết kế Jig & Đồ gá · Gia công Phay & Tiện CNC ·
+  Hàn & Lắp ráp cơ khí · Sản xuất chi tiết máy & OEM.
+- **Projects (6)** [taxonomy `du-an`, vocab post_cat; attach directly, no sector sub-cats]: Dây chuyền
+  lắp ráp tự động · Hệ thống Jig hàn robot · Khuôn mẫu cho sản phẩm gia dụng · Đồ gá kiểm tra thân vỏ xe ·
+  Gia công chi tiết hàng không · Cải tiến dây chuyền sản xuất.
+- **Products (6)** [taxonomy `san-pham` post_cat; sub-cats `do-ga`/`khuon-mau`/`chi-tiet-may` vocab
+  product_cat]: Jig kiểm cụm Taplo cho xe VF7 · Máy tự động nắn sửa sản phẩm · Jig hàn Frame Comp ·
+  Khuôn dập bình xăng · Khuôn đúc áp lực cao · Trục máy CNC.
+- **News (6):** team building 2024 · xu hướng tự động hóa · khánh thành nhà máy số 3 (Thạch Thất) ·
+  vật liệu mới khuôn mẫu · đào tạo ATLĐ · in 3D kim loại.
 - Fix `/lien-he` dead link → real contact route/page.
-- **NEEDED FROM USER** (non-blocking for build; blocking for *final* seed): canonical brand name
-  (An Vinh vs "Sơn Hà" title mismatch), canonical NAP (WP shows Hải Phòng + Hà Tĩnh; demo shows Hà Nội),
-  logo asset, real images. During build T2–T5: temp WP image URLs → replaced by pre-optimized R2
-  images (§5 Option C) before the T8 CWV gate.
+- **NEEDED FROM USER → RESOLVED** (all seeded, canonical): brand **Cơ Khí Chính Xác An Vinh**; legal
+  **CÔNG TY TNHH THƯƠNG MẠI VÀ DỊCH VỤ THIẾT KẾ GIA CÔNG CƠ KHÍ AN VINH**; tax **0108649706**;
+  phone/hotline **0915 66 83 83**; email **quybv@ckanvinh.vn**; address **Thôn Xuân Sơn, Xã Trung Giã,
+  TP Hà Nội**; logo + images placed on R2.
 
 ## 7. Diamond++ gates (every storefront PR)
 

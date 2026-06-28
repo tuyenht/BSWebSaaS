@@ -2,7 +2,7 @@
 
 **Stack:** PostgreSQL 17 (`bsweb_prod_pg` container) → gzip → Cloudflare R2 (`baoson-db-backups/db-backups/` — PRIVATE bucket; never `baoson-media`, which is public via `files.baoson.net`)
 
-**Design principle (R19):** an untested backup is not a backup. This procedure was tested end-to-end on 2026-06-27.
+**Design principle (R19):** an untested backup is not a backup. This procedure was tested end-to-end on 2026-06-27 (on the since-corrected mechanism; re-test pending).
 
 ---
 
@@ -204,6 +204,11 @@ The backup currently has **no automated health check**. Recommended additions (o
 ```
 [2026-06-27T10:06:52Z] pg_dump via docker exec bsweb_prod_pg → 19 KB gzip (152 KB raw SQL)
 [2026-06-27T10:06:52Z] wrangler upload → baoson-media/db-backups/db-bswebsaas-20260627-100652.sql.gz — Upload complete
+```
+
+> NOTE: this 06-27 test uploaded to the PUBLIC `baoson-media` bucket — that object was the CRITICAL exposure, since PURGED (HTTP 404 @ 28/06); the corrected procedure (private `baoson-db-backups` + token-prune, §1/§4/§5) should be re-tested end-to-end.
+
+```
 [2026-06-27T10:07:xx Z] r2_prune_backups.py --dry-run → Found 1 object, Keeping 1, Deleting 0
 [2026-06-27T10:08:xx Z] wrangler download → restore-test.sql.gz (19 KB) — Download complete
 [2026-06-27T10:08:xx Z] zcat | psql into restore_test — Exit 0
