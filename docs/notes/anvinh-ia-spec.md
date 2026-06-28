@@ -7,11 +7,11 @@
 
 ## 1. Content model — CHỐT 24/06
 
-- **av1 = the REAL An Vinh business**: industrial **thermal insulation / cách nhiệt–bảo ôn**, giàn
-  giáo, nhân lực O&M nhà máy, cho thuê xe nâng. B2B brochure. **No commerce, no customer-auth** (deferred).
-- **Demo** (`…run.app`, precision-mechanical) = **layout/skin target ONLY**. Its products are sample
-  data and are **NOT** used.
-- **WordPress** (`anvinh.baoson.net`) = **real content source** (services, projects).
+- **av1 = the REAL An Vinh business**: **gia công cơ khí chính xác** — thiết kế/chế tạo **đồ gá (jig),
+  khuôn mẫu, chi tiết máy**. B2B brochure. **No commerce, no customer-auth** (deferred).
+  *(CHỐT 27/06 "precision pivot" — thay khung "cách nhiệt/bảo ôn" 24/06; xác nhận bởi Tuyền 28/06.)*
+- **Demo** (`…run.app`, precision-mechanical) = **layout/skin + content model** (sản phẩm/dịch vụ/dự án cơ khí chính xác).
+- **WordPress** (`anvinh.baoson.net`) = legacy (cách nhiệt) — **không còn là nguồn nội dung** sau precision pivot.
 - **Products ARE shipped** (the "add later as post-by-category" escape hatch was exercised): implemented
   as **post-by-category** (taxonomy `san-pham`, vocabulary `post_cat`) — **NOT** the commerce `product`
   module. `SeedAnVinhContent` ships 6 product posts (`entries.type=post`; precision-mechanical — jig /
@@ -20,10 +20,7 @@
   `/san-pham/{slug}`), and a homepage "Sản phẩm tiêu biểu" `entry_grid` (limit 6).
 - **i18n = vi only** for Phase 1 (en/ja deferred → Stream 5), per [[anvinh-i18n-menu-model-b]].
 
-> **Reality gap (shipped seed):** `SeedAnVinhContent` currently seeds the **precision-mechanical demo
-> content** (jig · đồ gá · khuôn mẫu · CNC) across services/projects/news/products — so §1's insulation
-> framing and "demo products NOT used" describe the *intended* content, not today's seed. Reconciling the
-> seed to the real insulation/WP content is a separate, unresolved content-source decision.
+> **CHỐT 28/06 (precision pivot):** nội dung shipped (cơ khí chính xác — jig/đồ gá/khuôn mẫu/chi tiết máy) LÀ hướng chính thức của av1; seeder ĐÚNG. Khung "cách nhiệt/bảo ôn" 24/06 đã bị thay — KHÔNG reconcile seeder về cách nhiệt.
 
 ## 2. IA (frozen — layout from demo, content from WP)
 
