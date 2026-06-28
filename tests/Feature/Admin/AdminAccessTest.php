@@ -20,7 +20,7 @@ use Livewire\Livewire;
 beforeEach(function () {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, site_profile_translations, site_profiles, site_settings,
-         site_locales, site_modules, content_sections, domains, sites, tenants,
+         platform_settings, site_locales, site_modules, content_sections, domains, sites, tenants,
          tenant_users, users restart identity cascade'
     );
     truncateRbac();

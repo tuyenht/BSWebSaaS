@@ -37,6 +37,8 @@
         <!-- Gate #1 tests run on REAL PostgreSQL (RLS cannot be proven on sqlite).
              DB_* inherit from .env (docker) / workflow env (CI), connecting as the
              restricted app_user so RLS is enforced during tests. -->
+        <!-- Deterministic key for SecretCipher in tests (raw 32-byte string, no base64 prefix). -->
+        <env name="SETTINGS_ENCRYPTION_KEY" value="test-only-settings-key-32bytes!!"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

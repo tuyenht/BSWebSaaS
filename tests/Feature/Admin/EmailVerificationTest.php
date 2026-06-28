@@ -3,6 +3,7 @@
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 
@@ -11,6 +12,14 @@ use Livewire\Livewire;
  * cannot complete login — a fresh verification link is sent and the user stays guest. A
  * verified account proceeds to the mandatory second factor instead.
  */
+
+beforeEach(function () {
+    // Truncate both settings tables so no stale SMTP ciphertext (encrypted under a different
+    // key in the shared dev DB) can cause a DecryptException during TenantMailer::apply().
+    DB::connection('pgsql_admin')->statement(
+        'truncate site_settings, platform_settings restart identity cascade'
+    );
+});
 
 it('blocks an unverified account at login and sends a fresh verification link', function () {
     Notification::fake();

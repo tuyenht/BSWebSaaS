@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Support;
 
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 /**
@@ -11,12 +12,21 @@ use Throwable;
  * admin mail (password reset, notifications) goes out via the right mailer.
  *
  * Hybrid resolution: tenant override (site_settings group 'email') → platform default
- * (platform_settings group 'email') → null (caller falls back to the log mailer).
+ * (platform_settings group 'email') → log (safe no-op, guaranteed by apply()).
  *
  * Two methods: 'smtp_password' (host/port/user/password) and 'oauth2' (Google/Microsoft/
  * Yahoo) — the latter mints a short-lived access token from the stored refresh token and
  * sends over XOAUTH2 (transport registered in AdminServiceProvider). Secrets are AES-256-GCM
  * decrypted at apply time via SecretCipher — never logged.
+ *
+ * Octane isolation guarantee: apply() ALWAYS leaves the mailer in a deterministic state:
+ * — resolved config found → smtp or admin_xoauth2 (tenant/platform SMTP or OAuth setting)
+ * — no config found       → config('mail.default') forced to 'log'; callers may still
+ *                           send (messages go to the log channel, never to another tenant's
+ *                           SMTP). This prevents cross-tenant SMTP bleed under Octane where
+ *                           the config repo is a warmed singleton shared across requests.
+ * Cached mailer transports ('smtp', 'admin_xoauth2') are purged on every call so a
+ * warmed Octane worker cannot reuse a previous request/tenant's live transport object.
  */
 final class TenantMailer
 {
@@ -50,8 +60,18 @@ final class TenantMailer
 
     public function apply(): bool
     {
+        // Purge cached transports FIRST so a warmed Octane worker cannot reuse the previous
+        // request/tenant's live transport object regardless of what we configure below.
+        Mail::purge('smtp');
+        Mail::purge('admin_xoauth2');
+
         $cfg = $this->resolve();
         if ($cfg === null) {
+            // No email override found anywhere in the resolution chain. Force the global
+            // config to a safe no-op mailer so a previous request's SMTP config cannot
+            // bleed through in the same Octane worker.
+            config(['mail.default' => 'log']);
+
             return false;
         }
 
