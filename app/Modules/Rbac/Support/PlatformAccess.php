@@ -12,14 +12,43 @@ use Closure;
  * so checking them requires switching the team context regardless of the active
  * tenant — done here with a snapshot/restore on the shared TeamContext that is
  * leak-safe under Octane.
+ *
+ * isSuperAdmin() is memoized per user-id because Gate::before fires on EVERY
+ * authorization check (including AdminNav per-section).  The memo is stored on this
+ * singleton and is reset by FlushRbacTeamContext at RequestTerminated / TaskTerminated /
+ * TickTerminated, so it never leaks a stale verdict across requests under Octane.
  */
 final class PlatformAccess
 {
+    /** @var array<int, bool> */
+    private array $superAdminMemo = [];
+
     public function __construct(private readonly TeamContext $context) {}
 
     public function isSuperAdmin(User $user): bool
     {
-        return $this->hasAnyPlatformRole($user, ['super_admin']);
+        $id = $user->getKey();
+
+        if (! is_int($id)) {
+            // Unsaved / non-integer PK: skip memo, query directly.
+            return $this->hasAnyPlatformRole($user, ['super_admin']);
+        }
+
+        if (! array_key_exists($id, $this->superAdminMemo)) {
+            $this->superAdminMemo[$id] = $this->hasAnyPlatformRole($user, ['super_admin']);
+        }
+
+        return $this->superAdminMemo[$id];
+    }
+
+    /**
+     * Reset the per-request memo. Called by FlushRbacTeamContext on every Octane
+     * operation termination so a role change in one request is never hidden from
+     * subsequent requests served by the same worker.
+     */
+    public function forgetMemo(): void
+    {
+        $this->superAdminMemo = [];
     }
 
     /**

@@ -17,6 +17,11 @@ final class RbacServiceProvider extends ServiceProvider
         // Shared team-context holder. spatie's registrar `new`s the resolver itself,
         // so the override state must live in this single shared instance.
         $this->app->singleton(TeamContext::class);
+
+        // Singleton so the per-request isSuperAdmin memo (see PlatformAccess) survives
+        // all Gate::before calls within one request. FlushRbacTeamContext resets the memo
+        // at RequestTerminated / TaskTerminated / TickTerminated (Octane hygiene).
+        $this->app->singleton(PlatformAccess::class);
     }
 
     public function boot(): void
