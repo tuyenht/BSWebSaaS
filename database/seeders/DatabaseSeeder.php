@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Registry\PermissionRegistry;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
@@ -14,7 +13,10 @@ use Spatie\Permission\PermissionRegistrar;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
+    // NB: do NOT mute model events here — User auto-fills its external `ulid` on the
+    // `creating` event (HasUlidColumn). Muting events leaves ulid NULL and the very first
+    // (operator) insert fails the not-null constraint. No seeded model has an observer that
+    // would otherwise warrant silencing.
 
     /**
      * Seed the application's database.
