@@ -1,6 +1,6 @@
 # Prod DB Backup & Restore Runbook
 
-**Stack:** PostgreSQL 17 (`bsweb_prod_pg` container) → gzip → Cloudflare R2 (`baoson-media/db-backups/`)
+**Stack:** PostgreSQL 17 (`bsweb_prod_pg` container) → gzip → Cloudflare R2 (`baoson-db-backups/db-backups/` — PRIVATE bucket; never `baoson-media`, which is public via `files.baoson.net`)
 
 **Design principle (R19):** an untested backup is not a backup. This procedure was tested end-to-end on 2026-06-27.
 
@@ -12,7 +12,7 @@
 |------|--------|
 | Dump format | Plain SQL (`pg_dump --no-password`), piped through `gzip -9` |
 | Filename | `db-bswebsaas-YYYYMMDD-HHMMSS.sql.gz` (UTC timestamp) |
-| Destination | Cloudflare R2, bucket `baoson-media`, prefix `db-backups/` |
+| Destination | Cloudflare R2, bucket `baoson-db-backups` (PRIVATE — NOT `baoson-media`, which is publicly served), prefix `db-backups/` |
 | Upload tool | `npx wrangler r2 object put … --remote` |
 | Retention | 7 daily + 4 weekly (via `r2_prune_backups.py`) |
 | Secrets | `CLOUDFLARE_API_TOKEN`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` — sourced from `/opt/bswebsaas/dev/.env` (gitignored). No secrets are echoed or logged. |
@@ -110,7 +110,7 @@ DEST="/tmp/${BACKUP_FILE}"
 
 CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
   npx --yes wrangler r2 object get \
-  "baoson-media/db-backups/${BACKUP_FILE}" \
+  "baoson-db-backups/db-backups/${BACKUP_FILE}" \
   --file "$DEST" \
   --remote
 
@@ -153,7 +153,7 @@ docker exec bsweb_prod_pg sh -c \
 
 ```bash
 # 1. Stop app + horizon to prevent writes
-docker compose -p bsweb_prod stop app horizon
+docker compose -p bsweb-prod stop app horizon
 
 # 2. Terminate active connections to prod DB
 docker exec bsweb_prod_pg sh -c '
@@ -173,14 +173,14 @@ zcat "$DEST" | docker exec -i bsweb_prod_pg sh -c \
   'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d bswebsaas --quiet'
 
 # 5. Re-apply RLS policies (migration role — see CLAUDE.md §7)
-docker compose -p bsweb_prod run --rm --no-deps app \
+docker compose -p bsweb-prod run --rm --no-deps app \
   php artisan migrate --database=pgsql_admin --force
 
 # 6. Restart services
-docker compose -p bsweb_prod start app horizon
+docker compose -p bsweb-prod start app horizon
 
 # 7. Verify
-docker compose -p bsweb_prod exec app php artisan tinker --execute="echo App\Models\Entry::count();"
+docker compose -p bsweb-prod exec app php artisan tinker --execute="echo App\Modules\Cms\Models\Entry::count();"
 ```
 
 ---
