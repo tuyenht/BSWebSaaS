@@ -55,8 +55,9 @@ Only one secret is needed at runtime:
 
 | Variable | Purpose |
 |----------|---------|
-| `CLOUDFLARE_API_TOKEN` | R2 write scope — used by wrangler upload and deletion |
-| `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | S3-compatible API — used by `r2_prune_backups.py` for listing |
+| `CLOUDFLARE_API_TOKEN` | R2 scope — used by wrangler (upload, delete) **and** the REST API (object listing in `r2_prune_backups.py`) |
+
+`R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` (S3-compatible API) are **no longer used** by backup or prune: the access key lacked List/Delete on `baoson-db-backups` (HTTP 403 → backups accumulated), so listing was moved to the REST API under `CLOUDFLARE_API_TOKEN`. `R2_ENDPOINT` is still read — the account id is parsed from it (or from `CLOUDFLARE_ACCOUNT_ID` if set).
 
 The `.env` file is gitignored and stays on the host only. The cron job inherits no shell environment, so sourcing `.env` is the only way the script obtains credentials.
 
@@ -70,7 +71,7 @@ WEEKLY : keep newest backup per ISO week for the 4 weeks before the daily window
 PURGE  : delete everything else (> 35 days old, or extras within a week)
 ```
 
-The Python script (`r2_prune_backups.py`) lists objects via the R2 S3-compatible API (AWS Signature V4, stdlib only), computes the keep set, and calls `wrangler r2 object delete` for each stale object.
+The Python script (`r2_prune_backups.py`) lists objects via the Cloudflare REST API (`GET /accounts/{account_id}/r2/buckets/{bucket}/objects`, Bearer `CLOUDFLARE_API_TOKEN`, stdlib only), computes the keep set, and calls `wrangler r2 object delete` for each stale object. (Listing previously used the S3 access key, which lacked List/Delete on the bucket → HTTP 403 and unbounded backup growth; moving it to the token fixed that. Manual fallback for a single object: `npx wrangler r2 object delete baoson-db-backups/db-backups/<file> --remote`.)
 
 Dry-run (no deletions):
 ```bash

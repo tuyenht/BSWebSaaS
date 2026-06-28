@@ -8,154 +8,91 @@ Retention policy:
              (i.e. days 7–35 ago, 4 weekly snapshots)
   - PURGE  : delete everything else (> 35 days old or extras within a week)
 
-Uses R2 S3-compatible API (stdlib urllib + hmac — no boto3 required).
-Deletions go through `wrangler r2 object delete --remote`.
+Listing uses the Cloudflare REST API (Bearer token, stdlib urllib — no boto3).
+Deletions go through `wrangler r2 object delete --remote`. Both authenticate with
+CLOUDFLARE_API_TOKEN, so the S3 access key — which lacked List/Delete on the bucket
+and returned HTTP 403 (backups accumulated unbounded) — is no longer used.
 
 Required env vars (all set by backup-prod-db.sh):
-  CLOUDFLARE_API_TOKEN, R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID,
-  R2_SECRET_ACCESS_KEY, R2_REGION
+  CLOUDFLARE_API_TOKEN, R2_BUCKET, R2_ENDPOINT
+  (account id is read from CLOUDFLARE_ACCOUNT_ID if set, else parsed from R2_ENDPOINT)
 """
 
 import os
 import sys
-import hmac
-import hashlib
+import json
 import datetime
 import subprocess
 import urllib.request
 import urllib.parse
-import xml.etree.ElementTree as ET
-from collections import defaultdict
 
 # ── Config ────────────────────────────────────────────────────────────────────
-BUCKET          = os.environ["R2_BUCKET"]            # "baoson-media"
+BUCKET          = os.environ["R2_BUCKET"]            # e.g. "baoson-db-backups"
 ENDPOINT        = os.environ["R2_ENDPOINT"].rstrip("/")
-ACCESS_KEY      = os.environ["R2_ACCESS_KEY_ID"]
-SECRET_KEY      = os.environ["R2_SECRET_ACCESS_KEY"]
-REGION          = os.environ.get("R2_REGION", "auto")
 CF_TOKEN        = os.environ["CLOUDFLARE_API_TOKEN"]
+CF_API_BASE     = "https://api.cloudflare.com/client/v4"
 
 R2_PREFIX       = "db-backups/"
 BACKUP_STEM     = "db-bswebsaas-"
 DAILY_DAYS      = 7
 WEEKLY_COUNT    = 4
 
-# ── AWS Signature V4 (stdlib only) ────────────────────────────────────────────
 
-def _sign(key: bytes, msg: str) -> bytes:
-    return hmac.new(key, msg.encode("utf-8"), hashlib.sha256).digest()
+def _account_id() -> str:
+    """Cloudflare account id — from CLOUDFLARE_ACCOUNT_ID, else the R2 S3 endpoint
+    host (https://<account_id>.r2.cloudflarestorage.com)."""
+    explicit = os.environ.get("CLOUDFLARE_ACCOUNT_ID", "").strip()
+    if explicit:
+        return explicit
+    host = urllib.parse.urlparse(ENDPOINT).netloc
+    account = host.split(".", 1)[0]
+    if not account:
+        sys.exit("Cannot determine Cloudflare account id: set CLOUDFLARE_ACCOUNT_ID or R2_ENDPOINT")
+    return account
 
 
-def _signing_key(date_stamp: str) -> bytes:
-    k = _sign(("AWS4" + SECRET_KEY).encode("utf-8"), date_stamp)
-    k = _sign(k, REGION)
-    k = _sign(k, "s3")
-    k = _sign(k, "aws4_request")
-    return k
-
-
-def _s3_request(method: str, path: str, query_params: list[tuple]) -> urllib.request.Request:
-    """Build a signed S3 GET/DELETE request for R2."""
-    parsed = urllib.parse.urlparse(ENDPOINT)
-    host   = parsed.netloc
-
-    now        = datetime.datetime.now(datetime.timezone.utc)
-    amz_date   = now.strftime("%Y%m%dT%H%M%SZ")
-    date_stamp = now.strftime("%Y%m%d")
-
-    # Canonical query string — params MUST be sorted lexicographically
-    canonical_qs = "&".join(
-        f"{urllib.parse.quote(k, safe='')}={urllib.parse.quote(str(v), safe='')}"
-        for k, v in sorted(query_params)
-    )
-
-    payload_hash = hashlib.sha256(b"").hexdigest()
-
-    canonical_headers = (
-        f"host:{host}\n"
-        f"x-amz-content-sha256:{payload_hash}\n"
-        f"x-amz-date:{amz_date}\n"
-    )
-    signed_headers = "host;x-amz-content-sha256;x-amz-date"
-
-    canonical_request = "\n".join([
-        method,
-        path,
-        canonical_qs,
-        canonical_headers,
-        signed_headers,
-        payload_hash,
-    ])
-
-    credential_scope = f"{date_stamp}/{REGION}/s3/aws4_request"
-    string_to_sign = "\n".join([
-        "AWS4-HMAC-SHA256",
-        amz_date,
-        credential_scope,
-        hashlib.sha256(canonical_request.encode("utf-8")).hexdigest(),
-    ])
-
-    sig = hmac.new(
-        _signing_key(date_stamp),
-        string_to_sign.encode("utf-8"),
-        hashlib.sha256,
-    ).hexdigest()
-
-    auth = (
-        f"AWS4-HMAC-SHA256 "
-        f"Credential={ACCESS_KEY}/{credential_scope}, "
-        f"SignedHeaders={signed_headers}, "
-        f"Signature={sig}"
-    )
-
-    url = f"{ENDPOINT}{path}"
-    if canonical_qs:
-        url += "?" + canonical_qs
-
-    return urllib.request.Request(
-        url,
-        method=method,
-        headers={
-            "Authorization":           auth,
-            "x-amz-date":              amz_date,
-            "x-amz-content-sha256":    payload_hash,
-        },
-    )
+ACCOUNT_ID = _account_id()
 
 
 # ── R2 operations ─────────────────────────────────────────────────────────────
 
 def list_objects(prefix: str) -> list[dict]:
-    """Return all objects under prefix (handles truncated responses)."""
+    """Return all objects under prefix via the Cloudflare REST API (handles pagination).
+
+    Uses the Bearer CLOUDFLARE_API_TOKEN — the same scope wrangler upload/delete rely on —
+    instead of the S3 access key (which lacked List perms → HTTP 403).
+    """
     results = []
-    continuation_token = None
+    cursor = None
+    base = f"{CF_API_BASE}/accounts/{ACCOUNT_ID}/r2/buckets/{BUCKET}/objects"
 
     while True:
-        params: list[tuple] = [
-            ("list-type", "2"),
-            ("max-keys",  "1000"),
-            ("prefix",    prefix),
-        ]
-        if continuation_token:
-            params.append(("continuation-token", continuation_token))
+        params: list[tuple] = [("prefix", prefix), ("per_page", "1000")]
+        if cursor:
+            params.append(("cursor", cursor))
 
-        req = _s3_request("GET", f"/{BUCKET}", params)
+        req = urllib.request.Request(
+            f"{base}?{urllib.parse.urlencode(params)}",
+            method="GET",
+            headers={
+                "Authorization": f"Bearer {CF_TOKEN}",
+                "Accept":        "application/json",
+            },
+        )
         with urllib.request.urlopen(req) as resp:
-            body = resp.read()
+            payload = json.loads(resp.read())
 
-        ns   = {"s3": "http://s3.amazonaws.com/doc/2006-03-01/"}
-        tree = ET.fromstring(body)
+        if not payload.get("success", False):
+            raise RuntimeError(f"R2 list failed: {payload.get('errors')}")
 
-        for content in tree.findall("s3:Contents", ns):
-            key  = content.find("s3:Key", ns).text
-            size = int(content.find("s3:Size", ns).text)
-            results.append({"key": key, "size": size})
+        for obj in (payload.get("result") or []):
+            results.append({"key": obj["key"], "size": obj.get("size", 0)})
 
-        is_truncated = tree.findtext("s3:IsTruncated", default="false", namespaces=ns)
-        if is_truncated.lower() != "true":
+        info = payload.get("result_info") or {}
+        if not info.get("is_truncated"):
             break
-        continuation_token = tree.findtext("s3:NextContinuationToken", namespaces=ns)
-        if not continuation_token:
+        cursor = info.get("cursor")
+        if not cursor:
             break
 
     return results
