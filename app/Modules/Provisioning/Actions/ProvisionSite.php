@@ -27,6 +27,7 @@ use App\Modules\Tenancy\Models\SiteProfile;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Tenancy\Models\SiteType;
 use App\Modules\Tenancy\Models\Tenant;
+use App\Modules\Tenancy\Registry\ModuleCatalog;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
@@ -112,7 +113,9 @@ final class ProvisionSite
                 ['value' => ['default' => $data->siteName]],
             );
 
-            foreach ($data->modules as $module) {
+            // Entitlement (design.md §15.2): always write the site_type's canonical module
+            // set from ModuleCatalog, never from the DTO default — keeps ONE vocabulary.
+            foreach (ModuleCatalog::modulesFor($siteTypeKey) as $module) {
                 SiteModule::query()->firstOrCreate(['module_key' => $module], ['enabled' => true]);
             }
 

@@ -22,7 +22,7 @@ final readonly class ProvisionSiteData
         public ?string $ownerPassword = null,
         public string $defaultLocale = 'vi',
         public array $locales = ['vi'],
-        public array $modules = ['cms', 'media'],
+        public array $modules = [],
         public ?int $tenantId = null,
         public array $profile = [],
     ) {}

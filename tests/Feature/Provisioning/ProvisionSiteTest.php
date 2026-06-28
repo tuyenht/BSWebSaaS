@@ -16,6 +16,7 @@ use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteModule;
+use App\Modules\Tenancy\Registry\ModuleCatalog;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -53,7 +54,7 @@ it('provisions a full, active site stack', function () {
 
     expect($site->status)->toBe('active')
         ->and(Domain::query()->where('hostname', 'anvinh.test')->where('site_id', $site->id)->exists())->toBeTrue()
-        ->and($tenancy->enter($site->id, fn () => SiteModule::query()->where('enabled', true)->pluck('module_key')->sort()->values()->all()))->toBe(['cms', 'media'])
+        ->and($tenancy->enter($site->id, fn () => SiteModule::query()->where('enabled', true)->pluck('module_key')->sort()->values()->all()))->toBe(collect(ModuleCatalog::modulesFor('corporate'))->sort()->values()->all())
         ->and($tenancy->enter($site->id, fn () => SiteLocale::query()->where('is_default', true)->pluck('locale')->all()))->toBe(['vi'])
         ->and($tenancy->enter($site->id, fn () => SiteLocale::query()->orderBy('locale')->pluck('locale')->all()))->toBe(['en', 'ja', 'vi']);
 
@@ -166,6 +167,20 @@ it('isolates the provisioned site from another tenant', function () {
 
     // An Vinh's owner has NO authority on the other site.
     expect($tenancy->enter($other->id, fn () => $anVinhOwner->fresh()->can('entries.publish')))->toBeFalse();
+});
+
+it('provisioned site_modules keys are all valid ModuleCatalog keys — no orphan like "cms"', function () {
+    $site = provisionAnVinh();
+    $tenancy = app(Tenancy::class);
+
+    $catalogKeys = ModuleCatalog::modulesFor('corporate');
+    $provisioned = $tenancy->enter($site->id, fn () => SiteModule::query()->pluck('module_key')->all());
+
+    $orphans = array_diff($provisioned, $catalogKeys);
+    expect($orphans)->toBeEmpty('These module_keys are not in ModuleCatalog: '.implode(', ', $orphans));
+
+    // The full catalog set must be present — no subset, no orphan.
+    expect(collect($provisioned)->sort()->values()->all())->toBe(collect($catalogKeys)->sort()->values()->all());
 });
 
 it('seeds a contact page routed at /lien-he so the homepage CTA resolves', function () {
