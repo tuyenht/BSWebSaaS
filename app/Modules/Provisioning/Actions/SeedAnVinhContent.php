@@ -577,10 +577,17 @@ final class SeedAnVinhContent
                 'logo' => $this->media->url(self::KEY_LOGO),
                 'description' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
                 'og_image' => $this->media->url(self::KEY_ABOUT, 1280),
+                // Combined address string — used by the footer display and as fallback streetAddress
+                // for tenants that haven't been re-seeded with the split NAP fields below.
                 'address' => 'Thôn Xuân Sơn, Xã Trung Giã, TP Hà Nội',
+                // Split NAP fields — used by the Organization JSON-LD PostalAddress in head.blade.php.
+                'address_line' => 'Thôn Xuân Sơn',
+                'ward' => 'Xã Trung Giã',
+                'province' => 'TP Hà Nội',
                 'phone' => '0915 66 83 83',
                 'email' => 'quybv@ckanvinh.vn',
                 'license' => '0108649706',
+                'tax_id' => '0108649706',
             ]],
         );
     }

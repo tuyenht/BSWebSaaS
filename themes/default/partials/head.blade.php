@@ -54,6 +54,55 @@
     <link rel="alternate" hreflang="{{ $alt['hreflang'] }}" href="{{ $alt['href'] }}">
 @endforeach
 
+@if (! empty(data_get($brand ?? null, 'name')))
+    @php
+        // Organization JSON-LD — reads from $brand (already loaded by StorefrontController::brand();
+        // no additional DB query here). Null/empty fields are omitted; the whole block is suppressed
+        // when no brand name is set (fail-safe for tenants without a brand setting).
+        $orgTelephone = (! empty($brand['phone'])) ? $brand['phone'] : ((! empty($brand['hotline'])) ? $brand['hotline'] : null);
+        // address_line (new split key) takes priority; falls back to the combined address string
+        // so existing tenants without split keys still get a populated streetAddress.
+        $orgStreet    = (! empty($brand['address_line'])) ? $brand['address_line'] : ((! empty($brand['address'])) ? $brand['address'] : null);
+        $orgLocality  = ! empty($brand['ward']) ? $brand['ward'] : null;
+        $orgRegion    = ! empty($brand['province']) ? $brand['province'] : null;
+
+        $orgPostal = null;
+        if ($orgStreet !== null || $orgLocality !== null || $orgRegion !== null) {
+            $orgPostal = array_filter(
+                [
+                    '@type'           => 'PostalAddress',
+                    'streetAddress'   => $orgStreet,
+                    'addressLocality' => $orgLocality,
+                    'addressRegion'   => $orgRegion,
+                    'addressCountry'  => 'VN',
+                ],
+                fn ($v) => $v !== null && $v !== '',
+            );
+        }
+
+        // Build inside @php so Blade does not scan '@context' / '@type' as directives.
+        // JSON_HEX_TAG escapes < > — safe for inline <script>.
+        $orgLd = array_filter(
+            [
+                '@context'  => 'https://schema.org',
+                '@type'     => 'Organization',
+                'name'      => $brand['name'],
+                'legalName' => ! empty($brand['legal_name']) ? $brand['legal_name'] : null,
+                'url'       => url('/'),
+                'logo'      => ! empty($brand['logo']) ? $brand['logo'] : null,
+                'telephone' => $orgTelephone,
+                'email'     => ! empty($brand['email']) ? $brand['email'] : null,
+                'taxID'     => ! empty($brand['tax_id']) ? $brand['tax_id'] : null,
+                'address'   => $orgPostal ?: null,
+            ],
+            fn ($v) => $v !== null && $v !== '' && $v !== [],
+        );
+
+        $orgJson = json_encode($orgLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+    @endphp
+    <script type="application/ld+json">{!! $orgJson !!}</script>
+@endif
+
 @if (! empty($breadcrumb))
     @php
         // Build inside @php so Blade does not scan '@context' / '@type' as directives.
