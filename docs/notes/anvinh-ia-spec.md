@@ -12,13 +12,22 @@
 - **Demo** (`…run.app`, precision-mechanical) = **layout/skin target ONLY**. Its products are sample
   data and are **NOT** used.
 - **WordPress** (`anvinh.baoson.net`) = **real content source** (services, projects).
-- **No product catalog** (`san-pham` dropped — the real business has none). Can be added later as
-  post-by-category if real product content appears.
+- **Products ARE shipped** (the "add later as post-by-category" escape hatch was exercised): implemented
+  as **post-by-category** (taxonomy `san-pham`, vocabulary `post_cat`) — **NOT** the commerce `product`
+  module. `SeedAnVinhContent` ships 6 product posts (`entries.type=post`; precision-mechanical — jig /
+  đồ gá / khuôn mẫu / chi tiết máy) under `san-pham` + 3 sub-cats (`do-ga`, `khuon-mau`, `chi-tiet-may`,
+  vocabulary `product_cat`), a `ContentSection` (key `products`), storefront `/san-pham` (+ detail
+  `/san-pham/{slug}`), and a homepage "Sản phẩm tiêu biểu" `entry_grid` (limit 6).
 - **i18n = vi only** for Phase 1 (en/ja deferred → Stream 5), per [[anvinh-i18n-menu-model-b]].
+
+> **Reality gap (shipped seed):** `SeedAnVinhContent` currently seeds the **precision-mechanical demo
+> content** (jig · đồ gá · khuôn mẫu · CNC) across services/projects/news/products — so §1's insulation
+> framing and "demo products NOT used" describe the *intended* content, not today's seed. Reconciling the
+> seed to the real insulation/WP content is a separate, unresolved content-source decision.
 
 ## 2. IA (frozen — layout from demo, content from WP)
 
-**Nav (ordered):** Trang chủ · Giới thiệu · Dịch vụ · Dự án · Đối tác · Tin tức · (Tuyển dụng, later) · Liên hệ.
+**Nav (ordered, as shipped):** Trang chủ · Giới thiệu · Dịch vụ · **Sản phẩm** · Dự án · Đối tác · Liên hệ · Tin tức. (Tuyển dụng = later.)
 (Thư viện ảnh = a gallery *page*, later — not a homepage block.)
 
 **Homepage block stack (top → bottom):**
@@ -45,7 +54,9 @@
 - **du-an** (project = `entries.type=post`; taxonomy `du-an` with sector children: nhiệt điện, lọc
   hóa dầu, xi măng, phân bón, thép). Storefront list `/du-an` + detail `/du-an/{slug}`.
 - **tin-tuc** (exists).
-- **No san-pham.**
+- **san-pham** (product = `entries.type=post`; taxonomy `san-pham`, vocabulary `post_cat`, with sub-cats
+  `do-ga` / `khuon-mau` / `chi-tiet-may`, vocabulary `product_cat`). Storefront list `/san-pham` + detail
+  `/san-pham/{slug}`. Post-by-category — **NOT** the commerce `product` module.
 
 ## 4. Block DELTA — CHỐT 24/06 (COUNCIL F1 ✅ · F2 ✅ §E7 · F4 ✅)
 

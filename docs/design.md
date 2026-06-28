@@ -414,6 +414,11 @@ content_workflow_log(id, site_id, entry_id, locale NULL, transition_key, from_st
 ```
 - Transition guard = permission (submit/review/approve/publish); assign + note (phản biện) + log + notification (Mục 27). Chỉ trạng thái `is_published` mới ra public.
 
+### 15.5 Genesis — thứ tự khởi tạo & dải id *(BẤT BIẾN)*
+- **Thứ tự genesis (cố định):** `migrate:fresh` (role `pgsql_admin`) → `db:seed` (`rbac:sync` + tạo operator platform **super_admin** `admin@baoson.net` = **`users.id = 1`** — account gốc của hệ thống, trên mọi tenant) → `site:provision` (owner tenant nối tiếp) → tenant content seeders (vd `SeedAnVinhContent`).
+- **Dải id platform:** `rbac:sync` tạo 3 role platform theo thứ tự → chiếm **`roles.id` 1–3** (`super_admin` / `support` / `billing`; `site_id = 0` = sentinel `PLATFORM_TEAM_ID`). Role-template tenant (owner/admin/…) KHÔNG cố định id — instantiate **per-site** (team = `site_id`) lúc provision.
+- **Bất biến:** dữ liệu hệ thống/platform chiếm **các id đầu**, dữ liệu khách/tenant nối sau; `migrate:fresh` reset sequence → id **liền mạch từ 1, KHÔNG khoảng trống**. Code KHÔNG giả định id cứng ngoài dải platform này.
+
 ## 16. Lược đồ tổng hợp (toàn bộ bảng)
 
 | Nhóm | Bảng chính |
