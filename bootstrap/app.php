@@ -42,6 +42,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // Guests on the tenant admin plane land on the admin login; elsewhere the
         // platform/global login (P0.8 stub until its UI).
         $middleware->redirectGuestsTo(function (Request $request): string {
+            // Platform console (operator host) lives at root paths on its own host, so it
+            // matches neither admin branch — send its guests to the platform login instead
+            // of the global 401 JSON stub.
+            if ($request->getHost() === config('tenancy.platform_host')) {
+                return route('platform.login');
+            }
+
             $prefix = (string) config('admin.prefix', 'admin');
 
             return $request->is($prefix, $prefix.'/*') ? route('admin.login') : route('login');

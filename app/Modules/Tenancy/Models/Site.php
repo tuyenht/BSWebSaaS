@@ -42,4 +42,10 @@ final class Site extends Model
     {
         return $this->belongsTo(SiteType::class);
     }
+
+    /** @return BelongsTo<Tenant, $this> */
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
+    }
 }

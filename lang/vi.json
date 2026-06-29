@@ -161,5 +161,22 @@
     "admin.connected_accounts": "Tài khoản liên kết",
     "admin.disconnect": "Gỡ liên kết",
     "admin.social_disconnect_confirm": "Gỡ liên kết provider này?",
-    "admin.social_already_linked": "Tài khoản này đã liên kết với người dùng khác."
+    "admin.social_already_linked": "Tài khoản này đã liên kết với người dùng khác.",
+    "admin.platform_tenants": "Khách hàng",
+    "admin.platform_sites": "Website",
+    "admin.platform_audit": "Nhật ký hệ thống",
+    "admin.status": "Trạng thái",
+    "admin.all_statuses": "Tất cả trạng thái",
+    "admin.status_active": "Đang hoạt động",
+    "admin.status_suspended": "Tạm ngưng",
+    "admin.status_provisioning": "Đang khởi tạo",
+    "admin.status_archived": "Đã lưu trữ",
+    "admin.no_tenants": "Chưa có khách hàng.",
+    "admin.sites_count": "Số website",
+    "admin.view": "Xem",
+    "admin.tenant_sites": "Website của khách hàng",
+    "admin.no_sites": "Chưa có website.",
+    "admin.back": "Quay lại",
+    "admin.primary_domain": "Tên miền chính",
+    "admin.no_domain": "Chưa có tên miền"
 }

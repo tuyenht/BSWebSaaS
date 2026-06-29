@@ -10,6 +10,8 @@ use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
+use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\SocialSettings;
@@ -57,7 +59,13 @@ Route::domain((string) config('tenancy.platform_host'))
 Route::domain((string) config('tenancy.platform_host'))
     ->middleware(['web', 'auth', 'platform', SetLocale::class])
     ->group(function (): void {
-        Route::get('/', fn () => redirect()->route('platform.settings.email'))->name('platform.dashboard');
+        Route::get('/', fn () => redirect()->route('platform.tenants.index'))->name('platform.dashboard');
+
+        // Operator tenant management (read-only). `tenants` is GLOBAL (D6) — queried with no
+        // tenant context; addressed by ulid (D2, never the raw id).
+        Route::get('/tenants', Index::class)->name('platform.tenants.index');
+        Route::get('/tenants/{ulid}', Detail::class)->name('platform.tenants.show');
+
         Route::get('/settings/email', EmailSettings::class)->defaults('scope', 'platform')->name('platform.settings.email');
 
         Route::post('/logout', function () {

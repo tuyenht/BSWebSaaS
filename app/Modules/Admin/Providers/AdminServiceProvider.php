@@ -11,12 +11,15 @@ use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\Platform\Tenants\Detail as PlatformTenantsDetail;
+use App\Modules\Admin\Livewire\Platform\Tenants\Index as PlatformTenantsIndex;
 use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Navigation\AdminNav;
+use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
@@ -63,6 +66,8 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.entries.index', EntriesIndex::class);
         Livewire::component('admin.entries.editor', Editor::class);
         Livewire::component('admin.users.index', UsersIndex::class);
+        Livewire::component('admin.platform.tenants.index', PlatformTenantsIndex::class);
+        Livewire::component('admin.platform.tenants.detail', PlatformTenantsDetail::class);
 
         // Branded, i18n password-reset email pointing at the tenant admin reset page
         // (resolved under the current tenant host + admin prefix at send time).
@@ -112,6 +117,11 @@ final class AdminServiceProvider extends ServiceProvider
         // The dynamic menu (content_sections ∩ permissions) for every admin layout render.
         View::composer('admin::layouts.app', function (ViewContract $view): void {
             $view->with('navItems', app(AdminNav::class)->items(Auth::user()));
+        });
+
+        // Operator console nav (platform plane) — data-driven by platform permissions.
+        View::composer('admin::layouts.platform', function (ViewContract $view): void {
+            $view->with('platformNav', app(PlatformNav::class)->items(Auth::user()));
         });
 
         // Livewire's AJAX update endpoint must run inside the tenant context so component

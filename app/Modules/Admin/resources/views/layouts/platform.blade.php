@@ -27,6 +27,15 @@
             </span>
         </a>
 
+        @if (! empty($platformNav))
+            <nav class="ms-4 hidden items-center gap-1 md:flex">
+                @foreach ($platformNav as $item)
+                    <a href="{{ $item->url }}" wire:navigate
+                       class="rounded px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">{{ $item->label }}</a>
+                @endforeach
+            </nav>
+        @endif
+
         <div class="ms-auto" x-data="{ userOpen: false }">
             <div class="relative">
                 <button type="button" @click="userOpen = !userOpen"

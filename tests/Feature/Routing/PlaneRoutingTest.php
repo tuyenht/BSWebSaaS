@@ -66,14 +66,15 @@ it('forbids a non-operator on the platform plane', function () {
     $this->actingAs($user)->getJson('http://platform.bswebsaas.test/')->assertForbidden();
 });
 
-it('lands an authenticated platform operator on the System Email console', function () {
+it('lands an authenticated platform operator on the Tenants console', function () {
     $user = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
 
     // 2FA is enforced at login (TOTP or email-OTP), not by a console middleware gate; the
-    // platform root lands the operator on the System Email console (the platform default).
+    // platform root now lands the operator on the Tenants list (S0 — the operator console's
+    // home), replacing the earlier System-Email redirect.
     $this->actingAs($user)->get('http://platform.bswebsaas.test/')
-        ->assertRedirect(route('platform.settings.email'));
+        ->assertRedirect(route('platform.tenants.index'));
 });
 
 it('serves the System Email console to a super_admin operator', function () {
