@@ -4,6 +4,7 @@ use App\Modules\Admin\Providers\AdminServiceProvider;
 use App\Modules\Cms\Providers\CmsServiceProvider;
 use App\Modules\Forms\Providers\FormsServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
+use App\Modules\Media\Providers\MediaServiceProvider;
 use App\Modules\Provisioning\Providers\ProvisioningServiceProvider;
 use App\Modules\Rbac\Providers\RbacServiceProvider;
 use App\Modules\Tenancy\Providers\TenancyServiceProvider;
@@ -21,5 +22,6 @@ return [
     ThemeServiceProvider::class,
     CmsServiceProvider::class,
     FormsServiceProvider::class,
+    MediaServiceProvider::class,
     AdminServiceProvider::class,
 ];
