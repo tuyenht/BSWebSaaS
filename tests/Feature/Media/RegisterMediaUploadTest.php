@@ -2,6 +2,7 @@
 
 use App\Modules\Media\Actions\PresignMediaUpload;
 use App\Modules\Media\Actions\RegisterMediaUpload;
+use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Cache;
@@ -112,6 +113,17 @@ it('omits the tenant prefix in standalone (non-SaaS) mode', function () {
 
     expect($media->storage_key)->toStartWith('library/logo')
         ->and($media->storage_key)->not->toStartWith('a/');
+});
+
+it('rejects an oversize object via HEAD before loading it (OOM guard)', function () {
+    $tempKey = 'a/_incoming/01big.png';
+    stageUpload(1, $tempKey, str_repeat('x', UploadMedia::MAX_KB * 1024 + 1));
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'big.png')))
+        ->toThrow(RuntimeException::class);
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
+    Storage::disk('r2')->assertMissing($tempKey);
 });
 
 it('throws when the temp key has no ownership record (expired/forged)', function () {

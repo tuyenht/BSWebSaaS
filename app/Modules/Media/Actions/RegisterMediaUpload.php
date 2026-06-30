@@ -43,14 +43,15 @@ final class RegisterMediaUpload
             throw new RuntimeException('Không tìm thấy tệp đã tải lên.');
         }
 
-        // 2) Read the object ONCE (sniff + hash + size from the same bytes).
-        $contents = (string) $disk->get($tempKey);
-
-        // 3) Real size — the presigned PUT does not cap it, so enforce here (defense in depth).
-        if (strlen($contents) > UploadMedia::MAX_KB * 1024) {
+        // 2) Size FIRST via HEAD — the presigned PUT does NOT cap size, so reject a huge object
+        // BEFORE loading it into memory (otherwise get() would OOM the worker on a malicious upload).
+        if ($disk->size($tempKey) > UploadMedia::MAX_KB * 1024) {
             $disk->delete($tempKey);
             throw new RuntimeException('Tệp vượt quá dung lượng cho phép (tối đa 10MB).');
         }
+
+        // 3) Now safe to read the object (≤ cap) — sniff + hash come from the same bytes.
+        $contents = (string) $disk->get($tempKey);
 
         // 4) Real MIME from magic bytes — NEVER trust the client header/extension.
         $mime = (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($contents);
