@@ -84,3 +84,33 @@ it('throws on an R2 write failure (no orphan media row)', function () {
 
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });
+
+/** Parse a PHP ini shorthand size ("12M", "256K", "1G") to bytes. */
+function uploadIniBytes(string $key): int
+{
+    $value = ini_get($key);
+    if (! is_string($value) || $value === '') {
+        return 0;
+    }
+
+    $number = (int) $value;
+
+    return match (strtolower(substr($value, -1))) {
+        'g' => $number * 1024 ** 3,
+        'm' => $number * 1024 ** 2,
+        'k' => $number * 1024,
+        default => $number,
+    };
+}
+
+it('keeps the PHP upload ceiling at or above the media size cap (browser-upload guard)', function () {
+    // The real browser upload is bounded by PHP's SAPI limits: a body over upload_max_filesize /
+    // post_max_size is truncated BEFORE Livewire ever sees it, surfacing as a misleading "no file"
+    // error (the prod incident this guards). Keep both at/above UploadMedia::MAX_KB so the friendly
+    // app-level validation — not a silent SAPI truncation — is the gate. Set in
+    // docker/frankenphp/conf.d/app.ini; this fails on the stock 2M default.
+    $cap = UploadMedia::MAX_KB * 1024;
+
+    expect(uploadIniBytes('upload_max_filesize'))->toBeGreaterThanOrEqual($cap)
+        ->and(uploadIniBytes('post_max_size'))->toBeGreaterThan($cap);
+});
