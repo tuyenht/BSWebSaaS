@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    // Cloudflare Turnstile (public-form anti-spam, §23/R20). Keys are env-only: the public
+    // site key renders the widget; the secret verifies tokens server-side and MUST stay out
+    // of git. When unset (e.g. local/dev), Turnstile verification is skipped and the form
+    // still relies on the honeypot + rate-limit.
+    'turnstile' => [
+        'site_key' => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+        'verify_url' => env('TURNSTILE_VERIFY_URL', 'https://challenges.cloudflare.com/turnstile/v0/siteverify'),
+    ],
+
 ];
