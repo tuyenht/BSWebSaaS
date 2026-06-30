@@ -20,10 +20,6 @@
                 <dd class="font-medium text-gray-800">{{ $site->siteType?->key ?? '—' }}</dd>
             </div>
             <div>
-                <dt class="text-gray-500">{{ __('admin.default_locale') }}</dt>
-                <dd class="font-medium text-gray-800">{{ $site->default_locale ?? '—' }}</dd>
-            </div>
-            <div>
                 <dt class="text-gray-500">ULID</dt>
                 <dd class="font-mono text-xs text-gray-700">{{ $site->ulid }}</dd>
             </div>

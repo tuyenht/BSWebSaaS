@@ -55,7 +55,10 @@ it('shows a site detail by ulid with its domains', function () {
     // char(26) ulid column pads a sub-26-char seed value with a trailing space; trim for the URI.
     $this->actingAs(siteOperator('super_admin'))->get('http://'.$host.'/sites/'.rtrim((string) $site->ulid))
         ->assertOk()
-        ->assertSee('a.test');
+        ->assertSee('a.test')
+        // The default-locale column was dropped (it now lives in site_locales.is_default), so the
+        // god-view detail no longer carries a dead, always-empty "Default language" field.
+        ->assertDontSee(__('admin.default_locale'));
 });
 
 it('forbids billing (no sites.view) from the sites page', function () {
