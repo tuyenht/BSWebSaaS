@@ -70,6 +70,12 @@ return [
             'endpoint' => env('R2_ENDPOINT'),
             'url' => env('R2_PUBLIC_URL'),
             'use_path_style_endpoint' => true,
+            // aws-sdk-php 3.337+ adds a default CRC32 checksum to PutObject. On a PRESIGNED PUT the
+            // browser supplies the body, so the SDK cannot compute the checksum at sign time and R2
+            // rejects the upload. Only checksum when the operation actually requires it (the upload
+            // is still authenticated by the presigned signature); also covers server-side puts.
+            'request_checksum_calculation' => 'when_required',
+            'response_checksum_validation' => 'when_required',
             'throw' => false,
             'report' => false,
         ],
