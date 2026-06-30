@@ -37,6 +37,13 @@ final class NewLeadNotification extends Notification
             ->greeting(Cast::string(config('admin.brand.name'), 'Bảo Sơn'))
             ->line(__('forms.lead_email_intro', ['form' => $formName]));
 
+        // Reply-To the lead's own address, so a recipient can reply straight to the customer
+        // (the From is the platform/tenant sender, which a reply would otherwise hit).
+        $email = $this->submission->email;
+        if (is_string($email) && $email !== '') {
+            $mail->replyTo($email, Cast::string($this->submission->name));
+        }
+
         foreach ($this->leadLines() as $label => $value) {
             $mail->line("**{$label}:** {$value}");
         }

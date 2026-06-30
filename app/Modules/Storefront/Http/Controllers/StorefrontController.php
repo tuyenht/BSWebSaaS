@@ -50,6 +50,11 @@ final class StorefrontController
             return redirect()->to($redirectTo, 301);
         }
 
+        // Render the page chrome (form block submit button, validation hints, 404) in the resolved
+        // content locale — storefront routes carry no SetLocale, and app.locale defaults to 'en', so
+        // without this a vi site would show English UI strings.
+        app()->setLocale($locale);
+
         $resolved = $this->resolver->resolve($locale, $path);
 
         if ($resolved === null) {

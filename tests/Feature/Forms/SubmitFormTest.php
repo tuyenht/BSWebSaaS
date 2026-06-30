@@ -6,6 +6,7 @@ use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Notifications\NewLeadNotification;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
@@ -159,6 +160,20 @@ it('caps an over-long source_url to the column limit (no insert crash)', functio
 
     expect(mb_strlen((string) $submission->source_url))->toBeLessThanOrEqual(255)
         ->and($submission->status)->toBe('new');
+});
+
+it('sets reply-to to the lead email so the recipient replies to the customer', function () {
+    $form = contactForm();
+    $submission = app(Tenancy::class)->enter(1, fn () => $form->submissions()->create([
+        'name' => 'Khách A',
+        'email' => 'khach@example.test',
+        'data' => ['name' => 'Khách A', 'email' => 'khach@example.test'],
+    ]));
+
+    $mail = (new NewLeadNotification($submission, $form))->toMail(new AnonymousNotifiable);
+
+    expect($mail->replyTo[0][0])->toBe('khach@example.test') // MailMessage stores [address, name] tuples
+        ->and($mail->replyTo[0][1])->toBe('Khách A');
 });
 
 it('does not notify when the form has no recipients', function () {

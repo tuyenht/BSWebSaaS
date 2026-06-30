@@ -61,6 +61,15 @@ it('renders the form block with fields + honeypot + same-origin action, beside t
         ->toContain('Thông tin liên hệ');      // static NAP block coexists
 });
 
+it('renders the form chrome in the site locale even when app.locale differs', function () {
+    config(['app.locale' => 'en']); // prod default — the vi site must still render its UI in vi
+    seedContactPageWithForm();
+
+    expect($this->get('http://a.test/lien-he')->getContent())
+        ->toContain('Gửi liên hệ')        // vi submit button (forms.submit_button)
+        ->not->toContain('Send message');  // not the English string
+});
+
 it('omits the Turnstile widget when no site_key is configured (dev)', function () {
     seedContactPageWithForm();
 

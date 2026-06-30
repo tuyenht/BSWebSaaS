@@ -67,6 +67,13 @@ it('rejects a payload missing the required name + message with friendly errors',
     Notification::assertNothingSent();
 });
 
+it('renders validation errors in the site locale regardless of app.locale', function () {
+    config(['app.locale' => 'en']); // prod default — errors must still be vi for a vi site
+
+    submitContact(['email' => 'a@example.test']) // missing name + message
+        ->assertSessionHasErrors(['name' => 'Vui lòng nhập họ tên.']);
+});
+
 it('requires at least one of email or phone', function () {
     submitContact(['name' => 'Khách', 'message' => 'Xin chào'])
         ->assertRedirect()

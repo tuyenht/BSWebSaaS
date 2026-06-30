@@ -2,6 +2,7 @@
 
 namespace App\Modules\Storefront\Http\Requests;
 
+use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -16,6 +17,17 @@ final class StoreLeadRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    /**
+     * Localize validation (and the rest of the request — success/rate-limit messages, the lead
+     * notification) to the site's default locale before the rules run. The form POST carries no
+     * locale prefix and app.locale defaults to 'en', so without this a vi site would surface
+     * English validation errors.
+     */
+    protected function prepareForValidation(): void
+    {
+        app()->setLocale(app(SiteLocale::class)->default());
     }
 
     /**
