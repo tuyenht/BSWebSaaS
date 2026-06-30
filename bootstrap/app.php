@@ -18,11 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Trust only the in-process FrankenPHP/Caddy terminator (loopback). The previous
-        // '*' (trust-all) allowed any client to spoof X-Forwarded-* headers. Restricting
-        // to 127.0.0.1 / ::1 preserves X-Forwarded-Proto so canonical and sitemap URLs
-        // continue to render as https when Caddy sets the header from the loopback address.
-        $middleware->trustProxies(at: ['127.0.0.1', '::1']);
+        // Trust the loopback AND the Docker-internal reverse proxy. In prod the edge Caddy is a
+        // SEPARATE container that reaches the app over the bridge network on a private IP (NOT
+        // loopback), so a loopback-only list ignored its X-Forwarded-Host — making signed-URL
+        // validation reconstruct the internal host:port (…:80) and reject every signed URL
+        // (notably Livewire's file-upload endpoint) with a 401 invalid-signature. The RFC-1918
+        // private ranges trust that in-cluster proxy while still rejecting any spoofed
+        // X-Forwarded-* from a public client (whose source IP is never private).
+        $middleware->trustProxies(at: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16']);
 
         // Append security headers to every web response. Placement at the end of the
         // web group means headers are applied after routing but before the response
