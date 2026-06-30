@@ -11,6 +11,9 @@ use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\Platform\Audit\Index as PlatformAuditIndex;
+use App\Modules\Admin\Livewire\Platform\Sites\Detail as PlatformSitesDetail;
+use App\Modules\Admin\Livewire\Platform\Sites\Index as PlatformSitesIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail as PlatformTenantsDetail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index as PlatformTenantsIndex;
 use App\Modules\Admin\Livewire\ResetPassword;
@@ -20,6 +23,7 @@ use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\PlatformNav;
+use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
@@ -68,6 +72,9 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.users.index', UsersIndex::class);
         Livewire::component('admin.platform.tenants.index', PlatformTenantsIndex::class);
         Livewire::component('admin.platform.tenants.detail', PlatformTenantsDetail::class);
+        Livewire::component('admin.platform.sites.index', PlatformSitesIndex::class);
+        Livewire::component('admin.platform.sites.detail', PlatformSitesDetail::class);
+        Livewire::component('admin.platform.audit.index', PlatformAuditIndex::class);
 
         // Branded, i18n password-reset email pointing at the tenant admin reset page
         // (resolved under the current tenant host + admin prefix at send time).
@@ -78,7 +85,7 @@ final class AdminServiceProvider extends ServiceProvider
                 ->subject(__('auth.reset_email_subject'))
                 ->greeting(Cast::string(config('admin.brand.name')))
                 ->line(__('auth.reset_email_intro'))
-                ->action(__('auth.reset_password'), route('admin.password.reset', [
+                ->action(__('auth.reset_password'), route(AdminPlane::prefix().'.password.reset', [
                     'token' => $token,
                     'email' => $email,
                 ]))
@@ -87,7 +94,7 @@ final class AdminServiceProvider extends ServiceProvider
 
         // Branded, i18n email-verification link (signed; verified BEFORE login completes).
         VerifyEmail::createUrlUsing(fn (User $notifiable): string => URL::temporarySignedRoute(
-            'admin.verification.verify',
+            AdminPlane::prefix().'.verification.verify',
             now()->addMinutes(Cast::int(config('auth.verification.expire'), 60)),
             ['id' => $notifiable->getKey(), 'hash' => sha1($notifiable->getEmailForVerification())],
         ));

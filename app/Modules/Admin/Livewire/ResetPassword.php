@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Identity\Models\User;
 use Illuminate\Contracts\Auth\CanResetPassword;
@@ -57,7 +58,7 @@ final class ResetPassword extends Component
         if ($status === Password::PASSWORD_RESET) {
             session()->flash('status', __('auth.reset_done'));
 
-            return $this->redirectRoute('admin.login', navigate: false);
+            return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
         $this->addError('email', __('auth.reset_failed'));

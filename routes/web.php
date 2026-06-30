@@ -10,6 +10,9 @@ use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
+use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
+use App\Modules\Admin\Livewire\Platform\Sites\Index as SiteIndex;
 use App\Modules\Admin\Livewire\Platform\Tenants\Detail;
 use App\Modules\Admin\Livewire\Platform\Tenants\Index;
 use App\Modules\Admin\Livewire\ResetPassword;
@@ -39,8 +42,27 @@ Route::domain((string) config('tenancy.platform_host'))
     ->middleware(['web', SetLocale::class])
     ->group(function (): void {
         Route::get('/login', Login::class)->name('platform.login');
+        Route::get('/forgot-password', ForgotPassword::class)->name('platform.password.request');
+        Route::get('/reset-password', ResetPassword::class)->name('platform.password.reset');
         Route::get('/otp/challenge', EmailOtpChallenge::class)->name('platform.otp.challenge');
         Route::get('/two-factor/challenge', TwoFactorChallenge::class)->name('platform.two-factor.challenge');
+
+        // Email verification target (signed, no auth) — mirrors the tenant route with a
+        // platform-plane redirect, so an operator's verify link lands on the operator login.
+        Route::get('/email/verify/{id}/{hash}', function (Request $request, string $id, string $hash) {
+            $user = User::find($id);
+
+            if (! $request->hasValidSignature() || ! $user || ! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
+                abort(403);
+            }
+
+            if (! $user->hasVerifiedEmail()) {
+                $user->markEmailAsVerified();
+                event(new Verified($user));
+            }
+
+            return redirect()->route('platform.login')->with('status', __('auth.email_verified'));
+        })->name('platform.verification.verify');
 
         // Switch UI locale on the platform console — mirrors admin.locale so the shared auth
         // layout's language switcher (AdminPlane::route('locale')) resolves on this plane too.
@@ -65,6 +87,11 @@ Route::domain((string) config('tenancy.platform_host'))
         // tenant context; addressed by ulid (D2, never the raw id).
         Route::get('/tenants', Index::class)->name('platform.tenants.index');
         Route::get('/tenants/{ulid}', Detail::class)->name('platform.tenants.show');
+
+        // Operator site directory (read-only) + global audit log (cross-site).
+        Route::get('/sites', SiteIndex::class)->name('platform.sites.index');
+        Route::get('/sites/{ulid}', SiteDetail::class)->name('platform.sites.show');
+        Route::get('/audit', AuditIndex::class)->name('platform.audit.index');
 
         Route::get('/settings/email', EmailSettings::class)->defaults('scope', 'platform')->name('platform.settings.email');
 

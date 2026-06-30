@@ -178,5 +178,17 @@
     "admin.no_sites": "Chưa có website.",
     "admin.back": "Quay lại",
     "admin.primary_domain": "Tên miền chính",
-    "admin.no_domain": "Chưa có tên miền"
+    "admin.no_domain": "Chưa có tên miền",
+    "admin.tenant": "Khách hàng",
+    "admin.site_type": "Loại",
+    "admin.default_locale": "Ngôn ngữ mặc định",
+    "admin.domains": "Tên miền",
+    "admin.no_domains": "Chưa có tên miền",
+    "admin.audit_when": "Thời điểm",
+    "admin.audit_action": "Hành động",
+    "admin.audit_actor": "Người thực hiện",
+    "admin.audit_site": "Site",
+    "admin.audit_ip": "IP",
+    "admin.no_audit": "Chưa có nhật ký.",
+    "admin.filter_action": "Lọc theo hành động..."
 }

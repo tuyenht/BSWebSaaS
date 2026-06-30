@@ -47,11 +47,9 @@
                     </div>
                 </div>
             </div>
-            @unless (\App\Modules\Admin\Support\AdminPlane::isPlatform())
-                <div class="auth-forgot-link">
-                    <a href="{{ route('admin.password.request') }}">{{ __('auth.forgot_password') }}</a>
-                </div>
-            @endunless
+            <div class="auth-forgot-link">
+                <a href="{{ \App\Modules\Admin\Support\AdminPlane::route('password.request') }}">{{ __('auth.forgot_password') }}</a>
+            </div>
         </div>
 
         {{-- Error banner (auth failure / rate limit are attached to the email field) --}}
