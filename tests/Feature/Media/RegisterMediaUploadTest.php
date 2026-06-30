@@ -1,0 +1,123 @@
+<?php
+
+use App\Modules\Media\Actions\PresignMediaUpload;
+use App\Modules\Media\Actions\RegisterMediaUpload;
+use App\Modules\Media\Models\Media;
+use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+
+/*
+ * RegisterMediaUpload (DAM P1) — the REAL gate of the presigned direct-to-R2 flow. After the browser
+ * PUTs bytes to a temp key, register verifies the key belongs to THIS site (cross-tenant guard),
+ * sniffs magic bytes, hashes + dedups, and R2-internal-copies the object to the final content-hash
+ * key. A foreign / spoofed upload is rejected and its temp object deleted — never a usable row.
+ */
+
+beforeEach(function () {
+    seedTenancy();
+    Storage::fake('r2');
+});
+
+/** A real 1×1 PNG (finfo sniffs image/png; no GD needed). */
+function pngContent(): string
+{
+    return (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true);
+}
+
+/** Simulate a completed presigned PUT: an object at a temp key + its site-ownership record. */
+function stageUpload(int $site, string $tempKey, string $contents): void
+{
+    Storage::disk('r2')->put($tempKey, $contents);
+    Cache::put(PresignMediaUpload::ownershipKey($tempKey), $site, now()->addMinutes(5));
+}
+
+it('finalizes a valid upload: copies temp→content-hash key + stamps the site', function () {
+    $tempKey = 'a/_incoming/01abc.png';
+    stageUpload(1, $tempKey, pngContent());
+
+    $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'Bảng Giá.png'));
+
+    expect($media->site_id)->toBe(1)
+        ->and($media->mime)->toBe('image/png')
+        ->and(strlen($media->hash))->toBe(64)
+        ->and($media->storage_key)->toStartWith('a/library/')
+        ->and($media->storage_key)->not->toContain('_incoming');
+    Storage::disk('r2')->assertExists($media->storage_key);
+    Storage::disk('r2')->assertMissing($tempKey);
+});
+
+it('rejects a temp key issued to ANOTHER site (cross-tenant guard) + deletes the object', function () {
+    $tempKey = 'b/_incoming/01xyz.png';
+    stageUpload(2, $tempKey, pngContent()); // owned by site 2
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'x.png')))
+        ->toThrow(RuntimeException::class);
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
+    Storage::disk('r2')->assertMissing($tempKey);
+});
+
+it('rejects a spoofed file by sniffing magic bytes (PHP in a .png) + writes no row', function () {
+    $tempKey = 'a/_incoming/01evil.png';
+    stageUpload(1, $tempKey, '<?php echo "x"; ?>');
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'evil.png')))
+        ->toThrow(RuntimeException::class);
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
+});
+
+it('dedups identical content within a site (one master, temp dropped)', function () {
+    [$firstId, $secondId, $count] = app(Tenancy::class)->enter(1, function () {
+        stageUpload(1, 'a/_incoming/01one.png', pngContent());
+        $first = app(RegisterMediaUpload::class)->handle('a/_incoming/01one.png', 'one.png');
+
+        stageUpload(1, 'a/_incoming/01two.png', pngContent());
+        $second = app(RegisterMediaUpload::class)->handle('a/_incoming/01two.png', 'two.png');
+
+        return [$first->id, $second->id, Media::query()->count()];
+    });
+
+    expect($secondId)->toBe($firstId)->and($count)->toBe(1);
+    Storage::disk('r2')->assertMissing('a/_incoming/01two.png');
+});
+
+it('omits the hash suffix when url_hash_length is 0 (clean {slug}.{ext})', function () {
+    config(['media.url_hash_length' => 0]);
+    $tempKey = 'a/_incoming/01zero.png';
+    stageUpload(1, $tempKey, pngContent());
+
+    $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'about-doi-ngu.png'));
+
+    expect($media->storage_key)->toBe('a/library/about-doi-ngu.png'); // no -hash suffix
+});
+
+it('uses an 8-hex suffix when url_hash_length is 8', function () {
+    config(['media.url_hash_length' => 8]);
+    $tempKey = 'a/_incoming/01eight.png';
+    stageUpload(1, $tempKey, pngContent());
+
+    $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'anh.png'));
+
+    expect($media->storage_key)->toMatch('#^a/library/anh-[0-9a-f]{8}\.png$#');
+});
+
+it('omits the tenant prefix in standalone (non-SaaS) mode', function () {
+    config(['media.tenant_prefix' => false]);
+    $tempKey = 'a/_incoming/01solo.png';
+    stageUpload(1, $tempKey, pngContent());
+
+    $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'logo.png'));
+
+    expect($media->storage_key)->toStartWith('library/logo')
+        ->and($media->storage_key)->not->toStartWith('a/');
+});
+
+it('throws when the temp key has no ownership record (expired/forged)', function () {
+    $tempKey = 'a/_incoming/01gone.png';
+    Storage::disk('r2')->put($tempKey, pngContent()); // object but NO ownership cache
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'x.png')))
+        ->toThrow(RuntimeException::class);
+});

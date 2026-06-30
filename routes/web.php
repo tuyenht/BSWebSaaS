@@ -25,6 +25,7 @@ use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
@@ -189,6 +190,13 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Media library (DAM). Read gated by media.view; upload/delete re-gate media.upload/.delete
         // inside the component (the livewire/update endpoint bypasses this route middleware).
         Route::get('/media', MediaLibrary::class)->middleware('can:media.view')->name('admin.media.index');
+
+        // Upload endpoints (DAM): presign issues an R2 PUT URL, register finalizes (browser PUTs
+        // straight to R2 — no PHP upload limit / Livewire-temp / proxy); upload is the local-disk
+        // fallback. All re-gate media.upload.
+        Route::post('/media/presign', [MediaUploadController::class, 'presign'])->middleware('can:media.upload')->name('admin.media.presign');
+        Route::post('/media/register', [MediaUploadController::class, 'register'])->middleware('can:media.upload')->name('admin.media.register');
+        Route::post('/media/upload', [MediaUploadController::class, 'upload'])->middleware('can:media.upload')->name('admin.media.upload');
 
         Route::post('/logout', function () {
             Auth::logout();

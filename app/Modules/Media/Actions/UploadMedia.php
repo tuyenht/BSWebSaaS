@@ -3,6 +3,7 @@
 namespace App\Modules\Media\Actions;
 
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Support\MediaKey;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -23,7 +24,7 @@ final class UploadMedia
     public const MAX_KB = 10240;
 
     /** Real (magic-byte) MIME → stored extension. The render-safe GĐ1 allow-list. */
-    private const MIME_EXT = [
+    public const MIME_EXT = [
         'image/jpeg' => 'jpg',
         'image/png' => 'png',
         'image/webp' => 'webp',
@@ -55,14 +56,15 @@ final class UploadMedia
             return $existing;
         }
 
-        // 5) Opaque content-hash storage key (ADR-17): {tenant}/{collection}/{slug}-{hash12}.{ext}
+        // 5) Opaque content-hash storage key (ADR-17) — unique within the site (MediaKey extends the
+        // hash suffix only on a collision). Anti-enumerate waived (public media); cache-bust + uniqueness.
         $slug = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'tep';
-        $key = Str::slug($siteName)."/{$collection}/{$slug}-".substr($hash, 0, 12).".{$ext}";
+        $key = MediaKey::unique($siteName, $collection, $slug, $hash, $ext);
 
-        // 6) Store the single master to R2 (private; the public URL is derived, never stored).
+        // 6) Store the single master (private; the public URL is derived, never stored).
         // Laravel's filesystem does NOT throw by default — put() returns false on failure. Guard it,
         // or a failed write would still create a media row pointing at a missing object (broken image).
-        if (! Storage::disk('r2')->put($key, $contents)) {
+        if (! Storage::disk(MediaKey::disk())->put($key, $contents)) {
             throw new RuntimeException('Không lưu được tệp lên kho lưu trữ. Vui lòng thử lại.');
         }
 
@@ -79,7 +81,7 @@ final class UploadMedia
             [
                 'slug' => $slug,
                 'storage_key' => $key,
-                'disk' => 'r2',
+                'disk' => MediaKey::disk(),
                 'original_filename' => $file->getClientOriginalName(),
                 'mime' => $mime,
                 'size' => (int) $file->getSize(),
