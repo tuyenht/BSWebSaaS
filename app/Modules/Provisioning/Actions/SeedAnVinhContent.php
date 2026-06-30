@@ -11,6 +11,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
@@ -432,6 +433,8 @@ final class SeedAnVinhContent
                 'email' => 'quybv@ckanvinh.vn',
                 'map_embed' => 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d12503.468002335805!2d105.85833024594946!3d21.29902948043917!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351dc82e015dad%3A0xc3a6d44da6b27bb9!2zQ8O0bmcgdHkgY8ahIGtow60gQW4gVmluaA!5e0!3m2!1svi!2s!4v1762317872785!5m2!1svi!2s',
             ]],
+            // Lead-capture form (definition seeded by ProvisionSite::seedContactForm) → /forms/contact.
+            ['type' => 'form', 'props' => ['form_key' => 'contact']],
             ['type' => 'richtext', 'props' => [
                 'heading' => 'Hệ Thống Nhà Máy',
                 'paragraphs' => [
@@ -444,6 +447,14 @@ final class SeedAnVinhContent
 
         $entryId = $this->upsertPage($locale, 'Liên hệ', 'lien-he', '/lien-he', 'Liên hệ Cơ Khí Chính Xác An Vinh — hotline 0915 66 83 83, email quybv@ckanvinh.vn, hệ thống 3 nhà máy tại Hà Nội.', $blocks);
         $this->addMenuEntryItem($locale, $entryId, 'Liên hệ', 7);
+
+        // Seed the lead-capture form (self-sufficient: anvinh:seed-content alone wires the An Vinh
+        // contact form, so the deploy needs no interactive site:provision re-run). Route leads to
+        // the business inbox AUTHORITATIVELY — like the page bodies above, the An Vinh seed is the
+        // source of truth, so the recipient is consistent whether ProvisionSite created the form
+        // first (dev) or this seeder did (prod, fresh tables).
+        $form = app(EnsureContactForm::class)->handle(['quybv@ckanvinh.vn']);
+        $form->update(['notify_emails' => ['quybv@ckanvinh.vn']]);
     }
 
     /**

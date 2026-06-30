@@ -45,8 +45,10 @@ it('storefront response carries the allow-list Content-Security-Policy', functio
         ->toContain("default-src 'self'")
         ->toContain("img-src 'self' https://files.baoson.net data:")
         ->toContain("style-src 'self' 'unsafe-inline'")
-        ->toContain("script-src 'self'")
-        ->toContain('frame-src https://www.google.com')
+        // Cloudflare Turnstile (lead-form anti-spam, §23/R20) loads a script + iframe from
+        // challenges.cloudflare.com → both directives must allow that one trusted origin.
+        ->toContain("script-src 'self' https://challenges.cloudflare.com")
+        ->toContain('frame-src https://www.google.com https://challenges.cloudflare.com')
         ->toContain("base-uri 'self'")
         ->toContain("form-action 'self'");
 });

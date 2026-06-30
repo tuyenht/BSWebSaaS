@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Models\Permission;
@@ -147,6 +148,7 @@ final class ProvisionSite
             $owner->assignRole('owner');
 
             $this->seedHomepage($data, $owner);
+            $this->seedContactForm($data);
             $this->seedContactPage($data, $owner);
         });
 
@@ -236,6 +238,8 @@ final class ProvisionSite
                 ['type' => 'contact', 'props' => [
                     'heading' => 'Liên hệ '.$data->siteName,
                 ]],
+                // The lead-capture form (seeded by seedContactForm) submits to /forms/contact.
+                ['type' => 'form', 'props' => ['form_key' => 'contact']],
             ]],
         ]);
 
@@ -244,6 +248,17 @@ final class ProvisionSite
             'path' => '/lien-he',
             'entry_id' => $entry->id,
         ]);
+    }
+
+    /**
+     * Seed the lead-capture contact form (key 'contact') + its fields, so the storefront 'form'
+     * block on /lien-he has a form to render and submit to. Lead notifications default to the
+     * owner's email (a tenant can edit recipients later). Idempotent — anchored on the unique
+     * (site_id, key) and each field's (form_id, key); a re-run never duplicates.
+     */
+    private function seedContactForm(ProvisionSiteData $data): void
+    {
+        app(EnsureContactForm::class)->handle([$data->ownerEmail]);
     }
 
     /**

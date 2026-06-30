@@ -65,6 +65,18 @@
                         </a>
                     </li>
                 @endforeach
+                @can('forms.view')
+                    <li>
+                        <a href="{{ route('admin.forms.index') }}" wire:navigate
+                           @class([
+                               'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
+                               'bg-white/15 text-white' => request()->routeIs('admin.forms*'),
+                           ])>
+                            <x-admin::icon name="mail" class="size-5 shrink-0" />
+                            <span x-show="!collapsed">{{ __('forms.nav_contacts') }}</span>
+                        </a>
+                    </li>
+                @endcan
                 @can('users.manage')
                     <li>
                         <a href="{{ route('admin.users.index') }}" wire:navigate

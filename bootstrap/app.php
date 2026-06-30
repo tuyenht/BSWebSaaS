@@ -29,6 +29,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // leaves the pipeline, and they survive any earlier post-processing middleware.
         $middleware->web(append: [AddSecurityHeaders::class]);
 
+        // Storefront lead capture (POST /forms/{key}) is a public, session-less endpoint defended
+        // by Turnstile + honeypot + rate-limit (§23/R20), not the session CSRF token — which can't
+        // ride along on edge/full-page-cacheable storefront HTML. Exempt it so the public form
+        // submits cleanly; every authenticated admin/platform POST keeps CSRF protection.
+        $middleware->validateCsrfTokens(except: ['forms/*']);
+
         // Defense layer #1 (entitlement). Apply after SetCurrentSite has resolved
         // the tenant: 'site.active' gates lifecycle, 'module:<key>' gates modules.
         $middleware->alias([

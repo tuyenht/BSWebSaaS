@@ -85,8 +85,10 @@ final class AddSecurityHeaders
      *                data:             – inline SVG data URIs and favicons
      *   style-src    'unsafe-inline'   – Blade renders a <style>:root{} token block;
      *                                    no external stylesheet dependencies
-     *   script-src   'self'            – only /build/* Vite assets, no third-party JS
-     *   frame-src    google.com        – Google Maps embed on /lien-he (contact page)
+     *   script-src   'self' + CF       – /build/* Vite assets + the Cloudflare Turnstile
+     *                                    api.js (lead-form anti-spam, §23/R20)
+     *   frame-src    google.com + CF   – Google Maps embed on /lien-he + the Turnstile
+     *                                    challenge iframe (challenges.cloudflare.com)
      *   font-src     'self'            – self-hosted web fonts
      *   base-uri     'self'            – prevent base-tag injection attacks
      *   form-action  'self'            – constrain POST submission targets
@@ -97,8 +99,8 @@ final class AddSecurityHeaders
             "default-src 'self'",
             "img-src 'self' https://files.baoson.net data:",
             "style-src 'self' 'unsafe-inline'",
-            "script-src 'self'",
-            'frame-src https://www.google.com',
+            "script-src 'self' https://challenges.cloudflare.com",
+            'frame-src https://www.google.com https://challenges.cloudflare.com',
             "font-src 'self'",
             "base-uri 'self'",
             "form-action 'self'",

@@ -9,6 +9,8 @@ use App\Modules\Admin\Livewire\EmailSettings;
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
+use App\Modules\Admin\Livewire\Forms\Detail as FormsDetail;
+use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
@@ -22,6 +24,7 @@ use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Identity\Models\User;
+use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
@@ -176,6 +179,12 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/content/create', Editor::class)->name('admin.entries.create');
         Route::get('/content/{ulid}/edit', Editor::class)->name('admin.entries.edit');
 
+        // Lead inbox (contacts module). Read gated by forms.view; status changes inside the
+        // Detail component re-gate on forms.manage (the livewire/update endpoint bypasses this
+        // route middleware). Addressed by ulid (D2).
+        Route::get('/forms', FormsInbox::class)->middleware('can:forms.view')->name('admin.forms.index');
+        Route::get('/forms/{ulid}', FormsDetail::class)->middleware('can:forms.view')->name('admin.forms.show');
+
         Route::post('/logout', function () {
             Auth::logout();
             request()->session()->invalidate();
@@ -204,6 +213,14 @@ Route::get('/two-factor/setup', fn () => response()->json(['message' => 'Two-fac
 //    domains table. Để trong nhóm web mặc định — các middleware web (ShareErrors…)
 //    phụ thuộc session nên không strip; tần suất gọi cực thấp (chỉ lúc cấp cert). ─
 Route::get('/caddy/ask', CaddyAskController::class)->name('caddy.ask');
+
+// ── Storefront lead capture (public) — POST /forms/{key}. Registered BEFORE the fallback;
+//    CSRF-exempt (bootstrap/app.php): a session-less public endpoint guarded by Turnstile +
+//    honeypot + rate-limit, and storefront HTML is edge/full-page cacheable so a per-session
+//    CSRF token can't ride along. Resolves the form by key in the host's site context (RLS). ──
+Route::post('/forms/{key}', FormSubmissionController::class)
+    ->middleware([SetCurrentSite::class, 'site.active'])
+    ->name('storefront.forms.submit');
 
 // ── Per-tenant sitemap + robots (same middleware as storefront; registered BEFORE the
 //    fallback so these explicit routes win). public/robots.txt is deleted; this route

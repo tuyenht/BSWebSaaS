@@ -4,6 +4,7 @@ namespace App\Modules\Forms\Services;
 
 use App\Modules\Admin\Support\Cast;
 use Illuminate\Support\Facades\Http;
+use Throwable;
 
 /**
  * Cloudflare Turnstile server-side verification (§23/R20). When no secret is configured
@@ -25,11 +26,21 @@ final class TurnstileVerifier
             return false;
         }
 
-        $response = Http::asForm()->post(Cast::string(config('services.turnstile.verify_url')), [
-            'secret' => $secret,
-            'response' => $token,
-            'remoteip' => $ip,
-        ]);
+        try {
+            $response = Http::asForm()
+                ->timeout(5)
+                ->post(Cast::string(config('services.turnstile.verify_url')), [
+                    'secret' => $secret,
+                    'response' => $token,
+                    'remoteip' => $ip,
+                ]);
+        } catch (Throwable $e) {
+            // Cloudflare unreachable / timed out — fail CLOSED (never a 500 on the public submit):
+            // the lead is still captured + flagged spam, recoverable from the inbox's spam filter.
+            report($e);
+
+            return false;
+        }
 
         return $response->successful() && $response->json('success') === true;
     }

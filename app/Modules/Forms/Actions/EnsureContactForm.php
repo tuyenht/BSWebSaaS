@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Modules\Forms\Actions;
+
+use App\Modules\Forms\Models\Form;
+
+/**
+ * Idempotently seed the lead-capture contact form (key 'contact') + its fields for the CURRENT
+ * site (caller is inside the tenant context → site_id is stamped + RLS-scoped). Shared by
+ * ProvisionSite (every new site, owner as recipient) and SeedAnVinhContent (An Vinh, business
+ * inbox). Anchored on the unique (site_id, key) and each field's (form_id, key) — a re-run never
+ * duplicates and never clobbers a tenant's later-customized recipients.
+ */
+final class EnsureContactForm
+{
+    /**
+     * @param  list<string>  $notifyEmails  lead-notification recipients (set on first creation)
+     */
+    public function handle(array $notifyEmails): Form
+    {
+        $form = Form::query()->firstOrCreate(
+            ['key' => 'contact'],
+            [
+                'name' => ['vi' => 'Liên hệ'],
+                'success_message' => ['vi' => 'Cảm ơn bạn! Chúng tôi đã nhận được thông tin và sẽ liên hệ lại sớm.'],
+                'notify_emails' => $notifyEmails,
+                'status' => 'active',
+            ],
+        );
+
+        $fields = [
+            ['key' => 'name', 'type' => 'text', 'label' => ['vi' => 'Họ tên'], 'is_required' => true, 'sort_order' => 1],
+            ['key' => 'email', 'type' => 'email', 'label' => ['vi' => 'Email'], 'is_required' => false, 'sort_order' => 2],
+            ['key' => 'phone', 'type' => 'tel', 'label' => ['vi' => 'Số điện thoại'], 'is_required' => false, 'sort_order' => 3],
+            ['key' => 'message', 'type' => 'textarea', 'label' => ['vi' => 'Nội dung'], 'is_required' => true, 'sort_order' => 4],
+        ];
+
+        foreach ($fields as $field) {
+            $form->fields()->firstOrCreate(['key' => $field['key']], $field);
+        }
+
+        return $form;
+    }
+}

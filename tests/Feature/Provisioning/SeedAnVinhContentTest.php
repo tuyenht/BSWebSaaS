@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Forms\Models\Form;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -224,6 +225,24 @@ it('updates the contact page with real NAP and factory list', function () {
 
         // Factory list in richtext block
         expect($bodyJson)->toContain('Thạch Thất');  // 'Thạch Thất' — factory 3 address
+
+        // Lead-capture form embedded on /lien-he (submits to /forms/contact).
+        expect($bodyJson)->toContain('"type":"form"')->toContain('"form_key":"contact"');
+    });
+});
+
+it('seeds the An Vinh contact form routed to the business inbox', function () {
+    $site = seedPrecisionSite();
+
+    app(Tenancy::class)->enter($site->id, function () {
+        app(SeedAnVinhContent::class)->handle();
+
+        $form = Form::query()->where('key', 'contact')->with('fields')->first();
+
+        expect($form)->not->toBeNull()
+            ->and($form->status)->toBe('active')
+            ->and($form->notify_emails)->toBe(['quybv@ckanvinh.vn']) // authoritative business inbox
+            ->and($form->fields->pluck('key')->all())->toBe(['name', 'email', 'phone', 'message']);
     });
 });
 
