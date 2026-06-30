@@ -12,6 +12,7 @@ use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Forms\Detail as FormsDetail;
 use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as SiteIndex;
@@ -184,6 +185,10 @@ Route::prefix(config('admin.prefix', 'admin'))
         // route middleware). Addressed by ulid (D2).
         Route::get('/forms', FormsInbox::class)->middleware('can:forms.view')->name('admin.forms.index');
         Route::get('/forms/{ulid}', FormsDetail::class)->middleware('can:forms.view')->name('admin.forms.show');
+
+        // Media library (DAM). Read gated by media.view; upload/delete re-gate media.upload/.delete
+        // inside the component (the livewire/update endpoint bypasses this route middleware).
+        Route::get('/media', MediaLibrary::class)->middleware('can:media.view')->name('admin.media.index');
 
         Route::post('/logout', function () {
             Auth::logout();

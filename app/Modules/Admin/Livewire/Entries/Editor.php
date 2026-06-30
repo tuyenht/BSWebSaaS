@@ -8,11 +8,14 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -51,6 +54,12 @@ final class Editor extends Component
     /** Primary category id (posts only; index 0 of entry_taxonomies drives the URL). */
     public ?int $categoryId = null;
 
+    /** Featured/OG image — the picked media's storage_key, persisted to entry.meta['image_url']. */
+    public string $coverImageKey = '';
+
+    /** Whether the library picker is open (its media grid is only queried while true). */
+    public bool $showMediaPicker = false;
+
     /** @var list<array<string, mixed>> */
     public array $blocks = [];
 
@@ -88,6 +97,9 @@ final class Editor extends Component
             $this->slug = $translation->slug;
             $this->blocks = $this->normalizeBlocks($translation->body['blocks'] ?? []);
         }
+
+        $cover = data_get($entry->meta, 'image_url');
+        $this->coverImageKey = is_string($cover) ? $cover : '';
 
         if ($this->type === 'post') {
             $this->categoryId = $entry->taxonomies()->first()?->id;
@@ -193,12 +205,48 @@ final class Editor extends Component
         }
     }
 
+    public function openCoverPicker(): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+        $this->showMediaPicker = true;
+    }
+
+    public function closeCoverPicker(): void
+    {
+        $this->showMediaPicker = false;
+    }
+
+    public function selectCover(string $key): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+
+        // Only accept a storage_key from THIS site's library (RLS-scoped) — never an arbitrary or
+        // cross-site string injected via the wire payload.
+        if (Media::query()->where('storage_key', $key)->exists()) {
+            $this->coverImageKey = $key;
+        }
+
+        $this->showMediaPicker = false;
+    }
+
+    public function clearCover(): void
+    {
+        $this->coverImageKey = '';
+    }
+
     public function render(): View
     {
+        $urls = app(MediaUrlResolver::class);
+
         return view('admin::livewire.entries.editor', [
             'availableTypes' => app(ComponentRegistry::class)->types(),
             'schemas' => $this->schemas(),
             'categories' => $this->type === 'post' ? $this->availableCategories() : [],
+            'urls' => $urls,
+            'coverUrl' => $this->coverImageKey !== '' ? $urls->url($this->coverImageKey, 640) : null,
+            'pickerMedia' => $this->showMediaPicker
+                ? Media::query()->orderByDesc('created_at')->limit(60)->get()
+                : collect(),
         ]);
     }
 
@@ -244,6 +292,7 @@ final class Editor extends Component
                 'type' => $this->type,
                 'status' => 'draft',
                 'author_id' => $this->user()->id,
+                'meta' => [], // a fresh instance's meta is null until set; [] keeps the merge below array-typed
             ]);
             $this->ulid = $entry->ulid;
             $this->status = $entry->status;
@@ -251,6 +300,18 @@ final class Editor extends Component
             $entry = $this->resolveOrFail($this->ulid);
             $this->authorize('update', $entry);
         }
+
+        // Featured/OG image: store the picked media's storage_key in entry.meta['image_url'] (the
+        // storefront resolves it to an absolute og:image + card thumbnail). Merge so any other meta
+        // key survives; an empty pick clears it.
+        $meta = $entry->meta;
+        if ($this->coverImageKey !== '') {
+            $meta['image_url'] = $this->coverImageKey;
+        } else {
+            unset($meta['image_url']);
+        }
+        $entry->meta = $meta;
+        $entry->save();
 
         $entry->translations()->updateOrCreate(
             ['locale' => $this->locale],

@@ -225,5 +225,21 @@
     "forms.action_mark_read": "Đánh dấu đã đọc",
     "forms.action_archive": "Lưu trữ",
     "forms.action_mark_spam": "Đánh dấu spam",
-    "forms.action_not_spam": "Không phải spam"
+    "forms.action_not_spam": "Không phải spam",
+    "media.nav_label": "Thư viện",
+    "media.library_title": "Thư viện ảnh",
+    "media.library_subtitle": "Ảnh và tài liệu dùng chung cho website.",
+    "media.library_empty": "Chưa có ảnh nào. Hãy tải ảnh đầu tiên lên.",
+    "media.upload_label": "Tải ảnh lên",
+    "media.upload_button": "Tải lên",
+    "media.uploading": "Đang tải lên…",
+    "media.upload_hint": "JPG, PNG, WebP, GIF hoặc PDF. Tối đa 10MB.",
+    "media.upload_success": "Đã tải ảnh lên thư viện.",
+    "media.open": "Mở",
+    "media.delete": "Xóa",
+    "media.delete_confirm": "Chuyển ảnh này vào thùng rác?",
+    "media.delete_success": "Đã chuyển ảnh vào thùng rác.",
+    "media.err_required": "Vui lòng chọn một tệp để tải lên.",
+    "media.err_mimes": "Chỉ chấp nhận ảnh JPG, PNG, WebP, GIF hoặc PDF.",
+    "media.err_max": "Tệp vượt quá dung lượng cho phép (tối đa 10MB)."
 }

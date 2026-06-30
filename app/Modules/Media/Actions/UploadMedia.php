@@ -60,24 +60,34 @@ final class UploadMedia
         $key = Str::slug($siteName)."/{$collection}/{$slug}-".substr($hash, 0, 12).".{$ext}";
 
         // 6) Store the single master to R2 (private; the public URL is derived, never stored).
-        Storage::disk('r2')->put($key, $contents);
+        // Laravel's filesystem does NOT throw by default — put() returns false on failure. Guard it,
+        // or a failed write would still create a media row pointing at a missing object (broken image).
+        if (! Storage::disk('r2')->put($key, $contents)) {
+            throw new RuntimeException('Không lưu được tệp lên kho lưu trữ. Vui lòng thử lại.');
+        }
 
         [$width, $height] = $this->dimensions((string) $file->getRealPath(), $mime);
 
-        // 7) Persist — BelongsToSite stamps site_id from the current context.
-        return Media::query()->create([
-            'collection' => $collection,
-            'slug' => $slug,
-            'hash' => $hash,
-            'storage_key' => $key,
-            'disk' => 'r2',
-            'original_filename' => $file->getClientOriginalName(),
-            'mime' => $mime,
-            'size' => (int) $file->getSize(),
-            'width' => $width,
-            'height' => $height,
-            'created_by' => $createdBy,
-        ]);
+        // 7) Persist — BelongsToSite stamps site_id. createOrFirst (not create): the step-4 dedup
+        // check is a fast path a concurrent identical upload can race past, so the insert runs in a
+        // SAVEPOINT — on the UNIQUE(site_id,collection,hash) violation it rolls back to the savepoint
+        // (the request transaction stays valid) and returns the winner. A double-submit / concurrent
+        // upload is thus idempotent, never a 500 / aborted transaction. (site_id is in the unique key
+        // but stamped by the trait, so the dedup attributes are collection + hash within this site.)
+        return Media::query()->createOrFirst(
+            ['collection' => $collection, 'hash' => $hash],
+            [
+                'slug' => $slug,
+                'storage_key' => $key,
+                'disk' => 'r2',
+                'original_filename' => $file->getClientOriginalName(),
+                'mime' => $mime,
+                'size' => (int) $file->getSize(),
+                'width' => $width,
+                'height' => $height,
+                'created_by' => $createdBy,
+            ],
+        );
     }
 
     /**

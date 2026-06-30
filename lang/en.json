@@ -225,5 +225,21 @@
     "forms.action_mark_read": "Mark as read",
     "forms.action_archive": "Archive",
     "forms.action_mark_spam": "Mark as spam",
-    "forms.action_not_spam": "Not spam"
+    "forms.action_not_spam": "Not spam",
+    "media.nav_label": "Media",
+    "media.library_title": "Media library",
+    "media.library_subtitle": "Images and documents reused across the website.",
+    "media.library_empty": "No images yet. Upload your first one.",
+    "media.upload_label": "Upload an image",
+    "media.upload_button": "Upload",
+    "media.uploading": "Uploading…",
+    "media.upload_hint": "JPG, PNG, WebP, GIF or PDF. Up to 10MB.",
+    "media.upload_success": "Image uploaded to the library.",
+    "media.open": "Open",
+    "media.delete": "Delete",
+    "media.delete_confirm": "Move this image to the trash?",
+    "media.delete_success": "Image moved to the trash.",
+    "media.err_required": "Please choose a file to upload.",
+    "media.err_mimes": "Only JPG, PNG, WebP, GIF or PDF images are accepted.",
+    "media.err_max": "The file exceeds the maximum size (10MB)."
 }

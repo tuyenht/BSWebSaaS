@@ -32,6 +32,43 @@
         @error('categoryId') <p class="error">{{ $message }}</p> @enderror
     @endif
 
+    @can('media.view')
+        <section class="entry-cover">
+            <h2>Ảnh đại diện (chia sẻ mạng xã hội)</h2>
+            @if ($coverUrl)
+                <img src="{{ $coverUrl }}" alt="Ảnh đại diện" class="entry-cover__preview" style="max-width:240px;height:auto;display:block">
+                <button type="button" wire:click="clearCover">Bỏ ảnh</button>
+            @else
+                <p>Chưa chọn ảnh đại diện.</p>
+            @endif
+            <button type="button" wire:click="openCoverPicker">Chọn ảnh từ thư viện</button>
+        </section>
+
+        @if ($showMediaPicker)
+            <div class="media-picker" role="dialog" aria-modal="true" aria-label="Chọn ảnh từ thư viện">
+                <div class="media-picker__head">
+                    <strong>Chọn ảnh từ thư viện</strong>
+                    <button type="button" wire:click="closeCoverPicker">Đóng</button>
+                </div>
+                @if ($pickerMedia->isEmpty())
+                    <p>Thư viện chưa có ảnh. Hãy tải ảnh lên ở mục Thư viện trước.</p>
+                @else
+                    <div class="media-picker__grid">
+                        @foreach ($pickerMedia as $m)
+                            @if (str_starts_with($m->mime, 'image/'))
+                                <button type="button" wire:key="pick-{{ $m->id }}"
+                                        wire:click="selectCover('{{ $m->storage_key }}')"
+                                        class="media-picker__item" title="{{ $m->original_filename }}">
+                                    <img src="{{ $urls->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy">
+                                </button>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @endif
+    @endcan
+
     <section class="blocks">
         <h2>Khối nội dung</h2>
         @error('blocks') <p class="error">{{ $message }}</p> @enderror

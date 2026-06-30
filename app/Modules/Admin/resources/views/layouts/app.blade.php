@@ -77,6 +77,18 @@
                         </a>
                     </li>
                 @endcan
+                @can('media.view')
+                    <li>
+                        <a href="{{ route('admin.media.index') }}" wire:navigate
+                           @class([
+                               'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
+                               'bg-white/15 text-white' => request()->routeIs('admin.media*'),
+                           ])>
+                            <x-admin::icon name="image" class="size-5 shrink-0" />
+                            <span x-show="!collapsed">{{ __('media.nav_label') }}</span>
+                        </a>
+                    </li>
+                @endcan
                 @can('users.manage')
                     <li>
                         <a href="{{ route('admin.users.index') }}" wire:navigate

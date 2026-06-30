@@ -70,3 +70,17 @@ it('rejects a file over the size limit', function () {
         'An Vinh',
     ));
 })->throws(RuntimeException::class);
+
+it('throws on an R2 write failure (no orphan media row)', function () {
+    // Laravel's filesystem returns false (does not throw) on a failed write; the action must turn
+    // that into a friendly error BEFORE inserting, or a master would point at a missing object.
+    Storage::shouldReceive('disk')->with('r2')->andReturnSelf();
+    Storage::shouldReceive('put')->once()->andReturn(false);
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle(
+        UploadedFile::fake()->createWithContent('a.png', pngBytes()),
+        'An Vinh',
+    )))->toThrow(RuntimeException::class);
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
+});
