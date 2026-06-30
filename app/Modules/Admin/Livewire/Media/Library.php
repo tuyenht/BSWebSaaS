@@ -2,81 +2,43 @@
 
 namespace App\Modules\Admin\Livewire\Media;
 
-use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
-use App\Modules\Tenancy\Context\CurrentSite;
-use App\Modules\Tenancy\Models\Site;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
-use Livewire\WithFileUploads;
 use Livewire\WithPagination;
-use RuntimeException;
 
 /**
  * Media library (tenant plane): the site's reusable image/file masters, newest first. RLS- +
  * BelongsToSite-scoped — another site's asset is never visible. Read is gated by media.view,
- * re-checked in boot() because the livewire/update endpoint bypasses route middleware; upload
- * re-gates media.upload and delete re-gates media.delete (the view/write split). Upload routes
- * through the UploadMedia action (magic-byte sniff + content-hash dedup → one R2 master); the
- * extension/size rule here is the friendly first gate, the action's magic-byte sniff the real one.
- * Delete is soft (Thùng rác); a force-purge later cleans the R2 object + attachments via MediaObserver.
+ * re-checked in boot() because the livewire/update endpoint bypasses route middleware; delete
+ * re-gates media.delete. Upload no longer flows through this component: the Uppy island in the view
+ * PUTs straight to R2 and finalizes via the media.{presign,register} endpoints (each re-gating
+ * media.upload server-side, the real magic-byte sniff in RegisterMediaUpload), then dispatches a
+ * `media-uploaded` browser event so the grid here refreshes. Delete is soft (Thùng rác); a
+ * force-purge later cleans the R2 object + attachments via MediaObserver.
  */
 #[Layout('admin::layouts.app')]
 final class Library extends Component
 {
-    use WithFileUploads;
     use WithPagination;
-
-    /** The pending upload (validated as an image/pdf ≤10MB; the action re-sniffs the magic bytes). */
-    public ?TemporaryUploadedFile $upload = null;
 
     public function boot(): void
     {
         abort_unless(Gate::allows('media.view'), 403);
     }
 
-    public function save(): void
+    /**
+     * The Uppy island finished a batch (browser → R2 → register). Re-render to the first page so the
+     * newest masters show. The island lives in a wire:ignore block, so this morph never touches it.
+     */
+    #[On('media-uploaded')]
+    public function onMediaUploaded(): void
     {
-        abort_unless(Gate::allows('media.upload'), 403);
-
-        $this->validate([
-            'upload' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif,pdf', 'max:'.UploadMedia::MAX_KB],
-        ], [
-            'upload.required' => __('media.err_required'),
-            'upload.file' => __('media.err_mimes'),
-            'upload.mimes' => __('media.err_mimes'),
-            'upload.max' => __('media.err_max'),
-        ]);
-
-        if ($this->upload === null) {
-            return; // validate() guarantees this; the guard narrows the type for the action call.
-        }
-
-        $site = Site::query()->find(app(CurrentSite::class)->id());
-        $actor = auth()->id();
-
-        try {
-            app(UploadMedia::class)->handle(
-                $this->upload,
-                (string) $site?->name,
-                'library',
-                is_int($actor) ? $actor : null,
-            );
-        } catch (RuntimeException $e) {
-            // The action rejected on the magic-byte sniff (or size) — surface its plain-language
-            // message instead of a 500, so a content/extension mismatch reads as a normal error.
-            $this->addError('upload', $e->getMessage());
-
-            return;
-        }
-
-        $this->reset('upload');
         $this->resetPage();
-        session()->flash('media-status', __('media.upload_success'));
     }
 
     public function delete(string $ulid): void

@@ -11,25 +11,21 @@
     @endif
 
     @can('media.upload')
-        <form wire:submit="save" class="mb-5 rounded-lg border border-gray-200 bg-white p-4 shadow-card">
-            <label for="media-upload" class="mb-1.5 block text-sm font-medium text-gray-700">{{ __('media.upload_label') }}</label>
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <input type="file" id="media-upload" wire:model="upload"
-                       accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
-                       class="block w-full text-sm text-gray-600 file:me-3 file:rounded file:border-0 file:bg-admin-primary/10 file:px-3 file:py-2 file:text-sm file:font-medium file:text-admin-primary hover:file:bg-admin-primary/15 sm:max-w-md">
-                <button type="submit"
-                        class="inline-flex shrink-0 items-center justify-center gap-2 rounded bg-admin-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-admin-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
-                        wire:loading.attr="disabled" wire:target="upload,save">
-                    <span wire:loading.remove wire:target="save">{{ __('media.upload_button') }}</span>
-                    <span wire:loading wire:target="save">{{ __('media.uploading') }}</span>
-                </button>
-            </div>
-            <p class="mt-1.5 text-xs text-gray-400">{{ __('media.upload_hint') }}</p>
-            <p wire:loading wire:target="upload" class="mt-1.5 text-xs text-gray-400">{{ __('media.uploading') }}</p>
-            @error('upload')
-                <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p>
-            @enderror
-        </form>
+        <div class="mb-5 rounded-lg border border-gray-200 bg-white p-4 shadow-card">
+            <label class="mb-1.5 block text-sm font-medium text-gray-700">{{ __('media.upload_label') }}</label>
+            {{-- Uppy island: PUTs straight to R2 (presign → register), or proxies through Laravel on a
+                 local disk. wire:ignore keeps Livewire's morph off the Uppy DOM across grid refreshes;
+                 app.js (re)mounts it on every SPA navigation. --}}
+            <div wire:ignore
+                 data-media-uploader
+                 data-disk="{{ config('media.disk') }}"
+                 data-presign-url="{{ route('admin.media.presign') }}"
+                 data-register-url="{{ route('admin.media.register') }}"
+                 data-upload-url="{{ route('admin.media.upload') }}"
+                 data-max-bytes="{{ \App\Modules\Media\Actions\UploadMedia::MAX_KB * 1024 }}"
+                 data-allowed="{{ implode(',', array_keys(\App\Modules\Media\Actions\UploadMedia::MIME_EXT)) }}"></div>
+            <p class="mt-2 text-xs text-gray-400">{{ __('media.upload_hint') }}</p>
+        </div>
     @endcan
 
     @if ($media->isEmpty())

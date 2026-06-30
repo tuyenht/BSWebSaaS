@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 /**
@@ -18,24 +19,30 @@ use RuntimeException;
  * browser PUTs straight to R2 (no PHP upload limit / Livewire-temp / proxy); `register` validates +
  * records the row. `upload` is the local-disk fallback (dev) that proxies the file through Laravel.
  * All sit in the tenant admin group (auth + SetCurrentSite → RLS) and re-gate media.upload.
+ *
+ * These are a fetch()/JSON API for the Uppy island, so validation + domain errors are returned as
+ * JSON 422 here — the app renders framework ValidationExceptions as JSON only for api/* (see
+ * bootstrap/app.php), and a redirect-back would be meaningless to a fetch client.
  */
 final class MediaUploadController
 {
     public function presign(Request $request, PresignMediaUpload $presign, CurrentSite $current): JsonResponse
     {
-        $request->validate([
-            'filename' => ['required', 'string', 'max:255'],
-            'mime' => ['required', 'string', 'max:100'],
-            'size' => ['required', 'integer', 'min:1'],
-        ]);
-
         try {
+            $request->validate([
+                'filename' => ['required', 'string', 'max:255'],
+                'mime' => ['required', 'string', 'max:100'],
+                'size' => ['required', 'integer', 'min:1'],
+            ]);
+
             $result = $presign->handle(
                 (string) $request->string('filename'),
                 (string) $request->string('mime'),
                 $request->integer('size'),
                 $this->siteName($current),
             );
+        } catch (ValidationException $e) {
+            return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -45,14 +52,14 @@ final class MediaUploadController
 
     public function register(Request $request, RegisterMediaUpload $register): JsonResponse
     {
-        $request->validate([
-            'tempKey' => ['required', 'string', 'max:255'],
-            'filename' => ['required', 'string', 'max:255'],
-            'width' => ['nullable', 'integer'],
-            'height' => ['nullable', 'integer'],
-        ]);
-
         try {
+            $request->validate([
+                'tempKey' => ['required', 'string', 'max:255'],
+                'filename' => ['required', 'string', 'max:255'],
+                'width' => ['nullable', 'integer'],
+                'height' => ['nullable', 'integer'],
+            ]);
+
             $media = $register->handle(
                 (string) $request->string('tempKey'),
                 (string) $request->string('filename'),
@@ -60,6 +67,8 @@ final class MediaUploadController
                 $request->has('width') ? $request->integer('width') : null,
                 $request->has('height') ? $request->integer('height') : null,
             );
+        } catch (ValidationException $e) {
+            return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
@@ -69,17 +78,19 @@ final class MediaUploadController
 
     public function upload(Request $request, UploadMedia $upload, CurrentSite $current): JsonResponse
     {
-        $request->validate([
-            'file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif,pdf', 'max:'.UploadMedia::MAX_KB],
-        ]);
-
-        $file = $request->file('file');
-        if (! $file instanceof UploadedFile) {
-            return response()->json(['message' => 'Tệp không hợp lệ.'], 422);
-        }
-
         try {
+            $request->validate([
+                'file' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,gif,pdf', 'max:'.UploadMedia::MAX_KB],
+            ]);
+
+            $file = $request->file('file');
+            if (! $file instanceof UploadedFile) {
+                return response()->json(['message' => 'Tệp không hợp lệ.'], 422);
+            }
+
             $media = $upload->handle($file, $this->siteName($current), 'library', $this->actorId());
+        } catch (ValidationException $e) {
+            return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }
