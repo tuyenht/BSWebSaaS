@@ -111,13 +111,20 @@ final class TenantMailer
     {
         $smtp = Cast::arr($cfg['smtp'] ?? null);
         $from = $cfg['from_address'] ?? ($smtp['username'] ?? null);
+        $port = Cast::int($smtp['port'] ?? null, 587);
+        $encryption = is_string($smtp['encryption'] ?? null) ? $smtp['encryption'] : 'tls';
 
         config([
             'mail.default' => 'smtp',
             'mail.mailers.smtp.transport' => 'smtp',
             'mail.mailers.smtp.host' => $smtp['host'] ?? null,
-            'mail.mailers.smtp.port' => Cast::int($smtp['port'] ?? null, 587),
-            'mail.mailers.smtp.encryption' => $smtp['encryption'] ?? 'tls',
+            'mail.mailers.smtp.port' => $port,
+            // Pin the Symfony DSN scheme from the tenant's OWN encryption/port so the send never
+            // inherits a stale/invalid global MAIL_SCHEME. Symfony's SMTP transport accepts only
+            // "smtp" (STARTTLS, typically :587) or "smtps" (implicit TLS, :465) — the legacy "ssl"
+            // value throws UnsupportedSchemeException. SSL or port 465 → smtps; otherwise smtp.
+            'mail.mailers.smtp.scheme' => ($encryption === 'ssl' || $port === 465) ? 'smtps' : 'smtp',
+            'mail.mailers.smtp.encryption' => $encryption,
             'mail.mailers.smtp.username' => $smtp['username'] ?? null,
             'mail.mailers.smtp.password' => is_string($smtp['password'] ?? null) ? SecretCipher::decrypt($smtp['password']) : null,
             'mail.from.address' => $from,

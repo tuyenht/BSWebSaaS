@@ -43,3 +43,50 @@ it('is configured when the platform SMTP password is present', function () {
         expect(app(TenantMailer::class)->isConfigured())->toBeTrue();
     });
 });
+
+/*
+ * apply() must pin the Symfony DSN scheme from the config's own encryption/port — Symfony's SMTP
+ * transport rejects the legacy "ssl" scheme (UnsupportedSchemeException → a 500 on the login OTP
+ * send), and the send must never inherit an invalid global MAIL_SCHEME.
+ */
+
+it('pins the scheme to smtps for an SSL / port 465 config', function () {
+    config(['mail.mailers.smtp.scheme' => 'ssl']); // simulate an invalid global MAIL_SCHEME
+    app(PlatformSettings::class)->put('email', 'config', [
+        'method' => 'smtp_password',
+        'from_address' => 'info@example.com',
+        'smtp' => [
+            'host' => 'smtp.example.com',
+            'port' => 465,
+            'encryption' => 'ssl',
+            'username' => 'info@example.com',
+            'password' => SecretCipher::encrypt('app-password'),
+        ],
+    ]);
+
+    app(Tenancy::class)->enter(1, function () {
+        app(TenantMailer::class)->apply();
+        expect(config('mail.mailers.smtp.scheme'))->toBe('smtps')
+            ->and(config('mail.mailers.smtp.port'))->toBe(465);
+    });
+});
+
+it('uses the smtp scheme for a TLS / port 587 config', function () {
+    config(['mail.mailers.smtp.scheme' => 'ssl']);
+    app(PlatformSettings::class)->put('email', 'config', [
+        'method' => 'smtp_password',
+        'from_address' => 'info@example.com',
+        'smtp' => [
+            'host' => 'smtp.example.com',
+            'port' => 587,
+            'encryption' => 'tls',
+            'username' => 'info@example.com',
+            'password' => SecretCipher::encrypt('app-password'),
+        ],
+    ]);
+
+    app(Tenancy::class)->enter(1, function () {
+        app(TenantMailer::class)->apply();
+        expect(config('mail.mailers.smtp.scheme'))->toBe('smtp');
+    });
+});
