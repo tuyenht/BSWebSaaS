@@ -17,7 +17,7 @@
 - Typography SSOT = `resources/css/fonts.css` (`--font-stack` + `--vz-*`), **self-host Inter, zero third-party CDN**.
 - Body **14px** = `--vz-body-font-size`; Tailwind `@theme` đọc từ fonts.css; `bg-body` ← `--vz-body-bg`.
 - Brand admin **namespace `--color-admin-*`** (#405189…) — KHÔNG rò sang storefront `--color-primary` (ThemeResolver per-site). Shell scope `.admin-shell`.
-- Layout: **Vertical + Light scheme + dark sidebar**. Theme Customizer (Velzon-style: Layout/Scheme/Position/Topbar/Sidebar) = feature **interactive (phase sau)**.
+- Layout: **Vertical + Light scheme + dark sidebar**. Theme Customizer (Velzon-style: Layout/Scheme/Position/Topbar/Sidebar) = feature **interactive** → đặc tả đầy đủ ở **ADR-A4**.
 
 ## ADR-A3 — i18n / FONT (LOCKED)
 
@@ -57,6 +57,28 @@
 ### Thời điểm (OPEN — hoãn sâu)
 - CJK chỉ cần khi UI ja/zh bật functional **HOẶC** An Vinh P2 (ja content).
 - **Phase 1 + visual-review = vi thuần, Inter-only, 0 dòng CJK.** KHÔNG đụng refactor family / `:lang()` / R2-font lúc này.
+
+---
+
+## ADR-A4 — Theme Customizer + lưu cấu hình theme (LOCKED — chốt 2026-07-01; build theo `plans/260701-1523-admin-shell-velzon/`)
+
+> Nâng §A2 (Customizer "phase sau") thành đặc tả đầy đủ. Kiến trúc CHỐT, **CHƯA build** (P0→P6 trong plan).
+
+- **Phạm vi interactive:** 4 trục **Scheme (light/dark) · Sidebar · Topbar · Position**. **Horizontal Layout = HOÃN** — khác DOM (cần template nav-ngang + JS dropdown) → workstream riêng, KHÔNG phải toggle CSS.
+
+- **Lưu theme = 3 tầng, resolve deep-merge theo TỪNG field** (app-default → site-default → user-override):
+  - **Site-default** = trang **Settings** admin → **DB** `site_settings` group **`admin_theme`** (BelongsToSite + RLS, gate `settings.manage`). Per-site.
+  - **Per-user override** = **nút Customizer nổi cố định góc dưới-phải MỌI trang admin** → ghi **DB** `users.preferences.theme` (**cột `jsonb` MỚI trên bảng `users` GLOBAL — no-RLS, D6**) **+ localStorage** (fast-path áp tức thì, hydrate pre-paint). Mọi admin tự chỉnh, không cần quyền riêng.
+  - **Validate khi lưu:** allow-list `Rule::in([...])` cho CẢ 2 tầng — JSONB không CHECK được (D13) mà giá trị theme render vào `class=`/`data-*` → chống stored-injection.
+
+- **Ràng buộc kỹ thuật (prereq):**
+  - **Lớp semantic-token là PREREQ:** shell hiện sơn từ palette thô + literal `text-[#abb9e8]` cứng → phải refactor sang token vai trò (`--color-surface/-sidebar/-topbar/…`) + block `[data-scheme=dark]` NGOÀI `@theme`. Default reproduce nguyên trạng light (0 đổi thị giác tới khi set attribute).
+  - **Dark palette** thiết kế + verify **WCAG AA** (`text-admin-primary`/xám-nhạt/border rớt AA trên nền tối → remap brand-as-text sang tint sáng).
+  - **Anti-FOUC:** SSR attrs lên `<html data-*>` (byte đầu) + 1 inline script pre-paint đọc localStorage trước CSS; `<html>` sống qua `wire:navigate` morph.
+  - **Alpine = do Livewire bundle** → đăng ký store qua `alpine:init`; **CẤM `import Alpine from 'alpinejs'`** (double-register vỡ Livewire 4). State ở global store, KHÔNG ở `x-data` bị morph.
+  - **Resolver** = `App\Modules\Admin\Theme\AdminChromeResolver` (đặt trong **Admin** — được đọc Tenancy `SiteSetting` + Identity `User`; KHÔNG đặt ở Tenancy/Theme). Cache entitlement/theme keyed theo `site_id`/`user_id`, request/Valkey-scoped — **KHÔNG singleton xuyên-request** (Octane, §2/Gate #1).
+
+- 🔴 **BẤT BIẾN BẢO MẬT (§2) — near-miss đã chặn:** storefront `App\Modules\Theme\Theming\ThemeResolver` đọc `site_settings` group **`theme`** key `tokens` rồi in vào `<style>` HTML **CÔNG KHAI** (`themes/default/partials/head.blade.php:125`). ⇒ MỌI cấu hình admin/operator ghi `site_settings` **CẤM tái dùng group `theme`** — theme admin dùng group **`admin_theme`**. Vi phạm = cấu hình chrome operator lọt ra HTML public của tenant. *(Tổng quát: group `site_settings` có thể là public-storefront-emitted hoặc admin-private — xác định TRƯỚC khi ghi.)*
 
 ---
 
