@@ -38,6 +38,18 @@ it('fails and names a key present in .env.example but missing from .env', functi
     @unlink($env);
 });
 
+it('fails and names a key duplicated in .env (ambiguous value)', function () {
+    $example = tmpEnv("APP_KEY=\nMAIL_SCHEME=\n");
+    $env = tmpEnv("APP_KEY=x\nMAIL_SCHEME=smtp\nMAIL_SCHEME=ssl\n"); // MAIL_SCHEME twice
+
+    $this->artisan('env:check', ['--env' => $env, '--example' => $example])
+        ->expectsOutputToContain('MAIL_SCHEME')
+        ->assertExitCode(1);
+
+    @unlink($example);
+    @unlink($env);
+});
+
 it('fails when a file is not found', function () {
     $this->artisan('env:check', ['--env' => '/no/such/.env', '--example' => '/no/such/.env.example'])
         ->assertExitCode(1);

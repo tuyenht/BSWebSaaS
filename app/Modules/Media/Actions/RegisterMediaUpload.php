@@ -27,6 +27,8 @@ final class RegisterMediaUpload
 
     public function handle(string $tempKey, string $filename, ?int $createdBy = null, ?int $width = null, ?int $height = null, string $collection = 'library'): Media
     {
+        MediaKey::assertConfigured(); // fail loud + clean if the R2 disk has no bucket/creds (.env drift)
+
         $disk = Storage::disk(MediaKey::disk());
 
         // 1) Cross-tenant guard — the temp key MUST have been issued to the current site (presign

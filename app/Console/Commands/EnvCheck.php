@@ -31,11 +31,19 @@ class EnvCheck extends Command
         }
 
         $envKeys = $this->keys($envPath);
+        $dupes = $this->duplicates($envPath);
         $missing = array_values(array_diff($this->keys($examplePath), $envKeys));
         $extra = array_values(array_diff($envKeys, $this->keys($examplePath)));
+        sort($dupes);
         sort($missing);
         sort($extra);
 
+        if ($dupes !== []) {
+            $this->error('TRÙNG '.count($dupes).' key trong .env (giá trị mơ hồ — Dotenv/Docker chỉ dùng 1 dòng, dễ lấy nhầm giá trị cũ):');
+            foreach ($dupes as $k) {
+                $this->line('  - '.$k);
+            }
+        }
         if ($missing !== []) {
             $this->error('THIẾU '.count($missing).' key (.env.example có, .env chưa có):');
             foreach ($missing as $k) {
@@ -49,8 +57,8 @@ class EnvCheck extends Command
             }
         }
 
-        if ($missing !== []) {
-            $this->error('env:check THẤT BẠI — bổ sung các key thiếu vào .env.');
+        if ($missing !== [] || $dupes !== []) {
+            $this->error('env:check THẤT BẠI — sửa key thiếu/trùng trong .env.');
 
             return self::FAILURE;
         }
@@ -82,5 +90,24 @@ class EnvCheck extends Command
         }
 
         return array_values(array_unique($keys));
+    }
+
+    /**
+     * Keys that appear MORE THAN ONCE in a dotenv file. A duplicate is a real bug: Dotenv (immutable,
+     * first wins) and docker-compose env_file (last wins) disagree on which value is live, so the
+     * effective value is ambiguous — a stale second copy can silently shadow the intended one.
+     *
+     * @return list<string>
+     */
+    private function duplicates(string $path): array
+    {
+        $counts = [];
+        foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+            if (preg_match('/^\s*([A-Za-z_][A-Za-z0-9_]*)=/', $line, $m) === 1) {
+                $counts[$m[1]] = ($counts[$m[1]] ?? 0) + 1;
+            }
+        }
+
+        return array_keys(array_filter($counts, static fn (int $c): bool => $c > 1));
     }
 }
