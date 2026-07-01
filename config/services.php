@@ -45,4 +45,11 @@ return [
         'verify_url' => env('TURNSTILE_VERIFY_URL', 'https://challenges.cloudflare.com/turnstile/v0/siteverify'),
     ],
 
+    // Cloudflare account API token for R2 BUCKET administration (e.g. object-lifecycle rules — the R2
+    // S3 credentials only cover objects, not bucket config). Account-scoped, so it stays out of git and
+    // is unset in most envs. The R2 account id is derived from the R2 endpoint, not stored here.
+    'cloudflare' => [
+        'api_token' => env('CLOUDFLARE_API_TOKEN'),
+    ],
+
 ];
