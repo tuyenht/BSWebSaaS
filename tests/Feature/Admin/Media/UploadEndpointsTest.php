@@ -60,7 +60,7 @@ it('forbids presign without media.upload', function () {
 
 it('forbids register without media.upload', function () {
     $this->actingAs(mediaMember(['media.view']))
-        ->postJson('http://a.test/admin/media/register', ['tempKey' => 'a/_incoming/x.png', 'filename' => 'a.png'])
+        ->postJson('http://a.test/admin/media/register', ['tempKey' => '_incoming/a/x.png', 'filename' => 'a.png'])
         ->assertForbidden();
 });
 
@@ -90,7 +90,7 @@ it('validates the required fields on presign (422)', function () {
 it('finalizes a staged upload over HTTP → 200 {ulid} + a site-stamped row', function () {
     $editor = mediaMember(['media.view', 'media.upload']);
 
-    $tempKey = 'a/_incoming/01http.png';
+    $tempKey = '_incoming/a/01http.png';
     Storage::disk('r2')->put($tempKey, endpointPng());
     Cache::put(PresignMediaUpload::ownershipKey($tempKey), 1, now()->addMinutes(5));
 
@@ -112,7 +112,7 @@ it('finalizes a staged upload over HTTP → 200 {ulid} + a site-stamped row', fu
 it('rejects a register replaying ANOTHER site\'s temp key (cross-tenant guard) over HTTP', function () {
     $editor = mediaMember(['media.view', 'media.upload']);
 
-    $tempKey = 'b/_incoming/01foreign.png';
+    $tempKey = '_incoming/b/01foreign.png';
     Storage::disk('r2')->put($tempKey, endpointPng());
     Cache::put(PresignMediaUpload::ownershipKey($tempKey), 2, now()->addMinutes(5)); // owned by site 2
 

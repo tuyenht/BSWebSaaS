@@ -34,7 +34,7 @@ function stageUpload(int $site, string $tempKey, string $contents): void
 }
 
 it('finalizes a valid upload: copies temp→content-hash key + stamps the site', function () {
-    $tempKey = 'a/_incoming/01abc.png';
+    $tempKey = '_incoming/a/01abc.png';
     stageUpload(1, $tempKey, pngContent());
 
     $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'Bảng Giá.png'));
@@ -49,7 +49,7 @@ it('finalizes a valid upload: copies temp→content-hash key + stamps the site',
 });
 
 it('rejects a temp key issued to ANOTHER site (cross-tenant guard) + deletes the object', function () {
-    $tempKey = 'b/_incoming/01xyz.png';
+    $tempKey = '_incoming/b/01xyz.png';
     stageUpload(2, $tempKey, pngContent()); // owned by site 2
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'x.png')))
@@ -60,7 +60,7 @@ it('rejects a temp key issued to ANOTHER site (cross-tenant guard) + deletes the
 });
 
 it('rejects a spoofed file by sniffing magic bytes (PHP in a .png) + writes no row', function () {
-    $tempKey = 'a/_incoming/01evil.png';
+    $tempKey = '_incoming/a/01evil.png';
     stageUpload(1, $tempKey, '<?php echo "x"; ?>');
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'evil.png')))
@@ -71,22 +71,22 @@ it('rejects a spoofed file by sniffing magic bytes (PHP in a .png) + writes no r
 
 it('dedups identical content within a site (one master, temp dropped)', function () {
     [$firstId, $secondId, $count] = app(Tenancy::class)->enter(1, function () {
-        stageUpload(1, 'a/_incoming/01one.png', pngContent());
-        $first = app(RegisterMediaUpload::class)->handle('a/_incoming/01one.png', 'one.png');
+        stageUpload(1, '_incoming/a/01one.png', pngContent());
+        $first = app(RegisterMediaUpload::class)->handle('_incoming/a/01one.png', 'one.png');
 
-        stageUpload(1, 'a/_incoming/01two.png', pngContent());
-        $second = app(RegisterMediaUpload::class)->handle('a/_incoming/01two.png', 'two.png');
+        stageUpload(1, '_incoming/a/01two.png', pngContent());
+        $second = app(RegisterMediaUpload::class)->handle('_incoming/a/01two.png', 'two.png');
 
         return [$first->id, $second->id, Media::query()->count()];
     });
 
     expect($secondId)->toBe($firstId)->and($count)->toBe(1);
-    Storage::disk('r2')->assertMissing('a/_incoming/01two.png');
+    Storage::disk('r2')->assertMissing('_incoming/a/01two.png');
 });
 
 it('omits the hash suffix when url_hash_length is 0 (clean {slug}.{ext})', function () {
     config(['media.url_hash_length' => 0]);
-    $tempKey = 'a/_incoming/01zero.png';
+    $tempKey = '_incoming/a/01zero.png';
     stageUpload(1, $tempKey, pngContent());
 
     $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'about-doi-ngu.png'));
@@ -96,7 +96,7 @@ it('omits the hash suffix when url_hash_length is 0 (clean {slug}.{ext})', funct
 
 it('uses an 8-hex suffix when url_hash_length is 8', function () {
     config(['media.url_hash_length' => 8]);
-    $tempKey = 'a/_incoming/01eight.png';
+    $tempKey = '_incoming/a/01eight.png';
     stageUpload(1, $tempKey, pngContent());
 
     $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'anh.png'));
@@ -106,7 +106,7 @@ it('uses an 8-hex suffix when url_hash_length is 8', function () {
 
 it('omits the tenant prefix in standalone (non-SaaS) mode', function () {
     config(['media.tenant_prefix' => false]);
-    $tempKey = 'a/_incoming/01solo.png';
+    $tempKey = '_incoming/a/01solo.png';
     stageUpload(1, $tempKey, pngContent());
 
     $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'logo.png'));
@@ -116,7 +116,7 @@ it('omits the tenant prefix in standalone (non-SaaS) mode', function () {
 });
 
 it('rejects an oversize object via HEAD before loading it (OOM guard)', function () {
-    $tempKey = 'a/_incoming/01big.png';
+    $tempKey = '_incoming/a/01big.png';
     stageUpload(1, $tempKey, str_repeat('x', UploadMedia::MAX_KB * 1024 + 1));
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'big.png')))
@@ -127,7 +127,7 @@ it('rejects an oversize object via HEAD before loading it (OOM guard)', function
 });
 
 it('throws when the temp key has no ownership record (expired/forged)', function () {
-    $tempKey = 'a/_incoming/01gone.png';
+    $tempKey = '_incoming/a/01gone.png';
     Storage::disk('r2')->put($tempKey, pngContent()); // object but NO ownership cache
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'x.png')))
