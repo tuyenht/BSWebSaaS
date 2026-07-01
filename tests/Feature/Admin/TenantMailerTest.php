@@ -71,6 +71,26 @@ it('pins the scheme to smtps for an SSL / port 465 config', function () {
     });
 });
 
+it('overrides the From-name with the tenant brand (site name) even on the shared platform SMTP', function () {
+    app(PlatformSettings::class)->put('email', 'config', [
+        'method' => 'smtp_password',
+        'from_name' => 'BSWebSaaS', // the platform sender name
+        'from_address' => 'info@example.com',
+        'smtp' => [
+            'host' => 'smtp.example.com',
+            'port' => 465,
+            'encryption' => 'ssl',
+            'username' => 'info@example.com',
+            'password' => SecretCipher::encrypt('app-password'),
+        ],
+    ]);
+
+    app(Tenancy::class)->enter(1, function () {
+        app(TenantMailer::class)->apply();
+        expect(config('mail.from.name'))->toBe('A'); // seedTenancy names site 1 "A"
+    });
+});
+
 it('uses the smtp scheme for a TLS / port 587 config', function () {
     config(['mail.mailers.smtp.scheme' => 'ssl']);
     app(PlatformSettings::class)->put('email', 'config', [

@@ -2,6 +2,8 @@
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Models\Site;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
@@ -75,11 +77,47 @@ final class TenantMailer
             return false;
         }
 
-        return match ($cfg['method'] ?? 'smtp_password') {
+        $applied = match ($cfg['method'] ?? 'smtp_password') {
             'smtp_password' => $this->applySmtpPassword($cfg),
             'oauth2' => $this->applyOAuth2($cfg),
             default => false,
         };
+
+        if ($applied) {
+            $this->applyTenantIdentity();
+        }
+
+        return $applied;
+    }
+
+    /**
+     * Override the sender NAME with the tenant's own brand so a shared-SMTP send still shows the
+     * customer's identity (e.g. "Cơ Khí An Vinh"), not the platform's ("BSWebSaaS"). Uses the
+     * tenant's explicitly-set from_name, else the site name. No-op on the platform plane (no site
+     * resolved) so operator mail keeps the platform sender. Set via config each apply() → Octane-safe.
+     * (Reply-To routing to the customer is a follow-up — it needs a per-request reset to avoid leaks.)
+     */
+    private function applyTenantIdentity(): void
+    {
+        $current = app(CurrentSite::class);
+        if (! $current->hasId()) {
+            return;
+        }
+
+        $tenant = $this->tenant->get('email');
+        $explicit = is_array($tenant) ? ($tenant['from_name'] ?? null) : null;
+        $brand = (is_string($explicit) && $explicit !== '') ? $explicit : $this->siteName($current->id());
+
+        if ($brand !== null) {
+            config(['mail.from.name' => $brand]);
+        }
+    }
+
+    private function siteName(int $siteId): ?string
+    {
+        $name = Site::query()->find($siteId)?->name;
+
+        return (is_string($name) && $name !== '') ? $name : null;
     }
 
     /**
