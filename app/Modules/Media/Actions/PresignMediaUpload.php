@@ -25,6 +25,8 @@ final class PresignMediaUpload
      */
     public function handle(string $filename, string $declaredMime, int $declaredSize, string $siteName): array
     {
+        MediaKey::assertConfigured(); // fail loud + clean if the R2 disk has no bucket/creds (.env drift)
+
         $ext = UploadMedia::MIME_EXT[$declaredMime] ?? null;
         if ($ext === null) {
             throw new RuntimeException('Định dạng tệp không được hỗ trợ.');

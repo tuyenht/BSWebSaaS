@@ -4,6 +4,7 @@ namespace App\Modules\Media\Support;
 
 use App\Modules\Media\Models\Media;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 /**
  * Builds the opaque content-hash storage key (ADR-17): {tenant}/{collection}/{slug}-{hashN}.{ext}.
@@ -21,6 +22,26 @@ final class MediaKey
         $disk = config('media.disk');
 
         return is_string($disk) ? $disk : 'r2';
+    }
+
+    /**
+     * Fail LOUD + EARLY when the configured media disk is an S3-family (r2/s3) disk with no bucket —
+     * i.e. its credentials are missing from .env. Without this, Storage::disk() throws a cryptic
+     * "bucket must be string, null given" TypeError deep in the adapter (which is exactly how a
+     * missing R2_* block silently broke upload). Called at the upload entry points; the friendly
+     * RuntimeException surfaces as a clean 422 instead. (Deploy-time gate: `php artisan env:check`.)
+     */
+    public static function assertConfigured(): void
+    {
+        $disk = self::disk();
+        $cfg = config("filesystems.disks.{$disk}");
+
+        if (is_array($cfg) && ($cfg['driver'] ?? null) === 's3' && empty($cfg['bucket'])) {
+            throw new RuntimeException(
+                "Kho lưu trữ media ('{$disk}') chưa được cấu hình (thiếu bucket/khóa R2 trong .env). ".
+                'Chạy `php artisan env:check` để kiểm tra.'
+            );
+        }
     }
 
     public static function unique(string $siteName, string $collection, string $slug, string $hash, string $ext): string

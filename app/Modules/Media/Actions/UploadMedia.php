@@ -34,6 +34,8 @@ final class UploadMedia
 
     public function handle(UploadedFile $file, string $siteName, string $collection = 'library', ?int $createdBy = null): Media
     {
+        MediaKey::assertConfigured(); // fail loud + clean if the R2 disk has no bucket/creds (.env drift)
+
         // 1) Size guard (defense-in-depth — the upload FormRequest bounds it too).
         if ($file->getSize() > self::MAX_KB * 1024) {
             throw new RuntimeException('Tệp vượt quá dung lượng cho phép (tối đa 10MB).');
