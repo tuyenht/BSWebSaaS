@@ -56,13 +56,14 @@ Never set the From address to the customer's own domain while sending through th
   treated as "not configured" and sent through the shared transport. "Send test" then reports success
   (the shared transport works), so the tenant may believe their own SMTP is live when it isn't. If this
   causes confusion, surface a "SMTP incomplete — using the shared server" notice on the settings page.
-- **Per-IP OTP cap depends on the real client IP.** `EmailOtp` caps 20 sends/hr per source IP via
-  `request()->ip()`, which resolves correctly only because `bootstrap/app.php` trusts the RFC-1918
-  proxy ranges. If a tenant host is served **through the Cloudflare proxy** (orange cloud), the app
-  sees the Cloudflare edge IP (public, untrusted) instead of the visitor's, so the per-IP cap becomes
-  per-Cloudflare-PoP (shared across visitors). The **per-account cap (6/hr, keyed by user id) is exact
-  regardless** and remains the real protection; only the secondary IP cap coarsens. If false lockouts
-  ever appear, trust Cloudflare's IPs (or read `CF-Connecting-IP`) in `trustProxies`.
+- **Per-IP OTP cap depends on the real client IP — handled at the edge.** `EmailOtp` caps 20 sends/hr
+  per source IP via `request()->ip()`. For Cloudflare-proxied (orange) hosts the app would otherwise
+  see a Cloudflare edge IP, not the visitor. The edge Caddy resolves the true visitor from the
+  authoritative `CF-Connecting-IP` header — trusted only from Cloudflare's published ranges
+  (`docker/caddy/Caddyfile`) — and forwards it in `X-Forwarded-For`, so `request()->ip()` is correct
+  behind Cloudflare with no app change. Gray (DNS-only) hosts like av1 keep resolving the direct peer.
+  Refresh the Cloudflare ranges from `cloudflare.com/ips` if lockouts on legitimate visitors appear.
+  (The per-account cap of 6/hr, keyed by user id, is exact regardless and is the primary protection.)
 
 ## Follow-ups
 
