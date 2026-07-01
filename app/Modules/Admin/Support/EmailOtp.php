@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Support;
 
 use App\Modules\Admin\Notifications\EmailOtpNotification;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
@@ -32,8 +33,14 @@ final class EmailOtp
         $idKey = 'email-otp-send:'.Cast::string($user->getAuthIdentifier());
         $ipKey = 'email-otp-send-ip:'.sha1((string) request()->ip());
 
-        if (RateLimiter::tooManyAttempts($idKey, self::MAX_SENDS_PER_HOUR)
-            || RateLimiter::tooManyAttempts($ipKey, self::MAX_SENDS_PER_HOUR_PER_IP)) {
+        $accountCapped = RateLimiter::tooManyAttempts($idKey, self::MAX_SENDS_PER_HOUR);
+        if ($accountCapped || RateLimiter::tooManyAttempts($ipKey, self::MAX_SENDS_PER_HOUR_PER_IP)) {
+            Audit::record('auth.otp.throttled', [
+                'actor_id' => $user->getAuthIdentifier(),
+                'actor_label' => $user->email,
+                'meta' => ['cap' => $accountCapped ? 'account' : 'ip'],
+            ]);
+
             return false;
         }
 

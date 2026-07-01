@@ -3,9 +3,12 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Support\AdminPlane;
+use App\Modules\Admin\Support\Cast;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -43,6 +46,21 @@ final class TwoFactorChallenge extends Component
             return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
+        // Bound TOTP/recovery guesses the same way the email OTP challenge is (parity): 5 wrong
+        // codes lock the challenge for 10 minutes, so a stolen password can't be paired with an
+        // online brute-force of the 6-digit code.
+        $rlKey = 'admin-2fa-verify:'.Cast::string($user->getAuthIdentifier());
+        if (RateLimiter::tooManyAttempts($rlKey, 5)) {
+            Audit::record('auth.2fa.locked', [
+                'actor_id' => $user->getAuthIdentifier(),
+                'actor_label' => $user->email,
+                'meta' => ['factor' => $this->useRecovery ? 'recovery' : 'totp'],
+            ]);
+            $this->addError('code', __('auth.too_many_attempts', ['seconds' => RateLimiter::availableIn($rlKey)]));
+
+            return null;
+        }
+
         $service = app(TwoFactorService::class);
         $code = trim($this->code);
 
@@ -51,14 +69,21 @@ final class TwoFactorChallenge extends Component
             : $service->verify((string) $user->two_factor_secret, (string) preg_replace('/\s+/', '', $code));
 
         if (! $ok) {
+            RateLimiter::hit($rlKey, 600);
             $this->addError('code', __('auth.two_factor_invalid'));
 
             return null;
         }
 
+        RateLimiter::clear($rlKey);
         session()->forget('2fa.user_id');
         Auth::login($user);
         session()->regenerate();
+        Audit::record('auth.login.succeeded', [
+            'actor_id' => $user->getAuthIdentifier(),
+            'actor_label' => $user->email,
+            'meta' => ['factor' => $this->useRecovery ? 'recovery' : 'totp'],
+        ]);
 
         return $this->redirectRoute(AdminPlane::prefix().'.dashboard', navigate: false);
     }

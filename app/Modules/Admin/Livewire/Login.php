@@ -6,6 +6,7 @@ use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Admin\Support\TenantMailer;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -41,6 +42,10 @@ final class Login extends Component
         $key = 'admin-login:'.sha1(Str::lower($this->email).'|'.(string) request()->ip());
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
+            Audit::record('auth.login.throttled', [
+                'actor_label' => $this->email,
+                'meta' => ['available_in' => RateLimiter::availableIn($key)],
+            ]);
             $this->addError('email', __('auth.too_many_attempts', ['seconds' => RateLimiter::availableIn($key)]));
 
             return null;
@@ -50,6 +55,10 @@ final class Login extends Component
 
         if (! Auth::validate($credentials)) {
             RateLimiter::hit($key, self::DECAY_SECONDS);
+            Audit::record('auth.login.failed', [
+                'actor_label' => $this->email,
+                'meta' => ['reason' => 'invalid_credentials'],
+            ]);
             $this->addError('email', __('auth.invalid_credentials'));
 
             return null;

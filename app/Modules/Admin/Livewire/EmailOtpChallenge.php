@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\EmailOtp;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -48,6 +49,11 @@ final class EmailOtpChallenge extends Component
         if (RateLimiter::tooManyAttempts($rlKey, 5)) {
             // Hard cap: burn the code so it can't be brute-forced — a fresh one is required.
             app(EmailOtp::class)->invalidate($user);
+            Audit::record('auth.otp.locked', [
+                'actor_id' => $user->getAuthIdentifier(),
+                'actor_label' => $user->email,
+                'meta' => ['factor' => 'email_otp'],
+            ]);
             $this->addError('code', __('auth.otp_locked'));
 
             return null;
@@ -64,6 +70,11 @@ final class EmailOtpChallenge extends Component
         session()->forget('2fa.user_id');
         Auth::login($user);
         session()->regenerate();
+        Audit::record('auth.login.succeeded', [
+            'actor_id' => $user->getAuthIdentifier(),
+            'actor_label' => $user->email,
+            'meta' => ['factor' => 'email_otp'],
+        ]);
 
         return $this->redirectRoute(AdminPlane::prefix().'.dashboard', navigate: false);
     }
