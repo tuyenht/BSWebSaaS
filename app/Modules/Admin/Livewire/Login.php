@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Support\AdminPlane;
+use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Identity\Models\User;
@@ -64,11 +65,16 @@ final class Login extends Component
             return null;
         }
 
-        // Email must be verified before an email+password login completes. We send a fresh
-        // verification link (via the resolved mailer) and stop here.
+        // Email must be verified before an email+password login completes. Send a fresh verification
+        // link, but cap it per hour (same anti email-bomb ceiling as the OTP send) so a valid
+        // credential on an unverified address cannot flood the inbox.
         if (! $user->hasVerifiedEmail()) {
-            app(TenantMailer::class)->apply();
-            $user->sendEmailVerificationNotification();
+            $verifyKey = 'email-verify-send:'.Cast::string($user->getAuthIdentifier());
+            if (! RateLimiter::tooManyAttempts($verifyKey, 6)) {
+                RateLimiter::hit($verifyKey, 3600);
+                app(TenantMailer::class)->apply();
+                $user->sendEmailVerificationNotification();
+            }
             $this->addError('email', __('auth.email_unverified'));
 
             return null;

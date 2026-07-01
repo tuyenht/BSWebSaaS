@@ -35,6 +35,22 @@ it('blocks an unverified account at login and sends a fresh verification link', 
     Notification::assertSentTo($user, VerifyEmail::class);
 });
 
+it('caps the verification-link resend per hour (valid creds clear the login limiter, so cap it here)', function () {
+    Notification::fake();
+    $user = User::factory()->unverified()->create();
+
+    foreach (range(1, 7) as $ignored) {
+        Livewire::test(Login::class)
+            ->set('email', $user->email)
+            ->set('password', 'password')
+            ->call('login')
+            ->assertHasErrors('email');
+    }
+
+    // 6 links sent; the 7th within the hour is dropped (the login rate-limit is cleared on valid creds).
+    Notification::assertSentToTimes($user, VerifyEmail::class, 6);
+});
+
 it('lets a verified account proceed to the mandatory second factor', function () {
     $user = User::factory()->create(); // verified by default
 
