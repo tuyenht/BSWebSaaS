@@ -34,6 +34,7 @@
 | **PR-4** | rclone R2→B2 cron (L3) | độc lập |
 | **PR-5** | imgproxy cold-ready (L4 — không vào serving path) | PR-2 (driver branch) |
 | **PR-6** | Helper render `<img>` responsive (srcset/sizes/width/height/alt) | PR-2 |
+| **PR-7** | Công cụ transform động Pexels-style (full-param) + parity R2 ↔ Local (imgproxy) | PR-2,3,5 |
 
 **Ngoài epic này (epic SEO riêng sau):** ImageObject schema, image sitemap, per-tenant image domain, L5 hot standby.
 
@@ -356,6 +357,54 @@ Một Blade component / helper sinh `<img>` từ `MediaAsset` + `alt` (alt do ca
 
 ---
 
+## PR-7 — Công cụ transform động (Pexels-style) + parity R2 ↔ Local
+
+> Thêm 2026-07-01 (chốt với Tuyền). Mở rộng resolver PR-2 (chỉ `?w`) thành API transform đầy đủ, chạy **chuẩn trên CẢ R2 lẫn Local**, đổi bằng config.
+
+**Vấn đề:** `cf.image` **chỉ chạy với R2 + Cloudflare** (resize ở edge). Triển khai **local** (dev / standalone không-Cloudflare) không có cf.image → cần plane transform khác.
+
+**Chốt — KHÔNG đẻ resizer mới:** dùng **imgproxy (PR-5)** làm transform plane cho local. imgproxy đọc **local filesystem HOẶC S3 (R2/B2)**, HMAC-signed, free OSS, **cùng resolver + cùng whitelist**. ⇒ promote imgproxy từ "L4 cold" → **driver chủ động** cho mọi triển khai không-Cloudflare. cf.image vẫn là plane prod cho R2.
+
+**Pairing (driver auto suy từ disk; vẫn override được):**
+
+| Triển khai | `MEDIA_DISK` | `MEDIA_DRIVER` | Engine | Transform |
+|---|---|---|---|---|
+| Prod (An Vinh, Cloudflare) | `r2` | `cloudflare` | cf.image edge | ✅ full (metered) |
+| Standalone / local-prod | `local` *(hoặc `r2`)* | `imgproxy` | imgproxy (local/S3 source) | ✅ full (self-host, free) |
+| Dev nhanh | `local` | `static` | raw master | ❌ no resize |
+
+→ `MEDIA_DRIVER` **mặc-định-suy-từ** `MEDIA_DISK` (`r2`→`cloudflare` · `local`→`imgproxy`). Ca thường = **đổi DUY NHẤT `MEDIA_DISK`**; chỉ set `MEDIA_DRIVER` khi muốn ép (vd R2 nhưng dùng imgproxy thay cf.image).
+
+**API resolver (mở rộng từ `?w` → full param):**
+- `transform($key, ['w'=>800,'h'=>600,'fit'=>'cover','q'=>80,'f'=>'auto','dpr'=>2])` + `preset($key,'card')`.
+- Luồng: validate params theo whitelist `config('media.allow')` (loại/clamp ngoài range) → ký (imgproxy HMAC native; cf.image dựa Worker-whitelist) → driver build URL. `url($key, ?int $w)` cũ giữ nguyên (back-compat).
+
+**Map vocab → engine (cùng output thị giác):**
+
+| Param | cf.image (R2) | imgproxy (local/S3) |
+|---|---|---|
+| `w`/`h` | `width`/`height` | `rs:fit\|fill:w:h` |
+| `fit` cover/contain/crop/pad/scale-down | `fit=` | resizing-type + `g:` |
+| `q` | `quality` | `q:` |
+| `f=auto/webp/avif` | `format=auto` (Accept) | `@webp`/`@avif` + Accept |
+| `dpr` | `dpr=` | `dpr:` |
+| `gravity` | `gravity=` | `g:` |
+
+**Presets** (`config/media.presets`, dùng srcset storefront + admin): thumb·card·og·hero. **Warm** (tùy chọn `MEDIA_TRANSFORM_WARM`): job pre-gen thang preset lúc upload → storefront không bao giờ chạm resize-lạnh (bảo hiểm LCP) — áp cho cả 2 driver.
+
+**Bảo mật (bắt buộc):** whitelist **MỌI param** (giá trị rời rạc → bound không-gian transform, chống bơm-phồng/DoS **dù key media đoán-được** — anti-enumerate đã waived) ở CẢ resolver lẫn Worker/imgproxy; bucket private; **raw-master fallback** (L2) khi transform lỗi. Switch driver = no-url-column (ADR-17) → URL derive lúc render → đổi config + `view:clear` → mọi ảnh đổi engine, **KHÔNG migration**.
+
+**🔴 Gap đã VERIFY (01/07, đọc `MediaUrlResolver` + `config/media.php`):**
+- **Local-serving CHƯA chạy:** resolver hiện KHÔNG có nhánh local — `cloudflare`/`static` đều trỏ `files.baoson.net` (Worker đọc R2 binding), `imgproxy` trỏ `source_bucket` mặc định `s3://baoson-media`. ⇒ `MEDIA_DISK=local` **GHI được nhưng SERVE hỏng** (URL trỏ R2/CF, không tới file local). Để local chạy đầy đủ phải thêm nhánh **`local`**: `Storage::disk('local')->url($key)` (raw, cần `public` disk + `storage:link`) HOẶC imgproxy `IMGPROXY_USE_LOCAL` + `source_bucket=local`. **Bắt buộc khi kích hoạt local-serving** (đây là câu trả lời thật cho "R2/local đều chạy đầy đủ?": tầng ghi xong, **tầng serve local còn thiếu nhánh này**).
+- **cf.image CHƯA ký:** nhánh `cloudflare` chỉ dựa width-whitelist (KHÔNG HMAC như imgproxy đã có). P4 mở full-param + key media đoán-được (anti-enumerate đã waived) → khuyến nghị **HMAC CẢ 2 driver** (Worker verify chữ ký) để chặn billing-DoS, không chỉ whitelist.
+- **`widths` vs `allow`:** `config/media.php` đã có `widths`(320–2048); P4 thêm `allow`(đa-param) phải **hợp nhất**, tránh 2 nguồn whitelist.
+
+**Files:** mở rộng `MediaUrlResolver` (full-param + sign + nhánh local + nhánh imgproxy-local) · `config/media.php` (+`allow` whitelist params · +`presets` · disk→driver default) · Worker PR-3 (parse full params + whitelist) · imgproxy PR-5 (bật local-source, vào path khi `driver=imgproxy`) · (tùy) warm-job + `MediaObserver` purge-derivative khi Replace/Delete.
+
+**Sequencing:** sau DAM P1–P3 (xem `plans/260630-2327-media-dam-upload/` §P4). Không chặn An Vinh launch (ảnh pre-optimized). Phụ thuộc PR-2/3/5.
+
+---
+
 ## CI gate §6 (áp cho MỌI PR có code — tự chứng minh xanh)
 
 Chạy và **dán output thật**: `pint` · `larastan`/phpstan (max level) · `pest` (test mới + Arch + **Gate#1 RLS** + query-budget). Test sau khi sửa code dùng `docker compose run --rm --no-deps` (tránh OPcache cũ).
@@ -373,5 +422,6 @@ Conventional commits; **không** ref AI/Claude. Code và doc commit **riêng**; 
 - [ ] Switch driver chứng minh được bằng đổi 1 env (`cloudflare`↔`static` tối thiểu; `imgproxy` verify khi kích hoạt).
 - [ ] rclone cron chạy, B2 có bản sao master.
 - [ ] imgproxy cold-ready: runbook + compose sẵn, KHÔNG chạy nóng.
+- [ ] PR-7: `transform()` full-param chạy cả `cloudflare` (R2) lẫn `imgproxy` (local/S3); whitelist mọi param + raw-fallback; switch bằng config (`MEDIA_DISK`/`MEDIA_DRIVER`); presets + (tùy) warm.
 
 > Lưu ý kênh: đây là spec đã thẩm định để Claude Code thực thi + chạy gate §6 xác nhận. Mọi "xanh/verified" chỉ tính sau khi Claude Code chạy gate thật.
