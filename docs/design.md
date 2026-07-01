@@ -166,6 +166,7 @@ domains(id BIGINT PK, site_id, hostname UNIQUE, kind, is_primary, ssl_status, ve
 - **Admin (quản trị)** = **Livewire 4/Volt làm chính** (năng suất, ít JS thủ công) + **React island CHỈ cho builder canvas** (kéo-thả phong phú) nhúng qua **Inertia v2**. *(Livewire + Octane cần reset state đúng — lưu ý khi dựng.)*
 - **Headless-ready:** tách rõ tầng nội dung/API để tương lai phục vụ app/headless mà không đập kiến trúc.
 - **Làm rõ toolchain (tránh nhầm tầng):** **Laravel** = framework **backend** (app/serve, Octane); **Vite** = công cụ **build frontend** (đóng gói JS islands ≤30KB + React builder + Tailwind). Vite là build tool **mặc định đi kèm Laravel** (từ 9.19), **bổ trợ chứ KHÔNG thay thế** nhau: Laravel+Octane lo tốc độ server (TTFB), Vite lo tốc độ client (tree-shaking/code-split giữ JS nhỏ → CWV). Dùng **cả hai**.
+- **Điều hướng tức thời/mượt (storefront):** cross-document **View Transitions** (L1 — CSS thuần, bật mặc định vô hình *Mục 24*) + **Speculation Rules** (L2 — điều-kiện-benchmark TTFB-VN *Mục 18*) trên nền **MPA (KHÔNG SPA)**. Quyết định & ràng buộc: `docs/notes/storefront-instant-nav.md`.
 
 ---
 
