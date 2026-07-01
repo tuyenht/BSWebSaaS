@@ -161,5 +161,7 @@
     "admin.connected_accounts": "已关联账户",
     "admin.disconnect": "解除关联",
     "admin.social_disconnect_confirm": "解除该提供商的关联？",
-    "admin.social_already_linked": "该账户已关联到其他用户。"
+    "admin.social_already_linked": "该账户已关联到其他用户。",
+    "admin.reply_to": "回复邮箱",
+    "admin.reply_to_hint": "客户的回复将发送到此地址。如需使用系统共享服务器发送，请将上方 SMTP 字段留空。"
 }

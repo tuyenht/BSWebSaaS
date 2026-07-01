@@ -105,12 +105,16 @@ final class TenantMailer
         }
 
         $tenant = $this->tenant->get('email');
-        $explicit = is_array($tenant) ? ($tenant['from_name'] ?? null) : null;
+        $tenant = is_array($tenant) ? $tenant : [];
+
+        $explicit = $tenant['from_name'] ?? null;
         $brand = (is_string($explicit) && $explicit !== '') ? $explicit : $this->siteName($current->id());
 
         if ($brand !== null) {
             config(['mail.from.name' => $brand]);
         }
+        // Reply-To is applied per-message by the SetTenantReplyTo listener (stateless — no Octane
+        // reply-to leak), reading the site's reply_to setting at send time.
     }
 
     private function siteName(int $siteId): ?string

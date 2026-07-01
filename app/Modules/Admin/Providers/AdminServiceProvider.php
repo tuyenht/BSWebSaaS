@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Providers;
 
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
+use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -30,9 +31,11 @@ use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
@@ -120,6 +123,10 @@ final class AdminServiceProvider extends ServiceProvider
 
             return $transport;
         });
+
+        // Stamp the tenant's reply-to onto outgoing mail so replies reach the customer, not the
+        // shared platform inbox (stateless per-message — no Octane reply-to leak).
+        Event::listen(MessageSending::class, SetTenantReplyTo::class);
 
         // The dynamic menu (content_sections ∩ permissions) for every admin layout render.
         View::composer('admin::layouts.app', function (ViewContract $view): void {

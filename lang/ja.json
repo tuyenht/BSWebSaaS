@@ -161,5 +161,7 @@
     "admin.connected_accounts": "連携アカウント",
     "admin.disconnect": "連携解除",
     "admin.social_disconnect_confirm": "この連携を解除しますか？",
-    "admin.social_already_linked": "このアカウントは既に別のユーザーに連携されています。"
+    "admin.social_already_linked": "このアカウントは既に別のユーザーに連携されています。",
+    "admin.reply_to": "返信先メールアドレス",
+    "admin.reply_to_hint": "お客様からの返信はこのアドレスに届きます。共有サーバーで送信する場合は、上のSMTP欄を空欄のままにしてください。"
 }

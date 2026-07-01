@@ -6,6 +6,7 @@ use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
@@ -15,6 +16,12 @@ use PragmaRX\Google2FA\Google2FA;
  * sent to the authenticator challenge; everyone else gets an emailed one-time code. The
  * user is authenticated ONLY once the challenge passes; the pending id lives in the session.
  */
+
+beforeEach(function () {
+    // Clear stale SMTP ciphertext (encrypted under another test's key) so the OTP send's
+    // TenantMailer::apply() cannot hit a DecryptException on a leftover config (order-independent).
+    DB::connection('pgsql_admin')->statement('truncate site_settings, platform_settings restart identity cascade');
+});
 
 // ── Email OTP challenge ──────────────────────────────────────────────────────────────
 it('redirects the OTP challenge to login without a pending 2FA session', function () {

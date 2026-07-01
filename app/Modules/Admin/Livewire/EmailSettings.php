@@ -57,6 +57,8 @@ final class EmailSettings extends Component
 
     public string $fromName = '';
 
+    public string $replyTo = '';
+
     public bool $smtpPasswordSet = false;
 
     public bool $oauthSecretSet = false;
@@ -100,6 +102,7 @@ final class EmailSettings extends Component
         $this->method = Cast::string($cfg['method'] ?? null, 'smtp_password');
         $this->fromAddress = Cast::string($cfg['from_address'] ?? null);
         $this->fromName = Cast::string($cfg['from_name'] ?? null);
+        $this->replyTo = Cast::string($cfg['reply_to'] ?? null);
 
         $smtp = Cast::arr($cfg['smtp'] ?? null);
         $this->smtpHost = Cast::string($smtp['host'] ?? null);
@@ -134,6 +137,7 @@ final class EmailSettings extends Component
             'method' => $this->method,
             'from_address' => $this->fromAddress ?: null,
             'from_name' => $this->fromName ?: null,
+            'reply_to' => $this->replyTo ?: null,
         ];
 
         if ($this->method === 'smtp_password') {
@@ -246,11 +250,17 @@ final class EmailSettings extends Component
     private function rules(): array
     {
         if ($this->method === 'smtp_password') {
+            // The platform default must be a real, working sender (SMTP required). A tenant may leave
+            // SMTP blank to send via the shared transport with just their own identity (name +
+            // reply-to); SMTP is then all-or-nothing so a half-filled server can't be saved.
+            $smtpRequired = $this->scope === 'platform';
+
             return [
-                'smtpHost' => 'required|string',
-                'smtpPort' => 'required|integer|min:1|max:65535',
-                'smtpUsername' => 'required|string',
+                'smtpHost' => $smtpRequired ? 'required|string' : 'nullable|string|required_with:smtpUsername',
+                'smtpPort' => 'nullable|integer|min:1|max:65535',
+                'smtpUsername' => $smtpRequired ? 'required|string' : 'nullable|string|required_with:smtpHost',
                 'fromAddress' => 'nullable|email',
+                'replyTo' => 'nullable|email',
             ];
         }
 
@@ -258,6 +268,7 @@ final class EmailSettings extends Component
             'oauthProvider' => 'required|string|in:google,microsoft,yahoo',
             'oauthClientId' => 'required|string',
             'fromAddress' => 'nullable|email',
+            'replyTo' => 'nullable|email',
         ];
     }
 

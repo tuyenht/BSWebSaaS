@@ -241,5 +241,7 @@
     "media.delete_success": "Image moved to the trash.",
     "media.err_required": "Please choose a file to upload.",
     "media.err_mimes": "Only JPG, PNG, WebP, GIF or PDF images are accepted.",
-    "media.err_max": "The file exceeds the maximum size (10MB)."
+    "media.err_max": "The file exceeds the maximum size (10MB).",
+    "admin.reply_to": "Reply-to email",
+    "admin.reply_to_hint": "Replies from your customers land here. Leave the SMTP fields blank to send through the system's shared server with just your identity."
 }

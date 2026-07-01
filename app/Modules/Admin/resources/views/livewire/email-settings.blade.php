@@ -144,6 +144,12 @@
             <div class="grid gap-4 border-t border-gray-100 pt-5 sm:grid-cols-2">
                 <x-admin::input :label="__('admin.from_address')" type="email" wire:model="fromAddress" placeholder="no-reply@example.com" />
                 <x-admin::input :label="__('admin.from_name')" wire:model="fromName" :placeholder="config('admin.brand.name')" />
+                @if ($scope !== 'platform')
+                    <div class="sm:col-span-2">
+                        <x-admin::input :label="__('admin.reply_to')" type="email" wire:model="replyTo" placeholder="lienhe@congty-cua-ban.com" />
+                        <p class="mt-1 text-xs text-gray-500">{{ __('admin.reply_to_hint') }}</p>
+                    </div>
+                @endif
             </div>
 
             {{-- Actions --}}

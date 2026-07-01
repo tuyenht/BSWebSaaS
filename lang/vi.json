@@ -241,5 +241,7 @@
     "media.delete_success": "Đã chuyển ảnh vào thùng rác.",
     "media.err_required": "Vui lòng chọn một tệp để tải lên.",
     "media.err_mimes": "Chỉ chấp nhận ảnh JPG, PNG, WebP, GIF hoặc PDF.",
-    "media.err_max": "Tệp vượt quá dung lượng cho phép (tối đa 10MB)."
+    "media.err_max": "Tệp vượt quá dung lượng cho phép (tối đa 10MB).",
+    "admin.reply_to": "Email nhận phản hồi",
+    "admin.reply_to_hint": "Khi khách của bạn trả lời email, thư sẽ về địa chỉ này. Để trống phần SMTP ở trên nếu muốn gửi qua máy chủ chung của hệ thống (chỉ dùng danh tính của bạn)."
 }
