@@ -43,7 +43,31 @@ Never set the From address to the customer's own domain while sending through th
 - `App\Modules\Admin\Listeners\SetTenantReplyTo` — on `MessageSending`, stamps `reply_to` (stateless; no Octane leak; never overrides an explicit Reply-To).
 - `App\Modules\Admin\Livewire\EmailSettings` — the `replyTo` field + optional-SMTP save.
 
+## Operational caveats (do not trip these)
+
+- **Send must stay synchronous.** The identity mechanism relies on two request-scoped facts:
+  `TenantMailer::apply()` mutates the live mail config *in the web request*, and `SetTenantReplyTo`
+  reads `CurrentSite` *at send time*. Every auth mail today is synchronous (no notification implements
+  `ShouldQueue`), so both hold. **If you ever mark one `ShouldQueue`**, the Horizon worker has neither
+  the applied config nor the tenant's `CurrentSite` → From-name reverts to the platform brand and
+  Reply-To is dropped. To queue safely you must re-enter the site *and* call `apply()` inside the job.
+- **Partial SMTP silently falls back to shared.** `TenantMailer::usable()` requires host **+**
+  username **+** password together; a tenant who fills host/username but leaves the password blank is
+  treated as "not configured" and sent through the shared transport. "Send test" then reports success
+  (the shared transport works), so the tenant may believe their own SMTP is live when it isn't. If this
+  causes confusion, surface a "SMTP incomplete — using the shared server" notice on the settings page.
+- **Per-IP OTP cap depends on the real client IP.** `EmailOtp` caps 20 sends/hr per source IP via
+  `request()->ip()`, which resolves correctly only because `bootstrap/app.php` trusts the RFC-1918
+  proxy ranges. If a tenant host is served **through the Cloudflare proxy** (orange cloud), the app
+  sees the Cloudflare edge IP (public, untrusted) instead of the visitor's, so the per-IP cap becomes
+  per-Cloudflare-PoP (shared across visitors). The **per-account cap (6/hr, keyed by user id) is exact
+  regardless** and remains the real protection; only the secondary IP cap coarsens. If false lockouts
+  ever appear, trust Cloudflare's IPs (or read `CF-Connecting-IP`) in `trustProxies`.
+
 ## Follow-ups
 
 - Reconcile `docs/design.md` mail section with the transport-vs-identity split (COUNCIL, propose-first).
 - Optional: per-site brand/logo in transactional email templates.
+- Optional: an integration test that sends real mail within a tenant (array transport, which fires
+  `MessageSending`) and asserts the captured Reply-To — proves the `Event::listen` wiring, not just the
+  listener logic the unit test already covers.
