@@ -72,8 +72,9 @@ final class EmailOtpChallenge extends Component
     {
         $user = User::find(session('2fa.user_id'));
 
-        if ($user instanceof User && app(EmailOtp::class)->canResend($user)) {
-            app(EmailOtp::class)->send($user);
+        // canResend = the cooldown gate; send() returns false when an hourly abuse cap is hit. Either
+        // way the user sees the same "wait" message (no signal about which limit stopped them).
+        if ($user instanceof User && app(EmailOtp::class)->canResend($user) && app(EmailOtp::class)->send($user)) {
             $this->sentStatus = __('auth.otp_resent');
 
             return;

@@ -194,7 +194,7 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Upload endpoints (DAM): presign issues an R2 PUT URL, register finalizes (browser PUTs
         // straight to R2 — no PHP upload limit / Livewire-temp / proxy); upload is the local-disk
         // fallback. All re-gate media.upload.
-        Route::post('/media/presign', [MediaUploadController::class, 'presign'])->middleware('can:media.upload')->name('admin.media.presign');
+        Route::post('/media/presign', [MediaUploadController::class, 'presign'])->middleware(['can:media.upload', 'throttle:300,1'])->name('admin.media.presign');
         Route::post('/media/register', [MediaUploadController::class, 'register'])->middleware('can:media.upload')->name('admin.media.register');
         Route::post('/media/upload', [MediaUploadController::class, 'upload'])->middleware('can:media.upload')->name('admin.media.upload');
 

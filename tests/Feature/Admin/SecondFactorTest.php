@@ -2,8 +2,11 @@
 
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
+use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
+use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
 use PragmaRX\Google2FA\Google2FA;
 
@@ -40,6 +43,20 @@ it('locks the OTP challenge out after too many failed attempts', function () {
     }
 
     $this->assertGuest();
+});
+
+it('caps OTP sends per account per hour (anti email-bomb)', function () {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user) {
+        $otp = app(EmailOtp::class);
+        foreach (range(1, 6) as $ignored) {
+            expect($otp->send($user))->toBeTrue();
+        }
+        expect($otp->send($user))->toBeFalse(); // the 7th within the hour is dropped, not emailed
+    });
 });
 
 // ── TOTP (authenticator app) ───────────────────────────────────────────────────────
