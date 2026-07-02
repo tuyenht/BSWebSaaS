@@ -83,3 +83,17 @@ it('renders the new presentational primitives (alert, avatar, page-header, pagin
         ->assertSee('role="alert"', false)         // alert a11y role
         ->assertSee('aria-current="page"', false); // pagination current page
 });
+
+it('renders the interactive primitives (dropdown, tabs, tooltip, modal) with a11y roles', function () {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    $this->actingAs($owner)->get('http://anvinh.test/admin/_gallery')
+        ->assertOk()
+        ->assertSee('Dropdown')
+        ->assertSee('Tabs')
+        ->assertSee('Modal')
+        ->assertSee('aria-haspopup="true"', false) // dropdown
+        ->assertSee('role="tablist"', false)      // tabs
+        ->assertSee('role="dialog"', false)       // modal
+        ->assertSee('aria-modal="true"', false);  // modal
+});
