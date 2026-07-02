@@ -2,7 +2,9 @@
 
 namespace App\Modules\Admin\Support;
 
+use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Encryption\Encrypter;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 /**
@@ -26,7 +28,16 @@ final class SecretCipher
             return '';
         }
 
-        return self::cipher()->decryptString($payload);
+        try {
+            return self::cipher()->decryptString($payload);
+        } catch (DecryptException) {
+            // Undecryptable: the settings key was rotated (which invalidates every stored secret
+            // by design) or the value is corrupt. Treat it as "not set" so an optional credential
+            // degrades gracefully instead of crashing every caller. Never log the payload itself.
+            Log::warning('SecretCipher could not decrypt a stored secret; treating it as unset.');
+
+            return '';
+        }
     }
 
     private static function cipher(): Encrypter
