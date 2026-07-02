@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Providers;
 
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
+use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -26,6 +27,7 @@ use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
+use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -68,6 +70,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.settings', Settings::class);
         Livewire::component('admin.email-settings', EmailSettings::class);
         Livewire::component('admin.social-settings', SocialSettings::class);
+        Livewire::component('admin.appearance-settings', AppearanceSettings::class);
         Livewire::component('admin.dashboard', Dashboard::class);
         Livewire::component('admin.component-gallery', ComponentGallery::class);
         Livewire::component('admin.entries.index', EntriesIndex::class);
@@ -136,6 +139,15 @@ final class AdminServiceProvider extends ServiceProvider
         // Operator console nav (platform plane) — data-driven by platform permissions.
         View::composer('admin::layouts.platform', function (ViewContract $view): void {
             $view->with('platformNav', app(PlatformNav::class)->items(Auth::user()));
+        });
+
+        // Resolved admin-chrome theme (app → site → user) as <html data-*> attributes,
+        // once per request per layout. Stateless resolver — Octane-safe by construction.
+        View::composer(['admin::layouts.app', 'admin::layouts.platform'], function (ViewContract $view): void {
+            $user = Auth::user();
+            $view->with('chrome', app(AdminChromeResolver::class)->attributes(
+                $user instanceof User ? $user : null,
+            ));
         });
 
         // Livewire's AJAX update endpoint must run inside the tenant context so component

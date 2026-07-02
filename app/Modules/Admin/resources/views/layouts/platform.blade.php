@@ -1,10 +1,15 @@
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
+{{-- Scheme-only plane: the resolver emits just data-bs-theme here — the platform console
+     never follows tenant sidebar/topbar variants. --}}
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" @foreach ($chrome as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
+    {{-- CSRF token for fetch()-based endpoints (theme prefs). --}}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? __('admin.settings_system') }} — {{ config('admin.brand.name') }}</title>
+    @include('admin::partials.theme-boot')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
@@ -72,6 +77,7 @@
         {{ __('auth.rights') }}
     </footer>
 </div>
+@include('admin::partials.customizer')
 @livewireScripts
 </body>
 </html>

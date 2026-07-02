@@ -27,6 +27,9 @@
             if (Route::has('admin.settings.social')) {
                 $workspace[] = ['key' => 'social', 'route' => 'admin.settings.social', 'label' => __('admin.social_login')];
             }
+            if (Route::has('admin.settings.appearance')) {
+                $workspace[] = ['key' => 'appearance', 'route' => 'admin.settings.appearance', 'label' => __('admin.appearance')];
+            }
         }
         if ($workspace !== []) {
             $nav[] = ['group' => __('admin.settings_workspace'), 'items' => $workspace];

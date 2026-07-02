@@ -146,3 +146,18 @@
     --vz-vertical-menu-title-color: #8a92a0;           /* 3.13 ≥3 · vz-ref: #919da9 = 2.76 FAIL */
     --vz-vertical-menu-brand-color: #343a40;           /* 11.51 */
 }
+
+/* Layout position — 'scrollable' lets the chrome scroll away with the page instead of
+   pinning (Velzon data-layout-position). Same DOM, no color involvement: these
+   un-layered rules simply beat the layered Tailwind `fixed`/`sticky` utilities on the
+   marker-classed chrome nodes. Desktop-only — the mobile off-canvas sidebar must stay
+   fixed to slide over content. (64rem = the Tailwind `lg` breakpoint the shell uses.) */
+@media (min-width: 64rem) {
+    :root[data-layout-position='scrollable'] .admin-sidebar {
+        position: absolute; /* anchors to the top viewport-box → scrolls with the page */
+    }
+
+    :root[data-layout-position='scrollable'] .admin-topbar {
+        position: static;
+    }
+}

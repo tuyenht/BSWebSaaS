@@ -1,7 +1,9 @@
 <?php
 
 use App\Modules\Admin\Http\Controllers\OAuthController;
+use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\SetLocale;
+use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -100,6 +102,11 @@ Route::domain((string) config('tenancy.platform_host'))
 
         Route::get('/settings/email', EmailSettings::class)->defaults('scope', 'platform')->name('platform.settings.email');
 
+        // Per-user Customizer persistence (fetch/JSON). Mirrored per plane because the
+        // consoles live on different hosts and fetch() stays same-origin.
+        Route::post('/theme-preference', [ThemePreferenceController::class, 'store'])->name('platform.theme.save');
+        Route::delete('/theme-preference', [ThemePreferenceController::class, 'destroy'])->name('platform.theme.reset');
+
         Route::post('/logout', function () {
             Auth::logout();
             request()->session()->invalidate();
@@ -167,6 +174,11 @@ Route::prefix(config('admin.prefix', 'admin'))
         // does not pass through this route middleware.
         Route::get('/settings/email', EmailSettings::class)->middleware('can:settings.manage')->name('admin.settings.email');
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
+        Route::get('/settings/appearance', AppearanceSettings::class)->middleware('can:settings.manage')->name('admin.settings.appearance');
+
+        // Per-user Customizer persistence (fetch/JSON) — any authenticated member, own prefs only.
+        Route::post('/theme-preference', [ThemePreferenceController::class, 'store'])->name('admin.theme.save');
+        Route::delete('/theme-preference', [ThemePreferenceController::class, 'destroy'])->name('admin.theme.reset');
 
         // Site members + their roles (owner/admin). Add/change/remove routes through the guarded
         // AssignRole/RevokeRole actions, so the role hierarchy is enforced server-side.
