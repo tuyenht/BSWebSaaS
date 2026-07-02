@@ -1,0 +1,50 @@
+/*
+ | ADMIN CHROME VARIABLES — the runtime theme-flip sheet for the admin shell.
+ |
+ | Names follow Velzon v4.4.4 (_root.scss / _variables-custom.scss); ★ marks our
+ | extensions beyond the Velzon set. Values are OUR shipped light look — for the
+ | sidebar zone that look is byte-for-byte Velzon's `data-sidebar="dark"` preset,
+ | so adopting the Velzon names changes nothing visually. Deviations from the
+ | reference are annotated `vz-ref:`.
+ |
+ | INVARIANT (zone exclusivity): a variable flipped by a zone axis may only be
+ | consumed inside that zone — topbar vars inside <header>, sidebar vars inside
+ | <aside>. Deliberate exceptions, governed by the scheme axis instead: the
+ | user-menu dropdown inside <header> (a popover keeps the scheme surface even
+ | on a dark topbar) and --color-accent (brand accent never follows zone flips).
+ |
+ | P4 appends the override blocks here — [data-bs-theme="dark"] (+ color-scheme),
+ | [data-sidebar="..."], [data-topbar="dark"] — Velzon attribute names on <html>.
+ | Tailwind utilities are minted from the @theme adapters in app.css; this file
+ | is plain CSS on purpose so a theme flip never touches the compile surface.
+ */
+
+:root {
+    /* ---- Topbar (flip axis: data-topbar) ---------------------------------- */
+    --vz-header-bg: #ffffff;
+    --vz-header-border: #e9ebec;
+    --vz-header-item-color: #495057;                   /* user name, search text */
+    --vz-header-item-sub-color: #878a99;               /* icon buttons, platform nav links */
+    --vz-header-item-bg: #f3f6f9;                      /* item hover bg · vz-ref: rgba($secondary,.12) */
+    --vz-header-item-hover-color: #212529;             /* ★ platform nav link hover text */
+    --vz-header-brand-color: #343a40;                  /* ★ platform console brand name */
+    --vz-topbar-search-bg: oklch(98.5% 0.002 247.839); /* Tailwind 4 default gray-50 (shipped look) · vz-ref: #f3f3f9 */
+    --vz-topbar-search-color: #495057;
+    --vz-topbar-search-border: #eff2f7;                /* ★ vz-ref: borderless search field */
+    --vz-topbar-search-placeholder-color: #ced4da;     /* ★ placeholder + magnifier icon */
+    --vz-topbar-search-focus-bg: #ffffff;              /* ★ field brightens on focus */
+
+    /* ---- Sidebar / vertical menu (flip axis: data-sidebar) ----------------
+       Defaults = Velzon's data-sidebar="dark" preset (our shipped look). */
+    --vz-vertical-menu-bg: var(--color-admin-primary);
+    --vz-vertical-menu-item-color: #abb9e8;
+    --vz-vertical-menu-item-hover-color: #ffffff;
+    --vz-vertical-menu-item-active-color: #ffffff;
+    --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.10); /* ★ also the brand-initials chip · vz-ref item-bg: rgba(#fff,.15) */
+    --vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15);
+    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.40);   /* vz-ref: #838fb9 */
+    --vz-vertical-menu-brand-color: #ffffff;                   /* ★ text brand (Velzon swaps logo images instead) */
+
+    /* ---- Footer (flip axis: data-bs-theme) -------------------------------- */
+    --vz-footer-color: #adb5bd;                        /* vz-ref: #98a6ad */
+}
