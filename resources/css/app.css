@@ -3,6 +3,9 @@
 /* Antigravity font system (SSOT): --font-stack + --vz-* typography tokens, self-hosted. */
 @import './fonts.css';
 
+/* Admin chrome runtime variables (--vz-* Velzon-mirror sheet; theme flips live there). */
+@import './admin-chrome.css';
+
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
 @source '../../app/Modules/**/*.blade.php';
 @source '../../themes/**/*.blade.php';
@@ -53,6 +56,41 @@
     --spacing-sidebar: 250px;
     --spacing-sidebar-collapsed: 70px;
     --spacing-header: 70px;
+
+    /* Semantic roles — content plane (flips with [data-bs-theme=dark], P4).
+       Values live HERE: these roles are ours — the Velzon/Bootstrap equivalents
+       carry different values, so borrowing those names would lie. */
+    --color-surface: #ffffff;                    /* popover/panel bg (user-menu dropdown) */
+    --color-surface-hover: #f3f6f9;              /* item hover on a surface */
+    --color-border: #eff2f7;                     /* generic divider (dropdown, footer) */
+    --color-body-text: #495057;                  /* base text */
+    --color-body-muted: #878a99;                 /* secondary text (footer link) */
+    --color-accent: var(--color-admin-primary);  /* chrome accent as text/ring — a dark
+                                                    scheme remaps THIS, never the brand */
+
+    /* Semantic roles — zone adapters. Values single-sourced in admin-chrome.css
+       (Velzon-named, runtime-flippable); these lines only mint the utilities. */
+    --color-sidebar: var(--vz-vertical-menu-bg);
+    --color-sidebar-fg: var(--vz-vertical-menu-item-color);
+    --color-sidebar-fg-hover: var(--vz-vertical-menu-item-hover-color);
+    --color-sidebar-fg-active: var(--vz-vertical-menu-item-active-color);
+    --color-sidebar-hover: var(--vz-vertical-menu-item-hover-bg);
+    --color-sidebar-active: var(--vz-vertical-menu-item-active-bg);
+    --color-sidebar-title: var(--vz-vertical-menu-title-color);
+    --color-sidebar-brand: var(--vz-vertical-menu-brand-color);
+    --color-topbar: var(--vz-header-bg);
+    --color-topbar-border: var(--vz-header-border);
+    --color-topbar-fg: var(--vz-header-item-sub-color);
+    --color-topbar-fg-strong: var(--vz-header-item-color);
+    --color-topbar-fg-hover: var(--vz-header-item-hover-color);
+    --color-topbar-hover: var(--vz-header-item-bg);
+    --color-topbar-brand: var(--vz-header-brand-color);
+    --color-topbar-search: var(--vz-topbar-search-bg);
+    --color-topbar-search-fg: var(--vz-topbar-search-color);
+    --color-topbar-search-border: var(--vz-topbar-search-border);
+    --color-topbar-search-placeholder: var(--vz-topbar-search-placeholder-color);
+    --color-topbar-search-focus: var(--vz-topbar-search-focus-bg);
+    --color-footer: var(--vz-footer-color);
 }
 
 /* Dense-table font sizes (Velzon fs-* scale, sourced from fonts.css). */
