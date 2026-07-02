@@ -19,7 +19,7 @@
                             {{-- '' = inherit the app default; shown as its own card so "not pinned" stays visible. --}}
                             <label class="group block cursor-pointer">
                                 <input type="radio" value="" wire:model="{{ $axis }}" class="peer sr-only">
-                                <span class="grid h-14 place-items-center rounded border border-dashed border-border-strong text-[11px] font-medium text-body-faint transition-all peer-checked:border-solid peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30">
+                                <span class="grid h-14 place-items-center rounded border border-dashed border-border-strong text-[11px] font-medium text-body-faint transition-all peer-checked:border-solid peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60">
                                     {{ __('admin.theme_inherit') }}
                                 </span>
                                 <span class="mt-1.5 block text-center text-xs font-medium text-body-muted group-has-[:checked]:text-accent">{{ __('admin.theme_default') }}</span>
@@ -39,7 +39,7 @@
                     <div class="inline-flex rounded border border-border-strong p-0.5">
                         @foreach (['' => __('admin.theme_default'), 'fixed' => __('admin.theme_fixed'), 'scrollable' => __('admin.theme_scrollable')] as $value => $label)
                             <label @class([
-                                'cursor-pointer rounded px-3 py-1.5 text-xs font-medium transition-colors',
+                                'cursor-pointer rounded px-3 py-1.5 text-xs font-medium transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent/60',
                                 'bg-admin-primary text-white' => $position === (string) $value,
                                 'text-body-muted hover:bg-surface-hover' => $position !== (string) $value,
                             ])>

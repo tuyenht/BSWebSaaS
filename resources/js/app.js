@@ -47,6 +47,23 @@ function themeConfig() {
     return window.__adminTheme ?? { axes: {}, saveUrl: null, resetUrl: null };
 }
 
+function readPendingTheme() {
+    try {
+        const pending = JSON.parse(localStorage.getItem(THEME_PENDING_KEY) || '{}');
+        return pending && typeof pending === 'object' ? pending : {};
+    } catch {
+        return {};
+    }
+}
+
+function writePendingTheme(pending) {
+    if (Object.keys(pending).length) {
+        localStorage.setItem(THEME_PENDING_KEY, JSON.stringify(pending));
+    } else {
+        localStorage.removeItem(THEME_PENDING_KEY);
+    }
+}
+
 function readThemeFromHtml() {
     const state = {};
     const { axes } = themeConfig();
@@ -90,15 +107,12 @@ document.addEventListener('alpine:init', () => {
             this.state[field] = value;
             document.documentElement.setAttribute(spec.attr, value);
 
-            let pending = {};
-            try {
-                pending = JSON.parse(localStorage.getItem(THEME_PENDING_KEY) || '{}') ?? {};
-            } catch {
-                pending = {};
-            }
+            const pending = readPendingTheme();
             pending[field] = value;
-            localStorage.setItem(THEME_PENDING_KEY, JSON.stringify(pending));
-            this._persist({ [field]: value });
+            writePendingTheme(pending);
+            // Send the WHOLE buffer, not just this field: an axis whose earlier save
+            // failed rides along on the next successful request instead of being lost.
+            this._persist(pending);
         },
 
         reset() {
@@ -115,14 +129,8 @@ document.addEventListener('alpine:init', () => {
         },
 
         retryPending() {
-            let pending = null;
-            try {
-                pending = JSON.parse(localStorage.getItem(THEME_PENDING_KEY) || 'null');
-            } catch {
-                localStorage.removeItem(THEME_PENDING_KEY);
-                return;
-            }
-            if (pending && typeof pending === 'object' && Object.keys(pending).length) {
+            const pending = readPendingTheme();
+            if (Object.keys(pending).length) {
                 this._persist(pending);
             }
         },
@@ -130,14 +138,34 @@ document.addEventListener('alpine:init', () => {
         // One in-flight save at a time: two quick toggles serialize instead of racing
         // last-write-wins over the whole preference blob.
         _persist(fields) {
-            const { saveUrl } = themeConfig();
+            const { saveUrl, axes } = themeConfig();
             this._enqueue(async () => {
                 const response = await postTheme(saveUrl, 'POST', fields);
-                if (response.ok || response.status === 422) {
-                    // Saved — or rejected for good (stale enum): either way the buffer is done.
-                    localStorage.removeItem(THEME_PENDING_KEY);
+                if (!response.ok && response.status !== 422) {
+                    return; // network/5xx: keep the buffer; retryPending() retries next load
                 }
-                // Network/5xx: keep the buffer; retryPending() picks it up on the next load.
+
+                // Settle ONLY what this request carried — a toggle made while it was in
+                // flight re-buffered a newer value and must survive for the next request.
+                const pending = readPendingTheme();
+                for (const [field, value] of Object.entries(fields)) {
+                    if (pending[field] === value || response.status === 422) {
+                        delete pending[field];
+                    }
+                }
+                writePendingTheme(pending);
+
+                if (response.ok) {
+                    // Adopt the server's resolved attributes (heals site-default drift),
+                    // except on axes that still have a newer unsaved change.
+                    const { attributes } = await response.json();
+                    for (const [field, spec] of Object.entries(axes)) {
+                        if (!(field in pending) && typeof attributes[spec.attr] === 'string') {
+                            document.documentElement.setAttribute(spec.attr, attributes[spec.attr]);
+                        }
+                    }
+                    this.state = readThemeFromHtml();
+                }
             });
         },
 

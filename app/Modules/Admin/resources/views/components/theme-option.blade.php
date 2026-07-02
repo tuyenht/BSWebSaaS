@@ -26,7 +26,7 @@
            @if ($store) :checked="$store.adminTheme.state.{{ $axis }} === '{{ $value }}'"
            @change="$store.adminTheme.set('{{ $axis }}', '{{ $value }}')" @endif
            {{ $attributes }}>
-    <span class="flex h-14 overflow-hidden rounded border border-border transition-all peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30"
+    <span class="flex h-14 overflow-hidden rounded border border-border transition-all peer-checked:border-accent peer-checked:ring-2 peer-checked:ring-accent/30 peer-focus-visible:ring-2 peer-focus-visible:ring-accent/60"
           style="background: {{ $canvas }}">
         <span class="h-full w-4 shrink-0 border-e" style="background: {{ $sidebar }}; border-color: {{ $bar }}"></span>
         <span class="flex min-w-0 flex-1 flex-col">
