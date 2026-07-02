@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Tests\TestCase;
 
 /*
  * The app sits behind the edge Caddy (Docker-internal, a private-range peer). Caddy resolves the
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Route;
  */
 
 it('reads the client IP from X-Forwarded-For when the peer is a trusted proxy, and ignores it otherwise', function () {
-    /** @var \Tests\TestCase $this — Pest rebinds the closure to the TestCase; Larastan can't infer it. */
+    /** @var TestCase $this — Pest rebinds the closure to the TestCase; Larastan can't infer it. */
     Route::get('/__ip_probe', fn () => request()->ip());
 
     // Trusted edge (REMOTE_ADDR inside the private ranges) → client taken from the forwarded header.
