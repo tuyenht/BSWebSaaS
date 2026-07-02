@@ -71,3 +71,15 @@ it('renders button + badge variants with Velzon-mirrored admin tokens', function
         ->assertSee('bg-admin-success/10')   // soft (subtle bg)
         ->assertSee('border-admin-primary'); // outline
 });
+
+it('renders the new presentational primitives (alert, avatar, page-header, pagination)', function () {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    $this->actingAs($owner)->get('http://anvinh.test/admin/_gallery')
+        ->assertOk()
+        ->assertSee('Alerts')
+        ->assertSee('Avatars')
+        ->assertSee('Pagination')
+        ->assertSee('role="alert"', false)         // alert a11y role
+        ->assertSee('aria-current="page"', false); // pagination current page
+});

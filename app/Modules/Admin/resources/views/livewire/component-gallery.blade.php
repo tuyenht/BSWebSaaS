@@ -103,4 +103,48 @@
             </tbody>
         </x-admin::table>
     </x-admin::card>
+
+    {{-- Alerts --}}
+    <x-admin::card title="Alerts">
+        <div class="space-y-3">
+            <x-admin::alert color="success" icon="shield">Đã lưu thay đổi.</x-admin::alert>
+            <x-admin::alert color="info" icon="mail">Có 3 liên hệ mới trong hộp thư.</x-admin::alert>
+            <x-admin::alert color="warning" icon="megaphone" dismissible>Tên miền sắp hết hạn — gia hạn sớm.</x-admin::alert>
+            <x-admin::alert color="danger" icon="trash" dismissible>Không kết nối được máy chủ email.</x-admin::alert>
+        </div>
+    </x-admin::card>
+
+    {{-- Avatars --}}
+    <x-admin::card title="Avatars">
+        <div class="flex flex-wrap items-center gap-3">
+            <x-admin::avatar name="An Vinh Owner" size="sm" />
+            <x-admin::avatar name="Bảo Sơn" size="md" />
+            <x-admin::avatar name="Tuyền Trần" size="lg" />
+        </div>
+    </x-admin::card>
+
+    {{-- Page header --}}
+    <x-admin::card title="Page header">
+        <x-admin::page-header title="Người dùng" subtitle="Quản lý thành viên của website.">
+            <x-slot:breadcrumbs>Dashboard / Người dùng</x-slot:breadcrumbs>
+            <x-slot:actions>
+                <x-admin::button size="sm" color="primary">Thêm thành viên</x-admin::button>
+            </x-slot:actions>
+        </x-admin::page-header>
+    </x-admin::card>
+
+    {{-- Pagination --}}
+    <x-admin::card title="Pagination">
+        <x-admin::pagination :current="3" :last="8" />
+    </x-admin::card>
+
+    {{-- Card + footer --}}
+    <x-admin::card title="Card + footer">
+        <p class="text-sm text-gray-500">Thân card. Footer có border-top + action.</p>
+        <x-slot:footer>
+            <div class="flex justify-end">
+                <x-admin::button size="sm" variant="soft" color="primary">Lưu</x-admin::button>
+            </div>
+        </x-slot:footer>
+    </x-admin::card>
 </div>

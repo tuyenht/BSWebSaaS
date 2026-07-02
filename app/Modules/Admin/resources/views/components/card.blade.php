@@ -19,4 +19,10 @@
     <div class="p-4">
         {{ $slot }}
     </div>
+
+    @isset($footer)
+        <div class="border-t border-gray-200 px-4 py-3">
+            {{ $footer }}
+        </div>
+    @endisset
 </div>
