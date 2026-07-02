@@ -90,6 +90,9 @@
     --color-topbar-search-border: var(--vz-topbar-search-border);
     --color-topbar-search-placeholder: var(--vz-topbar-search-placeholder-color);
     --color-topbar-search-focus: var(--vz-topbar-search-focus-bg);
+    --color-topbar-search-accent: var(--vz-topbar-search-focus-accent);
+    --color-topbar-user: var(--vz-topbar-user-bg);
+    --color-topbar-user-fg: var(--vz-topbar-user-color);
     --color-footer: var(--vz-footer-color);
 }
 

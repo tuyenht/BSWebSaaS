@@ -33,6 +33,9 @@
     --vz-topbar-search-border: #eff2f7;                /* ★ vz-ref: borderless search field */
     --vz-topbar-search-placeholder-color: #ced4da;     /* ★ placeholder + magnifier icon */
     --vz-topbar-search-focus-bg: #ffffff;              /* ★ field brightens on focus */
+    --vz-topbar-search-focus-accent: var(--color-accent); /* ★ focus border + ring — zone-owned so a dark topbar can lighten it */
+    --vz-topbar-user-bg: color-mix(in oklab, var(--color-accent) 10%, transparent); /* user chip (initials) bg */
+    --vz-topbar-user-color: var(--color-accent);       /* ★ user chip initial letter */
 
     /* ---- Sidebar / vertical menu (flip axis: data-sidebar) ----------------
        Defaults = Velzon's data-sidebar="dark" preset (our shipped look). */
@@ -47,4 +50,89 @@
 
     /* ---- Footer (flip axis: data-bs-theme) -------------------------------- */
     --vz-footer-color: #adb5bd;                        /* vz-ref: #98a6ad */
+
+    /* Native UI (form controls, scrollbars) follows the scheme; the light
+       declaration also opts out of mobile force-dark auto-inversion. */
+    color-scheme: light;
+}
+
+/* ============================ THEME FLIPS ===================================
+ | The blocks below activate ONLY when the matching attribute is set on <html>
+ | (P5 Customizer / SSR); with no attribute the sheet above renders today's
+ | look unchanged. ORDER IS LOAD-BEARING (equal specificity, later wins):
+ |   [data-bs-theme=dark] → [data-topbar=dark] → [data-sidebar=light]
+ | so an explicit topbar/sidebar variant beats the scheme's zone values.
+ | AA (measured, WCAG): text ≥4.5 · icons/11px micro-labels ≥3.0. Deviations
+ | from the Velzon reference values are AA bumps, noted `vz-ref:`.
+ | Grandfathered pre-existing defaults (P6 eye pass may retune, 1 var each):
+ | menu title white/40 = 2.62 · sidebar item #abb9e8 on brand = 3.93.
+ ============================================================================ */
+
+/* Dark scheme — Velzon [data-bs-theme=dark]; --color-* (content plane) are ours,
+   AA-tuned against the Velzon dark anchors. */
+:root[data-bs-theme='dark'] {
+    color-scheme: dark;
+
+    /* content plane (ours) */
+    --color-body: #1a1d21;
+    --color-surface: #292e33;
+    --color-surface-hover: #2f343a;
+    --color-border: #32383e;
+    --color-body-text: #ced4da;                        /* 11.32 body · 9.17 surface */
+    --color-body-muted: #878a99;                       /* 4.93 body */
+    --color-accent: #96a1c0;                           /* brand-as-text tint · 6.57 body · 5.33 header */
+
+    /* topbar (light variant under a dark scheme) */
+    --vz-header-bg: #292e32;
+    --vz-header-border: #292e32;
+    --vz-header-item-color: #e9ecef;                   /* 11.57 */
+    --vz-header-item-sub-color: #878a99;               /* icons · 4.00 ≥3 */
+    --vz-header-item-bg: #31363c;
+    --vz-header-item-hover-color: #ffffff;
+    --vz-header-brand-color: #e9ecef;
+    --vz-topbar-search-bg: #202328;
+    --vz-topbar-search-color: #ffffff;                 /* 15.76 */
+    --vz-topbar-search-border: #2a2f34;
+    --vz-topbar-search-focus-bg: #262a2f;
+    --vz-topbar-user-bg: #31373c;
+    --vz-topbar-user-color: #e9ecef;                   /* 10.16 */
+
+    /* sidebar (dark preset under a dark scheme) */
+    --vz-vertical-menu-bg: #212529;
+    --vz-vertical-menu-item-color: #8f94a5;            /* 5.10 · vz-ref: #7c7f90 = 3.89 FAIL */
+    --vz-vertical-menu-title-color: #7d8294;           /* 4.03 · vz-ref: #5f6270 = 2.55 FAIL */
+
+    /* footer */
+    --vz-footer-color: #878a99;
+}
+
+/* Dark topbar — ONE block for both schemes (Velzon's light-scheme and
+   dark-scheme dark-topbar values are identical: $dark-header-* ≡ $dark-header-*-dark). */
+:root[data-topbar='dark'] {
+    --vz-header-bg: var(--color-admin-primary);
+    --vz-header-border: var(--color-admin-primary);
+    --vz-header-item-color: rgb(255 255 255 / 0.85);   /* 6.05 effective */
+    --vz-header-item-sub-color: #b0c4d9;               /* icons · 4.26 ≥3 */
+    --vz-header-item-bg: #495c99;
+    --vz-topbar-search-bg: rgb(255 255 255 / 0.05);
+    --vz-topbar-search-color: #ffffff;                 /* 6.67 effective */
+    --vz-topbar-search-border: rgb(255 255 255 / 0.08); /* vz-ref: borderless field */
+    --vz-topbar-search-focus-bg: rgb(255 255 255 / 0.10);
+    --vz-topbar-search-placeholder-color: #e2e5ed;     /* default #ced4da = 4.46 marginal on the brand field */
+    --vz-topbar-search-focus-accent: #b0c4d9;          /* ring · 4.26 ≥3 */
+    --vz-topbar-user-bg: #52639c;
+    --vz-topbar-user-color: #ffffff;                   /* 5.80 */
+}
+
+/* Light sidebar — ONE merged block for both schemes (Velzon splits them only by
+   a 4%-darken on the item color; we keep the darker, AA-safer value). */
+:root[data-sidebar='light'] {
+    --vz-vertical-menu-bg: #ffffff;
+    --vz-vertical-menu-item-color: #6c6f80;            /* darken($gray-600,10%) · 4.97 */
+    --vz-vertical-menu-item-hover-color: var(--color-admin-primary); /* 7.62 */
+    --vz-vertical-menu-item-active-color: var(--color-admin-primary);
+    --vz-vertical-menu-item-hover-bg: rgb(64 81 137 / 0.10);
+    --vz-vertical-menu-item-active-bg: rgb(64 81 137 / 0.15);
+    --vz-vertical-menu-title-color: #8a92a0;           /* 3.13 ≥3 · vz-ref: #919da9 = 2.76 FAIL */
+    --vz-vertical-menu-brand-color: #343a40;           /* 11.51 */
 }

@@ -87,7 +87,7 @@
                     <x-admin::icon name="search" class="size-4" />
                 </span>
                 <input type="search" aria-label="{{ __('admin.search') }}" placeholder="{{ __('admin.search_placeholder') }}"
-                       class="w-56 rounded border border-topbar-search-border bg-topbar-search py-2 pl-9 pr-3 text-sm text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-accent focus:bg-topbar-search-focus focus:outline-none focus:ring-2 focus:ring-accent/20 lg:w-72">
+                       class="w-56 rounded border border-topbar-search-border bg-topbar-search py-2 pl-9 pr-3 text-sm text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus focus:outline-none focus:ring-2 focus:ring-topbar-search-accent/20 lg:w-72">
             </div>
 
             {{-- User menu --}}
@@ -95,7 +95,7 @@
                 <div class="relative">
                     <button type="button" @click="userOpen = !userOpen"
                             class="flex items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-topbar-hover">
-                        <span class="grid size-8 place-items-center rounded-full bg-accent/10 font-semibold text-accent">
+                        <span class="grid size-8 place-items-center rounded-full bg-topbar-user font-semibold text-topbar-user-fg">
                             {{ \Illuminate\Support\Str::of(auth()->user()?->name ?? 'U')->substr(0, 1)->upper() }}
                         </span>
                         <span class="hidden text-sm font-medium text-topbar-fg-strong sm:block">{{ auth()->user()?->name ?? __('admin.account') }}</span>

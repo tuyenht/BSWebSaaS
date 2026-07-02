@@ -41,7 +41,7 @@
             <div class="relative">
                 <button type="button" @click="userOpen = !userOpen"
                         class="flex items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-topbar-hover">
-                    <span class="grid size-8 place-items-center rounded-full bg-accent/10 font-semibold text-accent">
+                    <span class="grid size-8 place-items-center rounded-full bg-topbar-user font-semibold text-topbar-user-fg">
                         {{ \Illuminate\Support\Str::of(auth()->user()?->name ?? 'U')->substr(0, 1)->upper() }}
                     </span>
                     <span class="hidden text-sm font-medium text-topbar-fg-strong sm:block">{{ auth()->user()?->name ?? __('admin.account') }}</span>
