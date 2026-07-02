@@ -5,6 +5,7 @@
 > **Dẫn xuất từ:** design.md **§6** (ADR-02, tầng trình bày) · **§10/ADR-11** (i18n URL/PathBuilder) · **§18** (SLO CWV + benchmark TTFB-VN) · **§24** (UX tối ưu vô hình) · **§25/ADR-06** (cache 5 tầng) · **ADR-15** (hạ tầng/CDN).
 > **Nhãn bằng chứng:** 🟦 người/council chốt · 🟨 suy luận chưa kiểm (verify khi build) · ✅ đã verify từ repo.
 > **Phạm vi:** doc-only. Chưa có code (greenfield ✅ — 0 match `view-transition`/`speculationrules` trong themes/ & resources/views/). Không đụng schema/RLS/PathBuilder/routes.
+> **Cập nhật kỹ thuật 07/2026 (web-verified):** cross-doc VT nay chạy **Chrome 126+ / Safari 18.2+ / Firefox 144+** (FF chưa có transition-*types*) — xem §6c. Kỹ thuật mới nên dùng khi build L1: **`view-transition-class`** (gom style nhóm, khỏi đặt tên từng phần tử) · **Types API** (`:active-view-transition-type` + `pagereveal`/`navigation.activation.navigationType` → transition nhận-biết-hướng forward/back, 0 JS app) · **`<link rel="expect">`** (né timeout-4s-gồm-TTFB, §6e) · **`object-fit:cover`** cho ảnh (§8). ⚠️ Admin **KHÔNG** dùng doc này — admin (Livewire/Volt same-document) có cơ chế RIÊNG: Livewire 4 `wire:navigate`(.transition)/`wire:transition`.
 
 ---
 
@@ -105,8 +106,8 @@ Nền tốc độ cho L2. Thuộc lộ trình cache §25/ADR-06. **Hiện DESIGN
 
 - **(a)** VT là *chi phí* CWV nhẹ (**~+70ms LCP mobile 🟨 ước lượng, phải đo**, có thể tăng INP) → bù bằng L0 khi có.
 - **(b)** form + full-page-cache → form phải là **fragment động** (ESI, §25), không full-cache, không prerender (phá CSRF/Turnstile).
-- **(c)** **Firefox** chưa hỗ trợ VT cross-doc → progressive enhancement, fallback `@supports`.
-- **(d)** **Safari** có thể thiếu `NavigationActivation` → fallback cross-fade/snap (§4 open-question).
+- **(c)** **Cross-doc VT nay cross-browser** (07/2026 ✅): Chrome 126+ · Safari 18.2+ · **Firefox 144+** (FF chưa có transition-*types*). Vẫn giữ progressive-enhancement + fallback `@supports` cho bản cũ (không còn coi FF là "không hỗ trợ").
+- **(d)** Safari **18.2+ đã ship** cross-doc VT; riêng **Navigation API / `NavigationActivation`** (cần cho locale-skip §4) vẫn phải verify trên bản Safari pin → còn là open-question §4.
 - **(e)** **"L1 độc lập cache/TTFB" chỉ đúng ở mức *ship*, KHÔNG ở mức *UX*:** cross-doc VT **giữ ảnh trang CŨ đóng băng** tới khi trang mới render xong (hoặc ~4s bailout Chrome). Trên cold-cache VN→SG miss (>200ms, render lạnh còn tệ hơn) → cảm giác **treo/lag**, có khi tệ hơn nav thường 🟨. ⇒ payoff thật của L1 vẫn muốn L0.
 - **(f)** **Prerender khuếch đại tải origin:** mỗi prerender = 1 lần SSR đầy đủ; trên cold-cache long-tail (§25), prerender trang không ai xem = nhân CPU/DB origin → rủi ro **chi phí/định mức** (tách biệt với latency) 🟨. ⇒ prefetch-hơn-prerender.
 - **(g)** Analytics **bên thứ 3 của tenant** (GA/GTM) có thể đếm sai dưới prerender (ngoài tầm kiểm soát nền tảng) — **known limitation**.
@@ -169,6 +170,10 @@ nav.site-nav      { view-transition-name: site-nav;    view-transition-class: pe
 - **4-giây bailout** của Chrome cần trang nhanh → nối L0.
 - **Font CJK** khi sang `/ja/` cần preload/render-block trước snapshot (Phase 2).
 - **CSP delta** cho L2 (`'inline-speculation-rules'` + bundle ngoài) — §2.3, council riêng.
+- **Ảnh trong VT** → `object-fit: cover` trên `::view-transition-old/new` (VT chụp ảnh cũ/mới; `fill` mặc định làm méo avatar/logo/cover).
+- **Timeout 4s tính CẢ TTFB** → dùng `<link rel="expect">` (hoặc xử lý `pagereveal`) cho nội dung tới hạn để né transition chết trên trang chậm.
+- **KHÔNG dùng meta cũ** `<meta name="view-transition">` (đã im lặng vô hiệu) — chỉ CSS `@view-transition`.
+- **`view-transition-class` + Types API** (`:active-view-transition-type`) → gom style nhóm + transition nhận-biết-hướng forward/back mà không cần JS phía app.
 
 ---
 
