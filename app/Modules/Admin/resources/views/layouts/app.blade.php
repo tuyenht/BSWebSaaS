@@ -1,11 +1,14 @@
 <!doctype html>
-<html lang="vi" class="h-full">
+{{-- The chrome data-* attributes (resolved app→site→user) SSR here so the first paint
+     is already themed; <html> survives wire:navigate morphs. --}}
+<html lang="vi" class="h-full" @foreach ($chrome as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    {{-- CSRF token for fetch()-based admin endpoints (DAM presign/register/upload). --}}
+    {{-- CSRF token for fetch()-based admin endpoints (DAM presign/register/upload, theme prefs). --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? __('admin.dashboard') }} — {{ config('admin.brand.name') }}</title>
+    @include('admin::partials.theme-boot')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
 </head>
@@ -24,9 +27,9 @@
     <div x-show="open" x-transition.opacity @click="open = false" x-cloak
          class="fixed inset-0 z-30 bg-gray-900/40 lg:hidden"></div>
 
-    {{-- Sidebar (Velzon dark vertical) --}}
+    {{-- Sidebar (Velzon dark vertical). `admin-sidebar` is the [data-layout-position] flip hook. --}}
     <aside
-        class="fixed inset-y-0 left-0 z-40 flex w-[var(--spacing-sidebar)] flex-col bg-sidebar text-sidebar-fg transition-all duration-200"
+        class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-[var(--spacing-sidebar)] flex-col bg-sidebar text-sidebar-fg transition-all duration-200"
         :class="{
             'lg:w-[var(--spacing-sidebar-collapsed)]': collapsed,
             'lg:w-[var(--spacing-sidebar)]': !collapsed,
@@ -70,8 +73,8 @@
     <div class="flex min-h-screen flex-col transition-all duration-200"
          :class="collapsed ? 'lg:pl-[var(--spacing-sidebar-collapsed)]' : 'lg:pl-[var(--spacing-sidebar)]'">
 
-        {{-- Topbar --}}
-        <header class="sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar px-4 shadow-card">
+        {{-- Topbar. `admin-topbar` is the [data-layout-position] flip hook. --}}
+        <header class="admin-topbar sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar px-4 shadow-card">
             <button type="button" @click="open = true" aria-label="{{ __('admin.open_menu') }}"
                     class="grid size-9 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover lg:hidden">
                 <x-admin::icon name="menu" class="size-5" />
@@ -129,6 +132,7 @@
         </footer>
     </div>
 </div>
+@include('admin::partials.customizer')
 @livewireScripts
 </body>
 </html>

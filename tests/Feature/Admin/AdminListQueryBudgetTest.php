@@ -36,7 +36,10 @@ it('lists admin entries on a flat query budget (no N+1 across rows)', function (
 
     $count = countQueries(fn () => $this->actingAs($editor)->get('http://a.test/admin/content')->assertOk());
 
-    expect($count)->toBeLessThanOrEqual(18); // observed 16, flat; an N+1 over the rows would exceed this
+    // Flat ceiling: nav/entitlement (P2) + ONE single-row admin_theme read on the unique
+    // (site_id, group_name, key) index (P5 chrome resolver). An N+1 scales with the 10
+    // seeded rows, so it still blows well past this.
+    expect($count)->toBeLessThanOrEqual(19);
 });
 
 it('lists admin members on a flat query budget (no N+1 across rows)', function () {
@@ -53,5 +56,6 @@ it('lists admin members on a flat query budget (no N+1 across rows)', function (
 
     $count = countQueries(fn () => $this->actingAs($admin)->get('http://a.test/admin/users')->assertOk());
 
-    expect($count)->toBeLessThanOrEqual(18); // observed 16, flat; an N+1 over the rows would exceed this
+    // Same flat ceiling as the entries list: +1 admin_theme single-row read (P5).
+    expect($count)->toBeLessThanOrEqual(19);
 });
