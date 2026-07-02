@@ -47,72 +47,21 @@
         {{-- Nav: Velzon grouped visual on the dynamic, RBAC/tenant-scoped $navItems --}}
         <nav class="flex-1 overflow-y-auto px-3 py-3">
             <p x-show="!collapsed" class="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-white/40">{{ __('admin.menu') }}</p>
+            {{-- Fully dynamic: dashboard/media/contacts/users/settings + content sections all
+                 come from AdminNav (ModuleCatalog ∩ entitlement ∩ RBAC); active is resolved there. --}}
             <ul class="space-y-1">
-                <li>
-                    <a href="{{ route('admin.dashboard') }}" wire:navigate
-                       @class([
-                           'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
-                           'bg-white/15 text-white' => request()->routeIs('admin.dashboard'),
-                       ])>
-                        <x-admin::icon name="dashboard" class="size-5 shrink-0" />
-                        <span x-show="!collapsed">{{ __('admin.dashboard') }}</span>
-                    </a>
-                </li>
                 @foreach ($navItems as $item)
                     <li>
                         <a href="{{ $item->url }}" wire:navigate
-                           class="group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white">
+                           @class([
+                               'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
+                               'bg-white/15 text-white' => $item->active,
+                           ])>
                             <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                             <span x-show="!collapsed">{{ $item->label }}</span>
                         </a>
                     </li>
                 @endforeach
-                @can('forms.view')
-                    <li>
-                        <a href="{{ route('admin.forms.index') }}" wire:navigate
-                           @class([
-                               'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
-                               'bg-white/15 text-white' => request()->routeIs('admin.forms*'),
-                           ])>
-                            <x-admin::icon name="mail" class="size-5 shrink-0" />
-                            <span x-show="!collapsed">{{ __('forms.nav_contacts') }}</span>
-                        </a>
-                    </li>
-                @endcan
-                @can('media.view')
-                    <li>
-                        <a href="{{ route('admin.media.index') }}" wire:navigate
-                           @class([
-                               'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
-                               'bg-white/15 text-white' => request()->routeIs('admin.media*'),
-                           ])>
-                            <x-admin::icon name="image" class="size-5 shrink-0" />
-                            <span x-show="!collapsed">{{ __('media.nav_label') }}</span>
-                        </a>
-                    </li>
-                @endcan
-                @can('users.manage')
-                    <li>
-                        <a href="{{ route('admin.users.index') }}" wire:navigate
-                           @class([
-                               'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
-                               'bg-white/15 text-white' => request()->routeIs('admin.users*'),
-                           ])>
-                            <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19M21 19v-1.5a3.5 3.5 0 0 0-2.6-3.4M14.5 4.4a3.5 3.5 0 0 1 0 6.2M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg>
-                            <span x-show="!collapsed">{{ __('admin.users') }}</span>
-                        </a>
-                    </li>
-                @endcan
-                <li>
-                    <a href="{{ route('admin.settings') }}" wire:navigate
-                       @class([
-                           'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/10 hover:text-white',
-                           'bg-white/15 text-white' => request()->routeIs('admin.settings*'),
-                       ])>
-                        <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M10.4 3.5h3.2l.5 2.4 1.9.8 2.1-1.3 2.2 2.2-1.3 2.1.8 1.9 2.4.5v3.2l-2.4.5-.8 1.9 1.3 2.1-2.2 2.2-2.1-1.3-1.9.8-.5 2.4h-3.2l-.5-2.4-1.9-.8-2.1 1.3-2.2-2.2 1.3-2.1-.8-1.9L2 13.6v-3.2l2.4-.5.8-1.9-1.3-2.1 2.2-2.2 2.1 1.3 1.9-.8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        <span x-show="!collapsed">{{ __('admin.settings') }}</span>
-                    </a>
-                </li>
             </ul>
         </nav>
     </aside>

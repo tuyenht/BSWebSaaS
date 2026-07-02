@@ -248,5 +248,7 @@
     "admin.pagination.previous": "Previous",
     "admin.pagination.next": "Next",
     "admin.dismiss": "Dismiss",
-    "admin.breadcrumb": "Breadcrumb"
+    "admin.breadcrumb": "Breadcrumb",
+    "admin.media": "Media",
+    "admin.contacts": "Contacts"
 }
