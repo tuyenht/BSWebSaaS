@@ -10,13 +10,13 @@
 <div {{ $attributes->merge(['class' => 'mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between']) }}>
     <div>
         @isset($breadcrumbs)
-            <nav aria-label="{{ __('admin.breadcrumb') }}" class="mb-1 text-xs text-gray-500">
+            <nav aria-label="{{ __('admin.breadcrumb') }}" class="mb-1 text-xs text-body-faint">
                 {{ $breadcrumbs }}
             </nav>
         @endisset
-        <h1 class="text-xl font-semibold text-gray-800">{{ $title }}</h1>
+        <h1 class="text-xl font-semibold text-heading">{{ $title }}</h1>
         @if ($subtitle)
-            <p class="mt-1 text-sm text-gray-500">{{ $subtitle }}</p>
+            <p class="mt-1 text-sm text-body-faint">{{ $subtitle }}</p>
         @endif
     </div>
     @isset($actions)

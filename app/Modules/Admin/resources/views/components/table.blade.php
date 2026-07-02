@@ -4,7 +4,7 @@
     // writes semantic table markup, no per-cell classes needed. fs-13 for dense data.
 @endphp
 <div class="overflow-x-auto">
-    <table {{ $attributes->merge(['class' => 'w-full text-left align-middle fs-13 text-gray-700 [&_thead_th]:border-b [&_thead_th]:border-gray-300 [&_thead_th]:px-3 [&_thead_th]:py-3 [&_thead_th]:font-semibold [&_thead_th]:text-gray-600 [&_tbody_td]:border-b [&_tbody_td]:border-gray-200 [&_tbody_td]:px-3 [&_tbody_td]:py-3 [&_tbody_tr:last-child_td]:border-0 [&_tbody_tr:hover]:bg-gray-50']) }}>
+    <table {{ $attributes->merge(['class' => 'w-full text-left align-middle fs-13 text-body-text [&_thead_th]:border-b [&_thead_th]:border-border-strong [&_thead_th]:px-3 [&_thead_th]:py-3 [&_thead_th]:font-semibold [&_thead_th]:text-body-muted [&_tbody_td]:border-b [&_tbody_td]:border-border [&_tbody_td]:px-3 [&_tbody_td]:py-3 [&_tbody_tr:last-child_td]:border-0 [&_tbody_tr:hover]:bg-surface-muted']) }}>
         {{ $slot }}
     </table>
 </div>

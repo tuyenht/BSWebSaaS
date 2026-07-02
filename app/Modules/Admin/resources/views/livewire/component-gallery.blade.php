@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div>
-        <h1 class="text-xl font-semibold text-gray-800">Component Gallery <span class="text-sm font-normal text-gray-500">(dev-only)</span></h1>
-        <p class="mt-1 text-sm text-gray-500">Primitive admin dựng lại từ Velzon (design source) bằng Tailwind 4 + token <code class="fs-13">--color-admin-*</code> — duyệt fidelity tại đây.</p>
+        <h1 class="text-xl font-semibold text-heading">Component Gallery <span class="text-sm font-normal text-body-faint">(dev-only)</span></h1>
+        <p class="mt-1 text-sm text-body-faint">Primitive admin dựng lại từ Velzon (design source) bằng Tailwind 4 + token <code class="fs-13">--color-admin-*</code> — duyệt fidelity tại đây.</p>
     </div>
 
     {{-- Buttons --}}
@@ -36,18 +36,18 @@
     {{-- Cards --}}
     <div class="grid gap-4 md:grid-cols-3">
         <x-admin::card>
-            <h5 class="mb-1 text-[1rem] font-semibold text-gray-700">Basic card</h5>
-            <p class="text-sm text-gray-500">Body-only — shadow-card + border + radius (mirror Velzon .card).</p>
+            <h5 class="mb-1 text-[1rem] font-semibold text-body-text">Basic card</h5>
+            <p class="text-sm text-body-faint">Body-only — shadow-card + border + radius (mirror Velzon .card).</p>
         </x-admin::card>
         <x-admin::card title="Card có title">
-            <p class="text-sm text-gray-500">Header border-bottom, title 16px.</p>
+            <p class="text-sm text-body-faint">Header border-bottom, title 16px.</p>
         </x-admin::card>
         <x-admin::card>
             <x-slot:header>
-                <h5 class="text-[1rem] font-semibold text-gray-700">Header slot</h5>
+                <h5 class="text-[1rem] font-semibold text-body-text">Header slot</h5>
                 <x-admin::button size="sm" variant="soft" color="primary">Action</x-admin::button>
             </x-slot:header>
-            <p class="text-sm text-gray-500">Header có action bên phải.</p>
+            <p class="text-sm text-body-faint">Header có action bên phải.</p>
         </x-admin::card>
     </div>
 
@@ -140,7 +140,7 @@
 
     {{-- Card + footer --}}
     <x-admin::card title="Card + footer">
-        <p class="text-sm text-gray-500">Thân card. Footer có border-top + action.</p>
+        <p class="text-sm text-body-faint">Thân card. Footer có border-top + action.</p>
         <x-slot:footer>
             <div class="flex justify-end">
                 <x-admin::button size="sm" variant="soft" color="primary">Lưu</x-admin::button>
@@ -154,18 +154,18 @@
             <x-slot:trigger>
                 <x-admin::button variant="soft" color="primary">Thao tác</x-admin::button>
             </x-slot:trigger>
-            <a href="#" class="block px-3 py-2 hover:bg-gray-50">Sửa</a>
-            <a href="#" class="block px-3 py-2 hover:bg-gray-50">Nhân bản</a>
-            <a href="#" class="block px-3 py-2 text-admin-danger hover:bg-gray-50">Xóa</a>
+            <a href="#" class="block px-3 py-2 hover:bg-surface-muted">Sửa</a>
+            <a href="#" class="block px-3 py-2 hover:bg-surface-muted">Nhân bản</a>
+            <a href="#" class="block px-3 py-2 text-admin-danger hover:bg-surface-muted">Xóa</a>
         </x-admin::dropdown>
     </x-admin::card>
 
     {{-- Tabs --}}
     <x-admin::card title="Tabs">
         <x-admin::tabs :tabs="['info' => 'Thông tin', 'security' => 'Bảo mật', 'notify' => 'Thông báo']">
-            <div x-show="active === 'info'" role="tabpanel" class="text-sm text-gray-600">Nội dung tab Thông tin.</div>
-            <div x-show="active === 'security'" role="tabpanel" class="text-sm text-gray-600" x-cloak>Nội dung tab Bảo mật.</div>
-            <div x-show="active === 'notify'" role="tabpanel" class="text-sm text-gray-600" x-cloak>Nội dung tab Thông báo.</div>
+            <div x-show="active === 'info'" role="tabpanel" class="text-sm text-body-muted">Nội dung tab Thông tin.</div>
+            <div x-show="active === 'security'" role="tabpanel" class="text-sm text-body-muted" x-cloak>Nội dung tab Bảo mật.</div>
+            <div x-show="active === 'notify'" role="tabpanel" class="text-sm text-body-muted" x-cloak>Nội dung tab Thông báo.</div>
         </x-admin::tabs>
     </x-admin::card>
 
@@ -187,7 +187,7 @@
             <x-slot:trigger>
                 <x-admin::button color="danger">Mở modal</x-admin::button>
             </x-slot:trigger>
-            <p class="text-sm text-gray-600">Bạn có chắc muốn xóa mục này? Hành động không thể hoàn tác.</p>
+            <p class="text-sm text-body-muted">Bạn có chắc muốn xóa mục này? Hành động không thể hoàn tác.</p>
             <x-slot:footer>
                 <x-admin::button variant="soft" color="primary" x-on:click="hide()">Hủy</x-admin::button>
                 <x-admin::button color="danger">Xóa</x-admin::button>

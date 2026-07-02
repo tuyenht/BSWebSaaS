@@ -60,11 +60,18 @@
     /* Semantic roles — content plane (flips with [data-bs-theme=dark], P4).
        Values live HERE: these roles are ours — the Velzon/Bootstrap equivalents
        carry different values, so borrowing those names would lie. */
-    --color-surface: #ffffff;                    /* popover/panel bg (user-menu dropdown) */
-    --color-surface-hover: #f3f6f9;              /* item hover on a surface */
-    --color-border: #eff2f7;                     /* generic divider (dropdown, footer) */
-    --color-body-text: #495057;                  /* base text */
-    --color-body-muted: #878a99;                 /* secondary text (footer link) */
+    --color-surface: #ffffff;                    /* card/popover/panel bg */
+    --color-surface-hover: #f3f6f9;              /* item hover / soft fill on a surface (gray-100) */
+    --color-surface-muted: oklch(98.5% 0.002 247.839); /* zebra rows, muted panels (gray-50) */
+    --color-border: #eff2f7;                     /* generic divider (gray-200) */
+    --color-border-strong: #e9ebec;              /* input/select borders, emphasized rules (gray-300) */
+    --color-border-soft: #f3f6f9;                /* hairline list dividers (gray-100) */
+    --color-heading: #343a40;                    /* page/card/section headings (gray-800) */
+    --color-body-text: #495057;                  /* base text (gray-700) */
+    --color-body-muted: #878a99;                 /* secondary text (gray-600) */
+    --color-body-faint: #adb5bd;                 /* meta/hint text, timestamps (gray-500) */
+    --color-placeholder: #ced4da;                /* input placeholder + disabled glyphs (gray-400) */
+    --color-ink-ghost: #e9ebec;                  /* decorative/empty-state glyphs — WCAG-exempt (gray-300) */
     --color-accent: var(--color-admin-primary);  /* chrome accent as text/ring — a dark
                                                     scheme remaps THIS, never the brand */
 
