@@ -10,14 +10,14 @@
 @endphp
 <div x-data="{ active: @js($first), keys: @js($keys), move(d) { const i = this.keys.indexOf(this.active); this.active = this.keys[(i + d + this.keys.length) % this.keys.length]; } }"
      {{ $attributes }}>
-    <div role="tablist" class="flex gap-1 border-b border-gray-200">
+    <div role="tablist" class="flex gap-1 border-b border-border">
         @foreach ($tabs as $key => $label)
             <button type="button" role="tab"
                     :aria-selected="active === @js($key) ? 'true' : 'false'"
                     :tabindex="active === @js($key) ? 0 : -1"
                     @click="active = @js($key)"
                     @keydown.right.prevent="move(1)" @keydown.left.prevent="move(-1)"
-                    :class="active === @js($key) ? 'border-admin-primary text-admin-primary' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                    :class="active === @js($key) ? 'border-admin-primary text-admin-primary' : 'border-transparent text-body-faint hover:text-body-text'"
                     class="-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-admin-primary/30">
                 {{ $label }}
             </button>

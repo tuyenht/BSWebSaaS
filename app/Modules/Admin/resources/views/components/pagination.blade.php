@@ -19,8 +19,8 @@
     $from = max(1, $current - 2);
     $to = min($last, $current + 2);
     $linkBase = 'inline-flex h-9 min-w-9 items-center justify-center rounded px-3 text-sm transition-colors';
-    $navlink = $linkBase.' text-gray-600 hover:bg-gray-100';
-    $disabled = $linkBase.' cursor-not-allowed text-gray-300';
+    $navlink = $linkBase.' text-body-muted hover:bg-surface-hover';
+    $disabled = $linkBase.' cursor-not-allowed text-ink-ghost';
 @endphp
 @if ($last > 1)
     <nav aria-label="Pagination" {{ $attributes->merge(['class' => 'flex items-center gap-1']) }}>
@@ -34,7 +34,7 @@
         @endif
 
         @if ($from > 1)
-            <span class="px-1 text-gray-400">&hellip;</span>
+            <span class="px-1 text-placeholder">&hellip;</span>
         @endif
         @for ($p = $from; $p <= $to; $p++)
             @if ($p === $current)
@@ -44,7 +44,7 @@
             @endif
         @endfor
         @if ($to < $last)
-            <span class="px-1 text-gray-400">&hellip;</span>
+            <span class="px-1 text-placeholder">&hellip;</span>
         @endif
 
         @if ($current < $last)

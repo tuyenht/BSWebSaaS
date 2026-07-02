@@ -12,7 +12,7 @@
     </div>
     {{-- A disclosure popover of links, not an ARIA menu (which would owe roving arrow-key nav). --}}
     <div x-show="open" @click.outside="open = false" x-transition x-cloak
-         class="absolute {{ $menuAlign }} z-30 mt-1 min-w-44 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-card">
+         class="absolute {{ $menuAlign }} z-30 mt-1 min-w-44 rounded-md border border-border bg-surface py-1 text-sm shadow-card">
         {{ $slot }}
     </div>
 </div>
