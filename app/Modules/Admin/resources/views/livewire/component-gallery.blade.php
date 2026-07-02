@@ -147,4 +147,51 @@
             </div>
         </x-slot:footer>
     </x-admin::card>
+
+    {{-- Dropdown --}}
+    <x-admin::card title="Dropdown">
+        <x-admin::dropdown>
+            <x-slot:trigger>
+                <x-admin::button variant="soft" color="primary">Thao tác</x-admin::button>
+            </x-slot:trigger>
+            <a href="#" class="block px-3 py-2 hover:bg-gray-50">Sửa</a>
+            <a href="#" class="block px-3 py-2 hover:bg-gray-50">Nhân bản</a>
+            <a href="#" class="block px-3 py-2 text-admin-danger hover:bg-gray-50">Xóa</a>
+        </x-admin::dropdown>
+    </x-admin::card>
+
+    {{-- Tabs --}}
+    <x-admin::card title="Tabs">
+        <x-admin::tabs :tabs="['info' => 'Thông tin', 'security' => 'Bảo mật', 'notify' => 'Thông báo']">
+            <div x-show="active === 'info'" role="tabpanel" class="text-sm text-gray-600">Nội dung tab Thông tin.</div>
+            <div x-show="active === 'security'" role="tabpanel" class="text-sm text-gray-600" x-cloak>Nội dung tab Bảo mật.</div>
+            <div x-show="active === 'notify'" role="tabpanel" class="text-sm text-gray-600" x-cloak>Nội dung tab Thông báo.</div>
+        </x-admin::tabs>
+    </x-admin::card>
+
+    {{-- Tooltip --}}
+    <x-admin::card title="Tooltip">
+        <div class="flex flex-wrap items-center gap-6">
+            <x-admin::tooltip text="Xem chi tiết">
+                <x-admin::button size="sm" variant="soft" color="info">Hover / focus tôi</x-admin::button>
+            </x-admin::tooltip>
+            <x-admin::tooltip text="Chú thích ở dưới" position="bottom">
+                <x-admin::badge soft color="primary">Badge có tooltip</x-admin::badge>
+            </x-admin::tooltip>
+        </div>
+    </x-admin::card>
+
+    {{-- Modal --}}
+    <x-admin::card title="Modal">
+        <x-admin::modal title="Xác nhận xóa" size="md">
+            <x-slot:trigger>
+                <x-admin::button color="danger">Mở modal</x-admin::button>
+            </x-slot:trigger>
+            <p class="text-sm text-gray-600">Bạn có chắc muốn xóa mục này? Hành động không thể hoàn tác.</p>
+            <x-slot:footer>
+                <x-admin::button variant="soft" color="primary" x-on:click="hide()">Hủy</x-admin::button>
+                <x-admin::button color="danger">Xóa</x-admin::button>
+            </x-slot:footer>
+        </x-admin::modal>
+    </x-admin::card>
 </div>

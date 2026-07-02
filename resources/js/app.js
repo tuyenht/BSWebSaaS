@@ -26,3 +26,9 @@ async function mountMediaUploader() {
 }
 
 document.addEventListener('livewire:navigated', mountMediaUploader);
+
+// Release any modal scroll-lock before a wire:navigate swap, so an open modal that morphs
+// away can never leave the body scroll-locked.
+document.addEventListener('livewire:navigating', () => {
+    document.body.style.overflow = '';
+});
