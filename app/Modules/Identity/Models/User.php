@@ -27,6 +27,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $two_factor_secret
  * @property list<string>|null $two_factor_recovery_codes
  * @property Carbon|null $two_factor_confirmed_at
+ * @property array<string, mixed> $preferences
  */
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -38,7 +39,12 @@ class User extends Authenticatable implements MustVerifyEmail
     use MustVerifyEmailTrait;
     use Notifiable;
 
-    protected $guarded = [];
+    /**
+     * preferences (per-user UI chrome, later rendered into class/data-* attributes)
+     * stays out of mass assignment so it is written only through an explicit,
+     * allow-list-validated setter — never a request-data spread.
+     */
+    protected $guarded = ['preferences'];
 
     /** @var list<string> */
     protected $hidden = [
@@ -84,6 +90,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'two_factor_secret' => 'encrypted',
             'two_factor_recovery_codes' => 'encrypted:array',
             'two_factor_confirmed_at' => 'datetime',
+            'preferences' => 'array',
         ];
     }
 }
