@@ -13,5 +13,6 @@ final readonly class NavItem
         public string $label,
         public string $url,
         public ?string $icon = null,
+        public bool $active = false,
     ) {}
 }

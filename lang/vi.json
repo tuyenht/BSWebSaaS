@@ -248,5 +248,7 @@
     "admin.pagination.previous": "Trang trước",
     "admin.pagination.next": "Trang sau",
     "admin.dismiss": "Đóng",
-    "admin.breadcrumb": "Đường dẫn"
+    "admin.breadcrumb": "Đường dẫn",
+    "admin.media": "Thư viện",
+    "admin.contacts": "Liên hệ"
 }
