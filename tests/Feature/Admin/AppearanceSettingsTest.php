@@ -109,3 +109,27 @@ it('appears in the settings nav only for settings.manage holders', function (): 
         ->assertOk()
         ->assertDontSee(route('admin.settings.appearance'));
 });
+
+it('persists the new visual axes to the admin_theme group', function (): void {
+    $tenancy = app(Tenancy::class);
+    $owner = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($owner): void {
+        grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
+
+        Livewire::actingAs($owner->fresh())
+            ->test(AppearanceSettings::class)
+            ->set('layout_width', 'boxed')
+            ->set('sidebar_size', 'sm')
+            ->set('sidebar_image', 'img-2')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(app(SettingsRepository::class)->get('admin_theme'))
+            ->toEqualCanonicalizing([
+                'layout_width' => 'boxed',
+                'sidebar_size' => 'sm',
+                'sidebar_image' => 'img-2',
+            ]);
+    });
+});

@@ -62,9 +62,9 @@ it('rejects values outside the allow-list with a JSON 422 and writes nothing', f
     $user = prefMember();
 
     $this->actingAs($user)
-        ->postJson('http://a.test/admin/theme-preference', ['scheme' => 'hotdog', 'position' => 'floaty'])
+        ->postJson('http://a.test/admin/theme-preference', ['scheme' => 'hotdog', 'position' => 'floaty', 'sidebar_image' => 'nope'])
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['scheme', 'position']);
+        ->assertJsonValidationErrors(['scheme', 'position', 'sidebar_image']);
 
     expect($user->fresh()->preferences)->toBe([]);
 });
@@ -123,4 +123,17 @@ it('persists on the platform plane through the mirrored route', function (): voi
         ->assertJsonPath('attributes.data-bs-theme', 'dark');
 
     expect($operator->fresh()->preferences['theme'])->toBe(['scheme' => 'dark']);
+});
+
+it('pins new visual axes and echoes their attributes', function (): void {
+    $user = prefMember();
+
+    $this->actingAs($user)
+        ->postJson('http://a.test/admin/theme-preference', ['sidebar' => 'gradient-3', 'sidebar_size' => 'sm'])
+        ->assertOk()
+        ->assertJsonPath('attributes.data-sidebar', 'gradient-3')
+        ->assertJsonPath('attributes.data-sidebar-size', 'sm');
+
+    expect($user->fresh()->preferences['theme'])
+        ->toEqualCanonicalizing(['sidebar' => 'gradient-3', 'sidebar_size' => 'sm']);
 });

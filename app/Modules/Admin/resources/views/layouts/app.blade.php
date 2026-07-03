@@ -22,7 +22,7 @@
         ->take(2)
         ->implode('');
 @endphp
-<div x-data="{ open: false, collapsed: false }" class="min-h-screen">
+<div x-data="{ open: false }" class="admin-shell-wrapper min-h-screen">
 
     {{-- Mobile overlay --}}
     <div x-show="open" x-transition.opacity @click="open = false" x-cloak
@@ -32,16 +32,17 @@
     <aside
         class="admin-sidebar fixed inset-y-0 left-0 z-40 flex w-[var(--spacing-sidebar)] flex-col bg-sidebar text-sidebar-fg transition-all duration-200"
         :class="{
-            'lg:w-[var(--spacing-sidebar-collapsed)]': collapsed,
-            'lg:w-[var(--spacing-sidebar)]': !collapsed,
             'translate-x-0': open,
             '-translate-x-full lg:translate-x-0': !open
         }">
+        {{-- Faint sidebar texture (data-sidebar-image); z-index:-1 keeps it behind the ink. --}}
+        <div class="sidebar-background" aria-hidden="true"></div>
+
         {{-- Brand (from config — white-label safe) --}}
         <div class="flex h-[var(--spacing-header)] shrink-0 items-center px-4">
-            <a href="{{ route('admin.dashboard') }}" wire:navigate class="flex items-center gap-2.5 text-sidebar-brand">
+            <a href="{{ route('admin.dashboard') }}" wire:navigate class="sidebar-brand-link flex items-center gap-2.5 text-sidebar-brand">
                 <span class="grid size-9 shrink-0 place-items-center rounded bg-sidebar-hover text-sm font-bold">{{ $brandInitials }}</span>
-                <span x-show="!collapsed" class="flex flex-col leading-tight">
+                <span class="sidebar-label flex flex-col leading-tight">
                     <span class="text-base font-semibold tracking-tight">{{ $brandName }}</span>
                     <span class="text-[11px] text-sidebar-brand/55">{{ $brandTagline }}</span>
                 </span>
@@ -50,19 +51,19 @@
 
         {{-- Nav: Velzon grouped visual on the dynamic, RBAC/tenant-scoped $navItems --}}
         <nav class="flex-1 overflow-y-auto px-3 py-3">
-            <p x-show="!collapsed" class="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-title">{{ __('admin.menu') }}</p>
+            <p class="sidebar-label px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-title">{{ __('admin.menu') }}</p>
             {{-- Fully dynamic: dashboard/media/contacts/users/settings + content sections all
                  come from AdminNav (ModuleCatalog ∩ entitlement ∩ RBAC); active is resolved there. --}}
             <ul class="space-y-1">
                 @foreach ($navItems as $item)
                     <li>
-                        <a href="{{ $item->url }}" wire:navigate
+                        <a href="{{ $item->url }}" wire:navigate title="{{ $item->label }}"
                            @class([
                                'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
                                'bg-sidebar-active text-sidebar-fg-active' => $item->active,
                            ])>
                             <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
-                            <span x-show="!collapsed">{{ $item->label }}</span>
+                            <span class="sidebar-label">{{ $item->label }}</span>
                         </a>
                     </li>
                 @endforeach
@@ -71,8 +72,7 @@
     </aside>
 
     {{-- Content column --}}
-    <div class="flex min-h-screen flex-col transition-all duration-200"
-         :class="collapsed ? 'lg:pl-[var(--spacing-sidebar-collapsed)]' : 'lg:pl-[var(--spacing-sidebar)]'">
+    <div class="admin-content flex min-h-screen flex-col pl-0 transition-all duration-200 lg:pl-[var(--spacing-sidebar)]">
 
         {{-- Topbar. `admin-topbar` is the [data-layout-position] flip hook. --}}
         <header class="admin-topbar sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar px-4 shadow-card">
@@ -80,7 +80,7 @@
                     class="grid size-9 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover lg:hidden">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
-            <button type="button" @click="collapsed = !collapsed" aria-label="{{ __('admin.collapse_menu') }}"
+            <button type="button" @click="$store.adminTheme.set('sidebar_size', $store.adminTheme.state.sidebar_size === 'sm' ? 'lg' : 'sm')" aria-label="{{ __('admin.collapse_menu') }}"
                     class="hidden size-9 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover lg:grid">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
