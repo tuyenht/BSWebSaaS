@@ -349,12 +349,13 @@ site_profiles(
   logo_media_id NULL, favicon_media_id NULL              -- brand assets (tham chiếu media)
 )
 site_profile_translations(site_id, locale, company_name, address_text, description)
-site_settings(site_id, group, key, value JSONB, UNIQUE(site_id, group, key))   -- groups: general|seo|scripts|smtp|payment|contact_widgets|features
+site_settings(site_id, group, key, value JSONB, UNIQUE(site_id, group, key))   -- groups: general|seo|scripts|smtp|payment|contact_widgets|features|admin_theme
 ```
 - **Nạp TOÀN BỘ settings/site 1 lần → cache Valkey** (đổi rất ít); typed access + validate theo registry mỗi group (không free-for-all).
 - **Script Manager 2 chế độ** (nhóm `scripts`): (A) tích hợp sẵn GTM/GA4/Pixel/Zalo/chat → **nạp tối ưu tự động** (defer/facade/Partytown) = mặc định; (B) mã thô Header/Body-top/Body-bottom/Footer = escape-hatch có cảnh báo, tránh `<head>`. *(Dung hòa tiện dụng vs CWV.)*
 - **SMTP** (nhóm `smtp`): password **mã hóa at-rest** (Laravel `encrypted` cast), không hiển thị plaintext; mặc định dùng email chung, SMTP riêng là override.
 - **`contact_widgets`:** zalo_oa_id, hotline, messenger_id, show_back_to_top, callback_enabled.
+- **`admin_theme`** (ADR-A4): site-default cho giao diện QUẢN TRỊ (Customizer 3 tầng: app → site → `users.preferences`). **TÁCH BIỆT nhóm `theme`** — nhóm `theme` được storefront ThemeResolver in thẳng vào HTML public, cấu hình admin CẤM tái dùng nhóm đó (bất biến §2).
 
 ## 15. Phân quyền (RBAC) + Workflow + Module/Entitlement (3 tầng) *(Mục 36, 38)*
 
