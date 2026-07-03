@@ -12,7 +12,8 @@ RUN install-php-extensions \
     gd \
     exif \
     redis \
-    sodium
+    sodium \
+    pcov
 
 # Composer (pinned major 2)
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
