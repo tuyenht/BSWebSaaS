@@ -81,6 +81,28 @@
 
 - 🔴 **BẤT BIẾN BẢO MẬT (§2) — near-miss đã chặn:** storefront `App\Modules\Theme\Theming\ThemeResolver` đọc `site_settings` group **`theme`** key `tokens` rồi in vào `<style>` HTML **CÔNG KHAI** (`themes/default/partials/head.blade.php:125`). ⇒ MỌI cấu hình admin/operator ghi `site_settings` **CẤM tái dùng group `theme`** — theme admin dùng group **`admin_theme`**. Vi phạm = cấu hình chrome operator lọt ra HTML public của tenant. *(Tổng quát: group `site_settings` có thể là public-storefront-emitted hoặc admin-private — xác định TRƯỚC khi ghi.)*
 
+### As-built addendum (2026-07-03, V-A1 axes + V-A2 branding)
+
+Interactive scope shipped BEYOND the original four axes; recorded so this ADR matches production.
+
+- **Eight axes** (V-A1): Scheme · Sidebar-color (dark / light / gradient×4) · Sidebar-image · Sidebar-size
+  (lg/sm — absorbed the old Alpine collapse toggle) · Topbar · Layout-width (fluid/boxed) · Position. A
+  **Preloader axis was designed then dropped via audit**: under Octane + SPA `wire:navigate` the overlay never
+  re-cleared (bricked nav), and it earns nothing in worker-mode SPA (YAGNI). Horizontal / two-column layouts
+  stay a separate workstream (different DOM), still deferred.
+- **Branding (V-A2):** config-driven logo (`admin.brand.logo` + `<x-admin::brand-logo>` — three variants +
+  initials fallback), sized to the Velzon reference (**48px full / 22px collapsed mark**) and centered. The
+  default dark sidebar is decoupled from the brand primary (#405189) to variant-one blue, then **darkened
+  #3577f1 → #286ef0** so white 14px menu text clears WCAG AA (4.59; #3577f1 capped at 4.15). Opt-in gradient
+  sidebars stay grandfathered. AA is gated by `scripts/admin_aa_contrast.py`.
+- **Velzon-parity topbar chrome:** a shared `partials/topbar-tools` (language switcher with real flag images ·
+  fullscreen · light/dark quick-toggle that reuses the Customizer's scheme axis + `adminTheme` store ·
+  notifications **placeholder — no fake badge**, GĐ1 has no notification system) plus `partials/topbar-user`
+  (avatar + name + primary-role line, account menu wired to **real routes only** — "My Account" points at
+  own-account security since no profile route exists). Both planes reuse the partials; the platform console
+  omits tenant account links. Primary-role label = `Str::headline()` of the highest-`level` role (no display
+  map exists), resolved once per request in the layout view composer.
+
 ---
 
 ## OPEN ITEMS

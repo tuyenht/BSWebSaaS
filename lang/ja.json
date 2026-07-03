@@ -163,5 +163,10 @@
     "admin.social_disconnect_confirm": "この連携を解除しますか？",
     "admin.social_already_linked": "このアカウントは既に別のユーザーに連携されています。",
     "admin.reply_to": "返信先メールアドレス",
-    "admin.reply_to_hint": "お客様からの返信はこのアドレスに届きます。共有サーバーで送信する場合は、上のSMTP欄を空欄のままにしてください。"
+    "admin.reply_to_hint": "お客様からの返信はこのアドレスに届きます。共有サーバーで送信する場合は、上のSMTP欄を空欄のままにしてください。",
+    "admin.language": "言語",
+    "admin.fullscreen": "全画面表示",
+    "admin.notifications": "通知",
+    "admin.notifications_empty": "新しい通知はありません。",
+    "admin.greeting": "ようこそ、:name さん！"
 }

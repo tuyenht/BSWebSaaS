@@ -285,5 +285,10 @@
     "admin.dismiss": "Dismiss",
     "admin.breadcrumb": "Breadcrumb",
     "admin.media": "Media",
-    "admin.contacts": "Contacts"
+    "admin.contacts": "Contacts",
+    "admin.language": "Language",
+    "admin.fullscreen": "Fullscreen",
+    "admin.notifications": "Notifications",
+    "admin.notifications_empty": "You have no new notifications.",
+    "admin.greeting": "Welcome, :name!"
 }

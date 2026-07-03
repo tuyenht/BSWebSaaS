@@ -285,5 +285,10 @@
     "admin.dismiss": "Đóng",
     "admin.breadcrumb": "Đường dẫn",
     "admin.media": "Thư viện",
-    "admin.contacts": "Liên hệ"
+    "admin.contacts": "Liên hệ",
+    "admin.language": "Ngôn ngữ",
+    "admin.fullscreen": "Toàn màn hình",
+    "admin.notifications": "Thông báo",
+    "admin.notifications_empty": "Bạn chưa có thông báo mới.",
+    "admin.greeting": "Xin chào, :name!"
 }

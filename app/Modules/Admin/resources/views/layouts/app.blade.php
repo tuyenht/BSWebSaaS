@@ -32,7 +32,7 @@
 
         {{-- Brand (from config — white-label safe) --}}
         <div class="flex h-[var(--spacing-header)] shrink-0 items-center px-4">
-            <a href="{{ route('admin.dashboard') }}" wire:navigate class="sidebar-brand-link flex items-center gap-2.5 text-sidebar-brand">
+            <a href="{{ route('admin.dashboard') }}" wire:navigate class="sidebar-brand-link flex w-full items-center justify-center gap-2.5 text-sidebar-brand">
                 <x-admin::brand-logo />
             </a>
         </div>
@@ -82,28 +82,11 @@
                        class="w-56 rounded border border-topbar-search-border bg-topbar-search py-2 pl-9 pr-3 text-sm text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus focus:outline-none focus:ring-2 focus:ring-topbar-search-accent/20 lg:w-72">
             </div>
 
-            {{-- User menu --}}
-            <div class="ms-auto" x-data="{ userOpen: false }">
-                <div class="relative">
-                    <button type="button" @click="userOpen = !userOpen"
-                            class="flex items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-topbar-hover">
-                        <span class="grid size-8 place-items-center rounded-full bg-topbar-user font-semibold text-topbar-user-fg">
-                            {{ \Illuminate\Support\Str::of(auth()->user()?->name ?? 'U')->substr(0, 1)->upper() }}
-                        </span>
-                        <span class="hidden text-sm font-medium text-topbar-fg-strong sm:block">{{ auth()->user()?->name ?? __('admin.account') }}</span>
-                    </button>
-                    <div x-show="userOpen" @click.outside="userOpen = false" x-transition x-cloak
-                         class="absolute end-0 mt-1 w-48 rounded-md border border-border bg-surface py-1 shadow-card">
-                        <form method="POST" action="{{ route('admin.logout') }}">
-                            @csrf
-                            <button type="submit"
-                                    class="flex w-full items-center gap-2 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
-                                <x-admin::icon name="logout" class="size-4" />
-                                {{ __('admin.logout') }}
-                            </button>
-                        </form>
-                    </div>
-                </div>
+            {{-- Right cluster: language · fullscreen · light/dark · notifications · user --}}
+            <div class="ms-auto flex items-center gap-1">
+                @include('admin::partials.topbar-tools')
+                <span class="mx-1 hidden h-6 w-px bg-topbar-border sm:block" aria-hidden="true"></span>
+                @include('admin::partials.topbar-user')
             </div>
         </header>
 
