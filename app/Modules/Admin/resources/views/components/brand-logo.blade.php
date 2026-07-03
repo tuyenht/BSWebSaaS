@@ -18,7 +18,7 @@
         {{-- Sidebar: CSS picks the variant by [data-sidebar] / [data-sidebar-size] (see admin-chrome.css). --}}
         <img src="{{ asset($logo['light']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--light h-8 w-auto">
         <img src="{{ asset($logo['dark']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--dark h-8 w-auto">
-        <img src="{{ asset($logo['sm']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--sm size-9 shrink-0" aria-hidden="true">
+        <img src="{{ asset($logo['sm']) }}" alt="{{ $brandName }}" class="brand-logo brand-logo--sm size-9 shrink-0">
     @endif
 @else
     {{-- White-label fallback: initials chip + name (mirrors the old shell). --}}
