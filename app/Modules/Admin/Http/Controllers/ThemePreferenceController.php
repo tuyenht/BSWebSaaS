@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Http\Controllers;
 
+use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
@@ -40,13 +41,28 @@ final class ThemePreferenceController
         return response()->json(['attributes' => $resolver->attributes($user)]);
     }
 
-    /** Reset = drop the whole per-user override; the site/app default shows through. */
+    /**
+     * Reset drops this PLANE's per-user pins, letting the site/app default show through.
+     * The tenant admin clears every axis; the platform console — whose launcher shows
+     * only the Scheme axis — clears just the scheme, so an operator's sidebar/topbar/
+     * position pins for tenant admins survive a console reset.
+     */
     public function destroy(AdminChromeResolver $resolver): JsonResponse
     {
         $user = $this->user();
 
         $preferences = $user->preferences;
-        unset($preferences['theme']);
+        if (AdminPlane::isPlatform()) {
+            $theme = Cast::arr($preferences['theme'] ?? null);
+            unset($theme['scheme']);
+            if ($theme === []) {
+                unset($preferences['theme']);
+            } else {
+                $preferences['theme'] = $theme;
+            }
+        } else {
+            unset($preferences['theme']);
+        }
         $user->preferences = $preferences;
         $user->save();
 
