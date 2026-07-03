@@ -23,9 +23,9 @@ use Symfony\Component\HttpFoundation\Response;
  * This request is its own hot path — queries here are not subject to the per-page hot-path
  * Query Budget, but N+1 is still avoided (one query for all routes).
  */
-final class SitemapController
+final readonly class SitemapController
 {
-    public function __construct(private readonly PathBuilder $paths) {}
+    public function __construct(private PathBuilder $paths) {}
 
     public function __invoke(Request $request): Response
     {
@@ -52,7 +52,7 @@ final class SitemapController
             );
             $xml .= '<url><loc>'.$loc.'</loc>';
             if ($route->updated_at !== null) {
-                $xml .= '<lastmod>'.htmlspecialchars($route->updated_at->toAtomString(), ENT_XML1 | ENT_QUOTES, 'UTF-8').'</lastmod>';
+                $xml .= '<lastmod>'.htmlspecialchars((string) $route->updated_at->toAtomString(), ENT_XML1 | ENT_QUOTES, 'UTF-8').'</lastmod>';
             }
             $xml .= '</url>';
         }

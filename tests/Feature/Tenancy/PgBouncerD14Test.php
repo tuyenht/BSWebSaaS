@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 
@@ -12,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  * runs against Postgres directly, where it acts as a regression guard.
  */
 
-it('survives many parameterized queries under transaction pooling (D14)', function () {
+it('survives many parameterized queries under transaction pooling (D14)', function (): void {
     for ($i = 1; $i <= 60; $i++) {
         $row = DB::selectOne('select (?::int * ?::int) as n', [$i, 2]);
 
@@ -20,12 +22,12 @@ it('survives many parameterized queries under transaction pooling (D14)', functi
     }
 });
 
-it('survives parameterized queries interleaved with tenant transactions (D14)', function () {
+it('survives parameterized queries interleaved with tenant transactions (D14)', function (): void {
     seedTenancy();
     $tenancy = app(Tenancy::class);
 
     foreach ([1, 2, 1, 2] as $site) {
-        $tenancy->enter($site, function () use ($site) {
+        $tenancy->enter($site, function () use ($site): void {
             $row = DB::selectOne('select current_setting(?, true) as guc', ['app.current_site_id']);
             expect($row->guc)->toBe((string) $site);
         });

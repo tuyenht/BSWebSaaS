@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  * no queries (budget unchanged). JSON-LD is encoded server-side with tag-hex escaping.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -43,7 +43,7 @@ function seoPublishPost(string $title, string $slug): void
 {
     $site = Site::query()->firstWhere('name', 'An Vinh');
 
-    app(Tenancy::class)->enter($site->id, function () use ($title, $slug) {
+    app(Tenancy::class)->enter($site->id, function () use ($title, $slug): void {
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
         $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
@@ -56,7 +56,7 @@ function seoPublishPost(string $title, string $slug): void
     });
 }
 
-it('emits canonical + Open Graph (website) on the home page', function () {
+it('emits canonical + Open Graph (website) on the home page', function (): void {
     seoProvision();
 
     $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
@@ -69,11 +69,11 @@ it('emits canonical + Open Graph (website) on the home page', function () {
         ->toContain('<title>An Vinh</title>');   // no regression
 });
 
-it('emits canonical + OG article + BreadcrumbList on a post, no extra queries', function () {
+it('emits canonical + OG article + BreadcrumbList on a post, no extra queries', function (): void {
     seoProvision();
     seoPublishPost('Bài viết đầu tiên', 'bai-viet-dau-tien');
 
-    $count = countQueries(function () {
+    $count = countQueries(function (): void {
         $html = $this->get('http://anvinh.test/tin-tuc/bai-viet-dau-tien')->assertOk()->getContent();
 
         expect($html)
@@ -90,7 +90,7 @@ it('emits canonical + OG article + BreadcrumbList on a post, no extra queries', 
     expect($count)->toBeLessThanOrEqual(16);   // SEO reuses resolved data → no new queries
 });
 
-it('emits canonical + OG website + BreadcrumbList on a category list', function () {
+it('emits canonical + OG website + BreadcrumbList on a category list', function (): void {
     seoProvision();
     seoPublishPost('Bài một', 'bai-mot');
 
@@ -103,11 +103,11 @@ it('emits canonical + OG website + BreadcrumbList on a category list', function 
         ->toContain('"name":"Tin tức"');
 });
 
-it('self-canonicals a paginated category page with ?page=N', function () {
+it('self-canonicals a paginated category page with ?page=N', function (): void {
     seoProvision();
     $site = Site::query()->firstWhere('name', 'An Vinh');
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
         $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 

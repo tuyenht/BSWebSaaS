@@ -13,8 +13,10 @@ use Illuminate\Console\Command;
  */
 class EnvCheck extends Command
 {
+    #[\Override]
     protected $signature = 'env:check {--env= : .env to check (default: base_path/.env)} {--example= : template (default: base_path/.env.example)}';
 
+    #[\Override]
     protected $description = 'Check a .env against .env.example — report missing / extra keys (non-zero exit on missing)';
 
     public function handle(): int
@@ -84,7 +86,7 @@ class EnvCheck extends Command
     {
         $keys = [];
         foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-            if (preg_match('/^\s*([A-Za-z_][A-Za-z0-9_]*)=/', $line, $m) === 1) {
+            if (preg_match('/^\s*([A-Za-z_]\w*)=/', $line, $m) === 1) {
                 $keys[] = $m[1];
             }
         }
@@ -103,7 +105,7 @@ class EnvCheck extends Command
     {
         $counts = [];
         foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
-            if (preg_match('/^\s*([A-Za-z_][A-Za-z0-9_]*)=/', $line, $m) === 1) {
+            if (preg_match('/^\s*([A-Za-z_]\w*)=/', $line, $m) === 1) {
                 $counts[$m[1]] = ($counts[$m[1]] ?? 0) + 1;
             }
         }

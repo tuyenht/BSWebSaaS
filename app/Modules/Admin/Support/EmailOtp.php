@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Admin\Support;
 
 use App\Modules\Admin\Notifications\EmailOtpNotification;
@@ -15,13 +17,13 @@ use Illuminate\Support\Facades\RateLimiter;
  */
 final class EmailOtp
 {
-    private const TTL_SECONDS = 600;     // code valid for 10 minutes
+    private const int TTL_SECONDS = 600;     // code valid for 10 minutes
 
-    private const RESEND_COOLDOWN = 60;  // seconds the user must wait before re-sending
+    private const int RESEND_COOLDOWN = 60;  // seconds the user must wait before re-sending
 
-    private const MAX_SENDS_PER_HOUR = 6;         // per account — bounds per-address email-bombing
+    private const int MAX_SENDS_PER_HOUR = 6;         // per account — bounds per-address email-bombing
 
-    private const MAX_SENDS_PER_HOUR_PER_IP = 20; // per source IP — one IP hitting many accounts
+    private const int MAX_SENDS_PER_HOUR_PER_IP = 20; // per source IP — one IP hitting many accounts
 
     /**
      * Emails a fresh code. Returns false WITHOUT sending when an hourly abuse cap is hit (per account

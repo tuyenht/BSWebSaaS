@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Taxonomy;

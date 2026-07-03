@@ -11,14 +11,14 @@ use App\Modules\Tenancy\Context\Tenancy;
  * covered by RoleHierarchyGuardTest / RevokeRoleTest.)
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('lets a member with users.manage open the users page', function () {
+it('lets a member with users.manage open the users page', function (): void {
     $admin = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'admin', ['users.manage', 'entries.view']));
 
@@ -27,14 +27,14 @@ it('lets a member with users.manage open the users page', function () {
         ->assertSee(__('admin.users'));
 });
 
-it('forbids a member without users.manage', function () {
+it('forbids a member without users.manage', function (): void {
     $author = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($author, 'author', ['entries.view']));
 
     $this->actingAs($author)->get('http://a.test/admin/users')->assertForbidden();
 });
 
-it('scopes the users page per site — manage on site A is not membership on site B', function () {
+it('scopes the users page per site — manage on site A is not membership on site B', function (): void {
     $admin = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'admin', ['users.manage', 'entries.view']));
 

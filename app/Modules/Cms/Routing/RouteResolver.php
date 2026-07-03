@@ -67,7 +67,7 @@ final class RouteResolver
         }
 
         $translation = $entry->translations
-            ->first(fn (EntryTranslation $candidate) => $candidate->locale === $locale && $candidate->status === 'published');
+            ->first(fn (EntryTranslation $candidate): bool => $candidate->locale === $locale && $candidate->status === 'published');
 
         if ($translation === null) {
             return null;

@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\View;
  * card links to the post's detail page.
  */
 
-it('registers the about block with url-typed sinks', function () {
+it('registers the about block with url-typed sinks', function (): void {
     $registry = app(ComponentRegistry::class);
 
     expect($registry->has('about'))->toBeTrue();
@@ -19,7 +19,7 @@ it('registers the about block with url-typed sinks', function () {
     expect($about['cta_url']['type'])->toBe('url');
 });
 
-it('renders the about block with paragraphs, image and CTA', function () {
+it('renders the about block with paragraphs, image and CTA', function (): void {
     $props = [
         'heading' => 'Về An Vinh',
         'paragraphs' => ['Đoạn một.', 'Đoạn hai.'],
@@ -36,7 +36,7 @@ it('renders the about block with paragraphs, image and CTA', function () {
         ->toContain('href="/gioi-thieu">Tìm hiểu thêm');
 });
 
-it('renders the entry_grid card image smartly: glyph key → SVG, URL → <img>, card → detail link', function () {
+it('renders the entry_grid card image smartly: glyph key → SVG, URL → <img>, card → detail link', function (): void {
     $view = ['props' => ['heading' => 'Dịch vụ'], 'items' => [
         ['image' => 'shield', 'title' => 'Cách nhiệt', 'url' => '/dich-vu/cach-nhiet', 'short_outcome' => '', 'sector' => ''],
         ['image' => 'https://cdn.example/forklift.jpg', 'title' => 'Xe nâng', 'url' => '/dich-vu/xe-nang', 'short_outcome' => '', 'sector' => ''],
@@ -51,7 +51,7 @@ it('renders the entry_grid card image smartly: glyph key → SVG, URL → <img>,
         ->toContain('href="/dich-vu/cach-nhiet">Cách nhiệt');     // card links to the service detail page
 });
 
-it('renders no icon for an unknown glyph key (no injection surface)', function () {
+it('renders no icon for an unknown glyph key (no injection surface)', function (): void {
     $view = ['props' => [], 'items' => [
         ['image' => 'definitely-not-a-glyph-key', 'title' => 'X', 'url' => '/x', 'short_outcome' => '', 'sector' => ''],
     ]];
@@ -61,7 +61,7 @@ it('renders no icon for an unknown glyph key (no injection surface)', function (
     expect($html)->not->toContain('<svg')->not->toContain('<img');
 });
 
-it('registers the partners block with url-typed logo list fields', function () {
+it('registers the partners block with url-typed logo list fields', function (): void {
     $registry = app(ComponentRegistry::class);
 
     expect($registry->has('partners'))->toBeTrue();
@@ -71,7 +71,7 @@ it('registers the partners block with url-typed logo list fields', function () {
     expect($logos['of']['url']['type'])->toBe('url');
 });
 
-it('renders the partners block as a logo grid, linking a logo only when it has both a url and a name', function () {
+it('renders the partners block as a logo grid, linking a logo only when it has both a url and a name', function (): void {
     $props = ['heading' => 'Đối tác', 'logos' => [
         ['image_url' => 'https://cdn.example/p1.png', 'name' => 'Đối tác Một', 'url' => 'https://p1.test'],
         ['image_url' => 'https://cdn.example/p2.png', 'name' => 'Đối tác Hai'],   // no url → image only
@@ -88,7 +88,7 @@ it('renders the partners block as a logo grid, linking a logo only when it has b
     expect(substr_count($html, '<a '))->toBe(1);
 });
 
-it('skips a partner logo that has no image_url (no empty <img>)', function () {
+it('skips a partner logo that has no image_url (no empty <img>)', function (): void {
     $props = ['logos' => [['name' => 'Không ảnh', 'url' => '/x']]];
 
     $html = View::make('theme::sections.partners', ['props' => $props])->render();
@@ -96,7 +96,7 @@ it('skips a partner logo that has no image_url (no empty <img>)', function () {
     expect($html)->not->toContain('<img')->not->toContain('src=""');
 });
 
-it('renders a hero second CTA when cta2 props are set', function () {
+it('renders a hero second CTA when cta2 props are set', function (): void {
     $props = [
         'heading' => 'An Vinh',
         'cta_label' => 'Yêu cầu báo giá', 'cta_url' => '/lien-he',
@@ -110,7 +110,7 @@ it('renders a hero second CTA when cta2 props are set', function () {
         ->toContain('href="/dich-vu">Xem dịch vụ');
 });
 
-it('renders the hero unchanged when no second CTA is set (render-neutral)', function () {
+it('renders the hero unchanged when no second CTA is set (render-neutral)', function (): void {
     $props = ['heading' => 'An Vinh', 'cta_label' => 'Liên hệ', 'cta_url' => '/lien-he'];
 
     $html = View::make('theme::sections.hero', ['props' => $props])->render();
@@ -118,7 +118,7 @@ it('renders the hero unchanged when no second CTA is set (render-neutral)', func
     expect($html)->toContain('href="/lien-he">Liên hệ')->not->toContain('hero__cta--secondary');
 });
 
-it('guards the hero heading against an empty element (no empty heading tag)', function () {
+it('guards the hero heading against an empty element (no empty heading tag)', function (): void {
     // The hero uses <h2> so the layout's <h1 class="page__title"> is the sole h1 per page.
     // An empty <h2></h2> is an axe violation; the heading is omitted when not set.
     $withHeading = View::make('theme::sections.hero', ['props' => ['heading' => 'An Vinh']])->render();
@@ -128,7 +128,7 @@ it('guards the hero heading against an empty element (no empty heading tag)', fu
     expect($noHeading)->not->toContain('<h2');
 });
 
-it('registers the contact block with url-typed phone/email/map sinks', function () {
+it('registers the contact block with url-typed phone/email/map sinks', function (): void {
     $contact = app(ComponentRegistry::class)->get('contact')->schema();
 
     expect($contact['phone']['type'])->toBe('url');
@@ -136,7 +136,7 @@ it('registers the contact block with url-typed phone/email/map sinks', function 
     expect($contact['map_embed']['type'])->toBe('url');
 });
 
-it('renders the contact block with click-to-call/mail and a lazy map iframe', function () {
+it('renders the contact block with click-to-call/mail and a lazy map iframe', function (): void {
     $props = [
         'heading' => 'Liên hệ An Vinh',
         'address' => 'Khu CN, Hải Phòng',
@@ -154,13 +154,13 @@ it('renders the contact block with click-to-call/mail and a lazy map iframe', fu
         ->toContain('src="https://maps.example/embed?x=1"')->toContain('loading="lazy"');
 });
 
-it('omits contact link/iframe markup for empty fields', function () {
+it('omits contact link/iframe markup for empty fields', function (): void {
     $html = View::make('theme::sections.contact', ['props' => ['heading' => 'Liên hệ']])->render();
 
     expect($html)->toContain('Liên hệ')->not->toContain('<a ')->not->toContain('<iframe');
 });
 
-it('sandboxes the contact map iframe and names it even when the heading is empty', function () {
+it('sandboxes the contact map iframe and names it even when the heading is empty', function (): void {
     $html = View::make('theme::sections.contact', ['props' => [
         'heading' => '',   // empty (not null) → title must still carry an accessible name
         'map_embed' => 'https://maps.example/e',
@@ -171,7 +171,7 @@ it('sandboxes the contact map iframe and names it even when the heading is empty
         ->toContain('title="Bản đồ"')->not->toContain('title=""');              // a11y fallback name
 });
 
-it('does not link a partner logo that has a url but no name (a11y: no name-less link)', function () {
+it('does not link a partner logo that has a url but no name (a11y: no name-less link)', function (): void {
     $props = ['logos' => [['image_url' => 'https://cdn.example/p.png', 'url' => 'https://p.test']]];
 
     $html = View::make('theme::sections.partners', ['props' => $props])->render();
@@ -180,7 +180,7 @@ it('does not link a partner logo that has a url but no name (a11y: no name-less 
     expect($html)->toContain('src="https://cdn.example/p.png"')->not->toContain('<a ');
 });
 
-it('scans bundled theme blades for Tailwind classes so storefront utilities are not purged', function () {
+it('scans bundled theme blades for Tailwind classes so storefront utilities are not purged', function (): void {
     // Regression guard: the bundled theme lives at top-level themes/; the Tailwind @source must
     // cover it, else moving views out of app/Modules/ silently purges their utility classes.
     expect(file_get_contents(base_path('resources/css/app.css')))->toContain("@source '../../themes/");

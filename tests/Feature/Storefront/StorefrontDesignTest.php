@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\DB;
  *   - every storefront page has a <footer> contentinfo landmark
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -45,7 +45,7 @@ function designPublishPost(string $title, string $slug): void
 {
     $site = Site::query()->firstWhere('name', 'An Vinh');
 
-    app(Tenancy::class)->enter($site->id, function () use ($title, $slug) {
+    app(Tenancy::class)->enter($site->id, function () use ($title, $slug): void {
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
         $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
@@ -61,7 +61,7 @@ function designPublishPost(string $title, string $slug): void
 
 // ─── Stylesheet linkage ───────────────────────────────────────────────────────
 
-it('head.blade.php references the storefront stylesheet via @vite', function () {
+it('head.blade.php references the storefront stylesheet via @vite', function (): void {
     // Template-level assertion: the @vite directive is wired correctly.
     // Rendering tests use withoutVite() (TestCase), so we check the source template
     // rather than the compiled HTML output.
@@ -70,7 +70,7 @@ it('head.blade.php references the storefront stylesheet via @vite', function () 
     expect($head)->toContain('resources/css/storefront.css');
 });
 
-it('vite.config.js includes storefront.css as a build input', function () {
+it('vite.config.js includes storefront.css as a build input', function (): void {
     $config = file_get_contents(base_path('vite.config.js'));
 
     expect($config)->toContain('resources/css/storefront.css');
@@ -78,7 +78,7 @@ it('vite.config.js includes storefront.css as a build input', function () {
 
 // ─── BreadcrumbList JSON-LD validity ─────────────────────────────────────────
 
-it('BreadcrumbList JSON-LD is valid decodable JSON on a post page', function () {
+it('BreadcrumbList JSON-LD is valid decodable JSON on a post page', function (): void {
     designProvision();
     designPublishPost('Bài kiểm tra JSON-LD', 'bai-kiem-tra-json-ld');
 
@@ -87,7 +87,7 @@ it('BreadcrumbList JSON-LD is valid decodable JSON on a post page', function () 
     // Extract the first application/ld+json script block.
     $matched = preg_match(
         '/<script type="application\/ld\+json">(.*?)<\/script>/s',
-        $html,
+        (string) $html,
         $m,
     );
 
@@ -108,7 +108,7 @@ it('BreadcrumbList JSON-LD is valid decodable JSON on a post page', function () 
 
 // ─── Branded Vietnamese 404 ───────────────────────────────────────────────────
 
-it('renders a branded Vietnamese 404 page (no English dead-end)', function () {
+it('renders a branded Vietnamese 404 page (no English dead-end)', function (): void {
     designProvision();
 
     $response = $this->get('http://anvinh.test/khong-ton-tai-xyz');
@@ -126,7 +126,7 @@ it('renders a branded Vietnamese 404 page (no English dead-end)', function () {
 
 // ─── Single h1 per page ───────────────────────────────────────────────────────
 
-it('every storefront page has exactly one h1 element', function () {
+it('every storefront page has exactly one h1 element', function (): void {
     designProvision();
     designPublishPost('Bài đầu tiên', 'bai-dau-tien');
 
@@ -139,7 +139,7 @@ it('every storefront page has exactly one h1 element', function () {
 
     foreach ($pages as $label => $url) {
         $html = $this->get($url)->assertOk()->getContent();
-        $count = preg_match_all('/<h1[\s>\/]/', $html);
+        $count = preg_match_all('/<h1[\s>\/]/', (string) $html);
 
         expect($count)->toBe(1, "Expected exactly 1 <h1> on {$label}, found {$count}");
     }
@@ -147,7 +147,7 @@ it('every storefront page has exactly one h1 element', function () {
 
 // ─── Footer presence ─────────────────────────────────────────────────────────
 
-it('every storefront layout renders a footer contentinfo landmark', function () {
+it('every storefront layout renders a footer contentinfo landmark', function (): void {
     designProvision();
     designPublishPost('Post footer test', 'post-footer-test');
 
@@ -161,19 +161,19 @@ it('every storefront layout renders a footer contentinfo landmark', function () 
     foreach ($urls as $url) {
         $html = $this->get($url)->assertOk()->getContent();
 
-        expect(str_contains($html, '<footer'))->toBeTrue("Missing <footer on {$url}");
-        expect(str_contains($html, 'site-footer'))->toBeTrue("Missing .site-footer class on {$url}");
+        expect(str_contains((string) $html, '<footer'))->toBeTrue("Missing <footer on {$url}");
+        expect(str_contains((string) $html, 'site-footer'))->toBeTrue("Missing .site-footer class on {$url}");
     }
 });
 
 // ─── og:image per-entry ───────────────────────────────────────────────────────
 
-it('emits og:image for a post that has a featured image in meta', function () {
+it('emits og:image for a post that has a featured image in meta', function (): void {
     designProvision();
 
     $site = Site::query()->firstWhere('name', 'An Vinh');
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
         $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 

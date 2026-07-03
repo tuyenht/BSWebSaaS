@@ -18,7 +18,7 @@ use Livewire\Livewire;
  * the block-list Page-JSON body (D1). All site-scoped by BelongsToSite + RLS.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -43,11 +43,11 @@ function seedPostCollection(string $slug = 'tin-tuc', string $name = 'Tin tức'
     return $category->id;
 }
 
-it('creates a post (type from section) with its primary category', function () {
+it('creates a post (type from section) with its primary category', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
         $categoryId = seedPostCollection();
 
@@ -70,11 +70,11 @@ it('creates a post (type from section) with its primary category', function () {
     });
 });
 
-it('publishes a post under its category path /tin-tuc/{slug}', function () {
+it('publishes a post under its category path /tin-tuc/{slug}', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'entries.publish']);
         seedPostCollection();
 
@@ -92,11 +92,11 @@ it('publishes a post under its category path /tin-tuc/{slug}', function () {
     });
 });
 
-it('requires a category when creating a post', function () {
+it('requires a category when creating a post', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
         seedPostCollection();
 
@@ -104,7 +104,7 @@ it('requires a category when creating a post', function () {
             ->test(Editor::class, ['section' => 'posts'])
             ->set('title', 'Bài 1')
             ->set('slug', 'bai-1')
-            ->set('categoryId', null)
+            ->set('categoryId')
             ->call('addBlock', 'richtext')
             ->call('save')
             ->assertHasErrors('categoryId');
@@ -113,14 +113,14 @@ it('requires a category when creating a post', function () {
     });
 });
 
-it('cannot flip a post category to another site (RLS-scoped exists)', function () {
+it('cannot flip a post category to another site (RLS-scoped exists)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
     // A post_cat that lives in site 2.
-    $foreignCategory = $tenancy->enter(2, fn () => seedPostCollection('cat-b', 'Cat B'));
+    $foreignCategory = $tenancy->enter(2, fn (): int => seedPostCollection('cat-b', 'Cat B'));
 
-    $tenancy->enter(1, function () use ($editor, $foreignCategory) {
+    $tenancy->enter(1, function () use ($editor, $foreignCategory): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
         seedPostCollection();
 
@@ -136,11 +136,11 @@ it('cannot flip a post category to another site (RLS-scoped exists)', function (
     });
 });
 
-it('lists posts for the posts section and pages by default', function () {
+it('lists posts for the posts section and pages by default', function (): void {
     $tenancy = app(Tenancy::class);
     $viewer = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($viewer) {
+    $tenancy->enter(1, function () use ($viewer): void {
         grantRole($viewer, 'editor', ['entries.view']);
         seedPostCollection();
 

@@ -18,7 +18,7 @@ use Illuminate\Auth\Access\AuthorizationException;
  * compared) — this is its first enforcement. Every user-facing grant routes through AssignRole.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -31,7 +31,7 @@ function templateRole(int $site, string $name): Role
     $tpl = PermissionRegistry::tenantRoleTemplates('corporate')[$name];
     $perms = $tpl['permissions'] === '*' ? PermissionRegistry::TENANT_PERMISSIONS : $tpl['permissions'];
 
-    return app(Tenancy::class)->enter($site, function () use ($name, $tpl, $perms) {
+    return app(Tenancy::class)->enter($site, function () use ($name, $tpl, $perms): Spatie\Permission\Contracts\Role {
         $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
         $role->forceFill(['level' => $tpl['level'], 'is_system' => true])->save();
         $role->syncPermissions($perms);
@@ -50,11 +50,11 @@ function userWithRole(int $site, string $name): User
     return $user;
 }
 
-it('lets owner grant a strictly-lower role (editor)', function () {
+it('lets owner grant a strictly-lower role (editor)', function (): void {
     $owner = userWithRole(1, 'owner');
     $editor = templateRole(1, 'editor');
 
-    $granted = app(Tenancy::class)->enter(1, function () use ($owner, $editor) {
+    $granted = app(Tenancy::class)->enter(1, function () use ($owner, $editor): true {
         app(RoleHierarchyGuard::class)->assertCanGrant($owner->fresh(), $editor);
 
         return true;
@@ -63,25 +63,25 @@ it('lets owner grant a strictly-lower role (editor)', function () {
     expect($granted)->toBeTrue();
 });
 
-it('rejects granting a higher-level role (editor → admin = escalation)', function () {
+it('rejects granting a higher-level role (editor → admin = escalation)', function (): void {
     $editor = userWithRole(1, 'editor');
     $admin = templateRole(1, 'admin');
 
     app(Tenancy::class)->enter(1, fn () => app(RoleHierarchyGuard::class)->assertCanGrant($editor->fresh(), $admin));
 })->throws(AuthorizationException::class);
 
-it('rejects granting a same-level role (strict-lower: editor → editor)', function () {
+it('rejects granting a same-level role (strict-lower: editor → editor)', function (): void {
     $editor = userWithRole(1, 'editor');
     $peer = templateRole(1, 'editor');
 
     app(Tenancy::class)->enter(1, fn () => app(RoleHierarchyGuard::class)->assertCanGrant($editor->fresh(), $peer));
 })->throws(AuthorizationException::class);
 
-it('rejects granting permissions the actor does not hold (perms-subset)', function () {
+it('rejects granting permissions the actor does not hold (perms-subset)', function (): void {
     $editor = userWithRole(1, 'editor'); // editor template lacks users.manage
 
     // A role LOWER in level (40 < 50) but carrying a permission the editor does not hold.
-    $privileged = app(Tenancy::class)->enter(1, function () {
+    $privileged = app(Tenancy::class)->enter(1, function (): Spatie\Permission\Contracts\Role {
         $role = Role::findOrCreate('site_manager', PermissionRegistry::GUARD);
         $role->forceFill(['level' => 40, 'is_system' => true])->save();
         $role->syncPermissions(['users.manage']);
@@ -92,7 +92,7 @@ it('rejects granting permissions the actor does not hold (perms-subset)', functi
     app(Tenancy::class)->enter(1, fn () => app(RoleHierarchyGuard::class)->assertCanGrant($editor->fresh(), $privileged));
 })->throws(AuthorizationException::class);
 
-it('exposes only strictly-lower, perms-subset roles via assignableRoles (visibility)', function () {
+it('exposes only strictly-lower, perms-subset roles via assignableRoles (visibility)', function (): void {
     $editor = userWithRole(1, 'editor');
     templateRole(1, 'admin');   // level 70 — above
     templateRole(1, 'owner');   // level 90 — above
@@ -106,19 +106,19 @@ it('exposes only strictly-lower, perms-subset roles via assignableRoles (visibil
         ->not->toContain('editor'); // same level excluded
 });
 
-it('rejects granting a role that belongs to another site team', function () {
+it('rejects granting a role that belongs to another site team', function (): void {
     $owner1 = userWithRole(1, 'owner');     // high level, but...
     $editorSite2 = templateRole(2, 'editor'); // ...this role lives in site 2
 
     app(Tenancy::class)->enter(1, fn () => app(RoleHierarchyGuard::class)->assertCanGrant($owner1->fresh(), $editorSite2));
 })->throws(AuthorizationException::class);
 
-it('lets a platform super_admin grant any role (bypass)', function () {
+it('lets a platform super_admin grant any role (bypass)', function (): void {
     $super = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $super->assignRole('super_admin'));
     $owner = templateRole(1, 'owner');
 
-    $granted = app(Tenancy::class)->enter(1, function () use ($super, $owner) {
+    $granted = app(Tenancy::class)->enter(1, function () use ($super, $owner): true {
         app(RoleHierarchyGuard::class)->assertCanGrant($super->fresh(), $owner);
 
         return true;
@@ -127,7 +127,7 @@ it('lets a platform super_admin grant any role (bypass)', function () {
     expect($granted)->toBeTrue();
 });
 
-it('AssignRole grants the role through the guard and writes an audit trail', function () {
+it('AssignRole grants the role through the guard and writes an audit trail', function (): void {
     $owner = userWithRole(1, 'owner');
     $target = User::factory()->create();
     $editor = templateRole(1, 'editor');

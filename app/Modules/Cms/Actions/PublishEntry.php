@@ -17,9 +17,9 @@ use RuntimeException;
  * review. Only published entries with a published translation reach the public
  * (RouteResolver). Tầng-2 (state-machine) is a deliberate later step.
  */
-final class PublishEntry
+final readonly class PublishEntry
 {
-    public function __construct(private readonly RouteSync $routes) {}
+    public function __construct(private RouteSync $routes) {}
 
     /** @return 'published'|'pending' the resulting lifecycle status */
     public function handle(Entry $entry, string $locale, User $actor): string

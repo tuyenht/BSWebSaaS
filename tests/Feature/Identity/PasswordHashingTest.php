@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
  * a defense-in-depth layer: a stolen DB without the pepper cannot be brute-forced.
  */
 
-it('round-trips through the Hash facade and is Argon2id underneath', function () {
+it('round-trips through the Hash facade and is Argon2id underneath', function (): void {
     $hash = Hash::make('correct horse battery staple');
 
     expect(Hash::check('correct horse battery staple', $hash))->toBeTrue()
@@ -17,11 +17,11 @@ it('round-trips through the Hash facade and is Argon2id underneath', function ()
         ->and($hash)->toContain('$argon2id$');
 });
 
-it('produces a distinct salted hash on every call', function () {
+it('produces a distinct salted hash on every call', function (): void {
     expect(Hash::make('same-input'))->not->toBe(Hash::make('same-input'));
 });
 
-it('binds the secret to the pepper — a different pepper rejects the hash', function () {
+it('binds the secret to the pepper — a different pepper rejects the hash', function (): void {
     $a = new PepperedArgon2IdHasher(['pepper-A'], argonTestOptions());
     $b = new PepperedArgon2IdHasher(['pepper-B'], argonTestOptions());
 
@@ -31,7 +31,7 @@ it('binds the secret to the pepper — a different pepper rejects the hash', fun
         ->and($b->check('secret', $hash))->toBeFalse();
 });
 
-it('verifies a previous-pepper hash and flags it for rehash (rotation)', function () {
+it('verifies a previous-pepper hash and flags it for rehash (rotation)', function (): void {
     $old = new PepperedArgon2IdHasher(['old-pepper'], argonTestOptions());
     $legacy = $old->make('secret');
 
@@ -45,7 +45,7 @@ it('verifies a previous-pepper hash and flags it for rehash (rotation)', functio
     expect($rotated->needsRehash($fresh))->toBeFalse();
 });
 
-it('fails closed when no pepper is configured', function () {
+it('fails closed when no pepper is configured', function (): void {
     new PepperedArgon2IdHasher([], argonTestOptions());
 })->throws(RuntimeException::class);
 

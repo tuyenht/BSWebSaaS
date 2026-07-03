@@ -11,30 +11,30 @@ use App\Modules\Tenancy\Context\Tenancy;
  * the user to the provider; the central callback resolves the origin from that state.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('redirects social-login start to the tenant login when the provider is not configured', function () {
+it('redirects social-login start to the tenant login when the provider is not configured', function (): void {
     $this->get('http://a.test/admin/oauth/google/start?purpose=login')
         ->assertRedirectContains('/admin/login')
         ->assertSessionHasErrors('oauth');
 });
 
-it('requires authentication to start an email-sender connect', function () {
+it('requires authentication to start an email-sender connect', function (): void {
     $this->get('http://a.test/admin/oauth/google/start?purpose=email')
         ->assertRedirectContains('/admin/login');
 });
 
-it('requires authentication to start a social account connect', function () {
+it('requires authentication to start a social account connect', function (): void {
     $this->get('http://a.test/admin/oauth/google/start?purpose=connect')
         ->assertRedirectContains('/admin/login');
 });
 
-it('sends a configured social-login start to the provider with a PKCE-bound state', function () {
+it('sends a configured social-login start to the provider with a PKCE-bound state', function (): void {
     // SecretCipher needs a dedicated key; the test env does not set one.
     config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
 
@@ -52,7 +52,7 @@ it('sends a configured social-login start to the provider with a PKCE-bound stat
         ->assertRedirectContains('access_type=offline');
 });
 
-it('rejects an OAuth callback carrying an unknown state', function () {
+it('rejects an OAuth callback carrying an unknown state', function (): void {
     $this->get('http://a.test/oauth/callback?state=bogus&code=whatever')
         ->assertRedirectContains('/admin/login')
         ->assertSessionHasErrors('oauth');

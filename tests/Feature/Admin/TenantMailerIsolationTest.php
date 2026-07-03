@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\TenantMailer;
@@ -15,16 +17,16 @@ use Illuminate\Support\Facades\DB;
  * Simulates worker reuse on one process (no process restart between the two sites).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate site_settings, platform_settings restart identity cascade'
     );
     seedTenancy(); // creates sites 1 (a.test) and 2 (b.test)
 });
 
-it('forces log mailer for a tenant with no email config, never leaking the previous smtp', function () {
+it('forces log mailer for a tenant with no email config, never leaking the previous smtp', function (): void {
     // Seed site A's SMTP override so it is picked up by resolve() inside site-1 context.
-    app(Tenancy::class)->enter(1, function () {
+    app(Tenancy::class)->enter(1, function (): void {
         app(SettingsRepository::class)->put('email', 'config', [
             'method' => 'smtp_password',
             'from_address' => 'mailer@site-a.com',
@@ -39,7 +41,7 @@ it('forces log mailer for a tenant with no email config, never leaking the previ
 
     // Request 1 (site A): apply() configures smtp with A's credentials.
     $resultA = null;
-    app(Tenancy::class)->enter(1, function () use (&$resultA) {
+    app(Tenancy::class)->enter(1, function () use (&$resultA): void {
         $resultA = app(TenantMailer::class)->apply();
     });
 
@@ -51,7 +53,7 @@ it('forces log mailer for a tenant with no email config, never leaking the previ
     // Request 2 (site B, same worker): no email override, no platform default.
     // apply() MUST reset to 'log' — site A's smtp config must NOT bleed through.
     $resultB = null;
-    app(Tenancy::class)->enter(2, function () use (&$resultB) {
+    app(Tenancy::class)->enter(2, function () use (&$resultB): void {
         $resultB = app(TenantMailer::class)->apply();
     });
 

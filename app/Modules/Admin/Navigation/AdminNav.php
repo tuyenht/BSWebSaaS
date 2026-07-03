@@ -24,7 +24,7 @@ final class AdminNav
      */
     public function items(?Authenticatable $user): array
     {
-        if ($user === null) {
+        if (! $user instanceof Authenticatable) {
             return [];
         }
 

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Cms\Models;
 
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -18,5 +20,6 @@ class MenuItemTranslation extends Model
 {
     use BelongsToSite;
 
+    #[\Override]
     protected $guarded = [];
 }

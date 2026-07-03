@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
@@ -11,8 +13,10 @@ use Illuminate\Console\Command;
  */
 class LangAdd extends Command
 {
+    #[\Override]
     protected $signature = 'lang:add {code : New locale code, e.g. ko} {--base=en} {--blank : Empty values instead of copying base text}';
 
+    #[\Override]
     protected $description = 'Create a new language JSON by cloning the canonical locale (keys guaranteed in sync)';
 
     public function handle(): int

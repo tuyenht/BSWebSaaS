@@ -15,14 +15,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('media', function (Blueprint $table) {
+        Schema::table('media', function (Blueprint $table): void {
             $table->unique(['site_id', 'storage_key']);
         });
     }
 
     public function down(): void
     {
-        Schema::table('media', function (Blueprint $table) {
+        Schema::table('media', function (Blueprint $table): void {
             $table->dropUnique(['site_id', 'storage_key']);
         });
     }

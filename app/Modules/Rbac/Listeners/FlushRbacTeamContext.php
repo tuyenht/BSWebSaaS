@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Rbac\Listeners;
 
 use App\Modules\Rbac\Context\TeamContext;
@@ -12,7 +14,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
  */
 final class FlushRbacTeamContext
 {
-    public function handle(object $event): void
+    public function handle(): void
     {
         app(TeamContext::class)->forget();
         app(PlatformAccess::class)->forgetMemo();

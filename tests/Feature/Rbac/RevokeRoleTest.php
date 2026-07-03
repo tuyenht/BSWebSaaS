@@ -15,7 +15,7 @@ use Illuminate\Auth\Access\AuthorizationException;
  * (strictly below your level, within your permissions, same team). Removing it writes an audit.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -25,7 +25,7 @@ beforeEach(function () {
 /** Seed a tenant role (with level) inside $site's team. */
 function seedSiteRole(int $site, string $name, int $level, array $permissions): Role
 {
-    return app(Tenancy::class)->enter($site, function () use ($name, $level, $permissions) {
+    return app(Tenancy::class)->enter($site, function () use ($name, $level, $permissions): Spatie\Permission\Contracts\Role {
         $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
         $role->forceFill(['level' => $level, 'is_system' => true])->save();
         $role->syncPermissions($permissions);
@@ -34,13 +34,13 @@ function seedSiteRole(int $site, string $name, int $level, array $permissions): 
     });
 }
 
-it('revokes a strictly-lower role and writes an audit trail', function () {
+it('revokes a strictly-lower role and writes an audit trail', function (): void {
     $owner = User::factory()->create();
     $target = User::factory()->create();
     $editor = seedSiteRole(1, 'editor', 50, ['entries.view']);
     seedSiteRole(1, 'owner', 90, PermissionRegistry::TENANT_PERMISSIONS);
 
-    app(Tenancy::class)->enter(1, function () use ($owner, $target, $editor) {
+    app(Tenancy::class)->enter(1, function () use ($owner, $target, $editor): void {
         $owner->assignRole('owner');
         $target->assignRole($editor);
     });
@@ -53,13 +53,13 @@ it('revokes a strictly-lower role and writes an audit trail', function () {
         ->and(AuditLog::query()->where('action', 'rbac.role.revoked')->exists())->toBeTrue();
 });
 
-it('refuses to revoke a role above the actor (no stripping a superior)', function () {
+it('refuses to revoke a role above the actor (no stripping a superior)', function (): void {
     $editor = User::factory()->create();
     $victim = User::factory()->create();
     seedSiteRole(1, 'editor', 50, ['entries.view']);
     $admin = seedSiteRole(1, 'admin', 70, PermissionRegistry::TENANT_PERMISSIONS);
 
-    app(Tenancy::class)->enter(1, function () use ($editor, $victim, $admin) {
+    app(Tenancy::class)->enter(1, function () use ($editor, $victim, $admin): void {
         $editor->assignRole('editor');
         $victim->assignRole($admin);
     });

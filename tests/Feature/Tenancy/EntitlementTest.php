@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Route;
 
 beforeEach(fn () => seedTenancy());
 
-it('reports a module enabled only for the site that has it', function () {
+it('reports a module enabled only for the site that has it', function (): void {
     $tenancy = app(Tenancy::class);
     $tenancy->enter(1, fn () => SiteModule::create(['module_key' => 'cms', 'enabled' => true]));
 
@@ -23,19 +23,19 @@ it('reports a module enabled only for the site that has it', function () {
         ->and($tenancy->enter(2, fn () => app(Entitlement::class)->moduleEnabled('cms')))->toBeFalse();
 });
 
-it('blocks a request into a module the site is not entitled to', function () {
+it('blocks a request into a module the site is not entitled to', function (): void {
     app(Tenancy::class)->enter(1, fn () => SiteModule::create(['module_key' => 'cms', 'enabled' => true]));
 
-    Route::middleware([SetCurrentSite::class, 'site.active', 'module:cms'])->get('/_cms', fn () => 'ok');
+    Route::middleware([SetCurrentSite::class, 'site.active', 'module:cms'])->get('/_cms', fn (): string => 'ok');
 
     $this->get('http://a.test/_cms')->assertOk();        // site 1 is entitled
     $this->get('http://b.test/_cms')->assertForbidden(); // site 2 is not
 });
 
-it('blocks a request to a non-active site', function () {
+it('blocks a request to a non-active site', function (): void {
     DB::connection('pgsql_admin')->table('sites')->where('id', 2)->update(['status' => 'suspended']);
 
-    Route::middleware([SetCurrentSite::class, 'site.active'])->get('/_active', fn () => 'ok');
+    Route::middleware([SetCurrentSite::class, 'site.active'])->get('/_active', fn (): string => 'ok');
 
     $this->get('http://a.test/_active')->assertOk();        // active
     $this->get('http://b.test/_active')->assertForbidden(); // suspended

@@ -11,11 +11,11 @@ use App\Modules\Tenancy\Context\CurrentSite;
  * the end of every Octane request/task/tick — belt-and-suspenders on top of the
  * scoped binding's automatic flush, so request A never leaks into request B.
  */
-final class FlushTenancyContext
+final readonly class FlushTenancyContext
 {
-    public function __construct(private readonly CurrentSite $current) {}
+    public function __construct(private CurrentSite $current) {}
 
-    public function handle(object $event): void
+    public function handle(): void
     {
         $this->current->clear();
     }

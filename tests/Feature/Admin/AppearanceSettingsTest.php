@@ -13,18 +13,18 @@ use Livewire\Livewire;
  * '' means inherit, so saving it drops the key (per-field merge in the resolver).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('is denied without settings.manage (route + component boot)', function () {
+it('is denied without settings.manage (route + component boot)', function (): void {
     $tenancy = app(Tenancy::class);
     $member = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($member) {
+    $tenancy->enter(1, function () use ($member): void {
         grantRole($member, 'editor', ['entries.view']);
 
         Livewire::actingAs($member->fresh())->test(AppearanceSettings::class)->assertForbidden();
@@ -35,11 +35,11 @@ it('is denied without settings.manage (route + component boot)', function () {
         ->assertForbidden();
 });
 
-it('persists only the pinned axes to the admin_theme group', function () {
+it('persists only the pinned axes to the admin_theme group', function (): void {
     $tenancy = app(Tenancy::class);
     $owner = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($owner) {
+    $tenancy->enter(1, function () use ($owner): void {
         grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
 
         Livewire::actingAs($owner->fresh())
@@ -55,11 +55,11 @@ it('persists only the pinned axes to the admin_theme group', function () {
     });
 });
 
-it('rejects a tampered value and stores nothing', function () {
+it('rejects a tampered value and stores nothing', function (): void {
     $tenancy = app(Tenancy::class);
     $owner = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($owner) {
+    $tenancy->enter(1, function () use ($owner): void {
         grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
 
         Livewire::actingAs($owner->fresh())
@@ -72,11 +72,11 @@ it('rejects a tampered value and stores nothing', function () {
     });
 });
 
-it('loads the stored pins and drops a key set back to inherit', function () {
+it('loads the stored pins and drops a key set back to inherit', function (): void {
     $tenancy = app(Tenancy::class);
     $owner = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($owner) {
+    $tenancy->enter(1, function () use ($owner): void {
         grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
         app(SettingsRepository::class)->put('admin_theme', 'config', ['scheme' => 'dark', 'topbar' => 'dark']);
 
@@ -93,10 +93,10 @@ it('loads the stored pins and drops a key set back to inherit', function () {
     });
 });
 
-it('appears in the settings nav only for settings.manage holders', function () {
+it('appears in the settings nav only for settings.manage holders', function (): void {
     $owner = User::factory()->create();
     $member = User::factory()->create();
-    app(Tenancy::class)->enter(1, function () use ($owner, $member) {
+    app(Tenancy::class)->enter(1, function () use ($owner, $member): void {
         grantRole($owner, 'owner', ['settings.manage', 'entries.view']);
         grantRole($member, 'editor', ['entries.view']);
     });

@@ -17,7 +17,7 @@ use Livewire\Livewire;
  * arbitrary/cross-site string from the wire payload.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -38,10 +38,10 @@ function seedPickableMedia(array $attrs = []): Media
     ], $attrs));
 }
 
-it('stores the picked cover as meta[image_url] = storage_key on save', function () {
+it('stores the picked cover as meta[image_url] = storage_key on save', function (): void {
     $editor = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($editor) {
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
         $media = seedPickableMedia();
 
@@ -60,10 +60,10 @@ it('stores the picked cover as meta[image_url] = storage_key on save', function 
     });
 });
 
-it('loads an existing cover into the editor on edit', function () {
+it('loads an existing cover into the editor on edit', function (): void {
     $editor = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($editor) {
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
         $media = seedPickableMedia();
 
@@ -76,10 +76,10 @@ it('loads an existing cover into the editor on edit', function () {
     });
 });
 
-it('clears the cover (removes meta[image_url]) on save', function () {
+it('clears the cover (removes meta[image_url]) on save', function (): void {
     $editor = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($editor) {
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
         $media = seedPickableMedia();
 
@@ -97,13 +97,13 @@ it('clears the cover (removes meta[image_url]) on save', function () {
     });
 });
 
-it('ignores a storage_key that is not in this site library (RLS / no injection)', function () {
+it('ignores a storage_key that is not in this site library (RLS / no injection)', function (): void {
     $editor = User::factory()->create();
-    $foreign = app(Tenancy::class)->enter(2, fn () => seedPickableMedia([
+    $foreign = app(Tenancy::class)->enter(2, fn (): Media => seedPickableMedia([
         'storage_key' => 'b/library/foreign-bbbbbbbbbbbb.png', 'hash' => str_repeat('b', 64),
     ]));
 
-    app(Tenancy::class)->enter(1, function () use ($editor, $foreign) {
+    app(Tenancy::class)->enter(1, function () use ($editor, $foreign): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
 
         Livewire::actingAs($editor->fresh())
@@ -113,10 +113,10 @@ it('ignores a storage_key that is not in this site library (RLS / no injection)'
     });
 });
 
-it('forbids picking a cover without media.view', function () {
+it('forbids picking a cover without media.view', function (): void {
     $editor = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($editor) {
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']); // no media.view
         $media = seedPickableMedia();
 
@@ -127,13 +127,13 @@ it('forbids picking a cover without media.view', function () {
     });
 });
 
-it('shows only this site library in the picker (RLS)', function () {
+it('shows only this site library in the picker (RLS)', function (): void {
     $editor = User::factory()->create();
-    app(Tenancy::class)->enter(2, fn () => seedPickableMedia([
+    app(Tenancy::class)->enter(2, fn (): Media => seedPickableMedia([
         'storage_key' => 'b/library/site-b-cover.png', 'hash' => str_repeat('2', 64), 'original_filename' => 'site-b-cover.png',
     ]));
 
-    app(Tenancy::class)->enter(1, function () use ($editor) {
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'media.view']);
         seedPickableMedia(['original_filename' => 'site-a-cover.png']);
 

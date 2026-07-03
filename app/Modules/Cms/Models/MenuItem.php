@@ -31,6 +31,7 @@ class MenuItem extends Model
 {
     use BelongsToSite;
 
+    #[\Override]
     protected $guarded = [];
 
     /**
@@ -71,6 +72,7 @@ class MenuItem extends Model
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

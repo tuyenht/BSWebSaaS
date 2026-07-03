@@ -14,7 +14,7 @@ use App\Modules\Tenancy\Context\Tenancy;
  * plane: it must never emit sidebar/topbar/position attributes.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -29,7 +29,7 @@ function themeMember(int $site = 1): User
     return $user->fresh();
 }
 
-it('SSRs the app defaults when no tier pins anything', function () {
+it('SSRs the app defaults when no tier pins anything', function (): void {
     $this->actingAs(themeMember())->get('http://a.test/admin/content')
         ->assertOk()
         ->assertSee('data-bs-theme="light"', false)
@@ -38,7 +38,7 @@ it('SSRs the app defaults when no tier pins anything', function () {
         ->assertSee('data-layout-position="fixed"', false);
 });
 
-it('applies the site default from the admin_theme settings group', function () {
+it('applies the site default from the admin_theme settings group', function (): void {
     app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)
         ->put('admin_theme', 'config', ['scheme' => 'dark', 'sidebar' => 'light']));
 
@@ -49,7 +49,7 @@ it('applies the site default from the admin_theme settings group', function () {
         ->assertSee('data-topbar="light"', false); // unpinned axis stays on the app default
 });
 
-it('lets a per-user pin win over the site default, per field', function () {
+it('lets a per-user pin win over the site default, per field', function (): void {
     app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)
         ->put('admin_theme', 'config', ['scheme' => 'dark', 'topbar' => 'dark']));
 
@@ -63,7 +63,7 @@ it('lets a per-user pin win over the site default, per field', function () {
         ->assertSee('data-topbar="dark"', false);   // unpinned field: site default shows through
 });
 
-it('ignores stored values outside the allow-list (fail-safe read)', function () {
+it('ignores stored values outside the allow-list (fail-safe read)', function (): void {
     app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)
         ->put('admin_theme', 'config', ['scheme' => 'hotdog']));
 
@@ -79,7 +79,7 @@ it('ignores stored values outside the allow-list (fail-safe read)', function () 
         ->assertDontSee('hotdog');
 });
 
-it('keeps site defaults isolated per site', function () {
+it('keeps site defaults isolated per site', function (): void {
     app(Tenancy::class)->enter(1, fn () => app(SettingsRepository::class)
         ->put('admin_theme', 'config', ['sidebar' => 'light']));
 
@@ -88,7 +88,7 @@ it('keeps site defaults isolated per site', function () {
         ->assertSee('data-sidebar="dark"', false); // site 1's pin never bleeds into site 2
 });
 
-it('emits only the scheme on the platform console (scheme-only plane)', function () {
+it('emits only the scheme on the platform console (scheme-only plane)', function (): void {
     $host = (string) config('tenancy.platform_host');
     $operator = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));

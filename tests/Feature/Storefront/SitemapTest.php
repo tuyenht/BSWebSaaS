@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  * the per-host Sitemap: directive.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -35,7 +35,7 @@ function sitemapSeedAnVinh(): void
     app(Tenancy::class)->enter($site->id, fn () => app(SeedAnVinhContent::class)->handle());
 }
 
-it('GET /sitemap.xml returns 200 application/xml with a valid urlset', function () {
+it('GET /sitemap.xml returns 200 application/xml with a valid urlset', function (): void {
     sitemapSeedAnVinh();
 
     $response = $this->get('http://anvinh.test/sitemap.xml')->assertOk();
@@ -49,7 +49,7 @@ it('GET /sitemap.xml returns 200 application/xml with a valid urlset', function 
         ->toContain('</urlset>');
 });
 
-it('sitemap contains expected An Vinh paths as absolute URLs', function () {
+it('sitemap contains expected An Vinh paths as absolute URLs', function (): void {
     sitemapSeedAnVinh();
 
     $xml = $this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent();
@@ -69,7 +69,7 @@ it('sitemap contains expected An Vinh paths as absolute URLs', function () {
     expect($xml)->toContain('<loc>http://anvinh.test/du-an/day-chuyen-lap-rap-tu-dong</loc>');
 });
 
-it('sitemap is RLS-scoped: a second site does not see the first site routes', function () {
+it('sitemap is RLS-scoped: a second site does not see the first site routes', function (): void {
     sitemapSeedAnVinh();
 
     // Provision a second tenant — default ProvisionSite only (no An Vinh content),
@@ -88,7 +88,7 @@ it('sitemap is RLS-scoped: a second site does not see the first site routes', fu
     expect($otherXml)->not->toContain('/san-pham');
 });
 
-it('GET /robots.txt returns 200 with a per-host Sitemap: directive', function () {
+it('GET /robots.txt returns 200 with a per-host Sitemap: directive', function (): void {
     sitemapSeedAnVinh();
 
     $body = $this->get('http://anvinh.test/robots.txt')->assertOk()->getContent();

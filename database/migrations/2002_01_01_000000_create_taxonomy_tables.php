@@ -20,7 +20,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('taxonomies', function (Blueprint $table) {
+        Schema::create('taxonomies', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('vocabulary');                       // post_cat|product_cat|tag|…
@@ -35,7 +35,7 @@ return new class extends Migration
             $table->index(['site_id', 'vocabulary']);
         });
 
-        Schema::create('taxonomy_translations', function (Blueprint $table) {
+        Schema::create('taxonomy_translations', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('taxonomy_id')->constrained('taxonomies')->cascadeOnDelete();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
@@ -48,7 +48,7 @@ return new class extends Migration
             $table->index(['site_id', 'locale', 'slug']);
         });
 
-        Schema::create('entry_taxonomies', function (Blueprint $table) {
+        Schema::create('entry_taxonomies', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->foreignId('entry_id')->constrained('entries')->cascadeOnDelete();

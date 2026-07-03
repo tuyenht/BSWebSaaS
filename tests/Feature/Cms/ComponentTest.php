@@ -15,7 +15,7 @@ use App\Modules\Theme\Rendering\BlockRenderer;
 
 beforeEach(fn () => seedTenancy());
 
-it('collects components from the theme and from modules into one registry', function () {
+it('collects components from the theme and from modules into one registry', function (): void {
     $types = app(ComponentRegistry::class)->types();
 
     expect($types)->toContain('hero')        // theme static
@@ -23,8 +23,8 @@ it('collects components from the theme and from modules into one registry', func
         ->toContain('latest_posts');         // Cms data-bound
 });
 
-it('renders a data-bound component sourced from another object (latest posts)', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('renders a data-bound component sourced from another object (latest posts)', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         foreach (['Bai moi nhat', 'Bai cu hon'] as $i => $title) {
             $post = Entry::create(['type' => 'post', 'status' => 'published', 'published_at' => now()->subDays($i)]);
             $post->translations()->create([
@@ -43,8 +43,8 @@ it('renders a data-bound component sourced from another object (latest posts)', 
     });
 });
 
-it('links each latest post to its canonical route', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('links each latest post to its canonical route', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
         $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
 
@@ -63,8 +63,8 @@ it('links each latest post to its canonical route', function () {
     });
 });
 
-it('renders a homepage composed of several components', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('renders a homepage composed of several components', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $html = app(BlockRenderer::class)->render(['blocks' => [
             ['type' => 'hero', 'props' => ['heading' => 'An Vinh']],
             ['type' => 'latest_posts', 'props' => ['heading' => 'Tin tuc']],
@@ -77,14 +77,14 @@ it('renders a homepage composed of several components', function () {
     });
 });
 
-it('every registered component declares a typed prop schema (§E7)', function () {
+it('every registered component declares a typed prop schema (§E7)', function (): void {
     $registry = app(ComponentRegistry::class);
 
     foreach ($registry->types() as $type) {
         $schema = $registry->get($type)->schema();
         expect($schema)->toBeArray();
 
-        foreach ($schema as $prop => $spec) {
+        foreach ($schema as $spec) {
             expect($spec)->toBeArray()->toHaveKey('type');
             expect(['text', 'textarea', 'url', 'int', 'list'])->toContain($spec['type']);
 
@@ -96,8 +96,8 @@ it('every registered component declares a typed prop schema (§E7)', function ()
     }
 });
 
-it('renders a features block from its items[] schema shape', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('renders a features block from its items[] schema shape', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $html = app(BlockRenderer::class)->render(['blocks' => [
             ['type' => 'features', 'props' => [
                 'heading' => 'Dich vu',
@@ -114,8 +114,8 @@ it('renders a features block from its items[] schema shape', function () {
     });
 });
 
-it('renders a richtext block from its paragraphs[] schema shape', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('renders a richtext block from its paragraphs[] schema shape', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $html = app(BlockRenderer::class)->render(['blocks' => [
             ['type' => 'richtext', 'props' => ['heading' => 'Ve chung toi', 'paragraphs' => ['Doan mot.', 'Doan hai.']]],
         ]]);
@@ -125,8 +125,8 @@ it('renders a richtext block from its paragraphs[] schema shape', function () {
     });
 });
 
-it('coerces a string limit from the editor and honours it (int prop round-trip)', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('coerces a string limit from the editor and honours it (int prop round-trip)', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         foreach (range(1, 4) as $i) {
             $post = Entry::create(['type' => 'post', 'status' => 'published', 'published_at' => now()->subDays($i)]);
             $post->translations()->create([

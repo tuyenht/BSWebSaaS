@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  * hreflang (never point at an empty page). <html lang> is the locale being viewed. Kept thin.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -53,7 +53,7 @@ function provisionBilingual(): Site
 /** A page published in vi (/gioi-thieu) + en (/about). */
 function seedAboutPage(int $site): void
 {
-    app(Tenancy::class)->enter($site, function () {
+    app(Tenancy::class)->enter($site, function (): void {
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
         $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'published', 'body' => ['blocks' => []]]);
         $entry->translations()->create(['locale' => 'en', 'title' => 'About', 'slug' => 'about', 'status' => 'published', 'body' => ['blocks' => []]]);
@@ -62,7 +62,7 @@ function seedAboutPage(int $site): void
     });
 }
 
-it('sets <html lang> to the locale being viewed', function () {
+it('sets <html lang> to the locale being viewed', function (): void {
     $site = provisionBilingual();
     seedAboutPage($site->id);
 
@@ -70,7 +70,7 @@ it('sets <html lang> to the locale being viewed', function () {
     expect($this->get('http://anvinh.test/en/about')->getContent())->toContain('<html lang="en">');
 });
 
-it('emits one absolute hreflang per published locale + x-default (vi view)', function () {
+it('emits one absolute hreflang per published locale + x-default (vi view)', function (): void {
     $site = provisionBilingual();
     seedAboutPage($site->id);
 
@@ -82,7 +82,7 @@ it('emits one absolute hreflang per published locale + x-default (vi view)', fun
         ->toContain('<link rel="alternate" hreflang="x-default" href="http://anvinh.test/gioi-thieu">');
 });
 
-it('emits reciprocal hreflang from the en view (back to vi + self en)', function () {
+it('emits reciprocal hreflang from the en view (back to vi + self en)', function (): void {
     $site = provisionBilingual();
     seedAboutPage($site->id);
 
@@ -95,9 +95,9 @@ it('emits reciprocal hreflang from the en view (back to vi + self en)', function
         ->toContain('<html lang="en">');
 });
 
-it('omits hreflang for a locale the page is not published in', function () {
+it('omits hreflang for a locale the page is not published in', function (): void {
     $site = provisionBilingual();   // 'en' enabled site-wide
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         // A page published in vi ONLY (no en translation/route). Uses /chinh-sach because
         // /lien-he is now an auto-provisioned contact route (would collide on the unique path).
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
@@ -113,7 +113,7 @@ it('omits hreflang for a locale the page is not published in', function () {
         ->not->toContain('hreflang="en"');   // page has no en translation → no en hreflang
 });
 
-it('self-references hreflang on a single-locale page', function () {
+it('self-references hreflang on a single-locale page', function (): void {
     provisionAnVinhSite();   // pure vi site (hot-path shape)
 
     $html = $this->get('http://anvinh.test/')->assertOk()->getContent();

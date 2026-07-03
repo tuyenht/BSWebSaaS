@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Tenancy\Models;
 
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -16,5 +18,6 @@ class SiteProfileTranslation extends Model
 {
     use BelongsToSite;
 
+    #[\Override]
     protected $guarded = [];
 }

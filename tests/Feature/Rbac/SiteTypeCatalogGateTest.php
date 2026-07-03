@@ -18,14 +18,14 @@ use Illuminate\Support\Facades\Gate;
  * The seed path writes raw DB inside the migration, so it never touches the gate.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('locks site_types catalog writes behind a platform-only gate (gate-first)', function () {
+it('locks site_types catalog writes behind a platform-only gate (gate-first)', function (): void {
     expect(PermissionRegistry::PLATFORM_PERMISSIONS)->toContain('platform.site_types.manage');
 
     // super_admin — short-circuits every gate (Gate::before).
@@ -38,7 +38,7 @@ it('locks site_types catalog writes behind a platform-only gate (gate-first)', f
 
     // platform operator — granted exactly the catalog permission (not super_admin).
     $operator = User::factory()->create();
-    app(PlatformAccess::class)->onPlatform(function () use ($operator) {
+    app(PlatformAccess::class)->onPlatform(function () use ($operator): void {
         Permission::findOrCreate('platform.site_types.manage', PermissionRegistry::GUARD);
         $role = Role::findOrCreate('catalog_operator', PermissionRegistry::GUARD);
         $role->forceFill(['level' => 60, 'is_system' => true])->save();
@@ -51,7 +51,7 @@ it('locks site_types catalog writes behind a platform-only gate (gate-first)', f
         ->and(Gate::forUser($operator->fresh())->allows('platform.site_types.manage'))->toBeTrue();
 });
 
-it('does not let the gate block the system seed — corporate survives the migration', function () {
+it('does not let the gate block the system seed — corporate survives the migration', function (): void {
     // The corporate row is seeded by raw DB inside the migration (privileged role), never invoking
     // the gate. Its presence proves system/seed writes are not blocked (no app-layer write exists in GĐ1).
     expect(DB::table('site_types')->where('key', 'corporate')->exists())->toBeTrue();

@@ -19,14 +19,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('sites', function (Blueprint $table) {
+        Schema::table('sites', function (Blueprint $table): void {
             $table->dropColumn('default_locale');
         });
     }
 
     public function down(): void
     {
-        Schema::table('sites', function (Blueprint $table) {
+        Schema::table('sites', function (Blueprint $table): void {
             $table->string('default_locale', 12)->default('vi');
         });
 

@@ -13,19 +13,19 @@ use App\Modules\Tenancy\Context\Tenancy;
  * platform super_admin overrides every gate, in any tenant context.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('scopes tenant permissions by site (team = site_id)', function () {
+it('scopes tenant permissions by site (team = site_id)', function (): void {
     $tenancy = app(Tenancy::class);
     $user = User::factory()->create();
 
     // Grant an editor role carrying entries.publish on site 1 only.
-    $tenancy->enter(1, function () use ($user) {
+    $tenancy->enter(1, function () use ($user): void {
         $role = Role::findOrCreate('editor', PermissionRegistry::GUARD);
         $role->givePermissionTo('entries.publish');
         $user->assignRole($role);
@@ -35,7 +35,7 @@ it('scopes tenant permissions by site (team = site_id)', function () {
         ->and($tenancy->enter(2, fn () => $user->fresh()->can('entries.publish')))->toBeFalse();
 });
 
-it('lets a platform super_admin pass every gate in any tenant context', function () {
+it('lets a platform super_admin pass every gate in any tenant context', function (): void {
     $tenancy = app(Tenancy::class);
     $user = User::factory()->create();
 

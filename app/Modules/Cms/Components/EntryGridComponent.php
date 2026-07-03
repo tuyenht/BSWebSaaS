@@ -3,6 +3,7 @@
 namespace App\Modules\Cms\Components;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Contracts\Component;
@@ -15,12 +16,12 @@ use Illuminate\Database\Eloquent\Builder;
  * unlike it, it filters by taxonomy and carries a richer card. Reusable — drives the An Vinh
  * projects (du-an) grid, but takes any taxonomy_slug.
  */
-final class EntryGridComponent implements Component
+final readonly class EntryGridComponent implements Component
 {
     /** Cards display ~480px wide; 640 (the next width on the Worker whitelist) keeps them crisp on retina. */
-    private const CARD_WIDTH = 640;
+    private const int CARD_WIDTH = 640;
 
-    public function __construct(private readonly MediaUrlResolver $media) {}
+    public function __construct(private MediaUrlResolver $media) {}
 
     public function view(): string
     {
@@ -81,10 +82,10 @@ final class EntryGridComponent implements Component
                 $image = isset($meta['image_url']) && is_string($meta['image_url']) ? $meta['image_url'] : '';
 
                 return [
-                    'title' => $translation !== null ? $translation->title : '',
+                    'title' => $translation instanceof EntryTranslation ? $translation->title : '',
                     'url' => $route !== null ? $route->path : '',
                     'image' => $this->resolveImage($image),
-                    'short_outcome' => $translation !== null ? ($translation->excerpt ?? '') : '',
+                    'short_outcome' => $translation instanceof EntryTranslation ? ($translation->excerpt ?? '') : '',
                     'sector' => $sectorTranslation !== null ? $sectorTranslation->name : '',
                 ];
             })

@@ -11,13 +11,13 @@ use Illuminate\Support\Str;
  * go through an explicit setter, never a request-data spread.
  */
 
-it('defaults preferences to an empty array', function () {
+it('defaults preferences to an empty array', function (): void {
     $user = User::factory()->create();
 
     expect($user->refresh()->preferences)->toBe([]);
 });
 
-it('round-trips nested preference values through the jsonb cast', function () {
+it('round-trips nested preference values through the jsonb cast', function (): void {
     $user = User::factory()->create();
 
     $user->preferences = ['theme' => ['scheme' => 'dark', 'sidebar' => 'compact']];
@@ -28,12 +28,12 @@ it('round-trips nested preference values through the jsonb cast', function () {
         ->toEqual(['theme' => ['scheme' => 'dark', 'sidebar' => 'compact']]);
 });
 
-it('guards preferences against mass assignment while other fields still fill', function () {
+it('guards preferences against mass assignment while other fields still fill', function (): void {
     // Unique email per run — the suite has no per-test rollback (shared dev DB), so a
     // hardcoded address would collide across runs.
     $user = User::create([
         'name' => 'Mass Assign Probe',
-        'email' => 'probe-'.(string) Str::ulid().'@example.test',
+        'email' => 'probe-'.Str::ulid().'@example.test',
         'password' => 'irrelevant-plaintext',
         'preferences' => ['injected' => 'nope'],
     ]);

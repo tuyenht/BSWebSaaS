@@ -3,6 +3,7 @@
 namespace App\Modules\Cms\Components;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Shared\Contracts\Component;
 
 /**
@@ -54,7 +55,7 @@ final class LatestPostsComponent implements Component
                 $route = $entry->routes->firstWhere('locale', $locale);
 
                 return [
-                    'title' => $translation !== null ? $translation->title : '',
+                    'title' => $translation instanceof EntryTranslation ? $translation->title : '',
                     'url' => $route !== null ? $route->path : '',
                 ];
             })

@@ -14,8 +14,10 @@ use Spatie\Permission\PermissionRegistrar;
  */
 final class SyncRbac extends Command
 {
+    #[\Override]
     protected $signature = 'rbac:sync';
 
+    #[\Override]
     protected $description = 'Sync permissions + platform roles from the registry (idempotent).';
 
     public function handle(PermissionRegistrar $registrar): int

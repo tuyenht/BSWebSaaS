@@ -17,18 +17,18 @@ use Livewire\Livewire;
  * BelongsToSite + RLS.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('creates a draft page and persists its Page-JSON translation (no route yet)', function () {
+it('creates a draft page and persists its Page-JSON translation (no route yet)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any']);
 
         Livewire::actingAs($editor->fresh())
@@ -53,11 +53,11 @@ it('creates a draft page and persists its Page-JSON translation (no route yet)',
     });
 });
 
-it('adds, reorders and removes blocks from the registry', function () {
+it('adds, reorders and removes blocks from the registry', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create']);
 
         $component = Livewire::actingAs($editor->fresh())
@@ -76,11 +76,11 @@ it('adds, reorders and removes blocks from the registry', function () {
     });
 });
 
-it('refuses to add an unregistered block type', function () {
+it('refuses to add an unregistered block type', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create']);
 
         Livewire::actingAs($editor->fresh())
@@ -91,11 +91,11 @@ it('refuses to add an unregistered block type', function () {
     });
 });
 
-it('rejects an unknown block on save and persists nothing (block lạ)', function () {
+it('rejects an unknown block on save and persists nothing (block lạ)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
 
         Livewire::actingAs($editor->fresh())
@@ -110,11 +110,11 @@ it('rejects an unknown block on save and persists nothing (block lạ)', functio
     });
 });
 
-it('publishes a page straight through for an editor (status + route + published_at)', function () {
+it('publishes a page straight through for an editor (status + route + published_at)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']);
 
         Livewire::actingAs($editor->fresh())
@@ -133,11 +133,11 @@ it('publishes a page straight through for an editor (status + route + published_
     });
 });
 
-it('parks an author submission as pending (no publish permission, no route)', function () {
+it('parks an author submission as pending (no publish permission, no route)', function (): void {
     $tenancy = app(Tenancy::class);
     $author = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($author) {
+    $tenancy->enter(1, function () use ($author): void {
         grantRole($author, 'author', ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit']);
 
         Livewire::actingAs($author->fresh())
@@ -156,16 +156,16 @@ it('parks an author submission as pending (no publish permission, no route)', fu
     });
 });
 
-it('lists only the current site pages', function () {
+it('lists only the current site pages', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(2, function () {
+    $tenancy->enter(2, function (): void {
         $other = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => null]);
         $other->translations()->create(['locale' => 'vi', 'title' => 'B-only page', 'slug' => 'b', 'status' => 'draft', 'body' => ['blocks' => []]]);
     });
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.view']);
         $mine = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
         $mine->translations()->create(['locale' => 'vi', 'title' => 'A-only page', 'slug' => 'a', 'status' => 'draft', 'body' => ['blocks' => []]]);
@@ -177,7 +177,7 @@ it('lists only the current site pages', function () {
     });
 });
 
-it('forbids a member without entries.view from the page list', function () {
+it('forbids a member without entries.view from the page list', function (): void {
     $tenancy = app(Tenancy::class);
     $member = User::factory()->create();
     $tenancy->enter(1, fn () => grantRole($member, 'media-only', ['media.view']));
@@ -185,7 +185,7 @@ it('forbids a member without entries.view from the page list', function () {
     $this->actingAs($member)->get('http://a.test/admin/content')->assertForbidden();
 });
 
-it('forbids an author from editing another author\'s page (scope own)', function () {
+it('forbids an author from editing another author\'s page (scope own)', function (): void {
     $tenancy = app(Tenancy::class);
     $author = User::factory()->create();
     $owner = User::factory()->create();
@@ -201,7 +201,7 @@ it('forbids an author from editing another author\'s page (scope own)', function
     $this->actingAs($author)->get("http://a.test/admin/content/{$ulid}/edit")->assertForbidden();
 });
 
-it('persists under the site default locale, not a hardcoded vi', function () {
+it('persists under the site default locale, not a hardcoded vi', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
@@ -213,7 +213,7 @@ it('persists under the site default locale, not a hardcoded vi', function () {
         'site_id' => 1, 'locale' => 'en', 'is_default' => true, 'enabled' => true, 'created_at' => now(), 'updated_at' => now(),
     ]);
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
 
         Livewire::actingAs($editor->fresh())
@@ -230,11 +230,11 @@ it('persists under the site default locale, not a hardcoded vi', function () {
     });
 });
 
-it('rejects a slug already owned by another page with a friendly error (no 500)', function () {
+it('rejects a slug already owned by another page with a friendly error (no 500)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any', 'entries.publish']);
 
         Livewire::actingAs($editor->fresh())
@@ -252,11 +252,11 @@ it('rejects a slug already owned by another page with a friendly error (no 500)'
     });
 });
 
-it('seeds list-typed props as empty arrays from the section schema (fixes paragraphs/items)', function () {
+it('seeds list-typed props as empty arrays from the section schema (fixes paragraphs/items)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create']);
 
         $component = Livewire::actingAs($editor->fresh())
@@ -275,11 +275,11 @@ it('seeds list-typed props as empty arrays from the section schema (fixes paragr
     });
 });
 
-it('adds, reorders and removes items within a list prop (repeater)', function () {
+it('adds, reorders and removes items within a list prop (repeater)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create']);
 
         $component = Livewire::actingAs($editor->fresh())
@@ -302,11 +302,11 @@ it('adds, reorders and removes items within a list prop (repeater)', function ()
     });
 });
 
-it('round-trips nested list props through save', function () {
+it('round-trips nested list props through save', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
 
         Livewire::actingAs($editor->fresh())
@@ -327,11 +327,11 @@ it('round-trips nested list props through save', function () {
     });
 });
 
-it('adds items to a scalar list prop and round-trips them (richtext paragraphs)', function () {
+it('adds items to a scalar list prop and round-trips them (richtext paragraphs)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
 
         Livewire::actingAs($editor->fresh())

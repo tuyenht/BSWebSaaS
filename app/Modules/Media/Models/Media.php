@@ -30,13 +30,16 @@ final class Media extends Model
     use SoftDeletes;
 
     /** Explicit so the irregular plural of "Media" never surprises the table name. */
+    #[\Override]
     protected $table = 'media';
 
+    #[\Override]
     protected $guarded = [];
 
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

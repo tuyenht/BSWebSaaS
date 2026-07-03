@@ -36,19 +36,19 @@ use Throwable;
  * Security: state + login token are single-use (Cache::pull); social login NEVER auto-
  * provisions — the provider-verified email must already be a member of the origin site.
  */
-final class OAuthController
+final readonly class OAuthController
 {
-    private const STATE_TTL = 600;
+    private const int STATE_TTL = 600;
 
-    private const LOGIN_TTL = 120;
+    private const int LOGIN_TTL = 120;
 
     public function __construct(
-        private readonly OAuthFlow $flow,
-        private readonly SocialAuth $social,
-        private readonly SettingsRepository $tenant,
-        private readonly PlatformSettings $platform,
-        private readonly PlatformAccess $platformAccess,
-        private readonly Tenancy $tenancy,
+        private OAuthFlow $flow,
+        private SocialAuth $social,
+        private SettingsRepository $tenant,
+        private PlatformSettings $platform,
+        private PlatformAccess $platformAccess,
+        private Tenancy $tenancy,
     ) {}
 
     public function start(Request $request, string $provider): RedirectResponse
@@ -231,7 +231,7 @@ final class OAuthController
             'refresh_token' => SecretCipher::encrypt($refresh),
             'email' => $connectedEmail,
         ]);
-        $cfg['from_address'] = $cfg['from_address'] ?? $connectedEmail;
+        $cfg['from_address'] ??= $connectedEmail;
         $this->tenant->put('email', 'config', $cfg);
 
         return redirect()->away($this->originPath($origin, 'settings/email').'?oauth=connected');

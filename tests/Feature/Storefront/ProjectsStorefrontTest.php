@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * with breadcrumb JSON-LD. All within the Query Budget (N+1 invariant).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -35,10 +35,10 @@ function seedAnVinhStorefront(): void
     app(Tenancy::class)->enter($site->id, fn () => app(SeedAnVinhContent::class)->handle());
 }
 
-it('lists the projects at /du-an within budget', function () {
+it('lists the projects at /du-an within budget', function (): void {
     seedAnVinhStorefront();
 
-    $count = countQueries(function () {
+    $count = countQueries(function (): void {
         $html = $this->get('http://anvinh.test/du-an')->assertOk()->getContent();
 
         expect($html)
@@ -54,7 +54,7 @@ it('lists the projects at /du-an within budget', function () {
     expect($count)->toBeLessThanOrEqual(18);
 });
 
-it('renders a project detail with breadcrumb JSON-LD', function () {
+it('renders a project detail with breadcrumb JSON-LD', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/du-an/day-chuyen-lap-rap-tu-dong')->assertOk()->getContent();
@@ -67,10 +67,10 @@ it('renders a project detail with breadcrumb JSON-LD', function () {
         ->toContain('"name":"Dự án"');
 });
 
-it('lists the services at /dich-vu within budget', function () {
+it('lists the services at /dich-vu within budget', function (): void {
     seedAnVinhStorefront();
 
-    $count = countQueries(function () {
+    $count = countQueries(function (): void {
         $html = $this->get('http://anvinh.test/dich-vu')->assertOk()->getContent();
 
         expect($html)
@@ -82,7 +82,7 @@ it('lists the services at /dich-vu within budget', function () {
     expect($count)->toBeLessThanOrEqual(17);
 });
 
-it('renders a service detail page with breadcrumb', function () {
+it('renders a service detail page with breadcrumb', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/dich-vu/thiet-ke-jig-do-ga')->assertOk()->getContent();
@@ -95,7 +95,7 @@ it('renders a service detail page with breadcrumb', function () {
         ->toContain('"name":"Dịch vụ"');
 });
 
-it('lists the products at /san-pham', function () {
+it('lists the products at /san-pham', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/san-pham')->assertOk()->getContent();
@@ -106,7 +106,7 @@ it('lists the products at /san-pham', function () {
         ->toContain('href="/san-pham/truc-may-cnc"');
 });
 
-it('renders a product detail page with breadcrumb', function () {
+it('renders a product detail page with breadcrumb', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/san-pham/truc-may-cnc')->assertOk()->getContent();
@@ -118,7 +118,7 @@ it('renders a product detail page with breadcrumb', function () {
         ->toContain('"name":"Sản phẩm"');
 });
 
-it('renders /gioi-thieu with about content', function () {
+it('renders /gioi-thieu with about content', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/gioi-thieu')->assertOk()->getContent();
@@ -132,7 +132,7 @@ it('renders /gioi-thieu with about content', function () {
         ->toContain('Tầm Nhìn');   // 'Tầm Nhìn' in body
 });
 
-it('renders /doi-tac with partner names and testimonials', function () {
+it('renders /doi-tac with partner names and testimonials', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/doi-tac')->assertOk()->getContent();
@@ -144,7 +144,7 @@ it('renders /doi-tac with partner names and testimonials', function () {
         ->toContain('Vinmanutech');
 });
 
-it('renders /lien-he with real NAP', function () {
+it('renders /lien-he with real NAP', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/lien-he')->assertOk()->getContent();
@@ -154,7 +154,7 @@ it('renders /lien-he with real NAP', function () {
         ->toContain('quybv@ckanvinh.vn');
 });
 
-it('renders the home page with An Vinh heading and resolved media URLs in entry_grid cards', function () {
+it('renders the home page with An Vinh heading and resolved media URLs in entry_grid cards', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
@@ -173,7 +173,7 @@ it('renders the home page with An Vinh heading and resolved media URLs in entry_
     expect($html)->toContain('site-header__logo')->toContain('an-vinh/brand/logo-');
 });
 
-it('news posts are listed at /tin-tuc', function () {
+it('news posts are listed at /tin-tuc', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/tin-tuc')->assertOk()->getContent();
@@ -183,7 +183,7 @@ it('news posts are listed at /tin-tuc', function () {
         ->toContain('An Vinh tổ chức team building 2024');
 });
 
-it('emits og:image from brand setting on the home page', function () {
+it('emits og:image from brand setting on the home page', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
@@ -193,7 +193,7 @@ it('emits og:image from brand setting on the home page', function () {
     expect($html)->toContain('<meta property="og:image" content="http');
 });
 
-it('category list /san-pham has non-empty meta description via brand fallback', function () {
+it('category list /san-pham has non-empty meta description via brand fallback', function (): void {
     seedAnVinhStorefront();
 
     $html = $this->get('http://anvinh.test/san-pham')->assertOk()->getContent();

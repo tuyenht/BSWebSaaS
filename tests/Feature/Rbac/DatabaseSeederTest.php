@@ -14,12 +14,12 @@ use Illuminate\Support\Facades\DB;
  * constraint — so the documented genesis path could never actually run.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     DB::connection('pgsql_admin')->statement('truncate users restart identity cascade');
 });
 
-it('seeds the platform operator with a ulid and the super_admin role', function () {
+it('seeds the platform operator with a ulid and the super_admin role', function (): void {
     $this->seed(DatabaseSeeder::class);
 
     $operator = User::query()->where('email', 'admin@baoson.net')->firstOrFail();

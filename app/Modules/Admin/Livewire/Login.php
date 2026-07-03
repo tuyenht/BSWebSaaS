@@ -24,9 +24,9 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class Login extends Component
 {
-    private const MAX_ATTEMPTS = 5;
+    private const int MAX_ATTEMPTS = 5;
 
-    private const DECAY_SECONDS = 60;
+    private const int DECAY_SECONDS = 60;
 
     public string $email = '';
 
@@ -39,7 +39,7 @@ final class Login extends Component
             'password' => 'required',
         ]);
 
-        $key = 'admin-login:'.sha1(Str::lower($this->email).'|'.(string) request()->ip());
+        $key = 'admin-login:'.sha1(Str::lower($this->email).'|'.request()->ip());
 
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
             Audit::record('auth.login.throttled', [

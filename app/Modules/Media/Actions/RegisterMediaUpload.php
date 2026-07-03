@@ -21,9 +21,9 @@ use RuntimeException;
  * final content-hash key and records the row. A spoofed / oversize / foreign upload is rejected and
  * its temp object deleted — the bytes never become a usable media row.
  */
-final class RegisterMediaUpload
+final readonly class RegisterMediaUpload
 {
-    public function __construct(private readonly CurrentSite $current) {}
+    public function __construct(private CurrentSite $current) {}
 
     public function handle(string $tempKey, string $filename, ?int $createdBy = null, ?int $width = null, ?int $height = null, string $collection = 'library'): Media
     {
@@ -56,7 +56,7 @@ final class RegisterMediaUpload
         $contents = (string) $disk->get($tempKey);
 
         // 4) Real MIME from magic bytes — NEVER trust the client header/extension.
-        $mime = (string) (new finfo(FILEINFO_MIME_TYPE))->buffer($contents);
+        $mime = (string) new finfo(FILEINFO_MIME_TYPE)->buffer($contents);
         $ext = UploadMedia::MIME_EXT[$mime] ?? null;
         if ($ext === null) {
             $disk->delete($tempKey);

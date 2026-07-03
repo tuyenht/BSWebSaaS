@@ -16,7 +16,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('tenant_probes', function (Blueprint $table) {
+        Schema::create('tenant_probes', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('value');

@@ -13,9 +13,9 @@ use Symfony\Component\HttpFoundation\Response;
  * Defense layer #1: a request into a module is rejected unless the current site is
  * entitled to it. Usage: ->middleware('module:cms'). Runs after SetCurrentSite.
  */
-final class EnsureModuleEnabled
+final readonly class EnsureModuleEnabled
 {
-    public function __construct(private readonly Entitlement $entitlement) {}
+    public function __construct(private Entitlement $entitlement) {}
 
     /**
      * @param  Closure(Request): Response  $next

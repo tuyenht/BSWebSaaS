@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
  */
 final class SiteLocale
 {
-    private const FALLBACK = 'vi';
+    private const string FALLBACK = 'vi';
 
     /** @var array<int, string> memoized default per site id (request-scoped) */
     private array $memo = [];

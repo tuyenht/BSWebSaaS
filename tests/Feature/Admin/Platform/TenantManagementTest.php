@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
  * a tenant user is forbidden. The list count of sites must not N+1.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy(); // tenant T1 (id 1) + sites A(1)/B(2) + domains a.test/b.test
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -31,7 +31,7 @@ function actingAsOperator(string $role): User
     return $user->fresh();
 }
 
-it('lists tenants for an operator, linked by ulid', function () {
+it('lists tenants for an operator, linked by ulid', function (): void {
     $host = (string) config('tenancy.platform_host');
     $user = actingAsOperator('support');
     $tenant = Tenant::query()->firstOrFail();
@@ -42,7 +42,7 @@ it('lists tenants for an operator, linked by ulid', function () {
         ->assertSee(route('platform.tenants.show', $tenant->ulid));
 });
 
-it('filters the tenant list by search', function () {
+it('filters the tenant list by search', function (): void {
     $host = (string) config('tenancy.platform_host');
     DB::connection('pgsql_admin')->table('tenants')->insert([
         'ulid' => 'TENANT0000000000000000002', 'name' => 'Acme Corp', 'status' => 'active',
@@ -56,7 +56,7 @@ it('filters the tenant list by search', function () {
         ->assertDontSee('T1');
 });
 
-it('shows a tenant detail with its sites and primary domain', function () {
+it('shows a tenant detail with its sites and primary domain', function (): void {
     $host = (string) config('tenancy.platform_host');
     $user = actingAsOperator('super_admin');
     $tenant = Tenant::query()->firstOrFail();
@@ -70,7 +70,7 @@ it('shows a tenant detail with its sites and primary domain', function () {
         ->assertSee('a.test'); // site A's primary domain
 });
 
-it('forbids a tenant user on the operator tenants page', function () {
+it('forbids a tenant user on the operator tenants page', function (): void {
     $host = (string) config('tenancy.platform_host');
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'admin', ['users.manage', 'entries.view']));
@@ -78,7 +78,7 @@ it('forbids a tenant user on the operator tenants page', function () {
     $this->actingAs($user)->get("http://{$host}/tenants")->assertForbidden();
 });
 
-it('lists tenants without an N+1 on the site count', function () {
+it('lists tenants without an N+1 on the site count', function (): void {
     DB::connection('pgsql_admin')->table('tenants')->insert([
         ['ulid' => 'TENANT0000000000000000002', 'name' => 'C2', 'status' => 'active', 'settings' => '{}', 'created_at' => now(), 'updated_at' => now()],
         ['ulid' => 'TENANT0000000000000000003', 'name' => 'C3', 'status' => 'active', 'settings' => '{}', 'created_at' => now(), 'updated_at' => now()],

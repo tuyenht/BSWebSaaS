@@ -12,15 +12,15 @@ use Illuminate\Support\Str;
  * backfill is the easy-to-get-wrong part, so it is asserted both directions.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement('truncate site_locales, domains, sites, tenants restart identity cascade');
 });
 
-it('has dropped sites.default_locale', function () {
+it('has dropped sites.default_locale', function (): void {
     expect(Schema::hasColumn('sites', 'default_locale'))->toBeFalse();
 });
 
-it('down() re-adds default_locale and backfills it from the is_default locale', function () {
+it('down() re-adds default_locale and backfills it from the is_default locale', function (): void {
     /** @var Migration $migration */
     $migration = require database_path('migrations/0007_01_01_000000_drop_sites_default_locale.php');
 

@@ -29,6 +29,7 @@ class Entry extends Model
     use HasUlidColumn;
     use SoftDeletes;
 
+    #[\Override]
     protected $guarded = [];
 
     /**
@@ -105,6 +106,7 @@ class Entry extends Model
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

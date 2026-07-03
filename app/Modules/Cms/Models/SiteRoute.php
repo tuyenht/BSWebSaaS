@@ -20,8 +20,10 @@ class SiteRoute extends Model
 {
     use BelongsToSite;
 
+    #[\Override]
     protected $table = 'routes';
 
+    #[\Override]
     protected $guarded = [];
 
     /**

@@ -10,11 +10,11 @@ use App\Modules\Tenancy\Context\Tenancy;
  * site_id from the current context on create.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy(); // sites 1 (a.test) + 2 (b.test)
 });
 
-it('stamps site_id from the current site context on create', function () {
+it('stamps site_id from the current site context on create', function (): void {
     $form = app(Tenancy::class)->enter(1, fn () => Form::query()->create([
         'key' => 'contact',
         'name' => ['vi' => 'Liên hệ'],
@@ -23,8 +23,8 @@ it('stamps site_id from the current site context on create', function () {
     expect($form->site_id)->toBe(1);
 });
 
-it('isolates form submissions per site (RLS fail-closed)', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('isolates form submissions per site (RLS fail-closed)', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $form = Form::query()->create(['key' => 'contact', 'name' => ['vi' => 'Liên hệ']]);
         FormSubmission::query()->create([
             'form_id' => $form->id,

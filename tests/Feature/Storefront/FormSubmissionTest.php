@@ -17,7 +17,7 @@ use Illuminate\Testing\TestResponse;
  * form 404s; too many attempts from one IP are throttled with a human-readable error.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy(); // sites 1 (a.test) / 2 (b.test)
     Notification::fake();
     Cache::flush(); // reset the per-IP rate-limiter so it doesn't leak across tests (form id is always 1)
@@ -40,7 +40,7 @@ function submitContact(array $payload): TestResponse
     return test()->post('http://a.test/forms/contact', $payload);
 }
 
-it('captures a valid lead, redirects back with a confirmation, and notifies', function () {
+it('captures a valid lead, redirects back with a confirmation, and notifies', function (): void {
     submitContact([
         'name' => 'Khách A',
         'email' => 'a@example.test',
@@ -58,7 +58,7 @@ it('captures a valid lead, redirects back with a confirmation, and notifies', fu
     Notification::assertSentOnDemand(NewLeadNotification::class);
 });
 
-it('rejects a payload missing the required name + message with friendly errors', function () {
+it('rejects a payload missing the required name + message with friendly errors', function (): void {
     submitContact(['email' => 'a@example.test'])
         ->assertRedirect()
         ->assertSessionHasErrors(['name', 'message']);
@@ -67,20 +67,20 @@ it('rejects a payload missing the required name + message with friendly errors',
     Notification::assertNothingSent();
 });
 
-it('renders validation errors in the site locale regardless of app.locale', function () {
+it('renders validation errors in the site locale regardless of app.locale', function (): void {
     config(['app.locale' => 'en']); // prod default — errors must still be vi for a vi site
 
     submitContact(['email' => 'a@example.test']) // missing name + message
         ->assertSessionHasErrors(['name' => 'Vui lòng nhập họ tên.']);
 });
 
-it('requires at least one of email or phone', function () {
+it('requires at least one of email or phone', function (): void {
     submitContact(['name' => 'Khách', 'message' => 'Xin chào'])
         ->assertRedirect()
         ->assertSessionHasErrors(['email', 'phone']);
 });
 
-it('captures but flags a honeypot-tripped submission as spam without notifying', function () {
+it('captures but flags a honeypot-tripped submission as spam without notifying', function (): void {
     submitContact([
         'name' => 'Bot',
         'email' => 'bot@spam.test',
@@ -94,12 +94,12 @@ it('captures but flags a honeypot-tripped submission as spam without notifying',
     Notification::assertNothingSent();
 });
 
-it('404s when the form key does not resolve in this site', function () {
+it('404s when the form key does not resolve in this site', function (): void {
     test()->post('http://a.test/forms/nope', ['name' => 'x', 'message' => 'y', 'email' => 'a@b.test'])
         ->assertNotFound();
 });
 
-it('throttles repeated submissions from the same IP', function () {
+it('throttles repeated submissions from the same IP', function (): void {
     $payload = ['name' => 'Khách', 'email' => 'a@example.test', 'message' => 'Xin chào'];
 
     for ($i = 0; $i < 5; $i++) {

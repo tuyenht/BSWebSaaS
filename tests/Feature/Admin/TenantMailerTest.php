@@ -11,24 +11,24 @@ use App\Modules\Tenancy\Context\Tenancy;
  * payload and crashing the send (the forgot-password 500 regression).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
     seedTenancy();
 });
 
-it('is not configured when the platform SMTP password is blank', function () {
+it('is not configured when the platform SMTP password is blank', function (): void {
     app(PlatformSettings::class)->put('email', 'config', [
         'method' => 'smtp_password',
         'from_address' => 'info@example.com',
         'smtp' => ['host' => 'smtp.gmail.com', 'username' => 'info@example.com', 'password' => ''],
     ]);
 
-    app(Tenancy::class)->enter(1, function () {
+    app(Tenancy::class)->enter(1, function (): void {
         expect(app(TenantMailer::class)->isConfigured())->toBeFalse();
     });
 });
 
-it('is configured when the platform SMTP password is present', function () {
+it('is configured when the platform SMTP password is present', function (): void {
     app(PlatformSettings::class)->put('email', 'config', [
         'method' => 'smtp_password',
         'from_address' => 'info@example.com',
@@ -39,7 +39,7 @@ it('is configured when the platform SMTP password is present', function () {
         ],
     ]);
 
-    app(Tenancy::class)->enter(1, function () {
+    app(Tenancy::class)->enter(1, function (): void {
         expect(app(TenantMailer::class)->isConfigured())->toBeTrue();
     });
 });
@@ -50,7 +50,7 @@ it('is configured when the platform SMTP password is present', function () {
  * send), and the send must never inherit an invalid global MAIL_SCHEME.
  */
 
-it('pins the scheme to smtps for an SSL / port 465 config', function () {
+it('pins the scheme to smtps for an SSL / port 465 config', function (): void {
     config(['mail.mailers.smtp.scheme' => 'ssl']); // simulate an invalid global MAIL_SCHEME
     app(PlatformSettings::class)->put('email', 'config', [
         'method' => 'smtp_password',
@@ -64,14 +64,14 @@ it('pins the scheme to smtps for an SSL / port 465 config', function () {
         ],
     ]);
 
-    app(Tenancy::class)->enter(1, function () {
+    app(Tenancy::class)->enter(1, function (): void {
         app(TenantMailer::class)->apply();
         expect(config('mail.mailers.smtp.scheme'))->toBe('smtps')
             ->and(config('mail.mailers.smtp.port'))->toBe(465);
     });
 });
 
-it('overrides the From-name with the tenant brand (site name) even on the shared platform SMTP', function () {
+it('overrides the From-name with the tenant brand (site name) even on the shared platform SMTP', function (): void {
     app(PlatformSettings::class)->put('email', 'config', [
         'method' => 'smtp_password',
         'from_name' => 'BSWebSaaS', // the platform sender name
@@ -85,13 +85,13 @@ it('overrides the From-name with the tenant brand (site name) even on the shared
         ],
     ]);
 
-    app(Tenancy::class)->enter(1, function () {
+    app(Tenancy::class)->enter(1, function (): void {
         app(TenantMailer::class)->apply();
         expect(config('mail.from.name'))->toBe('A'); // seedTenancy names site 1 "A"
     });
 });
 
-it('uses the smtp scheme for a TLS / port 587 config', function () {
+it('uses the smtp scheme for a TLS / port 587 config', function (): void {
     config(['mail.mailers.smtp.scheme' => 'ssl']);
     app(PlatformSettings::class)->put('email', 'config', [
         'method' => 'smtp_password',
@@ -105,7 +105,7 @@ it('uses the smtp scheme for a TLS / port 587 config', function () {
         ],
     ]);
 
-    app(Tenancy::class)->enter(1, function () {
+    app(Tenancy::class)->enter(1, function (): void {
         app(TenantMailer::class)->apply();
         expect(config('mail.mailers.smtp.scheme'))->toBe('smtp');
     });

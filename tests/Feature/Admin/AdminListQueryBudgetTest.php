@@ -12,17 +12,17 @@ use App\Modules\Tenancy\Context\Tenancy;
  * entries loop) scales the query count past the budget and fails CI.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('lists admin entries on a flat query budget (no N+1 across rows)', function () {
+it('lists admin entries on a flat query budget (no N+1 across rows)', function (): void {
     $editor = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($editor) {
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.view']);
 
         // Several page entries so an N+1 over rows / their translations would blow the ceiling.
@@ -42,10 +42,10 @@ it('lists admin entries on a flat query budget (no N+1 across rows)', function (
     expect($count)->toBeLessThanOrEqual(19);
 });
 
-it('lists admin members on a flat query budget (no N+1 across rows)', function () {
+it('lists admin members on a flat query budget (no N+1 across rows)', function (): void {
     $admin = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($admin) {
+    app(Tenancy::class)->enter(1, function () use ($admin): void {
         grantRole($admin, 'admin', ['users.manage', 'entries.view']);
 
         // Several members each with a role so an N+1 over their roles would blow the ceiling.

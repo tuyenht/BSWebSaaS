@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class SiteType extends Model
 {
+    #[\Override]
     protected $guarded = [];
 
     /** @return HasMany<Site, $this> */
@@ -30,6 +31,7 @@ final class SiteType extends Model
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

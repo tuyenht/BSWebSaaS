@@ -31,7 +31,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('menus', function (Blueprint $table) {
+        Schema::create('menus', function (Blueprint $table): void {
             $table->id();
             $table->ulid('ulid')->unique();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
@@ -45,7 +45,7 @@ return new class extends Migration
             $table->unique(['site_id', 'id']);              // composite-FK target (same-site refs)
         });
 
-        Schema::create('menu_assignments', function (Blueprint $table) {
+        Schema::create('menu_assignments', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('region_key');                   // theme-declared: primary|top|footer|mobile
@@ -58,7 +58,7 @@ return new class extends Migration
             $table->unique(['site_id', 'region_key', 'locale']);   // one menu per region per locale
         });
 
-        Schema::create('menu_items', function (Blueprint $table) {
+        Schema::create('menu_items', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->unsignedBigInteger('menu_id');
@@ -83,7 +83,7 @@ return new class extends Migration
             $table->index(['site_id', 'routable_type', 'routable_id']);       // D3 (type,id) + orphan sweep
         });
 
-        Schema::create('menu_item_translations', function (Blueprint $table) {
+        Schema::create('menu_item_translations', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->unsignedBigInteger('menu_item_id');

@@ -19,7 +19,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('media', function (Blueprint $table) {
+        Schema::create('media', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->ulid('ulid')->unique();
@@ -45,7 +45,7 @@ return new class extends Migration
             $table->index(['site_id', 'created_at']);             // library list (newest-first) — indexed at birth
         });
 
-        Schema::create('mediables', function (Blueprint $table) {
+        Schema::create('mediables', function (Blueprint $table): void {
             $table->id();
             // Soft ref: hard-purging a master NULLs the link (then the orphan sweep removes it),
             // so an attachment never blocks deleting a master. Nullable to allow the SET NULL.

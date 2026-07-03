@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 beforeEach(fn () => DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade'));
 
-it('records an audit entry with action + context', function () {
+it('records an audit entry with action + context', function (): void {
     Audit::record('rbac.role.granted', ['site_id' => null, 'meta' => ['role' => 'super_admin']]);
 
     $log = AuditLog::sole();
@@ -21,7 +21,7 @@ it('records an audit entry with action + context', function () {
         ->and($log->meta)->toBe(['role' => 'super_admin']);
 });
 
-it('never throws and writes nothing when the entry is invalid (best-effort)', function () {
+it('never throws and writes nothing when the entry is invalid (best-effort)', function (): void {
     // action exceeds varchar(255) → DB error → swallowed (no exception bubbles here),
     // and nothing is persisted.
     Audit::record(str_repeat('x', 300));

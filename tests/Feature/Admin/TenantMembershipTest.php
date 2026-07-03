@@ -12,34 +12,34 @@ use App\Modules\Tenancy\Context\Tenancy;
  * so a valid account from one tenant cannot enter a foreign tenant's admin.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('lets a site member into the admin shell', function () {
+it('lets a site member into the admin shell', function (): void {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
     $this->actingAs($user)->get('http://a.test/admin')->assertOk()->assertSee(__('admin.dashboard'));
 });
 
-it('forbids an authenticated non-member', function () {
+it('forbids an authenticated non-member', function (): void {
     $stranger = User::factory()->create();
 
     $this->actingAs($stranger)->get('http://a.test/admin')->assertForbidden();
 });
 
-it('lets a platform super_admin into any tenant admin (support)', function () {
+it('lets a platform super_admin into any tenant admin (support)', function (): void {
     $operator = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
 
     $this->actingAs($operator)->get('http://a.test/admin')->assertOk();
 });
 
-it('scopes membership per site — a role on site A is not membership on site B', function () {
+it('scopes membership per site — a role on site A is not membership on site B', function (): void {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 

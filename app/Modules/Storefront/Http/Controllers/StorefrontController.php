@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Http\Controllers;
 
+use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Cms\Routing\PathBuilder;
@@ -25,18 +26,18 @@ use Symfony\Component\HttpFoundation\Response;
  * otherwise 404s. The inbound path is lower-cased to match the all-lowercase slug/route
  * invariant. Runs inside the tenant context established by SetCurrentSite.
  */
-final class StorefrontController
+final readonly class StorefrontController
 {
     /** Posts per category-list page. */
-    private const POSTS_PER_PAGE = 12;
+    private const int POSTS_PER_PAGE = 12;
 
     public function __construct(
-        private readonly RouteResolver $resolver,
-        private readonly PageRenderer $renderer,
-        private readonly SiteLocale $locale,
-        private readonly MenuResolver $nav,
-        private readonly PathBuilder $paths,
-        private readonly MediaUrlResolver $media,
+        private RouteResolver $resolver,
+        private PageRenderer $renderer,
+        private SiteLocale $locale,
+        private MenuResolver $nav,
+        private PathBuilder $paths,
+        private MediaUrlResolver $media,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -59,7 +60,7 @@ final class StorefrontController
 
         if ($resolved === null) {
             $redirect = $this->resolver->redirect($locale, $path);
-            abort_if($redirect === null, 404);
+            abort_if(! $redirect instanceof Redirect, 404);
 
             return redirect()->to($redirect->to_path, $redirect->status_code);
         }
@@ -228,7 +229,7 @@ final class StorefrontController
             }
             $posts[] = [
                 'title' => $translation->title,
-                'url' => $this->paths->publicUrl('/'.$categorySlug.'/'.trim($translation->slug, '/'), $locale),
+                'url' => $this->paths->publicUrl('/'.$categorySlug.'/'.trim((string) $translation->slug, '/'), $locale),
             ];
         }
 

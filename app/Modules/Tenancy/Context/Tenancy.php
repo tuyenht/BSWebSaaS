@@ -17,11 +17,11 @@ use RuntimeException;
  * is_local=true) survives PgBouncer transaction pooling and is cleared when the
  * connection returns to the pool. CurrentSite is always cleared in finally.
  */
-final class Tenancy
+final readonly class Tenancy
 {
     public function __construct(
-        private readonly DatabaseManager $db,
-        private readonly CurrentSite $current,
+        private DatabaseManager $db,
+        private CurrentSite $current,
     ) {}
 
     /**

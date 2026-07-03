@@ -17,20 +17,20 @@ use Illuminate\Support\Facades\RateLimiter;
  * SubmitForm, and the visitor is redirected back to the page with a localized confirmation. Too
  * many attempts from one IP are throttled with a plain-language message (no 429 dead end).
  */
-final class FormSubmissionController
+final readonly class FormSubmissionController
 {
-    private const MAX_ATTEMPTS = 5;
+    private const int MAX_ATTEMPTS = 5;
 
-    private const DECAY_SECONDS = 60;
+    private const int DECAY_SECONDS = 60;
 
-    public function __construct(private readonly SubmitForm $submit) {}
+    public function __construct(private SubmitForm $submit) {}
 
     public function __invoke(StoreLeadRequest $request, string $key): RedirectResponse
     {
         $form = Form::query()->where('key', $key)->where('status', 'active')->first();
         abort_if($form === null, 404);
 
-        $throttle = 'lead-submit:'.$form->id.'|'.(string) $request->ip();
+        $throttle = 'lead-submit:'.$form->id.'|'.$request->ip();
 
         if (RateLimiter::tooManyAttempts($throttle, self::MAX_ATTEMPTS)) {
             return back()->withInput()->withErrors([

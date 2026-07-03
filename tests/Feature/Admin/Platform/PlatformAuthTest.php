@@ -7,12 +7,12 @@
  * by reusing the AdminPlane::prefix() pattern (already exercised by the login challenge routing).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
 });
 
-it('shows the forgot-password link on the platform login', function () {
+it('shows the forgot-password link on the platform login', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->get("http://{$host}/login")
@@ -20,13 +20,13 @@ it('shows the forgot-password link on the platform login', function () {
         ->assertSee(route('platform.password.request'));
 });
 
-it('still shows the forgot-password link on the tenant admin login', function () {
+it('still shows the forgot-password link on the tenant admin login', function (): void {
     $this->get('http://a.test/admin/login')
         ->assertOk()
         ->assertSee(route('admin.password.request'));
 });
 
-it('renders the platform forgot-password page', function () {
+it('renders the platform forgot-password page', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->get("http://{$host}/forgot-password")
@@ -34,7 +34,7 @@ it('renders the platform forgot-password page', function () {
         ->assertSee(__('auth.forgot_title'));
 });
 
-it('renders the platform reset-password page', function () {
+it('renders the platform reset-password page', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->get("http://{$host}/reset-password?token=tok&email=op@baoson.net")->assertOk();

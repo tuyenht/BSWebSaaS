@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Storage;
  * BelongsToSite. A spoofed extension (PHP in a .jpg) and an over-size file are rejected.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy();
     Storage::fake('r2');
 });
@@ -27,7 +27,7 @@ function pngBytes(): string
     );
 }
 
-it('stores a valid image as a single R2 master + a media row stamped to the site', function () {
+it('stores a valid image as a single R2 master + a media row stamped to the site', function (): void {
     $media = app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle(
         UploadedFile::fake()->createWithContent('Ảnh Sản Phẩm.png', pngBytes()),
         'An Vinh',
@@ -43,8 +43,8 @@ it('stores a valid image as a single R2 master + a media row stamped to the site
     Storage::disk('r2')->assertExists($media->storage_key);
 });
 
-it('dedups identical content within a site (one master, one R2 object)', function () {
-    [$first, $second, $count] = app(Tenancy::class)->enter(1, function () {
+it('dedups identical content within a site (one master, one R2 object)', function (): void {
+    [$first, $second, $count] = app(Tenancy::class)->enter(1, function (): array {
         $a = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('a.png', pngBytes()), 'An Vinh');
         $b = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', pngBytes()), 'An Vinh');
 
@@ -54,7 +54,7 @@ it('dedups identical content within a site (one master, one R2 object)', functio
     expect($second)->toBe($first)->and($count)->toBe(1);
 });
 
-it('rejects a spoofed extension by sniffing magic bytes (PHP in a .jpg)', function () {
+it('rejects a spoofed extension by sniffing magic bytes (PHP in a .jpg)', function (): void {
     // A real temp file so the action's finfo-based getMimeType() runs (the fake guesses from the
     // extension). The client mime lies ('image/jpeg'); finfo sees PHP → rejected.
     $path = (string) tempnam(sys_get_temp_dir(), 'evil');
@@ -64,14 +64,14 @@ it('rejects a spoofed extension by sniffing magic bytes (PHP in a .jpg)', functi
     app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle($spoofed, 'An Vinh'));
 })->throws(RuntimeException::class);
 
-it('rejects a file over the size limit', function () {
+it('rejects a file over the size limit', function (): void {
     app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle(
         UploadedFile::fake()->create('huge.jpg', 11 * 1024), // 11MB > 10MB
         'An Vinh',
     ));
 })->throws(RuntimeException::class);
 
-it('throws on an R2 write failure (no orphan media row)', function () {
+it('throws on an R2 write failure (no orphan media row)', function (): void {
     // Laravel's filesystem returns false (does not throw) on a failed write; the action must turn
     // that into a friendly error BEFORE inserting, or a master would point at a missing object.
     Storage::shouldReceive('disk')->with('r2')->andReturnSelf();
@@ -103,7 +103,7 @@ function uploadIniBytes(string $key): int
     };
 }
 
-it('keeps the PHP upload ceiling at or above the media size cap (browser-upload guard)', function () {
+it('keeps the PHP upload ceiling at or above the media size cap (browser-upload guard)', function (): void {
     // The real browser upload is bounded by PHP's SAPI limits: a body over upload_max_filesize /
     // post_max_size is truncated BEFORE Livewire ever sees it, surfacing as a misleading "no file"
     // error (the prod incident this guards). Keep both at/above UploadMedia::MAX_KB so the friendly

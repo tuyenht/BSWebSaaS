@@ -12,14 +12,14 @@ use App\Modules\Tenancy\Context\Tenancy;
  * widget appears ONLY when a site_key is configured (prod); dev/test render no third-party JS.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy();
     config(['services.turnstile.site_key' => '']); // dev → Turnstile widget omitted
 });
 
 function seedContactPageWithForm(int $site = 1): void
 {
-    app(Tenancy::class)->enter($site, function () {
+    app(Tenancy::class)->enter($site, function (): void {
         Form::query()->create([
             'key' => 'contact',
             'name' => ['vi' => 'Gửi yêu cầu báo giá'],
@@ -46,7 +46,7 @@ function seedContactPageWithForm(int $site = 1): void
     });
 }
 
-it('renders the form block with fields + honeypot + same-origin action, beside the NAP block', function () {
+it('renders the form block with fields + honeypot + same-origin action, beside the NAP block', function (): void {
     seedContactPageWithForm();
 
     $html = $this->get('http://a.test/lien-he')->assertOk()->getContent();
@@ -61,7 +61,7 @@ it('renders the form block with fields + honeypot + same-origin action, beside t
         ->toContain('Thông tin liên hệ');      // static NAP block coexists
 });
 
-it('renders the form chrome in the site locale even when app.locale differs', function () {
+it('renders the form chrome in the site locale even when app.locale differs', function (): void {
     config(['app.locale' => 'en']); // prod default — the vi site must still render its UI in vi
     seedContactPageWithForm();
 
@@ -70,14 +70,14 @@ it('renders the form chrome in the site locale even when app.locale differs', fu
         ->not->toContain('Send message');  // not the English string
 });
 
-it('omits the Turnstile widget when no site_key is configured (dev)', function () {
+it('omits the Turnstile widget when no site_key is configured (dev)', function (): void {
     seedContactPageWithForm();
 
     expect($this->get('http://a.test/lien-he')->getContent())
         ->not->toContain('challenges.cloudflare.com');
 });
 
-it('includes the Turnstile widget when a site_key is configured', function () {
+it('includes the Turnstile widget when a site_key is configured', function (): void {
     config(['services.turnstile.site_key' => '0x4AAAAAADtFZhUYB224F9cf']);
     seedContactPageWithForm();
 
@@ -86,8 +86,8 @@ it('includes the Turnstile widget when a site_key is configured', function () {
         ->toContain('data-sitekey="0x4AAAAAADtFZhUYB224F9cf"');
 });
 
-it('renders nothing for the block when the form key does not resolve', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('renders nothing for the block when the form key does not resolve', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'published', 'published_at' => now()]);
         $entry->translations()->create([
             'locale' => 'vi',

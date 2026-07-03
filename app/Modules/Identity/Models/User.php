@@ -44,9 +44,11 @@ class User extends Authenticatable implements MustVerifyEmail
      * stays out of mass assignment so it is written only through an explicit,
      * allow-list-validated setter — never a request-data spread.
      */
+    #[\Override]
     protected $guarded = ['preferences'];
 
     /** @var list<string> */
+    #[\Override]
     protected $hidden = [
         'password',
         'remember_token',
@@ -82,6 +84,7 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

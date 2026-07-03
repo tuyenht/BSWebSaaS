@@ -11,42 +11,42 @@ use App\Modules\Tenancy\Context\Tenancy;
  * the /livewire/update endpoint bypasses route middleware.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('lets a member with settings.manage open the email settings', function () {
+it('lets a member with settings.manage open the email settings', function (): void {
     $admin = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'admin', ['settings.manage', 'entries.view']));
 
     $this->actingAs($admin)->get('http://a.test/admin/settings/email')->assertOk();
 });
 
-it('lets a member with settings.manage open the social settings', function () {
+it('lets a member with settings.manage open the social settings', function (): void {
     $admin = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($admin, 'admin', ['settings.manage', 'entries.view']));
 
     $this->actingAs($admin)->get('http://a.test/admin/settings/social')->assertOk();
 });
 
-it('forbids a member without settings.manage from the email settings', function () {
+it('forbids a member without settings.manage from the email settings', function (): void {
     $author = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($author, 'author', ['entries.view']));
 
     $this->actingAs($author)->get('http://a.test/admin/settings/email')->assertForbidden();
 });
 
-it('forbids a member without settings.manage from the social settings', function () {
+it('forbids a member without settings.manage from the social settings', function (): void {
     $author = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($author, 'author', ['entries.view']));
 
     $this->actingAs($author)->get('http://a.test/admin/settings/social')->assertForbidden();
 });
 
-it('lets any member open their personal security settings (no settings.manage needed)', function () {
+it('lets any member open their personal security settings (no settings.manage needed)', function (): void {
     $author = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($author, 'author', ['entries.view']));
 

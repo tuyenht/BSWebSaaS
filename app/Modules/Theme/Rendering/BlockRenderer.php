@@ -12,11 +12,11 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  * customer code (ADR-04): only registered (allow-listed) types render; props are
  * Blade-escaped; unknown/malformed blocks are skipped (fail-safe).
  */
-final class BlockRenderer
+final readonly class BlockRenderer
 {
     public function __construct(
-        private readonly ViewFactory $views,
-        private readonly ComponentRegistry $registry,
+        private ViewFactory $views,
+        private ComponentRegistry $registry,
     ) {}
 
     public function allows(string $type): bool

@@ -12,6 +12,7 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
     /**
      * Bootstrap any application services.
      */
+    #[\Override]
     public function boot(): void
     {
         parent::boot();
@@ -26,15 +27,16 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
      *
      * This gate determines who can access Horizon in non-local environments.
      */
+    #[\Override]
     protected function gate(): void
     {
-        Gate::define('viewHorizon', function (?User $user = null) {
+        Gate::define('viewHorizon', function (?User $user = null): bool {
             /** @var list<string> $authorizedEmails */
             $authorizedEmails = [
                 // Add operator emails allowed to view Horizon in non-local envs.
             ];
 
-            return $user !== null && in_array($user->email, $authorizedEmails, true);
+            return $user instanceof User && in_array($user->email, $authorizedEmails, true);
         });
     }
 }

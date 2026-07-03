@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
  * SSR HTML, isolated per tenant.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -38,7 +38,7 @@ function provision(string $name, string $host, string $email): void
     ));
 }
 
-it('renders the provisioned An Vinh homepage as SSR HTML', function () {
+it('renders the provisioned An Vinh homepage as SSR HTML', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
@@ -48,7 +48,7 @@ it('renders the provisioned An Vinh homepage as SSR HTML', function () {
         ->toContain('An Vinh');
 });
 
-it('renders the auto-seeded contact page at /lien-he so the homepage CTA resolves (not 404)', function () {
+it('renders the auto-seeded contact page at /lien-he so the homepage CTA resolves (not 404)', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     // The CTA button_url=/lien-he must resolve through StorefrontController → BlockRenderer → layout.
@@ -57,7 +57,7 @@ it('renders the auto-seeded contact page at /lien-he so the homepage CTA resolve
     expect($html)->toContain('<section class="contact">')->toContain('Liên hệ An Vinh');
 });
 
-it('renders the seeded primary nav on the storefront home', function () {
+it('renders the seeded primary nav on the storefront home', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
@@ -69,18 +69,18 @@ it('renders the seeded primary nav on the storefront home', function () {
         ->toContain('aria-current="page"');     // home is the current path → marked active
 });
 
-it('404s an unknown path on a real site', function () {
+it('404s an unknown path on a real site', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     $this->get('http://anvinh.test/khong-ton-tai')->assertNotFound();
 });
 
-it('renders a published post at its category path within budget', function () {
+it('renders a published post at its category path within budget', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     $site = Site::query()->firstWhere('name', 'An Vinh');
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
         $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
@@ -98,7 +98,7 @@ it('renders a published post at its category path within budget', function () {
     });
 
     // The post seeded by ProvisionSite's category routes under /tin-tuc/{slug} (PathBuilder).
-    $count = countQueries(function () {
+    $count = countQueries(function (): void {
         $html = $this->get('http://anvinh.test/tin-tuc/bai-viet-dau-tien')->assertOk()->getContent();
 
         expect($html)->toContain('<title>Bài viết đầu tiên</title>')
@@ -113,11 +113,11 @@ it('renders a published post at its category path within budget', function () {
     expect($count)->toBeLessThanOrEqual(16);
 });
 
-it('renders a category list page of its published posts within budget', function () {
+it('renders a category list page of its published posts within budget', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
     $site = Site::query()->firstWhere('name', 'An Vinh');
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
         $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
@@ -131,7 +131,7 @@ it('renders a category list page of its published posts within budget', function
         }
     });
 
-    $count = countQueries(function () {
+    $count = countQueries(function (): void {
         $html = $this->get('http://anvinh.test/tin-tuc')->assertOk()->getContent();
 
         expect($html)->toContain('<title>Tin tức</title>')
@@ -143,7 +143,7 @@ it('renders a category list page of its published posts within budget', function
     expect($count)->toBeLessThanOrEqual(17); // resolve + paginate (count+items) + eager translations + nav (4) + brand setting (1)
 });
 
-it('renders an empty category list when it has no posts', function () {
+it('renders an empty category list when it has no posts', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     $html = $this->get('http://anvinh.test/tin-tuc')->assertOk()->getContent();
@@ -151,7 +151,7 @@ it('renders an empty category list when it has no posts', function () {
     expect($html)->toContain('Tin tức')->toContain('Chưa có bài viết nào.');
 });
 
-it('isolates rendered content between provisioned sites', function () {
+it('isolates rendered content between provisioned sites', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
     provision('Other Co', 'other.test', 'owner@other.test');
 

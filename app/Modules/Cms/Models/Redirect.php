@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Cms\Models;
 
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -21,11 +23,13 @@ class Redirect extends Model
 {
     use BelongsToSite;
 
+    #[\Override]
     protected $guarded = [];
 
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

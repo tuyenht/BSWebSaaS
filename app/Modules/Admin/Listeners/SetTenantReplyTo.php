@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Admin\Listeners;
 
 use App\Modules\Admin\Support\SettingsRepository;
@@ -13,11 +15,11 @@ use Illuminate\Mail\Events\MessageSending;
  * leak, unlike Mail::alwaysReplyTo). No-op off the tenant plane, when unset, or when the message
  * already carries an explicit Reply-To. Registered on Illuminate\Mail\Events\MessageSending.
  */
-final class SetTenantReplyTo
+final readonly class SetTenantReplyTo
 {
     public function __construct(
-        private readonly CurrentSite $current,
-        private readonly SettingsRepository $settings,
+        private CurrentSite $current,
+        private SettingsRepository $settings,
     ) {}
 
     public function handle(MessageSending $event): void

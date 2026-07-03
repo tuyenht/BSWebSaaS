@@ -22,7 +22,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('site_types', function (Blueprint $table) {
+        Schema::create('site_types', function (Blueprint $table): void {
             $table->id();
             $table->string('key')->unique();          // snake_case (D7); joins to the code registries
             $table->jsonb('label')->default('{}');     // {vi,en,ja}
@@ -40,7 +40,7 @@ return new class extends Migration
             'updated_at' => now(),
         ]);
 
-        Schema::table('sites', function (Blueprint $table) {
+        Schema::table('sites', function (Blueprint $table): void {
             $table->foreignId('site_type_id')->nullable()->constrained('site_types')->nullOnDelete();
             $table->index('site_type_id');
         });
@@ -48,7 +48,7 @@ return new class extends Migration
         // One-shot backfill: every site that predates the type axis becomes corporate.
         DB::table('sites')->whereNull('site_type_id')->update(['site_type_id' => $corporateId]);
 
-        Schema::table('roles', function (Blueprint $table) {
+        Schema::table('roles', function (Blueprint $table): void {
             $table->foreignId('forked_from_role_id')->nullable()->constrained('roles')->nullOnDelete();
             $table->index('forked_from_role_id');
         });
@@ -57,11 +57,11 @@ return new class extends Migration
     public function down(): void
     {
         // Drop the FK columns BEFORE the table they reference (correct FK teardown order).
-        Schema::table('roles', function (Blueprint $table) {
+        Schema::table('roles', function (Blueprint $table): void {
             $table->dropConstrainedForeignId('forked_from_role_id');
         });
 
-        Schema::table('sites', function (Blueprint $table) {
+        Schema::table('sites', function (Blueprint $table): void {
             $table->dropConstrainedForeignId('site_type_id');
         });
 

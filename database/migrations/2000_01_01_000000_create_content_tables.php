@@ -24,7 +24,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('entries', function (Blueprint $table) {
+        Schema::create('entries', function (Blueprint $table): void {
             $table->id();
             $table->ulid('ulid')->unique();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
@@ -49,7 +49,7 @@ return new class extends Migration
             $table->index(['site_id', 'parent_id']);
         });
 
-        Schema::create('entry_translations', function (Blueprint $table) {
+        Schema::create('entry_translations', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('entry_id')->constrained('entries')->cascadeOnDelete();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
@@ -68,7 +68,7 @@ return new class extends Migration
             $table->index(['site_id', 'locale']);
         });
 
-        Schema::create('routes', function (Blueprint $table) {
+        Schema::create('routes', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('locale', 12);

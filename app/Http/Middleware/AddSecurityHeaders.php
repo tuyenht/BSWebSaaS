@@ -69,11 +69,7 @@ final class AddSecurityHeaders
         $rawPrefix = config('admin.prefix', 'admin');
         $adminPrefix = trim(is_string($rawPrefix) ? $rawPrefix : 'admin', '/');
 
-        if ($request->is($adminPrefix, $adminPrefix.'/*')) {
-            return false;
-        }
-
-        return true;
+        return ! $request->is($adminPrefix, $adminPrefix.'/*');
     }
 
     /**

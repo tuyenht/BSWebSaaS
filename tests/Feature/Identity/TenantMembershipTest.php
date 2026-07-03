@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
  * and joins tenants through tenant_users (membership ≠ per-site authority).
  */
 
-it('auto-generates a ulid and hides secret attributes', function () {
+it('auto-generates a ulid and hides secret attributes', function (): void {
     $user = User::factory()->create();
 
     expect($user->ulid)->toBeString()->toHaveLength(26)
@@ -18,7 +18,7 @@ it('auto-generates a ulid and hides secret attributes', function () {
         ]);
 });
 
-it('links a user to tenants through tenant_users', function () {
+it('links a user to tenants through tenant_users', function (): void {
     $user = User::factory()->create();
     $tenant = Tenant::create(['ulid' => (string) Str::ulid(), 'name' => 'An Vinh']);
 

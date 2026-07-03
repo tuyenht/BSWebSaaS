@@ -16,9 +16,9 @@ use Symfony\Component\HttpFoundation\Response;
  * Unknown tenant host = fail-closed 404. Keeping SetCurrentSite itself strict means the
  * tenant /admin/* routes still 404 on the platform host (no cross-plane bleed).
  */
-final class ResolveLivewireContext
+final readonly class ResolveLivewireContext
 {
-    public function __construct(private readonly Tenancy $tenancy) {}
+    public function __construct(private Tenancy $tenancy) {}
 
     /**
      * @param  Closure(Request): Response  $next

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
@@ -13,9 +15,9 @@ use App\Modules\Rbac\Support\RoleHierarchyGuard;
  * within the permissions you hold, same team), so revocation can't strip a peer/superior or be
  * used to escalate. System callers (provisioning, bootstrap) mutate roles directly and bypass this.
  */
-final class RevokeRole
+final readonly class RevokeRole
 {
-    public function __construct(private readonly RoleHierarchyGuard $guard) {}
+    public function __construct(private RoleHierarchyGuard $guard) {}
 
     public function handle(User $actor, User $target, Role $role): void
     {

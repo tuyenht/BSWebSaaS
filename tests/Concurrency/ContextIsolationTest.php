@@ -19,18 +19,18 @@ beforeEach(fn () => seedTenancy());
 
 afterEach(fn () => app(CurrentSite::class)->clear());
 
-it('clears the current-site singleton after each enter (scenario #2: no A→B leak)', function () {
+it('clears the current-site singleton after each enter (scenario #2: no A→B leak)', function (): void {
     $tenancy = app(Tenancy::class);
     $current = app(CurrentSite::class);
 
-    $tenancy->enter(1, function () use ($current) {
+    $tenancy->enter(1, function () use ($current): void {
         expect($current->id())->toBe(1);
     });
 
     expect($current->hasId())->toBeFalse();
 });
 
-it('never leaks data across interleaved site contexts on one connection', function () {
+it('never leaks data across interleaved site contexts on one connection', function (): void {
     DB::connection('pgsql_admin')->table('tenant_probes')->insert([
         ['site_id' => 1, 'value' => 'A', 'created_at' => now(), 'updated_at' => now()],
         ['site_id' => 2, 'value' => 'B', 'created_at' => now(), 'updated_at' => now()],
@@ -46,7 +46,7 @@ it('never leaks data across interleaved site contexts on one connection', functi
     expect($seen)->toBe([['A'], ['B'], ['A'], ['B'], ['A']]);
 });
 
-it('throws when a tenant query runs with a site set but outside a transaction (scenario #1)', function () {
+it('throws when a tenant query runs with a site set but outside a transaction (scenario #1)', function (): void {
     app(CurrentSite::class)->setId(1);
 
     expect(fn () => TenantProbe::count())->toThrow(RuntimeException::class);

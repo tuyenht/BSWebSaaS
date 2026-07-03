@@ -14,11 +14,11 @@ use Symfony\Component\HttpFoundation\Response;
  * Gates the platform (Bảo Sơn operator) plane: the authenticated user must hold a
  * platform role (super_admin / support / billing). Runs after 'auth'.
  */
-final class EnsurePlatformAccess
+final readonly class EnsurePlatformAccess
 {
-    private const PLATFORM_ROLES = ['super_admin', 'support', 'billing'];
+    private const array PLATFORM_ROLES = ['super_admin', 'support', 'billing'];
 
-    public function __construct(private readonly PlatformAccess $platform) {}
+    public function __construct(private PlatformAccess $platform) {}
 
     /**
      * @param  Closure(Request): Response  $next

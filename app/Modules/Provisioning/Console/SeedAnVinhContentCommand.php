@@ -13,8 +13,10 @@ use Illuminate\Console\Command;
  */
 final class SeedAnVinhContentCommand extends Command
 {
+    #[\Override]
     protected $signature = 'anvinh:seed-content {--host=av1.baoson.net : Primary hostname of the An Vinh site}';
 
+    #[\Override]
     protected $description = 'Seed An Vinh project content (du-an category + sectors + projects). Idempotent.';
 
     public function handle(Tenancy $tenancy, SeedAnVinhContent $action): int

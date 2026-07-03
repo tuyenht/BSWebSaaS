@@ -10,7 +10,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 
 beforeEach(fn () => truncateRbac());
 
-it('creates the first operator as a platform super_admin', function () {
+it('creates the first operator as a platform super_admin', function (): void {
     $this->artisan('rbac:bootstrap-super-admin', ['--email' => 'ops@bsweb.vn', '--name' => 'Ops'])
         ->expectsQuestion('Password', 'change-me-strong')
         ->expectsQuestion('Confirm password', 'change-me-strong')
@@ -22,7 +22,7 @@ it('creates the first operator as a platform super_admin', function () {
         ->and(app(PlatformAccess::class)->isSuperAdmin($user->fresh()))->toBeTrue();
 });
 
-it('rejects a password mismatch', function () {
+it('rejects a password mismatch', function (): void {
     $this->artisan('rbac:bootstrap-super-admin', ['--email' => 'ops2@bsweb.vn', '--name' => 'Ops'])
         ->expectsQuestion('Password', 'one-password')
         ->expectsQuestion('Confirm password', 'different')

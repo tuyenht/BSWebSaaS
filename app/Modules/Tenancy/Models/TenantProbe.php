@@ -19,5 +19,6 @@ final class TenantProbe extends Model
 {
     use BelongsToSite;
 
+    #[\Override]
     protected $guarded = [];
 }

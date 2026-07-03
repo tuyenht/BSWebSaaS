@@ -14,9 +14,9 @@ use Illuminate\Support\Facades\Route;
  * see it. Computed inside ONE onPlatform() snapshot so the per-link permission checks share a
  * single team switch (cheap). super_admin is allowed regardless of perm materialization.
  */
-final class PlatformNav
+final readonly class PlatformNav
 {
-    public function __construct(private readonly PlatformAccess $platform) {}
+    public function __construct(private PlatformAccess $platform) {}
 
     /**
      * @return list<NavItem>

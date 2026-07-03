@@ -20,11 +20,11 @@ use PragmaRX\Google2FA\Google2FA;
  * the flow. Also pins the new TOTP attempt cap (parity with the email OTP challenge).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity');
 });
 
-it('records a failed login on invalid credentials', function () {
+it('records a failed login on invalid credentials', function (): void {
     $user = User::factory()->create();
 
     Livewire::test(Login::class)
@@ -36,7 +36,7 @@ it('records a failed login on invalid credentials', function () {
     expect(AuditLog::query()->where('action', 'auth.login.failed')->exists())->toBeTrue();
 });
 
-it('records a throttled login once the brute-force cap trips', function () {
+it('records a throttled login once the brute-force cap trips', function (): void {
     $user = User::factory()->create();
 
     // Five wrong attempts arm the limiter; the sixth is refused with the throttle notice.
@@ -50,7 +50,7 @@ it('records a throttled login once the brute-force cap trips', function () {
     expect(AuditLog::query()->where('action', 'auth.login.throttled')->exists())->toBeTrue();
 });
 
-it('records an OTP lockout after too many wrong codes', function () {
+it('records an OTP lockout after too many wrong codes', function (): void {
     $user = User::factory()->create();
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
@@ -61,7 +61,7 @@ it('records an OTP lockout after too many wrong codes', function () {
     expect(AuditLog::query()->where('action', 'auth.otp.locked')->exists())->toBeTrue();
 });
 
-it('locks the TOTP challenge after too many wrong codes and audits it (parity with email OTP)', function () {
+it('locks the TOTP challenge after too many wrong codes and audits it (parity with email OTP)', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
@@ -76,7 +76,7 @@ it('locks the TOTP challenge after too many wrong codes and audits it (parity wi
     expect(AuditLog::query()->where('action', 'auth.2fa.locked')->exists())->toBeTrue();
 });
 
-it('records a successful sign-in with the second factor used', function () {
+it('records a successful sign-in with the second factor used', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
@@ -94,12 +94,12 @@ it('records a successful sign-in with the second factor used', function () {
     expect($log->meta['factor'])->toBe('totp');
 });
 
-it('records an OTP send throttle when the hourly cap is hit', function () {
+it('records an OTP send throttle when the hourly cap is hit', function (): void {
     seedTenancy();
     Notification::fake();
     $user = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($user) {
+    app(Tenancy::class)->enter(1, function () use ($user): void {
         $otp = app(EmailOtp::class);
         foreach (range(1, 6) as $ignored) {
             $otp->send($user);

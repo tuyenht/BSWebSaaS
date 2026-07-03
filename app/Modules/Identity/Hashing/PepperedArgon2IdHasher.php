@@ -17,12 +17,12 @@ use RuntimeException;
  * Pepper is NEVER derived from email/id (an email change must not invalidate the
  * password). Fail-closed: refuses to operate with no pepper configured.
  */
-final class PepperedArgon2IdHasher implements Hasher
+final readonly class PepperedArgon2IdHasher implements Hasher
 {
-    private readonly Argon2IdHasher $argon;
+    private Argon2IdHasher $argon;
 
     /** @var non-empty-list<string> valid peppers, current first (rest = rotation history) */
-    private readonly array $peppers;
+    private array $peppers;
 
     /**
      * @param  list<string>  $peppers  valid peppers, current first
@@ -74,13 +74,7 @@ final class PepperedArgon2IdHasher implements Hasher
 
         [$tag, $hash] = $this->stripVersion($hashedValue);
 
-        foreach ($this->candidatePeppers($tag) as $pepper) {
-            if ($this->argon->check($this->prehash((string) $value, $pepper), $hash, $options)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($this->candidatePeppers($tag), fn (string $pepper) => $this->argon->check($this->prehash((string) $value, $pepper), $hash, $options));
     }
 
     /**

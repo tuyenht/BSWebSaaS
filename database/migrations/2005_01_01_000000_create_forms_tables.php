@@ -18,7 +18,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('forms', function (Blueprint $table) {
+        Schema::create('forms', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->ulid('ulid')->unique();
@@ -33,7 +33,7 @@ return new class extends Migration
             $table->unique(['site_id', 'key']);
         });
 
-        Schema::create('form_fields', function (Blueprint $table) {
+        Schema::create('form_fields', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->foreignId('form_id')->constrained('forms')->cascadeOnDelete();
@@ -49,7 +49,7 @@ return new class extends Migration
             $table->unique(['form_id', 'key']);
         });
 
-        Schema::create('form_submissions', function (Blueprint $table) {
+        Schema::create('form_submissions', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->ulid('ulid')->unique();

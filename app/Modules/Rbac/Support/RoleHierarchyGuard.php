@@ -18,11 +18,11 @@ use Illuminate\Database\Eloquent\Collection;
  * may have eager-loaded `->roles` at another team during a gate check, so the property can be
  * stale. Permission coverage is checked with `hasPermissionTo`, which is team-scoped + cached.
  */
-final class RoleHierarchyGuard
+final readonly class RoleHierarchyGuard
 {
     public function __construct(
-        private readonly PlatformAccess $platform,
-        private readonly CurrentSite $currentSite,
+        private PlatformAccess $platform,
+        private CurrentSite $currentSite,
     ) {}
 
     /** Highest role level the actor holds in the current team (0 if none). */

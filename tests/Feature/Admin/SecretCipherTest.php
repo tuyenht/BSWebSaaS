@@ -9,22 +9,22 @@ use Illuminate\Support\Facades\Log;
  * DecryptException in its callers (mailer, OAuth).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
 });
 
-it('returns an empty string when decrypting an empty payload', function () {
+it('returns an empty string when decrypting an empty payload', function (): void {
     expect(SecretCipher::decrypt(''))->toBe('');
 });
 
-it('round-trips a secret through encrypt and decrypt', function () {
+it('round-trips a secret through encrypt and decrypt', function (): void {
     $cipher = SecretCipher::encrypt('s3cret-app-password');
 
     expect($cipher)->not->toBe('s3cret-app-password')
         ->and(SecretCipher::decrypt($cipher))->toBe('s3cret-app-password');
 });
 
-it('returns an empty string for an unparseable payload instead of throwing', function () {
+it('returns an empty string for an unparseable payload instead of throwing', function (): void {
     Log::spy();
 
     expect(SecretCipher::decrypt('not-a-valid-payload'))->toBe('');
@@ -32,7 +32,7 @@ it('returns an empty string for an unparseable payload instead of throwing', fun
     Log::shouldHaveReceived('warning')->once();
 });
 
-it('returns an empty string when the settings key was rotated, never crashing its callers', function () {
+it('returns an empty string when the settings key was rotated, never crashing its callers', function (): void {
     // A secret encrypted under the previous key is undecryptable after rotation — the caller
     // must degrade to "not set" (as the docblock promises), not fatal-error the whole request.
     $cipher = SecretCipher::encrypt('was-encrypted-under-the-old-key');

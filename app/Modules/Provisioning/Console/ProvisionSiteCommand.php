@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Provisioning\Actions\ProvisionSite;
@@ -12,6 +14,7 @@ use Illuminate\Console\Command;
  */
 final class ProvisionSiteCommand extends Command
 {
+    #[\Override]
     protected $signature = 'site:provision
         {--name= : Site name}
         {--host= : Primary hostname (e.g. anvinh.test)}
@@ -20,6 +23,7 @@ final class ProvisionSiteCommand extends Command
         {--owner-name=Owner : Owner display name}
         {--locale=vi : Default locale}';
 
+    #[\Override]
     protected $description = 'Provision a site end-to-end (idempotent).';
 
     public function handle(ProvisionSite $action): int

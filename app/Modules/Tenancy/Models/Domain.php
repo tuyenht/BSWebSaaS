@@ -19,8 +19,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 final class Domain extends Model
 {
+    #[\Override]
     protected $guarded = [];
 
+    #[\Override]
     protected function casts(): array
     {
         return ['is_primary' => 'boolean'];

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
@@ -12,7 +14,7 @@ use Tests\TestCase;
  * behaviour: it's the app half of the client-IP resolution the rate-limits and audit log depend on.
  */
 
-it('reads the client IP from X-Forwarded-For when the peer is a trusted proxy, and ignores it otherwise', function () {
+it('reads the client IP from X-Forwarded-For when the peer is a trusted proxy, and ignores it otherwise', function (): void {
     /** @var TestCase $this — Pest rebinds the closure to the TestCase; Larastan can't infer it. */
     Route::get('/__ip_probe', fn () => request()->ip());
 

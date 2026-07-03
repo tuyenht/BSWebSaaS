@@ -5,6 +5,7 @@ namespace App\Modules\Cms\Navigation;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Menu;
 use App\Modules\Cms\Models\MenuItem;
+use App\Modules\Cms\Models\MenuItemTranslation;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
@@ -20,12 +21,12 @@ use Illuminate\Support\Collection;
  * builds a depth-guarded tree. Returns nested arrays (NOT Cms models) so the Theme module
  * stays Cms-agnostic. Every query is RLS-scoped to the current site.
  */
-final class MenuResolver
+final readonly class MenuResolver
 {
     /** Nesting cap — also the cycle guard for a malformed parent_id chain. */
-    private const MAX_DEPTH = 5;
+    private const int MAX_DEPTH = 5;
 
-    public function __construct(private readonly PathBuilder $paths) {}
+    public function __construct(private PathBuilder $paths) {}
 
     /**
      * @return list<array<string, mixed>> nodes: {label, url, active, attrs, children}
@@ -64,13 +65,13 @@ final class MenuResolver
     private function menuFor(string $region, string $locale, string $defaultLocale): array
     {
         $menu = $this->assignedMenu($region, $locale);
-        if ($menu !== null) {
+        if ($menu instanceof Menu) {
             return [$menu, $locale];
         }
 
         if ($defaultLocale !== $locale) {
             $menu = $this->assignedMenu($region, $defaultLocale);
-            if ($menu !== null) {
+            if ($menu instanceof Menu) {
                 return [$menu, $defaultLocale];
             }
         }
@@ -269,7 +270,7 @@ final class MenuResolver
     private function labelFor(MenuItem $item, string $locale, array $titles): string
     {
         $translation = $item->translationFor($locale);
-        if ($translation !== null && $translation->label !== '') {
+        if ($translation instanceof MenuItemTranslation && $translation->label !== '') {
             return $translation->label;
         }
 

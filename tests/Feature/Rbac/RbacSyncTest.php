@@ -12,7 +12,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 beforeEach(fn () => truncateRbac());
 
-it('syncs the full permission catalog and platform roles, idempotently', function () {
+it('syncs the full permission catalog and platform roles, idempotently', function (): void {
     $this->artisan('rbac:sync')->assertSuccessful();
     $this->artisan('rbac:sync')->assertSuccessful(); // second run must not duplicate
 

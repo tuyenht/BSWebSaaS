@@ -36,7 +36,7 @@ final class MediaUrlResolver
     private function snapWidth(int $width): int
     {
         $configured = config('media.widths');
-        $allowed = is_array($configured) ? array_values(array_filter($configured, 'is_int')) : [];
+        $allowed = is_array($configured) ? array_values(array_filter($configured, is_int(...))) : [];
         if ($allowed === []) {
             return $width;
         }
@@ -47,7 +47,7 @@ final class MediaUrlResolver
             }
         }
 
-        return (int) end($allowed);
+        return end($allowed);
     }
 
     /** imgproxy: an HMAC-signed processing URL (verify format vs the imgproxy version at PR-5). */

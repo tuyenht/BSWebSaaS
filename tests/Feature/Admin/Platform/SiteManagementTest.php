@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  * addressed by ulid. The list eager-loads domain/tenant/site_type (no N+1).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy(); // sites A(1)/B(2) + domains a.test/b.test
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -29,7 +29,7 @@ function siteOperator(string $role): User
     return $user->fresh();
 }
 
-it('lists sites for an operator with their primary domain', function () {
+it('lists sites for an operator with their primary domain', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->actingAs(siteOperator('support'))->get("http://{$host}/sites")
@@ -38,7 +38,7 @@ it('lists sites for an operator with their primary domain', function () {
         ->assertSee('b.test');
 });
 
-it('filters sites by status', function () {
+it('filters sites by status', function (): void {
     $host = (string) config('tenancy.platform_host');
     DB::connection('pgsql_admin')->table('sites')->where('id', 2)->update(['status' => 'archived']);
 
@@ -48,7 +48,7 @@ it('filters sites by status', function () {
         ->assertDontSee('a.test');
 });
 
-it('shows a site detail by ulid with its domains', function () {
+it('shows a site detail by ulid with its domains', function (): void {
     $host = (string) config('tenancy.platform_host');
     $site = Site::query()->firstOrFail();
 
@@ -61,13 +61,13 @@ it('shows a site detail by ulid with its domains', function () {
         ->assertDontSee(__('admin.default_locale'));
 });
 
-it('forbids billing (no sites.view) from the sites page', function () {
+it('forbids billing (no sites.view) from the sites page', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->actingAs(siteOperator('billing'))->get("http://{$host}/sites")->assertForbidden();
 });
 
-it('lists sites without an N+1 on domain/tenant/site_type', function () {
+it('lists sites without an N+1 on domain/tenant/site_type', function (): void {
     // Mirrors the Index query: eager loads fold to one query per relation, constant in row count.
     $queries = countQueries(function (): void {
         Site::query()->with(['domains', 'tenant', 'siteType'])->orderBy('id')->paginate(20);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Rbac\Registry;
 
 /**
@@ -10,12 +12,12 @@ namespace App\Modules\Rbac\Registry;
 final class PermissionRegistry
 {
     /** Platform scope sentinel — never a real site_id (identity starts at 1). */
-    public const PLATFORM_TEAM_ID = 0;
+    public const int PLATFORM_TEAM_ID = 0;
 
-    public const GUARD = 'web';
+    public const string GUARD = 'web';
 
     /** @var list<string> tenant-scoped permissions (resource.action) */
-    public const TENANT_PERMISSIONS = [
+    public const array TENANT_PERMISSIONS = [
         'entries.view',
         'entries.create',
         'entries.edit.own',
@@ -41,7 +43,7 @@ final class PermissionRegistry
     ];
 
     /** @var list<string> platform-scoped (Bảo Sơn operator) permissions */
-    public const PLATFORM_PERMISSIONS = [
+    public const array PLATFORM_PERMISSIONS = [
         'platform.tenants.view',
         'platform.tenants.manage',
         'platform.sites.view',

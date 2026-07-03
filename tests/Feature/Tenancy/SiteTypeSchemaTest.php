@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Schema;
  * they cannot be observed in the truncated shared test DB without corrupting other suites.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy();      // sites 1=A, 2=B (no site_type_id) — corporate persists (migration-seeded)
     truncateRbac();
 });
@@ -61,7 +61,7 @@ function stForeignKeyTo(string $table, string $column, string $referenced): bool
 
 // ── A. site_types catalog table ────────────────────────────────────────────
 
-it('creates site_types as a GLOBAL catalog (no site_id, unique key, jsonb, timestamptz)', function () {
+it('creates site_types as a GLOBAL catalog (no site_id, unique key, jsonb, timestamptz)', function (): void {
     expect(Schema::hasTable('site_types'))->toBeTrue()
         ->and(Schema::hasColumns('site_types', ['id', 'key', 'label', 'meta', 'created_at', 'updated_at']))->toBeTrue()
         ->and(Schema::hasColumn('site_types', 'site_id'))->toBeFalse()                 // D6: global, no tenant column
@@ -75,17 +75,17 @@ it('creates site_types as a GLOBAL catalog (no site_id, unique key, jsonb, times
     ]))->toThrow(QueryException::class);
 });
 
-it('seeds the corporate site_type with tri-locale labels', function () {
+it('seeds the corporate site_type with tri-locale labels', function (): void {
     $row = DB::table('site_types')->where('key', 'corporate')->first();
     expect($row)->not->toBeNull();
 
     /** @var array<string,string> $label */
-    $label = json_decode($row->label, true);
+    $label = json_decode((string) $row->label, true);
     expect($label)->toHaveKeys(['vi', 'en', 'ja'])
         ->and($label['vi'])->not->toBe('');
 });
 
-it('adds sites.site_type_id as a nullable FK to site_types', function () {
+it('adds sites.site_type_id as a nullable FK to site_types', function (): void {
     expect(Schema::hasColumn('sites', 'site_type_id'))->toBeTrue()
         ->and(DB::selectOne(
             'select is_nullable from information_schema.columns where table_name = ? and column_name = ?',
@@ -94,7 +94,7 @@ it('adds sites.site_type_id as a nullable FK to site_types', function () {
         ->and(stForeignKeyTo('sites', 'site_type_id', 'site_types'))->toBeTrue();
 });
 
-it('adds roles.forked_from_role_id as a nullable self-FK on roles', function () {
+it('adds roles.forked_from_role_id as a nullable self-FK on roles', function (): void {
     expect(Schema::hasColumn('roles', 'forked_from_role_id'))->toBeTrue()
         ->and(DB::selectOne(
             'select is_nullable from information_schema.columns where table_name = ? and column_name = ?',
@@ -103,7 +103,7 @@ it('adds roles.forked_from_role_id as a nullable self-FK on roles', function () 
         ->and(stForeignKeyTo('roles', 'forked_from_role_id', 'roles'))->toBeTrue();
 });
 
-it('keeps site_types OUT of RLS scope (global, D6) — RLS not enabled', function () {
+it('keeps site_types OUT of RLS scope (global, D6) — RLS not enabled', function (): void {
     // No site_id column ⇒ the RlsCoverageTest heuristic never flags it; assert the table is
     // genuinely RLS-free (a tenant table would be relrowsecurity = true).
     $row = DB::selectOne('select relrowsecurity from pg_class where relname = ?', ['site_types']);
@@ -113,7 +113,7 @@ it('keeps site_types OUT of RLS scope (global, D6) — RLS not enabled', functio
 
 // ── B. Models ───────────────────────────────────────────────────────────────
 
-it('SiteType is a global model (no BelongsToSite) with json casts and a sites() relation', function () {
+it('SiteType is a global model (no BelongsToSite) with json casts and a sites() relation', function (): void {
     expect(class_uses_recursive(SiteType::class))->not->toContain(BelongsToSite::class);
 
     $corporate = SiteType::query()->where('key', 'corporate')->first();
@@ -122,7 +122,7 @@ it('SiteType is a global model (no BelongsToSite) with json casts and a sites() 
         ->and($corporate->sites())->toBeInstanceOf(HasMany::class);
 });
 
-it('Site::siteType() resolves the linked corporate type', function () {
+it('Site::siteType() resolves the linked corporate type', function (): void {
     $corporate = SiteType::query()->where('key', 'corporate')->first();
     DB::connection('pgsql_admin')->table('sites')->where('id', 1)->update(['site_type_id' => $corporate->id]);
 
@@ -131,8 +131,8 @@ it('Site::siteType() resolves the linked corporate type', function () {
         ->and($site->siteType->key)->toBe('corporate');
 });
 
-it('Role::forkedFrom() is a self relation, null until copy-on-write', function () {
-    $role = app(Tenancy::class)->enter(1, fn () => Role::findOrCreate('tmp_role', PermissionRegistry::GUARD));
+it('Role::forkedFrom() is a self relation, null until copy-on-write', function (): void {
+    $role = app(Tenancy::class)->enter(1, fn (): Spatie\Permission\Contracts\Role => Role::findOrCreate('tmp_role', PermissionRegistry::GUARD));
 
     expect($role->forkedFrom())->toBeInstanceOf(BelongsTo::class)
         ->and($role->fresh()->forkedFrom)->toBeNull();

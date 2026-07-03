@@ -13,7 +13,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
  * The route is mirrored on both planes (different hosts, same-origin fetch).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -33,7 +33,7 @@ function prefMember(): User
     return $user->fresh();
 }
 
-it('pins a submitted axis and echoes the resolved attributes', function () {
+it('pins a submitted axis and echoes the resolved attributes', function (): void {
     $user = prefMember();
 
     $this->actingAs($user)
@@ -44,7 +44,7 @@ it('pins a submitted axis and echoes the resolved attributes', function () {
     expect($user->fresh()->preferences['theme'])->toBe(['scheme' => 'dark']);
 });
 
-it('merges per field instead of replacing the whole override', function () {
+it('merges per field instead of replacing the whole override', function (): void {
     $user = prefMember();
     $user->preferences = ['theme' => ['sidebar' => 'light']];
     $user->save();
@@ -58,7 +58,7 @@ it('merges per field instead of replacing the whole override', function () {
         ->toEqualCanonicalizing(['sidebar' => 'light', 'topbar' => 'dark']);
 });
 
-it('rejects values outside the allow-list with a JSON 422 and writes nothing', function () {
+it('rejects values outside the allow-list with a JSON 422 and writes nothing', function (): void {
     $user = prefMember();
 
     $this->actingAs($user)
@@ -69,14 +69,14 @@ it('rejects values outside the allow-list with a JSON 422 and writes nothing', f
     expect($user->fresh()->preferences)->toBe([]);
 });
 
-it('turns a guest away to the admin login', function () {
+it('turns a guest away to the admin login', function (): void {
     // Exceptions render as web outside api/* (bootstrap shouldRenderJsonWhen), so an
     // unauthenticated POST redirects rather than 401s — nothing is ever written.
     $this->postJson('http://a.test/admin/theme-preference', ['scheme' => 'dark'])
         ->assertRedirect(route('admin.login'));
 });
 
-it('drops the whole override on reset so the site default shows through', function () {
+it('drops the whole override on reset so the site default shows through', function (): void {
     $user = prefMember();
     $user->preferences = ['theme' => ['scheme' => 'dark'], 'other' => 'kept'];
     $user->save();
@@ -91,7 +91,7 @@ it('drops the whole override on reset so the site default shows through', functi
         ->and($preferences['other'])->toBe('kept'); // reset touches only the theme namespace
 });
 
-it('resets only the scheme on the platform console, keeping tenant-plane pins', function () {
+it('resets only the scheme on the platform console, keeping tenant-plane pins', function (): void {
     $host = (string) config('tenancy.platform_host');
     $operator = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
@@ -111,7 +111,7 @@ it('resets only the scheme on the platform console, keeping tenant-plane pins', 
     expect($operator->fresh()->preferences['theme'])->toBe(['sidebar' => 'light']);
 });
 
-it('persists on the platform plane through the mirrored route', function () {
+it('persists on the platform plane through the mirrored route', function (): void {
     $host = (string) config('tenancy.platform_host');
     $operator = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));

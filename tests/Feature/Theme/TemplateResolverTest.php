@@ -6,7 +6,7 @@ use App\Modules\Theme\Rendering\TemplateResolver;
  * Template fallback chain (design.md §188): override item → category → type → theme.
  */
 
-it('resolves the layout via the override → category → type → theme chain', function () {
+it('resolves the layout via the override → category → type → theme chain', function (): void {
     $resolver = new TemplateResolver;
 
     expect($resolver->layoutFor('page'))->toBe('theme::layouts.page')
