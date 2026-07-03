@@ -91,6 +91,26 @@ it('drops the whole override on reset so the site default shows through', functi
         ->and($preferences['other'])->toBe('kept'); // reset touches only the theme namespace
 });
 
+it('resets only the scheme on the platform console, keeping tenant-plane pins', function () {
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    $operator = $operator->fresh();
+    $operator->preferences = ['theme' => ['scheme' => 'dark', 'sidebar' => 'light']];
+    $operator->save();
+
+    $this->actingAs($operator->fresh())
+        ->deleteJson("http://{$host}/theme-preference")
+        ->assertOk()
+        ->assertJsonPath('attributes.data-bs-theme', 'light');
+
+    // The console launcher only shows Scheme — its reset must not silently drop the
+    // operator's sidebar pin for tenant admins.
+    expect($operator->fresh()->preferences['theme'])->toBe(['sidebar' => 'light']);
+});
+
 it('persists on the platform plane through the mirrored route', function () {
     $host = (string) config('tenancy.platform_host');
     $operator = User::factory()->create();
