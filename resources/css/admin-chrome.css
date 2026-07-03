@@ -161,3 +161,113 @@
         position: static;
     }
 }
+
+/* ========================= EXTENDED AXES ====================================
+ | Four more Velzon axes on the same <html data-*> flip model. Values resolved
+ | from Velzon v4.4.4 source (scss/_variables-custom.scss, structure/_layouts.scss,
+ | _vertical.scss). Blade hooks these classes:
+ |   .admin-shell-wrapper (outer shell div) · .admin-content (content column) ·
+ |   .sidebar-label (collapsible menu text) · .sidebar-background (image layer).
+ |   All desktop rules gate at 64rem = Tailwind `lg`.
+ ============================================================================ */
+
+:root {
+    --vz-boxed-width: 1300px; /* Velzon $boxed-layout-width */
+}
+
+/* ---- Sidebar color: gradients (flip axis: data-sidebar) --------------------
+   The gradient paints .admin-sidebar directly (background-image over the bg-sidebar
+   color — a linear-gradient can't ride background-color). `to right` = Velzon's
+   90° L→R. Item ink switches to the white gradient set (Velzon rgba(#fff,.5)); the
+   resting/title steps are an opt-in aesthetic, grandfathered like the base #abb9e8
+   (AA measured at gate — hover/active #fff pass; owner eye-pass may retune). */
+:root[data-sidebar='gradient'] .admin-sidebar {
+    background-image: linear-gradient(to right, #405189, #0ab39c); /* primary → success */
+}
+:root[data-sidebar='gradient-2'] .admin-sidebar {
+    background-image: linear-gradient(to right, #299cdb, #3577f1); /* info → secondary */
+}
+:root[data-sidebar='gradient-3'] .admin-sidebar {
+    background-image: linear-gradient(to right, #299cdb, #0ab39c); /* info → success */
+}
+:root[data-sidebar='gradient-4'] .admin-sidebar {
+    background-image: linear-gradient(to right, #1a1d21, #405189); /* dark → primary */
+}
+:root[data-sidebar^='gradient'] {
+    --vz-vertical-menu-bg: #405189;                          /* base under the gradient image */
+    --vz-vertical-menu-item-color: rgb(255 255 255 / 0.50);  /* vz-ref rgba(#fff,.5) — grandfathered */
+    --vz-vertical-menu-item-hover-color: #ffffff;
+    --vz-vertical-menu-item-active-color: #ffffff;
+    --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.15);
+    --vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15);
+    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.50); /* vz-ref — grandfathered */
+    --vz-vertical-menu-brand-color: #ffffff;
+}
+
+/* ---- Sidebar background image (flip axis: data-sidebar-image) --------------
+   Velzon's faint texture: a z-index:-1 layer at 7% opacity behind the menu ink, so
+   the sidebar's own bg/gradient dominates and text stays legible (no overlay needed).
+   .admin-sidebar (position:fixed) is the positioning context. 'none' = no rule → blank. */
+.sidebar-background {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-size: cover;
+    background-position: 50%;
+    opacity: 0.07;
+}
+:root[data-sidebar-image='img-1'] .sidebar-background {
+    background-image: url('/images/admin/sidebar/img-1.jpg');
+}
+:root[data-sidebar-image='img-2'] .sidebar-background {
+    background-image: url('/images/admin/sidebar/img-2.jpg');
+}
+:root[data-sidebar-image='img-3'] .sidebar-background {
+    background-image: url('/images/admin/sidebar/img-3.jpg');
+}
+:root[data-sidebar-image='img-4'] .sidebar-background {
+    background-image: url('/images/admin/sidebar/img-4.jpg');
+}
+
+/* ---- Sidebar size sm (flip axis: data-sidebar-size) — desktop only ---------
+   Icon-only 70px rail (Velzon data-sidebar-size="sm"): labels hidden, link content
+   centered, content column reflows to the collapsed width. Size is a desktop concept
+   — the <lg off-canvas keeps its full width and slides over content. This REPLACES
+   the old Alpine `collapsed` toggle (the header button now flips this persisted axis). */
+@media (min-width: 64rem) {
+    :root[data-sidebar-size='sm'] .admin-sidebar {
+        width: var(--spacing-sidebar-collapsed); /* 70px */
+    }
+    :root[data-sidebar-size='sm'] .admin-content {
+        padding-left: var(--spacing-sidebar-collapsed);
+    }
+    :root[data-sidebar-size='sm'] .admin-sidebar .sidebar-label {
+        display: none;
+    }
+    :root[data-sidebar-size='sm'] .admin-sidebar nav a,
+    :root[data-sidebar-size='sm'] .admin-sidebar .sidebar-brand-link {
+        justify-content: center;
+    }
+}
+
+/* ---- Layout width boxed (flip axis: data-layout-width) — desktop only ------
+   Velzon boxed: the shell centers within 1300px on a darkened body. Our sidebar is
+   viewport-fixed, so in boxed it re-anchors to the centered box's left edge with
+   max(0, half the gutter) — degrading to flush-left below the box width. (fluid is
+   the default; no attribute, no rule.) */
+@media (min-width: 64rem) {
+    :root[data-layout-width='boxed'] body {
+        background-color: #e5e5f2; /* Velzon $boxed-body-bg = $body-bg darken 4% (desktop only) */
+    }
+
+    :root[data-layout-width='boxed'] .admin-shell-wrapper {
+        max-width: var(--vz-boxed-width);
+        margin-inline: auto;
+        background-color: var(--color-body);
+        box-shadow: var(--shadow-card);
+    }
+
+    :root[data-layout-width='boxed'] .admin-sidebar {
+        left: max(0px, calc((100% - var(--vz-boxed-width)) / 2));
+    }
+}

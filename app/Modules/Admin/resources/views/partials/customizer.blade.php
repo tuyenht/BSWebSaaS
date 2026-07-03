@@ -45,11 +45,15 @@
 
             @unless ($planeIsPlatform)
                 <fieldset>
-                    <legend class="text-[11px] font-semibold uppercase tracking-wider text-body-faint">{{ __('admin.theme_sidebar') }}</legend>
-                    <p class="mb-2 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_sidebar_desc') }}</p>
-                    <div class="grid grid-cols-2 gap-3">
-                        <x-admin::theme-option axis="sidebar" value="dark" name="ct-sidebar" :label="__('admin.theme_dark')" store />
-                        <x-admin::theme-option axis="sidebar" value="light" name="ct-sidebar" :label="__('admin.theme_light')" store />
+                    <legend class="text-[11px] font-semibold uppercase tracking-wider text-body-faint">{{ __('admin.theme_layout_width') }}</legend>
+                    <p class="mb-2 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_layout_width_desc') }}</p>
+                    <div class="mt-2 inline-flex rounded border border-border-strong p-0.5">
+                        <template x-for="opt in ['fluid', 'boxed']" :key="opt">
+                            <button type="button" @click="$store.adminTheme.set('layout_width', opt)"
+                                    :class="$store.adminTheme.state.layout_width === opt ? 'bg-admin-primary text-white' : 'text-body-muted hover:bg-surface-hover'"
+                                    class="rounded px-3 py-1.5 text-xs font-medium transition-colors"
+                                    x-text="opt === 'fluid' ? @js(__('admin.theme_fluid')) : @js(__('admin.theme_boxed'))"></button>
+                        </template>
                     </div>
                 </fieldset>
 
@@ -59,6 +63,47 @@
                     <div class="grid grid-cols-2 gap-3">
                         <x-admin::theme-option axis="topbar" value="light" name="ct-topbar" :label="__('admin.theme_light')" store />
                         <x-admin::theme-option axis="topbar" value="dark" name="ct-topbar" :label="__('admin.theme_dark')" store />
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend class="text-[11px] font-semibold uppercase tracking-wider text-body-faint">{{ __('admin.theme_sidebar_size') }}</legend>
+                    <p class="mb-2 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_sidebar_size_desc') }}</p>
+                    <div class="mt-2 inline-flex rounded border border-border-strong p-0.5">
+                        <template x-for="opt in ['lg', 'sm']" :key="opt">
+                            <button type="button" @click="$store.adminTheme.set('sidebar_size', opt)"
+                                    :class="$store.adminTheme.state.sidebar_size === opt ? 'bg-admin-primary text-white' : 'text-body-muted hover:bg-surface-hover'"
+                                    class="rounded px-3 py-1.5 text-xs font-medium transition-colors"
+                                    x-text="opt === 'lg' ? @js(__('admin.theme_size_default')) : @js(__('admin.theme_size_compact'))"></button>
+                        </template>
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend class="text-[11px] font-semibold uppercase tracking-wider text-body-faint">{{ __('admin.theme_sidebar') }}</legend>
+                    <p class="mb-2 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_sidebar_desc') }}</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <x-admin::theme-option axis="sidebar" value="dark" name="ct-sidebar" :label="__('admin.theme_dark')" store />
+                        <x-admin::theme-option axis="sidebar" value="light" name="ct-sidebar" :label="__('admin.theme_light')" store />
+                        <x-admin::theme-option axis="sidebar" value="gradient" name="ct-sidebar" :label="__('admin.theme_gradient')" store />
+                        <x-admin::theme-option axis="sidebar" value="gradient-2" name="ct-sidebar" :label="__('admin.theme_gradient_2')" store />
+                        <x-admin::theme-option axis="sidebar" value="gradient-3" name="ct-sidebar" :label="__('admin.theme_gradient_3')" store />
+                        <x-admin::theme-option axis="sidebar" value="gradient-4" name="ct-sidebar" :label="__('admin.theme_gradient_4')" store />
+                    </div>
+                </fieldset>
+
+                <fieldset>
+                    <legend class="text-[11px] font-semibold uppercase tracking-wider text-body-faint">{{ __('admin.theme_sidebar_image') }}</legend>
+                    <p class="mb-2 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_sidebar_image_desc') }}</p>
+                    <div class="grid grid-cols-5 gap-2">
+                        <template x-for="img in ['none', 'img-1', 'img-2', 'img-3', 'img-4']" :key="img">
+                            <button type="button" @click="$store.adminTheme.set('sidebar_image', img)"
+                                    :aria-label="img === 'none' ? false : (@js(__('admin.theme_sidebar_image')) + ' ' + img.replace('img-', ''))"
+                                    :class="$store.adminTheme.state.sidebar_image === img ? 'ring-2 ring-accent' : 'border border-border'"
+                                    class="grid aspect-[3/5] place-items-center overflow-hidden rounded bg-surface-muted text-[9px] text-body-faint"
+                                    :style="img === 'none' ? '' : `background-image:url('/images/admin/sidebar/${img}.jpg');background-size:cover;background-position:center`"
+                                    x-text="img === 'none' ? @js(__('admin.theme_image_none')) : ''"></button>
+                        </template>
                     </div>
                 </fieldset>
 

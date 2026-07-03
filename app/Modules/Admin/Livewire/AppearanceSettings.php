@@ -30,6 +30,14 @@ final class AppearanceSettings extends Component
 
     public string $position = '';
 
+    public string $layout = '';
+
+    public string $layout_width = '';
+
+    public string $sidebar_size = '';
+
+    public string $sidebar_image = '';
+
     public bool $saved = false;
 
     public function boot(): void
@@ -82,9 +90,7 @@ final class AppearanceSettings extends Component
 
     public function render(): View
     {
-        $view = view('admin::livewire.appearance-settings', [
-            'axes' => AdminChromeResolver::FIELDS,
-        ]);
+        $view = view('admin::livewire.appearance-settings');
         $view->title(__('admin.appearance'));
 
         return $view;

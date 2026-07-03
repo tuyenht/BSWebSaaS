@@ -16,6 +16,10 @@
     $bar = $isDarkScheme ? 'rgb(255 255 255 / 0.14)' : '#eff2f7';
     $sidebar = match (true) {
         $axis === 'sidebar' && $value === 'light' => '#ffffff',
+        $axis === 'sidebar' && $value === 'gradient' => 'linear-gradient(to right, #405189, #0ab39c)',
+        $axis === 'sidebar' && $value === 'gradient-2' => 'linear-gradient(to right, #299cdb, #3577f1)',
+        $axis === 'sidebar' && $value === 'gradient-3' => 'linear-gradient(to right, #299cdb, #0ab39c)',
+        $axis === 'sidebar' && $value === 'gradient-4' => 'linear-gradient(to right, #1a1d21, #405189)',
         $isDarkScheme => 'rgb(255 255 255 / 0.08)',
         default => $brand,
     };

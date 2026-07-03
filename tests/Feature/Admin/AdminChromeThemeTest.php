@@ -35,7 +35,11 @@ it('SSRs the app defaults when no tier pins anything', function (): void {
         ->assertSee('data-bs-theme="light"', false)
         ->assertSee('data-sidebar="dark"', false)
         ->assertSee('data-topbar="light"', false)
-        ->assertSee('data-layout-position="fixed"', false);
+        ->assertSee('data-layout-position="fixed"', false)
+        ->assertSee('data-layout="vertical"', false)
+        ->assertSee('data-layout-width="fluid"', false)
+        ->assertSee('data-sidebar-size="lg"', false)
+        ->assertSee('data-sidebar-image="none"', false);
 });
 
 it('applies the site default from the admin_theme settings group', function (): void {
@@ -102,5 +106,27 @@ it('emits only the scheme on the platform console (scheme-only plane)', function
         ->assertOk()
         ->assertSee('data-bs-theme="dark"', false)
         ->assertDontSee('data-sidebar=', false)
-        ->assertDontSee('data-layout-position=', false);
+        ->assertDontSee('data-layout-position=', false)
+        ->assertDontSee('data-layout=', false)
+        ->assertDontSee('data-layout-width=', false)
+        ->assertDontSee('data-sidebar-size=', false)
+        ->assertDontSee('data-sidebar-image=', false);
+});
+
+it('applies the new axes when a user pins them', function (): void {
+    $user = themeMember();
+    $user->preferences = ['theme' => [
+        'layout_width' => 'boxed',
+        'sidebar' => 'gradient-2',
+        'sidebar_size' => 'sm',
+        'sidebar_image' => 'img-3',
+    ]];
+    $user->save();
+
+    $this->actingAs($user->fresh())->get('http://a.test/admin/content')
+        ->assertOk()
+        ->assertSee('data-layout-width="boxed"', false)
+        ->assertSee('data-sidebar="gradient-2"', false)
+        ->assertSee('data-sidebar-size="sm"', false)
+        ->assertSee('data-sidebar-image="img-3"', false);
 });

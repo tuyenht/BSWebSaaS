@@ -29,9 +29,13 @@ final readonly class AdminChromeResolver
     /** Allowed values per axis; the first entry is the app default (today's look). */
     public const array FIELDS = [
         'scheme' => ['light', 'dark'],
-        'sidebar' => ['dark', 'light'],
+        'sidebar' => ['dark', 'light', 'gradient', 'gradient-2', 'gradient-3', 'gradient-4'],
         'topbar' => ['light', 'dark'],
         'position' => ['fixed', 'scrollable'],
+        'layout' => ['vertical'], // horizontal + two-column join once their nav templates exist
+        'layout_width' => ['fluid', 'boxed'],
+        'sidebar_size' => ['lg', 'sm'],
+        'sidebar_image' => ['none', 'img-1', 'img-2', 'img-3', 'img-4'],
     ];
 
     /** Axis → the <html> data-attribute it drives (Velzon/Bootstrap 5.3 names). */
@@ -40,6 +44,10 @@ final readonly class AdminChromeResolver
         'sidebar' => 'data-sidebar',
         'topbar' => 'data-topbar',
         'position' => 'data-layout-position',
+        'layout' => 'data-layout',
+        'layout_width' => 'data-layout-width',
+        'sidebar_size' => 'data-sidebar-size',
+        'sidebar_image' => 'data-sidebar-image',
     ];
 
     public function __construct(private SettingsRepository $settings) {}

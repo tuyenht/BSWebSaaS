@@ -95,7 +95,7 @@
 
 ## 6. Guardrails CI (phải XANH trước merge)
 
-- `Larastan` (max level) · `Pest` (unit + feature) · `pest --mutate` (mutation — pcov trong image, mặc định TẮT, bật per-run `-d pcov.enabled=1`; baseline hiện tại: 3 file Theme-Customizer `--min=74`, mở rộng class-list + nâng min dần) · `Rector`
+- `Larastan` (max level) · `Pest` (unit + feature) · `pest --mutate` (mutation — pcov trong image, mặc định TẮT, bật per-run `-d pcov.enabled=1`; baseline hiện tại: 3 file Theme-Customizer `--min=75`, mở rộng class-list + nâng min dần) · `Rector`
 - **Query Budget test** — assert số query tối đa/route hot (bắt N+1)
 - **Arch test** — "mọi model tenant dùng BelongsToSite", "mọi action qua policy", "mọi transition qua engine", "ranh giới module — hướng phụ thuộc acyclic, Tenancy là nền"
 - `Lighthouse CI` + `axe` (storefront: LCP mobile p75 ≤1.5s, JS ≤30KB)
@@ -120,7 +120,7 @@ docker compose run --rm --no-deps app vendor/bin/pint --test
 # Mutation gate (pest --mutate; pcov nằm sẵn trong image nhưng TẮT mặc định — bật per-run):
 docker compose run --rm --no-deps app php -d pcov.enabled=1 vendor/bin/pest --mutate \
   --class="App\Modules\Admin\Theme\AdminChromeResolver,App\Modules\Admin\Http\Controllers\ThemePreferenceController,App\Modules\Admin\Livewire\AppearanceSettings" \
-  --covered-only --min=74   # baseline 74.32% đo 2026-07-03 — mở rộng dần, không hạ
+  --covered-only --min=75   # baseline 75.34% đo 2026-07-03 — mở rộng dần, không hạ
 
 # 🔁 Sau khi SỬA CODE PHP — Octane (worker mode) giữ code CŨ trong RAM.
 # Dùng `exec` (vào server ĐANG CHẠY), KHÔNG phải `run --rm` (tạo container mới → reload vô nghĩa):
