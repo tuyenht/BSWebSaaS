@@ -5,6 +5,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
     {{-- CSRF token for fetch()-based admin endpoints (DAM presign/register/upload, theme prefs). --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? __('admin.dashboard') }} — {{ config('admin.brand.name') }}</title>
