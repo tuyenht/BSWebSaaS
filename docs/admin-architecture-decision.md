@@ -60,15 +60,16 @@
 
 ---
 
-## ADR-A4 — Theme Customizer + lưu cấu hình theme (LOCKED — chốt 2026-07-01; build theo `plans/260701-1523-admin-shell-velzon/`)
+## ADR-A4 — Theme Customizer + lưu cấu hình theme (LOCKED — chốt 2026-07-01; ĐÃ SHIP 2026-07-03)
 
-> Nâng §A2 (Customizer "phase sau") thành đặc tả đầy đủ. Kiến trúc CHỐT, **CHƯA build** (P0→P6 trong plan).
+> Nâng §A2 (Customizer "phase sau") thành đặc tả đầy đủ. **ĐÃ BUILD + SHIP** (plan `plans/260701-1523-admin-shell-velzon/`, PR #31/#32 → main; chạy trên prod).
 
 - **Phạm vi interactive:** 4 trục **Scheme (light/dark) · Sidebar · Topbar · Position**. **Horizontal Layout = HOÃN** — khác DOM (cần template nav-ngang + JS dropdown) → workstream riêng, KHÔNG phải toggle CSS.
 
 - **Lưu theme = 3 tầng, resolve deep-merge theo TỪNG field** (app-default → site-default → user-override):
   - **Site-default** = trang **Settings** admin → **DB** `site_settings` group **`admin_theme`** (BelongsToSite + RLS, gate `settings.manage`). Per-site.
-  - **Per-user override** = **nút Customizer nổi cố định góc dưới-phải MỌI trang admin** → ghi **DB** `users.preferences.theme` (**cột `jsonb` MỚI trên bảng `users` GLOBAL — no-RLS, D6**) **+ localStorage** (fast-path áp tức thì, hydrate pre-paint). Mọi admin tự chỉnh, không cần quyền riêng.
+  - **Per-user override** = **nút Customizer nổi cố định góc dưới-phải MỌI trang admin** → ghi **DB** `users.preferences.theme` (**cột `jsonb` MỚI trên bảng `users` GLOBAL — no-RLS, D6**) **+ localStorage**. Mọi admin tự chỉnh, không cần quyền riêng.
+    - **Addendum (as-built, 2026-07-03): localStorage = PENDING-WRITE BUFFER, KHÔNG phải mirror của DB.** Nó chỉ giữ các trục đã đổi mà POST chưa được server xác nhận (bù race đổi-rồi-F5); server trả 2xx/422 → xoá khỏi buffer, net-fail → giữ lại retry khi load. Pre-paint chỉ áp buffer sau allow-list. Hệ quả: thiết bị khác không bao giờ bị localStorage cũ đè lên giá trị DB (multi-device an toàn); DB là nguồn sự thật duy nhất.
   - **Validate khi lưu:** allow-list `Rule::in([...])` cho CẢ 2 tầng — JSONB không CHECK được (D13) mà giá trị theme render vào `class=`/`data-*` → chống stored-injection.
 
 - **Ràng buộc kỹ thuật (prereq):**
