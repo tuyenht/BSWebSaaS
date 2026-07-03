@@ -3,6 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    {{-- The login/2FA pages are the only crawler-reachable admin surface (guests get
+         302'd here) — keep every admin plane out of search indexes. --}}
+    <meta name="robots" content="noindex, nofollow">
     <title>{{ $title ?? __('auth.welcome') }} — {{ config('admin.brand.name') }}</title>
     <meta name="description" content="{{ $metaDescription ?? config('admin.brand.name').' — '.config('admin.brand.tagline') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])

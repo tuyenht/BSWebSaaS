@@ -41,6 +41,12 @@ it('redirects an admin-plane guest to the tenant login', function () {
     $this->get('http://anvinh.test/admin')->assertRedirect('http://anvinh.test/admin/login');
 });
 
+it('keeps the crawler-reachable login page out of search indexes', function () {
+    $this->get('http://anvinh.test/admin/login')
+        ->assertOk()
+        ->assertSee('<meta name="robots" content="noindex, nofollow">', false);
+});
+
 it('accepts the owner credentials and challenges for the mandatory second factor', function () {
     Livewire::test(Login::class)
         ->set('email', 'owner@anvinh.test')
