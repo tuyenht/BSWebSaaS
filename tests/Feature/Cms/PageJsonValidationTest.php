@@ -51,7 +51,7 @@ function schemaHasUrlField(array $schema, string $key): bool
     return false;
 }
 
-it('passes a page composed only of registered components', function () {
+it('passes a page composed only of registered components', function (): void {
     $validator = validateBlocks([
         ['type' => 'hero', 'props' => ['heading' => 'Xin chào']],
         ['type' => 'latest_posts', 'props' => ['limit' => 3]],
@@ -61,26 +61,26 @@ it('passes a page composed only of registered components', function () {
     expect($validator->passes())->toBeTrue();
 });
 
-it('rejects an unknown block type (block lạ) and names it', function () {
+it('rejects an unknown block type (block lạ) and names it', function (): void {
     $validator = validateBlocks([['type' => 'evil_script', 'props' => []]]);
 
     expect($validator->fails())->toBeTrue()
         ->and($validator->errors()->first('blocks'))->toContain('evil_script');
 });
 
-it('rejects a block missing its type', function () {
+it('rejects a block missing its type', function (): void {
     expect(validateBlocks([['props' => ['x' => 1]]])->fails())->toBeTrue();
 });
 
-it('rejects malformed props that are not an object', function () {
+it('rejects malformed props that are not an object', function (): void {
     expect(validateBlocks([['type' => 'hero', 'props' => 'not-an-object']])->fails())->toBeTrue();
 });
 
-it('rejects a non-array block entry', function () {
+it('rejects a non-array block entry', function (): void {
     expect(validateBlocks(['just-a-string'])->fails())->toBeTrue();
 });
 
-it('stays in lockstep with the renderer allow-list (DRY)', function () {
+it('stays in lockstep with the renderer allow-list (DRY)', function (): void {
     $registry = app(ComponentRegistry::class);
 
     // Every type the renderer can dispatch also validates …
@@ -93,27 +93,27 @@ it('stays in lockstep with the renderer allow-list (DRY)', function () {
     expect(validateBlocks([['type' => 'definitely_not_registered', 'props' => []]])->fails())->toBeTrue();
 });
 
-it('rejects a dangerous URL scheme in a url prop (stored-XSS guard)', function () {
+it('rejects a dangerous URL scheme in a url prop (stored-XSS guard)', function (): void {
     expect(validateBlocks([['type' => 'cta', 'props' => ['button_url' => 'javascript:alert(document.cookie)']]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'cta', 'props' => ['button_url' => "java\tscript:alert(1)"]]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'cta', 'props' => ['button_url' => 'data:text/html,<script>']]])->fails())->toBeTrue();
 });
 
-it('allows safe URL schemes in url props', function () {
+it('allows safe URL schemes in url props', function (): void {
     expect(validateBlocks([['type' => 'cta', 'props' => ['button_url' => '/lien-he']]])->passes())->toBeTrue()
         ->and(validateBlocks([['type' => 'cta', 'props' => ['button_url' => 'https://example.test/x']]])->passes())->toBeTrue()
         ->and(validateBlocks([['type' => 'cta', 'props' => ['button_url' => 'mailto:a@b.test']]])->passes())->toBeTrue();
 });
 
-it('rejects a body with too many blocks', function () {
+it('rejects a body with too many blocks', function (): void {
     expect(validateBlocks(array_fill(0, 101, ['type' => 'hero', 'props' => []]))->fails())->toBeTrue();
 });
 
-it('rejects an oversized body', function () {
+it('rejects an oversized body', function (): void {
     expect(validateBlocks([['type' => 'hero', 'props' => ['heading' => str_repeat('x', 300_000)]]])->fails())->toBeTrue();
 });
 
-it('rejects a dangerous scheme in a typed-url prop regardless of its NAME (schema-driven)', function () {
+it('rejects a dangerous scheme in a typed-url prop regardless of its NAME (schema-driven)', function (): void {
     // §2 invariant: URL-safety must follow the schema's type:url, NOT a hand-maintained key
     // list. A url prop named 'link' (not in url/href/src/*_url) must STILL be sniffed.
     registerSchemaBlock('test_link', ['link' => ['type' => 'url']]);
@@ -123,7 +123,7 @@ it('rejects a dangerous scheme in a typed-url prop regardless of its NAME (schem
         ->and(validateBlocks([['type' => 'test_link', 'props' => ['link' => 'https://example.test/ok']]])->passes())->toBeTrue();
 });
 
-it('sniffs typed-url props nested 2+ levels deep via the schema walk (object lists + scalar url lists)', function () {
+it('sniffs typed-url props nested 2+ levels deep via the schema walk (object lists + scalar url lists)', function (): void {
     registerSchemaBlock('test_deep', [
         'rows' => ['type' => 'list', 'of' => [
             'cta_link' => ['type' => 'url'],
@@ -136,14 +136,14 @@ it('sniffs typed-url props nested 2+ levels deep via the schema walk (object lis
         ->and(validateBlocks([['type' => 'test_deep', 'props' => ['rows' => [['cta_link' => '/ok', 'subs' => ['https://x.test']]]]]])->passes())->toBeTrue();
 });
 
-it('rejects a non-string value under a typed-url prop (no render-time TypeError/500)', function () {
+it('rejects a non-string value under a typed-url prop (no render-time TypeError/500)', function (): void {
     registerSchemaBlock('test_arr', ['cta_url' => ['type' => 'url']]);
 
     expect(validateBlocks([['type' => 'test_arr', 'props' => ['cta_url' => ['javascript:alert(1)']]]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'test_arr', 'props' => ['cta_url' => 42]]])->fails())->toBeTrue();
 });
 
-it('treats url-encoded and protocol-relative URLs as non-XSS (documented: not a §2 scheme violation)', function () {
+it('treats url-encoded and protocol-relative URLs as non-XSS (documented: not a §2 scheme violation)', function (): void {
     // Browsers do not percent-decode the scheme position, so %6a%61… is an inert relative URL;
     // // is external navigation (open-redirect surface) by a trusted tenant admin, not script
     // execution. Both pass the §2 (no script-scheme) guard by design.
@@ -153,7 +153,7 @@ it('treats url-encoded and protocol-relative URLs as non-XSS (documented: not a 
         ->and(validateBlocks([['type' => 'test_doc', 'props' => ['link' => '//evil.example']]])->passes())->toBeTrue();
 });
 
-it('every author href/src sink in a section partial is a schema-declared url prop (drift sentinel)', function () {
+it('every author href/src sink in a section partial is a schema-declared url prop (drift sentinel)', function (): void {
     // The schema-driven validator scheme-checks props it types `url`. This sentinel keeps the
     // statically-visible SINKS in lockstep: `{{ $props['k'] }}` / `{{ $item['k'] }}` in an href/src
     // must be a type:url prop. It cannot see alias vars or non-href/src URL attributes, so it ALSO
@@ -186,7 +186,7 @@ it('every author href/src sink in a section partial is a schema-declared url pro
     }
 });
 
-it('rejects a dangerous URL scheme inside a partners logo item (list recursion)', function () {
+it('rejects a dangerous URL scheme inside a partners logo item (list recursion)', function (): void {
     // §2: ValidPageJson recurses into the logos[] list, so an item's url/image_url is sniffed
     // for script schemes — the stored-XSS guard reaches array-item URLs, not just scalar props.
     expect(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['url' => 'javascript:alert(1)']]]]])->fails())->toBeTrue()
@@ -194,7 +194,7 @@ it('rejects a dangerous URL scheme inside a partners logo item (list recursion)'
         ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 'https://cdn.test/p.png', 'url' => '/ok']]]]])->passes())->toBeTrue();
 });
 
-it('rejects a non-scalar value under a text/textarea prop (no render-time TypeError/500)', function () {
+it('rejects a non-scalar value under a text/textarea prop (no render-time TypeError/500)', function (): void {
     // ADR-08 boundary completeness: a text prop renders through e(); a non-scalar (array) would
     // crash htmlspecialchars and 500 the published page, so the wire-payload guard rejects it —
     // at top level, inside an object-list item, and inside a scalar list.
@@ -204,7 +204,7 @@ it('rejects a non-scalar value under a text/textarea prop (no render-time TypeEr
         ->and(validateBlocks([['type' => 'hero', 'props' => ['heading' => 'Tiêu đề hợp lệ']]])->passes())->toBeTrue();
 });
 
-it('rejects a dangerous URL scheme in a contact phone/email/map prop', function () {
+it('rejects a dangerous URL scheme in a contact phone/email/map prop', function (): void {
     // phone/email render into tel:/mailto: hrefs and map_embed into an iframe src — all type:url.
     expect(validateBlocks([['type' => 'contact', 'props' => ['phone' => 'javascript:alert(1)']]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'contact', 'props' => ['email' => 'javascript:alert(1)']]])->fails())->toBeTrue()

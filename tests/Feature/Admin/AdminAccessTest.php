@@ -17,7 +17,7 @@ use Livewire\Livewire;
  * tenant's own host under /admin (P0.8).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, site_profile_translations, site_profiles, site_settings,
          platform_settings, site_locales, site_modules, content_sections, domains, sites, tenants,
@@ -37,17 +37,17 @@ beforeEach(function () {
     ));
 });
 
-it('redirects an admin-plane guest to the tenant login', function () {
+it('redirects an admin-plane guest to the tenant login', function (): void {
     $this->get('http://anvinh.test/admin')->assertRedirect('http://anvinh.test/admin/login');
 });
 
-it('keeps the crawler-reachable login page out of search indexes', function () {
+it('keeps the crawler-reachable login page out of search indexes', function (): void {
     $this->get('http://anvinh.test/admin/login')
         ->assertOk()
         ->assertSee('<meta name="robots" content="noindex, nofollow">', false);
 });
 
-it('accepts the owner credentials and challenges for the mandatory second factor', function () {
+it('accepts the owner credentials and challenges for the mandatory second factor', function (): void {
     Livewire::test(Login::class)
         ->set('email', 'owner@anvinh.test')
         ->set('password', 'a-strong-password')
@@ -60,7 +60,7 @@ it('accepts the owner credentials and challenges for the mandatory second factor
     expect(session('2fa.user_id'))->not->toBeNull();
 });
 
-it('rejects bad credentials without authenticating', function () {
+it('rejects bad credentials without authenticating', function (): void {
     Livewire::test(Login::class)
         ->set('email', 'owner@anvinh.test')
         ->set('password', 'wrong-password')
@@ -70,7 +70,7 @@ it('rejects bad credentials without authenticating', function () {
     $this->assertGuest();
 });
 
-it('shows the dashboard shell and the dynamic "Trang" nav to the owner', function () {
+it('shows the dashboard shell and the dynamic "Trang" nav to the owner', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
     $this->actingAs($owner)->get('http://anvinh.test/admin')
@@ -79,7 +79,7 @@ it('shows the dashboard shell and the dynamic "Trang" nav to the owner', functio
         ->assertSee('Trang');
 });
 
-it('hides the "Trang" nav from a member without entries.view (entitlement ∩ RBAC)', function () {
+it('hides the "Trang" nav from a member without entries.view (entitlement ∩ RBAC)', function (): void {
     $member = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($member, 'media-only', ['media.view']));
 
@@ -89,7 +89,7 @@ it('hides the "Trang" nav from a member without entries.view (entitlement ∩ RB
         ->assertDontSee('Trang');
 });
 
-it('routes Livewire updates through the plane-aware tenant-context middleware', function () {
+it('routes Livewire updates through the plane-aware tenant-context middleware', function (): void {
     $route = Route::getRoutes()->getByName('livewire.update');
 
     expect($route)->not->toBeNull()
@@ -97,7 +97,7 @@ it('routes Livewire updates through the plane-aware tenant-context middleware', 
         ->and(app('livewire')->getUpdateUri())->toBe('/livewire/update');
 });
 
-it('logs out and returns to the tenant login', function () {
+it('logs out and returns to the tenant login', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
     // Real logout with CSRF on: seed the session token and post it back.
@@ -109,7 +109,7 @@ it('logs out and returns to the tenant login', function () {
     $this->assertGuest();
 });
 
-it('rate-limits repeated failed logins (brute-force guard)', function () {
+it('rate-limits repeated failed logins (brute-force guard)', function (): void {
     foreach (range(1, 5) as $ignored) {
         Livewire::test(Login::class)
             ->set('email', 'owner@anvinh.test')->set('password', 'wrong-password')

@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Storage;
  * happy paths through the full middleware stack.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -52,33 +52,33 @@ function mediaMember(array $permissions): User
 }
 
 // ── gate: every endpoint re-checks media.upload (a viewer with only media.view is forbidden) ──
-it('forbids presign without media.upload', function () {
+it('forbids presign without media.upload', function (): void {
     $this->actingAs(mediaMember(['media.view']))
         ->postJson('http://a.test/admin/media/presign', ['filename' => 'a.png', 'mime' => 'image/png', 'size' => 10])
         ->assertForbidden();
 });
 
-it('forbids register without media.upload', function () {
+it('forbids register without media.upload', function (): void {
     $this->actingAs(mediaMember(['media.view']))
         ->postJson('http://a.test/admin/media/register', ['tempKey' => '_incoming/a/x.png', 'filename' => 'a.png'])
         ->assertForbidden();
 });
 
-it('forbids the local-fallback upload without media.upload', function () {
+it('forbids the local-fallback upload without media.upload', function (): void {
     $this->actingAs(mediaMember(['media.view']))
         ->post('http://a.test/admin/media/upload', ['file' => UploadedFile::fake()->createWithContent('a.png', endpointPng())])
         ->assertForbidden();
 });
 
 // ── presign: validation + advisory rejection (the signed-URL happy path is E2E — needs real R2) ──
-it('rejects an unsupported declared mime on presign (422 with a message)', function () {
+it('rejects an unsupported declared mime on presign (422 with a message)', function (): void {
     $this->actingAs(mediaMember(['media.view', 'media.upload']))
         ->postJson('http://a.test/admin/media/presign', ['filename' => 'a.svg', 'mime' => 'image/svg+xml', 'size' => 10])
         ->assertStatus(422)
         ->assertJsonStructure(['message']);
 });
 
-it('validates the required fields on presign (422)', function () {
+it('validates the required fields on presign (422)', function (): void {
     // A non-empty object that omits every required key (an empty [] would encode as a JSON list).
     $this->actingAs(mediaMember(['media.view', 'media.upload']))
         ->postJson('http://a.test/admin/media/presign', ['probe' => 1])
@@ -87,7 +87,7 @@ it('validates the required fields on presign (422)', function () {
 });
 
 // ── register: the REAL gate, over HTTP (the browser has already PUT to the temp key) ──
-it('finalizes a staged upload over HTTP → 200 {ulid} + a site-stamped row', function () {
+it('finalizes a staged upload over HTTP → 200 {ulid} + a site-stamped row', function (): void {
     $editor = mediaMember(['media.view', 'media.upload']);
 
     $tempKey = '_incoming/a/01http.png';
@@ -109,7 +109,7 @@ it('finalizes a staged upload over HTTP → 200 {ulid} + a site-stamped row', fu
     Storage::disk('r2')->assertMissing($tempKey);
 });
 
-it('rejects a register replaying ANOTHER site\'s temp key (cross-tenant guard) over HTTP', function () {
+it('rejects a register replaying ANOTHER site\'s temp key (cross-tenant guard) over HTTP', function (): void {
     $editor = mediaMember(['media.view', 'media.upload']);
 
     $tempKey = '_incoming/b/01foreign.png';
@@ -123,7 +123,7 @@ it('rejects a register replaying ANOTHER site\'s temp key (cross-tenant guard) o
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });
 
-it('validates the required fields on register (422)', function () {
+it('validates the required fields on register (422)', function (): void {
     $this->actingAs(mediaMember(['media.view', 'media.upload']))
         ->postJson('http://a.test/admin/media/register', ['probe' => 1])
         ->assertStatus(422)
@@ -131,7 +131,7 @@ it('validates the required fields on register (422)', function () {
 });
 
 // ── upload: local-disk fallback (dev) proxies the file through Laravel ──
-it('ingests a multipart file via the local fallback → 200 {ulid} + a site-stamped row', function () {
+it('ingests a multipart file via the local fallback → 200 {ulid} + a site-stamped row', function (): void {
     $editor = mediaMember(['media.view', 'media.upload']);
 
     $this->actingAs($editor)

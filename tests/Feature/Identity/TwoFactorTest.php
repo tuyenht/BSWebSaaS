@@ -10,7 +10,7 @@ use PragmaRX\Google2FA\Google2FA;
  * enable requires proving possession of the secret; recovery codes are single-use.
  */
 
-it('verifies a valid TOTP code and rejects an invalid one', function () {
+it('verifies a valid TOTP code and rejects an invalid one', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $code = (new Google2FA)->getCurrentOtp($secret);
@@ -19,7 +19,7 @@ it('verifies a valid TOTP code and rejects an invalid one', function () {
         ->and($service->verify($secret, '000000'))->toBeFalse();
 });
 
-it('enables 2FA and stores the secret + recovery codes encrypted at rest', function () {
+it('enables 2FA and stores the secret + recovery codes encrypted at rest', function (): void {
     $service = app(TwoFactorService::class);
     $user = User::factory()->create();
     $secret = $service->generateSecret();
@@ -36,7 +36,7 @@ it('enables 2FA and stores the secret + recovery codes encrypted at rest', funct
     expect($raw)->toBeString()->not->toBe($secret);
 });
 
-it('refuses to enable 2FA with a bad code', function () {
+it('refuses to enable 2FA with a bad code', function (): void {
     $service = app(TwoFactorService::class);
     $user = User::factory()->create();
 
@@ -44,7 +44,7 @@ it('refuses to enable 2FA with a bad code', function () {
         ->and($user->refresh()->two_factor_confirmed_at)->toBeNull();
 });
 
-it('consumes a recovery code exactly once', function () {
+it('consumes a recovery code exactly once', function (): void {
     $service = app(TwoFactorService::class);
     $user = User::factory()->create();
     $secret = $service->generateSecret();

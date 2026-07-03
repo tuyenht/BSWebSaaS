@@ -14,13 +14,13 @@ use PragmaRX\Google2FA\Google2FA;
  * TOTP two-factor (design.md §29 / C1). Secret + recovery codes are encrypted at
  * rest (model casts). Mandatory for platform operators; optional for tenants.
  */
-final class TwoFactorService
+final readonly class TwoFactorService
 {
-    private const RECOVERY_CODES = 8;
+    private const int RECOVERY_CODES = 8;
 
-    private const VERIFY_WINDOW = 2; // tolerate ±2 periods of clock skew
+    private const int VERIFY_WINDOW = 2; // tolerate ±2 periods of clock skew
 
-    public function __construct(private readonly Google2FA $engine) {}
+    public function __construct(private Google2FA $engine) {}
 
     public function generateSecret(): string
     {

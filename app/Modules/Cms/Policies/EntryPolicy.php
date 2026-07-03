@@ -20,7 +20,7 @@ final class EntryPolicy
         return $user->can('entries.view');
     }
 
-    public function view(User $user, Entry $entry): bool
+    public function view(User $user): bool
     {
         return $user->can('entries.view');
     }
@@ -43,13 +43,13 @@ final class EntryPolicy
     }
 
     /** Submit for review (workflow Tầng-1): the path for authors without publish rights. */
-    public function submit(User $user, Entry $entry): bool
+    public function submit(User $user): bool
     {
         return $user->can('entries.submit');
     }
 
     /** Publish straight through (workflow Tầng-1): only grants carrying entries.publish. */
-    public function publish(User $user, Entry $entry): bool
+    public function publish(User $user): bool
     {
         return $user->can('entries.publish');
     }

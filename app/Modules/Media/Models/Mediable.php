@@ -24,11 +24,13 @@ final class Mediable extends Model
 {
     use BelongsToSite;
 
+    #[\Override]
     protected $guarded = [];
 
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

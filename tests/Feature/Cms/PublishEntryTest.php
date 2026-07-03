@@ -15,7 +15,7 @@ use App\Modules\Tenancy\Context\Tenancy;
  * leaves a 301 the storefront serves; a revert must not create a redirect loop.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -37,11 +37,11 @@ function makeDraftPage(User $author, string $slug, string $title = 'Trang', arra
     return $entry;
 }
 
-it('publishes straight through for an actor with entries.publish', function () {
+it('publishes straight through for an actor with entries.publish', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish', 'entries.submit']);
         $page = makeDraftPage($editor, 'gioi-thieu');
 
@@ -55,11 +55,11 @@ it('publishes straight through for an actor with entries.publish', function () {
     });
 });
 
-it('parks as pending (no route, no published_at) for an actor without publish', function () {
+it('parks as pending (no route, no published_at) for an actor without publish', function (): void {
     $tenancy = app(Tenancy::class);
     $author = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($author) {
+    $tenancy->enter(1, function () use ($author): void {
         grantRole($author, 'author', ['entries.create', 'entries.edit.own', 'entries.submit']);
         $page = makeDraftPage($author, 'tin-tuc');
 
@@ -72,11 +72,11 @@ it('parks as pending (no route, no published_at) for an actor without publish', 
     });
 });
 
-it('rewrites the route and records a 301 when a published slug changes', function () {
+it('rewrites the route and records a 301 when a published slug changes', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $page = makeDraftPage($editor, 'gioi-thieu');
         app(PublishEntry::class)->handle($page->fresh(), 'vi', $editor->fresh());
@@ -90,11 +90,11 @@ it('rewrites the route and records a 301 when a published slug changes', functio
     });
 });
 
-it('does not create a redirect loop when a slug reverts (A→B→A)', function () {
+it('does not create a redirect loop when a slug reverts (A→B→A)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $page = makeDraftPage($editor, 'a');
         $publish = app(PublishEntry::class);
@@ -112,11 +112,11 @@ it('does not create a redirect loop when a slug reverts (A→B→A)', function (
     });
 });
 
-it('serves the 301 from the storefront and 404s an unmapped path', function () {
+it('serves the 301 from the storefront and 404s an unmapped path', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $page = makeDraftPage($editor, 'gioi-thieu', 'Giới thiệu', ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'Giới thiệu']]]]);
         $publish = app(PublishEntry::class);
@@ -131,12 +131,12 @@ it('serves the 301 from the storefront and 404s an unmapped path', function () {
     $this->get('http://a.test/khong-ton-tai')->assertNotFound();
 });
 
-it('does not let a submit-only actor unpublish an already-published page', function () {
+it('does not let a submit-only actor unpublish an already-published page', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
     $author = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor, $author) {
+    $tenancy->enter(1, function () use ($editor, $author): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
 
@@ -152,11 +152,11 @@ it('does not let a submit-only actor unpublish an already-published page', funct
     });
 });
 
-it('collapses a repeated rename into a single-hop 301 chain (A→B→C)', function () {
+it('collapses a repeated rename into a single-hop 301 chain (A→B→C)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $page = makeDraftPage($editor, 'a');
         $publish = app(PublishEntry::class);
@@ -175,11 +175,11 @@ it('collapses a repeated rename into a single-hop 301 chain (A→B→C)', functi
     });
 });
 
-it('resolves a case-variant inbound path on the storefront', function () {
+it('resolves a case-variant inbound path on the storefront', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $page = makeDraftPage($editor, 'gioi-thieu', 'Giới thiệu', ['blocks' => [['type' => 'hero', 'props' => ['heading' => 'GT']]]]);
         app(PublishEntry::class)->handle($page->fresh(), 'vi', $editor->fresh());

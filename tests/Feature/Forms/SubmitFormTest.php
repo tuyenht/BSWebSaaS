@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Notification;
  * (BelongsToSite) stamps site_id from the current context.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy();
     Notification::fake();
     // Truncate both settings tables so no stale SMTP ciphertext (encrypted under a different
@@ -44,7 +44,7 @@ function contactForm(int $site = 1, array $notify = ['sales@anvinh.test']): Form
     ]));
 }
 
-it('captures a clean lead as new, graduates typed columns, and notifies recipients', function () {
+it('captures a clean lead as new, graduates typed columns, and notifies recipients', function (): void {
     $form = contactForm();
 
     $submission = app(Tenancy::class)->enter(1, fn () => app(SubmitForm::class)->handle(
@@ -68,14 +68,13 @@ it('captures a clean lead as new, graduates typed columns, and notifies recipien
     Notification::assertSentOnDemand(NewLeadNotification::class);
 });
 
-it('flags a honeypot-tripped submission as spam and does not notify', function () {
+it('flags a honeypot-tripped submission as spam and does not notify', function (): void {
     $form = contactForm();
 
     $submission = app(Tenancy::class)->enter(1, fn () => app(SubmitForm::class)->handle(
         $form,
         ['name' => 'Bot', 'email' => 'bot@spam.test'],
-        honeypot: 'http://spam.example', // a bot filled the hidden field
-        turnstileToken: null,
+        honeypot: 'http://spam.example',
     ));
 
     expect($submission->status)->toBe('spam')
@@ -84,7 +83,7 @@ it('flags a honeypot-tripped submission as spam and does not notify', function (
     Notification::assertNothingSent();
 });
 
-it('flags the submission as spam when turnstile verification fails', function () {
+it('flags the submission as spam when turnstile verification fails', function (): void {
     config(['services.turnstile.secret_key' => 'test-secret']);
     Http::fake([
         'challenges.cloudflare.com/*' => Http::response(['success' => false]),
@@ -105,7 +104,7 @@ it('flags the submission as spam when turnstile verification fails', function ()
     Notification::assertNothingSent();
 });
 
-it('passes turnstile when verification succeeds and stores the lead as new', function () {
+it('passes turnstile when verification succeeds and stores the lead as new', function (): void {
     config(['services.turnstile.secret_key' => 'test-secret']);
     Http::fake([
         'challenges.cloudflare.com/*' => Http::response(['success' => true]),
@@ -126,9 +125,9 @@ it('passes turnstile when verification succeeds and stores the lead as new', fun
     Notification::assertSentOnDemand(NewLeadNotification::class);
 });
 
-it('fails closed (flags spam, no crash) when turnstile is unreachable', function () {
+it('fails closed (flags spam, no crash) when turnstile is unreachable', function (): void {
     config(['services.turnstile.secret_key' => 'test-secret']);
-    Http::fake(function () {
+    Http::fake(function (): void {
         throw new ConnectionException('Connection timed out');
     });
 
@@ -145,7 +144,7 @@ it('fails closed (flags spam, no crash) when turnstile is unreachable', function
     Notification::assertNothingSent();
 });
 
-it('caps an over-long source_url to the column limit (no insert crash)', function () {
+it('caps an over-long source_url to the column limit (no insert crash)', function (): void {
     $form = contactForm();
     // A Referer with many UTM params easily exceeds varchar(255); Postgres rejects (not truncates).
     $longUrl = 'https://av1.test/lien-he?'.str_repeat('utm_source=x&', 40);
@@ -162,7 +161,7 @@ it('caps an over-long source_url to the column limit (no insert crash)', functio
         ->and($submission->status)->toBe('new');
 });
 
-it('sets reply-to to the lead email so the recipient replies to the customer', function () {
+it('sets reply-to to the lead email so the recipient replies to the customer', function (): void {
     $form = contactForm();
     $submission = app(Tenancy::class)->enter(1, fn () => $form->submissions()->create([
         'name' => 'Khách A',
@@ -170,13 +169,13 @@ it('sets reply-to to the lead email so the recipient replies to the customer', f
         'data' => ['name' => 'Khách A', 'email' => 'khach@example.test'],
     ]));
 
-    $mail = (new NewLeadNotification($submission, $form))->toMail(new AnonymousNotifiable);
+    $mail = new NewLeadNotification($submission, $form)->toMail(new AnonymousNotifiable);
 
     expect($mail->replyTo[0][0])->toBe('khach@example.test') // MailMessage stores [address, name] tuples
         ->and($mail->replyTo[0][1])->toBe('Khách A');
 });
 
-it('does not notify when the form has no recipients', function () {
+it('does not notify when the form has no recipients', function (): void {
     $form = contactForm(notify: []);
 
     app(Tenancy::class)->enter(1, fn () => app(SubmitForm::class)->handle(

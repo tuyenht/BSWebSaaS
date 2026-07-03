@@ -9,7 +9,7 @@ use Symfony\Component\Finder\Finder;
  * callers (bootstrap, provisioning) may mutate roles directly. Adding another caller fails this test.
  */
 
-it('routes every role mutation through a guarded role action', function () {
+it('routes every role mutation through a guarded role action', function (): void {
     $allowed = [
         'app/Modules/Rbac/Actions/AssignRole.php',            // guarded grant chokepoint
         'app/Modules/Rbac/Actions/RevokeRole.php',            // guarded revoke chokepoint
@@ -21,7 +21,7 @@ it('routes every role mutation through a guarded role action', function () {
     $offenders = [];
 
     foreach (Finder::create()->files()->in(app_path())->name('*.php') as $file) {
-        if (preg_match($pattern, (string) $file->getContents()) === 1) {
+        if (preg_match($pattern, $file->getContents()) === 1) {
             $rel = str_replace(base_path().'/', '', (string) $file->getRealPath());
             if (! in_array($rel, $allowed, true)) {
                 $offenders[] = $rel;

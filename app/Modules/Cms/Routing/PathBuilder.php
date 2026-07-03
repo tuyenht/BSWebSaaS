@@ -13,12 +13,12 @@ use App\Modules\Tenancy\Context\SiteLocale;
  * structural/query-only) — so localized URLs stay correct. Nested-category chains are
  * a later step; the slice uses flat (one-level) categories.
  */
-final class PathBuilder
+final readonly class PathBuilder
 {
     /** Conventional home slug → site root (matches ProvisionSite + seedHomepage). */
-    public const HOME_SLUG = 'home';
+    public const string HOME_SLUG = 'home';
 
-    public function __construct(private readonly SiteLocale $siteLocale) {}
+    public function __construct(private SiteLocale $siteLocale) {}
 
     /**
      * Overlay the locale prefix on an UNPREFIXED, site-relative path (design.md §10/ADR-11):

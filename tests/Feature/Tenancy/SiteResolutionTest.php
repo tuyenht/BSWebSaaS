@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Route;
  * + RLS return only that site's data), and fail-closes with 404 for unknown hosts.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy();
     DB::connection('pgsql_admin')->table('tenant_probes')->insert([
         ['site_id' => 1, 'value' => 'A', 'created_at' => now(), 'updated_at' => now()],
@@ -23,11 +23,11 @@ beforeEach(function () {
     ]));
 });
 
-it('resolves the site from the request host and isolates data', function () {
+it('resolves the site from the request host and isolates data', function (): void {
     $this->get('http://a.test/_probe')->assertOk()->assertExactJson(['values' => ['A']]);
     $this->get('http://b.test/_probe')->assertOk()->assertExactJson(['values' => ['B']]);
 });
 
-it('fail-closes with 404 for an unknown host', function () {
+it('fail-closes with 404 for an unknown host', function (): void {
     $this->get('http://unknown.test/_probe')->assertNotFound();
 });

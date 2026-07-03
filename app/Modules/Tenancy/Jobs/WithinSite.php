@@ -12,9 +12,9 @@ use Closure;
  * (design.md §5 — every entry point, not just HTTP). A tenant-aware job returns
  * `[new WithinSite($this->siteId)]` from its middleware() method.
  */
-final class WithinSite
+final readonly class WithinSite
 {
-    public function __construct(private readonly int $siteId) {}
+    public function __construct(private int $siteId) {}
 
     public function handle(object $job, Closure $next): mixed
     {

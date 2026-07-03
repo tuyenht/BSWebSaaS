@@ -19,6 +19,7 @@ class SiteProfile extends Model
 {
     use BelongsToSite;
 
+    #[\Override]
     protected $guarded = [];
 
     /**
@@ -32,6 +33,7 @@ class SiteProfile extends Model
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

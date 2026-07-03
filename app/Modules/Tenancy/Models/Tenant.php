@@ -22,8 +22,10 @@ final class Tenant extends Model
     use HasUlidColumn;
     use SoftDeletes;
 
+    #[\Override]
     protected $guarded = [];
 
+    #[\Override]
     protected function casts(): array
     {
         return ['settings' => 'array'];

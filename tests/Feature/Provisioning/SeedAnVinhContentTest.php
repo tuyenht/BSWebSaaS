@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  * and real NAP on SiteProfile. Idempotent.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -44,10 +44,10 @@ function seedPrecisionSite(): Site
     return Site::query()->firstWhere('name', 'An Vinh');
 }
 
-it('seeds san-pham with 3 sub-categories and 6 products', function () {
+it('seeds san-pham with 3 sub-categories and 6 products', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         $sanPhamTranslation = TaxonomyTranslation::query()->where('slug', 'san-pham')->first();
@@ -84,10 +84,10 @@ it('seeds san-pham with 3 sub-categories and 6 products', function () {
     });
 });
 
-it('seeds du-an with 6 projects, route, and no sectors', function () {
+it('seeds du-an with 6 projects, route, and no sectors', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         $duAnTranslation = TaxonomyTranslation::query()->where('slug', 'du-an')->first();
@@ -115,10 +115,10 @@ it('seeds du-an with 6 projects, route, and no sectors', function () {
     });
 });
 
-it('seeds dich-vu with 4 precision-mechanical services and glyph icons', function () {
+it('seeds dich-vu with 4 precision-mechanical services and glyph icons', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         $dichVuTranslation = TaxonomyTranslation::query()->where('slug', 'dich-vu')->first();
@@ -147,10 +147,10 @@ it('seeds dich-vu with 4 precision-mechanical services and glyph icons', functio
     });
 });
 
-it('seeds 6 tin-tuc news posts under the ProvisionSite news category', function () {
+it('seeds 6 tin-tuc news posts under the ProvisionSite news category', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         // tin-tuc taxonomy already existed from ProvisionSite — not created again
@@ -171,10 +171,10 @@ it('seeds 6 tin-tuc news posts under the ProvisionSite news category', function 
     });
 });
 
-it('updates the home page body with 4 entry_grid blocks covering all collections', function () {
+it('updates the home page body with 4 entry_grid blocks covering all collections', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         $homeRoute = SiteRoute::query()->where('path', '/')->first();
@@ -206,10 +206,10 @@ it('updates the home page body with 4 entry_grid blocks covering all collections
     });
 });
 
-it('updates the contact page with real NAP and factory list', function () {
+it('updates the contact page with real NAP and factory list', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         $contactRoute = SiteRoute::query()->where('path', '/lien-he')->first();
@@ -231,10 +231,10 @@ it('updates the contact page with real NAP and factory list', function () {
     });
 });
 
-it('seeds the An Vinh contact form routed to the business inbox', function () {
+it('seeds the An Vinh contact form routed to the business inbox', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         $form = Form::query()->where('key', 'contact')->with('fields')->first();
@@ -246,10 +246,10 @@ it('seeds the An Vinh contact form routed to the business inbox', function () {
     });
 });
 
-it('creates /gioi-thieu page with route, nav item, and about content', function () {
+it('creates /gioi-thieu page with route, nav item, and about content', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         expect(SiteRoute::query()->where('path', '/gioi-thieu')->exists())->toBeTrue();
@@ -278,10 +278,10 @@ it('creates /gioi-thieu page with route, nav item, and about content', function 
     });
 });
 
-it('creates /doi-tac page with route, nav item, partner names, and testimonials', function () {
+it('creates /doi-tac page with route, nav item, partner names, and testimonials', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         expect(SiteRoute::query()->where('path', '/doi-tac')->exists())->toBeTrue();
@@ -311,10 +311,10 @@ it('creates /doi-tac page with route, nav item, partner names, and testimonials'
     });
 });
 
-it('sets brand and NAP on SiteProfile', function () {
+it('sets brand and NAP on SiteProfile', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         $profile = SiteProfile::query()->first();
@@ -327,10 +327,10 @@ it('sets brand and NAP on SiteProfile', function () {
     });
 });
 
-it('contains no insulation, Formosa, or Mông Dương strings', function () {
+it('contains no insulation, Formosa, or Mông Dương strings', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         // Entry titles/excerpts: no insulation text
@@ -345,10 +345,10 @@ it('contains no insulation, Formosa, or Mông Dương strings', function () {
     });
 });
 
-it('is idempotent (re-run does not duplicate)', function () {
+it('is idempotent (re-run does not duplicate)', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
         app(SeedAnVinhContent::class)->handle();  // second run
 
@@ -376,10 +376,10 @@ it('is idempotent (re-run does not duplicate)', function () {
     });
 });
 
-it('repositions the tin-tuc menu item to position 8 (after all An Vinh sections)', function () {
+it('repositions the tin-tuc menu item to position 8 (after all An Vinh sections)', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         // ProvisionSite seeds tin-tuc at position 1 (right after Trang chủ at 0).
@@ -400,10 +400,10 @@ it('repositions the tin-tuc menu item to position 8 (after all An Vinh sections)
     });
 });
 
-it('creates the contact page when the site predates /lien-he (prod av1 parity)', function () {
+it('creates the contact page when the site predates /lien-he (prod av1 parity)', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         // Prod av1 was provisioned before ProvisionSite seeded a contact page — it had only
         // / + /tin-tuc. Drop /lien-he so the seeder must CREATE it (a plain "update" would no-op
         // and leave the home/about CTAs dangling on a 404).
@@ -426,10 +426,10 @@ it('creates the contact page when the site predates /lien-he (prod av1 parity)',
     });
 });
 
-it('re-seed refreshes an existing post featured image (re-curated photo reaches live posts)', function () {
+it('re-seed refreshes an existing post featured image (re-curated photo reaches live posts)', function (): void {
     $site = seedPrecisionSite();
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         app(SeedAnVinhContent::class)->handle();
 
         // A post already exists with a stale image (the prod state before a re-curation re-seed).

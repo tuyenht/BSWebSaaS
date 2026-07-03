@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Cms\Models;
 
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -19,5 +21,6 @@ class TaxonomyTranslation extends Model
 {
     use BelongsToSite;
 
+    #[\Override]
     protected $guarded = [];
 }

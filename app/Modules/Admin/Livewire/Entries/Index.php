@@ -36,7 +36,7 @@ final class Index extends Component
     {
         $locale = app(SiteLocale::class)->default();
         $section = $this->resolveSection();
-        $entryType = $section !== null ? ($section->entry_type ?? 'page') : 'page';
+        $entryType = $section instanceof ContentSection ? ($section->entry_type ?? 'page') : 'page';
 
         $entries = Entry::query()
             ->where('type', $entryType)

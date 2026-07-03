@@ -13,7 +13,7 @@ use App\Modules\Tenancy\Context\Tenancy;
  * is forbidden; a guest is sent to the platform login.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -30,7 +30,7 @@ function navAs(string $role): User
     return $user->fresh();
 }
 
-it('shows super_admin every console section', function () {
+it('shows super_admin every console section', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->actingAs(navAs('super_admin'))->get("http://{$host}/tenants")
@@ -41,7 +41,7 @@ it('shows super_admin every console section', function () {
         ->assertSee(route('platform.settings.email')); // super-only
 });
 
-it('shows support tenants+sites+audit but not the super-only Settings', function () {
+it('shows support tenants+sites+audit but not the super-only Settings', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->actingAs(navAs('support'))->get("http://{$host}/tenants")
@@ -52,7 +52,7 @@ it('shows support tenants+sites+audit but not the super-only Settings', function
         ->assertDontSee(route('platform.settings.email'));
 });
 
-it('shows billing only the Tenants section', function () {
+it('shows billing only the Tenants section', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->actingAs(navAs('billing'))->get("http://{$host}/tenants")
@@ -63,7 +63,7 @@ it('shows billing only the Tenants section', function () {
         ->assertDontSee(route('platform.settings.email'));
 });
 
-it('forbids a tenant user (no platform role) on the platform host', function () {
+it('forbids a tenant user (no platform role) on the platform host', function (): void {
     $host = (string) config('tenancy.platform_host');
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'admin', ['users.manage', 'entries.view']));
@@ -71,7 +71,7 @@ it('forbids a tenant user (no platform role) on the platform host', function () 
     $this->actingAs($user)->get("http://{$host}/tenants")->assertForbidden();
 });
 
-it('redirects a guest on the platform host to the platform login', function () {
+it('redirects a guest on the platform host to the platform login', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->get("http://{$host}/tenants")->assertRedirect(route('platform.login'));

@@ -13,7 +13,7 @@ use Tests\Fixtures\WriteProbeJob;
 
 beforeEach(fn () => seedTenancy());
 
-it('runs a queued job inside its own tenant context', function () {
+it('runs a queued job inside its own tenant context', function (): void {
     WriteProbeJob::dispatchSync(1, 'from-job-a');
     WriteProbeJob::dispatchSync(2, 'from-job-b');
 

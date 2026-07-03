@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Provisioning\Providers;
 
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;

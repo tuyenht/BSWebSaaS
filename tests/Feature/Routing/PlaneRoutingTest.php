@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  *   • platform   — operator host, auth + platform role
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -21,7 +21,7 @@ beforeEach(function () {
 });
 
 // ── Storefront ────────────────────────────────────────────────────────────────
-it('serves the storefront on a tenant host within its context', function () {
+it('serves the storefront on a tenant host within its context', function (): void {
     seedHomepage(1, 'A home');
     seedHomepage(2, 'B home');
 
@@ -29,11 +29,11 @@ it('serves the storefront on a tenant host within its context', function () {
     expect($this->get('http://b.test/')->assertOk()->getContent())->toContain('B home');
 });
 
-it('404s the storefront on an unknown host', function () {
+it('404s the storefront on an unknown host', function (): void {
     $this->get('http://nope.test/')->assertNotFound();
 });
 
-it('refuses a suspended site', function () {
+it('refuses a suspended site', function (): void {
     seedHomepage(1, 'A home');
     DB::connection('pgsql_admin')->table('sites')->where('id', 2)->update(['status' => 'suspended']);
 
@@ -42,11 +42,11 @@ it('refuses a suspended site', function () {
 });
 
 // ── Tenant admin ────────────────────────────────────────────────────────────────
-it('redirects an unauthenticated visitor on the admin plane to the tenant login', function () {
+it('redirects an unauthenticated visitor on the admin plane to the tenant login', function (): void {
     $this->get('http://a.test/admin')->assertRedirect('http://a.test/admin/login');
 });
 
-it('serves the admin shell to a site member in tenant context', function () {
+it('serves the admin shell to a site member in tenant context', function (): void {
     $user = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
 
@@ -56,17 +56,17 @@ it('serves the admin shell to a site member in tenant context', function () {
 });
 
 // ── Platform ────────────────────────────────────────────────────────────────────
-it('redirects an unauthenticated visitor on the platform plane to login', function () {
+it('redirects an unauthenticated visitor on the platform plane to login', function (): void {
     $this->get('http://platform.bswebsaas.test/')->assertRedirect('http://platform.bswebsaas.test/login');
 });
 
-it('forbids a non-operator on the platform plane', function () {
+it('forbids a non-operator on the platform plane', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->getJson('http://platform.bswebsaas.test/')->assertForbidden();
 });
 
-it('lands an authenticated platform operator on the Tenants console', function () {
+it('lands an authenticated platform operator on the Tenants console', function (): void {
     $user = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
 
@@ -77,7 +77,7 @@ it('lands an authenticated platform operator on the Tenants console', function (
         ->assertRedirect(route('platform.tenants.index'));
 });
 
-it('serves the System Email console to a super_admin operator', function () {
+it('serves the System Email console to a super_admin operator', function (): void {
     $user = User::factory()->create(['two_factor_confirmed_at' => now()]);
     app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
 

@@ -18,15 +18,15 @@ use Illuminate\Contracts\Validation\ValidationRule;
  * URL-safety is SCHEMA-DRIVEN (by declared type, not prop name), so it cannot drift from the
  * sinks. The body is also capped in count + size (storefront DoS / CWV guard).
  */
-final class ValidPageJson implements ValidationRule
+final readonly class ValidPageJson implements ValidationRule
 {
     /** A page composes a bounded number of sections; reject pathological bodies. */
-    private const MAX_BLOCKS = 100;
+    private const int MAX_BLOCKS = 100;
 
     /** Serialized body byte ceiling (~256KB) — keeps entry_translations.body + render sane. */
-    private const MAX_BYTES = 262_144;
+    private const int MAX_BYTES = 262_144;
 
-    public function __construct(private readonly ComponentRegistry $registry) {}
+    public function __construct(private ComponentRegistry $registry) {}
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
@@ -127,13 +127,8 @@ final class ValidPageJson implements ValidationRule
 
             // Scalar list: `of` IS the item spec. Object list: `of` is a field-map → recurse.
             $scalarOf = isset($of['type']) && is_string($of['type']);
-            foreach ($value as $item) {
-                if (! ($scalarOf ? $this->valueSafeForSpec($item, $of) : $this->urlPropsSafe($item, $of))) {
-                    return false;
-                }
-            }
 
-            return true;
+            return array_all($value, fn ($item): bool => $scalarOf ? $this->valueSafeForSpec($item, $of) : $this->urlPropsSafe($item, $of));
         }
 
         // text / textarea / int → rendered through e(); a non-scalar (array/object) would crash
@@ -147,12 +142,6 @@ final class ValidPageJson implements ValidationRule
     {
         $normalized = strtolower((string) preg_replace('/[\s\x00-\x1F]+/', '', $value));
 
-        foreach (['javascript:', 'data:', 'vbscript:'] as $scheme) {
-            if (str_starts_with($normalized, $scheme)) {
-                return false;
-            }
-        }
-
-        return true;
+        return array_all(['javascript:', 'data:', 'vbscript:'], fn ($scheme): bool => ! str_starts_with($normalized, (string) $scheme));
     }
 }

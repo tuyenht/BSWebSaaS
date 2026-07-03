@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Audit\Models;
 
 use App\Modules\Shared\Concerns\HasUlidColumn;
@@ -20,11 +22,13 @@ class AuditLog extends Model
 
     public const UPDATED_AT = null; // append-only: created_at only
 
+    #[\Override]
     protected $guarded = [];
 
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

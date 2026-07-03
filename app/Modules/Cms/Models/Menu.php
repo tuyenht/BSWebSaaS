@@ -26,6 +26,7 @@ class Menu extends Model
     use BelongsToSite;
     use HasUlidColumn;
 
+    #[\Override]
     protected $guarded = [];
 
     /**
@@ -47,6 +48,7 @@ class Menu extends Model
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

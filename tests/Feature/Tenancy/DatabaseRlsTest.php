@@ -20,7 +20,7 @@ function asSite(int $siteId, Closure $fn): mixed
     });
 }
 
-beforeEach(function () {
+beforeEach(function (): void {
     $admin = DB::connection('pgsql_admin');
     $admin->statement('truncate tenant_probes, domains, sites, tenants restart identity cascade');
     $admin->table('tenants')->insert(['ulid' => 'TENANT0000000000000000001', 'name' => 'T1', 'settings' => '{}', 'created_at' => now(), 'updated_at' => now()]);
@@ -35,7 +35,7 @@ beforeEach(function () {
     ]);
 });
 
-it('shows a site only its own rows even via raw queries (RLS, not app scope)', function () {
+it('shows a site only its own rows even via raw queries (RLS, not app scope)', function (): void {
     $aSeen = asSite(1, fn () => DB::table('tenant_probes')->pluck('value')->all());
     $bSeen = asSite(2, fn () => DB::table('tenant_probes')->pluck('value')->all());
 
@@ -43,17 +43,17 @@ it('shows a site only its own rows even via raw queries (RLS, not app scope)', f
     expect($bSeen)->toBe(['b-secret']);
 });
 
-it('is fail-closed: no site context → zero rows (never all rows)', function () {
+it('is fail-closed: no site context → zero rows (never all rows)', function (): void {
     expect(DB::table('tenant_probes')->count())->toBe(0);
 });
 
-it('blocks cross-site writes via WITH CHECK', function () {
-    asSite(1, function () {
+it('blocks cross-site writes via WITH CHECK', function (): void {
+    asSite(1, function (): void {
         DB::table('tenant_probes')->insert(['site_id' => 2, 'value' => 'cross', 'created_at' => now(), 'updated_at' => now()]);
     });
 })->throws(QueryException::class);
 
-it('runs as a NOSUPERUSER / NOBYPASSRLS role (otherwise RLS is theatre)', function () {
+it('runs as a NOSUPERUSER / NOBYPASSRLS role (otherwise RLS is theatre)', function (): void {
     $role = DB::selectOne('select rolsuper::int as super, rolbypassrls::int as bypass from pg_roles where rolname = current_user');
 
     expect((int) $role->super)->toBe(0)

@@ -25,6 +25,7 @@ final class Site extends Model
     use HasUlidColumn;
     use SoftDeletes;
 
+    #[\Override]
     protected $guarded = [];
 
     /** @return HasMany<Domain, $this> */

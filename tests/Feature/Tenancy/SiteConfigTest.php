@@ -13,7 +13,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 
 beforeEach(fn () => seedTenancy());
 
-it('auto-stamps site_id and isolates settings across tenants', function () {
+it('auto-stamps site_id and isolates settings across tenants', function (): void {
     $tenancy = app(Tenancy::class);
 
     $tenancy->enter(1, fn () => SiteSetting::create([
@@ -30,10 +30,10 @@ it('auto-stamps site_id and isolates settings across tenants', function () {
         ->and($tenancy->enter(2, fn () => SiteSetting::count()))->toBe(0);
 });
 
-it('stores a localized site profile within its site', function () {
+it('stores a localized site profile within its site', function (): void {
     $tenancy = app(Tenancy::class);
 
-    $tenancy->enter(1, function () {
+    $tenancy->enter(1, function (): void {
         $profile = SiteProfile::create(['legal_name' => 'Cong ty An Vinh', 'tax_code' => '0101234567']);
         $profile->translations()->create(['locale' => 'vi', 'brand_name' => 'An Vinh', 'description' => 'Co khi']);
     });
@@ -42,11 +42,11 @@ it('stores a localized site profile within its site', function () {
         ->and($tenancy->enter(2, fn () => SiteProfile::count()))->toBe(0);
 });
 
-it('records enabled locales per site', function () {
+it('records enabled locales per site', function (): void {
     $tenancy = app(Tenancy::class);
 
     // seedTenancy already provisions the default 'vi' locale per site; add a second one.
-    $tenancy->enter(1, function () {
+    $tenancy->enter(1, function (): void {
         SiteLocale::create(['locale' => 'en', 'is_default' => false, 'enabled' => true]);
     });
 

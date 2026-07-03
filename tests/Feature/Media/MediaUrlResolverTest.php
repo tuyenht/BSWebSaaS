@@ -13,7 +13,7 @@ function mediaUrl(string $key, ?int $width = null): string
     return app(MediaUrlResolver::class)->url($key, $width);
 }
 
-beforeEach(function () {
+beforeEach(function (): void {
     config([
         'media.cloudflare.base' => 'https://files.test',
         'media.imgproxy.base' => 'https://img.test',
@@ -23,7 +23,7 @@ beforeEach(function () {
     ]);
 });
 
-it('cloudflare driver: raw URL with no width, ?w when a width is given', function () {
+it('cloudflare driver: raw URL with no width, ?w when a width is given', function (): void {
     config(['media.driver' => 'cloudflare', 'media.widths' => [320, 640, 960, 1280, 1600, 2048]]);
 
     expect(mediaUrl('an-vinh/content/logo-abc123.webp'))
@@ -36,14 +36,14 @@ it('cloudflare driver: raw URL with no width, ?w when a width is given', functio
         ->toBe('https://files.test/an-vinh/content/logo-abc123.webp?w=960');
 });
 
-it('static driver: always the raw master, width is ignored', function () {
+it('static driver: always the raw master, width is ignored', function (): void {
     config(['media.driver' => 'static']);
 
     expect(mediaUrl('an-vinh/content/logo-abc123.webp', 800))
         ->toBe('https://files.test/an-vinh/content/logo-abc123.webp');
 });
 
-it('imgproxy driver: an HMAC-signed URL carrying the processing path', function () {
+it('imgproxy driver: an HMAC-signed URL carrying the processing path', function (): void {
     config(['media.driver' => 'imgproxy']);
 
     $url = mediaUrl('an-vinh/content/logo-abc123.webp', 640);
@@ -55,7 +55,7 @@ it('imgproxy driver: an HMAC-signed URL carrying the processing path', function 
     expect($sig)->toMatch('/^[A-Za-z0-9_-]+$/')->not->toBe('');   // urlsafe base64, no padding
 });
 
-it('flips driver output by changing ONE config value (the L0 switch)', function () {
+it('flips driver output by changing ONE config value (the L0 switch)', function (): void {
     $key = 'an-vinh/content/x-abc123.webp';
 
     config(['media.driver' => 'cloudflare']);
@@ -70,7 +70,7 @@ it('flips driver output by changing ONE config value (the L0 switch)', function 
         ->and($ip)->toStartWith('https://img.test/');
 });
 
-it('normalises a leading slash in the key', function () {
+it('normalises a leading slash in the key', function (): void {
     config(['media.driver' => 'cloudflare']);
 
     expect(mediaUrl('/an-vinh/content/logo-abc123.webp'))

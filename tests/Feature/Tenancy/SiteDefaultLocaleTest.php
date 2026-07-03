@@ -37,7 +37,7 @@ function setSiteLocales(int $site, array $rows): void
     }
 }
 
-it('reads the default from site_locales.is_default', function () {
+it('reads the default from site_locales.is_default', function (): void {
     setSiteLocales(1, [
         ['locale' => 'en', 'is_default' => true],
         ['locale' => 'vi', 'is_default' => false],
@@ -48,7 +48,7 @@ it('reads the default from site_locales.is_default', function () {
     expect($locale)->toBe('en');
 });
 
-it('rejects a second default locale for a site (partial-unique)', function () {
+it('rejects a second default locale for a site (partial-unique)', function (): void {
     setSiteLocales(1, [['locale' => 'vi', 'is_default' => true]]);
 
     expect(fn () => DB::connection('pgsql_admin')->table('site_locales')->insert([
@@ -57,14 +57,14 @@ it('rejects a second default locale for a site (partial-unique)', function () {
     ]))->toThrow(QueryException::class);
 });
 
-it('allows each site its own default (partial-unique is per-site)', function () {
+it('allows each site its own default (partial-unique is per-site)', function (): void {
     setSiteLocales(1, [['locale' => 'vi', 'is_default' => true]]);
     setSiteLocales(2, [['locale' => 'vi', 'is_default' => true]]);
 
     expect(DB::connection('pgsql_admin')->table('site_locales')->where('is_default', true)->count())->toBe(2);
 });
 
-it('falls back to the first enabled locale and warns when no default is set', function () {
+it('falls back to the first enabled locale and warns when no default is set', function (): void {
     setSiteLocales(1, [
         ['locale' => 'en', 'is_default' => false, 'enabled' => true],
         ['locale' => 'ja', 'is_default' => false, 'enabled' => true],
@@ -77,7 +77,7 @@ it('falls back to the first enabled locale and warns when no default is set', fu
     Log::shouldHaveReceived('warning')->once();
 });
 
-it('falls back to vi and warns when a site has no locales at all', function () {
+it('falls back to vi and warns when a site has no locales at all', function (): void {
     setSiteLocales(1, []);
     Log::spy();
 
@@ -87,13 +87,13 @@ it('falls back to vi and warns when a site has no locales at all', function () {
     Log::shouldHaveReceived('warning')->once();
 });
 
-it('memoizes the default within a request (one query)', function () {
+it('memoizes the default within a request (one query)', function (): void {
     setSiteLocales(1, [['locale' => 'vi', 'is_default' => true]]);
 
-    $count = app(Tenancy::class)->enter(1, function () {
+    $count = app(Tenancy::class)->enter(1, function (): int {
         $service = app(SiteLocale::class);
 
-        return countQueries(function () use ($service) {
+        return countQueries(function () use ($service): void {
             $service->default();
             $service->default();
         });
@@ -102,7 +102,7 @@ it('memoizes the default within a request (one query)', function () {
     expect($count)->toBe(1);
 });
 
-it('does not leak the memoized default across sites', function () {
+it('does not leak the memoized default across sites', function (): void {
     setSiteLocales(1, [['locale' => 'en', 'is_default' => true]]);
     setSiteLocales(2, [['locale' => 'ja', 'is_default' => true]]);
     $tenancy = app(Tenancy::class);

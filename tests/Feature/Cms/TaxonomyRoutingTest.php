@@ -24,8 +24,8 @@ function newCategory(string $slug, string $name = 'Tin tức'): Taxonomy
     return $category;
 }
 
-it('routes a category at its flat localized path', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('routes a category at its flat localized path', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $category = newCategory('tin-tuc');
 
         $path = app(RouteSync::class)->syncTaxonomy($category, 'vi', 'tin-tuc');
@@ -35,8 +35,8 @@ it('routes a category at its flat localized path', function () {
     });
 });
 
-it('is idempotent on the category route', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('is idempotent on the category route', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $category = newCategory('tin-tuc');
         app(RouteSync::class)->syncTaxonomy($category, 'vi', 'tin-tuc');
         app(RouteSync::class)->syncTaxonomy($category, 'vi', 'tin-tuc');
@@ -45,8 +45,8 @@ it('is idempotent on the category route', function () {
     });
 });
 
-it('rejects a category route whose path an entry already owns (A2)', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('rejects a category route whose path an entry already owns (A2)', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $page = Entry::query()->create(['type' => 'page', 'status' => 'published']);
         SiteRoute::query()->create(['locale' => 'vi', 'path' => '/tin-tuc', 'entry_id' => $page->id]);
 
@@ -57,8 +57,8 @@ it('rejects a category route whose path an entry already owns (A2)', function ()
     });
 });
 
-it('rejects an entry route whose path a category already owns (A2 reverse)', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('rejects an entry route whose path a category already owns (A2 reverse)', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $category = newCategory('tin-tuc');
         app(RouteSync::class)->syncTaxonomy($category, 'vi', 'tin-tuc');
 

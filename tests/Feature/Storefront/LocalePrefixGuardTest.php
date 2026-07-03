@@ -16,7 +16,7 @@ use Illuminate\Testing\TestResponse;
  * per request (C1 memo), so flipping it flips which prefix is canonical.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -29,7 +29,7 @@ beforeEach(function () {
 /** Enable 'en' for the site + give the news category an en translation + en list route. */
 function enableEnglishNews(int $site): void
 {
-    app(Tenancy::class)->enter($site, function () {
+    app(Tenancy::class)->enter($site, function (): void {
         SiteLocale::create(['locale' => 'en', 'is_default' => false, 'enabled' => true]);
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
         $category->translations()->create(['locale' => 'en', 'name' => 'News', 'slug' => 'tin-tuc']);
@@ -43,7 +43,7 @@ function redirectPath(TestResponse $response): string
     return parse_url((string) $response->headers->get('Location'), PHP_URL_PATH) ?: '/';
 }
 
-it('301s a default-locale prefix to the clean path', function () {
+it('301s a default-locale prefix to the clean path', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     $res = $this->get('http://anvinh.test/vi/tin-tuc')->assertStatus(301);   // permanent
@@ -51,7 +51,7 @@ it('301s a default-locale prefix to the clean path', function () {
     expect(redirectPath($res))->toBe('/tin-tuc');
 });
 
-it('301s the default-locale root prefix to /', function () {
+it('301s the default-locale root prefix to /', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     $res = $this->get('http://anvinh.test/vi')->assertStatus(301);
@@ -59,7 +59,7 @@ it('301s the default-locale root prefix to /', function () {
     expect(redirectPath($res))->toBe('/');
 });
 
-it('serves a valid non-default locale prefix (200, localized)', function () {
+it('serves a valid non-default locale prefix (200, localized)', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
     $site = Site::query()->firstWhere('name', 'An Vinh');
     enableEnglishNews($site->id);
@@ -69,14 +69,14 @@ it('serves a valid non-default locale prefix (200, localized)', function () {
     expect($html)->toContain('<title>News</title>')->toContain('News');
 });
 
-it('404s a disabled/unknown locale prefix without soft-fallback', function () {
+it('404s a disabled/unknown locale prefix without soft-fallback', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     // 'ko' is not enabled → 404; must NOT render the default /tin-tuc page.
     $this->get('http://anvinh.test/ko/tin-tuc')->assertNotFound();
 });
 
-it('404s an enabled locale with a route-miss (no soft-fallback)', function () {
+it('404s an enabled locale with a route-miss (no soft-fallback)', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
     $site = Site::query()->firstWhere('name', 'An Vinh');
     enableEnglishNews($site->id);
@@ -85,13 +85,13 @@ it('404s an enabled locale with a route-miss (no soft-fallback)', function () {
     $this->get('http://anvinh.test/en/khong-ton-tai')->assertNotFound();
 });
 
-it('serves the default locale unprefixed (200)', function () {
+it('serves the default locale unprefixed (200)', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
 
     $this->get('http://anvinh.test/tin-tuc')->assertOk();
 });
 
-it('reads the default dynamically — flipping it flips which prefix is canonical', function () {
+it('reads the default dynamically — flipping it flips which prefix is canonical', function (): void {
     provision('An Vinh', 'anvinh.test', 'owner@anvinh.test');
     $site = Site::query()->firstWhere('name', 'An Vinh');
     enableEnglishNews($site->id);

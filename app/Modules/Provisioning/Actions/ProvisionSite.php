@@ -40,15 +40,15 @@ use Spatie\Permission\PermissionRegistrar;
  * Order respects the defense layers: global identity/site rows first, then per-site
  * (RLS) config + RBAC inside the tenant context, then flip the site to 'active'.
  */
-final class ProvisionSite
+final readonly class ProvisionSite
 {
     /** Localized slug of the default post category seeded for every site. */
-    private const NEWS_SLUG = 'tin-tuc';
+    private const string NEWS_SLUG = 'tin-tuc';
 
     public function __construct(
-        private readonly Tenancy $tenancy,
-        private readonly PermissionRegistrar $registrar,
-        private readonly RouteSync $routes,
+        private Tenancy $tenancy,
+        private PermissionRegistrar $registrar,
+        private RouteSync $routes,
     ) {}
 
     public function handle(ProvisionSiteData $data): Site
@@ -285,7 +285,7 @@ final class ProvisionSite
         // Give the category a storefront list route (/tin-tuc). Best-effort: never break
         // genesis if an existing page already owns that path (category admin resolves later).
         $translation = $category->translationFor($locale);
-        if ($translation !== null) {
+        if ($translation instanceof TaxonomyTranslation) {
             try {
                 $this->routes->syncTaxonomy($category, $locale, $translation->slug);
             } catch (RouteConflictException) {

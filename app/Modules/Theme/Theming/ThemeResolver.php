@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Theme\Theming;
 
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -16,7 +18,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 final class ThemeResolver
 {
     /** @var array<string, string> */
-    private const DEFAULTS = [
+    private const array DEFAULTS = [
         'primary' => '#0a66c2',
         'surface' => '#ffffff',
         'text' => '#111111',

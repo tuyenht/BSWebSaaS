@@ -16,9 +16,9 @@ use RuntimeException;
  * feedback — the real gate is RegisterMediaUpload. The temp key's site ownership is recorded so a
  * foreign key cannot later be registered (cross-tenant guard).
  */
-final class PresignMediaUpload
+final readonly class PresignMediaUpload
 {
-    public function __construct(private readonly CurrentSite $current) {}
+    public function __construct(private CurrentSite $current) {}
 
     /**
      * @return array{url: string, headers: array<string, mixed>, tempKey: string}
@@ -39,7 +39,7 @@ final class PresignMediaUpload
         // lifecycle rule on prefix `_incoming/` can expire every site's abandoned staging uploads.
         // Do NOT move the site slug ahead of `_incoming/`: that makes the key un-coverable by a single
         // rule (a nested `{site}/_incoming/` segment is not a left-anchored prefix).
-        $tempKey = '_incoming/'.Str::slug($siteName).'/'.(string) Str::ulid().'.'.$ext;
+        $tempKey = '_incoming/'.Str::slug($siteName).'/'.Str::ulid().'.'.$ext;
 
         // Cross-tenant guard: record which site this temp key belongs to (register verifies + pulls).
         Cache::put(self::ownershipKey($tempKey), $this->current->id(), now()->addMinutes(5));

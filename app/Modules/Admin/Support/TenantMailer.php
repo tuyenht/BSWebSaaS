@@ -30,11 +30,11 @@ use Throwable;
  * Cached mailer transports ('smtp', 'admin_xoauth2') are purged on every call so a
  * warmed Octane worker cannot reuse a previous request/tenant's live transport object.
  */
-final class TenantMailer
+final readonly class TenantMailer
 {
     public function __construct(
-        private readonly SettingsRepository $tenant,
-        private readonly PlatformSettings $platform,
+        private SettingsRepository $tenant,
+        private PlatformSettings $platform,
     ) {}
 
     /**

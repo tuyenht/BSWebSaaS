@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  * plain post_cat + sector, independent of the An Vinh seeder.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -65,10 +65,10 @@ function gridSeedProject(string $email): void
     $draft->assignCategories([$cat->id]);
 }
 
-it('maps a published project card and excludes drafts', function () {
+it('maps a published project card and excludes drafts', function (): void {
     $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         gridSeedProject('owner@grid.test');
 
         $data = app(EntryGridComponent::class)->data(['taxonomy_slug' => 'du-an', 'limit' => 6, 'locale' => 'vi']);
@@ -84,10 +84,10 @@ it('maps a published project card and excludes drafts', function () {
     });
 });
 
-it('clamps limit and returns empty for an unknown slug', function () {
+it('clamps limit and returns empty for an unknown slug', function (): void {
     $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         gridSeedProject('owner@grid.test');
         $component = app(EntryGridComponent::class);
 
@@ -100,7 +100,7 @@ it('clamps limit and returns empty for an unknown slug', function () {
     });
 });
 
-it('isolates the grid between sites (RLS)', function () {
+it('isolates the grid between sites (RLS)', function (): void {
     $siteA = gridProvision('Site A', 'a.test', 'owner@a.test');
     gridProvision('Site B', 'b.test', 'owner@b.test');
 
@@ -108,15 +108,15 @@ it('isolates the grid between sites (RLS)', function () {
 
     // Site B has no "du-an" taxonomy of its own → empty (cannot see site A's content).
     $siteB = Site::query()->firstWhere('name', 'Site B');
-    app(Tenancy::class)->enter($siteB->id, function () {
+    app(Tenancy::class)->enter($siteB->id, function (): void {
         expect(app(EntryGridComponent::class)->data(['taxonomy_slug' => 'du-an', 'locale' => 'vi'])['items'])->toBe([]);
     });
 });
 
-it('resolves the grid in a fixed query count as cards scale (no N+1)', function () {
+it('resolves the grid in a fixed query count as cards scale (no N+1)', function (): void {
     $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         $owner = User::query()->firstWhere('email', 'owner@grid.test');
 
         $cat = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);
@@ -135,7 +135,7 @@ it('resolves the grid in a fixed query count as cards scale (no N+1)', function 
 
         $component = app(EntryGridComponent::class);
         $result = null;
-        $count = countQueries(function () use ($component, &$result) {
+        $count = countQueries(function () use ($component, &$result): void {
             $result = $component->data(['taxonomy_slug' => 'du-an', 'limit' => 6, 'locale' => 'vi']);
         });
 
@@ -146,11 +146,11 @@ it('resolves the grid in a fixed query count as cards scale (no N+1)', function 
     });
 });
 
-it('resolves a media storage key to a width-sized URL; leaves glyphs and absolute URLs untouched', function () {
+it('resolves a media storage key to a width-sized URL; leaves glyphs and absolute URLs untouched', function (): void {
     config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'https://files.test']);
     $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
 
-    app(Tenancy::class)->enter($site->id, function () {
+    app(Tenancy::class)->enter($site->id, function (): void {
         $owner = User::query()->firstWhere('email', 'owner@grid.test');
 
         $cat = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 1]);

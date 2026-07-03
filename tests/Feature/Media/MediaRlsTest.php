@@ -11,7 +11,7 @@ use App\Modules\Tenancy\Context\Tenancy;
  * policy on both new tables, data-driven.)
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy(); // sites 1 (a.test) + 2 (b.test)
 });
 
@@ -29,14 +29,14 @@ function makeMedia(int $site, array $attrs = []): Media
     ], $attrs)));
 }
 
-it('stamps site_id + a ulid from the current site context on create', function () {
+it('stamps site_id + a ulid from the current site context on create', function (): void {
     $media = makeMedia(1);
 
     expect($media->site_id)->toBe(1)
         ->and($media->ulid)->not->toBeEmpty();
 });
 
-it('isolates media per site (RLS fail-closed)', function () {
+it('isolates media per site (RLS fail-closed)', function (): void {
     makeMedia(1);
 
     $inSite1 = app(Tenancy::class)->enter(1, fn () => Media::query()->count());
@@ -46,7 +46,7 @@ it('isolates media per site (RLS fail-closed)', function () {
         ->and($inSite2)->toBe(0);
 });
 
-it('stamps site_id on a polymorphic attachment', function () {
+it('stamps site_id on a polymorphic attachment', function (): void {
     $attachment = app(Tenancy::class)->enter(1, function () {
         $media = Media::query()->create([
             'collection' => 'library',

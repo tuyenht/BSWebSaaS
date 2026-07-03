@@ -20,9 +20,9 @@ use Throwable;
  * (a mail failure must never lose the captured lead). site_id is stamped by BelongsToSite
  * from the current tenant context (RLS).
  */
-final class SubmitForm
+final readonly class SubmitForm
 {
-    public function __construct(private readonly TurnstileVerifier $turnstile) {}
+    public function __construct(private TurnstileVerifier $turnstile) {}
 
     /**
      * @param  array<string, mixed>  $data  validated field values (no honeypot / token)

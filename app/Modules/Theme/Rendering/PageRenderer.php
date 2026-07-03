@@ -11,13 +11,13 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  * apply per-site design tokens (ThemeResolver), wrap in the layout. Takes primitives,
  * not Cms models, so the Theme module stays independent of Cms.
  */
-final class PageRenderer
+final readonly class PageRenderer
 {
     public function __construct(
-        private readonly ViewFactory $views,
-        private readonly TemplateResolver $templates,
-        private readonly BlockRenderer $blocks,
-        private readonly ThemeResolver $theme,
+        private ViewFactory $views,
+        private TemplateResolver $templates,
+        private BlockRenderer $blocks,
+        private ThemeResolver $theme,
     ) {}
 
     /**

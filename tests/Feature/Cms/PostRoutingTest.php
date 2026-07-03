@@ -14,7 +14,7 @@ use App\Modules\Tenancy\Context\Tenancy;
  * pages stay flat. The entry_taxonomies pivot is RLS-protected (site_id stamped).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -30,11 +30,11 @@ function makeCategory(string $slug, string $name = 'Danh mục'): Taxonomy
     return $category;
 }
 
-it('routes a published post under its category path (/cat/slug)', function () {
+it('routes a published post under its category path (/cat/slug)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
 
         $category = makeCategory('tin-tuc', 'Tin tức');
@@ -48,11 +48,11 @@ it('routes a published post under its category path (/cat/slug)', function () {
     });
 });
 
-it('keeps a page route flat (no category prefix)', function () {
+it('keeps a page route flat (no category prefix)', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
 
         $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
@@ -64,13 +64,13 @@ it('keeps a page route flat (no category prefix)', function () {
     });
 });
 
-it('stamps site_id on the category pivot (RLS-safe) and isolates per site', function () {
+it('stamps site_id on the category pivot (RLS-safe) and isolates per site', function (): void {
     $tenancy = app(Tenancy::class);
 
     $catOne = $tenancy->enter(1, fn () => makeCategory('tin-tuc')->id);
 
     // Site 2 cannot see site 1's category pivot rows (RLS).
-    $tenancy->enter(2, function () use ($catOne) {
+    $tenancy->enter(2, function () use ($catOne): void {
         expect(Taxonomy::query()->whereKey($catOne)->exists())->toBeFalse();
     });
 });

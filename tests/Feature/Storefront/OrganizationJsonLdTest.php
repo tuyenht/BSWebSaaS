@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  * loaded by StorefrontController::brand() → no extra DB query on the hot path.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, routes, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
@@ -58,7 +58,7 @@ function orgSeedBrand(): void
     });
 }
 
-it('emits Organization JSON-LD with name, telephone, and addressRegion when brand is set', function () {
+it('emits Organization JSON-LD with name, telephone, and addressRegion when brand is set', function (): void {
     orgProvision();
     orgSeedBrand();
 
@@ -74,7 +74,7 @@ it('emits Organization JSON-LD with name, telephone, and addressRegion when bran
         ->toContain('application/ld+json');
 });
 
-it('emits email, legalName, streetAddress, and addressLocality in Organization JSON-LD', function () {
+it('emits email, legalName, streetAddress, and addressLocality in Organization JSON-LD', function (): void {
     orgProvision();
     orgSeedBrand();
 
@@ -88,7 +88,7 @@ it('emits email, legalName, streetAddress, and addressLocality in Organization J
         ->toContain('"@type":"PostalAddress"');
 });
 
-it('omits null fields — legalName and address absent when not present in brand setting', function () {
+it('omits null fields — legalName and address absent when not present in brand setting', function (): void {
     orgProvision();
     $site = Site::query()->firstWhere('name', 'Org Test');
 
@@ -110,7 +110,7 @@ it('omits null fields — legalName and address absent when not present in brand
         ->not->toContain('"taxID"');
 });
 
-it('falls back to combined address field when split NAP keys are absent', function () {
+it('falls back to combined address field when split NAP keys are absent', function (): void {
     orgProvision();
     $site = Site::query()->firstWhere('name', 'Org Test');
 
@@ -133,7 +133,7 @@ it('falls back to combined address field when split NAP keys are absent', functi
         ->toContain('"addressCountry":"VN"');
 });
 
-it('emits no Organization JSON-LD and no error when no brand setting exists', function () {
+it('emits no Organization JSON-LD and no error when no brand setting exists', function (): void {
     // ProvisionSite does not seed a brand setting; StorefrontController::brand() returns null.
     orgProvision();
 
@@ -142,11 +142,11 @@ it('emits no Organization JSON-LD and no error when no brand setting exists', fu
     expect($html)->not->toContain('"@type":"Organization"');
 });
 
-it('adds no DB query for Organization JSON-LD — budget unchanged', function () {
+it('adds no DB query for Organization JSON-LD — budget unchanged', function (): void {
     orgProvision();
     orgSeedBrand();
 
-    $count = countQueries(function () {
+    $count = countQueries(function (): void {
         $html = $this->get('http://org.test/')->assertOk()->getContent();
 
         // Confirm the block is present inside the query-counted closure.

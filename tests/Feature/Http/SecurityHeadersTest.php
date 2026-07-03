@@ -11,7 +11,7 @@
  *   4. Admin and platform pages still render 200 (CSP omission did not break them).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -19,7 +19,7 @@ beforeEach(function () {
 
 // ── Storefront — baseline headers ────────────────────────────────────────────
 
-it('storefront response carries all 5 baseline security headers', function () {
+it('storefront response carries all 5 baseline security headers', function (): void {
     seedHomepage(1, 'Trang chủ');
 
     $this->get('http://a.test/')
@@ -33,7 +33,7 @@ it('storefront response carries all 5 baseline security headers', function () {
 
 // ── Storefront — allow-list CSP ──────────────────────────────────────────────
 
-it('storefront response carries the allow-list Content-Security-Policy', function () {
+it('storefront response carries the allow-list Content-Security-Policy', function (): void {
     seedHomepage(1, 'Trang chủ');
 
     $response = $this->get('http://a.test/');
@@ -55,7 +55,7 @@ it('storefront response carries the allow-list Content-Security-Policy', functio
 
 // ── Admin plane — baseline only, no strict CSP ───────────────────────────────
 
-it('admin login carries baseline headers but no Content-Security-Policy', function () {
+it('admin login carries baseline headers but no Content-Security-Policy', function (): void {
     // The admin login is guest-accessible (no auth required); tenant context is
     // resolved by SetCurrentSite via the a.test host seeded in beforeEach.
     $this->get('http://a.test/admin/login')
@@ -70,7 +70,7 @@ it('admin login carries baseline headers but no Content-Security-Policy', functi
 
 // ── Platform plane — baseline only, no strict CSP ────────────────────────────
 
-it('platform login carries baseline headers but no Content-Security-Policy', function () {
+it('platform login carries baseline headers but no Content-Security-Policy', function (): void {
     // The platform login has no tenant context (dedicated host, no SetCurrentSite).
     $this->get('http://platform.bswebsaas.test/login')
         ->assertOk()

@@ -113,7 +113,7 @@ function grantRole(User $user, string $name, array $permissions): void
 */
 function seedHomepage(int $site, string $title = 'Home', string $path = '/'): void
 {
-    app(Tenancy::class)->enter($site, function () use ($title, $path) {
+    app(Tenancy::class)->enter($site, function () use ($title, $path): void {
         $entry = Entry::query()->create([
             'type' => 'page',
             'status' => 'published',

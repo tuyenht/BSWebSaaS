@@ -22,14 +22,16 @@ use Illuminate\Support\Facades\Http;
  */
 class SetIncomingLifecycle extends Command
 {
-    private const RULE_ID = 'expire-incoming-staging';
+    private const string RULE_ID = 'expire-incoming-staging';
 
-    private const PREFIX = '_incoming/';
+    private const string PREFIX = '_incoming/';
 
-    private const MAX_AGE_SECONDS = 86400; // 1 day — orphans are finalized within seconds, so this only hits abandoned staging objects.
+    private const int MAX_AGE_SECONDS = 86400; // 1 day — orphans are finalized within seconds, so this only hits abandoned staging objects.
 
+    #[\Override]
     protected $signature = 'media:set-incoming-lifecycle';
 
+    #[\Override]
     protected $description = 'Set the R2 lifecycle rule that deletes _incoming/ staging orphans 1 day after upload';
 
     public function handle(): int

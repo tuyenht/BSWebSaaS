@@ -13,7 +13,7 @@ use Livewire\Livewire;
  * verified account proceeds to the mandatory second factor instead.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Truncate both settings tables so no stale SMTP ciphertext (encrypted under a different
     // key in the shared dev DB) can cause a DecryptException during TenantMailer::apply().
     DB::connection('pgsql_admin')->statement(
@@ -21,7 +21,7 @@ beforeEach(function () {
     );
 });
 
-it('blocks an unverified account at login and sends a fresh verification link', function () {
+it('blocks an unverified account at login and sends a fresh verification link', function (): void {
     Notification::fake();
     $user = User::factory()->unverified()->create();
 
@@ -35,7 +35,7 @@ it('blocks an unverified account at login and sends a fresh verification link', 
     Notification::assertSentTo($user, VerifyEmail::class);
 });
 
-it('caps the verification-link resend per hour (valid creds clear the login limiter, so cap it here)', function () {
+it('caps the verification-link resend per hour (valid creds clear the login limiter, so cap it here)', function (): void {
     Notification::fake();
     $user = User::factory()->unverified()->create();
 
@@ -51,7 +51,7 @@ it('caps the verification-link resend per hour (valid creds clear the login limi
     Notification::assertSentToTimes($user, VerifyEmail::class, 6);
 });
 
-it('lets a verified account proceed to the mandatory second factor', function () {
+it('lets a verified account proceed to the mandatory second factor', function (): void {
     $user = User::factory()->create(); // verified by default
 
     Livewire::test(Login::class)

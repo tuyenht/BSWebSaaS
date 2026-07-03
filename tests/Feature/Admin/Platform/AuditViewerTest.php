@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  * (super_admin/support, NOT billing). Newest first; filterable by action.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -30,7 +30,7 @@ function auditOperator(string $role): User
     return $user->fresh();
 }
 
-it('lists audit entries for an operator', function () {
+it('lists audit entries for an operator', function (): void {
     AuditLog::query()->create([
         'action' => 'platform.entitlement.toggle',
         'actor_label' => 'admin@baoson.net',
@@ -45,7 +45,7 @@ it('lists audit entries for an operator', function () {
         ->assertSee('admin@baoson.net');
 });
 
-it('filters audit entries by action', function () {
+it('filters audit entries by action', function (): void {
     AuditLog::query()->create(['action' => 'rbac.role.assign', 'actor_label' => 'x', 'meta' => []]);
     AuditLog::query()->create(['action' => 'site.provision', 'actor_label' => 'y', 'meta' => []]);
     $host = (string) config('tenancy.platform_host');
@@ -56,7 +56,7 @@ it('filters audit entries by action', function () {
         ->assertDontSee('site.provision');
 });
 
-it('forbids billing (no audit.view) from the audit log', function () {
+it('forbids billing (no audit.view) from the audit log', function (): void {
     $host = (string) config('tenancy.platform_host');
 
     $this->actingAs(auditOperator('billing'))->get("http://{$host}/audit")->assertForbidden();

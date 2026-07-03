@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Rbac\Providers;
 
 use App\Modules\Identity\Models\User;
@@ -12,6 +14,7 @@ use Illuminate\Support\ServiceProvider;
 
 final class RbacServiceProvider extends ServiceProvider
 {
+    #[\Override]
     public function register(): void
     {
         // Shared team-context holder. spatie's registrar `new`s the resolver itself,

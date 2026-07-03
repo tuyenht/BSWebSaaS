@@ -14,12 +14,12 @@ use App\Modules\Rbac\Support\PlatformAccess;
  * the memo on request termination.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
 
     // Ensure the super_admin role exists without running the full rbac:sync.
     app(PlatformAccess::class)->onPlatform(
-        fn () => Role::findOrCreate('super_admin', PermissionRegistry::GUARD)
+        fn (): Spatie\Permission\Contracts\Role => Role::findOrCreate('super_admin', PermissionRegistry::GUARD)
     );
 
     // Start each test with a clean singleton state.
@@ -27,7 +27,7 @@ beforeEach(function () {
     app(PlatformAccess::class)->forgetMemo();
 });
 
-it('memoizes isSuperAdmin: two consecutive calls for the same user hit the DB only once', function () {
+it('memoizes isSuperAdmin: two consecutive calls for the same user hit the DB only once', function (): void {
     $user = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
     $user = $user->fresh();
@@ -42,7 +42,7 @@ it('memoizes isSuperAdmin: two consecutive calls for the same user hit the DB on
     expect($queries)->toBe(1);
 });
 
-it('without forgetMemo the memo prevents a second DB query', function () {
+it('without forgetMemo the memo prevents a second DB query', function (): void {
     $user = User::factory()->create();
     $platform = app(PlatformAccess::class);
 
@@ -55,7 +55,7 @@ it('without forgetMemo the memo prevents a second DB query', function () {
     expect($queries)->toBe(0);
 });
 
-it('forgetMemo resets the cached verdict and the next call re-queries the DB', function () {
+it('forgetMemo resets the cached verdict and the next call re-queries the DB', function (): void {
     $user = User::factory()->create();
     $platform = app(PlatformAccess::class);
 
@@ -70,7 +70,7 @@ it('forgetMemo resets the cached verdict and the next call re-queries the DB', f
     expect(countQueries(fn () => $platform->isSuperAdmin($user)))->toBe(1);
 });
 
-it('FlushRbacTeamContext listener resets the PlatformAccess memo', function () {
+it('FlushRbacTeamContext listener resets the PlatformAccess memo', function (): void {
     $user = User::factory()->create();
     $platform = app(PlatformAccess::class);
 
@@ -79,7 +79,7 @@ it('FlushRbacTeamContext listener resets the PlatformAccess memo', function () {
     expect(countQueries(fn () => $platform->isSuperAdmin($user)))->toBe(0); // memo warm
 
     // Simulate Octane RequestTerminated / TaskTerminated flush.
-    app(FlushRbacTeamContext::class)->handle(new stdClass);
+    app(FlushRbacTeamContext::class)->handle();
 
     // After the listener runs, isSuperAdmin must re-query the DB.
     expect(countQueries(fn () => $platform->isSuperAdmin($user)))->toBe(1);

@@ -13,6 +13,7 @@ use RuntimeException;
 
 final class TenancyServiceProvider extends ServiceProvider
 {
+    #[\Override]
     public function register(): void
     {
         // Scoped → Octane flushes it between operations (defense layer #3, with the

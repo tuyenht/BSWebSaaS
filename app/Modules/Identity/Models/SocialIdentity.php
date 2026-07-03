@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class SocialIdentity extends Model
 {
     /** @var list<string> */
+    #[\Override]
     protected $fillable = ['user_id', 'provider', 'sub', 'email'];
 
     /**

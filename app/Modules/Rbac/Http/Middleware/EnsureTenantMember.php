@@ -20,9 +20,9 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * Runs after auth + SetCurrentSite, so the user and the site team are both resolved.
  */
-final class EnsureTenantMember
+final readonly class EnsureTenantMember
 {
-    public function __construct(private readonly PlatformAccess $platform) {}
+    public function __construct(private PlatformAccess $platform) {}
 
     /**
      * @param  Closure(Request): Response  $next

@@ -114,7 +114,7 @@ final class AdminServiceProvider extends ServiceProvider
         // XOAUTH2 SMTP transport for OAuth2 email senders (Gmail/MS/Yahoo). TenantMailer
         // stashes host/port/username + a freshly-minted access token into this mailer's
         // config at apply time; under XOAUTH2 the access token IS the SMTP password.
-        Mail::extend('admin_xoauth2', function (array $config) {
+        Mail::extend('admin_xoauth2', function (array $config): EsmtpTransport {
             $transport = new EsmtpTransport(
                 Cast::string($config['host'] ?? null),
                 Cast::int($config['port'] ?? null, 587),

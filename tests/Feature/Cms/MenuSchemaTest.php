@@ -18,10 +18,10 @@ use Illuminate\Database\QueryException;
 
 beforeEach(fn () => seedTenancy());
 
-it('isolates menus, assignments, items and translations across tenants', function () {
+it('isolates menus, assignments, items and translations across tenants', function (): void {
     $tenancy = app(Tenancy::class);
 
-    $ids = $tenancy->enter(1, function () {
+    $ids = $tenancy->enter(1, function (): array {
         $menu = Menu::query()->create(['handle' => 'main-vi', 'name' => 'Menu A']);
         $item = MenuItem::query()->create([
             'menu_id' => $menu->id, 'link_type' => 'dynamic', 'dynamic_key' => 'home', 'position' => 0,
@@ -33,7 +33,7 @@ it('isolates menus, assignments, items and translations across tenants', functio
     });
 
     // Site B sees none of site A's navigation rows.
-    $tenancy->enter(2, function () {
+    $tenancy->enter(2, function (): void {
         expect(Menu::query()->count())->toBe(0)
             ->and(MenuAssignment::query()->count())->toBe(0)
             ->and(MenuItem::query()->count())->toBe(0)
@@ -41,14 +41,14 @@ it('isolates menus, assignments, items and translations across tenants', functio
     });
 
     // Site A still sees its own.
-    $tenancy->enter(1, function () use ($ids) {
+    $tenancy->enter(1, function () use ($ids): void {
         expect(Menu::query()->whereKey($ids['menu'])->exists())->toBeTrue()
             ->and(MenuItem::query()->whereKey($ids['item'])->exists())->toBeTrue();
     });
 });
 
-it('rejects an unknown link_type', function () {
-    expect(fn () => app(Tenancy::class)->enter(1, function () {
+it('rejects an unknown link_type', function (): void {
+    expect(fn () => app(Tenancy::class)->enter(1, function (): void {
         $menu = Menu::query()->create(['handle' => 'main-vi', 'name' => 'M']);
         MenuItem::query()->create([
             'menu_id' => $menu->id, 'link_type' => 'bogus', 'url' => '/x', 'position' => 0,
@@ -56,8 +56,8 @@ it('rejects an unknown link_type', function () {
     }))->toThrow(QueryException::class);
 });
 
-it('rejects an entry/taxonomy item with no routable target', function () {
-    expect(fn () => app(Tenancy::class)->enter(1, function () {
+it('rejects an entry/taxonomy item with no routable target', function (): void {
+    expect(fn () => app(Tenancy::class)->enter(1, function (): void {
         $menu = Menu::query()->create(['handle' => 'main-vi', 'name' => 'M']);
         MenuItem::query()->create([
             'menu_id' => $menu->id, 'link_type' => 'taxonomy', 'position' => 0,   // routable_* null
@@ -65,8 +65,8 @@ it('rejects an entry/taxonomy item with no routable target', function () {
     }))->toThrow(QueryException::class);
 });
 
-it('rejects a url item that also carries a routable target', function () {
-    expect(fn () => app(Tenancy::class)->enter(1, function () {
+it('rejects a url item that also carries a routable target', function (): void {
+    expect(fn () => app(Tenancy::class)->enter(1, function (): void {
         $menu = Menu::query()->create(['handle' => 'main-vi', 'name' => 'M']);
         MenuItem::query()->create([
             'menu_id' => $menu->id, 'link_type' => 'url', 'url' => 'https://x.test',
@@ -75,8 +75,8 @@ it('rejects a url item that also carries a routable target', function () {
     }))->toThrow(QueryException::class);
 });
 
-it('allows only one menu per region per locale (unique assignment)', function () {
-    expect(fn () => app(Tenancy::class)->enter(1, function () {
+it('allows only one menu per region per locale (unique assignment)', function (): void {
+    expect(fn () => app(Tenancy::class)->enter(1, function (): void {
         $a = Menu::query()->create(['handle' => 'main-vi', 'name' => 'A']);
         $b = Menu::query()->create(['handle' => 'alt-vi', 'name' => 'B']);
         MenuAssignment::query()->create(['region_key' => 'primary', 'locale' => 'vi', 'menu_id' => $a->id]);
@@ -84,8 +84,8 @@ it('allows only one menu per region per locale (unique assignment)', function ()
     }))->toThrow(QueryException::class);
 });
 
-it('allows only one label per item per locale (unique translation)', function () {
-    expect(fn () => app(Tenancy::class)->enter(1, function () {
+it('allows only one label per item per locale (unique translation)', function (): void {
+    expect(fn () => app(Tenancy::class)->enter(1, function (): void {
         $menu = Menu::query()->create(['handle' => 'main-vi', 'name' => 'M']);
         $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'dynamic', 'dynamic_key' => 'home', 'position' => 0]);
         $item->translations()->create(['locale' => 'vi', 'label' => 'A']);
@@ -93,14 +93,14 @@ it('allows only one label per item per locale (unique translation)', function ()
     }))->toThrow(QueryException::class);
 });
 
-it('treats the menu handle as case-insensitive within a site', function () {
-    expect(fn () => app(Tenancy::class)->enter(1, function () {
+it('treats the menu handle as case-insensitive within a site', function (): void {
+    expect(fn () => app(Tenancy::class)->enter(1, function (): void {
         Menu::query()->create(['handle' => 'main-vi', 'name' => 'A']);
         Menu::query()->create(['handle' => 'Main-VI', 'name' => 'B']);
     }))->toThrow(QueryException::class);
 });
 
-it("rejects an assignment that binds another tenant's menu (composite same-site FK)", function () {
+it("rejects an assignment that binds another tenant's menu (composite same-site FK)", function (): void {
     $tenancy = app(Tenancy::class);
 
     // A menu that lives in site B (committed).
@@ -112,8 +112,8 @@ it("rejects an assignment that binds another tenant's menu (composite same-site 
     )))->toThrow(QueryException::class);
 });
 
-it('cascades assignments, items and translations when a menu is deleted', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('cascades assignments, items and translations when a menu is deleted', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $menu = Menu::query()->create(['handle' => 'main-vi', 'name' => 'M']);
         $item = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'dynamic', 'dynamic_key' => 'home', 'position' => 0]);
         $item->translations()->create(['locale' => 'vi', 'label' => 'Trang chủ']);

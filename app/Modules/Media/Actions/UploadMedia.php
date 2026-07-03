@@ -21,10 +21,10 @@ use RuntimeException;
 final class UploadMedia
 {
     /** Max upload size in KB (10 MB). */
-    public const MAX_KB = 10240;
+    public const int MAX_KB = 10240;
 
     /** Real (magic-byte) MIME → stored extension. The render-safe GĐ1 allow-list. */
-    public const MIME_EXT = [
+    public const array MIME_EXT = [
         'image/jpeg' => 'jpg',
         'image/png' => 'png',
         'image/webp' => 'webp',
@@ -107,6 +107,6 @@ final class UploadMedia
 
         $info = @getimagesize($path);
 
-        return $info === false ? [null, null] : [(int) $info[0], (int) $info[1]];
+        return $info === false ? [null, null] : [$info[0], $info[1]];
     }
 }

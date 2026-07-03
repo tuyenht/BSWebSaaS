@@ -12,8 +12,10 @@ use Illuminate\Console\Command;
  */
 class LangCheck extends Command
 {
+    #[\Override]
     protected $signature = 'lang:check {--base=en : Canonical locale to compare against}';
 
+    #[\Override]
     protected $description = 'Check JSON language files for missing / extra / duplicate / untranslated keys';
 
     public function handle(): int

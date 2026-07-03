@@ -17,18 +17,18 @@ use PragmaRX\Google2FA\Google2FA;
  * user is authenticated ONLY once the challenge passes; the pending id lives in the session.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     // Clear stale SMTP ciphertext (encrypted under another test's key) so the OTP send's
     // TenantMailer::apply() cannot hit a DecryptException on a leftover config (order-independent).
     DB::connection('pgsql_admin')->statement('truncate site_settings, platform_settings restart identity cascade');
 });
 
 // ── Email OTP challenge ──────────────────────────────────────────────────────────────
-it('redirects the OTP challenge to login without a pending 2FA session', function () {
+it('redirects the OTP challenge to login without a pending 2FA session', function (): void {
     Livewire::test(EmailOtpChallenge::class)->assertRedirect(route('admin.login'));
 });
 
-it('rejects a wrong OTP and stays guest', function () {
+it('rejects a wrong OTP and stays guest', function (): void {
     $user = User::factory()->create();
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
@@ -40,7 +40,7 @@ it('rejects a wrong OTP and stays guest', function () {
     $this->assertGuest();
 });
 
-it('locks the OTP challenge out after too many failed attempts', function () {
+it('locks the OTP challenge out after too many failed attempts', function (): void {
     $user = User::factory()->create();
     session(['2fa.user_id' => $user->getAuthIdentifier()]);
 
@@ -52,12 +52,12 @@ it('locks the OTP challenge out after too many failed attempts', function () {
     $this->assertGuest();
 });
 
-it('caps OTP sends per account per hour (anti email-bomb)', function () {
+it('caps OTP sends per account per hour (anti email-bomb)', function (): void {
     seedTenancy();
     Notification::fake();
     $user = User::factory()->create();
 
-    app(Tenancy::class)->enter(1, function () use ($user) {
+    app(Tenancy::class)->enter(1, function () use ($user): void {
         $otp = app(EmailOtp::class);
         foreach (range(1, 6) as $ignored) {
             expect($otp->send($user))->toBeTrue();
@@ -67,11 +67,11 @@ it('caps OTP sends per account per hour (anti email-bomb)', function () {
 });
 
 // ── TOTP (authenticator app) ───────────────────────────────────────────────────────
-it('redirects the TOTP challenge to login without a pending 2FA session', function () {
+it('redirects the TOTP challenge to login without a pending 2FA session', function (): void {
     Livewire::test(TwoFactorChallenge::class)->assertRedirect(route('admin.login'));
 });
 
-it('logs the user in after a valid TOTP code', function () {
+it('logs the user in after a valid TOTP code', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
@@ -88,7 +88,7 @@ it('logs the user in after a valid TOTP code', function () {
     expect(session('2fa.user_id'))->toBeNull();
 });
 
-it('logs the user in with a single-use recovery code', function () {
+it('logs the user in with a single-use recovery code', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();
@@ -106,7 +106,7 @@ it('logs the user in with a single-use recovery code', function () {
     $this->assertAuthenticatedAs($user);
 });
 
-it('rejects an invalid TOTP code and stays guest', function () {
+it('rejects an invalid TOTP code and stays guest', function (): void {
     $service = app(TwoFactorService::class);
     $secret = $service->generateSecret();
     $user = User::factory()->create();

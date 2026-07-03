@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
@@ -12,9 +14,9 @@ use App\Modules\Rbac\Support\RoleHierarchyGuard;
  * guard (grant ≤ self, within own permissions + team) then records an audit trail. System
  * callers (provisioning, bootstrap) assign roles directly and intentionally bypass this.
  */
-final class AssignRole
+final readonly class AssignRole
 {
-    public function __construct(private readonly RoleHierarchyGuard $guard) {}
+    public function __construct(private RoleHierarchyGuard $guard) {}
 
     public function handle(User $actor, User $target, Role $role): void
     {

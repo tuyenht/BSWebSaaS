@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Admin\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -15,11 +17,13 @@ use Illuminate\Database\Eloquent\Model;
  */
 class PlatformSetting extends Model
 {
+    #[\Override]
     protected $guarded = [];
 
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

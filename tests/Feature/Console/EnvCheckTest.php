@@ -15,7 +15,7 @@ function tmpEnv(string $contents): string
     return $path;
 }
 
-it('passes when .env has every key of .env.example (extra keys only warn)', function () {
+it('passes when .env has every key of .env.example (extra keys only warn)', function (): void {
     $example = tmpEnv("APP_KEY=\nR2_BUCKET=\n# a comment\nMAIL_SCHEME=null\n");
     $env = tmpEnv("APP_KEY=x\nR2_BUCKET=b\nMAIL_SCHEME=smtps\nEXTRA_ONLY_IN_ENV=1\n");
 
@@ -26,7 +26,7 @@ it('passes when .env has every key of .env.example (extra keys only warn)', func
     @unlink($env);
 });
 
-it('fails and names a key present in .env.example but missing from .env', function () {
+it('fails and names a key present in .env.example but missing from .env', function (): void {
     $example = tmpEnv("APP_KEY=\nR2_BUCKET=\nR2_ENDPOINT=\n");
     $env = tmpEnv("APP_KEY=x\n"); // R2_BUCKET + R2_ENDPOINT missing
 
@@ -38,7 +38,7 @@ it('fails and names a key present in .env.example but missing from .env', functi
     @unlink($env);
 });
 
-it('fails and names a key duplicated in .env (ambiguous value)', function () {
+it('fails and names a key duplicated in .env (ambiguous value)', function (): void {
     $example = tmpEnv("APP_KEY=\nMAIL_SCHEME=\n");
     $env = tmpEnv("APP_KEY=x\nMAIL_SCHEME=smtp\nMAIL_SCHEME=ssl\n"); // MAIL_SCHEME twice
 
@@ -50,7 +50,7 @@ it('fails and names a key duplicated in .env (ambiguous value)', function () {
     @unlink($env);
 });
 
-it('fails when a file is not found', function () {
+it('fails when a file is not found', function (): void {
     $this->artisan('env:check', ['--env' => '/no/such/.env', '--example' => '/no/such/.env.example'])
         ->assertExitCode(1);
 });

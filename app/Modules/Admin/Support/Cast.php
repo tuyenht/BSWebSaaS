@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Admin\Support;
 
 /**
@@ -52,7 +54,7 @@ final class Cast
             return [];
         }
 
-        return array_values(array_filter($value, 'is_string'));
+        return array_values(array_filter($value, is_string(...)));
     }
 
     public static function stringOrNull(mixed $value): ?string

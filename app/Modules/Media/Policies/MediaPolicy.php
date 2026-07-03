@@ -17,7 +17,7 @@ final class MediaPolicy
         return $user->can('media.view');
     }
 
-    public function view(User $user, Media $media): bool
+    public function view(User $user): bool
     {
         return $user->can('media.view');
     }
@@ -27,7 +27,7 @@ final class MediaPolicy
         return $user->can('media.upload');
     }
 
-    public function delete(User $user, Media $media): bool
+    public function delete(User $user): bool
     {
         return $user->can('media.delete');
     }

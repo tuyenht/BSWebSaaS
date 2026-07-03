@@ -20,7 +20,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('site_locales', function (Blueprint $table) {
+        Schema::create('site_locales', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('locale', 12);
@@ -31,7 +31,7 @@ return new class extends Migration
             $table->unique(['site_id', 'locale']);
         });
 
-        Schema::create('site_settings', function (Blueprint $table) {
+        Schema::create('site_settings', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('group_name');
@@ -42,7 +42,7 @@ return new class extends Migration
             $table->unique(['site_id', 'group_name', 'key']);
         });
 
-        Schema::create('site_profiles', function (Blueprint $table) {
+        Schema::create('site_profiles', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('legal_name')->nullable();
@@ -68,7 +68,7 @@ return new class extends Migration
             $table->unique('site_id'); // one profile per site
         });
 
-        Schema::create('site_profile_translations', function (Blueprint $table) {
+        Schema::create('site_profile_translations', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->foreignId('site_profile_id')->constrained('site_profiles')->cascadeOnDelete();

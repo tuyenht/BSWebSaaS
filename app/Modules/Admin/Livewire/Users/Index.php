@@ -56,7 +56,7 @@ final class Index extends Component
         }
 
         $role = $this->siteRole($this->inviteRole);
-        if ($role === null) {
+        if (! $role instanceof Role) {
             $this->addError('inviteRole', __('admin.role_not_found'));
 
             return;
@@ -80,7 +80,7 @@ final class Index extends Component
         $target = User::query()->find($userId);
         $role = $this->siteRole($roleName);
 
-        if (! $actor instanceof User || ! $target instanceof User || $role === null) {
+        if (! $actor instanceof User || ! $target instanceof User || ! $role instanceof Role) {
             return;
         }
 

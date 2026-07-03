@@ -23,11 +23,13 @@ final class FormSubmission extends Model
     use BelongsToSite;
     use HasUlidColumn;
 
+    #[\Override]
     protected $guarded = [];
 
     /**
      * @return array<string, string>
      */
+    #[\Override]
     protected function casts(): array
     {
         return [

@@ -13,19 +13,19 @@ use App\Modules\Tenancy\Context\Tenancy;
  * every gate via Gate::before. (grantRole lives in tests/Pest.php — shared helper.)
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('lets an author edit/delete only their OWN entry, and never publish', function () {
+it('lets an author edit/delete only their OWN entry, and never publish', function (): void {
     $tenancy = app(Tenancy::class);
     $author = User::factory()->create();
     $other = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($author, $other) {
+    $tenancy->enter(1, function () use ($author, $other): void {
         grantRole($author, 'author', [
             'entries.view', 'entries.create', 'entries.edit.own', 'entries.delete.own', 'entries.submit',
         ]);
@@ -44,12 +44,12 @@ it('lets an author edit/delete only their OWN entry, and never publish', functio
     });
 });
 
-it('lets an editor edit/delete ANY entry and publish', function () {
+it('lets an editor edit/delete ANY entry and publish', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
     $author = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($editor, $author) {
+    $tenancy->enter(1, function () use ($editor, $author): void {
         grantRole($editor, 'editor', [
             'entries.view', 'entries.edit.any', 'entries.delete.any', 'entries.publish',
         ]);
@@ -62,11 +62,11 @@ it('lets an editor edit/delete ANY entry and publish', function () {
     });
 });
 
-it('denies a viewer every mutating ability even on their own entry', function () {
+it('denies a viewer every mutating ability even on their own entry', function (): void {
     $tenancy = app(Tenancy::class);
     $viewer = User::factory()->create();
 
-    $tenancy->enter(1, function () use ($viewer) {
+    $tenancy->enter(1, function () use ($viewer): void {
         grantRole($viewer, 'viewer', ['entries.view']);
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $viewer->id]);
 
@@ -78,7 +78,7 @@ it('denies a viewer every mutating ability even on their own entry', function ()
     });
 });
 
-it('scopes authority per site — an editor on site 1 has nothing on site 2', function () {
+it('scopes authority per site — an editor on site 1 has nothing on site 2', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();
 
@@ -86,22 +86,22 @@ it('scopes authority per site — an editor on site 1 has nothing on site 2', fu
         'type' => 'page', 'status' => 'draft', 'author_id' => $editor->id,
     ]));
 
-    $tenancy->enter(1, function () use ($editor) {
+    $tenancy->enter(1, function () use ($editor): void {
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
     });
 
-    $tenancy->enter(2, function () use ($editor, $entryOnTwo) {
+    $tenancy->enter(2, function () use ($editor, $entryOnTwo): void {
         expect($editor->fresh()->can('update', $entryOnTwo))->toBeFalse()
             ->and($editor->fresh()->can('publish', $entryOnTwo))->toBeFalse();
     });
 });
 
-it('lets a platform super_admin pass every entry gate via Gate::before', function () {
+it('lets a platform super_admin pass every entry gate via Gate::before', function (): void {
     $tenancy = app(Tenancy::class);
     $user = User::factory()->create();
     app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
 
-    $tenancy->enter(1, function () use ($user) {
+    $tenancy->enter(1, function () use ($user): void {
         $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => null]);
 
         $u = $user->fresh();

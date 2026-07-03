@@ -25,7 +25,7 @@ beforeEach(fn () => seedTenancy());
  */
 function seedNavFixture(): array
 {
-    return app(Tenancy::class)->enter(1, function () {
+    return app(Tenancy::class)->enter(1, function (): array {
         $news = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
         $news->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
         SiteRoute::query()->create(['locale' => 'vi', 'path' => '/tin-tuc', 'taxonomy_id' => $news->id]);
@@ -46,7 +46,7 @@ function seedNavFixture(): array
     });
 }
 
-it('resolves the primary menu to home + category links', function () {
+it('resolves the primary menu to home + category links', function (): void {
     seedNavFixture();
 
     $tree = app(Tenancy::class)->enter(1, fn () => app(MenuResolver::class)->resolve('primary', 'vi', 'vi', '/'));
@@ -60,7 +60,7 @@ it('resolves the primary menu to home + category links', function () {
         ->and($tree[1]['active'])->toBeFalse();
 });
 
-it('marks the active item by current path', function () {
+it('marks the active item by current path', function (): void {
     seedNavFixture();
 
     $tree = app(Tenancy::class)->enter(1, fn () => app(MenuResolver::class)->resolve('primary', 'vi', 'vi', '/tin-tuc'));
@@ -69,7 +69,7 @@ it('marks the active item by current path', function () {
         ->and(collect($tree)->firstWhere('url', '/tin-tuc')['active'])->toBeTrue();
 });
 
-it('nests children under their parent (multi-level)', function () {
+it('nests children under their parent (multi-level)', function (): void {
     $ids = seedNavFixture();
 
     $tree = app(Tenancy::class)->enter(1, function () use ($ids) {
@@ -87,7 +87,7 @@ it('nests children under their parent (multi-level)', function () {
         ->and($news['children'][0]['label'])->toBe('Mục con');
 });
 
-it('omits an item whose target has no route (orphan-safe)', function () {
+it('omits an item whose target has no route (orphan-safe)', function (): void {
     $ids = seedNavFixture();
 
     $tree = app(Tenancy::class)->enter(1, function () use ($ids) {
@@ -106,7 +106,7 @@ it('omits an item whose target has no route (orphan-safe)', function () {
         ->and(collect($tree)->pluck('label')->all())->not->toContain('Mồ côi');
 });
 
-it('falls back to the target title when an item has no label', function () {
+it('falls back to the target title when an item has no label', function (): void {
     $ids = seedNavFixture();
 
     $tree = app(Tenancy::class)->enter(1, function () use ($ids) {
@@ -124,7 +124,7 @@ it('falls back to the target title when an item has no label', function () {
     expect(collect($tree)->firstWhere('url', '/dich-vu')['label'])->toBe('Dịch vụ');
 });
 
-it('passes a safe external url and marks _blank links rel=noopener', function () {
+it('passes a safe external url and marks _blank links rel=noopener', function (): void {
     $ids = seedNavFixture();
 
     $tree = app(Tenancy::class)->enter(1, function () use ($ids) {
@@ -143,7 +143,7 @@ it('passes a safe external url and marks _blank links rel=noopener', function ()
         ->and($node['attrs']['rel'])->toBe('noopener noreferrer');
 });
 
-it('drops a url item with an unsafe scheme', function () {
+it('drops a url item with an unsafe scheme', function (): void {
     $ids = seedNavFixture();
 
     $tree = app(Tenancy::class)->enter(1, function () use ($ids) {
@@ -156,7 +156,7 @@ it('drops a url item with an unsafe scheme', function () {
     expect(collect($tree)->pluck('label')->all())->not->toContain('XSS');
 });
 
-it('falls back to the default-locale menu when the locale has no assignment', function () {
+it('falls back to the default-locale menu when the locale has no assignment', function (): void {
     seedNavFixture();   // only a 'vi' assignment exists
 
     $tree = app(Tenancy::class)->enter(1, fn () => app(MenuResolver::class)->resolve('primary', 'en', 'vi', '/'));
@@ -167,7 +167,7 @@ it('falls back to the default-locale menu when the locale has no assignment', fu
         ->and($tree[0]['label'])->toBe('Trang chủ');
 });
 
-it('returns an empty menu when the region has no assignment', function () {
+it('returns an empty menu when the region has no assignment', function (): void {
     seedNavFixture();
 
     $tree = app(Tenancy::class)->enter(1, fn () => app(MenuResolver::class)->resolve('footer', 'vi', 'vi', '/'));
@@ -175,7 +175,7 @@ it('returns an empty menu when the region has no assignment', function () {
     expect($tree)->toBe([]);
 });
 
-it('terminates on a parent_id cycle (no infinite recursion)', function () {
+it('terminates on a parent_id cycle (no infinite recursion)', function (): void {
     $ids = seedNavFixture();
 
     $tree = app(Tenancy::class)->enter(1, function () use ($ids) {
@@ -189,10 +189,10 @@ it('terminates on a parent_id cycle (no infinite recursion)', function () {
     expect($tree)->toHaveCount(2);   // only the original home + news roots; cyclic pair excluded
 });
 
-it('resolves the whole tree within a fixed query budget (no N+1)', function () {
+it('resolves the whole tree within a fixed query budget (no N+1)', function (): void {
     $ids = seedNavFixture();
 
-    app(Tenancy::class)->enter(1, function () use ($ids) {
+    app(Tenancy::class)->enter(1, function () use ($ids): void {
         // Extra siblings must NOT add per-item queries (batched URL + label resolution).
         for ($i = 0; $i < 5; $i++) {
             $item = MenuItem::query()->create(['menu_id' => $ids['menu'], 'link_type' => 'dynamic', 'dynamic_key' => 'home', 'position' => 10 + $i]);
@@ -205,7 +205,7 @@ it('resolves the whole tree within a fixed query budget (no N+1)', function () {
     });
 });
 
-it('prefixes resolved URLs for a non-default-locale menu (via PathBuilder)', function () {
+it('prefixes resolved URLs for a non-default-locale menu (via PathBuilder)', function (): void {
     $ids = seedNavFixture();   // vi menu + news taxonomy + vi route /tin-tuc
 
     $tree = app(Tenancy::class)->enter(1, function () use ($ids) {

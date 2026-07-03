@@ -19,7 +19,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('tenants', function (Blueprint $table) {
+        Schema::create('tenants', function (Blueprint $table): void {
             $table->id();
             $table->ulid('ulid')->unique();
             $table->string('name');
@@ -31,7 +31,7 @@ return new class extends Migration
             $table->softDeletesTz();
         });
 
-        Schema::create('sites', function (Blueprint $table) {
+        Schema::create('sites', function (Blueprint $table): void {
             $table->id();
             $table->ulid('ulid')->unique();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
@@ -43,7 +43,7 @@ return new class extends Migration
             $table->softDeletesTz();
         });
 
-        Schema::create('domains', function (Blueprint $table) {
+        Schema::create('domains', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('hostname');

@@ -14,7 +14,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('platform_settings', function (Blueprint $table) {
+        Schema::create('platform_settings', function (Blueprint $table): void {
             $table->id();
             $table->string('group_name');
             $table->string('key')->default('config');

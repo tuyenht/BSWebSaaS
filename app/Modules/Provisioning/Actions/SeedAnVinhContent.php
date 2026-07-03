@@ -30,34 +30,34 @@ use App\Modules\Tenancy\Models\SiteSetting;
  * card image_url = raw R2 key (EntryGridComponent resolves at render); page section
  * image_url = pre-resolved URL via MediaUrlResolver (blade renders src directly).
  */
-final class SeedAnVinhContent
+final readonly class SeedAnVinhContent
 {
     // R2 storage keys (from key-map.json — verbatim paths, never hard-coded base URLs)
-    private const KEY_ABOUT = 'an-vinh/content/about-doi-ngu-a7b78a0a6ff7.jpg';
+    private const string KEY_ABOUT = 'an-vinh/content/about-doi-ngu-a7b78a0a6ff7.jpg';
 
-    private const KEY_HERO = 'an-vinh/hero/hero-home-7ca90eafe212.jpg';
+    private const string KEY_HERO = 'an-vinh/hero/hero-home-7ca90eafe212.jpg';
 
-    private const KEY_LOGO = 'an-vinh/brand/logo-e76d7cb1dfe4.png';
+    private const string KEY_LOGO = 'an-vinh/brand/logo-e76d7cb1dfe4.png';
 
     // Storefront collection taxonomy slugs
-    private const PRODUCTS_SLUG = 'san-pham';
+    private const string PRODUCTS_SLUG = 'san-pham';
 
-    private const PROJECTS_SLUG = 'du-an';
+    private const string PROJECTS_SLUG = 'du-an';
 
-    private const SERVICES_SLUG = 'dich-vu';
+    private const string SERVICES_SLUG = 'dich-vu';
 
-    private const NEWS_SLUG = 'tin-tuc';  // created by ProvisionSite; we reuse it
+    private const string NEWS_SLUG = 'tin-tuc';  // created by ProvisionSite; we reuse it
 
     // Product sub-categories (vocabulary = 'product_cat', children of san-pham)
     /** @var array<string, string> slug => display name */
-    private const PRODUCT_CATS = [
+    private const array PRODUCT_CATS = [
         'do-ga' => 'Đồ gá',
         'khuon-mau' => 'Khuôn mẫu',
         'chi-tiet-may' => 'Chi tiết máy',
     ];
 
     /** @var list<array{title: string, slug: string, excerpt: string, specs: list<string>, image: string, sub_cat: string}> */
-    private const PRODUCTS = [
+    private const array PRODUCTS = [
         [
             'title' => 'Jig kiểm cụm Taplo cho xe VF7',
             'slug' => 'jig-kiem-tap-lo-vf7',
@@ -109,7 +109,7 @@ final class SeedAnVinhContent
     ];
 
     /** @var list<array{title: string, slug: string, excerpt: string, image: string}> */
-    private const PROJECTS = [
+    private const array PROJECTS = [
         [
             'title' => 'Dây chuyền lắp ráp tự động',
             'slug' => 'day-chuyen-lap-rap-tu-dong',
@@ -149,7 +149,7 @@ final class SeedAnVinhContent
     ];
 
     /** @var list<array{title: string, slug: string, excerpt: string, image: string}> */
-    private const SERVICES = [
+    private const array SERVICES = [
         [
             'title' => 'Thiết kế Jig & Đồ gá',
             'slug' => 'thiet-ke-jig-do-ga',
@@ -177,7 +177,7 @@ final class SeedAnVinhContent
     ];
 
     /** @var list<array{title: string, slug: string, excerpt: string, image: string}> */
-    private const NEWS = [
+    private const array NEWS = [
         [
             'title' => 'An Vinh tổ chức team building 2024',
             'slug' => 'an-vinh-to-chuc-team-building-2024',
@@ -217,8 +217,8 @@ final class SeedAnVinhContent
     ];
 
     public function __construct(
-        private readonly RouteSync $routes,
-        private readonly MediaUrlResolver $media,
+        private RouteSync $routes,
+        private MediaUrlResolver $media,
     ) {}
 
     public function handle(): void
@@ -727,7 +727,7 @@ final class SeedAnVinhContent
     private function syncTaxonomyRoute(Taxonomy $category, string $locale): void
     {
         $translation = $category->translationFor($locale);
-        if ($translation !== null) {
+        if ($translation instanceof TaxonomyTranslation) {
             try {
                 $this->routes->syncTaxonomy($category, $locale, $translation->slug);
             } catch (RouteConflictException) {

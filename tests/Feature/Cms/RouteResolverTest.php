@@ -18,7 +18,7 @@ beforeEach(fn () => seedTenancy());
 
 function makePage(int $site, string $path, string $status = 'published', string $tStatus = 'published'): void
 {
-    app(Tenancy::class)->enter($site, function () use ($path, $status, $tStatus) {
+    app(Tenancy::class)->enter($site, function () use ($path, $status, $tStatus): void {
         $entry = Entry::create(['type' => 'page', 'status' => $status]);
         $entry->translations()->create([
             'locale' => 'vi',
@@ -36,7 +36,7 @@ function resolveIn(int $site, string $path): mixed
     return app(Tenancy::class)->enter($site, fn () => app(RouteResolver::class)->resolve('vi', $path));
 }
 
-it('resolves a published page by path within the current site', function () {
+it('resolves a published page by path within the current site', function (): void {
     makePage(1, '/');
 
     $resolved = resolveIn(1, '/');
@@ -46,33 +46,33 @@ it('resolves a published page by path within the current site', function () {
         ->and($resolved->translation->title)->toBe('Trang chủ');
 });
 
-it('does not resolve another site route (isolation)', function () {
+it('does not resolve another site route (isolation)', function (): void {
     makePage(1, '/');
 
     expect(resolveIn(2, '/'))->toBeNull();
 });
 
-it('does not resolve an unpublished entry', function () {
+it('does not resolve an unpublished entry', function (): void {
     makePage(1, '/', status: 'draft');
 
     expect(resolveIn(1, '/'))->toBeNull();
 });
 
-it('does not resolve an unpublished translation', function () {
+it('does not resolve an unpublished translation', function (): void {
     makePage(1, '/', tStatus: 'draft');
 
     expect(resolveIn(1, '/'))->toBeNull();
 });
 
-it('enforces the single-target route constraint (D3)', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('enforces the single-target route constraint (D3)', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         expect(fn () => SiteRoute::create(['locale' => 'vi', 'path' => '/orphan']))
             ->toThrow(QueryException::class);
     });
 });
 
-it('resolves a category list route to a ResolvedCategory', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('resolves a category list route to a ResolvedCategory', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
         $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
         app(RouteSync::class)->syncTaxonomy($category, 'vi', 'tin-tuc');

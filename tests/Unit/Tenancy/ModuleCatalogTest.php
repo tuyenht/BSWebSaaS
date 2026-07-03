@@ -10,7 +10,7 @@ use App\Modules\Tenancy\Registry\ModuleCatalog;
  * render consumer (AdminNav) lands in increment-3; here the catalog is pinned as a tested contract.
  */
 
-it('defines exactly the 12 canonical admin-nav modules with unique snake_case keys', function () {
+it('defines exactly the 12 canonical admin-nav modules with unique snake_case keys', function (): void {
     $keys = array_column(ModuleCatalog::all(), 'key');
     sort($keys);
 
@@ -24,7 +24,7 @@ it('defines exactly the 12 canonical admin-nav modules with unique snake_case ke
     }
 });
 
-it('gives every module tri-locale labels, a sort order, and a real permission_prefix', function () {
+it('gives every module tri-locale labels, a sort order, and a real permission_prefix', function (): void {
     $permissions = PermissionRegistry::permissions();
 
     foreach (ModuleCatalog::all() as $module) {
@@ -39,12 +39,12 @@ it('gives every module tri-locale labels, a sort order, and a real permission_pr
     }
 });
 
-it('flags media as needing the tier-3 media stack', function () {
+it('flags media as needing the tier-3 media stack', function (): void {
     $media = collect(ModuleCatalog::all())->firstWhere('key', 'media');
     expect($media['needs_tier3'])->toBeTrue();
 });
 
-it('maps the corporate site_type to a module set drawn from the catalog', function () {
+it('maps the corporate site_type to a module set drawn from the catalog', function (): void {
     $catalogKeys = array_column(ModuleCatalog::all(), 'key');
     $corporate = ModuleCatalog::modulesFor('corporate');
 

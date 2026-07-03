@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\DB;
  * layers (global identity/site → per-site entitlement + RBAC under tenant context).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, site_profile_translations, site_profiles, site_settings,
          site_locales, site_modules, content_sections, domains, sites, tenants,
@@ -48,7 +48,7 @@ function provisionAnVinh(): Site
     ));
 }
 
-it('provisions a full, active site stack', function () {
+it('provisions a full, active site stack', function (): void {
     $site = provisionAnVinh();
     $tenancy = app(Tenancy::class);
 
@@ -63,7 +63,7 @@ it('provisions a full, active site stack', function () {
     expect($tenancy->enter($site->id, fn () => $owner->fresh()->can('entries.publish')))->toBeTrue();
 });
 
-it('is idempotent — re-running provisions nothing new', function () {
+it('is idempotent — re-running provisions nothing new', function (): void {
     $first = provisionAnVinh();
     $second = provisionAnVinh();
 
@@ -73,11 +73,11 @@ it('is idempotent — re-running provisions nothing new', function () {
         ->and(User::query()->where('email', 'owner@anvinh.test')->count())->toBe(1);
 });
 
-it('seeds a "posts" nav section bound to a tin-tuc post category', function () {
+it('seeds a "posts" nav section bound to a tin-tuc post category', function (): void {
     $site = provisionAnVinh();
     $tenancy = app(Tenancy::class);
 
-    $tenancy->enter($site->id, function () {
+    $tenancy->enter($site->id, function (): void {
         $section = ContentSection::query()->where('key', 'posts')->first();
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
 
@@ -95,34 +95,34 @@ it('seeds a "posts" nav section bound to a tin-tuc post category', function () {
     });
 });
 
-it('seeds the posts section + category idempotently', function () {
+it('seeds the posts section + category idempotently', function (): void {
     $site = provisionAnVinh();
     provisionAnVinh();
     $tenancy = app(Tenancy::class);
 
-    $tenancy->enter($site->id, function () {
+    $tenancy->enter($site->id, function (): void {
         expect(ContentSection::query()->where('key', 'posts')->count())->toBe(1)
             ->and(Taxonomy::query()->where('vocabulary', 'post_cat')->count())->toBe(1)
             ->and(TaxonomyTranslation::query()->where('slug', 'tin-tuc')->count())->toBe(1);
     });
 });
 
-it('routes the seeded category at /tin-tuc', function () {
+it('routes the seeded category at /tin-tuc', function (): void {
     $site = provisionAnVinh();
     $tenancy = app(Tenancy::class);
 
-    $tenancy->enter($site->id, function () {
+    $tenancy->enter($site->id, function (): void {
         $category = Taxonomy::query()->where('vocabulary', 'post_cat')->first();
 
         expect(SiteRoute::query()->where('taxonomy_id', $category->id)->value('path'))->toBe('/tin-tuc');
     });
 });
 
-it('seeds a primary menu (home + tin-tuc) assigned for the default locale', function () {
+it('seeds a primary menu (home + tin-tuc) assigned for the default locale', function (): void {
     $site = provisionAnVinh();
     $tenancy = app(Tenancy::class);
 
-    $tenancy->enter($site->id, function () {
+    $tenancy->enter($site->id, function (): void {
         $menu = Menu::query()->where('handle', 'main-vi')->first();
         expect($menu)->not->toBeNull();
 
@@ -139,19 +139,19 @@ it('seeds a primary menu (home + tin-tuc) assigned for the default locale', func
     });
 });
 
-it('seeds the menu idempotently', function () {
+it('seeds the menu idempotently', function (): void {
     $site = provisionAnVinh();
     provisionAnVinh();
     $tenancy = app(Tenancy::class);
 
-    $tenancy->enter($site->id, function () {
+    $tenancy->enter($site->id, function (): void {
         expect(Menu::query()->count())->toBe(1)
             ->and(MenuAssignment::query()->where('region_key', 'primary')->where('locale', 'vi')->count())->toBe(1)
             ->and(MenuItem::query()->count())->toBe(2);
     });
 });
 
-it('isolates the provisioned site from another tenant', function () {
+it('isolates the provisioned site from another tenant', function (): void {
     provisionAnVinh();
     $other = app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'Other Co',
@@ -169,7 +169,7 @@ it('isolates the provisioned site from another tenant', function () {
     expect($tenancy->enter($other->id, fn () => $anVinhOwner->fresh()->can('entries.publish')))->toBeFalse();
 });
 
-it('provisioned site_modules keys are all valid ModuleCatalog keys — no orphan like "cms"', function () {
+it('provisioned site_modules keys are all valid ModuleCatalog keys — no orphan like "cms"', function (): void {
     $site = provisionAnVinh();
     $tenancy = app(Tenancy::class);
 
@@ -183,11 +183,11 @@ it('provisioned site_modules keys are all valid ModuleCatalog keys — no orphan
     expect(collect($provisioned)->sort()->values()->all())->toBe(collect($catalogKeys)->sort()->values()->all());
 });
 
-it('seeds a contact page routed at /lien-he so the homepage CTA resolves', function () {
+it('seeds a contact page routed at /lien-he so the homepage CTA resolves', function (): void {
     $site = provisionAnVinh();
     $tenancy = app(Tenancy::class);
 
-    $tenancy->enter($site->id, function () {
+    $tenancy->enter($site->id, function (): void {
         $route = SiteRoute::query()->where('path', '/lien-he')->first();
         expect($route)->not->toBeNull();
 

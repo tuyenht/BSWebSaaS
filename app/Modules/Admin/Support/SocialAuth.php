@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Admin\Support;
 
 /**
@@ -8,11 +10,11 @@ namespace App\Modules\Admin\Support;
  * → platform default (platform_settings) → none. A provider is "enabled" only once its
  * client id + secret are configured; until then the login buttons render disabled.
  */
-final class SocialAuth
+final readonly class SocialAuth
 {
     public function __construct(
-        private readonly SettingsRepository $tenant,
-        private readonly PlatformSettings $platform,
+        private SettingsRepository $tenant,
+        private PlatformSettings $platform,
     ) {}
 
     public function enabled(string $provider): bool

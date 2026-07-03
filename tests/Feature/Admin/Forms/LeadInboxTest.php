@@ -15,7 +15,7 @@ use Livewire\Livewire;
  * list is eager-loaded (flat query budget, no N+1).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -40,7 +40,7 @@ function seedLead(int $site, array $attrs = []): FormSubmission
     });
 }
 
-it('lets a member with forms.view open the inbox and see its leads', function () {
+it('lets a member with forms.view open the inbox and see its leads', function (): void {
     $viewer = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['forms.view']));
     seedLead(1, ['name' => 'Alpha Corp']);
@@ -51,14 +51,14 @@ it('lets a member with forms.view open the inbox and see its leads', function ()
         ->assertSee('Alpha Corp');
 });
 
-it('forbids a member without forms.view', function () {
+it('forbids a member without forms.view', function (): void {
     $author = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($author, 'author', ['entries.view']));
 
     $this->actingAs($author)->get('http://a.test/admin/forms')->assertForbidden();
 });
 
-it('isolates leads per site (RLS) — site A inbox never shows site B leads', function () {
+it('isolates leads per site (RLS) — site A inbox never shows site B leads', function (): void {
     $viewer = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['forms.view']));
     seedLead(1, ['name' => 'Alpha Corp']);
@@ -70,7 +70,7 @@ it('isolates leads per site (RLS) — site A inbox never shows site B leads', fu
         ->assertDontSee('Bravo Ltd');
 });
 
-it('filters the inbox by status', function () {
+it('filters the inbox by status', function (): void {
     $viewer = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['forms.view']));
     seedLead(1, ['name' => 'Fresh Lead', 'status' => 'new']);
@@ -82,7 +82,7 @@ it('filters the inbox by status', function () {
         ->assertDontSee('Fresh Lead');
 });
 
-it('auto-marks a new lead read when a manager opens it', function () {
+it('auto-marks a new lead read when a manager opens it', function (): void {
     $manager = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($manager, 'admin', ['forms.view', 'forms.manage']));
     $lead = seedLead(1, ['status' => 'new']);
@@ -93,7 +93,7 @@ it('auto-marks a new lead read when a manager opens it', function () {
     expect($status)->toBe('read');
 });
 
-it('does not mutate a new lead when a view-only member opens it', function () {
+it('does not mutate a new lead when a view-only member opens it', function (): void {
     $viewer = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['forms.view']));
     $lead = seedLead(1, ['status' => 'new']);
@@ -104,11 +104,11 @@ it('does not mutate a new lead when a view-only member opens it', function () {
     expect($status)->toBe('new');
 });
 
-it('lets a manager change a lead status', function () {
+it('lets a manager change a lead status', function (): void {
     $manager = User::factory()->create();
     $lead = seedLead(1, ['status' => 'new']);
 
-    app(Tenancy::class)->enter(1, function () use ($manager, $lead) {
+    app(Tenancy::class)->enter(1, function () use ($manager, $lead): void {
         grantRole($manager, 'admin', ['forms.view', 'forms.manage']);
 
         Livewire::actingAs($manager->fresh())
@@ -119,11 +119,11 @@ it('lets a manager change a lead status', function () {
     });
 });
 
-it('forbids a view-only member from changing a lead status', function () {
+it('forbids a view-only member from changing a lead status', function (): void {
     $viewer = User::factory()->create();
     $lead = seedLead(1, ['status' => 'new']);
 
-    app(Tenancy::class)->enter(1, function () use ($viewer, $lead) {
+    app(Tenancy::class)->enter(1, function () use ($viewer, $lead): void {
         grantRole($viewer, 'editor', ['forms.view']);
 
         Livewire::actingAs($viewer->fresh())
@@ -135,9 +135,9 @@ it('forbids a view-only member from changing a lead status', function () {
     });
 });
 
-it('lists leads on a flat query budget (no N+1 across rows)', function () {
+it('lists leads on a flat query budget (no N+1 across rows)', function (): void {
     $viewer = User::factory()->create();
-    app(Tenancy::class)->enter(1, function () use ($viewer) {
+    app(Tenancy::class)->enter(1, function () use ($viewer): void {
         grantRole($viewer, 'editor', ['forms.view']);
         $form = Form::query()->firstOrCreate(['key' => 'contact'], ['name' => ['vi' => 'Liên hệ']]);
         foreach (range(1, 10) as $i) {

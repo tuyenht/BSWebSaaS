@@ -15,9 +15,9 @@ use Symfony\Component\HttpFoundation\Response;
  * request inside Tenancy::enter (transaction + SET LOCAL + assertion + cleanup).
  * Unknown host = fail-closed 404.
  */
-final class SetCurrentSite
+final readonly class SetCurrentSite
 {
-    public function __construct(private readonly Tenancy $tenancy) {}
+    public function __construct(private Tenancy $tenancy) {}
 
     /**
      * @param  Closure(Request): Response  $next

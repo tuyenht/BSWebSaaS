@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\File;
  * fine; this guards the LOCALE variable specifically, catching future regressions.
  */
 
-it('builds locale-prefixed URLs only through PathBuilder::publicUrl', function () {
+it('builds locale-prefixed URLs only through PathBuilder::publicUrl', function (): void {
     $targets = [
         base_path('app/Modules/Storefront/Http/Controllers/StorefrontController.php'),
         base_path('app/Modules/Cms/Navigation/MenuResolver.php'),

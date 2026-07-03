@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Admin\Support;
 
 use App\Modules\Tenancy\Models\SiteSetting;

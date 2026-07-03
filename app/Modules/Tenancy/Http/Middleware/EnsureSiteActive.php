@@ -13,9 +13,9 @@ use Symfony\Component\HttpFoundation\Response;
  * A request is rejected unless the resolved site's lifecycle status is 'active'
  * (provisioning/suspended/archived are not served). Runs after SetCurrentSite.
  */
-final class EnsureSiteActive
+final readonly class EnsureSiteActive
 {
-    public function __construct(private readonly Entitlement $entitlement) {}
+    public function __construct(private Entitlement $entitlement) {}
 
     /**
      * @param  Closure(Request): Response  $next

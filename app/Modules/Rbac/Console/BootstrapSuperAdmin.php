@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Rbac\Console;
 
 use App\Modules\Identity\Models\User;
@@ -15,8 +17,10 @@ use Spatie\Permission\PermissionRegistrar;
  */
 final class BootstrapSuperAdmin extends Command
 {
+    #[\Override]
     protected $signature = 'rbac:bootstrap-super-admin {--email=} {--name=}';
 
+    #[\Override]
     protected $description = 'Create or promote a platform super_admin operator.';
 
     public function handle(PermissionRegistrar $registrar): int

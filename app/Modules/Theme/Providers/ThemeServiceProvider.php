@@ -22,7 +22,7 @@ final class ThemeServiceProvider extends ServiceProvider
      *
      * @var array<string, array<string, array<string, mixed>>>
      */
-    private const SECTION_SCHEMAS = [
+    private const array SECTION_SCHEMAS = [
         'hero' => [
             'heading' => ['type' => 'text'],
             'subheading' => ['type' => 'text'],
@@ -72,6 +72,7 @@ final class ThemeServiceProvider extends ServiceProvider
         ],
     ];
 
+    #[\Override]
     public function register(): void
     {
         $this->app->singleton(ComponentRegistry::class, function (): ComponentRegistry {

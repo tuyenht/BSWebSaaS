@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Modules\Admin\Theme;
 
 use App\Modules\Admin\Support\AdminPlane;
@@ -22,10 +24,10 @@ use App\Modules\Identity\Models\User;
  * that route group), so the site tier is skipped there — which also keeps the plane
  * scheme-only by construction.
  */
-final class AdminChromeResolver
+final readonly class AdminChromeResolver
 {
     /** Allowed values per axis; the first entry is the app default (today's look). */
-    public const FIELDS = [
+    public const array FIELDS = [
         'scheme' => ['light', 'dark'],
         'sidebar' => ['dark', 'light'],
         'topbar' => ['light', 'dark'],
@@ -33,14 +35,14 @@ final class AdminChromeResolver
     ];
 
     /** Axis → the <html> data-attribute it drives (Velzon/Bootstrap 5.3 names). */
-    public const ATTRIBUTES = [
+    public const array ATTRIBUTES = [
         'scheme' => 'data-bs-theme',
         'sidebar' => 'data-sidebar',
         'topbar' => 'data-topbar',
         'position' => 'data-layout-position',
     ];
 
-    public function __construct(private readonly SettingsRepository $settings) {}
+    public function __construct(private SettingsRepository $settings) {}
 
     /**
      * @return array<string, string> field => resolved value (always complete)

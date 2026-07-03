@@ -25,6 +25,7 @@ final class StoreLeadRequest extends FormRequest
      * locale prefix and app.locale defaults to 'en', so without this a vi site would surface
      * English validation errors.
      */
+    #[\Override]
     protected function prepareForValidation(): void
     {
         app()->setLocale(app(SiteLocale::class)->default());
@@ -48,6 +49,7 @@ final class StoreLeadRequest extends FormRequest
      *
      * @return array<string, string>
      */
+    #[\Override]
     public function messages(): array
     {
         return [

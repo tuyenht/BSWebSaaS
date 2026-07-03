@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  * table is covered automatically — a forgotten RLS on a new tenant table fails CI here.
  */
 
-it('enforces RLS + FORCE on every table that has a site_id column', function () {
+it('enforces RLS + FORCE on every table that has a site_id column', function (): void {
     $unprotected = DB::select(<<<'SQL'
         select c.relname
         from pg_class c
@@ -38,7 +38,7 @@ it('enforces RLS + FORCE on every table that has a site_id column', function () 
     expect(array_map(fn ($r) => $r->relname, $unprotected))->toBe([]);
 });
 
-it('has at least one isolation policy on every tenant table', function () {
+it('has at least one isolation policy on every tenant table', function (): void {
     $withoutPolicy = DB::select(<<<'SQL'
         select c.relname
         from pg_class c

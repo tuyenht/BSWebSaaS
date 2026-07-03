@@ -20,9 +20,9 @@ use Illuminate\Database\Eloquent\Builder;
  * this covers entry-vs-entry AND entry-vs-taxonomy (A2). Runs inside the tenant context
  * (BelongsToSite + RLS scope every query to the site).
  */
-final class RouteSync
+final readonly class RouteSync
 {
-    public function __construct(private readonly PathBuilder $paths) {}
+    public function __construct(private PathBuilder $paths) {}
 
     /** Upsert the route for an entry+locale at the composed path; returns that path. */
     public function sync(Entry $entry, string $locale, string $slug): string

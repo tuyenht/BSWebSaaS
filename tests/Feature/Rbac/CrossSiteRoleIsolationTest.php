@@ -16,20 +16,20 @@ use App\Modules\Tenancy\Context\Tenancy;
  * set) — the weakest isolation link, so it gets its own regression guard.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('scopes the assignable-roles set to the actor\'s site', function () {
+it('scopes the assignable-roles set to the actor\'s site', function (): void {
     $tenancy = app(Tenancy::class);
     $owner = User::factory()->create();
 
     // An owner-level actor on site 1; a distinct role exists only on site 2.
     $tenancy->enter(1, fn () => grantRole($owner, 'owner', ['users.manage']));
-    $tenancy->enter(2, fn () => Role::findOrCreate('b-secret', PermissionRegistry::GUARD));
+    $tenancy->enter(2, fn (): Spatie\Permission\Contracts\Role => Role::findOrCreate('b-secret', PermissionRegistry::GUARD));
 
     $assignable = $tenancy->enter(1, fn () => app(RoleHierarchyGuard::class)
         ->assignableRoles($owner->fresh())->pluck('name')->all());
@@ -37,7 +37,7 @@ it('scopes the assignable-roles set to the actor\'s site', function () {
     expect($assignable)->not->toContain('b-secret');
 });
 
-it('scopes a member\'s role set to the site (no cross-site role bleed)', function () {
+it('scopes a member\'s role set to the site (no cross-site role bleed)', function (): void {
     $tenancy = app(Tenancy::class);
     $user = User::factory()->create();
 

@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Schema;
 //    the BelongsToSite trait (the RLS global scope at the app layer). Auto-discovered from
 //    app/Modules so a new tenant model that forgets the trait fails CI here — the code-layer
 //    twin of tests/Feature/Tenancy/RlsCoverageTest.php's DB-layer guard.
-test('every tenant model uses the BelongsToSite trait', function () {
+test('every tenant model uses the BelongsToSite trait', function (): void {
     // GLOBAL tables that legitimately carry a site_id column but are NOT tenant-scoped (the
     // app-layer mirror of RlsCoverageTest's documented exceptions): the RBAC authz pivots
     // scoped in-app by the spatie team key, the host-resolver table read before any tenant
@@ -39,7 +39,7 @@ test('every tenant model uses the BelongsToSite trait', function () {
         }
 
         /** @var class-string<Model> $class */
-        if ((new ReflectionClass($class))->isAbstract()) {
+        if (new ReflectionClass($class)->isAbstract()) {
             continue;
         }
 
@@ -61,7 +61,7 @@ test('every tenant model uses the BelongsToSite trait', function () {
 //    Livewire-first (no controllers): the Entry model has a bound policy, and the
 //    admin entry components authorize through it (the AuthorizesRequests arch rule
 //    in ModuleBoundariesTest enforces the components actually call it).
-test('every Entry action routes through EntryPolicy', function () {
+test('every Entry action routes through EntryPolicy', function (): void {
     expect(Gate::getPolicyFor(Entry::class))->toBeInstanceOf(EntryPolicy::class);
 });
 

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
  * the master's own site context → the attachment cleanup is RLS-scoped to that site.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy();
     Storage::fake('r2');
 });
@@ -41,8 +41,8 @@ function makeMediaWithAttachment(string $key, string $hash): Media
     return $media;
 }
 
-it('force-deleting a master deletes its R2 object and purges its attachments', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('force-deleting a master deletes its R2 object and purges its attachments', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $media = makeMediaWithAttachment('a/library/anh-aaaaaaaaaaaa.png', str_repeat('a', 64));
 
         $media->forceDelete();
@@ -52,8 +52,8 @@ it('force-deleting a master deletes its R2 object and purges its attachments', f
     });
 });
 
-it('soft-deleting a master keeps its R2 object and attachments (Thùng rác)', function () {
-    app(Tenancy::class)->enter(1, function () {
+it('soft-deleting a master keeps its R2 object and attachments (Thùng rác)', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
         $media = makeMediaWithAttachment('a/library/keep-bbbbbbbbbbbb.png', str_repeat('b', 64));
 
         $media->delete(); // soft

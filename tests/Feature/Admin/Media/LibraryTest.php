@@ -17,7 +17,7 @@ use Livewire\Livewire;
  * rác — the R2 object + attachments survive until a force-purge, covered by MediaObserverTest).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -40,7 +40,7 @@ function seedMediaAsset(int $site, array $attrs = []): Media
     ], $attrs)));
 }
 
-it('lets a member with media.view open the library', function () {
+it('lets a member with media.view open the library', function (): void {
     $viewer = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['media.view']));
     seedMediaAsset(1, ['original_filename' => 'bao-gia.png']);
@@ -51,14 +51,14 @@ it('lets a member with media.view open the library', function () {
         ->assertSee('bao-gia.png');
 });
 
-it('forbids a member without media.view', function () {
+it('forbids a member without media.view', function (): void {
     $author = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($author, 'author', ['entries.view']));
 
     $this->actingAs($author)->get('http://a.test/admin/media')->assertForbidden();
 });
 
-it('isolates media per site (RLS) — site A library never shows site B assets', function () {
+it('isolates media per site (RLS) — site A library never shows site B assets', function (): void {
     $viewer = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['media.view']));
     seedMediaAsset(1, ['original_filename' => 'site-a-asset.png', 'hash' => str_repeat('1', 64), 'storage_key' => 'a/library/x-111111111111.png']);
@@ -70,11 +70,11 @@ it('isolates media per site (RLS) — site A library never shows site B assets',
         ->assertDontSee('site-b-asset.png');
 });
 
-it('soft-deletes a master with media.delete (sends it to the Thùng rác)', function () {
+it('soft-deletes a master with media.delete (sends it to the Thùng rác)', function (): void {
     $manager = User::factory()->create();
     $asset = seedMediaAsset(1);
 
-    app(Tenancy::class)->enter(1, function () use ($manager, $asset) {
+    app(Tenancy::class)->enter(1, function () use ($manager, $asset): void {
         grantRole($manager, 'admin', ['media.view', 'media.delete']);
 
         Livewire::actingAs($manager->fresh())
@@ -86,11 +86,11 @@ it('soft-deletes a master with media.delete (sends it to the Thùng rác)', func
     });
 });
 
-it('forbids delete without media.delete', function () {
+it('forbids delete without media.delete', function (): void {
     $viewer = User::factory()->create();
     $asset = seedMediaAsset(1);
 
-    app(Tenancy::class)->enter(1, function () use ($viewer, $asset) {
+    app(Tenancy::class)->enter(1, function () use ($viewer, $asset): void {
         grantRole($viewer, 'editor', ['media.view']);
 
         Livewire::actingAs($viewer->fresh())
@@ -102,9 +102,9 @@ it('forbids delete without media.delete', function () {
     });
 });
 
-it('lists the library on a flat query budget (no N+1 across rows)', function () {
+it('lists the library on a flat query budget (no N+1 across rows)', function (): void {
     $viewer = User::factory()->create();
-    app(Tenancy::class)->enter(1, function () use ($viewer) {
+    app(Tenancy::class)->enter(1, function () use ($viewer): void {
         grantRole($viewer, 'editor', ['media.view']);
         foreach (range(1, 10) as $i) {
             seedMediaAsset(1, [

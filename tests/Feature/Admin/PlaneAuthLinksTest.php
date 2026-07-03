@@ -9,14 +9,14 @@ use App\Modules\Rbac\Context\TeamContext;
  * (no platform.locale route + URL generated from APP_URL). Regression guard for that fix.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
 });
 
-it('renders the platform login with platform-scoped auth links (no /admin/*)', function () {
+it('renders the platform login with platform-scoped auth links (no /admin/*)', function (): void {
     $res = $this->get('http://platform.bswebsaas.test/login')->assertOk();
 
     // Language switcher resolves to platform.locale on this host…
@@ -26,19 +26,19 @@ it('renders the platform login with platform-scoped auth links (no /admin/*)', f
         ->assertDontSee('/admin/login');
 });
 
-it('switches the UI locale on the platform plane', function () {
+it('switches the UI locale on the platform plane', function (): void {
     $this->get('http://platform.bswebsaas.test/locale?set=ja')
         ->assertRedirect()
         ->assertSessionHas('locale', 'ja');
 });
 
-it('ignores an unknown locale code on the platform plane', function () {
+it('ignores an unknown locale code on the platform plane', function (): void {
     $this->get('http://platform.bswebsaas.test/locale?set=zz')
         ->assertRedirect()
         ->assertSessionMissing('locale');
 });
 
-it('keeps the tenant admin login switcher on the admin routes (regression)', function () {
+it('keeps the tenant admin login switcher on the admin routes (regression)', function (): void {
     $this->get('http://a.test/admin/login')
         ->assertOk()
         ->assertSee('/admin/locale?set=');

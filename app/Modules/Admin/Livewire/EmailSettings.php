@@ -91,11 +91,11 @@ final class EmailSettings extends Component
         $cfg = $this->configRepo()->get('email');
 
         if ($this->scope === 'site') {
-            $this->hasOverride = ! empty($cfg);
+            $this->hasOverride = $cfg !== null && $cfg !== [];
             $this->platformConfigured = app(PlatformSettings::class)->get('email') !== null;
         }
 
-        if (empty($cfg)) {
+        if ($cfg === null || $cfg === []) {
             return;
         }
 

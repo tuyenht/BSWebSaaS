@@ -6,12 +6,12 @@
  * eager-load); for now it bounds the resolve + render of one page.
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     seedTenancy();
     seedHomepage(1, 'An Vinh');
 });
 
-it('renders the storefront home within its query budget', function () {
+it('renders the storefront home within its query budget', function (): void {
     $budget = 11; // + nav: one assignment lookup (miss → empty menu) on top of the page resolve
 
     $count = countQueries(fn () => $this->get('http://a.test/')->assertOk());

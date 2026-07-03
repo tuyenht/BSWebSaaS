@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * tenantRoleTemplates() signature change).
  */
 
-beforeEach(function () {
+beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
         'truncate tenant_probes, site_profile_translations, site_profiles, site_settings,
          site_locales, site_modules, content_sections, domains, sites, tenants,
@@ -36,7 +36,7 @@ function provisionCorporate(): Site
     ));
 }
 
-it('stamps a newly provisioned site with the corporate site_type', function () {
+it('stamps a newly provisioned site with the corporate site_type', function (): void {
     $site = provisionCorporate();
     $corporate = SiteType::query()->where('key', 'corporate')->first();
 
@@ -44,7 +44,7 @@ it('stamps a newly provisioned site with the corporate site_type', function () {
         ->and($site->fresh()->site_type_id)->toBe($corporate->id);
 });
 
-it('materializes the 6 corporate role templates with their canonical levels', function () {
+it('materializes the 6 corporate role templates with their canonical levels', function (): void {
     $site = provisionCorporate();
 
     $levels = app(Tenancy::class)->enter($site->id, fn () => Role::query()

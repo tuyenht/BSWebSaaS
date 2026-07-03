@@ -5,7 +5,9 @@ namespace App\Modules\Admin\Livewire\Entries;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
@@ -76,8 +78,8 @@ final class Editor extends Component
             // New entry: take the type (and a default category for posts) from the
             // content_section the admin came from (?section=…); default to a page.
             $contentSection = $this->resolveSection($section ?? request()->query('section'));
-            $this->type = $contentSection !== null ? ($contentSection->entry_type ?? 'page') : 'page';
-            $this->categoryId = $this->type === 'post' && $contentSection !== null && $contentSection->taxonomy_id !== null
+            $this->type = $contentSection instanceof ContentSection ? ($contentSection->entry_type ?? 'page') : 'page';
+            $this->categoryId = $this->type === 'post' && $contentSection instanceof ContentSection && $contentSection->taxonomy_id !== null
                 ? (int) $contentSection->taxonomy_id
                 : null;
 
@@ -92,7 +94,7 @@ final class Editor extends Component
         $this->status = $entry->status;
 
         $translation = $entry->translationFor($this->locale);
-        if ($translation !== null) {
+        if ($translation instanceof EntryTranslation) {
             $this->title = $translation->title;
             $this->slug = $translation->slug;
             $this->blocks = $this->normalizeBlocks($translation->body['blocks'] ?? []);
@@ -355,7 +357,7 @@ final class Editor extends Component
 
                 return [
                     'id' => $taxonomy->id,
-                    'name' => $translation !== null ? $translation->name : '(không tên)',
+                    'name' => $translation instanceof TaxonomyTranslation ? $translation->name : '(không tên)',
                 ];
             })
             ->all();

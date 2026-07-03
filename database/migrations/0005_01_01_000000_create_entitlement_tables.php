@@ -16,7 +16,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('site_modules', function (Blueprint $table) {
+        Schema::create('site_modules', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('module_key');
@@ -27,7 +27,7 @@ return new class extends Migration
             $table->unique(['site_id', 'module_key']);
         });
 
-        Schema::create('content_sections', function (Blueprint $table) {
+        Schema::create('content_sections', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('key');
