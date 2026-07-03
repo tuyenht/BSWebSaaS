@@ -38,14 +38,15 @@
     --vz-topbar-user-color: var(--color-accent);       /* ★ user chip initial letter */
 
     /* ---- Sidebar / vertical menu (flip axis: data-sidebar) ----------------
-       Defaults = Velzon's data-sidebar="dark" preset (our shipped look). */
-    --vz-vertical-menu-bg: var(--color-admin-primary);
-    --vz-vertical-menu-item-color: #abb9e8;
+       Default dark sidebar = Velzon variant-one $blue. Deliberately DECOUPLED from
+       the brand primary (#405189), which stays on buttons/links via --color-admin-primary. */
+    --vz-vertical-menu-bg: #3577f1;
+    --vz-vertical-menu-item-color: rgb(255 255 255 / 0.85); /* provisional: readable on #3577f1 retint. #3577f1 caps ~4.15 for normal text (owner soi: grandfather vs darken) */
     --vz-vertical-menu-item-hover-color: #ffffff;
     --vz-vertical-menu-item-active-color: #ffffff;
     --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.10); /* ★ also the brand-initials chip · vz-ref item-bg: rgba(#fff,.15) */
     --vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15);
-    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.40);   /* vz-ref: #838fb9 */
+    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.60);   /* bumped for #3577f1 retint (was .40) */
     --vz-vertical-menu-brand-color: #ffffff;                   /* ★ text brand (Velzon swaps logo images instead) */
 
     /* ---- Footer (flip axis: data-bs-theme) -------------------------------- */
@@ -270,4 +271,19 @@
     :root[data-layout-width='boxed'] .admin-sidebar {
         left: max(0px, calc((100% - var(--vz-boxed-width)) / 2));
     }
+}
+
+/* ---- Brand logo (config-driven, replaces text initials) -------------------
+   Sidebar shows the white logo on the dark sidebar, the dark logo on a light
+   sidebar, and the compact mark when collapsed (sm). Platform topbar uses the
+   dark logo statically. */
+.brand-logo { display: none; }
+.brand-logo--static { display: block; }
+.admin-sidebar .brand-logo--light { display: block; } /* default dark sidebar → white logo */
+:root[data-sidebar='light'] .admin-sidebar .brand-logo--light { display: none; }
+:root[data-sidebar='light'] .admin-sidebar .brand-logo--dark { display: block; }
+@media (min-width: 64rem) {
+    :root[data-sidebar-size='sm'] .admin-sidebar .brand-logo--light,
+    :root[data-sidebar-size='sm'] .admin-sidebar .brand-logo--dark { display: none; }
+    :root[data-sidebar-size='sm'] .admin-sidebar .brand-logo--sm { display: block; }
 }

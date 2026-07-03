@@ -37,9 +37,10 @@ def over(fg: tuple[int, int, int], bg: tuple[int, int, int], alpha: float):
 
 # (label, ink hex, ink alpha, [bg stops], threshold)
 CHECKS = [
-    # Base dark sidebar — UNCHANGED in V-A1 (documented grandfathers, regression guard):
-    ("dark base · item #abb9e8", "#abb9e8", 1.0, ["#405189"], 3.0),
-    ("dark base · title white/.40", "#ffffff", 0.40, ["#405189"], 3.0),
+    # Default dark sidebar — retinted to variant-one #3577f1 (V-A2 branding):
+    ("dark sidebar · item white/.85", "#ffffff", 0.85, ["#3577f1"], 3.0),
+    ("dark sidebar · title white/.60", "#ffffff", 0.60, ["#3577f1"], 3.0),
+    ("dark sidebar · hover/active #fff (4.5 unreachable)", "#ffffff", 1.0, ["#3577f1"], 4.5),
     # Gradient sidebars — NEW, opt-in aesthetic (Velzon rgba(#fff,.5)):
     ("gradient · item white/.5", "#ffffff", 0.50, ["#405189", "#0ab39c"], 4.5),
     ("gradient-2 · item white/.5", "#ffffff", 0.50, ["#299cdb", "#3577f1"], 4.5),

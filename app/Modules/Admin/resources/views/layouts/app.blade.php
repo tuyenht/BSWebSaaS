@@ -14,14 +14,6 @@
     @livewireStyles
 </head>
 <body class="admin-shell min-h-full bg-body font-sans text-base text-body-text antialiased">
-@php
-    $brandName = config('admin.brand.name');
-    $brandTagline = config('admin.brand.tagline');
-    $brandInitials = collect(explode(' ', (string) $brandName))
-        ->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))
-        ->take(2)
-        ->implode('');
-@endphp
 <div x-data="{ open: false }" class="admin-shell-wrapper min-h-screen">
 
     {{-- Mobile overlay --}}
@@ -41,11 +33,7 @@
         {{-- Brand (from config — white-label safe) --}}
         <div class="flex h-[var(--spacing-header)] shrink-0 items-center px-4">
             <a href="{{ route('admin.dashboard') }}" wire:navigate class="sidebar-brand-link flex items-center gap-2.5 text-sidebar-brand">
-                <span class="grid size-9 shrink-0 place-items-center rounded bg-sidebar-hover text-sm font-bold">{{ $brandInitials }}</span>
-                <span class="sidebar-label flex flex-col leading-tight">
-                    <span class="text-base font-semibold tracking-tight">{{ $brandName }}</span>
-                    <span class="text-[11px] text-sidebar-brand/55">{{ $brandTagline }}</span>
-                </span>
+                <x-admin::brand-logo />
             </a>
         </div>
 
