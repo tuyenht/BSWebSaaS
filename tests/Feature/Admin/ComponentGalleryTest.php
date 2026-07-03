@@ -56,7 +56,7 @@ it('renders the shell brand (from config), search and footer', function (): void
     $this->actingAs($owner)->get('http://anvinh.test/admin/_gallery')
         ->assertOk()
         ->assertSee(config('admin.brand.name'))
-        ->assertSee(config('admin.brand.tagline'))
+        ->assertSee('brand-logo', false) // config-driven logo replaces the text name+tagline in the shell (name lives in its alt)
         ->assertSee(__('admin.search_placeholder'))
         ->assertSee(__('auth.rights'));
 });

@@ -16,17 +16,13 @@
 <body class="admin-shell min-h-full bg-body font-sans text-base text-body-text antialiased">
 @php
     $brandName = config('admin.brand.name');
-    $brandInitials = collect(explode(' ', (string) $brandName))
-        ->map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)))
-        ->take(2)
-        ->implode('');
 @endphp
 <div class="flex min-h-screen flex-col">
     {{-- Topbar (platform console — no tenant sidebar; the settings shell carries the nav) --}}
     <header class="sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar px-4 shadow-card">
         <a href="{{ route('platform.dashboard') }}" wire:navigate class="flex items-center gap-2.5">
-            {{-- Brand chip stays literal brand: an identity mark, fixed across every scheme. --}}
-            <span class="grid size-9 shrink-0 place-items-center rounded bg-admin-primary text-sm font-bold text-white">{{ $brandInitials }}</span>
+            {{-- Brand mark stays literal brand: an identity mark, fixed across every scheme. --}}
+            <x-admin::brand-logo context="topbar" />
             <span class="flex flex-col leading-tight">
                 <span class="text-sm font-semibold text-topbar-brand">{{ $brandName }}</span>
                 <span class="text-[11px] font-semibold uppercase tracking-wider text-accent">{{ __('admin.platform_console') }}</span>

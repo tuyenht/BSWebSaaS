@@ -9,6 +9,14 @@ return [
         // Legal/company name + site shown in the copyright footer (the name links here).
         'company' => env('ADMIN_BRAND_COMPANY', 'BaoSon Ads'),
         'company_url' => env('ADMIN_BRAND_URL', 'https://baoson.net'),
+        // Brand mark assets (ADR-12 white-label). Empty env → falsy → the initials fallback
+        // in <x-admin::brand-logo> kicks in. dark/light = the full logo for light/dark
+        // surfaces; sm = the compact mark for the collapsed sidebar rail.
+        'logo' => [
+            'dark' => env('ADMIN_BRAND_LOGO_DARK', '/images/admin/logo-dark.png'),
+            'light' => env('ADMIN_BRAND_LOGO_LIGHT', '/images/admin/logo-light.png'),
+            'sm' => env('ADMIN_BRAND_LOGO_SM', '/images/admin/logo-sm.png'),
+        ],
     ],
 
     // URL prefix for the whole admin plane (login + dashboard + …). Change via env to
