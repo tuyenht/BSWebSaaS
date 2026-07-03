@@ -43,6 +43,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Symfony\Component\Mailer\Transport\Smtp\Auth\XOAuth2Authenticator;
 use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
@@ -145,9 +146,15 @@ final class AdminServiceProvider extends ServiceProvider
         // once per request per layout. Stateless resolver — Octane-safe by construction.
         View::composer(['admin::layouts.app', 'admin::layouts.platform'], function (ViewContract $view): void {
             $user = Auth::user();
-            $view->with('chrome', app(AdminChromeResolver::class)->attributes(
-                $user instanceof User ? $user : null,
-            ));
+            $user = $user instanceof User ? $user : null;
+            $view->with('chrome', app(AdminChromeResolver::class)->attributes($user));
+
+            // Primary-role label (highest level) for the topbar user area. Role slugs have no
+            // display map, so headline() renders "super_admin" → "Super Admin". Roles are
+            // team-scoped (current site, or platform team 0) and already warmed by the nav build.
+            $primaryRole = $user ? $user->roles->sortByDesc('level')->first() : null;
+            $roleName = $primaryRole?->getAttribute('name');
+            $view->with('roleLabel', is_string($roleName) && $roleName !== '' ? Str::headline($roleName) : null);
         });
 
         // Livewire's AJAX update endpoint must run inside the tenant context so component

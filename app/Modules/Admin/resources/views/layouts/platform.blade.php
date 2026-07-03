@@ -14,19 +14,13 @@
     @livewireStyles
 </head>
 <body class="admin-shell min-h-full bg-body font-sans text-base text-body-text antialiased">
-@php
-    $brandName = config('admin.brand.name');
-@endphp
 <div class="flex min-h-screen flex-col">
     {{-- Topbar (platform console — no tenant sidebar; the settings shell carries the nav) --}}
     <header class="sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar px-4 shadow-card">
         <a href="{{ route('platform.dashboard') }}" wire:navigate class="flex items-center gap-2.5">
             {{-- Brand mark stays literal brand: an identity mark, fixed across every scheme. --}}
             <x-admin::brand-logo context="topbar" />
-            <span class="flex flex-col leading-tight">
-                <span class="text-sm font-semibold text-topbar-brand">{{ $brandName }}</span>
-                <span class="text-[11px] font-semibold uppercase tracking-wider text-accent">{{ __('admin.platform_console') }}</span>
-            </span>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-accent">{{ __('admin.platform_console') }}</span>
         </a>
 
         @if (! empty($platformNav))
@@ -38,27 +32,10 @@
             </nav>
         @endif
 
-        <div class="ms-auto" x-data="{ userOpen: false }">
-            <div class="relative">
-                <button type="button" @click="userOpen = !userOpen"
-                        class="flex items-center gap-2 rounded px-2 py-1.5 transition-colors hover:bg-topbar-hover">
-                    <span class="grid size-8 place-items-center rounded-full bg-topbar-user font-semibold text-topbar-user-fg">
-                        {{ \Illuminate\Support\Str::of(auth()->user()?->name ?? 'U')->substr(0, 1)->upper() }}
-                    </span>
-                    <span class="hidden text-sm font-medium text-topbar-fg-strong sm:block">{{ auth()->user()?->name ?? __('admin.account') }}</span>
-                </button>
-                <div x-show="userOpen" @click.outside="userOpen = false" x-transition x-cloak
-                     class="absolute end-0 mt-1 w-48 rounded-md border border-border bg-surface py-1 shadow-card">
-                    <form method="POST" action="{{ route('platform.logout') }}">
-                        @csrf
-                        <button type="submit"
-                                class="flex w-full items-center gap-2 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
-                            <x-admin::icon name="logout" class="size-4" />
-                            {{ __('admin.logout') }}
-                        </button>
-                    </form>
-                </div>
-            </div>
+        <div class="ms-auto flex items-center gap-1">
+            @include('admin::partials.topbar-tools')
+            <span class="mx-1 hidden h-6 w-px bg-topbar-border sm:block" aria-hidden="true"></span>
+            @include('admin::partials.topbar-user')
         </div>
     </header>
 
