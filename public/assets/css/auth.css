@@ -238,17 +238,16 @@
   /* Golden Standard: 14px (NOT 16px) */
 }
 
-/* ---- Turnstile (bot challenge) — full field width (matches the inputs), never overflow ---- */
+/* ---- Turnstile (bot challenge) — the widget iframe has a hard min-width:300px inside a closed
+   shadow root, so JS (bsFitTurnstile) scales .cf-turnstile to the field width; keep this box pinned to
+   the field width (min-width:0 stops the 300px min-content from stretching it) so the scaler reads it right. */
 .auth-turnstile {
   display: flex;
-}
-
-.auth-turnstile .cf-turnstile {
-  width: 100%;
+  min-width: 0;
   max-width: 100%;
 }
 
-.auth-turnstile iframe {
+.auth-turnstile .cf-turnstile {
   max-width: 100%;
 }
 
