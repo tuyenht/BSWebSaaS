@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\EmailOtp;
+use App\Modules\Admin\Support\LoginTurnstile;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Services\TurnstileVerifier;
@@ -70,10 +71,11 @@ final class Login extends Component
         // Bot challenge first: a missing/failed Turnstile never reaches the credential check. Enforced
         // ONLY when fully configured (both keys) — the widget renders on the same signal, so login is
         // never gated by a challenge the user cannot see. See TurnstileVerifier::isConfigured().
-        // fail-open on a Cloudflare OUTAGE (not a bad token) so a CF blip can't lock out every admin —
-        // password + 2FA + the per-IP throttle still gate. A missing/invalid token still blocks.
+        // Bot challenge, active only when the CF keys are configured AND the operator's system-wide
+        // toggle is on (LoginTurnstile::active). fail-open on a Cloudflare OUTAGE (not a bad token) so a
+        // CF blip can't lock out every admin — password + 2FA + the per-IP throttle still gate.
         $turnstile = app(TurnstileVerifier::class);
-        if ($turnstile->isConfigured() && ! $turnstile->verify($this->turnstileToken, $ip, failOpenOnTransportError: true)) {
+        if (LoginTurnstile::active() && ! $turnstile->verify($this->turnstileToken, $ip, failOpenOnTransportError: true)) {
             $this->refreshChallenge();
             Audit::record('auth.login.captcha_failed', ['actor_label' => $this->email]);
             $this->addError('email', __('auth.captcha_failed'));

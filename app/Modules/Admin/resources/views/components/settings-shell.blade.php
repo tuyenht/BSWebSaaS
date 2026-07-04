@@ -6,6 +6,7 @@
             'group' => __('admin.settings_system'),
             'items' => array_values(array_filter([
                 Route::has('platform.settings.email') ? ['key' => 'system-email', 'route' => 'platform.settings.email', 'label' => __('admin.system_email')] : null,
+                Route::has('platform.settings.security') ? ['key' => 'login-security', 'route' => 'platform.settings.security', 'label' => __('admin.system_login_security')] : null,
                 Route::has('platform.settings.social') ? ['key' => 'system-social', 'route' => 'platform.settings.social', 'label' => __('admin.system_social')] : null,
             ])),
         ]];

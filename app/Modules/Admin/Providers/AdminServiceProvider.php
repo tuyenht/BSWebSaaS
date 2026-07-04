@@ -13,6 +13,7 @@ use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as PlatformAuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as PlatformSitesDetail;
@@ -71,6 +72,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.otp-challenge', EmailOtpChallenge::class);
         Livewire::component('admin.settings', Settings::class);
         Livewire::component('admin.email-settings', EmailSettings::class);
+        Livewire::component('admin.login-security-settings', LoginSecuritySettings::class);
         Livewire::component('admin.social-settings', SocialSettings::class);
         Livewire::component('admin.appearance-settings', AppearanceSettings::class);
         Livewire::component('admin.dashboard', Dashboard::class);

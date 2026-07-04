@@ -1,7 +1,10 @@
 <?php
 
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Support\LoginTurnstile;
+use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Identity\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
@@ -13,6 +16,11 @@ use Livewire\Livewire;
  * the existing per-email+IP throttle. Turnstile is skipped when unconfigured (dev/test), so the
  * other login tests are unaffected.
  */
+
+beforeEach(function (): void {
+    // platform_settings writes don't roll back between tests, so start clean (the toggle tests write it).
+    DB::connection('pgsql_admin')->statement('truncate platform_settings restart identity cascade');
+});
 
 it('blocks a valid credential when the Turnstile challenge fails (captcha gates before auth)', function (): void {
     // BOTH keys set turns the challenge ON (isConfigured); an empty token then fails with no network
@@ -77,6 +85,29 @@ it('fails open on login when Cloudflare is unreachable (no admin lockout)', func
         ->call('login')
         ->assertHasNoErrors()
         ->assertRedirect(route('admin.otp.challenge'));
+});
+
+it('does not enforce Turnstile when the operator toggle is off, even with keys configured', function (): void {
+    // The system-wide switch (super_admin) turns an already-configured challenge off without a redeploy.
+    config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
+    app(PlatformSettings::class)->put('security', 'config', ['turnstile_login_enabled' => false]);
+    Notification::fake();
+    $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse']);
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'correct-horse')
+        ->set('turnstileToken', '') // no token — but the toggle is off, so it isn't required
+        ->call('login')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('admin.otp.challenge'));
+});
+
+it('defaults the login-Turnstile toggle to on (fail-safe), only an explicit false disables it', function (): void {
+    expect(LoginTurnstile::enabled())->toBeTrue(); // never saved → on
+
+    app(PlatformSettings::class)->put('security', 'config', ['turnstile_login_enabled' => false]);
+    expect(LoginTurnstile::enabled())->toBeFalse();
 });
 
 it('lets login proceed when Turnstile is not configured (dev/test default)', function (): void {
