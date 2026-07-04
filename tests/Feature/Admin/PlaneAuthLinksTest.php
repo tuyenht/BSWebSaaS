@@ -38,8 +38,10 @@ it('ignores an unknown locale code on the platform plane', function (): void {
         ->assertSessionMissing('locale');
 });
 
-it('keeps the tenant admin login switcher on the admin routes (regression)', function (): void {
+it('keeps the tenant admin login switcher on the admin routes with wire:navigate (regression)', function (): void {
     $this->get('http://a.test/admin/login')
         ->assertOk()
-        ->assertSee('/admin/locale?set=');
+        ->assertSee('/admin/locale?set=')
+        // Enhanced to swap the page in place (no white reload); plain href stays as the fallback.
+        ->assertSee('wire:navigate', false);
 });

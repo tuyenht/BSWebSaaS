@@ -32,7 +32,7 @@
     <div x-show="langOpen" @click.outside="langOpen = false" x-transition x-cloak role="menu"
          class="absolute end-0 z-30 mt-1 w-44 overflow-hidden rounded-md border border-border bg-surface py-1 shadow-card">
         @foreach ($locales as $l)
-            <a href="{{ \App\Modules\Admin\Support\AdminPlane::route('locale', ['set' => $l['code']]) }}" role="menuitem"
+            <a wire:navigate href="{{ \App\Modules\Admin\Support\AdminPlane::route('locale', ['set' => $l['code']]) }}" role="menuitem"
                @class([
                    'flex items-center gap-2.5 px-4 py-2 text-sm transition-colors hover:bg-surface-hover',
                    'font-semibold text-accent' => $l['active'],
