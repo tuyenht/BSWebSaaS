@@ -26,9 +26,10 @@
             window.bsTurnstileClear = function () { window.Livewire && window.Livewire.dispatch('turnstile-token', { token: '' }); };
             document.addEventListener('livewire:init', function () {
                 window.Livewire.on('bs-turnstile-reset', function () {
+                    // The server already cleared turnstileToken; just re-challenge so the widget's own
+                    // callback delivers a fresh single-use token.
                     var el = document.querySelector('.cf-turnstile');
                     if (window.turnstile && el) { window.turnstile.reset(el); }
-                    window.Livewire.dispatch('turnstile-token', { token: '' });
                 });
             });
         </script>
