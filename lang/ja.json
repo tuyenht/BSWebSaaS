@@ -1,4 +1,9 @@
 {
+    "section.pages": "ページ",
+    "section.posts": "ニュース",
+    "section.services": "サービス",
+    "section.products": "製品",
+    "section.projects": "プロジェクト",
     "entries.noun_post": "投稿",
     "entries.noun_page": "ページ",
     "entries.edit_title": ":noun を編集",

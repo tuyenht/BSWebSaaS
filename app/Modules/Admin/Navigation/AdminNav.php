@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Gate;
 
 /**
  * The tenant admin menu (design.md §15.2) as a NESTED tree. Content sections become
- * expandable groups of {List · Add new}; feature modules are leaves; Settings is a group of
+ * expandable groups of {Add new · List}; feature modules are leaves; Settings is a group of
  * tabs. Three-ring gating (§2.7): a feature module shows only if the SITE is entitled to it
  * AND the user is PERMITTED (RBAC) — while the routes carry `can:` middleware as the real
  * access boundary (nav hiding is UX, not security). Iterating content_sections directly (not
@@ -45,7 +45,7 @@ final class AdminNav
             active: $request->routeIs('admin.dashboard'),
         );
 
-        // Content sections → an expandable group each, of {List, Add new, (Categories)}. A section
+        // Content sections → an expandable group each, of {Add new, List, (Categories)}. A section
         // EXISTS only if provisioned for this site (its presence is the entitlement); RBAC gates
         // per-section by its OWN permission_prefix (defaults to 'entries'). A section that owns a
         // taxonomy also gets a Categories child scoped to that section (?section=…), so each type's
@@ -63,15 +63,9 @@ final class AdminNav
             $inSection = $onEntries && $request->query('section') === $section->key;
             $inTaxonomy = $onTaxonomies && $request->query('section') === $section->key;
 
-            $children = [
-                new NavItem(
-                    key: "{$section->key}.list",
-                    label: __('admin.list'),
-                    url: route('admin.entries.index', ['section' => $section->key]),
-                    active: $inSection && $request->routeIs('admin.entries.index'),
-                    permission: "{$prefix}.view",
-                ),
-            ];
+            // Order: Add new · List · Categories (action-forward — owner preference). Add new shows
+            // only when the user can create, so a view-only member simply sees List first.
+            $children = [];
 
             if ($can("{$prefix}.create")) {
                 $children[] = new NavItem(
@@ -82,6 +76,14 @@ final class AdminNav
                     permission: "{$prefix}.create",
                 );
             }
+
+            $children[] = new NavItem(
+                key: "{$section->key}.list",
+                label: __('admin.list'),
+                url: route('admin.entries.index', ['section' => $section->key]),
+                active: $inSection && $request->routeIs('admin.entries.index'),
+                permission: "{$prefix}.view",
+            );
 
             // Categories belong UNDER their content type (never a shared top-level list). Only for
             // sections that own a taxonomy; scoped by section so they never mix. Points at the
@@ -98,7 +100,7 @@ final class AdminNav
 
             $items[] = new NavItem(
                 key: $section->key,
-                label: $section->label,
+                label: $section->localizedLabel(),
                 icon: $section->icon ?? 'file-text',
                 active: $inSection || $inTaxonomy,
                 children: $children,
