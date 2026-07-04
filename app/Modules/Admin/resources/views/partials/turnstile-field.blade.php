@@ -17,7 +17,7 @@
 @if ($turnstile->isConfigured())
     <div wire:ignore class="auth-turnstile">
         <div class="cf-turnstile" data-sitekey="{{ \App\Modules\Admin\Support\Cast::string(config('services.turnstile.site_key')) }}"
-             data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
+             data-size="flexible" data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
              data-expired-callback="bsTurnstileClear" data-timeout-callback="bsTurnstileClear"></div>
     </div>
     @once
