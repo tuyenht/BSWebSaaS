@@ -70,8 +70,10 @@ final class Login extends Component
         // Bot challenge first: a missing/failed Turnstile never reaches the credential check. Enforced
         // ONLY when fully configured (both keys) — the widget renders on the same signal, so login is
         // never gated by a challenge the user cannot see. See TurnstileVerifier::isConfigured().
+        // fail-open on a Cloudflare OUTAGE (not a bad token) so a CF blip can't lock out every admin —
+        // password + 2FA + the per-IP throttle still gate. A missing/invalid token still blocks.
         $turnstile = app(TurnstileVerifier::class);
-        if ($turnstile->isConfigured() && ! $turnstile->verify($this->turnstileToken, $ip)) {
+        if ($turnstile->isConfigured() && ! $turnstile->verify($this->turnstileToken, $ip, failOpenOnTransportError: true)) {
             $this->refreshChallenge();
             Audit::record('auth.login.captcha_failed', ['actor_label' => $this->email]);
             $this->addError('email', __('auth.captcha_failed'));

@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Identity\Models\User;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
@@ -59,6 +60,23 @@ it('resets the single-use Turnstile token after a rejected attempt', function ()
         ->call('login')
         ->assertDispatched('bs-turnstile-reset')
         ->assertSet('turnstileToken', '');
+});
+
+it('fails open on login when Cloudflare is unreachable (no admin lockout)', function (): void {
+    // A Cloudflare outage must not lock every admin out: a PRESENT token that simply can't be verified
+    // lets login proceed (password + 2FA + throttle still gate). A missing token still blocks (above).
+    config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
+    Http::fake(['*' => Http::response('', 503)]); // Cloudflare siteverify unavailable
+    Notification::fake();
+    $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse']);
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'correct-horse')
+        ->set('turnstileToken', 'present-but-unverifiable')
+        ->call('login')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('admin.otp.challenge'));
 });
 
 it('lets login proceed when Turnstile is not configured (dev/test default)', function (): void {

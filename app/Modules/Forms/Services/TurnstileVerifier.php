@@ -27,7 +27,14 @@ final class TurnstileVerifier
             && Cast::string(config('services.turnstile.secret_key')) !== '';
     }
 
-    public function verify(?string $token, ?string $ip = null): bool
+    /**
+     * @param  bool  $failOpenOnTransportError  When Cloudflare ITSELF is unreachable (network error or
+     *                                          5xx), the token could not be verified either way. The storefront keeps failing CLOSED (a lead is
+     *                                          captured as spam, recoverable). Login passes true so a Cloudflare outage doesn't lock EVERY admin
+     *                                          out — the token was present, only verification was impossible, and password + 2FA + rate-limit
+     *                                          still gate. A missing/invalid token always fails, regardless of this flag.
+     */
+    public function verify(?string $token, ?string $ip = null, bool $failOpenOnTransportError = false): bool
     {
         $secret = Cast::string(config('services.turnstile.secret_key'));
 
@@ -36,7 +43,7 @@ final class TurnstileVerifier
         }
 
         if (! is_string($token) || $token === '') {
-            return false;
+            return false; // A missing/blank token is a hard fail — never fail-open on this.
         }
 
         try {
@@ -48,13 +55,15 @@ final class TurnstileVerifier
                     'remoteip' => $ip,
                 ]);
         } catch (Throwable $e) {
-            // Cloudflare unreachable / timed out — fail CLOSED (never a 500 on the public submit):
-            // the lead is still captured + flagged spam, recoverable from the inbox's spam filter.
-            report($e);
+            report($e); // Cloudflare unreachable / timed out.
 
-            return false;
+            return $failOpenOnTransportError;
         }
 
-        return $response->successful() && $response->json('success') === true;
+        if (! $response->successful()) {
+            return $failOpenOnTransportError; // Cloudflare 5xx — verification impossible, not a rejected token.
+        }
+
+        return $response->json('success') === true;
     }
 }
