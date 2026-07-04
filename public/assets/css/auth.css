@@ -238,13 +238,16 @@
   /* Golden Standard: 14px (NOT 16px) */
 }
 
-/* ---- Turnstile (bot challenge) — standard 300px widget, centered, never overflow ---- */
+/* ---- Turnstile (bot challenge) — full field width (matches the inputs), never overflow ---- */
 .auth-turnstile {
   display: flex;
-  justify-content: center;
 }
 
-.auth-turnstile .cf-turnstile,
+.auth-turnstile .cf-turnstile {
+  width: 100%;
+  max-width: 100%;
+}
+
 .auth-turnstile iframe {
   max-width: 100%;
 }
