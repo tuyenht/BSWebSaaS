@@ -26,15 +26,17 @@
 
         {{-- Language switcher — built dynamically from lang/*.json. Drop a new {code}.json
              translation file and that language appears here automatically. --}}
-        <div class="auth-lang">
+        <div class="auth-lang" x-data="{ locale: '{{ app()->getLocale() }}' }">
             <div class="auth-lang-pill">
                 @foreach ($locales as $l)
-                    {{-- Plain full-page navigation (NOT wire:navigate): this page hosts the Turnstile
-                         widget, and a SPA morph would blank its iframe (the once-only auto-render never
-                         re-fires). A full reload re-renders it cleanly. The in-app topbar switcher, with
-                         no Turnstile, keeps wire:navigate. --}}
+                    {{-- Smooth in-place switch: dispatch a Livewire event so the auth component re-renders
+                         its labels in the new locale WITHOUT navigating — the Turnstile widget (wire:ignore'd)
+                         survives, where a wire:navigate / full-reload morph would blank its iframe. The href
+                         stays as a no-JS fallback that sets the same session locale via a full reload. --}}
                     <a href="{{ \App\Modules\Admin\Support\AdminPlane::route('locale', ['set' => $l['code']]) }}"
-                       @class(['auth-lang-btn', 'auth-lang-btn--active' => $l['active']])>
+                       @click.prevent="locale = '{{ $l['code'] }}'; Livewire.dispatch('auth-locale', { code: '{{ $l['code'] }}' })"
+                       :class="{ 'auth-lang-btn--active': locale === '{{ $l['code'] }}' }"
+                       class="auth-lang-btn">
                         {{ strtoupper($l['code']) }}
                         <span class="auth-lang-tooltip">{{ $l['label'] }}</span>
                     </a>

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\EmailOtp;
@@ -27,6 +28,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class Login extends Component
 {
+    use SwitchesLocale;
+
     private const int MAX_ATTEMPTS = 5;         // per email+IP — targeted brute force
 
     private const int MAX_IP_ATTEMPTS = 30;     // failed attempts per IP across all emails — blunts spraying

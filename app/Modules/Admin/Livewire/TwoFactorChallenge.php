@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Audit\Facades\Audit;
@@ -21,6 +22,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class TwoFactorChallenge extends Component
 {
+    use SwitchesLocale;
+
     public string $code = '';
 
     public bool $useRecovery = false;

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Identity\Models\User;
@@ -19,6 +20,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class ResetPassword extends Component
 {
+    use SwitchesLocale;
+
     public string $token = '';
 
     public string $email = '';

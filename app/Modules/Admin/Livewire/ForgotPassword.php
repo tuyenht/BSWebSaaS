@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\TenantMailer;
 use Illuminate\Support\Facades\Password;
 use Illuminate\View\View;
@@ -16,6 +17,8 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class ForgotPassword extends Component
 {
+    use SwitchesLocale;
+
     public string $email = '';
 
     public string $status = '';
