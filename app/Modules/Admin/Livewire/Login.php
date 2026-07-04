@@ -7,12 +7,14 @@ use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Forms\Services\TurnstileVerifier;
 use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 /**
@@ -24,13 +26,24 @@ use Livewire\Component;
 #[Layout('admin::layouts.auth')]
 final class Login extends Component
 {
-    private const int MAX_ATTEMPTS = 5;
+    private const int MAX_ATTEMPTS = 5;         // per email+IP — targeted brute force
+
+    private const int MAX_IP_ATTEMPTS = 30;     // failed attempts per IP across all emails — blunts spraying
 
     private const int DECAY_SECONDS = 60;
 
     public string $email = '';
 
     public string $password = '';
+
+    /** Cloudflare Turnstile token, pushed in from the widget's solve callback (see turnstile-field). */
+    public string $turnstileToken = '';
+
+    #[On('turnstile-token')]
+    public function setTurnstileToken(string $token): void
+    {
+        $this->turnstileToken = $token;
+    }
 
     public function login(): mixed
     {
@@ -39,14 +52,29 @@ final class Login extends Component
             'password' => 'required',
         ]);
 
-        $key = 'admin-login:'.sha1(Str::lower($this->email).'|'.request()->ip());
+        $ip = (string) request()->ip();
 
-        if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
+        // Bot challenge first: a missing/failed Turnstile never reaches the credential check. Skipped
+        // automatically when Turnstile is unconfigured (dev/test) — see TurnstileVerifier.
+        if (! app(TurnstileVerifier::class)->verify($this->turnstileToken, $ip)) {
+            Audit::record('auth.login.captcha_failed', ['actor_label' => $this->email]);
+            $this->addError('email', __('auth.captcha_failed'));
+
+            return null;
+        }
+
+        $key = 'admin-login:'.sha1(Str::lower($this->email).'|'.$ip);
+        $ipKey = 'admin-login-ip:'.sha1($ip);
+
+        // Two ceilings: MAX_ATTEMPTS per email+IP (targeted) and MAX_IP_ATTEMPTS failed attempts per IP
+        // across every email (spraying). Whichever trips first blocks the attempt.
+        if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS) || RateLimiter::tooManyAttempts($ipKey, self::MAX_IP_ATTEMPTS)) {
+            $seconds = max(RateLimiter::availableIn($key), RateLimiter::availableIn($ipKey));
             Audit::record('auth.login.throttled', [
                 'actor_label' => $this->email,
-                'meta' => ['available_in' => RateLimiter::availableIn($key)],
+                'meta' => ['available_in' => $seconds],
             ]);
-            $this->addError('email', __('auth.too_many_attempts', ['seconds' => RateLimiter::availableIn($key)]));
+            $this->addError('email', __('auth.too_many_attempts', ['seconds' => $seconds]));
 
             return null;
         }
@@ -55,6 +83,7 @@ final class Login extends Component
 
         if (! Auth::validate($credentials)) {
             RateLimiter::hit($key, self::DECAY_SECONDS);
+            RateLimiter::hit($ipKey, self::DECAY_SECONDS);
             Audit::record('auth.login.failed', [
                 'actor_label' => $this->email,
                 'meta' => ['reason' => 'invalid_credentials'],
@@ -64,6 +93,9 @@ final class Login extends Component
             return null;
         }
 
+        // Clear only the per-email counter on success — the per-IP spray ceiling must NOT reset just
+        // because one account authenticated (an attacker holding one valid credential could otherwise
+        // reset it between sprays). It decays on its own.
         RateLimiter::clear($key);
 
         $user = Auth::getProvider()->retrieveByCredentials($credentials);
