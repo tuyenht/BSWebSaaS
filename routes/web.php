@@ -14,6 +14,7 @@ use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Forms\Detail as FormsDetail;
 use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
 use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
@@ -102,6 +103,7 @@ Route::domain((string) config('tenancy.platform_host'))
         Route::get('/audit', AuditIndex::class)->name('platform.audit.index');
 
         Route::get('/settings/email', EmailSettings::class)->defaults('scope', 'platform')->name('platform.settings.email');
+        Route::get('/settings/security', LoginSecuritySettings::class)->name('platform.settings.security');
 
         // Per-user Customizer persistence (fetch/JSON). Mirrored per plane because the
         // consoles live on different hosts and fetch() stays same-origin.
