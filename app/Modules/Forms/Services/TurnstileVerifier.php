@@ -6,13 +6,15 @@ namespace App\Modules\Forms\Services;
 
 use App\Modules\Admin\Support\Cast;
 use Illuminate\Support\Facades\Http;
+use RuntimeException;
 use Throwable;
 
 /**
  * Cloudflare Turnstile server-side verification (§23/R20). When no secret is configured
  * (e.g. local/dev) verification is SKIPPED (returns true) so the form still works behind the
  * honeypot + rate-limit; it never fails open silently when a secret IS set — a missing/invalid
- * token then returns false and the submission is flagged for review.
+ * token then returns false and the submission is flagged for review. Callers that cannot tolerate a
+ * lockout (login) may fail-open on a Cloudflare OUTAGE only, via $failOpenOnTransportError.
  */
 final class TurnstileVerifier
 {
@@ -61,7 +63,11 @@ final class TurnstileVerifier
         }
 
         if (! $response->successful()) {
-            return $failOpenOnTransportError; // Cloudflare 5xx — verification impossible, not a rejected token.
+            // Cloudflare 5xx — verification impossible, not a rejected token. Report so a fail-open is
+            // observable (mirrors the transport-exception branch), then apply the caller's policy.
+            report(new RuntimeException('Turnstile siteverify returned HTTP '.$response->status()));
+
+            return $failOpenOnTransportError;
         }
 
         return $response->json('success') === true;
