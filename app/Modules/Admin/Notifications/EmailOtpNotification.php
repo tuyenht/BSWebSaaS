@@ -5,7 +5,6 @@ namespace App\Modules\Admin\Notifications;
 use App\Modules\Admin\Notifications\Concerns\QueuesTenantMail;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Audit\Facades\Audit;
-use DateTimeInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -18,9 +17,8 @@ use Throwable;
  * and re-applies the resolved mailer before building the message (see QueuesTenantMail).
  *
  * Because delivery is deferred to a worker (Horizon runs tries=1), a transient SMTP/worker blip
- * would otherwise silently lose a login code. So retry a few times with short backoffs, but never
- * past the code's own validity window (mailing an expired code is pointless), and audit a final
- * failure so an undelivered code is visible.
+ * would otherwise silently lose a login code. So retry a few times with short backoffs (which finish
+ * well inside the code's TTL), and audit a final failure so an undelivered code is visible.
  */
 final class EmailOtpNotification extends Notification implements ShouldQueue
 {
@@ -28,6 +26,12 @@ final class EmailOtpNotification extends Notification implements ShouldQueue
     use QueuesTenantMail;
 
     public int $tries = 3;
+
+    /**
+     * Actor captured at dispatch so a worker-side failed() — which has no request/Auth — can still
+     * attribute the undelivered code (the site comes from the trait's tenantSiteId).
+     */
+    public ?int $actorId = null;
 
     public function __construct(
         private readonly string $code,
@@ -42,17 +46,18 @@ final class EmailOtpNotification extends Notification implements ShouldQueue
         return [5, 20];
     }
 
-    public function retryUntil(): DateTimeInterface
-    {
-        // Evaluated once at dispatch and stored on the payload — so this is an absolute deadline
-        // (dispatch time + the code's TTL), not a moving one.
-        return now()->addMinutes($this->minutes);
-    }
+    // Deliberately NO retryUntil(): when both are defined Laravel's retryUntil WINS and $tries is
+    // ignored, so a deadline == the 10-min TTL would retry every ~20s (~30 SMTP attempts). $tries +
+    // backoff finish in ~25s — far inside the TTL — so a stale code is never mailed anyway.
 
     public function failed(Throwable $e): void
     {
-        // Best-effort (CLAUDE.md §2.6): record the class only, never the message (may carry SMTP detail).
-        Audit::record('auth.otp.send_failed', ['meta' => ['error' => $e::class]]);
+        // Best-effort (CLAUDE.md §2.6): attribute to actor + site (the worker has no Auth); class only,
+        // never the message (may carry SMTP detail — the full exception lands in failed_jobs).
+        Audit::record('auth.otp.send_failed', [
+            'actor_id' => $this->actorId,
+            'meta' => ['site_id' => $this->tenantSiteId, 'error' => $e::class],
+        ]);
     }
 
     /**
