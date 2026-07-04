@@ -38,6 +38,26 @@ it('adds no tenant middleware on the platform plane (no resolved site)', functio
         ->and($note->middleware())->toBe([]);
 });
 
+it('processes a platform-plane OTP (no site) through the worker without a tenant-context error', function (): void {
+    // Platform plane = no CurrentSite, so no WithinSite middleware and no app.current_site_id in the
+    // worker. toMail() still runs TenantMailer::apply() → resolve() → a SiteSetting read (RLS + the
+    // BelongsToSite 1=0 no-site guard). This asserts that read does NOT throw with the GUC unset.
+    config(['queue.default' => 'sync', 'mail.default' => 'array']);
+    $user = User::factory()->create();
+
+    expect(app(CurrentSite::class)->hasId())->toBeFalse();
+
+    $note = (new EmailOtpNotification('123456', 10))->forCurrentSite();
+    expect($note->tenantSiteId)->toBeNull()
+        ->and($note->middleware())->toBe([]);
+
+    // Would raise a DB/RLS error if the no-site SiteSetting read threw. Reaching the assert proves the
+    // worker completed; apply() found no tenant/platform config and fell back to the safe 'log' mailer.
+    $user->notify($note);
+
+    expect(config('mail.default'))->toBe('log');
+});
+
 it('re-enters the site and re-applies the mailer when the queued OTP is processed', function (): void {
     seedTenancy();
     config(['queue.default' => 'sync', 'mail.default' => 'array']);
@@ -70,4 +90,23 @@ it('re-enters the site and re-applies the mailer when the queued OTP is processe
     $user->notify($note);
 
     expect($probe->site)->toBe(1);
+});
+
+it('retries a transient OTP send and bounds retries to the code TTL', function (): void {
+    // Horizon runs tries=1, so a transient blip would drop the login code silently without these.
+    $note = new EmailOtpNotification('123456', 10);
+
+    expect($note->tries)->toBe(3)
+        ->and($note->backoff())->toBe([5, 20])
+        ->and($note->retryUntil()->getTimestamp())->toBeGreaterThan(now()->addMinutes(9)->getTimestamp())
+        ->and($note->retryUntil()->getTimestamp())->toBeLessThan(now()->addMinutes(11)->getTimestamp());
+});
+
+it('captures the request locale so the queued code mails in the user language, not app-default', function (): void {
+    app()->setLocale('vi');
+
+    $note = (new EmailOtpNotification('123456', 10))->locale(app()->getLocale())->forCurrentSite();
+
+    // Carried on the notification → the worker re-applies it around toMail() (Laravel localized send).
+    expect($note->locale)->toBe('vi');
 });

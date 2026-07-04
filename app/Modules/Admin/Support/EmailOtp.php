@@ -56,10 +56,13 @@ final class EmailOtp
             'sent_at' => time(),
         ], self::TTL_SECONDS);
 
-        // Queued (ShouldQueue) so login never blocks on SMTP. Bind the current site now, in the
-        // request, so the worker re-enters this tenant's isolation and re-applies its mailer.
+        // Queued (ShouldQueue) so login never blocks on SMTP. Capture the request locale AND bind the
+        // current site now — a worker has neither, so without this the code mails in the app-default
+        // language and via the wrong/default tenant mailer.
         $user->notify(
-            (new EmailOtpNotification($code, (int) ceil(self::TTL_SECONDS / 60)))->forCurrentSite()
+            (new EmailOtpNotification($code, (int) ceil(self::TTL_SECONDS / 60)))
+                ->forCurrentSite()
+                ->locale(app()->getLocale())
         );
 
         return true;
