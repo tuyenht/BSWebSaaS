@@ -9,7 +9,7 @@
     <title>{{ $title ?? __('auth.welcome') }} — {{ config('admin.brand.name') }}</title>
     <meta name="description" content="{{ $metaDescription ?? config('admin.brand.name').' — '.config('admin.brand.tagline') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <link rel="stylesheet" href="{{ asset('assets/css/auth.css') }}?v=5">
+    <link rel="stylesheet" href="{{ asset('assets/css/auth.css') }}?v=6">
     {{-- auth.css golden-standard values are sized against a 14px root (Velzon convention) --}}
     <style>html{font-size:14px}</style>
     @livewireStyles
