@@ -114,3 +114,26 @@ it('excludes a feature module whose nav_permission the user lacks (entitled ∩ 
 
     expect($keys)->toContain('media')->not->toContain('users');
 });
+
+it('orders each content group Add new before List (action-forward)', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    $items = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($owner));
+
+    $posts = collect($items)->firstWhere('key', 'posts');
+    $childKeys = array_map(fn (NavItem $c): string => $c->key, $posts->children);
+
+    expect($childKeys[0])->toBe('posts.create')
+        ->and($childKeys[1])->toBe('posts.list');
+});
+
+it('localizes the section label to the UI locale, falling back to the stored label', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    app()->setLocale('en');
+    $en = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($owner));
+    expect(collect($en)->firstWhere('key', 'posts')?->label)->toBe('News');
+
+    app()->setLocale('vi');
+    $vi = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($owner));
+    expect(collect($vi)->firstWhere('key', 'posts')?->label)->toBe('Tin tức');
+});
