@@ -246,8 +246,15 @@
         display: none;
     }
     :root[data-sidebar-size='sm'] .admin-sidebar nav a,
+    :root[data-sidebar-size='sm'] .admin-sidebar nav button,
     :root[data-sidebar-size='sm'] .admin-sidebar .sidebar-brand-link {
         justify-content: center;
+    }
+
+    /* Collapsed rail = icons only → hide the nested submenus (the hover-flyout is a later
+       stage) so an expandable group never renders as a column of unlabelled dots. */
+    :root[data-sidebar-size='sm'] .admin-sidebar nav ul ul {
+        display: none;
     }
 }
 
@@ -286,4 +293,29 @@
     :root[data-sidebar-size='sm'] .admin-sidebar .brand-logo--light,
     :root[data-sidebar-size='sm'] .admin-sidebar .brand-logo--dark { display: none; }
     :root[data-sidebar-size='sm'] .admin-sidebar .brand-logo--sm { display: block; }
+}
+
+/* ---- Sidebar scrollbar: thin + auto-hide (Velzon/SimpleBar-like, no JS library — ADR-A1) ---
+   The nav's overflow scrollbar stays invisible until you scroll (Alpine toggles .is-scrolling
+   for ~1.2s) or hover, then fades out. A neutral slate thumb reads on both dark + light sidebar. */
+.admin-sidebar nav {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s ease;
+}
+.admin-sidebar nav.is-scrolling,
+.admin-sidebar nav:hover {
+    scrollbar-color: rgb(148 163 184 / 0.6) transparent;
+}
+.admin-sidebar nav::-webkit-scrollbar {
+    width: 6px;
+}
+.admin-sidebar nav::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 9999px;
+    transition: background-color 0.3s ease;
+}
+.admin-sidebar nav.is-scrolling::-webkit-scrollbar-thumb,
+.admin-sidebar nav:hover::-webkit-scrollbar-thumb {
+    background-color: rgb(148 163 184 / 0.6);
 }

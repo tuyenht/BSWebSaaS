@@ -38,7 +38,16 @@
         </div>
 
         {{-- Nav: Velzon grouped visual on the dynamic, RBAC/tenant-scoped $navItems --}}
-        <nav class="flex-1 overflow-y-auto px-3 py-3">
+        @php
+            // Accordion: exactly ONE group open at a time = the active page's group (server-
+            // resolved), re-synced after each wire:navigate via the morph-updated data-active-group.
+            $activeGroup = collect($navItems)->first(fn ($i) => $i->hasChildren() && $i->active)?->key ?? '';
+        @endphp
+        <nav class="flex-1 overflow-y-auto px-3 py-3"
+             x-data="{ openGroup: @js($activeGroup), t: null }"
+             data-active-group="{{ $activeGroup }}"
+             x-init="document.addEventListener('livewire:navigated', () => { openGroup = $el.dataset.activeGroup })"
+             @scroll="$el.classList.add('is-scrolling'); clearTimeout(t); t = setTimeout(() => $el.classList.remove('is-scrolling'), 1200)">
             <p class="sidebar-label px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-title">{{ __('admin.menu') }}</p>
             {{-- Fully dynamic nested tree (AdminNav: entitlement ∩ RBAC, active resolved there).
                  A node with children renders as an expandable group (open by default when active);
@@ -47,17 +56,19 @@
                 @foreach ($navItems as $item)
                     <li>
                         @if ($item->hasChildren())
-                            <div x-data="{ open: @js($item->active) }">
-                                <button type="button" @click="open = ! open" :aria-expanded="open"
+                            <div>
+                                <button type="button" title="{{ $item->label }}"
+                                        @click="openGroup = (openGroup === '{{ $item->key }}' ? '' : '{{ $item->key }}')"
+                                        :aria-expanded="openGroup === '{{ $item->key }}'"
                                         @class([
                                             'group flex w-full items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
                                             'bg-sidebar-active text-sidebar-fg-active' => $item->active,
                                         ])>
                                     <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                     <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
-                                    <x-admin::icon name="chevron-down" class="sidebar-label size-4 shrink-0 transition-transform" ::class="open && 'rotate-180'" />
+                                    <x-admin::icon name="chevron-down" class="sidebar-label size-4 shrink-0 transition-transform" ::class="openGroup === '{{ $item->key }}' && 'rotate-180'" />
                                 </button>
-                                <ul x-show="open" x-cloak class="mt-1 space-y-1 ps-4">
+                                <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-1 ps-4">
                                     @foreach ($item->children as $child)
                                         <li>
                                             <a href="{{ $child->url }}" wire:navigate title="{{ $child->label }}"
