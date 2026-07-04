@@ -290,5 +290,11 @@
     "admin.fullscreen": "Toàn màn hình",
     "admin.notifications": "Thông báo",
     "admin.notifications_empty": "Bạn chưa có thông báo mới.",
-    "admin.greeting": "Xin chào, :name!"
+    "admin.greeting": "Xin chào, :name!",
+    "admin.list": "Danh sách",
+    "admin.add_new": "Thêm mới",
+    "admin.categories": "Chuyên mục",
+    "admin.menu_builder": "Trình đơn",
+    "admin.coming_soon": "Trang đang được xây dựng",
+    "admin.coming_soon_desc": "Tính năng này đang được hoàn thiện và sẽ sớm ra mắt."
 }

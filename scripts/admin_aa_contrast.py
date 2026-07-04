@@ -37,10 +37,10 @@ def over(fg: tuple[int, int, int], bg: tuple[int, int, int], alpha: float):
 
 # (label, ink hex, ink alpha, [bg stops], threshold)
 CHECKS = [
-    # Default dark sidebar — variant-one $blue #3577f1 darkened to #286ef0 for
-    # WCAG AA (owner chose AA over exact-demo-match, V-A2 branding tune):
-    ("dark sidebar · item #fff", "#ffffff", 1.0, ["#286ef0"], 4.5),
-    ("dark sidebar · title white/.75", "#ffffff", 0.75, ["#286ef0"], 3.0),
+    # Default dark sidebar — navy #405189 (matches the Velzon reference default sidebar;
+    # equals the brand primary; owner chose navy for 1:1):
+    ("dark sidebar · item white/.85", "#ffffff", 0.85, ["#405189"], 4.5),
+    ("dark sidebar · title white/.60", "#ffffff", 0.60, ["#405189"], 3.0),
     # Gradient sidebars — NEW, opt-in aesthetic (Velzon rgba(#fff,.5)):
     ("gradient · item white/.5", "#ffffff", 0.50, ["#405189", "#0ab39c"], 4.5),
     ("gradient-2 · item white/.5", "#ffffff", 0.50, ["#299cdb", "#3577f1"], 4.5),

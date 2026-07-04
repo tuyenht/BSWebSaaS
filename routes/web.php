@@ -15,6 +15,7 @@ use App\Modules\Admin\Livewire\Forms\Detail as FormsDetail;
 use App\Modules\Admin\Livewire\Forms\Inbox as FormsInbox;
 use App\Modules\Admin\Livewire\Login;
 use App\Modules\Admin\Livewire\Media\Library as MediaLibrary;
+use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as AuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as SiteDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as SiteIndex;
@@ -189,9 +190,15 @@ Route::prefix(config('admin.prefix', 'admin'))
 
         // Content CRUD (W4 + post collections). One section-driven set of routes for
         // every entry type (?section=… picks the type); addressed by ulid (D2).
-        Route::get('/content', EntriesIndex::class)->name('admin.entries.index');
-        Route::get('/content/create', Editor::class)->name('admin.entries.create');
+        Route::get('/content', EntriesIndex::class)->middleware('can:entries.view')->name('admin.entries.index');
+        Route::get('/content/create', Editor::class)->middleware('can:entries.create')->name('admin.entries.create');
         Route::get('/content/{ulid}/edit', Editor::class)->name('admin.entries.edit');
+
+        // Placeholder pages — the nav link is live but the real UI isn't built yet (taxonomies,
+        // menu builder). Still gated at the route by the module's own ability, so only permitted
+        // roles reach the stub — no dead-end, defence-in-depth intact.
+        Route::get('/taxonomies', Placeholder::class)->middleware('can:taxonomies.manage')->name('admin.taxonomies.index');
+        Route::get('/menus', Placeholder::class)->middleware('can:menus.manage')->name('admin.menus.index');
 
         // Lead inbox (contacts module). Read gated by forms.view; status changes inside the
         // Detail component re-gate on forms.manage (the livewire/update endpoint bypasses this

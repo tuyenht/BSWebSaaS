@@ -40,13 +40,13 @@
     /* ---- Sidebar / vertical menu (flip axis: data-sidebar) ----------------
        Default dark sidebar = Velzon variant-one $blue. Deliberately DECOUPLED from
        the brand primary (#405189), which stays on buttons/links via --color-admin-primary. */
-    --vz-vertical-menu-bg: #286ef0;                            /* variant-one $blue #3577f1 darkened to clear WCAG AA (white 4.59 vs 4.15); owner chose AA over exact-demo-match */
-    --vz-vertical-menu-item-color: #ffffff;                    /* full white = 4.59 on #286ef0 so normal 14px menu text clears 4.5 */
+    --vz-vertical-menu-bg: #405189;                            /* navy — matches the Velzon reference default sidebar; equals the brand primary; white text 7.6 clears AA with room */
+    --vz-vertical-menu-item-color: rgb(255 255 255 / 0.85);    /* 6.1 on #405189 — soft white resting, well over AA 4.5 */
     --vz-vertical-menu-item-hover-color: #ffffff;
     --vz-vertical-menu-item-active-color: #ffffff;
     --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.10); /* ★ also the brand-initials chip · vz-ref item-bg: rgba(#fff,.15) */
     --vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15);
-    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.75);   /* 11px micro-label — white/.75 clears the 3.0 bar on #286ef0 */
+    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.60);   /* 11px micro-label — 3.9 on #405189 (>=3.0) */
     --vz-vertical-menu-brand-color: #ffffff;                   /* ★ text brand (Velzon swaps logo images instead) */
 
     /* ---- Footer (flip axis: data-bs-theme) -------------------------------- */
@@ -65,8 +65,8 @@
  | so an explicit topbar/sidebar variant beats the scheme's zone values.
  | AA (measured, WCAG): text ≥4.5 · icons/11px micro-labels ≥3.0. Deviations
  | from the Velzon reference values are AA bumps, noted `vz-ref:`.
- | The default dark sidebar (#286ef0) is AA-clean: item #fff = 4.59, title
- | white/.75 clears 3.0. Only the opt-in gradient sidebars stay grandfathered.
+ | The default dark sidebar (#405189 navy) is AA-clean: item white/.85 = 6.1,
+ | title white/.60 = 3.9. Only the opt-in gradient sidebars stay grandfathered.
  ============================================================================ */
 
 /* Dark scheme — Velzon [data-bs-theme=dark]; --color-* (content plane) are ours,

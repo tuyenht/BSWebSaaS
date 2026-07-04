@@ -13,6 +13,7 @@ use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index as EntriesIndex;
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\Placeholder;
 use App\Modules\Admin\Livewire\Platform\Audit\Index as PlatformAuditIndex;
 use App\Modules\Admin\Livewire\Platform\Sites\Detail as PlatformSitesDetail;
 use App\Modules\Admin\Livewire\Platform\Sites\Index as PlatformSitesIndex;
@@ -74,6 +75,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.appearance-settings', AppearanceSettings::class);
         Livewire::component('admin.dashboard', Dashboard::class);
         Livewire::component('admin.component-gallery', ComponentGallery::class);
+        Livewire::component('admin.placeholder', Placeholder::class);
         Livewire::component('admin.entries.index', EntriesIndex::class);
         Livewire::component('admin.entries.editor', Editor::class);
         Livewire::component('admin.users.index', UsersIndex::class);
