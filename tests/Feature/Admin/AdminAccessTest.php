@@ -76,7 +76,7 @@ it('shows the dashboard shell and the dynamic "Trang" nav to the owner', functio
     $this->actingAs($owner)->get('http://anvinh.test/admin')
         ->assertOk()
         ->assertSee(__('admin.dashboard'))
-        ->assertSee('Trang');
+        ->assertSee(__('section.pages')); // the Pages section label, in the request's locale
 });
 
 it('hides the "Trang" nav from a member without entries.view (entitlement ∩ RBAC)', function (): void {
@@ -86,7 +86,10 @@ it('hides the "Trang" nav from a member without entries.view (entitlement ∩ RB
     $this->actingAs($member)->get('http://anvinh.test/admin')
         ->assertOk()
         ->assertSee(__('admin.dashboard'))
-        ->assertDontSee('Trang');
+        // No entries.view → the Pages section is filtered out. Assert its section-scoped links are
+        // gone (locale-independent + precise; the localized label "Trang" would collide with words
+        // like "Trang chủ").
+        ->assertDontSee('section=pages');
 });
 
 it('routes Livewire updates through the plane-aware tenant-context middleware', function (): void {
