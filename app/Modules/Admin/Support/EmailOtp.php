@@ -56,8 +56,11 @@ final class EmailOtp
             'sent_at' => time(),
         ], self::TTL_SECONDS);
 
-        app(TenantMailer::class)->apply();
-        $user->notify(new EmailOtpNotification($code, (int) ceil(self::TTL_SECONDS / 60)));
+        // Queued (ShouldQueue) so login never blocks on SMTP. Bind the current site now, in the
+        // request, so the worker re-enters this tenant's isolation and re-applies its mailer.
+        $user->notify(
+            (new EmailOtpNotification($code, (int) ceil(self::TTL_SECONDS / 60)))->forCurrentSite()
+        );
 
         return true;
     }
