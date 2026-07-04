@@ -92,14 +92,15 @@ it('re-enters the site and re-applies the mailer when the queued OTP is processe
     expect($probe->site)->toBe(1);
 });
 
-it('retries a transient OTP send and bounds retries to the code TTL', function (): void {
-    // Horizon runs tries=1, so a transient blip would drop the login code silently without these.
+it('bounds OTP retries with $tries and defines no retryUntil override', function (): void {
+    // Horizon runs tries=1, so without a retry a transient blip drops the code silently. But a
+    // retryUntil() would OVERRIDE $tries (Laravel precedence) and retry every ~20s until the code's
+    // 10-min TTL (~30 SMTP attempts) — so it must NOT be defined; tries + backoff finish in ~25s.
     $note = new EmailOtpNotification('123456', 10);
 
     expect($note->tries)->toBe(3)
         ->and($note->backoff())->toBe([5, 20])
-        ->and($note->retryUntil()->getTimestamp())->toBeGreaterThan(now()->addMinutes(9)->getTimestamp())
-        ->and($note->retryUntil()->getTimestamp())->toBeLessThan(now()->addMinutes(11)->getTimestamp());
+        ->and(method_exists($note, 'retryUntil'))->toBeFalse();
 });
 
 it('captures the request locale so the queued code mails in the user language, not app-default', function (): void {
