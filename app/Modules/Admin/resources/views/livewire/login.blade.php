@@ -52,6 +52,9 @@
             </div>
         </div>
 
+        {{-- Bot challenge (Cloudflare Turnstile) — dormant until TURNSTILE_SITE_KEY is set --}}
+        @include('admin::partials.turnstile-field')
+
         {{-- Error banner (auth failure / rate limit are attached to the email field) --}}
         @error('email')
             <div class="auth-alert auth-alert--error">{{ $message }}</div>

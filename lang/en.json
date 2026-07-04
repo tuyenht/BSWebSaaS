@@ -17,6 +17,7 @@
     "auth.rights": "All rights reserved.",
     "auth.reset_link_sent": "If an account exists for that email, a reset link has been sent.",
     "auth.invalid_credentials": "Invalid email or password.",
+    "auth.captcha_failed": "We couldn't verify you're human. Please try again.",
     "auth.too_many_attempts": "Too many attempts. Please try again in :seconds seconds.",
     "auth.otp_locked": "Too many attempts — request a new code.",
     "admin.dashboard": "Dashboard",

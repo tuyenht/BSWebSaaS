@@ -17,6 +17,7 @@
     "auth.rights": "全著作権所有。",
     "auth.reset_link_sent": "そのメールのアカウントが存在する場合、リセットリンクを送信しました。",
     "auth.invalid_credentials": "メールアドレスまたはパスワードが正しくありません。",
+    "auth.captcha_failed": "人間であることを確認できませんでした。もう一度お試しください。",
     "auth.too_many_attempts": "試行回数が多すぎます。:seconds 秒後にもう一度お試しください。",
     "auth.otp_locked": "試行回数が多すぎます — 新しいコードを請求してください。",
     "admin.dashboard": "ダッシュボード",

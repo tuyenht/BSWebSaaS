@@ -17,6 +17,7 @@
     "auth.rights": "版权所有。",
     "auth.reset_link_sent": "如果该邮箱存在账户，重置链接已发送。",
     "auth.invalid_credentials": "邮箱或密码不正确。",
+    "auth.captcha_failed": "无法验证您是真人，请重试。",
     "auth.too_many_attempts": "尝试次数过多，请在 :seconds 秒后重试。",
     "auth.otp_locked": "尝试次数过多 — 请重新获取验证码。",
     "admin.dashboard": "仪表盘",
