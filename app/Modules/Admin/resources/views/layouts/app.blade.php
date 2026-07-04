@@ -40,19 +40,48 @@
         {{-- Nav: Velzon grouped visual on the dynamic, RBAC/tenant-scoped $navItems --}}
         <nav class="flex-1 overflow-y-auto px-3 py-3">
             <p class="sidebar-label px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-title">{{ __('admin.menu') }}</p>
-            {{-- Fully dynamic: dashboard/media/contacts/users/settings + content sections all
-                 come from AdminNav (ModuleCatalog ∩ entitlement ∩ RBAC); active is resolved there. --}}
+            {{-- Fully dynamic nested tree (AdminNav: entitlement ∩ RBAC, active resolved there).
+                 A node with children renders as an expandable group (open by default when active);
+                 leaves are links. Collapsed-rail flyout is a later stage — here groups expand inline. --}}
             <ul class="space-y-1">
                 @foreach ($navItems as $item)
                     <li>
-                        <a href="{{ $item->url }}" wire:navigate title="{{ $item->label }}"
-                           @class([
-                               'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
-                               'bg-sidebar-active text-sidebar-fg-active' => $item->active,
-                           ])>
-                            <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
-                            <span class="sidebar-label">{{ $item->label }}</span>
-                        </a>
+                        @if ($item->hasChildren())
+                            <div x-data="{ open: @js($item->active) }">
+                                <button type="button" @click="open = ! open" :aria-expanded="open"
+                                        @class([
+                                            'group flex w-full items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
+                                            'bg-sidebar-active text-sidebar-fg-active' => $item->active,
+                                        ])>
+                                    <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
+                                    <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
+                                    <x-admin::icon name="chevron-down" class="sidebar-label size-4 shrink-0 transition-transform" ::class="open && 'rotate-180'" />
+                                </button>
+                                <ul x-show="open" x-cloak class="mt-1 space-y-1 ps-4">
+                                    @foreach ($item->children as $child)
+                                        <li>
+                                            <a href="{{ $child->url }}" wire:navigate title="{{ $child->label }}"
+                                               @class([
+                                                   'flex items-center gap-2.5 rounded px-3 py-2 text-sm transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
+                                                   'bg-sidebar-active text-sidebar-fg-active' => $child->active,
+                                               ])>
+                                                <span class="size-1.5 shrink-0 rounded-full bg-current opacity-70"></span>
+                                                <span class="sidebar-label">{{ $child->label }}</span>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @else
+                            <a href="{{ $item->url }}" wire:navigate title="{{ $item->label }}"
+                               @class([
+                                   'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
+                                   'bg-sidebar-active text-sidebar-fg-active' => $item->active,
+                               ])>
+                                <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
+                                <span class="sidebar-label">{{ $item->label }}</span>
+                            </a>
+                        @endif
                     </li>
                 @endforeach
             </ul>

@@ -290,5 +290,11 @@
     "admin.fullscreen": "Fullscreen",
     "admin.notifications": "Notifications",
     "admin.notifications_empty": "You have no new notifications.",
-    "admin.greeting": "Welcome, :name!"
+    "admin.greeting": "Welcome, :name!",
+    "admin.list": "List",
+    "admin.add_new": "Add new",
+    "admin.categories": "Categories",
+    "admin.menu_builder": "Menus",
+    "admin.coming_soon": "Coming soon",
+    "admin.coming_soon_desc": "This feature is being built and will be available soon."
 }

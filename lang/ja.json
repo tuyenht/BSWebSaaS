@@ -168,5 +168,14 @@
     "admin.fullscreen": "全画面表示",
     "admin.notifications": "通知",
     "admin.notifications_empty": "新しい通知はありません。",
-    "admin.greeting": "ようこそ、:name さん！"
+    "admin.greeting": "ようこそ、:name さん！",
+    "admin.list": "一覧",
+    "admin.add_new": "新規追加",
+    "admin.categories": "カテゴリー",
+    "admin.media": "メディア",
+    "admin.contacts": "お問い合わせ",
+    "admin.menu_builder": "メニュー",
+    "admin.appearance": "外観",
+    "admin.coming_soon": "準備中",
+    "admin.coming_soon_desc": "この機能は現在開発中です。近日公開予定です。"
 }
