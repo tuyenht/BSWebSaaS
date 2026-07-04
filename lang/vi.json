@@ -1,4 +1,9 @@
 {
+    "section.pages": "Trang",
+    "section.posts": "Tin tức",
+    "section.services": "Dịch vụ",
+    "section.products": "Sản phẩm",
+    "section.projects": "Dự án",
     "entries.noun_post": "bài viết",
     "entries.noun_page": "trang",
     "entries.edit_title": "Sửa :noun",

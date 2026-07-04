@@ -6,6 +6,7 @@ namespace App\Modules\Tenancy\Models;
 
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Lang;
 
 /**
  * Dynamic content-type registry / admin nav section (page|post + templates). Seeded
@@ -39,5 +40,17 @@ class ContentSection extends Model
         return [
             'meta' => 'array',
         ];
+    }
+
+    /**
+     * The section name in the current UI locale. Standard sections (pages, posts, services…) carry a
+     * `section.{key}` translation; a tenant's custom section, with no such key, keeps its stored label.
+     * This localizes the admin chrome without translating tenant-authored data.
+     */
+    public function localizedLabel(): string
+    {
+        $key = 'section.'.$this->key;
+
+        return Lang::has($key) ? __($key) : $this->label;
     }
 }

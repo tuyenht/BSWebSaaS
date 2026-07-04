@@ -1,4 +1,9 @@
 {
+    "section.pages": "Pages",
+    "section.posts": "News",
+    "section.services": "Services",
+    "section.products": "Products",
+    "section.projects": "Projects",
     "entries.noun_post": "post",
     "entries.noun_page": "page",
     "entries.edit_title": "Edit :noun",

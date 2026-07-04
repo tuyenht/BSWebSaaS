@@ -1,4 +1,9 @@
 {
+    "section.pages": "页面",
+    "section.posts": "新闻",
+    "section.services": "服务",
+    "section.products": "产品",
+    "section.projects": "项目",
     "entries.noun_post": "文章",
     "entries.noun_page": "页面",
     "entries.edit_title": "编辑:noun",
