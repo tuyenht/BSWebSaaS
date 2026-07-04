@@ -84,6 +84,26 @@ it('hides the Add-new child from a viewer who lacks entries.create', function ()
     expect($childKeys)->toContain("{$content->key}.list")->not->toContain("{$content->key}.create");
 });
 
+it('nests categories under each content type instead of a standalone item', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    $items = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($owner));
+
+    // The old standalone "taxonomies"/Categories top-level item is gone.
+    $topKeys = array_map(fn (NavItem $i): string => $i->key, $items);
+    expect($topKeys)->not->toContain('taxonomies');
+
+    // Any Categories child is nested under a content group and section-scoped (…​.taxonomy);
+    // Pages (no taxonomy) never gets one — so types never share/mix categories.
+    collect($items)
+        ->filter(fn (NavItem $i): bool => $i->hasChildren())
+        ->flatMap(fn (NavItem $i): array => $i->children)
+        ->filter(fn (NavItem $c): bool => str_ends_with($c->key, '.taxonomy'))
+        ->each(function (NavItem $c): void {
+            expect($c->url)->toContain('section=')
+                ->and($c->key)->not->toStartWith('pages.');
+        });
+});
+
 it('excludes a feature module whose nav_permission the user lacks (entitled ∩ RBAC)', function (): void {
     // A member with only media.view: media surfaces, users (needs users.manage) does not.
     $member = User::factory()->create();

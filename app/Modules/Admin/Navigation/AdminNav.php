@@ -45,53 +45,73 @@ final class AdminNav
             active: $request->routeIs('admin.dashboard'),
         );
 
-        // Content sections → an expandable group each, of {List, Add new}. A section EXISTS only
-        // if provisioned for this site, so its presence is the entitlement; RBAC still gates
-        // (view to see, create to add). The parent is a pure toggle (no url).
-        if ($can('entries.view')) {
-            $onEntries = $request->routeIs('admin.entries.*');
-            $canCreate = $can('entries.create');
+        // Content sections → an expandable group each, of {List, Add new, (Categories)}. A section
+        // EXISTS only if provisioned for this site (its presence is the entitlement); RBAC gates
+        // per-section by its OWN permission_prefix (defaults to 'entries'). A section that owns a
+        // taxonomy also gets a Categories child scoped to that section (?section=…), so each type's
+        // categories never mix — and Pages, which has no taxonomy, gets none. Parent is a toggle.
+        $onEntries = $request->routeIs('admin.entries.*');
+        $onTaxonomies = $request->routeIs('admin.taxonomies.*');
 
-            foreach (ContentSection::query()->orderBy('sort_order')->orderBy('id')->get() as $section) {
-                $inSection = $onEntries && $request->query('section') === $section->key;
+        foreach (ContentSection::query()->orderBy('sort_order')->orderBy('id')->get() as $section) {
+            $prefix = $section->permission_prefix ?: 'entries';
 
-                $children = [
-                    new NavItem(
-                        key: "{$section->key}.list",
-                        label: __('admin.list'),
-                        url: route('admin.entries.index', ['section' => $section->key]),
-                        active: $inSection && $request->routeIs('admin.entries.index'),
-                        permission: 'entries.view',
-                    ),
-                ];
+            if (! $can("{$prefix}.view")) {
+                continue; // user cannot view this section
+            }
 
-                if ($canCreate) {
-                    $children[] = new NavItem(
-                        key: "{$section->key}.create",
-                        label: __('admin.add_new'),
-                        url: route('admin.entries.create', ['section' => $section->key]),
-                        active: $inSection && $request->routeIs('admin.entries.create'),
-                        permission: 'entries.create',
-                    );
-                }
+            $inSection = $onEntries && $request->query('section') === $section->key;
+            $inTaxonomy = $onTaxonomies && $request->query('section') === $section->key;
 
-                $items[] = new NavItem(
-                    key: $section->key,
-                    label: $section->label,
-                    icon: $section->icon ?? 'file-text',
-                    active: $inSection,
-                    children: $children,
-                    permission: 'entries.view',
+            $children = [
+                new NavItem(
+                    key: "{$section->key}.list",
+                    label: __('admin.list'),
+                    url: route('admin.entries.index', ['section' => $section->key]),
+                    active: $inSection && $request->routeIs('admin.entries.index'),
+                    permission: "{$prefix}.view",
+                ),
+            ];
+
+            if ($can("{$prefix}.create")) {
+                $children[] = new NavItem(
+                    key: "{$section->key}.create",
+                    label: __('admin.add_new'),
+                    url: route('admin.entries.create', ['section' => $section->key]),
+                    active: $inSection && $request->routeIs('admin.entries.create'),
+                    permission: "{$prefix}.create",
                 );
             }
+
+            // Categories belong UNDER their content type (never a shared top-level list). Only for
+            // sections that own a taxonomy; scoped by section so they never mix. Points at the
+            // placeholder until the real taxonomy UI ships.
+            if ($section->taxonomy_id !== null && $can('taxonomies.manage')) {
+                $children[] = new NavItem(
+                    key: "{$section->key}.taxonomy",
+                    label: __('admin.categories'),
+                    url: route('admin.taxonomies.index', ['section' => $section->key]),
+                    active: $inTaxonomy,
+                    permission: 'taxonomies.manage',
+                );
+            }
+
+            $items[] = new NavItem(
+                key: $section->key,
+                label: $section->label,
+                icon: $section->icon ?? 'file-text',
+                active: $inSection || $inTaxonomy,
+                children: $children,
+                permission: "{$prefix}.view",
+            );
         }
 
         // Feature leaves. entitlementKey = the ModuleCatalog key to check site entitlement
         // against (null = a core capability, not a per-site module → RBAC only). Categories +
         // Menu builder point at placeholder pages until their real UIs ship.
         $features = [
-            // [key, labelKey, route, icon, permission, entitlementKey]
-            ['taxonomies', 'admin.categories', 'admin.taxonomies.index', 'file-text', 'taxonomies.manage', null],
+            // [key, labelKey, route, icon, permission, entitlementKey]. Categories are NOT here —
+            // they live per content type (see the section loop above), scoped so they never mix.
             ['media', 'admin.media', 'admin.media.index', 'image', 'media.view', 'media'],
             ['contacts', 'admin.contacts', 'admin.forms.index', 'mail', 'forms.view', 'contacts'],
             ['menus', 'admin.menu_builder', 'admin.menus.index', 'menu', 'menus.manage', 'menus'],
@@ -99,7 +119,7 @@ final class AdminNav
         ];
 
         foreach ($features as [$key, $labelKey, $routeName, $icon, $permission, $entitlementKey]) {
-            if ($entitlementKey !== null && ! in_array($entitlementKey, $entitled, true)) {
+            if (! in_array($entitlementKey, $entitled, true)) {
                 continue; // site not entitled to this module
             }
             if (! $can($permission)) {
