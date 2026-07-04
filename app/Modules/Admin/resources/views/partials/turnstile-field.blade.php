@@ -16,7 +16,7 @@
 @if (\App\Modules\Admin\Support\LoginTurnstile::active())
     <div wire:ignore class="auth-turnstile">
         <div class="cf-turnstile" data-sitekey="{{ \App\Modules\Admin\Support\Cast::string(config('services.turnstile.site_key')) }}"
-             data-size="flexible" data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
+             data-size="normal" data-callback="bsTurnstileOk" data-error-callback="bsTurnstileClear"
              data-expired-callback="bsTurnstileClear" data-timeout-callback="bsTurnstileClear"></div>
     </div>
     @once
