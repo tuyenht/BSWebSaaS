@@ -18,8 +18,8 @@ use PragmaRX\Google2FA\Google2FA;
  */
 
 beforeEach(function (): void {
-    // Clear stale SMTP ciphertext (encrypted under another test's key) so the OTP send's
-    // TenantMailer::apply() cannot hit a DecryptException on a leftover config (order-independent).
+    // Keep tenant + platform settings clean between order-independent runs so no leftover SMTP
+    // ciphertext (encrypted under another test's key) can trip a later mailer resolve.
     DB::connection('pgsql_admin')->statement('truncate site_settings, platform_settings restart identity cascade');
 });
 
