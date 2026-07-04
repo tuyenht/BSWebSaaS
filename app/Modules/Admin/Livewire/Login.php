@@ -45,6 +45,19 @@ final class Login extends Component
         $this->turnstileToken = $token;
     }
 
+    /**
+     * Cloudflare Turnstile tokens are single-use: a successful verify consumes the token, and a
+     * duplicate/expired one is rejected. So on ANY rejected attempt — the challenge itself or a later
+     * check — clear the spent token and tell the widget to issue a fresh one, else the user's
+     * corrected retry is refused as a duplicate (a ~5-min self-lockout on a mistyped password).
+     * No-op when Turnstile is dormant (no widget listens for the event).
+     */
+    private function refreshChallenge(): void
+    {
+        $this->turnstileToken = '';
+        $this->dispatch('bs-turnstile-reset');
+    }
+
     public function login(): mixed
     {
         $this->validate([
@@ -54,9 +67,12 @@ final class Login extends Component
 
         $ip = (string) request()->ip();
 
-        // Bot challenge first: a missing/failed Turnstile never reaches the credential check. Skipped
-        // automatically when Turnstile is unconfigured (dev/test) — see TurnstileVerifier.
-        if (! app(TurnstileVerifier::class)->verify($this->turnstileToken, $ip)) {
+        // Bot challenge first: a missing/failed Turnstile never reaches the credential check. Enforced
+        // ONLY when fully configured (both keys) — the widget renders on the same signal, so login is
+        // never gated by a challenge the user cannot see. See TurnstileVerifier::isConfigured().
+        $turnstile = app(TurnstileVerifier::class);
+        if ($turnstile->isConfigured() && ! $turnstile->verify($this->turnstileToken, $ip)) {
+            $this->refreshChallenge();
             Audit::record('auth.login.captcha_failed', ['actor_label' => $this->email]);
             $this->addError('email', __('auth.captcha_failed'));
 
@@ -74,6 +90,7 @@ final class Login extends Component
                 'actor_label' => $this->email,
                 'meta' => ['available_in' => $seconds],
             ]);
+            $this->refreshChallenge();
             $this->addError('email', __('auth.too_many_attempts', ['seconds' => $seconds]));
 
             return null;
@@ -88,6 +105,7 @@ final class Login extends Component
                 'actor_label' => $this->email,
                 'meta' => ['reason' => 'invalid_credentials'],
             ]);
+            $this->refreshChallenge();
             $this->addError('email', __('auth.invalid_credentials'));
 
             return null;
@@ -101,6 +119,7 @@ final class Login extends Component
         $user = Auth::getProvider()->retrieveByCredentials($credentials);
 
         if (! $user instanceof User) {
+            $this->refreshChallenge();
             $this->addError('email', __('auth.invalid_credentials'));
 
             return null;
@@ -116,6 +135,7 @@ final class Login extends Component
                 app(TenantMailer::class)->apply();
                 $user->sendEmailVerificationNotification();
             }
+            $this->refreshChallenge();
             $this->addError('email', __('auth.email_unverified'));
 
             return null;

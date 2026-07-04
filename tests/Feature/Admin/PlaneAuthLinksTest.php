@@ -38,10 +38,11 @@ it('ignores an unknown locale code on the platform plane', function (): void {
         ->assertSessionMissing('locale');
 });
 
-it('keeps the tenant admin login switcher on the admin routes with wire:navigate (regression)', function (): void {
+it('keeps the tenant admin login switcher on the admin routes as a full-reload link (regression)', function (): void {
     $this->get('http://a.test/admin/login')
         ->assertOk()
         ->assertSee('/admin/locale?set=')
-        // Enhanced to swap the page in place (no white reload); plain href stays as the fallback.
-        ->assertSee('wire:navigate', false);
+        // The login switcher must NOT be wire:navigate: this page co-hosts the Turnstile widget, and a
+        // SPA morph would blank its iframe. The in-app topbar switcher keeps wire:navigate (no Turnstile).
+        ->assertDontSee('wire:navigate');
 });

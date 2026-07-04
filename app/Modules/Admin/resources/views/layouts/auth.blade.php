@@ -29,9 +29,11 @@
         <div class="auth-lang">
             <div class="auth-lang-pill">
                 @foreach ($locales as $l)
-                    {{-- wire:navigate swaps the page in place (no white reload); the plain href is
-                         the graceful fallback when JS is off or Livewire nav is unavailable. --}}
-                    <a wire:navigate href="{{ \App\Modules\Admin\Support\AdminPlane::route('locale', ['set' => $l['code']]) }}"
+                    {{-- Plain full-page navigation (NOT wire:navigate): this page hosts the Turnstile
+                         widget, and a SPA morph would blank its iframe (the once-only auto-render never
+                         re-fires). A full reload re-renders it cleanly. The in-app topbar switcher, with
+                         no Turnstile, keeps wire:navigate. --}}
+                    <a href="{{ \App\Modules\Admin\Support\AdminPlane::route('locale', ['set' => $l['code']]) }}"
                        @class(['auth-lang-btn', 'auth-lang-btn--active' => $l['active']])>
                         {{ strtoupper($l['code']) }}
                         <span class="auth-lang-tooltip">{{ $l['label'] }}</span>
