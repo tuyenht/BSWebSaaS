@@ -238,9 +238,11 @@
   /* Golden Standard: 14px (NOT 16px) */
 }
 
-/* ---- Turnstile (bot challenge) — the widget iframe has a hard min-width:300px inside a closed
-   shadow root, so JS (bsFitTurnstile) scales .cf-turnstile to the field width; keep this box pinned to
-   the field width (min-width:0 stops the 300px min-content from stretching it) so the scaler reads it right. */
+/* ---- Turnstile (bot challenge). data-size="flexible" makes the widget fill 100% of .cf-turnstile down
+   to a 300px floor — so stretch .cf-turnstile to the field width and the widget grows to match it
+   (desktop). Below 300px the iframe (a hard min-width inside a closed shadow root) can't shrink, so the
+   JS scaler (bsFitTurnstile) scales .cf-turnstile down to fit (mobile). min-width:0 lets the host box
+   track the field width so the scaler measures it right. */
 .auth-turnstile {
   display: flex;
   min-width: 0;
@@ -248,6 +250,7 @@
 }
 
 .auth-turnstile .cf-turnstile {
+  width: 100%; /* give the flexible widget the full field width to expand into (desktop fill) */
   max-width: 100%;
 }
 
