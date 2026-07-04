@@ -16,6 +16,17 @@ use Throwable;
  */
 final class TurnstileVerifier
 {
+    /**
+     * Both keys present — the single signal to RENDER and ENFORCE the challenge together. Gating the
+     * widget and the server check on one thing stops a half-set config from either showing a widget
+     * that is never verified (ornamental) or enforcing a check with no widget (self-lockout).
+     */
+    public function isConfigured(): bool
+    {
+        return Cast::string(config('services.turnstile.site_key')) !== ''
+            && Cast::string(config('services.turnstile.secret_key')) !== '';
+    }
+
     public function verify(?string $token, ?string $ip = null): bool
     {
         $secret = Cast::string(config('services.turnstile.secret_key'));

@@ -14,8 +14,9 @@ use Livewire\Livewire;
  */
 
 it('blocks a valid credential when the Turnstile challenge fails (captcha gates before auth)', function (): void {
-    // A configured secret turns verification ON; an empty token then fails without any network call.
-    config(['services.turnstile.secret_key' => 'test-secret']);
+    // BOTH keys set turns the challenge ON (isConfigured); an empty token then fails with no network
+    // call (empty-token short-circuit).
+    config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
     $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse']);
 
     Livewire::test(Login::class)
@@ -27,6 +28,37 @@ it('blocks a valid credential when the Turnstile challenge fails (captcha gates 
         ->assertNoRedirect();
 
     $this->assertGuest();
+});
+
+it('does not enforce Turnstile when only one key is configured (no half-config lockout)', function (): void {
+    // Secret set but site key missing → isConfigured() false → the challenge is NOT enforced, so login
+    // is not locked out by a widget that never rendered. (The mirror case, site-only, is also off.)
+    config(['services.turnstile.secret_key' => 'test-secret']);
+    Notification::fake();
+    $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse']);
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'correct-horse')
+        ->set('turnstileToken', '')
+        ->call('login')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('admin.otp.challenge'));
+});
+
+it('resets the single-use Turnstile token after a rejected attempt', function (): void {
+    // Turnstile tokens are single-use, so a rejected attempt must clear the token AND tell the widget
+    // to issue a fresh one — else the corrected retry is refused as a duplicate (the ~5-min lockout).
+    config(['services.turnstile.site_key' => 'test-site', 'services.turnstile.secret_key' => 'test-secret']);
+    $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse']);
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'correct-horse')
+        ->set('turnstileToken', '')
+        ->call('login')
+        ->assertDispatched('bs-turnstile-reset')
+        ->assertSet('turnstileToken', '');
 });
 
 it('lets login proceed when Turnstile is not configured (dev/test default)', function (): void {
