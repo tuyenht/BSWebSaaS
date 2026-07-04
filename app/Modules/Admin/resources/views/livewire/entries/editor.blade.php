@@ -1,29 +1,29 @@
-@php($noun = $type === 'post' ? 'bài viết' : 'trang')
+@php($noun = $type === 'post' ? __('entries.noun_post') : __('entries.noun_page'))
 <div class="entry-editor">
-    <h1>{{ $ulid ? 'Sửa' : 'Tạo' }} {{ $noun }}</h1>
+    <h1>{{ $ulid ? __('entries.edit_title', ['noun' => $noun]) : __('entries.create_title', ['noun' => $noun]) }}</h1>
 
     @if ($status)
-        <p class="entry-status">Trạng thái: <strong>{{ $status }}</strong></p>
+        <p class="entry-status">{{ __('entries.status_label') }}: <strong>{{ $status }}</strong></p>
     @endif
 
     @if (session('saved'))
-        <p class="entry-saved">Đã lưu nháp.</p>
+        <p class="entry-saved">{{ __('entries.draft_saved') }}</p>
     @endif
 
-    <label>Tiêu đề
+    <label>{{ __('entries.title_label') }}
         <input type="text" wire:model="title">
     </label>
     @error('title') <p class="error">{{ $message }}</p> @enderror
 
-    <label>Đường dẫn (slug)
+    <label>{{ __('entries.slug_label') }}
         <input type="text" wire:model="slug">
     </label>
     @error('slug') <p class="error">{{ $message }}</p> @enderror
 
     @if ($type === 'post')
-        <label>Danh mục
+        <label>{{ __('entries.category_label') }}
             <select wire:model="categoryId">
-                <option value="">— Chọn danh mục —</option>
+                <option value="">{{ __('entries.category_placeholder') }}</option>
                 @foreach ($categories as $category)
                     <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
                 @endforeach
@@ -34,24 +34,24 @@
 
     @can('media.view')
         <section class="entry-cover">
-            <h2>Ảnh đại diện (chia sẻ mạng xã hội)</h2>
+            <h2>{{ __('entries.cover_heading') }}</h2>
             @if ($coverUrl)
-                <img src="{{ $coverUrl }}" alt="Ảnh đại diện" class="entry-cover__preview" style="max-width:240px;height:auto;display:block">
-                <button type="button" wire:click="clearCover">Bỏ ảnh</button>
+                <img src="{{ $coverUrl }}" alt="{{ __('entries.cover_alt') }}" class="entry-cover__preview" style="max-width:240px;height:auto;display:block">
+                <button type="button" wire:click="clearCover">{{ __('entries.cover_remove') }}</button>
             @else
-                <p>Chưa chọn ảnh đại diện.</p>
+                <p>{{ __('entries.cover_empty') }}</p>
             @endif
-            <button type="button" wire:click="openCoverPicker">Chọn ảnh từ thư viện</button>
+            <button type="button" wire:click="openCoverPicker">{{ __('entries.cover_pick') }}</button>
         </section>
 
         @if ($showMediaPicker)
-            <div class="media-picker" role="dialog" aria-modal="true" aria-label="Chọn ảnh từ thư viện">
+            <div class="media-picker" role="dialog" aria-modal="true" aria-label="{{ __('entries.cover_pick') }}">
                 <div class="media-picker__head">
-                    <strong>Chọn ảnh từ thư viện</strong>
-                    <button type="button" wire:click="closeCoverPicker">Đóng</button>
+                    <strong>{{ __('entries.cover_pick') }}</strong>
+                    <button type="button" wire:click="closeCoverPicker">{{ __('entries.close') }}</button>
                 </div>
                 @if ($pickerMedia->isEmpty())
-                    <p>Thư viện chưa có ảnh. Hãy tải ảnh lên ở mục Thư viện trước.</p>
+                    <p>{{ __('entries.library_empty') }}</p>
                 @else
                     <div class="media-picker__grid">
                         @foreach ($pickerMedia as $m)
@@ -70,7 +70,7 @@
     @endcan
 
     <section class="blocks">
-        <h2>Khối nội dung</h2>
+        <h2>{{ __('entries.blocks_heading') }}</h2>
         @error('blocks') <p class="error">{{ $message }}</p> @enderror
 
         <div class="block-palette">
@@ -84,9 +84,9 @@
                 <li wire:key="block-{{ $i }}" class="block">
                     <header>
                         <strong>{{ $block['type'] }}</strong>
-                        <button type="button" wire:click="moveUp({{ $i }})" aria-label="Lên">↑</button>
-                        <button type="button" wire:click="moveDown({{ $i }})" aria-label="Xuống">↓</button>
-                        <button type="button" wire:click="removeBlock({{ $i }})">Xóa</button>
+                        <button type="button" wire:click="moveUp({{ $i }})" aria-label="{{ __('entries.move_up') }}">↑</button>
+                        <button type="button" wire:click="moveDown({{ $i }})" aria-label="{{ __('entries.move_down') }}">↓</button>
+                        <button type="button" wire:click="removeBlock({{ $i }})">{{ __('entries.remove_block') }}</button>
                     </header>
                     <div class="block-props">
                         @foreach (($schemas[$block['type']] ?? []) as $prop => $spec)
@@ -102,12 +102,12 @@
                                                     @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $fieldSpec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop.$j.$field", 'fieldLabel' => $field])
                                                 @endforeach
                                             @endif
-                                            <button type="button" wire:click="moveItemUp({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="Lên">↑</button>
-                                            <button type="button" wire:click="moveItemDown({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="Xuống">↓</button>
-                                            <button type="button" wire:click="removeItem({{ $i }}, '{{ $prop }}', {{ $j }})">Xóa mục</button>
+                                            <button type="button" wire:click="moveItemUp({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_up') }}">↑</button>
+                                            <button type="button" wire:click="moveItemDown({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_down') }}">↓</button>
+                                            <button type="button" wire:click="removeItem({{ $i }}, '{{ $prop }}', {{ $j }})">{{ __('entries.remove_item') }}</button>
                                         </div>
                                     @endforeach
-                                    <button type="button" wire:click="addItem({{ $i }}, '{{ $prop }}')">+ Thêm mục</button>
+                                    <button type="button" wire:click="addItem({{ $i }}, '{{ $prop }}')">{{ __('entries.add_item') }}</button>
                                 </fieldset>
                             @else
                                 @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop])
@@ -120,7 +120,7 @@
     </section>
 
     <div class="editor-actions">
-        <button type="button" wire:click="save">Lưu nháp</button>
-        <button type="button" wire:click="publish">Đăng</button>
+        <button type="button" wire:click="save">{{ __('entries.save_draft') }}</button>
+        <button type="button" wire:click="publish">{{ __('entries.publish') }}</button>
     </div>
 </div>

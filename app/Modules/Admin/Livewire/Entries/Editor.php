@@ -111,7 +111,7 @@ final class Editor extends Component
     public function addBlock(string $type): void
     {
         if (! app(ComponentRegistry::class)->has($type)) {
-            $this->addError('blocks', "Khối \"{$type}\" không được hỗ trợ.");
+            $this->addError('blocks', __('entries.block_unsupported', ['type' => $type]));
 
             return;
         }
@@ -203,7 +203,7 @@ final class Editor extends Component
         try {
             $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
         } catch (RouteConflictException) {
-            $this->addError('slug', 'Đường dẫn này đã được dùng cho nội dung khác.');
+            $this->addError('slug', __('entries.slug_conflict'));
         }
     }
 
@@ -277,9 +277,9 @@ final class Editor extends Component
     protected function messages(): array
     {
         return [
-            'slug.regex' => 'Đường dẫn chỉ gồm chữ thường, số và dấu gạch nối.',
-            'categoryId.required' => 'Vui lòng chọn danh mục cho bài viết.',
-            'categoryId.exists' => 'Danh mục không hợp lệ.',
+            'slug.regex' => __('entries.slug_format'),
+            'categoryId.required' => __('entries.category_required'),
+            'categoryId.exists' => __('entries.category_invalid'),
         ];
     }
 
@@ -357,7 +357,7 @@ final class Editor extends Component
 
                 return [
                     'id' => $taxonomy->id,
-                    'name' => $translation instanceof TaxonomyTranslation ? $translation->name : '(không tên)',
+                    'name' => $translation instanceof TaxonomyTranslation ? $translation->name : __('entries.unnamed'),
                 ];
             })
             ->all();

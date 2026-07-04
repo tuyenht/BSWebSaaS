@@ -1,25 +1,25 @@
 <div class="entries-index">
     <div class="page-header">
-        <h1>{{ $section?->label ?? 'Trang' }}</h1>
-        <a href="{{ route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : []) }}" wire:navigate>Tạo mới</a>
+        <h1>{{ $section?->label ?? __('entries.section_fallback') }}</h1>
+        <a href="{{ route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : []) }}" wire:navigate>{{ __('entries.create_new') }}</a>
     </div>
 
     <table>
         <thead>
-            <tr><th>Tiêu đề</th><th>Trạng thái</th><th></th></tr>
+            <tr><th>{{ __('entries.title_label') }}</th><th>{{ __('entries.status_label') }}</th><th></th></tr>
         </thead>
         <tbody>
             @forelse ($entries as $entry)
                 @php($translation = $entry->translations->firstWhere('locale', $locale))
                 <tr wire:key="entry-{{ $entry->ulid }}">
-                    <td>{{ $translation?->title ?? '(chưa có tiêu đề)' }}</td>
+                    <td>{{ $translation?->title ?? __('entries.untitled') }}</td>
                     <td>{{ $entry->status }}</td>
                     <td>
-                        <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid]) }}" wire:navigate>Sửa</a>
+                        <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid]) }}" wire:navigate>{{ __('entries.edit_action') }}</a>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="3">Chưa có nội dung nào.</td></tr>
+                <tr><td colspan="3">{{ __('entries.empty') }}</td></tr>
             @endforelse
         </tbody>
     </table>
