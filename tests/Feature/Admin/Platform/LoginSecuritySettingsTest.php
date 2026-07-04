@@ -3,6 +3,7 @@
 use App\Modules\Admin\Livewire\LoginSecuritySettings;
 use App\Modules\Admin\Support\LoginTurnstile;
 use App\Modules\Admin\Support\PlatformSettings;
+use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -15,7 +16,7 @@ use Livewire\Livewire;
  */
 
 beforeEach(function (): void {
-    DB::connection('pgsql_admin')->statement('truncate platform_settings restart identity cascade');
+    DB::connection('pgsql_admin')->statement('truncate platform_settings, audit_logs restart identity cascade');
     truncateRbac();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
@@ -33,6 +34,10 @@ it('lets a super admin turn the login Turnstile off and persists it system-wide'
 
     expect(LoginTurnstile::enabled())->toBeFalse()
         ->and(app(PlatformSettings::class)->get('security'))->toBe(['turnstile_login_enabled' => false]);
+
+    // System-wide disable is audited (who + to what).
+    $log = AuditLog::query()->where('action', 'platform.security.turnstile_login')->firstOrFail();
+    expect($log->meta['enabled'])->toBeFalse();
 });
 
 it('forbids a non-super-admin from the login security settings', function (): void {

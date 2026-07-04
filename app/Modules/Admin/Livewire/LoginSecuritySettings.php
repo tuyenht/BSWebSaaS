@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Support\LoginTurnstile;
 use App\Modules\Admin\Support\PlatformSettings;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Rbac\Support\PlatformAccess;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -41,6 +42,13 @@ final class LoginSecuritySettings extends Component
         $security = app(PlatformSettings::class)->get(LoginTurnstile::GROUP) ?? [];
         $security[LoginTurnstile::KEY] = $this->turnstileLogin;
         app(PlatformSettings::class)->put(LoginTurnstile::GROUP, 'config', $security);
+
+        // Disabling the bot challenge is system-wide (every tenant admin + the console) — leave a trail
+        // of who flipped it and to what, since the login flow itself can't audit an absent challenge.
+        Audit::record('platform.security.turnstile_login', [
+            'actor_id' => auth()->id(),
+            'meta' => ['enabled' => $this->turnstileLogin],
+        ]);
 
         session()->flash('status', __('admin.saved'));
     }
