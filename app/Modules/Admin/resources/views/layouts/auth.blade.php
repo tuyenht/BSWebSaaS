@@ -29,7 +29,9 @@
         <div class="auth-lang">
             <div class="auth-lang-pill">
                 @foreach ($locales as $l)
-                    <a href="{{ \App\Modules\Admin\Support\AdminPlane::route('locale', ['set' => $l['code']]) }}"
+                    {{-- wire:navigate swaps the page in place (no white reload); the plain href is
+                         the graceful fallback when JS is off or Livewire nav is unavailable. --}}
+                    <a wire:navigate href="{{ \App\Modules\Admin\Support\AdminPlane::route('locale', ['set' => $l['code']]) }}"
                        @class(['auth-lang-btn', 'auth-lang-btn--active' => $l['active']])>
                         {{ strtoupper($l['code']) }}
                         <span class="auth-lang-tooltip">{{ $l['label'] }}</span>
