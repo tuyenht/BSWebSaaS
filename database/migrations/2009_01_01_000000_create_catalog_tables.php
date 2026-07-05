@@ -32,8 +32,8 @@ return new class extends Migration
             $table->ulid('ulid')->unique();
             $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->string('sku')->nullable();                 // brochure: no sku
-            $table->integer('price')->nullable();              // VND integer (D5); brochure: hidden
-            $table->integer('sale_price')->nullable();
+            $table->bigInteger('price')->nullable();           // VND integer (D5) — bigInteger: B2B tooling/vehicles exceed int32's ~2.1 tỷ cap; brochure: hidden
+            $table->bigInteger('sale_price')->nullable();
             $table->timestampTz('sale_starts_at')->nullable();
             $table->timestampTz('sale_ends_at')->nullable();
             $table->integer('stock')->nullable();              // brochure: no stock tracking
