@@ -2,9 +2,11 @@
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Policies\CatalogPolicy;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 
 /*
  * Catalog P0 foundation (design.md §11): the Product model is site-scoped (BelongsToSite → RLS,
@@ -42,5 +44,22 @@ it('gates the catalog: view needs catalog.view, writes need catalog.manage', fun
             ->and($policy->create($viewer->fresh()))->toBeFalse() // …but not write
             ->and($policy->update($manager->fresh()))->toBeTrue() // manager can write
             ->and($policy->delete($manager->fresh()))->toBeTrue();
+    });
+});
+
+it('stamps the product site_id on the category pivot (RLS-safe)', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $product = Product::create(['status' => 'published']);
+        $category = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'position' => 0]);
+
+        $product->assignCategories([$category->id]);
+
+        expect($product->taxonomies()->count())->toBe(1)
+            ->and($product->taxonomies()->first()?->id)->toBe($category->id);
+
+        // The pivot must carry the PRODUCT's site_id (else the row is invisible/leaky under RLS).
+        $pivot = DB::table('product_taxonomies')->where('product_id', $product->id)->first();
+        expect((int) $pivot->site_id)->toBe(1)
+            ->and((int) $pivot->position)->toBe(0);
     });
 });
