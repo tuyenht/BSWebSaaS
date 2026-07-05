@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Providers\AdminServiceProvider;
+use App\Modules\Catalog\Providers\CatalogServiceProvider;
 use App\Modules\Cms\Providers\CmsServiceProvider;
 use App\Modules\Forms\Providers\FormsServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
@@ -23,5 +24,6 @@ return [
     CmsServiceProvider::class,
     FormsServiceProvider::class,
     MediaServiceProvider::class,
+    CatalogServiceProvider::class,
     AdminServiceProvider::class,
 ];
