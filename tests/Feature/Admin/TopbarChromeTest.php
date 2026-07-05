@@ -69,3 +69,17 @@ it('gives the platform console the shared tools but omits tenant account links',
         ->assertSee(route('platform.logout', absolute: false), false)            // platform sign-out
         ->assertDontSee(route('admin.settings.security', absolute: false), false); // no tenant account link on the operator plane
 });
+
+it('exposes a mobile menu trigger on the platform console so small screens keep the nav', function (): void {
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    // The console nav is `hidden md:flex`; below md it lives only in the hamburger dropdown,
+    // so the trigger + click-away panel must be present or small screens hit a dead-end.
+    $this->actingAs($operator->fresh())->get("http://{$host}/tenants")
+        ->assertOk()
+        ->assertSee('@click="open = ! open"', false)          // hamburger toggles the dropdown
+        ->assertSee('@click.outside="open = false"', false);  // click-away closes the mobile nav panel
+});
