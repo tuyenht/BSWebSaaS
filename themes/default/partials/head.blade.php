@@ -6,6 +6,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ $seoTitle }}</title>
+{{-- Platform default favicon (Bảo Sơn) — per-tenant branding can override later via $brand. --}}
+<link rel="icon" href="/favicon.ico" sizes="any">
 @php
     // Brand description fallback: category-list and other pages without a per-page description
     // (seoDescription = null/empty) fall back to the tenant's brand short description so the

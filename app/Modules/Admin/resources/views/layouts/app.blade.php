@@ -9,6 +9,7 @@
     {{-- CSRF token for fetch()-based admin endpoints (DAM presign/register/upload, theme prefs). --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? __('admin.dashboard') }} — {{ config('admin.brand.name') }}</title>
+    <link rel="icon" href="/favicon.ico" sizes="any">
     @include('admin::partials.theme-boot')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles

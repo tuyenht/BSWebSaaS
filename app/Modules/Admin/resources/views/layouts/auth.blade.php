@@ -7,6 +7,7 @@
          302'd here) — keep every admin plane out of search indexes. --}}
     <meta name="robots" content="noindex, nofollow">
     <title>{{ $title ?? __('auth.welcome') }} — {{ config('admin.brand.name') }}</title>
+    <link rel="icon" href="/favicon.ico" sizes="any">
     <meta name="description" content="{{ $metaDescription ?? config('admin.brand.name').' — '.config('admin.brand.tagline') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="{{ asset('assets/css/auth.css') }}?v=7">

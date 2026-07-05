@@ -9,6 +9,7 @@
     {{-- CSRF token for fetch()-based endpoints (theme prefs). --}}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $title ?? __('admin.settings_system') }} — {{ config('admin.brand.name') }}</title>
+    <link rel="icon" href="/favicon.ico" sizes="any">
     @include('admin::partials.theme-boot')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
