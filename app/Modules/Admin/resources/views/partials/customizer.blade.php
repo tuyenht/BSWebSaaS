@@ -13,7 +13,8 @@
     <button type="button" @click="$store.adminTheme.open = true"
             aria-label="{{ __('admin.customize_theme') }}"
             class="fixed bottom-6 end-6 z-40 hidden size-12 place-items-center rounded-full bg-admin-info text-white shadow-lg transition-transform hover:scale-105 md:grid">
-        <x-admin::icon name="settings" class="size-5" />
+        {{-- Slow continuous spin draws the eye to the launcher (Velzon parity); paused for reduced-motion. --}}
+        <x-admin::icon name="settings" class="size-5 motion-safe:animate-spin motion-safe:[animation-duration:4s]" />
     </button>
 
     <div x-show="$store.adminTheme.open" x-transition.opacity @click="$store.adminTheme.open = false" x-cloak

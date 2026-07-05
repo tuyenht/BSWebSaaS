@@ -105,11 +105,11 @@
         {{-- Topbar. `admin-topbar` is the [data-layout-position] flip hook. --}}
         <header class="admin-topbar sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar px-4 shadow-card">
             <button type="button" @click="open = true" aria-label="{{ __('admin.open_menu') }}"
-                    class="grid size-9 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover lg:hidden">
+                    class="grid size-9 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg/70 lg:hidden">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
             <button type="button" @click="$store.adminTheme.set('sidebar_size', $store.adminTheme.state.sidebar_size === 'sm' ? 'lg' : 'sm')" aria-label="{{ __('admin.collapse_menu') }}"
-                    class="hidden size-9 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover lg:grid">
+                    class="hidden size-9 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg/70 lg:grid">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
 
@@ -136,11 +136,14 @@
         </main>
 
         {{-- Footer --}}
-        <footer class="border-t border-border px-4 py-4 text-center text-xs text-footer lg:text-start">
-            &copy; {{ now()->year }}
-            <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
-               class="font-medium text-body-muted transition-colors hover:text-accent hover:underline">{{ config('admin.brand.company') }}</a>.
-            {{ __('auth.rights') }}
+        <footer class="border-t border-border px-4 py-4 text-xs text-footer">
+            <div class="flex flex-col items-center gap-1 sm:flex-row sm:justify-between">
+                <span>&copy; {{ now()->year }}
+                    <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
+                       class="font-medium text-body-muted transition-colors hover:text-accent hover:underline">{{ config('admin.brand.company') }}</a>.
+                </span>
+                <span class="hidden sm:inline">{{ __('auth.rights') }}</span>
+            </div>
         </footer>
     </div>
 </div>

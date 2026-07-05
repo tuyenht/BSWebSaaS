@@ -22,7 +22,7 @@
                  without it the nav is hidden md:flex, leaving small screens a dead-end. --}}
             <button type="button" @click="open = ! open" aria-label="{{ __('admin.open_menu') }}"
                     :aria-expanded="open"
-                    class="grid size-9 shrink-0 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover md:hidden">
+                    class="grid size-9 shrink-0 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg/70 md:hidden">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
         @endif
@@ -36,7 +36,7 @@
             <nav class="ms-4 hidden items-center gap-1 md:flex">
                 @foreach ($platformNav as $item)
                     <a href="{{ $item->url }}" wire:navigate
-                       class="rounded px-3 py-1.5 text-sm font-medium text-topbar-fg transition-colors hover:bg-topbar-hover hover:text-topbar-fg-hover">{{ $item->label }}</a>
+                       class="rounded px-3 py-1.5 text-sm font-medium text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg/70 hover:text-topbar-fg-hover">{{ $item->label }}</a>
                 @endforeach
             </nav>
         @endif
@@ -54,7 +54,7 @@
                  class="absolute inset-x-0 top-full flex flex-col gap-1 border-b border-topbar-border bg-topbar p-3 shadow-card md:hidden">
                 @foreach ($platformNav as $item)
                     <a href="{{ $item->url }}" wire:navigate @click="open = false"
-                       class="rounded px-3 py-2 text-sm font-medium text-topbar-fg transition-colors hover:bg-topbar-hover hover:text-topbar-fg-hover">{{ $item->label }}</a>
+                       class="rounded px-3 py-2 text-sm font-medium text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg/70 hover:text-topbar-fg-hover">{{ $item->label }}</a>
                 @endforeach
             </nav>
         @endif
@@ -64,11 +64,14 @@
         {{ $slot }}
     </main>
 
-    <footer class="border-t border-border px-4 py-4 text-center text-xs text-footer">
-        &copy; {{ now()->year }}
-        <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
-           class="font-medium text-body-muted transition-colors hover:text-accent hover:underline">{{ config('admin.brand.company') }}</a>.
-        {{ __('auth.rights') }}
+    <footer class="border-t border-border px-4 py-4 text-xs text-footer">
+        <div class="flex flex-col items-center gap-1 sm:flex-row sm:justify-between">
+            <span>&copy; {{ now()->year }}
+                <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
+                   class="font-medium text-body-muted transition-colors hover:text-accent hover:underline">{{ config('admin.brand.company') }}</a>.
+            </span>
+            <span class="hidden sm:inline">{{ __('auth.rights') }}</span>
+        </div>
     </footer>
 </div>
 @include('admin::partials.customizer')
