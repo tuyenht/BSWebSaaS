@@ -259,6 +259,11 @@
     /* …and reappear as a hover FLYOUT to the right of the 70px rail — with the item's OWN label,
        so every collapsed item (leaves too, like Velzon "Widgets") shows its name on hover, not just
        a native title tooltip. Target span.sidebar-label only (the chevron carries the class too). */
+    /* The scroll container (overflow-y:auto forces overflow-x:auto) would CLIP the absolute flyout —
+       let the collapsed rail overflow (icon rail is short enough not to need its own scroll). */
+    :root[data-sidebar-size='sm'] .admin-sidebar nav {
+        overflow: visible;
+    }
     :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li {
         position: relative;
     }
