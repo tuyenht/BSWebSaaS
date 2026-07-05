@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Livewire\Catalog;
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
+use App\Modules\Catalog\Support\RichTextSanitizer;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -15,12 +16,14 @@ use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 /**
- * The catalog product editor — a STRUCTURED form (name/slug/description/category/price/sku/
- * status), not the entries block-builder: a product is commerce-typed fields, not Page-JSON.
- * Price and sku are shown plainly here; hiding them from visitors is the storefront's brochure
- * concern (catalog_mode, a later slice). Every mutation authorizes through CatalogPolicy
- * (coarse catalog.manage) and the product is addressed by ulid, never its raw id. The site's
- * default locale drives which translation row is edited (other locales arrive with full i18n).
+ * The catalog product editor — a STRUCTURED form (name/slug/description/summary/category/
+ * price/sku/SEO/status), not the entries block-builder: a product is commerce-typed fields,
+ * not Page-JSON. The two rich-text fields (detail description + short summary) come in as
+ * Jodit HTML and pass through RichTextSanitizer ON WRITE, so the DB only ever stores
+ * allowlisted markup. Price and sku are shown plainly here; hiding them from visitors is the
+ * storefront's brochure concern (catalog_mode, a later slice). Every mutation authorizes
+ * through CatalogPolicy (coarse catalog.manage) and the product is addressed by ulid, never
+ * its raw id. The site's default locale drives which translation row is edited.
  */
 #[Layout('admin::layouts.app')]
 final class Editor extends Component
@@ -42,8 +45,15 @@ final class Editor extends Component
 
     public string $slug = '';
 
-    /** Rich HTML specs/prose → product_translations.description. */
+    /** Rich HTML detail/specs (full toolbar) → product_translations.description. */
     public string $description = '';
+
+    /** Rich-basic teaser (list cards / og:description) → product_translations.summary. */
+    public string $summary = '';
+
+    public string $seoTitle = '';
+
+    public string $seoDescription = '';
 
     /** Primary category id (product_cat vocabulary); optional until the P3 reconcile seeds them. */
     public ?int $categoryId = null;
@@ -79,6 +89,9 @@ final class Editor extends Component
             $this->name = $translation->name;
             $this->slug = $translation->slug;
             $this->description = $translation->description ?? '';
+            $this->summary = $translation->summary ?? '';
+            $this->seoTitle = $translation->seo_title ?? '';
+            $this->seoDescription = $translation->seo_description ?? '';
         }
 
         $this->categoryId = $product->taxonomies()->first()?->id;
@@ -116,6 +129,9 @@ final class Editor extends Component
             'name' => ['required', 'string', 'max:200'],
             'slug' => ['required', 'string', 'max:200', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $uniqueSlug],
             'description' => ['nullable', 'string'],
+            'summary' => ['nullable', 'string'],
+            'seoTitle' => ['nullable', 'string', 'max:255'],
+            'seoDescription' => ['nullable', 'string', 'max:255'],
             'categoryId' => ['nullable', 'integer', Rule::exists('taxonomies', 'id')->where('vocabulary', 'product_cat')],
             'price' => ['nullable', 'integer', 'min:0'],
             'sku' => ['nullable', 'string', 'max:255', $uniqueSku],
@@ -144,6 +160,12 @@ final class Editor extends Component
         $this->sku = $this->sku === '' ? null : $this->sku;
         $this->price = $this->price === '' ? null : $this->price;
 
+        // Editor HTML is sanitized BEFORE validation so length checks and what the admin sees
+        // re-rendered are exactly what gets stored (junk-only input collapses to '').
+        $sanitizer = app(RichTextSanitizer::class);
+        $this->description = $sanitizer->full($this->description);
+        $this->summary = $sanitizer->basic($this->summary);
+
         $this->validate();
 
         $attributes = [
@@ -169,6 +191,9 @@ final class Editor extends Component
                 'name' => $this->name,
                 'slug' => $this->slug,
                 'description' => $this->description !== '' ? $this->description : null,
+                'summary' => $this->summary !== '' ? $this->summary : null,
+                'seo_title' => $this->seoTitle !== '' ? $this->seoTitle : null,
+                'seo_description' => $this->seoDescription !== '' ? $this->seoDescription : null,
             ],
         );
 

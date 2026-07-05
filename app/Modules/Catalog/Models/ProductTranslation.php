@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Per-locale product content — name/slug/description (rich HTML specs) + seo. site_id → RLS.
+ * Per-locale product content — name/slug + sanitized rich HTML (description = detail/specs,
+ * summary = list-card teaser) + SEO meta. site_id → RLS.
  *
  * @property int $product_id
  * @property int $site_id
@@ -15,6 +16,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $name
  * @property string $slug
  * @property string|null $description
+ * @property string|null $summary
+ * @property string|null $seo_title
+ * @property string|null $seo_description
  */
 class ProductTranslation extends Model
 {

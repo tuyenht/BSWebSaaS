@@ -27,6 +27,27 @@ async function mountMediaUploader() {
 
 document.addEventListener('livewire:navigated', mountMediaUploader);
 
+// Catalog product editor (Jodit) — same lazy-island contract as the uploader: its chunk loads
+// ONLY on the catalog editor page and remounts across Livewire SPA navigations.
+let catalogEditors = null;
+
+async function mountCatalogEditors() {
+    if (catalogEditors) {
+        catalogEditors.destroy();
+        catalogEditors = null;
+    }
+
+    const root = document.querySelector('[data-catalog-editor]');
+    if (!root) {
+        return; // not on the catalog editor page
+    }
+
+    const { createCatalogEditors } = await import('./catalog-editor.js');
+    catalogEditors = createCatalogEditors(root);
+}
+
+document.addEventListener('livewire:navigated', mountCatalogEditors);
+
 // Release any modal scroll-lock before a wire:navigate swap, so an open modal that morphs
 // away can never leave the body scroll-locked.
 document.addEventListener('livewire:navigating', () => {

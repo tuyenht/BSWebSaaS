@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.5",
         "bacon/bacon-qr-code": "^3.1",
+        "ezyang/htmlpurifier": "^4.19",
         "laravel/framework": "^13.8",
         "laravel/horizon": "^5.47",
         "laravel/octane": "^2.17",

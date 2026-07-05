@@ -174,6 +174,70 @@ it('cannot attach a category from another site (RLS-scoped exists rule)', functi
     });
 });
 
+it('sanitizes rich text on write — scripts and junk styles out, allowlisted markup in', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá')
+            ->set('slug', 'do-ga')
+            ->set('description', '<script>alert(1)</script><p style="font-size:14pt;position:absolute">Chi tiết</p>'
+                .'<table><tbody><tr><td style="color:red">±0.01mm</td></tr></tbody></table>')
+            ->set('summary', '<h2>To</h2><strong>đậm</strong><a href="javascript:alert(1)">x</a>')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $translation = Product::query()->first()?->translationFor('vi');
+        expect($translation)->not->toBeNull()
+            // full profile: script gone entirely, table + allowlisted styles kept, others stripped
+            ->and($translation?->description)->not->toContain('<script')
+            ->and($translation?->description)->toContain('<table')
+            ->and($translation?->description)->toContain('font-size')
+            ->and($translation?->description)->toContain('color:#FF0000') // purifier canonicalizes `red`
+            ->and($translation?->description)->not->toContain('position')
+            // basic profile: no headings, inline emphasis kept, javascript: URI stripped
+            ->and($translation?->summary)->not->toContain('<h2')
+            ->and($translation?->summary)->toContain('<strong>đậm</strong>')
+            ->and($translation?->summary)->not->toContain('javascript:');
+    });
+});
+
+it('persists and reloads the summary and SEO meta fields', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá')
+            ->set('slug', 'do-ga')
+            ->set('summary', '<p>Teaser <strong>ngắn</strong></p>')
+            ->set('seoTitle', 'Đồ gá hàn | An Vinh')
+            ->set('seoDescription', 'Đồ gá hàn chính xác cho khung máy.')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $product = Product::query()->first();
+        $translation = $product?->translationFor('vi');
+        expect($translation)->not->toBeNull()
+            ->and($translation?->summary)->toBe('<p>Teaser <strong>ngắn</strong></p>')
+            ->and($translation?->seo_title)->toBe('Đồ gá hàn | An Vinh')
+            ->and($translation?->seo_description)->toBe('Đồ gá hàn chính xác cho khung máy.')
+            ->and($translation?->site_id)->toBe(1);
+
+        // The edit form round-trips them back into the component state.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $product?->ulid])
+            ->assertSet('summary', '<p>Teaser <strong>ngắn</strong></p>')
+            ->assertSet('seoTitle', 'Đồ gá hàn | An Vinh')
+            ->assertSet('seoDescription', 'Đồ gá hàn chính xác cho khung máy.');
+    });
+});
+
 it('stores cleared price and sku as NULL — brochure rows share the partial sku index', function (): void {
     $editor = User::factory()->create();
 
