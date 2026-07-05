@@ -9,16 +9,16 @@ use Illuminate\Support\Facades\Schema;
  * Catalog (design.md §11) — brochure-mode for GĐ1. Content tier (2xxx), lands after
  * media (2006) so product_images can FK the media table.
  *
- *   products             — the catalog item; carries site_id → RLS + FORCE.
- *   product_translations — per-locale name/slug/description/seo; site_id → RLS + FORCE.
- *   product_taxonomies   — typed pivot (§9); NO site_id → parent-scoped like entry_taxonomies.
- *   product_images       — ordered gallery → media_id (§11); NO site_id → parent-scoped.
+ *   products             — the catalog item.
+ *   product_translations — per-locale name/slug/description/seo.
+ *   product_taxonomies   — typed pivot (§9), mirrors entry_taxonomies (id PK + position).
+ *   product_images       — ordered gallery → media_id (§11).
  *   routes.product_id    — the reserved FK is finally wired to products here.
  *
- * Commerce columns (sku/price/sale_price/stock…) are NULLABLE: brochure hides them, so
- * flipping a site to commerce later just fills them — the §11 shape is built once, no
- * expand-migration. Pivots have no site_id by design (D2), so they are reached ONLY through
- * the site-scoped Product; RlsCoverageTest auto-verifies the two site_id tables.
+ * D6: ALL four are tenant tables → each carries site_id + RLS + FORCE + fail-closed policy,
+ * auto-verified by RlsCoverageTest (the pivots too — like entry_taxonomies). Commerce columns
+ * (sku/price/sale_price/stock…) are NULLABLE: brochure hides them, so flipping a site to
+ * commerce later just fills them — the §11 shape is built once, no expand-migration.
  *
  * D-rules: D2 ulid · D5 money = integer VND · D11 timestamptz · D12 citext slug ·
  * D13 status = varchar+CHECK · D15 CHECK(stock>=0) + UNIQUE(site_id, sku) · D4 soft-delete.
@@ -63,23 +63,30 @@ return new class extends Migration
             $table->index(['site_id', 'locale']);
         });
 
-        // Typed pivot (§9). No site_id: reached only via the site-scoped Product.
+        // Typed pivot (§9) — mirrors entry_taxonomies: id PK, site_id + RLS, ordered.
         Schema::create('product_taxonomies', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->foreignId('product_id')->constrained('products')->cascadeOnDelete();
             $table->foreignId('taxonomy_id')->constrained('taxonomies')->cascadeOnDelete();
-            $table->primary(['product_id', 'taxonomy_id']);
+            $table->integer('position')->default(0);           // order WITHIN the category
+            $table->timestampsTz();
+
+            $table->unique(['product_id', 'taxonomy_id']);
+            $table->index(['site_id', 'taxonomy_id']);
         });
 
-        // Ordered gallery → media (§11). No site_id: parent-scoped via the Product.
+        // Ordered gallery → media (§11).
         Schema::create('product_images', function (Blueprint $table): void {
             $table->id();
+            $table->foreignId('site_id')->constrained('sites')->cascadeOnDelete();
             $table->foreignId('product_id')->constrained('products')->cascadeOnDelete();
             $table->foreignId('media_id')->constrained('media')->cascadeOnDelete();
             $table->integer('position')->default(0);
             $table->timestampsTz();
 
             $table->unique(['product_id', 'media_id']);
-            $table->index(['product_id', 'position']);
+            $table->index(['site_id', 'product_id', 'position']);
         });
 
         // Wire the reserved routes.product_id → products (entry_id was wired in 2000).
@@ -102,8 +109,8 @@ return new class extends Migration
         // D15: SKU unique per site — partial, so many brochure rows can share a NULL sku.
         DB::statement('CREATE UNIQUE INDEX products_site_sku_unique ON products (site_id, sku) WHERE sku IS NOT NULL');
 
-        // site_id tables → RLS + FORCE. Pivots are intentionally absent (parent-scoped).
-        foreach (['products', 'product_translations'] as $table) {
+        // D6: every tenant table → RLS + FORCE (pivots included, like entry_taxonomies).
+        foreach (['products', 'product_translations', 'product_taxonomies', 'product_images'] as $table) {
             $this->enableRls($table);
         }
     }
