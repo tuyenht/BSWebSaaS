@@ -7,8 +7,11 @@ use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Support\RichTextSanitizer;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -65,6 +68,18 @@ final class Editor extends Component
 
     public string $status = 'draft';
 
+    /**
+     * Ordered gallery (product_images): index = position, index 0 = the primary image.
+     * Held in component state like the entries block list, so create and edit share one
+     * atomic save path.
+     *
+     * @var list<int>
+     */
+    public array $imageMediaIds = [];
+
+    /** Whether the library picker is open (its media grid is only queried while true). */
+    public bool $showImagePicker = false;
+
     public function mount(?string $ulid = null): void
     {
         $this->locale = app(SiteLocale::class)->default();
@@ -95,6 +110,7 @@ final class Editor extends Component
         }
 
         $this->categoryId = $product->taxonomies()->first()?->id;
+        $this->imageMediaIds = $this->normalizeIds($product->images()->pluck('media_id')->all());
     }
 
     public function save(): void
@@ -103,10 +119,65 @@ final class Editor extends Component
         session()->flash('saved', true);
     }
 
+    public function openImagePicker(): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+        $this->showImagePicker = true;
+    }
+
+    public function closeImagePicker(): void
+    {
+        $this->showImagePicker = false;
+    }
+
+    /** Append a library image; stays open so several images can be picked in a row. */
+    public function pickImage(int $mediaId): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+
+        if (in_array($mediaId, $this->imageMediaIds, true)) {
+            return; // already in the gallery — the UNIQUE(product_id, media_id) guard, app-side
+        }
+
+        // Only ids from THIS site's LIVE library (the global scope filters site + trashed) —
+        // never an arbitrary id injected via the wire payload.
+        if (Media::query()->whereKey($mediaId)->exists()) {
+            $this->imageMediaIds[] = $mediaId;
+        }
+    }
+
+    public function removeImage(int $index): void
+    {
+        if (! array_key_exists($index, $this->imageMediaIds)) {
+            return;
+        }
+
+        $ids = $this->imageMediaIds;
+        array_splice($ids, $index, 1); // splice re-packs the keys — still a list
+        $this->imageMediaIds = $ids;
+    }
+
+    public function moveImageUp(int $index): void
+    {
+        $this->swapImages($index, $index - 1);
+    }
+
+    public function moveImageDown(int $index): void
+    {
+        $this->swapImages($index, $index + 1);
+    }
+
     public function render(): View
     {
+        $urls = app(MediaUrlResolver::class);
+
         return view('admin::livewire.catalog.editor', [
             'categories' => $this->availableCategories(),
+            'galleryImages' => $this->galleryImages($urls),
+            'pickerMedia' => $this->showImagePicker
+                ? Media::query()->orderByDesc('created_at')->limit(60)->get()
+                : collect(),
+            'urls' => $urls,
         ]);
     }
 
@@ -136,6 +207,12 @@ final class Editor extends Component
             'price' => ['nullable', 'integer', 'min:0'],
             'sku' => ['nullable', 'string', 'max:255', $uniqueSku],
             'status' => ['required', Rule::in(['draft', 'published', 'archived'])],
+            'imageMediaIds' => ['array'],
+            // RLS scopes the exists to this site. Deliberately NOT whereNull(deleted_at): an
+            // already attached image whose media went to Trash must not block saving (it renders
+            // as "missing"; restoring the media heals it) — the ADD path (pickImage) already
+            // refuses trashed media via the model's global scope.
+            'imageMediaIds.*' => ['integer', Rule::exists('media', 'id')],
         ];
     }
 
@@ -149,6 +226,8 @@ final class Editor extends Component
             'slug.unique' => __('catalog.slug_taken'),
             'sku.unique' => __('catalog.sku_taken'),
             'categoryId.exists' => __('catalog.category_invalid'),
+            'imageMediaIds.*.exists' => __('catalog.gallery_invalid'),
+            'imageMediaIds.*.integer' => __('catalog.gallery_invalid'),
         ];
     }
 
@@ -165,6 +244,10 @@ final class Editor extends Component
         $sanitizer = app(RichTextSanitizer::class);
         $this->description = $sanitizer->full($this->description);
         $this->summary = $sanitizer->basic($this->summary);
+
+        // Gallery ids arrive from the wire payload — coerce + dedup before validating each
+        // against the site's media (non-numeric junk becomes 0 and fails the exists rule).
+        $this->imageMediaIds = $this->normalizeIds($this->imageMediaIds);
 
         $this->validate();
 
@@ -198,8 +281,88 @@ final class Editor extends Component
         );
 
         $product->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);
+        $this->syncImages($product);
 
         return $product;
+    }
+
+    /**
+     * Sync product_images to the ordered id list (position = index). updateOrCreate rides the
+     * UNIQUE(product_id, media_id) index instead of tripping it; BelongsToSite stamps site_id
+     * on the created rows.
+     */
+    private function syncImages(Product $product): void
+    {
+        if ($this->imageMediaIds === []) {
+            $product->images()->delete();
+
+            return;
+        }
+
+        $product->images()->whereNotIn('media_id', $this->imageMediaIds)->delete();
+
+        foreach ($this->imageMediaIds as $position => $mediaId) {
+            $product->images()->updateOrCreate(
+                ['media_id' => $mediaId],
+                ['position' => $position],
+            );
+        }
+    }
+
+    /**
+     * The gallery for the view, in state order. The Media global scope filters other sites AND
+     * trashed rows, so an attached image whose media was trashed renders as `missing` (kept in
+     * state — restoring the media heals it; the admin can also remove it explicitly).
+     *
+     * @return list<array{id: int, url: string|null, name: string|null, missing: bool}>
+     */
+    private function galleryImages(MediaUrlResolver $urls): array
+    {
+        if ($this->imageMediaIds === []) {
+            return [];
+        }
+
+        $media = Media::query()->whereIn('id', $this->imageMediaIds)->get()->keyBy('id');
+
+        $items = [];
+        foreach ($this->imageMediaIds as $id) {
+            $item = $media->get($id);
+            if ($item instanceof Media) {
+                $items[] = ['id' => $id, 'url' => $urls->url($item->storage_key, 320), 'name' => $item->original_filename, 'missing' => false];
+            } else {
+                $items[] = ['id' => $id, 'url' => null, 'name' => null, 'missing' => true];
+            }
+        }
+
+        return $items;
+    }
+
+    private function swapImages(int $a, int $b): void
+    {
+        if (! array_key_exists($a, $this->imageMediaIds) || ! array_key_exists($b, $this->imageMediaIds)) {
+            return;
+        }
+
+        $ids = $this->imageMediaIds;
+        [$ids[$a], $ids[$b]] = [$ids[$b], $ids[$a]];
+        $this->imageMediaIds = array_values($ids); // keys unchanged by the swap — re-proves the list shape
+    }
+
+    /**
+     * Coerce wire-payload values (a client can send anything into an array property) into a
+     * deduped id list; non-scalar junk becomes 0 and fails the exists rule at validation.
+     *
+     * @param  array<array-key, mixed>  $ids
+     * @return list<int>
+     */
+    private function normalizeIds(array $ids): array
+    {
+        $ints = [];
+        foreach ($ids as $id) {
+            $ints[] = is_scalar($id) ? (int) $id : 0;
+        }
+
+        return array_values(array_unique($ints));
     }
 
     /**

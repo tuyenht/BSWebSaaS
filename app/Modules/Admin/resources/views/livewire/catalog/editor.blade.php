@@ -41,6 +41,44 @@
                 </div>
             </x-admin::card>
 
+            <x-admin::card :title="__('catalog.card_gallery')">
+                <div class="space-y-3">
+                    @if ($galleryImages === [])
+                        <p class="text-sm text-body-faint">{{ __('catalog.gallery_empty') }}</p>
+                    @else
+                        <ul class="grid grid-cols-3 gap-3 sm:grid-cols-4" role="list">
+                            @foreach ($galleryImages as $i => $image)
+                                <li wire:key="gallery-{{ $image['id'] }}" class="overflow-hidden rounded border border-border">
+                                    @if ($image['missing'])
+                                        <div class="flex aspect-square items-center justify-center bg-surface-muted p-2 text-center text-xs text-body-faint">{{ __('catalog.gallery_missing') }}</div>
+                                    @else
+                                        <img src="{{ $image['url'] }}" alt="{{ $image['name'] ?? '' }}" loading="lazy" class="aspect-square w-full object-cover">
+                                    @endif
+                                    <div class="flex items-center justify-between gap-1 border-t border-border bg-surface-muted px-1.5 py-1">
+                                        @if ($i === 0)
+                                            <span class="text-xs font-medium text-admin-primary">{{ __('catalog.gallery_primary') }}</span>
+                                        @else
+                                            <span></span>
+                                        @endif
+                                        <span class="flex items-center">
+                                            <button type="button" wire:click="moveImageUp({{ $i }})" aria-label="{{ __('catalog.gallery_move_up') }}" class="rounded px-1 text-sm text-body-faint hover:bg-surface-hover hover:text-body-text">↑</button>
+                                            <button type="button" wire:click="moveImageDown({{ $i }})" aria-label="{{ __('catalog.gallery_move_down') }}" class="rounded px-1 text-sm text-body-faint hover:bg-surface-hover hover:text-body-text">↓</button>
+                                            <button type="button" wire:click="removeImage({{ $i }})" class="rounded px-1 text-sm text-admin-danger hover:bg-surface-hover">{{ __('catalog.gallery_remove') }}</button>
+                                        </span>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+
+                    @can('media.view')
+                        <x-admin::button variant="soft" color="primary" wire:click="openImagePicker">{{ __('catalog.gallery_add') }}</x-admin::button>
+                    @endcan
+                    <p class="text-sm text-body-faint">{{ __('catalog.gallery_hint') }}</p>
+                    @error('imageMediaIds.*') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                </div>
+            </x-admin::card>
+
             <x-admin::card>
                 <x-admin::tabs :tabs="['general' => __('catalog.tab_general'), 'seo' => __('catalog.tab_seo')]">
                     <div x-show="active === 'general'" role="tabpanel" class="space-y-4">
@@ -104,4 +142,36 @@
             <x-admin::button color="primary" class="w-full" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-admin::button>
         </div>
     </div>
+
+    {{-- Library picker (Livewire-controlled — stays open so several images can be picked). --}}
+    @if ($showImagePicker)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="{{ __('catalog.picker_title') }}">
+            <div class="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-md border border-border bg-surface p-4 shadow-card">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <h5 class="text-[1rem] font-semibold text-body-text">{{ __('catalog.picker_title') }}</h5>
+                    <x-admin::button size="sm" variant="soft" color="primary" wire:click="closeImagePicker">{{ __('admin.dismiss') }}</x-admin::button>
+                </div>
+                @if ($pickerMedia->isEmpty())
+                    <p class="text-sm text-body-faint">{{ __('catalog.picker_empty') }}</p>
+                @else
+                    <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                        @foreach ($pickerMedia as $m)
+                            @if (str_starts_with($m->mime, 'image/'))
+                                @php($picked = in_array($m->id, $imageMediaIds, true))
+                                <button type="button" wire:key="pick-{{ $m->id }}" wire:click="pickImage({{ $m->id }})"
+                                        @disabled($picked)
+                                        class="relative overflow-hidden rounded border transition-colors {{ $picked ? 'border-admin-primary opacity-60' : 'border-border hover:border-admin-primary' }}"
+                                        title="{{ $m->original_filename }}">
+                                    <img src="{{ $urls->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy" class="aspect-square w-full object-cover">
+                                    @if ($picked)
+                                        <span class="absolute right-1 top-1 rounded bg-admin-primary px-1.5 py-0.5 text-xs text-white">✓</span>
+                                    @endif
+                                </button>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
 </div>

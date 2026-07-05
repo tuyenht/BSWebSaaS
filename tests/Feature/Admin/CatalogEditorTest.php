@@ -4,6 +4,7 @@ use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,22 @@ function seedProductCategory(string $slug = 'do-ga', string $name = 'Đồ gá')
     $category->translations()->create(['locale' => 'vi', 'name' => $name, 'slug' => $slug]);
 
     return $category->id;
+}
+
+/** Seed a live library image in the CURRENT site context; returns its id. */
+function seedCatalogMedia(string $suffix = 'a'): int
+{
+    $media = Media::query()->create([
+        'collection' => 'library',
+        'slug' => "anh-{$suffix}",
+        'hash' => str_repeat($suffix, 64),
+        'storage_key' => "s/library/anh-{$suffix}.png",
+        'disk' => 'r2',
+        'mime' => 'image/png',
+        'size' => 1024,
+    ]);
+
+    return $media->id;
 }
 
 it('gates the create and edit routes — 200 with catalog.manage, 403 with view only', function (): void {
@@ -235,6 +252,129 @@ it('persists and reloads the summary and SEO meta fields', function (): void {
             ->assertSet('summary', '<p>Teaser <strong>ngắn</strong></p>')
             ->assertSet('seoTitle', 'Đồ gá hàn | An Vinh')
             ->assertSet('seoDescription', 'Đồ gá hàn chính xác cho khung máy.');
+    });
+});
+
+it('attaches gallery images in picked order with site-stamped rows (duplicates ignored)', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage', 'media.view']);
+        $first = seedCatalogMedia('a');
+        $second = seedCatalogMedia('b');
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá')
+            ->set('slug', 'do-ga')
+            ->call('openImagePicker')
+            ->call('pickImage', $first)
+            ->call('pickImage', $second)
+            ->call('pickImage', $first) // duplicate — ignored (UNIQUE guard, app-side)
+            ->assertSet('imageMediaIds', [$first, $second])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $rows = DB::table('product_images')->orderBy('position')->get();
+        expect($rows)->toHaveCount(2)
+            ->and((int) $rows[0]->media_id)->toBe($first)
+            ->and((int) $rows[0]->position)->toBe(0)
+            ->and((int) $rows[0]->site_id)->toBe(1) // §2: the row must carry the site
+            ->and((int) $rows[1]->media_id)->toBe($second)
+            ->and((int) $rows[1]->position)->toBe(1);
+    });
+});
+
+it('reorders and removes gallery images across saves without tripping the unique index', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage', 'media.view']);
+        $first = seedCatalogMedia('a');
+        $second = seedCatalogMedia('b');
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá')
+            ->set('slug', 'do-ga')
+            ->call('pickImage', $first)
+            ->call('pickImage', $second)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $product = Product::query()->first();
+
+        // Swap the order and save again — updateOrCreate must ride UNIQUE(product_id, media_id).
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $product?->ulid])
+            ->assertSet('imageMediaIds', [$first, $second])
+            ->call('moveImageDown', 0)
+            ->assertSet('imageMediaIds', [$second, $first])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect((int) DB::table('product_images')->where('media_id', $second)->value('position'))->toBe(0)
+            ->and((int) DB::table('product_images')->where('media_id', $first)->value('position'))->toBe(1);
+
+        // Remove the now-first image — its row is deleted, the survivor re-packs to position 0.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $product?->ulid])
+            ->call('removeImage', 0)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $rows = DB::table('product_images')->get();
+        expect($rows)->toHaveCount(1)
+            ->and((int) $rows[0]->media_id)->toBe($first)
+            ->and((int) $rows[0]->position)->toBe(0);
+    });
+});
+
+it('rejects gallery ids from another site (RLS-scoped exists rule)', function (): void {
+    $editor = User::factory()->create();
+    $foreignMedia = app(Tenancy::class)->enter(2, fn (): int => seedCatalogMedia('c'));
+
+    app(Tenancy::class)->enter(1, function () use ($editor, $foreignMedia): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage', 'media.view']);
+
+        // Injected straight into the wire payload — the pickImage path never allows it, so the
+        // validation rule is the net that must hold.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Sản phẩm')
+            ->set('slug', 'san-pham')
+            ->set('imageMediaIds', [$foreignMedia])
+            ->call('save')
+            ->assertHasErrors('imageMediaIds.0');
+
+        expect(Product::query()->count())->toBe(0);
+    });
+});
+
+it('keeps a trashed-media gallery row saveable, shows it as missing, and refuses re-picking trashed media', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage', 'media.view']);
+        $attached = seedCatalogMedia('a');
+        $trashedOther = seedCatalogMedia('b');
+
+        $product = Product::query()->create(['status' => 'draft']);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá', 'slug' => 'do-ga']);
+        $product->images()->create(['media_id' => $attached, 'position' => 0]);
+
+        // Both media go to the Trash (soft delete).
+        Media::query()->whereKey([$attached, $trashedOther])->get()->each->delete();
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $product->ulid])
+            ->assertSee(__('catalog.gallery_missing'))   // renders as missing, no broken <img>
+            ->call('pickImage', $trashedOther)           // trashed → global scope refuses the ADD path
+            ->assertSet('imageMediaIds', [$attached])
+            ->call('save')                               // saving with the trashed-but-attached row must not block
+            ->assertHasNoErrors();
+
+        expect(DB::table('product_images')->count())->toBe(1); // the attached row survives (restore heals it)
     });
 });
 

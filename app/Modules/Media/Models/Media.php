@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $disk
  * @property string $mime
  * @property int $size
+ * @property string|null $original_filename
  */
 final class Media extends Model
 {
