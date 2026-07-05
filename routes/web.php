@@ -4,6 +4,7 @@ use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\SetLocale;
 use App\Modules\Admin\Livewire\AppearanceSettings;
+use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
@@ -195,6 +196,8 @@ Route::prefix(config('admin.prefix', 'admin'))
         // every entry type (?section=… picks the type); addressed by ulid (D2).
         Route::get('/content', EntriesIndex::class)->middleware('can:entries.view')->name('admin.entries.index');
         Route::get('/catalog', CatalogIndex::class)->middleware('can:catalog.view')->name('admin.catalog.index');
+        Route::get('/catalog/create', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.create');
+        Route::get('/catalog/{ulid}/edit', CatalogEditor::class)->middleware('can:catalog.manage')->name('admin.catalog.edit');
         Route::get('/content/create', Editor::class)->middleware('can:entries.create')->name('admin.entries.create');
         Route::get('/content/{ulid}/edit', Editor::class)->name('admin.entries.edit');
 

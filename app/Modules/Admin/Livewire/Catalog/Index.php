@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire\Catalog;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -13,7 +14,8 @@ use Livewire\Component;
  * Lists the site's catalog products (site-scoped by BelongsToSite + RLS). Read access is gated by
  * CatalogPolicy::viewAny; brochure hides price at the storefront, not in this admin list. Only the
  * lightweight translation columns are eager-loaded to keep the list at a flat, cheap query budget.
- * Create/edit surfaces arrive in the next slice; this is the read-only foundation.
+ * The create/edit links only render for users who pass CatalogPolicy::create (no dead-end 403s
+ * for view-only roles).
  */
 #[Layout('admin::layouts.app')]
 final class Index extends Component
@@ -35,6 +37,7 @@ final class Index extends Component
         return view('admin::livewire.catalog.index', [
             'products' => $products,
             'locale' => app(SiteLocale::class)->default(),
+            'canManage' => Gate::allows('create', Product::class),
         ]);
     }
 }
