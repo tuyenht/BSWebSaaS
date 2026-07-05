@@ -287,7 +287,7 @@
         display: block !important;
         position: absolute;
         left: var(--spacing-sidebar-collapsed);
-        top: 2.6rem;
+        top: 2.35rem; /* overlaps the label box slightly (same bg) so hover can't drop through a seam */
         z-index: 50;
         width: 12rem;
         margin: 0;

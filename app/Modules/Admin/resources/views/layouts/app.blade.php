@@ -1,7 +1,7 @@
 <!doctype html>
 {{-- The chrome data-* attributes (resolved app→site→user) SSR here so the first paint
      is already themed; <html> survives wire:navigate morphs. --}}
-<html lang="vi" class="h-full" @foreach ($chrome as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full" @foreach ($chrome as $attr => $value) {{ $attr }}="{{ $value }}" @endforeach>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
