@@ -35,4 +35,15 @@ final class CatalogPolicy
     {
         return $user->can('catalog.manage');
     }
+
+    public function restore(User $user): bool
+    {
+        return $user->can('catalog.manage');
+    }
+
+    /** Permanent delete (empties the Trash row; cascades translations/images, frees the sku). */
+    public function forceDelete(User $user): bool
+    {
+        return $user->can('catalog.manage');
+    }
 }
