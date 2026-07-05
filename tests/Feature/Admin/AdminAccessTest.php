@@ -127,3 +127,21 @@ it('rate-limits repeated failed logins (brute-force guard)', function (): void {
 
     $this->assertGuest();
 });
+
+it('opens the admin in the site default locale when nothing is chosen', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    // No session locale → SetLocale resolves the CURRENT SITE's default (An Vinh = vi), not the app
+    // default (en) — a fresh operator gets an admin in the tenant's language.
+    $this->actingAs($owner)->get('http://anvinh.test/admin')->assertOk();
+
+    expect(app()->getLocale())->toBe('vi');
+});
+
+it('lets an explicit session locale override the site default', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    $this->actingAs($owner)->withSession(['locale' => 'en'])->get('http://anvinh.test/admin')->assertOk();
+
+    expect(app()->getLocale())->toBe('en');
+});
