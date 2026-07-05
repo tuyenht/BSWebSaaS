@@ -1,6 +1,6 @@
 <div class="entries-index">
     <div class="page-header">
-        <h1>{{ $section?->label ?? __('entries.section_fallback') }}</h1>
+        <h1>{{ $sectionModel?->localizedLabel() ?? __('entries.section_fallback') }}</h1>
         <a href="{{ route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : []) }}" wire:navigate>{{ __('entries.create_new') }}</a>
     </div>
 

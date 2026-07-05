@@ -47,7 +47,10 @@ final class Index extends Component
         return view('admin::livewire.entries.index', [
             'entries' => $entries,
             'locale' => $locale,
-            'section' => $section,
+            // NOT 'section': the public string property $section (the key) is exposed to the view by
+            // Livewire and would shadow this resolved model — the reason the heading silently fell back
+            // before. Pass the model under a distinct name.
+            'sectionModel' => $section,
             'sectionKey' => $this->section,
         ]);
     }

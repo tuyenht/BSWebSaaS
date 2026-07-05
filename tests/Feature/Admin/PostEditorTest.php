@@ -150,9 +150,11 @@ it('lists posts for the posts section and pages by default', function (): void {
         $post = Entry::query()->create(['type' => 'post', 'status' => 'draft']);
         $post->translations()->create(['locale' => 'vi', 'title' => 'Bài B', 'slug' => 'bai-b', 'status' => 'draft', 'body' => ['blocks' => []]]);
 
-        // The posts section lists posts only.
+        // The posts section lists posts only, and the heading shows the section's localized name —
+        // guards the public-property-vs-render-data shadowing that used to silently fall back.
         Livewire::actingAs($viewer->fresh())
             ->test(Index::class, ['section' => 'posts'])
+            ->assertSee(__('section.posts'))
             ->assertSee('Bài B')
             ->assertDontSee('Trang A');
 
