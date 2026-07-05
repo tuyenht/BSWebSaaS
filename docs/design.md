@@ -260,9 +260,9 @@ routes(id, site_id, locale, path, entry_id NULL, product_id NULL, taxonomy_id NU
 ```sql
 products(id, site_id, sku, price, sale_price NULL, sale_starts_at NULL, sale_ends_at NULL,
          stock, is_featured, is_bestseller, status, meta JSONB)   -- "mới" suy từ created_at; "KM" suy từ sale_price
-product_translations(product_id, site_id, locale, name, slug, description, seo_*, UNIQUE(product_id, locale))
+product_translations(product_id, site_id, locale, name, slug, description, summary, seo_*, UNIQUE(product_id, locale))
 product_options(...) · product_variants(...)        -- GĐ1: ≤3 option / ≤100 biến thể
-product_images(product_id, media_id, position)
+product_images(product_id, site_id, media_id, position, UNIQUE(product_id, media_id))
 carts(...) · cart_items(...)
 orders(id, site_id, code, customer_id, status, total, shipping_snapshot JSONB, ...)   -- snapshot địa chỉ lúc đặt
 order_items(...) · order_status_logs(...)
@@ -274,8 +274,9 @@ coupon_redemptions(coupon_id, order_id, site_id)
 payments(id, site_id, order_id, method, amount, status, reference, paid_at, raw_payload JSONB)  -- đối soát VietQR (SePay webhook IDEMPOTENT)
 ```
 - **Tra cứu đơn theo mã** (mã đơn + SĐT → trạng thái) — không cần tài khoản; dùng `orders` + token tra cứu.
-- **Kiểu TIỀN (D5):** `price`/`sale_price`/`total`/`amount`/`min_order`/`value`(coupon) = **integer (VND đồng)**, KHÔNG float. `orders.code` UNIQUE(site_id, code).
-- **Tồn kho & toàn vẹn commerce (D15):** `CHECK(stock >= 0)` + **decrement nguyên tử** chống oversell (`UPDATE … SET stock=stock-:q WHERE stock >= :q` hoặc lock dòng trong transaction) — KHÔNG đọc-rồi-ghi. Payment/webhook **idempotent** (SePay — đã có). Unique: `products` UNIQUE(site_id, sku); `product_variants` UNIQUE(product_id, sku); `taxonomy_translations.slug` UNIQUE per (site, vocabulary, locale); `coupon_redemptions` UNIQUE(coupon_id, order_id).
+- **Kiểu TIỀN (D5):** `price`/`sale_price`/`total`/`amount`/`min_order`/`value`(coupon) = **integer (VND đồng)**, KHÔNG float. **Bề rộng = bigint (int64)** — int32 trần ~2,1 tỷ đồng, quá nhỏ cho B2B (máy/khuôn/xe); precedent đặt từ `products.price` (as-built 2026-07) cho `orders.total` Phase-2. `orders.code` UNIQUE(site_id, code).
+- **Tồn kho & toàn vẹn commerce (D15):** `CHECK(stock >= 0)` + **decrement nguyên tử** chống oversell (`UPDATE … SET stock=stock-:q WHERE stock >= :q` hoặc lock dòng trong transaction) — KHÔNG đọc-rồi-ghi. Payment/webhook **idempotent** (SePay — đã có). Unique: `products` UNIQUE(site_id, sku) (as-built: partial, `WHERE sku IS NOT NULL` — brochure nhiều hàng không sku); `product_variants` UNIQUE(product_id, sku); `taxonomy_translations.slug` UNIQUE per (site, vocabulary, locale); `coupon_redemptions` UNIQUE(coupon_id, order_id).
+- **As-built GĐ1 brochure (P0/P1 2026-07):** cả 4 bảng catalog **kể cả pivot `product_taxonomies` (§9) đều mang `site_id` + RLS + FORCE per D6** (mirror `entry_taxonomies` — pivot tenant KHÔNG ngoại lệ). Cột thương mại (sku/price/sale/stock) NULLABLE = brochure. `product_translations.description` (chi tiết/specs) + `summary` (teaser card/og) = **rich HTML sanitize-KHI-GHI** (HTMLPurifier allowlist 2 profile khớp 2 toolbar; lọc CSS property-level `color|background-color|font-size|text-align`; KHÔNG `img`/`iframe` — ảnh đi đường `product_images`→`media_id`); editor admin = Jodit 4 island (icon map Remix). Ẩn giá/đặt-hàng per-site qua setting `catalog_mode` (Slice-3, chưa build).
 
 ## 12. Media + Image CDN *(Mục 41)*
 
@@ -465,7 +466,7 @@ content_workflow_log(id, site_id, entry_id, locale NULL, transition_key, from_st
 
 > **⬛ QUY ƯỚC NỀN TẢNG SCHEMA (chuẩn hóa — normative, áp cho mọi bảng):**
 > - **D2 · Khóa & định danh (ADR-16):** **PK = `bigint` identity** khắp nơi (FK 8-byte → index composite `(site_id,…)` gọn/nhanh). Thực thể **lộ ra ngoài** có thêm cột **`ulid`** (public id, không enumerate, sortable). **TUYỆT ĐỐI không lộ `bigint id` thô** ra URL/API → public qua **slug** (content) / **code** (order) / **ulid** (media). Bảng nối/pivot chỉ cần bigint.
-> - **D5 · Tiền tệ:** lưu **integer (VND đồng)** — KHÔNG dùng float/double cho `price`/`total`/`amount`/`value`. (Nếu cần sub-unit tương lai → `decimal`, không bao giờ float.)
+> - **D5 · Tiền tệ:** lưu **integer (VND đồng)** — KHÔNG dùng float/double cho `price`/`total`/`amount`/`value`. **Bề rộng = bigint (int64)** — int32 trần ~2,1 tỷ đồng, không đủ cho hàng B2B (as-built `products.price` 2026-07; áp cho mọi cột tiền sau). (Nếu cần sub-unit tương lai → `decimal`, không bao giờ float.)
 > - **D4a · FK cascade:** con thuộc cha **ON DELETE CASCADE** (entry→translations/revisions; product→variants/images; order→items; taxonomy→pivot). Tham chiếu "mềm" (cover_media_id, logo_media_id…) **ON DELETE SET NULL**. Xóa **site** → cascade toàn bộ dữ liệu site (hoặc soft-delete site rồi purge job).
 > - **D4b · Soft-delete (thống nhất):** chỉ các thực thể cần "Thùng rác/khôi phục" mới có **`deleted_at`** (entries, products, media, sites, tenants). Còn lại **hard-delete**. `status=archived` ≠ xóa (là trạng thái nội dung). **RLS + global scope PHẢI kèm `deleted_at IS NULL`.**
 > - **D3 · Polymorphic vs typed (nhất quán):** **typed FK** cho đồ thị nội dung lõi (entry↔taxonomy) + **`routes`** (`entry_id`/`product_id`/`taxonomy_id` nullable + CHECK đúng-một + CASCADE). **Polymorphic** chỉ cho đính-kèm-mềm (`mediables`/`menu_items` target/`reviews`) — bắt buộc index `(type,id)` + **observer dọn mồ côi khi xóa cha** + job quét định kỳ.
