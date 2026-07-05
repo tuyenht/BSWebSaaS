@@ -251,10 +251,48 @@
         justify-content: center;
     }
 
-    /* Collapsed rail = icons only → hide the nested submenus (the hover-flyout is a later
-       stage) so an expandable group never renders as a column of unlabelled dots. */
+    /* Collapsed rail = icons only → nested submenus stay hidden inline… */
     :root[data-sidebar-size='sm'] .admin-sidebar nav ul ul {
         display: none;
+    }
+
+    /* …and reappear as a hover FLYOUT to the right of the 70px rail — with the item's OWN label,
+       so every collapsed item (leaves too, like Velzon "Widgets") shows its name on hover, not just
+       a native title tooltip. Target span.sidebar-label only (the chevron carries the class too). */
+    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li {
+        position: relative;
+    }
+    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > a > span.sidebar-label,
+    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > button > span.sidebar-label {
+        display: block;
+        position: absolute;
+        left: var(--spacing-sidebar-collapsed);
+        top: 0;
+        z-index: 50;
+        width: 12rem;
+        padding: 0.625rem 0.875rem;
+        background: var(--color-sidebar);
+        color: var(--color-sidebar-fg-hover);
+        border-radius: 0 0.25rem 0.25rem 0;
+        box-shadow: var(--shadow-card);
+        text-align: start;
+    }
+    /* Group children fly out below the label box; re-show the child labels inside it. */
+    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > ul {
+        display: block !important;
+        position: absolute;
+        left: var(--spacing-sidebar-collapsed);
+        top: 2.6rem;
+        z-index: 50;
+        width: 12rem;
+        margin: 0;
+        padding: 0.25rem 0.5rem 0.5rem !important;
+        background: var(--color-sidebar);
+        border-radius: 0 0 0.25rem 0.25rem;
+        box-shadow: var(--shadow-card);
+    }
+    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > ul span.sidebar-label {
+        display: inline;
     }
 }
 
