@@ -57,7 +57,7 @@
                     <li>
                         @if ($item->hasChildren())
                             <div>
-                                <button type="button" title="{{ $item->label }}"
+                                <button type="button" aria-label="{{ $item->label }}"
                                         @click="openGroup = (openGroup === '{{ $item->key }}' ? '' : '{{ $item->key }}')"
                                         :aria-expanded="openGroup === '{{ $item->key }}'"
                                         @class([
@@ -84,7 +84,7 @@
                                 </ul>
                             </div>
                         @else
-                            <a href="{{ $item->url }}" wire:navigate title="{{ $item->label }}"
+                            <a href="{{ $item->url }}" wire:navigate aria-label="{{ $item->label }}"
                                @class([
                                    'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
                                    'bg-sidebar-active text-sidebar-fg-active' => $item->active,
