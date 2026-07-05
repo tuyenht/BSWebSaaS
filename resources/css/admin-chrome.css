@@ -329,6 +329,23 @@
     }
 }
 
+/* ---- Customizer launcher gear -------------------------------------------
+   Slow continuous spin (Velzon parity), via an explicit keyframe so the 4s
+   duration never depends on Tailwind utility ordering; paused for reduced-motion. */
+.customizer-gear {
+    animation: bs-gear-spin 4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .customizer-gear {
+        animation: none;
+    }
+}
+@keyframes bs-gear-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* ---- Brand logo (config-driven, replaces text initials) -------------------
    Sidebar shows the white logo on the dark sidebar, the dark logo on a light
    sidebar, and the compact mark when collapsed (sm). Platform topbar uses the

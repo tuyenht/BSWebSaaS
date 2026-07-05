@@ -12,7 +12,7 @@
 @endphp
 <div class="relative" x-data="{ userOpen: false }">
     <button type="button" @click="userOpen = ! userOpen" :aria-expanded="userOpen"
-            class="flex items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg/70">
+            class="flex items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
         <span class="grid size-9 shrink-0 place-items-center rounded-full bg-topbar-user text-sm font-semibold text-topbar-user-fg">
             {{ \Illuminate\Support\Str::of($name)->substr(0, 1)->upper() }}
         </span>
