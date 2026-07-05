@@ -61,22 +61,22 @@
                                         @click="openGroup = (openGroup === '{{ $item->key }}' ? '' : '{{ $item->key }}')"
                                         :aria-expanded="openGroup === '{{ $item->key }}'"
                                         @class([
-                                            'group flex w-full items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
-                                            'bg-sidebar-active text-sidebar-fg-active' => $item->active,
+                                            'group flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
+                                            'text-sidebar-fg-active' => $item->active,
                                         ])>
                                     <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                     <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
                                     <x-admin::icon name="chevron-down" class="sidebar-label size-4 shrink-0 transition-transform" ::class="openGroup === '{{ $item->key }}' && 'rotate-180'" />
                                 </button>
-                                <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-1 ps-4">
+                                <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-0.5 ps-4">
                                     @foreach ($item->children as $child)
                                         <li>
-                                            <a href="{{ $child->url }}" wire:navigate title="{{ $child->label }}"
+                                            <a href="{{ $child->url }}" wire:navigate
                                                @class([
-                                                   'flex items-center gap-2.5 rounded px-3 py-2 text-sm transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
-                                                   'bg-sidebar-active text-sidebar-fg-active' => $child->active,
+                                                   'flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:text-sidebar-fg-hover',
+                                                   'text-sidebar-fg-active' => $child->active,
                                                ])>
-                                                <span class="size-1.5 shrink-0 rounded-full bg-current opacity-70"></span>
+                                                <span class="h-[1.5px] w-1.5 shrink-0 rounded-full bg-current opacity-60"></span>
                                                 <span class="sidebar-label">{{ $child->label }}</span>
                                             </a>
                                         </li>
@@ -86,8 +86,8 @@
                         @else
                             <a href="{{ $item->url }}" wire:navigate aria-label="{{ $item->label }}"
                                @class([
-                                   'group flex items-center gap-3 rounded px-3 py-2.5 text-sm font-medium transition-colors hover:bg-sidebar-hover hover:text-sidebar-fg-hover',
-                                   'bg-sidebar-active text-sidebar-fg-active' => $item->active,
+                                   'group flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
+                                   'text-sidebar-fg-active' => $item->active,
                                ])>
                                 <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                 <span class="sidebar-label">{{ $item->label }}</span>

@@ -21,6 +21,21 @@ use Illuminate\Support\Facades\Gate;
 final class AdminNav
 {
     /**
+     * A sensible default glyph per known content-section key, so each type reads distinctly in
+     * the sidebar instead of sharing one generic document icon. A section's own DB icon still
+     * wins when set; an unknown key falls back to the document glyph.
+     *
+     * @var array<string, string>
+     */
+    private const SECTION_ICONS = [
+        'pages' => 'file-text',
+        'posts' => 'newspaper',
+        'services' => 'briefcase',
+        'products' => 'cube',
+        'projects' => 'folder',
+    ];
+
+    /**
      * @return list<NavItem>
      */
     public function items(?Authenticatable $user): array
@@ -101,7 +116,7 @@ final class AdminNav
             $items[] = new NavItem(
                 key: $section->key,
                 label: $section->localizedLabel(),
-                icon: $section->icon ?? 'file-text',
+                icon: $section->icon ?: (self::SECTION_ICONS[$section->key] ?? 'file-text'),
                 active: $inSection || $inTaxonomy,
                 children: $children,
                 permission: "{$prefix}.view",

@@ -137,3 +137,13 @@ it('localizes the section label to the UI locale, falling back to the stored lab
     $vi = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($owner));
     expect(collect($vi)->firstWhere('key', 'posts')?->label)->toBe('Tin tức');
 });
+
+it('gives each content section a distinct default icon instead of one shared glyph', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+    $items = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($owner));
+    $byKey = collect($items)->keyBy('key');
+
+    // Each type reads apart in the sidebar (Pages and News were both provisioned above).
+    expect($byKey->get('pages')?->icon)->toBe('file-text')
+        ->and($byKey->get('posts')?->icon)->toBe('newspaper');
+});

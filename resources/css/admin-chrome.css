@@ -245,8 +245,10 @@
     :root[data-sidebar-size='sm'] .admin-sidebar .sidebar-label {
         display: none;
     }
-    :root[data-sidebar-size='sm'] .admin-sidebar nav a,
-    :root[data-sidebar-size='sm'] .admin-sidebar nav button,
+    /* Center ONLY the rail's own items (icon-only). Scoping to the direct row keeps the
+       hover flyout's child links left-aligned instead of centered/staggered. */
+    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li > a,
+    :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li > div > button,
     :root[data-sidebar-size='sm'] .admin-sidebar .sidebar-brand-link {
         justify-content: center;
     }
