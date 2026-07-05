@@ -5,19 +5,19 @@ use App\Modules\Tenancy\Registry\ModuleCatalog;
 
 /*
  * T2 increment-2 — ModuleCatalog is the source of truth for the admin-nav modules (design.md
- * §15.2). 12 modules, snake_case keys (D7), tri-locale labels, sort order, and a permission_prefix
+ * §15.2). 13 modules, snake_case keys (D7), tri-locale labels, sort order, and a permission_prefix
  * that must resolve to a real permission (catalog ⊆ PermissionRegistry — no orphan gates). The
  * render consumer (AdminNav) lands in increment-3; here the catalog is pinned as a tested contract.
  */
 
-it('defines exactly the 12 canonical admin-nav modules with unique snake_case keys', function (): void {
+it('defines exactly the 13 canonical admin-nav modules with unique snake_case keys', function (): void {
     $keys = array_column(ModuleCatalog::all(), 'key');
     sort($keys);
 
     expect($keys)->toBe([
-        'banners', 'contacts', 'dashboard', 'media', 'menus', 'pages',
+        'banners', 'catalog', 'contacts', 'dashboard', 'media', 'menus', 'pages',
         'posts', 'profile', 'roles', 'settings', 'trash', 'users',
-    ])->and(array_unique($keys))->toHaveCount(12);
+    ])->and(array_unique($keys))->toHaveCount(13);
 
     foreach ($keys as $key) {
         expect($key)->toMatch('/^[a-z][a-z0-9_]*$/'); // D7 snake_case

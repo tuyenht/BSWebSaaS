@@ -69,6 +69,12 @@ final class AdminNav
         $onTaxonomies = $request->routeIs('admin.taxonomies.*');
 
         foreach (ContentSection::query()->orderBy('sort_order')->orderBy('id')->get() as $section) {
+            // Products now live in the Catalog feature module (leaf below), so the legacy 'products'
+            // content_section is filtered here to avoid a double surface until P3 ETL removes the data.
+            if ($section->key === 'products') {
+                continue;
+            }
+
             $prefix = $section->permission_prefix ?: 'entries';
 
             if (! $can("{$prefix}.view")) {
@@ -129,6 +135,7 @@ final class AdminNav
         $features = [
             // [key, labelKey, route, icon, permission, entitlementKey]. Categories are NOT here —
             // they live per content type (see the section loop above), scoped so they never mix.
+            ['catalog', 'admin.catalog', 'admin.catalog.index', 'cube', 'catalog.view', 'catalog'],
             ['media', 'admin.media', 'admin.media.index', 'image', 'media.view', 'media'],
             ['contacts', 'admin.contacts', 'admin.forms.index', 'mail', 'forms.view', 'contacts'],
             ['menus', 'admin.menu_builder', 'admin.menus.index', 'menu', 'menus.manage', 'menus'],

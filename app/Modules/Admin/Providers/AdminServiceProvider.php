@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Providers;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Livewire\AppearanceSettings;
+use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -78,6 +79,7 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.dashboard', Dashboard::class);
         Livewire::component('admin.component-gallery', ComponentGallery::class);
         Livewire::component('admin.placeholder', Placeholder::class);
+        Livewire::component('admin.catalog.index', CatalogIndex::class);
         Livewire::component('admin.entries.index', EntriesIndex::class);
         Livewire::component('admin.entries.editor', Editor::class);
         Livewire::component('admin.users.index', UsersIndex::class);

@@ -4,6 +4,7 @@ use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\SetLocale;
 use App\Modules\Admin\Livewire\AppearanceSettings;
+use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -193,6 +194,7 @@ Route::prefix(config('admin.prefix', 'admin'))
         // Content CRUD (W4 + post collections). One section-driven set of routes for
         // every entry type (?section=… picks the type); addressed by ulid (D2).
         Route::get('/content', EntriesIndex::class)->middleware('can:entries.view')->name('admin.entries.index');
+        Route::get('/catalog', CatalogIndex::class)->middleware('can:catalog.view')->name('admin.catalog.index');
         Route::get('/content/create', Editor::class)->middleware('can:entries.create')->name('admin.entries.create');
         Route::get('/content/{ulid}/edit', Editor::class)->name('admin.entries.edit');
 
