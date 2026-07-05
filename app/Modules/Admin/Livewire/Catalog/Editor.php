@@ -175,7 +175,7 @@ final class Editor extends Component
             'categories' => $this->availableCategories(),
             'galleryImages' => $this->galleryImages($urls),
             'pickerMedia' => $this->showImagePicker
-                ? Media::query()->orderByDesc('created_at')->limit(60)->get()
+                ? Media::query()->where('mime', 'like', 'image/%')->orderByDesc('created_at')->limit(60)->get()
                 : collect(),
             'urls' => $urls,
         ]);

@@ -42,6 +42,19 @@ function editorOptions(profile) {
         askBeforePasteHTML: false,
         defaultActionOnPaste: 'insert_clear_html',
         disablePlugins: ['add-new-line'],
+        controls: {
+            // Only offer what survives the server-side allowlist (h1 belongs to the product
+            // name on the storefront; pre/h5/h6 are stripped) — no silent format loss.
+            paragraph: {
+                list: Jodit.atom({
+                    p: 'Normal',
+                    h2: 'Heading 2',
+                    h3: 'Heading 3',
+                    h4: 'Heading 4',
+                    blockquote: 'Quote',
+                }),
+            },
+        },
     };
 }
 
@@ -54,13 +67,19 @@ export function createCatalogEditors(root) {
         const target = el.dataset.richTarget;
         const wireId = el.closest('[wire\\:id]')?.getAttribute('wire:id');
 
-        const editor = Jodit.make(el, editorOptions(profile));
-        editor.events.on('change', (value) => {
+        const push = (value) => {
             if (!wireId || !target || typeof value !== 'string') {
                 return;
             }
             window.Livewire?.find(wireId)?.$wire.set(target, value, false); // deferred
-        });
+        };
+
+        const editor = Jodit.make(el, editorOptions(profile));
+        editor.events.on('change', push);
+        // Jodit's change observer is debounced (~100ms) — a type-then-click-Save inside that
+        // window would miss the last keystrokes. Blur fires before the Save click completes,
+        // so flushing here closes the race.
+        editor.events.on(editor.editor, 'blur', () => push(editor.value));
         editors.push(editor);
     }
 
