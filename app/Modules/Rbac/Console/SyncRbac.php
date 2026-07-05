@@ -2,6 +2,7 @@
 
 namespace App\Modules\Rbac\Console;
 
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
@@ -28,64 +29,84 @@ final class SyncRbac extends Command
 
     public function handle(PermissionRegistrar $registrar): int
     {
-        $registrar->setPermissionsTeamId(PermissionRegistry::PLATFORM_TEAM_ID);
+        try {
+            $registrar->setPermissionsTeamId(PermissionRegistry::PLATFORM_TEAM_ID);
 
-        foreach (PermissionRegistry::permissions() as $name) {
-            Permission::findOrCreate($name, PermissionRegistry::GUARD);
+            foreach (PermissionRegistry::permissions() as $name) {
+                Permission::findOrCreate($name, PermissionRegistry::GUARD);
+            }
+
+            foreach (PermissionRegistry::platformRoles() as $name => $spec) {
+                $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
+                $role->forceFill(['level' => $spec['level'], 'is_system' => true])->save();
+
+                $permissions = $spec['permissions'] === '*'
+                    ? PermissionRegistry::permissions()
+                    : $spec['permissions'];
+                $role->syncPermissions($permissions);
+            }
+
+            $backfilled = $this->backfillSystemTenantRoles();
+
+            $registrar->forgetCachedPermissions();
+
+            $this->info(sprintf(
+                'RBAC synced: %d permissions, %d platform roles, %d tenant grants back-filled.',
+                count(PermissionRegistry::permissions()),
+                count(PermissionRegistry::platformRoles()),
+                $backfilled,
+            ));
+
+            return self::SUCCESS;
+        } finally {
+            // Release the forced platform override — it otherwise WINS over the current-site
+            // resolver for everything that runs next in this process (console/queue), e.g. a
+            // provisioning call would silently create its tenant roles on team 0.
+            app(TeamContext::class)->forget();
         }
-
-        foreach (PermissionRegistry::platformRoles() as $name => $spec) {
-            $role = Role::findOrCreate($name, PermissionRegistry::GUARD);
-            $role->forceFill(['level' => $spec['level'], 'is_system' => true])->save();
-
-            $permissions = $spec['permissions'] === '*'
-                ? PermissionRegistry::permissions()
-                : $spec['permissions'];
-            $role->syncPermissions($permissions);
-        }
-
-        $backfilled = $this->backfillSystemTenantRoles();
-
-        $registrar->forgetCachedPermissions();
-
-        $this->info(sprintf(
-            'RBAC synced: %d permissions, %d platform roles, %d tenant grants back-filled.',
-            count(PermissionRegistry::permissions()),
-            count(PermissionRegistry::platformRoles()),
-            $backfilled,
-        ));
-
-        return self::SUCCESS;
     }
 
     /**
-     * Grant the is_system tenant-template roles the template permissions they are missing.
-     * Today these roles are GLOBAL definitions on the platform team (site_id = 0) shared by
-     * every site — ProvisionSite findOrCreates them there; users get per-site assignments via
-     * model_has_roles.site_id. When tier-2 inc-4 moves to per-site copy-on-write roles, this
-     * back-fill moves with it. Every site_type in use contributes its templates.
+     * Grant every is_system tenant-template role the template permissions it is missing.
+     * Template roles exist in two shapes (ProvisionSite inherits whatever team context the
+     * registrar happens to carry): per-site rows (site_id = N — the prod/genesis shape) and
+     * shared rows on the platform team (site_id = 0). Both are back-filled; template names
+     * (owner/admin/editor/…) never collide with platform role names, and role_has_permissions
+     * carries no team column, so grants are context-free. When tier-2 inc-4 formalizes
+     * per-site copy-on-write roles, this back-fill follows that shape.
      */
     private function backfillSystemTenantRoles(): int
     {
         $granted = 0;
 
-        // site_types is a global table (D6) — readable on the app connection.
-        $typeKeys = DB::table('site_types')->pluck('key');
+        // sites/site_types are global tables (D6) — readable on the app connection.
+        /** @var array<int, string> $siteTypeBySiteId */
+        $siteTypeBySiteId = DB::table('sites')
+            ->join('site_types', 'sites.site_type_id', '=', 'site_types.id')
+            ->pluck('site_types.key', 'sites.id')
+            ->filter(fn ($key): bool => is_string($key))
+            ->all();
 
-        foreach ($typeKeys as $typeKey) {
-            if (! is_string($typeKey)) {
+        $everyTypeInUse = array_values(array_unique(array_values($siteTypeBySiteId)));
+
+        foreach (Role::query()->where('is_system', true)->get() as $role) {
+            $roleName = $role->getAttribute('name');
+            $rawSiteId = $role->getAttribute('site_id');
+            if (! is_string($roleName) || ! is_numeric($rawSiteId)) {
                 continue;
             }
 
-            foreach (PermissionRegistry::tenantRoleTemplates($typeKey) as $name => $spec) {
-                $role = Role::query()
-                    ->where('name', $name)
-                    ->where('site_id', PermissionRegistry::PLATFORM_TEAM_ID)
-                    ->where('is_system', true)
-                    ->first();
+            // A per-site role follows its own site's type; a shared (team-0) role serves every
+            // site, so every type in use contributes (GĐ1: only `corporate` exists).
+            $siteId = (int) $rawSiteId;
+            $typeKeys = $siteId === PermissionRegistry::PLATFORM_TEAM_ID
+                ? $everyTypeInUse
+                : array_filter([$siteTypeBySiteId[$siteId] ?? null], is_string(...));
 
-                if ($role === null) {
-                    continue; // template role never materialized — ProvisionSite's job, not sync's
+            foreach ($typeKeys as $typeKey) {
+                $spec = PermissionRegistry::tenantRoleTemplates($typeKey)[$roleName] ?? null;
+                if ($spec === null) {
+                    continue; // platform roles / names outside the template
                 }
 
                 $template = $spec['permissions'] === '*'

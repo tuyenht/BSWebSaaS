@@ -3,15 +3,19 @@
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 
 /*
- * rbac:sync back-fill: site-type templates drift as the platform grows — a module shipped
- * AFTER a site was provisioned (e.g. catalog) adds permissions its is_system roles never
- * received. Sync must ADD the missing template grants on every deploy, never revoke, and
- * never touch custom (non-system) roles.
+ * rbac:sync back-fill + context hygiene. Site-type templates drift as the platform grows —
+ * a module shipped AFTER a site was provisioned (e.g. catalog) adds permissions the already
+ * materialized is_system roles never received. Sync must ADD the missing grants on every
+ * deploy (never revoke, never touch custom roles) across BOTH historical role shapes:
+ * per-site rows (site_id = N — the genesis/prod shape) and shared team-0 rows (created by
+ * provisions that ran while sync's forced platform override was still leaking — the leak
+ * itself is fixed here too: sync now releases the override in finally).
  */
 
 beforeEach(function (): void {
@@ -30,14 +34,20 @@ beforeEach(function (): void {
     ));
 });
 
-it('back-fills template permissions that shipped after the site was provisioned', function (): void {
+it('releases the forced platform team after sync, so provisioning creates PER-SITE roles', function (): void {
+    // The finally-forget: without it, the beforeEach provision (which runs after rbac:sync in
+    // the same process) would have created every tenant role on team 0 instead of the site.
+    expect(app(TeamContext::class)->isForced())->toBeFalse()
+        ->and(Role::query()->where('name', 'owner')->where('site_id', 1)->exists())->toBeTrue();
+});
+
+it('back-fills drifted PER-SITE template roles (the genesis/prod shape)', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
-    // Simulate a pre-catalog deployment: the tenant-template roles (global, platform team 0 —
-    // shared by every site until tier-2 inc-4) predate the module, so they miss the grants.
-    Role::query()->where('site_id', 0)->where('name', 'owner')->firstOrFail()
+    // Simulate a pre-catalog deployment: the site's system roles predate the module.
+    Role::query()->where('site_id', 1)->where('name', 'owner')->firstOrFail()
         ->revokePermissionTo(['catalog.view', 'catalog.manage']);
-    Role::query()->where('site_id', 0)->where('name', 'viewer')->firstOrFail()
+    Role::query()->where('site_id', 1)->where('name', 'viewer')->firstOrFail()
         ->revokePermissionTo(['catalog.view']);
 
     $can = fn (): bool => app(Tenancy::class)->enter(1, fn (): bool => $owner->fresh()->can('catalog.view'));
@@ -52,10 +62,28 @@ it('back-fills template permissions that shipped after the site was provisioned'
     $viewerHas = DB::table('role_has_permissions')
         ->join('roles', 'roles.id', '=', 'role_has_permissions.role_id')
         ->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
-        ->where('roles.site_id', 0)->where('roles.name', 'viewer')
+        ->where('roles.site_id', 1)->where('roles.name', 'viewer')
         ->where('permissions.name', 'catalog.view')
         ->exists();
     expect($viewerHas)->toBeTrue();
+});
+
+it('back-fills drifted SHARED team-0 template roles (the legacy leak shape)', function (): void {
+    // Reproduce an environment provisioned under the old leak: tenant roles live on team 0.
+    DB::table('roles')->whereIn('name', ['owner', 'admin', 'editor', 'author', 'contributor', 'viewer'])
+        ->update(['site_id' => 0]);
+    Role::query()->where('site_id', 0)->where('name', 'owner')->firstOrFail()
+        ->revokePermissionTo(['catalog.view', 'catalog.manage']);
+
+    $this->artisan('rbac:sync')->assertSuccessful();
+
+    $ownerHas = DB::table('role_has_permissions')
+        ->join('roles', 'roles.id', '=', 'role_has_permissions.role_id')
+        ->join('permissions', 'permissions.id', '=', 'role_has_permissions.permission_id')
+        ->where('roles.site_id', 0)->where('roles.name', 'owner')
+        ->where('permissions.name', 'catalog.manage')
+        ->exists();
+    expect($ownerHas)->toBeTrue();
 });
 
 it('never touches custom (non-system) tenant roles', function (): void {
