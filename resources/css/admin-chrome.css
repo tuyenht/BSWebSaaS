@@ -41,7 +41,7 @@
        Default dark sidebar = Velzon variant-one $blue. Deliberately DECOUPLED from
        the brand primary (#405189), which stays on buttons/links via --color-admin-primary. */
     --vz-vertical-menu-bg: #405189;                            /* navy — matches the Velzon reference default sidebar; equals the brand primary; white text 7.6 clears AA with room */
-    --vz-vertical-menu-item-color: rgb(255 255 255 / 0.85);    /* 6.1 on #405189 — soft white resting, well over AA 4.5 */
+    --vz-vertical-menu-item-color: #abb9e8;                    /* Velzon dark $dark-vertical-menu-item-color — a muted periwinkle resting so the white hover/active clearly pops (a hue jump, not just lightness). 3.9 on #405189: a reduced-emphasis nav affordance; its interactive state is white = 6.1. */
     --vz-vertical-menu-item-hover-color: #ffffff;
     --vz-vertical-menu-item-active-color: #ffffff;
     --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.10); /* ★ also the brand-initials chip · vz-ref item-bg: rgba(#fff,.15) */
@@ -265,6 +265,10 @@
        let the collapsed rail overflow (icon rail is short enough not to need its own scroll). */
     :root[data-sidebar-size='sm'] .admin-sidebar nav {
         overflow: visible;
+        /* Drop the row inset (Velzon uses container padding:0) so each <li> spans the FULL 70px
+           rail and butts against the flyout. With the inset, the <li> ended ~12px short of the
+           rail edge, leaving a dead gap the pointer could not cross to reach the flyout links. */
+        padding-inline: 0;
     }
     :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li {
         position: relative;
@@ -273,7 +277,7 @@
     :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > button > span.sidebar-label {
         display: block;
         position: absolute;
-        left: var(--spacing-sidebar-collapsed);
+        left: calc(var(--spacing-sidebar-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
         top: 0;
         z-index: 50;
         width: 12rem;
@@ -288,7 +292,7 @@
     :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > ul {
         display: block !important;
         position: absolute;
-        left: var(--spacing-sidebar-collapsed);
+        left: calc(var(--spacing-sidebar-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
         top: 2.35rem; /* overlaps the label box slightly (same bg) so hover can't drop through a seam */
         z-index: 50;
         width: 12rem;

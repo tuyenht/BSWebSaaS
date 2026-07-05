@@ -86,7 +86,7 @@
                         @else
                             <a href="{{ $item->url }}" wire:navigate aria-label="{{ $item->label }}"
                                @class([
-                                   'group flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
+                                   'group flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
                                    'text-sidebar-fg-active' => $item->active,
                                ])>
                                 <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />

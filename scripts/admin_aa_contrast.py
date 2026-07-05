@@ -39,7 +39,11 @@ def over(fg: tuple[int, int, int], bg: tuple[int, int, int], alpha: float):
 CHECKS = [
     # Default dark sidebar — navy #405189 (matches the Velzon reference default sidebar;
     # equals the brand primary; owner chose navy for 1:1):
-    ("dark sidebar · item white/.85", "#ffffff", 0.85, ["#405189"], 4.5),
+    # Resting nav text follows the Velzon reference (#abb9e8) so the white hover/active clearly pops;
+    # it is a reduced-emphasis affordance (its interactive state is white = 6.1) held to the 3.0
+    # nav/affordance tier, like the section title below.
+    ("dark sidebar · item #abb9e8 rest", "#abb9e8", 1.0, ["#405189"], 3.0),
+    ("dark sidebar · item hover/active #fff", "#ffffff", 1.0, ["#405189"], 4.5),
     ("dark sidebar · title white/.60", "#ffffff", 0.60, ["#405189"], 3.0),
     # Gradient sidebars — NEW, opt-in aesthetic (Velzon rgba(#fff,.5)):
     ("gradient · item white/.5", "#ffffff", 0.50, ["#405189", "#0ab39c"], 4.5),
