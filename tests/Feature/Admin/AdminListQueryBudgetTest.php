@@ -1,7 +1,10 @@
 <?php
 
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Identity\Models\User;
+use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 
@@ -40,6 +43,37 @@ it('lists admin entries on a flat query budget (no N+1 across rows)', function (
     // (site_id, group_name, key) index (P5 chrome resolver). An N+1 scales with the 10
     // seeded rows, so it still blows well past this.
     expect($count)->toBeLessThanOrEqual(19);
+});
+
+it('lists admin catalog on a flat query budget (no N+1 across rows)', function (): void {
+    $viewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($viewer): void {
+        grantRole($viewer, 'cat-viewer', ['catalog.view']);
+
+        $category = Taxonomy::query()->create(['vocabulary' => 'product_cat', 'position' => 0]);
+        $category->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá', 'slug' => 'do-ga']);
+
+        // Ten products, each with a translation + category + gallery image, so an N+1 over any
+        // of the four row decorations (name, category, price badge, thumbnail) blows the ceiling.
+        foreach (range(1, 10) as $i) {
+            $media = Media::query()->create([
+                'collection' => 'library', 'slug' => "anh-{$i}", 'hash' => hash('sha256', "img-{$i}"),
+                'storage_key' => "s/library/anh-{$i}.png", 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1024,
+            ]);
+            $product = Product::query()->create(['status' => 'draft', 'sku' => "SKU-{$i}", 'price' => 1000000]);
+            $product->translations()->create(['locale' => 'vi', 'name' => "Sản phẩm {$i}", 'slug' => "sp-{$i}"]);
+            $product->assignCategories([$category->id]);
+            $product->images()->create(['media_id' => $media->id, 'position' => 0]);
+        }
+    });
+
+    $count = countQueries(fn () => $this->actingAs($viewer)->get('http://a.test/admin/catalog')->assertOk());
+
+    // Nav/entitlement/theme baseline (~19, same as the other lists) + the catalog page's own
+    // flat set: paginator count, rows, 4 eager loads, trash count. An N+1 scales with the 10
+    // seeded rows and still blows well past this.
+    expect($count)->toBeLessThanOrEqual(26);
 });
 
 it('lists admin members on a flat query budget (no N+1 across rows)', function (): void {

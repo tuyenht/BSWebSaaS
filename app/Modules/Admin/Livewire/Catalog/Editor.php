@@ -115,8 +115,15 @@ final class Editor extends Component
 
     public function save(): void
     {
-        $this->persist();
+        $wasNew = $this->ulid === null;
+        $product = $this->persist();
         session()->flash('saved', true);
+
+        if ($wasNew) {
+            // A freshly created product gets its durable edit URL — refreshing the page keeps
+            // editing THIS product instead of opening a blank create form again.
+            $this->redirectRoute('admin.catalog.edit', ['ulid' => $product->ulid], navigate: true);
+        }
     }
 
     public function openImagePicker(): void
