@@ -12,18 +12,19 @@
     $shortName = \App\Modules\Admin\Support\DisplayName::short($name);
     $isPlatform = \App\Modules\Admin\Support\AdminPlane::isPlatform();
 @endphp
-<div class="relative -me-4 h-full" x-data="{ userOpen: false }">
-    {{-- Velzon reference: the user block sits on a persistent soft-gray slab spanning the
-         topbar height, not a hover-only chip. --}}
+<div class="relative h-full" x-data="{ userOpen: false }">
+    {{-- Velzon reference 1:1 — a persistent soft-gray slab spanning the topbar height that
+         ENDS at the header's 1.5rem end-padding (it does not bleed to the viewport edge);
+         32px avatar, 13px semibold name over an 11px muted role, no chevron, no hover shift. --}}
     <button type="button" @click="userOpen = ! userOpen" :aria-expanded="userOpen"
-            class="flex h-full items-center gap-2.5 bg-topbar-hover px-3 transition-[filter] hover:brightness-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
-        <span class="grid size-9 shrink-0 place-items-center rounded-full bg-topbar-user text-sm font-semibold text-topbar-user-fg">
+            class="flex h-full items-center gap-2.5 bg-topbar-user-block px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
+        <span class="grid size-8 shrink-0 place-items-center rounded-full bg-topbar-user text-sm font-semibold text-topbar-user-fg">
             {{ \Illuminate\Support\Str::of($name)->substr(0, 1)->upper() }}
         </span>
         <span class="hidden text-start leading-tight sm:block">
-            <span class="block text-sm font-medium text-topbar-fg-strong">{{ $shortName }}</span>
+            <span class="block text-[13px] font-semibold text-topbar-fg-strong">{{ $shortName }}</span>
             @if (! empty($roleLabel))
-                <span class="block text-xs text-topbar-fg">{{ $roleLabel }}</span>
+                <span class="block text-[11px] text-topbar-fg">{{ $roleLabel }}</span>
             @endif
         </span>
     </button>

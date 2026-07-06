@@ -36,6 +36,7 @@
     --vz-topbar-search-focus-accent: var(--color-accent); /* ★ focus border + ring — zone-owned so a dark topbar can lighten it */
     --vz-topbar-user-bg: color-mix(in oklab, var(--color-accent) 10%, transparent); /* user chip (initials) bg */
     --vz-topbar-user-color: var(--color-accent);       /* ★ user chip initial letter */
+    --vz-topbar-user-block-bg: #f3f3f9;                /* ★ user SLAB (vz-ref .topbar-user) — same fill family as the search */
 
     /* ---- Sidebar / vertical menu (flip axis: data-sidebar) ----------------
        Default dark sidebar = Velzon variant-one $blue. Deliberately DECOUPLED from
@@ -107,6 +108,7 @@
     --vz-topbar-search-focus-bg: #262a2f;
     --vz-topbar-user-bg: #31373c;
     --vz-topbar-user-color: #e9ecef;                   /* 10.16 */
+    --vz-topbar-user-block-bg: #202328;                /* user slab follows the dark search fill */
 
     /* sidebar (dark preset under a dark scheme) */
     --vz-vertical-menu-bg: #212529;
@@ -131,6 +133,7 @@
     --vz-topbar-search-focus-bg: rgb(255 255 255 / 0.10);
     --vz-topbar-search-placeholder-color: #e2e5ed;     /* default #ced4da = 4.46 marginal on the brand field */
     --vz-topbar-search-focus-accent: #b0c4d9;          /* ring · 4.26 ≥3 */
+    --vz-topbar-user-block-bg: rgb(255 255 255 / 0.05); /* user slab follows the dark-topbar search fill */
     --vz-topbar-user-bg: #52639c;
     --vz-topbar-user-color: #ffffff;                   /* 5.80 */
 }

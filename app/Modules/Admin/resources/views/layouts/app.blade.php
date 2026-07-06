@@ -104,14 +104,16 @@
     {{-- Content column --}}
     <div class="admin-content flex min-h-screen flex-col pl-0 transition-all duration-200 lg:pl-[var(--spacing-sidebar)]">
 
-        {{-- Topbar. `admin-topbar` is the [data-layout-position] flip hook. --}}
-        <header class="admin-topbar sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar px-4 shadow-card">
+        {{-- Topbar. `admin-topbar` is the [data-layout-position] flip hook.
+             Reference paddings: .75rem start · 1.5rem end (navbar-header), so the user slab
+             keeps the same balanced right gap as the content gutter below. --}}
+        <header class="admin-topbar sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar ps-3 pe-6 shadow-card">
             <button type="button" @click="open = true" aria-label="{{ __('admin.open_menu') }}"
-                    class="grid size-9 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
+                    class="grid size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
             <button type="button" @click="$store.adminTheme.set('sidebar_size', $store.adminTheme.state.sidebar_size === 'sm' ? 'lg' : 'sm')" aria-label="{{ __('admin.collapse_menu') }}"
-                    class="hidden size-9 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:grid">
+                    class="hidden size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:grid">
                 <x-admin::icon name="menu" class="size-5" />
             </button>
 
@@ -127,7 +129,6 @@
             {{-- Right cluster: language · fullscreen · light/dark · notifications · user --}}
             <div class="ms-auto flex items-center gap-1">
                 @include('admin::partials.topbar-tools')
-                <span class="mx-1 hidden h-6 w-px bg-topbar-border sm:block" aria-hidden="true"></span>
                 @include('admin::partials.topbar-user')
             </div>
         </header>
