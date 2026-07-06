@@ -42,6 +42,13 @@ trait WithMediaLibraryPicker
     /** Where a picked image goes: `gallery` (component hook) or `editor` (insert at caret). */
     public string $imagePickerMode = 'gallery';
 
+    /**
+     * Full-page management surface (the /admin/media page) vs. the insert-picker modal. In manage
+     * mode the modal chrome + "Chèn ảnh" footer are gone, clicking a tile opens its detail (not a
+     * pick), and the library content is always shown (no showImagePicker toggle).
+     */
+    public bool $pickerManageMode = false;
+
     public function openImagePicker(string $mode = 'gallery'): void
     {
         abort_unless(Gate::allows('media.view'), 403);
@@ -654,7 +661,8 @@ trait WithMediaLibraryPicker
     #[Computed]
     public function mediaPickerState(): array
     {
-        if (! $this->showImagePicker) {
+        // The modal is queried only while open; the manage page always shows its content.
+        if (! $this->showImagePicker && ! $this->pickerManageMode) {
             return ['open' => false];
         }
 

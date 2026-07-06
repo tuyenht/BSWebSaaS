@@ -70,7 +70,7 @@ it('isolates media per site (RLS) — site A library never shows site B assets',
         ->assertDontSee('site-b-asset.png');
 });
 
-it('soft-deletes a master with media.delete (sends it to the Thùng rác)', function (): void {
+it('bulk soft-deletes a selected master with media.delete (sends it to the Thùng rác)', function (): void {
     $manager = User::factory()->create();
     $asset = seedMediaAsset(1);
 
@@ -79,14 +79,16 @@ it('soft-deletes a master with media.delete (sends it to the Thùng rác)', func
 
         Livewire::actingAs($manager->fresh())
             ->test(Library::class)
-            ->call('delete', $asset->ulid);
+            ->assertSet('pickerManageMode', true)   // the page is the picker in manage mode
+            ->call('togglePickerItem', $asset->id)
+            ->call('pickerBulkDelete');
 
         expect(Media::query()->find($asset->id))->toBeNull()
             ->and(Media::withTrashed()->find($asset->id))->not->toBeNull();
     });
 });
 
-it('forbids delete without media.delete', function (): void {
+it('forbids bulk delete without media.delete', function (): void {
     $viewer = User::factory()->create();
     $asset = seedMediaAsset(1);
 
@@ -95,7 +97,8 @@ it('forbids delete without media.delete', function (): void {
 
         Livewire::actingAs($viewer->fresh())
             ->test(Library::class)
-            ->call('delete', $asset->ulid)
+            ->call('togglePickerItem', $asset->id)   // selecting only needs media.view
+            ->call('pickerBulkDelete')
             ->assertForbidden();
 
         expect(Media::query()->find($asset->id))->not->toBeNull();
@@ -117,5 +120,7 @@ it('lists the library on a flat query budget (no N+1 across rows)', function ():
 
     $count = countQueries(fn () => $this->actingAs($viewer)->get('http://a.test/admin/media')->assertOk());
 
-    expect($count)->toBeLessThanOrEqual(18); // flat; an N+1 over the rows would exceed this
+    // Nav/entitlement/theme baseline + the picker's flat set (page rows, count, folders+counts,
+    // trash count, formats). An N+1 over the 10 rows would blow well past this.
+    expect($count)->toBeLessThanOrEqual(30);
 });

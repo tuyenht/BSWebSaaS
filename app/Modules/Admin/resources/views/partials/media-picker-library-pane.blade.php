@@ -6,6 +6,9 @@
     : (str_starts_with($mime, 'audio/')
         ? ['ri-music-2', '#8b5cf6']
         : ($mime === 'application/pdf' ? ['ri-file-pdf-2', '#f06548'] : ['ri-file-excel-2', '#0ab39c'])))
+{{-- Manage mode (the /admin/media page, not the insert picker): clicking a tile opens its detail
+     and the checkbox selects for bulk ops; in the picker a tile click IS the pick. Never in trash. --}}
+@php($manage = ($pickerManageMode ?? false) && ! $pickerTrash)
 <div class="flex min-h-0 flex-1">
 
     {{-- Folder sidebar — a rail ≥640px, collapsed into the toolbar dropdown below on narrow screens. --}}
@@ -211,7 +214,7 @@
                         @php($selected = in_array($m->id, $pickerSelected, true))
                         {{-- A div, not a button, so the ⓘ detail button can nest without invalid markup. --}}
                         <div wire:key="mp-item-{{ $m->id }}" role="button" tabindex="0"
-                                wire:click="togglePickerItem({{ $m->id }})" title="{{ $m->original_filename }}"
+                                wire:click="{{ $manage ? 'openPickerDetail' : 'togglePickerItem' }}({{ $m->id }})" title="{{ $m->original_filename }}"
                                 @class(['relative aspect-square cursor-pointer overflow-hidden rounded-[11px] border border-border bg-surface-hover', 'pointer-events-none opacity-60' => $picked])>
                             @if (str_starts_with($m->mime, 'image/'))
                                 <img src="{{ $mp['urls']->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy"
@@ -225,15 +228,22 @@
                                 </span>
                             @endif
                             <span class="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-3.5 text-left text-[10px] text-white">{{ $m->original_filename }}</span>
-                            @unless ($pickerTrash)
+                            {{-- ⓘ only in the picker (manage-mode tile click already opens detail; trash hides it). --}}
+                            @unless ($pickerTrash || $manage)
                                 <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
                                         class="absolute left-[7px] top-[7px] flex size-[22px] items-center justify-center rounded-md bg-black/30 text-white transition-colors hover:bg-black/50">
                                     <x-admin::icon name="ri-information" class="size-3.5" />
                                 </button>
                             @endunless
-                            <span class="absolute right-[7px] top-[7px] flex size-5 items-center justify-center rounded-full border-[1.5px] shadow {{ $selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-white/90 bg-black/20 text-transparent' }}">
-                                <x-admin::icon name="ri-check" class="size-3" />
-                            </span>
+                            @php($checkClass = 'absolute right-[7px] top-[7px] flex size-5 items-center justify-center rounded-full border-[1.5px] shadow '.($selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-white/90 bg-black/20 text-transparent'))
+                            @if ($manage)
+                                {{-- Manage mode: the checkbox is the SELECT affordance (tile click = detail). --}}
+                                <button type="button" wire:click.stop="togglePickerItem({{ $m->id }})" class="{{ $checkClass }} {{ $selected ? '' : 'hover:bg-black/40' }}">
+                                    <x-admin::icon name="ri-check" class="size-3" />
+                                </button>
+                            @else
+                                <span class="{{ $checkClass }}"><x-admin::icon name="ri-check" class="size-3" /></span>
+                            @endif
                             @if ($selected)
                                 <span class="pointer-events-none absolute inset-0 rounded-[11px] border-[2.5px] border-admin-primary"></span>
                             @endif
@@ -253,11 +263,16 @@
                         @php($picked = in_array($m->id, $pickedIds ?? [], true))
                         @php($selected = in_array($m->id, $pickerSelected, true))
                         <div wire:key="mp-row-{{ $m->id }}" role="button" tabindex="0"
-                                wire:click="togglePickerItem({{ $m->id }})"
+                                wire:click="{{ $manage ? 'openPickerDetail' : 'togglePickerItem' }}({{ $m->id }})"
                                 @class(['flex cursor-pointer items-center gap-3 rounded-[9px] px-2.5 py-2 text-left', 'bg-admin-primary/4' => $selected, 'hover:bg-surface-hover' => ! $selected, 'pointer-events-none opacity-60' => $picked])>
-                            <span class="flex size-[22px] shrink-0 items-center justify-center rounded-md border-[1.5px] {{ $selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-placeholder bg-surface text-transparent' }}">
-                                <x-admin::icon name="ri-check" class="size-3" />
-                            </span>
+                            @php($rowCheckClass = 'flex size-[22px] shrink-0 items-center justify-center rounded-md border-[1.5px] '.($selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-placeholder bg-surface text-transparent'))
+                            @if ($manage)
+                                <button type="button" wire:click.stop="togglePickerItem({{ $m->id }})" class="{{ $rowCheckClass }}">
+                                    <x-admin::icon name="ri-check" class="size-3" />
+                                </button>
+                            @else
+                                <span class="{{ $rowCheckClass }}"><x-admin::icon name="ri-check" class="size-3" /></span>
+                            @endif
                             <span class="size-[42px] shrink-0 overflow-hidden rounded-lg bg-surface-hover">
                                 @if (str_starts_with($m->mime, 'image/'))
                                     <img src="{{ $mp['urls']->url($m->storage_key, 320) }}" alt="" loading="lazy" class="size-full object-cover" onerror="this.style.display='none'">

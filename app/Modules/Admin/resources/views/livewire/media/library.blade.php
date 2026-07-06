@@ -1,73 +1,50 @@
+{{-- /admin/media — full-page media management. Reuses the picker's panes (upload sources +
+     library-pane + detail) in MANAGE mode: no modal shell, no "Chèn ảnh" footer. Clicking a tile
+     opens its detail; the checkbox selects for bulk move/delete/trash. --}}
+@php($mp = $this->mediaPickerState())
 <div>
     <div class="mb-4">
         <h1 class="text-lg font-semibold text-heading">{{ __('media.library_title') }}</h1>
         <p class="mt-1 text-sm text-body-faint">{{ __('media.library_subtitle') }}</p>
     </div>
 
-    @if (session('media-status'))
-        <div class="mb-4 rounded border border-green-200 bg-green-50 px-4 py-2.5 text-sm text-green-700">
-            {{ session('media-status') }}
-        </div>
-    @endif
+    <div class="flex h-[calc(100dvh-13rem)] min-h-[520px] flex-col overflow-hidden rounded-lg border border-border-strong bg-surface shadow-card">
 
-    @can('media.upload')
-        <div class="mb-5 rounded-lg border border-border bg-surface p-4 shadow-card">
-            <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('media.upload_label') }}</label>
-            {{-- Uppy island: PUTs straight to R2 (presign → register), or proxies through Laravel on a
-                 local disk. wire:ignore keeps Livewire's morph off the Uppy DOM across grid refreshes;
-                 app.js (re)mounts it on every SPA navigation. --}}
-            <div wire:ignore
-                 data-media-uploader
-                 data-disk="{{ config('media.disk') }}"
-                 data-presign-url="{{ route('admin.media.presign') }}"
-                 data-register-url="{{ route('admin.media.register') }}"
-                 data-upload-url="{{ route('admin.media.upload') }}"
-                 data-max-bytes="{{ \App\Modules\Media\Actions\UploadMedia::MAX_KB * 1024 }}"
-                 data-allowed="{{ implode(',', array_keys(\App\Modules\Media\Actions\UploadMedia::MIME_EXT)) }}"></div>
-            <p class="mt-2 text-xs text-placeholder">{{ __('media.upload_hint') }}</p>
-        </div>
-    @endcan
-
-    @if ($media->isEmpty())
-        <div class="rounded-lg border border-dashed border-border-strong bg-surface px-4 py-12 text-center text-sm text-placeholder">
-            {{ __('media.library_empty') }}
-        </div>
-    @else
-        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            @foreach ($media as $item)
-                <div wire:key="media-{{ $item->id }}"
-                     class="overflow-hidden rounded-lg border border-border bg-surface shadow-card">
-                    <div class="flex aspect-square items-center justify-center bg-surface-muted">
-                        @if (str_starts_with($item->mime, 'image/'))
-                            <img src="{{ $urls->url($item->storage_key, 640) }}"
-                                 alt="{{ $item->alt['vi'] ?? $item->original_filename }}"
-                                 @if ($item->width && $item->height) width="{{ $item->width }}" height="{{ $item->height }}" @endif
-                                 loading="lazy" class="h-full w-full object-cover">
-                        @else
-                            <x-admin::icon name="doc" class="size-10 text-ink-ghost" />
-                        @endif
-                    </div>
-                    <div class="flex items-center justify-between gap-2 px-3 py-2">
-                        <span class="truncate text-xs text-body-muted" title="{{ $item->original_filename }}">{{ $item->original_filename ?? $item->slug }}</span>
-                        <div class="flex shrink-0 items-center gap-2.5">
-                            <a href="{{ $urls->url($item->storage_key) }}" target="_blank" rel="noopener"
-                               class="text-xs font-medium text-admin-primary transition-colors hover:underline">{{ __('media.open') }}</a>
-                            @can('media.delete')
-                                <button type="button"
-                                        wire:click="delete('{{ $item->ulid }}')"
-                                        wire:confirm="{{ __('media.delete_confirm') }}"
-                                        class="text-xs font-medium text-red-600 transition-colors hover:underline">
-                                    {{ __('media.delete') }}
-                                </button>
-                            @endcan
-                        </div>
-                    </div>
-                </div>
-            @endforeach
+        {{-- Tab bar (underline) --}}
+        <div class="flex shrink-0 gap-6 overflow-x-auto border-b border-border-strong px-5">
+            @can('media.upload')
+                <button type="button" wire:click="setPickerTab('upload')"
+                        class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-1 py-3 text-[13.5px] {{ $pickerTab === 'upload' ? 'font-semibold text-admin-primary shadow-[inset_0_-2.5px_0_var(--color-admin-primary)]' : 'font-medium text-body-muted' }}">
+                    <x-admin::icon name="ri-upload-2" class="size-4 {{ $pickerTab === 'upload' ? 'text-admin-primary' : 'text-body-faint' }}" />
+                    {{ __('media.picker_tab_upload') }}
+                </button>
+            @endcan
+            <button type="button" wire:click="setPickerTab('library')"
+                    class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-1 py-3 text-[13.5px] {{ $pickerTab === 'library' ? 'font-semibold text-admin-primary shadow-[inset_0_-2.5px_0_var(--color-admin-primary)]' : 'font-medium text-body-muted' }}">
+                <x-admin::icon name="ri-image-2" class="size-4 {{ $pickerTab === 'library' ? 'text-admin-primary' : 'text-body-faint' }}" />
+                {{ __('media.picker_tab_library') }}
+                <span class="rounded-[10px] px-[7px] py-px text-[10.5px] font-semibold {{ $pickerTab === 'library' ? 'bg-admin-primary/8 text-admin-primary' : 'bg-surface-hover text-body-muted' }}">{{ $mp['total'] }}</span>
+            </button>
         </div>
 
-        <div class="mt-5">
-            {{ $media->links() }}
+        {{-- Body --}}
+        <div class="relative flex min-h-0 min-w-0 flex-1">
+            <div class="flex min-w-0 flex-1 flex-col overflow-auto bg-surface">
+                @if ($pickerTab === 'upload')
+                    @if ($pickerSource === 'url')
+                        @include('admin::partials.media-picker-url-pane')
+                    @elseif ($pickerSource === 'device')
+                        @include('admin::partials.media-picker-device-pane')
+                    @else
+                        @include('admin::partials.media-picker-sources')
+                    @endif
+                @else
+                    @include('admin::partials.media-picker-library-pane', ['mp' => $mp])
+                @endif
+            </div>
+            @if ($pickerTab === 'library' && ($mp['detail'] ?? null))
+                @include('admin::partials.media-picker-detail-panel', ['mp' => $mp])
+            @endif
         </div>
-    @endif
+    </div>
 </div>
