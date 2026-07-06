@@ -202,7 +202,10 @@ it('sanitizes rich text on write — scripts and junk styles out, allowlisted ma
             ->set('name', 'Đồ gá')
             ->set('slug', 'do-ga')
             ->set('description', '<script>alert(1)</script><p style="font-size:14pt;position:absolute">Chi tiết</p>'
-                .'<table><tbody><tr><td style="color:red">±0.01mm</td></tr></tbody></table>')
+                .'<table><tbody><tr><td style="color:red">±0.01mm</td></tr></tbody></table>'
+                .'<p>m<sup>2</sup> CO<sub>2</sub></p><img src="https://files.baoson.net/x.png" alt="jig">'
+                .'<iframe src="https://www.youtube.com/embed/abc123"></iframe>'
+                .'<iframe src="https://evil.example.com/steal"></iframe>')
             ->set('summary', '<h2>To</h2><strong>đậm</strong><a href="javascript:alert(1)">x</a>')
             ->call('save')
             ->assertHasNoErrors();
@@ -215,10 +218,71 @@ it('sanitizes rich text on write — scripts and junk styles out, allowlisted ma
             ->and($translation?->description)->toContain('font-size')
             ->and($translation?->description)->toContain('color:#FF0000') // purifier canonicalizes `red`
             ->and($translation?->description)->not->toContain('position')
+            // technical units + library image survive; only youtube/vimeo iframes do
+            ->and($translation?->description)->toContain('<sup>2</sup>')
+            ->and($translation?->description)->toContain('<sub>2</sub>')
+            ->and($translation?->description)->toContain('<img src="https://files.baoson.net/x.png"')
+            ->and($translation?->description)->toContain('youtube.com/embed/abc123')
+            ->and($translation?->description)->not->toContain('evil.example.com')
             // basic profile: no headings, inline emphasis kept, javascript: URI stripped
             ->and($translation?->summary)->not->toContain('<h2')
             ->and($translation?->summary)->toContain('<strong>đậm</strong>')
             ->and($translation?->summary)->not->toContain('javascript:');
+    });
+});
+
+it('editor-mode picking dispatches the insert event and never touches the gallery', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage', 'media.view']);
+        $media = seedCatalogMedia('a');
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->call('openImagePicker', 'editor')
+            ->assertSet('imagePickerMode', 'editor')
+            ->call('pickImage', $media)
+            ->assertDispatched('admin-editor-insert-image')
+            ->assertSet('imageMediaIds', [])          // gallery untouched
+            ->assertSet('showImagePicker', false);    // editor mode closes after inserting
+
+        // T5G-parity second path: paste an external URL. Junk is refused with a friendly
+        // error; a valid https url dispatches the same insert event.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->call('openImagePicker', 'editor')
+            ->set('externalImageUrl', 'javascript:alert(1)')
+            ->call('insertExternalImage')
+            ->assertHasErrors('externalImageUrl')
+            ->assertNotDispatched('admin-editor-insert-image')
+            ->set('externalImageUrl', 'https://cdn.example.com/anh.png')
+            ->call('insertExternalImage')
+            ->assertDispatched('admin-editor-insert-image', url: 'https://cdn.example.com/anh.png')
+            ->assertSet('showImagePicker', false);
+    });
+});
+
+it('the video dialog builds the canonical embed server-side and rejects junk', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage', 'media.view']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->call('openVideoDialog')
+            ->assertSet('showVideoDialog', true)
+            ->set('videoUrl', 'https://evil.example.com/embed/xxx')
+            ->call('insertVideo')
+            ->assertHasErrors('videoUrl')
+            ->assertNotDispatched('admin-editor-insert-html')
+            ->set('videoUrl', 'https://www.youtube.com/watch?v=SxwkhMy4Ywo')
+            ->set('videoAutoplay', true)
+            ->call('insertVideo')
+            ->assertDispatched('admin-editor-insert-html')
+            ->assertSet('showVideoDialog', false)
+            ->assertSet('videoUrl', ''); // form resets for the next embed
     });
 });
 

@@ -6,7 +6,7 @@ namespace App\Modules\Catalog\Providers;
 
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Policies\CatalogPolicy;
-use App\Modules\Catalog\Support\RichTextSanitizer;
+use App\Modules\Shared\Support\RichTextSanitizer;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 

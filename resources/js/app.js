@@ -27,26 +27,26 @@ async function mountMediaUploader() {
 
 document.addEventListener('livewire:navigated', mountMediaUploader);
 
-// Catalog product editor (Jodit) — same lazy-island contract as the uploader: its chunk loads
-// ONLY on the catalog editor page and remounts across Livewire SPA navigations.
-let catalogEditors = null;
+// Admin rich-text editor (Jodit) — same lazy-island contract as the uploader: the chunk loads
+// on ANY admin page carrying a [data-rich-editor] textarea (one shared module, zero per-page
+// config) and remounts across Livewire SPA navigations.
+let richEditors = null;
 
-async function mountCatalogEditors() {
-    if (catalogEditors) {
-        catalogEditors.destroy();
-        catalogEditors = null;
+async function mountRichEditors() {
+    if (richEditors) {
+        richEditors.destroy();
+        richEditors = null;
     }
 
-    const root = document.querySelector('[data-catalog-editor]');
-    if (!root) {
-        return; // not on the catalog editor page
+    if (!document.querySelector('[data-rich-editor]')) {
+        return; // no rich-text fields on this page
     }
 
-    const { createCatalogEditors } = await import('./catalog-editor.js');
-    catalogEditors = createCatalogEditors(root);
+    const { createRichEditors } = await import('./admin-rich-editor.js');
+    richEditors = createRichEditors(document);
 }
 
-document.addEventListener('livewire:navigated', mountCatalogEditors);
+document.addEventListener('livewire:navigated', mountRichEditors);
 
 // Release any modal scroll-lock before a wire:navigate swap, so an open modal that morphs
 // away can never leave the body scroll-locked.

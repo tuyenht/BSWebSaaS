@@ -29,13 +29,8 @@
                         @error('slug') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <label class="mb-1.5 block text-sm font-medium text-body-text" for="catalog-description">{{ __('catalog.description_label') }}</label>
-                        {{-- wire:model = no-JS fallback only: Jodit never fires input events on the
-                             hidden textarea, so while the island is alive the deferred $wire.set path
-                             is the single writer; if the chunk fails to load, plain typing still syncs. --}}
-                        <div wire:ignore>
-                            <textarea id="catalog-description" data-rich-editor="full" data-rich-target="description" rows="10" wire:model="description">{{ $description }}</textarea>
-                        </div>
+                        <label class="mb-1.5 block text-sm font-medium text-body-text" for="rich-editor-description">{{ __('catalog.description_label') }}</label>
+                        <x-admin::rich-editor target="description" profile="full" :value="$description" rows="10" />
                         @error('description') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -132,9 +127,7 @@
             </x-admin::card>
 
             <x-admin::card :title="__('catalog.summary_label')">
-                <div wire:ignore>
-                    <textarea id="catalog-summary" data-rich-editor="basic" data-rich-target="summary" rows="4" wire:model="summary">{{ $summary }}</textarea>
-                </div>
+                <x-admin::rich-editor target="summary" profile="basic" :value="$summary" rows="4" />
                 <p class="mt-2 text-sm text-body-faint">{{ __('catalog.summary_hint') }}</p>
                 @error('summary') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
             </x-admin::card>
@@ -143,35 +136,8 @@
         </div>
     </div>
 
-    {{-- Library picker (Livewire-controlled — stays open so several images can be picked). --}}
-    @if ($showImagePicker)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="{{ __('catalog.picker_title') }}">
-            <div class="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-md border border-border bg-surface p-4 shadow-card">
-                <div class="mb-3 flex items-center justify-between gap-3">
-                    <h5 class="text-[1rem] font-semibold text-body-text">{{ __('catalog.picker_title') }}</h5>
-                    <x-admin::button size="sm" variant="soft" color="primary" wire:click="closeImagePicker">{{ __('admin.dismiss') }}</x-admin::button>
-                </div>
-                @if ($pickerMedia->isEmpty())
-                    <p class="text-sm text-body-faint">{{ __('catalog.picker_empty') }}</p>
-                @else
-                    <div class="grid grid-cols-3 gap-2 sm:grid-cols-5">
-                        @foreach ($pickerMedia as $m)
-                            @if (str_starts_with($m->mime, 'image/'))
-                                @php($picked = in_array($m->id, $imageMediaIds, true))
-                                <button type="button" wire:key="pick-{{ $m->id }}" wire:click="pickImage({{ $m->id }})"
-                                        @disabled($picked)
-                                        class="relative overflow-hidden rounded border transition-colors {{ $picked ? 'border-admin-primary opacity-60' : 'border-border hover:border-admin-primary' }}"
-                                        title="{{ $m->original_filename }}">
-                                    <img src="{{ $urls->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy" class="aspect-square w-full object-cover">
-                                    @if ($picked)
-                                        <span class="absolute right-1 top-1 rounded bg-admin-primary px-1.5 py-0.5 text-xs text-white">✓</span>
-                                    @endif
-                                </button>
-                            @endif
-                        @endforeach
-                    </div>
-                @endif
-            </div>
-        </div>
-    @endif
+    {{-- Shared library picker (WithMediaLibraryPicker): gallery mode marks already-attached
+         images and stays open for multi-pick; editor mode inserts at the caret and closes. --}}
+    @include('admin::partials.media-picker-modal', ['pickedIds' => $imagePickerMode === 'gallery' ? $imageMediaIds : []])
+    @include('admin::partials.video-embed-modal')
 </div>

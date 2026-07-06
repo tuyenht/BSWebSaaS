@@ -33,6 +33,7 @@ import arrowGoBack from 'remixicon/icons/Arrows/arrow-go-back-line.svg?raw';
 import arrowGoForward from 'remixicon/icons/Arrows/arrow-go-forward-line.svg?raw';
 import fullscreenExit from 'remixicon/icons/Media/fullscreen-exit-line.svg?raw';
 import fullscreen from 'remixicon/icons/Media/fullscreen-line.svg?raw';
+import movieLine from 'remixicon/icons/Media/movie-line.svg?raw';
 import checkLine from 'remixicon/icons/System/check-line.svg?raw';
 import closeLine from 'remixicon/icons/System/close-line.svg?raw';
 import deleteBin from 'remixicon/icons/System/delete-bin-line.svg?raw';
@@ -65,6 +66,7 @@ export const JODIT_REMIX_ICONS = {
     omega,
     source: codeView,
     fullsize: fullscreen,
+    video: movieLine,
     shrink: fullscreenExit,
     undo: arrowGoBack,
     redo: arrowGoForward,

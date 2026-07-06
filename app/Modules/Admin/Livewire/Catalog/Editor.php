@@ -2,16 +2,16 @@
 
 namespace App\Modules\Admin\Livewire\Catalog;
 
+use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
-use App\Modules\Catalog\Support\RichTextSanitizer;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -32,6 +32,7 @@ use Livewire\Component;
 final class Editor extends Component
 {
     use AuthorizesRequests;
+    use WithMediaLibraryPicker;
 
     #[Locked]
     public ?string $ulid = null;
@@ -76,9 +77,6 @@ final class Editor extends Component
      * @var list<int>
      */
     public array $imageMediaIds = [];
-
-    /** Whether the library picker is open (its media grid is only queried while true). */
-    public bool $showImagePicker = false;
 
     public function mount(?string $ulid = null): void
     {
@@ -126,29 +124,13 @@ final class Editor extends Component
         }
     }
 
-    public function openImagePicker(): void
+    /**
+     * Gallery hook for the shared picker (gallery mode): append once — duplicates are the
+     * UNIQUE(product_id, media_id) guard, app-side. The picker stays open for multi-pick.
+     */
+    protected function addGalleryImage(int $mediaId): void
     {
-        abort_unless(Gate::allows('media.view'), 403);
-        $this->showImagePicker = true;
-    }
-
-    public function closeImagePicker(): void
-    {
-        $this->showImagePicker = false;
-    }
-
-    /** Append a library image; stays open so several images can be picked in a row. */
-    public function pickImage(int $mediaId): void
-    {
-        abort_unless(Gate::allows('media.view'), 403);
-
-        if (in_array($mediaId, $this->imageMediaIds, true)) {
-            return; // already in the gallery — the UNIQUE(product_id, media_id) guard, app-side
-        }
-
-        // Only ids from THIS site's LIVE library (the global scope filters site + trashed) —
-        // never an arbitrary id injected via the wire payload.
-        if (Media::query()->whereKey($mediaId)->exists()) {
+        if (! in_array($mediaId, $this->imageMediaIds, true)) {
             $this->imageMediaIds[] = $mediaId;
         }
     }
@@ -181,9 +163,7 @@ final class Editor extends Component
         return view('admin::livewire.catalog.editor', [
             'categories' => $this->availableCategories(),
             'galleryImages' => $this->galleryImages($urls),
-            'pickerMedia' => $this->showImagePicker
-                ? Media::query()->where('mime', 'like', 'image/%')->orderByDesc('created_at')->limit(60)->get()
-                : collect(),
+            'pickerMedia' => $this->pickerMedia(),
             'urls' => $urls,
         ]);
     }
