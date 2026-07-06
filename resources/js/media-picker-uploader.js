@@ -46,14 +46,6 @@ export function createPickerUploader(el) {
         }
     }
 
-    // Files handed over from the source-screen quick-upload dropzone (they can't survive a
-    // Livewire round-trip, so app.js stashed the File objects for this island to drain).
-    if (Array.isArray(window.__pendingPickerFiles) && window.__pendingPickerFiles.length) {
-        const handed = window.__pendingPickerFiles;
-        window.__pendingPickerFiles = null;
-        addFiles(handed);
-    }
-
     // ── Dropzone wiring ──────────────────────────────────────────────────────
     const openDialog = () => inputEl?.click();
     dropEl?.addEventListener('click', openDialog);
@@ -179,6 +171,16 @@ export function createPickerUploader(el) {
         await Promise.allSettled(pending.splice(0));
         window.Livewire?.dispatch('media-uploaded');
     });
+
+    // Drain files handed over from the source-screen quick-upload dropzone (they can't survive the
+    // Livewire round-trip that switched to this pane, so app.js stashed the File objects). Must run
+    // AFTER every uppy.on(...) above — autoProceed fires file-added/complete synchronously, so
+    // draining earlier would lose the progress rows and the media-uploaded dispatch.
+    if (Array.isArray(window.__pendingPickerFiles) && window.__pendingPickerFiles.length) {
+        const handed = window.__pendingPickerFiles;
+        window.__pendingPickerFiles = null;
+        addFiles(handed);
+    }
 
     return {
         destroy() {

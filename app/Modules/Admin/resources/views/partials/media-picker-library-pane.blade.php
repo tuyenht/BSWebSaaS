@@ -235,17 +235,20 @@
                                     <x-admin::icon name="ri-information" class="size-3.5" />
                                 </button>
                             @endunless
-                            @php($checkClass = 'absolute right-[7px] top-[7px] flex size-5 items-center justify-center rounded-full border-[1.5px] shadow '.($selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-white/90 bg-black/20 text-transparent'))
+                            {{-- Selected = primary tint wash + a filled check badge that reads clearly on any
+                                 image; unselected = a subtle ring that darkens on hover (touch-friendly). --}}
+                            @if ($selected)
+                                <span class="pointer-events-none absolute inset-0 rounded-[11px] bg-admin-primary/25"></span>
+                                <span class="pointer-events-none absolute inset-0 rounded-[11px] border-[3px] border-admin-primary"></span>
+                            @endif
+                            @php($checkClass = 'absolute right-[7px] top-[7px] flex size-[22px] items-center justify-center rounded-full border-2 transition-transform '.($selected || $picked ? 'scale-110 border-white bg-admin-primary text-white shadow-md' : 'border-white bg-black/25 text-white/0'))
                             @if ($manage)
                                 {{-- Manage mode: the checkbox is the SELECT affordance (tile click = detail). --}}
-                                <button type="button" wire:click.stop="togglePickerItem({{ $m->id }})" class="{{ $checkClass }} {{ $selected ? '' : 'hover:bg-black/40' }}">
-                                    <x-admin::icon name="ri-check" class="size-3" />
+                                <button type="button" wire:click.stop="togglePickerItem({{ $m->id }})" class="{{ $checkClass }} {{ $selected ? '' : 'hover:bg-black/45 hover:text-white/70' }}">
+                                    <x-admin::icon name="ri-check" class="size-3.5" />
                                 </button>
                             @else
-                                <span class="{{ $checkClass }}"><x-admin::icon name="ri-check" class="size-3" /></span>
-                            @endif
-                            @if ($selected)
-                                <span class="pointer-events-none absolute inset-0 rounded-[11px] border-[2.5px] border-admin-primary"></span>
+                                <span class="{{ $checkClass }}"><x-admin::icon name="ri-check" class="size-3.5" /></span>
                             @endif
                         </div>
                     @endforeach
@@ -264,7 +267,7 @@
                         @php($selected = in_array($m->id, $pickerSelected, true))
                         <div wire:key="mp-row-{{ $m->id }}" role="button" tabindex="0"
                                 wire:click="{{ $manage ? 'openPickerDetail' : 'togglePickerItem' }}({{ $m->id }})"
-                                @class(['flex cursor-pointer items-center gap-3 rounded-[9px] px-2.5 py-2 text-left', 'bg-admin-primary/4' => $selected, 'hover:bg-surface-hover' => ! $selected, 'pointer-events-none opacity-60' => $picked])>
+                                @class(['flex cursor-pointer items-center gap-3 rounded-[9px] px-2.5 py-2 text-left', 'bg-admin-primary/10 shadow-[inset_3px_0_0_var(--color-admin-primary)]' => $selected, 'hover:bg-surface-hover' => ! $selected, 'pointer-events-none opacity-60' => $picked])>
                             @php($rowCheckClass = 'flex size-[22px] shrink-0 items-center justify-center rounded-md border-[1.5px] '.($selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-placeholder bg-surface text-transparent'))
                             @if ($manage)
                                 <button type="button" wire:click.stop="togglePickerItem({{ $m->id }})" class="{{ $rowCheckClass }}">
