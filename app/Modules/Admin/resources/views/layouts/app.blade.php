@@ -57,19 +57,23 @@
                     <li>
                         @if ($item->hasChildren())
                             <div>
+                                {{-- Reference state script (_vertical.scss 85-123): an EXPANDED group brightens
+                                     (link + arrow follow the active color even when it is not the active page's
+                                     group), and the ACTIVE group keeps its arrow rotated down + bright even while
+                                     the accordion has another group open (.collapsed.active::after stays at 90°). --}}
                                 <button type="button" aria-label="{{ $item->label }}"
                                         @click="openGroup = (openGroup === '{{ $item->key }}' ? '' : '{{ $item->key }}')"
                                         :aria-expanded="openGroup === '{{ $item->key }}'"
+                                        :class="openGroup === '{{ $item->key }}' && 'text-sidebar-fg-active'"
                                         @class([
                                             'group flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
                                             'text-sidebar-fg-active' => $item->active,
                                         ])>
                                     <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                     <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
-                                    {{-- Reference arrow verbatim (_vertical.scss 85-115): a SLIM glyph at ~1.05rem,
-                                         color:inherit (so it brightens with the item's own hover/active state),
-                                         rotating 90° open. No opacity of its own. --}}
-                                    <x-admin::icon name="arrow-right-s" class="sidebar-label size-4 shrink-0 transition-transform" ::class="openGroup === '{{ $item->key }}' && 'rotate-90'" />
+                                    {{-- Slim reference glyph (~1.05rem), color:inherit — brightens with the states
+                                         above; rotates down when open OR when this is the active page's group. --}}
+                                    <x-admin::icon name="arrow-right-s" class="sidebar-label size-4 shrink-0 transition-transform" ::class="(openGroup === '{{ $item->key }}' || {{ $item->active ? 'true' : 'false' }}) && 'rotate-90'" />
                                 </button>
                                 <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-0.5 ps-4">
                                     @foreach ($item->children as $child)
