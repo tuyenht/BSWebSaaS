@@ -188,6 +188,15 @@ trait WithMediaLibraryPicker
         $this->pickerPage = 1;
     }
 
+    /** The narrow-screen folder dropdown binds pickerFolderId directly — re-validate + reset page. */
+    public function updatedPickerFolderId(mixed $value): void
+    {
+        $this->pickerFolderId = ($value === null || $value === '')
+            ? null
+            : MediaFolder::query()->whereKey($value)->first()?->id;
+        $this->pickerPage = 1;
+    }
+
     public function setPickerTab(string $tab): void
     {
         abort_unless(Gate::allows('media.view'), 403);

@@ -27,7 +27,7 @@
                 · {{ __('media.picker_drop_import') }}
             </div>
         </div>
-        <div class="mx-auto grid w-full max-w-[640px] grid-cols-4 gap-3">
+        <div class="mx-auto grid w-full max-w-[640px] grid-cols-2 gap-3 min-[480px]:grid-cols-3 min-[720px]:grid-cols-4">
             @foreach ($sources as $source)
                 <button type="button" wire:key="mp-src-{{ $source['key'] }}" disabled
                         title="{{ __('media.picker_source_soon') }}"

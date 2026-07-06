@@ -9,7 +9,10 @@
          role="dialog" aria-modal="true" aria-label="{{ __('media.picker_title') }}"
          x-data x-on:keydown.escape.window="$wire.closeImagePicker()"
          wire:click.self="closeImagePicker">
-        <div class="flex h-[660px] max-h-[80vh] w-full max-w-[1020px] flex-col overflow-hidden rounded-[14px] border border-border-strong bg-surface text-sm text-body-text shadow-[0_24px_60px_-22px_rgba(56,65,74,0.4)]">
+        {{-- Responsive envelope (handoff Fidelity): caps at 1040×660 but shrinks to the viewport
+             (minus a 16px gutter each side) on any smaller screen — 360, 768, 1280, 1920 all fit
+             with no horizontal overflow. Inner panes carry their own breakpoints. --}}
+        <div class="flex h-[min(660px,calc(100dvh-2rem))] w-[min(1040px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[14px] border border-border-strong bg-surface text-sm text-body-text shadow-[0_24px_60px_-22px_rgba(56,65,74,0.4)]">
 
             {{-- Header --}}
             <div class="flex shrink-0 items-center justify-between gap-4 px-5 pb-[9px] pt-[15px]">

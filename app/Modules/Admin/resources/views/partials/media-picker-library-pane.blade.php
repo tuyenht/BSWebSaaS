@@ -8,8 +8,8 @@
         : ($mime === 'application/pdf' ? ['ri-file-pdf-2', '#f06548'] : ['ri-file-excel-2', '#0ab39c'])))
 <div class="flex min-h-0 flex-1">
 
-    {{-- Folder sidebar --}}
-    <div class="flex w-[184px] shrink-0 flex-col gap-0.5 overflow-auto border-r border-border p-[14px_10px]">
+    {{-- Folder sidebar — a rail ≥640px, collapsed into the toolbar dropdown below on narrow screens. --}}
+    <div class="hidden w-[184px] shrink-0 flex-col gap-0.5 overflow-auto border-r border-border p-[14px_10px] min-[640px]:flex">
         <div class="px-2 pb-1.5 pt-0.5 text-[11px] font-semibold uppercase tracking-[.05em] text-body-faint">{{ __('media.picker_folders') }}</div>
         <button type="button" wire:click="setPickerFolder(null)"
                 class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerFolderId === null ? 'bg-admin-primary/8 font-semibold text-admin-primary' : 'font-medium text-body-text hover:bg-surface-hover' }}">
@@ -53,6 +53,13 @@
 
         {{-- Toolbar --}}
         <div class="flex shrink-0 flex-wrap items-center gap-[9px] border-b border-border px-4 py-3">
+            {{-- Folder picker on narrow screens (the sidebar rail is hidden <640px). --}}
+            <select wire:model.live="pickerFolderId" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text focus:outline-none min-[640px]:hidden" aria-label="{{ __('media.picker_folders') }}">
+                <option value="">{{ __('media.picker_all_images') }} ({{ $mp['total'] }})</option>
+                @foreach ($mp['folders'] as $folder)
+                    <option value="{{ $folder->id }}">{{ $folder->name }} ({{ $folder->media_count }})</option>
+                @endforeach
+            </select>
             <div class="relative min-w-[150px] flex-1">
                 <x-admin::icon name="ri-search" class="absolute left-[11px] top-1/2 size-[15px] -translate-y-1/2 text-body-faint" />
                 <input type="search" wire:model.live.debounce.250ms="pickerSearch" placeholder="{{ __('media.picker_search_placeholder') }}"
