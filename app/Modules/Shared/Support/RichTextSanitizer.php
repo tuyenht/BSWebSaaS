@@ -20,11 +20,14 @@ final class RichTextSanitizer
 {
     private const string BASIC_ALLOWED = 'p,br,strong,em,b,i,u,ul,ol,li,a[href]';
 
-    private const string FULL_ALLOWED = 'p[style],br,strong,em,b,i,u,s,sub,sup,ul,ol,li,a[href],'
-        .'h2,h3,h4,h5,blockquote,table,thead,tbody,tr,td[style],th[style],span[style],'
+    private const string FULL_ALLOWED = 'p[style],br,hr,strong,em,b,i,u,s,sub,sup,ul,ol,li,a[href],'
+        .'h2,h3,h4,h5,blockquote,table[style],thead,tbody,tr,td[style],th[style],span[style],'
         .'img[src|alt|width|height],div[class],iframe[src|width|height|allowfullscreen|allow|loading]';
 
-    private const string ALLOWED_CSS = 'color,background-color,font-size,text-align';
+    // Layout props are what the editor's own tools write: indent → margin-left (padding-left
+    // inside table cells), column/table drag-resize → width/height. All inert — no script vector.
+    private const string ALLOWED_CSS = 'color,background-color,font-size,text-align,'
+        .'margin-left,padding-left,width,height';
 
     /** @var array<string, HTMLPurifier> */
     private array $purifiers = [];

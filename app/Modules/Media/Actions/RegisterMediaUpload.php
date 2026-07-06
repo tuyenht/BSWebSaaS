@@ -68,8 +68,15 @@ final readonly class RegisterMediaUpload
         $siteName = (string) Site::query()->find($this->current->id())?->name;
 
         // 6) Dedup within (site, collection, hash) — return the master, drop the temp object.
+        // A master whose object went missing (an interrupted past finalize) self-heals here:
+        // these are the same bytes, so they are copied back under the row's existing
+        // storage_key — otherwise dedup would pin that hash to a dead key forever and
+        // re-uploading the file could never fix the broken image.
         $existing = Media::query()->where('collection', $collection)->where('hash', $hash)->first();
         if ($existing instanceof Media) {
+            if (! $disk->exists($existing->storage_key) && ! $disk->copy($tempKey, $existing->storage_key)) {
+                throw new RuntimeException('Không thể lưu tệp vào kho. Vui lòng thử lại.');
+            }
             $disk->delete($tempKey);
 
             return $existing;
@@ -78,7 +85,11 @@ final readonly class RegisterMediaUpload
         // 7) Final opaque content-hash key (unique within the site) + R2-internal copy, drop temp.
         $slug = Str::slug(pathinfo($filename, PATHINFO_FILENAME)) ?: 'tep';
         $finalKey = MediaKey::unique($siteName, $collection, $slug, $hash, $ext);
-        $disk->copy($tempKey, $finalKey);
+        // copy() returns bool on this disk ('throw' => false) — unchecked failure would persist
+        // a row whose object never existed: an unrenderable orphan the picker shows as broken.
+        if (! $disk->copy($tempKey, $finalKey)) {
+            throw new RuntimeException('Không thể lưu tệp vào kho. Vui lòng thử lại.');
+        }
         $disk->delete($tempKey);
 
         // 8) Persist — BelongsToSite stamps site_id; createOrFirst is race-safe on (site,collection,hash).

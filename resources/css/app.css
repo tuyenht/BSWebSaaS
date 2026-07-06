@@ -159,3 +159,24 @@ button:not(:disabled) {
 .jodit-status-bar-link {
     display: none !important;
 }
+/* Counters read as quiet metadata ("Ký tự: 506 · Từ: 135"), not shouting caps — Jodit's
+   default status bar uppercases everything. */
+.jodit-status-bar {
+    text-transform: none;
+    height: 26px;
+    padding: 0 0.625rem;
+    background: var(--color-surface-muted);
+    border-top: 1px solid var(--color-border);
+    border-radius: 0 0 0.25rem 0.25rem;
+    color: var(--color-body-faint);
+    font-size: 0.75rem;
+}
+.jodit-status-bar__item {
+    margin: 0;
+}
+/* A middle-dot between the char and word counters instead of raw span-to-span spacing. */
+.jodit-status-bar__item-right + .jodit-status-bar__item-right::before {
+    content: '·';
+    margin: 0 0.375rem;
+    color: var(--color-placeholder);
+}

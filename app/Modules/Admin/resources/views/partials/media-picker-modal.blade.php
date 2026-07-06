@@ -34,7 +34,12 @@
                                 @disabled($picked)
                                 class="relative overflow-hidden rounded border transition-colors {{ $picked ? 'border-admin-primary opacity-60' : 'border-border hover:border-admin-primary' }}"
                                 title="{{ $m->original_filename }}">
-                            <img src="{{ $urls->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy" class="aspect-square w-full object-cover">
+                            {{-- onerror: a master whose object is gone (or a transform hiccup) degrades to
+                                 a quiet filename card instead of the browser's broken-image glyph. --}}
+                            <img src="{{ $urls->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy"
+                                 class="aspect-square w-full object-cover"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                            <span class="aspect-square w-full items-center justify-center bg-surface-muted p-1 text-center text-[10px] leading-tight text-body-faint" style="display:none">{{ $m->original_filename }}</span>
                             @if ($picked)
                                 <span class="absolute right-1 top-1 rounded bg-admin-primary px-1.5 py-0.5 text-xs text-white">✓</span>
                             @endif

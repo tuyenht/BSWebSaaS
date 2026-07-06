@@ -26,6 +26,24 @@
 
 import { Jodit } from 'jodit';
 import 'jodit/es2021/jodit.min.css';
+// The bare `jodit` entry (esm/index.js → esm/plugins/index.js) ships only the 21 "essential"
+// plugins. Every toolbar button outside that set must import its plugin here, or the button
+// still renders (our icon map registers icons globally) but silently no-ops on click.
+// tests/Feature/Admin/RichEditorContractTest pins button↔plugin↔sanitizer consistency.
+import 'jodit/esm/plugins/justify/justify.js'; // left/center/right/justify
+import 'jodit/esm/plugins/indent/indent.js'; // indent/outdent (margin-left; padding-left in cells)
+import 'jodit/esm/plugins/hr/hr.js';
+import 'jodit/esm/plugins/symbols/symbols.js';
+import 'jodit/esm/plugins/clean-html/clean-html.js'; // eraser
+import 'jodit/esm/plugins/source/source.js';
+import 'jodit/esm/plugins/fullsize/fullsize.js';
+import 'jodit/esm/plugins/resizer/resizer.js'; // drag-resize frames (img → width/height attrs)
+import 'jodit/esm/plugins/select-cells/select-cells.js'; // fires the cell popup + all table* commands
+import 'jodit/esm/plugins/resize-cells/resize-cells.js'; // drag column widths
+import 'jodit/esm/plugins/table-keyboard-navigation/table-keyboard-navigation.js';
+import 'jodit/esm/plugins/image-properties/image-properties.js'; // dblclick img → alt/size dialog
+import 'jodit/esm/plugins/paste/paste.js'; // consumes askBeforePasteHTML/defaultActionOnPaste
+import 'jodit/esm/plugins/paste-from-word/paste-from-word.js';
 import jaPack from 'jodit/esm/langs/ja.js';
 import zhPack from 'jodit/esm/langs/zh_cn.js';
 import viPack from './admin-rich-editor-lang-vi.js';
@@ -136,6 +154,25 @@ function editorOptions(profile) {
         askBeforePasteHTML: false,
         defaultActionOnPaste: 'insert_clear_html',
         disablePlugins: ['add-new-line'],
+        // Source view stays a plain textarea: 'ace' (the default) AND beautifyHTML both load
+        // libraries from cdnjs at runtime — a white-label/CSP violation.
+        sourceEditor: 'area',
+        beautifyHTML: false,
+        // Dblclick-image dialog trimmed to what survives the server allowlist (img[src|alt|
+        // width|height]) — src/link/margins/class/style/align edits and the unconfigured
+        // filebrowser affordances would either be stripped on save or dead-end.
+        image: {
+            editSrc: false,
+            useImageEditor: false,
+            editTitle: false,
+            editLink: false,
+            editBorderRadius: false,
+            editMargins: false,
+            editClass: false,
+            editStyle: false,
+            editId: false,
+            editAlign: false,
+        },
         controls: {
             // Only offer what survives the server-side allowlist — no silent format loss.
             // h1 is deliberately absent (owner 06/07): the system owns the page/product H1.

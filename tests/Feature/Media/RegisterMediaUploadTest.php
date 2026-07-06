@@ -5,6 +5,7 @@ use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
@@ -132,4 +133,44 @@ it('throws when the temp key has no ownership record (expired/forged)', function
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'x.png')))
         ->toThrow(RuntimeException::class);
+});
+
+it('writes NO row when the storage copy fails (orphan guard)', function (): void {
+    $tempKey = '_incoming/a/01fail.png';
+    Cache::put(PresignMediaUpload::ownershipKey($tempKey), 1, now()->addMinutes(5));
+
+    // copy() returns bool on the r2 disk ('throw' => false) — a silent false here used to
+    // persist a row whose object never existed (renders as a broken thumb in the picker).
+    $disk = Mockery::mock(Filesystem::class);
+    $disk->shouldReceive('exists')->with($tempKey)->andReturnTrue();
+    $disk->shouldReceive('size')->with($tempKey)->andReturn(strlen(pngContent()));
+    $disk->shouldReceive('get')->with($tempKey)->andReturn(pngContent());
+    $disk->shouldReceive('copy')->once()->andReturnFalse();
+    $disk->shouldReceive('delete')->never(); // the temp object must survive for a retry
+    Storage::shouldReceive('disk')->with('r2')->andReturn($disk);
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'fail.png')))
+        ->toThrow(RuntimeException::class, 'Không thể lưu tệp vào kho');
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
+});
+
+it('self-heals a master whose object went missing when the same bytes are re-uploaded', function (): void {
+    [$firstId, $secondId, $key] = app(Tenancy::class)->enter(1, function (): array {
+        stageUpload(1, '_incoming/a/01heal1.png', pngContent());
+        $first = app(RegisterMediaUpload::class)->handle('_incoming/a/01heal1.png', 'heal.png');
+
+        // Simulate the interrupted-finalize orphan: the row stays, its object vanishes.
+        Storage::disk('r2')->delete($first->storage_key);
+
+        stageUpload(1, '_incoming/a/01heal2.png', pngContent());
+        $second = app(RegisterMediaUpload::class)->handle('_incoming/a/01heal2.png', 'heal-again.png');
+
+        return [$first->id, $second->id, $first->storage_key];
+    });
+
+    // Dedup still returns the one master — now with its object restored under the SAME key.
+    expect($secondId)->toBe($firstId);
+    Storage::disk('r2')->assertExists($key);
+    Storage::disk('r2')->assertMissing('_incoming/a/01heal2.png');
 });

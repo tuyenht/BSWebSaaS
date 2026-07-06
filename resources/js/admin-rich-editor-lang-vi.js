@@ -112,4 +112,8 @@ export default {
     'Select all': 'Chọn tất cả',
     'Copy selection': 'Chép vùng chọn',
     'Alternative text': 'Chữ thay thế (alt)',
+    // Image dblclick dialog (image-properties — trimmed to alt + size)
+    'Image properties': 'Thuộc tính ảnh',
+    'Image': 'Ảnh',
+    'Alternative': 'Chữ thay thế (alt)',
 };
