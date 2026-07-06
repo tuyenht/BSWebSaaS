@@ -134,7 +134,7 @@
             @else
                 @if (! $mp['page']->isEmpty())
                     <button type="button"
-                            x-on:click="$bsConfirm({ text: @js(__('media.picker_trash_empty_confirm')), confirm: @js(__('media.picker_trash_empty')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.emptyPickerTrash())"
+                            x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_empty_confirm')), confirm: @js(__('media.picker_trash_empty')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.emptyPickerTrash())"
                             class="inline-flex items-center gap-1.5 rounded-lg border border-admin-danger/20 bg-surface px-3 py-2 text-[12.5px] font-semibold text-admin-danger">
                         <x-admin::icon name="ri-delete-bin" class="size-3.5" />{{ __('media.picker_trash_empty') }}
                     </button>
@@ -164,7 +164,7 @@
                                 <x-admin::icon name="ri-refresh" class="size-[13px]" />{{ __('media.picker_trash_restore') }}
                             </button>
                             <button type="button"
-                                    x-on:click="$bsConfirm({ text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())"
+                                    x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())"
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger">
                                 <x-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_trash_purge') }}
                             </button>
@@ -188,7 +188,7 @@
                         @endcan
                         @can('media.delete')
                             <button type="button"
-                                    x-on:click="$bsConfirm({ text: @js(__('media.picker_delete_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_delete')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.pickerBulkDelete())"
+                                    x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('media.picker_delete_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_delete')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.pickerBulkDelete())"
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger">
                                 <x-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_delete') }}
                             </button>
@@ -240,6 +240,11 @@
                             @if ($selected)
                                 <span class="pointer-events-none absolute inset-0 rounded-[11px] bg-admin-primary/25"></span>
                                 <span class="pointer-events-none absolute inset-0 rounded-[11px] border-[3px] border-admin-primary"></span>
+                            {{-- "Currently viewing" (manage-mode detail open on this tile): a soft ring, distinct
+                                 from the solid selected border, so you can see which one the panel is showing. --}}
+                            @elseif (($pickerDetailId ?? null) === $m->id)
+                                <span class="pointer-events-none absolute inset-0 rounded-[11px] bg-admin-primary/10"></span>
+                                <span class="pointer-events-none absolute inset-0 rounded-[11px] ring-2 ring-inset ring-admin-primary/60"></span>
                             @endif
                             @php($checkClass = 'absolute right-[7px] top-[7px] flex size-[22px] items-center justify-center rounded-full border-2 transition-transform '.($selected || $picked ? 'scale-110 border-white bg-admin-primary text-white shadow-md' : 'border-white bg-black/25 text-white/0'))
                             @if ($manage)
@@ -265,9 +270,10 @@
                     @foreach ($mp['page'] as $m)
                         @php($picked = in_array($m->id, $pickedIds ?? [], true))
                         @php($selected = in_array($m->id, $pickerSelected, true))
+                        @php($viewing = ($pickerDetailId ?? null) === $m->id)
                         <div wire:key="mp-row-{{ $m->id }}" role="button" tabindex="0"
                                 wire:click="{{ $manage ? 'openPickerDetail' : 'togglePickerItem' }}({{ $m->id }})"
-                                @class(['flex cursor-pointer items-center gap-3 rounded-[9px] px-2.5 py-2 text-left', 'bg-admin-primary/10 shadow-[inset_3px_0_0_var(--color-admin-primary)]' => $selected, 'hover:bg-surface-hover' => ! $selected, 'pointer-events-none opacity-60' => $picked])>
+                                @class(['flex cursor-pointer items-center gap-3 rounded-[9px] px-2.5 py-2 text-left', 'bg-admin-primary/10 shadow-[inset_3px_0_0_var(--color-admin-primary)]' => $selected, 'bg-admin-primary/5 shadow-[inset_2px_0_0_var(--color-admin-primary)]' => $viewing && ! $selected, 'hover:bg-surface-hover' => ! $selected && ! $viewing, 'pointer-events-none opacity-60' => $picked])>
                             @php($rowCheckClass = 'flex size-[22px] shrink-0 items-center justify-center rounded-md border-[1.5px] '.($selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-placeholder bg-surface text-transparent'))
                             @if ($manage)
                                 <button type="button" wire:click.stop="togglePickerItem({{ $m->id }})" class="{{ $rowCheckClass }}">
