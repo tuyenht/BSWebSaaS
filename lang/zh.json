@@ -312,5 +312,15 @@
     "media.picker_back_sources": "来源",
     "media.picker_prev": "上一页",
     "media.picker_next": "下一页",
-    "media.picker_page_of": "第 :page / :pages 页"
+    "media.picker_page_of": "第 :page / :pages 页",
+    "media.picker_detail": "详情",
+    "media.picker_detail_title": "图片详情",
+    "media.picker_detail_dims": "尺寸",
+    "media.picker_detail_size": "大小",
+    "media.picker_detail_format": "格式",
+    "media.picker_detail_folder": "文件夹",
+    "media.picker_detail_alt_label": "替代文本（ALT）",
+    "media.picker_detail_alt_placeholder": "为 SEO 和无障碍描述图片…",
+    "media.picker_detail_save": "保存信息",
+    "media.picker_detail_saved": "已保存图片信息。"
 }

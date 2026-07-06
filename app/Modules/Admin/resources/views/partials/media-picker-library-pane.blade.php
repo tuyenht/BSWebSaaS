@@ -170,9 +170,10 @@
                     @foreach ($mp['page'] as $m)
                         @php($picked = in_array($m->id, $pickedIds ?? [], true))
                         @php($selected = in_array($m->id, $pickerSelected, true))
-                        <button type="button" wire:key="mp-item-{{ $m->id }}" @disabled($picked)
+                        {{-- A div, not a button, so the ⓘ detail button can nest without invalid markup. --}}
+                        <div wire:key="mp-item-{{ $m->id }}" role="button" tabindex="0"
                                 wire:click="togglePickerItem({{ $m->id }})" title="{{ $m->original_filename }}"
-                                class="relative aspect-square overflow-hidden rounded-[11px] border border-border bg-surface-hover {{ $picked ? 'opacity-60' : '' }}">
+                                @class(['relative aspect-square cursor-pointer overflow-hidden rounded-[11px] border border-border bg-surface-hover', 'pointer-events-none opacity-60' => $picked])>
                             @if (str_starts_with($m->mime, 'image/'))
                                 <img src="{{ $mp['urls']->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy"
                                      class="absolute inset-0 size-full object-cover"
@@ -185,13 +186,17 @@
                                 </span>
                             @endif
                             <span class="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-3.5 text-left text-[10px] text-white">{{ $m->original_filename }}</span>
+                            <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
+                                    class="absolute left-[7px] top-[7px] flex size-[22px] items-center justify-center rounded-md bg-black/30 text-white transition-colors hover:bg-black/50">
+                                <x-admin::icon name="ri-information" class="size-3.5" />
+                            </button>
                             <span class="absolute right-[7px] top-[7px] flex size-5 items-center justify-center rounded-full border-[1.5px] shadow {{ $selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-white/90 bg-black/20 text-transparent' }}">
                                 <x-admin::icon name="ri-check" class="size-3" />
                             </span>
                             @if ($selected)
                                 <span class="pointer-events-none absolute inset-0 rounded-[11px] border-[2.5px] border-admin-primary"></span>
                             @endif
-                        </button>
+                        </div>
                     @endforeach
                 </div>
             @else
@@ -206,9 +211,9 @@
                     @foreach ($mp['page'] as $m)
                         @php($picked = in_array($m->id, $pickedIds ?? [], true))
                         @php($selected = in_array($m->id, $pickerSelected, true))
-                        <button type="button" wire:key="mp-row-{{ $m->id }}" @disabled($picked)
+                        <div wire:key="mp-row-{{ $m->id }}" role="button" tabindex="0"
                                 wire:click="togglePickerItem({{ $m->id }})"
-                                class="flex items-center gap-3 rounded-[9px] px-2.5 py-2 text-left {{ $selected ? 'bg-admin-primary/4' : 'hover:bg-surface-hover' }} {{ $picked ? 'opacity-60' : '' }}">
+                                @class(['flex cursor-pointer items-center gap-3 rounded-[9px] px-2.5 py-2 text-left', 'bg-admin-primary/4' => $selected, 'hover:bg-surface-hover' => ! $selected, 'pointer-events-none opacity-60' => $picked])>
                             <span class="flex size-[22px] shrink-0 items-center justify-center rounded-md border-[1.5px] {{ $selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-placeholder bg-surface text-transparent' }}">
                                 <x-admin::icon name="ri-check" class="size-3" />
                             </span>
@@ -226,7 +231,11 @@
                             <span class="w-[100px] text-[12.5px] text-body-muted">{{ $m->width !== null ? $m->width.' × '.$m->height : '—' }}</span>
                             <span class="w-[70px] text-[12.5px] text-body-muted">{{ number_format($m->size / 1048576, 1) }} MB</span>
                             <span class="w-[52px]"><span class="rounded-[5px] bg-admin-primary/8 px-[7px] py-0.5 text-[10px] font-semibold uppercase text-admin-primary">{{ $m->extLabel() }}</span></span>
-                        </button>
+                            <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
+                                    class="flex size-7 shrink-0 items-center justify-center text-body-faint hover:text-admin-primary">
+                                <x-admin::icon name="ri-information" class="size-4" />
+                            </button>
+                        </div>
                     @endforeach
                 </div>
             @endif

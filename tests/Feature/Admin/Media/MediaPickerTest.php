@@ -505,6 +505,72 @@ it('keeps inserted image links working after a folder is renamed (storage_key, n
     });
 });
 
+it('opens the detail panel for a library image and loads its alt in the site locale', function (): void {
+    $user = pickerManager();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $media = seedPickerMedia('detail', ['alt' => ['vi' => 'Đồ gá phay CNC', 'en' => 'CNC milling jig']]);
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerDetail', $media->id);
+
+        expect($component->get('pickerDetailId'))->toBe($media->id)
+            ->and($component->get('pickerDetailAlt'))->toBe('Đồ gá phay CNC'); // site default = vi
+        expect($component->instance()->mediaPickerState()['detail']?->id)->toBe($media->id);
+
+        $component->call('closePickerDetail');
+        expect($component->get('pickerDetailId'))->toBeNull();
+    });
+});
+
+it('saves alt for the site locale without touching other locales (media.upload)', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $media = seedPickerMedia('alt', ['alt' => ['en' => 'keep me']]);
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerDetail', $media->id)
+            ->set('pickerDetailAlt', '  Bàn gá khoan  ')
+            ->call('savePickerDetailAlt');
+
+        $fresh = $media->fresh();
+        expect($fresh?->alt)->toBe(['en' => 'keep me', 'vi' => 'Bàn gá khoan']); // trimmed, en preserved
+    });
+});
+
+it('403s saving alt without media.upload', function (): void {
+    $user = pickerManager(); // media.view only
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $media = seedPickerMedia('ro');
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerDetail', $media->id)
+            ->set('pickerDetailAlt', 'nope')
+            ->call('savePickerDetailAlt')
+            ->assertStatus(403);
+
+        expect($media->fresh()?->alt)->toBe([]);
+    });
+});
+
+it('never opens the detail of another site\'s image', function (): void {
+    $user = pickerManager();
+
+    $foreign = app(Tenancy::class)->enter(2, fn (): int => seedPickerMedia('foreign2')->id);
+
+    app(Tenancy::class)->enter(1, function () use ($user, $foreign): void {
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerDetail', $foreign)
+            ->assertSet('pickerDetailId', null); // RLS-scoped resolve → nothing
+    });
+});
+
 it('translates every picker string in all four admin languages', function (): void {
     $vi = json_decode((string) file_get_contents(lang_path('vi.json')), true, 512, JSON_THROW_ON_ERROR);
     $pickerKeys = array_filter(array_keys($vi), fn (string $k): bool => str_starts_with($k, 'media.picker_'));

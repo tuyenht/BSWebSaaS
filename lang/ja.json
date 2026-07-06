@@ -312,5 +312,15 @@
     "media.picker_back_sources": "ソース",
     "media.picker_prev": "前のページ",
     "media.picker_next": "次のページ",
-    "media.picker_page_of": ":page / :pages ページ"
+    "media.picker_page_of": ":page / :pages ページ",
+    "media.picker_detail": "詳細",
+    "media.picker_detail_title": "画像の詳細",
+    "media.picker_detail_dims": "寸法",
+    "media.picker_detail_size": "容量",
+    "media.picker_detail_format": "形式",
+    "media.picker_detail_folder": "フォルダー",
+    "media.picker_detail_alt_label": "代替テキスト（ALT）",
+    "media.picker_detail_alt_placeholder": "SEO・アクセシビリティ向けに画像を説明…",
+    "media.picker_detail_save": "情報を保存",
+    "media.picker_detail_saved": "画像情報を保存しました。"
 }

@@ -27,6 +27,8 @@ use Illuminate\Support\Str;
  * @property string|null $original_filename
  * @property int|null $folder_id
  * @property int $position
+ * @property array<string, string> $alt
+ * @property array<string, string> $title
  */
 final class Media extends Model
 {

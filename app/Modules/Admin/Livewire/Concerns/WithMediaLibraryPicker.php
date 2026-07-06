@@ -10,6 +10,7 @@ use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Shared\Support\VideoEmbed;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -50,7 +51,8 @@ trait WithMediaLibraryPicker
         $this->reset('pickerTab', 'pickerType', 'pickerFormat', 'pickerSearch', 'pickerFolderId',
             'pickerSelected', 'pickerPage', 'pickerNewFolderOpen', 'pickerNewFolderName',
             'pickerNewFolderSlug', 'pickerNewFolderSlugEdited', 'pickerNewFolderSlugFallback',
-            'pickerSource', 'pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy');
+            'pickerSource', 'pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy',
+            'pickerDetailId', 'pickerDetailAlt');
         $this->showImagePicker = true;
     }
 
@@ -179,6 +181,12 @@ trait WithMediaLibraryPicker
 
     public string $pickerNewFolderName = '';
 
+    /** The media whose detail panel is open (null = closed). */
+    public ?int $pickerDetailId = null;
+
+    /** Editable alt text for the open detail, in the site's default content locale. */
+    public string $pickerDetailAlt = '';
+
     /** Live slug preview under the name field (editable via the pencil). */
     public string $pickerNewFolderSlug = '';
 
@@ -224,7 +232,8 @@ trait WithMediaLibraryPicker
         abort_unless(Gate::allows('media.view'), 403);
 
         $this->pickerTab = $tab === 'upload' ? 'upload' : 'library';
-        $this->pickerSource = null; // tab switch always lands on the source grid (handoff behavior)
+        $this->pickerSource = null;   // tab switch always lands on the source grid (handoff behavior)
+        $this->closePickerDetail();   // …and closes the detail panel
     }
 
     public function setPickerView(string $view): void
@@ -266,6 +275,59 @@ trait WithMediaLibraryPicker
     public function clearPickerSelection(): void
     {
         $this->pickerSelected = [];
+    }
+
+    /*
+    |------------------------------------------------------------------------
+    | Detail panel (handoff screen 8) — preview + per-locale alt text
+    |------------------------------------------------------------------------
+    */
+
+    public function openPickerDetail(int $mediaId): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+
+        // RLS-scoped: never an arbitrary id from the wire — a foreign/trashed id resolves to null.
+        $media = Media::query()->whereKey($mediaId)->first();
+        if ($media === null) {
+            return;
+        }
+
+        $this->pickerDetailId = $media->id;
+        $this->pickerDetailAlt = $media->alt[$this->pickerContentLocale()] ?? '';
+    }
+
+    public function closePickerDetail(): void
+    {
+        $this->pickerDetailId = null;
+        $this->pickerDetailAlt = '';
+    }
+
+    /** Save the alt text for the site's default content locale (metadata write → media.upload). */
+    public function savePickerDetailAlt(): void
+    {
+        abort_unless(Gate::allows('media.upload'), 403);
+
+        if ($this->pickerDetailId === null) {
+            return;
+        }
+        $media = Media::query()->whereKey($this->pickerDetailId)->first();
+        if ($media === null) {
+            return;
+        }
+
+        // Per-locale JSONB — only this locale's key changes; other locales' alt survive.
+        $alt = $media->alt;
+        $alt[$this->pickerContentLocale()] = trim($this->pickerDetailAlt);
+        $media->update(['alt' => $alt]);
+
+        session()->flash('media-status', __('media.picker_detail_saved'));
+    }
+
+    /** The site's default content locale — alt is storefront copy, not the admin UI language. */
+    private function pickerContentLocale(): string
+    {
+        return app(SiteLocale::class)->default();
     }
 
     /*
@@ -500,7 +562,7 @@ trait WithMediaLibraryPicker
      * Everything the picker modal renders, in one request-cached bundle (the Blade partial
      * reads $this->mediaPickerState). Empty shell while closed, so hidden modals cost nothing.
      *
-     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver}
+     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, contentLocale?: string}
      */
     #[Computed]
     public function mediaPickerState(): array
@@ -529,6 +591,8 @@ trait WithMediaLibraryPicker
             'formats' => $formats,
             'selectedPreview' => Media::query()->whereIn('id', array_slice($this->pickerSelected, 0, 3))->get(),
             'urls' => app(MediaUrlResolver::class),
+            'detail' => $this->pickerDetailId === null ? null : Media::query()->with('folder')->whereKey($this->pickerDetailId)->first(),
+            'contentLocale' => $this->pickerContentLocale(),
         ];
     }
 

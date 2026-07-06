@@ -47,7 +47,7 @@
             </div>
 
             {{-- Body --}}
-            <div class="flex min-h-0 min-w-0 flex-1">
+            <div class="relative flex min-h-0 min-w-0 flex-1">
                 <div class="flex min-w-0 flex-1 flex-col overflow-auto bg-surface">
                     @if ($pickerTab === 'upload')
                         @if ($pickerSource === 'url')
@@ -59,6 +59,9 @@
                         @include('admin::partials.media-picker-library-pane', ['mp' => $mp])
                     @endif
                 </div>
+                @if ($pickerTab === 'library' && ($mp['detail'] ?? null))
+                    @include('admin::partials.media-picker-detail-panel', ['mp' => $mp])
+                @endif
             </div>
 
             {{-- Footer --}}
