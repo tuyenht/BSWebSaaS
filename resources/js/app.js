@@ -48,6 +48,31 @@ async function mountRichEditors() {
 
 document.addEventListener('livewire:navigated', mountRichEditors);
 
+// Quick-upload dropzone on the picker's source-select screen: drag-drop or "browse files" stages
+// the File objects on window.__pendingPickerFiles and opens the device pane, whose island drains
+// them on init (a File can't survive a Livewire round-trip, so it's handed over client-side).
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('pickerQuickUpload', () => ({
+        pick() {
+            this.$refs.quickInput?.click();
+        },
+        onChange(event) {
+            this.stage(event.target.files);
+            event.target.value = ''; // allow re-picking the same file
+        },
+        onDrop(event) {
+            this.stage(event.dataTransfer?.files);
+        },
+        stage(files) {
+            if (!files?.length) {
+                return;
+            }
+            window.__pendingPickerFiles = Array.from(files);
+            this.$wire.openPickerSource('device');
+        },
+    }));
+});
+
 // Picker "Thiết bị của tôi" uploader. The device pane appears/disappears inside a Livewire modal
 // (no page navigation), so it mounts via an Alpine component: init() when the pane renders,
 // destroy() when it's removed (tab/source change or modal close). The pane carries wire:ignore so

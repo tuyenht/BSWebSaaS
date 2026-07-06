@@ -46,6 +46,14 @@ export function createPickerUploader(el) {
         }
     }
 
+    // Files handed over from the source-screen quick-upload dropzone (they can't survive a
+    // Livewire round-trip, so app.js stashed the File objects for this island to drain).
+    if (Array.isArray(window.__pendingPickerFiles) && window.__pendingPickerFiles.length) {
+        const handed = window.__pendingPickerFiles;
+        window.__pendingPickerFiles = null;
+        addFiles(handed);
+    }
+
     // ── Dropzone wiring ──────────────────────────────────────────────────────
     const openDialog = () => inputEl?.click();
     dropEl?.addEventListener('click', openDialog);

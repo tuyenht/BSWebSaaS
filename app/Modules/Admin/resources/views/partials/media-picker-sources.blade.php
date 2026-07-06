@@ -14,8 +14,12 @@
 {{-- Compact geometry (handoff Fidelity "KHÔNG CUỘN"): hero 46px, tile icon 44px, tile pad
      13/8 — the hero + 4×2 grid + URL row all fit the standard modal height with no scrollbar.
      A short viewport (<620px) still scrolls as a fallback via the parent's overflow-auto. --}}
+@php($canUpload = auth()->user()?->can('media.upload'))
 <div class="flex flex-1 p-[18px]">
-    <div class="flex flex-1 flex-col justify-center rounded-2xl border-2 border-dashed border-[#dfe3ea] bg-surface-muted px-[22px] py-7">
+    {{-- The whole dashed box doubles as a quick-upload dropzone (drag-drop OR "browse files") for
+         media.upload users: it stages the files client-side and jumps to the device pane's uploader. --}}
+    <div class="flex flex-1 flex-col justify-center rounded-2xl border-2 border-dashed border-[#dfe3ea] bg-surface-muted px-[22px] py-7 transition-colors"
+         @if ($canUpload) x-data="pickerQuickUpload" x-on:dragover.prevent x-on:drop.prevent="onDrop($event)" @endif>
         <div class="mb-4 flex flex-col items-center gap-[5px] text-center">
             <div class="flex size-[46px] items-center justify-center rounded-full bg-admin-primary/8">
                 <x-admin::icon name="ri-upload-cloud-2" class="size-[22px] text-admin-primary" />
@@ -23,11 +27,15 @@
             <div class="text-[15px] font-semibold text-heading">{{ __('media.picker_drop_title') }}</div>
             <div class="text-[12.5px] text-body-muted">
                 {{ __('media.picker_drop_or') }}
-                <span class="cursor-not-allowed font-semibold text-admin-primary underline" title="{{ __('media.picker_source_soon') }}">{{ __('media.picker_drop_browse') }}</span>
+                @if ($canUpload)
+                    <button type="button" x-on:click="pick()" class="cursor-pointer font-semibold text-admin-primary underline">{{ __('media.picker_drop_browse') }}</button>
+                    <input type="file" x-ref="quickInput" multiple accept="image/*,application/pdf" class="hidden" x-on:change="onChange($event)">
+                @else
+                    <span class="font-semibold text-admin-primary underline opacity-60">{{ __('media.picker_drop_browse') }}</span>
+                @endif
                 · {{ __('media.picker_drop_import') }}
             </div>
         </div>
-        @php($canUpload = auth()->user()?->can('media.upload'))
         <div class="mx-auto grid w-full max-w-[640px] grid-cols-2 gap-3 min-[480px]:grid-cols-3 min-[720px]:grid-cols-4">
             @foreach ($sources as $source)
                 @php($active = $source['key'] === 'device' && $canUpload)
