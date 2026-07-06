@@ -164,6 +164,11 @@ docker compose restart horizon                        # sau khi sửa Job/Listen
 > Lớp meta-process điều phối vibe-coding. Tôi (Tuyền) là đạo diễn + senior reviewer; agent thực thi.
 > Slash command tương ứng ở `.claude/commands/bs/` (`/bs:spec` `/bs:audit` `/bs:next` `/bs:ship` `/bs:review`)
 > chỉ là trigger — luật nằm ở đây.
+> 🔴 **TỰ ĐỘNG INVOKE (chốt 06/07/2026, toàn project — mọi session):** agent TỰ gọi các skill `/bs:` khi
+> ngữ cảnh khớp, KHÔNG chờ tôi nhắc: hỏi "làm gì tiếp" → `/bs:next` · yêu cầu audit/soát chất lượng →
+> `/bs:audit` · trước khi code việc không-tầm-thường/COUNCIL-class → `/bs:spec` · diff lớn trước commit →
+> `/bs:review` · chốt-và-thực-thi trọn gói → `/bs:ship`. Sau khi skill nạp vẫn tuân Autonomy Gate §10.1
+> (ACT tự làm; COUNCIL dừng chờ tôi chốt).
 
 ### 10.1 🚦 Autonomy Gate — phân loại MỌI yêu cầu TRƯỚC khi làm
 
