@@ -64,9 +64,17 @@
                 @endif
             </div>
 
-            {{-- Footer --}}
+            {{-- Footer. In the trash view nothing is "inserted" — the bar just closes (restore/purge
+                 live in the bulk bar), so the Insert button is replaced by a plain hint. --}}
             @php($urlPick = $this->hasUrlPick())
             @php($pickCount = $urlPick ? 1 : count($pickerSelected))
+            @if ($pickerTab === 'library' && $pickerTrash)
+                <div class="flex shrink-0 items-center gap-3.5 border-t border-border bg-surface px-[18px] py-3">
+                    <span class="min-w-0 flex-1 text-[12.5px] text-body-faint">{{ __('media.picker_trash_footer_hint') }}</span>
+                    <button type="button" wire:click="closeImagePicker"
+                            class="shrink-0 rounded-lg border border-border-strong bg-surface px-4 py-[9px] text-[13px] font-medium text-body-text">{{ __('media.picker_cancel') }}</button>
+                </div>
+            @else
             <div class="flex shrink-0 items-center gap-3.5 border-t border-border bg-surface px-[18px] py-3">
                 @if ($urlPick)
                     <div class="flex min-w-0 flex-1 items-center gap-2.5">
@@ -100,6 +108,7 @@
                         : __('media.picker_insert') }}
                 </button>
             </div>
+            @endif
         </div>
     </div>
 @endif

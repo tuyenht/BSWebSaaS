@@ -69,49 +69,74 @@
                 </button>
             @endif
         @endcan
+
+        {{-- System "folder": the Trash (onlyTrashed) — a virtual entry, not a media_folders row. --}}
+        @can('media.delete')
+            <div class="mt-2 border-t border-border pt-2">
+                <button type="button" wire:click="openPickerTrash"
+                        class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerTrash ? 'bg-admin-danger/8 font-semibold text-admin-danger' : 'font-medium text-body-text hover:bg-surface-hover' }}">
+                    <x-admin::icon name="ri-delete-bin" class="size-[15px] shrink-0" />
+                    <span class="flex-1 truncate">{{ __('media.picker_trash') }}</span>
+                    <span class="text-[11px] {{ $pickerTrash ? 'text-admin-danger' : 'text-body-faint' }}">{{ $mp['trashTotal'] }}</span>
+                </button>
+            </div>
+        @endcan
     </div>
 
     {{-- Main column --}}
     <div class="flex min-h-0 min-w-0 flex-1 flex-col">
 
-        {{-- Toolbar --}}
+        {{-- Toolbar. In the trash view the folder/sort/type/format selects are hidden (trash is a
+             flat onlyTrashed set) — just search + view + an "empty trash" action. --}}
         <div class="flex shrink-0 flex-wrap items-center gap-[9px] border-b border-border px-4 py-3">
-            {{-- Folder picker on narrow screens (the sidebar rail is hidden <640px). --}}
-            <select wire:model.live="pickerFolderId" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text focus:outline-none min-[640px]:hidden" aria-label="{{ __('media.picker_folders') }}">
-                <option value="">{{ __('media.picker_all_images') }} ({{ $mp['total'] }})</option>
-                @foreach ($mp['folders'] as $folder)
-                    <option value="{{ $folder->id }}">{{ $folder->name }} ({{ $folder->media_count }})</option>
-                @endforeach
-            </select>
+            @unless ($pickerTrash)
+                {{-- Folder picker on narrow screens (the sidebar rail is hidden <640px). --}}
+                <select wire:model.live="pickerFolderId" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text focus:outline-none min-[640px]:hidden" aria-label="{{ __('media.picker_folders') }}">
+                    <option value="">{{ __('media.picker_all_images') }} ({{ $mp['total'] }})</option>
+                    @foreach ($mp['folders'] as $folder)
+                        <option value="{{ $folder->id }}">{{ $folder->name }} ({{ $folder->media_count }})</option>
+                    @endforeach
+                </select>
+            @endunless
             <div class="relative min-w-[150px] flex-1">
                 <x-admin::icon name="ri-search" class="absolute left-[11px] top-1/2 size-[15px] -translate-y-1/2 text-body-faint" />
                 <input type="search" wire:model.live.debounce.250ms="pickerSearch" placeholder="{{ __('media.picker_search_placeholder') }}"
                        class="block w-full rounded-lg border border-border-strong bg-surface py-2 pl-[34px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none">
             </div>
-            <select wire:model.live="pickerSort" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text focus:outline-none" aria-label="{{ __('media.picker_sort_label') }}">
-                <option value="recent">{{ __('media.picker_sort_recent') }}</option>
-                <option value="oldest">{{ __('media.picker_sort_oldest') }}</option>
-                <option value="nameAsc">{{ __('media.picker_sort_name_asc') }}</option>
-                <option value="nameDesc">{{ __('media.picker_sort_name_desc') }}</option>
-                <option value="sizeDesc">{{ __('media.picker_sort_size_desc') }}</option>
-                <option value="sizeAsc">{{ __('media.picker_sort_size_asc') }}</option>
-                <option value="ext">{{ __('media.picker_sort_ext') }}</option>
-            </select>
-            <select wire:model.live="pickerType" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text focus:outline-none" aria-label="{{ __('media.picker_type_label') }}">
-                <option value="all">{{ __('media.picker_type_all') }}</option>
-                <option value="image">{{ __('media.picker_type_image') }}</option>
-                <option value="video">{{ __('media.picker_type_video') }}</option>
-                <option value="audio">{{ __('media.picker_type_audio') }}</option>
-                <option value="doc">{{ __('media.picker_type_doc') }}</option>
-                <option value="used">{{ __('media.picker_type_used') }}</option>
-                <option value="unused">{{ __('media.picker_type_unused') }}</option>
-            </select>
-            <select wire:model.live="pickerFormat" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text focus:outline-none" aria-label="{{ __('media.picker_format_label') }}">
-                <option value="all">{{ __('media.picker_format_all') }}</option>
-                @foreach ($mp['formats'] as $ext)
-                    <option value="{{ $ext }}">{{ strtoupper($ext) }}</option>
-                @endforeach
-            </select>
+            @unless ($pickerTrash)
+                <select wire:model.live="pickerSort" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text focus:outline-none" aria-label="{{ __('media.picker_sort_label') }}">
+                    <option value="recent">{{ __('media.picker_sort_recent') }}</option>
+                    <option value="oldest">{{ __('media.picker_sort_oldest') }}</option>
+                    <option value="nameAsc">{{ __('media.picker_sort_name_asc') }}</option>
+                    <option value="nameDesc">{{ __('media.picker_sort_name_desc') }}</option>
+                    <option value="sizeDesc">{{ __('media.picker_sort_size_desc') }}</option>
+                    <option value="sizeAsc">{{ __('media.picker_sort_size_asc') }}</option>
+                    <option value="ext">{{ __('media.picker_sort_ext') }}</option>
+                </select>
+                <select wire:model.live="pickerType" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text focus:outline-none" aria-label="{{ __('media.picker_type_label') }}">
+                    <option value="all">{{ __('media.picker_type_all') }}</option>
+                    <option value="image">{{ __('media.picker_type_image') }}</option>
+                    <option value="video">{{ __('media.picker_type_video') }}</option>
+                    <option value="audio">{{ __('media.picker_type_audio') }}</option>
+                    <option value="doc">{{ __('media.picker_type_doc') }}</option>
+                    <option value="used">{{ __('media.picker_type_used') }}</option>
+                    <option value="unused">{{ __('media.picker_type_unused') }}</option>
+                </select>
+                <select wire:model.live="pickerFormat" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text focus:outline-none" aria-label="{{ __('media.picker_format_label') }}">
+                    <option value="all">{{ __('media.picker_format_all') }}</option>
+                    @foreach ($mp['formats'] as $ext)
+                        <option value="{{ $ext }}">{{ strtoupper($ext) }}</option>
+                    @endforeach
+                </select>
+            @else
+                @if (! $mp['page']->isEmpty())
+                    <button type="button" wire:click="emptyPickerTrash"
+                            wire:confirm="{{ __('media.picker_trash_empty_confirm') }}"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-admin-danger/20 bg-surface px-3 py-2 text-[12.5px] font-semibold text-admin-danger">
+                        <x-admin::icon name="ri-delete-bin" class="size-3.5" />{{ __('media.picker_trash_empty') }}
+                    </button>
+                @endif
+            @endunless
             <div class="flex overflow-hidden rounded-lg border border-border-strong">
                 <button type="button" wire:click="setPickerView('grid')" title="{{ __('media.picker_view_grid') }}"
                         class="flex h-8 w-[34px] items-center justify-center {{ $pickerView === 'grid' ? 'bg-admin-primary text-white' : 'bg-surface text-body-muted' }}">
@@ -124,34 +149,48 @@
             </div>
         </div>
 
-        {{-- Bulk-selection bar --}}
+        {{-- Bulk-selection bar. Trash mode swaps Move/Delete for Restore/Delete-permanently. --}}
         @if ($pickerSelected !== [])
-            <div class="flex shrink-0 items-center gap-2.5 border-b border-border bg-admin-primary/4 px-4 py-[9px]">
-                <span class="text-[12.5px] font-semibold text-admin-primary">{{ __('media.picker_selected_count', ['count' => count($pickerSelected)]) }}</span>
+            <div class="flex shrink-0 items-center gap-2.5 border-b border-border {{ $pickerTrash ? 'bg-admin-danger/4' : 'bg-admin-primary/4' }} px-4 py-[9px]">
+                <span class="text-[12.5px] font-semibold {{ $pickerTrash ? 'text-admin-danger' : 'text-admin-primary' }}">{{ __('media.picker_selected_count', ['count' => count($pickerSelected)]) }}</span>
                 <div class="ml-auto flex gap-1.5">
-                    @can('media.upload')
-                        <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
-                            <button type="button" x-on:click="open = !open"
-                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-border-strong bg-surface px-[11px] py-1.5 text-xs text-body-text">
-                                <x-admin::icon name="ri-folder-transfer" class="size-[13px]" />{{ __('media.picker_move') }}
+                    @if ($pickerTrash)
+                        @can('media.delete')
+                            <button type="button" wire:click="restorePickerSelection"
+                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-success/30 bg-surface px-[11px] py-1.5 text-xs font-medium text-admin-success">
+                                <x-admin::icon name="ri-refresh" class="size-[13px]" />{{ __('media.picker_trash_restore') }}
                             </button>
-                            <div class="absolute right-0 top-full z-10 mt-1 max-h-56 w-48 overflow-auto rounded-lg border border-border bg-surface py-1 shadow-card" x-show="open" x-cloak>
-                                <button type="button" wire:click="pickerBulkMove(null)" x-on:click="open = false"
-                                        class="block w-full px-3 py-1.5 text-left text-[12.5px] text-body-text hover:bg-surface-hover">{{ __('media.picker_move_root') }}</button>
-                                @foreach ($mp['folders'] as $folder)
-                                    <button type="button" wire:key="mp-move-{{ $folder->id }}" wire:click="pickerBulkMove({{ $folder->id }})" x-on:click="open = false"
-                                            class="block w-full truncate px-3 py-1.5 text-left text-[12.5px] text-body-text hover:bg-surface-hover">{{ $folder->name }}</button>
-                                @endforeach
+                            <button type="button" wire:click="purgePickerSelection"
+                                    wire:confirm="{{ __('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)]) }}"
+                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger">
+                                <x-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_trash_purge') }}
+                            </button>
+                        @endcan
+                    @else
+                        @can('media.upload')
+                            <div class="relative" x-data="{ open: false }" x-on:click.outside="open = false">
+                                <button type="button" x-on:click="open = !open"
+                                        class="inline-flex items-center gap-1.5 rounded-[7px] border border-border-strong bg-surface px-[11px] py-1.5 text-xs text-body-text">
+                                    <x-admin::icon name="ri-folder-transfer" class="size-[13px]" />{{ __('media.picker_move') }}
+                                </button>
+                                <div class="absolute right-0 top-full z-10 mt-1 max-h-56 w-48 overflow-auto rounded-lg border border-border bg-surface py-1 shadow-card" x-show="open" x-cloak>
+                                    <button type="button" wire:click="pickerBulkMove(null)" x-on:click="open = false"
+                                            class="block w-full px-3 py-1.5 text-left text-[12.5px] text-body-text hover:bg-surface-hover">{{ __('media.picker_move_root') }}</button>
+                                    @foreach ($mp['folders'] as $folder)
+                                        <button type="button" wire:key="mp-move-{{ $folder->id }}" wire:click="pickerBulkMove({{ $folder->id }})" x-on:click="open = false"
+                                                class="block w-full truncate px-3 py-1.5 text-left text-[12.5px] text-body-text hover:bg-surface-hover">{{ $folder->name }}</button>
+                                    @endforeach
+                                </div>
                             </div>
-                        </div>
-                    @endcan
-                    @can('media.delete')
-                        <button type="button" wire:click="pickerBulkDelete"
-                                wire:confirm="{{ __('media.picker_delete_confirm', ['count' => count($pickerSelected)]) }}"
-                                class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger">
-                            <x-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_delete') }}
-                        </button>
-                    @endcan
+                        @endcan
+                        @can('media.delete')
+                            <button type="button" wire:click="pickerBulkDelete"
+                                    wire:confirm="{{ __('media.picker_delete_confirm', ['count' => count($pickerSelected)]) }}"
+                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger">
+                                <x-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_delete') }}
+                            </button>
+                        @endcan
+                    @endif
                     <button type="button" wire:click="clearPickerSelection"
                             class="rounded-[7px] border border-border-strong bg-surface px-[11px] py-1.5 text-xs text-body-muted">{{ __('media.picker_clear') }}</button>
                 </div>
@@ -162,8 +201,8 @@
         <div class="min-h-0 flex-1 overflow-auto p-4">
             @if ($mp['page']->isEmpty())
                 <div class="px-5 py-[50px] text-center text-placeholder">
-                    <x-admin::icon name="ri-image-2" class="mx-auto size-10" />
-                    <div class="mt-2.5 text-[13.5px] text-body-faint">{{ __('media.picker_empty') }}</div>
+                    <x-admin::icon name="{{ $pickerTrash ? 'ri-delete-bin' : 'ri-image-2' }}" class="mx-auto size-10" />
+                    <div class="mt-2.5 text-[13.5px] text-body-faint">{{ $pickerTrash ? __('media.picker_trash_empty_state') : __('media.picker_empty') }}</div>
                 </div>
             @elseif ($pickerView === 'grid')
                 <div class="grid grid-cols-[repeat(auto-fill,minmax(118px,1fr))] gap-3">
@@ -186,10 +225,12 @@
                                 </span>
                             @endif
                             <span class="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/55 to-transparent px-2 pb-1.5 pt-3.5 text-left text-[10px] text-white">{{ $m->original_filename }}</span>
-                            <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
-                                    class="absolute left-[7px] top-[7px] flex size-[22px] items-center justify-center rounded-md bg-black/30 text-white transition-colors hover:bg-black/50">
-                                <x-admin::icon name="ri-information" class="size-3.5" />
-                            </button>
+                            @unless ($pickerTrash)
+                                <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
+                                        class="absolute left-[7px] top-[7px] flex size-[22px] items-center justify-center rounded-md bg-black/30 text-white transition-colors hover:bg-black/50">
+                                    <x-admin::icon name="ri-information" class="size-3.5" />
+                                </button>
+                            @endunless
                             <span class="absolute right-[7px] top-[7px] flex size-5 items-center justify-center rounded-full border-[1.5px] shadow {{ $selected || $picked ? 'border-admin-primary bg-admin-primary text-white' : 'border-white/90 bg-black/20 text-transparent' }}">
                                 <x-admin::icon name="ri-check" class="size-3" />
                             </span>
@@ -231,10 +272,14 @@
                             <span class="w-[100px] text-[12.5px] text-body-muted">{{ $m->width !== null ? $m->width.' × '.$m->height : '—' }}</span>
                             <span class="w-[70px] text-[12.5px] text-body-muted">{{ number_format($m->size / 1048576, 1) }} MB</span>
                             <span class="w-[52px]"><span class="rounded-[5px] bg-admin-primary/8 px-[7px] py-0.5 text-[10px] font-semibold uppercase text-admin-primary">{{ $m->extLabel() }}</span></span>
-                            <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
-                                    class="flex size-7 shrink-0 items-center justify-center text-body-faint hover:text-admin-primary">
-                                <x-admin::icon name="ri-information" class="size-4" />
-                            </button>
+                            @unless ($pickerTrash)
+                                <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
+                                        class="flex size-7 shrink-0 items-center justify-center text-body-faint hover:text-admin-primary">
+                                    <x-admin::icon name="ri-information" class="size-4" />
+                                </button>
+                            @else
+                                <span class="w-7 shrink-0"></span>
+                            @endunless
                         </div>
                     @endforeach
                 </div>

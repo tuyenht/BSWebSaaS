@@ -322,5 +322,16 @@
     "media.picker_detail_alt_label": "代替テキスト（ALT）",
     "media.picker_detail_alt_placeholder": "SEO・アクセシビリティ向けに画像を説明…",
     "media.picker_detail_save": "保存",
-    "media.picker_detail_saved": "画像情報を保存しました。"
+    "media.picker_detail_saved": "画像情報を保存しました。",
+    "media.picker_trash": "ゴミ箱",
+    "media.picker_trash_restore": "復元",
+    "media.picker_trash_purge": "完全に削除",
+    "media.picker_trash_purge_confirm": ":count 件を完全に削除しますか？元に戻せません。",
+    "media.picker_trash_empty": "ゴミ箱を空にする",
+    "media.picker_trash_empty_confirm": "ゴミ箱をすべて完全に削除しますか？元に戻せません。",
+    "media.picker_trash_empty_state": "ゴミ箱は空です",
+    "media.picker_trash_footer_hint": "ゴミ箱の画像は挿入できません。復元すると再び使えます。",
+    "media.picker_trash_restored": "画像をライブラリに復元しました。",
+    "media.picker_trash_purged": "完全に削除しました。",
+    "media.picker_trash_emptied": "ゴミ箱を空にしました。"
 }

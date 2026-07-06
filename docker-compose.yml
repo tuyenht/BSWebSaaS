@@ -53,6 +53,23 @@ services:
       valkey:
         condition: service_healthy
 
+  # In-process scheduler (php artisan schedule:work) — runs the daily media:purge-trash job.
+  # A long-running loop, so no host crontab is needed; restart-on-exit keeps it alive.
+  scheduler:
+    image: bsweb/app:dev
+    container_name: bsweb_dev_scheduler
+    restart: unless-stopped
+    command: php artisan schedule:work
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      valkey:
+        condition: service_healthy
+
   postgres:
     image: pgvector/pgvector:pg17
     container_name: bsweb_dev_pg

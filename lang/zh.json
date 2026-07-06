@@ -322,5 +322,16 @@
     "media.picker_detail_alt_label": "替代文本（ALT）",
     "media.picker_detail_alt_placeholder": "为 SEO 和无障碍描述图片…",
     "media.picker_detail_save": "保存",
-    "media.picker_detail_saved": "已保存图片信息。"
+    "media.picker_detail_saved": "已保存图片信息。",
+    "media.picker_trash": "回收站",
+    "media.picker_trash_restore": "恢复",
+    "media.picker_trash_purge": "永久删除",
+    "media.picker_trash_purge_confirm": "永久删除 :count 项？此操作无法撤销。",
+    "media.picker_trash_empty": "清空回收站",
+    "media.picker_trash_empty_confirm": "永久删除整个回收站？此操作无法撤销。",
+    "media.picker_trash_empty_state": "回收站是空的",
+    "media.picker_trash_footer_hint": "回收站中的图片不能插入。恢复后即可再次使用。",
+    "media.picker_trash_restored": "图片已恢复到图片库。",
+    "media.picker_trash_purged": "已永久删除。",
+    "media.picker_trash_emptied": "回收站已清空。"
 }

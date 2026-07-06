@@ -571,6 +571,105 @@ it('never opens the detail of another site\'s image', function (): void {
     });
 });
 
+it('shows only trashed media in the trash view and keeps live media out', function (): void {
+    $user = pickerManager(['media.delete']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $live = seedPickerMedia('live', ['original_filename' => 'con-song.jpg']);
+        $binned = seedPickerMedia('binned', ['original_filename' => 'da-xoa.jpg']);
+        $binned->delete();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')
+            ->assertSet('pickerTrash', true);
+
+        $names = $component->instance()->mediaPickerState()['page']->pluck('original_filename')->all();
+        expect($names)->toBe(['da-xoa.jpg'])                       // only the trashed one
+            ->and($component->instance()->mediaPickerState()['trashTotal'])->toBe(1);
+
+        // Leaving trash for a folder returns to live media.
+        $component->call('setPickerFolder', null)->assertSet('pickerTrash', false);
+        expect($component->instance()->mediaPickerState()['page']->pluck('original_filename')->all())->toBe(['con-song.jpg']);
+    });
+});
+
+it('restores a trashed image to its original folder', function (): void {
+    $user = pickerManager(['media.delete']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $folder = MediaFolder::query()->create(['name' => 'Sản phẩm', 'slug' => 'san-pham']);
+        $media = seedPickerMedia('r', ['folder_id' => $folder->id]);
+        $media->delete();
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')
+            ->call('togglePickerItem', $media->id)
+            ->call('restorePickerSelection')
+            ->assertSet('pickerSelected', []);
+
+        $fresh = $media->fresh();
+        expect($fresh?->trashed())->toBeFalse()
+            ->and($fresh?->folder_id)->toBe($folder->id); // back where it was
+    });
+});
+
+it('permanently deletes a trashed image + its R2 object (purge fires the observer)', function (): void {
+    $user = pickerManager(['media.delete']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        $media = seedPickerMedia('p', ['storage_key' => 's/library/purge-me.jpg']);
+        Storage::disk('r2')->put($media->storage_key, 'bytes');
+        $media->delete();
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')
+            ->call('togglePickerItem', $media->id)
+            ->call('purgePickerSelection');
+
+        expect(Media::withTrashed()->whereKey($media->id)->exists())->toBeFalse(); // row gone
+        Storage::disk('r2')->assertMissing('s/library/purge-me.jpg');              // object gone
+    });
+});
+
+it('empties the whole trash but never touches live media', function (): void {
+    $user = pickerManager(['media.delete']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        $live = seedPickerMedia('keep');
+        foreach (['a', 'b', 'c'] as $s) {
+            seedPickerMedia("bin-{$s}")->delete();
+        }
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')
+            ->call('emptyPickerTrash');
+
+        expect(Media::withTrashed()->count())->toBe(1)                 // only the live one remains
+            ->and(Media::query()->whereKey($live->id)->exists())->toBeTrue();
+    });
+});
+
+it('403s restore/purge/empty without media.delete', function (): void {
+    $user = pickerManager(); // media.view only
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $media = seedPickerMedia('nope');
+        $media->delete();
+
+        Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')->set('pickerSelected', [$media->id])
+            ->call('restorePickerSelection')->assertStatus(403);
+
+        expect($media->fresh()?->trashed())->toBeTrue(); // untouched
+    });
+});
+
 it('translates every picker string in all four admin languages', function (): void {
     $vi = json_decode((string) file_get_contents(lang_path('vi.json')), true, 512, JSON_THROW_ON_ERROR);
     $pickerKeys = array_filter(array_keys($vi), fn (string $k): bool => str_starts_with($k, 'media.picker_'));

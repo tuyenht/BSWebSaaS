@@ -49,7 +49,7 @@ trait WithMediaLibraryPicker
         // Fresh modal per open — stale filters/selection from a previous pick would surprise;
         // the view/sort preference survives within the component's lifetime.
         $this->reset('pickerTab', 'pickerType', 'pickerFormat', 'pickerSearch', 'pickerFolderId',
-            'pickerSelected', 'pickerPage', 'pickerNewFolderOpen', 'pickerNewFolderName',
+            'pickerTrash', 'pickerSelected', 'pickerPage', 'pickerNewFolderOpen', 'pickerNewFolderName',
             'pickerNewFolderSlug', 'pickerNewFolderSlugEdited', 'pickerNewFolderSlugFallback',
             'pickerSource', 'pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy',
             'pickerDetailId', 'pickerDetailAlt');
@@ -172,6 +172,9 @@ trait WithMediaLibraryPicker
 
     public ?int $pickerFolderId = null;
 
+    /** Trash view (onlyTrashed) — a virtual "folder", not a media_folders row. */
+    public bool $pickerTrash = false;
+
     /** @var list<int> */
     public array $pickerSelected = [];
 
@@ -224,6 +227,7 @@ trait WithMediaLibraryPicker
         $this->pickerFolderId = ($value === null || $value === '')
             ? null
             : MediaFolder::query()->whereKey($value)->first()?->id;
+        $this->pickerTrash = false;
         $this->pickerPage = 1;
     }
 
@@ -233,6 +237,7 @@ trait WithMediaLibraryPicker
 
         $this->pickerTab = $tab === 'upload' ? 'upload' : 'library';
         $this->pickerSource = null;   // tab switch always lands on the source grid (handoff behavior)
+        $this->pickerTrash = false;   // …and out of the trash view
         $this->closePickerDetail();   // …and closes the detail panel
     }
 
@@ -249,15 +254,35 @@ trait WithMediaLibraryPicker
         $this->pickerFolderId = $folderId === null
             ? null
             : MediaFolder::query()->whereKey($folderId)->first()?->id;
+        $this->pickerTrash = false; // leaving the trash view
+        $this->pickerSelected = [];
         $this->pickerPage = 1;
+        $this->closePickerDetail();
+    }
+
+    /** The virtual "Thùng rác" sidebar entry — shows onlyTrashed, swaps the bulk actions. */
+    public function openPickerTrash(): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+
+        $this->pickerTrash = true;
+        $this->pickerFolderId = null;
+        $this->pickerSelected = [];
+        $this->pickerPage = 1;
+        $this->closePickerDetail();
     }
 
     public function togglePickerItem(int $mediaId): void
     {
         abort_unless(Gate::allows('media.view'), 403);
 
-        if (! Media::query()->whereKey($mediaId)->exists()) {
-            return; // not this site's asset (or trashed) — never selectable
+        // Live library resolves live rows; the trash view resolves trashed rows. Either way the id
+        // is re-checked against THIS site's scoped query — never trusted from the wire.
+        $exists = $this->pickerTrash
+            ? Media::onlyTrashed()->whereKey($mediaId)->exists()
+            : Media::query()->whereKey($mediaId)->exists();
+        if (! $exists) {
+            return;
         }
 
         if (in_array($mediaId, $this->pickerSelected, true)) {
@@ -266,8 +291,8 @@ trait WithMediaLibraryPicker
             return;
         }
 
-        // Editor mode inserts ONE image at the caret — selecting replaces, gallery mode stacks.
-        $this->pickerSelected = $this->imagePickerMode === 'editor'
+        // Editor mode inserts ONE image — selecting replaces. Gallery + trash (restore/purge) stack.
+        $this->pickerSelected = ($this->imagePickerMode === 'editor' && ! $this->pickerTrash)
             ? [$mediaId]
             : [...$this->pickerSelected, $mediaId];
     }
@@ -496,6 +521,44 @@ trait WithMediaLibraryPicker
         $this->pickerSelected = [];
     }
 
+    /*
+    |------------------------------------------------------------------------
+    | Trash actions (onlyTrashed) — restore / permanent purge
+    |------------------------------------------------------------------------
+    | Trash management is gated to media.delete (same as sending to trash).
+    | Purge is per-instance so MediaObserver fires (drops attachments + the R2
+    | object); a mass forceDelete would bypass those events.
+    */
+
+    public function restorePickerSelection(): void
+    {
+        abort_unless(Gate::allows('media.delete'), 403);
+
+        // restore() clears deleted_at → the row returns to its original folder (folder_id was
+        // kept; if that folder was itself deleted the FK already SET NULL it to the root view).
+        Media::onlyTrashed()->whereIn('id', $this->pickerSelected)->get()->each->restore();
+        $this->pickerSelected = [];
+        session()->flash('media-status', __('media.picker_trash_restored'));
+    }
+
+    public function purgePickerSelection(): void
+    {
+        abort_unless(Gate::allows('media.delete'), 403);
+
+        Media::onlyTrashed()->whereIn('id', $this->pickerSelected)->get()->each->forceDelete();
+        $this->pickerSelected = [];
+        session()->flash('media-status', __('media.picker_trash_purged'));
+    }
+
+    public function emptyPickerTrash(): void
+    {
+        abort_unless(Gate::allows('media.delete'), 403);
+
+        Media::onlyTrashed()->get()->each->forceDelete();
+        $this->pickerSelected = [];
+        session()->flash('media-status', __('media.picker_trash_emptied'));
+    }
+
     /** Move the selection into a folder (null = back to the root "Tất cả ảnh" view). */
     public function pickerBulkMove(?int $folderId): void
     {
@@ -562,7 +625,7 @@ trait WithMediaLibraryPicker
      * Everything the picker modal renders, in one request-cached bundle (the Blade partial
      * reads $this->mediaPickerState). Empty shell while closed, so hidden modals cost nothing.
      *
-     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, contentLocale?: string}
+     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, contentLocale?: string, trashTotal?: int}
      */
     #[Computed]
     public function mediaPickerState(): array
@@ -593,6 +656,7 @@ trait WithMediaLibraryPicker
             'urls' => app(MediaUrlResolver::class),
             'detail' => $this->pickerDetailId === null ? null : Media::query()->with('folder')->whereKey($this->pickerDetailId)->first(),
             'contentLocale' => $this->pickerContentLocale(),
+            'trashTotal' => Media::onlyTrashed()->count(),
         ];
     }
 
@@ -603,6 +667,17 @@ trait WithMediaLibraryPicker
      */
     protected function pickerQuery(): Builder
     {
+        // Trash view: onlyTrashed, flat (no folder), newest-binned first — a distinct surface.
+        if ($this->pickerTrash) {
+            $query = Media::onlyTrashed();
+            $term = trim($this->pickerSearch);
+            if ($term !== '') {
+                $query->where('original_filename', 'ilike', '%'.addcslashes($term, '%_\\').'%');
+            }
+
+            return $query->orderByDesc('deleted_at')->orderByDesc('id');
+        }
+
         $query = Media::query();
 
         if ($this->pickerFolderId !== null) {

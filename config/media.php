@@ -38,4 +38,8 @@ return [
     // Responsive width whitelist (the Worker rejects widths outside this set). Drives srcset (PR-6).
     'widths' => [320, 640, 960, 1280, 1600, 2048],
 
+    // Days a soft-deleted (Thùng rác) master survives before media:purge-trash permanently deletes
+    // it (row + R2 object). Manual "empty trash" / "delete permanently" purge immediately regardless.
+    'trash_retention_days' => (int) env('MEDIA_TRASH_RETENTION_DAYS', 15),
+
 ];
