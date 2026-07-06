@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 /**
  * A media master (design.md §16 / ADR-17). Tenant table (site_id + RLS); BelongsToSite auto-scopes
@@ -32,6 +33,20 @@ final class Media extends Model
     use BelongsToSite;
     use HasUlidColumn;
     use SoftDeletes;
+
+    /** Sniffed mime → the extension label the library groups/badges by ("Định dạng" filter). */
+    public const array MIME_EXT_LABELS = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+        'application/pdf' => 'pdf',
+        'video/mp4' => 'mp4',
+        'video/webm' => 'webm',
+        'audio/mpeg' => 'mp3',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+    ];
 
     /** Explicit so the irregular plural of "Media" never surprises the table name. */
     #[\Override]
@@ -71,5 +86,11 @@ final class Media extends Model
     public function folder(): BelongsTo
     {
         return $this->belongsTo(MediaFolder::class, 'folder_id');
+    }
+
+    /** Extension badge for this master ("jpg", "pdf"…) — unmapped mimes fall back to the subtype. */
+    public function extLabel(): string
+    {
+        return self::MIME_EXT_LABELS[$this->mime] ?? Str::after($this->mime, '/');
     }
 }
