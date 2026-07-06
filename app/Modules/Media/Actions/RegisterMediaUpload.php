@@ -68,12 +68,17 @@ final readonly class RegisterMediaUpload
         $siteName = (string) Site::query()->find($this->current->id())?->name;
 
         // 6) Dedup within (site, collection, hash) — return the master, drop the temp object.
-        // A master whose object went missing (an interrupted past finalize) self-heals here:
-        // these are the same bytes, so they are copied back under the row's existing
-        // storage_key — otherwise dedup would pin that hash to a dead key forever and
-        // re-uploading the file could never fix the broken image.
-        $existing = Media::query()->where('collection', $collection)->where('hash', $hash)->first();
+        // withTrashed: the UNIQUE(site,collection,hash) index doesn't know about soft-deletes,
+        // so a trashed master would turn the insert below into a guaranteed violation —
+        // re-uploading a binned file RESTORES its master instead of dead-ending. And a master
+        // whose object went missing (an interrupted past finalize) self-heals: these are the
+        // same bytes, copied back under the row's existing storage_key — otherwise dedup would
+        // pin that hash to a dead key forever and re-uploading could never fix the broken image.
+        $existing = Media::query()->withTrashed()->where('collection', $collection)->where('hash', $hash)->first();
         if ($existing instanceof Media) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
             if (! $disk->exists($existing->storage_key) && ! $disk->copy($tempKey, $existing->storage_key)) {
                 throw new RuntimeException('Không thể lưu tệp vào kho. Vui lòng thử lại.');
             }

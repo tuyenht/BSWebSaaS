@@ -54,6 +54,24 @@ it('dedups identical content within a site (one master, one R2 object)', functio
     expect($second)->toBe($first)->and($count)->toBe(1);
 });
 
+it('restores a trashed master and heals a missing object on re-upload of the same bytes', function (): void {
+    // Same two invariants as the presigned path: a soft-deleted master must not turn the
+    // UNIQUE(site,collection,hash) insert into a dead-end, and dedup must put the bytes back
+    // when the row's object is gone instead of pinning the hash to a dead key.
+    [$firstId, $secondId, $stillTrashed, $key] = app(Tenancy::class)->enter(1, function (): array {
+        $a = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('a.png', pngBytes()), 'An Vinh');
+        $a->delete(); // Thùng rác
+        Storage::disk('r2')->delete($a->storage_key); // and the object is gone too
+
+        $b = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', pngBytes()), 'An Vinh');
+
+        return [$a->id, $b->id, $b->trashed(), $a->storage_key];
+    });
+
+    expect($secondId)->toBe($firstId)->and($stillTrashed)->toBeFalse();
+    Storage::disk('r2')->assertExists($key);
+});
+
 it('rejects a spoofed extension by sniffing magic bytes (PHP in a .jpg)', function (): void {
     // A real temp file so the action's finfo-based getMimeType() runs (the fake guesses from the
     // extension). The client mime lies ('image/jpeg'); finfo sees PHP → rejected.

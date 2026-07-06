@@ -53,8 +53,19 @@ final class UploadMedia
         $hash = hash('sha256', $contents);
 
         // 4) Dedup within (site, collection, hash) — RLS-scoped; return the master, skip re-upload.
-        $existing = Media::query()->where('collection', $collection)->where('hash', $hash)->first();
+        // withTrashed: the UNIQUE index doesn't know about soft-deletes — re-uploading a binned
+        // file restores its master instead of dead-ending on the violation. Self-heal: if the
+        // master's object went missing, these same bytes go back under its key.
+        $existing = Media::query()->withTrashed()->where('collection', $collection)->where('hash', $hash)->first();
         if ($existing instanceof Media) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
+            $disk = Storage::disk(MediaKey::disk());
+            if (! $disk->exists($existing->storage_key) && ! $disk->put($existing->storage_key, $contents)) {
+                throw new RuntimeException('Không lưu được tệp lên kho lưu trữ. Vui lòng thử lại.');
+            }
+
             return $existing;
         }
 

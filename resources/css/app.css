@@ -180,3 +180,8 @@ button:not(:disabled) {
     margin: 0 0.375rem;
     color: var(--color-placeholder);
 }
+/* The image dblclick dialog is trimmed to alt + size (every Advanced-tab field is disabled in
+   editorOptions), so the two-tab strip would show one useful tab and one empty one — drop it. */
+.jodit-ui-image-properties-form .jodit-tabs__buttons {
+    display: none;
+}

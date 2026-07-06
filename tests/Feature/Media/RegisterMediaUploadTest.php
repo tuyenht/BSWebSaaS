@@ -155,6 +155,24 @@ it('writes NO row when the storage copy fails (orphan guard)', function (): void
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });
 
+it('restores a trashed master when the same bytes are re-uploaded (no unique-violation dead-end)', function (): void {
+    // The UNIQUE(site,collection,hash) index doesn't know about soft-deletes: without
+    // withTrashed in the dedup, this second register is a guaranteed constraint violation —
+    // an unrecoverable 500 for the user, since the media Trash has no restore UI yet.
+    [$firstId, $secondId, $stillTrashed] = app(Tenancy::class)->enter(1, function (): array {
+        stageUpload(1, '_incoming/a/01bin1.png', pngContent());
+        $first = app(RegisterMediaUpload::class)->handle('_incoming/a/01bin1.png', 'bin.png');
+        $first->delete(); // Thùng rác
+
+        stageUpload(1, '_incoming/a/01bin2.png', pngContent());
+        $second = app(RegisterMediaUpload::class)->handle('_incoming/a/01bin2.png', 'bin-again.png');
+
+        return [$first->id, $second->id, $second->trashed()];
+    });
+
+    expect($secondId)->toBe($firstId)->and($stillTrashed)->toBeFalse();
+});
+
 it('self-heals a master whose object went missing when the same bytes are re-uploaded', function (): void {
     [$firstId, $secondId, $key] = app(Tenancy::class)->enter(1, function (): array {
         stageUpload(1, '_incoming/a/01heal1.png', pngContent());
