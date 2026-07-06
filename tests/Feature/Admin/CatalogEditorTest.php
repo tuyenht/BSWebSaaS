@@ -246,20 +246,6 @@ it('editor-mode picking dispatches the insert event and never touches the galler
             ->assertDispatched('admin-editor-insert-image')
             ->assertSet('imageMediaIds', [])          // gallery untouched
             ->assertSet('showImagePicker', false);    // editor mode closes after inserting
-
-        // T5G-parity second path: paste an external URL. Junk is refused with a friendly
-        // error; a valid https url dispatches the same insert event.
-        Livewire::actingAs($editor->fresh())
-            ->test(Editor::class)
-            ->call('openImagePicker', 'editor')
-            ->set('externalImageUrl', 'javascript:alert(1)')
-            ->call('insertExternalImage')
-            ->assertHasErrors('externalImageUrl')
-            ->assertNotDispatched('admin-editor-insert-image')
-            ->set('externalImageUrl', 'https://cdn.example.com/anh.png')
-            ->call('insertExternalImage')
-            ->assertDispatched('admin-editor-insert-image', url: 'https://cdn.example.com/anh.png')
-            ->assertSet('showImagePicker', false);
     });
 });
 

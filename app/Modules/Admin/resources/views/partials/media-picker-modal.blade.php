@@ -47,7 +47,11 @@
             <div class="flex min-h-0 min-w-0 flex-1">
                 <div class="flex min-w-0 flex-1 flex-col overflow-auto bg-surface">
                     @if ($pickerTab === 'upload')
-                        @include('admin::partials.media-picker-sources')
+                        @if ($pickerSource === 'url')
+                            @include('admin::partials.media-picker-url-pane')
+                        @else
+                            @include('admin::partials.media-picker-sources')
+                        @endif
                     @else
                         @include('admin::partials.media-picker-library-pane', ['mp' => $mp])
                     @endif
@@ -55,9 +59,17 @@
             </div>
 
             {{-- Footer --}}
-            <div class="flex shrink-0 items-center gap-3.5 border-t border-border bg-surface px-[18px] py-3"
-                 x-data="{ urlOpen: false }">
-                @if ($pickerSelected !== [])
+            @php($urlPick = $this->hasUrlPick())
+            @php($pickCount = $urlPick ? 1 : count($pickerSelected))
+            <div class="flex shrink-0 items-center gap-3.5 border-t border-border bg-surface px-[18px] py-3">
+                @if ($urlPick)
+                    <div class="flex min-w-0 flex-1 items-center gap-2.5">
+                        <span class="size-8 overflow-hidden rounded-[7px] border-2 border-white shadow-sm">
+                            <img src="{{ $pickerUrlPreview['url'] }}" alt="" class="size-full object-cover" onerror="this.style.display='none'">
+                        </span>
+                        <span class="text-[12.5px] text-body-muted">{{ __('media.picker_footer_selected', ['count' => 1]) }}</span>
+                    </div>
+                @elseif ($pickerSelected !== [])
                     <div class="flex min-w-0 flex-1 items-center gap-2.5">
                         <div class="flex pl-2">
                             @foreach ($mp['selectedPreview'] as $m)
@@ -70,30 +82,15 @@
                         <span class="text-[12.5px] text-body-muted">{{ __('media.picker_footer_selected', ['count' => count($pickerSelected)]) }}</span>
                     </div>
                 @else
-                    <div class="flex min-w-0 flex-1 items-center gap-3">
-                        <span class="text-[12.5px] text-body-faint" x-show="!urlOpen">{{ __('media.picker_footer_hint') }}</span>
-                        @if ($imagePickerMode === 'editor')
-                            {{-- External-URL insert kept from editor v2 (owner feature) — compact, editor mode only. --}}
-                            <button type="button" x-show="!urlOpen" x-on:click="urlOpen = true"
-                                    class="text-[12.5px] font-medium text-admin-primary underline">{{ __('media.picker_external_toggle') }}</button>
-                            <div class="flex min-w-0 flex-1 items-center gap-2" x-show="urlOpen" x-cloak>
-                                <input type="url" wire:model="externalImageUrl" wire:keydown.enter="insertExternalImage"
-                                       placeholder="https://…"
-                                       class="block w-full min-w-0 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-[12.5px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none">
-                                <button type="button" wire:click="insertExternalImage"
-                                        class="shrink-0 rounded-lg border border-border-strong bg-surface px-3 py-1.5 text-xs font-medium text-body-text">{{ __('catalog.picker_external_insert') }}</button>
-                            </div>
-                        @endif
-                    </div>
+                    <span class="min-w-0 flex-1 text-[12.5px] text-body-faint">{{ __('media.picker_footer_hint') }}</span>
                 @endif
-                @error('externalImageUrl') <p class="text-xs text-admin-danger">{{ $message }}</p> @enderror
                 <button type="button" wire:click="closeImagePicker"
                         class="shrink-0 rounded-lg border border-border-strong bg-surface px-4 py-[9px] text-[13px] font-medium text-body-text">{{ __('media.picker_cancel') }}</button>
-                <button type="button" wire:click="insertPicked" @disabled($pickerSelected === [])
-                        class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border-0 px-[18px] py-[9px] text-[13px] font-semibold text-white {{ $pickerSelected === [] ? 'cursor-not-allowed bg-placeholder' : 'bg-admin-primary' }}">
+                <button type="button" wire:click="insertPicked" @disabled($pickCount === 0)
+                        class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border-0 px-[18px] py-[9px] text-[13px] font-semibold text-white {{ $pickCount === 0 ? 'cursor-not-allowed bg-placeholder' : 'bg-admin-primary' }}">
                     <x-admin::icon name="ri-check" class="size-[15px]" />
-                    {{ $imagePickerMode === 'gallery' && count($pickerSelected) > 1
-                        ? __('media.picker_insert_count', ['count' => count($pickerSelected)])
+                    {{ $imagePickerMode === 'gallery' && $pickCount > 1
+                        ? __('media.picker_insert_count', ['count' => $pickCount])
                         : __('media.picker_insert') }}
                 </button>
             </div>

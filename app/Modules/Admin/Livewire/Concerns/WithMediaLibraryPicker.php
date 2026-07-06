@@ -2,17 +2,24 @@
 
 namespace App\Modules\Admin\Livewire\Concerns;
 
+use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
+use App\Modules\Media\Services\ExternalImageFetcher;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Media\Support\MediaKey;
 use App\Modules\Shared\Support\VideoEmbed;
+use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Models\Site;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
+use RuntimeException;
 
 /**
  * The shared media-library picker for admin Livewire components (rich editors, galleries).
@@ -31,9 +38,6 @@ trait WithMediaLibraryPicker
     /** Where a picked image goes: `gallery` (component hook) or `editor` (insert at caret). */
     public string $imagePickerMode = 'gallery';
 
-    /** Editor mode also accepts an external image URL (owner: both paths, like the old T5G). */
-    public string $externalImageUrl = '';
-
     public function openImagePicker(string $mode = 'gallery'): void
     {
         abort_unless(Gate::allows('media.view'), 403);
@@ -42,7 +46,8 @@ trait WithMediaLibraryPicker
         // Fresh modal per open — stale filters/selection from a previous pick would surprise;
         // the view/sort preference survives within the component's lifetime.
         $this->reset('pickerTab', 'pickerType', 'pickerFormat', 'pickerSearch', 'pickerFolderId',
-            'pickerSelected', 'pickerPage', 'pickerNewFolderOpen', 'pickerNewFolderName');
+            'pickerSelected', 'pickerPage', 'pickerNewFolderOpen', 'pickerNewFolderName',
+            'pickerSource', 'pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy');
         $this->showImagePicker = true;
     }
 
@@ -106,27 +111,6 @@ trait WithMediaLibraryPicker
         $this->dispatch('admin-editor-insert-html', html: $html);
         $this->reset('videoUrl', 'videoAutoplay');
         $this->showVideoDialog = false;
-    }
-
-    /** Insert an EXTERNAL image url at the caret (editor mode only — galleries stay library-only). */
-    public function insertExternalImage(): void
-    {
-        abort_unless(Gate::allows('media.view'), 403);
-
-        if ($this->imagePickerMode !== 'editor') {
-            return;
-        }
-
-        $url = trim($this->externalImageUrl);
-        if (filter_var($url, FILTER_VALIDATE_URL) === false || ! in_array(parse_url($url, PHP_URL_SCHEME), ['http', 'https'], true)) {
-            $this->addError('externalImageUrl', __('catalog.picker_external_invalid'));
-
-            return;
-        }
-
-        $this->dispatch('admin-editor-insert-image', url: $url);
-        $this->reset('externalImageUrl');
-        $this->showImagePicker = false;
     }
 
     /** Gallery-mode hook — components that carry a gallery override this; default: no-op. */
@@ -209,6 +193,7 @@ trait WithMediaLibraryPicker
         abort_unless(Gate::allows('media.view'), 403);
 
         $this->pickerTab = $tab === 'upload' ? 'upload' : 'library';
+        $this->pickerSource = null; // tab switch always lands on the source grid (handoff behavior)
     }
 
     public function setPickerView(string $view): void
@@ -252,10 +237,120 @@ trait WithMediaLibraryPicker
         $this->pickerSelected = [];
     }
 
+    /*
+    |------------------------------------------------------------------------
+    | "Ảnh từ URL" source (handoff §1b) — server fetch through the SSRF gate
+    |------------------------------------------------------------------------
+    */
+
+    /** Upload-tab screen: null = source grid; 'url' now, device/camera/clouds in later phases. */
+    public ?string $pickerSource = null;
+
+    public string $pickerUrlInput = '';
+
+    /** @var array{tempKey: string, url: string, filename: string, mime: string, size: int, width: int|null, height: int|null}|null */
+    public ?array $pickerUrlPreview = null;
+
+    /** "Lưu bản sao vào Thư viện ảnh" — default ON (hotlinks die when the origin deletes them). */
+    public bool $pickerUrlSaveCopy = true;
+
+    public function openPickerSource(string $source): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+
+        if (in_array($source, ['url'], true)) { // device/camera/clouds join in phases 3/5
+            $this->pickerSource = $source;
+        }
+    }
+
+    public function backToPickerSources(): void
+    {
+        $this->pickerSource = null;
+    }
+
+    /** "Xem trước": format-check the URL, then the server fetches it through the SSRF gate. */
+    public function previewPickerUrl(): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+
+        $this->resetErrorBag('pickerUrlInput');
+        $url = trim($this->pickerUrlInput);
+
+        // Fast client-shape check before any network: public http(s) URL with an image extension.
+        if (preg_match('#^https?://\S+\.(jpe?g|png|webp|gif|avif)([?\#]\S*)?$#i', $url) !== 1) {
+            $this->addError('pickerUrlInput', __('media.picker_url_invalid'));
+
+            return;
+        }
+
+        // Replacing a previous preview? Its staged bytes are abandoned — clean them eagerly
+        // (the `_incoming/` lifecycle rule remains the backstop).
+        if ($this->pickerUrlPreview !== null) {
+            Storage::disk(MediaKey::disk())->delete($this->pickerUrlPreview['tempKey']);
+        }
+
+        try {
+            $this->pickerUrlPreview = app(ExternalImageFetcher::class)
+                ->handle($url, (string) Site::query()->find(app(CurrentSite::class)->id())?->name);
+            // The URL source lives on the upload tab — land there so the preview screen shows.
+            $this->pickerTab = 'upload';
+            $this->pickerSource = 'url';
+        } catch (RuntimeException $e) {
+            $this->pickerUrlPreview = null;
+            $this->addError('pickerUrlInput', $e->getMessage());
+        }
+    }
+
+    /** The URL screen's preview counts as the pick — it feeds the footer's "Chèn ảnh". */
+    public function hasUrlPick(): bool
+    {
+        return $this->pickerTab === 'upload' && $this->pickerSource === 'url' && $this->pickerUrlPreview !== null;
+    }
+
+    /** Insert the previewed URL image: import a copy through register, or hotlink (editor only). */
+    private function insertUrlPreview(): void
+    {
+        $preview = $this->pickerUrlPreview;
+        if ($preview === null) {
+            return;
+        }
+
+        // A gallery row must reference a library master — hotlinking is an editor-only choice.
+        $saveCopy = $this->imagePickerMode === 'gallery' || $this->pickerUrlSaveCopy;
+
+        if ($saveCopy) {
+            abort_unless(Gate::allows('media.upload'), 403);
+
+            try {
+                $media = app(RegisterMediaUpload::class)->handle($preview['tempKey'], $preview['filename']);
+            } catch (RuntimeException $e) {
+                $this->addError('pickerUrlInput', $e->getMessage());
+
+                return;
+            }
+
+            $this->imagePickerMode === 'editor'
+                ? $this->dispatch('admin-editor-insert-image', url: app(MediaUrlResolver::class)->url($media->storage_key, 1200))
+                : $this->addGalleryImage($media->id);
+        } else {
+            $this->dispatch('admin-editor-insert-image', url: $preview['url']);
+            Storage::disk(MediaKey::disk())->delete($preview['tempKey']); // fetched only to validate
+        }
+
+        $this->reset('pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy');
+        $this->showImagePicker = false;
+    }
+
     /** Footer "Chèn ảnh": editor → caret insert (first pick); gallery → host hook, picked order. */
     public function insertPicked(): void
     {
         abort_unless(Gate::allows('media.view'), 403);
+
+        if ($this->hasUrlPick()) {
+            $this->insertUrlPreview();
+
+            return;
+        }
 
         $items = Media::query()->whereIn('id', $this->pickerSelected)->get()
             ->sortBy(fn (Media $m): int => (int) array_search($m->id, $this->pickerSelected, true))

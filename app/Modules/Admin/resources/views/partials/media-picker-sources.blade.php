@@ -28,14 +28,39 @@
             @foreach ($sources as $source)
                 <button type="button" wire:key="mp-src-{{ $source['key'] }}" disabled
                         title="{{ __('media.picker_source_soon') }}"
-                        class="relative flex cursor-not-allowed flex-col items-center gap-[11px] rounded-[13px] border border-border bg-surface px-2.5 py-[18px] opacity-60">
+                        class="relative flex min-w-0 cursor-not-allowed flex-col items-center gap-[11px] rounded-[13px] border border-border bg-surface px-2.5 py-[18px] opacity-60">
                     <span class="flex size-[52px] items-center justify-center rounded-[14px]"
                           style="background: {{ $source['color'] }}1a; color: {{ $source['color'] }};">
                         <x-admin::icon :name="$source['icon']" class="size-[26px]" />
                     </span>
-                    <span class="text-center text-[12.5px] font-medium leading-snug text-body-text">{{ $source['label'] }}</span>
+                    <span class="max-w-full truncate text-center text-[12.5px] font-medium leading-snug text-body-text">{{ $source['label'] }}</span>
                 </button>
             @endforeach
         </div>
+
+        {{-- "— hoặc dán liên kết ảnh —" (handoff §1b): format-check here, the REAL gate is the
+             server-side SSRF-guarded fetch in previewPickerUrl → ExternalImageFetcher. --}}
+        <div class="mx-auto mt-3.5 flex w-full max-w-[640px] items-center gap-3">
+            <span class="h-px flex-1 bg-border-strong"></span>
+            <span class="text-[11.5px] text-body-faint">{{ __('media.picker_url_divider') }}</span>
+            <span class="h-px flex-1 bg-border-strong"></span>
+        </div>
+        <div class="mx-auto mt-2.5 flex w-full max-w-[640px] gap-2">
+            <div class="relative min-w-0 flex-1">
+                <x-admin::icon name="ri-link" class="absolute left-3 top-1/2 size-[15px] -translate-y-1/2 text-body-faint" />
+                <input type="url" wire:model="pickerUrlInput" wire:keydown.enter="previewPickerUrl"
+                       placeholder="https://vi-du.com/anh-san-pham.jpg"
+                       class="block w-full rounded-lg border border-border-strong bg-surface py-[9px] pl-[35px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none">
+            </div>
+            <button type="button" wire:click="previewPickerUrl"
+                    class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-admin-primary/20 bg-admin-primary/4 px-[15px] py-[9px] text-[12.5px] font-semibold text-admin-primary">
+                <x-admin::icon name="ri-eye" class="size-3.5" />{{ __('media.picker_url_preview') }}
+            </button>
+        </div>
+        @error('pickerUrlInput')
+            <div class="mx-auto mt-2 flex w-full max-w-[640px] items-center gap-1.5 text-xs text-admin-danger">
+                <x-admin::icon name="ri-error-warning" class="size-3.5 shrink-0" />{{ $message }}
+            </div>
+        @enderror
     </div>
 </div>

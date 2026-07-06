@@ -5,8 +5,11 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Models\MediaFolder;
+use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 /*
@@ -41,6 +44,12 @@ function seedPickerMedia(string $suffix, array $attrs = []): Media
         'mime' => 'image/jpeg',
         'size' => 1024,
     ], $attrs));
+}
+
+/** Real 1×1 PNG bytes for the URL-source fetch fakes (finfo sniffs image/png). */
+function pickerPng(): string
+{
+    return (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', true);
 }
 
 /**
@@ -297,6 +306,101 @@ it('keeps the picker interaction on a flat query budget (no per-row N+1)', funct
         // queries and blow far past this ceiling.
         $queries = countQueries(fn () => $component->call('setPickerFolder', null));
         expect($queries)->toBeLessThanOrEqual(35);
+    });
+});
+
+it('rejects a non-image URL shape before any fetch, and previews a valid one', function (): void {
+    $user = pickerManager();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        Http::preventStrayRequests();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'editor');
+
+        // A page URL (no image extension) is refused by the client-shape guard — no network hit.
+        $component->set('pickerUrlInput', 'https://example.com/trang-san-pham')->call('previewPickerUrl')
+            ->assertHasErrors('pickerUrlInput');
+        Http::assertNothingSent();
+
+        // A valid public image URL previews (the server fetched + sniffed it).
+        Http::fake(['https://93.184.216.34/a.jpg' => Http::response(pickerPng(), 200)]);
+        $component->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')->call('previewPickerUrl')
+            ->assertHasNoErrors()
+            ->assertSet('pickerSource', 'url');
+        expect($component->instance()->pickerUrlPreview)->not->toBeNull()
+            ->and($component->instance()->hasUrlPick())->toBeTrue();
+    });
+});
+
+it('imports a URL copy (editor, save-copy on) — a real master row + insert event', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        Http::fake(['https://93.184.216.34/a.jpg' => Http::response(pickerPng(), 200)]);
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'editor')
+            ->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')->call('previewPickerUrl')
+            ->assertSet('pickerUrlSaveCopy', true)
+            ->call('insertPicked')
+            ->assertDispatched('admin-editor-insert-image')
+            ->assertSet('showImagePicker', false);
+
+        expect(Media::query()->count())->toBe(1); // the copy became a library master
+    });
+});
+
+it('hotlinks a URL without importing when save-copy is off (editor)', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        Http::fake(['https://93.184.216.34/a.jpg' => Http::response(pickerPng(), 200)]);
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'editor')
+            ->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')->call('previewPickerUrl')
+            ->set('pickerUrlSaveCopy', false)
+            ->call('insertPicked')
+            ->assertDispatched('admin-editor-insert-image', url: 'https://93.184.216.34/a.jpg');
+
+        expect(Media::query()->count())->toBe(0); // nothing imported — pure hotlink
+    });
+});
+
+it('always imports a URL image in gallery mode (a gallery row needs a master)', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        Http::fake(['https://93.184.216.34/a.jpg' => Http::response(pickerPng(), 200)]);
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')->call('previewPickerUrl')
+            ->call('insertPicked');
+
+        expect(Media::query()->count())->toBe(1)
+            ->and($component->get('imageMediaIds'))->toHaveCount(1);
+    });
+});
+
+it('keeps inserted image links working after a folder is renamed (storage_key, not slug)', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function (): void {
+        $folder = MediaFolder::query()->create(['name' => 'Sản phẩm', 'slug' => 'san-pham']);
+        $media = seedPickerMedia('keep', ['folder_id' => $folder->id]);
+        $before = app(MediaUrlResolver::class)->url($media->storage_key, 1200);
+
+        // Rename + reslug the folder — the image URL is derived from storage_key, never the slug.
+        $folder->update(['name' => 'Danh mục mới', 'slug' => 'danh-muc-moi']);
+
+        $after = app(MediaUrlResolver::class)->url($media->fresh()->storage_key, 1200);
+        expect($after)->toBe($before)
+            ->and($media->fresh()->folder_id)->toBe($folder->id); // still in the same (renamed) folder
     });
 });
 
