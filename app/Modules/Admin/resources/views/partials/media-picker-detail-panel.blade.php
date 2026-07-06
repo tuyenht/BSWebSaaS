@@ -47,6 +47,35 @@
                 <span class="shrink-0 text-body-faint">{{ __('media.picker_detail_folder') }}</span>
                 <span class="truncate text-body-text">{{ $d->folder?->name ?? __('media.picker_all_images') }}</span>
             </div>
+            @if (($mp['detailUploader'] ?? null) !== null)
+                <div class="flex justify-between gap-3 text-[12.5px]">
+                    <span class="shrink-0 text-body-faint">{{ __('media.picker_detail_uploader') }}</span>
+                    <span class="truncate text-body-text">{{ $mp['detailUploader'] }}</span>
+                </div>
+            @endif
+        </div>
+
+        {{-- "Used in": every post/product using this image, each a link opening in a new tab. One
+             image can be used by many objects (the reason it's a list). Empty = safe to delete. --}}
+        <div>
+            <div class="mb-1.5 text-[11px] font-semibold uppercase tracking-[.03em] text-body-muted">{{ __('media.picker_detail_used_in') }}</div>
+            @php($usages = $mp['detailUsages'] ?? [])
+            @if ($usages === [])
+                <p class="rounded-lg bg-surface-hover px-3 py-2 text-[12.5px] text-body-faint">{{ __('media.picker_detail_unused') }}</p>
+            @else
+                <ul class="flex flex-col gap-1">
+                    @foreach ($usages as $u)
+                        <li>
+                            <a href="{{ $u['url'] }}" target="_blank" rel="noopener"
+                               class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] text-body-text hover:bg-surface-hover">
+                                <x-admin::icon name="{{ $u['kind'] === 'product' ? 'ri-inbox-archive' : 'file-text' }}" class="size-3.5 shrink-0 text-body-faint" />
+                                <span class="min-w-0 flex-1 truncate">{{ $u['label'] }}</span>
+                                <span class="shrink-0 rounded bg-admin-primary/8 px-1.5 py-0.5 text-[10px] font-semibold text-admin-primary">{{ __('media.picker_kind_'.$u['kind']) }}</span>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
         </div>
 
         <div>

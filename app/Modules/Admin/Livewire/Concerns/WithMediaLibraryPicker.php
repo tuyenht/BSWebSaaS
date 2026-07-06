@@ -2,6 +2,8 @@
 
 namespace App\Modules\Admin\Livewire\Concerns;
 
+use App\Modules\Admin\Support\MediaUsageLocator;
+use App\Modules\Identity\Models\User;
 use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
@@ -656,7 +658,7 @@ trait WithMediaLibraryPicker
      * Everything the picker modal renders, in one request-cached bundle (the Blade partial
      * reads $this->mediaPickerState). Empty shell while closed, so hidden modals cost nothing.
      *
-     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, contentLocale?: string, trashTotal?: int}
+     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, detailUsages?: list<array{kind: string, label: string, url: string}>, detailUploader?: string|null, contentLocale?: string, trashTotal?: int}
      */
     #[Computed]
     public function mediaPickerState(): array
@@ -678,6 +680,13 @@ trait WithMediaLibraryPicker
             ->filter(fn (string $ext): bool => $ext !== '')
             ->unique()->sort()->values()->all();
 
+        $detail = $this->pickerDetailId === null ? null : Media::query()->with('folder')->whereKey($this->pickerDetailId)->first();
+        $uploaderName = null;
+        if ($detail?->created_by !== null) {
+            $name = User::query()->whereKey($detail->created_by)->value('name');
+            $uploaderName = is_string($name) ? $name : null;
+        }
+
         return [
             'open' => true,
             'page' => $page,
@@ -686,7 +695,9 @@ trait WithMediaLibraryPicker
             'formats' => $formats,
             'selectedPreview' => Media::query()->whereIn('id', array_slice($this->pickerSelected, 0, 3))->get(),
             'urls' => app(MediaUrlResolver::class),
-            'detail' => $this->pickerDetailId === null ? null : Media::query()->with('folder')->whereKey($this->pickerDetailId)->first(),
+            'detail' => $detail,
+            'detailUsages' => $detail === null ? [] : app(MediaUsageLocator::class)->usagesFor($detail, $this->pickerContentLocale()),
+            'detailUploader' => $uploaderName,
             'contentLocale' => $this->pickerContentLocale(),
             'trashTotal' => Media::onlyTrashed()->count(),
         ];
@@ -721,8 +732,8 @@ trait WithMediaLibraryPicker
             'video' => $query->where('mime', 'like', 'video/%'),
             'audio' => $query->where('mime', 'like', 'audio/%'),
             'doc' => $query->where('mime', 'like', 'application/%'),
-            'used' => $query->whereHas('attachments'),
-            'unused' => $query->whereDoesntHave('attachments'),
+            'used' => app(MediaUsageLocator::class)->constrain($query, true),
+            'unused' => app(MediaUsageLocator::class)->constrain($query, false),
             default => null,
         };
 

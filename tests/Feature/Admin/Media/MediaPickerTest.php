@@ -1,9 +1,11 @@
 <?php
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
+use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Models\ProductImage;
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
-use App\Modules\Media\Models\Mediable;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Rbac\Context\TeamContext;
@@ -74,8 +76,10 @@ it('filters the grid by folder, search, format and used/unused — combined AND'
         $folder = MediaFolder::query()->create(['name' => 'Sản phẩm', 'slug' => 'san-pham']);
         seedPickerMedia('jig', ['folder_id' => $folder->id, 'original_filename' => 'do-ga-phay.jpg']);
         seedPickerMedia('banner', ['original_filename' => 'banner-tet.png', 'mime' => 'image/png', 'storage_key' => 's/library/banner.png']);
-        $used = seedPickerMedia('used', ['original_filename' => 'da-dung.jpg']);
-        Mediable::query()->create(['media_id' => $used->id, 'mediable_type' => 'product', 'mediable_id' => 1]);
+        $used = seedPickerMedia('used', ['original_filename' => 'da-dung.jpg', 'storage_key' => 's/library/da-dung.jpg']);
+        // "Used" = referenced by a product gallery (or an entry cover) — MediaUsageLocator.
+        $product = Product::query()->create(['status' => 'published']);
+        ProductImage::query()->create(['product_id' => $product->id, 'media_id' => $used->id, 'position' => 0]);
 
         $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
 
@@ -692,6 +696,54 @@ it('opens the device pane with media.upload and lands on the library after a bat
             ->dispatch('media-uploaded')                 // the island fires this after register
             ->assertSet('pickerTab', 'library')
             ->assertSet('pickerSource', null);
+    });
+});
+
+it('shows the uploader and every product/post using the image in the detail panel', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $media = seedPickerMedia('used', ['created_by' => $user->id, 'storage_key' => 's/library/used.jpg']);
+
+        $product = Product::query()->create(['status' => 'published']);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Đồ gá phay CNC', 'slug' => 'do-ga-phay']);
+        ProductImage::query()->create(['product_id' => $product->id, 'media_id' => $media->id, 'position' => 0]);
+
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => ['image_url' => $media->storage_key]]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Bài giới thiệu', 'slug' => 'bai-gt', 'status' => 'published']);
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerDetail', $media->id);
+
+        $state = $component->instance()->mediaPickerState();
+        expect($state['detailUploader'])->toBe($user->name)
+            ->and(collect($state['detailUsages'])->pluck('label')->all())->toContain('Đồ gá phay CNC', 'Bài giới thiệu')
+            ->and(collect($state['detailUsages'])->pluck('kind')->all())->toContain('product', 'post');
+    });
+});
+
+it('filters used vs unused across product galleries and entry covers', function (): void {
+    $user = pickerManager();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $inGallery = seedPickerMedia('g', ['storage_key' => 's/library/g.jpg']);
+        $asCover = seedPickerMedia('c', ['storage_key' => 's/library/c.jpg']);
+        $unused = seedPickerMedia('n', ['storage_key' => 's/library/n.jpg', 'original_filename' => 'chua-dung.jpg']);
+
+        $product = Product::query()->create(['status' => 'published']);
+        ProductImage::query()->create(['product_id' => $product->id, 'media_id' => $inGallery->id, 'position' => 0]);
+        Entry::query()->create(['type' => 'post', 'status' => 'published', 'meta' => ['image_url' => $asCover->storage_key]]);
+
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
+
+        $component->set('pickerType', 'used');
+        expect($component->instance()->mediaPickerState()['page']->pluck('id')->all())
+            ->toContain($inGallery->id, $asCover->id)->not->toContain($unused->id);
+
+        $component->set('pickerType', 'unused');
+        expect($component->instance()->mediaPickerState()['page']->pluck('id')->all())
+            ->toContain($unused->id)->not->toContain($inGallery->id, $asCover->id);
     });
 });
 
