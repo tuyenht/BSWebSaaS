@@ -5,19 +5,29 @@ namespace App\Modules\Admin\Livewire;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Admin account settings. Section 1 = security (two-factor enrollment): generate a TOTP
- * secret + QR, confirm a code to enable, surface one-time recovery codes, and disable.
- * Reuses TwoFactorService (secret/QR/verify/recovery) so the login-time challenge becomes
- * reachable. Email / OAuth-app sections are added alongside.
+ * The signed-in user's own account page: profile (display name), password change
+ * (current-password gated), two-factor enrollment (TOTP secret + QR, confirm to enable,
+ * one-time recovery codes, disable) and social connects. Everything here scopes to
+ * auth()->user() only — site-wide settings live in their own tabs.
  */
 #[Layout('admin::layouts.app')]
 final class Settings extends Component
 {
+    public string $profileName = '';
+
+    public string $current_password = '';
+
+    public string $password = '';
+
+    public string $password_confirmation = '';
+
     public ?string $tfaSecret = null;
 
     public ?string $tfaQr = null;
@@ -34,6 +44,40 @@ final class Settings extends Component
         // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so re-assert
         // an authenticated session on every request (each action also scopes to auth()->user()).
         abort_unless(auth()->check(), 403);
+    }
+
+    public function mount(): void
+    {
+        $user = auth()->user();
+        $this->profileName = $user instanceof User ? $user->name : '';
+    }
+
+    /** Update the user's own display name (the topbar short-name derives from it). */
+    public function saveProfile(): void
+    {
+        $this->validate(['profileName' => ['required', 'string', 'max:120']]);
+
+        $user = auth()->user();
+        if ($user instanceof User) {
+            $user->forceFill(['name' => trim($this->profileName)])->save();
+            session()->flash('profile_saved', __('admin.saved'));
+        }
+    }
+
+    /** Change the user's own password — gated by their CURRENT password, never by role. */
+    public function changePassword(): void
+    {
+        $this->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'confirmed', Password::defaults()],
+        ]);
+
+        $user = auth()->user();
+        if ($user instanceof User) {
+            $user->forceFill(['password' => Hash::make($this->password)])->save();
+            $this->reset('current_password', 'password', 'password_confirmation');
+            session()->flash('password_changed', __('admin.password_changed'));
+        }
     }
 
     public function startTwoFactor(): void

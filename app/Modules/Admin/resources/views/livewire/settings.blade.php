@@ -1,4 +1,39 @@
 <x-admin::settings-shell active="security">
+    {{-- Profile — the user's own display name (topbar short-name derives from it) --}}
+    <x-admin::card :title="__('admin.profile_info')">
+        @if (session('profile_saved'))
+            <p class="mb-3 rounded bg-admin-success/10 px-3 py-2 text-sm text-admin-success">{{ session('profile_saved') }}</p>
+        @endif
+        <form wire:submit="saveProfile" class="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <div class="grow sm:max-w-sm">
+                <x-admin::input :label="__('admin.full_name')" name="profile-name" wire:model="profileName" />
+                @error('profileName') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+            </div>
+            <x-admin::button type="submit" wire:loading.attr="disabled" wire:target="saveProfile">{{ __('catalog.save') }}</x-admin::button>
+        </form>
+    </x-admin::card>
+
+    {{-- Password change — gated by the CURRENT password, never by role --}}
+    <x-admin::card :title="__('admin.change_password')">
+        @if (session('password_changed'))
+            <p class="mb-3 rounded bg-admin-success/10 px-3 py-2 text-sm text-admin-success">{{ session('password_changed') }}</p>
+        @endif
+        <form wire:submit="changePassword" class="max-w-sm space-y-3">
+            <div>
+                <x-admin::input :label="__('admin.current_password')" name="current-password" type="password" autocomplete="current-password" wire:model="current_password" />
+                @error('current_password') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <x-admin::input :label="__('admin.new_password')" name="new-password" type="password" autocomplete="new-password" wire:model="password" />
+                @error('password') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+            </div>
+            <div>
+                <x-admin::input :label="__('admin.confirm_password')" name="new-password-confirmation" type="password" autocomplete="new-password" wire:model="password_confirmation" />
+            </div>
+            <x-admin::button type="submit" wire:loading.attr="disabled" wire:target="changePassword">{{ __('admin.change_password') }}</x-admin::button>
+        </form>
+    </x-admin::card>
+
     {{-- Two-factor authentication --}}
     <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">

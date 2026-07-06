@@ -49,7 +49,6 @@
              data-active-group="{{ $activeGroup }}"
              x-init="document.addEventListener('livewire:navigated', () => { openGroup = $el.dataset.activeGroup })"
              @scroll="$el.classList.add('is-scrolling'); clearTimeout(t); t = setTimeout(() => $el.classList.remove('is-scrolling'), 1200)">
-            <p class="sidebar-label px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-sidebar-title">{{ __('admin.menu') }}</p>
             {{-- Fully dynamic nested tree (AdminNav: entitlement ∩ RBAC, active resolved there).
                  A node with children renders as an expandable group (open by default when active);
                  leaves are links. Collapsed-rail flyout is a later stage — here groups expand inline. --}}
@@ -67,7 +66,9 @@
                                         ])>
                                     <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                     <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
-                                    <x-admin::icon name="chevron-down" class="sidebar-label size-4 shrink-0 transition-transform" ::class="openGroup === '{{ $item->key }}' && 'rotate-180'" />
+                                    {{-- Velzon reference: closed = a small right chevron, open = rotated down (90°),
+                                         at 14px — noticeably smaller than the 20px leading icons. --}}
+                                    <x-admin::icon name="chevron-right" class="sidebar-label size-3.5 shrink-0 opacity-80 transition-transform" ::class="openGroup === '{{ $item->key }}' && 'rotate-90'" />
                                 </button>
                                 <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-0.5 ps-4">
                                     @foreach ($item->children as $child)
@@ -137,13 +138,14 @@
         </main>
 
         {{-- Footer --}}
+        {{-- Footer — one left-aligned line (owner preference; deliberately NOT the reference's split layout). --}}
         <footer class="border-t border-border px-4 py-4 text-xs text-footer">
-            <div class="flex flex-col items-center gap-1 sm:flex-row sm:justify-between">
+            <div class="flex flex-wrap items-center gap-1">
                 <span>&copy; {{ now()->year }}
                     <a href="{{ config('admin.brand.company_url') }}" target="_blank" rel="noopener noreferrer"
                        class="font-medium text-body-muted transition-colors hover:text-accent hover:underline">{{ config('admin.brand.company') }}</a>.
                 </span>
-                <span class="hidden sm:inline">{{ __('auth.rights') }}</span>
+                <span>{{ __('auth.rights') }}</span>
             </div>
         </footer>
     </div>

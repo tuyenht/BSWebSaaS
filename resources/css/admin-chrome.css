@@ -28,10 +28,10 @@
     --vz-header-item-bg: #f3f6f9;                      /* item hover bg · vz-ref: rgba($secondary,.12) */
     --vz-header-item-hover-color: #212529;             /* ★ platform nav link hover text */
     --vz-header-brand-color: #343a40;                  /* ★ platform console brand name */
-    --vz-topbar-search-bg: oklch(98.5% 0.002 247.839); /* Tailwind 4 default gray-50 (shipped look) · vz-ref: #f3f3f9 */
+    --vz-topbar-search-bg: #f3f3f9;                    /* vz-ref exact — clearly contrasts the white topbar (owner 06/07) */
     --vz-topbar-search-color: #495057;
-    --vz-topbar-search-border: #eff2f7;                /* ★ vz-ref: borderless search field */
-    --vz-topbar-search-placeholder-color: #ced4da;     /* ★ placeholder + magnifier icon */
+    --vz-topbar-search-border: #f3f3f9;                /* ★ vz-ref: borderless search field — border blends into the fill */
+    --vz-topbar-search-placeholder-color: #878a99;     /* ★ placeholder + magnifier readable on the gray fill (was #ced4da, too faint) */
     --vz-topbar-search-focus-bg: #ffffff;              /* ★ field brightens on focus */
     --vz-topbar-search-focus-accent: var(--color-accent); /* ★ focus border + ring — zone-owned so a dark topbar can lighten it */
     --vz-topbar-user-bg: color-mix(in oklab, var(--color-accent) 10%, transparent); /* user chip (initials) bg */

@@ -8,21 +8,24 @@
 @php
     $user = auth()->user();
     $name = $user?->name ?? __('admin.account');
+    // Topbar shows the SHORT name (≤2 words, Velzon-tight block); menus keep the full name.
+    $shortName = \App\Modules\Admin\Support\DisplayName::short($name);
     $isPlatform = \App\Modules\Admin\Support\AdminPlane::isPlatform();
 @endphp
-<div class="relative" x-data="{ userOpen: false }">
+<div class="relative -me-4 h-full" x-data="{ userOpen: false }">
+    {{-- Velzon reference: the user block sits on a persistent soft-gray slab spanning the
+         topbar height, not a hover-only chip. --}}
     <button type="button" @click="userOpen = ! userOpen" :aria-expanded="userOpen"
-            class="flex items-center gap-2 rounded px-1.5 py-1 transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
+            class="flex h-full items-center gap-2.5 bg-topbar-hover px-3 transition-[filter] hover:brightness-[.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
         <span class="grid size-9 shrink-0 place-items-center rounded-full bg-topbar-user text-sm font-semibold text-topbar-user-fg">
             {{ \Illuminate\Support\Str::of($name)->substr(0, 1)->upper() }}
         </span>
         <span class="hidden text-start leading-tight sm:block">
-            <span class="block text-sm font-medium text-topbar-fg-strong">{{ $name }}</span>
+            <span class="block text-sm font-medium text-topbar-fg-strong">{{ $shortName }}</span>
             @if (! empty($roleLabel))
                 <span class="block text-xs text-topbar-fg">{{ $roleLabel }}</span>
             @endif
         </span>
-        <x-admin::icon name="chevron-down" class="hidden size-4 text-topbar-fg sm:block" />
     </button>
 
     <div x-show="userOpen" @click.outside="userOpen = false" @keydown.escape.window="userOpen = false"
@@ -35,19 +38,14 @@
             @endif
         </div>
 
+        {{-- Personal items ONLY — this menu belongs to the signed-in user. Site-wide
+             configuration lives under the sidebar's Cài đặt group, not here. --}}
         @unless ($isPlatform)
             <a href="{{ route('admin.settings.security') }}" wire:navigate role="menuitem"
                class="flex items-center gap-2.5 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
                 <x-admin::icon name="user" class="size-4 text-body-faint" />
                 {{ __('admin.settings_account') }}
             </a>
-            @can('settings.manage')
-                <a href="{{ route('admin.settings.email') }}" wire:navigate role="menuitem"
-                   class="flex items-center gap-2.5 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
-                    <x-admin::icon name="settings" class="size-4 text-body-faint" />
-                    {{ __('admin.settings_workspace') }}
-                </a>
-            @endcan
         @endunless
 
         <div class="my-1 border-t border-border"></div>
