@@ -201,9 +201,11 @@ document.addEventListener('alpine:init', () => {
 });
 
 // The Appearance Settings page saved a new SITE default — repaint this tab immediately
-// (the resolver already folded the user's own override back in).
+// (the resolver already folded the user's own override back in). LW4's dispatch() emits a
+// real bubbling CustomEvent (detail = the named params), so a plain DOM listener works here
+// at bundle top-level, before window.Livewire exists.
 document.addEventListener('admin-chrome-changed', (event) => {
-    const attributes = event.detail?.attributes ?? event.detail?.[0]?.attributes;
+    const attributes = event.detail?.attributes;
     if (attributes) {
         applyThemeAttributes(attributes);
         const store = window.Alpine?.store('adminTheme');

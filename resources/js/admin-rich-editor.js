@@ -8,18 +8,21 @@
 // `basic` = short teaser fields (b/i, lists, link). Both show a slim status bar whose
 // char/word counters count plain TEXT, never markup.
 //
-// Livewire bridge is deliberately DOM-only — never window.Livewire JS APIs (LW4 changed them;
-// $wire.$set threw on every keystroke, which also broke IME composition and downstream
-// toolbar handlers):
+// Livewire 4 bridge (verified against v4.3.1 source). Component writes stay DOM-only on
+// purpose: Livewire.find(id) returns the $wire proxy itself, and $wire.$set(name, value,
+// live = true) defaults to LIVE — a network round-trip per keystroke — so editors never
+// talk to $wire directly:
 //   · content OUT: mirror HTML into the component's hidden [data-rich-sync] input + `input`
-//     event — plain wire:model (deferred) carries it with the next request (Save).
+//     event — plain wire:model (deferred by default in LW4) carries it with the next
+//     request (Save).
 //   · actions IN:  toolbar image/video buttons .click() the hidden [data-rich-action]
 //     wire:click buttons rendered by the blade component (host component must use the
 //     WithMediaLibraryPicker trait, or the wire:click fails server-side).
-//   · results back: `admin-editor-insert-image|html` heard on BOTH the window event bus and
-//     Livewire.on (whichever this Livewire version emits), deduped, applied to the editor
-//     that owned the request. Tooltips/dialogs follow the admin locale via <html lang>;
-//     Jodit ships no Vietnamese, so we register our own pack.
+//   · results back: PHP dispatch() → Livewire.on('admin-editor-insert-image|html') — the
+//     official LW4 bus (a __livewire-guarded window listener; the callback receives the
+//     dispatch params object directly). Applied to the editor that owned the request.
+// Tooltips/dialogs follow the admin locale via <html lang>; Jodit ships no Vietnamese, so
+// we register our own pack.
 
 import { Jodit } from 'jodit';
 import 'jodit/es2021/jodit.min.css';
@@ -75,37 +78,15 @@ function registerRemixIcons() {
 let activeEditor = null;
 let insertListenerBound = false;
 
-// One event can arrive on both buses (window CustomEvent AND Livewire.on) depending on the
-// Livewire version — apply it once.
-function makeInsertHandler(key, apply) {
-    let lastValue = '';
-    let lastAt = 0;
-
-    return (payload) => {
-        const raw = payload?.[key] ?? payload?.detail?.[key];
-        if (typeof raw !== 'string' || raw === '' || !activeEditor) {
-            return;
-        }
-        const now = Date.now();
-        if (raw === lastValue && now - lastAt < 500) {
-            return; // duplicate delivery of the same dispatch
-        }
-        lastValue = raw;
-        lastAt = now;
-        apply(raw);
-    };
-}
-
-function onEitherBus(name, handler) {
-    window.addEventListener(name, (event) => handler(event.detail));
-
-    const hookLivewireBus = () => {
-        window.Livewire?.on?.(name, (payload) => handler(Array.isArray(payload) ? payload[0] : payload));
-    };
+// Livewire.on callbacks receive the PHP dispatch(...named args) as one params object.
+function onLivewire(name, handler) {
+    const hook = () => window.Livewire.on(name, handler);
     if (window.Livewire?.on) {
-        hookLivewireBus();
+        hook();
     } else {
-        document.addEventListener('livewire:init', hookLivewireBus, { once: true });
+        // This chunk normally loads after Livewire boots (livewire:navigated), but on a cold
+        // first paint the import can win the race — livewire:init still fires in LW4.
+        document.addEventListener('livewire:init', hook, { once: true });
     }
 }
 
@@ -113,14 +94,20 @@ function bindInsertListener() {
     if (insertListenerBound) {
         return;
     }
-    onEitherBus('admin-editor-insert-image', makeInsertHandler('url', (url) => {
-        activeEditor.selection.insertImage(url);
-    }));
+    onLivewire('admin-editor-insert-image', (params) => {
+        const url = params?.url;
+        if (typeof url === 'string' && url !== '' && activeEditor) {
+            activeEditor.selection.insertImage(url);
+        }
+    });
     // Server-built fragments (video embeds) — inserted verbatim at the caret; the write-time
     // sanitizer remains the gate on what survives into the DB.
-    onEitherBus('admin-editor-insert-html', makeInsertHandler('html', (html) => {
-        activeEditor.selection.insertHTML(html);
-    }));
+    onLivewire('admin-editor-insert-html', (params) => {
+        const html = params?.html;
+        if (typeof html === 'string' && html !== '' && activeEditor) {
+            activeEditor.selection.insertHTML(html);
+        }
+    });
     insertListenerBound = true;
 }
 

@@ -5,9 +5,10 @@
     'rows' => 8,
 ])
 {{-- ONE-LINE rich editor: <x-admin::rich-editor target="description" profile="full" :value="$description" />
-     Version-agnostic Livewire bridge (LW4's JS API differs from LW3 — never call $wire from JS):
+     Livewire 4 bridge, DOM-only by design ($wire.$set defaults to live = a request per
+     keystroke, and the island must not depend on Livewire JS internals):
      · content OUT:  the island mirrors Jodit's HTML into the hidden [data-rich-sync] input
-       (OUTSIDE wire:ignore) and fires `input` — plain wire:model carries it on save.
+       (OUTSIDE wire:ignore) and fires `input` — plain deferred wire:model carries it on save.
      · actions IN:   toolbar image/video buttons .click() the hidden [data-rich-action] buttons,
        which are real wire:click handlers (requires the WithMediaLibraryPicker trait).
      wire:ignore only shields Jodit's own DOM from morphs. --}}
