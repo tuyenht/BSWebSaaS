@@ -223,6 +223,7 @@ final class AdminNav
                     ['settings.email', 'admin.email_settings', 'admin.settings.email'],
                     ['settings.social', 'admin.social_login', 'admin.settings.social'],
                     ['settings.appearance', 'admin.appearance', 'admin.settings.appearance'],
+                    ['settings.catalog', 'admin.catalog_settings', 'admin.settings.catalog'],
                 ] as [$sKey, $sLabelKey, $sRoute]) {
                     $settingsChildren[] = new NavItem(
                         key: $sKey,

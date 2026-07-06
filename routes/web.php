@@ -6,6 +6,7 @@ use App\Modules\Admin\Http\Middleware\SetLocale;
 use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
+use App\Modules\Admin\Livewire\CatalogSettings;
 use App\Modules\Admin\Livewire\ComponentGallery;
 use App\Modules\Admin\Livewire\Dashboard;
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
@@ -180,6 +181,7 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/settings/email', EmailSettings::class)->middleware('can:settings.manage')->name('admin.settings.email');
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
         Route::get('/settings/appearance', AppearanceSettings::class)->middleware('can:settings.manage')->name('admin.settings.appearance');
+        Route::get('/settings/catalog', CatalogSettings::class)->middleware('can:settings.manage')->name('admin.settings.catalog');
 
         // Per-user Customizer persistence (fetch/JSON) — any authenticated member, own prefs only.
         Route::post('/theme-preference', [ThemePreferenceController::class, 'store'])->name('admin.theme.save');

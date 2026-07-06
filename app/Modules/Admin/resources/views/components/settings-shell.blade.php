@@ -31,6 +31,9 @@
             if (Route::has('admin.settings.appearance')) {
                 $workspace[] = ['key' => 'appearance', 'route' => 'admin.settings.appearance', 'label' => __('admin.appearance')];
             }
+            if (Route::has('admin.settings.catalog')) {
+                $workspace[] = ['key' => 'catalog', 'route' => 'admin.settings.catalog', 'label' => __('admin.catalog_settings')];
+            }
         }
         if ($workspace !== []) {
             $nav[] = ['group' => __('admin.settings_workspace'), 'items' => $workspace];
