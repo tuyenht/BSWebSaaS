@@ -5,6 +5,7 @@ namespace App\Modules\Media\Models;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -23,6 +24,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $mime
  * @property int $size
  * @property string|null $original_filename
+ * @property int|null $folder_id
+ * @property int $position
  */
 final class Media extends Model
 {
@@ -58,5 +61,15 @@ final class Media extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(Mediable::class);
+    }
+
+    /**
+     * The library folder this master lives in (null = the root "Tất cả ảnh" view).
+     *
+     * @return BelongsTo<MediaFolder, $this>
+     */
+    public function folder(): BelongsTo
+    {
+        return $this->belongsTo(MediaFolder::class, 'folder_id');
     }
 }
