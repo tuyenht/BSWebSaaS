@@ -47,6 +47,7 @@ trait WithMediaLibraryPicker
         // the view/sort preference survives within the component's lifetime.
         $this->reset('pickerTab', 'pickerType', 'pickerFormat', 'pickerSearch', 'pickerFolderId',
             'pickerSelected', 'pickerPage', 'pickerNewFolderOpen', 'pickerNewFolderName',
+            'pickerNewFolderSlug', 'pickerNewFolderSlugEdited', 'pickerNewFolderSlugFallback',
             'pickerSource', 'pickerUrlInput', 'pickerUrlPreview', 'pickerUrlSaveCopy');
         $this->showImagePicker = true;
     }
@@ -165,6 +166,15 @@ trait WithMediaLibraryPicker
     public bool $pickerNewFolderOpen = false;
 
     public string $pickerNewFolderName = '';
+
+    /** Live slug preview under the name field (editable via the pencil). */
+    public string $pickerNewFolderSlug = '';
+
+    /** True once the admin hand-edits the slug — stop auto-deriving it from the name. */
+    public bool $pickerNewFolderSlugEdited = false;
+
+    /** The name didn't transliterate to Latin (CJK/emoji) → show the amber "sửa tay" hint. */
+    public bool $pickerNewFolderSlugFallback = false;
 
     private const int PICKER_PER_PAGE = 24;
 
@@ -413,6 +423,24 @@ trait WithMediaLibraryPicker
         $this->pickerSelected = [];
     }
 
+    /** Typing the name re-derives the slug preview — until the admin hand-edits it (pencil). */
+    public function updatedPickerNewFolderName(): void
+    {
+        if ($this->pickerNewFolderSlugEdited) {
+            return;
+        }
+        $suggested = (new MediaFolder)->suggestSlugBase(trim($this->pickerNewFolderName));
+        $this->pickerNewFolderSlug = trim($this->pickerNewFolderName) === '' ? '' : $suggested['slug'];
+        $this->pickerNewFolderSlugFallback = $suggested['fallback'];
+    }
+
+    /** Opening the slug field (pencil) freezes auto-derivation; the admin owns it from here. */
+    public function editPickerFolderSlug(): void
+    {
+        $this->pickerNewFolderSlugEdited = true;
+        $this->pickerNewFolderSlugFallback = false;
+    }
+
     public function createPickerFolder(): void
     {
         abort_unless(Gate::allows('media.upload'), 403);
@@ -424,12 +452,11 @@ trait WithMediaLibraryPicker
             return;
         }
 
-        $slug = Str::slug($name) ?: 'thu-muc';
-        if (MediaFolder::query()->where('slug', $slug)->exists()) {
-            $this->addError('pickerNewFolderName', __('media.picker_folder_exists'));
-
-            return;
-        }
+        // Hand-edited slug wins (sanitized to ASCII); otherwise derive from the name. uniqueSlug
+        // forces the [a-z0-9-] shape and appends -2/-3… on a same-site collision — never an error.
+        $folder = new MediaFolder;
+        $candidate = $this->pickerNewFolderSlugEdited ? $this->pickerNewFolderSlug : $name;
+        $slug = $folder->uniqueSlug($candidate, $name);
 
         $maxPosition = MediaFolder::query()->max('position');
         $folder = MediaFolder::query()->create([
@@ -438,7 +465,8 @@ trait WithMediaLibraryPicker
             'position' => (is_numeric($maxPosition) ? (int) $maxPosition : 0) + 1,
         ]);
 
-        $this->reset('pickerNewFolderOpen', 'pickerNewFolderName');
+        $this->reset('pickerNewFolderOpen', 'pickerNewFolderName', 'pickerNewFolderSlug',
+            'pickerNewFolderSlugEdited', 'pickerNewFolderSlugFallback');
         $this->pickerFolderId = $folder->id;
         $this->pickerPage = 1;
     }

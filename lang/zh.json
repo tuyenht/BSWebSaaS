@@ -259,6 +259,8 @@
     "media.picker_folder_name_placeholder": "文件夹名称…",
     "media.picker_folder_name_required": "请输入文件夹名称（不超过 100 字）。",
     "media.picker_folder_exists": "已存在同名文件夹。",
+    "media.picker_folder_slug_edit": "编辑网址标识",
+    "media.picker_folder_slug_fallback": "名称无法转写为拉丁字母 — 使用自动生成的标识，可编辑。",
     "media.picker_search_placeholder": "按文件名搜索…",
     "media.picker_sort_label": "排序",
     "media.picker_sort_recent": "最新",

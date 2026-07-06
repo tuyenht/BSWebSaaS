@@ -27,11 +27,34 @@
         @endforeach
         @can('media.upload')
             @if ($pickerNewFolderOpen)
-                <div class="mt-1.5 flex flex-col gap-1">
-                    <input type="text" wire:model="pickerNewFolderName" wire:keydown.enter="createPickerFolder"
+                <div class="mt-1.5 flex flex-col gap-2 rounded-[9px] border border-border-strong bg-surface p-2.5">
+                    <input type="text" wire:model.live.debounce.300ms="pickerNewFolderName" wire:keydown.enter="createPickerFolder"
                            placeholder="{{ __('media.picker_folder_name_placeholder') }}" x-init="$el.focus()"
                            class="block w-full rounded-[7px] border border-border-strong bg-surface px-2 py-1.5 text-[12.5px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none">
-                    @error('pickerNewFolderName') <p class="px-1 text-[11px] text-admin-danger">{{ $message }}</p> @enderror
+                    @error('pickerNewFolderName') <p class="text-[11px] text-admin-danger">{{ $message }}</p> @enderror
+
+                    {{-- Slug preview /{slug}; the pencil opens it for hand-editing (freezes auto-derive). --}}
+                    @if ($pickerNewFolderSlugEdited)
+                        <div class="flex items-center gap-1.5 text-[11px]">
+                            <x-admin::icon name="ri-link" class="size-3 shrink-0 text-body-faint" />
+                            <span class="text-body-faint">/</span>
+                            <input type="text" wire:model.live="pickerNewFolderSlug"
+                                   class="min-w-0 flex-1 rounded border border-border-strong bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-admin-primary focus:border-admin-primary focus:outline-none">
+                        </div>
+                    @elseif ($pickerNewFolderSlug !== '')
+                        <div class="flex min-w-0 items-center gap-1.5 text-[11px] text-body-faint">
+                            <x-admin::icon name="ri-link" class="size-3 shrink-0" />
+                            <span class="truncate font-semibold text-admin-primary">/{{ $pickerNewFolderSlug }}</span>
+                            <button type="button" wire:click="editPickerFolderSlug" title="{{ __('media.picker_folder_slug_edit') }}"
+                                    class="shrink-0 text-body-faint hover:text-admin-primary">
+                                <x-admin::icon name="ri-pencil" class="size-3" />
+                            </button>
+                        </div>
+                    @endif
+                    @if ($pickerNewFolderSlugFallback)
+                        <p class="text-[10.5px] leading-tight text-admin-warning">{{ __('media.picker_folder_slug_fallback') }}</p>
+                    @endif
+
                     <div class="flex gap-1">
                         <button type="button" wire:click="createPickerFolder"
                                 class="flex-1 rounded-[7px] bg-admin-primary px-2 py-1 text-[11.5px] font-semibold text-white">{{ __('media.picker_folder_create') }}</button>

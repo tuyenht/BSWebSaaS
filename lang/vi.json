@@ -344,6 +344,8 @@
     "media.picker_folder_name_placeholder": "Tên thư mục…",
     "media.picker_folder_name_required": "Nhập tên thư mục (tối đa 100 ký tự).",
     "media.picker_folder_exists": "Tên thư mục này đã tồn tại.",
+    "media.picker_folder_slug_edit": "Sửa đường dẫn",
+    "media.picker_folder_slug_fallback": "Tên không chuyển được sang chữ Latinh — dùng đường dẫn tự sinh, có thể sửa.",
     "media.picker_search_placeholder": "Tìm theo tên ảnh…",
     "media.picker_sort_label": "Sắp xếp",
     "media.picker_sort_recent": "Mới nhất",

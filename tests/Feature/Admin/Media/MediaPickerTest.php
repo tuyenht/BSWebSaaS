@@ -253,7 +253,7 @@ it('bulk move re-folders the selection and move-to-root clears it', function ():
     });
 });
 
-it('creates a folder behind media.upload, rejects a duplicate name, and selects the new folder', function (): void {
+it('creates a folder behind media.upload and selects the new folder', function (): void {
     $user = pickerManager(['media.upload']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
@@ -264,12 +264,59 @@ it('creates a folder behind media.upload, rejects a duplicate name, and selects 
 
         $folder = MediaFolder::query()->where('slug', 'san-pham')->first();
         expect($folder)->not->toBeNull()
+            ->and($folder?->name)->toBe('Sản phẩm')          // name keeps its diacritics
             ->and($component->get('pickerFolderId'))->toBe($folder?->id);
+    });
+});
 
-        $component->set('pickerNewFolderOpen', true)
-            ->set('pickerNewFolderName', 'SẢN PHẨM') // same slug, citext
-            ->call('createPickerFolder')
-            ->assertHasErrors('pickerNewFolderName');
+it('transliterates the slug from the name, previews it live, and de-dups WP-style', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
+
+        // Vietnamese name → diacritic-free ASCII slug, previewed live, no fallback warning.
+        $component->set('pickerNewFolderName', 'Đồ gá & Khuôn');
+        expect($component->get('pickerNewFolderSlug'))->toBe('do-ga-khuon')
+            ->and($component->get('pickerNewFolderSlugFallback'))->toBeFalse();
+
+        // Same base name twice → the second folder de-dups to -2 (never an error).
+        $component->call('createPickerFolder');
+        $component->set('pickerNewFolderOpen', true)->set('pickerNewFolderName', 'Đồ gá & Khuôn')->call('createPickerFolder');
+
+        expect(MediaFolder::query()->pluck('slug')->sort()->values()->all())->toBe(['do-ga-khuon', 'do-ga-khuon-2']);
+    });
+});
+
+it('falls back to an auto slug for an all-ideograph name and flags it for editing', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
+            ->set('pickerNewFolderName', '製品カタログ'); // no Latin transliteration
+
+        expect($component->get('pickerNewFolderSlug'))->toStartWith('thu-muc-')
+            ->and($component->get('pickerNewFolderSlugFallback'))->toBeTrue();
+
+        $component->call('createPickerFolder');
+        $folder = MediaFolder::query()->first();
+        expect($folder?->name)->toBe('製品カタログ')                 // Unicode name preserved
+            ->and($folder?->slug)->toMatch('/^thu-muc-\d+$/');    // ASCII fallback slug
+    });
+});
+
+it('honours a hand-edited slug over the derived one', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
+            ->set('pickerNewFolderName', 'Bài viết')
+            ->call('editPickerFolderSlug')       // pencil → freeze auto-derive
+            ->set('pickerNewFolderName', 'Bài viết đổi tên') // name change no longer moves the slug
+            ->set('pickerNewFolderSlug', 'Tin Tức Nổi Bật')  // sanitized on save
+            ->call('createPickerFolder');
+
+        expect(MediaFolder::query()->value('slug'))->toBe('tin-tuc-noi-bat');
     });
 });
 

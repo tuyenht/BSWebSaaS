@@ -259,6 +259,8 @@
     "media.picker_folder_name_placeholder": "フォルダー名…",
     "media.picker_folder_name_required": "フォルダー名を入力してください（100文字以内）。",
     "media.picker_folder_exists": "同名のフォルダーが既にあります。",
+    "media.picker_folder_slug_edit": "スラッグを編集",
+    "media.picker_folder_slug_fallback": "名前をラテン文字に変換できません — 自動生成のスラッグを使用（編集可能）。",
     "media.picker_search_placeholder": "ファイル名で検索…",
     "media.picker_sort_label": "並べ替え",
     "media.picker_sort_recent": "新しい順",

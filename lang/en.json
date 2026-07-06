@@ -344,6 +344,8 @@
     "media.picker_folder_name_placeholder": "Folder name…",
     "media.picker_folder_name_required": "Enter a folder name (max 100 characters).",
     "media.picker_folder_exists": "A folder with this name already exists.",
+    "media.picker_folder_slug_edit": "Edit the URL slug",
+    "media.picker_folder_slug_fallback": "The name doesn't transliterate to Latin — using an auto-generated slug you can edit.",
     "media.picker_search_placeholder": "Search by file name…",
     "media.picker_sort_label": "Sort",
     "media.picker_sort_recent": "Newest",
