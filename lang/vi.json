@@ -406,7 +406,7 @@
     "media.picker_detail_folder": "Thư mục",
     "media.picker_detail_alt_label": "Văn bản thay thế (ALT)",
     "media.picker_detail_alt_placeholder": "Mô tả ảnh cho SEO & trợ năng…",
-    "media.picker_detail_save": "Lưu thông tin",
+    "media.picker_detail_save": "Lưu",
     "media.picker_detail_saved": "Đã lưu thông tin ảnh.",
     "admin.reply_to": "Email nhận phản hồi",
     "admin.reply_to_hint": "Khi khách của bạn trả lời email, thư sẽ về địa chỉ này. Để trống phần SMTP ở trên nếu muốn gửi qua máy chủ chung của hệ thống (chỉ dùng danh tính của bạn)."

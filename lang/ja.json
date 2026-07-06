@@ -321,6 +321,6 @@
     "media.picker_detail_folder": "フォルダー",
     "media.picker_detail_alt_label": "代替テキスト（ALT）",
     "media.picker_detail_alt_placeholder": "SEO・アクセシビリティ向けに画像を説明…",
-    "media.picker_detail_save": "情報を保存",
+    "media.picker_detail_save": "保存",
     "media.picker_detail_saved": "画像情報を保存しました。"
 }

@@ -15,7 +15,8 @@
     <div class="flex flex-col gap-3.5 p-4">
         <div class="relative aspect-[4/3] overflow-hidden rounded-[10px] border border-border bg-surface-hover">
             @if (str_starts_with($d->mime, 'image/'))
-                <img src="{{ $mp['urls']->url($d->storage_key, 640) }}" alt="{{ $d->original_filename }}"
+                {{-- 320w is plenty for a 278px panel — no need to pull the 640 variant. --}}
+                <img src="{{ $mp['urls']->url($d->storage_key, 320) }}" alt="{{ $d->original_filename }}"
                      class="absolute inset-0 size-full object-cover" onerror="this.style.display='none'">
             @else
                 @php($glyph = str_starts_with($d->mime, 'video/') ? ['ri-film', '#299cdb']
@@ -54,15 +55,17 @@
                 <textarea id="picker-detail-alt" wire:model="pickerDetailAlt" rows="3"
                           placeholder="{{ __('media.picker_detail_alt_placeholder') }}"
                           class="block min-h-[64px] w-full resize-y rounded-lg border border-border-strong bg-surface px-[11px] py-[9px] text-[12.5px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none"></textarea>
-                @if (session('media-status'))
-                    <p class="mt-1.5 flex items-center gap-1 text-[11.5px] text-admin-success">
-                        <x-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ session('media-status') }}
-                    </p>
-                @endif
-                <button type="button" wire:click="savePickerDetailAlt"
-                        class="mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border-strong bg-surface py-[9px] text-[12.5px] font-medium text-body-text hover:border-admin-primary hover:text-admin-primary">
-                    <x-admin::icon name="ri-save" class="size-3.5" />{{ __('media.picker_detail_save') }}
-                </button>
+                {{-- Compact action row: a saved-tick on the left, a small filled button on the right
+                     (a full-width outline button read heavy for a metadata save). --}}
+                <div class="mt-2 flex items-center justify-between gap-2">
+                    <span class="flex items-center gap-1 text-[11.5px] text-admin-success" @if (! session('media-status')) hidden @endif>
+                        <x-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ __('media.picker_detail_saved') }}
+                    </span>
+                    <button type="button" wire:click="savePickerDetailAlt"
+                            class="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-admin-primary px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-admin-primary/90">
+                        <x-admin::icon name="ri-save" class="size-3.5" />{{ __('media.picker_detail_save') }}
+                    </button>
+                </div>
             @else
                 <p class="rounded-lg bg-surface-hover px-3 py-2 text-[12.5px] text-body-muted">{{ $pickerDetailAlt !== '' ? $pickerDetailAlt : '—' }}</p>
             @endcan
