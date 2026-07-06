@@ -52,6 +52,8 @@
                     @if ($pickerTab === 'upload')
                         @if ($pickerSource === 'url')
                             @include('admin::partials.media-picker-url-pane')
+                        @elseif ($pickerSource === 'device')
+                            @include('admin::partials.media-picker-device-pane')
                         @else
                             @include('admin::partials.media-picker-sources')
                         @endif

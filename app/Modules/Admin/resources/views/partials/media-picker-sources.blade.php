@@ -27,11 +27,17 @@
                 · {{ __('media.picker_drop_import') }}
             </div>
         </div>
+        @php($canUpload = auth()->user()?->can('media.upload'))
         <div class="mx-auto grid w-full max-w-[640px] grid-cols-2 gap-3 min-[480px]:grid-cols-3 min-[720px]:grid-cols-4">
             @foreach ($sources as $source)
-                <button type="button" wire:key="mp-src-{{ $source['key'] }}" disabled
-                        title="{{ __('media.picker_source_soon') }}"
-                        class="relative flex min-w-0 cursor-not-allowed flex-col items-center gap-2 rounded-[13px] border border-border bg-surface px-2 py-[13px] opacity-60">
+                @php($active = $source['key'] === 'device' && $canUpload)
+                <button type="button" wire:key="mp-src-{{ $source['key'] }}" @disabled(! $active)
+                        @if ($active) wire:click="openPickerSource('device')" @else title="{{ __('media.picker_source_soon') }}" @endif
+                        @class([
+                            'relative flex min-w-0 flex-col items-center gap-2 rounded-[13px] border bg-surface px-2 py-[13px] transition-all',
+                            'cursor-pointer border-border hover:-translate-y-0.5 hover:border-admin-primary hover:shadow-[0_6px_16px_-8px_rgba(64,81,137,0.4)]' => $active,
+                            'cursor-not-allowed border-border opacity-60' => ! $active,
+                        ])>
                     <span class="flex size-11 items-center justify-center rounded-xl"
                           style="background: {{ $source['color'] }}1a; color: {{ $source['color'] }};">
                         <x-admin::icon :name="$source['icon']" class="size-[22px]" />

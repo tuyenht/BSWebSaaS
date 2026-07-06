@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use RuntimeException;
 
 /**
@@ -376,9 +377,32 @@ trait WithMediaLibraryPicker
     {
         abort_unless(Gate::allows('media.view'), 403);
 
-        if (in_array($source, ['url'], true)) { // device/camera/clouds join in phases 3/5
-            $this->pickerSource = $source;
+        if ($source === 'device') {
+            abort_unless(Gate::allows('media.upload'), 403); // device upload writes real media
+            $this->pickerSource = 'device';
+
+            return;
         }
+        if ($source === 'url') { // camera/clouds join in phase 5
+            $this->pickerSource = 'url';
+        }
+    }
+
+    /**
+     * The device uploader island finished a batch (browser → R2 → register). Land on the library
+     * tab so the freshly-uploaded masters (newest-first) are right there to pick.
+     */
+    #[On('media-uploaded')]
+    public function onPickerMediaUploaded(): void
+    {
+        if (! $this->showImagePicker) {
+            return;
+        }
+        $this->pickerTab = 'library';
+        $this->pickerSource = null;
+        $this->pickerTrash = false;
+        $this->pickerPage = 1;
+        unset($this->mediaPickerState); // drop the request-cached computed so the grid re-queries
     }
 
     public function backToPickerSources(): void

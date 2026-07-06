@@ -670,6 +670,31 @@ it('403s restore/purge/empty without media.delete', function (): void {
     });
 });
 
+it('403s the device upload pane for a view-only actor', function (): void {
+    $user = pickerManager(); // media.view only
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'editor')
+            ->call('openPickerSource', 'device') // writes real media → needs media.upload
+            ->assertStatus(403);
+    });
+});
+
+it('opens the device pane with media.upload and lands on the library after a batch', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'editor')
+            ->call('openPickerSource', 'device')
+            ->assertSet('pickerSource', 'device')
+            ->dispatch('media-uploaded')                 // the island fires this after register
+            ->assertSet('pickerTab', 'library')
+            ->assertSet('pickerSource', null);
+    });
+});
+
 it('translates every picker string in all four admin languages', function (): void {
     $vi = json_decode((string) file_get_contents(lang_path('vi.json')), true, 512, JSON_THROW_ON_ERROR);
     $pickerKeys = array_filter(array_keys($vi), fn (string $k): bool => str_starts_with($k, 'media.picker_'));

@@ -48,6 +48,27 @@ async function mountRichEditors() {
 
 document.addEventListener('livewire:navigated', mountRichEditors);
 
+// Picker "Thiết bị của tôi" uploader. The device pane appears/disappears inside a Livewire modal
+// (no page navigation), so it mounts via an Alpine component: init() when the pane renders,
+// destroy() when it's removed (tab/source change or modal close). The pane carries wire:ignore so
+// Livewire never morphs the DOM Uppy builds inside it.
+document.addEventListener('alpine:init', () => {
+    window.Alpine.data('pickerUploader', () => ({
+        _uploader: null,
+        async init() {
+            const { createPickerUploader } = await import('./media-picker-uploader.js');
+            // The pane may have been torn down during the async import — bail if so.
+            if (this.$el.isConnected) {
+                this._uploader = createPickerUploader(this.$el);
+            }
+        },
+        destroy() {
+            this._uploader?.destroy();
+            this._uploader = null;
+        },
+    }));
+});
+
 // Release any modal scroll-lock before a wire:navigate swap, so an open modal that morphs
 // away can never leave the body scroll-locked.
 document.addEventListener('livewire:navigating', () => {
