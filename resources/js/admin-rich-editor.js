@@ -6,15 +6,20 @@
 // `full` = the product/article body toolbar (headings, sub/sup, font/size/color, lists,
 // align, link, LIBRARY image, youtube/vimeo video, table, hr, Ω, source, fullsize);
 // `basic` = short teaser fields (b/i, lists, link). Both show a slim status bar whose
-// char/word counters count plain TEXT, never markup. Content syncs to Livewire DEFERRED
-// ($wire.$set) so typing never triggers a round-trip; the server-side sanitizer stays the
-// real gate on what gets stored.
+// char/word counters count plain TEXT, never markup.
 //
-// Images enter ONLY through the site's media library: the toolbar button calls
-// $wire.$call('openImagePicker', 'editor') on the owning component (see the
-// WithMediaLibraryPicker trait), which dispatches `admin-editor-insert-image` back with the
-// resolved CDN url. Tooltips/dialogs follow the admin locale via <html lang>; Jodit ships no
-// Vietnamese, so we register our own pack.
+// Livewire bridge is deliberately DOM-only — never window.Livewire JS APIs (LW4 changed them;
+// $wire.$set threw on every keystroke, which also broke IME composition and downstream
+// toolbar handlers):
+//   · content OUT: mirror HTML into the component's hidden [data-rich-sync] input + `input`
+//     event — plain wire:model (deferred) carries it with the next request (Save).
+//   · actions IN:  toolbar image/video buttons .click() the hidden [data-rich-action]
+//     wire:click buttons rendered by the blade component (host component must use the
+//     WithMediaLibraryPicker trait, or the wire:click fails server-side).
+//   · results back: `admin-editor-insert-image|html` heard on BOTH the window event bus and
+//     Livewire.on (whichever this Livewire version emits), deduped, applied to the editor
+//     that owned the request. Tooltips/dialogs follow the admin locale via <html lang>;
+//     Jodit ships no Vietnamese, so we register our own pack.
 
 import { Jodit } from 'jodit';
 import 'jodit/es2021/jodit.min.css';
@@ -70,26 +75,60 @@ function registerRemixIcons() {
 let activeEditor = null;
 let insertListenerBound = false;
 
+// One event can arrive on both buses (window CustomEvent AND Livewire.on) depending on the
+// Livewire version — apply it once.
+function makeInsertHandler(key, apply) {
+    let lastValue = '';
+    let lastAt = 0;
+
+    return (payload) => {
+        const raw = payload?.[key] ?? payload?.detail?.[key];
+        if (typeof raw !== 'string' || raw === '' || !activeEditor) {
+            return;
+        }
+        const now = Date.now();
+        if (raw === lastValue && now - lastAt < 500) {
+            return; // duplicate delivery of the same dispatch
+        }
+        lastValue = raw;
+        lastAt = now;
+        apply(raw);
+    };
+}
+
+function onEitherBus(name, handler) {
+    window.addEventListener(name, (event) => handler(event.detail));
+
+    const hookLivewireBus = () => {
+        window.Livewire?.on?.(name, (payload) => handler(Array.isArray(payload) ? payload[0] : payload));
+    };
+    if (window.Livewire?.on) {
+        hookLivewireBus();
+    } else {
+        document.addEventListener('livewire:init', hookLivewireBus, { once: true });
+    }
+}
+
 function bindInsertListener() {
     if (insertListenerBound) {
         return;
     }
-    // Livewire dispatch('admin-editor-insert-image', url: …) arrives as a browser event.
-    window.addEventListener('admin-editor-insert-image', (event) => {
-        const url = event.detail?.url;
-        if (typeof url === 'string' && url !== '' && activeEditor) {
-            activeEditor.selection.insertImage(url);
-        }
-    });
+    onEitherBus('admin-editor-insert-image', makeInsertHandler('url', (url) => {
+        activeEditor.selection.insertImage(url);
+    }));
     // Server-built fragments (video embeds) — inserted verbatim at the caret; the write-time
     // sanitizer remains the gate on what survives into the DB.
-    window.addEventListener('admin-editor-insert-html', (event) => {
-        const html = event.detail?.html;
-        if (typeof html === 'string' && html !== '' && activeEditor) {
-            activeEditor.selection.insertHTML(html);
-        }
-    });
+    onEitherBus('admin-editor-insert-html', makeInsertHandler('html', (html) => {
+        activeEditor.selection.insertHTML(html);
+    }));
     insertListenerBound = true;
+}
+
+// Fire the hidden wire:click button the blade component renders next to the editor — the only
+// cross-version-safe way to call a Livewire action from third-party JS.
+function clickWireAction(editor, action) {
+    activeEditor = editor;
+    editor.element.closest('[wire\\:id]')?.querySelector(`[data-rich-action="${action}"]`)?.click();
 }
 
 function editorOptions(profile) {
@@ -103,6 +142,7 @@ function editorOptions(profile) {
         showWordsCounter: true,
         countHTMLChars: false,
         showXPathInStatusbar: false,
+        hidePoweredByJodit: true, // MIT license asks for the LICENSE file, not a UI credit
         minHeight: profile === 'full' ? 320 : 150,
         // Paste lands as cleaned HTML without the "keep formatting?" prompt; the server-side
         // sanitizer is the actual gate, this only keeps the UX quiet.
@@ -122,28 +162,19 @@ function editorOptions(profile) {
                     blockquote: 'Quote',
                 }),
             },
-            // Images enter ONLY through the site's media library (RLS-scoped DAM picker) —
-            // no free-URL hotlinking. Requires the owning Livewire component to use the
-            // WithMediaLibraryPicker trait.
+            // Images enter through the site's media library (RLS-scoped DAM picker) or a
+            // pasted URL — both live in the Livewire dialog, not here.
             libraryImage: {
                 icon: 'image',
                 tooltip: 'Insert Image',
-                exec: (editor) => {
-                    activeEditor = editor;
-                    const wireId = editor.element.closest('[wire\\:id]')?.getAttribute('wire:id');
-                    window.Livewire?.find(wireId)?.$wire?.$call('openImagePicker', 'editor');
-                },
+                exec: (editor) => clickWireAction(editor, 'image'),
             },
             // T5G-style video embed (URL + autoplay) built SERVER-side into the canonical
             // responsive .video-embed markup — the Livewire dialog owns the form.
             embedVideo: {
                 icon: 'video',
                 tooltip: 'Insert youtube/vimeo video',
-                exec: (editor) => {
-                    activeEditor = editor;
-                    const wireId = editor.element.closest('[wire\\:id]')?.getAttribute('wire:id');
-                    window.Livewire?.find(wireId)?.$wire?.$call('openVideoDialog');
-                },
+                exec: (editor) => clickWireAction(editor, 'video'),
             },
         },
     };
@@ -158,19 +189,16 @@ export function createRichEditors(root) {
     for (const el of root.querySelectorAll('[data-rich-editor]')) {
         const profile = el.dataset.richEditor === 'basic' ? 'basic' : 'full';
         const target = el.dataset.richTarget;
-        const wireId = el.closest('[wire\\:id]')?.getAttribute('wire:id');
+        // The wire:model carrier lives OUTSIDE the wire:ignore wrapper (morph-safe) — writing
+        // into it never touches the editor's DOM, so IME composition stays intact.
+        const syncEl = el.closest('[wire\\:id]')?.querySelector(`[data-rich-sync="${target}"]`);
 
         const push = (value) => {
-            if (!wireId || !target || typeof value !== 'string') {
+            if (!syncEl || typeof value !== 'string' || syncEl.value === value) {
                 return;
             }
-            // Livewire 3 magic API is $set (v2's .set() does not exist — calling it threw
-            // inside Jodit's event pipeline and took the other toolbar handlers down with it).
-            window.Livewire?.find(wireId)?.$wire?.$set(target, value, false); // deferred
-            // Belt-and-braces: mirror into the source textarea and emit input, so the
-            // wire:model fallback also carries the value wherever it is bound.
-            el.value = value;
-            el.dispatchEvent(new Event('input', { bubbles: true }));
+            syncEl.value = value;
+            syncEl.dispatchEvent(new Event('input', { bubbles: true }));
         };
 
         const editor = Jodit.make(el, editorOptions(profile));

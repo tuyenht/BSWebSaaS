@@ -138,18 +138,24 @@ button:not(:disabled) {
     border: 0;
 }
 
-/* ── Jodit (catalog rich text) — chrome aligned to the admin tokens ─────────────
-   Only the frame/toolbar surfaces; button icons are already Remix (catalog-editor-icons). */
-[data-catalog-editor] .jodit-container:not(.jodit_inline) {
+/* ── Jodit (admin rich text) — chrome aligned to the admin tokens ─────────────
+   Bare selectors on purpose: Jodit mounts the .jodit-container AROUND the source textarea,
+   so no attribute on the textarea can scope these, and Jodit only exists in the admin bundle. */
+.jodit-container:not(.jodit_inline) {
     border-color: var(--color-border-strong);
     border-radius: 0.25rem;
     background: var(--color-surface);
 }
-[data-catalog-editor] .jodit-toolbar__box:not(:empty) {
+.jodit-toolbar__box:not(:empty) {
     background: var(--color-surface-muted);
     border-bottom-color: var(--color-border);
     border-radius: 0.25rem 0.25rem 0 0;
 }
-[data-catalog-editor] .jodit-workplace {
+.jodit-workplace {
     background: var(--color-surface);
+}
+/* White-label: MIT requires the LICENSE file in source, not a UI credit — belt for the
+   hidePoweredByJodit option. */
+.jodit-status-bar-link {
+    display: none !important;
 }
