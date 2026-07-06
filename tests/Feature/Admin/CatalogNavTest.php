@@ -32,15 +32,28 @@ beforeEach(function (): void {
     ));
 });
 
-it('surfaces the Catalog feature leaf (entitled corporate, gated by catalog.view)', function (): void {
+it('surfaces Catalog as a content-style group — Thêm mới · Danh sách · Chuyên mục', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
     $items = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($owner));
 
     $catalog = collect($items)->firstWhere('key', 'catalog');
     expect($catalog)->not->toBeNull()
-        ->and($catalog->url)->toContain('/admin/catalog')
         ->and($catalog->icon)->toBe('cube')
-        ->and($catalog->hasChildren())->toBeFalse();   // a leaf, not a content group
+        ->and($catalog->hasChildren())->toBeTrue()
+        ->and(collect($catalog->children)->pluck('key')->all())
+        ->toBe(['catalog.create', 'catalog.list', 'catalog.taxonomy'])
+        ->and(collect($catalog->children)->firstWhere('key', 'catalog.list')?->url)->toContain('/admin/catalog');
+});
+
+it('trims the Catalog group to just the list for a view-only member', function (): void {
+    $viewer = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'cat-viewer', ['catalog.view']));
+
+    $items = app(Tenancy::class)->enter(1, fn (): array => (new AdminNav)->items($viewer->fresh()));
+
+    $catalog = collect($items)->firstWhere('key', 'catalog');
+    expect($catalog)->not->toBeNull()
+        ->and(collect($catalog->children)->pluck('key')->all())->toBe(['catalog.list']); // no dead-end create/categories
 });
 
 it('filters the legacy products content_section so it does not double-surface', function (): void {

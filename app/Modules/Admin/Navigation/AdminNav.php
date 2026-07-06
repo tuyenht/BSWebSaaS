@@ -129,13 +129,58 @@ final class AdminNav
             );
         }
 
+        // Catalog (Sản phẩm) — a full content-style GROUP like the sections above (Thêm mới ·
+        // Danh sách · Chuyên mục), not a feature leaf: products are a first-class content
+        // surface with their own CRUD + trash. Entitled per site_type; each child gates on its
+        // own ability, so a view-only member sees just the list. Chuyên mục points at the
+        // taxonomies placeholder scoped ?section=catalog — when the real taxonomy UI ships it
+        // maps that scope to the product_cat vocabulary.
+        if (in_array('catalog', $entitled, true) && $can('catalog.view')) {
+            $inCatalogTaxonomy = $onTaxonomies && $request->query('section') === 'catalog';
+
+            $children = [];
+            if ($can('catalog.manage')) {
+                $children[] = new NavItem(
+                    key: 'catalog.create',
+                    label: __('admin.add_new'),
+                    url: route('admin.catalog.create'),
+                    active: $request->routeIs('admin.catalog.create'),
+                    permission: 'catalog.manage',
+                );
+            }
+            $children[] = new NavItem(
+                key: 'catalog.list',
+                label: __('admin.list'),
+                url: route('admin.catalog.index'),
+                active: $request->routeIs('admin.catalog.index'),
+                permission: 'catalog.view',
+            );
+            if ($can('taxonomies.manage')) {
+                $children[] = new NavItem(
+                    key: 'catalog.taxonomy',
+                    label: __('admin.categories'),
+                    url: route('admin.taxonomies.index', ['section' => 'catalog']),
+                    active: $inCatalogTaxonomy,
+                    permission: 'taxonomies.manage',
+                );
+            }
+
+            $items[] = new NavItem(
+                key: 'catalog',
+                label: __('admin.catalog'),
+                icon: 'cube',
+                active: $request->routeIs('admin.catalog.*') || $inCatalogTaxonomy,
+                children: $children,
+                permission: 'catalog.view',
+            );
+        }
+
         // Feature leaves. entitlementKey = the ModuleCatalog key to check site entitlement
         // against (null = a core capability, not a per-site module → RBAC only). Categories +
         // Menu builder point at placeholder pages until their real UIs ship.
         $features = [
             // [key, labelKey, route, icon, permission, entitlementKey]. Categories are NOT here —
             // they live per content type (see the section loop above), scoped so they never mix.
-            ['catalog', 'admin.catalog', 'admin.catalog.index', 'cube', 'catalog.view', 'catalog'],
             ['media', 'admin.media', 'admin.media.index', 'image', 'media.view', 'media'],
             ['contacts', 'admin.contacts', 'admin.forms.index', 'mail', 'forms.view', 'contacts'],
             ['menus', 'admin.menu_builder', 'admin.menus.index', 'menu', 'menus.manage', 'menus'],
