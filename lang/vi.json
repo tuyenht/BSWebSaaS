@@ -388,6 +388,8 @@
     "media.picker_url_load_preview": "Tải xem trước",
     "media.picker_url_source": "Ảnh từ URL",
     "media.picker_url_invalid": "Liên kết chưa hợp lệ — cần là URL ảnh công khai (jpg, png, webp, gif).",
+    "media.picker_url_throttled": "Bạn dán liên kết quá nhanh. Vui lòng thử lại sau :seconds giây.",
+    "media.picker_url_placeholder": "https://vi-du.com/anh-san-pham.jpg",
     "media.picker_url_selected": "Đã chọn để chèn",
     "media.picker_url_save_copy": "Lưu bản sao vào Thư viện ảnh",
     "media.picker_url_save_copy_note": "khuyên dùng — tránh ảnh hỏng khi liên kết gốc bị xóa",

@@ -357,7 +357,7 @@ it('keeps the picker interaction on a flat query budget (no per-row N+1)', funct
 });
 
 it('rejects a non-image URL shape before any fetch, and previews a valid one', function (): void {
-    $user = pickerManager();
+    $user = pickerManager(['media.upload']);
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         Storage::fake('r2');
@@ -377,6 +377,60 @@ it('rejects a non-image URL shape before any fetch, and previews a valid one', f
             ->assertSet('pickerSource', 'url');
         expect($component->instance()->pickerUrlPreview)->not->toBeNull()
             ->and($component->instance()->hasUrlPick())->toBeTrue();
+    });
+});
+
+it('403s a URL fetch for a view-only actor (fetch is an upload-class action)', function (): void {
+    $user = pickerManager(); // media.view only
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Http::preventStrayRequests();
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'editor')
+            ->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')
+            ->call('previewPickerUrl')
+            ->assertStatus(403);
+        Http::assertNothingSent();
+    });
+});
+
+it('drops an un-inserted URL preview\'s staged bytes when the modal closes', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        Http::fake(['https://93.184.216.34/a.jpg' => Http::response(pickerPng(), 200)]);
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'editor')
+            ->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')->call('previewPickerUrl');
+
+        $tempKey = $component->instance()->pickerUrlPreview['tempKey'];
+        Storage::disk('r2')->assertExists($tempKey);
+
+        $component->call('closeImagePicker');
+        Storage::disk('r2')->assertMissing($tempKey); // no abandoned object left behind
+    });
+});
+
+it('rate-limits URL fetches per user', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        // A fresh response per request — one shared instance would drain its body stream after the
+        // first read (the streamed fetch reads to eof), making later fetches look empty.
+        Http::fake(fn () => Http::response(pickerPng(), 200));
+
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'editor');
+        // 20/min cap — the 21st distinct URL is throttled, not fetched.
+        for ($i = 1; $i <= 20; $i++) {
+            $component->set('pickerUrlInput', "https://93.184.216.34/a{$i}.jpg")->call('previewPickerUrl')
+                ->assertHasNoErrors();
+        }
+        $component->set('pickerUrlInput', 'https://93.184.216.34/over.jpg')->call('previewPickerUrl')
+            ->assertHasErrors('pickerUrlInput');
     });
 });
 

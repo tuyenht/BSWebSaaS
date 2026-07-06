@@ -388,6 +388,8 @@
     "media.picker_url_load_preview": "Load preview",
     "media.picker_url_source": "Image from URL",
     "media.picker_url_invalid": "Invalid link — it must be a public image URL (jpg, png, webp, gif).",
+    "media.picker_url_throttled": "You're pasting links too fast. Please try again in :seconds seconds.",
+    "media.picker_url_placeholder": "https://example.com/product-photo.jpg",
     "media.picker_url_selected": "Selected to insert",
     "media.picker_url_save_copy": "Save a copy to the image library",
     "media.picker_url_save_copy_note": "recommended — the image survives if the original link dies",

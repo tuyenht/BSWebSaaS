@@ -15,7 +15,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
@@ -54,7 +56,17 @@ trait WithMediaLibraryPicker
 
     public function closeImagePicker(): void
     {
+        $this->discardStagedUrlPreview();
         $this->showImagePicker = false;
+    }
+
+    /** Drop an un-inserted URL-preview's staged bytes eagerly (the _incoming/ lifecycle backstops). */
+    private function discardStagedUrlPreview(): void
+    {
+        if ($this->pickerUrlPreview !== null) {
+            Storage::disk(MediaKey::disk())->delete($this->pickerUrlPreview['tempKey']);
+            $this->pickerUrlPreview = null;
+        }
     }
 
     public function pickImage(int $mediaId): void
@@ -284,13 +296,21 @@ trait WithMediaLibraryPicker
 
     public function backToPickerSources(): void
     {
+        $this->discardStagedUrlPreview();
         $this->pickerSource = null;
     }
 
-    /** "Xem trước": format-check the URL, then the server fetches it through the SSRF gate. */
+    /** Server fetches are gated to media.upload and capped per user — see previewPickerUrl. */
+    private const int URL_PREVIEW_MAX_PER_MINUTE = 20;
+
+    /**
+     * "Xem trước": the SERVER fetches the URL (SSRF-guarded) and stages it. Gated to media.upload,
+     * not just view — a fetch spends network egress + a real R2 write and is the SSRF surface, so
+     * a view-only actor must not drive it — and rate-limited so it can't be a scanner / egress DoS.
+     */
     public function previewPickerUrl(): void
     {
-        abort_unless(Gate::allows('media.view'), 403);
+        abort_unless(Gate::allows('media.upload'), 403);
 
         $this->resetErrorBag('pickerUrlInput');
         $url = trim($this->pickerUrlInput);
@@ -302,11 +322,16 @@ trait WithMediaLibraryPicker
             return;
         }
 
-        // Replacing a previous preview? Its staged bytes are abandoned — clean them eagerly
-        // (the `_incoming/` lifecycle rule remains the backstop).
-        if ($this->pickerUrlPreview !== null) {
-            Storage::disk(MediaKey::disk())->delete($this->pickerUrlPreview['tempKey']);
+        $rlKey = 'media:url-preview:'.(Auth::id() ?? 'guest');
+        if (RateLimiter::tooManyAttempts($rlKey, self::URL_PREVIEW_MAX_PER_MINUTE)) {
+            $this->addError('pickerUrlInput', __('media.picker_url_throttled', ['seconds' => RateLimiter::availableIn($rlKey)]));
+
+            return;
         }
+        RateLimiter::hit($rlKey, 60);
+
+        // Replacing a previous preview? Its staged bytes are abandoned — clean them eagerly.
+        $this->discardStagedUrlPreview();
 
         try {
             $this->pickerUrlPreview = app(ExternalImageFetcher::class)

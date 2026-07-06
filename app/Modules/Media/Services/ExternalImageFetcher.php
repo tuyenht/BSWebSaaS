@@ -22,8 +22,11 @@ use RuntimeException;
  * bytes. The verified bytes land on the SAME `_incoming/` staging as presigned uploads (one R2
  * lifecycle rule covers abandons) with the same ownership cache, so RegisterMediaUpload can
  * finalize an import through the existing hardened pipeline.
+ *
+ * NOT final on purpose: the tests subclass it to override resolveHostIps() and exercise the
+ * DNS-rebind guard (a hostname resolving to a private address) without real DNS.
  */
-final readonly class ExternalImageFetcher
+class ExternalImageFetcher
 {
     /** What an <img> can render — pdf etc. stay out of the URL source. */
     private const array IMAGE_MIME_EXT = [
@@ -85,9 +88,16 @@ final readonly class ExternalImageFetcher
     private function download(string $url): array
     {
         for ($hop = 0; $hop <= self::MAX_REDIRECTS; $hop++) {
-            $this->assertSafeUrl($url);
+            // Resolve + validate ONCE, then PIN the request to that exact IP (CURLOPT_RESOLVE).
+            // Without pinning, cURL re-resolves the host and a DNS-rebind (TTL 0: public on the
+            // check, private on the fetch) would walk straight past the guard to 169.254.169.254.
+            $conn = $this->safeConnection($url);
 
-            $response = Http::withOptions(['allow_redirects' => false, 'stream' => true])
+            $response = Http::withOptions([
+                'allow_redirects' => false,
+                'stream' => true,
+                'curl' => [CURLOPT_RESOLVE => ["{$conn['host']}:{$conn['port']}:{$conn['ip']}"]],
+            ])
                 ->timeout(10)->connectTimeout(5)
                 ->withHeaders(['Accept' => 'image/*'])
                 ->get($url);
@@ -132,12 +142,20 @@ final readonly class ExternalImageFetcher
         return $bytes;
     }
 
-    /** http(s) only; the host — IP literal or every DNS answer — must be publicly routable. */
-    private function assertSafeUrl(string $url): void
+    /**
+     * Validate http(s) + host, resolve to a single publicly-routable IP, and return the exact
+     * (host, port, ip) the request must be pinned to. EVERY resolved address is checked — a
+     * hostname that resolves to even one private IP is rejected — and the pinned IP is one of
+     * those verified answers.
+     *
+     * @return array{host: string, port: int, ip: string}
+     */
+    private function safeConnection(string $url): array
     {
         $parts = parse_url($url);
         $scheme = strtolower((string) ($parts['scheme'] ?? ''));
         $host = (string) ($parts['host'] ?? '');
+        $port = is_int($parts['port'] ?? null) ? $parts['port'] : ($scheme === 'https' ? 443 : 80);
 
         if (! in_array($scheme, ['http', 'https'], true) || $host === '') {
             throw new RuntimeException('Liên kết chưa hợp lệ — cần là URL ảnh công khai (http/https).');
@@ -147,20 +165,27 @@ final readonly class ExternalImageFetcher
         if (filter_var($literal, FILTER_VALIDATE_IP) !== false) {
             $this->assertPublicIp($literal);
 
-            return;
+            return ['host' => $host, 'port' => $port, 'ip' => $literal];
         }
 
-        $ips = $this->resolve($host);
+        $ips = $this->resolveHostIps($host);
         if ($ips === []) {
             throw new RuntimeException('Không phân giải được tên miền của liên kết.');
         }
         foreach ($ips as $ip) {
             $this->assertPublicIp($ip);
         }
+
+        return ['host' => $host, 'port' => $port, 'ip' => $ips[0]];
     }
 
-    /** @return list<string> */
-    private function resolve(string $host): array
+    /**
+     * Every A/AAAA answer for the host. Protected so tests can override it to drive the guard
+     * (a hostname resolving to a private address) without touching real DNS.
+     *
+     * @return list<string>
+     */
+    protected function resolveHostIps(string $host): array
     {
         $ips = [];
         foreach (dns_get_record($host, DNS_A + DNS_AAAA) ?: [] as $record) {
@@ -174,6 +199,24 @@ final readonly class ExternalImageFetcher
     }
 
     private function assertPublicIp(string $ip): void
+    {
+        // An IPv4-mapped/compatible IPv6 (::ffff:169.254.169.254, ::a.b.c.d) smuggles a private
+        // IPv4 past a naive IPv6 check — validate the embedded IPv4 too.
+        if (str_contains($ip, ':')) {
+            $packed = @inet_pton($ip);
+            if ($packed !== false && strlen($packed) === 16
+                && (str_starts_with($packed, str_repeat("\x00", 10)."\xff\xff") || str_starts_with($packed, str_repeat("\x00", 12)))) {
+                $embedded = inet_ntop(substr($packed, 12));
+                if (is_string($embedded)) {
+                    $this->rejectIfNotPublic($embedded);
+                }
+            }
+        }
+
+        $this->rejectIfNotPublic($ip);
+    }
+
+    private function rejectIfNotPublic(string $ip): void
     {
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
             throw new RuntimeException('Liên kết trỏ tới địa chỉ nội bộ — không được phép.');

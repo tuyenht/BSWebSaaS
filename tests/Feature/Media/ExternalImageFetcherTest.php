@@ -2,6 +2,7 @@
 
 use App\Modules\Media\Actions\PresignMediaUpload;
 use App\Modules\Media\Services\ExternalImageFetcher;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -103,4 +104,29 @@ it('follows a redirect to another public image and imports it', function (): voi
 
     expect($result['url'])->toBe('https://93.184.216.34/b.jpg')
         ->and($result['mime'])->toBe('image/png');
+});
+
+it('blocks a hostname that resolves to a private address (DNS-rebind guard)', function (): void {
+    // A hostname passing a naive check but resolving to a private IP — the guard validates the
+    // resolved answer, not just the literal, and pins the request to it (no re-resolve window).
+    $fetcher = new class(app(CurrentSite::class)) extends ExternalImageFetcher
+    {
+        #[Override]
+        protected function resolveHostIps(string $host): array
+        {
+            return ['10.0.0.5']; // attacker-controlled DNS answer
+        }
+    };
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => $fetcher->handle('https://images.attacker.test/x.jpg', 'An Vinh')))
+        ->toThrow(RuntimeException::class);
+    Http::assertNothingSent(); // rejected before any fetch
+});
+
+it('blocks an IPv4-mapped IPv6 literal smuggling a private address', function (): void {
+    // ::ffff:169.254.169.254 is a valid IPv6 that a naive filter would pass — the embedded IPv4
+    // is the cloud metadata endpoint and must be rejected.
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(ExternalImageFetcher::class)->handle('https://[::ffff:169.254.169.254]/x.jpg', 'An Vinh')))
+        ->toThrow(RuntimeException::class);
+    Http::assertNothingSent();
 });

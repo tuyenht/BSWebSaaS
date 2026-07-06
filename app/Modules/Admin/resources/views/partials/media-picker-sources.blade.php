@@ -42,28 +42,31 @@
         </div>
 
         {{-- "— hoặc dán liên kết ảnh —" (handoff §1b): format-check here, the REAL gate is the
-             server-side SSRF-guarded fetch in previewPickerUrl → ExternalImageFetcher. --}}
-        <div class="mx-auto mt-3.5 flex w-full max-w-[640px] items-center gap-3">
-            <span class="h-px flex-1 bg-border-strong"></span>
-            <span class="text-[11.5px] text-body-faint">{{ __('media.picker_url_divider') }}</span>
-            <span class="h-px flex-1 bg-border-strong"></span>
-        </div>
-        <div class="mx-auto mt-2.5 flex w-full max-w-[640px] gap-2">
-            <div class="relative min-w-0 flex-1">
-                <x-admin::icon name="ri-link" class="absolute left-3 top-1/2 size-[15px] -translate-y-1/2 text-body-faint" />
-                <input type="url" wire:model="pickerUrlInput" wire:keydown.enter="previewPickerUrl"
-                       placeholder="https://vi-du.com/anh-san-pham.jpg"
-                       class="block w-full rounded-lg border border-border-strong bg-surface py-[9px] pl-[35px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none">
+             server-side SSRF-guarded fetch in previewPickerUrl → ExternalImageFetcher. Only for
+             media.upload — a URL fetch stages a real R2 object, so it's an upload-class action. --}}
+        @can('media.upload')
+            <div class="mx-auto mt-3.5 flex w-full max-w-[640px] items-center gap-3">
+                <span class="h-px flex-1 bg-border-strong"></span>
+                <span class="text-[11.5px] text-body-faint">{{ __('media.picker_url_divider') }}</span>
+                <span class="h-px flex-1 bg-border-strong"></span>
             </div>
-            <button type="button" wire:click="previewPickerUrl"
-                    class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-admin-primary/20 bg-admin-primary/4 px-[15px] py-[9px] text-[12.5px] font-semibold text-admin-primary">
-                <x-admin::icon name="ri-eye" class="size-3.5" />{{ __('media.picker_url_preview') }}
-            </button>
-        </div>
-        @error('pickerUrlInput')
-            <div class="mx-auto mt-2 flex w-full max-w-[640px] items-center gap-1.5 text-xs text-admin-danger">
-                <x-admin::icon name="ri-error-warning" class="size-3.5 shrink-0" />{{ $message }}
+            <div class="mx-auto mt-2.5 flex w-full max-w-[640px] gap-2">
+                <div class="relative min-w-0 flex-1">
+                    <x-admin::icon name="ri-link" class="absolute left-3 top-1/2 size-[15px] -translate-y-1/2 text-body-faint" />
+                    <input type="url" wire:model="pickerUrlInput" wire:keydown.enter="previewPickerUrl"
+                           placeholder="{{ __('media.picker_url_placeholder') }}"
+                           class="block w-full rounded-lg border border-border-strong bg-surface py-[9px] pl-[35px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none">
+                </div>
+                <button type="button" wire:click="previewPickerUrl"
+                        class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-admin-primary/20 bg-admin-primary/4 px-[15px] py-[9px] text-[12.5px] font-semibold text-admin-primary">
+                    <x-admin::icon name="ri-eye" class="size-3.5" />{{ __('media.picker_url_preview') }}
+                </button>
             </div>
-        @enderror
+            @error('pickerUrlInput')
+                <div class="mx-auto mt-2 flex w-full max-w-[640px] items-center gap-1.5 text-xs text-admin-danger">
+                    <x-admin::icon name="ri-error-warning" class="size-3.5 shrink-0" />{{ $message }}
+                </div>
+            @enderror
+        @endcan
     </div>
 </div>

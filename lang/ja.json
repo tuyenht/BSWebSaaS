@@ -303,6 +303,8 @@
     "media.picker_url_load_preview": "プレビューを読み込む",
     "media.picker_url_source": "URLから画像",
     "media.picker_url_invalid": "リンクが無効です — 公開画像URL（jpg・png・webp・gif）が必要です。",
+    "media.picker_url_throttled": "リンクの貼り付けが速すぎます。:seconds 秒後にもう一度お試しください。",
+    "media.picker_url_placeholder": "https://example.com/product-photo.jpg",
     "media.picker_url_selected": "挿入対象に選択済み",
     "media.picker_url_save_copy": "画像ライブラリにコピーを保存",
     "media.picker_url_save_copy_note": "推奨 — 元リンクが消えても画像が壊れません",

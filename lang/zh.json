@@ -303,6 +303,8 @@
     "media.picker_url_load_preview": "加载预览",
     "media.picker_url_source": "来自 URL 的图片",
     "media.picker_url_invalid": "链接无效 — 需要公开的图片 URL（jpg、png、webp、gif）。",
+    "media.picker_url_throttled": "粘贴链接太频繁，请在 :seconds 秒后重试。",
+    "media.picker_url_placeholder": "https://example.com/product-photo.jpg",
     "media.picker_url_selected": "已选择插入",
     "media.picker_url_save_copy": "保存副本到图片库",
     "media.picker_url_save_copy_note": "推荐 — 原链接失效时图片不会损坏",

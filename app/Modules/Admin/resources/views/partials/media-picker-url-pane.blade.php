@@ -18,7 +18,7 @@
         <div class="relative min-w-0 flex-1">
             <x-admin::icon name="ri-link" class="absolute left-3 top-1/2 size-[15px] -translate-y-1/2 text-body-faint" />
             <input type="url" wire:model="pickerUrlInput" wire:keydown.enter="previewPickerUrl"
-                   placeholder="https://vi-du.com/anh-san-pham.jpg"
+                   placeholder="{{ __('media.picker_url_placeholder') }}"
                    class="block w-full rounded-lg border border-border-strong bg-surface py-2.5 pl-[35px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none">
         </div>
         <button type="button" wire:click="previewPickerUrl"
