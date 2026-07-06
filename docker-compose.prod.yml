@@ -78,6 +78,10 @@ services:
         condition: service_started
       valkey:
         condition: service_healthy
+    # Not a web server — the image's default curl-Caddy healthcheck would always fail and
+    # show a false "unhealthy". restart:unless-stopped is the liveness guarantee here.
+    healthcheck:
+      disable: true
 
   postgres:
     image: pgvector/pgvector:pg17
