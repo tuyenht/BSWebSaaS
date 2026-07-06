@@ -21,6 +21,7 @@
     },
     "dependencies": {
         "jodit": "^4.12.35",
-        "remixicon": "^4.9.1"
+        "remixicon": "^4.9.1",
+        "sweetalert2": "^11.26.25"
     }
 }

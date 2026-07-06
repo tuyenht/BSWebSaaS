@@ -106,6 +106,7 @@
     "admin.scan_qr": "用验证器应用扫描此二维码，然后输入6位代码。",
     "admin.or_enter_key": "或输入此密钥",
     "admin.confirm": "确认",
+    "admin.cancel": "取消",
     "admin.recovery_codes_hint": "请将这些恢复代码保存在安全的地方 — 如果您丢失设备，每个代码可使用一次。",
     "auth.otp_title": "邮箱验证码",
     "auth.otp_subtitle": "我们已将6位代码发送到您的邮箱，请输入以继续。",

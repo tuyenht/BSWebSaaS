@@ -106,6 +106,7 @@
     "admin.scan_qr": "Quét mã QR bằng ứng dụng xác thực, rồi nhập mã 6 chữ số.",
     "admin.or_enter_key": "Hoặc nhập khóa này",
     "admin.confirm": "Xác nhận",
+    "admin.cancel": "Hủy",
     "admin.recovery_codes_hint": "Lưu các mã khôi phục này ở nơi an toàn — mỗi mã dùng một lần nếu bạn mất thiết bị.",
     "auth.otp_title": "Mã xác minh qua Email",
     "auth.otp_subtitle": "Chúng tôi đã gửi mã 6 chữ số đến email của bạn. Nhập mã để tiếp tục.",

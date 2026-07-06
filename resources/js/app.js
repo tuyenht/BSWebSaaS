@@ -3,6 +3,10 @@
 // page ships none of it. Re-runs on each Livewire SPA navigation (`livewire:navigated` fires on the
 // initial page load too), tearing down a leftover instance from a previous visit first.
 
+// Branded confirm dialog (SweetAlert2) replacing the native window.confirm — registers the
+// $bsConfirm Alpine magic + window.bsConfirm; SweetAlert2 itself lazy-loads on first use.
+import './sweet-confirm.js';
+
 let uploader = null;
 
 function teardown() {

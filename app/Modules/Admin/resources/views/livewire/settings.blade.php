@@ -45,7 +45,8 @@
             @if ($user?->two_factor_confirmed_at)
                 <span class="inline-flex items-center rounded bg-admin-success/10 px-2 py-0.5 text-xs font-semibold text-admin-success">{{ __('admin.two_factor_on') }}</span>
                 <p class="text-sm text-body-muted">{{ __('admin.two_factor_enabled_desc') }}</p>
-                <x-admin::button color="danger" variant="soft" wire:click="disableTwoFactor" wire:confirm="{{ __('admin.disable_2fa_confirm') }}">
+                <x-admin::button color="danger" variant="soft"
+                                 x-on:click="$bsConfirm({ text: @js(__('admin.disable_2fa_confirm')), confirm: @js(__('admin.disable_2fa')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.disableTwoFactor())">
                     {{ __('admin.disable_2fa') }}
                 </x-admin::button>
             @elseif ($tfaQr)
@@ -93,7 +94,8 @@
                         @endif
                     </div>
                     @if ($connected->has($key))
-                        <x-admin::button color="danger" variant="soft" wire:click="disconnect('{{ $key }}')" wire:confirm="{{ __('admin.social_disconnect_confirm') }}">
+                        <x-admin::button color="danger" variant="soft"
+                                         x-on:click="$bsConfirm({ text: @js(__('admin.social_disconnect_confirm')), confirm: @js(__('admin.disconnect')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.disconnect(@js($key)))">
                             {{ __('admin.disconnect') }}
                         </x-admin::button>
                     @else

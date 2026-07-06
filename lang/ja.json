@@ -106,6 +106,7 @@
     "admin.scan_qr": "認証アプリでこのQRコードをスキャンし、6桁のコードを入力してください。",
     "admin.or_enter_key": "またはこのキーを入力",
     "admin.confirm": "確認",
+    "admin.cancel": "キャンセル",
     "admin.recovery_codes_hint": "これらのリカバリーコードを安全な場所に保管してください。各コードはデバイス紛失時に一度だけ使用できます。",
     "auth.otp_title": "メール確認コード",
     "auth.otp_subtitle": "6桁のコードをメールで送信しました。入力して続行してください。",

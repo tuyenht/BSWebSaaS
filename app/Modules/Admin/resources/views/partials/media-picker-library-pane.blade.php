@@ -133,8 +133,8 @@
                 </select>
             @else
                 @if (! $mp['page']->isEmpty())
-                    <button type="button" wire:click="emptyPickerTrash"
-                            wire:confirm="{{ __('media.picker_trash_empty_confirm') }}"
+                    <button type="button"
+                            x-on:click="$bsConfirm({ text: @js(__('media.picker_trash_empty_confirm')), confirm: @js(__('media.picker_trash_empty')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.emptyPickerTrash())"
                             class="inline-flex items-center gap-1.5 rounded-lg border border-admin-danger/20 bg-surface px-3 py-2 text-[12.5px] font-semibold text-admin-danger">
                         <x-admin::icon name="ri-delete-bin" class="size-3.5" />{{ __('media.picker_trash_empty') }}
                     </button>
@@ -163,8 +163,8 @@
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-success/30 bg-surface px-[11px] py-1.5 text-xs font-medium text-admin-success">
                                 <x-admin::icon name="ri-refresh" class="size-[13px]" />{{ __('media.picker_trash_restore') }}
                             </button>
-                            <button type="button" wire:click="purgePickerSelection"
-                                    wire:confirm="{{ __('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)]) }}"
+                            <button type="button"
+                                    x-on:click="$bsConfirm({ text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())"
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger">
                                 <x-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_trash_purge') }}
                             </button>
@@ -187,8 +187,8 @@
                             </div>
                         @endcan
                         @can('media.delete')
-                            <button type="button" wire:click="pickerBulkDelete"
-                                    wire:confirm="{{ __('media.picker_delete_confirm', ['count' => count($pickerSelected)]) }}"
+                            <button type="button"
+                                    x-on:click="$bsConfirm({ text: @js(__('media.picker_delete_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_delete')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.pickerBulkDelete())"
                                     class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger">
                                 <x-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_delete') }}
                             </button>

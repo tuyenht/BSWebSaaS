@@ -78,8 +78,7 @@
                                     </select>
                                 @endif
                                 <button type="button"
-                                        wire:click="removeMember({{ $member->id }})"
-                                        wire:confirm="{{ __('admin.member_remove_confirm') }}"
+                                        x-on:click="$bsConfirm({ text: @js(__('admin.member_remove_confirm')), confirm: @js(__('admin.remove')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.removeMember({{ $member->id }}))"
                                         class="rounded px-2 py-1 text-xs font-medium text-admin-danger transition-colors hover:bg-admin-danger/10">
                                     {{ __('admin.remove') }}
                                 </button>
