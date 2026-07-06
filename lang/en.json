@@ -327,7 +327,7 @@
     "media.err_mimes": "Only JPG, PNG, WebP, GIF or PDF images are accepted.",
     "media.err_max": "The file exceeds the maximum size (10MB).",
     "media.picker_title": "Select image",
-    "media.picker_subtitle": "Insert images for posts & products",
+    "media.picker_subtitle": "Pick from the library or upload from many sources",
     "media.picker_tab_upload": "Upload new files",
     "media.picker_tab_library": "Image library",
     "media.picker_drop_title": "Drag & drop images here",

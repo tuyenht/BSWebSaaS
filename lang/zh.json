@@ -242,7 +242,7 @@
     "media.err_mimes": "仅支持 JPG、PNG、WebP、GIF 或 PDF。",
     "media.err_max": "文件超出大小上限（10MB）。",
     "media.picker_title": "选择图片",
-    "media.picker_subtitle": "为文章和产品插入图片",
+    "media.picker_subtitle": "从图片库选择，或从多种来源上传",
     "media.picker_tab_upload": "上传新文件",
     "media.picker_tab_library": "图片库",
     "media.picker_drop_title": "将图片拖放到这里",

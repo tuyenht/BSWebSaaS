@@ -327,7 +327,7 @@
     "media.err_mimes": "Chỉ chấp nhận ảnh JPG, PNG, WebP, GIF hoặc PDF.",
     "media.err_max": "Tệp vượt quá dung lượng cho phép (tối đa 10MB).",
     "media.picker_title": "Chọn ảnh",
-    "media.picker_subtitle": "Chèn ảnh cho bài viết & sản phẩm",
+    "media.picker_subtitle": "Chọn từ thư viện hoặc tải lên từ nhiều nguồn",
     "media.picker_tab_upload": "Tải lên tệp mới",
     "media.picker_tab_library": "Thư viện ảnh",
     "media.picker_drop_title": "Kéo & thả ảnh vào đây",
