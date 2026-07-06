@@ -12,12 +12,13 @@
     $shortName = \App\Modules\Admin\Support\DisplayName::short($name);
     $isPlatform = \App\Modules\Admin\Support\AdminPlane::isPlatform();
 @endphp
-<div class="relative h-full" x-data="{ userOpen: false }">
-    {{-- Velzon reference 1:1 — a persistent soft-gray slab spanning the topbar height that
-         ENDS at the header's 1.5rem end-padding (it does not bleed to the viewport edge);
-         32px avatar, 13px semibold name over an 11px muted role, no chevron, no hover shift. --}}
+<div class="relative" x-data="{ userOpen: false }">
+    {{-- Velzon reference 1:1 — .header-item sets an EXPLICIT height: $header-height (not a
+         percentage chain), so the gray slab spans the full 70px topbar regardless of the
+         flex cluster around it, and ENDS at the header's 1.5rem end-padding; 32px avatar,
+         13px semibold name over an 11px muted role, no chevron, no hover shift. --}}
     <button type="button" @click="userOpen = ! userOpen" :aria-expanded="userOpen"
-            class="flex h-full items-center gap-2.5 bg-topbar-user-block px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
+            class="flex h-[var(--spacing-header)] items-center gap-2.5 bg-topbar-user-block px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
         <span class="grid size-8 shrink-0 place-items-center rounded-full bg-topbar-user text-sm font-semibold text-topbar-user-fg">
             {{ \Illuminate\Support\Str::of($name)->substr(0, 1)->upper() }}
         </span>
