@@ -119,6 +119,13 @@
     display: none !important;
 }
 
+/* Tailwind 4's preflight resets <button> to cursor:default; every enabled button in the
+   admin performs an action, so restore the pointer affordance globally (disabled ones
+   keep the default cursor). Sits outside all layers so it wins over preflight. */
+button:not(:disabled) {
+    cursor: pointer;
+}
+
 /* ── Jodit (catalog rich text) — chrome aligned to the admin tokens ─────────────
    Only the frame/toolbar surfaces; button icons are already Remix (catalog-editor-icons). */
 [data-catalog-editor] .jodit-container:not(.jodit_inline) {

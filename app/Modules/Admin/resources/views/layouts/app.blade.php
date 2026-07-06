@@ -66,9 +66,10 @@
                                         ])>
                                     <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                     <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
-                                    {{-- Velzon reference: closed = a small right chevron, open = rotated down (90°),
-                                         at 14px — noticeably smaller than the 20px leading icons. --}}
-                                    <x-admin::icon name="chevron-right" class="sidebar-label size-3.5 shrink-0 opacity-80 transition-transform" ::class="openGroup === '{{ $item->key }}' && 'rotate-90'" />
+                                    {{-- Reference arrow verbatim (_vertical.scss 85-115): a SLIM glyph at ~1.05rem,
+                                         color:inherit (so it brightens with the item's own hover/active state),
+                                         rotating 90° open. No opacity of its own. --}}
+                                    <x-admin::icon name="arrow-right-s" class="sidebar-label size-4 shrink-0 transition-transform" ::class="openGroup === '{{ $item->key }}' && 'rotate-90'" />
                                 </button>
                                 <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-0.5 ps-4">
                                     @foreach ($item->children as $child)
