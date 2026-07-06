@@ -73,7 +73,10 @@
                                     <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
                                     {{-- Slim reference glyph (~1.05rem), color:inherit — brightens with the states
                                          above; rotates down when open OR when this is the active page's group. --}}
-                                    <x-admin::icon name="arrow-right-s" class="sidebar-label size-4 shrink-0 transition-transform" ::class="(openGroup === '{{ $item->key }}' || {{ $item->active ? 'true' : 'false' }}) && 'rotate-90'" />
+                                    {{-- 12px frame: the reference's font glyph fills only ~half its 1.05rem em-box,
+                                         so an SVG at the same frame size reads ~1.5× bigger — measured against the
+                                         reference screenshot, 12px lands the same visual arrow size. --}}
+                                    <x-admin::icon name="arrow-right-s" class="sidebar-label size-3 shrink-0 transition-transform" ::class="(openGroup === '{{ $item->key }}' || {{ $item->active ? 'true' : 'false' }}) && 'rotate-90'" />
                                 </button>
                                 <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-0.5 ps-4">
                                     @foreach ($item->children as $child)
