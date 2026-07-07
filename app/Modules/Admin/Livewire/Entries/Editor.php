@@ -485,6 +485,7 @@ final class Editor extends Component
         return match ($type) {
             'list' => [],
             'int' => $default ?? 0,
+            'image' => $default,   // a media_id, or null for an unset picker
             default => $default ?? '',
         };
     }

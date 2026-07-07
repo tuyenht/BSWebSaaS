@@ -31,19 +31,20 @@ function registerSchemaBlock(string $type, array $schema): void
 }
 
 /**
- * True when $key is declared `type:url` inside any list `of` field-map in the schema
- * (handles object lists + nesting) — used by the sink sentinel for $item['…'] sinks.
+ * True when $key is declared `type:url` or `type:image` inside any list `of` field-map in the
+ * schema (handles object lists + nesting) — the two schema types ValidPageJson proves safe for an
+ * href/src sink. Used by the sink sentinel for $item['…'] sinks.
  *
  * @param  array<array-key, mixed>  $schema
  */
-function schemaHasUrlField(array $schema, string $key): bool
+function schemaHasSafeSinkField(array $schema, string $key): bool
 {
     foreach ($schema as $spec) {
         if (! is_array($spec) || ($spec['type'] ?? null) !== 'list' || ! is_array($spec['of'] ?? null)) {
             continue;
         }
         $of = $spec['of'];
-        if (($of[$key]['type'] ?? null) === 'url' || schemaHasUrlField($of, $key)) {
+        if (in_array($of[$key]['type'] ?? null, ['url', 'image'], true) || schemaHasSafeSinkField($of, $key)) {
             return true;
         }
     }
@@ -175,13 +176,14 @@ it('every author href/src sink in a section partial is a schema-declared url pro
         // Top-level author sinks: href/src reading $props['KEY'] must be schema type:url.
         preg_match_all('/(?:href|src)\s*=\s*["\']\{\{[^}]*\$props\[[\'"](\w+)[\'"]\]/', $blade, $top);
         foreach ($top[1] as $key) {
-            expect($schema[$key]['type'] ?? null)->toBe('url', "{$type}.blade: \$props['{$key}'] feeds href/src but isn't type:url in the schema");
+            expect(in_array($schema[$key]['type'] ?? null, ['url', 'image'], true))
+                ->toBeTrue("{$type}.blade: \$props['{$key}'] feeds href/src but isn't a type:url|image sink in the schema");
         }
 
         // List-item author sinks: href/src reading $item['KEY'] must be a type:url list field.
         preg_match_all('/(?:href|src)\s*=\s*["\']\{\{[^}]*\$item\[[\'"](\w+)[\'"]\]/', $blade, $item);
         foreach ($item[1] as $key) {
-            expect(schemaHasUrlField($schema, $key))->toBeTrue("{$type}.blade: \$item['{$key}'] feeds href/src but isn't a type:url list field");
+            expect(schemaHasSafeSinkField($schema, $key))->toBeTrue("{$type}.blade: \$item['{$key}'] feeds href/src but isn't a type:url|image list field");
         }
     }
 });

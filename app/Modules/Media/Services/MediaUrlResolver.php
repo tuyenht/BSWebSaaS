@@ -19,6 +19,31 @@ final class MediaUrlResolver
         };
     }
 
+    /**
+     * Inverse of url() for the cloudflare/static form: recover the storage_key baked into a public
+     * URL, or null when the URL is not one this resolver would mint — a foreign host, or the
+     * HMAC-signed imgproxy form, which is not reversible. Driver-independent (always inverts the
+     * cloudflare base, the form legacy rows stored). Used ONLY to migrate content that froze a
+     * resolved URL back to a media_id; new content stores media_id and never a URL.
+     */
+    public function keyFromUrl(string $url): ?string
+    {
+        $prefix = $this->base('cloudflare').'/';
+        if ($prefix === '/' || ! str_starts_with($url, $prefix)) {
+            return null;
+        }
+
+        $key = substr($url, strlen($prefix));
+        foreach (['?', '#'] as $separator) {
+            $position = strpos($key, $separator);
+            if ($position !== false) {
+                $key = substr($key, 0, $position);
+            }
+        }
+
+        return $key !== '' ? $key : null;
+    }
+
     /** Cloudflare Worker: it reads ?w and runs cf.image; no width → the raw master (canonical / L2). */
     private function cloudflare(string $key, ?int $width): string
     {

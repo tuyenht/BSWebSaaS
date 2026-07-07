@@ -10,12 +10,12 @@ use Illuminate\Support\Facades\View;
  * card links to the post's detail page.
  */
 
-it('registers the about block with url-typed sinks', function (): void {
+it('registers the about block with an image prop and a url-typed CTA sink', function (): void {
     $registry = app(ComponentRegistry::class);
 
     expect($registry->has('about'))->toBeTrue();
     $about = $registry->get('about')->schema();
-    expect($about['image_url']['type'])->toBe('url');
+    expect($about['image_url']['type'])->toBe('image');   // media_id ref, resolved to a URL at render
     expect($about['cta_url']['type'])->toBe('url');
 });
 
@@ -61,14 +61,14 @@ it('renders no icon for an unknown glyph key (no injection surface)', function (
     expect($html)->not->toContain('<svg')->not->toContain('<img');
 });
 
-it('registers the partners block with url-typed logo list fields', function (): void {
+it('registers the partners block with an image logo field and a url link field', function (): void {
     $registry = app(ComponentRegistry::class);
 
     expect($registry->has('partners'))->toBeTrue();
     $logos = $registry->get('partners')->schema()['logos'];
     expect($logos['type'])->toBe('list');
-    expect($logos['of']['image_url']['type'])->toBe('url');
-    expect($logos['of']['url']['type'])->toBe('url');
+    expect($logos['of']['image_url']['type'])->toBe('image');   // logo = media_id ref
+    expect($logos['of']['url']['type'])->toBe('url');           // partner website link
 });
 
 it('renders the partners block as a logo grid, linking a logo only when it has both a url and a name', function (): void {

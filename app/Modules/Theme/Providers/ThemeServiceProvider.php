@@ -26,7 +26,7 @@ final class ThemeServiceProvider extends ServiceProvider
         'hero' => [
             'heading' => ['type' => 'text'],
             'subheading' => ['type' => 'text'],
-            'image_url' => ['type' => 'url'],
+            'image_url' => ['type' => 'image'],
             'cta_label' => ['type' => 'text'],
             'cta_url' => ['type' => 'url'],
             'cta2_label' => ['type' => 'text'],
@@ -46,14 +46,14 @@ final class ThemeServiceProvider extends ServiceProvider
         'about' => [
             'heading' => ['type' => 'text'],
             'paragraphs' => ['type' => 'list', 'of' => ['type' => 'textarea']],
-            'image_url' => ['type' => 'url'],
+            'image_url' => ['type' => 'image'],
             'cta_label' => ['type' => 'text'],
             'cta_url' => ['type' => 'url'],
         ],
         'partners' => [
             'heading' => ['type' => 'text'],
             'logos' => ['type' => 'list', 'of' => [
-                'image_url' => ['type' => 'url'],
+                'image_url' => ['type' => 'image'],
                 'name' => ['type' => 'text'],
                 'url' => ['type' => 'url'],
             ]],

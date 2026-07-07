@@ -119,6 +119,14 @@ final readonly class ValidPageJson implements ValidationRule
             return $value === null || (is_string($value) && $this->isSafeUrl($value));
         }
 
+        if (($spec['type'] ?? null) === 'image') {
+            // An image prop holds a media_id (int) — resolved to our own CDN URL at render, so
+            // inherently injection-free. A legacy URL string (expand phase, before content is
+            // migrated to media_id) still renders into src, so it must clear the same scheme guard
+            // as `url`; a javascript:/data: image is rejected. null = an unset picker.
+            return $value === null || is_int($value) || (is_string($value) && $this->isSafeUrl($value));
+        }
+
         if (($spec['type'] ?? null) === 'list') {
             $of = $spec['of'] ?? null;
             if (! is_array($of) || ! is_array($value)) {
