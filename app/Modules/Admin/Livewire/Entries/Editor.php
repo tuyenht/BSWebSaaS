@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
@@ -11,10 +12,12 @@ use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\SchemaImages;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -61,6 +64,12 @@ final class Editor extends Component
 
     /** Whether the library picker is open (its media grid is only queried while true). */
     public bool $showMediaPicker = false;
+
+    /** Block image picker: the target prop path inside $blocks (e.g. "0.props.image_url" or
+     *  "0.props.logos.1.image_url"), held while the picker is open for a block image field. */
+    public bool $showBlockImagePicker = false;
+
+    public string $blockImagePickerPath = '';
 
     /** @var list<array<string, mixed>> */
     public array $blocks = [];
@@ -236,20 +245,87 @@ final class Editor extends Component
         $this->coverImageKey = '';
     }
 
+    public function openBlockImagePicker(string $path): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+
+        $this->blockImagePickerPath = $path;
+        $this->showBlockImagePicker = true;
+    }
+
+    public function closeBlockImagePicker(): void
+    {
+        $this->showBlockImagePicker = false;
+        $this->blockImagePickerPath = '';
+    }
+
+    /**
+     * Set a block image prop to a media_id from THIS site's library (RLS-scoped) — never an
+     * arbitrary id from the wire payload. Content references media by id (ADR-17), not a URL.
+     */
+    public function selectBlockImage(int $mediaId): void
+    {
+        abort_unless(Gate::allows('media.view'), 403);
+
+        if ($this->blockImagePickerPath !== '' && Media::query()->whereKey($mediaId)->exists()) {
+            $this->setBlockProp($this->blockImagePickerPath, $mediaId);
+        }
+
+        $this->showBlockImagePicker = false;
+        $this->blockImagePickerPath = '';
+    }
+
+    public function clearBlockImage(string $path): void
+    {
+        $this->setBlockProp($path, null);
+    }
+
+    /** Set a dotted prop path inside $blocks (e.g. "0.props.logos.1.image_url"), keeping the list type. */
+    private function setBlockProp(string $path, mixed $value): void
+    {
+        $blocks = $this->blocks;
+        data_set($blocks, $path, $value);
+        /** @var list<array<string, mixed>> $blocks */
+        $this->blocks = $blocks;
+    }
+
     public function render(): View
     {
         $urls = app(MediaUrlResolver::class);
+        $schemas = $this->schemas();
 
         return view('admin::livewire.entries.editor', [
             'availableTypes' => app(ComponentRegistry::class)->types(),
-            'schemas' => $this->schemas(),
+            'schemas' => $schemas,
             'categories' => $this->type === 'post' ? $this->availableCategories() : [],
             'urls' => $urls,
             'coverUrl' => $this->coverImageKey !== '' ? $urls->url($this->coverImageKey, 640) : null,
-            'pickerMedia' => $this->showMediaPicker
+            'blockImageUrls' => $this->resolveBlockImageUrls($schemas),
+            'pickerMedia' => $this->showMediaPicker || $this->showBlockImagePicker
                 ? Media::query()->orderByDesc('created_at')->limit(60)->get()
                 : collect(),
         ]);
+    }
+
+    /**
+     * Preview URLs for every block image prop, resolved in ONE query (a thumbnail sits next to each
+     * picker). A media_id → its URL; unknown ids are simply absent.
+     *
+     * @param  array<string, array<string, array<string, mixed>>>  $schemas
+     * @return array<int, string>
+     */
+    private function resolveBlockImageUrls(array $schemas): array
+    {
+        $ids = [];
+        foreach ($this->blocks as $block) {
+            $type = $block['type'] ?? null;
+            $props = is_array($block['props'] ?? null) ? $block['props'] : [];
+            if (is_string($type) && isset($schemas[$type])) {
+                $ids = array_merge($ids, SchemaImages::ids($props, $schemas[$type]));
+            }
+        }
+
+        return app(MediaLibraryUrls::class)->urlsForIds($ids);
     }
 
     /**
@@ -324,6 +400,9 @@ final class Editor extends Component
                 'status' => $entry->status,
             ],
         );
+
+        // Materialize block image usage into mediables so it surfaces in "where is this media used".
+        app(EntryBlockMediaReconciler::class)->reconcile($entry);
 
         if ($this->type === 'post') {
             $entry->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);
@@ -485,6 +564,7 @@ final class Editor extends Component
         return match ($type) {
             'list' => [],
             'int' => $default ?? 0,
+            'image' => $default,   // a media_id, or null for an unset picker
             default => $default ?? '',
         };
     }

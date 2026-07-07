@@ -76,3 +76,40 @@ it('normalises a leading slash in the key', function (): void {
     expect(mediaUrl('/an-vinh/content/logo-abc123.webp'))
         ->toBe('https://files.test/an-vinh/content/logo-abc123.webp');
 });
+
+/*
+ * keyFromUrl — the inverse of url() for the cloudflare/static form. It exists ONLY to migrate
+ * legacy content that stored a resolved URL (a frozen path) back to a media reference; new content
+ * stores media_id and never a URL. It must round-trip the exact storage key and refuse anything it
+ * would never have minted (a foreign URL, or the non-reversible imgproxy form) so a migration can
+ * safely tell "our media" from "leave it alone".
+ */
+function mediaKeyFromUrl(string $url): ?string
+{
+    return app(MediaUrlResolver::class)->keyFromUrl($url);
+}
+
+it('keyFromUrl: round-trips a cloudflare URL back to its storage key (strips ?w)', function (): void {
+    config(['media.driver' => 'cloudflare', 'media.widths' => [320, 640, 960, 1280, 1600, 2048]]);
+    $key = 'an-vinh/content/logo-abc123.webp';
+
+    expect(mediaKeyFromUrl(mediaUrl($key)))->toBe($key);
+    expect(mediaKeyFromUrl(mediaUrl($key, 640)))->toBe($key);
+    expect(mediaKeyFromUrl(mediaUrl($key, 800)))->toBe($key);   // the snapped ?w=960 is stripped
+});
+
+it('keyFromUrl: round-trips a static URL (nested key path preserved)', function (): void {
+    config(['media.driver' => 'static']);
+    $key = 'an-vinh/cover/hero-def456.webp';
+
+    expect(mediaKeyFromUrl(mediaUrl($key, 800)))->toBe($key);
+});
+
+it('keyFromUrl: null for a URL this resolver would never mint', function (): void {
+    config(['media.driver' => 'cloudflare']);
+    // A foreign host (a pasted external image) — not our media, not resolvable to a master.
+    expect(mediaKeyFromUrl('https://evil.example/an-vinh/content/logo-abc123.webp'))->toBeNull();
+    // The imgproxy HMAC form lives under a different base → not reversible.
+    config(['media.driver' => 'imgproxy']);
+    expect(mediaKeyFromUrl(mediaUrl('an-vinh/content/logo-abc123.webp', 640)))->toBeNull();
+});

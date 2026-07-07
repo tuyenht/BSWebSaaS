@@ -63,18 +63,28 @@
             @if ($usages === [])
                 <p class="rounded-lg bg-surface-hover px-3 py-2 text-[12.5px] text-body-faint">{{ __('media.picker_detail_unused') }}</p>
             @else
-                <ul class="flex flex-col gap-1">
-                    @foreach ($usages as $u)
-                        <li>
-                            <a href="{{ $u['url'] }}" target="_blank" rel="noopener"
-                               class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] text-body-text hover:bg-surface-hover">
-                                <x-admin::icon name="{{ $u['kind'] === 'product' ? 'ri-inbox-archive' : 'file-text' }}" class="size-3.5 shrink-0 text-body-faint" />
-                                <span class="min-w-0 flex-1 truncate">{{ $u['label'] }}</span>
-                                <span class="shrink-0 rounded bg-admin-primary/8 px-1.5 py-0.5 text-[10px] font-semibold text-admin-primary">{{ __('media.picker_kind_'.$u['kind']) }}</span>
-                            </a>
-                        </li>
-                    @endforeach
-                </ul>
+                <p class="mb-2 text-[12px] text-body-muted">{{ __('media.picker_detail_used_count', ['count' => count($usages)]) }}</p>
+                {{-- Grouped by role — the owner asked to distinguish cover / gallery / content, not just
+                     which object. An entry using this media in two roles appears under each. --}}
+                @foreach (['cover', 'gallery', 'content'] as $role)
+                    @php($group = array_values(array_filter($usages, fn ($u) => $u['role'] === $role)))
+                    @if ($group !== [])
+                        <div class="mb-2">
+                            <div class="mb-1 text-[11px] font-semibold text-body-muted">{{ __('media.picker_role_'.$role) }}</div>
+                            <ul class="flex flex-col gap-1">
+                                @foreach ($group as $u)
+                                    <li>
+                                        <a href="{{ $u['url'] }}" target="_blank" rel="noopener"
+                                           class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] text-body-text hover:bg-surface-hover">
+                                            <span class="min-w-0 flex-1 truncate">{{ $u['label'] }}</span>
+                                            <span class="shrink-0 rounded bg-admin-primary/8 px-1.5 py-0.5 text-[10px] font-semibold text-admin-primary">{{ __('media.picker_kind_'.$u['kind']) }}</span>
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                @endforeach
             @endif
         </div>
 

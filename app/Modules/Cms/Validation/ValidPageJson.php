@@ -119,6 +119,15 @@ final readonly class ValidPageJson implements ValidationRule
             return $value === null || (is_string($value) && $this->isSafeUrl($value));
         }
 
+        if (($spec['type'] ?? null) === 'image') {
+            // An image prop is a media_id (positive int) or null (unset) — never a URL string.
+            // Content references media by id (ADR-17: the path lives only in media.storage_key), so a
+            // static URL in an image prop — even from a crafted wire payload past the picker — is
+            // rejected outright. That makes the "choose from library, no static URL" rule real at the
+            // save boundary, not only in the editor UI.
+            return $value === null || (is_int($value) && $value > 0);
+        }
+
         if (($spec['type'] ?? null) === 'list') {
             $of = $spec['of'] ?? null;
             if (! is_array($of) || ! is_array($value)) {

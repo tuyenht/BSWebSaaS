@@ -6,6 +6,7 @@ use App\Modules\Cms\Components\EntryGridComponent;
 use App\Modules\Cms\Components\LatestPostsComponent;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Observers\EntryObserver;
 use App\Modules\Cms\Policies\EntryPolicy;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -34,5 +35,8 @@ final class CmsServiceProvider extends ServiceProvider
         $registry->register('entry_grid', $this->app->make(EntryGridComponent::class));
 
         Gate::policy(Entry::class, EntryPolicy::class);
+
+        // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
+        Entry::observe(EntryObserver::class);
     }
 }

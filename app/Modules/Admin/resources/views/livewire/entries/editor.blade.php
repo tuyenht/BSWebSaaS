@@ -67,6 +67,30 @@
                 @endif
             </div>
         @endif
+
+        @if ($showBlockImagePicker)
+            <div class="media-picker" role="dialog" aria-modal="true" aria-label="{{ __('entries.image_pick') }}">
+                <div class="media-picker__head">
+                    <strong>{{ __('entries.image_pick') }}</strong>
+                    <button type="button" wire:click="closeBlockImagePicker">{{ __('entries.close') }}</button>
+                </div>
+                @if ($pickerMedia->isEmpty())
+                    <p>{{ __('entries.library_empty') }}</p>
+                @else
+                    <div class="media-picker__grid">
+                        @foreach ($pickerMedia as $m)
+                            @if (str_starts_with($m->mime, 'image/'))
+                                <button type="button" wire:key="blockpick-{{ $m->id }}"
+                                        wire:click="selectBlockImage({{ $m->id }})"
+                                        class="media-picker__item" title="{{ $m->original_filename }}">
+                                    <img src="{{ $urls->url($m->storage_key, 320) }}" alt="{{ $m->original_filename }}" loading="lazy">
+                                </button>
+                            @endif
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @endif
     @endcan
 
     <section class="blocks">
@@ -96,10 +120,10 @@
                                     @foreach (($block['props'][$prop] ?? []) as $j => $item)
                                         <div class="prop-list__item" wire:key="item-{{ $i }}-{{ $prop }}-{{ $j }}">
                                             @if (isset($spec['of']['type']))
-                                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['of']['type'], 'model' => "blocks.$i.props.$prop.$j", 'fieldLabel' => $prop])
+                                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['of']['type'], 'model' => "blocks.$i.props.$prop.$j", 'fieldLabel' => $prop, 'value' => $item, 'imageUrls' => $blockImageUrls])
                                             @else
                                                 @foreach (($spec['of'] ?? []) as $field => $fieldSpec)
-                                                    @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $fieldSpec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop.$j.$field", 'fieldLabel' => $field])
+                                                    @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $fieldSpec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop.$j.$field", 'fieldLabel' => $field, 'value' => $item[$field] ?? null, 'imageUrls' => $blockImageUrls])
                                                 @endforeach
                                             @endif
                                             <button type="button" wire:click="moveItemUp({{ $i }}, '{{ $prop }}', {{ $j }})" aria-label="{{ __('entries.move_up') }}">↑</button>
@@ -110,7 +134,7 @@
                                     <button type="button" wire:click="addItem({{ $i }}, '{{ $prop }}')">{{ __('entries.add_item') }}</button>
                                 </fieldset>
                             @else
-                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop])
+                                @include('admin::livewire.entries.partials.prop-input', ['fieldType' => $spec['type'] ?? 'text', 'model' => "blocks.$i.props.$prop", 'fieldLabel' => $prop, 'value' => $block['props'][$prop] ?? null, 'imageUrls' => $blockImageUrls])
                             @endif
                         @endforeach
                     </div>

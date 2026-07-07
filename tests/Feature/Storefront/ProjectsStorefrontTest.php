@@ -126,8 +126,8 @@ it('renders /gioi-thieu with about content', function (): void {
     expect($html)
         ->toContain('<title>Giới thiệu</title>')
         ->toContain('<meta name="description" content="Giới thiệu Cơ Khí Chính Xác An Vinh')  // §5: page has a real meta description, not empty
-        ->toContain('?w=960')          // about image resolved at a WHITELISTED width — the Worker serves it (a non-whitelisted ?w would 400)
-        ->not->toContain('?w=800')     // regression guard: the pre-resolved about width must never be the rejected 800
+        ->toContain('?w=1280')         // about image resolved at the whitelisted content-image width — the Worker serves it (a non-whitelisted ?w would 400)
+        ->not->toContain('?w=800')     // regression guard: the width must never be the rejected 800
         ->toContain('ISO 9001:2015')
         ->toContain('Tầm Nhìn');   // 'Tầm Nhìn' in body
 });
