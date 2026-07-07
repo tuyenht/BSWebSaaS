@@ -18,7 +18,7 @@ final readonly class MediaLibraryUrls
 
     /**
      * @param  array<array-key, mixed>  $ids  raw media_id values pulled from content props (untyped)
-     * @return array<int, string>  media_id => public URL (only for ids that resolve in this site)
+     * @return array<int, string> media_id => public URL (only for ids that resolve in this site)
      */
     public function urlsForIds(array $ids, ?int $width = null): array
     {

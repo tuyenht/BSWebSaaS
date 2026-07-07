@@ -120,6 +120,7 @@ it('media:reconcile-content-usage backfills entries that never went through a sa
             ->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft',
                 'body' => ['blocks' => [['type' => 'hero', 'props' => ['image_url' => $m->id]]]]]);
         expect(Mediable::query()->where('media_id', $m->id)->exists())->toBeFalse();   // seeded → not tracked yet
+
         return (int) $m->id;
     });
 
