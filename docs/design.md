@@ -1,7 +1,7 @@
-# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.10)
+# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.12)
 
 **Chủ dự án:** Hoàng Thanh Tuyền (Senior Tech Lead, Bảo Sơn) · tuyenht@gmail.com · 0962 04 6262
-**Trạng thái:** v2.10 — tinh chỉnh ADR-11: URL i18n (default unprefixed/mutable, non-default prefixed) + vòng đời default-locale. Lõi thiết kế ĐÓNG BĂNG; đang triển khai An Vinh.
+**Trạng thái:** v2.12 — chuẩn hóa nền dữ liệu multi-tenant scale (ADR-18): partition measure-first-có-trigger (≥30M/bảng) · giữ bigint-PK + retrofit-playbook · tenant-ctx codify + cache domain. Lõi thiết kế ĐÓNG BĂNG; đang triển khai An Vinh.
 **Nguồn:** hợp nhất từ tài liệu khởi tạo v1.0→v1.30 (41 mục + 14 ADR) + khảo sát 5 website thật + schema t5g.
 **Bản lịch sử (đầy đủ quá trình tranh luận):** `ke-hoach-tong-the-saas-website-platform.md` (v1.30).
 
@@ -57,7 +57,7 @@
 33. Câu hỏi mở cần chốt để đóng yêu cầu
 
 **PHỤ LỤC**
-- A. Chỉ mục 16 ADR (trạng thái cuối)
+- A. Chỉ mục 18 ADR (trạng thái cuối)
 - B. Sổ rủi ro R1–R24
 - C. Khảo sát 5 website + schema t5g (cô đọng)
 - E. Spec bổ sung (kéo từ docs cũ + platform-core)
@@ -696,7 +696,7 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 
 # PHỤ LỤC
 
-## A. Chỉ mục 17 ADR (trạng thái cuối)
+## A. Chỉ mục 18 ADR (trạng thái cuối)
 
 | ADR | Quyết định | Trạng thái |
 |---|---|---|
@@ -717,6 +717,7 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 | 15 | **Mục tiêu hạ tầng/triển khai:** Phase 0–1 deploy trên **Laravel Cloud (region Singapore)** + **Cloudflare** (CDN/WAF/edge VN Hà Nội+HCM) + **R2** (media). Lý do: **zero-ops** + sinh ra cho Laravel/Octane/FrankenPHP + **rẻ ở quy mô nhỏ** nhờ scale-to-zero (dev ≈ $0-10/th, +An Vinh ≈ $15-30/th) → tập trung dựng sản phẩm. Giữ code **portable** (driver-swap, không phụ thuộc primitive độc quyền) để **chuyển sang CloudFly.vn (VPS VN tự quản + Laravel Forge) khi lên quy mô** (rẻ hơn ở scale lớn, đổi lại nhận ops). Dev local Docker; CI GitHub Actions. Đánh đổi: origin Singapore (bù bằng Cloudflare edge VN); lock-in (bù bằng portability); tự quản Postgres hoãn tới giai đoạn scale | Chốt (v2.2) |
 | 16 | **ID & key strategy:** PK = **`bigint` identity** khắp nơi (FK 8-byte → index composite `(site_id,…)` gọn/nhanh); thực thể lộ ra ngoài thêm cột **`ulid`** (public id, chống enumerate, sortable). **KHÔNG lộ bigint id thô** ra URL/API (public qua slug/code/ulid). Bảng pivot chỉ bigint. UUIDv7 là lựa chọn thay thế nếu ưu tiên đơn giản hóa export hơn độ gọn index (Mục 17 D2) | Chốt (v2.5) |
 | 17 | **Media — Storage + Serving (supersede §12):** R2 **private** (bucket `baoson-media`, chỉ Worker đọc qua binding), 1 master WebP/ảnh; key content-addressed `{tenant}/{collection}/{slug}-{hash}.{ext}` (`tenant` = **`Site.slug`** citext-unique sinh-từ-name lúc provision, bất biến — thêm ở PR-1; `hash` = SHA-256[:12] nội dung, tính 1 lần lúc upload → dedup + cache-bust) thay `sites/{site_id}/media/{ulid}`; serving qua **Cloudflare Worker** (cf.image format=auto + width-whitelist + raw-master fallback) thay imgproxy-primary (imgproxy → **L4 cold-standby**, ngoài path chính); **resolver đa-driver** `media.driver ∈ {cloudflare, imgproxy, static}` (switch = 1 env), **KHÔNG cột `url`** (derive lúc render); lib **custom** `App\Modules\Media` thay spatie/medialibrary; domain `files.baoson.net`; resilience L0–L4 (bỏ L5). Media công khai (không token); cô lập tenant qua prefix `{tenant}` + RLS `media.site_id` FORCE fail-closed (tên bảng = `media`, nhất quán §12/§16 — reconcile 29/06). ⚠ PR-1 upload-safety BẮT BUỘC §2.5 (sniff magic-bytes + MIME whitelist + sanitize SVG). Epic: `docs/notes/media-system-epic.md` | Chốt (supersede §12) |
+| 18 | **Data & Performance Standards (scale nền multi-tenant, greenfield):** cô lập theo **`site_id`**. **Partition = measure-first CÓ TRIGGER** (bảng ≥30M rows HOẶC p99 breach → mới partition; ứng viên HASH-`site_id`: entries/products/media/mediables/orders · RANGE-time+**pg_partman**: form_submissions/audit_logs; KHÔNG partition config/RBAC/lookup/tenants/domains; whale=tách-DB ADR-03). **PK giữ `bigint identity + ulid` (ADR-16), single-PK now**; retrofit→composite `(site_id,id)` khi chạm trigger = 1-lần-có-kế-hoạch (playbook pg_partman, cửa-sổ-bảo-trì). **Read/write split** = design-intent, KHÔNG enforce (chưa replica). **Tenant-ctx** = codify bất-biến (explicit txn + `site_id=?` tường minh — đã có) + prod `assert=sample` + `READ ONLY` cho GET + **cache domain→site_id + negative-cache**. Chuẩn: index-dẫn-`site_id`+partial/BRIN · keyset+tie-break · rollup (không COUNT(*) live) · COPY-seed-lệch. **Loại:** schema/db-per-tenant · UUIDv4/v7 · partition-now · composite-PK-now. Chi tiết: `docs/notes/data-platform-standards.md` | Chốt (v2.12) |
 
 ## B. Sổ rủi ro R1–R24 (chính)
 
@@ -876,3 +877,11 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 ---
 
 *Hết v2.11 — Tầng hardening vận-hành (auth rate-limit + parity cap 2FA + mail sender-identity + IP-thật-sau-CF + audit auth) chốt khi chạy An Vinh prod. Lõi thiết kế (schema/RLS/ADR/i18n) KHÔNG đổi; chi tiết impl ở `docs/notes/` + code, đây là bản ghi normative.*
+
+---
+
+- **v2.12:** **chuẩn hóa nền dữ liệu multi-tenant khi scale (ADR-18 mới) — greenfield, KHÔNG lật lõi.** Sau GATE-0 khảo sát thực địa (bigint+ulid giữ nguyên · RLS FORCE + `site_id` tường minh · read-path đã trong explicit txn · CHƯA partition · CI thực = Pint/Larastan/Pest, KHÔNG chạy Infection/Rector/Lighthouse/axe). Council 4 Trục: **(B) partition = measure-first CÓ TRIGGER** (bảng ≥30M rows HOẶC p99 breach; ứng viên HASH-`site_id`: entries/products/media/mediables/orders · RANGE-time+pg_partman: form_submissions/audit_logs; KHÔNG partition config/RBAC/lookup/tenants/domains; whale=tách-DB ADR-03). **(A) giữ `bigint identity + ulid` single-PK now (ADR-16)**; retrofit→composite `(site_id,id)` khi chạm trigger = 1-lần-có-kế-hoạch (playbook, cửa-sổ-bảo-trì) — chi phí ghi RÕ, không giấu. **(C) read/write split = design-intent**, không enforce tới khi có replica. **(D) tenant-ctx = codify bất-biến** (explicit txn + `site_id=?` tường minh, đã có) + prod `assert=sample` + `READ ONLY` cho GET + cache domain→site_id + negative-cache. Loại: schema/db-per-tenant · UUIDv4/v7 · partition-now · composite-PK-now. Chi tiết why/trade-off/số: `docs/notes/data-platform-standards.md`; index Phụ lục A cập nhật 16/17→**18 ADR**.
+
+---
+
+*Hết v2.12 — Chuẩn hóa nền dữ liệu multi-tenant scale (ADR-18): partition measure-first-có-trigger + giữ bigint-PK + retrofit-playbook + tenant-ctx codify + cache domain. Greenfield; lõi thiết kế (schema/RLS/i18n/ADR-16) KHÔNG đổi — bổ sung chuẩn hiệu-năng-scale.*

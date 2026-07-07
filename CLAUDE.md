@@ -1,7 +1,7 @@
 # CLAUDE.md — Nền tảng SaaS Website Builder (Bảo Sơn)
 
 > File này được Claude Code **tự động nạp** vào context. Đây là **quy ước + guardrail BẮT BUỘC**.
-> **Thiết kế đầy đủ ở `docs/design.md` (v2.10)** — đọc mục liên quan khi cần (KHÔNG nạp toàn bộ, file dài).
+> **Thiết kế đầy đủ ở `docs/design.md` (v2.11)** — đọc mục liên quan khi cần (KHÔNG nạp toàn bộ, file dài).
 > Mọi quyết định kiến trúc theo **17 ADR** trong `docs/design.md` (Phụ lục A).
 
 ---
@@ -69,6 +69,18 @@
 - **D15 · Commerce:** `CHECK(stock≥0)` + decrement nguyên tử (KHÔNG đọc-rồi-ghi) chống oversell; payment idempotent.
 - **D7 · Tên:** snake_case; KHÔNG dùng từ khóa SQL (`order`→`sort_order`); FK = `{entity}_id`; bool = `is_/has_`.
 - **`meta JSONB` + quy tắc "tốt nghiệp":** field hay lọc/sắp/ràng buộc/dùng-chung → lên cột thật. Chống EAV trá hình.
+
+### 3.1 — Data & Performance Standards khi scale (chuẩn **ADR-18**; why/số ở `docs/notes/data-platform-standards.md`)
+
+> Áp MỌI bảng/list/truy-vấn. Đích 10.000+ **site** × 100M+ rows. Cô lập = `site_id` (KHÔNG "tenant").
+
+- **PK/Partition:** GIỮ `bigint identity + ulid` (ADR-16), **single-PK**. Partition = **measure-first CÓ TRIGGER** (bảng ≥30M rows HOẶC p99 breach mới partition; ứng viên HASH-`site_id`: entries/products/media/mediables/orders · RANGE-time+pg_partman: form_submissions/audit_logs; **KHÔNG** partition config/RBAC/lookup/tenants/domains; whale=tách-DB ADR-03). Retrofit→composite `(site_id,id)` khi chạm trigger = việc-có-kế-hoạch, đừng tự làm.
+- **Index:** dẫn-đầu `site_id` KHỚP shape (site_id→lọc→sort) + partial `WHERE deleted_at IS NULL` + BRIN append-only; evidence pg_stat; KHÔNG over-index.
+- **Fetch vừa-đủ:** keyset cursor + tie-break `(…, id)` (KHÔNG OFFSET list lớn); chỉ SELECT cột cần (KHÔNG `*`); eager `whereIn` (Query Budget §6 chặn N+1); ảnh lazy + `srcset`.
+- **Aggregation:** rollup per `site_id` — KHÔNG `COUNT(*)` live bảng lớn.
+- **Tenant-ctx:** mọi query tenant trong explicit txn + global-scope giữ `site_id=?` tường minh (ĐÃ có — chống-regress); prod `tenancy.assert=sample` + `READ ONLY` cho GET; **cache domain→site_id + negative-cache**.
+- **Seeding:** COPY (không INSERT) + phân bố LỆCH (whale+long-tail) + ANALYZE. **Pooling:** tránh LISTEN/NOTIFY · WITH HOLD cursor · temp-table xuyên-txn.
+- **Đổi schema/PK/partition/index = COUNCIL (§10.1)** — propose-first.
 
 ---
 
