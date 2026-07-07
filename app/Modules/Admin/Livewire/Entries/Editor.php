@@ -11,10 +11,12 @@ use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
+use App\Modules\Theme\Components\SchemaImages;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -250,6 +252,12 @@ final class Editor extends Component
         $this->showBlockImagePicker = true;
     }
 
+    public function closeBlockImagePicker(): void
+    {
+        $this->showBlockImagePicker = false;
+        $this->blockImagePickerPath = '';
+    }
+
     /**
      * Set a block image prop to a media_id from THIS site's library (RLS-scoped) — never an
      * arbitrary id from the wire payload. Content references media by id (ADR-17), not a URL.
@@ -283,17 +291,40 @@ final class Editor extends Component
     public function render(): View
     {
         $urls = app(MediaUrlResolver::class);
+        $schemas = $this->schemas();
 
         return view('admin::livewire.entries.editor', [
             'availableTypes' => app(ComponentRegistry::class)->types(),
-            'schemas' => $this->schemas(),
+            'schemas' => $schemas,
             'categories' => $this->type === 'post' ? $this->availableCategories() : [],
             'urls' => $urls,
             'coverUrl' => $this->coverImageKey !== '' ? $urls->url($this->coverImageKey, 640) : null,
+            'blockImageUrls' => $this->resolveBlockImageUrls($schemas),
             'pickerMedia' => $this->showMediaPicker || $this->showBlockImagePicker
                 ? Media::query()->orderByDesc('created_at')->limit(60)->get()
                 : collect(),
         ]);
+    }
+
+    /**
+     * Preview URLs for every block image prop, resolved in ONE query (a thumbnail sits next to each
+     * picker). A media_id → its URL; unknown ids are simply absent.
+     *
+     * @param  array<string, array<string, array<string, mixed>>>  $schemas
+     * @return array<int, string>
+     */
+    private function resolveBlockImageUrls(array $schemas): array
+    {
+        $ids = [];
+        foreach ($this->blocks as $block) {
+            $type = $block['type'] ?? null;
+            $props = is_array($block['props'] ?? null) ? $block['props'] : [];
+            if (is_string($type) && isset($schemas[$type])) {
+                $ids = array_merge($ids, SchemaImages::ids($props, $schemas[$type]));
+            }
+        }
+
+        return app(MediaLibraryUrls::class)->urlsForIds($ids);
     }
 
     /**

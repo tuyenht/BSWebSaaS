@@ -19,6 +19,8 @@
     "entries.cover_remove": "移除图片",
     "entries.cover_empty": "尚未选择封面图片。",
     "entries.cover_pick": "从媒体库选择",
+    "entries.image_pick": "选择图片",
+    "entries.image_clear": "移除图片",
     "entries.close": "关闭",
     "entries.library_empty": "媒体库中还没有图片。请先在「媒体库」中上传图片。",
     "entries.blocks_heading": "内容区块",

@@ -19,6 +19,8 @@
     "entries.cover_remove": "Remove image",
     "entries.cover_empty": "No cover image selected.",
     "entries.cover_pick": "Choose from library",
+    "entries.image_pick": "Choose image",
+    "entries.image_clear": "Remove image",
     "entries.close": "Close",
     "entries.library_empty": "The library has no images yet. Upload images in the Library section first.",
     "entries.blocks_heading": "Content blocks",

@@ -19,6 +19,8 @@
     "entries.cover_remove": "画像を削除",
     "entries.cover_empty": "カバー画像が選択されていません。",
     "entries.cover_pick": "ライブラリから選択",
+    "entries.image_pick": "画像を選択",
+    "entries.image_clear": "画像を削除",
     "entries.close": "閉じる",
     "entries.library_empty": "ライブラリに画像がまだありません。先に「ライブラリ」で画像をアップロードしてください。",
     "entries.blocks_heading": "コンテンツブロック",
