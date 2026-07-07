@@ -188,12 +188,22 @@ it('every author href/src sink in a section partial is a schema-declared url pro
     }
 });
 
-it('rejects a dangerous URL scheme inside a partners logo item (list recursion)', function (): void {
-    // §2: ValidPageJson recurses into the logos[] list, so an item's url/image_url is sniffed
-    // for script schemes — the stored-XSS guard reaches array-item URLs, not just scalar props.
+it('recurses into a partners logo item: url scheme-checks, image must be a media_id (no static URL)', function (): void {
+    // §2: ValidPageJson recurses into logos[]. The `url` field sniffs script schemes (stored-XSS
+    // guard); the `image_url` field is a media_id — ANY string is rejected (no static URL), even a
+    // "safe" one — so the picker's rule holds against a crafted wire payload. A valid logo carries an
+    // int image id + a safe url.
     expect(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['url' => 'javascript:alert(1)']]]]])->fails())->toBeTrue()
-        ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 'javascript:alert(1)']]]]])->fails())->toBeTrue()
-        ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 'https://cdn.test/p.png', 'url' => '/ok']]]]])->passes())->toBeTrue();
+        ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 'https://cdn.test/p.png']]]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 123, 'url' => '/ok']]]]])->passes())->toBeTrue();
+});
+
+it('rejects a static URL string in an image prop, accepting a media_id int or null', function (): void {
+    // The "choose from library, no static URL" rule, enforced at the save boundary (not only in the
+    // editor UI): an image prop is a media_id or unset — a URL string is never valid there.
+    expect(validateBlocks([['type' => 'hero', 'props' => ['image_url' => 'https://cdn.test/hero.jpg']]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'hero', 'props' => ['image_url' => 42]]])->passes())->toBeTrue()
+        ->and(validateBlocks([['type' => 'hero', 'props' => ['image_url' => null]]])->passes())->toBeTrue();
 });
 
 it('rejects a non-scalar value under a text/textarea prop (no render-time TypeError/500)', function (): void {
@@ -201,7 +211,7 @@ it('rejects a non-scalar value under a text/textarea prop (no render-time TypeEr
     // crash htmlspecialchars and 500 the published page, so the wire-payload guard rejects it —
     // at top level, inside an object-list item, and inside a scalar list.
     expect(validateBlocks([['type' => 'hero', 'props' => ['heading' => ['x']]]])->fails())->toBeTrue()
-        ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => '/ok.png', 'name' => ['x']]]]]])->fails())->toBeTrue()
+        ->and(validateBlocks([['type' => 'partners', 'props' => ['logos' => [['image_url' => 123, 'name' => ['x']]]]]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'richtext', 'props' => ['paragraphs' => [['nested']]]]])->fails())->toBeTrue()
         ->and(validateBlocks([['type' => 'hero', 'props' => ['heading' => 'Tiêu đề hợp lệ']]])->passes())->toBeTrue();
 });

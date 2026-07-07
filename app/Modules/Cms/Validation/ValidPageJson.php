@@ -120,11 +120,12 @@ final readonly class ValidPageJson implements ValidationRule
         }
 
         if (($spec['type'] ?? null) === 'image') {
-            // An image prop holds a media_id (int) — resolved to our own CDN URL at render, so
-            // inherently injection-free. A legacy URL string (expand phase, before content is
-            // migrated to media_id) still renders into src, so it must clear the same scheme guard
-            // as `url`; a javascript:/data: image is rejected. null = an unset picker.
-            return $value === null || is_int($value) || (is_string($value) && $this->isSafeUrl($value));
+            // An image prop is a media_id (positive int) or null (unset) — never a URL string.
+            // Content references media by id (ADR-17: the path lives only in media.storage_key), so a
+            // static URL in an image prop — even from a crafted wire payload past the picker — is
+            // rejected outright. That makes the "choose from library, no static URL" rule real at the
+            // save boundary, not only in the editor UI.
+            return $value === null || (is_int($value) && $value > 0);
         }
 
         if (($spec['type'] ?? null) === 'list') {
