@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Providers;
 
+use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Livewire\AppearanceSettings;
@@ -64,6 +65,10 @@ final class AdminServiceProvider extends ServiceProvider
     public function boot(): void
     {
         View::addNamespace('admin', $this->app->basePath('app/Modules/Admin/resources/views'));
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([ReconcileContentUsage::class]);
+        }
 
         // Admin UI primitives as anonymous Blade components: <x-admin::icon />, etc.
         Blade::anonymousComponentPath($this->app->basePath('app/Modules/Admin/resources/views/components'), 'admin');

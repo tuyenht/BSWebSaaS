@@ -98,3 +98,20 @@ it('surfaces a block-image entry in MediaUsageLocator', function (): void {
             ->and($usages[0]['label'])->toBe('Bài A');
     });
 });
+
+it('media:reconcile-content-usage backfills entries that never went through a save', function (): void {
+    $mediaId = app(Tenancy::class)->enter(1, function (): int {
+        $m = reconcilerMedia('a', 'a');
+        Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []])
+            ->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft',
+                'body' => ['blocks' => [['type' => 'hero', 'props' => ['image_url' => $m->id]]]]]);
+        expect(Mediable::query()->where('media_id', $m->id)->exists())->toBeFalse();   // seeded → not tracked yet
+        return (int) $m->id;
+    });
+
+    $this->artisan('media:reconcile-content-usage')->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function () use ($mediaId): void {
+        expect(Mediable::query()->where('media_id', $mediaId)->where('collection', 'content')->exists())->toBeTrue();
+    });
+});
