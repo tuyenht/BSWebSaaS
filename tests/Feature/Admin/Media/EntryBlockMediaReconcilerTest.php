@@ -130,3 +130,22 @@ it('media:reconcile-content-usage backfills entries that never went through a sa
         expect(Mediable::query()->where('media_id', $mediaId)->where('collection', 'content')->exists())->toBeTrue();
     });
 });
+
+it('cleans an entry content mediables on force-delete, keeps them on soft-delete', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $m = reconcilerMedia('a', 'a');
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft',
+            'body' => ['blocks' => [['type' => 'hero', 'props' => ['image_url' => $m->id]]]]]);
+        app(EntryBlockMediaReconciler::class)->reconcile($entry);
+
+        $exists = fn (): bool => Mediable::query()->where('media_id', $m->id)->where('collection', 'content')->exists();
+        expect($exists())->toBeTrue();
+
+        $entry->delete();          // soft (Trash) → kept, so a restore keeps its media
+        expect($exists())->toBeTrue();
+
+        $entry->forceDelete();     // permanent → cleaned (no orphan, no false "used")
+        expect($exists())->toBeFalse();
+    });
+});
