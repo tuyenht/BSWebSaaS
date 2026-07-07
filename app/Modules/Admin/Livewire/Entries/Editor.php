@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
@@ -399,6 +400,9 @@ final class Editor extends Component
                 'status' => $entry->status,
             ],
         );
+
+        // Materialize block image usage into mediables so it surfaces in "where is this media used".
+        app(EntryBlockMediaReconciler::class)->reconcile($entry);
 
         if ($this->type === 'post') {
             $entry->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);

@@ -6,6 +6,7 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductImage;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Models\Mediable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -43,7 +44,14 @@ final class MediaUsageLocator
             }
         }
 
-        foreach (Entry::query()->with('translations')->where('meta->image_url', $media->storage_key)->get() as $entry) {
+        // Entry usage: the cover (storage_key in meta) OR a block image (media_id materialized into
+        // mediables on save). Union so an entry using it in both places appears once.
+        $coverEntryIds = Entry::query()->where('meta->image_url', $media->storage_key)->pluck('id');
+        $blockEntryIds = Mediable::query()
+            ->where('media_id', $media->id)->where('mediable_type', 'entry')->where('collection', 'content')
+            ->pluck('mediable_id');
+
+        foreach (Entry::query()->with('translations')->whereIn('id', $coverEntryIds->merge($blockEntryIds)->unique())->get() as $entry) {
             $translation = $entry->translationFor($locale);
             $usages[] = [
                 'kind' => $entry->type === 'page' ? 'page' : 'post',
@@ -65,15 +73,20 @@ final class MediaUsageLocator
     {
         $galleryMediaIds = ProductImage::query()->select('media_id');
         $coverKeys = Entry::query()->whereNotNull('meta->image_url')->select(DB::raw("meta->>'image_url'"));
+        $blockMediaIds = Mediable::query()->where('collection', 'content')->select('media_id');
 
         if ($used) {
-            $query->where(function (Builder $q) use ($galleryMediaIds, $coverKeys): void {
-                $q->whereIn('id', $galleryMediaIds)->orWhereIn('storage_key', $coverKeys);
+            $query->where(function (Builder $q) use ($galleryMediaIds, $coverKeys, $blockMediaIds): void {
+                $q->whereIn('id', $galleryMediaIds)
+                    ->orWhereIn('storage_key', $coverKeys)
+                    ->orWhereIn('id', $blockMediaIds);
             });
 
             return;
         }
 
-        $query->whereNotIn('id', $galleryMediaIds)->whereNotIn('storage_key', $coverKeys);
+        $query->whereNotIn('id', $galleryMediaIds)
+            ->whereNotIn('storage_key', $coverKeys)
+            ->whereNotIn('id', $blockMediaIds);
     }
 }
