@@ -93,9 +93,23 @@ it('surfaces a block-image entry in MediaUsageLocator', function (): void {
 
         $usages = app(MediaUsageLocator::class)->usagesFor($m, 'vi');
 
-        expect($usages)->toHaveCount(1)                    // one row (cover + block union deduped)
+        expect($usages)->toHaveCount(1)                    // one block usage → one row, role=content
             ->and($usages[0]['kind'])->toBe('post')
+            ->and($usages[0]['role'])->toBe('content')
             ->and($usages[0]['label'])->toBe('Bài A');
+    });
+});
+
+it('lists an entry under BOTH cover and content when it uses the media in both roles', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $m = reconcilerMedia('a', 'a');
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'meta' => ['image_url' => $m->storage_key]]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'X', 'slug' => 'x', 'status' => 'draft',
+            'body' => ['blocks' => [['type' => 'hero', 'props' => ['image_url' => $m->id]]]]]);
+        app(EntryBlockMediaReconciler::class)->reconcile($entry);
+
+        $roles = collect(app(MediaUsageLocator::class)->usagesFor($m, 'vi'))->pluck('role')->sort()->values()->all();
+        expect($roles)->toBe(['content', 'cover']);   // cover (meta key) + content (block) — two rows, not deduped
     });
 });
 

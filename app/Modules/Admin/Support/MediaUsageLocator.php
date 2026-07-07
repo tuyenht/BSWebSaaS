@@ -24,43 +24,57 @@ use Illuminate\Support\Facades\DB;
 final class MediaUsageLocator
 {
     /**
-     * Every piece of content that uses this media, as {kind, label, url} for the detail panel.
+     * Every place this media is used, tagged by role for the grouped detail panel: `gallery` (a
+     * product image list), `cover` (an entry's featured/OG image), `content` (a block image inside an
+     * entry body). An entry that uses the media in two roles appears once per role.
      *
-     * @return list<array{kind: string, label: string, url: string}>
+     * @return list<array{kind: string, role: string, label: string, url: string}>
      */
     public function usagesFor(Media $media, string $locale): array
     {
         $usages = [];
 
+        // Gallery — a product's image list (product_images).
         $productIds = ProductImage::query()->where('media_id', $media->id)->pluck('product_id')->unique();
-        if ($productIds->isNotEmpty()) {
-            foreach (Product::query()->with('translations')->whereIn('id', $productIds)->get() as $product) {
-                $translation = $product->translationFor($locale);
-                $usages[] = [
-                    'kind' => 'product',
-                    'label' => $translation !== null ? $translation->name : '#'.$product->id,
-                    'url' => route('admin.catalog.edit', ['ulid' => $product->ulid]),
-                ];
-            }
-        }
-
-        // Entry usage: the cover (storage_key in meta) OR a block image (media_id materialized into
-        // mediables on save). Union so an entry using it in both places appears once.
-        $coverEntryIds = Entry::query()->where('meta->image_url', $media->storage_key)->pluck('id');
-        $blockEntryIds = Mediable::query()
-            ->where('media_id', $media->id)->where('mediable_type', 'entry')->where('collection', 'content')
-            ->pluck('mediable_id');
-
-        foreach (Entry::query()->with('translations')->whereIn('id', $coverEntryIds->merge($blockEntryIds)->unique())->get() as $entry) {
-            $translation = $entry->translationFor($locale);
+        foreach (Product::query()->with('translations')->whereIn('id', $productIds)->get() as $product) {
+            $translation = $product->translationFor($locale);
             $usages[] = [
-                'kind' => $entry->type === 'page' ? 'page' : 'post',
-                'label' => $translation !== null ? $translation->title : '#'.$entry->id,
-                'url' => route('admin.entries.edit', ['ulid' => $entry->ulid]),
+                'kind' => 'product',
+                'role' => 'gallery',
+                'label' => $translation !== null ? $translation->name : '#'.$product->id,
+                'url' => route('admin.catalog.edit', ['ulid' => $product->ulid]),
             ];
         }
 
+        // Cover — the entry's featured/OG image (storage_key in meta).
+        foreach (Entry::query()->with('translations')->where('meta->image_url', $media->storage_key)->get() as $entry) {
+            $usages[] = $this->entryUsage($entry, 'cover', $locale);
+        }
+
+        // Content — a block image (media_id materialized into mediables on save).
+        $blockEntryIds = Mediable::query()
+            ->where('media_id', $media->id)->where('mediable_type', 'entry')->where('collection', 'content')
+            ->pluck('mediable_id')->unique();
+        foreach (Entry::query()->with('translations')->whereIn('id', $blockEntryIds)->get() as $entry) {
+            $usages[] = $this->entryUsage($entry, 'content', $locale);
+        }
+
         return $usages;
+    }
+
+    /**
+     * @return array{kind: string, role: string, label: string, url: string}
+     */
+    private function entryUsage(Entry $entry, string $role, string $locale): array
+    {
+        $translation = $entry->translationFor($locale);
+
+        return [
+            'kind' => $entry->type === 'page' ? 'page' : 'post',
+            'role' => $role,
+            'label' => $translation !== null ? $translation->title : '#'.$entry->id,
+            'url' => route('admin.entries.edit', ['ulid' => $entry->ulid]),
+        ];
     }
 
     /**

@@ -658,7 +658,7 @@ trait WithMediaLibraryPicker
      * Everything the picker modal renders, in one request-cached bundle (the Blade partial
      * reads $this->mediaPickerState). Empty shell while closed, so hidden modals cost nothing.
      *
-     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, detailUsages?: list<array{kind: string, label: string, url: string}>, detailUploader?: string|null, contentLocale?: string, trashTotal?: int}
+     * @return array{open: bool, page?: LengthAwarePaginator<int, Media>, folders?: EloquentCollection<int, MediaFolder>, total?: int, formats?: array<int, string>, selectedPreview?: EloquentCollection<int, Media>, urls?: MediaUrlResolver, detail?: Media|null, detailUsages?: list<array{kind: string, role: string, label: string, url: string}>, detailUploader?: string|null, contentLocale?: string, trashTotal?: int}
      */
     #[Computed]
     public function mediaPickerState(): array
