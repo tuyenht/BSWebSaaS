@@ -2,6 +2,7 @@
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Media\Models\Media;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -197,8 +198,12 @@ it('updates the home page body with 4 entry_grid blocks covering all collections
         // Hero section with An Vinh branding
         expect($bodyJson)->toContain('"heading":"Cơ Khí Chính Xác An Vinh"');
 
-        // About section with pre-resolved image URL (from MediaUrlResolver, not a raw key)
-        expect($bodyJson)->toContain('"image_url":"http');
+        // Hero + about sections reference a media_id, never a baked URL: the seeder materialized the
+        // library row for the fixed brand key (firstOrFail proves it) and the block points at its id.
+        $aboutMedia = Media::query()->where('storage_key', 'an-vinh/content/about-doi-ngu-a7b78a0a6ff7.jpg')->firstOrFail();
+        expect($bodyJson)
+            ->toContain('"image_url":'.$aboutMedia->id)
+            ->not->toContain('"image_url":"http');
 
         // Contact section with real NAP
         expect($bodyJson)->toContain('0915 66 83 83');

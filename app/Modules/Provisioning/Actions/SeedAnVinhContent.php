@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Forms\Actions\EnsureContactForm;
+use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
@@ -27,8 +28,8 @@ use App\Modules\Tenancy\Models\SiteSetting;
  *
  * Idempotent — anchored on localized slug (taxonomies/entries) or route path (pages).
  * Runs INSIDE the tenant context (caller enters it) so site_id is stamped and RLS-scoped.
- * card image_url = raw R2 key (EntryGridComponent resolves at render); page section
- * image_url = pre-resolved URL via MediaUrlResolver (blade renders src directly).
+ * card image_url = raw R2 key (EntryGridComponent resolves at render); page-section block
+ * images reference a media_id (BlockRenderer resolves it at render via MediaLibraryUrls).
  */
 final readonly class SeedAnVinhContent
 {
@@ -219,6 +220,7 @@ final readonly class SeedAnVinhContent
     public function __construct(
         private RouteSync $routes,
         private MediaUrlResolver $media,
+        private EnsureMediaFromKey $ensureMedia,
     ) {}
 
     public function handle(): void
@@ -363,18 +365,16 @@ final readonly class SeedAnVinhContent
     }
 
     /**
-     * Replaces the generic ProvisionSite home body with the An Vinh assembly.
-     * hero schema has no image_url prop → bg image is a gap (noted in caller report).
-     * About and page section images are PRE-RESOLVED via MediaUrlResolver so the blade
-     * can render src directly (no resolver at render time for page sections).
+     * Replaces the generic ProvisionSite home body with the An Vinh assembly. Hero + about
+     * sections reference their image by media_id (BlockRenderer resolves it at render); the fixed
+     * brand keys are materialized into library rows first so there is an id to point at.
      */
     private function updateHomePage(string $locale): void
     {
-        $aboutUrl = $this->media->url(self::KEY_ABOUT, 960);
-        // Hero background: 1600px — snapped by MediaUrlResolver to the nearest
-        // whitelisted width. Pre-resolved so the blade renders src directly (no
-        // resolver at render-time for page-section props).
-        $heroUrl = $this->media->url(self::KEY_HERO, 1600);
+        // Page-section images reference a media_id (BlockRenderer resolves + snaps width at render);
+        // materialize the library row for each fixed brand key so there is an id to point at.
+        $aboutId = $this->ensureMedia->handle(self::KEY_ABOUT)->id;
+        $heroId = $this->ensureMedia->handle(self::KEY_HERO)->id;
 
         $blocks = [
             ['type' => 'hero', 'props' => [
@@ -382,7 +382,7 @@ final readonly class SeedAnVinhContent
                 'subheading' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
                 'cta_label' => 'Liên hệ ngay',
                 'cta_url' => '/lien-he',
-                'image_url' => $heroUrl,
+                'image_url' => $heroId,
             ]],
             ['type' => 'about', 'props' => [
                 'heading' => 'Chế Tác Tinh Hoa - Nâng Tầm Chính Xác',
@@ -390,7 +390,7 @@ final readonly class SeedAnVinhContent
                     'Là đơn vị hàng đầu trong lĩnh vực cơ khí chính xác tại Việt Nam, An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.',
                     'Với đội ngũ kỹ sư dày dạn kinh nghiệm, hệ thống máy móc CNC hiện đại nhập khẩu từ Nhật Bản và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước.',
                 ],
-                'image_url' => $aboutUrl,
+                'image_url' => $aboutId,
                 'cta_label' => 'Tìm hiểu thêm',
                 'cta_url' => '/gioi-thieu',
             ]],
@@ -463,7 +463,7 @@ final readonly class SeedAnVinhContent
      */
     private function createGioiThieuPage(string $locale): void
     {
-        $aboutUrl = $this->media->url(self::KEY_ABOUT, 960);
+        $aboutId = $this->ensureMedia->handle(self::KEY_ABOUT)->id;
 
         $blocks = [
             ['type' => 'about', 'props' => [
@@ -472,7 +472,7 @@ final readonly class SeedAnVinhContent
                     'Là đơn vị hàng đầu trong lĩnh vực cơ khí chính xác tại Việt Nam, An Vinh tự hào mang đến các giải pháp toàn diện về thiết kế và gia công đồ gá, jig, khuôn mẫu và các chi tiết máy công nghệ cao.',
                     'Với đội ngũ kỹ sư dày dạn kinh nghiệm, hệ thống máy móc CNC hiện đại nhập khẩu từ Nhật Bản và quy trình quản lý chất lượng nghiêm ngặt theo tiêu chuẩn ISO 9001:2015, chúng tôi cam kết mỗi sản phẩm xuất xưởng đều đạt độ chính xác tuyệt đối, đáp ứng những yêu cầu kỹ thuật khắt khe nhất của khách hàng trong và ngoài nước.',
                 ],
-                'image_url' => $aboutUrl,
+                'image_url' => $aboutId,
                 'cta_label' => 'Liên hệ hợp tác',
                 'cta_url' => '/lien-he',
             ]],
