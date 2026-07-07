@@ -20,6 +20,14 @@ use Illuminate\Contracts\View\Factory as ViewFactory;
  */
 final readonly class BlockRenderer
 {
+    /**
+     * Content images render at one whitelisted width — sized, not the raw master, so the storefront
+     * stays within its LCP/CWV budget. A single width is a compromise across hero/about/logo; proper
+     * per-context srcset is the follow-up. 1280 balances mobile DPR with desktop crispness (and caps,
+     * never upscaling, a smaller master).
+     */
+    private const int CONTENT_IMAGE_WIDTH = 1280;
+
     public function __construct(
         private ViewFactory $views,
         private ComponentRegistry $registry,
@@ -56,7 +64,7 @@ final readonly class BlockRenderer
         }
 
         // One batched lookup for the whole page (site-scoped; unknown ids simply resolve to nothing).
-        $urls = $this->mediaUrls->urlsForIds($ids);
+        $urls = $this->mediaUrls->urlsForIds($ids, self::CONTENT_IMAGE_WIDTH);
 
         // Pass 2 — render each block, swapping each image prop's media_id for its resolved URL.
         $html = '';
