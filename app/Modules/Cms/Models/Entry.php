@@ -2,9 +2,11 @@
 
 namespace App\Modules\Cms\Models;
 
+use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -38,6 +40,17 @@ class Entry extends Model
     public function translations(): HasMany
     {
         return $this->hasMany(EntryTranslation::class);
+    }
+
+    /**
+     * The user who created the entry (the list's "Người tạo" column). A soft reference —
+     * author_id is nullable (SET NULL if the user is removed), so this can be null.
+     *
+     * @return BelongsTo<User, $this>
+     */
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'author_id');
     }
 
     /**
