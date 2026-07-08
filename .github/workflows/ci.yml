@@ -67,6 +67,9 @@ jobs:
         with:
           php-version: '8.5'
           extensions: pdo_pgsql, pgsql, redis, intl, zip, bcmath, gd, pcntl, sodium, pdo_sqlite, sqlite3
+          # Mirror docker/frankenphp/conf.d/app.ini so the browser-upload ceiling stays at/above the
+          # 10MB media cap (UploadMediaTest guards this); stock PHP defaults (2M/8M) fall below it.
+          ini-values: upload_max_filesize=12M, post_max_size=16M
           coverage: none
           tools: composer:v2
 
