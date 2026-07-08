@@ -570,5 +570,7 @@
     "entries.filter_active": "Filtering:",
     "entries.filter_clear_all": "Clear all",
     "entries.filter_match": ":count of :total pages",
-    "entries.lang_hint": "Hover a code to edit or add its translation."
+    "entries.lang_hint": "Hover a code to edit or add its translation.",
+    "entries.template_default": "Default",
+    "entries.filter_none": "None"
 }

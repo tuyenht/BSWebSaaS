@@ -39,10 +39,12 @@ it('lists admin entries on a flat query budget (no N+1 across rows)', function (
 
     $count = countQueries(fn () => $this->actingAs($editor)->get('http://a.test/admin/content')->assertOk());
 
-    // Flat ceiling: nav/entitlement (P2) + ONE single-row admin_theme read on the unique
-    // (site_id, group_name, key) index (P5 chrome resolver). An N+1 scales with the 10
-    // seeded rows, so it still blows well past this.
-    expect($count)->toBeLessThanOrEqual(19);
+    // Flat ceiling: the nav/entitlement/theme baseline + the Pages list's own flat set — the
+    // entries load plus its translations/routes/author eager loads (the language, path and
+    // creator columns) and ONE grouped status-count (tabs + trash). All flat: an N+1 would
+    // scale with the 10 seeded rows and blow past this; the no-growth guarantee is additionally
+    // pinned in PagesIndexTest ("renders at a flat query budget regardless of row count").
+    expect($count)->toBeLessThanOrEqual(22);
 });
 
 it('lists admin catalog on a flat query budget (no N+1 across rows)', function (): void {

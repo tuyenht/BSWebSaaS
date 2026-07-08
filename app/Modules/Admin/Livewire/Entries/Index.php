@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -51,8 +52,23 @@ final class Index extends Component
     /** Rows per page (the design's per-page selector is a later step). */
     public int $perPage = 20;
 
+    /** @var list<string> selected content-locales — OR within the group. */
+    #[Url(as: 'lang')]
+    public array $langF = [];
+
+    /** @var list<string> selected author ulids — OR within the group. */
+    #[Url(as: 'author')]
+    public array $creatorF = [];
+
+    /** @var list<string> selected templates (TEMPLATE_NONE marks "no template") — OR within the group. */
+    #[Url(as: 'tpl')]
+    public array $templateF = [];
+
     /** Tabs that map to a concrete status; the rest: all = every non-trashed, trash = deleted. */
     private const array STATUS_TABS = ['published', 'draft', 'scheduled', 'private'];
+
+    /** Sentinel value for the "no template" (null template_override) filter option. */
+    private const string TEMPLATE_NONE = '__default__';
 
     public function mount(?string $section = null): void
     {
@@ -87,12 +103,66 @@ final class Index extends Component
         $this->page = 1;
     }
 
+    public function toggleFilterValue(string $group, string $value): void
+    {
+        if ($group === 'lang') {
+            $this->langF = $this->toggleIn($this->langF, $value);
+        } elseif ($group === 'creator') {
+            $this->creatorF = $this->toggleIn($this->creatorF, $value);
+        } elseif ($group === 'template') {
+            $this->templateF = $this->toggleIn($this->templateF, $value);
+        }
+
+        $this->page = 1;
+    }
+
+    public function resetFilterGroup(string $group): void
+    {
+        if ($group === 'lang') {
+            $this->langF = [];
+        } elseif ($group === 'creator') {
+            $this->creatorF = [];
+        } elseif ($group === 'template') {
+            $this->templateF = [];
+        }
+
+        $this->page = 1;
+    }
+
+    public function clearAllFilters(): void
+    {
+        $this->langF = [];
+        $this->creatorF = [];
+        $this->templateF = [];
+        $this->search = '';
+        $this->page = 1;
+    }
+
+    /**
+     * @param  list<string>  $values
+     * @return list<string>
+     */
+    private function toggleIn(array $values, string $value): array
+    {
+        $index = array_search($value, $values, true);
+        if ($index !== false) {
+            unset($values[$index]);
+
+            return array_values($values);
+        }
+
+        $values[] = $value;
+
+        return $values;
+    }
+
     public function render(): View
     {
         $section = $this->resolveSection();
         $type = $section instanceof ContentSection ? ($section->entry_type ?? 'page') : 'page';
         $siteLocale = app(SiteLocale::class);
         $locale = $siteLocale->default();
+        $locales = $siteLocale->enabled();
 
         $query = Entry::query()->where('type', $type);
 
@@ -109,21 +179,34 @@ final class Index extends Component
                 ->orWhere('slug', 'ilike', "%{$term}%"));
         }
 
-        $entries = $query->with([
+        $base = $query->with([
             'translations:id,entry_id,locale,title,slug,status',
             'routes:id,entry_id,locale,path',
-            'author:id,name',
+            'author:id,ulid,name',
         ])->get();
 
+        $facets = [
+            'lang' => $this->langFacet($base, $locales),
+            'creator' => $this->creatorFacet($base),
+            'template' => $this->templateFacet($base),
+        ];
+
+        // OR within a group, AND across groups — applied in memory (pages are a small per-site set).
+        $filtered = $base->filter(fn (Entry $entry): bool => $this->passesFilters($entry));
+
         $ordered = $type === 'page'
-            ? $this->buildTree($entries, $locale)
-            : $this->sortFlat($entries, $locale);
+            ? $this->buildTree($filtered, $locale)
+            : $this->sortFlat($filtered, $locale);
 
         return view('admin::livewire.entries.index', [
             'rows' => $this->paginate($ordered),
             'counts' => $this->counts($type),
+            'facets' => $facets,
+            'activeChips' => $this->activeChips($facets),
+            'matchCount' => $filtered->count(),
+            'baseCount' => $base->count(),
             'locale' => $locale,
-            'locales' => $siteLocale->enabled(),
+            'locales' => $locales,
             'homeSlug' => PathBuilder::HOME_SLUG,
             'sectionModel' => $section,
             'sectionKey' => $this->section,
@@ -140,23 +223,138 @@ final class Index extends Component
     }
 
     /**
-     * Tab counts. Cheap COUNTs on the (site_id, type, status) index — a small per-site set;
-     * flat (not per-row), so the render's query budget stays constant as rows grow.
+     * Tab counts in ONE grouped query on the (site_id, type, status) index (+ a trash count) —
+     * flat, not per-row, so the render's query budget stays constant as rows grow (§6). `all`
+     * sums every non-trashed status (so pending/archived, which have no tab, still count there).
      *
      * @return array{all: int, published: int, draft: int, scheduled: int, private: int, trash: int}
      */
     private function counts(string $type): array
     {
-        $of = fn (string $status): int => Entry::query()->where('type', $type)->where('status', $status)->count();
+        $tally = ['all' => 0, 'published' => 0, 'draft' => 0, 'scheduled' => 0, 'private' => 0, 'trash' => 0];
 
-        return [
-            'all' => Entry::query()->where('type', $type)->count(),
-            'published' => $of('published'),
-            'draft' => $of('draft'),
-            'scheduled' => $of('scheduled'),
-            'private' => $of('private'),
-            'trash' => Entry::onlyTrashed()->where('type', $type)->count(),
-        ];
+        // One grouped query for every tab + the trash count, split by deleted_at via FILTER.
+        $rows = Entry::query()->withTrashed()->where('type', $type)
+            ->selectRaw('status, count(*) filter (where deleted_at is null) as live, count(*) filter (where deleted_at is not null) as trashed')
+            ->groupBy('status')
+            ->get();
+
+        foreach ($rows as $row) {
+            $status = $row->status;
+            $live = is_numeric($row->getAttribute('live')) ? (int) $row->getAttribute('live') : 0;
+            $trashed = is_numeric($row->getAttribute('trashed')) ? (int) $row->getAttribute('trashed') : 0;
+            $tally['all'] += $live;      // includes pending/archived (real states without a tab)
+            $tally['trash'] += $trashed;
+            if (in_array($status, self::STATUS_TABS, true)) {
+                $tally[$status] += $live;
+            }
+        }
+
+        return $tally;
+    }
+
+    /**
+     * Content-locale facet: each enabled locale + how many base pages carry that translation.
+     *
+     * @param  EloquentCollection<int, Entry>  $base
+     * @param  list<string>  $locales
+     * @return list<array{value: string, label: string, count: int, active: bool}>
+     */
+    private function langFacet(EloquentCollection $base, array $locales): array
+    {
+        $out = [];
+        foreach ($locales as $lc) {
+            $count = $base->filter(fn (Entry $e): bool => $e->translations->contains(fn (EntryTranslation $t): bool => $t->locale === $lc))->count();
+            $out[] = ['value' => $lc, 'label' => strtoupper($lc), 'count' => $count, 'active' => in_array($lc, $this->langF, true)];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Author facet: distinct authors (by ulid, never the raw id) + their page counts.
+     *
+     * @param  EloquentCollection<int, Entry>  $base
+     * @return list<array{value: string, label: string, count: int, active: bool}>
+     */
+    private function creatorFacet(EloquentCollection $base): array
+    {
+        $byUlid = [];
+        foreach ($base as $entry) {
+            $author = $entry->author;
+            if ($author === null) {
+                continue;
+            }
+            $ulid = (string) $author->ulid;
+            if (! isset($byUlid[$ulid])) {
+                $byUlid[$ulid] = ['value' => $ulid, 'label' => (string) $author->name, 'count' => 0, 'active' => in_array($ulid, $this->creatorF, true)];
+            }
+            $byUlid[$ulid]['count']++;
+        }
+
+        return array_values($byUlid);
+    }
+
+    /**
+     * Template facet: distinct template_override values (null → the "Mặc định" bucket) + counts.
+     *
+     * @param  EloquentCollection<int, Entry>  $base
+     * @return list<array{value: string, label: string, count: int, active: bool}>
+     */
+    private function templateFacet(EloquentCollection $base): array
+    {
+        $byTemplate = [];
+        foreach ($base as $entry) {
+            $template = $entry->template_override ?? self::TEMPLATE_NONE;
+            if (! isset($byTemplate[$template])) {
+                $label = $template === self::TEMPLATE_NONE ? __('entries.template_default') : $template;
+                $byTemplate[$template] = ['value' => $template, 'label' => (string) $label, 'count' => 0, 'active' => in_array($template, $this->templateF, true)];
+            }
+            $byTemplate[$template]['count']++;
+        }
+
+        return array_values($byTemplate);
+    }
+
+    /** OR within each group, AND across groups (an empty group adds no constraint). */
+    private function passesFilters(Entry $entry): bool
+    {
+        if ($this->langF !== [] && ! $entry->translations->contains(fn (EntryTranslation $t): bool => in_array($t->locale, $this->langF, true))) {
+            return false;
+        }
+
+        if ($this->creatorF !== []) {
+            $author = $entry->author;
+            if ($author === null || ! in_array($author->ulid, $this->creatorF, true)) {
+                return false;
+            }
+        }
+
+        if ($this->templateF !== [] && ! in_array($entry->template_override ?? self::TEMPLATE_NONE, $this->templateF, true)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Active filter chips, in group order, labelled from the facets.
+     *
+     * @param  array{lang: list<array{value: string, label: string, count: int, active: bool}>, creator: list<array{value: string, label: string, count: int, active: bool}>, template: list<array{value: string, label: string, count: int, active: bool}>}  $facets
+     * @return list<array{group: string, value: string, label: string}>
+     */
+    private function activeChips(array $facets): array
+    {
+        $chips = [];
+        foreach (['lang', 'creator', 'template'] as $group) {
+            foreach ($facets[$group] as $option) {
+                if ($option['active']) {
+                    $chips[] = ['group' => $group, 'value' => $option['value'], 'label' => $option['label']];
+                }
+            }
+        }
+
+        return $chips;
     }
 
     /**
@@ -290,6 +488,9 @@ final class Index extends Component
             'q' => trim($this->search) !== '' ? trim($this->search) : null,
             'sort' => $this->sortKey !== 'updated' ? $this->sortKey : null,
             'dir' => $this->sortDir !== 'desc' ? $this->sortDir : null,
+            'lang' => $this->langF !== [] ? $this->langF : null,
+            'author' => $this->creatorF !== [] ? $this->creatorF : null,
+            'tpl' => $this->templateF !== [] ? $this->templateF : null,
         ]));
     }
 }

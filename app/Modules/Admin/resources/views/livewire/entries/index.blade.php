@@ -56,12 +56,11 @@
         {{-- Column visibility lives client-side (instant + persisted), so paging never resets it. --}}
         <div x-data="{
             cols: JSON.parse(localStorage.getItem('pagesCols')) || { path: true, langs: true, creator: true },
-            colsOpen: false,
             toggleCol(k) { this.cols[k] = !this.cols[k]; localStorage.setItem('pagesCols', JSON.stringify(this.cols)); },
         }">
-            {{-- Toolbar: search + column picker --}}
-            <div class="mb-4 flex items-center gap-3">
-                <div class="relative w-full max-w-sm">
+            {{-- Toolbar: search · filters · column picker --}}
+            <div class="mb-3 flex flex-wrap items-center gap-2">
+                <div class="relative w-full max-w-xs">
                     <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-placeholder">
                         <x-admin::icon name="ri-search" class="size-4" />
                     </span>
@@ -71,13 +70,19 @@
                         class="block w-full rounded border border-border-strong bg-surface py-2 pl-9 pr-3 text-sm text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
                 </div>
 
-                <div class="relative ml-auto" @click.outside="colsOpen = false">
-                    <button type="button" @click="colsOpen = !colsOpen"
+                @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'lang', 'label' => __('entries.col_language'), 'options' => $facets['lang'], 'activeCount' => count($langF)])
+                @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'creator', 'label' => __('entries.col_creator'), 'options' => $facets['creator'], 'activeCount' => count($creatorF)])
+                @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'template', 'label' => __('entries.filter_template'), 'options' => $facets['template'], 'activeCount' => count($templateF)])
+
+                <div class="ml-auto h-6 w-px bg-border"></div>
+
+                <div x-data="{ open: false }" @click.outside="open = false" class="relative">
+                    <button type="button" @click="open = !open"
                         class="inline-flex items-center gap-2 rounded border border-border-strong bg-surface px-3 py-2 text-sm font-medium text-body-text transition-colors hover:border-admin-primary">
                         <x-admin::icon name="ri-grid" class="size-4" /> {{ __('entries.cols_button') }}
-                        <x-admin::icon name="chevron-down" class="size-3.5 transition-transform" ::class="colsOpen && 'rotate-180'" />
+                        <x-admin::icon name="chevron-down" class="size-3.5 transition-transform" ::class="open && 'rotate-180'" />
                     </button>
-                    <div x-show="colsOpen" x-cloak x-transition
+                    <div x-show="open" x-cloak x-transition
                         class="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1.5 shadow-lg">
                         <p class="px-2 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wide text-placeholder">{{ __('entries.cols_required') }}</p>
                         @foreach ([__('entries.title_label'), __('entries.col_status'), __('entries.col_actions')] as $locked)
@@ -97,6 +102,21 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Active filter chips --}}
+            @if (count($activeChips) > 0)
+                <div class="mb-4 flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-medium text-body-faint">{{ __('entries.filter_active') }}</span>
+                    @foreach ($activeChips as $chip)
+                        <button type="button" wire:click="toggleFilterValue('{{ $chip['group'] }}', '{{ $chip['value'] }}')"
+                            class="inline-flex items-center gap-1 rounded-full bg-admin-primary/10 py-1 pl-2.5 pr-1.5 text-xs font-medium text-admin-primary transition-colors hover:bg-admin-primary/20">
+                            {{ $chip['label'] }} <x-admin::icon name="ri-close" class="size-3.5" />
+                        </button>
+                    @endforeach
+                    <button type="button" wire:click="clearAllFilters" class="ml-1 text-xs text-admin-danger hover:underline">{{ __('entries.filter_clear_all') }}</button>
+                    <span class="ml-auto text-xs text-placeholder">{{ __('entries.filter_match', ['count' => $matchCount, 'total' => $baseCount]) }}</span>
+                </div>
+            @endif
 
             <x-admin::table>
                 <thead>
