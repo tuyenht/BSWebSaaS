@@ -8,7 +8,7 @@
 // `basic` = short teaser fields (b/i, lists, link). Both show a slim status bar whose
 // char/word counters count plain TEXT, never markup.
 //
-// Livewire 4 bridge (verified against v4.3.1 source). Component writes stay DOM-only on
+// Livewire 4 bridge (verified against v4.3.3 source). Component writes stay DOM-only on
 // purpose: Livewire.find(id) returns the $wire proxy itself, and $wire.$set(name, value,
 // live = true) defaults to LIVE — a network round-trip per keystroke — so editors never
 // talk to $wire directly:
