@@ -3,6 +3,7 @@
 namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 
 /**
@@ -18,7 +19,10 @@ final readonly class PathBuilder
     /** Conventional home slug → site root (matches ProvisionSite + seedHomepage). */
     public const string HOME_SLUG = 'home';
 
-    public function __construct(private SiteLocale $siteLocale) {}
+    public function __construct(
+        private SiteLocale $siteLocale,
+        private PermalinkConfig $permalinks,
+    ) {}
 
     /**
      * Overlay the locale prefix on an UNPREFIXED, site-relative path (design.md §10/ADR-11):
@@ -52,10 +56,11 @@ final readonly class PathBuilder
     }
 
     /**
-     * A page's path: flat `/slug` (home → `/`), or prefixed by its parent page's path when the
-     * page is nested (`/dich-vu/thiet-ke-web`). Composed from ancestor SLUGS — not the stored
-     * route — so it is correct no matter which ancestors are published yet. A visited-set guards
-     * against a parent cycle.
+     * A page's path. Flat `/slug` (home → `/`) by default; the site's `pages` permalink pattern
+     * decides — only `nested` prefixes the page with its parent page's path (`/dich-vu/thiet-ke-web`).
+     * Under the default flat pattern a `parent_id` is admin tree-grouping only and never nests the URL.
+     * When nested, the chain is composed from ancestor SLUGS — not the stored route — so it is correct
+     * no matter which ancestors are published yet, and a visited-set guards against a parent cycle.
      *
      * @param  array<int, true>  $seen
      */
@@ -66,7 +71,11 @@ final readonly class PathBuilder
         }
 
         $seen[$entry->id] = true;
-        $parent = $entry->parent_id !== null && ! isset($seen[$entry->parent_id]) ? $entry->parent : null;
+        $parent = $this->permalinks->pagesNested()
+            && $entry->parent_id !== null
+            && ! isset($seen[$entry->parent_id])
+                ? $entry->parent
+                : null;
 
         if ($parent instanceof Entry && $parent->type === 'page') {
             $translation = $parent->translationFor($locale);

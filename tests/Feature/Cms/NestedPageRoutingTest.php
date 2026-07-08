@@ -9,11 +9,13 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteSetting;
 
 /*
- * P6 — nested page paths + the parent-rename cascade. A child page's URL is prefixed by its
- * parent's path (design §3a tree); renaming a parent moves every published descendant's route
- * and leaves a 301, so old deep links keep resolving. Flat (parentless) pages are unchanged.
+ * Page URL composition. By default a page is FLAT (`/slug`) even with a parent — `parent_id` is
+ * admin tree-grouping only. When the site's `pages` permalink pattern is `nested`, a child page's
+ * URL is prefixed by its parent's path (design §3a tree) and renaming a parent moves every published
+ * descendant's route, leaving a 301 so old deep links keep resolving.
  */
 
 beforeEach(function (): void {
@@ -35,10 +37,20 @@ function publishNestedPage(User $editor, string $slug, string $title, ?int $pare
     return $page->fresh();
 }
 
+/** Opt the current site into nested page URLs (default is flat). Call inside the tenancy context. */
+function enableNestedPages(): void
+{
+    SiteSetting::query()->updateOrCreate(
+        ['group_name' => 'permalinks', 'key' => 'pages'],
+        ['value' => ['pattern' => 'nested']],
+    );
+}
+
 it('composes a nested page path from its parent chain', function (): void {
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
+        enableNestedPages();
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $parent = publishNestedPage($editor, 'dich-vu', 'Dịch vụ');
         $child = publishNestedPage($editor, 'thiet-ke-web', 'Thiết kế web', $parent->id);
@@ -52,6 +64,7 @@ it('resolves a nested page on the storefront', function (): void {
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
+        enableNestedPages();
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $parent = publishNestedPage($editor, 'dich-vu', 'Dịch vụ');
         publishNestedPage($editor, 'thiet-ke-web', 'Thiết kế web', $parent->id);
@@ -64,6 +77,7 @@ it('cascades a 301 to descendants when a parent slug changes', function (): void
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
+        enableNestedPages();
         grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
         $parent = publishNestedPage($editor, 'dich-vu', 'Dịch vụ');
         $child = publishNestedPage($editor, 'thiet-ke-web', 'Thiết kế web', $parent->id);
@@ -78,4 +92,19 @@ it('cascades a 301 to descendants when a parent slug changes', function (): void
 
     $this->get('http://a.test/dich-vu/thiet-ke-web')->assertRedirect('http://a.test/dich-vu-moi/thiet-ke-web');
     $this->get('http://a.test/dich-vu-moi/thiet-ke-web')->assertOk();
+});
+
+it('keeps a page flat by default even when it has a parent', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish']);
+        $parent = publishNestedPage($editor, 'dich-vu', 'Dịch vụ');
+        $child = publishNestedPage($editor, 'thiet-ke-web', 'Thiết kế web', $parent->id);
+
+        expect(app(PathBuilder::class)->forEntry($child->fresh(), 'vi', 'thiet-ke-web'))->toBe('/thiet-ke-web')
+            ->and(SiteRoute::query()->where('entry_id', $child->id)->value('path'))->toBe('/thiet-ke-web');
+    });
+
+    $this->get('http://a.test/thiet-ke-web')->assertOk();
 });

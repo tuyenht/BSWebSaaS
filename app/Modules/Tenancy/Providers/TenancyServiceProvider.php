@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Providers;
 
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,10 @@ final class TenancyServiceProvider extends ServiceProvider
         // SiteLocale memoizes the per-site default for the request; scoped so the memo is
         // flushed between operations and never leaks a stale default across requests.
         $this->app->scoped(SiteLocale::class);
+
+        // PermalinkConfig memoizes the per-site permalink pattern (e.g. pages flat vs nested);
+        // scoped for the same reason — the memo must not leak across requests.
+        $this->app->scoped(PermalinkConfig::class);
     }
 
     public function boot(): void
