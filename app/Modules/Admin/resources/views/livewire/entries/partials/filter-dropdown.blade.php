@@ -1,6 +1,8 @@
-@props(['group', 'label', 'options', 'activeCount'])
+@props(['group', 'label', 'options', 'activeCount', 'icon' => null])
 {{-- A multi-select facet dropdown (design §3a). Options carry their live count; OR within the
-     group, AND across groups is enforced server-side. Open/close is client-side (Alpine). --}}
+     group, AND across groups is enforced server-side. Open/close is client-side (Alpine). The
+     leading `icon` is optional — a filter with no obvious equivalent glyph (Ngôn ngữ) omits it
+     rather than guess a wrong one. --}}
 <div x-data="{ open: false }" @click.outside="open = false" class="relative">
     <button type="button" @click="open = !open"
         @class([
@@ -8,6 +10,9 @@
             'border-admin-primary bg-admin-primary/5 text-admin-primary' => $activeCount > 0,
             'border-border-strong bg-surface text-body-text hover:border-admin-primary' => $activeCount === 0,
         ])>
+        @if ($icon)
+            <x-admin::icon :name="$icon" class="size-4" />
+        @endif
         {{ $label }}
         @if ($activeCount > 0)
             <span class="rounded bg-admin-primary px-1.5 text-xs font-semibold leading-5 text-white">{{ $activeCount }}</span>

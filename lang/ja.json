@@ -32,6 +32,7 @@
     "entries.save_draft": "下書きを保存",
     "entries.publish": "公開",
     "entries.section_fallback": "ページ",
+    "admin.breadcrumb_home": "ホーム",
     "entries.create_new": "新規作成",
     "entries.untitled": "（無題）",
     "entries.empty": "コンテンツがまだありません。",
@@ -410,5 +411,8 @@
     "entries.slug_saved": "パスを更新しました",
     "entries.title_saved": "ページ名を変更しました",
     "entries.add_translation": "追加",
-    "entries.views_count": ":count 回閲覧"
+    "entries.views_count": ":count 回閲覧",
+    "entries.footer_showing": "全:total件中 :first–:last件を表示",
+    "entries.rows_per_page": "1ページの行数",
+    "entries.manage_title": ":label管理"
 }

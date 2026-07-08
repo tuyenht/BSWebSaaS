@@ -61,7 +61,8 @@ final class Index extends Component
     #[Url(as: 'page', except: 1)]
     public int $page = 1;
 
-    /** Rows per page (the design's per-page selector is a later step). */
+    /** Rows per page — cycled 10/20/50 by the footer's "Dòng/trang" control (§3a). */
+    #[Url(as: 'per_page', except: 20)]
     public int $perPage = 20;
 
     /** @var list<string> ulids selected for a bulk action (transient — not URL-persisted). */
@@ -115,6 +116,15 @@ final class Index extends Component
             $this->sortDir = in_array($key, ['name', 'creator'], true) ? 'asc' : 'desc';
         }
 
+        $this->page = 1;
+    }
+
+    /** Footer "Dòng/trang" control — cycles 10 → 20 → 50 → 10, then returns to page 1. */
+    public function cyclePerPage(): void
+    {
+        $options = [10, 20, 50];
+        $index = array_search($this->perPage, $options, true);
+        $this->perPage = $options[$index === false ? 0 : ($index + 1) % count($options)];
         $this->page = 1;
     }
 
@@ -744,6 +754,7 @@ final class Index extends Component
             'lang' => $this->langF !== [] ? $this->langF : null,
             'author' => $this->creatorF !== [] ? $this->creatorF : null,
             'tpl' => $this->templateF !== [] ? $this->templateF : null,
+            'per_page' => $this->perPage !== 20 ? $this->perPage : null,
         ]));
     }
 }

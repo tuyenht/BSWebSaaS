@@ -32,6 +32,7 @@
     "entries.save_draft": "保存草稿",
     "entries.publish": "发布",
     "entries.section_fallback": "页面",
+    "admin.breadcrumb_home": "首页",
     "entries.create_new": "新建",
     "entries.untitled": "（无标题）",
     "entries.empty": "暂无内容。",
@@ -410,5 +411,8 @@
     "entries.slug_saved": "已更新路径",
     "entries.title_saved": "已重命名页面",
     "entries.add_translation": "添加",
-    "entries.views_count": ":count 次浏览"
+    "entries.views_count": ":count 次浏览",
+    "entries.footer_showing": "显示第 :first–:last 项，共 :total 页",
+    "entries.rows_per_page": "每页行数",
+    "entries.manage_title": "管理:label"
 }
