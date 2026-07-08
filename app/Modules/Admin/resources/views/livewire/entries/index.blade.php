@@ -118,9 +118,47 @@
                 </div>
             @endif
 
+            {{-- Bulk action bar — appears once one or more rows are selected --}}
+            @if (count($selected) > 0)
+                <div class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-admin-primary/30 bg-admin-primary/5 px-3 py-2">
+                    <span class="text-sm font-medium text-admin-primary">{{ __('entries.bulk_selected', ['count' => count($selected)]) }}</span>
+                    @if ($tab === 'trash')
+                        @if ($canDelete)
+                            <button type="button" wire:click="bulkRestore"
+                                class="rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">{{ __('entries.action_restore') }}</button>
+                            <button type="button"
+                                x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm')), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkForceDelete())"
+                                class="rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-danger hover:text-admin-danger">{{ __('entries.action_destroy') }}</button>
+                        @endif
+                    @else
+                        @if ($canPublish)
+                            <button type="button" wire:click="bulkPublish"
+                                class="rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">{{ __('entries.bulk_publish') }}</button>
+                            <button type="button" wire:click="bulkDraft"
+                                class="rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">{{ __('entries.bulk_draft') }}</button>
+                        @endif
+                        @if ($canCreate)
+                            <button type="button" wire:click="bulkDuplicate"
+                                class="rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">{{ __('entries.action_duplicate') }}</button>
+                        @endif
+                        @if ($canDelete)
+                            <button type="button"
+                                x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('entries.trash_confirm')), confirm: @js(__('entries.action_trash')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkTrash())"
+                                class="rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-danger hover:text-admin-danger">{{ __('entries.action_trash') }}</button>
+                        @endif
+                    @endif
+                    <button type="button" wire:click="clearSelection" class="ml-auto text-sm text-body-faint transition-colors hover:text-body-text">{{ __('entries.bulk_deselect') }}</button>
+                </div>
+            @endif
+
             <x-admin::table>
                 <thead>
                     <tr>
+                        <th class="w-10">
+                            <input type="checkbox" @checked($pageUlids !== [] && array_diff($pageUlids, $selected) === [])
+                                wire:click="toggleSelectAll(@js($pageUlids))" aria-label="{{ __('entries.select_all') }}"
+                                class="size-4 rounded border-border-strong text-admin-primary focus:ring-admin-primary/30">
+                        </th>
                         <th class="w-full">
                             <button type="button" wire:click="sortBy('name')" class="inline-flex items-center gap-1 hover:text-body-text">
                                 {{ __('entries.title_label') }} <x-admin::icon :name="$sortIcon('name')" class="size-3.5" />
@@ -159,6 +197,11 @@
                             $when = $isScheduled ? $entry->published_at : $entry->updated_at;
                         @endphp
                         <tr wire:key="entry-{{ $entry->ulid }}">
+                            <td class="align-top">
+                                <input type="checkbox" wire:model.live="selected" value="{{ $entry->ulid }}"
+                                    aria-label="{{ __('entries.select_row') }}"
+                                    class="mt-0.5 size-4 rounded border-border-strong text-admin-primary focus:ring-admin-primary/30">
+                            </td>
                             <td class="w-full">
                                 <div @class(['flex items-center gap-1.5', 'pl-5' => $depth])>
                                     @if ($depth)
@@ -282,7 +325,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="py-12 text-center text-body-faint">
+                            <td colspan="7" class="py-12 text-center text-body-faint">
                                 @if ($tab === 'trash')
                                     {{ __('entries.trash_empty') }}
                                 @elseif (trim($search) !== '')

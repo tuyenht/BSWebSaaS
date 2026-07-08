@@ -301,3 +301,57 @@ it('forbids a viewer without publish from changing a status', function (): void 
             ->assertForbidden();
     });
 });
+
+it('selects all visible rows then clears them', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view']);
+        $a = makePageEntry($editor, 'A', 'a');
+        $b = makePageEntry($editor, 'B', 'b');
+
+        $component = Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('toggleSelectAll', [$a->ulid, $b->ulid]);
+        expect($component->get('selected'))->toEqualCanonicalizing([$a->ulid, $b->ulid]);
+
+        $component->call('clearSelection');
+        expect($component->get('selected'))->toBe([]);
+    });
+});
+
+it('bulk-trashes the selected rows and clears the selection', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.delete.any']);
+        $a = makePageEntry($editor, 'A', 'a');
+        $b = makePageEntry($editor, 'B', 'b');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->set('selected', [$a->ulid, $b->ulid])
+            ->call('bulkTrash')
+            ->assertDispatched('bs-toast')
+            ->assertSet('selected', []);
+
+        expect($a->fresh()->trashed())->toBeTrue()
+            ->and($b->fresh()->trashed())->toBeTrue();
+    });
+});
+
+it('bulk-publishes the selected rows', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $a = makePageEntry($editor, 'A', 'a', 'draft');
+        $b = makePageEntry($editor, 'B', 'b', 'draft');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->set('selected', [$a->ulid, $b->ulid])
+            ->call('bulkPublish')
+            ->assertSet('selected', []);
+
+        expect($a->fresh()->status)->toBe('published')
+            ->and($b->fresh()->status)->toBe('published');
+    });
+});

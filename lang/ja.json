@@ -398,5 +398,12 @@
     "entries.force_delete_confirm": "このページを完全に削除しますか？元に戻せません。",
     "entries.status_menu_label": "ステータスを変更",
     "entries.schedule_at": "公開日時を選択",
-    "entries.schedule_set_action": "予約"
+    "entries.schedule_set_action": "予約",
+    "entries.bulk_selected": ":count 件を選択中",
+    "entries.bulk_publish": "公開",
+    "entries.bulk_draft": "下書きに戻す",
+    "entries.bulk_deselect": "選択解除",
+    "entries.bulk_done": ":count 件に適用しました",
+    "entries.select_all": "すべて選択",
+    "entries.select_row": "このページを選択"
 }
