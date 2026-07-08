@@ -385,5 +385,7 @@
     "entries.filter_active": "筛选：",
     "entries.filter_clear_all": "清除全部",
     "entries.filter_match": "匹配 :count / :total 页",
-    "entries.lang_hint": "将鼠标悬停在语言代码上以编辑或添加翻译。"
+    "entries.lang_hint": "将鼠标悬停在语言代码上以编辑或添加翻译。",
+    "entries.template_default": "默认",
+    "entries.filter_none": "无"
 }

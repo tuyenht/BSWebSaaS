@@ -156,3 +156,57 @@ it('renders the language column with the site content-locales', function (): voi
             ->assertSeeInOrder(['VI', 'EN']);
     });
 });
+
+it('filters pages by content-locale', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+
+        makePageEntry($user, 'Chỉ Việt', 'chi-viet'); // vi only
+        $bilingual = makePageEntry($user, 'Song ngữ', 'song-ngu');
+        $bilingual->translations()->create(['locale' => 'en', 'title' => 'Bilingual', 'slug' => 'bilingual', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        Livewire::actingAs($user->fresh())->test(Index::class)
+            ->call('toggleFilterValue', 'lang', 'en')
+            ->assertSee('Song ngữ')
+            ->assertDontSee('Chỉ Việt');
+    });
+});
+
+it('filters pages by author (using the ulid, never the raw id)', function (): void {
+    $ngoc = User::factory()->create(['name' => 'Ngọc Anh']);
+    $minh = User::factory()->create(['name' => 'Minh Trí']);
+
+    app(Tenancy::class)->enter(1, function () use ($ngoc, $minh): void {
+        grantRole($ngoc, 'editor', ['entries.view']);
+        makePageEntry($ngoc, 'Của Ngọc Anh', 'na');
+        makePageEntry($minh, 'Của Minh Trí', 'mt');
+
+        Livewire::actingAs($ngoc->fresh())->test(Index::class)
+            ->call('toggleFilterValue', 'creator', $minh->ulid)
+            ->assertSee('Của Minh Trí')
+            ->assertDontSee('Của Ngọc Anh');
+    });
+});
+
+it('clears all filters and restores the full list', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+        makePageEntry($user, 'Trang một', 'mot');
+        makePageEntry($user, 'Trang hai', 'hai');
+
+        Livewire::actingAs($user->fresh())->test(Index::class)
+            ->call('toggleFilterValue', 'lang', 'en') // no page has en → both filtered out
+            ->assertDontSee('Trang một')
+            ->call('clearAllFilters')
+            ->assertSee('Trang một')
+            ->assertSee('Trang hai');
+    });
+});

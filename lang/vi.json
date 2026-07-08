@@ -570,5 +570,7 @@
     "entries.filter_active": "Đang lọc:",
     "entries.filter_clear_all": "Xóa tất cả",
     "entries.filter_match": "Khớp :count / :total trang",
-    "entries.lang_hint": "Di chuột vào mã để sửa hoặc thêm bản dịch."
+    "entries.lang_hint": "Di chuột vào mã để sửa hoặc thêm bản dịch.",
+    "entries.template_default": "Mặc định",
+    "entries.filter_none": "Không có"
 }
