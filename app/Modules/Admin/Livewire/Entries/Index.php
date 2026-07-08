@@ -60,6 +60,9 @@ final class Index extends Component
     /** Rows per page (the design's per-page selector is a later step). */
     public int $perPage = 20;
 
+    /** @var list<string> ulids selected for a bulk action (transient — not URL-persisted). */
+    public array $selected = [];
+
     /** @var list<string> selected content-locales — OR within the group. */
     #[Url(as: 'lang')]
     public array $langF = [];
@@ -206,6 +209,92 @@ final class Index extends Component
         $this->toast(__('entries.destroyed'));
     }
 
+    /** @param  list<string>  $ulids  the current page's ulids (the view passes what is visible). */
+    public function toggleSelectAll(array $ulids): void
+    {
+        $allSelected = $ulids !== [] && array_diff($ulids, $this->selected) === [];
+        $this->selected = $allSelected
+            ? array_values(array_diff($this->selected, $ulids))
+            : array_values(array_unique([...$this->selected, ...$ulids]));
+    }
+
+    public function clearSelection(): void
+    {
+        $this->selected = [];
+    }
+
+    public function bulkPublish(): void
+    {
+        $user = $this->actingUser();
+        $locale = app(SiteLocale::class)->default();
+        $publish = app(PublishEntry::class);
+        $this->bulkApply(function (Entry $entry) use ($publish, $locale, $user): void {
+            $publish->handle($entry, $locale, $user);
+        });
+    }
+
+    public function bulkDraft(): void
+    {
+        $user = $this->actingUser();
+        $transition = app(TransitionEntryStatus::class);
+        $this->bulkApply(fn (Entry $entry) => $transition->handle($entry, EntryStatus::Draft, $user));
+    }
+
+    public function bulkDuplicate(): void
+    {
+        $user = $this->actingUser();
+        $duplicate = app(DuplicateEntry::class);
+        $reconciler = app(EntryBlockMediaReconciler::class);
+        $this->bulkApply(function (Entry $entry) use ($duplicate, $reconciler, $user): void {
+            $reconciler->reconcile($duplicate->handle($entry, $user));
+        });
+    }
+
+    public function bulkTrash(): void
+    {
+        $this->bulkApply(function (Entry $entry): void {
+            $this->authorize('delete', $entry);
+            $entry->delete();
+        });
+    }
+
+    public function bulkRestore(): void
+    {
+        $this->bulkApply(function (Entry $entry): void {
+            $this->authorize('restore', $entry);
+            $entry->restore();
+        });
+    }
+
+    public function bulkForceDelete(): void
+    {
+        $this->bulkApply(function (Entry $entry): void {
+            $this->authorize('forceDelete', $entry);
+            $entry->forceDelete();
+        });
+    }
+
+    /**
+     * Apply an action to every selected entry, then clear the selection and toast the count.
+     *
+     * @param  callable(Entry): void  $action
+     */
+    private function bulkApply(callable $action): void
+    {
+        $entries = $this->selectedEntries();
+        foreach ($entries as $entry) {
+            $action($entry);
+        }
+        $this->selected = [];
+        $this->toast(__('entries.bulk_done', ['count' => $entries->count()]));
+    }
+
+    /** @return EloquentCollection<int, Entry> */
+    private function selectedEntries(): EloquentCollection
+    {
+        return Entry::withTrashed()->whereIn('ulid', $this->selected)->get();
+    }
+
     private function findEntry(string $ulid): Entry
     {
         return Entry::withTrashed()->where('ulid', $ulid)->firstOrFail();
@@ -285,9 +374,16 @@ final class Index extends Component
             : $this->sortFlat($filtered, $locale);
 
         $user = $this->actingUser();
+        $rows = $this->paginate($ordered);
+
+        $pageUlids = [];
+        foreach ($rows->items() as $item) {
+            $pageUlids[] = $item['entry']->ulid;
+        }
 
         return view('admin::livewire.entries.index', [
-            'rows' => $this->paginate($ordered),
+            'rows' => $rows,
+            'pageUlids' => $pageUlids,
             'counts' => $this->counts($type),
             'facets' => $facets,
             'activeChips' => $this->activeChips($facets),
