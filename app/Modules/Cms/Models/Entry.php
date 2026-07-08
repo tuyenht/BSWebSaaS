@@ -54,6 +54,17 @@ class Entry extends Model
     }
 
     /**
+     * The parent page (self-referential; null at the top level). Drives a page's nested URL
+     * path and the parent/child grouping in the admin list.
+     *
+     * @return BelongsTo<Entry, $this>
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Entry::class, 'parent_id');
+    }
+
+    /**
      * Canonical routes (one per locale). Lets callers link an entry without recomposing
      * its path (the post-list components read the stored path).
      *
