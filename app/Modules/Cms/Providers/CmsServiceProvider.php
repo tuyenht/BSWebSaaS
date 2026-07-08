@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Providers;
 
 use App\Modules\Cms\Components\EntryGridComponent;
 use App\Modules\Cms\Components\LatestPostsComponent;
+use App\Modules\Cms\Console\PublishDueEntries;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Observers\EntryObserver;
@@ -38,5 +39,10 @@ final class CmsServiceProvider extends ServiceProvider
 
         // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
         Entry::observe(EntryObserver::class);
+
+        // Module commands aren't auto-discovered like app/Console/Commands.
+        if ($this->app->runningInConsole()) {
+            $this->commands([PublishDueEntries::class]);
+        }
     }
 }
