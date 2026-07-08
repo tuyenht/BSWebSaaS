@@ -25,6 +25,9 @@ final class SiteLocale
     /** @var array<int, string> memoized default per site id (request-scoped) */
     private array $memo = [];
 
+    /** @var array<int, list<string>> memoized enabled locales per site id (request-scoped) */
+    private array $enabledMemo = [];
+
     public function __construct(private readonly CurrentSite $current) {}
 
     public function default(): string
@@ -36,6 +39,33 @@ final class SiteLocale
         $siteId = $this->current->id();
 
         return $this->memo[$siteId] ??= $this->resolve($siteId);
+    }
+
+    /**
+     * All enabled content-locales for the current site, default first then by id — the set the
+     * Pages "Ngôn ngữ" column renders and the per-locale editor offers. Empty with no site context.
+     * Memoized per-site for the request (flushed between Octane operations, like the default memo).
+     *
+     * @return list<string>
+     */
+    public function enabled(): array
+    {
+        if (! $this->current->hasId()) {
+            return [];
+        }
+
+        $siteId = $this->current->id();
+
+        if (isset($this->enabledMemo[$siteId])) {
+            return $this->enabledMemo[$siteId];
+        }
+
+        $list = [];
+        foreach (SiteLocaleModel::query()->where('enabled', true)->orderByDesc('is_default')->orderBy('id')->get() as $row) {
+            $list[] = (string) $row->locale;
+        }
+
+        return $this->enabledMemo[$siteId] = $list;
     }
 
     /**

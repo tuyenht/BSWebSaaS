@@ -559,5 +559,16 @@
     "entries.action_restore": "Restore",
     "entries.action_destroy": "Delete permanently",
     "entries.scheduled_prefix": "Publishes",
-    "entries.no_views": "No views yet"
+    "entries.no_views": "No views yet",
+    "entries.col_language": "Languages",
+    "entries.cols_button": "Columns",
+    "entries.cols_required": "Required",
+    "entries.cols_optional": "Optional",
+    "entries.filter_template": "Template",
+    "entries.filter_reset": "Reset",
+    "entries.filter_done": "Done",
+    "entries.filter_active": "Filtering:",
+    "entries.filter_clear_all": "Clear all",
+    "entries.filter_match": ":count of :total pages",
+    "entries.lang_hint": "Hover a code to edit or add its translation."
 }

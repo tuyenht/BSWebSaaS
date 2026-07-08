@@ -5,6 +5,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Livewire\Livewire;
 
 /*
@@ -135,5 +136,23 @@ it('renders at a flat query budget regardless of row count', function (): void {
         $many = countQueries(fn () => Livewire::actingAs($user->fresh())->test(Index::class));
 
         expect($many)->toBeLessThanOrEqual($few); // no per-row queries → count does not grow
+    });
+});
+
+it('renders the language column with the site content-locales', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $user->id]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Chỉ tiếng Việt', 'slug' => 'vi-only', 'status' => 'published', 'body' => ['blocks' => []]]);
+
+        // The column header + both content-locale chips render (vi has content, en is missing).
+        Livewire::actingAs($user->fresh())->test(Index::class)
+            ->assertSee(__('entries.col_language'))
+            ->assertSeeInOrder(['VI', 'EN']);
     });
 });
