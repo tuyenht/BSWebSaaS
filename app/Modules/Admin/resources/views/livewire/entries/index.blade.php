@@ -290,15 +290,25 @@
                                     </div>
                                 @endif
                             </td>
-                            <td x-show="cols.langs" class="whitespace-nowrap">
+                            <td x-show="cols.langs" class="whitespace-nowrap align-top">
                                 <div class="flex flex-wrap items-center gap-1">
                                     @foreach ($locales as $lc)
                                         @php $has = $entry->translations->contains(fn ($tr) => $tr->locale === $lc); @endphp
-                                        <span @class([
-                                            'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
-                                            'border border-border bg-surface-muted text-body-text' => $has,
-                                            'border border-dashed border-border-strong text-placeholder' => ! $has,
-                                        ])>{{ strtoupper($lc) }}</span>
+                                        {{-- The code itself isn't clickable; hover reveals a floating Sửa/Thêm that opens the editor for that locale. --}}
+                                        <div class="group relative">
+                                            <span @class([
+                                                'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
+                                                'border border-border bg-surface-muted text-body-text' => $has,
+                                                'border border-dashed border-border-strong text-placeholder' => ! $has,
+                                            ])>{{ strtoupper($lc) }}</span>
+                                            @if ($canEdit)
+                                                <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) }}" wire:navigate
+                                                    class="absolute bottom-full left-1/2 z-20 mb-1 hidden -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-white shadow-lg group-hover:inline-flex {{ $has ? 'bg-admin-primary' : 'bg-admin-success' }}">
+                                                    <x-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
+                                                    {{ $has ? __('entries.edit_action') : __('entries.add_translation') }}
+                                                </a>
+                                            @endif
+                                        </div>
                                     @endforeach
                                 </div>
                             </td>

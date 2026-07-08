@@ -593,5 +593,6 @@
     "entries.select_row": "Chọn trang này",
     "entries.home_locked": "Đường dẫn trang chủ không thể thay đổi",
     "entries.slug_saved": "Đã cập nhật đường dẫn",
-    "entries.title_saved": "Đã đổi tên trang"
+    "entries.title_saved": "Đã đổi tên trang",
+    "entries.add_translation": "Thêm"
 }

@@ -7,6 +7,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
@@ -346,5 +347,70 @@ it('adds items to a scalar list prop and round-trips them (richtext paragraphs)'
 
         $entry = Entry::query()->where('type', 'page')->first();
         expect($entry->translationFor('vi')->body['blocks'][0]['props']['paragraphs'])->toBe(['Đoạn văn đầu tiên.']);
+    });
+});
+
+it('edits a specific locale translation when ?locale= is enabled', function (): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+        SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        $entry->translations()->create(['locale' => 'en', 'title' => 'About', 'slug' => 'about', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $entry->ulid, 'locale' => 'en'])
+            ->assertSet('locale', 'en')
+            ->assertSet('title', 'About')
+            ->assertSet('slug', 'about');
+    });
+});
+
+it('creates a new locale translation for a missing language (Thêm)', function (): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+        SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
+        SiteLocale::query()->firstOrCreate(['locale' => 'en'], ['is_default' => false, 'enabled' => true]);
+
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $entry->ulid, 'locale' => 'en'])
+            ->assertSet('locale', 'en')
+            ->assertSet('title', '')
+            ->set('title', 'About us')
+            ->set('slug', 'about-us')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect($entry->translationFor('en')->title)->toBe('About us')
+            ->and($entry->translations()->count())->toBe(2);
+    });
+});
+
+it('falls back to the default locale when ?locale= is not enabled', function (): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+        SiteLocale::query()->firstOrCreate(['locale' => 'vi'], ['is_default' => true, 'enabled' => true]);
+
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $entry->ulid, 'locale' => 'zz'])
+            ->assertSet('locale', 'vi')
+            ->assertSet('title', 'Giới thiệu');
     });
 });

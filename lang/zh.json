@@ -408,5 +408,6 @@
     "entries.select_row": "选择此页面",
     "entries.home_locked": "首页路径无法更改",
     "entries.slug_saved": "已更新路径",
-    "entries.title_saved": "已重命名页面"
+    "entries.title_saved": "已重命名页面",
+    "entries.add_translation": "添加"
 }
