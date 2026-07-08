@@ -374,5 +374,16 @@
     "entries.action_restore": "恢复",
     "entries.action_destroy": "永久删除",
     "entries.scheduled_prefix": "发布于",
-    "entries.no_views": "暂无浏览"
+    "entries.no_views": "暂无浏览",
+    "entries.col_language": "语言",
+    "entries.cols_button": "列",
+    "entries.cols_required": "必需",
+    "entries.cols_optional": "可选",
+    "entries.filter_template": "模板",
+    "entries.filter_reset": "重置",
+    "entries.filter_done": "完成",
+    "entries.filter_active": "筛选：",
+    "entries.filter_clear_all": "清除全部",
+    "entries.filter_match": "匹配 :count / :total 页",
+    "entries.lang_hint": "将鼠标悬停在语言代码上以编辑或添加翻译。"
 }

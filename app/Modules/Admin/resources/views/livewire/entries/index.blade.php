@@ -53,125 +53,171 @@
             </button>
         </div>
 
-        {{-- Search --}}
-        <div class="mb-4 flex items-center gap-3">
-            <div class="relative w-full max-w-sm">
-                <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-placeholder">
-                    <x-admin::icon name="ri-search" class="size-4" />
-                </span>
-                <label for="pages-search" class="sr-only">{{ __('entries.search_placeholder') }}</label>
-                <input id="pages-search" type="search" wire:model.live.debounce.300ms="search"
-                    placeholder="{{ __('entries.search_placeholder') }}"
-                    class="block w-full rounded border border-border-strong bg-surface py-2 pl-9 pr-3 text-sm text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+        {{-- Column visibility lives client-side (instant + persisted), so paging never resets it. --}}
+        <div x-data="{
+            cols: JSON.parse(localStorage.getItem('pagesCols')) || { path: true, langs: true, creator: true },
+            colsOpen: false,
+            toggleCol(k) { this.cols[k] = !this.cols[k]; localStorage.setItem('pagesCols', JSON.stringify(this.cols)); },
+        }">
+            {{-- Toolbar: search + column picker --}}
+            <div class="mb-4 flex items-center gap-3">
+                <div class="relative w-full max-w-sm">
+                    <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-placeholder">
+                        <x-admin::icon name="ri-search" class="size-4" />
+                    </span>
+                    <label for="pages-search" class="sr-only">{{ __('entries.search_placeholder') }}</label>
+                    <input id="pages-search" type="search" wire:model.live.debounce.300ms="search"
+                        placeholder="{{ __('entries.search_placeholder') }}"
+                        class="block w-full rounded border border-border-strong bg-surface py-2 pl-9 pr-3 text-sm text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+                </div>
+
+                <div class="relative ml-auto" @click.outside="colsOpen = false">
+                    <button type="button" @click="colsOpen = !colsOpen"
+                        class="inline-flex items-center gap-2 rounded border border-border-strong bg-surface px-3 py-2 text-sm font-medium text-body-text transition-colors hover:border-admin-primary">
+                        <x-admin::icon name="ri-grid" class="size-4" /> {{ __('entries.cols_button') }}
+                        <x-admin::icon name="chevron-down" class="size-3.5 transition-transform" ::class="colsOpen && 'rotate-180'" />
+                    </button>
+                    <div x-show="colsOpen" x-cloak x-transition
+                        class="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1.5 shadow-lg">
+                        <p class="px-2 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wide text-placeholder">{{ __('entries.cols_required') }}</p>
+                        @foreach ([__('entries.title_label'), __('entries.col_status'), __('entries.col_actions')] as $locked)
+                            <label class="flex cursor-not-allowed items-center gap-2.5 rounded px-2 py-1.5 text-sm text-body-faint">
+                                <input type="checkbox" checked disabled class="size-4 rounded border-border-strong">
+                                {{ $locked }}
+                            </label>
+                        @endforeach
+                        <p class="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-placeholder">{{ __('entries.cols_optional') }}</p>
+                        @foreach (['path' => __('entries.col_path'), 'langs' => __('entries.col_language'), 'creator' => __('entries.col_creator')] as $key => $label)
+                            <label class="flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 text-sm text-body-text hover:bg-surface-hover">
+                                <input type="checkbox" :checked="cols.{{ $key }}" @change="toggleCol('{{ $key }}')"
+                                    class="size-4 rounded border-border-strong text-admin-primary focus:ring-admin-primary/30">
+                                {{ $label }}
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
             </div>
-        </div>
 
-        <x-admin::table>
-            <thead>
-                <tr>
-                    <th class="w-full">
-                        <button type="button" wire:click="sortBy('name')" class="inline-flex items-center gap-1 hover:text-body-text">
-                            {{ __('entries.title_label') }} <x-admin::icon :name="$sortIcon('name')" class="size-3.5" />
-                        </button>
-                    </th>
-                    <th>{{ __('entries.col_path') }}</th>
-                    <th>
-                        <button type="button" wire:click="sortBy('status')" class="inline-flex items-center gap-1 hover:text-body-text">
-                            {{ __('entries.col_status') }} <x-admin::icon :name="$sortIcon('status')" class="size-3.5" />
-                        </button>
-                    </th>
-                    <th>
-                        <button type="button" wire:click="sortBy('creator')" class="inline-flex items-center gap-1 hover:text-body-text">
-                            {{ __('entries.col_creator') }} <x-admin::icon :name="$sortIcon('creator')" class="size-3.5" />
-                        </button>
-                    </th>
-                    <th class="text-right"><span class="sr-only">{{ __('entries.col_actions') }}</span></th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($rows as $row)
-                    @php
-                        $entry = $row['entry'];
-                        $depth = $row['depth'];
-                        $t = $entry->translations->firstWhere('locale', $locale);
-                        $route = $entry->routes->firstWhere('locale', $locale);
-                        $path = $route?->path ?? ($t?->slug ? '/'.ltrim($t->slug, '/') : null);
-                        $isHome = $path === '/' || $t?->slug === $homeSlug;
-                        $status = $entry->status;
-                        $isScheduled = $status === 'scheduled';
-                        $creator = $entry->author?->name;
-                        $parts = $creator ? preg_split('/\s+/', trim($creator)) : [];
-                        $initials = $parts ? mb_strtoupper(mb_substr($parts[0], 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')) : '—';
-                        $c = $avatarPalette[$creator ? abs(crc32($creator)) % count($avatarPalette) : 0];
-                        $when = $isScheduled ? $entry->published_at : $entry->updated_at;
-                    @endphp
-                    <tr wire:key="entry-{{ $entry->ulid }}">
-                        <td class="w-full">
-                            <div @class(['flex items-center gap-1.5', 'pl-5' => $depth])>
-                                @if ($depth)
-                                    <x-admin::icon name="chevron-right" class="size-3.5 shrink-0 text-placeholder" />
-                                @endif
-                                <span class="font-medium text-body-text">{{ $t?->title ?? __('entries.untitled') }}</span>
-                            </div>
-                        </td>
-                        <td class="max-w-[240px] truncate font-mono text-xs text-body-faint" title="{{ $path }}">
-                            @if ($isHome)
-                                <span class="inline-flex items-center gap-1 text-placeholder"><x-admin::icon name="home" class="size-3.5" /> /</span>
-                            @else
-                                {{ $path ?? '—' }}
-                            @endif
-                        </td>
-                        <td class="whitespace-nowrap">
-                            <x-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">{{ __('entries.status_'.$status) }}</x-admin::badge>
-                            @if ($when)
-                                <div class="mt-1 text-[11px] text-placeholder">
-                                    @if ($isScheduled)
-                                        {{ __('entries.scheduled_prefix') }} {{ $when->locale(app()->getLocale())->isoFormat('D MMM, Y') }} · {{ $when->format('H:i') }}
-                                    @else
-                                        {{ $when->locale(app()->getLocale())->isoFormat('D MMM, Y') }}
-                                    @endif
-                                </div>
-                            @endif
-                        </td>
-                        <td class="whitespace-nowrap">
-                            <div class="flex items-center gap-2">
-                                <span class="grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold" style="background: {{ $c['bg'] }}; color: {{ $c['fg'] }};">{{ $initials }}</span>
-                                <span class="text-sm text-body-text">{{ $creator ?? '—' }}</span>
-                            </div>
-                        </td>
-                        <td class="whitespace-nowrap text-right">
-                            <div class="inline-flex items-center gap-0.5">
-                                @if ($path && ! $entry->trashed())
-                                    <a href="{{ $path }}" target="_blank" rel="noopener" title="{{ __('entries.action_preview') }}"
-                                        class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-body-text">
-                                        <x-admin::icon name="ri-eye" class="size-4" />
-                                    </a>
-                                @endif
-                                <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid]) }}" wire:navigate title="{{ __('entries.edit_action') }}"
-                                    class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-body-text">
-                                    <x-admin::icon name="ri-pencil" class="size-4" />
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
+            <x-admin::table>
+                <thead>
                     <tr>
-                        <td colspan="5" class="py-12 text-center text-body-faint">
-                            @if ($tab === 'trash')
-                                {{ __('entries.trash_empty') }}
-                            @elseif (trim($search) !== '')
-                                {{ __('entries.search_empty') }}
-                            @else
-                                {{ __('entries.empty') }}
-                            @endif
-                        </td>
+                        <th class="w-full">
+                            <button type="button" wire:click="sortBy('name')" class="inline-flex items-center gap-1 hover:text-body-text">
+                                {{ __('entries.title_label') }} <x-admin::icon :name="$sortIcon('name')" class="size-3.5" />
+                            </button>
+                        </th>
+                        <th x-show="cols.path">{{ __('entries.col_path') }}</th>
+                        <th>
+                            <button type="button" wire:click="sortBy('status')" class="inline-flex items-center gap-1 hover:text-body-text">
+                                {{ __('entries.col_status') }} <x-admin::icon :name="$sortIcon('status')" class="size-3.5" />
+                            </button>
+                        </th>
+                        <th x-show="cols.langs">{{ __('entries.col_language') }}</th>
+                        <th x-show="cols.creator">
+                            <button type="button" wire:click="sortBy('creator')" class="inline-flex items-center gap-1 hover:text-body-text">
+                                {{ __('entries.col_creator') }} <x-admin::icon :name="$sortIcon('creator')" class="size-3.5" />
+                            </button>
+                        </th>
+                        <th class="text-right"><span class="sr-only">{{ __('entries.col_actions') }}</span></th>
                     </tr>
-                @endforelse
-            </tbody>
-        </x-admin::table>
+                </thead>
+                <tbody>
+                    @forelse ($rows as $row)
+                        @php
+                            $entry = $row['entry'];
+                            $depth = $row['depth'];
+                            $t = $entry->translations->firstWhere('locale', $locale);
+                            $route = $entry->routes->firstWhere('locale', $locale);
+                            $path = $route?->path ?? ($t?->slug ? '/'.ltrim($t->slug, '/') : null);
+                            $isHome = $path === '/' || $t?->slug === $homeSlug;
+                            $status = $entry->status;
+                            $isScheduled = $status === 'scheduled';
+                            $creator = $entry->author?->name;
+                            $parts = $creator ? preg_split('/\s+/', trim($creator)) : [];
+                            $initials = $parts ? mb_strtoupper(mb_substr($parts[0], 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')) : '—';
+                            $c = $avatarPalette[$creator ? abs(crc32($creator)) % count($avatarPalette) : 0];
+                            $when = $isScheduled ? $entry->published_at : $entry->updated_at;
+                        @endphp
+                        <tr wire:key="entry-{{ $entry->ulid }}">
+                            <td class="w-full">
+                                <div @class(['flex items-center gap-1.5', 'pl-5' => $depth])>
+                                    @if ($depth)
+                                        <x-admin::icon name="chevron-right" class="size-3.5 shrink-0 text-placeholder" />
+                                    @endif
+                                    <span class="font-medium text-body-text">{{ $t?->title ?? __('entries.untitled') }}</span>
+                                </div>
+                            </td>
+                            <td x-show="cols.path" class="max-w-[240px] truncate font-mono text-xs text-body-faint" title="{{ $path }}">
+                                @if ($isHome)
+                                    <span class="inline-flex items-center gap-1 text-placeholder"><x-admin::icon name="home" class="size-3.5" /> /</span>
+                                @else
+                                    {{ $path ?? '—' }}
+                                @endif
+                            </td>
+                            <td class="whitespace-nowrap">
+                                <x-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">{{ __('entries.status_'.$status) }}</x-admin::badge>
+                                @if ($when)
+                                    <div class="mt-1 text-[11px] text-placeholder">
+                                        @if ($isScheduled)
+                                            {{ __('entries.scheduled_prefix') }} {{ $when->locale(app()->getLocale())->isoFormat('D MMM, Y') }} · {{ $when->format('H:i') }}
+                                        @else
+                                            {{ $when->locale(app()->getLocale())->isoFormat('D MMM, Y') }}
+                                        @endif
+                                    </div>
+                                @endif
+                            </td>
+                            <td x-show="cols.langs" class="whitespace-nowrap">
+                                <div class="flex flex-wrap items-center gap-1">
+                                    @foreach ($locales as $lc)
+                                        @php $has = $entry->translations->contains(fn ($tr) => $tr->locale === $lc); @endphp
+                                        <span @class([
+                                            'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
+                                            'border border-border bg-surface-muted text-body-text' => $has,
+                                            'border border-dashed border-border-strong text-placeholder' => ! $has,
+                                        ])>{{ strtoupper($lc) }}</span>
+                                    @endforeach
+                                </div>
+                            </td>
+                            <td x-show="cols.creator" class="whitespace-nowrap">
+                                <div class="flex items-center gap-2">
+                                    <span class="grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold" style="background: {{ $c['bg'] }}; color: {{ $c['fg'] }};">{{ $initials }}</span>
+                                    <span class="text-sm text-body-text">{{ $creator ?? '—' }}</span>
+                                </div>
+                            </td>
+                            <td class="whitespace-nowrap text-right">
+                                <div class="inline-flex items-center gap-0.5">
+                                    @if ($path && ! $entry->trashed())
+                                        <a href="{{ $path }}" target="_blank" rel="noopener" title="{{ __('entries.action_preview') }}"
+                                            class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-body-text">
+                                            <x-admin::icon name="ri-eye" class="size-4" />
+                                        </a>
+                                    @endif
+                                    <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid]) }}" wire:navigate title="{{ __('entries.edit_action') }}"
+                                        class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-body-text">
+                                        <x-admin::icon name="ri-pencil" class="size-4" />
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="6" class="py-12 text-center text-body-faint">
+                                @if ($tab === 'trash')
+                                    {{ __('entries.trash_empty') }}
+                                @elseif (trim($search) !== '')
+                                    {{ __('entries.search_empty') }}
+                                @else
+                                    {{ __('entries.empty') }}
+                                @endif
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </x-admin::table>
 
-        <div class="mt-4 flex justify-end">
-            <x-admin::pagination :paginator="$rows" />
+            <div class="mt-4 flex justify-end">
+                <x-admin::pagination :paginator="$rows" />
+            </div>
         </div>
     </x-admin::card>
 </div>

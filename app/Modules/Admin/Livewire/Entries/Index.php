@@ -91,7 +91,8 @@ final class Index extends Component
     {
         $section = $this->resolveSection();
         $type = $section instanceof ContentSection ? ($section->entry_type ?? 'page') : 'page';
-        $locale = app(SiteLocale::class)->default();
+        $siteLocale = app(SiteLocale::class);
+        $locale = $siteLocale->default();
 
         $query = Entry::query()->where('type', $type);
 
@@ -122,6 +123,7 @@ final class Index extends Component
             'rows' => $this->paginate($ordered),
             'counts' => $this->counts($type),
             'locale' => $locale,
+            'locales' => $siteLocale->enabled(),
             'homeSlug' => PathBuilder::HOME_SLUG,
             'sectionModel' => $section,
             'sectionKey' => $this->section,
