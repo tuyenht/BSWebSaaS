@@ -27,6 +27,12 @@ final class PermalinkConfig
     /** Per-section pattern used when the site has no `site_settings` row for that section. */
     private const array DEFAULTS = ['pages' => 'flat'];
 
+    /**
+     * Recognised permalink patterns; an unrecognised (or malformed) stored value falls back to the
+     * section default rather than being acted on. Extend as new presets ship (permalink plan U1).
+     */
+    private const array PATTERNS = ['flat', 'nested'];
+
     /** @var array<string, string> memoized "{siteId}:{section}" => pattern (request-scoped) */
     private array $memo = [];
 
@@ -60,7 +66,7 @@ final class PermalinkConfig
             ->where('key', $section)
             ->value('value');
 
-        if (is_array($value) && isset($value['pattern']) && is_string($value['pattern']) && $value['pattern'] !== '') {
+        if (is_array($value) && isset($value['pattern']) && is_string($value['pattern']) && in_array($value['pattern'], self::PATTERNS, true)) {
             return $value['pattern'];
         }
 

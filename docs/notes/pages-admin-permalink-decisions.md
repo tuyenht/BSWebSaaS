@@ -4,16 +4,19 @@
 > so this file is the box-independent copy). Doc-only; does **not** amend design.md SSOT.
 > Written 2026-07-08 at session close.
 
-## 1. Build state — DONE, not merged
+## 1. Build state — ✅ MERGED to main
 
-Branch **`feat/pages-admin-fidelity`** = **12 commits ahead of `main`** (`main` tip unchanged at `593b5c5`
-→ clean rebase-merge / fast-forward). Full **Admin+Cms+Storefront suite: 475 passed, 0 failed**.
-Guardrails green each phase (Pest · Larastan max · Pint · Query-Budget).
+Merged 2026-07-08 via **PR #56** (rebase-merge of 14 commits: the 12 phases + the G1 default-flat gate +
+this note); `main` advanced `593b5c5` → `1a6da53`. Full suite **752 passed / 1 todo / 0 failed** (local and
+CI). Guardrails green each phase (Pest · Larastan max · Pint · Query-Budget). A follow-up **PR #57** (`6d3de599`)
+fixed a **pre-existing** CI misconfig — CI's PHP upload ini (stock 2M/8M) sat below the 10MB media cap, so
+`UploadMediaTest`'s browser-upload guard failed on every run; setting `ini-values` 12M/16M/256M (mirroring
+`docker/frankenphp/conf.d/app.ini`) turned CI green again repo-wide.
 
 The design is `docs/design_handoff_pages_admin/` §3a, rebuilt faithfully as the shared
 `admin.entries.index?section=pages` screen (`App\Modules\Admin\Livewire\Entries\Index`).
 
-Commits (reconstruct context via `git log 593b5c5..84becae`):
+Commits (pre-rebase `feat` SHAs; on `main` after PR #56 see `git log 593b5c5..1a6da53`):
 
 | Phase | Commit | What |
 |---|---|---|
@@ -32,24 +35,22 @@ Commits (reconstruct context via `git log 593b5c5..84becae`):
 
 ## 2. PENDING — owner chốt needed before/around merge
 
-### G1 — gate P6a nesting to **default FLAT** (owner: "mặc định không lồng nhau")
-P6a currently nests a page's URL **automatically** whenever `parent_id` is set. Owner wants nesting to be
-a **per-site config, default flat** (`parent_id` = admin tree grouping only; URL flat unless opted in).
+### G1 — page nesting gated to **default FLAT** — ✅ DONE (in PR #56)
+Pages are flat by default; `parent_id` is admin tree-grouping only. `App\Modules\Tenancy\Context\PermalinkConfig`
+(memoized request-scoped, mirrors `SiteLocale`, registered `scoped` in `TenancyServiceProvider`) reads
+`site_settings` group=`permalinks` key=`pages` `value.pattern` (recognised `flat`|`nested`, default `flat`,
+unknown/malformed → flat); `App\Modules\Cms\Routing\PathBuilder::pagePath` nests only when `pattern==='nested'`.
+The `RouteSync::syncDescendants` 301 cascade stays intact under `nested` (dormant by default). **No migration**
+(`site_settings` pre-existed). Tests: `tests/Feature/Cms/NestedPageRoutingTest.php` (opt-in nested) +
+`tests/Feature/Tenancy/PermalinkConfigTest.php` (reader branches + per-site memo isolation).
+**Placement in `Tenancy\Context` is arch-required** — `ModuleBoundariesTest` forbids `Cms` from using a
+`Tenancy` model, and the reader queries `SiteSetting`, so a `Cms\Routing` home would fail the arch test.
 
-**Exact next step (COUNCIL — routing core; propose-first):**
-1. Add a **memoized, request-scoped** `PermalinkConfig` reader (mirror `App\Modules\Tenancy\Context\SiteLocale`
-   — do NOT read `site_settings` per PathBuilder call = N+1). Config shape (forward-compatible with U1,
-   plan `260706-1116`): `site_settings` `group_name='permalinks'`, `key='pages'`, `value={pattern}`,
-   default `pattern='flat'`.
-2. `App\Modules\Cms\Routing\PathBuilder::pagePath` nests only when `pattern==='nested'`; else flat.
-3. Tests: reuse `tests/Feature/Cms/NestedPageRoutingTest.php` — default flat does NOT nest; nested-when-enabled still nests + cascades.
-Keeps P6a's tested `pagePath`/`syncDescendants` code (dormant until opted in).
-
-### Merge — SAFE regardless (audit-verified)
-An Vinh pages are **flat** (`SeedAnVinhContentCommand` sets no `parent_id`) AND `RouteSync` only re-syncs a
-route on **edit/publish, never on deploy** → P6a changes **zero** An Vinh URLs. So merge does not depend on G1.
-Owner options: (a) do G1 then merge · (b) merge now, G1 after · (c) review diff first. Recommended: **(a)**.
-Merge mechanics: rebase-merge feat→main (memory `gh-pr-automation`: push→pr→merge --rebase).
+### Merge — ✅ DONE (owner chose (a): G1 then merge → PR #56)
+`RouteSync` only re-syncs a route on **edit/publish, never on deploy**, and An Vinh pages are believed flat,
+so the merge changes **zero** An Vinh URLs. ⚠ **Pre-prod-deploy gate (still owed):** independently re-read
+`SeedAnVinhContentCommand` to confirm no An Vinh page carries a `parent_id` or a stored nested route before
+deploying — this "An Vinh is flat" claim is not yet source-verified (2026-07-08 audit finding).
 
 ### Permalink model (my recommendation, pending)
 - **Category = per-type vocabulary** (`post_cat`/`product_cat`/`project_cat`) — drives template + URL prefix per type.
@@ -90,3 +91,10 @@ Merge mechanics: rebase-merge feat→main (memory `gh-pr-automation`: push→pr�
 ## 6. Parked (not now)
 Full permalink U1/U2/U3 (plan `260706-1116`) · cross-content tag archive + tag UI · Taxonomy UI (5-fork, pending) ·
 media picker Phase 3/4 · catalog P2 storefront (must route THROUGH the U1 permalink engine).
+
+**Hand to U1 (2026-07-08 audit):** (a) reconcile the `site_settings[permalinks]` vocabulary — G1 ships
+`flat|nested` for `pages`; U1 adds `base|category|category_path` for posts/products → extend
+`PermalinkConfig::PATTERNS`. (b) The future permalink-config toggle must trigger a **bulk route re-sync (+301s)**:
+flipping a pattern does NOT move already-stored `site_routes` on its own (path *composition* changes, stored
+routes don't). Low-risk today (default flat, ~zero `nested` rows). `RouteSync::syncDescendants` under flat is a
+guaranteed no-op but is also the self-heal path for a nested→flat switch — keep it (or gate it) with that in mind.
