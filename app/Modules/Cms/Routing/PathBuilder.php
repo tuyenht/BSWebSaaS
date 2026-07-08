@@ -42,13 +42,41 @@ final readonly class PathBuilder
         $slug = trim($slug, '/');
 
         if ($entry->type === 'page') {
-            return ($slug === '' || $slug === self::HOME_SLUG) ? '/' : '/'.$slug;
+            return $this->pagePath($entry, $locale, $slug);
         }
 
         // Collection content (post): prefix with the primary category's localized slug.
         $prefix = $this->categoryPrefix($entry, $locale);
 
         return $prefix.'/'.$slug;
+    }
+
+    /**
+     * A page's path: flat `/slug` (home → `/`), or prefixed by its parent page's path when the
+     * page is nested (`/dich-vu/thiet-ke-web`). Composed from ancestor SLUGS — not the stored
+     * route — so it is correct no matter which ancestors are published yet. A visited-set guards
+     * against a parent cycle.
+     *
+     * @param  array<int, true>  $seen
+     */
+    private function pagePath(Entry $entry, string $locale, string $slug, array $seen = []): string
+    {
+        if ($slug === '' || $slug === self::HOME_SLUG) {
+            return '/';
+        }
+
+        $seen[$entry->id] = true;
+        $parent = $entry->parent_id !== null && ! isset($seen[$entry->parent_id]) ? $entry->parent : null;
+
+        if ($parent instanceof Entry && $parent->type === 'page') {
+            $translation = $parent->translationFor($locale);
+            $parentSlug = $translation !== null ? trim((string) $translation->slug, '/') : '';
+            $parentPath = $this->pagePath($parent, $locale, $parentSlug, $seen);
+
+            return ($parentPath === '/' ? '' : $parentPath).'/'.$slug;
+        }
+
+        return '/'.$slug;
     }
 
     /**

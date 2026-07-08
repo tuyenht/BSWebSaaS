@@ -67,6 +67,37 @@ final readonly class RouteSync
     }
 
     /**
+     * Re-sync the PUBLISHED descendants of a renamed ancestor page so their nested paths pick up
+     * the new prefix — each records its own 301. The page tree is small per site; drafts are
+     * skipped (they carry no route until published). A visited-set guards against a parent cycle.
+     */
+    public function syncDescendants(Entry $ancestor, string $locale): void
+    {
+        $frontier = [$ancestor->id];
+        $seen = [$ancestor->id => true];
+
+        while ($frontier !== []) {
+            $children = Entry::query()->whereIn('parent_id', $frontier)->get();
+            $frontier = [];
+
+            foreach ($children as $child) {
+                if (isset($seen[$child->id])) {
+                    continue;
+                }
+                $seen[$child->id] = true;
+                $frontier[] = $child->id;
+
+                if ($child->status === 'published') {
+                    $translation = $child->translationFor($locale);
+                    if ($translation !== null) {
+                        $this->sync($child, $locale, $translation->slug);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Upsert the route for a taxonomy+locale at its flat path (/slug); returns that path.
      * Categories aren't admin-renamed yet, so this carries no 301 history (that arrives
      * with the category editor); it still guards against an entry already owning the path
