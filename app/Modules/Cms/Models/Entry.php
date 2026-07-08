@@ -113,6 +113,7 @@ class Entry extends Model
             'published_at' => 'datetime',
             'position' => 'integer',
             'author_id' => 'integer',
+            'view_count' => 'integer',
             'meta' => 'array',
         ];
     }
