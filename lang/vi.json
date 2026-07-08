@@ -572,5 +572,16 @@
     "entries.filter_match": "Khớp :count / :total trang",
     "entries.lang_hint": "Di chuột vào mã để sửa hoặc thêm bản dịch.",
     "entries.template_default": "Mặc định",
-    "entries.filter_none": "Không có"
+    "entries.filter_none": "Không có",
+    "entries.status_changed": "Đã đổi trạng thái",
+    "entries.scheduled_set": "Đã đặt lịch đăng",
+    "entries.duplicated": "Đã nhân bản trang",
+    "entries.trashed": "Đã chuyển vào thùng rác",
+    "entries.restored": "Đã khôi phục trang",
+    "entries.destroyed": "Đã xoá vĩnh viễn",
+    "entries.trash_confirm": "Chuyển trang này vào thùng rác?",
+    "entries.force_delete_confirm": "Xoá vĩnh viễn trang này? Không thể hoàn tác.",
+    "entries.status_menu_label": "Đổi trạng thái",
+    "entries.schedule_at": "Chọn thời điểm đăng",
+    "entries.schedule_set_action": "Đặt lịch"
 }

@@ -174,8 +174,42 @@
                                     {{ $path ?? '—' }}
                                 @endif
                             </td>
-                            <td class="whitespace-nowrap">
-                                <x-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">{{ __('entries.status_'.$status) }}</x-admin::badge>
+                            <td class="whitespace-nowrap align-top">
+                                @if ($canPublish && ! $entry->trashed())
+                                    <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" class="relative inline-block">
+                                        <button type="button" @click="open = ! open" class="inline-flex items-center" aria-label="{{ __('entries.status_menu_label') }}">
+                                            <x-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">
+                                                {{ __('entries.status_'.$status) }} <x-admin::icon name="chevron-down" class="size-3" />
+                                            </x-admin::badge>
+                                        </button>
+                                        <div x-show="open" x-cloak x-transition
+                                            class="absolute left-0 z-30 mt-1 w-48 rounded-lg border border-border bg-surface p-1 shadow-lg">
+                                            @foreach (['published', 'draft', 'private'] as $opt)
+                                                <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), @js($opt)); open = false"
+                                                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-hover">
+                                                    <x-admin::badge soft :color="$statusColor[$opt]">{{ __('entries.status_'.$opt) }}</x-admin::badge>
+                                                    @if ($status === $opt)<x-admin::icon name="ri-check" class="ml-auto size-3.5 text-admin-primary" />@endif
+                                                </button>
+                                            @endforeach
+                                            <div class="mt-0.5 border-t border-border pt-0.5">
+                                                <button type="button" @click="sched = ! sched"
+                                                    class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-hover">
+                                                    <x-admin::badge soft color="warning">{{ __('entries.status_scheduled') }}</x-admin::badge>
+                                                    <x-admin::icon name="chevron-down" class="ml-auto size-3.5 text-placeholder transition-transform" ::class="sched && 'rotate-180'" />
+                                                </button>
+                                                <div x-show="sched" x-cloak class="px-2 pb-1.5 pt-1">
+                                                    <label class="mb-1 block text-[11px] text-body-faint">{{ __('entries.schedule_at') }}</label>
+                                                    <input type="datetime-local" x-ref="when"
+                                                        class="w-full rounded border border-border-strong bg-surface px-2 py-1 text-xs text-body-text">
+                                                    <button type="button" x-on:click="$wire.scheduleEntry(@js($entry->ulid), $refs.when.value); open = false; sched = false"
+                                                        class="mt-1.5 w-full rounded bg-admin-primary py-1 text-xs font-medium text-white transition-opacity hover:opacity-90">{{ __('entries.schedule_set_action') }}</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                @else
+                                    <x-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">{{ __('entries.status_'.$status) }}</x-admin::badge>
+                                @endif
                                 @if ($when)
                                     <div class="mt-1 text-[11px] text-placeholder">
                                         @if ($isScheduled)
@@ -204,18 +238,45 @@
                                     <span class="text-sm text-body-text">{{ $creator ?? '—' }}</span>
                                 </div>
                             </td>
-                            <td class="whitespace-nowrap text-right">
+                            <td class="whitespace-nowrap text-right align-top">
                                 <div class="inline-flex items-center gap-0.5">
-                                    @if ($path && ! $entry->trashed())
-                                        <a href="{{ $path }}" target="_blank" rel="noopener" title="{{ __('entries.action_preview') }}"
+                                    @if ($entry->trashed())
+                                        @if ($canDelete)
+                                            <button type="button" wire:click="restore('{{ $entry->ulid }}')" title="{{ __('entries.action_restore') }}"
+                                                class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-body-text">
+                                                <x-admin::icon name="ri-refresh" class="size-4" />
+                                            </button>
+                                            <button type="button" title="{{ __('entries.action_destroy') }}"
+                                                x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm')), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.forceDelete(@js($entry->ulid)))"
+                                                class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-admin-danger">
+                                                <x-admin::icon name="ri-delete-bin" class="size-4" />
+                                            </button>
+                                        @endif
+                                    @else
+                                        @if ($path)
+                                            <a href="{{ $path }}" target="_blank" rel="noopener" title="{{ __('entries.action_preview') }}"
+                                                class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-body-text">
+                                                <x-admin::icon name="ri-eye" class="size-4" />
+                                            </a>
+                                        @endif
+                                        <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid]) }}" wire:navigate title="{{ __('entries.edit_action') }}"
                                             class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-body-text">
-                                            <x-admin::icon name="ri-eye" class="size-4" />
+                                            <x-admin::icon name="ri-pencil" class="size-4" />
                                         </a>
+                                        @if ($canCreate)
+                                            <button type="button" wire:click="duplicate('{{ $entry->ulid }}')" title="{{ __('entries.action_duplicate') }}"
+                                                class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-body-text">
+                                                <x-admin::icon name="ri-file-copy" class="size-4" />
+                                            </button>
+                                        @endif
+                                        @if ($canDelete)
+                                            <button type="button" title="{{ __('entries.action_trash') }}"
+                                                x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('entries.trash_confirm')), confirm: @js(__('entries.action_trash')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.trash(@js($entry->ulid)))"
+                                                class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-admin-danger">
+                                                <x-admin::icon name="ri-delete-bin" class="size-4" />
+                                            </button>
+                                        @endif
                                     @endif
-                                    <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid]) }}" wire:navigate title="{{ __('entries.edit_action') }}"
-                                        class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-body-text">
-                                        <x-admin::icon name="ri-pencil" class="size-4" />
-                                    </a>
                                 </div>
                             </td>
                         </tr>

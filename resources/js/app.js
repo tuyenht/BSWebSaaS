@@ -7,6 +7,10 @@
 // $bsConfirm Alpine magic + window.bsConfirm; SweetAlert2 itself lazy-loads on first use.
 import './sweet-confirm.js';
 
+// Branded success toast (SweetAlert2 toast mode) — registers $bsToast + a DOM listener for the
+// `bs-toast` event Livewire dispatches after an action. Lazy-loads SweetAlert2 on first use.
+import './sweet-toast.js';
+
 let uploader = null;
 
 function teardown() {
