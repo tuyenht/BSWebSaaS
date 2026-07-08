@@ -77,9 +77,9 @@ final class Editor extends Component
     #[Locked]
     public ?string $status = null;
 
-    public function mount(?string $ulid = null, ?string $section = null): void
+    public function mount(?string $ulid = null, ?string $section = null, ?string $locale = null): void
     {
-        $this->locale = app(SiteLocale::class)->default();
+        $this->locale = $this->resolveLocale(app(SiteLocale::class), $locale ?? request()->query('locale'));
 
         if ($ulid === null) {
             $this->authorize('create', Entry::class);
@@ -115,6 +115,21 @@ final class Editor extends Component
         if ($this->type === 'post') {
             $this->categoryId = $entry->taxonomies()->first()?->id;
         }
+    }
+
+    /**
+     * The locale to edit — a `?locale=` query param when it is one of the site's enabled
+     * content-locales (the Pages list's per-language "Sửa"/"Thêm" links carry it), else the site
+     * default. #[Locked] $locale then pins it for the component's lifetime so the client can't
+     * flip which translation is being written.
+     */
+    private function resolveLocale(SiteLocale $siteLocale, mixed $requested): string
+    {
+        if (is_string($requested) && in_array($requested, $siteLocale->enabled(), true)) {
+            return $requested;
+        }
+
+        return $siteLocale->default();
     }
 
     public function addBlock(string $type): void

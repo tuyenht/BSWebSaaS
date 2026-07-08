@@ -408,5 +408,6 @@
     "entries.select_row": "このページを選択",
     "entries.home_locked": "ホームページのパスは変更できません",
     "entries.slug_saved": "パスを更新しました",
-    "entries.title_saved": "ページ名を変更しました"
+    "entries.title_saved": "ページ名を変更しました",
+    "entries.add_translation": "追加"
 }
