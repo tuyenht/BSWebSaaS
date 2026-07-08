@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 // Empty each site's media Trash of masters older than the retention window (config
 // media.trash_retention_days). Runs on the `scheduler` container (docker compose schedule:work).
 Schedule::command('media:purge-trash')->daily()->withoutOverlapping();
+
+// Publish scheduled entries the moment their slot arrives (status=scheduled, published_at<=now).
+// Runs on the `scheduler` container (docker compose schedule:work).
+Schedule::command('entries:publish-due')->everyMinute()->withoutOverlapping();
