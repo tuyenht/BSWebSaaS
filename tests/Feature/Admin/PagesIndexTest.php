@@ -1,7 +1,10 @@
 <?php
 
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Redirect;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -353,5 +356,65 @@ it('bulk-publishes the selected rows', function (): void {
 
         expect($a->fresh()->status)->toBe('published')
             ->and($b->fresh()->status)->toBe('published');
+    });
+});
+
+it('inline-renames a page title', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        $page = makePageEntry($editor, 'Tên cũ', 'ten-cu');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('saveTitle', $page->ulid, 'Tên mới')
+            ->assertDispatched('bs-toast');
+
+        expect($page->translationFor('vi')->fresh()->title)->toBe('Tên mới');
+    });
+});
+
+it('inline-edits a published page slug and moves its route with a 301', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $page = makePageEntry($editor, 'Giới thiệu', 'gioi-thieu', 'draft');
+        app(PublishEntry::class)->handle($page->fresh(), 'vi', $editor->fresh());
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('saveSlug', $page->ulid, 'Về chúng tôi');
+
+        expect($page->translationFor('vi')->fresh()->slug)->toBe('ve-chung-toi')
+            ->and(SiteRoute::query()->where('entry_id', $page->id)->value('path'))->toBe('/ve-chung-toi')
+            ->and(Redirect::query()->where('from_path', '/gioi-thieu')->where('to_path', '/ve-chung-toi')->exists())->toBeTrue();
+    });
+});
+
+it('locks the home page slug against inline edits', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        $home = makePageEntry($editor, 'Trang chủ', 'home');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('saveSlug', $home->ulid, 'khong-cho-doi');
+
+        expect($home->translationFor('vi')->fresh()->slug)->toBe('home'); // unchanged
+    });
+});
+
+it('slugifies a Vietnamese slug server-side', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        $page = makePageEntry($editor, 'Trang', 'trang', 'draft');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('saveSlug', $page->ulid, 'Đặt lịch hẹn');
+
+        expect($page->translationFor('vi')->fresh()->slug)->toBe('dat-lich-hen');
     });
 });

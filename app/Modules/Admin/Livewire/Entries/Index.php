@@ -7,9 +7,11 @@ use App\Modules\Cms\Actions\DuplicateEntry;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
+use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -20,6 +22,8 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -171,6 +175,67 @@ final class Index extends Component
         app(TransitionEntryStatus::class)->handle($this->findEntry($ulid), EntryStatus::Scheduled, $this->actingUser(), Carbon::parse($publishAt));
 
         $this->toast(__('entries.scheduled_set'));
+    }
+
+    /** Inline rename — updates the default-locale translation title. */
+    public function saveTitle(string $ulid, string $value): void
+    {
+        $entry = $this->findEntry($ulid);
+        $this->authorize('update', $entry);
+
+        $value = trim($value);
+        $translation = $entry->translationFor(app(SiteLocale::class)->default());
+        if ($value === '' || $translation === null || $translation->title === $value) {
+            return;
+        }
+
+        $translation->update(['title' => $value]);
+        $this->toast(__('entries.title_saved'));
+    }
+
+    /**
+     * Inline slug edit — slugifies the leaf server-side (VN-aware), updates the default-locale
+     * translation, and (for a published page) moves its route + cascades 301s to descendants,
+     * all in one transaction so a slug clash rolls back cleanly. The home page slug is locked.
+     */
+    public function saveSlug(string $ulid, string $value): void
+    {
+        $entry = $this->findEntry($ulid);
+        $this->authorize('update', $entry);
+
+        $locale = app(SiteLocale::class)->default();
+        $translation = $entry->translationFor($locale);
+        if ($translation === null) {
+            return;
+        }
+
+        if ($translation->slug === PathBuilder::HOME_SLUG) {
+            $this->toast(__('entries.home_locked'));
+
+            return;
+        }
+
+        $slug = Str::slug($value);
+        if ($slug === '' || $slug === $translation->slug) {
+            return;
+        }
+
+        try {
+            DB::transaction(function () use ($entry, $translation, $slug, $locale): void {
+                $translation->update(['slug' => $slug]);
+                if ($entry->status === 'published') {
+                    $routes = app(RouteSync::class);
+                    $routes->sync($entry, $locale, $slug);
+                    $routes->syncDescendants($entry, $locale);
+                }
+            });
+        } catch (RouteConflictException) {
+            $this->toast(__('entries.slug_conflict'));
+
+            return;
+        }
+
+        $this->toast(__('entries.slug_saved'));
     }
 
     public function duplicate(string $ulid): void
@@ -397,6 +462,7 @@ final class Index extends Component
             'canPublish' => $user->can('entries.publish'),
             'canCreate' => $user->can('entries.create'),
             'canDelete' => $user->can('entries.delete.any') || $user->can('entries.delete.own'),
+            'canEdit' => $user->can('entries.edit.any') || $user->can('entries.edit.own'),
         ]);
     }
 

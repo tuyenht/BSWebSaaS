@@ -195,6 +195,8 @@
                             $initials = $parts ? mb_strtoupper(mb_substr($parts[0], 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')) : '—';
                             $c = $avatarPalette[$creator ? abs(crc32($creator)) % count($avatarPalette) : 0];
                             $when = $isScheduled ? $entry->published_at : $entry->updated_at;
+                            $slugLeaf = $t?->slug;
+                            $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
                         @endphp
                         <tr wire:key="entry-{{ $entry->ulid }}">
                             <td class="align-top">
@@ -203,18 +205,43 @@
                                     class="mt-0.5 size-4 rounded border-border-strong text-admin-primary focus:ring-admin-primary/30">
                             </td>
                             <td class="w-full">
-                                <div @class(['flex items-center gap-1.5', 'pl-5' => $depth])>
+                                <div @class(['flex items-center gap-1.5', 'pl-5' => $depth]) x-data="{ editing: false, value: @js($t?->title ?? ''), cancel: false }">
                                     @if ($depth)
                                         <x-admin::icon name="chevron-right" class="size-3.5 shrink-0 text-placeholder" />
                                     @endif
-                                    <span class="font-medium text-body-text">{{ $t?->title ?? __('entries.untitled') }}</span>
+                                    @if ($canEdit)
+                                        <button type="button" x-show="!editing"
+                                            @click="editing = true; cancel = false; $nextTick(() => { $refs.titleInput.focus(); $refs.titleInput.select() })"
+                                            class="-mx-1 rounded px-1 py-0.5 text-left font-medium text-body-text hover:bg-[#eef2fb]">{{ $t?->title ?? __('entries.untitled') }}</button>
+                                        <input type="text" x-show="editing" x-cloak x-ref="titleInput" x-model="value"
+                                            @keydown.enter.prevent="cancel = false; $el.blur()"
+                                            @keydown.escape="cancel = true; $el.blur()"
+                                            @blur="editing = false; if (! cancel) { $wire.saveTitle(@js($entry->ulid), value) }"
+                                            class="w-full rounded border border-admin-primary bg-white px-1 py-0.5 text-sm font-medium text-body-text focus:outline-none">
+                                    @else
+                                        <span class="font-medium text-body-text">{{ $t?->title ?? __('entries.untitled') }}</span>
+                                    @endif
                                 </div>
                             </td>
-                            <td x-show="cols.path" class="max-w-[240px] truncate font-mono text-xs text-body-faint" title="{{ $path }}">
+                            <td x-show="cols.path" class="align-top font-mono text-xs text-body-faint">
                                 @if ($isHome)
-                                    <span class="inline-flex items-center gap-1 text-placeholder"><x-admin::icon name="home" class="size-3.5" /> /</span>
+                                    <span class="inline-flex items-center gap-1 text-placeholder" title="{{ __('entries.home_locked') }}"><x-admin::icon name="home" class="size-3.5" /> /</span>
+                                @elseif ($canEdit)
+                                    <div x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }" class="flex max-w-[240px] items-center">
+                                        <button type="button" x-show="!editing"
+                                            @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
+                                            class="-mx-1 truncate rounded px-1 py-0.5 hover:bg-[#eef2fb]" title="{{ $path }}">{{ $path ?? '—' }}</button>
+                                        <span x-show="editing" x-cloak class="flex items-center">
+                                            <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
+                                            <input type="text" x-ref="slugInput" x-model="value"
+                                                @keydown.enter.prevent="cancel = false; $el.blur()"
+                                                @keydown.escape="cancel = true; $el.blur()"
+                                                @blur="editing = false; if (! cancel) { $wire.saveSlug(@js($entry->ulid), value) }"
+                                                class="w-28 rounded border border-admin-primary bg-white px-1 py-0.5 focus:outline-none">
+                                        </span>
+                                    </div>
                                 @else
-                                    {{ $path ?? '—' }}
+                                    <span class="block max-w-[240px] truncate" title="{{ $path }}">{{ $path ?? '—' }}</span>
                                 @endif
                             </td>
                             <td class="whitespace-nowrap align-top">
