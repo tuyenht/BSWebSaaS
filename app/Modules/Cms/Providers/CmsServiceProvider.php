@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Providers;
 
 use App\Modules\Cms\Components\EntryGridComponent;
 use App\Modules\Cms\Components\LatestPostsComponent;
+use App\Modules\Cms\Console\FlushEntryViews;
 use App\Modules\Cms\Console\PublishDueEntries;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
@@ -42,7 +43,7 @@ final class CmsServiceProvider extends ServiceProvider
 
         // Module commands aren't auto-discovered like app/Console/Commands.
         if ($this->app->runningInConsole()) {
-            $this->commands([PublishDueEntries::class]);
+            $this->commands([PublishDueEntries::class, FlushEntryViews::class]);
         }
     }
 }

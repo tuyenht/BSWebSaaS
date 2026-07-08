@@ -11,6 +11,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
 use App\Modules\Cms\Routing\RouteResolver;
+use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
@@ -38,6 +39,7 @@ final readonly class StorefrontController
         private MenuResolver $nav,
         private PathBuilder $paths,
         private MediaUrlResolver $media,
+        private EntryViewCounter $views,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -147,6 +149,9 @@ final readonly class StorefrontController
     private function renderEntry(ResolvedContent $content, string $locale, string $path, array $chrome): Response
     {
         $entry = $content->entry;
+
+        // Buffer this page view in Valkey — fail-open, no Postgres write on a GET (§3.1).
+        $this->views->record($entry->site_id, $entry->id);
 
         $categoryTemplate = null;
         $extra = $chrome;
