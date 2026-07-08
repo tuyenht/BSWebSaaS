@@ -590,5 +590,8 @@
     "entries.bulk_deselect": "Deselect",
     "entries.bulk_done": "Applied to :count pages",
     "entries.select_all": "Select all",
-    "entries.select_row": "Select this page"
+    "entries.select_row": "Select this page",
+    "entries.home_locked": "The home page path can't be changed",
+    "entries.slug_saved": "Path updated",
+    "entries.title_saved": "Page renamed"
 }
