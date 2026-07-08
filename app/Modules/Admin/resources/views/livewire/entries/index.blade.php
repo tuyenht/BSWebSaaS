@@ -222,6 +222,10 @@
                                         <span class="font-medium text-body-text">{{ $t?->title ?? __('entries.untitled') }}</span>
                                     @endif
                                 </div>
+                                <div @class(['mt-0.5 flex items-center gap-1 text-[11px] text-placeholder', 'pl-5' => $depth])>
+                                    <x-admin::icon name="ri-eye" class="size-3" />
+                                    {{ $entry->view_count > 0 ? __('entries.views_count', ['count' => number_format($entry->view_count)]) : __('entries.no_views') }}
+                                </div>
                             </td>
                             <td x-show="cols.path" class="align-top font-mono text-xs text-body-faint">
                                 @if ($isHome)

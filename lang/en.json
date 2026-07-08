@@ -594,5 +594,6 @@
     "entries.home_locked": "The home page path can't be changed",
     "entries.slug_saved": "Path updated",
     "entries.title_saved": "Page renamed",
-    "entries.add_translation": "Add"
+    "entries.add_translation": "Add",
+    "entries.views_count": ":count views"
 }

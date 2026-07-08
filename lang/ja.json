@@ -409,5 +409,6 @@
     "entries.home_locked": "ホームページのパスは変更できません",
     "entries.slug_saved": "パスを更新しました",
     "entries.title_saved": "ページ名を変更しました",
-    "entries.add_translation": "追加"
+    "entries.add_translation": "追加",
+    "entries.views_count": ":count 回閲覧"
 }

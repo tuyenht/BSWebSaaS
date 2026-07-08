@@ -594,5 +594,6 @@
     "entries.home_locked": "Đường dẫn trang chủ không thể thay đổi",
     "entries.slug_saved": "Đã cập nhật đường dẫn",
     "entries.title_saved": "Đã đổi tên trang",
-    "entries.add_translation": "Thêm"
+    "entries.add_translation": "Thêm",
+    "entries.views_count": ":count lượt xem"
 }

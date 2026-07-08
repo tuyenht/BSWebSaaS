@@ -15,3 +15,6 @@ Schedule::command('media:purge-trash')->daily()->withoutOverlapping();
 // Publish scheduled entries the moment their slot arrives (status=scheduled, published_at<=now).
 // Runs on the `scheduler` container (docker compose schedule:work).
 Schedule::command('entries:publish-due')->everyMinute()->withoutOverlapping();
+
+// Drain each site's Valkey-buffered storefront views into entries.view_count.
+Schedule::command('entries:flush-views')->everyFiveMinutes()->withoutOverlapping();
