@@ -32,6 +32,7 @@
     "entries.save_draft": "Lưu nháp",
     "entries.publish": "Đăng",
     "entries.section_fallback": "Trang",
+    "admin.breadcrumb_home": "Trang chủ",
     "entries.create_new": "Tạo mới",
     "entries.untitled": "(chưa có tiêu đề)",
     "entries.empty": "Chưa có nội dung nào.",
@@ -595,5 +596,8 @@
     "entries.slug_saved": "Đã cập nhật đường dẫn",
     "entries.title_saved": "Đã đổi tên trang",
     "entries.add_translation": "Thêm",
-    "entries.views_count": ":count lượt xem"
+    "entries.views_count": ":count lượt xem",
+    "entries.footer_showing": "Hiển thị :first–:last trong :total trang",
+    "entries.rows_per_page": "Dòng/trang",
+    "entries.manage_title": "Quản lý :label"
 }

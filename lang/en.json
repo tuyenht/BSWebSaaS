@@ -32,6 +32,7 @@
     "entries.save_draft": "Save draft",
     "entries.publish": "Publish",
     "entries.section_fallback": "Page",
+    "admin.breadcrumb_home": "Home",
     "entries.create_new": "New",
     "entries.untitled": "(untitled)",
     "entries.empty": "No content yet.",
@@ -595,5 +596,8 @@
     "entries.slug_saved": "Path updated",
     "entries.title_saved": "Page renamed",
     "entries.add_translation": "Add",
-    "entries.views_count": ":count views"
+    "entries.views_count": ":count views",
+    "entries.footer_showing": "Showing :first–:last of :total pages",
+    "entries.rows_per_page": "Rows per page",
+    "entries.manage_title": "Manage :label"
 }

@@ -229,6 +229,22 @@ it('changes a row status to published through the workflow', function (): void {
     });
 });
 
+it('cycles rows-per-page 20 → 50 → 10 → 20 and returns to the first page', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        makePageEntry($user, 'Trang một', 'trang-mot');
+
+        Livewire::actingAs($user->fresh())->test(Index::class)
+            ->assertSet('perPage', 20)
+            ->set('page', 2)
+            ->call('cyclePerPage')->assertSet('perPage', 50)->assertSet('page', 1)
+            ->call('cyclePerPage')->assertSet('perPage', 10)
+            ->call('cyclePerPage')->assertSet('perPage', 20);
+    });
+});
+
 it('schedules a row for a future time', function (): void {
     $editor = User::factory()->create();
 
