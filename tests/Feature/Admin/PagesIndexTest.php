@@ -210,3 +210,94 @@ it('clears all filters and restores the full list', function (): void {
             ->assertSee('Trang hai');
     });
 });
+
+it('changes a row status to published through the workflow', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $page = makePageEntry($editor, 'Nháp', 'nhap', 'draft');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('changeStatus', $page->ulid, 'published')
+            ->assertDispatched('bs-toast');
+
+        expect($page->fresh()->status)->toBe('published');
+    });
+});
+
+it('schedules a row for a future time', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $page = makePageEntry($editor, 'Hẹn giờ', 'hen-gio', 'draft');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('scheduleEntry', $page->ulid, now()->addDay()->format('Y-m-d\TH:i'))
+            ->assertDispatched('bs-toast');
+
+        expect($page->fresh()->status)->toBe('scheduled');
+    });
+});
+
+it('duplicates a row into a fresh draft copy', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.create']);
+        makePageEntry($editor, 'Gốc', 'goc');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('duplicate', Entry::query()->where('type', 'page')->firstOrFail()->ulid)
+            ->assertDispatched('bs-toast');
+
+        expect(Entry::query()->where('type', 'page')->count())->toBe(2);
+    });
+});
+
+it('trashes then restores a row', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.delete.any']);
+        $page = makePageEntry($editor, 'Xoá thử', 'xoa-thu');
+
+        $component = Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('trash', $page->ulid)
+            ->assertDispatched('bs-toast');
+        expect($page->fresh()->trashed())->toBeTrue();
+
+        $component->call('restore', $page->ulid);
+        expect($page->fresh()->trashed())->toBeFalse();
+    });
+});
+
+it('permanently deletes a trashed row', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.delete.any']);
+        $page = makePageEntry($editor, 'Xoá hẳn', 'xoa-han');
+        $page->delete();
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('forceDelete', $page->ulid)
+            ->assertDispatched('bs-toast');
+
+        expect(Entry::withTrashed()->where('ulid', $page->ulid)->exists())->toBeFalse();
+    });
+});
+
+it('forbids a viewer without publish from changing a status', function (): void {
+    $viewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($viewer): void {
+        grantRole($viewer, 'viewer', ['entries.view']);
+        $page = makePageEntry($viewer, 'Chỉ xem', 'chi-xem', 'draft');
+
+        Livewire::actingAs($viewer->fresh())->test(Index::class)
+            ->call('changeStatus', $page->ulid, 'draft')
+            ->assertForbidden();
+    });
+});

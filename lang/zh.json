@@ -387,5 +387,16 @@
     "entries.filter_match": "匹配 :count / :total 页",
     "entries.lang_hint": "将鼠标悬停在语言代码上以编辑或添加翻译。",
     "entries.template_default": "默认",
-    "entries.filter_none": "无"
+    "entries.filter_none": "无",
+    "entries.status_changed": "状态已更新",
+    "entries.scheduled_set": "已设置发布计划",
+    "entries.duplicated": "已复制页面",
+    "entries.trashed": "已移到回收站",
+    "entries.restored": "已恢复页面",
+    "entries.destroyed": "已永久删除",
+    "entries.trash_confirm": "将此页面移到回收站？",
+    "entries.force_delete_confirm": "永久删除此页面？此操作无法撤销。",
+    "entries.status_menu_label": "更改状态",
+    "entries.schedule_at": "选择发布时间",
+    "entries.schedule_set_action": "计划"
 }

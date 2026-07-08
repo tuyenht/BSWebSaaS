@@ -42,6 +42,18 @@ final class EntryPolicy
             || ($user->can('entries.delete.own') && $this->owns($user, $entry));
     }
 
+    /** Restore from Trash — same authority as delete (you can undo what you could remove). */
+    public function restore(User $user, Entry $entry): bool
+    {
+        return $this->delete($user, $entry);
+    }
+
+    /** Permanently purge from Trash — same authority as delete; irreversible, so also FORCE-gated in UI. */
+    public function forceDelete(User $user, Entry $entry): bool
+    {
+        return $this->delete($user, $entry);
+    }
+
     /** Submit for review (workflow Tầng-1): the path for authors without publish rights. */
     public function submit(User $user): bool
     {

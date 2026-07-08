@@ -572,5 +572,16 @@
     "entries.filter_match": ":count of :total pages",
     "entries.lang_hint": "Hover a code to edit or add its translation.",
     "entries.template_default": "Default",
-    "entries.filter_none": "None"
+    "entries.filter_none": "None",
+    "entries.status_changed": "Status updated",
+    "entries.scheduled_set": "Publishing scheduled",
+    "entries.duplicated": "Page duplicated",
+    "entries.trashed": "Moved to trash",
+    "entries.restored": "Page restored",
+    "entries.destroyed": "Permanently deleted",
+    "entries.trash_confirm": "Move this page to the trash?",
+    "entries.force_delete_confirm": "Permanently delete this page? This cannot be undone.",
+    "entries.status_menu_label": "Change status",
+    "entries.schedule_at": "Choose publish time",
+    "entries.schedule_set_action": "Schedule"
 }

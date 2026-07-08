@@ -2,16 +2,24 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
+use App\Modules\Admin\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Actions\DuplicateEntry;
+use App\Modules\Cms\Actions\PublishEntry;
+use App\Modules\Cms\Actions\TransitionEntryStatus;
+use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
+use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -138,6 +146,84 @@ final class Index extends Component
         $this->page = 1;
     }
 
+    /** Row status menu → published (via PublishEntry, route-synced) or draft/private (via the engine). */
+    public function changeStatus(string $ulid, string $status): void
+    {
+        $entry = $this->findEntry($ulid);
+        $user = $this->actingUser();
+
+        if ($status === EntryStatus::Published->value) {
+            app(PublishEntry::class)->handle($entry, app(SiteLocale::class)->default(), $user);
+        } elseif ($status === EntryStatus::Draft->value || $status === EntryStatus::Private->value) {
+            app(TransitionEntryStatus::class)->handle($entry, EntryStatus::from($status), $user);
+        } else {
+            return; // scheduled has its own datetime path; unknown values are ignored
+        }
+
+        $this->toast(__('entries.status_changed'));
+    }
+
+    public function scheduleEntry(string $ulid, string $publishAt): void
+    {
+        app(TransitionEntryStatus::class)->handle($this->findEntry($ulid), EntryStatus::Scheduled, $this->actingUser(), Carbon::parse($publishAt));
+
+        $this->toast(__('entries.scheduled_set'));
+    }
+
+    public function duplicate(string $ulid): void
+    {
+        $copy = app(DuplicateEntry::class)->handle($this->findEntry($ulid), $this->actingUser());
+        // Materialize the copied block images into the usage index, exactly as the editor does on save.
+        app(EntryBlockMediaReconciler::class)->reconcile($copy);
+
+        $this->toast(__('entries.duplicated'));
+    }
+
+    public function trash(string $ulid): void
+    {
+        $entry = $this->findEntry($ulid);
+        $this->authorize('delete', $entry);
+        $entry->delete();
+
+        $this->toast(__('entries.trashed'));
+    }
+
+    public function restore(string $ulid): void
+    {
+        $entry = $this->findEntry($ulid);
+        $this->authorize('restore', $entry);
+        $entry->restore();
+
+        $this->toast(__('entries.restored'));
+    }
+
+    public function forceDelete(string $ulid): void
+    {
+        $entry = $this->findEntry($ulid);
+        $this->authorize('forceDelete', $entry);
+        $entry->forceDelete(); // EntryObserver clears the block-image usage index
+
+        $this->toast(__('entries.destroyed'));
+    }
+
+    private function findEntry(string $ulid): Entry
+    {
+        return Entry::withTrashed()->where('ulid', $ulid)->firstOrFail();
+    }
+
+    private function actingUser(): User
+    {
+        $user = Auth::user();
+        assert($user instanceof User);
+
+        return $user;
+    }
+
+    private function toast(string $message): void
+    {
+        $this->dispatch('bs-toast', text: $message);
+    }
+
     /**
      * @param  list<string>  $values
      * @return list<string>
@@ -198,6 +284,8 @@ final class Index extends Component
             ? $this->buildTree($filtered, $locale)
             : $this->sortFlat($filtered, $locale);
 
+        $user = $this->actingUser();
+
         return view('admin::livewire.entries.index', [
             'rows' => $this->paginate($ordered),
             'counts' => $this->counts($type),
@@ -210,6 +298,9 @@ final class Index extends Component
             'homeSlug' => PathBuilder::HOME_SLUG,
             'sectionModel' => $section,
             'sectionKey' => $this->section,
+            'canPublish' => $user->can('entries.publish'),
+            'canCreate' => $user->can('entries.create'),
+            'canDelete' => $user->can('entries.delete.any') || $user->can('entries.delete.own'),
         ]);
     }
 

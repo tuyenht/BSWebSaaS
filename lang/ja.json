@@ -387,5 +387,16 @@
     "entries.filter_match": ":total 件中 :count 件",
     "entries.lang_hint": "コードにカーソルを合わせて翻訳を編集・追加。",
     "entries.template_default": "デフォルト",
-    "entries.filter_none": "なし"
+    "entries.filter_none": "なし",
+    "entries.status_changed": "ステータスを更新しました",
+    "entries.scheduled_set": "公開予約を設定しました",
+    "entries.duplicated": "ページを複製しました",
+    "entries.trashed": "ゴミ箱に移動しました",
+    "entries.restored": "ページを復元しました",
+    "entries.destroyed": "完全に削除しました",
+    "entries.trash_confirm": "このページをゴミ箱に移動しますか？",
+    "entries.force_delete_confirm": "このページを完全に削除しますか？元に戻せません。",
+    "entries.status_menu_label": "ステータスを変更",
+    "entries.schedule_at": "公開日時を選択",
+    "entries.schedule_set_action": "予約"
 }
