@@ -67,6 +67,54 @@ final readonly class RouteSync
     }
 
     /**
+     * Upsert the route for a product+locale at its composed path; returns that path. Mirrors sync():
+     * on a slug/category change it moves the route and records a 301 from the old path. The path is
+     * composed from PRIMITIVES (the product's primary category + slug) — Cms routing never references
+     * the Catalog Product model, so the module graph stays acyclic. Product redirects carry no target
+     * attribution (the redirects table has no product_id column yet); they still serve from → to.
+     */
+    public function syncProduct(int $productId, ?Taxonomy $primaryCategory, string $locale, string $slug): string
+    {
+        $path = $this->paths->forProduct($primaryCategory, $slug, $locale);
+
+        $this->assertPathAvailable($locale, $path, 'product_id', $productId);
+
+        $route = SiteRoute::query()
+            ->where('product_id', $productId)
+            ->where('locale', $locale)
+            ->first();
+
+        if ($route === null) {
+            SiteRoute::query()->create(['locale' => $locale, 'path' => $path, 'product_id' => $productId]);
+
+            return $path;
+        }
+
+        if ($route->path !== $path) {
+            $oldPath = $route->path;
+
+            // Collapse chains: anything that pointed at the old path now points at the new one.
+            Redirect::query()
+                ->where('locale', $locale)
+                ->where('to_path', $oldPath)
+                ->update(['to_path' => $path]);
+
+            // Record old → new (idempotent on from_path).
+            Redirect::query()->updateOrCreate(
+                ['locale' => $locale, 'from_path' => $oldPath],
+                ['to_path' => $path, 'status_code' => 301],
+            );
+
+            // The new path is now live content — retire any redirect FROM it (loop guard).
+            Redirect::query()->where('locale', $locale)->where('from_path', $path)->delete();
+
+            $route->update(['path' => $path]);
+        }
+
+        return $path;
+    }
+
+    /**
      * Re-sync the PUBLISHED descendants of a renamed ancestor page so their nested paths pick up
      * the new prefix — each records its own 301. The page tree is small per site; drafts are
      * skipped (they carry no route until published). A visited-set guards against a parent cycle.

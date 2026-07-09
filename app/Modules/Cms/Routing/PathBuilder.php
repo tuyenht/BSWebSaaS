@@ -74,9 +74,31 @@ final readonly class PathBuilder
             : PermalinkConfig::DEFAULT_PATTERN;
 
         $prefix = match ($pattern) {
-            'category' => $this->categoryPrefix($entry, $locale),
-            'category_path' => $this->categoryPath($entry, $locale),
+            'category' => $this->categoryPrefix($entry->taxonomies()->first(), $locale),
+            'category_path' => $this->categoryPath($entry->taxonomies()->first(), $locale),
             'base' => $section !== null ? $this->basePrefix($section['key']) : '',
+            default => '',
+        };
+
+        return $prefix.'/'.$slug;
+    }
+
+    /**
+     * A product's path per the catalog's permalink preset (section key `products`): flat `/slug`
+     * (default), `/{primary-category}/slug` (category), the full category chain (category_path), or a
+     * fixed `/{base}/slug` (base). Composed from PRIMITIVES — the primary category (a Cms Taxonomy) +
+     * slug — so Cms routing never depends on the Catalog Product model, keeping the module graph
+     * acyclic. The caller (a Catalog service) passes the product's primary category and slug.
+     */
+    public function forProduct(?Taxonomy $primaryCategory, string $slug, string $locale): string
+    {
+        $slug = trim($slug, '/');
+        $pattern = $this->permalinks->pattern('products', 'products');
+
+        $prefix = match ($pattern) {
+            'category' => $this->categoryPrefix($primaryCategory, $locale),
+            'category_path' => $this->categoryPath($primaryCategory, $locale),
+            'base' => $this->basePrefix('products'),
             default => '',
         };
 
@@ -132,27 +154,25 @@ final readonly class PathBuilder
         return '/'.trim($slug, '/');
     }
 
-    /** The `/primary-category` prefix (localized), or '' when the post carries no category. */
-    private function categoryPrefix(Entry $entry, string $locale): string
+    /** The `/primary-category` prefix (localized) for a routable's primary category, or '' when none. */
+    private function categoryPrefix(?Taxonomy $primary, string $locale): string
     {
-        $category = $entry->taxonomies()->first();
-
-        if ($category === null) {
+        if (! $primary instanceof Taxonomy) {
             return '';
         }
 
-        $translation = $category->translationFor($locale);
+        $translation = $primary->translationFor($locale);
 
         return $translation !== null ? '/'.trim($translation->slug, '/') : '';
     }
 
     /**
-     * The full ancestor chain of the post's primary category as localized slugs (root first), e.g.
-     * `/noi-that/van-phong`. Empty when the post has no category. A visited-set guards a parent cycle.
+     * The full ancestor chain of a routable's primary category as localized slugs (root first), e.g.
+     * `/noi-that/van-phong`. Empty when there is no category. A visited-set guards a parent cycle.
      */
-    private function categoryPath(Entry $entry, string $locale): string
+    private function categoryPath(?Taxonomy $primary, string $locale): string
     {
-        $node = $entry->taxonomies()->first();
+        $node = $primary;
         $segments = [];
         $seen = [];
 
