@@ -8,6 +8,7 @@ use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -37,6 +38,16 @@ function seoProvision(): void
         ownerName: 'Owner',
         ownerPassword: 'a-strong-password',
     ));
+
+    // Pin the `posts` section to the category preset so provisioned posts route /{category}/{slug}
+    // (platform default is flat; these SEO tests model a category-preset site, like An Vinh).
+    $site = Site::query()->where('name', 'An Vinh')->firstOrFail();
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'permalinks', 'key' => 'posts'],
+            ['value' => ['pattern' => 'category']],
+        );
+    });
 }
 
 function seoPublishPost(string $title, string $slug): void

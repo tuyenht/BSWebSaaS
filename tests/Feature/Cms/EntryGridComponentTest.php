@@ -76,7 +76,7 @@ it('maps a published project card and excludes drafts', function (): void {
         expect($data['items'])->toHaveCount(1);                 // draft excluded
         expect($data['items'][0])->toMatchArray([
             'title' => 'Mông Dương 1',
-            'url' => '/du-an/mong-duong-1',                      // routes via du-an primary category
+            'url' => '/mong-duong-1',                            // flat default (no section pinned to a preset)
             'image' => 'https://cdn.example/mong-duong-1.avif',  // from entry.meta
             'short_outcome' => 'Bảo ôn cách nhiệt nhà máy nhiệt điện', // from translation.excerpt
             'sector' => 'Nhiệt điện',                            // from the sector-vocabulary term

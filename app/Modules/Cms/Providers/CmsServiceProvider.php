@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Observers\EntryObserver;
 use App\Modules\Cms\Policies\EntryPolicy;
+use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
@@ -22,6 +23,15 @@ use Illuminate\Support\ServiceProvider;
  */
 final class CmsServiceProvider extends ServiceProvider
 {
+    #[\Override]
+    public function register(): void
+    {
+        // SectionResolver memoizes per-site the section a post belongs to (derived from its primary
+        // category); scoped so the memo is flushed between Octane operations and never leaks across
+        // requests, yet is shared within a request so bulk route-sync doesn't re-resolve per entry.
+        $this->app->scoped(SectionResolver::class);
+    }
+
     public function boot(): void
     {
         // Stable morph aliases for the menu_items.routable target (D3) → 'entry'/'taxonomy'

@@ -228,6 +228,7 @@ final readonly class SeedAnVinhContent
         $defaultLocale = SiteLocale::query()->where('is_default', true)->value('locale');
         $locale = is_string($defaultLocale) ? $defaultLocale : 'vi';
 
+        $this->pinPostSectionsToCategory();
         $this->seedProducts($locale);
         $this->seedProjects($locale);
         $this->seedServices($locale);
@@ -237,6 +238,24 @@ final readonly class SeedAnVinhContent
         $this->createGioiThieuPage($locale);
         $this->createDoiTacPage($locale);
         $this->updateBrandNAP($locale);
+    }
+
+    /**
+     * Pin An Vinh's post sections to the `category` permalink preset so their live URLs stay
+     * `/{category}/{slug}` (san-pham/du-an/dich-vu/tin-tuc) even though the platform default is now
+     * flat `/{slug}`. Written BEFORE any post is route-synced below, so the first sync already
+     * composes the pinned path — no flip window. An Vinh-specific (kept out of ProvisionSite so
+     * other tenants keep the flat default). Idempotent. The keys are ContentSection.key values;
+     * `posts` (news) is owned by ProvisionSite, the other three by this seeder.
+     */
+    private function pinPostSectionsToCategory(): void
+    {
+        foreach (['products', 'projects', 'services', 'posts'] as $section) {
+            SiteSetting::query()->updateOrCreate(
+                ['group_name' => 'permalinks', 'key' => $section],
+                ['value' => ['pattern' => 'category']],
+            );
+        }
     }
 
     private function seedProducts(string $locale): void

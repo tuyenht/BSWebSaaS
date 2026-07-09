@@ -59,7 +59,9 @@ it('links each latest post to its canonical route', function (): void {
             ['type' => 'latest_posts', 'props' => ['heading' => 'Tin moi', 'limit' => 5]],
         ]]);
 
-        expect($html)->toContain('href="/tin-tuc/bai-co-route"')->toContain('Bai co route');
+        // No section is pinned to a preset → the post routes flat (platform default); the component
+        // links to whatever RouteSync stored, so it reflects the flat canonical route.
+        expect($html)->toContain('href="/bai-co-route"')->toContain('Bai co route');
     });
 });
 

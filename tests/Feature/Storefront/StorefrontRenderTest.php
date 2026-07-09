@@ -8,6 +8,7 @@ use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -36,6 +37,16 @@ function provision(string $name, string $host, string $email): void
         ownerName: 'Owner',
         ownerPassword: 'a-strong-password',
     ));
+
+    // Pin the `posts` section to the category preset so provisioned posts route /{category}/{slug}.
+    // The platform default is flat; these render tests model a category-preset site (like An Vinh).
+    $site = Site::query()->where('name', $name)->firstOrFail();
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'permalinks', 'key' => 'posts'],
+            ['value' => ['pattern' => 'category']],
+        );
+    });
 }
 
 it('renders the provisioned An Vinh homepage as SSR HTML', function (): void {

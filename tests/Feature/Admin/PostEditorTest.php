@@ -9,6 +9,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Livewire\Livewire;
 
 /*
@@ -38,6 +39,11 @@ function seedPostCollection(string $slug = 'tin-tuc', string $name = 'Tin tức'
         'taxonomy_id' => $category->id,
         'permission_prefix' => 'entries',
         'sort_order' => 1,
+    ]);
+
+    // Pin the section to the category preset so its posts route /{category}/{slug} (default is flat).
+    SiteSetting::query()->create([
+        'group_name' => 'permalinks', 'key' => 'posts', 'value' => ['pattern' => 'category'],
     ]);
 
     return $category->id;

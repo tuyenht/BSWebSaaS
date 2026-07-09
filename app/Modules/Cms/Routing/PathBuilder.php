@@ -3,16 +3,20 @@
 namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 
 /**
- * Composes an entry's canonical URL path (design.md §213: "path = danh mục + slug").
- * A `page` is flat (`/slug`, with the home slug → `/`); a `post` (or other collection
- * type) is prefixed by its primary category's localized slug (`/tin-tuc/slug`). The
- * prefix is built from the per-locale taxonomy slug — NOT the ltree `path` (which is
- * structural/query-only) — so localized URLs stay correct. Nested-category chains are
- * a later step; the slice uses flat (one-level) categories.
+ * Composes an entry's canonical URL path (design.md §213: "path = danh mục + slug") from the
+ * per-site permalink preset. A page is flat `/slug` by default (home slug → `/`); a post is flat
+ * too, unless its section opts into a prefixing preset (category / category_path / base). The
+ * section — and thus the preset — is derived from the post's primary category via SectionResolver.
+ * Category prefixes are built from the per-locale taxonomy slug (NOT the ltree `path`, which is
+ * structural/query-only) so localized URLs stay correct.
+ *
+ * This is the single forward-composer and the sole locale-prefix chokepoint; the storefront read
+ * surfaces resolve inbound paths against the STORED routes RouteSync persists from here.
  */
 final readonly class PathBuilder
 {
@@ -22,6 +26,7 @@ final readonly class PathBuilder
     public function __construct(
         private SiteLocale $siteLocale,
         private PermalinkConfig $permalinks,
+        private SectionResolver $sections,
     ) {}
 
     /**
@@ -49,18 +54,42 @@ final readonly class PathBuilder
             return $this->pagePath($entry, $locale, $slug);
         }
 
-        // Collection content (post): prefix with the primary category's localized slug.
-        $prefix = $this->categoryPrefix($entry, $locale);
+        return $this->postPath($entry, $locale, $slug);
+    }
+
+    /**
+     * A post's path per its section's permalink preset (default flat `/slug`):
+     *   category      → /{primary-category}/slug
+     *   category_path → /{ancestor}/…/{primary-category}/slug
+     *   base          → /{configured-base}/slug
+     * The section (hence the preset) is derived from the post's primary category; a post with no
+     * resolvable section — or a preset whose prefix cannot be built — falls back to flat.
+     */
+    private function postPath(Entry $entry, string $locale, string $slug): string
+    {
+        $section = $this->sections->forEntry($entry);
+
+        $pattern = $section !== null
+            ? $this->permalinks->pattern($section['key'], $section['type'])
+            : PermalinkConfig::DEFAULT_PATTERN;
+
+        $prefix = match ($pattern) {
+            'category' => $this->categoryPrefix($entry, $locale),
+            'category_path' => $this->categoryPath($entry, $locale),
+            'base' => $section !== null ? $this->basePrefix($section['key']) : '',
+            default => '',
+        };
 
         return $prefix.'/'.$slug;
     }
 
     /**
-     * A page's path. Flat `/slug` (home → `/`) by default; the site's `pages` permalink pattern
-     * decides — only `nested` prefixes the page with its parent page's path (`/dich-vu/thiet-ke-web`).
-     * Under the default flat pattern a `parent_id` is admin tree-grouping only and never nests the URL.
-     * When nested, the chain is composed from ancestor SLUGS — not the stored route — so it is correct
-     * no matter which ancestors are published yet, and a visited-set guards against a parent cycle.
+     * A page's path. Flat `/slug` (home → `/`) by default; the site's `pages` permalink preset
+     * decides — `nested` prefixes the page with its parent page's path (`/dich-vu/thiet-ke-web`),
+     * `base` prefixes a fixed segment (`/{base}/slug`). Under flat a `parent_id` is admin
+     * tree-grouping only and never nests the URL. When nested, the chain is composed from ancestor
+     * SLUGS — not the stored route — so it is correct no matter which ancestors are published yet,
+     * and a visited-set guards against a parent cycle.
      *
      * @param  array<int, true>  $seen
      */
@@ -70,8 +99,14 @@ final readonly class PathBuilder
             return '/';
         }
 
+        $pattern = $this->permalinks->pattern('pages', 'pages');
+
+        if ($pattern === 'base') {
+            return $this->basePrefix('pages').'/'.$slug;
+        }
+
         $seen[$entry->id] = true;
-        $parent = $this->permalinks->pagesNested()
+        $parent = $pattern === 'nested'
             && $entry->parent_id !== null
             && ! isset($seen[$entry->parent_id])
                 ? $entry->parent
@@ -97,6 +132,7 @@ final readonly class PathBuilder
         return '/'.trim($slug, '/');
     }
 
+    /** The `/primary-category` prefix (localized), or '' when the post carries no category. */
     private function categoryPrefix(Entry $entry, string $locale): string
     {
         $category = $entry->taxonomies()->first();
@@ -108,5 +144,43 @@ final readonly class PathBuilder
         $translation = $category->translationFor($locale);
 
         return $translation !== null ? '/'.trim($translation->slug, '/') : '';
+    }
+
+    /**
+     * The full ancestor chain of the post's primary category as localized slugs (root first), e.g.
+     * `/noi-that/van-phong`. Empty when the post has no category. A visited-set guards a parent cycle.
+     */
+    private function categoryPath(Entry $entry, string $locale): string
+    {
+        $node = $entry->taxonomies()->first();
+        $segments = [];
+        $seen = [];
+
+        while ($node instanceof Taxonomy && ! isset($seen[$node->id])) {
+            $seen[$node->id] = true;
+            $translation = $node->translationFor($locale);
+
+            if ($translation !== null) {
+                $slug = trim((string) $translation->slug, '/');
+
+                if ($slug !== '') {
+                    array_unshift($segments, $slug);
+                }
+            }
+
+            $node = $node->parent_id !== null
+                ? Taxonomy::query()->whereKey($node->parent_id)->first()
+                : null;
+        }
+
+        return $segments === [] ? '' : '/'.implode('/', $segments);
+    }
+
+    /** The `/base` prefix for the `base` preset, or '' when the section has no base configured. */
+    private function basePrefix(string $section): string
+    {
+        $base = $this->permalinks->base($section);
+
+        return $base !== null ? '/'.$base : '';
     }
 }
