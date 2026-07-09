@@ -413,6 +413,7 @@
     "entries.status_menu_label": "ステータスを変更",
     "entries.schedule_at": "公開日時を選択",
     "entries.schedule_set_action": "予約",
+    "entries.schedule_future_only": "予約日時は現在より後の時刻を指定してください。",
     "entries.bulk_selected": ":count 件を選択中",
     "entries.bulk_publish": "公開",
     "entries.bulk_draft": "下書きに戻す",

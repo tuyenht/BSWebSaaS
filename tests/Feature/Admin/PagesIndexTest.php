@@ -260,6 +260,21 @@ it('schedules a row for a future time', function (): void {
     });
 });
 
+it('rejects scheduling a page for a past time so the publish-due cron cannot insta-publish it', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $page = makePageEntry($editor, 'Quá khứ', 'qua-khu', 'draft');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('scheduleEntry', $page->ulid, now()->subDay()->format('Y-m-d\TH:i'))
+            ->assertDispatched('bs-toast', text: __('entries.schedule_future_only'));
+
+        expect($page->fresh()->status)->toBe('draft'); // rejected — still a draft, never scheduled
+    });
+});
+
 it('duplicates a row into a fresh draft copy', function (): void {
     $editor = User::factory()->create();
 

@@ -358,7 +358,7 @@
                                                 </button>
                                                 <div x-show="sched" x-cloak class="px-2 pb-1.5 pt-1">
                                                     <label class="mb-1 block text-[11px] text-body-faint">{{ __('entries.schedule_at') }}</label>
-                                                    <input type="datetime-local" x-ref="when"
+                                                    <input type="datetime-local" x-ref="when" min="{{ now()->format('Y-m-d\TH:i') }}"
                                                         class="w-full rounded border border-border-strong bg-surface px-2 py-1 text-xs text-body-text">
                                                     <button type="button" x-on:click="$wire.scheduleEntry(@js($entry->ulid), $refs.when.value); open = false; sched = false"
                                                         class="mt-1.5 w-full rounded bg-admin-primary py-1 text-xs font-medium text-white transition-opacity hover:opacity-90">{{ __('entries.schedule_set_action') }}</button>

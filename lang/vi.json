@@ -596,6 +596,7 @@
     "entries.status_menu_label": "Đổi trạng thái",
     "entries.schedule_at": "Chọn thời điểm đăng",
     "entries.schedule_set_action": "Đặt lịch",
+    "entries.schedule_future_only": "Thời điểm lên lịch phải ở tương lai.",
     "entries.bulk_selected": "Đã chọn :count trang",
     "entries.bulk_publish": "Xuất bản",
     "entries.bulk_draft": "Chuyển nháp",
