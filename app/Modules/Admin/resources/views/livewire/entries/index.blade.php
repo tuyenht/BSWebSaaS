@@ -389,7 +389,7 @@
                                         @php $has = $entry->translations->contains(fn ($tr) => $tr->locale === $lc); @endphp
                                         {{-- The code itself isn't clickable; hover reveals a floating Sửa/Thêm that opens the editor for that locale. --}}
                                         <div class="group relative">
-                                            <span @class([
+                                            <span @if ($canEdit) title="{{ $has ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) }}" @endif @class([
                                                 'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
                                                 'border border-border bg-surface-muted text-body-text' => $has,
                                                 'border border-dashed border-border-strong text-placeholder' => ! $has,
