@@ -413,6 +413,7 @@
     "entries.status_menu_label": "更改状态",
     "entries.schedule_at": "选择发布时间",
     "entries.schedule_set_action": "计划",
+    "entries.schedule_future_only": "计划发布时间必须晚于当前时间。",
     "entries.bulk_selected": "已选择 :count 个页面",
     "entries.bulk_publish": "发布",
     "entries.bulk_draft": "转为草稿",

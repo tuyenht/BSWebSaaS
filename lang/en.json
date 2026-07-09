@@ -596,6 +596,7 @@
     "entries.status_menu_label": "Change status",
     "entries.schedule_at": "Choose publish time",
     "entries.schedule_set_action": "Schedule",
+    "entries.schedule_future_only": "The scheduled time must be in the future.",
     "entries.bulk_selected": ":count pages selected",
     "entries.bulk_publish": "Publish",
     "entries.bulk_draft": "Set to draft",

@@ -204,9 +204,32 @@ final class Index extends Component
 
     public function scheduleEntry(string $ulid, string $publishAt): void
     {
-        app(TransitionEntryStatus::class)->handle($this->findEntry($ulid), EntryStatus::Scheduled, $this->actingUser(), Carbon::parse($publishAt));
+        // Future-only: a past (or now) time would let entries:publish-due publish it on its very
+        // next run, so "scheduled" would flash and vanish. Reject it with a plain-language toast.
+        $when = $this->parseSchedule($publishAt);
+        if ($when === null || ! $when->isFuture()) {
+            $this->toast(__('entries.schedule_future_only'));
+
+            return;
+        }
+
+        app(TransitionEntryStatus::class)->handle($this->findEntry($ulid), EntryStatus::Scheduled, $this->actingUser(), $when);
 
         $this->toast(__('entries.scheduled_set'));
+    }
+
+    /** Parse the datetime-local value; null when empty or malformed (only a forged/broken submit sends that). */
+    private function parseSchedule(string $publishAt): ?Carbon
+    {
+        if (trim($publishAt) === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($publishAt);
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /** Inline rename — updates the default-locale translation title. */
