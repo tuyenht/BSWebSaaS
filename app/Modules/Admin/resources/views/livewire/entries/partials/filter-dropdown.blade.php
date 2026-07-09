@@ -1,8 +1,7 @@
-@props(['group', 'label', 'options', 'activeCount', 'icon' => null])
+@props(['group', 'label', 'options', 'activeCount', 'icon' => null, 'heading' => null])
 {{-- A multi-select facet dropdown (design §3a). Options carry their live count; OR within the
      group, AND across groups is enforced server-side. Open/close is client-side (Alpine). The
-     leading `icon` is optional — a filter with no obvious equivalent glyph (Ngôn ngữ) omits it
-     rather than guess a wrong one. --}}
+     optional `heading` renders as an uppercase label above the option list (design line 61). --}}
 <div x-data="{ open: false }" @click.outside="open = false" class="relative">
     <button type="button" @click="open = !open"
         @class([
@@ -21,6 +20,9 @@
     </button>
     <div x-show="open" x-cloak x-transition
         class="absolute left-0 z-30 mt-1 max-h-72 w-60 overflow-auto rounded-lg border border-border bg-surface p-1.5 shadow-lg">
+        @if ($heading)
+            <p class="px-2 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wide text-placeholder">{{ $heading }}</p>
+        @endif
         @forelse ($options as $opt)
             <button type="button" wire:click="toggleFilterValue('{{ $group }}', '{{ $opt['value'] }}')"
                 class="flex w-full items-center gap-2.5 rounded px-2 py-1.5 text-left text-sm hover:bg-surface-hover">

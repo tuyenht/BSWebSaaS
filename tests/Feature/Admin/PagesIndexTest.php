@@ -434,3 +434,51 @@ it('slugifies a Vietnamese slug server-side', function (): void {
         expect($page->translationFor('vi')->fresh()->slug)->toBe('dat-lich-hen');
     });
 });
+
+it('clamps an out-of-range per_page back to the default on a live update', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        makePageEntry($user, 'Trang một', 'trang-mot');
+
+        Livewire::actingAs($user->fresh())->test(Index::class)
+            ->set('page', 3)
+            ->set('perPage', 0)
+            ->assertSet('perPage', 20) // 0 (and any value outside 10/20/50) resets to the default
+            ->assertSet('page', 1); // …and strands nobody on a now-invalid page number
+
+        Livewire::actingAs($user->fresh())->test(Index::class)
+            ->set('perPage', 999999)
+            ->assertSet('perPage', 20);
+    });
+});
+
+it('does not degenerate when the URL supplies a zero per_page', function (): void {
+    // perPage is a #[Url] property, so `?per_page=0` sets it directly during mount — a path
+    // updatedPerPage() never sees (that hook only fires on a later property *change*). Without
+    // mount()'s own clamp, paginate() divides the row total by a zero perPage and 500s.
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        makePageEntry($user, 'Trang một', 'trang-mot');
+    });
+
+    $this->actingAs($user)->get('http://a.test/admin/content?per_page=0')->assertOk();
+});
+
+it('navigates to a specific page via the footer pager', function (): void {
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        grantRole($user, 'editor', ['entries.view']);
+        foreach (range(1, 25) as $i) {
+            makePageEntry($user, "Trang {$i}", "trang-{$i}");
+        }
+
+        Livewire::actingAs($user->fresh())->test(Index::class)
+            ->call('gotoPage', 2)
+            ->assertSet('page', 2);
+    });
+});

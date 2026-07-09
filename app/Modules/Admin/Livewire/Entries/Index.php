@@ -89,6 +89,13 @@ final class Index extends Component
     public function mount(?string $section = null): void
     {
         $this->section = $section ?? request()->query('section');
+        // #[Url] hydrates perPage directly from the query string during mount, which bypasses
+        // updatedPerPage() below (that hook only fires on a later property *change*, not this
+        // initial value) — so a degenerate `?per_page=0` must also be clamped here, or paginate()
+        // divides the row total by zero on the very first request.
+        if (! in_array($this->perPage, [10, 20, 50], true)) {
+            $this->perPage = 20;
+        }
         $this->authorize('viewAny', Entry::class);
     }
 
@@ -126,6 +133,21 @@ final class Index extends Component
         $index = array_search($this->perPage, $options, true);
         $this->perPage = $options[$index === false ? 0 : ($index + 1) % count($options)];
         $this->page = 1;
+    }
+
+    /** Guards a live property change (e.g. a forged $wire.set) — mount()'s own clamp covers the URL. */
+    public function updatedPerPage(): void
+    {
+        if (! in_array($this->perPage, [10, 20, 50], true)) {
+            $this->perPage = 20;
+        }
+        $this->page = 1;
+    }
+
+    /** Footer pager — page-pill/arrow clicks; paginate() clamps an out-of-range target below. */
+    public function gotoPage(int $page): void
+    {
+        $this->page = max(1, $page);
     }
 
     public function toggleFilterValue(string $group, string $value): void
@@ -528,7 +550,9 @@ final class Index extends Component
         $out = [];
         foreach ($locales as $lc) {
             $count = $base->filter(fn (Entry $e): bool => $e->translations->contains(fn (EntryTranslation $t): bool => $t->locale === $lc))->count();
-            $out[] = ['value' => $lc, 'label' => strtoupper($lc), 'count' => $count, 'active' => in_array($lc, $this->langF, true)];
+            // Localized by the ADMIN UI locale, e.g. a vi-admin sees "Tiếng Việt (VI)".
+            $label = __('entries.language_'.$lc).' ('.strtoupper($lc).')';
+            $out[] = ['value' => $lc, 'label' => $label, 'count' => $count, 'active' => in_array($lc, $this->langF, true)];
         }
 
         return $out;
