@@ -14,12 +14,13 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -218,15 +219,15 @@ final class Index extends Component
         $this->toast(__('entries.scheduled_set'));
     }
 
-    /** Parse the datetime-local value; null when empty or malformed (only a forged/broken submit sends that). */
-    private function parseSchedule(string $publishAt): ?Carbon
+    /** Parse the datetime-local value in the site's zone → UTC; null when empty or malformed (only a forged/broken submit sends that). */
+    private function parseSchedule(string $publishAt): ?CarbonImmutable
     {
         if (trim($publishAt) === '') {
             return null;
         }
 
         try {
-            return Carbon::parse($publishAt);
+            return app(SiteTime::class)->toStorage($publishAt);
         } catch (\Exception) {
             return null;
         }
@@ -518,6 +519,7 @@ final class Index extends Component
             'canCreate' => $user->can('entries.create'),
             'canDelete' => $user->can('entries.delete.any') || $user->can('entries.delete.own'),
             'canEdit' => $user->can('entries.edit.any') || $user->can('entries.edit.own'),
+            'siteTime' => app(SiteTime::class),
         ]);
     }
 
