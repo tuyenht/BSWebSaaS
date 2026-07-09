@@ -6,6 +6,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use RuntimeException;
 
@@ -30,13 +31,17 @@ final readonly class PublishEntry
         $gate = Gate::forUser($actor);
 
         if ($gate->allows('publish', $entry)) {
-            $entry->update([
-                'status' => 'published',
-                'published_at' => $entry->published_at ?? now(),
-            ]);
-            $translation->update(['status' => 'published']);
+            // Atomic: a RouteConflictException from sync must roll back the status flip, or the
+            // entry is left `published` with no reachable route — a silent 404.
+            DB::transaction(function () use ($entry, $translation, $locale): void {
+                $entry->update([
+                    'status' => 'published',
+                    'published_at' => $entry->published_at ?? now(),
+                ]);
+                $translation->update(['status' => 'published']);
 
-            $this->routes->sync($entry, $locale, $translation->slug);
+                $this->routes->sync($entry, $locale, $translation->slug);
+            });
 
             return 'published';
         }
