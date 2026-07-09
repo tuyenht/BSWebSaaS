@@ -53,6 +53,26 @@
             'primary' => 'bg-admin-primary',
             default => 'bg-admin-secondary',
         };
+        // Footer pager (design lines 255-262): always renders — even a single page shows "[1]"
+        // with dimmed arrows. Windowed to first, last, and current±1; any gap collapses to one
+        // "…" (a `null` cell) so a large page count never floods the footer with every number.
+        $pagerWindow = function (int $current, int $last): array {
+            $keep = collect([1, $last, $current - 1, $current, $current + 1])
+                ->filter(fn (int $p): bool => $p >= 1 && $p <= $last)
+                ->unique()->sort()->values();
+
+            $cells = [];
+            $prev = null;
+            foreach ($keep as $p) {
+                if ($prev !== null && $p - $prev > 1) {
+                    $cells[] = null;
+                }
+                $cells[] = $p;
+                $prev = $p;
+            }
+
+            return $cells;
+        };
     @endphp
 
     <x-admin::card class="mt-4">
@@ -100,18 +120,16 @@
                         class="block w-full rounded border border-border-strong bg-surface py-2 pl-9 pr-3 text-sm text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
                 </div>
 
-                {{-- Ngôn ngữ intentionally has no leading icon — no translate/language glyph exists
-                     in the icon set and guessing a wrong one would be worse than none (gap 6). --}}
-                @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'lang', 'label' => __('entries.col_language'), 'options' => $facets['lang'], 'activeCount' => count($langF)])
-                @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'creator', 'label' => __('entries.col_creator'), 'options' => $facets['creator'], 'activeCount' => count($creatorF), 'icon' => 'user'])
-                @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'template', 'label' => __('entries.filter_template'), 'options' => $facets['template'], 'activeCount' => count($templateF), 'icon' => 'ri-grid'])
+                @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'lang', 'label' => __('entries.col_language'), 'options' => $facets['lang'], 'activeCount' => count($langF), 'icon' => 'ri-translate-2', 'heading' => __('entries.filter_by_language')])
+                @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'creator', 'label' => __('entries.col_creator'), 'options' => $facets['creator'], 'activeCount' => count($creatorF), 'icon' => 'ri-user-3', 'heading' => __('entries.filter_by_creator')])
+                @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'template', 'label' => __('entries.filter_template'), 'options' => $facets['template'], 'activeCount' => count($templateF), 'icon' => 'ri-layout-2', 'heading' => __('entries.filter_by_template')])
 
                 <div class="ml-auto h-6 w-px bg-border"></div>
 
                 <div x-data="{ open: false }" @click.outside="open = false" class="relative">
                     <button type="button" @click="open = !open"
                         class="inline-flex items-center gap-2 rounded border border-border-strong bg-surface px-3 py-2 text-sm font-medium text-body-text transition-colors hover:border-admin-primary">
-                        <x-admin::icon name="ri-grid" class="size-4" /> {{ __('entries.cols_button') }}
+                        <x-admin::icon name="ri-layout-column" class="size-4" /> {{ __('entries.cols_button') }}
                         <x-admin::icon name="chevron-down" class="size-3.5 transition-transform" ::class="open && 'rotate-180'" />
                     </button>
                     <div x-show="open" x-cloak x-transition
@@ -207,19 +225,19 @@
                         </th>
                         <th class="w-full">
                             <button type="button" wire:click="sortBy('name')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.title_label') }} <x-admin::icon :name="$sortIcon('name')" class="size-3.5" />
+                                {{ __('entries.title_label') }} <x-admin::icon :name="$sortIcon('name')" class="size-3.5 {{ $sortKey === 'name' ? 'text-admin-primary' : '' }}" />
                             </button>
                         </th>
                         <th x-show="cols.path">{{ __('entries.col_path') }}</th>
                         <th>
                             <button type="button" wire:click="sortBy('status')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.col_status') }} <x-admin::icon :name="$sortIcon('status')" class="size-3.5" />
+                                {{ __('entries.col_status') }} <x-admin::icon :name="$sortIcon('status')" class="size-3.5 {{ $sortKey === 'status' ? 'text-admin-primary' : '' }}" />
                             </button>
                         </th>
                         <th x-show="cols.langs">{{ __('entries.col_language') }}</th>
                         <th x-show="cols.creator">
                             <button type="button" wire:click="sortBy('creator')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.col_creator') }} <x-admin::icon :name="$sortIcon('creator')" class="size-3.5" />
+                                {{ __('entries.col_creator') }} <x-admin::icon :name="$sortIcon('creator')" class="size-3.5 {{ $sortKey === 'creator' ? 'text-admin-primary' : '' }}" />
                             </button>
                         </th>
                         <th class="w-[132px] text-center">{{ __('entries.col_actions') }}</th>
@@ -275,9 +293,9 @@
                             </td>
                             <td x-show="cols.path" class="align-top font-mono text-xs text-body-faint">
                                 @if ($isHome)
-                                    <span class="inline-flex items-center gap-1 text-placeholder" title="{{ __('entries.home_locked') }}"><x-admin::icon name="home" class="size-3.5" /> /</span>
+                                    <span class="inline-flex items-center gap-1 text-placeholder" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-admin::icon name="ri-lock" class="size-3" /></span>
                                 @elseif ($canEdit)
-                                    <div x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }" class="flex max-w-[240px] items-center">
+                                    <div wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }" class="flex max-w-[240px] items-center">
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
                                             class="-mx-1 truncate rounded px-1 py-0.5 hover:bg-[#eef2fb]" title="{{ $path }}">{{ $path ?? '—' }}</button>
@@ -449,7 +467,33 @@
                             {{ $perPage }} <x-admin::icon name="chevron-down" class="size-3.5 text-body-faint" />
                         </button>
                     </div>
-                    <x-admin::pagination :paginator="$rows" />
+                    @php
+                        $pgCurrent = $rows->currentPage();
+                        $pgLast = $rows->lastPage();
+                        $pgBase = 'inline-flex h-9 min-w-9 items-center justify-center rounded px-3 text-sm transition-colors';
+                    @endphp
+                    <nav aria-label="Pagination" class="flex items-center gap-1">
+                        <button type="button" wire:click="gotoPage({{ max(1, $pgCurrent - 1) }})" @disabled($pgCurrent <= 1)
+                            aria-label="{{ __('admin.pagination.previous') }}"
+                            @class([$pgBase, 'text-body-muted hover:bg-surface-hover' => $pgCurrent > 1, 'cursor-not-allowed text-ink-ghost' => $pgCurrent <= 1])>
+                            <x-admin::icon name="chevron-left" class="size-4" />
+                        </button>
+                        @foreach ($pagerWindow($pgCurrent, $pgLast) as $cell)
+                            @if ($cell === null)
+                                <span class="px-1 text-placeholder">&hellip;</span>
+                            @else
+                                <button type="button" wire:click="gotoPage({{ $cell }})"
+                                    @class([$pgBase, 'bg-admin-primary font-medium text-white' => $cell === $pgCurrent, 'text-body-muted hover:bg-surface-hover' => $cell !== $pgCurrent])>
+                                    {{ $cell }}
+                                </button>
+                            @endif
+                        @endforeach
+                        <button type="button" wire:click="gotoPage({{ min($pgLast, $pgCurrent + 1) }})" @disabled($pgCurrent >= $pgLast)
+                            aria-label="{{ __('admin.pagination.next') }}"
+                            @class([$pgBase, 'text-body-muted hover:bg-surface-hover' => $pgCurrent < $pgLast, 'cursor-not-allowed text-ink-ghost' => $pgCurrent >= $pgLast])>
+                            <x-admin::icon name="chevron-right" class="size-4" />
+                        </button>
+                    </nav>
                 </div>
             </div>
         </div>
