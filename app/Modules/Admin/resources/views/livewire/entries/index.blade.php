@@ -266,7 +266,7 @@
                             $parts = $creator ? preg_split('/\s+/', trim($creator)) : [];
                             $initials = $parts ? mb_strtoupper(mb_substr($parts[0], 0, 1).(count($parts) > 1 ? mb_substr(end($parts), 0, 1) : '')) : '—';
                             $c = $avatarPalette[$creator ? abs(crc32($creator)) % count($avatarPalette) : 0];
-                            $when = $isScheduled ? $entry->published_at : $entry->updated_at;
+                            $when = $siteTime->forDisplay($isScheduled ? $entry->published_at : $entry->updated_at);
                             $slugLeaf = $t?->slug;
                             $slugPrefix = ($path !== null && $slugLeaf) ? \Illuminate\Support\Str::beforeLast($path, $slugLeaf) : '/';
                         @endphp
@@ -358,7 +358,7 @@
                                                 </button>
                                                 <div x-show="sched" x-cloak class="px-2 pb-1.5 pt-1">
                                                     <label class="mb-1 block text-[11px] text-body-faint">{{ __('entries.schedule_at') }}</label>
-                                                    <input type="datetime-local" x-ref="when" min="{{ now()->format('Y-m-d\TH:i') }}"
+                                                    <input type="datetime-local" x-ref="when" min="{{ $siteTime->now()->format('Y-m-d\TH:i') }}"
                                                         class="w-full rounded border border-border-strong bg-surface px-2 py-1 text-xs text-body-text">
                                                     <button type="button" x-on:click="$wire.scheduleEntry(@js($entry->ulid), $refs.when.value); open = false; sched = false"
                                                         class="mt-1.5 w-full rounded bg-admin-primary py-1 text-xs font-medium text-white transition-opacity hover:opacity-90">{{ __('entries.schedule_set_action') }}</button>
