@@ -17,7 +17,7 @@ use App\Modules\Cms\Models\Taxonomy;
  */
 final class RouteResolver
 {
-    public function resolve(string $locale, string $path): ResolvedContent|ResolvedCategory|null
+    public function resolve(string $locale, string $path): ResolvedContent|ResolvedCategory|ResolvedProduct|null
     {
         $route = SiteRoute::query()
             ->where('locale', $locale)
@@ -36,7 +36,13 @@ final class RouteResolver
             return $this->resolveCategory($route->taxonomy_id, $locale);
         }
 
-        return null; // product routes are not wired yet
+        // Product routes carry only a thin reference — Cms never loads Catalog\Product (keeps the
+        // module graph acyclic). The storefront loads the product and enforces published visibility.
+        if ($route->product_id !== null) {
+            return new ResolvedProduct($route->product_id, $locale);
+        }
+
+        return null;
     }
 
     /**

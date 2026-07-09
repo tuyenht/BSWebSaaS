@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Http\Controllers;
 
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Navigation\MenuResolver;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\ResolvedCategory;
 use App\Modules\Cms\Routing\ResolvedContent;
+use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -76,6 +78,10 @@ final readonly class StorefrontController
             'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
             'brand' => $this->brand(),
         ];
+
+        if ($resolved instanceof ResolvedProduct) {
+            return $this->renderProduct($resolved, $locale, $path, $chrome);
+        }
 
         return $resolved instanceof ResolvedCategory
             ? $this->renderCategory($resolved, $locale, $path, $chrome)
@@ -268,14 +274,70 @@ final readonly class StorefrontController
     }
 
     /**
+     * Render a catalog product detail page. The product is loaded HERE (the storefront may depend on
+     * Catalog; Cms routing must not) and visibility is enforced at load — an unpublished/soft-deleted
+     * product, or one with no translation for the locale, 404s. Name + description HTML + gallery are
+     * handed to the Theme as primitives.
+     *
+     * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
+     */
+    private function renderProduct(ResolvedProduct $resolved, string $locale, string $path, array $chrome): Response
+    {
+        $product = Product::query()
+            ->whereKey($resolved->productId)
+            ->where('status', 'published')
+            ->with(['translations', 'images.media'])
+            ->first();
+
+        abort_if($product === null, 404);
+
+        $translation = $product->translationFor($locale);
+        abort_if($translation === null, 404);
+
+        $canonical = url($this->paths->publicUrl($path, $locale));
+        $extra = $chrome;
+        $extra['canonical'] = $canonical;
+        $extra['ogType'] = 'product';
+        $extra['breadcrumb'] = [
+            $this->homeCrumb($locale),
+            ['name' => $translation->name, 'url' => $canonical],
+        ];
+
+        $images = [];
+        foreach ($product->images as $image) {
+            $key = $image->media?->storage_key;
+            if (is_string($key) && $key !== '') {
+                $images[] = ['url' => $this->media->url($key, 1280), 'alt' => $translation->name];
+            }
+        }
+        if ($images !== []) {
+            $extra['ogImage'] = $images[0]['url'];
+        }
+
+        $html = $this->renderer->renderProduct(
+            $translation->name,
+            (string) $translation->description,
+            $images,
+            ['title' => $translation->seo_title, 'description' => $translation->seo_description],
+            $extra,
+        );
+
+        return response($html);
+    }
+
+    /**
      * hreflang alternates for the resolved content (design.md §10/§18): one entry per locale the
      * content is PUBLISHED in (self from the in-hand path; other locales from their stored route),
      * plus x-default → the site default. Every URL is absolute + locale-prefixed via publicUrl.
      *
      * @return list<array{hreflang: string, href: string}>
      */
-    private function hreflangFor(ResolvedContent|ResolvedCategory $resolved, string $locale, string $default, string $path): array
+    private function hreflangFor(ResolvedContent|ResolvedCategory|ResolvedProduct $resolved, string $locale, string $default, string $path): array
     {
+        if ($resolved instanceof ResolvedProduct) {
+            return [];   // product hreflang alternates are a later step (An Vinh products are single-locale)
+        }
+
         if ($resolved instanceof ResolvedContent) {
             $entry = $resolved->entry;
             $others = [];

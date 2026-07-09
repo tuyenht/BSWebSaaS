@@ -62,4 +62,28 @@ final readonly class PageRenderer
             'pagination' => $pagination,
         ] + $extra)->render();
     }
+
+    /**
+     * Render a product detail page: name + description HTML + gallery, on the product layout
+     * (theme::layouts.product). Like render()/renderCategory(), takes PRIMITIVES (a pre-sanitized
+     * description string + resolved image URLs) so the Theme module stays independent of Cms and
+     * Catalog.
+     *
+     * @param  list<array{url: string, alt: string}>  $images
+     * @param  array{title?: string|null, description?: string|null}  $seo
+     * @param  array<string, mixed>  $extra  extra layout vars (chrome, canonical, og:*, breadcrumb)
+     */
+    public function renderProduct(string $name, string $descriptionHtml, array $images, array $seo = [], array $extra = []): string
+    {
+        $layout = $this->templates->layoutFor('product');
+
+        return $this->views->make($layout, [
+            'title' => $name,
+            'seoTitle' => $seo['title'] ?? $name,
+            'seoDescription' => $seo['description'] ?? null,
+            'tokens' => $this->theme->tokens(),
+            'description' => $descriptionHtml,
+            'images' => $images,
+        ] + $extra)->render();
+    }
 }
