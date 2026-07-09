@@ -42,6 +42,16 @@
             'trash' => 'bg-admin-danger/10 text-admin-danger',
             default => 'bg-surface-muted text-body-faint', // draft — design: grey chip, not blue
         };
+        // Gap (design §3a JS lines 791-795): each status tab carries its own leading glyph,
+        // not just the "all" tab — Trash keeps its separate hard-coded ri-delete-bin.
+        $tabIcon = fn (string $key): string => match ($key) {
+            'all' => 'ri-file-list-3',
+            'published' => 'ri-global',
+            'draft' => 'ri-draft',
+            'scheduled' => 'ri-calendar-schedule',
+            'private' => 'ri-lock',
+            default => 'ri-file-list-3',
+        };
         // Gap 5: status dot colored from the same badge color NAME ($statusColor's values) —
         // one source of truth instead of a parallel status→class map.
         $dotClass = fn (string $color): string => match ($color) {
@@ -85,9 +95,7 @@
                         'border-admin-primary text-admin-primary' => $tab === $key,
                         'border-transparent text-body-faint hover:text-body-text' => $tab !== $key,
                     ])>
-                    @if ($key === 'all')
-                        <x-admin::icon name="ri-list-check-2" class="size-4" />
-                    @endif
+                    <x-admin::icon :name="$tabIcon($key)" class="size-4" />
                     {{ $label }}
                     <span class="rounded px-1.5 py-0.5 text-xs font-semibold leading-none {{ $tabBadgeClass($key) }}">{{ $counts[$key] ?? 0 }}</span>
                 </button>
@@ -276,7 +284,10 @@
                                     @if ($canEdit)
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.titleInput.focus(); $refs.titleInput.select() })"
-                                            class="-mx-1 rounded px-1 py-0.5 text-left font-medium text-body-text hover:bg-[#eef2fb]">{{ $t?->title ?? __('entries.untitled') }}</button>
+                                            title="{{ __('entries.edit_name_hint') }}"
+                                            class="group relative -mx-1 rounded py-0.5 pl-1 pr-5 text-left font-medium text-body-text transition-colors hover:bg-[#eef2fb] hover:text-admin-primary">{{ $t?->title ?? __('entries.untitled') }}
+                                            <x-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-admin-primary opacity-0 transition-opacity group-hover:opacity-100" />
+                                        </button>
                                         <input type="text" x-show="editing" x-cloak x-ref="titleInput" x-model="value"
                                             @keydown.enter.prevent="cancel = false; $el.blur()"
                                             @keydown.escape="cancel = true; $el.blur()"
@@ -298,7 +309,10 @@
                                     <div wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }" class="flex max-w-[240px] items-center">
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
-                                            class="-mx-1 truncate rounded px-1 py-0.5 hover:bg-[#eef2fb]" title="{{ $path }}">{{ $path ?? '—' }}</button>
+                                            title="{{ $path }} · {{ __('entries.edit_hint') }}"
+                                            class="group relative -mx-1 truncate rounded py-0.5 pl-1 pr-4 text-body-faint transition-colors hover:bg-[#eef2fb] hover:text-admin-primary">{{ $path ?? '—' }}
+                                            <x-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-admin-primary opacity-0 transition-opacity group-hover:opacity-100" />
+                                        </button>
                                         <span x-show="editing" x-cloak class="flex items-center">
                                             <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
                                             <input type="text" x-ref="slugInput" x-model="value"
@@ -360,7 +374,7 @@
                                 @endif
                                 @if ($when)
                                     <div class="mt-1 flex items-center gap-1 text-[11px] text-placeholder">
-                                        <x-admin::icon name="clock" class="size-3" />
+                                        <x-admin::icon :name="$isScheduled ? 'ri-time' : 'ri-history'" class="size-3" />
                                         @if ($isScheduled)
                                             {{ __('entries.scheduled_prefix') }} {{ $when->locale(app()->getLocale())->isoFormat('D MMM, Y') }} · {{ $when->format('H:i') }}
                                         @else
@@ -381,11 +395,16 @@
                                                 'border border-dashed border-border-strong text-placeholder' => ! $has,
                                             ])>{{ strtoupper($lc) }}</span>
                                             @if ($canEdit)
-                                                <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) }}" wire:navigate
-                                                    class="absolute bottom-full left-1/2 z-20 mb-1 hidden -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-white shadow-lg group-hover:inline-flex {{ $has ? 'bg-admin-primary' : 'bg-admin-success' }}">
-                                                    <x-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
-                                                    {{ $has ? __('entries.edit_action') : __('entries.add_translation') }}
-                                                </a>
+                                                {{-- §3a: the popover is wrapped with a padding-gap (not a margin) + pointer-events so the
+                                                     cursor can travel from the chip onto the Sửa/Thêm button without the hover dropping. --}}
+                                                <span class="pointer-events-none absolute bottom-full left-1/2 z-20 -translate-x-1/2 pb-1.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+                                                    <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) }}" wire:navigate
+                                                        title="{{ $has ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) }}"
+                                                        class="inline-flex items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-white shadow-lg {{ $has ? 'bg-admin-primary' : 'bg-admin-success' }}">
+                                                        <x-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
+                                                        {{ $has ? __('entries.edit_action') : __('entries.add_translation') }}
+                                                    </a>
+                                                </span>
                                             @endif
                                         </div>
                                     @endforeach
