@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Publishes a scheduled entry when its time arrives — the counterpart to PublishEntry's Tầng-1
@@ -19,11 +20,15 @@ final readonly class PublishScheduledEntry
 
     public function handle(Entry $entry): void
     {
-        $entry->update(['status' => 'published']);
+        // Atomic: if any locale's route sync conflicts, roll the whole publish back rather than
+        // leave the entry `published` with some locales unrouted.
+        DB::transaction(function () use ($entry): void {
+            $entry->update(['status' => 'published']);
 
-        foreach ($entry->translations as $translation) {
-            $translation->update(['status' => 'published']);
-            $this->routes->sync($entry, $translation->locale, $translation->slug);
-        }
+            foreach ($entry->translations as $translation) {
+                $translation->update(['status' => 'published']);
+                $this->routes->sync($entry, $translation->locale, $translation->slug);
+            }
+        });
     }
 }
