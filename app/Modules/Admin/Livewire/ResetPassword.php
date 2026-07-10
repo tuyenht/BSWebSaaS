@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire;
 use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Support\Facades\Password;
@@ -41,7 +42,7 @@ final class ResetPassword extends Component
         $this->validate([
             'token' => 'required',
             'email' => 'required|email',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => 'required|string|min:10|confirmed',
         ]);
 
         $status = Password::reset(
@@ -54,6 +55,12 @@ final class ResetPassword extends Component
             function (CanResetPassword $user, string $password): void {
                 if ($user instanceof User) {
                     $user->forceFill(['password' => $password])->save();
+
+                    // Security-sensitive event — parity with login/OTP/2FA, which all audit.
+                    Audit::record('auth.password.reset', [
+                        'actor_id' => $user->getAuthIdentifier(),
+                        'actor_label' => $user->email,
+                    ]);
                 }
             },
         );
