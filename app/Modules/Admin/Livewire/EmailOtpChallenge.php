@@ -48,7 +48,7 @@ final class EmailOtpChallenge extends Component
             return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
         }
 
-        $rlKey = 'email-otp-verify:'.Cast::string($user->getAuthIdentifier());
+        $rlKey = 'email-otp-verify:'.Cast::int($user->getAuthIdentifier());
         if (RateLimiter::tooManyAttempts($rlKey, 5)) {
             // Hard cap: burn the code so it can't be brute-forced — a fresh one is required.
             app(EmailOtp::class)->invalidate($user);

@@ -52,7 +52,7 @@ final class TwoFactorChallenge extends Component
         // Bound TOTP/recovery guesses the same way the email OTP challenge is (parity): 5 wrong
         // codes lock the challenge for 10 minutes, so a stolen password can't be paired with an
         // online brute-force of the 6-digit code.
-        $rlKey = 'admin-2fa-verify:'.Cast::string($user->getAuthIdentifier());
+        $rlKey = 'admin-2fa-verify:'.Cast::int($user->getAuthIdentifier());
         if (RateLimiter::tooManyAttempts($rlKey, 5)) {
             Audit::record('auth.2fa.locked', [
                 'actor_id' => $user->getAuthIdentifier(),

@@ -2,6 +2,7 @@
 
 use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
+use App\Modules\Admin\Notifications\EmailOtpNotification;
 use App\Modules\Admin\Support\EmailOtp;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
@@ -63,6 +64,47 @@ it('caps OTP sends per account per hour (anti email-bomb)', function (): void {
             expect($otp->send($user))->toBeTrue();
         }
         expect($otp->send($user))->toBeFalse(); // the 7th within the hour is dropped, not emailed
+    });
+});
+
+it('does not accept one user email OTP for another user (no cross-user 2FA bypass)', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $userA = User::factory()->create();
+    $userB = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($userA, $userB): void {
+        $otp = app(EmailOtp::class);
+        $otp->send($userA);
+
+        // The plaintext code A was emailed only lives in the notification — pull it out to replay.
+        $code = null;
+        Notification::assertSentTo($userA, EmailOtpNotification::class, function (EmailOtpNotification $note) use (&$code): bool {
+            $code = (new ReflectionProperty($note, 'code'))->getValue($note);
+
+            return true;
+        });
+
+        // Regression: every account once shared the cache slot 'email-otp:' (Cast::string dropped the
+        // integer id), so ONE user's code logged in ANY account. Each user now has its own slot.
+        expect($otp->verify($userB, (string) $code))->toBeFalse(); // A's code must NOT verify B
+        expect($otp->verify($userA, (string) $code))->toBeTrue();  // A's own code still works
+    });
+});
+
+it('gives each user its own OTP send cooldown (fixes only-one-email)', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $userA = User::factory()->create();
+    $userB = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($userA, $userB): void {
+        $otp = app(EmailOtp::class);
+        $otp->send($userA);
+
+        // Before the fix A's send sat in the shared slot, so B's login found the cooldown active and
+        // skipped emailing B a code. Independent slots mean B still gets its own.
+        expect($otp->canResend($userB))->toBeTrue();
     });
 });
 

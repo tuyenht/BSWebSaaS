@@ -136,7 +136,7 @@ final class Login extends Component
         // link, but cap it per hour (same anti email-bomb ceiling as the OTP send) so a valid
         // credential on an unverified address cannot flood the inbox.
         if (! $user->hasVerifiedEmail()) {
-            $verifyKey = 'email-verify-send:'.Cast::string($user->getAuthIdentifier());
+            $verifyKey = 'email-verify-send:'.Cast::int($user->getAuthIdentifier());
             if (! RateLimiter::tooManyAttempts($verifyKey, 6)) {
                 RateLimiter::hit($verifyKey, 3600);
                 app(TenantMailer::class)->apply();

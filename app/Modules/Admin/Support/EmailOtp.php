@@ -32,7 +32,7 @@ final class EmailOtp
      */
     public function send(User $user): bool
     {
-        $idKey = 'email-otp-send:'.Cast::string($user->getAuthIdentifier());
+        $idKey = 'email-otp-send:'.Cast::int($user->getAuthIdentifier());
         $ipKey = 'email-otp-send-ip:'.sha1((string) request()->ip());
 
         $accountCapped = RateLimiter::tooManyAttempts($idKey, self::MAX_SENDS_PER_HOUR);
@@ -103,6 +103,6 @@ final class EmailOtp
 
     private function key(User $user): string
     {
-        return 'email-otp:'.Cast::string($user->getAuthIdentifier());
+        return 'email-otp:'.Cast::int($user->getAuthIdentifier());
     }
 }
