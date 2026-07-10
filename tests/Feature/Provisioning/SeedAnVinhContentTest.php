@@ -172,7 +172,7 @@ it('seeds 6 tin-tuc news posts under the ProvisionSite news category', function 
     });
 });
 
-it('updates the home page body with 4 entry_grid blocks covering all collections', function (): void {
+it('seeds the home page body with 3 collection entry_grids and a featured-products product_grid', function (): void {
     $site = seedPrecisionSite();
 
     app(Tenancy::class)->enter($site->id, function (): void {
@@ -189,11 +189,15 @@ it('updates the home page body with 4 entry_grid blocks covering all collections
 
         $bodyJson = (string) json_encode($translation->body, JSON_UNESCAPED_UNICODE);
 
-        // All 4 collection entry_grid blocks present
+        // 3 collection entry_grid blocks remain (services / projects / news)
         expect($bodyJson)->toContain('"taxonomy_slug":"dich-vu"');
-        expect($bodyJson)->toContain('"taxonomy_slug":"san-pham"');
         expect($bodyJson)->toContain('"taxonomy_slug":"du-an"');
         expect($bodyJson)->toContain('"taxonomy_slug":"tin-tuc"');
+
+        // Featured products swapped from the old san-pham entry_grid to a data-bound product_grid
+        expect($bodyJson)->toContain('"type":"product_grid"');
+        expect($bodyJson)->toContain('"heading":"Sản phẩm tiêu biểu"');
+        expect($bodyJson)->not->toContain('"taxonomy_slug":"san-pham"');
 
         // Hero section with An Vinh branding
         expect($bodyJson)->toContain('"heading":"Cơ Khí Chính Xác An Vinh"');

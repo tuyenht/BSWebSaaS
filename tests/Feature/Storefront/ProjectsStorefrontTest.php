@@ -167,8 +167,10 @@ it('renders the home page with An Vinh heading and resolved media URLs in entry_
     // EntryGridComponent::CARD_WIDTH = 640 → ?w=640 appended by cloudflare driver
     expect($html)->toContain('?w=');
 
-    // At least one product name visible in the products entry_grid
-    expect($html)->toContain('Trục máy CNC');
+    // Featured products now render via a data-bound product_grid (swapped from the old san-pham
+    // entry_grid). The seed's catalog is still posts, so the grid is empty and shows its section
+    // heading; product-card population is covered by ProductGridComponentTest.
+    expect($html)->toContain('Sản phẩm tiêu biểu');
 
     // Header carries the brand logo (server-resolved from the 'brand' site setting)
     expect($html)->toContain('site-header__logo')->toContain('an-vinh/brand/logo-');

@@ -414,7 +414,7 @@ final readonly class SeedAnVinhContent
                 'cta_url' => '/gioi-thieu',
             ]],
             ['type' => 'entry_grid', 'props' => ['heading' => 'Dịch vụ của chúng tôi', 'taxonomy_slug' => 'dich-vu', 'limit' => 4]],
-            ['type' => 'entry_grid', 'props' => ['heading' => 'Sản phẩm tiêu biểu', 'taxonomy_slug' => 'san-pham', 'limit' => 6]],
+            ['type' => 'product_grid', 'props' => ['heading' => 'Sản phẩm tiêu biểu', 'limit' => 6]],
             ['type' => 'entry_grid', 'props' => ['heading' => 'Dự án nổi bật', 'taxonomy_slug' => 'du-an', 'limit' => 6]],
             ['type' => 'entry_grid', 'props' => ['heading' => 'Tin tức mới nhất', 'taxonomy_slug' => 'tin-tuc', 'limit' => 3]],
             // Partner logos are placeholders in the demo, so a logo-grid would render empty (the
