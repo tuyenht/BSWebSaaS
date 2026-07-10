@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Http\Controllers;
 
+use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\PathBuilder;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,6 +20,8 @@ use Symfony\Component\HttpFoundation\Response;
  * Included routes:
  *  - Entry routes where the entry is published (status = 'published', soft-deletes respected).
  *  - Taxonomy routes (category-list pages; taxonomies have no publish/draft lifecycle).
+ *  - Published catalog product routes. Cms's SiteRoute stays Catalog-agnostic (no product
+ *    relation), so the Storefront resolves published product ids here and matches by product_id.
  *
  * This request is its own hot path — queries here are not subject to the per-page hot-path
  * Query Budget, but N+1 is still avoided (one query for all routes).
@@ -29,12 +32,18 @@ final readonly class SitemapController
 
     public function __invoke(Request $request): Response
     {
+        // Published product ids, resolved in the Storefront (which may depend on Catalog) so
+        // Cms's SiteRoute never references the Product model — the module graph stays acyclic.
+        $publishedProductIds = Product::query()->where('status', 'published')->pluck('id');
+
         $routes = SiteRoute::query()
-            ->where(function (Builder $query): void {
+            ->where(function (Builder $query) use ($publishedProductIds): void {
                 // Published entry routes (soft-delete scope respected via the Entry model).
                 $query->whereHas('entry', fn (Builder $e) => $e->where('status', 'published'))
                     // Taxonomy (category-list) routes: always reachable, no publish lifecycle.
-                    ->orWhereNotNull('taxonomy_id');
+                    ->orWhereNotNull('taxonomy_id')
+                    // Published catalog product routes.
+                    ->orWhereIn('product_id', $publishedProductIds);
             })
             ->orderBy('path')
             ->get(['path', 'locale', 'updated_at']);

@@ -1,10 +1,13 @@
 <?php
 
+use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -97,4 +100,31 @@ it('GET /robots.txt returns 200 with a per-host Sitemap: directive', function ()
         ->toContain('User-agent: *')
         ->toContain('Disallow:')
         ->toContain('Sitemap: http://anvinh.test/sitemap.xml');
+});
+
+it('sitemap includes published catalog product routes and excludes drafts', function (): void {
+    sitemapSeedAnVinh();
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+
+    // Route a live + a draft product under the pinned catalog base (/san-pham/{slug}).
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'permalinks', 'key' => 'products'],
+            ['value' => ['pattern' => 'base', 'base' => 'san-pham']],
+        );
+
+        $live = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+        $live->translations()->create(['locale' => 'vi', 'name' => 'Trục CNC', 'slug' => 'truc-cnc-live']);
+        app(RouteSync::class)->syncProduct($live->id, null, 'vi', 'truc-cnc-live');
+
+        $draft = Product::query()->create(['status' => 'draft']);
+        $draft->translations()->create(['locale' => 'vi', 'name' => 'Nháp', 'slug' => 'khuon-nhap']);
+        app(RouteSync::class)->syncProduct($draft->id, null, 'vi', 'khuon-nhap');
+    });
+
+    $xml = $this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent();
+
+    expect($xml)
+        ->toContain('truc-cnc-live')    // published product route present in the sitemap
+        ->not->toContain('khuon-nhap'); // draft product route excluded (status = draft)
 });
