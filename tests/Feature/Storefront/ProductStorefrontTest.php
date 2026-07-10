@@ -51,16 +51,21 @@ function seedStorefrontProduct(string $slug, string $status = 'published'): stri
     });
 }
 
-it('renders a published product detail page at its base-pinned route', function (): void {
+it('renders a published product detail page at its base-pinned route within budget', function (): void {
     expect(seedStorefrontProduct('jig-vf7'))->toBe('/san-pham/jig-vf7');
 
-    $html = $this->get('http://anvinh.test/san-pham/jig-vf7')->assertOk()->getContent();
+    $count = countQueries(function (): void {
+        $html = $this->get('http://anvinh.test/san-pham/jig-vf7')->assertOk()->getContent();
 
-    expect($html)
-        ->toContain('<h1 class="product__title">Jig kiểm VF7</h1>')
-        ->toContain('Đồ gá kiểm tra cụm taplo')                                          // description HTML rendered
-        ->toContain('<link rel="canonical" href="http://anvinh.test/san-pham/jig-vf7">') // canonical from the stored route
-        ->toContain('property="og:type" content="product"');
+        expect($html)
+            ->toContain('<h1 class="product__title">Jig kiểm VF7</h1>')
+            ->toContain('Đồ gá kiểm tra cụm taplo')                                          // description HTML rendered
+            ->toContain('<link rel="canonical" href="http://anvinh.test/san-pham/jig-vf7">') // canonical from the stored route
+            ->toContain('property="og:type" content="product"');
+    });
+
+    // Product load (+ eager translations & images.media), route resolve, nav, brand — no N+1.
+    expect($count)->toBeLessThanOrEqual(16);
 });
 
 it('404s a product route whose product is not published (visibility enforced at load)', function (): void {
