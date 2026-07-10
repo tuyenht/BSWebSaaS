@@ -11,6 +11,7 @@ use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Forms\Services\TurnstileVerifier;
 use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Support\PlatformAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -126,6 +127,25 @@ final class Login extends Component
         $user = Auth::getProvider()->retrieveByCredentials($credentials);
 
         if (! $user instanceof User) {
+            $this->refreshChallenge();
+            $this->addError('email', __('auth.invalid_credentials'));
+
+            return null;
+        }
+
+        // The platform (Bảo Sơn operator) plane is operator-only. A valid credential that is not a
+        // platform operator (super_admin / support / billing) is refused right here — before any
+        // session, 2FA email, or verification link — so a tenant user can never establish an
+        // authenticated session on the operator host. The response is identical to a bad credential
+        // (no operator-host user enumeration) and counts against the throttle so the operator login
+        // cannot be probed. EnsurePlatformAccess stays the authoritative gate on protected routes.
+        if (AdminPlane::isPlatform() && ! app(PlatformAccess::class)->isOperator($user)) {
+            RateLimiter::hit($key, self::DECAY_SECONDS);
+            RateLimiter::hit($ipKey, self::DECAY_SECONDS);
+            Audit::record('auth.login.platform_denied', [
+                'actor_label' => $this->email,
+                'meta' => ['user_id' => $user->getAuthIdentifier()],
+            ]);
             $this->refreshChallenge();
             $this->addError('email', __('auth.invalid_credentials'));
 

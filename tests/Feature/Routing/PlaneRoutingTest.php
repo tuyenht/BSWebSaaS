@@ -1,10 +1,16 @@
 <?php
 
+use App\Modules\Admin\Livewire\Login;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Auth\Middleware\Authenticate;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 /*
  * P0.8 — two-plane routing skeleton. Three planes with distinct middleware stacks:
@@ -64,6 +70,62 @@ it('forbids a non-operator on the platform plane', function (): void {
     $user = User::factory()->create();
 
     $this->actingAs($user)->getJson('http://platform.bswebsaas.test/')->assertForbidden();
+});
+
+it('refuses a non-operator at login on the platform plane, before any session', function (): void {
+    // A valid, verified tenant user (no platform role) submitting correct credentials on the
+    // operator host is refused at login. The gate runs before 2FA is staged, so no authenticated
+    // session is ever established on the platform plane — not merely blocked downstream.
+    $user = User::factory()->create(); // random verified email, factory password 'password'
+    $this->app->instance('request', Request::create('http://platform.bswebsaas.test/login', 'GET'));
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'password')
+        ->call('login')
+        ->assertHasErrors('email');
+
+    $this->assertGuest();
+    expect(session('2fa.user_id'))->toBeNull();
+});
+
+it('lets a platform operator through login to the mandatory second factor', function (): void {
+    // Positive control: the gate must not over-block. A real operator with correct credentials
+    // still reaches the mandatory 2FA challenge on the platform plane.
+    $user = User::factory()->create(['two_factor_confirmed_at' => now()]);
+    app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
+    $this->app->instance('request', Request::create('http://platform.bswebsaas.test/login', 'GET'));
+
+    Livewire::test(Login::class)
+        ->set('email', $user->email)
+        ->set('password', 'password')
+        ->call('login')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('platform.two-factor.challenge'));
+
+    $this->assertGuest();
+    expect(session('2fa.user_id'))->not->toBeNull();
+});
+
+it('guards every authenticated platform-host route with the platform middleware', function (): void {
+    // Security invariant: any route on the operator host that requires auth must ALSO carry the
+    // `platform` gate. Guest routes (login/forgot/reset/challenges) have no `auth` and are
+    // excluded; the shared /livewire/update route is not on the platform domain. A new protected
+    // platform route that forgot `platform` would be reachable by any authenticated tenant user.
+    $platformHost = (string) config('tenancy.platform_host');
+
+    $has = fn (Route $route, string $alias, string $class): bool => collect($route->gatherMiddleware())
+        ->contains(fn (mixed $m): bool => $m === $alias || $m === $class || str_starts_with((string) $m, $alias.':'));
+
+    $unguarded = collect(app('router')->getRoutes()->getRoutes())
+        ->filter(fn (Route $route): bool => $route->getDomain() === $platformHost)
+        ->filter(fn (Route $route): bool => $has($route, 'auth', Authenticate::class))
+        ->reject(fn (Route $route): bool => $has($route, 'platform', EnsurePlatformAccess::class))
+        ->map(fn (Route $route): string => $route->uri())
+        ->values()
+        ->all();
+
+    expect($unguarded)->toBe([]);
 });
 
 it('lands an authenticated platform operator on the Tenants console', function (): void {

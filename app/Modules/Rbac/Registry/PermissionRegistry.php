@@ -85,6 +85,18 @@ final class PermissionRegistry
     }
 
     /**
+     * The platform role names — the operator set that gates the platform plane. Derived from
+     * platformRoles() so the login gate and EnsurePlatformAccess share one definition and can
+     * never drift when a role is added or removed.
+     *
+     * @return list<string>
+     */
+    public static function platformRoleNames(): array
+    {
+        return array_keys(self::platformRoles());
+    }
+
+    /**
      * Tenant role templates for a site_type, instantiated per-site by ProvisionSite (team = site_id).
      * Keyed by site_type (design.md §15.2); GĐ1 ships only `corporate`. An unknown type yields an
      * empty set so a caller never silently inherits the wrong shape. '*' = every TENANT permission

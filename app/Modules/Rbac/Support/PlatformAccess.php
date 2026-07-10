@@ -64,6 +64,16 @@ final class PlatformAccess
     }
 
     /**
+     * Is the user a Bảo Sơn operator — does it hold ANY platform role? The single predicate
+     * that gates access to the platform plane, shared by the login gate and EnsurePlatformAccess
+     * so authentication and the middleware apply the exact same rule.
+     */
+    public function isOperator(User $user): bool
+    {
+        return $this->hasAnyPlatformRole($user, PermissionRegistry::platformRoleNames());
+    }
+
+    /**
      * Does the user hold this permission at PLATFORM scope (team 0), regardless of the active
      * tenant? For platform-only gates whose permission never lives in a tenant team.
      */

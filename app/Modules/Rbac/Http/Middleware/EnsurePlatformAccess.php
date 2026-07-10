@@ -16,8 +16,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class EnsurePlatformAccess
 {
-    private const array PLATFORM_ROLES = ['super_admin', 'support', 'billing'];
-
     public function __construct(private PlatformAccess $platform) {}
 
     /**
@@ -28,7 +26,7 @@ final readonly class EnsurePlatformAccess
         $user = $request->user();
 
         abort_unless(
-            $user instanceof User && $this->platform->hasAnyPlatformRole($user, self::PLATFORM_ROLES),
+            $user instanceof User && $this->platform->isOperator($user),
             403,
         );
 
