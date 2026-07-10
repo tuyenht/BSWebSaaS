@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Modules\Catalog\Providers;
 
+use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Policies\CatalogPolicy;
 use App\Modules\Shared\Support\RichTextSanitizer;
+use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -27,5 +29,9 @@ final class CatalogServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Product::class, CatalogPolicy::class);
+
+        // Register the catalog's data-bound grid into the shared Section Library, so a page (e.g. the
+        // An Vinh home) can compose a `product_grid` block alongside Cms's `entry_grid`.
+        $this->app->make(ComponentRegistry::class)->register('product_grid', $this->app->make(ProductGridComponent::class));
     }
 }
