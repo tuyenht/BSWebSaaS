@@ -16,6 +16,7 @@ use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\PageRenderer;
 use Illuminate\Database\Eloquent\Builder;
@@ -219,6 +220,17 @@ final readonly class StorefrontController
      */
     private function renderCategory(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
     {
+        // When this category IS the catalog section's bound taxonomy AND real products exist, it is
+        // the product index — list published products instead of entries (the storefront may depend
+        // on Catalog). With no products yet it falls through to the entry list, so the page keeps
+        // working through the post→product migration (posts until products land, products after).
+        $catalogSection = ContentSection::query()->where('key', 'products')->first();
+        if ($catalogSection !== null
+            && $catalogSection->taxonomy_id === $resolved->taxonomy->id
+            && Product::query()->where('status', 'published')->exists()) {
+            return $this->renderProductIndex($resolved, $locale, $path, $chrome);
+        }
+
         $categorySlug = trim($resolved->translation->slug, '/');
 
         // Posts whose PRIMARY category (pivot position 0) is this one — so each lands at
@@ -266,6 +278,56 @@ final readonly class StorefrontController
                 'prevUrl' => $paginator->previousPageUrl(),
                 'nextUrl' => $paginator->nextPageUrl(),
             ],
+            ['title' => $resolved->translation->name],
+            $extra,
+        );
+
+        return response($html);
+    }
+
+    /**
+     * The catalog product index — the catalog section's category (e.g. /san-pham) lists published
+     * products newest-first, each linking to its canonical product route, on the category layout.
+     * The product query lives here so Cms and Theme stay Catalog-agnostic.
+     *
+     * @param  array<string, mixed>  $chrome  page chrome (menu, lang, hreflang)
+     */
+    private function renderProductIndex(ResolvedCategory $resolved, string $locale, string $path, array $chrome): Response
+    {
+        $paginator = Product::query()
+            ->where('status', 'published')
+            ->with(['translations', 'taxonomies'])
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->paginate(self::POSTS_PER_PAGE);
+
+        $products = [];
+        foreach ($paginator->items() as $product) {
+            $translation = $product->translationFor($locale);
+            if ($translation === null) {
+                continue;
+            }
+            $unprefixed = $this->paths->forProduct($product->taxonomies->first(), (string) $translation->slug, $locale);
+            $products[] = ['title' => $translation->name, 'url' => $this->paths->publicUrl($unprefixed, $locale)];
+        }
+
+        $canonical = url($this->paths->publicUrl($path, $locale));
+        if ($paginator->currentPage() > 1) {
+            $canonical .= '?page='.$paginator->currentPage();
+        }
+        $extra = $chrome;
+        $extra['canonical'] = $canonical;
+        $extra['ogType'] = 'website';
+        $extra['breadcrumb'] = [
+            $this->homeCrumb($locale),
+            ['name' => $resolved->translation->name, 'url' => $canonical],
+        ];
+
+        $html = $this->renderer->renderCategory(
+            $resolved->taxonomy->list_template,
+            $resolved->translation->name,
+            $products,
+            ['prevUrl' => $paginator->previousPageUrl(), 'nextUrl' => $paginator->nextPageUrl()],
             ['title' => $resolved->translation->name],
             $extra,
         );

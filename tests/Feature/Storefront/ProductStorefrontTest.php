@@ -1,10 +1,12 @@
 <?php
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
@@ -73,4 +75,45 @@ it('404s a product route whose product is not published (visibility enforced at 
 
     // The route exists (syncProduct is status-agnostic) but the storefront load filters published.
     $this->get('http://anvinh.test/san-pham/jig-draft')->assertNotFound();
+});
+
+/** Provision + wire the catalog index at /san-pham (products section + list route) with N products. */
+function seedCatalogIndex(int $productCount = 2): void
+{
+    app(ProvisionSite::class)->handle(new ProvisionSiteData(
+        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.test',
+        ownerEmail: 'owner@anvinh.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
+    ));
+
+    $site = Site::query()->where('name', 'An Vinh')->firstOrFail();
+
+    app(Tenancy::class)->enter($site->id, function () use ($productCount): void {
+        // The catalog category (post_cat) + its /san-pham list route + the section that binds it.
+        $sanPham = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $sanPham->translations()->create(['locale' => 'vi', 'name' => 'Sản phẩm', 'slug' => 'san-pham']);
+        ContentSection::query()->create(['key' => 'products', 'label' => 'Sản phẩm', 'entry_type' => 'post', 'taxonomy_id' => $sanPham->id]);
+        app(RouteSync::class)->syncTaxonomy($sanPham, 'vi', 'san-pham');
+
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'permalinks', 'key' => 'products'],
+            ['value' => ['pattern' => 'base', 'base' => 'san-pham']],
+        );
+
+        for ($i = 1; $i <= $productCount; $i++) {
+            $product = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+            $product->translations()->create(['locale' => 'vi', 'name' => "Sản phẩm {$i}", 'slug' => "sp-{$i}"]);
+            app(RouteSync::class)->syncProduct($product->id, null, 'vi', "sp-{$i}");
+        }
+    });
+}
+
+it('lists published products at the catalog category index (/san-pham)', function (): void {
+    seedCatalogIndex(2);
+
+    $html = $this->get('http://anvinh.test/san-pham')->assertOk()->getContent();
+
+    // The catalog category renders products (not entries), each linking to its base-pinned route.
+    expect($html)
+        ->toContain('Sản phẩm 1')->toContain('href="/san-pham/sp-1"')
+        ->toContain('Sản phẩm 2')->toContain('href="/san-pham/sp-2"');
 });

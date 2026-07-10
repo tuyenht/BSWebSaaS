@@ -50,8 +50,9 @@ it('lists the projects at /du-an within budget', function (): void {
     // MenuResolver batches route+title lookups regardless of item count; the An Vinh nav
     // (7 items including entry-type links for /gioi-thieu and /doi-tac) still costs the
     // same 1 batched route query as the original 3-item nav. The header brand logo adds one
-    // small per-page lookup (the 'brand' site setting) on every storefront route → budget 18.
-    expect($count)->toBeLessThanOrEqual(18);
+    // small per-page lookup (the 'brand' site setting) on every storefront route; the catalog probe
+    // (is this the product-index category?) adds one more constant lookup → budget 19.
+    expect($count)->toBeLessThanOrEqual(19);
 });
 
 it('renders a project detail with breadcrumb JSON-LD', function (): void {
@@ -79,7 +80,7 @@ it('lists the services at /dich-vu within budget', function (): void {
             ->toContain('href="/dich-vu/thiet-ke-jig-do-ga"');
     });
 
-    expect($count)->toBeLessThanOrEqual(17);
+    expect($count)->toBeLessThanOrEqual(18); // +1 vs a bare category: the constant catalog-index probe
 });
 
 it('renders a service detail page with breadcrumb', function (): void {

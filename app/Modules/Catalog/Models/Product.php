@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Catalog product (design.md §11) — a real commerce-typed row (NOT an entry). Per-locale
@@ -24,6 +25,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property int|null $stock
  * @property bool $is_featured
  * @property string $status
+ * @property Carbon|null $published_at
  * @property array<string, mixed> $meta
  */
 class Product extends Model
@@ -104,6 +106,7 @@ class Product extends Model
             'stock' => 'integer',
             'is_featured' => 'boolean',
             'is_bestseller' => 'boolean',
+            'published_at' => 'datetime',
             'meta' => 'array',
         ];
     }
