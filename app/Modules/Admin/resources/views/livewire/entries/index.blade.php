@@ -313,13 +313,13 @@
                                             class="group relative -mx-1 truncate rounded py-0.5 pl-1 pr-4 text-body-faint transition-colors hover:bg-[#eef2fb] hover:text-admin-primary">{{ $path ?? '—' }}
                                             <x-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-admin-primary opacity-0 transition-opacity group-hover:opacity-100" />
                                         </button>
-                                        <span x-show="editing" x-cloak class="flex items-center">
+                                        <span x-show="editing" x-cloak class="flex w-full items-center gap-0.5">
                                             <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
                                             <input type="text" x-ref="slugInput" x-model="value"
                                                 @keydown.enter.prevent="cancel = false; $el.blur()"
                                                 @keydown.escape="cancel = true; $el.blur()"
                                                 @blur="editing = false; if (! cancel) { $wire.saveSlug(@js($entry->ulid), value) }"
-                                                class="w-28 rounded border border-admin-primary bg-white px-1 py-0.5 focus:outline-none">
+                                                class="min-w-0 flex-1 rounded border border-admin-primary bg-white px-1 py-0.5 focus:outline-none">
                                         </span>
                                     </div>
                                 @else

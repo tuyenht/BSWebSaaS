@@ -461,6 +461,7 @@ final class Index extends Component
         $locales = $siteLocale->enabled();
 
         $query = Entry::query()->where('type', $type);
+        $this->scopeToSection($query, $section);
 
         if ($this->tab === 'trash') {
             $query->onlyTrashed();
@@ -505,7 +506,7 @@ final class Index extends Component
         return view('admin::livewire.entries.index', [
             'rows' => $rows,
             'pageUlids' => $pageUlids,
-            'counts' => $this->counts($type),
+            'counts' => $this->counts($type, $section),
             'facets' => $facets,
             'activeChips' => $this->activeChips($facets),
             'matchCount' => $filtered->count(),
@@ -533,18 +534,43 @@ final class Index extends Component
     }
 
     /**
+     * Scope a post query to the section it belongs to: entries whose PRIMARY category (pivot
+     * position 0) is the section's bound taxonomy — so each collection section (Tin tức, Dịch vụ,
+     * Dự án…) lists only its own posts instead of every post of the type. A section with no bound
+     * taxonomy (Pages) or an unresolved key adds no constraint. Mirrors the storefront category
+     * listing (exact primary match); a post filed under a sub-category is a later, ltree step.
+     *
+     * @param  Builder<Entry>  $query
+     */
+    private function scopeToSection(Builder $query, ?ContentSection $section): void
+    {
+        if ($section === null || $section->taxonomy_id === null) {
+            return;
+        }
+
+        $taxonomyId = $section->taxonomy_id;
+        $query->whereHas('taxonomies', fn (Builder $taxonomy): Builder => $taxonomy
+            ->where('taxonomies.id', $taxonomyId)
+            ->where('entry_taxonomies.position', 0));
+    }
+
+    /**
      * Tab counts in ONE grouped query on the (site_id, type, status) index (+ a trash count) —
      * flat, not per-row, so the render's query budget stays constant as rows grow (§6). `all`
      * sums every non-trashed status (so pending/archived, which have no tab, still count there).
      *
      * @return array{all: int, published: int, draft: int, scheduled: int, private: int, trash: int}
      */
-    private function counts(string $type): array
+    private function counts(string $type, ?ContentSection $section): array
     {
         $tally = ['all' => 0, 'published' => 0, 'draft' => 0, 'scheduled' => 0, 'private' => 0, 'trash' => 0];
 
         // One grouped query for every tab + the trash count, split by deleted_at via FILTER.
-        $rows = Entry::query()->withTrashed()->where('type', $type)
+        // Scoped to the section (like the list) so a collection's tab counts match its own rows.
+        $query = Entry::query()->withTrashed()->where('type', $type);
+        $this->scopeToSection($query, $section);
+
+        $rows = $query
             ->selectRaw('status, count(*) filter (where deleted_at is null) as live, count(*) filter (where deleted_at is not null) as trashed')
             ->groupBy('status')
             ->get();
