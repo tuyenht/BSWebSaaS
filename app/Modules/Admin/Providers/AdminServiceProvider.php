@@ -35,9 +35,7 @@ use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword as ResetPasswordNotification;
 use Illuminate\Auth\Notifications\VerifyEmail;
-use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -98,21 +96,9 @@ final class AdminServiceProvider extends ServiceProvider
         Livewire::component('admin.platform.sites.detail', PlatformSitesDetail::class);
         Livewire::component('admin.platform.audit.index', PlatformAuditIndex::class);
 
-        // Branded, i18n password-reset email pointing at the tenant admin reset page
-        // (resolved under the current tenant host + admin prefix at send time).
-        ResetPasswordNotification::toMailUsing(function (mixed $notifiable, string $token): MailMessage {
-            $email = $notifiable instanceof CanResetPassword ? $notifiable->getEmailForPasswordReset() : '';
-
-            return (new MailMessage)
-                ->subject(__('auth.reset_email_subject'))
-                ->greeting(Cast::string(config('admin.brand.name')))
-                ->line(__('auth.reset_email_intro'))
-                ->action(__('auth.reset_password'), route(AdminPlane::prefix().'.password.reset', [
-                    'token' => $token,
-                    'email' => $email,
-                ]))
-                ->line(__('auth.reset_email_outro'));
-        });
+        // Password-reset mail is NOT the framework default notification: ForgotPassword dispatches
+        // the queued ResetPasswordLinkNotification with a request-built URL (plane + host resolve
+        // only in the request; a worker has neither).
 
         // Branded, i18n email-verification link (signed; verified BEFORE login completes).
         VerifyEmail::createUrlUsing(fn (User $notifiable): string => URL::temporarySignedRoute(

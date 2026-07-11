@@ -3,8 +3,10 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
-use App\Modules\Admin\Support\TenantMailer;
+use App\Modules\Admin\Notifications\ResetPasswordLinkNotification;
+use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Identity\Models\User;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -54,9 +56,20 @@ final class ForgotPassword extends Component
         RateLimiter::hit($key, 3600);
         RateLimiter::hit($ipKey, 3600);
 
-        // Configure the resolved mailer (tenant override → platform default) before send.
-        app(TenantMailer::class)->apply();
-        Password::sendResetLink(['email' => $this->email]);
+        // The link is composed HERE, in the request — the queued notification runs in a worker
+        // with no request host, which could pick neither the right plane (admin ↔ platform route
+        // names) nor the right absolute host. Queuing also makes the reply constant-time: a
+        // synchronous SMTP send is slower for an existing address than the broker's fast miss
+        // for an unknown one — a timing oracle the uniform reply body alone cannot close.
+        Password::sendResetLink(['email' => $this->email], function (User $user, string $token): void {
+            $notification = (new ResetPasswordLinkNotification(AdminPlane::route('password.reset', [
+                'token' => $token,
+                'email' => $user->getEmailForPasswordReset(),
+            ])))->forCurrentSite();
+            $notification->actorId = $user->id;
+
+            $user->notify($notification);
+        });
 
         $this->sentResponse();
     }

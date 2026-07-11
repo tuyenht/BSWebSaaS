@@ -2,9 +2,11 @@
 
 use App\Modules\Admin\Livewire\ForgotPassword;
 use App\Modules\Admin\Livewire\ResetPassword;
+use App\Modules\Admin\Notifications\ResetPasswordLinkNotification;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Livewire\Livewire;
@@ -61,4 +63,25 @@ it('audits a completed reset and rejects a password shorter than 10', function (
     expect(
         AuditLog::query()->where('action', 'auth.password.reset')->where('actor_id', $user->id)->exists()
     )->toBeTrue();
+});
+
+it('queues the reset mail with a request-built link so the reply never blocks on SMTP', function (): void {
+    seedTenancy();
+    Notification::fake();
+    $user = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::test(ForgotPassword::class)
+            ->set('email', $user->email)
+            ->call('submit')
+            ->assertSet('status', __('auth.reset_link_sent'));
+    });
+
+    Notification::assertSentTo($user, ResetPasswordLinkNotification::class, function (ResetPasswordLinkNotification $notification) use ($user): bool {
+        // Queued (constant-time reply + tenant mailer re-applied in the worker) and attributed.
+        expect($notification)->toBeInstanceOf(ShouldQueue::class);
+        expect($notification->actorId)->toBe($user->id);
+
+        return true;
+    });
 });
