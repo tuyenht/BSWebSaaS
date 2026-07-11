@@ -32,7 +32,7 @@ Xác minh & nhãn NGUỒN GỐC (mỗi mục):
   "đã quyết/đã xong" cho thứ chỉ mới bàn.
 
 Phân loại rủi ro:
-- Đụng DB schema / D1–D15 / 16 ADR / bảo mật §2 / ranh giới module → [COUNCIL], KHÔNG tự chốt,
+- Đụng DB schema / D1–D15 / các ADR / bảo mật §2 / ranh giới module → [COUNCIL], KHÔNG tự chốt,
   KHÔNG kèm diff — chỉ nêu để chuyển council.
 - LẬT một quyết định đã đóng băng trong design.md → [COUNCIL] + ⚠RỦI RO CAO.
 
@@ -84,7 +84,7 @@ Dự án BSWebSaaS. Trước khi làm BẤT CỨ GÌ: theo [GIAO THỨC] ở cu�
 3. Đọc CHỈ [§ CẦN ĐỌC].
 4. PHÂN LOẠI hành động kế tiếp theo §10.1:
    • ACT → nói 1 câu "đang làm X" rồi TỰ LÀM, báo cáo sau (đừng hỏi vụn vặt).
-   • COUNCIL (schema/D1–D15/16 ADR/bảo mật §2/ranh giới module/LẬT quyết định frozen) → DỪNG,
+   • COUNCIL (schema/D1–D15/các ADR/bảo mật §2/ranh giới module/LẬT quyết định frozen) → DỪNG,
      propose, chờ tôi.
 5. Định XÂY TIẾP lên mục ✅ → tự kiểm bằng chứng trước, đừng tin nhãn suông.
 └──── HẾT RESUME ────

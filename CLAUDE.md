@@ -1,8 +1,8 @@
 # CLAUDE.md — Nền tảng SaaS Website Builder (Bảo Sơn)
 
 > File này được Claude Code **tự động nạp** vào context. Đây là **quy ước + guardrail BẮT BUỘC**.
-> **Thiết kế đầy đủ ở `docs/design.md` (v2.11)** — đọc mục liên quan khi cần (KHÔNG nạp toàn bộ, file dài).
-> Mọi quyết định kiến trúc theo **17 ADR** trong `docs/design.md` (Phụ lục A).
+> **Thiết kế đầy đủ ở `docs/design.md`** — đọc mục liên quan khi cần (KHÔNG nạp toàn bộ, file dài).
+> Mọi quyết định kiến trúc theo **các ADR** trong `docs/design.md` (Phụ lục A).
 
 ---
 
@@ -189,7 +189,7 @@ docker compose restart horizon                        # sau khi sửa Job/Listen
   Gồm: refactor giữ nguyên behavior · viết/sửa test · fix bug tầng app · fix Larastan/Pint/Rector ·
   code theo contract đã chốt · tài liệu · task đã nằm trong plan/issue đã duyệt.
 - **COUNCIL (propose-first — DỪNG, chờ tôi duyệt):** bất cứ việc nào đụng tới →
-  **DB schema / migration / index / quan hệ bảng** · quy ước **D1–D15** (§3) · **16 ADR** ·
+  **DB schema / migration / index / quan hệ bảng** · quy ước **D1–D15** (§3) · **các ADR (design.md Phụ lục A)** ·
   bất biến bảo mật **§2** · ranh giới module / module-contract (§5) ·
   quyết định ảnh hưởng **nhiều tenant / nhiều module / về sau**.
   → KHÔNG tự thực thi. Chạy Council (10.2) → chờ tôi xác nhận.

@@ -8,9 +8,10 @@ Với vai trò senior reviewer, soi diff/đề xuất dưới đây theo Diamond
 - Vi phạm DB §3: float cho tiền · `timestamp` naive · native ENUM · EAV trá hình · reserved word làm tên cột.
 - N+1 ẩn / vượt Query Budget · migration không đường lùi.
 - Thiếu UX/SEO: empty/loading/error state · meta/canonical/JSON-LD/sitemap · breadcrumb · pagination rel=prev/next.
+Danh sách trên là hotlist RÚT GỌN — diff chạm vùng §2/§3 khác thì đối chiếu bản đầy đủ.
 
 Với mỗi quyết định có trade-off → hỏi "tại sao cách này thay vì phương án khác?".
 Nêu rõ: vấn đề + mức độ nghiêm trọng + cách sửa. KHÔNG rubber-stamp.
-Nếu phần dưới trống → tự lấy diff: `git diff` (working tree) hoặc `git diff main...HEAD` (đã commit).
+Nếu phần dưới trống → tự lấy diff: `git diff` (working tree) hoặc `git diff origin/main...HEAD` (đã commit, chưa push/PR).
 
 $ARGUMENTS
