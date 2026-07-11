@@ -1,6 +1,8 @@
 <?php
 
+use App\Modules\Admin\Livewire\EmailOtpChallenge;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
@@ -10,6 +12,8 @@ use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 /*
@@ -126,6 +130,55 @@ it('guards every authenticated platform-host route with the platform middleware'
         ->all();
 
     expect($unguarded)->toBe([]);
+});
+
+it('throttles a valid non-operator on the platform plane exactly like a bad password (no oracle)', function (): void {
+    // A valid tenant credential refused on the operator host must ACCUMULATE the per-email throttle
+    // so it locks out at MAX_ATTEMPTS identically to a wrong password. Otherwise the throttle timing
+    // is a credential-validity oracle ("never locked out" ⇒ valid non-operator account).
+    $user = User::factory()->create();
+    $this->app->instance('request', Request::create('http://platform.bswebsaas.test/login', 'GET'));
+    $key = 'admin-login:'.sha1(Str::lower($user->email).'|'.(string) request()->ip());
+
+    foreach (range(1, 5) as $ignored) {
+        Livewire::test(Login::class)
+            ->set('email', $user->email)->set('password', 'password')
+            ->call('login')->assertHasErrors('email');
+    }
+
+    // Pre-fix this was false (clear() reset the counter every attempt); the gate must leave it tripped.
+    expect(RateLimiter::tooManyAttempts($key, 5))->toBeTrue();
+});
+
+it('never authenticates a non-operator on the platform plane at the TOTP challenge', function (): void {
+    // Defense in depth: even if a 2fa.user_id were somehow staged for a non-operator on the operator
+    // host, the challenge must refuse to Auth::login them — the operator-only rule holds at the point
+    // of session creation, not only at the login gate.
+    $user = User::factory()->create(['two_factor_confirmed_at' => now()]);
+    $this->app->instance('request', Request::create('http://platform.bswebsaas.test/two-factor/challenge', 'GET'));
+    session(['2fa.user_id' => $user->getKey()]);
+
+    Livewire::test(TwoFactorChallenge::class)
+        ->set('code', '000000')
+        ->call('verify')
+        ->assertRedirect('http://platform.bswebsaas.test/login');
+
+    $this->assertGuest();
+    expect(session('2fa.user_id'))->toBeNull();
+});
+
+it('never authenticates a non-operator on the platform plane at the email-OTP challenge', function (): void {
+    $user = User::factory()->create();
+    $this->app->instance('request', Request::create('http://platform.bswebsaas.test/otp/challenge', 'GET'));
+    session(['2fa.user_id' => $user->getKey()]);
+
+    Livewire::test(EmailOtpChallenge::class)
+        ->set('code', '000000')
+        ->call('verify')
+        ->assertRedirect('http://platform.bswebsaas.test/login');
+
+    $this->assertGuest();
+    expect(session('2fa.user_id'))->toBeNull();
 });
 
 it('lands an authenticated platform operator on the Tenants console', function (): void {

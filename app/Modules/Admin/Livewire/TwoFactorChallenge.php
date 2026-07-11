@@ -8,6 +8,7 @@ use App\Modules\Admin\Support\Cast;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
+use App\Modules\Rbac\Support\PlatformAccess;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
@@ -44,6 +45,16 @@ final class TwoFactorChallenge extends Component
         $user = User::find(session('2fa.user_id'));
 
         if (! $user instanceof User || $user->two_factor_confirmed_at === null) {
+            session()->forget('2fa.user_id');
+
+            return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);
+        }
+
+        // Defense in depth: never authenticate a non-operator on the platform plane, even if a
+        // 2fa.user_id were somehow staged. The login gate already rejects them and host-only session
+        // cookies isolate the planes; this enforces the operator-only rule at the point Auth::login
+        // happens, so the invariant survives any future change to session-cookie scope.
+        if (AdminPlane::isPlatform() && ! app(PlatformAccess::class)->isOperator($user)) {
             session()->forget('2fa.user_id');
 
             return $this->redirectRoute(AdminPlane::prefix().'.login', navigate: false);

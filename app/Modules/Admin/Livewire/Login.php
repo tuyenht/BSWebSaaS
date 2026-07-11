@@ -119,11 +119,6 @@ final class Login extends Component
             return null;
         }
 
-        // Clear only the per-email counter on success — the per-IP spray ceiling must NOT reset just
-        // because one account authenticated (an attacker holding one valid credential could otherwise
-        // reset it between sprays). It decays on its own.
-        RateLimiter::clear($key);
-
         $user = Auth::getProvider()->retrieveByCredentials($credentials);
 
         if (! $user instanceof User) {
@@ -151,6 +146,13 @@ final class Login extends Component
 
             return null;
         }
+
+        // Clear the per-email counter only now — AFTER the operator gate — so a valid credential that
+        // is refused on the platform plane still accumulates the counter and locks out at MAX_ATTEMPTS
+        // identically to a wrong password (no throttle-timing oracle distinguishing a valid non-operator
+        // from a bad password). The per-IP spray ceiling is never cleared — an attacker holding one
+        // valid credential must not reset it between sprays; it decays on its own.
+        RateLimiter::clear($key);
 
         // Email must be verified before an email+password login completes. Send a fresh verification
         // link, but cap it per hour (same anti email-bomb ceiling as the OTP send) so a valid
