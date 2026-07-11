@@ -70,3 +70,16 @@ it('rejects an entry route whose path a category already owns (A2 reverse)', fun
             ->toThrow(RouteConflictException::class);
     });
 });
+
+it('deleting a taxonomy cascades its route away instead of stranding a 404', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $category = newCategory('chuyen-muc-tam', 'Chuyên mục tạm');
+        app(RouteSync::class)->syncTaxonomy($category, 'vi', 'chuyen-muc-tam');
+        expect(SiteRoute::query()->where('path', '/chuyen-muc-tam')->exists())->toBeTrue();
+
+        $category->delete(); // taxonomies are hard-deleted (no Trash)
+
+        // The route follows the taxonomy out (DB cascade) — the path is free to reuse.
+        expect(SiteRoute::query()->where('path', '/chuyen-muc-tam')->exists())->toBeFalse();
+    });
+});

@@ -115,3 +115,35 @@ it('moves a product route and records a 301 when its slug changes', function ():
             ->and(Redirect::query()->where('from_path', '/cu')->where('to_path', '/moi')->where('status_code', 301)->exists())->toBeTrue();
     });
 });
+
+it('trashing a product keeps its route — the slug stays reserved for restore', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $product = Product::query()->create(['status' => 'published']);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'SP jig-vf9', 'slug' => 'jig-vf9']);
+        app(RouteSync::class)->syncProduct($product->id, null, 'vi', 'jig-vf9');
+
+        $product->delete(); // Trash (soft) — restorable, so the path must stay booked
+
+        expect(SiteRoute::query()->where('product_id', $product->id)->exists())->toBeTrue();
+    });
+});
+
+it('purging a product cascades its route away so the path is reclaimable', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $product = Product::query()->create(['status' => 'published']);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'SP jig-vf8', 'slug' => 'jig-vf8']);
+        app(RouteSync::class)->syncProduct($product->id, null, 'vi', 'jig-vf8');
+        expect(SiteRoute::query()->where('path', '/jig-vf8')->exists())->toBeTrue();
+
+        $product->forceDelete(); // Trash purge (hard)
+
+        // The route went with it (DB cascade) — no orphan 404 left squatting the slug…
+        expect(SiteRoute::query()->where('path', '/jig-vf8')->exists())->toBeFalse();
+
+        // …so a successor product can reclaim the identical path at once.
+        $successor = Product::query()->create(['status' => 'published']);
+        $successor->translations()->create(['locale' => 'vi', 'name' => 'SP kế nhiệm', 'slug' => 'jig-vf8']);
+        app(RouteSync::class)->syncProduct($successor->id, null, 'vi', 'jig-vf8');
+        expect(SiteRoute::query()->where('path', '/jig-vf8')->value('product_id'))->toBe($successor->id);
+    });
+});
