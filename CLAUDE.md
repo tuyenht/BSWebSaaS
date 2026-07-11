@@ -175,8 +175,8 @@ docker compose restart horizon                        # sau khi sửa Job/Listen
 ## 10. Quy trình ra quyết định & chuẩn chất lượng (Decision Protocol)
 
 > Lớp meta-process điều phối vibe-coding. Tôi (Tuyền) là đạo diễn + senior reviewer; agent thực thi.
-> Slash command tương ứng ở `.claude/commands/bs/` (`/bs:spec` `/bs:audit` `/bs:next` `/bs:ship` `/bs:review`)
-> chỉ là trigger — luật nằm ở đây.
+> Slash command tương ứng ở `.claude/commands/bs/` (`/bs:spec` `/bs:audit` `/bs:next` `/bs:ship` `/bs:review`;
+> `/bs:close` = chốt/bàn giao cuối session, MANUAL-ONLY — không auto-invoke) chỉ là trigger — luật nằm ở đây.
 > 🔴 **TỰ ĐỘNG INVOKE (chốt 06/07/2026, toàn project — mọi session):** agent TỰ gọi các skill `/bs:` khi
 > ngữ cảnh khớp, KHÔNG chờ tôi nhắc: hỏi "làm gì tiếp" → `/bs:next` · yêu cầu audit/soát chất lượng →
 > `/bs:audit` · trước khi code việc không-tầm-thường/COUNCIL-class → `/bs:spec` · diff lớn trước commit →

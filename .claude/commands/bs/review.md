@@ -11,5 +11,6 @@ Với vai trò senior reviewer, soi diff/đề xuất dưới đây theo Diamond
 
 Với mỗi quyết định có trade-off → hỏi "tại sao cách này thay vì phương án khác?".
 Nêu rõ: vấn đề + mức độ nghiêm trọng + cách sửa. KHÔNG rubber-stamp.
+Nếu phần dưới trống → tự lấy diff: `git diff` (working tree) hoặc `git diff main...HEAD` (đã commit).
 
 $ARGUMENTS
