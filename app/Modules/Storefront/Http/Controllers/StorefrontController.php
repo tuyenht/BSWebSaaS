@@ -231,16 +231,13 @@ final readonly class StorefrontController
             return $this->renderProductIndex($resolved, $locale, $path, $chrome);
         }
 
-        $categorySlug = trim($resolved->translation->slug, '/');
-
-        // Posts whose PRIMARY category (pivot position 0) is this one — so each lands at
-        // /{categorySlug}/{postSlug} (its canonical route). Only published, locale-present.
+        // Posts whose PRIMARY category (pivot position 0) is this one. Only published, locale-present.
         $paginator = $resolved->taxonomy->entries()
             ->where('entries.type', 'post')
             ->where('entries.status', 'published')
             ->where('entry_taxonomies.position', 0)
             ->whereHas('translations', fn (Builder $query) => $query->where('locale', $locale)->where('status', 'published'))
-            ->with('translations')
+            ->with(['translations', 'routes'])
             ->orderByDesc('entries.published_at')
             ->paginate(self::POSTS_PER_PAGE);
 
@@ -250,9 +247,16 @@ final readonly class StorefrontController
             if ($translation === null) {
                 continue;
             }
+            // Link each card to the post's STORED route, so it follows the section's permalink
+            // preset (flat, category, …) exactly instead of a hardcoded shape. A published post
+            // always has a route; fall back to a config-correct compose if one is somehow absent.
+            $route = $post->routes->firstWhere('locale', $locale);
+            $unprefixed = $route !== null
+                ? $route->path
+                : $this->paths->forEntry($post, $locale, trim((string) $translation->slug, '/'));
             $posts[] = [
                 'title' => $translation->title,
-                'url' => $this->paths->publicUrl('/'.$categorySlug.'/'.trim((string) $translation->slug, '/'), $locale),
+                'url' => $this->paths->publicUrl($unprefixed, $locale),
             ];
         }
 

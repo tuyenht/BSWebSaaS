@@ -6,6 +6,7 @@ namespace App\Modules\Provisioning\Providers;
 
 use App\Modules\Provisioning\Console\PromoteAnVinhProductPostsToCatalogCommand;
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;
+use App\Modules\Provisioning\Console\ReflowSitePermalinksCommand;
 use App\Modules\Provisioning\Console\SeedAnVinhContentCommand;
 use Illuminate\Support\ServiceProvider;
 
@@ -18,6 +19,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 ProvisionSiteCommand::class,
                 SeedAnVinhContentCommand::class,
                 PromoteAnVinhProductPostsToCatalogCommand::class,
+                ReflowSitePermalinksCommand::class,
             ]);
         }
     }

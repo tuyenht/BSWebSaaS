@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -51,8 +52,31 @@ it('lists the projects at /du-an within budget', function (): void {
     // (7 items including entry-type links for /gioi-thieu and /doi-tac) still costs the
     // same 1 batched route query as the original 3-item nav. The header brand logo adds one
     // small per-page lookup (the 'brand' site setting) on every storefront route; the catalog probe
-    // (is this the product-index category?) adds one more constant lookup → budget 19.
-    expect($count)->toBeLessThanOrEqual(19);
+    // (is this the product-index category?) adds one more constant lookup. The post cards eager-load
+    // their stored routes (1 batched query, constant regardless of card count) so hrefs follow the
+    // section's permalink preset instead of a hardcoded shape → budget 20.
+    expect($count)->toBeLessThanOrEqual(20);
+});
+
+it('links a category card to the post STORED route, not a hardcoded category prefix', function (): void {
+    seedAnVinhStorefront();
+
+    // Move one post to a flat route, exactly as a flat reflow would; the category listing card
+    // must follow that stored route (/{slug}) rather than re-composing the old /{category}/{slug}.
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteRoute::query()
+            ->where('locale', 'vi')
+            ->where('path', '/du-an/day-chuyen-lap-rap-tu-dong')
+            ->firstOrFail()
+            ->update(['path' => '/day-chuyen-lap-rap-tu-dong']);
+    });
+
+    $html = $this->get('http://anvinh.test/du-an')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('href="/day-chuyen-lap-rap-tu-dong"')
+        ->not->toContain('href="/du-an/day-chuyen-lap-rap-tu-dong"');
 });
 
 it('renders a project detail with breadcrumb JSON-LD', function (): void {
@@ -80,7 +104,7 @@ it('lists the services at /dich-vu within budget', function (): void {
             ->toContain('href="/dich-vu/thiet-ke-jig-do-ga"');
     });
 
-    expect($count)->toBeLessThanOrEqual(18); // +1 vs a bare category: the constant catalog-index probe
+    expect($count)->toBeLessThanOrEqual(19); // +1 catalog-index probe, +1 card-route eager-load for preset-correct hrefs
 });
 
 it('renders a service detail page with breadcrumb', function (): void {

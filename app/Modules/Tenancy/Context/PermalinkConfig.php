@@ -105,6 +105,17 @@ final class PermalinkConfig
     }
 
     /**
+     * Drop the memoized rows so the next read reflects settings written earlier in the SAME
+     * request/command — e.g. a permalink reflow rewrites `site_settings[permalinks]` and then
+     * re-syncs routes in one process; without this the re-sync would compose from the stale
+     * pattern this instance already cached. Scoped instance, so callers share the cleared memo.
+     */
+    public function flush(): void
+    {
+        $this->memo = [];
+    }
+
+    /**
      * The memoized raw `value` row for a section (null with no site context or no row). Negative-
      * cached so a section without a setting costs at most one query per request.
      *
