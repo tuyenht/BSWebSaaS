@@ -74,9 +74,18 @@ it('sets a browser-bound nonce cookie when starting social login', function (): 
         'enabled' => true,
     ]));
 
-    $this->get('http://a.test/admin/oauth/google/start?purpose=login')
+    $response = $this->get('http://a.test/admin/oauth/google/start?purpose=login')
         ->assertRedirectContains('accounts.google.com')
         ->assertCookie('oauth_login_nonce');
+
+    // The whole browser-binding defense rests on SameSite=lax (so the cookie survives the cross-site
+    // top-level GET back from the callback domain) + HttpOnly. Pin both so a later edit that flips them
+    // to 'strict' / non-HttpOnly cannot pass CI while silently breaking real logins in prod.
+    $cookie = collect($response->headers->getCookies())
+        ->first(fn ($c): bool => $c->getName() === 'oauth_login_nonce');
+    expect($cookie)->not->toBeNull()
+        ->and($cookie->getSameSite())->toBe('lax')
+        ->and($cookie->isHttpOnly())->toBeTrue();
 });
 
 it('completes oauth finish when the browser nonce matches the login token', function (): void {

@@ -97,9 +97,14 @@ final readonly class OAuthController
             'nonce' => hash('sha256', $nonce),
         ], self::STATE_TTL);
 
+        // Cookie must outlive a login token minted at the very end of the state window (state TTL)
+        // and living LOGIN_TTL beyond it — otherwise a slow consent screen leaves a valid token with
+        // no cookie to match. +1 min of headroom.
+        $cookieMinutes = intdiv(self::STATE_TTL + self::LOGIN_TTL, 60) + 1;
+
         return redirect()->away(
             $this->flow->authorizeUrl($provider, $purpose, $clientId, OAuthFlow::callbackUrl(), $state, $this->pkceChallenge($verifier)),
-        )->withCookie(Cookie::make(self::LOGIN_NONCE_COOKIE, $nonce, intdiv(self::STATE_TTL, 60), null, null, null, true, false, 'lax'));
+        )->withCookie(Cookie::make(self::LOGIN_NONCE_COOKIE, $nonce, $cookieMinutes, null, null, null, true, false, 'lax'));
     }
 
     public function callback(Request $request): RedirectResponse
