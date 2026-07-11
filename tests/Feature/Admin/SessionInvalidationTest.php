@@ -1,10 +1,13 @@
 <?php
 
+use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Livewire\Livewire;
 
 /*
@@ -66,4 +69,44 @@ it('re-seeds this session on a self password change so the changer is not kicked
     // The current session now carries the NEW hash, so AuthenticateSession will not kick the
     // changer on their next full-page load (every other session still holds the old hash).
     expect(session('password_hash_web'))->toBe($user->fresh()->getAuthPassword());
+});
+
+it('kicks a stale-hash session on the platform plane too', function (): void {
+    // auth.session was added to BOTH protected groups; prove the operator (platform) host also kicks.
+    $user = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $user->assignRole('super_admin'));
+    $staleHash = $user->getAuthPassword();
+
+    $user->forceFill(['password' => Hash::make('rotated-operator-pw-123')])->save();
+
+    $this->actingAs($user->fresh())
+        ->withSession(['password_hash_web' => $staleHash])
+        ->get('http://platform.bswebsaas.test/')
+        ->assertRedirect('http://platform.bswebsaas.test/login');
+
+    $this->assertGuest();
+});
+
+it('kicks other sessions after a real password reset completes', function (): void {
+    // End-to-end: drive the actual ResetPassword flow (broker token), then confirm a session opened
+    // before the reset (old hash) is logged out on its next full-page load.
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+    $staleHash = $user->getAuthPassword();
+
+    $token = Password::broker()->createToken($user);
+    Livewire::test(ResetPassword::class)
+        ->set('token', $token)
+        ->set('email', $user->email)
+        ->set('password', 'fresh-reset-password-99')
+        ->set('password_confirmation', 'fresh-reset-password-99')
+        ->call('resetPassword')
+        ->assertHasNoErrors();
+
+    $this->actingAs($user->fresh())
+        ->withSession(['password_hash_web' => $staleHash])
+        ->get('http://a.test/admin')
+        ->assertRedirect('http://a.test/admin/login');
+
+    $this->assertGuest();
 });
