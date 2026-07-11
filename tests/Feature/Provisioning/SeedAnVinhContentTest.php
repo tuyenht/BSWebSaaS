@@ -1,13 +1,17 @@
 <?php
 
+use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Media\Models\Media;
+use App\Modules\Provisioning\Actions\PromoteAnVinhProductPostsToCatalog;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -15,6 +19,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteProfile;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -27,7 +32,8 @@ use Illuminate\Support\Facades\DB;
 
 beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(
-        'truncate tenant_probes, routes, entry_translations, entries,
+        'truncate tenant_probes, redirects, routes, product_translations, product_images,
+         product_taxonomies, products, entry_taxonomies, entry_translations, entries,
          site_profile_translations, site_profiles, site_settings, site_locales,
          site_modules, content_sections, domains, sites, tenants, tenant_users, users
          restart identity cascade'
@@ -450,5 +456,72 @@ it('re-seed refreshes an existing post featured image (re-curated photo reaches 
         // The featured image is refreshed to the canonical curated key (firstOrCreatePost updates it
         // on an existing post instead of skipping) — so a swapped photo actually reaches prod.
         expect($product->fresh()->meta['image_url'])->toStartWith('an-vinh/san-pham/sp-truc-may-cnc-');
+    });
+});
+
+it('re-seeding after the catalog promotion keeps product URLs and the permalink pin intact', function (): void {
+    $site = seedPrecisionSite();
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        app(SeedAnVinhContent::class)->handle();
+    });
+    app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
+    app()->forgetScopedInstances(); // seed / promote / re-seed are separate artisan processes in reality
+
+    // The hazard under test: a routine content re-seed AFTER the catalog handover.
+    app(Tenancy::class)->enter($site->id, function (): void {
+        app(SeedAnVinhContent::class)->handle();
+    });
+    app()->forgetScopedInstances();
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        // The permalink pin still agrees with the catalog handover — a re-seed must never
+        // flip products back to `category` (that would compose /{sub-cat}/{slug} links → 404).
+        $pin = SiteSetting::query()->where('group_name', 'permalinks')->where('key', 'products')->value('value');
+        expect($pin['pattern'] ?? null)->toBe('base');
+        expect($pin['base'] ?? null)->toBe('san-pham');
+
+        // Catalog rows and their routes are untouched; no product-post was resurrected.
+        expect(Product::query()->count())->toBe(6);
+        expect(SiteRoute::query()->whereNotNull('product_id')->where('path', 'like', '/san-pham/%')->count())->toBe(6);
+        expect(Entry::query()->whereHas('translations', fn ($q) => $q->where('slug', 'truc-may-cnc'))->exists())->toBeFalse();
+
+        // Composed product links still target /san-pham/{slug} (not the primary sub-category).
+        $translation = ProductTranslation::query()->where('slug', 'truc-may-cnc')->firstOrFail();
+        $product = Product::query()->findOrFail($translation->product_id);
+        $primaryCategory = $product->taxonomies()->first();
+        expect(app(PathBuilder::class)->forProduct($primaryCategory, 'truc-may-cnc', 'vi'))->toBe('/san-pham/truc-may-cnc');
+    });
+
+    // End-to-end: the live URL still serves the product after the re-seed.
+    $this->get('http://anvinh.test/san-pham/truc-may-cnc')->assertOk();
+});
+
+it('re-seeding after promotion and a trash purge does not resurrect product-posts', function (): void {
+    $site = seedPrecisionSite();
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        app(SeedAnVinhContent::class)->handle();
+    });
+    app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
+
+    // Prod state since 11/07: the six retired posts were purged from Trash — their translation
+    // rows are gone, so the seeder's slug-existence net no longer sees them.
+    app(Tenancy::class)->enter($site->id, function (): void {
+        Entry::withTrashed()->whereNotNull('deleted_at')->forceDelete();
+    });
+    app()->forgetScopedInstances();
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        app(SeedAnVinhContent::class)->handle();
+    });
+
+    app(Tenancy::class)->enter($site->id, function (): void {
+        // The slugs now live as catalog Products — the seeder must skip them, not re-create posts.
+        expect(Entry::withTrashed()->whereHas('translations', fn ($q) => $q->where('slug', 'truc-may-cnc'))->exists())->toBeFalse();
+        expect(Product::query()->count())->toBe(6);
+
+        // Other content seeded normally (the guard is products-only).
+        expect(TaxonomyTranslation::query()->where('slug', 'du-an')->exists())->toBeTrue();
     });
 });

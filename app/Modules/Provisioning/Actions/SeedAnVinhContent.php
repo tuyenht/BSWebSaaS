@@ -2,6 +2,7 @@
 
 namespace App\Modules\Provisioning\Actions;
 
+use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
@@ -228,7 +229,7 @@ final readonly class SeedAnVinhContent
         $defaultLocale = SiteLocale::query()->where('is_default', true)->value('locale');
         $locale = is_string($defaultLocale) ? $defaultLocale : 'vi';
 
-        $this->pinPostSectionsToCategory();
+        $this->pinSectionPermalinks();
         $this->seedProducts($locale);
         $this->seedProjects($locale);
         $this->seedServices($locale);
@@ -241,21 +242,31 @@ final readonly class SeedAnVinhContent
     }
 
     /**
-     * Pin An Vinh's post sections to the `category` permalink preset so their live URLs stay
-     * `/{category}/{slug}` (san-pham/du-an/dich-vu/tin-tuc) even though the platform default is now
-     * flat `/{slug}`. Written BEFORE any post is route-synced below, so the first sync already
-     * composes the pinned path — no flip window. An Vinh-specific (kept out of ProvisionSite so
-     * other tenants keep the flat default). Idempotent. The keys are ContentSection.key values;
-     * `posts` (news) is owned by ProvisionSite, the other three by this seeder.
+     * Pin An Vinh's section permalinks so live URLs keep their launch shape even though the
+     * platform default is now flat `/{slug}`. Written BEFORE any post is route-synced below, so
+     * the first sync already composes the pinned path — no flip window. An Vinh-specific (kept
+     * out of ProvisionSite so other tenants keep the flat default). Idempotent. The keys are
+     * ContentSection.key values; `posts` (news) is owned by ProvisionSite, the rest by this seeder.
+     *
+     * Post sections pin to `category` (`/{category}/{slug}`). `products` pins to the FIXED base
+     * `san-pham` — the same value the catalog promotion writes. The two writers must agree: under
+     * `category`, product links would compose from a product's primary category (a `product_cat`
+     * sub-term like `do-ga`), a path no route serves — so a re-seed after the catalog handover
+     * would 404 every composed product link. Under `base` both eras compose `/san-pham/{slug}`.
      */
-    private function pinPostSectionsToCategory(): void
+    private function pinSectionPermalinks(): void
     {
-        foreach (['products', 'projects', 'services', 'posts'] as $section) {
+        foreach (['projects', 'services', 'posts'] as $section) {
             SiteSetting::query()->updateOrCreate(
                 ['group_name' => 'permalinks', 'key' => $section],
                 ['value' => ['pattern' => 'category']],
             );
         }
+
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'permalinks', 'key' => 'products'],
+            ['value' => ['pattern' => 'base', 'base' => self::PRODUCTS_SLUG]],
+        );
     }
 
     private function seedProducts(string $locale): void
@@ -275,6 +286,14 @@ final readonly class SeedAnVinhContent
         }
 
         foreach (self::PRODUCTS as $product) {
+            // Once the catalog promotion has moved this slug to a Product row, the legacy post is
+            // gone for good (trashed, then purged) — a re-seed must not resurrect it as a duplicate
+            // post alongside the live catalog product. firstOrCreatePost's own slug net can't catch
+            // this after the purge (the translation row is deleted with the post), so check catalog.
+            if (ProductTranslation::query()->where('locale', $locale)->where('slug', $product['slug'])->exists()) {
+                continue;
+            }
+
             $blocks = [
                 ['type' => 'richtext', 'props' => ['heading' => $product['title'], 'paragraphs' => [$product['excerpt']]]],
                 ['type' => 'richtext', 'props' => ['heading' => 'Thông số kỹ thuật', 'paragraphs' => $product['specs']]],
@@ -605,6 +624,9 @@ final readonly class SeedAnVinhContent
                 'name' => 'Cơ Khí Chính Xác An Vinh',
                 'legal_name' => 'Công ty TNHH TM & DV Thiết Kế Gia Công Cơ Khí An Vinh',
                 'logo' => $this->media->url(self::KEY_LOGO),
+                // Browser-tab icon (PNG is fine). Interim: a small cut of the logo until An Vinh
+                // supplies a dedicated favicon file — still beats showing the platform's icon.
+                'favicon' => $this->media->url(self::KEY_LOGO, 64),
                 'description' => 'Dẫn đầu về giải pháp cơ khí chính xác, chuyên thiết kế, gia công đồ gá, jig, và khuôn mẫu chất lượng cao tại Việt Nam.',
                 'og_image' => $this->media->url(self::KEY_ABOUT, 1280),
                 // Combined address string — used by the footer display and as fallback streetAddress
