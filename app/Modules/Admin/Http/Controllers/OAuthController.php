@@ -17,6 +17,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -41,6 +42,8 @@ final readonly class OAuthController
     private const int STATE_TTL = 600;
 
     private const int LOGIN_TTL = 120;
+
+    private const string LOGIN_NONCE_COOKIE = 'oauth_login_nonce';
 
     public function __construct(
         private OAuthFlow $flow,
@@ -77,17 +80,26 @@ final readonly class OAuthController
 
         $state = Str::random(40);
         $verifier = Str::random(64);
+
+        // Bind this flow to the initiating browser. A random nonce is set as an HttpOnly cookie on
+        // THIS host — finish() runs on the same origin host, so the cookie is readable there — and
+        // only its hash is stored server-side. finish() refuses a login token whose nonce cookie is
+        // missing or wrong, closing the login-CSRF / session-fixation window in which a captured
+        // handoff token could otherwise complete into any browser.
+        $nonce = Str::random(40);
+
         Cache::put('oauth-state:'.$state, [
             'origin' => $request->getSchemeAndHttpHost(),
             'provider' => $provider,
             'purpose' => $purpose,
             'verifier' => $verifier,
             'user_id' => Auth::id(),
+            'nonce' => hash('sha256', $nonce),
         ], self::STATE_TTL);
 
         return redirect()->away(
             $this->flow->authorizeUrl($provider, $purpose, $clientId, OAuthFlow::callbackUrl(), $state, $this->pkceChallenge($verifier)),
-        );
+        )->withCookie(Cookie::make(self::LOGIN_NONCE_COOKIE, $nonce, intdiv(self::STATE_TTL, 60), null, null, null, true, false, 'lax'));
     }
 
     public function callback(Request $request): RedirectResponse
@@ -104,6 +116,7 @@ final readonly class OAuthController
         $purpose = Cast::string($data['purpose'] ?? null, 'login');
         $verifier = Cast::string($data['verifier'] ?? null);
         $userId = Cast::int($data['user_id'] ?? null);
+        $nonceHash = Cast::string($data['nonce'] ?? null);
         $host = (string) (parse_url($origin, PHP_URL_HOST) ?: '');
 
         if ($request->query('error') !== null || ! is_string($request->query('code'))) {
@@ -118,27 +131,40 @@ final readonly class OAuthController
         // Re-enter the originating tenant's context to read its app + store/verify.
         return $this->tenancy->enter(
             $domain->site_id,
-            fn (): RedirectResponse => $this->complete($request, $origin, $provider, $purpose, $verifier, $userId),
+            fn (): RedirectResponse => $this->complete($request, $origin, $provider, $purpose, $verifier, $userId, $nonceHash),
         );
     }
 
     public function finish(Request $request): RedirectResponse
     {
         $token = $request->query('token');
-        $userId = is_string($token) ? Cache::pull('oauth-login:'.$token) : null;
-        $user = $userId !== null ? User::find($userId) : null;
+        $data = is_string($token) ? Cache::pull('oauth-login:'.$token) : null;
+        $cookieNonce = $request->cookie(self::LOGIN_NONCE_COOKIE);
 
+        // Drop the one-shot nonce cookie whatever happens next.
+        $forget = Cookie::forget(self::LOGIN_NONCE_COOKIE);
+
+        // The login token must be presented by the SAME browser that began the flow: its payload
+        // carries the hash of the nonce set as an HttpOnly cookie at start(). A token replayed or
+        // forged into a different browser has no matching cookie and is refused (fail closed).
+        if (! is_array($data)
+            || ! is_string($cookieNonce) || $cookieNonce === ''
+            || ! hash_equals(Cast::string($data['nonce'] ?? null), hash('sha256', $cookieNonce))) {
+            return redirect()->route('admin.login')->withErrors(['email' => __('admin.oauth_failed')])->withCookie($forget);
+        }
+
+        $user = User::find(Cast::int($data['uid'] ?? null));
         if (! $user instanceof User) {
-            return redirect()->route('admin.login')->withErrors(['email' => __('admin.oauth_failed')]);
+            return redirect()->route('admin.login')->withErrors(['email' => __('admin.oauth_failed')])->withCookie($forget);
         }
 
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('admin.dashboard'));
+        return redirect()->intended(route('admin.dashboard'))->withCookie($forget);
     }
 
-    private function complete(Request $request, string $origin, string $provider, string $purpose, string $verifier, int $userId): RedirectResponse
+    private function complete(Request $request, string $origin, string $provider, string $purpose, string $verifier, int $userId, string $nonceHash): RedirectResponse
     {
         [$clientId, $clientSecret] = $this->creds($provider, $purpose);
         if ($clientId === null || $clientSecret === null) {
@@ -157,14 +183,14 @@ final readonly class OAuthController
         return match ($purpose) {
             'email' => $this->finishEmail($origin, $provider, $tokens, $info),
             'connect' => $this->finishConnect($origin, $provider, $info, $userId),
-            default => $this->finishLogin($origin, $provider, $info),
+            default => $this->finishLogin($origin, $provider, $info, $nonceHash),
         };
     }
 
     /**
      * @param  array<string, mixed>  $info
      */
-    private function finishLogin(string $origin, string $provider, array $info): RedirectResponse
+    private function finishLogin(string $origin, string $provider, array $info, string $nonceHash): RedirectResponse
     {
         $sub = Cast::string($info[$this->subjectField($provider)] ?? null);
 
@@ -176,7 +202,7 @@ final readonly class OAuthController
             if ($linked !== null) {
                 $user = User::find($linked->user_id);
                 if ($user instanceof User && $this->memberOfOrigin($user)) {
-                    return $this->bounceLogin($origin, $user);
+                    return $this->bounceLogin($origin, $user, $nonceHash);
                 }
             }
         }
@@ -207,7 +233,7 @@ final readonly class OAuthController
             );
         }
 
-        return $this->bounceLogin($origin, $user);
+        return $this->bounceLogin($origin, $user, $nonceHash);
     }
 
     /**
@@ -279,11 +305,17 @@ final readonly class OAuthController
         return $this->platformAccess->isSuperAdmin($user) || $user->roles()->exists();
     }
 
-    /** The session lives on the origin host — bounce there with a single-use login token. */
-    private function bounceLogin(string $origin, User $user): RedirectResponse
+    /**
+     * The session lives on the origin host — bounce there with a single-use login token. The token
+     * payload carries the nonce hash so finish() can verify the same browser that began the flow.
+     */
+    private function bounceLogin(string $origin, User $user, string $nonceHash): RedirectResponse
     {
         $token = Str::random(48);
-        Cache::put('oauth-login:'.$token, $user->getAuthIdentifier(), self::LOGIN_TTL);
+        Cache::put('oauth-login:'.$token, [
+            'uid' => $user->getAuthIdentifier(),
+            'nonce' => $nonceHash,
+        ], self::LOGIN_TTL);
 
         return redirect()->away($this->originPath($origin, 'oauth/finish').'?token='.$token);
     }
