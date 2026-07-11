@@ -12,6 +12,7 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Provisioning\Exceptions\DryRunRollback;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -82,7 +83,7 @@ final readonly class ReflowSitePermalinks
     {
         $summary = [];
 
-        /** @var \Illuminate\Database\Eloquent\Collection<int, Entry> $posts */
+        /** @var Collection<int, Entry> $posts */
         $posts = Entry::query()
             ->where('type', 'post')
             ->where('status', 'published')
@@ -111,7 +112,7 @@ final readonly class ReflowSitePermalinks
     {
         $summary = [];
 
-        /** @var \Illuminate\Database\Eloquent\Collection<int, Product> $products */
+        /** @var Collection<int, Product> $products */
         $products = Product::query()
             ->where('status', 'published')
             ->with(['translations', 'taxonomies'])
@@ -120,7 +121,7 @@ final readonly class ReflowSitePermalinks
         foreach ($products as $product) {
             $primaryCategory = $product->taxonomies->first();
 
-            /** @var \Illuminate\Database\Eloquent\Collection<int, SiteRoute> $productRoutes */
+            /** @var Collection<int, SiteRoute> $productRoutes */
             $productRoutes = SiteRoute::query()->where('product_id', $product->id)->get();
 
             foreach ($productRoutes as $route) {
