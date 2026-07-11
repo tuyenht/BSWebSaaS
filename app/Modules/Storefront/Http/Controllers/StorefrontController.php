@@ -376,6 +376,24 @@ final readonly class StorefrontController
             $extra['ogImage'] = $images[0]['url'];
         }
 
+        // Product JSON-LD (brochure mode: no offers/price — this catalog sells nothing online).
+        // Description must be plain text, so the sanitized HTML body is stripped; the dedicated
+        // SEO description wins when the editor wrote one.
+        $ldDescription = ! empty($translation->seo_description)
+            ? $translation->seo_description
+            : str((string) $translation->description)->stripTags()->squish()->limit(300)->toString();
+        $extra['productLd'] = array_filter([
+            '@context' => 'https://schema.org',
+            '@type' => 'Product',
+            'name' => $translation->name,
+            'description' => $ldDescription !== '' ? $ldDescription : null,
+            'image' => array_column($images, 'url') ?: null,
+            'url' => $canonical,
+            'brand' => ($brandName = data_get($chrome, 'brand.name')) !== null && $brandName !== ''
+                ? ['@type' => 'Brand', 'name' => $brandName]
+                : null,
+        ], fn ($value) => $value !== null);
+
         $html = $this->renderer->renderProduct(
             $translation->name,
             (string) $translation->description,

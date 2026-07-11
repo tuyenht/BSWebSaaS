@@ -138,3 +138,24 @@ it('self-canonicals a paginated category page with ?page=N', function (): void {
 
     expect($html)->toContain('<link rel="canonical" href="http://anvinh.test/tin-tuc?page=2">');
 });
+
+it('uses the tenant brand favicon when set, and the platform file only as fallback', function (): void {
+    seoProvision();
+
+    // No brand favicon yet → platform fallback.
+    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+    expect($html)->toContain('<link rel="icon" href="/favicon.ico"');
+
+    // A tenant that sets brand.favicon gets its own icon — no platform branding leak.
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'general', 'key' => 'brand'],
+            ['value' => ['name' => 'An Vinh', 'favicon' => 'https://files.example.test/an-vinh/brand/logo-64.png']],
+        );
+    });
+
+    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+    expect($html)->toContain('<link rel="icon" href="https://files.example.test/an-vinh/brand/logo-64.png"');
+    expect($html)->not->toContain('<link rel="icon" href="/favicon.ico"');
+});

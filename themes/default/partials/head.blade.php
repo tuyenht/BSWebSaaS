@@ -6,8 +6,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ $seoTitle }}</title>
-{{-- Platform default favicon (Bảo Sơn) — per-tenant branding can override later via $brand. --}}
-<link rel="icon" href="/favicon.ico" sizes="any">
+{{-- Tenant favicon from the brand setting; the platform file is only the no-brand fallback. --}}
+<link rel="icon" href="{{ data_get($brand ?? null, 'favicon') ?: '/favicon.ico' }}" sizes="any">
 @php
     // Brand description fallback: category-list and other pages without a per-page description
     // (seoDescription = null/empty) fall back to the tenant's brand short description so the
@@ -103,6 +103,15 @@
         $orgJson = json_encode($orgLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
     @endphp
     <script type="application/ld+json">{!! $orgJson !!}</script>
+@endif
+
+@if (! empty($productLd))
+    @php
+        // Product schema for catalog detail pages (built by StorefrontController::renderProduct —
+        // no offers: brochure catalog). Encoded inside @php, same escaping rules as the blocks below.
+        $productJson = json_encode($productLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG);
+    @endphp
+    <script type="application/ld+json">{!! $productJson !!}</script>
 @endif
 
 @if (! empty($breadcrumb))

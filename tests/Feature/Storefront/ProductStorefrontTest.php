@@ -117,3 +117,32 @@ it('lists published products at the catalog category index (/san-pham)', functio
         ->toContain('Sản phẩm 1')->toContain('href="/san-pham/sp-1"')
         ->toContain('Sản phẩm 2')->toContain('href="/san-pham/sp-2"');
 });
+
+it('emits Product JSON-LD on the detail page — name, text description, url, brand; no offers', function (): void {
+    seedStorefrontProduct('jig-vf7');
+
+    // Give the tenant a brand so the LD carries it.
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'general', 'key' => 'brand'],
+            ['value' => ['name' => 'Cơ Khí Chính Xác An Vinh']],
+        );
+    });
+
+    $html = $this->get('http://anvinh.test/san-pham/jig-vf7')->assertOk()->getContent();
+
+    expect($html)->toContain('"@type":"Product"');
+
+    preg_match_all('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $matches);
+    $productLd = collect($matches[1])
+        ->map(fn (string $json) => json_decode($json, true))
+        ->firstWhere('@type', 'Product');
+
+    expect($productLd)->not->toBeNull();
+    expect($productLd['name'])->toBe('Jig kiểm VF7');
+    expect($productLd['description'])->toBe('Đồ gá kiểm tra cụm taplo.'); // stripped to plain text
+    expect($productLd['url'])->toBe('http://anvinh.test/san-pham/jig-vf7');
+    expect($productLd['brand'])->toBe(['@type' => 'Brand', 'name' => 'Cơ Khí Chính Xác An Vinh']);
+    expect($productLd)->not->toHaveKey('offers'); // brochure catalog — nothing is sold online
+});
