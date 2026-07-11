@@ -148,13 +148,16 @@ it('lists posts for the posts section and pages by default', function (): void {
 
     $tenancy->enter(1, function () use ($viewer): void {
         grantRole($viewer, 'editor', ['entries.view']);
-        seedPostCollection();
+        $categoryId = seedPostCollection();
 
         $page = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
         $page->translations()->create(['locale' => 'vi', 'title' => 'Trang A', 'slug' => 'trang-a', 'status' => 'draft', 'body' => ['blocks' => []]]);
 
         $post = Entry::query()->create(['type' => 'post', 'status' => 'draft']);
         $post->translations()->create(['locale' => 'vi', 'title' => 'Bài B', 'slug' => 'bai-b', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        // A post carries its section's primary category (the editor makes it required), which is
+        // what files it under that section's list.
+        $post->assignCategories([$categoryId]);
 
         // The posts section lists posts only, and the heading shows the section's localized name —
         // guards the public-property-vs-render-data shadowing that used to silently fall back.
