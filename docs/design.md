@@ -1,7 +1,7 @@
-# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.12)
+# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.14)
 
 **Chủ dự án:** Hoàng Thanh Tuyền (Senior Tech Lead, Bảo Sơn) · tuyenht@gmail.com · 0962 04 6262
-**Trạng thái:** v2.12 — chuẩn hóa nền dữ liệu multi-tenant scale (ADR-18): partition measure-first-có-trigger (≥30M/bảng) · giữ bigint-PK + retrofit-playbook · tenant-ctx codify + cache domain. Lõi thiết kế ĐÓNG BĂNG; đang triển khai An Vinh.
+**Trạng thái:** v2.14 — chuẩn hóa nền dữ liệu multi-tenant scale (ADR-18) + permalink flat-default (v2.13) + doc-sync as-built & 4 ADR đề xuất Draft (v2.14, audit 11/07): partition measure-first-có-trigger (≥30M/bảng) · giữ bigint-PK + retrofit-playbook · tenant-ctx codify + cache domain. Lõi thiết kế ĐÓNG BĂNG; đang triển khai An Vinh.
 **Nguồn:** hợp nhất từ tài liệu khởi tạo v1.0→v1.30 (41 mục + 14 ADR) + khảo sát 5 website thật + schema t5g.
 **Bản lịch sử (đầy đủ quá trình tranh luận):** `ke-hoach-tong-the-saas-website-platform.md` (v1.30).
 
@@ -194,7 +194,7 @@ domains(id BIGINT PK, site_id, hostname UNIQUE, kind, is_primary, ssl_status, ve
 ```sql
 entries(
   id, site_id, type,                 -- 'page'|'post'  (product = bảng riêng, Mục 11)
-  status,                            -- draft|pending|published|archived (vòng đời đơn giản)
+  status,                            -- draft|pending|published|scheduled|private|archived (as-built; scheduled → auto-publish qua worker `entries:publish-due`; private = hoàn tất nhưng không public)
   workflow_state NULL,               -- khi gắn workflow (Mục 15); NULL = dùng status
   assigned_to NULL,                  -- người được phân công duyệt
   parent_id NULL,                    -- phân cấp (số tạp chí → bài; cây tài liệu)
@@ -276,7 +276,7 @@ payments(id, site_id, order_id, method, amount, status, reference, paid_at, raw_
 - **Tra cứu đơn theo mã** (mã đơn + SĐT → trạng thái) — không cần tài khoản; dùng `orders` + token tra cứu.
 - **Kiểu TIỀN (D5):** `price`/`sale_price`/`total`/`amount`/`min_order`/`value`(coupon) = **integer (VND đồng)**, KHÔNG float. **Bề rộng = bigint (int64)** — int32 trần ~2,1 tỷ đồng, quá nhỏ cho B2B (máy/khuôn/xe); precedent đặt từ `products.price` (as-built 2026-07) cho `orders.total` Phase-2. `orders.code` UNIQUE(site_id, code).
 - **Tồn kho & toàn vẹn commerce (D15):** `CHECK(stock >= 0)` + **decrement nguyên tử** chống oversell (`UPDATE … SET stock=stock-:q WHERE stock >= :q` hoặc lock dòng trong transaction) — KHÔNG đọc-rồi-ghi. Payment/webhook **idempotent** (SePay — đã có). Unique: `products` UNIQUE(site_id, sku) (as-built: partial, `WHERE sku IS NOT NULL` — brochure nhiều hàng không sku); `product_variants` UNIQUE(product_id, sku); `taxonomy_translations.slug` UNIQUE per (site, vocabulary, locale); `coupon_redemptions` UNIQUE(coupon_id, order_id).
-- **As-built GĐ1 brochure (P0/P1 2026-07):** cả 4 bảng catalog **kể cả pivot `product_taxonomies` (§9) đều mang `site_id` + RLS + FORCE per D6** (mirror `entry_taxonomies` — pivot tenant KHÔNG ngoại lệ). Cột thương mại (sku/price/sale/stock) NULLABLE = brochure. `product_translations.description` (chi tiết/specs) + `summary` (teaser card/og) = **rich HTML sanitize-KHI-GHI** (HTMLPurifier allowlist 2 profile khớp 2 toolbar; lọc CSS property-level `color|background-color|font-size|text-align`; KHÔNG `img`/`iframe` — ảnh đi đường `product_images`→`media_id`); editor admin = Jodit 4 island (icon map Remix). Ẩn giá/đặt-hàng per-site qua setting `catalog_mode` (Slice-3, chưa build).
+- **As-built GĐ1 brochure (P0/P1 2026-07):** cả 4 bảng catalog **kể cả pivot `product_taxonomies` (§9) đều mang `site_id` + RLS + FORCE per D6** (mirror `entry_taxonomies` — pivot tenant KHÔNG ngoại lệ). Cột thương mại (sku/price/sale/stock) NULLABLE = brochure. `product_translations.description` (chi tiết/specs) + `summary` (teaser card/og) = **rich HTML sanitize-KHI-GHI** (HTMLPurifier 2 profile khớp 2 toolbar: `description`=**full** (cho `img` từ library + `iframe` CHỈ youtube/vimeo qua SafeIframe + table/heading/sub-sup + CSS property-level `color|background-color|font-size|text-align|margin-left|padding-left|width|height`) vs `summary`=**basic** (KHÔNG `img`/`iframe`); ảnh SP chính vẫn qua `product_images`→`media_id`); editor admin = Jodit 4 island (icon map Remix). Ẩn giá/đặt-hàng per-site qua setting `catalog_mode` (Slice-3, chưa build).
 
 ## 12. Media + Image CDN *(Mục 41)*
 
@@ -520,6 +520,7 @@ content_workflow_log(id, site_id, entry_id, locale NULL, transition_key, from_st
 
 - **Theme = Section Library + Page JSON**; **KHÔNG chạy code khách** (an toàn, export được). *(ADR-04)*
 - **Builder section-based** + **iframe preview thật** + postMessage; React island (Puck) cho canvas admin — **chỉ là editor, KHÔNG phải renderer storefront** (storefront render Blade từ Page JSON). Cần spike parity preview↔render. *(ADR-05)*
+  > *Thực-tế (11/07):* editor admin đang chạy = **Livewire form-based** (`App\Modules\Admin\Livewire\Entries\Editor` + `ValidPageJson`), là MVP. **Puck** (canvas kéo-thả trực quan) = roadmap, **CHƯA build** — ADR-05 giữ nguyên hướng builder trực quan tương lai.
 - **Template hiển thị theo category** (Mục 8): list/detail template thuộc Section Library; AI sinh template mới được.
 - Theme versioned (`themes`, `theme_versions`, `site_theme`).
 
@@ -719,6 +720,17 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 | 17 | **Media — Storage + Serving (supersede §12):** R2 **private** (bucket `baoson-media`, chỉ Worker đọc qua binding), 1 master WebP/ảnh; key content-addressed `{tenant}/{collection}/{slug}-{hash}.{ext}` (`tenant` = **`Site.slug`** citext-unique sinh-từ-name lúc provision, bất biến — thêm ở PR-1; `hash` = SHA-256[:12] nội dung, tính 1 lần lúc upload → dedup + cache-bust) thay `sites/{site_id}/media/{ulid}`; serving qua **Cloudflare Worker** (cf.image format=auto + width-whitelist + raw-master fallback) thay imgproxy-primary (imgproxy → **L4 cold-standby**, ngoài path chính); **resolver đa-driver** `media.driver ∈ {cloudflare, imgproxy, static}` (switch = 1 env), **KHÔNG cột `url`** (derive lúc render); lib **custom** `App\Modules\Media` thay spatie/medialibrary; domain `files.baoson.net`; resilience L0–L4 (bỏ L5). Media công khai (không token); cô lập tenant qua prefix `{tenant}` + RLS `media.site_id` FORCE fail-closed (tên bảng = `media`, nhất quán §12/§16 — reconcile 29/06). ⚠ PR-1 upload-safety BẮT BUỘC §2.5 (sniff magic-bytes + MIME whitelist + sanitize SVG). Epic: `docs/notes/media-system-epic.md` | Chốt (supersede §12) |
 | 18 | **Data & Performance Standards (scale nền multi-tenant, greenfield):** cô lập theo **`site_id`**. **Partition = measure-first CÓ TRIGGER** (bảng ≥30M rows HOẶC p99 breach → mới partition; ứng viên HASH-`site_id`: entries/products/media/mediables/orders · RANGE-time+**pg_partman**: form_submissions/audit_logs; KHÔNG partition config/RBAC/lookup/tenants/domains; whale=tách-DB ADR-03). **PK giữ `bigint identity + ulid` (ADR-16), single-PK now**; retrofit→composite `(site_id,id)` khi chạm trigger = 1-lần-có-kế-hoạch (playbook pg_partman, cửa-sổ-bảo-trì). **Read/write split** = design-intent, KHÔNG enforce (chưa replica). **Tenant-ctx** = codify bất-biến (explicit txn + `site_id=?` tường minh — đã có) + prod `assert=sample` + `READ ONLY` cho GET + **cache domain→site_id + negative-cache**. Chuẩn: index-dẫn-`site_id`+partial/BRIN · keyset+tie-break · rollup (không COUNT(*) live) · COPY-seed-lệch. **Loại:** schema/db-per-tenant · UUIDv4/v7 · partition-now · composite-PK-now. Chi tiết: `docs/notes/data-platform-standards.md` | Chốt (v2.12) |
 
+**ADR ĐỀ XUẤT (Draft — CHƯA Accepted; ghi 11/07 sau audit hội đồng, chờ chốt-build. KHÔNG tính vào "18 ADR" ở trên):**
+
+| ADR | Quyết định | Trạng thái |
+|---|---|---|
+| 19 | **Page Builder — section kind `html` (khối rich-HTML):** tái dùng `RichTextSanitizer::full` **sanitize-KHI-GHI ở MỌI đường ghi** (editor người **+ AI-gen Page-JSON ADR-08 + import** — nếu bỏ sót AI/import = stored-XSS) + phủ `ValidPageJson`; render qua `BlockRenderer`. Khác kind `richtext` hiện có (`paragraphs` plain-text). | **Đề xuất (Draft)** |
+| 20 | **Khối tái dùng (reusable blocks):** bảng **typed riêng `content_blocks`(+`content_block_translations`)** — KHÔNG mở `entries.type='block'` (giữ entries thuần `page\|post` theo §9); Page-JSON tham chiếu `reusable_ref{block_id}` + guard **đệ quy/độ sâu/ngân sách**; `block_usages` back-ref + **GIN `entry_translations.body`** (tra "trang nào dùng block X"). **Build HOÃN** (YAGNI — An Vinh brochure chưa cần). *Loại:* `entries.type='block'` (buộc chặn block khỏi route/sitemap/listing/menu-target ở N nơi = bất biến dễ vỡ cho sản phẩm bán ra). | **Đề xuất (Draft)** |
+| 21 | **Tracking — seam khung (near-term):** **CSP nonce ĐỘNG per-request** (hiện thực §29 đã đặc tả, qua `spatie/laravel-csp`; vá CSP static + admin-plane hở hiện tại) + **analytics cookieless `page_views`** (đã intent §27/§29). Kích hoạt khi Script-Manager / tag 3rd-party xuất hiện. | **Đề xuất (Draft)** |
+| 22 | **Tracking — 3rd-party & lead (pha thương mại, DEFER):** `site_integrations` (secret **mã hoá** + `site_id`+RLS) + consent record + collector/queue fan-out + attribution lead (gclid/fbclid/utm trên `form_submissions`) + offline-conversion export; tracking-domain suy từ `config('tenancy.base_domains')`. YAGNI cho An Vinh; council chốt scope pha thương mại. | **Đề xuất (Draft)** |
+
+> **Ghi chú Revisions (audit 11/07):** GIỮ `entry_revisions` **typed** (đã đặc tả §8/§16/§17/D4a) — **loại** đề xuất `content_revisions` polymorphic (tránh lặp lỗi orphan-sweep đã dính ở `mediables`; FK-cascade toàn vẹn; KISS>DRY cho solo). Products/blocks cần history → thêm `product_revisions`/`block_revisions` typed khi tới. An toàn draft↔published (§8) = build snapshot-on-publish vào `entry_revisions` khi ưu tiên safe-edit. **Index** `(site_id,type,status,published_at DESC)` = REVERSIBLE → measure-first (§17), chưa thêm; `products` bỏ `type` (không có cột).
+
 ## B. Sổ rủi ro R1–R24 (chính)
 
 | R | Rủi ro | Giảm thiểu |
@@ -887,3 +899,7 @@ OPcache → **Valkey** → fragment → full-page → CDN, với **tag invalidat
 ---
 
 *Hết v2.13 — URL permalink flat-default (opt-in prefix, per-site, guard = routes-UNIQUE) + Products catalog-canonical (An Vinh 6-post migrate giữ `/san-pham/{slug}`, 0 301) + timezone per-site (SiteTime). Mở rộng ADR-11; lõi i18n/RLS/PathBuilder KHÔNG đổi. Deployed An Vinh prod + data-verified.*
+
+- **v2.14 (doc-sync as-built + 4 ADR đề xuất — audit hội đồng 11/07; KHÔNG lật lõi):** đối chiếu code→doc (verify first-hand migrations 2000/2006/2012). **Sửa doc lệch as-built:** (a) §8 status enum `entries` = draft|pending|published|**scheduled|private**|archived (worker `entries:publish-due` mỗi phút — đã chạy); (b) §11 sanitizer catalog: `description`=**full** (img library + iframe youtube/vimeo + table/heading + CSS allowlist rộng) vs `summary`=**basic** (KHÔNG img/iframe) — đính chính claim "KHÔNG img/iframe" cũ. **Ghi 4 ADR ĐỀ XUẤT (Draft, chưa build, Phụ lục A):** 19 section-kind `html` (sanitize MỌI write-path gồm AI-gen); 20 reusable blocks = bảng typed `content_blocks` riêng (KHÔNG `entries.type='block'`), build hoãn; 21 tracking-seam (CSP nonce động + cookieless page_views); 22 3rd-party+attribution(gclid/fbclid/utm)+offline-conv (pha thương mại). **Quyết định kèm:** GIỮ `entry_revisions` typed (loại polymorphic `content_revisions`); **Puck** = roadmap chưa build (editor hiện tại Livewire MVP); index `(site_id,type,status,published_at)` reversible → measure-first (chưa thêm; `products` bỏ `type`). **Đính chính "còn thiếu":** redirects+auto-301 (`RouteSync`) + scheduled-publish = ĐÃ build; `media.alt`=jsonb per-locale đã có; `cover_alt` không tồn tại (dùng `media.alt[locale]`).
+
+*Hết v2.14 — doc khớp as-built (status enum + sanitizer profile) + 4 ADR đề xuất Draft (page-builder html-block · reusable `content_blocks` · tracking 2-tier) chờ chốt-build; revisions giữ typed. Lõi thiết kế KHÔNG đổi; chưa migrate gì.*
