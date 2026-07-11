@@ -286,3 +286,35 @@ it('the console command fails cleanly for an unknown host', function (): void {
     $this->artisan('anvinh:promote-products', ['--host' => 'does-not-exist.test'])
         ->assertFailed();
 });
+
+it('records a 301 when a source post lived at a different path than the product', function (): void {
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-g.test', 1);
+    $slug = $slugs[0];
+
+    // A tenant whose product-posts were NOT category-pinned (flat-era history): the live route
+    // sits at /{slug}, so the promoted product's /san-pham/{slug} is a genuine URL change.
+    app(Tenancy::class)->enter($site->id, function () use ($slug): void {
+        SiteRoute::query()->where('path', "/san-pham/{$slug}")->update(['path' => "/{$slug}"]);
+    });
+    app()->forgetScopedInstances();
+
+    app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
+
+    app(Tenancy::class)->enter($site->id, function () use ($slug): void {
+        // The old flat path bridges to the product's new home — never a silent 404.
+        $redirect = Redirect::query()->where('from_path', "/{$slug}")->first();
+        expect($redirect)->not->toBeNull();
+        expect($redirect->to_path)->toBe("/san-pham/{$slug}");
+        expect($redirect->status_code)->toBe(301);
+
+        // The product route itself is live at the new path.
+        $route = SiteRoute::query()->where('path', "/san-pham/{$slug}")->firstOrFail();
+        expect($route->product_id)->not->toBeNull();
+    });
+
+    // End-to-end: the old URL 301s to the product, which serves 200.
+    $this->get("http://anvinh-promo-g.test/{$slug}")
+        ->assertStatus(301)
+        ->assertRedirect("http://anvinh-promo-g.test/san-pham/{$slug}");
+    $this->get("http://anvinh-promo-g.test/san-pham/{$slug}")->assertOk();
+});

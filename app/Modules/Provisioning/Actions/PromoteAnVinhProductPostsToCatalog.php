@@ -8,6 +8,7 @@ use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
@@ -143,6 +144,32 @@ final readonly class PromoteAnVinhProductPostsToCatalog
         );
     }
 
+    /**
+     * Bridge a retired post path to the product's new path with a 301 — mirrors the redirect
+     * bookkeeping RouteSync does on a slug change (collapse chains onto the new path, record
+     * old → new idempotently, and never leave a redirect FROM the live path). Product redirects
+     * carry no target attribution, same as RouteSync::syncProduct. No-op when the handover
+     * landed on the identical path (the normal An Vinh case).
+     */
+    private function bridgeRetiredPath(string $locale, string $oldPath, string $newPath): void
+    {
+        if ($oldPath === $newPath) {
+            return;
+        }
+
+        Redirect::query()
+            ->where('locale', $locale)
+            ->where('to_path', $oldPath)
+            ->update(['to_path' => $newPath]);
+
+        Redirect::query()->updateOrCreate(
+            ['locale' => $locale, 'from_path' => $oldPath],
+            ['to_path' => $newPath, 'status_code' => 301],
+        );
+
+        Redirect::query()->where('locale', $locale)->where('from_path', $newPath)->delete();
+    }
+
     /** The san-pham taxonomy id, resolved via the `products` ContentSection (not a slug guess). */
     private function productsTaxonomyId(): ?int
     {
@@ -205,10 +232,20 @@ final readonly class PromoteAnVinhProductPostsToCatalog
             return DB::transaction(function () use ($entry, $translation, $locale, $slug): array {
                 $result = $this->upsertProduct($entry, $translation, $locale);
 
+                // The identical-path handover holds only for posts the seeder pinned onto
+                // /san-pham/{slug}; capture the retiring routes so any that actually lived
+                // elsewhere get bridged with a 301 instead of going dark.
+                /** @var \Illuminate\Support\Collection<string, string> $oldPaths locale => path (both NOT NULL) */
+                $oldPaths = SiteRoute::query()->where('entry_id', $entry->id)->pluck('path', 'locale');
+
                 $entry->delete();
                 SiteRoute::query()->where('entry_id', $entry->id)->delete();
 
                 $path = $this->routes->syncProduct($result['product']->id, null, $locale, $slug);
+
+                foreach ($oldPaths as $oldLocale => $oldPath) {
+                    $this->bridgeRetiredPath($oldLocale, $oldPath, $path);
+                }
 
                 return [
                     'postSlug' => $slug,
