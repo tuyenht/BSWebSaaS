@@ -91,7 +91,7 @@ Route::domain((string) config('tenancy.platform_host'))
 // Protected: platform operators only (EnsurePlatformAccess). 2FA is enforced at login
 // (TOTP or email-OTP), so the TOTP-enrollment ' 2fa' gate is not layered here.
 Route::domain((string) config('tenancy.platform_host'))
-    ->middleware(['web', 'auth', 'platform', SetLocale::class])
+    ->middleware(['web', 'auth', 'auth.session', 'platform', SetLocale::class])
     ->group(function (): void {
         Route::get('/', fn () => redirect()->route('platform.tenants.index'))->name('platform.dashboard');
 
@@ -170,7 +170,7 @@ Route::prefix(config('admin.prefix', 'admin'))
 
 // ── Tenant admin plane — protected (auth + tenant context + site membership) ───
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware(['web', SetCurrentSite::class, 'site.active', 'auth', 'tenant.member', SetLocale::class])
+    ->middleware(['web', SetCurrentSite::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
         Route::get('/settings', fn () => redirect()->route('admin.settings.security'))->name('admin.settings');

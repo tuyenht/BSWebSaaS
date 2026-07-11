@@ -75,6 +75,16 @@ final class Settings extends Component
         $user = auth()->user();
         if ($user instanceof User) {
             $user->forceFill(['password' => Hash::make($this->password)])->save();
+
+            // Rotating the hash invalidates every OTHER session via AuthenticateSession (they
+            // still carry the old hash). Re-seed THIS session's stored hash so the person making
+            // the change is not logged out on their next page load — this action runs on the
+            // livewire/update endpoint, which does not pass through AuthenticateSession.
+            session()->put(
+                'password_hash_'.Cast::string(config('auth.defaults.guard')),
+                $user->getAuthPassword(),
+            );
+
             $this->reset('current_password', 'password', 'password_confirmation');
             session()->flash('password_changed', __('admin.password_changed'));
         }
