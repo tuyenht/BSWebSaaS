@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,5 +32,11 @@ class AppServiceProvider extends ServiceProvider
         if (is_string($appUrl) && str_starts_with($appUrl, 'https://')) {
             URL::forceScheme('https');
         }
+
+        // One password policy for every entry point (self-service change + reset): at least 10
+        // characters and not present in a known breach corpus (HaveIBeenPwned k-anonymity range API —
+        // only a 5-char SHA-1 prefix leaves the server). Fail-open on an outage so a third-party blip
+        // never blocks a legitimate password change.
+        Password::defaults(fn (): Password => Password::min(10)->uncompromised());
     }
 }

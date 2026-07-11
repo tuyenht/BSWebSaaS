@@ -7,6 +7,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -129,5 +130,29 @@ function seedHomepage(int $site, string $title = 'Home', string $path = '/'): vo
         ]);
 
         SiteRoute::query()->create(['locale' => 'vi', 'path' => $path, 'entry_id' => $entry->id]);
+    });
+}
+
+/*
+|--------------------------------------------------------------------------
+| Breach-check (HIBP) test double
+|--------------------------------------------------------------------------
+| Password::defaults() carries ->uncompromised(), which calls the HaveIBeenPwned
+| range API. Swap the verifier so password tests never touch the network: default
+| treats the password as safe; pass true to simulate a breached password.
+*/
+function fakePwnedVerifier(bool $compromised = false): void
+{
+    app()->instance(UncompromisedVerifier::class, new class($compromised) implements UncompromisedVerifier
+    {
+        public function __construct(private bool $compromised) {}
+
+        /**
+         * @param  array<string, mixed>  $data
+         */
+        public function verify($data): bool
+        {
+            return ! $this->compromised;
+        }
     });
 }

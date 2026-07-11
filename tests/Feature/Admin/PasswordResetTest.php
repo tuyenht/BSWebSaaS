@@ -38,6 +38,7 @@ it('throttles forgot-password past the hourly cap and keeps every reply uniform'
 
 it('audits a completed reset and rejects a password shorter than 10', function (): void {
     seedTenancy();
+    fakePwnedVerifier(); // breach check: treat the new password as not compromised
     $user = User::factory()->create();
     $token = Password::createToken($user);
 

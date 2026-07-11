@@ -18,6 +18,8 @@ beforeEach(function (): void {
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
+    // Password::defaults() now includes ->uncompromised(); keep the breach check off the network.
+    fakePwnedVerifier();
 });
 
 it('updates the own display name and the topbar shows its short form', function (): void {
@@ -80,4 +82,24 @@ it('rejects a mismatched confirmation', function (): void {
         ->assertHasErrors('password');
 
     expect(Hash::check('old-password-123', $user->fresh()->password))->toBeTrue();
+});
+
+it('rejects a password found in a known breach', function (): void {
+    $user = User::factory()->create(['password' => Hash::make('old-password-123')]);
+    app(Tenancy::class)->enter(1, fn () => grantRole($user, 'editor', ['entries.view']));
+
+    // Simulate HIBP reporting this password as breached so Password::defaults()->uncompromised()
+    // must reject it (the value is long enough to clear the min-length rule first).
+    $breached = 'a-long-but-leaked-pass';
+    fakePwnedVerifier(compromised: true);
+
+    Livewire::actingAs($user->fresh())
+        ->test(Settings::class)
+        ->set('current_password', 'old-password-123')
+        ->set('password', $breached)
+        ->set('password_confirmation', $breached)
+        ->call('changePassword')
+        ->assertHasErrors('password');
+
+    expect(Hash::check($breached, $user->fresh()->password))->toBeFalse();
 });

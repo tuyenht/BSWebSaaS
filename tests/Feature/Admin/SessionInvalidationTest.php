@@ -22,6 +22,8 @@ beforeEach(function (): void {
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
+    // changePassword/resetPassword now run Password::defaults()->uncompromised(); keep it off the wire.
+    fakePwnedVerifier();
 });
 
 it('kicks a session that carries a stale password hash after the password rotates', function (): void {

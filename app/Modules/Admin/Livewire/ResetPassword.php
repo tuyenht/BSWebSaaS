@@ -9,6 +9,7 @@ use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -42,7 +43,7 @@ final class ResetPassword extends Component
         $this->validate([
             'token' => 'required',
             'email' => 'required|email',
-            'password' => 'required|string|min:10|confirmed',
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
         ]);
 
         $status = Password::reset(
