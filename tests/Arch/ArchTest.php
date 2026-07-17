@@ -65,6 +65,12 @@ test('every Entry action routes through EntryPolicy', function (): void {
     expect(Gate::getPolicyFor(Entry::class))->toBeInstanceOf(EntryPolicy::class);
 });
 
-// 3) Every workflow state transition must go through the workflow engine.
-test('workflow transitions go through the engine')
-    ->todo('Enforce once the workflow engine exists.');
+// 3) Every workflow state transition must go through the workflow engine. The trail row IS the
+//    transition's record, so keeping WorkflowLog engine-only means no module can move content
+//    without passing the engine's guards (edge exists, origin matches, permission, note) — a
+//    hand-rolled `WorkflowLog::create` elsewhere would be exactly the hard-coded transition
+//    design.md §15.4 exists to prevent. Consumers call WorkflowEngine::apply() and persist the
+//    state it returns onto their own subject.
+arch('workflow transitions go through the engine')
+    ->expect('App\\Modules\\Workflow\\Models\\WorkflowLog')
+    ->toOnlyBeUsedIn('App\\Modules\\Workflow');
