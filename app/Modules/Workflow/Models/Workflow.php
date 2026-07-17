@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $site_id
  * @property string $key
  * @property string $name
- * @property string $applies_to_type  a content_sections.key
- * @property string $template  none|admin_approval|editorial
+ * @property string $applies_to_type a content_sections.key
+ * @property string $template none|admin_approval|editorial
  * @property bool $is_active
  */
 class Workflow extends Model

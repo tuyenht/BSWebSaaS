@@ -61,8 +61,8 @@ final readonly class WorkflowEngine
      * state on its subject, inside its own transaction, so the move and the subject's status can
      * never diverge.
      *
-     * @throws InvalidTransitionException  unknown edge, wrong origin, or a missing required note
-     * @throws AuthorizationException  the actor lacks the transition's required_permission
+     * @throws InvalidTransitionException unknown edge, wrong origin, or a missing required note
+     * @throws AuthorizationException the actor lacks the transition's required_permission
      */
     public function apply(
         Workflow $workflow,
