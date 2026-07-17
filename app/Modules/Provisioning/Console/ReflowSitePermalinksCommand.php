@@ -7,6 +7,7 @@ namespace App\Modules\Provisioning\Console;
 use App\Modules\Provisioning\Actions\ReflowSitePermalinks;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Domain;
+use App\Modules\Tenancy\Models\Site;
 use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
 
@@ -23,9 +24,12 @@ final class ReflowSitePermalinksCommand extends Command
 {
     use ConfirmableTrait;
 
+    // --host is REQUIRED (no default): a default would let `reflow --force` with a forgotten flag
+    // silently rewrite one specific site's live URLs, and hardcoding a tenant host would breach the
+    // zero-hardcoded-tenant rule (CLAUDE.md §0). Missing host fails closed.
     #[\Override]
     protected $signature = 'permalinks:reflow
-        {--host=av1.baoson.net : Primary hostname of the site to reflow}
+        {--host= : Primary hostname of the site to reflow (required)}
         {--dry-run : Preview the route moves — no changes are written}
         {--force : Skip the confirmation prompt}';
 
@@ -35,7 +39,13 @@ final class ReflowSitePermalinksCommand extends Command
     public function handle(Tenancy $tenancy, ReflowSitePermalinks $action): int
     {
         $host = $this->option('host');
-        $host = is_string($host) ? $host : '';
+        $host = is_string($host) ? trim($host) : '';
+
+        if ($host === '') {
+            $this->error('Bạn phải chỉ định --host (hostname của site cần reflow). Không có mặc định để tránh nhắm nhầm site.');
+
+            return self::FAILURE;
+        }
 
         $domain = Domain::query()->where('hostname', $host)->first();
         if ($domain === null) {
@@ -46,7 +56,12 @@ final class ReflowSitePermalinksCommand extends Command
 
         $dryRun = (bool) $this->option('dry-run');
 
-        if (! $dryRun && ! $this->confirmToProceed('This moves live post + product URLs to /{slug} (old paths keep working via 301).')) {
+        // Name the target in the prompt so an operator confirms the site they meant, not a default.
+        $name = Site::query()->whereKey($domain->site_id)->value('name');
+        $siteName = is_string($name) ? $name : '(site)';
+        if (! $dryRun && ! $this->confirmToProceed(
+            "This moves live post + product URLs to /{slug} on {$siteName} (site #{$domain->site_id} · {$host}). Old paths keep working via 301."
+        )) {
             return self::FAILURE;
         }
 
