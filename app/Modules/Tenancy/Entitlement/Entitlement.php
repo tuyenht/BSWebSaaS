@@ -3,8 +3,11 @@
 namespace App\Modules\Tenancy\Entitlement;
 
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Models\PlanFeature;
 use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteModule;
+use App\Modules\Tenancy\Registry\FeatureRegistry;
 use App\Modules\Tenancy\Registry\ModuleCatalog;
 
 /**
@@ -55,6 +58,64 @@ final class Entitlement
         $fromOverride = SiteModule::query()->where('enabled', true)->pluck('module_key')->all();
 
         return array_values(array_unique([...$fromType, ...$fromOverride]));
+    }
+
+    /**
+     * Is a boolean feature granted to the current site? Resolves a per-site override first, then
+     * the tenant's plan grant, then the registry default (fail-closed: unknown/ungranted → false).
+     */
+    public function featureEnabled(string $key): bool
+    {
+        return (bool) $this->featureValue($key);
+    }
+
+    /**
+     * The resolved value of a feature for the current site — a boolean grant or a numeric limit,
+     * coerced to the kind the FeatureRegistry declares. Resolution order:
+     *   per-site override (site_features, RLS-scoped) → tenant's plan grant (plan_features)
+     *   → registry default. No site context → the registry default (fail-closed baseline).
+     */
+    public function featureValue(string $key): bool|int
+    {
+        $current = app(CurrentSite::class);
+
+        if (! $current->hasId()) {
+            return FeatureRegistry::default($key);
+        }
+
+        // A per-site override wins over the plan (BelongsToSite scopes it to the current site).
+        $override = SiteFeature::query()->where('feature_key', $key)->first();
+        if ($override !== null) {
+            return $this->coerce($override->value, $key);
+        }
+
+        // Else the tenant's plan grant. sites/tenants are global (D6) so this join is context-free;
+        // plan_id may be null (no plan) → fall through to the default.
+        $planId = Site::query()
+            ->whereKey($current->id())
+            ->join('tenants', 'sites.tenant_id', '=', 'tenants.id')
+            ->value('tenants.plan_id');
+
+        if ($planId !== null) {
+            $grant = PlanFeature::query()->where('plan_id', $planId)->where('feature_key', $key)->first();
+            if ($grant !== null) {
+                return $this->coerce($grant->value, $key);
+            }
+        }
+
+        return FeatureRegistry::default($key);
+    }
+
+    /** Coerce a stored jsonb value to the feature's declared kind (boolean grant vs numeric limit). */
+    private function coerce(mixed $value, string $key): bool|int
+    {
+        $kind = FeatureRegistry::all()[$key]['kind'] ?? 'boolean';
+
+        if ($kind === 'limit') {
+            return is_numeric($value) ? (int) $value : 0;
+        }
+
+        return (bool) $value;
     }
 
     public function siteIsActive(): bool
