@@ -1,7 +1,7 @@
-# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.15)
+# NỀN TẢNG SAAS WEBSITE BUILDER ĐA TENANT — TÀI LIỆU THIẾT KẾ HỆ THỐNG (v2.16)
 
 **Chủ dự án:** Hoàng Thanh Tuyền (Senior Tech Lead, Bảo Sơn) · tuyenht@gmail.com · 0962 04 6262
-**Trạng thái:** v2.15 — mở rộng ADR-04: style-props token hoá + preset registry platform-curated cho Page Builder (2 council 12/07, spec `docs/notes/section-style-system.md`); trước đó v2.14 doc-sync as-built + 4 ADR Draft · v2.13 permalink flat-default · v2.12 ADR-18 data-platform. Lõi thiết kế ĐÓNG BĂNG; đang triển khai An Vinh.
+**Trạng thái:** v2.16 — đính chính pin Build: Vite 7→8 (repo dùng `^8.0.0` từ scaffold đầu, CI xanh — doc-only); trước đó v2.15 mở rộng ADR-04: style-props token hoá + preset registry platform-curated cho Page Builder (2 council 12/07, spec `docs/notes/section-style-system.md`) · v2.14 doc-sync as-built + 4 ADR Draft · v2.13 permalink flat-default · v2.12 ADR-18 data-platform. Lõi thiết kế ĐÓNG BĂNG; đang triển khai An Vinh.
 **Nguồn:** hợp nhất từ tài liệu khởi tạo v1.0→v1.30 (41 mục + 14 ADR) + khảo sát 5 website thật + schema t5g.
 **Bản lịch sử (đầy đủ quá trình tranh luận):** `ke-hoach-tong-the-saas-website-platform.md` (v1.30).
 
@@ -115,14 +115,14 @@
 | Ngôn ngữ/Framework | **PHP 8.5 + Laravel 13** | Hệ sinh thái mạnh, AI hỗ trợ tốt, Bảo Sơn quen PHP |
 | Runtime | **Octane + FrankenPHP** (RoadRunner fallback) | Worker mode, HTTP/2-3, hiệu năng cao |
 
-> 🟢 **Lưu ý version (vibe-coding bằng AI):** stack dùng nhiều bản major mới nhất cùng lúc (Laravel 13 + PHP 8.5 + Tailwind 4 + Vite 7 + Livewire 4 + Pest 4 + FrankenPHP) → ít dữ liệu training/Stack Overflow → AI dễ gợi ý sai cú pháp. **Pin version cụ thể** (lock file) + chấp nhận vài chỗ cần kiểm tay. RoadRunner fallback đã có (ADR-09).
+> 🟢 **Lưu ý version (vibe-coding bằng AI):** stack dùng nhiều bản major mới nhất cùng lúc (Laravel 13 + PHP 8.5 + Tailwind 4 + Vite 8 + Livewire 4 + Pest 4 + FrankenPHP) → ít dữ liệu training/Stack Overflow → AI dễ gợi ý sai cú pháp. **Pin version cụ thể** (lock file) + chấp nhận vài chỗ cần kiểm tay. RoadRunner fallback đã có (ADR-09).
 | CSDL | **PostgreSQL 17** + `pgvector` + `ltree` | RLS, JSONB, full-text, cây taxonomy |
 | Pooler | **PgBouncer** (transaction mode) | Nhiều worker Octane |
 | Cache/Queue/Session | **Valkey** + **Horizon** | BSD license sạch, drop-in Redis |
 | Realtime | **Laravel Reverb** *(HOÃN sau GĐ1 — YAGNI)* | WebSocket native; GĐ1 chưa có tính năng cần WebSocket, notification chạy async qua Horizon → bật khi thực sự cần |
 | Storefront UI | **Blade SSR + Alpine.js islands** (JS ≤30KB) | CWV, SEO, nhẹ *(ADR-02)* |
 | Admin UI | **Livewire 4/Volt** + **React island** (chỉ builder canvas, qua Inertia v2) | Năng suất + builder phong phú *(ADR-02)* |
-| Build | **Vite 7 + Tailwind 4** | — |
+| Build | **Vite 8 + Tailwind 4** | — |
 | Media | **Cloudflare R2** (private) + **Worker/cf.image** serving + custom `App\Modules\Media` (imgproxy = L4 cold) | ADR-17 (supersede §12) |
 | Search | **Meilisearch + Scout** | Nhanh, gõ tiếng Việt tốt |
 | AI | **Laravel AI SDK → Anthropic** (claude-sonnet-4-6 / claude-haiku-4-5) | Provider-agnostic qua interface riêng |
