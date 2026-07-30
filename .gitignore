@@ -1,5 +1,7 @@
-# Claude Code local (personal) settings
+# Claude Code local (personal) settings + agent working data (per-machine)
 .claude/settings.local.json
+.claude/agent-memory/
+.claude/lessons.log
 
 # Environment & secrets
 .env
@@ -33,6 +35,7 @@ pnpm-debug.log
 # OS / Editor
 .DS_Store
 Thumbs.db
+__pycache__/
 .idea/
 .vscode/
 *.swp
