@@ -41,6 +41,7 @@ Phân loại rủi ro:
   (theo lệ v2.x); doc-only riêng.
 - docs/notes/* → epic / ghi-chú / ADR-nhánh (freeze chính ghi ở changelog design.md).
 - CLAUDE.md → chỉ khi là LUẬT thực thi mới.
+- `.claude/lessons.log` (CLAUDE.md §10.5): có rule lặp ≥2 lần → ĐỀ XUẤT promote vào § liên quan + archive log (compaction §10.6 — chỉ chạy sau khi tôi duyệt).
 - Memory (file-based, index `MEMORY.md`): ĐỀ XUẤT ở khối MEMORY UPDATE dưới — mỗi fact bền = 1 file
   + 1 dòng pointer vào `MEMORY.md`; GHI sau khi tôi duyệt (giữ tinh thần propose-only của lệnh này).
   Chỉ fact BỀN (quyết định/quy ước/sở thích lâu dài), KHÔNG trạng thái tạm. Có thể trùng memory sẵn có —
