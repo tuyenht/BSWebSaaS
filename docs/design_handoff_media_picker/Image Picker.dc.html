@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</helmet>
+<section style="padding:44px;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;">
+  <div id="2a" style="display:flex;flex-direction:column;gap:14px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;padding:0 9px;border-radius:6px;background:#405189;color:#fff;font-size:13px;font-weight:700;">2a</span>
+      <div style="display:flex;flex-direction:column;">
+        <span style="font-size:15px;font-weight:600;color:#343a40;">Trình chọn ảnh · 2 tab (Tải lên tệp mới · Thư viện ảnh)</span>
+        <span style="font-size:12.5px;color:#878a99;">Tab "Tải lên" hiện lưới 8 nguồn kiểu Uppy — bấm mỗi nguồn mở giao diện tương ứng, có nút quay lại</span>
+      </div>
+    </div>
+    <div style="width:1020px;height:660px;">
+      <dc-import name="MediaPicker" multiple="{{ yes }}" hint-size="1020px,660px"></dc-import>
+    </div>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals(){ return { yes:true }; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>body{margin:0;background:#f4f4f5;}a{color:#405189;}a:hover{color:#364574;}</style>
+</helmet>
+<section style="padding:40px 40px 8px;font-family:Inter,'Segoe UI',sans-serif;color:#495057;display:flex;justify-content:center;">
+    <div id="3a" style="position:relative;width:1240px;background:#f3f3f9;border:1px solid #e9ebec;border-radius:12px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
+
+      <!-- turn badge -->
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:20px;background:#405189;color:#fff;font-size:12px;font-weight:700;">3a</span>
+        <span style="font-size:12.5px;color:#878a99;">Bản tương tác — lọc, sắp xếp, chọn nhiều, đổi trạng thái, và bấm mã ngôn ngữ để sửa từng bản dịch</span>
+      </div>
+
+      <!-- page header -->
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#adb5bd;">
+          <a href="#3a" style="display:inline-flex;align-items:center;gap:4px;color:#878a99;text-decoration:none;" style-hover="color:#405189;"><i class="ri-home-4-line" style="font-size:13px;"></i>Trang chủ</a>
+          <i class="ri-arrow-right-s-line" style="font-size:13px;"></i>
+          <span style="color:#878a99;font-weight:500;">Trang</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+          <h1 style="margin:0;font-size:20px;font-weight:600;color:#343a40;line-height:1.2;">Quản lý Trang</h1>
+          <button style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);" style-hover="filter:brightness(0.95);" onClick="{{ onAddPage }}"><i class="ri-add-line" style="font-size:16px;"></i>Thêm trang mới</button>
+        </div>
+      </div>
+
+      <!-- card -->
+      <div style="background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);">
+
+        <!-- status tabs -->
+        <div style="display:flex;align-items:center;gap:2px;padding:4px 16px 0;border-bottom:1px solid #e9ebec;">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+            <button style="{{ t.btnStyle }}" onClick="{{ t.on }}"><sc-if value="{{ t.icon }}"><i class="{{ t.icon }}" style="font-size:15px;"></i></sc-if>{{ t.label }}<span style="{{ t.badgeStyle }}">{{ t.count }}</span></button>
+          </sc-for>
+          <button style="{{ trashTab.btnStyle }}" onClick="{{ trashTab.on }}"><i class="ri-delete-bin-line" style="font-size:15px;"></i>Thùng rác<span style="{{ trashTab.badgeStyle }}">{{ trashTab.count }}</span></button>
+        </div>
+
+        <!-- toolbar: search + inline filter dropdowns -->
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 10px;">
+          <div style="position:relative;flex:1;max-width:340px;">
+            <i class="ri-search-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#adb5bd;font-size:15px;"></i>
+            <input placeholder="Tìm theo tiêu đề, đường dẫn…" value="{{ searchVal }}" onChange="{{ onSearch }}" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 34px;border:1px solid #e9ebec;border-radius:6px;font:inherit;font-size:13px;color:#495057;background:#f8f9fb;outline:none;" style-focus="border-color:#405189;background:#fff;box-shadow:0 0 0 3px rgba(64,81,137,0.12);">
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:8px;position:relative;z-index:50;">
+            <!-- Ngôn ngữ -->
+            <div style="position:relative;">
+              <button style="{{ fLang.btnStyle }}" onClick="{{ fLang.on }}"><i class="ri-translate-2" style="font-size:15px;"></i>Ngôn ngữ<sc-if value="{{ fLang.hasCount }}"><span style="background:#405189;color:#fff;font-size:11px;font-weight:700;padding:1px 6px;border-radius:20px;line-height:1.4;">{{ fLang.count }}</span></sc-if><i class="{{ fLang.arrow }}" style="font-size:15px;"></i></button>
+              <sc-if value="{{ fLang.open }}">
+                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:238px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+                  <div style="padding:10px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Lọc theo ngôn ngữ</div>
+                  <sc-for list="{{ fLang.items }}" as="it" hint-placeholder-count="4">
+                    <div style="{{ it.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span><span style="font-size:11px;color:#adb5bd;font-variant-numeric:tabular-nums;">{{ it.count }}</span></div>
+                  </sc-for>
+                  <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #f0f1f3;">
+                    <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;padding:0;" style-hover="color:#405189;" onClick="{{ fLang.onReset }}">Đặt lại</button>
+                    <button style="margin-left:auto;padding:7px 16px;border:0;border-radius:6px;background:#405189;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ fLang.onApply }}">Xong</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            <!-- Người tạo -->
+            <div style="position:relative;">
+              <button style="{{ fCreator.btnStyle }}" onClick="{{ fCreator.on }}"><i class="ri-user-3-line" style="font-size:15px;"></i>Người tạo<sc-if value="{{ fCreator.hasCount }}"><span style="background:#405189;color:#fff;font-size:11px;font-weight:700;padding:1px 6px;border-radius:20px;line-height:1.4;">{{ fCreator.count }}</span></sc-if><i class="{{ fCreator.arrow }}" style="font-size:15px;"></i></button>
+              <sc-if value="{{ fCreator.open }}">
+                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:238px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+                  <div style="padding:10px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Lọc theo người tạo</div>
+                  <sc-for list="{{ fCreator.items }}" as="it" hint-placeholder-count="3">
+                    <div style="{{ it.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span><span style="font-size:11px;color:#adb5bd;font-variant-numeric:tabular-nums;">{{ it.count }}</span></div>
+                  </sc-for>
+                  <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #f0f1f3;">
+                    <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;padding:0;" style-hover="color:#405189;" onClick="{{ fCreator.onReset }}">Đặt lại</button>
+                    <button style="margin-left:auto;padding:7px 16px;border:0;border-radius:6px;background:#405189;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ fCreator.onApply }}">Xong</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            <!-- Mẫu trang -->
+            <div style="position:relative;">
+              <button style="{{ fTemplate.btnStyle }}" onClick="{{ fTemplate.on }}"><i class="ri-layout-2-line" style="font-size:15px;"></i>Mẫu trang<sc-if value="{{ fTemplate.hasCount }}"><span style="background:#405189;color:#fff;font-size:11px;font-weight:700;padding:1px 6px;border-radius:20px;line-height:1.4;">{{ fTemplate.count }}</span></sc-if><i class="{{ fTemplate.arrow }}" style="font-size:15px;"></i></button>
+              <sc-if value="{{ fTemplate.open }}">
+                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:250px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+                  <div style="padding:10px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Lọc theo mẫu trang</div>
+                  <div style="max-height:240px;overflow:auto;">
+                    <sc-for list="{{ fTemplate.items }}" as="it" hint-placeholder-count="5">
+                      <div style="{{ it.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span><span style="font-size:11px;color:#adb5bd;font-variant-numeric:tabular-nums;">{{ it.count }}</span></div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #f0f1f3;">
+                    <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;padding:0;" style-hover="color:#405189;" onClick="{{ fTemplate.onReset }}">Đặt lại</button>
+                    <button style="margin-left:auto;padding:7px 16px;border:0;border-radius:6px;background:#405189;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ fTemplate.onApply }}">Xong</button>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            <span style="width:1px;height:20px;background:#e9ebec;margin:0 2px;"></span>
+            <div style="position:relative;">
+              <button title="Tùy chọn cột hiển thị" style="{{ fCols.btnStyle }}" onClick="{{ fCols.on }}"><i class="ri-layout-column-line" style="font-size:15px;"></i>Cột<i class="{{ fCols.arrow }}" style="font-size:15px;"></i></button>
+              <sc-if value="{{ fCols.open }}">
+                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:230px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+                  <div style="padding:10px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Cột bắt buộc</div>
+                  <sc-for list="{{ fCols.locked }}" as="it" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;opacity:0.65;"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid #ced4da;border-radius:4px;background:#eef0f3;color:#adb5bd;"><i class="ri-check-line" style="font-size:12px;"></i></span><span style="flex:1;font-size:13px;color:#878a99;">{{ it.label }}</span><i class="ri-lock-line" style="font-size:13px;color:#ced4da;"></i></div>
+                  </sc-for>
+                  <div style="padding:8px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;border-top:1px solid #f0f1f3;">Tùy chọn</div>
+                  <sc-for list="{{ fCols.toggles }}" as="it" hint-placeholder-count="3">
+                    <div style="{{ it.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span></div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+
+        <!-- active filter chips -->
+        <sc-if value="{{ hasFilter }}">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 16px 12px;">
+            <span style="font-size:12.5px;color:#878a99;">Đang lọc:</span>
+            <sc-for list="{{ chips }}" as="c" hint-placeholder-count="1">
+              <span style="display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 10px;background:rgba(64,81,137,0.08);border:1px solid rgba(64,81,137,0.18);border-radius:20px;font-size:12px;font-weight:500;color:#405189;">{{ c.label }}<button title="Bỏ lọc" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:2px;border:0;border-radius:50%;background:transparent;color:#405189;cursor:pointer;" style-hover="background:rgba(64,81,137,0.18);" onClick="{{ c.on }}"><i class="ri-close-line" style="font-size:13px;"></i></button></span>
+            </sc-for>
+            <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;padding:2px 4px;" style-hover="color:#f06548;" onClick="{{ onClearAll }}">Xóa tất cả</button>
+            <span style="margin-left:auto;font-size:12.5px;color:#878a99;">Khớp <strong style="color:#495057;font-weight:600;">{{ matchCount }}</strong> / {{ baseCount }} trang</span>
+          </div>
+        </sc-if>
+
+        <!-- bulk action bar -->
+        <sc-if value="{{ bulkVisible }}">
+          <div style="display:flex;align-items:center;gap:8px;margin:0 16px 12px;padding:7px 12px;background:rgba(64,81,137,0.06);border:1px solid rgba(64,81,137,0.18);border-radius:6px;">
+            <span style="font-size:13px;font-weight:600;color:#405189;">Đã chọn {{ bulkCount }} trang</span>
+            <span style="width:1px;height:16px;background:rgba(64,81,137,0.2);"></span>
+            <sc-if value="{{ isTrashTab }}">
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onBulkRestore }}"><i class="ri-arrow-go-back-line" style="font-size:14px;color:#878a99;"></i>Khôi phục</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(240,101,72,0.3);border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#f06548;cursor:pointer;" style-hover="background:rgba(240,101,72,0.08);" onClick="{{ onBulkDestroy }}"><i class="ri-delete-bin-2-line" style="font-size:14px;"></i>Xoá vĩnh viễn</button>
+            </sc-if>
+            <sc-if value="{{ notTrashTab }}">
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onBulkPublish }}"><i class="ri-check-double-line" style="font-size:14px;color:#0ab39c;"></i>Xuất bản</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onBulkDraft }}"><i class="ri-draft-line" style="font-size:14px;color:#878a99;"></i>Chuyển nháp</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onBulkDuplicate }}"><i class="ri-file-copy-line" style="font-size:14px;color:#878a99;"></i>Nhân bản</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(240,101,72,0.3);border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#f06548;cursor:pointer;" style-hover="background:rgba(240,101,72,0.08);" onClick="{{ onBulkTrash }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i>Thùng rác</button>
+            </sc-if>
+            <button style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:12.5px;color:#878a99;cursor:pointer;" style-hover="color:#405189;" onClick="{{ onClearSel }}">Bỏ chọn<i class="ri-close-line" style="font-size:14px;"></i></button>
+          </div>
+        </sc-if>
+
+        <!-- table -->
+        <table style="width:100%;border-collapse:collapse;font-size:13px;color:#495057;">
+          <thead>
+            <tr>
+              <th style="width:40px;padding:0 0 0 16px;border-bottom:1px solid #e9ebec;text-align:left;height:40px;vertical-align:middle;"><span style="{{ headerBoxStyle }}" onClick="{{ onHeaderToggle }}"><sc-if value="{{ headerHasIcon }}"><i class="{{ headerIconClass }}" style="font-size:12px;"></i></sc-if></span></th>
+              <th style="width:100%;text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.name.btnStyle }}" onClick="{{ sortUI.name.on }}">Tiêu đề<i class="{{ sortUI.name.iconClass }}" style="{{ sortUI.name.iconStyle }}"></i></button></th>
+              <sc-if value="{{ colSlug }}"><th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;">Đường dẫn</th></sc-if>
+              <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.status.btnStyle }}" onClick="{{ sortUI.status.on }}">Trạng thái<i class="{{ sortUI.status.iconClass }}" style="{{ sortUI.status.iconStyle }}"></i></button></th>
+              <sc-if value="{{ colLangs }}"><th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:4px;" title="Bấm mã ngôn ngữ trong mỗi hàng để mở/sửa đúng bản dịch đó">Ngôn ngữ<i class="ri-question-line" style="font-size:13px;color:#ced4da;"></i></span></th></sc-if>
+              <sc-if value="{{ colCreator }}"><th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.creator.btnStyle }}" onClick="{{ sortUI.creator.on }}">Người tạo<i class="{{ sortUI.creator.iconClass }}" style="{{ sortUI.creator.iconStyle }}"></i></button></th></sc-if>
+              <th style="width: 132px; text-align: center; padding: 10px 16px 10px 12px; border-bottom: 1px solid #e9ebec; font-size: 12.5px; font-weight: 600; color: #878a99; white-space: nowrap">Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ rowsD }}" as="r" hint-placeholder-count="7">
+              <tr style="{{ r.rowStyle }}" style-hover="background:#f8f9fa;">
+                <td style="width:40px;padding:0 0 0 16px;border-bottom:1px solid #eff2f7;vertical-align:middle;"><span style="{{ r.checkStyle }}" onClick="{{ r.onToggle }}"><sc-if value="{{ r.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span></td>
+                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                  <div style="display:flex;align-items:flex-start;gap:8px;padding-left:{{ r.pad }};">
+                    <sc-if value="{{ r.isChild }}"><i class="ri-corner-down-right-line" style="color:#ced4da;font-size:13px;margin-top:4px;"></i></sc-if>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+                      <sc-if value="{{ r.editingName }}"><input value="{{ draft }}" autoFocus onFocus="{{ onEditFocus }}" onChange="{{ onEditChange }}" onBlur="{{ onCommitEdit }}" onKeyDown="{{ onEditKey }}" style="font:inherit;font-size:13px;font-weight:500;color:#343a40;border:1px solid #405189;border-radius:5px;padding:3px 7px;outline:none;box-shadow:0 0 0 3px rgba(64,81,137,0.12);min-width:200px;"></sc-if>
+                      <sc-if value="{{ r.notEditingName }}"><span title="Bấm để sửa tên" style="position:relative;display:inline-flex;align-items:center;max-width:100%;width:fit-content;font-weight:500;color:#495057;white-space:nowrap;cursor:text;border-radius:5px;padding:2px 26px 2px 7px;margin:-2px -7px;transition:background .12s ease;" style-hover="background:#eef2fb;color:#405189;--pen:1;" onClick="{{ r.onEditName }}"><span style="overflow:hidden;text-overflow:ellipsis;">{{ r.name }}</span><i class="ri-pencil-line" style="position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:12.5px;color:#405189;opacity:var(--pen,0);transition:opacity .12s ease;"></i></span></sc-if>
+                      <div style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:#adb5bd;" title="Lượt xem"><i class="ri-eye-line" style="font-size:12.5px;"></i>{{ r.viewsText }}</div>
+                    </div>
+                  </div>
+                </td>
+                <sc-if value="{{ colSlug }}"><td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                  <sc-if value="{{ r.editingSlug }}"><span style="display:inline-flex;align-items:center;border:1px solid #405189;border-radius:5px;box-shadow:0 0 0 3px rgba(64,81,137,0.12);background:#fff;"><span style="padding:3px 0 3px 8px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#adb5bd;white-space:nowrap;flex-shrink:0;">{{ r.slugPrefix }}</span><input value="{{ draft }}" autoFocus onFocus="{{ onEditFocus }}" onChange="{{ onEditChange }}" onBlur="{{ onCommitEdit }}" onKeyDown="{{ onEditKey }}" style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#343a40;border:0;padding:3px 8px 3px 1px;outline:none;min-width:110px;background:transparent;"></span></sc-if>
+                  <sc-if value="{{ r.slugPlainView }}"><code title="{{ r.slugTitle }}" style="position:relative;display:inline-flex;align-items:center;max-width:240px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#878a99;cursor:text;border-radius:5px;padding:2px 24px 2px 7px;margin:-2px -7px;transition:background .12s ease;" style-hover="background:#eef2fb;color:#405189;--pen:1;" onClick="{{ r.onEditSlug }}"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ r.slug }}</span><i class="ri-pencil-line" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:11.5px;color:#405189;opacity:var(--pen,0);transition:opacity .12s ease;"></i></code></sc-if>
+                  <sc-if value="{{ r.slugLockedView }}"><code title="Đường dẫn trang chủ — không thể thay đổi" style="display:inline-flex;align-items:center;gap:5px;max-width:240px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#adb5bd;cursor:default;padding:2px 0;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">{{ r.slug }}</span><i class="ri-lock-line" style="font-size:11.5px;color:#ced4da;flex-shrink:0;"></i></code></sc-if>
+                </td></sc-if>
+                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;position:relative;">
+                  <button title="Bấm để đổi trạng thái" style="{{ r.badgeStyle }}" onClick="{{ r.onBadge }}"><span style="{{ r.dotStyle }}"></span>{{ r.statusLabel }}<i class="ri-arrow-down-s-line" style="font-size:13px;opacity:0.7;"></i></button>
+                  <div style="margin-top:4px;font-size:11px;color:#adb5bd;display:flex;align-items:center;gap:4px;" title="{{ r.metaTitle }}"><i class="{{ r.metaIcon }}" style="font-size:12px;"></i>{{ r.metaText }}</div>
+                  <sc-if value="{{ r.menuOpen }}">
+                    <div style="position:absolute;top:calc(100% - 2px);left:12px;z-index:60;width:206px;background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 5px 15px rgba(30,32,37,0.15);padding:4px 0;">
+                      <div style="padding:6px 12px 4px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Chuyển trạng thái</div>
+                      <sc-for list="{{ r.statusItems }}" as="si" hint-placeholder-count="4">
+                        <button style="{{ si.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ si.on }}"><span style="{{ si.dotStyle }}"></span>{{ si.label }}<sc-if value="{{ si.active }}"><i class="ri-check-line" style="margin-left:auto;font-size:14px;color:#405189;"></i></sc-if></button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </td>
+                <sc-if value="{{ colLangs }}"><td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                  <div style="display:flex;gap:4px;">
+                    <sc-for list="{{ r.langs }}" as="lg" hint-placeholder-count="4">
+                      <div style="position:relative;display:inline-flex;" style-hover="--pop:1;--pe:auto;">
+                        <span title="{{ lg.title }}" style="{{ lg.chipStyle }}">{{ lg.code }}</span>
+                        <span style="position:absolute;left:50%;bottom:100%;transform:translateX(-50%);padding-bottom:7px;opacity:var(--pop,0);pointer-events:var(--pe,none);transition:opacity .12s ease;z-index:30;white-space:nowrap;">
+                          <button title="{{ lg.title }}" style="{{ lg.popStyle }}" onClick="{{ lg.on }}"><i class="{{ lg.popIcon }}" style="font-size:12px;"></i>{{ lg.popLabel }}</button>
+                        </span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </td></sc-if>
+                <sc-if value="{{ colCreator }}"><td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                  <div style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
+                    <span style="{{ r.avStyle }}">{{ r.creatorInit }}</span>
+                    <span style="color:#495057;">{{ r.creator }}</span>
+                  </div>
+                </td></sc-if>
+                <td style="padding:9px 16px 9px 12px;border-bottom:1px solid #eff2f7;">
+                  <div style="display:flex;gap:2px;justify-content:flex-end;">
+                    <sc-if value="{{ r.trashed }}">
+                      <button title="Khôi phục" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#0ab39c;" onClick="{{ r.onRestore }}"><i class="ri-arrow-go-back-line" style="font-size:15px;"></i></button>
+                      <button title="Xoá vĩnh viễn" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(240,101,72,0.1);color:#f06548;" onClick="{{ r.onDestroy }}"><i class="ri-delete-bin-2-line" style="font-size:15px;"></i></button>
+                    </sc-if>
+                    <sc-if value="{{ r.notTrashed }}">
+                      <button title="Xem trước" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;" onClick="{{ r.onPreview }}"><i class="ri-eye-line" style="font-size:15px;"></i></button>
+                      <button title="Sửa nội dung" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;" onClick="{{ r.onEdit }}"><i class="ri-pencil-line" style="font-size:15px;"></i></button>
+                      <button title="Nhân bản" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;" onClick="{{ r.onDup }}"><i class="ri-file-copy-line" style="font-size:15px;"></i></button>
+                      <button title="Chuyển vào thùng rác" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(240,101,72,0.1);color:#f06548;" onClick="{{ r.onTrash }}"><i class="ri-delete-bin-line" style="font-size:15px;"></i></button>
+                    </sc-if>
+                  </div>
+                </td>
+              </tr>
+            </sc-for>
+            <sc-if value="{{ isEmpty }}">
+              <tr>
+                <td colSpan="{{ emptyColspan }}" style="padding:48px 16px;text-align:center;color:#878a99;">
+                  <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+                    <i class="ri-inbox-2-line" style="font-size:32px;color:#ced4da;"></i>
+                    <div style="font-size:14px;">Không tìm thấy trang nào khớp bộ lọc.</div>
+                    <button style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#405189;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onClearAll }}"><i class="ri-refresh-line" style="font-size:15px;"></i>Xoá bộ lọc</button>
+                  </div>
+                </td>
+              </tr>
+            </sc-if>
+          </tbody>
+        </table>
+
+        <!-- pagination footer -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;">
+          <span style="font-size:12.5px;color:#878a99;">{{ footerText }}</span>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#878a99;">Dòng/trang
+              <span title="Bấm để đổi" style="display:inline-flex;align-items:center;gap:5px;border:1px solid #e9ebec;border-radius:4px;padding:5px 9px;background:#fff;color:#495057;font-weight:500;cursor:pointer;" style-hover="border-color:#dfe2e6;background:#f8f9fb;" onClick="{{ onCyclePerPage }}">{{ perPageVal }}<i class="ri-arrow-down-s-line" style="color:#878a99;"></i></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span style="{{ prevStyle }}" onClick="{{ onPrev }}"><i class="ri-arrow-left-s-line" style="font-size:16px;"></i></span>
+              <sc-for list="{{ pager }}" as="pg" hint-placeholder-count="1">
+                <sc-if value="{{ pg.ell }}"><span style="padding:0 4px;color:#ced4da;">…</span></sc-if>
+                <sc-if value="{{ pg.num }}"><span style="{{ pg.style }}" style-hover="background:#f3f6f9;" onClick="{{ pg.on }}">{{ pg.label }}</span></sc-if>
+              </sc-for>
+              <span style="{{ nextStyle }}" onClick="{{ onNext }}"><i class="ri-arrow-right-s-line" style="font-size:16px;"></i></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- outside-click backdrop for open menus -->
+      <sc-if value="{{ anyOverlay }}"><div style="position:fixed;inset:0;z-index:40;" onClick="{{ onCloseOverlays }}"></div></sc-if>
+      <!-- toast -->
+      <sc-if value="{{ showToast }}"><div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:200;background:#212529;color:#fff;padding:10px 16px;border-radius:6px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:8px;"><i class="ri-checkbox-circle-line" style="font-size:16px;color:#0ab39c;"></i>{{ toastMsg }}</div></sc-if>
+    </div>
+</section>
+<section style="padding:8px 40px 40px;font-family:Inter,'Segoe UI',sans-serif;color:#495057;display:flex;justify-content:center;">
+    <div id="2a" style="width:1240px;background:#f3f3f9;border:1px solid #e9ebec;border-radius:12px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
+
+      <!-- turn badge -->
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:20px;background:#adb5bd;color:#fff;font-size:12px;font-weight:700;">2a</span>
+        <span style="font-size:12.5px;color:#adb5bd;">Bản trước — để đối chiếu</span>
+      </div>
+
+      <!-- page header (theo x-admin::page-header) -->
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#adb5bd;">
+          <span>Trang chủ</span><i class="ri-arrow-right-s-line" style="font-size:13px;"></i>
+          <span>Nội dung</span><i class="ri-arrow-right-s-line" style="font-size:13px;"></i>
+          <span style="color:#878a99;">Trang</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
+          <h1 style="margin:0;font-size:20px;font-weight:600;color:#343a40;line-height:1.2;">Quản lý Trang</h1>
+          <button style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);" style-hover="filter:brightness(0.95);"><i class="ri-add-line" style="font-size:16px;"></i>Thêm trang mới</button>
+        </div>
+      </div>
+
+      <!-- card -->
+      <div style="background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);">
+
+        <!-- status tabs (kiểu Velzon Orders) -->
+        <div style="display:flex;align-items:center;gap:2px;padding:4px 16px 0;border-bottom:1px solid #e9ebec;">
+          <button style="display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid #405189;background:transparent;font:inherit;font-size:13.5px;font-weight:600;color:#405189;cursor:pointer;"><i class="ri-file-list-3-line" style="font-size:15px;"></i>Tất cả<span style="background:rgba(64,81,137,0.1);color:#405189;font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;">143</span></button>
+          <button style="display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid transparent;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="color:#405189;">Đã xuất bản<span style="background:rgba(10,179,156,0.1);color:#0ab39c;font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;">96</span></button>
+          <button style="display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid transparent;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="color:#405189;">Bản nháp<span style="background:rgba(33,37,41,0.08);color:#495057;font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;">31</span></button>
+          <button style="display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid transparent;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="color:#405189;">Đã lên lịch<span style="background:rgba(247,184,75,0.15);color:#c78729;font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;">9</span></button>
+          <button style="display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid transparent;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="color:#405189;">Riêng tư<span style="background:rgba(53,119,241,0.1);color:#3577f1;font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;">7</span></button>
+          <button style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid transparent;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="color:#f06548;"><i class="ri-delete-bin-line" style="font-size:15px;"></i>Thùng rác<span style="background:rgba(240,101,72,0.1);color:#f06548;font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;">4</span></button>
+        </div>
+
+        <!-- toolbar -->
+        <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;">
+          <div style="position:relative;flex:1;max-width:360px;">
+            <i class="ri-search-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#adb5bd;font-size:15px;"></i>
+            <input placeholder="Tìm theo tiêu đề, đường dẫn…" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 34px;border:1px solid #e9ebec;border-radius:6px;font:inherit;font-size:13px;color:#495057;background:#f8f9fb;outline:none;" style-focus="border-color:#405189;background:#fff;box-shadow:0 0 0 3px rgba(64,81,137,0.12);">
+          </div>
+          <button style="display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;border-color:#dfe2e6;"><i class="ri-filter-3-line" style="font-size:15px;color:#878a99;"></i>Bộ lọc<span style="background:rgba(64,81,137,0.1);color:#405189;font-size:11px;font-weight:600;padding:2px 7px;border-radius:20px;line-height:1;">2</span></button>
+          <button style="margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:9px 12px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;border-color:#dfe2e6;"><i class="ri-sort-desc" style="font-size:15px;color:#878a99;"></i>Sắp xếp<span style="width:1px;height:13px;background:#e9ebec;"></span><span style="color:#405189;font-weight:600;">Mới cập nhật</span><i class="ri-arrow-down-s-line" style="font-size:15px;color:#878a99;"></i></button>
+        </div>
+
+        <!-- bulk bar (2 dòng đang chọn) -->
+        <div style="display:flex;align-items:center;gap:8px;margin:0 16px 12px;padding:7px 12px;background:rgba(64,81,137,0.06);border:1px solid rgba(64,81,137,0.18);border-radius:6px;">
+          <span style="font-size:13px;font-weight:600;color:#405189;">Đã chọn 2 trang</span>
+          <span style="width:1px;height:16px;background:rgba(64,81,137,0.2);"></span>
+          <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;"><i class="ri-loop-right-line" style="font-size:14px;color:#878a99;"></i>Chuyển trạng thái<i class="ri-arrow-down-s-line" style="font-size:14px;color:#878a99;"></i></button>
+          <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;"><i class="ri-file-copy-line" style="font-size:14px;color:#878a99;"></i>Nhân bản</button>
+          <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(240,101,72,0.3);border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#f06548;cursor:pointer;" style-hover="background:rgba(240,101,72,0.08);"><i class="ri-delete-bin-line" style="font-size:14px;"></i>Chuyển vào thùng rác</button>
+          <button style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:12.5px;color:#878a99;cursor:pointer;" style-hover="color:#405189;">Bỏ chọn<i class="ri-close-line" style="font-size:14px;"></i></button>
+        </div>
+
+        <!-- table -->
+        <table style="width:100%;border-collapse:collapse;font-size:13px;color:#495057;">
+          <thead>
+            <tr>
+              <th style="width:40px;padding:0 0 0 16px;border-bottom:1px solid #e9ebec;text-align:left;height:40px;vertical-align:middle;"><span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #ced4da;border-radius:4px;background:#fff;vertical-align:middle;"><i class="ri-subtract-line" style="font-size:12px;color:#405189;"></i></span></th>
+              <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;"><button style="display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;font-weight:600;color:inherit;cursor:pointer;padding:0;" style-hover="color:#405189;">Tiêu đề<i class="ri-expand-up-down-line" style="font-size:13px;color:#ced4da;"></i></button></th>
+              <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;">Đường dẫn</th>
+              <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;"><button style="display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;font-weight:600;color:inherit;cursor:pointer;padding:0;" style-hover="color:#405189;">Trạng thái<i class="ri-expand-up-down-line" style="font-size:13px;color:#ced4da;"></i></button></th>
+              <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;">Ngôn ngữ</th>
+              <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;"><button style="display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;font-weight:600;color:inherit;cursor:pointer;padding:0;" style-hover="color:#405189;">Người tạo<i class="ri-expand-up-down-line" style="font-size:13px;color:#ced4da;"></i></button></th>
+              <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#405189;white-space:nowrap;"><button style="display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;font-weight:600;color:inherit;cursor:pointer;padding:0;">Cập nhật<i class="ri-arrow-down-line" style="font-size:13px;color:#405189;"></i></button></th>
+              <th style="text-align:right;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;"><button style="display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;font-weight:600;color:inherit;cursor:pointer;padding:0;" style-hover="color:#405189;">Lượt xem<i class="ri-expand-up-down-line" style="font-size:13px;color:#ced4da;"></i></button></th>
+              <th style="width:118px;text-align:right;padding:10px 16px 10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;">Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{ rowsC }}" as="r" hint-placeholder-count="6">
+              <tr style="{{ r.rowStyle }}" style-hover="background:#f8f9fa;">
+                <td style="width:40px;padding:0 0 0 16px;border-bottom:1px solid #eff2f7;vertical-align:middle;"><span style="{{ r.checkStyle }}"><sc-if value="{{ r.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span></td>
+                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                  <div style="display:flex;align-items:center;gap:8px;padding-left:{{ r.pad }};">
+                    <sc-if value="{{ r.isChild }}"><i class="ri-corner-down-right-line" style="color:#ced4da;font-size:13px;"></i></sc-if>
+                    <span style="font-weight:500;color:#495057;white-space:nowrap;">{{ r.name }}</span>
+                  </div>
+                </td>
+                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;"><code style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#878a99;">{{ r.slug }}</code></td>
+                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;position:relative;">
+                  <button title="Bấm để đổi trạng thái" style="{{ r.badgeStyle }}"><span style="{{ r.dotStyle }}"></span>{{ r.statusLabel }}<i class="ri-arrow-down-s-line" style="font-size:13px;opacity:0.7;"></i></button>
+                  <sc-if value="{{ r.schedNote }}"><div style="margin-top:3px;font-size:11px;color:#adb5bd;display:flex;align-items:center;gap:4px;"><i class="ri-time-line"></i>{{ r.schedNote }}</div></sc-if>
+                  <sc-if value="{{ r.menuOpen }}">
+                    <div style="position:absolute;top:calc(100% - 6px);left:12px;z-index:40;width:210px;background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 5px 15px rgba(30,32,37,0.15);padding:4px 0;">
+                      <div style="padding:6px 12px 4px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Chuyển trạng thái</div>
+                      <button disabled="" title="Bạn không có quyền xuất bản" style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:#ced4da;cursor:not-allowed;text-align:left;"><span style="width:7px;height:7px;border-radius:50%;background:#ced4da;"></span>Đã xuất bản<i class="ri-lock-line" style="margin-left:auto;font-size:13px;"></i></button>
+                      <button style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:#495057;cursor:pointer;text-align:left;" style-hover="background:#f3f6f9;"><span style="width:7px;height:7px;border-radius:50%;background:#878a99;"></span>Bản nháp<i class="ri-check-line" style="margin-left:auto;font-size:14px;color:#405189;"></i></button>
+                      <button style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:#495057;cursor:pointer;text-align:left;" style-hover="background:#f3f6f9;"><span style="width:7px;height:7px;border-radius:50%;background:#f7b84b;"></span>Lên lịch xuất bản…</button>
+                      <button style="display:flex;align-items:center;gap:8px;width:100%;padding:7px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:#495057;cursor:pointer;text-align:left;" style-hover="background:#f3f6f9;"><span style="width:7px;height:7px;border-radius:50%;background:#3577f1;"></span>Riêng tư</button>
+                    </div>
+                  </sc-if>
+                </td>
+                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                  <div style="display:flex;gap:4px;">
+                    <sc-for list="{{ r.langs }}" as="lg" hint-placeholder-count="4">
+                      <span style="{{ lg.style }}">{{ lg.code }}</span>
+                    </sc-for>
+                  </div>
+                </td>
+                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                  <div style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
+                    <span style="width:24px;height:24px;border-radius:50%;background:rgba(64,81,137,0.1);color:#405189;font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;">{{ r.creatorInit }}</span>
+                    <span style="color:#495057;">{{ r.creator }}</span>
+                  </div>
+                </td>
+                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;color:#adb5bd;white-space:nowrap;" title="{{ r.updatedExact }}">{{ r.updated }}</td>
+                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;text-align:right;color:#495057;font-variant-numeric:tabular-nums;">{{ r.views }}</td>
+                <td style="padding:9px 16px 9px 12px;border-bottom:1px solid #eff2f7;">
+                  <div style="display:flex;gap:2px;justify-content:flex-end;">
+                    <button title="Xem trước" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;"><i class="ri-eye-line" style="font-size:15px;"></i></button>
+                    <button title="Sửa" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;"><i class="ri-pencil-line" style="font-size:15px;"></i></button>
+                    <button title="Nhân bản" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;"><i class="ri-file-copy-line" style="font-size:15px;"></i></button>
+                    <button title="Chuyển vào thùng rác" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(240,101,72,0.1);color:#f06548;"><i class="ri-delete-bin-line" style="font-size:15px;"></i></button>
+                  </div>
+                </td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+
+        <!-- pagination footer -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;">
+          <span style="font-size:12.5px;color:#878a99;">1–20 trong 143 trang</span>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#878a99;">Dòng/trang
+              <span style="display:inline-flex;align-items:center;gap:5px;border:1px solid #e9ebec;border-radius:4px;padding:5px 9px;background:#fff;color:#495057;font-weight:500;cursor:pointer;">20<i class="ri-arrow-down-s-line" style="color:#878a99;"></i></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <span style="display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;color:#e9ebec;cursor:not-allowed;"><i class="ri-arrow-left-s-line" style="font-size:16px;"></i></span>
+              <span style="display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;background:#405189;color:#fff;font-size:13px;font-weight:500;">1</span>
+              <a href="#2a" style="display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;color:#878a99;font-size:13px;text-decoration:none;" style-hover="background:#f3f6f9;">2</a>
+              <a href="#2a" style="display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;color:#878a99;font-size:13px;text-decoration:none;" style-hover="background:#f3f6f9;">3</a>
+              <span style="padding:0 4px;color:#ced4da;">…</span>
+              <a href="#2a" style="display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;color:#878a99;font-size:13px;text-decoration:none;" style-hover="background:#f3f6f9;">8</a>
+              <a href="#2a" style="display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;color:#878a99;text-decoration:none;" style-hover="background:#f3f6f9;"><i class="ri-arrow-right-s-line" style="font-size:16px;"></i></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      pages: this.baseSeed(),
+      search: '',
+      tab: 'all',
+      langF: [],
+      creatorF: [],
+      templateF: [],
+      openFilter: null,
+      sortKey: 'updated',
+      sortDir: 'desc',
+      selected: {},
+      statusMenu: null,
+      page: 1,
+      perPage: 20,
+      toast: null,
+      seq: 0,
+      cols: { slug: true, langs: true, creator: true },
+      edit: null,
+      draft: ''
+    };
+    this.locale = 'vi-VN';
+  }
+
+  baseSeed() {
+    return [
+      { id:'p1', name:'Trang chủ', slug:'/', st:'pub', template:'Trang chủ', langs:['VI','EN','JA','ZH'], creator:'Ngọc Anh', updatedExact:'02/07/2026', views:'12.480', viewsNum:12480, trashed:false },
+      { id:'p2', name:'Giới thiệu', slug:'/gioi-thieu', st:'pub', template:'Mặc định', langs:['VI','EN','JA'], creator:'Minh Trí', updatedExact:'28/06/2026', views:'3.214', viewsNum:3214, trashed:false },
+      { id:'p3', name:'Dịch vụ', slug:'/dich-vu', st:'pub', template:'Danh mục dịch vụ', langs:['VI','EN'], creator:'Ngọc Anh', updatedExact:'30/06/2026', views:'5.902', viewsNum:5902, trashed:false },
+      { id:'p4', name:'Thiết kế website', slug:'/dich-vu/thiet-ke-website', st:'pub', parentId:'p3', template:'Chi tiết dịch vụ', langs:['VI','EN'], creator:'Minh Trí', updatedExact:'24/06/2026', views:'1.876', viewsNum:1876, trashed:false },
+      { id:'p5', name:'Quảng cáo Google', slug:'/dich-vu/quang-cao-google', st:'draft', parentId:'p3', template:'Chi tiết dịch vụ', langs:['VI'], creator:'Thu Hà', updatedExact:'21/06/2026', views:'0', viewsNum:0, trashed:false },
+      { id:'p6', name:'SEO tổng thể', slug:'/dich-vu/seo-tong-the', st:'sched', parentId:'p3', template:'Chi tiết dịch vụ', langs:['VI','EN'], creator:'Thu Hà', updatedExact:'05/07/2026', views:'0', viewsNum:0, trashed:false },
+      { id:'p7', name:'Tin tức', slug:'/tin-tuc', st:'pub', template:'Danh sách bài viết', langs:['VI','EN','JA','ZH'], creator:'Ngọc Anh', updatedExact:'01/07/2026', views:'8.655', viewsNum:8655, trashed:false },
+      { id:'p8', name:'Liên hệ', slug:'/lien-he', st:'pub', template:'Liên hệ', langs:['VI','EN','JA'], creator:'Minh Trí', updatedExact:'15/06/2026', views:'2.190', viewsNum:2190, trashed:false },
+      { id:'p9', name:'Chính sách bảo mật', slug:'/chinh-sach-bao-mat', st:'priv', template:'Văn bản', langs:['VI'], creator:'Thu Hà', updatedExact:'10/06/2026', views:'312', viewsNum:312, trashed:false },
+      { id:'p10', name:'Tuyển dụng', slug:'/tuyen-dung', st:'draft', template:'Mặc định', langs:['VI'], creator:'Ngọc Anh', updatedExact:'04/07/2026', views:'0', viewsNum:0, trashed:false }
+    ];
+  }
+
+  langLabel(code) { return { VI:'Tiếng Việt', EN:'Tiếng Anh', JA:'Tiếng Nhật', ZH:'Tiếng Trung' }[code]; }
+  stLabel(st) { return { pub:'Đã xuất bản', draft:'Bản nháp', sched:'Đã lên lịch', priv:'Riêng tư' }[st]; }
+  toTs(exact) { const a = String(exact).split('/'); return (+a[2]) * 10000 + (+a[1]) * 100 + (+a[0]); }
+  relTime(exact) {
+    const a = String(exact).split('/');
+    const then = new Date(+a[2], +a[1] - 1, +a[0]);
+    const now = new Date(2026, 6, 8);
+    const days = Math.round((now - then) / 86400000);
+    if (days <= 0) return 'hôm nay';
+    if (days === 1) return 'hôm qua';
+    if (days < 7) return days + ' ngày trước';
+    return Math.round(days / 7) + ' tuần trước';
+  }
+
+  notify(msg) {
+    this.setState({ toast: msg });
+    clearTimeout(this._t);
+    this._t = setTimeout(() => this.setState({ toast: null }), 2400);
+  }
+
+  setSearch(v) { this.setState({ search: v, page: 1 }); }
+  setTab(t) { this.setState({ tab: t, page: 1, openFilter: null, statusMenu: null, selected: {} }); }
+  toggleFilter(k) { this.setState(s => ({ openFilter: s.openFilter === k ? null : k, statusMenu: null })); }
+  closeFilterOnly() { this.setState({ openFilter: null }); }
+  closeOverlays() { this.setState({ openFilter: null, statusMenu: null }); }
+  toggleIn(field, val) {
+    this.setState(s => {
+      const arr = s[field].slice();
+      const i = arr.indexOf(val);
+      if (i >= 0) arr.splice(i, 1); else arr.push(val);
+      const o = { page: 1 }; o[field] = arr; return o;
+    });
+  }
+  resetField(field) { this.setState(s => { const o = { page: 1, openFilter: null }; o[field] = []; return o; }); }
+  clearAll() { this.setState({ langF: [], creatorF: [], templateF: [], search: '', page: 1, openFilter: null }); }
+  sortBy(k) {
+    this.setState(s => ({
+      sortKey: k,
+      sortDir: s.sortKey === k ? (s.sortDir === 'asc' ? 'desc' : 'asc') : ((k === 'name' || k === 'creator') ? 'asc' : 'desc'),
+      openFilter: null
+    }));
+  }
+  toggleSel(id) { this.setState(s => { const sel = Object.assign({}, s.selected); if (sel[id]) delete sel[id]; else sel[id] = true; return { selected: sel }; }); }
+  toggleSelAll(ids) {
+    this.setState(s => {
+      const all = ids.length > 0 && ids.every(i => s.selected[i]);
+      const sel = Object.assign({}, s.selected);
+      if (all) ids.forEach(i => delete sel[i]); else ids.forEach(i => sel[i] = true);
+      return { selected: sel };
+    });
+  }
+  clearSel() { this.setState({ selected: {} }); }
+  openStatus(id) { this.setState(s => ({ statusMenu: s.statusMenu === id ? null : id, openFilter: null })); }
+  setStatus(id, st) {
+    this.setState(s => ({ pages: s.pages.map(p => p.id === id ? Object.assign({}, p, { st: st }) : p), statusMenu: null }));
+    this.notify('Đã đổi trạng thái sang “' + this.stLabel(st) + '”');
+  }
+  openLocale(id, code) {
+    const p = this.state.pages.find(x => x.id === id);
+    this.notify('Mở nội dung ' + this.langLabel(code) + ' · ' + (p ? p.name : ''));
+  }
+  addLocale(id, code) {
+    this.setState(s => ({ pages: s.pages.map(p => (p.id === id && p.langs.indexOf(code) < 0) ? Object.assign({}, p, { langs: p.langs.concat([code]) }) : p) }));
+    this.notify('Đã tạo bản ' + this.langLabel(code));
+  }
+  trash(id) {
+    this.setState(s => { const sel = Object.assign({}, s.selected); delete sel[id]; return { pages: s.pages.map(p => p.id === id ? Object.assign({}, p, { trashed: true }) : p), selected: sel, statusMenu: null }; });
+    this.notify('Đã chuyển vào thùng rác');
+  }
+  restore(id) { this.setState(s => ({ pages: s.pages.map(p => p.id === id ? Object.assign({}, p, { trashed: false }) : p) })); this.notify('Đã khôi phục trang'); }
+  destroy(id) { this.setState(s => { const sel = Object.assign({}, s.selected); delete sel[id]; return { pages: s.pages.filter(p => p.id !== id), selected: sel }; }); this.notify('Đã xoá vĩnh viễn'); }
+  duplicate(id) {
+    this.setState(s => {
+      const src = s.pages.find(p => p.id === id);
+      if (!src) return {};
+      const seq = s.seq + 1;
+      const copy = Object.assign({}, src, { id: 'c' + seq, name: src.name + ' (bản sao)', slug: src.slug + '-copy' + seq, st: 'draft', trashed: false, parentId: null, updatedExact: '08/07/2026', views: '0', viewsNum: 0 });
+      const idx = s.pages.findIndex(p => p.id === id);
+      const pages = s.pages.slice(); pages.splice(idx + 1, 0, copy);
+      return { pages: pages, seq: seq };
+    });
+    this.notify('Đã nhân bản trang');
+  }
+  addPage() {
+    this.setState(s => {
+      const seq = s.seq + 1;
+      const np = { id: 'n' + seq, name: 'Trang mới', slug: '/trang-moi' + (seq > 1 ? ('-' + seq) : ''), st: 'draft', template: 'Mặc định', langs: ['VI'], creator: 'Ngọc Anh', updatedExact: '08/07/2026', views: '0', viewsNum: 0, trashed: false };
+      return { pages: [np].concat(s.pages), seq: seq, tab: 'all', search: '', langF: [], creatorF: [], templateF: [], page: 1, sortKey: 'updated', sortDir: 'desc' };
+    });
+    this.notify('Đã tạo bản nháp “Trang mới”');
+  }
+  bulkTrash() { this.setState(s => { const ids = Object.keys(s.selected); return { pages: s.pages.map(p => ids.indexOf(p.id) >= 0 ? Object.assign({}, p, { trashed: true }) : p), selected: {} }; }); this.notify('Đã chuyển các trang đã chọn vào thùng rác'); }
+  bulkRestore() { this.setState(s => { const ids = Object.keys(s.selected); return { pages: s.pages.map(p => ids.indexOf(p.id) >= 0 ? Object.assign({}, p, { trashed: false }) : p), selected: {} }; }); this.notify('Đã khôi phục các trang đã chọn'); }
+  bulkDestroy() { this.setState(s => { const ids = Object.keys(s.selected); return { pages: s.pages.filter(p => ids.indexOf(p.id) < 0), selected: {} }; }); this.notify('Đã xoá vĩnh viễn các trang đã chọn'); }
+  bulkStatus(st) { this.setState(s => { const ids = Object.keys(s.selected); return { pages: s.pages.map(p => ids.indexOf(p.id) >= 0 ? Object.assign({}, p, { st: st }) : p), selected: {} }; }); this.notify('Đã đổi trạng thái các trang đã chọn'); }
+  bulkDuplicate() {
+    this.setState(s => {
+      let seq = s.seq; const ids = Object.keys(s.selected); const add = [];
+      ids.forEach(id => { const src = s.pages.find(p => p.id === id); if (src) { seq++; add.push(Object.assign({}, src, { id: 'c' + seq, name: src.name + ' (bản sao)', slug: src.slug + '-copy' + seq, st: 'draft', trashed: false, parentId: null, updatedExact: '08/07/2026', views: '0', viewsNum: 0 })); } });
+      return { pages: s.pages.concat(add), seq: seq, selected: {} };
+    });
+    this.notify('Đã nhân bản các trang đã chọn');
+  }
+  cyclePerPage() { this.setState(s => { const opts = [10, 20, 50]; const i = opts.indexOf(s.perPage); return { perPage: opts[(i + 1) % opts.length], page: 1 }; }); }
+  goPage(n) { this.setState({ page: n }); }
+  toggleCol(k) { this.setState(s => { const cols = Object.assign({}, s.cols); cols[k] = !cols[k]; return { cols: cols }; }); }
+  startEdit(id, field) {
+    const p = this.state.pages.find(x => x.id === id); if (!p) return;
+    let draft;
+    if (field === 'slug') {
+      if (p.slug === '/') { this.notify('Đường dẫn trang chủ không thể thay đổi'); return; }
+      const par = p.parentId ? this.state.pages.find(pp => pp.id === p.parentId) : null;
+      const prefix = par ? (par.slug + '/') : '/';
+      draft = p.slug.indexOf(prefix) === 0 ? p.slug.slice(prefix.length) : p.slug.replace(/^\//, '');
+    } else { draft = p.name; }
+    this.setState({ edit: { id: id, field: field }, draft: draft, statusMenu: null, openFilter: null });
+  }
+  editChange(e) { this.setState({ draft: e && e.target ? e.target.value : '' }); }
+  editFocus(e) { try { e.target.select(); } catch (_) {} }
+  cancelEdit() { this.setState({ edit: null }); }
+  commitEdit() {
+    const s = this.state; if (!s.edit) return;
+    const id = s.edit.id, field = s.edit.field;
+    const raw = s.draft || '';
+    const cur = s.pages.find(p => p.id === id);
+    if (field === 'name') {
+      const v = raw.trim();
+      if (!v) { this.setState({ edit: null }); return; }
+      const changed = cur && cur.name !== v;
+      this.setState({ pages: s.pages.map(p => p.id === id ? Object.assign({}, p, { name: v }) : p), edit: null });
+      if (changed) this.notify('Đã đổi tên trang');
+      return;
+    }
+    const par = cur && cur.parentId ? s.pages.find(pp => pp.id === cur.parentId) : null;
+    const prefix = par ? (par.slug + '/') : '/';
+    let slug = (prefix + this.slugify(raw)).replace(/\/{2,}/g, '/');
+    if (slug.length > 1) slug = slug.replace(/\/+$/, '');
+    if (!slug) slug = '/';
+    const changed = cur && cur.slug !== slug;
+    this.setState({ pages: s.pages.map(p => p.id === id ? Object.assign({}, p, { slug: slug }) : p), edit: null });
+    if (changed) this.notify('Đã cập nhật đường dẫn: ' + slug);
+  }
+  slugify(str) {
+    let s = String(str).toLowerCase().trim();
+    s = s.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    s = s.replace(/đ/g, 'd');
+    s = s.replace(/[^a-z0-9\/\s_-]/g, '');
+    s = s.replace(/[\s_]+/g, '-');
+    s = s.replace(/\/{2,}/g, '/');
+    s = s.replace(/-{2,}/g, '-');
+    s = s.replace(/^[-\/]+/, '');
+    s = s.replace(/[-\/]+$/, '');
+    s = s.replace(/-*\/-*/g, '/');
+    return s;
+  }
+  editKey(e) { if (e.key === 'Enter') { e.preventDefault(); this.commitEdit(); } else if (e.key === 'Escape') { this.cancelEdit(); } }
+  fmtDate(exact) {
+    const a = String(exact).split('/');
+    const d = new Date(+a[2], +a[1] - 1, +a[0]);
+    try { return new Intl.DateTimeFormat(this.locale, { day: 'numeric', month: 'short', year: 'numeric' }).format(d); } catch (_) { return exact; }
+  }
+
+  renderVals() {
+    const S = this.state;
+    const cols = S.cols;
+    const AV = {
+      'Ngọc Anh': { init: 'NA', bg: '#e0e7ff', c: '#4338ca' },
+      'Minh Trí': { init: 'MT', bg: '#fce7f3', c: '#be185d' },
+      'Thu Hà': { init: 'TH', bg: '#d1fae5', c: '#047857' }
+    };
+    const ALL_LANGS = ['VI', 'EN', 'JA', 'ZH'];
+    const STATUS = {
+      pub:   { label: 'Đã xuất bản', c: '#0ab39c', bg: 'rgba(10,179,156,0.1)' },
+      draft: { label: 'Bản nháp',    c: '#495057', bg: 'rgba(33,37,41,0.08)' },
+      sched: { label: 'Đã lên lịch', c: '#c78729', bg: 'rgba(247,184,75,0.15)' },
+      priv:  { label: 'Riêng tư',    c: '#3577f1', bg: 'rgba(53,119,241,0.1)' }
+    };
+    const STATUS_ORDER = ['pub', 'draft', 'sched', 'priv'];
+
+    // ================= 2a (static comparison) =================
+    const pages2a = [
+      { name:'Trang chủ', slug:'/', st:'pub', langs:['VI','EN','JA','ZH'], creator:'Ngọc Anh', updated:'02/07/2026', views:'12.480' },
+      { name:'Giới thiệu', slug:'/gioi-thieu', st:'pub', langs:['VI','EN','JA'], creator:'Minh Trí', updated:'28/06/2026', views:'3.214' },
+      { name:'Dịch vụ', slug:'/dich-vu', st:'pub', langs:['VI','EN'], creator:'Ngọc Anh', updated:'30/06/2026', views:'5.902' },
+      { name:'Thiết kế website', slug:'/dich-vu/thiet-ke-website', st:'pub', child:true, langs:['VI','EN'], creator:'Minh Trí', updated:'24/06/2026', views:'1.876' },
+      { name:'Quảng cáo Google', slug:'/dich-vu/quang-cao-google', st:'draft', child:true, langs:['VI'], creator:'Thu Hà', updated:'21/06/2026', views:'0', checked:true },
+      { name:'SEO tổng thể', slug:'/dich-vu/seo-tong-the', st:'sched', child:true, langs:['VI','EN'], creator:'Thu Hà', updated:'05/07/2026', views:'0' },
+      { name:'Tin tức', slug:'/tin-tuc', st:'pub', langs:['VI','EN','JA','ZH'], creator:'Ngọc Anh', updated:'01/07/2026', views:'8.655' },
+      { name:'Liên hệ', slug:'/lien-he', st:'pub', langs:['VI','EN','JA'], creator:'Minh Trí', updated:'15/06/2026', views:'2.190' },
+      { name:'Chính sách bảo mật', slug:'/chinh-sach-bao-mat', st:'priv', langs:['VI'], creator:'Thu Hà', updated:'10/06/2026', views:'312' },
+      { name:'Tuyển dụng', slug:'/tuyen-dung', st:'draft', langs:['VI'], creator:'Ngọc Anh', updated:'04/07/2026', views:'0', checked:true }
+    ];
+    const REL = ['4 ngày trước','1 tuần trước','6 ngày trước','2 tuần trước','2 tuần trước','hôm qua','5 ngày trước','3 tuần trước','4 tuần trước','2 ngày trước'];
+    const mkRowC = (p, i) => {
+      const s = STATUS[p.st]; const a = AV[p.creator]; const checked = !!p.checked;
+      return {
+        name: p.name, slug: p.slug, creator: p.creator, views: p.views,
+        isChild: !!p.child, pad: p.child ? '18px' : '0px',
+        statusLabel: s.label,
+        badgeStyle: 'display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:0;font:inherit;font-size:12px;font-weight:500;line-height:1;color:' + s.c + ';background:' + s.bg + ';border-radius:4px;white-space:nowrap;cursor:pointer;',
+        dotStyle: 'width:6px;height:6px;border-radius:50%;background:' + s.c + ';flex-shrink:0;',
+        creatorInit: a.init.charAt(0),
+        updated: REL[i], updatedExact: p.updated,
+        schedNote: p.st === 'sched' ? '08/07/2026 · 09:00' : false,
+        menuOpen: p.slug === '/dich-vu/quang-cao-google',
+        langs: ALL_LANGS.map(code => ({ code, style: p.langs.indexOf(code) >= 0 ? 'font-size:10px;font-weight:600;color:#495057;background:#f3f6f9;border:1px solid #e9ebec;border-radius:4px;padding:2px 5px;' : 'font-size:10px;font-weight:600;color:#ced4da;background:#fff;border:1px dashed #e9ebec;border-radius:4px;padding:2px 5px;' })),
+        checked: checked,
+        rowStyle: checked ? 'background:rgba(64,81,137,0.04);' : '',
+        checkStyle: checked ? 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #405189;border-radius:4px;background:#405189;color:#fff;vertical-align:middle;' : 'display:inline-flex;width:15px;height:15px;border:1px solid #ced4da;border-radius:4px;background:#fff;vertical-align:middle;'
+      };
+    };
+    const rowsC = pages2a.map((p, i) => mkRowC(p, i));
+
+    // ================= 3a (interactive) =================
+    const notTrashed = S.pages.filter(p => !p.trashed);
+    const cnt = { all: notTrashed.length, pub: 0, draft: 0, sched: 0, priv: 0, trash: S.pages.filter(p => p.trashed).length };
+    notTrashed.forEach(p => { if (cnt[p.st] !== undefined) cnt[p.st]++; });
+
+    let base;
+    if (S.tab === 'trash') base = S.pages.filter(p => p.trashed);
+    else if (S.tab === 'all') base = notTrashed;
+    else base = notTrashed.filter(p => p.st === S.tab);
+    const baseCount = base.length;
+
+    const q = S.search.trim().toLowerCase();
+    let list = base.filter(p => !q || p.name.toLowerCase().indexOf(q) >= 0 || p.slug.toLowerCase().indexOf(q) >= 0);
+    if (S.langF.length) list = list.filter(p => S.langF.some(c => p.langs.indexOf(c) >= 0));
+    if (S.creatorF.length) list = list.filter(p => S.creatorF.indexOf(p.creator) >= 0);
+    if (S.templateF.length) list = list.filter(p => S.templateF.indexOf(p.template) >= 0);
+
+    const dir = S.sortDir === 'asc' ? 1 : -1;
+    const rank = { pub: 0, sched: 1, draft: 2, priv: 3 };
+    const val = (p) => {
+      switch (S.sortKey) {
+        case 'name': return p.name.toLowerCase();
+        case 'status': return rank[p.st];
+        case 'creator': return p.creator;
+        case 'views': return p.viewsNum;
+        default: return this.toTs(p.updatedExact);
+      }
+    };
+    // Group children under their parent so sorting never detaches them.
+    const cmp = (a, b) => { const va = val(a), vb = val(b); if (va < vb) return -dir; if (va > vb) return dir; return 0; };
+    const passSet = {}; list.forEach(p => { passSet[p.id] = 1; });
+    const kids = {};
+    list.forEach(p => { if (p.parentId && passSet[p.parentId]) { (kids[p.parentId] = kids[p.parentId] || []).push(p); } });
+    Object.keys(kids).forEach(k => kids[k].sort(cmp));
+    const tops = list.filter(p => !p.parentId || !passSet[p.parentId]).sort(cmp);
+    const ordered = [];
+    tops.forEach(t => { ordered.push({ p: t, depth: 0 }); (kids[t.id] || []).forEach(c => ordered.push({ p: c, depth: 1 })); });
+
+    const total = ordered.length;
+    const perPage = S.perPage;
+    const pageCount = Math.max(1, Math.ceil(total / perPage));
+    const page = Math.min(S.page, pageCount);
+    const start = (page - 1) * perPage;
+    const pageRows = ordered.slice(start, start + perPage);
+    const pageIds = pageRows.map(o => o.p.id);
+
+    const existing = {}; S.pages.forEach(p => { existing[p.id] = 1; });
+    const selIds = Object.keys(S.selected).filter(id => existing[id]);
+    const bulkCount = selIds.length;
+    const allSel = pageIds.length > 0 && pageIds.every(id => S.selected[id]);
+    const someSel = pageIds.some(id => S.selected[id]);
+
+    const rowsD = pageRows.map(o => {
+      const p = o.p;
+      const st = STATUS[p.st], a = AV[p.creator], sel = !!S.selected[p.id];
+      const isSched = p.st === 'sched';
+      const en = S.edit && S.edit.id === p.id && S.edit.field === 'name';
+      const es = S.edit && S.edit.id === p.id && S.edit.field === 'slug';
+      const parent = p.parentId ? S.pages.find(pp => pp.id === p.parentId) : null;
+      const slugPrefix = parent ? (parent.slug + '/') : '/';
+      const isHome = p.slug === '/';
+      return {
+        slugPrefix: slugPrefix, slugTitle: isHome ? p.slug : (p.slug + ' · Bấm để sửa'),
+        slugLockedView: isHome, slugPlainView: !es && !isHome,
+        editingName: en, notEditingName: !en, editingSlug: es, notEditingSlug: !es,
+        onEditName: () => this.startEdit(p.id, 'name'), onEditSlug: () => this.startEdit(p.id, 'slug'),
+        viewsText: p.viewsNum > 0 ? (p.views + ' lượt xem') : 'Chưa có lượt xem',
+        metaIcon: isSched ? 'ri-time-line' : 'ri-history-line',
+        metaText: isSched ? ('Đăng ' + this.fmtDate(p.updatedExact) + ' · 09:00') : this.fmtDate(p.updatedExact),
+        metaTitle: isSched ? 'Lịch xuất bản' : ('Cập nhật lần cuối: ' + this.fmtDate(p.updatedExact)),
+        id: p.id, name: p.name, slug: p.slug, creator: p.creator, views: p.views,
+        isChild: o.depth === 1, pad: o.depth === 1 ? '18px' : '0px',
+        trashed: !!p.trashed, notTrashed: !p.trashed,
+        statusLabel: st.label,
+        badgeStyle: 'display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border:0;font:inherit;font-size:12px;font-weight:500;line-height:1;color:' + st.c + ';background:' + st.bg + ';border-radius:4px;white-space:nowrap;cursor:pointer;',
+        dotStyle: 'width:6px;height:6px;border-radius:50%;background:' + st.c + ';flex-shrink:0;',
+        schedNote: p.st === 'sched' ? (p.updatedExact + ' · 09:00') : false,
+        menuOpen: S.statusMenu === p.id,
+        statusItems: STATUS_ORDER.map(k => ({
+          label: STATUS[k].label, active: p.st === k,
+          dotStyle: 'width:7px;height:7px;border-radius:50%;background:' + STATUS[k].c + ';flex-shrink:0;',
+          rowStyle: 'display:flex;align-items:center;gap:8px;width:100%;padding:7px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:' + (p.st === k ? '#405189' : '#495057') + ';' + (p.st === k ? 'font-weight:600;' : '') + 'cursor:pointer;text-align:left;',
+          on: () => this.setStatus(p.id, k)
+        })),
+        langs: ALL_LANGS.map(code => {
+          const on = p.langs.indexOf(code) >= 0;
+          return {
+            code: code,
+            chipStyle: on
+              ? 'display:inline-flex;align-items:center;font-size:10px;font-weight:700;color:#495057;background:#f3f6f9;border:1px solid #e9ebec;border-radius:4px;padding:2px 6px;line-height:1.4;'
+              : 'display:inline-flex;align-items:center;font-size:10px;font-weight:700;color:#c8ccd2;background:#fcfcfd;border:1px dashed #e3e6ea;border-radius:4px;padding:2px 6px;line-height:1.4;',
+            popStyle: 'display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:0;border-radius:6px;background:' + (on ? '#405189' : '#0ab39c') + ';color:#fff;font:inherit;font-size:11px;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(30,32,37,0.28);',
+            popIcon: on ? 'ri-pencil-line' : 'ri-add-line',
+            popLabel: on ? 'Sửa' : 'Thêm',
+            title: (on ? 'Sửa nội dung ' : 'Thêm bản ') + this.langLabel(code) + ' · ' + p.name,
+            on: on ? () => this.openLocale(p.id, code) : () => this.addLocale(p.id, code)
+          };
+        }),
+        avStyle: 'width:26px;height:26px;border-radius:50%;background:' + a.bg + ';color:' + a.c + ';border:1px solid ' + a.c + '33;font-size:10.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;',
+        creatorInit: a.init,
+        updated: this.relTime(p.updatedExact), updatedExact: p.updatedExact,
+        checked: sel,
+        rowStyle: sel ? 'background:rgba(64,81,137,0.05);' : '',
+        checkStyle: sel
+          ? 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #405189;border-radius:4px;background:#405189;color:#fff;vertical-align:middle;cursor:pointer;'
+          : 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #ced4da;border-radius:4px;background:#fff;vertical-align:middle;cursor:pointer;',
+        onToggle: () => this.toggleSel(p.id),
+        onBadge: () => this.openStatus(p.id),
+        onPreview: () => this.notify('Xem trước: ' + p.name),
+        onEdit: () => this.notify('Mở trình chỉnh sửa: ' + p.name),
+        onDup: () => this.duplicate(p.id),
+        onTrash: () => this.trash(p.id),
+        onRestore: () => this.restore(p.id),
+        onDestroy: () => this.destroy(p.id)
+      };
+    });
+
+    // tabs
+    const tabDefs = [
+      { key: 'all', label: 'Tất cả', icon: 'ri-file-list-3-line', c: '#405189', bg: 'rgba(64,81,137,0.1)' },
+      { key: 'pub', label: 'Đã xuất bản', icon: 'ri-global-line', c: '#0ab39c', bg: 'rgba(10,179,156,0.1)' },
+      { key: 'draft', label: 'Bản nháp', icon: 'ri-draft-line', c: '#495057', bg: 'rgba(33,37,41,0.08)' },
+      { key: 'sched', label: 'Đã lên lịch', icon: 'ri-calendar-schedule-line', c: '#c78729', bg: 'rgba(247,184,75,0.15)' },
+      { key: 'priv', label: 'Riêng tư', icon: 'ri-lock-line', c: '#3577f1', bg: 'rgba(53,119,241,0.1)' }
+    ];
+    const tabBtn = (active) => 'display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid ' + (active ? '#405189' : 'transparent') + ';background:transparent;font:inherit;font-size:13.5px;font-weight:' + (active ? '600' : '500') + ';color:' + (active ? '#405189' : '#878a99') + ';cursor:pointer;';
+    const tabs = tabDefs.map(t => ({
+      label: t.label, icon: t.icon, count: cnt[t.key], on: () => this.setTab(t.key),
+      btnStyle: tabBtn(S.tab === t.key),
+      badgeStyle: 'background:' + t.bg + ';color:' + t.c + ';font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;'
+    }));
+    const trA = S.tab === 'trash';
+    const trashTab = {
+      count: cnt.trash, on: () => this.setTab('trash'),
+      btnStyle: 'margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid ' + (trA ? '#f06548' : 'transparent') + ';background:transparent;font:inherit;font-size:13.5px;font-weight:' + (trA ? '600' : '500') + ';color:' + (trA ? '#f06548' : '#878a99') + ';cursor:pointer;',
+      badgeStyle: 'background:rgba(240,101,72,0.1);color:#f06548;font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;'
+    };
+
+    // filters
+    const dBox = (ck) => ck ? 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid #405189;border-radius:4px;background:#405189;color:#fff;flex-shrink:0;' : 'display:inline-flex;width:16px;height:16px;border:1px solid #ced4da;border-radius:4px;background:#fff;flex-shrink:0;';
+    const dRow = (ck) => 'display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;' + (ck ? 'background:#f6f8fc;' : '');
+    const dText = (ck) => 'flex:1;font-size:13px;' + (ck ? 'font-weight:600;color:#405189;' : 'color:#495057;');
+    const fBtn = (active, open) => 'display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border:1px solid ' + ((active || open) ? '#405189' : '#e9ebec') + ';border-radius:6px;background:' + ((active || open) ? 'rgba(64,81,137,0.06)' : '#fff') + ';font:inherit;font-size:13px;font-weight:500;color:' + ((active || open) ? '#405189' : '#495057') + ';cursor:pointer;';
+    const arrow = (open) => open ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line';
+
+    const langItems = ALL_LANGS.map(code => { const ck = S.langF.indexOf(code) >= 0; const c2 = notTrashed.filter(p => p.langs.indexOf(code) >= 0).length; return { label: this.langLabel(code) + ' (' + code + ')', checked: ck, count: c2, boxStyle: dBox(ck), rowStyle: dRow(ck), textStyle: dText(ck), on: () => this.toggleIn('langF', code) }; });
+    const CREATORS = ['Ngọc Anh', 'Minh Trí', 'Thu Hà'];
+    const creatorItems = CREATORS.map(nm => { const ck = S.creatorF.indexOf(nm) >= 0; const c2 = notTrashed.filter(p => p.creator === nm).length; return { label: nm, checked: ck, count: c2, boxStyle: dBox(ck), rowStyle: dRow(ck), textStyle: dText(ck), on: () => this.toggleIn('creatorF', nm) }; });
+    const TEMPLATES = []; notTrashed.forEach(p => { if (TEMPLATES.indexOf(p.template) < 0) TEMPLATES.push(p.template); });
+    const templateItems = TEMPLATES.map(tp => { const ck = S.templateF.indexOf(tp) >= 0; const c2 = notTrashed.filter(p => p.template === tp).length; return { label: tp, checked: ck, count: c2, boxStyle: dBox(ck), rowStyle: dRow(ck), textStyle: dText(ck), on: () => this.toggleIn('templateF', tp) }; });
+
+    const mkFilter = (k, field, items) => ({
+      btnStyle: fBtn(S[field].length > 0, S.openFilter === k),
+      open: S.openFilter === k, hasCount: S[field].length > 0, count: S[field].length,
+      arrow: arrow(S.openFilter === k), on: () => this.toggleFilter(k), items: items,
+      onReset: () => this.resetField(field), onApply: () => this.closeFilterOnly()
+    });
+    const fLang = mkFilter('lang', 'langF', langItems);
+    const fCreator = mkFilter('creator', 'creatorF', creatorItems);
+    const fTemplate = mkFilter('template', 'templateF', templateItems);
+    const colToggleDefs = [{ key: 'slug', label: 'Đường dẫn' }, { key: 'langs', label: 'Ngôn ngữ' }, { key: 'creator', label: 'Người tạo' }];
+    const fCols = {
+      btnStyle: fBtn(false, S.openFilter === 'cols'), open: S.openFilter === 'cols', arrow: arrow(S.openFilter === 'cols'), on: () => this.toggleFilter('cols'),
+      locked: [{ label: 'Tiêu đề' }, { label: 'Trạng thái' }, { label: 'Hành động' }],
+      toggles: colToggleDefs.map(c => { const ck = !!cols[c.key]; return { label: c.label, checked: ck, boxStyle: dBox(ck), rowStyle: dRow(ck), textStyle: dText(ck), on: () => this.toggleCol(c.key) }; })
+    };
+    const emptyColspan = String(4 + (cols.slug ? 1 : 0) + (cols.langs ? 1 : 0) + (cols.creator ? 1 : 0));
+
+    // chips
+    const chips = [];
+    if (q) chips.push({ label: 'Tìm: “' + S.search.trim() + '”', on: () => this.setSearch('') });
+    S.langF.forEach(c => chips.push({ label: 'Ngôn ngữ: ' + c, on: () => this.toggleIn('langF', c) }));
+    S.creatorF.forEach(c => chips.push({ label: 'Người tạo: ' + c, on: () => this.toggleIn('creatorF', c) }));
+    S.templateF.forEach(c => chips.push({ label: 'Mẫu: ' + c, on: () => this.toggleIn('templateF', c) }));
+    const hasFilter = chips.length > 0;
+
+    // sort UI
+    const sBtn = (active) => 'display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:600;color:' + (active ? '#405189' : '#878a99') + ';cursor:pointer;padding:0;';
+    const sIcon = (active) => active ? (S.sortDir === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line') : 'ri-expand-up-down-line';
+    const sIconStyle = (active) => 'font-size:13px;color:' + (active ? '#405189' : '#ced4da') + ';';
+    const mkSort = (k) => { const active = S.sortKey === k; return { on: () => this.sortBy(k), btnStyle: sBtn(active), iconClass: sIcon(active), iconStyle: sIconStyle(active) }; };
+    const sortUI = { name: mkSort('name'), status: mkSort('status'), creator: mkSort('creator'), updated: mkSort('updated'), views: mkSort('views') };
+
+    // header checkbox
+    const headerBoxStyle = (allSel || someSel)
+      ? 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #405189;border-radius:4px;background:#405189;color:#fff;vertical-align:middle;cursor:pointer;'
+      : 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #ced4da;border-radius:4px;background:#fff;vertical-align:middle;cursor:pointer;';
+    const headerIconClass = allSel ? 'ri-check-line' : (someSel ? 'ri-subtract-line' : '');
+
+    // pagination
+    const pageBtn = (active) => 'display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;font-size:13px;cursor:pointer;' + (active ? 'background:#405189;color:#fff;font-weight:500;' : 'color:#878a99;');
+    const buildPager = (cur, last) => {
+      const out = [];
+      if (last <= 7) { for (let i = 1; i <= last; i++) out.push(i); }
+      else { out.push(1); const l = Math.max(2, cur - 1), r = Math.min(last - 1, cur + 1); if (l > 2) out.push('…'); for (let i = l; i <= r; i++) out.push(i); if (r < last - 1) out.push('…'); out.push(last); }
+      return out;
+    };
+    const pager = buildPager(page, pageCount).map(x => x === '…' ? { ell: true, num: false } : { ell: false, num: true, label: String(x), active: x === page, style: pageBtn(x === page), on: () => this.goPage(x) });
+    const prevDisabled = page <= 1, nextDisabled = page >= pageCount;
+    const navBase = 'display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;';
+    const prevStyle = navBase + (prevDisabled ? 'color:#e9ebec;cursor:not-allowed;' : 'color:#878a99;cursor:pointer;');
+    const nextStyle = navBase + (nextDisabled ? 'color:#e9ebec;cursor:not-allowed;' : 'color:#878a99;cursor:pointer;');
+    const footerText = total === 0 ? 'Không có trang nào' : ('Hiển thị ' + (start + 1) + '–' + (start + pageRows.length) + ' trong ' + total + ' trang' + ((hasFilter || S.tab !== 'all') ? ' đã lọc' : ''));
+
+    return {
+      rowsC: rowsC,
+      onAddPage: () => this.addPage(),
+      colSlug: cols.slug, colLangs: cols.langs, colCreator: cols.creator, fCols: fCols, emptyColspan: emptyColspan,
+      draft: S.draft, onEditChange: (e) => this.editChange(e), onEditFocus: (e) => this.editFocus(e), onCommitEdit: () => this.commitEdit(), onEditKey: (e) => this.editKey(e),
+      tabs: tabs, trashTab: trashTab,
+      searchVal: S.search, onSearch: (e) => this.setSearch(e && e.target ? e.target.value : ''),
+      fLang: fLang, fCreator: fCreator, fTemplate: fTemplate,
+      hasFilter: hasFilter, chips: chips, onClearAll: () => this.clearAll(), matchCount: total, baseCount: baseCount,
+      bulkVisible: bulkCount > 0, bulkCount: bulkCount, isTrashTab: trA, notTrashTab: !trA,
+      onBulkPublish: () => this.bulkStatus('pub'), onBulkDraft: () => this.bulkStatus('draft'), onBulkDuplicate: () => this.bulkDuplicate(),
+      onBulkTrash: () => this.bulkTrash(), onBulkRestore: () => this.bulkRestore(), onBulkDestroy: () => this.bulkDestroy(), onClearSel: () => this.clearSel(),
+      headerBoxStyle: headerBoxStyle, headerIconClass: headerIconClass, headerHasIcon: allSel || someSel, onHeaderToggle: () => this.toggleSelAll(pageIds),
+      sortUI: sortUI,
+      rowsD: rowsD, isEmpty: total === 0,
+      footerText: footerText, perPageVal: S.perPage, onCyclePerPage: () => this.cyclePerPage(),
+      pager: pager, prevStyle: prevStyle, nextStyle: nextStyle,
+      onPrev: () => this.goPage(Math.max(1, page - 1)), onNext: () => this.goPage(Math.min(pageCount, page + 1)),
+      anyOverlay: !!(S.openFilter || S.statusMenu), onCloseOverlays: () => this.closeOverlays(),
+      showToast: !!S.toast, toastMsg: S.toast
+    };
+  }
+}
+</script>
+</body>
+</html>
