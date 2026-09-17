@@ -35,3 +35,30 @@ website.baoson.net {
 		header_up X-Forwarded-For {client_ip}
 	}
 }
+
+# ── Velzon reference demos (nội bộ, KHÔNG phải production) ──────────────────
+# DNS 2 sub này đang orange-cloud (proxy Cloudflare). Origin phục vụ CẢ hai:
+#   - HTTP :80  → khớp CF SSL mode Flexible + tool nội bộ truy cập thẳng
+#   - HTTPS tls internal (self-signed) → khớp CF SSL mode Full
+# KHÔNG redirect http→https ở origin: CF mode Flexible sẽ bị redirect-loop.
+http://default.baoson.net {
+	encode zstd gzip
+	reverse_proxy velzon-default:80
+}
+
+http://master.baoson.net {
+	encode zstd gzip
+	reverse_proxy velzon-master:80
+}
+
+default.baoson.net {
+	tls internal
+	encode zstd gzip
+	reverse_proxy velzon-default:80
+}
+
+master.baoson.net {
+	tls internal
+	encode zstd gzip
+	reverse_proxy velzon-master:80
+}
