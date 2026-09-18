@@ -34,6 +34,11 @@
             if (Route::has('admin.settings.catalog')) {
                 $workspace[] = ['key' => 'catalog', 'route' => 'admin.settings.catalog', 'label' => __('admin.catalog_settings')];
             }
+            // Operator-only: the approval-workflow switchboard (north-star — super_admin
+            // enables approval per site × per content type; tenant roles never see it).
+            if (Route::has('admin.settings.workflows') && \Illuminate\Support\Facades\Gate::allows('platform.workflows.manage')) {
+                $workspace[] = ['key' => 'workflow', 'route' => 'admin.settings.workflows', 'label' => __('admin.workflow_settings')];
+            }
         }
         if ($workspace !== []) {
             $nav[] = ['group' => __('admin.settings_workspace'), 'items' => $workspace];

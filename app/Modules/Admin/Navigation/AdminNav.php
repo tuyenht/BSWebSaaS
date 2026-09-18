@@ -235,6 +235,18 @@ final class AdminNav
                 }
             }
 
+            // Operator-only: approval-workflow switchboard. No tenant role template carries
+            // this permission, so only platform operators (Gate::before) ever see the tab.
+            if ($can('platform.workflows.manage')) {
+                $settingsChildren[] = new NavItem(
+                    key: 'settings.workflow',
+                    label: __('admin.workflow_settings'),
+                    url: route('admin.settings.workflows'),
+                    active: $request->routeIs('admin.settings.workflows'),
+                    permission: 'platform.workflows.manage',
+                );
+            }
+
             $items[] = new NavItem(
                 key: 'settings',
                 label: __('admin.settings'),

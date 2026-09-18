@@ -51,6 +51,7 @@ final class PermissionRegistry
         'platform.sites.view',
         'platform.sites.manage',
         'platform.entitlements.manage',
+        'platform.workflows.manage',
         'platform.site_types.manage',
         'platform.themes.manage',
         'platform.billing.manage',

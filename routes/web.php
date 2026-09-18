@@ -30,6 +30,7 @@ use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\SocialSettings;
 use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
+use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Admin\Support\Locales;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
@@ -182,6 +183,9 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/settings/social', SocialSettings::class)->middleware('can:settings.manage')->name('admin.settings.social');
         Route::get('/settings/appearance', AppearanceSettings::class)->middleware('can:settings.manage')->name('admin.settings.appearance');
         Route::get('/settings/catalog', CatalogSettings::class)->middleware('can:settings.manage')->name('admin.settings.catalog');
+        // Approval-workflow switchboard — platform operators only (no tenant role template
+        // grants this permission; super_admin passes via Gate::before).
+        Route::get('/settings/workflows', WorkflowSettings::class)->middleware('can:platform.workflows.manage')->name('admin.settings.workflows');
 
         // Per-user Customizer persistence (fetch/JSON) — any authenticated member, own prefs only.
         Route::post('/theme-preference', [ThemePreferenceController::class, 'store'])->name('admin.theme.save');
