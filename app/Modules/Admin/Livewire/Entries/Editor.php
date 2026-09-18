@@ -3,12 +3,15 @@
 namespace App\Modules\Admin\Livewire\Entries;
 
 use App\Modules\Admin\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Validation\ValidPageJson;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
@@ -18,6 +21,14 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
+use App\Modules\Workflow\Exceptions\InvalidTransitionException;
+use App\Modules\Workflow\Models\Workflow;
+use App\Modules\Workflow\Models\WorkflowState;
+use App\Modules\Workflow\Models\WorkflowTransition;
+use App\Modules\Workflow\Services\WorkflowEngine;
+use App\Modules\Workflow\Services\WorkflowTrail;
+use Carbon\CarbonInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -26,6 +37,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use RuntimeException;
 
 /**
  * The content editor: a block-list builder over the shared ComponentRegistry (add /
@@ -36,11 +48,20 @@ use Livewire\Component;
  * body (validated against the registry allow-list — ValidPageJson, D1: posts reuse the
  * block-list); Publish runs the Tầng-1 workflow (PublishEntry). Every mutation authorizes
  * through EntryPolicy. The entry is addressed by ulid, never its raw id.
+ *
+ * Where an ACTIVE workflow governs the post's section (design.md §15.4 tier-2), the Publish
+ * button gives way to the "Trạng thái duyệt" block: the flow's stages, the transitions the
+ * engine allows this user, a mandatory-note hand-off, and the approval trail. Which flow
+ * applies follows the PICKED category — so an unsaved post already shows the right block and
+ * a transition persists it first, the same way Publish does.
  */
 #[Layout('admin::layouts.app')]
 final class Editor extends Component
 {
     use AuthorizesRequests;
+
+    /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
+    private const int TRAIL_PAGE = 3;
 
     public ?string $ulid = null;
 
@@ -76,6 +97,40 @@ final class Editor extends Component
 
     #[Locked]
     public ?string $status = null;
+
+    /** Reason for a return/retract — transitions flagged requires_note refuse without one. */
+    public string $transitionNote = '';
+
+    /** Member (users.id) to hand the post to on a note transition; must be able to act at the next stage. */
+    public ?int $assignTo = null;
+
+    /**
+     * Approval trail rows shown so far (newest first) + the keyset cursor for the next page and
+     * the per-entry total — held in state so "Xem thêm" appends instead of re-reading. Server
+     * data, so #[Locked]: the client pages it, never edits it.
+     *
+     * @var list<array{id: int, at: string, actor: string|null, transition: string, from: string, to: string, note: string|null}>
+     */
+    #[Locked]
+    public array $trail = [];
+
+    #[Locked]
+    public ?string $trailCursor = null;
+
+    #[Locked]
+    public int $trailTotal = 0;
+
+    /**
+     * Per-request memo of hand-off candidates by destination stage (protected = not Livewire state).
+     *
+     * @var array<string, array<int, array{id: int, name: string}>>
+     */
+    protected array $memberMemo = [];
+
+    /** Per-request memo of the governing workflow + the category it was resolved for. */
+    protected ?Workflow $workflowMemo = null;
+
+    protected ?int $workflowMemoFor = null;
 
     public function mount(?string $ulid = null, ?string $section = null, ?string $locale = null): void
     {
@@ -114,6 +169,10 @@ final class Editor extends Component
 
         if ($this->type === 'post') {
             $this->categoryId = $entry->taxonomies()->first()?->id;
+        }
+
+        if ($this->governingWorkflow() !== null) {
+            $this->loadTrail($entry->id);
         }
     }
 
@@ -228,7 +287,296 @@ final class Editor extends Component
             $this->status = app(PublishEntry::class)->handle($entry, $this->locale, $this->user());
         } catch (RouteConflictException) {
             $this->addError('slug', __('entries.slug_conflict'));
+        } catch (WorkflowGovernedException) {
+            // A tab that still shows the tier-1 button after the flow was switched on: the
+            // draft is saved, and the next render swaps in the approval block.
+            $this->addError('workflow', __('entries.workflow_governed'));
         }
+    }
+
+    /**
+     * Move the post along its workflow (design screen 2 action bar). Persists first, exactly
+     * like publish(), so an unsaved post can be submitted in one move. The engine is the only
+     * judge of the move — the pre-checks below just put the failure on the right field.
+     */
+    public function applyTransition(string $key): void
+    {
+        $this->resetErrorBag(['workflow', 'transitionNote', 'assignTo']);
+
+        $entry = $this->persist();
+        $this->status = $entry->status;
+
+        $workflow = app(EntryWorkflowResolver::class)->forEntry($entry);
+        if ($workflow === null) {
+            $this->addError('workflow', __('admin.wfb.err_not_governed'));
+
+            return;
+        }
+
+        $transition = $workflow->transitions()->where('key', $key)->first();
+        if (! $transition instanceof WorkflowTransition) {
+            $this->addError('workflow', __('admin.wfb.err_stale'));
+
+            return;
+        }
+
+        $note = trim($this->transitionNote);
+        if ($transition->requires_note && $note === '') {
+            $this->addError('transitionNote', __('admin.wfb.note_missing'));
+
+            return;
+        }
+
+        // A hand-off only exists on the note modal (design screen 2); a value left over from a
+        // cancelled modal must not ride along on a plain move. And it may only name someone who
+        // can act at the destination — never an arbitrary (or another site's) users.id from the
+        // wire payload.
+        $assignTo = $transition->requires_note ? $this->assignTo : null;
+        if ($assignTo !== null && ! array_key_exists($assignTo, $this->assignableMembers($workflow, $transition->to_state))) {
+            $this->addError('assignTo', __('admin.wfb.assignee_invalid'));
+
+            return;
+        }
+
+        try {
+            $destination = app(ApplyEntryWorkflowTransition::class)->handle(
+                $entry, $this->locale, $this->user(), $key, $note !== '' ? $note : null, $assignTo,
+            );
+        } catch (RouteConflictException) {
+            $this->addError('slug', __('entries.slug_conflict'));
+
+            return;
+        } catch (InvalidTransitionException) {
+            // Another tab moved the post first, or the flow was reconfigured under this one.
+            $this->addError('workflow', __('admin.wfb.err_stale'));
+
+            return;
+        } catch (AuthorizationException) {
+            $this->addError('workflow', __('admin.wfb.err_forbidden'));
+
+            return;
+        } catch (RuntimeException) {
+            $this->addError('workflow', __('admin.wfb.err_not_governed'));
+
+            return;
+        }
+
+        $entry->refresh();
+        $this->status = $entry->status;
+        $this->transitionNote = '';
+        $this->assignTo = null;
+        $this->loadTrail($entry->id);
+
+        $stepLabel = $workflow->states()->where('key', $destination)->value('label');
+
+        $this->dispatch('workflow-moved');   // closes the note modal only on success
+        $this->dispatch('bs-toast', text: __('admin.wfb.moved', [
+            'action' => $transition->label,
+            'step' => is_string($stepLabel) ? $stepLabel : $destination,
+        ]));
+    }
+
+    /** "Xem thêm": the next keyset page of the trail, appended below what is already shown. */
+    public function loadMoreTrail(): void
+    {
+        if ($this->ulid === null || $this->trailCursor === null) {
+            return;
+        }
+
+        // Re-authorize per request (livewire/update skips the route middleware): the trail
+        // carries reviewers' notes, so it is read on the same terms as the entry itself.
+        $entry = $this->resolveOrFail($this->ulid);
+        $this->authorize('update', $entry);
+
+        $page = app(WorkflowTrail::class)->forEntry($entry->id, self::TRAIL_PAGE, $this->trailCursor);
+        $this->trail = array_merge($this->trail, $this->trailRows($page['rows']));
+        $this->trailCursor = $page['cursor'];
+        $this->trailTotal = $page['total'];
+    }
+
+    /** (Re)load the first page of the trail — after mount, and after every move. */
+    private function loadTrail(int $entryId): void
+    {
+        $page = app(WorkflowTrail::class)->forEntry($entryId, self::TRAIL_PAGE);
+        $this->trail = $this->trailRows($page['rows']);
+        $this->trailCursor = $page['cursor'];
+        $this->trailTotal = $page['total'];
+    }
+
+    /**
+     * Trail rows as plain state: the timestamp becomes ISO-8601 so it survives the Livewire
+     * snapshot (the view renders it relative, in the site's zone).
+     *
+     * @param  list<array{id: int, at: CarbonInterface, actor: string|null, transition: string, from: string, to: string, note: string|null}>  $rows
+     * @return list<array{id: int, at: string, actor: string|null, transition: string, from: string, to: string, note: string|null}>
+     */
+    private function trailRows(array $rows): array
+    {
+        return array_map(static fn (array $row): array => [
+            'id' => $row['id'],
+            'at' => $row['at']->toIso8601String(),
+            'actor' => $row['actor'],
+            'transition' => $row['transition'],
+            'from' => $row['from'],
+            'to' => $row['to'],
+            'note' => $row['note'],
+        ], $rows);
+    }
+
+    /**
+     * The active workflow governing the PICKED category's section, or null (tier-1). Memoized
+     * per request (the component instance lives one request), keyed by the category so a
+     * category change inside the same request is never answered from the previous pick.
+     */
+    private function governingWorkflow(): ?Workflow
+    {
+        if ($this->type !== 'post' || $this->categoryId === null) {
+            return null;
+        }
+
+        if ($this->workflowMemoFor !== $this->categoryId) {
+            $category = Taxonomy::query()->whereKey($this->categoryId)->first();
+            $this->workflowMemo = $category instanceof Taxonomy ? app(EntryWorkflowResolver::class)->forCategory($category) : null;
+            $this->workflowMemoFor = $this->categoryId;
+        }
+
+        return $this->workflowMemo;
+    }
+
+    /**
+     * Everything the "Trạng thái duyệt" block renders — stages, the current one, the user's
+     * transitions (with hand-off candidates for the note ones) and the hints around them. A
+     * flat set of queries: states, allowed transitions, and ONE members lookup per distinct
+     * destination that a note transition can reach.
+     *
+     * @return array{
+     *     name: string,
+     *     steps: list<array{key: string, label: string, is_published: bool, is_terminal: bool, is_initial: bool, state: 'done'|'current'|'todo'}>,
+     *     current: array{index: int, label: string, is_published: bool},
+     *     next_label: string|null,
+     *     pre_workflow: bool,
+     *     is_live: bool,
+     *     assignee: string|null,
+     *     missing: list<string>,
+     *     actions: list<array{key: string, label: string, to_label: string, to_published: bool, note: bool, members: list<array{id: int, name: string}>}>,
+     * }
+     */
+    private function workflowPanel(Workflow $workflow, ?Entry $entry): array
+    {
+        $states = $workflow->states()->orderBy('sort_order')->orderBy('id')->get()->keyBy('key');
+        $initial = $states->first(fn (WorkflowState $state): bool => $state->is_initial);
+        $initialKey = $initial instanceof WorkflowState ? $initial->key : (string) $states->keys()->first();
+
+        // The origin the ENGINE will use (workflow_state, or the initial stage for a pre-workflow
+        // entry) decides which buttons exist; the drawn position falls back to the start when
+        // that key is one the (rebuilt) flow no longer defines.
+        $fromState = $entry !== null && $entry->workflow_state !== null ? $entry->workflow_state : $initialKey;
+        $currentKey = $states->has($fromState) ? $fromState : $initialKey;
+
+        $keys = $states->keys()->values()->all();
+        $currentIndex = max(0, (int) array_search($currentKey, $keys, true));
+
+        $steps = [];
+        foreach ($states->values() as $index => $state) {
+            $steps[] = [
+                'key' => $state->key,
+                'label' => $state->label,
+                'is_published' => $state->is_published,
+                'is_terminal' => $state->is_terminal,
+                'is_initial' => $state->is_initial,
+                'state' => $index < $currentIndex ? 'done' : ($index === $currentIndex ? 'current' : 'todo'),
+            ];
+        }
+
+        $current = $states->get($currentKey);
+        $nextState = $states->values()->get($currentIndex + 1);
+
+        $actions = [];
+        foreach (app(WorkflowEngine::class)->allowedTransitions($workflow, $fromState, $this->user()) as $transition) {
+            $destination = $states->get($transition->to_state);
+            $actions[] = [
+                'key' => $transition->key,
+                'label' => $transition->label,
+                'to_label' => $destination instanceof WorkflowState ? $destination->label : $transition->to_state,
+                'to_published' => $destination instanceof WorkflowState && $destination->is_published,
+                'note' => $transition->requires_note,
+                'members' => $transition->requires_note
+                    ? array_values($this->assignableMembers($workflow, $transition->to_state))
+                    : [],
+            ];
+        }
+
+        $assignee = $entry?->assigned_to !== null ? User::query()->whereKey($entry->assigned_to)->value('name') : null;
+
+        return [
+            'name' => $workflow->name,
+            'steps' => $steps,
+            'current' => [
+                'index' => $currentIndex,
+                'label' => $current instanceof WorkflowState ? $current->label : $currentKey,
+                'is_published' => $current instanceof WorkflowState && $current->is_published,
+            ],
+            'next_label' => $nextState instanceof WorkflowState ? $nextState->label : null,
+            'pre_workflow' => $entry !== null && $entry->workflow_state === null,
+            'is_live' => $entry?->status === 'published',
+            'assignee' => is_string($assignee) ? $assignee : null,
+            'missing' => $this->missingPublicFields(),
+            'actions' => $actions,
+        ];
+    }
+
+    /**
+     * Members of THIS site who hold a permission some transition out of $stateKey requires — the
+     * people a returned post can be handed to. Keyed by users.id for the validity check.
+     *
+     * @return array<int, array{id: int, name: string}>
+     */
+    private function assignableMembers(Workflow $workflow, string $stateKey): array
+    {
+        // Memo on the instance (one per request) — never a static: under Octane a static would
+        // outlive the request and hand one site's members to the next.
+        if (isset($this->memberMemo[$stateKey])) {
+            return $this->memberMemo[$stateKey];
+        }
+
+        $permissions = $workflow->transitions
+            ->where('from_state', $stateKey)
+            ->pluck('required_permission')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($permissions === []) {
+            return $this->memberMemo[$stateKey] = [];
+        }
+
+        // Spatie's permission scope honours the team (site) on both the role and the direct
+        // grant, so a member of another site never shows up here.
+        $members = [];
+        foreach (User::query()->permission($permissions)->orderBy('name')->get(['users.id', 'users.name']) as $member) {
+            $members[(int) $member->id] = ['id' => (int) $member->id, 'name' => (string) $member->name];
+        }
+
+        return $this->memberMemo[$stateKey] = $members;
+    }
+
+    /**
+     * Public-facing fields still empty on this post — said up front so the author fills them
+     * before a reviewer has to send it back. Only what the storefront actually shows for a post.
+     *
+     * @return list<string>
+     */
+    private function missingPublicFields(): array
+    {
+        $missing = [];
+        if ($this->coverImageKey === '') {
+            $missing[] = __('admin.wfb.missing_cover');
+        }
+        if ($this->blocks === []) {
+            $missing[] = __('admin.wfb.missing_body');
+        }
+
+        return $missing;
     }
 
     public function openCoverPicker(): void
@@ -308,6 +656,7 @@ final class Editor extends Component
     {
         $urls = app(MediaUrlResolver::class);
         $schemas = $this->schemas();
+        $workflow = $this->governingWorkflow();
 
         return view('admin::livewire.entries.editor', [
             'availableTypes' => app(ComponentRegistry::class)->types(),
@@ -319,6 +668,9 @@ final class Editor extends Component
             'pickerMedia' => $this->showMediaPicker || $this->showBlockImagePicker
                 ? Media::query()->orderByDesc('created_at')->limit(60)->get()
                 : collect(),
+            'workflow' => $workflow !== null
+                ? $this->workflowPanel($workflow, $this->ulid !== null ? $this->resolveOrFail($this->ulid) : null)
+                : null,
         ]);
     }
 

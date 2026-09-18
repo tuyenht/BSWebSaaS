@@ -143,8 +143,17 @@
         </ol>
     </section>
 
-    <div class="editor-actions">
-        <button type="button" wire:click="save">{{ __('entries.save_draft') }}</button>
-        <button type="button" wire:click="publish">{{ __('entries.publish') }}</button>
-    </div>
+    @if ($workflow !== null)
+        {{-- An active workflow governs this section: the approval block replaces Publish. --}}
+        @include('admin::livewire.entries.partials.workflow-status')
+        <div class="editor-actions">
+            <button type="button" wire:click="save">{{ __('entries.save_draft') }}</button>
+        </div>
+    @else
+        @error('workflow') <p class="error">{{ $message }}</p> @enderror
+        <div class="editor-actions">
+            <button type="button" wire:click="save">{{ __('entries.save_draft') }}</button>
+            <button type="button" wire:click="publish">{{ __('entries.publish') }}</button>
+        </div>
+    @endif
 </div>

@@ -8,6 +8,7 @@ use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
@@ -186,18 +187,28 @@ final class Index extends Component
         $this->page = 1;
     }
 
-    /** Row status menu → published (via PublishEntry, route-synced) or draft/private (via the engine). */
+    /**
+     * Row status menu → published (via PublishEntry, route-synced) or draft/private (via the
+     * engine). A post whose section runs an approval workflow cannot be published from here —
+     * that is the editor's approval block — so the refusal comes back as a plain toast.
+     */
     public function changeStatus(string $ulid, string $status): void
     {
         $entry = $this->findEntry($ulid);
         $user = $this->actingUser();
 
-        if ($status === EntryStatus::Published->value) {
-            app(PublishEntry::class)->handle($entry, app(SiteLocale::class)->default(), $user);
-        } elseif ($status === EntryStatus::Draft->value || $status === EntryStatus::Private->value) {
-            app(TransitionEntryStatus::class)->handle($entry, EntryStatus::from($status), $user);
-        } else {
-            return; // scheduled has its own datetime path; unknown values are ignored
+        try {
+            if ($status === EntryStatus::Published->value) {
+                app(PublishEntry::class)->handle($entry, app(SiteLocale::class)->default(), $user);
+            } elseif ($status === EntryStatus::Draft->value || $status === EntryStatus::Private->value) {
+                app(TransitionEntryStatus::class)->handle($entry, EntryStatus::from($status), $user);
+            } else {
+                return; // scheduled has its own datetime path; unknown values are ignored
+            }
+        } catch (WorkflowGovernedException) {
+            $this->toast(__('entries.workflow_governed'));
+
+            return;
         }
 
         $this->toast(__('entries.status_changed'));
@@ -214,7 +225,13 @@ final class Index extends Component
             return;
         }
 
-        app(TransitionEntryStatus::class)->handle($this->findEntry($ulid), EntryStatus::Scheduled, $this->actingUser(), $when);
+        try {
+            app(TransitionEntryStatus::class)->handle($this->findEntry($ulid), EntryStatus::Scheduled, $this->actingUser(), $when);
+        } catch (WorkflowGovernedException) {
+            $this->toast(__('entries.workflow_governed'));
+
+            return;
+        }
 
         $this->toast(__('entries.scheduled_set'));
     }
@@ -349,9 +366,18 @@ final class Index extends Component
         $user = $this->actingUser();
         $locale = app(SiteLocale::class)->default();
         $publish = app(PublishEntry::class);
-        $this->bulkApply(function (Entry $entry) use ($publish, $locale, $user): void {
-            $publish->handle($entry, $locale, $user);
+        $governed = 0;
+        $this->bulkApply(function (Entry $entry) use ($publish, $locale, $user, &$governed): void {
+            try {
+                $publish->handle($entry, $locale, $user);
+            } catch (WorkflowGovernedException) {
+                $governed++;   // left as is: only the editor's approval block may move it
+            }
         });
+
+        if ($governed > 0) {
+            $this->toast(__('entries.workflow_governed_bulk', ['count' => $governed]));
+        }
     }
 
     public function bulkDraft(): void
