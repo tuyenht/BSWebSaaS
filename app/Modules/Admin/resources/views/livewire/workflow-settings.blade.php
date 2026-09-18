@@ -3,7 +3,7 @@
         <x-admin::alert color="success" icon="shield">{{ session('status') }}</x-admin::alert>
     @endif
     @error('template')
-        <x-admin::alert color="danger" icon="error-warning">{{ $message }}</x-admin::alert>
+        <x-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-admin::alert>
     @enderror
 
     <div
@@ -21,6 +21,7 @@
             openFor(row) { this.row = row; this.selected = row.template ?? null; this.open = true; },
             tpl() { return this.templates.find(t => t.key === this.selected) ?? null; },
             pick(t) { if (! t.locked) this.selected = t.key; },
+            stepLabel(key) { const s = (this.tpl()?.states ?? []).find(x => x.key === key); return s ? s.label : key; },
             submit(activate) {
                 const doApply = () => { $wire.apply(this.row.key, this.selected, activate); this.open = false; };
                 if (this.row.template && this.row.template !== this.selected && this.row.pending > 0) {
@@ -200,7 +201,7 @@
                                     <template x-for="tr in tpl().transitions.filter(t => ! t.note)" :key="tr.key">
                                         <li class="rounded border border-border p-2 text-xs">
                                             <span class="font-medium text-body-text" x-text="tr.label"></span>
-                                            <span class="block text-body-faint" x-text="tr.from + ' → ' + tr.to"></span>
+                                            <span class="block text-body-faint" x-text="stepLabel(tr.from) + ' → ' + stepLabel(tr.to)"></span>
                                         </li>
                                     </template>
                                 </ul>
@@ -211,7 +212,7 @@
                                     <template x-for="tr in tpl().transitions.filter(t => t.note)" :key="tr.key">
                                         <li class="rounded border border-admin-danger/30 p-2 text-xs">
                                             <span class="font-medium text-body-text" x-text="tr.label"></span>
-                                            <span class="block text-body-faint" x-text="tr.from + ' → ' + tr.to"></span>
+                                            <span class="block text-body-faint" x-text="stepLabel(tr.from) + ' → ' + stepLabel(tr.to)"></span>
                                             <span class="mt-0.5 inline-block rounded-full bg-admin-warning/15 px-1.5 py-px text-[10px] font-bold text-[#8a5f18]">{{ __('admin.wf.note_required') }}</span>
                                         </li>
                                     </template>
