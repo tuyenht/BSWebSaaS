@@ -57,7 +57,12 @@ final readonly class EntryWorkflowResolver
      */
     public function originFor(Workflow $workflow, Entry $entry): string
     {
-        if ($entry->workflow_state !== null) {
+        // Trust the stored pointer only while this workflow still defines it. A post re-filed
+        // into another section, or one whose template was swapped without its pointer being
+        // cleared, would otherwise be handed a stage the engine does not know: no transition
+        // starts there, so the editor would show a stepper with no buttons at all — a dead end
+        // with no way out. Falling through re-derives the stage from what is actually true.
+        if ($entry->workflow_state !== null && $workflow->states()->where('key', $entry->workflow_state)->exists()) {
             return $entry->workflow_state;
         }
 

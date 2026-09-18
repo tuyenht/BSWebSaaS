@@ -2,6 +2,7 @@
 
 namespace App\Modules\Cms\Actions;
 
+use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\EntryStatusAudit;
@@ -37,7 +38,7 @@ final readonly class ApplyEntryWorkflowTransition
     /**
      * Move an entry along its workflow; returns the destination state key.
      *
-     * @throws RuntimeException no workflow governs this entry (the caller should use tier-1)
+     * @throws EntryNotGovernedException no workflow governs this entry (the caller should use tier-1)
      */
     public function handle(
         Entry $entry,
@@ -51,7 +52,7 @@ final readonly class ApplyEntryWorkflowTransition
             ?? throw new RuntimeException("Entry {$entry->id} has no '{$locale}' translation to move.");
 
         $workflow = $this->workflows->forEntry($entry)
-            ?? throw new RuntimeException("Entry {$entry->id} is not governed by an active workflow.");
+            ?? throw EntryNotGovernedException::for($entry->id);
 
         // An entry created before the workflow was switched on carries no state yet: live content
         // stands at the published stage, anything else at the initial one — never stranded

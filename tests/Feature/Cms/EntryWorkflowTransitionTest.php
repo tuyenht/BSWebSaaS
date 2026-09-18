@@ -226,6 +226,24 @@ it('keeps a live post that predates the workflow at the published stage — join
     $this->get('http://a.test/tin-tuc/ban-tin')->assertNotFound();
 });
 
+it('re-derives the stage when the stored pointer is not one this workflow defines', function (): void {
+    $author = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author): void {
+        grantRole($author, 'author', ['entries.submit']);
+        $entry = newsPost();
+        activeNewsWorkflow();
+
+        // A stage key from another flow (template swapped, or the post re-filed): no transition
+        // starts there, so trusting it would leave the author with a stepper and no buttons.
+        $entry->update(['workflow_state' => 'copyedit']);
+
+        expect(app(ApplyEntryWorkflowTransition::class)->handle($entry->fresh(), 'vi', $author->fresh(), 'submit'))
+            ->toBe('pending');
+        expect($entry->fresh()->workflow_state)->toBe('pending');
+    });
+});
+
 it('starts an entry that predates the workflow at the initial stage', function (): void {
     $author = User::factory()->create();
 
