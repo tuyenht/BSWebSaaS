@@ -30,6 +30,7 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Throwable;
 
 /**
  * The Pages list (design_handoff_pages_admin §3a). Lists a content_section's entries
@@ -369,19 +370,30 @@ final class Index extends Component
         // Runs its own loop rather than bulkApply(): the outcome is two numbers, and a second
         // toast would simply replace the first, so what did publish would never be read.
         $entries = $this->selectedEntries();
+        $done = 0;
         $governed = 0;
+        $failed = 0;
         foreach ($entries as $entry) {
             try {
                 $publish->handle($entry, $locale, $user);
+                $done++;
             } catch (WorkflowGovernedException) {
                 $governed++;   // left as is: only the editor's approval block may move it
+            } catch (Throwable $e) {
+                // A slug clash, or a row this user may neither publish nor submit: report it and
+                // keep going. Aborting here would leave the selection half-applied, the checkbox
+                // state stale and no toast at all — the user could not tell what had happened.
+                report($e);
+                $failed++;
             }
         }
         $this->selected = [];
 
-        $this->toast($governed > 0
-            ? __('entries.bulk_done_governed', ['count' => $entries->count() - $governed, 'governed' => $governed])
-            : __('entries.bulk_done', ['count' => $entries->count()]));
+        $this->toast(match (true) {
+            $governed > 0 => __('entries.bulk_done_governed', ['count' => $done, 'governed' => $governed]),
+            $failed > 0 => __('entries.bulk_done_failed', ['count' => $done, 'failed' => $failed]),
+            default => __('entries.bulk_done', ['count' => $done]),
+        });
     }
 
     public function bulkDraft(): void
