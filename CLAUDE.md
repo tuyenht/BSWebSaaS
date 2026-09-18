@@ -163,6 +163,14 @@ docker compose restart horizon                        # sau khi sửa Job/Listen
 5. Chạy guardrail (mục 6) → phải xanh.
 6. Commit nhỏ, mô tả rõ. PR (nếu dùng) một việc.
 
+> 🎨 **UI chưa có design = KHÔNG tự dựng (owner chốt 18/09/2026, mọi session):** gặp chỗ cần giao diện mà chưa có
+> handoff (màn hình/modal/form/settings/empty-error state) → vẫn làm backend + test (ACT), phần UI đánh dấu `⏸ chờ design`
+> và xuất **prompt tự-đứng cho Claude Design** (owner chuyển tay): bối cảnh BSWebSaaS + admin Velzon · màn hình/luồng +
+> mục tiêu người dùng · đối tượng không rành CN (§10.3 #6) · mô hình dữ liệu thật (§4, không lộ id) · ràng buộc stack
+> (Livewire 4 + Blade + Tailwind 4, `<x-admin::*>`, icon inline-SVG, KHÔNG Bootstrap/Flux) + token Velzon · output =
+> prototype `.dc.html` + README theo mẫu `docs/design_handoff_*/`. Có handoff mới port 1:1. Sửa lặt vặt trên màn hình
+> ĐÃ có design (thêm 1 nút/1 cột) → hỏi owner: tự làm theo token sẵn có hay qua Claude Design.
+
 > **Thứ tự/trạng thái hiện hành:** xem `plans/` (master backlog) + `git log` — CLAUDE.md KHÔNG giữ tiến độ (§10.6).
 
 ---
@@ -176,6 +184,7 @@ docker compose restart horizon                        # sau khi sửa Job/Listen
 - ❌ Query thiếu `site_id`; bỏ qua RLS; lộ bigint id thô.
 - ❌ Tự nâng major version; thêm dependency nặng không bàn.
 - ❌ Reverb/realtime ở GĐ1 (YAGNI); microservices (đây là Modular Monolith).
+- ❌ Tự dựng giao diện chưa có design handoff — xuất prompt cho Claude Design rồi mới port (§8).
 
 ---
 
