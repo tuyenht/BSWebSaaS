@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * Content entry (design.md §8). type ∈ {page, post}; the display layout/body lives
@@ -23,6 +24,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $status
  * @property string|null $template_override
  * @property int|null $author_id
+ * @property Carbon|null $published_at
+ * @property string|null $workflow_state the stage of the section's approval workflow, null until it joins one
+ * @property int|null $assigned_to
  * @property array<string, mixed> $meta
  */
 class Entry extends Model

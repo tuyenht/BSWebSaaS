@@ -8,6 +8,7 @@ use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Workflow\Services\WorkflowEngine;
+use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -75,7 +76,12 @@ final readonly class ApplyEntryWorkflowTransition
             $entry->update([
                 'workflow_state' => $destination->key,
                 'status' => $status,
-                'published_at' => $destination->is_published ? ($entry->published_at ?? now()) : $entry->published_at,
+                // Going live keeps the original publication date when there is one in the PAST
+                // (a post taken down and approved again keeps its date), but a slot still in the
+                // future — an entry that was scheduled before the flow was switched on — becomes
+                // now: the decision to publish is being taken today, and post lists order by
+                // this column, so a future date would park it at the top of the news page.
+                'published_at' => $destination->is_published ? $this->publicationDate($entry) : $entry->published_at,
                 'assigned_to' => $assignTo ?? $entry->assigned_to,
             ]);
             $translation->update(['status' => $status]);
@@ -92,5 +98,13 @@ final readonly class ApplyEntryWorkflowTransition
         EntryStatusAudit::record($entry, $fromStatus, $entry->status, 'workflow', $actor, ['transition' => $transitionKey]);
 
         return $destinationKey;
+    }
+
+    /** The date to stamp when content goes live — see the call site for why a future slot is dropped. */
+    private function publicationDate(Entry $entry): DateTimeInterface
+    {
+        $existing = $entry->published_at;
+
+        return $existing instanceof DateTimeInterface && $existing <= now() ? $existing : now();
     }
 }

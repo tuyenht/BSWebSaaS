@@ -77,6 +77,54 @@ it('still schedules a post whose section workflow exists but is switched off', f
     });
 });
 
+it('stamps today as the publication date when approving a post whose old slot is still in the future', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.submit', 'entries.approve', 'entries.publish']);
+
+        // Scheduled for next week while tier-1 was in force…
+        $entry = schedulableNewsPost();
+        $slot = now()->addWeek();
+        app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $editor->fresh(), $slot);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+
+        // …then approved today. Post lists order by published_at, so keeping next week's date
+        // would park this post above everything published since.
+        $move = app(ApplyEntryWorkflowTransition::class);
+        $move->handle($entry->fresh(), 'vi', $editor->fresh(), 'submit');
+        $move->handle($entry->fresh(), 'vi', $editor->fresh(), 'approve');
+
+        $entry->refresh();
+        expect($entry->status)->toBe('published')
+            ->and($entry->published_at->isFuture())->toBeFalse()
+            ->and($entry->published_at->diffInMinutes(now()))->toBeLessThan(2);
+    });
+});
+
+it('keeps the original publication date when live content is approved again after a retraction', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.submit', 'entries.approve', 'entries.review', 'entries.publish']);
+        $entry = schedulableNewsPost();
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        $move = app(ApplyEntryWorkflowTransition::class);
+
+        $move->handle($entry, 'vi', $editor->fresh(), 'submit');
+        $move->handle($entry->fresh(), 'vi', $editor->fresh(), 'approve');
+        $firstPublished = $entry->fresh()->published_at;
+
+        $move->handle($entry->fresh(), 'vi', $editor->fresh(), 'retract', 'Sửa số liệu');
+        $this->travel(2)->hours();
+        $move->handle($entry->fresh(), 'vi', $editor->fresh(), 'submit');
+        $move->handle($entry->fresh(), 'vi', $editor->fresh(), 'approve');
+
+        // The article's date is its original one — a correction is not a new article.
+        expect($entry->fresh()->published_at->equalTo($firstPublished))->toBeTrue();
+    });
+});
+
 it('sends a governed post back to the flow start when the status menu takes it off the site', function (): void {
     $editor = User::factory()->create();
 
