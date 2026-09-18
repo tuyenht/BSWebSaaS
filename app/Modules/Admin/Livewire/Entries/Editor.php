@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire\Entries;
 use App\Modules\Admin\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
+use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
@@ -28,6 +29,7 @@ use App\Modules\Workflow\Models\WorkflowTransition;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use App\Modules\Workflow\Services\WorkflowTrail;
 use Carbon\CarbonInterface;
+use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
@@ -37,7 +39,6 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
-use RuntimeException;
 
 /**
  * The content editor: a block-list builder over the shared ComponentRegistry (add /
@@ -63,6 +64,16 @@ final class Editor extends Component
     /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
     private const int TRAIL_PAGE = 3;
 
+    /**
+     * Cap on the "Giao cho" list. It rides inside the Livewire snapshot of every governed
+     * render, so an unbounded team would grow the payload without bound (ADR-18: paginate
+     * everything). A site whose approving team is larger than this needs a picker with search,
+     * not a longer <select>.
+     */
+    private const int ASSIGNEE_LIMIT = 50;
+
+    /** Which entry is being edited — server-resolved (mount/persist); never client-set. */
+    #[Locked]
     public ?string $ulid = null;
 
     /** Entry type (page|post); server-resolved, never client-set. */
@@ -123,7 +134,7 @@ final class Editor extends Component
     /**
      * Per-request memo of hand-off candidates by destination stage (protected = not Livewire state).
      *
-     * @var array<string, array<int, array{id: int, name: string}>>
+     * @var array<string, array<int, array{id: int, name: string}>> keyed "{workflow}:{stage}"
      */
     protected array $memberMemo = [];
 
@@ -355,7 +366,9 @@ final class Editor extends Component
             $this->addError('workflow', __('admin.wfb.err_forbidden'));
 
             return;
-        } catch (RuntimeException) {
+        } catch (EntryNotGovernedException) {
+            // NOT a broad RuntimeException: QueryException is one too, and reporting a deadlock
+            // as "no workflow here any more" would push the editor toward publishing directly.
             $this->addError('workflow', __('admin.wfb.err_not_governed'));
 
             return;
@@ -537,8 +550,9 @@ final class Editor extends Component
     {
         // Memo on the instance (one per request) — never a static: under Octane a static would
         // outlive the request and hand one site's members to the next.
-        if (isset($this->memberMemo[$stateKey])) {
-            return $this->memberMemo[$stateKey];
+        $memoKey = $workflow->id.':'.$stateKey;
+        if (isset($this->memberMemo[$memoKey])) {
+            return $this->memberMemo[$memoKey];
         }
 
         $permissions = $workflow->transitions
@@ -549,17 +563,17 @@ final class Editor extends Component
             ->all();
 
         if ($permissions === []) {
-            return $this->memberMemo[$stateKey] = [];
+            return $this->memberMemo[$memoKey] = [];
         }
 
         // Spatie's permission scope honours the team (site) on both the role and the direct
         // grant, so a member of another site never shows up here.
         $members = [];
-        foreach (User::query()->permission($permissions)->orderBy('name')->get(['users.id', 'users.name']) as $member) {
+        foreach (User::query()->permission($permissions)->orderBy('name')->limit(self::ASSIGNEE_LIMIT)->get(['users.id', 'users.name']) as $member) {
             $members[(int) $member->id] = ['id' => (int) $member->id, 'name' => (string) $member->name];
         }
 
-        return $this->memberMemo[$stateKey] = $members;
+        return $this->memberMemo[$memoKey] = $members;
     }
 
     /**
@@ -710,10 +724,43 @@ final class Editor extends Component
 
         // A post's URL is its category slug + post slug, so a post must have a category.
         if ($this->type === 'post') {
-            $rules['categoryId'] = ['required', 'integer', Rule::exists('taxonomies', 'id')->where('vocabulary', 'post_cat')];
+            $rules['categoryId'] = [
+                'required', 'integer',
+                Rule::exists('taxonomies', 'id')->where('vocabulary', 'post_cat'),
+                $this->keepsGovernedSection(...),
+            ];
         }
 
         return $rules;
+    }
+
+    /**
+     * A post an active workflow governs may not be re-filed out of that workflow's section.
+     *
+     * The gate asks "which workflow governs this entry?" AFTER the save has written the picked
+     * category, and `categoryId` is client-owned — so without this rule, re-pointing the picker
+     * at a category no section binds, pressing Publish, and re-pointing it back would take the
+     * post public with no approval and no trail. Filing it under another category of the SAME
+     * section (a sub-category, say) is ordinary editing and stays allowed.
+     */
+    private function keepsGovernedSection(string $attribute, mixed $value, Closure $fail): void
+    {
+        if ($this->ulid === null || ! is_numeric($value)) {
+            return;   // a new post has nothing to escape from; `exists` reports a bad value
+        }
+
+        $workflows = app(EntryWorkflowResolver::class);
+        $current = $workflows->forEntry($this->resolveOrFail($this->ulid));
+        if ($current === null) {
+            return;   // tier-1 content: filing is free
+        }
+
+        $target = Taxonomy::query()->whereKey((int) $value)->first();
+        $destination = $target instanceof Taxonomy ? $workflows->forCategory($target) : null;
+
+        if ($destination?->id !== $current->id) {
+            $fail(__('entries.category_governed', ['workflow' => $current->name]));
+        }
     }
 
     /**

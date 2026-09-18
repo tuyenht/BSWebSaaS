@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use App\Modules\Workflow\Models\WorkflowLog;
 use Livewire\Livewire;
 
 /*
@@ -444,6 +445,65 @@ it('toasts instead of erroring when the list tries to publish a governed post di
             ->assertDispatched('bs-toast', text: __('entries.workflow_governed'));
 
         expect($post->fresh()->status)->toBe('draft');
+    });
+});
+
+it('cannot be walked around by switching the category picker to an ungoverned term', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']);
+        $post = wfEditorPost(wfEditorCollection(), $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        // A category no ContentSection binds — so nothing governs it.
+        $loose = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $loose->translations()->create(['locale' => 'vi', 'name' => 'Linh tinh', 'slug' => 'linh-tinh']);
+
+        // The gate must not be keyed on the category currently in the FORM: re-pointing it and
+        // pressing Publish would otherwise take the post public with no approval and no trail.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('categoryId', $loose->id)
+            ->call('publish')
+            ->assertHasErrors('categoryId');
+
+        $post->refresh();
+        expect($post->status)->toBe('draft')
+            ->and($post->taxonomies()->first()?->id)->not->toBe($loose->id)   // the move itself is refused
+            ->and(SiteRoute::query()->count())->toBe(0);
+        expect(WorkflowLog::query()->count())->toBe(0);
+
+        // Saving the same move is refused too — otherwise the same escape works in two steps.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('categoryId', $loose->id)
+            ->call('save')
+            ->assertHasErrors('categoryId');
+    });
+});
+
+it('still allows moving a governed post between categories of the SAME governed section', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.publish']);
+        $rootId = wfEditorCollection();
+        $post = wfEditorPost($rootId, $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        // A sub-category of the section's own category still resolves to that section
+        // (SectionResolver walks the ancestor chain), so ordinary filing must keep working.
+        $child = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $rootId, 'position' => 1]);
+        $child->translations()->create(['locale' => 'vi', 'name' => 'Tin nội bộ', 'slug' => 'tin-noi-bo']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('categoryId', $child->id)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect($post->fresh()->taxonomies()->first()?->id)->toBe($child->id);
     });
 });
 

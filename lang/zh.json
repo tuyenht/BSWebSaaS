@@ -492,7 +492,7 @@
     "admin.wfb.actions_hint_next": "本流程的下一步是“:label”。",
     "admin.wfb.actions_hint_role": "你只会看到自己角色可以点击的按钮。",
     "admin.wfb.wait_line": "等待审批中——有变化时会通知你。",
-    "admin.wfb.wait_line_live": "文章正对访客展示：保存的任何修改都会立即对外显示。你的角色无法撤下已发布文章——如需隐藏，请联系内容负责人。",
+    "admin.wfb.wait_line_live": "文章正对访客展示：保存的任何修改都会立即对外显示。在此步骤中你的角色没有审批操作——如需撤下，请使用列表中的状态菜单，或联系内容负责人。",
     "admin.wfb.trail_title": "审批记录",
     "admin.wfb.trail_count": ":count 次流转",
     "admin.wfb.trail_empty": "还没有流转记录。当你或其他人推进步骤时，谁做了什么、原因是什么都会显示在这里。",
@@ -514,5 +514,8 @@
     "admin.wfb.err_forbidden": "你的角色无权执行此操作。",
     "admin.wfb.moved": ":action 完成——文章现在处于“:step”。",
     "admin.wfb.live_edit_hint": "文章正对访客展示：保存的任何修改都会立即对外显示。若想先隐藏再仔细修改，请使用“撤下文章”。",
-    "entries.bulk_done_governed": "已发布 :count 篇；:governed 篇正在走审批流程，未发布——请逐篇打开审批。"
+    "entries.bulk_done_governed": "已发布 :count 篇；:governed 篇正在走审批流程，未发布——请逐篇打开审批。",
+    "entries.category_governed": "这篇文章正在走审批流程“:workflow”，因此无法移动到其他类型。确实需要移动时，请联系管理员关闭该类型的流程。",
+    "admin.close": "关闭",
+    "entries.bulk_done_failed": "已发布 :count 项；:failed 项无法发布——请逐项打开查看原因。"
 }

@@ -492,7 +492,7 @@
     "admin.wfb.actions_hint_next": "このフローの次のステップは「:label」です。",
     "admin.wfb.actions_hint_role": "表示されるのは、あなたの役割で押せるボタンだけです。",
     "admin.wfb.wait_line": "承認待ちです。変化があればお知らせします。",
-    "admin.wfb.wait_line_live": "この記事は公開中です。保存した変更はすぐに訪問者に表示されます。あなたの役割では公開済み記事を取り下げられません。非表示が必要ならコンテンツ担当者に連絡してください。",
+    "admin.wfb.wait_line_live": "この記事は公開中です。保存した変更はすぐに訪問者に表示されます。このステップではあなたの役割に承認操作はありません。取り下げるには一覧のステータスメニューを使うか、コンテンツ担当者にご連絡ください。",
     "admin.wfb.trail_title": "承認履歴",
     "admin.wfb.trail_count": ":count 回の移動",
     "admin.wfb.trail_empty": "まだ移動はありません。誰かがステップを進めると、誰が何をなぜ行ったかがここに表示されます。",
@@ -514,5 +514,8 @@
     "admin.wfb.err_forbidden": "あなたの役割ではこの操作を行えません。",
     "admin.wfb.moved": ":action 完了 — 記事は「:step」にあります。",
     "admin.wfb.live_edit_hint": "この記事は公開中です。保存した変更はすぐに訪問者に表示されます。非公開で作業するには、先に取り下げてください。",
-    "entries.bulk_done_governed": ":count 件を公開しました。:governed 件は承認フローの対象のため公開されていません。各記事を開いて承認してください。"
+    "entries.bulk_done_governed": ":count 件を公開しました。:governed 件は承認フローの対象のため公開されていません。各記事を開いて承認してください。",
+    "entries.category_governed": "この記事は承認フロー「:workflow」の対象のため、別の種別へ移動できません。どうしても移動が必要な場合は、管理者にこの種別のフロー停止を依頼してください。",
+    "admin.close": "閉じる",
+    "entries.bulk_done_failed": ":count 件を公開しました。:failed 件は公開できませんでした。各項目を開いて原因をご確認ください。"
 }
