@@ -696,6 +696,6 @@
     "admin.wfb.err_stale": "The post was just moved elsewhere, or the workflow changed. Reload the page to see its current status — nothing is lost.",
     "admin.wfb.err_forbidden": "Your role is not allowed to perform this action.",
     "admin.wfb.moved": ":action done — the post is now at “:step”.",
-    "entries.workflow_governed_bulk": ":count posts follow an approval workflow and were not published — open each to review.",
-    "admin.wfb.live_edit_hint": "This post is live: any edit you save shows to visitors immediately. To work on it out of sight, take it down first."
+    "admin.wfb.live_edit_hint": "This post is live: any edit you save shows to visitors immediately. To work on it out of sight, take it down first.",
+    "entries.bulk_done_governed": "Published :count pages; :governed follow an approval workflow and were not published — open each to review."
 }

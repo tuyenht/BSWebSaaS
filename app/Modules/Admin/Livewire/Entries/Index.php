@@ -366,18 +366,22 @@ final class Index extends Component
         $user = $this->actingUser();
         $locale = app(SiteLocale::class)->default();
         $publish = app(PublishEntry::class);
+        // Runs its own loop rather than bulkApply(): the outcome is two numbers, and a second
+        // toast would simply replace the first, so what did publish would never be read.
+        $entries = $this->selectedEntries();
         $governed = 0;
-        $this->bulkApply(function (Entry $entry) use ($publish, $locale, $user, &$governed): void {
+        foreach ($entries as $entry) {
             try {
                 $publish->handle($entry, $locale, $user);
             } catch (WorkflowGovernedException) {
                 $governed++;   // left as is: only the editor's approval block may move it
             }
-        });
-
-        if ($governed > 0) {
-            $this->toast(__('entries.workflow_governed_bulk', ['count' => $governed]));
         }
+        $this->selected = [];
+
+        $this->toast($governed > 0
+            ? __('entries.bulk_done_governed', ['count' => $entries->count() - $governed, 'governed' => $governed])
+            : __('entries.bulk_done', ['count' => $entries->count()]));
     }
 
     public function bulkDraft(): void

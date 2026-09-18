@@ -513,6 +513,6 @@
     "admin.wfb.err_stale": "記事が別の場所で移動されたか、フローが変更されました。ページを再読み込みして最新の状態を確認してください。失われたものはありません。",
     "admin.wfb.err_forbidden": "あなたの役割ではこの操作を行えません。",
     "admin.wfb.moved": ":action 完了 — 記事は「:step」にあります。",
-    "entries.workflow_governed_bulk": ":count 件の記事は承認フローの対象のため公開されませんでした。各記事を開いて承認してください。",
-    "admin.wfb.live_edit_hint": "この記事は公開中です。保存した変更はすぐに訪問者に表示されます。非公開で作業するには、先に取り下げてください。"
+    "admin.wfb.live_edit_hint": "この記事は公開中です。保存した変更はすぐに訪問者に表示されます。非公開で作業するには、先に取り下げてください。",
+    "entries.bulk_done_governed": ":count 件を公開しました。:governed 件は承認フローの対象のため公開されていません。各記事を開いて承認してください。"
 }

@@ -446,3 +446,27 @@ it('toasts instead of erroring when the list tries to publish a governed post di
         expect($post->fresh()->status)->toBe('draft');
     });
 });
+
+it('sums up a mixed bulk publish in one toast — governed posts counted, not published', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $governedPost = wfEditorPost(wfEditorCollection(), $editor);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        // A page carries no taxonomy, so no workflow can govern it: it publishes as always.
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $editor->id]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ', 'slug' => 'lien-he', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        // A second toast would simply replace the first, so the two outcomes travel together.
+        Livewire::actingAs($editor->fresh())
+            ->test(Index::class)
+            ->set('selected', [$page->ulid, $governedPost->ulid])
+            ->call('bulkPublish')
+            ->assertDispatched('bs-toast', text: __('entries.bulk_done_governed', ['count' => 1, 'governed' => 1]));
+
+        expect($page->fresh()->status)->toBe('published')
+            ->and($governedPost->fresh()->status)->toBe('draft');
+    });
+});
