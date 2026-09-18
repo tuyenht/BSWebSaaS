@@ -4,7 +4,7 @@ namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
-use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +27,7 @@ use RuntimeException;
 final readonly class ApplyEntryWorkflowTransition
 {
     public function __construct(
-        private SectionResolver $sections,
+        private EntryWorkflowResolver $workflows,
         private WorkflowEngine $engine,
         private RouteSync $routes,
     ) {}
@@ -48,12 +48,8 @@ final readonly class ApplyEntryWorkflowTransition
         $translation = $entry->translationFor($locale)
             ?? throw new RuntimeException("Entry {$entry->id} has no '{$locale}' translation to move.");
 
-        $section = $this->sections->forEntry($entry);
-        $workflow = $section !== null ? $this->engine->activeFor($section['key']) : null;
-
-        if ($workflow === null) {
-            throw new RuntimeException("Entry {$entry->id} is not governed by an active workflow.");
-        }
+        $workflow = $this->workflows->forEntry($entry)
+            ?? throw new RuntimeException("Entry {$entry->id} is not governed by an active workflow.");
 
         // An entry created before the workflow was switched on carries no state yet — it starts at
         // the initial stage rather than being stranded outside the machine.

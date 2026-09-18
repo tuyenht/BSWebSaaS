@@ -50,6 +50,18 @@ final class SectionResolver
             return null;
         }
 
+        return $this->forCategory($primary);
+    }
+
+    /**
+     * The (key, type) of the section a primary category files content under — the same
+     * derivation as forEntry, exposed for content that has no Entry row yet (an unsaved post
+     * whose picked category already decides which section, and so which workflow, it will join).
+     *
+     * @return array{key: string, type: string}|null
+     */
+    public function forCategory(Taxonomy $primary): ?array
+    {
         if (! $this->current->hasId()) {
             return $this->resolve($primary);
         }

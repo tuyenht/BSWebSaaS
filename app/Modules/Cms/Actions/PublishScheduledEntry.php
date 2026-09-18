@@ -2,8 +2,10 @@
 
 namespace App\Modules\Cms\Actions;
 
+use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -13,13 +15,27 @@ use Illuminate\Support\Facades\DB;
  * every one of its translations go `published`, and each locale's route is synced (nested paths +
  * 301 history via RouteSync). published_at is left as the scheduled slot. Runs inside a site's
  * tenant context (the command enters it).
+ *
+ * The scheduler is not an approver: an entry scheduled while tier-1 was in force whose section
+ * has SINCE been put under a workflow stays where it is (the editor shows it at the flow's first
+ * stage), rather than being pushed live behind the gate's back.
  */
 final readonly class PublishScheduledEntry
 {
-    public function __construct(private RouteSync $routes) {}
+    public function __construct(
+        private RouteSync $routes,
+        private EntryWorkflowResolver $workflows,
+    ) {}
 
+    /**
+     * @throws WorkflowGovernedException an active workflow governs this entry — only a transition may publish it
+     */
     public function handle(Entry $entry): void
     {
+        if ($this->workflows->forEntry($entry) !== null) {
+            throw new WorkflowGovernedException;
+        }
+
         // Atomic: if any locale's route sync conflicts, roll the whole publish back rather than
         // leave the entry `published` with some locales unrouted.
         DB::transaction(function () use ($entry): void {

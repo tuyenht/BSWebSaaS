@@ -5,9 +5,8 @@ namespace App\Modules\Cms\Actions;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
-use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
-use App\Modules\Workflow\Services\WorkflowEngine;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -30,8 +29,7 @@ final readonly class PublishEntry
 {
     public function __construct(
         private RouteSync $routes,
-        private SectionResolver $sections,
-        private WorkflowEngine $engine,
+        private EntryWorkflowResolver $workflows,
     ) {}
 
     /**
@@ -45,8 +43,7 @@ final readonly class PublishEntry
             ?? throw new RuntimeException("Entry {$entry->id} has no '{$locale}' translation to publish.");
 
         // Tier-2 wins where it is active: publishing must not skip the stages a site configured.
-        $section = $this->sections->forEntry($entry);
-        if ($section !== null && $this->engine->activeFor($section['key']) !== null) {
+        if ($this->workflows->forEntry($entry) !== null) {
             throw new WorkflowGovernedException;
         }
 

@@ -1,0 +1,114 @@
+<?php
+
+use App\Modules\Cms\Actions\TransitionEntryStatus;
+use App\Modules\Cms\Enums\EntryStatus;
+use App\Modules\Cms\Exceptions\WorkflowGovernedException;
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Workflow\Actions\InstantiateWorkflow;
+
+/*
+ * Scheduling is the one remaining road to `published` that skips the approval gate: a scheduled
+ * entry is published by `entries:publish-due` with no actor and no engine. Where a workflow is
+ * active, both ends are closed — a governed entry cannot be scheduled, and an entry that was
+ * scheduled BEFORE the workflow was switched on is left alone by the scheduler rather than
+ * silently pushed live. Tier-1 sites (no active workflow) keep scheduling exactly as before.
+ */
+
+beforeEach(function (): void {
+    truncateRbac();
+    seedTenancy();
+    $this->artisan('rbac:sync')->assertSuccessful();
+    app(TeamContext::class)->forget();
+});
+
+/** A `tin-tuc` post section + one draft post filed under it; returns the entry. */
+function schedulableNewsPost(): Entry
+{
+    $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+    $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
+
+    ContentSection::query()->firstOrCreate(
+        ['key' => 'tin-tuc'],
+        ['label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $category->id],
+    );
+
+    $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft']);
+    $entry->translations()->create([
+        'locale' => 'vi', 'title' => 'Bản tin', 'slug' => 'ban-tin', 'status' => 'draft', 'body' => ['blocks' => []],
+    ]);
+    $entry->assignCategories([$category->id]);
+
+    return $entry->fresh();
+}
+
+it('refuses to schedule a post an active workflow governs', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.publish']);
+        $entry = schedulableNewsPost();
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+
+        expect(fn () => app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $editor->fresh(), now()->addDay()))
+            ->toThrow(WorkflowGovernedException::class);
+
+        expect($entry->fresh()->status)->toBe('draft');
+    });
+});
+
+it('still schedules a post whose section workflow exists but is switched off', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.publish']);
+        $entry = schedulableNewsPost();
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: false);
+
+        app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $editor->fresh(), now()->addDay());
+
+        expect($entry->fresh()->status)->toBe('scheduled');
+    });
+});
+
+it('leaves a pre-workflow scheduled post alone once its section is governed, while still publishing the rest', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.publish']);
+
+        // Scheduled while tier-1 was in force…
+        $post = schedulableNewsPost();
+        app(TransitionEntryStatus::class)->handle($post, EntryStatus::Scheduled, $editor->fresh(), now()->addMinute());
+
+        // …and a page due at the same time, which no workflow can ever govern.
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Liên hệ', 'slug' => 'lien-he', 'status' => 'draft', 'body' => ['blocks' => []]]);
+        app(TransitionEntryStatus::class)->handle($page->fresh(), EntryStatus::Scheduled, $editor->fresh(), now()->addMinute());
+
+        // Then the operator switches the approval flow on for tin-tuc.
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+    });
+
+    $this->travel(2)->minutes();
+    $this->artisan('entries:publish-due')
+        ->expectsOutputToContain('Published 1 scheduled entr(y/ies), skipped 1')
+        ->assertSuccessful();
+
+    app(Tenancy::class)->enter(1, function (): void {
+        // The governed post never went live behind the gate's back…
+        $post = Entry::query()->where('type', 'post')->first();
+        expect($post->status)->toBe('scheduled');
+        expect(SiteRoute::query()->where('entry_id', $post->id)->exists())->toBeFalse();
+
+        // …and the page published on time as always.
+        $page = Entry::query()->where('type', 'page')->first();
+        expect($page->status)->toBe('published');
+        expect(SiteRoute::query()->where('entry_id', $page->id)->exists())->toBeTrue();
+    });
+});
