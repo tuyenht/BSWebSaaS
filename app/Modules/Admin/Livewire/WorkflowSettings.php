@@ -3,8 +3,12 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\Plan;
+use App\Modules\Tenancy\Models\PlanFeature;
+use App\Modules\Tenancy\Models\Site;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Registry\WorkflowTemplateRegistry;
@@ -104,15 +108,58 @@ final class WorkflowSettings extends Component
             ];
         })->values()->all();
 
+        $editorialLocked = ! app(Entitlement::class)->featureEnabled('workflow.editorial');
+
         $view = view('admin::livewire.workflow-settings', [
             'rows' => $rows,
             'templates' => WorkflowTemplateRegistry::all(),
-            'editorialLocked' => ! app(Entitlement::class)->featureEnabled('workflow.editorial'),
+            'editorialLocked' => $editorialLocked,
+            // Only worth two queries when there is actually something locked to explain.
+            'upgrade' => $editorialLocked ? $this->upgradePath('workflow.editorial') : null,
             'hasAnyWorkflow' => $workflows->isNotEmpty(),
         ]);
         $view->title(__('admin.workflow_settings'));
 
         return $view;
+    }
+
+    /**
+     * What a site would have to change to unlock a locked feature: the plan it is on now, and the
+     * active plans that actually grant the feature. Both come from real rows — a site with no plan
+     * and a platform with no plan catalog both resolve to null/empty, and the UI says so rather
+     * than inventing a tier. There is no self-serve upgrade (billing is deferred), so the panel
+     * informs and points at the provider instead of offering a button that would do nothing.
+     *
+     * @return array{current: string|null, plans: list<string>}
+     */
+    private function upgradePath(string $featureKey): array
+    {
+        $planId = Site::query()
+            ->whereKey(app(CurrentSite::class)->id())
+            ->join('tenants', 'sites.tenant_id', '=', 'tenants.id')
+            ->value('tenants.plan_id');
+
+        // jsonb truthiness is decided in PHP: a grant may be stored as true or as a numeric limit,
+        // and there are only a handful of plan rows to begin with.
+        $grantingPlanIds = PlanFeature::query()
+            ->where('feature_key', $featureKey)
+            ->get()
+            ->filter(fn (PlanFeature $feature): bool => (bool) $feature->value)
+            ->pluck('plan_id');
+
+        $current = $planId === null ? null : Plan::query()->whereKey($planId)->value('name');
+
+        /** @var list<string> $plans */
+        $plans = Plan::query()
+            ->whereIn('id', $grantingPlanIds)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->pluck('name')
+            ->filter(fn (mixed $name): bool => is_string($name))
+            ->values()
+            ->all();
+
+        return ['current' => is_string($current) ? $current : null, 'plans' => $plans];
     }
 
     /**

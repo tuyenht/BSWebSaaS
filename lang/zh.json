@@ -466,5 +466,11 @@
     "admin.wf.turned_off": "审批流程已停用，待审文章恢复为直接发布模式。",
     "admin.wf.empty_title": "尚未启用任何流程",
     "admin.wf.empty_body": "审批流程要求文章先经审核人审核才能公开。默认全部关闭 — 启用前一切照旧。",
-    "admin.wf.empty_cta": "为第一个类型启用"
+    "admin.wf.empty_cta": "为第一个类型启用",
+    "admin.wf.upgrade_title": "该流程属于更高套餐",
+    "admin.wf.upgrade_current": "当前套餐：",
+    "admin.wf.upgrade_needed": "包含于：",
+    "admin.wf.upgrade_no_plan": "尚未分配套餐",
+    "admin.wf.upgrade_contact": "请联系服务商为该站点升级套餐。",
+    "admin.wf.upgrade_safe": "正在运行其他流程的类型不受影响。"
 }

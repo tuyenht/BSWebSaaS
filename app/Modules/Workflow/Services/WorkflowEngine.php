@@ -91,17 +91,33 @@ final readonly class WorkflowEngine
             throw InvalidTransitionException::noteRequired($transitionKey);
         }
 
-        $destination = $workflow->states()->where('key', $transition->to_state)->firstOrFail();
+        // Both endpoints in one lookup: the destination is what the caller persists, and the
+        // origin's label is needed for the trail snapshot below.
+        $endpoints = $workflow->states()
+            ->whereIn('key', [$fromState, $transition->to_state])
+            ->get()
+            ->keyBy('key');
+
+        $destination = $endpoints->get($transition->to_state)
+            ?? throw InvalidTransitionException::notDefined($transitionKey);
 
         // One insert needs no transaction of its own, and wrapping it here would be a lie about
         // atomicity: the move only means anything once the CALLER persists $destination on its
         // subject, so the caller's transaction is the one that must cover both.
         WorkflowLog::query()->create([
+            'workflow_id' => $workflow->id,
             'entry_id' => $entryId,
             'locale' => $locale,
             'transition_key' => $transition->key,
             'from_state' => $fromState,
             'to_state' => $transition->to_state,
+            // Snapshot the display text: a later template swap rebuilds states/transitions, so
+            // resolving these keys through a live join would eventually render raw keys.
+            'labels' => [
+                'transition' => $transition->label,
+                'from' => $endpoints->get($fromState)?->label,
+                'to' => $destination->label,
+            ],
             'actor_id' => $actor->id,
             'assigned_to' => $assignTo,
             'note' => $note !== null && trim($note) !== '' ? trim($note) : null,

@@ -649,5 +649,11 @@
     "admin.wf.turned_off": "Đã tắt quy trình duyệt. Bài đang chờ quay về chế độ đăng thường.",
     "admin.wf.empty_title": "Chưa bật quy trình nào",
     "admin.wf.empty_body": "Quy trình duyệt buộc bài viết phải qua người duyệt trước khi hiện ra ngoài. Mặc định mọi thể loại đều tắt — mọi thứ giữ nguyên như trước.",
-    "admin.wf.empty_cta": "Bật cho thể loại đầu tiên"
+    "admin.wf.empty_cta": "Bật cho thể loại đầu tiên",
+    "admin.wf.upgrade_title": "Quy trình này thuộc gói cao hơn",
+    "admin.wf.upgrade_current": "Gói hiện tại:",
+    "admin.wf.upgrade_needed": "Có trong gói:",
+    "admin.wf.upgrade_no_plan": "Chưa gắn gói nào",
+    "admin.wf.upgrade_contact": "Liên hệ nhà cung cấp để nâng gói cho site này.",
+    "admin.wf.upgrade_safe": "Các thể loại đang chạy quy trình khác không bị ảnh hưởng."
 }

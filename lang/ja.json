@@ -466,5 +466,11 @@
     "admin.wf.turned_off": "承認ワークフローを無効にしました。審査中の記事は直接公開モードに戻ります。",
     "admin.wf.empty_title": "まだワークフローが有効になっていません",
     "admin.wf.empty_body": "承認ワークフローを使うと、記事は公開前に必ずレビュー担当者を通ります。既定ではすべて無効で、有効にするまで何も変わりません。",
-    "admin.wf.empty_cta": "最初の種別で有効にする"
+    "admin.wf.empty_cta": "最初の種別で有効にする",
+    "admin.wf.upgrade_title": "このワークフローは上位プランの機能です",
+    "admin.wf.upgrade_current": "現在のプラン：",
+    "admin.wf.upgrade_needed": "含まれるプラン：",
+    "admin.wf.upgrade_no_plan": "プラン未設定",
+    "admin.wf.upgrade_contact": "このサイトのプランを上げるにはプロバイダーにご連絡ください。",
+    "admin.wf.upgrade_safe": "他のワークフローで稼働中の種別には影響しません。"
 }

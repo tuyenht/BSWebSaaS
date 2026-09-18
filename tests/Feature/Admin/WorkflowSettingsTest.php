@@ -8,8 +8,11 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Tenancy\Models\Plan;
+use App\Modules\Tenancy\Models\PlanFeature;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Workflow\Models\Workflow;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 
 /*
@@ -22,6 +25,10 @@ use Livewire\Livewire;
  */
 
 beforeEach(function (): void {
+    // `plans` sits on the far side of tenants.plan_id, so seedTenancy's truncate-cascade from
+    // sites/tenants never reaches it and rows would survive into the next run. Clear it first,
+    // then let seedTenancy rebuild the tenant it cascades away.
+    DB::connection('pgsql_admin')->statement('truncate plans restart identity cascade');
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -126,6 +133,45 @@ it('locks the editorial template behind its entitlement and opens it when grante
             ->call('apply', 'posts', 'editorial')
             ->assertHasNoErrors();
         expect(Workflow::query()->where('template', 'editorial')->exists())->toBeTrue();
+    });
+});
+
+it('explains the plan gap from real plan rows, and says so when there is no plan at all', function (): void {
+    $operator = wfOperator();
+
+    $starter = Plan::query()->create(['key' => 'starter', 'name' => 'Gói Khởi đầu', 'is_active' => true, 'sort_order' => 1]);
+    $pro = Plan::query()->create(['key' => 'pro', 'name' => 'Gói Chuyên nghiệp', 'is_active' => true, 'sort_order' => 2]);
+    PlanFeature::query()->create(['plan_id' => $pro->id, 'feature_key' => 'workflow.editorial', 'value' => true]);
+    // A plan that lists the feature as NOT granted must not be advertised as the way out.
+    PlanFeature::query()->create(['plan_id' => $starter->id, 'feature_key' => 'workflow.editorial', 'value' => false]);
+
+    app(Tenancy::class)->enter(1, function () use ($operator, $starter): void {
+        wfSection('posts', 'Tin tức', 'tin-tuc');
+
+        // No plan on the tenant yet → the panel says that rather than inventing a tier.
+        Livewire::actingAs($operator->fresh())
+            ->test(WorkflowSettings::class)
+            ->assertViewHas('upgrade', ['current' => null, 'plans' => ['Gói Chuyên nghiệp']]);
+
+        DB::table('tenants')->where('id', 1)->update(['plan_id' => $starter->id]);
+
+        Livewire::actingAs($operator->fresh())
+            ->test(WorkflowSettings::class)
+            ->assertViewHas('upgrade', ['current' => 'Gói Khởi đầu', 'plans' => ['Gói Chuyên nghiệp']]);
+    });
+});
+
+it('drops the upgrade lookup once the feature is granted', function (): void {
+    $operator = wfOperator();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        wfSection('posts', 'Tin tức', 'tin-tuc');
+        SiteFeature::query()->create(['feature_key' => 'workflow.editorial', 'value' => true]);
+
+        Livewire::actingAs($operator->fresh())
+            ->test(WorkflowSettings::class)
+            ->assertViewHas('editorialLocked', false)
+            ->assertViewHas('upgrade', null);
     });
 });
 

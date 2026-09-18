@@ -20,7 +20,8 @@
             ])->values()->all()),
             openFor(row) { this.row = row; this.selected = row.template ?? null; this.open = true; },
             tpl() { return this.templates.find(t => t.key === this.selected) ?? null; },
-            pick(t) { if (! t.locked) this.selected = t.key; },
+            upgrade: false,
+            pick(t) { if (t.locked) { this.upgrade = true; return; } this.selected = t.key; },
             stepLabel(key) { const s = (this.tpl()?.states ?? []).find(x => x.key === key); return s ? s.label : key; },
             submit(activate) {
                 const doApply = () => { $wire.apply(this.row.key, this.selected, activate); this.open = false; };
@@ -34,7 +35,7 @@
                 } else { doApply(); }
             },
         }"
-        x-on:keydown.escape.window="open = false"
+        x-on:keydown.escape.window="upgrade ? upgrade = false : open = false"
         class="space-y-6"
     >
         @if (! $hasAnyWorkflow && $rows !== [])
@@ -125,7 +126,7 @@
                                         <button type="button" role="switch" aria-checked="{{ $row['active'] ? 'true' : 'false' }}"
                                                 class="relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors {{ $row['active'] ? 'bg-admin-success' : 'bg-gray-300' }}"
                                                 title="{{ $row['active'] ? __('admin.wf.turn_off') : __('admin.wf.turn_on') }}"
-                                                wire:click="toggle(@js($row['key']))">
+                                                wire:click="toggle(@js($row['key']))" wire:loading.attr="disabled">
                                             <span class="absolute top-0.5 size-5 rounded-full bg-white shadow {{ $row['active'] ? 'right-0.5' : 'left-0.5' }}"></span>
                                         </button>
                                     @endif
@@ -174,6 +175,29 @@
                 </div>
                 <p x-show="tpl() === null" class="mt-3 text-sm text-body-faint">{{ __('admin.wf.pick_hint') }}</p>
                 <p x-show="templates.some(t => t.locked)" class="mt-2 text-xs text-body-faint">{{ __('admin.wf.locked_hint') }}</p>
+
+                {{-- Plan panel: what the site is on, what actually grants the feature. There is no
+                     self-serve upgrade yet (billing deferred), so this informs rather than pretends. --}}
+                @if ($upgrade !== null)
+                    <div x-cloak x-show="upgrade" class="mt-3 rounded border border-admin-warning/40 bg-admin-warning/10 p-3">
+                        <p class="text-sm font-semibold text-heading">{{ __('admin.wf.upgrade_title') }}</p>
+                        <dl class="mt-2 space-y-1 text-sm">
+                            <div class="flex gap-2">
+                                <dt class="text-body-muted">{{ __('admin.wf.upgrade_current') }}</dt>
+                                <dd class="font-medium text-body-text">{{ $upgrade['current'] ?? __('admin.wf.upgrade_no_plan') }}</dd>
+                            </div>
+                            @if ($upgrade['plans'] !== [])
+                                <div class="flex gap-2">
+                                    <dt class="text-body-muted">{{ __('admin.wf.upgrade_needed') }}</dt>
+                                    <dd class="font-medium text-body-text">{{ implode(' · ', $upgrade['plans']) }}</dd>
+                                </div>
+                            @endif
+                        </dl>
+                        <p class="mt-2 text-sm text-body-muted">{{ __('admin.wf.upgrade_contact') }}</p>
+                        <p class="mt-1 text-xs text-body-faint">{{ __('admin.wf.upgrade_safe') }}</p>
+                        <button type="button" class="mt-2 text-xs font-medium text-admin-primary hover:underline" x-on:click="upgrade = false">{{ __('admin.close') }}</button>
+                    </div>
+                @endif
 
                 {{-- Step map --}}
                 <template x-if="tpl()">
@@ -226,10 +250,10 @@
                     <x-admin::button color="light" x-on:click="open = false">{{ __('admin.cancel') }}</x-admin::button>
                     <x-admin::button color="light"
                                      x-bind:disabled="tpl() === null || tpl().locked || (row && row.template === selected)"
-                                     x-on:click="submit(false)">{{ __('admin.wf.apply') }}</x-admin::button>
+                                     x-on:click="submit(false)" wire:loading.attr="disabled">{{ __('admin.wf.apply') }}</x-admin::button>
                     <x-admin::button color="primary"
                                      x-bind:disabled="tpl() === null || tpl().locked || (row && row.template === selected && row.active)"
-                                     x-on:click="submit(true)">{{ __('admin.wf.apply_on') }}</x-admin::button>
+                                     x-on:click="submit(true)" wire:loading.attr="disabled">{{ __('admin.wf.apply_on') }}</x-admin::button>
                 </div>
             </div>
         </div>

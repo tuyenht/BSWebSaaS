@@ -649,5 +649,11 @@
     "admin.wf.turned_off": "Approval workflow turned off. Posts in review return to direct publishing.",
     "admin.wf.empty_title": "No workflow is on yet",
     "admin.wf.empty_body": "An approval workflow makes posts pass a reviewer before going public. Everything is off by default — nothing changes until you turn one on.",
-    "admin.wf.empty_cta": "Turn on for the first type"
+    "admin.wf.empty_cta": "Turn on for the first type",
+    "admin.wf.upgrade_title": "This workflow belongs to a higher plan",
+    "admin.wf.upgrade_current": "Current plan:",
+    "admin.wf.upgrade_needed": "Included in:",
+    "admin.wf.upgrade_no_plan": "No plan assigned",
+    "admin.wf.upgrade_contact": "Contact your provider to upgrade this site's plan.",
+    "admin.wf.upgrade_safe": "Types already running another workflow are not affected."
 }

@@ -137,6 +137,35 @@ it('applies a permitted transition and writes an audit row', function (): void {
         expect($log->to_state)->toBe('published');
         expect($log->actor_id)->toBe($editor->id);
         expect($log->locale)->toBe('vi');
+
+        // Provenance: which flow this move belonged to, plus the display text as it read at the
+        // time — a trail row must stay readable after the flow is rebuilt or swapped.
+        expect($log->workflow_id)->toBe($workflow->id);
+        // jsonb normalizes key order, so compare by content, not by shape.
+        expect($log->labels)->toMatchArray(['transition' => 'Duyệt đăng', 'from' => 'Chờ duyệt', 'to' => 'Đã đăng']);
+    });
+});
+
+it('keeps a trail row readable after the workflow is swapped out from under it', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        $workflow = editorialWorkflow();
+        grantRole($editor, 'editor', ['entries.approve']);
+
+        app(WorkflowEngine::class)->apply(
+            $workflow, 'approve', 'pending', $editor->fresh(), workflowEntry(), 'vi',
+        );
+
+        // The site switches its flow: the same workflow row is reused with different stages,
+        // so the recorded keys no longer name anything that exists.
+        $workflow->transitions()->delete();
+        $workflow->states()->delete();
+        $workflow->states()->create(['key' => 'moi', 'label' => 'Mới', 'sort_order' => 0, 'is_initial' => true]);
+
+        $log = WorkflowLog::query()->firstOrFail();
+        expect($workflow->states()->where('key', 'published')->exists())->toBeFalse()
+            ->and($log->labels['to'])->toBe('Đã đăng');   // still renders, no live join needed
     });
 });
 
