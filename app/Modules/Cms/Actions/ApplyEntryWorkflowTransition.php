@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Actions;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Workflow\Services\WorkflowEngine;
@@ -51,16 +52,14 @@ final readonly class ApplyEntryWorkflowTransition
         $workflow = $this->workflows->forEntry($entry)
             ?? throw new RuntimeException("Entry {$entry->id} is not governed by an active workflow.");
 
-        // An entry created before the workflow was switched on carries no state yet — it starts at
-        // the initial stage rather than being stranded outside the machine.
-        $fromState = $entry->workflow_state;
-        if ($fromState === null) {
-            $initial = $workflow->initialState()
-                ?? throw new RuntimeException("Workflow {$workflow->id} defines no initial state.");
-            $fromState = $initial->key;
-        }
+        // An entry created before the workflow was switched on carries no state yet: live content
+        // stands at the published stage, anything else at the initial one — never stranded
+        // outside the machine, never hidden by joining it (EntryWorkflowResolver::originFor).
+        $fromState = $this->workflows->originFor($workflow, $entry);
 
-        return DB::transaction(function () use ($entry, $translation, $locale, $actor, $workflow, $transitionKey, $fromState, $note, $assignTo): string {
+        $fromStatus = $entry->status;
+
+        $destinationKey = DB::transaction(function () use ($entry, $translation, $locale, $actor, $workflow, $transitionKey, $fromState, $note, $assignTo): string {
             $destination = $this->engine->apply(
                 $workflow, $transitionKey, $fromState, $actor, $entry->id, $locale, $note, $assignTo,
             );
@@ -87,5 +86,11 @@ final readonly class ApplyEntryWorkflowTransition
 
             return $destination->key;
         });
+
+        // The workflow_log row is the transition's own record; this line is what lets ONE
+        // query answer "who changed this entry's status, by any road" across tier-1 and tier-2.
+        EntryStatusAudit::record($entry, $fromStatus, $entry->status, 'workflow', $actor, ['transition' => $transitionKey]);
+
+        return $destinationKey;
     }
 }

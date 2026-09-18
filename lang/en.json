@@ -675,7 +675,7 @@
     "admin.wfb.actions_hint_next": "The next step in this workflow is “:label”.",
     "admin.wfb.actions_hint_role": "You only see the buttons your role may press.",
     "admin.wfb.wait_line": "Awaiting review — you will be notified when something changes.",
-    "admin.wfb.wait_line_live": "This post is live. Your role cannot change a published post — ask the content lead to take it down or edit it.",
+    "admin.wfb.wait_line_live": "This post is live: any edit you save shows to visitors immediately. Your role cannot take a published post down — ask the content lead if it needs hiding.",
     "admin.wfb.trail_title": "Review history",
     "admin.wfb.trail_count": ":count moves",
     "admin.wfb.trail_empty": "No moves yet. When you or someone else moves the post, who did what and why shows up here.",
@@ -696,5 +696,6 @@
     "admin.wfb.err_stale": "The post was just moved elsewhere, or the workflow changed. Reload the page to see its current status — nothing is lost.",
     "admin.wfb.err_forbidden": "Your role is not allowed to perform this action.",
     "admin.wfb.moved": ":action done — the post is now at “:step”.",
-    "entries.workflow_governed_bulk": ":count posts follow an approval workflow and were not published — open each to review."
+    "entries.workflow_governed_bulk": ":count posts follow an approval workflow and were not published — open each to review.",
+    "admin.wfb.live_edit_hint": "This post is live: any edit you save shows to visitors immediately. To work on it out of sight, take it down first."
 }

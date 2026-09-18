@@ -467,10 +467,10 @@ final class Editor extends Component
         $initial = $states->first(fn (WorkflowState $state): bool => $state->is_initial);
         $initialKey = $initial instanceof WorkflowState ? $initial->key : (string) $states->keys()->first();
 
-        // The origin the ENGINE will use (workflow_state, or the initial stage for a pre-workflow
-        // entry) decides which buttons exist; the drawn position falls back to the start when
-        // that key is one the (rebuilt) flow no longer defines.
-        $fromState = $entry !== null && $entry->workflow_state !== null ? $entry->workflow_state : $initialKey;
+        // The origin the ENGINE will use decides which buttons exist (one definition, shared with
+        // ApplyEntryWorkflowTransition); the drawn position falls back to the start when that key
+        // is one the (rebuilt) flow no longer defines.
+        $fromState = $entry !== null ? app(EntryWorkflowResolver::class)->originFor($workflow, $entry) : $initialKey;
         $currentKey = $states->has($fromState) ? $fromState : $initialKey;
 
         $keys = $states->keys()->values()->all();
@@ -517,7 +517,9 @@ final class Editor extends Component
                 'is_published' => $current instanceof WorkflowState && $current->is_published,
             ],
             'next_label' => $nextState instanceof WorkflowState ? $nextState->label : null,
-            'pre_workflow' => $entry !== null && $entry->workflow_state === null,
+            // "Written before the flow existed, so it counts as at the start" — only true for
+            // content that actually lands at the start; a live post simply stands at its stage.
+            'pre_workflow' => $entry !== null && $entry->workflow_state === null && $currentKey === $initialKey,
             'is_live' => $entry?->status === 'published',
             'assignee' => is_string($assignee) ? $assignee : null,
             'missing' => $this->missingPublicFields(),

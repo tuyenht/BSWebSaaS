@@ -3,6 +3,7 @@
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
+use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -250,6 +251,42 @@ it('approves into the public stage: status, route and the live chip', function (
         expect($post->workflow_state)->toBe('published')
             ->and($post->status)->toBe('published')
             ->and(SiteRoute::query()->where('entry_id', $post->id)->value('path'))->toBe('/tin-tuc/bai-1');
+    });
+
+    $this->get('http://a.test/tin-tuc/bai-1')->assertOk();
+});
+
+it('shows a live pre-workflow post at the public stage — no submit button that would hide it', function (): void {
+    $author = User::factory()->create();
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        grantRole($author, 'author', ['entries.view', 'entries.create', 'entries.edit.any', 'entries.submit']);
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish', 'entries.review', 'entries.approve']);
+        $post = wfEditorPost(wfEditorCollection(), $author);
+        app(PublishEntry::class)->handle($post, 'vi', $editor->fresh());   // live under tier-1
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        // The author: nothing to press (submit does not exist from the published stage), told
+        // plainly that the post is live and that saved edits show at once.
+        Livewire::actingAs($author->fresh())
+            ->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSee(__('admin.wfb.live_chip'))
+            ->assertSee(__('admin.wfb.step_of', ['n' => 3, 'total' => 4, 'label' => 'Đã đăng']))
+            ->assertDontSee(__('admin.wfb.pre_workflow'))
+            ->assertDontSee('Gửi duyệt')
+            ->assertSee(__('admin.wfb.wait_line_live'));
+
+        // The editor: only the moves that exist from the published stage.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $post->ulid])
+            ->assertSee('Gỡ bài')
+            ->assertSee('Lưu trữ')
+            ->assertDontSee('Gửi duyệt')
+            ->assertDontSee('Duyệt đăng')
+            ->assertSee(__('admin.wfb.live_edit_hint'));
+
+        expect($post->fresh()->status)->toBe('published');
     });
 
     $this->get('http://a.test/tin-tuc/bai-1')->assertOk();

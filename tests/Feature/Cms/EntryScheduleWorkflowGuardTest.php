@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
@@ -73,6 +74,30 @@ it('still schedules a post whose section workflow exists but is switched off', f
         app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $editor->fresh(), now()->addDay());
 
         expect($entry->fresh()->status)->toBe('scheduled');
+    });
+});
+
+it('sends a governed post back to the flow start when the status menu takes it off the site', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.submit', 'entries.approve', 'entries.publish']);
+        $entry = schedulableNewsPost();
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
+        $move = app(ApplyEntryWorkflowTransition::class);
+        $move->handle($entry, 'vi', $editor->fresh(), 'submit');
+        $move->handle($entry->fresh(), 'vi', $editor->fresh(), 'approve');
+        expect($entry->fresh()->workflow_state)->toBe('published');
+
+        // "Chuyển nháp" from the row menu is allowed (it only hides), but the stage must not stay
+        // "published" over a hidden post: it re-derives from the new status = the start.
+        app(TransitionEntryStatus::class)->handle($entry->fresh(), EntryStatus::Draft, $editor->fresh());
+        $entry->refresh();
+        expect($entry->status)->toBe('draft')
+            ->and($entry->workflow_state)->toBeNull();
+
+        // The only road back to live is approval again — a plain "submit" is the move on offer.
+        expect($move->handle($entry, 'vi', $editor->fresh(), 'submit'))->toBe('pending');
     });
 });
 

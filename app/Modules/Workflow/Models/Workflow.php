@@ -46,6 +46,15 @@ class Workflow extends Model
         return $this->states()->where('is_initial', true)->first();
     }
 
+    /**
+     * The (first) stage that exposes a subject publicly — where content that was already live
+     * when the flow was switched on belongs, so that "submit" never means "hide".
+     */
+    public function publishedState(): ?WorkflowState
+    {
+        return $this->states()->where('is_published', true)->orderBy('sort_order')->orderBy('id')->first();
+    }
+
     #[\Override]
     protected function casts(): array
     {

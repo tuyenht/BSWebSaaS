@@ -675,7 +675,7 @@
     "admin.wfb.actions_hint_next": "Bước kế tiếp trong quy trình này là “:label”.",
     "admin.wfb.actions_hint_role": "Bạn chỉ thấy nút mà vai trò của mình được bấm.",
     "admin.wfb.wait_line": "Đang chờ duyệt — bạn sẽ được báo khi có thay đổi.",
-    "admin.wfb.wait_line_live": "Bài đang hiển thị cho khách. Vai trò của bạn không đổi được trạng thái bài đã đăng — cần gỡ hay sửa thì nhắn người phụ trách nội dung.",
+    "admin.wfb.wait_line_live": "Bài đang hiển thị cho khách: mọi chỉnh sửa bấm Lưu sẽ hiện ra ngoài ngay. Vai trò của bạn không gỡ được bài đã đăng — cần ẩn thì nhắn người phụ trách nội dung.",
     "admin.wfb.trail_title": "Lịch sử duyệt",
     "admin.wfb.trail_count": ":count lần chuyển bước",
     "admin.wfb.trail_empty": "Chưa có lần chuyển bước nào. Khi bạn hoặc người khác chuyển bước, ai làm gì và lý do sẽ hiện ở đây.",
@@ -696,5 +696,6 @@
     "admin.wfb.err_stale": "Bài vừa được chuyển bước ở nơi khác, hoặc quy trình vừa đổi. Tải lại trang để xem trạng thái mới — không có gì bị mất.",
     "admin.wfb.err_forbidden": "Vai trò của bạn không được thực hiện thao tác này.",
     "admin.wfb.moved": ":action xong — bài đang ở bước “:step”.",
-    "entries.workflow_governed_bulk": ":count bài đang theo quy trình duyệt nên chưa đăng — mở từng bài để duyệt."
+    "entries.workflow_governed_bulk": ":count bài đang theo quy trình duyệt nên chưa đăng — mở từng bài để duyệt.",
+    "admin.wfb.live_edit_hint": "Bài đang hiển thị cho khách: mọi chỉnh sửa bấm Lưu sẽ hiện ra ngoài ngay. Muốn ẩn tạm để sửa kỹ thì dùng Gỡ bài."
 }

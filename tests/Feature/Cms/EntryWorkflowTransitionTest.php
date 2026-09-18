@@ -11,6 +11,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Models\Workflow;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -195,6 +196,34 @@ it('enforces the engine guard through the action — no permission, no move', fu
         expect($entry->fresh()->status)->toBe('pending');
         expect($entry->fresh()->workflow_state)->toBe('pending');
     });
+});
+
+it('keeps a live post that predates the workflow at the published stage — joining the flow never hides it', function (): void {
+    $author = User::factory()->create();
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        grantRole($author, 'author', ['entries.submit']);
+        grantRole($editor, 'editor', ['entries.publish', 'entries.review']);
+        $entry = newsPost();
+        app(PublishEntry::class)->handle($entry, 'vi', $editor->fresh());   // live under tier-1
+        activeNewsWorkflow();                                               // switched on afterwards
+        $action = app(ApplyEntryWorkflowTransition::class);
+
+        expect($entry->fresh()->workflow_state)->toBeNull();
+
+        // "Submit" is an edge out of draft; live content stands at the published stage, so the
+        // engine refuses it — the visitors' page is not pulled down by an author's click.
+        expect(fn () => $action->handle($entry->fresh(), 'vi', $author->fresh(), 'submit'))
+            ->toThrow(InvalidTransitionException::class);
+        expect($entry->fresh()->status)->toBe('published');
+
+        // The moves that DO exist from the published stage work, with the usual guards.
+        expect($action->handle($entry->fresh(), 'vi', $editor->fresh(), 'retract', 'Sai số liệu'))->toBe('draft');
+        expect($entry->fresh()->status)->toBe('draft');
+    });
+
+    $this->get('http://a.test/tin-tuc/ban-tin')->assertNotFound();
 });
 
 it('starts an entry that predates the workflow at the initial stage', function (): void {

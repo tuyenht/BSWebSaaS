@@ -5,6 +5,7 @@ namespace App\Modules\Cms\Actions;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -48,6 +49,7 @@ final readonly class PublishEntry
         }
 
         $gate = Gate::forUser($actor);
+        $from = $entry->status;
 
         if ($gate->allows('publish', $entry)) {
             // Atomic: a RouteConflictException from sync must roll back the status flip, or the
@@ -62,6 +64,8 @@ final readonly class PublishEntry
                 $this->routes->sync($entry, $locale, $translation->slug);
             });
 
+            EntryStatusAudit::record($entry, $from, 'published', 'publish', $actor);
+
             return 'published';
         }
 
@@ -74,6 +78,8 @@ final readonly class PublishEntry
 
             $entry->update(['status' => 'pending']);
             $translation->update(['status' => 'pending']);
+
+            EntryStatusAudit::record($entry, $from, 'pending', 'submit', $actor);
 
             return 'pending';
         }

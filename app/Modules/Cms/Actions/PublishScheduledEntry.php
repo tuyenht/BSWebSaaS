@@ -5,6 +5,7 @@ namespace App\Modules\Cms\Actions;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use Illuminate\Support\Facades\DB;
 
@@ -38,6 +39,7 @@ final readonly class PublishScheduledEntry
 
         // Atomic: if any locale's route sync conflicts, roll the whole publish back rather than
         // leave the entry `published` with some locales unrouted.
+        $from = $entry->status;
         DB::transaction(function () use ($entry): void {
             $entry->update(['status' => 'published']);
 
@@ -46,5 +48,7 @@ final readonly class PublishScheduledEntry
                 $this->routes->sync($entry, $translation->locale, $translation->slug);
             }
         });
+
+        EntryStatusAudit::record($entry, $from, 'published', 'scheduler');
     }
 }

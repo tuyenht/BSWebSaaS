@@ -5,6 +5,7 @@ namespace App\Modules\Cms\Actions;
 use App\Modules\Cms\Enums\EntryStatus;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use DateTimeInterface;
@@ -51,20 +52,29 @@ final readonly class TransitionEntryStatus
             throw new AuthorizationException('Bạn không có quyền đổi trạng thái nội dung này.');
         }
 
+        $governed = $this->workflows->forEntry($entry) !== null;
+
         if ($target === EntryStatus::Scheduled) {
             if ($publishAt === null || $publishAt <= now()) {
                 throw new InvalidArgumentException('Lên lịch cần một thời điểm trong tương lai.');
             }
 
-            if ($this->workflows->forEntry($entry) !== null) {
+            if ($governed) {
                 throw new WorkflowGovernedException;
             }
 
+            $from = $entry->status;
             $entry->update(['status' => EntryStatus::Scheduled->value, 'published_at' => $publishAt]);
+            EntryStatusAudit::record($entry, $from, EntryStatus::Scheduled->value, 'status-menu', $actor, ['publish_at' => $publishAt->format(DATE_ATOM)]);
 
             return;
         }
 
-        $entry->update(['status' => $target->value]);
+        $from = $entry->status;
+        // Under a workflow, leaving the public site from this menu also leaves the flow's stage
+        // behind: the stage is re-derived from the new status (the start), so the only road back
+        // to live is approval — and the stepper never claims "Đã đăng" over a hidden post.
+        $entry->update(['status' => $target->value] + ($governed ? ['workflow_state' => null] : []));
+        EntryStatusAudit::record($entry, $from, $target->value, 'status-menu', $actor);
     }
 }
