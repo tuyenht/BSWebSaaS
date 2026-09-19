@@ -66,6 +66,17 @@ final class EntryPolicy
         return $user->can('entries.publish');
     }
 
+    /**
+     * Open the review inbox (workflow Tầng-2, screen 3). Deliberately NOT tied to `update`:
+     * approving is not editing, and the editorial template exists to separate the two. It is
+     * also not `entries.view` — that is the right to read the content list, which every viewer
+     * has and which must not put someone in a queue of work they cannot action.
+     */
+    public function review(User $user): bool
+    {
+        return $user->can('entries.review') || $user->can('entries.approve');
+    }
+
     private function owns(User $user, Entry $entry): bool
     {
         return $entry->author_id !== null && $entry->author_id === $user->id;
