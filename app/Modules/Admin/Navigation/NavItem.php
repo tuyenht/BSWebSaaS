@@ -14,6 +14,7 @@ final readonly class NavItem
 {
     /**
      * @param  list<NavItem>  $children  submenu leaves (present → this node is an expandable group)
+     * @param  int|null  $badge  a count worth interrupting for (work waiting on this person); null = none
      */
     public function __construct(
         public string $key,
@@ -23,6 +24,7 @@ final readonly class NavItem
         public bool $active = false,
         public array $children = [],
         public ?string $permission = null,
+        public ?int $badge = null,
     ) {}
 
     public function hasChildren(): bool

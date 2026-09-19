@@ -40,10 +40,17 @@ class Workflow extends Model
         return $this->hasMany(WorkflowTransition::class);
     }
 
-    /** The state a subject enters on creation. */
+    /**
+     * The stage helpers below read the `states` relation when it is already loaded. A caller
+     * that resolves many subjects (the review inbox, a bulk move) loads it once; querying here
+     * regardless would put a query behind every subject and make those screens scale with the
+     * size of the queue.
+     */
     public function initialState(): ?WorkflowState
     {
-        return $this->states()->where('is_initial', true)->first();
+        return $this->relationLoaded('states')
+            ? $this->states->firstWhere('is_initial', true)
+            : $this->states()->where('is_initial', true)->first();
     }
 
     /**
@@ -52,7 +59,19 @@ class Workflow extends Model
      */
     public function publishedState(): ?WorkflowState
     {
+        if ($this->relationLoaded('states')) {
+            return $this->states->sortBy([['sort_order', 'asc'], ['id', 'asc']])->firstWhere('is_published', true);
+        }
+
         return $this->states()->where('is_published', true)->orderBy('sort_order')->orderBy('id')->first();
+    }
+
+    /** Whether this workflow defines a stage — used to distrust a stale pointer on a subject. */
+    public function definesState(string $key): bool
+    {
+        return $this->relationLoaded('states')
+            ? $this->states->contains('key', $key)
+            : $this->states()->where('key', $key)->exists();
     }
 
     #[\Override]

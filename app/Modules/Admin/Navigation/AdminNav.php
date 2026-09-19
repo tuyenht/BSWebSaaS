@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Navigation;
 
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Identity\Models\User;
+use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Workflow\Services\ReviewQueue;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -175,6 +180,19 @@ final class AdminNav
             );
         }
 
+        // Review inbox — only for people who can act on something waiting. The count is the
+        // point of the badge, so it is only paid for when the person has a queue at all.
+        if ($can('entries.review') || $can('entries.approve')) {
+            $items[] = new NavItem(
+                key: 'review-inbox',
+                label: __('admin.inbox.title'),
+                url: route('admin.entries.review'),
+                icon: 'ri-inbox-archive',
+                active: $request->routeIs('admin.entries.review'),
+                badge: $this->reviewCount($user),
+            );
+        }
+
         // Feature leaves. entitlementKey = the ModuleCatalog key to check site entitlement
         // against (null = a core capability, not a per-site module → RBAC only). Categories +
         // Menu builder point at placeholder pages until their real UIs ship.
@@ -257,5 +275,35 @@ final class AdminNav
         }
 
         return $items;
+    }
+
+    /**
+     * How many posts are waiting for this person, for the sidebar badge.
+     *
+     * Cached for a minute per (site, user): the sidebar renders on every admin page, and a live
+     * count on each navigation would put a query on pages that have nothing to do with reviewing.
+     * A minute late on a badge costs nothing; the inbox itself is always exact.
+     */
+    private function reviewCount(Authenticatable $user): ?int
+    {
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        $siteId = app(CurrentSite::class)->hasId() ? app(CurrentSite::class)->id() : 0;
+
+        // Cast: the cache store hands numbers back as strings (Valkey), and a nav badge must
+        // never be the thing that 500s an admin page.
+        $count = (int) Cache::remember(
+            'review-inbox:'.$siteId.':'.$user->id,
+            now()->addMinute(),
+            function () use ($user): int {
+                $stages = app(ReviewQueue::class)->actionableStageKeys($user);
+
+                return $stages === [] ? 0 : Entry::query()->whereIn('workflow_state', $stages)->count();
+            },
+        );
+
+        return $count > 0 ? $count : null;   // no badge when there is nothing waiting
     }
 }

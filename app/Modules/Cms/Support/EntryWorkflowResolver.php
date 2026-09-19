@@ -62,7 +62,7 @@ final readonly class EntryWorkflowResolver
         // cleared, would otherwise be handed a stage the engine does not know: no transition
         // starts there, so the editor would show a stepper with no buttons at all — a dead end
         // with no way out. Falling through re-derives the stage from what is actually true.
-        if ($entry->workflow_state !== null && $workflow->states()->where('key', $entry->workflow_state)->exists()) {
+        if ($entry->workflow_state !== null && $workflow->definesState($entry->workflow_state)) {
             return $entry->workflow_state;
         }
 

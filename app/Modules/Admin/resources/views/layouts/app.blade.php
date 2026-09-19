@@ -101,6 +101,10 @@
                                ])>
                                 <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                 <span class="sidebar-label">{{ $item->label }}</span>
+                                @if ($item->badge !== null)
+                                    {{-- Work waiting on this person; hidden with the labels when the rail collapses. --}}
+                                    <span class="sidebar-label ml-auto rounded-full bg-admin-danger px-1.5 py-0.5 text-[10.5px] font-bold leading-none text-white">{{ $item->badge }}</span>
+                                @endif
                             </a>
                         @endif
                     </li>
