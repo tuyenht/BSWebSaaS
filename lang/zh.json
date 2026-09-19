@@ -544,5 +544,6 @@
     "admin.inbox.moved": "已:action。前往下一篇。",
     "admin.inbox.err_gone": "这篇文章已不在你的队列中——可能刚被其他人处理了。",
     "admin.inbox.err_stale": "文章刚在别处被推进，或流程刚被更改。请刷新查看最新状态。",
-    "admin.inbox.err_slug": "它的路径与另一篇已发布文章冲突。请作者修改路径后再审批。"
+    "admin.inbox.err_slug": "它的路径与另一篇已发布文章冲突。请作者修改路径后再审批。",
+    "admin.inbox.err_no_translation": "这篇文章还没有任何语言的内容，无法审批。请作者补充内容后重新提交。"
 }

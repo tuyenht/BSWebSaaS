@@ -237,3 +237,33 @@ it('rejects an unknown section or template', function (): void {
             ->assertStatus(404);
     });
 });
+
+it('re-enters posts filed under a SUB-category too, not just the section root', function (): void {
+    $operator = wfOperator();
+
+    app(Tenancy::class)->enter(1, function () use ($operator): void {
+        $news = wfSection('posts', 'Tin tức', 'tin-tuc');
+
+        // A sub-category of the section's own category: SectionResolver walks ancestors, so a
+        // post filed here belongs to this section just as much as one filed at the root.
+        $child = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'parent_id' => $news->taxonomy_id, 'position' => 1]);
+        $child->translations()->create(['locale' => 'vi', 'name' => 'Tin nội bộ', 'slug' => 'tin-noi-bo']);
+
+        SiteFeature::query()->create(['feature_key' => 'workflow.editorial', 'value' => true]);
+
+        $component = Livewire::actingAs($operator->fresh())->test(WorkflowSettings::class);
+        $component->call('apply', 'posts', 'editorial', true);
+
+        $atRoot = wfPost($news, 'pending', 'reviewing');
+        $inChild = Entry::query()->create(['type' => 'post', 'status' => 'pending', 'workflow_state' => 'reviewing']);
+        $inChild->translations()->create(['locale' => 'vi', 'title' => 'Bài con', 'slug' => 'bai-con', 'status' => 'pending', 'body' => ['blocks' => []]]);
+        $inChild->assignCategories([$child->id]);
+
+        // admin_approval defines no `reviewing`: a post left holding it is invisible to every
+        // review inbox and stuck for its author — which is what happened to sub-category posts.
+        $component->call('apply', 'posts', 'admin_approval', true);
+
+        expect($atRoot->refresh()->workflow_state)->toBeNull()
+            ->and($inChild->refresh()->workflow_state)->toBeNull();
+    });
+});

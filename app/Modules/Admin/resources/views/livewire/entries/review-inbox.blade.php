@@ -6,7 +6,7 @@
     Content is rendered as TEXT, never as the stored HTML: a reviewer needs to read the post, and
     running a tenant's markup inside the admin shell would hand them the page.
 --}}
-<div class="space-y-4" x-data="{ note: '' }" x-on:inbox-moved.window="note = ''">
+<div class="space-y-4">
     <x-admin::page-header :title="__('admin.inbox.title')" :subtitle="__('admin.inbox.subtitle')" />
 
     @error('inbox')
@@ -15,7 +15,7 @@
 
     {{-- Tabs --}}
     <div class="flex flex-wrap gap-2">
-        @foreach ([['queue', 'ri-inbox-archive', $total], ['mine', 'ri-user-follow', $mineCount]] as [$key, $icon, $count])
+        @foreach ([['queue', 'ri-inbox-archive', $queueCount], ['mine', 'ri-user-follow', $mineCount]] as [$key, $icon, $count])
             <button type="button" wire:click="setTab('{{ $key }}')" @class([
                 'inline-flex items-center gap-2 rounded border px-3.5 py-2 text-sm font-medium transition-colors',
                 'border-admin-primary bg-admin-primary/5 text-admin-primary' => $tab === $key,

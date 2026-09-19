@@ -726,5 +726,6 @@
     "admin.inbox.moved": "Đã :action. Chuyển sang bài kế tiếp.",
     "admin.inbox.err_gone": "Bài này không còn trong hàng chờ của bạn — có thể người khác vừa xử lý xong.",
     "admin.inbox.err_stale": "Bài vừa được chuyển bước ở nơi khác, hoặc quy trình vừa đổi. Tải lại trang để xem trạng thái mới.",
-    "admin.inbox.err_slug": "Đường dẫn của bài trùng với một bài khác đang đăng. Nhờ người viết đổi đường dẫn rồi duyệt lại."
+    "admin.inbox.err_slug": "Đường dẫn của bài trùng với một bài khác đang đăng. Nhờ người viết đổi đường dẫn rồi duyệt lại.",
+    "admin.inbox.err_no_translation": "Bài này chưa có nội dung ở ngôn ngữ nào nên chưa duyệt được. Nhờ người viết nhập nội dung rồi gửi lại."
 }

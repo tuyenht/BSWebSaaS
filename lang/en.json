@@ -726,5 +726,6 @@
     "admin.inbox.moved": ":action done. Moving to the next one.",
     "admin.inbox.err_gone": "This post is no longer in your queue — someone else may have just handled it.",
     "admin.inbox.err_stale": "The post was just moved elsewhere, or the workflow changed. Reload to see its current state.",
-    "admin.inbox.err_slug": "Its path collides with another live post. Ask the writer to change the path, then approve again."
+    "admin.inbox.err_slug": "Its path collides with another live post. Ask the writer to change the path, then approve again.",
+    "admin.inbox.err_no_translation": "This post has no content in any language yet, so it cannot be approved. Ask the writer to fill it in and resubmit."
 }

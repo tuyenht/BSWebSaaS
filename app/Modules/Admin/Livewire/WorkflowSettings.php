@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -220,12 +221,46 @@ final class WorkflowSettings extends Component
      */
     private function restartInFlightEntries(ContentSection $section): void
     {
+        // Membership follows SectionResolver, which walks a category's ANCESTORS — a post filed
+        // under a sub-category belongs to this section just as much as one filed at the root.
+        // Matching only the bound taxonomy left those posts holding a stage the rebuilt flow no
+        // longer defines: invisible in every review inbox, and stuck for their author.
+        $taxonomyIds = $this->sectionTaxonomyIds($section);
+        if ($taxonomyIds === []) {
+            return;
+        }
+
         Entry::query()
             ->whereNotNull('workflow_state')
-            ->whereHas('taxonomies', function ($taxonomy) use ($section): void {
-                $taxonomy->where('taxonomies.id', $section->taxonomy_id)
+            ->whereHas('taxonomies', function ($taxonomy) use ($taxonomyIds): void {
+                $taxonomy->whereIn('taxonomies.id', $taxonomyIds)
                     ->where('entry_taxonomies.position', 0);
             })
             ->update(['workflow_state' => null]);
+    }
+
+    /**
+     * The section's own category plus every descendant of it.
+     *
+     * @return list<int>
+     */
+    private function sectionTaxonomyIds(ContentSection $section): array
+    {
+        if ($section->taxonomy_id === null) {
+            return [];
+        }
+
+        $ids = [(int) $section->taxonomy_id];
+        $frontier = $ids;
+
+        // Breadth-first over parent_id. Category trees are shallow (ltree, a handful of levels),
+        // so this is a few small queries rather than a recursive CTE.
+        while ($frontier !== []) {
+            $children = Taxonomy::query()->whereIn('parent_id', $frontier)->get()->map(fn (Taxonomy $term): int => (int) $term->id)->all();
+            $frontier = array_values(array_diff($children, $ids));
+            $ids = array_merge($ids, $frontier);
+        }
+
+        return $ids;
     }
 }

@@ -2,10 +2,14 @@
 
 use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\NavItem;
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\ContentSection;
+use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -146,4 +150,28 @@ it('gives each content section a distinct default icon instead of one shared gly
     // Each type reads apart in the sidebar (Pages and News were both provisioned above).
     expect($byKey->get('pages')?->icon)->toBe('file-text')
         ->and($byKey->get('posts')?->icon)->toBe('newspaper');
+});
+
+it('offers the review inbox only where an approval flow is actually running', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $owner = User::query()->firstOrFail();   // provisioned owner: holds review + approve
+
+        // Workflows are off by default, so the entry would only ever open an empty inbox.
+        $keys = collect((new AdminNav)->items($owner))->pluck('key');
+        expect($keys)->not->toContain('review-inbox');
+
+        ContentSection::query()->firstOrCreate(['key' => 'posts'], ['label' => 'Tin tức', 'entry_type' => 'post']);
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+        Cache::flush();   // the count is cached for a minute
+
+        $item = collect((new AdminNav)->items($owner))->firstWhere('key', 'review-inbox');
+        expect($item)->toBeInstanceOf(NavItem::class)
+            ->and($item->badge)->toBeNull();   // nothing waiting yet → no red dot
+
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'pending', 'workflow_state' => 'pending']);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Chờ duyệt', 'slug' => 'cho-duyet', 'status' => 'pending', 'body' => ['blocks' => []]]);
+        Cache::flush();
+
+        expect(collect((new AdminNav)->items($owner))->firstWhere('key', 'review-inbox')->badge)->toBe(1);
+    });
 });

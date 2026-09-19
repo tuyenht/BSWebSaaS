@@ -55,6 +55,9 @@ final class ReviewInbox extends Component
     /** Trail rows shown inside the reader. */
     private const int TRAIL_PAGE = 3;
 
+    /** Hard ceiling on how much of the queue is hydrated in one request (see waiting()). */
+    private const int MAX_QUEUE = 500;
+
     #[Url(as: 'tab', except: 'queue')]
     public string $tab = 'queue';
 
@@ -64,7 +67,9 @@ final class ReviewInbox extends Component
     #[Url(as: 'type', except: '')]
     public string $sectionFilter = '';
 
-    /** The post open in the reader (ulid — never a raw id). */
+    /** The post open in the reader (ulid — never a raw id); validated against the queue, and
+     *  #[Locked] so a crafted payload cannot make the client's value load-bearing. */
+    #[Locked]
     public ?string $current = null;
 
     /** Reason for a transition that demands one. */
@@ -85,6 +90,14 @@ final class ReviewInbox extends Component
 
     /** @var array<string, string>|null */
     protected ?array $sectionOptions = null;
+
+    /**
+     * The waiting set, resolved once per request. Without this it ran three or four times for a
+     * single approve click — each run a fresh query plus four eager loads.
+     *
+     * @var EloquentCollection<int, Entry>|null
+     */
+    protected ?EloquentCollection $waitingMemo = null;
 
     public function boot(): void
     {
@@ -119,7 +132,7 @@ final class ReviewInbox extends Component
     /** Open a post in the reader (only one that is actually in this person's queue). */
     public function open(string $ulid): void
     {
-        $this->current = $this->waiting()->firstWhere('ulid', $ulid)?->ulid;
+        $this->current = $this->visible()->firstWhere('ulid', $ulid)?->ulid;
         $this->note = '';
         $this->resetErrorBag();
     }
@@ -165,9 +178,25 @@ final class ReviewInbox extends Component
             return;
         }
 
+        // Move the translation that EXISTS. Publishing is per-locale, and a post written only in
+        // a non-default language would otherwise take the action down with a missing-translation
+        // error — or, worse on a multilingual site, publish the default-language copy while the
+        // one that was actually submitted stays hidden.
+        $locale = $this->actionableLocale($entry);
+        if ($locale === null) {
+            $this->addError('inbox', __('admin.inbox.err_no_translation'));
+
+            return;
+        }
+
+        // Remember where we were BEFORE the move: afterwards this entry has left the stage and
+        // the list re-sorts, so "the next one" can only be read from the list as it stood.
+        /** @var list<string> $queueBefore */
+        $queueBefore = $this->visible()->map(fn (Entry $entry): string => (string) $entry->ulid)->values()->all();
+
         try {
             app(ApplyEntryWorkflowTransition::class)->handle(
-                $entry, app(SiteLocale::class)->default(), $this->actor(), $key, $note !== '' ? $note : null,
+                $entry, $locale, $this->actor(), $key, $note !== '' ? $note : null,
             );
         } catch (InvalidTransitionException) {
             $this->addError('inbox', __('admin.inbox.err_stale'));
@@ -188,22 +217,62 @@ final class ReviewInbox extends Component
         }
 
         $this->note = '';
-        $this->dispatch('inbox-moved');
+        $this->waitingMemo = null;   // the entry just left its stage; the queue changed
         $this->dispatch('bs-toast', text: __('admin.inbox.moved', ['action' => $transition->label]));
 
-        // Handled — move to the next one waiting so a reviewer can work straight down the list.
-        $this->current = $this->waiting()->firstWhere('ulid', '!=', $this->current)?->ulid;
+        // Handled — carry on DOWN the list: the first post that came after this one and is still
+        // waiting. (Taking the head of the re-sorted list would throw the reviewer back to the
+        // top after every decision.)
+        $this->current = $this->nextAfter($queueBefore, (string) $this->current);
+    }
+
+    /**
+     * The locale to act on: the site default when the post has it, otherwise the first
+     * translation it does have. Null when the post has no translation at all.
+     */
+    private function actionableLocale(Entry $entry): ?string
+    {
+        $default = app(SiteLocale::class)->default();
+        if ($entry->translationFor($default) instanceof EntryTranslation) {
+            return $default;
+        }
+
+        $first = $entry->translations->first();
+
+        return $first instanceof EntryTranslation ? $first->locale : null;
+    }
+
+    /**
+     * The next post still waiting, taken from the order the list had BEFORE the move.
+     *
+     * @param  list<string>  $queueBefore
+     */
+    private function nextAfter(array $queueBefore, string $handled): ?string
+    {
+        $position = array_search($handled, $queueBefore, true);
+        $successors = $position === false ? $queueBefore : array_slice($queueBefore, $position + 1);
+        $stillWaiting = $this->visible()->map(fn (Entry $entry): string => (string) $entry->ulid)->all();
+
+        foreach ($successors as $ulid) {
+            if (in_array($ulid, $stillWaiting, true)) {
+                return $ulid;
+            }
+        }
+
+        // Nothing below it — fall back to whatever is left at the top, else an empty reader.
+        return $this->visible()->first()?->ulid;
     }
 
     public function render(): View
     {
-        $waiting = $this->waiting();
+        $visible = $this->visible();
         $entry = $this->currentEntry();
 
         $view = view('admin::livewire.entries.review-inbox', [
-            'rows' => $this->rows($waiting->take($this->shown)),
-            'total' => $waiting->count(),
-            'mineCount' => $this->mineCount($waiting),
+            'rows' => $this->rows($visible->take($this->shown)),
+            'total' => $visible->count(),
+            'queueCount' => $this->waiting()->count(),
+            'mineCount' => $this->mineCount(),
             'sections' => $this->sectionOptions(),
             'reader' => $entry instanceof Entry ? $this->reader($entry) : null,
         ]);
@@ -225,33 +294,47 @@ final class ReviewInbox extends Component
      */
     private function waiting(): EloquentCollection
     {
-        $stages = app(ReviewQueue::class)->actionableStageKeys($this->actor());
-        if ($stages === []) {
+        if ($this->waitingMemo instanceof EloquentCollection) {
+            return $this->waitingMemo;
+        }
+
+        $stages = app(ReviewQueue::class)->actionableStages($this->actor());
+        $keys = array_values(array_unique($stages === [] ? [] : array_merge(...array_values($stages))));
+
+        if ($keys === []) {
             /** @var EloquentCollection<int, Entry> $empty */
             $empty = Entry::query()->whereRaw('1 = 0')->get();
 
-            return $empty;
+            return $this->waitingMemo = $empty;
         }
 
-        $query = Entry::query()
-            ->whereIn('workflow_state', $stages)
+        // Bounded on purpose. A review queue is work in flight, so it is small in a healthy
+        // team — but "small" is tenant behaviour, not an invariant, and this set is hydrated
+        // with its relations. The ceiling keeps a neglected queue from turning every render
+        // into an OOM; crossing it is the signal to move search + type filtering into SQL and
+        // page this properly (ADR-18).
+        $entries = Entry::query()
+            ->whereIn('workflow_state', $keys)
             ->with(['translations', 'author', 'taxonomies.translations'])
             ->orderByDesc('updated_at')
-            ->orderByDesc('id');
+            ->orderByDesc('id')
+            ->limit(self::MAX_QUEUE)
+            ->get();
 
-        if ($this->tab === 'mine') {
-            $query->where('assigned_to', $this->actor()->id);
-        }
-
-        $entries = $query->get();
-
-        // Search + type filter run in memory: the set is a queue (tens of rows), and both need
-        // the localized title / resolved section that only the loaded relations can answer.
         $term = trim(mb_strtolower($this->search));
         $locale = app(SiteLocale::class)->default();
 
-        return $entries->filter(function (Entry $entry) use ($term, $locale): bool {
-            if ($this->sectionFilter !== '' && ($this->sectionKey($entry) ?? '') !== $this->sectionFilter) {
+        $filtered = $entries->filter(function (Entry $entry) use ($stages, $term, $locale): bool {
+            $section = $this->sectionKey($entry);
+
+            // Stage keys repeat across templates ('pending' exists in both bundled flows), so a
+            // key match alone would show a reviewer of "Tin tức" every "Dịch vụ" post sitting on
+            // the same-named stage — work they have no transition for. Membership is per TYPE.
+            if ($section === null || ! isset($stages[$section]) || ! in_array((string) $entry->workflow_state, $stages[$section], true)) {
+                return false;
+            }
+
+            if ($this->sectionFilter !== '' && $section !== $this->sectionFilter) {
                 return false;
             }
 
@@ -266,18 +349,38 @@ final class ReviewInbox extends Component
 
             return str_contains($title, $term) || str_contains($authorName, $term);
         })->values();
+
+        /** @var EloquentCollection<int, Entry> $result */
+        $result = $filtered;
+
+        return $this->waitingMemo = $result;
     }
 
     /**
-     * @param  EloquentCollection<int, Entry>  $waiting
+     * The rows of the ACTIVE tab (the shared queue, or only what is handed to me).
+     *
+     * @return EloquentCollection<int, Entry>
      */
-    private function mineCount(EloquentCollection $waiting): int
+    private function visible(): EloquentCollection
+    {
+        if ($this->tab !== 'mine') {
+            return $this->waiting();
+        }
+
+        $id = $this->actor()->id;
+
+        /** @var EloquentCollection<int, Entry> $mine */
+        $mine = $this->waiting()->filter(fn (Entry $entry): bool => $entry->assigned_to === $id)->values();
+
+        return $mine;
+    }
+
+    /** How many of the waiting posts are handed to this person — the same number on both tabs. */
+    private function mineCount(): int
     {
         $id = $this->actor()->id;
 
-        return $this->tab === 'mine'
-            ? $waiting->count()
-            : $waiting->filter(fn (Entry $entry): bool => $entry->assigned_to === $id)->count();
+        return $this->waiting()->filter(fn (Entry $entry): bool => $entry->assigned_to === $id)->count();
     }
 
     /**
@@ -525,13 +628,14 @@ final class ReviewInbox extends Component
 
     private function currentEntry(): ?Entry
     {
-        return $this->current === null ? null : $this->waiting()->firstWhere('ulid', $this->current);
+        return $this->current === null ? null : $this->visible()->firstWhere('ulid', $this->current);
     }
 
     private function resetList(): void
     {
         $this->shown = self::PAGE;
         $this->current = null;
+        $this->waitingMemo = null;
     }
 
     private function actor(): User

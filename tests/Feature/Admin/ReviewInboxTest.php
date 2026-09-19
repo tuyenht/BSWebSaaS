@@ -245,3 +245,115 @@ it('renders the inbox on a flat query budget regardless of how many posts are wa
 
     expect($loaded)->toBe($lean);
 });
+
+it('keeps the shared-queue count visible while the assigned-to-me tab is open', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $categoryId = inboxCollection();
+
+        $mine = submittedPost($categoryId, $author, 'Giao tôi', 'giao-toi');
+        $mine->update(['assigned_to' => $reviewer->id]);
+        submittedPost($categoryId, $author, 'Của nhóm A', 'nhom-a');
+        submittedPost($categoryId, $author, 'Của nhóm B', 'nhom-b');
+
+        // On the "mine" tab the shared queue still says 3 — reading it as "the team queue is
+        // empty" would be exactly the wrong conclusion.
+        Livewire::actingAs($reviewer->fresh())
+            ->test(ReviewInbox::class)
+            ->call('setTab', 'mine')
+            ->assertSee(__('admin.inbox.showing', ['shown' => 1, 'total' => 1]))
+            ->assertSeeHtml('>3</span>')
+            ->assertSee('Giao tôi')
+            ->assertDontSee('Của nhóm A');
+    });
+});
+
+it('does not mix content types that share a stage key', function (): void {
+    $author = User::factory()->create();
+    $newsOnly = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $newsOnly): void {
+        grantRole($author, 'author', ['entries.submit']);
+        // Can approve, cannot review: in `admin_approval` that is only the pending→published edge.
+        grantRole($newsOnly, 'approver', ['entries.approve']);
+
+        $newsCategory = inboxCollection();
+        submittedPost($newsCategory, $author, 'Tin chờ duyệt', 'tin-cho');
+
+        // A second governed type whose flow also parks work at a stage named `pending`.
+        $services = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $services->translations()->create(['locale' => 'vi', 'name' => 'Dịch vụ', 'slug' => 'dich-vu']);
+        ContentSection::query()->create(['key' => 'services', 'label' => 'Dịch vụ', 'entry_type' => 'post', 'taxonomy_id' => $services->id, 'sort_order' => 2]);
+        app(InstantiateWorkflow::class)->handle('editorial', 'services', active: true);
+        submittedPost($services->id, $author, 'Dịch vụ chờ biên tập', 'dv-cho');
+
+        // In `editorial`, pending→reviewing needs entries.review, which this person lacks — so
+        // the services post is work they cannot do and must not be listed or counted.
+        Livewire::actingAs($newsOnly->fresh())
+            ->test(ReviewInbox::class)
+            ->assertSee('Tin chờ duyệt')
+            ->assertDontSee('Dịch vụ chờ biên tập');
+    });
+});
+
+it('approves a post that exists only in a non-default language instead of failing', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $categoryId = inboxCollection();
+
+        // Written in English on a Vietnamese-default site.
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
+        $entry->translations()->create([
+            'locale' => 'en', 'title' => 'English only', 'slug' => 'english-only', 'status' => 'draft',
+            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Body text']]]],
+        ]);
+        $entry->assignCategories([$categoryId]);
+        app(ApplyEntryWorkflowTransition::class)->handle($entry->fresh(), 'en', $author->fresh(), 'submit');
+
+        Livewire::actingAs($reviewer->fresh())
+            ->test(ReviewInbox::class)
+            ->call('open', $entry->ulid)
+            ->call('apply', 'approve')
+            ->assertHasNoErrors();
+
+        $entry->refresh();
+        expect($entry->status)->toBe('published')
+            ->and($entry->translationFor('en')->status)->toBe('published')
+            ->and(SiteRoute::query()->where('entry_id', $entry->id)->value('locale'))->toBe('en');
+    });
+});
+
+it('carries the reviewer down the list, not back to the top', function (): void {
+    $author = User::factory()->create();
+    $reviewer = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
+        grantRole($author, 'author', ['entries.submit']);
+        grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
+        $categoryId = inboxCollection();
+
+        // Submitted oldest → newest, so the list (updated_at desc) reads C, B, A.
+        $a = submittedPost($categoryId, $author, 'Bài A', 'bai-a');
+        $b = submittedPost($categoryId, $author, 'Bài B', 'bai-b');
+        $c = submittedPost($categoryId, $author, 'Bài C', 'bai-c');
+
+        Livewire::actingAs($reviewer->fresh())
+            ->test(ReviewInbox::class)
+            ->call('open', $b->ulid)
+            ->call('apply', 'approve')
+            ->assertHasNoErrors()
+            // After handling B the reader must hold A — the one BELOW it — not C at the top.
+            ->assertSet('current', $a->ulid);
+
+        expect($b->fresh()->status)->toBe('published')
+            ->and($c->fresh()->workflow_state)->toBe('pending');
+    });
+});

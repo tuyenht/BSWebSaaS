@@ -54,14 +54,21 @@ final readonly class ApplyEntryWorkflowTransition
         $workflow = $this->workflows->forEntry($entry)
             ?? throw EntryNotGovernedException::for($entry->id);
 
-        // An entry created before the workflow was switched on carries no state yet: live content
-        // stands at the published stage, anything else at the initial one — never stranded
-        // outside the machine, never hidden by joining it (EntryWorkflowResolver::originFor).
-        $fromState = $this->workflows->originFor($workflow, $entry);
-
         $fromStatus = $entry->status;
 
-        $destinationKey = DB::transaction(function () use ($entry, $translation, $locale, $actor, $workflow, $transitionKey, $fromState, $note, $assignTo): string {
+        $destinationKey = DB::transaction(function () use ($entry, $translation, $locale, $actor, $workflow, $transitionKey, $note, $assignTo): string {
+            // Lock the row and read the origin INSIDE the transaction. A shared review inbox
+            // makes two people acting on the same post routine, and reading the stage outside
+            // would let both pass the engine's origin guard: two trail rows, two audit rows, and
+            // a last-writer-wins status — one of them told their decision stuck when it did not.
+            $entry->refresh();
+            Entry::query()->whereKey($entry->id)->lockForUpdate()->first();
+
+            // An entry created before the workflow was switched on carries no state yet: live
+            // content stands at the published stage, anything else at the initial one — never
+            // stranded outside the machine, never hidden by joining it.
+            $fromState = $this->workflows->originFor($workflow, $entry);
+
             $destination = $this->engine->apply(
                 $workflow, $transitionKey, $fromState, $actor, $entry->id, $locale, $note, $assignTo,
             );
