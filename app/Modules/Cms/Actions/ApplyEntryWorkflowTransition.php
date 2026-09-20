@@ -57,12 +57,14 @@ final readonly class ApplyEntryWorkflowTransition
         $fromStatus = $entry->status;
 
         $destinationKey = DB::transaction(function () use ($entry, $translation, $locale, $actor, $workflow, $transitionKey, $note, $assignTo): string {
-            // Lock the row and read the origin INSIDE the transaction. A shared review inbox
-            // makes two people acting on the same post routine, and reading the stage outside
-            // would let both pass the engine's origin guard: two trail rows, two audit rows, and
-            // a last-writer-wins status — one of them told their decision stuck when it did not.
-            $entry->refresh();
+            // Take the row lock FIRST, then read. A shared review inbox makes two people acting
+            // on the same post routine; if the stage were read before the lock, both would read
+            // the same value, then queue on the lock and both pass the engine's origin guard —
+            // two trail rows, two audit rows, a last-writer-wins status, and one reviewer told
+            // their decision stuck when it did not. Reading after the lock makes the second
+            // caller see the first one's result and be refused, which is the point.
             Entry::query()->whereKey($entry->id)->lockForUpdate()->first();
+            $entry->refresh();
 
             // An entry created before the workflow was switched on carries no state yet: live
             // content stands at the published stage, anything else at the initial one — never
