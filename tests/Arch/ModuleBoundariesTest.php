@@ -37,11 +37,30 @@ arch('Tenancy module depends on no feature module')
 // Identity owns the core User<->Tenant relation. Theme is listed PROVISIONALLY — it currently
 // reads SiteSetting for per-site theme tokens and is under review to move behind a Shared
 // contract; until that is decided it is named here so the rule mirrors reality. Every other
-// module must reach tenancy only through its public surface (BelongsToSite trait, Tenancy /
-// SiteLocale context).
-arch('feature modules reach tenancy through its public surface, not its models')
-    ->expect($namespacesExcept(['Tenancy', 'Shared', 'Admin', 'Provisioning', 'Identity', 'Theme']))
-    ->not->toUse('App\\Modules\\Tenancy\\Models');
+// module must reach tenancy only through its public surface (BelongsToSite trait, the
+// Tenancy\Context classes).
+//
+// One rule PER module: with an array on the expect() side, `->not->toUse()` only fails when
+// EVERY listed module violates, so the single-rule form passed while four modules read the
+// models directly. The debt list below is a ratchet of the reads that predate the fix — it may
+// only shrink: move a read behind Tenancy\Context, then delete its line. Anything new fails CI.
+$tenancyModelDebt = [
+    'App\\Modules\\Catalog\\Support\\CatalogMode',
+    'App\\Modules\\Cms\\Routing\\SectionResolver',
+    'App\\Modules\\Cms\\Console\\PublishDueEntries',
+    'App\\Modules\\Cms\\Console\\FlushEntryViews',
+    'App\\Modules\\Media\\Actions\\RegisterMediaUpload',
+    'App\\Modules\\Media\\Http\\Controllers\\MediaUploadController',
+    'App\\Modules\\Media\\Console\\PurgeTrashedMedia',
+    'App\\Modules\\Storefront\\Http\\Controllers\\StorefrontController',
+];
+
+foreach ($namespacesExcept(['Tenancy', 'Shared', 'Admin', 'Provisioning', 'Identity', 'Theme']) as $namespace) {
+    arch("{$namespace} reaches tenancy through its public surface, not its models")
+        ->expect($namespace)
+        ->not->toUse('App\\Modules\\Tenancy\\Models')
+        ->ignoring($tenancyModelDebt);
+}
 
 // Shared contracts are the only sanctioned cross-module interface seam.
 arch('Shared namespace holds interfaces only')

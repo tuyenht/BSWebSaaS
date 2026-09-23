@@ -50,8 +50,11 @@ Cạnh được arch test ép (ngoài "Tenancy không dùng module tính năng n
 - **Cms** không trỏ lên consumer của nó (Storefront/Admin/Provisioning).
 - **Identity** nằm dưới **Rbac**; **Storefront** độc lập với **Admin**.
 - Module tính năng không chạm thẳng `Tenancy\Models` (dùng bề mặt công khai: trait
-  `BelongsToSite`, context `Tenancy`/`SiteLocale`). Ngoại lệ: shell `Admin` + orchestrator
-  `Provisioning` được đọc model registry của Tenancy (vd `ContentSection`).
+  `BelongsToSite`, các lớp `Tenancy\Context` — `Tenancy`, `CurrentSite`, `SiteLocale`,
+  `SiteTime`, `PermalinkConfig`, `SiteDirectory`). Ngoại lệ: shell `Admin` + orchestrator
+  `Provisioning` được đọc model registry của Tenancy (vd `ContentSection`). Luật được ép
+  **từng module một**; 8 chỗ đọc thẳng có từ trước khi luật được sửa nằm trong danh sách nợ
+  `$tenancyModelDebt` của `tests/Arch/ModuleBoundariesTest.php` — danh sách chỉ được giảm.
 
 ## Hợp đồng đăng ký module
 
