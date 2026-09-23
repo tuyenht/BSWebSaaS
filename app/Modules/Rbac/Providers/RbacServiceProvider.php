@@ -8,6 +8,8 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Console\BootstrapSuperAdmin;
 use App\Modules\Rbac\Console\SyncRbac;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Policies\RolePolicy;
 use App\Modules\Rbac\Support\PlatformAccess;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +31,8 @@ final class RbacServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(Role::class, RolePolicy::class);
+
         Gate::before(function (mixed $user, string $ability): ?bool {
             if (! $user instanceof User) {
                 return null;

@@ -60,11 +60,76 @@ final class PermissionRegistry
     ];
 
     /**
+     * What holding a permission requires alongside it (INV-R5): acting on a resource means seeing
+     * it. A custom role is normalized through {@see withImplied()} on save, so no role ever carries
+     * `catalog.manage` without `catalog.view`. The shipped templates are already closed under this
+     * map (PermissionCatalogTest) — a fork therefore normalizes to exactly its source.
+     *
+     * @var array<string, list<string>>
+     */
+    public const array IMPLIES = [
+        'entries.create' => ['entries.view'],
+        'entries.edit.own' => ['entries.view'],
+        'entries.edit.any' => ['entries.view'],
+        'entries.delete.own' => ['entries.view'],
+        'entries.delete.any' => ['entries.view'],
+        'entries.submit' => ['entries.view'],
+        'entries.review' => ['entries.view'],
+        'entries.approve' => ['entries.view'],
+        'entries.publish' => ['entries.view'],
+        'media.upload' => ['media.view'],
+        'media.delete' => ['media.view'],
+        'forms.manage' => ['forms.view'],
+        'catalog.manage' => ['catalog.view'],
+    ];
+
+    /**
      * @return list<string>
      */
     public static function permissions(): array
     {
         return [...self::TENANT_PERMISSIONS, ...self::PLATFORM_PERMISSIONS];
+    }
+
+    /** The resource a permission acts on (`entries.edit.own` → `entries`) — the module-ownership key. */
+    public static function prefixOf(string $permission): string
+    {
+        return explode('.', $permission, 2)[0];
+    }
+
+    /**
+     * $permissions plus everything they imply, de-duplicated (one level is enough: implied
+     * permissions imply nothing further).
+     *
+     * @param  list<string>  $permissions
+     * @return list<string>
+     */
+    public static function withImplied(array $permissions): array
+    {
+        $closed = $permissions;
+        foreach ($permissions as $permission) {
+            array_push($closed, ...(self::IMPLIES[$permission] ?? []));
+        }
+
+        return array_values(array_unique($closed));
+    }
+
+    /**
+     * Names a custom role may never take: every system role template and every platform role —
+     * code resolves those by name (`assignRole('owner')`, the platform gate), so a look-alike
+     * custom role would be read as the real one. Compared case-insensitively by the callers.
+     *
+     * @return list<string>
+     */
+    public static function reservedRoleNames(): array
+    {
+        return [...self::platformRoleNames(), ...array_keys(self::corporateRoleTemplates())];
+    }
+
+    /** The highest level a tenant template grants — nothing custom may sit at or above it. */
+    public static function topTenantLevel(): int
+    {
+        return max(0, ...array_column(self::corporateRoleTemplates(), 'level'));
     }
 
     /**

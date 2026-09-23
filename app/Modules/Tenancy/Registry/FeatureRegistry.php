@@ -28,6 +28,9 @@ final class FeatureRegistry
             'sites.max' => ['name' => 'Số site tối đa', 'kind' => 'limit', 'default' => 1],
             // Media storage ceiling in megabytes.
             'media.storage_mb' => ['name' => 'Dung lượng media (MB)', 'kind' => 'limit', 'default' => 500],
+            // Whether the site may create its own roles (fork a system role or start blank). The
+            // six system roles stay available and locked either way.
+            'rbac.custom_roles' => ['name' => 'Nhóm quyền tùy chỉnh', 'kind' => 'boolean', 'default' => false],
         ];
     }
 

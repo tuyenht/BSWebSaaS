@@ -4,6 +4,7 @@ namespace App\Modules\Rbac\Support;
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection;
@@ -31,6 +32,18 @@ final readonly class RoleHierarchyGuard
         $max = $actor->roles()->max('level');
 
         return is_numeric($max) ? (int) $max : 0;
+    }
+
+    /**
+     * The level every role the actor creates or edits must stay STRICTLY below: their own highest
+     * level here — or, for a platform super_admin (who holds no tenant role), the top template
+     * level, so nothing custom ever sits at or above the site's owner.
+     */
+    public function levelCeiling(User $actor): int
+    {
+        return $this->platform->isSuperAdmin($actor)
+            ? PermissionRegistry::topTenantLevel()
+            : $this->maxLevel($actor);
     }
 
     /**

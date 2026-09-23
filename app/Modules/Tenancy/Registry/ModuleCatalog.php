@@ -30,10 +30,14 @@ final class ModuleCatalog
             ['key' => 'media', 'label' => ['vi' => 'Thư viện', 'en' => 'Media', 'ja' => 'メディア'], 'permission_prefix' => 'media', 'route' => 'admin.media.index', 'nav_permission' => 'media.view', 'sort_order' => 3, 'icon' => 'image', 'needs_tier3' => true],
             ['key' => 'contacts', 'label' => ['vi' => 'Liên hệ', 'en' => 'Contacts', 'ja' => 'お問い合わせ'], 'permission_prefix' => 'forms', 'route' => 'admin.forms.index', 'nav_permission' => 'forms.view', 'sort_order' => 4, 'icon' => 'mail', 'needs_tier3' => false],
             ['key' => 'menus', 'label' => ['vi' => 'Menu', 'en' => 'Menus', 'ja' => 'メニュー'], 'permission_prefix' => 'menus', 'route' => null, 'nav_permission' => null, 'sort_order' => 5, 'icon' => 'menu', 'needs_tier3' => false],
+            // taxonomies/domains own `taxonomies.manage` / `domains.manage` so those permissions fall
+            // inside a site's role ceiling (INV-R1); hidden (route null) until their screens ship.
+            ['key' => 'taxonomies', 'label' => ['vi' => 'Chuyên mục', 'en' => 'Categories', 'ja' => 'カテゴリ'], 'permission_prefix' => 'taxonomies', 'route' => null, 'nav_permission' => null, 'sort_order' => 5, 'icon' => 'folder', 'needs_tier3' => false],
             ['key' => 'banners', 'label' => ['vi' => 'Banner', 'en' => 'Banners', 'ja' => 'バナー'], 'permission_prefix' => null, 'route' => null, 'nav_permission' => null, 'sort_order' => 6, 'icon' => 'megaphone', 'needs_tier3' => false],
             ['key' => 'users', 'label' => ['vi' => 'Người dùng', 'en' => 'Users', 'ja' => 'ユーザー'], 'permission_prefix' => 'users', 'route' => 'admin.users.index', 'nav_permission' => 'users.manage', 'sort_order' => 7, 'icon' => 'users', 'needs_tier3' => false],
             ['key' => 'roles', 'label' => ['vi' => 'Vai trò', 'en' => 'Roles', 'ja' => 'ロール'], 'permission_prefix' => 'roles', 'route' => null, 'nav_permission' => null, 'sort_order' => 8, 'icon' => 'shield', 'needs_tier3' => false],
             ['key' => 'settings', 'label' => ['vi' => 'Cài đặt', 'en' => 'Settings', 'ja' => '設定'], 'permission_prefix' => 'settings', 'route' => 'admin.settings', 'nav_permission' => null, 'sort_order' => 9, 'icon' => 'settings', 'needs_tier3' => false],
+            ['key' => 'domains', 'label' => ['vi' => 'Tên miền', 'en' => 'Domains', 'ja' => 'ドメイン'], 'permission_prefix' => 'domains', 'route' => null, 'nav_permission' => null, 'sort_order' => 9, 'icon' => 'ri-global', 'needs_tier3' => false],
             ['key' => 'trash', 'label' => ['vi' => 'Thùng rác', 'en' => 'Trash', 'ja' => 'ゴミ箱'], 'permission_prefix' => 'entries', 'route' => null, 'nav_permission' => null, 'sort_order' => 10, 'icon' => 'trash', 'needs_tier3' => false],
             ['key' => 'profile', 'label' => ['vi' => 'Hồ sơ', 'en' => 'Profile', 'ja' => 'プロフィール'], 'permission_prefix' => null, 'route' => null, 'nav_permission' => null, 'sort_order' => 11, 'icon' => 'user', 'needs_tier3' => false],
         ];
