@@ -1,5 +1,5 @@
 /*
- * storefront.css — Cơ Khí Chính Xác An Vinh storefront design system
+ * storefront.css — shared storefront design system (every tenant; per-site look = tokens)
  *
  * Palette — driven by per-site tokens (ThemeResolver, :root custom properties),
  * NOT hardcoded here. Every color below is `var(--primary|surface|ink|body)` or a
@@ -13,6 +13,13 @@
  *   --surface  #ffffff (card backgrounds; page-bg/pagination-bg are tints of it)
  *   --body     #333333 default → An Vinh #334155 (slate-700) — long-form copy;
  *              secondary/muted text shades are `color-mix()` off this
+ *
+ * Contrast floor (WCAG 2 AA, 4.5:1 — computed for the default AND An Vinh seeds, 24/09):
+ *   muted text on a light surface = `color-mix(in srgb, var(--body) 80%, white)` (≥5.4:1);
+ *   anything lighter (--body 65%, --ink 40%) fails there. Light text on the dark header/
+ *   footer = `color-mix(in srgb, var(--ink) 40%, white)` (≥7:1). `--primary` used as TEXT
+ *   on a light surface is NOT guaranteed — a light brand color (An Vinh's amber) fails; see
+ *   docs/notes/section-style-system.md §1 (accent-text role, pending).
  *
  * Architecture: BEM (.block__element--modifier), mobile-first, zero JS framework.
  * Target: <15 KB minified. No @import 'tailwindcss' — passed through Vite as plain CSS.
@@ -493,13 +500,13 @@ main:has(.hero) .page__title {
 .entry-grid__outcome {
     padding: 0 1rem 1rem;
     font-size: 0.875rem;
-    color: color-mix(in srgb, var(--body) 65%, white);
+    color: color-mix(in srgb, var(--body) 80%, white);
     line-height: 1.55;
     flex: 1;
 }
 
 .entry-grid__empty {
-    color: color-mix(in srgb, var(--ink) 40%, white);
+    color: color-mix(in srgb, var(--body) 80%, white);
     font-style: italic;
 }
 
@@ -569,7 +576,7 @@ main:has(.hero) .page__title {
 }
 
 .category__empty {
-    color: color-mix(in srgb, var(--ink) 40%, white);
+    color: color-mix(in srgb, var(--body) 80%, white);
     font-style: italic;
 }
 
@@ -588,7 +595,7 @@ main:has(.hero) .page__title {
 
 .post__breadcrumb {
     font-size: 0.875rem;
-    color: color-mix(in srgb, var(--ink) 40%, white);
+    color: color-mix(in srgb, var(--body) 80%, white);
     margin-bottom: 1rem;
 }
 
@@ -823,7 +830,7 @@ main:has(.hero) .page__title {
 
 .features__item p {
     font-size: 0.9rem;
-    color: color-mix(in srgb, var(--body) 65%, white);
+    color: color-mix(in srgb, var(--body) 80%, white);
     line-height: 1.6;
 }
 
@@ -986,7 +993,7 @@ main:has(.hero) .page__title {
 
 .site-footer__license {
     font-size: 0.8125rem;
-    color: color-mix(in srgb, var(--body) 80%, white);
+    color: color-mix(in srgb, var(--ink) 40%, white);
     margin-top: 0.75rem;
 }
 
@@ -1032,7 +1039,7 @@ main:has(.hero) .page__title {
 }
 
 .error-page__message {
-    color: color-mix(in srgb, var(--body) 65%, white);
+    color: color-mix(in srgb, var(--body) 80%, white);
     max-width: 28rem;
     line-height: 1.65;
     margin: 0 0 2rem;
