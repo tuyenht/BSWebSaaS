@@ -9,6 +9,7 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -21,6 +22,12 @@ use Livewire\Component;
  * RevokeRole actions, so the no-escalation hierarchy invariant holds (grant/revoke strictly
  * below your own level, within your own permissions); the role <select> only ever offers
  * roles the actor may grant. Gated by `users.manage` (owner/admin, super_admin via Gate::before).
+ *
+ * `users` is GLOBAL identity (D6 — no RLS), so nothing below the app stops a lookup by key from
+ * reaching another tenant's account. Change/remove therefore resolve their target through
+ * {@see siteMember()} — by ulid, and only among this site's members — never by a client-supplied
+ * bigint (§2 #3/#4): otherwise any owner could pull an arbitrary account into their site and read
+ * its name + email off this table.
  */
 #[Layout('admin::layouts.app')]
 final class Index extends Component
@@ -74,13 +81,19 @@ final class Index extends Component
         session()->flash('status', __('admin.member_added'));
     }
 
-    public function changeRole(int $userId, string $roleName): void
+    public function changeRole(string $memberUlid, string $roleName): void
     {
         $actor = auth()->user();
-        $target = User::query()->find($userId);
+        $target = $this->siteMember($memberUlid);
         $role = $this->siteRole($roleName);
 
-        if (! $actor instanceof User || ! $target instanceof User || ! $role instanceof Role) {
+        if (! $target instanceof User) {
+            session()->flash('error', __('admin.member_not_found'));
+
+            return;
+        }
+
+        if (! $actor instanceof User || ! $role instanceof Role) {
             return;
         }
 
@@ -106,12 +119,18 @@ final class Index extends Component
         session()->flash('status', __('admin.saved'));
     }
 
-    public function removeMember(int $userId): void
+    public function removeMember(string $memberUlid): void
     {
         $actor = auth()->user();
-        $target = User::query()->find($userId);
+        $target = $this->siteMember($memberUlid);
 
-        if (! $actor instanceof User || ! $target instanceof User) {
+        if (! $target instanceof User) {
+            session()->flash('error', __('admin.member_not_found'));
+
+            return;
+        }
+
+        if (! $actor instanceof User) {
             return;
         }
 
@@ -140,7 +159,7 @@ final class Index extends Component
         $siteId = app(CurrentSite::class)->id();
 
         $members = User::query()
-            ->select('users.id', 'users.name', 'users.email')
+            ->select('users.id', 'users.ulid', 'users.name', 'users.email')
             ->join('model_has_roles as mhr', 'mhr.model_id', '=', 'users.id')
             ->where('mhr.model_type', User::class)
             ->where('mhr.site_id', $siteId)
@@ -160,6 +179,19 @@ final class Index extends Component
         $view->title(__('admin.users'));
 
         return $view;
+    }
+
+    /** A member of the CURRENT site (holds a role in its team), addressed by public ulid. */
+    private function siteMember(string $ulid): ?User
+    {
+        return User::query()
+            ->where('ulid', $ulid)
+            ->whereExists(fn (Builder $membership): Builder => $membership->selectRaw('1')
+                ->from('model_has_roles')
+                ->whereColumn('model_has_roles.model_id', 'users.id')
+                ->where('model_has_roles.model_type', User::class)
+                ->where('model_has_roles.site_id', app(CurrentSite::class)->id()))
+            ->first();
     }
 
     private function siteRole(string $name): ?Role

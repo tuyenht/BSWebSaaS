@@ -56,7 +56,7 @@
             </thead>
             <tbody class="divide-y divide-border-soft">
                 @forelse ($members as $member)
-                    <tr wire:key="member-{{ $member->id }}">
+                    <tr wire:key="member-{{ $member->ulid }}">
                         <td class="px-4 py-3 font-medium text-heading">{{ $member->name }}</td>
                         <td class="px-4 py-3 text-body-muted">{{ $member->email }}</td>
                         <td class="px-4 py-3">
@@ -69,7 +69,7 @@
                         <td class="px-4 py-3">
                             <div class="flex items-center justify-end gap-2">
                                 @if ($assignableRoles->isNotEmpty())
-                                    <select wire:change="changeRole({{ $member->id }}, $event.target.value)"
+                                    <select wire:change="changeRole(@js($member->ulid), $event.target.value)"
                                             class="rounded border border-border bg-surface px-2 py-1 text-xs text-body-text focus:border-admin-primary focus:outline-none">
                                         <option value="">{{ __('admin.change_role') }}</option>
                                         @foreach ($assignableRoles as $role)
@@ -78,7 +78,7 @@
                                     </select>
                                 @endif
                                 <button type="button"
-                                        x-on:click="$bsConfirm({ text: @js(__('admin.member_remove_confirm')), confirm: @js(__('admin.remove')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.removeMember({{ $member->id }}))"
+                                        x-on:click="$bsConfirm({ text: @js(__('admin.member_remove_confirm')), confirm: @js(__('admin.remove')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.removeMember(@js($member->ulid)))"
                                         class="rounded px-2 py-1 text-xs font-medium text-admin-danger transition-colors hover:bg-admin-danger/10">
                                     {{ __('admin.remove') }}
                                 </button>

@@ -243,6 +243,7 @@
     "admin.member_removed": "Đã gỡ thành viên.",
     "admin.member_remove_confirm": "Gỡ thành viên này khỏi website?",
     "admin.member_remove_denied": "Bạn không thể gỡ thành viên này.",
+    "admin.member_not_found": "Người này không còn là thành viên của website. Hãy tải lại trang để xem danh sách mới nhất.",
     "admin.role_change_denied": "Bạn không thể gán vai trò đó.",
     "admin.user_not_found": "Không có tài khoản với email này.",
     "admin.role_not_found": "Không tìm thấy vai trò.",

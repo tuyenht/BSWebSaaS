@@ -243,6 +243,7 @@
     "admin.member_removed": "Member removed.",
     "admin.member_remove_confirm": "Remove this member from the site?",
     "admin.member_remove_denied": "You can't remove this member.",
+    "admin.member_not_found": "This person is no longer a member of this site. Reload the page to see the current list.",
     "admin.role_change_denied": "You can't assign that role.",
     "admin.user_not_found": "No account with that email.",
     "admin.role_not_found": "Role not found.",

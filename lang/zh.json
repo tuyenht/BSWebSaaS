@@ -210,6 +210,7 @@
     "admin.member_removed": "已移除成员。",
     "admin.member_remove_confirm": "将该成员从网站移除？",
     "admin.member_remove_denied": "您无法移除该成员。",
+    "admin.member_not_found": "此人已不是本网站的成员。请刷新页面查看最新列表。",
     "admin.role_change_denied": "您无法分配该角色。",
     "admin.user_not_found": "没有使用该邮箱的账户。",
     "admin.role_not_found": "未找到角色。",
