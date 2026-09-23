@@ -9,7 +9,7 @@
 ## 0. Bối cảnh & nguyên tắc tối cao
 
 - **Dự án:** SaaS **multi-tenant** website builder (kiểu Sapo/Haravan thu gọn). GĐ1: website giới thiệu công ty/sản phẩm + giỏ hàng + đặt hàng (**COD + VietQR**, KHÔNG cổng thanh toán online).
-- **🎯 NORTH-STAR SẢN PHẨM (owner chốt 06/07/2026):** bộ khung này (kiến trúc + CSDL + admin UI + phân cấp/phân quyền) là **SẢN PHẨM tái sử dụng/bán được** (mọi dự án công ty + bán sàn code) — dùng cho MỌI thể loại admin: **đa ngôn ngữ · phân cấp/phân quyền ĐỘNG · workflow duyệt ĐỘNG per-site × per-thể-loại (super_admin bật riêng; MẶC ĐỊNH TẮT)**. Hệ quả bắt buộc mọi quyết định: license-clean (GPL cấm) · white-label (zero hardcode brand/tenant ngoài config + seeder) · chuẩn hóa · **scale 10.000+ tenant × hàng triệu record/tenant vẫn nhanh** (paginate + eager + budget-test mọi list; UI qua component library). Ưu tiên thi công hiện hành: xem `plans/` (master backlog) — CLAUDE.md KHÔNG giữ trạng thái/tiến độ (§10.6). Backlog thương mại hóa: `plans/260706-1040-framework-as-product-northstar/`.
+- **🎯 NORTH-STAR SẢN PHẨM (owner chốt 06/07/2026):** bộ khung này (kiến trúc + CSDL + admin UI + phân cấp/phân quyền) là **SẢN PHẨM tái sử dụng/bán được** (mọi dự án công ty + bán sàn code) — dùng cho MỌI thể loại admin: **đa ngôn ngữ · phân cấp/phân quyền ĐỘNG · workflow duyệt ĐỘNG per-site × per-thể-loại (super_admin bật riêng; MẶC ĐỊNH TẮT)**. Hệ quả bắt buộc mọi quyết định: license-clean (GPL cấm) · white-label (zero hardcode brand/tenant ngoài config + seeder) · chuẩn hóa · **scale 10.000+ tenant × hàng triệu record/tenant vẫn nhanh** (paginate + eager + budget-test mọi list; UI qua component library). Ưu tiên thi công hiện hành: xem `docs/roadmap.md` — CLAUDE.md KHÔNG giữ trạng thái/tiến độ (§10.6). Backlog thương mại hóa: `docs/roadmap.md` §4 (chi tiết nháp cục bộ `plans/260706-1040-framework-as-product-northstar/`).
 - **Quy mô đích:** 10.000+ khách, mỗi khách nhiều site; nhưng **bắt đầu từ 1 site thật (An Vinh)**.
 - **Bối cảnh phát triển:** làm **SOLO + vibe-coding**. → Thứ tự ưu tiên BẤT DI BẤT DỊCH: **chất lượng → hiệu năng → vận hành → tiến độ.**
 - **Quy tắc làm việc:**
@@ -173,7 +173,7 @@ docker compose restart horizon                        # sau khi sửa Job/Listen
 > prototype `.dc.html` + README theo mẫu `docs/design_handoff_*/`. Có handoff mới port 1:1. Sửa lặt vặt trên màn hình
 > ĐÃ có design (thêm 1 nút/1 cột) → hỏi owner: tự làm theo token sẵn có hay qua Claude Design.
 
-> **Thứ tự/trạng thái hiện hành:** xem `plans/` (master backlog) + `git log` — CLAUDE.md KHÔNG giữ tiến độ (§10.6).
+> **Thứ tự/trạng thái hiện hành:** xem `docs/roadmap.md` + `git log` — CLAUDE.md KHÔNG giữ tiến độ (§10.6). `plans/` bị `.gitignore` = nháp cục bộ; brief/prompt gửi Claude Design lưu ở `docs/design-briefs/` (bản đồ tài liệu: `docs/README.md`).
 
 ---
 

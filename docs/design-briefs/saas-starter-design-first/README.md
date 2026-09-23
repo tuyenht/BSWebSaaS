@@ -2,7 +2,7 @@
 
 **Chốt:** owner 23–24/09/2026 (design-first; khu đăng nhập giữ nguyên; nối mọi màn vào Admin Shell thành prototype liền mạch).
 **Đây là bản gốc** của bộ prompt — sửa trực tiếp ở `prompts/`. Trang copy có nút sao chép + đánh dấu tiến độ: https://claude.ai/artifact/ADEfS7nBGv15dM9txkQd2J
-**Sổ đo độ phủ:** `docs/saas-starter-screen-map.md` · **Quyết định dữ liệu đi kèm:** `docs/design.md` changelog v2.22.
+**Sổ đo độ phủ:** `docs/saas-starter-screen-map.md` · **Quyết định dữ liệu đi kèm:** `docs/design.md` changelog v2.23.
 
 ## Cách dùng
 - Mỗi file trong `prompts/` = **1 lượt chat mới** trong project Claude Design BSWebSaaS; copy nguyên văn, gửi. Không gộp 2 file vào 1 lượt (hết hạn mức giữa chừng).
