@@ -580,5 +580,16 @@
     "rbac.invitation.mail_intro": ":inviter さんが、ウェブサイト :site の管理にあなたを招待しています（役割：:roles）。",
     "rbac.invitation.mail_action": "招待を受ける",
     "rbac.invitation.mail_expiry": "この招待は :date まで有効です。",
-    "rbac.invitation.mail_ignore": "この招待にお心当たりがない場合は、このメールを無視してください。何も変更されません。"
+    "rbac.invitation.mail_ignore": "この招待にお心当たりがない場合は、このメールを無視してください。何も変更されません。",
+    "notifications.workflow.assigned": ":actor さんが「:title」をあなたに割り当てました。",
+    "notifications.workflow.returned": ":actor さんが「:title」を修正のため差し戻しました。",
+    "notifications.workflow.published": ":actor さんが「:title」を公開しました。",
+    "notifications.workflow.pending_review": ":actor さんが「:title」を提出しました。あなたの承認待ちです。",
+    "notifications.lead.new": ":name さんから新しいお問い合わせがあります。",
+    "notifications.security.new_device_login": "あなたのアカウントが新しい端末からログインしました。",
+    "notifications.security.two_factor_disabled": ":at にアカウントの2段階認証がオフになりました。",
+    "notifications.system.storage_near_limit": "メディアライブラリの容量がプランの上限に近づいています。",
+    "notifications.mail.two_factor_disabled_subject": "2段階認証がオフになりました",
+    "notifications.mail.two_factor_disabled_intro": ":at にアカウントの2段階認証がオフになりました。",
+    "notifications.mail.two_factor_disabled_action": "お心当たりがない場合は、すぐにパスワードを変更し、2段階認証を再度オンにしてください。"
 }

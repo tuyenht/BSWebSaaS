@@ -580,5 +580,16 @@
     "rbac.invitation.mail_intro": ":inviter 邀请您以 :roles 的角色参与管理网站 :site。",
     "rbac.invitation.mail_action": "接受邀请",
     "rbac.invitation.mail_expiry": "邀请有效期至 :date。",
-    "rbac.invitation.mail_ignore": "如果您并未预期收到此邀请，请忽略本邮件——不会有任何变化。"
+    "rbac.invitation.mail_ignore": "如果您并未预期收到此邀请，请忽略本邮件——不会有任何变化。",
+    "notifications.workflow.assigned": ":actor 将《:title》分配给了您。",
+    "notifications.workflow.returned": ":actor 退回了《:title》，需要修改。",
+    "notifications.workflow.published": ":actor 发布了《:title》。",
+    "notifications.workflow.pending_review": ":actor 提交了《:title》，等待您审核。",
+    "notifications.lead.new": "新的客户咨询：:name。",
+    "notifications.security.new_device_login": "您的账号刚刚在新设备上登录。",
+    "notifications.security.two_factor_disabled": "您的账号已于 :at 关闭两步验证。",
+    "notifications.system.storage_near_limit": "媒体库即将达到套餐的存储上限。",
+    "notifications.mail.two_factor_disabled_subject": "两步验证已关闭",
+    "notifications.mail.two_factor_disabled_intro": "您的账号已于 :at 关闭两步验证。",
+    "notifications.mail.two_factor_disabled_action": "如果不是您本人操作，请立即修改密码并重新开启两步验证。"
 }

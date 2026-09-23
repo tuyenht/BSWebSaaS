@@ -183,6 +183,8 @@ it('does not notify when the form has no recipients', function (): void {
         ['name' => 'Khách', 'email' => 'k@example.test'],
     ));
 
-    Notification::assertNothingSent();
+    // No lead EMAIL without recipients. (Members who may read leads still get the in-app notice —
+    // a separate channel, covered by the notifications tests.)
+    Notification::assertSentTimes(NewLeadNotification::class, 0);
     expect(app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->count()))->toBe(1);
 });

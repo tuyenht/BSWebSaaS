@@ -6,6 +6,7 @@ use App\Modules\Cms\Providers\CmsServiceProvider;
 use App\Modules\Forms\Providers\FormsServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
 use App\Modules\Media\Providers\MediaServiceProvider;
+use App\Modules\Notifications\Providers\NotificationsServiceProvider;
 use App\Modules\Provisioning\Providers\ProvisioningServiceProvider;
 use App\Modules\Rbac\Providers\RbacServiceProvider;
 use App\Modules\Tenancy\Providers\TenancyServiceProvider;
@@ -19,6 +20,7 @@ return [
     IdentityServiceProvider::class,
     TenancyServiceProvider::class,
     RbacServiceProvider::class,
+    NotificationsServiceProvider::class,
     ProvisioningServiceProvider::class,
     ThemeServiceProvider::class,
     CmsServiceProvider::class,

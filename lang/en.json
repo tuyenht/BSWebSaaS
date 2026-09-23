@@ -762,5 +762,16 @@
     "rbac.invitation.mail_intro": ":inviter invites you to help manage the website :site as: :roles.",
     "rbac.invitation.mail_action": "Accept the invitation",
     "rbac.invitation.mail_expiry": "The invitation is valid until :date.",
-    "rbac.invitation.mail_ignore": "If you were not expecting this invitation, ignore this email — nothing will change."
+    "rbac.invitation.mail_ignore": "If you were not expecting this invitation, ignore this email — nothing will change.",
+    "notifications.workflow.assigned": ":actor assigned «:title» to you.",
+    "notifications.workflow.returned": ":actor sent «:title» back for changes.",
+    "notifications.workflow.published": ":actor published «:title».",
+    "notifications.workflow.pending_review": ":actor submitted «:title» — it is waiting for your review.",
+    "notifications.lead.new": "New enquiry from :name.",
+    "notifications.security.new_device_login": "Your account just signed in from a new device.",
+    "notifications.security.two_factor_disabled": "Two-step sign-in was turned off on your account at :at.",
+    "notifications.system.storage_near_limit": "The media library is almost at your plan’s storage limit.",
+    "notifications.mail.two_factor_disabled_subject": "Two-step sign-in was turned off",
+    "notifications.mail.two_factor_disabled_intro": "Two-step sign-in on your account was turned off at :at.",
+    "notifications.mail.two_factor_disabled_action": "If this was not you, change your password now and turn two-step sign-in back on."
 }

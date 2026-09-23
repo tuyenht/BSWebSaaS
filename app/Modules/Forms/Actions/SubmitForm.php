@@ -8,6 +8,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Notifications\NewLeadNotification;
 use App\Modules\Forms\Services\TurnstileVerifier;
+use App\Modules\Notifications\Support\Notify;
 use Illuminate\Support\Facades\Notification;
 use Throwable;
 
@@ -55,6 +56,13 @@ final readonly class SubmitForm
 
         if (! $isSpam) {
             $this->notify($form, $submission);
+
+            // In-app: everyone on the site who may read leads sees a new one in their bell.
+            Notify::holdersOf('forms.view', 'lead.new', [
+                'submission' => $submission->ulid,
+                // Who to call back — the name, else the phone, else the email the visitor left.
+                'name' => $submission->name ?: ($submission->phone ?: ($submission->email ?: '—')),
+            ]);
         }
 
         return $submission;

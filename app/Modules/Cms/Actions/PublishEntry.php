@@ -5,6 +5,7 @@ namespace App\Modules\Cms\Actions;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryNotifier;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
@@ -31,6 +32,7 @@ final readonly class PublishEntry
     public function __construct(
         private RouteSync $routes,
         private EntryWorkflowResolver $workflows,
+        private EntryNotifier $notifier,
     ) {}
 
     /**
@@ -66,6 +68,10 @@ final readonly class PublishEntry
 
             EntryStatusAudit::record($entry, $from, 'published', 'publish', $actor);
 
+            if ($from !== 'published') {
+                $this->notifier->published($entry, $locale, $actor);   // tells the author, unless they published it
+            }
+
             return 'published';
         }
 
@@ -80,6 +86,10 @@ final readonly class PublishEntry
             $translation->update(['status' => 'pending']);
 
             EntryStatusAudit::record($entry, $from, 'pending', 'submit', $actor);
+
+            if ($from !== 'pending') {
+                $this->notifier->awaitingReview($entry, $locale, $actor, 'entries.publish');   // the publishers
+            }
 
             return 'pending';
         }

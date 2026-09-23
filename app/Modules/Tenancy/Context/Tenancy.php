@@ -47,6 +47,38 @@ final readonly class Tenancy
     }
 
     /**
+     * Run $callback inside each site's context in turn — the entry point for background work that
+     * sweeps every site (retention, cleanup…), so feature modules never walk the site registry
+     * themselves. Sites are read in id order, $chunk at a time (keyset, so 10,000+ sites never load
+     * at once); every call gets its own transaction, exactly like enter(). Returns how many sites
+     * were visited.
+     *
+     * @param  Closure(int):mixed  $callback  receives the site id
+     */
+    public function eachSite(Closure $callback, int $chunk = 200): int
+    {
+        $visited = 0;
+        $after = 0;
+
+        do {
+            $ids = $this->db->connection()->table('sites')->where('id', '>', $after)->orderBy('id')->limit($chunk)->pluck('id');
+
+            foreach ($ids as $id) {
+                if (! is_numeric($id)) {
+                    continue;
+                }
+
+                $siteId = (int) $id;
+                $this->enter($siteId, fn (): mixed => $callback($siteId));
+                $after = $siteId;
+                $visited++;
+            }
+        } while ($ids->count() === $chunk);
+
+        return $visited;
+    }
+
+    /**
      * Assert the DB actually sees the site we resolved (turns a silent cross-tenant
      * bug into a loud failure). strict = always; sample = 1/N; off = skip.
      */

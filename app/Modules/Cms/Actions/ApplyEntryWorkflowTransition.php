@@ -5,6 +5,7 @@ namespace App\Modules\Cms\Actions;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryNotifier;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
@@ -33,6 +34,7 @@ final readonly class ApplyEntryWorkflowTransition
         private EntryWorkflowResolver $workflows,
         private WorkflowEngine $engine,
         private RouteSync $routes,
+        private EntryNotifier $notifier,
     ) {}
 
     /**
@@ -107,7 +109,27 @@ final readonly class ApplyEntryWorkflowTransition
         // query answer "who changed this entry's status, by any road" across tier-1 and tier-2.
         EntryStatusAudit::record($entry, $fromStatus, $entry->status, 'workflow', $actor, ['transition' => $transitionKey]);
 
+        $this->notify($entry, $locale, $actor, $note, $assignTo);
+
         return $destinationKey;
+    }
+
+    /**
+     * Who hears about this move: an assignee is told the work is theirs; the author learns their
+     * entry went live, or came back with the reviewer's note; otherwise the reviewers learn that
+     * something waits for them. Still inside the caller's tenant transaction.
+     */
+    private function notify(Entry $entry, string $locale, User $actor, ?string $note, ?int $assignTo): void
+    {
+        if ($assignTo !== null) {
+            $this->notifier->assigned($entry, $locale, $actor, $assignTo);
+        }
+
+        match ($entry->status) {
+            'published' => $this->notifier->published($entry, $locale, $actor),
+            'draft' => $this->notifier->returned($entry, $locale, $actor, $note),
+            default => $assignTo === null ? $this->notifier->awaitingReview($entry, $locale, $actor, 'entries.review') : null,
+        };
     }
 
     /** The date to stamp when content goes live — see the call site for why a future slot is dropped. */
