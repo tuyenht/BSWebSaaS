@@ -242,7 +242,7 @@ jobs:
           install-chromedriver: true
 
       # Self-contained: lhci boots `php artisan serve`, waits for it, runs Lighthouse 3x,
-      # asserts against .lighthouserc.json (currently all "warn" — see file comment), then
+      # asserts against .lighthouserc.cjs (currently all "warn" — see file comment), then
       # stops the server. Assertions are informational while thresholds get calibrated
       # against real measurements; nothing here fails the job.
       - name: Lighthouse CI (performance + LCP + JS budget)
