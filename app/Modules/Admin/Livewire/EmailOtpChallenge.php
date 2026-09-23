@@ -90,7 +90,9 @@ final class EmailOtpChallenge extends Component
             'meta' => ['factor' => 'email_otp'],
         ]);
 
-        return $this->redirectRoute(AdminPlane::prefix().'.dashboard', navigate: false);
+        // Back to the page that sent the visitor to sign in (a protected page, or an invitation
+        // link) — the session's intended URL, set on this host only — else the dashboard.
+        return $this->redirectIntended(route(AdminPlane::prefix().'.dashboard'), navigate: false);
     }
 
     public function resend(): void

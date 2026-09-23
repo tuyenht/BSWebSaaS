@@ -20,8 +20,8 @@
 | Trạng thái | Việc |
 |---|---|
 | ✅ Xong | Q14 luật kiến trúc "module tính năng không đọc thẳng `Tenancy\Models`" có hiệu lực lại + danh sách nợ 8 class · trang 404 hiện đúng tên website (white-label) — PR #67 · Q10 dòng báo thành công sau đặt lại mật khẩu / xác minh email — PR #68 · Q13 `docs/` là nơi bền cho brief + roadmap + sổ màn — PR #69 |
-| ✅ Backend xong (UI chờ thiết kế) | Q2 ngôn ngữ "cho khách xem" (`site_locales.is_public`) + hạn mức `locales.max` (mặc định 2) + đường ghi `Tenancy\Actions\ConfigureSiteLocale`; sitemap/hreflang chỉ liệt kê địa chỉ mở được — màn D3-1 · Q3 trình đơn trỏ Sản phẩm (`link_type` `product`, Catalog đăng ký qua `Cms\Navigation\MenuTargets`) + trình đơn không còn link tới trang/sản phẩm đã gỡ hoặc trong thùng rác — màn D1-2 |
-| 🔄 Đang làm (owner duyệt shape 24/09) | Q4 bảng lời mời · Q5 bảng thông báo · Q1 cột `site_profiles` còn thiếu so với §14 + danh mục phường/xã–tỉnh/thành + chuyển đường đọc NAP — đặc tả `plans/260924-0103-saas-starter-schema-increments/` |
+| ✅ Backend xong (UI chờ thiết kế) | Q2 ngôn ngữ "cho khách xem" (`site_locales.is_public`) + hạn mức `locales.max` (mặc định 2) + đường ghi `Tenancy\Actions\ConfigureSiteLocale`; sitemap/hreflang chỉ liệt kê địa chỉ mở được — màn D3-1 · Q3 trình đơn trỏ Sản phẩm (`link_type` `product`, Catalog đăng ký qua `Cms\Navigation\MenuTargets`) + trình đơn không còn link tới trang/sản phẩm đã gỡ hoặc trong thùng rác — màn D1-2 · Q4 lời mời thành viên (`invitations` + trả lời đồng nhất, vá lỗ dò email) + màn nhận lời mời theo khung đăng nhập (Q9) — tab Lời mời chờ D2-2 |
+| 🔄 Đang làm (owner duyệt shape 24/09) | Q5 bảng thông báo · Q1 cột `site_profiles` còn thiếu so với §14 + danh mục phường/xã–tỉnh/thành + chuyển đường đọc NAP — đặc tả `plans/260924-0103-saas-starter-schema-increments/` |
 | ⏳ Làm cùng màn | Q6 ngôn ngữ/cỡ chữ theo người (`users.preferences`) + Q7 trang Tài khoản — khi build D2-3 · Q8 Shell chung 2 mặt — khi build D0-4/D4 · Q9 màn mới khu đăng nhập — theo §LR |
 | ⏭ Sau | Q11 palette An Vinh v2 (chờ bộ sinh bảng màu + khách duyệt) · Q12 bộ AI = module sau core v1 · trả nợ 8 class của Q14 qua `Tenancy\Context` |
 

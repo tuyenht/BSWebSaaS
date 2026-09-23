@@ -2,26 +2,35 @@
 
 namespace App\Modules\Admin\Livewire\Users;
 
+use App\Modules\Admin\Notifications\MemberInvitationNotification;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\AssignRole;
+use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\RevokeRole;
+use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Role;
+use App\Modules\Rbac\Support\IssuedInvitation;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\SiteLocale;
+use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Models\Site;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
 /**
- * Site members + their roles. Add an existing account to this site with a role, change a
- * member's role, or remove them. Every mutation routes through the guarded AssignRole /
- * RevokeRole actions, so the no-escalation hierarchy invariant holds (grant/revoke strictly
- * below your own level, within your own permissions); the role <select> only ever offers
- * roles the actor may grant. Gated by `users.manage` (owner/admin, super_admin via Gate::before).
+ * Site members + their roles. Invite an address with a role (InviteMember — the holder accepts
+ * from the mailed link), change a member's role, or remove them. Every grant routes through the
+ * guarded InviteMember / AssignRole / RevokeRole actions, so the no-escalation hierarchy invariant
+ * holds (grant/revoke strictly below your own level, within your own permissions); the role
+ * <select> only ever offers roles the actor may grant. Gated by `users.manage` (owner/admin,
+ * super_admin via Gate::before); inviting also needs `users.invite`.
  *
  * `users` is GLOBAL identity (D6 — no RLS), so nothing below the app stops a lookup by key from
  * reaching another tenant's account. Change/remove therefore resolve their target through
@@ -43,22 +52,21 @@ final class Index extends Component
         abort_unless(Gate::allows('users.manage'), 403);
     }
 
+    /**
+     * Invite an address with a role (design.md §15.3). The reply is the same sentence whether or
+     * not the address holds an account anywhere on the platform — it used to answer "no account
+     * with this email", which let any site admin probe the platform's user list. The mail goes to
+     * the address; its holder signs in or creates the account from the link.
+     */
     public function addMember(): void
     {
         $this->validate([
-            'inviteEmail' => 'required|email',
+            'inviteEmail' => 'required|email|max:254',
             'inviteRole' => 'required|string',
         ]);
 
         $actor = auth()->user();
         if (! $actor instanceof User) {
-            return;
-        }
-
-        $target = User::query()->firstWhere('email', $this->inviteEmail);
-        if (! $target instanceof User) {
-            $this->addError('inviteEmail', __('admin.user_not_found'));
-
             return;
         }
 
@@ -70,15 +78,24 @@ final class Index extends Component
         }
 
         try {
-            app(AssignRole::class)->handle($actor, $target, $role);
+            $issued = app(InviteMember::class)->handle($actor, $this->inviteEmail, [$role]);
         } catch (AuthorizationException) {
             $this->addError('inviteRole', __('admin.role_change_denied'));
 
             return;
+        } catch (InvitationRejectedException $e) {
+            $this->addError('inviteEmail', __('rbac.invitation.error_'.$e->reason));
+
+            return;
         }
 
+        $this->mailInvitation($issued, $actor);
+
         $this->reset('inviteEmail', 'inviteRole');
-        session()->flash('status', __('admin.member_added'));
+        session()->flash('status', __('rbac.invitation.sent', [
+            'email' => $issued->invitation->email,
+            'days' => InviteMember::VALID_DAYS,
+        ]));
     }
 
     public function changeRole(string $memberUlid, string $roleName): void
@@ -200,5 +217,29 @@ final class Index extends Component
             ->where('site_id', app(CurrentSite::class)->id())
             ->where('name', $name)
             ->first();
+    }
+
+    /**
+     * Queue the invitation mail. Everything is composed here, in the request: the worker has no
+     * host to build the link from and no site context to read names in. Same mail for every
+     * address — the invitation page decides whether to sign in or create the account.
+     */
+    private function mailInvitation(IssuedInvitation $issued, User $actor): void
+    {
+        $invitation = $issued->invitation;
+        $siteName = Site::query()->whereKey(app(CurrentSite::class)->id())->value('name');
+        $expiresAt = app(SiteTime::class)->forDisplay($invitation->expires_at);
+
+        $notification = (new MemberInvitationNotification(
+            acceptUrl: route('admin.invitations.accept', ['token' => $issued->token]),
+            siteName: is_string($siteName) && $siteName !== '' ? $siteName : request()->getHost(),
+            inviterName: $actor->name,
+            roles: array_values($invitation->roles()->get()->map(fn (Role $role): array => ['name' => $role->name, 'system' => $role->is_system])->all()),
+            personalMessage: $invitation->message,
+            expiresOn: $expiresAt?->format('d/m/Y H:i') ?? '',
+        ))->forCurrentSite();
+
+        Notification::route('mail', $invitation->email)
+            ->notify($notification->locale(app(SiteLocale::class)->default()));
     }
 }
