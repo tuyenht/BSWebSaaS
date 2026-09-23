@@ -8,7 +8,7 @@
  * An Vinh's current values (what you'll see if you inspect a rendered page):
  *   --ink      #111111 default → An Vinh #0f172a (slate-900) — headings, dark
  *              surface fills (header/footer), text-on-`--primary`
- *   --primary  #0a66c2 default → An Vinh #f59e0b (amber-500) — accent, CTA,
+ *   --primary  #3b82f6 default → An Vinh #f59e0b (amber-500) — accent, CTA,
  *              section borders; hover/light shades are `color-mix()` off this
  *   --surface  #ffffff (card backgrounds; page-bg/pagination-bg are tints of it)
  *   --body     #333333 default → An Vinh #334155 (slate-700) — long-form copy;

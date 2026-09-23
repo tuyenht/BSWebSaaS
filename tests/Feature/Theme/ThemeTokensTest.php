@@ -26,7 +26,7 @@ it('applies a site-specific design token over the shared template', function ():
 });
 
 it('falls back to default tokens when a site has none', function (): void {
-    expect(renderHome(2))->toContain('--primary:#0a66c2');
+    expect(renderHome(2))->toContain('--primary:#3b82f6');
 });
 
 it('isolates tokens per site', function (): void {
@@ -35,7 +35,7 @@ it('isolates tokens per site', function (): void {
     ]));
 
     expect(renderHome(1))->toContain('--primary:#ff0000');
-    expect(renderHome(2))->toContain('--primary:#0a66c2')->not->toContain('#ff0000');
+    expect(renderHome(2))->toContain('--primary:#3b82f6')->not->toContain('#ff0000');
 });
 
 it('sanitizes a malicious token value (no CSS breakout)', function (): void {
@@ -44,5 +44,5 @@ it('sanitizes a malicious token value (no CSS breakout)', function (): void {
     ]));
 
     $html = renderHome(1);
-    expect($html)->not->toContain('display:none')->toContain('--primary:#0a66c2'); // rejected → default
+    expect($html)->not->toContain('display:none')->toContain('--primary:#3b82f6'); // rejected → default
 });

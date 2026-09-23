@@ -9,7 +9,7 @@ beforeEach(fn () => seedTenancy());
 it('returns the six safe defaults when a site has no theme setting', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         expect(app(ThemeResolver::class)->tokens())->toBe([
-            'primary' => '#0a66c2',
+            'primary' => '#3b82f6',
             'surface' => '#ffffff',
             'text' => '#111111',
             'font' => 'system-ui, sans-serif',
@@ -46,7 +46,7 @@ it('drops a token value that could break out of the CSS custom property', functi
             'value' => ['primary' => '#fff;}body{background:url(javascript:alert(1))'],
         ]);
 
-        expect(app(ThemeResolver::class)->tokens()['primary'])->toBe('#0a66c2');
+        expect(app(ThemeResolver::class)->tokens()['primary'])->toBe('#3b82f6');
     });
 });
 
@@ -58,14 +58,14 @@ it('drops a token key that is not a plain CSS custom property name', function ()
             'value' => ['primary; --evil' => '#000000'],
         ]);
 
-        expect(app(ThemeResolver::class)->tokens())->toHaveKey('primary', '#0a66c2')
+        expect(app(ThemeResolver::class)->tokens())->toHaveKey('primary', '#3b82f6')
             ->not->toHaveKey('primary; --evil');
     });
 });
 
 it('falls back to safe defaults with no site context at all', function (): void {
     expect(app(ThemeResolver::class)->tokens())->toBe([
-        'primary' => '#0a66c2',
+        'primary' => '#3b82f6',
         'surface' => '#ffffff',
         'text' => '#111111',
         'font' => 'system-ui, sans-serif',

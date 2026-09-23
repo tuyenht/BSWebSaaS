@@ -19,7 +19,12 @@ final class ThemeResolver
 {
     /** @var array<string, string> */
     private const array DEFAULTS = [
-        'primary' => '#0a66c2',
+        // #3b82f6, not the more obvious #0a66c2: storefront.css puts `ink` as TEXT on
+        // top of `primary` (buttons, CTAs) as well as using it for headings — a site
+        // that never configures a theme gets this pairing for free, and #0a66c2 only
+        // clears ~3.3:1 against #111111 (WCAG2AA needs 4.5:1 for normal text; axe
+        // caught it live in the `cwv` CI job, 23/09). #3b82f6 clears ~5.1:1.
+        'primary' => '#3b82f6',
         'surface' => '#ffffff',
         'text' => '#111111',
         'font' => 'system-ui, sans-serif',
