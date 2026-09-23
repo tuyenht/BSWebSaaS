@@ -129,6 +129,7 @@ docker compose up -d                       # PG17 + PgBouncer + Valkey + Franken
 docker compose run --rm --no-deps app php artisan migrate --database=pgsql_admin --force
 
 # Test & QA (chạy TRƯỚC khi commit) — test chạy trên PostgreSQL thật, role app_user:
+# (DB test DÙNG CHUNG, không rollback: TestCase giữ advisory lock trên pgsql_admin ⇒ lần chạy Pest thứ 2 in "waiting…" và CHỜ, không phá dữ liệu nhau)
 docker compose run --rm --no-deps app vendor/bin/pest
 docker compose run --rm --no-deps app vendor/bin/phpstan analyse --memory-limit=1G   # Larastan max
 docker compose run --rm --no-deps app vendor/bin/pint --test
