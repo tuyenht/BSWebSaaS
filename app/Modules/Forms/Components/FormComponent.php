@@ -51,6 +51,7 @@ final class FormComponent implements Component
         return [
             'props' => $props,
             'action' => $form !== null ? '/forms/'.$form->key : null,
+            'locale' => $locale,
             'heading' => $form !== null ? $this->localized($form->name, $locale) : '',
             'fields' => $form?->fields->map(fn (FormField $field): array => [
                 'key' => $field->key,

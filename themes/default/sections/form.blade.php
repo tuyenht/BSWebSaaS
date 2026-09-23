@@ -19,6 +19,9 @@
         @endif
 
         <form class="lead-form__form" method="POST" action="{{ $action }}">
+            {{-- The language the visitor is reading, so errors and the thank-you come back in it
+                 (the POST URL carries no locale prefix). The server accepts only a public locale. --}}
+            <input type="hidden" name="locale" value="{{ $locale ?? '' }}">
             {{-- Honeypot: a real field name bots tend to fill, hidden from humans + the a11y tree.
                  A non-empty value flags the submission as spam server-side (SubmitForm). --}}
             <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">

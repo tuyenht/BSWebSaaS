@@ -4,6 +4,7 @@ use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Notifications\NewLeadNotification;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -72,6 +73,31 @@ it('renders validation errors in the site locale regardless of app.locale', func
 
     submitContact(['email' => 'a@example.test']) // missing name + message
         ->assertSessionHasErrors(['name' => 'Vui lòng nhập họ tên.']);
+});
+
+it('answers the visitor in the language of the page they filled in', function (): void {
+    app(Tenancy::class)->enter(1, fn () => SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]));
+
+    submitContact(['email' => 'a@example.test', 'locale' => 'en'])   // missing name + message
+        ->assertSessionHasErrors(['name' => 'Please enter your name.']);
+});
+
+it('falls back to the site default for a language visitors cannot open', function (): void {
+    app(Tenancy::class)->enter(1, fn () => SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => false]));
+
+    submitContact(['email' => 'a@example.test', 'locale' => 'en'])   // en is not public yet
+        ->assertSessionHasErrors(['name' => 'Vui lòng nhập họ tên.']);
+    submitContact(['email' => 'a@example.test', 'locale' => 'xx'])
+        ->assertSessionHasErrors(['name' => 'Vui lòng nhập họ tên.']);
+});
+
+it('emails the site owner in the site language whatever language the visitor used', function (): void {
+    app(Tenancy::class)->enter(1, fn () => SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]));
+
+    submitContact(['name' => 'Visitor', 'email' => 'v@example.test', 'message' => 'Quote please', 'locale' => 'en'])
+        ->assertSessionHas('form_success');
+
+    Notification::assertSentOnDemand(NewLeadNotification::class, fn (NewLeadNotification $note): bool => $note->locale === 'vi');
 });
 
 it('requires at least one of email or phone', function (): void {
