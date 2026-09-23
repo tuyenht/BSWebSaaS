@@ -35,7 +35,11 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
+            // A ULID local part, not fake()->unique(): faker's uniqueness lasts one test (the app —
+            // and its Faker — is rebuilt per test) while the suite's database is never rolled back,
+            // so users pile up across tests and runs and a random address eventually repeats
+            // (users_email_unique, CI run 35900519878).
+            'email' => Str::lower((string) Str::ulid()).'@'.fake()->safeEmailDomain(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
