@@ -110,11 +110,11 @@ final readonly class StorefrontController
     /**
      * Resolve the request's locale + UNPREFIXED content path from the URL (design.md §10/ADR-11).
      * The site's current default locale is unprefixed, so a /{default}/… request is a canonical
-     * violation → 301 to the clean path. A langcode-shaped first segment that is an ENABLED
+     * violation → 301 to the clean path. A langcode-shaped first segment that is a PUBLIC
      * non-default locale selects that locale (the remainder is its content path). Anything else
-     * — no prefix, or a langcode-shaped segment that is not an enabled locale — resolves as a
-     * default-locale path, so an unknown/disabled locale prefix simply 404s on the route miss
-     * (no soft-fallback to the default).
+     * — no prefix, or a langcode-shaped segment that is not a public locale — resolves as a
+     * default-locale path, so an unknown, disabled or not-yet-public locale prefix simply 404s on
+     * the route miss (no soft-fallback to the default).
      *
      * @return array{0: string, 1: string, 2: string|null} [locale, contentPath, redirectTo]
      */
@@ -133,17 +133,17 @@ final readonly class StorefrontController
             return [$default, $path, $rest];
         }
 
-        if ($this->locale->isEnabled($first)) {
+        if ($this->locale->isPublic($first)) {
             return [$first, '/'.implode('/', array_slice($segments, 1)), null];
         }
 
-        return [$default, $path, null];   // langcode-shaped but not enabled → 404 via route miss
+        return [$default, $path, null];   // langcode-shaped but not public → 404 via route miss
     }
 
     /**
      * A path segment shaped like a BCP-47 langcode — `en`, `vi`, `pt-br` (the path is
-     * already lower-cased). Broad SHAPE match only; isEnabled() decides whether it is a real,
-     * enabled locale. The 2-letter base excludes ordinary content slugs (e.g. `tin-tuc`).
+     * already lower-cased). Broad SHAPE match only; isPublic() decides whether it is a real
+     * locale visitors may open. The 2-letter base excludes ordinary content slugs (e.g. `tin-tuc`).
      */
     private function looksLikeLocale(string $segment): bool
     {
@@ -411,8 +411,10 @@ final readonly class StorefrontController
 
     /**
      * hreflang alternates for the resolved content (design.md §10/§18): one entry per locale the
-     * content is PUBLISHED in (self from the in-hand path; other locales from their stored route),
-     * plus x-default → the site default. Every URL is absolute + locale-prefixed via publicUrl.
+     * content is PUBLISHED in and visitors can open (self from the in-hand path; other locales from
+     * their stored route), plus x-default → the site default. A translation in a language the site
+     * has not made public yet is left out — its URL would 404. Every URL is absolute +
+     * locale-prefixed via publicUrl.
      *
      * @return list<array{hreflang: string, href: string}>
      */
@@ -422,11 +424,13 @@ final readonly class StorefrontController
             return [];   // product hreflang alternates are a later step (An Vinh products are single-locale)
         }
 
+        $public = $this->locale->public();
+
         if ($resolved instanceof ResolvedContent) {
             $entry = $resolved->entry;
             $others = [];
             foreach ($entry->translations as $translation) {
-                if ($translation->status === 'published' && $translation->locale !== $locale) {
+                if ($translation->status === 'published' && $translation->locale !== $locale && in_array($translation->locale, $public, true)) {
                     $others[] = $translation->locale;
                 }
             }
@@ -435,7 +439,7 @@ final readonly class StorefrontController
             $taxonomy = $resolved->taxonomy;
             $others = [];
             foreach ($taxonomy->translations as $translation) {
-                if ($translation->locale !== $locale) {
+                if ($translation->locale !== $locale && in_array($translation->locale, $public, true)) {
                     $others[] = $translation->locale;
                 }
             }

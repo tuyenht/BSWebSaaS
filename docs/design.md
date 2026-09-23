@@ -248,10 +248,11 @@ product_taxonomies(product_id, taxonomy_id, position)    -- typed pivot
 - **Locale theo site** (sống ở `site_locales`, KHÔNG pin bộ locale cứng vào phase — i18n lõi **locale-agnostic**: thêm locale bất kỳ per-site khi có khách thật cần). **An Vinh** (site tham chiếu): **vi/en/ja, default vi** — Phase 1 chỉ làm **vi**; en/ja giai đoạn sau (copy + dịch).
 - **Quản lý ngôn ngữ (default MUTABLE)** — quyền **`locales.manage`** (thêm/bật-tắt locale + đặt default), gate qua RBAC hiện có:
   - **Ràng buộc:** đúng **1 default/site** (partial unique — xem schema `site_locales`); default mới phải đang `enabled`; **cấm tắt/xóa default hiện tại khi chưa gán default khác**.
+  - **Soạn ≠ hiển thị (v2.23 Q2, as-built 24/09):** `enabled` = biên tập viên viết được; `is_public` = khách mở được (tiền tố URL, hreflang, sitemap) → chuẩn bị bản dịch trước khi cho khách thấy. CHECK: default luôn `enabled AND is_public`; `is_public ⇒ enabled`. Bật thêm ngôn ngữ tính vào hạn mức gói `locales.max` (mặc định 2, gồm cả default; site đã vượt giữ nguyên, chỉ không bật thêm) — đường ghi duy nhất `Tenancy\Actions\ConfigureSiteLocale`. Quyền gọi (UI D3-1) = `settings.manage` (registry chưa có `locales.manage`).
   - **Đổi default = high-impact:** kéo theo **mass 301 + recrawl** → khi đổi phải regenerate sitemap + bump `lastmod` + tag-bust cache URL/menu của site; **cảnh báo admin trước khi xác nhận**.
 
 ```sql
-site_locales(site_id, locale, is_default, enabled)   -- partial UNIQUE(site_id) WHERE is_default=true → đúng 1 default/site; default phải enabled
+site_locales(site_id, locale, is_default, enabled, is_public)   -- partial UNIQUE(site_id) WHERE is_default=true → đúng 1 default/site; CHECK default ⇒ enabled+public, public ⇒ enabled
 translation_overrides(site_id, locale, key, value)
 routes(id, site_id, locale, path, entry_id NULL, product_id NULL, taxonomy_id NULL, UNIQUE(site_id, locale, path), CHECK(num_nonnull(entry_id,product_id,taxonomy_id)=1))   -- TYPED (D3): đúng-một đích + ON DELETE CASCADE; sửa slug → tạo 301
 ```
