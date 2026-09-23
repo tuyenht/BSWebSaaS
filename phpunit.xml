@@ -24,29 +24,52 @@
         </include>
     </source>
     <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
-        <env name="BCRYPT_ROUNDS" value="4"/>
+        <!-- Every value is set as <env> AND <server>, both forced: the docker app container already
+             exports these from .env (APP_ENV=local, QUEUE_CONNECTION=redis, CACHE_STORE=redis,
+             SESSION_DRIVER=redis…), PHPUnit leaves an already-set variable alone unless forced, and
+             Laravel reads $_SERVER before $_ENV — which <env> alone never writes. Without this a local
+             run was not the CI run: queued jobs went to the dev Horizon queue and the tests shared
+             the dev Valkey cache and sessions. -->
+        <env name="APP_ENV" value="testing" force="true"/>
+        <server name="APP_ENV" value="testing" force="true"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>
+        <server name="APP_MAINTENANCE_DRIVER" value="file" force="true"/>
+        <env name="BCRYPT_ROUNDS" value="4" force="true"/>
+        <server name="BCRYPT_ROUNDS" value="4" force="true"/>
         <!-- Deterministic pepper + cheap Argon params keep the hashing tests fast. -->
-        <env name="AUTH_PASSWORD_PEPPER" value="test-only-pepper-not-a-secret"/>
-        <env name="ARGON_MEMORY" value="1024"/>
-        <env name="ARGON_TIME" value="1"/>
-        <env name="ARGON_THREADS" value="1"/>
-        <env name="BROADCAST_CONNECTION" value="null"/>
-        <env name="CACHE_STORE" value="array"/>
+        <env name="AUTH_PASSWORD_PEPPER" value="test-only-pepper-not-a-secret" force="true"/>
+        <server name="AUTH_PASSWORD_PEPPER" value="test-only-pepper-not-a-secret" force="true"/>
+        <env name="ARGON_MEMORY" value="1024" force="true"/>
+        <server name="ARGON_MEMORY" value="1024" force="true"/>
+        <env name="ARGON_TIME" value="1" force="true"/>
+        <server name="ARGON_TIME" value="1" force="true"/>
+        <env name="ARGON_THREADS" value="1" force="true"/>
+        <server name="ARGON_THREADS" value="1" force="true"/>
+        <env name="BROADCAST_CONNECTION" value="null" force="true"/>
+        <server name="BROADCAST_CONNECTION" value="null" force="true"/>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <server name="CACHE_STORE" value="array" force="true"/>
         <!-- Gate #1 tests run on REAL PostgreSQL (RLS cannot be proven on sqlite).
              DB_* inherit from .env (docker) / workflow env (CI), connecting as the
              restricted app_user so RLS is enforced during tests. -->
         <!-- Deterministic key for SecretCipher in tests (raw 32-byte string, no base64 prefix). -->
-        <env name="SETTINGS_ENCRYPTION_KEY" value="test-only-settings-key-32bytes!!"/>
+        <env name="SETTINGS_ENCRYPTION_KEY" value="test-only-settings-key-32bytes!!" force="true"/>
+        <server name="SETTINGS_ENCRYPTION_KEY" value="test-only-settings-key-32bytes!!" force="true"/>
         <!-- The r2 media disk is faked (Storage::fake) in tests, but MediaKey::assertConfigured()
              reads the disk bucket from config — give it a value so the config-guard passes. -->
-        <env name="R2_BUCKET" value="test-bucket"/>
-        <env name="MAIL_MAILER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="PULSE_ENABLED" value="false"/>
-        <env name="TELESCOPE_ENABLED" value="false"/>
-        <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="R2_BUCKET" value="test-bucket" force="true"/>
+        <server name="R2_BUCKET" value="test-bucket" force="true"/>
+        <env name="MAIL_MAILER" value="array" force="true"/>
+        <server name="MAIL_MAILER" value="array" force="true"/>
+        <env name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <server name="QUEUE_CONNECTION" value="sync" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <server name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="PULSE_ENABLED" value="false" force="true"/>
+        <server name="PULSE_ENABLED" value="false" force="true"/>
+        <env name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <server name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <env name="NIGHTWATCH_ENABLED" value="false" force="true"/>
+        <server name="NIGHTWATCH_ENABLED" value="false" force="true"/>
     </php>
 </phpunit>
