@@ -35,9 +35,14 @@
 | Gradient | `--gradient-1..3` sinh từ brand (brand→đậm · brand→accent · dark→brand) | |
 | Motion | `--motion-duration` (0.5s) · `--motion-distance` (24px) | 1 công tắc site tắt toàn bộ motion |
 
+**Hai tầng token (chốt 23/09/2026 — khớp as-built `ThemeResolver`):**
+- **Seed = giá trị LƯU per-site** (`site_settings` group `theme` key `tokens`) — contract bền: đổi tên seed = migrate data mọi tenant ⇒ tên giữ nguyên as-built: `primary` (màu thương hiệu — nguồn duy nhất của `--brand-50..900` + gradient) · `surface` (nền) · `ink` (gần-đen: heading, nền tối header/footer, chữ đặt trên nền `primary`) · `body` (màu chữ nội dung dài, mềm hơn `ink`) · `font` (fallback cho tới khi thêm cặp seed `font-heading`/`font-body` — additive). Seed do operator/seeder hoặc panel "Giao diện" (5 quyết định bên dưới) ghi; KHÔNG phải knob per-section.
+- **Role = tên trong bảng trên** (`--color-*`, `--brand-*`, `--space-*`, `--radius-*`…) — CSS nội bộ SINH từ seed (`color-mix()` / palette generator) ⇒ đổi tên tự do, KHÔNG đụng data. Utility class + preset CHỈ tiêu thụ role, không đọc seed trực tiếp (`storefront.css` hiện còn đọc seed trực tiếp — chuyển sang role trong PR 1a.1 phần còn lại).
+- Thêm seed = key + default ở `ThemeResolver::DEFAULTS` + **tự contrast-check với seed đã có** (bài học 23/09: default `primary` phải đạt AA khi `ink` nằm trên nó). `text` (default cũ, trùng `ink`, chỉ còn `welcome.blade.php` dùng) → gỡ ở PR 1a.1 phần còn lại.
+
 **Cài đặt site-level mở cho tenant (panel "Giao diện" — ngôn ngữ đời thường §24, 5 quyết định):** màu thương hiệu (1 màu → cả palette) · cặp font · mật độ (thoáng/vừa/gọn) · kiểu bo mặc định · bật/tắt hiệu ứng chuyển động. Lưu `site_settings` group `theme` (đường `ThemeResolver` sẵn có; value validate allow-list `Rule::in` — đây là chỗ Rule::in đúng nghĩa, KHÔNG phải trong body).
 
-**Trả nợ white-label:** `storefront.css` hiện hardcode palette An Vinh (header file ghi rõ "An Vinh storefront design system"; chỉ tiêu thụ `var(--font)`). PR đầu Đợt 1a = token hóa **visual no-op** (An Vinh render giống hệt), gỡ toàn bộ hex brand khỏi CSS chung.
+**Trả nợ white-label:** ~~`storefront.css` hardcode palette An Vinh~~ — **phần MÀU đã xong 23/09** (`5f19003`+`4941016`: 15 hex/101 lần → `var()`/`color-mix()` từ seed; An Vinh giữ diện mạo nhờ seed `{primary,ink,body}` trên prod). CÒN của PR 1a.1: palette generator `--brand-50..900` + thang spacing/radius/shadow/gradient + chuyển CSS sang tầng role.
 
 ---
 

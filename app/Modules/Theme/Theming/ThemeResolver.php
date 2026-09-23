@@ -28,7 +28,8 @@ final class ThemeResolver
         'surface' => '#ffffff',
         'text' => '#111111',
         'font' => 'system-ui, sans-serif',
-        // Storefront-specific roles (design.md §19 token-hardening): `ink` is the
+        // Storefront seeds (docs/notes/section-style-system.md §1 — persisted per site, so
+        // renaming one means migrating every tenant's data; CSS roles derive from these): `ink` is the
         // near-black used for headings, dark-surface fills (header/footer), and text
         // on top of `primary` — one brand decision, reused across those three
         // contexts. `body` is long-form copy, deliberately softer than `ink` for

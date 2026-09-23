@@ -33,7 +33,7 @@
 | Build FE | Vite 8 + Tailwind 4 | công cụ build, KHÔNG thay Laravel |
 | Storage | Cloudflare **R2** (private) + **Worker/cf.image** serving (imgproxy = L4 cold) | ADR-17 |
 | AI | ⏳ Laravel AI SDK → Anthropic (sonnet-4-6 / haiku-4-5) — CHƯA cài | |
-| Test/QA | Pest 4 (kèm `--mutate` thủ công §6) + Larastan (max) + Rector (theo yêu cầu) | ⏳ Lighthouse + axe: đo TAY khi chạm storefront — chưa vào CI |
+| Test/QA | Pest 4 (kèm `--mutate` thủ công §6) + Larastan (max) + Rector (theo yêu cầu) | Lighthouse + axe: CI job `cwv` chạy tự động nhưng **informational** (chưa chặn merge) — sandbox không có Chrome, số đo đọc từ CI |
 
 > ⏳ = đã pin trong thiết kế nhưng CHƯA cài trong repo — KHÔNG viết code giả định nó tồn tại.
 > ⚠ Nhiều major mới → AI dễ gợi ý SAI cú pháp. Khi viết code framework, **bám tài liệu version đã pin**; nếu nghi ngờ cú pháp, kiểm lại, đừng đoán.
@@ -113,9 +113,9 @@
 - `Pint --test` · `Larastan` (max) · `Pest` (unit + feature + Arch + Query Budget + **Gate #1 concurrency** — phpunit.xml khai đủ 4 suite) · migrate PostgreSQL thật (app_user + pgsql_admin) · build FE (Vite + Tailwind).
 - **Query Budget test** — assert số query tối đa/route hot (bắt N+1). **Arch test** — "mọi model tenant dùng BelongsToSite" · "mọi action qua policy" · "mọi transition qua engine" · ranh giới module acyclic (Tenancy là nền).
 
-**Tầng 2 · Gate THỦ CÔNG bắt buộc theo vùng chạm (CHƯA vào CI — dán output trước khi báo DONE §10.4):**
+**Tầng 2 · Gate THỦ CÔNG bắt buộc theo vùng chạm (CHƯA chặn merge — dán output trước khi báo DONE §10.4):**
 - `pest --mutate` khi sửa class trong baseline-list (lệnh + list ở §7; pcov trong image, mặc định TẮT, bật per-run; mở rộng class-list + nâng min dần, không hạ).
-- Lighthouse + axe khi chạm storefront/UI (LCP mobile p75 ≤1.5s, JS ≤30KB).
+- Lighthouse + axe khi chạm storefront/UI (LCP mobile p75 ≤1.5s, JS ≤30KB) — job `cwv` đo sẵn mỗi push (ngưỡng đang `warn`, chờ hiệu chỉnh bằng số thật): dán số từ artifact `lighthouse-reports` + log axe.
 
 ---
 
