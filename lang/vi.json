@@ -762,5 +762,16 @@
     "rbac.invitation.mail_intro": ":inviter mời bạn tham gia quản trị website :site với vai trò: :roles.",
     "rbac.invitation.mail_action": "Nhận lời mời",
     "rbac.invitation.mail_expiry": "Lời mời có hiệu lực đến :date.",
-    "rbac.invitation.mail_ignore": "Nếu bạn không mong đợi lời mời này, hãy bỏ qua email — không có gì thay đổi."
+    "rbac.invitation.mail_ignore": "Nếu bạn không mong đợi lời mời này, hãy bỏ qua email — không có gì thay đổi.",
+    "notifications.workflow.assigned": ":actor giao bài «:title» cho bạn.",
+    "notifications.workflow.returned": ":actor trả lại bài «:title» để sửa thêm.",
+    "notifications.workflow.published": ":actor đã đăng bài «:title».",
+    "notifications.workflow.pending_review": ":actor gửi bài «:title» — đang chờ bạn duyệt.",
+    "notifications.lead.new": "Có khách liên hệ mới: :name.",
+    "notifications.security.new_device_login": "Tài khoản của bạn vừa đăng nhập từ một thiết bị mới.",
+    "notifications.security.two_factor_disabled": "Xác thực 2 lớp của tài khoản đã được tắt lúc :at.",
+    "notifications.system.storage_near_limit": "Thư viện ảnh & tệp sắp đầy dung lượng của gói.",
+    "notifications.mail.two_factor_disabled_subject": "Xác thực 2 lớp đã được tắt",
+    "notifications.mail.two_factor_disabled_intro": "Xác thực 2 lớp trên tài khoản của bạn đã được tắt lúc :at.",
+    "notifications.mail.two_factor_disabled_action": "Nếu không phải bạn làm, hãy đổi mật khẩu ngay và bật lại xác thực 2 lớp."
 }

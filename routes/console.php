@@ -18,3 +18,6 @@ Schedule::command('entries:publish-due')->everyMinute()->withoutOverlapping();
 
 // Drain each site's Valkey-buffered storefront views into entries.view_count.
 Schedule::command('entries:flush-views')->everyFiveMinutes()->withoutOverlapping();
+
+// Retention: in-app notifications are kept 90 days (site_notifications).
+Schedule::command('notifications:prune')->daily()->withoutOverlapping();

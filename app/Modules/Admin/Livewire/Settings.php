@@ -2,9 +2,12 @@
 
 namespace App\Modules\Admin\Livewire;
 
+use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
 use App\Modules\Admin\Support\Cast;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
+use App\Modules\Tenancy\Context\SiteTime;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\View\View;
@@ -132,12 +135,27 @@ final class Settings extends Component
     public function disableTwoFactor(): void
     {
         $user = auth()->user();
+        $wasOn = false;
         if ($user instanceof User) {
+            $wasOn = $user->two_factor_confirmed_at !== null;
+
             $user->forceFill([
                 'two_factor_secret' => null,
                 'two_factor_recovery_codes' => null,
                 'two_factor_confirmed_at' => null,
             ])->save();
+        }
+
+        if ($user instanceof User && $wasOn) {
+            // Weakening sign-in is a security event: on record, and the account owner is told in
+            // the bell and by mail (locked notice) — a hijacked session cannot do it quietly.
+            Audit::record('auth.2fa.disabled', [
+                'actor_id' => $user->getKey(),
+                'actor_label' => $user->email,
+            ]);
+            $user->notify((new TwoFactorDisabledNotification(
+                app(SiteTime::class)->now()->format('d/m/Y H:i'),
+            ))->forCurrentSite());
         }
 
         $this->reset('showRecovery', 'recoveryCodes', 'tfaSecret', 'tfaQr', 'tfaCode');

@@ -16,7 +16,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 4 | Tổng quan theo vai trò | 🟡 | — | 🔴 stub | D2-5 | |
 | 5 | Tổng quan nền tảng | ❌ | — | ❌ | D4-1 | |
 | 6 | Tài khoản của tôi | 🟡 modal | — | 🟡 Cài đặt›Bảo mật | D2-3 | quyết định: trang riêng từ menu người dùng |
-| 7 | Thông báo | 🟡 chuông | — | ❌ | D2-4 | quyết định: bảng riêng đúng D-rules |
+| 7 | Thông báo | 🟡 chuông | — | ❌ UI · ✅ backend | D2-4 | backend 24/09: module `Notifications`, 4 nguồn đã nối, giữ 90 ngày |
 | 8 | Danh sách Trang | 🟠 cờ giả `canPublish` | `design_handoff_pages_admin/` | ✅ | D1-3 | |
 | 9 | Danh sách Bài viết/Dịch vụ/Dự án | ✅ | — | ✅ | D1-3 | thiếu lọc chuyên mục |
 | 10–11 | Trình soạn Trang / Bài viết | ✅ (TODO đợt 4 còn mở) | — | 🔴 chỉ tiêu đề/đường dẫn/chuyên mục | D1-4a, D1-4b | khoảng cách build lớn nhất |

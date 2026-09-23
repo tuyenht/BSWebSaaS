@@ -35,7 +35,9 @@ Shared            (chỉ interface — seam liên-module duy nhất)
        ├─ Theme       (trình bày; KHÔNG biết content)
        ├─ Identity    (user + hashing)
        │    ├─ Rbac   (role/permission trên nền user)
-       │    └─ Audit
+       │    ├─ Audit
+       │    └─ Notifications (thông báo trong ứng dụng: site_notifications + kênh + tuỳ chọn
+       │                     theo người; Cms/Forms/Admin gửi QUA nó, không chiều ngược lại)
        └─ Cms         (content: entries/taxonomy/routing; dùng registry của Theme)
             ├─ Storefront   (mặt phẳng public)
             └─ Admin        (mặt phẳng admin)
