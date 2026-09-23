@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\Providers;
 
+use App\Modules\Provisioning\Console\ImportAdminUnitsCommand;
 use App\Modules\Provisioning\Console\PromoteAnVinhProductPostsToCatalogCommand;
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;
 use App\Modules\Provisioning\Console\ReflowSitePermalinksCommand;
 use App\Modules\Provisioning\Console\SeedAnVinhContentCommand;
+use App\Modules\Provisioning\Console\SyncSiteProfilesFromBrandCommand;
 use Illuminate\Support\ServiceProvider;
 
 final class ProvisioningServiceProvider extends ServiceProvider
@@ -20,6 +22,8 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 SeedAnVinhContentCommand::class,
                 PromoteAnVinhProductPostsToCatalogCommand::class,
                 ReflowSitePermalinksCommand::class,
+                SyncSiteProfilesFromBrandCommand::class,
+                ImportAdminUnitsCommand::class,
             ]);
         }
     }

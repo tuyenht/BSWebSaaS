@@ -40,6 +40,10 @@ class SiteProfile extends Model
             'latitude' => 'float',
             'longitude' => 'float',
             'meta' => 'array',
+            'social_links' => 'array',
+            'business_hours' => 'array',
+            'license_issued_at' => 'immutable_date',
+            'moit_registered' => 'boolean',
         ];
     }
 }
