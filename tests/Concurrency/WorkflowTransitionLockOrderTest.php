@@ -10,7 +10,6 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Models\Workflow;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 /*
  * Regression for ca62f01: the row lock inside ApplyEntryWorkflowTransition must be acquired

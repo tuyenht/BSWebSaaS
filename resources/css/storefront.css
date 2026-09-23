@@ -1,17 +1,18 @@
 /*
  * storefront.css — Cơ Khí Chính Xác An Vinh storefront design system
  *
- * Palette  (matched from demo):
- *   slate-900  #0f172a  — header / footer backgrounds
- *   slate-800  #1e293b  — secondary dark surfaces
- *   amber-500  #f59e0b  — accent, CTA buttons, section borders
- *   amber-600  #d97706  — CTA hover
- *   white      #ffffff  — card surfaces
- *   slate-50   #f8fafc  — page body background
- *   slate-700  #334155  — body copy
- *   slate-500  #64748b  — secondary / muted text
- *   slate-300  #cbd5e1  — nav link text on dark bg
- *   slate-400  #94a3b8  — footer text
+ * Palette — driven by per-site tokens (ThemeResolver, :root custom properties),
+ * NOT hardcoded here. Every color below is `var(--primary|surface|ink|body)` or a
+ * `color-mix()` shade of one of those four, so a site can change its brand by
+ * overriding `site_settings.theme.tokens` — no CSS edit needed (design.md §19).
+ * An Vinh's current values (what you'll see if you inspect a rendered page):
+ *   --ink      #111111 default → An Vinh #0f172a (slate-900) — headings, dark
+ *              surface fills (header/footer), text-on-`--primary`
+ *   --primary  #0a66c2 default → An Vinh #f59e0b (amber-500) — accent, CTA,
+ *              section borders; hover/light shades are `color-mix()` off this
+ *   --surface  #ffffff (card backgrounds; page-bg/pagination-bg are tints of it)
+ *   --body     #333333 default → An Vinh #334155 (slate-700) — long-form copy;
+ *              secondary/muted text shades are `color-mix()` off this
  *
  * Architecture: BEM (.block__element--modifier), mobile-first, zero JS framework.
  * Target: <15 KB minified. No @import 'tailwindcss' — passed through Vite as plain CSS.
@@ -30,8 +31,8 @@ html {
 
 body {
     margin: 0;
-    background: #f8fafc;
-    color: #1e293b;
+    background: color-mix(in srgb, var(--surface) 97%, var(--ink));
+    color: color-mix(in srgb, var(--ink) 85%, white);
     font-family: var(--font, system-ui, -apple-system, sans-serif);
     font-size: 1rem;
     line-height: 1.6;
@@ -83,7 +84,7 @@ p {
     position: sticky;
     top: 0;
     z-index: 50;
-    background: #0f172a;
+    background: var(--ink);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -150,7 +151,7 @@ p {
     top: 100%;
     left: 0;
     z-index: 60;
-    background: #1e293b;
+    background: color-mix(in srgb, var(--ink) 85%, white);
     border-radius: 0.375rem;
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
     min-width: 11rem;
@@ -169,7 +170,7 @@ p {
 .site-nav__link {
     display: block;
     padding: 0.4rem 0.625rem;
-    color: #cbd5e1;
+    color: color-mix(in srgb, var(--ink) 22%, white);
     font-size: 0.875rem;
     font-weight: 600;
     border-radius: 0.25rem;
@@ -179,8 +180,8 @@ p {
 
 .site-nav__link:hover,
 .site-nav__link[aria-current="page"] {
-    background: #334155;
-    color: #ffffff;
+    background: var(--body);
+    color: var(--surface);
 }
 
 .site-nav__list--level-1 .site-nav__link {
@@ -189,15 +190,15 @@ p {
 }
 
 .site-nav__list--level-1 .site-nav__link:hover {
-    background: #0f172a;
-    color: #f59e0b;
+    background: var(--ink);
+    color: var(--primary);
 }
 
 /* ───── Page title (page layout h1, sr-only when hero is present) ────────── */
 .page__title {
     font-size: clamp(1.75rem, 3.5vw, 2.5rem);
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ink);
     padding: 2rem 1.5rem 0.5rem;
     max-width: 80rem;
     margin-inline: auto;
@@ -235,7 +236,7 @@ main:has(.hero) .page__title {
     min-height: 28rem;
     display: flex;
     align-items: center;
-    background: #0f172a;
+    background: var(--ink);
     overflow: hidden;
 }
 
@@ -274,7 +275,7 @@ main:has(.hero) .page__title {
 .hero__heading {
     font-size: clamp(1.75rem, 5vw, 3rem);
     font-weight: 900;
-    color: #ffffff;
+    color: var(--surface);
     margin: 0 0 1rem;
     text-transform: uppercase;
     letter-spacing: 0.01em;
@@ -282,7 +283,7 @@ main:has(.hero) .page__title {
 
 .hero__subheading {
     font-size: clamp(1rem, 2vw, 1.25rem);
-    color: #cbd5e1;
+    color: color-mix(in srgb, var(--ink) 22%, white);
     max-width: 40rem;
     line-height: 1.65;
     margin: 0 0 2rem;
@@ -291,8 +292,8 @@ main:has(.hero) .page__title {
 .hero__cta {
     display: inline-block;
     padding: 0.75rem 1.75rem;
-    background: #f59e0b;
-    color: #0f172a;
+    background: var(--primary);
+    color: var(--ink);
     font-weight: 700;
     font-size: 0.95rem;
     border-radius: 0.375rem;
@@ -302,18 +303,18 @@ main:has(.hero) .page__title {
 }
 
 .hero__cta:hover {
-    background: #d97706;
+    background: color-mix(in srgb, var(--primary) 85%, black);
 }
 
 .hero__cta--secondary {
     background: transparent;
-    border: 2px solid #f59e0b;
-    color: #f59e0b;
+    border: 2px solid var(--primary);
+    color: var(--primary);
 }
 
 .hero__cta--secondary:hover {
-    background: #f59e0b;
-    color: #0f172a;
+    background: var(--primary);
+    color: var(--ink);
 }
 
 /* ───── About section ────────────────────────────────────────────────────── */
@@ -354,12 +355,12 @@ main:has(.hero) .page__title {
 .about__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 1rem;
 }
 
 .about__paragraph {
-    color: #475569;
+    color: color-mix(in srgb, var(--body) 80%, white);
     line-height: 1.75;
     margin: 0 0 0.875rem;
 }
@@ -368,8 +369,8 @@ main:has(.hero) .page__title {
     display: inline-block;
     margin-top: 0.5rem;
     padding: 0.625rem 1.5rem;
-    background: #f59e0b;
-    color: #0f172a;
+    background: var(--primary);
+    color: var(--ink);
     font-weight: 700;
     font-size: 0.9rem;
     border-radius: 0.375rem;
@@ -377,7 +378,7 @@ main:has(.hero) .page__title {
 }
 
 .about__cta:hover {
-    background: #d97706;
+    background: color-mix(in srgb, var(--primary) 85%, black);
 }
 
 .about__image {
@@ -407,10 +408,10 @@ main:has(.hero) .page__title {
 .entry-grid__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid #f59e0b;
+    border-bottom: 3px solid var(--primary);
     display: inline-block;
 }
 
@@ -433,7 +434,7 @@ main:has(.hero) .page__title {
 }
 
 .entry-grid__card {
-    background: #ffffff;
+    background: var(--surface);
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
     overflow: hidden;
@@ -458,13 +459,13 @@ main:has(.hero) .page__title {
     width: 3rem;
     height: 3rem;
     margin: 1.5rem 1.5rem 0;
-    color: #f59e0b;
+    color: var(--primary);
 }
 
 .entry-grid__title {
     font-size: 1rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0;
     padding: 0.875rem 1rem 0.375rem;
     line-height: 1.4;
@@ -476,7 +477,7 @@ main:has(.hero) .page__title {
 }
 
 .entry-grid__title a:hover {
-    color: #f59e0b;
+    color: var(--primary);
 }
 
 .entry-grid__sector {
@@ -484,7 +485,7 @@ main:has(.hero) .page__title {
     padding: 0 1rem 0.25rem;
     font-size: 0.75rem;
     font-weight: 600;
-    color: #f59e0b;
+    color: var(--primary);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -492,13 +493,13 @@ main:has(.hero) .page__title {
 .entry-grid__outcome {
     padding: 0 1rem 1rem;
     font-size: 0.875rem;
-    color: #64748b;
+    color: color-mix(in srgb, var(--body) 65%, white);
     line-height: 1.55;
     flex: 1;
 }
 
 .entry-grid__empty {
-    color: #94a3b8;
+    color: color-mix(in srgb, var(--ink) 40%, white);
     font-style: italic;
 }
 
@@ -518,10 +519,10 @@ main:has(.hero) .page__title {
 .category__title {
     font-size: clamp(1.5rem, 3vw, 2.25rem);
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid #f59e0b;
+    border-bottom: 3px solid var(--primary);
     display: inline-block;
 }
 
@@ -544,7 +545,7 @@ main:has(.hero) .page__title {
 }
 
 .category__item {
-    background: #ffffff;
+    background: var(--surface);
     border-radius: 0.375rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
     overflow: hidden;
@@ -559,16 +560,16 @@ main:has(.hero) .page__title {
     display: block;
     padding: 1rem 1.25rem;
     font-weight: 600;
-    color: #1e293b;
+    color: color-mix(in srgb, var(--ink) 85%, white);
     transition: color 0.2s;
 }
 
 .category__item a:hover {
-    color: #f59e0b;
+    color: var(--primary);
 }
 
 .category__empty {
-    color: #94a3b8;
+    color: color-mix(in srgb, var(--ink) 40%, white);
     font-style: italic;
 }
 
@@ -587,29 +588,29 @@ main:has(.hero) .page__title {
 
 .post__breadcrumb {
     font-size: 0.875rem;
-    color: #94a3b8;
+    color: color-mix(in srgb, var(--ink) 40%, white);
     margin-bottom: 1rem;
 }
 
 .post__breadcrumb a {
-    color: #f59e0b;
+    color: var(--primary);
     font-weight: 600;
     transition: color 0.2s;
 }
 
 .post__breadcrumb a:hover {
-    color: #d97706;
+    color: color-mix(in srgb, var(--primary) 85%, black);
 }
 
 .post__title {
     font-size: clamp(1.5rem, 3vw, 2.25rem);
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 2rem;
 }
 
 .post__body {
-    color: #334155;
+    color: var(--body);
 }
 
 .post__body section {
@@ -619,7 +620,7 @@ main:has(.hero) .page__title {
 .post__body h2 {
     font-size: 1.375rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ink);
     margin: 1.75rem 0 0.625rem;
 }
 
@@ -644,15 +645,15 @@ main:has(.hero) .page__title {
 .contact__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 1.25rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid #f59e0b;
+    border-bottom: 3px solid var(--primary);
     display: inline-block;
 }
 
 .contact__address {
-    color: #475569;
+    color: color-mix(in srgb, var(--body) 80%, white);
     line-height: 1.65;
     margin-bottom: 0.75rem;
 }
@@ -662,14 +663,14 @@ main:has(.hero) .page__title {
     display: inline-block;
     font-size: 1.0625rem;
     font-weight: 700;
-    color: #f59e0b;
+    color: var(--primary);
     margin: 0 1.5rem 0.5rem 0;
     transition: color 0.2s;
 }
 
 .contact__phone:hover,
 .contact__email:hover {
-    color: #d97706;
+    color: color-mix(in srgb, var(--primary) 85%, black);
 }
 
 .contact__map {
@@ -684,7 +685,7 @@ main:has(.hero) .page__title {
 
 /* ───── CTA section ──────────────────────────────────────────────────────── */
 .cta {
-    background: #0f172a;
+    background: var(--ink);
     padding: 4rem 1.5rem;
     text-align: center;
 }
@@ -698,15 +699,15 @@ main:has(.hero) .page__title {
 .cta h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: #ffffff;
+    color: var(--surface);
     margin: 0 0 1.5rem;
 }
 
 .cta__button {
     display: inline-block;
     padding: 0.75rem 2rem;
-    background: #f59e0b;
-    color: #0f172a;
+    background: var(--primary);
+    color: var(--ink);
     font-weight: 700;
     font-size: 1rem;
     border-radius: 0.375rem;
@@ -714,7 +715,7 @@ main:has(.hero) .page__title {
 }
 
 .cta__button:hover {
-    background: #d97706;
+    background: color-mix(in srgb, var(--primary) 85%, black);
 }
 
 /* ───── Partners section ─────────────────────────────────────────────────── */
@@ -733,10 +734,10 @@ main:has(.hero) .page__title {
 .partners__heading {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid #f59e0b;
+    border-bottom: 3px solid var(--primary);
     display: inline-block;
 }
 
@@ -781,10 +782,10 @@ main:has(.hero) .page__title {
 .features h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 2rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid #f59e0b;
+    border-bottom: 3px solid var(--primary);
     display: inline-block;
 }
 
@@ -807,7 +808,7 @@ main:has(.hero) .page__title {
 }
 
 .features__item {
-    background: #ffffff;
+    background: var(--surface);
     border-radius: 0.5rem;
     padding: 1.5rem;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
@@ -816,13 +817,13 @@ main:has(.hero) .page__title {
 .features__item h3 {
     font-size: 1rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 0.5rem;
 }
 
 .features__item p {
     font-size: 0.9rem;
-    color: #64748b;
+    color: color-mix(in srgb, var(--body) 65%, white);
     line-height: 1.6;
 }
 
@@ -842,12 +843,12 @@ main:has(.hero) .page__title {
 .richtext h2 {
     font-size: clamp(1.125rem, 2vw, 1.5rem);
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 0.875rem;
 }
 
 .richtext p {
-    color: #475569;
+    color: color-mix(in srgb, var(--body) 80%, white);
     line-height: 1.75;
     margin-bottom: 0.75rem;
 }
@@ -868,10 +869,10 @@ main:has(.hero) .page__title {
 .latest-posts h2 {
     font-size: clamp(1.25rem, 2.5vw, 1.875rem);
     font-weight: 800;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 1.5rem;
     padding-bottom: 0.625rem;
-    border-bottom: 3px solid #f59e0b;
+    border-bottom: 3px solid var(--primary);
     display: inline-block;
 }
 
@@ -881,7 +882,7 @@ main:has(.hero) .page__title {
 }
 
 .latest-posts__item {
-    background: #ffffff;
+    background: var(--surface);
     border-radius: 0.375rem;
     padding: 0.875rem 1rem;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -889,12 +890,12 @@ main:has(.hero) .page__title {
 
 .latest-posts__item a {
     font-weight: 600;
-    color: #1e293b;
+    color: color-mix(in srgb, var(--ink) 85%, white);
     transition: color 0.2s;
 }
 
 .latest-posts__item a:hover {
-    color: #f59e0b;
+    color: var(--primary);
 }
 
 /* ───── Pagination ───────────────────────────────────────────────────────── */
@@ -910,8 +911,8 @@ main:has(.hero) .page__title {
 .pagination__next {
     display: inline-block;
     padding: 0.625rem 1.25rem;
-    background: #f1f5f9;
-    color: #1e293b;
+    background: color-mix(in srgb, var(--surface) 94%, var(--ink));
+    color: color-mix(in srgb, var(--ink) 85%, white);
     border-radius: 0.375rem;
     font-weight: 600;
     font-size: 0.9rem;
@@ -920,21 +921,21 @@ main:has(.hero) .page__title {
 
 .pagination__prev:hover,
 .pagination__next:hover {
-    background: #f59e0b;
-    color: #0f172a;
+    background: var(--primary);
+    color: var(--ink);
 }
 
 /* ───── Inline icon glyphs (theme::partials.icon) ───────────────────────── */
 .icon {
     display: block;
-    color: #f59e0b;
+    color: var(--primary);
 }
 
 /* ───── Site footer ──────────────────────────────────────────────────────── */
 .site-footer {
-    background: #0f172a;
-    border-top: 4px solid #f59e0b;
-    color: #94a3b8;
+    background: var(--ink);
+    border-top: 4px solid var(--primary);
+    color: color-mix(in srgb, var(--ink) 40%, white);
 }
 
 .site-footer__inner {
@@ -963,7 +964,7 @@ main:has(.hero) .page__title {
 .site-footer__company {
     font-size: 0.875rem;
     font-weight: 700;
-    color: #e2e8f0;
+    color: color-mix(in srgb, var(--ink) 15%, white);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0 0 0.75rem;
@@ -975,27 +976,27 @@ main:has(.hero) .page__title {
 }
 
 .site-footer__nap a {
-    color: #f59e0b;
+    color: var(--primary);
     transition: color 0.2s;
 }
 
 .site-footer__nap a:hover {
-    color: #fbbf24;
+    color: color-mix(in srgb, var(--primary) 70%, white);
 }
 
 .site-footer__license {
     font-size: 0.8125rem;
-    color: #475569;
+    color: color-mix(in srgb, var(--body) 80%, white);
     margin-top: 0.75rem;
 }
 
 .site-footer__bottom {
-    background: #020617;
+    background: color-mix(in srgb, var(--ink) 88%, black);
     padding: 1rem 1.5rem;
     text-align: center;
     font-size: 0.8125rem;
-    color: #475569;
-    border-top: 1px solid #1e293b;
+    color: color-mix(in srgb, var(--ink) 40%, white); /* was #475569 — failed WCAG2AA on this background (axe, 23/09) */
+    border-top: 1px solid color-mix(in srgb, var(--ink) 85%, white);
 }
 
 @media (min-width: 1024px) {
@@ -1018,7 +1019,7 @@ main:has(.hero) .page__title {
 .error-page__code {
     font-size: 6rem;
     font-weight: 900;
-    color: #f59e0b;
+    color: var(--primary);
     line-height: 1;
     margin-bottom: 0.5rem;
 }
@@ -1026,12 +1027,12 @@ main:has(.hero) .page__title {
 .error-page__title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--ink);
     margin: 0 0 1rem;
 }
 
 .error-page__message {
-    color: #64748b;
+    color: color-mix(in srgb, var(--body) 65%, white);
     max-width: 28rem;
     line-height: 1.65;
     margin: 0 0 2rem;
@@ -1040,13 +1041,13 @@ main:has(.hero) .page__title {
 .error-page__cta {
     display: inline-block;
     padding: 0.75rem 1.75rem;
-    background: #f59e0b;
-    color: #0f172a;
+    background: var(--primary);
+    color: var(--ink);
     font-weight: 700;
     border-radius: 0.375rem;
     transition: background 0.2s;
 }
 
 .error-page__cta:hover {
-    background: #d97706;
+    background: color-mix(in srgb, var(--primary) 85%, black);
 }
