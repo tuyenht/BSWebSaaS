@@ -3,6 +3,7 @@
 use App\Modules\Admin\Http\Controllers\OAuthController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
 use App\Modules\Admin\Http\Middleware\SetLocale;
+use App\Modules\Admin\Livewire\AcceptInvitation;
 use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
@@ -133,6 +134,13 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::get('/reset-password', ResetPassword::class)->name('admin.password.reset');
         Route::get('/two-factor/challenge', TwoFactorChallenge::class)->name('admin.two-factor.challenge');
         Route::get('/otp/challenge', EmailOtpChallenge::class)->name('admin.otp.challenge');
+
+        // Member invitation link (mailed). Open to guests AND signed-in users: the page itself
+        // decides the road (join · sign in · create the account). The token is 64 random chars.
+        Route::get('/invitations/{token}', AcceptInvitation::class)
+            ->where('token', '[A-Za-z0-9]{64}')
+            ->middleware('throttle:30,1')
+            ->name('admin.invitations.accept');
 
         // OAuth2 redirect endpoints (social login + email-sender connect). Guest-reachable
         // (login needs them pre-auth); the 'email' purpose enforces auth in OAuthController.

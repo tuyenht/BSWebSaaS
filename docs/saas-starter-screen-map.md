@@ -33,7 +33,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 24–25 | Hộp thư liên hệ · chi tiết | ❌ | — | 🟡 | D1-7 | |
 | 26 | Trình dựng biểu mẫu | ❌ | — | ❌ | D1-7 | |
 | 27–30 | Thành viên · Nhóm quyền · Sửa nhóm · "Nhóm làm được gì" | ❌ | — | 🟡 · ❌ · ❌ · ❌ | D2-1 | backend nhóm tuỳ chỉnh có (`e922240`) |
-| 31 | Lời mời thành viên | ❌ | — | ❌ | D2-2 | quyết định: bảng lời mời, trả lời đồng nhất |
+| 31 | Lời mời thành viên | ❌ | — | 🟡 backend + màn nhận lời mời (khung đăng nhập) · tab Lời mời ❌ | D2-2 | backend 24/09: `invitations`, trả lời đồng nhất, 7 ngày, ≤50/ngày |
 | 32 | Khung Cài đặt (1 thanh Lưu) | ✅ | — | 🟡 | D0-4, D3 | |
 | 33 | Thông tin chung | 🟠 đa ngữ vs dữ liệu 1 ngữ | — | ❌ | D3-1 | nguồn = `site_profiles` (§14) |
 | 34 | Giao diện website | 🟠 6 màu tự do | — | ❌ | D3-1 | đúng 5 quyết định (section-style-system §1) |
