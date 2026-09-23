@@ -1,6 +1,12 @@
 <div class="auth-glass">
     <h2 class="auth-title">{{ __('auth.welcome') }}</h2>
 
+    {{-- One-shot confirmation flashed by the step that led here (password reset, email verified) —
+         without it the user never learns that step worked and starts it over. --}}
+    @if (session('status'))
+        <div class="auth-alert auth-alert--success" role="status" style="margin-bottom:14px">{{ session('status') }}</div>
+    @endif
+
     <form wire:submit="login" class="auth-form">
         {{-- Account / Email --}}
         <div class="auth-input-group">
