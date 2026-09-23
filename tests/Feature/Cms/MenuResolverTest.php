@@ -209,8 +209,10 @@ it('prefixes resolved URLs for a non-default-locale menu (via PathBuilder)', fun
     $ids = seedNavFixture();   // vi menu + news taxonomy + vi route /tin-tuc
 
     $tree = app(Tenancy::class)->enter(1, function () use ($ids) {
-        // An 'en' menu for the same news category: en route + en assignment. Site default
-        // stays 'vi', so the resolved 'en' URLs must be /en-prefixed (through publicUrl).
+        // An 'en' menu for the same news category: en translation + en route + en assignment
+        // (the storefront only renders a category in a language it is translated into). Site
+        // default stays 'vi', so the resolved 'en' URLs must be /en-prefixed (through publicUrl).
+        Taxonomy::query()->findOrFail($ids['news'])->translations()->create(['locale' => 'en', 'name' => 'News', 'slug' => 'tin-tuc']);
         SiteRoute::query()->create(['locale' => 'en', 'path' => '/tin-tuc', 'taxonomy_id' => $ids['news']]);
         $menu = Menu::query()->create(['handle' => 'main-en', 'name' => 'Menu EN']);
         $home = MenuItem::query()->create(['menu_id' => $menu->id, 'link_type' => 'dynamic', 'dynamic_key' => 'home', 'position' => 0]);

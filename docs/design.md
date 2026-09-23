@@ -316,8 +316,8 @@ mediables(media_id, mediable_type, mediable_id, site_id, collection)            
 menus(id, site_id, name, handle, locales JSONB NULL, meta JSONB)        -- locales: ['vi','en'] | null=all
 menu_assignments(site_id, region_key, locale, menu_id)                  -- gán per (region × locale); UNIQUE(site_id, region_key, locale); menu_id FK→menus ON DELETE CASCADE; CHECK menu_id cùng site_id
 menu_items(id, site_id, menu_id, parent_id, position,
-           link_type,                  -- 'entry'|'taxonomy'|'dynamic'|'url'
-           routable_type NULL, routable_id NULL, url NULL, dynamic_key NULL,
+           link_type,                  -- 'entry'|'taxonomy'|'product'|'dynamic'|'url'
+           routable_type NULL, routable_id NULL, url NULL, dynamic_key NULL,   -- CHECK: kiểu có đích ⇒ routable_type = link_type
            meta JSONB)                 -- icon, css_class, target, rel, description, megamenu, điều kiện hiển thị
 menu_item_translations(menu_item_id, site_id, locale, label)           -- rỗng → title đã dịch của routable
 ```
@@ -325,6 +325,7 @@ menu_item_translations(menu_item_id, site_id, locale, label)           -- rỗng
 - **Resolver theo ASSIGNMENT (KHÔNG theo `handle`):** tra `menu_assignments` đúng (region, locale); thiếu assignment cho (region, locale) → **fallback menu của default-locale** (KHÔNG trả nav rỗng).
 - **Vị trí menu = region do theme khai báo** (primary/top/footer/mobile…), không enum cứng.
 - **Link mọi loại**; URL tự bản địa hóa qua `routes`. Builder **kéo-thả React island** (DB chỉ parent_id+position).
+- **Trỏ Sản phẩm (v2.23 Q3, as-built 24/09):** Catalog đăng ký alias morph `product` + một `Cms\Navigation\MenuTargets` (cột `routes.product_id`, điều kiện "khách mở được", tên dự phòng) → Cms không import Catalog. **Chỉ link tới đích khách mở được:** trang phải `published` + bản dịch của ngôn ngữ đó `published` (trang gỡ/vào thùng rác vẫn giữ dòng `routes` → trước đây menu vẫn hiện link 404), chuyên mục phải có bản dịch ngôn ngữ đó, sản phẩm `published` và không trong thùng rác. Nhãn rỗng → tên hiện tại của đích (cả sản phẩm). Toàn bộ URL vẫn 1 truy vấn `routes`.
 - **Hiệu năng:** batch resolve URL+nhãn + **cache menu đã-resolve per (site, region, locale)** chống N+1.
 
 **Banner/Placement:**

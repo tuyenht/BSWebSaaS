@@ -8,6 +8,7 @@ use App\Modules\Cms\Console\FlushEntryViews;
 use App\Modules\Cms\Console\PublishDueEntries;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Observers\EntryObserver;
 use App\Modules\Cms\Policies\EntryPolicy;
 use App\Modules\Cms\Routing\SectionResolver;
@@ -30,6 +31,10 @@ final class CmsServiceProvider extends ServiceProvider
         // category); scoped so the memo is flushed between Octane operations and never leaks across
         // requests, yet is shared within a request so bulk route-sync doesn't re-resolve per entry.
         $this->app->scoped(SectionResolver::class);
+
+        // Menu link kinds other modules register at boot (Catalog → `product`). Boot-time closures
+        // only, no request state — shared across Octane requests like the ComponentRegistry.
+        $this->app->singleton(MenuTargets::class);
     }
 
     public function boot(): void

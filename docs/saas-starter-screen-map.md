@@ -24,7 +24,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 13 | Thanh ngôn ngữ nội dung | ✅ spec | — | 🟡 | D1-4b | |
 | 14 | Lịch sử phiên bản | 🟡 | — | ❌ chưa có bảng | D1-4b | `entry_revisions` typed (Phụ lục A) |
 | 15 | Chuyên mục | ❌ | — | ❌ trang "sắp có" | D1-1 | cột ltree `path` chưa được ghi |
-| 16 | Trình đơn | 🟠 thiếu gán theo ngôn ngữ | — | ❌ trang "sắp có" | D1-2 | quyết định: cho trỏ Sản phẩm |
+| 16 | Trình đơn | 🟠 thiếu gán theo ngôn ngữ | — | ❌ trang "sắp có" · ✅ backend trỏ Sản phẩm | D1-2 | backend 24/09: `link_type` `product` + ẩn đích khách không mở được |
 | 17 | Page builder | ✅ v3 | — | 🟡 | ⏸ track Builder v3 | |
 | 18–19 | Hộp duyệt · Khối trạng thái duyệt | ✅ | `design_handoff_workflow/` | ✅ prod | — | |
 | 20–21 | Sản phẩm: danh sách · trình sửa | ❌ | — | ✅ · 🟡 | D1-5 | |
