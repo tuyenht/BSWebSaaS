@@ -167,6 +167,12 @@ jobs:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
       SESSION_DRIVER: redis
+      # phpunit.xml sets these for the Pest run in `guardrails`; this job calls `artisan`
+      # commands directly (no Pest), so the fail-closed guards (PepperedArgon2IdHasher,
+      # SecretCipher) need their own values here. Same test-only strings phpunit.xml uses,
+      # not secrets.
+      AUTH_PASSWORD_PEPPER: test-only-pepper-not-a-secret
+      SETTINGS_ENCRYPTION_KEY: test-only-settings-key-32bytes!!
       CWV_HOST: cwv-ci.test
       CWV_PORT: 8099
 
