@@ -6,9 +6,13 @@ namespace App\Modules\Catalog\Providers;
 
 use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Policies\CatalogPolicy;
+use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Theme\Components\ComponentRegistry;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -33,5 +37,28 @@ final class CatalogServiceProvider extends ServiceProvider
         // Register the catalog's data-bound grid into the shared Section Library, so a page (e.g. the
         // An Vinh home) can compose a `product_grid` block alongside Cms's `entry_grid`.
         $this->app->make(ComponentRegistry::class)->register('product_grid', $this->app->make(ProductGridComponent::class));
+
+        // Menus can link to a product (design.md §13). The morph alias keeps menu_items storing
+        // 'product' instead of a class name; MenuTargets tells Cms's menu which product routes a
+        // visitor can open (published, not trashed) and what an unlabelled item is called — so
+        // the dependency stays Catalog → Cms, never the other way round.
+        Relation::morphMap(['product' => Product::class]);
+
+        $this->app->make(MenuTargets::class)->register(
+            'product',
+            'product_id',
+            static fn (Builder $routes): Builder => $routes->whereIn(
+                'product_id',
+                Product::query()->select('products.id')->where('status', 'published'),
+            ),
+            static function (array $ids, string $locale): array {
+                $titles = [];
+                foreach (ProductTranslation::query()->whereIn('product_id', $ids)->where('locale', $locale)->get(['product_id', 'name']) as $row) {
+                    $titles[$row->product_id] = $row->name;
+                }
+
+                return $titles;
+            },
+        );
     }
 }

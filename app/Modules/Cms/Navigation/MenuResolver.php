@@ -16,17 +16,22 @@ use Illuminate\Support\Collection;
  * Resolves the menu bound to a theme region for the active locale into a primitive tree
  * the theme renders (design.md §13). Picks the menu via menu_assignments (region × locale,
  * falling back to the site's default locale so an untranslated region is never a dead-end),
- * BATCH-resolves each internal target's URL through the routes table (no N+1), drops items
- * whose target no longer resolves (orphan-safe — D3 observer/sweep is a later step), and
- * builds a depth-guarded tree. Returns nested arrays (NOT Cms models) so the Theme module
- * stays Cms-agnostic. Every query is RLS-scoped to the current site.
+ * BATCH-resolves each internal target's URL through the routes table in one query (no N+1),
+ * drops items whose target a visitor cannot open — no route, or a page taken offline or
+ * trashed, whose route row stays behind — and builds a depth-guarded tree. Link kinds owned
+ * by other modules (Catalog's `product`) come in through {@see MenuTargets}, so Cms imports
+ * none of them. Returns nested arrays (NOT Cms models) so the Theme module stays
+ * Cms-agnostic. Every query is RLS-scoped to the current site.
  */
 final readonly class MenuResolver
 {
     /** Nesting cap — also the cycle guard for a malformed parent_id chain. */
     private const int MAX_DEPTH = 5;
 
-    public function __construct(private PathBuilder $paths) {}
+    public function __construct(
+        private PathBuilder $paths,
+        private MenuTargets $targets,
+    ) {}
 
     /**
      * @return list<array<string, mixed>> nodes: {label, url, active, attrs, children}
@@ -90,32 +95,25 @@ final readonly class MenuResolver
 
     /**
      * @param  Collection<int, MenuItem>  $items
-     * @return array<int, string|null> itemId → resolved URL (null = unresolved/orphan)
+     * @return array<int, string|null> itemId → resolved URL (null = unresolved/orphan/unreachable)
      */
     private function resolveUrls(Collection $items, string $locale): array
     {
-        $entryIds = [];
-        $taxonomyIds = [];
+        $targets = [];   // link type → target ids
         foreach ($items as $item) {
-            if ($item->routable_id === null) {
-                continue;
-            }
-            if ($item->link_type === 'entry') {
-                $entryIds[] = $item->routable_id;
-            } elseif ($item->link_type === 'taxonomy') {
-                $taxonomyIds[] = $item->routable_id;
+            if ($item->routable_id !== null && $this->routeColumn($item->link_type) !== null) {
+                $targets[$item->link_type][] = $item->routable_id;
             }
         }
 
-        [$byEntry, $byTaxonomy] = $this->loadRoutePaths($entryIds, $taxonomyIds, $locale);
+        $paths = $this->loadRoutePaths($targets, $locale);
 
         $urls = [];
         foreach ($items as $item) {
-            $urls[$item->id] = match ($item->link_type) {
-                'entry' => $this->internalUrl($item->routable_id !== null ? ($byEntry[$item->routable_id] ?? null) : null, $locale),
-                'taxonomy' => $this->internalUrl($item->routable_id !== null ? ($byTaxonomy[$item->routable_id] ?? null) : null, $locale),
-                'url' => $this->sanitizeUrl($item->url),   // external link — never locale-prefixed
-                'dynamic' => $this->internalUrl($this->resolveDynamic($item->dynamic_key), $locale),
+            $urls[$item->id] = match (true) {
+                $item->link_type === 'url' => $this->sanitizeUrl($item->url),   // external link — never locale-prefixed
+                $item->link_type === 'dynamic' => $this->internalUrl($this->resolveDynamic($item->dynamic_key), $locale),
+                $item->routable_id !== null => $this->internalUrl($paths[$item->link_type][$item->routable_id] ?? null, $locale),
                 default => null,
             };
         }
@@ -129,47 +127,99 @@ final readonly class MenuResolver
         return $path === null ? null : $this->paths->publicUrl($path, $locale);
     }
 
-    /**
-     * @param  list<int>  $entryIds
-     * @param  list<int>  $taxonomyIds
-     * @return array{0: array<int, string>, 1: array<int, string>}
-     */
-    private function loadRoutePaths(array $entryIds, array $taxonomyIds, string $locale): array
+    /** The routes column naming a link kind's target; null for a kind with no route (url, dynamic, unknown). */
+    private function routeColumn(string $linkType): ?string
     {
-        $byEntry = [];
-        $byTaxonomy = [];
+        return match ($linkType) {
+            'entry' => 'entry_id',
+            'taxonomy' => 'taxonomy_id',
+            default => $this->targets->all()[$linkType]['column'] ?? null,
+        };
+    }
 
-        if ($entryIds === [] && $taxonomyIds === []) {
-            return [$byEntry, $byTaxonomy];
+    /**
+     * One routes query for every internal target in the menu, each kind narrowed to targets a
+     * visitor can open in this locale (see reachable()).
+     *
+     * @param  array<string, list<int>>  $targets  link type → target ids
+     * @return array<string, array<int, string>> link type → [target id → unprefixed path]
+     */
+    private function loadRoutePaths(array $targets, string $locale): array
+    {
+        $columns = [];   // link type → routes column
+        foreach (array_keys($targets) as $linkType) {
+            $column = $this->routeColumn($linkType);
+            if ($column !== null) {
+                $columns[$linkType] = $column;
+            }
+        }
+
+        if ($columns === []) {
+            return [];
         }
 
         $routes = SiteRoute::query()
             ->where('locale', $locale)
-            ->where(function (Builder $query) use ($entryIds, $taxonomyIds): void {
-                if ($entryIds !== []) {
-                    $query->whereIn('entry_id', $entryIds);
-                }
-                if ($taxonomyIds !== []) {
-                    $query->orWhereIn('taxonomy_id', $taxonomyIds);
+            ->where(function (Builder $query) use ($targets, $columns, $locale): void {
+                foreach ($columns as $linkType => $column) {
+                    $query->orWhere(function (Builder $branch) use ($linkType, $column, $targets, $locale): void {
+                        $branch->whereIn($column, $targets[$linkType]);
+                        $this->reachable($branch, $linkType, $locale);
+                    });
                 }
             })
-            ->get(['path', 'entry_id', 'taxonomy_id']);
+            ->get(['path', ...array_values($columns)]);
 
+        $paths = [];
         foreach ($routes as $route) {
-            if ($route->entry_id !== null) {
-                $byEntry[$route->entry_id] = $route->path;
-            }
-            if ($route->taxonomy_id !== null) {
-                $byTaxonomy[$route->taxonomy_id] = $route->path;
+            foreach ($columns as $linkType => $column) {
+                $targetId = $route->getAttribute($column);
+                if (is_numeric($targetId)) {
+                    $paths[$linkType][(int) $targetId] = $route->path;
+                }
             }
         }
 
-        return [$byEntry, $byTaxonomy];
+        return $paths;
+    }
+
+    /**
+     * Narrow one kind's routes to targets a visitor can open. A page taken offline or moved to the
+     * Trash keeps its route row, so a bare route lookup would put a 404 in the main navigation:
+     * an entry must be published AND have its translation in this locale published — the same test
+     * the storefront applies before rendering. A category needs its translation in this locale. A
+     * kind another module registered (Catalog's product) applies its own rule.
+     *
+     * @param  Builder<SiteRoute>  $routes
+     */
+    private function reachable(Builder $routes, string $linkType, string $locale): void
+    {
+        if ($linkType === 'entry') {
+            $routes->whereHas('entry', fn (Builder $entry) => $entry
+                ->where('status', 'published')
+                ->whereHas('translations', fn (Builder $translation) => $translation
+                    ->where('locale', $locale)
+                    ->where('status', 'published')));
+
+            return;
+        }
+
+        if ($linkType === 'taxonomy') {
+            $routes->whereHas('taxonomy', fn (Builder $taxonomy) => $taxonomy
+                ->whereHas('translations', fn (Builder $translation) => $translation->where('locale', $locale)));
+
+            return;
+        }
+
+        $registered = $this->targets->all()[$linkType]['reachable'] ?? null;
+        if ($registered !== null) {
+            $registered($routes);
+        }
     }
 
     /**
      * Fallback display titles for items whose per-locale label is empty (§13: empty label →
-     * routable's translated title). Batched per target type; runs no query when every item
+     * routable's translated title). Batched per target kind; runs no query when every item
      * already has a label.
      *
      * @param  Collection<int, MenuItem>  $items
@@ -177,8 +227,7 @@ final readonly class MenuResolver
      */
     private function resolveFallbackTitles(Collection $items, string $locale): array
     {
-        $entryItems = [];     // entryId => list<itemId>
-        $taxonomyItems = [];  // taxonomyId => list<itemId>
+        $unlabelled = [];   // link type → [target id → list<item id>]
 
         foreach ($items as $item) {
             if ($item->routable_id === null) {
@@ -188,40 +237,48 @@ final readonly class MenuResolver
             if ($translation !== null && $translation->label !== '') {
                 continue;
             }
-            if ($item->link_type === 'entry') {
-                $entryItems[$item->routable_id][] = $item->id;
-            } elseif ($item->link_type === 'taxonomy') {
-                $taxonomyItems[$item->routable_id][] = $item->id;
-            }
+            $unlabelled[$item->link_type][$item->routable_id][] = $item->id;
         }
 
         $titles = [];
-
-        if ($entryItems !== []) {
-            $rows = EntryTranslation::query()
-                ->whereIn('entry_id', array_keys($entryItems))
-                ->where('locale', $locale)
-                ->get(['entry_id', 'title']);
-            foreach ($rows as $row) {
-                foreach ($entryItems[$row->entry_id] as $itemId) {
-                    $titles[$itemId] = $row->title;
-                }
-            }
-        }
-
-        if ($taxonomyItems !== []) {
-            $rows = TaxonomyTranslation::query()
-                ->whereIn('taxonomy_id', array_keys($taxonomyItems))
-                ->where('locale', $locale)
-                ->get(['taxonomy_id', 'name']);
-            foreach ($rows as $row) {
-                foreach ($taxonomyItems[$row->taxonomy_id] as $itemId) {
-                    $titles[$itemId] = $row->name;
+        foreach ($unlabelled as $linkType => $itemsByTarget) {
+            foreach ($this->targetTitles($linkType, array_keys($itemsByTarget), $locale) as $targetId => $title) {
+                foreach ($itemsByTarget[$targetId] ?? [] as $itemId) {
+                    $titles[$itemId] = $title;
                 }
             }
         }
 
         return $titles;
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @return array<int, string> target id → its name in the locale
+     */
+    private function targetTitles(string $linkType, array $ids, string $locale): array
+    {
+        $titles = [];
+
+        if ($linkType === 'entry') {
+            foreach (EntryTranslation::query()->whereIn('entry_id', $ids)->where('locale', $locale)->get(['entry_id', 'title']) as $row) {
+                $titles[$row->entry_id] = $row->title;
+            }
+
+            return $titles;
+        }
+
+        if ($linkType === 'taxonomy') {
+            foreach (TaxonomyTranslation::query()->whereIn('taxonomy_id', $ids)->where('locale', $locale)->get(['taxonomy_id', 'name']) as $row) {
+                $titles[$row->taxonomy_id] = $row->name;
+            }
+
+            return $titles;
+        }
+
+        $registered = $this->targets->all()[$linkType]['titles'] ?? null;
+
+        return $registered !== null ? $registered($ids, $locale) : [];
     }
 
     /**
