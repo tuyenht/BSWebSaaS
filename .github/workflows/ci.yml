@@ -248,6 +248,17 @@ jobs:
       - name: Lighthouse CI (performance + LCP + JS budget)
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
+      # "warn"-level assertions print no pass/fail table — the actual numbers (LCP, JS
+      # transfer size, performance score) only exist in these JSON reports. Without this,
+      # every run's real measurements are written to disk and then thrown away.
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci
+          retention-days: 30
+
       - name: Boot a server for the axe pass
         run: |
           php artisan serve --host=0.0.0.0 --port="${CWV_PORT}" &
