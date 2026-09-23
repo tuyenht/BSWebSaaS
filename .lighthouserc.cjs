@@ -18,10 +18,15 @@ module.exports = {
       },
     },
     assert: {
+      // The two budgets CLAUDE.md fixes for the storefront (LCP ≤ 1.5s, JS ≤ 30KB) GATE the job;
+      // calibrated 24/09 on 18 CI samples of this page: LCP 751–1055 ms (two clusters from the
+      // simulated throttling), JS 0 bytes — ≥30% headroom. Median of the 3 runs, so one slow
+      // run cannot fail it on its own. The overall performance score is not a fixed budget and
+      // is noisier; it stays a warning.
       assertions: {
-        'categories:performance': ['warn', { minScore: 0.7 }],
-        'largest-contentful-paint': ['warn', { maxNumericValue: 1500 }],
-        'resource-summary:script:size': ['warn', { maxNumericValue: 30720 }],
+        'categories:performance': ['warn', { minScore: 0.7, aggregationMethod: 'median' }],
+        'largest-contentful-paint': ['error', { maxNumericValue: 1500, aggregationMethod: 'median' }],
+        'resource-summary:script:size': ['error', { maxNumericValue: 30720, aggregationMethod: 'median' }],
       },
     },
     upload: {

@@ -126,7 +126,7 @@ jobs:
         run: pnpm run build
 
   cwv:
-    name: Core Web Vitals + a11y (Lighthouse · axe) — informational, not yet a merge gate
+    name: Core Web Vitals + a11y (Lighthouse · axe)
     runs-on: ubuntu-24.04
 
     services:
@@ -245,9 +245,9 @@ jobs:
           install-chromedriver: true
 
       # Self-contained: lhci boots `php artisan serve`, waits for it, runs Lighthouse 3x,
-      # asserts against .lighthouserc.cjs (currently all "warn" — see file comment), then
-      # stops the server. Assertions are informational while thresholds get calibrated
-      # against real measurements; nothing here fails the job.
+      # asserts against .lighthouserc.cjs, then stops the server. LCP ≤ 1.5s and JS ≤ 30KB
+      # FAIL the job (calibrated 24/09 on 18 real samples — see that file); the overall
+      # performance score only warns.
       - name: Lighthouse CI (performance + LCP + JS budget)
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
@@ -302,7 +302,7 @@ jobs:
       # — the first real run "succeeded" while uploading nothing. Confirmed empirically (0
       # artifacts on that run) before adding this, not assumed from the docs alone.
       # continue-on-error: this step's ONE job is to hand a human the real numbers behind
-      # the "warn" assertions above — it must never be why the job goes red. Learned the
+      # the assertions above — it must never be why the job goes red. Learned the
       # hard way: a repo-level artifact-storage-quota hit turned this into a hard failure
       # on a run where lhci itself, the code, and every assertion were fine.
       - name: Upload Lighthouse reports
@@ -324,11 +324,10 @@ jobs:
           done
 
       # axe-core is stricter than Lighthouse's built-in a11y category (full WCAG ruleset).
-      # continue-on-error: the FIRST pass on real storefront markup is expected to surface
-      # findings; this stays informational until we've triaged a baseline (same reasoning
-      # as the "warn"-only Lighthouse assertions above — not a silent job, just not a gate yet).
+      # A gate since 24/09: the baseline was triaged (the one real finding, a footer contrast
+      # failure, fixed 23/09) and every run since logged "0 violations found" — five in a row
+      # on the calibration reruns. A WCAG2A/AA violation now fails the job (--exit).
       - name: axe accessibility scan
-        continue-on-error: true
         run: >-
           pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/"
           --tags wcag2a,wcag2aa
