@@ -251,6 +251,48 @@ jobs:
       - name: Lighthouse CI (performance + LCP + JS budget)
         run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
 
+      # The numbers the "warn" thresholds must be calibrated against, printed where they cannot
+      # be lost: the log + the run's job summary. The artifact below is best-effort — when the
+      # repo's artifact-storage quota is exhausted it uploads nothing (seen on every run 23/09),
+      # which left no real measurement anywhere. Plain node, no extra dependency.
+      - name: Print Lighthouse measurements
+        if: always()
+        continue-on-error: true
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync, existsSync, readdirSync, readFileSync } from 'node:fs';
+
+          const dir = '.lighthouseci';
+          const files = existsSync(dir) ? readdirSync(dir).filter((f) => /^lhr-.*\.json$/.test(f)) : [];
+          if (files.length === 0) {
+            console.log('No Lighthouse reports found — lhci did not produce any run.');
+            process.exit(0);
+          }
+
+          const rows = files.map((file) => {
+            const lhr = JSON.parse(readFileSync(`${dir}/${file}`, 'utf8'));
+            const metric = (id) => lhr.audits[id]?.numericValue;
+            const script = lhr.audits['resource-summary']?.details?.items?.find((item) => item.resourceType === 'script');
+
+            return {
+              url: lhr.finalDisplayedUrl ?? lhr.requestedUrl,
+              performance: Math.round((lhr.categories.performance?.score ?? 0) * 100),
+              lcp_ms: Math.round(metric('largest-contentful-paint') ?? NaN),
+              cls: Number((metric('cumulative-layout-shift') ?? NaN).toFixed(3)),
+              tbt_ms: Math.round(metric('total-blocking-time') ?? NaN),
+              js_bytes: script?.transferSize ?? 0,
+            };
+          });
+
+          console.table(rows);
+
+          if (process.env.GITHUB_STEP_SUMMARY) {
+            const header = '| URL | Perf | LCP (ms) | CLS | TBT (ms) | JS (bytes) |\n|---|---|---|---|---|---|\n';
+            const body = rows.map((r) => `| ${r.url} | ${r.performance} | ${r.lcp_ms} | ${r.cls} | ${r.tbt_ms} | ${r.js_bytes} |`).join('\n');
+            appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Lighthouse measurements\n\n${header}${body}\n`);
+          }
+          JS
+
       # "warn"-level assertions print no pass/fail table — the actual numbers (LCP, JS
       # transfer size, performance score) only exist in these JSON reports. Without this,
       # every run's real measurements are written to disk and then thrown away.

@@ -115,7 +115,7 @@
 
 **Tầng 2 · Gate THỦ CÔNG bắt buộc theo vùng chạm (CHƯA chặn merge — dán output trước khi báo DONE §10.4):**
 - `pest --mutate` khi sửa class trong baseline-list (lệnh + list ở §7; pcov trong image, mặc định TẮT, bật per-run; mở rộng class-list + nâng min dần, không hạ).
-- Lighthouse + axe khi chạm storefront/UI (LCP mobile p75 ≤1.5s, JS ≤30KB) — job `cwv` đo sẵn mỗi push (ngưỡng đang `warn`, chờ hiệu chỉnh bằng số thật): dán số từ artifact `lighthouse-reports` + log axe.
+- Lighthouse + axe khi chạm storefront/UI (LCP mobile p75 ≤1.5s, JS ≤30KB) — job `cwv` đo sẵn mỗi push (ngưỡng đang `warn`, chờ hiệu chỉnh bằng số thật): dán số từ job summary của run (bước "Print Lighthouse measurements" — artifact `lighthouse-reports` có thể trống khi hết hạn ngạch lưu trữ) + log axe.
 
 ---
 
