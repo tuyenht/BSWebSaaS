@@ -33,7 +33,7 @@
 | Build FE | Vite 8 + Tailwind 4 | công cụ build, KHÔNG thay Laravel |
 | Storage | Cloudflare **R2** (private) + **Worker/cf.image** serving (imgproxy = L4 cold) | ADR-17 |
 | AI | ⏳ Laravel AI SDK → Anthropic (sonnet-4-6 / haiku-4-5) — CHƯA cài | |
-| Test/QA | Pest 4 (kèm `--mutate` thủ công §6) + Larastan (max) + Rector (theo yêu cầu) | Lighthouse + axe: CI job `cwv` **gate** (từ 24/09) trang `/` của site đo-lường; `/lien-he` + `/tin-tuc` đo ở mức cảnh báo tới khi hiệu chỉnh xong — sandbox không có Chrome, số đo đọc từ CI |
+| Test/QA | Pest 4 (kèm `--mutate` thủ công §6) + Larastan (max) + Rector (theo yêu cầu) | Lighthouse + axe: CI job `cwv` **gate** (từ 24/09) trang `/`, `/lien-he`, `/tin-tuc` của site đo-lường — sandbox không có Chrome, số đo đọc từ CI |
 
 > ⏳ = đã pin trong thiết kế nhưng CHƯA cài trong repo — KHÔNG viết code giả định nó tồn tại.
 > ⚠ Nhiều major mới → AI dễ gợi ý SAI cú pháp. Khi viết code framework, **bám tài liệu version đã pin**; nếu nghi ngờ cú pháp, kiểm lại, đừng đoán.
@@ -111,12 +111,12 @@
 
 **Tầng 1 · CI tự động (`.github/workflows/ci.yml` — chặn merge):**
 - `Pint --test` · `Larastan` (max) · `Pest` (unit + feature + Arch + Query Budget + **Gate #1 concurrency** — phpunit.xml khai đủ 4 suite) · migrate PostgreSQL thật (app_user + pgsql_admin) · build FE (Vite + Tailwind).
-- **Job `cwv`** (Lighthouse + axe; gate trang `/` của site đo-lường — `/lien-he`, `/tin-tuc` đang hiệu chỉnh ở mức cảnh báo): LCP ≤1.5s + JS ≤30KB (median 3 lượt) + axe WCAG2A/AA 0 vi phạm — đỏ = chặn. Điểm performance tổng chỉ cảnh báo.
+- **Job `cwv`** (Lighthouse + axe; gate `/`, `/lien-he`, `/tin-tuc` của site đo-lường): LCP ≤1.5s + JS ≤30KB (median 3 lượt) + axe WCAG2A/AA 0 vi phạm — đỏ = chặn. Điểm performance tổng chỉ cảnh báo.
 - **Query Budget test** — assert số query tối đa/route hot (bắt N+1). **Arch test** — "mọi model tenant dùng BelongsToSite" · "mọi action qua policy" · "mọi transition qua engine" · ranh giới module acyclic (Tenancy là nền).
 
 **Tầng 2 · Gate THỦ CÔNG bắt buộc theo vùng chạm (CHƯA chặn merge — dán output trước khi báo DONE §10.4):**
 - `pest --mutate` khi sửa class trong baseline-list (lệnh + list ở §7; pcov trong image, mặc định TẮT, bật per-run; mở rộng class-list + nâng min dần, không hạ).
-- Lighthouse + axe khi chạm storefront/UI (LCP mobile p75 ≤1.5s, JS ≤30KB) — job `cwv` chỉ gate trang `/` (còn `/lien-he`, `/tin-tuc` cảnh báo); trang/section khác chạm tới phải đo thêm và dán số (job summary bước "Print Lighthouse measurements" + log axe; artifact `lighthouse-reports` có thể trống khi hết hạn ngạch lưu trữ).
+- Lighthouse + axe khi chạm storefront/UI (LCP mobile p75 ≤1.5s, JS ≤30KB) — job `cwv` chỉ gate `/`, `/lien-he`, `/tin-tuc`; trang/section khác chạm tới phải đo thêm và dán số (job summary bước "Print Lighthouse measurements" + log axe; artifact `lighthouse-reports` có thể trống khi hết hạn ngạch lưu trữ).
 
 ---
 

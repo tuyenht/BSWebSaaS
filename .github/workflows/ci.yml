@@ -324,24 +324,12 @@ jobs:
           done
 
       # axe-core is stricter than Lighthouse's built-in a11y category (full WCAG ruleset).
-      # A gate since 24/09: the baseline was triaged (the one real finding, a footer contrast
-      # failure, fixed 23/09) and every run since logged "0 violations found" — five in a row
-      # on the calibration reruns. A WCAG2A/AA violation now fails the job (--exit).
+      # A gate since 24/09 on all three measured pages: the home baseline was clean five runs in a
+      # row; widening to /lien-he + /tin-tuc surfaced one real failure (.category__empty contrast,
+      # fixed de81d6b), clean on every run since. A WCAG2A/AA violation fails the job (--exit).
       - name: axe accessibility scan
         run: >-
-          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/"
-          --tags wcag2a,wcag2aa
-          --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
-          --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"
-          --chrome-options="--headless=new,--no-sandbox"
-          --exit
-
-      # Pages under calibration (joined 24/09 with the Lighthouse matrix): reported, not yet a
-      # gate. Promote them into the step above once their own runs are clean, as the homepage was.
-      - name: axe accessibility scan (pages under calibration)
-        continue-on-error: true
-        run: >-
-          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc"
+          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/" "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc"
           --tags wcag2a,wcag2aa
           --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"

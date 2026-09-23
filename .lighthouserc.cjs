@@ -31,12 +31,10 @@ module.exports = {
       },
     },
     assert: {
-      assertMatrix: [
-        // Calibrated 24/09 on 18 samples: LCP 751–1055 ms, JS 0 bytes.
-        { matchingUrlPattern: '/$', assertions: budgets('error') },
-        // Under calibration since 24/09 — promote once their own numbers are in.
-        { matchingUrlPattern: '/(lien-he|tin-tuc)$', assertions: budgets('warn') },
-      ],
+      // All three pages gated. Calibration (CI, 24/09): / 18 samples, /lien-he + /tin-tuc 12 each —
+      // LCP 750–1055 ms (two clusters from simulated throttling), JS 0 bytes, axe clean.
+      // A page added later joins through an assertMatrix entry at 'warn' first.
+      assertions: budgets('error'),
     },
     upload: {
       target: 'filesystem',
