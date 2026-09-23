@@ -16,7 +16,7 @@
 - Cổng nghiệm thu mỗi handoff: đối chiếu code + 12 tiêu chí dễ dùng → `design_handoff_<slug>/` → cập nhật
   `saas-starter-screen-map.md` → mới build. Việc backend không cần UI chạy song song.
 
-## 2. Quyết định 24/09 (Q1–Q14, owner chốt theo khuyến nghị — `design.md` changelog v2.22)
+## 2. Quyết định 24/09 (Q1–Q14, owner chốt theo khuyến nghị — `design.md` changelog v2.23)
 | Trạng thái | Việc |
 |---|---|
 | ✅ Xong | Q14 luật kiến trúc "module tính năng không đọc thẳng `Tenancy\Models`" có hiệu lực lại + danh sách nợ 8 class · trang 404 hiện đúng tên website (white-label) — PR #67 |
@@ -27,7 +27,7 @@
 
 ## 3. Mạch khác đang mở
 - **RBAC Console:** backend nhóm quyền tuỳ chỉnh xong (`rbac.custom_roles`, mặc định tắt); UI = lượt D2-1.
-- **Core Web Vitals:** job `cwv` là gate từ 24/09 (trang `/`; `/lien-he`, `/tin-tuc` đang hiệu chỉnh ở mức cảnh báo).
+- **Core Web Vitals:** job `cwv` là gate từ 24/09 cho `/`, `/lien-he`, `/tin-tuc` (LCP ≤ 1,5s · JS ≤ 30KB · axe 0 vi phạm).
 - **Đăng nhập 3 cửa (§LR B1–B6):** tường minh mặt phẳng · cửa owner · đăng nhập chung + chọn website · chuyển website ·
   đăng nhập hỗ trợ (thiết kế ở D4-3) — chưa code.
 - **Builder v3:** danh mục section v3.1 chờ phía thiết kế; PR 1a.1 còn bộ sinh bảng màu `--brand-50..900` + thang spacing.
