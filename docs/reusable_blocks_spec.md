@@ -2,7 +2,7 @@
 
 > Học concept "UX Blocks" của Flatsome (dựng khối một lần, dùng nhiều nơi) NHƯNG bỏ shortcode.
 > Bám ADR‑04/05/08/17: Page‑JSON + Section Library, không mã khách, export‑được, RLS đa tenant.
-> Nguồn liên quan: `docs/builder_v2_alignment.md`, `docs/builder_v3_spec.md`.
+> Nguồn liên quan: `docs/archive/2607-design-sync/builder_v2_alignment.md`, `docs/builder_v3_spec.md`.
 
 ## 1. Mô hình dữ liệu
 - **Khối tái dùng = `entries type='block'`** (đồng bộ "page/post = entries"). Thân khối = **Page‑JSON** (`entry_translations.body`).

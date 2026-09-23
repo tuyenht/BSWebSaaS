@@ -1,3 +1,7 @@
+> 🗄 **LƯU TRỮ (24/09/2026)** — tài liệu làm việc của đợt đồng bộ thiết kế tháng 7/2026, giữ làm lịch sử.
+> KHÔNG phải nguồn sự thật: có chỗ đã lỗi thời hoặc mâu thuẫn quyết định sau này. SSOT = `docs/design.md`
+> (chỉ mục ADR ở Phụ lục A) + `docs/README.md`. Lý do lưu trữ: `docs/archive/README.md`.
+
 Chạy audit doc‑only (propose‑first, KHÔNG code, KHÔNG migrate) để reconcile 5 điểm dưới đây vào `docs/design.md`. Đây là việc COUNCIL/tài liệu — dừng chờ tôi duyệt diff trước khi ghi. Grounded: verify lại CODE first‑hand, CODE thắng khi mâu thuẫn.
 
 BỐI CẢNH: audit thiết kế đã đối chiếu v2.14 (commit c040caa) với CODE. Doc‑sync phần lớn chuẩn; 4 ADR Draft đúng; "chưa migrate gì" đúng (migration dừng 2013). Nhưng có 5 điểm cần làm rõ:

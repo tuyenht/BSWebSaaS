@@ -1,0 +1,51 @@
+═══ BỐI CẢNH CHUNG (giữ nguyên ở đầu mọi lượt) ═══
+Dự án BSWebSaaS trong Claude Design. Trước khi làm: đọc CLAUDE.md, LESSONS.md, github.md, TODO.md; mở Admin Shell.dc.html và design system `_ds/bssaas-adminkit-design-system`; dùng lại nguồn chung ai-quota.js (BSAI) · content-workflow.js (BSCW) · content-ui.js (BSUI) · content-seo.js (BSSEO), và — khi đã có — `Chuẩn giao diện SaaS Starter.dc.html` (lượt D0-2, D0-3) + registry màn của Admin Shell (lượt D0-4) + `SaaS Starter - Bản đồ màn hình.md` (lượt D0-1).
+Sản phẩm: SaaS Starter — bộ khung quản trị đa-tenant BÁN ĐƯỢC cho nhiều loại website/SaaS: white-label, đa ngôn ngữ (tiếng Việt trước), phân quyền động, quy trình duyệt động (mặc định TẮT). Người dùng: từ chủ doanh nghiệp nhỏ lớn tuổi, chỉ biết đọc và dùng chuột/điện thoại, tới nhân viên văn phòng và người quản trị thạo việc.
+Nguồn sự thật dữ liệu: GitHub tuyenht/BSWebSaaS@main — mở đúng file repo nêu trong prompt để lấy bảng/cột/quyền/trạng thái thật; KHÔNG bịa. Chỗ nào repo chưa có thì vẫn vẽ, gắn nhãn "Chờ backend" và ghi vào mục "Câu hỏi cho backend" của README.
+Luật cứng:
+- Token AdminKit: navy #405189 · Inter 14px · bo 4px ô nhập / 6px thẻ · 1 bóng thẻ · nền #f3f3f9. Không thêm màu, gradient, bóng mới.
+- Đích build: Livewire 4 + Blade + Tailwind 4 + <x-admin::*>; icon Remix inline-SVG (prototype dùng CDN được, README liệt kê tên icon). Không Bootstrap, không Flux.
+- Mỗi màn đủ trạng thái: trống · đang tải · lỗi (có "Thử lại") · không có quyền · khoá theo gói · thành công. Không ngõ cụt.
+- 3 bề rộng 1240 / 768 / 390, sáng + tối, WCAG 2.2 AA.
+- Không hiện mã số nội bộ (id) — chỉ tên, đường dẫn, mã công khai. Không gắn cứng thương hiệu (tên nền tảng/website/"Phát triển bởi" lấy từ cấu hình).
+- Dữ liệu động: vai trò, quyền, loại nội dung, ngôn ngữ, gói, bước duyệt đều đọc từ registry/bảng — chịu được 1–20 mục, tên dài.
+- Hành động nguy hiểm: hộp xác nhận giữa màn (mẫu SweetAlert2), nút Huỷ được focus.
+TIÊU CHÍ DỄ DÙNG — kiểm từng màn trước khi giao, ghi kết quả (đạt/chưa + lý do) vào README:
+ 1. Hiểu trong 5 giây: tiêu đề + 1 dòng mô tả nói màn này để làm gì; đúng 1 nút chính nổi bật; người mới biết bấm gì tiếp.
+ 2. Việc chính của màn xong trong ≤ 3 bước từ menu, không cần đọc hướng dẫn.
+ 3. Không thuật ngữ kỹ thuật trần (SMTP, OAuth, DNS, CNAME, SSL, API, webhook, token, slug, meta, robots…). Buộc phải có thì để trong khối "Nâng cao" và kèm 1 câu giải thích đời thường. Tên thương hiệu quen (Google, Zalo, Facebook) giữ nguyên nhưng nói rõ công dụng ("Facebook Pixel — đo hiệu quả quảng cáo Facebook").
+ 4. Icon luôn kèm chữ; chỉ icon rất quen (tìm kiếm, chuông, đóng, thêm) mới được đứng một mình, và phải có tooltip + aria-label.
+ 5. Ô nhập có gợi ý bằng ví dụ thật; lỗi nói cách sửa ("Số điện thoại cần 10 số, ví dụ 0901 234 567"), không nói lỗi kỹ thuật.
+ 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu, xoá = vào Thùng rác kèm toast "Hoàn tác".
+ 7. Trạng thái luôn có màu + hình + chữ — không bao giờ chỉ dùng màu.
+ 8. Không cắt chữ: nhãn nút, chip, tab, nút lọc luôn 1 dòng (dài thì "…" + tooltip) — nút KHÔNG bao giờ xuống 2 dòng; nhãn ô nhập được xuống dòng nhưng không bị che. Không thanh cuộn ngang trong thẻ/khung đọc.
+ 9. Điện thoại: việc hay làm (trả lời khách liên hệ, duyệt bài, đăng tin nhanh, xem thông báo) làm trọn được ở 390px; vùng bấm ≥ 44px; không thành phần nổi nào che nút Lưu hay nội dung.
+10. Hai tầng người dùng: mặc định gọn cho người mới (tuỳ chọn nâng cao gập lại); người thạo có phím tắt, thao tác hàng loạt, lọc nhanh — nhưng không làm rối tầng người mới.
+11. Chế độ "Chữ lớn" (+2px toàn trang) không làm vỡ bố cục.
+12. Dùng đúng từ trong "Bảng thuật ngữ" của Chuẩn giao diện (D0-3): cùng một việc luôn cùng một từ ở mọi màn.
+Nhúng & điều hướng: màn tuân hợp đồng nhúng §13 (embedded · onDirty · embedId · bs-embed-cmd), đăng ký vào registry màn của Admin Shell (sau D0-4) với trạng thái "ready", chuyển màn bằng sự kiện bs-goto {screen, params}; cập nhật dòng tương ứng trong `SaaS Starter - Bản đồ màn hình.md`.
+Giao nộp: 1 file .dc.html mỗi màn (hoặc gộp có anchor) + README handoff theo mẫu: Tổng quan · File · Mức hoàn thiện · Màn & trạng thái · Tương tác · Ánh xạ dữ liệu (file:dòng repo) · Quyền & gói (ai thấy gì) · Token · Icon · Chuỗi cần dịch · Kết quả 12 tiêu chí dễ dùng · Câu hỏi cho backend.
+Không sửa CLAUDE.md (chỉ owner sửa) — bài học mới ghi 1 dòng vào LESSONS.md. Làm xong gọi ready_for_verification và sửa hết lỗi verifier báo. Lượt này làm ĐÚNG MỘT việc bên dưới.
+═══ VIỆC CỦA LƯỢT NÀY ═══
+
+# D0-1 · Dọn & đồng bộ project thiết kế (không vẽ màn mới)
+
+Mục tiêu: project gọn, không bản trùng, câu chữ đúng luật của chính project, tài liệu nói đúng về repo.
+
+1. Bản trùng / lưu trữ:
+   - `Website Config - Integrations.dc.html` trùng chức năng `Integrations Panel.dc.html` nhưng thiếu hợp đồng nhúng §13 → gộp phần hay còn thiếu (nếu có) vào `Integrations Panel`, rồi xoá bản cũ (như đã làm với `Floating Contact - Settings` — TODO.md).
+   - Đưa `Page Builder v2.dc.html` và `Page Builder - Options.dc.html` vào `_archive/` (bản khám phá). Grep mọi dc-import/đường dẫn tới chúng trước khi chuyển; Page Builder v3 giữ nguyên chỗ cũ (Trình đơn đang trỏ tới).
+   - GIỮ NGUYÊN `Cài đặt - Đề xuất giao diện.dc.html` — CLAUDE.md §1 đang lấy file này làm chuẩn đối chiếu cho Cài đặt; chỉ đảm bảo nó không xuất hiện trong menu Shell.
+2. Câu chữ trái luật §7: còn cụm gộp "lượt AI" cho tác vụ chữ — `Admin Shell.dc.html` (thông báo khi dịch, quanh dòng 2103), `Cài đặt xuất bản tự động.dc.html` (quanh dòng 280, 339, 491), `AI Writer Panel v2.dc.html` (quanh dòng 297) → đổi đúng đơn vị theo §7/§7a ("từ AI" cho chữ, "lượt tạo ảnh" cho ảnh). Grep toàn project để không sót.
+3. White-label: grep "Bảo Sơn" / "baoson" trong CÂU CHỮ giao diện (không phải dữ liệu mẫu) — ví dụ footer `Admin Shell.dc.html` (quanh dòng 707-708: "BSWeb", "BSSaaS StarterKit v1.0", "Bảo Sơn"), "Hộp thư của Bảo Sơn" trong `Email Settings.dc.html` → đổi thành biến cấu hình nền tảng (tên nền tảng, tên bộ khung, dòng "Phát triển bởi" bật/tắt theo mục Thương hiệu trắng `p-branding`). Dữ liệu mẫu giữ, nhưng đánh dấu "mẫu" trong README.
+4. Design system: `readme.md` ghi storefront "slate + amber #f59e0b/#d97706" nhưng `tokens/colors.css` dùng vàng đồng `--color-sf-accent: #d6a43a` → sửa readme cho khớp token.
+5. `github.md` — sửa thông tin sai về repo:
+   - Bỏ mục "Bug hiện tại: NewLeadNotification … dịch theo ngôn ngữ khách": repo đặt ngôn ngữ = ngôn ngữ mặc định của site trước khi gửi (`app/Modules/Storefront/Http/Requests/StoreLeadRequest.php:23-31`). Vấn đề thật ở đó là chiều ngược lại: khách đang xem bản tiếng Anh vẫn nhận thông báo lỗi của form bằng ngôn ngữ mặc định → ghi vào "Câu hỏi cho backend".
+   - Cập nhật "Screen map" theo repo: Hộp duyệt `app/Modules/Admin/Livewire/Entries/ReviewInbox.php` · Quy trình duyệt `app/Modules/Admin/Livewire/WorkflowSettings.php` · Thành viên `app/Modules/Admin/Livewire/Users/Index.php` · Thư viện `app/Modules/Admin/Livewire/Media/Library.php` · Liên hệ `app/Modules/Admin/Livewire/Forms/{Inbox,Detail}.php` · Sản phẩm `app/Modules/Admin/Livewire/Catalog/{Index,Editor}.php` · Nền tảng `app/Modules/Admin/Livewire/Platform/{Tenants,Sites,Audit}/*` · menu thật `app/Modules/Admin/Navigation/{AdminNav,PlatformNav}.php`.
+6. Tạo `SaaS Starter - Bản đồ màn hình.md` — bảng: mục menu · màn · file thiết kế · trạng thái (ready / đang làm / chờ thiết kế / để sau / giữ nguyên) · mã lượt sẽ làm. Danh sách:
+   - Site: Tổng quan · [mỗi loại nội dung: Thêm mới · Danh sách · Chuyên mục] · Sản phẩm (Thêm mới · Danh sách · Chuyên mục) · Hộp duyệt · Thư viện ảnh & tệp · Khách liên hệ · Biểu mẫu · Trình đơn · Thành viên · Nhóm quyền · Cài đặt (Chung: Thông tin chung · Giao diện website · Giao diện trang quản trị · Ngôn ngữ website | Nội dung: Đường dẫn · Sản phẩm · Quy trình duyệt | Tiếp thị & Kết nối: SEO & Chia sẻ · Chuyển hướng · Tích hợp & Theo dõi · Nút liên hệ nổi | Hệ thống: Tên miền · Email · Đăng nhập nhanh · Gói & mức dùng | Nâng cao: Bảo mật & Nâng cao · Dữ liệu & Phục hồi) · Tài khoản của tôi · Thông báo · Trợ giúp · Trang lỗi · Kết quả tìm kiếm.
+   - Nền tảng: Tổng quan · Khách hàng · Website (+ Tạo website) · Gói & tính năng · Loại website · Nhân sự vận hành · Nhật ký hệ thống · Đăng nhập hỗ trợ · Cài đặt nền tảng (Thông tin · Thương hiệu trắng · Email hệ thống · Mẫu email · Đăng nhập nhanh · Bảo mật).
+   - Để sau: bộ AI · mặt TMĐT (Đơn hàng, Khách hàng, Khuyến mãi, Kho, Báo cáo; Thanh toán, Vận chuyển, Thuế) · Khối tái dùng · Trình dựng trang v3 (track riêng).
+   - Giữ nguyên, không thiết kế lại: khu đăng nhập (đăng nhập · quên/đặt lại mật khẩu · xác thực 2 lớp · mã qua email).
+
+Xong khi: không còn bản trùng; grep không còn dc-import gãy, không còn "lượt AI" cho tác vụ chữ, không còn tên nền tảng gắn cứng trong câu chữ; github.md và readme đúng repo; có file Bản đồ màn hình.

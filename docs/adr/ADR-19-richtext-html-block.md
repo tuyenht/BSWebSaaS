@@ -2,7 +2,7 @@
 
 - **Trạng thái:** **Đề xuất (Draft)** — ĐÃ LAND vào `docs/design.md` Phụ lục A dòng 19 + changelog v2.14. Không chạm schema.
 - **Liên quan:** ADR‑04 (Section Library + Page‑JSON) · ADR‑05 · **ADR‑08 (AI sinh Page‑JSON)** · ADR‑17 (image = media_id) · §11 (sanitizer catalog 2 profile) · D1 (page & post chung body).
-- **Nguồn:** `docs/builder_v2_alignment.md`; đối chiếu CODE `ComponentRegistry`/`ValidPageJson`/`RichTextSanitizer` (main c040caa).
+- **Nguồn:** `docs/archive/2607-design-sync/builder_v2_alignment.md`; đối chiếu CODE `ComponentRegistry`/`ValidPageJson`/`RichTextSanitizer` (main c040caa).
 
 ## Bối cảnh (grounded CODE)
 - `entry_translations.body` = MỘT cột `jsonb` per‑locale, block‑list phẳng; page & post chung body + renderer (D1).

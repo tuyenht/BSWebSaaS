@@ -1,3 +1,7 @@
+> 🗄 **LƯU TRỮ (24/09/2026)** — tài liệu làm việc của đợt đồng bộ thiết kế tháng 7/2026, giữ làm lịch sử.
+> KHÔNG phải nguồn sự thật: có chỗ đã lỗi thời hoặc mâu thuẫn quyết định sau này. SSOT = `docs/design.md`
+> (chỉ mục ADR ở Phụ lục A) + `docs/README.md`. Lý do lưu trữ: `docs/archive/README.md`.
+
 # Prompt cho Claude Code — land gói ADR‑19..22 (DOCS‑ONLY)
 
 > 🚫 **LỖI THỜI — ĐÃ THỰC HIỆN.** 4 ADR đã land vào `docs/design.md` v2.14 (commit `c040caa`). Prompt này giữ làm **lịch sử**; ĐỪNG dán lại. Task Claude Code kế tiếp sẽ là **BUILD** (propose‑first per wave), không phải commit doc. Xem `README.md §4`.

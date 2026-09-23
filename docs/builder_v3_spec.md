@@ -3,7 +3,7 @@
 > Chốt theo khuyến nghị Council (audit 2026‑07). Bám **ADR‑04/05/08/17 + §E7** và code repo `main`.
 > Đây là **blueprint cho prototype `Page Builder v3.dc.html`** (design deliverable) **và** đề xuất cho
 > Claude Code (các mục đánh **[COUNCIL]** chạm §E7/ValidPageJson → propose‑first khi vào repo).
-> Nguồn đối chiếu chi tiết: `docs/builder_v2_alignment.md`.
+> Nguồn đối chiếu chi tiết: `docs/archive/2607-design-sync/builder_v2_alignment.md`.
 
 ## 0. Mục tiêu
 Thay builder Elementor (Section›Cột›Phần tử + inline‑CSS) bằng **trình soạn Section Library** xuất **Page‑JSON**:

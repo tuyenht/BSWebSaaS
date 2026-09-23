@@ -1,6 +1,6 @@
 # ADR‑19 — SPEC hiện thực: kind `html` + "một body / hai editor" (map prototype → repo)
 
-> Phần **(b) spec** của deliverable ADR‑19 (phần (a) = prototype `Page Editor - Options.dc.html` đã dựng; (c) = prompt Claude Code ở `_claude_code_ADR19_prompt.md`). Grounded CODE `tuyenht/BSWebSaaS@main c040caa` (đã đọc first‑hand). **CODE thắng.** ADR‑19 đã land design.md §19 (Draft) — spec này chi tiết hoá để build; mọi mục chạm registry/validate = **[COUNCIL] propose‑first**.
+> Phần **(b) spec** của deliverable ADR‑19 (phần (a) = prototype `Page Editor - Options.dc.html` đã dựng; (c) = prompt Claude Code ở `docs/archive/2607-design-sync/_claude_code_ADR19_prompt.md`). Grounded CODE `tuyenht/BSWebSaaS@main c040caa` (đã đọc first‑hand). **CODE thắng.** ADR‑19 đã land design.md §19 (Draft) — spec này chi tiết hoá để build; mọi mục chạm registry/validate = **[COUNCIL] propose‑first**.
 
 ## 0. Hội đồng đã soi (tóm tắt phán quyết)
 - **Security:** field raw‑render là bề mặt XSS #1 → sanitize **ON‑WRITE mọi đường ghi**, không chỉ FormRequest. **Chốt.**
