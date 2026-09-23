@@ -46,3 +46,15 @@ it('sanitizes a malicious token value (no CSS breakout)', function (): void {
     $html = renderHome(1);
     expect($html)->not->toContain('display:none')->toContain('--primary:#3b82f6'); // rejected → default
 });
+
+it('prints the derived, readable brand text color next to the brand seed', function (): void {
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::create([
+        'group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => '#f59e0b'],
+    ]));
+
+    $html = renderHome(1);
+
+    expect($html)->toContain('--primary:#f59e0b')
+        ->toMatch('/--primary-text:#[0-9a-f]{6};/')
+        ->not->toContain('--primary-text:#f59e0b');
+});

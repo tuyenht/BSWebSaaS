@@ -60,6 +60,23 @@ final class ThemeResolver
         return $tokens;
     }
 
+    /**
+     * What the storefront prints into :root — the seeds plus the roles CSS cannot derive by itself
+     * (docs/notes/section-style-system.md §1). `primary-text` is the brand color made readable on
+     * `surface` (WCAG AA), for brand-colored TEXT on light surfaces; fills and borders keep `primary`
+     * exactly as the site chose it. Always derived, never read from settings; a seed that is not a
+     * hex color (a name, rgb()) cannot be measured, so the role falls back to the ink color.
+     *
+     * @return array<string, string>
+     */
+    public function cssVariables(): array
+    {
+        $variables = $this->tokens();
+        $variables['primary-text'] = ReadableColor::on($variables['primary'], $variables['surface']) ?? 'var(--ink)';
+
+        return $variables;
+    }
+
     private function safeKey(string $key): bool
     {
         return preg_match('/^[a-z0-9-]{1,40}$/', $key) === 1;

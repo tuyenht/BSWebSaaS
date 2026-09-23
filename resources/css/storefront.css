@@ -17,9 +17,10 @@
  * Contrast floor (WCAG 2 AA, 4.5:1 — computed for the default AND An Vinh seeds, 24/09):
  *   muted text on a light surface = `color-mix(in srgb, var(--body) 80%, white)` (≥5.4:1);
  *   anything lighter (--body 65%, --ink 40%) fails there. Light text on the dark header/
- *   footer = `color-mix(in srgb, var(--ink) 40%, white)` (≥7:1). `--primary` used as TEXT
- *   on a light surface is NOT guaranteed — a light brand color (An Vinh's amber) fails; see
- *   docs/notes/section-style-system.md §1 (accent-text role, pending).
+ *   footer = `color-mix(in srgb, var(--ink) 40%, white)` (≥7:1). Brand-colored TEXT on a light
+ *   surface = `var(--primary-text)` — ThemeResolver derives it from the brand seed until it
+ *   clears 4.5:1 against --surface (a light brand like An Vinh's amber alone reads ≈2.1:1).
+ *   `--primary` stays for fills, borders and text on the dark header/hero/footer.
  *
  * Architecture: BEM (.block__element--modifier), mobile-first, zero JS framework.
  * Target: <15 KB minified. No @import 'tailwindcss' — passed through Vite as plain CSS.
@@ -484,7 +485,7 @@ main:has(.hero) .page__title {
 }
 
 .entry-grid__title a:hover {
-    color: var(--primary);
+    color: var(--primary-text);
 }
 
 .entry-grid__sector {
@@ -492,7 +493,7 @@ main:has(.hero) .page__title {
     padding: 0 1rem 0.25rem;
     font-size: 0.75rem;
     font-weight: 600;
-    color: var(--primary);
+    color: var(--primary-text);
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
@@ -572,7 +573,7 @@ main:has(.hero) .page__title {
 }
 
 .category__item a:hover {
-    color: var(--primary);
+    color: var(--primary-text);
 }
 
 .category__empty {
@@ -600,13 +601,13 @@ main:has(.hero) .page__title {
 }
 
 .post__breadcrumb a {
-    color: var(--primary);
+    color: var(--primary-text);
     font-weight: 600;
     transition: color 0.2s;
 }
 
 .post__breadcrumb a:hover {
-    color: color-mix(in srgb, var(--primary) 85%, black);
+    color: color-mix(in srgb, var(--primary-text) 85%, black);
 }
 
 .post__title {
@@ -670,14 +671,14 @@ main:has(.hero) .page__title {
     display: inline-block;
     font-size: 1.0625rem;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--primary-text);
     margin: 0 1.5rem 0.5rem 0;
     transition: color 0.2s;
 }
 
 .contact__phone:hover,
 .contact__email:hover {
-    color: color-mix(in srgb, var(--primary) 85%, black);
+    color: color-mix(in srgb, var(--primary-text) 85%, black);
 }
 
 .contact__map {
@@ -902,7 +903,7 @@ main:has(.hero) .page__title {
 }
 
 .latest-posts__item a:hover {
-    color: var(--primary);
+    color: var(--primary-text);
 }
 
 /* ───── Pagination ───────────────────────────────────────────────────────── */
@@ -1026,7 +1027,7 @@ main:has(.hero) .page__title {
 .error-page__code {
     font-size: 6rem;
     font-weight: 900;
-    color: var(--primary);
+    color: var(--primary-text);
     line-height: 1;
     margin-bottom: 0.5rem;
 }

@@ -34,7 +34,7 @@ final readonly class PageRenderer
             'title' => $title,
             'seoTitle' => $seo['title'] ?? $title,
             'seoDescription' => $seo['description'] ?? null,
-            'tokens' => $this->theme->tokens(),
+            'tokens' => $this->theme->cssVariables(),
             'sections' => $this->blocks->render($body),
         ] + $extra)->render();
     }
@@ -57,7 +57,7 @@ final readonly class PageRenderer
             'title' => $title,
             'seoTitle' => $seo['title'] ?? $title,
             'seoDescription' => $seo['description'] ?? null,
-            'tokens' => $this->theme->tokens(),
+            'tokens' => $this->theme->cssVariables(),
             'posts' => $posts,
             'pagination' => $pagination,
         ] + $extra)->render();
@@ -81,7 +81,7 @@ final readonly class PageRenderer
             'title' => $name,
             'seoTitle' => $seo['title'] ?? $name,
             'seoDescription' => $seo['description'] ?? null,
-            'tokens' => $this->theme->tokens(),
+            'tokens' => $this->theme->cssVariables(),
             'description' => $descriptionHtml,
             'images' => $images,
         ] + $extra)->render();

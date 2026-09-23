@@ -2,6 +2,7 @@
 
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Theming\ReadableColor;
 use App\Modules\Theme\Theming\ThemeResolver;
 
 beforeEach(fn () => seedTenancy());
@@ -72,4 +73,30 @@ it('falls back to safe defaults with no site context at all', function (): void 
         'ink' => '#111111',
         'body' => '#333333',
     ]);
+});
+
+it('prints the seeds plus a brand text color that stays readable on the surface', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create([
+            'group_name' => 'theme',
+            'key' => 'tokens',
+            // A light brand, and an attempt to pin the derived role from settings.
+            'value' => ['primary' => '#f59e0b', 'primary-text' => '#f59e0b'],
+        ]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect($variables['primary'])->toBe('#f59e0b') // fills and borders keep the brand as chosen
+            ->and($variables['primary-text'])->not->toBe('#f59e0b') // the role is always derived
+            ->and(ReadableColor::ratio($variables['primary-text'], $variables['surface']))
+            ->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
+
+it('falls back to the ink color when the brand seed is not a hex color', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => 'rebeccapurple']]);
+
+        expect(app(ThemeResolver::class)->cssVariables()['primary-text'])->toBe('var(--ink)');
+    });
 });
