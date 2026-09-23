@@ -96,6 +96,9 @@
                 'email'     => ! empty($brand['email']) ? $brand['email'] : null,
                 'taxID'     => ! empty($brand['tax_id']) ? $brand['tax_id'] : null,
                 'address'   => $orgPostal ?: null,
+                // The site's own social profiles (site_profiles.social_links) — how search engines
+                // tie the Facebook page / YouTube channel to this business.
+                'sameAs'    => ! empty($brand['social_links']) && is_array($brand['social_links']) ? array_values($brand['social_links']) : null,
             ],
             fn ($v) => $v !== null && $v !== '' && $v !== [],
         );

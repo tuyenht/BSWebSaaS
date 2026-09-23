@@ -15,9 +15,9 @@ use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
-use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Theme\Rendering\PageRenderer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -43,6 +43,7 @@ final readonly class StorefrontController
         private PathBuilder $paths,
         private MediaUrlResolver $media,
         private EntryViewCounter $views,
+        private SiteIdentity $identity,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -77,7 +78,9 @@ final readonly class StorefrontController
             'menu' => $this->nav->resolve('primary', $locale, $default, $requestPath),
             'lang' => $locale,
             'hreflang' => $this->hreflangFor($resolved, $locale, $default, $path),
-            'brand' => $this->brand(),
+            // Business identity in the page's language (site_profiles + translations, the legacy
+            // general.brand setting keeping precedence in the default language — SiteIdentity).
+            'brand' => $this->identity->for($locale),
         ];
 
         if ($resolved instanceof ResolvedProduct) {
@@ -87,24 +90,6 @@ final readonly class StorefrontController
         return $resolved instanceof ResolvedCategory
             ? $this->renderCategory($resolved, $locale, $path, $chrome)
             : $this->renderEntry($resolved, $locale, $path, $chrome);
-    }
-
-    /**
-     * The tenant's storefront brand (name + logo URL) from the 'brand' site setting, or null when
-     * unset — so the header shows a logo for a site that has one and just the nav for one that
-     * doesn't. RLS-scoped to the active site.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function brand(): ?array
-    {
-        $value = SiteSetting::query()->where('key', 'brand')->value('value');
-        if (! is_array($value)) {
-            return null;
-        }
-
-        /** @var array<string, mixed> $value */
-        return $value;
     }
 
     /**
