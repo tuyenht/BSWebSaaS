@@ -256,14 +256,19 @@ jobs:
       # path (lhci's own output dir is `.lighthouseci`) and just logs a warning, not a failure
       # — the first real run "succeeded" while uploading nothing. Confirmed empirically (0
       # artifacts on that run) before adding this, not assumed from the docs alone.
+      # continue-on-error: this step's ONE job is to hand a human the real numbers behind
+      # the "warn" assertions above — it must never be why the job goes red. Learned the
+      # hard way: a repo-level artifact-storage-quota hit turned this into a hard failure
+      # on a run where lhci itself, the code, and every assertion were fine.
       - name: Upload Lighthouse reports
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-reports
           path: .lighthouseci
           include-hidden-files: true
-          retention-days: 30
+          retention-days: 7
 
       - name: Boot a server for the axe pass
         run: |
