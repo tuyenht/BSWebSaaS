@@ -251,12 +251,18 @@ jobs:
       # "warn"-level assertions print no pass/fail table — the actual numbers (LCP, JS
       # transfer size, performance score) only exist in these JSON reports. Without this,
       # every run's real measurements are written to disk and then thrown away.
+      #
+      # include-hidden-files is required: upload-artifact@v4 silently skips any dot-prefixed
+      # path (lhci's own output dir is `.lighthouseci`) and just logs a warning, not a failure
+      # — the first real run "succeeded" while uploading nothing. Confirmed empirically (0
+      # artifacts on that run) before adding this, not assumed from the docs alone.
       - name: Upload Lighthouse reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-reports
           path: .lighthouseci
+          include-hidden-files: true
           retention-days: 30
 
       - name: Boot a server for the axe pass
