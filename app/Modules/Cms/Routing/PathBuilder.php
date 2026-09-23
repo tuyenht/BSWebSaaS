@@ -74,8 +74,8 @@ final readonly class PathBuilder
             : PermalinkConfig::DEFAULT_PATTERN;
 
         $prefix = match ($pattern) {
-            'category' => $this->categoryPrefix($entry->taxonomies()->first(), $locale),
-            'category_path' => $this->categoryPath($entry->taxonomies()->first(), $locale),
+            'category' => $this->categoryPrefix($entry->primaryCategory(), $locale),
+            'category_path' => $this->categoryPath($entry->primaryCategory(), $locale),
             'base' => $section !== null ? $this->basePrefix($section['key']) : '',
             default => '',
         };

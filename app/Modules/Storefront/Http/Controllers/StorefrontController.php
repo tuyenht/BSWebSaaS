@@ -179,7 +179,7 @@ final readonly class StorefrontController
         // (detail_template) and a breadcrumb back to the category list. Pages skip this.
         // The Cms lookup lives here so the Theme module stays Cms-agnostic.
         if ($entry->type === 'post') {
-            $category = $entry->taxonomies()->first();
+            $category = $entry->primaryCategory();
             $categoryTemplate = $category?->detail_template;
 
             $categoryTranslation = $category?->translationFor($locale);
@@ -311,7 +311,7 @@ final readonly class StorefrontController
             if ($translation === null) {
                 continue;
             }
-            $unprefixed = $this->paths->forProduct($product->taxonomies->first(), (string) $translation->slug, $locale);
+            $unprefixed = $this->paths->forProduct($product->primaryCategory(), (string) $translation->slug, $locale);
             $products[] = ['title' => $translation->name, 'url' => $this->paths->publicUrl($unprefixed, $locale)];
         }
 

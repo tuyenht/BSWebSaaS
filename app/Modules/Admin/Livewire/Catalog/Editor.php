@@ -107,7 +107,7 @@ final class Editor extends Component
             $this->seoDescription = $translation->seo_description ?? '';
         }
 
-        $this->categoryId = $product->taxonomies()->first()?->id;
+        $this->categoryId = $product->primaryCategory()?->id;
         $this->imageMediaIds = $this->normalizeIds($product->images()->pluck('media_id')->all());
     }
 

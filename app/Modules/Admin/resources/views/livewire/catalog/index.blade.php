@@ -40,7 +40,7 @@
                 @forelse ($products as $product)
                     @php($translation = $product->translations->firstWhere('locale', $locale))
                     @php($thumbnail = $product->images->first()?->media)
-                    @php($categoryName = $product->taxonomies->first()?->translations->firstWhere('locale', $locale)?->name)
+                    @php($categoryName = $product->primaryCategory()?->translations->firstWhere('locale', $locale)?->name)
                     <tr wire:key="product-{{ $product->ulid }}">
                         <td>
                             @if ($thumbnail !== null)

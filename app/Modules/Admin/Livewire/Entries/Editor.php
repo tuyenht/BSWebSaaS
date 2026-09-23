@@ -179,7 +179,7 @@ final class Editor extends Component
         $this->coverImageKey = is_string($cover) ? $cover : '';
 
         if ($this->type === 'post') {
-            $this->categoryId = $entry->taxonomies()->first()?->id;
+            $this->categoryId = $entry->primaryCategory()?->id;
         }
 
         if ($this->governingWorkflow() !== null) {

@@ -200,7 +200,7 @@ final readonly class PromoteAnVinhProductPostsToCatalog
                 }
             })
             ->get()
-            ->filter(fn (Entry $entry): bool => $entry->taxonomies->first()?->id === $taxonomyId)
+            ->filter(fn (Entry $entry): bool => $entry->primaryCategory()?->id === $taxonomyId)
             ->values();
     }
 

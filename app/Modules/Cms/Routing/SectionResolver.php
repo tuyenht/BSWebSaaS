@@ -42,9 +42,7 @@ final class SectionResolver
      */
     public function forEntry(Entry $entry): ?array
     {
-        $primary = $entry->relationLoaded('taxonomies')
-            ? $entry->taxonomies->first()
-            : $entry->taxonomies()->first();
+        $primary = $entry->primaryCategory();
 
         if (! $primary instanceof Taxonomy) {
             return null;

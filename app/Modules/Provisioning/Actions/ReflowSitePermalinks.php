@@ -119,7 +119,7 @@ final readonly class ReflowSitePermalinks
             ->get();
 
         foreach ($products as $product) {
-            $primaryCategory = $product->taxonomies->first();
+            $primaryCategory = $product->primaryCategory();
 
             /** @var Collection<int, SiteRoute> $productRoutes */
             $productRoutes = SiteRoute::query()->where('product_id', $product->id)->get();

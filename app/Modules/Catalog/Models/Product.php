@@ -2,6 +2,7 @@
 
 namespace App\Modules\Catalog\Models;
 
+use App\Modules\Cms\Concerns\HasCategoryTaxonomies;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Shared\Concerns\HasUlidColumn;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
 class Product extends Model
 {
     use BelongsToSite;
+    use HasCategoryTaxonomies;
     use HasUlidColumn;
     use SoftDeletes;
 
@@ -73,23 +75,6 @@ class Product extends Model
         }
 
         return $this->translations()->where('locale', $locale)->first();
-    }
-
-    /**
-     * Sync the product's categories (product_taxonomies). Stamps site_id on each pivot row
-     * (the pivot is RLS-protected; sync() does not auto-fill it) and uses array order as the
-     * pivot position — index 0 is the primary category used for routing.
-     *
-     * @param  list<int>  $taxonomyIds
-     */
-    public function assignCategories(array $taxonomyIds): void
-    {
-        $payload = [];
-        foreach ($taxonomyIds as $position => $id) {
-            $payload[$id] = ['position' => $position, 'site_id' => $this->site_id];
-        }
-
-        $this->taxonomies()->sync($payload);
     }
 
     /**
