@@ -1,3 +1,7 @@
+> 🗄 **LƯU TRỮ (24/09/2026)** — tài liệu làm việc của đợt đồng bộ thiết kế tháng 7/2026, giữ làm lịch sử.
+> KHÔNG phải nguồn sự thật: có chỗ đã lỗi thời hoặc mâu thuẫn quyết định sau này. SSOT = `docs/design.md`
+> (chỉ mục ADR ở Phụ lục A) + `docs/README.md`. Lý do lưu trữ: `docs/archive/README.md`.
+
 # Session handoff — BSWebSaaS design (bs:close)
 
 > Bản ghi để nối tiếp ở session mới không đứt mạch. ĐỌC TRƯỚC: `CLAUDE.md` + `docs/implementation_roadmap.md`

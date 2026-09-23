@@ -3,7 +3,7 @@
 > ⚠️ **ĐÃ ĐÍNH CHÍNH theo commit land (design.md §20).** Bản staging trước đề xuất `entries.type='block'` — **council đã BÁC**, chốt **bảng typed riêng `content_blocks`**. File này viết lại theo quyết định LAND. CODE thắng.
 
 - **Trạng thái:** **Đề xuất (Draft)** — LAND design.md dòng 20 + v2.14. **Build HOÃN** (YAGNI — An Vinh brochure chưa cần). **Chạm schema** → COUNCIL.
-- **Liên quan:** ADR‑04/05/08/17 · §8 (type chỉ page|post) · §9. **Nguồn:** `docs/reusable_blocks_spec.md`, `db_audit_storage.md §B1/B3`.
+- **Liên quan:** ADR‑04/05/08/17 · §8 (type chỉ page|post) · §9. **Nguồn:** `docs/reusable_blocks_spec.md`, `docs/archive/2607-design-sync/db_audit_storage.md §B1/B3`.
 
 ## Bối cảnh (grounded CODE)
 - Muốn "dựng khối 1 lần, dùng nhiều nơi" (footer/header/CTA/Liên hệ) **không shortcode**.

@@ -1,3 +1,7 @@
+> 🗄 **LƯU TRỮ (24/09/2026)** — tài liệu làm việc của đợt đồng bộ thiết kế tháng 7/2026, giữ làm lịch sử.
+> KHÔNG phải nguồn sự thật: có chỗ đã lỗi thời hoặc mâu thuẫn quyết định sau này. SSOT = `docs/design.md`
+> (chỉ mục ADR ở Phụ lục A) + `docs/README.md`. Lý do lưu trữ: `docs/archive/README.md`.
+
 # Audit v2.14 (doc‑sync + 4 ADR) đối chiếu CODE `main@c040caa` — 2026‑07‑11 (RECONCILED 2 vòng)
 
 > Kiểm từng claim design.md v2.14 bằng CODE first‑hand, reconcile 2 vòng (design ↔ Claude Code council). Kết luận: **doc‑sync CHUẨN**; 4 ADR Draft đúng; "chưa migrate gì" ĐÚNG (migration dừng 2013). **Chốt 3 diff doc‑only** (không lật‑lõi): (i) ADR‑20 §9→§8/ADR‑14 · (ii) ADR‑21 rewrite storefront‑only + nonce×cache + spatie=dep · (iii) §29:633 annotate as‑built. V3 (nghi §29 sai) đã **rút lại** — §29 đúng.

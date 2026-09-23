@@ -3,7 +3,7 @@
 > ⚠️ **ĐÃ ĐÍNH CHÍNH 2026‑07‑11 sau commit `c040caa`.** 4 ADR **ĐÃ LAND** vào `docs/design.md` (Phụ lục A "Chỉ mục ADR" dòng 19–22 + changelog **v2.14**), trạng thái **Đề xuất (Draft)**. Gói này KHÔNG còn là "staging chờ commit" — nó là **bản chi tiết design‑side + log reconcile + task build cho Claude Code**. Grounded CODE `tuyenht/BSWebSaaS@main c040caa`. **CODE/design.md thắng khi mâu thuẫn.**
 
 ## 0. Convention ADR (verify) — GIỮ NGUYÊN
-- Không có `docs/adr/` trong repo. ADR = **dòng trong bảng chỉ mục `docs/design.md`** + changelog `v2.x`. Gói `docs/adr/` này chỉ sống ở **project thiết kế**.
+- ADR chính thức = **dòng trong bảng chỉ mục `docs/design.md`** (Phụ lục A) + changelog `v2.x`. Thư mục `docs/adr/` (nhập từ project thiết kế ngày 12/07) chỉ giữ **bản chi tiết** của ADR‑19..22 — không phải nơi ghi quyết định. *(Câu cũ "không có `docs/adr/` trong repo" đã sai từ khi gói này được nhập — sửa 24/09; các prompt đã dùng chuyển sang `docs/archive/2607-design-sync/`.)*
 
 ## 1. Trạng thái ĐÃ LAND (đọc design.md v2.14, không đoán)
 | ADR | Dòng design.md (nguyên văn rút gọn) | Trạng thái |
@@ -31,4 +31,4 @@ Giữ nguyên (khớp land): ADR‑21 dùng `spatie/laravel-csp` + `page_views` 
 ## 4. Gói này dùng để làm gì tiếp
 - **Tham chiếu build** (chi tiết Pest + UX "một body/hai editor" mà dòng design.md quá ngắn không chứa).
 - Việc kế: **dọn nợ prototype §4** (dùng kind `html` + `media.alt[locale]`), rồi **prototype ADR‑19 + thiết kế lại 2 tab Soạn thảo/Trình dựng**.
-- `_claude_code_prompt.md` = **ĐÃ DÙNG/lỗi thời** (commit doc‑only đã land) — giữ làm lịch sử; task Claude Code mới sẽ là **build** (propose‑first per wave), không phải commit doc.
+- `docs/archive/2607-design-sync/_claude_code_prompt.md` = **ĐÃ DÙNG/lỗi thời** (commit doc‑only đã land) — giữ làm lịch sử; task Claude Code mới sẽ là **build** (propose‑first per wave), không phải commit doc.

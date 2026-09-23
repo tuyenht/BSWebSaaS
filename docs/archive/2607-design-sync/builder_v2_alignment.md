@@ -1,3 +1,7 @@
+> 🗄 **LƯU TRỮ (24/09/2026)** — tài liệu làm việc của đợt đồng bộ thiết kế tháng 7/2026, giữ làm lịch sử.
+> KHÔNG phải nguồn sự thật: có chỗ đã lỗi thời hoặc mâu thuẫn quyết định sau này. SSOT = `docs/design.md`
+> (chỉ mục ADR ở Phụ lục A) + `docs/README.md`. Lý do lưu trữ: `docs/archive/README.md`.
+
 # Đối chiếu Page Builder v2 (prototype) ↔ kiến trúc thật BSWebSaaS
 
 > Nguồn: đọc trực tiếp repo `tuyenht/BSWebSaaS@main` (2026‑07‑10). Mục đích: chỉ ra builder prototype

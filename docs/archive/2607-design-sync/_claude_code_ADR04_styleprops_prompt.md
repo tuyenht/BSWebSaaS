@@ -1,3 +1,7 @@
+> 🗄 **LƯU TRỮ (24/09/2026)** — tài liệu làm việc của đợt đồng bộ thiết kế tháng 7/2026, giữ làm lịch sử.
+> KHÔNG phải nguồn sự thật: có chỗ đã lỗi thời hoặc mâu thuẫn quyết định sau này. SSOT = `docs/design.md`
+> (chỉ mục ADR ở Phụ lục A) + `docs/README.md`. Lý do lưu trữ: `docs/archive/README.md`.
+
 Chạy /bs:audit (Council Protocol, propose-first, KHÔNG code) cho đề xuất MỞ RỘNG ADR-04 (design.md §19 + dòng ADR-04 phụ lục): "STYLE-PROPS CHUẨN HOÁ + PRESET REGISTRY" cho Page Builder. DỪNG chờ tôi duyệt diff trước khi ghi.
 
 BỐI CẢNH: Builder v3 (thiết kế) mở rộng Section Library lên ~36 section (danh mục: docs/builder_v3_section_catalog.md phía thiết kế). Yêu cầu sản phẩm: tùy biến mạnh, trực quan, dễ dùng "kiểu Flatsome" — NHƯNG theo cách platform-curated (chúng ta cài sẵn để tenant CHỌN), KHÔNG phải raw CSS/HTML tự nhập. Đề xuất gồm 3 lớp, toàn bộ tương thích tinh thần ADR-04:

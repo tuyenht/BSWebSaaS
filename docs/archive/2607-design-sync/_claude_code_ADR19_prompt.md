@@ -1,3 +1,7 @@
+> 🗄 **LƯU TRỮ (24/09/2026)** — tài liệu làm việc của đợt đồng bộ thiết kế tháng 7/2026, giữ làm lịch sử.
+> KHÔNG phải nguồn sự thật: có chỗ đã lỗi thời hoặc mâu thuẫn quyết định sau này. SSOT = `docs/design.md`
+> (chỉ mục ADR ở Phụ lục A) + `docs/README.md`. Lý do lưu trữ: `docs/archive/README.md`.
+
 Chạy /bs:spec cho ADR‑19 (kind `html` + "một body/hai editor"). Đây là spec‑first: nói lại hiểu + edge case + giả định + phân loại ACT/COUNCIL, rồi DỪNG chờ tôi duyệt. Verify CODE first‑hand (CODE thắng). KHÔNG code/migrate tới khi tôi chốt.
 
 BỐI CẢNH: ADR‑19 đã land design.md §19 (Draft). Prototype thiết kế `Page Editor` đã dựng hành vi tham chiếu: body per‑locale + alt per‑locale + hợp đồng một‑body/hai‑editor. Spec chi tiết ở docs/adr/ADR-19-spec.md (bản thiết kế). Nhiệm vụ: đối chiếu CODE thật rồi chốt kế hoạch build.

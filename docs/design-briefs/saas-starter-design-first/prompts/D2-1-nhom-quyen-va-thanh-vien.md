@@ -1,0 +1,87 @@
+═══ BỐI CẢNH CHUNG (giữ nguyên ở đầu mọi lượt) ═══
+Dự án BSWebSaaS trong Claude Design. Trước khi làm: đọc CLAUDE.md, LESSONS.md, github.md, TODO.md; mở Admin Shell.dc.html và design system `_ds/bssaas-adminkit-design-system`; dùng lại nguồn chung ai-quota.js (BSAI) · content-workflow.js (BSCW) · content-ui.js (BSUI) · content-seo.js (BSSEO), và — khi đã có — `Chuẩn giao diện SaaS Starter.dc.html` (lượt D0-2, D0-3) + registry màn của Admin Shell (lượt D0-4) + `SaaS Starter - Bản đồ màn hình.md` (lượt D0-1).
+Sản phẩm: SaaS Starter — bộ khung quản trị đa-tenant BÁN ĐƯỢC cho nhiều loại website/SaaS: white-label, đa ngôn ngữ (tiếng Việt trước), phân quyền động, quy trình duyệt động (mặc định TẮT). Người dùng: từ chủ doanh nghiệp nhỏ lớn tuổi, chỉ biết đọc và dùng chuột/điện thoại, tới nhân viên văn phòng và người quản trị thạo việc.
+Nguồn sự thật dữ liệu: GitHub tuyenht/BSWebSaaS@main — mở đúng file repo nêu trong prompt để lấy bảng/cột/quyền/trạng thái thật; KHÔNG bịa. Chỗ nào repo chưa có thì vẫn vẽ, gắn nhãn "Chờ backend" và ghi vào mục "Câu hỏi cho backend" của README.
+Luật cứng:
+- Token AdminKit: navy #405189 · Inter 14px · bo 4px ô nhập / 6px thẻ · 1 bóng thẻ · nền #f3f3f9. Không thêm màu, gradient, bóng mới.
+- Đích build: Livewire 4 + Blade + Tailwind 4 + <x-admin::*>; icon Remix inline-SVG (prototype dùng CDN được, README liệt kê tên icon). Không Bootstrap, không Flux.
+- Mỗi màn đủ trạng thái: trống · đang tải · lỗi (có "Thử lại") · không có quyền · khoá theo gói · thành công. Không ngõ cụt.
+- 3 bề rộng 1240 / 768 / 390, sáng + tối, WCAG 2.2 AA.
+- Không hiện mã số nội bộ (id) — chỉ tên, đường dẫn, mã công khai. Không gắn cứng thương hiệu (tên nền tảng/website/"Phát triển bởi" lấy từ cấu hình).
+- Dữ liệu động: vai trò, quyền, loại nội dung, ngôn ngữ, gói, bước duyệt đều đọc từ registry/bảng — chịu được 1–20 mục, tên dài.
+- Hành động nguy hiểm: hộp xác nhận giữa màn (mẫu SweetAlert2), nút Huỷ được focus.
+TIÊU CHÍ DỄ DÙNG — kiểm từng màn trước khi giao, ghi kết quả (đạt/chưa + lý do) vào README:
+ 1. Hiểu trong 5 giây: tiêu đề + 1 dòng mô tả nói màn này để làm gì; đúng 1 nút chính nổi bật; người mới biết bấm gì tiếp.
+ 2. Việc chính của màn xong trong ≤ 3 bước từ menu, không cần đọc hướng dẫn.
+ 3. Không thuật ngữ kỹ thuật trần (SMTP, OAuth, DNS, CNAME, SSL, API, webhook, token, slug, meta, robots…). Buộc phải có thì để trong khối "Nâng cao" và kèm 1 câu giải thích đời thường. Tên thương hiệu quen (Google, Zalo, Facebook) giữ nguyên nhưng nói rõ công dụng ("Facebook Pixel — đo hiệu quả quảng cáo Facebook").
+ 4. Icon luôn kèm chữ; chỉ icon rất quen (tìm kiếm, chuông, đóng, thêm) mới được đứng một mình, và phải có tooltip + aria-label.
+ 5. Ô nhập có gợi ý bằng ví dụ thật; lỗi nói cách sửa ("Số điện thoại cần 10 số, ví dụ 0901 234 567"), không nói lỗi kỹ thuật.
+ 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu, xoá = vào Thùng rác kèm toast "Hoàn tác".
+ 7. Trạng thái luôn có màu + hình + chữ — không bao giờ chỉ dùng màu.
+ 8. Không cắt chữ: nhãn nút, chip, tab, nút lọc luôn 1 dòng (dài thì "…" + tooltip) — nút KHÔNG bao giờ xuống 2 dòng; nhãn ô nhập được xuống dòng nhưng không bị che. Không thanh cuộn ngang trong thẻ/khung đọc.
+ 9. Điện thoại: việc hay làm (trả lời khách liên hệ, duyệt bài, đăng tin nhanh, xem thông báo) làm trọn được ở 390px; vùng bấm ≥ 44px; không thành phần nổi nào che nút Lưu hay nội dung.
+10. Hai tầng người dùng: mặc định gọn cho người mới (tuỳ chọn nâng cao gập lại); người thạo có phím tắt, thao tác hàng loạt, lọc nhanh — nhưng không làm rối tầng người mới.
+11. Chế độ "Chữ lớn" (+2px toàn trang) không làm vỡ bố cục.
+12. Dùng đúng từ trong "Bảng thuật ngữ" của Chuẩn giao diện (D0-3): cùng một việc luôn cùng một từ ở mọi màn.
+Nhúng & điều hướng: màn tuân hợp đồng nhúng §13 (embedded · onDirty · embedId · bs-embed-cmd), đăng ký vào registry màn của Admin Shell (sau D0-4) với trạng thái "ready", chuyển màn bằng sự kiện bs-goto {screen, params}; cập nhật dòng tương ứng trong `SaaS Starter - Bản đồ màn hình.md`.
+Giao nộp: 1 file .dc.html mỗi màn (hoặc gộp có anchor) + README handoff theo mẫu: Tổng quan · File · Mức hoàn thiện · Màn & trạng thái · Tương tác · Ánh xạ dữ liệu (file:dòng repo) · Quyền & gói (ai thấy gì) · Token · Icon · Chuỗi cần dịch · Kết quả 12 tiêu chí dễ dùng · Câu hỏi cho backend.
+Không sửa CLAUDE.md (chỉ owner sửa) — bài học mới ghi 1 dòng vào LESSONS.md. Làm xong gọi ready_for_verification và sửa hết lỗi verifier báo. Lượt này làm ĐÚNG MỘT việc bên dưới.
+═══ VIỆC CỦA LƯỢT NÀY ═══
+
+# D2-1 · Nhóm quyền & Thành viên (4 màn)
+
+Thiết kế **4 màn "Nhóm quyền & Thành viên"** cho admin BSWebSaaS (bộ khung SaaS đa-tenant, admin kiểu Velzon), xuất `.dc.html` + `README.md` ánh xạ data-model — đúng format các handoff trước (MediaPicker, Pages Admin, Workflow).
+
+## Ràng buộc chung (BẮT BUỘC)
+- Đúng design system `bssaas-adminkit-design-system`: navy `--color-admin-primary #405189`, Inter 14px, radius 4/6px, shadow card nhẹ — KHÔNG chế màu/elevation/gradient mới. Giữ nguyên sidebar/topbar hiện có, chỉ thiết kế NỘI DUNG màn.
+- Stack đích: **Livewire 4 + Blade + Tailwind 4 + `<x-admin::*>`**, icon **Remix inline-SVG** (prototype dùng remixicon CDN được, README liệt kê tên icon từng chỗ). KHÔNG Bootstrap, KHÔNG Flux.
+- Người dùng là **chủ doanh nghiệp không rành công nghệ**: copy tiếng Việt đời thường, KHÔNG thuật ngữ "RBAC/permission/role" trên giao diện (dùng "nhóm quyền", "được phép…"). Mobile-first, WCAG AA, mỗi màn đủ **empty / loading / error**, không ngõ cụt.
+- Xác nhận nguy hiểm theo pattern SweetAlert2 (modal giữa màn; hành động nguy hiểm → nút Hủy được focus).
+- **Dữ liệu ĐỘNG:** số nhóm, tên nhóm (tới 60 ký tự), danh sách quyền đều từ hệ thống — chịu được 3–20 nhóm, tên dài. Không hiển thị mã số nội bộ nào.
+
+## Data model thật (README phải ánh xạ đúng)
+- Mỗi website có **6 nhóm hệ thống** theo cấp: Chủ sở hữu (90) · Quản trị (70) · Biên tập (50) · Tác giả (30) · Cộng tác viên (20) · Người xem (10). Nhóm hệ thống **khóa cứng**: xem được, KHÔNG sửa/xóa/đổi tên.
+- **Nhóm tùy chỉnh** (chỉ khi gói website có tính năng "Nhóm quyền tùy chỉnh" — mặc định TẮT): tạo **từ một nhóm có sẵn** (sao chép quyền rồi chỉnh — ghi nhớ "tạo từ: Biên tập") hoặc **trống**. Sửa tên / cấp / quyền; xóa được khi **không còn ai** trong nhóm.
+- **Luật cấp:** người dùng chỉ tạo/sửa/gán nhóm **thấp hơn cấp của mình**, và chỉ cấp được quyền **mình đang có** (quyền mình không có → ô bị khóa + giải thích).
+- **Quyền theo khu vực** (khu vực website không được bật trong gói → ẩn/khóa cả hàng, nhãn "Ngoài gói"):
+  - Nội dung: Xem · Tạo · Sửa bài của mình · Sửa mọi bài · Xóa bài của mình · Xóa mọi bài · Gửi duyệt · Phản biện · Duyệt · Đăng
+  - Thư viện ảnh/tệp: Xem · Tải lên · Xóa
+  - Chuyên mục: Quản lý · Menu: Quản lý · Tên miền: Quản lý · Cài đặt website: Quản lý
+  - Liên hệ/khách để lại thông tin: Xem · Quản lý · Sản phẩm: Xem · Quản lý
+  - Người dùng: Mời · Quản lý · Nhóm quyền: Quản lý
+- **Quyền kéo theo:** tick "Sửa mọi bài / Xóa / Quản lý / Tải lên" (và mọi quyền hành động: Tạo, Gửi duyệt, Phản biện, Duyệt, Đăng) tự tick "Xem" tương ứng — không bỏ được "Xem" khi quyền lớn còn tick. "Sửa mọi bài" KHÔNG tự tick "Sửa bài của mình" (đã bao hàm — chỉ hiện gợi ý "gồm cả bài của mình"; nhóm Biên tập hệ thống đúng như vậy).
+- Một thành viên có thể thuộc **nhiều nhóm**; quyền thực = hợp các nhóm.
+- Mọi thay đổi nhóm/quyền/gán đều được ghi nhật ký (ai, lúc nào, đổi gì).
+
+## Màn 1 — Danh sách nhóm quyền
+- Bảng: tên nhóm · badge "Hệ thống" (khóa) / "Tùy chỉnh" (+ "tạo từ …") · cấp · số thành viên · mô tả ngắn "làm được gì" (3–4 quyền tiêu biểu) · hành động (Xem / Sửa / Nhân bản / Xóa — theo luật ở trên, không có quyền → ẩn).
+- Nút chính "Tạo nhóm" → chọn "Từ nhóm có sẵn" (liệt kê nhóm thấp hơn cấp mình) hoặc "Nhóm trống".
+- Gói chưa bật nhóm tùy chỉnh: vẫn xem nhóm hệ thống; nút Tạo hiện khóa + dòng "Gói hiện tại chưa có nhóm quyền tùy chỉnh — liên hệ bộ phận hỗ trợ để bật" (không dead-end; KHÔNG ghi tên thương hiệu nhà cung cấp — sản phẩm white-label).
+- Empty (chưa có nhóm tùy chỉnh): 1 đoạn giải thích khi nào cần nhóm riêng (ví dụ "người chỉ duyệt bài, không sửa bài") + CTA.
+
+## Màn 2 — Tạo / sửa nhóm (trọng tâm)
+- Tên nhóm, chọn **cấp** (chỉ các cấp dưới mình, giải thích 1 dòng "Nhóm cấp cao quản lý được nhóm cấp thấp").
+- **Ma trận khu vực × hành động**: tick từng ô, **tick cả hàng**, ô tìm kiếm quyền, mỗi ô có tooltip giải thích đời thường; ô khóa (không có quyền / ngoài gói) có lý do khi hover/tap.
+- Nhóm tạo từ nhóm khác: đánh dấu ô **khác với nhóm gốc** (chấm/nhãn "đã đổi").
+- **Xem trước thay đổi trước khi lưu**: "Thêm: Duyệt, Đăng · Bớt: Sửa mọi bài" + "Ảnh hưởng tới N thành viên đang trong nhóm".
+- Nhóm hệ thống mở ở chế độ chỉ xem (ma trận read-only) + nút "Nhân bản để tùy chỉnh".
+- Mobile: ma trận gập theo khu vực (accordion), mỗi khu vực là danh sách công tắc.
+
+## Màn 3 — "Nhóm này làm được gì?" (xem như nhóm)
+- Checklist đời thường theo khu vực ("Được viết bài mới", "Không được xóa bài người khác"…) cho 1 nhóm, mở từ Màn 1/2. Dành cho chủ website kiểm tra trước khi gán người.
+
+## Màn 4 — Thành viên (thay màn hiện tại)
+- Bảng: tên · email · các nhóm (chip) · trạng thái · hành động. Thêm thành viên bằng email + chọn **nhiều nhóm** (checkbox, chỉ nhóm thấp hơn cấp mình).
+- Sửa nhóm của 1 thành viên = panel checkbox nhiều nhóm + xem trước "quyền thực sau khi đổi".
+- Gỡ khỏi website (confirm nguy hiểm). Không sửa được người cấp bằng/cao hơn mình → nút ẩn, hiện dòng "Người này cùng cấp hoặc cao hơn bạn".
+- Lỗi đời thường, ví dụ: "Người này không còn là thành viên của website. Hãy tải lại trang."
+
+## Deliverable
+1 file `.dc.html`/màn (hoặc gộp có anchor) + `README.md`: hi-fi, bảng Design Tokens dùng, bảng icon Remix, ánh xạ data-model theo mục trên, hành vi từng state (empty/loading/error/khóa theo gói/khóa theo cấp), biến thể desktop + mobile.
+
+Bổ sung cho lượt này (audit 23/09):
+- Dùng Chuẩn giao diện SaaS Starter (D0-2, D0-3): ma trận quyền dùng component "Ô quyền"; hộp xác nhận chuẩn.
+- Người mới: màn Thành viên là màn chính (nhóm quyền là màn phụ); khi gán nhóm, mỗi nhóm có 1 dòng "làm được gì" và nút "Xem chi tiết" mở Màn 3; ma trận quyền mặc định hiện theo khu vực, gập các khu vực không liên quan.
+- Màn 4 Thành viên: thêm tìm kiếm + "Tải thêm" (repo hiện không phân trang, không tìm); tab "Lời mời" để lượt D2-2.
+- Backend đã có (23/09, commit e922240): đường ghi nhóm quyền tuỳ chỉnh có kiểm cấp/trần quyền — đọc `app/Modules/Rbac/Registry/PermissionRegistry.php` (24 quyền site, 6 nhóm mẫu) và `app/Modules/Rbac/Support/RoleHierarchyGuard.php` (luật cấp).
+- Đăng ký vào registry Shell: `users`, `roles`. Handoff đặt tên `design_handoff_rbac`.
