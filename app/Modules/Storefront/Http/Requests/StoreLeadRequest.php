@@ -20,15 +20,20 @@ final class StoreLeadRequest extends FormRequest
     }
 
     /**
-     * Localize validation (and the rest of the request — success/rate-limit messages, the lead
-     * notification) to the site's default locale before the rules run. The form POST carries no
-     * locale prefix and app.locale defaults to 'en', so without this a vi site would surface
-     * English validation errors.
+     * Localize validation and the rest of the visitor's reply (errors, thank-you, rate-limit
+     * message) to the language of the page they filled the form on. The POST URL carries no
+     * locale prefix, so the form sends it as a hidden field; only a locale visitors can open on
+     * this site is accepted — anything else falls back to the site default (never app.locale,
+     * which is 'en': a vi site would otherwise answer in English). The site owner's email about
+     * the lead stays in the site's default language (SubmitForm).
      */
     #[\Override]
     protected function prepareForValidation(): void
     {
-        app()->setLocale(app(SiteLocale::class)->default());
+        $locales = app(SiteLocale::class);
+        $requested = $this->input('locale');
+
+        app()->setLocale(is_string($requested) && $locales->isPublic($requested) ? $requested : $locales->default());
     }
 
     /**

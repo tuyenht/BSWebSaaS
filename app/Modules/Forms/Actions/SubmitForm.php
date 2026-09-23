@@ -9,6 +9,7 @@ use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Notifications\NewLeadNotification;
 use App\Modules\Forms\Services\TurnstileVerifier;
 use App\Modules\Notifications\Support\Notify;
+use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Support\Facades\Notification;
 use Throwable;
 
@@ -98,8 +99,9 @@ final readonly class SubmitForm
 
         try {
             app(TenantMailer::class)->apply();
+            // The owner reads the lead in the SITE's language, whatever language the visitor used.
             Notification::route('mail', $recipients)
-                ->notify(new NewLeadNotification($submission, $form));
+                ->notify((new NewLeadNotification($submission, $form))->locale(app(SiteLocale::class)->default()));
         } catch (Throwable $e) {
             // Best-effort: a mail/transport failure must not 500 the storefront or lose the lead.
             report($e);
