@@ -335,3 +335,15 @@ jobs:
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"
           --chrome-options="--headless=new,--no-sandbox"
           --exit
+
+      # Pages under calibration (joined 24/09 with the Lighthouse matrix): reported, not yet a
+      # gate. Promote them into the step above once their own runs are clean, as the homepage was.
+      - name: axe accessibility scan (pages under calibration)
+        continue-on-error: true
+        run: >-
+          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/lien-he" "http://${CWV_HOST}:${CWV_PORT}/tin-tuc"
+          --tags wcag2a,wcag2aa
+          --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
+          --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"
+          --chrome-options="--headless=new,--no-sandbox"
+          --exit

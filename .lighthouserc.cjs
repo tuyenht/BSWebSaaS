@@ -3,11 +3,24 @@
 // (a JSON config can't reference an env var at all — that was the previous, riskier shape).
 const host = process.env.CWV_HOST || 'cwv-ci.test';
 const port = process.env.CWV_PORT || '8099';
+const origin = `http://${host}:${port}`;
+
+// The storefront budgets CLAUDE.md fixes (LCP <= 1.5s, JS <= 30KB), per page, median of the 3 runs
+// (one slow run cannot fail it alone). A page joins at 'warn' and is promoted to 'error' only
+// after its own real measurements show headroom — the protocol the homepage went through 24/09.
+// The overall performance score is not a fixed budget and is noisier: always a warning.
+const budgets = (level) => ({
+  'categories:performance': ['warn', { minScore: 0.7, aggregationMethod: 'median' }],
+  'largest-contentful-paint': [level, { maxNumericValue: 1500, aggregationMethod: 'median' }],
+  'resource-summary:script:size': [level, { maxNumericValue: 30720, aggregationMethod: 'median' }],
+});
 
 module.exports = {
   ci: {
     collect: {
-      url: [`http://${host}:${port}/`],
+      // Pages the provisioned measurement site already publishes: home, the contact page (a form
+      // block) and the seeded news category list.
+      url: [`${origin}/`, `${origin}/lien-he`, `${origin}/tin-tuc`],
       numberOfRuns: 3,
       startServerCommand: `php artisan serve --host=0.0.0.0 --port=${port}`,
       startServerReadyPattern: 'Server running on',
@@ -18,16 +31,12 @@ module.exports = {
       },
     },
     assert: {
-      // The two budgets CLAUDE.md fixes for the storefront (LCP ≤ 1.5s, JS ≤ 30KB) GATE the job;
-      // calibrated 24/09 on 18 CI samples of this page: LCP 751–1055 ms (two clusters from the
-      // simulated throttling), JS 0 bytes — ≥30% headroom. Median of the 3 runs, so one slow
-      // run cannot fail it on its own. The overall performance score is not a fixed budget and
-      // is noisier; it stays a warning.
-      assertions: {
-        'categories:performance': ['warn', { minScore: 0.7, aggregationMethod: 'median' }],
-        'largest-contentful-paint': ['error', { maxNumericValue: 1500, aggregationMethod: 'median' }],
-        'resource-summary:script:size': ['error', { maxNumericValue: 30720, aggregationMethod: 'median' }],
-      },
+      assertMatrix: [
+        // Calibrated 24/09 on 18 samples: LCP 751–1055 ms, JS 0 bytes.
+        { matchingUrlPattern: '/$', assertions: budgets('error') },
+        // Under calibration since 24/09 — promote once their own numbers are in.
+        { matchingUrlPattern: '/(lien-he|tin-tuc)$', assertions: budgets('warn') },
+      ],
     },
     upload: {
       target: 'filesystem',
