@@ -38,7 +38,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 33 | Thông tin chung | 🟠 đa ngữ vs dữ liệu 1 ngữ | — | ❌ | D3-1 | nguồn = `site_profiles` (§14) |
 | 34 | Giao diện website | 🟠 6 màu tự do | — | ❌ | D3-1 | đúng 5 quyết định (section-style-system §1) |
 | 35 | Giao diện trang quản trị | ✅ | — | ✅ | — | |
-| 36 | Ngôn ngữ website | 🟠 3 tầng | — | ❌ | D3-1 | quyết định: `is_public` + `locales.max` |
+| 36 | Ngôn ngữ website | 🟠 3 tầng | — | ❌ UI · ✅ backend | D3-1 | backend 24/09: `is_public` + `locales.max` + `ConfigureSiteLocale` |
 | 37 | Đường dẫn | ❌ | — | ❌ (engine có) | D3-1 | 5 kiểu đã chốt 09/07 |
 | 38 | SEO & Chia sẻ | ✅ | — | ❌ | D3-2 | |
 | 39 | Chuyển hướng | ❌ | — | ❌ (bảng có) | D3-2 | |
