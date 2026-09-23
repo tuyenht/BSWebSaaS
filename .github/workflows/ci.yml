@@ -121,3 +121,145 @@ jobs:
 
       - name: Build assets (Vite + Tailwind 4)
         run: pnpm run build
+
+  cwv:
+    name: Core Web Vitals + a11y (Lighthouse · axe) — informational, not yet a merge gate
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: bswebsaas
+          POSTGRES_USER: bsweb
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bsweb -d bswebsaas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: bswebsaas
+      DB_USERNAME: app_user
+      DB_PASSWORD: app_secret
+      DB_ADMIN_HOST: 127.0.0.1
+      DB_ADMIN_PORT: 5432
+      DB_ADMIN_USERNAME: bsweb
+      DB_ADMIN_PASSWORD: secret
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      CWV_HOST: cwv-ci.test
+      CWV_PORT: 8099
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql, pgsql, redis, intl, zip, bcmath, gd, pcntl, sodium
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Install JS dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build assets (Vite + Tailwind 4)
+        run: pnpm run build
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Migrate (PostgreSQL + extensions + restricted app role)
+        run: php artisan migrate --database=pgsql_admin --force
+
+      # A fresh site with nothing else on it — real published storefront HTML (homepage +
+      # contact page), not a fixture that has to be kept in sync with An Vinh's business
+      # content model. Owner auto-generated (--no-interaction skips the secret prompt).
+      - name: Provision a measurement-only site
+        run: |
+          php artisan site:provision \
+            --name="CWV CI" \
+            --host="${CWV_HOST}" \
+            --owner-email="cwv-ci@example.test" \
+            --no-interaction
+
+      # Chrome (via Lighthouse/axe) resolves this by real hostname, same as production —
+      # no Host-header spoofing needed, and the multi-tenant domain resolver sees a real domain.
+      - name: Map the CI hostname to localhost
+        run: echo "127.0.0.1 ${CWV_HOST}" | sudo tee -a /etc/hosts
+
+      # One authoritative source for BOTH binaries, matched to each other by construction.
+      # The alternative — trusting the runner's preinstalled Chrome to line up with whatever
+      # version the `chromedriver` npm package (an @axe-core/cli dependency) happens to fetch
+      # at install time — is exactly the kind of silent version-skew that breaks Selenium with
+      # "session not created" on some future runner image, for reasons nothing here would explain.
+      - name: Install a Chrome + matching chromedriver pair
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+          install-chromedriver: true
+
+      # Self-contained: lhci boots `php artisan serve`, waits for it, runs Lighthouse 3x,
+      # asserts against .lighthouserc.json (currently all "warn" — see file comment), then
+      # stops the server. Assertions are informational while thresholds get calibrated
+      # against real measurements; nothing here fails the job.
+      - name: Lighthouse CI (performance + LCP + JS budget)
+        run: pnpm exec lhci autorun --collect.chromePath="${{ steps.chrome.outputs.chrome-path }}"
+
+      - name: Boot a server for the axe pass
+        run: |
+          php artisan serve --host=0.0.0.0 --port="${CWV_PORT}" &
+          for i in $(seq 1 15); do
+            curl -sf -o /dev/null "http://${CWV_HOST}:${CWV_PORT}/" && break
+            sleep 1
+          done
+
+      # axe-core is stricter than Lighthouse's built-in a11y category (full WCAG ruleset).
+      # continue-on-error: the FIRST pass on real storefront markup is expected to surface
+      # findings; this stays informational until we've triaged a baseline (same reasoning
+      # as the "warn"-only Lighthouse assertions above — not a silent job, just not a gate yet).
+      - name: axe accessibility scan
+        continue-on-error: true
+        run: >-
+          pnpm exec axe "http://${CWV_HOST}:${CWV_PORT}/"
+          --tags wcag2a,wcag2aa
+          --chrome-path="${{ steps.chrome.outputs.chrome-path }}"
+          --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"
+          --chrome-options="--headless=new,--no-sandbox"
+          --exit
