@@ -30,7 +30,7 @@ Không sửa CLAUDE.md (chỉ owner sửa) — bài học mới ghi 1 dòng vào
 
 # D5-1 · Trang lỗi & tiện ích (quản trị + website khách)
 
-Hiện trạng: repo có 1 trang 404 dùng chung cho website khách và trang quản trị (`resources/views/errors/404.blade.php`) — trước đây gắn cứng tên 1 khách, bản sửa 23/09 cho hiện đúng tên website theo tên miền; lỗi khác hiện trang mặc định của framework; website tạm ngưng trả trang 403 trần.
+Hiện trạng: repo có 1 trang 404 dùng chung cho website khách và trang quản trị (`resources/views/errors/404.blade.php`) — trước đây gắn cứng tên 1 khách, bản sửa 23/09 cho hiện đúng tên website theo tên miền; trang 404 này hiện chỉ có tiếng Việt (khách xem bản `/en` vẫn gặp chữ tiếng Việt); lỗi khác hiện trang mặc định của framework; website tạm ngưng trả trang 403 trần.
 Vẽ (mẫu "Trang lỗi" D0-3; mọi tên/logo lấy từ cấu hình của nền tảng hoặc của website — không gắn cứng):
 1. Quản trị (trong/ngoài Shell): 403 không có quyền (nói ai cấp được + nút "Nhờ quản trị cấp quyền") · 403 tính năng ngoài gói · 404 · 419 phiên hết hạn (đăng nhập lại, giữ chữ đang soạn nếu có) · 429 thao tác quá nhanh (đếm ngược) · 500 (mã tham chiếu để gửi hỗ trợ + nút liên hệ hỗ trợ, không lộ lỗi kỹ thuật) · 503 bảo trì nền tảng.
 2. Website khách (theo giao diện của từng website, đa ngôn ngữ theo địa chỉ khách đang mở): 404 có ô tìm + liên kết phổ biến · đang bảo trì (lời do chủ website đặt) · website tạm ngưng (lời lịch sự, không lộ lý do) · tên miền chưa gắn website (thương hiệu nền tảng).

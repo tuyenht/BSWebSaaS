@@ -31,6 +31,7 @@ Không sửa CLAUDE.md (chỉ owner sửa) — bài học mới ghi 1 dòng vào
 # D1-5 · Sản phẩm — danh sách + trình sửa (chế độ giới thiệu / bán hàng)
 
 Chưa có thiết kế. Repo đang chạy bản tạm: `app/Modules/Admin/Livewire/Catalog/{Index,Editor}.php` (chỉ ngôn ngữ mặc định; thiếu ô giá khuyến mãi, tồn kho, nổi bật, bán chạy, ngày đăng).
+Đường dẫn công khai (as-built 24/09): lưu sản phẩm ở trạng thái Đã đăng là có ngay địa chỉ trên website theo kiểu đường dẫn của site (ví dụ `/san-pham/{đường-dẫn}`); đổi đường dẫn hoặc chuyên mục chính → website tự tạo chuyển hướng từ địa chỉ cũ; địa chỉ trùng một trang/chuyên mục có sẵn → báo ngay ở ô đường dẫn và không lưu. Lần đăng đầu tự ghi ngày đăng. Trình sửa nên hiện địa chỉ này + nút "Xem trên website".
 Dữ liệu thật (`database/migrations/2009_01_01_000000_create_catalog_tables.php`, `2010…`, `2013…`):
 - `products`: mã SKU, giá, giá khuyến mãi + thời gian bắt đầu/kết thúc, tồn kho, nổi bật, bán chạy, trạng thái draft|published|archived, ngày đăng, thùng rác. Tiền = số nguyên đồng.
 - `product_translations`: tên, đường dẫn, tóm tắt, mô tả (nội dung dài, gồm cả bảng thông số), SEO.

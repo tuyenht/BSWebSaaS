@@ -32,11 +32,12 @@ Không sửa CLAUDE.md (chỉ owner sửa) — bài học mới ghi 1 dòng vào
 
 Sửa `Trình đơn.dc.html` (KHÔNG vẽ lại — giữ mọi phần đang tốt: kéo-thả, trạng thái mục, hoàn tác, xem trước).
 Dữ liệu thật (`database/migrations/2003_01_01_000000_create_menu_tables.php`; bộ đọc `app/Modules/Cms/Navigation/MenuResolver.php`):
-- `menus` (tên); `menu_assignments` (vị trí × ngôn ngữ → đúng 1 menu); `menu_items` (cha, thứ tự, loại liên kết: bài/trang · chuyên mục · động (trang chủ) · địa chỉ ngoài; mở tab mới); `menu_item_translations` (nhãn theo ngôn ngữ; nhãn trống → lấy tiêu đề nguồn).
+- `menus` (tên); `menu_assignments` (vị trí × ngôn ngữ → đúng 1 menu); `menu_items` (cha, thứ tự, loại liên kết: bài/trang · chuyên mục · sản phẩm (có từ 24/09) · động (trang chủ) · địa chỉ ngoài; mở tab mới); `menu_item_translations` (nhãn theo ngôn ngữ; nhãn trống → lấy tên/tiêu đề hiện tại của nguồn).
+- Website TỰ ẨN mục trỏ tới trang/bài chưa đăng, đã gỡ hoặc trong thùng rác, sản phẩm chưa đăng, và chuyên mục chưa có bản dịch ở ngôn ngữ đó — khách không bao giờ bấm vào trang lỗi. Người quản trị cần thấy các mục đang bị ẩn và lý do.
 - Ngôn ngữ chưa được gán menu → dùng menu của ngôn ngữ mặc định. Độ sâu tối đa 5.
 Việc:
 1. Thêm lớp "gán theo ngôn ngữ" cho mỗi vị trí: mặc định "Dùng chung cho mọi ngôn ngữ" (nhãn dịch theo từng mục); tuỳ chọn "Dùng trình đơn riêng cho <ngôn ngữ>" (tạo bằng Sao chép + Dịch, hoặc chọn menu khác). Hiện rõ ngôn ngữ nào đang dùng bản mặc định (chip "theo Tiếng Việt").
-2. Liên kết tới "Sản phẩm": vẽ nhưng gắn "Chờ chốt" (DB hiện chưa cho loại này); ẩn với người dùng khi Tweak "đã chốt" tắt. Khi chọn 1 sản phẩm, nhãn được điền sẵn theo tên sản phẩm ở từng ngôn ngữ (sửa được); sản phẩm bị xoá → mục hiện trạng thái "nguồn đã xoá".
+2. Liên kết tới "Sản phẩm" (backend có từ 24/09 — vẽ như loại chính thức, không gắn "Chờ chốt"): chọn 1 sản phẩm bằng danh sách có tìm; nhãn điền sẵn theo tên sản phẩm ở từng ngôn ngữ (sửa được; để trống thì website tự lấy tên hiện tại). Mục có nguồn chưa đăng / trong thùng rác / đã xoá hẳn → hiện nhãn trạng thái rõ ("Đang ẩn trên website — sản phẩm chưa đăng", "Nguồn đã xoá") kèm nút đi tới nguồn hoặc gỡ mục.
 3. "Khối tự dựng" (bảng lớn): gắn "Để sau" (phụ thuộc Khối tái dùng — chưa build); menu vẫn dùng đầy đủ khi tắt.
 4. Vị trí lấy từ giao diện đang dùng; repo hiện chỉ hiển thị "Trình đơn chính" → vị trí khác vẽ kèm dòng "Giao diện hiện tại chưa hiển thị vị trí này".
 5. Người không quen kéo-thả / điện thoại: mỗi mục có nút "Chuyển lên", "Chuyển xuống", "Đưa vào trong mục trên"; thêm mục bằng "Chọn trang có sẵn" (danh sách có tìm) là đường chính, "Nhập địa chỉ ngoài" là phụ.
