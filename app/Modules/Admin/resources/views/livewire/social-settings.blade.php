@@ -9,7 +9,7 @@
     <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
             <h2 class="text-[15px] font-semibold text-body-text">{{ __('admin.social_login') }}</h2>
-            <p class="mt-0.5 text-xs text-body-faint">{{ __('admin.social_login_desc') }}</p>
+            <p class="mt-0.5 text-xs text-body-muted">{{ __('admin.social_login_desc') }}</p>
         </div>
         <div class="space-y-3 p-5">
             <label class="mb-1 block text-sm font-medium text-body-text">{{ __('admin.redirect_uri') }}</label>
@@ -22,13 +22,13 @@
                     <span x-show="copied" x-cloak>{{ __('admin.copied') }}</span>
                 </x-admin::button>
             </div>
-            <p class="text-xs text-body-faint">{{ __('admin.redirect_uri_hint') }}</p>
+            <p class="text-xs text-body-muted">{{ __('admin.redirect_uri_hint') }}</p>
             <ol class="list-decimal space-y-1 pl-5 text-xs text-body-muted">
                 <li>{{ __('admin.oauth_guide_step1') }}</li>
                 <li>{{ __('admin.oauth_guide_step2') }}</li>
                 <li>{{ __('admin.oauth_guide_step3') }}</li>
             </ol>
-            <p class="text-xs text-body-faint">{{ __('admin.oauth_redirect_uri_shared') }}</p>
+            <p class="text-xs text-body-muted">{{ __('admin.oauth_redirect_uri_shared') }}</p>
         </div>
     </div>
 
@@ -50,7 +50,7 @@
                     <x-admin::input :label="__('admin.client_secret')" type="password" wire:model="forms.{{ $provider }}.client_secret" autocomplete="new-password"
                                     :placeholder="($secretSet[$provider] ?? false) ? __('admin.secret_stored') : ''" />
                     @if ($secretSet[$provider] ?? false)
-                        <p class="mt-1 text-xs text-body-faint">{{ __('admin.leave_blank_keep') }}</p>
+                        <p class="mt-1 text-xs text-body-muted">{{ __('admin.leave_blank_keep') }}</p>
                     @endif
                 </div>
                 <div class="sm:col-span-2">

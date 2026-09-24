@@ -57,7 +57,7 @@
         @endif
 
         <x-admin::card :title="__('admin.workflow_settings_title')">
-            <p class="mb-4 text-sm text-body-faint">{{ __('admin.wf.subtitle') }}</p>
+            <p class="mb-4 text-sm text-body-muted">{{ __('admin.wf.subtitle') }}</p>
 
             @if ($rows === [])
                 <p class="py-6 text-center text-sm text-body-muted">{{ __('admin.wf.no_sections') }}</p>
@@ -72,7 +72,7 @@
                                 </span>
                                 <div class="min-w-0">
                                     <p class="truncate text-sm font-medium text-heading">{{ $row['label'] }}</p>
-                                    <p class="text-xs text-body-faint">{{ __('admin.wf.posts_count', ['count' => $row['total']]) }}</p>
+                                    <p class="text-xs text-body-muted">{{ __('admin.wf.posts_count', ['count' => $row['total']]) }}</p>
                                 </div>
                             </div>
 
@@ -99,7 +99,7 @@
                                         </span>
                                     @endif
                                 @else
-                                    <p class="text-sm text-body-faint">{{ __('admin.wf.none') }}</p>
+                                    <p class="text-sm text-body-muted">{{ __('admin.wf.none') }}</p>
                                 @endif
                             </div>
 
@@ -169,12 +169,12 @@
                                     <x-admin::icon name="lock" class="size-3" />{{ __('admin.wf.locked') }}
                                 </span>
                             </span>
-                            <span class="mt-1 block text-xs text-body-faint" x-text="t.states.length + ' {{ __('admin.wf.steps_unit') }}'"></span>
+                            <span class="mt-1 block text-xs text-body-muted" x-text="t.states.length + ' {{ __('admin.wf.steps_unit') }}'"></span>
                         </button>
                     </template>
                 </div>
-                <p x-show="tpl() === null" class="mt-3 text-sm text-body-faint">{{ __('admin.wf.pick_hint') }}</p>
-                <p x-show="templates.some(t => t.locked)" class="mt-2 text-xs text-body-faint">{{ __('admin.wf.locked_hint') }}</p>
+                <p x-show="tpl() === null" class="mt-3 text-sm text-body-muted">{{ __('admin.wf.pick_hint') }}</p>
+                <p x-show="templates.some(t => t.locked)" class="mt-2 text-xs text-body-muted">{{ __('admin.wf.locked_hint') }}</p>
 
                 {{-- Plan panel: what the site is on, what actually grants the feature. There is no
                      self-serve upgrade yet (billing deferred), so this informs rather than pretends. --}}
@@ -194,7 +194,7 @@
                             @endif
                         </dl>
                         <p class="mt-2 text-sm text-body-muted">{{ __('admin.wf.upgrade_contact') }}</p>
-                        <p class="mt-1 text-xs text-body-faint">{{ __('admin.wf.upgrade_safe') }}</p>
+                        <p class="mt-1 text-xs text-body-muted">{{ __('admin.wf.upgrade_safe') }}</p>
                         <button type="button" class="mt-2 text-xs font-medium text-admin-primary hover:underline" x-on:click="upgrade = false">{{ __('admin.close') }}</button>
                     </div>
                 @endif
@@ -215,7 +215,7 @@
                                 </li>
                             </template>
                         </ol>
-                        <p class="mt-2 text-xs text-body-faint">{{ __('admin.wf.public_step_hint') }}</p>
+                        <p class="mt-2 text-xs text-body-muted">{{ __('admin.wf.public_step_hint') }}</p>
 
                         {{-- Transitions, grouped: forward vs return-with-note --}}
                         <div class="mt-4 grid gap-4 sm:grid-cols-2">
@@ -225,7 +225,7 @@
                                     <template x-for="tr in tpl().transitions.filter(t => ! t.note)" :key="tr.key">
                                         <li class="rounded border border-border p-2 text-xs">
                                             <span class="font-medium text-body-text" x-text="tr.label"></span>
-                                            <span class="block text-body-faint" x-text="stepLabel(tr.from) + ' → ' + stepLabel(tr.to)"></span>
+                                            <span class="block text-body-muted" x-text="stepLabel(tr.from) + ' → ' + stepLabel(tr.to)"></span>
                                         </li>
                                     </template>
                                 </ul>
@@ -236,7 +236,7 @@
                                     <template x-for="tr in tpl().transitions.filter(t => t.note)" :key="tr.key">
                                         <li class="rounded border border-admin-danger/30 p-2 text-xs">
                                             <span class="font-medium text-body-text" x-text="tr.label"></span>
-                                            <span class="block text-body-faint" x-text="stepLabel(tr.from) + ' → ' + stepLabel(tr.to)"></span>
+                                            <span class="block text-body-muted" x-text="stepLabel(tr.from) + ' → ' + stepLabel(tr.to)"></span>
                                             <span class="mt-0.5 inline-block rounded-full bg-admin-warning/15 px-1.5 py-px text-[10px] font-bold text-[#8a5f18]">{{ __('admin.wf.note_required') }}</span>
                                         </li>
                                     </template>

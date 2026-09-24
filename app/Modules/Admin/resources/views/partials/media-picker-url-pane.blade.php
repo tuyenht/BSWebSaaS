@@ -16,7 +16,7 @@
 <div class="mx-auto flex w-full max-w-[560px] flex-col gap-3.5 p-[22px]">
     <div class="flex gap-2">
         <div class="relative min-w-0 flex-1">
-            <x-admin::icon name="ri-link" class="absolute left-3 top-1/2 size-[15px] -translate-y-1/2 text-body-faint" />
+            <x-admin::icon name="ri-link" class="absolute left-3 top-1/2 size-[15px] -translate-y-1/2 text-body-muted" />
             <input type="url" wire:model="pickerUrlInput" wire:keydown.enter="previewPickerUrl"
                    placeholder="{{ __('media.picker_url_placeholder') }}"
                    class="block w-full rounded-lg border border-border-strong bg-surface py-2.5 pl-[35px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none">
@@ -45,7 +45,7 @@
             <div class="flex flex-col gap-2.5 px-[15px] py-[13px]">
                 <div class="flex items-center justify-between gap-2.5">
                     <span class="truncate text-[13px] font-semibold text-heading">{{ $pickerUrlPreview['filename'] }}</span>
-                    <span class="shrink-0 text-[11.5px] text-body-faint">
+                    <span class="shrink-0 text-[11.5px] text-body-muted">
                         {{ $pickerUrlPreview['width'] !== null ? $pickerUrlPreview['width'].' × '.$pickerUrlPreview['height'].' · ' : '' }}~{{ number_format($pickerUrlPreview['size'] / 1048576, 1) }} MB
                     </span>
                 </div>
@@ -56,13 +56,13 @@
                                 <x-admin::icon name="ri-check" class="size-3" />
                             </span>
                             <span class="text-[12.5px] text-body-text">{{ __('media.picker_url_save_copy') }}
-                                <span class="text-body-faint">({{ __('media.picker_url_save_copy_note') }})</span>
+                                <span class="text-body-muted">({{ __('media.picker_url_save_copy_note') }})</span>
                             </span>
                         </button>
                     @endcan
                 @else
                     {{-- Gallery rows must reference a library master — the copy is not optional here. --}}
-                    <div class="flex items-center gap-[9px] text-[12.5px] text-body-faint">
+                    <div class="flex items-center gap-[9px] text-[12.5px] text-body-muted">
                         <x-admin::icon name="ri-checkbox-circle" class="size-4 shrink-0 text-admin-success-text" />{{ __('media.picker_url_save_copy') }}
                     </div>
                 @endif

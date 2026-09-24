@@ -79,7 +79,7 @@
          class="absolute end-0 z-30 mt-1 w-72 rounded-md border border-border bg-surface shadow-card">
         <p class="border-b border-border px-4 py-2.5 text-sm font-semibold text-body-text">{{ __('admin.notifications') }}</p>
         <div class="grid place-items-center gap-2 px-4 py-8 text-center">
-            <span class="grid size-10 place-items-center rounded-full bg-surface-muted text-body-faint">
+            <span class="grid size-10 place-items-center rounded-full bg-surface-muted text-body-muted">
                 <x-admin::icon name="bell" class="size-5" />
             </span>
             <p class="text-sm text-body-muted">{{ __('admin.notifications_empty') }}</p>

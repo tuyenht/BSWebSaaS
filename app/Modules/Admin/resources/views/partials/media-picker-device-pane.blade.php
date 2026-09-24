@@ -39,14 +39,14 @@
         <span class="inline-flex items-center gap-1.5 rounded-lg bg-admin-primary px-[18px] py-[9px] text-[13.5px] font-semibold text-white">
             <x-admin::icon name="ri-folder-open" class="size-[15px]" />{{ __('media.picker_device_browse') }}
         </span>
-        <div class="text-[11.5px] text-body-faint">{{ __('media.picker_device_hint', ['size' => \App\Modules\Media\Actions\UploadMedia::MAX_KB / 1024]) }}</div>
+        <div class="text-[11.5px] text-body-muted">{{ __('media.picker_device_hint', ['size' => \App\Modules\Media\Actions\UploadMedia::MAX_KB / 1024]) }}</div>
     </div>
 
     <input type="file" data-input multiple accept="image/*,application/pdf" class="hidden">
 
     <div class="mt-5 flex flex-col gap-[9px]">
         <div data-progress-label data-template="{{ __('media.picker_device_uploading', ['n' => ':n']) }}"
-             style="display:none" class="text-[11px] font-semibold uppercase tracking-[.05em] text-body-faint"></div>
+             style="display:none" class="text-[11px] font-semibold uppercase tracking-[.05em] text-body-muted"></div>
         <div data-progress class="flex flex-col gap-[9px]"></div>
     </div>
 </div>

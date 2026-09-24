@@ -6,7 +6,7 @@
     <form wire:submit="save" class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
             <h2 class="text-[15px] font-semibold text-body-text">{{ __('admin.turnstile_login_title') }}</h2>
-            <p class="mt-0.5 text-xs text-body-faint">{{ __('admin.turnstile_login_desc') }}</p>
+            <p class="mt-0.5 text-xs text-body-muted">{{ __('admin.turnstile_login_desc') }}</p>
         </div>
 
         <div class="space-y-4 p-5">

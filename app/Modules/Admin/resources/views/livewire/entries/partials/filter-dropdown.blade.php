@@ -41,7 +41,7 @@
         @endforelse
         @if (count($options) > 0)
             <div class="mt-1 flex items-center justify-between border-t border-border px-1 pt-1.5">
-                <button type="button" wire:click="resetFilterGroup('{{ $group }}')" class="rounded px-1.5 py-1 text-xs text-body-faint hover:text-body-text">{{ __('entries.filter_reset') }}</button>
+                <button type="button" wire:click="resetFilterGroup('{{ $group }}')" class="rounded px-1.5 py-1 text-xs text-body-muted hover:text-body-text">{{ __('entries.filter_reset') }}</button>
                 <button type="button" @click="open = false" class="rounded px-1.5 py-1 text-xs font-medium text-admin-primary">{{ __('entries.filter_done') }}</button>
             </div>
         @endif

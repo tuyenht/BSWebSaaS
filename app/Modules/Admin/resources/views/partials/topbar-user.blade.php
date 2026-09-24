@@ -45,7 +45,7 @@
         @unless ($isPlatform)
             <a href="{{ route('admin.settings.security') }}" wire:navigate role="menuitem"
                class="flex items-center gap-2.5 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
-                <x-admin::icon name="user" class="size-4 text-body-faint" />
+                <x-admin::icon name="user" class="size-4 text-body-muted" />
                 {{ __('admin.settings_account') }}
             </a>
         @endunless
@@ -55,7 +55,7 @@
             @csrf
             <button type="submit" role="menuitem"
                     class="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
-                <x-admin::icon name="logout" class="size-4 text-body-faint" />
+                <x-admin::icon name="logout" class="size-4 text-body-muted" />
                 {{ __('admin.logout') }}
             </button>
         </form>
