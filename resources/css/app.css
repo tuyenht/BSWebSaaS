@@ -140,6 +140,24 @@
     display: none !important;
 }
 
+/* Keyboard focus — one indicator for every control in the admin shells: the focus-ring tokens
+   (admin-chrome.css) as a 2px outline 2px off the element, >= 3:1 on the page, the card and, via
+   the zone re-point, the sidebar. In the base layer on purpose: a component that draws its own
+   focus (the topbar's inset rings) still can. The sign-in pages keep auth.css. */
+@layer base {
+    :where(.admin-shell) :focus-visible {
+        outline: var(--focus-ring-width) solid var(--focus-ring-color);
+        outline-offset: var(--focus-ring-offset);
+    }
+}
+
+/* The sticky topbar would hide whatever focus or an in-page link scrolls to the top edge
+   (WCAG 2.4.11) — keep its height clear. Zero specificity: a topbar that scrolls away resets
+   it (admin-chrome.css). */
+:where(:root:has(> body.admin-shell)) {
+    scroll-padding-top: var(--spacing-header);
+}
+
 /* Every admin form field draws its edge in the input-border role. Views style fields inline with
    the generic border tokens, so inside an input/select/textarea those tokens resolve to it; the
    field's own focus and error border utilities use other tokens and still win. Scoped to the

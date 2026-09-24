@@ -93,6 +93,26 @@ it('draws the alert dismiss icon at full strength', function (): void {
     expect((string) $this->blade('<x-admin::alert color="danger" dismissible>Lỗi.</x-admin::alert>'))->not->toContain('opacity-70');
 });
 
+/*
+ * Keyboard focus is one shared ring (app.css :focus-visible, tokens in admin-chrome.css). A kit
+ * component that switched the outline off or drew its own faint ring (the input's was 1.4:1) would
+ * hide where the keyboard is.
+ */
+it('leaves keyboard focus to the shared focus ring', function (string $markup): void {
+    expect((string) $this->blade($markup))
+        ->not->toContain('outline-none')
+        ->not->toMatch('/(?<![\w-])focus(?:-visible)?:ring/');
+})->with([
+    'solid button' => '<x-admin::button>Lưu</x-admin::button>',
+    'soft success button' => '<x-admin::button variant="soft" color="success">Lưu</x-admin::button>',
+    'outline danger button' => '<x-admin::button variant="outline" color="danger">Xoá</x-admin::button>',
+    'light button' => '<x-admin::button color="light">Huỷ</x-admin::button>',
+    'tabs' => '<x-admin::tabs :tabs="[\'a\' => \'Một\', \'b\' => \'Hai\']" />',
+    'input' => '<x-admin::input name="email" label="Email" />',
+    'dismissible alert' => '<x-admin::alert color="warning" dismissible>Sắp hết hạn.</x-admin::alert>',
+    'modal' => '<x-admin::modal title="Xác nhận xoá"><p>Chắc chưa?</p></x-admin::modal>',
+]);
+
 it('paints secondary text a reader needs with the muted role, never the decorative faint one', function (string $markup): void {
     expect((string) $this->blade($markup))
         ->toContain('text-body-muted')
