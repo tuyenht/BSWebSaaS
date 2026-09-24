@@ -110,7 +110,7 @@
 ## 6. Guardrails — 2 tầng, tầng nào cũng BẮT BUỘC (khác nhau ở CHỖ enforce)
 
 **Tầng 1 · CI tự động (`.github/workflows/ci.yml` — chặn merge):**
-- `Pint --test` · `Larastan` (max) · `Pest` (unit + feature + Arch + Query Budget + **Gate #1 concurrency** — phpunit.xml khai đủ 4 suite) · migrate PostgreSQL thật (app_user + pgsql_admin) · build FE (Vite + Tailwind).
+- `Pint --test` · `Larastan` (max) · `lang:check` (mọi `lang/*.json` đủ đúng bộ khoá của `en.json`) · `Pest` (unit + feature + Arch + Query Budget + **Gate #1 concurrency** — phpunit.xml khai đủ 4 suite) · migrate PostgreSQL thật (app_user + pgsql_admin) · build FE (Vite + Tailwind).
 - **Job `cwv`** (Lighthouse + axe; gate `/`, `/lien-he`, `/tin-tuc` của site đo-lường): LCP ≤1.5s + JS ≤30KB (median 3 lượt) + axe WCAG2A/AA 0 vi phạm — đỏ = chặn. Điểm performance tổng chỉ cảnh báo.
 - **Query Budget test** — assert số query tối đa/route hot (bắt N+1). **Arch test** — "mọi model tenant dùng BelongsToSite" · "mọi action qua policy" · "mọi transition qua engine" · ranh giới module acyclic (Tenancy là nền).
 
