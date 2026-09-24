@@ -756,6 +756,7 @@
     "rbac.invitation.error_no_longer_valid": "由于邀请人的权限已变更，此邀请已失效。请重新获取邀请。",
     "rbac.invitation.error_no_roles": "请至少选择一个角色。",
     "rbac.invitation.error_already_member": "此人已是网站成员。",
+    "rbac.invitation.error_address_daily_limit": "该地址在过去 24 小时内收到的邀请已达上限。请提醒收件人查看垃圾邮件文件夹，或稍后再发送。",
     "rbac.invitation.error_daily_limit": "本网站在过去 24 小时内已发送大量邀请。请稍后再试。",
     "rbac.invitation.error_resend_too_soon": "刚刚已向该地址发送邀请。请稍等一分钟后再发送。",
     "rbac.invitation.mail_subject": "邀请您参与管理网站 :site",

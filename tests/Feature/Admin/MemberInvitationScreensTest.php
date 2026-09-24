@@ -81,6 +81,28 @@ it('answers "invite member" with the same sentence whether or not the address ha
     Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, 2);
 });
 
+it('tells the admin in plain words when an address has had its invitations for today', function (): void {
+    Notification::fake();
+    $owner = screensMember('owner');
+    screensMember('viewer');
+    $inviteHopThu = fn () => app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($owner->fresh())
+        ->test(Index::class)
+        ->set('inviteEmail', 'hop-thu@example.test')
+        ->set('inviteRole', 'viewer')
+        ->call('addMember'));
+
+    for ($i = 0; $i < InviteMember::ADDRESS_DAILY_LIMIT; $i++) {
+        $inviteHopThu()->assertHasNoErrors();
+        $this->travel(InviteMember::RESEND_COOLDOWN_SECONDS + 1)->seconds();
+    }
+
+    $inviteHopThu()
+        ->assertHasErrors('inviteEmail')
+        ->assertSee(__('rbac.invitation.error_address_daily_limit'));
+
+    Notification::assertSentOnDemandTimes(MemberInvitationNotification::class, InviteMember::ADDRESS_DAILY_LIMIT);
+});
+
 it('mails a link to the invitation page on the site’s own host', function (): void {
     Notification::fake();
     URL::forceRootUrl('http://a.test');   // the admin request's host, as in a real invite

@@ -756,6 +756,7 @@
     "rbac.invitation.error_no_longer_valid": "Lời mời này không còn hiệu lực vì quyền của người mời đã thay đổi. Hãy nhờ gửi lời mời mới.",
     "rbac.invitation.error_no_roles": "Hãy chọn ít nhất một vai trò.",
     "rbac.invitation.error_already_member": "Người này đã là thành viên của website.",
+    "rbac.invitation.error_address_daily_limit": "Địa chỉ này đã nhận đủ số thư mời cho phép trong 24 giờ qua. Hãy nhắc người nhận xem cả mục Thư rác, hoặc gửi lại sau.",
     "rbac.invitation.error_daily_limit": "Website đã gửi nhiều lời mời trong 24 giờ qua. Hãy thử lại sau.",
     "rbac.invitation.error_resend_too_soon": "Vừa gửi lời mời tới địa chỉ này. Hãy đợi một phút rồi gửi lại.",
     "rbac.invitation.mail_subject": "Lời mời tham gia quản trị website :site",

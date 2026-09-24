@@ -257,20 +257,46 @@ it('caps invitation mail per site per 24 hours', function (): void {
     expect(invitationRefusal(fn () => invite(1, $owner, 'them-mot@example.test')))->toBeNull();
 });
 
-it('counts a re-sent invitation toward the daily cap, so one inbox cannot be flooded', function (): void {
+it('counts a re-sent invitation toward the daily cap', function (): void {
+    // Every address is re-sent up to its own limit: the site's mail — not its invitations — hits the cap.
     $owner = invitationMember(1, 'owner');
     $viewer = invitationRole(1, 'viewer');
 
     app(Tenancy::class)->enter(1, function () use ($owner, $viewer): void {
         for ($i = 0; $i < InviteMember::DAILY_LIMIT; $i++) {
-            app(InviteMember::class)->handle($owner, 'cung-mot-nguoi@example.test', [$viewer]);
+            $address = 'nguoi-'.intdiv($i, InviteMember::ADDRESS_DAILY_LIMIT).'@example.test';
+            app(InviteMember::class)->handle($owner, $address, [$viewer]);
             $this->travel(InviteMember::RESEND_COOLDOWN_SECONDS + 1)->seconds();
         }
     });
 
-    expect(DB::connection('pgsql_admin')->table('invitations')->count())->toBe(1)
-        ->and(invitationRefusal(fn () => invite(1, $owner, 'cung-mot-nguoi@example.test')))->toBe('daily_limit')
+    expect(DB::connection('pgsql_admin')->table('invitations')->count())
+        ->toBe((int) ceil(InviteMember::DAILY_LIMIT / InviteMember::ADDRESS_DAILY_LIMIT))
         ->and(invitationRefusal(fn () => invite(1, $owner, 'nguoi-khac@example.test')))->toBe('daily_limit');
+});
+
+it('mails one address at most a few times a day from one site, so its inbox cannot be flooded', function (): void {
+    // The mail goes out under the platform's shared sender: an inbox flooded from one website would
+    // teach mail providers to junk every website's mail. The limit is per site — counting across sites
+    // would tell one site's admin that another site had just invited that person.
+    $owner = invitationMember(1, 'owner');
+    $otherOwner = invitationMember(2, 'owner');
+    $viewer = invitationRole(1, 'viewer');
+
+    app(Tenancy::class)->enter(1, function () use ($owner, $viewer): void {
+        for ($i = 0; $i < InviteMember::ADDRESS_DAILY_LIMIT; $i++) {
+            app(InviteMember::class)->handle($owner, 'hop-thu@example.test', [$viewer]);
+            $this->travel(InviteMember::RESEND_COOLDOWN_SECONDS + 1)->seconds();
+        }
+    });
+
+    expect(invitationRefusal(fn () => invite(1, $owner, 'HOP-THU@example.test')))->toBe('address_daily_limit')
+        ->and(invitationRefusal(fn () => invite(1, $owner, 'nguoi-khac@example.test')))->toBeNull()
+        ->and(invitationRefusal(fn () => invite(2, $otherOwner, 'hop-thu@example.test')))->toBeNull();
+
+    $this->travel(1)->days();
+
+    expect(invitationRefusal(fn () => invite(1, $owner, 'hop-thu@example.test')))->toBeNull();
 });
 
 it('makes invitations on one site wait for each other, so parallel invites cannot overrun the cap', function (): void {

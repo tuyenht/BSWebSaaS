@@ -14,6 +14,7 @@ use App\Modules\Rbac\Support\IssuedInvitation;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
@@ -30,8 +31,12 @@ use Illuminate\Support\Str;
  *  - `users.invite` + the no-escalation rule: every role strictly below the inviter's level and
  *    within the permissions they hold (RoleHierarchyGuard) — checked again when it is accepted.
  *  - Invitation MAIL per site is capped at DAILY_LIMIT per rolling 24 hours — every mail counts, a
- *    re-sent invitation included (one `rbac.invitation.sent` audit row per mail), and one invitation
- *    is not re-mailed within RESEND_COOLDOWN_SECONDS, so the form cannot be used to flood an inbox.
+ *    re-sent invitation included (one `rbac.invitation.sent` audit row per mail). One address gets
+ *    at most ADDRESS_DAILY_LIMIT of them from this site in that window, and one invitation is not
+ *    re-mailed within RESEND_COOLDOWN_SECONDS (a double click must not spend that allowance), so the
+ *    form cannot be used to flood an inbox under the platform's shared sender. The address limit is
+ *    per site on purpose: counting across sites would tell this site that another one had invited
+ *    the same person.
  *  - Invites on one site are serialized by a transaction-scoped advisory lock (lockKey): the daily
  *    cap is counted and then written, so two invites for different addresses at the same moment
  *    cannot both pass it — and the pending-invitation unique index is never hit by a race.
@@ -42,6 +47,9 @@ final readonly class InviteMember
 {
     /** Invitation mails a site may send per rolling 24 hours (owner decision 24/09). */
     public const int DAILY_LIMIT = 50;
+
+    /** Invitation mails one address may get from one site per rolling 24 hours (owner decision 24/09). */
+    public const int ADDRESS_DAILY_LIMIT = 3;
 
     /** How long an invitation stays open (owner decision 24/09). */
     public const int VALID_DAYS = 7;
@@ -58,7 +66,7 @@ final readonly class InviteMember
      * @param  list<Role>  $roles
      *
      * @throws AuthorizationException the actor may not invite, or a role is not theirs to grant
-     * @throws InvitationRejectedException no_roles · already_member · daily_limit · resend_too_soon
+     * @throws InvitationRejectedException no_roles · already_member · resend_too_soon · address_daily_limit · daily_limit
      */
     public function handle(User $actor, string $email, array $roles, ?string $message = null): IssuedInvitation
     {
@@ -93,6 +101,10 @@ final readonly class InviteMember
 
             if ($invitation !== null && $invitation->sent_at->isAfter(now()->subSeconds(self::RESEND_COOLDOWN_SECONDS))) {
                 throw new InvitationRejectedException('resend_too_soon');
+            }
+
+            if ($this->mailsSentToday($siteId, $email) >= self::ADDRESS_DAILY_LIMIT) {
+                throw new InvitationRejectedException('address_daily_limit');
             }
 
             if ($this->mailsSentToday($siteId) >= self::DAILY_LIMIT) {
@@ -135,16 +147,18 @@ final readonly class InviteMember
     }
 
     /**
-     * Invitation mails this site sent in the last 24 hours, new and re-sent alike: counting open
-     * invitations instead would let one address be re-mailed every cooldown, all day. The audit
-     * trail holds one row per mail (not RLS-scoped, hence the explicit site filter).
+     * Invitation mails this site sent in the last 24 hours — to $email only, when given — new and
+     * re-sent alike: counting open invitations instead would let one address be re-mailed every
+     * cooldown, all day. The audit trail holds one row per mail (not RLS-scoped, hence the explicit
+     * site filter), read through its (site_id, created_at) index.
      */
-    private function mailsSentToday(int $siteId): int
+    private function mailsSentToday(int $siteId, ?string $email = null): int
     {
         return AuditLog::query()
             ->where('site_id', $siteId)
             ->where('action', 'rbac.invitation.sent')
             ->where('created_at', '>=', now()->subDay())
+            ->when($email !== null, fn (Builder $mails): Builder => $mails->where('meta->email', $email))
             ->count();
     }
 

@@ -756,6 +756,7 @@
     "rbac.invitation.error_no_longer_valid": "招待者の権限が変更されたため、この招待は無効になりました。新しい招待を依頼してください。",
     "rbac.invitation.error_no_roles": "役割を1つ以上選択してください。",
     "rbac.invitation.error_already_member": "この方はすでにサイトのメンバーです。",
+    "rbac.invitation.error_address_daily_limit": "このアドレスには過去24時間に送れる上限の招待が届いています。迷惑メールフォルダーも確認するよう受信者に伝えるか、しばらくしてから再送してください。",
     "rbac.invitation.error_daily_limit": "このサイトは過去24時間に多くの招待を送信しました。しばらくしてから再度お試しください。",
     "rbac.invitation.error_resend_too_soon": "このアドレスには先ほど招待を送信しました。1分ほど待ってから再送してください。",
     "rbac.invitation.mail_subject": ":site の管理への招待",

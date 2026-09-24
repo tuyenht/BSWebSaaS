@@ -756,6 +756,7 @@
     "rbac.invitation.error_no_longer_valid": "This invitation is no longer valid because the inviter’s permissions changed. Ask for a new invitation.",
     "rbac.invitation.error_no_roles": "Choose at least one role.",
     "rbac.invitation.error_already_member": "This person is already a member of the site.",
+    "rbac.invitation.error_address_daily_limit": "This address has received as many invitations as allowed in the last 24 hours. Ask the recipient to check their spam folder, or send it again later.",
     "rbac.invitation.error_daily_limit": "This site has sent many invitations in the last 24 hours. Try again later.",
     "rbac.invitation.error_resend_too_soon": "An invitation was just sent to this address. Wait a minute before sending it again.",
     "rbac.invitation.mail_subject": "You are invited to help manage :site",
