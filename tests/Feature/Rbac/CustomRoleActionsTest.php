@@ -4,11 +4,13 @@ use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Actions\CreateCustomRole;
 use App\Modules\Rbac\Actions\DeleteCustomRole;
+use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\UpdateCustomRole;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Exceptions\RoleChangeRejectedException;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Rbac\Support\IssuedInvitation;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteFeature;
@@ -22,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  * Invariants: R1 a role never carries a permission outside the modules the SITE is entitled to ·
  * R2 nor one the EDITOR doesn't hold (what they can't hold, they can't add or strip) · R3 its level
  * sits strictly below the editor · R4 system roles are immutable, a custom role is deletable only
- * once nobody holds it · R5 implications normalized on save · R6 every change audited. The RBAC
+ * once nobody holds it and no pending invitation grants it · R5 implications normalized on save · R6 every change audited. The RBAC
  * tables are global (no RLS), so a role from another site must be refused before any guard runs.
  */
 
@@ -241,6 +243,24 @@ it('deletes a custom role only once nobody holds it, even with the feature switc
 
     expect(Role::query()->whereKey($role->getKey())->exists())->toBeFalse()
         ->and(consoleIn(1, fn (): bool => AuditLog::query()->where('action', 'rbac.role.deleted')->exists()))->toBeTrue();
+});
+
+it('refuses to delete a custom role that a pending invitation would grant', function (): void {
+    // The FK cascade would quietly strip the role from the invitation: the invitee would then join
+    // with less than they were promised, or not at all.
+    consoleSite(1);
+    $owner = consoleTemplateUser(1, 'owner');
+    $role = consoleRole(1, 'Nhóm L', 20, ['entries.view'], system: false);
+    $issued = consoleIn(1, fn (): IssuedInvitation => app(InviteMember::class)->handle($owner->fresh(), 'nguoi-moi@example.test', [$role]));
+
+    expect(fn () => consoleIn(1, fn () => app(DeleteCustomRole::class)->handle($owner->fresh(), $role)))
+        ->toThrow(RoleChangeRejectedException::class, 'in_use');
+
+    // An invitation nobody can accept any more no longer holds the role back.
+    DB::connection('pgsql_admin')->table('invitations')->where('id', $issued->invitation->getKey())->update(['expires_at' => now()->subMinute()]);
+    consoleIn(1, fn () => app(DeleteCustomRole::class)->handle($owner->fresh(), $role));
+
+    expect(Role::query()->whereKey($role->getKey())->exists())->toBeFalse();
 });
 
 it('never offers a lower custom role that carries a permission the granter lacks', function (): void {

@@ -12,6 +12,7 @@ use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Rbac\Support\IssuedInvitation;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -270,6 +271,26 @@ it('counts a re-sent invitation toward the daily cap, so one inbox cannot be flo
     expect(DB::connection('pgsql_admin')->table('invitations')->count())->toBe(1)
         ->and(invitationRefusal(fn () => invite(1, $owner, 'cung-mot-nguoi@example.test')))->toBe('daily_limit')
         ->and(invitationRefusal(fn () => invite(1, $owner, 'nguoi-khac@example.test')))->toBe('daily_limit');
+});
+
+it('makes invitations on one site wait for each other, so parallel invites cannot overrun the cap', function (): void {
+    // The cap is counted and then written: two invites for DIFFERENT addresses at the same moment
+    // must not both read "49 sent" and both send. While another session holds the site's invitation
+    // lock, an invite waits — here until lock_timeout gives up.
+    $owner = invitationMember(1, 'owner');
+    $viewer = invitationRole(1, 'viewer');
+    $other = DB::connection('pgsql_admin');
+    $other->beginTransaction();
+    $other->select('select pg_advisory_xact_lock(hashtextextended(?, 0))', [InviteMember::lockKey(1)]);
+
+    try {
+        expect(fn () => app(Tenancy::class)->enter(1, function () use ($owner, $viewer): void {
+            DB::statement("set local lock_timeout = '300ms'");
+            app(InviteMember::class)->handle($owner->fresh(), 'cung-luc@example.test', [$viewer]);
+        }))->toThrow(QueryException::class, 'lock timeout');
+    } finally {
+        $other->rollBack();
+    }
 });
 
 it('keeps each site to its own daily cap', function (): void {

@@ -7,17 +7,20 @@ namespace App\Modules\Rbac\Actions;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Exceptions\RoleChangeRejectedException;
+use App\Modules\Rbac\Models\Invitation;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\CustomRoleRules;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
- * Delete a custom role of this site — only once nobody holds it (INV-R4): deleting a held role
- * would silently strip those members' access through the FK cascade. Like UpdateCustomRole it is
- * not gated by the entitlement, so a downgraded site can still clean up.
+ * Delete a custom role of this site — only once nobody holds it and no pending invitation grants
+ * it (INV-R4): the FK cascade would silently strip the role from those members, or from the
+ * invitation someone has not answered yet. Like UpdateCustomRole it is not gated by the
+ * entitlement, so a downgraded site can still clean up.
  */
 final readonly class DeleteCustomRole
 {
@@ -36,12 +39,18 @@ final readonly class DeleteCustomRole
         $this->rules->assertManageable($actor, $role);
 
         DB::transaction(function () use ($role): void {
-            // Lock the role row first: a concurrent grant inserts into model_has_roles, whose FK
-            // takes a KEY SHARE lock on this row — so it either committed before this lock (and the
-            // holder check below sees it) or waits until the role is gone (and its insert fails).
+            // Lock the role row first: a concurrent grant or invitation inserts into model_has_roles /
+            // invitation_roles, whose FK takes a KEY SHARE lock on this row — so it either committed
+            // before this lock (and the checks below see it) or waits until the role is gone (and its
+            // insert fails).
             Role::query()->whereKey($role->getKey())->lockForUpdate()->first();
 
-            if (DB::table('model_has_roles')->where('role_id', $role->getKey())->exists()) {
+            $held = DB::table('model_has_roles')->where('role_id', $role->getKey())->exists();
+            $promised = Invitation::query()->pending()
+                ->whereHas('roles', fn (Builder $roles): Builder => $roles->whereKey($role->getKey()))
+                ->exists();
+
+            if ($held || $promised) {
                 throw new RoleChangeRejectedException('in_use');
             }
 

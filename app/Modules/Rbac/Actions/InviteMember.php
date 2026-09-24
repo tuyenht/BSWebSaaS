@@ -32,8 +32,9 @@ use Illuminate\Support\Str;
  *  - Invitation MAIL per site is capped at DAILY_LIMIT per rolling 24 hours — every mail counts, a
  *    re-sent invitation included (one `rbac.invitation.sent` audit row per mail), and one invitation
  *    is not re-mailed within RESEND_COOLDOWN_SECONDS, so the form cannot be used to flood an inbox.
- *  - Concurrent invites for one address are serialized by a transaction-scoped advisory lock, so
- *    the pending-invitation unique index is never hit by a race.
+ *  - Invites on one site are serialized by a transaction-scoped advisory lock (lockKey): the daily
+ *    cap is counted and then written, so two invites for different addresses at the same moment
+ *    cannot both pass it — and the pending-invitation unique index is never hit by a race.
  *
  * Returns the plain token for the caller that owns mail delivery; only its hash is stored.
  */
@@ -82,7 +83,7 @@ final readonly class InviteMember
         $token = Str::random(64);
 
         return DB::transaction(function () use ($actor, $email, $roles, $message, $siteId, $token): IssuedInvitation {
-            DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ["invitation:{$siteId}:{$email}"]);
+            DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', [self::lockKey($siteId)]);
 
             $invitation = Invitation::query()
                 ->whereNull('accepted_at')
@@ -125,6 +126,12 @@ final readonly class InviteMember
 
             return new IssuedInvitation($invitation, $token);
         });
+    }
+
+    /** The advisory-lock key every invitation write on $siteId waits on. */
+    public static function lockKey(int $siteId): string
+    {
+        return "invitation:{$siteId}";
     }
 
     /**
