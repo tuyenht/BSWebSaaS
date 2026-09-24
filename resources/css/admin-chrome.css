@@ -51,7 +51,7 @@
     --vz-vertical-menu-brand-color: #ffffff;                   /* ★ text brand (Velzon swaps logo images instead) */
 
     /* ---- Footer (flip axis: data-bs-theme) -------------------------------- */
-    --vz-footer-color: #adb5bd;                        /* vz-ref: #98a6ad */
+    --vz-footer-color: var(--color-body-muted);        /* secondary text on the page bg — follows the scheme's muted ink · vz-ref: #98a6ad */
 
     /* Native UI (form controls, scrollbars) follows the scheme; the light
        declaration also opts out of mobile force-dark auto-inversion. */
@@ -114,9 +114,6 @@
     --vz-vertical-menu-bg: #212529;
     --vz-vertical-menu-item-color: #8f94a5;            /* 5.10 · vz-ref: #7c7f90 = 3.89 FAIL */
     --vz-vertical-menu-title-color: #7d8294;           /* 4.03 · vz-ref: #5f6270 = 2.55 FAIL */
-
-    /* footer */
-    --vz-footer-color: #878a99;
 }
 
 /* Dark topbar — ONE block for both schemes (Velzon's light-scheme and

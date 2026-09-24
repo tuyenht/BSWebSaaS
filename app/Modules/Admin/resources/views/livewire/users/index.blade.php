@@ -46,7 +46,7 @@
     {{-- Members --}}
     <div class="overflow-x-auto rounded-lg border border-border bg-surface shadow-card">
         <table class="w-full text-sm">
-            <thead class="border-b border-border bg-surface-muted text-left text-xs uppercase tracking-wider text-body-faint">
+            <thead class="border-b border-border bg-surface-muted text-left text-xs uppercase tracking-wider text-body-muted">
                 <tr>
                     <th class="px-4 py-3 font-semibold">{{ __('admin.name') }}</th>
                     <th class="px-4 py-3 font-semibold">{{ __('admin.email') }}</th>
