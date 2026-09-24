@@ -5,13 +5,16 @@ namespace App\Modules\Admin\Livewire\Catalog;
 use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
+use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -27,6 +30,11 @@ use Livewire\Component;
  * storefront's brochure concern (catalog_mode, a later slice). Every mutation authorizes
  * through CatalogPolicy (coarse catalog.manage) and the product is addressed by ulid, never
  * its raw id. The site's default locale drives which translation row is edited.
+ *
+ * A published product is saved together with its public address (the `routes` row the storefront
+ * resolves, composed by the site's permalink preset): created on first publish, moved with a 301
+ * from the old path when the slug or primary category changes. A path another page or category
+ * already owns undoes the whole save and says so on the slug field.
  */
 #[Layout('admin::layouts.app')]
 final class Editor extends Component
@@ -114,7 +122,20 @@ final class Editor extends Component
     public function save(): void
     {
         $wasNew = $this->ulid === null;
-        $product = $this->persist();
+
+        try {
+            $product = DB::transaction(fn (): Product => $this->persist());
+        } catch (RouteConflictException) {
+            if ($wasNew) {
+                // Rolled back: the form is still a create form.
+                $this->ulid = null;
+                $this->productId = null;
+            }
+            $this->addError('slug', __('catalog.slug_conflict'));
+
+            return;
+        }
+
         session()->flash('saved', true);
 
         if ($wasNew) {
@@ -218,7 +239,12 @@ final class Editor extends Component
         ];
     }
 
-    /** Validate + persist the product, its default-locale translation and category; returns it. */
+    /**
+     * Validate + persist the product, its default-locale translation, category, gallery and — when
+     * it is live — its public address; returns it. Runs inside save()'s transaction.
+     *
+     * @throws RouteConflictException the composed path belongs to another page or category
+     */
     private function persist(): Product
     {
         // A cleared input arrives as '' — store NULL: an '' sku would enter the partial
@@ -269,6 +295,17 @@ final class Editor extends Component
 
         $product->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);
         $this->syncImages($product);
+
+        if ($product->status === 'published') {
+            // First time live: the storefront lists order by this date.
+            if ($product->published_at === null) {
+                $product->forceFill(['published_at' => now()])->save();
+            }
+
+            // Drafts and archived products keep whatever address they had — the storefront renders
+            // only published ones, so their route rows are harmless and keep old links stable.
+            app(RouteSync::class)->syncProduct($product->id, $product->primaryCategory(), $this->locale, $this->slug);
+        }
 
         return $product;
     }

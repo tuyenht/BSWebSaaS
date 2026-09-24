@@ -227,6 +227,7 @@
     "admin.add_new": "新增",
     "admin.categories": "分类",
     "admin.media": "媒体",
+    "catalog.slug_conflict": "此网址已被现有页面或分类使用，请换一个。",
     "admin.contacts": "联系与反馈",
     "admin.menu_builder": "菜单",
     "admin.appearance": "外观",

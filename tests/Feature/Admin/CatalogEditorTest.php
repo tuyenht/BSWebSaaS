@@ -2,7 +2,11 @@
 
 use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\Redirect;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Rbac\Context\TeamContext;
@@ -450,5 +454,134 @@ it('stores cleared price and sku as NULL — brochure rows share the partial sku
         expect(Product::query()->count())->toBe(2)
             ->and(Product::query()->whereNull('sku')->count())->toBe(2)
             ->and(Product::query()->whereNull('price')->count())->toBe(2);
+    });
+});
+
+/** The stored public path of a product in $locale, or null when it has none. */
+function productRoutePath(Product $product, string $locale = 'vi'): ?string
+{
+    $path = SiteRoute::query()->where('product_id', $product->id)->where('locale', $locale)->value('path');
+
+    return is_string($path) ? $path : null;
+}
+
+it('gives a published product its public address and its first publication date', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá hàn khung')
+            ->set('slug', 'do-ga-han-khung')
+            ->set('status', 'published')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $product = Product::query()->firstOrFail();
+        expect(productRoutePath($product))->toBe('/do-ga-han-khung')   // flat: the default preset
+            ->and($product->published_at)->not->toBeNull();
+    });
+});
+
+it('leaves a draft without an address until it is published', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Jig kiểm')
+            ->set('slug', 'jig-kiem')
+            ->set('status', 'draft')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $product = Product::query()->firstOrFail();
+        expect(productRoutePath($product))->toBeNull()
+            ->and($product->published_at)->toBeNull();
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $product->ulid])
+            ->set('status', 'published')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(productRoutePath($product))->toBe('/jig-kiem');
+    });
+});
+
+it('moves the address with a 301 when a published product is renamed, keeping its publication date', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Đồ gá')
+            ->set('slug', 'do-ga-cu')
+            ->set('status', 'published')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $product = Product::query()->firstOrFail();
+        $publishedAt = $product->published_at?->toIso8601String();
+        $this->travel(1)->hours();
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $product->ulid])
+            ->set('slug', 'do-ga-moi')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        expect(productRoutePath($product))->toBe('/do-ga-moi')
+            ->and(Redirect::query()->where('from_path', '/do-ga-cu')->where('to_path', '/do-ga-moi')->where('status_code', 301)->exists())->toBeTrue()
+            ->and($product->fresh()->published_at?->toIso8601String())->toBe($publishedAt);
+    });
+});
+
+it('refuses an address a page already owns and keeps nothing of the save', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published', 'author_id' => $editor->id]);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Giới thiệu', 'slug' => 'gioi-thieu', 'status' => 'published', 'body' => ['blocks' => []]]);
+        app(RouteSync::class)->sync($page->fresh(), 'vi', 'gioi-thieu');
+
+        // A new product: nothing is created, and the form stays a create form.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Sản phẩm')
+            ->set('slug', 'gioi-thieu')
+            ->set('status', 'published')
+            ->call('save')
+            ->assertHasErrors(['slug'])
+            ->assertSet('ulid', null);
+
+        expect(Product::query()->count())->toBe(0);
+
+        // A live product renamed onto the page's address: its slug and address stay as they were.
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('name', 'Sản phẩm')
+            ->set('slug', 'san-pham-a')
+            ->set('status', 'published')
+            ->call('save')
+            ->assertHasNoErrors();
+        $product = Product::query()->firstOrFail();
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $product->ulid])
+            ->set('slug', 'gioi-thieu')
+            ->call('save')
+            ->assertHasErrors(['slug']);
+
+        expect($product->fresh()->translationFor('vi')?->slug)->toBe('san-pham-a')
+            ->and(productRoutePath($product))->toBe('/san-pham-a');
     });
 });
