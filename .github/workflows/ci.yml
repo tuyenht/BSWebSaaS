@@ -100,6 +100,11 @@ jobs:
       - name: PHPStan (Larastan max)
         run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
 
+      # Every language file carries exactly en.json's keys (lang/README.md): a key added in one
+      # language only would otherwise show English — or the raw key — to the others.
+      - name: Translations (same keys in every language)
+        run: php artisan lang:check
+
       - name: Pest (unit · feature · arch · query-budget)
         run: vendor/bin/pest
 
