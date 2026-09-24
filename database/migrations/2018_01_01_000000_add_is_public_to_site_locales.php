@@ -7,9 +7,10 @@ use Illuminate\Support\Facades\DB;
  * `site_locales.enabled` has carried two meanings: the languages editors write in (admin) and
  * the languages visitors can open (storefront prefix, hreflang, sitemap). A site could not prepare
  * a translation before showing it. `is_public` takes the visitor half: a locale is authored when
- * enabled and shown when also public. Existing rows default to public, so every live site keeps
- * exactly the storefront it has today (expand-only; adding a column with a constant default is a
- * catalog-only change in PostgreSQL, no table rewrite).
+ * enabled and shown when also public. Every existing row gets exactly the visibility it has today:
+ * an enabled locale is public, a switched-off one is not — the column arrives with a constant
+ * default (a catalog-only change in PostgreSQL, no table rewrite), then the few switched-off rows
+ * are turned private before the CHECK below would refuse them.
  *
  * Two CHECKs pin what the storefront relies on: the default locale is always enabled and public
  * (its URLs are the canonical unprefixed ones), and only an enabled locale can be public. Each is
@@ -34,6 +35,9 @@ return new class extends Migration
         }
 
         DB::statement('ALTER TABLE site_locales ADD COLUMN IF NOT EXISTS is_public boolean NOT NULL DEFAULT true');
+
+        // A locale switched off before this column existed was hidden from visitors too — keep it so.
+        DB::table('site_locales')->where('enabled', false)->where('is_public', true)->update(['is_public' => false]);
 
         $this->addCheck(
             'site_locales_default_visible_check',

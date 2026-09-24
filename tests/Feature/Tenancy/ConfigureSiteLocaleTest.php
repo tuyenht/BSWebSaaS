@@ -9,6 +9,7 @@ use App\Modules\Tenancy\Exceptions\SiteLocaleChangeRejectedException;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
@@ -141,4 +142,38 @@ it('refuses a public language that editors cannot write in, at the database too'
         'site_id' => $site, 'locale' => 'en', 'is_default' => false, 'enabled' => false, 'is_public' => true,
         'created_at' => now(), 'updated_at' => now(),
     ]))->toThrow(QueryException::class, 'site_locales_public_requires_enabled_check');
+});
+
+it('keeps a language switched off before is_public existed hidden from visitors', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2018_01_01_000000_add_is_public_to_site_locales.php');
+    $site = localeSite();
+    $admin = DB::connection('pgsql_admin');
+    $admin->table('site_locales')->insert([
+        'site_id' => $site, 'locale' => 'en', 'is_default' => false, 'enabled' => false, 'is_public' => false,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    // Step back to the schema a live database meets this migration with (no column, no CHECKs),
+    // then forward again. Migrations run on the privileged connection.
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        $migration->up();
+    } finally {
+        DB::setDefaultConnection($original);
+    }
+
+    $public = $admin->table('site_locales')->where('site_id', $site)->orderBy('locale')->pluck('is_public', 'locale');
+    $validated = $admin->table('pg_constraint')
+        ->whereIn('conname', ['site_locales_default_visible_check', 'site_locales_public_requires_enabled_check'])
+        ->orderBy('conname')
+        ->pluck('convalidated', 'conname');
+
+    expect($public->all())->toBe(['en' => false, 'vi' => true])
+        ->and($validated->all())->toBe([
+            'site_locales_default_visible_check' => true,
+            'site_locales_public_requires_enabled_check' => true,
+        ]);
 });
