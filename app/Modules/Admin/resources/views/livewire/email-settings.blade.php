@@ -1,20 +1,20 @@
 <x-admin::settings-shell :active="$scope === 'platform' ? 'system-email' : 'email'">
     {{-- Flash + OAuth-connect errors --}}
     @if (session('status'))
-        <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success">{{ session('status') }}</div>
+        <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>
     @endif
     @error('oauth')
-        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger">{{ $message }}</div>
+        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger-text">{{ $message }}</div>
     @enderror
     @if (request('oauth_error'))
-        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger">{{ request('oauth_error') }}</div>
+        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger-text">{{ request('oauth_error') }}</div>
     @endif
     @if (request('oauth') === 'connected')
-        <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success">{{ __('admin.oauth_connected_ok') }}</div>
+        <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ __('admin.oauth_connected_ok') }}</div>
     @endif
 
     @if ($scope === 'platform')
-        <div class="rounded border border-admin-warning/40 bg-admin-warning/10 px-4 py-3 text-sm text-admin-warning">{{ __('admin.system_default_warning') }}</div>
+        <div class="rounded border border-admin-warning/40 bg-admin-warning/10 px-4 py-3 text-sm text-admin-warning-text">{{ __('admin.system_default_warning') }}</div>
     @endif
 
     @if ($scope !== 'platform')
@@ -26,15 +26,15 @@
         <div class="space-y-3 p-5">
             @if ($hasOverride)
                 <div class="flex flex-wrap items-center gap-3">
-                    <span class="inline-flex items-center rounded bg-admin-success/10 px-2 py-0.5 text-xs font-semibold text-admin-success">{{ __('admin.tenant_override_active') }}</span>
+                    <span class="inline-flex items-center rounded bg-admin-success/10 px-2 py-0.5 text-xs font-semibold text-admin-success-text">{{ __('admin.tenant_override_active') }}</span>
                     <x-admin::button color="danger" variant="soft" size="sm"
                                      x-on:click="$bsConfirm({ text: @js(__('admin.clear_override_confirm')), confirm: @js(__('admin.clear_override')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.clearOverride())">{{ __('admin.clear_override') }}</x-admin::button>
                 </div>
             @elseif ($platformConfigured)
-                <span class="inline-flex items-center rounded bg-admin-info/10 px-2 py-0.5 text-xs font-semibold text-admin-info">{{ __('admin.platform_default_active') }}</span>
+                <span class="inline-flex items-center rounded bg-admin-info/10 px-2 py-0.5 text-xs font-semibold text-admin-info-text">{{ __('admin.platform_default_active') }}</span>
                 <p class="text-sm text-body-muted">{{ __('admin.platform_default_desc') }}</p>
             @else
-                <span class="inline-flex items-center rounded bg-admin-warning/10 px-2 py-0.5 text-xs font-semibold text-admin-warning">{{ __('admin.no_email_configured') }}</span>
+                <span class="inline-flex items-center rounded bg-admin-warning/10 px-2 py-0.5 text-xs font-semibold text-admin-warning-text">{{ __('admin.no_email_configured') }}</span>
             @endif
         </div>
     </div>
@@ -128,7 +128,7 @@
 
                 <div class="flex flex-wrap items-center gap-3 rounded border border-border bg-surface-muted px-4 py-3">
                     @if ($oauthConnectedEmail)
-                        <span class="inline-flex items-center gap-1.5 text-sm text-admin-success">
+                        <span class="inline-flex items-center gap-1.5 text-sm text-admin-success-text">
                             <span class="inline-block h-2 w-2 rounded-full bg-admin-success"></span>
                             {{ __('admin.oauth_connected_as', ['email' => $oauthConnectedEmail]) }}
                         </span>
@@ -158,9 +158,9 @@
                 <x-admin::button type="submit" wire:loading.attr="disabled" wire:target="save">{{ __('admin.save') }}</x-admin::button>
                 <x-admin::button type="button" variant="outline" wire:click="sendTest" wire:loading.attr="disabled" wire:target="sendTest">{{ __('admin.send_test_email') }}</x-admin::button>
                 @if ($testResult === 'ok')
-                    <span class="text-sm text-admin-success">{{ __('admin.test_email_sent') }}</span>
+                    <span class="text-sm text-admin-success-text">{{ __('admin.test_email_sent') }}</span>
                 @elseif ($testResult === 'error')
-                    <span class="text-sm text-admin-danger">{{ __('admin.test_email_failed') }}</span>
+                    <span class="text-sm text-admin-danger-text">{{ __('admin.test_email_failed') }}</span>
                 @endif
             </div>
         </div>

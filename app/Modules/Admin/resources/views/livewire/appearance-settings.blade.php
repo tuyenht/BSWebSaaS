@@ -29,7 +29,7 @@
                                                        :label="__('admin.theme_'.str_replace('-', '_', $value))" wire:model="{{ $axis }}" />
                             @endforeach
                         </div>
-                        @error($axis) <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                        @error($axis) <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
                     </fieldset>
                 @endforeach
 
@@ -48,7 +48,7 @@
                             </label>
                         @endforeach
                     </div>
-                    @error('layout_width') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                    @error('layout_width') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
                 </fieldset>
 
                 <fieldset>
@@ -66,7 +66,7 @@
                             </label>
                         @endforeach
                     </div>
-                    @error('sidebar_size') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                    @error('sidebar_size') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
                 </fieldset>
 
                 <fieldset>
@@ -90,7 +90,7 @@
                             </label>
                         @endforeach
                     </div>
-                    @error('sidebar_image') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                    @error('sidebar_image') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
                 </fieldset>
 
                 <fieldset>
@@ -108,7 +108,7 @@
                             </label>
                         @endforeach
                     </div>
-                    @error('position') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                    @error('position') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
                 </fieldset>
             </div>
 
@@ -117,7 +117,7 @@
                     {{ __('admin.save') }}
                 </x-admin::button>
                 @if ($saved)
-                    <span class="text-xs font-medium text-admin-success">{{ __('admin.theme_saved_note') }}</span>
+                    <span class="text-xs font-medium text-admin-success-text">{{ __('admin.theme_saved_note') }}</span>
                 @endif
             </div>
         </div>

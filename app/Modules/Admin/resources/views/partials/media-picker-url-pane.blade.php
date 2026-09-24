@@ -27,7 +27,7 @@
         </button>
     </div>
     @error('pickerUrlInput')
-        <div class="flex items-center gap-1.5 text-xs text-admin-danger">
+        <div class="flex items-center gap-1.5 text-xs text-admin-danger-text">
             <x-admin::icon name="ri-error-warning" class="size-3.5 shrink-0" />{{ $message }}
         </div>
     @enderror
@@ -38,7 +38,7 @@
                 <img src="{{ $pickerUrlPreview['url'] }}" alt="{{ $pickerUrlPreview['filename'] }}"
                      class="absolute inset-0 size-full object-cover"
                      onerror="this.style.display='none'">
-                <span class="absolute right-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-[20px] bg-white/90 px-[9px] py-1 text-[11px] font-semibold text-admin-success">
+                <span class="absolute right-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-[20px] bg-white/90 px-[9px] py-1 text-[11px] font-semibold text-admin-success-text">
                     <x-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ __('media.picker_url_selected') }}
                 </span>
             </div>
@@ -63,7 +63,7 @@
                 @else
                     {{-- Gallery rows must reference a library master — the copy is not optional here. --}}
                     <div class="flex items-center gap-[9px] text-[12.5px] text-body-faint">
-                        <x-admin::icon name="ri-checkbox-circle" class="size-4 shrink-0 text-admin-success" />{{ __('media.picker_url_save_copy') }}
+                        <x-admin::icon name="ri-checkbox-circle" class="size-4 shrink-0 text-admin-success-text" />{{ __('media.picker_url_save_copy') }}
                     </div>
                 @endif
             </div>

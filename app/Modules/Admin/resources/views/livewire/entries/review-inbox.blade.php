@@ -157,7 +157,7 @@
                                     'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px]',
                                     'border-admin-primary bg-admin-primary text-white' => $step['state'] === 'done',
                                     'border-admin-primary font-bold text-admin-primary' => $step['state'] === 'current' && ! $step['is_published'],
-                                    'border-admin-success font-bold text-[#0a6d60]' => $step['state'] === 'current' && $step['is_published'],
+                                    'border-admin-success-text font-bold text-[#0a6d60]' => $step['state'] === 'current' && $step['is_published'],
                                     'border-border text-body-muted' => $step['state'] === 'todo',
                                 ])>{{ $step['label'] }}</li>
                             @endforeach

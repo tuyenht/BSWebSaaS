@@ -4,13 +4,13 @@
     </div>
 
     @if (session('status'))
-        <div class="mb-4 rounded border border-admin-success/30 bg-admin-success/10 px-4 py-2 text-sm text-admin-success">
+        <div class="mb-4 rounded border border-admin-success/30 bg-admin-success/10 px-4 py-2 text-sm text-admin-success-text">
             {{ session('status') }}
         </div>
     @endif
 
     @if (session('error'))
-        <div class="mb-4 rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-2 text-sm text-admin-danger">
+        <div class="mb-4 rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-2 text-sm text-admin-danger-text">
             {{ session('error') }}
         </div>
     @endif
@@ -23,7 +23,7 @@
                 <label for="inviteEmail" class="mb-1 block text-xs font-medium text-body-muted">{{ __('admin.email') }}</label>
                 <input type="email" id="inviteEmail" wire:model="inviteEmail" placeholder="name@example.com"
                        class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary focus:bg-surface focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
-                @error('inviteEmail') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                @error('inviteEmail') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
             </div>
             <div class="flex-1">
                 <label for="inviteRole" class="mb-1 block text-xs font-medium text-body-muted">{{ __('admin.role') }}</label>
@@ -34,7 +34,7 @@
                         <option value="{{ $role->name }}">{{ $role->name }}</option>
                     @endforeach
                 </select>
-                @error('inviteRole') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                @error('inviteRole') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
             </div>
             <button type="submit"
                     class="rounded bg-admin-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-admin-primary/90">
@@ -79,7 +79,7 @@
                                 @endif
                                 <button type="button"
                                         x-on:click="$bsConfirm({ text: @js(__('admin.member_remove_confirm')), confirm: @js(__('admin.remove')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.removeMember(@js($member->ulid)))"
-                                        class="rounded px-2 py-1 text-xs font-medium text-admin-danger transition-colors hover:bg-admin-danger/10">
+                                        class="rounded px-2 py-1 text-xs font-medium text-admin-danger-text transition-colors hover:bg-admin-danger/10">
                                     {{ __('admin.remove') }}
                                 </button>
                             </div>

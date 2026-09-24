@@ -2,12 +2,12 @@
     {{-- Profile — the user's own display name (topbar short-name derives from it) --}}
     <x-admin::card :title="__('admin.profile_info')">
         @if (session('profile_saved'))
-            <p class="mb-3 rounded bg-admin-success/10 px-3 py-2 text-sm text-admin-success">{{ session('profile_saved') }}</p>
+            <p class="mb-3 rounded bg-admin-success/10 px-3 py-2 text-sm text-admin-success-text">{{ session('profile_saved') }}</p>
         @endif
         <form wire:submit="saveProfile" class="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div class="grow sm:max-w-sm">
                 <x-admin::input :label="__('admin.full_name')" name="profile-name" wire:model="profileName" />
-                @error('profileName') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                @error('profileName') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
             </div>
             <x-admin::button type="submit" wire:loading.attr="disabled" wire:target="saveProfile">{{ __('catalog.save') }}</x-admin::button>
         </form>
@@ -16,16 +16,16 @@
     {{-- Password change — gated by the CURRENT password, never by role --}}
     <x-admin::card :title="__('admin.change_password')">
         @if (session('password_changed'))
-            <p class="mb-3 rounded bg-admin-success/10 px-3 py-2 text-sm text-admin-success">{{ session('password_changed') }}</p>
+            <p class="mb-3 rounded bg-admin-success/10 px-3 py-2 text-sm text-admin-success-text">{{ session('password_changed') }}</p>
         @endif
         <form wire:submit="changePassword" class="max-w-sm space-y-3">
             <div>
                 <x-admin::input :label="__('admin.current_password')" name="current-password" type="password" autocomplete="current-password" wire:model="current_password" />
-                @error('current_password') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                @error('current_password') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
             </div>
             <div>
                 <x-admin::input :label="__('admin.new_password')" name="new-password" type="password" autocomplete="new-password" wire:model="password" />
-                @error('password') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                @error('password') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
             </div>
             <div>
                 <x-admin::input :label="__('admin.confirm_password')" name="new-password-confirmation" type="password" autocomplete="new-password" wire:model="password_confirmation" />
@@ -43,7 +43,7 @@
             @php($user = auth()->user())
 
             @if ($user?->two_factor_confirmed_at)
-                <span class="inline-flex items-center rounded bg-admin-success/10 px-2 py-0.5 text-xs font-semibold text-admin-success">{{ __('admin.two_factor_on') }}</span>
+                <span class="inline-flex items-center rounded bg-admin-success/10 px-2 py-0.5 text-xs font-semibold text-admin-success-text">{{ __('admin.two_factor_on') }}</span>
                 <p class="text-sm text-body-muted">{{ __('admin.two_factor_enabled_desc') }}</p>
                 <x-admin::button color="danger" variant="soft"
                                  x-on:click="$bsConfirm({ text: @js(__('admin.disable_2fa_confirm')), confirm: @js(__('admin.disable_2fa')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.disableTwoFactor())">
@@ -57,7 +57,7 @@
                     <div>
                         <input type="text" wire:model="tfaCode" inputmode="numeric" autocomplete="one-time-code" autofocus placeholder="000000"
                                class="w-40 rounded border border-border-strong bg-surface px-3 py-2 text-sm text-heading placeholder:text-body-faint focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
-                        @error('tfaCode') <p class="mt-1 text-xs text-admin-danger">{{ $message }}</p> @enderror
+                        @error('tfaCode') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                     <x-admin::button type="submit" wire:loading.attr="disabled" wire:target="confirmTwoFactor">{{ __('admin.confirm') }}</x-admin::button>
                 </form>

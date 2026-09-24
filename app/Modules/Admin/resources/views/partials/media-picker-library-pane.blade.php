@@ -34,7 +34,7 @@
                     <input type="text" wire:model.live.debounce.300ms="pickerNewFolderName" wire:keydown.enter="createPickerFolder"
                            placeholder="{{ __('media.picker_folder_name_placeholder') }}" x-init="$el.focus()"
                            class="block w-full rounded-[7px] border border-border-strong bg-surface px-2 py-1.5 text-[12.5px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none">
-                    @error('pickerNewFolderName') <p class="text-[11px] text-admin-danger">{{ $message }}</p> @enderror
+                    @error('pickerNewFolderName') <p class="text-[11px] text-admin-danger-text">{{ $message }}</p> @enderror
 
                     {{-- Slug preview /{slug}; the pencil opens it for hand-editing (freezes auto-derive). --}}
                     @if ($pickerNewFolderSlugEdited)
@@ -55,7 +55,7 @@
                         </div>
                     @endif
                     @if ($pickerNewFolderSlugFallback)
-                        <p class="text-[10.5px] leading-tight text-admin-warning">{{ __('media.picker_folder_slug_fallback') }}</p>
+                        <p class="text-[10.5px] leading-tight text-admin-warning-text">{{ __('media.picker_folder_slug_fallback') }}</p>
                     @endif
 
                     <div class="flex gap-1">
@@ -77,10 +77,10 @@
         @can('media.delete')
             <div class="mt-2 border-t border-border pt-2">
                 <button type="button" wire:click="openPickerTrash"
-                        class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerTrash ? 'bg-admin-danger/8 font-semibold text-admin-danger' : 'font-medium text-body-text hover:bg-surface-hover' }}">
+                        class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerTrash ? 'bg-admin-danger/8 font-semibold text-admin-danger-text' : 'font-medium text-body-text hover:bg-surface-hover' }}">
                     <x-admin::icon name="ri-delete-bin" class="size-[15px] shrink-0" />
                     <span class="flex-1 truncate">{{ __('media.picker_trash') }}</span>
-                    <span class="text-[11px] {{ $pickerTrash ? 'text-admin-danger' : 'text-body-faint' }}">{{ $mp['trashTotal'] }}</span>
+                    <span class="text-[11px] {{ $pickerTrash ? 'text-admin-danger-text' : 'text-body-faint' }}">{{ $mp['trashTotal'] }}</span>
                 </button>
             </div>
         @endcan
@@ -135,7 +135,7 @@
                 @if (! $mp['page']->isEmpty())
                     <button type="button"
                             x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_empty_confirm')), confirm: @js(__('media.picker_trash_empty')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.emptyPickerTrash())"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-admin-danger/20 bg-surface px-3 py-2 text-[12.5px] font-semibold text-admin-danger">
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-admin-danger/20 bg-surface px-3 py-2 text-[12.5px] font-semibold text-admin-danger-text">
                         <x-admin::icon name="ri-delete-bin" class="size-3.5" />{{ __('media.picker_trash_empty') }}
                     </button>
                 @endif
@@ -155,17 +155,17 @@
         {{-- Bulk-selection bar. Trash mode swaps Move/Delete for Restore/Delete-permanently. --}}
         @if ($pickerSelected !== [])
             <div class="flex shrink-0 items-center gap-2.5 border-b border-border {{ $pickerTrash ? 'bg-admin-danger/4' : 'bg-admin-primary/4' }} px-4 py-[9px]">
-                <span class="text-[12.5px] font-semibold {{ $pickerTrash ? 'text-admin-danger' : 'text-admin-primary' }}">{{ __('media.picker_selected_count', ['count' => count($pickerSelected)]) }}</span>
+                <span class="text-[12.5px] font-semibold {{ $pickerTrash ? 'text-admin-danger-text' : 'text-admin-primary' }}">{{ __('media.picker_selected_count', ['count' => count($pickerSelected)]) }}</span>
                 <div class="ml-auto flex gap-1.5">
                     @if ($pickerTrash)
                         @can('media.delete')
                             <button type="button" wire:click="restorePickerSelection"
-                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-success/30 bg-surface px-[11px] py-1.5 text-xs font-medium text-admin-success">
+                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-success/30 bg-surface px-[11px] py-1.5 text-xs font-medium text-admin-success-text">
                                 <x-admin::icon name="ri-refresh" class="size-[13px]" />{{ __('media.picker_trash_restore') }}
                             </button>
                             <button type="button"
                                     x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('media.picker_trash_purge_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_trash_purge')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.purgePickerSelection())"
-                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger">
+                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger-text">
                                 <x-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_trash_purge') }}
                             </button>
                         @endcan
@@ -189,7 +189,7 @@
                         @can('media.delete')
                             <button type="button"
                                     x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('media.picker_delete_confirm', ['count' => count($pickerSelected)])), confirm: @js(__('media.picker_delete')), cancel: @js(__('media.picker_cancel')) }).then(ok => ok && $wire.pickerBulkDelete())"
-                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger">
+                                    class="inline-flex items-center gap-1.5 rounded-[7px] border border-admin-danger/20 bg-surface px-[11px] py-1.5 text-xs text-admin-danger-text">
                                 <x-admin::icon name="ri-delete-bin" class="size-[13px]" />{{ __('media.picker_delete') }}
                             </button>
                         @endcan

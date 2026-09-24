@@ -97,7 +97,7 @@
                 {{-- Compact action row: a saved-tick on the left, a small filled button on the right
                      (a full-width outline button read heavy for a metadata save). --}}
                 <div class="mt-2 flex items-center justify-between gap-2">
-                    <span class="flex items-center gap-1 text-[11.5px] text-admin-success" @if (! session('media-status')) hidden @endif>
+                    <span class="flex items-center gap-1 text-[11.5px] text-admin-success-text" @if (! session('media-status')) hidden @endif>
                         <x-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ __('media.picker_detail_saved') }}
                     </span>
                     <button type="button" wire:click="savePickerDetailAlt"
