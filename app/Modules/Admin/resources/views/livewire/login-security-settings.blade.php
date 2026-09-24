@@ -1,6 +1,6 @@
 <x-admin::settings-shell active="login-security">
     @if (session('status'))
-        <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success">{{ session('status') }}</div>
+        <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>
     @endif
 
     <form wire:submit="save" class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
@@ -19,7 +19,7 @@
                 </span>
             </label>
 
-            <div class="rounded border border-admin-info/30 bg-admin-info/10 px-4 py-3 text-xs text-admin-info">{{ __('admin.turnstile_login_note') }}</div>
+            <div class="rounded border border-admin-info/30 bg-admin-info/10 px-4 py-3 text-xs text-admin-info-text">{{ __('admin.turnstile_login_note') }}</div>
         </div>
 
         <div class="flex justify-end border-t border-border px-5 py-3">

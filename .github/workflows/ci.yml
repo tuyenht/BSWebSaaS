@@ -130,6 +130,11 @@ jobs:
       - name: Build assets (Vite + Tailwind 4)
         run: pnpm run build
 
+      # Gate the admin design tokens at WCAG AA: reads the token values straight from the CSS and
+      # fails if any checked text/border/focus pair drops below its threshold. Pure Node, no deps.
+      - name: Contrast tokens (WCAG AA)
+        run: node scripts/contrast-check.mjs
+
   cwv:
     name: Core Web Vitals + a11y (Lighthouse · axe)
     runs-on: ubuntu-24.04

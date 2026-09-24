@@ -1,9 +1,9 @@
 <x-admin::settings-shell active="social">
     @if (session('status'))
-        <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success">{{ session('status') }}</div>
+        <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>
     @endif
     @if (request('oauth_error'))
-        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger">{{ request('oauth_error') }}</div>
+        <div class="rounded border border-admin-danger/30 bg-admin-danger/10 px-4 py-3 text-sm text-admin-danger-text">{{ request('oauth_error') }}</div>
     @endif
 
     <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">

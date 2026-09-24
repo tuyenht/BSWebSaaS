@@ -12,7 +12,7 @@
 <div x-data class="contents">
     <button type="button" @click="$store.adminTheme.open = true"
             aria-label="{{ __('admin.customize_theme') }}"
-            class="fixed bottom-6 end-6 z-40 hidden size-12 place-items-center rounded-full bg-admin-info text-white shadow-lg transition-transform hover:scale-105 md:grid">
+            class="fixed bottom-6 end-6 z-40 hidden size-12 place-items-center rounded-full bg-admin-info-solid text-white shadow-lg transition-transform hover:scale-105 md:grid">
         {{-- Slow continuous spin draws the eye to the launcher (Velzon parity); paused for reduced-motion. --}}
         <x-admin::icon name="settings" class="size-5 customizer-gear" />
     </button>

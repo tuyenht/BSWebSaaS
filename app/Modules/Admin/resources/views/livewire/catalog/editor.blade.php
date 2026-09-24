@@ -22,16 +22,16 @@
                 <div class="space-y-4">
                     <div>
                         <x-admin::input :label="__('catalog.name_label')" name="catalog-name" wire:model="name" />
-                        @error('name') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                        @error('name') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <x-admin::input :label="__('catalog.slug_label')" name="catalog-slug" wire:model="slug" />
-                        @error('slug') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                        @error('slug') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text" for="rich-editor-description">{{ __('catalog.description_label') }}</label>
                         <x-admin::rich-editor target="description" profile="full" :value="$description" rows="10" />
-                        @error('description') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                        @error('description') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                 </div>
             </x-admin::card>
@@ -58,7 +58,7 @@
                                         <span class="flex items-center">
                                             <button type="button" wire:click="moveImageUp({{ $i }})" aria-label="{{ __('catalog.gallery_move_up') }}" class="rounded px-1 text-sm text-body-faint hover:bg-surface-hover hover:text-body-text">↑</button>
                                             <button type="button" wire:click="moveImageDown({{ $i }})" aria-label="{{ __('catalog.gallery_move_down') }}" class="rounded px-1 text-sm text-body-faint hover:bg-surface-hover hover:text-body-text">↓</button>
-                                            <button type="button" wire:click="removeImage({{ $i }})" class="rounded px-1 text-sm text-admin-danger hover:bg-surface-hover">{{ __('catalog.gallery_remove') }}</button>
+                                            <button type="button" wire:click="removeImage({{ $i }})" class="rounded px-1 text-sm text-admin-danger-text hover:bg-surface-hover">{{ __('catalog.gallery_remove') }}</button>
                                         </span>
                                     </div>
                                 </li>
@@ -70,7 +70,7 @@
                         <x-admin::button variant="soft" color="primary" wire:click="openImagePicker">{{ __('catalog.gallery_add') }}</x-admin::button>
                     @endcan
                     <p class="text-sm text-body-faint">{{ __('catalog.gallery_hint') }}</p>
-                    @error('imageMediaIds.*') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                    @error('imageMediaIds.*') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                 </div>
             </x-admin::card>
 
@@ -80,23 +80,23 @@
                         <div>
                             <x-admin::input :label="__('catalog.price_label')" name="catalog-price" type="number" min="0" step="1" inputmode="numeric" wire:model="price" />
                             <p class="mt-1 text-sm text-body-faint">{{ __('catalog.price_hint') }}</p>
-                            @error('price') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                            @error('price') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <x-admin::input :label="__('catalog.sku_label')" name="catalog-sku" wire:model="sku" />
-                            @error('sku') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                            @error('sku') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                     </div>
                     <div x-show="active === 'seo'" role="tabpanel" class="space-y-4" x-cloak>
                         <div>
                             <x-admin::input :label="__('catalog.seo_title_label')" name="catalog-seo-title" wire:model="seoTitle" />
-                            @error('seoTitle') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                            @error('seoTitle') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-body-text" for="catalog-seo-description">{{ __('catalog.seo_description_label') }}</label>
                             <textarea id="catalog-seo-description" rows="3" wire:model="seoDescription"
                                       class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20"></textarea>
-                            @error('seoDescription') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                            @error('seoDescription') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                     </div>
                 </x-admin::tabs>
@@ -112,7 +112,7 @@
                     <option value="published">{{ __('catalog.status_published') }}</option>
                     <option value="archived">{{ __('catalog.status_archived') }}</option>
                 </select>
-                @error('status') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                @error('status') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
             </x-admin::card>
 
             <x-admin::card :title="__('catalog.category_label')">
@@ -123,13 +123,13 @@
                         <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>
                     @endforeach
                 </select>
-                @error('categoryId') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                @error('categoryId') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
             </x-admin::card>
 
             <x-admin::card :title="__('catalog.summary_label')">
                 <x-admin::rich-editor target="summary" profile="basic" :value="$summary" rows="4" />
                 <p class="mt-2 text-sm text-body-faint">{{ __('catalog.summary_hint') }}</p>
-                @error('summary') <p class="mt-1 text-sm text-admin-danger">{{ $message }}</p> @enderror
+                @error('summary') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
             </x-admin::card>
 
             <x-admin::button color="primary" class="w-full" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-admin::button>

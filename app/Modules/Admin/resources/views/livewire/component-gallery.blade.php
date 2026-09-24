@@ -156,7 +156,7 @@
             </x-slot:trigger>
             <a href="#" class="block px-3 py-2 hover:bg-surface-muted">Sửa</a>
             <a href="#" class="block px-3 py-2 hover:bg-surface-muted">Nhân bản</a>
-            <a href="#" class="block px-3 py-2 text-admin-danger hover:bg-surface-muted">Xóa</a>
+            <a href="#" class="block px-3 py-2 text-admin-danger-text hover:bg-surface-muted">Xóa</a>
         </x-admin::dropdown>
     </x-admin::card>
 

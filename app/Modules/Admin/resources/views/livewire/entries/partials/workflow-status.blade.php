@@ -81,7 +81,7 @@
                                 'inline-flex size-[26px] shrink-0 items-center justify-center rounded-full border-2 text-[13px]',
                                 'border-admin-primary bg-admin-primary text-white' => $done,
                                 'border-admin-primary bg-surface text-admin-primary shadow-[0_0_0_4px_rgba(64,81,137,.14)]' => $cur && ! $pub,
-                                'border-admin-success bg-surface text-[#0a6d60] shadow-[0_0_0_4px_rgba(10,179,156,.16)]' => $cur && $pub,
+                                'border-admin-success-text bg-surface text-[#0a6d60] shadow-[0_0_0_4px_rgba(10,179,156,.16)]' => $cur && $pub,
                                 'border-admin-success/45 bg-surface text-[#0a6d60]' => ! $done && ! $cur && $pub,
                                 'border-border bg-surface text-body-muted' => ! $done && ! $cur && ! $pub,
                             ])>
@@ -233,10 +233,10 @@
                     <p class="text-[12.5px] leading-relaxed text-body-faint">{{ __('admin.wfb.modal_hint') }}</p>
                     @error('workflow') <p class="text-xs font-semibold text-[#c0432c]">{{ $message }}</p> @enderror
                     <div class="flex flex-col gap-1.5">
-                        <label class="text-xs font-semibold text-body-text" for="wf-note-{{ $action['key'] }}">{{ __('admin.wfb.note_label') }} <span class="text-admin-danger">*</span></label>
+                        <label class="text-xs font-semibold text-body-text" for="wf-note-{{ $action['key'] }}">{{ __('admin.wfb.note_label') }} <span class="text-admin-danger-text">*</span></label>
                         <textarea id="wf-note-{{ $action['key'] }}" x-model="note" x-on:input="bad = false" rows="4"
                                   class="w-full rounded border px-3 py-2.5 text-[13px] text-body-text focus:outline-none focus:ring-[3px] focus:ring-admin-primary/20"
-                                  :class="bad ? 'border-admin-danger ring-[3px] ring-admin-danger/15' : 'border-border focus:border-admin-primary'"
+                                  :class="bad ? 'border-admin-danger-text ring-[3px] ring-admin-danger/15' : 'border-border focus:border-admin-primary'"
                                   placeholder="{{ __('admin.wfb.note_placeholder') }}"></textarea>
                         <p x-cloak x-show="bad" class="flex items-center gap-1.5 text-xs font-semibold text-[#c0432c]">
                             <x-admin::icon name="ri-error-warning" class="size-3.5" />{{ __('admin.wfb.note_missing') }}

@@ -36,10 +36,10 @@
         // whether the tab is active — literal Tailwind strings only (bg-{$x}/10 never compiles).
         $tabBadgeClass = fn (string $key): string => match ($key) {
             'all' => 'bg-admin-primary/10 text-admin-primary',
-            'published' => 'bg-admin-success/10 text-admin-success',
-            'scheduled' => 'bg-admin-warning/10 text-admin-warning',
-            'private' => 'bg-admin-info/10 text-admin-info',
-            'trash' => 'bg-admin-danger/10 text-admin-danger',
+            'published' => 'bg-admin-success/10 text-admin-success-text',
+            'scheduled' => 'bg-admin-warning/10 text-admin-warning-text',
+            'private' => 'bg-admin-info/10 text-admin-info-text',
+            'trash' => 'bg-admin-danger/10 text-admin-danger-text',
             default => 'bg-surface-muted text-body-faint', // draft — design: grey chip, not blue
         };
         // Gap (design §3a JS lines 791-795): each status tab carries its own leading glyph,
@@ -103,7 +103,7 @@
             <button type="button" wire:click="setTab('trash')"
                 @class([
                     '-mb-px ml-auto inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
-                    'border-admin-danger text-admin-danger' => $tab === 'trash',
+                    'border-admin-danger-text text-admin-danger-text' => $tab === 'trash',
                     'border-transparent text-body-muted hover:text-body-text' => $tab !== 'trash',
                 ])>
                 <x-admin::icon name="ri-delete-bin" class="size-4" /> {{ __('entries.tab_trash') }}
@@ -171,7 +171,7 @@
                             {{ $chip['label'] }} <x-admin::icon name="ri-close" class="size-3.5" />
                         </button>
                     @endforeach
-                    <button type="button" wire:click="clearAllFilters" class="ml-1 text-xs text-admin-danger hover:underline">{{ __('entries.filter_clear_all') }}</button>
+                    <button type="button" wire:click="clearAllFilters" class="ml-1 text-xs text-admin-danger-text hover:underline">{{ __('entries.filter_clear_all') }}</button>
                     <span class="ml-auto text-xs text-placeholder">{{ __('entries.filter_match', ['count' => $matchCount, 'total' => $baseCount]) }}</span>
                 </div>
             @endif
@@ -188,7 +188,7 @@
                             </button>
                             <button type="button"
                                 x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm')), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkForceDelete())"
-                                class="inline-flex items-center gap-1.5 rounded border border-admin-danger/30 bg-surface px-2.5 py-1 text-sm font-medium text-admin-danger transition-colors hover:bg-admin-danger/10">
+                                class="inline-flex items-center gap-1.5 rounded border border-admin-danger/30 bg-surface px-2.5 py-1 text-sm font-medium text-admin-danger-text transition-colors hover:bg-admin-danger/10">
                                 <x-admin::icon name="ri-delete-bin" class="size-3.5" /> {{ __('entries.action_destroy') }}
                             </button>
                         @endif
@@ -196,7 +196,7 @@
                         @if ($canPublish)
                             <button type="button" wire:click="bulkPublish"
                                 class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">
-                                <x-admin::icon name="ri-check" class="size-3.5 text-admin-success" /> {{ __('entries.bulk_publish') }}
+                                <x-admin::icon name="ri-check" class="size-3.5 text-admin-success-text" /> {{ __('entries.bulk_publish') }}
                             </button>
                             <button type="button" wire:click="bulkDraft"
                                 class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">
@@ -212,7 +212,7 @@
                         @if ($canDelete)
                             <button type="button"
                                 x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('entries.trash_confirm')), confirm: @js(__('entries.action_trash')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkTrash())"
-                                class="inline-flex items-center gap-1.5 rounded border border-admin-danger/30 bg-surface px-2.5 py-1 text-sm font-medium text-admin-danger transition-colors hover:bg-admin-danger/10">
+                                class="inline-flex items-center gap-1.5 rounded border border-admin-danger/30 bg-surface px-2.5 py-1 text-sm font-medium text-admin-danger-text transition-colors hover:bg-admin-danger/10">
                                 <x-admin::icon name="ri-delete-bin" class="size-3.5" /> {{ __('entries.action_trash') }}
                             </button>
                         @endif
@@ -400,7 +400,7 @@
                                                 <span class="pointer-events-none absolute bottom-full left-1/2 z-20 -translate-x-1/2 pb-1.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
                                                     <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) }}" wire:navigate
                                                         title="{{ $has ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) }}"
-                                                        class="inline-flex items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-white shadow-lg {{ $has ? 'bg-admin-primary' : 'bg-admin-success' }}">
+                                                        class="inline-flex items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-white shadow-lg {{ $has ? 'bg-admin-primary' : 'bg-admin-success-solid' }}">
                                                         <x-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
                                                         {{ $has ? __('entries.edit_action') : __('entries.add_translation') }}
                                                     </a>
@@ -426,7 +426,7 @@
                                             </button>
                                             <button type="button" title="{{ __('entries.action_destroy') }}"
                                                 x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm')), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.forceDelete(@js($entry->ulid)))"
-                                                class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-admin-danger">
+                                                class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-admin-danger-text">
                                                 <x-admin::icon name="ri-delete-bin" class="size-4" />
                                             </button>
                                         @endif
@@ -450,7 +450,7 @@
                                         @if ($canDelete)
                                             <button type="button" title="{{ __('entries.action_trash') }}"
                                                 x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('entries.trash_confirm')), confirm: @js(__('entries.action_trash')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.trash(@js($entry->ulid)))"
-                                                class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-admin-danger">
+                                                class="grid size-7 place-items-center rounded text-body-faint transition-colors hover:bg-surface-hover hover:text-admin-danger-text">
                                                 <x-admin::icon name="ri-delete-bin" class="size-4" />
                                             </button>
                                         @endif

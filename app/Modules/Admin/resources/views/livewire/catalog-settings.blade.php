@@ -23,7 +23,7 @@
                 </span>
             </label>
         </div>
-        @error('mode') <p class="mt-2 text-sm text-admin-danger">{{ $message }}</p> @enderror
+        @error('mode') <p class="mt-2 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
 
         <x-slot:footer>
             <div class="flex justify-end">

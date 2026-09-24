@@ -77,7 +77,7 @@
                 </button>
             </div>
             @error('pickerUrlInput')
-                <div class="mx-auto mt-2 flex w-full max-w-[640px] items-center gap-1.5 text-xs text-admin-danger">
+                <div class="mx-auto mt-2 flex w-full max-w-[640px] items-center gap-1.5 text-xs text-admin-danger-text">
                     <x-admin::icon name="ri-error-warning" class="size-3.5 shrink-0" />{{ $message }}
                 </div>
             @enderror
