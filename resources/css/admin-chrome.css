@@ -82,6 +82,7 @@
     --color-surface-muted: #24282d;                    /* zebra rows: between body and surface */
     --color-border: #32383e;
     --color-border-strong: #3a4149;
+    --color-border-input: #71777f;                     /* form-field edge: the border family lightened to 3.03 on surface · 3.74 body */
     --color-border-soft: #2c3237;
     --color-heading: #e9ecef;                          /* 14.26 body · 11.55 surface */
     --color-body-text: #ced4da;                        /* 11.32 body · 9.17 surface */

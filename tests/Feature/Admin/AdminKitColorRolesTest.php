@@ -83,6 +83,12 @@ it('gives the warning fill dark text', function (): void {
     }
 });
 
+it('edges a form field in the input-border role, not the decorative rule color', function (): void {
+    expect((string) $this->blade('<x-admin::input name="email" label="Email" />'))
+        ->toContain('border-border-input')
+        ->not->toContain('border-border-strong');
+});
+
 it('draws the alert dismiss icon at full strength', function (): void {
     expect((string) $this->blade('<x-admin::alert color="danger" dismissible>Lỗi.</x-admin::alert>'))->not->toContain('opacity-70');
 });

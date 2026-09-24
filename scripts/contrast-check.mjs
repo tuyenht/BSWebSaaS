@@ -322,7 +322,7 @@ const ROWS = [
     { item: 'Màu ngữ nghĩa', role: 'warning solid — chữ (nút, badge)', fg: '--color-admin-dark', bg: ['--color-admin-warning'], min: 4.5 },
 
     // The input's own boundary, against its fill and against the page around it.
-    { item: 'Viền ô nhập', role: 'Viền ô nhập (input / select / textarea)', fg: '--color-border-strong', bgs: [['--color-surface'], ['--color-body']], min: 3 },
+    { item: 'Viền ô nhập', role: 'Viền ô nhập (input / select / textarea)', fg: '--color-border-input', bgs: [['--color-surface'], ['--color-body']], min: 3 },
 
     // Focus indicators.
     { item: 'Focus', role: 'Vòng focus — nút', fg: '--color-accent', bgs: [['--color-surface'], ['--color-body']], min: 3 },

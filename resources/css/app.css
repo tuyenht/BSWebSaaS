@@ -78,7 +78,9 @@
     --color-surface-hover: #f3f6f9;              /* item hover / soft fill on a surface (gray-100) */
     --color-surface-muted: oklch(98.5% 0.002 247.839); /* zebra rows, muted panels (gray-50) */
     --color-border: #eff2f7;                     /* generic divider (gray-200) */
-    --color-border-strong: #e9ebec;              /* input/select borders, emphasized rules (gray-300) */
+    --color-border-strong: #e9ebec;              /* emphasized rules (gray-300) — decorative, not a field edge */
+    --color-border-input: #878a99;               /* form-field edge — 3:1 against the field and the page
+                                                    (WCAG 1.4.11): 3.43 white · 3.10 page bg (gray-600) */
     --color-border-soft: #f3f6f9;                /* hairline list dividers (gray-100) */
     --color-heading: #343a40;                    /* page/card/section headings (gray-800) */
     --color-body-text: #495057;                  /* base text (gray-700) */
@@ -136,6 +138,15 @@
 /* Hide Alpine-controlled elements until Alpine initializes (avoids first-paint flash). */
 [x-cloak] {
     display: none !important;
+}
+
+/* Every admin form field draws its edge in the input-border role. Views style fields inline with
+   the generic border tokens, so inside an input/select/textarea those tokens resolve to it; the
+   field's own focus and error border utilities use other tokens and still win. Scoped to the
+   admin shells: the sign-in pages keep auth.css. */
+:where(.admin-shell) :where(input, select, textarea) {
+    --color-border: var(--color-border-input);
+    --color-border-strong: var(--color-border-input);
 }
 
 /* Tailwind 4's preflight resets <button> to cursor:default; every enabled button in the
