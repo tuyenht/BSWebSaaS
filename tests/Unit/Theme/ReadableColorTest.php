@@ -41,6 +41,26 @@ it('gives up (null) on a seed that is not a hex color, so the caller picks the f
         ->and(ReadableColor::ratio('#12345', '#ffffff'))->toBeNull();
 });
 
+it('reads at AA on every background it is given, not only the first', function (): void {
+    // An amber brand on a white card and on the page tint around it (#f8f8f9).
+    $readable = ReadableColor::onAll('#f59e0b', ['#ffffff', '#f8f8f9']);
+
+    expect(ReadableColor::ratio((string) $readable, '#ffffff'))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT)
+        ->and(ReadableColor::ratio((string) $readable, '#f8f8f9'))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT)
+        // The white-only answer falls short on the page tint — why both are checked.
+        ->and(ReadableColor::ratio((string) ReadableColor::on('#f59e0b', '#ffffff'), '#f8f8f9'))->toBeLessThan(ReadableColor::AA_NORMAL_TEXT);
+});
+
+it('gives up (null) when any background is not a hex color, or none is given', function (): void {
+    expect(ReadableColor::onAll('#f59e0b', ['#ffffff', 'white']))->toBeNull()
+        ->and(ReadableColor::onAll('#f59e0b', []))->toBeNull();
+});
+
+it('mixes two colors the way color-mix(in srgb) paints them', function (): void {
+    expect(ReadableColor::mix('#ffffff', '#0f172a', 0.97))->toBe('#f8f8f9')
+        ->and(ReadableColor::mix('#ffffff', 'white', 0.97))->toBeNull();
+});
+
 it('darkens on a mid-grey surface, where black contrasts more than white', function (): void {
     // Luminance ≈0.3: black reaches ~7:1 here, white only ~3:1.
     $readable = ReadableColor::on('#9ca3af', '#949494');

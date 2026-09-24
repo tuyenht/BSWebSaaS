@@ -17,6 +17,13 @@ use App\Modules\Tenancy\Models\SiteSetting;
  */
 final class ThemeResolver
 {
+    /**
+     * storefront.css paints the page as color-mix(in srgb, var(--surface) 97%, var(--ink)); brand
+     * text sits both on cards (`surface`) and straight on that page (breadcrumb, contact details).
+     * ThemeResolverTest pins the stylesheet to this share.
+     */
+    public const float PAGE_SURFACE_SHARE = 0.97;
+
     /** @var array<string, string> */
     private const array DEFAULTS = [
         // #3b82f6, not the more obvious #0a66c2: storefront.css puts `ink` as TEXT on
@@ -62,17 +69,20 @@ final class ThemeResolver
 
     /**
      * What the storefront prints into :root — the seeds plus the roles CSS cannot derive by itself
-     * (docs/notes/section-style-system.md §1). `primary-text` is the brand color made readable on
-     * `surface` (WCAG AA), for brand-colored TEXT on light surfaces; fills and borders keep `primary`
-     * exactly as the site chose it. Always derived, never read from settings; a seed that is not a
-     * hex color (a name, rgb()) cannot be measured, so the role falls back to the ink color.
+     * (docs/notes/section-style-system.md §1). `primary-text` is the brand color made readable
+     * (WCAG AA) on `surface` AND on the page background, for brand-colored TEXT on light surfaces;
+     * fills and borders keep `primary` exactly as the site chose it. Always derived, never read
+     * from settings; a seed that is not a hex color (a name, rgb()) cannot be measured, so the role
+     * falls back to the ink color.
      *
      * @return array<string, string>
      */
     public function cssVariables(): array
     {
         $variables = $this->tokens();
-        $variables['primary-text'] = ReadableColor::on($variables['primary'], $variables['surface']) ?? 'var(--ink)';
+        $page = ReadableColor::mix($variables['surface'], $variables['ink'], self::PAGE_SURFACE_SHARE);
+        $backgrounds = $page === null ? [$variables['surface']] : [$variables['surface'], $page];
+        $variables['primary-text'] = ReadableColor::onAll($variables['primary'], $backgrounds) ?? 'var(--ink)';
 
         return $variables;
     }

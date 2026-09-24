@@ -44,16 +44,39 @@ final class ReadableColor
      */
     public static function on(string $color, string $background, float $minimum = self::AA_NORMAL_TEXT): ?string
     {
-        $rgb = self::parse($color);
-        $surface = self::parse($background);
+        return self::onAll($color, [$background], $minimum);
+    }
 
-        if ($rgb === null || $surface === null) {
+    /**
+     * The same, for text that sits on several backgrounds (a card and the page around it): the
+     * first step that reaches $minimum against EVERY one of them. The first background sets the
+     * direction, so list the main surface first. Null when $color or any background is not a hex
+     * color, or when no background is given.
+     *
+     * @param  list<string>  $backgrounds
+     */
+    public static function onAll(string $color, array $backgrounds, float $minimum = self::AA_NORMAL_TEXT): ?string
+    {
+        $rgb = self::parse($color);
+        $surfaces = [];
+
+        foreach ($backgrounds as $background) {
+            $surface = self::parse($background);
+
+            if ($surface === null) {
+                return null;
+            }
+
+            $surfaces[] = $surface;
+        }
+
+        if ($rgb === null || $surfaces === []) {
             return null;
         }
 
-        // Head for whichever extreme contrasts more with the surface (black wins above luminance
-        // ≈0.18, not 0.5 — a mid-grey surface still wants dark text).
-        $surfaceLuminance = self::luminance($surface);
+        // Head for whichever extreme contrasts more with the main surface (black wins above
+        // luminance ≈0.18, not 0.5 — a mid-grey surface still wants dark text).
+        $surfaceLuminance = self::luminance($surfaces[0]);
         $target = ($surfaceLuminance + 0.05) / 0.05 >= 1.05 / ($surfaceLuminance + 0.05)
             ? [0.0, 0.0, 0.0]
             : [255.0, 255.0, 255.0];
@@ -67,12 +90,44 @@ final class ReadableColor
             ];
             $hex = self::hex($candidate);
 
-            if ((float) self::ratio($hex, $background) >= $minimum) {
+            if (self::readsOnEvery($hex, $backgrounds, $minimum)) {
                 return $hex;
             }
         }
 
         return self::hex($target);
+    }
+
+    /**
+     * $first and $second mixed in gamma-encoded sRGB, $firstShare of the first — what the
+     * stylesheet's color-mix(in srgb, first N%, second) paints. Null when either is not a hex color.
+     */
+    public static function mix(string $first, string $second, float $firstShare): ?string
+    {
+        $one = self::parse($first);
+        $two = self::parse($second);
+
+        if ($one === null || $two === null) {
+            return null;
+        }
+
+        return self::hex([
+            $one[0] * $firstShare + $two[0] * (1 - $firstShare),
+            $one[1] * $firstShare + $two[1] * (1 - $firstShare),
+            $one[2] * $firstShare + $two[2] * (1 - $firstShare),
+        ]);
+    }
+
+    /** @param  list<string>  $backgrounds */
+    private static function readsOnEvery(string $hex, array $backgrounds, float $minimum): bool
+    {
+        foreach ($backgrounds as $background) {
+            if ((float) self::ratio($hex, $background) < $minimum) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /** @return array{0: float, 1: float, 2: float}|null */
