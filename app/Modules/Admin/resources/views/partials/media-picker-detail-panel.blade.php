@@ -93,7 +93,7 @@
             @can('media.upload')
                 <textarea id="picker-detail-alt" wire:model="pickerDetailAlt" rows="3"
                           placeholder="{{ __('media.picker_detail_alt_placeholder') }}"
-                          class="block min-h-[64px] w-full resize-y rounded-lg border border-border-strong bg-surface px-[11px] py-[9px] text-[12.5px] text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none"></textarea>
+                          class="block min-h-[64px] w-full resize-y rounded-lg border border-border-strong bg-surface px-[11px] py-[9px] text-[12.5px] text-body-text placeholder:text-placeholder focus:border-admin-primary"></textarea>
                 {{-- Compact action row: a saved-tick on the left, a small filled button on the right
                      (a full-width outline button read heavy for a metadata save). --}}
                 <div class="mt-2 flex items-center justify-between gap-2">

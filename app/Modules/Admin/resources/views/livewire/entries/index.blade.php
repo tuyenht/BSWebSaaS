@@ -292,7 +292,7 @@
                                             @keydown.enter.prevent="cancel = false; $el.blur()"
                                             @keydown.escape="cancel = true; $el.blur()"
                                             @blur="editing = false; if (! cancel) { $wire.saveTitle(@js($entry->ulid), value) }"
-                                            class="w-full rounded border border-admin-primary bg-white px-1 py-0.5 text-sm font-medium text-body-text focus:outline-none">
+                                            class="w-full rounded border border-admin-primary bg-white px-1 py-0.5 text-sm font-medium text-body-text">
                                     @else
                                         <span class="font-medium text-body-text">{{ $t?->title ?? __('entries.untitled') }}</span>
                                     @endif
@@ -319,7 +319,7 @@
                                                 @keydown.enter.prevent="cancel = false; $el.blur()"
                                                 @keydown.escape="cancel = true; $el.blur()"
                                                 @blur="editing = false; if (! cancel) { $wire.saveSlug(@js($entry->ulid), value) }"
-                                                class="min-w-0 flex-1 rounded border border-admin-primary bg-white px-1 py-0.5 focus:outline-none">
+                                                class="min-w-0 flex-1 rounded border border-admin-primary bg-white px-1 py-0.5">
                                         </span>
                                     </div>
                                 @else
