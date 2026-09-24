@@ -33,7 +33,7 @@ Không sửa CLAUDE.md (chỉ owner sửa) — bài học mới ghi 1 dòng vào
 Thay mục `p-plans` hiện có (đang tự đặt trường dùng thử / thời hạn / giới hạn không khớp dữ liệu).
 Dữ liệu thật (`database/migrations/2016_01_01_000000_create_plan_and_feature_tables.php`, `app/Modules/Tenancy/Registry/FeatureRegistry.php`, `app/Modules/Tenancy/Registry/ModuleCatalog.php`):
 - `plans`: tên, đang bán, thứ tự — KHÔNG có giá (thanh toán để sau).
-- `plan_features`: gói × tính năng → giá trị (bật/tắt hoặc hạn mức). Có thật: `workflow.editorial` (bật/tắt), `sites.max` (hạn mức), `media.storage_mb` (hạn mức), `rbac.custom_roles` (bật/tắt, có từ 23/09). Danh sách đọc từ registry, chịu được thêm. Mỗi tính năng hiện bằng tên + 1 dòng lợi ích cho khách (không hiện khoá kỹ thuật).
+- `plan_features`: gói × tính năng → giá trị (bật/tắt hoặc hạn mức). Có thật: `workflow.editorial` (bật/tắt), `sites.max` (hạn mức), `media.storage_mb` (hạn mức), `rbac.custom_roles` (bật/tắt, có từ 23/09), `locales.max` (hạn mức số ngôn ngữ, mặc định 2, có từ 24/09). Danh sách đọc từ registry, chịu được thêm. Mỗi tính năng hiện bằng tên + 1 dòng lợi ích cho khách (không hiện khoá kỹ thuật).
 - Thứ tự áp: ghi đè theo website → theo gói → mặc định.
 Vẽ:
 1. Danh sách gói: tên, số khách đang dùng, tính năng chính, trạng thái; kéo sắp xếp; nhân bản gói.

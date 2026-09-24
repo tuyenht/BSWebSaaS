@@ -30,7 +30,7 @@ Không sửa CLAUDE.md (chỉ owner sửa) — bài học mới ghi 1 dòng vào
 
 # D2-4 · Thông báo trong ứng dụng
 
-Hiện trạng: chuông trên topbar chỉ là ô trống; chưa có bảng thông báo (Chờ backend: thông báo lưu DB + tuỳ chọn kênh theo người dùng).
+Hiện trạng: chuông trên topbar chỉ là ô trống — nhưng BACKEND ĐÃ CÓ (24/09, module `app/Modules/Notifications`): bảng `site_notifications` (theo website, theo người nhận; loại nằm trong `Registry/NotificationKinds.php`); đếm chưa đọc, danh sách mới nhất có "Tải thêm", đánh dấu đã đọc một mục / tất cả (`Support/NotificationFeed.php`); giữ 90 ngày rồi tự dọn. Sự kiện đã nối thật: có bài chờ duyệt (cả duyệt 1 bước lẫn quy trình nhiều bước) · bài được giao cho bạn · bài bị trả lại kèm lý do · bài của bạn đã đăng · khách liên hệ mới · xác thực 2 lớp bị tắt. Tuỳ chọn kênh theo người dùng lưu ở `users.preferences.notifications.<loại>.<in_app|mail>`; loại bảo mật luôn bật, không tắt được.
 Sự kiện có thật để dựng nội dung mẫu: quy trình duyệt (được giao bài, bài bị trả lại kèm lý do, bài đã đăng, có bài chờ duyệt — `app/Modules/Workflow`), khách liên hệ mới (`app/Modules/Forms`), bảo mật (đăng nhập thiết bị lạ, tắt 2 lớp, đổi mật khẩu), hệ thống (thư viện sắp đầy, website bị tạm ngưng).
 Vẽ:
 1. Chuông: số chưa đọc, 5–8 mục gần nhất nhóm theo ngày, mỗi mục là 1 câu đời thường + việc cần làm ("Anh Nam gửi bài 'Bàn giao dây chuyền…' chờ bạn duyệt — Mở bài"), "Đánh dấu đã đọc tất cả", "Xem tất cả". Bấm 1 mục → mở đúng màn (bs-goto) và đánh dấu đã đọc.

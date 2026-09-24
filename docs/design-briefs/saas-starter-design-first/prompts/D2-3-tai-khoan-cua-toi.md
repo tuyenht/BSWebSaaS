@@ -36,6 +36,7 @@ Vẽ TRANG (thay hộp modal hiện có — LESSONS #2, không làm trùng) 5 ta
 1. Hồ sơ: tên, chức danh, SĐT, ảnh đại diện ("Để sau" — hiện dùng chữ cái đầu), email (đổi email phải xác minh).
 2. Bảo mật: đổi mật khẩu (hiện độ mạnh bằng chữ + gợi ý); xác thực 2 lớp (giải thích 1 câu "thêm một lớp khoá bằng điện thoại"; bật: quét QR → nhập mã → NHẬN, TẢI, SAO CHÉP mã khôi phục; tạo lại mã; tắt 2 lớp và tạo lại mã đều phải nhập lại mật khẩu hoặc mã).
 3. Phiên đăng nhập: thiết bị, trình duyệt, lần hoạt động cuối; đăng xuất từng thiết bị / tất cả thiết bị khác (Chờ backend).
+   (24/09: tắt xác thực 2 lớp nay đã ghi nhật ký và gửi cảnh báo bảo mật — chuông + email, người dùng không tắt được loại cảnh báo này. Bước "nhập lại mật khẩu trước khi tắt 2 lớp" làm cùng lượt build màn này.)
 4. Tài khoản liên kết: dùng lại biến thể profile của `Đăng nhập nhanh & Liên kết tài khoản`.
 5. Tuỳ chọn: ngôn ngữ giao diện (mặc định của tài khoản; nút ngôn ngữ ở topbar chỉ đổi tạm cho phiên) · múi giờ hiển thị · Giao diện: sáng / tối / theo máy · CỠ CHỮ Bình thường / Lớn / Rất lớn · tương phản cao · giảm chuyển động · lối sang Tuỳ chọn thông báo (D2-4). Thay đổi hiệu lực ngay, có xem trước.
 Gắn vào Shell: khoá `account`, mở từ menu người dùng ở cả 2 mặt.

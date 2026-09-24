@@ -20,9 +20,11 @@
 | Trạng thái | Việc |
 |---|---|
 | ✅ Xong | Q14 luật kiến trúc "module tính năng không đọc thẳng `Tenancy\Models`" có hiệu lực lại + danh sách nợ 8 class · trang 404 hiện đúng tên website (white-label) — PR #67 · Q10 dòng báo thành công sau đặt lại mật khẩu / xác minh email — PR #68 · Q13 `docs/` là nơi bền cho brief + roadmap + sổ màn — PR #69 |
-| ✅ Backend xong (UI chờ thiết kế) | Q2 ngôn ngữ "cho khách xem" (`site_locales.is_public`) + hạn mức `locales.max` (mặc định 2) + đường ghi `Tenancy\Actions\ConfigureSiteLocale`; sitemap/hreflang chỉ liệt kê địa chỉ mở được — màn D3-1 · Q3 trình đơn trỏ Sản phẩm (`link_type` `product`, Catalog đăng ký qua `Cms\Navigation\MenuTargets`) + trình đơn không còn link tới trang/sản phẩm đã gỡ hoặc trong thùng rác — màn D1-2 · Q4 lời mời thành viên (`invitations` + trả lời đồng nhất, vá lỗ dò email) + màn nhận lời mời theo khung đăng nhập (Q9) — tab Lời mời chờ D2-2 · Q1 thông tin doanh nghiệp theo §14: cột còn thiếu + `provinces`/`wards` + đường đọc `Tenancy\Context\SiteIdentity` (website đọc NAP theo ngôn ngữ; ngôn ngữ mặc định giữ nguyên `general.brand` tới bước contract) + lệnh `site-profiles:sync-from-brand`, `admin-units:import` — màn D3-1 · Q5 thông báo trong ứng dụng: module `Notifications` + `site_notifications` (duyệt bài, khách liên hệ, tắt 2 lớp) — chuông + trang chờ D2-4 |
+| ✅ Backend xong + lên prod 24/09 (UI chờ thiết kế) | Q2 ngôn ngữ "cho khách xem" (`site_locales.is_public`) + hạn mức `locales.max` (mặc định 2) + đường ghi `Tenancy\Actions\ConfigureSiteLocale`; sitemap/hreflang chỉ liệt kê địa chỉ mở được — màn D3-1 · Q3 trình đơn trỏ Sản phẩm (`link_type` `product`, Catalog đăng ký qua `Cms\Navigation\MenuTargets`) + trình đơn không còn link tới trang/sản phẩm đã gỡ hoặc trong thùng rác — màn D1-2 · Q4 lời mời thành viên (`invitations` + trả lời đồng nhất, vá lỗ dò email) + màn nhận lời mời theo khung đăng nhập (Q9) — tab Lời mời chờ D2-2 · Q1 thông tin doanh nghiệp theo §14: cột còn thiếu + `provinces`/`wards` + đường đọc `Tenancy\Context\SiteIdentity` (website đọc NAP theo ngôn ngữ; ngôn ngữ mặc định giữ nguyên `general.brand` tới bước contract) + lệnh `site-profiles:sync-from-brand`, `admin-units:import` — màn D3-1 · Q5 thông báo trong ứng dụng: module `Notifications` + `site_notifications` (duyệt bài, khách liên hệ, tắt 2 lớp) — chuông + trang chờ D2-4 |
 | ⏳ Làm cùng màn | Q6 ngôn ngữ/cỡ chữ theo người (`users.preferences`) + Q7 trang Tài khoản — khi build D2-3 · Q8 Shell chung 2 mặt — khi build D0-4/D4 · Q9 màn mới khu đăng nhập — theo §LR |
-| ⏭ Sau | Q11 palette An Vinh v2 (chờ bộ sinh bảng màu + khách duyệt) · Q12 bộ AI = module sau core v1 · trả nợ 8 class của Q14 qua `Tenancy\Context` |
+| ⏭ Sau | Q11 palette An Vinh v2 (chờ bộ sinh bảng màu + khách duyệt) · Q12 bộ AI = module sau core v1 · nợ Q14 còn 5 class (3 lệnh chạy nền đã chuyển sang `Tenancy::siteIds()/eachSite()` 24/09) |
+
+**Audit sau merge 24/09 (đã sửa + lên prod):** migration `is_public` hỏng khi có ngôn ngữ đang tắt (sửa trước deploy) · hạn mức thư mời đếm cả thư gửi lại · `admin-units:import` nhận CSV của Excel (BOM, `;`) · sản phẩm đăng trong admin có địa chỉ công khai + 301 khi đổi đường dẫn (+ lệnh `catalog:sync-routes`; prod không có sản phẩm nào thiếu) · chữ của giao diện website theo ngôn ngữ trang, link trang chủ giữ ngôn ngữ, hover chân trang hết bị CSP chặn, `img-src` lấy từ cấu hình · ja/zh đủ khoá + CI `lang:check`.
 
 ## 3. Mạch khác đang mở
 - **RBAC Console:** backend nhóm quyền tuỳ chỉnh xong (`rbac.custom_roles`, mặc định tắt); UI = lượt D2-1.
@@ -30,7 +32,8 @@
 - **Đăng nhập 3 cửa (§LR B1–B6):** tường minh mặt phẳng · cửa owner · đăng nhập chung + chọn website · chuyển website ·
   đăng nhập hỗ trợ (thiết kế ở D4-3) — chưa code.
 - **Builder v3:** danh mục section v3.1 chờ phía thiết kế; PR 1a.1 còn bộ sinh bảng màu `--brand-50..900` + thang spacing.
-- **Đa ngôn ngữ giao diện:** ja/zh thiếu 182 khoá mỗi bản (vi/en đủ).
+- **Đa ngôn ngữ giao diện:** vi/en/ja/zh đủ khoá (24/09), CI chặn lệch bằng `lang:check`. Trang 404 chung còn chỉ tiếng Việt → thiết kế ở D5-1.
+- **Còn mở (nhỏ, chưa gấp):** xem trước ngôn ngữ chưa công khai (câu hỏi cho D3-1) · sitemap > 50.000 địa chỉ cần sitemap index (khi có site lớn) · nhập lại mật khẩu trước khi tắt 2 lớp (làm cùng D2-3) · `tenant_users` chưa có chỗ đọc (chốt ở D4-1).
 
 ## 4. Để sau (có chủ đích)
 Commerce GĐ1 (giỏ hàng + COD + VietQR) · thanh toán/billing (chỉ để chỗ chờ) · bộ AI · Meilisearch · đóng gói core v1.0

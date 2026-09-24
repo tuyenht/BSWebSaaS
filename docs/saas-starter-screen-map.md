@@ -27,15 +27,15 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 16 | Trình đơn | 🟠 thiếu gán theo ngôn ngữ | — | ❌ trang "sắp có" · ✅ backend trỏ Sản phẩm | D1-2 | backend 24/09: `link_type` `product` + ẩn đích khách không mở được |
 | 17 | Page builder | ✅ v3 | — | 🟡 | ⏸ track Builder v3 | |
 | 18–19 | Hộp duyệt · Khối trạng thái duyệt | ✅ | `design_handoff_workflow/` | ✅ prod | — | |
-| 20–21 | Sản phẩm: danh sách · trình sửa | ❌ | — | ✅ · 🟡 | D1-5 | |
+| 20–21 | Sản phẩm: danh sách · trình sửa | ❌ | — | ✅ · 🟡 | D1-5 | 24/09: lưu sản phẩm Đã đăng → có địa chỉ công khai, đổi đường dẫn → 301 (`catalog:sync-routes` sửa hàng cũ) |
 | 22 | Thư viện ảnh & tệp (trang) | 🟡 chỉ modal | — | ✅ | D1-6 | ALT mới 1 ngôn ngữ |
 | 23 | Trình chọn ảnh | ✅ | `design_handoff_media_picker/` | ✅ P1/P2 | D1-6 | P3/P4 còn |
 | 24–25 | Hộp thư liên hệ · chi tiết | ❌ | — | 🟡 | D1-7 | |
 | 26 | Trình dựng biểu mẫu | ❌ | — | ❌ | D1-7 | |
 | 27–30 | Thành viên · Nhóm quyền · Sửa nhóm · "Nhóm làm được gì" | ❌ | — | 🟡 · ❌ · ❌ · ❌ | D2-1 | backend nhóm tuỳ chỉnh có (`e922240`) |
-| 31 | Lời mời thành viên | ❌ | — | 🟡 backend + màn nhận lời mời (khung đăng nhập) · tab Lời mời ❌ | D2-2 | backend 24/09: `invitations`, trả lời đồng nhất, 7 ngày, ≤50/ngày |
+| 31 | Lời mời thành viên | ❌ | — | 🟡 backend + màn nhận lời mời (khung đăng nhập) · tab Lời mời ❌ | D2-2 | backend 24/09: `invitations`, trả lời đồng nhất, 7 ngày, ≤50 thư/ngày (tính cả gửi lại) |
 | 32 | Khung Cài đặt (1 thanh Lưu) | ✅ | — | 🟡 | D0-4, D3 | |
-| 33 | Thông tin chung | 🟠 đa ngữ vs dữ liệu 1 ngữ | — | ❌ UI · ✅ backend đọc | D3-1 | backend 24/09: cột §14 + `provinces`/`wards` + `SiteIdentity`; website đọc NAP theo ngôn ngữ |
+| 33 | Thông tin chung | 🟠 đa ngữ vs dữ liệu 1 ngữ | — | ❌ UI · ✅ backend đọc | D3-1 | backend 24/09: cột §14 + `provinces`/`wards` + `SiteIdentity`; website đọc NAP theo ngôn ngữ; tên hiển thị (viết tắt, theo ngôn ngữ) ≠ tên pháp lý đầy đủ |
 | 34 | Giao diện website | 🟠 6 màu tự do | — | ❌ | D3-1 | đúng 5 quyết định (section-style-system §1) |
 | 35 | Giao diện trang quản trị | ✅ | — | ✅ | — | |
 | 36 | Ngôn ngữ website | 🟠 3 tầng | — | ❌ UI · ✅ backend | D3-1 | backend 24/09: `is_public` + `locales.max` + `ConfigureSiteLocale` |
