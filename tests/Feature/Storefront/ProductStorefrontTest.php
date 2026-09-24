@@ -1,8 +1,10 @@
 <?php
 
+use App\Modules\Admin\Livewire\Catalog\Editor;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -10,6 +12,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 
 /*
  * Product storefront — U1-c S2 read path. A product route resolves to ResolvedProduct (a thin Cms
@@ -145,4 +148,23 @@ it('emits Product JSON-LD on the detail page — name, text description, url, br
     expect($productLd['url'])->toBe('http://anvinh.test/san-pham/jig-vf7');
     expect($productLd['brand'])->toBe(['@type' => 'Brand', 'name' => 'Cơ Khí Chính Xác An Vinh']);
     expect($productLd)->not->toHaveKey('offers'); // brochure catalog — nothing is sold online
+});
+
+it('opens a product the admin has just published — page and catalog link alike', function (): void {
+    seedCatalogIndex(0);
+    $site = Site::query()->where('name', 'An Vinh')->firstOrFail();
+    $owner = User::query()->where('email', 'owner@anvinh.test')->firstOrFail();
+
+    app(Tenancy::class)->enter($site->id, function () use ($owner): void {
+        Livewire::actingAs($owner)
+            ->test(Editor::class)
+            ->set('name', 'Jig hàn khung mới')
+            ->set('slug', 'jig-han-khung-moi')
+            ->set('status', 'published')
+            ->call('save')
+            ->assertHasNoErrors();
+    });
+
+    $this->get('http://anvinh.test/san-pham/jig-han-khung-moi')->assertOk()->assertSee('Jig hàn khung mới');
+    expect($this->get('http://anvinh.test/san-pham')->assertOk()->getContent())->toContain('href="/san-pham/jig-han-khung-moi"');
 });

@@ -460,6 +460,7 @@
     "catalog.slug_label": "Path (slug)",
     "catalog.slug_format": "The path may contain only lowercase letters, numbers, and hyphens.",
     "catalog.slug_taken": "This path is already used by another product.",
+    "catalog.slug_conflict": "This address is already used by a page or category. Please choose another one.",
     "catalog.category_label": "Category",
     "catalog.category_placeholder": "— Choose a category —",
     "catalog.category_invalid": "Invalid category.",

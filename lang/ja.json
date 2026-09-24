@@ -227,6 +227,7 @@
     "admin.add_new": "新規追加",
     "admin.categories": "カテゴリー",
     "admin.media": "メディア",
+    "catalog.slug_conflict": "このURLは既存のページまたはカテゴリーで使われています。別のURLを指定してください。",
     "admin.contacts": "お問い合わせ",
     "admin.menu_builder": "メニュー",
     "admin.appearance": "外観",

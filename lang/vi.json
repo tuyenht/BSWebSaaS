@@ -460,6 +460,7 @@
     "catalog.slug_label": "Đường dẫn (slug)",
     "catalog.slug_format": "Đường dẫn chỉ gồm chữ thường, số và dấu gạch nối.",
     "catalog.slug_taken": "Đường dẫn này đã được dùng cho sản phẩm khác.",
+    "catalog.slug_conflict": "Đường dẫn này trùng với một trang hoặc chuyên mục đã có. Hãy chọn đường dẫn khác.",
     "catalog.category_label": "Danh mục",
     "catalog.category_placeholder": "— Chọn danh mục —",
     "catalog.category_invalid": "Danh mục không hợp lệ.",
