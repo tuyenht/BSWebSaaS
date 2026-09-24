@@ -70,7 +70,7 @@
                             <div class="flex items-center justify-end gap-2">
                                 @if ($assignableRoles->isNotEmpty())
                                     <select wire:change="changeRole(@js($member->ulid), $event.target.value)"
-                                            class="rounded border border-border bg-surface px-2 py-1 text-xs text-body-text focus:border-admin-primary focus:outline-none">
+                                            class="rounded border border-border bg-surface px-2 py-1 text-xs text-body-text focus:border-admin-primary">
                                         <option value="">{{ __('admin.change_role') }}</option>
                                         @foreach ($assignableRoles as $role)
                                             <option value="{{ $role->name }}">{{ $role->name }}</option>
