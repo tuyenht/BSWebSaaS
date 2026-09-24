@@ -75,8 +75,9 @@
  | so an explicit topbar/sidebar variant beats the scheme's zone values.
  | AA (measured, WCAG): text ≥4.5 · icons/11px micro-labels ≥3.0. Deviations
  | from the Velzon reference values are AA bumps, noted `vz-ref:`.
- | The default dark sidebar (#405189 navy) is AA-clean: item white/.85 = 6.1,
- | title white/.60 = 3.9. Only the opt-in gradient sidebars stay grandfathered.
+ | The default dark sidebar (#405189 navy) is AA-clean: item white/.85 = 6.05,
+ | title white/.60 = 3.9; so are the gradient sidebars at every point of their
+ | band (node scripts/contrast-check.mjs measures all of it).
  ============================================================================ */
 
 /* Dark scheme — Velzon [data-bs-theme=dark]; --color-* (content plane) are ours,
@@ -204,24 +205,25 @@
 /* ---- Sidebar color: gradients (flip axis: data-sidebar) --------------------
    The gradient paints .admin-sidebar directly (background-image over the bg-sidebar
    color — a linear-gradient can't ride background-color). `to right` = Velzon's
-   90° L→R. Item ink switches to the white gradient set (Velzon rgba(#fff,.5)); the
-   resting/title steps are an opt-in aesthetic, grandfathered like the base #abb9e8
-   (AA measured at gate — hover/active #fff pass; owner eye-pass may retune). */
+   90° L→R. Item ink is white at 85%, like the navy sidebar. The light stops of the
+   Velzon bands (#0ab39c, #299cdb, #3577f1: white/.85 read 1.6–3.6 there) are darkened
+   in OKLCH — same hue, lightness down just far enough that resting white/.85 and the
+   active row (white on white/.15) clear 4.5 at EVERY point of the band. */
 :root[data-sidebar='gradient'] .admin-sidebar {
-    background-image: linear-gradient(to right, #405189, #0ab39c); /* primary → success */
+    background-image: linear-gradient(to right, #405189, #056d5e); /* primary → success, deepened (vz-ref #0ab39c) */
 }
 :root[data-sidebar='gradient-2'] .admin-sidebar {
-    background-image: linear-gradient(to right, #299cdb, #3577f1); /* info → secondary */
+    background-image: linear-gradient(to right, #036797, #185ad2); /* info → secondary, deepened (vz-ref #299cdb → #3577f1) */
 }
 :root[data-sidebar='gradient-3'] .admin-sidebar {
-    background-image: linear-gradient(to right, #299cdb, #0ab39c); /* info → success */
+    background-image: linear-gradient(to right, #036797, #056d5e); /* info → success, deepened (vz-ref #299cdb → #0ab39c) */
 }
 :root[data-sidebar='gradient-4'] .admin-sidebar {
     background-image: linear-gradient(to right, #1a1d21, #405189); /* dark → primary */
 }
 :root[data-sidebar^='gradient'] {
     --vz-vertical-menu-bg: #405189;                          /* base under the gradient image */
-    --vz-vertical-menu-item-color: rgb(255 255 255 / 0.50);  /* vz-ref rgba(#fff,.5) — grandfathered */
+    --vz-vertical-menu-item-color: rgb(255 255 255 / 0.85);  /* >=4.5 at every point of the deepened bands · vz-ref rgba(#fff,.5) */
     --vz-vertical-menu-item-hover-color: #ffffff;
     --vz-vertical-menu-item-active-color: #ffffff;
     --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.15);
