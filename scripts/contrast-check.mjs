@@ -304,11 +304,11 @@ const ROWS = [
     { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên thẻ', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên nền trang', fg: '--color-body-muted', bg: ['--color-body'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Footer', fg: '--vz-footer-color', bg: ['--color-body'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Breadcrumb (page-header, trang Nội dung)', fg: '--color-body-faint', bg: ['--color-body'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Tab chưa chọn (x-admin::tabs, trang Nội dung)', fg: '--color-body-faint', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Breadcrumb + phụ đề (page-header, trang Nội dung)', fg: '--color-body-muted', bg: ['--color-body'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Tab chưa chọn (x-admin::tabs, trang Nội dung)', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Đầu cột bảng — x-admin::table', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Đầu cột bảng — thead nền surface-muted (7 trang danh sách)', fg: '--color-body-faint', bg: ['--color-surface-muted'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Tiêu đề nhóm Customizer', fg: '--color-body-faint', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Đầu cột bảng — thead nền surface-muted (7 trang danh sách) · bộ đếm Jodit', fg: '--color-body-muted', bg: ['--color-surface-muted'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Tiêu đề nhóm Customizer', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
 
     // Semantic colors.
     ...['success', 'info', 'warning', 'danger'].flatMap((hue) => [
@@ -348,6 +348,7 @@ const ROWS = [
 
     // Watch-list — reported, never failing the run.
     { item: 'Theo dõi', role: 'Nút secondary solid — chữ trắng', fg: WHITE, bg: ['--color-admin-secondary'], min: 4.5 },
+    { item: 'Theo dõi', role: 'Topbar — dòng vai trò dưới tên, link điều hướng platform (chữ dùng màu icon)', fg: '--vz-header-item-sub-color', bg: ['--vz-header-bg'], min: 4.5 },
     { item: 'Theo dõi', role: 'Placeholder ô nhập (là chữ)', fg: '--color-placeholder', bg: ['--color-surface'], min: 4.5 },
     { item: 'Theo dõi', role: 'Sidebar tối — tiêu đề nhóm (chưa hiển thị ở layout)', fg: '--vz-vertical-menu-title-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
     { item: 'Theo dõi', role: 'Avatar / mục đang chọn settings-shell — chữ primary', fg: '--color-admin-primary', bg: ['--color-surface', ['--color-admin-primary', 0.1]], min: 4.5 },

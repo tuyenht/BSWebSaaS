@@ -68,8 +68,11 @@
     --color-border-soft: #f3f6f9;                /* hairline list dividers (gray-100) */
     --color-heading: #343a40;                    /* page/card/section headings (gray-800) */
     --color-body-text: #495057;                  /* base text (gray-700) */
-    --color-body-muted: #878a99;                 /* secondary text (gray-600) */
-    --color-body-faint: #adb5bd;                 /* meta/hint text, timestamps (gray-500) */
+    --color-body-muted: #6b6e7f;                 /* secondary text a reader needs — breadcrumb, footer,
+                                                    unselected tab, column header · 5.04 on white, 4.56 on
+                                                    the page bg (#6c6f80 misses there: 4.4988) */
+    --color-body-faint: #adb5bd;                 /* decorative detail only, never text a reader needs
+                                                    (gray-500 · 2.07 on white) */
     --color-placeholder: #ced4da;                /* input placeholder + disabled glyphs (gray-400) */
     --color-ink-ghost: #e9ebec;                  /* decorative/empty-state glyphs — WCAG-exempt (gray-300) */
     /* The brand navy wherever it is INK — text, border, focus ring. A fill under white text keeps
@@ -170,7 +173,7 @@ button:not(:disabled) {
     background: var(--color-surface-muted);
     border-top: 1px solid var(--color-border);
     border-radius: 0 0 0.25rem 0.25rem;
-    color: var(--color-body-faint);
+    color: var(--color-body-muted);
     font-size: 0.75rem;
 }
 .jodit-status-bar__item {

@@ -45,3 +45,12 @@ it('draws the brand navy ink through the accent role', function (): void {
 it('keeps the brand navy as the fill under white text', function (): void {
     expect((string) $this->blade('<x-admin::button>Lưu</x-admin::button>'))->toContain('bg-admin-primary text-white');
 });
+
+it('paints secondary text a reader needs with the muted role, never the decorative faint one', function (string $markup): void {
+    expect((string) $this->blade($markup))
+        ->toContain('text-body-muted')
+        ->not->toContain('text-body-faint');
+})->with([
+    'breadcrumb + subtitle' => '<x-admin::page-header title="Người dùng" subtitle="Quản lý thành viên."><x-slot:breadcrumbs>Bảng điều khiển / Người dùng</x-slot:breadcrumbs></x-admin::page-header>',
+    'unselected tab' => '<x-admin::tabs :tabs="[\'a\' => \'Một\', \'b\' => \'Hai\']" />',
+]);

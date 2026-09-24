@@ -3,11 +3,11 @@
     <x-admin::page-header :title="__('entries.manage_title', ['label' => $sectionLabel])">
         <x-slot:breadcrumbs>
             <div class="flex items-center gap-1.5">
-                <a href="{{ route('admin.dashboard') }}" wire:navigate class="inline-flex items-center gap-1 text-body-faint transition-colors hover:text-admin-primary">
+                <a href="{{ route('admin.dashboard') }}" wire:navigate class="inline-flex items-center gap-1 text-body-muted transition-colors hover:text-accent">
                     <x-admin::icon name="home" class="size-3.5" /> {{ __('admin.breadcrumb_home') }}
                 </a>
                 <x-admin::icon name="chevron-right" class="size-3.5 text-placeholder" />
-                <span class="font-medium text-body-faint">{{ $sectionLabel }}</span>
+                <span class="font-medium text-body-muted">{{ $sectionLabel }}</span>
             </div>
         </x-slot:breadcrumbs>
         <x-slot:actions>
@@ -92,8 +92,8 @@
                 <button type="button" wire:click="setTab('{{ $key }}')"
                     @class([
                         '-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
-                        'border-admin-primary text-admin-primary' => $tab === $key,
-                        'border-transparent text-body-faint hover:text-body-text' => $tab !== $key,
+                        'border-accent text-accent' => $tab === $key,
+                        'border-transparent text-body-muted hover:text-body-text' => $tab !== $key,
                     ])>
                     <x-admin::icon :name="$tabIcon($key)" class="size-4" />
                     {{ $label }}
@@ -104,7 +104,7 @@
                 @class([
                     '-mb-px ml-auto inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors',
                     'border-admin-danger text-admin-danger' => $tab === 'trash',
-                    'border-transparent text-body-faint hover:text-body-text' => $tab !== 'trash',
+                    'border-transparent text-body-muted hover:text-body-text' => $tab !== 'trash',
                 ])>
                 <x-admin::icon name="ri-delete-bin" class="size-4" /> {{ __('entries.tab_trash') }}
                 <span class="rounded px-1.5 py-0.5 text-xs font-semibold leading-none {{ $tabBadgeClass('trash') }}">{{ $counts['trash'] }}</span>
