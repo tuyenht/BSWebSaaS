@@ -34,7 +34,7 @@ final class NewLeadNotification extends Notification
 
         $mail = (new MailMessage)
             ->subject(__('forms.lead_email_subject', ['form' => $formName]))
-            ->greeting(Cast::string(config('admin.brand.name'), 'Bảo Sơn'))
+            ->greeting(Cast::string(config('admin.brand.name')))
             ->line(__('forms.lead_email_intro', ['form' => $formName]));
 
         // Reply-To the lead's own address, so a recipient can reply straight to the customer

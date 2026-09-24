@@ -53,6 +53,19 @@ it('storefront response carries the allow-list Content-Security-Policy', functio
         ->toContain("form-action 'self'");
 });
 
+it('allows images from the configured media hosts, not a hardcoded one', function (): void {
+    seedHomepage(1, 'Trang chủ');
+    config([
+        'media.cloudflare.base' => 'https://cdn.example.test/',
+        'media.imgproxy.base' => 'https://img.example.test:8443/x',
+    ]);
+
+    $csp = (string) $this->get('http://a.test/')->assertOk()->headers->get('Content-Security-Policy', '');
+
+    expect($csp)->toContain("img-src 'self' https://cdn.example.test https://img.example.test:8443 data:")
+        ->not->toContain('files.baoson.net');
+});
+
 // ── Admin plane — baseline only, no strict CSP ───────────────────────────────
 
 it('admin login carries baseline headers but no Content-Security-Policy', function (): void {

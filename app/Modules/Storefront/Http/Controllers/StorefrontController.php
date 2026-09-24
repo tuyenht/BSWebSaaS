@@ -81,6 +81,8 @@ final readonly class StorefrontController
             // Business identity in the page's language (site_profiles + translations, the legacy
             // general.brand setting keeping precedence in the default language — SiteIdentity).
             'brand' => $this->identity->for($locale),
+            // The logo and footer home links stay in the page's language (/en for an English page).
+            'homeUrl' => $this->paths->publicUrl('/', $locale),
         ];
 
         if ($resolved instanceof ResolvedProduct) {
@@ -475,6 +477,6 @@ final readonly class StorefrontController
      */
     private function homeCrumb(string $locale): array
     {
-        return ['name' => 'Trang chủ', 'url' => url($this->paths->publicUrl('/', $locale))];
+        return ['name' => __('storefront.home'), 'url' => url($this->paths->publicUrl('/', $locale))];
     }
 }

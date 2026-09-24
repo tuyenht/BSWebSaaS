@@ -7,12 +7,12 @@
         @if (! empty($brand['logo']))
             {{-- Brand logo = a server-resolved media URL from the tenant's 'brand' site setting
                  (not author Page-JSON), linked home. width/height reserve space (no CLS). --}}
-            <a class="site-header__brand" href="/" aria-label="{{ $brand['name'] ?? 'Trang chủ' }}">
+            <a class="site-header__brand" href="{{ $homeUrl ?? '/' }}" aria-label="{{ $brand['name'] ?? __('storefront.home') }}">
                 <img class="site-header__logo" src="{{ $brand['logo'] }}" alt="{{ $brand['name'] ?? '' }}" width="156" height="40">
             </a>
         @endif
         @if (! empty($menu))
-            <nav class="site-nav" aria-label="Điều hướng chính">
+            <nav class="site-nav" aria-label="{{ __('storefront.nav_main') }}">
                 @include('theme::partials.menu-list', ['items' => $menu, 'level' => 0])
             </nav>
         @endif

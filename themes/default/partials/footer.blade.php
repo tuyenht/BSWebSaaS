@@ -1,14 +1,14 @@
 {{--
-    Storefront footer — contentinfo landmark. NAP, legal name, license, and copyright
-    all read from the $brand site-setting (set by SeedAnVinhContent for An Vinh GĐ1;
-    future tenant-settings UI will let every site configure them). Sections are
-    conditional so tenants without NAP data get a minimal but valid footer.
+    Storefront footer — contentinfo landmark. NAP, legal name, license and copyright read from
+    $brand (SiteIdentity: the page's language), labels from the storefront translations, colors
+    from the site's tokens (storefront.css) — nothing here names a tenant, a year or a language.
+    Sections are conditional so tenants without NAP data get a minimal but valid footer.
 --}}
 <footer class="site-footer" role="contentinfo">
     <div class="site-footer__inner">
         <div>
             @if (! empty($brand['logo']))
-                <a href="/" aria-label="{{ $brand['name'] ?? 'Trang chủ' }}">
+                <a href="{{ $homeUrl ?? '/' }}" aria-label="{{ $brand['name'] ?? __('storefront.home') }}">
                     <img src="{{ $brand['logo'] }}" alt="{{ $brand['name'] ?? '' }}" width="140" height="36" loading="lazy" style="height:2.25rem;width:auto;margin-bottom:1rem;">
                 </a>
             @endif
@@ -23,28 +23,24 @@
                         {{ $brand['address'] }}<br>
                     @endif
                     @if (! empty($brand['phone']))
-                        Hotline: <a href="tel:{{ preg_replace('/[^+\d]/', '', $brand['phone']) }}">{{ $brand['phone'] }}</a><br>
+                        {{ __('storefront.hotline') }}: <a href="tel:{{ preg_replace('/[^+\d]/', '', $brand['phone']) }}">{{ $brand['phone'] }}</a><br>
                     @endif
                     @if (! empty($brand['email']))
-                        Email: <a href="mailto:{{ $brand['email'] }}">{{ $brand['email'] }}</a>
+                        {{ __('storefront.email') }}: <a href="mailto:{{ $brand['email'] }}">{{ $brand['email'] }}</a>
                     @endif
                 </address>
             @endif
             @if (! empty($brand['license']))
-                <p class="site-footer__license">GPĐKKD: {{ $brand['license'] }}</p>
+                <p class="site-footer__license">{{ __('storefront.license', ['number' => $brand['license']]) }}</p>
             @endif
         </div>
         <div>
-            <p style="font-size:0.875rem;font-weight:700;color:#e2e8f0;text-transform:uppercase;letter-spacing:0.04em;margin:0 0 0.75rem;">
-                Điều hướng
-            </p>
+            <p class="site-footer__heading">{{ __('storefront.nav_footer') }}</p>
             @if (! empty($menu))
-                <ul style="display:flex;flex-direction:column;gap:0.375rem;">
+                <ul class="site-footer__links">
                     @foreach ($menu as $item)
                         <li>
-                            <a href="{{ $item['url'] }}" style="font-size:0.875rem;color:#94a3b8;transition:color 0.2s;" onmouseover="this.style.color='#f59e0b'" onmouseout="this.style.color='#94a3b8'">
-                                {{ $item['label'] }}
-                            </a>
+                            <a class="site-footer__link" href="{{ $item['url'] }}">{{ $item['label'] }}</a>
                         </li>
                     @endforeach
                 </ul>
@@ -53,9 +49,9 @@
     </div>
     <div class="site-footer__bottom">
         @if (! empty($brand['name']))
-            &copy; 2024–{{ date('Y') }} {{ $brand['name'] }}. Bảo lưu mọi quyền.
+            {{ __('storefront.rights', ['year' => date('Y'), 'name' => $brand['name']]) }}
         @else
-            &copy; {{ date('Y') }}. Bảo lưu mọi quyền.
+            {{ __('storefront.rights_unnamed', ['year' => date('Y')]) }}
         @endif
     </div>
 </footer>
