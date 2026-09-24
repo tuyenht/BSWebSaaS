@@ -45,7 +45,7 @@ DECISIONS = [
     ('Q1', 'Thông tin doanh nghiệp (NAP) lưu ở đâu?', '✅ Đã làm, lên prod 24/09: đủ cột theo design.md §14 + danh mục Tỉnh/Phường; website đọc theo ngôn ngữ trang. Tên công ty: web dùng bản viết tắt theo ngôn ngữ, bản đầy đủ theo giấy phép là tên pháp lý.'),
     ('Q2', 'Tách "ngôn ngữ đang soạn" khỏi "ngôn ngữ hiển thị cho khách"?', '✅ Đã làm, lên prod 24/09: cờ is_public + hạn mức locales.max (mặc định 2). Ngôn ngữ chưa hiển thị không lộ ra sitemap, hreflang hay địa chỉ /en.'),
     ('Q3', 'Trình đơn được trỏ tới Sản phẩm?', '✅ Đã làm, lên prod 24/09: có loại liên kết Sản phẩm; website tự ẩn mục trỏ tới trang/sản phẩm chưa đăng hoặc trong thùng rác.'),
-    ('Q4', 'Lời mời thành viên?', '✅ Đã làm, lên prod 24/09: bảng lời mời, luôn báo cùng một câu, hết hạn 7 ngày, tối đa 50 thư/ngày (tính cả thư gửi lại). Màn nhận lời mời dựng theo khung đăng nhập.'),
+    ('Q4', 'Lời mời thành viên?', '✅ Đã làm, lên prod 24/09: bảng lời mời, luôn báo cùng một câu, hết hạn 7 ngày; mỗi website tối đa 50 thư/ngày (tính cả thư gửi lại) và 3 thư/địa chỉ/ngày. Màn nhận lời mời dựng theo khung đăng nhập.'),
     ('Q5', 'Thông báo trong ứng dụng?', '✅ Đã làm, lên prod 24/09: module Notifications, đã nối duyệt bài · khách liên hệ mới · tắt 2 lớp; giữ 90 ngày. Chuông + trang chờ thiết kế D2-4.'),
     ('Q6', 'Ngôn ngữ giao diện theo từng người?', 'Đổi so với bản trước: lưu trong users.preferences cùng cỡ chữ, múi giờ — không cần thêm cột.'),
     ('Q7', '"Tài khoản của tôi" nằm đâu?', 'Trang riêng từ menu người dùng, cho cả vận hành viên nền tảng; Cài đặt chỉ còn việc toàn website.'),
