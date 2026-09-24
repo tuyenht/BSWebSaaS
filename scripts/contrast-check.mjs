@@ -361,32 +361,34 @@ const ROWS = [
 ];
 
 // ── Storefront --primary-text ───────────────────────────────────────────────────────────────
-// Mirrors App\Modules\Theme\Theming\ReadableColor::on() as ThemeResolver::cssVariables() calls it.
+// Mirrors App\Modules\Theme\Theming\ReadableColor::onAll() as ThemeResolver::cssVariables() calls
+// it: the brand seed darkened (hue kept) until it reads on the card surface AND the page background.
 // Sample brands only (no tenant data): the default seed, a light amber, a very light yellow.
 const themeResolver = read('app/Modules/Theme/Theming/ThemeResolver.php');
 const defaultSeed = (key) => themeResolver.match(new RegExp(`'${key}'\\s*=>\\s*'(#[0-9a-fA-F]{3,6})'`))?.[1];
+const pageShare = Number(themeResolver.match(/PAGE_SURFACE_SHARE = ([\d.]+);/)?.[1]);
 const SEEDS = [
     { name: 'mặc định (ThemeResolver::DEFAULTS)', primary: defaultSeed('primary'), surface: defaultSeed('surface'), ink: defaultSeed('ink') },
     { name: 'thương hiệu amber mẫu', primary: '#f59e0b', surface: '#ffffff', ink: '#0f172a' },
     { name: 'thương hiệu vàng sáng mẫu', primary: '#facc15', surface: '#ffffff', ink: '#111111' },
 ];
 
-function readableOn(color, background, minimum = 4.5) {
+function readableOn(color, backgrounds, minimum = 4.5) {
     const rgb = parseColor(color, {});
-    const surface = parseColor(background, {});
-    const surfaceLuminance = luminance(surface);
+    const surfaces = backgrounds.map((background) => parseColor(background, {}));
+    const surfaceLuminance = luminance(surfaces[0]);
     const target = (surfaceLuminance + 0.05) / 0.05 >= 1.05 / (surfaceLuminance + 0.05) ? rgba(0, 0, 0) : rgba(255, 255, 255);
     for (let step = 0; step <= 20; step++) {
         const weight = step / 20;
         const candidate = rgba(...['r', 'g', 'b'].map((k) => Math.round(rgb[k] + (target[k] - rgb[k]) * weight)));
-        if (ratio(candidate, surface) >= minimum) return hex(candidate);
+        if (surfaces.every((surface) => ratio(candidate, surface) >= minimum)) return hex(candidate);
     }
     return hex(target);
 }
 
-const storefrontPrimaryText = (seed) => readableOn(seed.primary, seed.surface);
 // storefront.css: body { background: color-mix(in srgb, var(--surface) 97%, var(--ink)) }
-const storefrontPage = (seed) => hex(mix(parseColor(seed.surface, {}), parseColor(seed.ink, {}), 0.97, 0.03, 'srgb'));
+const storefrontPage = (seed) => hex(mix(parseColor(seed.surface, {}), parseColor(seed.ink, {}), pageShare, 1 - pageShare, 'srgb'));
+const storefrontPrimaryText = (seed) => readableOn(seed.primary, [seed.surface, storefrontPage(seed)]);
 
 // ── Report ──────────────────────────────────────────────────────────────────────────────────────
 // Truncated to 2 decimals before comparing, as axe-core does: 4.4988 is a fail, not a rounded 4.50.
@@ -419,17 +421,14 @@ for (const row of ROWS) {
     lines.push(`| ${row.item} | ${row.role} | ${row.min} | ${cell(results[0], row.min, row.none)} | ${cell(results[1], row.min, row.none)} |`);
 }
 
-lines.push('', '**Storefront `--primary-text`** (sinh từ `--primary`; nền thẻ = `--surface`, nền trang = `color-mix(in srgb, --surface 97%, --ink)`)', '');
-lines.push('| Bộ màu | `--primary` | `--primary-text` | trên `--surface` | trên nền trang |', '|---|---|---|---|---|');
+lines.push('', `**Storefront — chữ màu thương hiệu** (\`--primary-text\` cho chữ trên nền sáng: thẻ = \`--surface\`, nền trang = \`color-mix(in srgb, --surface ${pageShare * 100}%, --ink)\`; \`--primary\` giữ cho chữ trên nền tối \`--ink\`: footer, menu con, CTA phụ)`, '');
+lines.push('| Bộ màu | `--primary` | `--primary-text` | `--primary-text` trên `--surface` | `--primary-text` trên nền trang | `--primary` trên `--ink` |', '|---|---|---|---|---|---|');
 for (const seed of SEEDS) {
     const text = storefrontPrimaryText(seed);
-    const results = [seed.surface, storefrontPage(seed)].map((background) => ({
-        value: ratio(parseColor(text, {}), parseColor(background, {})),
-        fg: text,
-        bg: background,
-    }));
+    const measureOn = (fg, background) => ({ value: ratio(parseColor(fg, {}), parseColor(background, {})), fg, bg: background });
+    const results = [measureOn(text, seed.surface), measureOn(text, storefrontPage(seed)), measureOn(seed.primary, seed.ink)];
     if (results.some((result) => !passes(result, 4.5))) failures++;
-    lines.push(`| ${seed.name} | \`${seed.primary}\` | \`${text}\` | ${cell(results[0], 4.5)} | ${cell(results[1], 4.5)} |`);
+    lines.push(`| ${seed.name} | \`${seed.primary}\` | \`${text}\` | ${results.map((result) => cell(result, 4.5)).join(' | ')} |`);
 }
 
 lines.push('', failures === 0 ? '**Kết quả:** mọi cặp được gác đều đạt ngưỡng.' : `**Kết quả:** ${failures} cặp được gác chưa đạt.`);

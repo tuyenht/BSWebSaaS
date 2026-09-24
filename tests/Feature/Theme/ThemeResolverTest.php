@@ -93,6 +93,30 @@ it('prints the seeds plus a brand text color that stays readable on the surface'
     });
 });
 
+it('keeps the brand text color readable on the page background too, where breadcrumb and contact details sit', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create([
+            'group_name' => 'theme',
+            'key' => 'tokens',
+            'value' => ['primary' => '#f59e0b', 'ink' => '#0f172a'],
+        ]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+        $page = (string) ReadableColor::mix($variables['surface'], $variables['ink'], ThemeResolver::PAGE_SURFACE_SHARE);
+
+        expect($page)->toBe('#f8f8f9')
+            ->and(ReadableColor::ratio($variables['primary-text'], $variables['surface']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT)
+            ->and(ReadableColor::ratio($variables['primary-text'], $page))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
+
+it('measures the page background the storefront stylesheet actually paints', function (): void {
+    $share = (int) round(ThemeResolver::PAGE_SURFACE_SHARE * 100);
+
+    expect((string) file_get_contents(resource_path('css/storefront.css')))
+        ->toMatch("/body \\{[^}]*background: color-mix\\(in srgb, var\\(--surface\\) {$share}%, var\\(--ink\\)\\);/");
+});
+
 it('falls back to the ink color when the brand seed is not a hex color', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => 'rebeccapurple']]);

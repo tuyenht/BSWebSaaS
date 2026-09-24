@@ -18,9 +18,11 @@
  *   muted text on a light surface = `color-mix(in srgb, var(--body) 80%, white)` (≥5.4:1);
  *   anything lighter (--body 65%, --ink 40%) fails there. Light text on the dark header/
  *   footer = `color-mix(in srgb, var(--ink) 40%, white)` (≥7:1). Brand-colored TEXT on a light
- *   surface = `var(--primary-text)` — ThemeResolver derives it from the brand seed until it
- *   clears 4.5:1 against --surface (a light brand like An Vinh's amber alone reads ≈2.1:1).
- *   `--primary` stays for fills, borders and text on the dark header/hero/footer.
+ *   surface = `var(--primary-text)` — ThemeResolver darkens the brand seed (hue kept) until it
+ *   clears 4.5:1 against --surface AND the page background below, since breadcrumb and contact
+ *   details sit straight on the page (a light brand like An Vinh's amber alone reads ≈2.1:1).
+ *   `--primary` stays for fills, borders and text on the dark header/hero/footer, where the
+ *   darkened role would read worse.
  *
  * Architecture: BEM (.block__element--modifier), mobile-first, zero JS framework.
  * Target: <15 KB minified. No @import 'tailwindcss' — passed through Vite as plain CSS.
@@ -39,6 +41,7 @@ html {
 
 body {
     margin: 0;
+    /* ThemeResolver::PAGE_SURFACE_SHARE mirrors the 97% — --primary-text is measured on this. */
     background: color-mix(in srgb, var(--surface) 97%, var(--ink));
     color: color-mix(in srgb, var(--ink) 85%, white);
     font-family: var(--font, system-ui, -apple-system, sans-serif);
