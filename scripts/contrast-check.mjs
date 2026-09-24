@@ -325,10 +325,12 @@ const ROWS = [
     { item: 'Viền ô nhập', role: 'Viền ô nhập (input / select / textarea)', fg: '--color-border-input', bgs: [['--color-surface'], ['--color-body']], min: 3 },
 
     // Focus indicators.
-    { item: 'Focus', role: 'Vòng focus — nút', fg: '--color-accent', bgs: [['--color-surface'], ['--color-body']], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — tab', fg: ['--color-accent', 0.3], bg: ['--color-surface'], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — ô nhập', fg: ['--color-accent', 0.2], bg: ['--color-surface'], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — link / mục sidebar', fg: null, none: 'mặc định trình duyệt', bg: ['--vz-vertical-menu-bg'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — nút', fg: '--focus-ring-color', bgs: [['--color-surface'], ['--color-body']], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — tab', fg: '--focus-ring-color', bg: ['--color-surface'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — ô nhập', fg: '--focus-ring-color', bg: ['--color-surface'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — link / mục sidebar', state: { zone: '.admin-sidebar' }, fg: '--focus-ring-color', bg: ['--vz-vertical-menu-bg'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — mục sidebar sáng', state: { zone: '.admin-sidebar', sidebar: 'light' }, fg: '--focus-ring-color', bg: ['--vz-vertical-menu-bg'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — header Customizer (nền navy, theo chữ trắng)', fg: WHITE, bg: ['--color-admin-primary'], min: 3 },
 
     // Sidebar ink (default dark sidebar; the dark scheme swaps in its own sidebar values).
     { item: 'Sidebar', role: 'Sidebar — mục thường', fg: '--vz-vertical-menu-item-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },

@@ -26,7 +26,7 @@
     <div class="flex-1">{{ $slot }}</div>
     @if ($dismissible)
         <button type="button" @click="show = false" aria-label="{{ __('admin.dismiss') }}"
-                class="-m-1 shrink-0 rounded p-1 transition-colors hover:bg-current/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-current">
+                class="-m-1 shrink-0 rounded p-1 transition-colors hover:bg-current/10">
             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
     @endif

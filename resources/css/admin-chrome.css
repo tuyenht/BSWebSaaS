@@ -50,6 +50,15 @@
     --vz-vertical-menu-title-color: rgb(255 255 255 / 0.60);   /* 11px micro-label — 3.9 on #405189 (>=3.0) */
     --vz-vertical-menu-brand-color: #ffffff;                   /* ★ text brand (Velzon swaps logo images instead) */
 
+    /* ---- Focus ring ★ (flip axis: data-bs-theme, through --color-accent) ---
+       One keyboard-focus indicator for the whole admin (app.css :focus-visible): a 2px outline
+       2px off the element, in the accent — navy in light, #96a1c0 in dark. A zone painted in
+       navy or near-black re-points --focus-ring-color to its own ink (see .admin-sidebar). Kept
+       as three parts: a shorthand var would resolve on :root and freeze the root color. */
+    --focus-ring-width: 2px;
+    --focus-ring-offset: 2px;
+    --focus-ring-color: var(--color-accent);
+
     /* ---- Footer (flip axis: data-bs-theme) -------------------------------- */
     --vz-footer-color: var(--color-body-muted);        /* secondary text on the page bg — follows the scheme's muted ink · vz-ref: #98a6ad */
 
@@ -153,6 +162,12 @@
     --vz-vertical-menu-brand-color: #343a40;           /* 11.51 */
 }
 
+/* The sidebar zone rings focus in its active ink — white on the navy, dark and gradient
+   presets, navy on the light one — never the page accent it would sit on. */
+.admin-sidebar {
+    --focus-ring-color: var(--color-sidebar-fg-active);
+}
+
 /* Layout position — 'scrollable' lets the chrome scroll away with the page instead of
    pinning (Velzon data-layout-position). Same DOM, no color involvement: these
    un-layered rules simply beat the layered Tailwind `fixed`/`sticky` utilities on the
@@ -165,6 +180,11 @@
 
     :root[data-layout-position='scrollable'] .admin-topbar {
         position: static;
+    }
+
+    /* A topbar that scrolls away covers nothing: no scroll padding (app.css). */
+    :root[data-layout-position='scrollable'] {
+        scroll-padding-top: 0;
     }
 }
 

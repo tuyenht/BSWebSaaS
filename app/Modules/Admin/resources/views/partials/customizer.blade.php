@@ -26,7 +26,8 @@
              x-transition:enter="transition-transform duration-200" x-transition:enter-start="translate-x-full" x-transition:enter-end="translate-x-0"
              x-transition:leave="transition-transform duration-150" x-transition:leave-start="translate-x-0" x-transition:leave-end="translate-x-full"
              class="fixed inset-y-0 end-0 z-50 flex w-80 max-w-full flex-col bg-surface shadow-card">
-        <header class="flex items-center gap-2 bg-admin-primary px-4 py-3 text-white">
+        {{-- Navy header: focus rings follow its white ink (the page accent is this very navy). --}}
+        <header class="flex items-center gap-2 bg-admin-primary px-4 py-3 text-white [--focus-ring-color:currentColor]">
             <h2 class="text-sm font-semibold">{{ __('admin.customize_theme') }}</h2>
             <button type="button" @click="$store.adminTheme.open = false" aria-label="{{ __('admin.close') }}"
                     class="ms-auto grid size-8 place-items-center rounded transition-colors hover:bg-white/10">
