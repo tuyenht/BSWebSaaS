@@ -69,7 +69,7 @@ it('renders button + badge variants with Velzon-mirrored admin tokens', function
         ->assertSee('bg-admin-primary')      // solid
         ->assertSee('bg-admin-danger')       // danger solid
         ->assertSee('bg-admin-success/10')   // soft (subtle bg)
-        ->assertSee('border-admin-primary'); // outline
+        ->assertSee('border-accent');        // outline (the brand navy as ink goes through the accent role)
 });
 
 it('renders the new presentational primitives (alert, avatar, page-header, pagination)', function (): void {

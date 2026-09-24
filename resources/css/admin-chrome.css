@@ -92,7 +92,7 @@
                                                           narrow for three gray steps */
     --color-placeholder: #98a0ae;                      /* 5.20 on surface (input bg) */
     --color-ink-ghost: #4a5058;                        /* decorative/disabled glyphs — WCAG-exempt, dim on purpose */
-    --color-accent: #96a1c0;                           /* brand-as-text tint · 6.57 body · 5.33 header */
+    --color-accent: #96a1c0;                           /* brand as ink (text/border/ring) · 5.32 surface · 6.57 body · 5.33 header */
 
     /* topbar (light variant under a dark scheme) */
     --vz-header-bg: #292e32;

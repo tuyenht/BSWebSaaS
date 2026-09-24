@@ -72,8 +72,10 @@
     --color-body-faint: #adb5bd;                 /* meta/hint text, timestamps (gray-500) */
     --color-placeholder: #ced4da;                /* input placeholder + disabled glyphs (gray-400) */
     --color-ink-ghost: #e9ebec;                  /* decorative/empty-state glyphs — WCAG-exempt (gray-300) */
-    --color-accent: var(--color-admin-primary);  /* chrome accent as text/ring — a dark
-                                                    scheme remaps THIS, never the brand */
+    /* The brand navy wherever it is INK — text, border, focus ring. A fill under white text keeps
+       --color-admin-primary. The dark scheme remaps THIS (admin-chrome.css), never the brand:
+       #405189 on the dark surface #292e33 reads 1.8:1. */
+    --color-accent: var(--color-admin-primary);
 
     /* Semantic roles — zone adapters. Values single-sourced in admin-chrome.css
        (Velzon-named, runtime-flippable); these lines only mint the utilities. */
