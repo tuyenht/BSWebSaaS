@@ -334,16 +334,17 @@ const ROWS = [
 
     // Sidebar ink (default dark sidebar; the dark scheme swaps in its own sidebar values).
     { item: 'Sidebar', role: 'Sidebar — mục thường', fg: '--vz-vertical-menu-item-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
-    { item: 'Sidebar', role: 'Sidebar — mục đang chọn (chữ)', fg: '--vz-vertical-menu-item-active-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
-    { item: 'Sidebar', role: 'Sidebar — vạch chỉ báo mục đang chọn', fg: null, none: 'chưa có', bg: ['--vz-vertical-menu-bg'], min: 3 },
+    { item: 'Sidebar', role: 'Sidebar — mục đang chọn (chữ trên nền active)', fg: '--vz-vertical-menu-item-active-color', bg: ['--vz-vertical-menu-bg', '--vz-vertical-menu-item-active-bg'], min: 4.5 },
+    { item: 'Sidebar', role: 'Sidebar — vạch chỉ báo mục đang chọn', fg: '--vz-vertical-menu-item-active-color', bgs: [['--vz-vertical-menu-bg'], ['--vz-vertical-menu-bg', '--vz-vertical-menu-item-active-bg']], min: 3 },
     { item: 'Sidebar', role: 'Sidebar sáng — mục thường', state: { sidebar: 'light' }, fg: '--vz-vertical-menu-item-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
     { item: 'Sidebar', role: 'Sidebar sáng — tiêu đề nhóm', state: { sidebar: 'light' }, fg: '--vz-vertical-menu-title-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
-    { item: 'Sidebar', role: 'Sidebar sáng — mục đang chọn (chữ)', state: { sidebar: 'light' }, fg: '--vz-vertical-menu-item-active-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
+    { item: 'Sidebar', role: 'Sidebar sáng — mục đang chọn (chữ trên nền active)', state: { sidebar: 'light' }, fg: '--vz-vertical-menu-item-active-color', bg: ['--vz-vertical-menu-bg', '--vz-vertical-menu-item-active-bg'], min: 4.5 },
+    { item: 'Sidebar', role: 'Sidebar sáng — vạch chỉ báo mục đang chọn', state: { sidebar: 'light' }, fg: '--vz-vertical-menu-item-active-color', bgs: [['--vz-vertical-menu-bg'], ['--vz-vertical-menu-bg', '--vz-vertical-menu-item-active-bg']], min: 3 },
 
     // Gradient sidebars, every point of the band.
     ...['gradient', 'gradient-2', 'gradient-3', 'gradient-4'].flatMap((variant) => [
         { item: 'Sidebar gradient', role: `${variant} — mục thường (mọi điểm của dải)`, state: { sidebar: variant }, fg: '--vz-vertical-menu-item-color', bg: [{ gradient: variant }], min: 4.5 },
-        { item: 'Sidebar gradient', role: `${variant} — mục đang chọn (mọi điểm của dải)`, state: { sidebar: variant }, fg: '--vz-vertical-menu-item-active-color', bg: [{ gradient: variant }], min: 4.5 },
+        { item: 'Sidebar gradient', role: `${variant} — mục đang chọn, chữ trên nền active (mọi điểm của dải)`, state: { sidebar: variant }, fg: '--vz-vertical-menu-item-active-color', bg: [{ gradient: variant }, '--vz-vertical-menu-item-active-bg'], min: 4.5 },
     ]),
 
     // Modal close button (an icon: 3:1).
