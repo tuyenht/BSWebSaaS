@@ -53,11 +53,13 @@ Cạnh được arch test ép (ngoài "Tenancy không dùng module tính năng n
 - **Identity** nằm dưới **Rbac**; **Storefront** độc lập với **Admin**.
 - Module tính năng không chạm thẳng `Tenancy\Models` (dùng bề mặt công khai: trait
   `BelongsToSite`, các lớp `Tenancy\Context` — `Tenancy`, `CurrentSite`, `SiteLocale`,
-  `SiteTime`, `PermalinkConfig`, `SiteDirectory` — và đường ghi `Tenancy\Actions`, vd
-  `ConfigureSiteLocale` bật/tắt ngôn ngữ theo hạn mức gói). Ngoại lệ: shell `Admin` + orchestrator
+  `SiteTime`, `PermalinkConfig`, `SiteDirectory`, `SiteIdentity` — và đường ghi `Tenancy\Actions`,
+  vd `ConfigureSiteLocale` bật/tắt ngôn ngữ theo hạn mức gói). Việc chạy nền quét mọi website đi qua
+  `Tenancy::eachSite()` (vào ngữ cảnh từng site) hoặc `Tenancy::siteIds()` (chỉ lấy id theo keyset,
+  không vào site) — không module nào tự nạp bảng `sites`. Ngoại lệ: shell `Admin` + orchestrator
   `Provisioning` được đọc model registry của Tenancy (vd `ContentSection`). Luật được ép
-  **từng module một**; 8 chỗ đọc thẳng có từ trước khi luật được sửa nằm trong danh sách nợ
-  `$tenancyModelDebt` của `tests/Arch/ModuleBoundariesTest.php` — danh sách chỉ được giảm.
+  **từng module một**; 5 chỗ đọc thẳng có từ trước khi luật được sửa (còn lại sau 24/09) nằm trong
+  danh sách nợ `$tenancyModelDebt` của `tests/Arch/ModuleBoundariesTest.php` — danh sách chỉ được giảm.
 
 ## Hợp đồng đăng ký module
 

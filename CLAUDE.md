@@ -134,7 +134,7 @@ docker compose run --rm --no-deps app php artisan migrate --database=pgsql_admin
 docker compose run --rm --no-deps app vendor/bin/pest
 docker compose run --rm --no-deps app vendor/bin/phpstan analyse --memory-limit=1G   # Larastan max
 docker compose run --rm --no-deps app vendor/bin/pint --test
-docker compose run --rm --no-deps app composer qa        # gộp cả 3: pint --test + phpstan + pest
+docker compose run --rm --no-deps app composer qa        # gộp như CI: pint --test + phpstan + lang:check + pest
 
 # Rector (require-dev): chạy khi owner yêu cầu / refactor lớn — CHƯA enforce tự động:
 docker compose run --rm --no-deps app vendor/bin/rector process --dry-run
