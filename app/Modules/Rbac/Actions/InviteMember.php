@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Invitation;
@@ -28,7 +29,8 @@ use Illuminate\Support\Str;
  *
  *  - `users.invite` + the no-escalation rule: every role strictly below the inviter's level and
  *    within the permissions they hold (RoleHierarchyGuard) — checked again when it is accepted.
- *  - Invitation mail per site is capped at DAILY_LIMIT per rolling 24 hours, and one invitation
+ *  - Invitation MAIL per site is capped at DAILY_LIMIT per rolling 24 hours — every mail counts, a
+ *    re-sent invitation included (one `rbac.invitation.sent` audit row per mail), and one invitation
  *    is not re-mailed within RESEND_COOLDOWN_SECONDS, so the form cannot be used to flood an inbox.
  *  - Concurrent invites for one address are serialized by a transaction-scoped advisory lock, so
  *    the pending-invitation unique index is never hit by a race.
@@ -92,7 +94,7 @@ final readonly class InviteMember
                 throw new InvitationRejectedException('resend_too_soon');
             }
 
-            if (Invitation::query()->where('sent_at', '>=', now()->subDay())->count() >= self::DAILY_LIMIT) {
+            if ($this->mailsSentToday($siteId) >= self::DAILY_LIMIT) {
                 throw new InvitationRejectedException('daily_limit');
             }
 
@@ -123,6 +125,20 @@ final readonly class InviteMember
 
             return new IssuedInvitation($invitation, $token);
         });
+    }
+
+    /**
+     * Invitation mails this site sent in the last 24 hours, new and re-sent alike: counting open
+     * invitations instead would let one address be re-mailed every cooldown, all day. The audit
+     * trail holds one row per mail (not RLS-scoped, hence the explicit site filter).
+     */
+    private function mailsSentToday(int $siteId): int
+    {
+        return AuditLog::query()
+            ->where('site_id', $siteId)
+            ->where('action', 'rbac.invitation.sent')
+            ->where('created_at', '>=', now()->subDay())
+            ->count();
     }
 
     /** Whether the address already holds a role on the current site (team-scoped). */

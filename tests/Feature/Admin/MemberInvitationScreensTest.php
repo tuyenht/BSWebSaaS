@@ -28,7 +28,7 @@ use PragmaRX\Google2FA\Google2FA;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
-    DB::connection('pgsql_admin')->statement('truncate invitations, invitation_roles, users, site_settings, platform_settings restart identity cascade');
+    DB::connection('pgsql_admin')->statement('truncate invitations, invitation_roles, audit_logs, users, site_settings, platform_settings restart identity cascade');
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     fakePwnedVerifier();

@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\Hash;
 beforeEach(function (): void {
     truncateRbac();
     seedTenancy();
-    DB::connection('pgsql_admin')->statement('truncate invitations, invitation_roles, users restart identity cascade');
+    DB::connection('pgsql_admin')->statement('truncate invitations, invitation_roles, audit_logs, users restart identity cascade');
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     fakePwnedVerifier();
@@ -242,13 +242,9 @@ it('caps invitation mail per site per 24 hours', function (): void {
     $owner = invitationMember(1, 'owner');
     $viewer = invitationRole(1, 'viewer');
 
-    app(Tenancy::class)->enter(1, function () use ($viewer): void {
+    app(Tenancy::class)->enter(1, function () use ($owner, $viewer): void {
         for ($i = 0; $i < InviteMember::DAILY_LIMIT; $i++) {
-            $invitation = Invitation::query()->create([
-                'email' => "da-moi-{$i}@example.test", 'token_hash' => hash('sha256', "token-{$i}"),
-                'expires_at' => now()->addDays(7), 'sent_at' => now(),
-            ]);
-            $invitation->roles()->attach($viewer->getKey(), ['site_id' => 1]);
+            app(InviteMember::class)->handle($owner, "da-moi-{$i}@example.test", [$viewer]);
         }
     });
 
@@ -258,4 +254,34 @@ it('caps invitation mail per site per 24 hours', function (): void {
     $this->travel(1)->minutes();
 
     expect(invitationRefusal(fn () => invite(1, $owner, 'them-mot@example.test')))->toBeNull();
+});
+
+it('counts a re-sent invitation toward the daily cap, so one inbox cannot be flooded', function (): void {
+    $owner = invitationMember(1, 'owner');
+    $viewer = invitationRole(1, 'viewer');
+
+    app(Tenancy::class)->enter(1, function () use ($owner, $viewer): void {
+        for ($i = 0; $i < InviteMember::DAILY_LIMIT; $i++) {
+            app(InviteMember::class)->handle($owner, 'cung-mot-nguoi@example.test', [$viewer]);
+            $this->travel(InviteMember::RESEND_COOLDOWN_SECONDS + 1)->seconds();
+        }
+    });
+
+    expect(DB::connection('pgsql_admin')->table('invitations')->count())->toBe(1)
+        ->and(invitationRefusal(fn () => invite(1, $owner, 'cung-mot-nguoi@example.test')))->toBe('daily_limit')
+        ->and(invitationRefusal(fn () => invite(1, $owner, 'nguoi-khac@example.test')))->toBe('daily_limit');
+});
+
+it('keeps each site to its own daily cap', function (): void {
+    $owner = invitationMember(1, 'owner');
+    $viewer = invitationRole(1, 'viewer');
+    $otherOwner = invitationMember(2, 'owner');
+
+    app(Tenancy::class)->enter(1, function () use ($owner, $viewer): void {
+        for ($i = 0; $i < InviteMember::DAILY_LIMIT; $i++) {
+            app(InviteMember::class)->handle($owner, "da-moi-{$i}@example.test", [$viewer]);
+        }
+    });
+
+    expect(invitationRefusal(fn () => invite(2, $otherOwner, 'website-khac@example.test')))->toBeNull();
 });
