@@ -102,6 +102,22 @@ it('loads the official units, then retires what a newer list drops', function ()
     unlink($file);
 });
 
+it('reads the CSV Excel saves: byte-order mark, semicolons, Windows line ends', function (): void {
+    $file = tempnam(sys_get_temp_dir(), 'units');
+    file_put_contents($file, "\xEF\xBB\xBF".implode("\r\n", [
+        'level;code;name;parent_code;valid_from',
+        'province;01;Thành phố Hà Nội;;2025-07-01',
+        'ward;00004;Phường Ba Đình;01;2025-07-01',
+    ])."\r\n");
+
+    $this->artisan('admin-units:import', ['file' => $file])->expectsOutputToContain('Imported 1 provinces and 1 wards')->assertSuccessful();
+
+    expect(Ward::query()->where('code', '00004')->firstOrFail()->name)->toBe('Phường Ba Đình')
+        ->and(Province::query()->where('code', '01')->firstOrFail()->valid_from->toDateString())->toBe('2025-07-01');
+
+    unlink($file);
+});
+
 it('rejects a file whose rows do not match the official layout', function (): void {
     $file = tempnam(sys_get_temp_dir(), 'units');
     file_put_contents($file, "level,code,name,parent_code,valid_from\nward,00004,Phường Ba Đình,,2025-07-01\n");
