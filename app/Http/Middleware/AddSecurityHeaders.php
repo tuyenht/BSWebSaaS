@@ -77,7 +77,8 @@ final class AddSecurityHeaders
      *
      * Origin inventory:
      *   default-src 'self'             – same-origin baseline for everything
-     *   img-src      files.baoson.net  – R2 CDN (media images served via CF Worker)
+     *   img-src      media planes      – the configured media hosts (media.cloudflare.base,
+     *                                    media.imgproxy.base) — config, never a hardcoded brand
      *                data:             – inline SVG data URIs and favicons
      *   style-src    'unsafe-inline'   – Blade renders a <style>:root{} token block;
      *                                    no external stylesheet dependencies
@@ -93,7 +94,7 @@ final class AddSecurityHeaders
     {
         return implode('; ', [
             "default-src 'self'",
-            "img-src 'self' https://files.baoson.net data:",
+            trim("img-src 'self' ".implode(' ', $this->mediaOrigins()).' data:'),
             "style-src 'self' 'unsafe-inline'",
             "script-src 'self' https://challenges.cloudflare.com",
             'frame-src https://www.google.com https://challenges.cloudflare.com',
@@ -101,5 +102,25 @@ final class AddSecurityHeaders
             "base-uri 'self'",
             "form-action 'self'",
         ]);
+    }
+
+    /**
+     * The origins (scheme://host[:port]) the configured media planes serve images from.
+     *
+     * @return list<string>
+     */
+    private function mediaOrigins(): array
+    {
+        $origins = [];
+
+        foreach ([config('media.cloudflare.base'), config('media.imgproxy.base')] as $base) {
+            $parts = is_string($base) ? parse_url($base) : false;
+
+            if (is_array($parts) && isset($parts['scheme'], $parts['host'])) {
+                $origins[] = $parts['scheme'].'://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+            }
+        }
+
+        return array_values(array_unique($origins));
     }
 }

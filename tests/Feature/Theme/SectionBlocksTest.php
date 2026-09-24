@@ -161,6 +161,7 @@ it('omits contact link/iframe markup for empty fields', function (): void {
 });
 
 it('sandboxes the contact map iframe and names it even when the heading is empty', function (): void {
+    app()->setLocale('vi');   // the storefront renders in the page's language
     $html = View::make('theme::sections.contact', ['props' => [
         'heading' => '',   // empty (not null) → title must still carry an accessible name
         'map_embed' => 'https://maps.example/e',

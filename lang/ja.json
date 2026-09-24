@@ -592,5 +592,19 @@
     "notifications.system.storage_near_limit": "メディアライブラリの容量がプランの上限に近づいています。",
     "notifications.mail.two_factor_disabled_subject": "2段階認証がオフになりました",
     "notifications.mail.two_factor_disabled_intro": ":at にアカウントの2段階認証がオフになりました。",
-    "notifications.mail.two_factor_disabled_action": "お心当たりがない場合は、すぐにパスワードを変更し、2段階認証を再度オンにしてください。"
+    "notifications.mail.two_factor_disabled_action": "お心当たりがない場合は、すぐにパスワードを変更し、2段階認証を再度オンにしてください。",
+    "storefront.home": "ホーム",
+    "storefront.nav_main": "メインナビゲーション",
+    "storefront.nav_footer": "ナビゲーション",
+    "storefront.hotline": "電話",
+    "storefront.email": "メール",
+    "storefront.license": "事業登録番号: :number",
+    "storefront.rights": "© :year :name. All rights reserved.",
+    "storefront.rights_unnamed": "© :year. All rights reserved.",
+    "storefront.pagination": "ページ送り",
+    "storefront.prev_page": "← 前へ",
+    "storefront.next_page": "次へ →",
+    "storefront.no_posts": "まだ記事はありません。",
+    "storefront.no_content": "まだコンテンツはありません。",
+    "storefront.map": "地図"
 }

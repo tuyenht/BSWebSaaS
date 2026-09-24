@@ -18,17 +18,17 @@
             </ul>
 
             @if (! empty($pagination['prevUrl']) || ! empty($pagination['nextUrl']))
-                <nav class="pagination" aria-label="Phân trang">
+                <nav class="pagination" aria-label="{{ __('storefront.pagination') }}">
                     @if (! empty($pagination['prevUrl']))
-                        <a class="pagination__prev" rel="prev" href="{{ $pagination['prevUrl'] }}">← Trang trước</a>
+                        <a class="pagination__prev" rel="prev" href="{{ $pagination['prevUrl'] }}">{{ __('storefront.prev_page') }}</a>
                     @endif
                     @if (! empty($pagination['nextUrl']))
-                        <a class="pagination__next" rel="next" href="{{ $pagination['nextUrl'] }}">Trang sau →</a>
+                        <a class="pagination__next" rel="next" href="{{ $pagination['nextUrl'] }}">{{ __('storefront.next_page') }}</a>
                     @endif
                 </nav>
             @endif
         @else
-            <p class="category__empty">Chưa có bài viết nào.</p>
+            <p class="category__empty">{{ __('storefront.no_posts') }}</p>
         @endif
     </main>
     @include('theme::partials.footer', ['menu' => $menu ?? [], 'brand' => $brand ?? null])

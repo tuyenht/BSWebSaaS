@@ -774,5 +774,19 @@
     "notifications.system.storage_near_limit": "Thư viện ảnh & tệp sắp đầy dung lượng của gói.",
     "notifications.mail.two_factor_disabled_subject": "Xác thực 2 lớp đã được tắt",
     "notifications.mail.two_factor_disabled_intro": "Xác thực 2 lớp trên tài khoản của bạn đã được tắt lúc :at.",
-    "notifications.mail.two_factor_disabled_action": "Nếu không phải bạn làm, hãy đổi mật khẩu ngay và bật lại xác thực 2 lớp."
+    "notifications.mail.two_factor_disabled_action": "Nếu không phải bạn làm, hãy đổi mật khẩu ngay và bật lại xác thực 2 lớp.",
+    "storefront.home": "Trang chủ",
+    "storefront.nav_main": "Điều hướng chính",
+    "storefront.nav_footer": "Điều hướng",
+    "storefront.hotline": "Hotline",
+    "storefront.email": "Email",
+    "storefront.license": "GPĐKKD: :number",
+    "storefront.rights": "© :year :name. Bảo lưu mọi quyền.",
+    "storefront.rights_unnamed": "© :year. Bảo lưu mọi quyền.",
+    "storefront.pagination": "Phân trang",
+    "storefront.prev_page": "← Trang trước",
+    "storefront.next_page": "Trang sau →",
+    "storefront.no_posts": "Chưa có bài viết nào.",
+    "storefront.no_content": "Chưa có nội dung.",
+    "storefront.map": "Bản đồ"
 }

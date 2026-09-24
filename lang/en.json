@@ -774,5 +774,19 @@
     "notifications.system.storage_near_limit": "The media library is almost at your plan’s storage limit.",
     "notifications.mail.two_factor_disabled_subject": "Two-step sign-in was turned off",
     "notifications.mail.two_factor_disabled_intro": "Two-step sign-in on your account was turned off at :at.",
-    "notifications.mail.two_factor_disabled_action": "If this was not you, change your password now and turn two-step sign-in back on."
+    "notifications.mail.two_factor_disabled_action": "If this was not you, change your password now and turn two-step sign-in back on.",
+    "storefront.home": "Home",
+    "storefront.nav_main": "Main navigation",
+    "storefront.nav_footer": "Navigation",
+    "storefront.hotline": "Hotline",
+    "storefront.email": "Email",
+    "storefront.license": "Business registration no.: :number",
+    "storefront.rights": "© :year :name. All rights reserved.",
+    "storefront.rights_unnamed": "© :year. All rights reserved.",
+    "storefront.pagination": "Pagination",
+    "storefront.prev_page": "← Previous",
+    "storefront.next_page": "Next →",
+    "storefront.no_posts": "No posts yet.",
+    "storefront.no_content": "Nothing here yet.",
+    "storefront.map": "Map"
 }

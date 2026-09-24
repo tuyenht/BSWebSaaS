@@ -79,6 +79,7 @@ it('renders a category list page with posts + pagination links', function (): vo
 });
 
 it('shows an empty state when a category has no posts', function (): void {
+    app()->setLocale('vi');   // the storefront renders in the page's language
     $html = app(PageRenderer::class)->renderCategory(null, 'Tin tức', []);
 
     expect($html)->toContain('Chưa có bài viết nào.')->not->toContain('class="category__list"');

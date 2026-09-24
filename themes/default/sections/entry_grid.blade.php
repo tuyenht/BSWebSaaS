@@ -37,6 +37,6 @@
             @endforeach
         </ul>
     @else
-        <p class="entry-grid__empty">Chưa có nội dung.</p>
+        <p class="entry-grid__empty">{{ __('storefront.no_content') }}</p>
     @endif
 </section>
