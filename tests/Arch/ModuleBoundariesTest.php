@@ -47,11 +47,8 @@ arch('Tenancy module depends on no feature module')
 $tenancyModelDebt = [
     'App\\Modules\\Catalog\\Support\\CatalogMode',
     'App\\Modules\\Cms\\Routing\\SectionResolver',
-    'App\\Modules\\Cms\\Console\\PublishDueEntries',
-    'App\\Modules\\Cms\\Console\\FlushEntryViews',
     'App\\Modules\\Media\\Actions\\RegisterMediaUpload',
     'App\\Modules\\Media\\Http\\Controllers\\MediaUploadController',
-    'App\\Modules\\Media\\Console\\PurgeTrashedMedia',
     'App\\Modules\\Storefront\\Http\\Controllers\\StorefrontController',
 ];
 

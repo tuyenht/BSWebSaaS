@@ -6,7 +6,6 @@ use App\Modules\Cms\Actions\PublishScheduledEntry;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Models\Site;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -33,39 +32,33 @@ class PublishDueEntries extends Command
         $skipped = 0;
         $failed = 0;
 
-        foreach (Site::query()->get() as $site) {
-            $siteId = $site->getKey();
-            if (! is_int($siteId)) {
-                continue;
-            }
-            $tenancy->enter($siteId, function () use ($publisher, &$published, &$skipped, &$failed): void {
-                $due = Entry::query()
-                    ->where('status', 'scheduled')
-                    ->where('published_at', '<=', now())
-                    ->get();
+        $tenancy->eachSite(function () use ($publisher, &$published, &$skipped, &$failed): void {
+            $due = Entry::query()
+                ->where('status', 'scheduled')
+                ->where('published_at', '<=', now())
+                ->get();
 
-                foreach ($due as $entry) {
-                    try {
-                        $publisher->handle($entry);
-                        $published++;
-                    } catch (WorkflowGovernedException) {
-                        // Scheduled before its section went under an approval flow: only a
-                        // transition may publish it now, so it stays put (visible in the editor
-                        // at the flow's first stage) instead of going live unreviewed.
-                        $skipped++;
-                    } catch (Throwable $e) {
-                        // One entry must never take the sweep down with it. An escaping
-                        // exception would roll back the tenant transaction this loop runs in
-                        // (Tenancy::enter), un-publishing the entries that already went live,
-                        // and abort every site after this one — every minute, forever, because
-                        // the offending entry stays due. A slug that now collides with a live
-                        // page is exactly that: permanent until someone edits it.
-                        report($e);
-                        $failed++;
-                    }
+            foreach ($due as $entry) {
+                try {
+                    $publisher->handle($entry);
+                    $published++;
+                } catch (WorkflowGovernedException) {
+                    // Scheduled before its section went under an approval flow: only a
+                    // transition may publish it now, so it stays put (visible in the editor
+                    // at the flow's first stage) instead of going live unreviewed.
+                    $skipped++;
+                } catch (Throwable $e) {
+                    // One entry must never take the sweep down with it. An escaping
+                    // exception would roll back the tenant transaction this loop runs in
+                    // (Tenancy::enter), un-publishing the entries that already went live,
+                    // and abort every site after this one — every minute, forever, because
+                    // the offending entry stays due. A slug that now collides with a live
+                    // page is exactly that: permanent until someone edits it.
+                    report($e);
+                    $failed++;
                 }
-            });
-        }
+            }
+        });
 
         $this->info("Published {$published} scheduled entr(y/ies), skipped {$skipped} governed by an approval workflow, {$failed} failed.");
 

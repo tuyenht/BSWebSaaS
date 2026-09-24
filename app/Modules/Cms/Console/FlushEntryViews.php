@@ -4,7 +4,6 @@ namespace App\Modules\Cms\Console;
 
 use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Models\Site;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -26,12 +25,9 @@ class FlushEntryViews extends Command
     {
         $flushed = 0;
 
-        foreach (Site::query()->get() as $site) {
-            $siteId = $site->getKey();
-            if (! is_int($siteId)) {
-                continue;
-            }
-
+        // Draining needs no tenant context, and most sites have no buffered views — only the ones
+        // that do pay for a transaction.
+        foreach ($tenancy->siteIds() as $siteId) {
             $counts = $counter->drain($siteId);
             if ($counts === []) {
                 continue;
