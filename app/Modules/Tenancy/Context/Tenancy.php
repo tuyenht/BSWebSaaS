@@ -6,6 +6,7 @@ namespace App\Modules\Tenancy\Context;
 
 use Closure;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\LazyCollection;
 use RuntimeException;
 
 /**
@@ -47,33 +48,48 @@ final readonly class Tenancy
     }
 
     /**
+     * Every site id, in id order, read $chunk at a time by keyset — lazily, so 10,000+ sites never
+     * load at once. No tenant context is entered: for a sweep that can tell from outside whether a
+     * site has anything to do, so only those sites pay for a transaction. eachSite() is the common
+     * case built on it.
+     *
+     * @return LazyCollection<int, int>
+     */
+    public function siteIds(int $chunk = 200): LazyCollection
+    {
+        return LazyCollection::make(function () use ($chunk) {
+            $after = 0;
+
+            do {
+                $ids = $this->db->connection()->table('sites')->where('id', '>', $after)->orderBy('id')->limit($chunk)->pluck('id');
+
+                foreach ($ids as $id) {
+                    if (is_numeric($id)) {
+                        $after = (int) $id;
+
+                        yield $after;
+                    }
+                }
+            } while ($ids->count() === $chunk);
+        });
+    }
+
+    /**
      * Run $callback inside each site's context in turn — the entry point for background work that
      * sweeps every site (retention, cleanup…), so feature modules never walk the site registry
-     * themselves. Sites are read in id order, $chunk at a time (keyset, so 10,000+ sites never load
-     * at once); every call gets its own transaction, exactly like enter(). Returns how many sites
-     * were visited.
+     * themselves. Sites come from siteIds() (keyset, $chunk at a time); every call gets its own
+     * transaction, exactly like enter(). Returns how many sites were visited.
      *
      * @param  Closure(int):mixed  $callback  receives the site id
      */
     public function eachSite(Closure $callback, int $chunk = 200): int
     {
         $visited = 0;
-        $after = 0;
 
-        do {
-            $ids = $this->db->connection()->table('sites')->where('id', '>', $after)->orderBy('id')->limit($chunk)->pluck('id');
-
-            foreach ($ids as $id) {
-                if (! is_numeric($id)) {
-                    continue;
-                }
-
-                $siteId = (int) $id;
-                $this->enter($siteId, fn (): mixed => $callback($siteId));
-                $after = $siteId;
-                $visited++;
-            }
-        } while ($ids->count() === $chunk);
+        foreach ($this->siteIds($chunk) as $siteId) {
+            $this->enter($siteId, fn (): mixed => $callback($siteId));
+            $visited++;
+        }
 
         return $visited;
     }

@@ -4,7 +4,6 @@ namespace App\Modules\Media\Console;
 
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Models\Site;
 use Illuminate\Console\Command;
 
 /**
@@ -32,17 +31,11 @@ class PurgeTrashedMedia extends Command
         $cutoff = now()->subDays($days);
         $purged = 0;
 
-        foreach (Site::query()->get() as $site) {
-            $siteId = $site->getKey();
-            if (! is_int($siteId)) {
-                continue;
-            }
-            $tenancy->enter($siteId, function () use ($cutoff, &$purged): void {
-                $stale = Media::onlyTrashed()->where('deleted_at', '<', $cutoff)->get();
-                $stale->each->forceDelete(); // per-instance → MediaObserver drops attachments + R2 object
-                $purged += $stale->count();
-            });
-        }
+        $tenancy->eachSite(function () use ($cutoff, &$purged): void {
+            $stale = Media::onlyTrashed()->where('deleted_at', '<', $cutoff)->get();
+            $stale->each->forceDelete(); // per-instance → MediaObserver drops attachments + R2 object
+            $purged += $stale->count();
+        });
 
         $this->info("Purged {$purged} trashed media older than {$days} day(s).");
 
