@@ -16,7 +16,7 @@
                 <input type="checkbox" wire:model="videoAutoplay" class="accent-admin-primary">
                 {{ __('catalog.video_autoplay') }}
             </label>
-            <p class="mt-1 text-xs text-body-faint">{{ __('catalog.video_autoplay_hint') }}</p>
+            <p class="mt-1 text-xs text-body-muted">{{ __('catalog.video_autoplay_hint') }}</p>
             <div class="mt-4 flex justify-end">
                 <x-admin::button color="primary" wire:click="insertVideo" wire:loading.attr="disabled">{{ __('catalog.video_insert') }}</x-admin::button>
             </div>

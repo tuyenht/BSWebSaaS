@@ -39,13 +39,13 @@
             <x-admin::card :title="__('catalog.card_gallery')">
                 <div class="space-y-3">
                     @if ($galleryImages === [])
-                        <p class="text-sm text-body-faint">{{ __('catalog.gallery_empty') }}</p>
+                        <p class="text-sm text-body-muted">{{ __('catalog.gallery_empty') }}</p>
                     @else
                         <ul class="grid grid-cols-3 gap-3 sm:grid-cols-4" role="list">
                             @foreach ($galleryImages as $i => $image)
                                 <li wire:key="gallery-{{ $image['id'] }}" class="overflow-hidden rounded border border-border">
                                     @if ($image['missing'])
-                                        <div class="flex aspect-square items-center justify-center bg-surface-muted p-2 text-center text-xs text-body-faint">{{ __('catalog.gallery_missing') }}</div>
+                                        <div class="flex aspect-square items-center justify-center bg-surface-muted p-2 text-center text-xs text-body-muted">{{ __('catalog.gallery_missing') }}</div>
                                     @else
                                         <img src="{{ $image['url'] }}" alt="{{ $image['name'] ?? '' }}" loading="lazy" class="aspect-square w-full object-cover">
                                     @endif
@@ -56,8 +56,8 @@
                                             <span></span>
                                         @endif
                                         <span class="flex items-center">
-                                            <button type="button" wire:click="moveImageUp({{ $i }})" aria-label="{{ __('catalog.gallery_move_up') }}" class="rounded px-1 text-sm text-body-faint hover:bg-surface-hover hover:text-body-text">↑</button>
-                                            <button type="button" wire:click="moveImageDown({{ $i }})" aria-label="{{ __('catalog.gallery_move_down') }}" class="rounded px-1 text-sm text-body-faint hover:bg-surface-hover hover:text-body-text">↓</button>
+                                            <button type="button" wire:click="moveImageUp({{ $i }})" aria-label="{{ __('catalog.gallery_move_up') }}" class="rounded px-1 text-sm text-body-muted hover:bg-surface-hover hover:text-body-text">↑</button>
+                                            <button type="button" wire:click="moveImageDown({{ $i }})" aria-label="{{ __('catalog.gallery_move_down') }}" class="rounded px-1 text-sm text-body-muted hover:bg-surface-hover hover:text-body-text">↓</button>
                                             <button type="button" wire:click="removeImage({{ $i }})" class="rounded px-1 text-sm text-admin-danger-text hover:bg-surface-hover">{{ __('catalog.gallery_remove') }}</button>
                                         </span>
                                     </div>
@@ -69,7 +69,7 @@
                     @can('media.view')
                         <x-admin::button variant="soft" color="primary" wire:click="openImagePicker">{{ __('catalog.gallery_add') }}</x-admin::button>
                     @endcan
-                    <p class="text-sm text-body-faint">{{ __('catalog.gallery_hint') }}</p>
+                    <p class="text-sm text-body-muted">{{ __('catalog.gallery_hint') }}</p>
                     @error('imageMediaIds.*') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                 </div>
             </x-admin::card>
@@ -79,7 +79,7 @@
                     <div x-show="active === 'general'" role="tabpanel" class="space-y-4">
                         <div>
                             <x-admin::input :label="__('catalog.price_label')" name="catalog-price" type="number" min="0" step="1" inputmode="numeric" wire:model="price" />
-                            <p class="mt-1 text-sm text-body-faint">{{ __('catalog.price_hint') }}</p>
+                            <p class="mt-1 text-sm text-body-muted">{{ __('catalog.price_hint') }}</p>
                             @error('price') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                         <div>
@@ -128,7 +128,7 @@
 
             <x-admin::card :title="__('catalog.summary_label')">
                 <x-admin::rich-editor target="summary" profile="basic" :value="$summary" rows="4" />
-                <p class="mt-2 text-sm text-body-faint">{{ __('catalog.summary_hint') }}</p>
+                <p class="mt-2 text-sm text-body-muted">{{ __('catalog.summary_hint') }}</p>
                 @error('summary') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
             </x-admin::card>
 

@@ -45,7 +45,7 @@
     <form wire:submit="save" class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <div class="border-b border-border px-5 py-3">
             <h2 class="text-[15px] font-semibold text-body-text">{{ __('admin.email_settings') }}</h2>
-            <p class="mt-0.5 text-xs text-body-faint">{{ __('admin.email_settings_desc') }}</p>
+            <p class="mt-0.5 text-xs text-body-muted">{{ __('admin.email_settings_desc') }}</p>
         </div>
         <div class="space-y-5 p-5">
             @if ($scope !== 'platform')
@@ -78,7 +78,7 @@
                         <x-admin::input :label="__('admin.smtp_password')" type="password" wire:model="smtpPassword" autocomplete="new-password"
                                         :placeholder="$smtpPasswordSet ? __('admin.secret_stored') : ''" />
                         @if ($smtpPasswordSet)
-                            <p class="mt-1 text-xs text-body-faint">{{ __('admin.leave_blank_keep') }}</p>
+                            <p class="mt-1 text-xs text-body-muted">{{ __('admin.leave_blank_keep') }}</p>
                         @endif
                     </div>
                 </div>
@@ -98,7 +98,7 @@
                         <x-admin::input :label="__('admin.client_secret')" type="password" wire:model="oauthClientSecret" autocomplete="new-password"
                                         :placeholder="$oauthSecretSet ? __('admin.secret_stored') : ''" />
                         @if ($oauthSecretSet)
-                            <p class="mt-1 text-xs text-body-faint">{{ __('admin.leave_blank_keep') }}</p>
+                            <p class="mt-1 text-xs text-body-muted">{{ __('admin.leave_blank_keep') }}</p>
                         @endif
                     </div>
                 </div>
@@ -123,7 +123,7 @@
                             <span x-show="!copied">{{ __('admin.copy') }}</span><span x-show="copied" x-cloak>{{ __('admin.copied') }}</span>
                         </x-admin::button>
                     </div>
-                    <p class="text-xs text-body-faint">{{ __('admin.oauth_redirect_uri_shared') }}</p>
+                    <p class="text-xs text-body-muted">{{ __('admin.oauth_redirect_uri_shared') }}</p>
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3 rounded border border-border bg-surface-muted px-4 py-3">
@@ -148,7 +148,7 @@
                 @if ($scope !== 'platform')
                     <div class="sm:col-span-2">
                         <x-admin::input :label="__('admin.reply_to')" type="email" wire:model="replyTo" placeholder="lienhe@congty-cua-ban.com" />
-                        <p class="mt-1 text-xs text-body-faint">{{ __('admin.reply_to_hint') }}</p>
+                        <p class="mt-1 text-xs text-body-muted">{{ __('admin.reply_to_hint') }}</p>
                     </div>
                 @endif
             </div>

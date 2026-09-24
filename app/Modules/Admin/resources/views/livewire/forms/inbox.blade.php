@@ -1,7 +1,7 @@
 <div>
     <div class="mb-4">
         <h1 class="text-lg font-semibold text-heading">{{ __('forms.inbox_title') }}</h1>
-        <p class="mt-1 text-sm text-body-faint">{{ __('forms.inbox_subtitle') }}</p>
+        <p class="mt-1 text-sm text-body-muted">{{ __('forms.inbox_subtitle') }}</p>
     </div>
 
     {{-- Status filter --}}

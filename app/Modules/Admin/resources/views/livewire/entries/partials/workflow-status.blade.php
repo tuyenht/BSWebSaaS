@@ -180,7 +180,7 @@
         </x-slot:header>
 
         @if ($trail === [])
-            <p class="text-sm leading-relaxed text-body-faint">{{ __('admin.wfb.trail_empty') }}</p>
+            <p class="text-sm leading-relaxed text-body-muted">{{ __('admin.wfb.trail_empty') }}</p>
         @else
             <ol class="space-y-0">
                 @foreach ($trail as $row)
@@ -230,7 +230,7 @@
                         <x-admin::icon name="ri-alert" class="mt-0.5 size-4 shrink-0" />
                         <span>{{ $workflow['is_live'] && ! $action['to_published'] ? __('admin.wfb.modal_retract') : __('admin.wfb.modal_return', ['label' => $action['to_label']]) }}</span>
                     </p>
-                    <p class="text-[12.5px] leading-relaxed text-body-faint">{{ __('admin.wfb.modal_hint') }}</p>
+                    <p class="text-[12.5px] leading-relaxed text-body-muted">{{ __('admin.wfb.modal_hint') }}</p>
                     @error('workflow') <p class="text-xs font-semibold text-[#c0432c]">{{ $message }}</p> @enderror
                     <div class="flex flex-col gap-1.5">
                         <label class="text-xs font-semibold text-body-text" for="wf-note-{{ $action['key'] }}">{{ __('admin.wfb.note_label') }} <span class="text-admin-danger-text">*</span></label>

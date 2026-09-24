@@ -54,7 +54,7 @@
                         <td>
                             <span class="block font-medium text-body-text">{{ $translation?->name ?? __('catalog.untitled') }}</span>
                             @if ($product->sku !== null)
-                                <span class="text-xs text-body-faint">SKU: {{ $product->sku }}</span>
+                                <span class="text-xs text-body-muted">SKU: {{ $product->sku }}</span>
                             @endif
                         </td>
                         <td>{{ $categoryName ?? '—' }}</td>
@@ -62,7 +62,7 @@
                         <td>
                             <x-admin::badge soft :color="$statusColor[$product->status] ?? 'secondary'">{{ __('catalog.status_'.$product->status) }}</x-admin::badge>
                         </td>
-                        <td class="whitespace-nowrap text-body-faint">{{ $product->updated_at?->locale(app()->getLocale())->diffForHumans() }}</td>
+                        <td class="whitespace-nowrap text-body-muted">{{ $product->updated_at?->locale(app()->getLocale())->diffForHumans() }}</td>
                         <td class="whitespace-nowrap text-right">
                             @if ($canManage)
                                 @if ($showTrash)
@@ -77,7 +77,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="py-10 text-center text-body-faint">
+                        <td colspan="7" class="py-10 text-center text-body-muted">
                             {{ $showTrash ? __('catalog.trash_empty') : (trim($search) !== '' ? __('catalog.search_empty') : __('catalog.empty')) }}
                             @if (! $showTrash && trim($search) === '' && $canManage)
                                 <div class="mt-4">

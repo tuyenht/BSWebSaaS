@@ -7,7 +7,7 @@
     <div class="flex items-center justify-between border-b border-border px-4 py-[13px]">
         <span class="text-[13px] font-semibold text-heading">{{ __('media.picker_detail_title') }}</span>
         <button type="button" wire:click="closePickerDetail" title="{{ __('media.picker_cancel') }}"
-                class="flex size-[26px] items-center justify-center rounded-md text-body-faint hover:text-body-text">
+                class="flex size-[26px] items-center justify-center rounded-md text-body-muted hover:text-body-text">
             <x-admin::icon name="ri-close" class="size-4" />
         </button>
     </div>
@@ -32,24 +32,24 @@
 
         <div class="flex flex-col gap-[9px]">
             <div class="flex justify-between text-[12.5px]">
-                <span class="text-body-faint">{{ __('media.picker_detail_dims') }}</span>
+                <span class="text-body-muted">{{ __('media.picker_detail_dims') }}</span>
                 <span class="text-body-text">{{ $d->width !== null ? $d->width.' × '.$d->height.' px' : '—' }}</span>
             </div>
             <div class="flex justify-between text-[12.5px]">
-                <span class="text-body-faint">{{ __('media.picker_detail_size') }}</span>
+                <span class="text-body-muted">{{ __('media.picker_detail_size') }}</span>
                 <span class="text-body-text">{{ number_format($d->size / 1048576, 1) }} MB</span>
             </div>
             <div class="flex justify-between text-[12.5px]">
-                <span class="text-body-faint">{{ __('media.picker_detail_format') }}</span>
+                <span class="text-body-muted">{{ __('media.picker_detail_format') }}</span>
                 <span class="uppercase text-body-text">{{ $d->extLabel() }}</span>
             </div>
             <div class="flex justify-between gap-3 text-[12.5px]">
-                <span class="shrink-0 text-body-faint">{{ __('media.picker_detail_folder') }}</span>
+                <span class="shrink-0 text-body-muted">{{ __('media.picker_detail_folder') }}</span>
                 <span class="truncate text-body-text">{{ $d->folder?->name ?? __('media.picker_all_images') }}</span>
             </div>
             @if (($mp['detailUploader'] ?? null) !== null)
                 <div class="flex justify-between gap-3 text-[12.5px]">
-                    <span class="shrink-0 text-body-faint">{{ __('media.picker_detail_uploader') }}</span>
+                    <span class="shrink-0 text-body-muted">{{ __('media.picker_detail_uploader') }}</span>
                     <span class="truncate text-body-text">{{ $mp['detailUploader'] }}</span>
                 </div>
             @endif
@@ -61,7 +61,7 @@
             <div class="mb-1.5 text-[11px] font-semibold uppercase tracking-[.03em] text-body-muted">{{ __('media.picker_detail_used_in') }}</div>
             @php($usages = $mp['detailUsages'] ?? [])
             @if ($usages === [])
-                <p class="rounded-lg bg-surface-hover px-3 py-2 text-[12.5px] text-body-faint">{{ __('media.picker_detail_unused') }}</p>
+                <p class="rounded-lg bg-surface-hover px-3 py-2 text-[12.5px] text-body-muted">{{ __('media.picker_detail_unused') }}</p>
             @else
                 <p class="mb-2 text-[12px] text-body-muted">{{ __('media.picker_detail_used_count', ['count' => count($usages)]) }}</p>
                 {{-- Grouped by role — the owner asked to distinguish cover / gallery / content, not just

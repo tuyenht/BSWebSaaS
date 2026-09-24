@@ -8,19 +8,19 @@
         <h1 class="text-lg font-semibold text-heading">{{ $site->name }}</h1>
         <dl class="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div>
-                <dt class="text-body-faint">{{ __('admin.status') }}</dt>
+                <dt class="text-body-muted">{{ __('admin.status') }}</dt>
                 <dd class="font-medium text-heading">{{ $site->status ? __('admin.status_'.$site->status) : '—' }}</dd>
             </div>
             <div>
-                <dt class="text-body-faint">{{ __('admin.tenant') }}</dt>
+                <dt class="text-body-muted">{{ __('admin.tenant') }}</dt>
                 <dd class="font-medium text-heading">{{ $site->tenant?->name ?? '—' }}</dd>
             </div>
             <div>
-                <dt class="text-body-faint">{{ __('admin.site_type') }}</dt>
+                <dt class="text-body-muted">{{ __('admin.site_type') }}</dt>
                 <dd class="font-medium text-heading">{{ $site->siteType?->key ?? '—' }}</dd>
             </div>
             <div>
-                <dt class="text-body-faint">ULID</dt>
+                <dt class="text-body-muted">ULID</dt>
                 <dd class="font-mono text-xs text-body-text">{{ $site->ulid }}</dd>
             </div>
         </dl>

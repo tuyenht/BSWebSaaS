@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div>
-        <h1 class="text-xl font-semibold text-heading">Component Gallery <span class="text-sm font-normal text-body-faint">(dev-only)</span></h1>
-        <p class="mt-1 text-sm text-body-faint">Primitive admin dựng lại từ Velzon (design source) bằng Tailwind 4 + token <code class="fs-13">--color-admin-*</code> — duyệt fidelity tại đây.</p>
+        <h1 class="text-xl font-semibold text-heading">Component Gallery <span class="text-sm font-normal text-body-muted">(dev-only)</span></h1>
+        <p class="mt-1 text-sm text-body-muted">Primitive admin dựng lại từ Velzon (design source) bằng Tailwind 4 + token <code class="fs-13">--color-admin-*</code> — duyệt fidelity tại đây.</p>
     </div>
 
     {{-- Buttons --}}
@@ -37,17 +37,17 @@
     <div class="grid gap-4 md:grid-cols-3">
         <x-admin::card>
             <h5 class="mb-1 text-[1rem] font-semibold text-body-text">Basic card</h5>
-            <p class="text-sm text-body-faint">Body-only — shadow-card + border + radius (mirror Velzon .card).</p>
+            <p class="text-sm text-body-muted">Body-only — shadow-card + border + radius (mirror Velzon .card).</p>
         </x-admin::card>
         <x-admin::card title="Card có title">
-            <p class="text-sm text-body-faint">Header border-bottom, title 16px.</p>
+            <p class="text-sm text-body-muted">Header border-bottom, title 16px.</p>
         </x-admin::card>
         <x-admin::card>
             <x-slot:header>
                 <h5 class="text-[1rem] font-semibold text-body-text">Header slot</h5>
                 <x-admin::button size="sm" variant="soft" color="primary">Action</x-admin::button>
             </x-slot:header>
-            <p class="text-sm text-body-faint">Header có action bên phải.</p>
+            <p class="text-sm text-body-muted">Header có action bên phải.</p>
         </x-admin::card>
     </div>
 
@@ -140,7 +140,7 @@
 
     {{-- Card + footer --}}
     <x-admin::card title="Card + footer">
-        <p class="text-sm text-body-faint">Thân card. Footer có border-top + action.</p>
+        <p class="text-sm text-body-muted">Thân card. Footer có border-top + action.</p>
         <x-slot:footer>
             <div class="flex justify-end">
                 <x-admin::button size="sm" variant="soft" color="primary">Lưu</x-admin::button>

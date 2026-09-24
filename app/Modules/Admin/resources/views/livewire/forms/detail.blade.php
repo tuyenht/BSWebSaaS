@@ -12,7 +12,7 @@
         <div class="mb-4 flex items-start justify-between gap-3">
             <div>
                 <h1 class="text-lg font-semibold text-heading">{{ $submission->name ?: __('forms.lead_title') }}</h1>
-                <p class="mt-1 text-sm text-body-faint">
+                <p class="mt-1 text-sm text-body-muted">
                     {{ $submission->created_at?->format('d/m/Y H:i') ?? '—' }}
                 </p>
             </div>
@@ -29,7 +29,7 @@
             @foreach ($submission->data as $key => $value)
                 @if (is_scalar($value) && (string) $value !== '')
                     <div @class(['sm:col-span-2' => $key === 'message'])>
-                        <dt class="text-body-faint">{{ $key }}</dt>
+                        <dt class="text-body-muted">{{ $key }}</dt>
                         <dd class="whitespace-pre-line font-medium text-heading">{{ $value }}</dd>
                     </div>
                 @endif

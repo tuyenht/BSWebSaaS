@@ -22,7 +22,7 @@
                     </div>
                     <div class="flex flex-col gap-px">
                         <span class="text-[15.5px] font-semibold leading-tight text-heading">{{ __('media.picker_title') }}</span>
-                        <span class="text-xs text-body-faint">{{ __('media.picker_subtitle') }}</span>
+                        <span class="text-xs text-body-muted">{{ __('media.picker_subtitle') }}</span>
                     </div>
                 </div>
                 <button type="button" wire:click="closeImagePicker" title="{{ __('admin.dismiss') }}"
@@ -35,12 +35,12 @@
             <div class="flex shrink-0 gap-6 overflow-x-auto border-b border-border-strong bg-surface px-5">
                 <button type="button" wire:click="setPickerTab('upload')"
                         class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-1 py-3 text-[13.5px] {{ $pickerTab === 'upload' ? 'font-semibold text-admin-primary shadow-[inset_0_-2.5px_0_var(--color-admin-primary)]' : 'font-medium text-body-muted' }}">
-                    <x-admin::icon name="ri-upload-2" class="size-4 {{ $pickerTab === 'upload' ? 'text-admin-primary' : 'text-body-faint' }}" />
+                    <x-admin::icon name="ri-upload-2" class="size-4 {{ $pickerTab === 'upload' ? 'text-admin-primary' : 'text-body-muted' }}" />
                     {{ __('media.picker_tab_upload') }}
                 </button>
                 <button type="button" wire:click="setPickerTab('library')"
                         class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-1 py-3 text-[13.5px] {{ $pickerTab === 'library' ? 'font-semibold text-admin-primary shadow-[inset_0_-2.5px_0_var(--color-admin-primary)]' : 'font-medium text-body-muted' }}">
-                    <x-admin::icon name="ri-image-2" class="size-4 {{ $pickerTab === 'library' ? 'text-admin-primary' : 'text-body-faint' }}" />
+                    <x-admin::icon name="ri-image-2" class="size-4 {{ $pickerTab === 'library' ? 'text-admin-primary' : 'text-body-muted' }}" />
                     {{ __('media.picker_tab_library') }}
                     <span class="rounded-[10px] px-[7px] py-px text-[10.5px] font-semibold {{ $pickerTab === 'library' ? 'bg-admin-primary/8 text-admin-primary' : 'bg-surface-hover text-body-muted' }}">{{ $mp['total'] }}</span>
                 </button>
@@ -72,7 +72,7 @@
             @php($pickCount = $urlPick ? 1 : count($pickerSelected))
             @if ($pickerTab === 'library' && $pickerTrash)
                 <div class="flex shrink-0 items-center gap-3.5 border-t border-border bg-surface px-[18px] py-3">
-                    <span class="min-w-0 flex-1 text-[12.5px] text-body-faint">{{ __('media.picker_trash_footer_hint') }}</span>
+                    <span class="min-w-0 flex-1 text-[12.5px] text-body-muted">{{ __('media.picker_trash_footer_hint') }}</span>
                     <button type="button" wire:click="closeImagePicker"
                             class="shrink-0 rounded-lg border border-border-strong bg-surface px-4 py-[9px] text-[13px] font-medium text-body-text">{{ __('media.picker_cancel') }}</button>
                 </div>
@@ -98,7 +98,7 @@
                         <span class="text-[12.5px] text-body-muted">{{ __('media.picker_footer_selected', ['count' => count($pickerSelected)]) }}</span>
                     </div>
                 @else
-                    <span class="min-w-0 flex-1 text-[12.5px] text-body-faint">{{ __('media.picker_footer_hint') }}</span>
+                    <span class="min-w-0 flex-1 text-[12.5px] text-body-muted">{{ __('media.picker_footer_hint') }}</span>
                 @endif
                 <button type="button" wire:click="closeImagePicker"
                         class="shrink-0 rounded-lg border border-border-strong bg-surface px-4 py-[9px] text-[13px] font-medium text-body-text">{{ __('media.picker_cancel') }}</button>

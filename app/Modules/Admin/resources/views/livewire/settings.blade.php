@@ -52,7 +52,7 @@
             @elseif ($tfaQr)
                 <p class="text-sm text-body-muted">{{ __('admin.scan_qr') }}</p>
                 <div class="inline-block rounded border border-border bg-surface p-3">{!! $tfaQr !!}</div>
-                <p class="text-xs text-body-faint">{{ __('admin.or_enter_key') }}: <span class="select-all font-mono text-body-text">{{ $tfaSecret }}</span></p>
+                <p class="text-xs text-body-muted">{{ __('admin.or_enter_key') }}: <span class="select-all font-mono text-body-text">{{ $tfaSecret }}</span></p>
                 <form wire:submit="confirmTwoFactor" class="flex flex-col gap-2 sm:flex-row sm:items-start">
                     <div>
                         <input type="text" wire:model="tfaCode" inputmode="numeric" autocomplete="one-time-code" autofocus placeholder="000000"
@@ -88,7 +88,7 @@
                     <div>
                         <p class="text-sm font-medium text-body-text">{{ $label }}</p>
                         @if ($connected->has($key))
-                            <p class="text-xs text-body-faint">{{ __('admin.oauth_connected_as', ['email' => $connected[$key] ?: '—']) }}</p>
+                            <p class="text-xs text-body-muted">{{ __('admin.oauth_connected_as', ['email' => $connected[$key] ?: '—']) }}</p>
                         @else
                             <p class="text-xs text-placeholder">{{ __('admin.oauth_not_connected') }}</p>
                         @endif
