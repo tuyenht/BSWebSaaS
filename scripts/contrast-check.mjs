@@ -348,7 +348,7 @@ const ROWS = [
     ]),
 
     // Modal close button (an icon: 3:1).
-    { item: 'Modal', role: 'Modal — nút đóng (icon)', fg: '--color-placeholder', bg: ['--color-surface'], min: 3 },
+    { item: 'Modal', role: 'Modal — nút đóng (icon)', fg: '--color-body-muted', bg: ['--color-surface'], min: 3 },
 
     // Watch-list — reported, never failing the run.
     { item: 'Theo dõi', role: 'Nút secondary solid — chữ trắng', fg: WHITE, bg: ['--color-admin-secondary'], min: 4.5 },
