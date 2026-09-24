@@ -93,6 +93,10 @@
     --color-placeholder: #98a0ae;                      /* 5.20 on surface (input bg) */
     --color-ink-ghost: #4a5058;                        /* decorative/disabled glyphs — WCAG-exempt, dim on purpose */
     --color-accent: #96a1c0;                           /* brand as ink (text/border/ring) · 5.32 surface · 6.57 body · 5.33 header */
+    --color-admin-success-text: #0db49d;               /* semantic ink, lightened: >=4.5 on surface, body and the 10% soft tints */
+    --color-admin-info-text: #39a8e8;
+    --color-admin-warning-text: var(--color-admin-warning); /* the fill itself reads 6.28+ here */
+    --color-admin-danger-text: #ff7355;
 
     /* topbar (light variant under a dark scheme) */
     --vz-header-bg: #292e32;
