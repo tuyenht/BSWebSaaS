@@ -17,8 +17,8 @@
                     :tabindex="active === @js($key) ? 0 : -1"
                     @click="active = @js($key)"
                     @keydown.right.prevent="move(1)" @keydown.left.prevent="move(-1)"
-                    :class="active === @js($key) ? 'border-admin-primary text-admin-primary' : 'border-transparent text-body-faint hover:text-body-text'"
-                    class="-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-admin-primary/30">
+                    :class="active === @js($key) ? 'border-accent text-accent' : 'border-transparent text-body-faint hover:text-body-text'"
+                    class="-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30">
                 {{ $label }}
             </button>
         @endforeach

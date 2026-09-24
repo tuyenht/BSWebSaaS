@@ -9,7 +9,7 @@
     // is Livewire-bundled) — transient, so a wire:navigate morph resetting it (re-showing) is
     // acceptable for a page-level alert.
     $subtle = [
-        'primary' => 'bg-admin-primary/10 text-admin-primary',
+        'primary' => 'bg-admin-primary/10 text-accent',
         'success' => 'bg-admin-success/10 text-admin-success',
         'info' => 'bg-admin-info/10 text-admin-info',
         'warning' => 'bg-admin-warning/10 text-admin-warning',

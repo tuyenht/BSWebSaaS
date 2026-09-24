@@ -295,10 +295,10 @@ const both = ['light', 'dark'];
 // no token-driven color yet (it counts as failing until one exists).
 const ROWS = [
     // The brand navy as text, border or ring in the dark scheme.
-    { item: 'Primary làm chữ/viền', role: 'Nút outline/ghost primary — chữ + viền', fg: '--color-admin-primary', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Primary làm chữ/viền', role: 'Nút soft primary — chữ', fg: '--color-admin-primary', bg: ['--color-surface', ['--color-admin-primary', 0.1]], min: 4.5 },
-    { item: 'Primary làm chữ/viền', role: 'Tab đang chọn — chữ + gạch chân', fg: '--color-admin-primary', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Primary làm chữ/viền', role: 'Ô nhập — viền khi focus', fg: '--color-admin-primary', bg: ['--color-surface'], min: 3 },
+    { item: 'Primary làm chữ/viền', role: 'Nút outline/ghost primary — chữ + viền', fg: '--color-accent', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Primary làm chữ/viền', role: 'Nút soft primary — chữ', fg: '--color-accent', bg: ['--color-surface', ['--color-admin-primary', 0.1]], min: 4.5 },
+    { item: 'Primary làm chữ/viền', role: 'Tab đang chọn — chữ + gạch chân', fg: '--color-accent', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Primary làm chữ/viền', role: 'Ô nhập — viền khi focus', fg: '--color-accent', bg: ['--color-surface'], min: 3 },
 
     // Secondary text.
     { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên thẻ', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
@@ -324,9 +324,9 @@ const ROWS = [
     { item: 'Viền ô nhập', role: 'Viền ô nhập (input / select / textarea)', fg: '--color-border-strong', bgs: [['--color-surface'], ['--color-body']], min: 3 },
 
     // Focus indicators.
-    { item: 'Focus', role: 'Vòng focus — nút', fg: '--color-admin-primary', bgs: [['--color-surface'], ['--color-body']], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — tab', fg: ['--color-admin-primary', 0.3], bg: ['--color-surface'], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — ô nhập', fg: ['--color-admin-primary', 0.2], bg: ['--color-surface'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — nút', fg: '--color-accent', bgs: [['--color-surface'], ['--color-body']], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — tab', fg: ['--color-accent', 0.3], bg: ['--color-surface'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — ô nhập', fg: ['--color-accent', 0.2], bg: ['--color-surface'], min: 3 },
     { item: 'Focus', role: 'Vòng focus — link / mục sidebar', fg: null, none: 'mặc định trình duyệt', bg: ['--vz-vertical-menu-bg'], min: 3 },
 
     // Sidebar ink (default dark sidebar; the dark scheme swaps in its own sidebar values).

@@ -19,7 +19,7 @@
     ];
 
     $subtle = [
-        'primary' => 'bg-admin-primary/10 text-admin-primary',
+        'primary' => 'bg-admin-primary/10 text-accent',
         'secondary' => 'bg-admin-secondary/10 text-admin-secondary',
         'success' => 'bg-admin-success/10 text-admin-success',
         'info' => 'bg-admin-info/10 text-admin-info',
