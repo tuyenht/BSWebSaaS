@@ -42,11 +42,11 @@
        Default dark sidebar = Velzon variant-one $blue. Deliberately DECOUPLED from
        the brand primary (#405189), which stays on buttons/links via --color-admin-primary. */
     --vz-vertical-menu-bg: #405189;                            /* navy — matches the Velzon reference default sidebar; equals the brand primary; white text 7.6 clears AA with room */
-    --vz-vertical-menu-item-color: #abb9e8;                    /* Velzon dark $dark-vertical-menu-item-color — a muted periwinkle resting so the white hover/active clearly pops (a hue jump, not just lightness). 3.9 on #405189: a reduced-emphasis nav affordance; its interactive state is white = 6.1. */
+    --vz-vertical-menu-item-color: rgb(255 255 255 / 0.85);   /* 6.05 on #405189 · vz-ref: #abb9e8 = 3.93 FAIL. The current page is told apart by more than color: white ink + the active bg + an inset bar (layouts/app.blade.php) + aria-current. */
     --vz-vertical-menu-item-hover-color: #ffffff;
     --vz-vertical-menu-item-active-color: #ffffff;
     --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.10); /* ★ also the brand-initials chip · vz-ref item-bg: rgba(#fff,.15) */
-    --vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15);
+    --vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15); /* current-page row · white on it 5.38 */
     --vz-vertical-menu-title-color: rgb(255 255 255 / 0.60);   /* 11px micro-label — 3.9 on #405189 (>=3.0) */
     --vz-vertical-menu-brand-color: #ffffff;                   /* ★ text brand (Velzon swaps logo images instead) */
 
@@ -158,7 +158,7 @@
     --vz-vertical-menu-item-active-color: var(--color-admin-primary);
     --vz-vertical-menu-item-hover-bg: rgb(64 81 137 / 0.10);
     --vz-vertical-menu-item-active-bg: rgb(64 81 137 / 0.15);
-    --vz-vertical-menu-title-color: #8a92a0;           /* 3.13 ≥3 · vz-ref: #919da9 = 2.76 FAIL */
+    --vz-vertical-menu-title-color: #6c6f80;           /* 4.97 — group titles are text, like the items · vz-ref: #919da9 = 2.76 FAIL */
     --vz-vertical-menu-brand-color: #343a40;           /* 11.51 */
 }
 

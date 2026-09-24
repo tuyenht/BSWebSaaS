@@ -43,6 +43,10 @@
             // Accordion: exactly ONE group open at a time = the active page's group (server-
             // resolved), re-synced after each wire:navigate via the morph-updated data-active-group.
             $activeGroup = collect($navItems)->first(fn ($i) => $i->hasChildren() && $i->active)?->key ?? '';
+            // The current page's row (and its group's, so the collapsed rail still shows it): white
+            // ink, the active fill and an inset bar on the left — told apart by shape, not only by
+            // color, now that resting items are white/.85. Links also carry aria-current="page".
+            $currentRow = 'text-sidebar-fg-active bg-sidebar-active shadow-[inset_3px_0_0_var(--color-sidebar-fg-active)]';
         @endphp
         <nav class="flex-1 overflow-y-auto px-3 py-3"
              x-data="{ openGroup: @js($activeGroup), t: null }"
@@ -67,7 +71,7 @@
                                         :class="openGroup === '{{ $item->key }}' && 'text-sidebar-fg-active'"
                                         @class([
                                             'group flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
-                                            'text-sidebar-fg-active' => $item->active,
+                                            $currentRow => $item->active,
                                         ])>
                                     <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                     <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
@@ -81,10 +85,10 @@
                                 <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-0.5 ps-4">
                                     @foreach ($item->children as $child)
                                         <li>
-                                            <a href="{{ $child->url }}" wire:navigate
+                                            <a href="{{ $child->url }}" wire:navigate @if ($child->active) aria-current="page" @endif
                                                @class([
                                                    'flex items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:text-sidebar-fg-hover',
-                                                   'text-sidebar-fg-active' => $child->active,
+                                                   $currentRow => $child->active,
                                                ])>
                                                 <span class="h-[1.5px] w-1.5 shrink-0 rounded-full bg-current opacity-60"></span>
                                                 <span class="sidebar-label">{{ $child->label }}</span>
@@ -94,10 +98,10 @@
                                 </ul>
                             </div>
                         @else
-                            <a href="{{ $item->url }}" wire:navigate aria-label="{{ $item->label }}"
+                            <a href="{{ $item->url }}" wire:navigate aria-label="{{ $item->label }}" @if ($item->active) aria-current="page" @endif
                                @class([
                                    'group flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
-                                   'text-sidebar-fg-active' => $item->active,
+                                   $currentRow => $item->active,
                                ])>
                                 <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                 <span class="sidebar-label">{{ $item->label }}</span>
