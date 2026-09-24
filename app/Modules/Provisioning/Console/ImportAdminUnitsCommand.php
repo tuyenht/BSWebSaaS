@@ -20,6 +20,9 @@ use RuntimeException;
  *  - code: the official unit code; a ward's `parent_code` is its province's code;
  *  - valid_from: the date the list takes effect (Y-m-d).
  *
+ * The file may come straight from Excel: a UTF-8 byte-order mark, Windows line ends and the `;`
+ * separator Excel uses under Vietnamese regional settings are all accepted.
+ *
  * Upserts by the official code, so re-running with a newer list renames and adds units. With
  * --retire-missing, a unit absent from the file gets valid_to = today instead of being deleted:
  * site profiles may still point at it. One transaction — a bad row rolls the whole file back.
@@ -89,7 +92,13 @@ final class ImportAdminUnitsCommand extends Command
             return null;
         }
 
-        $header = fgetcsv($handle, escape: '');
+        // Excel's "CSV UTF-8" starts with a byte-order mark, and under Vietnamese regional settings
+        // it separates fields with ';' — read the header line raw to settle both.
+        $first = fgets($handle);
+        $first = is_string($first) ? (string) preg_replace('/^\xEF\xBB\xBF/', '', rtrim($first, "\r\n")) : '';
+        $separator = str_contains($first, ';') && ! str_contains($first, ',') ? ';' : ',';
+        $header = array_map(fn (?string $cell): string => trim((string) $cell), str_getcsv($first, separator: $separator, escape: ''));
+
         if ($header !== ['level', 'code', 'name', 'parent_code', 'valid_from']) {
             fclose($handle);
             $this->error('Expected the header: level,code,name,parent_code,valid_from');
@@ -99,7 +108,7 @@ final class ImportAdminUnitsCommand extends Command
 
         $rows = [];
         $line = 1;
-        while (($fields = fgetcsv($handle, escape: '')) !== false) {
+        while (($fields = fgetcsv($handle, separator: $separator, escape: '')) !== false) {
             $line++;
             if ($fields === [null]) {
                 continue;   // blank line
