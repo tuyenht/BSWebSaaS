@@ -10,10 +10,10 @@
     // acceptable for a page-level alert.
     $subtle = [
         'primary' => 'bg-admin-primary/10 text-accent',
-        'success' => 'bg-admin-success/10 text-admin-success',
-        'info' => 'bg-admin-info/10 text-admin-info',
-        'warning' => 'bg-admin-warning/10 text-admin-warning',
-        'danger' => 'bg-admin-danger/10 text-admin-danger',
+        'success' => 'bg-admin-success/10 text-admin-success-text',
+        'info' => 'bg-admin-info/10 text-admin-info-text',
+        'warning' => 'bg-admin-warning/10 text-admin-warning-text',
+        'danger' => 'bg-admin-danger/10 text-admin-danger-text',
     ];
     $tone = $subtle[$color] ?? $subtle['info'];
 @endphp
@@ -26,7 +26,7 @@
     <div class="flex-1">{{ $slot }}</div>
     @if ($dismissible)
         <button type="button" @click="show = false" aria-label="{{ __('admin.dismiss') }}"
-                class="-m-1 shrink-0 rounded p-1 opacity-70 transition-opacity hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-current">
+                class="-m-1 shrink-0 rounded p-1 transition-colors hover:bg-current/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-current">
             <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
         </button>
     @endif

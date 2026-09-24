@@ -35,6 +35,20 @@
     --color-admin-light: #f3f6f9;
     --color-admin-dark: #212529;
 
+    /* Semantic tiers — the same hue and chroma (OKLCH), lightness moved until the pair clears
+       WCAG AA. The base colors above stay for tints, icons and borders.
+       *-solid: the fill under white text (>=4.5:1), in both schemes.
+       *-text: the hue as text and in the soft style (>=4.5:1 on white, the page background and
+       their 10% soft tints); the dark scheme remaps it to a lighter step (admin-chrome.css).
+       Warning keeps its fill and takes dark text (#212529) instead of a darker solid. */
+    --color-admin-success-solid: #038573;
+    --color-admin-info-solid: #057db6;
+    --color-admin-danger-solid: #d0472b;
+    --color-admin-success-text: #047767;
+    --color-admin-info-text: #026fa2;
+    --color-admin-warning-text: #906405;
+    --color-admin-danger-text: #bf371a;
+
     /* Velzon gray scale (neutral). */
     --color-gray-100: #f3f6f9;
     --color-gray-200: #eff2f7;

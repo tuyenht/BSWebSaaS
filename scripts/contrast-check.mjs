@@ -312,13 +312,14 @@ const ROWS = [
 
     // Semantic colors.
     ...['success', 'info', 'warning', 'danger'].flatMap((hue) => [
-        { item: 'Màu ngữ nghĩa', role: `${hue} — chữ (thẻ / nền trang)`, fg: `--color-admin-${hue}`, bgs: [['--color-surface'], ['--color-body']], min: 4.5 },
-        { item: 'Màu ngữ nghĩa', role: `${hue} — kiểu soft (badge / alert / nút)`, fg: `--color-admin-${hue}`, bgs: [['--color-surface', [`--color-admin-${hue}`, 0.1]], ['--color-body', [`--color-admin-${hue}`, 0.1]]], min: 4.5 },
+        { item: 'Màu ngữ nghĩa', role: `${hue} — chữ (thẻ / nền trang)`, fg: `--color-admin-${hue}-text`, bgs: [['--color-surface'], ['--color-body']], min: 4.5 },
+        { item: 'Màu ngữ nghĩa', role: `${hue} — kiểu soft (badge / alert / nút; chữ + viền outline)`, fg: `--color-admin-${hue}-text`, bgs: [['--color-surface', [`--color-admin-${hue}`, 0.1]], ['--color-body', [`--color-admin-${hue}`, 0.1]]], min: 4.5 },
+        { item: 'Màu ngữ nghĩa', role: `${hue} — alert: nút đóng (icon)`, fg: `--color-admin-${hue}-text`, bgs: [['--color-surface', [`--color-admin-${hue}`, 0.1]], ['--color-body', [`--color-admin-${hue}`, 0.1]]], min: 3 },
     ]),
     ...['success', 'info', 'danger'].map((hue) => (
-        { item: 'Màu ngữ nghĩa', role: `${hue} solid — chữ trắng`, fg: WHITE, bg: [`--color-admin-${hue}`], min: 4.5 }
+        { item: 'Màu ngữ nghĩa', role: `${hue} solid — chữ trắng (nút, badge${hue === 'danger' ? ', số đếm sidebar' : ''})`, fg: WHITE, bg: [`--color-admin-${hue}-solid`], min: 4.5 }
     )),
-    { item: 'Màu ngữ nghĩa', role: 'warning solid — chữ', fg: WHITE, bg: ['--color-admin-warning'], min: 4.5 },
+    { item: 'Màu ngữ nghĩa', role: 'warning solid — chữ (nút, badge)', fg: '--color-admin-dark', bg: ['--color-admin-warning'], min: 4.5 },
 
     // The input's own boundary, against its fill and against the page around it.
     { item: 'Viền ô nhập', role: 'Viền ô nhập (input / select / textarea)', fg: '--color-border-strong', bgs: [['--color-surface'], ['--color-body']], min: 3 },
