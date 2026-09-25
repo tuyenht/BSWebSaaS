@@ -94,7 +94,9 @@ Interactive scope shipped BEYOND the original four axes; recorded so this ADR ma
   initials fallback), sized to the Velzon reference (**48px full / 22px collapsed mark**) and centered. The
   default dark sidebar is decoupled from the brand primary (#405189) to variant-one blue, then **darkened
   #3577f1 → #286ef0** so white 14px menu text clears WCAG AA (4.59; #3577f1 capped at 4.15). Opt-in gradient
-  sidebars stay grandfathered. AA is gated by `scripts/admin_aa_contrast.py`.
+  sidebars stay grandfathered. AA is gated by `scripts/contrast-check.mjs` (token values, both schemes) +
+  the admin-view guard tests + `scripts/admin-preview/axe.mjs` (structural WCAG in CI); the earlier
+  `scripts/admin_aa_contrast.py` was retired (P1.7).
 - **Velzon-parity topbar chrome:** a shared `partials/topbar-tools` (language switcher with real flag images ·
   fullscreen · light/dark quick-toggle that reuses the Customizer's scheme axis + `adminTheme` store ·
   notifications **placeholder — no fake badge**, GĐ1 has no notification system) plus `partials/topbar-user`
@@ -102,6 +104,27 @@ Interactive scope shipped BEYOND the original four axes; recorded so this ADR ma
   own-account security since no profile route exists). Both planes reuse the partials; the platform console
   omits tenant account links. Primary-role label = `Str::headline()` of the highest-`level` role (no display
   map exists), resolved once per request in the layout view composer.
+
+---
+
+## Admin AA — colour, contrast & focus (P1.7 closeout)
+- **Gate** (three layers): `scripts/contrast-check.mjs` measures every admin token pair (text ≥ 4.5,
+  border/ring/icon ≥ 3) across light/dark × sidebar (dark/light/gradient 1–4) × topbar (light/dark),
+  plus the storefront brand text and placeholder; the admin-view guard tests forbid raw semantic ink,
+  navy-as-ink, faint-as-text and focus rings < 3:1 in the templates; `scripts/admin-preview/axe.mjs`
+  gates structural WCAG 2A/2AA (labels, names, roles) in CI. Colour is contrast-check's job; structure
+  is axe's. Known naming/label debt sits in `scripts/admin-preview/axe-allowlist.json`.
+- **Roles**: navy used as ink/border/ring is the `accent` role (flips to #96a1c0 in dark); the semantic
+  hues carry `-text`/`-solid` tiers, and secondary + neutral-`dark` gained the same; `--primary-on-ink`
+  makes brand text readable on the dark surface (footer/hero/sub-menu) — the companion to
+  `--primary-text` (light surface).
+- **Placeholder convention**: a placeholder holds only an EXAMPLE value and uses `--color-placeholder`
+  (= muted, ≥ 4.5:1); real instructions go in a hint line UNDER the field, never in the placeholder.
+- **Dev login link (`admin:login-link`)**: DECIDED — **not built** (deferred). The "see the admin"
+  need for a reviewer/agent is met by the no-login render tool (`tests/Tools/RenderAdminPreviewTest.php`
+  + `scripts/admin-preview/*` — dev-only, binds 127.0.0.1, no route/cron/service); humans use the normal
+  email + 2FA login. Revisit only if 2FA friction becomes real, and then via a trusted-device option,
+  not a bypass route (the `/admin/scan-access` incident).
 
 ---
 
