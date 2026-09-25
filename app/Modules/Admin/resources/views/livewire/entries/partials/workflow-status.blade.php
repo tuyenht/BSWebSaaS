@@ -39,7 +39,7 @@
     <x-admin::card>
         <x-slot:header>
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                <x-admin::icon name="ri-flow-chart" class="size-4 text-admin-primary" />
+                <x-admin::icon name="ri-flow-chart" class="size-4 text-accent" />
                 <span class="text-sm font-semibold text-heading">{{ __('admin.wfb.title') }}</span>
                 @if ($workflow['is_live'])
                     <span class="inline-flex h-[22px] items-center gap-1 rounded-full bg-admin-success/10 px-2.5 text-[10.5px] font-bold text-[#0a6d60]">
@@ -47,7 +47,7 @@
                     </span>
                 @endif
                 @if ($workflow['assignee'] !== null)
-                    <span class="ml-auto inline-flex h-[22px] items-center gap-1 rounded-full bg-admin-primary/10 px-2.5 text-[10.5px] font-bold text-admin-primary">
+                    <span class="ml-auto inline-flex h-[22px] items-center gap-1 rounded-full bg-admin-primary/10 px-2.5 text-[10.5px] font-bold text-accent">
                         <x-admin::icon name="ri-user-follow" class="size-3" />{{ __('admin.wfb.assigned_to', ['name' => $workflow['assignee']]) }}
                     </span>
                 @endif
@@ -57,7 +57,7 @@
         <div class="space-y-3.5">
             {{-- Step headline --}}
             <div class="flex flex-wrap items-baseline gap-2">
-                <span class="inline-flex items-center gap-1 text-[12.5px] font-bold text-admin-primary">
+                <span class="inline-flex items-center gap-1 text-[12.5px] font-bold text-accent">
                     <x-admin::icon :name="$stepIcon($current)" class="size-3.5" />
                     {{ __('admin.wfb.step_of', ['n' => $workflow['current']['index'] + 1, 'total' => $stepCount, 'label' => $workflow['current']['label']]) }}
                 </span>
@@ -80,7 +80,7 @@
                             <span @class([
                                 'inline-flex size-[26px] shrink-0 items-center justify-center rounded-full border-2 text-[13px]',
                                 'border-admin-primary bg-admin-primary text-white' => $done,
-                                'border-admin-primary bg-surface text-admin-primary shadow-[0_0_0_4px_rgba(64,81,137,.14)]' => $cur && ! $pub,
+                                'border-accent bg-surface text-accent shadow-[0_0_0_4px_rgba(64,81,137,.14)]' => $cur && ! $pub,
                                 'border-admin-success-text bg-surface text-[#0a6d60] shadow-[0_0_0_4px_rgba(10,179,156,.16)]' => $cur && $pub,
                                 'border-admin-success/45 bg-surface text-[#0a6d60]' => ! $done && ! $cur && $pub,
                                 'border-border bg-surface text-body-muted' => ! $done && ! $cur && ! $pub,
@@ -91,7 +91,7 @@
                         </span>
                         <span @class([
                             'px-1 text-center text-[11.5px] leading-snug text-pretty',
-                            'font-bold text-admin-primary' => $cur && ! $pub,
+                            'font-bold text-accent' => $cur && ! $pub,
                             'font-bold text-[#0a6d60]' => $cur && $pub,
                             'text-body-text' => $done,
                             'text-body-muted' => ! $done && ! $cur,
@@ -190,7 +190,7 @@
                         $when = \Carbon\CarbonImmutable::parse($row['at'])->locale(app()->getLocale())->diffForHumans();
                     @endphp
                     <li class="relative flex gap-3 pb-3.5 {{ ! $loop->last ? 'before:absolute before:bottom-0 before:left-[14px] before:top-8 before:w-px before:bg-border-soft' : '' }}" wire:key="wf-log-{{ $row['id'] }}">
-                        <span class="inline-flex size-[30px] shrink-0 items-center justify-center rounded-full bg-admin-primary/10 text-[11.5px] font-bold text-admin-primary">{{ $initial }}</span>
+                        <span class="inline-flex size-[30px] shrink-0 items-center justify-center rounded-full bg-admin-primary/10 text-[11.5px] font-bold text-accent">{{ $initial }}</span>
                         <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                             <p class="flex flex-wrap items-baseline gap-x-2">
                                 <span class="text-[13px] font-semibold text-heading">{{ $who }}</span>
@@ -236,7 +236,7 @@
                         <label class="text-xs font-semibold text-body-text" for="wf-note-{{ $action['key'] }}">{{ __('admin.wfb.note_label') }} <span class="text-admin-danger-text">*</span></label>
                         <textarea id="wf-note-{{ $action['key'] }}" x-model="note" x-on:input="bad = false" rows="4"
                                   class="w-full rounded border px-3 py-2.5 text-[13px] text-body-text"
-                                  :class="bad ? 'border-admin-danger-text ring-[3px] ring-admin-danger/15' : 'border-border focus:border-admin-primary'"
+                                  :class="bad ? 'border-admin-danger-text ring-[3px] ring-admin-danger/15' : 'border-border focus:border-accent'"
                                   placeholder="{{ __('admin.wfb.note_placeholder') }}"></textarea>
                         <p x-cloak x-show="bad" class="flex items-center gap-1.5 text-xs font-semibold text-[#c0432c]">
                             <x-admin::icon name="ri-error-warning" class="size-3.5" />{{ __('admin.wfb.note_missing') }}
@@ -245,7 +245,7 @@
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="text-xs font-semibold text-body-text" for="wf-who-{{ $action['key'] }}">{{ __('admin.wfb.assign_label') }} <span class="font-normal text-body-muted">{{ __('admin.wfb.assign_optional') }}</span></label>
-                        <select id="wf-who-{{ $action['key'] }}" wire:model="assignTo" class="min-h-[38px] w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-admin-primary">
+                        <select id="wf-who-{{ $action['key'] }}" wire:model="assignTo" class="min-h-[38px] w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-accent">
                             <option value="">{{ __('admin.wfb.assign_none') }}</option>
                             @foreach ($action['members'] as $member)
                                 <option value="{{ $member['id'] }}">{{ $member['name'] }}</option>

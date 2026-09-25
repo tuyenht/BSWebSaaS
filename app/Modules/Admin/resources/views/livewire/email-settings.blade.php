@@ -67,7 +67,7 @@
                     <x-admin::input :label="__('admin.smtp_port')" type="number" wire:model="smtpPort" placeholder="587" />
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.smtp_encryption') }}</label>
-                        <select wire:model="smtpEncryption" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-admin-primary">
+                        <select wire:model="smtpEncryption" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-accent">
                             <option value="tls">{{ __('admin.encryption_tls') }}</option>
                             <option value="ssl">{{ __('admin.encryption_ssl') }}</option>
                             <option value="null">{{ __('admin.encryption_none') }}</option>
@@ -86,7 +86,7 @@
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.email_provider') }}</label>
-                        <select wire:model.live="oauthProvider" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-admin-primary">
+                        <select wire:model.live="oauthProvider" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-accent">
                             <option value="google">Google</option>
                             <option value="microsoft">Microsoft</option>
                             <option value="yahoo">Yahoo</option>
@@ -106,7 +106,7 @@
                 {{-- Setup guide (provider console link reflects the selected provider) --}}
                 <div class="space-y-2 rounded border border-admin-info/30 bg-admin-info/5 p-4 text-sm">
                     <p class="font-semibold text-body-text">{{ __('admin.oauth_setup_guide') }}
-                        <a href="{{ config('oauth.providers.'.$oauthProvider.'.console_url') }}" target="_blank" rel="noopener noreferrer" class="ms-1 font-medium text-admin-primary hover:underline">{{ __('admin.oauth_open_console', ['provider' => ucfirst($oauthProvider)]) }} ↗</a>
+                        <a href="{{ config('oauth.providers.'.$oauthProvider.'.console_url') }}" target="_blank" rel="noopener noreferrer" class="ms-1 font-medium text-accent hover:underline">{{ __('admin.oauth_open_console', ['provider' => ucfirst($oauthProvider)]) }} ↗</a>
                     </p>
                     <ol class="list-decimal space-y-1 pl-5 text-body-muted">
                         <li>{{ __('admin.oauth_guide_step1') }}</li>

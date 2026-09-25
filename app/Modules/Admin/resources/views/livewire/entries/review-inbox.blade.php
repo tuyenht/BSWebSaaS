@@ -18,7 +18,7 @@
         @foreach ([['queue', 'ri-inbox-archive', $queueCount], ['mine', 'ri-user-follow', $mineCount]] as [$key, $icon, $count])
             <button type="button" wire:click="setTab('{{ $key }}')" @class([
                 'inline-flex items-center gap-2 rounded border px-3.5 py-2 text-sm font-medium transition-colors',
-                'border-admin-primary bg-admin-primary/5 text-admin-primary' => $tab === $key,
+                'border-accent bg-admin-primary/5 text-accent' => $tab === $key,
                 'border-border text-body-muted hover:border-border-strong' => $tab !== $key,
             ])>
                 <x-admin::icon :name="$icon" class="size-4" />
@@ -44,13 +44,13 @@
 
             {{-- Search + type filter --}}
             <div class="mb-3 flex flex-col gap-2">
-                <label class="flex items-center gap-2 rounded border border-border px-2.5 focus-within:border-admin-primary focus-within:ring-[3px] focus-within:ring-admin-primary/20">
+                <label class="flex items-center gap-2 rounded border border-border px-2.5 focus-within:border-accent focus-within:ring-[3px] focus-within:ring-admin-primary/20">
                     <x-admin::icon name="ri-search" class="size-4 shrink-0 text-body-muted" />
                     <input type="search" wire:model.live.debounce.300ms="search" class="min-h-9 w-full border-0 bg-transparent p-0 text-[13px] text-body-text"
                            placeholder="{{ __('admin.inbox.search_placeholder') }}" aria-label="{{ __('admin.inbox.search_placeholder') }}">
                 </label>
                 @if (count($sections) > 1)
-                    <select wire:model.live="sectionFilter" class="min-h-9 w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-admin-primary">
+                    <select wire:model.live="sectionFilter" class="min-h-9 w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-accent">
                         <option value="">{{ __('admin.inbox.all_types') }}</option>
                         @foreach ($sections as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -75,7 +75,7 @@
                         <li wire:key="inbox-{{ $row['ulid'] }}">
                             <button type="button" wire:click="open(@js($row['ulid']))" @class([
                                 'flex w-full gap-2.5 px-4 py-3 text-left transition-colors hover:bg-surface-hover',
-                                'border-l-2 border-admin-primary bg-admin-primary/5' => $row['current'],
+                                'border-l-2 border-accent bg-admin-primary/5' => $row['current'],
                                 'border-l-2 border-transparent' => ! $row['current'],
                             ])>
                                 <span class="flex min-w-0 flex-1 flex-col gap-1">
@@ -113,7 +113,7 @@
             <x-admin::card class="hidden lg:block">
                 <div class="flex flex-col items-center gap-3 px-6 py-10 text-center">
                     <span class="flex size-13 items-center justify-center rounded-full bg-admin-primary/10">
-                        <x-admin::icon name="ri-file-list-3" class="size-6 text-admin-primary" />
+                        <x-admin::icon name="ri-file-list-3" class="size-6 text-accent" />
                     </span>
                     <p class="text-[15px] font-semibold text-heading">{{ __('admin.inbox.pick_title') }}</p>
                     <p class="max-w-[420px] text-[13px] leading-relaxed text-body-muted">{{ __('admin.inbox.pick_body') }}</p>
@@ -136,7 +136,7 @@
                 <div class="space-y-4">
                     {{-- Who sent it --}}
                     <div class="flex flex-wrap items-center gap-2.5">
-                        <span class="inline-flex size-8 items-center justify-center rounded-full bg-admin-primary/10 text-[12px] font-bold text-admin-primary">
+                        <span class="inline-flex size-8 items-center justify-center rounded-full bg-admin-primary/10 text-[12px] font-bold text-accent">
                             {{ mb_strtoupper(mb_substr(\Illuminate\Support\Str::of($reader['author'])->trim()->afterLast(' '), 0, 1)) }}
                         </span>
                         <span class="flex flex-col">
@@ -147,7 +147,7 @@
 
                     {{-- Stage --}}
                     <div class="space-y-2">
-                        <p class="text-[12.5px] font-bold text-admin-primary">
+                        <p class="text-[12.5px] font-bold text-accent">
                             {{ __('admin.wfb.step_of', ['n' => $reader['step_no'], 'total' => $reader['step_count'], 'label' => $reader['step_label']]) }}
                             <span class="font-normal text-body-muted">· {{ $reader['workflow'] }}</span>
                         </p>
@@ -156,7 +156,7 @@
                                 <li @class([
                                     'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px]',
                                     'border-admin-primary bg-admin-primary text-white' => $step['state'] === 'done',
-                                    'border-admin-primary font-bold text-admin-primary' => $step['state'] === 'current' && ! $step['is_published'],
+                                    'border-accent font-bold text-accent' => $step['state'] === 'current' && ! $step['is_published'],
                                     'border-admin-success-text font-bold text-[#0a6d60]' => $step['state'] === 'current' && $step['is_published'],
                                     'border-border text-body-muted' => $step['state'] === 'todo',
                                 ])>{{ $step['label'] }}</li>
@@ -225,7 +225,7 @@
                                 <label class="block">
                                     <span class="mb-1 block text-xs font-semibold text-body-text">{{ __('admin.wfb.note_label') }}</span>
                                     <textarea wire:model="note" rows="2"
-                                              class="w-full rounded border border-border px-3 py-2 text-[13px] text-body-text focus:border-admin-primary"
+                                              class="w-full rounded border border-border px-3 py-2 text-[13px] text-body-text focus:border-accent"
                                               placeholder="{{ __('admin.wfb.note_placeholder') }}"></textarea>
                                     @error('note') <span class="mt-1 block text-xs font-semibold text-[#c0432c]">{{ $message }}</span> @enderror
                                 </label>

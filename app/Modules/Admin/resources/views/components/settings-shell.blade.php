@@ -58,7 +58,7 @@
                         <a href="{{ route($item['route']) }}" wire:navigate
                            @class([
                                'shrink-0 whitespace-nowrap rounded px-3 py-2 text-sm font-medium transition-colors',
-                               'bg-admin-primary/10 text-admin-primary' => $active === $item['key'],
+                               'bg-admin-primary/10 text-accent' => $active === $item['key'],
                                'text-body-muted hover:bg-surface-hover' => $active !== $item['key'],
                            ])>{{ $item['label'] }}</a>
                     @endforeach

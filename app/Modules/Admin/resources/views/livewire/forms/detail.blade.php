@@ -1,7 +1,7 @@
 <div class="mx-auto max-w-3xl">
     <div class="mb-4">
         <a href="{{ route('admin.forms.index') }}" wire:navigate
-           class="text-sm font-medium text-admin-primary transition-colors hover:underline">&larr; {{ __('forms.back_to_inbox') }}</a>
+           class="text-sm font-medium text-accent transition-colors hover:underline">&larr; {{ __('forms.back_to_inbox') }}</a>
     </div>
 
     @if (session('status'))

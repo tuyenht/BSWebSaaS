@@ -16,7 +16,7 @@
     $initial = mb_strtoupper(mb_substr(trim((string) $name) !== '' ? trim((string) $name) : 'U', 0, 1));
 @endphp
 <span role="img" aria-label="{{ $name }}"
-      {{ $attributes->merge(['class' => 'relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-admin-primary/10 font-semibold text-admin-primary '.$box]) }}>
+      {{ $attributes->merge(['class' => 'relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-admin-primary/10 font-semibold text-accent '.$box]) }}>
     <span aria-hidden="true">{{ $initial }}</span>
     @if ($src)
         <img src="{{ $src }}" alt="" class="absolute inset-0 size-full object-cover" onerror="this.remove()">

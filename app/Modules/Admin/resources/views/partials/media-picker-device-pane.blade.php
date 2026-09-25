@@ -28,9 +28,9 @@
      data-error-label="{{ __('media.picker_device_error') }}">
 
     <div data-drop
-         class="flex cursor-pointer flex-col items-center gap-3.5 rounded-[14px] border-2 border-dashed border-placeholder bg-surface-muted px-6 py-10 text-center transition-colors hover:border-admin-primary">
+         class="flex cursor-pointer flex-col items-center gap-3.5 rounded-[14px] border-2 border-dashed border-placeholder bg-surface-muted px-6 py-10 text-center transition-colors hover:border-accent">
         <div class="flex size-16 items-center justify-center rounded-full bg-admin-primary/8">
-            <x-admin::icon name="ri-upload-cloud-2" class="size-[30px] text-admin-primary" />
+            <x-admin::icon name="ri-upload-cloud-2" class="size-[30px] text-accent" />
         </div>
         <div>
             <div class="text-base font-semibold text-heading">{{ __('media.picker_drop_title') }}</div>

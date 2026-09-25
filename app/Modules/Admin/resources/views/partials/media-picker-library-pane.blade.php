@@ -15,17 +15,17 @@
     <div class="hidden w-[184px] shrink-0 flex-col gap-0.5 overflow-auto border-r border-border p-[14px_10px] min-[640px]:flex">
         <div class="px-2 pb-1.5 pt-0.5 text-[11px] font-semibold uppercase tracking-[.05em] text-body-muted">{{ __('media.picker_folders') }}</div>
         <button type="button" wire:click="setPickerFolder(null)"
-                class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerFolderId === null ? 'bg-admin-primary/8 font-semibold text-admin-primary' : 'font-medium text-body-text hover:bg-surface-hover' }}">
+                class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerFolderId === null ? 'bg-admin-primary/8 font-semibold text-accent' : 'font-medium text-body-text hover:bg-surface-hover' }}">
             <x-admin::icon name="ri-stack" class="size-[15px] shrink-0" />
             <span class="flex-1 truncate">{{ __('media.picker_all_images') }}</span>
-            <span class="text-[11px] {{ $pickerFolderId === null ? 'text-admin-primary' : 'text-body-muted' }}">{{ $mp['total'] }}</span>
+            <span class="text-[11px] {{ $pickerFolderId === null ? 'text-accent' : 'text-body-muted' }}">{{ $mp['total'] }}</span>
         </button>
         @foreach ($mp['folders'] as $folder)
             <button type="button" wire:key="mp-folder-{{ $folder->id }}" wire:click="setPickerFolder({{ $folder->id }})"
-                    class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerFolderId === $folder->id ? 'bg-admin-primary/8 font-semibold text-admin-primary' : 'font-medium text-body-text hover:bg-surface-hover' }}">
+                    class="flex w-full items-center gap-2 rounded-[7px] px-[9px] py-[7px] text-left text-[13px] {{ $pickerFolderId === $folder->id ? 'bg-admin-primary/8 font-semibold text-accent' : 'font-medium text-body-text hover:bg-surface-hover' }}">
                 <x-admin::icon name="ri-folder-3" class="size-[15px] shrink-0" />
                 <span class="flex-1 truncate">{{ $folder->name }}</span>
-                <span class="text-[11px] {{ $pickerFolderId === $folder->id ? 'text-admin-primary' : 'text-body-muted' }}">{{ $folder->media_count }}</span>
+                <span class="text-[11px] {{ $pickerFolderId === $folder->id ? 'text-accent' : 'text-body-muted' }}">{{ $folder->media_count }}</span>
             </button>
         @endforeach
         @can('media.upload')
@@ -33,7 +33,7 @@
                 <div class="mt-1.5 flex flex-col gap-2 rounded-[9px] border border-border-strong bg-surface p-2.5">
                     <input type="text" wire:model.live.debounce.300ms="pickerNewFolderName" wire:keydown.enter="createPickerFolder"
                            placeholder="{{ __('media.picker_folder_name_placeholder') }}" x-init="$el.focus()"
-                           class="block w-full rounded-[7px] border border-border-strong bg-surface px-2 py-1.5 text-[12.5px] text-body-text placeholder:text-placeholder focus:border-admin-primary">
+                           class="block w-full rounded-[7px] border border-border-strong bg-surface px-2 py-1.5 text-[12.5px] text-body-text placeholder:text-placeholder focus:border-accent">
                     @error('pickerNewFolderName') <p class="text-[11px] text-admin-danger-text">{{ $message }}</p> @enderror
 
                     {{-- Slug preview /{slug}; the pencil opens it for hand-editing (freezes auto-derive). --}}
@@ -42,14 +42,14 @@
                             <x-admin::icon name="ri-link" class="size-3 shrink-0 text-body-muted" />
                             <span class="text-body-muted">/</span>
                             <input type="text" wire:model.live="pickerNewFolderSlug"
-                                   class="min-w-0 flex-1 rounded border border-border-strong bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-admin-primary focus:border-admin-primary">
+                                   class="min-w-0 flex-1 rounded border border-border-strong bg-surface px-1.5 py-0.5 text-[11px] font-semibold text-accent focus:border-accent">
                         </div>
                     @elseif ($pickerNewFolderSlug !== '')
                         <div class="flex min-w-0 items-center gap-1.5 text-[11px] text-body-muted">
                             <x-admin::icon name="ri-link" class="size-3 shrink-0" />
-                            <span class="truncate font-semibold text-admin-primary">/{{ $pickerNewFolderSlug }}</span>
+                            <span class="truncate font-semibold text-accent">/{{ $pickerNewFolderSlug }}</span>
                             <button type="button" wire:click="editPickerFolderSlug" title="{{ __('media.picker_folder_slug_edit') }}"
-                                    class="shrink-0 text-body-muted hover:text-admin-primary">
+                                    class="shrink-0 text-body-muted hover:text-accent">
                                 <x-admin::icon name="ri-pencil" class="size-3" />
                             </button>
                         </div>
@@ -67,7 +67,7 @@
                 </div>
             @else
                 <button type="button" wire:click="$set('pickerNewFolderOpen', true)"
-                        class="mt-1.5 flex w-full items-center gap-2 rounded-[7px] border border-dashed border-placeholder bg-transparent px-[9px] py-2 text-[12.5px] text-body-muted hover:border-admin-primary hover:text-admin-primary">
+                        class="mt-1.5 flex w-full items-center gap-2 rounded-[7px] border border-dashed border-placeholder bg-transparent px-[9px] py-2 text-[12.5px] text-body-muted hover:border-accent hover:text-accent">
                     <x-admin::icon name="ri-add" class="size-[15px]" />{{ __('media.picker_new_folder') }}
                 </button>
             @endif
@@ -104,7 +104,7 @@
             <div class="relative min-w-[150px] flex-1">
                 <x-admin::icon name="ri-search" class="absolute left-[11px] top-1/2 size-[15px] -translate-y-1/2 text-body-muted" />
                 <input type="search" wire:model.live.debounce.250ms="pickerSearch" placeholder="{{ __('media.picker_search_placeholder') }}"
-                       class="block w-full rounded-lg border border-border-strong bg-surface py-2 pl-[34px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-admin-primary">
+                       class="block w-full rounded-lg border border-border-strong bg-surface py-2 pl-[34px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-accent">
             </div>
             @unless ($pickerTrash)
                 <select wire:model.live="pickerSort" class="cursor-pointer rounded-lg border border-border-strong bg-surface px-2.5 py-2 text-[12.5px] text-body-text" aria-label="{{ __('media.picker_sort_label') }}">
@@ -155,7 +155,7 @@
         {{-- Bulk-selection bar. Trash mode swaps Move/Delete for Restore/Delete-permanently. --}}
         @if ($pickerSelected !== [])
             <div class="flex shrink-0 items-center gap-2.5 border-b border-border {{ $pickerTrash ? 'bg-admin-danger/4' : 'bg-admin-primary/4' }} px-4 py-[9px]">
-                <span class="text-[12.5px] font-semibold {{ $pickerTrash ? 'text-admin-danger-text' : 'text-admin-primary' }}">{{ __('media.picker_selected_count', ['count' => count($pickerSelected)]) }}</span>
+                <span class="text-[12.5px] font-semibold {{ $pickerTrash ? 'text-admin-danger-text' : 'text-accent' }}">{{ __('media.picker_selected_count', ['count' => count($pickerSelected)]) }}</span>
                 <div class="ml-auto flex gap-1.5">
                     @if ($pickerTrash)
                         @can('media.delete')
@@ -239,7 +239,7 @@
                                  image; unselected = a subtle ring that darkens on hover (touch-friendly). --}}
                             @if ($selected)
                                 <span class="pointer-events-none absolute inset-0 rounded-[11px] bg-admin-primary/25"></span>
-                                <span class="pointer-events-none absolute inset-0 rounded-[11px] border-[3px] border-admin-primary"></span>
+                                <span class="pointer-events-none absolute inset-0 rounded-[11px] border-[3px] border-accent"></span>
                             {{-- "Currently viewing" (manage-mode detail open on this tile): a soft ring, distinct
                                  from the solid selected border, so you can see which one the panel is showing. --}}
                             @elseif (($pickerDetailId ?? null) === $m->id)
@@ -295,10 +295,10 @@
                             <span class="min-w-0 flex-1 truncate text-[13px] text-body-text">{{ $m->original_filename }}</span>
                             <span class="w-[100px] text-[12.5px] text-body-muted">{{ $m->width !== null ? $m->width.' × '.$m->height : '—' }}</span>
                             <span class="w-[70px] text-[12.5px] text-body-muted">{{ number_format($m->size / 1048576, 1) }} MB</span>
-                            <span class="w-[52px]"><span class="rounded-[5px] bg-admin-primary/8 px-[7px] py-0.5 text-[10px] font-semibold uppercase text-admin-primary">{{ $m->extLabel() }}</span></span>
+                            <span class="w-[52px]"><span class="rounded-[5px] bg-admin-primary/8 px-[7px] py-0.5 text-[10px] font-semibold uppercase text-accent">{{ $m->extLabel() }}</span></span>
                             @unless ($pickerTrash)
                                 <button type="button" wire:click.stop="openPickerDetail({{ $m->id }})" title="{{ __('media.picker_detail') }}"
-                                        class="flex size-7 shrink-0 items-center justify-center text-body-muted hover:text-admin-primary">
+                                        class="flex size-7 shrink-0 items-center justify-center text-body-muted hover:text-accent">
                                     <x-admin::icon name="ri-information" class="size-4" />
                                 </button>
                             @else

@@ -6,9 +6,9 @@
     {{-- Filters --}}
     <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('admin.search_placeholder') }}"
-               class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary focus:bg-surface sm:max-w-xs">
+               class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-accent focus:bg-surface sm:max-w-xs">
         <select wire:model.live="status"
-                class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary focus:bg-surface sm:max-w-[200px]">
+                class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text transition-colors focus:border-accent focus:bg-surface sm:max-w-[200px]">
             <option value="">{{ __('admin.all_statuses') }}</option>
             <option value="active">{{ __('admin.status_active') }}</option>
             <option value="suspended">{{ __('admin.status_suspended') }}</option>
@@ -33,7 +33,7 @@
                         <td class="px-4 py-3 text-body-muted">{{ $tenant->sites_count }}</td>
                         <td class="px-4 py-3 text-end">
                             <a href="{{ route('platform.tenants.show', $tenant->ulid) }}" wire:navigate
-                               class="font-medium text-admin-primary transition-colors hover:underline">{{ __('admin.view') }}</a>
+                               class="font-medium text-accent transition-colors hover:underline">{{ __('admin.view') }}</a>
                         </td>
                     </tr>
                 @empty
