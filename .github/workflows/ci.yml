@@ -345,3 +345,14 @@ jobs:
           --chromedriver-path="${{ steps.chrome.outputs.chromedriver-path }}"
           --chrome-options="--headless=new,--no-sandbox"
           --exit
+
+      # Admin a11y: render the admin screens as a seeded owner (no login, no 2FA, no real env —
+      # tests/Tools/RenderAdminPreviewTest.php) and gate them on STRUCTURAL WCAG 2A/2AA with axe in
+      # jsdom (dashboard, content list, email settings, kit + revealed modal; light and dark). Colour
+      # contrast is the frontend job's contrast-check.mjs — disabled here. Known naming/label debt
+      # lives in scripts/admin-preview/axe-allowlist.json; a NEW structural violation fails the job.
+      - name: Render admin screens (no login)
+        run: php artisan test tests/Tools/RenderAdminPreviewTest.php
+
+      - name: Admin a11y (axe · structural WCAG 2A/2AA)
+        run: node scripts/admin-preview/axe.mjs
