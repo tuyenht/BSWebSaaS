@@ -35,7 +35,7 @@
         // Gap 2 (design §3a): each tab's count badge is tinted by its OWN status, not by
         // whether the tab is active — literal Tailwind strings only (bg-{$x}/10 never compiles).
         $tabBadgeClass = fn (string $key): string => match ($key) {
-            'all' => 'bg-admin-primary/10 text-admin-primary',
+            'all' => 'bg-admin-primary/10 text-accent',
             'published' => 'bg-admin-success/10 text-admin-success-text',
             'scheduled' => 'bg-admin-warning/10 text-admin-warning-text',
             'private' => 'bg-admin-info/10 text-admin-info-text',
@@ -125,7 +125,7 @@
                     <label for="pages-search" class="sr-only">{{ __('entries.search_placeholder') }}</label>
                     <input id="pages-search" type="search" wire:model.live.debounce.300ms="search"
                         placeholder="{{ __('entries.search_placeholder') }}"
-                        class="block w-full rounded border border-border-strong bg-surface py-2 pl-9 pr-3 text-sm text-body-text placeholder:text-placeholder focus:border-admin-primary">
+                        class="block w-full rounded border border-border-strong bg-surface py-2 pl-9 pr-3 text-sm text-body-text placeholder:text-placeholder focus:border-accent">
                 </div>
 
                 @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'lang', 'label' => __('entries.col_language'), 'options' => $facets['lang'], 'activeCount' => count($langF), 'icon' => 'ri-translate-2', 'heading' => __('entries.filter_by_language')])
@@ -136,7 +136,7 @@
 
                 <div x-data="{ open: false }" @click.outside="open = false" class="relative">
                     <button type="button" @click="open = !open"
-                        class="inline-flex items-center gap-2 rounded border border-border-strong bg-surface px-3 py-2 text-sm font-medium text-body-text transition-colors hover:border-admin-primary">
+                        class="inline-flex items-center gap-2 rounded border border-border-strong bg-surface px-3 py-2 text-sm font-medium text-body-text transition-colors hover:border-accent">
                         <x-admin::icon name="ri-layout-column" class="size-4" /> {{ __('entries.cols_button') }}
                         <x-admin::icon name="chevron-down" class="size-3.5 transition-transform" ::class="open && 'rotate-180'" />
                     </button>
@@ -153,7 +153,7 @@
                         @foreach (['path' => __('entries.col_path'), 'langs' => __('entries.col_language'), 'creator' => __('entries.col_creator')] as $key => $label)
                             <label class="flex cursor-pointer items-center gap-2.5 rounded px-2 py-1.5 text-sm text-body-text hover:bg-surface-hover">
                                 <input type="checkbox" :checked="cols.{{ $key }}" @change="toggleCol('{{ $key }}')"
-                                    class="size-4 rounded border-border-strong text-admin-primary focus:ring-admin-primary/30">
+                                    class="size-4 rounded border-border-strong text-accent focus:ring-admin-primary/30">
                                 {{ $label }}
                             </label>
                         @endforeach
@@ -167,7 +167,7 @@
                     <span class="text-xs font-medium text-body-muted">{{ __('entries.filter_active') }}</span>
                     @foreach ($activeChips as $chip)
                         <button type="button" wire:click="toggleFilterValue('{{ $chip['group'] }}', '{{ $chip['value'] }}')"
-                            class="inline-flex items-center gap-1 rounded-full bg-admin-primary/10 py-1 pl-2.5 pr-1.5 text-xs font-medium text-admin-primary transition-colors hover:bg-admin-primary/20">
+                            class="inline-flex items-center gap-1 rounded-full bg-admin-primary/10 py-1 pl-2.5 pr-1.5 text-xs font-medium text-accent transition-colors hover:bg-admin-primary/20">
                             {{ $chip['label'] }} <x-admin::icon name="ri-close" class="size-3.5" />
                         </button>
                     @endforeach
@@ -179,11 +179,11 @@
             {{-- Bulk action bar — appears once one or more rows are selected --}}
             @if (count($selected) > 0)
                 <div class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-admin-primary/30 bg-admin-primary/5 px-3 py-2">
-                    <span class="text-sm font-medium text-admin-primary">{{ __('entries.bulk_selected', ['count' => count($selected)]) }}</span>
+                    <span class="text-sm font-medium text-accent">{{ __('entries.bulk_selected', ['count' => count($selected)]) }}</span>
                     @if ($tab === 'trash')
                         @if ($canDelete)
                             <button type="button" wire:click="bulkRestore"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">
+                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
                                 <x-admin::icon name="ri-refresh" class="size-3.5 text-body-muted" /> {{ __('entries.action_restore') }}
                             </button>
                             <button type="button"
@@ -195,17 +195,17 @@
                     @else
                         @if ($canPublish)
                             <button type="button" wire:click="bulkPublish"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">
+                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
                                 <x-admin::icon name="ri-check" class="size-3.5 text-admin-success-text" /> {{ __('entries.bulk_publish') }}
                             </button>
                             <button type="button" wire:click="bulkDraft"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">
+                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
                                 <x-admin::icon name="ri-pencil" class="size-3.5 text-body-muted" /> {{ __('entries.bulk_draft') }}
                             </button>
                         @endif
                         @if ($canCreate)
                             <button type="button" wire:click="bulkDuplicate"
-                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-admin-primary hover:text-admin-primary">
+                                class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
                                 <x-admin::icon name="ri-file-copy" class="size-3.5 text-body-muted" /> {{ __('entries.action_duplicate') }}
                             </button>
                         @endif
@@ -229,23 +229,23 @@
                         <th class="w-10">
                             <input type="checkbox" @checked($pageUlids !== [] && array_diff($pageUlids, $selected) === [])
                                 wire:click="toggleSelectAll(@js($pageUlids))" aria-label="{{ __('entries.select_all') }}"
-                                class="size-4 rounded border-border-strong text-admin-primary focus:ring-admin-primary/30">
+                                class="size-4 rounded border-border-strong text-accent focus:ring-admin-primary/30">
                         </th>
                         <th class="w-full">
                             <button type="button" wire:click="sortBy('name')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.title_label') }} <x-admin::icon :name="$sortIcon('name')" class="size-3.5 {{ $sortKey === 'name' ? 'text-admin-primary' : '' }}" />
+                                {{ __('entries.title_label') }} <x-admin::icon :name="$sortIcon('name')" class="size-3.5 {{ $sortKey === 'name' ? 'text-accent' : '' }}" />
                             </button>
                         </th>
                         <th x-show="cols.path">{{ __('entries.col_path') }}</th>
                         <th>
                             <button type="button" wire:click="sortBy('status')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.col_status') }} <x-admin::icon :name="$sortIcon('status')" class="size-3.5 {{ $sortKey === 'status' ? 'text-admin-primary' : '' }}" />
+                                {{ __('entries.col_status') }} <x-admin::icon :name="$sortIcon('status')" class="size-3.5 {{ $sortKey === 'status' ? 'text-accent' : '' }}" />
                             </button>
                         </th>
                         <th x-show="cols.langs">{{ __('entries.col_language') }}</th>
                         <th x-show="cols.creator">
                             <button type="button" wire:click="sortBy('creator')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.col_creator') }} <x-admin::icon :name="$sortIcon('creator')" class="size-3.5 {{ $sortKey === 'creator' ? 'text-admin-primary' : '' }}" />
+                                {{ __('entries.col_creator') }} <x-admin::icon :name="$sortIcon('creator')" class="size-3.5 {{ $sortKey === 'creator' ? 'text-accent' : '' }}" />
                             </button>
                         </th>
                         <th class="w-[132px] text-center">{{ __('entries.col_actions') }}</th>
@@ -274,7 +274,7 @@
                             <td class="align-top">
                                 <input type="checkbox" wire:model.live="selected" value="{{ $entry->ulid }}"
                                     aria-label="{{ __('entries.select_row') }}"
-                                    class="mt-0.5 size-4 rounded border-border-strong text-admin-primary focus:ring-admin-primary/30">
+                                    class="mt-0.5 size-4 rounded border-border-strong text-accent focus:ring-admin-primary/30">
                             </td>
                             <td class="w-full">
                                 <div @class(['flex items-center gap-1.5', 'pl-5' => $depth]) x-data="{ editing: false, value: @js($t?->title ?? ''), cancel: false }">
@@ -285,14 +285,14 @@
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.titleInput.focus(); $refs.titleInput.select() })"
                                             title="{{ __('entries.edit_name_hint') }}"
-                                            class="group relative -mx-1 rounded py-0.5 pl-1 pr-5 text-left font-medium text-body-text transition-colors hover:bg-[#eef2fb] hover:text-admin-primary">{{ $t?->title ?? __('entries.untitled') }}
-                                            <x-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-admin-primary opacity-0 transition-opacity group-hover:opacity-100" />
+                                            class="group relative -mx-1 rounded py-0.5 pl-1 pr-5 text-left font-medium text-body-text transition-colors hover:bg-[#eef2fb] hover:text-accent">{{ $t?->title ?? __('entries.untitled') }}
+                                            <x-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
                                         </button>
                                         <input type="text" x-show="editing" x-cloak x-ref="titleInput" x-model="value"
                                             @keydown.enter.prevent="cancel = false; $el.blur()"
                                             @keydown.escape="cancel = true; $el.blur()"
                                             @blur="editing = false; if (! cancel) { $wire.saveTitle(@js($entry->ulid), value) }"
-                                            class="w-full rounded border border-admin-primary bg-white px-1 py-0.5 text-sm font-medium text-body-text">
+                                            class="w-full rounded border border-accent bg-white px-1 py-0.5 text-sm font-medium text-body-text">
                                     @else
                                         <span class="font-medium text-body-text">{{ $t?->title ?? __('entries.untitled') }}</span>
                                     @endif
@@ -310,8 +310,8 @@
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
                                             title="{{ $path }} · {{ __('entries.edit_hint') }}"
-                                            class="group relative -mx-1 truncate rounded py-0.5 pl-1 pr-4 text-body-muted transition-colors hover:bg-[#eef2fb] hover:text-admin-primary">{{ $path ?? '—' }}
-                                            <x-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-admin-primary opacity-0 transition-opacity group-hover:opacity-100" />
+                                            class="group relative -mx-1 truncate rounded py-0.5 pl-1 pr-4 text-body-muted transition-colors hover:bg-[#eef2fb] hover:text-accent">{{ $path ?? '—' }}
+                                            <x-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
                                         </button>
                                         <span x-show="editing" x-cloak class="flex w-full items-center gap-0.5">
                                             <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
@@ -319,7 +319,7 @@
                                                 @keydown.enter.prevent="cancel = false; $el.blur()"
                                                 @keydown.escape="cancel = true; $el.blur()"
                                                 @blur="editing = false; if (! cancel) { $wire.saveSlug(@js($entry->ulid), value) }"
-                                                class="min-w-0 flex-1 rounded border border-admin-primary bg-white px-1 py-0.5">
+                                                class="min-w-0 flex-1 rounded border border-accent bg-white px-1 py-0.5">
                                         </span>
                                     </div>
                                 @else
@@ -344,7 +344,7 @@
                                                         <span class="size-1.5 shrink-0 rounded-full {{ $dotClass($statusColor[$opt]) }}"></span>
                                                         {{ __('entries.status_'.$opt) }}
                                                     </x-admin::badge>
-                                                    @if ($status === $opt)<x-admin::icon name="ri-check" class="ml-auto size-3.5 text-admin-primary" />@endif
+                                                    @if ($status === $opt)<x-admin::icon name="ri-check" class="ml-auto size-3.5 text-accent" />@endif
                                                 </button>
                                             @endforeach
                                             <div class="mt-0.5 border-t border-border pt-0.5">

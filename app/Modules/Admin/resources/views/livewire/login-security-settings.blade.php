@@ -12,7 +12,7 @@
         <div class="space-y-4 p-5">
             <label class="flex items-start gap-3">
                 <input type="checkbox" wire:model="turnstileLogin"
-                       class="mt-0.5 h-4 w-4 rounded border-border-strong text-admin-primary focus:ring-admin-primary/30">
+                       class="mt-0.5 h-4 w-4 rounded border-border-strong text-accent focus:ring-admin-primary/30">
                 <span>
                     <span class="block text-sm font-medium text-body-text">{{ __('admin.turnstile_login_label') }}</span>
                     <span class="mt-0.5 block text-xs text-body-muted">{{ __('admin.turnstile_login_help') }}</span>

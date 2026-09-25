@@ -7,7 +7,7 @@
     {{-- Status filter --}}
     <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <select wire:model.live="status"
-                class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary focus:bg-surface sm:max-w-[220px]">
+                class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text transition-colors focus:border-accent focus:bg-surface sm:max-w-[220px]">
             <option value="">{{ __('forms.status_all') }}</option>
             <option value="new">{{ __('forms.status_new') }}</option>
             <option value="read">{{ __('forms.status_read') }}</option>
@@ -44,7 +44,7 @@
                         </td>
                         <td class="px-4 py-3 text-end">
                             <a href="{{ route('admin.forms.show', $submission->ulid) }}" wire:navigate
-                               class="font-medium text-admin-primary transition-colors hover:underline">{{ __('admin.view') }}</a>
+                               class="font-medium text-accent transition-colors hover:underline">{{ __('admin.view') }}</a>
                         </td>
                     </tr>
                 @empty

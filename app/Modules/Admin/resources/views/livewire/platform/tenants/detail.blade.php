@@ -1,7 +1,7 @@
 <div class="mx-auto max-w-4xl">
     <div class="mb-4">
         <a href="{{ route('platform.tenants.index') }}" wire:navigate
-           class="text-sm font-medium text-admin-primary transition-colors hover:underline">&larr; {{ __('admin.back') }}</a>
+           class="text-sm font-medium text-accent transition-colors hover:underline">&larr; {{ __('admin.back') }}</a>
     </div>
 
     <div class="mb-6 rounded-lg border border-border bg-surface p-5 shadow-card">

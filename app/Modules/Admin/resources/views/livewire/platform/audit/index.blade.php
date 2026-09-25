@@ -5,7 +5,7 @@
 
     <div class="mb-4">
         <input type="search" wire:model.live.debounce.300ms="action" placeholder="{{ __('admin.filter_action') }}"
-               class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary focus:bg-surface sm:max-w-xs">
+               class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-accent focus:bg-surface sm:max-w-xs">
     </div>
 
     <div class="overflow-x-auto rounded-lg border border-border bg-surface shadow-card">

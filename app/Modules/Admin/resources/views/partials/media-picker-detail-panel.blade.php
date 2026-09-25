@@ -77,7 +77,7 @@
                                         <a href="{{ $u['url'] }}" target="_blank" rel="noopener"
                                            class="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-[12.5px] text-body-text hover:bg-surface-hover">
                                             <span class="min-w-0 flex-1 truncate">{{ $u['label'] }}</span>
-                                            <span class="shrink-0 rounded bg-admin-primary/8 px-1.5 py-0.5 text-[10px] font-semibold text-admin-primary">{{ __('media.picker_kind_'.$u['kind']) }}</span>
+                                            <span class="shrink-0 rounded bg-admin-primary/8 px-1.5 py-0.5 text-[10px] font-semibold text-accent">{{ __('media.picker_kind_'.$u['kind']) }}</span>
                                         </a>
                                     </li>
                                 @endforeach
@@ -93,7 +93,7 @@
             @can('media.upload')
                 <textarea id="picker-detail-alt" wire:model="pickerDetailAlt" rows="3"
                           placeholder="{{ __('media.picker_detail_alt_placeholder') }}"
-                          class="block min-h-[64px] w-full resize-y rounded-lg border border-border-strong bg-surface px-[11px] py-[9px] text-[12.5px] text-body-text placeholder:text-placeholder focus:border-admin-primary"></textarea>
+                          class="block min-h-[64px] w-full resize-y rounded-lg border border-border-strong bg-surface px-[11px] py-[9px] text-[12.5px] text-body-text placeholder:text-placeholder focus:border-accent"></textarea>
                 {{-- Compact action row: a saved-tick on the left, a small filled button on the right
                      (a full-width outline button read heavy for a metadata save). --}}
                 <div class="mt-2 flex items-center justify-between gap-2">

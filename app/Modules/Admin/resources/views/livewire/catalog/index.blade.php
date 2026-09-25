@@ -21,7 +21,7 @@
             <label for="catalog-search" class="sr-only">{{ __('catalog.search_placeholder') }}</label>
             <input type="search" id="catalog-search" wire:model.live.debounce.300ms="search"
                    placeholder="{{ __('catalog.search_placeholder') }}"
-                   class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary">
+                   class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-accent">
         </div>
 
         <x-admin::table>
@@ -66,10 +66,10 @@
                         <td class="whitespace-nowrap text-right">
                             @if ($canManage)
                                 @if ($showTrash)
-                                    <button type="button" wire:click="restore('{{ $product->ulid }}')" class="text-admin-primary hover:underline">{{ __('catalog.restore_action') }}</button>
+                                    <button type="button" wire:click="restore('{{ $product->ulid }}')" class="text-accent hover:underline">{{ __('catalog.restore_action') }}</button>
                                     <button type="button" x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('catalog.force_delete_confirm')), confirm: @js(__('catalog.force_delete_action')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.forceDelete(@js($product->ulid)))" class="ml-2 text-admin-danger-text hover:underline">{{ __('catalog.force_delete_action') }}</button>
                                 @else
-                                    <a href="{{ route('admin.catalog.edit', ['ulid' => $product->ulid]) }}" wire:navigate class="text-admin-primary hover:underline">{{ __('catalog.edit_action') }}</a>
+                                    <a href="{{ route('admin.catalog.edit', ['ulid' => $product->ulid]) }}" wire:navigate class="text-accent hover:underline">{{ __('catalog.edit_action') }}</a>
                                     <button type="button" x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('catalog.trash_confirm')), confirm: @js(__('catalog.trash_action')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.trash(@js($product->ulid)))" class="ml-2 text-admin-danger-text hover:underline">{{ __('catalog.trash_action') }}</button>
                                 @endif
                             @endif

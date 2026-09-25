@@ -42,7 +42,7 @@
             {{-- First-run explainer: what an approval flow is, one primary CTA (no dead-end). --}}
             <x-admin::card>
                 <div class="flex flex-col items-start gap-3 py-2 sm:flex-row sm:items-center">
-                    <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-admin-primary/10 text-admin-primary">
+                    <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-admin-primary/10 text-accent">
                         <x-admin::icon name="ri-flow-chart" class="size-5" />
                     </span>
                     <div class="min-w-0 flex-1">
@@ -81,7 +81,7 @@
                                 @if ($row['template'] !== null)
                                     <div class="min-w-0">
                                         <p class="truncate text-sm text-body-text">{{ $row['workflow_name'] }}</p>
-                                        <button type="button" class="text-xs font-medium text-admin-primary hover:underline"
+                                        <button type="button" class="text-xs font-medium text-accent hover:underline"
                                                 x-on:click="openFor(@js($row))">{{ __('admin.wf.view_steps') }}</button>
                                     </div>
                                     @if ($row['active'])
@@ -158,7 +158,7 @@
                         <button type="button"
                                 class="rounded border p-3 text-left transition-colors"
                                 :class="{
-                                    'border-admin-primary bg-admin-primary/5': selected === t.key && ! t.locked,
+                                    'border-accent bg-admin-primary/5': selected === t.key && ! t.locked,
                                     'border-border hover:border-border-strong': selected !== t.key && ! t.locked,
                                     'cursor-not-allowed border-border opacity-60': t.locked,
                                 }"
@@ -195,7 +195,7 @@
                         </dl>
                         <p class="mt-2 text-sm text-body-muted">{{ __('admin.wf.upgrade_contact') }}</p>
                         <p class="mt-1 text-xs text-body-muted">{{ __('admin.wf.upgrade_safe') }}</p>
-                        <button type="button" class="mt-2 text-xs font-medium text-admin-primary hover:underline" x-on:click="upgrade = false">{{ __('admin.close') }}</button>
+                        <button type="button" class="mt-2 text-xs font-medium text-accent hover:underline" x-on:click="upgrade = false">{{ __('admin.close') }}</button>
                     </div>
                 @endif
 

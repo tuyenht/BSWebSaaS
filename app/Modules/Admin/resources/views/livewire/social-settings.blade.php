@@ -37,10 +37,10 @@
               class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
             <div class="flex items-center justify-between border-b border-border px-5 py-3">
                 <h3 class="text-sm font-semibold text-body-text">{{ ucfirst($provider) }}
-                    <a href="{{ config('oauth.providers.'.$provider.'.console_url') }}" target="_blank" rel="noopener noreferrer" class="ms-1 text-xs font-medium text-admin-primary hover:underline">{{ __('admin.oauth_open_console', ['provider' => ucfirst($provider)]) }} ↗</a>
+                    <a href="{{ config('oauth.providers.'.$provider.'.console_url') }}" target="_blank" rel="noopener noreferrer" class="ms-1 text-xs font-medium text-accent hover:underline">{{ __('admin.oauth_open_console', ['provider' => ucfirst($provider)]) }} ↗</a>
                 </h3>
                 <label class="inline-flex cursor-pointer items-center gap-2">
-                    <input type="checkbox" wire:model="forms.{{ $provider }}.enabled" class="h-4 w-4 rounded border-border-strong text-admin-primary focus:ring-admin-primary/30">
+                    <input type="checkbox" wire:model="forms.{{ $provider }}.enabled" class="h-4 w-4 rounded border-border-strong text-accent focus:ring-admin-primary/30">
                     <span class="text-sm text-body-muted">{{ __('admin.enabled') }}</span>
                 </label>
             </div>

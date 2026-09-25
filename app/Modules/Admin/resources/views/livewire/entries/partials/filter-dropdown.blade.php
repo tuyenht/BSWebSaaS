@@ -6,8 +6,8 @@
     <button type="button" @click="open = !open"
         @class([
             'inline-flex items-center gap-2 rounded border px-3 py-2 text-sm font-medium transition-colors',
-            'border-admin-primary bg-admin-primary/5 text-admin-primary' => $activeCount > 0,
-            'border-border-strong bg-surface text-body-text hover:border-admin-primary' => $activeCount === 0,
+            'border-accent bg-admin-primary/5 text-accent' => $activeCount > 0,
+            'border-border-strong bg-surface text-body-text hover:border-accent' => $activeCount === 0,
         ])>
         @if ($icon)
             <x-admin::icon :name="$icon" class="size-4" />
@@ -33,7 +33,7 @@
                 ])>
                     @if ($opt['active'])<x-admin::icon name="ri-check" class="size-3" />@endif
                 </span>
-                <span @class(['flex-1 truncate', 'font-medium text-admin-primary' => $opt['active'], 'text-body-text' => ! $opt['active']])>{{ $opt['label'] }}</span>
+                <span @class(['flex-1 truncate', 'font-medium text-accent' => $opt['active'], 'text-body-text' => ! $opt['active']])>{{ $opt['label'] }}</span>
                 <span class="text-xs text-placeholder">{{ $opt['count'] }}</span>
             </button>
         @empty
@@ -42,7 +42,7 @@
         @if (count($options) > 0)
             <div class="mt-1 flex items-center justify-between border-t border-border px-1 pt-1.5">
                 <button type="button" wire:click="resetFilterGroup('{{ $group }}')" class="rounded px-1.5 py-1 text-xs text-body-muted hover:text-body-text">{{ __('entries.filter_reset') }}</button>
-                <button type="button" @click="open = false" class="rounded px-1.5 py-1 text-xs font-medium text-admin-primary">{{ __('entries.filter_done') }}</button>
+                <button type="button" @click="open = false" class="rounded px-1.5 py-1 text-xs font-medium text-accent">{{ __('entries.filter_done') }}</button>
             </div>
         @endif
     </div>

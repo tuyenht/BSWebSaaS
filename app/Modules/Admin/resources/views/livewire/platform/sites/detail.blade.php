@@ -1,7 +1,7 @@
 <div class="mx-auto max-w-4xl">
     <div class="mb-4">
         <a href="{{ route('platform.sites.index') }}" wire:navigate
-           class="text-sm font-medium text-admin-primary transition-colors hover:underline">&larr; {{ __('admin.back') }}</a>
+           class="text-sm font-medium text-accent transition-colors hover:underline">&larr; {{ __('admin.back') }}</a>
     </div>
 
     <div class="mb-6 rounded-lg border border-border bg-surface p-5 shadow-card">
@@ -42,7 +42,7 @@
                         <td class="px-4 py-3 font-medium text-heading">
                             {{ $domain->hostname }}
                             @if ($domain->is_primary)
-                                <span class="ms-1 rounded bg-admin-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-admin-primary">★</span>
+                                <span class="ms-1 rounded bg-admin-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-accent">★</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-body-muted">{{ $domain->kind }}</td>
