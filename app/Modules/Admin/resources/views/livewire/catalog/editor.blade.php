@@ -95,7 +95,7 @@
                         <div>
                             <label class="mb-1.5 block text-sm font-medium text-body-text" for="catalog-seo-description">{{ __('catalog.seo_description_label') }}</label>
                             <textarea id="catalog-seo-description" rows="3" wire:model="seoDescription"
-                                      class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20"></textarea>
+                                      class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary"></textarea>
                             @error('seoDescription') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                     </div>
@@ -107,7 +107,7 @@
             <x-admin::card :title="__('catalog.card_publish')">
                 <label class="mb-1.5 block text-sm font-medium text-body-text" for="catalog-status">{{ __('catalog.status_label') }}</label>
                 <select id="catalog-status" wire:model="status"
-                        class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+                        class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary">
                     <option value="draft">{{ __('catalog.status_draft') }}</option>
                     <option value="published">{{ __('catalog.status_published') }}</option>
                     <option value="archived">{{ __('catalog.status_archived') }}</option>
@@ -117,7 +117,7 @@
 
             <x-admin::card :title="__('catalog.category_label')">
                 <select id="catalog-category" wire:model="categoryId"
-                        class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+                        class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary">
                     <option value="">{{ __('catalog.category_placeholder') }}</option>
                     @foreach ($categories as $category)
                         <option value="{{ $category['id'] }}">{{ $category['name'] }}</option>

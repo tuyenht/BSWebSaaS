@@ -33,16 +33,39 @@ it('never colours meaningful text with the faint tier (placeholder aside)', func
     expect($offenders)->toBe([], 'Use text-body-muted for meaningful text, not faint: '.json_encode($offenders, JSON_UNESCAPED_SLASHES));
 });
 
-it('never suppresses the shared focus ring with an unpaired outline-none', function () use ($adminViews): void {
+it('never suppresses focus with a faint or missing ring (outline-none needs a >=3:1 ring)', function () use ($adminViews): void {
+    // A focus ring that fails 3:1 is worse than none — it looks like a real ring but is invisible.
+    // So `outline-none` may only accompany a SOLID ring that clears 3:1; otherwise drop outline-none
+    // and let the admin-wide :focus-visible outline (2px accent) show. Faint alpha rings
+    // (ring-<color>/NN) and ring-0 fail. The solid rings below are measured in scripts/contrast-check.mjs.
+    $solidRings = ['ring-topbar-fg'];   // #878a99 on the topbar: 3.42 light / 4.00 dark
+
     $offenders = [];
 
     foreach ($adminViews() as $file) {
         foreach (explode("\n", $file->getContents()) as $index => $line) {
-            if (str_contains($line, 'outline-none') && preg_match('/focus(?:-visible)?:ring/', $line) === 0) {
+            if (! str_contains($line, 'outline-none')) {
+                continue;
+            }
+
+            // A justified exception is allowed only with an inline `focus-ring-ok` comment.
+            if (str_contains($line, 'focus-ring-ok')) {
+                continue;
+            }
+
+            $hasSolidRing = false;
+            foreach ($solidRings as $ring) {
+                if (str_contains($line, $ring)) {
+                    $hasSolidRing = true;
+                    break;
+                }
+            }
+
+            if (! $hasSolidRing) {
                 $offenders[] = $file->getRelativePathname().':'.($index + 1);
             }
         }
     }
 
-    expect($offenders)->toBe([], 'Drop outline-none (the shared :focus-visible ring covers it) or pair it with focus:ring: '.json_encode($offenders, JSON_UNESCAPED_SLASHES));
+    expect($offenders)->toBe([], 'outline-none must pair with a solid ring >=3:1 ('.implode(', ', $solidRings).') or be dropped for the shared :focus-visible outline. Faint ring-*/NN and ring-0 fail; a justified exception needs an inline `focus-ring-ok` comment. Offenders: '.json_encode($offenders, JSON_UNESCAPED_SLASHES));
 });

@@ -235,7 +235,7 @@
                     <div class="flex flex-col gap-1.5">
                         <label class="text-xs font-semibold text-body-text" for="wf-note-{{ $action['key'] }}">{{ __('admin.wfb.note_label') }} <span class="text-admin-danger-text">*</span></label>
                         <textarea id="wf-note-{{ $action['key'] }}" x-model="note" x-on:input="bad = false" rows="4"
-                                  class="w-full rounded border px-3 py-2.5 text-[13px] text-body-text focus:outline-none focus:ring-[3px] focus:ring-admin-primary/20"
+                                  class="w-full rounded border px-3 py-2.5 text-[13px] text-body-text"
                                   :class="bad ? 'border-admin-danger-text ring-[3px] ring-admin-danger/15' : 'border-border focus:border-admin-primary'"
                                   placeholder="{{ __('admin.wfb.note_placeholder') }}"></textarea>
                         <p x-cloak x-show="bad" class="flex items-center gap-1.5 text-xs font-semibold text-[#c0432c]">
@@ -245,7 +245,7 @@
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <label class="text-xs font-semibold text-body-text" for="wf-who-{{ $action['key'] }}">{{ __('admin.wfb.assign_label') }} <span class="font-normal text-body-muted">{{ __('admin.wfb.assign_optional') }}</span></label>
-                        <select id="wf-who-{{ $action['key'] }}" wire:model="assignTo" class="min-h-[38px] w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-admin-primary focus:outline-none focus:ring-[3px] focus:ring-admin-primary/20">
+                        <select id="wf-who-{{ $action['key'] }}" wire:model="assignTo" class="min-h-[38px] w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-admin-primary">
                             <option value="">{{ __('admin.wfb.assign_none') }}</option>
                             @foreach ($action['members'] as $member)
                                 <option value="{{ $member['id'] }}">{{ $member['name'] }}</option>

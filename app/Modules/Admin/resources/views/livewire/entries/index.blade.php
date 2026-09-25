@@ -125,7 +125,7 @@
                     <label for="pages-search" class="sr-only">{{ __('entries.search_placeholder') }}</label>
                     <input id="pages-search" type="search" wire:model.live.debounce.300ms="search"
                         placeholder="{{ __('entries.search_placeholder') }}"
-                        class="block w-full rounded border border-border-strong bg-surface py-2 pl-9 pr-3 text-sm text-body-text placeholder:text-placeholder focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+                        class="block w-full rounded border border-border-strong bg-surface py-2 pl-9 pr-3 text-sm text-body-text placeholder:text-placeholder focus:border-admin-primary">
                 </div>
 
                 @include('admin::livewire.entries.partials.filter-dropdown', ['group' => 'lang', 'label' => __('entries.col_language'), 'options' => $facets['lang'], 'activeCount' => count($langF), 'icon' => 'ri-translate-2', 'heading' => __('entries.filter_by_language')])

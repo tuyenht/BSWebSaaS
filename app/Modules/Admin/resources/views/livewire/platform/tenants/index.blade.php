@@ -6,9 +6,9 @@
     {{-- Filters --}}
     <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <input type="search" wire:model.live.debounce.300ms="search" placeholder="{{ __('admin.search_placeholder') }}"
-               class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary focus:bg-surface focus:outline-none focus:ring-2 focus:ring-admin-primary/20 sm:max-w-xs">
+               class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary focus:bg-surface sm:max-w-xs">
         <select wire:model.live="status"
-                class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary focus:bg-surface focus:outline-none focus:ring-2 focus:ring-admin-primary/20 sm:max-w-[200px]">
+                class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary focus:bg-surface sm:max-w-[200px]">
             <option value="">{{ __('admin.all_statuses') }}</option>
             <option value="active">{{ __('admin.status_active') }}</option>
             <option value="suspended">{{ __('admin.status_suspended') }}</option>
