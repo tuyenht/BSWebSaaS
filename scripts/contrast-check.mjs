@@ -350,14 +350,28 @@ const ROWS = [
     // Modal close button (an icon: 3:1).
     { item: 'Modal', role: 'Modal — nút đóng (icon)', fg: '--color-body-muted', bg: ['--color-surface'], min: 3 },
 
-    // Watch-list — reported, never failing the run.
-    { item: 'Theo dõi', role: 'Nút secondary solid — chữ trắng', fg: WHITE, bg: ['--color-admin-secondary'], min: 4.5 },
-    { item: 'Theo dõi', role: 'Topbar — dòng vai trò dưới tên, link điều hướng platform (chữ dùng màu icon)', fg: '--vz-header-item-sub-color', bg: ['--vz-header-bg'], min: 4.5 },
-    { item: 'Theo dõi', role: 'Placeholder ô nhập (là chữ)', fg: '--color-placeholder', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Theo dõi', role: 'Sidebar tối — tiêu đề nhóm (chưa hiển thị ở layout)', fg: '--vz-vertical-menu-title-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
-    { item: 'Theo dõi', role: 'Avatar / mục đang chọn settings-shell — chữ primary', fg: '--color-admin-primary', bg: ['--color-surface', ['--color-admin-primary', 0.1]], min: 4.5 },
-    { item: 'Theo dõi', role: 'Badge "dark" soft — chữ', fg: '--color-admin-dark', bg: ['--color-surface', ['--color-admin-dark', 0.1]], min: 4.5 },
-    { item: 'Theo dõi', role: 'Chữ faint — token trang trí, còn dùng làm chữ ở các màn khác', fg: '--color-body-faint', bg: ['--color-surface'], min: 4.5 },
+    // Secondary role (button + badge): the -solid fill under white, the -text as ink / soft / outline.
+    { item: 'Secondary', role: 'Secondary solid — chữ trắng (nút, badge)', fg: WHITE, bg: ['--color-admin-secondary-solid'], min: 4.5 },
+    { item: 'Secondary', role: 'Secondary — chữ / soft / outline (nút, badge)', fg: '--color-admin-secondary-text', bgs: [['--color-surface'], ['--color-surface', ['--color-admin-secondary', 0.1]]], min: 4.5 },
+
+    // Topbar text (role line under the name + platform nav links) and the icon focus rings kept in
+    // item 1 (ring-topbar-fg) — measured on the light topbar AND the dark (navy) topbar.
+    { item: 'Topbar', role: 'Dòng vai trò + link platform — topbar sáng', fg: '--vz-header-item-sub-color', bg: ['--vz-header-bg'], min: 4.5 },
+    { item: 'Topbar', role: 'Dòng vai trò + link platform — topbar tối (navy)', state: { topbar: 'dark' }, fg: '--vz-header-item-sub-color', bg: ['--vz-header-bg'], min: 4.5 },
+    { item: 'Topbar', role: 'Vòng focus icon (ring-topbar-fg) — topbar sáng', fg: '--color-topbar-fg', bg: ['--vz-header-bg'], min: 3 },
+    { item: 'Topbar', role: 'Vòng focus icon (ring-topbar-fg) — topbar tối (navy)', state: { topbar: 'dark' }, fg: '--color-topbar-fg', bg: ['--vz-header-bg'], min: 3 },
+
+    // Placeholder (input) — now the muted role token, on the card and the page.
+    { item: 'Chữ phụ', role: 'Placeholder ô nhập (là chữ)', fg: '--color-placeholder', bgs: [['--color-surface'], ['--color-body']], min: 4.5 },
+
+    // Sidebar group title (default navy sidebar in light, #212529 sidebar in the dark scheme).
+    { item: 'Sidebar', role: 'Sidebar (navy / tối) — tiêu đề nhóm', fg: '--vz-vertical-menu-title-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
+
+    // Avatar / settings-shell active — the accent role now (item 2), on the primary soft tint.
+    { item: 'Primary làm chữ/viền', role: 'Avatar / mục đang chọn settings-shell — chữ accent', fg: '--color-accent', bg: ['--color-surface', ['--color-admin-primary', 0.1]], min: 4.5 },
+
+    // Badge "dark" soft — the neutral dark-text tier.
+    { item: 'Màu ngữ nghĩa', role: 'Badge "dark" soft — chữ', fg: '--color-admin-dark-text', bg: ['--color-surface', ['--color-admin-dark', 0.1]], min: 4.5 },
 ];
 
 // ── Storefront --primary-text ───────────────────────────────────────────────────────────────
@@ -368,9 +382,9 @@ const themeResolver = read('app/Modules/Theme/Theming/ThemeResolver.php');
 const defaultSeed = (key) => themeResolver.match(new RegExp(`'${key}'\\s*=>\\s*'(#[0-9a-fA-F]{3,6})'`))?.[1];
 const pageShare = Number(themeResolver.match(/PAGE_SURFACE_SHARE = ([\d.]+);/)?.[1]);
 const SEEDS = [
-    { name: 'mặc định (ThemeResolver::DEFAULTS)', primary: defaultSeed('primary'), surface: defaultSeed('surface'), ink: defaultSeed('ink') },
-    { name: 'thương hiệu amber mẫu', primary: '#f59e0b', surface: '#ffffff', ink: '#0f172a' },
-    { name: 'thương hiệu vàng sáng mẫu', primary: '#facc15', surface: '#ffffff', ink: '#111111' },
+    { name: 'mặc định (ThemeResolver::DEFAULTS)', primary: defaultSeed('primary'), surface: defaultSeed('surface'), ink: defaultSeed('ink'), body: defaultSeed('body') ?? '#333333' },
+    { name: 'thương hiệu amber mẫu', primary: '#f59e0b', surface: '#ffffff', ink: '#0f172a', body: '#334155' },
+    { name: 'thương hiệu vàng sáng mẫu', primary: '#facc15', surface: '#ffffff', ink: '#111111', body: '#333333' },
 ];
 
 function readableOn(color, backgrounds, minimum = 4.5) {
@@ -417,7 +431,7 @@ const lines = [
 
 for (const row of ROWS) {
     const results = both.map((scheme) => (row.fg === null ? null : measure(row, { scheme })));
-    if (row.item !== 'Theo dõi' && results.some((result) => !passes(result, row.min))) failures++;
+    if (results.some((result) => !passes(result, row.min))) failures++;
     lines.push(`| ${row.item} | ${row.role} | ${row.min} | ${cell(results[0], row.min, row.none)} | ${cell(results[1], row.min, row.none)} |`);
 }
 
@@ -429,6 +443,15 @@ for (const seed of SEEDS) {
     const results = [measureOn(text, seed.surface), measureOn(text, storefrontPage(seed)), measureOn(seed.primary, seed.ink)];
     if (results.some((result) => !passes(result, 4.5))) failures++;
     lines.push(`| ${seed.name} | \`${seed.primary}\` | \`${text}\` | ${results.map((result) => cell(result, 4.5)).join(' | ')} |`);
+}
+
+lines.push('', '**Storefront — placeholder** (chữ ví dụ trong ô = `color-mix(--body 80%, white)`; hướng dẫn đặt ở dòng gợi ý dưới ô, KHÔNG trong placeholder). Đo trên `--surface`.', '');
+lines.push('| Bộ màu | `--body` | placeholder | trên `--surface` |', '|---|---|---|---|');
+for (const seed of SEEDS) {
+    const placeholder = hex(mix(parseColor(seed.body, {}), rgba(255, 255, 255), 0.8, 0.2, 'srgb'));
+    const result = { value: ratio(parseColor(placeholder, {}), parseColor(seed.surface, {})), fg: placeholder, bg: seed.surface };
+    if (!passes(result, 4.5)) failures++;
+    lines.push(`| ${seed.name} | \`${seed.body}\` | \`${placeholder}\` | ${cell(result, 4.5)} |`);
 }
 
 lines.push('', failures === 0 ? '**Kết quả:** mọi cặp được gác đều đạt ngưỡng.' : `**Kết quả:** ${failures} cặp được gác chưa đạt.`);

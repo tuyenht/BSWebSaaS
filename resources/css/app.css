@@ -44,10 +44,13 @@
     --color-admin-success-solid: #038573;
     --color-admin-info-solid: #057db6;
     --color-admin-danger-solid: #d0472b;
+    --color-admin-secondary-solid: #2f69d4;      /* fill under white text: white 5.14:1 — one value shared with -text (light), no near-duplicate */
     --color-admin-success-text: #047767;
     --color-admin-info-text: #026fa2;
     --color-admin-warning-text: #906405;
     --color-admin-danger-text: #bf371a;
+    --color-admin-secondary-text: #2f69d4;        /* = secondary-solid: text/soft/outline · 5.14 white · 4.65 page · 4.55 soft tint (dark step in admin-chrome) */
+    --color-admin-dark-text: #212529;             /* neutral "dark" badge/soft as text (dark step in admin-chrome) */
 
     /* Velzon gray scale (neutral). */
     --color-gray-100: #f3f6f9;
@@ -89,7 +92,7 @@
                                                     the page bg (#6c6f80 misses there: 4.4988) */
     --color-body-faint: #adb5bd;                 /* decorative detail only, never text a reader needs
                                                     (gray-500 · 2.07 on white) */
-    --color-placeholder: #ced4da;                /* input placeholder + disabled glyphs (gray-400) */
+    --color-placeholder: var(--color-body-muted); /* placeholder is text → reuse muted (>=4.5); entered text stays #495057 */
     --color-ink-ghost: #e9ebec;                  /* decorative/empty-state glyphs — WCAG-exempt (gray-300) */
     /* The brand navy wherever it is INK — text, border, focus ring. A fill under white text keeps
        --color-admin-primary. The dark scheme remaps THIS (admin-chrome.css), never the brand:

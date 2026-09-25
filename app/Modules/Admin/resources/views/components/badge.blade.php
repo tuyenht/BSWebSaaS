@@ -12,7 +12,7 @@
 
     $solid = [
         'primary' => 'bg-admin-primary text-white',
-        'secondary' => 'bg-admin-secondary text-white',
+        'secondary' => 'bg-admin-secondary-solid text-white',
         'success' => 'bg-admin-success-solid text-white',
         'info' => 'bg-admin-info-solid text-white',
         'warning' => 'bg-admin-warning text-admin-dark',
@@ -22,12 +22,12 @@
 
     $subtle = [
         'primary' => 'bg-admin-primary/10 text-accent',
-        'secondary' => 'bg-admin-secondary/10 text-admin-secondary',
+        'secondary' => 'bg-admin-secondary/10 text-admin-secondary-text',
         'success' => 'bg-admin-success/10 text-admin-success-text',
         'info' => 'bg-admin-info/10 text-admin-info-text',
         'warning' => 'bg-admin-warning/10 text-admin-warning-text',
         'danger' => 'bg-admin-danger/10 text-admin-danger-text',
-        'dark' => 'bg-admin-dark/10 text-admin-dark',
+        'dark' => 'bg-admin-dark/10 text-admin-dark-text',
     ];
 
     $tone = $soft ? ($subtle[$color] ?? $subtle['primary']) : ($solid[$color] ?? $solid['primary']);

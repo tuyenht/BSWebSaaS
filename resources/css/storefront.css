@@ -50,6 +50,14 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Form placeholders are text → same readable muted step as secondary copy (>=4.5:1 on the surface),
+   never the browser default (~2.7:1). A placeholder holds only an example value; instructions belong
+   in a hint line under the field. */
+::placeholder {
+    color: color-mix(in srgb, var(--body) 80%, white);
+    opacity: 1; /* Firefox dims placeholders by default */
+}
+
 img,
 video {
     display: block;

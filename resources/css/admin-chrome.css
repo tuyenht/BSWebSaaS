@@ -24,7 +24,7 @@
     --vz-header-bg: #ffffff;
     --vz-header-border: #e9ebec;
     --vz-header-item-color: #495057;                   /* user name, search text */
-    --vz-header-item-sub-color: #878a99;               /* icon buttons, platform nav links */
+    --vz-header-item-sub-color: var(--color-body-muted); /* icon buttons + role line + platform nav links · 5.04 */
     --vz-header-item-bg: #f3f6f9;                      /* item hover bg · vz-ref: rgba($secondary,.12) */
     --vz-header-item-hover-color: #212529;             /* ★ platform nav link hover text */
     --vz-header-brand-color: #343a40;                  /* ★ platform console brand name */
@@ -47,7 +47,7 @@
     --vz-vertical-menu-item-active-color: #ffffff;
     --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.10); /* ★ also the brand-initials chip · vz-ref item-bg: rgba(#fff,.15) */
     --vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15); /* current-page row · white on it 5.38 */
-    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.60);   /* 11px micro-label — 3.9 on #405189 (>=3.0) */
+    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.72);   /* group titles are text · 4.86 on #405189 (>=4.5) */
     --vz-vertical-menu-brand-color: #ffffff;                   /* ★ text brand (Velzon swaps logo images instead) */
 
     /* ---- Focus ring ★ (flip axis: data-bs-theme, through --color-accent) ---
@@ -101,19 +101,21 @@
     --color-body-faint: #98a0ae;                       /* dark collapses muted/faint/placeholder to ONE
                                                           secondary ink: the >=4.5-on-surface window is too
                                                           narrow for three gray steps */
-    --color-placeholder: #98a0ae;                      /* 5.20 on surface (input bg) */
+    --color-placeholder: var(--color-body-muted);      /* placeholder is text → reuse muted (5.20 surface) */
     --color-ink-ghost: #4a5058;                        /* decorative/disabled glyphs — WCAG-exempt, dim on purpose */
     --color-accent: #96a1c0;                           /* brand as ink (text/border/ring) · 5.32 surface · 6.57 body · 5.33 header */
     --color-admin-success-text: #0db49d;               /* semantic ink, lightened: >=4.5 on surface, body and the 10% soft tints */
     --color-admin-info-text: #39a8e8;
     --color-admin-warning-text: var(--color-admin-warning); /* the fill itself reads 6.28+ here */
     --color-admin-danger-text: #ff7355;
+    --color-admin-secondary-text: #6e9df5;             /* secondary as text/soft, lightened: 5.09 surface · 4.58 soft tint */
+    --color-admin-dark-text: #dce0e6;                  /* neutral "dark" soft as text on the dark tint: 10.46 */
 
     /* topbar (light variant under a dark scheme) */
     --vz-header-bg: #292e32;
     --vz-header-border: #292e32;
     --vz-header-item-color: #e9ecef;                   /* 11.57 */
-    --vz-header-item-sub-color: #878a99;               /* icons · 4.00 ≥3 */
+    --vz-header-item-sub-color: var(--color-body-muted); /* icons + role line + platform links · 5.20 */
     --vz-header-item-bg: #31363c;
     --vz-header-item-hover-color: #ffffff;
     --vz-header-brand-color: #e9ecef;
@@ -128,7 +130,7 @@
     /* sidebar (dark preset under a dark scheme) */
     --vz-vertical-menu-bg: #212529;
     --vz-vertical-menu-item-color: #8f94a5;            /* 5.10 · vz-ref: #7c7f90 = 3.89 FAIL */
-    --vz-vertical-menu-title-color: #7d8294;           /* 4.03 · vz-ref: #5f6270 = 2.55 FAIL */
+    --vz-vertical-menu-title-color: var(--color-body-muted); /* group titles are text · 5.85 · reuse muted (#7d8294 = 4.03 was too tight) */
 }
 
 /* Dark topbar — ONE block for both schemes (Velzon's light-scheme and
@@ -137,7 +139,7 @@
     --vz-header-bg: var(--color-admin-primary);
     --vz-header-border: var(--color-admin-primary);
     --vz-header-item-color: rgb(255 255 255 / 0.85);   /* 6.05 effective */
-    --vz-header-item-sub-color: #b0c4d9;               /* icons · 4.26 ≥3 */
+    --vz-header-item-sub-color: #bccdde;               /* icons + role line + platform links on navy · 4.68 (>=4.5) */
     --vz-header-item-bg: #495c99;
     --vz-topbar-search-bg: rgb(255 255 255 / 0.05);
     --vz-topbar-search-color: #ffffff;                 /* 6.67 effective */
