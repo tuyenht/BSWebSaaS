@@ -83,6 +83,10 @@ final class ThemeResolver
         $page = ReadableColor::mix($variables['surface'], $variables['ink'], self::PAGE_SURFACE_SHARE);
         $backgrounds = $page === null ? [$variables['surface']] : [$variables['surface'], $page];
         $variables['primary-text'] = ReadableColor::onAll($variables['primary'], $backgrounds) ?? 'var(--ink)';
+        // Brand color made readable as TEXT on the dark surface (--ink): footer NAP link + hover,
+        // sub-menu, secondary hero CTA. Lightened (hue kept) until >=4.5 on --ink — a light brand
+        // (amber) is unchanged, a dark brand is lifted. Companion to --primary-text (light bg).
+        $variables['primary-on-ink'] = ReadableColor::onAll($variables['primary'], [$variables['ink']]) ?? 'var(--surface)';
 
         return $variables;
     }

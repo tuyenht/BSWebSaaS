@@ -403,6 +403,8 @@ function readableOn(color, backgrounds, minimum = 4.5) {
 // storefront.css: body { background: color-mix(in srgb, var(--surface) 97%, var(--ink)) }
 const storefrontPage = (seed) => hex(mix(parseColor(seed.surface, {}), parseColor(seed.ink, {}), pageShare, 1 - pageShare, 'srgb'));
 const storefrontPrimaryText = (seed) => readableOn(seed.primary, [seed.surface, storefrontPage(seed)]);
+// Mirrors ThemeResolver's --primary-on-ink: the brand lightened (hue kept) until it reads on --ink.
+const storefrontPrimaryOnInk = (seed) => readableOn(seed.primary, [seed.ink]);
 
 // ── Report ──────────────────────────────────────────────────────────────────────────────────────
 // Truncated to 2 decimals before comparing, as axe-core does: 4.4988 is a fail, not a rounded 4.50.
@@ -436,13 +438,14 @@ for (const row of ROWS) {
 }
 
 lines.push('', `**Storefront — chữ màu thương hiệu** (\`--primary-text\` cho chữ trên nền sáng: thẻ = \`--surface\`, nền trang = \`color-mix(in srgb, --surface ${pageShare * 100}%, --ink)\`; \`--primary\` giữ cho chữ trên nền tối \`--ink\`: footer, menu con, CTA phụ)`, '');
-lines.push('| Bộ màu | `--primary` | `--primary-text` | `--primary-text` trên `--surface` | `--primary-text` trên nền trang | `--primary` trên `--ink` |', '|---|---|---|---|---|---|');
+lines.push('| Bộ màu | `--primary` | `--primary-text` | trên `--surface` | trên nền trang | `--primary-on-ink` | trên `--ink` |', '|---|---|---|---|---|---|---|');
 for (const seed of SEEDS) {
     const text = storefrontPrimaryText(seed);
+    const onInk = storefrontPrimaryOnInk(seed);
     const measureOn = (fg, background) => ({ value: ratio(parseColor(fg, {}), parseColor(background, {})), fg, bg: background });
-    const results = [measureOn(text, seed.surface), measureOn(text, storefrontPage(seed)), measureOn(seed.primary, seed.ink)];
+    const results = [measureOn(text, seed.surface), measureOn(text, storefrontPage(seed)), measureOn(onInk, seed.ink)];
     if (results.some((result) => !passes(result, 4.5))) failures++;
-    lines.push(`| ${seed.name} | \`${seed.primary}\` | \`${text}\` | ${results.map((result) => cell(result, 4.5)).join(' | ')} |`);
+    lines.push(`| ${seed.name} | \`${seed.primary}\` | \`${text}\` | ${cell(results[0], 4.5)} | ${cell(results[1], 4.5)} | \`${onInk}\` | ${cell(results[2], 4.5)} |`);
 }
 
 lines.push('', '**Storefront — placeholder** (chữ ví dụ trong ô = `color-mix(--body 80%, white)`; hướng dẫn đặt ở dòng gợi ý dưới ô, KHÔNG trong placeholder). Đo trên `--surface`.', '');

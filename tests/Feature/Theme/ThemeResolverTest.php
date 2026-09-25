@@ -110,6 +110,39 @@ it('keeps the brand text color readable on the page background too, where breadc
     });
 });
 
+it('lifts a dark brand to read as text on the dark ink surface (footer, hero, sub-menu)', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        // A dark brand: its own primary fails on the dark ink, so primary-on-ink must lighten it.
+        SiteSetting::query()->create([
+            'group_name' => 'theme',
+            'key' => 'tokens',
+            'value' => ['primary' => '#1e3a5f', 'ink' => '#0f172a'],
+        ]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect(ReadableColor::ratio($variables['primary'], $variables['ink']))->toBeLessThan(ReadableColor::AA_NORMAL_TEXT)
+            ->and($variables['primary-on-ink'])->not->toBe($variables['primary'])
+            ->and(ReadableColor::ratio($variables['primary-on-ink'], $variables['ink']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
+
+it('leaves a light brand unchanged on the ink surface', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create([
+            'group_name' => 'theme',
+            'key' => 'tokens',
+            'value' => ['primary' => '#f59e0b', 'ink' => '#0f172a'],
+        ]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        // Amber already clears 4.5 on the dark ink, so on-ink stays the seed.
+        expect($variables['primary-on-ink'])->toBe('#f59e0b')
+            ->and(ReadableColor::ratio($variables['primary-on-ink'], $variables['ink']))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+});
+
 it('measures the page background the storefront stylesheet actually paints', function (): void {
     $share = (int) round(ThemeResolver::PAGE_SURFACE_SHARE * 100);
 

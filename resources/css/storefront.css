@@ -210,7 +210,7 @@ p {
 
 .site-nav__list--level-1 .site-nav__link:hover {
     background: var(--ink);
-    color: var(--primary);
+    color: var(--primary-on-ink);
 }
 
 /* ───── Page title (page layout h1, sr-only when hero is present) ────────── */
@@ -328,7 +328,7 @@ main:has(.hero) .page__title {
 .hero__cta--secondary {
     background: transparent;
     border: 2px solid var(--primary);
-    color: var(--primary);
+    color: var(--primary-on-ink);
 }
 
 .hero__cta--secondary:hover {
@@ -995,12 +995,12 @@ main:has(.hero) .page__title {
 }
 
 .site-footer__nap a {
-    color: var(--primary);
+    color: var(--primary-on-ink);
     transition: color 0.2s;
 }
 
 .site-footer__nap a:hover {
-    color: color-mix(in srgb, var(--primary) 70%, white);
+    color: color-mix(in srgb, var(--primary-on-ink) 80%, white);
 }
 
 .site-footer__license {
