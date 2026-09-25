@@ -1,0 +1,38 @@
+[
+  {
+    "rule": "button-name",
+    "selector": "bg-topbar-hover",
+    "reason": "Topbar icon buttons (search / theme / fullscreen / notifications / user) have no aria-label. A naming fix, not colour/focus — out of P1.7 scope.",
+    "debt": "a11y-names-labels"
+  },
+  {
+    "rule": "label",
+    "selector": "x-ref=\"titleInput\"",
+    "reason": "Inline row-edit title input (content list) has no associated <label>. Forms-labeling debt.",
+    "debt": "a11y-names-labels"
+  },
+  {
+    "rule": "label",
+    "selector": "x-ref=\"slugInput\"",
+    "reason": "Inline row-edit slug input (content list) has no associated <label>. Forms-labeling debt.",
+    "debt": "a11y-names-labels"
+  },
+  {
+    "rule": "label",
+    "selector": "x-ref=\"when\"",
+    "reason": "Inline schedule datetime input (content list) has no associated <label>. Forms-labeling debt.",
+    "debt": "a11y-names-labels"
+  },
+  {
+    "rule": "label",
+    "selector": "input[type=\"password\"]",
+    "reason": "Email-settings SMTP password field has no associated <label>. Forms-labeling debt.",
+    "debt": "a11y-names-labels"
+  },
+  {
+    "rule": "select-name",
+    "selector": "select",
+    "reason": "Email-settings encryption <select> has no accessible name. Forms-labeling debt.",
+    "debt": "a11y-names-labels"
+  }
+]
