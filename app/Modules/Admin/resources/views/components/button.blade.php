@@ -24,7 +24,7 @@
 
     $solid = [
         'primary' => 'bg-admin-primary text-white shadow-sm hover:brightness-95',
-        'secondary' => 'bg-admin-secondary text-white shadow-sm hover:brightness-95',
+        'secondary' => 'bg-admin-secondary-solid text-white shadow-sm hover:brightness-95',
         'success' => 'bg-admin-success-solid text-white shadow-sm hover:brightness-95',
         'info' => 'bg-admin-info-solid text-white shadow-sm hover:brightness-95',
         'warning' => 'bg-admin-warning text-admin-dark shadow-sm hover:brightness-95',
@@ -35,7 +35,7 @@
 
     $soft = [
         'primary' => 'bg-admin-primary/10 text-accent hover:bg-admin-primary hover:text-white',
-        'secondary' => 'bg-admin-secondary/10 text-admin-secondary hover:bg-admin-secondary hover:text-white',
+        'secondary' => 'bg-admin-secondary/10 text-admin-secondary-text hover:bg-admin-secondary-solid hover:text-white',
         'success' => 'bg-admin-success/10 text-admin-success-text hover:bg-admin-success-solid hover:text-white',
         'info' => 'bg-admin-info/10 text-admin-info-text hover:bg-admin-info-solid hover:text-white',
         'warning' => 'bg-admin-warning/10 text-admin-warning-text hover:bg-admin-warning hover:text-admin-dark',
@@ -44,7 +44,7 @@
 
     $outline = [
         'primary' => 'border border-accent text-accent hover:bg-admin-primary hover:text-white',
-        'secondary' => 'border border-admin-secondary text-admin-secondary hover:bg-admin-secondary hover:text-white',
+        'secondary' => 'border border-admin-secondary-text text-admin-secondary-text hover:bg-admin-secondary-solid hover:text-white',
         'success' => 'border border-admin-success-text text-admin-success-text hover:bg-admin-success-solid hover:text-white',
         'danger' => 'border border-admin-danger-text text-admin-danger-text hover:bg-admin-danger-solid hover:text-white',
     ];

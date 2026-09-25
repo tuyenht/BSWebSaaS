@@ -21,16 +21,19 @@ $adminViews = static function (): array {
     );
 };
 
-it('never colours meaningful text with the faint tier (placeholder aside)', function () use ($adminViews): void {
+it('never uses the faint tier as text, not even for placeholders', function () use ($adminViews): void {
+    // faint (#adb5bd) is decorative-only. Meaningful text uses muted; placeholders use the
+    // --color-placeholder role token (itself = muted, >=4.5). So text-body-faint must not appear
+    // as an ink utility anywhere in the admin — placeholder:text-body-faint included.
     $offenders = [];
 
     foreach ($adminViews() as $file) {
-        if (preg_match_all('/(?<!placeholder:)text-body-faint/', $file->getContents(), $m) && $m[0] !== []) {
+        if (preg_match_all('/text-body-faint/', $file->getContents(), $m) && $m[0] !== []) {
             $offenders[$file->getRelativePathname()] = count($m[0]);
         }
     }
 
-    expect($offenders)->toBe([], 'Use text-body-muted for meaningful text, not faint: '.json_encode($offenders, JSON_UNESCAPED_SLASHES));
+    expect($offenders)->toBe([], 'faint is decorative-only; use text-body-muted or placeholder:text-placeholder: '.json_encode($offenders, JSON_UNESCAPED_SLASHES));
 });
 
 it('never suppresses focus with a faint or missing ring (outline-none needs a >=3:1 ring)', function () use ($adminViews): void {
