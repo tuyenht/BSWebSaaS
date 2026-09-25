@@ -22,13 +22,13 @@
             <div class="flex-1">
                 <label for="inviteEmail" class="mb-1 block text-xs font-medium text-body-muted">{{ __('admin.email') }}</label>
                 <input type="email" id="inviteEmail" wire:model="inviteEmail" placeholder="name@example.com"
-                       class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary focus:bg-surface focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+                       class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text placeholder:text-placeholder transition-colors focus:border-admin-primary focus:bg-surface">
                 @error('inviteEmail') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
             </div>
             <div class="flex-1">
                 <label for="inviteRole" class="mb-1 block text-xs font-medium text-body-muted">{{ __('admin.role') }}</label>
                 <select id="inviteRole" wire:model="inviteRole"
-                        class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary focus:bg-surface focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+                        class="w-full rounded border border-border bg-surface-muted px-3 py-2 text-sm text-body-text transition-colors focus:border-admin-primary focus:bg-surface">
                     <option value="">{{ __('admin.select_role') }}</option>
                     @foreach ($assignableRoles as $role)
                         <option value="{{ $role->name }}">{{ $role->name }}</option>

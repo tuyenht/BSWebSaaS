@@ -56,7 +56,7 @@
                 <form wire:submit="confirmTwoFactor" class="flex flex-col gap-2 sm:flex-row sm:items-start">
                     <div>
                         <input type="text" wire:model="tfaCode" inputmode="numeric" autocomplete="one-time-code" autofocus placeholder="000000"
-                               class="w-40 rounded border border-border-strong bg-surface px-3 py-2 text-sm text-heading placeholder:text-body-faint focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+                               class="w-40 rounded border border-border-strong bg-surface px-3 py-2 text-sm text-heading placeholder:text-body-faint focus:border-admin-primary">
                         @error('tfaCode') <p class="mt-1 text-xs text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                     <x-admin::button type="submit" wire:loading.attr="disabled" wire:target="confirmTwoFactor">{{ __('admin.confirm') }}</x-admin::button>

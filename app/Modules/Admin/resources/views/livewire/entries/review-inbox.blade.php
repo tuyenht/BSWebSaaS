@@ -46,11 +46,11 @@
             <div class="mb-3 flex flex-col gap-2">
                 <label class="flex items-center gap-2 rounded border border-border px-2.5 focus-within:border-admin-primary focus-within:ring-[3px] focus-within:ring-admin-primary/20">
                     <x-admin::icon name="ri-search" class="size-4 shrink-0 text-body-muted" />
-                    <input type="search" wire:model.live.debounce.300ms="search" class="min-h-9 w-full border-0 bg-transparent p-0 text-[13px] text-body-text focus:outline-none focus:ring-0"
+                    <input type="search" wire:model.live.debounce.300ms="search" class="min-h-9 w-full border-0 bg-transparent p-0 text-[13px] text-body-text"
                            placeholder="{{ __('admin.inbox.search_placeholder') }}" aria-label="{{ __('admin.inbox.search_placeholder') }}">
                 </label>
                 @if (count($sections) > 1)
-                    <select wire:model.live="sectionFilter" class="min-h-9 w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-admin-primary focus:outline-none focus:ring-[3px] focus:ring-admin-primary/20">
+                    <select wire:model.live="sectionFilter" class="min-h-9 w-full rounded border border-border bg-surface px-2.5 text-[13px] text-body-text focus:border-admin-primary">
                         <option value="">{{ __('admin.inbox.all_types') }}</option>
                         @foreach ($sections as $key => $label)
                             <option value="{{ $key }}">{{ $label }}</option>
@@ -225,7 +225,7 @@
                                 <label class="block">
                                     <span class="mb-1 block text-xs font-semibold text-body-text">{{ __('admin.wfb.note_label') }}</span>
                                     <textarea wire:model="note" rows="2"
-                                              class="w-full rounded border border-border px-3 py-2 text-[13px] text-body-text focus:border-admin-primary focus:outline-none focus:ring-[3px] focus:ring-admin-primary/20"
+                                              class="w-full rounded border border-border px-3 py-2 text-[13px] text-body-text focus:border-admin-primary"
                                               placeholder="{{ __('admin.wfb.note_placeholder') }}"></textarea>
                                     @error('note') <span class="mt-1 block text-xs font-semibold text-[#c0432c]">{{ $message }}</span> @enderror
                                 </label>

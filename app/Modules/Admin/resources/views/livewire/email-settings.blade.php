@@ -67,7 +67,7 @@
                     <x-admin::input :label="__('admin.smtp_port')" type="number" wire:model="smtpPort" placeholder="587" />
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.smtp_encryption') }}</label>
-                        <select wire:model="smtpEncryption" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+                        <select wire:model="smtpEncryption" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-admin-primary">
                             <option value="tls">{{ __('admin.encryption_tls') }}</option>
                             <option value="ssl">{{ __('admin.encryption_ssl') }}</option>
                             <option value="null">{{ __('admin.encryption_none') }}</option>
@@ -86,7 +86,7 @@
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text">{{ __('admin.email_provider') }}</label>
-                        <select wire:model.live="oauthProvider" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-admin-primary focus:outline-none focus:ring-2 focus:ring-admin-primary/20">
+                        <select wire:model.live="oauthProvider" class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text focus:border-admin-primary">
                             <option value="google">Google</option>
                             <option value="microsoft">Microsoft</option>
                             <option value="yahoo">Yahoo</option>
