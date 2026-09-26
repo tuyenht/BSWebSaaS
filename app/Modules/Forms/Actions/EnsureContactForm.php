@@ -46,6 +46,33 @@ final class EnsureContactForm
     }
 
     /**
+     * Rewrite the consent box's sentence from the current interface translations. The sentence is
+     * the platform's legal wording, not the site's copy, so a reworded version (after a legal
+     * review) has to reach every site; handle() never rewrites an existing field. Leads keep the
+     * sentence the visitor actually ticked (SubmitForm stores it), so earlier evidence stays as is.
+     *
+     * @return bool whether the stored sentence changed
+     */
+    public function refreshConsentLabel(Form $form): bool
+    {
+        $field = $form->fields()->where('key', 'consent')->first();
+        if ($field === null) {
+            return false;
+        }
+
+        $label = $this->inEveryLanguage('forms.consent_label');
+        $stored = $field->label;
+        ksort($stored);
+        if ($stored === $label) {
+            return false;
+        }
+
+        $field->update(['label' => $label]);
+
+        return true;
+    }
+
+    /**
      * A per-locale label map from the interface translations (lang/*.json), so a visitor reading
      * the site in any of those languages sees the sentence in it.
      *
