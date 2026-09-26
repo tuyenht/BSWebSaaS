@@ -2,9 +2,9 @@
 
 namespace App\Modules\Forms\Notifications;
 
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 

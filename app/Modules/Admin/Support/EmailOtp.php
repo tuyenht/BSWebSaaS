@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Support;
 use App\Modules\Admin\Notifications\EmailOtpNotification;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 

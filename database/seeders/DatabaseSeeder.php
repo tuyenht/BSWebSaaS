@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;

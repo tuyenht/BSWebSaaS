@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support;
 
-use App\Modules\Forms\Services\TurnstileVerifier;
+use App\Modules\Shared\Support\TurnstileVerifier;
 
 /**
  * Whether the Cloudflare Turnstile challenge is ACTIVE on the login form. Two conditions:

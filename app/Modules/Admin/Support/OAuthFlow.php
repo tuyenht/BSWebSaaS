@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 

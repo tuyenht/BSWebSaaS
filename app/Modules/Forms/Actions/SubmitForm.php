@@ -2,13 +2,13 @@
 
 namespace App\Modules\Forms\Actions;
 
-use App\Modules\Admin\Support\Cast;
-use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Forms\Notifications\NewLeadNotification;
-use App\Modules\Forms\Services\TurnstileVerifier;
 use App\Modules\Notifications\Support\Notify;
+use App\Modules\Shared\Contracts\TenantMailConfigurator;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\TurnstileVerifier;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Support\Facades\Notification;
 use Throwable;
@@ -98,7 +98,7 @@ final readonly class SubmitForm
         }
 
         try {
-            app(TenantMailer::class)->apply();
+            app(TenantMailConfigurator::class)->apply();
             // The owner reads the lead in the SITE's language, whatever language the visitor used.
             Notification::route('mail', $recipients)
                 ->notify((new NewLeadNotification($submission, $form))->locale(app(SiteLocale::class)->default()));

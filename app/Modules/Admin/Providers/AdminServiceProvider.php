@@ -32,9 +32,11 @@ use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Admin\Support\AdminPlane;
-use App\Modules\Admin\Support\Cast;
+use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Contracts\TenantMailConfigurator;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Mail\Events\MessageSending;
@@ -60,6 +62,13 @@ use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
  */
 final class AdminServiceProvider extends ServiceProvider
 {
+    public function register(): void
+    {
+        // Feature modules (Forms' lead notice) send tenant mail through the Shared contract; the
+        // settings, secrets and OAuth transport behind it stay here.
+        $this->app->bind(TenantMailConfigurator::class, TenantMailer::class);
+    }
+
     public function boot(): void
     {
         View::addNamespace('admin', $this->app->basePath('app/Modules/Admin/resources/views'));

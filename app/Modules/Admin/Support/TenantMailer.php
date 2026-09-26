@@ -2,6 +2,8 @@
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Shared\Contracts\TenantMailConfigurator;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Contracts\Cache\LockTimeoutException;
@@ -30,7 +32,7 @@ use Throwable;
  * Cached mailer transports ('smtp', 'admin_xoauth2') are purged on every call so a
  * warmed Octane worker cannot reuse a previous request/tenant's live transport object.
  */
-final readonly class TenantMailer
+final readonly class TenantMailer implements TenantMailConfigurator
 {
     public function __construct(
         private SettingsRepository $tenant,

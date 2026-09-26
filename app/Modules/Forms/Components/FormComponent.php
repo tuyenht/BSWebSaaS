@@ -2,10 +2,10 @@
 
 namespace App\Modules\Forms\Components;
 
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormField;
 use App\Modules\Shared\Contracts\Component;
+use App\Modules\Shared\Support\Cast;
 
 /**
  * Data-bound page component: embeds a lead-capture form (resolved by key within the current site,
