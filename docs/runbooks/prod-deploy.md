@@ -27,7 +27,15 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
    - Routes/middleware/config/events changed → `docker exec bsweb_prod_app php artisan optimize`.
    - `octane:reload` alone does NOT pick up a cached route or middleware change.
 5. `docker exec bsweb_prod_app php artisan octane:reload`, then `docker restart bsweb_prod_horizon` (mail and jobs run on the queue).
+   - From the merge until this reload, the old workers serve old PHP against the new files on disk (Blade compiles on demand; a class moved in the delta is gone). Run steps 2–5 back to back.
+   - Commands that write data only the new code understands (a new field type, a new setting) run **after** the reload — never before — and the rollback must remove that data.
 6. If a migration changed a column type on a table with prepared statements in flight, the logs may show "cached plan must not change result type". In that case run `docker restart bsweb_prod_pgbouncer` to drop the server connections.
+
+## `.env` changes and the image
+
+- The containers get `.env` through `env_file` **when they are created**. Laravel never overrides a variable the process already has, so after an `.env` edit `optimize` re-caches the old value (26/09: the Cloudflare token replaced in `.env` is still the old one inside `bsweb_prod_app`). Only a recreate (`docker compose up -d app horizon scheduler` in `/opt/bswebsaas/prod`) applies it — a few seconds of downtime.
+- Before recreating, check the image: dev and prod both run the tag `bsweb/app:dev`, and a dev rebuild moves it. On 26/09 the running prod containers use builds that are no longer tagged, so a recreate would start prod on a different build. Compare `docker inspect bsweb_prod_app --format '{{.Image}}'` with `docker image inspect bsweb/app:dev --format '{{.Id}}'`; if they differ, don't recreate until prod has its own tag.
+- Scripts that read `.env` themselves (the backup and the restore drill) see an edit at their next run.
 
 ## After
 
@@ -36,4 +44,5 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 - Rollback:
   1. `git -C /opt/bswebsaas/prod reset --hard <previous-sha>`.
   2. `pnpm run build` → `optimize` → `octane:reload` → restart horizon.
-  3. If a migration broke data, restore the pre-deploy dump.
+  3. Remove data the old code cannot render (whatever the deploy's post-reload commands added).
+  4. If a migration broke data, restore the pre-deploy dump.
