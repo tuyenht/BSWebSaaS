@@ -2,8 +2,8 @@
 
 namespace App\Modules\Forms\Models;
 
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Shared\Concerns\HasUlidColumn;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;

@@ -3,8 +3,8 @@
 namespace App\Modules\Admin\Notifications;
 
 use App\Modules\Admin\Notifications\Concerns\QueuesTenantMail;
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Audit\Facades\Audit;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;

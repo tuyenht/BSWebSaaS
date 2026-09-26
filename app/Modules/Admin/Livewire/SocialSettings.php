@@ -2,10 +2,10 @@
 
 namespace App\Modules\Admin\Livewire;
 
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;

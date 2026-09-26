@@ -2,7 +2,6 @@
 
 namespace App\Modules\Admin\Http\Controllers;
 
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
@@ -11,6 +10,7 @@ use App\Modules\Admin\Support\SocialAuth;
 use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Http\RedirectResponse;

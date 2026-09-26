@@ -14,35 +14,51 @@
 - **`Tenancy/`** = nền của Gate #1 (Site resolver · `BelongsToSite` · RLS · `SET LOCAL` ·
   Octane reset · Entitlement). **Là module nền — phụ thuộc 0 module khác.** *(Code Gate #1
   sẽ viết vào đây ở prompt riêng — hiện để trống.)*
-- **`Shared/Contracts/`** = interface liên-module CHỈ ở điểm **swap/external** mà design đã
-  chốt bọc interface (DomainProvisioner, WHMCS License, AI SDK). KHÔNG ép interface mọi cạnh
-  nội bộ.
+- **`Shared/Contracts/`** = interface liên-module ở điểm **swap/external** mà design đã chốt bọc
+  interface (DomainProvisioner, WHMCS License, AI SDK) VÀ ở cạnh nào mà thiếu nó sẽ thành chu trình
+  (vd `Component` cho Theme, `TenantMailConfigurator` cho Forms gửi thư qua cấu hình mail của Admin).
+  KHÔNG ép interface mọi cạnh nội bộ.
+- **`Shared/Support/`, `Shared/Concerns/`** = tiện ích thuần dùng chung (`Cast`, `TurnstileVerifier`,
+  `RichTextSanitizer`, `VideoEmbed`, `HasUlidColumn`) — chỉ phụ thuộc Laravel/PHP, KHÔNG phụ thuộc
+  module nào.
 
 ## Ranh giới được ép thế nào
 
-- **arch test** (`tests/Arch/ModuleBoundariesTest.php`) ép **hướng phụ thuộc acyclic**;
-  `Tenancy` không được dùng bất kỳ module tính năng nào. Vi phạm = CI đỏ.
+- **arch test** ép **hướng phụ thuộc acyclic**: `tests/Arch/ModuleDependencyGraphTest.php` dựng đồ thị
+  từ code (mọi tên `App\Modules\<X>` ngoài chú thích, PHP + Blade) và đỏ khi có BẤT KỲ chu trình nào;
+  `tests/Arch/ModuleBoundariesTest.php` giữ các cạnh cấm cụ thể (vd `Tenancy` không dùng module tính
+  năng nào). Vi phạm = CI đỏ.
 - FK/pivot **xuyên module được phép** (đồ thị quan hệ là MỘT — vd `entry_taxonomies`,
   `product_taxonomies`). Chủ sở hữu pivot = module `Taxonomy`.
 
 ## Tầng phụ thuộc (acyclic — đồ thị thực tế)
 
-Phụ thuộc chỉ trỏ **lên trên**. `Tenancy` là nền (Gate #1), `Shared` chỉ chứa interface.
+Phụ thuộc chỉ trỏ **lên trên**. `Tenancy` là nền (Gate #1), `Shared` không phụ thuộc module nào.
 
 ```
-Shared            (chỉ interface — seam liên-module duy nhất)
-  └─ Tenancy      (RLS + BelongsToSite; nền — chỉ phụ thuộc Shared)
-       ├─ Theme       (trình bày; KHÔNG biết content)
+Shared            (interface + tiện ích thuần — không phụ thuộc module nào)
+  └─ Tenancy      (RLS + BelongsToSite + Entitlement; nền — chỉ phụ thuộc Shared)
        ├─ Identity    (user + hashing)
-       │    ├─ Rbac   (role/permission trên nền user)
        │    ├─ Audit
-       │    └─ Notifications (thông báo trong ứng dụng: site_notifications + kênh + tuỳ chọn
-       │                     theo người; Cms/Forms/Admin gửi QUA nó, không chiều ngược lại)
-       └─ Cms         (content: entries/taxonomy/routing; dùng registry của Theme)
+       │    ├─ Rbac   (role/permission trên nền user; dùng Audit)
+       │    ├─ Notifications (thông báo trong ứng dụng: site_notifications + kênh + tuỳ chọn
+       │    │                theo người; Cms/Forms/Admin gửi QUA nó, không chiều ngược lại)
+       │    ├─ Workflow  (máy trạng thái duyệt, subject-agnostic ở code)
+       │    └─ Media     (thư viện ảnh & tệp)
+       ├─ Theme       (trình bày; KHÔNG biết content; dùng Media)
+       └─ Cms         (content: entries/taxonomy/routing/menu; dùng Theme, Workflow, Media)
+            ├─ Catalog      (sản phẩm; dùng Cms)
+            ├─ Forms        (biểu mẫu + khách liên hệ; gửi thư qua Shared\Contracts)
             ├─ Storefront   (mặt phẳng public)
-            └─ Admin        (mặt phẳng admin)
+            └─ Admin        (mặt phẳng admin — hub: dùng mọi module bên dưới)
        └─ Provisioning (genesis — ráp mọi module theo từng site)
 ```
+
+Nợ khái niệm (không phải chu trình code, ghi để không tăng thêm): bảng `workflow_log.entry_id` có FK
+tới `entries` (Workflow ở code không biết Cms, nhưng schema thì có); `Tenancy` chứa `ContentSection`,
+`PermalinkConfig`, `SiteProfile` (khái niệm website); `Rbac\Registry\PermissionRegistry` liệt kê quyền
+nội dung; `Shared\Contracts\Component` là hợp đồng block storefront. Gỡ khi có dự án phi-website
+dùng lõi.
 
 Cạnh được arch test ép (ngoài "Tenancy không dùng module tính năng nào"):
 

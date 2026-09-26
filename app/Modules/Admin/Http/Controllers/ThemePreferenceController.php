@@ -3,9 +3,9 @@
 namespace App\Modules\Admin\Http\Controllers;
 
 use App\Modules\Admin\Support\AdminPlane;
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

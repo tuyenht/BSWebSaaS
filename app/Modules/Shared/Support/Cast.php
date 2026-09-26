@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Modules\Admin\Support;
+namespace App\Modules\Shared\Support;
 
 /**
  * Narrowing helpers for the inevitably-`mixed` values read from JSON-backed settings

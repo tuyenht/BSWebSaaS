@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Modules\Admin\Theme;
 
 use App\Modules\Admin\Support\AdminPlane;
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\Cast;
 
 /**
  * Resolves the admin chrome theme for the current request: app default → site default

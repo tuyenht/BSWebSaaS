@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Encryption\Encrypter;
 use Illuminate\Support\Facades\Log;

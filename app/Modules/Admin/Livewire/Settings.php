@@ -3,10 +3,10 @@
 namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
-use App\Modules\Admin\Support\Cast;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
