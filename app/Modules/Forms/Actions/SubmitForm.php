@@ -38,6 +38,7 @@ final readonly class SubmitForm
         array $meta = [],
     ): FormSubmission {
         $ip = $meta['ip'] ?? null;
+        $data = $this->recordConsent($form, $data);
         $isSpam = $this->isSpam($honeypot, $turnstileToken, $ip);
 
         // Cap to the column limits at the storage boundary. name/email/phone are validated upstream,
@@ -67,6 +68,25 @@ final readonly class SubmitForm
         }
 
         return $submission;
+    }
+
+    /**
+     * A ticked checkbox is kept as the sentence the visitor agreed to, in the language they read
+     * it in — the evidence of consent; the submission's created_at says when.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function recordConsent(Form $form, array $data): array
+    {
+        foreach ($form->fields()->where('type', 'checkbox')->get() as $field) {
+            if (! empty($data[$field->key])) {
+                $labels = Cast::arr($field->label);
+                $data[$field->key] = Cast::string($labels[app()->getLocale()] ?? $labels['vi'] ?? null) ?: true;
+            }
+        }
+
+        return $data;
     }
 
     /** Narrow to a non-empty string capped to $limit characters (the column width), else null. */

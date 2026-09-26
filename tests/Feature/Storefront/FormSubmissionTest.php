@@ -137,3 +137,38 @@ it('throttles repeated submissions from the same IP', function (): void {
     // Only the 5 allowed attempts were stored; the throttled 6th never reached SubmitForm.
     expect(app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->count()))->toBe(5);
 });
+
+/** Add the consent checkbox the provisioned contact form carries (required, labelled per language). */
+function addConsentField(): void
+{
+    app(Tenancy::class)->enter(1, fn () => Form::query()->firstWhere('key', 'contact')->fields()->create([
+        'key' => 'consent', 'type' => 'checkbox', 'is_required' => true, 'sort_order' => 5,
+        'label' => ['vi' => 'Tôi đồng ý để website lưu thông tin.', 'en' => 'I agree this website may store my details.'],
+    ]));
+}
+
+it('refuses a lead whose form asks for consent until the box is ticked', function (): void {
+    addConsentField();
+
+    submitContact(['name' => 'Khách A', 'phone' => '0900000000', 'message' => 'Cần báo giá'])
+        ->assertRedirect()
+        ->assertSessionHasErrors(['consent' => 'Vui lòng đánh dấu ô đồng ý để chúng tôi được lưu và dùng thông tin liên hệ của bạn.']);
+
+    expect(app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->count()))->toBe(0);
+});
+
+it('keeps the sentence the visitor agreed to, in their language, as the evidence of consent', function (): void {
+    addConsentField();
+    app(Tenancy::class)->enter(1, fn () => SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]));
+
+    submitContact(['name' => 'Guest', 'phone' => '0900000000', 'message' => 'Quote please', 'consent' => '1', 'locale' => 'en'])
+        ->assertRedirect()->assertSessionHas('form_success');
+
+    $lead = app(Tenancy::class)->enter(1, fn () => FormSubmission::query()->firstOrFail());
+    expect($lead->data['consent'])->toBe('I agree this website may store my details.');
+});
+
+it('does not ask for consent on a form without a consent box', function (): void {
+    submitContact(['name' => 'Khách B', 'phone' => '0900000001', 'message' => 'Hỏi giá'])
+        ->assertRedirect()->assertSessionHasNoErrors();
+});

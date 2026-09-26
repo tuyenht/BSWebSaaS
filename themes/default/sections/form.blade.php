@@ -31,6 +31,18 @@
             </div>
 
             @foreach ($fields as $field)
+                @if ($field['type'] === 'checkbox')
+                    {{-- The box precedes its sentence and the whole label is clickable (large tap target). --}}
+                    <div class="lead-form__field lead-form__field--checkbox">
+                        <input id="lead-{{ $field['key'] }}" type="checkbox" name="{{ $field['key'] }}" value="1"
+                               @checked(old($field['key'])) @if ($field['is_required']) required @endif>
+                        <label for="lead-{{ $field['key'] }}">{{ $field['label'] }}@if ($field['is_required'])<span class="lead-form__required" aria-hidden="true">*</span>@endif</label>
+                        @error($field['key'])
+                            <span class="lead-form__field-error" role="alert">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    @continue
+                @endif
                 @php $inputType = in_array($field['type'], ['email', 'tel', 'text'], true) ? $field['type'] : 'text'; @endphp
                 <div class="lead-form__field">
                     <label for="lead-{{ $field['key'] }}">

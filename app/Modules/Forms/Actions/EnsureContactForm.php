@@ -33,6 +33,9 @@ final class EnsureContactForm
             ['key' => 'email', 'type' => 'email', 'label' => ['vi' => 'Email'], 'is_required' => false, 'sort_order' => 2],
             ['key' => 'phone', 'type' => 'tel', 'label' => ['vi' => 'Số điện thoại'], 'is_required' => false, 'sort_order' => 3],
             ['key' => 'message', 'type' => 'textarea', 'label' => ['vi' => 'Nội dung'], 'is_required' => true, 'sort_order' => 4],
+            // Personal data is collected only with the visitor's explicit agreement; the ticked
+            // sentence is stored with the lead as the evidence (SubmitForm).
+            ['key' => 'consent', 'type' => 'checkbox', 'label' => $this->inEveryLanguage('forms.consent_label'), 'is_required' => true, 'sort_order' => 5],
         ];
 
         foreach ($fields as $field) {
@@ -40,5 +43,23 @@ final class EnsureContactForm
         }
 
         return $form;
+    }
+
+    /**
+     * A per-locale label map from the interface translations (lang/*.json), so a visitor reading
+     * the site in any of those languages sees the sentence in it.
+     *
+     * @return array<string, string>
+     */
+    private function inEveryLanguage(string $key): array
+    {
+        $labels = [];
+        foreach (glob(lang_path('*.json')) ?: [] as $file) {
+            $locale = basename($file, '.json');
+            $labels[$locale] = (string) __($key, [], $locale);
+        }
+        ksort($labels);
+
+        return $labels;
     }
 }

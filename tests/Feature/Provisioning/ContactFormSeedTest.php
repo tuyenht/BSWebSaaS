@@ -46,7 +46,7 @@ it('seeds a contact form with its fields and the owner as the notify recipient',
 
     expect($form->status)->toBe('active')
         ->and($form->notify_emails)->toBe(['owner@anvinh.test'])
-        ->and($fieldKeys)->toBe(['name', 'email', 'phone', 'message']);
+        ->and($fieldKeys)->toBe(['name', 'email', 'phone', 'message', 'consent']);
 });
 
 it('embeds the form block on the provisioned /lien-he page', function (): void {
@@ -68,5 +68,17 @@ it('is idempotent — a re-provision does not duplicate the form or its fields',
         'fields' => Form::query()->where('key', 'contact')->firstOrFail()->fields()->count(),
     ]);
 
-    expect($counts['forms'])->toBe(1)->and($counts['fields'])->toBe(4);
+    expect($counts['forms'])->toBe(1)->and($counts['fields'])->toBe(5);
+});
+
+it('asks the visitors of every new site for consent, in each interface language', function (): void {
+    $site = provisionForForm();
+
+    $consent = app(Tenancy::class)->enter($site->id, fn () => Form::query()->where('key', 'contact')->firstOrFail()
+        ->fields()->where('key', 'consent')->firstOrFail());
+
+    expect($consent->type)->toBe('checkbox')
+        ->and($consent->is_required)->toBeTrue()
+        ->and($consent->label)->toHaveKeys(['vi', 'en', 'ja', 'zh'])
+        ->and($consent->label['vi'])->toBe(__('forms.consent_label', [], 'vi'));
 });
