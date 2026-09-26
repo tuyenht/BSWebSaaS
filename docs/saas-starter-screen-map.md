@@ -24,21 +24,21 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 13 | Thanh ngôn ngữ nội dung | ✅ spec | — | 🟡 | D1-4b | |
 | 14 | Lịch sử phiên bản | 🟡 | — | ❌ chưa có bảng | D1-4b | `entry_revisions` typed (Phụ lục A) |
 | 15 | Chuyên mục | ❌ | — | ❌ trang "sắp có" | D1-1 | cột ltree `path` chưa được ghi |
-| 16 | Trình đơn | 🟠 thiếu gán theo ngôn ngữ | — | ❌ trang "sắp có" · ✅ backend trỏ Sản phẩm | D1-2 | backend 24/09: `link_type` `product` + ẩn đích khách không mở được |
+| 16 | Trình đơn | 🟠 thiếu gán theo ngôn ngữ | — | ❌ trang "sắp có" · ✅ backend đường ghi | D1-2 | backend 24/09: `link_type` `product` + ẩn đích khách không mở được · 26/09: tạo/sửa/xoá trình đơn và mục, kéo thả ≤ 5 cấp, gán theo vùng × ngôn ngữ (`Cms\Actions\Menus`) |
 | 17 | Page builder | ✅ v3 | — | 🟡 | ⏸ track Builder v3 | |
 | 18–19 | Hộp duyệt · Khối trạng thái duyệt | ✅ | `design_handoff_workflow/` | ✅ prod | — | |
 | 20–21 | Sản phẩm: danh sách · trình sửa | ❌ | — | ✅ · 🟡 | D1-5 | 24/09: lưu sản phẩm Đã đăng → có địa chỉ công khai, đổi đường dẫn → 301 (`catalog:sync-routes` sửa hàng cũ) |
 | 22 | Thư viện ảnh & tệp (trang) | 🟡 chỉ modal | — | ✅ | D1-6 | ALT mới 1 ngôn ngữ |
 | 23 | Trình chọn ảnh | ✅ | `design_handoff_media_picker/` | ✅ P1/P2 | D1-6 | P3/P4 còn |
 | 24–25 | Hộp thư liên hệ · chi tiết | ❌ | — | 🟡 | D1-7 | |
-| 26 | Trình dựng biểu mẫu | ❌ | — | ❌ | D1-7 | |
+| 26 | Trình dựng biểu mẫu | ❌ | — | ❌ | D1-7 | 26/09: form liên hệ có ô đồng ý bắt buộc (kiểu `checkbox`), lưu câu khách đã tick làm bằng chứng |
 | 27–30 | Thành viên · Nhóm quyền · Sửa nhóm · "Nhóm làm được gì" | ❌ | — | 🟡 · ❌ · ❌ · ❌ | D2-1 | backend nhóm tuỳ chỉnh có (`e922240`) |
 | 31 | Lời mời thành viên | ❌ | — | 🟡 backend + màn nhận lời mời (khung đăng nhập) · tab Lời mời ❌ | D2-2 | backend 24/09: `invitations`, trả lời đồng nhất, 7 ngày, ≤50 thư/ngày (tính cả gửi lại) |
 | 32 | Khung Cài đặt (1 thanh Lưu) | ✅ | — | 🟡 | D0-4, D3 | |
 | 33 | Thông tin chung | 🟠 đa ngữ vs dữ liệu 1 ngữ | — | ❌ UI · ✅ backend đọc | D3-1 | backend 24/09: cột §14 + `provinces`/`wards` + `SiteIdentity`; website đọc NAP theo ngôn ngữ; tên hiển thị (viết tắt, theo ngôn ngữ) ≠ tên pháp lý đầy đủ |
-| 34 | Giao diện website | 🟠 6 màu tự do | — | ❌ | D3-1 | đúng 5 quyết định (section-style-system §1) |
+| 34 | Giao diện website | 🟠 6 màu tự do | — | ❌ UI · 🟡 backend | D3-1 | đúng 5 quyết định (section-style-system §1) · 26/09: một màu thương hiệu → 10 bậc `--brand-50..900` (`Theme\Theming\BrandPalette`) |
 | 35 | Giao diện trang quản trị | ✅ | — | ✅ | — | |
-| 36 | Ngôn ngữ website | 🟠 3 tầng | — | ❌ UI · ✅ backend | D3-1 | backend 24/09: `is_public` + `locales.max` + `ConfigureSiteLocale` |
+| 36 | Ngôn ngữ website | 🟠 3 tầng | — | ❌ UI · ✅ backend | D3-1 | backend 24/09: `is_public` + `locales.max` + `ConfigureSiteLocale` · 26/09: mặc định 1 ngôn ngữ, operator cấp thêm bằng `site:locale` |
 | 37 | Đường dẫn | ❌ | — | ❌ (engine có) | D3-1 | 5 kiểu đã chốt 09/07 |
 | 38 | SEO & Chia sẻ | ✅ | — | ❌ | D3-2 | |
 | 39 | Chuyển hướng | ❌ | — | ❌ (bảng có) | D3-2 | |
