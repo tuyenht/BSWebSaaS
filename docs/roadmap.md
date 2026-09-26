@@ -1,10 +1,12 @@
-# Roadmap — BSWebSaaS (cập nhật 24/09/2026)
+# Roadmap — BSWebSaaS (cập nhật 26/09/2026)
 
 > Nguồn "đang ở đâu / làm gì tiếp" DUY NHẤT được theo dõi trong git (thay master backlog 24/06 trong `plans/`,
 > vốn bị `.gitignore` và đã lỗi thời). Chi tiết thiết kế ở `design.md`; tiến độ từng commit ở `git log`.
 > Không ghi SHA của prod ở đây (lỗi thời nhanh) — xem nhật ký deploy.
 
-**Where we are:** ✅ Spine (Tenancy/RLS/RBAC/Provisioning) → ✅ CMS + Media + Catalog + Admin Velzon → ✅ An Vinh LIVE →
+**Where we are (26/09):** ✅ như dưới + audit tổng thể 26/09 (quyết định §2b) → 🔶 **BẠN Ở ĐÂY: thiết kế D0 (chưa handoff nào về) ∥ các việc nền §2b** → ⬜ build core theo handoff → ⬜ đóng gói (3 kênh).
+
+**Where we were (24/09):** ✅ Spine (Tenancy/RLS/RBAC/Provisioning) → ✅ CMS + Media + Catalog + Admin Velzon → ✅ An Vinh LIVE →
 ✅ Workflow engine + Entitlement + Workflow UI (Phase 1) → ✅ Audit độ phủ thiết kế + 14 quyết định (24/09) →
 🔶 **BẠN Ở ĐÂY: thiết kế đủ 100% màn SaaS Starter (design-first) + các việc nền đi kèm** → ⬜ build core theo từng handoff →
 ⬜ đóng gói core v1.0.
@@ -26,6 +28,13 @@
 
 **Audit sau merge 24/09 (đã sửa + lên prod):** migration `is_public` hỏng khi có ngôn ngữ đang tắt (sửa trước deploy) · hạn mức thư mời đếm cả thư gửi lại · `admin-units:import` nhận CSV của Excel (BOM, `;`) · sản phẩm đăng trong admin có địa chỉ công khai + 301 khi đổi đường dẫn (+ lệnh `catalog:sync-routes`; prod không có sản phẩm nào thiếu) · chữ của giao diện website theo ngôn ngữ trang, link trang chủ giữ ngôn ngữ, hover chân trang hết bị CSP chặn, `img-src` lấy từ cấu hình · ja/zh đủ khoá + CI `lang:check` (`composer qa` chạy đúng các bước như CI, không còn bị cắt ở 300 giây) · (phiên song song) nhật ký kiểm toán ghi trong savepoint riêng — một dòng nhật ký lỗi hay header `X-Request-Id` quá dài không còn làm mất cả request · không xoá được nhóm quyền tuỳ chỉnh mà một lời mời đang chờ còn hứa · hạn mức thư mời khoá theo site.
 
+## 2b. Quyết định 26/09 (sau audit tổng thể — `design.md` changelog v2.27)
+| Trạng thái | Việc |
+|---|---|
+| ✅ Chốt | Website trên core CMS cũ: làm lại giao diện sau; dữ liệu chuyển bằng AI đọc → phân tích → viết lại (có người duyệt), không import thẳng — cần bộ AI (sau core v1) · Đóng gói 3 kênh: Starter nội bộ → Standalone Export (Phase 3) → bán mã nguồn · An Vinh giữ `av1.baoson.net` · dev + prod chung 1 máy trong giai đoạn này |
+| 🔨 Đang làm | Backup DB prod: token Cloudflare hết hạn 25/09 → script kiểm hạn token trước khi chạy, giữ bản dump cục bộ khi không upload được, ping healthcheck tuỳ chọn (owner: gia hạn token + tạo healthcheck) · gỡ vòng phụ thuộc Admin ↔ Forms + arch test kiểm chu trình toàn đồ thị · `locales.max` mặc định 1 + lệnh operator cấp ngôn ngữ cho site · ô đồng ý bắt buộc trên biểu mẫu thu dữ liệu cá nhân · brief luật sư đợt 1 (bảo mật, điều khoản, thoả thuận xử lý dữ liệu) |
+| ⏭ Sau | An Vinh mở en (khi khách dịch xong, duyệt qua xem trước) rồi ja · nợ khái niệm của lõi (FK `workflow_log.entry_id`, `ContentSection`/`PermalinkConfig` trong Tenancy, quyền nội dung trong Rbac) — ghi thành danh sách chỉ-giảm, gỡ khi có dự án phi-website · chuỗi hiển thị còn viết cứng tiếng Việt trong PHP (lỗi Media, nhãn mẫu quy trình duyệt, danh mục module/tính năng) |
+
 ## 3. Mạch khác đang mở
 - **RBAC Console:** backend nhóm quyền tuỳ chỉnh xong (`rbac.custom_roles`, mặc định tắt); UI = lượt D2-1.
 - **Core Web Vitals:** job `cwv` là gate từ 24/09 cho `/`, `/lien-he`, `/tin-tuc` (LCP ≤ 1,5s · JS ≤ 30KB · axe 0 vi phạm).
@@ -33,8 +42,10 @@
   đăng nhập hỗ trợ (thiết kế ở D4-3) — chưa code.
 - **Builder v3:** danh mục section v3.1 chờ phía thiết kế; PR 1a.1 còn bộ sinh bảng màu `--brand-50..900` + thang spacing.
 - **Đa ngôn ngữ giao diện:** vi/en/ja/zh đủ khoá (24/09), CI chặn lệch bằng `lang:check`. Trang 404 chung còn chỉ tiếng Việt → thiết kế ở D5-1.
-- **Còn mở (nhỏ, chưa gấp):** xem trước ngôn ngữ chưa công khai (câu hỏi cho D3-1) · sitemap > 50.000 địa chỉ cần sitemap index (khi có site lớn) · nhập lại mật khẩu trước khi tắt 2 lớp (làm cùng D2-3) · `tenant_users` chưa có chỗ đọc (chốt ở D4-1) · (đề xuất) trần thư mời theo từng địa chỉ — hiện một địa chỉ vẫn nhận được tới 50 thư/ngày từ cùng một website.
+- **Còn mở (nhỏ, chưa gấp):** xem trước ngôn ngữ chưa công khai (câu hỏi cho D3-1) · sitemap > 50.000 địa chỉ cần sitemap index (khi có site lớn) · nhập lại mật khẩu trước khi tắt 2 lớp (làm cùng D2-3) · `tenant_users` chưa có chỗ đọc (chốt ở D4-1). (Trần thư mời theo từng địa chỉ: ✅ ≤ 3 thư / địa chỉ / site / 24 giờ — v2.26.)
 
 ## 4. Để sau (có chủ đích)
-Commerce GĐ1 (giỏ hàng + COD + VietQR) · thanh toán/billing (chỉ để chỗ chờ) · bộ AI · Meilisearch · đóng gói core v1.0
-(installer, quét white-label, tài liệu EN, bench 1M bản ghi/tenant, versioning — backlog "G-P").
+Commerce GĐ1 (giỏ hàng + COD + VietQR — các website đang chờ đều là site giới thiệu, chưa cần) · thanh toán/billing (chỉ để
+chỗ chờ) · bộ AI (dịch hỗ trợ cho khách + chuyển nội dung website cũ) · Meilisearch · tên miền riêng tự phục vụ (khi có
+khách cần) · đóng gói core v1.0 (installer, quét white-label — gồm đổi tiền tố token CSS mượn tên template tham khảo
+`--vz-*` cùng lúc đồng bộ design system với Claude Design —, tài liệu EN, bench 1M bản ghi/tenant, versioning — backlog "G-P").
