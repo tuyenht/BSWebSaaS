@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(//opt/bswebsaas/prod/.env*)",
+      "Read(//opt/bswebsaas/prod/**/.env*)",
+      "Read(//opt/bswebsaas/prod/db-backups/**)",
+      "Read(//opt/bswebsaas/prod/storage/app/private/**)",
+      "Read(//opt/bswebsaas/db-backups/**)",
+      "Read(//opt/bswebsaas/*.sql)",
+      "Read(//opt/bswebsaas/*.sql.gz)",
+      "Read(//opt/bswebsaas/*.tgz)",
+      "Read(//opt/bswebsaas/dev/.env)",
+      "Read(//opt/bswebsaas/dev/.env.bak*)",
+      "Edit(//opt/bswebsaas/prod/**)",
+      "Edit(//etc/claude-code/**)",
+      "Edit(//**/.claude/settings*.json)",
+      "Edit(~/.claude/settings*.json)",
+      "Edit(~/.claude/hooks/**)",
+      "Edit(//etc/sudoers*)",
+      "Edit(//etc/sudoers.d/**)",
+      "Edit(//etc/crontab)",
+      "Edit(//etc/cron.d/**)",
+      "Edit(//var/spool/cron/**)",
+      "Edit(//etc/systemd/**)",
+      "Edit(//root/.ssh/**)",
+      "Bash(apt install *)",
+      "Bash(apt remove *)",
+      "Bash(apt purge *)",
+      "Bash(apt-get install *)",
+      "Bash(apt-get remove *)",
+      "Bash(apt-get purge *)",
+      "Bash(dpkg -i *)",
+      "Bash(dpkg -r *)",
+      "Bash(dpkg -P *)",
+      "Bash(snap install *)",
+      "Bash(snap remove *)",
+      "Bash(pip install *)",
+      "Bash(pip3 install *)",
+      "Bash(npm install -g *)",
+      "Bash(npm i -g *)",
+      "Bash(pnpm add -g *)",
+      "Bash(yarn global *)",
+      "Bash(crontab *)",
+      "Bash(systemctl *)",
+      "Bash(service *)",
+      "Bash(useradd *)",
+      "Bash(usermod *)",
+      "Bash(userdel *)",
+      "Bash(passwd *)",
+      "Bash(visudo *)",
+      "Bash(iptables *)",
+      "Bash(ufw *)",
+      "Bash(nft *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Read|Edit|Write|MultiEdit|NotebookEdit|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 /etc/claude-code/hooks/host_guard.py || exit 2",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -157,6 +157,7 @@ docker compose restart horizon                        # sau khi sửa Job/Listen
 ### 7.1 An toàn vận hành máy chủ (dev + prod chung host)
 
 > Không cài/gỡ gói hệ thống (apt, snap, pip toàn cục, npm -g…) trên máy chủ 103.82.27.129 — dev và prod dùng chung máy — khi chưa được chủ dự án duyệt rõ ràng trong phiên. Công cụ đo/kiểm phải nằm trong repo hoặc chạy trong container dự án. Nếu lỡ cài, phải báo ngay trong câu trả lời kế tiếp kèm lệnh gỡ.
+> Rào chắn cấp máy thực thi quy tắc này (và chặn ghi prod, đọc bí mật, docker vào prod) cho mọi phiên Claude Code: `docs/runbooks/claude-code-host-guard.md` — bị chặn thì đọc lý do trong thông báo, không tìm đường lách.
 
 ---
 

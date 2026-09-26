@@ -108,6 +108,18 @@ jobs:
       - name: Pest (unit · feature · arch · query-budget)
         run: vendor/bin/pest
 
+  # The Claude Code host guard (installed machine-wide on the shared dev+prod host) and the prod
+  # deploy tooling: pure-Python stdlib tests, no services, so they run in seconds.
+  ops-guards:
+    name: Ops guards (host guard · deploy scripts)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Host guard — every deny rule + everyday commands
+        run: python3 .claude/guard/test_host_guard.py -v
+
   frontend:
     name: Frontend build (Vite + Tailwind)
     runs-on: ubuntu-24.04
