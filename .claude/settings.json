@@ -1,4 +1,5 @@
 {
+  "autoCompactWindow": 500000,
   "permissions": {
     "allow": [
       "Bash(docker compose ps*)",
