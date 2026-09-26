@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # backup-prod-db.sh — Offsite PostgreSQL backup to Cloudflare R2
 #
-# Usage: /opt/bswebsaas/dev/scripts/backup-prod-db.sh
-# Cron:  15 3 * * * /opt/bswebsaas/dev/scripts/backup-prod-db.sh >> /var/log/anvinh-db-backup.log 2>&1
+# Usage: <checkout>/scripts/backup-prod-db.sh
+# Cron:  15 3 * * * /opt/bswebsaas/prod/scripts/backup-prod-db.sh >> /var/log/anvinh-db-backup.log 2>&1
+#        (host time, +07 — run from the PROD checkout, so prod backups run prod's reviewed copy)
 #
 # Optional env (process env or the .env file):
-#   BACKUP_ENV_FILE            .env to source (default /opt/bswebsaas/dev/.env)
+#   BACKUP_ENV_FILE            .env to source (default: the .env of the checkout holding this script)
+#   BACKUP_WRANGLER_PKG        wrangler package spec for npx (default: the pinned version below)
 #   BACKUP_HEALTHCHECK_URL     healthchecks.io-style check URL: pinged /start, on success, and /fail —
 #                              a run that never reports success (cron not firing, host down) alerts too
 #   BACKUP_LOCAL_FALLBACK_DIR  where a dump is kept when the offsite upload cannot happen
@@ -15,13 +17,13 @@
 #   - Docker (bsweb_prod_pg container running)
 #   - Node.js / npx (for wrangler)
 #   - Python 3 (stdlib only — no boto3 required)
-#   - /opt/bswebsaas/dev/.env with CLOUDFLARE_API_TOKEN, R2_* vars
+#   - the checkout's .env with CLOUDFLARE_API_TOKEN, R2_* vars
 
 set -euo pipefail
 
 # ── Config ──────────────────────────────────────────────────────────────────
-ENV_FILE="${BACKUP_ENV_FILE:-/opt/bswebsaas/dev/.env}"
-SCRIPTS_DIR="/opt/bswebsaas/dev/scripts"
+SCRIPTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="${BACKUP_ENV_FILE:-$(dirname "$SCRIPTS_DIR")/.env}"
 PG_CONTAINER="bsweb_prod_pg"
 # PRIVATE bucket — NOT baoson-media (that one is served publicly by the media Worker, so a dump
 # there would be downloadable at files.baoson.net/db-backups/*). This bucket has no Worker/route.
@@ -30,6 +32,9 @@ R2_PREFIX="db-backups"
 SCRATCHPAD_BASE="/tmp/bsweb-db-backup"
 # The Cloudflare token behind the upload carries an expiry date; warn this many days ahead.
 TOKEN_WARN_DAYS=14
+# Pinned: an unpinned `npx wrangler` installs whatever npm serves as latest on the day its cache is
+# empty, and runs it with the Cloudflare token in its environment. Bump deliberately.
+export WRANGLER_PKG="${BACKUP_WRANGLER_PKG:-wrangler@4.101.0}"
 
 # ── Timestamp & filename ─────────────────────────────────────────────────────
 TIMESTAMP=$(date -u +%Y%m%d-%H%M%S)
@@ -64,6 +69,9 @@ hc_ping() {
 
 # Prints "<status> <expires_on|-> <days_left|->" for CLOUDFLARE_API_TOKEN without echoing it.
 # Tries the user-token endpoint, then the account-token one (account id from R2_ENDPOINT).
+# status: the API's own word ("active", "expired", "disabled"…), "invalid" when the API answered
+# but accepted neither form, or "unreachable" when it never answered (network or Cloudflare
+# outage — which says nothing about the token itself).
 token_state() {
     python3 - <<'PY'
 import datetime, json, os, re, urllib.error, urllib.request
@@ -72,18 +80,22 @@ account = re.match(r"https://([0-9a-f]+)\.", os.environ.get("R2_ENDPOINT", ""))
 urls = ["https://api.cloudflare.com/client/v4/user/tokens/verify"]
 if account:
     urls.append(f"https://api.cloudflare.com/client/v4/accounts/{account.group(1)}/tokens/verify")
+answered = False
 for url in urls:
     request = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
     try:
         with urllib.request.urlopen(request, timeout=15) as response:
             body = json.load(response)
     except urllib.error.HTTPError as error:
+        if error.code >= 500:
+            continue
         try:
             body = json.load(error)
         except Exception:
             continue
     except Exception:
         continue
+    answered = True
     result = body.get("result") or {}
     if body.get("success") and result:
         expires = result.get("expires_on")
@@ -94,7 +106,7 @@ for url in urls:
         print(result.get("status", "unknown"), expires or "-", days)
         break
 else:
-    print("invalid - -")
+    print("invalid - -" if answered else "unreachable - -")
 PY
 }
 
@@ -147,10 +159,15 @@ log "Dump size: ${DUMP_SIZE} (${ACTUAL_BYTES}B)"
 
 # ── Token check: an expired/revoked token must fail loudly, not after a silent 401 ─────────
 read -r TOKEN_STATUS TOKEN_EXPIRES TOKEN_DAYS_LEFT < <(token_state)
-if [[ "$TOKEN_STATUS" != "active" ]]; then
-    keep_local_copy
-    die "Cloudflare API token is ${TOKEN_STATUS} (expires_on ${TOKEN_EXPIRES}) — renew it in the Cloudflare dashboard, then rerun"
-fi
+case "$TOKEN_STATUS" in
+    active) ;;
+    unreachable)
+        # No verdict on the token — try the upload; if that fails too, the dump is kept locally.
+        log "WARN: could not reach the Cloudflare API to check the token — trying the upload anyway" ;;
+    *)
+        keep_local_copy
+        die "Cloudflare API token is ${TOKEN_STATUS} (expires_on ${TOKEN_EXPIRES}) — renew it in the Cloudflare dashboard, then rerun" ;;
+esac
 TOKEN_WARNING=""
 if [[ "$TOKEN_DAYS_LEFT" != "-" && "$TOKEN_DAYS_LEFT" -le "$TOKEN_WARN_DAYS" ]]; then
     TOKEN_WARNING="Cloudflare API token expires on ${TOKEN_EXPIRES} (${TOKEN_DAYS_LEFT} days) — renew it before then"
@@ -162,7 +179,7 @@ log "Uploading to R2: ${R2_BUCKET_NAME}/${R2_PREFIX}/${FILENAME}"
 
 # wrangler picks up CLOUDFLARE_API_TOKEN from env automatically
 if ! CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_TOKEN" \
-    npx --yes wrangler r2 object put \
+    npx --yes "$WRANGLER_PKG" r2 object put \
     "${R2_BUCKET_NAME}/${R2_PREFIX}/${FILENAME}" \
     --file "$TMPFILE" \
     --remote; then
