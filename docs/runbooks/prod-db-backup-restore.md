@@ -59,7 +59,13 @@ Only one secret is needed at runtime:
 
 `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` (S3-compatible API) are **no longer used** by backup or prune: the access key lacked List/Delete on `baoson-db-backups` (HTTP 403 → backups accumulated), so listing was moved to the REST API under `CLOUDFLARE_API_TOKEN`. `R2_ENDPOINT` is still read — the account id is parsed from it (or from `CLOUDFLARE_ACCOUNT_ID` if set).
 
-The `.env` file is gitignored and stays on the host only. The cron job inherits no shell environment, so sourcing `.env` is the only way the script obtains credentials.
+The `.env` file is gitignored and stays on the host only. The cron job inherits no shell environment, so sourcing `.env` is the only way the script obtains credentials. `BACKUP_ENV_FILE` points the script at a different `.env`.
+
+**The token carries an expiry date.** Before uploading, the script asks Cloudflare for the token's status
+(`/user/tokens/verify`, then `/accounts/{id}/tokens/verify`). Not `active` ⇒ the run fails with the reason and the
+expiry date; within 14 days of expiry ⇒ a `WARN` line (and a failed healthcheck, see §8). Renewing: Cloudflare
+dashboard → My Profile → API Tokens → the backup token → edit its TTL (the value stays the same, `.env` untouched),
+or create a new token with R2 edit rights on `baoson-db-backups` and replace the `.env` line.
 
 ---
 
@@ -186,16 +192,20 @@ docker compose -p bsweb-prod exec app php artisan tinker --execute="echo App\Mod
 
 ---
 
-## 8. Monitoring & Alerting (gaps to close)
+## 8. Monitoring & Alerting
 
-The backup currently has **no automated health check**. Recommended additions (out of scope for this increment):
+| Mechanism | Behaviour |
+|-----------|-----------|
+| Healthcheck (dead-man switch) | Set `BACKUP_HEALTHCHECK_URL` (healthchecks.io-style check URL, schedule daily 03:15 +07, grace ~2h) in the `.env`. The script pings `/start`, the bare URL on success, `/fail` on any error — and `/fail` after a successful upload when the token expires within 14 days. A night that never pings (cron not firing, host down) alerts through the check's own schedule. Unset = no pings. |
+| Local fallback | When the upload cannot happen (token not active, wrangler error) the dump is kept as `not-uploaded-*.sql.gz` in `BACKUP_LOCAL_FALLBACK_DIR` (default `/opt/bswebsaas/db-backups`, mode 600) — upload it by hand once the token works. |
+| Size floor | The dump must be ≥ 5000 bytes before upload (catches empty/partial dumps). |
+
+Still open:
 
 | Gap | Suggested fix |
 |-----|---------------|
-| No alert if backup fails silently | Add `curl` heartbeat to Healthchecks.io or similar at end of script; alert on missed ping |
 | Log rotation | Add `/etc/logrotate.d/anvinh-db-backup` (daily, 30d, compress) |
-| No size check | Assert `DUMP_SIZE_BYTES > 10000` before uploading (catches empty dumps) |
-| No offsite replication of `.env` | Rotate and store `CLOUDFLARE_API_TOKEN` in a secrets manager or encrypted vault |
+| No offsite replication of `.env` | Store `CLOUDFLARE_API_TOKEN` in a secrets manager or encrypted vault |
 
 ---
 
