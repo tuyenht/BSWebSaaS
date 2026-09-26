@@ -101,7 +101,7 @@ def list_objects(prefix: str) -> list[dict]:
 def delete_via_wrangler(key: str) -> bool:
     """Delete a single R2 object via wrangler (reuses proven upload path)."""
     result = subprocess.run(
-        ["npx", "--yes", "wrangler", "r2", "object", "delete",
+        ["npx", "--yes", os.environ.get("WRANGLER_PKG", "wrangler@4.101.0"), "r2", "object", "delete",
          f"{BUCKET}/{key}", "--remote"],
         capture_output=True,
         text=True,
