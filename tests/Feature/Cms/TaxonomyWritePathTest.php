@@ -287,9 +287,59 @@ it('refuses a move that would hand posts to another section or to none', functio
             ->and($events->fresh()?->parent_id)->toBe($news->id)
             ->and(twRoute($post))->toBe('/tin-tuc/su-kien/hoi-thao');
 
-        // A section's own root keeps its section wherever it sits.
-        expect(twRefusal(fn () => twMove($projects, $news)))->toBeNull()
+        // Without posts there is nothing to hand over; posts joining a section from none gain an
+        // approval workflow rather than escape one; a section's own root keeps its section.
+        $empty = twCreate('Trống', $news);
+        $loose = twCreate('Rời');
+        twPost('rieng', [$loose]);
+        expect(twRefusal(fn () => twMove($empty, $projects)))->toBeNull()
+            ->and(twRefusal(fn () => twMove($loose, $news)))->toBeNull()
+            ->and(twRefusal(fn () => twMove($projects, $news)))->toBeNull()
             ->and($projects->fresh()?->parent_id)->toBe($news->id);
+    });
+});
+
+it('moves posts to another section once the caller confirms it, each with a 301', function (): void {
+    twSiteOne(function (): void {
+        $news = twCreate('Tin tức');
+        $projects = twCreate('Dự án');
+        twSection($news, 'category_path');
+        twSection($projects, 'category_path', 'projects');
+        $events = twCreate('Sự kiện', $news);
+        $post = twPost('hoi-thao', [$events]);
+
+        app(MoveTaxonomy::class)->handle($events, $projects, 0, evenIfSectionChanges: true);
+
+        expect(twRoute($post))->toBe('/du-an/su-kien/hoi-thao')
+            ->and(twRedirect('/tin-tuc/su-kien/hoi-thao'))->toBe('/du-an/su-kien/hoi-thao');
+    });
+});
+
+it('refuses a delete that would take posts out of their section unless confirmed', function (): void {
+    twSiteOne(function (): void {
+        $news = twCreate('Tin tức');
+        $projects = twCreate('Dự án');
+        twSection($news, 'category');
+        twSection($projects, 'category', 'projects');
+        $events = twCreate('Sự kiện', $news);
+        $talks = twCreate('Hội thảo', $news);
+        $sites = twCreate('Công trình', $projects);
+        $post = twPost('bai', [$events]);
+        $delete = app(DeleteTaxonomy::class);
+
+        expect(twRefusal(fn () => $delete->handle($events, CategoryItemsOnDelete::Reassign, $sites)))->toBe('section_changed')
+            ->and(twRefusal(fn () => $delete->handle($events, CategoryItemsOnDelete::Detach)))->toBe('section_changed')
+            ->and(twFiled($post))->toBe([$events->id => 0]);
+
+        $delete->handle($events, CategoryItemsOnDelete::Reassign, $sites, evenIfSectionChanges: true);
+        expect(twFiled($post))->toBe([$sites->id => 0])
+            ->and(twRoute($post))->toBe('/cong-trinh/bai');
+
+        // Onto a category of the same section needs no confirmation.
+        $later = twPost('bai-2', [$talks]);
+        $more = twCreate('Hội nghị', $news);
+        expect(twRefusal(fn () => $delete->handle($talks, CategoryItemsOnDelete::Reassign, $more)))->toBeNull()
+            ->and(twFiled($later))->toBe([$more->id => 0]);
     });
 });
 
@@ -437,8 +487,9 @@ it('answers every address a deleted category leaves behind with a 301', function
             ->and(twRedirect('/su-kien/bai-viet'))->toBe('/hoi-thao/bai-viet')
             ->and(twRedirect('/su-kien'))->toBe('/hoi-thao');
 
-        // No target: the page goes to the nearest category above; the post loses its section too.
-        app(DeleteTaxonomy::class)->handle($jobs, CategoryItemsOnDelete::Detach);
+        // No target: the page goes to the nearest category above; the post loses its section too,
+        // which the caller has to confirm.
+        app(DeleteTaxonomy::class)->handle($jobs, CategoryItemsOnDelete::Detach, evenIfSectionChanges: true);
         expect(twRoute($detached))->toBe('/tin')
             ->and(twRedirect('/tuyen-dung/tin'))->toBe('/tin')
             ->and(twRedirect('/tuyen-dung'))->toBe('/tin-tuc');

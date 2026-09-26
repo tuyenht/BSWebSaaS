@@ -32,7 +32,10 @@ use Illuminate\Support\Facades\DB;
  *    are deleted with it (their items handled the same way). Without a decision, a category with
  *    sub-categories is kept (has_children).
  * A category a content section is built on is never deleted (section_bound): the section's posts
- * would lose their home.
+ * would lose their home. Posts filed primarily under a deleted category that belongs to a section
+ * must not leave it as a side effect — moved onto a category of another section (or of none), or
+ * detached — unless the caller confirms it ($evenIfSectionChanges): a section carries their
+ * permissions and approval workflow (section_changed).
  *
  * Every address that stops existing answers with a 301: each deleted category page (per language)
  * points to the target's page, else the nearest remaining category above, else the home page; posts
@@ -65,8 +68,9 @@ final readonly class DeleteTaxonomy
         ?CategoryItemsOnDelete $items = null,
         ?Taxonomy $target = null,
         ?CategoryChildrenOnDelete $children = null,
+        bool $evenIfSectionChanges = false,
     ): array {
-        return DB::transaction(function () use ($taxonomy, $items, $target, $children): array {
+        return DB::transaction(function () use ($taxonomy, $items, $target, $children, $evenIfSectionChanges): array {
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
 
@@ -81,6 +85,9 @@ final readonly class DeleteTaxonomy
                 throw new TaxonomyChangeRejectedException('section_bound');
             }
             $targetId = $this->targetId($deleted, $items, $target);
+            if (! $evenIfSectionChanges && $this->postsLeaveSection($deleted, $targetId)) {
+                throw new TaxonomyChangeRejectedException('section_changed');
+            }
 
             $slugs = TaxonomyTranslation::query()->whereIn('taxonomy_id', $deleted)->orderBy('taxonomy_id')->pluck('slug')->all();
             $retired = SiteRoute::query()->whereIn('taxonomy_id', $deleted)->get(['locale', 'path']);
@@ -161,6 +168,29 @@ final readonly class DeleteTaxonomy
         }
 
         return $target->id;
+    }
+
+    /**
+     * Whether re-filing takes posts out of their section: posts filed primarily under a deleted
+     * category that belongs to a section, when they move onto a category of another section (or of
+     * none) — or are detached, since whatever category ranks next may sit anywhere.
+     *
+     * @param  list<int>  $deleted
+     */
+    private function postsLeaveSection(array $deleted, ?int $targetId): bool
+    {
+        $target = $targetId === null ? null : Taxonomy::query()->whereKey($targetId)->first();
+        $after = $target === null ? null : $this->sections->forCategory($target);
+
+        $leaving = Taxonomy::query()->whereKey($deleted)->get()
+            ->filter(function (Taxonomy $category) use ($target, $after): bool {
+                $before = $this->sections->forCategory($category);
+
+                return $before !== null && ($target === null || $before !== $after);
+            })
+            ->modelKeys();
+
+        return $this->relinker->hasPrimaryPosts(array_values(array_map(static fn (mixed $id): int => Cast::int($id), $leaving)));
     }
 
     /**

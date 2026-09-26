@@ -15,6 +15,7 @@ use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Support\Facades\DB;
 
@@ -24,10 +25,12 @@ use Illuminate\Support\Facades\DB;
  *
  * A new parent must be on this site, of the same vocabulary, not the category itself or anything
  * under it, and deep enough room must be left: the parent's level plus the moved branch's height may
- * not exceed TaxonomyRules::MAX_DEPTH, and the branch's posts must stay in the section they are in
- * (a section carries their permissions and approval workflow — moving them across is refused as
- * section_changed rather than done silently). Reordering under the current parent skips those checks, so a
- * tree that predates the rules can still be sorted. On a new parent the branch's structural paths are
+ * not exceed TaxonomyRules::MAX_DEPTH. A section carries its posts' permissions and approval workflow,
+ * so a move that would take posts out of their section (to another one, or to none) is refused as
+ * section_changed unless the caller confirms it ($evenIfSectionChanges — the screen shows what moves
+ * where first); a branch without posts, or posts joining a section from none, move freely.
+ * Reordering under the current parent skips those checks, so a tree that predates the rules can
+ * still be sorted. On a new parent the branch's structural paths are
  * rewritten and — where the permalink presets carry the category chain — the posts and products
  * filed under the branch follow, each with a 301 (CategoryRelinker), in the same transaction.
  *
@@ -48,9 +51,9 @@ final readonly class MoveTaxonomy
     /**
      * @throws TaxonomyChangeRejectedException
      */
-    public function handle(Taxonomy $taxonomy, ?Taxonomy $parent, int $position): void
+    public function handle(Taxonomy $taxonomy, ?Taxonomy $parent, int $position, bool $evenIfSectionChanges = false): void
     {
-        DB::transaction(function () use ($taxonomy, $parent, $position): void {
+        DB::transaction(function () use ($taxonomy, $parent, $position, $evenIfSectionChanges): void {
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
             $parent = $parent === null ? null : $this->reload($parent, 'parent_invalid');
@@ -70,9 +73,7 @@ final readonly class MoveTaxonomy
             if ($reparented && $parentLevel + TaxonomyTree::heightOf($branch) > TaxonomyRules::MAX_DEPTH) {
                 throw new TaxonomyChangeRejectedException('depth_exceeded');
             }
-            // A post's section decides which permissions and which approval workflow govern it; a
-            // move must not hand the branch's posts to another section (or to none) as a side effect.
-            if ($reparented && $this->sectionAfter($taxonomy, $parent) !== $this->sections->forCategory($taxonomy)) {
+            if ($reparented && ! $evenIfSectionChanges && $this->postsLeaveSection($taxonomy, $parent, array_keys($branch))) {
                 throw new TaxonomyChangeRejectedException('section_changed');
             }
 
@@ -109,17 +110,28 @@ final readonly class MoveTaxonomy
     }
 
     /**
-     * The section the moved category's posts would belong to under $parent: its own when the
-     * category is a section's root, otherwise whatever the new parent resolves to (none at the top).
+     * Whether the move takes posts out of the section they are in: the posts filed primarily under
+     * the part of the branch that gets its section through the moved category (a section root inside
+     * the branch keeps its own). A section root itself never changes section, and posts joining a
+     * section from none gain an approval workflow rather than escape one.
      *
-     * @return array{key: string, type: string}|null
+     * @param  list<int>  $branch
      */
-    private function sectionAfter(Taxonomy $taxonomy, ?Taxonomy $parent): ?array
+    private function postsLeaveSection(Taxonomy $taxonomy, ?Taxonomy $parent, array $branch): bool
     {
-        if ($this->sections->boundAmong([$taxonomy->id]) !== []) {
-            return $this->sections->forCategory($taxonomy);
+        $before = $this->sections->forCategory($taxonomy);
+        if ($before === null || $this->sections->boundAmong([$taxonomy->id]) !== []) {
+            return false;
+        }
+        $after = $parent === null ? null : $this->sections->forCategory($parent);
+        if ($after === $before) {
+            return false;
         }
 
-        return $parent === null ? null : $this->sections->forCategory($parent);
+        $following = Taxonomy::query()->whereKey($branch)->get()
+            ->filter(fn (Taxonomy $category): bool => $this->sections->forCategory($category) === $before)
+            ->modelKeys();
+
+        return $this->relinker->hasPrimaryPosts(array_values(array_map(static fn (mixed $id): int => Cast::int($id), $following)));
     }
 }

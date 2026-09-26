@@ -142,6 +142,21 @@ final readonly class CategoryRelinker
     }
 
     /**
+     * Whether any post has one of these categories as its PRIMARY category (pivot position 0) — the
+     * category that decides the post's section, and so its permissions and approval workflow.
+     *
+     * @param  list<int>  $taxonomyIds
+     */
+    public function hasPrimaryPosts(array $taxonomyIds): bool
+    {
+        return $taxonomyIds !== [] && DB::table('entry_taxonomies')
+            ->where('site_id', $this->site->id())
+            ->whereIn('taxonomy_id', $taxonomyIds)
+            ->where('position', 0)
+            ->exists();
+    }
+
+    /**
      * Cms's own entries, then every registered kind. A null section means posts: their preset
      * depends on the section their primary category puts them in.
      *
