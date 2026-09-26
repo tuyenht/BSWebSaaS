@@ -26,8 +26,6 @@ use Illuminate\Support\Collection;
 final readonly class MenuResolver
 {
     /** Nesting cap — also the cycle guard for a malformed parent_id chain. */
-    private const int MAX_DEPTH = 5;
-
     public function __construct(
         private PathBuilder $paths,
         private MenuTargets $targets,
@@ -289,7 +287,7 @@ final readonly class MenuResolver
      */
     private function buildTree(Collection $items, ?int $parentId, string $locale, string $currentPath, array $urls, array $titles, int $depth): array
     {
-        if ($depth >= self::MAX_DEPTH) {
+        if ($depth >= MenuRules::MAX_DEPTH) {
             return [];
         }
 
@@ -351,28 +349,11 @@ final readonly class MenuResolver
 
     private function sanitizeUrl(?string $url): ?string
     {
-        if ($url === null) {
-            return null;
-        }
-        $url = trim($url);
-        if ($url === '') {
-            return null;
-        }
-        // Site-relative paths and anchors are always safe.
-        if (str_starts_with($url, '/') || str_starts_with($url, '#')) {
-            return $url;
-        }
-        // Absolute URLs: allow only safe schemes (blocks javascript:, data:, …).
-        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
-
-        return in_array($scheme, ['http', 'https', 'mailto', 'tel'], true) ? $url : null;
+        return MenuRules::safeUrl($url);
     }
 
     private function resolveDynamic(?string $key): ?string
     {
-        return match ($key) {
-            'home' => '/',
-            default => null,
-        };
+        return $key === null ? null : (MenuRules::DYNAMIC[$key] ?? null);
     }
 }
