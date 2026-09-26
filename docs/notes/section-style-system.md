@@ -43,7 +43,7 @@
 
 **Cài đặt site-level mở cho tenant (panel "Giao diện" — ngôn ngữ đời thường §24, 5 quyết định):** màu thương hiệu (1 màu → cả palette) · cặp font · mật độ (thoáng/vừa/gọn) · kiểu bo mặc định · bật/tắt hiệu ứng chuyển động. Lưu `site_settings` group `theme` (đường `ThemeResolver` sẵn có; value validate allow-list `Rule::in` — đây là chỗ Rule::in đúng nghĩa, KHÔNG phải trong body).
 
-**Trả nợ white-label:** ~~`storefront.css` hardcode palette An Vinh~~ — **phần MÀU đã xong 23/09** (`5f19003`+`4941016`: 15 hex/101 lần → `var()`/`color-mix()` từ seed; An Vinh giữ diện mạo nhờ seed `{primary,ink,body}` trên prod). CÒN của PR 1a.1: palette generator `--brand-50..900` + thang spacing/radius/shadow/gradient + chuyển CSS sang tầng role.
+**Trả nợ white-label:** ~~`storefront.css` hardcode palette An Vinh~~ — **phần MÀU đã xong 23/09** (`5f19003`+`4941016`: 15 hex/101 lần → `var()`/`color-mix()` từ seed; An Vinh giữ diện mạo nhờ seed `{primary,ink,body}` trên prod). CÒN của PR 1a.1: ~~palette generator `--brand-50..900`~~ ✅ 26/09 (`Theme\Theming\BrandPalette`, OKLCH: giữ sắc, bậc sáng đều, màu gốc nằm nguyên ở bậc gần nhất; `ThemeResolver::cssVariables()` in ra, chưa CSS nào dùng ⇒ An Vinh không đổi) + thang spacing/radius/shadow/gradient + chuyển CSS sang tầng role.
 
 ---
 
