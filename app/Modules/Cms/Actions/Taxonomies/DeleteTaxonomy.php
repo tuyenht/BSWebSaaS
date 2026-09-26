@@ -1,0 +1,214 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Cms\Actions\Taxonomies;
+
+use App\Modules\Audit\Facades\Audit;
+use App\Modules\Cms\Actions\Taxonomies\Concerns\EditsTaxonomyTree;
+use App\Modules\Cms\Enums\CategoryChildrenOnDelete;
+use App\Modules\Cms\Enums\CategoryItemsOnDelete;
+use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
+use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\CategoryChange;
+use App\Modules\Cms\Routing\CategoryRelinker;
+use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Taxonomy\TaxonomyPaths;
+use App\Modules\Cms\Taxonomy\TaxonomyTree;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\CurrentSite;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Delete a category. Nothing filed under it or below it is lost by accident — the caller decides:
+ *  - its entries and products ($items) move onto a target category of the same vocabulary, taking
+ *    the deleted one's rank (so a primary category stays primary), or simply lose it; facet terms
+ *    are never touched. Without a decision, a category with items is kept (has_items);
+ *  - its sub-categories ($children) move up to its parent, taking its place among the siblings, or
+ *    are deleted with it (their items handled the same way). Without a decision, a category with
+ *    sub-categories is kept (has_children).
+ * A category a content section is built on is never deleted (section_bound): the section's posts
+ * would lose their home.
+ *
+ * Every address that stops existing answers with a 301: each deleted category page (per language)
+ * points to the target's page, else the nearest remaining category above, else the home page; posts
+ * and products whose address carried a deleted or lifted category move with RouteSync's 301s
+ * (CategoryRelinker). All in one transaction. Menu links to a deleted category are left as they are —
+ * the website stops showing a link whose target is gone.
+ *
+ * Who may manage categories (`taxonomies.manage`) is the caller's check. Runs inside the tenant
+ * context. Returns the counts the screen reports.
+ */
+final readonly class DeleteTaxonomy
+{
+    use EditsTaxonomyTree;
+
+    public function __construct(
+        private CategoryRelinker $relinker,
+        private RouteSync $routes,
+        private TaxonomyPaths $paths,
+        private SectionResolver $sections,
+        private CurrentSite $site,
+    ) {}
+
+    /**
+     * @return array{categories: int, items: int, routes_moved: int, redirects: int}
+     *
+     * @throws TaxonomyChangeRejectedException
+     */
+    public function handle(
+        Taxonomy $taxonomy,
+        ?CategoryItemsOnDelete $items = null,
+        ?Taxonomy $target = null,
+        ?CategoryChildrenOnDelete $children = null,
+    ): array {
+        return DB::transaction(function () use ($taxonomy, $items, $target, $children): array {
+            $this->lockTree($this->site->id());
+            $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
+
+            $branch = TaxonomyTree::branchOf($taxonomy->id);
+            $childIds = array_keys(array_filter($branch, static fn (int $depth): bool => $depth === 1));
+            if ($childIds !== [] && $children === null) {
+                throw new TaxonomyChangeRejectedException('has_children');
+            }
+            $deleted = $children === CategoryChildrenOnDelete::Delete ? array_keys($branch) : [$taxonomy->id];
+
+            if ($this->sections->boundAmong($deleted) !== []) {
+                throw new TaxonomyChangeRejectedException('section_bound');
+            }
+            $targetId = $this->targetId($deleted, $items, $target);
+
+            $slugs = TaxonomyTranslation::query()->whereIn('taxonomy_id', $deleted)->orderBy('taxonomy_id')->pluck('slug')->all();
+            $retired = SiteRoute::query()->whereIn('taxonomy_id', $deleted)->get(['locale', 'path']);
+            // Where visitors of a deleted category page land: the target, else the nearest remaining category above.
+            $landings = [...($targetId === null ? [] : [$targetId]), ...array_reverse(TaxonomyTree::ancestorsOf($taxonomy->id))];
+
+            $lifted = $children === CategoryChildrenOnDelete::Lift ? $childIds : [];
+            if ($lifted !== []) {
+                $this->lift($taxonomy, $lifted);
+                // Which section a post belongs to follows its category's ancestors: forget the old answer.
+                $this->sections->flush();
+            }
+
+            try {
+                $refiled = $this->relinker->refile($deleted, $targetId);
+                $liftedBranches = array_merge([], ...array_map(static fn (int $child): array => array_keys(TaxonomyTree::branchOf($child)), $lifted));
+                $routesMoved = $refiled['routes'] + $this->relinker->relink($liftedBranches, CategoryChange::Moved);
+            } catch (RouteConflictException) {
+                throw new TaxonomyChangeRejectedException('path_taken');
+            }
+
+            $landingPaths = [];
+            foreach ($retired as $route) {
+                $landingPaths[$route->locale] ??= $this->landingPath($landings, $route->locale);
+                $this->routes->retire($route->locale, $route->path, $landingPaths[$route->locale]);
+            }
+
+            // The category rows go last; their translations, routes and (now empty) pivot rows cascade.
+            $count = Cast::int(Taxonomy::query()->whereKey($deleted)->delete());
+
+            Audit::record('cms.taxonomy.deleted', [
+                'auditable_type' => Taxonomy::class,
+                'auditable_id' => $taxonomy->id,
+                'meta' => [
+                    'ids' => $deleted,
+                    'slugs' => $slugs,
+                    'items' => $items?->value,
+                    'target' => $targetId,
+                    'children' => $children?->value,
+                    'items_refiled' => $refiled['items'],
+                    'routes_moved' => $routesMoved,
+                    'redirects' => $retired->count(),
+                ],
+            ]);
+
+            return ['categories' => $count, 'items' => $refiled['items'], 'routes_moved' => $routesMoved, 'redirects' => $retired->count()];
+        });
+    }
+
+    /**
+     * The category the items move onto, null when they are detached — refusing a missing decision
+     * while items exist, or a target that is not a remaining category of the same vocabulary.
+     *
+     * @param  list<int>  $deleted
+     *
+     * @throws TaxonomyChangeRejectedException
+     */
+    private function targetId(array $deleted, ?CategoryItemsOnDelete $items, ?Taxonomy $target): ?int
+    {
+        if ($items === null) {
+            if ($this->relinker->hasItems($deleted)) {
+                throw new TaxonomyChangeRejectedException('has_items');
+            }
+
+            return null;
+        }
+        if ($items === CategoryItemsOnDelete::Detach) {
+            return null;
+        }
+
+        $target = $target === null ? null : Taxonomy::query()->whereKey($target->id)->first();
+        if ($target === null || in_array($target->id, $deleted, true)) {
+            throw new TaxonomyChangeRejectedException('target_invalid');
+        }
+        $vocabularies = Taxonomy::query()->whereKey($deleted)->distinct()->pluck('vocabulary')->all();
+        if (array_diff(Cast::strings($vocabularies), [$target->vocabulary]) !== []) {
+            throw new TaxonomyChangeRejectedException('vocabulary_mismatch');
+        }
+
+        return $target->id;
+    }
+
+    /**
+     * Move the children up to the deleted category's parent: those of its vocabulary take its place
+     * among its siblings (in their own order), any of another vocabulary join the end of theirs.
+     *
+     * @param  list<int>  $childIds
+     */
+    private function lift(Taxonomy $taxonomy, array $childIds): void
+    {
+        $children = Taxonomy::query()->whereKey($childIds)->orderBy('position')->orderBy('id')->get(['id', 'vocabulary']);
+
+        foreach ($children->groupBy('vocabulary') as $vocabulary => $group) {
+            $siblings = $this->siblings(Cast::string($vocabulary), $taxonomy->parent_id);
+            $at = array_search($taxonomy->id, $siblings, true);
+            $moving = array_values(array_map(static fn (mixed $id): int => Cast::int($id), $group->modelKeys()));
+
+            if ($at === false) {
+                array_push($siblings, ...$moving);
+            } else {
+                array_splice($siblings, $at, 1, $moving);
+            }
+            $this->renumber($taxonomy->parent_id, $siblings);
+        }
+
+        foreach ($childIds as $child) {
+            $this->paths->refreshBranch($child);
+        }
+    }
+
+    /**
+     * The first of the candidate categories with a page in this language, else the home page.
+     *
+     * @param  list<int>  $candidates
+     */
+    private function landingPath(array $candidates, string $locale): string
+    {
+        if ($candidates === []) {
+            return '/';
+        }
+
+        $paths = SiteRoute::query()->whereIn('taxonomy_id', $candidates)->where('locale', $locale)->pluck('path', 'taxonomy_id');
+        foreach ($candidates as $id) {
+            if (isset($paths[$id])) {
+                return Cast::string($paths[$id], '/');
+            }
+        }
+
+        return '/';
+    }
+}

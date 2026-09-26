@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Models\ContentSection;
 
@@ -71,6 +72,47 @@ final class SectionResolver
         }
 
         return $this->memo[$key];
+    }
+
+    /**
+     * Every section that files posts on the current site, as (key, type) — for a writer that must
+     * know whether any post path depends on categories at all before re-syncing posts.
+     *
+     * @return list<array{key: string, type: string}>
+     */
+    public function postSections(): array
+    {
+        $keys = ContentSection::query()
+            ->where('entry_type', '!=', 'page')
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->pluck('key')
+            ->all();
+
+        return array_values(array_map(static fn (mixed $key): array => ['key' => Cast::string($key), 'type' => 'posts'], $keys));
+    }
+
+    /**
+     * The categories among $taxonomyIds a section is bound to — the root a section files its posts
+     * under, which must not disappear from under it.
+     *
+     * @param  list<int>  $taxonomyIds
+     * @return list<int>
+     */
+    public function boundAmong(array $taxonomyIds): array
+    {
+        $bound = ContentSection::query()->whereIn('taxonomy_id', $taxonomyIds)->pluck('taxonomy_id')->all();
+
+        return array_values(array_map(static fn (mixed $id): int => Cast::int($id), $bound));
+    }
+
+    /**
+     * Drop the memo so the next lookup reflects categories moved earlier in the SAME request — a
+     * move changes which section a category's posts resolve to.
+     */
+    public function flush(): void
+    {
+        $this->memo = [];
     }
 
     /**

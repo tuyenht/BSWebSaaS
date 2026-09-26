@@ -4,6 +4,7 @@ namespace App\Modules\Cms\Models;
 
 use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -35,6 +36,17 @@ class Taxonomy extends Model
     public function translations(): HasMany
     {
         return $this->hasMany(TaxonomyTranslation::class);
+    }
+
+    /**
+     * The parent category (null at the top level). Eager-loading it along an item's primary
+     * category lets PathBuilder compose a category-path URL without a query per ancestor.
+     *
+     * @return BelongsTo<Taxonomy, $this>
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Taxonomy::class, 'parent_id');
     }
 
     public function translationFor(string $locale): ?TaxonomyTranslation
