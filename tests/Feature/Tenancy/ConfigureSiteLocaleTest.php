@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\DB;
 /*
  * A site's languages: `enabled` = editors write in it, `is_public` = visitors can open it. The
  * write path keeps the default language enabled and public, hides a language from visitors when
- * editors lose it, and stops switching languages on at the plan's `locales.max` (default 2, the
+ * editors lose it, and stops switching languages on at the plan's `locales.max` (default 1, the
  * default language included). The database refuses the same broken states on its own (CHECK).
  */
 
@@ -57,6 +57,7 @@ function localeChangeRefusal(string $locale, bool $enabled, bool $public): ?stri
 it('prepares a language for editors before showing it to visitors', function (): void {
     app(Tenancy::class)->enter(localeSite(), function (): void {
         $locales = app(SiteLocaleContext::class);
+        SiteFeature::query()->create(['feature_key' => 'locales.max', 'value' => 2]);
 
         expect(localeChangeRefusal('en', enabled: true, public: false))->toBeNull()
             ->and($locales->enabled())->toBe(['vi', 'en'])
@@ -70,7 +71,8 @@ it('prepares a language for editors before showing it to visitors', function ():
 
 it('hides a language from visitors when editors lose it', function (): void {
     app(Tenancy::class)->enter(localeSite(), function (): void {
-        localeChangeRefusal('en', enabled: true, public: true);
+        SiteFeature::query()->create(['feature_key' => 'locales.max', 'value' => 2]);
+        expect(localeChangeRefusal('en', enabled: true, public: true))->toBeNull();
 
         expect(localeChangeRefusal('en', enabled: false, public: true))->toBeNull();
 
@@ -91,10 +93,15 @@ it('keeps the default language enabled and public', function (): void {
 
 it('stops switching languages on at the plan limit, the default included', function (): void {
     app(Tenancy::class)->enter(localeSite(), function (): void {
-        // Registry default locales.max = 2: Vietnamese + one foreign language.
+        // Registry default locales.max = 1: a website starts with its default language only;
+        // more languages are a separate grant (plan or per-site override).
+        expect(localeChangeRefusal('en', enabled: true, public: false))->toBe('limit_reached')
+            ->and(SiteLocale::query()->where('locale', 'en')->exists())->toBeFalse();
+
+        SiteFeature::query()->create(['feature_key' => 'locales.max', 'value' => 2]);
+
         expect(localeChangeRefusal('en', enabled: true, public: true))->toBeNull()
-            ->and(localeChangeRefusal('ja', enabled: true, public: false))->toBe('limit_reached')
-            ->and(SiteLocale::query()->where('locale', 'ja')->exists())->toBeFalse();
+            ->and(localeChangeRefusal('ja', enabled: true, public: false))->toBe('limit_reached');
     });
 });
 
@@ -110,7 +117,7 @@ it('lets a per-site override raise the limit', function (): void {
 
 it('lets a site already above its limit keep and re-show what it has', function (): void {
     app(Tenancy::class)->enter(localeSite(), function (): void {
-        // Enabled before the limit existed: three languages on a two-language plan.
+        // Enabled before the limit existed: three languages on a one-language plan.
         SiteLocale::query()->create(['locale' => 'en', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
         SiteLocale::query()->create(['locale' => 'ja', 'is_default' => false, 'enabled' => true, 'is_public' => true]);
 
