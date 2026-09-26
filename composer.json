@@ -58,14 +58,14 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
-            "@php vendor/bin/pest"
+            "@php -d memory_limit=512M vendor/bin/pest"
         ],
         "qa": [
             "Composer\\Config::disableProcessTimeout",
             "@php vendor/bin/pint --test",
             "@php vendor/bin/phpstan analyse --no-progress --memory-limit=1G",
             "@php artisan lang:check",
-            "@php vendor/bin/pest"
+            "@php -d memory_limit=512M vendor/bin/pest"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

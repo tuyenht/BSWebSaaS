@@ -105,8 +105,10 @@ jobs:
       - name: Translations (same keys in every language)
         run: php artisan lang:check
 
+      # One process runs every suite, and its memory grows with the test count (the run died at
+      # 256M near 1190 tests). The limit is raised for this step only; composer qa matches it.
       - name: Pest (unit · feature · arch · query-budget)
-        run: vendor/bin/pest
+        run: php -d memory_limit=512M vendor/bin/pest
 
   frontend:
     name: Frontend build (Vite + Tailwind)
