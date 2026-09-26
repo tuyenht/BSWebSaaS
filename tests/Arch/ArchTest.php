@@ -6,17 +6,16 @@ use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
+use Symfony\Component\Finder\Finder;
 
 /*
- * Architecture invariants (CLAUDE.md §6).
- * Placeholders for now — each is promoted from ->todo() to a real arch
- * expectation as the relevant layer lands. They MUST be enforced before
- * the feature that needs them ships.
+ * Architecture invariants (CLAUDE.md §6) — every rule below is enforced.
  */
 
 // 1) Every Eloquent model whose table carries a site_id column IS a tenant model and MUST use
-//    the BelongsToSite trait (the RLS global scope at the app layer). Auto-discovered from
-//    app/Modules so a new tenant model that forgets the trait fails CI here — the code-layer
+//    the BelongsToSite trait (the RLS global scope at the app layer). Auto-discovered across ALL
+//    of app/ — not just app/Modules/*/Models — so a tenant model that forgets the trait fails CI
+//    wherever it lives, including app/Models where a bare `make:model` puts it. The code-layer
 //    twin of tests/Feature/Tenancy/RlsCoverageTest.php's DB-layer guard.
 test('every tenant model uses the BelongsToSite trait', function (): void {
     // GLOBAL tables that legitimately carry a site_id column but are NOT tenant-scoped (the
@@ -27,12 +26,14 @@ test('every tenant model uses the BelongsToSite trait', function (): void {
 
     $offenders = [];
 
-    foreach (glob(app_path('Modules/*/Models/*.php')) ?: [] as $file) {
-        $class = sprintf(
-            'App\\Modules\\%s\\Models\\%s',
-            basename(dirname($file, 2)),
-            basename($file, '.php'),
-        );
+    // Blade views also live under app/ (app/Modules/Admin/resources/views); only files that
+    // declare a class extending something are autoloaded, so no view or script is ever included.
+    foreach (Finder::create()->files()->in(app_path())->name('*.php')->notName('*.blade.php') as $file) {
+        if (preg_match('/^\s*(?:(?:final|abstract|readonly)\s+)*class\s+\w+\s+extends\s/m', $file->getContents()) !== 1) {
+            continue;
+        }
+
+        $class = 'App\\'.str_replace(['/', '.php'], ['\\', ''], $file->getRelativePathname());
 
         if (! class_exists($class) || ! is_subclass_of($class, Model::class)) {
             continue;
