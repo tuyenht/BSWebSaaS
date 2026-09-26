@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int $site_id
  * @property int $form_id
  * @property string $key
+ * @property array<string, string> $label per-locale label
  * @property string $type
  * @property bool $is_required
  */
