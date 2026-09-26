@@ -205,12 +205,13 @@ docker exec bsweb_prod_pg sh -c '
 zcat "$DEST" | docker exec -i bsweb_prod_pg sh -c \
   'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d bswebsaas --quiet -v ON_ERROR_STOP=1 --single-transaction'
 
-# 5. Re-apply RLS policies (migration role — see CLAUDE.md §7)
-docker compose -p bsweb-prod run --rm --no-deps app \
-  php artisan migrate --database=pgsql_admin --force
-
-# 6. Restart services
+# 5. Restart the existing containers (start, never run/up: those create containers from the
+#    bsweb/app:dev tag, which may point at a different build than prod runs — prod-deploy.md)
 docker compose -p bsweb-prod start app horizon scheduler
+
+# 6. Re-apply anything the dump predates (migration role — see CLAUDE.md §7); a no-op when the
+#    dump came from the same code
+docker exec bsweb_prod_app php artisan migrate --database=pgsql_admin --force
 
 # 7. Verify — as the superuser: the app role sees 0 rows without a tenant context (RLS fail-closed),
 #    so a tinker count would read 0 even after a good restore
@@ -248,6 +249,9 @@ dev cluster, a dev dump:        tables=62/62 rls_policies=36/36 rls_forced_table
                                 sites=2/2 domains=2/2 users=32/32 entries=1/1 → passed, drill DB dropped
 dev cluster, a truncated dump:  ERROR: missing data for column "failed_at" → failed (exit 1), drill DB dropped
 ```
+
+Nightly script from this branch, run by hand against prod (`BACKUP_ENV_FILE=/opt/bswebsaas/prod/.env`):
+dump 31 465 B → upload with the pinned `wrangler 4.101.0` → prune kept 13, deleted 0 → exit 0.
 
 First prod drill (newest R2 backup on `bsweb_prod_pg`): pending — run by the owner, then record the
 summary line here.
