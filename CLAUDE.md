@@ -124,6 +124,10 @@ docker compose restart horizon                                  # after Job/List
 - After `config:cache`/`route:cache`, changing `.env`/routes needs `config:clear`/`route:clear`.
 - Boost MCP tools run inside the app container (`/app/…` = `/opt/bswebsaas/dev/…`); DB tools connect as `app_user` with no tenant context, so tenant tables return 0 rows by design (RLS fail-closed).
 - Prod deploy: `docs/runbooks/prod-deploy.md`.
+- **Cloud session** (`CLAUDE_CODE_REMOTE=true`): the fallback when the plan quota runs out. It spends a small included credit, so keep it short and route delegated work down a tier where quality allows.
+  - The VM clones GitHub (push local work first) and has Docker, but only PHP 8.3 on the host. It has no `~/.claude`, no auto memory, and no dev DB or prod access.
+  - Bootstrap the stack once, then use the commands above: `cp -n .env.example .env && docker compose build app && docker compose up -d postgres pgbouncer valkey && docker compose run --rm --no-deps app composer install && docker compose run --rm --no-deps app php artisan key:generate && docker compose run --rm --no-deps app php artisan migrate --database=pgsql_admin --force`.
+  - Guardrail evidence there = these runs + the PR's CI; turn on Auto-fix for the PR.
 
 ## 8. Workflow per issue
 
@@ -149,6 +153,14 @@ Status/order: `docs/roadmap.md` + `git log`. `plans/` is gitignored (local draft
 ## 10. Decision protocol & quality bar
 
 The owner (Tuyền) is director + senior reviewer; the agent executes. The `/bs:` commands (`.claude/commands/bs/`) are triggers — the rules live here. **Invoke them yourself when the context fits** (owner, every session): "what next" → `/bs:next` · audit/quality review → `/bs:audit` · non-trivial or COUNCIL-class coding → `/bs:spec` first · large diff before commit → `/bs:review` · decide-and-execute → `/bs:ship`. `/bs:close` is manual only. Don't re-invoke a command already loaded in this session unless its arguments change. §10.1 still applies after a command loads.
+
+**Models** (owner, every project): the owner picks the main model; you pass an explicit `model` for every delegated task.
+- `haiku`: search, measurement, mechanical work.
+- `sonnet`: implementation from a clear spec, tests, docs, small reviews.
+- `opus`: design, COUNCIL work, §2 security/tenancy, money, migrations, hard debugging, large reviews.
+- `fable`: only after an `opus` attempt fails, or for extreme stakes — say why.
+
+Never go below `opus` for §2, money or migrations. Verify delegated output yourself; when it fails, move up a tier.
 
 ### 10.1 🚦 Autonomy gate — classify every request first
 
