@@ -5,8 +5,13 @@ argument-hint: [tùy chọn — để trống nếu tiếp nối council ở tr�
 Chốt theo khuyến nghị Council ở trên — nếu CHƯA có council ở trên: phân loại §10.1 trước, ACT thì thực thi thẳng, COUNCIL-class mới tự chạy Council (§10.2) chốt phương án. Thực thi đạt Diamond++ (CLAUDE.md §10.3):
 
 - Tuân thủ §2 (bảo mật), §3 (D1–D15), §5 (coding standards).
-- Tự chạy guardrail §6: Pest · Larastan max · Pint · Rector · Query Budget · Arch · Gate #1.
-  Nếu chạm storefront/UI → thêm Lighthouse + axe. Nếu chạm class trong baseline mutation → `pest --mutate`.
+- Tự chạy guardrail §6: `composer qa` (Pint `--test` · Larastan max · `lang:check` · Pest Unit/Feature/Arch/Concurrency).
+  Chạm admin UI → build + render + `axe.mjs` + `contrast-check.mjs`.
+  Chạm storefront → số Lighthouse/axe từ job `cwv` sau push.
+  Chạm Tenancy/Octane → `.claude/rules/tenancy-octane.md`.
+  Chạm class baseline mutation → `pest --mutate`.
+  Rector chỉ chạy khi được yêu cầu.
+- Sau push: chờ CI của PR xanh (`gh pr checks <n> --watch`) rồi mới merge.
 - Nếu đỏ → tự sửa và chạy lại đến khi TẤT CẢ xanh.
 - DÁN output cuối cùng làm bằng chứng. Chưa xanh = chưa được báo done (§10.4).
 
