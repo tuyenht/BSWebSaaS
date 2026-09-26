@@ -8,7 +8,9 @@ use App\Modules\Catalog\Components\ProductGridComponent;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Catalog\Policies\CatalogPolicy;
+use App\Modules\Catalog\Support\ProductRoutes;
 use App\Modules\Cms\Navigation\MenuTargets;
+use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Builder;
@@ -59,6 +61,18 @@ final class CatalogServiceProvider extends ServiceProvider
 
                 return $titles;
             },
+        );
+
+        // A product's address can carry its primary category (the `products` permalink preset), so a
+        // category renamed, moved or deleted in Cms must re-file and re-route products too. Cms calls
+        // this in the same transaction; the closure resolves ProductRoutes per call (Octane-safe).
+        $this->app->make(CategoryDependents::class)->register(
+            'product',
+            'product_taxonomies',
+            'product_id',
+            'products',
+            /** @param list<int> $ids */
+            static fn (array $ids): int => app(ProductRoutes::class)->resync($ids),
         );
     }
 }

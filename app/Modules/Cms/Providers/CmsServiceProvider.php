@@ -6,11 +6,13 @@ use App\Modules\Cms\Components\EntryGridComponent;
 use App\Modules\Cms\Components\LatestPostsComponent;
 use App\Modules\Cms\Console\FlushEntryViews;
 use App\Modules\Cms\Console\PublishDueEntries;
+use App\Modules\Cms\Console\RebuildTaxonomyPaths;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuTargets;
 use App\Modules\Cms\Observers\EntryObserver;
 use App\Modules\Cms\Policies\EntryPolicy;
+use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -35,6 +37,10 @@ final class CmsServiceProvider extends ServiceProvider
         // Menu link kinds other modules register at boot (Catalog → `product`). Boot-time closures
         // only, no request state — shared across Octane requests like the ComponentRegistry.
         $this->app->singleton(MenuTargets::class);
+
+        // Item kinds other modules file under categories (Catalog → `product`), re-routed when a
+        // category changes. Boot-time closures only, no request state — same as MenuTargets.
+        $this->app->singleton(CategoryDependents::class);
     }
 
     public function boot(): void
@@ -58,7 +64,7 @@ final class CmsServiceProvider extends ServiceProvider
 
         // Module commands aren't auto-discovered like app/Console/Commands.
         if ($this->app->runningInConsole()) {
-            $this->commands([PublishDueEntries::class, FlushEntryViews::class]);
+            $this->commands([PublishDueEntries::class, FlushEntryViews::class, RebuildTaxonomyPaths::class]);
         }
     }
 }

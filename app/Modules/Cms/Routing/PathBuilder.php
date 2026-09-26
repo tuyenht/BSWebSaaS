@@ -4,8 +4,12 @@ namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Closure;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * Composes an entry's canonical URL path (design.md §213: "path = danh mục + slug") from the
@@ -44,6 +48,34 @@ final readonly class PathBuilder
         $path = '/'.ltrim($path, '/');
 
         return $path === '/' ? '/'.$locale : '/'.$locale.$path;
+    }
+
+    /**
+     * What to eager-load on entries or products so composing many of their paths reads the primary
+     * category (pivot position 0), its slugs and its ancestors' slugs without a query per item:
+     * categoryPath() follows a loaded `parent` instead of querying it. Only the primary category is
+     * loaded, so `taxonomies` holds nothing else afterwards.
+     *
+     * @return array<int|string, string|Closure(Relation<*, *, *>): void>
+     */
+    public static function primaryCategoryRelations(): array
+    {
+        $relations = [
+            'taxonomies' => static function (Relation $query): void {
+                if ($query instanceof BelongsToMany) {
+                    $query->wherePivot('position', 0);
+                }
+            },
+            'taxonomies.translations',
+        ];
+
+        $chain = 'taxonomies';
+        for ($level = 2; $level <= TaxonomyRules::MAX_DEPTH; $level++) {
+            $chain .= '.parent';
+            $relations[] = $chain.'.translations';
+        }
+
+        return $relations;
     }
 
     public function forEntry(Entry $entry, string $locale, string $slug): string
@@ -188,9 +220,11 @@ final readonly class PathBuilder
                 }
             }
 
-            $node = $node->parent_id !== null
-                ? Taxonomy::query()->whereKey($node->parent_id)->first()
-                : null;
+            $node = match (true) {
+                $node->parent_id === null => null,
+                $node->relationLoaded('parent') => $node->parent,
+                default => Taxonomy::query()->whereKey($node->parent_id)->first(),
+            };
         }
 
         return $segments === [] ? '' : '/'.implode('/', $segments);
