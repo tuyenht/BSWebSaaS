@@ -43,7 +43,7 @@ WAVES = [
 
 DECISIONS = [
     ('Q1', 'Thông tin doanh nghiệp (NAP) lưu ở đâu?', '✅ Đã làm, lên prod 24/09: đủ cột theo design.md §14 + danh mục Tỉnh/Phường; website đọc theo ngôn ngữ trang. Tên công ty: web dùng bản viết tắt theo ngôn ngữ, bản đầy đủ theo giấy phép là tên pháp lý.'),
-    ('Q2', 'Tách "ngôn ngữ đang soạn" khỏi "ngôn ngữ hiển thị cho khách"?', '✅ Đã làm, lên prod 24/09: cờ is_public + hạn mức locales.max (mặc định 2). Ngôn ngữ chưa hiển thị không lộ ra sitemap, hreflang hay địa chỉ /en.'),
+    ('Q2', 'Tách "ngôn ngữ đang soạn" khỏi "ngôn ngữ hiển thị cho khách"?', '✅ Đã làm, lên prod 24/09: cờ is_public + hạn mức locales.max (mặc định 2 → 1 từ 26/09: website bắt đầu với 1 ngôn ngữ, cấp thêm theo gói/website). Ngôn ngữ chưa hiển thị không lộ ra sitemap, hreflang hay địa chỉ /en.'),
     ('Q3', 'Trình đơn được trỏ tới Sản phẩm?', '✅ Đã làm, lên prod 24/09: có loại liên kết Sản phẩm; website tự ẩn mục trỏ tới trang/sản phẩm chưa đăng hoặc trong thùng rác.'),
     ('Q4', 'Lời mời thành viên?', '✅ Đã làm, lên prod 24/09: bảng lời mời, luôn báo cùng một câu, hết hạn 7 ngày; mỗi website tối đa 50 thư/ngày (tính cả thư gửi lại) và 3 thư/địa chỉ/ngày. Màn nhận lời mời dựng theo khung đăng nhập.'),
     ('Q5', 'Thông báo trong ứng dụng?', '✅ Đã làm, lên prod 24/09: module Notifications, đã nối duyệt bài · khách liên hệ mới · tắt 2 lớp; giữ 90 ngày. Chuông + trang chờ thiết kế D2-4.'),
@@ -267,7 +267,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       <li><b>Mở một cửa sổ chat MỚI</b> trong project Claude Design BSWebSaaS, dán và gửi. Không gộp 2 lượt vào 1 cửa sổ.</li>
       <li><b>Xong thì tích ô "Xong"</b> và gửi bản export cho Claude Code để đối chiếu với code trước khi build.</li>
     </ol>
-    <p class="hint">Bản 3 (24/09): 10 lượt (D0-1, D0-4, D1-2, D1-5, D2-2, D2-3, D2-4, D3-1, D4-2, D5-1) đã sửa theo backend vừa lên prod — bỏ các nhãn "Chờ backend" không còn đúng, thêm giới hạn và thông báo lỗi thật mà màn phải hiện. Bản 2 (23/09): 12 tiêu chí dễ dùng cho người không rành CNTT ở mọi lượt.</p>
+    <p class="hint">Bản 3.2 (26/09): D0-4, D3-1, D4-2 — website mặc định 1 ngôn ngữ, thêm ngôn ngữ do Bảo Sơn cấp riêng. Bản 3 (24/09): 10 lượt (D0-1, D0-4, D1-2, D1-5, D2-2, D2-3, D2-4, D3-1, D4-2, D5-1) đã sửa theo backend vừa lên prod — bỏ các nhãn "Chờ backend" không còn đúng, thêm giới hạn và thông báo lỗi thật mà màn phải hiện. Bản 2 (23/09): 12 tiêu chí dễ dùng cho người không rành CNTT ở mọi lượt.</p>
   </section>
 
   <div class="facts" role="list">
