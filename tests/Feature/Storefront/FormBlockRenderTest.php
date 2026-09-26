@@ -102,3 +102,17 @@ it('renders nothing for the block when the form key does not resolve', function 
     expect($this->get('http://a.test/lien-he')->assertOk()->getContent())
         ->not->toContain('name="company_website"'); // the lead form's honeypot — unique to this block
 });
+
+it('renders a required consent checkbox tied to its label', function (): void {
+    seedContactPageWithForm();
+    app(Tenancy::class)->enter(1, fn () => Form::query()->firstWhere('key', 'contact')->fields()->create([
+        'key' => 'consent', 'type' => 'checkbox', 'is_required' => true, 'sort_order' => 5,
+        'label' => ['vi' => 'Tôi đồng ý để website lưu thông tin.'],
+    ]));
+
+    $html = $this->get('http://a.test/lien-he')->assertOk()->getContent();
+
+    expect($html)
+        ->toContain('<input id="lead-consent" type="checkbox" name="consent" value="1"')
+        ->toContain('<label for="lead-consent">Tôi đồng ý để website lưu thông tin.');
+});

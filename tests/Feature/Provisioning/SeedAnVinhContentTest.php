@@ -257,7 +257,7 @@ it('seeds the An Vinh contact form routed to the business inbox', function (): v
         expect($form)->not->toBeNull()
             ->and($form->status)->toBe('active')
             ->and($form->notify_emails)->toBe(['quybv@ckanvinh.vn']) // authoritative business inbox
-            ->and($form->fields->pluck('key')->all())->toBe(['name', 'email', 'phone', 'message']);
+            ->and($form->fields->pluck('key')->all())->toBe(['name', 'email', 'phone', 'message', 'consent']);
     });
 });
 

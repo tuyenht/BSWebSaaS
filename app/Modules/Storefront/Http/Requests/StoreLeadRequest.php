@@ -2,6 +2,7 @@
 
 namespace App\Modules\Storefront\Http\Requests;
 
+use App\Modules\Forms\Models\FormField;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -46,7 +47,36 @@ final class StoreLeadRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255', 'required_without:phone'],
             'phone' => ['nullable', 'string', 'max:32', 'required_without:email'],
             'message' => ['required', 'string', 'max:5000'],
+            ...$this->requiredCheckboxRules(),
         ];
+    }
+
+    /**
+     * A required checkbox on this form (the consent box) must be ticked before the lead is taken.
+     *
+     * @return array<string, array<int, string>>
+     */
+    private function requiredCheckboxRules(): array
+    {
+        $formKey = $this->route('key');
+        if (! is_string($formKey)) {
+            return [];
+        }
+
+        $keys = FormField::query()
+            ->where('type', 'checkbox')
+            ->where('is_required', true)
+            ->whereHas('form', fn ($form) => $form->where('key', $formKey)->where('status', 'active'))
+            ->pluck('key');
+
+        $rules = [];
+        foreach ($keys as $field) {
+            if (is_string($field)) {
+                $rules[$field] = ['accepted'];
+            }
+        }
+
+        return $rules;
     }
 
     /**
@@ -63,6 +93,7 @@ final class StoreLeadRequest extends FormRequest
             'email.email' => __('forms.err_email_invalid'),
             'email.required_without' => __('forms.err_contact_required'),
             'phone.required_without' => __('forms.err_contact_required'),
+            'accepted' => __('forms.err_consent_required'),
         ];
     }
 }

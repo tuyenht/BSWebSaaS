@@ -292,6 +292,8 @@
     "forms.err_message_required": "お問い合わせ内容を入力してください。",
     "forms.err_email_invalid": "メールアドレスの形式が正しくありません。",
     "forms.err_contact_required": "ご連絡のため、メールアドレスまたは電話番号をご記入ください。",
+    "forms.consent_label": "上記の情報を保存し、ご連絡のために使用することに同意します。",
+    "forms.err_consent_required": "連絡先情報の保存と利用に同意いただける場合は、チェックを入れてください。",
     "forms.submit_button": "送信する",
     "forms.nav_contacts": "お問い合わせ",
     "forms.inbox_title": "お問い合わせ一覧",
