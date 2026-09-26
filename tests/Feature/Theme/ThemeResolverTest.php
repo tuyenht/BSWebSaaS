@@ -2,6 +2,7 @@
 
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Theme\Theming\BrandPalette;
 use App\Modules\Theme\Theming\ReadableColor;
 use App\Modules\Theme\Theming\ThemeResolver;
 
@@ -155,5 +156,27 @@ it('falls back to the ink color when the brand seed is not a hex color', functio
         SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => 'rebeccapurple']]);
 
         expect(app(ThemeResolver::class)->cssVariables()['primary-text'])->toBe('var(--ink)');
+    });
+});
+
+it('prints the ten-step brand palette derived from the brand seed, never read from settings', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => '#f59e0b', 'brand-500' => '#000000']]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        foreach ([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as $step) {
+            expect($variables)->toHaveKey("brand-{$step}")
+                ->and($variables["brand-{$step}"])->toBe(BrandPalette::from('#f59e0b')[$step]);
+        }
+        expect($variables['brand-500'])->not->toBe('#000000');
+    });
+});
+
+it('prints no brand palette when the brand seed is not a hex color', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => 'rebeccapurple']]);
+
+        expect(array_filter(array_keys(app(ThemeResolver::class)->cssVariables()), fn (string $key): bool => str_starts_with($key, 'brand-')))->toBe([]);
     });
 });

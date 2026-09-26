@@ -73,7 +73,7 @@ final class ThemeResolver
      * (WCAG AA) on `surface` AND on the page background, for brand-colored TEXT on light surfaces;
      * fills and borders keep `primary` exactly as the site chose it. Always derived, never read
      * from settings; a seed that is not a hex color (a name, rgb()) cannot be measured, so the role
-     * falls back to the ink color.
+     * falls back to the ink color. `brand-50` … `brand-900` are the brand palette (BrandPalette).
      *
      * @return array<string, string>
      */
@@ -87,6 +87,17 @@ final class ThemeResolver
         // sub-menu, secondary hero CTA. Lightened (hue kept) until >=4.5 on --ink — a light brand
         // (amber) is unchanged, a dark brand is lifted. Companion to --primary-text (light bg).
         $variables['primary-on-ink'] = ReadableColor::onAll($variables['primary'], [$variables['ink']]) ?? 'var(--surface)';
+
+        // Tints, fills and dark accents of the brand (--brand-50 … --brand-900), derived — like the
+        // roles above, a same-named key in settings never wins. A non-hex brand yields no palette.
+        foreach (array_keys($variables) as $key) {
+            if (str_starts_with($key, 'brand-')) {
+                unset($variables[$key]);
+            }
+        }
+        foreach (BrandPalette::from($variables['primary']) ?? [] as $step => $color) {
+            $variables["brand-{$step}"] = $color;
+        }
 
         return $variables;
     }
