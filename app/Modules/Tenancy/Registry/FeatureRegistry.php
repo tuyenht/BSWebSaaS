@@ -31,7 +31,7 @@ final class FeatureRegistry
             // Content languages a site may have enabled, its default included — 2 = Vietnamese plus
             // one foreign language. Checked only when a language is switched on, so a site already
             // above its plan keeps what it has.
-            'locales.max' => ['name' => 'Số ngôn ngữ tối đa', 'kind' => 'limit', 'default' => 2],
+            'locales.max' => ['name' => 'Số ngôn ngữ tối đa', 'kind' => 'limit', 'default' => 1],
             // Whether the site may create its own roles (fork a system role or start blank). The
             // six system roles stay available and locked either way.
             'rbac.custom_roles' => ['name' => 'Nhóm quyền tùy chỉnh', 'kind' => 'boolean', 'default' => false],
