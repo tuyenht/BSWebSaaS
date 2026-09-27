@@ -103,7 +103,8 @@ services:
       retries: 12
 
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    # PgBouncer 1.25.2, pinned by digest: `:latest` would move on the next pull.
+    image: edoburu/pgbouncer@sha256:4c1ca296ef525f108f5d3552cc337c0c09587cf8dae7f0067fd93349e47dc1cd
     container_name: bsweb_prod_pgbouncer
     restart: unless-stopped
     environment:

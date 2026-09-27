@@ -34,7 +34,8 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 ## `.env` changes and the image
 
 - The containers get `.env` through `env_file` **when they are created**. Laravel never overrides a variable the process already has, so after an `.env` edit `optimize` re-caches the old value (26/09: the Cloudflare token replaced in `.env` is still the old one inside `bsweb_prod_app`). Only a recreate (`docker compose up -d app horizon scheduler` in `/opt/bswebsaas/prod`) applies it — a few seconds of downtime.
-- Before recreating, check the image: dev and prod both run the tag `bsweb/app:dev`, and a dev rebuild moves it. On 26/09 the running prod containers use builds that are no longer tagged, so a recreate would start prod on a different build. Compare `docker inspect bsweb_prod_app --format '{{.Image}}'` with `docker image inspect bsweb/app:dev --format '{{.Id}}'`; if they differ, don't recreate until prod has its own tag.
+- Before recreating, check the image: dev and prod both run the tag `bsweb/app:dev`, and a dev rebuild moves it. On 26/09 the running prod containers use builds that are no longer tagged, so a recreate would start prod on a different build. Compare `docker inspect bsweb_prod_app --format '{{.Image}}'` with `docker image inspect bsweb/app:dev --format '{{.Id}}'`; if they differ, compare what matters before recreating: `php -v`, `php -m` and `frankenphp version` inside both. On 27/09 the tagged build had the same PHP 8.5.7 and FrankenPHP 1.12.4 as prod, plus the `pcov` extension (coverage for the mutation gate; idle unless a coverage run starts it).
+- PgBouncer is pinned by digest (1.25.2), not `:latest`. Changing that line changes the service's config, so the next `docker compose up -d` recreates the pgbouncer container once — a few seconds without database connections.
 - Scripts that read `.env` themselves (the backup and the restore drill) see an edit at their next run.
 
 ## After
