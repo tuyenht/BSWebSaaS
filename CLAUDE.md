@@ -124,6 +124,7 @@ docker compose restart horizon                                  # after Job/List
 - After `config:cache`/`route:cache`, changing `.env`/routes needs `config:clear`/`route:clear`.
 - Boost MCP tools run inside the app container (`/app/…` = `/opt/bswebsaas/dev/…`); DB tools connect as `app_user` with no tenant context, so tenant tables return 0 rows by design (RLS fail-closed).
 - Prod deploy: `docs/runbooks/prod-deploy.md`.
+- **Host safety** (dev and prod share 103.82.27.129): never install or remove system packages (apt, snap, global pip, `npm -g`…) without the owner's explicit approval in the session. Measuring tools live in the repo or run in a project container. If one was installed anyway, say so in the next reply with the command that removes it, and record host-level changes in `docs/ops-log.md`.
 - **Cloud session** (`CLAUDE_CODE_REMOTE=true`): the fallback when the plan quota runs out. It spends a small included credit, so keep it short and route delegated work down a tier where quality allows.
   - The VM clones GitHub (push local work first) and has Docker, but only PHP 8.3 on the host. It has no `~/.claude`, no auto memory, and no dev DB or prod access.
   - Bootstrap the stack once, then use the commands above: `cp -n .env.example .env && docker compose build app && docker compose up -d postgres pgbouncer valkey && docker compose run --rm --no-deps app composer install && docker compose run --rm --no-deps app php artisan key:generate && docker compose run --rm --no-deps app php artisan migrate --database=pgsql_admin --force`.
