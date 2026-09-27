@@ -3,6 +3,7 @@
 use App\Modules\Media\Actions\PresignMediaUpload;
 use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Actions\UploadMedia;
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Contracts\Filesystem\Filesystem;
@@ -54,7 +55,7 @@ it('rejects a temp key issued to ANOTHER site (cross-tenant guard) + deletes the
     stageUpload(2, $tempKey, pngContent()); // owned by site 2
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'x.png')))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(MediaRejectedException::class, 'upload_session_invalid');
 
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
     Storage::disk('r2')->assertMissing($tempKey);
@@ -65,7 +66,7 @@ it('rejects a spoofed file by sniffing magic bytes (PHP in a .png) + writes no r
     stageUpload(1, $tempKey, '<?php echo "x"; ?>');
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'evil.png')))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(MediaRejectedException::class, 'unsupported_type');
 
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });
@@ -121,7 +122,7 @@ it('rejects an oversize object via HEAD before loading it (OOM guard)', function
     stageUpload(1, $tempKey, str_repeat('x', UploadMedia::MAX_KB * 1024 + 1));
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'big.png')))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(MediaRejectedException::class, 'too_large');
 
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
     Storage::disk('r2')->assertMissing($tempKey);
@@ -132,7 +133,7 @@ it('throws when the temp key has no ownership record (expired/forged)', function
     Storage::disk('r2')->put($tempKey, pngContent()); // object but NO ownership cache
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'x.png')))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(MediaRejectedException::class, 'upload_session_invalid');
 });
 
 it('writes NO row when the storage copy fails (orphan guard)', function (): void {
@@ -150,7 +151,7 @@ it('writes NO row when the storage copy fails (orphan guard)', function (): void
     Storage::shouldReceive('disk')->with('r2')->andReturn($disk);
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'fail.png')))
-        ->toThrow(RuntimeException::class, 'Không thể lưu tệp vào kho');
+        ->toThrow(MediaRejectedException::class, 'storage_failed');
 
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });

@@ -28,8 +28,10 @@ final class MediaKey
      * Fail LOUD + EARLY when the configured media disk is an S3-family (r2/s3) disk with no bucket —
      * i.e. its credentials are missing from .env. Without this, Storage::disk() throws a cryptic
      * "bucket must be string, null given" TypeError deep in the adapter (which is exactly how a
-     * missing R2_* block silently broke upload). Called at the upload entry points; the friendly
-     * RuntimeException surfaces as a clean 422 instead. (Deploy-time gate: `php artisan env:check`.)
+     * missing R2_* block silently broke upload). Called at the upload entry points; the upload
+     * endpoints log this RuntimeException for the operator and show the person uploading a plain
+     * "try again" — a site admin cannot fix the platform's storage. (Deploy-time gate:
+     * `php artisan env:check`.)
      */
     public static function assertConfigured(): void
     {
@@ -38,8 +40,8 @@ final class MediaKey
 
         if (is_array($cfg) && ($cfg['driver'] ?? null) === 's3' && empty($cfg['bucket'])) {
             throw new RuntimeException(
-                "Kho lưu trữ media ('{$disk}') chưa được cấu hình (thiếu bucket/khóa R2 trong .env). ".
-                'Chạy `php artisan env:check` để kiểm tra.'
+                "Media storage '{$disk}' is not configured (the R2 bucket/keys are missing from .env). ".
+                'Run `php artisan env:check`.'
             );
         }
     }

@@ -71,11 +71,23 @@ it('forbids the local-fallback upload without media.upload', function (): void {
 });
 
 // ── presign: validation + advisory rejection (the signed-URL happy path is E2E — needs real R2) ──
-it('rejects an unsupported declared mime on presign (422 with a message)', function (): void {
+it('rejects an unsupported declared mime on presign (422 with the sentence in the admin\'s language)', function (): void {
     $this->actingAs(mediaMember(['media.view', 'media.upload']))
         ->postJson('http://a.test/admin/media/presign', ['filename' => 'a.svg', 'mime' => 'image/svg+xml', 'size' => 10])
         ->assertStatus(422)
-        ->assertJsonStructure(['message']);
+        ->assertExactJson(['message' => __('media.err_mimes')]);
+});
+
+it('answers an unexpected failure with a plain sentence and keeps its own text out of the response', function (): void {
+    // Storage not configured is the operator's problem: logged, never shown (it names .env and the disk).
+    config(['media.disk' => 'r2', 'filesystems.disks.r2.driver' => 's3', 'filesystems.disks.r2.bucket' => null]);
+
+    $response = $this->actingAs(mediaMember(['media.view', 'media.upload']))
+        ->postJson('http://a.test/admin/media/presign', ['filename' => 'a.png', 'mime' => 'image/png', 'size' => 10])
+        ->assertStatus(500)
+        ->assertExactJson(['message' => __('media.err_unexpected')]);
+
+    expect((string) $response->getContent())->not->toContain('.env')->not->toContain('configured');
 });
 
 it('validates the required fields on presign (422)', function (): void {

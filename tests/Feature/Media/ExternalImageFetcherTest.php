@@ -1,9 +1,11 @@
 <?php
 
 use App\Modules\Media\Actions\PresignMediaUpload;
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Services\ExternalImageFetcher;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -49,20 +51,20 @@ it('rejects a non-image payload by sniffing magic bytes (HTML pretending to be a
     Http::fake([PUBLIC_IMG => Http::response('<!doctype html><title>not an image</title>', 200)]);
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(ExternalImageFetcher::class)->handle(PUBLIC_IMG, 'An Vinh')))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(MediaRejectedException::class, 'not_an_image');
 });
 
 it('caps the download at the upload limit (a lying Content-Length cannot balloon memory)', function (): void {
     Http::fake([PUBLIC_IMG => Http::response(str_repeat('x', 11 * 1024 * 1024), 200)]);
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(ExternalImageFetcher::class)->handle(PUBLIC_IMG, 'An Vinh')))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(MediaRejectedException::class, 'image_too_large');
 });
 
 it('blocks non-http(s) schemes', function (): void {
     foreach (['file:///etc/passwd', 'ftp://93.184.216.34/x.jpg', 'gopher://93.184.216.34/'] as $url) {
         expect(fn () => app(Tenancy::class)->enter(1, fn () => app(ExternalImageFetcher::class)->handle($url, 'An Vinh')))
-            ->toThrow(RuntimeException::class);
+            ->toThrow(MediaRejectedException::class, 'url_invalid');
     }
     Http::assertNothingSent();
 });
@@ -77,7 +79,7 @@ it('blocks private, loopback and link-local IP literals (SSRF)', function (): vo
     ];
     foreach ($targets as $url) {
         expect(fn () => app(Tenancy::class)->enter(1, fn () => app(ExternalImageFetcher::class)->handle($url, 'An Vinh')))
-            ->toThrow(RuntimeException::class);
+            ->toThrow(MediaRejectedException::class, 'private_address');
     }
     Http::assertNothingSent(); // guarded BEFORE any network call
 });
@@ -89,7 +91,7 @@ it('re-validates a redirect hop and blocks one pointing at a private address', f
     ]);
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(ExternalImageFetcher::class)->handle('https://93.184.216.34/start.jpg', 'An Vinh')))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(MediaRejectedException::class, 'private_address');
 
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '169.254.169.254'));
 });
@@ -119,7 +121,7 @@ it('blocks a hostname that resolves to a private address (DNS-rebind guard)', fu
     };
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => $fetcher->handle('https://images.attacker.test/x.jpg', 'An Vinh')))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(MediaRejectedException::class, 'private_address');
     Http::assertNothingSent(); // rejected before any fetch
 });
 
@@ -127,6 +129,13 @@ it('blocks an IPv4-mapped IPv6 literal smuggling a private address', function ()
     // ::ffff:169.254.169.254 is a valid IPv6 that a naive filter would pass — the embedded IPv4
     // is the cloud metadata endpoint and must be rejected.
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(ExternalImageFetcher::class)->handle('https://[::ffff:169.254.169.254]/x.jpg', 'An Vinh')))
-        ->toThrow(RuntimeException::class);
+        ->toThrow(MediaRejectedException::class, 'private_address');
     Http::assertNothingSent();
+});
+
+it('answers a link that cannot be reached as the link\'s problem, not a server error', function (): void {
+    Http::fake([PUBLIC_IMG => fn () => throw new ConnectionException('cURL error 28: Operation timed out')]);
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(ExternalImageFetcher::class)->handle(PUBLIC_IMG, 'An Vinh')))
+        ->toThrow(MediaRejectedException::class, 'fetch_unreachable');
 });

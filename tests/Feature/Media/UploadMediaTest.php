@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Media\Actions\UploadMedia;
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Http\UploadedFile;
@@ -80,14 +81,14 @@ it('rejects a spoofed extension by sniffing magic bytes (PHP in a .jpg)', functi
     $spoofed = new UploadedFile($path, 'evil.jpg', 'image/jpeg', null, true);
 
     app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle($spoofed, 'An Vinh'));
-})->throws(RuntimeException::class);
+})->throws(MediaRejectedException::class, 'unsupported_type');
 
 it('rejects a file over the size limit', function (): void {
     app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle(
         UploadedFile::fake()->create('huge.jpg', 11 * 1024), // 11MB > 10MB
         'An Vinh',
     ));
-})->throws(RuntimeException::class);
+})->throws(MediaRejectedException::class, 'too_large');
 
 it('throws on an R2 write failure (no orphan media row)', function (): void {
     // Laravel's filesystem returns false (does not throw) on a failed write; the action must turn
@@ -98,7 +99,7 @@ it('throws on an R2 write failure (no orphan media row)', function (): void {
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle(
         UploadedFile::fake()->createWithContent('a.png', pngBytes()),
         'An Vinh',
-    )))->toThrow(RuntimeException::class);
+    )))->toThrow(MediaRejectedException::class, 'storage_failed');
 
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });

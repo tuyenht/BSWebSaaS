@@ -4,15 +4,16 @@ namespace App\Modules\Media\Services;
 
 use App\Modules\Media\Actions\PresignMediaUpload;
 use App\Modules\Media\Actions\UploadMedia;
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Tenancy\Context\CurrentSite;
 use finfo;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * Server-side fetch of an EXTERNAL image URL for the picker's "Ảnh từ URL" source. This is the
@@ -55,7 +56,7 @@ class ExternalImageFetcher
         $mime = (string) new finfo(FILEINFO_MIME_TYPE)->buffer($bytes);
         $ext = self::IMAGE_MIME_EXT[$mime] ?? null;
         if ($ext === null) {
-            throw new RuntimeException('Liên kết không trỏ tới một ảnh hợp lệ (JPG, PNG, WEBP, GIF).');
+            throw new MediaRejectedException('not_an_image');
         }
 
         $dimensions = @getimagesizefromstring($bytes);
@@ -64,7 +65,7 @@ class ExternalImageFetcher
         // `_incoming/` stays the left-anchored prefix so one lifecycle rule expires abandons.
         $tempKey = '_incoming/'.Str::slug($siteName).'/url-'.Str::ulid().'.'.$ext;
         if (! Storage::disk(MediaKey::disk())->put($tempKey, $bytes)) {
-            throw new RuntimeException('Không lưu được tệp lên kho lưu trữ. Vui lòng thử lại.');
+            throw new MediaRejectedException('storage_failed');
         }
         // Longer than presign's 5m: the admin reads the preview before deciding to insert.
         Cache::put(PresignMediaUpload::ownershipKey($tempKey), $this->current->id(), now()->addMinutes(30));
@@ -93,19 +94,24 @@ class ExternalImageFetcher
             // check, private on the fetch) would walk straight past the guard to 169.254.169.254.
             $conn = $this->safeConnection($url);
 
-            $response = Http::withOptions([
-                'allow_redirects' => false,
-                'stream' => true,
-                'curl' => [CURLOPT_RESOLVE => ["{$conn['host']}:{$conn['port']}:{$conn['ip']}"]],
-            ])
-                ->timeout(10)->connectTimeout(5)
-                ->withHeaders(['Accept' => 'image/*'])
-                ->get($url);
+            try {
+                $response = Http::withOptions([
+                    'allow_redirects' => false,
+                    'stream' => true,
+                    'curl' => [CURLOPT_RESOLVE => ["{$conn['host']}:{$conn['port']}:{$conn['ip']}"]],
+                ])
+                    ->timeout(10)->connectTimeout(5)
+                    ->withHeaders(['Accept' => 'image/*'])
+                    ->get($url);
+            } catch (ConnectionException) {
+                // A timeout or a refused connection is the link's problem, not a server error.
+                throw new MediaRejectedException('fetch_unreachable');
+            }
 
             if ($response->redirect()) {
                 $location = (string) $response->header('Location');
                 if ($location === '') {
-                    throw new RuntimeException('Liên kết chuyển hướng không hợp lệ.');
+                    throw new MediaRejectedException('redirect_invalid');
                 }
                 $url = $this->absolutize($location, $url);
 
@@ -113,13 +119,13 @@ class ExternalImageFetcher
             }
 
             if (! $response->successful()) {
-                throw new RuntimeException('Không tải được ảnh từ liên kết (HTTP '.$response->status().').');
+                throw new MediaRejectedException('fetch_failed', ['status' => $response->status()]);
             }
 
             return [$this->readCapped($response), $url];
         }
 
-        throw new RuntimeException('Liên kết chuyển hướng quá nhiều lần.');
+        throw new MediaRejectedException('too_many_redirects');
     }
 
     /** Stream the body up to the upload cap — a lying Content-Length can never balloon memory. */
@@ -132,11 +138,11 @@ class ExternalImageFetcher
         while (! $body->eof()) {
             $bytes .= $body->read(65536);
             if (strlen($bytes) > $cap) {
-                throw new RuntimeException('Ảnh vượt quá dung lượng cho phép (tối đa 10MB).');
+                throw new MediaRejectedException('image_too_large');
             }
         }
         if ($bytes === '') {
-            throw new RuntimeException('Liên kết trả về nội dung rỗng.');
+            throw new MediaRejectedException('empty_response');
         }
 
         return $bytes;
@@ -158,7 +164,7 @@ class ExternalImageFetcher
         $port = is_int($parts['port'] ?? null) ? $parts['port'] : ($scheme === 'https' ? 443 : 80);
 
         if (! in_array($scheme, ['http', 'https'], true) || $host === '') {
-            throw new RuntimeException('Liên kết chưa hợp lệ — cần là URL ảnh công khai (http/https).');
+            throw new MediaRejectedException('url_invalid');
         }
 
         $literal = trim($host, '[]');
@@ -170,7 +176,7 @@ class ExternalImageFetcher
 
         $ips = $this->resolveHostIps($host);
         if ($ips === []) {
-            throw new RuntimeException('Không phân giải được tên miền của liên kết.');
+            throw new MediaRejectedException('host_unresolvable');
         }
         foreach ($ips as $ip) {
             $this->assertPublicIp($ip);
@@ -219,7 +225,7 @@ class ExternalImageFetcher
     private function rejectIfNotPublic(string $ip): void
     {
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-            throw new RuntimeException('Liên kết trỏ tới địa chỉ nội bộ — không được phép.');
+            throw new MediaRejectedException('private_address');
         }
     }
 

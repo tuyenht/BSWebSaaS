@@ -5,6 +5,7 @@ namespace App\Modules\Media\Http\Controllers;
 use App\Modules\Media\Actions\PresignMediaUpload;
 use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Actions\UploadMedia;
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Http\JsonResponse;
@@ -22,7 +23,9 @@ use RuntimeException;
  *
  * These are a fetch()/JSON API for the Uppy island, so validation + domain errors are returned as
  * JSON 422 here — the app renders framework ValidationExceptions as JSON only for api/* (see
- * bootstrap/app.php), and a redirect-back would be meaningless to a fetch client.
+ * bootstrap/app.php), and a redirect-back would be meaningless to a fetch client. Only a refusal
+ * (MediaRejectedException) is shown as it is, in the admin's language; any other failure is logged
+ * and answered with a plain "try again" (500) — a storage SDK's message can name buckets and paths.
  */
 final class MediaUploadController
 {
@@ -43,8 +46,10 @@ final class MediaUploadController
             );
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        } catch (MediaRejectedException $e) {
+            return response()->json(['message' => $e->userMessage()], 422);
         } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->unexpected($e);
         }
 
         return response()->json($result);
@@ -69,8 +74,10 @@ final class MediaUploadController
             );
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        } catch (MediaRejectedException $e) {
+            return response()->json(['message' => $e->userMessage()], 422);
         } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->unexpected($e);
         }
 
         return response()->json(['ulid' => $media->ulid]);
@@ -85,17 +92,27 @@ final class MediaUploadController
 
             $file = $request->file('file');
             if (! $file instanceof UploadedFile) {
-                return response()->json(['message' => 'Tệp không hợp lệ.'], 422);
+                return response()->json(['message' => __('media.err_file_invalid')], 422);
             }
 
             $media = $upload->handle($file, $this->siteName($current), 'library', $this->actorId());
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
+        } catch (MediaRejectedException $e) {
+            return response()->json(['message' => $e->userMessage()], 422);
         } catch (RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return $this->unexpected($e);
         }
 
         return response()->json(['ulid' => $media->ulid]);
+    }
+
+    /** A failure the person uploading cannot act on: logged for the operator, a plain "try again" for them. */
+    private function unexpected(RuntimeException $e): JsonResponse
+    {
+        report($e);
+
+        return response()->json(['message' => __('media.err_unexpected')], 500);
     }
 
     private function siteName(CurrentSite $current): string
