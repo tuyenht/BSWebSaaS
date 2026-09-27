@@ -253,8 +253,13 @@ dev cluster, a truncated dump:  ERROR: missing data for column "failed_at" → f
 Nightly script from this branch, run by hand against prod (`BACKUP_ENV_FILE=/opt/bswebsaas/prod/.env`):
 dump 31 465 B → upload with the pinned `wrangler 4.101.0` → prune kept 13, deleted 0 → exit 0.
 
-First prod drill (newest R2 backup on `bsweb_prod_pg`): pending — run by the owner, then record the
-summary line here.
+### 2026-09-27 — first prod drill (owner, by hand, after deploying `0cd245e`)
+
+```
+newest R2 backup db-bswebsaas-20260926-201501.sql.gz (20h old, 31 465 B) → restored with ON_ERROR_STOP
+restored/live: tables=62/62 rls_policies=36/36 rls_forced_tables=36/36 migrations=40/40
+               sites=1/1 domains=1/1 users=2/2 entries=20/20 → passed, drill DB dropped
+```
 
 ### 2026-06-27
 
