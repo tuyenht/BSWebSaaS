@@ -13,6 +13,7 @@
 - **Hậu kiểm:** `/`→200, `/lien-he`→200 (có ô đồng ý), `/tin-tuc`→200, `/admin`→302, `/admin/login`→200; log app 0 dòng lỗi; Horizon chạy.
 - **Lần preflight đầu (23:22) dừng:** tra CI của commit trả rỗng dù CI đã xanh (chạy lại cùng lệnh thì ra `completed:success`) — trục trặc tạm thời phía GitHub; prod không bị đụng. Script deploy giờ in lỗi thật của `gh` và thử lại 3 lần.
 - **Diễn tập khôi phục lần đầu:** `23:30 (+07)` — owner chạy tay `scripts/restore-drill-prod-db.sh` trên bản prod: đạt (chi tiết: `runbooks/prod-db-backup-restore.md` §9). Log `/var/log/bsweb-restore-drill.log` (600).
+- **Crontab (owner, 23:4x):** backup `15 3 * * *` chạy từ `/opt/bswebsaas/prod/scripts/` (đọc `.env` prod — đủ 6 biến bắt buộc) + diễn tập `45 4 1 * *` → `/var/log/bsweb-restore-drill.log` (runbook §3); dòng cũ chạy script từ `dev/` đã bỏ.
 - **Chưa làm (owner):** container app/horizon/scheduler chưa tạo lại — vẫn chạy bản build `da1e043…` (không còn tag). `docker compose up -d` giờ vắng chuyển sang `bsweb/app:prod` = `e00aba…` (đo 27/09: cùng PHP 8.5.7 + FrankenPHP 1.12.4, thêm `pcov` không dùng) + PgBouncer theo digest + nạp `.env` mới.
 
 ### 2026-09-25 — Cài rồi gỡ ImageMagick (công cụ đo một lần cho PR #92)
