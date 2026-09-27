@@ -292,6 +292,7 @@
     "forms.err_message_required": "Vui lòng nhập nội dung cần liên hệ.",
     "forms.err_email_invalid": "Email chưa đúng định dạng.",
     "forms.err_contact_required": "Vui lòng để lại email hoặc số điện thoại để chúng tôi liên hệ.",
+    "forms.contact_form_name": "Liên hệ",
     "forms.consent_label": "Tôi đồng ý để website lưu các thông tin trên và dùng chúng để liên hệ lại với tôi.",
     "forms.err_consent_required": "Vui lòng đánh dấu ô đồng ý để chúng tôi được lưu và dùng thông tin liên hệ của bạn.",
     "forms.submit_button": "Gửi liên hệ",
