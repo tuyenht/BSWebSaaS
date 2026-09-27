@@ -2,6 +2,7 @@
 
 namespace App\Modules\Media\Actions;
 
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Tenancy\Context\CurrentSite;
@@ -10,7 +11,6 @@ use finfo;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * Finalizes a presigned direct-to-R2 upload (DAM P1). The browser PUT the bytes straight to R2 under
@@ -39,17 +39,17 @@ final readonly class RegisterMediaUpload
         $ownerId = is_numeric($owner) ? (int) $owner : 0;
         if ($ownerId !== $this->current->id()) {
             $disk->delete($tempKey);
-            throw new RuntimeException('Phiên tải lên không hợp lệ. Vui lòng thử lại.');
+            throw new MediaRejectedException('upload_session_invalid');
         }
         if (! $disk->exists($tempKey)) {
-            throw new RuntimeException('Không tìm thấy tệp đã tải lên.');
+            throw new MediaRejectedException('upload_missing');
         }
 
         // 2) Size FIRST via HEAD — the presigned PUT does NOT cap size, so reject a huge object
         // BEFORE loading it into memory (otherwise get() would OOM the worker on a malicious upload).
         if ($disk->size($tempKey) > UploadMedia::MAX_KB * 1024) {
             $disk->delete($tempKey);
-            throw new RuntimeException('Tệp vượt quá dung lượng cho phép (tối đa 10MB).');
+            throw new MediaRejectedException('too_large');
         }
 
         // 3) Now safe to read the object (≤ cap) — sniff + hash come from the same bytes.
@@ -60,7 +60,7 @@ final readonly class RegisterMediaUpload
         $ext = UploadMedia::MIME_EXT[$mime] ?? null;
         if ($ext === null) {
             $disk->delete($tempKey);
-            throw new RuntimeException('Định dạng tệp không được hỗ trợ.');
+            throw new MediaRejectedException('unsupported_type');
         }
 
         // 5) Full SHA-256 — the dedup column (separate from the short cache-bust suffix in the key).
@@ -80,7 +80,7 @@ final readonly class RegisterMediaUpload
                 $existing->restore();
             }
             if (! $disk->exists($existing->storage_key) && ! $disk->copy($tempKey, $existing->storage_key)) {
-                throw new RuntimeException('Không thể lưu tệp vào kho. Vui lòng thử lại.');
+                throw new MediaRejectedException('storage_failed');
             }
             $disk->delete($tempKey);
 
@@ -93,7 +93,7 @@ final readonly class RegisterMediaUpload
         // copy() returns bool on this disk ('throw' => false) — unchecked failure would persist
         // a row whose object never existed: an unrenderable orphan the picker shows as broken.
         if (! $disk->copy($tempKey, $finalKey)) {
-            throw new RuntimeException('Không thể lưu tệp vào kho. Vui lòng thử lại.');
+            throw new MediaRejectedException('storage_failed');
         }
         $disk->delete($tempKey);
 

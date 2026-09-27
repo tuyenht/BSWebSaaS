@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire\Concerns;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Actions\RegisterMediaUpload;
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\MediaFolder;
 use App\Modules\Media\Services\ExternalImageFetcher;
@@ -459,9 +460,14 @@ trait WithMediaLibraryPicker
             // The URL source lives on the upload tab — land there so the preview screen shows.
             $this->pickerTab = 'upload';
             $this->pickerSource = 'url';
-        } catch (RuntimeException $e) {
+        } catch (MediaRejectedException $e) {
             $this->pickerUrlPreview = null;
-            $this->addError('pickerUrlInput', $e->getMessage());
+            $this->addError('pickerUrlInput', $e->userMessage());
+        } catch (RuntimeException $e) {
+            // Not the link's fault (storage not configured, an SDK error): log it, keep its text out of the screen.
+            report($e);
+            $this->pickerUrlPreview = null;
+            $this->addError('pickerUrlInput', __('media.err_unexpected'));
         }
     }
 
@@ -487,8 +493,13 @@ trait WithMediaLibraryPicker
 
             try {
                 $media = app(RegisterMediaUpload::class)->handle($preview['tempKey'], $preview['filename']);
+            } catch (MediaRejectedException $e) {
+                $this->addError('pickerUrlInput', $e->userMessage());
+
+                return;
             } catch (RuntimeException $e) {
-                $this->addError('pickerUrlInput', $e->getMessage());
+                report($e);
+                $this->addError('pickerUrlInput', __('media.err_unexpected'));
 
                 return;
             }

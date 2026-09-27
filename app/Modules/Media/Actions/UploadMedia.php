@@ -2,12 +2,12 @@
 
 namespace App\Modules\Media\Actions;
 
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * Securely ingest an uploaded file into the media library (design.md §2.5 / §16 / ADR-17). The
@@ -38,14 +38,14 @@ final class UploadMedia
 
         // 1) Size guard (defense-in-depth — the upload FormRequest bounds it too).
         if ($file->getSize() > self::MAX_KB * 1024) {
-            throw new RuntimeException('Tệp vượt quá dung lượng cho phép (tối đa 10MB).');
+            throw new MediaRejectedException('too_large');
         }
 
         // 2) MIME from magic bytes (finfo reads content) — NEVER trust the client mime/extension.
         $mime = (string) $file->getMimeType();
         $ext = self::MIME_EXT[$mime] ?? null;
         if ($ext === null) {
-            throw new RuntimeException('Định dạng tệp không được hỗ trợ.');
+            throw new MediaRejectedException('unsupported_type');
         }
 
         // 3) Content hash (full SHA-256; the key embeds the first 12 chars — ADR-17).
@@ -63,7 +63,7 @@ final class UploadMedia
             }
             $disk = Storage::disk(MediaKey::disk());
             if (! $disk->exists($existing->storage_key) && ! $disk->put($existing->storage_key, $contents)) {
-                throw new RuntimeException('Không lưu được tệp lên kho lưu trữ. Vui lòng thử lại.');
+                throw new MediaRejectedException('storage_failed');
             }
 
             return $existing;
@@ -78,7 +78,7 @@ final class UploadMedia
         // Laravel's filesystem does NOT throw by default — put() returns false on failure. Guard it,
         // or a failed write would still create a media row pointing at a missing object (broken image).
         if (! Storage::disk(MediaKey::disk())->put($key, $contents)) {
-            throw new RuntimeException('Không lưu được tệp lên kho lưu trữ. Vui lòng thử lại.');
+            throw new MediaRejectedException('storage_failed');
         }
 
         [$width, $height] = $this->dimensions((string) $file->getRealPath(), $mime);

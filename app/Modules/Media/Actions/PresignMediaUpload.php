@@ -2,12 +2,12 @@
 
 namespace App\Modules\Media\Actions;
 
+use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * Issues a short-lived presigned direct-to-R2 PUT for a browser upload (DAM P1). The bytes go
@@ -29,10 +29,10 @@ final readonly class PresignMediaUpload
 
         $ext = UploadMedia::MIME_EXT[$declaredMime] ?? null;
         if ($ext === null) {
-            throw new RuntimeException('Định dạng tệp không được hỗ trợ.');
+            throw new MediaRejectedException('unsupported_type');
         }
         if ($declaredSize > UploadMedia::MAX_KB * 1024) {
-            throw new RuntimeException('Tệp vượt quá dung lượng cho phép (tối đa 10MB).');
+            throw new MediaRejectedException('too_large');
         }
 
         // Leading `_incoming/` prefix — the site slug is nested INSIDE it, not before it — so ONE R2
