@@ -15,9 +15,9 @@ use App\Modules\Cms\Routing\ResolvedProduct;
 use App\Modules\Cms\Routing\RouteResolver;
 use App\Modules\Cms\Support\EntryViewCounter;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Tenancy\Context\ContentSections;
 use App\Modules\Tenancy\Context\SiteIdentity;
 use App\Modules\Tenancy\Context\SiteLocale;
-use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Rendering\PageRenderer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -44,6 +44,7 @@ final readonly class StorefrontController
         private MediaUrlResolver $media,
         private EntryViewCounter $views,
         private SiteIdentity $identity,
+        private ContentSections $sections,
     ) {}
 
     public function __invoke(Request $request): Response
@@ -211,9 +212,7 @@ final readonly class StorefrontController
         // the product index — list published products instead of entries (the storefront may depend
         // on Catalog). With no products yet it falls through to the entry list, so the page keeps
         // working through the post→product migration (posts until products land, products after).
-        $catalogSection = ContentSection::query()->where('key', 'products')->first();
-        if ($catalogSection !== null
-            && $catalogSection->taxonomy_id === $resolved->taxonomy->id
+        if ($this->sections->taxonomyIdOf('products') === $resolved->taxonomy->id
             && Product::query()->where('status', 'published')->exists()) {
             return $this->renderProductIndex($resolved, $locale, $path, $chrome);
         }

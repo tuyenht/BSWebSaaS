@@ -6,9 +6,8 @@ namespace App\Modules\Cms\Routing;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
-use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\ContentSections;
 use App\Modules\Tenancy\Context\CurrentSite;
-use App\Modules\Tenancy\Models\ContentSection;
 
 /**
  * Resolves which permalink SECTION a post belongs to — the (key, type) pair PermalinkConfig is
@@ -34,7 +33,10 @@ final class SectionResolver
     /** @var array<string, array{key: string, type: string}|null> memo per "{siteId}:{primaryTaxonomyId}" */
     private array $memo = [];
 
-    public function __construct(private readonly CurrentSite $current) {}
+    public function __construct(
+        private readonly CurrentSite $current,
+        private readonly ContentSections $sections,
+    ) {}
 
     /**
      * The (key, type) of the section a post belongs to, or null when none can be derived.
@@ -82,14 +84,7 @@ final class SectionResolver
      */
     public function postSections(): array
     {
-        $keys = ContentSection::query()
-            ->where('entry_type', '!=', 'page')
-            ->orderBy('sort_order')
-            ->orderBy('id')
-            ->pluck('key')
-            ->all();
-
-        return array_values(array_map(static fn (mixed $key): array => ['key' => Cast::string($key), 'type' => 'posts'], $keys));
+        return array_map(static fn (string $key): array => ['key' => $key, 'type' => 'posts'], $this->sections->postSectionKeys());
     }
 
     /**
@@ -101,9 +96,7 @@ final class SectionResolver
      */
     public function boundAmong(array $taxonomyIds): array
     {
-        $bound = ContentSection::query()->whereIn('taxonomy_id', $taxonomyIds)->pluck('taxonomy_id')->all();
-
-        return array_values(array_map(static fn (mixed $id): int => Cast::int($id), $bound));
+        return $this->sections->boundAmong($taxonomyIds);
     }
 
     /**
@@ -129,17 +122,12 @@ final class SectionResolver
         while ($taxonomy instanceof Taxonomy && ! isset($seen[$taxonomy->id])) {
             $seen[$taxonomy->id] = true;
 
-            $section = ContentSection::query()
-                ->whereNotNull('taxonomy_id')
-                ->where('taxonomy_id', $taxonomy->id)
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->first();
+            $section = $this->sections->boundTo($taxonomy->id);
 
-            if ($section instanceof ContentSection) {
+            if ($section !== null) {
                 return [
-                    'key' => $section->key,
-                    'type' => $section->entry_type === 'page' ? 'pages' : 'posts',
+                    'key' => $section['key'],
+                    'type' => $section['entry_type'] === 'page' ? 'pages' : 'posts',
                 ];
             }
 

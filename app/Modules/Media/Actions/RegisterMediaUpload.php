@@ -6,7 +6,7 @@ use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Tenancy\Context\CurrentSite;
-use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Context\SiteDirectory;
 use finfo;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +23,10 @@ use Illuminate\Support\Str;
  */
 final readonly class RegisterMediaUpload
 {
-    public function __construct(private CurrentSite $current) {}
+    public function __construct(
+        private CurrentSite $current,
+        private SiteDirectory $sites,
+    ) {}
 
     public function handle(string $tempKey, string $filename, ?int $createdBy = null, ?int $width = null, ?int $height = null, string $collection = 'library'): Media
     {
@@ -65,7 +68,7 @@ final readonly class RegisterMediaUpload
 
         // 5) Full SHA-256 — the dedup column (separate from the short cache-bust suffix in the key).
         $hash = hash('sha256', $contents);
-        $siteName = (string) Site::query()->find($this->current->id())?->name;
+        $siteName = $this->sites->nameOfCurrent($this->current);
 
         // 6) Dedup within (site, collection, hash) — return the master, drop the temp object.
         // withTrashed: the UNIQUE(site,collection,hash) index doesn't know about soft-deletes,
