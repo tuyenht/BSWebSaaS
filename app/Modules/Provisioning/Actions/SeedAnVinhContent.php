@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -222,6 +223,7 @@ final readonly class SeedAnVinhContent
         private RouteSync $routes,
         private MediaUrlResolver $media,
         private EnsureMediaFromKey $ensureMedia,
+        private TaxonomyPaths $paths,
     ) {}
 
     public function handle(): void
@@ -653,6 +655,7 @@ final readonly class SeedAnVinhContent
         }
 
         $taxonomy = Taxonomy::query()->create(['vocabulary' => $vocabulary, 'parent_id' => $parentId, 'position' => 0]);
+        $this->paths->refreshBranch($taxonomy->id);
         $taxonomy->translations()->create(['locale' => $locale, 'name' => $name, 'slug' => $slug]);
 
         return $taxonomy;

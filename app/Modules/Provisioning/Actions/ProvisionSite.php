@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
@@ -49,6 +50,7 @@ final readonly class ProvisionSite
         private Tenancy $tenancy,
         private PermissionRegistrar $registrar,
         private RouteSync $routes,
+        private TaxonomyPaths $paths,
     ) {}
 
     public function handle(ProvisionSiteData $data): Site
@@ -342,6 +344,7 @@ final readonly class ProvisionSite
         }
 
         $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
+        $this->paths->refreshBranch($category->id);
         $category->translations()->create([
             'locale' => $locale,
             'name' => 'Tin tức',

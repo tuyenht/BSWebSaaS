@@ -10,6 +10,7 @@ use App\Modules\Cms\Enums\CategoryChildrenOnDelete;
 use App\Modules\Cms\Enums\CategoryItemsOnDelete;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
+use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
@@ -40,8 +41,9 @@ use Illuminate\Support\Facades\DB;
  * Every address that stops existing answers with a 301: each deleted category page (per language)
  * points to the target's page, else the nearest remaining category above, else the home page; posts
  * and products whose address carried a deleted or lifted category move with RouteSync's 301s
- * (CategoryRelinker). All in one transaction. Menu links to a deleted category are left as they are —
- * the website stops showing a link whose target is gone.
+ * (CategoryRelinker). All in one transaction. Menu links to a deleted category follow its items onto
+ * the target category when there is one; with no target they stay, and the website stops showing
+ * a link whose target is gone.
  *
  * Who may manage categories (`taxonomies.manage`) is the caller's check. Runs inside the tenant
  * context. Returns the counts the screen reports.
@@ -59,7 +61,7 @@ final readonly class DeleteTaxonomy
     ) {}
 
     /**
-     * @return array{categories: int, items: int, routes_moved: int, redirects: int}
+     * @return array{categories: int, items: int, routes_moved: int, redirects: int, menu_links: int}
      *
      * @throws TaxonomyChangeRejectedException
      */
@@ -115,6 +117,12 @@ final readonly class DeleteTaxonomy
                 $this->routes->retire($route->locale, $route->path, $landingPaths[$route->locale]);
             }
 
+            // Menu links follow the items: the person deleting chose where the category's content lives now.
+            $menuLinks = $targetId === null ? 0 : MenuItem::query()
+                ->where('routable_type', 'taxonomy')
+                ->whereIn('routable_id', $deleted)
+                ->update(['routable_id' => $targetId]);
+
             // The category rows go last; their translations, routes and (now empty) pivot rows cascade.
             $count = Cast::int(Taxonomy::query()->whereKey($deleted)->delete());
 
@@ -130,10 +138,11 @@ final readonly class DeleteTaxonomy
                     'items_refiled' => $refiled['items'],
                     'routes_moved' => $routesMoved,
                     'redirects' => $retired->count(),
+                    'menu_links' => $menuLinks,
                 ],
             ]);
 
-            return ['categories' => $count, 'items' => $refiled['items'], 'routes_moved' => $routesMoved, 'redirects' => $retired->count()];
+            return ['categories' => $count, 'items' => $refiled['items'], 'routes_moved' => $routesMoved, 'redirects' => $retired->count(), 'menu_links' => $menuLinks];
         });
     }
 
