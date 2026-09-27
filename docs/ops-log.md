@@ -11,10 +11,11 @@
 
 - **Deploy:** `23:29 (+07)` — owner chạy script deploy có ghim SHA: prod `9daf094` → `0cd245e` (33 commit, 0 migration, không đổi dependency). Dump trước deploy: `/opt/bswebsaas/db-backups/prod-predeploy-9daf094-20260927-162912.sql.gz`. Dữ liệu: ô đồng ý thêm vào 1 form liên hệ (`forms:sync-contact-fields`), 7 chuyên mục được ghi `path` (`cms:rebuild-taxonomy-paths`).
 - **Hậu kiểm:** `/`→200, `/lien-he`→200 (có ô đồng ý), `/tin-tuc`→200, `/admin`→302, `/admin/login`→200; log app 0 dòng lỗi; Horizon chạy.
-- **Lần preflight đầu (23:22) dừng:** tra CI của commit trả rỗng dù CI đã xanh (chạy lại cùng lệnh thì ra `completed:success`) — trục trặc tạm thời phía GitHub; prod không bị đụng. Script deploy giờ in lỗi thật của `gh` và thử lại 3 lần.
+- **Lần preflight đầu (23:22) dừng:** tra CI của commit (`gh run list --commit`) trả rỗng dù CI đã xanh; cùng lệnh chạy lại vài phút sau ra `completed:success`. Nguyên nhân chưa xác định (không tái hiện được); prod không bị đụng. Script deploy giờ in lỗi thật của `gh` và thử lại 3 lần.
 - **Diễn tập khôi phục lần đầu:** `23:30 (+07)` — owner chạy tay `scripts/restore-drill-prod-db.sh` trên bản prod: đạt (chi tiết: `runbooks/prod-db-backup-restore.md` §9). Log `/var/log/bsweb-restore-drill.log` (600).
 - **Crontab (owner, 23:4x):** backup `15 3 * * *` chạy từ `/opt/bswebsaas/prod/scripts/` (đọc `.env` prod — đủ 6 biến bắt buộc) + diễn tập `45 4 1 * *` → `/var/log/bsweb-restore-drill.log` (runbook §3); dòng cũ chạy script từ `dev/` đã bỏ.
-- **Chưa làm (owner):** container app/horizon/scheduler chưa tạo lại — vẫn chạy bản build `da1e043…` (không còn tag). `docker compose up -d` giờ vắng chuyển sang `bsweb/app:prod` = `e00aba…` (đo 27/09: cùng PHP 8.5.7 + FrankenPHP 1.12.4, thêm `pcov` không dùng) + PgBouncer theo digest + nạp `.env` mới.
+- **Tạo lại container (owner, 23:5x):** `docker compose up -d` trong bản prod — app/horizon/scheduler chạy `bsweb/app:prod` (`e00aba…`, PHP 8.5.7), PgBouncer theo digest; valkey/pg/caddy không đổi. Hậu kiểm: app + horizon healthy, 0 restart; `/` `/lien-he` (có ô đồng ý) `/tin-tuc` `/admin/login` → 200, `/admin` → 302; log 0 lỗi. Build cũ `da1e043…` đã không còn trong kho image từ trước (không giữ được làm đường lùi); đường lùi = `bsweb/app:prod` hiện tại, cùng runtime đã đo.
+- **Giám sát (owner):** healthchecks.io 2 check (backup đêm `15 3 * * *` grace 2h · diễn tập `45 4 1 * *` grace 1 ngày, múi `Asia/Ho_Chi_Minh`), URL trong `.env` prod (`BACKUP_`/`RESTORE_HEALTHCHECK_URL`, script host tự đọc); diễn tập chạy lại 23:52 để thử ping — đạt, không có cảnh báo ping. UptimeRobot cho av1.baoson.net + website.baoson.net.
 
 ### 2026-09-25 — Cài rồi gỡ ImageMagick (công cụ đo một lần cho PR #92)
 
