@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Models\Role;
@@ -42,6 +43,17 @@ it('stamps a newly provisioned site with the corporate site_type', function (): 
 
     expect($corporate)->not->toBeNull()
         ->and($site->fresh()->site_type_id)->toBe($corporate->id);
+});
+
+it('gives the categories it creates their tree path', function (): void {
+    $site = provisionCorporate();
+
+    $paths = app(Tenancy::class)->enter($site->id, fn (): array => Taxonomy::query()->pluck('path', 'id')->all());
+
+    expect($paths)->not->toBeEmpty();
+    foreach ($paths as $id => $path) {
+        expect($path)->toBe((string) $id); // a top-level category's path is its own id
+    }
 });
 
 it('materializes the 6 corporate role templates with their canonical levels', function (): void {

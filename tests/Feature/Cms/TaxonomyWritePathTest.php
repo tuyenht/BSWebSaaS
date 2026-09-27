@@ -1,10 +1,13 @@
 <?php
 
 use App\Modules\Audit\Models\AuditLog;
+use App\Modules\Cms\Actions\Menus\SaveMenu;
+use App\Modules\Cms\Actions\Menus\SaveMenuItem;
 use App\Modules\Cms\Actions\Taxonomies\CreateTaxonomy;
 use App\Modules\Cms\Actions\Taxonomies\DeleteTaxonomy;
 use App\Modules\Cms\Actions\Taxonomies\MoveTaxonomy;
 use App\Modules\Cms\Actions\Taxonomies\UpdateTaxonomy;
+use App\Modules\Cms\Data\MenuItemData;
 use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Enums\CategoryChildrenOnDelete;
 use App\Modules\Cms\Enums\CategoryItemsOnDelete;
@@ -482,7 +485,7 @@ it('answers every address a deleted category leaves behind with a 301', function
         expect(twRoute($moved))->toBe('/su-kien/bai-viet');
 
         $result = app(DeleteTaxonomy::class)->handle($events, CategoryItemsOnDelete::Reassign, $talks);
-        expect($result)->toBe(['categories' => 1, 'items' => 1, 'routes_moved' => 1, 'redirects' => 1])
+        expect($result)->toBe(['categories' => 1, 'items' => 1, 'routes_moved' => 1, 'redirects' => 1, 'menu_links' => 0])
             ->and(twRoute($moved))->toBe('/hoi-thao/bai-viet')
             ->and(twRedirect('/su-kien/bai-viet'))->toBe('/hoi-thao/bai-viet')
             ->and(twRedirect('/su-kien'))->toBe('/hoi-thao');
@@ -498,6 +501,25 @@ it('answers every address a deleted category leaves behind with a 301', function
         $orphan = twCreate('Khác');
         app(DeleteTaxonomy::class)->handle($orphan);
         expect(twRedirect('/khac'))->toBe('/');
+    });
+});
+
+it('points menu links at the category the items moved to, and leaves them when there is none', function (): void {
+    twSiteOne(function (): void {
+        $news = twCreate('Tin tức');
+        $events = twCreate('Sự kiện', $news);
+        $talks = twCreate('Hội thảo', $news);
+        $jobs = twCreate('Tuyển dụng');
+        $menu = app(SaveMenu::class)->handle(null, 'Menu chính');
+        $toEvents = app(SaveMenuItem::class)->handle($menu, null, new MenuItemData('taxonomy', $events->id));
+        $toJobs = app(SaveMenuItem::class)->handle($menu, null, new MenuItemData('taxonomy', $jobs->id));
+
+        $result = app(DeleteTaxonomy::class)->handle($events, CategoryItemsOnDelete::Reassign, $talks);
+        app(DeleteTaxonomy::class)->handle($jobs, CategoryItemsOnDelete::Detach);
+
+        expect($result['menu_links'])->toBe(1)
+            ->and($toEvents->fresh()?->routable_id)->toBe($talks->id)
+            ->and($toJobs->fresh()?->routable_id)->toBe($jobs->id);
     });
 });
 
