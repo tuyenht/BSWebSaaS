@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Workflow\Actions;
 
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Registry\WorkflowTemplateRegistry;
 use Illuminate\Support\Facades\DB;
@@ -17,15 +18,18 @@ use InvalidArgumentException;
  * Idempotent by (site, applies_to_type): re-running rebuilds the states + transitions from the
  * template, so re-seeding a site is safe. Because it REBUILDS, it is a provisioning tool, not an
  * editor — once a site has hand-tuned its stages, drive changes through that editor, not this.
+ * Names and labels are written in the site's default language.
  */
 final readonly class InstantiateWorkflow
 {
+    public function __construct(private SiteLocale $locales) {}
+
     /**
      * @param  bool  $active  switch it on now, or stage it disabled (default) for an operator to enable
      */
     public function handle(string $templateKey, string $appliesToType, bool $active = false): Workflow
     {
-        $template = WorkflowTemplateRegistry::all()[$templateKey]
+        $template = WorkflowTemplateRegistry::localized($this->locales->default())[$templateKey]
             ?? throw new InvalidArgumentException("Unknown workflow template '{$templateKey}'.");
 
         return DB::transaction(function () use ($templateKey, $template, $appliesToType, $active): Workflow {

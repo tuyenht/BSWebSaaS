@@ -16,6 +16,10 @@ namespace App\Modules\Workflow\Registry;
  *
  * The `template` values line up with the workflows.template CHECK: 'none' means no workflow, so
  * it is intentionally absent here.
+ *
+ * Names and labels are lang/*.json keys: localized() resolves them for one language — the site's
+ * default when a template is copied into a site's rows (a site's stages then read in its own
+ * language and stay editable), the reader's for a screen that previews the templates.
  */
 final class WorkflowTemplateRegistry
 {
@@ -32,44 +36,65 @@ final class WorkflowTemplateRegistry
             // Single gate: a submitter parks it, an approver publishes. The lightest workflow that
             // is still more than tier-1 — one explicit review before the public sees anything.
             'admin_approval' => [
-                'name' => 'Duyệt trước khi đăng',
+                'name' => 'workflow.template_admin_approval',
                 'states' => [
-                    ['key' => 'draft', 'label' => 'Bản nháp', 'is_initial' => true],
-                    ['key' => 'pending', 'label' => 'Chờ duyệt'],
-                    ['key' => 'published', 'label' => 'Đã đăng', 'is_published' => true],
-                    ['key' => 'archived', 'label' => 'Lưu trữ', 'is_terminal' => true],
+                    ['key' => 'draft', 'label' => 'workflow.state_draft', 'is_initial' => true],
+                    ['key' => 'pending', 'label' => 'workflow.state_pending'],
+                    ['key' => 'published', 'label' => 'workflow.state_published', 'is_published' => true],
+                    ['key' => 'archived', 'label' => 'workflow.state_archived', 'is_terminal' => true],
                 ],
                 'transitions' => [
-                    ['key' => 'submit', 'label' => 'Gửi duyệt', 'from' => 'draft', 'to' => 'pending', 'permission' => 'entries.submit'],
-                    ['key' => 'approve', 'label' => 'Duyệt đăng', 'from' => 'pending', 'to' => 'published', 'permission' => 'entries.approve'],
-                    ['key' => 'reject', 'label' => 'Trả lại', 'from' => 'pending', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
-                    ['key' => 'retract', 'label' => 'Gỡ bài', 'from' => 'published', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
-                    ['key' => 'archive', 'label' => 'Lưu trữ', 'from' => 'published', 'to' => 'archived', 'permission' => 'entries.approve'],
+                    ['key' => 'submit', 'label' => 'workflow.action_submit', 'from' => 'draft', 'to' => 'pending', 'permission' => 'entries.submit'],
+                    ['key' => 'approve', 'label' => 'workflow.action_approve', 'from' => 'pending', 'to' => 'published', 'permission' => 'entries.approve'],
+                    ['key' => 'reject', 'label' => 'workflow.action_reject', 'from' => 'pending', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
+                    ['key' => 'retract', 'label' => 'workflow.action_retract', 'from' => 'published', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
+                    ['key' => 'archive', 'label' => 'workflow.action_archive', 'from' => 'published', 'to' => 'archived', 'permission' => 'entries.approve'],
                 ],
             ],
 
             // Newsroom flow (design.md §15.4 phóng viên→biên tập→giám đốc): author writes, editor
             // reviews, an approver signs off. Separates who may edit from who may approve.
             'editorial' => [
-                'name' => 'Quy trình biên tập',
+                'name' => 'workflow.template_editorial',
                 'states' => [
-                    ['key' => 'draft', 'label' => 'Bản nháp', 'is_initial' => true],
-                    ['key' => 'pending', 'label' => 'Chờ biên tập'],
-                    ['key' => 'reviewing', 'label' => 'Đang phản biện'],
-                    ['key' => 'published', 'label' => 'Đã đăng', 'is_published' => true],
-                    ['key' => 'archived', 'label' => 'Lưu trữ', 'is_terminal' => true],
+                    ['key' => 'draft', 'label' => 'workflow.state_draft', 'is_initial' => true],
+                    ['key' => 'pending', 'label' => 'workflow.state_pending_edit'],
+                    ['key' => 'reviewing', 'label' => 'workflow.state_reviewing'],
+                    ['key' => 'published', 'label' => 'workflow.state_published', 'is_published' => true],
+                    ['key' => 'archived', 'label' => 'workflow.state_archived', 'is_terminal' => true],
                 ],
                 'transitions' => [
-                    ['key' => 'submit', 'label' => 'Gửi biên tập', 'from' => 'draft', 'to' => 'pending', 'permission' => 'entries.submit'],
-                    ['key' => 'to_review', 'label' => 'Chuyển phản biện', 'from' => 'pending', 'to' => 'reviewing', 'permission' => 'entries.review'],
-                    ['key' => 'approve', 'label' => 'Duyệt đăng', 'from' => 'reviewing', 'to' => 'published', 'permission' => 'entries.approve'],
-                    ['key' => 'request_changes', 'label' => 'Yêu cầu sửa', 'from' => 'reviewing', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
-                    ['key' => 'send_back', 'label' => 'Trả lại tác giả', 'from' => 'pending', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
-                    ['key' => 'retract', 'label' => 'Gỡ bài', 'from' => 'published', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
-                    ['key' => 'archive', 'label' => 'Lưu trữ', 'from' => 'published', 'to' => 'archived', 'permission' => 'entries.approve'],
+                    ['key' => 'submit', 'label' => 'workflow.action_submit_edit', 'from' => 'draft', 'to' => 'pending', 'permission' => 'entries.submit'],
+                    ['key' => 'to_review', 'label' => 'workflow.action_to_review', 'from' => 'pending', 'to' => 'reviewing', 'permission' => 'entries.review'],
+                    ['key' => 'approve', 'label' => 'workflow.action_approve', 'from' => 'reviewing', 'to' => 'published', 'permission' => 'entries.approve'],
+                    ['key' => 'request_changes', 'label' => 'workflow.action_request_changes', 'from' => 'reviewing', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
+                    ['key' => 'send_back', 'label' => 'workflow.action_send_back', 'from' => 'pending', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
+                    ['key' => 'retract', 'label' => 'workflow.action_retract', 'from' => 'published', 'to' => 'draft', 'permission' => 'entries.review', 'note' => true],
+                    ['key' => 'archive', 'label' => 'workflow.action_archive', 'from' => 'published', 'to' => 'archived', 'permission' => 'entries.approve'],
                 ],
             ],
         ];
+    }
+
+    /**
+     * Every template with its name and labels resolved in $locale.
+     *
+     * @return array<string, array{
+     *     name: string,
+     *     states: list<array{key: string, label: string, is_initial?: bool, is_published?: bool, is_terminal?: bool}>,
+     *     transitions: list<array{key: string, label: string, from: string, to: string, permission: string, note?: bool}>,
+     * }>
+     */
+    public static function localized(string $locale): array
+    {
+        $text = static fn (string $key): string => (string) __($key, [], $locale);
+
+        return array_map(static fn (array $template): array => [
+            ...$template,
+            'name' => $text($template['name']),
+            'states' => array_map(static fn (array $state): array => [...$state, 'label' => $text($state['label'])], $template['states']),
+            'transitions' => array_map(static fn (array $transition): array => [...$transition, 'label' => $text($transition['label'])], $template['transitions']),
+        ], self::all());
     }
 
     /**
