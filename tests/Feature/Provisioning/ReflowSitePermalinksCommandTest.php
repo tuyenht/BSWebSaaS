@@ -13,7 +13,7 @@ beforeEach(function (): void {
 
 it('fails closed when no --host is given (no accidental default target)', function (): void {
     $this->artisan('permalinks:reflow', ['--force' => true])
-        ->expectsOutputToContain('phải chỉ định --host')
+        ->expectsOutputToContain('Pass --host')
         ->assertFailed();
 });
 

@@ -11,8 +11,8 @@ use Illuminate\Auth\Access\AuthorizationException;
 
 /*
  * P2 — "Nhân bản" (design §3a). A copy is a fresh single-node DRAFT: parent_id cleared, every
- * translation copied with a " (bản sao)" title + a unique slug, categories carried over, and NO
- * route (a draft has no public URL until it is published).
+ * translation copied with a "(copy)" title marker + a unique slug, both in that translation's own
+ * language, categories carried over, and NO route (a draft has no public URL until it is published).
  */
 
 beforeEach(function (): void {
@@ -40,6 +40,24 @@ it('copies an entry as a draft single node with a suffixed title and unique slug
             ->and($copy->translationFor('vi')->title)->toBe('Dịch vụ (bản sao)')
             ->and($copy->translationFor('vi')->slug)->toBe('dich-vu-ban-sao')
             ->and(SiteRoute::query()->where('entry_id', $copy->id)->exists())->toBeFalse();
+    });
+});
+
+it('marks each copied translation in its own language', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create']);
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published']);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Dịch vụ', 'slug' => 'dich-vu', 'status' => 'published', 'body' => ['blocks' => []]]);
+        $page->translations()->create(['locale' => 'en', 'title' => 'Services', 'slug' => 'services', 'status' => 'published', 'body' => ['blocks' => []]]);
+
+        $copy = app(DuplicateEntry::class)->handle($page->fresh(), $editor->fresh());
+
+        expect($copy->translationFor('vi')->title)->toBe('Dịch vụ (bản sao)')
+            ->and($copy->translationFor('vi')->slug)->toBe('dich-vu-ban-sao')
+            ->and($copy->translationFor('en')->title)->toBe('Services (copy)')
+            ->and($copy->translationFor('en')->slug)->toBe('services-copy');
     });
 });
 

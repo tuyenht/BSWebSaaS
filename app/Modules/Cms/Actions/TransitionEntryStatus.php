@@ -45,18 +45,18 @@ final readonly class TransitionEntryStatus
     public function handle(Entry $entry, EntryStatus $target, User $actor, ?DateTimeInterface $publishAt = null): void
     {
         if (! in_array($target->value, self::ALLOWED, true)) {
-            throw new InvalidArgumentException("Trạng thái “{$target->value}” phải đi qua quy trình đăng, không đặt trực tiếp.");
+            throw new InvalidArgumentException(__('entries.err_status_needs_publish_flow', ['status' => $target->value]));
         }
 
         if (! Gate::forUser($actor)->allows('publish', $entry)) {
-            throw new AuthorizationException('Bạn không có quyền đổi trạng thái nội dung này.');
+            throw new AuthorizationException(__('entries.err_status_forbidden'));
         }
 
         $governed = $this->workflows->forEntry($entry) !== null;
 
         if ($target === EntryStatus::Scheduled) {
             if ($publishAt === null || $publishAt <= now()) {
-                throw new InvalidArgumentException('Lên lịch cần một thời điểm trong tương lai.');
+                throw new InvalidArgumentException(__('entries.err_schedule_in_past'));
             }
 
             if ($governed) {
