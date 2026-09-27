@@ -7,7 +7,7 @@ use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Tenancy\Context\CurrentSite;
-use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Context\SiteDirectory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -29,7 +29,7 @@ use RuntimeException;
  */
 final class MediaUploadController
 {
-    public function presign(Request $request, PresignMediaUpload $presign, CurrentSite $current): JsonResponse
+    public function presign(Request $request, PresignMediaUpload $presign, CurrentSite $current, SiteDirectory $sites): JsonResponse
     {
         try {
             $request->validate([
@@ -42,7 +42,7 @@ final class MediaUploadController
                 (string) $request->string('filename'),
                 (string) $request->string('mime'),
                 $request->integer('size'),
-                $this->siteName($current),
+                $sites->nameOfCurrent($current),
             );
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
@@ -83,7 +83,7 @@ final class MediaUploadController
         return response()->json(['ulid' => $media->ulid]);
     }
 
-    public function upload(Request $request, UploadMedia $upload, CurrentSite $current): JsonResponse
+    public function upload(Request $request, UploadMedia $upload, CurrentSite $current, SiteDirectory $sites): JsonResponse
     {
         try {
             $request->validate([
@@ -95,7 +95,7 @@ final class MediaUploadController
                 return response()->json(['message' => __('media.err_file_invalid')], 422);
             }
 
-            $media = $upload->handle($file, $this->siteName($current), 'library', $this->actorId());
+            $media = $upload->handle($file, $sites->nameOfCurrent($current), 'library', $this->actorId());
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (MediaRejectedException $e) {
@@ -113,11 +113,6 @@ final class MediaUploadController
         report($e);
 
         return response()->json(['message' => __('media.err_unexpected')], 500);
-    }
-
-    private function siteName(CurrentSite $current): string
-    {
-        return (string) Site::query()->find($current->id())?->name;
     }
 
     private function actorId(): ?int

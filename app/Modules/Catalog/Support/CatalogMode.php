@@ -2,7 +2,7 @@
 
 namespace App\Modules\Catalog\Support;
 
-use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Tenancy\Context\SiteSettings;
 
 /**
  * The per-site catalog mode flag (site_settings: group `catalog`, key `mode`) — THE single
@@ -10,10 +10,10 @@ use App\Modules\Tenancy\Models\SiteSetting;
  * `brochure` = show the catalog, hide price & ordering (An Vinh's target state);
  * `commerce` = full selling, phase-2. Reads fail closed to brochure: a missing or
  * malformed setting can only ever HIDE commercial surfaces, never expose them.
- * Reads SiteSetting (Tenancy, the base module) directly — not the Admin settings
- * repository — so the Catalog module keeps the acyclic dependency direction.
+ * Reads through Tenancy's SiteSettings (the base module's public surface) — not the Admin
+ * settings repository — so the Catalog module keeps the acyclic dependency direction.
  */
-final class CatalogMode
+final readonly class CatalogMode
 {
     public const string BROCHURE = 'brochure';
 
@@ -22,15 +22,12 @@ final class CatalogMode
     /** @var list<string> */
     public const array MODES = [self::BROCHURE, self::COMMERCE];
 
+    public function __construct(private SiteSettings $settings) {}
+
     /** The current site's mode (site-scoped by BelongsToSite + RLS). */
     public function current(): string
     {
-        $setting = SiteSetting::query()
-            ->where('group_name', 'catalog')
-            ->where('key', 'mode')
-            ->first();
-
-        $mode = is_array($setting?->value) ? ($setting->value['value'] ?? null) : null;
+        $mode = $this->settings->value('catalog', 'mode')['value'] ?? null;
 
         return in_array($mode, self::MODES, true) ? $mode : self::BROCHURE;
     }

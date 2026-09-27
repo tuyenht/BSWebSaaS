@@ -42,21 +42,12 @@ arch('Tenancy module depends on no feature module')
 //
 // One rule PER module: with an array on the expect() side, `->not->toUse()` only fails when
 // EVERY listed module violates, so the single-rule form passed while four modules read the
-// models directly. The debt list below is a ratchet of the reads that predate the fix — it may
-// only shrink: move a read behind Tenancy\Context, then delete its line. Anything new fails CI.
-$tenancyModelDebt = [
-    'App\\Modules\\Catalog\\Support\\CatalogMode',
-    'App\\Modules\\Cms\\Routing\\SectionResolver',
-    'App\\Modules\\Media\\Actions\\RegisterMediaUpload',
-    'App\\Modules\\Media\\Http\\Controllers\\MediaUploadController',
-    'App\\Modules\\Storefront\\Http\\Controllers\\StorefrontController',
-];
-
+// models directly. The reads that predated the fix now go through Tenancy\Context (the debt list
+// that tracked them is empty and gone); anything new fails CI.
 foreach ($namespacesExcept(['Tenancy', 'Shared', 'Admin', 'Provisioning', 'Identity', 'Theme']) as $namespace) {
     arch("{$namespace} reaches tenancy through its public surface, not its models")
         ->expect($namespace)
-        ->not->toUse('App\\Modules\\Tenancy\\Models')
-        ->ignoring($tenancyModelDebt);
+        ->not->toUse('App\\Modules\\Tenancy\\Models');
 }
 
 // Shared contracts are the only sanctioned cross-module interface seam.
