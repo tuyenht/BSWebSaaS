@@ -42,7 +42,7 @@ final class ReflowSitePermalinksCommand extends Command
         $host = is_string($host) ? trim($host) : '';
 
         if ($host === '') {
-            $this->error('Bạn phải chỉ định --host (hostname của site cần reflow). Không có mặc định để tránh nhắm nhầm site.');
+            $this->error('Pass --host (the hostname of the site to reflow). There is no default, so a forgotten flag cannot rewrite the wrong site.');
 
             return self::FAILURE;
         }

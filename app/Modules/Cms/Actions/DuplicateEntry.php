@@ -8,6 +8,7 @@ use App\Modules\Identity\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 
 /**
  * Duplicates an entry as a fresh DRAFT (design §3a "Nhân bản"). The copy is a single node —
@@ -24,7 +25,7 @@ final class DuplicateEntry
     public function handle(Entry $entry, User $actor): Entry
     {
         if (! Gate::forUser($actor)->allows('create', Entry::class)) {
-            throw new AuthorizationException('Bạn không có quyền tạo nội dung.');
+            throw new AuthorizationException(__('entries.err_create_forbidden'));
         }
 
         /** @var Entry $copy */
@@ -42,7 +43,8 @@ final class DuplicateEntry
             foreach ($entry->translations()->get() as $translation) {
                 $copy->translations()->create([
                     'locale' => $translation->locale,
-                    'title' => $translation->title.' (bản sao)',
+                    // The copy is marked in the copied translation's own language.
+                    'title' => __('entries.copy_title', ['title' => $translation->title], $translation->locale),
                     'slug' => $this->uniqueSlug($translation->slug, $translation->locale),
                     'status' => 'draft',
                     'body' => $translation->body,
@@ -71,7 +73,10 @@ final class DuplicateEntry
     /** Appends a suffix until the slug is free for this locale (site-scoped by RLS). */
     private function uniqueSlug(string $slug, string $locale): string
     {
-        $base = $slug === '' ? 'ban-sao' : $slug.'-ban-sao';
+        // The marker reads in the translation's language; a script with no Latin form (ja, zh)
+        // keeps the plain "copy".
+        $marker = Str::slug(__('entries.copy_slug', [], $locale)) ?: 'copy';
+        $base = $slug === '' ? $marker : $slug.'-'.$marker;
         $candidate = $base;
         $n = 1;
 

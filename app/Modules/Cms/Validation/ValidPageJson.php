@@ -31,19 +31,19 @@ final readonly class ValidPageJson implements ValidationRule
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         if (! is_array($value)) {
-            $fail('Danh sách khối không hợp lệ.');
+            $fail(__('entries.err_blocks_invalid'));
 
             return;
         }
 
         if (count($value) > self::MAX_BLOCKS) {
-            $fail('Trang có quá nhiều khối (tối đa '.self::MAX_BLOCKS.').');
+            $fail(__('entries.err_blocks_too_many', ['max' => self::MAX_BLOCKS]));
 
             return;
         }
 
         if (strlen((string) json_encode($value)) > self::MAX_BYTES) {
-            $fail('Nội dung trang quá lớn.');
+            $fail(__('entries.err_body_too_large'));
 
             return;
         }
@@ -52,7 +52,7 @@ final readonly class ValidPageJson implements ValidationRule
             $position = $index + 1;
 
             if (! is_array($block)) {
-                $fail("Khối #{$position} không hợp lệ.");
+                $fail(__('entries.err_block_invalid', ['position' => $position]));
 
                 return;
             }
@@ -60,7 +60,7 @@ final readonly class ValidPageJson implements ValidationRule
             $type = $block['type'] ?? null;
             if (! is_string($type) || ! $this->registry->has($type)) {
                 $shown = is_string($type) ? $type : '?';
-                $fail("Khối \"{$shown}\" không được hỗ trợ.");
+                $fail(__('entries.err_block_unsupported', ['type' => $shown]));
 
                 return;
             }
@@ -70,13 +70,13 @@ final readonly class ValidPageJson implements ValidationRule
             }
 
             if (! is_array($block['props'])) {
-                $fail("Thuộc tính của khối \"{$type}\" không hợp lệ.");
+                $fail(__('entries.err_block_props_invalid', ['type' => $type]));
 
                 return;
             }
 
             if (! $this->urlPropsSafe($block['props'], $this->registry->get($type)->schema())) {
-                $fail("Liên kết trong khối \"{$type}\" không hợp lệ.");
+                $fail(__('entries.err_block_link_invalid', ['type' => $type]));
 
                 return;
             }

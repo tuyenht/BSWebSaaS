@@ -94,6 +94,6 @@ final readonly class PublishEntry
             return 'pending';
         }
 
-        throw new AuthorizationException('Bạn không có quyền đăng hoặc gửi duyệt nội dung này.');
+        throw new AuthorizationException(__('entries.err_publish_forbidden'));
     }
 }

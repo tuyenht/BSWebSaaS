@@ -84,7 +84,7 @@ final readonly class WorkflowEngine
         }
 
         if (! $actor->can($transition->required_permission)) {
-            throw new AuthorizationException('Bạn không có quyền thực hiện thao tác duyệt này.');
+            throw new AuthorizationException(__('workflow.err_transition_forbidden'));
         }
 
         if ($transition->requires_note && ($note === null || trim($note) === '')) {
