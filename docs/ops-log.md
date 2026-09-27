@@ -7,6 +7,14 @@
 
 ## 2026
 
+### 2026-09-27 — Deploy lô #94–#113 + diễn tập khôi phục lần đầu
+
+- **Deploy:** `23:29 (+07)` — owner chạy script deploy có ghim SHA: prod `9daf094` → `0cd245e` (33 commit, 0 migration, không đổi dependency). Dump trước deploy: `/opt/bswebsaas/db-backups/prod-predeploy-9daf094-20260927-162912.sql.gz`. Dữ liệu: ô đồng ý thêm vào 1 form liên hệ (`forms:sync-contact-fields`), 7 chuyên mục được ghi `path` (`cms:rebuild-taxonomy-paths`).
+- **Hậu kiểm:** `/`→200, `/lien-he`→200 (có ô đồng ý), `/tin-tuc`→200, `/admin`→302, `/admin/login`→200; log app 0 dòng lỗi; Horizon chạy.
+- **Lần preflight đầu (23:22) dừng:** tra CI của commit trả rỗng dù CI đã xanh (chạy lại cùng lệnh thì ra `completed:success`) — trục trặc tạm thời phía GitHub; prod không bị đụng. Script deploy giờ in lỗi thật của `gh` và thử lại 3 lần.
+- **Diễn tập khôi phục lần đầu:** `23:30 (+07)` — owner chạy tay `scripts/restore-drill-prod-db.sh` trên bản prod: đạt (chi tiết: `runbooks/prod-db-backup-restore.md` §9). Log `/var/log/bsweb-restore-drill.log` (600).
+- **Chưa làm (owner):** container app/horizon/scheduler chưa tạo lại — vẫn chạy bản build `da1e043…` (không còn tag). `docker compose up -d` giờ vắng chuyển sang `bsweb/app:prod` = `e00aba…` (đo 27/09: cùng PHP 8.5.7 + FrankenPHP 1.12.4, thêm `pcov` không dùng) + PgBouncer theo digest + nạp `.env` mới.
+
 ### 2026-09-25 — Cài rồi gỡ ImageMagick (công cụ đo một lần cho PR #92)
 
 - **Cài:** `2026-09-25 11:48 (+07)` — `apt-get install -y imagemagick` trên host `103.82.27.129`, kéo theo tổng **38 gói** (1 chính + 37 phụ thuộc).
