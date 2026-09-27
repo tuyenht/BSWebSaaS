@@ -292,6 +292,7 @@
     "forms.err_message_required": "Please enter your message.",
     "forms.err_email_invalid": "That email address looks invalid.",
     "forms.err_contact_required": "Please leave an email or phone number so we can reach you.",
+    "forms.contact_form_name": "Contact",
     "forms.consent_label": "I agree that this website may store the details above and use them to contact me.",
     "forms.err_consent_required": "Please tick the box to let us store and use your contact details.",
     "forms.submit_button": "Send message",

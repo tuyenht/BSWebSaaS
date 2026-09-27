@@ -3,6 +3,7 @@
 namespace App\Modules\Forms\Actions;
 
 use App\Modules\Forms\Models\Form;
+use App\Modules\Shared\Support\Cast;
 
 /**
  * Idempotently seed the lead-capture contact form (key 'contact') + its fields for the CURRENT
@@ -10,9 +11,25 @@ use App\Modules\Forms\Models\Form;
  * ProvisionSite (every new site, owner as recipient) and SeedAnVinhContent (An Vinh, business
  * inbox). Anchored on the unique (site_id, key) and each field's (form_id, key) — a re-run never
  * duplicates and never clobbers a tenant's later-customized recipients.
+ *
+ * The default wording (form name, thank-you sentence, field labels) is written in every interface
+ * language, so a visitor reading the site in English sees English labels. A form created before
+ * that — Vietnamese only — gets its missing languages filled on the next run; a language the site
+ * already has is never rewritten.
  */
 final class EnsureContactForm
 {
+    /** The default fields, their wording keyed by the lang/*.json entry it comes from. */
+    private const array FIELDS = [
+        ['key' => 'name', 'type' => 'text', 'label' => 'forms.lead_field_name', 'is_required' => true, 'sort_order' => 1],
+        ['key' => 'email', 'type' => 'email', 'label' => 'forms.lead_field_email', 'is_required' => false, 'sort_order' => 2],
+        ['key' => 'phone', 'type' => 'tel', 'label' => 'forms.lead_field_phone', 'is_required' => false, 'sort_order' => 3],
+        ['key' => 'message', 'type' => 'textarea', 'label' => 'forms.lead_field_message', 'is_required' => true, 'sort_order' => 4],
+        // Personal data is collected only with the visitor's explicit agreement; the ticked
+        // sentence is stored with the lead as the evidence (SubmitForm).
+        ['key' => 'consent', 'type' => 'checkbox', 'label' => 'forms.consent_label', 'is_required' => true, 'sort_order' => 5],
+    ];
+
     /**
      * @param  list<string>  $notifyEmails  lead-notification recipients (set on first creation)
      */
@@ -21,26 +38,18 @@ final class EnsureContactForm
         $form = Form::query()->firstOrCreate(
             ['key' => 'contact'],
             [
-                'name' => ['vi' => 'Liên hệ'],
-                'success_message' => ['vi' => 'Cảm ơn bạn! Chúng tôi đã nhận được thông tin và sẽ liên hệ lại sớm.'],
+                'name' => $this->inEveryLanguage('forms.contact_form_name'),
+                'success_message' => $this->inEveryLanguage('forms.submit_success'),
                 'notify_emails' => $notifyEmails,
                 'status' => 'active',
             ],
         );
 
-        $fields = [
-            ['key' => 'name', 'type' => 'text', 'label' => ['vi' => 'Họ tên'], 'is_required' => true, 'sort_order' => 1],
-            ['key' => 'email', 'type' => 'email', 'label' => ['vi' => 'Email'], 'is_required' => false, 'sort_order' => 2],
-            ['key' => 'phone', 'type' => 'tel', 'label' => ['vi' => 'Số điện thoại'], 'is_required' => false, 'sort_order' => 3],
-            ['key' => 'message', 'type' => 'textarea', 'label' => ['vi' => 'Nội dung'], 'is_required' => true, 'sort_order' => 4],
-            // Personal data is collected only with the visitor's explicit agreement; the ticked
-            // sentence is stored with the lead as the evidence (SubmitForm).
-            ['key' => 'consent', 'type' => 'checkbox', 'label' => $this->inEveryLanguage('forms.consent_label'), 'is_required' => true, 'sort_order' => 5],
-        ];
-
-        foreach ($fields as $field) {
-            $form->fields()->firstOrCreate(['key' => $field['key']], $field);
+        foreach (self::FIELDS as $field) {
+            $form->fields()->firstOrCreate(['key' => $field['key']], [...$field, 'label' => $this->inEveryLanguage($field['label'])]);
         }
+
+        $this->fillMissingLanguages($form);
 
         return $form;
     }
@@ -70,6 +79,41 @@ final class EnsureContactForm
         $field->update(['label' => $label]);
 
         return true;
+    }
+
+    /**
+     * Add the languages the default wording is missing — form name, thank-you sentence and the
+     * default fields' labels — keeping every language the site already has exactly as written.
+     */
+    private function fillMissingLanguages(Form $form): void
+    {
+        $name = $this->withMissing($form->name, 'forms.contact_form_name');
+        $success = $this->withMissing($form->success_message, 'forms.submit_success');
+        if ($name !== null || $success !== null) {
+            $form->update(array_filter(['name' => $name, 'success_message' => $success], static fn (?array $value): bool => $value !== null));
+        }
+
+        $defaults = array_column(self::FIELDS, 'label', 'key');
+        foreach ($form->fields()->whereIn('key', array_keys($defaults))->get() as $field) {
+            $label = $this->withMissing($field->label, $defaults[$field->key]);
+            if ($label !== null) {
+                $field->update(['label' => $label]);
+            }
+        }
+    }
+
+    /**
+     * $current plus the languages of $key it lacks, or null when it lacks none.
+     *
+     * @return array<string, string>|null
+     */
+    private function withMissing(mixed $current, string $key): ?array
+    {
+        $current = Cast::arr($current);
+        $merged = $current + $this->inEveryLanguage($key);
+        ksort($merged);
+
+        return count($merged) === count($current) ? null : array_map(static fn (mixed $text): string => Cast::string($text), $merged);
     }
 
     /**

@@ -292,6 +292,7 @@
     "forms.err_message_required": "请输入留言内容。",
     "forms.err_email_invalid": "邮箱格式不正确。",
     "forms.err_contact_required": "请留下邮箱或电话，方便我们联系您。",
+    "forms.contact_form_name": "联系我们",
     "forms.consent_label": "我同意本网站保存上述信息并用于与我联系。",
     "forms.err_consent_required": "请勾选同意，以便我们保存并使用您的联系信息。",
     "forms.submit_button": "发送",

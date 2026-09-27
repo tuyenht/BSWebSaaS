@@ -31,7 +31,9 @@ it('adds the consent box to an existing contact form without touching what the s
 
     expect($keys)->toBe(['name', 'email', 'phone', 'message', 'consent'])
         ->and($form->notify_emails)->toBe(['sales@a.test'])
-        ->and($nameLabel)->toBe(['vi' => 'Tên của bạn']);
+        // The site's own wording stays; only the languages it lacked are added.
+        ->and($nameLabel['vi'])->toBe('Tên của bạn')
+        ->and(array_keys($nameLabel))->toBe(['en', 'ja', 'vi', 'zh']);
 });
 
 it('rewrites the consent sentence from the translations only when asked, and nothing else', function (): void {
@@ -44,7 +46,8 @@ it('rewrites the consent sentence from the translations only when asked, and not
         ->with('fields')->firstOrFail()->fields->pluck('label', 'key')->all());
 
     $this->artisan('forms:sync-contact-fields')->assertSuccessful();
-    expect($labels()['consent'])->toBe(['vi' => 'Câu đồng ý cũ']);
+    $before = $labels();
+    expect($before['consent']['vi'])->toBe('Câu đồng ý cũ');
 
     $this->artisan('forms:sync-contact-fields --refresh-consent')
         ->expectsOutputToContain('Consent sentences rewritten: 1.')
@@ -52,11 +55,40 @@ it('rewrites the consent sentence from the translations only when asked, and not
     $after = $labels();
     expect($after['consent']['vi'])->toBe(__('forms.consent_label', [], 'vi'))
         ->and(array_keys($after['consent']))->toBe(['en', 'ja', 'vi', 'zh'])
-        ->and($after['name'])->toBe(['vi' => 'Tên của bạn']);
+        ->and($after['name'])->toBe($before['name'])
+        ->and($after['name']['vi'])->toBe('Tên của bạn');
 
     $this->artisan('forms:sync-contact-fields --refresh-consent')
         ->expectsOutputToContain('Consent sentences rewritten: 0.')
         ->assertSuccessful();
+});
+
+it('gives a Vietnamese-only form the languages it lacks, keeping every word the site wrote', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $form = Form::query()->create([
+            'key' => 'contact', 'name' => ['vi' => 'Liên hệ báo giá'], 'status' => 'active',
+            'success_message' => ['vi' => 'Đã nhận, cảm ơn anh/chị.'],
+        ]);
+        $form->fields()->create(['key' => 'message', 'type' => 'textarea', 'label' => ['vi' => 'Yêu cầu của bạn'], 'is_required' => true, 'sort_order' => 4]);
+        $form->fields()->create(['key' => 'company', 'type' => 'text', 'label' => ['vi' => 'Công ty'], 'is_required' => false, 'sort_order' => 9]);
+    });
+
+    $this->artisan('forms:sync-contact-fields')->assertSuccessful();
+
+    [$form, $labels] = app(Tenancy::class)->enter(1, function (): array {
+        $form = Form::query()->where('key', 'contact')->with('fields')->firstOrFail();
+
+        return [$form, $form->fields->pluck('label', 'key')->all()];
+    });
+
+    expect($form->name)->toBe(['en' => __('forms.contact_form_name', [], 'en'), 'ja' => __('forms.contact_form_name', [], 'ja'), 'vi' => 'Liên hệ báo giá', 'zh' => __('forms.contact_form_name', [], 'zh')])
+        ->and($form->success_message['vi'])->toBe('Đã nhận, cảm ơn anh/chị.')
+        ->and($form->success_message['en'])->toBe(__('forms.submit_success', [], 'en'))
+        ->and($labels['message']['vi'])->toBe('Yêu cầu của bạn')
+        ->and($labels['message']['en'])->toBe(__('forms.lead_field_message', [], 'en'))
+        ->and($labels['name']['en'])->toBe(__('forms.lead_field_name', [], 'en'))
+        // A field the site added itself is not the platform's wording to fill.
+        ->and($labels['company'])->toBe(['vi' => 'Công ty']);
 });
 
 it('leaves a site without a contact form alone', function (): void {
