@@ -8,13 +8,14 @@ name: bsweb-prod
 #
 # Isolation vs dev: own project name, network, container names (bsweb_prod_*) and
 # volumes (*_prod). Postgres/Valkey/PgBouncer are internal-only (expose, never published
-# to the host); ONLY Caddy takes the public 80/443. Runtime image is shared with dev
-# (env-agnostic PHP/FrankenPHP) — prod CODE + DATA are isolated by the bind mount + this
-# project's own volumes/DB. Secrets come from ./.env via ${...}, never written here.
+# to the host); ONLY Caddy takes the public 80/443. The runtime image is built from the same
+# Dockerfile as dev but carries its own tag, bsweb/app:prod: a dev rebuild must never change
+# what prod starts on (docs/runbooks/prod-deploy.md). Prod CODE + DATA are isolated by the bind
+# mount + this project's own volumes/DB. Secrets come from ./.env via ${...}, never written here.
 
 services:
   app:
-    image: bsweb/app:dev
+    image: bsweb/app:prod
     container_name: bsweb_prod_app
     restart: unless-stopped
     command: >-
@@ -38,7 +39,7 @@ services:
         condition: service_healthy
 
   horizon:
-    image: bsweb/app:dev
+    image: bsweb/app:prod
     container_name: bsweb_prod_horizon
     restart: unless-stopped
     command: php artisan horizon
@@ -65,7 +66,7 @@ services:
   # In-process scheduler (php artisan schedule:work) — runs the daily media:purge-trash job.
   # A long-running loop, so no host crontab is needed; restart-on-exit keeps it alive.
   scheduler:
-    image: bsweb/app:dev
+    image: bsweb/app:prod
     container_name: bsweb_prod_scheduler
     restart: unless-stopped
     command: php artisan schedule:work
