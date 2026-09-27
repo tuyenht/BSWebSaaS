@@ -113,7 +113,7 @@ final class WorkflowSettings extends Component
 
         $view = view('admin::livewire.workflow-settings', [
             'rows' => $rows,
-            'templates' => WorkflowTemplateRegistry::all(),
+            'templates' => WorkflowTemplateRegistry::localized(app()->getLocale()),
             'editorialLocked' => $editorialLocked,
             // Only worth two queries when there is actually something locked to explain.
             'upgrade' => $editorialLocked ? $this->upgradePath('workflow.editorial') : null,

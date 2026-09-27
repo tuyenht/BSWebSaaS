@@ -3,7 +3,9 @@
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Models\SiteLocale as SiteLocaleRow;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowState;
@@ -55,6 +57,35 @@ it('materializes a template into engine-usable rows, staged disabled by default'
         // Default-OFF holds: the engine still resolves nothing until it is switched on.
         expect(app(WorkflowEngine::class)->activeFor('tin-tuc'))->toBeNull();
     });
+});
+
+it('writes the workflow in the site\'s default language', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $vietnamese = app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc');
+        expect($vietnamese->name)->toBe('Duyệt trước khi đăng')
+            ->and($vietnamese->states()->where('key', 'pending')->value('label'))->toBe('Chờ duyệt');
+
+        SiteLocaleRow::query()->update(['is_default' => false]);
+        SiteLocaleRow::query()->updateOrCreate(['locale' => 'en'], ['is_default' => true, 'enabled' => true, 'is_public' => true]);
+        app(SiteLocale::class)->forget();
+
+        $english = app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc');
+        expect($english->name)->toBe('Approve before publishing')
+            ->and($english->states()->where('key', 'pending')->value('label'))->toBe('Awaiting approval')
+            ->and($english->transitions()->where('key', 'submit')->value('label'))->toBe('Submit for approval');
+    });
+});
+
+it('has every template name and label in every interface language', function (): void {
+    foreach (glob(lang_path('*.json')) ?: [] as $file) {
+        $locale = basename($file, '.json');
+        foreach (WorkflowTemplateRegistry::localized($locale) as $key => $template) {
+            $texts = [$template['name'], ...array_column($template['states'], 'label'), ...array_column($template['transitions'], 'label')];
+            foreach ($texts as $text) {
+                expect($text)->not->toStartWith('workflow.', "{$locale}: {$key}");
+            }
+        }
+    }
 });
 
 it('is idempotent — re-instantiating rebuilds without duplicating', function (): void {
