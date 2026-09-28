@@ -7,13 +7,16 @@
 
 ## 2026
 
-### 2026-09-28 — Deploy 2 lần (Q14 · lịch sử phiên bản) + dọn phiên Claude nhàn rỗi
+### 2026-09-28 — Deploy 3 lần (Q14 · lịch sử phiên bản · index tra FK) + dọn phiên Claude nhàn rỗi
 
 - **Máy chủ (sáng):** swap đầy (2042/2047 MB) vì 12 phiên Claude nhàn rỗi trong tmux (~3,2 GB, mỗi phiên kèm 1 container `boost:mcp`). Owner cho đóng hết, chỉ giữ phiên đang làm → RAM dùng 5,3 → 2,4 GB, swap 2,0 → 0,7 GB. Prod không bị đụng.
 - **Deploy 1:** `10:30 (+07)` — prod `0cd245e` → `d9eded6` (6 commit: 5 tài liệu + module tính năng đọc qua `Tenancy\Context`), 0 migration. Dump: `prod-predeploy-0cd245e-20260928-033043.sql.gz`. Hậu kiểm: 30/30 địa chỉ trong sitemap → 200, log 0 lỗi.
 - **Deploy 2:** `14:18 (+07)` — prod `d9eded6` → `405afac` (2 commit: lưu trang hẹn giờ/riêng tư #117 + lịch sử phiên bản #118). 1 migration `2023_01_01_000000_create_entry_revisions_table` (34 ms, chạy bằng `pgsql_admin`). Dump: `prod-predeploy-d9eded6-20260928-071835.sql.gz`. Dữ liệu: `cms:snapshot-published` ghi 20 bản gốc, khớp 20 bản dịch đang công khai (1 site, 0 lỗi).
 - **Hậu kiểm deploy 2:** `/` `/lien-he` (có ô đồng ý) `/admin/login` → 200, `/admin` → 302, qua Caddy → 200; 30/30 địa chỉ sitemap → 200; log app + horizon 0 lỗi; `entry_revisions` bật RLS + FORCE; `cms:prune-revisions` chạy 00:00 hằng ngày.
 - **Script deploy (bản cục bộ):** lệnh rollback chỉ gỡ ô đồng ý khi quay về code trước `bfaf682` — trước đó nó luôn gỡ, kể cả khi code đích vẫn hỗ trợ ô này (bắt buộc về pháp lý); thêm bước `cms:snapshot-published` khi lệnh có trong bản mới. Rollback về `d9eded6` không cần khôi phục dump (lô chỉ thêm bảng).
+- **Deploy 3:** `23:47 (+07)` — prod `405afac` → `a1bc675` (5 commit: ops-log #119 · index tra FK #120 · bỏ index trùng #121 · Pint + rules #122). 2 migration chỉ đụng index, chạy bằng `pgsql_admin`: `2024_01_01_000000_add_foreign_key_lookup_indexes` (34,69 ms — 15 index `CONCURRENTLY`, 8 partial) · `2025_01_01_000000_drop_duplicate_prefix_indexes` (6,55 ms — bỏ 4 index trùng tiền tố). Dump: `prod-predeploy-405afac-20260928-164724.sql.gz`. Lệnh dữ liệu idempotent: 0 thay đổi.
+- **Hậu kiểm deploy 3:** `/` `/lien-he` (có ô đồng ý) `/admin/login` → 200, `/admin` → 302, qua Caddy → 200; 15/15 index mới hợp lệ, 0 index trùng còn lại, 0 index INVALID, 2 migration ở batch 15; 30/30 địa chỉ sitemap → 200; log container app/horizon/scheduler 0 dòng lỗi. Rollback chỉ cần code (index mới vô hại; 4 index đã bỏ vốn thừa) — không cần dump.
+- **Log app prod:** kênh `stack → single` = `storage/logs/laravel.log` (app ghi được); dòng cuối 03/08 ⇒ 8 tuần không có warning/lỗi. Hậu kiểm log xem cả file này lẫn `docker logs`.
 
 ### 2026-09-27 — Deploy lô #94–#113 + diễn tập khôi phục lần đầu
 
