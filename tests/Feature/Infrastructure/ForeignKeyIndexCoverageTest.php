@@ -10,9 +10,11 @@ use Illuminate\Support\Facades\DB;
  * request's transaction (measured 28/09 on 5M rows: 316 ms per lookup, 0.06 ms with the index).
  * Data-driven like RlsCoverageTest, so every future foreign key is checked.
  *
- * An index counts when it is valid, its first column is one of the key's columns (a composite
- * `(site_id, x)` key led by site_id narrows the lookup to one site), and it is either not partial
- * or partial on exactly `<first column> IS NOT NULL`, which the lookup's `=` implies.
+ * An index counts when it is a valid btree or hash index (a BRIN one still reads most of the table)
+ * that leads with a key column other than site_id, or with all of the key's columns: for a
+ * composite `(site_id, x)` key, `(site_id, x, …)` counts while `(site_id, y)` would scan the whole
+ * site. It is either not partial or partial on exactly `<first column> IS NOT NULL`, which the
+ * lookup's `=` implies.
  */
 
 it('gives every foreign key an index that its parent-delete lookup can use', function (): void {
@@ -43,8 +45,15 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
         'workflows' => ['workflow_log.workflow_id'],
     ];
 
+    // Hard-deleted parents whose children are a handful of rows per site, so an index led by
+    // site_id already bounds the lookup: unique (site_id, region_key, locale) allows one menu
+    // assignment per theme region and locale.
+    $fewRowsPerSite = [
+        'menus' => ['menu_assignments.site_id,menu_id'],
+    ];
+
     $expected = [];
-    foreach ($neverHardDeleted as $parent => $children) {
+    foreach (array_merge_recursive($neverHardDeleted, $fewRowsPerSite) as $parent => $children) {
         foreach ($children as $child) {
             $expected[] = "{$child} -> {$parent}";
         }
@@ -65,10 +74,16 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
           and not exists (
               select 1
               from pg_index i
+              join pg_class ic on ic.oid = i.indexrelid
+              join pg_am am on am.oid = ic.relam
               join pg_attribute lc on lc.attrelid = i.indrelid and lc.attnum = i.indkey[0]
               where i.indrelid = con.conrelid
                 and i.indisvalid
+                and am.amname in ('btree', 'hash')
                 and i.indkey[0] = any (con.conkey)
+                and (lc.attname <> 'site_id'
+                     or (i.indnkeyatts >= cardinality(con.conkey)
+                         and (i.indkey::int2[])[0:cardinality(con.conkey) - 1] @> con.conkey))
                 and (i.indpred is null
                      or pg_get_expr(i.indpred, i.indrelid) = format('(%s IS NOT NULL)', quote_ident(lc.attname)))
           )
@@ -79,7 +94,7 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
 
     expect($uncovered)->toBe(
         $expected,
-        'Index each new foreign key (lead with its column; partial IS NOT NULL when nullable), '
-        .'or list it above if its parent is never hard-deleted.',
+        'Index each new foreign key (lead with its columns; partial IS NOT NULL when nullable), '
+        .'or list it above with the reason it needs none.',
     );
 });

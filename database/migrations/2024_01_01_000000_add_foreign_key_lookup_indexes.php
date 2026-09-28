@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  *   - custom roles: DeleteCustomRole.
  * A nullable column gets a partial `IS NOT NULL` index: the lookup's `=` implies the predicate, so
  * the planner still uses it, and rows without a parent stay out of it.
- * tests/Feature/Infrastructure/ForeignKeyIndexCoverageTest.php keeps every foreign key covered.
+ * tests/Feature/Infrastructure/ForeignKeyIndexCoverageTest.php flags any foreign key left without one.
  *
  * CONCURRENTLY forbids a transaction, so a mid-run failure must be safely re-runnable: an index an
  * interrupted build left INVALID is dropped and built again (IF NOT EXISTS alone would keep it).
