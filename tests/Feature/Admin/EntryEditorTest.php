@@ -414,3 +414,26 @@ it('falls back to the default locale when ?locale= is not enabled', function ():
             ->assertSet('title', 'Giới thiệu');
     });
 });
+
+it('saves a scheduled or private page without touching its status or its translation state', function (string $status): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor, $status): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        $entry = Entry::query()->create(['type' => 'page', 'status' => $status, 'author_id' => $editor->id, 'published_at' => now()->addDay()]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'Sắp ra mắt', 'slug' => 'sap-ra-mat', 'status' => 'draft', 'body' => ['blocks' => []]]);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class, ['ulid' => $entry->ulid])
+            ->set('title', 'Sắp ra mắt (sửa)')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $entry->refresh();
+        $translation = $entry->translationFor('vi');
+        expect($entry->status)->toBe($status)
+            ->and($translation->title)->toBe('Sắp ra mắt (sửa)')
+            ->and($translation->status)->toBe('draft');
+    });
+})->with(['scheduled', 'private']);
