@@ -64,6 +64,9 @@ final class Editor extends Component
     /** How many trail rows the block shows before "Xem thêm" (design: 3, +3 per load). */
     private const int TRAIL_PAGE = 3;
 
+    /** The states a translation row may hold (entry_translations_status_check). */
+    private const array TRANSLATION_STATES = ['draft', 'pending', 'published', 'archived'];
+
     /**
      * Cap on the "Giao cho" list. It rides inside the Livewire snapshot of every governed
      * render, so an unbounded team would grow the payload without bound (ADR-18: paginate
@@ -807,15 +810,13 @@ final class Editor extends Component
         $entry->meta = $meta;
         $entry->save();
 
-        $entry->translations()->updateOrCreate(
-            ['locale' => $this->locale],
-            [
-                'title' => $this->title,
-                'slug' => $this->slug,
-                'body' => ['blocks' => $this->blocks],
-                'status' => $entry->status,
-            ],
-        );
+        $translation = $entry->translations()->firstOrNew(['locale' => $this->locale]);
+        $translation->fill([
+            'title' => $this->title,
+            'slug' => $this->slug,
+            'body' => ['blocks' => $this->blocks],
+            'status' => $this->translationStatus($entry, $translation),
+        ])->save();
 
         // Materialize block image usage into mediables so it surfaces in "where is this media used".
         app(EntryBlockMediaReconciler::class)->reconcile($entry);
@@ -825,6 +826,21 @@ final class Editor extends Component
         }
 
         return $entry;
+    }
+
+    /**
+     * The status to store on the saved translation. Translations take only draft · pending ·
+     * published · archived (entry_translations_status_check); a scheduled or private entry keeps
+     * the translation's current state — the same as TransitionEntryStatus, which never touches
+     * translations — and a new translation starts as draft.
+     */
+    private function translationStatus(Entry $entry, EntryTranslation $translation): string
+    {
+        if (in_array($entry->status, self::TRANSLATION_STATES, true)) {
+            return $entry->status;
+        }
+
+        return $translation->exists ? $translation->status : 'draft';
     }
 
     private function resolveSection(?string $key): ?ContentSection
