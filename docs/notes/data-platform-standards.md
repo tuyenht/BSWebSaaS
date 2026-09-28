@@ -40,6 +40,7 @@ ADR-15 single-origin, chưa replica. Dùng read/write-connection abstraction c�
 
 ## Chuẩn xuyên suốt (áp MỌI bảng/list)
 - **Index:** dẫn-đầu `site_id` KHỚP shape `(site_id → lọc → sort)`; partial `WHERE deleted_at IS NULL`; BRIN cho append-only-time; evidence pg_stat_statements; không over-index (mỗi index = phí ghi).
+  - **Ngoại lệ FK (council 28/09):** xoá dòng cha ⇒ Postgres tìm dòng con bằng `WHERE fk = $1` (không `site_id`, bỏ qua RLS) ⇒ `(site_id, fk)` chỉ phục vụ được bằng cách quét toàn index (đo 5M dòng: 316 ms/lượt; index dẫn đầu `fk`: 0,06 ms). Bảng cha bị xoá cứng ⇒ index dẫn đầu cột FK (nullable ⇒ partial `IS NOT NULL`); bảng cha không bao giờ xoá cứng ⇒ ghi vào danh sách miễn của `ForeignKeyIndexCoverageTest` kèm lý do. FK ghép `(site_id, fk)` (tra theo 1 site, dùng lại index sẵn có) = đường nâng cấp lúc retrofit partition (§A), không làm bây giờ.
 - **Pagination:** keyset cursor + tie-break unique `(…, id)`; cấm `OFFSET` list lớn; cấm `SELECT *`.
 - **Aggregation:** rollup tăng-dần per `site_id` / materialized view; KHÔNG `COUNT(*)` live bảng lớn.
 - **Cache:** domain→site_id + negative-cache + anti-stampede (lock/SWR); config/RBAC; fragment tag-invalidation; edge full-page khách-vô-danh.
