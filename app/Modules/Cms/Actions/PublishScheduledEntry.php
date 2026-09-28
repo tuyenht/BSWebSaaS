@@ -2,6 +2,7 @@
 
 namespace App\Modules\Cms\Actions;
 
+use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
@@ -26,6 +27,7 @@ final readonly class PublishScheduledEntry
     public function __construct(
         private RouteSync $routes,
         private EntryWorkflowResolver $workflows,
+        private RecordEntryRevision $revisions,
     ) {}
 
     /**
@@ -47,6 +49,9 @@ final readonly class PublishScheduledEntry
                 $translation->update(['status' => 'published']);
                 $this->routes->sync($entry, $translation->locale, $translation->slug);
             }
+
+            // The scheduler has no actor: created_by stays null.
+            $this->revisions->forAllLocales($entry, RevisionKind::Publish, null);
         });
 
         EntryStatusAudit::record($entry, $from, 'published', 'scheduler');

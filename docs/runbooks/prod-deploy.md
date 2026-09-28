@@ -29,6 +29,7 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 5. `docker exec bsweb_prod_app php artisan octane:reload`, then `docker restart bsweb_prod_horizon` (mail and jobs run on the queue).
    - From the merge until this reload, the old workers serve old PHP against the new files on disk (Blade compiles on demand; a class moved in the delta is gone). Run steps 2–5 back to back.
    - Commands that write data only the new code understands (a new field type, a new setting) run **after** the reload — never before — and the rollback must remove that data.
+   - Idempotent data commands, safe to run on every deploy: `forms:sync-contact-fields`, `cms:rebuild-taxonomy-paths`, `cms:snapshot-published` (a baseline revision for each public post/page with none — needed once after `entry_revisions` first lands).
 6. If a migration changed a column type on a table with prepared statements in flight, the logs may show "cached plan must not change result type". In that case run `docker restart bsweb_prod_pgbouncer` to drop the server connections.
 
 ## `.env` changes and the image

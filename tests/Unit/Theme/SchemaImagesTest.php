@@ -71,3 +71,20 @@ it('replaces each image inside a list and nulls an unresolved id (fail-safe)', f
             ['image_url' => null, 'name' => 'B'],
         ]]);
 });
+
+it('clears only the image ids missing from the kept set, at any depth, leaving the rest intact', function () use ($heroSchema, $partnersSchema): void {
+    expect(SchemaImages::retain(['heading' => 'Hi', 'image_url' => 5, 'cta_url' => '/x'], $heroSchema, [7]))
+        ->toBe(['heading' => 'Hi', 'image_url' => null, 'cta_url' => '/x'])
+        ->and(SchemaImages::retain(['heading' => 'Hi', 'image_url' => 5], $heroSchema, [5]))
+        ->toBe(['heading' => 'Hi', 'image_url' => 5]);
+
+    expect(SchemaImages::retain(['logos' => [
+        ['image_url' => 7, 'name' => 'A'],
+        ['image_url' => 9, 'name' => 'B'],
+        ['image_url' => null, 'name' => 'C'],
+    ]], $partnersSchema, [7]))->toBe(['logos' => [
+        ['image_url' => 7, 'name' => 'A'],
+        ['image_url' => null, 'name' => 'B'],
+        ['image_url' => null, 'name' => 'C'],
+    ]]);
+});

@@ -22,7 +22,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 10–11 | Trình soạn Trang / Bài viết | ✅ (TODO đợt 4 còn mở) | — | 🔴 chỉ tiêu đề/đường dẫn/chuyên mục | D1-4a, D1-4b | khoảng cách build lớn nhất |
 | 12 | Trình soạn chữ | ✅ | — | ✅ Jodit | D1-4a | |
 | 13 | Thanh ngôn ngữ nội dung | ✅ spec | — | 🟡 | D1-4b | |
-| 14 | Lịch sử phiên bản | 🟡 | — | ❌ chưa có bảng | D1-4b | `entry_revisions` typed (Phụ lục A) |
+| 14 | Lịch sử phiên bản | 🟡 | — | ❌ UI · ✅ backend | D1-4b | 28/09: `entry_revisions` (1 bản/ngôn ngữ, ghi ở mọi đường lên public + lưu khi đang public), danh sách keyset, khôi phục có mã lý do, giữ 20 bản/90 ngày; bản nháp đè bản công khai chưa làm |
 | 15 | Chuyên mục | ❌ | — | ❌ trang "sắp có" · ✅ backend đường ghi | D1-1 | 26/09: tạo/sửa/chuyển/xoá chuyên mục ≤ 3 cấp (`Cms\Actions\Taxonomies`), ghi `path` ltree; bài/sản phẩm đổi đường dẫn + 301 cùng giao dịch (`Cms\Routing\CategoryDependents`); bài rời chuyên mục cần xác nhận; xoá → link trình đơn trỏ theo nơi đến |
 | 16 | Trình đơn | 🟠 thiếu gán theo ngôn ngữ | — | ❌ trang "sắp có" · ✅ backend đường ghi | D1-2 | backend 24/09: `link_type` `product` + ẩn đích khách không mở được · 26/09: tạo/sửa/xoá trình đơn và mục, kéo thả ≤ 5 cấp, gán theo vùng × ngôn ngữ (`Cms\Actions\Menus`) |
 | 17 | Page builder | ✅ v3 | — | 🟡 | ⏸ track Builder v3 | |

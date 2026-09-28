@@ -56,6 +56,23 @@ final class SchemaImages
     }
 
     /**
+     * $props with every image leaf whose media_id is NOT in $keep cleared to null (the value the
+     * editor's "remove image" writes); every other leaf is untouched. Used to drop references to
+     * media that has left the library before old content is written back.
+     *
+     * @param  array<array-key, mixed>  $props
+     * @param  array<array-key, mixed>  $schema
+     * @param  list<int>  $keep  media_ids that still exist
+     * @return array<array-key, mixed>
+     */
+    public static function retain(array $props, array $schema, array $keep): array
+    {
+        $kept = array_flip($keep);
+
+        return self::walk($props, $schema, static fn (mixed $value): mixed => is_int($value) && $value > 0 && ! isset($kept[$value]) ? null : $value);
+    }
+
+    /**
      * Walk $props against $schema, applying $fn to each image-typed leaf value; returns $props with
      * those leaves replaced by $fn's return. Non-image props are left untouched.
      *
