@@ -63,7 +63,7 @@ Many fresh majors → AI often suggests wrong syntax: follow the pinned version'
 Every table/list/query. Target 10,000+ **sites** × 100M+ rows; the isolation key is `site_id` (not a tenant id).
 - **Optimize irreversible choices at birth** (schema, indexes, query shape, pagination, transaction boundaries); defer reversible ones (cache, read models) behind a seam until measured.
 - **PK/partition:** keep `bigint identity + ulid` (ADR-16), single-column PK. Partition only **measure-first with a trigger** (table ≥ 30M rows or a p99 breach). HASH-`site_id` candidates: entries/products/media/mediables/orders; RANGE-time + pg_partman: form_submissions/audit_logs; **never** config/RBAC/lookup/tenants/domains; a whale site gets its own DB (ADR-03). Retrofitting a composite `(site_id, id)` at the trigger is planned work — never ad hoc.
-- **Indexes:** lead with `site_id` matching the query shape (site_id → filter → sort) + partial `WHERE deleted_at IS NULL` + BRIN for append-only; justify with pg_stat evidence; don't over-index. Exception: a parent delete looks up children by the FK column alone, so a foreign key whose parent is hard-deleted gets an index led by that column (`ForeignKeyIndexCoverageTest` enforces it).
+- **Indexes:** lead with `site_id` matching the query shape (site_id → filter → sort) + partial `WHERE deleted_at IS NULL` + BRIN for append-only; justify with pg_stat evidence; don't over-index. Exception: a parent delete looks up children by the foreign key alone (no `site_id`), so a foreign key whose parent is hard-deleted gets an index led by its column(s). `ForeignKeyIndexCoverageTest` flags missing ones but cannot see delete paths: giving a parent on its exemption list a hard delete means indexing that parent's children.
 - **Fetch just enough:** keyset cursor + `(…, id)` tie-break (no OFFSET on large lists); select only needed columns (no `*`); eager `whereIn` (Query Budget blocks N+1); lazy images + `srcset`. Cross-cutting lookups use a materialized index table/counter maintained in the same transaction (+ a reconcile command), never a scan of content.
 - **Aggregation:** per-`site_id` rollups — no live `COUNT(*)` on big tables.
 - **Tenant context:** every tenant query runs inside an explicit transaction and the global scope keeps an explicit `site_id = ?` (built — guard against regressions). Prod must run `tenancy.assert=sample` (strict is for dev/CI). ⏳ Not built yet: `READ ONLY` transactions for GET; domain → site_id cache + negative cache (`SetCurrentSite` queries `domains` on every request).
@@ -88,7 +88,7 @@ Every table/list/query. Target 10,000+ **sites** × 100M+ rows; the isolation ke
 - N+1 is forbidden (eager load); respect the **Query Budget** (§6).
 - PHP: typed parameters/returns, constructor promotion, TitleCase enum cases, PHPDoc array shapes, braces always (Pint + Larastan enforce most).
 - Tests: Pest 4 — every feature has tests, every bug fix a regression test; never delete a test without approval.
-- Migrations: expand-contract; `CREATE INDEX CONCURRENTLY`; indexes lead with `site_id`.
+- Migrations: expand-contract; `CREATE INDEX CONCURRENTLY`; indexes lead with `site_id` (foreign-key exception: §3.1).
 
 ## 6. Guardrails — two tiers, both mandatory (they differ in where they are enforced)
 
