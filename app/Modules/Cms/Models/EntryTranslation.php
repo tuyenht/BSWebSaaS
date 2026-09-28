@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $excerpt
  * @property string|null $seo_title
  * @property string|null $seo_description
+ * @property int|null $og_image_id
  * @property string $status
  */
 class EntryTranslation extends Model

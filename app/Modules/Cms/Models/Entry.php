@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
  * @property string $type
  * @property string $status
  * @property string|null $template_override
+ * @property int|null $cover_media_id
  * @property int|null $author_id
  * @property Carbon|null $published_at
  * @property string|null $workflow_state the stage of the section's approval workflow, null until it joins one
@@ -46,6 +47,17 @@ class Entry extends Model
     public function translations(): HasMany
     {
         return $this->hasMany(EntryTranslation::class);
+    }
+
+    /**
+     * Revision history, every locale (design.md §8). Read it through Cms\Queries\EntryRevisions,
+     * which pages by keyset and never loads the snapshot column into a list.
+     *
+     * @return HasMany<EntryRevision, $this>
+     */
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(EntryRevision::class);
     }
 
     /**

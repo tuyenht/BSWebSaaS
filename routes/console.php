@@ -21,3 +21,7 @@ Schedule::command('entries:flush-views')->everyFiveMinutes()->withoutOverlapping
 
 // Retention: in-app notifications are kept 90 days (site_notifications).
 Schedule::command('notifications:prune')->daily()->withoutOverlapping();
+
+// Retention: revision history keeps the newest cms.revisions.keep per entry and language, and
+// removes older ones past cms.revisions.days (entry_revisions).
+Schedule::command('cms:prune-revisions')->daily()->withoutOverlapping();

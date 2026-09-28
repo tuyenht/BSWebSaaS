@@ -2,9 +2,10 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
-use App\Modules\Admin\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
+use App\Modules\Cms\Actions\RecordEntryRevision;
+use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
@@ -12,8 +13,9 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
-use App\Modules\Cms\Validation\ValidPageJson;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaLibraryUrls;
@@ -719,11 +721,7 @@ final class Editor extends Component
      */
     protected function rules(): array
     {
-        $rules = [
-            'title' => ['required', 'string', 'max:200'],
-            'slug' => ['required', 'string', 'max:200', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
-            'blocks' => [app(ValidPageJson::class)],
-        ];
+        $rules = app(EntryContentRules::class)->rules();
 
         // A post's URL is its category slug + post slug, so a post must have a category.
         if ($this->type === 'post') {
@@ -808,6 +806,7 @@ final class Editor extends Component
             unset($meta['image_url']);
         }
         $entry->meta = $meta;
+        $sharedChanged = $entry->isDirty('meta');
         $entry->save();
 
         $translation = $entry->translations()->firstOrNew(['locale' => $this->locale]);
@@ -823,6 +822,17 @@ final class Editor extends Component
 
         if ($this->type === 'post') {
             $entry->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);
+        }
+
+        // A save on live content is what visitors now see: keep that version (skipped when unchanged).
+        // A changed cover is shared by every language's page, so then every language is recorded.
+        if ($entry->status === 'published') {
+            $revisions = app(RecordEntryRevision::class);
+            if ($sharedChanged) {
+                $revisions->forAllLocales($entry, RevisionKind::Edit, $this->user());
+            } else {
+                $revisions->forLocale($entry, $translation, RevisionKind::Edit, $this->user());
+            }
         }
 
         return $entry;

@@ -2,8 +2,8 @@
 
 namespace App\Modules\Admin\Console;
 
-use App\Modules\Admin\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Console\Command;

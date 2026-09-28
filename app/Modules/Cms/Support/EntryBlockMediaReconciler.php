@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Modules\Admin\Support;
+namespace App\Modules\Cms\Support;
 
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Media\Models\Mediable;
@@ -15,8 +15,9 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * Reconciled on save: collects every media_id referenced by an image prop across ALL locale bodies,
  * then upserts/prunes the entry's content rows to match. It runs inside the request transaction (the
- * save), so the usage index never drifts from the content. Lives in Admin (reaches Cms + Media + Theme,
- * like MediaUsageLocator) — putting it lower would make the module graph cyclic.
+ * save), so the usage index never drifts from the content. Lives in Cms, which already depends on
+ * Media and Theme, so every Cms write path that changes a body (the editor save, a revision restore)
+ * reconciles through this one class.
  */
 final readonly class EntryBlockMediaReconciler
 {

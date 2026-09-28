@@ -1,8 +1,8 @@
 <?php
 
-use App\Modules\Admin\Support\EntryBlockMediaReconciler;
 use App\Modules\Admin\Support\MediaUsageLocator;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Tenancy\Context\Tenancy;

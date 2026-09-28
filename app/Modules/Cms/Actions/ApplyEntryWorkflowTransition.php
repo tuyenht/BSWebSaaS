@@ -2,6 +2,7 @@
 
 namespace App\Modules\Cms\Actions;
 
+use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\EntryNotGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
@@ -35,6 +36,7 @@ final readonly class ApplyEntryWorkflowTransition
         private WorkflowEngine $engine,
         private RouteSync $routes,
         private EntryNotifier $notifier,
+        private RecordEntryRevision $revisions,
     ) {}
 
     /**
@@ -100,6 +102,7 @@ final readonly class ApplyEntryWorkflowTransition
 
             if ($destination->is_published) {
                 $this->routes->sync($entry, $locale, $translation->slug);
+                $this->revisions->forAllLocales($entry, RevisionKind::Publish, $actor);
             }
 
             return $destination->key;

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Cms\Actions;
 
+use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
@@ -33,6 +34,7 @@ final readonly class PublishEntry
         private RouteSync $routes,
         private EntryWorkflowResolver $workflows,
         private EntryNotifier $notifier,
+        private RecordEntryRevision $revisions,
     ) {}
 
     /**
@@ -56,7 +58,7 @@ final readonly class PublishEntry
         if ($gate->allows('publish', $entry)) {
             // Atomic: a RouteConflictException from sync must roll back the status flip, or the
             // entry is left `published` with no reachable route — a silent 404.
-            DB::transaction(function () use ($entry, $translation, $locale): void {
+            DB::transaction(function () use ($entry, $translation, $locale, $actor): void {
                 $entry->update([
                     'status' => 'published',
                     'published_at' => $entry->published_at ?? now(),
@@ -64,6 +66,9 @@ final readonly class PublishEntry
                 $translation->update(['status' => 'published']);
 
                 $this->routes->sync($entry, $locale, $translation->slug);
+
+                // What just went public is kept, in the same transaction as the flip.
+                $this->revisions->forAllLocales($entry, RevisionKind::Publish, $actor);
             });
 
             EntryStatusAudit::record($entry, $from, 'published', 'publish', $actor);

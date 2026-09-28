@@ -2,17 +2,19 @@
 
 namespace App\Modules\Admin\Livewire\Entries;
 
-use App\Modules\Admin\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Actions\DuplicateEntry;
 use App\Modules\Cms\Actions\PublishEntry;
+use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Enums\EntryStatus;
+use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -264,6 +266,7 @@ final class Index extends Component
         }
 
         $translation->update(['title' => $value]);
+        $this->recordLiveEdit($entry, $translation);
         $this->toast(__('entries.title_saved'));
     }
 
@@ -302,6 +305,7 @@ final class Index extends Component
                     $routes->sync($entry, $locale, $slug);
                     $routes->syncDescendants($entry, $locale);
                 }
+                $this->recordLiveEdit($entry, $translation);
             });
         } catch (RouteConflictException) {
             $this->toast(__('entries.slug_conflict'));
@@ -310,6 +314,14 @@ final class Index extends Component
         }
 
         $this->toast(__('entries.slug_saved'));
+    }
+
+    /** An inline rename of live content changes what visitors see — keep that version, like an editor save. */
+    private function recordLiveEdit(Entry $entry, EntryTranslation $translation): void
+    {
+        if ($entry->status === 'published') {
+            app(RecordEntryRevision::class)->forLocale($entry, $translation, RevisionKind::Edit, $this->actingUser());
+        }
     }
 
     public function duplicate(string $ulid): void

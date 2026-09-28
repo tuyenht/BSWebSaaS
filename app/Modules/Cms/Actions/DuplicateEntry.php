@@ -17,8 +17,8 @@ use Illuminate\Support\Str;
  * categories. No route is created: a draft has no public URL until PublishEntry runs. Requires
  * the `create` ability; the whole copy runs in one transaction so a half-copied entry can never
  * surface. Block image usage (mediables) is the caller's concern — reconcile the returned copy
- * exactly as the editor does on save (EntryBlockMediaReconciler lives in Admin to keep the
- * module graph acyclic). Returns the new draft for a redirect-to-edit.
+ * exactly as the editor does on save (EntryBlockMediaReconciler). Returns the new draft for a
+ * redirect-to-edit.
  */
 final class DuplicateEntry
 {
