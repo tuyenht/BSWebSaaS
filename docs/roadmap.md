@@ -1,10 +1,10 @@
-# Roadmap — BSWebSaaS (cập nhật 27/09/2026)
+# Roadmap — BSWebSaaS (cập nhật 28/09/2026)
 
 > Nguồn "đang ở đâu / làm gì tiếp" DUY NHẤT được theo dõi trong git (thay master backlog 24/06 trong `plans/`,
 > vốn bị `.gitignore` và đã lỗi thời). Chi tiết thiết kế ở `design.md`; tiến độ từng commit ở `git log`.
 > Không ghi SHA của prod ở đây (lỗi thời nhanh) — xem nhật ký deploy.
 
-**Where we are (27/09 tối):** ✅ như dưới + lô §2b (#94–#113) trên prod, diễn tập khôi phục đạt, giám sát bật, prod chạy image riêng → 🔶 **BẠN Ở ĐÂY: thiết kế D0 (chưa handoff nào về) ∥ việc nền không cần UI** → ⬜ build core theo handoff → ⬜ đóng gói (3 kênh).
+**Where we are (28/09):** ✅ như dưới + lô §2b (#94–#113) trên prod, diễn tập khôi phục đạt, giám sát bật, prod chạy image riêng, hết nợ Q14, lịch sử phiên bản bài/trang (backend) trên prod → 🔶 **BẠN Ở ĐÂY: thiết kế D0 (chưa handoff nào về) ∥ việc nền không cần UI** → ⬜ build core theo handoff → ⬜ đóng gói (3 kênh).
 
 **Where we were (24/09):** ✅ Spine (Tenancy/RLS/RBAC/Provisioning) → ✅ CMS + Media + Catalog + Admin Velzon → ✅ An Vinh LIVE →
 ✅ Workflow engine + Entitlement + Workflow UI (Phase 1) → ✅ Audit độ phủ thiết kế + 14 quyết định (24/09) →
@@ -38,6 +38,9 @@
 | ⏭ Sau | lệnh nạp cấu hình site từ một file (trình đơn, chuyên mục, trang, thông tin doanh nghiệp, màu) để giao website khách không phải chờ màn quản trị — cần số site đang chờ · An Vinh mở en (khi khách dịch xong, duyệt qua xem trước) rồi ja · nợ khái niệm của lõi (FK `workflow_log.entry_id`, `ContentSection`/`PermalinkConfig` trong Tenancy, quyền nội dung trong Rbac) — ghi thành danh sách chỉ-giảm, gỡ khi có dự án phi-website · chuỗi hiển thị còn viết cứng tiếng Việt: nhãn danh mục module/tính năng (`ModuleCatalog`/`FeatureRegistry`, làm cùng D4) + chuỗi dự phòng trong `resources/js/media-*.js` |
 
 ## 3. Mạch khác đang mở
+- **Lịch sử phiên bản bài/trang (D1-4b):** backend ✅ lên prod 28/09 (`entry_revisions`, khôi phục, giữ ≥ 20 bản/90 ngày;
+  design §8 v2.29) — màn chờ handoff D1-4b. Còn mở, cần quyết cùng handoff D1-4: **bản nháp đè bản công khai** (sửa bài
+  đang công khai chưa hiện ra ngay mà chờ "Cập nhật"/duyệt) — đổi hành vi storefront + trình soạn ⇒ COUNCIL riêng.
 - **RBAC Console:** backend nhóm quyền tuỳ chỉnh xong (`rbac.custom_roles`, mặc định tắt); UI = lượt D2-1.
 - **Core Web Vitals:** job `cwv` là gate từ 24/09 cho `/`, `/lien-he`, `/tin-tuc` (LCP ≤ 1,5s · JS ≤ 30KB · axe 0 vi phạm).
 - **Đăng nhập 3 cửa (§LR B1–B6):** tường minh mặt phẳng · cửa owner · đăng nhập chung + chọn website · chuyển website ·
