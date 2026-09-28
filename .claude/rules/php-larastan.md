@@ -6,7 +6,8 @@ paths:
 # PHP + Larastan max
 
 - `$x?->prop ?? $default` → `nullsafe.neverNull` (a recurring failure). Narrow first: `$t = …; $v = $t !== null ? $t->prop : $default;`. Never switch to `->` — the value really is null at runtime.
-- Model datetime columns compared in PHP need an `@property` PHPDoc, or Larastan reads them as strings and "proves" the comparison false.
+- A cast attribute read in PHP needs an `@property` PHPDoc of its cast type on the model (datetime → `Carbon`, array cast → `array<string, string>`…). Without it Larastan reads a string and "proves" comparisons false (`identical.alwaysFalse`). Declare it on the model; never cast `(array)` at the call site.
+  - A runtime guard on an attribute the PHPDoc already narrows: read it through `getAttribute()` (`mixed`) and guard that value. `is_array()` on the typed property fails `function.alreadyNarrowedType`.
 - `max(...$list)` on a list that may be empty → seed a floor: `max(0, ...$list)`. `Collection::map()->all()` is `array<int, X>` → wrap it in `array_values()` for `list<X>`.
 - `Collection::filter()` with a builtin → wrap it: `fn (mixed $v): bool => is_string($v)` (filter passes both value and key).
 - Numeric ids in cache or rate-limit keys use `Cast::int()`, never `Cast::string()`. It returns `''` for ints, merging every user into one slot — the cross-user 2FA bypass fixed in `ba09a92`.
