@@ -4,7 +4,7 @@
 > vốn bị `.gitignore` và đã lỗi thời). Chi tiết thiết kế ở `design.md`; tiến độ từng commit ở `git log`.
 > Không ghi SHA của prod ở đây (lỗi thời nhanh) — xem nhật ký deploy.
 
-**Where we are (27/09 tối):** ✅ như dưới + lô §2b (#94–#113) trên prod, diễn tập khôi phục đạt, giám sát bật, prod chạy image riêng → 🔶 **BẠN Ở ĐÂY: thiết kế D0 (chưa handoff nào về) ∥ việc nền không cần UI (nợ Q14…)** → ⬜ build core theo handoff → ⬜ đóng gói (3 kênh).
+**Where we are (27/09 tối):** ✅ như dưới + lô §2b (#94–#113) trên prod, diễn tập khôi phục đạt, giám sát bật, prod chạy image riêng → 🔶 **BẠN Ở ĐÂY: thiết kế D0 (chưa handoff nào về) ∥ việc nền không cần UI** → ⬜ build core theo handoff → ⬜ đóng gói (3 kênh).
 
 **Where we were (24/09):** ✅ Spine (Tenancy/RLS/RBAC/Provisioning) → ✅ CMS + Media + Catalog + Admin Velzon → ✅ An Vinh LIVE →
 ✅ Workflow engine + Entitlement + Workflow UI (Phase 1) → ✅ Audit độ phủ thiết kế + 14 quyết định (24/09) →
