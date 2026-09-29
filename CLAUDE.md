@@ -141,7 +141,7 @@ docker compose restart horizon                                  # after Job/List
 
 **UI without a design handoff = don't build it** (owner, every session): still do the backend + tests (ACT), mark the UI `⏸ awaiting design`, and output a self-contained Claude Design prompt (recipe: `docs/README.md`). With a handoff, port it 1:1. Small edits to an already-designed screen (one button/column): ask the owner — existing tokens or Claude Design.
 
-**Design leads, backend follows** <!-- owner 29/09/2026 -->: when an approved design does more than the backend, extend the backend to match — never trim the design, prompt it down to the backend, or ship stand-in UI states. Schema parts still go through COUNCIL (how, not whether). Only §2 security/tenancy, §3.1 scale or legal limits go back to the owner as a question. Before auditing or prompting a screen, open its existing design first. Sync loop and snapshots: `docs/README.md` ("Nối Claude Code ↔ Claude Design").
+**Design leads, backend follows** <!-- owner 29/09/2026 -->: when an approved design does more than the backend, extend the backend to match — never trim the design, prompt it down to the backend, or ship stand-in UI states. Schema parts still go through COUNCIL (how, not whether). Only §2 security/tenancy, §3.1 scale or legal limits go back to the owner as a question. Before auditing, prompting or building a screen, open its design in `docs/design-source/` (the owner's full Claude Design export) first. Sync loop and snapshots: `docs/README.md` ("Nối Claude Code ↔ Claude Design").
 
 Status/order: `docs/roadmap.md` + `git log`. `plans/` is gitignored (local drafts); Claude Design briefs live in `docs/design-briefs/` (doc map: `docs/README.md`).
 

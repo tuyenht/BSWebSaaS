@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+@keyframes mpSpin{to{transform:rotate(360deg)}}
+.mp-scroll::-webkit-scrollbar{width:8px;height:8px}
+.mp-scroll::-webkit-scrollbar-thumb{background:#ced4da;border-radius:8px}
+.mp-scroll::-webkit-scrollbar-track{background:transparent}
+.mp-tabs::-webkit-scrollbar{height:4px}
+.mp-tabs::-webkit-scrollbar-thumb{background:#e9ebec;border-radius:4px}
+</style>
+</helmet>
+<div style="width:100%;height:min(660px,calc(100vh - 96px));max-height:100%;display:flex;flex-direction:column;background:#ffffff;border:1px solid #e9ebec;border-radius:14px;overflow:hidden;font-family:Inter,'Segoe UI',sans-serif;color:#495057;box-shadow:0 24px 60px -22px rgba(56,65,74,0.4);">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 20px 9px;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:34px;height:34px;border-radius:9px;background:#40518914;display:flex;align-items:center;justify-content:center;"><i class="ri-image-add-line" style="font-size:19px;color:#405189;"></i></div>
+      <div style="display:flex;flex-direction:column;gap:1px;">
+        <span style="font-size:15.5px;font-weight:600;color:#343a40;line-height:1.2;">Chọn ảnh</span>
+        <span style="font-size:12px;color:#adb5bd;">Chọn từ thư viện hoặc tải lên từ nhiều nguồn</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="mp-tabs" style="display:flex;gap:24px;padding:0 20px;border-bottom:1px solid #e9ebec;overflow-x:auto;flex-shrink:0;background:#fff;">
+    <sc-for list="{{ topTabs }}" as="t" hint-placeholder-count="2">
+      <button onClick="{{ t.onClick }}" style="{{ t.style }}"><i class="{{ t.icon }}" style="{{ t.iconStyle }}"></i>{{ t.label }}<sc-if value="{{ t.showBadge }}"><span style="{{ t.badgeStyle }}">{{ t.badge }}</span></sc-if></button>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;flex-direction:row;flex:1;min-height:0;min-width:0;">
+    <div class="mp-scroll" style="flex:1;min-width:0;overflow:auto;background:#fff;display:flex;flex-direction:column;">
+
+      <sc-if value="{{ showSources }}">
+        <div style="padding:18px;flex:1 1 auto;display:flex;min-height:0;box-sizing:border-box;overflow:hidden;">
+          <div class="mp-scroll" style="flex:1;min-height:0;border:2px dashed #dfe3ea;border-radius:16px;background:#fbfcfd;padding:24px 22px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:auto;">
+            <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px;margin-bottom:16px;">
+              <div style="width:46px;height:46px;border-radius:50%;background:#40518914;display:flex;align-items:center;justify-content:center;"><i class="ri-upload-cloud-2-line" style="font-size:22px;color:#405189;"></i></div>
+              <div style="font-size:15px;font-weight:600;color:#343a40;">Kéo &amp; thả ảnh vào đây</div>
+              <div style="font-size:12.5px;color:#878a99;">hoặc <span style="color:#405189;font-weight:600;text-decoration:underline;cursor:pointer;">chọn tệp</span> · nhập từ nguồn bên dưới</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;max-width:640px;margin:0 auto;width:100%;">
+              <sc-for list="{{ sources }}" as="s" hint-placeholder-count="8">
+                <button onClick="{{ s.onOpen }}" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:13px 8px;border:1px solid #eff2f7;border-radius:13px;background:#fff;cursor:pointer;transition:all .15s;min-width:0;" style-hover="border-color:#405189;box-shadow:0 6px 16px -8px rgba(64,81,137,0.4);transform:translateY(-2px);">
+                  <span style="width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:{{ s.tint }};color:{{ s.color }};"><i class="{{ s.icon }}"></i></span>
+                  <span style="font-size:12px;color:#495057;font-weight:500;text-align:center;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">{{ s.label }}</span>
+                  <sc-if value="{{ s.showDot }}"><span style="position:absolute;top:10px;right:10px;width:9px;height:9px;border-radius:50%;background:#0ab39c;border:2px solid #fff;" title="Đã kết nối"></span></sc-if>
+                </button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;max-width:640px;margin:14px auto 0;width:100%;">
+              <span style="flex:1;height:1px;background:#e9ebec;"></span>
+              <span style="font-size:11.5px;color:#adb5bd;">hoặc dán liên kết ảnh</span>
+              <span style="flex:1;height:1px;background:#e9ebec;"></span>
+            </div>
+            <div style="display:flex;gap:8px;max-width:640px;margin:10px auto 0;width:100%;">
+              <div style="position:relative;flex:1;min-width:0;">
+                <i class="ri-link" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#adb5bd;font-size:15px;"></i>
+                <input value="{{ urlValue }}" onInput="{{ onUrlInput }}" onKeyDown="{{ onUrlKey }}" placeholder="https://vi-du.com/anh-san-pham.jpg" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 35px;border:1px solid #e9ebec;border-radius:8px;font:inherit;font-size:13px;color:#495057;outline:none;background:#fff;">
+              </div>
+              <button onClick="{{ onUrlPreview }}" style="display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:8px;border:1px solid #40518933;background:#40518908;color:#405189;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ri-eye-line" style="font-size:14px;"></i>Xem trước</button>
+            </div>
+            <sc-if value="{{ urlErr }}"><div style="max-width:640px;margin:8px auto 0;width:100%;font-size:12px;color:#f06548;display:flex;align-items:center;gap:5px;"><i class="ri-error-warning-line"></i>{{ urlErr }}</div></sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isUrl }}">
+        <div style="padding:22px;display:flex;flex-direction:column;gap:14px;max-width:560px;margin:0 auto;width:100%;box-sizing:border-box;">
+          <div style="display:flex;gap:8px;">
+            <div style="position:relative;flex:1;min-width:0;">
+              <i class="ri-link" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#adb5bd;font-size:15px;"></i>
+              <input value="{{ urlValue }}" onInput="{{ onUrlInput }}" onKeyDown="{{ onUrlKey }}" placeholder="https://vi-du.com/anh-san-pham.jpg" style="width:100%;box-sizing:border-box;padding:10px 12px 10px 35px;border:1px solid #e9ebec;border-radius:8px;font:inherit;font-size:13px;color:#495057;outline:none;">
+            </div>
+            <button onClick="{{ onUrlPreview }}" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:8px;border:0;background:#405189;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ri-refresh-line" style="font-size:14px;"></i>Tải xem trước</button>
+          </div>
+          <sc-if value="{{ urlErr }}"><div style="font-size:12px;color:#f06548;display:flex;align-items:center;gap:5px;"><i class="ri-error-warning-line"></i>{{ urlErr }}</div></sc-if>
+          <sc-if value="{{ urlHasPreview }}">
+            <div style="border:1px solid #eff2f7;border-radius:13px;overflow:hidden;background:#fff;">
+              <div style="aspect-ratio:16/9;position:relative;background:#f3f3f9;">
+                <div style="position:absolute;inset:0;{{ urlPrev.thumbStyle }}"></div>
+                <span style="position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#0ab39c;background:#ffffffe6;padding:4px 9px;border-radius:20px;font-weight:600;"><i class="ri-checkbox-circle-fill"></i>Đã chọn để chèn</span>
+              </div>
+              <div style="padding:13px 15px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+                  <span style="font-size:13px;font-weight:600;color:#343a40;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ urlPrev.name }}</span>
+                  <span style="font-size:11.5px;color:#adb5bd;flex-shrink:0;">{{ urlPrev.meta }}</span>
+                </div>
+                <button onClick="{{ toggleSaveCopy }}" style="display:flex;align-items:center;gap:9px;padding:0;border:0;background:transparent;cursor:pointer;text-align:left;font:inherit;">
+                  <span style="{{ saveCopyBoxStyle }}"><sc-if value="{{ saveCopyOn }}"><i class="ri-check-line"></i></sc-if></span>
+                  <span style="font-size:12.5px;color:#495057;">Lưu bản sao vào Thư viện ảnh <span style="color:#adb5bd;">(khuyên dùng — tránh ảnh hỏng khi liên kết gốc bị xóa)</span></span>
+                </button>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ urlNoPreview }}">
+            <div style="border:1.5px dashed #dfe3ea;border-radius:13px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;">
+              <i class="ri-image-2-line" style="font-size:30px;color:#ced4da;"></i>
+              <div style="font-size:12.5px;color:#878a99;max-width:340px;">Dán liên kết ảnh công khai (JPG, PNG, WEBP, GIF) rồi bấm <b>Tải xem trước</b> để kiểm tra trước khi chèn.</div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ inSource }}">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid #eff2f7;flex-shrink:0;">
+          <button onClick="{{ srcHeader.onBack }}" style="display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid #e9ebec;border-radius:8px;background:#fff;color:#495057;font:inherit;font-size:12.5px;cursor:pointer;"><i class="ri-arrow-left-line"></i>Nguồn</button>
+          <span style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;background:{{ srcHeader.tint }};color:{{ srcHeader.color }};"><i class="{{ srcHeader.icon }}"></i></span>
+          <span style="font-size:14px;font-weight:600;color:#343a40;">{{ srcHeader.name }}</span>
+          <sc-if value="{{ srcHeader.showChip }}"><span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:#0ab39c;background:#0ab39c14;padding:5px 10px;border-radius:20px;"><i class="ri-checkbox-circle-fill"></i>Đã kết nối</span></sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isDevice }}">
+        <div style="padding:24px;">
+          <div style="border:2px dashed #ced4da;border-radius:14px;background:#f8f9fb;padding:40px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;">
+            <div style="width:64px;height:64px;border-radius:50%;background:#40518914;display:flex;align-items:center;justify-content:center;"><i class="ri-upload-cloud-2-line" style="font-size:30px;color:#405189;"></i></div>
+            <div>
+              <div style="font-size:16px;font-weight:600;color:#343a40;">Kéo &amp; thả ảnh vào đây</div>
+              <div style="font-size:13px;color:#878a99;margin-top:3px;">hoặc chọn tệp từ thiết bị của bạn</div>
+            </div>
+            <button style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:0;background:#405189;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><i class="ri-folder-open-line" style="font-size:15px;"></i>Chọn tệp</button>
+            <div style="font-size:11.5px;color:#adb5bd;">JPG, PNG, WEBP, GIF · tối đa 10MB mỗi tệp</div>
+          </div>
+          <div style="margin-top:20px;display:flex;flex-direction:column;gap:9px;">
+            <div style="font-size:11px;font-weight:600;color:#adb5bd;letter-spacing:.05em;">ĐANG TẢI LÊN · 2 TỆP</div>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #eff2f7;border-radius:10px;">
+              <div style="width:38px;height:38px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,oklch(86% 0.05 40),oklch(68% 0.06 70));"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#495057;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">banner-mua-he-2026.jpg</span><span style="color:#878a99;flex-shrink:0;">62%</span></div>
+                <div style="height:5px;border-radius:5px;background:#eff2f7;margin-top:6px;overflow:hidden;"><div style="width:62%;height:100%;background:#405189;border-radius:5px;"></div></div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #eff2f7;border-radius:10px;">
+              <div style="width:38px;height:38px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,oklch(85% 0.05 200),oklch(67% 0.06 240));"></div>
+              <div style="flex:1;min-width:0;">
+                <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:#495057;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">san-pham-noi-bat.png</span><span style="color:#0ab39c;flex-shrink:0;display:inline-flex;align-items:center;gap:3px;"><i class="ri-checkbox-circle-fill"></i>Xong</span></div>
+                <div style="height:5px;border-radius:5px;background:#eff2f7;margin-top:6px;overflow:hidden;"><div style="width:100%;height:100%;background:#0ab39c;border-radius:5px;"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCamera }}">
+        <div style="padding:24px;display:flex;flex-direction:column;align-items:center;gap:18px;">
+          <div style="width:100%;max-width:520px;aspect-ratio:16/10;border-radius:14px;background:radial-gradient(circle at 50% 40%,#2b3138,#16191d);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+            <div style="position:absolute;inset:0;background-image:linear-gradient(#ffffff10 1px,transparent 1px),linear-gradient(90deg,#ffffff10 1px,transparent 1px);background-size:32px 32px;"></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:#8b93a1;z-index:1;"><i class="ri-camera-lens-line" style="font-size:44px;"></i><span style="font-size:13px;">Đang xem trước máy ảnh…</span></div>
+            <span style="position:absolute;top:12px;left:14px;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:#fff;background:#f0654899;padding:4px 9px;border-radius:20px;"><span style="width:7px;height:7px;border-radius:50%;background:#fff;"></span>LIVE</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:22px;">
+            <button style="width:42px;height:42px;border-radius:50%;border:1px solid #e9ebec;background:#fff;color:#495057;font-size:18px;cursor:pointer;" title="Đổi camera"><i class="ri-camera-switch-line"></i></button>
+            <button style="width:64px;height:64px;border-radius:50%;border:4px solid #40518933;background:#405189;color:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Chụp"><i class="ri-camera-fill"></i></button>
+            <button style="width:42px;height:42px;border-radius:50%;border:1px solid #e9ebec;background:#fff;color:#495057;font-size:18px;cursor:pointer;" title="Bộ đếm giờ"><i class="ri-timer-line"></i></button>
+          </div>
+          <div style="width:100%;max-width:520px;">
+            <div style="font-size:11px;font-weight:600;color:#adb5bd;letter-spacing:.05em;margin-bottom:8px;">ẢNH ĐÃ CHỤP</div>
+            <div style="display:flex;gap:10px;">
+              <div style="width:64px;height:64px;border-radius:9px;background:linear-gradient(135deg,oklch(85% 0.05 150),oklch(67% 0.06 190));"></div>
+              <div style="width:64px;height:64px;border-radius:9px;background:linear-gradient(135deg,oklch(85% 0.05 300),oklch(67% 0.06 340));"></div>
+              <div style="width:64px;height:64px;border-radius:9px;border:1.5px dashed #ced4da;display:flex;align-items:center;justify-content:center;color:#ced4da;font-size:20px;"><i class="ri-add-line"></i></div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isCloud }}">
+        <sc-if value="{{ cloudConnected }}">
+          <div style="display:flex;flex-direction:column;flex:1;min-height:0;">
+            <div style="display:flex;align-items:center;gap:8px;padding:11px 18px;border-bottom:1px solid #eff2f7;flex-shrink:0;">
+              <i class="ri-folder-3-line" style="color:#adb5bd;font-size:15px;"></i>
+              <span style="font-size:12px;color:#878a99;">{{ cloud.crumb }}</span>
+              <button style="margin-left:auto;font-size:11.5px;color:#878a99;background:transparent;border:0;cursor:pointer;text-decoration:underline;">Ngắt kết nối</button>
+            </div>
+            <div class="mp-scroll" style="flex:1;overflow:auto;padding:8px 10px;">
+              <sc-for list="{{ cloud.rows }}" as="r" hint-placeholder-count="6">
+                <div onClick="{{ r.onToggle }}" style="display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:9px;cursor:pointer;">
+                  <sc-if value="{{ r.isFolder }}"><span style="width:38px;height:38px;border-radius:8px;background:#f3f3f9;display:flex;align-items:center;justify-content:center;font-size:19px;color:#f7b84b;flex-shrink:0;"><i class="ri-folder-3-fill"></i></span></sc-if>
+                  <sc-if value="{{ r.isFile }}"><span style="width:38px;height:38px;border-radius:8px;flex-shrink:0;{{ r.thumbStyle }}"></span></sc-if>
+                  <div style="flex:1;min-width:0;"><div style="font-size:13px;color:#495057;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.name }}</div><div style="font-size:11.5px;color:#adb5bd;">{{ r.meta }}</div></div>
+                  <sc-if value="{{ r.isFolder }}"><i class="ri-arrow-right-s-line" style="color:#ced4da;font-size:18px;"></i></sc-if>
+                  <sc-if value="{{ r.isFile }}"><span style="{{ r.checkStyle }}"><sc-if value="{{ r.selected }}"><i class="ri-check-line"></i></sc-if></span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ cloudDisconnected }}">
+          <div style="padding:36px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;flex:1;justify-content:center;">
+            <div style="width:78px;height:78px;border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:38px;background:{{ cloud.tintBg }};color:{{ cloud.color }};"><i class="{{ cloud.icon }}"></i></div>
+            <div>
+              <div style="font-size:17px;font-weight:600;color:#343a40;">Kết nối {{ cloud.name }}</div>
+              <div style="font-size:13px;color:#878a99;margin-top:4px;max-width:320px;">Đăng nhập để duyệt và chọn ảnh trực tiếp từ {{ cloud.name }} của bạn.</div>
+            </div>
+            <button onClick="{{ cloud.onConnect }}" style="display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:9px;border:0;color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;background:{{ cloud.color }};"><i class="ri-links-line" style="font-size:16px;"></i>Kết nối tài khoản</button>
+            <div style="font-size:11px;color:#adb5bd;display:inline-flex;align-items:center;gap:5px;"><i class="ri-lock-2-line"></i>Kết nối an toàn qua OAuth</div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <sc-if value="{{ isGphotos }}">
+        <div style="padding:20px 22px;">
+          <sc-for list="{{ gphotos }}" as="g" hint-placeholder-count="2">
+            <div style="margin-bottom:22px;">
+              <div style="font-size:13px;font-weight:600;color:#495057;margin-bottom:10px;display:flex;align-items:center;gap:7px;"><i class="ri-calendar-line" style="color:#adb5bd;"></i>{{ g.month }}</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;">
+                <sc-for list="{{ g.items }}" as="item" hint-placeholder-count="6">
+                  <div onClick="{{ item.onToggle }}" style="position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;cursor:pointer;">
+                    <div style="{{ item.thumbStyle }}"></div>
+                    <span style="{{ item.checkStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
+                    <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid #405189;border-radius:9px;pointer-events:none;"></div></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isUnsplash }}">
+        <div style="padding:18px 22px;">
+          <div style="position:relative;margin-bottom:14px;">
+            <i class="ri-search-line" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#adb5bd;font-size:16px;"></i>
+            <input placeholder="Tìm ảnh miễn phí trên Unsplash…" style="width:100%;box-sizing:border-box;padding:11px 14px 11px 38px;border:1px solid #e9ebec;border-radius:9px;font:inherit;font-size:13.5px;color:#495057;outline:none;background:#fff;">
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
+            <sc-for list="{{ unsplashChips }}" as="c" hint-placeholder-count="5">
+              <button style="padding:6px 13px;border-radius:20px;border:1px solid #e9ebec;background:#fff;color:#495057;font:inherit;font-size:12.5px;cursor:pointer;">{{ c }}</button>
+            </sc-for>
+          </div>
+          <div style="column-count:3;column-gap:10px;">
+            <sc-for list="{{ unsplashItems }}" as="item" hint-placeholder-count="9">
+              <div onClick="{{ item.onToggle }}" style="position:relative;break-inside:avoid;margin-bottom:10px;border-radius:10px;overflow:hidden;cursor:pointer;">
+                <div style="{{ item.thumbStyle }}"></div>
+                <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 9px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.6));font-size:10.5px;color:#fff;">{{ item.author }}</div>
+                <span style="{{ item.checkStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
+                <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid #405189;border-radius:10px;pointer-events:none;"></div></sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLibrary }}">
+        <div style="display:flex;flex:1;min-height:0;">
+          <div class="mp-scroll" style="width:184px;border-right:1px solid #eff2f7;padding:14px 10px;overflow:auto;flex-shrink:0;display:flex;flex-direction:column;gap:2px;">
+            <div style="font-size:11px;font-weight:600;color:#adb5bd;letter-spacing:.05em;padding:2px 8px 6px;">THƯ MỤC</div>
+            <sc-for list="{{ folders }}" as="f" hint-placeholder-count="5">
+              <button onClick="{{ f.onClick }}" style="{{ f.style }}"><i class="{{ f.icon }}" style="font-size:15px;"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ f.label }}</span><span style="{{ f.countStyle }}">{{ f.count }}</span></button>
+            </sc-for>
+            <button onClick="{{ toggleNewFolder }}" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 9px;margin-top:6px;border:1px dashed #ced4da;border-radius:7px;background:transparent;color:#878a99;font:inherit;font-size:12.5px;cursor:pointer;"><i class="ri-add-line"></i>Thư mục mới</button>
+            <sc-if value="{{ newFolderOpen }}">
+              <div style="margin-top:6px;padding:10px;border:1px solid #e9ebec;border-radius:9px;background:#fff;display:flex;flex-direction:column;gap:8px;">
+                <input value="{{ nfName }}" onInput="{{ onNfName }}" onKeyDown="{{ onNfKey }}" placeholder="Tên thư mục…" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid #e9ebec;border-radius:7px;font:inherit;font-size:12.5px;color:#495057;outline:none;">
+                <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#adb5bd;min-width:0;">
+                  <i class="ri-link" style="flex-shrink:0;"></i>
+                  <span style="color:#405189;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">/{{ nfSlug }}</span>
+                  <button onClick="{{ editNfSlug }}" title="Sửa slug" style="border:0;background:transparent;color:#adb5bd;font-size:12px;cursor:pointer;padding:0;flex-shrink:0;"><i class="ri-pencil-line"></i></button>
+                </div>
+                <sc-if value="{{ nfSlugFallback }}"><div style="font-size:10.5px;color:#f7b84b;line-height:1.4;">Tên không chuyển được sang chữ Latinh — dùng slug tự sinh, có thể sửa.</div></sc-if>
+                <button onClick="{{ createFolder }}" style="padding:7px;border-radius:7px;border:0;background:#405189;color:#fff;font:inherit;font-size:12px;font-weight:600;cursor:pointer;">Tạo thư mục</button>
+              </div>
+            </sc-if>
+          </div>
+
+          <div style="flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;">
+            <div style="display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;flex-shrink:0;">
+              <div style="position:relative;flex:1;min-width:150px;">
+                <i class="ri-search-line" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#adb5bd;font-size:15px;"></i>
+                <input onInput="{{ onSearch }}" placeholder="Tìm theo tên ảnh…" style="width:100%;box-sizing:border-box;padding:8px 12px 8px 34px;border:1px solid #e9ebec;border-radius:8px;font:inherit;font-size:13px;color:#495057;outline:none;">
+              </div>
+              <select onChange="{{ onSort }}" value="{{ sort }}" style="padding:8px 10px;border:1px solid #e9ebec;border-radius:8px;font:inherit;font-size:12.5px;color:#495057;background:#fff;cursor:pointer;outline:none;">
+                <option value="recent">Mới nhất</option>
+                <option value="oldest">Cũ nhất</option>
+                <option value="nameAsc">Tên A→Z</option>
+                <option value="nameDesc">Tên Z→A</option>
+                <option value="sizeDesc">Kích thước lớn → nhỏ</option>
+                <option value="sizeAsc">Kích thước nhỏ → lớn</option>
+                <option value="ext">Theo đuôi tệp</option>
+              </select>
+              <select onChange="{{ onType }}" value="{{ typeFilter }}" style="padding:8px 10px;border:1px solid #e9ebec;border-radius:8px;font:inherit;font-size:12.5px;color:#495057;background:#fff;cursor:pointer;outline:none;">
+                <option value="all">Tất cả loại tệp</option>
+                <option value="image">Hình ảnh</option>
+                <option value="video">Video</option>
+                <option value="audio">Âm thanh</option>
+                <option value="doc">Tài liệu</option>
+                <option value="used">Đã dùng trong bài</option>
+                <option value="unused">Chưa sử dụng</option>
+              </select>
+              <select onChange="{{ onFilter }}" value="{{ filter }}" style="padding:8px 10px;border:1px solid #e9ebec;border-radius:8px;font:inherit;font-size:12.5px;color:#495057;background:#fff;cursor:pointer;outline:none;">
+                <option value="all">Mọi định dạng</option>
+                <option value="jpg">JPG</option>
+                <option value="png">PNG</option>
+                <option value="mp4">MP4</option>
+                <option value="pdf">PDF</option>
+                <option value="xlsx">XLSX</option>
+                <option value="mp3">MP3</option>
+              </select>
+              <div style="display:flex;border:1px solid #e9ebec;border-radius:8px;overflow:hidden;">
+                <button onClick="{{ onGrid }}" style="{{ gridBtnStyle }}" title="Dạng lưới"><i class="ri-grid-fill"></i></button>
+                <button onClick="{{ onList }}" style="{{ listBtnStyle }}" title="Dạng danh sách"><i class="ri-list-check-2"></i></button>
+              </div>
+            </div>
+
+            <sc-if value="{{ hasSelection }}">
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:#40518908;border-bottom:1px solid #eff2f7;flex-shrink:0;">
+                <span style="font-size:12.5px;font-weight:600;color:#405189;">{{ selCount }} đã chọn</span>
+                <div style="margin-left:auto;display:flex;gap:6px;">
+                  <button style="display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid #e9ebec;border-radius:7px;background:#fff;color:#495057;font:inherit;font-size:12px;cursor:pointer;"><i class="ri-folder-transfer-line"></i>Di chuyển</button>
+                  <button style="display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid #f0654833;border-radius:7px;background:#fff;color:#f06548;font:inherit;font-size:12px;cursor:pointer;"><i class="ri-delete-bin-line"></i>Xóa</button>
+                  <button onClick="{{ clearSel }}" style="padding:6px 11px;border:1px solid #e9ebec;border-radius:7px;background:#fff;color:#878a99;font:inherit;font-size:12px;cursor:pointer;">Bỏ chọn</button>
+                </div>
+              </div>
+            </sc-if>
+
+            <div class="mp-scroll" style="flex:1;overflow:auto;padding:16px;min-height:0;">
+              <sc-if value="{{ isGrid }}">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px;">
+                  <sc-for list="{{ libItems }}" as="item" hint-placeholder-count="12">
+                    <div draggable="true" onDragStart="{{ item.onDragStart }}" onDragOver="{{ item.allowDrop }}" onDrop="{{ item.onDrop }}" onClick="{{ item.onToggle }}" style="position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;cursor:pointer;border:1px solid #eff2f7;background:#f3f3f9;">
+                      <div style="{{ item.thumbStyle }}"></div>
+                      <sc-if value="{{ item.showIcon }}"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><i class="{{ item.fileIcon }}" style="font-size:34px;color:{{ item.fileIconColor }};"></i></span></sc-if>
+                      <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 8px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.55));font-size:10px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ item.name }}</div>
+                      <span style="{{ item.checkStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
+                      <button onClick="{{ item.onOpen }}" style="position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:6px;border:0;background:rgba(0,0,0,0.32);color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Chi tiết"><i class="ri-information-line"></i></button>
+                      <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid #405189;border-radius:11px;pointer-events:none;"></div></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ isList }}">
+                <div style="display:flex;flex-direction:column;gap:2px;">
+                  <div style="display:flex;align-items:center;gap:12px;padding:7px 10px;font-size:11px;font-weight:600;color:#adb5bd;letter-spacing:.03em;">
+                    <span style="width:22px;"></span><span style="width:42px;"></span><span style="flex:1;">TÊN TỆP</span><span style="width:100px;">KÍCH THƯỚC</span><span style="width:70px;">DUNG LƯỢNG</span><span style="width:52px;">LOẠI</span><span style="width:28px;"></span>
+                  </div>
+                  <sc-for list="{{ libItems }}" as="item" hint-placeholder-count="10">
+                    <div onClick="{{ item.onToggle }}" style="{{ item.rowStyle }}">
+                      <span style="{{ item.rowCheckStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
+                      <span style="width:42px;height:42px;border-radius:8px;flex-shrink:0;overflow:hidden;{{ item.thumbBoxStyle }}"><sc-if value="{{ item.showIcon }}"><i class="{{ item.fileIcon }}" style="font-size:20px;color:{{ item.fileIconColor }};"></i></sc-if></span>
+                      <span style="flex:1;min-width:0;font-size:13px;color:#495057;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ item.name }}</span>
+                      <span style="width:100px;font-size:12.5px;color:#878a99;">{{ item.dimsText }}</span>
+                      <span style="width:70px;font-size:12.5px;color:#878a99;">{{ item.sizeText }}</span>
+                      <span style="width:52px;"><span style="font-size:10px;font-weight:600;color:#405189;background:#40518914;padding:2px 7px;border-radius:5px;">{{ item.typeBadge }}</span></span>
+                      <button onClick="{{ item.onOpen }}" style="width:28px;height:28px;border:0;background:transparent;color:#adb5bd;font-size:16px;cursor:pointer;" title="Chi tiết"><i class="ri-information-line"></i></button>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ libEmpty }}">
+                <div style="padding:50px 20px;text-align:center;color:#ced4da;"><i class="ri-image-line" style="font-size:40px;"></i><div style="font-size:13.5px;margin-top:10px;color:#adb5bd;">Không tìm thấy ảnh phù hợp</div></div>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+    </div>
+
+    <sc-if value="{{ detailOpen }}">
+      <div class="mp-scroll" style="width:278px;flex-shrink:0;border-left:1px solid #eff2f7;background:#fbfcfd;overflow:auto;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #eff2f7;">
+          <span style="font-size:13px;font-weight:600;color:#343a40;">Chi tiết ảnh</span>
+          <button onClick="{{ closeDetail }}" style="width:26px;height:26px;border:0;background:transparent;color:#adb5bd;font-size:17px;cursor:pointer;"><i class="ri-close-line"></i></button>
+        </div>
+        <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
+          <div style="aspect-ratio:4/3;border-radius:10px;overflow:hidden;position:relative;border:1px solid #eff2f7;"><div style="position:absolute;inset:0;{{ detail.thumbStyle }}"></div><sc-if value="{{ detail.showIcon }}"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><i class="{{ detail.fileIcon }}" style="font-size:46px;color:{{ detail.fileIconColor }};"></i></span></sc-if></div>
+          <div style="font-size:13.5px;font-weight:600;color:#343a40;word-break:break-all;">{{ detail.name }}</div>
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#adb5bd;">Kích thước</span><span style="color:#495057;">{{ detail.dimsText }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#adb5bd;">Dung lượng</span><span style="color:#495057;">{{ detail.sizeText }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#adb5bd;">Định dạng</span><span style="color:#495057;">{{ detail.typeText }}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:#adb5bd;">Thư mục</span><span style="color:#495057;">{{ detail.folderLabel }}</span></div>
+          </div>
+          <div>
+            <label style="display:block;font-size:11px;font-weight:600;color:#878a99;margin-bottom:6px;">VĂN BẢN THAY THẾ (ALT)</label>
+            <textarea style="width:100%;box-sizing:border-box;min-height:64px;padding:9px 11px;border:1px solid #e9ebec;border-radius:8px;font:inherit;font-size:12.5px;color:#495057;resize:vertical;outline:none;" placeholder="Mô tả ảnh cho SEO &amp; trợ năng…">{{ detail.alt }}</textarea>
+          </div>
+          <button style="display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:8px;border:1px solid #e9ebec;background:#fff;color:#495057;font:inherit;font-size:12.5px;cursor:pointer;"><i class="ri-save-line"></i>Lưu thông tin</button>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:14px;padding:12px 18px;border-top:1px solid #eff2f7;flex-shrink:0;background:#fff;">
+    <sc-if value="{{ hasSelection }}">
+      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+        <div style="display:flex;">
+          <sc-for list="{{ selItems }}" as="s" hint-placeholder-count="3">
+            <span style="width:32px;height:32px;border-radius:7px;border:2px solid #fff;margin-left:-8px;box-shadow:0 1px 3px rgba(0,0,0,0.2);{{ s.thumbStyle }}"></span>
+          </sc-for>
+        </div>
+        <span style="font-size:12.5px;color:#878a99;">{{ selCount }} ảnh đã chọn</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noSelection }}">
+      <span style="flex:1;font-size:12.5px;color:#adb5bd;">Chọn ảnh để chèn vào nội dung</span>
+    </sc-if>
+    <button onClick="{{ onClose }}" style="padding:9px 16px;border-radius:8px;border:1px solid #e9ebec;background:#fff;color:#495057;font:inherit;font-size:13px;font-weight:500;cursor:pointer;">Hủy</button>
+    <button onClick="{{ onInsert }}" style="{{ insertBtnStyle }}"><i class="ri-check-line" style="font-size:15px;"></i>{{ insertLabel }}</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1020,&quot;height&quot;:660},&quot;multiple&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { tab:'upload', src:null, view:'grid', sort:'recent', filter:'all', typeFilter:'all', urlValue:'', urlErr:null, urlItem:null, urlSaveCopy:true, newFolderOpen:false, nfName:'', search:'', folder:'all', selected:[], detail:null, dragId:null, conn:{ dropbox:true, gdrive:true, onedrive:true, box:false } };
+
+  constructor(...a){ super(...a); const t=this.props.tab; if(t==='library'||t==='upload') this.state=Object.assign({},this.state,{tab:t}); this.seed(); }
+
+  seed(){
+    this.folderLabels = { all:'Tất cả ảnh', products:'Sản phẩm', posts:'Bài viết', banners:'Banner', avatars:'Ảnh đại diện' };
+    this.folderSlugs = { products:'san-pham', posts:'bai-viet', banners:'banner', avatars:'anh-dai-dien' };
+    this.folderKeys = ['all','products','posts','banners','avatars'];
+    const hues=[28,205,150,265,330,95,180,315,45,240,12,190];
+    const dims=[[1600,1067],[1200,1200],[2000,1333],[1080,1350]];
+    const grad=(h)=>`linear-gradient(135deg,oklch(86% 0.045 ${h}),oklch(66% 0.06 ${(h+38)%360}))`;
+    this.grad=grad; this.hues=hues;
+    this.library=[]; let n=0;
+    const per=[['products',8],['posts',6],['banners',4],['avatars',6]];
+    per.forEach(([f,cnt])=>{ for(let i=1;i<=cnt;i++){ const d=dims[n%4]; const h=hues[n%hues.length]; const png=(n%5===0);
+      this.library.push({ id:'lib-'+n, name:f+'-'+String(i).padStart(2,'0')+'.'+(png?'png':'jpg'), folder:f, type:png?'png':'jpg', mediaType:'image', used:(n%3!==0), w:d[0], h:d[1], size:+(0.2+(n*173%820)/1000).toFixed(1), bg:grad(h) }); n++; } });
+
+    const xf=(name,folder,mt,type,size,icon,c,w,h)=>({ id:'lib-'+(n++), name, folder, mediaType:mt, type, size, w:w||null, h:h||null, icon, iconColor:c, used:(n%2===0), bg:null });
+    this.library.push(
+      xf('video-gioi-thieu.mp4','posts','video','mp4',24.6,'ri-film-line','#299cdb',1920,1080),
+      xf('quang-cao-tet.mp4','banners','video','mp4',18.2,'ri-film-line','#299cdb',1920,1080),
+      xf('huong-dan-su-dung.pdf','posts','doc','pdf',1.4,'ri-file-pdf-2-line','#f06548'),
+      xf('bao-gia-2026.xlsx','products','doc','xlsx',0.3,'ri-file-excel-2-line','#0ab39c'),
+      xf('nhac-nen-quang-cao.mp3','banners','audio','mp3',3.8,'ri-music-2-line','#8b5cf6')
+    );
+
+    this.clouds={ dropbox:{name:'Dropbox',color:'#0061FF',icon:'ri-dropbox-fill'}, gdrive:{name:'Google Drive',color:'#1a73e8',icon:'ri-drive-fill'}, onedrive:{name:'OneDrive',color:'#0364B7',icon:'ri-microsoft-fill'}, box:{name:'Box',color:'#0061D5',icon:'ri-inbox-archive-line'} };
+    const fnames=['Chiến dịch 2026','Ảnh sản phẩm','Tư liệu thiết kế'];
+    const files=['banner-trang-chu','san-pham-moi','anh-doi-ngu','landing-hero','uu-dai-thang'];
+    let ci=0;
+    for(const key in this.clouds){ const c=this.clouds[key]; c.tintBg=c.color+'1a'; c.crumb='Trang chủ / '+c.name;
+      c.rows=[ ...fnames.map((fn,i)=>({id:key+'-fold-'+i,kind:'folder',name:fn,meta:(3+i*2)+' mục'})),
+        ...files.map((fb,i)=>{ const h=(ci*55+i*44)%360; return {id:key+'-file-'+i,kind:'file',name:fb+'.jpg',meta:((i+2)*0.4).toFixed(1)+' MB',bg:grad(h),w:1600,h:1067,size:+((i+2)*0.4).toFixed(1),type:'jpg',folder:c.name}; }) ]; ci++; }
+
+    this.gphotos=[ {month:'Tháng 6, 2026', items:this.mkPool('gp6',9,'Google Photos')}, {month:'Tháng 5, 2026', items:this.mkPool('gp5',6,'Google Photos')} ];
+
+    const authors=['An Nguyễn','M. Rivera','K. Sato','L. Costa','P. Ivanov','J. Kim','T. Bảo','S. Diallo','R. Mehta','C. Dubois','E. Rossi','H. Tran'];
+    this.unsplashItems=Array.from({length:12},(_,i)=>{ const h=hues[i%hues.length]; const hh=[150,190,240,120,170,210,140,200,260,110][i%10]; return {id:'uns-'+i, author:'📷 '+authors[i], bg:grad(h), h:hh, w:800, size:null, type:'jpg', folder:'Unsplash', name:'unsplash-'+i+'.jpg'}; });
+    this.unsplashChips=['Thiên nhiên','Sản phẩm','Văn phòng','Ẩm thực','Công nghệ','Kiến trúc'];
+
+    this.index={};
+    const add=(a)=>a.forEach(x=>this.index[x.id]=x);
+    add(this.library); for(const k in this.clouds) add(this.clouds[k].rows.filter(r=>r.kind==='file'));
+    this.gphotos.forEach(g=>add(g.items)); add(this.unsplashItems);
+  }
+
+  mkPool(pre,cnt,folder){ return Array.from({length:cnt},(_,i)=>({ id:pre+'-'+i, bg:this.grad(this.hues[(i*3)%this.hues.length]), w:1200, h:1200, size:+(0.5+i*0.13).toFixed(1), type:'jpg', folder, name:pre+'-'+i+'.jpg' })); }
+
+  setTab(t){ this.setState({tab:t, detail:null, src:null}); }
+  openSrc(k){ this.setState({src:k, detail:null}); }
+  backToSources(){ this.setState({src:null, detail:null}); }
+  toggle(id){ const m=this.props.multiple!==false; this.setState(s=>{ let sel=s.selected.slice(); if(sel.includes(id)) sel=sel.filter(x=>x!==id); else sel=m?[...sel,id]:[id]; return {selected:sel}; }); }
+  openDetail(id){ this.setState({detail:id}); }
+  closeDetail(){ this.setState({detail:null}); }
+  clearSel(){ this.setState({selected:[]}); }
+  setView(v){ this.setState({view:v}); }
+  setFolder(k){ this.setState({folder:k}); }
+  connect(k){ this.setState(s=>({conn:{...s.conn,[k]:true}})); }
+  slugify(s){ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'d').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+  nfSlugOf(name){ const raw=this.slugify(name); if(raw) return {slug:raw, fallback:false}; const n=this.folderKeys.length; return {slug:'folder-'+n, fallback:!!(name||'').trim()}; }
+  createFolder(){ const name=(this.state.nfName||'').trim(); if(!name) return;
+    let {slug}=this.nfSlugOf(name); let u=slug,i=2; while(this.folderKeys.includes(u)){ u=slug+'-'+(i++); }
+    this.folderLabels[u]=name; this.folderSlugs[u]=u; this.folderKeys.push(u);
+    this.setState({nfName:'', newFolderOpen:false, folder:u}); }
+  previewUrl(){
+    const v=(this.state.urlValue||'').trim();
+    if(!/^https?:\/\/\S+\.(jpe?g|png|webp|gif|avif)(\?\S*)?$/i.test(v)){
+      this.setState({urlErr:'Liên kết chưa hợp lệ — cần là URL ảnh công khai (jpg, png, webp, gif).'});
+      return;
+    }
+    const seg=v.split('?')[0].split('/').pop()||'anh-tu-url.jpg';
+    const ext=(seg.split('.').pop()||'jpg').toLowerCase();
+    const item={ id:'url-ext', name:decodeURIComponent(seg), bg:this.grad(210), w:1600, h:900, size:0.8, type:ext, mediaType:'image', folder:'URL' };
+    this.index[item.id]=item;
+    const m=this.props.multiple!==false;
+    this.setState(s=>({ urlErr:null, urlItem:item, src:'url', selected: s.selected.includes(item.id)? s.selected : (m? [...s.selected,item.id] : [item.id]) }));
+  }
+  reorder(target){ const s=this.state; if(s.sort!=='recent'||!s.dragId){ this.setState({dragId:null}); return; } const a=this.library; const fi=a.findIndex(x=>x.id===s.dragId); const ti=a.findIndex(x=>x.id===target); if(fi<0||ti<0||fi===ti){ this.setState({dragId:null}); return; } const [m]=a.splice(fi,1); a.splice(ti,0,m); this.setState({dragId:null}); }
+
+  tile(it){ const sel=this.state.selected.includes(it.id);
+    const bg=it.bg||((it.iconColor||'#878a99')+'14');
+    return { id:it.id, name:it.name, author:it.author, selected:sel,
+      showIcon:!it.bg, fileIcon:it.icon||'ri-file-line', fileIconColor:it.iconColor||'#878a99',
+      thumbBoxStyle:`background:${bg};background-size:cover;display:flex;align-items:center;justify-content:center;`,
+      thumbStyle:`position:absolute;inset:0;background:${bg};background-size:cover;`,
+      checkStyle:`position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${sel?'#405189':'rgba(255,255,255,0.9)'};background:${sel?'#405189':'rgba(0,0,0,0.18)'};box-shadow:0 1px 3px rgba(0,0,0,0.3);`,
+      rowCheckStyle:`width:22px;height:22px;flex-shrink:0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${sel?'#405189':'#ced4da'};background:${sel?'#405189':'#fff'};`,
+      rowStyle:`display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:9px;cursor:pointer;background:${sel?'#40518908':'transparent'};`,
+      dimsText: it.w? `${it.w} × ${it.h}` : '—', sizeText: it.size!=null? it.size+' MB':'—', typeBadge:(it.type||'IMG').toUpperCase(),
+      onToggle:()=>this.toggle(it.id), onOpen:(e)=>{ e.stopPropagation(); this.openDetail(it.id); },
+      onDragStart:()=>this.setState({dragId:it.id}), onDrop:(e)=>{ e.preventDefault(); this.reorder(it.id); }, allowDrop:(e)=>e.preventDefault() };
+  }
+
+  folderItem(key){ const active=this.state.folder===key; const count= key==='all'? this.library.length : this.library.filter(x=>x.folder===key).length;
+    return { key, label:this.folderLabels[key], count, active, icon: key==='all'?'ri-stack-line':'ri-folder-3-line', onClick:()=>this.setFolder(key),
+      style:`display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:7px 9px;border:0;border-radius:7px;font:inherit;font-size:13px;cursor:pointer;background:${active?'#40518914':'transparent'};color:${active?'#405189':'#495057'};font-weight:${active?600:500};`,
+      countStyle:`font-size:11px;color:${active?'#405189':'#adb5bd'};` }; }
+
+  renderVals(){
+    const S=this.state; const tab=S.tab; const src=S.src;
+    const isUpload=tab==='upload', isLibrary=tab==='library';
+    const showSources=isUpload && !src;
+    const inSource=isUpload && !!src;
+
+    const tabDefs=[ {key:'upload',icon:'ri-upload-2-line',label:'Tải lên tệp mới'}, {key:'library',icon:'ri-image-2-line',label:'Thư viện ảnh'} ];
+    const topTabs=tabDefs.map(t=>{ const active=tab===t.key; return { ...t, onClick:()=>this.setTab(t.key),
+      style:`display:inline-flex;align-items:center;gap:8px;padding:12px 4px;border:0;font:inherit;font-size:13.5px;white-space:nowrap;cursor:pointer;flex-shrink:0;background:transparent;color:${active?'#405189':'#878a99'};font-weight:${active?600:500};box-shadow:${active?'inset 0 -2.5px 0 #405189':'none'};`,
+      iconStyle:`font-size:16px;color:${active?'#405189':'#adb5bd'};`,
+      showBadge:t.key==='library', badge:this.library.length,
+      badgeStyle:`font-size:10.5px;font-weight:600;padding:1.5px 7px;border-radius:10px;background:${active?'#40518914':'#f3f3f9'};color:${active?'#405189':'#878a99'};` }; });
+
+    const srcDefs=[ {key:'device',icon:'ri-computer-line',label:'Thiết bị của tôi',color:'#405189'}, {key:'camera',icon:'ri-camera-line',label:'Máy ảnh',color:'#0ab39c'}, {key:'dropbox',icon:'ri-dropbox-fill',label:'Dropbox',color:'#0061FF'}, {key:'gdrive',icon:'ri-drive-fill',label:'Google Drive',color:'#1a73e8'}, {key:'gphotos',icon:'ri-google-fill',label:'Google Photos',color:'#EA4335'}, {key:'onedrive',icon:'ri-microsoft-fill',label:'OneDrive',color:'#0364B7'}, {key:'unsplash',icon:'ri-camera-lens-line',label:'Unsplash',color:'#111827'}, {key:'box',icon:'ri-inbox-archive-line',label:'Box',color:'#0061D5'} ];
+    const connectedMap={ dropbox:!!S.conn.dropbox, gdrive:!!S.conn.gdrive, onedrive:!!S.conn.onedrive, box:!!S.conn.box, gphotos:true };
+    const sources=srcDefs.map(d=>({ ...d, tint:d.color+'1a', onOpen:()=>this.openSrc(d.key), showDot: (d.key in connectedMap) && connectedMap[d.key] }));
+
+    const urlDef={key:'url',icon:'ri-link',label:'Ảnh từ URL',color:'#6559cc'};
+    let srcHeader=null;
+    if(inSource){ const d=srcDefs.find(x=>x.key===src)||urlDef; const conn=(src in connectedMap)?connectedMap[src]:null;
+      srcHeader={ name:d.label, icon:d.icon, color:d.color, tint:d.color+'1a', onBack:()=>this.backToSources(), showChip: conn===true }; }
+
+    const isCloud=inSource && ['dropbox','gdrive','onedrive','box'].includes(src);
+
+    let items=this.library.filter(it=> S.folder==='all'||it.folder===S.folder);
+    const tf=S.typeFilter;
+    if(tf==='used') items=items.filter(it=>it.used);
+    else if(tf==='unused') items=items.filter(it=>!it.used);
+    else if(tf!=='all') items=items.filter(it=>it.mediaType===tf);
+    if(S.filter!=='all') items=items.filter(it=>it.type===S.filter);
+    const q=S.search.trim().toLowerCase(); if(q) items=items.filter(it=>it.name.toLowerCase().includes(q));
+    const by={ nameAsc:(a,b)=>a.name.localeCompare(b.name), nameDesc:(a,b)=>b.name.localeCompare(a.name), sizeDesc:(a,b)=>(b.size||0)-(a.size||0), sizeAsc:(a,b)=>(a.size||0)-(b.size||0), ext:(a,b)=>(a.type||'').localeCompare(b.type||'') }[S.sort];
+    if(by) items=[...items].sort(by); else if(S.sort==='oldest') items=[...items].reverse();
+    const libItems=items.map(it=>this.tile(it));
+
+    let cloud=null,cloudConnected=false,cloudDisconnected=false;
+    if(isCloud){ const c=this.clouds[src]; const conn=!!S.conn[src];
+      cloud={ name:c.name, color:c.color, tintBg:c.tintBg, icon:c.icon, crumb:c.crumb, onConnect:()=>this.connect(src),
+        rows:c.rows.map(r=>({ id:r.id, name:r.name, meta:r.meta, isFolder:r.kind==='folder', isFile:r.kind==='file', selected:S.selected.includes(r.id),
+          thumbStyle:r.bg?`background:${r.bg};background-size:cover;`:'', onToggle:r.kind==='file'?()=>this.toggle(r.id):()=>{},
+          checkStyle:`width:20px;height:20px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${S.selected.includes(r.id)?'#405189':'#ced4da'};background:${S.selected.includes(r.id)?'#405189':'#fff'};` })) };
+      cloudConnected=conn; cloudDisconnected=!conn; }
+
+    let detail=null; if(S.detail && this.index[S.detail]){ const it=this.index[S.detail];
+      const dbg=it.bg||((it.iconColor||'#878a99')+'14');
+      detail={ name:it.name, showIcon:!it.bg, fileIcon:it.icon||'ri-file-line', fileIconColor:it.iconColor||'#878a99', thumbStyle:`background:${dbg};background-size:cover;`, dimsText: it.w?`${it.w} × ${it.h} px`:'—', sizeText: it.size!=null? it.size+' MB':'—', typeText:(it.type||'IMG').toUpperCase(), folderLabel: this.folderLabels[it.folder]||it.folder||'—', alt: it.name.replace(/\.[a-z0-9]+$/i,'').replace(/[-_]/g,' ') }; }
+
+    const selCount=S.selected.length; const hasSelection=selCount>0;
+    const selItems=S.selected.slice(0,4).map(id=>({ thumbStyle:`background:${(this.index[id]||{}).bg||'#ced4da'};background-size:cover;` }));
+
+    const gp=this.gphotos.map(g=>({ month:g.month, items:g.items.map(it=>this.tile(it)) }));
+    const uns=this.unsplashItems.map(it=>{ const t=this.tile(it); return {...t, thumbStyle:`position:relative;display:block;width:100%;height:${it.h/800*160+80}px;background:${it.bg};background-size:cover;`}; });
+
+    const vb=(active)=>`width:34px;height:32px;border:0;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;background:${active?'#405189':'#fff'};color:${active?'#fff':'#878a99'};`;
+
+    return {
+      topTabs, showSources, inSource, srcHeader, sources,
+      isDevice:inSource && src==='device', isCamera:inSource && src==='camera', isCloud, isGphotos:inSource && src==='gphotos', isUnsplash:inSource && src==='unsplash', isUrl:inSource && src==='url', isLibrary,
+      urlValue:S.urlValue, urlErr:S.urlErr, urlHasPreview:!!S.urlItem, urlNoPreview:!S.urlItem,
+      urlPrev: S.urlItem? { name:S.urlItem.name, meta:`${S.urlItem.w} × ${S.urlItem.h} · ~${S.urlItem.size} MB`, thumbStyle:`background:${S.urlItem.bg};background-size:cover;` } : null,
+      onUrlInput:(e)=>this.setState({urlValue:e.target.value, urlErr:null}),
+      onUrlKey:(e)=>{ if(e.key==='Enter') this.previewUrl(); },
+      onUrlPreview:()=>this.previewUrl(),
+      saveCopyOn:S.urlSaveCopy, toggleSaveCopy:()=>this.setState(s=>({urlSaveCopy:!s.urlSaveCopy})),
+      saveCopyBoxStyle:`width:19px;height:19px;flex-shrink:0;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${S.urlSaveCopy?'#405189':'#ced4da'};background:${S.urlSaveCopy?'#405189':'#fff'};`,
+      cloud, cloudConnected, cloudDisconnected,
+      folders:this.folderKeys.map(k=>this.folderItem(k)),
+      newFolderOpen:S.newFolderOpen, nfName:S.nfName,
+      nfSlug:this.nfSlugOf(S.nfName).slug, nfSlugFallback:this.nfSlugOf(S.nfName).fallback,
+      toggleNewFolder:()=>this.setState(s=>({newFolderOpen:!s.newFolderOpen})),
+      onNfName:(e)=>this.setState({nfName:e.target.value}),
+      onNfKey:(e)=>{ if(e.key==='Enter') this.createFolder(); },
+      editNfSlug:()=>{}, createFolder:()=>this.createFolder(),
+      libItems, libEmpty:libItems.length===0,
+      isGrid:S.view==='grid', isList:S.view==='list', sort:S.sort, filter:S.filter, typeFilter:S.typeFilter,
+      onType:(e)=>this.setState({typeFilter:e.target.value}),
+      gridBtnStyle:vb(S.view==='grid'), listBtnStyle:vb(S.view==='list'),
+      onSearch:(e)=>this.setState({search:e.target.value}), onSort:(e)=>this.setState({sort:e.target.value}), onFilter:(e)=>this.setState({filter:e.target.value}),
+      onGrid:()=>this.setView('grid'), onList:()=>this.setView('list'),
+      gphotos:gp, unsplashItems:uns, unsplashChips:this.unsplashChips,
+      detail, detailOpen:!!detail, closeDetail:()=>this.closeDetail(),
+      hasSelection, noSelection:!hasSelection, selCount, selItems, clearSel:()=>this.clearSel(),
+      insertLabel: hasSelection? `Chèn ${selCount} ảnh` : 'Chèn ảnh',
+      insertBtnStyle:`display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;border:0;font:inherit;font-size:13px;font-weight:600;cursor:${hasSelection?'pointer':'not-allowed'};background:${hasSelection?'#405189':'#ced4da'};color:#fff;`,
+      onClose:()=>{ if(this.props.onClose) this.props.onClose(); try{ document.dispatchEvent(new CustomEvent('bs-media',{detail:{act:'close'}})); }catch(e){} },
+      onInsert:()=>{ if(!hasSelection) return; const items=S.selected.map(id=>this.index[id]).filter(Boolean); if(this.props.onInsert) this.props.onInsert(items); try{ document.dispatchEvent(new CustomEvent('bs-media',{detail:{act:'insert',items:items.map(x=>({name:x.name,bg:x.bg,w:x.w,h:x.h}))}})); }catch(e){} },
+    };
+  }
+}
+</script>
+</body>
+</html>

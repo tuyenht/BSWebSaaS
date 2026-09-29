@@ -4,13 +4,14 @@
 > (export Claude Design 18/09 ↔ repo `13281cb`). Brief thi công: `design-briefs/saas-starter-design-first/`.
 > Khu đăng nhập (login · quên/đặt lại mật khẩu · 2 lớp · mã email) **giữ nguyên** — không nằm trong đếm.
 
-## Bản thiết kế đã chụp (vòng nhận: `README.md` → "Nối Claude Code ↔ Claude Design")
+## Nguồn thiết kế (vòng nhận: `README.md` → "Nối Claude Code ↔ Claude Design")
 
-| Màn | Link publish | Bản đã chụp | Thư mục |
-|---|---|---|---|
-| 16 Trình đơn | https://claude.ai/artifact/72uxdN6nMYG1RJhthnjV7F | 29/09/2026 | `design_handoff_menus/` |
-| 9 Danh sách Bài viết | https://claude.ai/artifact/9bxFH2VrkPxdop37vZT7TZ | chưa chụp (code đã build theo) | — |
-| 8 Danh sách Trang | https://claude.ai/artifact/MYKcpNg5sk4A6sbt4DcUSg | bản cũ trong thư mục; bản publish 29/09 chưa chụp | `design_handoff_pages_admin/` |
+- **Export dự án Claude Design 18/09/2026** → `design-source/` (32 màn `.dc.html` + script dùng chung + token + ghi chú dự án).
+  Các cột "Thiết kế" trong bảng dưới đối chiếu với bản này.
+- **Link publish** (29/09 kiểm: phần logic giống hệt export 18/09): Trình đơn 72uxdN6nMYG1RJhthnjV7F · Bài viết
+  9bxFH2VrkPxdop37vZT7TZ · Trang MYKcpNg5sk4A6sbt4DcUSg · Quy trình duyệt WBkiTmWiNLnwkPoJQTZMRu.
+- `design_handoff_pages_admin/` là bản 17/09, CŨ hơn export: bản 18/09 thêm "Đặt lịch" tại chỗ (code đã có), cột
+  "Lượt xem" (code chưa có) và sắp xếp mặc định theo tên — đối chiếu theo `design-source/Quản lý Trang - Options.dc.html`.
 
 Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyết định · 🔴 sơ sài · ❌ chưa có · ⏸ ngoài core v1
 

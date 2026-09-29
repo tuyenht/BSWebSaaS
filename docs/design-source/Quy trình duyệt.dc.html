@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./ai-quota.js"></script>
+<script src="./content-workflow.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+.qd-wrap{container-type:inline-size;display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;}
+.qd-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.qd-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
+.qd-t{font-size:14px;font-weight:600;color:#343a40;}
+.qd-hrow{display:grid;grid-template-columns:minmax(0,1fr) 226px 152px 150px;gap:12px;align-items:center;padding:9px 16px;border-bottom:1px solid #eff2f7;background:#fcfcfd;}
+.qd-hcell{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#878a99;}
+.qd-hcell.r{text-align:right;}
+.qd-row{display:grid;grid-template-columns:minmax(0,1fr) 226px 152px 150px;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid #f6f7f9;}
+.qd-row:hover{background:#fcfcfd;}
+.qd-row:first-of-type{border-top:0;}
+.qd-c1,.qd-c2,.qd-c3,.qd-c4{display:flex;min-width:0;}
+.qd-c1{flex-direction:column;gap:3px;}
+.qd-c2{flex-direction:column;gap:3px;}
+.qd-c3{flex-direction:row;align-items:center;gap:9px;}
+.qd-c4{display:flex;justify-content:flex-end;align-items:center;}
+.qd-c4 .qd-btn{width:100%;}
+.qd-sw{display:flex;align-items:center;gap:8px;min-height:44px;padding:0;border:0;background:transparent;font:inherit;cursor:pointer;}
+.qd-swlb{font-size:12.5px;font-weight:600;color:#5c5f6e;white-space:nowrap;}
+.qd-sw.on .qd-swlb{color:#405189;}
+.qd-name{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:#343a40;line-height:1.4;}
+.qd-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:#5c5f6e;line-height:1.5;}
+.qd-pend{display:inline-flex;align-items:center;gap:5px;border:0;background:transparent;padding:0;font:inherit;font-size:11.5px;font-weight:600;color:#8a5f18;white-space:nowrap;cursor:pointer;}
+.qd-pend:hover{text-decoration:underline;}
+.qd-wf{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:500;color:#495057;line-height:1.45;}
+.qd-none{font-size:12.5px;color:#5c5f6e;line-height:1.5;}
+.qd-link{border:0;background:transparent;padding:0;font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;text-align:left;}
+.qd-link:hover{text-decoration:underline;}
+.qd-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;width:fit-content;}
+.qd-chip.on{background:rgba(10,179,156,.12);color:#0a6d60;}
+.qd-chip.off{background:rgba(135,138,153,.14);color:#5c5f6e;}
+.qd-chip.warn{background:rgba(247,184,75,.18);color:#8a5f18;}
+.qd-chip.plan{background:rgba(64,81,137,.10);color:#405189;}
+.qd-chip.perm{background:#f3f6f9;color:#6c6f80;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+.qd-dot{color:#dfe2e8;font-size:11.5px;}
+.qd-na{font-size:12px;color:#adb5bd;}
+.qd-naw{display:flex;align-items:center;gap:9px;min-height:44px;}
+.qd-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 12px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
+.qd-btn:hover{background:#f3f6f9;}
+.qd-pri{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.qd-pri:hover{filter:brightness(.95);}
+.qd-pri:disabled{background:#e9ebec;color:#adb5bd;cursor:not-allowed;}
+.qd-dgr{border-color:rgba(240,101,72,.45);color:#c0432c;background:#fff;}
+.qd-dgr:hover{background:rgba(240,101,72,.08);}
+.dsw{position:relative;width:38px;height:22px;border-radius:20px;border:1px solid #e9ebec;background:#eff2f7;padding:0;flex-shrink:0;display:inline-block;}
+.dsw:after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(56,65,74,.25);transition:left .15s;}
+.dsw.on{background:#405189;border-color:#405189;}
+.dsw.on:after{left:18px;}
+.qd-sw:hover .dsw{border-color:#ccd0d8;}
+.qd-sw:hover .dsw.on{filter:brightness(.95);}
+.qd-sw:focus-visible{outline:2px solid #405189;outline-offset:2px;border-radius:4px;}
+.qd-track{display:flex;align-items:flex-start;width:100%;}
+.qd-cell{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;}
+.qd-rail{display:flex;align-items:center;width:100%;}
+.qd-l{flex:1 1 auto;height:2px;background:#e9ebec;}
+.qd-cell:first-child .qd-l.left{visibility:hidden;}
+.qd-cell:last-child .qd-l.right{visibility:hidden;}
+.qd-node{width:26px;height:26px;border-radius:50%;border:2px solid #e9ebec;background:#fff;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:#878a99;font-size:13px;}
+.qd-cell.init .qd-node{border-color:rgba(64,81,137,.5);color:#405189;}
+.qd-cell.pub .qd-node{border-color:#0ab39c;color:#0a6d60;background:rgba(10,179,156,.08);}
+.qd-cap{font-size:11.5px;line-height:1.45;text-align:center;color:#5c5f6e;padding:0 4px;text-wrap:pretty;}
+.qd-cell.pub .qd-cap{color:#0a6d60;font-weight:600;}
+.qd-pills{display:none;}
+.qd-trgrp{font-size:11px;font-weight:700;letter-spacing:.04em;color:#5c5f6e;text-transform:uppercase;}
+.qd-tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:9px 11px;border:1px solid #eff2f7;border-radius:4px;background:#fff;}
+.qd-trname{font-size:12.5px;font-weight:600;color:#343a40;line-height:1.45;}
+.qd-trflow{font-size:11.5px;color:#5c5f6e;line-height:1.5;}
+.qd-trmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+@container (max-width: 640px){
+  .qd-track{display:none;}
+  .qd-pills{display:flex !important;align-items:center;gap:7px;flex-wrap:wrap;}
+  .qd-tr{grid-template-columns:minmax(0,1fr);}
+  .qd-trmeta{justify-content:flex-start;}
+}
+.qd-step{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:5px 11px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font-size:12px;font-weight:500;color:#495057;line-height:1.35;}
+.qd-step.pub{border-color:rgba(10,179,156,.4);background:rgba(10,179,156,.08);color:#0a6d60;font-weight:600;}
+.qd-step.init{border-color:rgba(64,81,137,.3);background:rgba(64,81,137,.06);}
+.qd-ov{position:fixed;inset:0;background:rgba(33,37,41,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60;}
+.qd-modal{background:#fff;border-radius:6px;box-shadow:0 5px 20px rgba(56,65,74,.28);width:100%;max-width:760px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;}
+.qd-modal.sm{max-width:440px;}
+.qd-mb{padding:16px;overflow:auto;display:flex;flex-direction:column;gap:14px;}
+.qd-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #eff2f7;background:#fcfcfd;flex-wrap:wrap;}
+.qd-tpl{box-sizing:border-box;display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid #e9ebec;border-radius:6px;background:#fff;cursor:pointer;text-align:left;font:inherit;width:100%;}
+.qd-tpl:hover{background:#f8f9fb;}
+.qd-tpl.sel{border-color:#405189;background:rgba(64,81,137,.05);box-shadow:0 0 0 3px rgba(64,81,137,.12);}
+.qd-tpl.lock{opacity:.62;}
+.qd-rad{width:18px;height:18px;border-radius:50%;border:1.5px solid #ccd0d8;flex-shrink:0;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;}
+.qd-rad.on{border-color:#405189;}
+.qd-rad.on:after{content:"";width:10px;height:10px;border-radius:50%;background:#405189;}
+.qd-ta{width:100%;box-sizing:border-box;min-height:88px;border:1px solid #e9ebec;border-radius:4px;padding:10px 12px;font:inherit;font-size:13px;color:#495057;resize:vertical;}
+.qd-ta:focus{outline:0;border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.2);}
+.qd-sk{height:14px;border-radius:4px;background:linear-gradient(90deg,#f3f6f9,#eaeef3,#f3f6f9);background-size:200% 100%;animation:qdsk 1.2s linear infinite;}
+@keyframes qdsk{from{background-position:200% 0}to{background-position:-200% 0}}
+@container (max-width: 900px){
+  .qd-row{grid-template-columns:minmax(0,1fr);gap:10px;}
+  .qd-c4{justify-content:flex-start;}
+  .qd-c4 .qd-btn{width:auto;}
+  .qd-hrow{display:none;}
+}
+@container (max-width: 560px){
+  .qd-wrap{padding:16px;}
+  .qd-btn,.qd-pri{width:100%;}
+}
+@media (pointer:coarse){
+  .qd-btn,.qd-pri,.qd-tpl{min-height:44px;}
+}
+</style>
+</helmet>
+
+<div class="qd-wrap">
+
+  <sc-if value="{{ showHeader }}">
+    <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
+        <span style="font-size:11.5px;color:#adb5bd;">Cài đặt › Quy trình duyệt</span>
+        <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Quy trình duyệt</span>
+        <span style="font-size:13px;color:#878a99;line-height:1.65;">Chọn cách bài viết đi từ lúc soạn đến lúc hiện ra ngoài, theo từng thể loại nội dung. Không bật gì thì ai có quyền đăng là đăng được ngay.</span>
+      </div>
+      <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;">
+        <button class="qd-btn" style="min-height:38px;" onClick="{{ onReload }}"><i class="ri-refresh-line" style="font-size:15px;"></i>Tải lại</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ noAccess }}">
+    <div class="qd-card" style="padding:24px;display:flex;flex-direction:column;gap:12px;align-items:flex-start;">
+      <span style="display:flex;align-items:center;gap:10px;"><i class="ri-shield-keyhole-line" style="font-size:22px;color:#405189;"></i><span class="qd-t" style="font-size:16px;">Mục này do bên cung cấp dịch vụ cài đặt</span></span>
+      <span style="font-size:13px;color:#878a99;line-height:1.7;max-width:620px;">Quy trình duyệt được đặt cùng lúc với cấu trúc nội dung của website, nên chỉ bộ phận vận hành nền tảng mới đổi được. Bạn muốn thêm bước duyệt cho một thể loại nào, gửi yêu cầu là chúng tôi bật giúp trong ngày làm việc.</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="qd-pri" onClick="{{ onRequest }}"><i class="ri-customer-service-2-line" style="font-size:16px;"></i>Gửi yêu cầu cho nhà cung cấp</button>
+        <button class="qd-btn" style="min-height:38px;" onClick="{{ onOpenInbox }}"><i class="ri-inbox-line" style="font-size:15px;"></i>Xem Hộp duyệt của tôi</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isLoading }}">
+    <div class="qd-card">
+      <div class="qd-h"><span class="qd-t">Thể loại nội dung của website</span></div>
+      <div class="qd-hrow">
+        <span class="qd-hcell">Thể loại nội dung</span>
+        <span class="qd-hcell">Quy trình đang dùng</span>
+        <span class="qd-hcell">Trạng thái</span>
+        <span class="qd-hcell r">Thay đổi</span>
+      </div>
+      <sc-for list="{{ skeletons }}" as="s" hint-placeholder-count="4">
+        <div class="qd-row">
+          <span class="qd-c1"><span class="qd-sk" style="width:44%;"></span><span class="qd-sk" style="width:62%;height:10px;margin-top:6px;"></span></span>
+          <span class="qd-c2"><span class="qd-sk" style="width:80%;"></span></span>
+          <span class="qd-c3"><span class="qd-sk" style="width:104px;height:22px;border-radius:20px;"></span></span>
+          <span class="qd-c4"><span class="qd-sk" style="width:100%;height:34px;"></span></span>
+        </div>
+      </sc-for>
+      <div style="padding:12px 16px;border-top:1px solid #f6f7f9;font-size:12px;color:#5c5f6e;">Đang tải danh sách thể loại…</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isError }}">
+    <div class="qd-card" style="padding:20px;display:flex;flex-direction:column;gap:12px;align-items:flex-start;border-color:rgba(240,101,72,.35);">
+      <span style="display:flex;align-items:center;gap:9px;"><i class="ri-error-warning-line" style="font-size:20px;color:#f06548;"></i><span class="qd-t">Chưa tải được danh sách thể loại</span></span>
+      <span style="font-size:13px;color:#878a99;line-height:1.7;max-width:560px;">Đường truyền tới máy chủ đang chập chờn. Nội dung và cài đặt của bạn vẫn còn nguyên, bấm thử lại giúp chúng tôi.</span>
+      <button class="qd-pri" onClick="{{ onReload }}"><i class="ri-refresh-line" style="font-size:16px;"></i>Thử lại</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEmpty }}">
+    <div class="qd-card" style="padding:28px 24px;display:flex;flex-direction:column;gap:14px;align-items:flex-start;">
+      <span style="width:46px;height:46px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;"><i class="ri-flow-chart" style="font-size:22px;color:#405189;"></i></span>
+      <span class="qd-t" style="font-size:16px;">Website này chưa có thể loại nào cần duyệt</span>
+      <span style="font-size:13px;color:#878a99;line-height:1.7;max-width:640px;">Quy trình duyệt là các bước một bài phải đi qua trước khi khách nhìn thấy: người viết gửi duyệt, người phụ trách đọc lại rồi bấm đăng. Trong lúc chưa bật, ai có quyền đăng thì bài lên ngay sau khi lưu.</span>
+      <button class="qd-pri" onClick="{{ onFirst }}"><i class="ri-add-line" style="font-size:16px;"></i>Bật cho thể loại đầu tiên</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isReady }}">
+    <div class="qd-card">
+      <div class="qd-h">
+        <span class="qd-t">Thể loại nội dung của website</span>
+        <span class="qd-chip plan"><i class="ri-vip-crown-2-line" style="font-size:12px;"></i>{{ planLine }}</span>
+        <span style="margin-left:auto;font-size:11.5px;color:#5c5f6e;">{{ summaryLine }}</span>
+      </div>
+      <div class="qd-hrow">
+        <span class="qd-hcell">Thể loại nội dung</span>
+        <span class="qd-hcell">Quy trình đang dùng</span>
+        <span class="qd-hcell">Trạng thái</span>
+        <span class="qd-hcell r">Thay đổi</span>
+      </div>
+      <sc-for list="{{ rows }}" as="r" hint-placeholder-count="5">
+        <div class="qd-row">
+          <span class="qd-c1">
+            <span class="qd-name"><i class="{{ r.icon }}" style="font-size:16px;color:#878a99;"></i>{{ r.name }}</span>
+            <span class="qd-sub">
+              <span>{{ r.sub }}</span>
+              <sc-if value="{{ r.hasPending }}">
+                <span class="qd-dot">·</span>
+                <button class="qd-pend" onClick="{{ r.onPending }}" title="{{ r.pendingTitle }}"><i class="ri-time-line" style="font-size:12px;"></i>{{ r.pendingLine }}</button>
+              </sc-if>
+            </span>
+          </span>
+          <span class="qd-c2">
+            <sc-if value="{{ r.hasWf }}">
+              <span class="qd-wf"><i class="ri-flow-chart" style="font-size:14px;color:#405189;"></i>{{ r.wfName }}</span>
+              <button class="qd-link" onClick="{{ r.onView }}">Xem sơ đồ các bước</button>
+            </sc-if>
+            <sc-if value="{{ r.noWf }}">
+              <span class="qd-none">Không có — ai có quyền thì đăng thẳng</span>
+            </sc-if>
+          </span>
+          <span class="qd-c3">
+            <sc-if value="{{ r.chipOn }}">
+              <button class="qd-sw on" onClick="{{ r.onToggle }}" role="switch" aria-checked="true" title="{{ r.toggleTitle }}">
+                <span class="dsw on"></span><span class="qd-swlb">Đang bật</span>
+              </button>
+            </sc-if>
+            <sc-if value="{{ r.chipOff }}">
+              <button class="qd-sw" onClick="{{ r.onToggle }}" role="switch" aria-checked="false" title="{{ r.toggleTitle }}">
+                <span class="dsw"></span><span class="qd-swlb">Đã tắt</span>
+              </button>
+            </sc-if>
+            <sc-if value="{{ r.noWf }}"><span class="qd-naw"><span class="qd-na">Chưa bật</span></span></sc-if>
+          </span>
+          <span class="qd-c4">
+            <sc-if value="{{ r.noWf }}">
+              <button class="qd-btn" onClick="{{ r.onPick }}"><i class="ri-add-line" style="font-size:14px;"></i>Chọn quy trình</button>
+            </sc-if>
+            <sc-if value="{{ r.hasWf }}">
+              <button class="qd-btn" onClick="{{ r.onPick }}"><i class="ri-repeat-2-line" style="font-size:14px;"></i>Đổi quy trình</button>
+            </sc-if>
+          </span>
+        </div>
+      </sc-for>
+    </div>
+    <span style="font-size:12px;color:#5c5f6e;line-height:1.7;">Tắt quy trình không xoá bài nào. Bài đang chờ sẽ quay về cách đăng thường, nội dung và lịch sử vẫn giữ nguyên.</span>
+  </sc-if>
+
+  <sc-if value="{{ pickOpen }}">
+    <div class="qd-ov" onClick="{{ onBackdrop }}">
+      <div class="qd-modal" onClick="{{ stop }}" role="dialog" aria-modal="true">
+        <div class="qd-h" style="padding:14px 16px;">
+          <i class="ri-flow-chart" style="font-size:17px;color:#405189;"></i>
+          <span class="qd-t">{{ pickTitle }}</span>
+          <button class="qd-link" style="margin-left:auto;font-size:18px;" onClick="{{ onClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
+        </div>
+        <div class="qd-mb">
+          <span style="font-size:12.5px;color:#5c5f6e;line-height:1.65;">Chọn một quy trình rồi xem trước các bước bên dưới. Chỉ khi bạn bấm áp dụng thì thể loại này mới đổi cách đăng bài.</span>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <sc-for list="{{ tpls }}" as="t" hint-placeholder-count="3">
+              <sc-if value="{{ t.free }}">
+                <button class="qd-tpl {{ t.cls }}" onClick="{{ t.onPick }}">
+                  <span class="qd-rad {{ t.radCls }}"></span>
+                  <span style="display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto;">
+                    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:#343a40;">{{ t.name }}</span><span class="qd-chip off">{{ t.stepLine }}</span></span>
+                    <span style="font-size:12px;color:#5c5f6e;line-height:1.6;">{{ t.desc }}</span>
+                  </span>
+                </button>
+              </sc-if>
+              <sc-if value="{{ t.locked }}">
+                <button class="qd-tpl lock" onClick="{{ t.onLocked }}">
+                  <span style="width:18px;flex-shrink:0;margin-top:2px;"><i class="ri-lock-2-line" style="font-size:15px;color:#878a99;"></i></span>
+                  <span style="display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto;">
+                    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:#343a40;">{{ t.name }}</span><span class="qd-chip plan"><i class="ri-vip-crown-2-line" style="font-size:11px;"></i>{{ t.lockLine }}</span></span>
+                    <span style="font-size:12px;color:#5c5f6e;line-height:1.6;">{{ t.desc }}</span>
+                  </span>
+                </button>
+              </sc-if>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ prevNone }}">
+            <div style="display:flex;align-items:flex-start;gap:9px;padding:12px 13px;border-radius:4px;background:#f6f7f9;color:#6c6f80;font-size:12.5px;line-height:1.65;">
+              <i class="ri-information-line" style="font-size:16px;flex-shrink:0;"></i>
+              <span>Thể loại này sẽ không có bước chờ nào: ai có quyền đăng thì bài lên ngay sau khi lưu. Bài đang chờ duyệt không bị xoá — chỉ chuyển về cách đăng thường.</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ hasPreview }}">
+            <div style="display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid #eff2f7;border-radius:6px;background:#fcfcfd;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#5c5f6e;text-transform:uppercase;">Các bước của {{ prevName }} <span style="font-weight:500;letter-spacing:0;text-transform:none;">· {{ prevStepCount }} bước</span></span>
+              <div class="qd-track">
+                <sc-for list="{{ prevSteps }}" as="s" hint-placeholder-count="4">
+                  <span class="qd-cell {{ s.cls }}">
+                    <span class="qd-rail">
+                      <span class="qd-l left"></span>
+                      <span class="qd-node"><i class="{{ s.icon }}"></i></span>
+                      <span class="qd-l right"></span>
+                    </span>
+                    <span class="qd-cap">{{ s.label }}</span>
+                  </span>
+                </sc-for>
+              </div>
+              <div class="qd-pills">
+                <sc-for list="{{ prevSteps }}" as="s" hint-placeholder-count="4">
+                  <sc-if value="{{ s.narrow }}"><span class="qd-step {{ s.cls2 }}"><i class="{{ s.icon }}" style="font-size:13px;"></i>{{ s.label }}</span></sc-if>
+                </sc-for>
+              </div>
+              <span style="font-size:11.5px;color:#5c5f6e;line-height:1.6;"><i class="ri-global-line" style="color:#0a6d60;"></i> Mốc xanh là bước khách truy cập nhìn thấy bài. Các bước trước đó chỉ người trong nhà thấy.</span>
+              <div style="height:1px;background:#eff2f7;"></div>
+              <span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#5c5f6e;text-transform:uppercase;">Các nút chuyển bước và quyền cần có</span>
+              <sc-if value="{{ hasFwd }}">
+                <span class="qd-trgrp"><i class="ri-arrow-right-circle-line" style="font-size:13px;"></i> Đưa bài đi tiếp</span>
+                <div style="display:flex;flex-direction:column;gap:7px;">
+                  <sc-for list="{{ prevFwd }}" as="t" hint-placeholder-count="3">
+                    <div class="qd-tr">
+                      <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+                        <span class="qd-trname">{{ t.label }}</span>
+                        <span class="qd-trflow">{{ t.flow }}</span>
+                      </span>
+                      <span class="qd-trmeta">
+                        <span class="qd-chip perm">{{ t.perm }}</span>
+                        <sc-if value="{{ t.note }}"><span class="qd-chip warn"><i class="ri-edit-2-line" style="font-size:11px;"></i>bắt buộc ghi lý do</span></sc-if>
+                      </span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ hasBack }}">
+                <span class="qd-trgrp"><i class="ri-arrow-go-back-line" style="font-size:13px;"></i> Trả lại hoặc gỡ xuống — luôn phải ghi lý do</span>
+                <div style="display:flex;flex-direction:column;gap:7px;">
+                  <sc-for list="{{ prevBack }}" as="t" hint-placeholder-count="2">
+                    <div class="qd-tr">
+                      <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+                        <span class="qd-trname">{{ t.label }}</span>
+                        <span class="qd-trflow">{{ t.flow }}</span>
+                      </span>
+                      <span class="qd-trmeta">
+                        <span class="qd-chip perm">{{ t.perm }}</span>
+                        <sc-if value="{{ t.note }}"><span class="qd-chip warn"><i class="ri-edit-2-line" style="font-size:11px;"></i>bắt buộc ghi lý do</span></sc-if>
+                      </span>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+        <div class="qd-mf">
+          <button class="qd-btn" style="min-height:38px;" onClick="{{ onClose }}">Huỷ</button>
+          <button class="qd-pri" onClick="{{ onApply }}" disabled="{{ applyOff }}" title="{{ applyTitle }}"><i class="ri-check-line" style="font-size:16px;"></i>{{ applyLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ confirmOpen }}">
+    <div class="qd-ov">
+      <div class="qd-modal sm" role="alertdialog" aria-modal="true">
+        <div class="qd-mb" style="align-items:center;text-align:center;padding:24px 20px 8px;">
+          <span style="width:56px;height:56px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;"><i class="ri-alert-line" style="font-size:26px;color:#c78729;"></i></span>
+          <span class="qd-t" style="font-size:17px;">{{ cfTitle }}</span>
+          <span style="font-size:13px;color:#878a99;line-height:1.7;">{{ cfText }}</span>
+        </div>
+        <div class="qd-mf" style="justify-content:center;">
+          <button class="qd-btn" style="min-height:38px;" onClick="{{ onCfCancel }}" ref="{{ cancelRef }}">Không, để nguyên</button>
+          <button class="qd-pri" onClick="{{ onCfOk }}">{{ cfOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ upOpen }}">
+    <div class="qd-ov">
+      <div class="qd-modal sm" role="dialog" aria-modal="true">
+        <div class="qd-mb" style="padding:22px 20px 6px;">
+          <span style="display:flex;align-items:center;gap:10px;"><i class="ri-vip-crown-2-line" style="font-size:22px;color:#405189;"></i><span class="qd-t" style="font-size:16px;">{{ upTitle }}</span></span>
+          <span style="font-size:13px;color:#878a99;line-height:1.7;">{{ upText }}</span>
+        </div>
+        <div class="qd-mf">
+          <button class="qd-btn" style="min-height:38px;" onClick="{{ onUpClose }}">Để sau</button>
+          <button class="qd-pri" onClick="{{ onUpgrade }}"><i class="ri-arrow-right-up-line" style="font-size:16px;"></i>Xem gói {{ upPlan }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toastOn }}">
+    <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:4px;background:#343a40;color:#fff;font-size:13px;box-shadow:0 5px 20px rgba(56,65,74,.3);max-width:calc(100vw - 32px);">
+      <i class="{{ toastIcon }}" style="font-size:16px;"></i><span>{{ toast }}</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showSave }}">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(56,65,74,.15);position:sticky;bottom:16px;">
+      <span style="font-size:12.5px;color:#a9762a;font-weight:600;display:flex;align-items:center;gap:7px;"><i class="ri-error-warning-line" style="font-size:15px;"></i>{{ dirtyLine }}</span>
+      <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="qd-btn" style="min-height:38px;" onClick="{{ onReset }}">Bỏ thay đổi</button>
+        <button class="qd-pri" onClick="{{ onSave }}"><i class="ri-save-3-line" style="font-size:16px;"></i>Lưu — hiệu lực ngay</button>
+      </span>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;embedded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Nhúng&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(dirty: boolean) =&gt; void&quot;},&quot;viewer&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Vận hành nền tảng&quot;,&quot;Quản trị site&quot;],&quot;default&quot;:&quot;Vận hành nền tảng&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;},&quot;plan&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Cơ bản&quot;,&quot;Chuyên nghiệp&quot;],&quot;default&quot;:&quot;Cơ bản&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;},&quot;loadState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Bình thường&quot;,&quot;Đang tải&quot;,&quot;Lỗi tải&quot;,&quot;Chưa bật quy trình nào&quot;],&quot;default&quot;:&quot;Bình thường&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;}}">
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.NONE = 'Không duyệt — đăng thẳng';
+    this.state = {
+      rows: this.seed(), pick: null, sel: null, confirm: null, up: null,
+      toast: '', toastIcon: 'ri-check-line', dirty: 0, loadKey: 0
+    };
+    this._saved = JSON.stringify(this.seed());
+  }
+  seed() {
+    return [
+      { id: 'news', name: 'Tin tức', icon: 'ri-newspaper-line', sub: '148 bài · 3 người viết', wf: 'Duyệt trước khi đăng', on: true, pending: 4 },
+      { id: 'projects', name: 'Dự án', icon: 'ri-building-4-line', sub: '26 bài · 2 người viết', wf: 'Duyệt trước khi đăng', on: false, pending: 1 },
+      { id: 'services', name: 'Dịch vụ', icon: 'ri-tools-line', sub: '12 bài · 1 người viết', wf: null, on: false, pending: 0 },
+      { id: 'recruit', name: 'Tuyển dụng', icon: 'ri-user-add-line', sub: '5 bài · 1 người viết', wf: null, on: false, pending: 0 },
+      { id: 'faq', name: 'Câu hỏi thường gặp', icon: 'ri-question-answer-line', sub: '31 bài · 2 người viết', wf: 'Duyệt trước khi đăng', on: true, pending: 0 }
+    ];
+  }
+  componentDidMount() {
+    this._onCw = () => this.forceUpdate();
+    document.addEventListener('bs-cw-ready', this._onCw);
+    this._onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (this.state.up) this.setState({ up: null });
+      else if (this.state.confirm) this.setState({ confirm: null });
+      else if (this.state.pick) this.setState({ pick: null, sel: null });
+    };
+    document.addEventListener('keydown', this._onKey);
+    this._onCmd = (e) => {
+      const d = e.detail || {};
+      if (this.props.embedId && d.id !== this.props.embedId) return;
+      if (d.act === 'save') this.save();
+      if (d.act === 'reset') this.reset();
+    };
+    document.addEventListener('bs-embed-cmd', this._onCmd);
+    this._guard = (e) => { if (this.state.dirty) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', this._guard);
+  }
+  componentWillUnmount() {
+    document.removeEventListener('bs-cw-ready', this._onCw);
+    document.removeEventListener('keydown', this._onKey);
+    document.removeEventListener('bs-embed-cmd', this._onCmd);
+    window.removeEventListener('beforeunload', this._guard);
+  }
+  cw() { return window.BSCW || null; }
+  planKey() { return (this.props.plan || 'Cơ bản') === 'Chuyên nghiệp' ? 'pro' : 'basic'; }
+  notify(msg, icon) {
+    clearTimeout(this._tt);
+    this.setState({ toast: msg, toastIcon: icon || 'ri-check-line' });
+    this._tt = setTimeout(() => this.setState({ toast: '' }), 3200);
+  }
+  markDirty(rows) {
+    const n = JSON.stringify(rows) === this._saved ? 0 : 1;
+    this.setState({ rows: rows, dirty: n });
+    if (typeof this.props.onDirty === 'function') this.props.onDirty(!!n);
+  }
+  save() {
+    this._saved = JSON.stringify(this.state.rows);
+    this.setState({ dirty: 0 });
+    if (typeof this.props.onDirty === 'function') this.props.onDirty(false);
+    this.notify('Đã lưu — quy trình có hiệu lực ngay', 'ri-check-double-line');
+  }
+  reset() {
+    this.setState({ rows: JSON.parse(this._saved), dirty: 0 });
+    if (typeof this.props.onDirty === 'function') this.props.onDirty(false);
+  }
+  row(id) { return this.state.rows.filter((r) => r.id === id)[0]; }
+  setRow(id, patch) {
+    this.markDirty(this.state.rows.map((r) => (r.id === id ? Object.assign({}, r, patch) : r)));
+  }
+  openPick(id) {
+    const r = this.row(id);
+    this.setState({ pick: id, sel: r ? (r.wf || this.NONE) : null });
+  }
+  applyPick() {
+    const id = this.state.pick, name = this.state.sel;
+    if (!id || !name) return;
+    const r = this.row(id);
+    if (name === this.NONE) {
+      const go = () => {
+        this.setRow(id, { wf: null, on: false });
+        this.setState({ pick: null, sel: null });
+        this.notify('“' + (r ? r.name : '') + '” chuyển về đăng thẳng — bấm Lưu để có hiệu lực', 'ri-flow-chart');
+      };
+      if (r && r.on && r.pending > 0) {
+        this.setState({
+          pick: null, sel: null,
+          confirm: {
+            title: 'Bỏ quy trình của “' + r.name + '”?',
+            text: r.pending + ' bài đang chờ duyệt sẽ quay về chế độ đăng thường, không mất dữ liệu. Lịch sử duyệt cũ vẫn giữ lại.',
+            ok: 'Bỏ quy trình', run: go
+          }
+        });
+        return;
+      }
+      go();
+      return;
+    }
+    this.setRow(id, { wf: name, on: true });
+    this.setState({ pick: null, sel: null });
+    this.notify('“' + (r ? r.name : '') + '” sẽ dùng ' + name + ' — bấm Lưu để có hiệu lực', 'ri-flow-chart');
+  }
+  toggle(id) {
+    const r = this.row(id);
+    if (!r) return;
+    if (r.on && r.pending > 0) {
+      this.setState({
+        confirm: {
+          title: 'Tắt quy trình của “' + r.name + '”?',
+          text: r.pending + ' bài đang chờ duyệt sẽ quay về chế độ đăng thường, không mất dữ liệu. Ai có quyền đăng sẽ đăng được ngay sau khi lưu.',
+          ok: 'Tắt quy trình', run: () => this.setRow(id, { on: false })
+        }
+      });
+      return;
+    }
+    this.setRow(id, { on: !r.on });
+  }
+  renderVals() {
+    const cw = this.cw();
+    const st = this.props.loadState || 'Bình thường';
+    const isTenant = (this.props.viewer || 'Vận hành nền tảng') === 'Quản trị site';
+    const pk = this.planKey();
+    const tpls = cw ? cw.templates(pk) : [];
+    const isEmptySite = st === 'Chưa bật quy trình nào';
+    const rows = isEmptySite ? (this.state.fromEmpty ? this.state.rows : []) : this.state.rows;
+    const onCount = rows.filter((r) => r.wf && r.on).length;
+
+    const sel = this.state.sel;
+    const prev = tpls.filter((t) => t.name === sel)[0] || null;
+    /* Chia nút chuyển thành 2 nhóm: đưa bài đi tiếp vs trả lại/gỡ xuống (luôn có note). */
+    const trRow = (t) => {
+      const ss = prev.steps.filter((s) => s.key === t.from)[0];
+      const ds = prev.steps.filter((s) => s.key === t.to)[0];
+      return {
+        label: t.label, perm: t.perm, note: !!t.note,
+        flow: (ss ? ss.label : t.from) + ' → ' + (ds ? ds.label : t.to)
+      };
+    };
+    const prevFwd = prev ? prev.transitions.filter((t) => !t.note).map(trRow) : [];
+    const prevBack = prev ? prev.transitions.filter((t) => !!t.note).map(trRow) : [];
+    const pickRow = this.state.pick ? this.row(this.state.pick) : null;
+    const cf = this.state.confirm;
+    const up = this.state.up;
+
+    return {
+      showHeader: !this.props.embedded && !isTenant,
+      noAccess: isTenant,
+      isLoading: !isTenant && st === 'Đang tải',
+      isError: !isTenant && st === 'Lỗi tải',
+      isEmpty: !isTenant && isEmptySite && !this.state.fromEmpty,
+      isReady: !isTenant && (st === 'Bình thường' || (isEmptySite && this.state.fromEmpty)),
+      skeletons: [1, 2, 3, 4],
+      planLine: 'Gói ' + (cw ? cw.planName(pk) : pk),
+      summaryLine: onCount + '/' + rows.length + ' thể loại đang có bước duyệt',
+
+      rows: rows.map((r) => ({
+        name: r.name, icon: r.icon, sub: r.sub,
+        hasWf: !!r.wf, noWf: !r.wf, wfName: r.wf || '',
+        chipOn: !!r.wf && r.on, chipOff: !!r.wf && !r.on,
+        hasPending: !!r.wf && r.on && r.pending > 0,
+        pendingLine: r.pending + ' bài chờ duyệt',
+        pendingTitle: 'Mở Hộp duyệt để xem ' + r.pending + ' bài đang chờ của ' + r.name,
+        onPending: () => { try { window.location.href = 'H%E1%BB%99p%20duy%E1%BB%87t.dc.html'; } catch (e) {} },
+        soloCls: r.wf ? '' : 'solo',
+        toggleTitle: r.on
+          ? 'Tắt quy trình cho ' + r.name + ' — bài đang chờ quay về đăng thường, không mất dữ liệu'
+          : 'Bật lại quy trình cho ' + r.name,
+        onPick: () => this.openPick(r.id),
+        onView: () => this.openPick(r.id),
+        onToggle: () => this.toggle(r.id)
+      })),
+
+      pickOpen: !!this.state.pick,
+      pickTitle: pickRow ? 'Quy trình cho “' + pickRow.name + '”' : 'Chọn quy trình',
+      prevNone: sel === this.NONE,
+      tpls: [{
+        name: this.NONE,
+        desc: 'Không có bước chờ nào. Ai có quyền đăng thì bài lên ngay sau khi lưu.',
+        stepLine: 'không có bước', free: true, locked: false,
+        cls: sel === this.NONE ? 'sel' : '', radCls: sel === this.NONE ? 'on' : '',
+        lockLine: '', onPick: () => this.setState({ sel: this.NONE }), onLocked: () => {}
+      }].concat(tpls.map((t) => ({
+        name: t.name, desc: t.desc,
+        stepLine: t.steps.length + ' bước',
+        free: !t.locked, locked: t.locked,
+        cls: sel === t.name ? 'sel' : '',
+        radCls: sel === t.name ? 'on' : '',
+        lockLine: 'Gói ' + t.needPlanName,
+        onPick: () => this.setState({ sel: t.name }),
+        onLocked: () => this.setState({ up: t })
+      }))),
+      hasPreview: !!prev,
+      prevName: prev ? prev.name : '',
+      prevStepCount: prev ? prev.steps.length : 0,
+      prevSteps: prev ? prev.steps.map((s) => ({
+        label: s.label, narrow: true,
+        cls: s.published ? 'pub' : (s.initial ? 'init' : ''),
+        cls2: s.published ? 'pub' : (s.initial ? 'init' : ''),
+        icon: s.published ? 'ri-global-line'
+          : (s.initial ? 'ri-draft-line' : (s.terminal ? 'ri-archive-line' : 'ri-user-search-line'))
+      })) : [],
+      hasFwd: !!(prev && prevFwd.length), prevFwd: prevFwd,
+      hasBack: !!(prev && prevBack.length), prevBack: prevBack,
+      applyOff: !sel || (pickRow && (pickRow.wf || this.NONE) === sel),
+      applyLabel: sel === this.NONE ? 'Chuyển về đăng thẳng' : (pickRow && pickRow.wf ? 'Áp dụng quy trình mới' : 'Áp dụng cho thể loại này'),
+      applyTitle: !sel ? 'Chọn một quy trình trước'
+        : ((pickRow && (pickRow.wf || this.NONE) === sel) ? 'Thể loại này đang dùng đúng lựa chọn đó' : 'Áp dụng và bật ngay'),
+      onApply: () => this.applyPick(),
+      onClose: () => this.setState({ pick: null, sel: null }),
+      onBackdrop: () => this.setState({ pick: null, sel: null }),
+      stop: (e) => e.stopPropagation(),
+
+      confirmOpen: !!cf,
+      cfTitle: cf ? cf.title : '', cfText: cf ? cf.text : '', cfOk: cf ? cf.ok : '',
+      cancelRef: (el) => { if (el) setTimeout(() => { try { el.focus(); } catch (e) {} }, 0); },
+      onCfCancel: () => this.setState({ confirm: null }),
+      onCfOk: () => { const r = cf && cf.run; this.setState({ confirm: null }); if (r) r(); },
+
+      upOpen: !!up,
+      upTitle: up ? up.name + ' nằm ở gói cao hơn' : '',
+      upText: up ? 'Quy trình này thêm một bước phản biện, phù hợp khi có từ hai người cùng đọc bài trước lúc đăng. Website đang ở gói ' + (cw ? cw.planName(pk) : pk) + ' nên chưa bật được. Nâng lên gói ' + up.needPlanName + ' là dùng được ngay, các thể loại đang chạy không bị ảnh hưởng.' : '',
+      upPlan: up ? up.needPlanName : '',
+      onUpClose: () => this.setState({ up: null }),
+      onUpgrade: () => { this.setState({ up: null }); this.notify('Đang mở bảng gói dịch vụ…', 'ri-vip-crown-2-line'); },
+
+      showSave: !this.props.embedded && !isTenant && rows.length > 0 && !!this.state.dirty,
+      dirtyLine: 'Có thay đổi chưa lưu',
+      onSave: () => this.save(),
+      onReset: () => this.reset(),
+      onReload: () => this.notify('Đang tải lại danh sách…', 'ri-refresh-line'),
+      onFirst: () => {
+        const blank = this.state.rows.map((r) => Object.assign({}, r, { wf: null, on: false, pending: 0 }));
+        this._saved = JSON.stringify(blank);
+        this.setState({ rows: blank, fromEmpty: true, dirty: 0 }, () => this.openPick(blank[0].id));
+      },
+      onRequest: () => this.notify('Đã gửi yêu cầu — nhà cung cấp sẽ liên hệ lại', 'ri-customer-service-2-line'),
+      onOpenInbox: () => { try { window.location.href = 'H%E1%BB%99p%20duy%E1%BB%87t.dc.html'; } catch (e) {} },
+
+      toastOn: !!this.state.toast, toast: this.state.toast, toastIcon: this.state.toastIcon
+    };
+  }
+}
+
+</script>
+</body>
+</html>

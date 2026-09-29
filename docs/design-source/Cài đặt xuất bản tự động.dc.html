@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+.px-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.px-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
+.px-t{font-size:14px;font-weight:600;color:#343a40;}
+.px-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;}
+.px-lbl{display:flex;flex-direction:column;gap:2px;flex:1 1 280px;min-width:0;}
+.px-n{font-size:12.5px;font-weight:600;color:#343a40;line-height:1.45;}
+.px-x{font-size:11.5px;color:#878a99;line-height:1.6;}
+.px-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.px-pill:hover{background:#f3f6f9;}
+.px-pill.on{border-color:#405189;background:rgba(64,81,137,.07);font-weight:600;color:#405189;}
+.px-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
+.px-btn:hover{background:#f3f6f9;}
+.px-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.px-pri:disabled{background:#e9ebec;color:#adb5bd;cursor:not-allowed;}
+.px-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.px-sw{width:38px;height:20px;border-radius:20px;background:#dfe2e8;position:relative;display:inline-block;flex-shrink:0;transition:background .15s;}
+.px-sw.on{background:#405189;}
+.px-sk{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.15);}
+.px-sw.on .px-sk{left:20px;}
+.px-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
+.px-day{width:40px;height:40px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12px;font-weight:600;color:#878a99;cursor:pointer;flex-shrink:0;}
+.px-day:hover{background:#f3f6f9;}
+.px-day.on{border-color:#405189;background:rgba(64,81,137,.08);color:#405189;}
+.px-hr{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;}
+.px-hb{height:34px;border:1px solid #eff2f7;border-radius:3px;background:#fbfcfe;font:inherit;font-size:10.5px;font-weight:600;color:#adb5bd;cursor:pointer;padding:0;}
+.px-hb.on{border-color:#405189;background:rgba(64,81,137,.12);color:#405189;}
+.px-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;}
+.px-perm{display:grid;grid-template-columns:1.6fr repeat(4,minmax(70px,1fr));gap:0;align-items:center;border-top:1px solid #f6f7f9;}
+.px-perm>span{padding:10px 12px;font-size:12px;min-width:0;}
+.px-ph{display:grid;grid-template-columns:1.6fr repeat(4,minmax(70px,1fr));gap:0;background:#f8f9fb;border-top:1px solid #eff2f7;}
+.px-ph>span{padding:8px 12px;font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#878a99;text-align:center;}
+.px-ph>span:first-child{text-align:left;}
+@media (max-width:1000px){.px-grid{grid-template-columns:1fr;}.px-hr{grid-template-columns:repeat(6,1fr);}.px-perm,.px-ph{grid-template-columns:1.4fr repeat(4,minmax(56px,1fr));}}
+@keyframes pxFade{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+
+  <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
+      <span style="font-size:11.5px;color:#adb5bd;">Cài đặt › Xuất bản tự động</span>
+      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Xuất bản tự động</span>
+      <span style="font-size:13px;color:#878a99;line-height:1.65;">Nơi duy nhất quyết định khi nào nội dung được tự lên website, ai có quyền bật, và ai nhận thông báo. Mọi cài đặt đã có sẵn giá trị an toàn — bạn chỉ đổi khi cần.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;flex-wrap:wrap;">
+      <button class="px-btn" style="min-height:38px;" onClick="{{ onReset }}" title="Đưa mọi mục về giá trị hệ thống đề xuất"><i class="ri-refresh-line" style="font-size:15px;"></i>Về mặc định an toàn</button>
+      <button class="px-pri" onClick="{{ onSave }}" title="{{ saveTitle }}" disabled="{{ saveOff }}"><i class="ri-save-3-line" style="font-size:16px;"></i>{{ saveLabel }}</button>
+    </div>
+  </div>
+
+  <div class="px-card">
+    <div style="{{ heroStyle }}">
+      <i class="{{ heroIcon }}" style="font-size:19px;flex-shrink:0;margin-top:1px;"></i>
+      <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 320px;min-width:0;">
+        <span style="font-size:13.5px;font-weight:600;line-height:1.45;">{{ heroTitle }}</span>
+        <span style="font-size:11.5px;line-height:1.65;opacity:.85;">{{ heroText }}</span>
+      </span>
+      <span style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+        <span style="font-size:12px;font-weight:600;">{{ masterText }}</span>
+        <button class="px-hit" onClick="{{ onMaster }}" title="{{ masterTitle }}">
+          <sc-if value="{{ masterOn }}"><span class="px-sw on"><span class="px-sk"></span></span></sc-if>
+          <sc-if value="{{ masterOff }}"><span class="px-sw"><span class="px-sk"></span></span></sc-if>
+        </button>
+      </span>
+    </div>
+  </div>
+
+  <div class="px-grid">
+    <div class="px-card">
+      <div class="px-h">
+        <i class="ri-time-line" style="font-size:17px;color:#405189;"></i>
+        <span class="px-t">Khung giờ được đăng</span>
+        <span style="margin-left:auto;font-size:11.5px;color:#878a99;white-space:nowrap;">{{ hourSummary }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px;padding:14px 16px;">
+        <span class="px-x">Bấm để bật hoặc tắt từng giờ. Hệ thống rải bài ngẫu nhiên trong các giờ đã bật, mỗi bài cách nhau ít nhất 25 phút — không đăng dồn.</span>
+        <div class="px-hr">
+          <sc-for list="{{ hours }}" as="h" hint-placeholder-count="12">
+            <sc-if value="{{ h.on2 }}"><button class="px-hb on" onClick="{{ h.on }}" title="{{ h.title }}">{{ h.label }}</button></sc-if>
+            <sc-if value="{{ h.off }}"><button class="px-hb" onClick="{{ h.on }}" title="{{ h.title }}">{{ h.label }}</button></sc-if>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+          <button class="px-btn" onClick="{{ onHoursWork }}">Giờ làm việc (8–17h)</button>
+          <button class="px-btn" onClick="{{ onHoursPeak }}" title="Giờ khách đọc nhiều nhất theo thống kê website của bạn">Giờ khách đọc nhiều (9–11h, 14–16h)</button>
+        </div>
+      </div>
+      <div class="px-row">
+        <span class="px-lbl">
+          <span class="px-n">Ngày không đăng</span>
+          <span class="px-x">Hệ thống dồn bài sang ngày làm việc gần nhất, không bỏ bài.</span>
+        </span>
+        <span style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">
+          <sc-for list="{{ days }}" as="d" hint-placeholder-count="7">
+            <sc-if value="{{ d.on2 }}"><button class="px-day on" onClick="{{ d.on }}" title="{{ d.title }}">{{ d.label }}</button></sc-if>
+            <sc-if value="{{ d.off }}"><button class="px-day" onClick="{{ d.on }}" title="{{ d.title }}">{{ d.label }}</button></sc-if>
+          </sc-for>
+        </span>
+      </div>
+      <div class="px-row">
+        <span class="px-lbl">
+          <span class="px-n">Múi giờ &amp; ngày lễ Việt Nam</span>
+          <span class="px-x">Giờ đăng tính theo múi giờ này. Hệ thống tự nhận ngày lễ và tạm dừng đăng nếu bạn bật.</span>
+        </span>
+        <span style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+          <span class="px-chip" style="background:#f3f6f9;color:#495057;height:30px;">GMT+7 · Hồ Chí Minh</span>
+          <span style="font-size:11.5px;font-weight:600;color:{{ holidayColor }};white-space:nowrap;">{{ holidayText }}</span>
+          <button class="px-hit" onClick="{{ onHoliday }}" title="{{ holidayTitle }}">
+            <sc-if value="{{ holidayOn }}"><span class="px-sw on"><span class="px-sk"></span></span></sc-if>
+            <sc-if value="{{ holidayOff }}"><span class="px-sw"><span class="px-sk"></span></span></sc-if>
+          </button>
+        </span>
+      </div>
+    </div>
+
+    <div class="px-card">
+      <div class="px-h">
+        <i class="ri-git-pull-request-line" style="font-size:17px;color:#405189;"></i>
+        <span class="px-t">Van tổng — trần trang mới mỗi ngày</span>
+      </div>
+      <div style="{{ capNoteStyle }}"><i class="{{ capIcon }}" style="font-size:15px;flex-shrink:0;margin-top:1px;"></i><span>{{ capNote }}</span></div>
+      <div class="px-row">
+        <span class="px-lbl">
+          <span class="px-n">Trần tổng toàn website</span>
+          <span class="px-x">Nhịp thật 30 ngày qua của bạn là {{ paceText }}. Đặt quá cao dễ bị coi là nội dung sản xuất máy móc.</span>
+        </span>
+        <span style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0;">
+          <sc-for list="{{ caps }}" as="c" hint-placeholder-count="4">
+            <sc-if value="{{ c.on2 }}"><button class="px-pill on" onClick="{{ c.on }}" title="{{ c.title }}">{{ c.label }}</button></sc-if>
+            <sc-if value="{{ c.off }}"><button class="px-pill" onClick="{{ c.on }}" title="{{ c.title }}">{{ c.label }}</button></sc-if>
+          </sc-for>
+        </span>
+      </div>
+      <div class="px-h" style="border-bottom:0;border-top:1px solid #eff2f7;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Trần riêng từng làn</span>
+        <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ laneSummary }}</span>
+      </div>
+      <sc-for list="{{ lanes }}" as="l" hint-placeholder-count="5">
+        <div class="px-row" style="padding:10px 16px;">
+          <span class="px-lbl">
+            <span class="px-n">{{ l.name }}</span>
+            <span class="px-x">{{ l.hint }}</span>
+          </span>
+          <span style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">
+            <sc-for list="{{ l.opts }}" as="o" hint-placeholder-count="3">
+              <sc-if value="{{ o.on2 }}"><button class="px-pill on" style="min-height:32px;padding:5px 11px;" onClick="{{ o.on }}" title="{{ o.title }}">{{ o.label }}</button></sc-if>
+              <sc-if value="{{ o.off }}"><button class="px-pill" style="min-height:32px;padding:5px 11px;" onClick="{{ o.on }}" title="{{ o.title }}">{{ o.label }}</button></sc-if>
+            </sc-for>
+          </span>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+        <i class="ri-sort-desc" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+        <span class="px-x">Kịch trần thì hệ thống hoãn, không bỏ: nhường chỗ theo thứ tự cụm SEO → làm mới bài cũ → sản phẩm → tin tức, và ghi rõ lý do ở màn hình Duyệt.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="px-card">
+    <div class="px-h">
+      <i class="ri-shield-user-line" style="font-size:17px;color:#405189;"></i>
+      <span class="px-t">Ai được làm gì</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:11.5px;color:#878a99;">{{ permSummary }}</span>
+        <button class="px-btn" onClick="{{ onInvite }}"><i class="ri-user-add-line" style="font-size:14px;"></i>Mời người dùng</button>
+      </span>
+    </div>
+    <div class="px-ph"><span>Vai trò</span><span>Bật tự đăng</span><span>Duyệt bài thường</span><span>Duyệt bài giá · sức khoẻ</span><span>Đổi cài đặt này</span></div>
+    <sc-for list="{{ perms }}" as="p" hint-placeholder-count="4">
+      <div class="px-perm">
+        <span style="display:flex;flex-direction:column;gap:2px;">
+          <span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ p.role }}</span>
+          <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ p.who }}</span>
+        </span>
+        <sc-for list="{{ p.cells }}" as="c" hint-placeholder-count="4">
+          <span style="display:flex;justify-content:center;">
+            <sc-if value="{{ c.locked }}"><span title="{{ c.title }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;color:#ccd0d8;"><i class="{{ c.lockIcon }}" style="font-size:16px;"></i></span></sc-if>
+            <sc-if value="{{ c.editable }}">
+              <button class="px-hit" onClick="{{ c.on }}" title="{{ c.title }}">
+                <sc-if value="{{ c.on2 }}"><span class="px-sw on" style="width:34px;height:18px;"><span class="px-sk" style="width:14px;height:14px;"></span></span></sc-if>
+                <sc-if value="{{ c.off }}"><span class="px-sw" style="width:34px;height:18px;"><span class="px-sk" style="width:14px;height:14px;"></span></span></sc-if>
+              </button>
+            </sc-if>
+          </span>
+        </sc-for>
+      </div>
+    </sc-for>
+    <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+      <i class="ri-lock-2-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+      <span class="px-x">Hai ô không mở được là có lý do: <b>Biên tập viên</b> không được tự bật chế độ tự đăng cho cả website, và bài có giá hoặc bài sức khoẻ luôn cần người có quyền cao hơn xác nhận. Mọi lần bật hoặc tắt tự đăng đều ghi vào nhật ký kèm tên người thực hiện.</span>
+    </div>
+  </div>
+
+  <div class="px-grid">
+    <div class="px-card">
+      <div class="px-h">
+        <i class="ri-notification-3-line" style="font-size:17px;color:#405189;"></i>
+        <span class="px-t">Thông báo cho bạn</span>
+        <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ notifySummary }}</span>
+      </div>
+      <sc-for list="{{ notifies }}" as="n" hint-placeholder-count="5">
+        <div class="px-row" style="padding:11px 16px;">
+          <span class="px-lbl">
+            <span class="px-n">{{ n.name }}</span>
+            <span class="px-x">{{ n.hint }}</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <span style="font-size:11.5px;font-weight:600;color:{{ n.color }};white-space:nowrap;">{{ n.stateText }}</span>
+            <sc-if value="{{ n.lockedOn }}"><span title="Không tắt được — đây là thông báo an toàn bắt buộc" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;color:#ccd0d8;"><i class="ri-lock-2-line" style="font-size:15px;"></i></span></sc-if>
+            <sc-if value="{{ n.editable }}">
+              <button class="px-hit" onClick="{{ n.on }}" title="{{ n.title }}">
+                <sc-if value="{{ n.on2 }}"><span class="px-sw on"><span class="px-sk"></span></span></sc-if>
+                <sc-if value="{{ n.off }}"><span class="px-sw"><span class="px-sk"></span></span></sc-if>
+              </button>
+            </sc-if>
+          </span>
+        </div>
+      </sc-for>
+      <div class="px-row">
+        <span class="px-lbl">
+          <span class="px-n">Gửi tới</span>
+          <span class="px-x">Bản tin sáng gộp mọi việc cần bạn trong một thư, không gửi lẻ từng bài.</span>
+        </span>
+        <span style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0;">
+          <sc-for list="{{ channels }}" as="ch" hint-placeholder-count="3">
+            <sc-if value="{{ ch.on2 }}"><button class="px-pill on" onClick="{{ ch.on }}" title="{{ ch.title }}"><i class="{{ ch.icon }}" style="font-size:14px;"></i>{{ ch.label }}</button></sc-if>
+            <sc-if value="{{ ch.off }}"><button class="px-pill" onClick="{{ ch.on }}" title="{{ ch.title }}"><i class="{{ ch.icon }}" style="font-size:14px;"></i>{{ ch.label }}</button></sc-if>
+          </sc-for>
+        </span>
+      </div>
+    </div>
+
+    <div class="px-card">
+      <div class="px-h">
+        <i class="ri-lifebuoy-line" style="font-size:17px;color:#405189;"></i>
+        <span class="px-t">Phanh an toàn</span>
+      </div>
+      <sc-for list="{{ brakes }}" as="b" hint-placeholder-count="4">
+        <div class="px-row" style="padding:11px 16px;">
+          <span class="px-lbl">
+            <span class="px-n">{{ b.name }}</span>
+            <span class="px-x">{{ b.hint }}</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <span style="font-size:11.5px;font-weight:600;color:{{ b.color }};white-space:nowrap;">{{ b.stateText }}</span>
+            <sc-if value="{{ b.lockedOn }}"><span title="Không tắt được — phanh bắt buộc của nền tảng" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;color:#ccd0d8;"><i class="ri-lock-2-line" style="font-size:15px;"></i></span></sc-if>
+            <sc-if value="{{ b.editable }}">
+              <button class="px-hit" onClick="{{ b.on }}" title="{{ b.title }}">
+                <sc-if value="{{ b.on2 }}"><span class="px-sw on"><span class="px-sk"></span></span></sc-if>
+                <sc-if value="{{ b.off }}"><span class="px-sw"><span class="px-sk"></span></span></sc-if>
+              </button>
+            </sc-if>
+          </span>
+        </div>
+      </sc-for>
+      <div style="display:flex;flex-direction:column;gap:9px;padding:13px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Dừng khẩn cấp</span>
+        <span class="px-x">Tắt mọi hoạt động tự động ngay: đang viết thì viết xong rồi dừng, chưa đăng thì giữ lại. Không mất bài nào, không mất lượt AI. Bật lại lúc nào cũng được.</span>
+        <button class="px-btn" style="min-height:38px;align-self:flex-start;border-color:rgba(240,101,72,.35);background:rgba(240,101,72,.07);color:#a5402c;" onClick="{{ onStopAll }}"><i class="ri-stop-circle-line" style="font-size:15px;"></i>Dừng toàn bộ tự động</button>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ askOpen }}">
+    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
+      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:pxFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:#405189;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ askTitle }}</span></div>
+        <span style="font-size:12.5px;color:#878a99;line-height:1.7;">{{ askText }}</span>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+          <button class="px-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Huỷ</button>
+          <button class="px-pri" onClick="{{ onAskOk }}">{{ askOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}">
+    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#343a40;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:pxFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+      <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
+      <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;autoPublishDefault&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;},&quot;dailyCap&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[6,9,12,20],&quot;default&quot;:12,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;},&quot;pace&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:6,&quot;min&quot;:1,&quot;max&quot;:40,&quot;unit&quot;:&quot;trang/ngày&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;}}">
+class Component extends DCLogic {
+  QUOTA = { used: 41500, limit: 60000 };
+  PACE = 6;
+  DEFAULTS = {
+    master: true, hours: [8, 9, 10, 11, 13, 14, 15, 16], days: [5, 6], holiday: true,
+    cap: 12, lanes: { seo: 2, prod: 8, news: 3, refresh: 5, social: 0 },
+    perms: { editor_auto: false, editor_normal: true, editor_ymyl: false, editor_settings: false, mkt_auto: true, mkt_normal: true, mkt_ymyl: false, mkt_settings: false },
+    notify: { morning: true, hold: true, quota: true, fail: true, noindex: true },
+    channels: ['email', 'zalo'],
+    brakes: { hold24: true, dupe: true, price: true, drift: true }
+  };
+  state = { dirty: 0, toast: null, ask: null };
+
+  LANES = [
+    { k: 'seo', name: 'Cụm SEO chủ đề', hint: 'Bài trụ và bài ngách — làn duy nhất theo tần suất tuần. Hai ràng buộc cùng áp: tối đa số bài/ngày chọn ở đây, và trong đó không quá 1 bài mỗi cụm chủ đề, cách nhau ≥48 giờ.', opts: [1, 2, 3] },
+    { k: 'prod', name: 'Sản phẩm & danh mục', hint: 'Mô tả sản phẩm, mô tả danh mục — không tính vào tần suất tuần.', opts: [5, 8, 12] },
+    { k: 'news', name: 'Tin tức & thông báo', hint: 'Chỉ đăng khi có sự kiện thật, luôn cần người duyệt.', opts: [1, 3, 5] },
+    { k: 'refresh', name: 'Làm mới bài cũ', hint: 'Cập nhật bài đã đăng, không tạo trang mới.', opts: [3, 5, 8] },
+    { k: 'social', name: 'Mạng xã hội', hint: 'Không tạo trang trên website nên không nằm trong trần tổng.', opts: [0] }
+  ];
+  PERMS = [
+    { role: 'Chủ website', who: 'Nguyễn Bảo Sơn', cells: ['always', 'always', 'always', 'always'] },
+    { role: 'Quản lý nội dung', who: 'Trần Mai Anh', cells: ['mkt_auto', 'mkt_normal', 'mkt_ymyl', 'mkt_settings'] },
+    { role: 'Biên tập viên', who: '2 người', cells: ['never_auto', 'editor_normal', 'never_ymyl', 'never_settings'] },
+    { role: 'Trợ lý AI', who: 'Tự động', cells: ['auto_note', 'auto_gate', 'never_ai', 'never_ai2'] }
+  ];
+  NOTIFY = [
+    { k: 'morning', name: 'Bản tin sáng 8:00', hint: 'Gộp mọi việc cần bạn: bài chờ duyệt, bài sắp tự đăng, bài đang chờ ảnh.', lock: false },
+    { k: 'hold', name: 'Bài sắp tự đăng', hint: 'Danh sách bài sẽ lên trong 24 giờ, có liên kết chặn nhanh.', lock: false },
+    { k: 'quota', name: 'Sắp hết lượt AI', hint: 'Nhắc khi còn dưới 20% hạn ngạch tháng — tránh dừng giữa cụm.', lock: true },
+    { k: 'fail', name: 'Bài lỗi hoặc thiếu dữ liệu', hint: 'Bài dừng vì thiếu thông số, thiếu ảnh thật hoặc lỗi hệ thống.', lock: true },
+    { k: 'noindex', name: 'Bài chưa được index sau 14 ngày', hint: 'Dấu hiệu sớm nhất cho biết chất lượng hoặc kỹ thuật có vấn đề.', lock: false }
+  ];
+  BRAKES = [
+    { k: 'hold24', name: 'Giữ 24 giờ trước khi tự đăng', hint: 'Bài đã đạt cổng vẫn nằm ở hàng chờ một ngày để bạn kịp chặn.', lock: true },
+    { k: 'dupe', name: 'Kiểm trùng lại ngay trước lúc đăng', hint: 'Chặn trường hợp hai bài cùng ý định lọt qua vì được xếp lịch ở hai thời điểm khác nhau.', lock: true },
+    { k: 'price', name: 'Bài có giá luôn cần người duyệt', hint: 'Giá sai là rủi ro pháp lý, không phải lỗi SEO. Không tắt được.', lock: true },
+    { k: 'drift', name: 'Tự dừng khi chất lượng trôi', hint: 'Ba bài tự đăng liên tiếp bị hạ điểm hoặc không index thì tạm dừng tự đăng và báo cho bạn.', lock: false }
+  ];
+  CHANNELS = [
+    { k: 'email', label: 'Email', icon: 'ri-mail-line', title: 'son@example.com' },
+    { k: 'zalo', label: 'Zalo', icon: 'ri-chat-3-line', title: 'Zalo của chủ website' },
+    { k: 'bell', label: 'Trong trang quản trị', icon: 'ri-notification-3-line', title: 'Chuông thông báo trong admin' }
+  ];
+
+  cfg() {
+    if (!this._c) {
+      this._c = JSON.parse(JSON.stringify(this.DEFAULTS));
+      if (this.props.autoPublishDefault != null) this._c.master = !!this.props.autoPublishDefault;
+      if (this.props.dailyCap != null) this._c.cap = this.props.dailyCap;
+    }
+    return this._c;
+  }
+  touch(msg, icon) { this.setState(s => ({ dirty: s.dirty + 1 })); if (msg) this.toast(msg, icon); }
+  componentDidMount() {
+    this._key = (e) => { if (e.key === 'Escape' && this.state.ask) this.setState({ ask: null }); };
+    window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() { clearTimeout(this._t); if (this._key) window.removeEventListener('keydown', this._key); }
+  toast(text, icon) { clearTimeout(this._t); this.setState({ toast: { text: text, icon: icon || 'ri-check-line' } }); this._t = setTimeout(() => this.setState({ toast: null }), 4400); }
+
+  renderVals() {
+    const c = this.cfg(), S = this.state;
+    const DAYN = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+    const pace = this.props.pace != null ? this.props.pace : this.PACE;
+    const capMax = pace * 2;
+    const hoursOn = c.hours.length;
+    const dirty = S.dirty > 0;
+    const ask = S.ask;
+    const noteBase = 'display:flex;align-items:flex-start;gap:8px;padding:11px 16px;border-bottom:1px solid #eff2f7;font-size:11.5px;line-height:1.65;';
+    const capHigh = c.cap > capMax;
+
+    const cell = (code, ri) => {
+      if (code === 'always') return { locked: true, editable: false, lockIcon: 'ri-check-double-line', title: 'Chủ website luôn có toàn quyền — không thể bỏ' };
+      if (code.indexOf('never') === 0) {
+        const T = { never_auto: 'Biên tập viên không được tự bật chế độ tự đăng cho cả website', never_ymyl: 'Bài có giá và bài sức khoẻ cần người có quyền cao hơn xác nhận', never_settings: 'Chỉ chủ website và quản lý nội dung được đổi cài đặt này', never_ai: 'Trợ lý AI không bao giờ được tự duyệt bài có giá hay bài sức khoẻ', never_ai2: 'Trợ lý AI không được đổi cài đặt' };
+        return { locked: true, editable: false, lockIcon: 'ri-close-line', title: T[code] || 'Không mở được' };
+      }
+      if (code === 'auto_note') return { locked: true, editable: false, lockIcon: 'ri-subtract-line', title: 'Không áp dụng — trợ lý AI không tự bật chế độ' };
+      if (code === 'auto_gate') return { locked: true, editable: false, lockIcon: 'ri-shield-check-line', title: 'Chỉ đăng được bài đạt toàn bộ cổng chất lượng và không thuộc nhóm bắt buộc soát' };
+      const on = !!c.perms[code];
+      return {
+        locked: false, editable: true, on2: on, off: !on,
+        title: (on ? 'Bỏ quyền này' : 'Cho quyền này') + ' — ' + (ri === 1 ? 'Quản lý nội dung' : 'Biên tập viên'),
+        on: () => { c.perms[code] = !on; this.touch('Đã ' + (on ? 'bỏ' : 'cấp') + ' quyền — ghi vào nhật ký kèm tên bạn', 'ri-shield-user-line'); }
+      };
+    };
+
+    return {
+      masterOn: c.master, masterOff: !c.master, masterText: c.master ? 'Đang bật' : 'Đang tắt',
+      masterTitle: c.master ? 'Tắt tự đăng — mọi bài chờ bạn duyệt, kế hoạch và hàng đợi vẫn chạy' : 'Bật tự đăng cho bài đạt cổng chất lượng',
+      onMaster: () => {
+        if (c.master) { c.master = false; this.touch('Đã tắt tự đăng — mọi bài chờ bạn duyệt, không bài nào bị mất', 'ri-hand'); return; }
+        this.setState({ ask: { kind: 'master', icon: 'ri-robot-2-line', title: 'Bật chế độ tự đăng?', text: 'Chỉ bài đạt toàn bộ cổng chất lượng của loại nội dung đó mới được tự lên, và vẫn nằm ở hàng chờ 24 giờ để bạn kịp chặn. Bài có giá, bài so sánh đối thủ và bài sức khoẻ luôn chờ bạn duyệt. Nên chạy 2–3 tuần ở chế độ tắt trước, để bạn thấy chất lượng thực tế.', ok: 'Bật tự đăng' } });
+      },
+      heroStyle: 'display:flex;align-items:flex-start;gap:12px;padding:15px 16px;flex-wrap:wrap;' + (c.master ? 'background:rgba(10,179,156,.06);color:#0a7d6f;' : 'background:#f8f9fb;color:#878a99;'),
+      heroIcon: c.master ? 'ri-robot-2-line' : 'ri-hand',
+      heroTitle: c.master ? 'Tự đăng đang bật — chỉ bài đạt chuẩn được lên' : 'Tự đăng đang tắt — mọi bài chờ bạn duyệt',
+      heroText: c.master
+        ? 'Bài đạt cổng đăng đúng slot đã xếp, trong khung giờ bên dưới, tối đa ' + c.cap + ' trang mới mỗi ngày. Bạn vẫn nhận danh sách bài sắp lên mỗi sáng và chặn được bất cứ bài nào.'
+        : 'Hệ thống vẫn lập kế hoạch, viết bài và tính điểm bình thường — chỉ khác là không bài nào tự lên website. Đây là chế độ nên dùng trong vài tuần đầu.',
+
+      hours: Array.from({ length: 24 }, (_, h) => {
+        const on = c.hours.indexOf(h) >= 0;
+        return {
+          label: h + 'h', on2: on, off: !on,
+          title: (on ? 'Tắt' : 'Bật') + ' giờ ' + h + ':00',
+          on: () => { c.hours = on ? c.hours.filter(x => x !== h) : c.hours.concat([h]).sort((a, b) => a - b); this.touch(); }
+        };
+      }),
+      hourSummary: hoursOn ? (hoursOn + ' giờ đã bật · sớm nhất ' + Math.min.apply(null, c.hours) + 'h, muộn nhất ' + Math.max.apply(null, c.hours) + 'h') : 'Chưa bật giờ nào — bài sẽ không tự đăng',
+      onHoursWork: () => { c.hours = [8, 9, 10, 11, 13, 14, 15, 16]; this.touch('Đã đặt khung giờ làm việc 8–17h', 'ri-time-line'); },
+      onHoursPeak: () => { c.hours = [9, 10, 11, 14, 15, 16]; this.touch('Đã đặt theo giờ khách đọc nhiều nhất trên website của bạn', 'ri-line-chart-line'); },
+      days: DAYN.map((d, i) => {
+        const off = c.days.indexOf(i) >= 0;
+        return {
+          label: d, on2: off, off: !off,
+          title: off ? 'Bỏ ngày nghỉ ' + d + ' — sẽ đăng vào ngày này' : 'Đặt ' + d + ' là ngày không đăng',
+          on: () => { c.days = off ? c.days.filter(x => x !== i) : c.days.concat([i]); this.touch(); }
+        };
+      }),
+      holidayOn: c.holiday, holidayOff: !c.holiday,
+      holidayText: c.holiday ? 'Tạm dừng ngày lễ' : 'Đăng cả ngày lễ',
+      holidayColor: c.holiday ? '#0a8f7f' : '#878a99',
+      holidayTitle: c.holiday ? 'Cho đăng cả ngày lễ' : 'Tạm dừng đăng vào ngày lễ Việt Nam',
+      onHoliday: () => { c.holiday = !c.holiday; this.touch(); },
+
+      paceText: pace + ' trang mới mỗi ngày',
+      caps: [6, 9, 12, 20].map(v => ({
+        label: v + ' trang/ngày', on2: c.cap === v, off: c.cap !== v,
+        title: v <= capMax ? 'An toàn: dưới 2 lần nhịp thật của bạn' : 'Vượt 2 lần nhịp thật (' + pace + '/ngày) — rủi ro bị coi là nội dung sản xuất máy móc',
+        on: () => { c.cap = v; this.touch(); }
+      })),
+      capNote: capHigh
+        ? 'Trần ' + c.cap + ' trang/ngày cao hơn 2 lần nhịp thật (' + pace + ' trang/ngày). Tăng đột ngột số trang mới là tín hiệu xấu rõ rệt — nếu cần đẩy nhanh, hãy tăng dần mỗi tuần thay vì đặt trần cao ngay.'
+        : 'Trần ' + c.cap + ' trang/ngày nằm trong vùng an toàn so với nhịp thật ' + pace + ' trang/ngày của bạn. Kịch trần thì hệ thống hoãn sang ngày sau, không bỏ bài nào.',
+      capNoteStyle: noteBase + (capHigh ? 'background:rgba(247,184,75,.10);color:#8a6115;' : 'background:#f8f9fb;color:#878a99;'),
+      capIcon: capHigh ? 'ri-alert-line' : 'ri-information-line',
+      lanes: this.LANES.map(l => Object.assign({}, l, {
+        opts: l.opts.map(v => ({
+          label: v === 0 ? 'không giới hạn' : v + '/ngày',
+          on2: c.lanes[l.k] === v, off: c.lanes[l.k] !== v,
+          title: v === 0 ? 'Không tạo trang trên website nên không có trần' : 'Tối đa ' + v + ' mục mỗi ngày cho làn này',
+          on: () => { c.lanes[l.k] = v; this.touch(); }
+        }))
+      })),
+      laneSummary: 'tổng trần các làn: ' + this.LANES.reduce((a, l) => a + c.lanes[l.k], 0) + ' · van tổng vẫn chặn ở ' + c.cap,
+
+      perms: this.PERMS.map((p, ri) => Object.assign({}, p, { cells: p.cells.map(code => cell(code, ri)) })),
+      permSummary: '4 vai trò · 2 quyền bị khoá theo quy định nền tảng',
+      onInvite: () => this.toast('Mở Cài đặt › Người dùng để mời thêm người và chọn vai trò', 'ri-user-add-line'),
+
+      notifies: this.NOTIFY.map(n => {
+        const on = !!c.notify[n.k];
+        return Object.assign({}, n, {
+          on2: on, off: !on, editable: !n.lock, lockedOn: n.lock,
+          stateText: n.lock ? 'Luôn gửi' : (on ? 'Đang gửi' : 'Đang tắt'),
+          color: (n.lock || on) ? '#0a8f7f' : '#878a99',
+          title: on ? 'Tắt thông báo này' : 'Bật thông báo này',
+          on: () => { c.notify[n.k] = !on; this.touch(); }
+        });
+      }),
+      notifySummary: this.CHANNELS.filter(ch => c.channels.indexOf(ch.k) >= 0).length + ' kênh đang bật',
+      channels: this.CHANNELS.map(ch => {
+        const on = c.channels.indexOf(ch.k) >= 0;
+        return Object.assign({}, ch, {
+          on2: on, off: !on,
+          title: (on ? 'Bỏ kênh ' : 'Thêm kênh ') + ch.label + ' · ' + ch.title,
+          on: () => { c.channels = on ? c.channels.filter(x => x !== ch.k) : c.channels.concat([ch.k]); this.touch(); }
+        });
+      }),
+      brakes: this.BRAKES.map(b => {
+        const on = !!c.brakes[b.k];
+        return Object.assign({}, b, {
+          on2: on, off: !on, editable: !b.lock, lockedOn: b.lock,
+          stateText: b.lock ? 'Luôn bật' : (on ? 'Đang bật' : 'Đang tắt'),
+          color: (b.lock || on) ? '#0a8f7f' : '#878a99',
+          title: on ? 'Tắt phanh này' : 'Bật phanh này',
+          on: () => { c.brakes[b.k] = !on; this.touch(); }
+        });
+      }),
+      onStopAll: () => this.setState({ ask: { kind: 'stop', icon: 'ri-stop-circle-line', title: 'Dừng toàn bộ hoạt động tự động?', text: 'Bài đang viết sẽ viết xong rồi dừng; bài chưa đăng được giữ lại trong hàng chờ. Không mất bài nào, không mất lượt AI, kế hoạch vẫn còn nguyên. Bạn bật lại lúc nào cũng được.', ok: 'Dừng toàn bộ' } }),
+
+      saveLabel: dirty ? 'Lưu — hiệu lực ngay' : 'Đã lưu',
+      saveOff: !dirty,
+      saveTitle: dirty ? S.dirty + ' thay đổi chưa lưu · áp dụng ngay khi lưu, không cần bước duyệt' : 'Chưa có thay đổi nào',
+      onSave: () => { this.setState({ dirty: 0 }); this.toast('Đã lưu — cài đặt có hiệu lực ngay với các bài chưa đăng', 'ri-save-3-line'); },
+      onReset: () => { this._c = null; this.cfg(); this.touch('Đã đưa mọi mục về mặc định an toàn — xem lại rồi bấm Lưu', 'ri-refresh-line'); },
+
+      askOpen: !!ask, askTitle: ask ? ask.title : '', askText: ask ? ask.text : '', askOk: ask ? ask.ok : '', askIcon: ask ? ask.icon : 'ri-information-line',
+      onAskCancel: () => this.setState({ ask: null }),
+      onAskOk: () => {
+        const k = ask ? ask.kind : '';
+        this.setState({ ask: null });
+        if (k === 'master') { c.master = true; this.touch('Đã bật tự đăng — vẫn giữ 24 giờ trước khi mỗi bài lên, bạn chặn được bất cứ lúc nào', 'ri-robot-2-line'); }
+        else { c.master = false; this.touch('Đã dừng toàn bộ tự động — bài đang viết sẽ hoàn tất rồi dừng, không mất gì', 'ri-stop-circle-line'); }
+      },
+      toast: !!S.toast, toastText: S.toast ? S.toast.text : '', toastIcon: S.toast ? S.toast.icon : 'ri-check-line'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

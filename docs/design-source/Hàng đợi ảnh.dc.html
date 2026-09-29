@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<script src="ai-quota.js"></script>
+<style>
+body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+.im-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.im-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
+.im-t{font-size:14px;font-weight:600;color:#343a40;}
+.im-row{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;}
+.im-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.im-tab:hover{background:#f3f6f9;}
+.im-tab.on{border-color:#405189;background:rgba(64,81,137,.08);font-weight:600;color:#405189;}
+.im-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
+.im-btn:hover{background:#f3f6f9;}
+.im-ai{border-color:rgba(64,81,137,.28);background:rgba(64,81,137,.10);color:#405189;}
+.im-ai:disabled{border-color:#eff2f7;background:#f8f9fb;color:#adb5bd;cursor:not-allowed;}
+.im-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.im-pri:disabled{background:#e9ebec;color:#adb5bd;cursor:not-allowed;}
+.im-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.im-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.im-pill:hover{background:#f3f6f9;}
+.im-pill.on{border-color:#405189;background:rgba(64,81,137,.07);font-weight:600;color:#405189;}
+.im-slot{display:flex;align-items:center;justify-content:center;border:1px dashed #ccd0d8;border-radius:5px;background:#fbfcfe;color:#adb5bd;flex-shrink:0;overflow:hidden;}
+.im-cb{width:18px;height:18px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#fff;}
+.im-cb.on{border-color:#405189;background:#405189;color:#fff;}
+.im-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
+.im-ta{width:100%;box-sizing:border-box;min-height:74px;padding:9px 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;color:#343a40;line-height:1.6;resize:vertical;}
+.im-ta:focus{outline:0;border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.12);}
+.im-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.im-cands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+@media (max-width:900px){.im-4{grid-template-columns:repeat(2,minmax(0,1fr));}.im-cands{grid-template-columns:1fr;}}
+@keyframes imFade{from{opacity:0}to{opacity:1}}
+@keyframes imSpin{to{transform:rotate(360deg)}}
+.im-spin{display:inline-block;animation:imSpin 1s linear infinite;}
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+
+  <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
+      <span style="font-size:11.5px;color:#adb5bd;">Nội dung › Hàng đợi ảnh</span>
+      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Hàng đợi ảnh</span>
+      <span style="font-size:13px;color:#878a99;line-height:1.65;">Chỗ duy nhất gom mọi bài đang mắc vì thiếu ảnh. Hệ thống đã đọc nội dung từng bài, tìm sẵn ảnh có trong thư viện và viết sẵn mô tả để AI tạo ảnh — bạn xem, sửa nếu muốn, rồi bấm chạy.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;flex-wrap:wrap;">
+      <a href="{{ quotaHref }}" title="{{ iqTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:20px;background:#fff;border:1px solid #eff2f7;font-size:12px;font-weight:600;color:#878a99;white-space:nowrap;text-decoration:none;"><i class="ri-image-2-line" style="font-size:14px;"></i>{{ iqChip }}<i class="ri-arrow-right-up-line" style="font-size:13px;opacity:.7;"></i></a>
+      <button class="im-pri" onClick="{{ onUpload }}" title="{{ uploadTitle }}"><i class="ri-upload-2-line" style="font-size:16px;"></i>{{ uploadLabel }}</button>
+    </div>
+  </div>
+
+  <sc-if value="{{ needsOn }}">
+    <div class="im-card" style="display:flex;align-items:flex-start;gap:9px;padding:11px 16px;flex-wrap:wrap;">
+      <i class="ri-camera-line" style="font-size:16px;color:#a5402c;flex-shrink:0;margin-top:1px;"></i>
+      <span style="font-size:11.5px;color:#495057;line-height:1.65;flex:1 1 260px;min-width:0;">{{ needsLine }}</span>
+      <button class="im-btn" style="min-height:32px;flex-shrink:0;" onClick="{{ onCopyNeeds }}" title="Sao chép danh sách ảnh cần chụp kèm hướng dẫn từng ảnh để gửi cho người chụp"><i class="ri-file-copy-line" style="font-size:14px;"></i>Sao chép danh sách cần chụp</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ iqLowOn }}">
+    <div class="im-card" style="display:flex;align-items:flex-start;gap:9px;padding:11px 16px;background:rgba(247,184,75,.10);border-color:rgba(247,184,75,.3);">
+      <i class="ri-alert-line" style="font-size:16px;color:#b57d13;flex-shrink:0;margin-top:1px;"></i>
+      <span style="font-size:11.5px;color:#8a6115;line-height:1.65;flex:1;min-width:0;">{{ iqWarn }}</span>
+      <span style="display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap;">
+        <a class="im-btn im-ai" style="min-height:32px;text-decoration:none;" href="{{ quotaHref }}" title="{{ iqBuyTitle }}"><i class="ri-add-circle-line" style="font-size:14px;"></i>Mua thêm lượt tạo ảnh</a>
+        <a class="im-btn" style="min-height:32px;text-decoration:none;" href="{{ quotaHref }}" title="Mở Cài đặt › Mức dùng AI — so sánh mua thêm và nâng gói">Nâng gói</a>
+      </span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ doneOn }}">
+    <div class="im-card" style="display:flex;align-items:center;gap:9px;padding:11px 16px;background:rgba(10,179,156,.06);border-color:rgba(10,179,156,.28);flex-wrap:wrap;">
+      <i class="ri-checkbox-circle-fill" style="font-size:16px;color:#0a8f7f;flex-shrink:0;"></i>
+      <span style="font-size:11.5px;color:#0a7d6f;line-height:1.6;flex:1;min-width:0;">{{ doneLine }}</span>
+      <button class="im-btn" style="min-height:32px;flex-shrink:0;" onClick="{{ onGoApprove }}">Mở hộp duyệt</button>
+    </div>
+  </sc-if>
+
+  <div class="im-4">
+    <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+      <div class="im-card" style="padding:14px;display:flex;flex-direction:column;gap:5px;">
+        <span style="display:flex;align-items:center;gap:7px;"><i class="{{ s.icon }}" style="font-size:15px;color:{{ s.color }};"></i><span style="font-size:11.5px;color:#878a99;line-height:1.4;">{{ s.label }}</span></span>
+        <span style="font-size:22px;font-weight:600;color:#343a40;font-variant-numeric:tabular-nums;">{{ s.value }}</span>
+        <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ s.hint }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <sc-if value="{{ tabQOn }}"><button class="im-tab on" onClick="{{ onTabQ }}"><i class="ri-image-add-line" style="font-size:16px;"></i>Bài đang chờ ảnh<span style="font-weight:700;">{{ qCount }}</span></button></sc-if>
+    <sc-if value="{{ tabQOff }}"><button class="im-tab" onClick="{{ onTabQ }}"><i class="ri-image-add-line" style="font-size:16px;"></i>Bài đang chờ ảnh<span style="font-weight:700;">{{ qCount }}</span></button></sc-if>
+    <sc-if value="{{ tabRvOn }}"><button class="im-tab on" onClick="{{ onTabRv }}"><i class="ri-sparkling-2-line" style="font-size:16px;"></i>Ảnh AI chờ duyệt<span style="font-weight:700;">{{ rvCount }}</span></button></sc-if>
+    <sc-if value="{{ tabRvOff }}"><button class="im-tab" onClick="{{ onTabRv }}"><i class="ri-sparkling-2-line" style="font-size:16px;"></i>Ảnh AI chờ duyệt<span style="font-weight:700;">{{ rvCount }}</span></button></sc-if>
+    <sc-if value="{{ tabDoneOn }}"><button class="im-tab on" onClick="{{ onTabDone }}"><i class="ri-checkbox-circle-line" style="font-size:16px;"></i>Đã đủ ảnh<span style="font-weight:700;">{{ doneCount }}</span></button></sc-if>
+    <sc-if value="{{ tabDoneOff }}"><button class="im-tab" onClick="{{ onTabDone }}"><i class="ri-checkbox-circle-line" style="font-size:16px;"></i>Đã đủ ảnh<span style="font-weight:700;">{{ doneCount }}</span></button></sc-if>
+    <sc-if value="{{ tabRuleOn }}"><button class="im-tab on" onClick="{{ onTabRule }}"><i class="ri-shield-check-line" style="font-size:16px;"></i>Khi nào được dùng ảnh AI</button></sc-if>
+    <sc-if value="{{ tabRuleOff }}"><button class="im-tab" onClick="{{ onTabRule }}"><i class="ri-shield-check-line" style="font-size:16px;"></i>Khi nào được dùng ảnh AI</button></sc-if>
+  </div>
+
+  <sc-if value="{{ listOn }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="im-card">
+        <div class="im-h">
+          <i class="ri-filter-3-line" style="font-size:17px;color:#405189;"></i>
+          <span class="im-t">{{ listTitle }}</span>
+          <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ groupHint }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:12px 16px;">
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+            <sc-if value="{{ g.on2 }}"><button class="im-pill on" onClick="{{ g.on }}" title="{{ g.title }}">{{ g.label }}<span style="font-weight:700;">{{ g.n }}</span></button></sc-if>
+            <sc-if value="{{ g.off }}"><button class="im-pill" onClick="{{ g.on }}" title="{{ g.title }}">{{ g.label }}<span style="color:#adb5bd;font-weight:600;">{{ g.n }}</span></button></sc-if>
+          </sc-for>
+        </div>
+        <sc-if value="{{ bulkOn }}">
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #f6f7f9;background:#fbfcfe;flex-wrap:wrap;">
+            <i class="ri-flashlight-line" style="font-size:15px;color:#405189;flex-shrink:0;"></i>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1 1 220px;min-width:0;">{{ bulkScope }}</span>
+            <span style="display:flex;gap:7px;flex-wrap:wrap;flex-shrink:0;">
+              <sc-if value="{{ autoLibOn }}"><button class="im-btn im-ai" style="min-height:34px;" onClick="{{ onAutoLib }}" title="{{ autoLibTitle }}"><i class="ri-folder-image-line" style="font-size:14px;"></i>{{ autoLibLabel }}</button></sc-if>
+              <button class="im-btn im-ai" style="min-height:34px;" onClick="{{ onAutoAll }}" title="{{ autoAllTitle }}" disabled="{{ autoAllOff }}"><i class="ri-magic-line" style="font-size:15px;"></i>{{ autoAllLabel }}</button>
+            </span>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-for list="{{ items }}" as="it" hint-placeholder-count="4">
+        <div class="im-card">
+          <div class="im-h" style="align-items:flex-start;">
+            <button class="im-hit" onClick="{{ it.onPick }}" title="{{ it.pickTitle }}" style="width:34px;height:34px;margin-top:-2px;">
+              <sc-if value="{{ it.checked }}"><span class="im-cb on"><i class="ri-check-line" style="font-size:13px;"></i></span></sc-if>
+              <sc-if value="{{ it.unchecked }}"><span class="im-cb"></span></sc-if>
+            </button>
+            <span style="display:flex;flex-direction:column;gap:4px;flex:1 1 300px;min-width:0;">
+              <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                <span style="font-size:13.5px;font-weight:600;color:#343a40;line-height:1.4;">{{ it.title }}</span>
+                <span class="im-chip" style="{{ it.typeStyle }}">{{ it.type }}</span>
+                <span class="im-chip" style="{{ it.needStyle }}">{{ it.needText }}</span>
+              </span>
+              <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ it.meta }}</span>
+            </span>
+            <span style="display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap;">
+              <sc-if value="{{ it.libOn }}"><button class="im-btn" style="min-height:34px;" onClick="{{ it.onLib }}" title="{{ it.libTitle }}"><i class="ri-folder-image-line" style="font-size:14px;"></i>{{ it.libLabel }}</button></sc-if>
+              <sc-if value="{{ it.aiAllowed }}"><button class="im-btn im-ai" style="min-height:34px;" onClick="{{ it.onGen }}" title="{{ it.genTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ it.genLabel }}</button></sc-if>
+              <sc-if value="{{ it.aiBlocked }}"><span class="im-chip" style="background:rgba(240,101,72,.10);color:#a5402c;height:34px;" title="{{ it.blockTitle }}"><i class="ri-camera-line" style="font-size:14px;"></i>Cần ảnh thật</span></sc-if>
+            </span>
+          </div>
+
+          <sc-for list="{{ it.slots }}" as="sl" hint-placeholder-count="2">
+            <div class="im-row" style="padding:12px 16px;">
+              <span class="im-slot" style="{{ sl.boxStyle }}" title="{{ sl.dropHint }}">
+                <sc-if value="{{ sl.hasImg }}"><i class="ri-image-fill" style="font-size:20px;color:#8fa3c7;"></i></sc-if>
+                <sc-if value="{{ sl.canDrop }}"><span style="display:flex;flex-direction:column;align-items:center;gap:2px;"><i class="ri-drag-drop-line" style="font-size:18px;"></i><span style="font-size:9px;font-weight:600;letter-spacing:.02em;">KÉO ẢNH</span></span></sc-if>
+              </span>
+              <span style="display:flex;flex-direction:column;gap:5px;flex:1 1 300px;min-width:0;">
+                <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                  <span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ sl.role }}</span>
+                  <span class="im-chip" style="background:#f3f6f9;color:#878a99;">{{ sl.ratio }}</span>
+                  <span class="im-chip" style="{{ sl.reqStyle }}">{{ sl.reqText }}</span>
+                  <span class="im-chip" style="{{ sl.stStyle }}">{{ sl.stText }}</span>
+                  <sc-if value="{{ sl.matchOn }}"><span class="im-chip" style="{{ sl.matchStyle }}">{{ sl.matchText }}</span></sc-if>
+                </span>
+                <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ sl.why }}</span>
+                <sc-if value="{{ sl.shotOn }}">
+                  <span style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:5px;background:#f8f9fb;">
+                    <i class="ri-camera-lens-line" style="font-size:14px;color:#878a99;flex-shrink:0;margin-top:2px;"></i>
+                    <span style="display:flex;flex-direction:column;gap:5px;min-width:0;">
+                      <span style="font-size:11.5px;color:#878a99;line-height:1.6;"><b style="color:#495057;">Cách chụp:</b> {{ sl.shotText }}</span>
+                      <button class="im-btn" style="min-height:30px;align-self:flex-start;" onClick="{{ sl.onAskShot }}"><i class="ri-send-plane-line" style="font-size:13px;"></i>Gửi yêu cầu chụp kèm hướng dẫn</button>
+                    </span>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ sl.open }}">
+                  <span style="display:flex;flex-direction:column;gap:7px;margin-top:3px;">
+                    <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Mô tả để AI tạo ảnh — hệ thống viết sẵn từ nội dung bài</span>
+                    <textarea class="im-ta" value="{{ sl.prompt }}" onChange="{{ sl.onPrompt }}" placeholder="Mô tả ảnh muốn có"></textarea>
+                    <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                      <span style="font-size:11.5px;color:#878a99;">Kiểu ảnh:</span>
+                      <sc-for list="{{ sl.styles }}" as="st" hint-placeholder-count="3">
+                        <sc-if value="{{ st.on2 }}"><button class="im-pill on" style="min-height:30px;padding:4px 10px;" onClick="{{ st.on }}" title="{{ st.title }}">{{ st.label }}</button></sc-if>
+                        <sc-if value="{{ st.off }}"><button class="im-pill" style="min-height:30px;padding:4px 10px;" onClick="{{ st.on }}" title="{{ st.title }}">{{ st.label }}</button></sc-if>
+                      </sc-for>
+                    </span>
+                    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <button class="im-btn im-ai" style="min-height:34px;" onClick="{{ sl.onRun }}" title="{{ sl.runTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ sl.runLabel }}</button>
+                      <button class="im-btn" style="min-height:34px;" onClick="{{ sl.onClose }}">Thu gọn</button>
+                      <span style="font-size:11px;color:#adb5bd;">{{ sl.costText }}</span>
+                    </span>
+                  </span>
+                </sc-if>
+              </span>
+              <span style="display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap;">
+                <sc-if value="{{ sl.canOpen }}"><button class="im-btn im-ai" style="min-height:34px;" onClick="{{ sl.onOpen }}" title="Xem và sửa mô tả trước khi tạo"><i class="ri-edit-2-line" style="font-size:14px;"></i>Xem mô tả</button></sc-if>
+                <sc-if value="{{ sl.canUseMatch }}"><button class="im-btn im-ai" style="min-height:34px;" onClick="{{ sl.onUseMatch }}" title="{{ sl.useMatchTitle }}"><i class="ri-check-line" style="font-size:14px;"></i>Dùng ảnh khớp</button></sc-if>
+                <sc-if value="{{ sl.canLib }}"><button class="im-btn" style="min-height:34px;" onClick="{{ sl.onLib }}" title="{{ sl.libTitle }}">{{ sl.libLabel }}</button></sc-if>
+                <sc-if value="{{ sl.running }}">
+                  <span style="display:flex;align-items:center;gap:6px;">
+                    <span class="im-chip" style="background:rgba(64,81,137,.10);color:#405189;height:34px;"><i class="ri-loader-4-line im-spin" style="font-size:14px;"></i>Đang tạo…</span>
+                    <button class="im-btn" style="min-height:34px;padding:0 8px;" onClick="{{ sl.onCancelRun }}" title="Huỷ lần tạo này và hoàn lại lượt tạo ảnh"><i class="ri-close-line" style="font-size:14px;"></i></button>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ sl.done }}"><button class="im-btn" style="min-height:34px;" onClick="{{ sl.onGoReview }}">{{ sl.reviewLabel }}</button></sc-if>
+                <sc-if value="{{ sl.assigned }}">
+                  <span style="display:flex;gap:6px;">
+                    <button class="im-btn" style="min-height:34px;" onClick="{{ sl.onLib }}" title="Chọn ảnh khác từ thư viện"><i class="ri-repeat-2-line" style="font-size:14px;"></i>Đổi ảnh</button>
+                    <button class="im-btn" style="min-height:34px;padding:0 8px;" onClick="{{ sl.onUnassign }}" title="Bỏ ảnh khỏi ô này — ảnh vẫn còn trong thư viện"><i class="ri-close-line" style="font-size:14px;"></i></button>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ sl.canSkip }}"><button class="im-btn" style="min-height:34px;" onClick="{{ sl.onSkip }}" title="{{ sl.skipTitle }}"><i class="ri-eye-off-line" style="font-size:14px;"></i>Bỏ ô này</button></sc-if>
+                <sc-if value="{{ sl.skipped }}"><button class="im-btn" style="min-height:34px;" onClick="{{ sl.onUnskip }}" title="Bật lại ô ảnh này"><i class="ri-eye-line" style="font-size:14px;"></i>Bật lại ô</button></sc-if>
+              </span>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+
+      <sc-if value="{{ listEmpty }}">
+        <div class="im-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:9px;padding:24px 16px;">
+          <span style="font-size:13px;font-weight:600;color:#343a40;">{{ emptyTitle }}</span>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.65;max-width:620px;">{{ emptyText }}</span>
+        </div>
+      </sc-if>
+
+      <div class="im-card">
+        <div style="display:flex;gap:9px;padding:12px 16px;">
+          <i class="ri-lightbulb-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Thứ tự hệ thống tự làm cho bạn: <b>1)</b> tìm trong thư viện ảnh của bạn theo tên sản phẩm, danh mục và nội dung bài; <b>2)</b> nếu là ảnh minh hoạ khái niệm thì viết sẵn mô tả để AI tạo ảnh; <b>3)</b> nếu là ảnh sản phẩm thật, ảnh công trình, ảnh người thật hoặc ảnh chứng cứ thì <b>không tạo bằng AI</b> — chỉ nhắc bạn tải ảnh thật. Bài vẫn nằm chờ, không bị đăng thiếu ảnh và không bị bỏ.</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tabRvOn }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <sc-for list="{{ reviews }}" as="r" hint-placeholder-count="2">
+        <div class="im-card">
+          <div class="im-h" style="align-items:flex-start;">
+            <span style="display:flex;flex-direction:column;gap:4px;flex:1 1 300px;min-width:0;">
+              <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13.5px;font-weight:600;color:#343a40;">{{ r.role }} — {{ r.title }}</span><span class="im-chip" style="background:#f3f6f9;color:#878a99;">{{ r.ratio }}</span></span>
+              <span style="font-size:11.5px;color:#878a99;line-height:1.6;">Mô tả đã dùng: “{{ r.prompt }}”</span>
+            </span>
+            <span style="display:flex;gap:7px;flex-shrink:0;">
+              <button class="im-btn" style="min-height:34px;" onClick="{{ r.onEdit }}"><i class="ri-edit-2-line" style="font-size:14px;"></i>Sửa mô tả &amp; tạo lại</button>
+            </span>
+          </div>
+          <div style="padding:12px 16px;">
+            <div class="im-cands">
+              <sc-for list="{{ r.cands }}" as="cd" hint-placeholder-count="3">
+                <span style="{{ cd.wrapStyle }}">
+                  <span class="im-slot" style="{{ cd.boxStyle }}"><i class="ri-image-fill" style="font-size:26px;color:#8fa3c7;"></i></span>
+                  <span style="display:flex;flex-direction:column;gap:3px;padding:9px 10px;">
+                    <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="font-size:12px;font-weight:600;color:#343a40;">{{ cd.name }}</span><sc-if value="{{ cd.best }}"><span class="im-chip" style="background:rgba(10,179,156,.12);color:#0a7d6f;">AI đề xuất</span></sc-if></span>
+                    <span style="font-size:11px;color:#878a99;line-height:1.55;">{{ cd.note }}</span>
+                    <span style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
+                      <sc-if value="{{ cd.canPick }}"><button class="im-btn im-ai" style="min-height:32px;" onClick="{{ cd.onPick }}" title="{{ cd.pickTitle }}">Dùng ảnh này</button></sc-if>
+                      <sc-if value="{{ cd.picked }}"><span class="im-chip" style="background:rgba(10,179,156,.12);color:#0a7d6f;height:32px;"><i class="ri-check-line" style="font-size:13px;"></i>Đã chọn</span></sc-if>
+                      <button class="im-btn" style="min-height:32px;padding:0 8px;" onClick="{{ cd.onZoom }}" title="Xem lớn"><i class="ri-fullscreen-line" style="font-size:13px;"></i></button>
+                    </span>
+                  </span>
+                </span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;flex-wrap:wrap;">
+            <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1;min-width:0;">{{ r.note }}</span>
+            <button class="im-btn" style="min-height:34px;" onClick="{{ r.onNone }}" title="Không dùng phương án nào — bài quay lại hàng chờ ảnh thật">Không dùng ảnh nào</button>
+          </div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ rvEmpty }}">
+        <div class="im-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:9px;padding:24px 16px;">
+          <span style="font-size:13px;font-weight:600;color:#343a40;">Chưa có ảnh AI nào chờ duyệt</span>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.65;max-width:620px;">Mở thẻ “Bài đang chờ ảnh”, bấm <b>Xem mô tả</b> ở một ô ảnh minh hoạ rồi bấm <b>Vẽ 3 phương án</b>. Ảnh vẽ xong sẽ hiện ở đây để bạn chọn.</span>
+          <button class="im-pri" onClick="{{ onTabQ }}"><i class="ri-image-add-line" style="font-size:16px;"></i>Về danh sách bài chờ ảnh</button>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tabRuleOn }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="im-card">
+        <div class="im-h">
+          <i class="ri-shield-check-line" style="font-size:17px;color:#405189;"></i>
+          <span class="im-t">Loại ảnh nào được tạo bằng AI, loại nào bắt buộc ảnh thật</span>
+        </div>
+        <sc-for list="{{ rules }}" as="ru" hint-placeholder-count="6">
+          <div class="im-row" style="padding:11px 16px;align-items:center;">
+            <span class="im-chip" style="{{ ru.style }}">{{ ru.verdict }}</span>
+            <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 300px;min-width:0;">
+              <span style="font-size:12.5px;font-weight:600;color:#343a40;line-height:1.45;">{{ ru.name }}</span>
+              <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ ru.hint }}</span>
+            </span>
+          </div>
+        </sc-for>
+        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+          <i class="ri-error-warning-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Ranh giới này không phải để làm khó bạn: ảnh AI tạo một cái máy lọc nước “giống thật nhưng không phải hàng bạn bán” là nói sai với khách và rủi ro quảng cáo. Ảnh minh hoạ khái niệm — sơ đồ dòng nước, nền trang trí, hình vẽ giải thích — thì vẽ bằng AI hoàn toàn ổn.</span>
+        </div>
+      </div>
+
+      <div class="im-card">
+        <div class="im-h">
+          <i class="ri-settings-3-line" style="font-size:17px;color:#405189;"></i>
+          <span class="im-t">Cách hệ thống xử lý ảnh sau khi bạn chọn</span>
+        </div>
+        <sc-for list="{{ pipeline }}" as="p" hint-placeholder-count="5">
+          <div class="im-row" style="padding:10px 16px;align-items:center;">
+            <i class="{{ p.icon }}" style="font-size:16px;color:#405189;flex-shrink:0;"></i>
+            <span style="font-size:12.5px;color:#495057;line-height:1.6;flex:1;min-width:0;">{{ p.text }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ askOpen }}">
+    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
+      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:imFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:#405189;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ askTitle }}</span></div>
+        <span style="font-size:12.5px;color:#878a99;line-height:1.7;">{{ askText }}</span>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+          <button class="im-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Huỷ</button>
+          <button class="im-pri" onClick="{{ onAskOk }}">{{ askOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}">
+    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#343a40;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:imFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+      <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
+      <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;allowAiImages&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ảnh AI&quot;},&quot;variantsPerRun&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[2,3,4],&quot;default&quot;:3,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Ảnh AI&quot;},&quot;imageQuota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:6,&quot;limit&quot;:10,&quot;addon&quot;:50},&quot;tsType&quot;:&quot;{used:number,limit:number,addon:number}&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'q', group: 'all', picked: {}, open: null, prompts: {}, styles: {}, gen: {}, chosen: {}, skipped: {}, dropped: {}, spent: 0, toast: null, ask: null };
+  settled(s) { const S = this.state; return !!S.chosen[s.k] || !!S.skipped[s.k]; }
+  itemDone(i) { return i.slots.every(s => this.settled(s) || !s.req); }
+
+  ITEMS = [
+    {
+      k: 'a1', title: 'Hệ lọc tổng 3 cột inox đầu nguồn', type: 'Mô tả sản phẩm', g: 'prod',
+      meta: 'Sản phẩm › Hệ lọc tổng · bài đã viết xong 810 từ · chỉ mắc ở ảnh',
+      slots: [
+        { k: 's1', role: 'Ảnh sản phẩm chính', ratio: '1:1', real: true, req: true, why: 'Đây là hàng bạn bán nên bắt buộc ảnh thật — AI tạo ra một cái máy không tồn tại là nói sai với khách.', lib: 2 },
+        { k: 's2', role: 'Ảnh chi tiết cột lọc', ratio: '4:3', real: true, req: false, why: 'Nên có để khách tin, nhưng không bắt buộc — thiếu ảnh này bài vẫn đăng được.', lib: 0 }
+      ]
+    },
+    {
+      k: 'a2', title: 'Cách xử lý nước nhiễm phèn tại nhà', type: 'Bài trụ', g: 'post',
+      meta: 'Bài viết › Nước nhiễm phèn · 1.680 từ · cần 1 ảnh bìa và 1 sơ đồ',
+      slots: [
+        { k: 's3', role: 'Ảnh bìa bài viết', ratio: '16:9', real: false, req: true, why: 'Ảnh minh hoạ khái niệm — tạo bằng AI được. Hệ thống đã đọc bài và viết sẵn mô tả.', lib: 0,
+          prompt: 'Ảnh bìa ngang cho bài về nước nhiễm phèn: hai ly nước cạnh nhau trên nền bàn gỗ sáng, ly bên trái nước vàng đục có cặn, ly bên phải nước trong, ánh sáng tự nhiên bên cửa sổ, không có chữ, không có logo, chụp thật như ảnh tư liệu.' },
+        { k: 's4', role: 'Sơ đồ các bước xử lý', ratio: '4:3', real: false, req: false, why: 'Sơ đồ giải thích 4 bước lắng — lọc thô — vật liệu khử phèn — lọc tinh, lấy đúng theo các mục trong bài.', lib: 0,
+          prompt: 'Sơ đồ ngang 4 bước xử lý nước nhiễm phèn: bể lắng, lọc thô, cột vật liệu khử phèn, lọc tinh; mũi tên nối theo dòng nước, nét vẽ phẳng, hai màu xanh navy và xanh ngọc, nền trắng, không chữ tiếng nước ngoài.' }
+      ]
+    },
+    {
+      k: 'a3', title: 'Nước nhiễm phèn có tắm được không?', type: 'Sức khoẻ', g: 'post',
+      meta: 'Bài viết › Nước nhiễm phèn · 1.020 từ · cần 1 ảnh minh hoạ',
+      slots: [
+        { k: 's5', role: 'Ảnh minh hoạ tác động lên da', ratio: '16:9', real: true, req: true, why: 'Bài sức khoẻ: ảnh mô tả triệu chứng trên người phải là ảnh thật hoặc ảnh có giấy phép y tế — không tạo bằng AI. Hệ thống chỉ nhắc bạn tải ảnh lên.', lib: 1 }
+      ]
+    },
+    {
+      k: 'a4', title: 'Máy lọc nước RO Karofi KAQ-U95', type: 'Mô tả sản phẩm', g: 'prod',
+      meta: 'Sản phẩm › Máy lọc gia đình · đã có 1 ảnh · thiếu 2 ảnh góc cạnh',
+      slots: [
+        { k: 's6', role: 'Ảnh góc 3/4', ratio: '1:1', real: true, req: true, why: 'Ảnh sản phẩm thật. Thư viện có 3 ảnh cùng model, hệ thống đã lọc sẵn.', lib: 3 }
+      ]
+    },
+    {
+      k: 'a5', title: 'Danh mục: Xử lý nước nhiễm phèn', type: 'Mô tả danh mục', g: 'cat',
+      meta: 'Danh mục › 12 sản phẩm · cần 1 ảnh đầu trang danh mục',
+      slots: [
+        { k: 's7', role: 'Ảnh đầu trang danh mục', ratio: '21:9', real: false, req: true, why: 'Ảnh nền trang trí cho đầu danh mục — tạo bằng AI hoàn toàn ổn, không mô tả sản phẩm cụ thể nào.', lib: 0,
+          prompt: 'Ảnh nền ngang rất rộng cho đầu trang danh mục xử lý nước: mặt nước trong gợn nhẹ, tông xanh navy sang xanh ngọc, mờ nhẹ ở hai bên để đặt chữ lên, không có sản phẩm, không có người, không có chữ.' }
+      ]
+    }
+  ];
+  STYLES = [
+    { k: 'photo', label: 'Như ảnh chụp thật', title: 'Phù hợp ảnh bìa, ảnh minh hoạ hiện trường' },
+    { k: 'flat', label: 'Hình vẽ phẳng', title: 'Phù hợp sơ đồ, hình giải thích các bước' },
+    { k: 'bg', label: 'Nền trang trí', title: 'Phù hợp ảnh đầu trang, ảnh nền có chỗ đặt chữ' }
+  ];
+  CANDS = [
+    { k: 'c1', name: 'Phương án 1', note: 'Bố cục cân, chỗ trống bên phải đặt tiêu đề tốt.', best: true },
+    { k: 'c2', name: 'Phương án 2', note: 'Góc chụp gần hơn, màu ấm hơn.', best: false },
+    { k: 'c3', name: 'Phương án 3', note: 'Nhiều chi tiết nền, phù hợp khi không chèn chữ.', best: false },
+    { k: 'c4', name: 'Phương án 4', note: 'Bố cục dọc hơn, dùng tốt khi cắt sang ảnh vuông.', best: false }
+  ];
+  RULES = [
+    { name: 'Ảnh sản phẩm bạn đang bán', verdict: 'Ảnh thật', ok: false, hint: 'Kể cả khi AI tạo giống, đó vẫn không phải hàng của bạn. Khách so ảnh với hàng nhận được là mất tin ngay.' },
+    { name: 'Ảnh công trình, ảnh thi công, ảnh xưởng', verdict: 'Ảnh thật', ok: false, hint: 'Đây là bằng chứng năng lực — dùng ảnh AI tạo là khai sai.' },
+    { name: 'Ảnh người thật: nhân viên, khách hàng, chuyên gia', verdict: 'Ảnh thật', ok: false, hint: 'Ảnh người do AI tạo dùng làm tác giả hoặc lời chứng là vi phạm nguyên tắc minh bạch.' },
+    { name: 'Ảnh triệu chứng, ảnh y tế, ảnh kết quả đo', verdict: 'Ảnh thật', ok: false, hint: 'Chủ đề sức khoẻ cần ảnh có nguồn hoặc ảnh đo thật của bạn.' },
+    { name: 'Ảnh bìa bài viết mang tính khái niệm', verdict: 'AI tạo được', ok: true, hint: 'Ly nước trong và nước đục, giọt nước, nền nước — không nhận là sản phẩm cụ thể nào.' },
+    { name: 'Sơ đồ, hình giải thích các bước', verdict: 'AI tạo được', ok: true, hint: 'Tạo theo đúng các mục trong bài. Chữ trong hình do hệ thống chèn lại bằng tiếng Việt, không để AI viết chữ.' },
+    { name: 'Ảnh nền trang trí, ảnh đầu trang danh mục', verdict: 'AI tạo được', ok: true, hint: 'Có chừa chỗ trống để đặt tiêu đề, không chứa sản phẩm hay người.' },
+    { name: 'Ảnh mô phỏng cấu tạo, mặt cắt kỹ thuật', verdict: 'Cần bạn xác nhận', ok: null, hint: 'Tạo được nhưng phải đúng kỹ thuật — người có chuyên môn phải xem trước khi đăng.' }
+  ];
+  PIPELINE = [
+    { icon: 'ri-crop-line', text: 'Tự cắt đúng mọi tỷ lệ cần dùng: ảnh vuông cho sản phẩm, 16:9 cho bìa, 21:9 cho đầu trang, ảnh dọc cho mạng xã hội — giữ đúng tỷ lệ gốc, không bóp méo.' },
+    { icon: 'ri-image-line', text: 'Nén và chuyển sang định dạng nhẹ, sinh nhiều kích thước cho điện thoại và máy tính để trang tải nhanh.' },
+    { icon: 'ri-text', text: 'Tự viết chữ thay thế (alt) và chú thích bằng tiếng Việt theo nội dung ảnh thật, không nhồi từ khoá.' },
+    { icon: 'ri-price-tag-3-line', text: 'Gắn ảnh vào đúng ô của bài hoặc sản phẩm, đưa vào thư viện theo cụm chủ đề để lần sau dùng lại được.' },
+    { icon: 'ri-information-line', text: 'Ảnh do AI tạo được ghi dấu trong dữ liệu ảnh và ghi rõ trong nhật ký xuất bản — minh bạch, không ảnh hưởng xếp hạng.' },
+    { icon: 'ri-shield-check-line', text: 'Bài chỉ ra khỏi hàng đợi ảnh khi mọi ô ảnh bắt buộc đã có ảnh. Không bao giờ đăng bài thiếu ảnh chỉ để giữ nhịp.' }
+  ];
+
+  componentDidMount() {
+    this._key = (e) => { if (e.key === 'Escape' && this.state.ask) this.setState({ ask: null }); };
+    window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() { clearTimeout(this._t); Object.keys(this._g || {}).forEach(k => clearTimeout(this._g[k])); if (this._key) window.removeEventListener('keydown', this._key); }
+  retry(s) {
+    this._g = this._g || {};
+    clearTimeout(this._g[s.k]);
+    delete this._g[s.k];
+    this.setState(st => ({ gen: Object.assign({}, st.gen, { [s.k]: null }), spent: Math.max(0, st.spent - this.nVar()) }));
+    this.toast('Đã hoàn ' + this.nVar() + ' lượt tạo ảnh cho “' + s.role + '” — bấm tạo lại, lần lỗi không tính phí', 'ri-refresh-line');
+  }
+  toast(text, icon) { clearTimeout(this._t); this.setState({ toast: { text: text, icon: icon || 'ri-check-line' } }); this._t = setTimeout(() => this.setState({ toast: null }), 4400); }
+  allSlots() { return this.ITEMS.reduce((a, i) => a.concat(i.slots.map(s => Object.assign({ item: i }, s))), []); }
+  SHOTS = {
+    s1: 'Đặt máy trên nền tường sáng, chụp thẳng chính diện, cách 1,5m, thấy trọn 3 cột và chân đế. Tránh ngược sáng và không để đồ khác trong khung.',
+    s2: 'Chụp gần mặt bích và van, lấy góc chéo 45°, đủ sáng để thấy đường hàn inox. Đặt thước hoặc bàn tay cạnh cột để khách thấy kích thước thật.',
+    s5: 'Ảnh triệu chứng trên da cần nguồn y tế có giấy phép, hoặc ảnh do khách hàng cho phép dùng kèm văn bản đồng ý. Không tự chụp và không lấy trên mạng.',
+    s6: 'Chụp góc 3/4 từ bên phải, nền trắng hoặc xám nhạt, thấy được vòi và tem model. Máy dựng thẳng, không nghiêng.'
+  };
+  aiOn() { return this.props.allowAiImages !== false; }
+  matchOf(s) { return s.lib ? { n: s.lib, conf: s.lib >= 3 ? 92 : (s.lib >= 2 ? 84 : 61) } : null; }
+  autoLib(slots, msg) {
+    this.setState(st => {
+      const c = Object.assign({}, st.chosen);
+      slots.forEach(s => { c[s.k] = 'lib'; });
+      return { chosen: c };
+    });
+    this.toast(msg, 'ri-folder-image-line');
+  }
+  nVar() { if (this.props.variantsPerRun != null) return this.props.variantsPerRun; return window.BSAI ? window.BSAI.variants() : 1; }
+  aiSlots() { return this.aiOn() ? this.allSlots().filter(s => !s.real && !this.state.skipped[s.k]) : []; }
+  skip(s, on) {
+    this.setState(st => {
+      const k = Object.assign({}, st.skipped);
+      if (on) k[s.k] = true; else delete k[s.k];
+      return { skipped: k };
+    });
+    this.toast(on ? ('Đã bỏ ô “' + s.role + '” — bài không còn mắc vì ô này, thêm ảnh lại lúc nào cũng được') : ('Đã bật lại ô “' + s.role + '”'), on ? 'ri-eye-off-line' : 'ri-eye-line');
+  }
+  unassign(s) {
+    this.setState(st => {
+      const c = Object.assign({}, st.chosen); delete c[s.k];
+      const g = Object.assign({}, st.gen); delete g[s.k];
+      return { chosen: c, gen: g };
+    });
+    this.toast('Đã bỏ ảnh khỏi “' + s.role + '” — ảnh vẫn còn trong thư viện, không mất', 'ri-arrow-go-back-line');
+  }
+  promptOf(s) { const p = this.state.prompts[s.k]; return p != null ? p : (s.prompt || ''); }
+  styleOf(s) { return this.state.styles[s.k] || (s.ratio === '21:9' ? 'bg' : (s.role.indexOf('Sơ đồ') === 0 ? 'flat' : 'photo')); }
+  run(s) {
+    this.setState(st => ({ gen: Object.assign({}, st.gen, { [s.k]: 'run' }), open: null, spent: st.spent + this.nVar() }));
+    const n = this.nVar();
+    this.toast('Đang tạo ' + n + ' phương án cho “' + s.role + '” — khoảng 40 giây, dùng ' + n + ' lượt tạo ảnh', 'ri-sparkling-2-line');
+    this._g = this._g || {};
+    clearTimeout(this._g[s.k]);
+    this._g[s.k] = setTimeout(() => {
+      this.setState(st => ({ gen: Object.assign({}, st.gen, { [s.k]: 'done' }) }));
+      this.toast('Đã tạo xong ' + n + ' phương án — mở thẻ “Ảnh AI chờ duyệt” để chọn', 'ri-check-line');
+    }, 1600);
+  }
+
+  renderVals() {
+    const S = this.state;
+    const G = S.group;
+    const live = this.ITEMS.filter(i => !S.dropped[i.k] && !this.itemDone(i));
+    const isDoneTab = S.tab === 'done';
+    const base = isDoneTab ? this.ITEMS.filter(i => !S.dropped[i.k] && this.itemDone(i)) : live;
+    const shown = base.filter(i => G === 'all' || i.g === G);
+    const picked = shown.filter(i => S.picked[i.k]);
+    const inScope = (s) => shown.some(i => i.slots.some(x => x.k === s.k));
+    const aiReady = this.aiSlots().filter(s => !S.gen[s.k] && !S.chosen[s.k] && inScope(s));
+    const reviews = this.aiSlots().filter(s => S.gen[s.k] === 'done');
+    const realNeeded = this.allSlots().filter(s => s.real && !this.settled(s));
+    const realReq = realNeeded.filter(s => s.req);
+    const realOpt = realNeeded.filter(s => !s.req);
+    const TY = (t) => t === 'Mô tả sản phẩm' || t === 'Mô tả danh mục' ? 'background:rgba(10,179,156,.12);color:#0a7d6f;'
+      : (t === 'Sức khoẻ' ? 'background:rgba(240,101,72,.10);color:#a5402c;'
+        : (t === 'Bài trụ' ? 'background:rgba(64,81,137,.12);color:#405189;' : 'background:#f3f6f9;color:#495057;'));
+    const box = (ratio, h) => {
+      const R = { '1:1': 1, '4:3': 4 / 3, '16:9': 16 / 9, '21:9': 21 / 9 }[ratio] || 1;
+      return 'width:' + Math.round(h * R) + 'px;height:' + h + 'px;';
+    };
+    const ask = S.ask, nVar = this.nVar(), aiOn = this.aiOn();
+    const iq = this.props.imageQuota || { used: 6, limit: (window.BSAI ? window.BSAI.plan().images : 20), addon: 50 };
+    const addon = iq.addon != null ? iq.addon : 0;
+    const planLeft = Math.max(0, iq.limit - iq.used - S.spent);
+    const addonLeft = Math.max(0, addon - Math.max(0, iq.used + S.spent - iq.limit));
+    const iqLeft = planLeft + addonLeft;
+    const autoLibSlots = this.allSlots().filter(s => !this.settled(s) && inScope(s) && this.matchOf(s) && this.matchOf(s).conf >= 80);
+    const doneItems = this.ITEMS.filter(i => this.itemDone(i));
+    const CANDS = this.CANDS.slice(0, nVar);
+    const GRP = [
+      { v: 'all', label: 'Tất cả', n: base.length, title: isDoneTab ? 'Mọi bài đã đủ ảnh' : 'Mọi bài đang chờ ảnh' },
+      { v: 'prod', label: 'Sản phẩm', n: base.filter(i => i.g === 'prod').length, title: 'Mô tả sản phẩm — phần lớn cần ảnh thật' },
+      { v: 'post', label: 'Bài viết', n: base.filter(i => i.g === 'post').length, title: 'Bài viết — nhiều ảnh minh hoạ AI tạo được' },
+      { v: 'cat', label: 'Danh mục', n: base.filter(i => i.g === 'cat').length, title: 'Ảnh đầu trang danh mục' }
+    ];
+
+    return {
+      stats: [
+        { icon: 'ri-image-add-line', color: '#1c7ba8', label: 'Bài đang mắc vì thiếu ảnh', value: String(live.length), hint: this.allSlots().filter(s => !this.settled(s)).length + ' ô còn trống · ' + Object.keys(S.skipped).length + ' ô đã bỏ' },
+        { icon: 'ri-sparkling-2-line', color: '#405189', label: 'Ô ảnh AI tạo được', value: aiOn ? String(this.aiSlots().filter(s => !S.gen[s.k] && !S.chosen[s.k]).length) : '—', hint: aiOn ? 'Đã có mô tả viết sẵn, chỉ cần bạn duyệt' : 'Ảnh AI đang tắt — mọi ô cần ảnh thật' },
+        { icon: 'ri-camera-line', color: '#a5402c', label: 'Bắt buộc ảnh thật', value: String(realReq.length), hint: realOpt.length ? (realReq.length + ' ô chặn đăng · ' + realOpt.length + ' ô tuỳ chọn, bỏ được') : 'Ảnh sản phẩm, công trình, người thật, y tế' },
+        { icon: 'ri-folder-image-line', color: '#0a8f7f', label: 'Ảnh khớp trong thư viện', value: String(this.allSlots().reduce((a, s) => a + (S.chosen[s.k] ? 0 : (s.lib || 0)), 0)), hint: autoLibSlots.length ? (autoLibSlots.length + ' ô gán được ngay, chỉ cần bạn duyệt') : 'Hệ thống đã tìm sẵn theo tên và nội dung' }
+      ],
+      iqChip: 'Còn ' + iqLeft + ' lượt tạo ảnh',
+      iqTitle: (window.BSAI ? window.BSAI.enoughImages(iqLeft) + ' · ' : '') + 'Sổ ảnh AI tách riêng với sổ nội dung chữ. Gói tháng: ' + planLeft + '/' + iq.limit + ' lượt còn lại' + (addon ? ' · addon đã mua: ' + addonLeft + '/' + addon + ' lượt (hạn 12 tháng)' : '') + '. Trừ hạn ngạch gói trước, addon sau. Đã dùng ' + (iq.used + S.spent) + (S.spent ? ', trong đó ' + S.spent + ' lượt ở phiên này' : '') + '. Mỗi phương án tạo ra tính 1 lượt; sửa mô tả rồi tạo lại lần đầu cho mỗi ảnh không tính thêm. Bấm để mở Cài đặt › Mức dùng AI.',
+      iqLowOn: iqLeft <= (iq.limit + addon) * 0.2, iqLowOff: iqLeft > (iq.limit + addon) * 0.2,
+      iqWarn: iqLeft === 0
+        ? 'Đã hết lượt tạo ảnh. Nội dung chữ vẫn chạy bình thường — chỉ ảnh AI tạm dừng. Mua thêm là dùng lại được ngay, hoặc dùng ảnh thư viện và ảnh thật.'
+        : ('Còn ' + iqLeft + ' lượt tạo ảnh — đủ tạo khoảng ' + Math.floor(iqLeft / nVar) + ' ô nữa (gói tháng ' + planLeft + ' · addon ' + addonLeft + '). Ưu tiên ảnh bìa và sơ đồ, phần còn lại dùng ảnh thư viện.'),
+      iqBuyTitle: 'Mở Cài đặt › Mức dùng AI để mua thêm lượt tạo ảnh — cộng vào sổ ảnh, dùng trong 12 tháng, không đụng hạn ngạch nội dung chữ',
+      quotaHref: encodeURI('Hạn ngạch AI và mua thêm.dc.html'),
+      autoLibOn: autoLibSlots.length > 0, autoLibOff: autoLibSlots.length === 0,
+      autoLibLabel: 'Gán ' + autoLibSlots.length + ' ảnh khớp sẵn',
+      autoLibTitle: autoLibSlots.length ? ('Hệ thống đã tìm được ảnh khớp trên 80% cho ' + autoLibSlots.length + ' ô — gán một lần, bạn xem lại và đổi được từng ô') : 'Không còn ô nào có ảnh khớp chắc chắn',
+      onAutoLib: () => { if (autoLibSlots.length) this.autoLib(autoLibSlots, 'Đã gán ' + autoLibSlots.length + ' ảnh từ thư viện vào các ô khớp nhất — xem lại từng ô và đổi nếu chưa đúng, không tốn lượt AI'); },
+      doneLine: doneItems.length ? (doneItems.length + ' bài đã đủ ảnh và rời hàng đợi — đang chờ duyệt ở Duyệt & xuất bản') : '',
+      doneOn: doneItems.length > 0, doneOff: doneItems.length === 0,
+      onGoApprove: () => this.toast('Mở Nội dung › Duyệt & xuất bản để duyệt các bài đã đủ ảnh', 'ri-external-link-line'),
+      listOn: S.tab === 'q' || isDoneTab,
+      tabDoneOn: isDoneTab, tabDoneOff: !isDoneTab, doneCount: doneItems.length,
+      onTabDone: () => this.setState({ tab: 'done' }),
+      listTitle: isDoneTab ? 'Bài đã đủ ảnh — xem lại và đổi ảnh nếu cần' : 'Gom theo nhóm — làm cả nhóm một lượt',
+      tabQOn: S.tab === 'q', tabQOff: S.tab !== 'q',
+      tabRvOn: S.tab === 'rv', tabRvOff: S.tab !== 'rv',
+      tabRuleOn: S.tab === 'rule', tabRuleOff: S.tab !== 'rule',
+      onTabQ: () => this.setState({ tab: 'q' }), onTabRv: () => this.setState({ tab: 'rv' }), onTabRule: () => this.setState({ tab: 'rule' }),
+      qCount: live.length, rvCount: reviews.length,
+
+      uploadLabel: realReq.length ? ('Tải ảnh cho ' + realReq.length + ' ô bắt buộc') : (realNeeded.length ? ('Tải ảnh cho ' + realNeeded.length + ' ô tuỳ chọn') : 'Tải ảnh thật lên'),
+      uploadTitle: realNeeded.length
+        ? ('Mở bảng tải ảnh kèm danh sách ' + realReq.length + ' ô bắt buộc' + (realOpt.length ? ' và ' + realOpt.length + ' ô tuỳ chọn' : '') + ': ' + realNeeded.slice(0, 3).map(s => s.role + ' — ' + s.item.title).join(' · ') + (realNeeded.length > 3 ? ' · và ' + (realNeeded.length - 3) + ' ô nữa' : '') + '. Kéo cả loạt ảnh vào, hệ thống tự gán theo tên sản phẩm và tỷ lệ ảnh; ảnh thật không tốn lượt AI.')
+        : 'Tải ảnh vào thư viện để dùng cho các bài sau — ảnh thật không tốn lượt tạo ảnh nào',
+      needsLine: realNeeded.length
+        ? ('Đang chờ ' + realReq.length + ' ảnh bắt buộc' + (realOpt.length ? ' và ' + realOpt.length + ' ảnh tuỳ chọn (bỏ được bằng nút “Bỏ ô này”)' : '') + ': ' + realReq.slice(0, 3).map(s => s.role.toLowerCase() + ' (' + s.item.title + ')').join(', ') + (realReq.length > 3 ? ', và ' + (realReq.length - 3) + ' ô nữa' : '') + '. Mỗi ô có hướng dẫn chụp riêng ở bên dưới.')
+        : 'Không còn ô nào chờ ảnh thật.',
+      needsOn: realNeeded.length > 0,
+      onCopyNeeds: () => this.toast('Đã sao chép danh sách ' + realNeeded.length + ' ảnh cần chụp kèm hướng dẫn từng ảnh — gửi cho người chụp là đủ, không cần giải thích thêm', 'ri-file-copy-line'),
+      onUpload: () => this.toast('Mở thư viện ảnh để tải lên — kéo nhiều ảnh một lượt, hệ thống tự gán vào các ô đang chờ theo tên sản phẩm', 'ri-upload-2-line'),
+      autoAllLabel: !aiOn ? 'Ảnh AI đang tắt' : (!aiReady.length ? 'Không còn ô ảnh AI' : (iqLeft < aiReady.length * nVar ? 'Không đủ lượt tạo ảnh' : 'Tạo hết ' + aiReady.length + ' ô ảnh AI')),
+      autoAllOff: aiReady.length === 0 || iqLeft < aiReady.length * nVar,
+      autoAllTitle: !aiOn ? 'Ảnh AI đang tắt cho website này — mọi ô ảnh phải dùng ảnh thật' : (aiReady.length ? ('Tạo ' + nVar + ' phương án cho từng ô, dùng ' + (aiReady.length * nVar) + ' lượt ảnh AI — bạn vẫn phải chọn phương án trước khi ảnh vào bài') : 'Mọi ô ảnh AI đã xử lý'),
+      onAutoAll: () => { if (!aiReady.length) return; this.setState({ ask: { kind: 'all', icon: 'ri-magic-line', title: 'Tạo hết ' + aiReady.length + ' ô ảnh minh hoạ?', text: 'Mỗi ô được vẽ ' + nVar + ' phương án, dùng ' + (aiReady.length * nVar) + ' lượt ảnh AI. Ảnh vẽ xong nằm ở thẻ “Ảnh AI chờ duyệt” — không ảnh nào tự vào bài trước khi bạn chọn. Các ô bắt buộc ảnh thật không bị vẽ.', ok: 'Vẽ tất cả' } }); },
+
+      groups: GRP.map(g => Object.assign({}, g, { on2: g.v === G, off: g.v !== G, on: () => this.setState({ group: g.v, picked: {} }) })),
+      groupHint: isDoneTab ? (shown.length + ' bài đã đủ ảnh · đổi ảnh không tốn lượt AI') : (picked.length ? ('đã chọn ' + picked.length + ' bài') : 'Chọn nhóm để làm cả nhóm một lượt'),
+      bulkOn: !isDoneTab && shown.length > 0,
+      bulkScope: 'Làm nhanh cho ' + shown.length + ' bài đang hiện' + (G === 'all' ? '' : ' trong nhóm này') + ': gán ảnh thư viện khớp sẵn không tốn lượt, hoặc tạo các ô minh hoạ bằng AI.',
+      listEmpty: shown.length === 0,
+      emptyTitle: isDoneTab ? 'Chưa có bài nào đủ ảnh' : 'Không còn bài nào chờ ảnh trong nhóm này',
+      emptyText: isDoneTab
+        ? 'Bài đủ ảnh sẽ nằm ở đây để bạn xem lại, đổi ảnh hoặc bật lại ô đã bỏ — không tốn lượt AI.'
+        : 'Chọn nhóm khác, hoặc mở thẻ “Đã đủ ảnh” để xem lại các bài đã xử lý.',
+
+      items: shown.map(i => {
+        const aiN = i.slots.filter(s => !s.real && !this.settled(s) && !S.gen[s.k]).length;
+        const realN = i.slots.filter(s => s.real && !this.settled(s)).length;
+        const libN = i.slots.reduce((a, s) => a + (this.settled(s) ? 0 : (s.lib || 0)), 0);
+        const done = this.itemDone(i);
+        const optN = i.slots.filter(s => !s.req && !this.settled(s)).length;
+        return {
+          title: i.title, type: i.type, typeStyle: TY(i.type), meta: i.meta,
+          needText: done ? (optN ? ('Đủ ảnh bắt buộc · còn ' + optN + ' ô tuỳ chọn') : 'Đủ ảnh') : (realN ? (realN + ' ô cần ảnh thật') : (aiN + ' ô AI tạo được')),
+          needStyle: done ? 'background:rgba(10,179,156,.12);color:#0a7d6f;' : (realN ? 'background:rgba(240,101,72,.10);color:#a5402c;' : 'background:rgba(64,81,137,.12);color:#405189;'),
+          checked: !!S.picked[i.k], unchecked: !S.picked[i.k],
+          pickTitle: (S.picked[i.k] ? 'Bỏ chọn' : 'Chọn') + ' “' + i.title + '”',
+          onPick: () => this.setState(s => ({ picked: Object.assign({}, s.picked, { [i.k]: !s.picked[i.k] }) })),
+          libOn: libN > 0 || !done,
+          libLabel: libN ? ('Thư viện có ' + libN + ' ảnh khớp') : 'Chọn từ thư viện',
+          libTitle: libN ? 'Hệ thống đã lọc ' + libN + ' ảnh khớp theo tên và nội dung — mở để gán' : 'Mở thư viện ảnh của bạn',
+          onLib: () => this.toast(libN ? ('Mở ' + libN + ' ảnh khớp cho “' + i.title + '” — kéo vào ô ảnh là xong') : ('Mở thư viện ảnh cho “' + i.title + '”'), 'ri-folder-image-line'),
+          aiAllowed: aiOn && aiN > 0, aiBlocked: !(aiOn && aiN > 0) && realN > 0,
+          genLabel: 'Tạo ' + aiN + ' ô bằng AI',
+          genTitle: 'Tạo ' + nVar + ' phương án cho mỗi ô minh hoạ của bài này · ' + (aiN * nVar) + ' lượt tạo ảnh',
+          blockTitle: 'Bài này chỉ còn ô bắt buộc ảnh thật — AI không tạo ảnh sản phẩm, công trình, người thật hay ảnh y tế',
+          onGen: () => { i.slots.filter(s => !s.real && !S.chosen[s.k] && !S.gen[s.k]).forEach(s => this.run(s)); },
+          slots: i.slots.map(s => {
+            const chosen = S.chosen[s.k], st = S.gen[s.k], skip = !!S.skipped[s.k];
+            const open = S.open === s.k, m = this.matchOf(s);
+            return {
+              role: s.role, ratio: s.ratio, boxStyle: box(s.ratio, 46),
+              hasImg: !!chosen,
+              reqText: s.req ? 'Bắt buộc' : 'Không bắt buộc',
+              reqStyle: s.req ? 'background:rgba(64,81,137,.10);color:#405189;' : 'background:#f3f6f9;color:#adb5bd;',
+              stText: skip ? 'Đã bỏ ô này' : (chosen ? 'Đã có ảnh' : (st === 'run' ? 'Đang tạo' : (st === 'done' ? nVar + ' phương án chờ chọn' : ((s.real || !aiOn) ? 'Chờ ảnh thật' : 'Chờ bạn duyệt mô tả')))),
+              stStyle: skip ? 'background:#f3f6f9;color:#878a99;' : (chosen ? 'background:rgba(10,179,156,.12);color:#0a7d6f;' : (st ? 'background:rgba(64,81,137,.12);color:#405189;' : ((s.real || !aiOn) ? 'background:rgba(240,101,72,.10);color:#a5402c;' : 'background:rgba(247,184,75,.16);color:#8a6115;'))),
+              canSkip: !s.req && !chosen && !st && !skip,
+              skipTitle: 'Bỏ ô này — bài không mắc vì ô không bắt buộc, thêm ảnh lại lúc nào cũng được',
+              onSkip: () => this.skip(s, true),
+              skipped: skip, onUnskip: () => this.skip(s, false),
+              assigned: !!chosen, onUnassign: () => this.unassign(s),
+              dropHint: (!chosen && !skip) ? 'Kéo ảnh vào đây' : '',
+              canDrop: !chosen && !skip,
+              why: skip ? 'Ô này đã bỏ nên bài không còn chờ nó. Bật lại bất cứ lúc nào nếu bạn có ảnh.' : (chosen ? 'Đã gán ảnh — hệ thống tự cắt đúng tỷ lệ, nén nhẹ và viết chữ thay thế tiếng Việt.' : s.why),
+                  matchOn: !chosen && !st && !skip && !!m, matchText: m ? ('Thư viện khớp ' + m.conf + '% · ' + m.n + ' ảnh') : '',
+              matchStyle: m && m.conf >= 80 ? 'background:rgba(10,179,156,.12);color:#0a7d6f;' : 'background:rgba(247,184,75,.16);color:#8a6115;',
+              canUseMatch: !chosen && !st && !skip && !!m && m.conf >= 80,
+              useMatchTitle: m ? ('Dùng ngay ảnh khớp nhất trong ' + m.n + ' ảnh — đổi được sau, không tốn lượt AI') : '',
+              onUseMatch: () => this.autoLib([s], 'Đã gán ảnh khớp nhất vào “' + s.role + '” — mở thư viện nếu muốn đổi ảnh khác'),
+              shotOn: s.real && !chosen && !skip && !!this.SHOTS[s.k], shotText: this.SHOTS[s.k] || '',
+              onAskShot: () => this.toast('Đã gửi yêu cầu chụp “' + s.role + '” kèm hướng dẫn chụp cho nhóm nội dung — ảnh tải lên là tự gán vào ô này', 'ri-send-plane-line'),
+              canOpen: aiOn && !s.real && !chosen && !st && !skip, open: open,
+              onOpen: () => this.setState({ open: s.k }),
+              onClose: () => this.setState({ open: null }),
+              prompt: this.promptOf(s),
+              onPrompt: (e) => { const v = e.target.value; this.setState(st2 => ({ prompts: Object.assign({}, st2.prompts, { [s.k]: v }) })); },
+              styles: this.STYLES.map(x => ({ label: x.label, title: x.title, on2: this.styleOf(s) === x.k, off: this.styleOf(s) !== x.k, on: () => this.setState(st2 => ({ styles: Object.assign({}, st2.styles, { [s.k]: x.k }) })) })),
+              costText: 'Dùng ' + nVar + ' lượt tạo ảnh · tạo lại không mất thêm nếu bạn chỉ sửa mô tả một lần',
+              runLabel: 'Tạo ' + nVar + ' phương án',
+              runTitle: 'Tạo ' + nVar + ' phương án theo mô tả này, tỷ lệ ' + s.ratio,
+              onRun: () => this.run(s),
+              canLib: (s.real || !!s.lib) && !chosen && !st && !skip,
+              libLabel: s.lib ? (s.lib + ' ảnh khớp') : 'Mở thư viện',
+              libTitle: s.lib ? 'Thư viện có ' + s.lib + ' ảnh khớp cho ô này' : 'Chưa có ảnh khớp — tải ảnh thật lên',
+              onLib: () => this.toast(chosen ? ('Mở thư viện để đổi ảnh cho “' + s.role + '” — đổi ảnh không tốn lượt AI') : (s.lib ? ('Mở ' + s.lib + ' ảnh khớp cho ô “' + s.role + '”') : ('Chưa có ảnh khớp cho “' + s.role + '” — kéo ảnh vào ô hoặc tải lên là hệ thống tự gán')), 'ri-folder-image-line'),
+              running: st === 'run', done: st === 'done', reviewLabel: 'Xem ' + nVar + ' phương án',
+              onCancelRun: () => this.retry(s),
+              onGoReview: () => this.setState({ tab: 'rv' })
+            };
+          })
+        };
+      }),
+
+      reviews: reviews.map(s => ({
+        role: s.role, title: s.item.title, ratio: s.ratio, prompt: this.promptOf(s),
+        onEdit: () => { this.setState(st => ({ tab: 'q', open: s.k, gen: Object.assign({}, st.gen, { [s.k]: null }) })); this.toast('Sửa mô tả rồi bấm “Tạo ' + nVar + ' phương án” — lần sửa đầu không tính thêm lượt', 'ri-edit-2-line'); },
+        note: 'Ảnh được chọn sẽ tự cắt đúng tỷ lệ ' + s.ratio + ', nén nhẹ, sinh chữ thay thế tiếng Việt và ghi dấu “ảnh do AI tạo” trong dữ liệu ảnh.',
+        onNone: () => { this.setState(st => ({ gen: Object.assign({}, st.gen, { [s.k]: null }) })); this.toast('Không dùng phương án nào — ô “' + s.role + '” quay lại hàng chờ, bạn có thể sửa mô tả hoặc tải ảnh thật', 'ri-close-circle-line'); },
+        cands: CANDS.map(c => ({
+          name: c.name, note: c.note, best: c.best,
+          wrapStyle: 'display:flex;flex-direction:column;border:1px solid ' + (c.best ? 'rgba(10,179,156,.35)' : '#eff2f7') + ';border-radius:6px;overflow:hidden;background:#fff;',
+          boxStyle: 'width:100%;height:112px;border:0;border-bottom:1px solid #eff2f7;border-radius:0;',
+          canPick: S.chosen[s.k] !== c.k, picked: S.chosen[s.k] === c.k,
+          pickTitle: 'Dùng ' + c.name + ' cho ô “' + s.role + '”',
+          onPick: () => { this.setState(st => ({ chosen: Object.assign({}, st.chosen, { [s.k]: c.k }) })); this.toast('Đã gán ' + c.name + ' vào “' + s.role + '” — hệ thống đang cắt tỷ lệ và viết chữ thay thế', 'ri-check-line'); },
+          onZoom: () => this.toast('Xem lớn ' + c.name, 'ri-fullscreen-line')
+        }))
+      })),
+      rvEmpty: reviews.length === 0,
+
+      rules: this.RULES.map(r => Object.assign({}, r, {
+        style: r.ok === true ? 'background:rgba(10,179,156,.12);color:#0a7d6f;' : (r.ok === false ? 'background:rgba(240,101,72,.10);color:#a5402c;' : 'background:rgba(247,184,75,.16);color:#8a6115;')
+      })),
+      pipeline: this.PIPELINE,
+
+      askOpen: !!ask, askTitle: ask ? ask.title : '', askText: ask ? ask.text : '', askOk: ask ? ask.ok : '', askIcon: ask ? ask.icon : 'ri-magic-line',
+      onAskCancel: () => this.setState({ ask: null }),
+      onAskOk: () => { this.setState({ ask: null }); aiReady.forEach(s => this.run(s)); },
+      toast: !!S.toast, toastText: S.toast ? S.toast.text : '', toastIcon: S.toast ? S.toast.icon : 'ri-check-line'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

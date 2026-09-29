@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<script src="./image-slot.js"></script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<script src="ai-quota.js"></script>
+<style>
+html,body{margin:0;background:#f3f3f9;}*{box-sizing:border-box;}
+.em-wrap{container-type:inline-size;font-family:Inter,'Segoe UI',sans-serif;}
+.em-scroll::-webkit-scrollbar{width:8px;height:8px}.em-scroll::-webkit-scrollbar-thumb{background:#ced4da;border-radius:6px}
+.dsw{width:38px;height:22px;border-radius:20px;position:relative;flex-shrink:0;display:inline-block;background:#ced4da;transition:background .18s;cursor:pointer;border:0;padding:0;}
+.dsw.on{background:#0ab39c;}.dsw.lock{cursor:not-allowed;opacity:.5;}
+.dsw>span{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .18s;}
+.dsw.on>span{left:19px;}
+.em-wrap button{white-space:nowrap;}
+.em-row{transition:background .12s;}.em-row:hover{background:#f8f9fb;}
+.em-tile{transition:border-color .12s,background .12s;}.em-tile:hover{border-color:#adb5bd;}
+.em-ce{outline:none;}.em-ce:focus{outline:none;}
+.em-ce:empty:before{content:attr(data-ph);color:#adb5bd;}
+[data-cta]{background:var(--em-brand,#405189);color:var(--em-brand-fg,#fff)!important;}
+.em-var{display:inline-block;padding:1px 7px;margin:0 1px;border:1px solid #e4e6ee;border-radius:4px;background:#f4f5f9;color:#405189;font-weight:600;font-size:.92em;white-space:nowrap;}
+.em-sbox:focus-within{border-color:#405189!important;box-shadow:0 0 0 3px rgba(64,81,137,.14);}
+.em-lnk{color:#405189;text-decoration:none;cursor:pointer;}.em-lnk:hover{text-decoration:underline;}
+a{color:#405189;}a:hover{color:#334166;}
+@keyframes em-spin{to{transform:rotate(360deg)}}
+@keyframes em-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.em-pop{animation:em-fade .16s ease;}
+.fc-selcode{display:none}
+@container (max-width:860px){.fc-status{display:none!important}}
+@container (max-width:700px){.fc-pills{display:none!important}}
+@container (min-width:701px){.fc-cursel{display:none!important}}
+@container (max-width:600px){.fc-quota{display:none!important}}
+@container (max-width:520px){.fc-div{display:none!important}.fc-prog{display:none!important}}
+@container (max-width:520px){.fc-panel{left:0!important;right:auto!important;min-width:0!important;max-width:min(296px, calc(100cqw - 92px), calc(100vw - 32px))!important;}.fc-cursel,.fc-ovf,.fc-trbtn{min-height:44px!important;}}
+.fc-btnshort{display:none}
+@container (max-width:960px){.fc-btnlong{display:none}.fc-btnshort{display:inline}}
+@container (max-width:400px){.fc-selname{display:none}.fc-selcode{display:inline}.fc-btnshort{display:none}}
+.fc-sbox:focus-within{border-color:#405189!important;box-shadow:0 0 0 3px rgba(64,81,137,.14);}
+.em-wrap [role="radio"]:focus-visible,.em-wrap button:focus-visible,.em-wrap .em-ce:focus-visible{outline:2px solid #405189;outline-offset:2px;}
+.em-wrap [role="radio"]{cursor:pointer;}
+.em-tabstrip::-webkit-scrollbar{height:0;}
+.em-tabstrip>button{flex:0 0 auto;}
+@container (max-width:560px){
+  .em-wrap button:not(.dsw),.em-wrap [role="switch"],.em-wrap input:not(.em-plain){min-height:44px;}
+  .em-wrap button:not(.dsw){min-width:44px;}
+  .em-sbox{min-height:44px;}
+  .em-sbox input{align-self:stretch;}
+  .dsw{height:44px!important;background:transparent!important;}
+  .dsw::before{content:"";position:absolute;left:0;right:0;top:9px;bottom:9px;border-radius:20px;background:#ced4da;transition:background .18s;}
+  .dsw.on::before{background:#0ab39c;}
+  .dsw>span{top:12px!important;}
+  .em-row{flex-wrap:wrap!important;}
+  .em-rowtext{flex:1 1 100%!important;order:2;}
+  .em-tplname{flex:1 1 calc(100% - 31px)!important;}
+  .em-rowact{width:100%;order:3;margin-left:34px!important;}
+  .em-info{width:44px!important;height:44px!important;}
+  .em-tplchips{order:3;width:auto!important;margin-left:0!important;}
+  .em-tplreset{width:auto!important;}
+  .em-tplrow{display:flex!important;padding:12px 18px!important;}
+  .em-tplhead{display:none!important;}
+  .em-tplrow>div{order:3;width:auto!important;justify-content:flex-start!important;margin-left:34px!important;}
+}
+/* guard: the recurring defect class — text-bearing spans wrapping inside flex rows */
+.em-wrap label > span:first-child{white-space:nowrap;}
+.em-wrap .em-nw{white-space:nowrap;}
+.em-wrap input.em-inp:focus,.em-wrap label input:focus{border-color:#405189!important;box-shadow:0 0 0 3px rgba(64,81,137,.14);}
+@container (max-width:820px){.em-provgrid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}}
+@container (max-width:700px){.em-edlangs{width:100%;flex-wrap:nowrap!important;overflow-x:auto;}.em-edbar{gap:10px!important;}.em-spacer{display:none!important;}.em-actions{width:100%;margin-top:10px!important;}.em-actions button{flex:1;justify-content:center;}}
+@container (max-width:560px){.em-wrap .dsw{width:44px;height:26px;}.em-wrap .dsw>span{width:20px;height:20px;}.em-wrap .dsw.on>span{left:21px;}}
+@container (max-width:900px){.em-2col{grid-template-columns:1fr!important;}}
+@container (max-width:640px){.em-brandrow .em-tsep{display:none;}}
+.em-rcol{border-left:1px solid #eff2f7;padding-left:24px;}
+@container (max-width:900px){.em-rcol{border-left:0!important;padding-left:0!important;}.em-lcol{padding-right:0!important;}}
+.em-help{position:relative;}
+.em-helppop{position:absolute;top:30px;left:0;z-index:30;width:min(304px,calc(100cqw - 64px));padding:12px 13px;border:1px solid #e9ebec;border-radius:6px;background:#fff;box-shadow:0 5px 16px rgba(56,65,74,.22);font-size:12.5px;font-weight:400;color:#5b6270;line-height:1.6;white-space:normal;}
+.em-testbtn{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 17px;border:1px solid #d0d3da;border-radius:4px;background:#fff;color:#405189;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;}
+.em-testbtn:hover:not(:disabled){background:rgba(64,81,137,.06);}
+.em-testbtn:disabled{opacity:.6;cursor:progress;}
+.em-tlink{display:inline-flex;align-items:center;gap:5px;padding:0;border:0;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:#405189;cursor:pointer;white-space:nowrap;flex-shrink:0;text-align:left;}
+.em-tlink:hover{text-decoration:underline;}
+.em-rmreason{margin-left:74px;}
+.em-editbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:84px;padding:7px 14px;border:1px solid #d0d3da;border-radius:6px;background:#fff;color:#405189;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;flex-shrink:0;}
+.em-editbtn:hover{background:rgba(64,81,137,.06);}
+.em-aibtn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 13px;border:1px solid rgba(64,81,137,.28);border-radius:4px;background:rgba(64,81,137,.10);color:#405189;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.em-aibtn:hover:not(:disabled){background:rgba(64,81,137,.16);}
+.em-aibtn:disabled{opacity:1;cursor:not-allowed;background:#f6f7f9;border-color:#e9ebec;color:#9aa0ab;}
+.em-mail{font-family:Arial,'Helvetica Neue',Helvetica,sans-serif!important;font-size:16px!important;line-height:1.5!important;color:#333333!important;}
+.em-ce a[data-cta]{position:relative;}
+.em-ce a[data-cta]::after{content:attr(href);position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% + 8px);z-index:5;padding:3px 8px;border-radius:4px;background:#212529;color:#fff;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;font-weight:600;line-height:1.5;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .12s;}
+.em-ce a[data-cta]:hover::after{opacity:1;}
+.em-mail p{margin:0 0 16px;}
+.em-mail a{color:#405189;}
+.em-mail b,.em-mail strong{font-weight:700;}
+.em-vchip{display:inline-flex;align-items:stretch;border:1px solid #e4e6ee;border-radius:16px;background:#f4f5f9;overflow:hidden;}
+.em-vins{padding:6px 4px 6px 12px;border:0;background:transparent;color:#405189;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;}
+.em-vchip:hover{border-color:#405189;background:rgba(64,81,137,.09);}
+.em-vcopy{display:inline-flex;align-items:center;justify-content:center;width:28px;border:0;border-left:1px solid #e4e6ee;background:transparent;color:#878a99;cursor:pointer;font-size:13px;}
+.em-vcopy:hover{color:#405189;background:rgba(64,81,137,.10);}
+.em-vcopy.ok{color:#0ab39c;}
+.em-vchip.on{border-color:#405189;background:rgba(64,81,137,.12);}
+.em-gbtn.primary.off{cursor:not-allowed;}
+.em-lfield{width:100%;padding:10px 12px;border:1px solid #ced4da;border-radius:4px;font:inherit;font-size:14px;color:#495057;outline:none;}
+.em-lfield:focus{border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.14);}
+.em-mtab{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:0;border-bottom:2px solid transparent;background:transparent;color:#878a99;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;margin-bottom:-1px;}
+.em-mtab:hover{color:#5b6270;}
+.em-mtab.on{color:#405189;border-bottom-color:#405189;}
+.em-tsep{width:1px;align-self:stretch;background:#e9ebec;flex-shrink:0;}
+@container (max-width:930px){.em-tsep{display:none;}}
+.em-quota{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;color:#878a99;white-space:nowrap;}
+.em-quota.low{color:#b57d13;}
+.em-quota.out{color:#f06548;}
+.em-tplrow{display:grid;grid-template-columns:20px minmax(0,1fr) 108px 152px;align-items:center;gap:12px;padding:13px 18px;border-top:1px solid #f2f3f6;}
+.em-tplhead{display:grid;grid-template-columns:20px minmax(0,1fr) 108px 152px;gap:12px;padding:8px 18px 7px;border-top:1px solid #eff2f7;background:#fafbfc;}
+.em-tplhead span{font-size:10.5px;font-weight:700;letter-spacing:.05em;color:#adb5bd;text-transform:uppercase;}
+.em-tplactions{display:flex;align-items:center;justify-content:flex-end;gap:10px;}
+.em-iconbtn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:6px;background:transparent;color:#878a99;font-size:16px;cursor:pointer;flex-shrink:0;}
+.em-iconbtn:hover{background:rgba(64,81,137,.08);color:#405189;}
+
+.em-rot{transform:rotate(180deg);}
+@container (max-width:560px){.em-iconbtn{width:44px;height:44px;}}
+.em-tplbtn{display:flex;flex-direction:column;gap:2px;align-items:flex-start;flex:1;min-width:0;padding:0;border:0;background:transparent;font:inherit;text-align:left;cursor:pointer;}
+.em-tplbtn:hover .em-tplt{text-decoration:underline;}
+.em-off .em-tplt{color:#6c757d!important;}
+.em-off .em-tplicon{color:#c5c8d0!important;}
+.em-off .em-tplchips{filter:grayscale(1);}
+.em-lockon{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border:1px solid #e0e3e9;border-radius:20px;background:#f6f7f9;color:#5b6270;font-size:11.5px;font-weight:600;white-space:nowrap;}
+.em-gbtn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 15px;border:1px solid #d0d3da;border-radius:4px;background:#fff;color:#495057;font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
+.em-gbtn:hover:not(:disabled){background:#f6f7f9;}
+.em-gbtn:disabled,.em-gbtn.off{cursor:not-allowed!important;background:#f6f7f9!important;border-color:#e9ebec!important;color:#9aa0ab!important;}
+.em-gbtn:disabled:hover,.em-gbtn.off:hover{background:#f6f7f9!important;}
+.em-gbtn.danger{border-color:rgba(240,101,72,.45);color:#b42318;}
+.em-gbtn.danger:hover:not(:disabled){background:rgba(240,101,72,.08);}
+.em-gbtn.primary{border-color:#405189;background:#405189;color:#fff;}
+.em-gbtn.primary:hover:not(:disabled):not(.off){filter:brightness(.95);background:#405189;}
+@container (max-width:560px){.em-rmreason{margin-left:0!important;}}
+@container (max-width:760px){.em-edcol{grid-template-columns:1fr!important;}.em-preview-side{display:none!important;}}
+@container (max-width:560px){.em-hidesm{display:none!important;}}
+</style>
+</helmet>
+
+<div class="em-wrap" style="min-height:100vh;color:#495057;font-size:14px;{{ brandVar }}">
+
+  <sc-if value="{{ notEditing }}" hint-placeholder-val="{{ true }}">
+  <sc-if value="{{ showOwnHeader }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:1180px;margin:0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 26px 0;flex-wrap:wrap;">
+    <div style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:4px;">
+      <h1 style="margin:0;font-size:20px;font-weight:600;color:#212529;">Email</h1>
+      <p style="margin:0;font-size:13px;color:#878a99;max-width:640px;line-height:1.55;">Chọn cách website gửi thư đi, soạn nội dung email tự động và chữ ký chung. Phần máy chủ, bảo mật và xác thực tên miền do nền tảng lo — bạn chỉ chọn và bấm.</p>
+    </div>
+    <div class="em-actions" style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-top:22px;">
+      <sc-if value="{{ anyUnsaved }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#b57d13;white-space:nowrap;"><span style="width:8px;height:8px;border-radius:50%;background:#f7b84b;"></span>{{ unsavedLabel }}</span></sc-if><button onClick="{{ onSave }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;"><i class="ri-save-3-line"></i>Lưu</button>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ showTabstrip }}" hint-placeholder-val="{{ true }}">
+  <div style="max-width:1180px;margin:0 auto;padding:14px 26px 0;">
+    <div class="em-tabstrip" style="display:flex;gap:4px;border-bottom:1px solid #e9ebec;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <button onClick="{{ t.onClick }}" style="{{ t.style }}"><i class="{{ t.icon }}"></i><span>{{ t.label }}</span><sc-if value="{{ t.hasCount }}"><span style="{{ t.countStyle }}">{{ t.count }}</span></sc-if></button>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <div class="em-scroll" style="max-width:1180px;margin:0 auto;padding:22px 26px 60px;">
+
+    <!-- ============ TAB: GỬI THƯ ============ -->
+    <sc-if value="{{ tabSend }}">
+      <div style="display:flex;flex-direction:column;gap:18px;">
+
+        <sc-if value="{{ platformMailNote }}"><div style="display:flex;align-items:flex-start;gap:11px;padding:13px 16px;border:1px solid color-mix(in srgb, #f7b84b 42%, transparent);border-radius:6px;background:color-mix(in srgb, #f7b84b 12%, transparent);"><i class="ri-alert-line" style="margin-top:1px;color:#b57d13;font-size:16px;flex-shrink:0;"></i><div style="font-size:13px;color:#5f4a1a;line-height:1.55;">{{ platformMailNote }}</div></div></sc-if>
+
+        <div style="{{ summaryStyle }}">
+          <span style="{{ summaryIconWrap }}"><i class="{{ healthIcon }}"></i></span>
+          <div style="min-width:0;display:flex;flex-direction:column;gap:2px;">
+            <div style="font-size:14px;font-weight:600;color:#212529;">{{ summaryTitle }}</div>
+            <div style="font-size:12.5px;color:#878a99;line-height:1.5;">{{ summaryMeta }}</div>
+          </div>
+          <button onClick="{{ onTest }}" style="margin-left:auto;display:inline-flex;align-items:center;gap:7px;padding:8px 15px;border:1px solid #d0d3da;border-radius:4px;background:#fff;color:#405189;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;flex-shrink:0;"><i class="ri-send-plane-line"></i>Gửi thử</button>
+        </div>
+
+        <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);">
+          <div style="display:flex;align-items:center;gap:7px;padding:13px 16px;border-bottom:1px solid #eff2f7;font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;">{{ outboxTitle }}</div>
+          <div role="radiogroup" aria-label="Hộp thư gửi đi" style="padding:12px 16px;display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ outboxes }}" as="o" hint-placeholder-count="4">
+              <div>
+                <div class="em-row" role="radio" aria-checked="{{ o.ariaChecked }}" tabindex="{{ o.tabIndex }}" onKeyDown="{{ o.onKey }}" onClick="{{ o.onPick }}" style="{{ o.rowStyle }}">
+                  <span style="{{ o.radioStyle }}"><sc-if value="{{ o.sel }}"><span style="width:10px;height:10px;border-radius:50%;background:#405189;"></span></sc-if></span>
+                  <sc-if value="{{ o.hasIcon }}"><i class="{{ o.icon }}" style="{{ o.iconStyle }}"></i></sc-if>
+                  <sc-if value="{{ o.hasBadgeLetter }}"><span style="{{ o.letterStyle }}">{{ o.letter }}</span></sc-if>
+                  <div class="em-rowtext" style="min-width:0;display:flex;flex-direction:column;gap:1px;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <span style="font-size:14px;font-weight:600;color:#212529;">{{ o.name }}</span>
+                      <sc-if value="{{ o.isDefault }}"><span style="padding:1px 7px;border-radius:4px;background:#eef0f6;color:#405189;font-size:10px;font-weight:700;letter-spacing:.03em;white-space:nowrap;">MẶC ĐỊNH</span></sc-if>
+                      <sc-if value="{{ o.hasTip }}"><span style="{{ o.tipStyle }}">{{ o.tip }}</span></sc-if>
+                    </div>
+                    <span style="font-size:12.5px;color:#878a99;line-height:1.45;">{{ o.meta }}</span>
+                  </div>
+                  <div class="em-rowact" style="margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;">
+                    <sc-if value="{{ o.hasQuota }}"><span class="em-hidesm" style="display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:#495057;">{{ o.quota }}<span style="width:44px;height:5px;border-radius:20px;background:#e9ebec;overflow:hidden;display:inline-block;"><span style="display:block;height:100%;width:23%;background:#0ab39c;"></span></span></span></sc-if>
+                    <sc-if value="{{ o.hasRowState }}"><span style="{{ o.rowStateChip }}"><span style="{{ o.rowStateDot }}"></span>{{ o.rowStateText }}</span></sc-if>
+                    
+                    <button onClick="{{ o.onInfo }}" title="Giải thích" class="em-info" style="width:26px;height:26px;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;"><i class="ri-information-line" style="font-size:16px;"></i></button>
+                  </div>
+                </div>
+                <sc-if value="{{ o.connectOpen }}">
+                  <div class="em-pop" style="margin:-1px 2px 2px;padding:14px 16px 15px;border:1px solid #405189;border-top:0;border-radius:0 0 6px 6px;background:rgba(64,81,137,.035);">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                      <button class="em-connbtn" onClick="{{ o.onConnect }}" style="{{ o.connBtn }}"><i class="{{ o.connBtnIcon }}"></i>{{ o.connBtnLabel }}</button>
+                      <sc-if value="{{ o.isLinked }}"><button onClick="{{ o.onDisconnect }}" style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;color:#b42318;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;"><i class="ri-link-unlink-m"></i>Ngắt kết nối</button></sc-if>
+                    </div>
+                    <p style="margin:12px 0 0;font-size:12.5px;line-height:1.6;color:#5b6270;">{{ o.connNote }}</p>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ o.infoOpen }}">
+                  <div class="em-pop" style="margin:8px 2px 2px;padding:14px 16px;border:1px solid #e9ebec;border-radius:6px;background:#f8f9fb;">
+                    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+                      <div style="font-size:13.5px;font-weight:600;color:#212529;">{{ o.infoTitle }}</div>
+                      <button onClick="{{ o.onInfo }}" style="border:0;background:transparent;color:#adb5bd;cursor:pointer;font-size:16px;line-height:1;"><i class="ri-close-line"></i></button>
+                    </div>
+                    <p style="margin:8px 0 0;font-size:13px;line-height:1.6;color:#5b6270;">{{ o.infoBody }}</p>
+                    <sc-if value="{{ o.hasInfoLinks }}"><div style="margin-top:11px;padding-top:11px;border-top:1px solid #e9ebec;display:flex;gap:18px;"><span class="em-lnk">Cách gửi từ @anvinh.vn</span><span class="em-lnk">Nâng hạn mức</span></div></sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <sc-if value="{{ showOther }}">
+          <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);padding:16px;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;margin-bottom:12px;">CHỌN DỊCH VỤ</div>
+            <div class="em-provgrid" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;">
+              <sc-for list="{{ otherProviders }}" as="p" hint-placeholder-count="7">
+                <button class="em-tile" onClick="{{ p.onPick }}" style="{{ p.style }}"><span style="{{ p.badgeStyle }}">{{ p.badge }}</span><span style="display:flex;flex-direction:column;gap:0;min-width:0;text-align:left;"><span style="font-size:13px;font-weight:600;color:#212529;">{{ p.name }}</span><span style="font-size:11px;color:#878a99;">{{ p.sub }}</span></span></button>
+              </sc-for>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:6px;margin-top:10px;font-size:12.5px;color:#878a99;line-height:1.6;"><i class="ri-lightbulb-line" style="font-size:14px;color:#f7b84b;flex-shrink:0;margin-top:2px;"></i><span>{{ provTip }}</span></div>
+            <div class="em-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:14px 18px;margin-top:16px;">
+              <sc-for list="{{ otherFields }}" as="f" hint-placeholder-count="2">
+                <label style="{{ f.wrapStyle }}"><span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:#212529;white-space:nowrap;">{{ f.label }}<sc-if value="{{ f.req }}"><span style="color:#f06548;">*</span></sc-if></span><input type="{{ f.type }}" value="{{ f.value }}" placeholder="{{ f.ph }}" autocomplete="new-password" onInput="{{ f.onInput }}" style="{{ f.inputStyle }}"><sc-if value="{{ f.hasErr }}"><span style="font-size:12px;color:#b42318;line-height:1.5;">{{ f.err }}</span></sc-if><sc-if value="{{ f.hasHint }}"><span style="font-size:12px;color:#878a99;line-height:1.5;">{{ f.hint }}</span></sc-if></label>
+              </sc-for>
+            </div>
+            <div style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <button onClick="{{ onSaveProvider }}" style="{{ provBtn }}"><i class="{{ provBtnIcon }}"></i>{{ provBtnLabel }}</button>
+              <span style="{{ provChip }}"><span style="{{ provDot }}"></span>{{ provState }}</span>
+            </div>
+            <div style="margin-top:16px;border:1px solid #e9ebec;border-radius:6px;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:#fafbfc;border-bottom:1px solid #eff2f7;"><span style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;">Xác thực tên miền — nền tảng tự làm</span><span style="font-size:11.5px;color:#878a99;white-space:nowrap;">{{ dnsHint }}</span></div>
+              <sc-for list="{{ dnsRows }}" as="d" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-top:1px solid #f4f5f8;">
+                  <span style="{{ d.dot }}"></span>
+                  <span style="font-size:13px;font-weight:600;color:#212529;width:64px;flex-shrink:0;">{{ d.name }}</span>
+                  <span style="font-size:12.5px;color:#878a99;line-height:1.45;min-width:0;">{{ d.desc }}</span>
+                  <span style="{{ d.chip }}">{{ d.state }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);padding:16px;">
+          <div class="em-2col" style="display:grid;grid-template-columns:1fr 1fr;gap:18px 0;align-items:start;">
+          <div class="em-lcol" style="padding-right:24px;min-width:0;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;margin-bottom:10px;">TÊN VÀ ĐỊA CHỈ NGƯỜI GỬI</div>
+            <sc-if value="{{ showSenderPreview }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;border:1px dashed #dfe2ea;border-radius:4px;background:#fafbfc;min-width:0;"><i class="ri-mail-line" style="font-size:14px;color:#adb5bd;flex-shrink:0;"></i><span style="flex:1 1 auto;font-size:13px;color:#495057;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ senderPreview }}</span></div></sc-if>
+            <sc-if value="{{ senderNoAddr }}"><div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;border:1px dashed #dfe2ea;border-radius:4px;background:#fafbfc;min-width:0;font-size:13px;color:#878a99;line-height:1.5;"><i class="ri-mail-line" style="font-size:14px;color:#adb5bd;flex-shrink:0;"></i><span style="flex:1 1 auto;min-width:0;">Chọn xong hộp thư gửi ở trên là địa chỉ hiện ra đây.</span></div></sc-if>
+            <div style="display:flex;flex-direction:column;gap:14px;">
+              <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:#212529;">Tên hiển thị</span><input type="text" name="em_sender_name" autocomplete="organization" value="{{ displayName }}" onInput="{{ onDisplayName }}" style="width:100%;padding:9px 11px;border:1px solid #ced4da;border-radius:4px;font:inherit;font-size:14px;color:#495057;outline:none;"></label>
+              <sc-if value="{{ showFromEdit }}"><label style="display:flex;flex-direction:column;gap:6px;"><span class="em-help" style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:500;color:#212529;">Địa chỉ gửi đi<button type="button" onClick="{{ onHelpFrom }}" aria-label="Giải thích địa chỉ gửi đi" class="em-info" style="width:26px;height:26px;padding:0;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;"><i class="ri-question-line"></i></button><sc-if value="{{ helpFrom }}"><span class="em-helppop">Đây là địa chỉ đứng tên gửi trên thư. Phần sau dấu @ lấy theo tên miền đã xác thực ở trên nên không nhập lệch được — nhập khác thì nhà cung cấp sẽ chặn thư.</span></sc-if></span>
+                <span style="display:flex;align-items:stretch;">
+                  <input type="text" name="em_from_local" autocomplete="off" value="{{ fromLocal }}" onInput="{{ onFromLocal }}" style="flex:1;min-width:0;padding:9px 11px;border:1px solid #ced4da;border-right:0;border-radius:4px 0 0 4px;font:inherit;font-size:14px;color:#495057;outline:none;">
+                  <span style="display:inline-flex;align-items:center;padding:0 12px;border:1px solid #ced4da;border-radius:0 4px 4px 0;background:#f6f7f9;font-size:13.5px;color:#5b6270;white-space:nowrap;">@{{ fromDomain }}</span>
+                </span></label></sc-if>
+              <sc-if value="{{ showFromRO }}"><label style="display:flex;flex-direction:column;gap:6px;"><span class="em-help" style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:500;color:#212529;">Địa chỉ gửi đi<button type="button" onClick="{{ onHelpFrom }}" aria-label="Giải thích địa chỉ gửi đi" class="em-info" style="width:26px;height:26px;padding:0;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;"><i class="ri-question-line"></i></button><sc-if value="{{ helpFrom }}"><span class="em-helppop">Google và Microsoft buộc thư gửi từ chính hộp thư đã kết nối, nên địa chỉ này không sửa được. Muốn đổi thì kết nối hộp thư khác ở trên.</span></sc-if></span>
+                <span style="display:flex;align-items:center;gap:8px;padding:9px 11px;border:1px solid #ced4da;border-radius:4px;background:#f6f7f9;font-size:14px;color:#5b6270;"><i class="ri-lock-line" style="font-size:14px;color:#adb5bd;"></i>{{ fromRO }}</span></label></sc-if>
+              <label style="display:flex;flex-direction:column;gap:6px;"><span class="em-help" style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:500;color:#212529;">Khách trả lời về địa chỉ<button type="button" onClick="{{ onHelpReply }}" aria-label="Giải thích địa chỉ nhận trả lời" class="em-info" style="width:26px;height:26px;padding:0;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;"><i class="ri-question-line"></i></button><sc-if value="{{ helpReply }}"><span class="em-helppop">Chỉ áp dụng cho thư website gửi ra cho khách: khách bấm Trả lời thì thư về đây. Thư thông báo gửi cho bạn không dùng địa chỉ này — xem giải thích ở cột bên phải.</span></sc-if></span><input type="email" name="em_reply_to" autocomplete="off" inputmode="email" value="{{ replyTo }}" onInput="{{ onReplyTo }}" style="width:100%;padding:9px 11px;border:1px solid #ced4da;border-radius:4px;font:inherit;font-size:14px;color:#495057;outline:none;"><sc-if value="{{ replyErr }}"><span style="font-size:12px;color:#b42318;line-height:1.5;">Địa chỉ này chưa đúng định dạng email.</span></sc-if></label>
+            </div>
+          </div>
+          <div class="em-rcol" style="min-width:0;">
+            <div style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;margin-bottom:14px;">{{ notifyTitle }}</div>
+            <label style="display:flex;flex-direction:column;gap:6px;"><span class="em-help" style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:500;color:#212529;">Gửi thông báo tới<button type="button" onClick="{{ onHelpNotify }}" aria-label="Giải thích địa chỉ nhận thông báo" class="em-info" style="width:26px;height:26px;padding:0;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;font-size:15px;line-height:1;flex-shrink:0;"><i class="ri-question-line"></i></button><sc-if value="{{ helpNotify }}"><span class="em-helppop">{{ notifyHelpText }}</span></sc-if></span><div class="em-sbox" style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;padding:6px 8px;border:1px solid #ced4da;border-radius:4px;min-height:40px;">
+              <sc-for list="{{ notifyChips }}" as="ch" hint-placeholder-count="2"><span style="{{ ch.style }}">{{ ch.email }}<button type="button" onClick="{{ ch.onRemove }}" aria-label="Gỡ {{ ch.email }}" style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer;font-size:13px;line-height:1;padding:0;">×</button></span></sc-for>
+              <input class="em-plain" value="{{ notifyDraft }}" onInput="{{ onNotifyDraft }}" onKeyDown="{{ onNotifyDraftKey }}" onBlur="{{ onNotifyDraftBlur }}" placeholder="{{ notifyPh }}" style="flex:1 1 120px;min-width:120px;border:0;outline:none;background:transparent;font:inherit;font-size:14px;color:#495057;padding:4px 2px;">
+            </div>
+            <sc-if value="{{ hasNotifySuggest }}"><div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;"><sc-for list="{{ notifySuggestions }}" as="sg" hint-placeholder-count="2"><button type="button" onClick="{{ sg.onClick }}" style="padding:4px 10px;border:1px dashed #ced4da;border-radius:14px;background:#fff;color:#405189;font:inherit;font-size:12px;cursor:pointer;">+ {{ sg.label }}</button></sc-for></div></sc-if>
+            <sc-if value="{{ notifyErr }}"><span style="font-size:12px;color:#b42318;line-height:1.5;">{{ notifyErrText }}</span></sc-if></label>
+            <div style="margin-top:10px;display:flex;align-items:flex-start;gap:9px;font-size:12.5px;color:#878a99;line-height:1.6;">
+              <i class="ri-translate-2" style="font-size:14px;color:#adb5bd;flex-shrink:0;margin-top:2px;"></i>
+              <span style="min-width:0;">Thư thông báo gửi bằng <b style="color:#495057;">{{ notifyLangName }}</b> — theo ngôn ngữ trong hồ sơ của bạn. Người nhận có tài khoản sẽ nhận theo ngôn ngữ riêng của họ.</span>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:flex-start;gap:9px;padding:11px 12px;border:1px solid rgba(41,156,219,.28);border-radius:4px;background:rgba(41,156,219,.07);">
+              <i class="ri-reply-line" style="font-size:15px;color:#299cdb;flex-shrink:0;margin-top:1px;"></i>
+              <sc-if value="{{ notifyIsSaas }}"><span style="font-size:12.5px;color:#495057;line-height:1.6;">Đây là thư tự động của hệ thống, không gắn với một khách cụ thể — trả lời sẽ về đúng địa chỉ <b>Khách trả lời về</b> ở cột bên trái.</span></sc-if>
+              <sc-if value="{{ notifyNotSaas }}"><span style="font-size:12.5px;color:#495057;line-height:1.6;">Trong thư thông báo, hệ thống tự đặt người trả lời là <b>email của khách vừa gửi</b> — bạn bấm Trả lời là trả lời thẳng cho khách, không phải sao chép địa chỉ.</span></sc-if>
+            </div>
+          </div>
+          <div style="grid-column:1/-1;margin-top:6px;padding-top:16px;border-top:1px solid #eff2f7;">
+            <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:#212529;">Gửi thư kiểm tra tới</span>
+              <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <input class="em-inp" type="email" name="em_test_to" autocomplete="off" inputmode="email" value="{{ testTo }}" onInput="{{ onTestTo }}" placeholder="vidu@congty.vn" style="flex:1;min-width:180px;max-width:340px;padding:11px 12px;border:1px solid #ced4da;border-radius:4px;font:inherit;font-size:14px;color:#495057;outline:none;">
+                <button type="button" class="em-testbtn" onClick="{{ onSendTest }}" disabled="{{ testBusy }}"><i class="{{ testBtnIcon }}"></i>{{ testBtnLabel }}</button>
+              </span>
+            </label>
+            <sc-if value="{{ testOk }}"><div style="margin-top:9px;display:flex;align-items:center;gap:7px;font-size:12.5px;color:#0a8f7f;line-height:1.5;"><i class="ri-checkbox-circle-line" style="font-size:14px;flex-shrink:0;"></i><span>{{ testMsg }}</span></div></sc-if>
+            <sc-if value="{{ testErr }}"><div style="margin-top:9px;display:flex;align-items:center;gap:7px;font-size:12.5px;color:#b42318;line-height:1.5;"><i class="ri-error-warning-line" style="font-size:14px;flex-shrink:0;"></i><span>{{ testMsg }}</span></div></sc-if>
+            <sc-if value="{{ testIdle }}"><div style="margin-top:9px;font-size:12.5px;color:#878a99;line-height:1.5;">Thư kiểm tra dùng đúng hộp thư và chữ ký đang cài, để bạn thấy trước thứ khách nhận được.</div></sc-if>
+          </div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid #eff2f7;">
+            <span style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;">THƯ GẦN ĐÂY</span>
+            <div style="display:flex;border:1px solid #e9ebec;border-radius:6px;overflow:hidden;">
+              <sc-for list="{{ rmFilters }}" as="f" hint-placeholder-count="4"><button type="button" onClick="{{ f.onClick }}" aria-pressed="{{ f.on }}" style="{{ f.style }}">{{ f.label }}</button></sc-for>
+            </div>
+          </div>
+          <sc-for list="{{ recentMail }}" as="r" hint-placeholder-count="5">
+            <div class="em-row" style="padding:11px 16px;border-top:1px solid #f4f5f8;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span style="font-size:12.5px;color:#878a99;min-width:62px;flex-shrink:0;white-space:nowrap;">{{ r.at }}</span>
+                <span style="font-size:13.5px;font-weight:500;color:#212529;flex-shrink:0;white-space:nowrap;">{{ r.kind }}</span>
+                <span class="em-hidesm" style="font-size:12.5px;color:#878a99;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.to }}</span>
+                <span style="{{ r.chip }}">{{ r.state }}</span>
+              </div>
+              <sc-if value="{{ r.hasReason }}"><div class="em-rmreason" style="margin-top:5px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;"><span style="font-size:12px;color:#878a99;line-height:1.5;min-width:0;">{{ r.reason }}</span><button type="button" class="em-tlink" style="font-size:12px;font-weight:600;" onClick="{{ r.onResend }}"><i class="ri-refresh-line" style="font-size:12px;"></i>Gửi lại</button></div></sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{ rmEmpty }}"><div style="padding:26px 16px;border-top:1px solid #f4f5f8;text-align:center;font-size:13px;color:#878a99;line-height:1.6;">Không có thư nào ở trạng thái này trong 30 ngày qua.</div></sc-if>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid #f4f5f8;background:#fafbfc;font-size:12.5px;color:#878a99;line-height:1.5;"><span style="min-width:0;">Thư vào hộp thư rác hay không gửi được đều hiện ở đây kèm lý do — bạn tự kiểm tra được, không cần hỏi hỗ trợ.</span><span style="white-space:nowrap;">Giữ nhật ký 30 ngày</span></div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ============ TAB: MẪU THƯ ============ -->
+    <sc-if value="{{ tabTpl }}">
+      <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;">
+          <sc-if value="{{ showSearch }}" hint-placeholder-val="{{ true }}"><label class="em-sbox" style="flex:1 1 260px;min-width:0;display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid #e9ebec;border-radius:6px;background:#fff;transition:box-shadow .15s,border-color .15s;"><i class="ri-search-line" style="color:#adb5bd;"></i><input class="em-plain" value="{{ q }}" onInput="{{ onSearch }}" placeholder="Tìm mẫu thư…" style="flex:1;min-width:0;border:0;outline:none;background:transparent;font:inherit;font-size:13.5px;color:#495057;"></label></sc-if>
+          <div style="display:inline-flex;border:1px solid #e9ebec;border-radius:6px;overflow:hidden;flex-shrink:0;margin-right:auto;">
+            <sc-for list="{{ tplFilters }}" as="tf" hint-placeholder-count="3"><button onClick="{{ tf.onClick }}" aria-pressed="{{ tf.on }}" style="{{ tf.style }}">{{ tf.label }}</button></sc-for>
+          </div>
+          <span class="em-tsep"></span>
+          <div style="display:flex;align-items:center;gap:9px;flex-shrink:0;">
+            <span class="{{ aiChipClass }}" title="{{ aiChipTitle }}"><i class="ri-sparkling-2-line"></i>{{ aiChipText }}</span>
+            <button type="button" class="em-aibtn" onClick="{{ onFillAll }}" disabled="{{ fillBlocked }}" title="{{ fillTip }}"><i class="ri-sparkling-2-line"></i>{{ fillLabel }}</button>
+          </div>
+        </div>
+        <div>
+          <sc-if value="{{ tplHasRows }}">
+            <div class="em-tplhead"><span></span><span>MẪU THƯ</span><span style="text-align:center;">NGÔN NGỮ</span><span style="text-align:right;">HÀNH ĐỘNG</span></div>
+          </sc-if>
+          <sc-for list="{{ tplGroups }}" as="g" hint-placeholder-count="3">
+            <div>
+              <div style="padding:12px 18px 6px;font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;">{{ g.label }}</div>
+              <sc-for list="{{ g.items }}" as="t" hint-placeholder-count="2">
+                <div class="em-row em-tplrow {{ t.rowCls }}">
+                  <i class="em-tplicon {{ t.icon }}" style="font-size:19px;color:#878a99;"></i>
+                  <div class="em-tplname em-tplbtn" role="button" tabindex="0" onClick="{{ t.onEdit }}" onKeyDown="{{ t.onEditKey }}">
+                    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <span class="em-tplt" style="font-size:14px;font-weight:600;color:#212529;">{{ t.name }}</span>
+                      <sc-if value="{{ t.showAccChip }}"><span style="{{ t.accChipStyle }}">{{ t.accChipText }}</span></sc-if>
+                      <sc-if value="{{ t.showBadge }}"><span style="{{ t.badgeOuterStyle }}"><span style="{{ t.badgeDotStyle }}"></span>{{ t.badgeText }}</span></sc-if>
+                      <sc-if value="{{ t.canReset }}"><span style="color:#c5c8d0;font-size:12px;">·</span><button type="button" class="em-tlink" onClick="{{ t.onReset }}" title="{{ t.resetTip }}" aria-label="{{ t.resetTip }}"><i class="ri-arrow-go-back-line" style="font-size:12px;"></i>Hoàn tác</button></sc-if>
+                    </span>
+                    <span style="font-size:12px;color:#878a99;line-height:1.45;">{{ t.when }}</span>
+                  </div>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
+                    <sc-for list="{{ t.langs }}" as="l" hint-placeholder-count="3"><span style="{{ l.style }}" title="{{ l.title }}">{{ l.code }}</span></sc-for>
+                  </div>
+                  <div class="em-tplactions">
+                    <sc-if value="{{ t.lockedOn }}"><span class="dsw on lock" role="img" aria-label="Luôn bật — khách cần email này, không thể tắt" title="Không thể tắt — khách cần email này"><span></span></span></sc-if>
+                    <sc-if value="{{ t.canToggle }}"><button class="{{ t.swClass }}" role="switch" aria-checked="{{ t.ariaOn }}" aria-label="{{ t.swLabel }}" onClick="{{ t.onToggle }}"><span></span></button></sc-if>
+                    <sc-if value="{{ t.sysOnly }}"><button type="button" class="em-editbtn" onClick="{{ t.onEdit }}"><i class="ri-eye-line"></i>Xem</button></sc-if>
+                    <sc-if value="{{ t.canEdit }}"><button type="button" class="em-editbtn" onClick="{{ t.onEdit }}"><i class="ri-pencil-line"></i>Sửa</button></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <sc-if value="{{ tplEmptyQ }}"><div style="padding:36px;text-align:center;color:#878a99;font-size:13.5px;line-height:1.6;">Không có mẫu nào khớp từ khoá “{{ q }}”. Thử từ khác hoặc tên mẫu.</div></sc-if>
+          <sc-if value="{{ tplEmptyFilter }}"><div style="padding:32px;text-align:center;color:#878a99;font-size:13.5px;line-height:1.6;">Không có mẫu nào ở trạng thái này.<br><button type="button" class="em-tlink" style="margin-top:9px;font-size:13px;font-weight:600;" onClick="{{ onClearFilter }}"><i class="ri-close-circle-line" style="font-size:13px;"></i>Bỏ lọc</button></div></sc-if>
+          <sc-if value="{{ hasEdited }}"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid #f2f3f6;background:#fafbfc;">
+            <span style="font-size:12.5px;color:#878a99;line-height:1.5;min-width:0;">{{ editedSummary }}</span>
+            <button type="button" class="em-gbtn" style="min-height:34px;padding:0 13px;font-size:12.5px;" onClick="{{ onResetAllAsk }}"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Về mẫu gốc tất cả</button>
+          </div></sc-if>
+          <sc-if value="{{ tplEmptyBoth }}"><div style="padding:32px;text-align:center;color:#878a99;font-size:13.5px;line-height:1.6;">Không có mẫu nào vừa khớp từ khoá “{{ q }}” vừa ở trạng thái đang lọc.<br><button type="button" class="em-tlink" style="margin-top:9px;font-size:13px;font-weight:600;" onClick="{{ onClearFilter }}"><i class="ri-close-circle-line" style="font-size:13px;"></i>Bỏ lọc, giữ từ khoá</button></div></sc-if>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);margin-top:14px;">
+        <button type="button" onClick="{{ onToggleLocked }}" style="width:100%;display:flex;align-items:center;gap:10px;padding:14px 18px;border:0;background:transparent;font:inherit;cursor:pointer;text-align:left;">
+          <i class="ri-shield-check-line" style="font-size:17px;color:#878a99;"></i>
+          <span style="font-size:13.5px;font-weight:600;color:#212529;">Mẫu hệ thống &amp; bắt buộc</span>
+          <span style="font-size:12.5px;color:#878a99;">— {{ lockedCount }} mẫu không chỉnh bật/tắt</span>
+          <i class="{{ lockedChevron }}" style="margin-left:auto;font-size:18px;color:#adb5bd;"></i>
+        </button>
+        <sc-if value="{{ lockedOpen }}">
+          <div>
+            <sc-for list="{{ lockedTpls }}" as="t" hint-placeholder-count="6">
+              <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid #f2f3f6;">
+                <i class="{{ t.icon }}" style="font-size:19px;color:#878a99;"></i>
+                <div class="em-tplbtn" role="button" tabindex="0" onClick="{{ t.onEdit }}" onKeyDown="{{ t.onEditKey }}" style="min-width:0;display:flex;flex-direction:column;gap:1px;flex:1;cursor:pointer;">
+                  <span style="font-size:14px;font-weight:600;color:#212529;">{{ t.name }}</span>
+                  <span style="font-size:12px;color:#878a99;line-height:1.45;">{{ t.when }}</span>
+                </div>
+                <span style="{{ t.badgeStyle }}"><i class="{{ t.badgeIcon }}" style="font-size:12px;"></i>{{ t.badgeText }}</span>
+                <button type="button" class="em-iconbtn" onClick="{{ t.onEdit }}" title="Xem mẫu" aria-label="Xem mẫu {{ t.name }}"><i class="ri-eye-line"></i></button>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- ============ TAB: CHỮ KÝ ============ -->
+    <sc-if value="{{ tabSign }}">
+      <div style="display:flex;flex-direction:column;gap:18px;">
+      <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);">
+        <div style="padding:13px 16px;border-bottom:1px solid #eff2f7;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;">THƯƠNG HIỆU EMAIL</div>
+          <div style="margin-top:2px;font-size:12.5px;color:#878a99;line-height:1.5;">Dùng chung cho mọi email tự động — đổi một lần, áp dụng khắp nơi.</div>
+        </div>
+        <div style="padding:14px 16px;">
+          <div class="em-brandrow" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+              <div style="{{ logoBoxStyleSm }}"><image-slot id="email-logo" ref="{{ logoRef }}" shape="rect" fit="contain" placeholder="Thả logo" style="width:100%;height:100%;"></image-slot></div>
+              <span style="font-size:12.5px;color:#878a99;line-height:1.4;">Logo đầu thư<br><span style="color:#adb5bd;">Kéo ảnh vào ô bên cạnh, hoặc bấm để chọn file</span></span>
+            </div>
+            <span class="em-tsep" style="height:32px;"></span>
+            <div style="flex:1 1 260px;min-width:0;">
+              <span style="font-size:12.5px;color:#878a99;">Màu nút &amp; tiêu đề</span>
+              <div role="radiogroup" aria-label="Màu nút trong thư" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px;">
+                <sc-for list="{{ brandSwatches }}" as="sw" hint-placeholder-count="8"><button type="button" role="radio" aria-checked="{{ sw.ariaOn }}" onClick="{{ sw.onPick }}" title="{{ sw.name }}" aria-label="{{ sw.name }}" style="{{ sw.style }}"><i class="{{ sw.check }}"></i></button></sc-for>
+              </div>
+              <div style="margin-top:8px;font-size:12px;color:#878a99;line-height:1.5;">Áp dụng cho nút và tiêu đề nhấn trong <b>mọi email tự động</b> — chọn ở đây là mọi mẫu thư đổi theo.</div>
+            </div>
+          </div>
+          <sc-if value="{{ brandLowCR }}"><div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px;padding:9px 11px;border-radius:4px;background:rgba(247,184,75,.12);color:#8a6410;font-size:12px;line-height:1.55;"><i class="ri-error-warning-line" style="margin-top:1px;"></i><span>Màu này chỉ vừa đủ tương phản cho chữ lớn trên nút. Chọn màu đậm hơn nếu muốn đạt chuẩn WCAG AA.</span></div></sc-if>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid #eff2f7;">
+          <div>
+            <div style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;">CHỮ KÝ EMAIL</div>
+            <div style="margin-top:2px;font-size:12.5px;color:#878a99;line-height:1.5;">Chèn tự động ở cuối mọi email gửi ra.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <sc-for list="{{ sigLayouts }}" as="s" hint-placeholder-count="3"><button onClick="{{ s.onClick }}" style="{{ s.style }}"><i class="{{ s.icon }}"></i>{{ s.label }}</button></sc-for>
+            <button onClick="{{ onResetSig }}" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font:inherit;font-size:13px;color:#495057;cursor:pointer;"><i class="ri-arrow-go-back-line"></i>Về mặc định</button>
+          </div>
+        </div>
+        <div style="padding:16px;">
+        <div style="display:flex;align-items:flex-start;gap:9px;padding:11px 14px;border-radius:4px;background:#f8f9fb;color:#5b6270;font-size:12.5px;line-height:1.55;margin-bottom:14px;"><i class="ri-links-line" style="margin-top:1px;color:#405189;"></i><span>Đang lấy tự động từ <b>Thông tin chung</b> — sửa tên, hotline, địa chỉ ở đó thì chữ ký tự cập nhật. Muốn khác thì soạn trực tiếp bên dưới.</span></div>
+        <div style="border:1px solid #e9ebec;border-radius:6px;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:2px;padding:8px 10px;border-bottom:1px solid #eff2f7;background:#fafbfc;flex-wrap:wrap;">
+            <sc-for list="{{ sigTools }}" as="b" hint-placeholder-count="6"><sc-if value="{{ b.sepBefore }}"><span style="width:1px;height:20px;background:#e9ebec;margin:0 4px;flex-shrink:0;"></span></sc-if><button onClick="{{ b.onClick }}" title="{{ b.label }}" style="height:30px;padding:0 8px;border:0;border-radius:4px;background:transparent;color:#5b6270;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;font:inherit;font-size:13px;"><i class="{{ b.icon }}"></i><sc-if value="{{ b.hasText }}"><span>{{ b.text }}</span></sc-if></button></sc-for>
+          </div>
+          <div style="{{ sigBodyWrap }}">
+            <sc-if value="{{ sigShowLogo }}"><div style="{{ logoBoxStyle }}"><image-slot id="email-logo" ref="{{ logoRef }}" shape="rect" fit="contain" placeholder="Logo" style="width:100%;height:100%;"></image-slot></div></sc-if>
+            <div key="{{ sigLayout }}" ref="{{ sigRef }}" class="em-ce" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Nội dung chữ ký" onPaste="{{ onPastePlain }}" onInput="{{ onSigInput }}" data-ph="Soạn chữ ký…" style="padding:18px 16px;min-height:120px;font-size:14px;line-height:1.6;color:#495057;flex:1;min-width:0;"></div>
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;margin-bottom:9px;"><span style="font-family:monospace;">{ }</span>BIẾN CỦA WEBSITE</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <sc-for list="{{ sigVars }}" as="v" hint-placeholder-count="6"><button onClick="{{ v.onClick }}" title="{{ v.sample }}" style="padding:6px 12px;border:1px solid #e4e6ee;border-radius:16px;background:#f4f5f9;color:#405189;font:inherit;font-size:12.5px;font-weight:500;white-space:nowrap;cursor:pointer;">{{ v.label }}</button></sc-for>
+          </div>
+        </div>
+        </div>
+      </div>
+      </div>
+    </sc-if>
+
+  </div>
+  </sc-if>
+
+  <!-- ============ EDITOR (4c) ============ -->
+  <sc-if value="{{ isEditing }}">
+    <div style="max-width:1180px;margin:0 auto;padding:18px 26px 60px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+          <button onClick="{{ onCloseEditor }}" style="width:34px;height:34px;border:1px solid #e9ebec;border-radius:6px;background:#fff;color:#495057;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:18px;"><i class="ri-arrow-left-line"></i></button>
+          <h2 style="margin:0;font-size:18px;font-weight:600;color:#212529;white-space:nowrap;">{{ edTitle }}</h2>
+          <sc-if value="{{ edEdited }}"><span style="padding:2px 9px;border-radius:4px;background:#eef0f6;color:#5b6270;font-size:11.5px;font-weight:600;">Bạn đã sửa</span></sc-if>
+          <sc-if value="{{ edLocked }}"><span class="dsw on lock" role="switch" aria-checked="true" aria-disabled="true" aria-label="Luôn bật — khách cần email này" title="Không thể tắt — khách cần email này"><span></span></span></sc-if>
+          <sc-if value="{{ edCanToggle }}"><button class="{{ edSwClass }}" role="switch" aria-checked="{{ edAriaOn }}" aria-label="Bật hoặc tắt mẫu này" onClick="{{ onToggleEdTpl }}" title="Bật / tắt mẫu này"><span></span></button></sc-if>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <sc-if value="{{ edSaveable }}" hint-placeholder-val="{{ true }}"><button class="em-gbtn" onClick="{{ onResetTpl }}" disabled="{{ edResetBlocked }}" title="{{ edResetTip }}"><i class="ri-arrow-go-back-line" style="font-size:15px;"></i>Về mẫu gốc</button></sc-if>
+<sc-if value="{{ edDirty }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#b57d13;white-space:nowrap;"><span style="width:8px;height:8px;border-radius:50%;background:#f7b84b;"></span>Chưa lưu mẫu</span></sc-if><sc-if value="{{ edSaveable }}" hint-placeholder-val="{{ true }}"><button onClick="{{ onSaveTpl }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;"><i class="ri-save-3-line"></i>Lưu mẫu</button></sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ edOff }}"><div style="display:flex;align-items:flex-start;gap:9px;padding:11px 14px;border-radius:4px;background:rgba(247,184,75,.12);color:#8a6410;font-size:12.5px;line-height:1.55;margin-bottom:14px;"><i class="ri-error-warning-line" style="margin-top:1px;"></i><span>Mẫu này <b>đang tắt</b> nên khách sẽ không nhận được. Sửa xong hãy bật công tắc ở trên.</span></div></sc-if>
+      <div class="em-edbar" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+        <sc-if value="{{ edI18n }}"><div class="em-edlangs" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <sc-for list="{{ langPillsAll }}" as="lg" hint-placeholder-count="3"><button onClick="{{ lg.onPick }}" title="{{ lg.title }}" style="{{ lg.style }}"><span style="{{ lg.dot }}"></span>{{ lg.name }}<sc-if value="{{ lg.isSrc }}"><i class="ri-star-fill" title="Ngôn ngữ nguồn" style="font-size:11px;color:#f7b84b;flex-shrink:0;"></i></sc-if></button></sc-for>
+          </div>
+          <button onClick="{{ onTranslateLang }}" title="{{ translateTitle }}" style="{{ translateStyle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ translateLabel }}</button>
+        </div></sc-if>
+        <sc-if value="{{ edNoI18n }}"><div style="display:flex;align-items:center;gap:8px;min-width:0;font-size:12.5px;color:#5b6270;line-height:1.5;"><i class="ri-user-received-2-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;"></i><span>Thư này chỉ gửi cho bạn nên không cần dịch — soạn một bản là đủ.</span></div></sc-if>
+        <sc-if value="{{ edSys }}"><div style="display:flex;align-items:center;gap:8px;min-width:0;font-size:12.5px;color:#5b6270;line-height:1.5;"><i class="ri-shield-check-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;"></i><span>Thư hệ thống — nội dung do nền tảng quản lý nên chỉ xem được. Ngôn ngữ theo hồ sơ của từng người nhận.</span></div></sc-if>
+      </div>
+      <sc-if value="{{ edSaveable }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:flex-end;gap:4px;border-bottom:1px solid #e9ebec;margin-bottom:16px;">
+        <button class="{{ modeEditCls }}" onClick="{{ onEditMode }}"><i class="ri-edit-2-line"></i>Soạn thảo</button>
+        <button class="{{ modePreviewCls }}" onClick="{{ onPreviewMode }}"><i class="ri-eye-line"></i>Xem trước</button>
+      </div></sc-if>
+
+      <sc-if value="{{ modeEdit }}">
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px solid #e9ebec;border-radius:6px;background:#fff;margin-bottom:12px;">
+          <span style="font-size:12.5px;color:#878a99;flex-shrink:0;">Tiêu đề</span>
+          <div ref="{{ subjRef }}" class="em-ce" contenteditable="true" role="textbox" aria-label="Tiêu đề email" onPaste="{{ onPastePlain }}" data-ph="Tiêu đề email…" style="flex:1;min-width:0;font-size:14.5px;font-weight:500;color:#212529;" onFocus="{{ onFocusSubj }}" onInput="{{ onEdInput }}"></div>
+          <span style="font-family:monospace;color:#c5c8d0;flex-shrink:0;">{ }</span>
+        </div>
+        <div style="border:1px solid #e9ebec;border-radius:6px;overflow:hidden;background:#fff;">
+          <div style="display:flex;align-items:center;gap:2px;padding:8px 10px;border-bottom:1px solid #eff2f7;background:#fafbfc;flex-wrap:wrap;">
+            <sc-for list="{{ edTools }}" as="b" hint-placeholder-count="7"><sc-if value="{{ b.sepBefore }}"><span style="width:1px;height:20px;background:#e9ebec;margin:0 4px;flex-shrink:0;"></span></sc-if><button onClick="{{ b.onClick }}" title="{{ b.label }}" style="height:30px;padding:0 8px;border:0;border-radius:4px;background:transparent;color:#5b6270;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px;font:inherit;font-size:13px;"><i class="{{ b.icon }}"></i><sc-if value="{{ b.hasText }}"><span>{{ b.text }}</span></sc-if></button></sc-for>
+          </div>
+          <div style="padding:20px 18px;background:#f8f9fb;">
+            <div ref="{{ bodyRef }}" class="em-ce em-mail" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Nội dung email" onPaste="{{ onPastePlain }}" data-ph="Nội dung email…" style="max-width:600px;margin:0 auto;padding:24px;min-height:240px;background:#fff;border:1px solid #eff2f7;border-radius:4px;" onFocus="{{ onFocusBody }}" onInput="{{ onEdInput }}"></div>
+            <div style="max-width:600px;margin:8px auto 0;font-size:11.5px;color:#adb5bd;line-height:1.5;">Khung rộng 600px, phông Arial 16px — đúng khổ hầu hết hộp thư hiển thị, xem sao thì gửi đi đúng vậy.</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;border:1px solid #e9ebec;border-radius:6px;background:#fff;overflow:hidden;">
+          <div style="display:flex;align-items:center;gap:6px;padding:10px 14px 0;flex-wrap:wrap;">
+            <span style="font-family:monospace;color:#c5c8d0;">{ }</span>
+            <sc-for list="{{ varGroups }}" as="vg" hint-placeholder-count="4"><button onClick="{{ vg.onClick }}" style="{{ vg.style }}">{{ vg.label }}</button></sc-for>
+            <label class="em-sbox" style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:6px;"><i class="ri-search-line" style="color:#adb5bd;font-size:14px;"></i><input class="em-plain" value="{{ varQ }}" onInput="{{ onVarSearch }}" placeholder="Tìm biến…" style="border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;width:110px;"></label>
+          </div>
+          <div style="padding:12px 14px;display:flex;gap:8px;flex-wrap:wrap;">
+            <sc-for list="{{ varChips }}" as="v" hint-placeholder-count="6"><span class="em-vchip"><button type="button" class="em-vins" onClick="{{ v.onClick }}" title="{{ v.tip }}">{{ v.token }}</button><button type="button" class="{{ v.copyCls }}" onClick="{{ v.onCopy }}" title="{{ v.copyTip }}" aria-label="{{ v.copyTip }}"><i class="{{ v.copyIcon }}"></i></button></span></sc-for>
+          </div>
+          <div style="padding:0 14px 12px;font-size:11.5px;color:#adb5bd;line-height:1.5;">{{ varHint }}</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ modePreview }}">
+        <div style="border:1px solid #e9ebec;border-radius:6px;background:#f3f3f9;padding:28px;">
+          <div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #e9ebec;border-radius:6px;overflow:hidden;box-shadow:0 4px 18px rgba(56,65,74,.15);">
+            <div style="padding:14px 26px;background:#fafbfc;border-bottom:1px solid #eff2f7;">
+              <div style="font-size:13px;color:#878a99;">Từ: <span style="color:#212529;font-weight:600;">An Vinh</span> &lt;no-reply@anvinh.vn&gt;</div>
+              <div style="margin-top:3px;font-size:13.5px;color:#212529;font-weight:600;">{{ previewSubj }}</div>
+            </div>
+            <div class="em-mail" style="padding:26px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;"><div style="{{ logoBoxStyle }}"><image-slot id="email-logo" ref="{{ logoRef }}" shape="rect" fit="contain" placeholder="Logo" style="width:100%;height:100%;"></image-slot></div><sc-if value="{{ !logoFilled }}"><span style="font-weight:600;color:#212529;font-size:15px;font-family:Arial,sans-serif;">An Vinh</span></sc-if></div>
+              {{ previewBody }}
+            </div>
+            <div style="padding:18px 26px;border-top:1px solid #eff2f7;background:#fafbfc;font-size:12.5px;color:#878a99;line-height:1.6;"><div style="{{ prevFooterWrap }}"><sc-if value="{{ sigShowLogo }}"><div style="{{ logoBoxStyle }}"><image-slot id="email-logo" ref="{{ logoRef }}" shape="rect" fit="contain" placeholder="Logo" style="width:100%;height:100%;"></image-slot></div></sc-if>{{ previewFooter }}</div></div>
+          </div>
+          <p style="text-align:center;margin:16px 0 0;font-size:12px;color:#878a99;">Bản xem trước với dữ liệu mẫu. <span class="em-lnk" onClick="{{ onTest }}">Gửi thử tới hộp thư của tôi</span></p>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ oauthOpen }}">
+    <div onClick="{{ onOaBackdrop }}" style="position:fixed;inset:0;z-index:300;background:rgba(33,37,41,.55);display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow:auto;">
+      <div ref="{{ oaRef }}" role="dialog" aria-modal="true" tabindex="-1" aria-label="{{ oaAria }}" onKeyDown="{{ onOaKey }}" onClick="{{ onOaStop }}" style="width:100%;max-width:432px;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.34);animation:em-fade .18s ease;">
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:#f1f3f4;border-bottom:1px solid #dfe1e5;">
+          <span style="display:flex;gap:5px;flex-shrink:0;"><span style="width:9px;height:9px;border-radius:50%;background:#ff5f57;"></span><span style="width:9px;height:9px;border-radius:50%;background:#febc2e;"></span><span style="width:9px;height:9px;border-radius:50%;background:#28c840;"></span></span>
+          <span style="flex:1;min-width:0;display:flex;align-items:center;gap:7px;padding:5px 11px;border-radius:20px;background:#fff;font-size:12px;color:#5f6368;"><i class="ri-lock-line" style="font-size:12px;color:#0ab39c;"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ oaHost }}</span></span>
+        </div>
+        <div style="padding:24px 26px 22px;">
+          <div style="display:flex;align-items:center;gap:9px;"><i class="{{ oaIcon }}" style="{{ oaIconStyle }}"></i><span style="font-size:14.5px;font-weight:600;color:#212529;">{{ oaBrand }}</span></div>
+
+          <sc-if value="{{ oaStepAccount }}">
+            <h3 style="margin:16px 0 4px;font-size:17px;font-weight:600;color:#212529;">Chọn tài khoản</h3>
+            <p style="margin:0;font-size:13px;color:#5f6368;">để tiếp tục tới <b style="color:#212529;">Bảo Sơn</b></p>
+            <div style="display:flex;flex-direction:column;gap:2px;margin-top:16px;">
+              <sc-for list="{{ oaAccounts }}" as="a" hint-placeholder-count="3">
+                <button onClick="{{ a.onPick }}" style="display:flex;align-items:center;gap:12px;padding:11px 10px;border:0;border-radius:4px;background:transparent;font:inherit;text-align:left;cursor:pointer;width:100%;">
+                  <span style="width:34px;height:34px;border-radius:50%;background:#405189;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0;">{{ a.initial }}</span>
+                  <span style="min-width:0;display:flex;flex-direction:column;"><span style="font-size:13.5px;font-weight:600;color:#212529;">{{ a.name }}</span><span style="font-size:12.5px;color:#5f6368;overflow:hidden;text-overflow:ellipsis;">{{ a.email }}</span></span>
+                  <i class="ri-arrow-right-s-line" style="margin-left:auto;color:#adb5bd;font-size:18px;"></i>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ oaStepConsent }}">
+            <h3 style="margin:16px 0 14px;font-size:16.5px;font-weight:600;color:#212529;line-height:1.45;">Bảo Sơn muốn quyền gửi thư từ tài khoản của bạn</h3>
+            <div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #e9ebec;border-radius:20px;width:fit-content;max-width:100%;">
+              <span style="width:26px;height:26px;border-radius:50%;background:#405189;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;">{{ oaInitial }}</span>
+              <span style="font-size:12.5px;color:#212529;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ oaAccount }}</span>
+            </div>
+            <div style="margin-top:16px;display:flex;align-items:flex-start;gap:11px;">
+              <i class="ri-send-plane-line" style="margin-top:2px;color:#5f6368;font-size:17px;"></i>
+              <div><div style="font-size:13.5px;font-weight:500;color:#212529;">Gửi email thay bạn</div><div style="margin-top:3px;font-size:12.5px;color:#5f6368;line-height:1.55;">Chỉ dùng để gửi thư tự động của website. Bảo Sơn không đọc, không xoá thư trong hộp thư của bạn.</div></div>
+            </div>
+            <p style="margin:16px 0 0;font-size:12px;color:#80868b;line-height:1.6;">Bạn có thể thu hồi quyền bất cứ lúc nào trong phần bảo mật của tài khoản {{ oaShort }}.</p>
+            <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
+              <button onClick="{{ onOaDeny }}" style="padding:9px 16px;border:0;border-radius:4px;background:transparent;color:#1a73e8;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;">Huỷ</button>
+              <button onClick="{{ onOaGrant }}" style="padding:9px 20px;border:0;border-radius:4px;background:#1a73e8;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;">Cho phép</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ oaStepWorking }}">
+            <div style="display:flex;align-items:center;gap:12px;padding:26px 0 14px;">
+              <span style="width:20px;height:20px;border:2px solid #dfe1e5;border-top-color:#1a73e8;border-radius:50%;animation:em-spin .8s linear infinite;display:inline-block;flex-shrink:0;"></span>
+              <span style="font-size:13.5px;color:#5f6368;">Đang cấp quyền và gửi thư kiểm tra…</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}"><div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:200;padding:11px 20px;border-radius:6px;background:#212529;color:#fff;font-size:13px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.22);">{{ toast }}</div></sc-if>
+
+</div>
+
+    <sc-if value="{{ resetAskOpen }}">
+      <div style="position:fixed;inset:0;z-index:122;background:rgba(33,37,41,.48);display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div role="dialog" aria-modal="true" style="width:min(492px,100%);background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 12px 32px rgba(56,65,74,.28);padding:20px;">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <span style="width:36px;height:36px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:rgba(247,184,75,.16);color:#b57d13;font-size:19px;"><i class="ri-arrow-go-back-line"></i></span>
+            <div style="min-width:0;">
+              <div style="font-size:15.5px;font-weight:600;color:#212529;line-height:1.4;">{{ resetAskTitle }}</div>
+              <p style="margin:7px 0 0;font-size:13px;color:#5b6270;line-height:1.6;">{{ resetAskBody }}</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;justify-content:flex-end;margin-top:18px;">
+            <button type="button" class="em-gbtn" onClick="{{ onResetAllCancel }}">Huỷ</button>
+            <button type="button" class="em-gbtn danger" onClick="{{ onResetAllDo }}"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Về mẫu gốc</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ linkOpen }}">
+      <div style="position:fixed;inset:0;z-index:118;background:rgba(33,37,41,.42);display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div role="dialog" aria-modal="true" style="width:min(520px,100%);background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 12px 32px rgba(56,65,74,.28);padding:20px;">
+          <div style="font-size:15.5px;font-weight:600;color:#212529;margin-bottom:14px;">{{ linkTitle }}</div>
+          <div style="display:flex;flex-direction:column;gap:14px;">
+            <sc-if value="{{ linkNeedText }}"><label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:#212529;">{{ linkTextLabel }}</span><input class="em-lfield" value="{{ linkText }}" onInput="{{ onLinkText }}" placeholder="Ví dụ: Xem đơn hàng"></label></sc-if>
+            <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:#212529;">Liên kết trỏ tới</span><input class="em-lfield" value="{{ linkUrl }}" onInput="{{ onLinkUrl }}" placeholder="https://… hoặc {order_url}"></label>
+            <sc-if value="{{ linkHasTokens }}"><div>
+              <div style="font-size:12px;color:#878a99;margin-bottom:8px;line-height:1.5;">Chọn liên kết động của mẫu này để hệ thống tự điền địa chỉ thật khi gửi:</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <sc-for list="{{ linkTokens }}" as="t" hint-placeholder-count="2"><span class="{{ t.cls }}"><button type="button" class="em-vins" style="padding-right:12px;" onClick="{{ t.onClick }}" title="{{ t.desc }}">{{ t.token }}</button></span></sc-for>
+              </div>
+            </div></sc-if>
+            <sc-if value="{{ linkIsButton }}"><div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#878a99;line-height:1.55;"><i class="ri-palette-line" style="font-size:14px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i><span>Màu nút lấy theo màu thương hiệu — đổi ở tab <b style="color:#5b6270;">Chữ ký &amp; thương hiệu</b> để mọi nút trong mọi mẫu đổi cùng lúc.</span></div></sc-if>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;justify-content:flex-end;margin-top:20px;">
+            <sc-if value="{{ linkEditing }}"><button type="button" class="em-gbtn danger" style="margin-right:auto;" onClick="{{ onLinkRemove }}"><i class="ri-link-unlink" style="font-size:14px;"></i>{{ linkRemoveLabel }}</button></sc-if>
+            <button type="button" class="em-gbtn" onClick="{{ onLinkCancel }}">Huỷ</button>
+            <button type="button" class="{{ linkApplyCls }}" onClick="{{ onLinkApply }}"><i class="ri-link" style="font-size:14px;"></i>{{ linkApplyLabel }}</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ guardOpen }}">
+      <div style="position:fixed;inset:0;z-index:120;background:rgba(33,37,41,.48);display:flex;align-items:center;justify-content:center;padding:20px;">
+        <div ref="{{ guardRef }}" role="dialog" aria-modal="true" tabindex="-1" onKeyDown="{{ onGuardKey }}" style="width:min(468px,100%);background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 12px 32px rgba(56,65,74,.28);padding:20px;outline:none;">
+          <div style="display:flex;align-items:flex-start;gap:12px;">
+            <span style="width:36px;height:36px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:rgba(247,184,75,.16);color:#b57d13;font-size:19px;"><i class="ri-error-warning-line"></i></span>
+            <div style="min-width:0;">
+              <div style="font-size:15.5px;font-weight:600;color:#212529;line-height:1.4;">Mẫu “{{ guardTpl }}” còn thay đổi chưa lưu</div>
+              <p style="margin:7px 0 0;font-size:13px;color:#5b6270;line-height:1.6;">{{ guardBody }}</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end;margin-top:18px;">
+            <button type="button" class="em-gbtn" onClick="{{ onGuardCancel }}">Huỷ</button>
+            <button type="button" class="em-gbtn danger" onClick="{{ onGuardDiscard }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i>Bỏ thay đổi</button>
+            <button type="button" class="em-gbtn primary" onClick="{{ onGuardSave }}"><i class="ri-save-line" style="font-size:14px;"></i>Lưu nháp</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;accountType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;saas&quot;,&quot;options&quot;:[&quot;site&quot;,&quot;ecom&quot;,&quot;saas&quot;],&quot;tsType&quot;:&quot;'site'|'ecom'|'saas'&quot;}}">
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.SAMPLE = { '{customer_name}':'Nguyễn Văn An', '{customer_email}':'an.nguyen@gmail.com', '{customer_phone}':'0912 345 678',
+      '{order_code}':'AV-1048', '{order_total}':'4.200.000 ₫', '{order_items}':'Trục vít CNC ×2, Bạc lót đồng ×4', '{payment_method}':'Chuyển khoản ngân hàng',
+      '{shipping_address}':'12 Lê Lợi, P. Bến Nghé, Q.1, TP.HCM', '{order_date}':'27/07/2026', '{tracking_code}':'GHN2607481', '{carrier}':'Giao Hàng Nhanh',
+      '{order_url}':'https://anvinh.vn/don-hang/AV-1048', '{cancel_reason}':'Khách đổi ý', '{refund_amount}':'4.200.000 ₫',
+      '{verify_url}':'https://anvinh.vn/xac-minh/9f2c', '{reset_url}':'https://anvinh.vn/dat-lai-mat-khau/7b1d', '{account_url}':'https://anvinh.vn/tai-khoan',
+      '{change_time}':'14:32 ngày 27/07/2026', '{change_ip}':'113.161.44.20',
+      '{site_name}':'An Vinh', '{site_url}':'https://anvinh.vn', '{site_tagline}':'Cơ khí chính xác', '{contact_email}':'lienhe@anvinh.vn', '{hotline}':'1900 6789', '{address}':'Lô C3, KCN Tân Bình, TP.HCM',
+      '{message}':'Tôi cần báo giá 200 chi tiết tiện CNC.', '{form_name}':'Liên hệ trang chủ', '{submitted_at}':'09:12 ngày 27/07/2026', '{admin_url}':'https://anvinh.vn/admin/lien-he/482',
+      '{refund_method}':'Chuyển khoản ngân hàng', '{cart_items}':'Trục vít CNC ×1, Bạc lót đồng ×2', '{cart_url}':'https://anvinh.vn/gio-hang',
+      '{trial_end_date}':'03/08/2026', '{plan_name}':'Gói Pro', '{upgrade_url}':'https://anvinh.vn/admin/nang-goi',
+      '{invoice_amount}':'990.000 ₫', '{invoice_date}':'01/08/2026', '{invoice_url}':'https://anvinh.vn/admin/hoa-don/INV-2026-07',
+      '{amount}':'990.000 ₫', '{retry_url}':'https://anvinh.vn/admin/thanh-toan', '{effective_date}':'01/08/2026', '{reactivate_url}':'https://anvinh.vn/admin/nang-goi',
+      '{usage_percent}':'92%', '{usage_metric}':'dung lượng media', '{inviter_name}':'Ngọc Anh', '{team_name}':'An Vinh', '{accept_url}':'https://anvinh.vn/admin/loi-moi/8f3a' };
+    this.SAMPLE_I18N = {
+      en:{'{site_tagline}':'Precision Machining', '{customer_name}':'Nguyen Van An', '{order_items}':'CNC lead screw ×2, Bronze bushing ×4', '{payment_method}':'Bank transfer', '{carrier}':'GHN Express', '{cancel_reason}':'Customer changed mind', '{message}':'I need a quote for 200 CNC turned parts.', '{form_name}':'Homepage contact form'},
+      ja:{'{site_tagline}':'精密機械加工', '{customer_name}':'グエン・バン・アン', '{order_items}':'CNCリードスクリュー ×2、ブロンズブッシュ ×4', '{payment_method}':'銀行振込', '{carrier}':'GHNエクスプレス', '{cancel_reason}':'お客様都合', '{message}':'CNC旋盤加工200点の見積りをお願いします。', '{form_name}':'トップページお問い合わせ'}
+    };
+    this.VARS = {
+      '{customer_name}':['Khách hàng','tên khách hàng'], '{customer_email}':['Khách hàng','email khách'], '{customer_phone}':['Khách hàng','số điện thoại khách'],
+      '{order_code}':['Đơn hàng','mã đơn hàng'], '{order_total}':['Đơn hàng','tổng tiền'], '{order_items}':['Đơn hàng','danh sách sản phẩm'],
+      '{payment_method}':['Đơn hàng','hình thức thanh toán'], '{shipping_address}':['Đơn hàng','địa chỉ giao hàng'], '{order_date}':['Đơn hàng','ngày đặt hàng'],
+      '{tracking_code}':['Đơn hàng','mã vận đơn'], '{carrier}':['Đơn hàng','đơn vị vận chuyển'], '{order_url}':['Đơn hàng','liên kết xem đơn hàng',1],
+      '{cancel_reason}':['Đơn hàng','lý do huỷ đơn'], '{refund_amount}':['Đơn hàng','số tiền hoàn'],
+      '{verify_url}':['Tài khoản','liên kết xác minh email',1], '{reset_url}':['Tài khoản','liên kết đặt lại mật khẩu',1], '{account_url}':['Tài khoản','liên kết trang tài khoản',1],
+      '{change_time}':['Tài khoản','thời điểm thay đổi'], '{change_ip}':['Tài khoản','địa chỉ IP thực hiện'],
+      '{site_name}':['Website','tên website'], '{site_url}':['Website','địa chỉ website',1], '{site_tagline}':['Website','khẩu hiệu'],
+      '{contact_email}':['Website','email liên hệ'], '{hotline}':['Website','tổng đài'], '{address}':['Website','địa chỉ công ty'],
+      '{message}':['Liên hệ','nội dung lời nhắn'], '{form_name}':['Liên hệ','tên biểu mẫu'], '{submitted_at}':['Liên hệ','thời điểm gửi'], '{admin_url}':['Liên hệ','liên kết mở trong quản trị',1] };
+    this.TVARS = {
+      welcome:['{customer_name}','{customer_email}','{account_url}','{site_name}','{site_url}','{contact_email}','{hotline}'],
+      verify:['{customer_name}','{customer_email}','{verify_url}','{site_name}','{contact_email}'],
+      reset:['{customer_name}','{reset_url}','{site_name}','{contact_email}','{hotline}'],
+      pwchanged:['{customer_name}','{change_time}','{change_ip}','{site_name}','{contact_email}','{hotline}'],
+      order:['{customer_name}','{order_code}','{order_date}','{order_items}','{order_total}','{payment_method}','{shipping_address}','{order_url}','{site_name}','{hotline}'],
+      paid:['{customer_name}','{order_code}','{order_total}','{payment_method}','{order_url}','{site_name}','{hotline}'],
+      shipping:['{customer_name}','{order_code}','{carrier}','{tracking_code}','{shipping_address}','{order_url}','{site_name}','{hotline}'],
+      delivered:['{customer_name}','{order_code}','{order_url}','{site_name}','{contact_email}','{hotline}'],
+      cancelled:['{customer_name}','{order_code}','{cancel_reason}','{refund_amount}','{site_name}','{contact_email}','{hotline}'],
+      contact:['{customer_name}','{site_name}','{contact_email}','{hotline}'],
+      ntf_contact:['{customer_name}','{customer_email}','{customer_phone}','{message}','{form_name}','{submitted_at}','{admin_url}'],
+      ntf_order:['{order_code}','{order_total}','{payment_method}','{customer_name}','{customer_phone}','{order_items}','{admin_url}'] };
+    this.chip = (v)=>'<span class="em-var" data-v="'+v+'" contenteditable="false">'+v+'</span>';
+    const c=this.chip;
+    const cta=(label,url)=>'<p><a href="'+url+'" data-cta="1" style="display:inline-block;padding:10px 20px;color:#fff;border-radius:4px;text-decoration:none;font-weight:600;font-size:15px;">'+label+'</a></p>';
+    const sign='<p>Trân trọng,<br>Đội ngũ '+c('{site_name}')+'</p>';
+    const signEn='<p>Best regards,<br>The '+c('{site_name}')+' team</p>';
+    const signJa='<p>よろしくお願いいたします。<br>'+c('{site_name}')+' チーム</p>';
+    this.DEF = {
+      welcome:{ vi:{s:'Chào mừng bạn đến với '+c('{site_name}'),
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Cảm ơn bạn đã tạo tài khoản tại '+c('{site_name}')+'. Từ nay bạn có thể theo dõi đơn hàng, lưu thông tin nhận hàng và nhận ưu đãi dành riêng cho khách quen.</p>'+cta('Vào trang tài khoản','{account_url}')+'<p>Cần hỗ trợ, bạn gọi '+c('{hotline}')+' hoặc trả lời ngay email này — chúng tôi luôn sẵn sàng.</p>'+sign},
+        en:{s:'Welcome to '+c('{site_name}'),
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Thanks for creating your '+c('{site_name}')+' account. You can now track orders, save delivery details and receive offers reserved for returning customers.</p>'+cta('Go to my account','{account_url}')+'<p>Need help? Call '+c('{hotline}')+' or simply reply to this email.</p>'+signEn},
+        ja:{s:c('{site_name}')+' へようこそ',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>'+c('{site_name}')+' のアカウント作成ありがとうございます。今後は注文状況の確認やお届け先情報の保存、常連様限定特典の受け取りができます。</p>'+cta('マイページへ','{account_url}')+'<p>ご不明な点は '+c('{hotline}')+' または本メールへの返信でお問い合わせください。</p>'+signJa} },      verify:{ vi:{s:'Xác minh địa chỉ email của bạn',
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Bấm nút bên dưới để xác minh địa chỉ '+c('{customer_email}')+' và kích hoạt tài khoản tại '+c('{site_name}')+'. Liên kết có hiệu lực <b>trong 24 giờ</b>.</p>'+cta('Xác minh email','{verify_url}')+'<p><i>Nếu bạn không tạo tài khoản này, hãy bỏ qua email — sẽ không có gì thay đổi.</i></p>'+sign},
+        en:{s:'Verify your email address',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Click below to verify '+c('{customer_email}')+' and activate your '+c('{site_name}')+' account. The link is valid for 24 hours.</p>'+cta('Verify email','{verify_url}')+'<p>If you did not create this account, you can safely ignore this email.</p>'+signEn},
+        ja:{s:'メールアドレスの確認',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>下のボタンより '+c('{customer_email}')+' を確認し、'+c('{site_name}')+' のアカウントを有効化してください。リンクの有効期限は<b>24時間</b>です。</p>'+cta('メールを確認','{verify_url}')+'<p><i>このアカウントに心当たりがない場合は、このメールは破棄してください。</i></p>'+signJa} },
+      reset:{ vi:{s:'Đặt lại mật khẩu tài khoản '+c('{site_name}'),
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn. Bấm nút bên dưới để tạo mật khẩu mới — liên kết <b>có hiệu lực trong 60 phút</b> và chỉ dùng được một lần.</p>'+cta('Đặt lại mật khẩu','{reset_url}')+'<p><i>Nếu bạn không yêu cầu, hãy bỏ qua email này; mật khẩu hiện tại vẫn giữ nguyên.</i> Nghi ngờ có người truy cập trái phép, hãy báo ngay '+c('{contact_email}')+'.</p>'+sign},
+        en:{s:'Reset your '+c('{site_name}')+' password',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>We received a request to reset your password. Use the button below to set a new one — the link works once and expires in 60 minutes.</p>'+cta('Reset password','{reset_url}')+'<p>If you did not request this, ignore this email; your current password stays unchanged.</p>'+signEn},
+        ja:{s:'パスワードの再設定',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>パスワード再設定のご依頼を承りました。下のボタンから新しいパスワードを設定してください。リンクの有効期限は60分です。</p>'+cta('パスワードを再設定','{reset_url}')+'<p>お心当たりがない場合は、このメールを破棄してください。</p>'} },
+      pwchanged:{ vi:{s:'Mật khẩu của bạn vừa được đổi',
+        b:'<p>Chào '+c('{customer_name}')+',</p><p>Mật khẩu tài khoản '+c('{site_name}')+' vừa được đổi thành công lúc '+c('{change_time}')+', từ địa chỉ '+c('{change_ip}')+'.</p><p>Nếu đúng là bạn thực hiện, bạn không cần làm gì thêm. <b>Nếu không phải bạn</b>, hãy đặt lại mật khẩu ngay và báo cho chúng tôi qua '+c('{contact_email}')+' hoặc '+c('{hotline}')+'.</p>'+sign},
+        en:{s:'Your password was changed',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Your '+c('{site_name}')+' password was changed at '+c('{change_time}')+' from '+c('{change_ip}')+'.</p><p>If this was you, no action is needed. If not, reset your password now and contact us at '+c('{contact_email}')+'.</p>'+signEn},
+        ja:{s:'パスワードが変更されました',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>'+c('{site_name}')+' のパスワードは '+c('{change_time}')+' に '+c('{change_ip}')+' から変更されました。</p><p>ご本人による変更であれば対応は不要です。<b>心当たりがない場合</b>はすぐにパスワードを再設定し、'+c('{contact_email}')+' までご連絡ください。</p>'+signJa} },
+      order:{ vi:{s:'Đã nhận đơn hàng '+c('{order_code}'),
+        b:'<p>Cảm ơn '+c('{customer_name}')+' đã đặt hàng tại '+c('{site_name}')+'. Chúng tôi đã nhận đơn và đang chuẩn bị hàng cho bạn.</p><p><b>Mã đơn:</b> '+c('{order_code}')+'<br><b>Ngày đặt:</b> '+c('{order_date}')+'<br><b>Sản phẩm:</b> '+c('{order_items}')+'<br><b>Tổng tiền:</b> '+c('{order_total}')+'<br><b>Thanh toán:</b> '+c('{payment_method}')+'<br><b>Giao tới:</b> '+c('{shipping_address}')+'</p>'+cta('Xem đơn hàng','{order_url}')+'<p>Cần đổi địa chỉ hoặc số lượng, bạn gọi '+c('{hotline}')+' ngay hôm nay để chúng tôi kịp điều chỉnh.</p>'+sign},
+        en:{s:'We received your order '+c('{order_code}'),
+        b:'<p>Thank you '+c('{customer_name}')+' for ordering from '+c('{site_name}')+'. Your order is confirmed and being prepared.</p><p><b>Order:</b> '+c('{order_code}')+'<br><b>Date:</b> '+c('{order_date}')+'<br><b>Items:</b> '+c('{order_items}')+'<br><b>Total:</b> '+c('{order_total}')+'<br><b>Payment:</b> '+c('{payment_method}')+'<br><b>Ship to:</b> '+c('{shipping_address}')+'</p>'+cta('View order','{order_url}')+signEn},
+        ja:{s:'ご注文 '+c('{order_code}')+' を確認しました',
+        b:'<p>'+c('{customer_name}')+' 様、'+c('{site_name}')+' でのご注文ありがとうございます。現在発送準備を進めております。</p><p><b>注文番号：</b>'+c('{order_code}')+'<br><b>日付：</b>'+c('{order_date}')+'<br><b>商品：</b>'+c('{order_items}')+'<br><b>合計：</b>'+c('{order_total}')+'<br><b>支払方法：</b>'+c('{payment_method}')+'<br><b>配送先：</b>'+c('{shipping_address}')+'</p>'+cta('注文を確認','{order_url}')+signJa} },
+      paid:{ vi:{s:'Đã nhận thanh toán cho đơn '+c('{order_code}'),
+        b:'<p>Chào '+c('{customer_name}')+',</p><p>'+c('{site_name}')+' đã nhận '+c('{order_total}')+' cho đơn '+c('{order_code}')+' qua '+c('{payment_method}')+'. Đơn của bạn chuyển sang bước đóng gói ngay hôm nay.</p>'+cta('Xem đơn hàng','{order_url}')+'<p>Cần hoá đơn giá trị gia tăng, bạn nhắn lại giúp chúng tôi tên đơn vị và mã số thuế.</p>'+sign},
+        en:{s:'Payment received for order '+c('{order_code}'),
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>We received '+c('{order_total}')+' for order '+c('{order_code}')+' via '+c('{payment_method}')+'. Your order is moving to packing.</p>'+cta('View order','{order_url}')+signEn},
+        ja:{s:'ご注文 '+c('{order_code}')+' のご入金を確認しました',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>'+c('{site_name}')+' はご注文 '+c('{order_code}')+' の '+c('{payment_method}')+' による '+c('{order_total}')+' のご入金を確認いたしました。現在梱包作業に進んでおります。</p>'+cta('注文を確認','{order_url}')+signJa} },
+      shipping:{ vi:{s:'Đơn '+c('{order_code}')+' đang trên đường giao',
+        b:'<p>Chào '+c('{customer_name}')+',</p><p>Đơn '+c('{order_code}')+' đã được bàn giao cho '+c('{carrier}')+'.</p><p><b>Mã vận đơn:</b> '+c('{tracking_code}')+'<br><b>Giao tới:</b> '+c('{shipping_address}')+'</p>'+cta('Theo dõi đơn hàng','{order_url}')+'<p>Bạn để ý điện thoại giúp chúng tôi nhé — nhân viên giao hàng sẽ gọi trước khi tới.</p>'+sign},
+        en:{s:'Order '+c('{order_code}')+' is on its way',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Order '+c('{order_code}')+' has been handed to '+c('{carrier}')+'.</p><p><b>Tracking code:</b> '+c('{tracking_code}')+'<br><b>Ship to:</b> '+c('{shipping_address}')+'</p>'+cta('Track order','{order_url}')+'<p>Please keep your phone handy — the courier will call before arriving.</p>'+signEn},
+        ja:{s:'ご注文 '+c('{order_code}')+' を発送しました',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>ご注文 '+c('{order_code}')+' を '+c('{carrier}')+' にお渡しいたしました。</p><p><b>追跡番号：</b>'+c('{tracking_code}')+'<br><b>配送先：</b>'+c('{shipping_address}')+'</p>'+cta('配送状況を確認','{order_url}')+'<p>配達前にドライバーよりご連絡いたしますので、電話にご注意ください。</p>'+signJa} },
+      delivered:{ vi:{s:'Đơn '+c('{order_code}')+' đã giao thành công',
+        b:'<p>Chào '+c('{customer_name}')+',</p><p>Đơn '+c('{order_code}')+' đã được giao. Cảm ơn bạn đã tin chọn '+c('{site_name}')+'.</p>'+cta('Xem lại đơn hàng','{order_url}')+'<p>Hàng có vấn đề gì, bạn báo <b>trong 7 ngày</b> qua '+c('{contact_email}')+' hoặc '+c('{hotline}')+' để chúng tôi xử lý.</p>'+sign},
+        en:{s:'Order '+c('{order_code}')+' delivered',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Order '+c('{order_code}')+' has been delivered. Thanks for choosing '+c('{site_name}')+'.</p>'+cta('View order','{order_url}')+'<p>Any issue with the item, let us know <b>within 7 days</b> at '+c('{contact_email}')+' or '+c('{hotline}')+'.</p>'+signEn},
+        ja:{s:'ご注文 '+c('{order_code}')+' をお届けしました',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>ご注文 '+c('{order_code}')+' をお届けしました。'+c('{site_name}')+' をご利用いただきありがとうございます。</p>'+cta('注文を確認','{order_url}')+'<p>商品に問題がある場合は<b>7日以内</b>に '+c('{contact_email}')+' または '+c('{hotline}')+' までご連絡ください。</p>'+signJa} },
+      cancelled:{ vi:{s:'Đơn '+c('{order_code}')+' đã được huỷ',
+        b:'<p>Chào '+c('{customer_name}')+',</p><p>Đơn '+c('{order_code}')+' đã được huỷ. <b>Lý do:</b> '+c('{cancel_reason}')+'.</p><p>Nếu bạn đã thanh toán, '+c('{refund_amount}')+' sẽ được hoàn về tài khoản <b>trong 3–5 ngày làm việc</b>.</p><p>Muốn đặt lại hoặc đổi sang sản phẩm khác, bạn gọi '+c('{hotline}')+' — chúng tôi hỗ trợ ngay.</p>'+sign},
+        en:{s:'Order '+c('{order_code}')+' has been cancelled',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Order '+c('{order_code}')+' has been cancelled. <b>Reason:</b> '+c('{cancel_reason}')+'.</p><p>If you already paid, '+c('{refund_amount}')+' will be refunded <b>within 3–5 business days</b>.</p><p>Want to reorder or swap for another item? Call '+c('{hotline}')+' — we can help right away.</p>'+signEn},
+        ja:{s:'ご注文 '+c('{order_code}')+' はキャンセルされました',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>ご注文 '+c('{order_code}')+' はキャンセルされました。<b>理由：</b>'+c('{cancel_reason}')+'</p><p>ご支払い済みの場合、'+c('{refund_amount}')+' は<b>3〜5営業日以内</b>に返金いたします。</p><p>再度ご注文または他の商品への変更をご希望の場合は '+c('{hotline}')+' までご連絡ください。</p>'+signJa} },
+      contact:{ vi:{s:c('{site_name}')+' đã nhận được lời nhắn của bạn',
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Cảm ơn bạn đã liên hệ với '+c('{site_name}')+'. Chúng tôi đã nhận lời nhắn và sẽ phản hồi trong vòng 24 giờ làm việc.</p><p>Nếu cần gấp, bạn gọi '+c('{hotline}')+' hoặc trả lời ngay email này.</p>'+sign},
+        en:{s:c('{site_name}')+' received your message',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Thanks for contacting '+c('{site_name}')+'. We have your message and will reply within one business day.</p><p>If it is urgent, call '+c('{hotline}')+' or reply to this email.</p>'+signEn},
+        ja:{s:c('{site_name}')+' がメッセージを受信しました',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>'+c('{site_name}')+' へのご連絡ありがとうございます。メッセージを確認いたしました。営業日<b>1日以内</b>にご返信いたします。</p><p>お急ぎの場合は '+c('{hotline}')+' までお電話いただくか、本メールに返信ください。</p>'+signJa} },
+      ntf_contact:{ vi:{s:'Liên hệ mới từ '+c('{customer_name}'),
+        b:'<p>Có người vừa gửi biểu mẫu <b>'+c('{form_name}')+'</b> lúc '+c('{submitted_at}')+'.</p><p><b>Họ tên:</b> '+c('{customer_name}')+'<br><b>Email:</b> '+c('{customer_email}')+'<br><b>Điện thoại:</b> '+c('{customer_phone}')+'</p><p><b>Nội dung:</b><br>'+c('{message}')+'</p>'+cta('Mở trong quản trị','{admin_url}')+'<p>Bấm Trả lời là trả lời thẳng cho khách.</p>'} },
+      ntf_order:{ vi:{s:'Đơn hàng mới '+c('{order_code}')+' — '+c('{order_total}'),
+        b:'<p>Vừa có đơn hàng mới trên website.</p><p><b>Mã đơn:</b> '+c('{order_code}')+'<br><b>Khách:</b> '+c('{customer_name}')+' · '+c('{customer_phone}')+'<br><b>Sản phẩm:</b> '+c('{order_items}')+'<br><b>Giá trị:</b> '+c('{order_total}')+'<br><b>Thanh toán:</b> '+c('{payment_method}')+'</p>'+cta('Mở trong quản trị','{admin_url}')} },
+      refund:{ vi:{s:'Đã hoàn tiền đơn '+c('{order_code}'),
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Chúng tôi đã hoàn tất hoàn tiền cho đơn '+c('{order_code}')+'.</p><p><b>Số tiền hoàn:</b> '+c('{refund_amount}')+'<br><b>Hình thức:</b> '+c('{refund_method}')+'</p><p>Tiền thường về tài khoản trong 3–5 ngày làm việc tuỳ ngân hàng. Cần hỗ trợ thêm, gọi '+c('{hotline}')+'.</p>'+sign},
+        en:{s:'Refund completed for order '+c('{order_code}'),
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Your refund for order '+c('{order_code}')+' is complete.</p><p><b>Amount:</b> '+c('{refund_amount}')+'<br><b>Method:</b> '+c('{refund_method}')+'</p><p>It usually lands in 3–5 business days depending on your bank.</p>'+signEn},
+        ja:{s:'ご注文 '+c('{order_code}')+' の返金が完了しました',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>ご注文 '+c('{order_code}')+' の返金処理が完了しました。</p><p><b>返金額：</b>'+c('{refund_amount}')+'<br><b>方法：</b>'+c('{refund_method}')+'</p><p>銀行により3〜5営業日ほどで反映されます。</p>'+signJa} },
+      abandoned_cart:{ vi:{s:'Bạn còn để quên vài món trong giỏ hàng',
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Bạn đã thêm vào giỏ nhưng chưa hoàn tất đơn hàng:</p><p>'+c('{cart_items}')+'</p>'+cta('Quay lại giỏ hàng','{cart_url}')+'<p>Sản phẩm có thể hết hàng bất cứ lúc nào — hoàn tất đặt hàng sớm để chắc chắn nhận được giá hiện tại.</p>'+sign},
+        en:{s:'You left something in your cart',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>You added these to your cart but did not check out:</p><p>'+c('{cart_items}')+'</p>'+cta('Return to cart','{cart_url}')+signEn},
+        ja:{s:'カートに商品が残っています',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>カートに追加されたまま、ご注文が完了していません：</p><p>'+c('{cart_items}')+'</p>'+cta('カートに戻る','{cart_url}')+signJa} },
+      trial_ending:{ vi:{s:c('{plan_name}')+' của bạn sắp hết hạn dùng thử',
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Thời gian dùng thử '+c('{plan_name}')+' sẽ kết thúc vào '+c('{trial_end_date}')+'. Nâng cấp ngay để không gián đoạn công việc.</p>'+cta('Nâng cấp gói','{upgrade_url}')+sign},
+        en:{s:'Your '+c('{plan_name}')+' trial is ending soon',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Your '+c('{plan_name}')+' trial ends on '+c('{trial_end_date}')+'. Upgrade now to keep everything running.</p>'+cta('Upgrade plan','{upgrade_url}')+signEn},
+        ja:{s:c('{plan_name}')+' の無料期間がまもなく終了します',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>'+c('{plan_name}')+' の無料期間は '+c('{trial_end_date}')+' に終了します。継続してご利用いただくにはアップグレードしてください。</p>'+cta('プランをアップグレード','{upgrade_url}')+signJa} },
+      invoice:{ vi:{s:'Hoá đơn gia hạn '+c('{plan_name}'),
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Chúng tôi vừa xuất hoá đơn gia hạn cho tài khoản của bạn.</p><p><b>Gói:</b> '+c('{plan_name}')+'<br><b>Số tiền:</b> '+c('{invoice_amount}')+'<br><b>Ngày:</b> '+c('{invoice_date}')+'</p>'+cta('Xem hoá đơn','{invoice_url}')+sign},
+        en:{s:'Your '+c('{plan_name}')+' renewal invoice',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>We just issued your renewal invoice.</p><p><b>Plan:</b> '+c('{plan_name}')+'<br><b>Amount:</b> '+c('{invoice_amount}')+'<br><b>Date:</b> '+c('{invoice_date}')+'</p>'+cta('View invoice','{invoice_url}')+signEn},
+        ja:{s:c('{plan_name}')+' の更新請求書',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>更新請求書を発行いたしました。</p><p><b>プラン：</b>'+c('{plan_name}')+'<br><b>金額：</b>'+c('{invoice_amount}')+'<br><b>日付：</b>'+c('{invoice_date}')+'</p>'+cta('請求書を見る','{invoice_url}')+signJa} },
+      payment_failed:{ vi:{s:'Thanh toán gói '+c('{plan_name}')+' không thành công',
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Chúng tôi không thể thu phí gói '+c('{plan_name}')+' ('+c('{amount}')+'). Vui lòng kiểm tra lại phương thức thanh toán để tài khoản không bị tạm ngưng.</p>'+cta('Cập nhật thanh toán','{retry_url}')+sign},
+        en:{s:'Payment failed for '+c('{plan_name}'),
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>We could not charge your '+c('{plan_name}')+' plan ('+c('{amount}')+'). Please update your payment method to avoid interruption.</p>'+cta('Update payment','{retry_url}')+signEn},
+        ja:{s:c('{plan_name}')+' の支払いに失敗しました',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>'+c('{plan_name}')+' プランのお支払い（'+c('{amount}')+'）を処理できませんでした。サービス停止を避けるため、お支払い方法をご確認ください。</p>'+cta('支払い方法を更新','{retry_url}')+signJa} },
+      downgrade:{ vi:{s:'Gói '+c('{plan_name}')+' của bạn đã được huỷ',
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Gói '+c('{plan_name}')+' sẽ ngừng hiệu lực từ '+c('{effective_date}')+'. Bạn vẫn có thể dùng đến hết chu kỳ hiện tại.</p><p>Đổi ý bất cứ lúc nào, bấm nút bên dưới để kích hoạt lại.</p>'+cta('Kích hoạt lại gói','{reactivate_url}')+sign},
+        en:{s:'Your '+c('{plan_name}')+' plan has been cancelled',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Your '+c('{plan_name}')+' plan ends on '+c('{effective_date}')+'. You can keep using it until then.</p>'+cta('Reactivate plan','{reactivate_url}')+signEn},
+        ja:{s:c('{plan_name}')+' プランが解約されました',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>'+c('{plan_name}')+' プランは '+c('{effective_date}')+' に終了します。それまでは引き続きご利用いただけます。</p>'+cta('プランを再開','{reactivate_url}')+signJa} },
+      usage_limit:{ vi:{s:'Sắp vượt hạn mức sử dụng',
+        b:'<p>Xin chào '+c('{customer_name}')+',</p><p>Tài khoản của bạn đã dùng '+c('{usage_percent}')+' '+c('{usage_metric}')+' trong gói '+c('{plan_name}')+'. Nâng cấp để tránh gián đoạn khi chạm hạn mức.</p>'+cta('Nâng cấp gói','{upgrade_url}')+sign},
+        en:{s:'You are close to your usage limit',
+        b:'<p>Hi '+c('{customer_name}')+',</p><p>Your account has used '+c('{usage_percent}')+' of '+c('{usage_metric}')+' on the '+c('{plan_name}')+' plan. Upgrade to avoid interruption.</p>'+cta('Upgrade plan','{upgrade_url}')+signEn},
+        ja:{s:'利用上限に近づいています',
+        b:'<p>'+c('{customer_name}')+' 様</p><p>'+c('{plan_name}')+' プランの '+c('{usage_metric}')+' を '+c('{usage_percent}')+' ご利用中です。中断を避けるためアップグレードをご検討ください。</p>'+cta('プランをアップグレード','{upgrade_url}')+signJa} },
+      team_invite:{ vi:{s:c('{inviter_name}')+' mời bạn vào nhóm '+c('{team_name}'),
+        b:'<p>Xin chào,</p><p>'+c('{inviter_name}')+' vừa mời bạn tham gia nhóm quản trị '+c('{team_name}')+'.</p>'+cta('Chấp nhận lời mời','{accept_url}')+sign},
+        en:{s:c('{inviter_name}')+' invited you to '+c('{team_name}'),
+        b:'<p>Hi,</p><p>'+c('{inviter_name}')+' just invited you to join the '+c('{team_name}')+' admin team.</p>'+cta('Accept invite','{accept_url}')+signEn},
+        ja:{s:c('{inviter_name}')+' さんがあなたを '+c('{team_name}')+' に招待しました',
+        b:'<p>こんにちは。</p><p>'+c('{inviter_name}')+' さんがあなたを '+c('{team_name}')+' の管理チームに招待しました。</p>'+cta('招待を承諾','{accept_url}')+signJa} }
+    };
+    this.sigDefs=(init)=>({
+      left:'<div><div style="font-weight:700;color:#212529;">'+c('{site_name}')+'</div><div style="color:#878a99;font-size:.9em;">'+c('{site_tagline}')+'</div><div style="color:#878a99;font-size:.9em;">'+c('{hotline}')+' · '+c('{contact_email}')+'</div><div style="color:#878a99;font-size:.9em;">'+c('{address}')+'</div></div>',
+      top:'<div style="text-align:center;"><div style="font-weight:700;color:#212529;">'+c('{site_name}')+'</div><div style="color:#878a99;font-size:.9em;">'+c('{hotline}')+' · '+c('{contact_email}')+'</div><div style="color:#878a99;font-size:.9em;">'+c('{address}')+'</div></div>',
+      text:'<div><span style="font-weight:700;color:#212529;">'+c('{site_name}')+'</span> · '+c('{hotline}')+' · '+c('{contact_email}')+'</div>'
+    });
+    this.TMETA = {
+      welcome:{n:'Chào mừng khách mới',ic:'ri-emotion-happy-line',when:'Gửi ngay sau khi khách tạo tài khoản',tr:{vi:1,en:1,ja:0},edited:false,lock:false,mod:'account',acc:['site','ecom','saas']},
+      verify:{n:'Xác minh địa chỉ email',ic:'ri-shield-check-line',when:'Gửi ngay khi khách đăng ký, trước khi kích hoạt tài khoản',tr:{vi:1,en:1,ja:0},edited:false,lock:true,mod:'account',acc:['site','ecom','saas']},
+      pwchanged:{n:'Mật khẩu vừa được đổi',ic:'ri-key-2-line',when:'Gửi ngay sau khi mật khẩu thay đổi thành công',tr:{vi:1,en:1,ja:0},edited:false,lock:true,mod:'account',acc:['site','ecom','saas']},
+      paid:{n:'Đã nhận thanh toán',ic:'ri-money-dollar-circle-line',when:'Gửi khi ghi nhận được tiền của đơn',tr:{vi:1,en:1,ja:0},edited:false,lock:false,mod:'order',acc:['ecom']},
+      delivered:{n:'Đã giao thành công',ic:'ri-checkbox-circle-line',when:'Gửi khi đơn được giao xong',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'order',acc:['ecom']},
+      cancelled:{n:'Đơn hàng bị huỷ',ic:'ri-close-circle-line',when:'Gửi khi đơn bị huỷ bởi khách hoặc bởi bạn',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'order',acc:['ecom']},
+      ntf_contact:{n:'Có liên hệ mới',ic:'ri-notification-3-line',when:'Gửi cho bạn khi khách gửi biểu mẫu liên hệ',tr:{vi:1},edited:false,lock:false,mod:'internal',i18n:false,sys:true,acc:['site','ecom']},
+      ntf_order:{n:'Có đơn hàng mới',ic:'ri-shopping-cart-2-line',when:'Gửi cho bạn ngay khi có đơn mới',tr:{vi:1},edited:false,lock:false,mod:'internal',i18n:false,sys:true,acc:['ecom']},
+      reset:{n:'Đặt lại mật khẩu',ic:'ri-lock-2-line',when:'Gửi khi khách yêu cầu lấy lại mật khẩu',tr:{vi:1,en:1,ja:1},edited:false,lock:true,mod:'account',acc:['site','ecom','saas']},
+      order:{n:'Xác nhận đơn hàng',ic:'ri-shopping-bag-3-line',when:'Gửi khi khách đặt hàng thành công',tr:{vi:1,en:1,ja:0},edited:true,lock:false,mod:'order',acc:['ecom']},
+      shipping:{n:'Cập nhật vận chuyển',ic:'ri-truck-line',when:'Gửi khi đơn hàng chuyển trạng thái giao',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'order',acc:['ecom']},
+      contact:{n:'Cảm ơn đã liên hệ',ic:'ri-mail-check-line',when:'Gửi tự động khi khách gửi biểu mẫu liên hệ',tr:{vi:1,en:1,ja:0},edited:true,lock:false,mod:'contact',acc:['site','ecom']},
+      refund:{n:'Hoàn tiền hoàn tất',ic:'ri-refund-2-line',when:'Gửi khi hoàn tiền cho khách xử lý xong',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'order',acc:['ecom']},
+      abandoned_cart:{n:'Giỏ hàng bị bỏ quên',ic:'ri-shopping-cart-line',when:'Gửi vài giờ sau khi khách rời đi mà chưa thanh toán',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'order',acc:['ecom']},
+      trial_ending:{n:'Dùng thử sắp hết hạn',ic:'ri-time-line',when:'Gửi vài ngày trước khi hết hạn dùng thử',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'saas',acc:['saas']},
+      invoice:{n:'Hoá đơn gia hạn gói',ic:'ri-file-list-3-line',when:'Gửi khi hệ thống xuất hoá đơn gia hạn',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'saas',acc:['saas']},
+      payment_failed:{n:'Thanh toán thất bại',ic:'ri-bank-card-line',when:'Gửi ngay khi thu phí gói không thành công',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'saas',acc:['saas']},
+      downgrade:{n:'Huỷ gói / hạ gói',ic:'ri-arrow-down-circle-line',when:'Gửi khi gói bị huỷ hoặc hạ xuống gói thấp hơn',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'saas',acc:['saas']},
+      usage_limit:{n:'Sắp vượt hạn mức sử dụng',ic:'ri-speed-up-line',when:'Gửi khi tài khoản gần chạm hạn mức của gói',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'saas',acc:['saas']},
+      team_invite:{n:'Mời thành viên vào nhóm',ic:'ri-user-add-line',when:'Gửi khi có lời mời quản trị viên mới',tr:{vi:1,en:0,ja:0},edited:false,lock:false,mod:'saas',acc:['saas']}
+    };
+    this.modules = ['account','order','contact','internal','saas'];
+    this.GROUPS = [
+      {label:'TÀI KHOẢN KHÁCH',mod:'account',items:['welcome','verify','reset','pwchanged']},
+      {label:'ĐƠN HÀNG',mod:'order',items:['order','paid','shipping','delivered','cancelled','refund','abandoned_cart']},
+      {label:'GÓI DỊCH VỤ & THANH TOÁN',mod:'saas',items:['trial_ending','invoice','payment_failed','downgrade','usage_limit','team_invite']},
+      {label:'LIÊN HỆ',mod:'contact',items:['contact']},
+      {label:'THÔNG BÁO CHO BẠN',mod:'internal',items:['ntf_contact','ntf_order']}
+    ];
+    this.VARGROUPS = {};
+    this.siteBrand='#405189';
+    this.siteLocales=['vi','en','ja']; this.pubLocales=['vi','en']; this.defLang='vi'; this.adminLang='vi'; this.AIQ={used:8400,limit:(window.BSAI?window.BSAI.plan().words:60000)};
+    if(!window.BSAI)document.addEventListener('bs-ai-quota-ready',()=>{try{this.forceUpdate();}catch(e){}},{once:true});
+    this._subj={}; this._body={}; this._sig={};
+    this.state = { tab:(this.props.onlyTab||(this.props.accountType==='platform'?'tpl':'send')), outbox:(this.props.accountType==='saas'||this.props.accountType==='platform'?'google':'platform'), otherProv:'sendgrid', info:null, q:'', brandColor:'#405189', brandInitials:'AV', senderName:'An Vinh', tplDirty:{}, oauth:null, oauthDenied:{}, replyTo:'lienhe@anvinh.vn', notifyTo:'lienhe@anvinh.vn', conn:{}, connBusy:null, apiKey:'', sendDomain:'anvinh.vn', smtpEmail:'no-reply@anvinh.vn', smtpPass:'', provSaved:false, provErr:{}, fromLocal:'no-reply', testTo:'ngocanh@anvinh.vn', dirty:false, tplFilter:'all', tplOn:{welcome:true,reset:true,order:true,shipping:false,contact:true}, editing:null, edMode:'edit', lang:'vi', langBarW:0, langFit:null, langPanel:false, langQ:'', varGroup:'Tất cả', varQ:'', sigLayout:'left', toast:null };
+    this._focus='body'; this._help=null;
+    this.state.help=null; this.state.testState=null; this.state.rmFilter='all'; this.state.brandOverride=false; this.state.brandColor=this.siteBrand;
+    Object.keys(this.TMETA).forEach(k=>{ if(this.state.tplOn[k]===undefined) this.state.tplOn[k]=true; });
+  }
+  notify(m){ this.setState({toast:m}); clearTimeout(this._t); this._t=setTimeout(()=>this.setState({toast:null}),2600); }
+  sizeLogo(el){ const root=el.shadowRoot; const img=root&&root.querySelector('img'); if(!img) return;
+    const apply=()=>{ const iw=img.naturalWidth,ih=img.naturalHeight; if(!iw||!ih) return;
+      const maxW=160,maxH=44,minW=28,minH=24;
+      let w=maxW,h=maxW*ih/iw;
+      if(h>maxH){ h=maxH; w=maxH*iw/ih; }
+      w=Math.max(minW,Math.min(maxW,Math.round(w))); h=Math.max(minH,Math.min(maxH,Math.round(h)));
+      if(w!==this.state.logoBoxW||h!==this.state.logoBoxH) this.setState({logoBoxW:w,logoBoxH:h}); };
+    if(img.complete&&img.naturalWidth) apply(); else img.addEventListener('load',apply,{once:true}); }
+  componentDidMount(){ this._bu=(e)=>{ const S=this.state; if(S.dirty||Object.keys(S.tplDirty||{}).length){ e.preventDefault(); e.returnValue=''; return ''; } }; window.addEventListener('beforeunload',this._bu);
+    const eid=this.props.embedId||'email';
+    this._cmd=(e)=>{ const d=e.detail||{}; if(d.id!==eid) return; if(d.act==='save') this.doSave(); else if(d.act==='reset') this.doReset(); };
+    document.addEventListener('bs-embed-cmd',this._cmd); }
+  componentDidUpdate(){ this.emitDirty(); }
+  emitDirty(){ const d=this.state.dirty||Object.keys(this.state.tplDirty||{}).length>0; if(this._lastDirty===d) return; this._lastDirty=d; if(typeof this.props.onDirty==='function') this.props.onDirty(d); try{ document.dispatchEvent(new CustomEvent('bs-embed-dirty',{detail:{id:this.props.embedId||'email',dirty:d}})); }catch(e){} }
+  doSave(){ this.setState({dirty:false,tplDirty:{}}); this.notify('Đã lưu — hiệu lực ngay'); }
+  doReset(){ this.setState({dirty:false,tplDirty:{}}); this.notify('Đã hoàn nguyên thay đổi'); }
+  componentWillUnmount(){ if(this._bu) window.removeEventListener('beforeunload',this._bu); if(this._gEsc) document.removeEventListener('keydown',this._gEsc,true); if(this._cmd) document.removeEventListener('bs-embed-cmd',this._cmd); }
+  isEmail(v){ return /^[^\s@,]+@[^\s@,]+\.[a-z]{2,}$/i.test(String(v||'').trim()); }
+  toggleHelp(k){
+    const nk=(this._help===k)?null:k; this._help=nk; this.setState({help:nk});
+    if(this._hOff){ document.removeEventListener('click',this._hOff,true); document.removeEventListener('keydown',this._hOff,true); this._hOff=null; }
+    if(!nk) return;
+    const off=(e)=>{ if(e.type==='keydown'&&e.key!=='Escape') return;
+      document.removeEventListener('click',off,true); document.removeEventListener('keydown',off,true);
+      this._hOff=null; this._help=null; this.setState({help:null}); };
+    setTimeout(()=>{ if(this._help!==nk) return; this._hOff=off;
+      document.addEventListener('click',off,true); document.addEventListener('keydown',off,true); },0);
+  }
+  sendTest(){
+    const to=String(this.state.testTo||'').trim();
+    if(!to){ this.setState({testState:{k:'err',m:'Hãy nhập địa chỉ nhận thư kiểm tra.'}}); return; }
+    if(!this.isEmail(to)){ this.setState({testState:{k:'err',m:'Địa chỉ này chưa đúng định dạng email — ví dụ vidu@congty.vn.'}}); return; }
+    this.setState({testState:{k:'busy',m:''}});
+    clearTimeout(this._tt);
+    this._tt=setTimeout(()=>{
+      const d=new Date(), p=(n)=>('0'+n).slice(-2);
+      this.setState({testState:{k:'ok',m:'Đã gửi tới '+to+' lúc '+p(d.getHours())+':'+p(d.getMinutes())+' — nếu chưa thấy, xem cả hộp Thư rác.'}});
+    },900);
+  }
+  ekey(){ return this.state.editing+'/'+this.state.lang; }
+  ensure(k,lang){ const key=k+'/'+lang; if(this._subj[key]===undefined){ const d=(this.DEF[k]||{})[lang]; this._subj[key]=d?d.s:''; this._body[key]=d?d.b:''; } return key; }
+  captureEd(){ const k=this.ekey(); if(this._subjRef) this._subj[k]=this._subjRef.innerHTML; if(this._bodyRef) this._body[k]=this._bodyRef.innerHTML; }
+  sigKey(){ return this.state.sigLayout; }
+  captureSig(){ if(this._sigRef) this._sig[this.sigKey()]=this._sigRef.innerHTML; }
+  sigDef(l){ return this.sigDefs(this.state.brandInitials||'AV')[l||this.state.sigLayout]; }
+  sigVal(){ const k=this.sigKey(); return (this._sig[k]!==undefined)?this._sig[k]:this.sigDef(); }
+  focusInto(target){ const el=target==='subj'?this._subjRef:this._bodyRef; if(el){ el.focus(); } }
+  insertVar(v){ if(this.state.editing){ this.focusInto(this._focus==='subj'?'subj':'body'); } else { if(this._sigRef) this._sigRef.focus(); }
+    try{ document.execCommand('insertHTML',false,this.chip(v)+'&nbsp;'); }catch(e){} this.captureEd(); this.captureSig(); }
+  copyVar(v){
+    const done=()=>{ this.setState({copied:v}); clearTimeout(this._cp); this._cp=setTimeout(()=>this.setState({copied:null}),1600); };
+    try{ navigator.clipboard.writeText(v).then(done,()=>done()); }
+    catch(e){ const t=document.createElement('textarea'); t.value=v; document.body.appendChild(t); t.select(); try{document.execCommand('copy');}catch(err){} t.remove(); done(); }
+  }
+  openLinkDlg(mode,tvars){
+    const sel0=window.getSelection();
+    const body=this._bodyRef;
+    this._caretInBody=!!(sel0&&sel0.rangeCount&&body&&body.contains(sel0.getRangeAt(0).commonAncestorContainer));
+    this._rng=this._caretInBody?sel0.getRangeAt(0).cloneRange():null;
+    const txt=this._rng?String(this._rng.toString()||'').trim():'';
+    let node=this._caretInBody?sel0.getRangeAt(0).commonAncestorContainer:null;
+    while(node&&node!==body&&node.tagName!=='A') node=node.parentNode;
+    const anchor=(node&&node.tagName==='A')?node:null;
+    this._anchor=anchor;
+    if(anchor){ try{ if(body) [...body.querySelectorAll('[data-editing]')].forEach(n=>n.removeAttribute('data-editing')); anchor.setAttribute('data-editing','1'); }catch(e){}
+      this.setState({linkDlg:{mode:anchor.hasAttribute('data-cta')?'button':'link',edit:true,hadSel:false,text:anchor.textContent||'',url:anchor.getAttribute('href')||''}}); return; }
+    const first=(tvars||[]).filter(v=>this.VARS[v]&&this.VARS[v][2])[0]||'';
+    this.setState({linkDlg:{mode:mode,hadSel:!!txt,text:txt||(mode==='button'?'Xem chi tiết':''),url:first}});
+  }
+  setLinkDlg(patch){ this.setState(st=>({linkDlg:Object.assign({},st.linkDlg,patch)})); }
+  closeLinkDlg(){ try{ const b=this._bodyRef; if(b) [...b.querySelectorAll('[data-editing]')].forEach(n=>n.removeAttribute('data-editing')); }catch(e){}
+    this.setState({linkDlg:null}); this._rng=null; this._anchor=null; }
+  removeLink(){
+    const body=this._bodyRef;
+    const a=(body&&body.querySelector('[data-editing]'))||(this._anchor&&document.contains(this._anchor)?this._anchor:null);
+    if(!a){ this._anchor=null; this.setState({linkDlg:null}); this.notify('Không tìm thấy liên kết vừa chọn — hãy bấm lại vào nút rồi thử lần nữa'); return; }
+    const p=a.parentNode, isCta=a.hasAttribute('data-cta');
+    if(isCta&&p&&p.tagName==='P'&&p.childNodes.length===1) p.remove();
+    else a.replaceWith(document.createTextNode(a.textContent||''));
+    this.captureEd(); this._anchor=null; this._rng=null;
+    this.setState({linkDlg:null});
+    this.notify(isCta?'Đã gỡ nút bấm':'Đã gỡ liên kết, giữ lại chữ');
+    if(!this.state.tplDirty[this.state.editing]) this.setState(st=>({tplDirty:Object.assign({},st.tplDirty,{[st.editing]:true})}));
+  }
+  applyLinkDlg(){
+    const d=this.state.linkDlg; if(!d) return;
+    const url=String(d.url||'').trim(); if(!url) return;
+    const label=String(d.text||'').trim();
+    const needText=(d.mode==='button')||!d.hadSel||d.edit;
+    if(needText&&!label) return;
+    if(d.edit){
+      const body=this._bodyRef;
+      const a=(body&&body.querySelector('[data-editing]'))||(this._anchor&&document.contains(this._anchor)?this._anchor:null);
+      if(!a){ this._anchor=null; this.setState({linkDlg:null}); this.notify('Không tìm thấy liên kết vừa chọn — hãy bấm lại vào nút rồi thử lần nữa'); return; }
+      a.setAttribute('href',url);
+      if(label!==(a.textContent||'')) a.textContent=label;
+      a.removeAttribute('data-editing');
+      this.captureEd(); this._anchor=null; this._rng=null;
+      this.setState({linkDlg:null});
+      this.notify(d.mode==='button'?'Đã cập nhật nút bấm':'Đã cập nhật liên kết');
+      if(!this.state.tplDirty[this.state.editing]) this.setState(st=>({tplDirty:Object.assign({},st.tplDirty,{[st.editing]:true})}));
+      return;
+    }
+    this.focusInto('body');
+    const sel=window.getSelection();
+    const body=this._bodyRef;
+    if(this._rng&&sel&&this._caretInBody){ sel.removeAllRanges(); sel.addRange(this._rng); }
+    else if(body&&sel){ const r=document.createRange(); r.selectNodeContents(body); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+    const esc=(t)=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    let html;
+    if(d.mode==='button') html='<p><a href="'+esc(url)+'" data-cta="1" style="display:inline-block;padding:10px 20px;color:#fff;border-radius:4px;text-decoration:none;font-weight:600;font-size:15px;">'+esc(label)+'</a></p>';
+    else html='<a href="'+esc(url)+'" style="color:#405189;">'+esc(label)+'</a>&nbsp;';
+    try{ document.execCommand('insertHTML',false,html); }catch(e){}
+    this.captureEd(); this._rng=null;
+    this.setState({linkDlg:null});
+    if(!this.state.tplDirty[this.state.editing]) this.setState(st=>({tplDirty:Object.assign({},st.tplDirty,{[st.editing]:true})}));
+  }
+  exec(cmd,val){ this.focusInto('body'); try{ document.execCommand(cmd,false,val||null); }catch(e){} this.captureEd(); this.captureSig(); }
+  subHtmlToText(html,lang){ const M=this.smap(lang); const d=document.createElement('div'); d.innerHTML=html||''; d.querySelectorAll('.em-var').forEach(s=>{ const v=s.getAttribute('data-v'); s.replaceWith(document.createTextNode(M[v]||v)); }); return d.textContent; }
+  smap(lang){ return Object.assign({}, this.SAMPLE, this.SAMPLE_I18N[lang||this.state.lang]||{}, {'{site_name}':(this.state.senderName||'An Vinh')}); }
+  subHtml(html,lang){ const M=this.smap(lang); const d=document.createElement('div'); d.innerHTML=html||''; d.querySelectorAll('.em-var').forEach(s=>{ const v=s.getAttribute('data-v'); s.replaceWith(document.createTextNode(M[v]||v)); });
+    d.querySelectorAll('a[href]').forEach(a=>{ a.removeAttribute('data-editing'); const h=a.getAttribute('href')||''; if(M[h]!==undefined) a.setAttribute('href',M[h]); });
+    return d.innerHTML; }
+  openEditor(k){ this.captureEd(); const sys=!!(this.TMETA[k]||{}).sys; if(!sys&&!(this.state.tplDirty||{})[k]) this.snapTpl(k); this.ensure(k,this.state.lang); this._bodyRef=null; this._subjRef=null; this.setState({editing:k,edMode:sys?'preview':'edit'}); }
+  closeEditor(){ this.captureEd(); this.setState({editing:null}); }
+  snapTpl(k){ if(!this._snap)this._snap={}; const s={subj:{},body:{},edited:!!(this._editedFlag||{})[k]};
+    this.siteLocales.forEach(lg=>{ const key=k+'/'+lg;
+      if(this._subj[key]!==undefined) s.subj[lg]=this._subj[key];
+      if(this._body[key]!==undefined) s.body[lg]=this._body[key]; });
+    this._snap[k]=s; }
+  revertTpl(k){ const s=(this._snap||{})[k]; if(!s) return;
+    this.siteLocales.forEach(lg=>{ const key=k+'/'+lg;
+      if(s.subj[lg]!==undefined) this._subj[key]=s.subj[lg]; else delete this._subj[key];
+      if(s.body[lg]!==undefined) this._body[key]=s.body[lg]; else delete this._body[key]; });
+    if(!this._editedFlag)this._editedFlag={}; this._editedFlag[k]=s.edited;
+    this._subjRef=null; this._bodyRef=null; }
+  clearTplDirty(k,extra){ this.setState(st=>{ const td=Object.assign({},st.tplDirty); delete td[k]; return Object.assign({tplDirty:td},extra||{}); }); }
+  guardSave(){ const g=this.state.guard; if(!g) return; const k=g.tpl;
+    this.captureEd(); this.snapTpl(k); this.closeGuard(); this.clearTplDirty(k,{guard:null});
+    this.notify('Đã lưu nháp mẫu “'+((this.TMETA[k]||{}).n||k)+'”'); this.afterGuard(g); }
+  guardDiscard(){ const g=this.state.guard; if(!g) return; const k=g.tpl;
+    this.revertTpl(k); this.closeGuard(); this.clearTplDirty(k,{guard:null});
+    this.notify('Đã bỏ các thay đổi chưa lưu của mẫu này'); this.afterGuard(g); }
+  openGuard(g){ this._gTrigger=document.activeElement;
+    if(!this._gEsc){ this._gEsc=(e)=>{ if(e.key==='Escape'&&this.state.guard){ e.preventDefault(); e.stopPropagation(); this.guardCancel(); } };
+      document.addEventListener('keydown',this._gEsc,true); }
+    this.setState({guard:g,langPanel:false}); }
+  closeGuard(extra){ if(this._gEsc){ document.removeEventListener('keydown',this._gEsc,true); this._gEsc=null; }
+    if(extra) this.setState(extra); else this.setState({guard:null}); }
+  guardCancel(){ this.closeGuard({guard:null}); }
+  afterGuard(g){ if(g.kind==='lang') setTimeout(()=>this.setLang(g.lang,true),0); }
+  setLang(code,force){ const S=this.state, k=S.editing;
+    if(!force && k && code!==S.lang && (S.tplDirty||{})[k]){ this.captureEd(); this.openGuard({kind:'lang',lang:code,tpl:k}); return; }
+    if(k){ this.captureEd(); this.ensure(k,code); this._bodyRef=null; this._subjRef=null; }
+    this.setState({lang:code,langPanel:false,langQ:''}); }
+  setEdLang(l){ this.setLang(l); }
+  setEdMode(m){ this.captureEd(); if(m==='edit'){ this._bodyRef=null; this._subjRef=null; } this.setState({edMode:m}); }
+  setSig(l){ this.captureSig(); this._sigRef=null; this.setState({sigLayout:l}); }
+  commitNotifyDraft(){ const v=(this.state.notifyDraft||'').trim().replace(/,$/,''); if(!v) return;
+    const arr=String(this.state.notifyTo||'').split(',').map(x=>x.trim()).filter(Boolean).concat(v);
+    this.setState({notifyTo:arr.join(','),notifyDraft:'',dirty:true}); }
+  linkMailbox(k){
+    const S=this.state;
+    if((S.conn||{})[k]){ this.notify('Đã gửi lại thư kiểm tra tới hộp thư đã kết nối'); return; }
+    if(S.oauth) return;
+    this._oaTrigger=document.activeElement;
+    this._esc=(e)=>{ if(e.key==='Escape'){ e.preventDefault(); this.denyOAuth(true); } };
+    document.addEventListener('keydown',this._esc);
+    this.setState({oauth:{prov:k,step:'account',account:null},connBusy:k});
+  }
+  closeOAuth(patch){ document.removeEventListener('keydown',this._esc); clearTimeout(this._oa); this.setState(Object.assign({oauth:null,connBusy:null},patch||{})); }
+  pickAccount(email){ this.setState(st=>({oauth:Object.assign({},st.oauth,{step:'consent',account:email})})); }
+  denyOAuth(closed){ const oa=this.state.oauth; if(!oa) return; const k=oa.prov;
+    const why=(oa.step==='consent')?(closed?'closedConsent':'denied'):'closedChooser';
+    this.closeOAuth({oauthDenied:Object.assign({},this.state.oauthDenied,{[k]:why})});
+    this.notify(why==='denied'?'Bạn đã bấm Huỷ ở bước cấp quyền nên chưa kết nối — bấm Kết nối để thử lại'
+      :why==='closedConsent'?'Bạn đã đóng cửa sổ ở bước cấp quyền nên chưa kết nối — bấm Kết nối để thử lại'
+      :'Bạn đã đóng cửa sổ trước khi chọn tài khoản nên chưa kết nối'); }
+  grantOAuth(){ const oa=this.state.oauth; if(!oa) return;
+    this.setState({oauth:Object.assign({},oa,{step:'working'})});
+    clearTimeout(this._oa);
+    this._oa=setTimeout(()=>{
+      const d=new Date(); const p=n=>(n<10?'0':'')+n; const at=p(d.getHours())+':'+p(d.getMinutes());
+      const den=Object.assign({},this.state.oauthDenied); delete den[oa.prov];
+      this.closeOAuth({dirty:true,oauthDenied:den,conn:Object.assign({},this.state.conn,{[oa.prov]:{email:oa.account,at:at}})});
+      this.notify('Đã kết nối '+oa.account+' — hệ thống vừa tự gửi một thư kiểm tra');
+    },1100);
+  }
+  saveProvider(){
+    const S=this.state, isSmtp=S.otherProv==='smtp', err={};
+    if(isSmtp){ if(!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(S.smtpEmail||'')) err.smtpEmail='Địa chỉ email chưa đúng định dạng.';
+      if(!String(S.smtpPass||'').trim()) err.smtpPass='Hãy dán mật khẩu ứng dụng.'; }
+    else { if(!String(S.apiKey||'').trim()) err.apiKey='Hãy dán khoá API lấy từ nhà cung cấp.';
+      if(!/^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/i.test(S.sendDomain||'')) err.sendDomain='Tên miền chưa hợp lệ (ví dụ anvinh.vn).'; }
+    if(Object.keys(err).length){ this.setState({provErr:err,provSaved:false}); this.notify('Còn '+Object.keys(err).length+' mục chưa hợp lệ — sửa rồi thử lại'); return; }
+    this.setState({provErr:{},provSaved:true,dirty:true});
+    this.notify('Kết nối thành công — đã gửi một thư kiểm tra qua nhà cung cấp');
+  }
+  hasLang(k,lg){ const v=this._subj[k+'/'+lg]; if(v!==undefined) return String(v).replace(/<[^>]*>/g,'').trim()!==''; const d=(this.DEF[k]||{})[lg]; return !!(d&&String(d.s||'').trim()); }
+  isEdited(k){ return !!(this._editedFlag||{})[k] || !!this.TMETA[k].edited; }
+
+  get AIW(){ return (window.BSAI||{}).RATES||{perField:140,perTpl:120,perLabel:12,perPost:980,perSeoPair:45}; }
+  aiLeftW(){ return Math.max(0,this.AIQ.limit-this.AIQ.used); }
+  nfm(v){ return window.BSAI?window.BSAI.nfm(v):Math.round(v).toLocaleString('vi-VN'); }
+  aiEnough(v){ return window.BSAI?window.BSAI.enough(v,["tpl","post"]):(v>0?'':'đã hết từ AI trong tháng này'); }
+  fillMissing(targets,onlyKey){
+    const langs=(targets&&targets.length)?targets:this.siteLocales.filter(l=>l!==this.defLang);
+    const enabled=onlyKey?[onlyKey]:Object.keys(this.TMETA).filter(k=>this.state.tplOn[k]&&this.TMETA[k].i18n!==false);
+    let jobs=0; this._filled=[];
+    langs.forEach(lg=>{ if(lg===this.defLang)return;
+      enabled.forEach(k=>{ if(this.hasLang(k,lg)) return;
+        const src=k+'/'+this.defLang, ds=(this.DEF[k]||{})[this.defLang]||{}, dt=(this.DEF[k]||{})[lg];
+        const srcS=(this._subj[src]!==undefined?this._subj[src]:(ds.s||'')), srcB=(this._body[src]!==undefined?this._body[src]:(ds.b||''));
+        this._subj[k+'/'+lg]=dt?dt.s:this.mt(srcS,lg);
+        this._body[k+'/'+lg]=dt?dt.b:this.mt(srcB,lg); jobs++; if(this._filled.indexOf(lg)<0) this._filled.push(lg); });
+      });
+    this._sigRef=null; this._subjRef=null; this._bodyRef=null;
+    if(jobs===0){ this.notify('Mọi mẫu đã có bản dịch — không tốn từ AI nào'); return; }
+    const cost=jobs*this.AIW.perTpl;
+    this.AIQ.used=Math.min(this.AIQ.limit,this.AIQ.used+cost);
+    this.notify('Đã dịch '+jobs+' mẫu — dùng '+this.nfm(cost)+' từ AI, còn '+this.nfm(this.aiLeftW())+' từ ('+this.aiEnough(this.aiLeftW())+')');
+    this.forceUpdate();
+  }
+  mt(html,lg){
+    const NOTE={en:'[Machine translation — please review]',ja:'【機械翻訳 — ご確認ください】'};
+    const tag='<p style="color:#878a99;font-size:12.5px;">'+(NOTE[lg]||'[Machine translation]')+'</p>';
+    return /<p|<div|<br/i.test(html||'') ? (tag+html) : html;
+  }
+  editedKeys(){ return Object.keys(this.TMETA).filter(k=>!this.TMETA[k].sys&&this.isEdited(k)); }
+  resetTplKeys(keys){
+    keys.forEach(k=>{ this.siteLocales.forEach(lg=>{ delete this._subj[k+'/'+lg]; delete this._body[k+'/'+lg]; });
+      if(this._editedFlag) this._editedFlag[k]=false; this.TMETA[k].edited=false; if(this._snap) delete this._snap[k]; });
+    this._subjRef=null; this._bodyRef=null;
+    this.setState(st=>{ const td=Object.assign({},st.tplDirty); keys.forEach(k=>delete td[k]); return {resetAsk:null,tplDirty:td}; });
+  }
+  doReset(){
+    const t=this.state.resetAsk; if(!t) return;
+    if(t==='all'){ this.resetTplKeys(this.editedKeys()); this.setState({editing:null}); this.notify('Đã đưa toàn bộ mẫu thư về nội dung gốc'); return; }
+    this.resetTplKeys([t]); this.notify('Đã đưa mẫu “'+((this.TMETA[t]||{}).n||t)+'” về nội dung gốc');
+  }
+  resetAllTpl(){
+    Object.keys(this.TMETA).forEach(k=>{ this.siteLocales.forEach(lg=>{ delete this._subj[k+'/'+lg]; delete this._body[k+'/'+lg]; });
+      if(this._editedFlag) this._editedFlag[k]=false; this.TMETA[k].edited=false; if(this._snap) delete this._snap[k]; });
+    this._subjRef=null; this._bodyRef=null;
+    this.setState({resetAsk:false,tplDirty:{},editing:null});
+    this.notify('Đã đưa toàn bộ mẫu thư về nội dung gốc');
+  }
+  langBar(){
+    const st=this.state, NAMES={vi:'Tiếng Việt',en:'English',ja:'日本語'};
+    const enabled=Object.keys(this.TMETA).filter(k=>st.tplOn[k]&&this.TMETA[k].i18n!==false);
+    const total=enabled.length||1;
+    const LOC=(st.editing&&this.TMETA[st.editing]&&this.TMETA[st.editing].i18n===false)?[this.defLang]:this.siteLocales;
+    const LS=LOC.map(lc=>{
+      const done=enabled.filter(k=>this.hasLang(k,lc)).length;
+      const kind=lc==='vi'?'src':(done===0?'empty':(done<total?'partial':'ok'));
+      const col=({src:'#0ab39c',ok:'#0ab39c',partial:'#f7b84b',empty:'#adb5bd'})[kind];
+      const label=({src:'Bản nguồn — nội dung gốc',ok:'Đủ nội dung',partial:'Còn '+(total-done)+' mẫu chưa dịch',empty:'Chưa dịch mẫu nào'})[kind];
+      const pub=this.pubLocales.indexOf(lc)>=0;
+      return {code:lc,name:NAMES[lc]||lc,isSrc:lc==='vi',kind:kind,done:done,total:total,label:label,pub:pub,
+        title:(NAMES[lc]||lc)+' — '+label+' · '+done+'/'+total+' mẫu'+(pub?'':' · chưa hiển thị ra ngoài'),
+        dot:'width:8px;height:8px;border-radius:50%;flex-shrink:0;'+(kind==='empty'?('border:1.5px dashed '+col+';'):('background:'+col+';'))};});
+    const cur=LS.find(x=>x.code===st.lang)||LS[0];
+    const must=['vi',st.lang].filter((v,i,a)=>a.indexOf(v)===i);
+    const barW=st.langBarW||900;
+    const compact=barW<650;
+    const wOf=(s)=>{let n=0;for(const ch of String(s))n+=(ch.charCodeAt(0)>0x2e80?16.5:8.2);return 52+n;};
+    let fitCodes=LS.map(x=>x.code);
+    const fitIn=(reserve)=>{const room=Math.max(120,barW-46-(barW>=1010?390:300)-reserve);
+      let est=0;const keep=[];
+      must.forEach(c=>{const L=LS.find(x=>x.code===c);if(L){est+=wOf(L.name)+6;keep.push(c);}});
+      LS.forEach(L=>{if(keep.indexOf(L.code)>=0)return;const w=wOf(L.name)+6;if(est+w<=room){est+=w;keep.push(L.code);}});
+      const cap=(typeof st.langFit==='number')?Math.max(must.length,st.langFit):keep.length;
+      const ordered=LS.filter(x=>keep.indexOf(x.code)>=0).map(x=>x.code);
+      const trimmed=ordered.filter(c=>must.indexOf(c)>=0);
+      ordered.forEach(c=>{if(trimmed.indexOf(c)<0&&trimmed.length<cap)trimmed.push(c);});
+      return LS.filter(x=>trimmed.indexOf(x.code)>=0).map(x=>x.code);};
+    let statusOn=false;
+    if(!compact){const withChip=barW>=810?fitIn(165):[];
+      if(withChip.length===LS.length){statusOn=true;fitCodes=withChip;}
+      else fitCodes=fitIn(0);}
+    else fitCodes=[];
+    const overflowN=LS.length-fitCodes.length-(compact?1:0);
+    const aiLeft=Math.max(0,this.AIQ.limit-this.AIQ.used);
+    const aiLow=aiLeft>0&&aiLeft<=Math.max(5,Math.round(this.AIQ.limit*0.2));
+    const trTargets=cur.isSrc?LS.filter(x=>!x.isSrc).map(x=>x.code):[cur.code];
+    let trJobs=0;trTargets.forEach(lg=>{(st.editing?[st.editing]:enabled).forEach(k=>{if(!this.hasLang(k,lg))trJobs++;});});
+    const trCost=trJobs*this.AIW.perTpl;
+    const trBlocked=aiLeft<=0||trJobs===0||trCost>aiLeft;
+    const trLabel=cur.isSrc?('Dịch sang '+trTargets.length+' ngôn ngữ'):('Dịch bản '+cur.name);
+    const note=(()=>{
+      if(aiLeft<=0)return {text:'Đã hết từ AI trong tháng này — bạn vẫn nhập tay bình thường, hoặc mua thêm từ AI để dịch tiếp.',icon:'ri-lock-line',fg:'#b42318',bg:'rgba(240,101,72,.10)'};
+      if(aiLow)return {text:'Chỉ còn '+this.nfm(aiLeft)+' từ AI trong tháng ('+this.aiEnough(aiLeft)+') — cân nhắc dịch từng ngôn ngữ.',icon:'ri-flashlight-line',fg:'#b57d13',bg:'rgba(247,184,75,.10)'};
+      if(cur.kind==='empty')return {text:'Bản '+cur.name+' chưa có mẫu nào — bấm Dịch để lấy từ Tiếng Việt, hoặc tự nhập.',icon:'ri-translate-2',fg:'#b57d13',bg:'rgba(247,184,75,.10)'};
+      if(cur.kind==='partial')return {text:'Còn '+(cur.total-cur.done)+' mẫu chưa có bản '+cur.name+' — bấm Dịch để đổ nốt.',icon:'ri-error-warning-line',fg:'#b57d13',bg:'rgba(247,184,75,.10)'};
+      if(cur.isSrc){const miss=LS.filter(x=>!x.isSrc&&x.done<x.total).length;
+        return {text:'Đây là bản nguồn — soạn đủ và chuẩn các mẫu có chip '+cur.code.toUpperCase()+', rồi bấm Dịch để đổ sang '+(LS.length-1)+' ngôn ngữ còn lại.'+(miss?' Hiện còn '+miss+' bản chưa đủ.':''),icon:'ri-star-fill',fg:'#5a6a86',bg:'rgba(64,81,137,.07)'};}
+      if(!statusOn)return {text:'Bản '+cur.name+' — '+cur.label.toLowerCase()+'.',icon:'ri-checkbox-circle-line',fg:'#0a8f7f',bg:'rgba(10,179,156,.10)'};
+      return {text:'',icon:'',fg:'#b57d13',bg:'rgba(247,184,75,.10)'};})();
+    const full=LS.filter(x=>x.done>=x.total).length;
+    return {
+      showLang:this.siteLocales.length>1,
+      langBarRef:(el)=>{if(!el)return;this._barEl=el;
+        this._sync=()=>{const n=this._barEl;if(!n||!n.isConnected)return;const w=n.clientWidth;
+          if(w&&Math.abs((this.state.langBarW||0)-w)>2)this.setState({langBarW:w,langFit:null});};
+        this._sync();
+        if(this._barRO)this._barRO.disconnect();
+        if(typeof ResizeObserver!=='undefined'){this._barRO=new ResizeObserver(()=>this._sync());this._barRO.observe(el);}
+        if(!this._winRz){this._winRz=()=>this._sync();window.addEventListener('resize',this._winRz);}},
+      langPillsRef:(el)=>{this._pillsEl=el;if(!el)return;const n=fitCodes.length,floor=must.length;
+        const key=barW+':'+must.join(',')+':'+(st.langFit==null?'n':st.langFit)+':'+n;
+        this._measKey=key;if(this._raf)cancelAnimationFrame(this._raf);
+        this._raf=requestAnimationFrame(()=>{this._raf=null;
+          if(this._pillsEl!==el||this._measKey!==key)return;
+          if((this.state.langBarW||900)!==barW)return;
+          if(el.scrollWidth>el.clientWidth+1&&n>floor)this.setState({langFit:n-1});});},
+      langInline:true,langShowSel:true,
+      langPillsAll:LS.map(x=>({code:x.code,name:x.name,isSrc:x.isSrc,title:x.title,dot:x.dot,
+        style:'display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:6px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;'+(x.code===st.lang?'border:1px solid #405189;background:#fff;font-weight:600;color:#343a40;box-shadow:0 0 0 3px rgba(64,81,137,.14);':(x.kind==='empty'?'border:1px dashed #ced4da;background:#fff;font-weight:500;color:#878a99;':'border:1px solid #eff2f7;background:#f3f6f9;font-weight:500;color:#495057;')),
+        onPick:()=>this.setLang(x.code)})),
+      langPills:LS.filter(x=>fitCodes.indexOf(x.code)>=0).map(x=>({code:x.code,name:x.name,isSrc:x.isSrc,title:x.title,dot:x.dot,cur:(x.code===st.lang)?'true':'false',
+        style:'display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:6px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;'+(x.code===st.lang?'border:1px solid #405189;background:#fff;font-weight:600;color:#343a40;box-shadow:0 0 0 3px rgba(64,81,137,.14);':(x.kind==='empty'?'border:1px dashed #ced4da;background:#fff;font-weight:500;color:#878a99;':'border:1px solid #eff2f7;background:#f3f6f9;font-weight:500;color:#495057;')),
+        onPick:()=>this.setLang(x.code)})),
+      langCurName:cur.name,langCode:st.lang.toUpperCase(),langCurIsSrc:cur.isSrc,langCurTitle:cur.title,langCurDot:cur.dot,
+      langCurStyle:'display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 9px 0 11px;border:1px solid #405189;border-radius:6px;background:#fff;font:inherit;font-size:13px;font-weight:600;color:#343a40;cursor:pointer;white-space:nowrap;box-shadow:0 0 0 3px rgba(64,81,137,.14);',
+      langHasOverflow:!compact&&overflowN>0,langOverflowText:'+'+overflowN,
+      langOverflowStyle:'display:inline-flex;align-items:center;gap:2px;height:32px;padding:0 7px 0 10px;border:1px solid #eff2f7;border-radius:6px;background:#f3f6f9;font:inherit;font-size:13px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;flex-shrink:0;',
+      langPanelOpen:!!st.langPanel,onToggleLangPanel:()=>this.setState({langPanel:!st.langPanel,langQ:''}),
+      langPanelItems:LS.map(x=>({name:x.name+(x.isSrc?' ★':''),status:x.label+(x.pub?'':' · chưa hiển thị ra ngoài'),count:x.done+'/'+x.total+' mẫu',dot:x.dot,
+        nameStyle:'font-size:13px;font-weight:'+(x.code===st.lang?600:500)+';color:#343a40;white-space:nowrap;',
+        rowStyle:'display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;border:0;border-radius:6px;background:'+(x.code===st.lang?'#f3f6f9':'transparent')+';font:inherit;cursor:pointer;',
+        onPick:()=>this.setLang(x.code)})),
+      langHasMissing:LS.some(x=>!x.isSrc&&x.done<x.total),
+      langFillText:'Dịch '+LS.filter(x=>!x.isSrc&&x.done<x.total).length+' bản còn thiếu',
+      onFillMissing:()=>{this.setState({langPanel:false});this.fillMissing(LS.filter(x=>!x.isSrc&&x.done<x.total).map(x=>x.code));},
+      onManageLangs:()=>{this.setState({langPanel:false});this.notify('Mở Cài đặt › Ngôn ngữ website');},
+      langStatusText:cur.label,
+      langStatusStyle:!statusOn?'display:none;':('display:inline-flex;align-items:center;gap:6px;margin-left:2px;padding:0 9px;height:24px;border-radius:20px;font-size:11.5px;font-weight:500;white-space:nowrap;flex-shrink:0;color:'+({src:'#0a8f7f',ok:'#0a8f7f',partial:'#b57d13',empty:'#878a99'})[cur.kind]+';background:'+({src:'rgba(10,179,156,.12)',ok:'rgba(10,179,156,.12)',partial:'rgba(247,184,75,.16)',empty:'rgba(173,181,189,.16)'})[cur.kind]+';'),
+      langProg:full+'/'+this.siteLocales.length,langProgTitle:'Số ngôn ngữ đã đủ nội dung cho các mẫu đang bật',
+      langNote:note.text,langNoteIcon:note.icon,
+      langNoteStyle:'display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid #e9ebec;border-radius:0 0 6px 6px;font-size:12px;line-height:1.5;color:'+note.fg+';background:'+note.bg+';',
+      aiQuotaText:'Còn '+this.nfm(aiLeft)+' từ AI',
+      aiQuotaTitle:'Sổ nội dung chữ — Gói Cơ bản: '+this.nfm(this.AIQ.limit)+' từ AI mỗi tháng, đã dùng '+this.nfm(this.AIQ.used)+'. Còn '+this.nfm(aiLeft)+' từ — '+this.aiEnough(aiLeft)+'.',
+      aiQuotaStyle:'display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;color:'+(aiLeft<=0?'#f06548':(aiLow?'#b57d13':'#878a99'))+';white-space:nowrap;flex-shrink:0;',
+      onTranslateLang:()=>{ if(trBlocked)return; this.fillMissing(trTargets,st.editing);
+        const done=(this._filled&&this._filled.length)?this._filled:trTargets;
+        if(done.indexOf(st.lang)<0) this.setLang(done[0],true); },
+      translateLabel:trLabel,
+      translateStyle:'display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid '+(trBlocked?'#e9ebec':'rgba(64,81,137,.28)')+';border-radius:4px;background:'+(trBlocked?'#f3f6f9':'rgba(64,81,137,.10)')+';font:inherit;font-size:12.5px;font-weight:600;color:'+(trBlocked?'#adb5bd':'#405189')+';cursor:'+(trBlocked?'not-allowed':'pointer')+';white-space:nowrap;flex-shrink:0;',
+      translateTitle:(aiLeft<=0?'Đã hết từ AI tháng này — mua thêm từ AI hoặc nâng gói để dịch tiếp':(trJobs===0?(st.editing?'Mẫu này đã có đủ bản dịch — không tốn từ AI nào':'Mọi mẫu đã có bản dịch — không tốn từ AI nào'):(trCost>aiLeft?('Cần khoảng '+this.nfm(trCost)+' từ AI nhưng chỉ còn '+this.nfm(aiLeft)+' — dịch từng mẫu hoặc mua thêm từ AI'):(trLabel+' · '+trJobs+' mẫu còn thiếu, dùng ~'+this.nfm(trCost)+' từ AI, còn '+this.nfm(Math.max(0,aiLeft-trCost))+' từ'))))
+    };
+  }
+  renderVals(){
+    const S=this.state, self=this;
+    const accType=this.props.accountType||null;
+    const isPlatform=accType==='platform';
+    const noParentMailbox=accType==='saas'||isPlatform;
+    const visTpl=(k)=>{ const m=this.TMETA[k]; return !accType||isPlatform||!m.acc||m.acc.indexOf(accType)>=0; };
+    const visKeys=Object.keys(this.TMETA).filter(visTpl);
+    const ACC_L={site:'Site',ecom:'TMĐT',saas:'SaaS'};
+    const tabDefAll=[ {k:'send',l:'Gửi thư',i:'ri-send-plane-line'}, {k:'tpl',l:'Mẫu thư',i:'ri-mail-line',count:visKeys.length}, {k:'sign',l:'Chữ ký & thương hiệu',i:'ri-quill-pen-line'} ];
+    const onlyTab=this.props.onlyTab||(isPlatform?'tpl':null);
+    const tabDef=onlyTab?tabDefAll.filter(t=>t.k===onlyTab):tabDefAll;
+    const tabStyle=(on)=>'white-space:nowrap;display:inline-flex;align-items:center;gap:7px;padding:11px 16px 13px;border:0;background:transparent;font:inherit;font-size:13.5px;font-weight:'+(on?'600':'500')+';color:'+(on?'#405189':'#5b6270')+';cursor:pointer;border-bottom:2px solid '+(on?'#405189':'transparent')+';margin-bottom:-1px;';
+    const tabs=tabDef.map(t=>({label:t.l,icon:t.i,onClick:()=>this.setState({tab:t.k}),style:tabStyle(S.tab===t.k),hasCount:t.count!==undefined,count:t.count,countStyle:'padding:1px 7px;border-radius:20px;background:'+(S.tab===t.k?'rgba(64,81,137,.14)':'#eef0f2')+';color:'+(S.tab===t.k?'#405189':'#878a99')+';font-size:11px;font-weight:700;'}));
+
+    // ---- OUTBOX ----
+    const isSaasAcc=noParentMailbox;
+    const OB_ALL=[
+      {k:'platform',name:'Hộp thư của Bảo Sơn',isDefault:true,meta:'no-reply@baoson.net',hasQuota:true,quota:'Còn 23 thư hôm nay',infoTitle:'Dùng hộp thư của Bảo Sơn nghĩa là gì',infoBody:'Khách thấy người gửi là An Vinh <no-reply@baoson.net> — không phải tên miền của bạn; bấm Trả lời sẽ về lienhe@anvinh.vn. Hạn mức gói Cơ bản 30 thư/ngày, đặt lại lúc 00:00. Hết hạn mức thư xếp hàng, gửi tiếp hôm sau.',hasInfoLinks:true},
+      {k:'google',name:'Gmail / Google Workspace',icon:'ri-google-fill',iconColor:'#ea4335',meta:'Đăng nhập một lần, không hạn mức gửi.',isAction:true,actionLabel:'Kết nối',tip:'Nhanh nhất',connect:{label:'Kết nối với Google',note:'Bạn chỉ cần đăng nhập một lần. Nền tảng dùng ứng dụng đã được Google duyệt sẵn, tự làm mới quyền và tự gửi một thư kiểm tra sau khi kết nối — không cần khoá API, máy chủ hay cổng.'},infoTitle:'Kết nối Gmail / Google Workspace',infoBody:'Đăng nhập một lần bằng chính hộp thư của bạn. Nền tảng dùng ứng dụng đã được Google duyệt sẵn — bạn không phải tạo dự án hay dán khoá nào. Thư gửi thẳng từ hộp thư này, tự làm mới quyền.'},
+      {k:'microsoft',name:'Outlook / Microsoft 365',icon:'ri-microsoft-fill',iconColor:'#0078d4',meta:'Đăng nhập bằng tài khoản công ty.',isAction:true,actionLabel:'Kết nối',connect:{label:'Kết nối với Microsoft',note:'Đăng nhập một lần bằng tài khoản Microsoft 365. Nền tảng lo ứng dụng, bảo mật và làm mới quyền, đồng thời tự gửi thư kiểm tra sau khi kết nối.'},infoTitle:'Kết nối Outlook / Microsoft 365',infoBody:'Đăng nhập một lần bằng tài khoản Microsoft 365. Nền tảng lo phần ứng dụng và bảo mật, tự làm mới quyền — bạn chỉ cần đăng nhập.'},
+      {k:'other',name:'Nhà cung cấp khác',icon:'ri-server-line',iconColor:'#405189',meta:'SendGrid, Brevo, SES, Postmark hoặc SMTP riêng.',isAction:true,actionLabel:'Thiết lập',tip:'Gửi số lượng lớn',infoTitle:'Nhà cung cấp gửi thư khác',infoBody:'Dùng dịch vụ gửi thư chuyên dụng (API) khi cần gửi số lượng lớn với tỷ lệ vào hộp thư cao, hoặc máy chủ SMTP riêng của bạn. Chỉ cần khoá API và tên miền gửi — nền tảng tự lo xác thực.'}
+    ];
+    const OB=OB_ALL.filter(o=>!(isSaasAcc&&o.k==='platform'));
+    const outboxes=OB.map(o=>{ const sel=S.outbox===o.k; return {
+      sel:sel,name:o.name,isDefault:!!o.isDefault,
+      meta:(((S.conn||{})[o.k])?S.conn[o.k].email:((o.k==='other'&&S.provSaved)?('Gửi qua '+((({sendgrid:'SendGrid',brevo:'Brevo',ses:'Amazon SES',postmark:'Postmark',mailgun:'Mailgun',resend:'Resend',smtp:'SMTP riêng'})[S.otherProv])||'nhà cung cấp riêng')):o.meta)),hasQuota:!!o.hasQuota,quota:o.quota,
+      hasIcon:!!o.icon,icon:o.icon,iconStyle:'font-size:20px;color:'+(o.iconColor||'#878a99')+';flex-shrink:0;width:22px;text-align:center;',
+      hasBadgeLetter:false,
+      hasTip:!!o.tip,tip:o.tip,tipStyle:'padding:1px 8px;border-radius:4px;background:rgba(10,179,156,.12);color:#0a8f7f;font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap;',
+      connectOpen:sel&&!!o.connect,
+      isLinked:!!(S.conn||{})[o.k],
+      hasRowState:(o.k==='google'||o.k==='microsoft'||o.k==='other'),
+      rowStateText:(o.k==='other')
+        ? (S.provSaved?'Đã thiết lập':'Chưa thiết lập')
+        : ((S.connBusy===o.k)?'Đang xác thực…':(((S.conn||{})[o.k])?'Đã kết nối':'Chưa kết nối')),
+      rowStateChip:'display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap;'+(((o.k==='other')?!!S.provSaved:!!(S.conn||{})[o.k])?'background:rgba(10,179,156,.12);color:#0a8f7f;':'background:#f2f3f6;color:#878a99;'),
+      rowStateDot:'width:7px;height:7px;border-radius:50%;flex-shrink:0;'+(((o.k==='other')?!!S.provSaved:!!(S.conn||{})[o.k])?'background:#0ab39c;':'border:1.5px dashed #adb5bd;'),
+      connState:(S.connBusy===o.k)?'Đang xác thực ở cửa sổ nhà cung cấp…':(((S.conn||{})[o.k])?('Đã kết nối · '+(S.conn[o.k].email)):'Chưa kết nối'),
+      connChip:'display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:20px;font-size:12.5px;font-weight:600;white-space:nowrap;'+(((S.conn||{})[o.k])?'background:rgba(10,179,156,.14);color:#0a8f7f;':'background:rgba(247,184,75,.16);color:#b57d13;'),
+      connDot:'width:8px;height:8px;border-radius:50%;'+(((S.conn||{})[o.k])?'background:#0ab39c;':'border:1.5px dashed #b57d13;'),
+      connBtnLabel:((S.conn||{})[o.k])?'Gửi lại thư kiểm tra':(o.connect?o.connect.label:''),
+      connBtnIcon:((S.conn||{})[o.k])?'ri-send-plane-line':o.icon,
+      connBtn:'display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:'+(((S.conn||{})[o.k])?'1px solid #d0d3da':'0')+';border-radius:4px;background:'+(((S.conn||{})[o.k])?'#fff':'#405189')+';color:'+(((S.conn||{})[o.k])?'#405189':'#fff')+';font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:'+((S.connBusy===o.k)?'progress':'pointer')+';',
+      onConnect:()=>this.linkMailbox(o.k),
+      onDisconnect:()=>{ this.setState(st=>{ const c=Object.assign({},st.conn); delete c[o.k]; return {conn:c,dirty:true}; }); this.notify('Đã ngắt kết nối — website tạm quay về hộp thư nền tảng'); },
+      connNote:((S.conn||{})[o.k])?('Quyền gửi thư được nền tảng tự làm mới, lần gần nhất '+(S.conn[o.k].at)+'. Thư kiểm tra đã gửi và nhận thành công.'):((((S.oauthDenied||{})[o.k])==='closedChooser')?'Lần trước bạn đóng cửa sổ trước khi chọn tài khoản, nên website chưa có quyền gửi thư. Bấm Kết nối để mở lại.':(((S.oauthDenied||{})[o.k])?'Lần trước bạn dừng ở bước cấp quyền nên website chưa có quyền gửi thư. Bấm Kết nối để mở lại cửa sổ và bấm Cho phép.':(o.connect?o.connect.note:''))),
+      isAction:!!o.isAction,actionLabel:o.actionLabel,onAction:()=>{ this.setState({outbox:o.k}); },
+      onPick:()=>this.setState({outbox:o.k}),
+      ariaChecked:sel?'true':'false', tabIndex:sel?0:-1,
+      onKey:(e)=>{ const K=e.key;
+        if(K===' '||K==='Enter'){ e.preventDefault(); this.setState({outbox:o.k}); return; }
+        if(K==='ArrowDown'||K==='ArrowRight'||K==='ArrowUp'||K==='ArrowLeft'){ e.preventDefault();
+          const keys=OB.map(x=>x.k); const i=keys.indexOf(this.state.outbox);
+          const d=(K==='ArrowDown'||K==='ArrowRight')?1:-1;
+          const nk=keys[(i+d+keys.length)%keys.length];
+          this.setState({outbox:nk});
+          const nodes=document.querySelectorAll('[role="radio"]'); const n=nodes[keys.indexOf(nk)]; if(n&&n.focus)n.focus(); } },
+      onInfo:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); this.setState({info:S.info===o.k?null:o.k}); },
+      infoOpen:S.info===o.k,infoTitle:o.infoTitle,infoBody:o.infoBody,hasInfoLinks:!!o.hasInfoLinks,
+      rowStyle:'display:flex;align-items:center;gap:12px;padding:11px 13px;border:1.5px solid '+(sel?'#405189':'#e9ebec')+';border-radius:'+((sel&&o.connect)?'6px 6px 0 0':'6px')+';background:'+(sel?'rgba(64,81,137,.045)':'#fff')+';cursor:pointer;min-height:48px;',
+      radioStyle:'width:18px;height:18px;border-radius:50%;border:2px solid '+(sel?'#405189':'#ced4da')+';flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;'
+    };});
+    const showOther=S.outbox==='other';
+    const BRANDS=[['#405189','Navy'],['#2f6fd0','Xanh dương'],['#0e7490','Xanh cổ vịt'],['#0f766e','Mòng két'],['#15803d','Xanh lá'],['#4338ca','Chàm'],['#5b3fb3','Tím than'],['#9d174d','Mận']];
+    const lum=(hex)=>{ const n=parseInt(String(hex).slice(1),16), r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+      const lin=(v)=>{ v=v/255; return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4); };
+      return .2126*lin(r)+.7152*lin(g)+.0722*lin(b); };
+    const CR=(a,b)=>{ const l1=Math.max(lum(a),lum(b)), l2=Math.min(lum(a),lum(b)); return (l1+.05)/(l2+.05); };
+    const fgOn=(hex)=>CR(hex,'#212529')>=CR(hex,'#ffffff')?'#212529':'#ffffff';
+    const crOn=(hex)=>Math.max(CR(hex,'#212529'),CR(hex,'#ffffff'));
+    const brandFg=fgOn(S.brandColor);
+    const brandName=(BRANDS.filter(b=>b[0].toLowerCase()===String(this.siteBrand).toLowerCase())[0]||[null,'màu riêng'])[1];
+    const brandSwatches=BRANDS.map(b=>{ const on=S.brandColor===b[0], cr=crOn(b[0]);
+      const note=b[1]+' — chữ '+(fgOn(b[0])==='#212529'?'đen':'trắng')+(cr>=4.5?', tương phản đạt chuẩn':', tương phản chỉ vừa đủ cho chữ lớn trên nút');
+      return {name:note,ariaOn:on?'true':'false',check:on?'ri-check-line':'',fg:fgOn(b[0]),onPick:()=>this.setState({brandColor:b[0],dirty:true}),
+      style:'display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border-radius:50%;cursor:pointer;font-size:16px;color:'+fgOn(b[0])+';background:'+b[0]+';border:2px solid '+(on?'#212529':'rgba(0,0,0,.10)')+';box-shadow:'+(on?'0 0 0 2px #fff inset':'none')+';'};});
+    const brandLogoStyle='width:40px;height:40px;border-radius:6px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;color:'+brandFg+';background:'+S.brandColor+';';
+    const sigHtml=this.sigVal();
+    const previewFooter=React.createElement('div',{dangerouslySetInnerHTML:{__html:this.subHtml(sigHtml,S.lang)}});
+    const domOf=(a)=>String(a||'').split('@').pop().trim().toLowerCase();
+    let fromDomain='—';
+    if(S.outbox==='other') fromDomain=(S.otherProv==='smtp')?domOf(S.smtpEmail):String(S.sendDomain||'').trim().toLowerCase();
+    else if((S.conn||{})[S.outbox]) fromDomain=domOf(S.conn[S.outbox].email);
+    const dnsState=S.provSaved?'ok':'idle';
+    const DNS=[['SPF','Cho phép nền tảng gửi thay tên miền của bạn',dnsState],['DKIM','Ký số để thư không bị coi là giả mạo',dnsState],['DMARC','Quy định cách xử lý thư mạo danh',S.provSaved?'pending':'idle']];
+    const dnsMeta={ok:{c:'#0ab39c',l:'Đã xác thực',bg:'rgba(10,179,156,.12)',fg:'#0a8f7f'},pending:{c:'#f7b84b',l:'Đang chờ DNS',bg:'rgba(247,184,75,.16)',fg:'#b57d13'},idle:{c:'#adb5bd',l:'Chưa kiểm tra',bg:'rgba(173,181,189,.16)',fg:'#878a99'}};
+    const dnsRows=DNS.map(d=>{ const m=dnsMeta[d[2]]; return {name:d[0],desc:d[1],state:m.l,
+      dot:'width:9px;height:9px;border-radius:50%;flex-shrink:0;'+((d[2]==='idle')?('border:1.5px dashed '+m.c+';'):('background:'+m.c+';')),
+      chip:'margin-left:auto;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap;flex-shrink:0;background:'+m.bg+';color:'+m.fg+';'};});
+    const RM_BY_ACC={
+      ecom:[['09:12','order','khach.a@gmail.com','ok'],['08:40','contact','nguyenvanb@company.vn','ok'],['08:05','reset','thuha@yahoo.com','ok'],['Hôm qua','welcome','minh.tri@outlook.com','spam'],['Hôm qua','order','sai@dia-chi','fail']],
+      site:[['09:12','contact','nguyenvanb@company.vn','ok'],['08:40','contact','khach.a@gmail.com','ok'],['08:05','reset','thuha@yahoo.com','ok'],['Hôm qua','welcome','minh.tri@outlook.com','spam'],['Hôm qua','contact','sai@dia-chi','fail']],
+      saas:[['09:12','trial_ending','khach.a@gmail.com','ok'],['08:40','invoice','nguyenvanb@company.vn','ok'],['08:05','reset','thuha@yahoo.com','ok'],['Hôm qua','welcome','minh.tri@outlook.com','spam'],['Hôm qua','payment_failed','sai@dia-chi','fail']]
+    };
+    const RM=RM_BY_ACC[accType]||RM_BY_ACC.ecom;
+    const rmMeta={ok:{l:'Đã gửi',bg:'rgba(10,179,156,.12)',fg:'#0a8f7f'},spam:{l:'Vào thư rác',bg:'rgba(247,184,75,.16)',fg:'#b57d13'},fail:{l:'Không gửi được',bg:'rgba(240,101,72,.12)',fg:'#b42318'}};
+    const rmWhy={spam:'Hộp thư người nhận xếp vào thư rác — thường do tên miền gửi chưa xác thực đủ.',fail:'Địa chỉ người nhận không tồn tại nên hộp thư đích từ chối.'};
+    const rmF=S.rmFilter||'all';
+    const RMF=[['all','Tất cả'],['ok','Đã gửi'],['spam','Thư rác'],['fail','Lỗi']];
+    const rmFilters=RMF.map(f=>({label:f[1]+(f[0]==='all'?'':' '+RM.filter(r=>r[3]===f[0]).length),on:rmF===f[0]?'true':'false',onClick:()=>this.setState({rmFilter:f[0]}),
+      style:'min-height:32px;padding:6px 12px;border:0;border-right:1px solid #e9ebec;background:'+(rmF===f[0]?'#405189':'#fff')+';color:'+(rmF===f[0]?'#fff':'#878a99')+';font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;'}));
+    const recentMail=RM.filter(r=>rmF==='all'||r[3]===rmF).map(r=>{ const m=rmMeta[r[3]], tk=r[1], tm=this.TMETA[tk]||{n:tk};
+      return {at:r[0],kind:tm.n,to:r[2],state:m.l,
+      hasReason:!!rmWhy[r[3]],reason:rmWhy[r[3]]||'',
+      onResend:()=>this.notify('Đang gửi lại thư “'+tm.n+'” tới '+r[2]),
+      chip:'margin-left:auto;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap;flex-shrink:0;background:'+m.bg+';color:'+m.fg+';'};});
+    const rmEmpty=recentMail.length===0;
+    const linkedNow=(S.conn||{})[S.outbox];
+    const showFromEdit=S.outbox==='other';
+    const showFromRO=(S.outbox==='google'||S.outbox==='microsoft')&&!!linkedNow;
+    const fromRO=linkedNow?linkedNow.email:'';
+    const badNotify=String(S.notifyTo||'').split(',').map(x=>x.trim()).filter(x=>x&&!this.isEmail(x));
+    const notifyList=String(S.notifyTo||'').split(',').map(x=>x.trim()).filter(Boolean);
+    const ndom=(fromDomain&&fromDomain!=='—')?fromDomain:'anvinh.vn';
+    const notifyPrefixes=accType==='saas'?['billing','support']:['info','contact'];
+    const notifySuggestions=notifyPrefixes.filter(p=>notifyList.indexOf(p+'@'+ndom)<0).map(p=>({label:p+'@'+ndom,onClick:()=>{ this.setState({notifyTo:notifyList.concat(p+'@'+ndom).join(','),dirty:true}); }}));
+    let senderAddr='';
+    if(!isSaasAcc&&S.outbox==='platform') senderAddr='no-reply@baoson.net';
+    else if(showFromRO) senderAddr=fromRO;
+    else if(showFromEdit&&fromDomain&&fromDomain!=='—') senderAddr=(S.fromLocal||'no-reply')+'@'+fromDomain;
+    const OBNAME={platform:'Hộp thư của Bảo Sơn',google:'Gmail / Google Workspace',microsoft:'Outlook / Microsoft 365',other:'nhà cung cấp riêng'};
+    const okNow=(!isSaasAcc&&S.outbox==='platform')||(S.outbox==='other'?!!S.provSaved:!!(S.conn||{})[S.outbox]);
+    const health=okNow?{l:'Đang gửi tốt',i:'ri-checkbox-circle-fill',c:'#0ab39c'}:((S.outbox==='other')?{l:'Chưa thiết lập xong',i:'ri-error-warning-fill',c:'#b57d13'}:{l:'Chưa kết nối',i:'ri-time-fill',c:'#b57d13'});
+    const summaryMeta2=null;
+    const summaryTitle=okNow?('Đang gửi qua '+OBNAME[S.outbox]):('Chưa gửi được — '+OBNAME[S.outbox]+' chưa hoàn tất');
+    const health2=okNow?{l:'Đang gửi tốt',i:'ri-checkbox-circle-fill',c:'#0ab39c'}:null;
+    const summaryMeta=okNow?(((!isSaasAcc)&&S.outbox==='platform')?'Thư gần nhất 09:12 · mọi thứ bình thường':'Đã kiểm tra xong · thư gần nhất 09:12'):'Hoàn tất bước bên dưới, hệ thống sẽ tự gửi một thư kiểm tra.';
+    const OPROV={
+      sendgrid:{n:'SendGrid',sub:'Twilio · phổ biến nhất',b:'SG',c:'#1a82e2',tip:'Khuyến nghị: nền tảng dùng nhiều nhất, phù hợp khi gửi số lượng lớn và cần độ ổn định đã được kiểm chứng.'},
+      postmark:{n:'Postmark',sub:'thư giao dịch, giao nhanh',b:'Pm',c:'#ffcb2b',tip:'Khuyến nghị: giao thư nhanh và vào hộp thư đến tốt nhất — hợp với email quan trọng như xác nhận đơn hàng, đặt lại mật khẩu.'},
+      ses:{n:'Amazon SES',sub:'AWS · rẻ nhất',b:'SES',c:'#ff9900',tip:'Khuyến nghị: chi phí thấp nhất, hợp khi gửi khối lượng lớn và đã quen hạ tầng AWS.'},
+      mailgun:{n:'Mailgun',sub:'API mạnh, đa vùng',b:'Mg',c:'#c02428',tip:'Khuyến nghị: API linh hoạt, hỗ trợ gửi theo vùng (EU/US) — phù hợp website có khách quốc tế.'},
+      brevo:{n:'Brevo',sub:'ex-Sendinblue · gộp marketing',b:'Br',c:'#0b996e',tip:'Khuyến nghị: gộp được cả email marketing lẫn giao dịch trong một nơi, hợp nếu sau này cần gửi bản tin.'},
+      resend:{n:'Resend',sub:'nhà phát triển',b:'Re',c:'#111827',tip:'Khuyến nghị: trải nghiệm hiện đại cho đội kỹ thuật, phù hợp dự án mới bắt đầu.'},
+      mailtrap:{n:'Mailtrap',sub:'giao nhận tốt, hiện đại',b:'Mt',c:'#0d9488',tip:'Khuyến nghị: giao nhận thư tốt, tách riêng thư giao dịch và thư hàng loạt — lựa chọn thay thế đáng cân nhắc.'},
+      smtp:{n:'SMTP riêng',sub:'máy chủ của bạn',b:'SM',c:'#405189',tip:'Khuyến nghị: chỉ chọn nếu đội kỹ thuật đã có máy chủ SMTP riêng cần dùng lại — các lựa chọn còn lại dễ thiết lập hơn.'}
+    };
+    const provTip=(OPROV[S.otherProv]||{}).tip||'';
+    const otherProviders=Object.keys(OPROV).map(k=>{ const p=OPROV[k]; const sel=S.otherProv===k; return {
+      name:p.n,sub:p.sub||'—',onPick:()=>this.setState({otherProv:k}),
+      badge:p.b||'',badgeStyle:'width:34px;height:34px;border-radius:4px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:'+(p.b?'#fff':p.c)+';background:'+(p.b?p.c:'#eef0f6')+';'+(p.ic?'':''),
+      style:'display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid '+(sel?'#405189':'#e9ebec')+';border-radius:6px;background:'+(sel?'rgba(64,81,137,.045)':'#fff')+';cursor:pointer;text-align:left;font:inherit;'
+    };});
+    const isSmtp=S.otherProv==='smtp', isSes=S.otherProv==='ses';
+    let otherFields;
+    const PE=S.provErr||{};
+    const mkF=(key,label,type,val,ph,hint)=>({label:label,type:type,value:val,ph:ph||'',req:true,hasHint:!PE[key],hint:hint,hasErr:!!PE[key],err:PE[key]||'',
+      wrapStyle:'display:flex;flex-direction:column;gap:6px;',
+      inputStyle:'width:100%;padding:9px 11px;border:1px solid '+(PE[key]?'#f06548':'#e9ebec')+';border-radius:4px;font:inherit;font-size:14px;color:#495057;outline:none;',
+      onInput:(e)=>{ const v=e.target.value; this.setState(st=>{ const pe=Object.assign({},st.provErr); delete pe[key]; return {[key]:v,provErr:pe,provSaved:false,dirty:true}; }); }});
+    if(isSmtp){ otherFields=[ mkF('smtpEmail','Email gửi đi','email',S.smtpEmail,'','Máy chủ, cổng, mã hoá được tự nhận theo tên miền.'), mkF('smtpPass','Mật khẩu ứng dụng','password',S.smtpPass,'••••••••••','Tạo trong phần bảo mật của email, an toàn hơn mật khẩu đăng nhập.') ]; }
+    else { otherFields=[ mkF('apiKey','Khoá API','password',S.apiKey,'API key của '+OPROV[S.otherProv].n,'Dán khoá lấy từ trang quản trị của nhà cung cấp.'), mkF('sendDomain','Tên miền gửi','text',S.sendDomain,'','Tên miền thư sẽ gửi đi từ đó.') ]; }
+
+    // ---- TEMPLATE LIST ----
+    const showChips=this.siteLocales.length>1;
+    const chipL=(code,done)=>({code:code,title:done?('Đã có bản '+code):('Chưa có bản '+code),
+      style:'display:inline-flex;align-items:center;justify-content:center;min-width:30px;padding:2px 6px;border-radius:4px;font-size:10.5px;font-weight:700;'+(done?'border:1px solid #a9dfc9;background:#d7f2e6;color:#07705f;':'border:1px dashed #adb5bd;background:#fff;color:#6c757d;')});
+    const q=(S.q||'').trim().toLowerCase();
+    const hayOf=(k,m)=>{ let s=m.n+' ';
+      this.siteLocales.forEach(lg=>{ const key=k+'/'+lg, d=(this.DEF[k]||{})[lg]||{};
+        s+=' '+(this._subj[key]!==undefined?this._subj[key]:(d.s||''))+' '+(this._body[key]!==undefined?this._body[key]:(d.b||'')); });
+      return String(s).toLowerCase().replace(/<[^>]*>/g,' '); };
+    const misLangs=this.siteLocales.filter(l=>l!==this.defLang);
+    let misJobs=0; const misTpl={};
+    Object.keys(this.TMETA).filter(k=>S.tplOn[k]&&this.TMETA[k].i18n!==false).forEach(k=>{ misLangs.forEach(lg=>{ if(!this.hasLang(k,lg)){ misJobs++; misTpl[k]=1; } }); });
+    const misCount=Object.keys(misTpl).length;
+    const aiLeft2=Math.max(0,this.AIQ.limit-this.AIQ.used);
+    const misCost=misJobs*this.AIW.perTpl;
+    const notEnough=misJobs>0&&aiLeft2<misCost;
+    const fillBlocked=misJobs===0||aiLeft2<=0||notEnough;
+    const FILT=[['all','Tất cả'],['on','Đang bật'],['off','Đang tắt']];
+    const tplFilters=FILT.map(f=>({label:f[1]+(f[0]==='all'?'':' '+visKeys.filter(k=>f[0]==='on'?!!S.tplOn[k]:!S.tplOn[k]).length),on:S.tplFilter===f[0]?'true':'false',onClick:()=>this.setState({tplFilter:f[0]}),
+      style:'padding:8px 13px;border:0;border-right:1px solid #e9ebec;background:'+(S.tplFilter===f[0]?'#405189':'#fff')+';color:'+(S.tplFilter===f[0]?'#fff':'#878a99')+';font:inherit;font-size:12.5px;font-weight:'+(S.tplFilter===f[0]?'600':'500')+';cursor:pointer;'}));
+    const tplGroups=this.GROUPS.filter(g=>this.modules.indexOf(g.mod)>=0).map(g=>({ label:g.label, items:g.items.filter(k=>{ const m=this.TMETA[k]; if(m.sys||m.lock) return false; if(!visTpl(k)) return false; if(q&&hayOf(k,m).indexOf(q)<0) return false; if(S.tplFilter==='on'&&!S.tplOn[k]) return false; if(S.tplFilter==='off'&&S.tplOn[k]) return false; return true; }).map(k=>{ const m=this.TMETA[k]; const on=!!S.tplOn[k];
+      const pend=!!(S.tplDirty||{})[k];
+      const BADGE={pending:{text:'Chưa lưu',icon:'ri-time-line',bg:'rgba(247,184,75,.16)',fg:'#b57d13'},sys:{text:'Hệ thống',icon:'ri-shield-check-line',bg:'rgba(91,98,112,.10)',fg:'#5b6270'},lock:{text:'Bắt buộc',icon:'ri-lock-line',bg:'rgba(247,184,75,.16)',fg:'#b57d13'},edited:{text:'Đã sửa',icon:'ri-edit-2-line',bg:'rgba(64,81,137,.10)',fg:'#405189'}};
+      const bKind=pend?'pending':(m.sys?'sys':(m.lock?'lock':(this.isEdited(k)?'edited':null)));
+      const bd=bKind?BADGE[bKind]:null;
+      const canReset=!m.sys&&this.isEdited(k);
+      const langsArr=(m.i18n===false)?[chipL(this.defLang.toUpperCase(),this.hasLang(k,this.defLang))]:(showChips?[chipL('VI',this.hasLang(k,'vi')),chipL('EN',this.hasLang(k,'en')),chipL('JA',this.hasLang(k,'ja'))]:[]);
+      return { name:m.n,icon:m.ic,when:m.when,rowCls:on?'':'em-off',langs:langsArr,hasLangs:langsArr.length>0,
+        showAccChip:isPlatform, accChipText:(m.acc||['site','ecom','saas']).map(a=>ACC_L[a]).join(' · '),
+        accChipStyle:'padding:2px 8px;border-radius:4px;background:#eef0f6;color:#405189;font-size:10.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap;',
+        showBadge:!!bd,badgeIcon:bd?bd.icon:'',badgeText:bd?bd.text:'',
+        badgeOuterStyle:bd?('display:inline-flex;align-items:center;gap:6px;color:'+bd.fg+';font-size:12px;font-weight:600;white-space:nowrap;'):'',
+        badgeDotStyle:bd?('width:7px;height:7px;border-radius:50%;flex-shrink:0;background:'+bd.fg+';'):'',
+        canReset:canReset,resetTip:'Đưa mẫu “'+m.n+'” về nội dung gốc',onReset:(e)=>{ e.stopPropagation(); this.setState({resetAsk:k}); },
+        sysOnly:!!m.sys,canEdit:!m.sys,lockedOn:m.lock&&!m.sys,canToggle:!m.lock&&!m.sys,swClass:'dsw'+(on?' on':''),ariaOn:on?'true':'false',swLabel:(on?'Tắt':'Bật')+' mẫu '+m.n,onToggle:()=>this.setState(st=>({tplOn:Object.assign({},st.tplOn,{[k]:!st.tplOn[k]}),dirty:true})),
+        onEdit:()=>this.openEditor(k), onEditKey:(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); this.openEditor(k); } } };
+    }) })).filter(g=>g.items.length);
+    const tplEmpty=tplGroups.length===0;
+    const hasFilt=!!S.tplFilter&&S.tplFilter!=='all';
+    const lockedKeys=Object.keys(this.TMETA).filter(k=>{ const m=this.TMETA[k]; return (m.sys||m.lock)&&visTpl(k); });
+    const lockedTpls=lockedKeys.map(k=>{ const m=this.TMETA[k];
+      const sysR=!!m.sys, badge=sysR?{t:'Hệ thống',i:'ri-shield-check-line',bg:'rgba(91,98,112,.10)',fg:'#5b6270'}:{t:'Bắt buộc',i:'ri-lock-line',bg:'rgba(247,184,75,.16)',fg:'#b57d13'};
+      return { name:m.n,icon:m.ic,when:m.when,
+        badgeStyle:'display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:20px;background:'+badge.bg+';color:'+badge.fg+';font-size:11.5px;font-weight:600;white-space:nowrap;',badgeIcon:badge.i,badgeText:badge.t,
+        onEdit:()=>this.openEditor(k), onEditKey:(e)=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); this.openEditor(k); } } }; });
+    const lockedOpen=!!S.lockedOpen;
+    const onToggleLocked=()=>this.setState({lockedOpen:!S.lockedOpen});
+
+    // ---- EDITOR ----
+    const OA=S.oauth, oaProv=OA?OA.prov:null;
+    const OABRAND={ google:{brand:'Đăng nhập bằng Google',short:'Google',host:'accounts.google.com',icon:'ri-google-fill',color:'#ea4335',accs:[['Ngọc Anh','ngocanh@anvinh.vn'],['Kế toán An Vinh','ketoan@anvinh.vn'],['Hộp thư gửi tự động','no-reply@anvinh.vn']]},
+      microsoft:{brand:'Đăng nhập bằng Microsoft',short:'Microsoft',host:'login.microsoftonline.com',icon:'ri-microsoft-fill',color:'#0078d4',accs:[['Ngọc Anh','ngocanh@anvinh.vn'],['Hỗ trợ An Vinh','hotro@anvinh.vn'],['Hộp thư gửi tự động','no-reply@anvinh.vn']]} };
+    const B=oaProv?OABRAND[oaProv]:null;
+    const isEditing=!!S.editing;
+    let ed={};
+    if(isEditing){ const k=S.editing, m=this.TMETA[k]; const key=this.ensure(k,S.lang);
+      const langDef=(m.i18n===false?[this.defLang]:this.siteLocales).map(cc=>({c:cc,l:({vi:'Tiếng Việt',en:'English',ja:'日本語'})[cc]||cc}));
+      ed.edLangs=langDef.map(L=>{ const on=S.lang===L.c; const done=this.hasLang(k,L.c); return {label:L.l,onClick:()=>this.setEdLang(L.c),done:done&&L.c!=='vi',pending:!done&&L.c!=='vi',style:'white-space:nowrap;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:0;border-right:1px solid #e9ebec;background:'+(on?'#fff':'#f6f7f9')+';color:'+(on?'#212529':'#878a99')+';font:inherit;font-size:13px;font-weight:'+(on?'600':'500')+';cursor:pointer;'};});
+      const tvars=(this.TVARS[k]||[]).filter(v=>this.VARS[v]);
+      const groupsOf=[]; tvars.forEach(v=>{ const g=this.VARS[v][0]; if(groupsOf.indexOf(g)<0) groupsOf.push(g); });
+      const allowed=['Tất cả'].concat(groupsOf);
+      const curGroup=(allowed.indexOf(S.varGroup)>=0)?S.varGroup:'Tất cả';
+      const vq=(S.varQ||'').trim().toLowerCase();
+      ed.varGroups=allowed.map(g=>({label:g,onClick:()=>this.setState({varGroup:g}),style:'padding:6px 12px;border:0;border-radius:6px;background:'+(curGroup===g?'rgba(64,81,137,.10)':'transparent')+';color:'+(curGroup===g?'#405189':'#878a99')+';font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;'}));
+      ed.varChips=tvars.filter(v=>curGroup==='Tất cả'||this.VARS[v][0]===curGroup)
+        .filter(v=>!vq||v.toLowerCase().indexOf(vq)>=0||this.VARS[v][1].toLowerCase().indexOf(vq)>=0)
+        .map(v=>({token:v,desc:this.VARS[v][1],isLink:!!this.VARS[v][2],
+          tip:this.VARS[v][1]+' — bấm để chèn. Ví dụ: '+(this.SAMPLE[v]||v),
+          copyTip:'Sao chép '+v+(this.VARS[v][2]?' để dán vào ô liên kết':''),
+          copyIcon:(S.copied===v)?'ri-check-line':'ri-file-copy-line',
+          copyCls:'em-vcopy'+((S.copied===v)?' ok':''),
+          onClick:()=>this.insertVar(v), onCopy:()=>this.copyVar(v)}));
+      ed.varHint=ed.varChips.length?'Bấm thẻ để chèn vào chỗ con trỏ · biểu tượng sao chép để dán token vào ô liên kết.':'Không có biến nào khớp từ khoá.';
+      const TOOLB=[{i:'ri-bold',l:'Đậm',cmd:'bold'},{i:'ri-italic',l:'Nghiêng',cmd:'italic'},{i:'ri-underline',l:'Gạch dưới',cmd:'underline'},{i:'ri-align-left',l:'Căn trái',cmd:'justifyLeft',sep:true},{i:'ri-align-center',l:'Căn giữa',cmd:'justifyCenter'},{i:'ri-align-right',l:'Căn phải',cmd:'justifyRight'},{i:'ri-list-unordered',l:'Danh sách',cmd:'insertUnorderedList',sep:true},{i:'ri-list-ordered',l:'Danh sách số',cmd:'insertOrderedList'},{i:'ri-link',l:'Liên kết',cmd:'link'},{i:'ri-cursor-line',l:'Nút bấm',cmd:'button',text:'Nút bấm',hasText:true},{i:'ri-format-clear',l:'Xoá định dạng',cmd:'removeFormat'}];
+      ed.edTools=TOOLB.map(b=>({icon:b.i,label:b.l,hasText:!!b.hasText,text:b.text,sepBefore:!!b.sep,onClick:()=>{ if(b.cmd==='link'||b.cmd==='button') this.openLinkDlg(b.cmd==='button'?'button':'link',tvars); else this.exec(b.cmd); }}));
+      const D=S.linkDlg;
+      ed.linkOpen=!!D;
+      if(D){
+        ed.linkTitle=(D.edit?'Sửa ':'Chèn ')+(D.mode==='button'?'nút bấm':'liên kết');
+        ed.linkEditing=!!D.edit;
+        ed.linkIsButton=D.mode==='button';
+        ed.linkApplyLabel=D.edit?'Cập nhật':'Chèn';
+        ed.linkRemoveLabel=D.mode==='button'?'Gỡ nút bấm':'Gỡ liên kết';
+        ed.onLinkRemove=()=>this.removeLink();
+        ed.linkText=D.text; ed.linkUrl=D.url;
+        ed.linkNeedText=(D.mode==='button')||!D.hadSel;
+        ed.linkTextLabel=D.mode==='button'?'Chữ trên nút':'Chữ hiển thị';
+        ed.linkTokens=tvars.filter(v=>this.VARS[v][2]).map(v=>({token:v,desc:this.VARS[v][1],
+          cls:'em-vchip'+(D.url===v?' on':''), onClick:()=>this.setLinkDlg({url:v})}));
+        ed.linkHasTokens=ed.linkTokens.length>0;
+        ed.onLinkText=(e)=>this.setLinkDlg({text:e.target.value});
+        ed.onLinkUrl=(e)=>this.setLinkDlg({url:e.target.value});
+        ed.onLinkCancel=()=>this.closeLinkDlg();
+        ed.onLinkApply=()=>this.applyLinkDlg();
+        ed.linkReady=!!String(D.url||'').trim()&&(!ed.linkNeedText||!!String(D.text||'').trim());
+        ed.linkApplyCls='em-gbtn primary'+(ed.linkReady?'':' off');
+      }
+      ed.modeEdit=(S.edMode==='edit')&&!m.sys; ed.modePreview=(S.edMode==='preview')||!!m.sys;
+      const segStyle=(on)=>'white-space:nowrap;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:0;border-right:1px solid #e9ebec;background:'+(on?'#405189':'#fff')+';color:'+(on?'#fff':'#878a99')+';font:inherit;font-size:13px;font-weight:'+(on?'600':'500')+';cursor:pointer;';
+      ed.modeEditCls='em-mtab'+(ed.modeEdit?' on':''); ed.modePreviewCls='em-mtab'+(ed.modePreview?' on':'');
+      ed.edTitle=m.n; ed.edEdited=this.isEdited(k); ed.edDirty=!!(S.tplDirty||{})[k];
+      const eon=!!S.tplOn[k];
+      ed.edSys=!!m.sys; ed.edSaveable=!m.sys;
+      ed.edLocked=m.lock&&!m.sys; ed.edCanToggle=!m.lock&&!m.sys; ed.edOff=!eon&&!m.lock&&!m.sys;
+      ed.edI18n=(m.i18n!==false)&&!m.sys; ed.edNoI18n=(m.i18n===false)&&!m.sys;
+      ed.edSwClass='dsw'+(eon?' on':''); ed.edAriaOn=eon?'true':'false';
+      ed.onToggleEdTpl=()=>this.setState(st=>({tplOn:Object.assign({},st.tplOn,{[k]:!st.tplOn[k]}),dirty:true}));
+      if(ed.modePreview){ this.captureEd(); ed.previewSubj=this.subHtmlToText(this._subj[key]||'',S.lang); ed.previewBody=React.createElement('div',{dangerouslySetInnerHTML:{__html:this.subHtml(this._body[key]||'<p style=\"color:#adb5bd\">(Chưa có nội dung cho ngôn ngữ này — bấm Dịch từ Tiếng Việt)</p>',S.lang)}}); }
+      ed.subjRef=(el)=>{ if(!el){ if(this._subjRef) this._subj[key]=this._subjRef.innerHTML; this._subjRef=null; return; } if(this._subjRef!==el){ this._subjRef=el; el.innerHTML=this._subj[key]||''; } };
+      ed.bodyRef=(el)=>{ if(!el){ if(this._bodyRef) this._body[key]=this._bodyRef.innerHTML; this._bodyRef=null; return; } if(this._bodyRef!==el){ this._bodyRef=el; el.innerHTML=this._body[key]||''; } };
+    }
+
+    // ---- SIGNATURE ----
+    const SL=[{k:'left',l:'Logo bên trái',i:'ri-layout-left-line'},{k:'top',l:'Logo trên, chữ dưới',i:'ri-layout-top-line'},{k:'text',l:'Chỉ chữ, gọn',i:'ri-text'}];
+    const sigLayouts=SL.map(s=>({label:s.l,icon:s.i,onClick:()=>this.setSig(s.k),style:'white-space:nowrap;display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border:1.5px solid '+(S.sigLayout===s.k?'#405189':'#e9ebec')+';border-radius:4px;background:'+(S.sigLayout===s.k?'rgba(64,81,137,.05)':'#fff')+';color:'+(S.sigLayout===s.k?'#405189':'#495057')+';font:inherit;font-size:13px;font-weight:'+(S.sigLayout===s.k?'600':'500')+';cursor:pointer;'}));
+    const SIGTOOLS=[{i:'ri-bold',l:'Đậm',cmd:'bold'},{i:'ri-italic',l:'Nghiêng',cmd:'italic'},{i:'ri-align-left',l:'Căn trái',cmd:'justifyLeft',sep:true},{i:'ri-align-center',l:'Căn giữa',cmd:'justifyCenter'},{i:'ri-link',l:'Liên kết',cmd:'link'},{i:'ri-image-line',l:'Ảnh',cmd:'img'},{i:'ri-font-color',l:'Màu chữ',cmd:'color'},{i:'ri-share-line',l:'Icon mạng xã hội',cmd:'social',text:'Icon mạng xã hội',hasText:true},{i:'ri-separator',l:'Đường kẻ',cmd:'hr',text:'Đường kẻ',hasText:true}];
+    const sigTools=SIGTOOLS.map(b=>({icon:b.i,label:b.l,hasText:!!b.hasText,text:b.text,sepBefore:!!b.sep,onClick:()=>{ if(this._sigRef)this._sigRef.focus(); if(b.cmd==='hr'){ try{document.execCommand('insertHTML',false,'<hr style=\"border:0;border-top:1px solid #e9ebec;margin:10px 0;\">');}catch(e){} } else if(b.cmd==='bold'||b.cmd==='italic'||b.cmd==='justifyLeft'||b.cmd==='justifyCenter'||b.cmd==='justifyRight'){ try{document.execCommand(b.cmd);}catch(e){} } else { this.notify('Chèn '+b.l.toLowerCase()); } this.captureSig(); }}));
+    const sigVars=['{site_name}','{site_tagline}','{hotline}','{contact_email}','{address}','{site_url}'].map(v=>({label:v,sample:'Ví dụ: '+(this.SAMPLE[v]||v),onClick:()=>this.insertVar(v)}));
+    const sigRef=(el)=>{ if(!el){ if(this._sigRef) this._sig[S.sigLayout]=this._sigRef.innerHTML; this._sigRef=null; return; } if(this._sigRef!==el){ this._sigRef=el; el.innerHTML=this.sigVal(); } };
+
+    return Object.assign({
+      notEditing:!isEditing, isEditing:isEditing, tabs:tabs, showOwnHeader:!this.props.embedded, showTabstrip:tabDef.length>1,
+      tabSend:S.tab==='send'&&!isEditing, tabTpl:S.tab==='tpl'&&!isEditing, tabSign:S.tab==='sign'&&!isEditing,
+      dirty:S.dirty,
+      oauthOpen:!!OA, oaAria:B?('Cửa sổ đăng nhập '+B.short):'', oaHost:B?B.host:'', oaBrand:B?B.brand:'', oaShort:B?B.short:'',
+      oaIcon:B?B.icon:'', oaIconStyle:'font-size:20px;color:'+(B?B.color:'#878a99')+';',
+      oaStepAccount:!!OA&&OA.step==='account', oaStepConsent:!!OA&&OA.step==='consent', oaStepWorking:!!OA&&OA.step==='working',
+      oaAccount:OA?OA.account:'', oaInitial:(OA&&OA.account)?OA.account.charAt(0).toUpperCase():'',
+      oaAccounts:(B?B.accs:[]).map(a=>({name:a[0],email:a[1],initial:a[0].charAt(0),onPick:()=>this.pickAccount(a[1])})),
+      onOaGrant:()=>this.grantOAuth(), onOaDeny:()=>this.denyOAuth(false), onOaBackdrop:()=>this.denyOAuth(true), onOaStop:(e)=>e.stopPropagation(),
+      oaRef:(el)=>{
+        const wrap=document.querySelector('.em-wrap');
+        if(!el){ if(wrap)[...wrap.children].forEach(c=>{c.removeAttribute('inert');c.removeAttribute('aria-hidden');});
+          const t=this._oaTrigger; this._oaTrigger=null;
+          setTimeout(()=>{ const live=(t&&document.contains(t))?t:document.querySelector('.em-connbtn'); if(live){ try{live.focus();}catch(e){} } },0);
+          this._oaEl=null; return; }
+        if(this._oaEl===el) return; this._oaEl=el;
+        const overlay=el.parentElement;
+        if(wrap)[...wrap.children].forEach(c=>{ if(c!==overlay){ c.setAttribute('inert',''); c.setAttribute('aria-hidden','true'); } });
+        el.focus();
+      },
+      onOaKey:(e)=>{ if(e.key!=='Tab') return; const el=this._oaEl; if(!el) return;
+        const f=[...el.querySelectorAll('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])')].filter(n=>!n.disabled&&n.offsetParent!==null);
+        if(!f.length){ e.preventDefault(); return; }
+        const first=f[0], last=f[f.length-1], a=document.activeElement;
+        if(e.shiftKey&&(a===first||a===el)){ e.preventDefault(); last.focus(); }
+        else if(!e.shiftKey&&a===last){ e.preventDefault(); first.focus(); } },
+      anyUnsaved:S.dirty||Object.keys(S.tplDirty||{}).length>0,
+      unsavedLabel:'Chưa lưu'+(Object.keys(S.tplDirty||{}).length?(' · '+Object.keys(S.tplDirty||{}).length+' mẫu'):''),
+      onSave:()=>this.doSave(), onTest:()=>this.notify('Đã gửi thư thử tới '+((S.testTo||'').trim()||S.notifyTo)+' — kiểm tra trong 1–2 phút'),
+      outboxes:outboxes, outboxTitle:isSaasAcc?'HỘP THƯ GỬI ĐI — DÙNG CHUNG CHO TOÀN HỆ THỐNG':'HỘP THƯ GỬI ĐI', platformMailNote:isPlatform?'Bắt buộc cấu hình. Đây là máy chủ gửi dùng chung cho toàn nền tảng — mọi website khách hàng chưa tự cấu hình riêng đều gửi qua đây, nên chưa hoàn tất mục này thì cả nền tảng không gửi được email.':'', showOther:showOther, showFromEdit:showFromEdit, showFromRO:showFromRO, fromRO:fromRO, dnsRows:dnsRows, recentMail:recentMail, rmFilters:rmFilters, rmEmpty:rmEmpty, provTip:provTip,
+      onSaveProvider:()=>this.saveProvider(),
+      dnsHint:S.provSaved?'Tự kiểm tra lại mỗi 5 phút':'Chạy sau khi bạn bấm Kiểm tra & lưu',
+      provBtnLabel:S.provSaved?'Kiểm tra lại':'Kiểm tra & lưu kết nối', provBtnIcon:S.provSaved?'ri-refresh-line':'ri-shield-check-line',
+      provBtn:'display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border:'+(S.provSaved?'1px solid #d0d3da':'0')+';border-radius:4px;background:'+(S.provSaved?'#fff':'#405189')+';color:'+(S.provSaved?'#405189':'#fff')+';font:inherit;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;',
+      provState:S.provSaved?'Đã kết nối và gửi thử thành công':'Chưa kiểm tra',
+      provChip:'display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:20px;font-size:12.5px;font-weight:600;white-space:nowrap;'+(S.provSaved?'background:rgba(10,179,156,.14);color:#0a8f7f;':'background:rgba(247,184,75,.16);color:#b57d13;'),
+      provDot:'width:8px;height:8px;border-radius:50%;'+(S.provSaved?'background:#0ab39c;':'border:1.5px dashed #b57d13;'),
+      brandSwatches:brandSwatches, brandLogoStyle:brandLogoStyle, brandInitials:S.brandInitials, previewFooter:previewFooter,
+      brandVar:'--em-brand:'+S.brandColor+';--em-brand-fg:'+brandFg+';',
+      onOpenBrand:(e)=>{ if(e&&e.preventDefault)e.preventDefault(); this.notify('Mở Cài đặt › Thương hiệu & Giao diện để đổi logo'); },
+      brandLowCR:crOn(S.brandColor)<4.5,
+      fromLocal:S.fromLocal, fromDomain:fromDomain, onFromLocal:(e)=>{ const v=e.target.value.replace(/[^a-zA-Z0-9._-]/g,''); this.setState({fromLocal:v,dirty:true}); },
+      testTo:S.testTo, onTestTo:(e)=>this.setState({testTo:e.target.value,testState:null}),
+      onSendTest:()=>this.sendTest(),
+      testBusy:(S.testState||{}).k==='busy',
+      testOk:(S.testState||{}).k==='ok', testErr:(S.testState||{}).k==='err', testIdle:!S.testState,
+      testMsg:(S.testState||{}).m||'',
+      testBtnLabel:((S.testState||{}).k==='busy')?'Đang gửi…':((S.testState||{}).k==='ok'?'Gửi lại':'Gửi thư kiểm tra'),
+      testBtnIcon:((S.testState||{}).k==='busy')?'ri-loader-4-line':((S.testState||{}).k==='ok'?'ri-refresh-line':'ri-send-plane-line'),
+      senderPreview:(String(S.senderName||'').trim()||'Tên website')+' <'+senderAddr+'>',
+      showSenderPreview:!!senderAddr, senderNoAddr:!senderAddr,
+      notifyLangName:({vi:'Tiếng Việt',en:'English',ja:'日本語',zh:'中文'})[this.adminLang]||this.adminLang,
+      helpFrom:S.help==='from', helpReply:S.help==='reply', helpNotify:S.help==='notify',
+      onHelpFrom:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); if(e&&e.preventDefault)e.preventDefault(); this.toggleHelp('from'); },
+      onHelpReply:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); if(e&&e.preventDefault)e.preventDefault(); this.toggleHelp('reply'); },
+      onHelpNotify:(e)=>{ if(e&&e.stopPropagation)e.stopPropagation(); if(e&&e.preventDefault)e.preventDefault(); this.toggleHelp('notify'); },
+      replyErr:!!String(S.replyTo||'').trim()&&!this.isEmail(S.replyTo),
+      notifyErr:badNotify.length>0,
+      notifyErrText:badNotify.length?('Chưa đúng định dạng email: '+badNotify.join(', ')):'',
+      notifyChips:notifyList.map((email,i)=>({email,style:'display:inline-flex;align-items:center;gap:5px;padding:3px 4px 3px 10px;border-radius:16px;font-size:13px;white-space:nowrap;background:'+(this.isEmail(email)?'#eef0f6':'rgba(240,101,72,.12)')+';color:'+(this.isEmail(email)?'#405189':'#b42318')+';',
+        onRemove:()=>{ const arr=notifyList.slice(); arr.splice(i,1); this.setState({notifyTo:arr.join(','),dirty:true}); }})),
+      notifyDraft:S.notifyDraft||'', notifyPh:notifyList.length?'':'vd. contact@anvinh.vn',
+      onNotifyDraft:(e)=>this.setState({notifyDraft:e.target.value}),
+      onNotifyDraftKey:(e)=>{ if(e.key==='Enter'||e.key===','||e.key==='Tab'){ if(!(e.target.value||'').trim()) return; e.preventDefault(); this.commitNotifyDraft(); } else if(e.key==='Backspace'&&!e.target.value&&notifyList.length){ this.setState(st=>{ const arr=String(st.notifyTo||'').split(',').map(x=>x.trim()).filter(Boolean); arr.pop(); return {notifyTo:arr.join(','),dirty:true}; }); } },
+      onNotifyDraftBlur:()=>this.commitNotifyDraft(),
+      hasNotifySuggest:notifySuggestions.length>0, notifySuggestions:notifySuggestions,
+      notifyTitle:isPlatform?'NHẬN CẢNH BÁO HỆ THỐNG':(accType==='saas'?'NHẬN THÔNG BÁO TÀI KHOẢN & THANH TOÁN':(accType==='ecom'?'NHẬN THÔNG BÁO LIÊN HỆ & ĐƠN HÀNG':'NHẬN THÔNG BÁO LIÊN HỆ')),
+      notifyHelpText:isPlatform?'Máy chủ gửi lỗi, gần hết hạn mức hoặc token OAuth sắp hết hạn sẽ báo về đây — đội vận hành nền tảng theo dõi, không phải khách hàng.':(accType==='saas'?'Có khách đăng ký dùng thử, thanh toán thất bại hoặc sắp hết hạn gói, hệ thống báo về đây. Muốn nhiều người cùng nhận thì viết nhiều địa chỉ, cách nhau bằng dấu phẩy.':(accType==='ecom'?'Có liên hệ hoặc đơn hàng mới, hệ thống báo về đây. Muốn nhiều người cùng nhận thì viết nhiều địa chỉ, cách nhau bằng dấu phẩy.':'Có liên hệ mới, hệ thống báo về đây. Muốn nhiều người cùng nhận thì viết nhiều địa chỉ, cách nhau bằng dấu phẩy.')),
+      notifyReplyNote:accType==='saas'?'Đây là thư tự động của hệ thống, không gắn với một khách cụ thể — trả lời sẽ về đúng địa chỉ Khách trả lời về ở cột bên trái.':'Trong thư thông báo, hệ thống tự đặt người trả lời là <b>email của khách vừa gửi</b> — bạn bấm Trả lời là trả lời thẳng cho khách, không phải sao chép địa chỉ.',
+      notifyIsSaas:accType==='saas', notifyNotSaas:accType!=='saas',
+      displayName:S.senderName, onDisplayName:(e)=>this.setState({senderName:e.target.value,dirty:true}),
+      replyTo:S.replyTo, onReplyTo:(e)=>this.setState({replyTo:e.target.value,dirty:true}),
+      notifyTo:S.notifyTo, onNotifyTo:(e)=>this.setState({notifyTo:e.target.value,dirty:true}),
+      onPickLogo:()=>this.notify('Mở thư viện ảnh để chọn logo đầu thư'),
+      healthIcon:health.i, summaryTitle:summaryTitle, summaryMeta:summaryMeta,
+      summaryStyle:'display:flex;align-items:center;gap:13px;padding:14px 16px;border:1px solid '+(okNow?'rgba(10,179,156,.35)':'rgba(247,184,75,.5)')+';border-radius:6px;background:'+(okNow?'rgba(10,179,156,.06)':'rgba(247,184,75,.08)')+';',
+      summaryIconWrap:'width:34px;height:34px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:18px;color:'+health.c+';background:'+(okNow?'rgba(10,179,156,.14)':'rgba(247,184,75,.18)')+';', onConnect:()=>this.notify('Đang mở cửa sổ đăng nhập của nhà cung cấp…'), otherProviders:otherProviders, otherFields:otherFields,
+      q:S.q, onSearch:(e)=>this.setState({q:e.target.value}),
+      resetAskOpen:!!S.resetAsk,
+      onResetAllAsk:()=>{ if(this.editedKeys().length) this.setState({resetAsk:'all'}); },
+      onResetAllCancel:()=>this.setState({resetAsk:null}),
+      onResetAllDo:()=>this.doReset(),
+      hasEdited:this.editedKeys().length>0,
+      editedSummary:'Bạn đã tuỳ biến '+this.editedKeys().length+' mẫu. Về mẫu gốc sẽ xoá cả các bản dịch của những mẫu đó.',
+      resetAskTitle:(S.resetAsk==='all')?'Đưa toàn bộ mẫu thư về nội dung gốc?':('Đưa mẫu “'+((this.TMETA[S.resetAsk]||{}).n||'')+'” về nội dung gốc?'),
+      resetAskBody:(S.resetAsk==='all')
+        ?('Nội dung bạn đã sửa ở '+this.editedKeys().length+' mẫu sẽ bị xoá, kể cả các bản dịch, và mọi mẫu trở về đúng nội dung gốc của nền tảng. Không hoàn tác được.')
+        :'Nội dung bạn đã sửa ở mẫu này sẽ bị xoá, kể cả các bản dịch, và mẫu trở về đúng nội dung gốc của nền tảng. Không hoàn tác được.',
+      tplGroups:tplGroups, tplHasRows:!tplEmpty, tplEmpty:tplEmpty, tplFilters:tplFilters, showSearch:Object.keys(this.TMETA).length>8,
+      lockedTpls:lockedTpls, lockedCount:lockedTpls.length, lockedOpen:lockedOpen, onToggleLocked:onToggleLocked,
+      lockedChevron:'ri-arrow-down-s-line'+(lockedOpen?' em-rot':''),
+      tplEmptyQ:tplEmpty&&!!q&&!hasFilt, tplEmptyFilter:tplEmpty&&!q&&hasFilt, tplEmptyBoth:tplEmpty&&!!q&&hasFilt,
+      onClearFilter:()=>this.setState({tplFilter:'all'}),
+      aiChipClass:'em-quota'+(aiLeft2<=0?' out':(aiLeft2<=this.AIQ.limit*0.2?' low':'')),
+      aiChipText:'Còn '+this.nfm(aiLeft2)+' từ AI',
+      aiChipTitle:'Sổ nội dung chữ — Gói Cơ bản: '+this.nfm(this.AIQ.limit)+' từ AI mỗi tháng, đã dùng '+this.nfm(this.AIQ.used)+'. Còn '+this.nfm(aiLeft2)+' từ — '+this.aiEnough(aiLeft2)+'.',
+      fillBlocked:fillBlocked, onFillAll:()=>{ if(!fillBlocked) this.fillMissing(); },
+      fillLabel:misCount===0?'Mọi mẫu đã có bản dịch':('Dịch '+misCount+' mẫu còn thiếu'),
+      fillTip:misCount===0?'Mọi mẫu đã có bản dịch ở các ngôn ngữ đang bật.'
+        :(aiLeft2<=0?'Hết từ AI tháng này — mua thêm từ AI hoặc nâng gói để tiếp tục.'
+        :(notEnough?('Cần khoảng '+this.nfm(misCost)+' từ AI nhưng chỉ còn '+this.nfm(aiLeft2)+' — mở từng mẫu để dịch dần, hoặc mua thêm từ AI.')
+        :('Dùng ~'+this.nfm(misCost)+' từ AI, còn '+this.nfm(aiLeft2-misCost)+' từ. Chỉ điền ô trống, không đè nội dung bạn đã sửa.'))),
+      onCloseEditor:()=>this.closeEditor(), onSaveTpl:()=>{ this.captureEd(); const k=S.editing; this.snapTpl(k); this.notify('Đã lưu mẫu — hiệu lực ngay'); this.setState(st=>{ const td=Object.assign({},st.tplDirty); delete td[k]; return {editing:null,tplDirty:td}; }); }, onResetTpl:()=>{ if(this.isEdited(S.editing)) this.setState({resetAsk:S.editing}); },
+      edResetBlocked:!(S.editing&&this.isEdited(S.editing)),
+      edResetTip:(S.editing&&this.isEdited(S.editing))?'Xoá nội dung bạn đã sửa ở mẫu này, kể cả các bản dịch':'Mẫu này chưa bị sửa — không có gì để trả về',
+      onEditMode:()=>this.setEdMode('edit'), onPreviewMode:()=>this.setEdMode('preview'),
+      onFocusSubj:()=>{this._focus='subj';}, onFocusBody:()=>{this._focus='body';},
+      onPastePlain:(e)=>{ if(!e||!e.clipboardData) return; e.preventDefault();
+        const html=e.clipboardData.getData('text/html');
+        let out='';
+        if(html){ const d=document.createElement('div'); d.innerHTML=html;
+          d.querySelectorAll('style,script,meta,link,o\\:p').forEach(n=>n.remove());
+          d.querySelectorAll('*').forEach(n=>{ if(n.classList&&n.classList.contains('em-var')) return;
+            [...n.attributes].forEach(a=>{ if(a.name!=='href') n.removeAttribute(a.name); });
+            if(['B','STRONG','I','EM','U','A','BR','P','UL','OL','LI','SPAN','DIV'].indexOf(n.tagName)<0){ const t=document.createTextNode(n.textContent||''); n.replaceWith(t); } });
+          out=d.innerHTML; }
+        else { out=(e.clipboardData.getData('text/plain')||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]).replace(/\n/g,'<br>'); }
+        try{ document.execCommand('insertHTML',false,out); }catch(err){}
+        this.captureEd(); this.captureSig(); },
+      onEdInput:()=>{ if(!this._editedFlag)this._editedFlag={}; const k=this.state.editing; if(!k)return; this._editedFlag[k]=true; if(!(this.state.tplDirty||{})[k]) this.setState(st=>({tplDirty:Object.assign({},st.tplDirty,{[k]:true})})); },
+      varQ:S.varQ, onVarSearch:(e)=>this.setState({varQ:e.target.value}),
+      sigLayouts:sigLayouts, sigLayout:S.sigLayout, sigTools:sigTools, sigVars:sigVars, sigRef:sigRef,
+      sigShowLogo:S.sigLayout!=='text',
+      sigBodyWrap:S.sigLayout==='top'?'display:flex;flex-direction:column;align-items:center;gap:8px;padding-top:16px;':(S.sigLayout==='left'?'display:flex;gap:14px;align-items:flex-start;padding-left:16px;padding-top:12px;':''),
+      prevFooterWrap:S.sigLayout==='top'?'display:flex;flex-direction:column;align-items:center;gap:8px;':(S.sigLayout==='left'?'display:flex;gap:14px;align-items:flex-start;':''),
+      logoRef:(el)=>{ if(this._logoObs){ this._logoObs.disconnect(); this._logoObs=null; } if(!el) return;
+        const sync=()=>{ const f=el.hasAttribute('data-filled'); if(f!==!!this.state.logoFilled) this.setState({logoFilled:f}); if(f) this.sizeLogo(el); else if(this.state.logoBoxW) this.setState({logoBoxW:null,logoBoxH:null}); };
+        this._logoObs=new MutationObserver(sync); this._logoObs.observe(el,{attributes:true,attributeFilter:['data-filled']}); sync(); },
+      logoFilled:!!S.logoFilled,
+      logoBoxStyle:'width:'+(S.logoBoxW||140)+'px;height:'+(S.logoBoxH||44)+'px;flex-shrink:0;',
+      logoBoxStyleSm:'width:'+(S.logoBoxW?Math.round(S.logoBoxW*0.86):120)+'px;height:'+(S.logoBoxH?Math.round(S.logoBoxH*0.86):36)+'px;flex-shrink:0;',
+      onSigInput:()=>{ this.captureSig(); if(!this.state.dirty) this.setState({dirty:true}); },
+      onResetSig:()=>{ this._sig[S.sigLayout]=this.sigDef(S.sigLayout); this._sigRef=null; this.forceUpdate(); this.notify('Đã trả chữ ký về bố cục mặc định'); },
+      toast:S.toast,
+      guardOpen:!!S.guard,
+      guardTpl:S.guard?(((this.TMETA[S.guard.tpl]||{}).n)||S.guard.tpl):'',
+      guardBody:S.guard?('Bạn đang chuyển sang bản '+(({vi:'Tiếng Việt',en:'English',ja:'日本語'})[S.guard.lang]||S.guard.lang)+'. Nội dung vừa sửa ở bản đang mở chưa được lưu — chọn cách xử lý trước khi đi tiếp.'):'',
+      onGuardSave:()=>this.guardSave(), onGuardDiscard:()=>this.guardDiscard(), onGuardCancel:()=>this.guardCancel(),
+      onGuardKey:(e)=>{ if(e.key==='Escape'){ e.preventDefault(); this.guardCancel(); return; }
+        if(e.key!=='Tab') return; const el=this._gEl; if(!el) return;
+        const f=[...el.querySelectorAll('button')]; if(!f.length) return;
+        const first=f[0], last=f[f.length-1], a=document.activeElement;
+        if(e.shiftKey&&(a===first||a===el)){ e.preventDefault(); last.focus(); }
+        else if(!e.shiftKey&&a===last){ e.preventDefault(); first.focus(); } },
+      guardRef:(el)=>{ const wrap=document.querySelector('.em-wrap');
+        if(!el){ if(wrap)[...wrap.children].forEach(c=>{ c.removeAttribute('inert'); c.removeAttribute('aria-hidden'); });
+          this._gEl=null; const t=this._gTrigger; this._gTrigger=null;
+          setTimeout(()=>{ if(t&&document.contains(t)){ try{t.focus();}catch(err){} } },0); return; }
+        this._gEl=el;
+        const overlay=el.parentElement;
+        if(wrap)[...wrap.children].forEach(c=>{ if(c!==overlay){ c.setAttribute('inert',''); c.setAttribute('aria-hidden','true'); } });
+        const put=()=>{ if(!this._gEl||!document.contains(this._gEl)) return;
+          if(this._gEl.contains(document.activeElement)) return;
+          const b=this._gEl.querySelector('.em-gbtn.primary')||this._gEl;
+          try{ b.focus(); }catch(err){} };
+        put(); requestAnimationFrame(put); setTimeout(put,60); }
+    }, ed, this.langBar());
+  }
+}
+</script>
+</body>
+</html>

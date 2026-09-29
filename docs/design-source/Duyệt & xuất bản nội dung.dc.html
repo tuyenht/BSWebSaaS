@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+.rv-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.rv-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
+.rv-t{font-size:14px;font-weight:600;color:#343a40;}
+.rv-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;}
+.rv-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.rv-tab:hover{background:#f3f6f9;}
+.rv-tab.on{border-color:#405189;background:rgba(64,81,137,.08);font-weight:600;color:#405189;}
+.rv-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
+.rv-btn:hover{background:#f3f6f9;}
+.rv-ai{border-color:rgba(64,81,137,.28);background:rgba(64,81,137,.10);color:#405189;}
+.rv-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.rv-pri:disabled{background:#e9ebec;color:#adb5bd;cursor:not-allowed;}
+.rv-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.rv-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.rv-pill:hover{background:#f3f6f9;}
+.rv-pill.on{border-color:#405189;background:rgba(64,81,137,.07);font-weight:600;color:#405189;}
+.rv-cb{width:18px;height:18px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#fff;}
+.rv-cb.on{border-color:#405189;background:#405189;color:#fff;}
+.rv-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
+.rv-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+@media (max-width:900px){.rv-4{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@keyframes rvFade{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+
+  <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
+      <span style="font-size:11.5px;color:#adb5bd;">Nội dung › Duyệt &amp; xuất bản</span>
+      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Duyệt &amp; xuất bản</span>
+      <span style="font-size:13px;color:#878a99;line-height:1.65;">Một chỗ duy nhất cho mọi bài AI đã viết xong — bài viết, mô tả sản phẩm, tin tức. Bài đã qua cổng chất lượng thì chỉ cần bạn xem và bấm đăng; bài chưa đạt có sẵn danh sách chỗ cần sửa.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;flex-wrap:wrap;">
+      <button class="rv-btn" style="min-height:38px;" onClick="{{ onSettings }}"><i class="ri-settings-3-line" style="font-size:15px;"></i>Cài đặt xuất bản</button>
+      <button class="rv-pri" onClick="{{ onApproveReady }}" title="{{ approveReadyTitle }}" disabled="{{ approveReadyOff }}"><i class="ri-check-double-line" style="font-size:16px;"></i>{{ approveReadyLabel }}</button>
+    </div>
+  </div>
+
+  <div class="rv-4">
+    <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+      <div class="rv-card" style="padding:14px;display:flex;flex-direction:column;gap:5px;">
+        <span style="display:flex;align-items:center;gap:7px;"><i class="{{ s.icon }}" style="font-size:15px;color:{{ s.color }};"></i><span style="font-size:11.5px;color:#878a99;line-height:1.4;">{{ s.label }}</span></span>
+        <span style="font-size:22px;font-weight:600;color:#343a40;font-variant-numeric:tabular-nums;">{{ s.value }}</span>
+        <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ s.hint }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <sc-if value="{{ tabInboxOn }}"><button class="rv-tab on" onClick="{{ onTabInbox }}"><i class="ri-inbox-line" style="font-size:16px;"></i>Chờ bạn duyệt<span style="font-weight:700;">{{ inboxCount }}</span></button></sc-if>
+    <sc-if value="{{ tabInboxOff }}"><button class="rv-tab" onClick="{{ onTabInbox }}"><i class="ri-inbox-line" style="font-size:16px;"></i>Chờ bạn duyệt<span style="font-weight:700;">{{ inboxCount }}</span></button></sc-if>
+    <sc-if value="{{ tabHoldOn }}"><button class="rv-tab on" onClick="{{ onTabHold }}"><i class="ri-timer-2-line" style="font-size:16px;"></i>Sắp tự đăng<span style="font-weight:700;">{{ holdCount }}</span></button></sc-if>
+    <sc-if value="{{ tabHoldOff }}"><button class="rv-tab" onClick="{{ onTabHold }}"><i class="ri-timer-2-line" style="font-size:16px;"></i>Sắp tự đăng<span style="font-weight:700;">{{ holdCount }}</span></button></sc-if>
+    <sc-if value="{{ tabLogOn }}"><button class="rv-tab on" onClick="{{ onTabLog }}"><i class="ri-history-line" style="font-size:16px;"></i>Nhật ký xuất bản</button></sc-if>
+    <sc-if value="{{ tabLogOff }}"><button class="rv-tab" onClick="{{ onTabLog }}"><i class="ri-history-line" style="font-size:16px;"></i>Nhật ký xuất bản</button></sc-if>
+  </div>
+
+  <sc-if value="{{ tabInboxOn }}" hint-placeholder-val="{{ true }}">
+    <div class="rv-card">
+      <div class="rv-h">
+        <button class="rv-hit" onClick="{{ onSelectAll }}" title="{{ selectAllTitle }}" style="width:36px;height:36px;">
+          <sc-if value="{{ allChecked }}"><span class="rv-cb on"><i class="ri-check-line" style="font-size:13px;"></i></span></sc-if>
+          <sc-if value="{{ allUnchecked }}"><span class="rv-cb"></span></sc-if>
+        </button>
+        <span class="rv-t">Bài đã viết xong, chờ bạn</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11.5px;color:#878a99;white-space:nowrap;">{{ pickedLine }}</span>
+          <sc-if value="{{ hasPicked }}">
+            <button class="rv-btn rv-ai" onClick="{{ onBulkApprove }}" title="{{ bulkApproveTitle }}"><i class="ri-check-double-line" style="font-size:14px;"></i>{{ bulkApproveLabel }}</button>
+            <button class="rv-btn" onClick="{{ onBulkReturn }}" title="Trả lại cho AI sửa theo bảng kiểm, không tốn lượt cho phần đã viết"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Trả lại AI sửa</button>
+          </sc-if>
+        </span>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid #f6f7f9;">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="6">
+          <sc-if value="{{ f.on2 }}"><button class="rv-pill on" onClick="{{ f.on }}" title="{{ f.title }}">{{ f.label }}<span style="font-weight:700;">{{ f.n }}</span></button></sc-if>
+          <sc-if value="{{ f.off }}"><button class="rv-pill" onClick="{{ f.on }}" title="{{ f.title }}">{{ f.label }}<span style="color:#adb5bd;font-weight:600;">{{ f.n }}</span></button></sc-if>
+        </sc-for>
+      </div>
+      <sc-for list="{{ items }}" as="it" hint-placeholder-count="6">
+        <div class="rv-row" style="padding:12px 16px;">
+          <button class="rv-hit" onClick="{{ it.onPick }}" title="{{ it.pickTitle }}" style="width:36px;height:36px;">
+            <sc-if value="{{ it.checked }}"><span class="rv-cb on"><i class="ri-check-line" style="font-size:13px;"></i></span></sc-if>
+            <sc-if value="{{ it.unchecked }}"><span class="rv-cb"></span></sc-if>
+          </button>
+          <span style="display:flex;flex-direction:column;gap:4px;flex:1 1 320px;min-width:0;">
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:600;color:#343a40;line-height:1.4;">{{ it.title }}</span>
+              <span class="rv-chip" style="{{ it.typeStyle }}">{{ it.type }}</span>
+            </span>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ it.dest }}</span>
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><i class="{{ it.whyIcon }}" style="font-size:13px;color:{{ it.whyColor }};"></i><span style="font-size:11.5px;color:{{ it.whyColor }};font-weight:600;line-height:1.5;">{{ it.why }}</span></span>
+          </span>
+          <span style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;flex-shrink:0;min-width:96px;">
+            <span style="font-size:18px;font-weight:700;color:{{ it.scoreColor }};font-variant-numeric:tabular-nums;">{{ it.score }}</span>
+            <span style="font-size:11px;color:#adb5bd;white-space:nowrap;">{{ it.when }}</span>
+          </span>
+          <span style="display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap;">
+            <button class="rv-btn" style="min-height:34px;" onClick="{{ it.onView }}">Xem bài</button>
+            <sc-if value="{{ it.canPublish }}"><button class="rv-btn rv-ai" style="min-height:34px;" onClick="{{ it.onPublish }}" title="{{ it.publishTitle }}">{{ it.publishLabel }}</button></sc-if>
+            <sc-if value="{{ it.needsFix }}"><button class="rv-btn rv-ai" style="min-height:34px;" onClick="{{ it.onFix }}" title="{{ it.fixTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ it.fixLabel }}</button></sc-if>
+            <button class="rv-btn" style="min-height:34px;padding:0 8px;" onClick="{{ it.onDrop }}" title="Bỏ bài này — chuyển vào thùng rác, giữ 30 ngày"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button>
+          </span>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+        <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Điểm là kết quả bảng kiểm của đúng loại nội dung đó. Bài “đạt cổng” chỉ cần bạn xem rồi bấm đăng — hoặc để hệ thống tự đăng đúng lịch. Bài thiếu ảnh thật hoặc thiếu thông số thì AI không đoán: bạn bổ sung rồi bấm chạy lại, phần đã viết không phải viết lại.</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tabHoldOn }}" hint-placeholder-val="{{ false }}">
+    <div class="rv-card">
+      <div class="rv-h">
+        <i class="ri-timer-2-line" style="font-size:17px;color:#405189;"></i>
+        <span class="rv-t">Đã qua cổng — sẽ tự đăng nếu bạn không chặn</span>
+        <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ holdSummary }}</span>
+      </div>
+      <sc-for list="{{ holds }}" as="h" hint-placeholder-count="4">
+        <div class="rv-row" style="padding:12px 16px;">
+          <span style="display:flex;flex-direction:column;gap:4px;flex:1 1 320px;min-width:0;">
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:#343a40;line-height:1.4;">{{ h.title }}</span><span class="rv-chip" style="{{ h.typeStyle }}">{{ h.type }}</span><span class="rv-chip" style="background:rgba(10,179,156,.12);color:#0a7d6f;">{{ h.score }} điểm · đạt cổng</span></span>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ h.dest }}</span>
+          </span>
+          <span style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;flex-shrink:0;">
+            <span style="font-size:12.5px;font-weight:600;color:#b57d13;white-space:nowrap;">{{ h.left }}</span>
+            <span style="font-size:11px;color:#adb5bd;white-space:nowrap;">{{ h.when }}</span>
+          </span>
+          <span style="display:flex;gap:7px;flex-shrink:0;">
+            <button class="rv-btn" style="min-height:34px;" onClick="{{ h.onView }}">Xem bài</button>
+            <button class="rv-btn rv-ai" style="min-height:34px;" onClick="{{ h.onNow }}">Đăng ngay</button>
+            <button class="rv-btn" style="min-height:34px;" onClick="{{ h.onBlock }}" title="Giữ lại, chuyển về hàng chờ bạn duyệt">Chặn lại</button>
+          </span>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+        <i class="ri-shield-check-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Hàng chờ 24 giờ là chốt an toàn cuối: bài đã đạt mọi điều kiện vẫn nằm đây một ngày để bạn kịp chặn. Bạn nhận thông báo mỗi sáng kèm danh sách bài sắp lên. Bài có giá, bài so sánh đối thủ và bài sức khoẻ không bao giờ vào hàng này.</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tabLogOn }}" hint-placeholder-val="{{ false }}">
+    <div class="rv-card">
+      <div class="rv-h">
+        <i class="ri-history-line" style="font-size:17px;color:#405189;"></i>
+        <span class="rv-t">Nhật ký xuất bản 7 ngày</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:11.5px;color:#878a99;">{{ logSummary }}</span>
+          <button class="rv-btn" onClick="{{ onExport }}"><i class="ri-download-2-line" style="font-size:14px;"></i>Xuất file</button>
+        </span>
+      </div>
+      <sc-for list="{{ logs }}" as="l" hint-placeholder-count="6">
+        <div class="rv-row" style="padding:11px 16px;">
+          <span class="rv-chip" style="{{ l.byStyle }}">{{ l.by }}</span>
+          <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 300px;min-width:0;">
+            <span style="font-size:12.5px;font-weight:500;color:#343a40;line-height:1.45;">{{ l.title }}</span>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ l.meta }}</span>
+          </span>
+          <span style="font-size:11.5px;font-weight:600;color:{{ l.idxColor }};white-space:nowrap;flex-shrink:0;">{{ l.idx }}</span>
+          <span style="display:flex;gap:7px;flex-shrink:0;">
+            <button class="rv-btn" style="min-height:32px;" onClick="{{ l.onOpen }}">Mở</button>
+            <sc-if value="{{ l.canRevert }}"><button class="rv-btn" style="min-height:32px;" onClick="{{ l.onRevert }}" title="Gỡ khỏi website, chuyển về Nháp — không xoá nội dung">Gỡ về nháp</button></sc-if>
+          </span>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+        <i class="ri-fingerprint-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Mỗi dòng ghi: ai hoặc máy nào đăng, lúc nào, điểm bảng kiểm khi đăng, số từ AI đã dùng và tình trạng index. Đây là chỗ để truy vết khi chất lượng trôi dần hoặc khi cần chứng minh nội dung có người kiểm.</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ askOpen }}">
+    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
+      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:rvFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:#405189;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ askTitle }}</span></div>
+        <span style="font-size:12.5px;color:#878a99;line-height:1.7;">{{ askText }}</span>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+          <button class="rv-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Huỷ</button>
+          <button class="rv-pri" onClick="{{ onAskOk }}">{{ askOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}">
+    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#343a40;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:rvFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+      <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
+      <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { tab: 'inbox', filter: 'all', picked: {}, done: {}, blocked: {}, logs: [], toast: null, ask: null };
+  USER = 'Bảo Sơn';
+
+  ITEMS = [
+    { k: 'i1', title: 'Nên chọn RO hay Nano cho nước máy thành phố', type: 'Bài hướng dẫn', dest: 'Bài viết › Kiến thức lọc nước › Công nghệ RO · cụm “Máy lọc nước RO” · 1.240 từ · 4 liên kết nội bộ', score: 91, why: 'Đạt cổng — chỉ cần bạn xem rồi đăng', kind: 'ready', when: 'viết xong 09:12 hôm nay' },
+    { k: 'i2', title: 'Cách xử lý nước nhiễm phèn tại nhà', type: 'Bài trụ', dest: 'Bài viết › Kiến thức lọc nước › Nước nhiễm phèn · bài trụ của cụm · 1.680 từ', score: 88, why: 'Đạt cổng — là bài trụ, nên đọc kỹ trước khi đăng', kind: 'ready', when: 'viết xong 08:40 hôm nay' },
+    { k: 'i3', title: 'Chi phí xử lý nước nhiễm phèn 2026', type: 'Bài có giá', dest: 'Bài viết › Nước nhiễm phèn · cụm “Xử lý nước nhiễm phèn” · 940 từ', score: 86, why: 'Bắt buộc bạn duyệt: bài có giá — cần đối chiếu bảng giá hiện hành', kind: 'must', when: 'viết xong 08:05 hôm nay' },
+    { k: 'i4', title: 'Nước nhiễm phèn có tắm được không?', type: 'Sức khoẻ', dest: 'Bài viết › Nước nhiễm phèn · 1.020 từ · 3 nguồn y tế đã dẫn', score: 84, why: 'Bắt buộc bạn duyệt: chủ đề sức khoẻ — cần người có chuyên môn xác nhận', kind: 'must', when: 'viết xong hôm qua 16:20' },
+    { k: 'i5', title: 'Cột làm mềm nước Cation 1054', type: 'Mô tả sản phẩm', dest: 'Sản phẩm › Xử lý nước cứng · ghi vào chính sản phẩm này · 780 từ', score: 82, why: 'Đạt cổng sản phẩm — đăng là cập nhật trực tiếp, có bản cũ để hoàn tác', kind: 'ready', when: 'viết xong hôm qua 15:02' },
+    { k: 'i6', title: 'Hệ lọc tổng 3 cột inox đầu nguồn', type: 'Mô tả sản phẩm', dest: 'Sản phẩm › Hệ lọc tổng · 810 từ', score: 74, why: 'Thiếu ảnh thật: cần 2 ảnh sản phẩm để hoàn thiện phần thông số', kind: 'image', when: 'viết xong hôm qua 14:36' },
+    { k: 'i7', title: 'Bơm tăng áp Aquatec 8800', type: 'Mô tả sản phẩm', dest: 'Sản phẩm › Phụ kiện · chưa viết xong', score: 0, why: 'Thiếu thông số công suất — AI không đoán, bạn nhập rồi bấm chạy lại', kind: 'data', when: 'dừng lúc 13:58 hôm qua' },
+    { k: 'i8', title: 'Vật liệu lọc phèn loại nào tốt', type: 'So sánh', dest: 'Bài viết › Nước nhiễm phèn · 1.100 từ', score: 79, why: 'Dưới ngưỡng 85: hai đoạn nhắc lại ý và một số liệu chưa có nguồn', kind: 'low', when: 'viết xong hôm qua 11:14' },
+    { k: 'i9', title: 'Thông báo lịch nghỉ lễ 2/9 và trực kỹ thuật', type: 'Tin tức', dest: 'Bài viết › Tin tức · 320 từ', score: 0, why: 'Tin tức luôn cần bạn xác nhận sự kiện và mốc thời gian', kind: 'must', when: 'viết xong hôm qua 10:02' },
+    { k: 'i10', title: 'Lõi lọc thô PP 5 micron 10 inch', type: 'Mô tả sản phẩm', dest: 'Sản phẩm › Lõi và vật tư · 770 từ', score: 85, why: 'Đạt cổng sản phẩm', kind: 'ready', when: 'viết xong hôm qua 09:41' }
+  ];
+  HOLDS = [
+    { k: 'h1', title: 'Máy lọc RO có tốn điện không?', type: 'Bài ngách', score: 92, dest: 'Bài viết › Công nghệ RO · đăng 14:20 hôm nay', left: 'còn 5 giờ 40 phút', when: 'qua cổng 08:20 hôm nay' },
+    { k: 'h2', title: 'Hệ lọc tổng 3 cột khác 2 cột thế nào', type: 'So sánh', score: 89, dest: 'Bài viết › Giải pháp › Hệ lọc tổng · đăng 10:05 mai', left: 'còn 21 giờ', when: 'qua cổng 10:05 hôm nay' },
+    { k: 'h3', title: 'Máy lọc nước RO Karofi KAQ-U95', type: 'Mô tả sản phẩm', score: 86, dest: 'Sản phẩm › Máy lọc gia đình · cập nhật 09:30 mai', left: 'còn 20 giờ 15 phút', when: 'qua cổng 09:30 hôm nay' },
+    { k: 'h4', title: 'Dấu hiệu cần thay lõi lọc', type: 'Bổ sung bài cũ', score: 90, dest: 'Cập nhật bài đã đăng · thêm 240 từ · 15:00 mai', left: 'còn 25 giờ', when: 'qua cổng 07:55 hôm nay' }
+  ];
+  LOGS = [
+    { k: 'l1', by: 'Tự động', title: 'Dấu hiệu nước nhiễm phèn (bổ sung 310 từ)', meta: 'Hôm nay 09:15 · 90 điểm · 310 từ AI · làn cụm SEO', idx: 'Đã index', ok: true, revert: true },
+    { k: 'l2', by: 'Bảo Sơn', title: 'So sánh máy lọc RO và Nano cho nước máy', meta: 'Hôm qua 16:40 · 93 điểm · 1.180 từ AI · duyệt tay sau khi sửa 2 đoạn', idx: 'Đã index', ok: true, revert: true },
+    { k: 'l3', by: 'Tự động', title: 'Đèn UV diệt khuẩn 12GPM (mô tả sản phẩm)', meta: 'Hôm qua 14:02 · 84 điểm · 790 từ AI · làn sản phẩm', idx: 'Đã index', ok: true, revert: true },
+    { k: 'l4', by: 'Tự động', title: 'Bao lâu nên thay lõi lọc số 1', meta: '2 ngày trước 11:20 · 88 điểm · 1.020 từ AI · làn cụm SEO', idx: 'Chưa index 3 ngày', ok: false, revert: true },
+    { k: 'l5', by: 'Mai Anh', title: 'Thông báo bảo trì hệ thống 20/7', meta: '3 ngày trước 08:30 · tin tức · duyệt tay', idx: 'Không cần index', ok: true, revert: false },
+    { k: 'l6', by: 'Tự động', title: 'Bình áp 11 lít inox (mô tả sản phẩm)', meta: '4 ngày trước 15:44 · 83 điểm · 760 từ AI · làn sản phẩm', idx: 'Đã index', ok: true, revert: true }
+  ];
+
+  componentDidMount() {
+    this._key = (e) => { if (e.key === 'Escape' && this.state.ask) this.setState({ ask: null }); };
+    window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() { clearTimeout(this._t); if (this._key) window.removeEventListener('keydown', this._key); }
+  toast(text, icon) { clearTimeout(this._t); this.setState({ toast: { text: text, icon: icon || 'ri-check-line' } }); this._t = setTimeout(() => this.setState({ toast: null }), 4600); }
+  live() {
+    const S = this.state;
+    const held = this.HOLDS.filter(h => S.blocked[h.k] === 'block' && !S.done['H' + h.k]).map(h => ({
+      k: 'H' + h.k, title: h.title, type: h.type, dest: h.dest, score: h.score, kind: 'ready',
+      why: 'Bạn đã chặn trước giờ đăng — xem lại rồi đăng lúc nào cũng được', when: 'chặn lúc ' + h.when.replace('qua cổng ', '')
+    }));
+    return this.ITEMS.filter(i => !S.done[i.k]).concat(held);
+  }
+  addLog(items, by) {
+    const now = new Date();
+    const hh = ('0' + now.getHours()).slice(-2) + ':' + ('0' + now.getMinutes()).slice(-2);
+    const rows = items.map(i => ({
+      k: 'n' + i.k + now.getTime(), by: by, title: i.title,
+      meta: 'Hôm nay ' + hh + ' · ' + (i.score ? i.score + ' điểm · ' : '') + i.type + (by === 'Tự động' ? ' · tự đăng theo lịch' : ' · bạn duyệt'),
+      idx: 'Chờ index', ok: true, revert: true
+    }));
+    this.setState(s => ({ logs: rows.concat(s.logs) }));
+  }
+  shown() {
+    const f = this.state.filter;
+    return this.live().filter(i => f === 'all' || (f === 'ready' && i.kind === 'ready') || (f === 'must' && i.kind === 'must') || (f === 'fix' && (i.kind === 'low' || i.kind === 'image' || i.kind === 'data')) || (f === 'post' && (i.type.indexOf('Bài') === 0 || i.type === 'So sánh' || i.type === 'Sức khoẻ')) || (f === 'prod' && i.type === 'Mô tả sản phẩm'));
+  }
+
+  renderVals() {
+    const S = this.state;
+    const live = this.live(), shown = this.shown();
+    const ready = live.filter(i => i.kind === 'ready');
+    const holds = this.HOLDS.filter(h => !S.blocked[h.k]);
+    const nAuto = 11, nHand = 7 + S.logs.filter(l => l.by !== 'Tự động').length;
+    const picked = shown.filter(i => S.picked[i.k]);
+    const KIND = {
+      ready: { icon: 'ri-checkbox-circle-fill', color: '#0a8f7f' },
+      must: { icon: 'ri-user-star-line', color: '#8a6115' },
+      low: { icon: 'ri-error-warning-fill', color: '#b57d13' },
+      image: { icon: 'ri-image-add-line', color: '#1c7ba8' },
+      data: { icon: 'ri-alert-fill', color: '#c0392b' }
+    };
+    const TY = (t) => t === 'Mô tả sản phẩm' ? 'background:rgba(10,179,156,.12);color:#0a7d6f;'
+      : (t === 'Tin tức' ? 'background:rgba(247,184,75,.16);color:#b57d13;'
+        : (t === 'Bài có giá' || t === 'Sức khoẻ' ? 'background:rgba(240,101,72,.10);color:#a5402c;'
+          : (t === 'Bài trụ' ? 'background:rgba(64,81,137,.12);color:#405189;' : 'background:#f3f6f9;color:#495057;')));
+    const ask = S.ask;
+    const F = [
+      { v: 'all', label: 'Tất cả', n: live.length, title: 'Mọi bài đang chờ bạn' },
+      { v: 'ready', label: 'Đạt cổng, chỉ cần đăng', n: live.filter(i => i.kind === 'ready').length, title: 'Đã qua bảng kiểm — xem rồi bấm đăng' },
+      { v: 'must', label: 'Bắt buộc bạn duyệt', n: live.filter(i => i.kind === 'must').length, title: 'Bài có giá, sức khoẻ, tin tức, so sánh đối thủ' },
+      { v: 'fix', label: 'Cần sửa hoặc bổ sung', n: live.filter(i => i.kind === 'low' || i.kind === 'image' || i.kind === 'data').length, title: 'Dưới ngưỡng, thiếu ảnh thật hoặc thiếu thông số' },
+      { v: 'post', label: 'Bài viết', n: live.filter(i => i.type.indexOf('Bài') === 0 || i.type === 'So sánh' || i.type === 'Sức khoẻ').length, title: 'Chỉ bài viết' },
+      { v: 'prod', label: 'Sản phẩm', n: live.filter(i => i.type === 'Mô tả sản phẩm').length, title: 'Chỉ mô tả sản phẩm' }
+    ];
+
+    return {
+      stats: [
+        { icon: 'ri-inbox-line', color: '#405189', label: 'Chờ bạn duyệt', value: String(live.length), hint: ready.length + ' bài chỉ cần bấm đăng' },
+        { icon: 'ri-timer-2-line', color: '#b57d13', label: 'Sắp tự đăng trong 24 giờ', value: String(holds.length), hint: 'Chặn lại được bất cứ lúc nào' },
+        { icon: 'ri-image-add-line', color: '#1c7ba8', label: 'Đang chờ ảnh hoặc thông số thật', value: String(live.filter(i => i.kind === 'image' || i.kind === 'data').length), hint: 'AI không tự bịa — cần bạn bổ sung' },
+        { icon: 'ri-send-plane-line', color: '#0a8f7f', label: 'Đã đăng 7 ngày qua', value: '18', hint: '11 bài tự động · 7 bài duyệt tay' }
+      ],
+      tabInboxOn: S.tab === 'inbox', tabInboxOff: S.tab !== 'inbox',
+      tabHoldOn: S.tab === 'hold', tabHoldOff: S.tab !== 'hold',
+      tabLogOn: S.tab === 'log', tabLogOff: S.tab !== 'log',
+      onTabInbox: () => this.setState({ tab: 'inbox' }), onTabHold: () => this.setState({ tab: 'hold' }), onTabLog: () => this.setState({ tab: 'log' }),
+      inboxCount: live.length, holdCount: holds.length,
+      onSettings: () => this.toast('Mở Cài đặt › Xuất bản tự động: khung giờ đăng, trần mỗi ngày, van tổng toàn website, ai được bật tự đăng, thông báo khi có bài chờ', 'ri-settings-3-line'),
+      approveReadyLabel: ready.length ? ('Duyệt ' + ready.length + ' bài đạt cổng') : 'Không còn bài đạt cổng',
+      approveReadyOff: ready.length === 0,
+      approveReadyTitle: ready.length ? 'Đăng theo lịch ' + ready.length + ' bài đã qua bảng kiểm — bài bắt buộc soát không nằm trong nhóm này' : 'Chưa có bài nào đạt cổng',
+      onApproveReady: () => { if (!ready.length) { this.toast('Chưa có bài nào đạt cổng để duyệt nhanh', 'ri-information-line'); return; } this.setState({ ask: { kind: 'ready', icon: 'ri-check-double-line', title: 'Duyệt ' + ready.length + ' bài đã đạt cổng?', text: 'Các bài này đã qua toàn bộ bảng kiểm của loại nội dung tương ứng và không thuộc nhóm bắt buộc soát. Chúng sẽ đăng theo đúng lịch và van tổng — không đăng dồn cùng lúc. Bài có giá, bài sức khoẻ và tin tức vẫn giữ nguyên trong hàng chờ bạn.', ok: 'Duyệt và đăng theo lịch' } }); },
+
+      filters: F.map(f => Object.assign({}, f, { on2: f.v === S.filter, off: f.v !== S.filter, on: () => this.setState({ filter: f.v, picked: {} }) })),
+      items: shown.map(i => {
+        const K = KIND[i.kind];
+        return {
+          title: i.title, type: i.type, typeStyle: TY(i.type), dest: i.dest, why: i.why, whyIcon: K.icon, whyColor: K.color,
+          score: i.score ? String(i.score) : '—', scoreColor: i.score >= 85 ? '#0a8f7f' : (i.score ? '#b57d13' : '#adb5bd'),
+          when: i.when,
+          checked: !!S.picked[i.k], unchecked: !S.picked[i.k],
+          pickTitle: (S.picked[i.k] ? 'Bỏ chọn' : 'Chọn') + ' “' + i.title + '”',
+          onPick: () => this.setState(s => ({ picked: Object.assign({}, s.picked, { [i.k]: !s.picked[i.k] }) })),
+          canPublish: i.kind === 'ready' || i.kind === 'must',
+          publishLabel: i.kind === 'must' ? 'Duyệt và đăng' : 'Đăng theo lịch',
+          publishTitle: i.kind === 'must' ? 'Bạn xác nhận nội dung này và cho đăng' : 'Đăng đúng slot đã xếp trong lịch, không đăng dồn',
+          onPublish: () => { this.setState(s => ({ done: Object.assign({}, s.done, { [i.k]: true }) })); this.addLog([i], this.USER); this.toast('Đã duyệt “' + i.title + '” — sẽ đăng theo lịch, đã ghi vào nhật ký xuất bản', 'ri-check-line'); },
+          needsFix: i.kind === 'low' || i.kind === 'image' || i.kind === 'data',
+          fixLabel: i.kind === 'image' ? 'Chọn ảnh' : (i.kind === 'data' ? 'Nhập thông số' : 'Cho AI sửa lại'),
+          fixTitle: i.kind === 'image' ? 'Mở thư viện ảnh, chọn ảnh thật cho bài này' : (i.kind === 'data' ? 'Nhập thông số còn thiếu rồi hệ thống viết tiếp phần dở, không viết lại từ đầu' : 'AI sửa đúng các dòng chưa đạt trong bảng kiểm — lần sửa đầu chỉ tính nửa lượt'),
+          onFix: () => this.toast(i.kind === 'image' ? 'Mở thư viện ảnh cho “' + i.title + '” — chọn xong hệ thống tự viết chú thích và chữ thay thế' : (i.kind === 'data' ? 'Mở form thông số của “' + i.title + '” — nhập xong bấm chạy lại, phần đã viết được giữ' : 'AI đang sửa 3 dòng chưa đạt của “' + i.title + '” — xong sẽ hiện “cũ → mới” để bạn đối chiếu'), 'ri-sparkling-2-line'),
+          onView: () => this.toast('Mở “' + i.title + '” kèm bảng kiểm và các chỗ AI đã tự sửa', 'ri-external-link-line'),
+          onDrop: () => { this.setState(s => ({ done: Object.assign({}, s.done, { [i.k]: true }) })); this.toast('Đã bỏ “' + i.title + '” vào thùng rác — giữ 30 ngày, khôi phục được', 'ri-delete-bin-line'); }
+        };
+      }),
+      allChecked: picked.length > 0 && picked.length >= shown.length, allUnchecked: !(picked.length > 0 && picked.length >= shown.length),
+      selectAllTitle: picked.length >= shown.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả ' + shown.length + ' bài đang hiện',
+      onSelectAll: () => this.setState(s => {
+        const all = picked.length >= shown.length, np = {};
+        if (!all) shown.forEach(i => { np[i.k] = true; });
+        return { picked: np };
+      }),
+      pickedLine: picked.length ? ('đã chọn ' + picked.length + '/' + shown.length) : (shown.length + ' bài đang hiện'),
+      hasPicked: picked.length > 0,
+      bulkApproveLabel: 'Duyệt ' + picked.length + ' bài đã chọn',
+      bulkApproveTitle: picked.filter(i => i.kind !== 'ready' && i.kind !== 'must').length ? 'Trong nhóm đã chọn có bài chưa đạt — những bài đó sẽ bị bỏ qua và nêu rõ lý do' : 'Đăng theo lịch ' + picked.length + ' bài đã chọn',
+      onBulkApprove: () => {
+        const okItems = picked.filter(i => i.kind === 'ready' || i.kind === 'must');
+        const skip = picked.length - okItems.length;
+        this.setState(s => { const d = Object.assign({}, s.done); okItems.forEach(i => { d[i.k] = true; }); return { done: d, picked: {} }; });
+        this.addLog(okItems, this.USER);
+        this.toast('Đã duyệt ' + okItems.length + ' bài' + (skip ? ' · bỏ qua ' + skip + ' bài chưa đạt (thiếu ảnh, thiếu thông số hoặc dưới ngưỡng) — chúng vẫn nằm trong hàng chờ' : ' — đăng theo lịch, không đăng dồn'), 'ri-check-double-line');
+      },
+      onBulkReturn: () => { this.setState({ picked: {} }); this.toast('Đã trả ' + picked.length + ' bài cho AI sửa theo bảng kiểm — lần sửa đầu của mỗi bài chỉ tính nửa lượt', 'ri-arrow-go-back-line'); },
+
+      holds: holds.map(h => Object.assign({}, h, {
+        typeStyle: TY(h.type),
+        onView: () => this.toast('Mở “' + h.title + '” — còn kịp sửa trước giờ đăng', 'ri-external-link-line'),
+        onNow: () => { this.setState(s => ({ blocked: Object.assign({}, s.blocked, { [h.k]: 'now' }) })); this.addLog([h], this.USER); this.toast('Đã đăng ngay “' + h.title + '” — nhật ký ghi là bạn đăng, không phải tự động', 'ri-send-plane-line'); },
+        onBlock: () => { this.setState(s => ({ blocked: Object.assign({}, s.blocked, { [h.k]: 'block' }), tab: 'inbox' })); this.toast('Đã chặn “' + h.title + '” — bài chuyển sang hàng “Chờ bạn duyệt”, không bị xoá', 'ri-hand'); }
+      })),
+      holdSummary: holds.length + ' bài · sớm nhất trong 5 giờ 40 phút',
+      logs: S.logs.concat(this.LOGS).map(l => Object.assign({}, l, {
+        byStyle: l.by === 'Tự động' ? 'background:rgba(64,81,137,.12);color:#405189;' : 'background:#f3f6f9;color:#495057;',
+        idxColor: l.ok ? '#0a8f7f' : '#b57d13',
+        canRevert: l.revert,
+        onOpen: () => this.toast('Mở “' + l.title + '” kèm bảng kiểm lúc đăng', 'ri-external-link-line'),
+        onRevert: () => this.toast('Đã gỡ “' + l.title + '” về Nháp — nội dung còn nguyên, có thể đăng lại sau khi sửa', 'ri-arrow-go-back-line')
+      })),
+      logSummary: (nAuto + nHand) + ' lần đăng · ' + nAuto + ' tự động · ' + nHand + ' duyệt tay · 1 bài chưa index',
+      onExport: () => this.toast('Xuất nhật ký 7 ngày ra tệp — dùng khi cần chứng minh nội dung có người kiểm', 'ri-download-2-line'),
+
+      askOpen: !!ask, askTitle: ask ? ask.title : '', askText: ask ? ask.text : '', askOk: ask ? ask.ok : '', askIcon: ask ? ask.icon : 'ri-check-double-line',
+      onAskCancel: () => this.setState({ ask: null }),
+      onAskOk: () => {
+        this.setState(s => { const d = Object.assign({}, s.done); ready.forEach(i => { d[i.k] = true; }); return { done: d, ask: null }; });
+        this.addLog(ready, this.USER);
+        this.toast('Đã duyệt ' + ready.length + ' bài — hệ thống đăng theo lịch, mỗi bài cách nhau tối thiểu 25 phút', 'ri-check-double-line');
+      },
+      toast: !!S.toast, toastText: S.toast ? S.toast.text : '', toastIcon: S.toast ? S.toast.icon : 'ri-check-line'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

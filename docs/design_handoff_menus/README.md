@@ -1,8 +1,7 @@
-# Trình đơn — thiết kế đã duyệt (bản chụp) + việc backend làm theo
+# Trình đơn — thiết kế đã duyệt + việc backend làm theo
 
-- **Nguồn:** https://claude.ai/artifact/72uxdN6nMYG1RJhthnjV7F — bản owner publish, cập nhật 29/09/2026.
-- **Bản chụp:** `Trình đơn.dc.html` (tách từ bản publish bằng `scripts/design_snapshot.py`; ảnh/font trỏ theo mã
-  tài sản của bản publish nên không mở offline được — dùng để đọc và `git diff` giữa các bản).
+- **Thiết kế:** `docs/design-source/Trình đơn.dc.html` (bản export dự án Claude Design 18/09/2026, owner gửi
+  17–18/09 và 23/09). Bản owner publish https://claude.ai/artifact/72uxdN6nMYG1RJhthnjV7F trùng khớp bản này.
 - **Còn chờ thiết kế (lượt D1-2):** chọn trình đơn theo từng ngôn ngữ ở mỗi vị trí; nhãn trạng thái cho mục trỏ
   tới sản phẩm. Phần còn lại của thiết kế giữ nguyên.
 - **Luật:** thiết kế dẫn, backend theo (CLAUDE.md §8). Không cắt tính năng, không dựng trạng thái tạm.

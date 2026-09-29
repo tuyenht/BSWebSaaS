@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+.qz-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.qz-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
+.qz-t{font-size:14px;font-weight:600;color:#343a40;}
+.qz-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;}
+.qz-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
+.qz-btn:hover{background:#f3f6f9;}
+.qz-btn:disabled{opacity:.6;cursor:not-allowed;}
+.qz-ai{border-color:rgba(64,81,137,.28);background:rgba(64,81,137,.10);color:#405189;}
+.qz-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.qz-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.qz-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.qz-pill:hover{background:#f3f6f9;}
+.qz-pill.on{border-color:#405189;background:rgba(64,81,137,.07);font-weight:600;color:#405189;}
+.qz-bar{height:9px;border-radius:20px;background:#eff2f7;overflow:hidden;display:flex;}
+.qz-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
+.qz-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+.qz-pack{display:flex;flex-direction:column;gap:6px;padding:13px;border:1px solid #e9ebec;border-radius:6px;background:#fff;cursor:pointer;text-align:left;font:inherit;min-width:0;}
+.qz-pack:hover{background:#fbfcfe;}
+.qz-pack.on{border-color:#405189;background:rgba(64,81,137,.05);box-shadow:0 0 0 1px #405189 inset;}
+.qz-sw{width:38px;height:20px;border-radius:20px;background:#dfe2e8;position:relative;display:inline-block;flex-shrink:0;transition:background .15s;}
+.qz-sw.on{background:#405189;}
+.qz-sk{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.15);}
+.qz-sw.on .qz-sk{left:20px;}
+.qz-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
+.qz-plan{display:grid;grid-template-columns:minmax(0,1fr) 206px minmax(0,0.95fr) 128px;gap:14px;align-items:start;padding:13px 16px;border-top:1px solid #f6f7f9;}
+.qz-use{display:grid;grid-template-columns:minmax(0,1fr) 132px minmax(0,1.8fr);gap:0;border-top:1px solid #f6f7f9;align-items:center;}
+.qz-use span{padding:9px 14px;font-size:12px;color:#495057;min-width:0;}
+@media (max-width:900px){.qz-2,.qz-3{grid-template-columns:minmax(0,1fr);}.qz-plan{grid-template-columns:minmax(0,1fr) 168px;}.qz-plan span:nth-child(3){display:none;}.qz-use{grid-template-columns:minmax(0,1fr) 118px;}.qz-use span:nth-child(3){display:none;}}
+@keyframes qzFade{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+
+  <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
+      <span style="font-size:11.5px;color:#878a99;">Cài đặt › Mức dùng AI</span>
+      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.3;">Mức dùng AI của website</span>
+      <span style="font-size:12.5px;color:#878a99;line-height:1.7;max-width:760px;text-wrap:pretty;">Nội dung chữ và ảnh AI tính bằng hai sổ riêng, không quy đổi qua nhau. Hết loại nào thì chỉ loại đó tạm dừng — mua thêm đúng loại đang thiếu, không phải nâng cả gói.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;flex-wrap:wrap;">
+      <span title="{{ planChipTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:20px;background:#fff;border:1px solid #eff2f7;font-size:12px;font-weight:600;color:#878a99;white-space:nowrap;">{{ planChip }}</span>
+      <button class="qz-btn" style="min-height:38px;font-size:13px;" onClick="{{ onHistory }}" title="Xem từng lần chạy đã trừ bao nhiêu, ở màn hình nào, và các lần được hoàn"><i class="ri-file-list-3-line" style="font-size:16px;"></i>Nhật ký sử dụng</button>
+    </div>
+  </div>
+
+  <sc-if value="{{ trialOn }}">
+    <div class="qz-card" style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-left:3px solid #405189;flex-wrap:wrap;">
+      <span style="width:32px;height:32px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-gift-line" style="font-size:16px;color:#405189;"></i></span>
+      <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 300px;min-width:0;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Đang dùng gói miễn phí</span>
+        <span style="font-size:12.5px;color:#495057;line-height:1.7;">{{ trialText }}</span>
+      </span>
+      <button class="qz-pri" onClick="{{ onSubscribe }}" style="flex-shrink:0;"><i class="ri-shield-check-line" style="font-size:16px;"></i>Đăng ký gói website</button>
+    </div>
+  </sc-if>
+
+  <div class="qz-2">
+    <div class="qz-card" style="display:flex;flex-direction:column;">
+      <div class="qz-h">
+        <i class="ri-sparkling-2-line" style="font-size:17px;color:#405189;"></i>
+        <span class="qz-t">Nội dung chữ</span>
+        <span class="qz-chip" style="{{ wChipStyle }}">{{ wChipText }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px;padding:14px 16px;">
+        <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:28px;font-weight:600;color:#343a40;font-variant-numeric:tabular-nums;line-height:1;">{{ wLeftText }}</span>
+          <span style="font-size:12.5px;color:#878a99;padding-bottom:3px;">từ AI còn dùng được</span>
+        </div>
+        <div class="qz-bar" title="{{ wBarTitle }}">
+          <span style="width:{{ wPlanPct }}%;background:#405189;"></span>
+          <span style="width:{{ wAddonPct }}%;background:#7d8bb3;"></span>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#878a99;">
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:#405189;"></span>Gói tháng: {{ wPlanLine }}</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:#7d8bb3;"></span>Đã mua thêm: {{ wAddonLine }}</span>
+        </div>
+        <span style="font-size:12px;color:#495057;line-height:1.65;">{{ wEnough }}</span>
+        <span style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:#adb5bd;line-height:1.6;"><i class="ri-calendar-close-line" style="font-size:13px;flex-shrink:0;margin-top:1px;"></i><span>{{ resetLine }}</span></span>
+      </div>
+      <div style="{{ wNoteStyle }}"><i class="{{ wNoteIcon }}" style="font-size:15px;flex-shrink:0;margin-top:1px;"></i><span>{{ wNote }}</span></div>
+      <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid #eff2f7;flex-wrap:wrap;margin-top:auto;">
+        <button class="qz-btn qz-ai" onClick="{{ onPickWords }}" title="Mua thêm từ AI — cộng vào đúng sổ nội dung chữ, dùng trong 12 tháng"><i class="ri-add-circle-line" style="font-size:15px;"></i>Mua thêm từ AI</button>
+        <button class="qz-btn" onClick="{{ onUpgrade }}" title="Nâng gói — hợp khi bạn dùng đều hằng tháng">Nâng gói</button>
+      </div>
+    </div>
+
+    <div class="qz-card" style="display:flex;flex-direction:column;">
+      <div class="qz-h">
+        <i class="ri-image-2-line" style="font-size:17px;color:#405189;"></i>
+        <span class="qz-t">Ảnh AI</span>
+        <span class="qz-chip" style="{{ iChipStyle }}">{{ iChipText }}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:11px;padding:14px 16px;">
+        <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:28px;font-weight:600;color:#343a40;font-variant-numeric:tabular-nums;line-height:1;">{{ iLeftText }}</span>
+          <span style="font-size:12.5px;color:#878a99;padding-bottom:3px;">lượt tạo ảnh còn dùng được</span>
+        </div>
+        <div class="qz-bar" title="{{ iBarTitle }}">
+          <span style="width:{{ iPlanPct }}%;background:#405189;"></span>
+          <span style="width:{{ iAddonPct }}%;background:#7d8bb3;"></span>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:#878a99;">
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:#405189;"></span>Gói tháng: {{ iPlanLine }}</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:#7d8bb3;"></span>Đã mua thêm: {{ iAddonLine }}</span>
+        </div>
+        <span style="font-size:12px;color:#495057;line-height:1.65;">{{ iEnough }}</span>
+        <span style="display:flex;align-items:flex-start;gap:7px;font-size:11px;color:#adb5bd;line-height:1.6;"><i class="ri-calendar-close-line" style="font-size:13px;flex-shrink:0;margin-top:1px;"></i><span>{{ resetLine }}</span></span>
+      </div>
+      <div style="{{ iNoteStyle }}"><i class="{{ iNoteIcon }}" style="font-size:15px;flex-shrink:0;margin-top:1px;"></i><span>{{ iNote }}</span></div>
+      <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid #eff2f7;flex-wrap:wrap;margin-top:auto;">
+        <button class="qz-btn qz-ai" onClick="{{ onPickImages }}" title="Mua thêm lượt tạo ảnh — cộng vào đúng sổ ảnh, dùng trong 12 tháng"><i class="ri-add-circle-line" style="font-size:15px;"></i>Mua thêm lượt tạo ảnh</button>
+        <button class="qz-btn" onClick="{{ onUpgrade }}" title="Nâng gói — hợp khi bạn dùng đều hằng tháng">Nâng gói</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="qz-card">
+    <div class="qz-h">
+      <i class="ri-shopping-bag-3-line" style="font-size:17px;color:#405189;"></i>
+      <span class="qz-t">Mua thêm dung lượng</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+        <sc-for list="{{ kinds }}" as="k" hint-placeholder-count="2">
+          <sc-if value="{{ k.on2 }}"><button class="qz-pill on" onClick="{{ k.on }}" title="{{ k.title }}"><i class="{{ k.icon }}" style="font-size:14px;"></i>{{ k.label }}</button></sc-if>
+          <sc-if value="{{ k.off }}"><button class="qz-pill" onClick="{{ k.on }}" title="{{ k.title }}"><i class="{{ k.icon }}" style="font-size:14px;"></i>{{ k.label }}</button></sc-if>
+        </sc-for>
+      </span>
+    </div>
+    <div style="display:flex;gap:9px;padding:11px 16px;background:#fbfcfe;border-bottom:1px solid #f6f7f9;">
+      <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+      <span style="font-size:11.5px;color:#878a99;line-height:1.65;">{{ shopNote }}</span>
+    </div>
+    <sc-if value="{{ shopBlocked }}">
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid #f6f7f9;background:rgba(247,184,75,.10);flex-wrap:wrap;">
+        <i class="ri-lock-line" style="font-size:15px;color:#8a6115;flex-shrink:0;margin-top:2px;"></i>
+        <span style="font-size:11.5px;color:#8a6115;line-height:1.65;flex:1 1 260px;min-width:0;">{{ shopBlockText }}</span>
+        <button class="qz-btn qz-ai" style="flex-shrink:0;" onClick="{{ onSubscribe }}"><i class="ri-shield-check-line" style="font-size:14px;"></i>Đăng ký gói website</button>
+      </div>
+    </sc-if>
+    <div class="qz-3" style="padding:14px 16px;">
+      <sc-for list="{{ packs }}" as="p" hint-placeholder-count="3">
+        <sc-if value="{{ p.on2 }}">
+          <button class="qz-pack on" onClick="{{ p.on }}" title="{{ p.title }}">
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:600;color:#343a40;">{{ p.amount }}</span><sc-if value="{{ p.best }}"><span class="qz-chip" style="background:rgba(64,81,137,.12);color:#405189;">Hay chọn</span></sc-if></span>
+            <span style="font-size:17px;font-weight:600;color:#405189;">{{ p.price }}</span>
+            <sc-if value="{{ p.enoughOn }}"><span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ p.enough }}</span></sc-if>
+            <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ p.unitPrice }}</span>
+          </button>
+        </sc-if>
+        <sc-if value="{{ p.off }}">
+          <button class="qz-pack" onClick="{{ p.on }}" title="{{ p.title }}">
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:600;color:#343a40;">{{ p.amount }}</span><sc-if value="{{ p.best }}"><span class="qz-chip" style="background:rgba(64,81,137,.12);color:#405189;">Hay chọn</span></sc-if></span>
+            <span style="font-size:17px;font-weight:600;color:#405189;">{{ p.price }}</span>
+            <sc-if value="{{ p.enoughOn }}"><span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ p.enough }}</span></sc-if>
+            <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ p.unitPrice }}</span>
+          </button>
+        </sc-if>
+      </sc-for>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #eff2f7;flex-wrap:wrap;">
+      <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 280px;min-width:0;">
+        <span style="font-size:12px;color:#495057;line-height:1.6;">{{ buyLine }}</span>
+        <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ cmpText }}</span>
+      </span>
+      <button class="qz-pri" onClick="{{ onBuy }}" title="{{ buyTitle }}"><i class="ri-shopping-cart-2-line" style="font-size:16px;"></i>{{ buyLabel }}</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;flex-wrap:wrap;">
+      <i class="ri-repeat-line" style="font-size:15px;color:#405189;flex-shrink:0;"></i>
+      <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 280px;min-width:0;">
+        <span style="font-size:12.5px;font-weight:600;color:#343a40;">Tự mua thêm khi gần hết</span>
+        <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ topupHint }}</span>
+      </span>
+      <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <sc-if value="{{ topupOn }}"><span style="font-size:11.5px;font-weight:600;color:#0a8f7f;white-space:nowrap;">Đang bật</span></sc-if>
+        <sc-if value="{{ topupOff }}"><span style="font-size:11.5px;font-weight:600;color:#878a99;white-space:nowrap;">Đang tắt</span></sc-if>
+        <button class="qz-hit" onClick="{{ onTopup }}" title="{{ topupTitle }}">
+          <sc-if value="{{ topupOn }}"><span class="qz-sw on"><span class="qz-sk"></span></span></sc-if>
+          <sc-if value="{{ topupOff }}"><span class="qz-sw"><span class="qz-sk"></span></span></sc-if>
+        </button>
+      </span>
+    </div>
+  </div>
+
+  <div class="qz-card">
+    <div class="qz-h">
+      <i class="ri-bar-chart-2-line" style="font-size:17px;color:#405189;"></i>
+      <span class="qz-t">Bạn đã dùng vào việc gì — 30 ngày qua</span>
+      <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ useSummary }}</span>
+    </div>
+    <div style="display:flex;gap:9px;padding:11px 16px;background:#fbfcfe;border-bottom:1px solid #f6f7f9;">
+      <i class="ri-lightbulb-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+      <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Mọi câu “đủ khoảng bao nhiêu” ở trên tính từ chính mức dùng thật của website này, không phải số trung bình chung.</span>
+    </div>
+    <sc-for list="{{ uses }}" as="u" hint-placeholder-count="6">
+      <div class="qz-use">
+        <span style="display:flex;align-items:center;gap:9px;min-width:0;"><i class="{{ u.icon }}" style="font-size:15px;color:#878a99;flex-shrink:0;"></i><span style="font-weight:500;color:#343a40;">{{ u.name }}</span></span>
+        <span style="font-variant-numeric:tabular-nums;font-weight:600;color:#495057;text-align:right;white-space:nowrap;padding-left:0;padding-right:16px;">{{ u.amount }}</span>
+        <span style="font-size:11.5px;color:#adb5bd;line-height:1.55;">{{ u.hint }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{ lotsOn }}">
+    <div class="qz-card">
+      <div class="qz-h">
+        <i class="ri-inbox-archive-line" style="font-size:17px;color:#405189;"></i>
+        <span class="qz-t">Phần đã mua thêm và hạn dùng</span>
+      </div>
+      <sc-for list="{{ lots }}" as="l" hint-placeholder-count="1">
+        <div class="qz-row" style="padding:11px 16px;" title="{{ l.title }}">
+          <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 240px;min-width:0;">
+            <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:#343a40;">{{ l.name }}</span><span class="qz-chip" style="background:rgba(64,81,137,.10);color:#405189;">{{ l.book }}</span></span>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ l.line }}</span>
+          </span>
+          <span style="font-size:12px;font-weight:600;color:#495057;white-space:nowrap;flex-shrink:0;">{{ l.left }}</span>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+        <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:11.5px;color:#878a99;line-height:1.65;">{{ lotsNote }}</span>
+      </div>
+    </div>
+  </sc-if>
+
+  <div class="qz-card">
+    <div class="qz-h">
+      <i class="ri-history-line" style="font-size:17px;color:#405189;"></i>
+      <span class="qz-t">Các lần trừ gần nhất</span>
+      <button class="qz-btn" style="margin-left:auto;" onClick="{{ onHistory }}" title="Mở nhật ký đầy đủ — lọc theo màn hình, theo loại, theo khoảng thời gian">Xem đầy đủ</button>
+    </div>
+    <sc-for list="{{ logs }}" as="g" hint-placeholder-count="5">
+      <div class="qz-row" style="padding:10px 16px;">
+        <span style="font-size:11.5px;color:#adb5bd;white-space:nowrap;flex:0 0 auto;min-width:104px;">{{ g.at }}</span>
+        <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 260px;min-width:0;">
+          <span style="font-size:12.5px;color:#343a40;line-height:1.45;">{{ g.what }}</span>
+          <span style="font-size:11px;color:#adb5bd;">{{ g.where }}</span>
+        </span>
+        <span class="qz-chip" style="{{ g.srcStyle }}">{{ g.src }}</span>
+        <span style="font-size:12.5px;{{ g.amountStyle }}white-space:nowrap;flex:0 0 auto;min-width:78px;text-align:right;font-variant-numeric:tabular-nums;">{{ g.amount }}</span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div class="qz-card">
+    <div class="qz-h">
+      <i class="ri-scales-3-line" style="font-size:17px;color:#405189;"></i>
+      <span class="qz-t">Cái gì tính hạn ngạch, cái gì không</span>
+      <span style="margin-left:auto;font-size:11.5px;color:#878a99;">Mọi nút tốn hạn ngạch đều ghi rõ trước khi bạn bấm</span>
+    </div>
+    <sc-for list="{{ rules }}" as="r" hint-placeholder-count="8">
+      <div class="qz-row" style="padding:10px 16px;">
+        <span class="qz-chip" style="{{ r.tagStyle }}">{{ r.tag }}</span>
+        <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 300px;min-width:0;">
+          <span style="font-size:12.5px;font-weight:500;color:#343a40;line-height:1.45;">{{ r.name }}</span>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ r.hint }}</span>
+        </span>
+      </div>
+    </sc-for>
+  </div>
+
+  <div class="qz-card" id="qz-plans">
+    <div class="qz-h">
+      <i class="ri-vip-crown-line" style="font-size:17px;color:#405189;"></i>
+      <span class="qz-t">Nâng gói — chỉ nên chọn khi bạn dùng đều hằng tháng</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+        <sc-for list="{{ billings }}" as="b" hint-placeholder-count="2">
+          <sc-if value="{{ b.on2 }}"><button class="qz-pill on" onClick="{{ b.on }}" title="{{ b.title }}">{{ b.label }}</button></sc-if>
+          <sc-if value="{{ b.off }}"><button class="qz-pill" onClick="{{ b.on }}" title="{{ b.title }}">{{ b.label }}</button></sc-if>
+        </sc-for>
+      </span>
+    </div>
+    <div style="display:flex;gap:9px;padding:11px 16px;background:#fbfcfe;border-bottom:1px solid #f6f7f9;">
+      <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+      <span style="font-size:11.5px;color:#878a99;line-height:1.65;">{{ upgradeAdvice }}</span>
+    </div>
+    <div style="display:flex;gap:9px;padding:11px 16px;border-bottom:1px solid #f6f7f9;">
+      <i class="ri-calendar-close-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+      <span style="font-size:11.5px;color:#878a99;line-height:1.65;">{{ billingNote }}</span>
+    </div>
+    <sc-for list="{{ plans }}" as="pl" hint-placeholder-count="3">
+      <div class="qz-plan">
+        <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+          <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:#343a40;">{{ pl.name }}</span><sc-if value="{{ pl.cur }}"><span class="qz-chip" style="background:rgba(10,179,156,.12);color:#0a7d6f;">Gói hiện tại</span></sc-if></span>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ pl.quota }}</span>
+          <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ pl.quota2 }}</span>
+        </span>
+        <span style="display:flex;flex-direction:column;gap:2px;min-width:0;text-align:right;">
+          <span style="font-size:13px;font-weight:600;color:#495057;white-space:nowrap;">{{ pl.price }}</span>
+          <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ pl.priceSub }}</span>
+        </span>
+        <span style="font-size:11.5px;color:#adb5bd;line-height:1.55;min-width:0;">{{ pl.fit }}</span>
+        <span style="display:flex;justify-content:flex-end;min-width:0;">
+          <sc-if value="{{ pl.canPick }}"><button class="qz-btn" onClick="{{ pl.onPick }}" title="{{ pl.pickTitle }}">{{ pl.pickLabel }}</button></sc-if>
+          <sc-if value="{{ pl.cur }}"><span class="qz-chip" style="background:#f3f6f9;color:#adb5bd;height:30px;">Đang dùng</span></sc-if>
+          <sc-if value="{{ pl.freeRow }}"><span class="qz-chip" title="Gói miễn phí là mức mặc định của mọi website chưa đăng ký gói" style="background:#f3f6f9;color:#adb5bd;height:30px;">Mức mặc định</span></sc-if>
+        </span>
+      </div>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{ askOpen }}">
+    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
+      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:qzFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:#405189;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ askTitle }}</span></div>
+        <span style="font-size:12.5px;color:#878a99;line-height:1.7;">{{ askText }}</span>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+          <button class="qz-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Huỷ</button>
+          <button class="qz-pri" onClick="{{ onAskOk }}">{{ askOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}">
+    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#343a40;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:qzFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+      <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
+      <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;plan&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;free&quot;,&quot;basic&quot;,&quot;pro&quot;,&quot;ent&quot;],&quot;default&quot;:&quot;basic&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Gói dịch vụ&quot;},&quot;quota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:41500,&quot;limit&quot;:60000,&quot;addon&quot;:0},&quot;tsType&quot;:&quot;{used:number,limit:number,addon:number}&quot;,&quot;section&quot;:&quot;Hạn ngạch&quot;},&quot;imageQuota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:12,&quot;limit&quot;:20,&quot;addon&quot;:50},&quot;tsType&quot;:&quot;{used:number,limit:number,addon:number}&quot;,&quot;section&quot;:&quot;Hạn ngạch&quot;}}">
+class Component extends DCLogic {
+  state = { kind: null, pack: null, topup: null, billing: 'month', bought: { w: 0, i: 0 }, toast: null, ask: null };
+  YEAR_MONTHS = 10;
+
+  WPACKS = [
+    { k: 'w1', n: 20000, price: 149000 },
+    { k: 'w2', n: 60000, price: 390000, best: true },
+    { k: 'w3', n: 200000, price: 1190000 }
+  ];
+  IPACKS = [
+    { k: 'i1', n: 50, price: 490000 },
+    { k: 'i2', n: 150, price: 1290000, best: true },
+    { k: 'i3', n: 500, price: 3900000 }
+  ];
+  get PLANS() {
+    // Bảng gói: nguồn duy nhất ở ai-quota.js (§7a-bis). Mảng dưới chỉ là dự phòng khi helper chưa nạp.
+    const s = window.BSAI ? window.BSAI.plans() : [];
+    return s.length
+      ? s.map(p => ({ k: p.key, name: p.name, w: p.words, i: p.images, v: p.variants, price: p.price, free: !!p.free, bundled: !!p.bundled, fit: p.fit }))
+      : this.PLANS_FALLBACK;
+  }
+  PLANS_FALLBACK = [
+    { k: 'free', name: 'Miễn phí', w: 5000, i: 5, v: 1, price: 0, free: true, fit: 'Dùng thử thật, không giới hạn thời gian — mỗi tháng cấp lại' },
+    { k: 'basic', name: 'Cơ bản', w: 60000, i: 20, v: 1, price: 490000, bundled: true, fit: 'Website mới hoặc lên bài 2–3 bài mỗi tuần' },
+    { k: 'pro', name: 'Chuyên nghiệp', w: 200000, i: 120, v: 2, price: 990000, fit: 'Lên bài đều 3–5 bài mỗi tuần, có nhiều ngôn ngữ' },
+    { k: 'ent', name: 'Doanh nghiệp', w: 600000, i: 320, v: 3, price: 2690000, fit: 'Nhiều nhóm sản phẩm và viết hàng loạt' }
+  ];
+  USES = [
+    { k: 'post', icon: 'ri-article-line', name: 'Viết bài cụm SEO', kind: 'w', amount: 22800, n: 24, unit: 'bài' },
+    { k: 'prod', icon: 'ri-price-tag-3-line', name: 'Mô tả sản phẩm và danh mục', kind: 'w', amount: 9600, n: 32, unit: 'mục' },
+    { k: 'label', icon: 'ri-translate-2', name: 'Dịch nội dung sang ngôn ngữ khác', kind: 'w', amount: 7300, n: 610, unit: 'nhãn và đoạn ngắn' },
+    { k: 'refresh', icon: 'ri-refresh-line', name: 'Làm mới bài cũ', kind: 'w', amount: 1800, n: 6, unit: 'bài đã đăng' },
+    { k: 'cover', icon: 'ri-image-2-line', name: 'Ảnh bìa và ảnh minh hoạ', kind: 'i', amount: 18, unit: 'ảnh dùng được' },
+    { k: 'chart', icon: 'ri-flow-chart', name: 'Sơ đồ và ảnh giải thích', kind: 'i', amount: 6, unit: 'ảnh dùng được' }
+  ];
+  FREE_USES = [
+    { k: 'post', icon: 'ri-article-line', name: 'Viết bài cụm SEO', kind: 'w', amount: 2720, n: 3, unit: 'bài' },
+    { k: 'label', icon: 'ri-translate-2', name: 'Dịch nội dung sang ngôn ngữ khác', kind: 'w', amount: 480, n: 40, unit: 'nhãn và đoạn ngắn' },
+    { k: 'cover', icon: 'ri-image-2-line', name: 'Ảnh bìa và ảnh minh hoạ', kind: 'i', amount: 2, unit: 'ảnh dùng được' }
+  ];
+  FREE_LOG = [
+    { at: 'Hôm nay 09:12', where: 'Kế hoạch nội dung SEO', what: 'Viết bài “vật liệu lọc phèn loại nào tốt”', amount: -980, kind: 'w', src: 'Gói tháng' },
+    { at: 'Hôm nay 08:40', where: 'Hàng đợi ảnh', what: 'Tạo ảnh bìa bài “xử lý nước nhiễm phèn”', kind: 'i', byPlan: true, src: 'Gói tháng' },
+    { at: 'Hôm qua 14:05', where: 'Cài đặt · Ngôn ngữ', what: 'Dịch 40 nhãn sang English', amount: -480, kind: 'w', src: 'Gói tháng' }
+  ];
+  LOTS = [
+    { kind: 'i', n: 50, at: '12/07/2026', exp: '12/07/2027', price: 490000 }
+  ];
+  LOG = [
+    { at: 'Hôm nay 09:12', where: 'Kế hoạch nội dung SEO', what: 'Viết bài “vật liệu lọc phèn loại nào tốt”', amount: -980, kind: 'w', src: 'Gói tháng' },
+    { at: 'Hôm nay 08:40', where: 'Hàng đợi ảnh', what: 'Tạo ảnh bìa bài “xử lý nước nhiễm phèn”', kind: 'i', byPlan: true, src: 'Gói tháng' },
+    { at: 'Hôm qua 16:22', where: 'Hàng đợi ảnh', what: 'Lần tạo ảnh bị lỗi — hoàn lượt', kind: 'i', byPlan: true, back: true, src: 'Gói tháng' },
+    { at: 'Hôm qua 14:05', where: 'Cài đặt · Ngôn ngữ', what: 'Dịch 84 nhãn sang English', amount: -1010, kind: 'w', src: 'Gói tháng' },
+    { at: '27/07 10:31', where: 'Vận hành nội dung AI', what: 'Viết hàng loạt 12 mô tả sản phẩm', amount: -3600, kind: 'w', src: 'Gói tháng' }
+  ];
+  RULES = [
+    { tag: 'Tính từ AI', kind: 'w', name: 'Phân tích chủ đề, viết bài, viết lại đoạn, dịch, mô tả sản phẩm', hint: 'Đo bằng số từ AI thật sự sinh ra, không tính số bài — bài dài trừ nhiều, bài ngắn trừ ít, không làm tròn lên.' },
+    { tag: 'Tính lượt tạo ảnh', kind: 'i', name: 'Mỗi phương án ảnh AI tạo ra tính 1 lượt', hint: 'Gói cao tạo nhiều phương án cho một ảnh để bạn chọn, nên một ảnh trừ nhiều lượt hơn. Chọn phương án nào không trừ thêm lượt nào.' },
+    { tag: 'Miễn phí', kind: 'f', name: 'Sửa mô tả rồi tạo lại lần đầu cho mỗi ảnh', hint: 'Bạn không phải trả tiền cho mô tả do máy tự viết chưa đúng ý. Từ lần thứ hai trở đi tính bình thường.' },
+    { tag: 'Miễn phí', kind: 'f', name: 'Chấm điểm bảng kiểm, kiểm định chất lượng, tính điểm lại', hint: 'Chỉ đọc và chấm bản đã viết nên không sinh nội dung mới.' },
+    { tag: 'Miễn phí', kind: 'f', name: 'Sửa dàn ý, đổi thứ tự mục, bỏ mục', hint: 'Sửa dàn ý trước khi viết là cách rẻ nhất để bài ra đúng ý ngay lần đầu.' },
+    { tag: 'Miễn phí', kind: 'f', name: 'Cắt tỷ lệ ảnh, nén ảnh, sinh chữ thay thế và chú thích, gán ảnh vào bài', hint: 'Đây là hậu xử lý, không phải sinh ảnh mới.' },
+    { tag: 'Miễn phí', kind: 'f', name: 'Ảnh thật do bạn tải lên', hint: 'Không tính lượt nào, và hệ thống luôn ưu tiên trình bày ảnh thật trước ảnh AI.' },
+    { tag: 'Hoàn lại', kind: 'r', name: 'Lỗi, kẹt, hoặc bạn huỷ giữa lần chạy', hint: 'Hoàn đủ phần chưa dùng về đúng nguồn đã trừ (gói tháng hoặc phần mua thêm), kèm nút chạy lại ngay tại chỗ.' }
+  ];
+
+  componentDidMount() {
+    this._key = (e) => { if (e.key === 'Escape' && this.state.ask) this.setState({ ask: null }); };
+    window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() { clearTimeout(this._t); if (this._key) window.removeEventListener('keydown', this._key); }
+  toast(text, icon) { clearTimeout(this._t); this.setState({ toast: { text: text, icon: icon || 'ri-check-line' } }); this._t = setTimeout(() => this.setState({ toast: null }), 4600); }
+  n(v) { return Number(v || 0).toLocaleString('vi-VN'); }
+  lcFirst(s) { return String(s || '').charAt(0).toLowerCase() + String(s || '').slice(1); }
+  money(v) { return v === 0 ? 'Có sẵn trong gói' : this.n(v) + ' ₫'; }
+
+  renderVals() {
+    const S = this.state;
+    const planKey = (this.props.plan === 'none' ? 'free' : (this.props.plan || 'basic'));
+    const noPlan = planKey === 'free';
+    const FREE = this.PLANS[0];
+    if (!window.BSAI) document.addEventListener('bs-ai-quota-ready', () => { try { this.forceUpdate(); } catch (e) {} }, { once: true });
+    const CUR = this.PLANS.find(p => p.k === planKey) || this.PLANS[1] || FREE;
+    const q = noPlan ? { used: 3200, limit: FREE.w, addon: 0 } : (this.props.quota || { used: 41500, limit: CUR.w, addon: 0 });
+    const iq = noPlan ? { used: 2, limit: FREE.i, addon: 0 } : (this.props.imageQuota || { used: 12, limit: CUR.i, addon: 50 });
+
+    const BT = S.bought || { w: 0, i: 0 };
+    const book = (b, extra) => {
+      const addon = (b.addon || 0) + (extra || 0);
+      const planLeft = Math.max(0, b.limit - b.used);
+      const addonLeft = Math.max(0, addon - Math.max(0, b.used - b.limit));
+      return { addon: addon, planLeft: planLeft, addonLeft: addonLeft, left: planLeft + addonLeft, total: b.limit + addon, limit: b.limit, bought: extra || 0 };
+    };
+    const W = book(q, BT.w), I = book(iq, BT.i);
+
+    const USES = noPlan ? this.FREE_USES : this.USES;
+    const LOTS = noPlan ? [] : this.LOTS;
+    const LOG = noPlan ? this.FREE_LOG : this.LOG;
+    const wUsed30 = USES.filter(u => u.kind === 'w').reduce((a, u) => a + u.amount, 0);
+    const iUsed30 = USES.filter(u => u.kind === 'i').reduce((a, u) => a + u.amount, 0);
+    const per = (k, n) => { const u = USES.find(x => x.k === k); return u && u.n ? Math.max(1, Math.round(u.amount / u.n)) : n; };
+    const useN = (u) => u.n || Math.max(1, Math.floor(u.amount / iPerSlot));
+    const wPerPost = per('post', 950), wPerLabel = per('label', 12);
+    const iPerSlot = (this.PLANS.find(p => p.k === ((this.props.plan === 'none' ? 'free' : (this.props.plan || 'basic')))) || this.PLANS[1]).v || 1;
+
+    const st = (B) => B.left <= 0 ? 'out' : ((B.total ? B.left / B.total : 0) <= 0.2 ? 'low' : 'ok');
+    const wS = st(W), iS = st(I);
+    const noteBase = 'display:flex;align-items:flex-start;gap:8px;padding:11px 16px;border-top:1px solid #eff2f7;font-size:11.5px;line-height:1.65;';
+    const CH = {
+      ok: { t: 'Đủ dùng', s: 'background:rgba(10,179,156,.12);color:#0a7d6f;' },
+      low: { t: 'Sắp hết', s: 'background:rgba(247,184,75,.16);color:#8a6115;' },
+      out: { t: 'Đã hết', s: 'background:rgba(240,101,72,.12);color:#a5402c;' }
+    };
+
+    const kind = S.kind || ((iS === 'out' && wS !== 'out') ? 'i' : 'w');
+    const isW = kind === 'w';
+    const packs = isW ? this.WPACKS : this.IPACKS;
+    const packK = S.pack && packs.some(p => p.k === S.pack) ? S.pack : (packs.find(p => p.best) || packs[0]).k;
+    const pick = packs.find(p => p.k === packK);
+    const topup = S.topup != null ? S.topup : false;
+    const billing = S.billing || 'month';
+    const isYear = billing === 'year';
+    const yearOffPct = Math.round((12 - this.YEAR_MONTHS) / 12 * 100);
+    // Đơn giá trong gói tính trên PHẦN TĂNG THÊM so với gói cơ bản (đó là phần khách thật sự trả tiền),
+    // quy 45% giá gói cho sổ chữ và 55% cho sổ ảnh — ảnh đắt hơn nhiều nên phải gánh phần lớn giá.
+    // Chỉ dùng để so sánh và định giá, không phải quy đổi hạn ngạch giữa hai sổ.
+    const base = this.PLANS.find(p => p.bundled) || this.PLANS[1];
+    const effPrice = (p) => isYear ? Math.round(p.price * this.YEAR_MONTHS / 12 / 1000) * 1000 : p.price;
+    const rateW = (p) => (p.w > base.w) ? Math.round(effPrice(p) * 0.45 / ((p.w - base.w) / 1000)) : 0;
+    const rateI = (p) => (p.i > base.i) ? Math.round(effPrice(p) * 0.55 / (p.i - base.i)) : 0;
+    const upPlan = this.PLANS.find(p => !p.bundled && !p.free) || base;
+    const planWRate = rateW(upPlan), planIRate = rateI(upPlan);
+    const curPlan = this.PLANS.find(p => p.k === planKey) || this.PLANS[0];
+    const paidPlan = this.PLANS.find(p => p.bundled) || this.PLANS[1];
+
+    const enoughW = (n) => this.n(Math.floor(n / wPerPost)) + ' bài viết, hoặc ' + this.n(Math.floor(n / wPerLabel)) + ' nhãn dịch';
+    const enoughI = (n) => this.n(Math.floor(n / iPerSlot)) + ' ảnh' + (iPerSlot > 1 ? ' (mỗi ảnh tạo ' + iPerSlot + ' phương án để bạn chọn)' : '');
+
+    const ask = S.ask;
+    return {
+      planChip: noPlan ? 'Gói Miễn phí' : ('Gói ' + curPlan.name + ' · ' + this.n(effPrice(curPlan)) + ' ₫/tháng'),
+      planChipTitle: noPlan
+        ? ('Website chưa đăng ký gói nào nên đang ở gói Miễn phí: ' + this.n(FREE.w) + ' từ AI và ' + FREE.i + ' lượt tạo ảnh mỗi tháng, không giới hạn thời gian, không cần thẻ. Hạn ngạch cấp lại vào ngày 1 và không cộng dồn.')
+        : ('Gói ' + curPlan.name + ': ' + this.n(curPlan.w) + ' từ AI và ' + this.n(curPlan.i) + ' lượt tạo ảnh mỗi tháng. Hạn ngạch được cấp lại vào ngày 1 — phần chưa dùng của tháng trước KHÔNG cộng dồn. Chỉ phần bạn mua thêm mới giữ được sang tháng sau, theo hạn riêng của từng lô.'),
+      trialOn: noPlan,
+      trialText: 'Chưa đăng ký gói nên website đang ở gói Miễn phí: ' + this.n(FREE.w) + ' từ AI và ' + FREE.i + ' lượt tạo ảnh mỗi tháng, cấp lại đều, không cần thẻ. Cần nhiều hơn thì gói website Cơ bản ' + this.n(paidPlan.price) + ' ₫ mỗi tháng đã gồm ' + this.n(paidPlan.w) + ' từ AI và ' + paidPlan.i + ' lượt tạo ảnh.',
+      onSubscribe: () => this.toast('Mở đăng ký gói website Cơ bản — ' + this.n(paidPlan.price) + ' ₫ mỗi tháng, đã gồm ' + this.n(paidPlan.w) + ' từ AI và ' + paidPlan.i + ' lượt tạo ảnh (' + Math.floor(paidPlan.i / paidPlan.v) + ' ảnh) mỗi tháng, không tính phí AI riêng', 'ri-shield-check-line'),
+      resetLine: 'Cấp lại ngày 1 mỗi tháng, phần chưa dùng không cộng dồn.' + (noPlan ? '' : ' Phần mua thêm giữ theo hạn riêng.'),
+      onHistory: () => this.toast('Mở nhật ký sử dụng — từng lần chạy, ở màn hình nào, trừ bao nhiêu, trừ từ gói tháng hay phần mua thêm, và các lần được hoàn', 'ri-file-list-3-line'),
+
+      wChipText: CH[wS].t, wChipStyle: CH[wS].s,
+      wLeftText: this.n(W.left),
+      wPlanPct: W.total ? Math.round(W.planLeft / W.total * 100) : 0,
+      wAddonPct: W.total ? Math.round(W.addonLeft / W.total * 100) : 0,
+      wBarTitle: 'Còn ' + this.n(W.left) + '/' + this.n(W.total) + ' từ AI · gói tháng ' + this.n(W.planLeft) + ' · mua thêm ' + this.n(W.addonLeft) + ' · trừ hạn ngạch gói trước, phần mua thêm sau',
+      wPlanLine: this.n(W.planLeft) + '/' + this.n(W.limit) + ' từ',
+      wAddonLine: W.addon ? (this.n(W.addonLeft) + '/' + this.n(W.addon) + ' từ') : 'chưa mua',
+      wEnough: W.left > 0
+        ? ('Đủ khoảng ' + enoughW(W.left) + ' — theo mức dùng thật của website này.')
+        : 'Đã hết. Ảnh AI vẫn chạy bình thường vì hai sổ tách riêng.',
+      wNote: wS === 'out'
+        ? 'Việc viết, dịch và mô tả sản phẩm tạm dừng cho tới khi bạn mua thêm hoặc sang kỳ mới. Bài đã viết vẫn nằm ở hộp duyệt, không mất.'
+        : (wS === 'low'
+          ? ('Với nhịp hiện tại, phần còn lại đủ khoảng ' + Math.max(1, Math.round(W.left / (wUsed30 / 30))) + ' ngày.' + (topup ? ' Tự mua thêm đang bật: dưới 10% hệ thống tự mua gói ' + this.n(this.WPACKS[0].n) + ' từ và gửi thư cho bạn.' : ' Tự mua thêm đang tắt: hết là việc đang chạy dừng và chờ bạn.'))
+          : ('Nhịp 30 ngày qua ' + this.n(wUsed30) + ' từ, chủ yếu cho ' + this.lcFirst((USES.filter(u => u.kind === 'w').sort((a, b) => b.amount - a.amount)[0] || {}).name || '') + '. Bài dài trừ nhiều, bài ngắn trừ ít, không làm tròn lên.')),
+      wNoteStyle: noteBase + (wS === 'out' ? 'background:rgba(240,101,72,.07);color:#a5402c;' : (wS === 'low' ? 'background:rgba(247,184,75,.10);color:#8a6115;' : 'background:#f8f9fb;color:#878a99;')),
+      wNoteIcon: wS === 'out' ? 'ri-error-warning-line' : (wS === 'low' ? 'ri-alert-line' : 'ri-information-line'),
+      onPickWords: () => { this.setState({ kind: 'w', pack: null }); this.toast('Chọn gói từ AI muốn mua thêm — cộng thẳng vào sổ nội dung chữ, không đụng lượt tạo ảnh', 'ri-add-circle-line'); },
+
+      iChipText: CH[iS].t, iChipStyle: CH[iS].s,
+      iLeftText: this.n(I.left),
+      iPlanPct: I.total ? Math.round(I.planLeft / I.total * 100) : 0,
+      iAddonPct: I.total ? Math.round(I.addonLeft / I.total * 100) : 0,
+      iBarTitle: 'Còn ' + this.n(I.left) + '/' + this.n(I.total) + ' lượt tạo ảnh · gói tháng ' + this.n(I.planLeft) + ' · mua thêm ' + this.n(I.addonLeft) + ' · trừ hạn ngạch gói trước, phần mua thêm sau',
+      iPlanLine: this.n(I.planLeft) + '/' + this.n(I.limit) + ' lượt',
+      iAddonLine: I.addon ? (this.n(I.addonLeft) + '/' + this.n(I.addon) + ' lượt') : 'chưa mua',
+      iEnough: I.left > 0
+        ? (iPerSlot > 1
+          ? ('Đủ khoảng ' + enoughI(I.left) + ' — theo mức dùng thật của website này.')
+          : ('Mỗi ảnh 1 phương án, chưa ưng thì tạo lại — mỗi lần tính 1 lượt.'))
+        : 'Đã hết. Nội dung chữ vẫn chạy bình thường, và ảnh thật bạn tải lên không tốn lượt.',
+      iNote: iS === 'out'
+        ? 'Chỉ ảnh AI tạm dừng. Ảnh thư viện và ảnh thật bạn tải lên không tốn lượt nào.'
+        : (iS === 'low'
+          ? ('Nên ưu tiên ảnh bìa và sơ đồ, phần còn lại dùng ảnh thư viện.' + (topup ? ' Tự mua thêm đang bật: dưới 10% hệ thống tự mua gói ' + this.n(this.IPACKS[0].n) + ' lượt và gửi thư cho bạn.' : ''))
+          : ('Nhịp 30 ngày qua ' + iUsed30 + ' lượt. Ảnh thật bạn tải lên không tính lượt và luôn được ưu tiên trước ảnh AI.')),
+      iNoteStyle: noteBase + (iS === 'out' ? 'background:rgba(240,101,72,.07);color:#a5402c;' : (iS === 'low' ? 'background:rgba(247,184,75,.10);color:#8a6115;' : 'background:#f8f9fb;color:#878a99;')),
+      iNoteIcon: iS === 'out' ? 'ri-error-warning-line' : (iS === 'low' ? 'ri-alert-line' : 'ri-information-line'),
+      onPickImages: () => { this.setState({ kind: 'i', pack: null }); this.toast('Chọn gói lượt tạo ảnh muốn mua thêm — cộng thẳng vào sổ ảnh, không đụng từ AI', 'ri-add-circle-line'); },
+
+      onUpgrade: () => { const el = document.getElementById('qz-plans'); if (el) window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.pageYOffset - 16), behavior: 'smooth' }); this.toast('Bảng so sánh gói ở cuối trang — nâng gói cấp thêm cho cả hai loại mỗi tháng, còn thiếu một đợt thì mua thêm rẻ hơn', 'ri-vip-crown-line'); },
+
+      kinds: [
+        { v: 'w', label: 'Từ AI (nội dung chữ)', icon: 'ri-sparkling-2-line', title: 'Mua thêm từ AI — cộng vào sổ nội dung chữ' },
+        { v: 'i', label: 'Lượt tạo ảnh AI', icon: 'ri-image-2-line', title: 'Mua thêm lượt tạo ảnh — cộng vào sổ ảnh' }
+      ].map(k => ({ label: k.label, icon: k.icon, title: k.title, on2: k.v === kind, off: k.v !== kind, on: () => this.setState({ kind: k.v, pack: null }) })),
+      shopBlocked: noPlan,
+      shopBlockText: 'Gói Miễn phí không mua thêm được — và cũng không nên: cùng một lượng, nằm trong gói rẻ hơn 2–3 lần. Đăng ký gói website trước, chỉ mua thêm khi tháng nào đó thiếu.',
+      shopNote: 'Phần mua thêm giữ 12 tháng kể từ ngày mua, không hết theo tháng. Hệ thống dùng hết hạn ngạch tháng của gói trước rồi mới trừ phần bạn mua, và trong đó dùng lô sắp hết hạn trước — nhắc bằng thư 30 ngày trước khi hết hạn.',
+      packs: packs.map(p => ({
+        amount: isW ? (this.n(p.n) + ' từ AI') : (this.n(p.n) + ' lượt tạo ảnh'),
+        price: this.money(p.price),
+        best: !!p.best,
+        enoughOn: isW || iPerSlot > 1,
+        enough: isW ? ('Đủ khoảng ' + enoughW(p.n)) : ('Đủ khoảng ' + enoughI(p.n)),
+        unitPrice: (isW ? (this.n(Math.round(p.price / (p.n / 1000))) + ' ₫ mỗi 1.000 từ') : (this.n(Math.round(p.price / p.n)) + ' ₫ mỗi lượt')) + ' · dùng trong 12 tháng',
+        title: 'Cộng ' + (isW ? this.n(p.n) + ' từ AI' : this.n(p.n) + ' lượt tạo ảnh') + ' vào sổ ' + (isW ? 'nội dung chữ' : 'ảnh') + ' · ' + this.money(p.price) + ' · dùng trong 12 tháng',
+        on2: p.k === packK, off: p.k !== packK,
+        on: () => this.setState({ pack: p.k })
+      })),
+      buyLine: 'Sau khi mua còn ' + (isW ? this.n(W.left + pick.n) + ' từ AI' : this.n(I.left + pick.n) + ' lượt tạo ảnh')
+        + (isW ? (' — đủ khoảng ' + enoughW(W.left + pick.n) + '.') : (iPerSlot > 1 ? (' — đủ khoảng ' + enoughI(I.left + pick.n) + '.') : '.')),
+      cmpText: (() => {
+        const unit = isW ? (pick.price / (pick.n / 1000)) : (pick.price / pick.n);
+        const planUnit = isW ? planWRate : planIRate;
+        return 'Mua thêm ' + this.n(Math.round(unit)) + ' ₫' + (isW ? '/1.000 từ' : '/lượt') + ' · trong gói ' + upPlan.name + ' ' + this.n(Math.round(planUnit)) + ' ₫.';
+      })(),
+      buyLabel: 'Mua · ' + this.money(pick.price),
+      buyTitle: 'Thanh toán một lần · cộng ngay vào sổ ' + (isW ? 'nội dung chữ' : 'ảnh') + ' · hạn dùng 12 tháng · không tự gia hạn',
+      onBuy: () => this.setState({ ask: { kind: 'buy', icon: 'ri-shopping-cart-2-line', title: 'Mua ' + (isW ? this.n(pick.n) + ' từ AI' : this.n(pick.n) + ' lượt tạo ảnh') + '?', text: 'Thanh toán ' + this.money(pick.price) + ' một lần, cộng ngay vào sổ ' + (isW ? 'nội dung chữ' : 'ảnh AI') + ' và dùng trong 12 tháng — không tự gia hạn, không trừ tiền lần sau. Sau khi mua bạn còn khoảng ' + (isW ? enoughW(W.left + pick.n) : enoughI(I.left + pick.n)) + '. Hệ thống vẫn trừ hạn ngạch tháng của gói trước, phần mua thêm dùng sau.', ok: 'Xác nhận mua' } }),
+
+      topupOn: topup, topupOff: !topup,
+      topupHint: topup
+        ? ('Dưới 10% thì tự mua gói nhỏ nhất của đúng loại đó (' + this.n(this.WPACKS[0].n) + ' từ hoặc ' + this.IPACKS[0].n + ' lượt tạo ảnh). Tối đa 2 lần mỗi tháng cho mỗi loại, gửi thư ngay, hoàn tiền được trong 7 ngày.')
+        : 'Đang tắt: hết hạn ngạch thì việc đang chạy dừng và chờ bạn. Bật nếu không muốn kế hoạch bị ngắt giữa cụm — chỉ mua gói nhỏ nhất, tối đa 2 lần mỗi tháng.',
+      topupTitle: topup ? 'Tắt tự mua thêm — hết hạn ngạch thì dừng và chờ bạn' : 'Bật tự mua thêm — chỉ mua gói nhỏ nhất, tối đa 2 lần mỗi tháng, luôn báo trước bằng thư',
+      onTopup: () => {
+        if (!topup) { this.setState({ ask: { kind: 'topup', icon: 'ri-repeat-line', title: 'Bật tự mua thêm khi gần hết?', text: 'Khi một sổ còn dưới 10%, hệ thống tự mua gói nhỏ nhất của đúng loại đó để việc đang chạy không dừng giữa cụm. Giới hạn 2 lần mỗi tháng cho mỗi loại, mỗi lần gửi thư thông báo ngay và bạn hoàn tiền được trong 7 ngày nếu không cần. Tắt lúc nào cũng được.', ok: 'Bật tự mua thêm' } }); return; }
+        this.setState({ topup: false });
+        this.toast('Đã tắt tự mua thêm — khi hết hạn ngạch, việc đang chạy sẽ dừng và chờ bạn quyết định', 'ri-pause-circle-line');
+      },
+
+      lotsOn: LOTS.length > 0 || BT.w > 0 || BT.i > 0,
+      lots: LOTS.map(l => ({
+        name: (l.kind === 'w' ? this.n(l.n) + ' từ AI' : this.n(l.n) + ' lượt tạo ảnh'),
+        book: l.kind === 'w' ? 'Sổ nội dung chữ' : 'Sổ ảnh AI',
+        line: 'Mua ' + l.at + ' · ' + this.money(l.price) + ' · dùng đến ' + l.exp,
+        left: l.kind === 'w' ? (this.n(Math.min(l.n, W.addonLeft)) + '/' + this.n(l.n) + ' từ còn lại') : (this.n(Math.min(l.n, I.addonLeft)) + '/' + this.n(l.n) + ' lượt còn lại'),
+        title: 'Phần mua thêm không hết theo tháng — chỉ hết khi dùng xong hoặc quá ngày ' + l.exp + '. Hệ thống trừ hạn ngạch gói tháng trước, phần này sau, và trừ lô mua trước hết hạn sớm nhất trước.'
+      })).concat(
+        (BT.w > 0 ? [{ name: this.n(BT.w) + ' từ AI', book: 'Sổ nội dung chữ', line: 'Mua trong phiên này · dùng trong 12 tháng', left: this.n(BT.w) + '/' + this.n(BT.w) + ' từ còn lại', title: 'Vừa mua trong phiên này' }] : []),
+        (BT.i > 0 ? [{ name: this.n(BT.i) + ' lượt tạo ảnh', book: 'Sổ ảnh AI', line: 'Mua trong phiên này · dùng trong 12 tháng', left: this.n(BT.i) + '/' + this.n(BT.i) + ' lượt còn lại', title: 'Vừa mua trong phiên này' }] : [])
+      ),
+      lotsNote: 'Khi trừ, lô sắp hết hạn được dùng trước — bạn không mất phần đã trả tiền vì để lâu.',
+      logs: LOG.map(l => {
+        const amt = l.byPlan ? (l.back ? iPerSlot : -iPerSlot) : l.amount;
+        return {
+        at: l.at, where: l.where,
+        what: l.what + (l.byPlan && !l.back && iPerSlot > 1 ? ' · ' + iPerSlot + ' phương án' : ''),
+        amount: (amt > 0 ? '+' : '') + (l.kind === 'w' ? this.n(amt) + ' từ' : amt + ' lượt'),
+        amountStyle: l.back ? 'color:#0a8f7f;font-weight:600;' : 'color:#495057;font-weight:600;',
+        src: l.back ? 'Hoàn về ' + l.src.toLowerCase() : ('Trừ từ ' + l.src.toLowerCase()),
+        srcStyle: l.back ? 'background:rgba(10,179,156,.12);color:#0a7d6f;' : 'background:#f3f6f9;color:#878a99;'
+        };
+      }),
+      useSummary: this.n(wUsed30) + ' từ AI · ' + iUsed30 + ' lượt tạo ảnh',
+      uses: USES.map(u => Object.assign({}, u, {
+        amount: u.kind === 'w' ? (this.n(u.amount) + ' từ') : (this.n(u.amount) + ' lượt'),
+        hint: this.n(useN(u)) + ' ' + u.unit + ((u.kind === 'i' && iPerSlot === 1) ? '' : (' · trung bình ' + this.n(Math.round(u.amount / useN(u))) + (u.kind === 'w' ? ' từ mỗi ' : ' lượt mỗi ') + u.unit.split(' ')[0]))
+      })),
+      rules: this.RULES.map(r => Object.assign({}, r, {
+        tagStyle: r.kind === 'f' ? 'background:rgba(10,179,156,.12);color:#0a7d6f;' : (r.kind === 'r' ? 'background:rgba(41,156,219,.12);color:#1c7ba8;' : 'background:rgba(64,81,137,.12);color:#405189;')
+      })),
+
+      billings: [
+        { v: 'month', label: 'Trả hằng tháng', title: 'Thanh toán mỗi tháng, dừng lúc nào cũng được' },
+        { v: 'year', label: 'Trả trước 12 tháng · giảm ' + yearOffPct + '%', title: 'Trả trước 12 tháng chỉ bằng ' + this.YEAR_MONTHS + ' tháng — tặng ' + (12 - this.YEAR_MONTHS) + ' tháng. Hạn ngạch vẫn cấp theo từng tháng và không cộng dồn.' }
+      ].map(b => ({ label: b.label, title: b.title, on2: b.v === billing, off: b.v !== billing, on: () => this.setState({ billing: b.v }) })),
+      billingNote: isYear
+        ? ('Trả trước 12 tháng chỉ bằng ' + this.YEAR_MONTHS + ' tháng. Lưu ý: trả trước chỉ giảm giá — hạn ngạch vẫn cấp theo từng tháng và không cộng dồn. Muốn dùng dồn một đợt lớn thì mua thêm dung lượng.')
+        : 'Trả hằng tháng, đổi hoặc dừng lúc nào cũng được. Trả trước 12 tháng rẻ hơn ' + yearOffPct + '% nhưng hạn ngạch vẫn cấp theo từng tháng, không cộng dồn.',
+      upgradeAdvice: noPlan
+        ? ('Bạn đang ở gói Miễn phí (' + this.n(FREE.w) + ' từ · ' + FREE.i + ' lượt tạo ảnh mỗi tháng, tức ' + Math.floor(FREE.i / FREE.v) + ' ảnh). Gói website Cơ bản ' + this.n(effPrice(paidPlan)) + ' ₫ mỗi tháng nâng lên ' + this.n(paidPlan.w) + ' từ và ' + paidPlan.i + ' lượt tạo ảnh (' + Math.floor(paidPlan.i / paidPlan.v) + ' ảnh), không tính phí AI riêng — hạn ngạch trong gói luôn rẻ hơn mua thêm 2–3 lần, nên đừng mua thêm trước khi có gói.')
+        : ('Với mức dùng 30 ngày qua (' + this.n(wUsed30) + ' từ · ' + iUsed30 + ' lượt tạo ảnh), gói ' + curPlan.name + ' vẫn vừa. Hạn ngạch trong gói luôn rẻ hơn mua thêm — mua thêm là để chữa cháy một đợt, nâng gói là để dùng đều. Nếu hai tháng liền bạn phải mua thêm thì nâng gói rẻ hơn.'),
+      plans: this.PLANS.map(p => ({
+        name: p.name, cur: p.k === curPlan.k, canPick: p.k !== curPlan.k && !p.free,
+        freeRow: !!p.free && p.k !== curPlan.k,
+        pickLabel: noPlan ? 'Đăng ký gói này' : 'Chọn gói này',
+        quota: this.n(p.w) + ' từ AI · ' + this.n(p.i) + ' lượt tạo ảnh mỗi tháng',
+        quota2: p.v + (p.v > 1 ? ' phương án mỗi ảnh để bạn chọn' : ' phương án mỗi ảnh'),
+        price: p.free ? '0 ₫' : (this.n(effPrice(p)) + ' ₫ mỗi tháng'),
+        priceSub: p.free
+          ? 'không cần thẻ, không hết hạn'
+          : (isYear ? ('trả trước ' + this.n(effPrice(p) * 12) + ' ₫ cho 12 tháng') : 'thanh toán mỗi tháng'),
+        rate: '',
+        fit: 'Đủ khoảng ' + this.n(Math.floor(p.w / wPerPost)) + ' bài viết và ' + this.n(Math.floor(p.i / p.v)) + ' ảnh mỗi tháng · ' + this.lcFirst(p.fit),
+        pickTitle: noPlan
+          ? ('Đăng ký gói ' + p.name + ' — có hạn ngạch AI ngay trong gói, cấp lại mỗi tháng')
+          : ('Đổi sang gói ' + p.name + ' — hạn ngạch mới áp từ kỳ tiếp theo, phần đã mua thêm vẫn giữ nguyên'),
+        onPick: () => this.toast(noPlan
+          ? ('Mở đăng ký gói ' + p.name + ' — hạn ngạch AI đi kèm trong gói, cấp lại vào ngày 1 mỗi tháng')
+          : ('Mở đổi gói sang ' + p.name + ' — hạn ngạch mới áp từ kỳ tiếp theo, phần bạn đã mua thêm không bị mất'), 'ri-vip-crown-line')
+      })),
+
+      askOpen: !!ask, askTitle: ask ? ask.title : '', askText: ask ? ask.text : '', askOk: ask ? ask.ok : '', askIcon: ask ? ask.icon : 'ri-information-line',
+      onAskCancel: () => this.setState({ ask: null }),
+      onAskOk: () => {
+        const k = ask ? ask.kind : '';
+        this.setState({ ask: null });
+        if (k === 'buy') {
+          this.setState(s => {
+            const b = Object.assign({ w: 0, i: 0 }, s.bought);
+            b[isW ? 'w' : 'i'] += pick.n;
+            return { bought: b };
+          });
+          this.toast('Đã cộng ' + (isW ? this.n(pick.n) + ' từ AI vào sổ nội dung chữ' : this.n(pick.n) + ' lượt tạo ảnh vào sổ ảnh') + ' — dùng được ngay, hạn 12 tháng. Hoá đơn đã gửi vào email của bạn.', 'ri-check-line');
+        }
+        else if (k === 'topup') { this.setState({ topup: true }); this.toast('Đã bật tự mua thêm — chỉ mua gói nhỏ nhất, tối đa 2 lần mỗi tháng, luôn gửi thư ngay sau khi mua', 'ri-repeat-line'); }
+      },
+      toast: !!S.toast, toastText: S.toast ? S.toast.text : '', toastIcon: S.toast ? S.toast.icon : 'ri-check-line'
+    };
+  }
+}
+
+</script>
+</body>
+</html>
