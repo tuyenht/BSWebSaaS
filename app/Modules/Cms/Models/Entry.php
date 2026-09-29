@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 
@@ -58,6 +59,16 @@ class Entry extends Model
     public function revisions(): HasMany
     {
         return $this->hasMany(EntryRevision::class);
+    }
+
+    /**
+     * The pending change to this entry's live content, if one is open (at most one per entry).
+     *
+     * @return HasOne<EntryDraft, $this>
+     */
+    public function draft(): HasOne
+    {
+        return $this->hasOne(EntryDraft::class);
     }
 
     /**
