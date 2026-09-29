@@ -52,10 +52,10 @@ DECISIONS = [
     ('Q8', 'Mặt Nền tảng dùng khung nào?', 'Một khung Shell dùng chung. Không có nút chuyển mặt trong cùng phiên — vào website khách chỉ qua Đăng nhập hỗ trợ.'),
     ('Q9', 'Màn mới trong khu đăng nhập (chọn website, nhận lời mời…)?', 'Dựng thẳng theo khung login hiện có, gửi ảnh chụp để duyệt trong PR.'),
     ('Q10', 'Hiện dòng báo thành công ở khu đăng nhập?', 'Có: thông báo đang bị nuốt; dùng đúng kiểu hộp báo đang có.'),
-    ('Q11', 'Áp palette An Vinh v2 (vàng đồng)?', 'Chưa: vàng trên nền trắng chỉ 2,28:1 (trượt AA). Chờ bộ sinh bảng màu + khách An Vinh duyệt. Không chặn việc thiết kế.'),
+    ('Q11', 'Áp palette An Vinh v2 (vàng đồng)?', 'Chưa: vàng trên nền trắng chỉ 2,28:1 (trượt AA). Bộ sinh bảng màu đã có (26/09) — chờ khách An Vinh duyệt. Không chặn việc thiết kế.'),
     ('Q12', 'Bộ AI có vào core v1?', 'Không: làm module riêng sau core v1 (kéo theo thanh toán). Giữ nguyên 10 màn đã vẽ, ẩn nút AI khi website không được cấp.'),
     ('Q13', 'Tài liệu thiết kế để đâu?', 'Đưa brief + prompt + roadmap + sổ màn vào docs/ (có trong git) để Claude Design đọc được; plans/ vẫn là nháp cục bộ.'),
-    ('Q14', 'Luật kiến trúc module đang vô hiệu — xử lý?', 'Sửa test thành 1 luật mỗi module + ghi nợ 8 chỗ vi phạm hiện có, chặn ngay vi phạm mới; trả nợ dần.'),
+    ('Q14', 'Luật kiến trúc module đang vô hiệu — xử lý?', 'Sửa test thành 1 luật mỗi module + ghi nợ 8 chỗ vi phạm hiện có, chặn ngay vi phạm mới; trả nợ dần. ✅ Hết nợ 27/09.'),
 ]
 
 # (module, screen, design, code) — design/code status keys: ok · part · off · bad · none · later · keep
@@ -267,7 +267,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       <li><b>Mở một cửa sổ chat MỚI</b> trong project Claude Design BSWebSaaS, dán và gửi. Không gộp 2 lượt vào 1 cửa sổ.</li>
       <li><b>Xong thì tích ô "Xong"</b> và gửi bản export cho Claude Code để đối chiếu với code trước khi build.</li>
     </ol>
-    <p class="hint">Bản 3.2 (26/09): D0-4, D3-1, D4-2 — website mặc định 1 ngôn ngữ, thêm ngôn ngữ do Bảo Sơn cấp riêng. Bản 3 (24/09): 10 lượt (D0-1, D0-4, D1-2, D1-5, D2-2, D2-3, D2-4, D3-1, D4-2, D5-1) đã sửa theo backend vừa lên prod — bỏ các nhãn "Chờ backend" không còn đúng, thêm giới hạn và thông báo lỗi thật mà màn phải hiện. Bản 2 (23/09): 12 tiêu chí dễ dùng cho người không rành CNTT ở mọi lượt.</p>
+    <p class="hint">Bản 3.3 (29/09): mọi lượt nhận token #92 (màu secondary/dark 2 bậc, placeholder chỉ chứa ví dụ, --primary-on-ink) và tiêu chí 6 rõ hơn (thứ có Thùng rác → Hoàn tác; thứ xoá hẳn → xác nhận nói hệ quả bằng số); D1-1 Chuyên mục, D1-2 Trình đơn, D1-4b Lịch sử phiên bản theo backend đã lên prod; D1-3, D1-6, D1-7 (ô đồng ý), D0-2/D3-1 (bảng màu 10 bậc), D3-2 (tên miền riêng để sau), D4-1 (cấp thêm ngôn ngữ). Bản 3.2 (26/09): D0-4, D3-1, D4-2 — website mặc định 1 ngôn ngữ, thêm ngôn ngữ do Bảo Sơn cấp riêng. Bản 3 (24/09): 10 lượt (D0-1, D0-4, D1-2, D1-5, D2-2, D2-3, D2-4, D3-1, D4-2, D5-1) đã sửa theo backend vừa lên prod — bỏ các nhãn "Chờ backend" không còn đúng, thêm giới hạn và thông báo lỗi thật mà màn phải hiện. Bản 2 (23/09): 12 tiêu chí dễ dùng cho người không rành CNTT ở mọi lượt.</p>
   </section>
 
   <div class="facts" role="list">

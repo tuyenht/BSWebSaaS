@@ -6,11 +6,11 @@ Luật cứng:
 - Token AdminKit — bậc WCAG AA đã chuẩn hoá (PR #87 trong repo); DÙNG ĐÚNG bộ này, không tự thêm màu ngoài bộ: navy #405189 · Inter 14px · bo 4px ô nhập / 6px thẻ · 1 bóng thẻ · nền #f3f3f9.
   · Chữ phụ: --color-body-muted #6b6e7f (≥4.5:1 trên trắng và trên nền trang). --color-body-faint CHỈ cho chi tiết trang trí, KHÔNG cho chữ có nghĩa.
   · Navy làm CHỮ / VIỀN / VÒNG FOCUS = role "accent" (sáng #405189 · tối #96a1c0); navy làm NỀN dưới chữ trắng vẫn là --color-admin-primary.
-  · Màu ngữ nghĩa 2 bậc: --color-admin-{success,info,warning,danger}-text (chữ + kiểu soft + viền, ≥4.5:1, lật theo sáng/tối) và -solid (nền dưới chữ trắng, ≥4.5:1). Nút/badge warning solid dùng chữ #212529.
-  · Viền ô nhập: --color-border-input (≥3:1 trên nền ô, cả sáng lẫn tối).
+  · Màu ngữ nghĩa 2 bậc: --color-admin-{secondary,success,info,warning,danger}-text (chữ + kiểu soft + viền, ≥4.5:1, lật theo sáng/tối) và -solid (nền dưới chữ trắng, ≥4.5:1; secondary nền #2f69d4, KHÔNG dùng #3577f1 làm nền chữ). Nút/badge warning solid dùng chữ #212529. Badge "dark" kiểu soft dùng chữ --color-admin-dark-text (lật sáng ở chế độ tối) (PR #92).
+  · Viền ô nhập: --color-border-input (≥3:1 trên nền ô, cả sáng lẫn tối). Placeholder = --color-placeholder (= muted) và CHỈ chứa ví dụ ("0912 345 678"); hướng dẫn/điều kiện đặt ở dòng gợi ý dưới ô, không nhét vào placeholder (PR #92).
   · Focus: --focus-ring-width 2px · --focus-ring-offset 2px · --focus-ring-color (accent; vùng nền đậm như sidebar/header đổi màu vòng theo chữ của vùng). KHÔNG outline:none mà không thay bằng ring.
   · Sidebar: chữ mục thường trắng .85; MỤC ĐANG CHỌN = chữ trắng + nền active + vạch chỉ báo bên trái + aria-current="page" (phân biệt bằng HÌNH, không chỉ bằng màu).
-  · Storefront: chữ màu thương hiệu trên nền sáng dùng --primary-text (tự làm tối tới ≥4.5:1 trên thẻ và trên nền trang); --primary giữ cho nền/viền và chữ trên nền tối (header/hero/footer).
+  · Storefront: chữ màu thương hiệu trên nền sáng dùng --primary-text (tự làm tối tới ≥4.5:1 trên thẻ và trên nền trang); chữ màu thương hiệu trên nền tối --ink (link footer, menu con, nút phụ ở hero) dùng --primary-on-ink (tự làm sáng tới ≥4.5:1, PR #92); --primary giữ cho nền/viền.
 - Đích build: Livewire 4 + Blade + Tailwind 4 + <x-admin::*>; icon Remix inline-SVG (prototype dùng CDN được, README liệt kê tên icon). Không Bootstrap, không Flux.
 - Mỗi màn đủ trạng thái: trống · đang tải · lỗi (có "Thử lại") · không có quyền · khoá theo gói · thành công. Không ngõ cụt.
 - 3 bề rộng 1240 / 768 / 390, sáng + tối, WCAG 2.2 AA.
@@ -23,7 +23,7 @@ TIÊU CHÍ DỄ DÙNG — kiểm từng màn trước khi giao, ghi kết quả 
  3. Không thuật ngữ kỹ thuật trần (SMTP, OAuth, DNS, CNAME, SSL, API, webhook, token, slug, meta, robots…). Buộc phải có thì để trong khối "Nâng cao" và kèm 1 câu giải thích đời thường. Tên thương hiệu quen (Google, Zalo, Facebook) giữ nguyên nhưng nói rõ công dụng ("Facebook Pixel — đo hiệu quả quảng cáo Facebook").
  4. Icon luôn kèm chữ; chỉ icon rất quen (tìm kiếm, chuông, đóng, thêm) mới được đứng một mình, và phải có tooltip + aria-label.
  5. Ô nhập có gợi ý bằng ví dụ thật; lỗi nói cách sửa ("Số điện thoại cần 10 số, ví dụ 0901 234 567"), không nói lỗi kỹ thuật.
- 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu, xoá = vào Thùng rác kèm toast "Hoàn tác".
+ 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu. Xoá thứ CÓ Thùng rác (bài, trang, sản phẩm, ảnh & tệp) = vào Thùng rác kèm toast "Hoàn tác"; xoá thứ KHÔNG có Thùng rác (trình đơn, mục trình đơn, chuyên mục, nhóm quyền…) = hộp xác nhận nói rõ hệ quả bằng số và tên ("Xoá mục này và 3 mục con", "12 bài sẽ chuyển sang Tin công ty") — không hứa "Hoàn tác" cho thứ đã xoá hẳn.
  7. Trạng thái luôn có màu + hình + chữ — không bao giờ chỉ dùng màu.
  8. Không cắt chữ: nhãn nút, chip, tab, nút lọc luôn 1 dòng (dài thì "…" + tooltip) — nút KHÔNG bao giờ xuống 2 dòng; nhãn ô nhập được xuống dòng nhưng không bị che. Không thanh cuộn ngang trong thẻ/khung đọc.
  9. Điện thoại: việc hay làm (trả lời khách liên hệ, duyệt bài, đăng tin nhanh, xem thông báo) làm trọn được ở 390px; vùng bấm ≥ 44px; không thành phần nổi nào che nút Lưu hay nội dung.
@@ -41,7 +41,7 @@ Vì sao: design system mới có 18 component nền (Alert, Avatar, Badge, Butto
 
 Tạo `Chuẩn giao diện SaaS Starter.dc.html` (phần Component) + README. Mỗi component: biến thể, hover/focus/disabled/lỗi, sáng/tối, cỡ cảm ứng, chế độ "Chữ lớn", và luật không cắt chữ (tiêu chí 8):
 - Điều khiển: Switch · Checkbox · Radio group · Segmented control · Ô tìm kiếm (khung sáng khi focus, placeholder nói rõ tìm gì) · Thanh lọc (chip lọc + "Xoá lọc") · Chọn ngày & giờ (theo múi giờ site, dd/mm/yyyy) · Nhập thẻ · Vùng thả tệp.
-- Màu: HAI loại tách bạch — (a) "Màu thương hiệu": chọn 1 màu tự do + tự kiểm tương phản chữ trên màu, gợi ý màu an toàn nếu không đạt (chỉ dùng ở Giao diện website); (b) "Chọn trong bảng màu": chỉ các ô token (dùng ở mọi chỗ khác).
+- Màu: HAI loại tách bạch — (a) "Màu thương hiệu": chọn 1 màu tự do + tự kiểm tương phản chữ trên màu, gợi ý màu an toàn nếu không đạt (chỉ dùng ở Giao diện website); hiện dải 10 bậc tự sinh `--brand-50 … --brand-900` — backend ĐÃ CÓ 26/09 (`app/Modules/Theme/Theming/BrandPalette.php`: giữ sắc màu, bậc sáng đều, màu gốc nằm nguyên ở bậc gần nhất; đầu sáng đi chữ tối, đầu tối đi chữ trắng, ≥4.5:1) — vẽ đúng thuật toán đó, không tự chế bảng; (b) "Chọn trong bảng màu": chỉ các ô token (dùng ở mọi chỗ khác).
 - Phản hồi: Toast (biến thể có nút "Hoàn tác" 8 giây) · Hộp xác nhận (mẫu SweetAlert2, nút Huỷ focus, biến thể nguy hiểm) · Dải thông báo trong trang (thông tin / cảnh báo / lỗi / thành công) · Skeleton (danh sách, thẻ, form) · Trạng thái trống (có ví dụ + nút "Bắt đầu từ mẫu" khi hợp).
 - Bố cục: Panel trượt phải (drawer) · Thanh thao tác hàng loạt ("Đã chọn N" + nút đếm đúng số hợp lệ) · Popover ⓘ (theo §8) · Danh sách khoá–giá trị · Thẻ số liệu · Thanh mức dùng (ngưỡng 80% / 100%).
 - Tiến độ & lịch sử: Stepper (đường tiến độ có mốc — lấy từ bộ Quy trình duyệt) · Timeline · Vòng tiến độ "Hoàn thiện website 3/6".

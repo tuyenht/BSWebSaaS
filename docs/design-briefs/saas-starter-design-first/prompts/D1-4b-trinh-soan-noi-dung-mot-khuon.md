@@ -6,11 +6,11 @@ Luật cứng:
 - Token AdminKit — bậc WCAG AA đã chuẩn hoá (PR #87 trong repo); DÙNG ĐÚNG bộ này, không tự thêm màu ngoài bộ: navy #405189 · Inter 14px · bo 4px ô nhập / 6px thẻ · 1 bóng thẻ · nền #f3f3f9.
   · Chữ phụ: --color-body-muted #6b6e7f (≥4.5:1 trên trắng và trên nền trang). --color-body-faint CHỈ cho chi tiết trang trí, KHÔNG cho chữ có nghĩa.
   · Navy làm CHỮ / VIỀN / VÒNG FOCUS = role "accent" (sáng #405189 · tối #96a1c0); navy làm NỀN dưới chữ trắng vẫn là --color-admin-primary.
-  · Màu ngữ nghĩa 2 bậc: --color-admin-{success,info,warning,danger}-text (chữ + kiểu soft + viền, ≥4.5:1, lật theo sáng/tối) và -solid (nền dưới chữ trắng, ≥4.5:1). Nút/badge warning solid dùng chữ #212529.
-  · Viền ô nhập: --color-border-input (≥3:1 trên nền ô, cả sáng lẫn tối).
+  · Màu ngữ nghĩa 2 bậc: --color-admin-{secondary,success,info,warning,danger}-text (chữ + kiểu soft + viền, ≥4.5:1, lật theo sáng/tối) và -solid (nền dưới chữ trắng, ≥4.5:1; secondary nền #2f69d4, KHÔNG dùng #3577f1 làm nền chữ). Nút/badge warning solid dùng chữ #212529. Badge "dark" kiểu soft dùng chữ --color-admin-dark-text (lật sáng ở chế độ tối) (PR #92).
+  · Viền ô nhập: --color-border-input (≥3:1 trên nền ô, cả sáng lẫn tối). Placeholder = --color-placeholder (= muted) và CHỈ chứa ví dụ ("0912 345 678"); hướng dẫn/điều kiện đặt ở dòng gợi ý dưới ô, không nhét vào placeholder (PR #92).
   · Focus: --focus-ring-width 2px · --focus-ring-offset 2px · --focus-ring-color (accent; vùng nền đậm như sidebar/header đổi màu vòng theo chữ của vùng). KHÔNG outline:none mà không thay bằng ring.
   · Sidebar: chữ mục thường trắng .85; MỤC ĐANG CHỌN = chữ trắng + nền active + vạch chỉ báo bên trái + aria-current="page" (phân biệt bằng HÌNH, không chỉ bằng màu).
-  · Storefront: chữ màu thương hiệu trên nền sáng dùng --primary-text (tự làm tối tới ≥4.5:1 trên thẻ và trên nền trang); --primary giữ cho nền/viền và chữ trên nền tối (header/hero/footer).
+  · Storefront: chữ màu thương hiệu trên nền sáng dùng --primary-text (tự làm tối tới ≥4.5:1 trên thẻ và trên nền trang); chữ màu thương hiệu trên nền tối --ink (link footer, menu con, nút phụ ở hero) dùng --primary-on-ink (tự làm sáng tới ≥4.5:1, PR #92); --primary giữ cho nền/viền.
 - Đích build: Livewire 4 + Blade + Tailwind 4 + <x-admin::*>; icon Remix inline-SVG (prototype dùng CDN được, README liệt kê tên icon). Không Bootstrap, không Flux.
 - Mỗi màn đủ trạng thái: trống · đang tải · lỗi (có "Thử lại") · không có quyền · khoá theo gói · thành công. Không ngõ cụt.
 - 3 bề rộng 1240 / 768 / 390, sáng + tối, WCAG 2.2 AA.
@@ -23,7 +23,7 @@ TIÊU CHÍ DỄ DÙNG — kiểm từng màn trước khi giao, ghi kết quả 
  3. Không thuật ngữ kỹ thuật trần (SMTP, OAuth, DNS, CNAME, SSL, API, webhook, token, slug, meta, robots…). Buộc phải có thì để trong khối "Nâng cao" và kèm 1 câu giải thích đời thường. Tên thương hiệu quen (Google, Zalo, Facebook) giữ nguyên nhưng nói rõ công dụng ("Facebook Pixel — đo hiệu quả quảng cáo Facebook").
  4. Icon luôn kèm chữ; chỉ icon rất quen (tìm kiếm, chuông, đóng, thêm) mới được đứng một mình, và phải có tooltip + aria-label.
  5. Ô nhập có gợi ý bằng ví dụ thật; lỗi nói cách sửa ("Số điện thoại cần 10 số, ví dụ 0901 234 567"), không nói lỗi kỹ thuật.
- 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu, xoá = vào Thùng rác kèm toast "Hoàn tác".
+ 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu. Xoá thứ CÓ Thùng rác (bài, trang, sản phẩm, ảnh & tệp) = vào Thùng rác kèm toast "Hoàn tác"; xoá thứ KHÔNG có Thùng rác (trình đơn, mục trình đơn, chuyên mục, nhóm quyền…) = hộp xác nhận nói rõ hệ quả bằng số và tên ("Xoá mục này và 3 mục con", "12 bài sẽ chuyển sang Tin công ty") — không hứa "Hoàn tác" cho thứ đã xoá hẳn.
  7. Trạng thái luôn có màu + hình + chữ — không bao giờ chỉ dùng màu.
  8. Không cắt chữ: nhãn nút, chip, tab, nút lọc luôn 1 dòng (dài thì "…" + tooltip) — nút KHÔNG bao giờ xuống 2 dòng; nhãn ô nhập được xuống dòng nhưng không bị che. Không thanh cuộn ngang trong thẻ/khung đọc.
  9. Điện thoại: việc hay làm (trả lời khách liên hệ, duyệt bài, đăng tin nhanh, xem thông báo) làm trọn được ở 390px; vùng bấm ≥ 44px; không thành phần nổi nào che nút Lưu hay nội dung.
@@ -44,7 +44,13 @@ Việc:
 3. Tạo trang mới: "Bắt đầu từ mẫu" (Giới thiệu · Dịch vụ · Liên hệ · Trang trống — mẫu lấy từ Trình dựng v3) hoặc "Trang trống"; bài mới: gợi ý "Viết bằng AI" (gắn nhãn cần gói AI) cạnh "Tự viết".
 4. Xem trước trên Máy tính / Điện thoại trước khi Đăng; sau khi Đăng hiện dải "Đã đăng — Xem trên website".
 5. Làm nốt các mục CHƯA LÀM của TODO đợt 4 (Kiểm định theo BSSEO.audit; ô mô tả ảnh đại diện cho Trang; chốt chặn hay chỉ cảnh báo nhóm SEO bắt buộc — đề xuất: chỉ cảnh báo, không chặn người mới; phân vai "Nâng cấp nội dung" và "AI Writer" — phần AI giữ, gắn nhãn "cần gói AI").
-6. Lịch sử phiên bản: thẻ 3 bản gần nhất + "Xem tất cả" (panel: ai, lúc nào, ngôn ngữ; so với bản hiện tại; Khôi phục có xác nhận "tạo bản mới, không xoá bản nào"). Ghi "Chờ backend: bảng lịch sử phiên bản chưa có".
-7. Rời trang khi chưa lưu: hộp 3 nút (Ở lại / Thoát không lưu / Lưu & thoát). Tự lưu nháp + giờ lưu gần nhất.
+6. Lịch sử phiên bản — BACKEND ĐÃ CÓ, lên prod 28/09 (`docs/design.md` §8; `app/Modules/Cms/Queries/EntryRevisions.php`, `app/Modules/Cms/Actions/RestoreEntryRevision.php`, `app/Modules/Cms/Enums/RevisionKind.php`) — KHÔNG gắn "Chờ backend". Luật as-built:
+   · Mỗi dòng = 1 NGÔN NGỮ (khôi phục bản tiếng Anh không kéo lùi bản tiếng Việt) → lịch sử lọc theo ngôn ngữ đang chọn ở thanh ngôn ngữ.
+   · Chỉ ghi khi nội dung ĐANG CÔNG KHAI: lúc lên website (Đăng, hẹn giờ, duyệt xong) và mỗi lần lưu khi đang công khai; bản nháp chưa đăng không có lịch sử → trạng thái trống nói rõ "Lịch sử bắt đầu từ lần đăng đầu tiên".
+   · 4 lý do (nhãn đời thường): Bản gốc (có sẵn trước khi bật lịch sử) · Đăng · Sửa khi đang công khai · Khôi phục. Mỗi dòng: ai, lúc nào (giờ site), lý do. Danh sách "Tải thêm" (không đánh số trang). Giữ ít nhất 20 bản gần nhất; bản cũ hơn 90 ngày tự dọn.
+   · Xem 1 bản = nội dung đầy đủ của bản đó; tô chỗ khác so với hiện tại là việc của màn.
+   · Khôi phục (quyền sửa bài): KHÔNG đổi trạng thái; nếu bài đang công khai thì khách thấy NGAY (như bấm Lưu) → hộp xác nhận nói đúng điều này + "tạo bản mới, không xoá bản nào". Ảnh đã bị xoá khỏi thư viện thì bị bỏ trống → báo "N ảnh không còn trong thư viện đã được bỏ trống". Từ chối có mã + câu đã dịch sẵn (`lang/vi.json` `entries.revision_err_*`): slug_taken · locale_disabled · snapshot_incompatible · entry_trashed.
+7. Rời trang khi chưa lưu: hộp 3 nút (Ở lại / Thoát không lưu / Lưu & thoát). Tự lưu nháp + giờ lưu gần nhất — CHỈ cho bài chưa công khai: hiện tại lưu bài đang công khai là khách thấy ngay (xem mục 9), nên tự lưu không được đẩy nửa chừng lên website.
 8. Không nhân bản code 2 màn — sửa 1 nơi đổi mọi loại. Áp content-ui.js (BSUI) + Chuẩn giao diện. Audit responsive các khối mới (mục cuối của TODO đợt 4).
+9. Quyết định còn mở, cần hình để owner chọn (roadmap: "bản nháp đè bản công khai"): vẽ HAI phương án cho bài đang công khai, ghi so sánh vào README — (A) như hiện tại: nút "Cập nhật" = khách thấy ngay, lịch sử giữ bản trước để khôi phục; (B) sửa trên bản nháp riêng, khách vẫn thấy bản cũ tới khi bấm "Cập nhật website" (hoặc duyệt xong khi bật quy trình), có dải "Đang có thay đổi chưa đăng — Xem trước / Bỏ thay đổi". B đổi hành vi website + backend → chỉ build sau khi owner chọn.
 Gắn vào Shell: `<loại>.create`, mở từ danh sách bằng `bs-goto` kèm mã công khai của bài (không dùng id).
