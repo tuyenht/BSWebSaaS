@@ -10,11 +10,11 @@
 - Mỗi file đã chứa sẵn phần **BỐI CẢNH CHUNG** (luật cứng + 12 tiêu chí dễ dùng + hợp đồng nhúng Admin Shell + mẫu README handoff).
 - Xong mỗi lượt: export → Claude Code đối chiếu với code + 12 tiêu chí → lưu `docs/design_handoff_<slug>/` → cập nhật sổ màn → mới build.
 
-## Sóng (25 lượt)
+## Sóng (28 lượt)
 | Sóng | Lượt | Cần trước |
 |---|---|---|
-| D0 Nền | D0-1 Dọn & đồng bộ project · D0-2 Chuẩn giao diện: component · D0-3 Chuẩn giao diện: mẫu trang + Bảng thuật ngữ + tiêu chí dễ dùng · D0-4 Admin Shell v2: điều hướng + registry màn · D0-5 Nối màn đã có | bắt đầu ngay |
-| D1 Nội dung | D1-1 Chuyên mục · D1-2 Trình đơn · D1-3 Danh sách nội dung · D1-4a Rà trình soạn chung · D1-4b Trình soạn một khuôn · D1-5 Sản phẩm · D1-6 Thư viện ảnh & tệp · D1-7 Khách liên hệ & Biểu mẫu | D0 |
+| D0 Nền | D0-1 Dọn & đồng bộ project · D0-2 Chuẩn giao diện: component · D0-3 Chuẩn giao diện: mẫu trang + Bảng thuật ngữ + tiêu chí dễ dùng · D0-4a Admin Shell v2: menu + topbar + Cài đặt · D0-4b Admin Shell v2: Tweaks + registry màn + điều hướng · D0-5 Nối màn đã có | bắt đầu ngay · chạy đúng thứ tự D0-1 → D0-5 (lượt sau dùng kết quả lượt trước) |
+| D1 Nội dung | D1-1 Chuyên mục · D1-2 Trình đơn · D1-3 Danh sách nội dung · D1-4a Rà trình soạn chung · D1-4b Trình soạn một khuôn · D1-4c SEO còn lại + Lịch sử phiên bản · D1-4d Rời trang + nháp đè bản công khai · D1-5 Sản phẩm · D1-6 Thư viện ảnh & tệp · D1-7 Khách liên hệ & Biểu mẫu | D0 |
 | D2 Người dùng | D2-1 Nhóm quyền & Thành viên · D2-2 Lời mời · D2-3 Tài khoản của tôi · D2-4 Thông báo · D2-5 Tổng quan theo vai trò | D0 |
 | D3 Cài đặt | D3-1 Chung & Nội dung · D3-2 Tiếp thị & Hệ thống | D0 |
 | D4 Nền tảng | D4-1 Tổng quan + Khách hàng + Website · D4-2 Gói & tính năng + Loại website · D4-3 Vận hành viên + Nhật ký + Đăng nhập hỗ trợ + Cài đặt nền tảng | D0 |
@@ -37,4 +37,4 @@ Ngoài phạm vi: khu đăng nhập (giữ nguyên) · bộ AI (module sau core 
 12. Đúng Bảng thuật ngữ chung (lượt D0-3).
 
 ## Nghiệm thu toàn bộ
-Mọi mục menu ở 2 mặt mở ra màn đã thiết kế (chỉ còn ô "Để sau" có lý do) · luồng tạo bài → duyệt → đăng, mời thành viên → gán nhóm, đổi ngôn ngữ, hết hạn mức gói, tạo website → đăng nhập hỗ trợ chạy trọn · 3 bề rộng × sáng/tối × chữ thường/lớn × 6 vai trò × 3 chế độ duyệt × 1/3/8 ngôn ngữ · 4 người dùng mẫu làm việc chính ≤ 3 bước.
+Mọi mục menu ở 2 mặt mở ra màn đã thiết kế (chỉ còn ô "Để sau" có lý do) · luồng tạo bài → duyệt → đăng, mời thành viên → gán nhóm, đổi ngôn ngữ, hết hạn mức gói, tạo website → đăng nhập hỗ trợ chạy trọn · 3 bề rộng × sáng/tối × chữ thường/lớn × 6 vai trò website + 3 vai trò nền tảng × 3 chế độ duyệt × 1/3/8 ngôn ngữ · 4 người dùng mẫu làm việc chính ≤ 3 bước.
