@@ -2,6 +2,8 @@
 
 use App\Modules\Admin\Livewire\Entries\Editor;
 use App\Modules\Admin\Livewire\Entries\Index;
+use App\Modules\Cms\Actions\ApplyEntryDraft;
+use App\Modules\Cms\Actions\ApplyEntryDraftTransition;
 use App\Modules\Cms\Actions\ApplyEntryWorkflowTransition;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\PublishScheduledEntry;
@@ -34,8 +36,12 @@ arch('entry status changes happen only on the known roads')
     ->expect(EntryStatusAudit::class)
     ->toOnlyBeUsedIn($statusRoads);
 
+// A pending change put on the website (approved, or applied by a publisher) changes what visitors
+// see without changing the status, so those two roads are not status roads, yet record a revision.
+$changeRoads = [ApplyEntryDraftTransition::class, ApplyEntryDraft::class];
+
 // One rule per class: an array on the expect() side passes as soon as ONE of them complies.
-foreach ([...$publishingRoads, Editor::class, Index::class, RestoreEntryRevision::class] as $road) {
+foreach ([...$publishingRoads, ...$changeRoads, Editor::class, Index::class, RestoreEntryRevision::class] as $road) {
     arch(class_basename($road).' records a revision')
         ->expect($road)
         ->toUse(RecordEntryRevision::class);

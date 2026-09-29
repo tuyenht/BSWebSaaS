@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
 /**
  * The one place a revision is written (design.md §8). Every road that puts an entry live
  * (PublishEntry, PublishScheduledEntry, ApplyEntryWorkflowTransition), a save while it is live,
- * and a restore call it — an arch test holds the publishing roads to it.
+ * a pending change put on the website (ApplyEntryDraftTransition, ApplyEntryDraft) and a restore
+ * call it — an arch test holds those roads to it.
  *
  * What a snapshot holds: the locale's title, slug, body, excerpt, SEO fields and OG image, plus
  * the entry's shared template_override, cover_media_id and meta. NOT status / workflow_state /
