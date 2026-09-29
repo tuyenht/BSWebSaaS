@@ -35,10 +35,10 @@ File mới dùng **kebab-case** (`admin-ux-conventions.md`). Không đổi tên 
 9. Icon — tên Remix từng chỗ (build bằng inline-SVG)
 10. Chuỗi cần dịch
 11. Kết quả 12 tiêu chí dễ dùng (`design-briefs/saas-starter-design-first/README.md`)
-12. Câu hỏi cho backend
+12. Việc cho backend — tính năng thiết kế có mà repo chưa có (dữ liệu cần lưu · luật); backend làm theo (CLAUDE.md §8)
 
 ## Prompt tự-đứng gửi Claude Design (UI chưa có handoff — CLAUDE.md §8)
-Claude Design không đọc được repo, nên prompt phải đứng một mình và gồm đủ:
+Claude Design đọc repo qua GitHub (nhánh `main`) nhưng không chạy code; prompt vẫn phải đứng một mình và gồm đủ:
 1. Bối cảnh: BSWebSaaS — SaaS website builder đa tenant, đa ngôn ngữ, admin phong cách Velzon (AdminKit).
 2. Màn hình/luồng cần thiết kế + mục tiêu của người dùng.
 3. Đối tượng không rành công nghệ: trạng thái trống · đang tải · lỗi bằng lời thường · không ngõ cụt · mobile-first ·
@@ -49,3 +49,20 @@ Claude Design không đọc được repo, nên prompt phải đứng một mìn
 6. Đầu ra: prototype tương tác `.dc.html` + README theo mẫu ở trên, lưu vào `design_handoff_<slug>/`.
 
 Trong báo cáo: đánh dấu phần "⏸ chờ design" và dán nguyên văn prompt trong một khối code để owner chuyển tay.
+
+## Nối Claude Code ↔ Claude Design (không để vênh)
+Luật: **thiết kế dẫn, backend theo** (CLAUDE.md §8). Mỗi bên chỉ ghi phần của mình, nên không bao giờ hai bên cùng sửa một chỗ.
+
+| Chiều | Kênh | Ai ghi |
+|---|---|---|
+| Thiết kế → code | Bản publish của màn (link claude.ai/artifact) | Owner publish trong Claude Design |
+| Thiết kế → code | Bản chụp `design_handoff_<slug>/<Màn>.dc.html` + README "Việc cho backend" | Claude Code |
+| Code → thiết kế | `main` trên GitHub: prompt `design-briefs/`, README handoff, mã lỗi, bảng/cột | Claude Code (owner merge) |
+| Trạng thái | `saas-starter-screen-map.md` — mục "Bản thiết kế đã chụp" | Claude Code |
+
+Vòng nhận thiết kế (Claude Code làm, mở đầu mỗi `/bs:next` và khi owner gửi link):
+1. Liệt kê bản publish của owner (Artifact `list`); bản nào mới hơn ngày ghi trong sổ màn → đọc.
+2. Chụp: `python3 scripts/design_snapshot.py <file đã đọc> "docs/design_handoff_<slug>/<Màn>.dc.html"`; `git diff` = đúng phần thiết kế đổi.
+3. Cập nhật bảng "Việc cho backend" của màn; phần đổi cấu trúc dữ liệu → đặc tả COUNCIL (bàn cách làm, không bàn có làm hay không).
+4. Làm backend → build giao diện 1:1 → đánh dấu ✅ trong README và sổ màn.
+5. Thiết kế cần một điều backend không được phép (tách dữ liệu giữa website, bảo mật, pháp lý, danh sách rất lớn) → không tự cắt: ghi "Cần owner chốt" và hỏi owner.

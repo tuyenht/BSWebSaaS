@@ -4,6 +4,14 @@
 > (export Claude Design 18/09 ↔ repo `13281cb`). Brief thi công: `design-briefs/saas-starter-design-first/`.
 > Khu đăng nhập (login · quên/đặt lại mật khẩu · 2 lớp · mã email) **giữ nguyên** — không nằm trong đếm.
 
+## Bản thiết kế đã chụp (vòng nhận: `README.md` → "Nối Claude Code ↔ Claude Design")
+
+| Màn | Link publish | Bản đã chụp | Thư mục |
+|---|---|---|---|
+| 16 Trình đơn | https://claude.ai/artifact/72uxdN6nMYG1RJhthnjV7F | 29/09/2026 | `design_handoff_menus/` |
+| 9 Danh sách Bài viết | https://claude.ai/artifact/9bxFH2VrkPxdop37vZT7TZ | chưa chụp (code đã build theo) | — |
+| 8 Danh sách Trang | https://claude.ai/artifact/MYKcpNg5sk4A6sbt4DcUSg | bản cũ trong thư mục; bản publish 29/09 chưa chụp | `design_handoff_pages_admin/` |
+
 Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyết định · 🔴 sơ sài · ❌ chưa có · ⏸ ngoài core v1
 
 **Tổng (23/09):** ≈60 màn — thiết kế đủ 28 (8 lệch) · một phần 7 · chưa có 25.
@@ -24,7 +32,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 13 | Thanh ngôn ngữ nội dung | ✅ spec | — | 🟡 | D1-4b | |
 | 14 | Lịch sử phiên bản | 🟡 | — | ❌ UI · ✅ backend | D1-4b | 28/09: `entry_revisions` (1 bản/ngôn ngữ, ghi ở mọi đường lên public + lưu khi đang public), danh sách keyset, khôi phục có mã lý do, giữ 20 bản/90 ngày; bản nháp đè bản công khai chưa làm |
 | 15 | Chuyên mục | ❌ | — | ❌ trang "sắp có" · ✅ backend đường ghi | D1-1 | 26/09: tạo/sửa/chuyển/xoá chuyên mục ≤ 3 cấp (`Cms\Actions\Taxonomies`), ghi `path` ltree; bài/sản phẩm đổi đường dẫn + 301 cùng giao dịch (`Cms\Routing\CategoryDependents`); bài rời chuyên mục cần xác nhận; xoá → link trình đơn trỏ theo nơi đến |
-| 16 | Trình đơn | 🟠 thiếu gán theo ngôn ngữ | — | ❌ trang "sắp có" · ✅ backend đường ghi | D1-2 | backend 24/09: `link_type` `product` + ẩn đích khách không mở được · 26/09: tạo/sửa/xoá trình đơn và mục, kéo thả ≤ 5 cấp, gán theo vùng × ngôn ngữ (`Cms\Actions\Menus`) |
+| 16 | Trình đơn | ✅ owner duyệt · 🟠 thiếu gán theo ngôn ngữ | `design_handoff_menus/` | ❌ trang "sắp có" · ✅ backend đường ghi | D1-2 | backend 24/09: `link_type` `product` + ẩn đích khách không mở được · 26/09: tạo/sửa/xoá trình đơn và mục, kéo thả ≤ 5 cấp, gán theo vùng × ngôn ngữ (`Cms\Actions\Menus`) |
 | 17 | Page builder | ✅ v3 | — | 🟡 | ⏸ track Builder v3 | |
 | 18–19 | Hộp duyệt · Khối trạng thái duyệt | ✅ | `design_handoff_workflow/` | ✅ prod | — | |
 | 20–21 | Sản phẩm: danh sách · trình sửa | ❌ | — | ✅ · 🟡 | D1-5 | 24/09: lưu sản phẩm Đã đăng → có địa chỉ công khai, đổi đường dẫn → 301 (`catalog:sync-routes` sửa hàng cũ) |
