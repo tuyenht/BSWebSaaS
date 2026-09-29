@@ -46,6 +46,16 @@ Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm n
 
 Mục tiêu: project gọn, không bản trùng, câu chữ đúng luật của chính project, tài liệu nói đúng về repo.
 
+0. LÀM ĐẦU TIÊN — owner uỷ quyền 30/09 (ngoại lệ DUY NHẤT của luật "Không sửa CLAUDE.md"): sửa CLAUDE.md của project đúng 3 chỗ dưới đây, không đổi gì khác, rồi ghi 1 dòng LESSONS.md "CLAUDE.md §8/§13 đồng bộ prompt 30/09". Từ đó CLAUDE.md và prompt cùng một luật.
+   1) §8, THAY dòng "Token AdminKit: primary `#405189`, bo 4px control / 6px card, …, Inter 14px, canvas `#f3f3f9`. Không tự chế màu mới." bằng:
+   - Token AdminKit (đồng bộ repo PR #87/#92, đạt WCAG AA): primary `#405189` = nền dưới chữ trắng · accent `#405189` (tối `#96a1c0`) = chữ, viền, vòng focus · chữ phụ `--color-body-muted` `#6b6e7f` (tối `#98a0ae`); `--color-body-faint` chỉ cho chi tiết trang trí · viền ô nhập `--color-border-input` · màu ngữ nghĩa 2 bậc: `-text` (chữ, kiểu soft) và `-solid` (nền dưới chữ trắng; secondary `#2f69d4`, không dùng `#3577f1` làm nền chữ) · focus: vòng 2px cách 2px, không `outline:none`. Bo 4px control / 6px card, shadow `0 1px 2px rgba(56,65,74,.15)`, Inter 14px, canvas `#f3f3f9`. Không tự chế màu mới.
+
+   2) §8, THAY "mở thử từng popover ở 3 bề rộng 1180 / 700 / 440px" bằng "mở thử từng popover ở 3 bề rộng 1240 / 768 / 390px", và THÊM dòng:
+   - Mỗi màn kiểm ở 1240 / 768 / 390px × sáng + tối × chữ thường + chữ lớn trước khi giao.
+
+   3) Cuối §13, THÊM:
+   - Màn TOÀN TRANG (danh sách, trình soạn, hộp duyệt, thư viện) cũng nhận `embedded`, nhưng chỉ ẩn phần trùng Shell (breadcrumb, tiêu đề trang, khung 100vh); GIỮ thanh thao tác và nút quy trình của chính màn; vẫn báo `onDirty` và nghe `bs-embed-cmd`. Shell chỉ mount màn toàn trang đang mở (`sc-if`); panel Cài đặt giữ cách `xWrapStyle` ở trên.
+
 1. Bản trùng / lưu trữ:
    - `Website Config - Integrations.dc.html` trùng chức năng `Integrations Panel.dc.html` nhưng thiếu hợp đồng nhúng §13 → `Integrations Panel` đã có đủ mọi mục (Claude Code đã so chữ hai file) — grep dc-import rồi xoá bản cũ (như đã làm với `Floating Contact - Settings` — TODO.md).
    - Đưa `Page Builder v2.dc.html` và `Page Builder - Options.dc.html` vào `_archive/` (bản khám phá). Grep mọi dc-import/đường dẫn tới chúng trước khi chuyển; Page Builder v3 giữ nguyên chỗ cũ (track Builder v3 riêng — không chuyển, không sửa).
@@ -64,4 +74,4 @@ Mục tiêu: project gọn, không bản trùng, câu chữ đúng luật của 
    - Để sau: bộ AI · mặt TMĐT (Đơn hàng, Khách hàng, Khuyến mãi, Kho, Báo cáo; Thanh toán, Vận chuyển, Thuế) · Khối tái dùng · Trình dựng trang v3 (track riêng).
    - Giữ nguyên, không thiết kế lại: khu đăng nhập (đăng nhập · quên/đặt lại mật khẩu · xác thực 2 lớp · mã qua email).
 
-Xong khi: không còn bản trùng; grep không còn dc-import gãy, không còn "lượt AI" cho tác vụ chữ, không còn tên nền tảng gắn cứng trong câu chữ (mọi chỗ đọc BSPLAT); token trong `_ds`, BSUI, BSCW, Shell khớp repo; github.md và readme đúng repo; có file Bản đồ màn hình.
+Xong khi: CLAUDE.md đã sửa đúng 3 chỗ ở việc 0; không còn bản trùng; grep không còn dc-import gãy, không còn "lượt AI" cho tác vụ chữ, không còn tên nền tảng gắn cứng trong câu chữ (mọi chỗ đọc BSPLAT); token trong `_ds`, BSUI, BSCW, Shell khớp repo; github.md và readme đúng repo; có file Bản đồ màn hình.
