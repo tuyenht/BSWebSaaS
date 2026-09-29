@@ -42,8 +42,9 @@
   design §8 v2.29) — màn chờ handoff D1-4c. Còn mở, cần quyết cùng handoff D1-4d: **bản nháp đè bản công khai** (sửa bài
   đang công khai chưa hiện ra ngay mà chờ "Cập nhật"/duyệt) — đổi hành vi storefront + trình soạn ⇒ COUNCIL riêng.
   ⚠ Rủi ro đang có (29/09): website BẬT quy trình duyệt thì người có quyền sửa bài vẫn lưu thẳng thay đổi lên bài đang
-  công khai, không qua duyệt (`Entries/Editor.php` `save()`). Khuyến nghị C5: tắt duyệt → lên ngay; bật duyệt → bản chờ
-  duyệt. Chưa bật quy trình duyệt cho website khách nào trước khi COUNCIL này xong.
+  công khai, không qua duyệt (`Entries/Editor.php` `save()`). Owner chốt C5 30/09 (design v2.31): tắt duyệt → lên ngay; bật duyệt →
+  thay đổi chờ duyệt; đặc tả COUNCIL `plans/reports/council-260930-0025-c5-draft-over-live-spec-report.md`. Chưa bật quy trình
+  duyệt cho website khách nào trước khi C5 lên prod.
 - **RBAC Console:** backend nhóm quyền tuỳ chỉnh xong (`rbac.custom_roles`, mặc định tắt); UI = lượt D2-1.
 - **Core Web Vitals:** job `cwv` là gate từ 24/09 cho `/`, `/lien-he`, `/tin-tuc` (LCP ≤ 1,5s · JS ≤ 30KB · axe 0 vi phạm).
 - **Đăng nhập 3 cửa (§LR B1–B6):** tường minh mặt phẳng · cửa owner · đăng nhập chung + chọn website · chuyển website ·
