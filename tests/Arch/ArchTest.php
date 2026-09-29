@@ -75,3 +75,10 @@ test('every Entry action routes through EntryPolicy', function (): void {
 arch('workflow transitions go through the engine')
     ->expect('App\\Modules\\Workflow\\Models\\WorkflowLog')
     ->toOnlyBeUsedIn('App\\Modules\\Workflow');
+
+// 4) A pending change to live content is not yet approved, so it must never reach a visitor:
+//    only the content module (which writes and applies it) and the admin (which edits and reviews
+//    it) may touch EntryDraft. The storefront reads entries/entry_translations alone.
+arch('pending changes to live content stay out of the storefront')
+    ->expect('App\\Modules\\Cms\\Models\\EntryDraft')
+    ->toOnlyBeUsedIn(['App\\Modules\\Cms', 'App\\Modules\\Admin']);

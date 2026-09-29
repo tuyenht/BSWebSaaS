@@ -25,7 +25,8 @@ it('gives every foreign key an index that its parent-delete lookup can use', fun
     $neverHardDeleted = [
         // Accounts are never deleted; an account-erasure flow must index these first.
         'users' => [
-            'entries.assigned_to', 'entries.author_id', 'entry_revisions.created_by',
+            'entries.assigned_to', 'entries.author_id', 'entry_drafts.assigned_to',
+            'entry_drafts.created_by', 'entry_drafts.updated_by', 'entry_revisions.created_by',
             'invitations.accepted_user_id', 'invitations.invited_by', 'site_notifications.user_id',
             'tenant_users.user_id', 'workflow_log.actor_id', 'workflow_log.assigned_to',
         ],
