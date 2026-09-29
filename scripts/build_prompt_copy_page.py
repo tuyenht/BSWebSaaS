@@ -111,6 +111,20 @@ for mod, screen, d, c in MATRIX:
     last = mod
     rows.append(f'<tr><td class="mod">{m}</td><td>{e(screen)}</td><td>{pill(d)}</td><td>{pill(c)}</td></tr>')
 
+# Open calls the 29/09 audit left for the owner: the prompts draw the safest default and tag it "Cần owner chốt".
+OPEN = [
+    ('C1', 'Khoá màn hình', 'Prompt giữ như đã vẽ (menu người dùng) và ghi Việc cho backend. Bỏ thì owner nói — vì lý do dễ dùng, không phải vì thiếu backend.'),
+    ('C2', 'Dữ liệu & Phục hồi', 'Màn đã vẽ (khôi phục về thời điểm, xuất, nhập). Prompt giữ + Việc cho backend; sổ màn đang ghi ⏸ — owner chọn giữ hay hoãn.'),
+    ('C3', 'Ai được "Đăng nhập hỗ trợ"', 'Mặc định vẽ: quyền riêng cho super_admin + support, không cho billing; bắt lý do, có thời hạn, ghi nhật ký. Quyết định bảo mật — build chỉ sau khi owner duyệt.'),
+    ('C4', 'Màu trang quản trị theo từng người', 'Mặc định vẽ: một màu cho cả nền tảng (Thương hiệu trắng, tự đạt AA); tuỳ biến cá nhân không có ô màu.'),
+    ('C5', 'Bản nháp đè bản công khai', 'D1-4d vẽ cả hai phương án A/B kèm so sánh — owner chọn một rồi mới build.'),
+    ('C6', 'Việc owner làm trong project Claude Design', 'Sửa CLAUDE.md của project: §8 thêm token AA (muted #6b6e7f, bậc -text/-solid, vòng focus 2px) và bộ bề rộng 1240/768/390; §13 thêm cách nhúng màn toàn trang. Claude Design không được tự sửa file này.'),
+]
+
+open_rows = ''.join(
+    f'<li class="dec"><span class="qid">{q}</span><div><p class="dq">{e(t)}</p><p class="da">{e(a)}</p></div></li>'
+    for q, t, a in OPEN)
+
 dec_rows = ''.join(
     f'<li class="dec"><span class="qid">{q}</span><div><p class="dq">{e(t)}</p><p class="da">{e(a)}</p></div></li>'
     for q, t, a in DECISIONS)
@@ -256,7 +270,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
   <header class="top">
     <span class="eyebrow">BSWebSaaS · Audit độ phủ thiết kế · 23/09/2026</span>
     <h1>Gói prompt SaaS Starter</h1>
-    <p class="lede">25 lượt chat cho Claude Design để hoàn thiện và chuẩn hoá toàn bộ màn hình của bộ khung SaaS Starter, rồi nối tất cả vào Admin Shell thành một prototype bấm xuyên được. Mỗi nút <b>Sao chép prompt</b> chép đủ phần bối cảnh chung + việc của lượt đó. Chạy đúng thứ tự, mỗi prompt một cửa sổ chat mới.</p>
+    <p class="lede">{len(prompts)} lượt chat cho Claude Design để hoàn thiện và chuẩn hoá toàn bộ màn hình của bộ khung SaaS Starter, rồi nối tất cả vào Admin Shell thành một prototype bấm xuyên được. Mỗi nút <b>Sao chép prompt</b> chép đủ phần bối cảnh chung + việc của lượt đó. Chạy đúng thứ tự, mỗi prompt một cửa sổ chat mới.</p>
     <p class="meta">Nguồn: export Claude Design 18/09 (32 màn .dc.html) đối chiếu repo main <code>13281cb</code> · Báo cáo đầy đủ: <code>plans/reports/council-audit-260923-2254-saas-starter-design-coverage-and-docs-report.md</code></p>
   </header>
 
@@ -267,7 +281,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       <li><b>Mở một cửa sổ chat MỚI</b> trong project Claude Design BSWebSaaS, dán và gửi. Không gộp 2 lượt vào 1 cửa sổ.</li>
       <li><b>Xong thì tích ô "Xong"</b> và gửi bản export cho Claude Code để đối chiếu với code trước khi build.</li>
     </ol>
-    <p class="hint">Bản 3.4 (29/09): THIẾT KẾ DẪN, BACKEND THEO — màn cần gì mà repo chưa có thì cứ vẽ, ghi vào "Việc cho backend" của README; không cắt tính năng, không vẽ trạng thái tạm. mọi lượt nhận token #92 (màu secondary/dark 2 bậc, placeholder chỉ chứa ví dụ, --primary-on-ink) và "Mẫu DANH SÁCH dùng chung" lấy từ thiết kế Bài viết/Trang đã build (mọi màn danh sách dùng lại, không chế mới); tiêu chí 6 giữ Thùng rác + Hoàn tác, chỗ backend chưa có thì ghi Chờ backend; D1-2 Trình đơn = thiết kế đã có, chỉ khớp (trục ngôn ngữ, trạng thái nguồn sản phẩm, bảng tính năng chờ backend); D1-1 Chuyên mục, D1-4b Lịch sử phiên bản theo backend đã lên prod; D1-3, D1-6, D1-7 (ô đồng ý), D0-2/D3-1 (bảng màu 10 bậc), D3-2 (tên miền riêng để sau), D4-1 (cấp thêm ngôn ngữ). Bản 3.2 (26/09): D0-4, D3-1, D4-2 — website mặc định 1 ngôn ngữ, thêm ngôn ngữ do Bảo Sơn cấp riêng. Bản 3 (24/09): 10 lượt (D0-1, D0-4, D1-2, D1-5, D2-2, D2-3, D2-4, D3-1, D4-2, D5-1) đã sửa theo backend vừa lên prod — bỏ các nhãn "Chờ backend" không còn đúng, thêm giới hạn và thông báo lỗi thật mà màn phải hiện. Bản 2 (23/09): 12 tiêu chí dễ dùng cho người không rành CNTT ở mọi lượt.</p>
+    <p class="hint">Bản 3.5 (29/09, chưa chạy lượt nào): audit khắt khe cả 25 prompt với bản export thiết kế + repo. Tách D0-4 → D0-4a/4b và D1-4b → D1-4b/4c/4d cho vừa một lượt; D0-1 đồng bộ token AA vào design system + nguồn thương hiệu duy nhất (platform-config.js) + nối "lượt AI" của Shell với ai-quota.js; giữ Khoá màn hình, Dữ liệu & Phục hồi, 9 nguồn ảnh của MediaPicker (không cắt vì backend); xoá vào Thùng rác không hỏi (Hoàn tác 8 giây), chỉ hỏi khi kéo theo mục khác hoặc không hoàn tác được; màn toàn trang khi nhúng GIỮ thanh thao tác của mình; thêm mã lỗi thật còn thiếu (Chuyên mục, Thư viện 16/16, Lời mời); kiểm bằng lưới mẫu thay tích số đầy đủ; mỗi lượt lớn có điểm dừng "phần 2". Bản 3.4 (29/09): THIẾT KẾ DẪN, BACKEND THEO — màn cần gì mà repo chưa có thì cứ vẽ, ghi vào "Việc cho backend" của README; không cắt tính năng, không vẽ trạng thái tạm. mọi lượt nhận token #92 (màu secondary/dark 2 bậc, placeholder chỉ chứa ví dụ, --primary-on-ink) và "Mẫu DANH SÁCH dùng chung" lấy từ thiết kế Bài viết/Trang đã build (mọi màn danh sách dùng lại, không chế mới); tiêu chí 6 giữ Thùng rác + Hoàn tác, chỗ backend chưa có thì ghi Chờ backend; D1-2 Trình đơn = thiết kế đã có, chỉ khớp (trục ngôn ngữ, trạng thái nguồn sản phẩm, bảng tính năng chờ backend); D1-1 Chuyên mục, D1-4b Lịch sử phiên bản theo backend đã lên prod; D1-3, D1-6, D1-7 (ô đồng ý), D0-2/D3-1 (bảng màu 10 bậc), D3-2 (tên miền riêng để sau), D4-1 (cấp thêm ngôn ngữ). Bản 3.2 (26/09): D0-4, D3-1, D4-2 — website mặc định 1 ngôn ngữ, thêm ngôn ngữ do Bảo Sơn cấp riêng. Bản 3 (24/09): 10 lượt (D0-1, D0-4, D1-2, D1-5, D2-2, D2-3, D2-4, D3-1, D4-2, D5-1) đã sửa theo backend vừa lên prod — bỏ các nhãn "Chờ backend" không còn đúng, thêm giới hạn và thông báo lỗi thật mà màn phải hiện. Bản 2 (23/09): 12 tiêu chí dễ dùng cho người không rành CNTT ở mọi lượt.</p>
   </section>
 
   <div class="facts" role="list">
@@ -280,6 +294,11 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
   <section class="panel" aria-labelledby="dec-h">
     <div class="panel-head"><h2 id="dec-h">✅ Đã chốt 24/09 — 14 quyết định theo khuyến nghị</h2><span class="hint">Đã làm và lên prod 24/09: Q1–Q5 (5 migration, PR #70–#74) cùng các bản sửa sau audit (#75–#83). Q6–Q9 làm cùng màn tương ứng; Q11, Q12 để sau.</span></div>
     <ul class="decs">{dec_rows}</ul>
+  </section>
+
+  <section class="panel" aria-labelledby="open-h">
+    <div class="panel-head"><h2 id="open-h">🟡 Cần owner chốt — prompt đã vẽ mặc định an toàn</h2><span class="hint">Không chặn việc chạy prompt: Claude Design vẽ mặc định dưới đây và gắn "Cần owner chốt" trong README. Owner trả lời bất cứ lúc nào trước khi build màn đó.</span></div>
+    <ul class="decs">{open_rows}</ul>
   </section>
 
   <section class="panel" aria-labelledby="run-h">

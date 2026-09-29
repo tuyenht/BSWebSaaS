@@ -19,19 +19,19 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 
 | # | Màn | Thiết kế | Handoff repo | Code | Lượt | Ghi chú |
 |---|---|---|---|---|---|---|
-| 1 | Admin Shell mặt site | 🟠 menu cũ, 8/13 mục trống | — | ✅ | D0-4, D0-5 | thiếu Hộp duyệt, tab Quy trình duyệt, Sản phẩm trong Cài đặt |
-| 2 | Mặt Nền tảng chung Shell | 🟡 | — | 🟠 layout top-nav riêng | D0-4 | không có nút chuyển mặt trong phiên |
-| 3 | Tìm kiếm toàn cục | 🟡 | — | ❌ ô chết | D0-4 | |
+| 1 | Admin Shell mặt site | 🟠 menu cũ, 8/13 mục trống | — | ✅ | D0-4a, D0-4b, D0-5 | thiếu Hộp duyệt, tab Quy trình duyệt, Sản phẩm trong Cài đặt |
+| 2 | Mặt Nền tảng chung Shell | 🟡 | — | 🟠 layout top-nav riêng | D0-4a | không có nút chuyển mặt trong phiên |
+| 3 | Tìm kiếm toàn cục | 🟡 | — | ❌ ô chết | D0-4a | |
 | 4 | Tổng quan theo vai trò | 🟡 | — | 🔴 stub | D2-5 | |
 | 5 | Tổng quan nền tảng | ❌ | — | ❌ | D4-1 | |
 | 6 | Tài khoản của tôi | 🟡 modal | — | 🟡 Cài đặt›Bảo mật | D2-3 | quyết định: trang riêng từ menu người dùng |
 | 7 | Thông báo | 🟡 chuông | — | ❌ UI · ✅ backend | D2-4 | backend 24/09: module `Notifications`, 4 nguồn đã nối, giữ 90 ngày |
 | 8 | Danh sách Trang | 🟠 cờ giả `canPublish` | `design_handoff_pages_admin/` | ✅ | D1-3 | |
 | 9 | Danh sách Bài viết/Dịch vụ/Dự án | ✅ | — | ✅ | D1-3 | thiếu lọc chuyên mục |
-| 10–11 | Trình soạn Trang / Bài viết | ✅ (TODO đợt 4 còn mở) | — | 🔴 chỉ tiêu đề/đường dẫn/chuyên mục | D1-4a, D1-4b | khoảng cách build lớn nhất |
+| 10–11 | Trình soạn Trang / Bài viết | ✅ (TODO đợt 4 còn mở) | — | 🔴 chỉ tiêu đề/đường dẫn/chuyên mục | D1-4a → D1-4d | khoảng cách build lớn nhất |
 | 12 | Trình soạn chữ | ✅ | — | ✅ Jodit | D1-4a | |
 | 13 | Thanh ngôn ngữ nội dung | ✅ spec | — | 🟡 | D1-4b | |
-| 14 | Lịch sử phiên bản | 🟡 | — | ❌ UI · ✅ backend | D1-4b | 28/09: `entry_revisions` (1 bản/ngôn ngữ, ghi ở mọi đường lên public + lưu khi đang public), danh sách keyset, khôi phục có mã lý do, giữ 20 bản/90 ngày; bản nháp đè bản công khai chưa làm |
+| 14 | Lịch sử phiên bản | 🟡 | — | ❌ UI · ✅ backend | D1-4c | 28/09: `entry_revisions` (1 bản/ngôn ngữ, ghi ở mọi đường lên public + lưu khi đang public), danh sách keyset, khôi phục có mã lý do, giữ 20 bản/90 ngày; bản nháp đè bản công khai chưa làm |
 | 15 | Chuyên mục | ❌ | — | ❌ trang "sắp có" · ✅ backend đường ghi | D1-1 | 26/09: tạo/sửa/chuyển/xoá chuyên mục ≤ 3 cấp (`Cms\Actions\Taxonomies`), ghi `path` ltree; bài/sản phẩm đổi đường dẫn + 301 cùng giao dịch (`Cms\Routing\CategoryDependents`); bài rời chuyên mục cần xác nhận; xoá → link trình đơn trỏ theo nơi đến |
 | 16 | Trình đơn | ✅ owner duyệt · 🟠 thiếu gán theo ngôn ngữ | `design_handoff_menus/` | ❌ trang "sắp có" · ✅ backend đường ghi | D1-2 | backend 24/09: `link_type` `product` + ẩn đích khách không mở được · 26/09: tạo/sửa/xoá trình đơn và mục, kéo thả ≤ 5 cấp, gán theo vùng × ngôn ngữ (`Cms\Actions\Menus`) |
 | 17 | Page builder | ✅ v3 | — | 🟡 | ⏸ track Builder v3 | |
@@ -43,7 +43,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 26 | Trình dựng biểu mẫu | ❌ | — | ❌ | D1-7 | 26/09: form liên hệ có ô đồng ý bắt buộc (kiểu `checkbox`), lưu câu khách đã tick làm bằng chứng · 27/09: nhãn form theo đủ ngôn ngữ của site, `--refresh-consent` viết lại câu đồng ý khi lời văn pháp lý đổi |
 | 27–30 | Thành viên · Nhóm quyền · Sửa nhóm · "Nhóm làm được gì" | ❌ | — | 🟡 · ❌ · ❌ · ❌ | D2-1 | backend nhóm tuỳ chỉnh có (`e922240`) |
 | 31 | Lời mời thành viên | ❌ | — | 🟡 backend + màn nhận lời mời (khung đăng nhập) · tab Lời mời ❌ | D2-2 | backend 24/09: `invitations`, trả lời đồng nhất, 7 ngày, ≤50 thư/ngày (tính cả gửi lại) |
-| 32 | Khung Cài đặt (1 thanh Lưu) | ✅ | — | 🟡 | D0-4, D3 | |
+| 32 | Khung Cài đặt (1 thanh Lưu) | ✅ | — | 🟡 | D0-4a, D3 | |
 | 33 | Thông tin chung | 🟠 đa ngữ vs dữ liệu 1 ngữ | — | ❌ UI · ✅ backend đọc | D3-1 | backend 24/09: cột §14 + `provinces`/`wards` + `SiteIdentity`; website đọc NAP theo ngôn ngữ; tên hiển thị (viết tắt, theo ngôn ngữ) ≠ tên pháp lý đầy đủ |
 | 34 | Giao diện website | 🟠 6 màu tự do | — | ❌ UI · 🟡 backend | D3-1 | đúng 5 quyết định (section-style-system §1) · 26/09: một màu thương hiệu → 10 bậc `--brand-50..900` (`Theme\Theming\BrandPalette`) |
 | 35 | Giao diện trang quản trị | ✅ | — | ✅ | — | |
@@ -60,7 +60,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 46 | Quy trình duyệt (vận hành viên) | ✅ | `design_handoff_workflow/` | ✅ | D0-5 | |
 | 47 | Gói & mức dùng (phía khách) | ❌ | — | ❌ | D3-2 | |
 | 48 | Bảo mật & Nâng cao | 🟠 mã `<head>` | — | ❌ | D3-2 | |
-| 49 | Dữ liệu & Phục hồi | ✅ | — | ❌ | ⏸ | |
+| 49 | Dữ liệu & Phục hồi | ✅ | — | ❌ | D3-2 | 29/09: prompt giữ màn đã vẽ + Việc cho backend; owner chốt giữ hay hoãn build (⏸) |
 | 50–51 | Nền tảng: Khách hàng · Website (+ tạo) | ❌ | — | 🟡 chỉ-đọc | D4-1 | |
 | 52 | Gói & tính năng | 🟠 ≠ schema | — | ❌ | D4-2 | |
 | 53 | Loại website · Giao diện | ❌ | — | ❌ | D4-2 | |
