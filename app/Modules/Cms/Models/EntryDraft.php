@@ -40,8 +40,40 @@ class EntryDraft extends Model
 {
     use BelongsToSite;
 
+    /** The fields one language of a change holds (the revision snapshot's per-locale fields). */
+    public const array LOCALE_FIELDS = ['title', 'slug', 'body', 'excerpt', 'seo_title', 'seo_description', 'og_image_id'];
+
+    /** The fields every language of a change shares (the snapshot's entry fields + the primary category). */
+    public const array SHARED_FIELDS = ['template_override', 'cover_media_id', 'meta', 'primary_category_id'];
+
     #[\Override]
     protected $fillable = ['entry_id', 'workflow_state', 'assigned_to', 'content', 'created_by', 'updated_by'];
+
+    /**
+     * A fingerprint of the content: the screen that shows a change passes it back with a decision,
+     * and the decision is refused when it no longer matches, so nobody approves, applies or throws
+     * away content they have not seen (a change returned, edited and sent again keeps its stage).
+     * It is taken over the content rather than updated_at, which is stored to the second and so
+     * cannot tell two saves in the same second apart. Keys are sorted first: jsonb does not keep
+     * the order an array was written in.
+     */
+    public function version(): string
+    {
+        return hash('sha256', json_encode(self::canonical($this->content), JSON_THROW_ON_ERROR));
+    }
+
+    private static function canonical(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+
+        return array_map(self::canonical(...), $value);
+    }
 
     /**
      * @return BelongsTo<Entry, $this>

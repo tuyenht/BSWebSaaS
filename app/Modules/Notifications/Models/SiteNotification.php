@@ -42,7 +42,9 @@ class SiteNotification extends Model
             }
         }
 
-        $key = 'notifications.'.$this->kind;
+        // A notice about a pending change to a subject (rather than the subject itself) reads its
+        // own sentence: "a change to «…»", since the subject stays as it was until approved.
+        $key = 'notifications.'.$this->kind.(($this->data['change'] ?? false) === true ? '.change' : '');
         $line = __($key, $placeholders);
 
         return is_string($line) ? $line : $key;

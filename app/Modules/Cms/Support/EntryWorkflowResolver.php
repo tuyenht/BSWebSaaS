@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Support;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Workflow\Models\Workflow;
@@ -77,5 +78,44 @@ final readonly class EntryWorkflowResolver
             ?? throw new RuntimeException("Workflow {$workflow->id} defines no initial state.");
 
         return $initial->key;
+    }
+
+    /**
+     * The stage a pending change to a live entry stands at: its stored stage while the workflow
+     * still defines it, otherwise the initial one (a change never sits at the published stage —
+     * reaching it applies the change and deletes it).
+     *
+     * @throws RuntimeException the workflow defines no initial state
+     */
+    public function changeOriginFor(Workflow $workflow, EntryDraft $change): string
+    {
+        if ($change->workflow_state !== null && $workflow->definesState($change->workflow_state)) {
+            return $change->workflow_state;
+        }
+
+        $initial = $workflow->initialState()
+            ?? throw new RuntimeException("Workflow {$workflow->id} defines no initial state.");
+
+        return $initial->key;
+    }
+
+    /**
+     * Whether a change may still be edited or thrown away by its authors: always when no workflow
+     * governs the entry (a flow switched off mid-review leaves the change with its author and the
+     * publishers), otherwise only at the workflow's first stage — once sent, it is what the
+     * reviewer reads, and it comes back to the author only by being returned.
+     */
+    public function changeIsOpen(?Workflow $workflow, EntryDraft $change): bool
+    {
+        if ($workflow === null || $change->workflow_state === null) {
+            return true;
+        }
+
+        // A stage the workflow no longer defines counts as the initial one, as in changeOriginFor().
+        $initial = $workflow->initialState();
+
+        return $initial === null
+            || $change->workflow_state === $initial->key
+            || ! $workflow->definesState($change->workflow_state);
     }
 }
