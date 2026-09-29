@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+html,body{margin:0;background:#f3f3f9;}*{box-sizing:border-box;}
+.ig-sc::-webkit-scrollbar{width:9px}.ig-sc::-webkit-scrollbar-thumb{background:#ced4da;border-radius:9px}.ig-sc::-webkit-scrollbar-track{background:transparent}
+.ig-row{transition:box-shadow .14s,border-color .14s;}.ig-row:hover{border-color:#c8ccd2 !important;box-shadow:0 2px 8px rgba(56,65,74,.08);}
+.ig-nav:hover{background:#f8f9fb !important;}
+.ig-i{transition:background .12s,color .12s;}.ig-i:hover{background:#eef2fb !important;color:var(--brand) !important;}
+@keyframes ig-fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+.scl{scrollbar-width:thin;scrollbar-color:transparent transparent;}
+.scl:hover{scrollbar-color:rgba(120,130,150,.4) transparent;}
+.scl::-webkit-scrollbar{width:6px;}
+.scl::-webkit-scrollbar-thumb{background:transparent;border-radius:6px;}
+.scl:hover::-webkit-scrollbar-thumb{background:rgba(120,130,150,.4);}
+.scl::-webkit-scrollbar-track{background:transparent;}
+</style>
+</helmet>
+
+<div class="admin-shell" style="font-family:Inter,'Segoe UI',sans-serif;font-size:14px;color:var(--color-body-text, #495057);">
+
+  <div class="ig-cols" ref="{{ setCols }}" style="{{ colsStyle }}">
+
+    <!-- center -->
+    <div class="ig-main" style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:16px;">
+
+      <!-- remarketing explainer -->
+      <div style="background:linear-gradient(120deg,var(--brand),#4c5da0);border-radius:8px;padding:18px 20px;color:#fff;box-shadow:0 6px 18px -8px color-mix(in srgb, var(--brand) 60%, transparent);">
+        <div style="display:flex;align-items:center;gap:9px;margin-bottom:6px;"><i class="ri-radar-line" style="font-size:19px;"></i><span style="font-size:15px;font-weight:700;">Re‑marketing đa nền tảng — bám đuổi đúng khách</span></div>
+        <div style="font-size:12.5px;line-height:1.6;color:rgba(255,255,255,.88);max-width:760px;">Khi khách vào website và quan tâm điều gì, hệ thống ghi nhận hành vi rồi gửi <b>từ máy chủ</b> tới Facebook, Google, TikTok để dựng tệp đối tượng riêng cho website của bạn — quảng cáo sẽ đuổi theo đúng người, đúng thứ họ đang quan tâm, trên mọi nền tảng.</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap;">
+          <span style="{{ flowChip }}"><i class="ri-eye-line" style="font-size:13px;"></i>Khách xem</span><i class="ri-arrow-right-line" style="opacity:.6;"></i>
+          <span style="{{ flowChip }}"><i class="ri-pulse-line" style="font-size:13px;"></i>Ghi sự kiện</span><i class="ri-arrow-right-line" style="opacity:.6;"></i>
+          <span style="{{ flowChipHi }}"><i class="ri-server-line" style="font-size:13px;"></i>Máy chủ gửi đi</span><i class="ri-arrow-right-line" style="opacity:.6;"></i>
+          <span style="{{ flowChip }}"><i class="ri-group-line" style="font-size:13px;"></i>Tệp đối tượng</span><i class="ri-arrow-right-line" style="opacity:.6;"></i>
+          <span style="{{ flowChip }}"><i class="ri-advertisement-line" style="font-size:13px;"></i>Quảng cáo bám đuổi</span>
+        </div>
+      </div>
+
+      <!-- event signals -->
+      <div style="background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;padding:15px 18px;box-shadow:0 1px 2px rgb(56 65 74/.06);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px;"><div style="display:flex;align-items:center;gap:8px;"><i class="ri-flashlight-line" style="font-size:16px;color:var(--brand-fg);"></i><span style="font-size:13.5px;font-weight:600;color:var(--color-heading, #343a40);">Sự kiện theo dõi</span><button onClick="{{ onInfoEvents }}" title="Tìm hiểu" aria-label="Giải thích Sự kiện theo dõi" class="ig-i" style="{{ iBtn }}"><i class="ri-information-line" style="font-size:14px;"></i></button></div><span style="font-size:11.5px;color:var(--color-body-faint, #adb5bd);">Gửi tới mọi nền tảng đang bật</span></div>
+        <sc-if value="{{ infoEventsOpen }}"><div style="{{ calloutStyle }}margin-bottom:11px;">Mỗi khi khách thực hiện một hành động (xem trang, xem sản phẩm, gửi form…), hệ thống ghi lại thành "sự kiện" và gửi tới các nền tảng đang bật để đo lường và dựng tệp quảng cáo. Bạn không cần cài đặt gì thêm cho từng sự kiện.</div></sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;"><sc-for list="{{ events }}" as="e" hint-placeholder-count="6"><span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--color-border, #eff2f7);border-radius:20px;background:var(--color-surface-muted, #f8f9fb);font-size:12px;color:var(--color-body-text, #495057);"><i class="{{ e.icon }}" style="font-size:13px;color:var(--brand-fg);"></i>{{ e.label }}</span></sc-for></div>
+      </div>
+
+      <!-- provider groups -->
+      <sc-for list="{{ groups }}" as="g" hint-placeholder-count="5">
+        <div style="background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;box-shadow:0 1px 2px rgb(56 65 74/.06);overflow:hidden;">
+          <div onClick="{{ g.onHeader }}" role="{{ g.headerRole }}" aria-expanded="{{ g.openVal }}" style="display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--color-border-soft, #f0f1f3);background:var(--color-surface-muted, #fbfcfd);{{ g.headerCursor }}">
+            <span style="width:30px;height:30px;border-radius:7px;background:{{ g.tint }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ g.icon }}" style="font-size:16px;color:{{ g.color }};"></i></span>
+            <div style="flex:1;min-width:0;"><div style="font-size:13.5px;font-weight:600;color:var(--color-heading, #343a40);">{{ g.label }}</div><div style="font-size:11.5px;color:var(--color-body-faint, #adb5bd);">{{ g.desc }}</div></div>
+            <span style="font-size:11px;color:var(--color-body-muted, #878a99);background:color-mix(in srgb, var(--brand) 11%, transparent);border-radius:20px;padding:3px 10px;font-weight:600;">{{ g.onCount }} đang bật</span>
+            <sc-if value="{{ g.hasNeed }}"><span title="Có công cụ đang bật nhưng chưa nhập thông tin" style="font-size:11px;color:var(--tone-warn-fg);background:rgba(247,184,75,.18);border-radius:20px;padding:3px 10px;font-weight:600;">{{ g.needCount }} chưa nhập</span></sc-if>
+            <sc-if value="{{ g.showChevron }}"><i class="{{ g.chevron }}" style="font-size:20px;color:var(--color-body-muted, #878a99);"></i></sc-if>
+          </div>
+          <sc-if value="{{ g.showBody }}">
+          <sc-if value="{{ g.overlap }}"><div style="display:flex;align-items:flex-start;gap:7px;margin:12px 14px 0;padding:9px 11px;background:color-mix(in srgb, #f7b84b 15%, transparent);border:1px solid color-mix(in srgb, #f7b84b 34%, transparent);border-radius:7px;font-size:11.5px;color:var(--tone-warn-fg);line-height:1.5;"><i class="ri-information-line" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i><span>Khác với <b>Nút liên hệ nổi</b> (chỉ là nút bấm mở Zalo/Messenger). Ở đây là <b>khung chat nhúng</b> — chạy script bên thứ 3, có ảnh hưởng tốc độ.</span></div></sc-if>
+          <sc-if value="{{ g.intlWarn }}"><div style="display:flex;align-items:flex-start;gap:7px;margin:12px 14px 0;padding:9px 11px;background:color-mix(in srgb, #f7b84b 15%, transparent);border:1px solid color-mix(in srgb, #f7b84b 34%, transparent);border-radius:7px;font-size:11.5px;color:var(--tone-warn-fg);line-height:1.5;"><i class="ri-alert-line" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i><span>Các công cụ này dành cho quảng cáo <b>thị trường nước ngoài</b>. Với khách hàng Việt Nam thường không cần bật.</span></div></sc-if>
+          <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+            <sc-for list="{{ g.items }}" as="p" hint-placeholder-count="2">
+              <div class="ig-row" style="{{ p.rowStyle }}">
+                <div style="display:flex;align-items:flex-start;gap:12px;">
+                  <span style="width:38px;height:38px;border-radius:9px;background:{{ p.iconBg }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ p.icon }}" style="font-size:20px;color:{{ p.iconColor }};"></i></span>
+                  <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13.5px;font-weight:600;color:var(--color-heading, #343a40);">{{ p.name }}</span>
+                      <button onClick="{{ p.onInfo }}" title="Tìm hiểu công cụ này" aria-label="{{ p.infoAria }}" aria-expanded="{{ p.infoOpenVal }}" class="ig-i" style="{{ iBtn }}"><i class="ri-information-line" style="font-size:14px;"></i></button>
+                      <sc-if value="{{ p.needsInput }}"><span title="Đang bật nhưng chưa nhập thông tin — chưa chạy" style="{{ badgeRed }}"><i class="ri-error-warning-line" style="font-size:10px;"></i>Cần nhập ID</span></sc-if>
+                      <sc-if value="{{ p.recommended }}"><span title="Cấu hình được đội ngũ khuyến nghị dùng." style="{{ badgeGreen }}"><i class="ri-star-fill" style="font-size:10px;"></i>Khuyến nghị</span></sc-if>
+                      <sc-if value="{{ p.serverSideOk }}"><span title="Sự kiện gửi từ máy chủ — nhẹ trình duyệt, né chặn quảng cáo." style="{{ badgeBlue }}"><i class="ri-server-line" style="font-size:10px;"></i>Server‑side</span></sc-if>
+                      <sc-if value="{{ p.consentM }}"><span title="Tag marketing — chỉ chạy sau khi khách đồng ý cookie (Nghị định 13, GDPR)." style="{{ badgeAmber }}"><i class="ri-shield-user-line" style="font-size:10px;"></i>Cần đồng ý</span></sc-if>
+                      <sc-if value="{{ p.metaOnly }}"><span title="Chỉ chèn thẻ meta xác minh — không chạy script, không thu dữ liệu khách." style="{{ badgeGray }}"><i class="ri-code-line" style="font-size:10px;"></i>Thẻ meta</span></sc-if>
+                      <sc-if value="{{ p.heavyBad }}"><span title="Script nặng, đang tải ngay — ảnh hưởng tốc độ tải trang." style="{{ badgeGray }}"><i class="ri-scales-3-line" style="font-size:10px;"></i>Nặng</span></sc-if>
+                      <sc-if value="{{ p.heavyOpt }}"><span title="Đã tối ưu: chỉ tải khi cần, không chặn tải trang." style="{{ badgeGreen }}"><i class="ri-rocket-2-line" style="font-size:10px;"></i>{{ p.heavyOptText }}</span></sc-if>
+                      <sc-if value="{{ p.risky }}"><span title="Cần nới Content-Security-Policy (nonce) — cân nhắc bảo mật & tốc độ." style="{{ badgeRed }}"><i class="ri-alert-line" style="font-size:10px;"></i>Nới CSP</span></sc-if>
+                    </div>
+                    <div style="font-size:12px;color:var(--color-body-muted, #878a99);line-height:1.5;margin-top:3px;">{{ p.note }}</div>
+                    <sc-if value="{{ p.infoOpen }}"><div style="{{ calloutStyle }}margin-top:9px;">{{ p.about }}<a href="{{ p.learn }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;color:var(--brand-fg);font-weight:600;text-decoration:none;">Hướng dẫn chi tiết<i class="ri-external-link-line" style="font-size:12px;"></i></a></div></sc-if>
+                    <sc-if value="{{ p.doubleWarn }}"><div style="display:flex;align-items:flex-start;gap:7px;margin-top:9px;padding:9px 11px;background:color-mix(in srgb, #f7b84b 15%, transparent);border:1px solid color-mix(in srgb, #f7b84b 34%, transparent);border-radius:7px;font-size:11.5px;color:var(--tone-warn-fg);line-height:1.5;"><i class="ri-error-warning-line" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i><span>Bạn đang bật GTM cùng GA4/Pixel riêng — dễ <b>đếm trùng</b>. Nên khai báo các thẻ đó <b>bên trong GTM</b> thay vì bật song song ở đây.</span></div></sc-if>
+                  </div>
+                  <button onClick="{{ p.onToggle }}" role="switch" aria-checked="{{ p.on }}" aria-label="{{ p.swAria }}" title="Bật/tắt" style="{{ p.swStyle }}"><span style="{{ p.knobStyle }}"></span></button>
+                </div>
+                <sc-if value="{{ p.on }}">
+                  <div style="margin-top:12px;padding-top:12px;border-top:1px dashed #eef2f7;display:flex;flex-direction:column;gap:10px;animation:ig-fade .15s ease;">
+                    <sc-if value="{{ p.managed }}">
+                      <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:color-mix(in srgb, #0ab39c 13%, transparent);border:1px solid color-mix(in srgb, #0ab39c 22%, transparent);border-radius:8px;font-size:12px;color:var(--tone-success-fg);line-height:1.5;"><i class="ri-checkbox-circle-fill" style="font-size:15px;flex-shrink:0;margin-top:1px;"></i><span>Đang dùng <b>hạ tầng đo lường của {{ platform }}</b> — không cần cài đặt gì. Bật là chạy.</span></div>
+                      <button onClick="{{ p.onToggleCustom }}" aria-expanded="{{ p.mgCustom }}" style="{{ guideLink }}"><i class="{{ p.customChevron }}" style="font-size:14px;"></i>Dùng tên miền riêng (nâng cao)</button>
+                      <sc-if value="{{ p.mgCustom }}">
+                        <div style="{{ guideBox }}">
+                          <label style="{{ lbl }}">Tên miền theo dõi riêng</label><input value="{{ p.mgDomain }}" onInput="{{ p.onMgDomain }}" placeholder="track.tenmien.vn" style="{{ inp }}">
+                          <div style="margin-top:10px;font-size:11.5px;color:var(--color-body-text, #495057);line-height:1.6;">Tạo bản ghi <b>CNAME</b> tại nơi quản lý tên miền:<div style="margin-top:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="padding:4px 9px;background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:5px;font-family:ui-monospace,Menlo,monospace;font-size:11px;">track</span><i class="ri-arrow-right-line" style="color:var(--color-body-faint, #adb5bd);"></i><span style="padding:4px 9px;background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:5px;font-family:ui-monospace,Menlo,monospace;font-size:11px;">{{ p.mgCnameLink }}</span></div></div>
+                          <div style="display:flex;align-items:center;gap:10px;margin-top:11px;flex-wrap:wrap;"><button onClick="{{ p.onCheckDns }}" style="{{ guideBtn }}"><i class="ri-refresh-line" style="font-size:13px;"></i>Kiểm tra kết nối</button><sc-if value="{{ p.dnsShow }}"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:{{ p.dnsColor }};"><i class="{{ p.dnsIcon }}" style="font-size:14px;"></i>{{ p.dnsText }}</span></sc-if></div>
+                        </div>
+                      </sc-if>
+                    </sc-if>
+                    <sc-if value="{{ p.notManaged }}">
+                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                      <div style="flex:1;min-width:220px;"><label style="{{ lbl }}">{{ p.fieldLabel }}</label><input value="{{ p.idVal }}" onInput="{{ p.onId }}" placeholder="{{ p.ph }}" aria-label="{{ p.fieldAria }}" style="{{ p.idInputStyle }}"><sc-if value="{{ p.idBad }}"><div style="display:flex;align-items:flex-start;gap:5px;margin-top:5px;font-size:11px;color:#f06548;line-height:1.45;"><i class="ri-error-warning-line" style="font-size:12px;flex-shrink:0;margin-top:1px;"></i>{{ p.idMsg }}</div></sc-if></div>
+                      <sc-if value="{{ p.showSecret }}"><div style="flex:1;min-width:220px;"><label style="{{ lbl }}">{{ p.secretLabel }} <span style="font-weight:400;color:var(--color-body-faint, #adb5bd);">· mã hoá</span></label><div style="position:relative;"><input value="{{ p.secretVal }}" onInput="{{ p.onSecret }}" type="{{ p.secretType }}" placeholder="••••••••••••" aria-label="{{ p.secretLabel }}" style="{{ p.secretInputStyle }}"><button onClick="{{ p.onToggleSecret }}" type="button" aria-label="Hiện hoặc ẩn" title="Hiện/ẩn" class="ig-i" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--color-body-faint, #adb5bd);cursor:pointer;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;padding:0;border-radius:50%;"><i class="{{ p.secretEyeIcon }}" style="font-size:15px;"></i></button></div></div></sc-if>
+                    </div>
+                    <sc-if value="{{ p.isHeavy }}">
+                      <div style="background:var(--color-surface-muted, #f8f9fb);border:1px solid var(--color-border, #eff2f7);border-radius:8px;padding:11px 12px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11.5px;font-weight:600;color:var(--color-body-text, #495057);"><i class="ri-rocket-2-line" style="font-size:14px;color:var(--brand-fg);"></i>Chiến lược tải (tối ưu tốc độ)</div>
+                        <div role="radiogroup" aria-label="Chiến lược tải" style="display:flex;gap:7px;flex-wrap:wrap;">
+                          <sc-for list="{{ p.loadOpts }}" as="o" hint-placeholder-count="3">
+                            <button onClick="{{ o.on }}" onKeyDown="{{ o.onKey }}" role="radio" aria-checked="{{ o.sel }}" tabindex="{{ o.tab }}" aria-label="{{ o.label }}" style="{{ o.style }}"><i class="{{ o.icon }}" style="font-size:13px;"></i>{{ o.label }}</button>
+                          </sc-for>
+                        </div>
+                        <div style="font-size:11px;color:var(--color-body-muted, #878a99);line-height:1.5;margin-top:8px;">{{ p.loadNote }}</div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ p.isScope }}">
+                      <div style="background:var(--color-surface-muted, #f8f9fb);border:1px solid var(--color-border, #eff2f7);border-radius:8px;padding:11px 12px;margin-top:9px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11.5px;font-weight:600;color:var(--color-body-text, #495057);"><i class="ri-filter-3-line" style="font-size:14px;"></i>Phạm vi tải</div>
+                        <div role="radiogroup" aria-label="Phạm vi tải" style="display:flex;gap:7px;flex-wrap:wrap;">
+                          <sc-for list="{{ p.scopeOpts }}" as="o" hint-placeholder-count="2">
+                            <button onClick="{{ o.on }}" role="radio" aria-checked="{{ o.sel }}" aria-label="{{ o.label }}" style="{{ o.style }}"><i class="{{ o.icon }}" style="font-size:13px;"></i>{{ o.label }}</button>
+                          </sc-for>
+                        </div>
+                        <div style="font-size:11px;color:var(--color-body-muted, #878a99);line-height:1.5;margin-top:8px;">{{ p.scopeNote }}</div>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ p.isSample }}">
+                      <div style="background:var(--color-surface-muted, #f8f9fb);border:1px solid var(--color-border, #eff2f7);border-radius:8px;padding:11px 12px;margin-top:9px;">
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:11.5px;font-weight:600;color:var(--color-body-text, #495057);"><i class="ri-focus-3-line" style="font-size:14px;"></i>Tỉ lệ ghi phiên</div>
+                        <div role="radiogroup" aria-label="Tỉ lệ ghi phiên" style="display:flex;gap:7px;flex-wrap:wrap;">
+                          <sc-for list="{{ p.sampleOpts }}" as="o" hint-placeholder-count="4">
+                            <button onClick="{{ o.on }}" role="radio" aria-checked="{{ o.sel }}" aria-label="{{ o.label }}" style="{{ o.style }}">{{ o.label }}</button>
+                          </sc-for>
+                        </div>
+                        <div style="font-size:11px;color:var(--color-body-muted, #878a99);line-height:1.5;margin-top:8px;">{{ p.sampleNote }}</div>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                      <sc-if value="{{ p.connectedChip }}"><span style="{{ chipOk }}"><i class="ri-checkbox-circle-fill" style="font-size:12px;"></i>Hợp lệ</span></sc-if>
+                      <sc-if value="{{ p.hasGuide }}"><button onClick="{{ p.onGuide }}" aria-expanded="{{ p.guideOpen }}" style="{{ guideLink }}"><i class="ri-questionnaire-line" style="font-size:13px;"></i>Cách lấy {{ p.fieldShort }}?</button></sc-if>
+                    </div>
+                    <sc-if value="{{ p.guideOpen }}">
+                      <div style="{{ guideBox }}">
+                        <ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;">
+                          <sc-for list="{{ p.guideSteps }}" as="st" hint-placeholder-count="3"><li style="font-size:11.5px;color:var(--color-body-text, #495057);line-height:1.55;">{{ st.t }}</li></sc-for>
+                        </ol>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;">
+                          <sc-if value="{{ p.hasOpen }}"><a href="{{ p.openUrl }}" target="_blank" rel="noopener" style="{{ guideBtn }}"><i class="ri-external-link-line" style="font-size:13px;"></i>Mở đúng trang</a></sc-if>
+                          <sc-if value="{{ p.hasCreate }}"><a href="{{ p.createUrl }}" target="_blank" rel="noopener" style="{{ guideBtnGhost }}"><i class="ri-add-line" style="font-size:13px;"></i>Chưa có? Tạo mới</a></sc-if>
+                        </div>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                      <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:{{ p.connColor }};"><i class="{{ p.connIcon }}" style="font-size:14px;"></i>{{ p.connText }}</div>
+                      <sc-if value="{{ p.canTest }}"><button onClick="{{ p.onTest }}" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--color-border-strong, #e9ebec);border-radius:5px;background:var(--color-surface, #fff);font:inherit;font-size:12px;font-weight:600;color:var(--brand-fg);cursor:pointer;" style-hover="background:color-mix(in srgb, var(--brand) 6%, transparent);"><i class="ri-flask-line" style="font-size:13px;"></i>Gửi sự kiện thử</button></sc-if>
+                    </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          </sc-if>
+        </div>
+      </sc-for>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:linear-gradient(120deg,color-mix(in srgb, #0ab39c 13%, transparent),var(--color-surface-hover, #f3f6f9));border:1px solid color-mix(in srgb, #0ab39c 22%, transparent);border-radius:8px;padding:15px 18px;">
+        <div style="display:flex;align-items:center;gap:12px;min-width:0;"><span style="width:38px;height:38px;flex-shrink:0;border-radius:9px;background:var(--color-surface, #fff);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgb(56 65 74/.1);"><i class="ri-customer-service-2-line" style="font-size:20px;color:#0ab39c;"></i></span><div style="min-width:0;"><div style="font-size:13.5px;font-weight:700;color:var(--color-heading, #343a40);">Không rành kỹ thuật? Để chúng tôi lo.</div><div style="font-size:12px;color:var(--color-body-muted, #6b7482);line-height:1.5;margin-top:2px;">Đội ngũ {{ platform }} sẽ cài đặt & kết nối theo dõi giúp bạn — bạn chỉ cần cấp quyền truy cập tài khoản quảng cáo.</div></div></div>
+        <button onClick="{{ onHelp }}" style="flex-shrink:0;display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:0;border-radius:6px;background:#0ab39c;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74/.15);" style-hover="filter:brightness(0.96);"><i class="ri-service-line" style="font-size:15px;"></i>Nhờ cài giúp</button>
+      </div>
+      <div style="font-size:11.5px;color:var(--color-body-faint, #adb5bd);line-height:1.6;padding:0 2px;"><i class="ri-lock-line" style="color:#0ab39c;"></i> Token/secret nhà cung cấp được mã hoá phía máy chủ, không lộ ra trình duyệt. Mỗi website có bộ theo dõi & tệp đối tượng riêng — dữ liệu khách không dùng chung giữa các site (RLS đa tenant).</div>
+    </div>
+
+    <!-- right rail: live summary -->
+    <div class="ig-sticky scl" style="{{ railStyle }}">
+
+      <!-- collection mode -->
+      <div style="background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;padding:15px;box-shadow:0 1px 2px rgb(56 65 74/.06);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+          <div style="min-width:0;"><div style="display:flex;align-items:center;gap:6px;"><i class="ri-server-line" style="font-size:16px;color:#0ab39c;"></i><span style="font-size:13px;font-weight:700;color:var(--color-heading, #343a40);">Thu thập phía máy chủ</span><button onClick="{{ onInfoServer }}" title="Tìm hiểu" aria-label="Giải thích Thu thập phía máy chủ" class="ig-i" style="{{ iBtn }}"><i class="ri-information-line" style="font-size:14px;"></i></button></div><div style="font-size:11.5px;color:var(--color-body-muted, #878a99);line-height:1.5;margin-top:4px;">Gửi sự kiện từ máy chủ (CAPI/MP/Events API) — né chặn quảng cáo, nhẹ trình duyệt.</div></div>
+          <button onClick="{{ onServerSide }}" role="switch" aria-checked="{{ serverSide }}" aria-label="Thu thập phía máy chủ" title="Bật/tắt" style="{{ ssSwStyle }}"><span style="{{ ssKnobStyle }}"></span></button>
+        </div>
+        <sc-if value="{{ infoServerOpen }}"><div style="{{ calloutStyle }}margin-top:10px;">Thay vì để trình duyệt của khách tải nhiều mã theo dõi, máy chủ của bạn gửi thẳng sự kiện tới Facebook/Google/TikTok. Kết quả: trang tải nhanh hơn, đo lường chính xác hơn (không bị chặn quảng cáo), và token được giữ kín ở máy chủ.</div></sc-if>
+      </div>
+
+      <!-- consent (3 modes) -->
+      <div style="background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;padding:15px;box-shadow:0 1px 2px rgb(56 65 74/.06);">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><i class="ri-shield-check-line" style="font-size:16px;color:var(--brand-fg);"></i><span style="font-size:13px;font-weight:700;color:var(--color-heading, #343a40);">Xin phép (Consent)</span><button onClick="{{ onInfoConsent }}" title="Tìm hiểu" aria-label="Giải thích Consent" class="ig-i" style="{{ iBtn }}"><i class="ri-information-line" style="font-size:14px;"></i></button></div>
+        <sc-if value="{{ infoConsentOpen }}"><div style="{{ calloutStyle }}margin-bottom:10px;">"Consent" là việc xin phép khách trước khi theo dõi cho mục đích quảng cáo. Luật VN (Nghị định 13/2023) và GDPR yêu cầu điều này. Chọn chế độ phù hợp giữa tuân thủ và trải nghiệm.</div></sc-if>
+        <div role="radiogroup" aria-label="Chế độ xin phép theo dõi" style="display:flex;flex-direction:column;gap:7px;">
+          <sc-for list="{{ consentModes }}" as="m" hint-placeholder-count="3">
+            <button ref="{{ m.ref }}" onClick="{{ m.on }}" onKeyDown="{{ onConsentKey }}" role="radio" aria-checked="{{ m.sel }}" tabindex="{{ m.tab }}" aria-label="{{ m.label }}" style="{{ m.style }}">
+              <span style="{{ m.radio }}"><sc-if value="{{ m.sel }}"><span style="width:8px;height:8px;border-radius:50%;background:var(--brand);"></span></sc-if></span>
+              <span style="flex:1;min-width:0;text-align:left;"><span style="display:block;font-size:12.5px;font-weight:600;color:var(--color-heading, #343a40);">{{ m.label }}</span><span style="display:block;font-size:11px;color:var(--color-body-muted, #878a99);line-height:1.45;margin-top:2px;">{{ m.desc }}</span></span>
+            </button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ consentWarn }}"><div style="display:flex;align-items:flex-start;gap:6px;margin-top:10px;padding:8px 10px;background:color-mix(in srgb, #f06548 12%, transparent);border-radius:6px;font-size:11px;color:#f06548;line-height:1.45;"><i class="ri-error-warning-line" style="font-size:13px;flex-shrink:0;margin-top:1px;"></i>Đang thu thập cho quảng cáo khi <b>chưa xin phép</b> khách. Được phép về kỹ thuật, nhưng có rủi ro pháp lý — cân nhắc dùng "Consent Mode".</div></sc-if>
+        <div style="margin-top:11px;padding-top:10px;border-top:1px solid var(--color-border-soft, #f0f1f3);font-size:11px;color:var(--color-body-muted, #878a99);">Nhóm dữ liệu đang thu: <b style="color:var(--color-body-text, #495057);">{{ consentCats }}</b></div>
+      </div>
+
+      <!-- CWV impact -->
+      <div style="background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;padding:15px;box-shadow:0 1px 2px rgb(56 65 74/.06);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;"><div style="display:flex;align-items:center;gap:6px;"><i class="ri-speed-up-line" style="font-size:16px;color:var(--brand-fg);"></i><span style="font-size:13px;font-weight:700;color:var(--color-heading, #343a40);">Tác động tốc độ</span><button onClick="{{ onInfoCwv }}" title="Tìm hiểu" aria-label="Giải thích Tác động tốc độ" class="ig-i" style="{{ iBtn }}"><i class="ri-information-line" style="font-size:14px;"></i></button></div><span style="font-size:12px;font-weight:700;color:{{ cwvColor }};">{{ cwvKb }} / 30 KB</span></div>
+        <div style="height:8px;border-radius:8px;background:var(--color-border, #eff2f7);overflow:hidden;"><div style="{{ cwvBarStyle }}"></div></div>
+        <sc-if value="{{ infoCwvOpen }}"><div style="{{ calloutStyle }}margin-top:9px;">Đây là ước tính dung lượng mã theo dõi mà trình duyệt khách phải tải thêm. Ngân sách khuyến nghị ≤30KB để trang luôn nhanh (điểm Core Web Vitals của Google). Bật "Thu thập phía máy chủ" giúp giảm mạnh con số này (chỉ còn một mẩu nhỏ để lấy mã click).</div></sc-if>
+        <div style="font-size:11px;color:var(--color-body-muted, #878a99);line-height:1.5;margin-top:8px;">{{ cwvNote }}</div>
+        <sc-if value="{{ cwvOver }}"><div style="display:flex;align-items:flex-start;gap:6px;margin-top:8px;padding:8px 10px;background:color-mix(in srgb, #f06548 12%, transparent);border-radius:6px;font-size:11px;color:#f06548;line-height:1.45;"><i class="ri-alert-line" style="font-size:13px;flex-shrink:0;margin-top:1px;"></i>{{ cwvHint }}</div></sc-if>
+      </div>
+
+      <!-- CSP origins -->
+      <div style="background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;padding:15px;box-shadow:0 1px 2px rgb(56 65 74/.06);">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;"><i class="ri-shield-keyhole-line" style="font-size:16px;color:var(--brand-fg);"></i><span style="font-size:13px;font-weight:700;color:var(--color-heading, #343a40);">CSP đang mở (script‑src)</span><button onClick="{{ onInfoCsp }}" title="Tìm hiểu" aria-label="Giải thích CSP" class="ig-i" style="{{ iBtn }}"><i class="ri-information-line" style="font-size:14px;"></i></button></div>
+        <sc-if value="{{ infoCspOpen }}"><div style="{{ calloutStyle }}margin-bottom:10px;">CSP (Content‑Security‑Policy) là "danh sách trắng" các nguồn được phép chạy mã trên website — chặn mã lạ/độc. Mỗi công cụ bật lên sẽ tự thêm đúng nguồn của nó; server‑side giúp danh sách gọn nhất, an toàn nhất.</div></sc-if>
+        <div style="font-size:11.5px;color:var(--color-body-muted, #878a99);line-height:1.5;margin-bottom:10px;">Tự sinh theo nhà cung cấp đang bật.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:color-mix(in srgb, #0ab39c 13%, transparent);border:1px solid color-mix(in srgb, #0ab39c 22%, transparent);font-size:11px;font-family:ui-monospace,Menlo,monospace;color:var(--tone-success-fg);"><i class="ri-check-line"></i>'self'</span>
+          <sc-for list="{{ cspOrigins }}" as="o" hint-placeholder-count="2"><span style="padding:4px 10px;border-radius:6px;background:var(--color-surface-muted, #f8f9fb);border:1px solid var(--color-border, #eff2f7);font-size:11px;font-family:ui-monospace,Menlo,monospace;color:var(--color-body-text, #495057);">{{ o.v }}</span></sc-for>
+          <sc-if value="{{ cspClean }}"><span style="font-size:11.5px;color:var(--tone-success-fg);padding:4px 2px;">Không mở origin ngoài nào 🎉</span></sc-if>
+        </div>
+      </div>
+
+      <!-- security checklist -->
+      <div style="background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;padding:15px;box-shadow:0 1px 2px rgb(56 65 74/.06);">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><i class="ri-shield-star-line" style="font-size:16px;color:#0ab39c;"></i><span style="font-size:13px;font-weight:700;color:var(--color-heading, #343a40);">Đảm bảo bảo mật</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <sc-for list="{{ secChecks }}" as="c" hint-placeholder-count="4"><div style="display:flex;align-items:flex-start;gap:8px;font-size:11.5px;line-height:1.45;color:var(--color-body-text, #495057);"><i class="{{ c.icon }}" style="font-size:14px;color:{{ c.color }};flex-shrink:0;margin-top:1px;"></i><span>{{ c.text }}</span></div></sc-for>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ confirmResetOpen }}">
+    <div style="position:fixed;inset:0;z-index:700;background:rgba(33,37,41,.45);display:flex;align-items:center;justify-content:center;padding:20px;animation:ig-fade .12s ease;">
+      <div style="width:100%;max-width:420px;background:var(--color-surface, #fff);border-radius:8px;box-shadow:0 12px 40px rgba(0,0,0,.25);overflow:hidden;">
+        <div style="padding:18px 20px 14px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;"><span style="width:36px;height:36px;border-radius:9px;background:color-mix(in srgb, #f06548 13%, transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-refresh-line" style="font-size:19px;color:#f06548;"></i></span><span style="font-size:15px;font-weight:700;color:var(--color-heading, #343a40);">Đặt lại cấu hình?</span></div>
+          <div style="font-size:12.5px;color:var(--color-body-muted, #6b7482);line-height:1.55;">Mọi thay đổi chưa lưu sẽ bị bỏ và khôi phục về mẫu ban đầu. Hành động này không hoàn tác được.</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;padding:12px 20px;background:var(--color-surface-muted, #f8f9fb);border-top:1px solid var(--color-border-soft, #f0f1f3);">
+          <button onClick="{{ onCancelReset }}" style="padding:8px 15px;border:1px solid var(--color-border-strong, #e9ebec);border-radius:5px;background:var(--color-surface, #fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-body-text, #495057);cursor:pointer;" style-hover="background:var(--color-surface-hover, #f1f3f5);">Huỷ</button>
+          <button onClick="{{ onConfirmReset }}" style="padding:8px 16px;border:0;border-radius:5px;background:#f06548;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);">Đặt lại</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ toast }}"><div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:600;background:var(--color-heading, #212529);color:#fff;padding:10px 16px;border-radius:6px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;align-items:center;gap:8px;animation:ig-fade .15s ease;"><i class="{{ toastIcon }}" style="font-size:16px;color:#0ab39c;"></i>{{ toastMsg }}</div></sc-if>
+<sc-if value="{{ showOwnBar }}"><div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--color-border-strong, #e9ebec);margin-top:4px;">
+    <span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted, #878a99);"><span style="{{ savedDot }}"></span>{{ savedText }}</span>
+    <button onClick="{{ onReset }}" style="padding:8px 15px;border:1px solid var(--color-border-strong, #e9ebec);border-radius:4px;background:var(--color-surface, #fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-body-text, #495057);cursor:pointer;" style-hover="background:var(--color-surface-hover, #f8f9fa);">Đặt lại</button>
+    <button onClick="{{ onSave }}" style="display:inline-flex;align-items:center;gap:7px;padding:8px 17px;border:0;border-radius:4px;background:var(--brand);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74/.15);" style-hover="background:color-mix(in srgb, var(--brand) 78%, #000);"><i class="ri-save-3-line" style="font-size:15px;"></i>Lưu cấu hình</button>
+  </div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1360,&quot;height&quot;:980}}">
+class Component extends DCLogic {
+  // Lưu/hoàn nguyên do shell điều khiển qua sự kiện 'bs-embed-cmd' (xem componentDidMount).
+  // Không dùng prevProps/prevState: runtime chỉ truyền 1 tham số nên mọi so sánh đều không đáng tin.
+  componentDidUpdate() { this.emitDirty(); }
+  emitDirty() { const d = !!this.state.dirty; if (this._lastDirty === d) return; this._lastDirty = d; if (typeof this.props.onDirty === 'function') this.props.onDirty(d); try { document.dispatchEvent(new CustomEvent('bs-embed-dirty', { detail: { id: 'integrations', dirty: d } })); } catch (e) {} }
+  constructor(props){
+    super(props);
+    this.platform='Bảo Sơn';
+    this.platformTrackDomain='sgtm.baoson.net';
+    this.consentRefs=[React.createRef(),React.createRef(),React.createRef()];
+    this.GROUPS=[
+      {key:'analytics',label:'Đo lường (Analytics)',icon:'ri-line-chart-line',color:'var(--brand)',tint:'color-mix(in srgb, var(--brand) 11%, transparent)',desc:'Hiểu khách đến từ đâu, xem gì.'},
+      {key:'ads',label:'Quảng cáo & Re‑marketing',icon:'ri-advertisement-line',color:'var(--tone-danger-fg)',tint:'color-mix(in srgb, #f06548 14%, transparent)',desc:'Bám đuổi & đo chuyển đổi đa nền tảng.'},
+      {key:'support',label:'Hỗ trợ & Chat',icon:'ri-chat-smile-2-line',color:'#0ab39c',tint:'color-mix(in srgb, #0ab39c 13%, transparent)',desc:'Khung chat trực tiếp trên website.'},
+      {key:'verify',label:'Xác minh & Công cụ',icon:'ri-verified-badge-line',color:'#3577f1',tint:'color-mix(in srgb, var(--brand) 10%, transparent)',desc:'Xác minh sở hữu website & tên miền.'},
+      {key:'advanced',label:'Nâng cao & Kết nối',icon:'ri-terminal-box-line',color:'#6d28d9',tint:'color-mix(in srgb, #6d28d9 12%, transparent)',desc:'Trình quản lý thẻ, container máy chủ, webhook.'},
+      {key:'intl',label:'Công cụ quốc tế',icon:'ri-earth-line',color:'var(--color-body-muted, #6c757d)',tint:'var(--color-surface-hover, #f1f2f4)',desc:'Chỉ bật khi chạy quảng cáo ở thị trường nước ngoài.'}
+    ];
+    this.PROVIDERS=[
+      {id:'ga4',group:'analytics',name:'Google Analytics 4',icon:'ri-google-fill',color:'#e37400',field:'Measurement ID',ph:'G-XXXXXXXXXX',rx:/^G-[A-Z0-9]{6,}$/i,consent:'analytics',serverSide:'Measurement Protocol',secret:'API Secret',csp:['*.google-analytics.com','googletagmanager.com'],kb:28,note:'Chuẩn đo lường phổ biến nhất.',about:'Google Analytics 4 đo lượng truy cập, nguồn khách (Google, Facebook, trực tiếp…), trang được xem nhiều, tỉ lệ chuyển đổi. Miễn phí, gần như bắt buộc cho mọi website.',learn:'https://support.google.com/analytics/answer/9539598'},
+      {id:'clarity',group:'analytics',name:'Microsoft Clarity',icon:'ri-cursor-fill',color:'#3577f1',field:'Project ID',ph:'abcdefghij',rx:/^[a-z0-9]{6,}$/i,consent:'analytics',serverSide:null,csp:['*.clarity.ms'],kb:16,replay:true,note:'Bản đồ nhiệt & xem lại phiên — miễn phí.',about:'Clarity ghi lại "bản đồ nhiệt" (khách bấm/kéo tới đâu) và quay lại phiên xem để bạn thấy khách thật sự dùng website thế nào. Hoàn toàn miễn phí.',learn:'https://learn.microsoft.com/clarity/setup-and-installation/clarity-setup'},
+      {id:'meta',group:'ads',name:'Meta Pixel + CAPI',icon:'ri-meta-fill',color:'#0866ff',field:'Pixel ID',ph:'0000000000000000',rx:/^\d{10,20}$/,consent:'marketing',serverSide:'Conversions API',token:'Access Token (CAPI)',csp:['connect.facebook.net'],kb:25,note:'Remarketing trên Facebook & Instagram.',about:'Meta Pixel ghi nhận khách đã xem gì để chạy quảng cáo bám đuổi trên Facebook & Instagram. Kèm Conversions API (CAPI) gửi từ máy chủ để đo chính xác hơn khi trình duyệt chặn cookie.',learn:'https://www.facebook.com/business/help/952192354843755'},
+      {id:'gads',group:'ads',name:'Google Ads',icon:'ri-google-fill',color:'#4285f4',field:'Conversion ID',ph:'AW-XXXXXXXXX',rx:/^AW-\d{6,}$/i,consent:'marketing',serverSide:'Enhanced Conversions',secret:'Conversion Label / Secret',csp:['googleadservices.com','googletagmanager.com'],kb:22,note:'Remarketing + Tìm kiếm/Display/YouTube.',about:'Google Ads đo chuyển đổi và dựng tệp remarketing để quảng cáo bám đuổi trên Google Tìm kiếm, mạng Display và YouTube. Enhanced Conversions tăng độ chính xác.',learn:'https://support.google.com/google-ads/answer/6095821'},
+      {id:'tiktok',group:'ads',name:'TikTok Pixel + Events API',icon:'ri-tiktok-fill',color:'#111111',field:'Pixel ID',ph:'CXXXXXXXXXXXXXXXXX',rx:/^C[A-Z0-9]{10,}$/i,consent:'marketing',serverSide:'Events API',token:'Access Token',csp:['analytics.tiktok.com'],kb:20,note:'Bám đuổi khách trên TikTok.',about:'TikTok Pixel ghi nhận hành vi để chạy quảng cáo bám đuổi trên TikTok; Events API gửi sự kiện từ máy chủ để đo chính xác hơn.',learn:'https://ads.tiktok.com/help/article/get-started-pixel'},
+      {id:'zalo',group:'ads',name:'Zalo Pixel',icon:'ri-chat-3-fill',color:'#0068ff',field:'Zalo Pixel ID',ph:'1234567890123',rx:/^\d{8,}$/,consent:'marketing',serverSide:null,csp:['sp.zalo.me'],kb:14,note:'Nền tảng nội địa Việt Nam.',about:'Zalo Pixel giúp remarketing tới người dùng Zalo tại Việt Nam — phù hợp khi khách hàng mục tiêu dùng Zalo nhiều.',learn:'https://business.zalo.me'},
+      {id:'zalo_oa',group:'support',name:'Zalo OA Chat',icon:'ri-chat-3-fill',color:'#0068ff',field:'Zalo OA ID',ph:'1234567890',rx:/^\d{6,}$/,consent:null,serverSide:null,csp:['sp.zalo.me'],kb:40,heavy:true,note:'Khung chat Zalo Official Account.',about:'Chèn khung chat Zalo OA để khách nhắn trực tiếp từ website. Khác với "Nút liên hệ nổi" (chỉ mở link) — đây là widget nhúng, tốn thêm dung lượng tải.',learn:'https://oa.zalo.me'},
+      {id:'messenger',group:'support',name:'Facebook Messenger Chat',icon:'ri-messenger-fill',color:'#0866ff',field:'Facebook Page ID',ph:'100000000000000',rx:/^\d{8,}$/,consent:'marketing',serverSide:null,csp:['connect.facebook.net'],kb:55,heavy:true,note:'Khung chat Messenger — nặng.',about:'Nhúng khung chat Messenger để khách nhắn qua Fanpage. Script khá nặng và có đặt cookie nên cần đồng ý — cân nhắc tốc độ.',learn:'https://developers.facebook.com/docs/messenger-platform/discovery/facebook-chat-plugin'},
+      {id:'tawk',group:'support',name:'Tawk.to Live Chat',icon:'ri-customer-service-2-fill',color:'#03a84e',field:'Property/Widget ID',ph:'xxxxxxxx/1abcde',rx:/.{6,}/,consent:null,serverSide:null,csp:['*.tawk.to'],kb:35,heavy:true,note:'Live chat miễn phí, nhân viên trả lời.',about:'Tawk.to là live chat miễn phí: nhân viên trả lời khách theo thời gian thực, có app điện thoại. Tốn thêm dung lượng tải.',learn:'https://help.tawk.to'},
+      {id:'gsc',group:'verify',name:'Google Search Console',icon:'ri-google-fill',color:'#4285f4',field:'Mã xác minh (chỉ phần mã)',ph:'abc123… (không cần cả thẻ)',rx:/^[A-Za-z0-9_-]{20,}$/,consent:null,serverSide:null,csp:[],metaOnly:true,kb:0,note:'Xác minh sở hữu để xem thứ hạng tìm kiếm.',about:'Xác minh website với Google để theo dõi từ khoá, thứ hạng, lỗi lập chỉ mục. Chỉ chèn một thẻ meta — không chạy script, không thu dữ liệu khách.',learn:'https://support.google.com/webmasters/answer/9008080'},
+      {id:'bing',group:'verify',name:'Bing Webmaster',icon:'ri-microsoft-fill',color:'var(--tone-success-fg)',field:'Mã xác minh (chỉ phần mã)',ph:'abc123… (không cần cả thẻ)',rx:/^[A-Za-z0-9_-]{12,}$/,consent:null,serverSide:null,csp:[],metaOnly:true,kb:0,note:'Xác minh với Bing/Microsoft.',about:'Tương tự Search Console nhưng cho Bing. Chỉ chèn thẻ meta xác minh.',learn:'https://www.bing.com/webmasters/help/getting-started-checklist-15b8e2a4'},
+      {id:'fb_domain',group:'verify',name:'Facebook Domain Verification',icon:'ri-meta-fill',color:'#0866ff',field:'Mã xác minh tên miền',ph:'abc123def456…',rx:/^[a-z0-9]{20,}$/i,consent:null,serverSide:null,csp:[],metaOnly:true,kb:0,note:'Bắt buộc cho quảng cáo Meta thời iOS.',about:'Xác minh quyền sở hữu tên miền với Meta — bắt buộc để chạy quảng cáo/CAPI ổn định sau thay đổi quyền riêng tư iOS, và chống người khác giả mạo tên miền của bạn.',learn:'https://www.facebook.com/business/help/286768115176155'},
+      {id:'gtm',group:'advanced',name:'Google Tag Manager (client)',icon:'ri-code-box-line',color:'#4285f4',field:'Container ID',ph:'GTM-XXXXXXX',rx:/^GTM-[A-Z0-9]{5,}$/i,consent:'marketing',serverSide:null,csp:['googletagmanager.com'],risky:true,kb:45,heavy:true,note:'Linh hoạt vô hạn nhưng cần nới CSP.',about:'GTM cho phép tự quản lý mọi thẻ theo dõi mà không cần lập trình — "cửa thoát" để phủ công cụ lạ. Nhưng bản client chạy mã tuỳ ý nên phải nới CSP (nonce) và có thể làm chậm trang. Ưu tiên dùng Container máy chủ.',learn:'https://support.google.com/tagmanager/answer/6103696'},
+      {id:'sgtm',group:'advanced',name:'Đo lường nâng cao (máy chủ)',icon:'ri-server-line',color:'#0ab39c',field:'Tên miền riêng',ph:'track.tenmien.vn',rx:/^[a-z0-9.-]+\.[a-z]{2,}$/i,consent:'marketing',serverSide:'Server‑side',csp:[],firstParty:true,recommended:true,managed:true,kb:2,note:'Gửi thẻ từ máy chủ — CSP sạch, nhanh nhất. Đã tích hợp sẵn.',about:'Đây là chế độ đo lường chạy trên máy chủ (server‑side Google Tag Manager) — đã tích hợp sẵn trên hạ tầng của hệ thống, bạn không phải cài đặt gì. Kết quả: CSP sạch, trang nhanh, dữ liệu chính xác và bảo mật nhất. Chỉ khi muốn dùng tên miền riêng bạn mới cần trỏ DNS.',learn:'https://developers.google.com/tag-platform/tag-manager/server-side'},
+      {id:'webhook',group:'advanced',name:'Webhook (lead)',icon:'ri-webhook-line',color:'var(--tone-warn-fg)',field:'Webhook URL',ph:'https://hooks.zapier.com/…',rx:/^https:\/\/.+/i,urlField:true,consent:null,serverSide:'Server‑side',csp:[],kb:0,note:'Gửi lead tới CRM / Zapier / Make.',about:'Mỗi khi có lead từ biểu mẫu, máy chủ gửi dữ liệu tới một địa chỉ (URL) bên ngoài để nối với CRM, Zapier/Make, Google Sheet… Gửi từ máy chủ nên không ảnh hưởng tốc độ và không cần mở CSP.',learn:'https://zapier.com/apps/webhook/integrations'},
+      {id:'pinterest',group:'intl',name:'Pinterest Tag',icon:'ri-pinterest-fill',color:'#e60023',field:'Tag ID',ph:'2612345678901',rx:/^\d{6,}$/,consent:'marketing',serverSide:'Conversions API',token:'Access Token',csp:['s.pinimg.com'],intl:true,kb:18,note:'Bám đuổi trên Pinterest.',about:'Pinterest Tag đo chuyển đổi và dựng tệp remarketing trên Pinterest — mạnh ở thị trường Âu/Mỹ, ngành thời trang/nội thất/DIY.',learn:'https://help.pinterest.com/en/business/article/install-the-pinterest-tag'},
+      {id:'linkedin',group:'intl',name:'LinkedIn Insight Tag',icon:'ri-linkedin-box-fill',color:'#0a66c2',field:'Partner ID',ph:'1234567',rx:/^\d{4,}$/,consent:'marketing',serverSide:null,csp:['snap.licdn.com'],intl:true,kb:20,note:'Remarketing B2B trên LinkedIn.',about:'LinkedIn Insight Tag phục vụ quảng cáo B2B: bám đuổi người ra quyết định, đo chuyển đổi theo công ty/chức danh. Phù hợp bán hàng doanh nghiệp quốc tế.',learn:'https://www.linkedin.com/help/lms/answer/a418880'},
+      {id:'x_ads',group:'intl',name:'X (Twitter) Pixel',icon:'ri-twitter-x-fill',color:'#111111',field:'Pixel ID',ph:'o1abc',rx:/^[a-z0-9]{5,}$/i,consent:'marketing',serverSide:null,csp:['static.ads-twitter.com'],intl:true,kb:18,note:'Bám đuổi trên X (Twitter).',about:'X Pixel đo chuyển đổi và remarketing trên nền tảng X (Twitter) — dùng khi chạy quảng cáo tới người dùng quốc tế.',learn:'https://business.x.com/en/help/campaign-measurement-and-analytics/conversion-tracking-for-websites'},
+      {id:'snapchat',group:'intl',name:'Snap Pixel',icon:'ri-snapchat-fill',color:'#fffc00',field:'Pixel ID',ph:'xxxxxxxx-xxxx-xxxx',rx:/^[a-z0-9-]{8,}$/i,consent:'marketing',serverSide:'Conversions API',token:'Access Token',csp:['sc-static.net'],intl:true,kb:18,note:'Bám đuổi trên Snapchat.',about:'Snap Pixel bám đuổi & đo chuyển đổi trên Snapchat — tệp khách trẻ ở thị trường Âu/Mỹ.',learn:'https://businesshelp.snapchat.com/s/article/snap-pixel-about'},
+      {id:'reddit',group:'intl',name:'Reddit Pixel',icon:'ri-reddit-fill',color:'#ff4500',field:'Advertiser ID',ph:'t2_xxxxxxxx',rx:/^t2_[a-z0-9]+$/i,consent:'marketing',serverSide:null,csp:['*.reddit.com'],intl:true,kb:16,note:'Bám đuổi trên Reddit.',about:'Reddit Pixel đo chuyển đổi và remarketing trên Reddit — cộng đồng ngách ở thị trường quốc tế.',learn:'https://business.reddithelp.com/s/article/install-the-reddit-pixel'}
+    ];
+    this.EVENTS=[['ri-eye-line','Xem trang'],['ri-shopping-bag-line','Xem sản phẩm'],['ri-search-line','Tìm kiếm'],['ri-add-circle-line','Thêm giỏ hàng'],['ri-phone-line','Bắt đầu liên hệ'],['ri-send-plane-line','Gửi biểu mẫu'],['ri-shopping-cart-2-line','Mua hàng']];
+    this.NAV=[['ri-settings-3-line','Thông tin chung',false],['ri-palette-line','Thương hiệu & Giao diện',false],['ri-menu-2-line','Menu điều hướng',false],['ri-customer-service-2-line','Nút liên hệ nổi',false],['ri-share-line','SEO & Chia sẻ',false],['ri-radar-line','Tích hợp & Theo dõi',true],['ri-shield-keyhole-line','Bảo mật & Nâng cao',false]];
+    this.CMODES=[
+      {k:'off',label:'Tắt hỏi — thu thập ngay',desc:'Không hiện banner, theo dõi ngay khi khách vào. Trải nghiệm mượt nhất nhưng có rủi ro pháp lý.'},
+      {k:'mode',label:'Consent Mode v2 (khuyến nghị)',desc:'Hỏi nhẹ nhàng; khách từ chối vẫn có số liệu mô hình hoá ẩn danh. Cân bằng tuân thủ & trải nghiệm.'},
+      {k:'strict',label:'Chặt (opt‑in)',desc:'Không chạy tag marketing tới khi khách bấm Đồng ý. Tuân thủ cao nhất.'}
+    ];
+    this.GUIDES={
+      ga4:{open:'https://analytics.google.com/',create:'https://analytics.google.com/analytics/web/#/provision',steps:['Vào analytics.google.com và đăng nhập Google.','Bấm Quản trị (bánh răng ⚙ góc dưới trái).','Chọn "Luồng dữ liệu" → chọn website của bạn.','Copy "Mã đo lường" bắt đầu bằng G-.']},
+      clarity:{open:'https://clarity.microsoft.com/',create:'https://clarity.microsoft.com/',steps:['Vào clarity.microsoft.com và đăng nhập.','Tạo dự án mới cho website (nếu chưa có).','Vào Settings → Overview và copy Project ID.']},
+      meta:{open:'https://business.facebook.com/events_manager2/',create:'https://www.facebook.com/business/tools/meta-pixel',steps:['Vào Trình quản lý sự kiện (Events Manager).','Chọn hoặc tạo Pixel cho website.','Copy dãy số Pixel ID (15–16 chữ số).','Token: Cài đặt → Conversions API → Tạo mã truy cập.']},
+      gads:{open:'https://ads.google.com/',create:'https://ads.google.com/',steps:['Vào ads.google.com → Công cụ & Cài đặt → Lượt chuyển đổi.','Tạo hoặc chọn hành động chuyển đổi cho website.','Copy "ID lượt chuyển đổi" dạng AW-xxxxxxxxx.']},
+      tiktok:{open:'https://ads.tiktok.com/',create:'https://ads.tiktok.com/',steps:['Vào TikTok Ads Manager → Tài sản → Sự kiện.','Chọn hoặc tạo Pixel web.','Copy Pixel ID; tạo Access Token cho Events API.']},
+      zalo:{open:'https://business.zalo.me/',create:'https://business.zalo.me/',steps:['Vào Zalo Ads/Business.','Tạo Zalo Pixel cho website.','Copy Pixel ID (dãy số).']},
+      zalo_oa:{open:'https://oa.zalo.me/',create:'https://oa.zalo.me/',steps:['Vào oa.zalo.me và chọn Official Account.','Vào Quản lý OA → Thông tin.','Copy OA ID (dãy số).']},
+      messenger:{open:'https://business.facebook.com/settings/pages',create:'',steps:['Mở Fanpage Facebook của bạn.','Meta Business Settings → Trang → chọn Trang.','Copy Page ID (dãy số).']},
+      tawk:{open:'https://dashboard.tawk.to/',create:'https://www.tawk.to/',steps:['Đăng nhập dashboard.tawk.to.','Administration → Chat Widget.','Copy Widget ID (dạng property/widget).']},
+      gsc:{open:'https://search.google.com/search-console',create:'https://search.google.com/search-console',steps:['Vào Search Console → Thêm tài sản.','Chọn xác minh bằng "Thẻ HTML".','Copy mã trong content="…" (dán cả thẻ cũng được, hệ thống tự lấy).']},
+      bing:{open:'https://www.bing.com/webmasters',create:'https://www.bing.com/webmasters',steps:['Vào Bing Webmaster Tools → Thêm site.','Chọn xác minh bằng thẻ meta.','Copy mã trong content="…" (dán cả thẻ cũng được).']},
+      fb_domain:{open:'https://business.facebook.com/settings/owned-domains',create:'',steps:['Business Settings → Thương hiệu → Miền.','Thêm miền của bạn, chọn xác minh "Thẻ Meta".','Copy mã trong content="…".']},
+      gtm:{open:'https://tagmanager.google.com/',create:'https://tagmanager.google.com/',steps:['Vào tagmanager.google.com, tạo tài khoản + vùng chứa loại Web.','Copy mã vùng chứa dạng GTM-XXXXXXX.']},
+      sgtm:{open:'',create:'',steps:['Khuyến nghị: để trống — dùng sẵn hạ tầng đo lường của hệ thống, không cần cài gì.','Nếu muốn tên miền riêng: tạo bản ghi CNAME cho track → '+this.platformTrackDomain+' tại nơi quản lý tên miền.','Bấm "Kiểm tra kết nối" để xác nhận.']},
+      webhook:{open:'',create:'https://zapier.com/apps/webhook/integrations',steps:['Ở Zapier/Make: tạo bước "Catch Hook" (Webhook).','Copy URL webhook nhận được.','Dán URL vào đây (phải bắt đầu bằng https://).']},
+      pinterest:{open:'https://ads.pinterest.com/',create:'https://ads.pinterest.com/',steps:['Vào Pinterest Ads → Chuyển đổi → Thẻ Pinterest.','Copy Tag ID (dãy số).']},
+      linkedin:{open:'https://www.linkedin.com/campaignmanager/',create:'https://www.linkedin.com/campaignmanager/',steps:['Vào Campaign Manager → Tài sản → Insight Tag.','Copy Partner ID (dãy số).']},
+      x_ads:{open:'https://ads.x.com/',create:'https://ads.x.com/',steps:['Vào X Ads → Tools → Conversion tracking.','Tạo/chọn Pixel, copy Pixel ID.']},
+      snapchat:{open:'https://ads.snapchat.com/',create:'https://ads.snapchat.com/',steps:['Vào Snapchat Ads Manager → Events Manager.','Tạo Snap Pixel, copy Pixel ID.']},
+      reddit:{open:'https://ads.reddit.com/',create:'https://ads.reddit.com/',steps:['Vào Reddit Ads → Events Manager.','Copy Advertiser ID dạng t2_….']}
+    };
+    this.DISTINCT={'Google Analytics 4':/^G-[A-Z0-9]{6,}$/i,'Google Tag Manager':/^GTM-[A-Z0-9]{5,}$/i,'Google Ads':/^AW-\d{6,}$/i,'TikTok':/^C[A-Z0-9]{10,}$/i};
+    this.COLLAPSIBLE={support:1,verify:1,advanced:1,intl:1};
+    const _onInit={ga4:true,meta:true,gads:true,sgtm:true,zalo_oa:true};
+    this._initCollapsed={}; Object.keys(this.COLLAPSIBLE).forEach(k=>{ this._initCollapsed[k]=true; });
+    this.state={ on:{ga4:true,meta:true,gads:true,sgtm:true,zalo_oa:true}, ids:{ga4:'G-8XY2AVML7Q',meta:'481920735560284',gads:'AW-11223344',sgtm:'track.anvinh.vn',zalo_oa:'3388776655'}, secrets:{}, sampleRate:{clarity:25}, tagScope:{}, narrow:false, consentMode:'mode', serverSide:true, info:null, guide:null, collapsed:Object.assign({},this._initCollapsed), customDomain:false, dnsStatus:'none', dirty:false, saving:false, savedAt:null, toast:null, toastIcon:'ri-checkbox-circle-line', confirmReset:false, secretShow:{}, loadStrat:{} };
+  }
+  componentDidMount(){ this._cmd=(e)=>{ const d=e.detail||{}; if(d.id!=='integrations') return; if(d.act==='save') this.save(); else if(d.act==='reset') this.reset(); }; document.addEventListener('bs-embed-cmd',this._cmd); this._bu=(e)=>{ if(this.state.dirty){ e.preventDefault(); e.returnValue=''; return ''; } }; window.addEventListener('beforeunload',this._bu); this._esc=(e)=>{ if(e.key==='Escape'&&this.state.confirmReset) this.cancelReset(); }; window.addEventListener('keydown',this._esc); }
+  componentWillUnmount(){ if(this._ro){ try{this._ro.disconnect();}catch(e){} } document.removeEventListener('bs-embed-cmd',this._cmd); window.removeEventListener('beforeunload',this._bu); window.removeEventListener('keydown',this._esc); clearTimeout(this._t); clearTimeout(this._dns); }
+  setCols(el){ if(this._ro){ try{this._ro.disconnect();}catch(e){} this._ro=null; } this.colsEl=el||null;
+    if(el&&typeof ResizeObserver!=='undefined'){ this._ro=new ResizeObserver(()=>{ const n=el.clientWidth<820; if(n!==this.state.narrow) this.setState({narrow:n}); }); this._ro.observe(el); const n0=el.clientWidth<820; if(n0!==this.state.narrow) this.setState({narrow:n0}); } }
+  toggleGuide(id){ this.setState(s=>({guide:s.guide===id?null:id})); }
+  askReset(){ this.setState({confirmReset:true}); }
+  cancelReset(){ this.setState({confirmReset:false}); }
+  toggleSecret(id){ this.setState(s=>{ const t=Object.assign({},s.secretShow); t[id]=!t[id]; return {secretShow:t}; }); }
+  deferrable(p){ return !p.heavy && !p.metaOnly && (p.consent==='marketing' || p.consent==='analytics'); }
+  sampleOf(p){ return p.replay ? (this.state.sampleRate[p.id] || 25) : 100; }
+  scopable(p){ return this.deferrable(p) && p.consent==='marketing' && !p.serverSide; }
+  scopeOf(p){ return this.state.tagScope[p.id] || (p.intl ? 'campaign' : 'all'); }
+  setScope(id,v){ this.setState(st=>{ const t=Object.assign({},st.tagScope); t[id]=v; return {tagScope:t,dirty:true}; }); }
+  setSample(id,v){ this.setState(st=>{ const t=Object.assign({},st.sampleRate); t[id]=v; return {sampleRate:t,dirty:true}; }); }
+  stratOf(p){ const v=this.state.loadStrat[p.id]; if(v) return v; return p.heavy?'facade':(this.deferrable(p)?'idle':'now'); }
+  setLoadStrat(id,k){ this.setState(s=>{ const t=Object.assign({},s.loadStrat); t[id]=k; return {loadStrat:t,dirty:true}; }); }
+  loadStratKey(e,id){ const pv=this.PROVIDERS.find(x=>x.id===id)||{}; const ks=pv.heavy?['facade','idle','now']:['idle','now']; const i=ks.indexOf(this.state.loadStrat[id]||'facade'); let ni=null; if(e.key==='ArrowRight'||e.key==='ArrowDown') ni=(i+1)%3; else if(e.key==='ArrowLeft'||e.key==='ArrowUp') ni=(i-1+3)%3; if(ni!==null){ e.preventDefault(); const g=e.currentTarget.parentNode; const t=g&&g.children[ni]; this.setLoadStrat(id,ks[ni]); if(t&&t.focus) t.focus(); } }
+  consentKey(e){ const ks=this.CMODES.map(m=>m.k); const i=ks.indexOf(this.state.consentMode); let ni=null; if(e.key==='ArrowDown'||e.key==='ArrowRight') ni=(i+1)%ks.length; else if(e.key==='ArrowUp'||e.key==='ArrowLeft') ni=(i-1+ks.length)%ks.length; if(ni!==null){ e.preventDefault(); this.setState({consentMode:ks[ni],dirty:true},()=>{ const r=this.consentRefs[ni]; if(r&&r.current) r.current.focus(); }); } }
+  fmtTime(ts){ const d=new Date(ts); const p=n=>(n<10?'0':'')+n; return p(d.getHours())+':'+p(d.getMinutes()); }
+  helpRequest(){ this.notify('Đã gửi yêu cầu — đội '+this.platform+' sẽ hỗ trợ cài đặt ✓','ri-customer-service-2-line'); }
+  extractId(id,raw){ const s=(raw||'').trim(); if(!s) return null;
+    const metaC=s.match(/content\s*=\s*["']([^"']+)["']/i);
+    if(id==='gsc'||id==='bing'||id==='fb_domain'){ return metaC?metaC[1].trim():null; }
+    if(id==='meta'){ const fb=s.match(/init['"]?\s*,\s*['"](\d{8,})['"]/i); if(fb) return fb[1]; if(/\D/.test(s)){ const m=s.match(/\d{10,20}/); if(m) return m[0]; } return null; }
+    if(id==='ga4'){ const m=s.match(/G-[A-Z0-9]{4,}/i); return (m&&m[0].toUpperCase()!==s.toUpperCase())?m[0].toUpperCase():null; }
+    if(id==='gtm'){ const m=s.match(/GTM-[A-Z0-9]{4,}/i); return (m&&m[0].toUpperCase()!==s.toUpperCase())?m[0].toUpperCase():null; }
+    if(id==='gads'){ const m=s.match(/AW-\d{6,}/i); return (m&&m[0].toUpperCase()!==s.toUpperCase())?m[0].toUpperCase():null; }
+    if(id==='tiktok'){ const m=s.match(/C[A-Z0-9]{10,}/i); return (m&&m[0]!==s)?m[0]:null; }
+    if(id==='webhook'){ const m=s.match(/https?:\/\/[^\s"'<>]+/i); return (m&&m[0]!==s)?m[0]:null; }
+    if(id==='zalo'||id==='zalo_oa'||id==='messenger'){ if(/\D/.test(s)){ const m=s.match(/\d{6,}/); if(m) return m[0]; } return null; }
+    if(id==='tawk'){ const m=s.match(/[a-f0-9]{16,}\/[A-Za-z0-9]+/i); return (m&&m[0]!==s)?m[0]:null; }
+    return null;
+  }
+  notify(m,i){ this.setState({toast:m,toastIcon:i||'ri-checkbox-circle-line'}); clearTimeout(this._t); this._t=setTimeout(()=>this.setState({toast:null}),2200); }
+  recStrat(p){ return p.heavy ? 'facade' : (this.deferrable(p) ? 'idle' : 'now'); }
+  recScope(p){ return p.intl ? 'campaign' : 'all'; }
+  // Bật một công cụ luôn khởi động lại ở cấu hình khuyến nghị (nhẹ nhất mà vẫn đủ dữ liệu).
+  toggle(id){ this.setState(s=>{ const on=Object.assign({},s.on); on[id]=!on[id];
+    const ls=Object.assign({},s.loadStrat), ts=Object.assign({},s.tagScope), sr=Object.assign({},s.sampleRate);
+    // Tắt: xoá mọi ghi đè -> lần bật sau tự rơi về mặc định khuyến nghị.
+    delete ls[id]; delete ts[id]; delete sr[id];
+    if(on[id]){ const p=this.PROVIDERS.find(x=>x.id===id); if(p){ ls[id]=this.recStrat(p); if(this.scopable(p)) ts[id]=this.recScope(p); if(p.replay) sr[id]=25; } }
+    return {on:on,loadStrat:ls,tagScope:ts,sampleRate:sr,dirty:true}; }); }
+  detectForeign(id,t){ const p=this.PROVIDERS.find(x=>x.id===id); const selfName=p?p.name:''; for(const nm in this.DISTINCT){ if(nm===selfName) continue; if(this.DISTINCT[nm].test(t)) return nm; } return null; }
+  setId(id,v){ const p=this.PROVIDERS.find(x=>x.id===id); const ex=this.extractId(id,v); const val=(ex&&ex!==v)?ex:v;
+    if(ex&&ex!==v){ this.notify('Đã tự nhận diện: '+ex,'ri-magic-line'); }
+    else { const t=(v||'').trim(); if(p&&t!==''&&!(p.rx&&p.rx.test(t))){ const f=this.detectForeign(id,t); if(f) this.notify('Có vẻ đây là ID của '+f+' — không phải '+p.name,'ri-error-warning-line'); } }
+    this.setState(s=>{ const ids=Object.assign({},s.ids); ids[id]=val; return {ids:ids,dirty:true}; }); }
+  toggleGroup(key){ if(!this.COLLAPSIBLE[key]) return; this.setState(s=>{ const opening=!!s.collapsed[key]; const c={}; Object.keys(this.COLLAPSIBLE).forEach(k=>{ c[k]=true; }); if(opening) c[key]=false; return {collapsed:c}; }); }
+  toggleCustomDomain(){ this.setState(s=>({customDomain:!s.customDomain,dirty:true})); }
+  checkDns(){ this.setState({dnsStatus:'checking'}); clearTimeout(this._dns); this._dns=setTimeout(()=>this.setState({dnsStatus:'ok'}),1300); }
+  setSecret(id,v){ this.setState(s=>{ const t=Object.assign({},s.secrets); t[id]=v; return {secrets:t,dirty:true}; }); }
+  toggleInfo(key){ this.setState(s=>({info:s.info===key?null:key})); }
+  badUrl(v){ if(!v) return false; const s=String(v).trim().toLowerCase().replace(/[\s\u0000-\u001f]+/g,''); return s.indexOf('javascript:')===0||s.indexOf('data:')===0||s.indexOf('vbscript:')===0; }
+  save(){ this.setState({saving:true}); setTimeout(()=>{ this.setState({saving:false,dirty:false,savedAt:Date.now()}); this.notify('Đã lưu cấu hình tích hợp'); },450); }
+  reset(){ this.setState({sampleRate:{clarity:25},tagScope:{},on:{ga4:true,meta:true,gads:true,sgtm:true,zalo_oa:true},ids:{ga4:'G-8XY2AVML7Q',meta:'481920735560284',gads:'AW-11223344',sgtm:'track.anvinh.vn',zalo_oa:'3388776655'},secrets:{},consentMode:'mode',serverSide:true,info:null,guide:null,collapsed:Object.assign({},this._initCollapsed),customDomain:false,dnsStatus:'none',dirty:false,confirmReset:false,loadStrat:{}}); this.notify('Đã đặt lại mẫu','ri-refresh-line'); }
+  test(name){ this.notify('Đã gửi sự kiện thử tới '+name+' ✓','ri-flask-line'); }
+
+  sw(on,color){ return 'position:relative;width:40px;height:23px;border-radius:23px;border:0;cursor:pointer;flex-shrink:0;transition:background .15s;background:'+(on?(color||'#0ab39c'):'var(--color-border-strong, #ced4da)')+';'; }
+  knob(on){ return 'position:absolute;top:2px;left:'+(on?'19px':'2px')+';width:19px;height:19px;border-radius:50%;background:var(--color-surface, #fff);transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.25);'; }
+
+  renderVals(){
+    const S=this.state; const INP='width:100%;padding:9px 11px;border:1px solid var(--color-border-strong, #ced4da);border-radius:5px;font:inherit;font-size:13px;color:var(--color-body-text, #495057);background:var(--color-surface, #fff);outline:none;';
+    const badge=(bg,c)=>'display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;background:'+bg+';color:'+c+';white-space:nowrap;';
+    const CALL='background:color-mix(in srgb, var(--brand) 10%, transparent);border:1px solid color-mix(in srgb, var(--brand) 18%, transparent);border-radius:7px;padding:10px 12px;font-size:11.5px;color:#3b5580;line-height:1.55;';
+
+    let kb=0, shared=false; const origins=new Set(); const cats=new Set();
+    this.PROVIDERS.forEach(p=>{ if(!S.on[p.id]) return; if(p.consent) cats.add(p.consent);
+      if(p.metaOnly) return;
+      if(S.serverSide&&p.serverSide){ shared=true; return; }
+      const strat=this.stratOf(p);
+      if(p.heavy) kb+=(strat==='now')?(p.kb||18):2;
+      else { var base=(strat==='idle')?Math.round((p.kb||18)*0.35):(p.kb||18);
+        if(p.replay) base=Math.max(3,Math.round(base*(this.sampleOf(p)/100)));
+        if(this.scopable(p)&&this.scopeOf(p)==='campaign') base=Math.max(1,Math.round(base*0.15));
+        kb+=base; }
+      (p.csp||[]).forEach(o=>origins.add(o));
+    });
+    if(shared) kb+=8;
+    const cwvKb=kb; const cwvPct=Math.min(100,Math.round(cwvKb/30*100)); const cwvColor=cwvKb<=20?'#0ab39c':(cwvKb<=30?'var(--tone-warn-fg)':'#f06548');
+    let ssSavings=0, heavyNowKb=0; this.PROVIDERS.forEach(p=>{ if(!S.on[p.id]) return; if(!p.metaOnly&&p.serverSide) ssSavings+=p.kb||18; if(this.deferrable(p)&&this.stratOf(p)==='now') heavyNowKb+=Math.round((p.kb||18)*0.65); if(p.heavy&&this.stratOf(p)==='now') heavyNowKb+=(p.kb||18)-2; });
+    const cwvOver=cwvKb>30; const cwvHint=cwvOver?(heavyNowKb>0?('Vượt ngân sách. Đổi công cụ nặng sang "Tải khi khách bấm" có thể giảm ~'+heavyNowKb+'KB mà vẫn giữ đủ tính năng.'):((!S.serverSide&&ssSavings>0)?('Vượt ngân sách. Bật "Thu thập phía máy chủ" có thể giảm ~'+Math.max(1,ssSavings-8)+'KB.'):'Vượt ngân sách — cân nhắc dùng "Nút liên hệ nổi" (≈0KB) thay khung chat nhúng.')):'';
+    const marketingOn=this.PROVIDERS.some(p=>S.on[p.id]&&p.consent==='marketing');
+    const consentWarn=marketingOn&&S.consentMode==='off';
+    const dupOn=S.on.gtm&&(S.on.ga4||S.on.meta||S.on.gads);
+    const catLabel=(cats.has('analytics')?'Đo lường':'')+((cats.has('analytics')&&cats.has('marketing'))?' · ':'')+(cats.has('marketing')?'Marketing':'')||'—';
+
+    const narrow=!!S.narrow;
+    const colsStyle='display:flex;align-items:flex-start;gap:20px;padding:18px 24px 24px;flex-wrap:'+(narrow?'wrap':'nowrap')+';';
+    const railStyle=narrow
+      ? 'flex:1 1 100%;width:100%;min-width:0;display:flex;flex-direction:column;gap:14px;'
+      : 'flex:0 0 310px;width:310px;min-width:0;display:flex;flex-direction:column;gap:14px;position:sticky;top:16px;max-height:calc(100vh - 104px);overflow-y:auto;overscroll-behavior:contain;padding-right:2px;';
+    const groups=this.GROUPS.map(g=>{ const items=this.PROVIDERS.filter(p=>p.group===g.key); const onCount=items.filter(p=>S.on[p.id]).length; const isIntl=g.key==='intl'; const isColl=!!this.COLLAPSIBLE[g.key]; const open=isColl?!S.collapsed[g.key]:true; const showBody=open;
+      const needCount=items.filter(p=>S.on[p.id]&&!p.managed&&(''+(S.ids[p.id]||'')).trim()==='').length;
+      return { label:g.label, desc:g.desc, icon:g.icon, color:g.color, tint:g.tint, onCount:onCount, needCount:needCount, hasNeed:needCount>0, overlap:g.key==='support', isIntl:isIntl, showChevron:isColl, headerRole:isColl?'button':null, openVal:open, showBody:showBody, onHeader:isColl?(()=>this.toggleGroup(g.key)):null, headerCursor:isColl?'cursor:pointer;':'', chevron:isColl?(open?'ri-arrow-up-s-line':'ri-arrow-down-s-line'):'', intlWarn:isIntl&&open,
+        items:items.map(p=>{ const on=!!S.on[p.id]; const idv=S.ids[p.id]||''; const trimmed=idv.trim(); const bad=on&&trimmed!==''&&(p.urlField?(this.badUrl(trimmed)||!p.rx.test(trimmed)):!p.rx.test(trimmed)); const connected=on&&trimmed!==''&&!bad;
+          const serverRun=(S.serverSide&&p.serverSide); const showSecret=on&&(p.secret||p.token)&&(p.token?true:serverRun);
+          const gd=this.GUIDES[p.id]||{steps:[],open:'',create:''}; const fShort=p.metaOnly?'mã':(p.urlField?'URL':'ID');
+          const foreign=(bad?this.detectForeign(p.id,trimmed):null);
+          const idMsg=foreign?('Đây có vẻ là ID của "'+foreign+'" — không phải '+p.name+'. Ô này cần '+p.field+' dạng: '+p.ph):('Chưa đúng định dạng — '+p.field+' có dạng: '+p.ph);
+          return { name:p.name, note:p.note, about:p.about, learn:p.learn, icon:p.icon, iconColor:p.color, iconBg:p.color+'14',
+            recommended:!!p.recommended, serverSideOk:!!serverRun, consentM:p.consent==='marketing', metaOnly:!!p.metaOnly, heavy:!!p.heavy, risky:!!p.risky,
+            on:on, onToggle:()=>this.toggle(p.id), swStyle:this.sw(on,'#0ab39c'), knobStyle:this.knob(on), swAria:(on?'Tắt ':'Bật ')+p.name, infoAria:'Tìm hiểu '+p.name, fieldAria:p.field+' của '+p.name,
+            onInfo:()=>this.toggleInfo(p.id), infoOpen:S.info===p.id,
+            rowStyle:'border:1px solid '+(on?'color-mix(in srgb, var(--brand) 22%, transparent)':'var(--color-border, #eff2f7)')+';border-radius:9px;padding:13px 14px;background:'+(on?'var(--color-surface-muted, var(--color-surface-muted, #fcfdff))':'var(--color-surface, #fff)')+';',
+            fieldLabel:p.field, ph:p.ph, idVal:idv, onId:(e)=>this.setId(p.id,e.target.value), idBad:bad, idInputStyle:INP+(bad?'border-color:#f06548;background:color-mix(in srgb, #f06548 12%, transparent);':''),
+            showSecret:showSecret, secretLabel:p.token||p.secret||'', secretVal:S.secrets[p.id]||'', onSecret:(e)=>this.setSecret(p.id,e.target.value),
+            needsInput:(on&&!p.managed&&trimmed===''), secretType:(S.secretShow[p.id]?'text':'password'), secretEyeIcon:(S.secretShow[p.id]?'ri-eye-off-line':'ri-eye-line'), onToggleSecret:()=>this.toggleSecret(p.id), secretInputStyle:INP+'padding-right:38px;',
+            isScope:this.scopable(p),
+            scopeNote:(this.scopeOf(p)==='campaign'?'Chỉ nạp khi khách đến từ quảng cáo của nền tảng này (có tham số utm/click-id) hoặc đang ở bước giỏ hàng — đo đủ chuyển đổi mà hầu hết lượt xem không phải tải gì. Đánh đổi: tệp remarketing rộng sẽ nhỏ hơn.':'Nạp trên mọi trang cho mọi khách — tệp remarketing lớn nhất, nhưng mọi lượt xem đều phải tải mã.'),
+            scopeOpts:[['campaign','Chỉ khách từ chiến dịch','ri-crosshair-2-line'],['all','Mọi lượt truy cập','ri-global-line']].map(o=>{ const sel=this.scopeOf(p)===o[0]; return { label:o[1]+(this.recScope(p)===o[0]?' · khuyến nghị':''), icon:o[2], sel:sel, on:()=>this.setScope(p.id,o[0]), style:'display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:6px;border:1px solid '+(sel?'color-mix(in srgb, var(--brand) 34%, transparent)':'var(--color-border-strong, #e9ebec)')+';background:'+(sel?'color-mix(in srgb, var(--brand) 8%, transparent)':'var(--color-surface, #fff)')+';color:'+(sel?'var(--brand-fg)':'var(--color-body-muted, #6c757d)')+';font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;' }; }),
+            isSample:!!p.replay, sampleNote:'Chỉ ghi lại '+this.sampleOf(p)+'% số phiên — bản đồ nhiệt vẫn đại diện đúng hành vi, ảnh hưởng tốc độ trung bình giảm '+(100-this.sampleOf(p))+'%.',
+            sampleOpts:[10,25,50,100].map(v=>{ const sel=this.sampleOf(p)===v; return { label:v+'%'+(v===25?' · khuyến nghị':''), sel:sel, on:()=>this.setSample(p.id,v), style:'display:inline-flex;align-items:center;padding:6px 12px;border-radius:6px;border:1px solid '+(sel?'color-mix(in srgb, var(--brand) 34%, transparent)':'var(--color-border-strong, #e9ebec)')+';background:'+(sel?'color-mix(in srgb, var(--brand) 8%, transparent)':'var(--color-surface, #fff)')+';color:'+(sel?'var(--brand-fg)':'var(--color-body-muted, #6c757d)')+';font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;' }; }),
+            isHeavy:(!!p.heavy||this.deferrable(p)), heavyBad:(!!p.heavy&&this.stratOf(p)==='now'), heavyOpt:((!!p.heavy||this.deferrable(p))&&this.stratOf(p)!=='now'), heavyOptText:(this.stratOf(p)==='facade'?'Tải khi bấm':'Tải khi rảnh'),
+            loadNote:(p.heavy?(this.stratOf(p)==='now'?'Widget tải ngay khi vào trang — nặng nhất, chỉ dùng khi cần chat hiện ngay lập tức.':(this.stratOf(p)==='idle'?'Widget tải sau khi trang xong, lúc trình duyệt rảnh — không chặn hiển thị.':'Widget chỉ tải khi khách bấm nút chat — gần như 0KB lúc vào trang, khách vẫn chat đầy đủ (kỹ thuật facade chuẩn Google).')):(this.stratOf(p)==='idle'?'Pixel tải sau khi trang hiển thị xong (khi trình duyệt rảnh hoặc khách tương tác lần đầu) — không chặn hiển thị, vẫn ghi đủ lượt xem và chuyển đổi.':'Pixel tải ngay khi vào trang — chỉ nên dùng nếu bạn cần đo chính xác từng mili-giây đầu tiên.')),
+            loadOpts:(p.heavy?[['facade','Tải khi khách bấm','ri-cursor-line'],['idle','Khi trang rảnh','ri-time-line'],['now','Tải ngay','ri-flashlight-line']]:[['idle','Khi trang rảnh','ri-time-line'],['now','Tải ngay','ri-flashlight-line']]).map(o=>{ const sel=this.stratOf(p)===o[0]; const rec=this.recStrat(p)===o[0]; return { k:o[0], label:o[1]+(rec?' · khuyến nghị':''), icon:o[2], sel:sel, tab:(sel?'0':'-1'), onKey:(e)=>this.loadStratKey(e,p.id), on:()=>this.setLoadStrat(p.id,o[0]), style:'display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border-radius:6px;border:1px solid '+(sel?'color-mix(in srgb, var(--brand) 34%, transparent)':'var(--color-border-strong, #e9ebec)')+';background:'+(sel?'color-mix(in srgb, var(--brand) 8%, transparent)':'var(--color-surface, #fff)')+';color:'+(sel?'var(--brand-fg)':'var(--color-body-muted, #6c757d)')+';font:inherit;font-size:11.5px;font-weight:600;cursor:pointer;' }; }),
+            connColor:connected?'var(--tone-success-fg)':'var(--color-body-faint, #adb5bd)', connIcon:connected?'ri-checkbox-circle-fill':'ri-time-line', connText:connected?(p.metaOnly?'Đã thêm thẻ xác minh':(p.urlField?'Đã kết nối · gửi từ máy chủ':(serverRun?'Đã kết nối · gửi từ máy chủ':'Đã kết nối · chạy phía trình duyệt'))):'Nhập thông tin để kích hoạt',
+            canTest:connected&&!p.metaOnly, onTest:()=>this.test(p.name),
+            connectedChip:connected, doubleWarn:(p.id==='gtm'&&dupOn),
+            hasGuide:(gd.steps||[]).length>0, guideOpen:S.guide===p.id, onGuide:()=>this.toggleGuide(p.id), guideSteps:(gd.steps||[]).map((t,i)=>({n:i+1,t:t})), openUrl:gd.open||'', hasOpen:!!gd.open, createUrl:gd.create||'', hasCreate:!!gd.create, fieldShort:fShort, infoOpenVal:(S.info===p.id), idMsg:idMsg,
+            managed:!!p.managed, notManaged:!p.managed, mgCustom:S.customDomain, onToggleCustom:()=>this.toggleCustomDomain(), customChevron:(S.customDomain?'ri-arrow-up-s-line':'ri-arrow-down-s-line'), mgDomain:idv, onMgDomain:(e)=>this.setId('sgtm',e.target.value), mgCnameLink:'sgtm.baoson.net', onCheckDns:()=>this.checkDns(), dnsShow:S.dnsStatus!=='none', dnsText:(S.dnsStatus==='checking'?'Đang kiểm tra DNS…':(S.dnsStatus==='ok'?'Đã hoạt động':'')), dnsColor:(S.dnsStatus==='ok'?'var(--tone-success-fg)':'#3577f1'), dnsIcon:(S.dnsStatus==='ok'?'ri-checkbox-circle-fill':'ri-loader-4-line') };
+        })
+      };
+    });
+
+    return { showOwnBar: !this.props.embedded,
+      navItems:this.NAV.map(n=>({ icon:n[0], label:n[1], active:n[2], style:'display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:5px;font-size:13px;cursor:pointer;margin-bottom:1px;'+(n[2]?'background:color-mix(in srgb, var(--brand) 11%, transparent);color:var(--brand-fg);font-weight:600;':'color:var(--color-body-text, #495057);') })),
+      events:this.EVENTS.map(e=>({icon:e[0],label:e[1]})), groups:groups, platform:this.platform,
+      flowChip:'display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;background:rgba(255,255,255,.14);font-size:11.5px;font-weight:600;',
+      flowChipHi:'display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;background:var(--color-surface, #fff);color:var(--brand-fg);font-size:11.5px;font-weight:700;',
+      lbl:'display:block;font-size:11.5px;font-weight:600;color:var(--color-body-text, #495057);margin-bottom:5px;', inp:INP, calloutStyle:CALL,
+      iBtn:'width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:var(--color-body-faint, #adb5bd);cursor:pointer;padding:0;flex-shrink:0;',
+      chipOk:'display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(10,179,156,.12);color:var(--tone-success-fg);',
+      guideLink:'display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:transparent;font:inherit;font-size:11.5px;font-weight:600;color:var(--brand-fg);cursor:pointer;text-decoration:underline;text-underline-offset:2px;',
+      guideBox:'margin-top:9px;background:var(--color-surface-muted, #f8f9fb);border:1px solid var(--color-border, #eff2f7);border-radius:8px;padding:12px 14px;',
+      guideBtn:'display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:0;border-radius:6px;background:var(--brand);color:#fff;font-size:12px;font-weight:600;text-decoration:none;',
+      guideBtnGhost:'display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid color-mix(in srgb, var(--brand) 22%, transparent);border-radius:6px;background:var(--color-surface, #fff);color:var(--brand-fg);font-size:12px;font-weight:600;text-decoration:none;',
+      onHelp:()=>this.helpRequest(),
+      setCols:(el)=>this.setCols(el), colsStyle:colsStyle, railStyle:railStyle,
+      badgeGreen:badge('rgba(10,179,156,.12)','var(--tone-success-fg)'), badgeBlue:badge('rgba(53,119,241,.1)','#3577f1'), badgeAmber:badge('rgba(247,184,75,.18)','var(--tone-warn-fg)'), badgeGray:badge('rgba(33,37,41,.07)','var(--color-body-muted, #6c757d)'), badgeRed:badge('rgba(240,101,72,.12)','#f06548'),
+      onServerSide:()=>this.setState(s=>({serverSide:!s.serverSide,dirty:true})), serverSide:S.serverSide, ssSwStyle:this.sw(S.serverSide,'#0ab39c'), ssKnobStyle:this.knob(S.serverSide),
+      onConsentKey:(e)=>this.consentKey(e),
+      consentModes:this.CMODES.map((m,i)=>({ label:m.label, desc:m.desc, sel:S.consentMode===m.k, tab:(S.consentMode===m.k?'0':'-1'), ref:this.consentRefs[i], on:()=>this.setState({consentMode:m.k,dirty:true}), style:'display:flex;align-items:flex-start;gap:9px;width:100%;text-align:left;padding:9px 10px;border:1px solid '+(S.consentMode===m.k?'color-mix(in srgb, var(--brand) 34%, transparent)':'var(--color-border, #eff2f7)')+';border-radius:7px;background:'+(S.consentMode===m.k?'var(--color-surface-muted, color-mix(in srgb, var(--brand) 6%, transparent))':'var(--color-surface, #fff)')+';cursor:pointer;font:inherit;', radio:'width:16px;height:16px;border-radius:50%;border:1.5px solid '+(S.consentMode===m.k?'var(--brand)':'var(--color-border-strong, #ced4da)')+';display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;' })),
+      consentWarn:consentWarn, consentCats:catLabel,
+      cwvKb:cwvKb, cwvColor:cwvColor, cwvOver:cwvOver, cwvHint:cwvHint, cwvBarStyle:'height:100%;width:'+cwvPct+'%;background:'+cwvColor+';border-radius:8px;transition:width .2s,background .2s;', cwvNote:S.serverSide?'Chế độ máy chủ đang bật — trình duyệt chỉ tải một mẩu nhỏ (lấy mã click), giảm mạnh tải & né chặn.':'Đang chạy phía trình duyệt — bật "Thu thập phía máy chủ" để giảm tải & né chặn.',
+      cspOrigins:Array.from(origins).map(o=>({v:o})), cspClean:origins.size===0,
+      onInfoEvents:()=>this.toggleInfo('ev'), infoEventsOpen:S.info==='ev', onInfoServer:()=>this.toggleInfo('srv'), infoServerOpen:S.info==='srv', onInfoConsent:()=>this.toggleInfo('cons'), infoConsentOpen:S.info==='cons', onInfoCwv:()=>this.toggleInfo('cwv'), infoCwvOpen:S.info==='cwv', onInfoCsp:()=>this.toggleInfo('csp'), infoCspOpen:S.info==='csp',
+      secChecks:[
+        {icon:'ri-checkbox-circle-fill',color:'#0ab39c',text:'Đoạn mã do hệ thống sinh, ký bằng nonce — không mở unsafe‑inline.'},
+        {icon:'ri-checkbox-circle-fill',color:'#0ab39c',text:'CSP chỉ mở đúng origin của nhà cung cấp đang bật.'},
+        {icon:(S.consentMode!=='off'?'ri-checkbox-circle-fill':'ri-error-warning-fill'),color:(S.consentMode!=='off'?'#0ab39c':'var(--tone-warn-fg)'),text:(S.consentMode==='off'?'Đang thu thập không xin phép — cân nhắc rủi ro pháp lý.':'Có xin phép khách trước khi theo dõi marketing.')},
+        {icon:'ri-checkbox-circle-fill',color:'#0ab39c',text:'Token/secret mã hoá phía máy chủ; dữ liệu khách cách ly theo từng website (RLS).'}
+      ],
+      savedText:S.saving?'Đang lưu…':(S.dirty?'Thay đổi chưa lưu':(S.savedAt?'Đã lưu lúc '+this.fmtTime(S.savedAt):'Mẫu An Vinh')), savedDot:'width:8px;height:8px;border-radius:50%;display:inline-block;background:'+(S.saving?'#3577f1':(S.dirty?'var(--tone-warn-fg)':'#0ab39c'))+';',
+      onSave:()=>this.save(), onReset:()=>this.askReset(), confirmResetOpen:S.confirmReset, onCancelReset:()=>this.cancelReset(), onConfirmReset:()=>this.reset(),
+      toast:!!S.toast, toastMsg:S.toast, toastIcon:S.toastIcon
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+html,body{margin:0;background:#f3f3f9;}*{box-sizing:border-box;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3c68;text-decoration:underline;}
+.lc-pill{transition:background .15s,border-color .15s,box-shadow .15s,color .15s;}
+.lc-pill:hover{background:#f3f6f9;}
+.lc-pill[aria-selected="true"]:hover{background:#fff;}
+.lc-pill:focus-visible{outline:0;border-color:#405189 !important;box-shadow:0 0 0 3px rgba(64,81,137,.22) !important;}
+.lc-row{transition:background .12s;}
+.lc-row:hover{background:#f8f9fb;}
+.lc-row:focus-visible{outline:0;background:#eef2fb;box-shadow:inset 2px 0 0 #405189;}
+.lc-btn{transition:background .15s,border-color .15s,color .15s,opacity .15s;}
+.lc-btn:focus-visible{outline:0;box-shadow:0 0 0 3px rgba(64,81,137,.22);}
+.lc-sk{background:linear-gradient(90deg,#eff2f7 25%,#f8f9fb 50%,#eff2f7 75%);background-size:400% 100%;animation:lc-sh 1.4s linear infinite;border-radius:4px;}
+@keyframes lc-sh{from{background-position:100% 0}to{background-position:0 0}}
+@keyframes lc-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes lc-spin{to{transform:rotate(360deg)}}
+.lc-pop{animation:lc-in .14s ease-out;}
+.lc-sc{overflow-y:auto;}.lc-sc::-webkit-scrollbar{width:8px}.lc-sc::-webkit-scrollbar-thumb{background:#ced4da;border-radius:8px}
+input[type=range]{accent-color:#405189;}
+@media(prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;font-family:Inter,'Segoe UI',sans-serif;font-size:14px;line-height:1.5;color:#495057;background:#f3f3f9;">
+
+  <div style="background:#fff;border-bottom:1px solid #e9ebec;padding:14px 24px;position:sticky;top:0;z-index:60;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+    <div style="max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:2px;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#878a99;"><span>Design System</span><i class="ri-arrow-right-s-line"></i><span>Nội dung đa ngữ</span><i class="ri-arrow-right-s-line"></i><span style="color:#495057;font-weight:500;">LanguageContext</span></div>
+        <h1 style="margin:0;font-size:20px;font-weight:600;color:#343a40;">Ngữ cảnh ngôn ngữ biên tập</h1>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid #e9ebec;border-radius:4px;background:#f8f9fb;font-size:12px;font-weight:500;color:#878a99;"><i class="ri-git-branch-line"></i>v1.0 · Spec</span>
+        <a href="#demo" style="display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:4px;background:#405189;color:#fff;font-size:13px;font-weight:600;">Xem component <i class="ri-arrow-down-line"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1200px;margin:0 auto;padding:20px 24px 64px;display:flex;flex-direction:column;gap:20px;">
+
+    <!-- 0. Định vị -->
+    <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);display:flex;gap:22px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:340px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;margin-bottom:8px;">Định vị component</div>
+        <p style="margin:0 0 10px;font-size:15px;line-height:1.6;color:#343a40;">Đây <b>không phải</b> bộ chọn ngôn ngữ giao diện. Component chỉ đổi <b>ngữ cảnh biên tập của một nội dung</b>: cùng một trang, đổi sang bản dịch khác. Giao diện CMS giữ nguyên ngôn ngữ của người dùng.</p>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:#878a99;">
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#f8f9fb;"><i class="ri-file-text-line"></i>Trang “Về chúng tôi”</span>
+          <i class="ri-arrow-right-line"></i>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #cfd8ec;border-radius:4px;background:#eef2fb;color:#405189;font-weight:600;">Đang biên tập: Tiếng Việt</span>
+          <i class="ri-arrow-right-line"></i>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#f8f9fb;">Chuyển sang English</span>
+          <i class="ri-arrow-right-line"></i>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#f8f9fb;">Cùng trang · bản English</span>
+        </div>
+      </div>
+      <div style="width:320px;flex-shrink:0;border-left:1px solid #eff2f7;padding-left:22px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;margin-bottom:10px;">Ba điểm yếu đã sửa trong brief</div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:12.5px;line-height:1.55;">
+          <div><b style="color:#343a40;">Dịch máy không được đăng trực tiếp.</b> <span style="color:#878a99;">Trạng thái “Dịch máy” là bản chưa soát → buộc qua bước soát trước khi Đăng (tránh nội dung máy dịch lên production).</span></div>
+          <div><b style="color:#343a40;">“Lỗi thời” phải theo từng trường.</b> <span style="color:#878a99;">So sánh theo field-hash, không theo cả trang: chỉ đánh dấu và cập nhật đúng trường đã đổi ở nguồn.</span></div>
+          <div><b style="color:#343a40;">Không hỏi “ghi đè hay merge” bằng dialog trống.</b> <span style="color:#878a99;">Luôn mở diff theo trường, chọn từng trường — quyết định có ngữ cảnh, hoàn tác được.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. UX principles -->
+    <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;">
+        <h2 style="margin:0;font-size:16px;font-weight:600;color:#343a40;">1 · Nguyên tắc UX</h2>
+        <span style="font-size:12px;color:#adb5bd;">Quyết định mọi tranh luận thiết kế sau này</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">
+        <div style="border:1px solid #eff2f7;border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:#343a40;margin-bottom:4px;">P1 · Ngữ cảnh, không phải tuỳ chọn</div><div style="font-size:12.5px;color:#878a99;line-height:1.55;">Nhãn luôn là “Đang biên tập”. Không bao giờ đứng cạnh cờ hay menu ngôn ngữ giao diện.</div></div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:#343a40;margin-bottom:4px;">P2 · Nguồn luôn hiện diện</div><div style="font-size:12.5px;color:#878a99;line-height:1.55;">Ngôn ngữ nguồn được neo đầu danh sách với nhãn “Nguồn”, kể cả khi đang biên tập ngôn ngữ khác.</div></div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:#343a40;margin-bottom:4px;">P3 · Trạng thái ở nền, chi tiết theo yêu cầu</div><div style="font-size:12.5px;color:#878a99;line-height:1.55;">Một điểm màu 8px trong hàng ngang; nhãn chữ đầy đủ trong panel và tooltip. Không nhồi chữ vào pill.</div></div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:#343a40;margin-bottom:4px;">P4 · Tiết lộ dần theo quy mô</div><div style="font-size:12.5px;color:#878a99;line-height:1.55;">1 → nhãn tĩnh · 2–6 → hàng ngang · 7–14 → hàng ngang + tràn · 15+ → panel tìm kiếm. Cùng một anatomy.</div></div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:#343a40;margin-bottom:4px;">P5 · Không mất chữ của người dùng</div><div style="font-size:12.5px;color:#878a99;line-height:1.55;">Mọi lần chuyển ngữ cảnh khi còn thay đổi chưa lưu đều đi qua hộp thoại Lưu nháp / Bỏ / Huỷ.</div></div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:#343a40;margin-bottom:4px;">P6 · Hành động AI phải nói trước hệ quả</div><div style="font-size:12.5px;color:#878a99;line-height:1.55;">Nêu số từ, nguồn dịch và việc có ghi đè hay không, trước khi chạy. Luôn hoàn tác được.</div></div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:#343a40;margin-bottom:4px;">P7 · Học một lần, dùng mọi nơi</div><div style="font-size:12.5px;color:#878a99;line-height:1.55;">Trang, Sản phẩm, Bài viết, Form, SEO, Menu, module tương lai đều dùng đúng component này, chỉ khác biến thể.</div></div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:#343a40;margin-bottom:4px;">P8 · Không bao giờ chỉ dùng màu</div><div style="font-size:12.5px;color:#878a99;line-height:1.55;">Mỗi trạng thái = màu + hình dạng điểm + nhãn chữ; đạt WCAG 2.2 AA, đọc được bởi trình đọc màn hình.</div></div>
+      </div>
+    </div>
+
+    <!-- 2. Business rules -->
+    <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:6px;">
+        <h2 style="margin:0;font-size:16px;font-weight:600;color:#343a40;">2 · Quy tắc nghiệp vụ</h2>
+        <span style="font-size:12px;color:#adb5bd;">UI bắt buộc tuân theo — không có ngoại lệ trực quan</span>
+      </div>
+      <div style="font-size:12.5px;color:#878a99;margin-bottom:14px;">Mô hình dữ liệu: <code style="background:#f3f6f9;padding:2px 6px;border-radius:4px;color:#405189;">ContentItem(type, id)</code> → <code style="background:#f3f6f9;padding:2px 6px;border-radius:4px;color:#405189;">LocaleVersion(locale, status, sourceRev, fieldHashes, updatedAt, translatedBy)</code>. Ngôn ngữ được cấu hình ở cấp website, có thể bật/tắt theo từng loại nội dung.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0 26px;">
+        <div style="display:flex;flex-direction:column;">
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R1</b><span style="font-size:12.5px;">Mỗi nội dung có <b>đúng một</b> ngôn ngữ nguồn, mặc định là ngôn ngữ chính của website; đổi nguồn là hành động cấp website, ghi vào audit log.</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R2</b><span style="font-size:12.5px;">Mọi bản dịch AI chỉ sinh <b>từ nguồn</b>. Không bao giờ dịch từ một bản đã dịch.</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R3</b><span style="font-size:12.5px;">Nút “Dịch bằng AI” chỉ hiện khi: website &gt; 1 ngôn ngữ <b>và</b> nguồn tồn tại <b>và</b> nguồn ở Hoàn tất/Đã đăng <b>và</b> ngôn ngữ hiện tại đang trống. Ngược lại: ẩn (thiếu điều kiện cấu hình) hoặc vô hiệu kèm lý do (nguồn còn nháp).</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R4</b><span style="font-size:12.5px;">Đã có bản dịch → thay bằng <b>Dịch lại</b> (đồng bộ) hoặc <b>Cập nhật từ nguồn</b> (lỗi thời). Không bao giờ hiện cả ba.</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R5</b><span style="font-size:12.5px;">Nguồn đổi sau khi đã dịch → mọi bản đích thành <b>Lỗi thời</b>, so sánh theo field-hash để biết đúng trường nào lệch.</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R6</b><span style="font-size:12.5px;">Bản <b>Dịch máy chưa soát</b> không được Đăng: phải qua “Đánh dấu đã soát” (một cú nhấp) rồi mới Đăng.</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;">
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R7</b><span style="font-size:12.5px;">Chuyển ngôn ngữ khi còn thay đổi chưa lưu → hộp thoại chặn: Lưu nháp / Bỏ thay đổi / Huỷ.</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R8</b><span style="font-size:12.5px;">Gỡ đăng hoặc xoá bản nguồn khi còn bản đích đã đăng → cảnh báo kèm danh sách ảnh hưởng; bản đích chuyển sang dùng fallback theo cấu hình.</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R9</b><span style="font-size:12.5px;">Tập ngôn ngữ do website quy định, từng loại nội dung được phép thu hẹp (ví dụ Form chỉ 3 ngôn ngữ). Component đọc <code style="font-size:11.5px;">enabledLocales(contentType)</code>.</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R10</b><span style="font-size:12.5px;">Không có quyền <code style="font-size:11.5px;">translate.&lt;locale&gt;</code> → ngôn ngữ đó ở trạng thái vô hiệu, có tooltip lý do, vẫn đọc được.</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R11</b><span style="font-size:12.5px;">Ngữ cảnh chỉ đọc (danh sách, lịch sử, audit) không cho chuyển — chỉ hiển thị ngôn ngữ của bản ghi.</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid #f3f6f9;"><b style="color:#405189;font-size:12px;min-width:26px;">R12</b><span style="font-size:12.5px;">Xoá một bản dịch là <b>hoàn tác được</b> trong 30 ngày; ngôn ngữ trở về trạng thái Trống.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. State machine -->
+    <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+      <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px;">
+        <h2 style="margin:0;font-size:16px;font-weight:600;color:#343a40;">3 · Máy trạng thái</h2>
+        <span style="font-size:12px;color:#adb5bd;">Nguồn và đích là hai vòng đời riêng, nối nhau bằng sourceRev</span>
+      </div>
+
+      <div style="border:1px solid #eff2f7;border-radius:6px;background:#fcfdfe;padding:16px;margin-bottom:14px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;margin-bottom:10px;">Ngôn ngữ nguồn</div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font-size:13px;font-weight:500;"><span style="width:8px;height:8px;border-radius:50%;background:#878a99;"></span>Nháp</span>
+          <i class="ri-arrow-right-line" style="color:#adb5bd;"></i>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font-size:13px;font-weight:500;"><span style="width:8px;height:8px;border-radius:50%;background:#299cdb;"></span>Hoàn tất</span>
+          <i class="ri-arrow-right-line" style="color:#adb5bd;"></i>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #b8e3dd;border-radius:6px;background:#e6f7f5;font-size:13px;font-weight:600;color:#0a8a78;"><span style="width:8px;height:8px;border-radius:50%;background:#0ab39c;"></span>Đã đăng</span>
+          <span style="font-size:12px;color:#878a99;margin-left:6px;">Từ <b>Hoàn tất</b> trở đi mới được phép dịch (R3). Mỗi lần lưu tăng <code style="font-size:11.5px;background:#f3f6f9;padding:1px 5px;border-radius:3px;">sourceRev</code>.</span>
+        </div>
+      </div>
+
+      <div style="border:1px solid #eff2f7;border-radius:6px;background:#fcfdfe;padding:16px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;margin-bottom:12px;">Ngôn ngữ đích</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px dashed #ced4da;border-radius:6px;background:#fff;font-size:13px;font-weight:500;color:#878a99;"><span style="width:8px;height:8px;border-radius:50%;border:1.5px dashed #adb5bd;"></span>Trống</span>
+          <span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;color:#405189;"><span style="font-size:10.5px;font-weight:600;">Dịch bằng AI</span><i class="ri-arrow-right-line"></i></span>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #b6dcf2;border-radius:6px;background:#eaf5fc;font-size:13px;font-weight:600;color:#1d7fb8;"><span style="width:8px;height:8px;border-radius:50%;background:#299cdb;"></span>Dịch máy</span>
+          <span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;color:#405189;"><span style="font-size:10.5px;font-weight:600;">Đã soát</span><i class="ri-arrow-right-line"></i></span>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #fae3ac;border-radius:6px;background:#fef6e7;font-size:13px;font-weight:600;color:#b57d13;"><span style="width:8px;height:8px;border-radius:50%;background:#f7b84b;"></span>Cần soát</span>
+          <span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;color:#405189;"><span style="font-size:10.5px;font-weight:600;">Lưu</span><i class="ri-arrow-right-line"></i></span>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font-size:13px;font-weight:600;color:#495057;"><span style="width:8px;height:8px;border-radius:50%;background:#878a99;"></span>Nháp</span>
+          <span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;color:#405189;"><span style="font-size:10.5px;font-weight:600;">Đăng</span><i class="ri-arrow-right-line"></i></span>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #b8e3dd;border-radius:6px;background:#e6f7f5;font-size:13px;font-weight:600;color:#0a8a78;"><span style="width:8px;height:8px;border-radius:50%;background:#0ab39c;"></span>Đã đăng</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px dashed #e9ebec;">
+          <span style="font-size:12px;color:#878a99;">Khi <code style="font-size:11.5px;background:#f3f6f9;padding:1px 5px;border-radius:3px;">source.rev &gt; target.sourceRev</code> — từ bất kỳ trạng thái nào:</span>
+          <i class="ri-arrow-right-line" style="color:#adb5bd;"></i>
+          <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #f8c3bc;border-radius:6px;background:#fdeceb;font-size:13px;font-weight:600;color:#c0392b;"><span style="width:8px;height:8px;border-radius:50%;background:#f06548;"></span>Lỗi thời</span>
+          <i class="ri-arrow-right-line" style="color:#adb5bd;"></i>
+          <span style="font-size:12px;color:#878a99;"><b>Cập nhật từ nguồn</b> (diff theo trường) → Cần soát &nbsp;·&nbsp; hoặc <b>Dịch lại</b> → Dịch máy &nbsp;·&nbsp; hoặc <b>Giữ nguyên</b> (bỏ qua phiên bản này).</span>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:12.5px;color:#878a99;">Trạng thái của <b>component</b> (khác trạng thái nội dung): <code style="font-size:11.5px;">idle → open → loading → switching → translating → error → readonly</code>; hộp thoại chặn <code style="font-size:11.5px;">guard</code> chen vào giữa <code style="font-size:11.5px;">open</code> và <code style="font-size:11.5px;">switching</code>.</div>
+    </div>
+
+    <!-- 4. Adaptive + 5. Interaction -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:20px;">
+      <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+        <h2 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#343a40;">4 · Quy tắc thích ứng</h2>
+        <div style="font-size:12.5px;color:#878a99;margin-bottom:12px;">Chọn biến thể theo <b>bốn</b> đầu vào — không chỉ theo số lượng ngôn ngữ: <code style="font-size:11.5px;">contextRole</code>, chiều rộng đo bằng ResizeObserver, số ngôn ngữ bật, và độ dài tên bản địa (中文（繁體） rộng khác Deutsch).</div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
+          <div style="display:grid;grid-template-columns:64px 1fr;gap:0;background:#f8f9fb;padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;"><span>Biến thể</span><span>Điều kiện áp dụng</span></div>
+          <div style="display:grid;grid-template-columns:64px 1fr;padding:10px 12px;border-top:1px solid #f3f6f9;font-size:12.5px;"><b style="color:#405189;">A</b><span><b>Inline đầy đủ</b> — mọi tên bản địa vừa chiều rộng khả dụng. Vùng biên tập rộng, 1–6 ngôn ngữ.</span></div>
+          <div style="display:grid;grid-template-columns:64px 1fr;padding:10px 12px;border-top:1px solid #f3f6f9;font-size:12.5px;"><b style="color:#405189;">B</b><span><b>Inline + tràn</b> — không vừa: hạ xuống mã ISO (VI EN JA ZH) và dồn phần còn lại vào <code style="font-size:11.5px;">+N</code> mở panel tìm kiếm. Luôn giữ hiển thị nguồn và ngôn ngữ đang biên tập.</span></div>
+          <div style="display:grid;grid-template-columns:64px 1fr;padding:10px 12px;border-top:1px solid #f3f6f9;font-size:12.5px;"><b style="color:#405189;">C</b><span><b>Compact</b> — chiều rộng &lt; 560px, hoặc mobile / sidebar / dialog / ô bảng: chỉ nút ngôn ngữ hiện tại + panel. Bắt buộc khi ngôn ngữ ≥ 15 (panel là trải nghiệm chính).</span></div>
+          <div style="display:grid;grid-template-columns:64px 1fr;padding:10px 12px;border-top:1px solid #f3f6f9;font-size:12.5px;"><b style="color:#405189;">D</b><span><b>Readonly</b> — danh sách, thẻ, lịch sử phiên bản, audit log: một chip tĩnh, không tương tác, không focus.</span></div>
+        </div>
+        <div style="margin-top:12px;font-size:12.5px;color:#878a99;">Với 1 ngôn ngữ: component <b>không biến mất</b> mà thu thành nhãn tĩnh “Tiếng Việt · Nguồn” + liên kết “Thêm ngôn ngữ” — người dùng vẫn thấy đường vào tính năng.</div>
+      </div>
+
+      <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+        <h2 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#343a40;">5 · Mô hình tương tác</h2>
+        <div style="display:flex;flex-direction:column;">
+          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">Tab</code><span>Vào cả nhóm inline như <b>một</b> điểm dừng; mũi tên ←→ di chuyển giữa các ngôn ngữ (mẫu tablist).</span></div>
+          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">Enter / Space</code><span>Chuyển ngữ cảnh; nếu còn thay đổi chưa lưu → mở hộp thoại chặn, focus vào “Lưu nháp”.</span></div>
+          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">↓ / ⌥↓</code><span>Mở panel từ nút hiện tại hoặc chip <code style="font-size:11.5px;">+N</code>; focus tự vào ô tìm kiếm, gõ để lọc theo tên bản địa, tên tiếng Anh hoặc mã ISO.</span></div>
+          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">↑ ↓ Home End</code><span>Di chuyển trong panel (bỏ qua tiêu đề nhóm); <code style="font-size:11.5px;">Esc</code> đóng và trả focus về nút mở.</span></div>
+          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">⌘⇧L</code><span>Mở panel từ bất kỳ đâu trong trình biên tập; <code style="font-size:11.5px;">⌘⌥→</code> nhảy sang ngôn ngữ kế tiếp có nội dung.</span></div>
+          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;font-size:12.5px;"><b style="color:#343a40;font-size:12.5px;">Sau khi chuyển</b><span>Giữ nguyên vị trí cuộn và tab đang mở của trình biên tập; thông báo qua <code style="font-size:11.5px;">aria-live="polite"</code>: “Đang biên tập English — Cần soát”.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. LIVE COMPONENT -->
+    <div id="demo" style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.06);overflow:hidden;">
+      <div style="padding:16px 22px;border-bottom:1px solid #eff2f7;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+        <div>
+          <h2 style="margin:0 0 2px;font-size:16px;font-weight:600;color:#343a40;">6 · Component trực tiếp</h2>
+          <div style="font-size:12.5px;color:#878a99;">Đổi số ngôn ngữ, chiều rộng và ngữ cảnh — biến thể tự chọn theo quy tắc mục 4.</div>
+        </div>
+        <div style="display:inline-flex;align-items:center;gap:8px;padding:6px 11px;border:1px solid #cfd8ec;border-radius:4px;background:#eef2fb;font-size:12px;font-weight:600;color:#405189;"><i class="ri-layout-row-line"></i>Biến thể tự chọn: {{ variantName }}</div>
+      </div>
+
+      <!-- controls -->
+      <div style="padding:14px 22px;background:#f8f9fb;border-bottom:1px solid #eff2f7;display:flex;align-items:center;gap:22px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Số ngôn ngữ</span>
+          <div style="display:inline-flex;border:1px solid #e9ebec;border-radius:4px;overflow:hidden;background:#fff;">
+            <sc-for list="{{ scaleOpts }}" as="s" hint-placeholder-count="4">
+              <button type="button" onClick="{{ s.onClick }}" class="lc-btn" style="{{ s.style }}">{{ s.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Chiều rộng</span>
+          <input type="range" min="340" max="1120" step="10" value="{{ width }}" onInput="{{ onWidth }}" aria-label="Chiều rộng vùng chứa" style="width:190px;">
+          <span style="font-size:12px;font-variant-numeric:tabular-nums;color:#495057;min-width:52px;">{{ width }}px</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;">
+          <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Ngữ cảnh</span>
+          <div style="display:inline-flex;border:1px solid #e9ebec;border-radius:4px;overflow:hidden;background:#fff;">
+            <sc-for list="{{ ctxOpts }}" as="c" hint-placeholder-count="3">
+              <button type="button" onClick="{{ c.onClick }}" class="lc-btn" style="{{ c.style }}">{{ c.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <label style="display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:#495057;cursor:pointer;margin-left:auto;">
+          <input type="checkbox" checked="{{ dirty }}" onChange="{{ onDirty }}" style="width:15px;height:15px;accent-color:#405189;">Có thay đổi chưa lưu
+        </label>
+      </div>
+
+      <!-- editor mock -->
+      <div style="padding:22px;background:#f3f3f9;position:relative;">
+        <div class="lc-sc" style="{{ boxStyle }}">
+          <!-- editor topbar -->
+          <div style="padding:12px 16px;border-bottom:1px solid #eff2f7;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+            <div style="display:flex;align-items:center;gap:9px;min-width:0;">
+              <i class="ri-file-text-line" style="color:#878a99;font-size:16px;"></i>
+              <div style="min-width:0;">
+                <div style="font-size:14px;font-weight:600;color:#343a40;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Về chúng tôi</div>
+                <div style="font-size:11.5px;color:#adb5bd;">Trang · /ve-chung-toi</div>
+              </div>
+            </div>
+            <sc-if value="{{ dirty }}" hint-placeholder-val="{{ true }}">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:#b57d13;background:#fef6e7;border:1px solid #fae3ac;border-radius:4px;padding:4px 8px;white-space:nowrap;"><span style="width:6px;height:6px;border-radius:50%;background:#f7b84b;"></span>Chưa lưu</span>
+            </sc-if>
+          </div>
+
+          <!-- THE COMPONENT -->
+          <div style="padding:12px 16px;border-bottom:1px solid #eff2f7;background:#fcfdfe;display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;white-space:nowrap;">Đang biên tập</span>
+
+              <sc-if value="{{ isReadonly }}">
+                <span style="display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#f8f9fb;font-size:12.5px;font-weight:600;color:#495057;"><span style="{{ curDot }}"></span>{{ curName }}<span style="color:#adb5bd;font-weight:500;">· {{ curStatusShort }}</span></span>
+              </sc-if>
+
+              <sc-if value="{{ isSingle }}">
+                <span style="display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:#343a40;">{{ curName }}<span style="font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#405189;background:#eef2fb;border-radius:3px;padding:2px 6px;">Nguồn</span></span>
+                <a href="#demo" onClick="{{ noop }}" style="font-size:12.5px;font-weight:500;">Thêm ngôn ngữ</a>
+              </sc-if>
+
+              <sc-if value="{{ showInline }}" hint-placeholder-val="{{ true }}">
+                <div role="tablist" aria-label="Ngôn ngữ đang biên tập" style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0;">
+                  <sc-for list="{{ pills }}" as="p" hint-placeholder-count="5">
+                    <button type="button" role="tab" class="lc-pill" aria-selected="{{ p.sel }}" aria-label="{{ p.aria }}" title="{{ p.aria }}" disabled="{{ p.disabled }}" onClick="{{ p.onClick }}" style="{{ p.style }}"><span style="{{ p.dot }}"></span>{{ p.label }}<sc-if value="{{ p.isSource }}"><span style="font-size:9.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#7d8bb3;">Nguồn</span></sc-if></button>
+                  </sc-for>
+                  <sc-if value="{{ hasOverflow }}">
+                    <button type="button" class="lc-pill" aria-haspopup="listbox" aria-expanded="{{ open }}" onClick="{{ onToggle }}" style="{{ overflowStyle }}">+{{ overflowCount }}</button>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{ showCompact }}">
+                <button type="button" class="lc-pill" aria-haspopup="listbox" aria-expanded="{{ open }}" aria-label="{{ curAria }}" onClick="{{ onToggle }}" style="{{ compactStyle }}"><span style="{{ curDot }}"></span><span style="font-weight:600;color:#343a40;">{{ curName }}</span><span style="font-size:11.5px;color:#878a99;">{{ curStatusShort }}</span><i class="ri-arrow-down-s-line" style="font-size:15px;color:#878a99;margin-left:2px;"></i></button>
+              </sc-if>
+
+              <sc-if value="{{ showProgress }}">
+                <span style="display:inline-flex;align-items:center;gap:8px;margin-left:auto;white-space:nowrap;" title="{{ progressAria }}">
+                  <span style="font-size:11.5px;font-variant-numeric:tabular-nums;color:#878a99;">{{ progressText }}</span>
+                  <span style="width:56px;height:4px;border-radius:2px;background:#eff2f7;overflow:hidden;display:inline-block;"><span style="{{ progressFill }}"></span></span>
+                </span>
+              </sc-if>
+            </div>
+
+            <!-- contextual action bar -->
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+              <sc-if value="{{ busy }}">
+                <span style="display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid #cfd8ec;border-radius:4px;background:#eef2fb;font-size:12.5px;font-weight:600;color:#405189;"><i class="ri-loader-4-line" style="display:inline-block;animation:lc-spin .9s linear infinite;"></i>{{ busyText }}</span>
+                <span style="flex:1;min-width:80px;max-width:220px;height:4px;border-radius:2px;overflow:hidden;background:#eff2f7;"><span class="lc-sk" style="display:block;height:100%;background:#405189;opacity:.35;"></span></span>
+              </sc-if>
+              <sc-if value="{{ err }}">
+                <span style="display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid #f8c3bc;border-radius:4px;background:#fdeceb;font-size:12.5px;font-weight:500;color:#c0392b;"><i class="ri-error-warning-line"></i>Không dịch được — dịch vụ AI đang quá tải.</span>
+                <button type="button" class="lc-btn" onClick="{{ onRetry }}" style="height:34px;padding:0 13px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:600;color:#495057;cursor:pointer;">Thử lại</button>
+              </sc-if>
+              <sc-if value="{{ showActions }}" hint-placeholder-val="{{ true }}">
+                <sc-if value="{{ hasNotice }}">
+                  <span style="{{ noticeStyle }}"><i class="{{ noticeIcon }}"></i>{{ noticeText }}</span>
+                </sc-if>
+                <sc-for list="{{ actions }}" as="a" hint-placeholder-count="2">
+                  <button type="button" class="lc-btn" onClick="{{ a.onClick }}" disabled="{{ a.disabled }}" title="{{ a.title }}" style="{{ a.style }}"><i class="{{ a.icon }}" style="font-size:14px;"></i>{{ a.label }}</button>
+                </sc-for>
+              </sc-if>
+            </div>
+          </div>
+
+          <!-- editor body -->
+          <div style="padding:16px;display:flex;flex-direction:column;gap:12px;position:relative;">
+            <sc-if value="{{ isEmptyState }}">
+              <div style="border:1px dashed #ced4da;border-radius:6px;padding:26px 20px;text-align:center;background:#fcfdfe;">
+                <i class="ri-translate-2" style="font-size:22px;color:#adb5bd;"></i>
+                <div style="font-size:13.5px;font-weight:600;color:#343a40;margin:8px 0 4px;">Chưa có bản {{ curName }} cho trang này</div>
+                <div style="font-size:12.5px;color:#878a99;max-width:420px;margin:0 auto 14px;line-height:1.55;">Dịch từ bản nguồn <b>{{ srcName }}</b> ({{ wordCount }} từ) rồi soát lại, hoặc tự viết nội dung mới.</div>
+                <div style="display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                  <button type="button" class="lc-btn" onClick="{{ onTranslate }}" style="display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;"><i class="ri-sparkling-2-line"></i>Dịch bằng AI</button>
+                  <button type="button" class="lc-btn" onClick="{{ onWriteOwn }}" style="height:38px;padding:0 15px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:600;color:#495057;cursor:pointer;">Tự viết nội dung</button>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isLoading }}">
+              <div style="display:flex;flex-direction:column;gap:10px;"><span class="lc-sk" style="height:13px;width:32%;"></span><span class="lc-sk" style="height:34px;"></span><span class="lc-sk" style="height:13px;width:24%;"></span><span class="lc-sk" style="height:74px;"></span></div>
+            </sc-if>
+            <sc-if value="{{ showFields }}">
+              <div>
+                <div style="font-size:11.5px;font-weight:600;color:#878a99;margin-bottom:5px;">Tiêu đề</div>
+                <div style="border:1px solid #e9ebec;border-radius:4px;padding:9px 12px;background:#fff;font-size:13.5px;color:#343a40;">{{ fTitle }}</div>
+              </div>
+              <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;">
+                  <span style="font-size:11.5px;font-weight:600;color:#878a99;">Nội dung</span>
+                  <sc-if value="{{ isOutdated }}"><span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;color:#c0392b;"><span style="width:6px;height:6px;border-radius:50%;background:#f06548;"></span>Trường này đã lệch so với nguồn</span></sc-if>
+                </div>
+                <div style="{{ bodyStyle }}">{{ fBody }}</div>
+              </div>
+            </sc-if>
+          </div>
+
+          <!-- panel -->
+          <sc-if value="{{ open }}">
+            <div class="lc-pop lc-sc" role="listbox" aria-label="Chọn ngôn ngữ biên tập" style="{{ panelStyle }}">
+              <div style="padding:10px;border-bottom:1px solid #eff2f7;position:sticky;top:0;background:#fff;z-index:2;">
+                <div style="display:flex;align-items:center;gap:8px;border:1px solid #e9ebec;border-radius:4px;padding:0 10px;height:38px;background:#fff;">
+                  <i class="ri-search-line" style="color:#adb5bd;font-size:15px;"></i>
+                  <input type="text" value="{{ q }}" onInput="{{ onQ }}" onKeyDown="{{ onKey }}" placeholder="Tìm ngôn ngữ hoặc mã ISO…" aria-label="Tìm ngôn ngữ" style="flex:1;border:0;outline:0;font:inherit;font-size:13px;color:#343a40;background:transparent;">
+                  <span style="font-size:11px;color:#adb5bd;font-variant-numeric:tabular-nums;">{{ resultCount }}</span>
+                </div>
+              </div>
+              <div style="padding:4px 0 6px;">
+                <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+                  <sc-if value="{{ r.isHeader }}">
+                    <div style="padding:9px 12px 5px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;">{{ r.label }}</div>
+                  </sc-if>
+                  <sc-if value="{{ r.isRow }}">
+                    <div role="option" tabIndex="0" aria-selected="{{ r.sel }}" class="lc-row" onClick="{{ r.onClick }}" style="{{ r.style }}">
+                      <span style="{{ r.dot }}"></span>
+                      <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;">
+                        <span style="font-size:13px;font-weight:500;color:#343a40;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ r.name }}</span>
+                        <span style="font-size:11px;color:#adb5bd;">{{ r.meta }}</span>
+                      </span>
+                      <sc-if value="{{ r.isSource }}"><span style="font-size:9.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#405189;background:#eef2fb;border-radius:3px;padding:2px 5px;">Nguồn</span></sc-if>
+                      <span style="{{ r.chip }}">{{ r.status }}</span>
+                      <sc-if value="{{ r.sel }}"><i class="ri-check-line" style="color:#405189;font-size:16px;"></i></sc-if>
+                    </div>
+                  </sc-if>
+                </sc-for>
+                <sc-if value="{{ noResult }}">
+                  <div style="padding:22px 16px;text-align:center;"><div style="font-size:13px;font-weight:600;color:#343a40;margin-bottom:3px;">Không tìm thấy ngôn ngữ</div><div style="font-size:12px;color:#878a99;">Thử tên bản địa hoặc mã ISO, ví dụ “日本語” hoặc “ja”.</div></div>
+                </sc-if>
+              </div>
+              <div style="border-top:1px solid #eff2f7;padding:8px;display:flex;gap:6px;position:sticky;bottom:0;background:#fff;">
+                <button type="button" class="lc-btn" onClick="{{ noop }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:600;color:#405189;cursor:pointer;"><i class="ri-add-line"></i>Thêm ngôn ngữ</button>
+                <button type="button" class="lc-btn" onClick="{{ noop }}" style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:34px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;"><i class="ri-settings-3-line"></i>Quản lý ngôn ngữ</button>
+              </div>
+            </div>
+          </sc-if>
+
+          <!-- guard dialog -->
+          <sc-if value="{{ guard }}">
+            <div style="position:absolute;inset:0;background:rgba(33,37,41,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px;">
+              <div role="dialog" aria-modal="true" aria-label="Thay đổi chưa lưu" class="lc-pop" style="width:100%;max-width:420px;background:#fff;border-radius:6px;box-shadow:0 12px 34px rgba(33,37,41,.28);padding:20px;">
+                <div style="display:flex;gap:12px;margin-bottom:14px;">
+                  <span style="width:36px;height:36px;flex-shrink:0;border-radius:50%;background:#fef6e7;display:inline-flex;align-items:center;justify-content:center;"><i class="ri-error-warning-line" style="color:#f7b84b;font-size:19px;"></i></span>
+                  <div>
+                    <div style="font-size:15px;font-weight:600;color:#343a40;margin-bottom:4px;">Bạn có thay đổi chưa lưu ở bản {{ guardFrom }}</div>
+                    <div style="font-size:12.5px;color:#878a99;line-height:1.55;">Chuyển sang <b>{{ guardTo }}</b> bây giờ sẽ rời khỏi bản đang sửa. Bạn muốn làm gì với các thay đổi này?</div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+                  <button type="button" class="lc-btn" onClick="{{ onCancel }}" style="height:40px;padding:0 15px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;">Huỷ</button>
+                  <button type="button" class="lc-btn" onClick="{{ onDiscard }}" style="height:40px;padding:0 15px;border:1px solid #f8c3bc;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:600;color:#c0392b;cursor:pointer;">Bỏ thay đổi</button>
+                  <button type="button" class="lc-btn" onClick="{{ onSaveDraft }}" style="height:40px;padding:0 17px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;">Lưu nháp rồi chuyển</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+        <div style="margin-top:10px;font-size:12px;color:#878a99;text-align:center;">Vùng chứa mô phỏng: <b>{{ width }}px</b> · {{ localeCount }} ngôn ngữ · {{ ctxLabel }} → <b>{{ variantName }}</b>. Trạng thái thông báo cho trình đọc màn hình: “{{ liveText }}”.</div>
+      </div>
+    </div>
+
+    <!-- 7. Anatomy -->
+    <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+      <h2 style="margin:0 0 14px;font-size:16px;font-weight:600;color:#343a40;">7 · Anatomy &amp; trạng thái phần tử</h2>
+      <div style="display:flex;gap:22px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:300px;">
+          <div style="border:1px solid #eff2f7;border-radius:6px;padding:16px;background:#fcfdfe;display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Đang biên tập</span>
+              <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid #405189;border-radius:6px;background:#fff;box-shadow:0 0 0 3px rgba(64,81,137,.14);font-size:13px;font-weight:600;color:#343a40;"><span style="width:8px;height:8px;border-radius:50%;background:#0ab39c;"></span>Tiếng Việt<span style="font-size:9.5px;font-weight:700;text-transform:uppercase;color:#7d8bb3;">Nguồn</span></span>
+              <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid #eff2f7;border-radius:6px;background:#f3f6f9;font-size:13px;font-weight:500;color:#495057;"><span style="width:8px;height:8px;border-radius:50%;background:#f7b84b;"></span>English</span>
+              <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px dashed #ced4da;border-radius:6px;background:#fff;font-size:13px;color:#878a99;"><span style="width:8px;height:8px;border-radius:50%;border:1.5px dashed #adb5bd;"></span>日本語</span>
+              <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid #eff2f7;border-radius:6px;background:#fff;font-size:13px;color:#ced4da;"><span style="width:8px;height:8px;border-radius:50%;background:#dee2e6;"></span>한국어<i class="ri-lock-line" style="font-size:12px;"></i></span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#878a99;">
+              <div><b style="color:#405189;">1</b> Nhãn ngữ cảnh · <b style="color:#405189;">2</b> Điểm trạng thái 8px (đặc / viền nét đứt khi trống) · <b style="color:#405189;">3</b> Tên bản địa · <b style="color:#405189;">4</b> Nhãn Nguồn · <b style="color:#405189;">5</b> Ổ khoá = không có quyền</div>
+              <div>Active: viền primary + ring 3px. Hover: nền <code style="font-size:11px;">#f3f6f9</code>. Focus: ring <code style="font-size:11px;">rgba(64,81,137,.22)</code>. Disabled: opacity 60%, vẫn đọc được, tooltip nêu lý do.</div>
+            </div>
+          </div>
+        </div>
+        <div style="width:330px;flex-shrink:0;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;margin-bottom:8px;">Sáu trạng thái nội dung</div>
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;"><span style="width:8px;height:8px;border-radius:50%;border:1.5px dashed #adb5bd;flex-shrink:0;"></span><b style="min-width:86px;color:#343a40;">Trống</b><span style="color:#878a99;">Chưa có bản dịch nào</span></div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;"><span style="width:8px;height:8px;border-radius:50%;background:#299cdb;flex-shrink:0;"></span><b style="min-width:86px;color:#343a40;">Dịch máy</b><span style="color:#878a99;">AI vừa dịch, chưa ai soát · không được Đăng</span></div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;"><span style="width:8px;height:8px;border-radius:50%;background:#f7b84b;flex-shrink:0;"></span><b style="min-width:86px;color:#343a40;">Cần soát</b><span style="color:#878a99;">Đã có người sửa, chờ duyệt</span></div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;"><span style="width:8px;height:8px;border-radius:50%;background:#878a99;flex-shrink:0;"></span><b style="min-width:86px;color:#343a40;">Nháp</b><span style="color:#878a99;">Đã soát, chưa công khai</span></div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;"><span style="width:8px;height:8px;border-radius:50%;background:#0ab39c;flex-shrink:0;"></span><b style="min-width:86px;color:#343a40;">Đã đăng</b><span style="color:#878a99;">Đang hiển thị công khai</span></div>
+            <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;"><span style="width:8px;height:8px;border-radius:50%;background:#f06548;flex-shrink:0;"></span><b style="min-width:86px;color:#343a40;">Lỗi thời</b><span style="color:#878a99;">Nguồn đã đổi sau lần dịch</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8. Variants in context -->
+    <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+      <h2 style="margin:0 0 4px;font-size:16px;font-weight:600;color:#343a40;">8 · Bốn biến thể trong ngữ cảnh thật</h2>
+      <div style="font-size:12.5px;color:#878a99;margin-bottom:14px;">Cùng một component, cùng một anatomy — chỉ khác mức tiết lộ. Dùng nguyên xi cho Trang, Sản phẩm, Bài viết, Danh mục, Menu, Form, SEO, Media, Template, module tương lai.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;">
+        <div style="border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
+          <div style="padding:8px 12px;background:#f8f9fb;border-bottom:1px solid #eff2f7;font-size:12px;font-weight:600;color:#405189;">A · Inline — trình biên tập sản phẩm, 4 ngôn ngữ</div>
+          <div style="padding:14px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#adb5bd;">Đang biên tập</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid #405189;border-radius:6px;font-size:13px;font-weight:600;color:#343a40;"><span style="width:8px;height:8px;border-radius:50%;background:#0ab39c;"></span>Tiếng Việt</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px solid #eff2f7;border-radius:6px;background:#f3f6f9;font-size:13px;color:#495057;"><span style="width:8px;height:8px;border-radius:50%;background:#299cdb;"></span>English</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px dashed #ced4da;border-radius:6px;font-size:13px;color:#878a99;"><span style="width:8px;height:8px;border-radius:50%;border:1.5px dashed #adb5bd;"></span>日本語</span>
+            <span style="display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border:1px dashed #ced4da;border-radius:6px;font-size:13px;color:#878a99;"><span style="width:8px;height:8px;border-radius:50%;border:1.5px dashed #adb5bd;"></span>한국어</span>
+          </div>
+        </div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
+          <div style="padding:8px 12px;background:#f8f9fb;border-bottom:1px solid #eff2f7;font-size:12px;font-weight:600;color:#405189;">B · Inline + tràn — 14 ngôn ngữ, chiều rộng hẹp</div>
+          <div style="padding:14px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#adb5bd;">Đang biên tập</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid #405189;border-radius:6px;font-size:12.5px;font-weight:700;color:#343a40;"><span style="width:7px;height:7px;border-radius:50%;background:#0ab39c;"></span>VI</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid #eff2f7;border-radius:6px;background:#f3f6f9;font-size:12.5px;font-weight:600;color:#495057;"><span style="width:7px;height:7px;border-radius:50%;background:#f7b84b;"></span>EN</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px solid #eff2f7;border-radius:6px;background:#f3f6f9;font-size:12.5px;font-weight:600;color:#495057;"><span style="width:7px;height:7px;border-radius:50%;background:#299cdb;"></span>JA</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border:1px dashed #ced4da;border-radius:6px;font-size:12.5px;font-weight:600;color:#878a99;"><span style="width:7px;height:7px;border-radius:50%;border:1.5px dashed #adb5bd;"></span>ZH</span>
+            <span style="display:inline-flex;align-items:center;height:32px;padding:0 11px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font-size:12.5px;font-weight:600;color:#405189;">+10</span>
+          </div>
+        </div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
+          <div style="padding:8px 12px;background:#f8f9fb;border-bottom:1px solid #eff2f7;font-size:12px;font-weight:600;color:#405189;">C · Compact — sidebar SEO / mobile / dialog</div>
+          <div style="padding:14px 12px;">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#adb5bd;margin-bottom:7px;">Đang biên tập</div>
+            <span style="display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font-size:13.5px;max-width:280px;"><span style="width:8px;height:8px;border-radius:50%;background:#299cdb;"></span><b style="color:#343a40;font-weight:600;">日本語</b><span style="font-size:11.5px;color:#878a99;">Dịch máy</span><i class="ri-arrow-down-s-line" style="margin-left:auto;color:#878a99;font-size:16px;"></i></span>
+          </div>
+        </div>
+        <div style="border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
+          <div style="padding:8px 12px;background:#f8f9fb;border-bottom:1px solid #eff2f7;font-size:12px;font-weight:600;color:#405189;">D · Readonly — bảng danh sách &amp; lịch sử phiên bản</div>
+          <div style="padding:12px;">
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 6px;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><span style="color:#343a40;font-weight:500;">Về chúng tôi</span><span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#495057;background:#f3f6f9;border-radius:3px;padding:3px 7px;"><span style="width:6px;height:6px;border-radius:50%;background:#0ab39c;"></span>Tiếng Việt</span><span style="font-size:11px;color:#adb5bd;font-variant-numeric:tabular-nums;">4/12</span></div>
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 6px;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><span style="color:#343a40;font-weight:500;">Về chúng tôi</span><span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#495057;background:#f3f6f9;border-radius:3px;padding:3px 7px;"><span style="width:6px;height:6px;border-radius:50%;background:#f06548;"></span>English</span><span style="font-size:11px;color:#adb5bd;">Lỗi thời</span></div>
+            <div style="display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:8px 6px;font-size:12.5px;"><span style="color:#878a99;">Sửa bởi Minh · 2 giờ trước</span><span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#495057;background:#f3f6f9;border-radius:3px;padding:3px 7px;"><span style="width:6px;height:6px;border-radius:50%;background:#299cdb;"></span>日本語</span><span style="font-size:11px;color:#adb5bd;">v12</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 9. Sync / diff -->
+    <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+      <h2 style="margin:0 0 4px;font-size:16px;font-weight:600;color:#343a40;">9 · Đồng bộ khi nguồn đổi — diff theo trường</h2>
+      <div style="font-size:12.5px;color:#878a99;margin-bottom:14px;">Thay vì hỏi “ghi đè hay merge?”, mở bảng so sánh từng trường. Người quản trị chọn đúng trường cần lấy về; các trường đã biên tập kỹ được giữ nguyên. Hoàn tác trong 30 ngày.</div>
+      <div style="border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
+        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:0;background:#f8f9fb;padding:9px 14px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;"><span>Trường</span><span>Nguồn · Tiếng Việt (v13)</span><span>Bản English (dịch từ v11)</span><span>Hành động</span></div>
+        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid #f3f6f9;font-size:12.5px;align-items:center;"><span style="font-weight:600;color:#343a40;">Tiêu đề</span><span style="color:#878a99;">Về chúng tôi</span><span style="color:#878a99;">About us</span><span style="font-size:11.5px;color:#0a8a78;display:inline-flex;align-items:center;gap:5px;"><i class="ri-check-line"></i>Khớp</span></div>
+        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid #f3f6f9;font-size:12.5px;align-items:center;background:#fffaf3;"><span style="font-weight:600;color:#343a40;">Đoạn mở đầu</span><span style="color:#343a40;">…<b style="background:#e6f7f5;">20 năm gia công CNC chính xác</b>…</span><span style="color:#878a99;">…<s style="color:#c0392b;">15 years of CNC machining</s>…</span><label style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#405189;font-weight:600;cursor:pointer;"><input type="checkbox" checked="{{ true }}" readOnly="{{ true }}" style="accent-color:#405189;width:14px;height:14px;">Lấy về</label></div>
+        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid #f3f6f9;font-size:12.5px;align-items:center;background:#fffaf3;"><span style="font-weight:600;color:#343a40;">Meta description</span><span style="color:#343a40;">Đã cập nhật</span><span style="color:#878a99;">Chưa đổi từ v11</span><label style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#405189;font-weight:600;cursor:pointer;"><input type="checkbox" style="accent-color:#405189;width:14px;height:14px;">Lấy về</label></div>
+        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid #f3f6f9;font-size:12.5px;align-items:center;"><span style="font-weight:600;color:#343a40;">Ảnh bìa (alt)</span><span style="color:#878a99;">Xưởng CNC An Vinh</span><span style="color:#878a99;">An Vinh CNC workshop</span><span style="font-size:11.5px;color:#0a8a78;display:inline-flex;align-items:center;gap:5px;"><i class="ri-check-line"></i>Khớp</span></div>
+        <div style="padding:11px 14px;border-top:1px solid #eff2f7;background:#f8f9fb;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:#878a99;">2 trong 9 trường lệch so với nguồn · lấy về sẽ đặt bản English về <b>Cần soát</b>.</span>
+          <span style="display:inline-flex;gap:8px;"><button type="button" class="lc-btn" onClick="{{ noop }}" style="height:36px;padding:0 13px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;">Giữ nguyên bản dịch</button><button type="button" class="lc-btn" onClick="{{ noop }}" style="height:36px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">Lấy về 1 trường đã chọn</button></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 10. Tokens + a11y -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:20px;">
+      <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+        <h2 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#343a40;">10 · Design token</h2>
+        <div style="display:flex;flex-direction:column;">
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">--lc-radius</code><span>6px (pill &amp; card), 4px (nút, ô nhập) — theo AdminKit, không bo lớn.</span></div>
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">--lc-height</code><span>32px dense desktop · 40px mặc định · <b>44px</b> compact/mobile (vùng bấm luôn ≥ 44px kể cả khi pill 32px, nhờ padding trong suốt).</span></div>
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">--lc-gap</code><span>6 / 8 / 12 / 16 / 24 — lưới 4px của AdminKit.</span></div>
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">--lc-primary</code><span>#405189 (navy) — active, focus ring rgba(64,81,137,.22), liên kết.</span></div>
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">--lc-status-*</code><span>empty #adb5bd · mt #299cdb · review #f7b84b · draft #878a99 · published #0ab39c · outdated #f06548. Chữ trên nền nhạt dùng biến thể đậm (#1d7fb8 / #b57d13 / #0a8a78 / #c0392b) để đạt ≥ 4.5:1.</span></div>
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid #f3f6f9;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">--lc-type</code><span>Inter (nạp đủ dấu tiếng Việt) 12–13.5px; tên bản địa CJK/Thai/Ả Rập dựa vào fallback hệ thống, không ép font.</span></div>
+          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;font-size:12.5px;"><code style="font-size:11.5px;color:#405189;">--lc-shadow-pop</code><span>0 6px 22px rgba(33,37,41,.14) cho panel; card chỉ 0 1px 2px rgba(56,65,74,.15).</span></div>
+        </div>
+      </div>
+      <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+        <h2 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#343a40;">11 · Tiếp cận (WCAG 2.2 AA)</h2>
+        <div style="display:flex;flex-direction:column;gap:9px;font-size:12.5px;">
+          <div><b style="color:#343a40;">Vai trò.</b> Inline = <code style="font-size:11.5px;">tablist/tab</code> với <code style="font-size:11.5px;">aria-selected</code>; nút compact = <code style="font-size:11.5px;">aria-haspopup="listbox" aria-expanded</code>; panel = <code style="font-size:11.5px;">listbox/option</code>; readonly = văn bản thuần, không focus.</div>
+          <div><b style="color:#343a40;">Nhãn.</b> <code style="font-size:11.5px;">aria-label="Biên tập bản English — Cần soát, đã dịch 6 ngày trước"</code>: trạng thái luôn có trong tên, không chỉ ở màu.</div>
+          <div><b style="color:#343a40;">Thông báo.</b> Sau khi chuyển, dịch xong, hoặc lỗi: <code style="font-size:11.5px;">aria-live="polite"</code>; lỗi chặn dùng <code style="font-size:11.5px;">role="alertdialog"</code>.</div>
+          <div><b style="color:#343a40;">Focus.</b> Ring 3px hiện rõ trên mọi nền (2.4.11 Focus Not Obscured); panel bẫy focus, Esc trả về nút mở; thứ tự DOM = thứ tự thị giác.</div>
+          <div><b style="color:#343a40;">Vùng bấm.</b> ≥ 44×44px (2.5.8), khoảng cách tối thiểu 8px giữa các pill.</div>
+          <div><b style="color:#343a40;">Không bẫy chuột.</b> Mọi hành động AI/đồng bộ đều có tương đương bàn phím và không phụ thuộc hover; tooltip cũng mở bằng focus.</div>
+          <div><b style="color:#343a40;">Ngôn ngữ tài liệu.</b> Mỗi tên bản địa mang <code style="font-size:11.5px;">lang</code> riêng và <code style="font-size:11.5px;">dir="rtl"</code> khi cần (العربية, עברית) để trình đọc phát âm đúng.</div>
+          <div><b style="color:#343a40;">Giảm chuyển động.</b> <code style="font-size:11.5px;">prefers-reduced-motion</code> tắt mọi hiệu ứng, giữ nguyên phản hồi trạng thái.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 12. Dev + edge + scale -->
+    <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
+      <h2 style="margin:0 0 14px;font-size:16px;font-weight:600;color:#343a40;">12 · Ghi chú triển khai · Edge case · Mở rộng</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;">
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;margin-bottom:9px;">Triển khai (Livewire 4 · Alpine)</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:#878a99;">
+            <div>Một component Blade duy nhất: <code style="font-size:11.5px;color:#405189;">&lt;x-admin::language-context :item="$item" role="editor|compact|readonly" /&gt;</code>; biến thể A/B/C do Alpine + ResizeObserver quyết định ở client, <code style="font-size:11.5px;">role</code> chỉ đặt trần trên.</div>
+            <div>Chuyển ngôn ngữ = điều hướng có URL riêng <code style="font-size:11.5px;">?locale=en</code> (deep-link, chia sẻ được, back/forward hoạt động) — không phải state ẩn.</div>
+            <div>Server trả <code style="font-size:11.5px;">localeSummary</code> một lần cho mọi module: <code style="font-size:11.5px;">[{code,name,status,sourceRev,updatedAt,can}]</code> — module mới không cần code UI.</div>
+            <div>Dịch AI chạy qua queue + Echo; UI hiện trạng thái “Đang dịch…” theo từng ngôn ngữ, cho phép dịch hàng loạt nhiều ngôn ngữ cùng lúc.</div>
+            <div>Guard dùng <code style="font-size:11.5px;">wire:dirty</code> + <code style="font-size:11.5px;">beforeunload</code>; bản nháp tự lưu 20s một lần để hộp thoại gần như không bao giờ mất dữ liệu.</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;margin-bottom:9px;">Edge case</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:#878a99;">
+            <div>Đổi ngôn ngữ nguồn của website khi đã có bản dịch → chỉ chuyển “nhãn nguồn”, không dịch lại; mọi bản đích thành Lỗi thời kèm giải thích.</div>
+            <div>Nội dung chỉ tồn tại ở một ngôn ngữ đích (nguồn trống) → cho phép “Đặt làm nguồn cho nội dung này”.</div>
+            <div>Ngôn ngữ bị tắt ở website nhưng nội dung vẫn còn bản dịch → hiện mờ trong panel, nhóm “Đã tắt”, không mất dữ liệu.</div>
+            <div>Xoá ngôn ngữ khỏi website → xác nhận hai bước, nêu số nội dung ảnh hưởng, thùng rác 30 ngày.</div>
+            <div>Hai người biên tập hai ngôn ngữ cùng lúc → không xung đột (khác bản ghi); cùng một ngôn ngữ → hiện avatar người đang mở + khoá mềm.</div>
+            <div>RTL, CJK không khoảng trắng, tên rất dài (Bahasa Indonesia) → pill co giãn theo nội dung, cắt bằng ellipsis ở 18 ký tự, tooltip hiện đủ.</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;margin-bottom:9px;">Mở rộng tương lai</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:#878a99;">
+            <div>Biến thể vùng miền (en-US / en-GB, pt-BR / pt-PT): panel gom theo nhóm cây, dịch kế thừa từ ngôn ngữ mẹ.</div>
+            <div>Chế độ song ngữ cạnh nhau (nguồn | đích) dùng đúng component này ở hai cột, cột nguồn ở biến thể readonly.</div>
+            <div>Dịch hàng loạt ở cấp danh sách: chọn nhiều nội dung × nhiều ngôn ngữ, tái dùng panel làm bộ chọn ngôn ngữ.</div>
+            <div>Bộ nhớ dịch &amp; thuật ngữ (glossary) theo tenant: hiện nhãn “Áp dụng thuật ngữ riêng” trước khi chạy AI.</div>
+            <div>Workflow duyệt nhiều bước: chèn trạng thái <code style="font-size:11.5px;">in_review → approved</code> giữa Nháp và Đã đăng mà không đổi anatomy.</div>
+            <div>Ngưỡng 50+ ngôn ngữ: panel ảo hoá danh sách, thêm nhóm “Gần đây” và “Đang thiếu bản dịch” lên đầu.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900},&quot;variantLock&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;],&quot;default&quot;:&quot;auto&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Component&quot;},&quot;showProgress&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Component&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#405189&quot;,&quot;options&quot;:[&quot;#405189&quot;,&quot;#3577f1&quot;,&quot;#0ab39c&quot;,&quot;#299cdb&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Component&quot;}}">
+const CAT = [
+  ['vi','Tiếng Việt','vi'],['en','English','en'],['ja','日本語','ja'],['zh-Hans','中文（简体）','zh'],['ko','한국어','ko'],
+  ['fr','Français','fr'],['de','Deutsch','de'],['es','Español','es'],['pt','Português','pt'],['it','Italiano','it'],
+  ['th','ไทย','th'],['id','Bahasa Indonesia','id'],['ms','Bahasa Melayu','ms'],['ru','Русский','ru'],['ar','العربية','ar'],
+  ['hi','हिन्दी','hi'],['nl','Nederlands','nl'],['pl','Polski','pl'],['tr','Türkçe','tr'],['sv','Svenska','sv'],
+  ['da','Dansk','da'],['nb','Norsk bokmål','nb'],['fi','Suomi','fi'],['cs','Čeština','cs'],['sk','Slovenčina','sk'],
+  ['hu','Magyar','hu'],['ro','Română','ro'],['bg','Български','bg'],['uk','Українська','uk'],['el','Ελληνικά','el'],
+  ['he','עברית','he'],['zh-Hant','中文（繁體）','zh'],['fil','Filipino','fil'],['km','ភាសាខ្មែរ','km'],['lo','ລາວ','lo'],
+  ['my','မြန်မာ','my'],['bn','বাংলা','bn'],['ta','தமிழ்','ta'],['te','తెలుగు','te'],['ur','اردو','ur'],
+  ['fa','فارسی','fa'],['sr','Српски','sr'],['hr','Hrvatski','hr'],['sl','Slovenščina','sl'],['et','Eesti','et'],
+  ['lv','Latviešu','lv'],['lt','Lietuvių','lt'],['ca','Català','ca'],['sw','Kiswahili','sw'],['af','Afrikaans','af'],
+  ['is','Íslenska','is'],['ga','Gaeilge','ga'],['gl','Galego','gl'],['eu','Euskara','eu'],['sq','Shqip','sq']
+];
+const ST = {
+  empty:{s:'Trống',l:'Chưa có nội dung',c:'#adb5bd',t:'#878a99',bg:'#f8f9fb',bd:'#e9ebec',hollow:true},
+  mt:{s:'Dịch máy',l:'Dịch máy chưa soát',c:'#299cdb',t:'#1d7fb8',bg:'#eaf5fc',bd:'#b6dcf2'},
+  review:{s:'Cần soát',l:'Cần soát lại',c:'#f7b84b',t:'#b57d13',bg:'#fef6e7',bd:'#fae3ac'},
+  draft:{s:'Nháp',l:'Bản nháp',c:'#878a99',t:'#495057',bg:'#f3f6f9',bd:'#e9ebec'},
+  published:{s:'Đã đăng',l:'Đã đăng',c:'#0ab39c',t:'#0a8a78',bg:'#e6f7f5',bd:'#b8e3dd'},
+  outdated:{s:'Lỗi thời',l:'Lỗi thời so với nguồn',c:'#f06548',t:'#c0392b',bg:'#fdeceb',bd:'#f8c3bc'}
+};
+const PAT = ['review','empty','mt','outdated','draft','empty','published','empty','mt','empty','review','empty','empty','draft','empty'];
+const META = {empty:'Chưa dịch',mt:'AI dịch · 2 giờ trước',review:'Sửa bởi Minh · 2 giờ trước',draft:'Lưu nháp · hôm qua',published:'Đăng 12/07/2026',outdated:'Dịch từ v11 · nguồn đã là v13'};
+
+class Component extends DCLogic {
+  state = {count:5,width:900,ctx:'editor',current:'en',open:false,q:'',dirty:true,guard:null,busy:null,err:false,loading:false,vers:{},ai:0};
+
+  locales(){ return CAT.slice(0, this.state.count); }
+  st(code){ if(code==='vi') return 'published'; if(this.state.vers[code]) return this.state.vers[code]; const i=CAT.findIndex(l=>l[0]===code); return PAT[(i-1)%PAT.length]||'empty'; }
+  setV(code,v){ this.setState(s=>({vers:Object.assign({},s.vers,{[code]:v})})); }
+  name(code){ const f=CAT.find(l=>l[0]===code); return f?f[1]:code; }
+
+  go(code){
+    if(code===this.state.current){ this.setState({open:false}); return; }
+    if(this.state.dirty){ this.setState({guard:{to:code},open:false}); return; }
+    this.setState({open:false,err:false,loading:true,current:code});
+    clearTimeout(this._t); this._t=setTimeout(()=>this.setState({loading:false}),450);
+  }
+  proceed(save){
+    const to=this.state.guard.to, from=this.state.current;
+    if(save && this.st(from)==='mt') this.setV(from,'review'); else if(save) this.setV(from,this.st(from)==='published'?'published':'draft');
+    this.setState({guard:null,dirty:false,open:false,loading:true,current:to,err:false});
+    clearTimeout(this._t); this._t=setTimeout(()=>this.setState({loading:false}),450);
+  }
+  run(kind){
+    const cur=this.state.current, n=this.state.ai+1;
+    this.setState({busy:kind,err:false,ai:n});
+    clearTimeout(this._b);
+    this._b=setTimeout(()=>{
+      if(kind==='translate' && n%4===0){ this.setState({busy:null,err:true}); return; }
+      this.setV(cur, kind==='translate'?'mt':'review');
+      this.setState({busy:null,dirty:false});
+    },1500);
+  }
+
+  renderVals(){
+    const s=this.state, L=this.locales(), src='vi', cur=s.current, curSt=this.st(cur), isSrc=cur===src;
+    const lockAuto=this.props.variantLock ?? 'auto';
+    const showProg=(this.props.showProgress ?? true) && L.length>1;
+
+    let variant;
+    if(s.ctx==='readonly') variant='D';
+    else if(L.length===1) variant='single';
+    else if(s.ctx==='compact'||s.width<560||L.length>=15) variant='C';
+    else {
+      const w=(n)=>Math.max(64, 30+n.length*8.2);
+      const avail=s.width-40-(showProg?150:0)-108;
+      const total=L.reduce((a,l)=>a+w(l[1])+6,0);
+      variant = total<=avail ? 'A' : 'B';
+    }
+    if(lockAuto!=='auto') variant = lockAuto;
+
+    const dot=(k,sz)=>{const m=ST[k];const d=sz||8;return m.hollow?`width:${d}px;height:${d}px;border-radius:50%;border:1.5px dashed ${m.c};flex-shrink:0;`:`width:${d}px;height:${d}px;border-radius:50%;background:${m.c};flex-shrink:0;`;};
+
+    // inline pills
+    let shown=L, overflow=0, useCode=false;
+    if(variant==='B'){
+      useCode=true;
+      const per=52, avail=s.width-40-(showProg?150:0)-108-58;
+      const fit=Math.max(2,Math.floor(avail/per));
+      if(L.length>fit){
+        const keep=[L[0]]; const curL=L.find(l=>l[0]===cur);
+        if(curL&&curL[0]!==src) keep.push(curL);
+        for(const l of L){ if(keep.length>=fit) break; if(!keep.includes(l)) keep.push(l); }
+        shown=L.filter(l=>keep.includes(l)); overflow=L.length-shown.length;
+      }
+    }
+    const pills=shown.map(l=>{
+      const k=this.st(l[0]), sel=l[0]===cur, m=ST[k], dis=l[0]==='ko'&&s.count>4;
+      const base=`display:inline-flex;align-items:center;gap:${useCode?6:7}px;height:32px;padding:0 ${useCode?10:11}px;border-radius:6px;font:inherit;font-size:${useCode?12.5:13}px;cursor:${dis?'not-allowed':'pointer'};white-space:nowrap;opacity:${dis?.55:1};`;
+      const skin = sel
+        ? `border:1px solid #405189;background:#fff;font-weight:${useCode?700:600};color:#343a40;box-shadow:0 0 0 3px rgba(64,81,137,.14);`
+        : (k==='empty'
+          ? `border:1px dashed #ced4da;background:#fff;font-weight:${useCode?600:500};color:#878a99;`
+          : `border:1px solid #eff2f7;background:#f3f6f9;font-weight:${useCode?600:500};color:#495057;`);
+      return {code:l[0],label:useCode?l[0].split('-')[0].toUpperCase():l[1],sel:sel,isSource:l[0]===src&&!useCode,disabled:dis,
+        aria:`Biên tập bản ${l[1]} — ${m.l}${dis?' — bạn không có quyền dịch ngôn ngữ này':''}`,
+        style:base+skin, dot:dot(k,useCode?7:8), onClick:dis?()=>{}:()=>this.go(l[0])};
+    });
+
+    // panel rows
+    const q=s.q.trim().toLowerCase();
+    const match=(l)=>!q||l[1].toLowerCase().includes(q)||l[0].toLowerCase().includes(q)||l[2].includes(q);
+    const rowOf=(l)=>{
+      const k=this.st(l[0]), sel=l[0]===cur, m=ST[k];
+      return {isRow:true,isHeader:false,code:l[0],name:l[1],sel:sel,isSource:l[0]===src,status:m.s,meta:`${l[0].toUpperCase()} · ${META[k]}`,
+        dot:dot(k,8), chip:`font-size:11px;font-weight:600;color:${m.t};background:${m.bg};border:1px solid ${m.bd};border-radius:3px;padding:2px 7px;white-space:nowrap;`,
+        style:`display:flex;align-items:center;gap:10px;padding:8px 12px;min-height:44px;cursor:pointer;background:${sel?'#eef2fb':'transparent'};`,
+        onClick:()=>this.go(l[0])};
+    };
+    const hdr=(t)=>({isHeader:true,isRow:false,label:t});
+    const rows=[]; const filtered=L.filter(match);
+    const srcL=filtered.find(l=>l[0]===src);
+    if(srcL){ rows.push(hdr('Ngôn ngữ nguồn')); rows.push(rowOf(srcL)); }
+    const rest=filtered.filter(l=>l[0]!==src);
+    if(!q && L.length>8){
+      const recent=rest.filter(l=>['en','ja','zh-Hans'].includes(l[0])).slice(0,3);
+      if(recent.length){ rows.push(hdr('Dùng gần đây')); recent.forEach(l=>rows.push(rowOf(l))); }
+      const others=rest.filter(l=>!recent.includes(l));
+      if(others.length){ rows.push(hdr(`Tất cả ngôn ngữ (${others.length})`)); others.forEach(l=>rows.push(rowOf(l))); }
+    } else if(rest.length){
+      rows.push(hdr(q?`Kết quả (${rest.length})`:`Ngôn ngữ đích (${rest.length})`)); rest.forEach(l=>rows.push(rowOf(l)));
+    }
+
+    // actions per business rules
+    const srcSt=this.st(src), srcReady=srcSt==='published'||srcSt==='completed';
+    const actions=[]; let notice=null;
+    const btn=(kind)=>kind==='primary'
+      ? 'display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;'
+      : 'display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px;border:1px solid #e9ebec;border-radius:4px;background:#fff;color:#495057;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;';
+    if(!isSrc && L.length>1){
+      if(curSt==='empty'){
+        if(srcReady) actions.push({label:'Dịch bằng AI',icon:'ri-sparkling-2-line',style:btn('primary'),onClick:()=>this.run('translate'),title:`Dịch từ ${this.name(src)} · 412 từ`,disabled:false});
+        else actions.push({label:'Dịch bằng AI',icon:'ri-sparkling-2-line',style:btn('primary')+'opacity:.5;cursor:not-allowed;',onClick:()=>{},title:'Bản nguồn còn là nháp — hoàn tất nguồn trước khi dịch',disabled:true});
+      } else if(curSt==='outdated'){
+        notice={text:'Nguồn đã đổi sau lần dịch — 2 trường lệch.',icon:'ri-error-warning-line',style:`display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border:1px solid ${ST.outdated.bd};border-radius:4px;background:${ST.outdated.bg};font-size:12.5px;font-weight:500;color:${ST.outdated.t};`};
+        actions.push({label:'Xem và cập nhật từ nguồn',icon:'ri-git-merge-line',style:btn('primary'),onClick:()=>this.run('update'),title:'Mở bảng so sánh theo trường',disabled:false});
+        actions.push({label:'Dịch lại toàn bộ',icon:'ri-refresh-line',style:btn(''),onClick:()=>this.run('translate'),title:'Ghi đè bản dịch hiện tại',disabled:false});
+      } else if(curSt==='mt'){
+        notice={text:'Bản dịch máy chưa được soát — chưa thể đăng.',icon:'ri-sparkling-2-line',style:`display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border:1px solid ${ST.mt.bd};border-radius:4px;background:${ST.mt.bg};font-size:12.5px;font-weight:500;color:${ST.mt.t};`};
+        actions.push({label:'Đánh dấu đã soát',icon:'ri-check-double-line',style:btn('primary'),onClick:()=>this.setV(cur,'review'),title:'Chuyển sang Cần soát',disabled:false});
+        actions.push({label:'Dịch lại',icon:'ri-refresh-line',style:btn(''),onClick:()=>this.run('translate'),title:'Ghi đè bản dịch máy',disabled:false});
+      } else {
+        if(curSt!=='published') actions.push({label:'Đăng bản này',icon:'ri-send-plane-line',style:btn('primary'),onClick:()=>this.setV(cur,'published'),title:'Công khai bản dịch',disabled:false});
+        actions.push({label:'Dịch lại',icon:'ri-refresh-line',style:btn(''),onClick:()=>this.run('translate'),title:'Ghi đè bản dịch hiện tại',disabled:false});
+      }
+    } else if(isSrc){
+      notice={text:`Đây là bản nguồn — mọi bản dịch sinh ra từ đây.`,icon:'ri-flag-line',style:'display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border:1px solid #cfd8ec;border-radius:4px;background:#eef2fb;font-size:12.5px;font-weight:500;color:#405189;'};
+      if(L.length>1) actions.push({label:`Dịch sang ${L.length-1} ngôn ngữ`,icon:'ri-sparkling-2-line',style:btn(''),onClick:()=>{},title:'Dịch hàng loạt từ nguồn',disabled:false});
+    }
+
+    const done=L.filter(l=>this.st(l[0])!=='empty').length;
+    const pct=Math.round(done/L.length*100);
+    const accent=this.props.accent ?? '#405189';
+
+    const bodyTxt = curSt==='empty' ? '' : (isSrc
+      ? 'An Vinh có hơn 20 năm gia công CNC chính xác cho khách hàng trong nước và Nhật Bản…'
+      : (curSt==='outdated' ? 'An Vinh has over 15 years of precision CNC machining experience…' : 'An Vinh has over 20 years of precision CNC machining experience for customers in Vietnam and Japan…'));
+
+    return {
+      variantName:{A:'A · Inline',B:'B · Inline + tràn',C:'C · Compact',D:'D · Readonly',single:'Một ngôn ngữ'}[variant],
+      width:s.width, localeCount:L.length,
+      ctxLabel:{editor:'Trình biên tập',compact:'Sidebar / mobile',readonly:'Danh sách (chỉ đọc)'}[s.ctx],
+      scaleOpts:[1,5,20,50].map(n=>({label:String(n),onClick:()=>this.setState({count:n,current:n===1?'vi':(CAT.slice(0,n).some(l=>l[0]===s.current)?s.current:'en'),open:false}),
+        style:`height:30px;padding:0 12px;border:0;border-right:1px solid #e9ebec;background:${s.count===n?'#405189':'#fff'};color:${s.count===n?'#fff':'#495057'};font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;`})),
+      ctxOpts:[['editor','Biên tập'],['compact','Compact'],['readonly','Chỉ đọc']].map(c=>({label:c[1],onClick:()=>this.setState({ctx:c[0],open:false}),
+        style:`height:30px;padding:0 12px;border:0;border-right:1px solid #e9ebec;background:${s.ctx===c[0]?'#405189':'#fff'};color:${s.ctx===c[0]?'#fff':'#495057'};font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;`})),
+      onWidth:e=>this.setState({width:+e.target.value}),
+      onDirty:e=>this.setState({dirty:e.target.checked}),
+      dirty:s.dirty, noop:e=>{if(e&&e.preventDefault)e.preventDefault();},
+
+      boxStyle:`width:${s.width}px;max-width:100%;margin:0 auto;background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);position:relative;transition:width .15s;`,
+      isReadonly:variant==='D', isSingle:variant==='single', showInline:variant==='A'||variant==='B', showCompact:variant==='C',
+      pills:pills, hasOverflow:overflow>0, overflowCount:overflow, open:s.open,
+      overflowStyle:'display:inline-flex;align-items:center;height:32px;padding:0 11px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font:inherit;font-size:12.5px;font-weight:600;color:'+accent+';cursor:pointer;',
+      compactStyle:'display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 12px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font:inherit;font-size:13.5px;cursor:pointer;min-width:200px;max-width:300px;',
+      onToggle:()=>this.setState({open:!s.open,q:''}),
+      curName:this.name(cur), curStatusShort:ST[curSt].s, curDot:dot(curSt,8),
+      curAria:`Đang biên tập bản ${this.name(cur)} — ${ST[curSt].l}. Mở danh sách ngôn ngữ.`,
+      srcName:this.name(src), wordCount:'412',
+      showProgress:showProg, progressText:`${done}/${L.length} đã dịch`, progressAria:`Đã có nội dung ở ${done} trong ${L.length} ngôn ngữ (${pct}%)`,
+      progressFill:`display:block;height:100%;width:${pct}%;background:${accent};border-radius:2px;`,
+
+      busy:!!s.busy, busyText:s.busy==='update'?'Đang lấy nội dung mới từ nguồn…':'Đang dịch bằng AI…',
+      err:s.err, onRetry:()=>this.run('translate'),
+      showActions:!s.busy&&!s.err&&variant!=='D', actions:actions,
+      hasNotice:!!notice&&!s.busy&&!s.err, noticeText:notice?notice.text:'', noticeIcon:notice?notice.icon:'', noticeStyle:notice?notice.style:'',
+
+      isLoading:s.loading, isEmptyState:!s.loading&&curSt==='empty'&&!s.busy, showFields:!s.loading&&curSt!=='empty',
+      isOutdated:curSt==='outdated',
+      fTitle:isSrc?'Về chúng tôi':(curSt==='outdated'?'About us':'About us'),
+      fBody:bodyTxt,
+      bodyStyle:`border:1px solid ${curSt==='outdated'?ST.outdated.bd:'#e9ebec'};border-radius:4px;padding:10px 12px;background:${curSt==='outdated'?'#fffaf9':'#fff'};font-size:13px;line-height:1.6;color:#495057;min-height:64px;`,
+
+      panelStyle:`position:absolute;top:${variant==='C'?'104px':'96px'};left:16px;width:${Math.min(360,s.width-32)}px;max-height:340px;background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 6px 22px rgba(33,37,41,.14);z-index:40;`,
+      q:s.q, onQ:e=>this.setState({q:e.target.value}),
+      onKey:e=>{ if(e.key==='Escape') this.setState({open:false}); },
+      rows:rows, noResult:rows.length===0, resultCount:`${filtered.length}/${L.length}`,
+
+      guard:!!s.guard, guardFrom:this.name(cur), guardTo:s.guard?this.name(s.guard.to):'',
+      onCancel:()=>this.setState({guard:null}), onDiscard:()=>this.proceed(false), onSaveDraft:()=>this.proceed(true),
+      onTranslate:()=>this.run('translate'), onWriteOwn:()=>this.setV(cur,'draft'),
+      liveText:`Đang biên tập ${this.name(cur)} — ${ST[curSt].l}`
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+/* ============================================================================
+   TYPOGRAPHY — Inter everywhere. Base 14px / 1.5 (Velzon convention).
+   Font sizes follow Velzon's fs-10..fs-48 utility scale.
+   ============================================================================ */
+:root {
+    /* Single source of truth — the UI font stack. */
+    --font-stack: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    --font-sans: var(--font-stack);
+
+    /* Body */
+    --text-body-size: 0.875rem;   /* 14px */
+    --text-body-lh: 1.5;
+    --text-heading-lh: 1.2;
+
+    /* Weights */
+    --fw-light: 300; /* @kind font */
+    --fw-normal: 400; /* @kind font */
+    --fw-medium: 500; /* @kind font */
+    --fw-semibold: 600; /* @kind font */
+    --fw-bold: 700; /* @kind font */
+    --fw-heading: 500; /* @kind font */  /* Velzon headings default to 500 */
+
+    /* Velzon fs-* scale */
+    --fs-10: 0.625rem;
+    --fs-11: 0.6875rem;
+    --fs-12: 0.75rem;
+    --fs-13: 0.8125rem;
+    --fs-14: 0.875rem;
+    --fs-15: 0.9375rem;
+    --fs-16: 1rem;
+    --fs-18: 1.125rem;
+    --fs-20: 1.25rem;
+    --fs-24: 1.5rem;
+    --fs-36: 2.25rem;
+    --fs-48: 3rem;
+}

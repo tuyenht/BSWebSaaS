@@ -1,0 +1,28 @@
+/* ============================================================================
+   SHAPE & LAYOUT — small radii, one subtle shadow, fixed admin dimensions.
+   No heavy elevation, no large rounding, no gradients on chrome.
+   ============================================================================ */
+:root {
+    /* Radius — small: 4px controls, 6px cards. */
+    --radius-control: 0.25rem;   /* 4px */
+    --radius-card: 0.375rem;     /* 6px */
+    --radius-pill: 9999px;
+
+    /* The single admin shadow. */
+    --shadow-card: 0 1px 2px rgb(56 65 74 / 0.15);
+    --shadow-pop: 0 5px 15px rgb(30 32 37 / 0.12);   /* dropdown/menu/customizer */
+
+    /* Admin layout dimensions. */
+    --sidebar-w: 250px;
+    --sidebar-w-collapsed: 70px;
+    --header-h: 70px;
+
+    /* Spacing scale (Velzon 0.25rem step). */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+}

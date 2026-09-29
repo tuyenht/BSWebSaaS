@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+.cs-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #e9ebec;border-radius:4px;font:inherit;font-size:13px;line-height:1.6;color:#343a40;background:#fff;outline:none;resize:vertical;}
+.cs-in:focus{border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.10);}
+.cs-in::placeholder{color:#b9bec7;}
+.cs-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.cs-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;}
+.cs-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;padding:16px;}
+@media (max-width:820px){.cs-grid{grid-template-columns:1fr;}.cs-3{grid-template-columns:1fr !important;}}
+.cs-full{grid-column:1 / -1;}
+.cs-fld{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.cs-lb{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#495057;}
+.dsw{width:38px;height:20px;border-radius:20px;background:#dfe2e8;position:relative;display:inline-block;flex-shrink:0;transition:background .15s;}
+.dsw.on{background:#405189;}
+.dsk{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.15);}
+.dsw.on .dsk{left:20px;}
+@keyframes csFade{from{opacity:0}to{opacity:1}}
+.csp{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.csp:hover{background:#f3f6f9;}
+.csp.on{border-color:#405189;background:rgba(64,81,137,.07);font-weight:600;color:#405189;}
+.cspl{height:32px;padding:0 11px;border-color:#eff2f7;}
+.cs-lockchip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;background:#f3f6f9;font-size:10.5px;font-weight:700;color:#878a99;white-space:nowrap;}
+.csr{display:flex;align-items:flex-start;gap:10px;padding:11px 13px;border:1px solid #eff2f7;border-radius:5px;background:#fff;cursor:pointer;text-align:left;font:inherit;min-height:44px;box-sizing:border-box;}
+.csr:hover{background:#fbfcfe;}
+.csr.on{border-color:#405189;background:rgba(64,81,137,.05);}
+.csrd{width:16px;height:16px;border-radius:50%;border:1.5px solid #ccd0d8;flex-shrink:0;margin-top:2px;position:relative;}
+.csr.on .csrd{border-color:#405189;}
+.csr.on .csrd:after{content:'';position:absolute;inset:3px;border-radius:50%;background:#405189;}
+.csrt{font-size:12.5px;font-weight:600;color:#343a40;}
+.csrx{font-size:11.5px;color:#878a99;line-height:1.55;}
+.csbtn{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
+.csbtn:hover{background:#f3f6f9;}
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;position:relative;">
+
+  <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
+      <span style="font-size:11.5px;color:#adb5bd;">Cài đặt › Nội dung AI</span>
+      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Nội dung AI</span>
+      <span style="font-size:13px;color:#878a99;line-height:1.65;">Khai báo một lần ở đây, mọi bài viết sau này tự dùng: văn phong thương hiệu, tác giả chịu trách nhiệm nội dung, quyền cho các trợ lý AI đọc website, hạn ngạch và bộ mặc định theo loại bài.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;">
+      <button style="display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 13px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;"><i class="ri-eye-line" style="font-size:16px;"></i>Xem thử trên một bài</button>
+      <button onClick="{{ onSave }}" title="{{ saveTitle }}" style="{{ saveStyle }}"><i class="ri-save-3-line" style="font-size:16px;"></i>{{ saveLabel }}</button>
+    </div>
+  </div>
+
+  <div class="cs-card" style="padding:0;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;">
+      <i class="ri-translate-2" title="Đang sửa bản nội dung của ngôn ngữ được chọn" style="font-size:16px;color:#878a99;flex-shrink:0;"></i>
+      <sc-for list="{{ langs }}" as="lg" hint-placeholder-count="3">
+        <sc-if value="{{ lg.on2 }}"><button class="csp cspl on" onClick="{{ lg.on }}" title="{{ lg.title }}"><span style="{{ lg.dot }}"></span>{{ lg.name }}<sc-if value="{{ lg.src }}"><i class="ri-star-fill" style="font-size:10px;color:#f7b84b;"></i></sc-if></button></sc-if>
+        <sc-if value="{{ lg.off }}"><button class="csp cspl" onClick="{{ lg.on }}" title="{{ lg.title }}"><span style="{{ lg.dot }}"></span>{{ lg.name }}<sc-if value="{{ lg.src }}"><i class="ri-star-fill" style="font-size:10px;color:#f7b84b;"></i></sc-if></button></sc-if>
+      </sc-for>
+      <span style="width:1px;height:22px;background:#eff2f7;margin:0 4px;flex-shrink:0;"></span>
+      <span style="font-size:11.5px;color:#878a99;white-space:nowrap;">{{ langProgress }}</span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span title="{{ quotaTitle }}" style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:20px;background:#f8f9fb;font-size:11.5px;font-weight:600;color:#878a99;white-space:nowrap;"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaChip }}</span>
+        <button onClick="{{ onTranslate }}" title="{{ trTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid rgba(64,81,137,.28);border-radius:4px;background:rgba(64,81,137,.10);font:inherit;font-size:12px;font-weight:600;color:#405189;cursor:pointer;white-space:nowrap;"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ trLabel }}</button>
+      </span>
+    </div>
+    <div style="{{ langNoteStyle }}"><i class="{{ langNoteIcon }}" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i><span>{{ langNote }}</span></div>
+  </div>
+
+  <div class="cs-card">
+    <div class="cs-h">
+      <i class="ri-mic-line" style="font-size:17px;color:#405189;"></i>
+      <span style="font-size:14px;font-weight:600;color:#343a40;">Văn phong thương hiệu</span>
+      <button onClick="{{ onInfoVoice }}" title="Giải thích thêm" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;"><i class="ri-information-line" style="font-size:15px;"></i></button>
+      <span style="margin-left:auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;">áp dụng cho mọi bài — khỏi nhập lại từng lần</span>
+    </div>
+    <div class="cs-grid">
+      <div class="cs-fld">
+        <span class="cs-lb">Giọng mặc định</span>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <sc-for list="{{ tones }}" as="t" hint-placeholder-count="4">
+            <sc-if value="{{ t.on2 }}"><button class="csp on" onClick="{{ t.on }}" title="{{ t.title }}">{{ t.label }}</button></sc-if>
+            <sc-if value="{{ t.off }}"><button class="csp" onClick="{{ t.on }}" title="{{ t.title }}">{{ t.label }}</button></sc-if>
+          </sc-for>
+        </div>
+      </div>
+      <div class="cs-fld">
+        <span class="cs-lb">Gọi khách hàng là</span>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <sc-for list="{{ addr }}" as="a" hint-placeholder-count="3">
+            <sc-if value="{{ a.on2 }}"><button class="csp on" onClick="{{ a.on }}" title="{{ a.title }}">{{ a.label }}</button></sc-if>
+            <sc-if value="{{ a.off }}"><button class="csp" onClick="{{ a.on }}" title="{{ a.title }}">{{ a.label }}</button></sc-if>
+          </sc-for>
+        </div>
+      </div>
+      <div class="cs-fld">
+        <span class="cs-lb">Từ ngữ nên dùng<span style="display:inline-flex;align-items:center;padding:1px 6px;border-radius:3px;font-size:9.5px;font-weight:700;color:#7d8bb3;background:rgba(64,81,137,.10);">{{ langCode }}</span></span>
+        <textarea class="cs-in" rows="3" value="{{ likeWords }}" onChange="{{ onLike }}" placeholder="Mỗi dòng một cách gọi bạn muốn giữ. Ví dụ: “kỹ thuật viên” thay cho “nhân viên kỹ thuật”"></textarea>
+      </div>
+      <div class="cs-fld">
+        <span class="cs-lb">Từ ngữ cấm dùng<span style="display:inline-flex;align-items:center;padding:1px 6px;border-radius:3px;font-size:9.5px;font-weight:700;color:#7d8bb3;background:rgba(64,81,137,.10);">{{ langCode }}</span></span>
+        <textarea class="cs-in" rows="3" value="{{ banWords }}" onChange="{{ onBan }}" placeholder="Mỗi dòng một cụm cấm. Ví dụ: tốt nhất thị trường, số 1 Việt Nam, cam kết 100%"></textarea>
+      </div>
+      <div class="cs-fld cs-full">
+        <span class="cs-lb">Một đoạn văn mẫu đúng giọng của bạn<span style="display:inline-flex;align-items:center;padding:1px 6px;border-radius:3px;font-size:9.5px;font-weight:700;color:#7d8bb3;background:rgba(64,81,137,.10);">{{ langCode }}</span></span>
+        <textarea class="cs-in" rows="3" value="{{ sampleText }}" onChange="{{ onSample }}" placeholder="{{ samplePh }}"></textarea>
+        <span style="font-size:11.5px;color:#878a99;line-height:1.6;">AI học nhịp câu và cách gọi từ đoạn này. Một đoạn thật của bạn hiệu quả hơn mười dòng mô tả giọng điệu.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cs-card">
+    <div class="cs-h">
+      <i class="ri-user-star-line" style="font-size:17px;color:#405189;"></i>
+      <span style="font-size:14px;font-weight:600;color:#343a40;">Tác giả chịu trách nhiệm nội dung</span>
+      <button onClick="{{ onInfoAuthor }}" title="Vì sao cần mục này" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;"><i class="ri-information-line" style="font-size:15px;"></i></button>
+      <sc-if value="{{ lockOn }}"><span class="cs-lockchip" title="Trường dùng chung cho mọi ngôn ngữ — sửa ở bản nguồn Tiếng Việt"><i class="ri-lock-2-line" style="font-size:12px;"></i>Chung</span></sc-if>
+      <span style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#878a99;white-space:nowrap;"><i class="ri-shield-check-line" style="font-size:14px;color:#0ab39c;"></i>{{ eeatLine }}</span>
+    </div>
+    <div style="{{ lockStyle }}display:flex;flex-direction:column;">
+      <sc-for list="{{ authors }}" as="au" hint-placeholder-count="2">
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;">
+          <span style="width:38px;height:38px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#405189;flex-shrink:0;">{{ au.initials }}</span>
+          <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 220px;min-width:0;">
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:#343a40;">{{ au.name }}</span><sc-if value="{{ au.isDefault }}"><span style="display:inline-flex;align-items:center;height:19px;padding:0 7px;border-radius:20px;background:rgba(64,81,137,.10);font-size:10px;font-weight:700;color:#405189;">mặc định</span></sc-if></span>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.5;">{{ au.role }}</span>
+          </span>
+          <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 240px;min-width:0;">
+            <span style="font-size:11.5px;color:#495057;line-height:1.5;">{{ au.exp }}</span>
+            <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ au.links }}</span>
+          </span>
+          <span style="{{ au.tagStyle }}">{{ au.tag }}</span>
+          <span style="display:flex;gap:6px;flex-shrink:0;">
+            <button onClick="{{ au.onDefault }}" title="{{ au.defTitle }}" style="{{ au.defStyle }}">{{ au.defLabel }}</button>
+            <button title="Sửa hồ sơ tác giả" style="display:inline-flex;align-items:center;height:30px;padding:0 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:500;color:#495057;cursor:pointer;">Sửa</button>
+          </span>
+        </div>
+      </sc-for>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;">
+        <button style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border:1px dashed #dfe2e8;border-radius:4px;background:#fbfcfe;font:inherit;font-size:12px;font-weight:600;color:#405189;cursor:pointer;"><i class="ri-add-line" style="font-size:15px;"></i>Thêm tác giả</button>
+        <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1;min-width:0;">Mỗi bài phải có một tác giả thật kèm chuyên môn. Hệ thống tự gắn dữ liệu tác giả vào trang và tạo trang giới thiệu tác giả — phần Google và trợ lý AI dùng để đánh giá độ tin cậy.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cs-card">
+    <div class="cs-h">
+      <i class="ri-robot-2-line" style="font-size:17px;color:#405189;"></i>
+      <span style="font-size:14px;font-weight:600;color:#343a40;">Cho công cụ AI đọc website</span>
+      <button onClick="{{ onInfoBots }}" title="Cho phép hay chặn thì được gì, mất gì" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;"><i class="ri-information-line" style="font-size:15px;"></i></button>
+      <sc-if value="{{ lockOn }}"><span class="cs-lockchip" title="Cấu hình dùng chung cho mọi ngôn ngữ — sửa ở bản nguồn Tiếng Việt"><i class="ri-lock-2-line" style="font-size:12px;"></i>Chung</span></sc-if>
+      <span style="margin-left:auto;font-size:11.5px;color:#878a99;white-space:nowrap;">{{ botSummary }}</span>
+    </div>
+    <div style="{{ lockStyle }}display:flex;flex-direction:column;gap:8px;padding:14px 16px;">
+      <span style="font-size:11.5px;color:#878a99;line-height:1.6;">Có hàng chục công cụ AI và mỗi tháng lại có thêm cái mới. Bạn chỉ cần chọn một quy tắc chung — nền tảng tự cập nhật danh sách và áp dụng cho cả những công cụ chưa xuất hiện hôm nay.</span>
+      <sc-if value="{{ polAllOn }}"><button class="csr on" onClick="{{ onPolAll }}" title="Áp dụng cho mọi công cụ AI, kể cả công cụ mới xuất hiện sau này"><span class="csrd"></span><span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span class="csrt">Cho tất cả công cụ AI đọc — kể cả công cụ mới <span style="margin-left:4px;font-size:10.5px;font-weight:700;color:#0ab39c;">KHUYÊN DÙNG</span></span><span class="csrx">Website của bạn có cơ hội được trích dẫn ở mọi trợ lý AI. Công cụ mới ra mắt tự được phép, bạn không phải theo dõi gì.</span></span></button></sc-if>
+      <sc-if value="{{ polAllOff }}"><button class="csr" onClick="{{ onPolAll }}" title="Áp dụng cho mọi công cụ AI, kể cả công cụ mới xuất hiện sau này"><span class="csrd"></span><span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span class="csrt">Cho tất cả công cụ AI đọc — kể cả công cụ mới <span style="margin-left:4px;font-size:10.5px;font-weight:700;color:#0ab39c;">KHUYÊN DÙNG</span></span><span class="csrx">Website của bạn có cơ hội được trích dẫn ở mọi trợ lý AI. Công cụ mới ra mắt tự được phép, bạn không phải theo dõi gì.</span></span></button></sc-if>
+      <sc-if value="{{ polCiteOn }}"><button class="csr on" onClick="{{ onPolCite }}" title="Cho phép nhóm trả lời &amp; trích dẫn, chặn nhóm chỉ lấy dữ liệu huấn luyện"><span class="csrd"></span><span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span class="csrt">Chỉ cho công cụ có dẫn nguồn về website</span><span class="csrx">Cho phép các trợ lý trả lời kèm liên kết (ChatGPT, Claude, Perplexity, Google AI…), chặn nhóm chỉ thu dữ liệu để huấn luyện. Công cụ mới được xếp nhóm tự động.</span></span></button></sc-if>
+      <sc-if value="{{ polCiteOff }}"><button class="csr" onClick="{{ onPolCite }}" title="Cho phép nhóm trả lời &amp; trích dẫn, chặn nhóm chỉ lấy dữ liệu huấn luyện"><span class="csrd"></span><span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span class="csrt">Chỉ cho công cụ có dẫn nguồn về website</span><span class="csrx">Cho phép các trợ lý trả lời kèm liên kết (ChatGPT, Claude, Perplexity, Google AI…), chặn nhóm chỉ thu dữ liệu để huấn luyện. Công cụ mới được xếp nhóm tự động.</span></span></button></sc-if>
+      <sc-if value="{{ polNoneOn }}"><button class="csr on" onClick="{{ onPolNone }}" title="Chặn mọi công cụ AI"><span class="csrd"></span><span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span class="csrt">Chặn tất cả công cụ AI</span><span class="csrx">Nội dung không bị dùng, nhưng cũng không xuất hiện trong câu trả lời của trợ lý AI. Không ảnh hưởng xếp hạng Google thường.</span></span></button></sc-if>
+      <sc-if value="{{ polNoneOff }}"><button class="csr" onClick="{{ onPolNone }}" title="Chặn mọi công cụ AI"><span class="csrd"></span><span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span class="csrt">Chặn tất cả công cụ AI</span><span class="csrx">Nội dung không bị dùng, nhưng cũng không xuất hiện trong câu trả lời của trợ lý AI. Không ảnh hưởng xếp hạng Google thường.</span></span></button></sc-if>
+      <sc-if value="{{ polCustomOn }}"><button class="csr on" onClick="{{ onPolCustom }}" title="Tự bật tắt từng công cụ"><span class="csrd"></span><span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span class="csrt">Tôi tự chọn từng công cụ</span><span class="csrx">Dành cho người muốn kiểm soát chi tiết. Bạn cũng chọn được cách xử lý công cụ mới chưa có trong danh sách.</span></span></button></sc-if>
+      <sc-if value="{{ polCustomOff }}"><button class="csr" onClick="{{ onPolCustom }}" title="Tự bật tắt từng công cụ"><span class="csrd"></span><span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span class="csrt">Tôi tự chọn từng công cụ</span><span class="csrx">Dành cho người muốn kiểm soát chi tiết. Bạn cũng chọn được cách xử lý công cụ mới chưa có trong danh sách.</span></span></button></sc-if>
+    </div>
+
+    <div style="{{ lockStyle }}display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+      <i class="ri-refresh-line" style="font-size:15px;color:#0ab39c;flex-shrink:0;"></i>
+      <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1;min-width:0;">{{ registryLine }}</span>
+      <button onClick="{{ onToggleList }}" class="csbtn" style="flex-shrink:0;"><i class="ri-list-check-2" style="font-size:14px;"></i>{{ listBtnLabel }}</button>
+    </div>
+
+    <sc-if value="{{ listOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="{{ lockStyle }}display:flex;flex-direction:column;">
+        <sc-if value="{{ isCustom }}">
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f6f7f9;background:rgba(247,184,75,.06);">
+            <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+              <span style="font-size:13px;font-weight:600;color:#343a40;">Công cụ AI mới chưa có trong danh sách</span>
+              <span style="font-size:11.5px;color:#878a99;line-height:1.55;">Quy tắc áp dụng cho mọi công cụ xuất hiện sau này, cho tới khi bạn chỉnh riêng.</span>
+            </span>
+            <span style="font-size:11.5px;font-weight:600;color:{{ newBotColor }};white-space:nowrap;flex-shrink:0;">{{ newBotText }}</span>
+            <button onClick="{{ onNewBot }}" title="{{ newBotTitle }}" style="width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;">
+              <sc-if value="{{ newBotOn }}"><span class="dsw on"><span class="dsk"></span></span></sc-if>
+              <sc-if value="{{ newBotOff }}"><span class="dsw"><span class="dsk"></span></span></sc-if>
+            </button>
+          </div>
+        </sc-if>
+        <sc-for list="{{ bots }}" as="b" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f6f7f9;">
+            <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+              <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:500;color:#343a40;">{{ b.name }}</span><span style="font-size:11px;color:#adb5bd;">{{ b.owner }}</span><span style="font-size:10.5px;font-weight:700;color:#878a99;background:#f3f6f9;border-radius:20px;padding:2px 8px;">{{ b.groupLabel }}</span></span>
+              <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ b.hint }}</span>
+            </span>
+            <span style="font-size:11.5px;font-weight:600;color:{{ b.stateColor }};white-space:nowrap;flex-shrink:0;">{{ b.stateText }}</span>
+            <sc-if value="{{ b.editable }}">
+              <button onClick="{{ b.on }}" title="{{ b.title }}" style="width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;">
+                <sc-if value="{{ b.allowed }}"><span class="dsw on"><span class="dsk"></span></span></sc-if>
+                <sc-if value="{{ b.blocked }}"><span class="dsw"><span class="dsk"></span></span></sc-if>
+              </button>
+            </sc-if>
+            <sc-if value="{{ b.locked }}">
+              <span title="Đang theo quy tắc chung ở trên — chọn “Tôi tự chọn từng công cụ” nếu muốn sửa riêng" style="width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;color:#ccd0d8;flex-shrink:0;"><i class="ri-lock-2-line" style="font-size:15px;"></i></span>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <div style="{{ lockStyle }}display:flex;flex-direction:column;border-top:1px solid #eff2f7;">
+      <div style="display:flex;align-items:center;gap:8px;padding:11px 16px;">
+        <i class="ri-radar-line" style="font-size:15px;color:#405189;"></i>
+        <span style="font-size:12.5px;font-weight:600;color:#343a40;">Công cụ lạ vừa ghé website bạn</span>
+        <span style="margin-left:auto;font-size:11.5px;color:#878a99;white-space:nowrap;">{{ unknownSummary }}</span>
+      </div>
+      <sc-for list="{{ unknowns }}" as="u" hint-placeholder-count="2">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;">
+          <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:500;color:#343a40;">{{ u.name }}</span><span style="font-size:11px;color:#adb5bd;">{{ u.owner }}</span></span>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ u.hint }}</span>
+          </span>
+          <sc-if value="{{ u.pending }}">
+            <span style="display:flex;gap:8px;flex-shrink:0;">
+              <button onClick="{{ u.allow }}" class="csbtn" style="height:34px;border-color:rgba(64,81,137,.28);background:rgba(64,81,137,.10);color:#405189;">Cho đọc</button>
+              <button onClick="{{ u.block }}" class="csbtn" style="height:34px;">Chặn</button>
+            </span>
+          </sc-if>
+          <sc-if value="{{ u.done }}">
+            <span style="font-size:11.5px;font-weight:600;color:{{ u.doneColor }};white-space:nowrap;flex-shrink:0;">{{ u.doneText }}</span>
+          </sc-if>
+        </div>
+      </sc-for>
+      <div style="padding:10px 16px;border-top:1px solid #f6f7f9;">
+        <span style="font-size:11.5px;color:#878a99;line-height:1.6;">Nền tảng đọc log truy cập, nhận diện công cụ chưa có trong danh sách và tự báo lên đây. Trong lúc chờ bạn quyết định, chúng đã được xử lý theo quy tắc chung ở trên — website không hề mở toang.</span>
+      </div>
+    </div>
+    <div class="cs-grid" style="{{ lockStyle }}border-top:1px solid #eff2f7;">
+      <div class="cs-fld">
+        <span class="cs-lb">Tệp hướng dẫn cho trợ lý AI (llms.txt)</span>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #eff2f7;border-radius:5px;background:#fbfcfe;">
+          <i class="ri-file-text-line" style="font-size:16px;color:#878a99;flex-shrink:0;"></i>
+          <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;">{{ llmsPath }}</span><span style="font-size:11px;color:#878a99;">Tự sinh từ danh mục và các bài trụ — cập nhật mỗi khi bạn đăng bài mới.</span></span>
+          <button style="display:inline-flex;align-items:center;height:30px;padding:0 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;white-space:nowrap;flex-shrink:0;">Xem tệp</button>
+        </div>
+      </div>
+      <div class="cs-fld">
+        <span class="cs-lb">Ghi rõ bài có AI tham gia</span>
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #eff2f7;border-radius:5px;background:#fbfcfe;">
+          <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1;min-width:0;">Hiện dòng “Nội dung có sự hỗ trợ của AI, đã được {{ defaultAuthorName }} kiểm duyệt” ở cuối bài. Minh bạch giúp tăng độ tin, không ảnh hưởng xếp hạng.</span>
+          <button onClick="{{ onDisclose }}" title="{{ discloseTitle }}" style="width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;">
+            <sc-if value="{{ discloseOn }}"><span class="dsw on"><span class="dsk"></span></span></sc-if>
+            <sc-if value="{{ discloseOff }}"><span class="dsw"><span class="dsk"></span></span></sc-if>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cs-card">
+    <div class="cs-h">
+      <i class="ri-coins-line" style="font-size:17px;color:#405189;"></i>
+      <span style="font-size:14px;font-weight:600;color:#343a40;">Hạn ngạch AI</span>
+      <button onClick="{{ onInfoQuota }}" title="Cách tính hạn ngạch" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;"><i class="ri-information-line" style="font-size:15px;"></i></button>
+      <sc-if value="{{ lockOn }}"><span class="cs-lockchip" title="Hạn ngạch dùng chung cho cả website — sửa ở bản nguồn Tiếng Việt"><i class="ri-lock-2-line" style="font-size:12px;"></i>Chung</span></sc-if>
+      <span style="margin-left:auto;font-size:11.5px;color:#878a99;white-space:nowrap;">tính theo số từ AI sinh ra, không theo số bài</span>
+    </div>
+    <div style="{{ lockStyle }}display:flex;flex-direction:column;gap:12px;padding:16px;">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 260px;min-width:0;">
+          <span style="font-size:13px;font-weight:600;color:#343a40;">{{ planLine }}</span>
+          <span style="height:8px;border-radius:20px;background:#eff2f7;overflow:hidden;"><span style="{{ usedBarStyle }}"></span></span>
+          <span style="font-size:11.5px;color:#878a99;">{{ usedLine }}</span>
+        </span>
+        <button style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 13px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;flex-shrink:0;"><i class="ri-arrow-up-circle-line" style="font-size:15px;"></i>Nâng gói AI</button>
+        <button style="display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 13px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;flex-shrink:0;"><i class="ri-file-list-3-line" style="font-size:15px;"></i>Sổ dùng AI</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;" class="cs-3">
+        <sc-for list="{{ plans }}" as="p" hint-placeholder-count="3">
+          <div style="{{ p.style }}">
+            <span style="display:flex;align-items:center;gap:7px;"><span style="font-size:13px;font-weight:600;color:#343a40;">{{ p.name }}</span><sc-if value="{{ p.current }}"><span style="display:inline-flex;align-items:center;height:19px;padding:0 7px;border-radius:20px;background:#405189;font-size:10px;font-weight:700;color:#fff;">đang dùng</span></sc-if></span>
+            <span style="font-size:18px;font-weight:600;color:#405189;">{{ p.words }}</span>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ p.hint }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;padding:12px;border:1px solid #eff2f7;border-radius:6px;background:#fbfcfe;">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Quy tắc tính — để bạn không bao giờ bị trừ oan</span>
+        <sc-for list="{{ rules }}" as="r" hint-placeholder-count="4">
+          <span style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#495057;line-height:1.65;"><i class="{{ r.icon }}" style="font-size:14px;color:#0ab39c;flex-shrink:0;margin-top:2px;"></i>{{ r.text }}</span>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div class="cs-card">
+    <div class="cs-h">
+      <i class="ri-layout-grid-line" style="font-size:17px;color:#405189;"></i>
+      <span style="font-size:14px;font-weight:600;color:#343a40;">Mặc định theo loại bài</span>
+      <button onClick="{{ onInfoMatrix }}" title="Bảng này điều khiển những gì" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;"><i class="ri-information-line" style="font-size:15px;"></i></button>
+      <sc-if value="{{ lockOn }}"><span class="cs-lockchip" title="Bảng mặc định dùng chung cho mọi ngôn ngữ — sửa ở bản nguồn Tiếng Việt"><i class="ri-lock-2-line" style="font-size:12px;"></i>Chung</span></sc-if>
+      <span style="margin-left:auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;">trợ lý viết bài đọc đúng bảng này</span>
+    </div>
+    <div style="{{ lockStyle }}overflow-x:auto;">
+      <div style="min-width:720px;">
+        <div style="display:grid;grid-template-columns:1.25fr .85fr .7fr .75fr 1.5fr 64px;gap:0;background:#f8f9fb;border-bottom:1px solid #eff2f7;">
+          <sc-for list="{{ matrixHead }}" as="h" hint-placeholder-count="5"><span style="padding:9px 14px;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#878a99;">{{ h.text }}</span></sc-for>
+        </div>
+        <sc-for list="{{ matrix }}" as="m" hint-placeholder-count="9">
+          <div style="display:grid;grid-template-columns:1.25fr .85fr .7fr .75fr 1.5fr 64px;gap:0;border-bottom:1px solid #f6f7f9;align-items:center;">
+            <span style="padding:10px 14px;font-size:12.5px;font-weight:600;color:#343a40;">{{ m.type }}</span>
+            <span style="padding:10px 14px;font-size:12px;color:#495057;">{{ m.aud }}</span>
+            <span style="padding:10px 14px;font-size:12px;color:#495057;">{{ m.tone }}</span>
+            <span style="padding:10px 14px;font-size:12px;color:#495057;font-variant-numeric:tabular-nums;">{{ m.len }}</span>
+            <span style="padding:10px 14px;font-size:11.5px;color:#878a99;line-height:1.55;">{{ m.blocks }}</span>
+            <span style="display:flex;justify-content:center;"><button onClick="{{ m.onEdit }}" title="{{ m.editTitle }}" class="csbtn" style="width:32px;height:32px;padding:0;justify-content:center;"><i class="ri-pencil-line" style="font-size:14px;"></i></button></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;gap:9px;padding:12px 16px;border-top:1px solid #eff2f7;">
+      <i class="ri-lightbulb-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+      <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Đổi một dòng ở đây là mọi bài mới thuộc loại đó dùng ngay bộ mặc định mới — không cần sửa từng bài, không cần lập trình. Người soạn vẫn đổi được cho riêng một bài, và chỗ nào lệch mặc định sẽ hiện viền nét đứt kèm nút trả về mức đề xuất.</span>
+    </div>
+  </div>
+
+  <sc-if value="{{ infoOpen }}">
+    <div style="position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div onClick="{{ onInfoClose }}" style="position:absolute;inset:0;background:rgba(52,58,64,.45);animation:csFade .14s ease;"></div>
+      <div style="position:relative;z-index:1;width:460px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:csFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><i class="ri-information-line" style="font-size:20px;color:#405189;"></i><span style="font-size:14.5px;font-weight:600;color:#343a40;">{{ infoTitle }}</span></div>
+        <span style="font-size:12.5px;color:#495057;line-height:1.75;">{{ infoText }}</span>
+        <button onClick="{{ onInfoClose }}" style="align-self:flex-end;margin-top:4px;min-height:36px;padding:8px 14px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">Đã hiểu</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ askOpen }}">
+    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
+      <div style="position:relative;z-index:1;width:440px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:csFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:#b57d13;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ askTitle }}</span></div>
+        <span style="font-size:12.5px;color:#878a99;line-height:1.7;">{{ askText }}</span>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+          <button onClick="{{ onAskCancel }}" style="min-height:38px;padding:9px 13px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;">Giữ nguyên</button>
+          <button onClick="{{ onAskOk }}" style="min-height:38px;padding:9px 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">{{ askOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}">
+    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#343a40;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:csFade .16s ease;max-width:min(620px,calc(100vw - 32px));">
+      <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
+      <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
+    </div>
+  </sc-if>
+
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(56,65,74,.15);position:sticky;bottom:12px;">
+    <span style="{{ dirtyStyle }}">{{ dirtyText }}</span>
+    <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1;min-width:0;">Lưu là hiệu lực ngay cho các bài viết sau. Bài đã đăng không bị đổi.</span>
+    <button onClick="{{ onSave }}" title="{{ saveTitle }}" style="{{ saveStyle }}"><i class="ri-save-3-line" style="font-size:16px;"></i>{{ saveLabel }}</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = {
+    lang: 'vi', tone: 'pro', addr: 'ban',
+    i18n: {
+      vi: {
+        like: 'kỹ thuật viên\nnguồn nước\nchi phí ba năm',
+        ban: 'tốt nhất thị trường\nsố 1 Việt Nam\ncam kết 100%\ngiải pháp toàn diện',
+        sample: 'Nhà bốn người ở Bình Chánh và nhà bốn người ở Cầu Giấy cần hai chiếc máy khác nhau. Nguồn nước quyết định phần lớn, chứ không phải số lõi ghi trên vỏ máy.'
+      },
+      en: {
+        like: 'water technician\nwater source\nthree-year cost',
+        ban: 'best on the market\nnumber one in Vietnam\n100% guaranteed',
+        sample: ''
+      },
+      ja: { like: '', ban: '', sample: '' }
+    },
+    botPolicy: 'cite', newBotAllow: true, listOpen: false, unknownDec: {},
+    bots: { gpt: true, claude: true, perplexity: true, google: true, bing: true, grok: true, apple: true, amazon: false, meta: false, bytespider: false, deepseek: false, mistral: false, cohere: false, cc: false, diffbot: false },
+    disclose: true, defAuthor: 'a1', dirty: 0, toast: null, info: null, ask: null
+  };
+  LANGS = [
+    { v: 'vi', name: 'Tiếng Việt', src: true },
+    { v: 'en', name: 'English', src: false },
+    { v: 'ja', name: '日本語', src: false }
+  ];
+  I18KEYS = ['like', 'ban', 'sample'];
+  txt(k) { const b = this.state.i18n[this.state.lang] || {}; return b[k] || ''; }
+  setTxt(k, v) {
+    this.setState(s => {
+      const n = Object.assign({}, s.i18n);
+      n[s.lang] = Object.assign({}, n[s.lang] || {}, { [k]: v });
+      return { i18n: n };
+    });
+    this.touch();
+  }
+  doneOf(lv) { const b = this.state.i18n[lv] || {}; return this.I18KEYS.filter(k => (b[k] || '').trim()).length; }
+  TONES = [
+    { v: 'pro', l: 'Chuyên nghiệp, gần gũi', t: 'Mặc định an toàn nhất cho phần lớn ngành' },
+    { v: 'warm', l: 'Thân thiện', t: 'Như đang tư vấn trực tiếp' },
+    { v: 'plain', l: 'Ngắn gọn, khô', t: 'Chỉ dữ kiện — phù hợp ngành kỹ thuật' },
+    { v: 'sell', l: 'Thiên bán hàng', t: 'Nhấn lợi ích, chỉ nên dùng cho landing' }
+  ];
+  ADDR = [
+    { v: 'ban', l: '“bạn”', t: 'Gần gũi, dùng được cho hầu hết khách lẻ' },
+    { v: 'anhchi', l: '“anh/chị”', t: 'Lịch sự hơn, phù hợp dịch vụ tại nhà' },
+    { v: 'quykhach', l: '“quý khách”', t: 'Trang trọng, phù hợp khách doanh nghiệp' }
+  ];
+  AUTHORS = [
+    { k: 'a1', name: 'Nguyễn Bảo Sơn', initials: 'BS', role: 'Kỹ sư nước — 12 năm lắp đặt hệ lọc dân dụng', exp: 'Chuyên môn: xử lý nước nhiễm phèn, nước cứng, hệ RO công suất nhỏ', links: 'Hồ sơ tác giả · LinkedIn · 3 bài báo ngành', ok: true },
+    { k: 'a2', name: 'Trần Mai Anh', initials: 'MA', role: 'Phụ trách nội dung', exp: 'Chuyên môn: biên tập, chưa khai báo chứng chỉ ngành', links: 'Hồ sơ tác giả · chưa có liên kết ngoài', ok: false }
+  ];
+  BOTS = [
+    { k: 'gpt', name: 'GPTBot / OAI-SearchBot', owner: 'OpenAI · ChatGPT', g: 'cite', hint: 'Cho phép thì bài của bạn có thể được ChatGPT trích dẫn kèm tên website.' },
+    { k: 'claude', name: 'ClaudeBot', owner: 'Anthropic · Claude', g: 'cite', hint: 'Nguồn cho các câu trả lời của Claude, kèm liên kết về trang gốc.' },
+    { k: 'perplexity', name: 'PerplexityBot', owner: 'Perplexity', g: 'cite', hint: 'Công cụ trả lời có dẫn nguồn — nhóm gửi nhiều truy cập về nhất hiện nay.' },
+    { k: 'google', name: 'Google-Extended', owner: 'Google · AI Overviews', g: 'cite', hint: 'Chặn thì bài vẫn được xếp hạng nhưng không xuất hiện trong phần trả lời AI của Google.' },
+    { k: 'bing', name: 'Bingbot AI', owner: 'Microsoft · Copilot', g: 'cite', hint: 'Nguồn cho Copilot trong Windows, Office và Bing — dẫn liên kết về website.' },
+    { k: 'grok', name: 'xAI-Bot', owner: 'xAI · Grok', g: 'cite', hint: 'Trợ lý trong mạng X, trả lời có kèm liên kết nguồn.' },
+    { k: 'apple', name: 'Applebot-Extended', owner: 'Apple · Apple Intelligence', g: 'cite', hint: 'Dùng cho Siri và các gợi ý trên iPhone. Chặn thì Spotlight vẫn tìm thấy website.' },
+    { k: 'amazon', name: 'Amazonbot', owner: 'Amazon · Alexa', g: 'cite', hint: 'Nguồn cho trợ lý Alexa và tìm kiếm trong hệ Amazon.' },
+    { k: 'meta', name: 'Meta-ExternalAgent', owner: 'Meta · Llama, Meta AI', g: 'train', hint: 'Thu nội dung để huấn luyện và trả lời trong Facebook, Instagram, WhatsApp.' },
+    { k: 'bytespider', name: 'Bytespider', owner: 'ByteDance · Doubao', g: 'train', hint: 'Thu rất nhiều trang, hiếm khi dẫn nguồn về. Nhiều website chọn chặn.' },
+    { k: 'deepseek', name: 'DeepSeekBot', owner: 'DeepSeek', g: 'train', hint: 'Thu dữ liệu huấn luyện, không gửi truy cập về website.' },
+    { k: 'mistral', name: 'MistralAI-User', owner: 'Mistral AI · Le Chat', g: 'train', hint: 'Đọc trang khi người dùng hỏi, có thể dùng lại cho huấn luyện.' },
+    { k: 'cohere', name: 'cohere-ai', owner: 'Cohere', g: 'train', hint: 'Dùng cho các trợ lý doanh nghiệp, không dẫn nguồn công khai.' },
+    { k: 'cc', name: 'CCBot', owner: 'Common Crawl', g: 'train', hint: 'Kho dữ liệu chung, nhiều bên dùng để huấn luyện. Chặn nếu bạn không muốn nội dung vào dữ liệu huấn luyện.' },
+    { k: 'diffbot', name: 'Diffbot', owner: 'Diffbot', g: 'train', hint: 'Bóc dữ liệu để bán lại cho các mô hình khác.' }
+  ];
+  UNKNOWNS = [
+    { k: 'u1', name: 'Kimi-Web-Crawler', owner: 'Moonshot AI · Kimi', hint: 'Lạ với danh sách hiện tại · đã đọc 214 trang trong 7 ngày qua. Nền tảng nhận diện là trợ lý AI có dẫn nguồn.' },
+    { k: 'u2', name: 'Omgili / Webz.io', owner: 'Chưa rõ chủ sở hữu', hint: 'Đọc 1.860 trang trong 7 ngày, không khai mục đích. Đang bị xử lý theo quy tắc chung.' }
+  ];
+  PLANS = [
+    { k: 'free', name: 'Dùng thử', words: '10.000 từ AI', hint: 'Khoảng 8 bài hướng dẫn ngắn mỗi tháng. Đủ để thử trước khi quyết định.' },
+    { k: 'basic', name: 'Cơ bản', words: '60.000 từ AI', hint: 'Khoảng 30–40 bài mỗi tháng, gồm cả phân tích và sửa lại. Phù hợp một website đang xây nội dung.', current: true },
+    { k: 'pro', name: 'Chuyên nghiệp', words: '200.000 từ AI', hint: 'Cho đội nội dung nhiều người hoặc website thương mại điện tử nhiều sản phẩm.' }
+  ];
+  RULES = [
+    { icon: 'ri-checkbox-circle-line', text: 'Chỉ trừ khi AI thật sự sinh chữ. Xem lại, sửa tay, lập dàn ý lại đều không trừ.' },
+    { icon: 'ri-checkbox-circle-line', text: 'Lần viết lại đầu của mỗi phần chỉ tính nửa giá — bản đầu chưa vừa ý không phải lỗi của bạn.' },
+    { icon: 'ri-checkbox-circle-line', text: 'Dừng giữa lúc đang viết thì chỉ trừ phần đã sinh, tối thiểu 20%; phần còn lại hoàn ngay vào hạn ngạch.' },
+    { icon: 'ri-checkbox-circle-line', text: 'Trần mỗi ngày 15% hạn ngạch tháng để một người không dùng hết của cả đội.' },
+    { icon: 'ri-checkbox-circle-line', text: 'Mỗi lần chạy được ghi vào sổ dùng AI: ai chạy, bài nào, bao nhiêu từ. Hạn ngạch trừ ở máy chủ nên không sửa được từ trình duyệt.' }
+  ];
+  MATRIX = [
+    { type: 'Bài hướng dẫn', aud: 'Khách lẻ', tone: 'Gần gũi', len: '~1.200 từ', blocks: 'Tóm tắt · trả lời ngắn · bảng so sánh · bảng kiểm · hỏi đáp · ý chính · nguồn' },
+    { type: 'Tin tức', aud: 'Khách lẻ', tone: 'Khô', len: '~500 từ', blocks: 'Tóm tắt · trả lời ngắn · nguồn tin' },
+    { type: 'Mô tả sản phẩm', aud: 'Khách lẻ', tone: 'Bán hàng', len: '~800 từ', blocks: 'Trả lời ngắn · so sánh phiên bản · thông số · hỏi đáp · lời mời mua' },
+    { type: 'Trang dịch vụ', aud: 'Doanh nghiệp', tone: 'Gần gũi', len: '~900 từ', blocks: 'Trả lời ngắn · hỏi đáp · ý chính · lời mời liên hệ' },
+    { type: 'Landing page', aud: 'Khách lẻ', tone: 'Bán hàng', len: '~600 từ', blocks: 'Trả lời ngắn · bằng chứng · hỏi đáp · lời mời chính' },
+    { type: 'Blog trải nghiệm', aud: 'Khách lẻ', tone: 'Thân thiện', len: '~900 từ', blocks: 'Mở bằng chuyện thật · trả lời ngắn · bài học rút ra' },
+    { type: 'Bài đăng mạng xã hội', aud: 'Khách lẻ', tone: 'Thân thiện', len: '~150 từ', blocks: 'Câu mở hút mắt · ý chính · lời mời' },
+    { type: 'Bài chuyên sâu', aud: 'Người có chuyên môn', tone: 'Khô', len: '~2.500 từ', blocks: 'Tóm tắt · trả lời ngắn · bảng dữ liệu · cách kiểm chứng · hỏi đáp · ý chính · nguồn' },
+    { type: 'Chỉ tiêu đề & mô tả SEO', aud: '—', tone: '—', len: '—', blocks: 'Không dựng khối nội dung' }
+  ];
+  INFO = {
+    voice: { t: 'Văn phong thương hiệu dùng để làm gì', x: 'Mỗi lần viết bài, trợ lý sẽ nhận đúng những gì bạn khai ở đây: giọng, cách gọi khách, từ nên dùng và từ cấm. Nhờ vậy bài của bạn không nghe giống bài của website khác, và bạn không phải nhắc lại yêu cầu mỗi lần viết. Đoạn văn mẫu là phần hiệu quả nhất — AI học nhịp câu thật của bạn thay vì đoán theo mô tả.' },
+    author: { t: 'Vì sao phải khai tác giả', x: 'Google và các trợ lý AI đánh giá độ tin cậy dựa nhiều vào việc nội dung do ai viết và người đó có chuyên môn gì. Bài không có tác giả rõ ràng thường bị xếp sau bài có tác giả kèm kinh nghiệm thật, nhất là các chủ đề liên quan tiền bạc và sức khoẻ. Hệ thống tự gắn dữ liệu tác giả vào từng bài và tạo trang giới thiệu tác giả — bạn chỉ cần khai một lần.' },
+    bots: { t: 'Cho phép hay chặn trợ lý AI', x: 'Danh sách công cụ AI thay đổi liên tục — riêng năm nay đã có thêm hơn mười cái mới. Vì vậy bạn không chọn theo từng tên, mà chọn một quy tắc chung; nền tảng theo dõi các công cụ mới, xếp chúng vào nhóm “có dẫn nguồn về website” hoặc “chỉ thu dữ liệu huấn luyện” rồi tự áp quy tắc của bạn, đồng thời cập nhật tệp robots.txt và llms.txt. Công cụ lạ ghé website được nhận diện từ log truy cập và báo ở cuối thẻ này để bạn quyết định — trong lúc chờ, chúng vẫn bị xử theo quy tắc chung nên không có lỗ hổng nào.' },
+    quota: { t: 'Hạn ngạch tính thế nào', x: 'Tính theo số từ AI thật sự sinh ra, vì một bài đăng 150 từ và một bài trụ 2.500 từ chi phí khác nhau hàng chục lần — tính theo “số bài” sẽ không công bằng cho cả hai phía. Trước mỗi lần chạy, hệ thống nói rõ sẽ dùng bao nhiêu từ và còn lại bao nhiêu; không đủ thì gợi ý chạy từng phần thay vì báo lỗi.' },
+    matrix: { t: 'Bảng mặc định theo loại bài', x: 'Đây là nơi quyết định mọi giá trị chọn sẵn trong trợ lý viết bài: người đọc, giọng, độ dài và các khối cấu trúc. Bảng sinh ra từ ba trục — Loại bài × Người đọc × Ngành của website — nên bạn chỉ sửa một dòng là toàn bộ bài mới thuộc loại đó thay đổi theo. Người soạn vẫn được đổi cho riêng một bài, và hệ thống luôn cho họ đường về mức đề xuất.' }
+  };
+
+  componentDidMount() {
+    this._key = (e) => { if (e.key === 'Escape') { if (this.state.info) this.setState({ info: null }); else if (this.state.ask) this.setState({ ask: null }); } };
+    window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() { clearTimeout(this._t); if (this._key) window.removeEventListener('keydown', this._key); }
+  toast(text, icon) { clearTimeout(this._t); this.setState({ toast: { text: text, icon: icon || 'ri-check-line' } }); this._t = setTimeout(() => this.setState({ toast: null }), 4200); }
+  touch() { this.setState(s => ({ dirty: s.dirty + 1 })); }
+  langOf() { return this.LANGS.find(l => l.v === this.state.lang) || this.LANGS[0]; }
+  toggleBot(k) {
+    const on = this.state.bots[k], b = this.BOTS.find(x => x.k === k);
+    if (on) {
+      this.setState({ ask: { kind: 'bot', k: k, title: 'Chặn ' + b.name + '?', text: 'Chặn xong, nội dung của bạn không bị dùng nữa nhưng cũng sẽ không được ' + b.owner.split('·').pop().trim() + ' trích dẫn. Bài viết vẫn xếp hạng bình thường trên tìm kiếm. Bật lại lúc nào cũng được và không mất nội dung.', ok: 'Chặn ' + b.name } });
+      return;
+    }
+    this.setState(s => ({ bots: Object.assign({}, s.bots, { [k]: true }) }));
+    this.touch();
+    this.toast('Đã cho phép ' + b.name + ' đọc website — bài mới sẽ được cập nhật trong lần thu thập tới', 'ri-check-line');
+  }
+
+  setPolicy(p) {
+    if (p === this.state.botPolicy) return;
+    const T = {
+      all: 'Đã cho tất cả công cụ AI đọc website — công cụ mới ra mắt cũng tự được phép',
+      cite: 'Chỉ cho các công cụ có dẫn nguồn về website — nhóm chỉ thu dữ liệu huấn luyện bị chặn',
+      none: 'Đã chặn tất cả công cụ AI — bài viết vẫn xếp hạng bình thường trên tìm kiếm',
+      custom: 'Bạn đang tự chọn từng công cụ — mở danh sách bên dưới để bật tắt'
+    };
+    this.setState({ botPolicy: p, listOpen: p === 'custom' ? true : this.state.listOpen });
+    this.touch();
+    this.toast(T[p], p === 'none' ? 'ri-shield-keyhole-line' : 'ri-check-line');
+  }
+  decideUnknown(u, d) {
+    this.setState(s => ({ unknownDec: Object.assign({}, s.unknownDec, { [u.k]: d }) }));
+    this.touch();
+    const exc = d === 'allow' && this.state.botPolicy !== 'all' && this.state.botPolicy !== 'custom';
+    this.toast(d === 'allow' ? ('Đã cho ' + u.name + ' đọc website' + (exc ? ' — ghi làm ngoại lệ riêng, quy tắc chung không đổi' : ' — nền tảng cũng bổ sung công cụ này vào danh sách chung')) : ('Đã chặn ' + u.name + ' — áp dụng ngay trong lần thu thập tới'), d === 'allow' ? 'ri-check-line' : 'ri-shield-keyhole-line');
+  }
+
+  renderVals() {
+    const S = this.state, L = this.langOf();
+    const TOT = this.I18KEYS.length;
+    const langs = this.LANGS.map(l => {
+      const on = l.v === S.lang, done = this.doneOf(l.v);
+      const st = done === 0 ? { b: 'transparent', bd: '1px dashed #ced4da' } : (done < TOT ? { b: '#f7b84b', bd: '0' } : { b: '#0ab39c', bd: '0' });
+      return {
+        name: l.name, src: l.src, on2: on, off: !on, on: () => this.setState({ lang: l.v }),
+        title: (l.src ? 'Bản nguồn — ' : 'Bản dịch — ') + (done === 0 ? 'chưa có nội dung' : (done < TOT ? ('còn thiếu ' + (TOT - done) + ' trường') : 'đã đủ nội dung')),
+        dot: 'width:8px;height:8px;border-radius:50%;flex-shrink:0;background:' + st.b + ';border:' + st.bd + ';'
+      };
+    });
+    const missing = this.LANGS.filter(l => !l.src && this.doneOf(l.v) < TOT).length;
+    const lockOn = !L.src;
+    const lockStyle = lockOn ? 'opacity:.55;pointer-events:none;filter:grayscale(.15);' : '';
+    const isSrc = L.src;
+    const noteBase = 'display:flex;align-items:flex-start;gap:8px;padding:9px 14px;border-top:1px solid #eff2f7;font-size:11.5px;line-height:1.65;';
+    const authors = this.AUTHORS.map(a => {
+      const def = S.defAuthor === a.k;
+      return Object.assign({}, a, {
+        isDefault: def,
+        tag: a.ok ? 'Đủ dữ liệu tác giả' : 'Thiếu chuyên môn',
+        tagStyle: 'display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (a.ok ? '#0a8f7f' : '#b57d13') + ';background:' + (a.ok ? 'rgba(10,179,156,.10)' : 'rgba(247,184,75,.14)') + ';',
+        defLabel: def ? 'Đang mặc định' : 'Đặt mặc định',
+        defTitle: def ? 'Bài mới sẽ gán tác giả này' : 'Đặt làm tác giả gán sẵn cho bài mới',
+        defStyle: 'display:inline-flex;align-items:center;height:30px;padding:0 11px;border:1px solid ' + (def ? 'rgba(64,81,137,.28)' : '#e9ebec') + ';border-radius:4px;background:' + (def ? 'rgba(64,81,137,.10)' : '#fff') + ';font:inherit;font-size:11.5px;font-weight:600;color:' + (def ? '#405189' : '#495057') + ';cursor:' + (def ? 'default' : 'pointer') + ';white-space:nowrap;',
+        onDefault: () => { if (!def) { this.setState({ defAuthor: a.k }); this.touch(); this.toast('Bài mới sẽ gán tác giả ' + a.name, 'ri-user-star-line'); } }
+      });
+    });
+    const pol = S.botPolicy, isCustom = pol === 'custom';
+    const eff = (b) => pol === 'all' ? true : pol === 'none' ? false : pol === 'cite' ? b.g === 'cite' : !!S.bots[b.k];
+    const allowed = this.BOTS.filter(eff).length;
+    const used = 41500, limit = 60000;
+    const pct = Math.min(100, Math.round(used / limit * 100));
+    const info = S.info ? this.INFO[S.info] : null;
+    const ask = S.ask;
+
+    return {
+      langs: langs, langCode: L.v.toUpperCase(),
+      langProgress: this.doneOf(L.v) + '/' + TOT + ' trường đã có nội dung',
+      lockOn: lockOn, lockOff: !lockOn, lockStyle: lockStyle,
+      quotaChip: 'Còn ' + (limit - used).toLocaleString('vi-VN') + ' từ AI',
+      quotaTitle: 'Gói Cơ bản: ' + limit.toLocaleString('vi-VN') + ' từ AI mỗi tháng, tính riêng với hạn ngạch dịch. Đã dùng ' + used.toLocaleString('vi-VN') + '.',
+      trLabel: isSrc ? ('Dịch sang ' + (this.LANGS.length - 1) + ' ngôn ngữ') : ('Dịch bản ' + L.name),
+      trTitle: isSrc
+        ? 'Chỉ điền những trường còn trống ở các bản dịch, không đè nội dung bạn đã sửa · dùng ~900 từ AI'
+        : ('Chỉ điền các trường còn trống của bản ' + L.name + ' · dùng ~450 từ AI'),
+      onTranslate: () => this.toast(isSrc ? 'Đang dịch các trường còn trống sang English và 日本語 — nội dung bạn đã sửa được giữ nguyên' : ('Đang điền các trường còn trống của bản ' + L.name), 'ri-sparkling-2-line'),
+      langNote: isSrc
+        ? ('Đây là bản nguồn — nhập đủ và chuẩn các trường có chip ' + L.v.toUpperCase() + ', rồi bấm Dịch để đổ sang ' + (this.LANGS.length - 1) + ' ngôn ngữ còn lại.' + (missing ? (' Hiện còn ' + missing + ' bản chưa đủ nội dung.') : ''))
+        : ('Bản ' + L.name + ' do AI dịch từ Tiếng Việt — sửa chỗ nào chưa ưng rồi bấm Lưu. Các trường dùng chung khoá ở bản này, sửa tại bản nguồn.'),
+      langNoteIcon: isSrc ? 'ri-information-line' : 'ri-translate-2',
+      langNoteStyle: noteBase + (isSrc ? 'color:#5b6b8c;background:#fbfcfe;' : 'color:#1d7fb8;background:rgba(41,156,219,.07);'),
+
+      tones: this.TONES.map(t => { const on = t.v === S.tone; return { label: t.l, title: t.t, on2: on, off: !on, on: () => { this.setState({ tone: t.v }); this.touch(); },
+        style: 'display:inline-flex;align-items:center;min-height:34px;padding:7px 12px;border:1px solid ' + (on ? '#405189' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(64,81,137,.07)' : '#fff') + ';font:inherit;font-size:12px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#405189' : '#495057') + ';cursor:pointer;white-space:nowrap;' }; }),
+      addr: this.ADDR.map(a => { const on = a.v === S.addr; return { label: a.l, title: a.t, on2: on, off: !on, on: () => { this.setState({ addr: a.v }); this.touch(); },
+        style: 'display:inline-flex;align-items:center;min-height:34px;padding:7px 12px;border:1px solid ' + (on ? '#405189' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(64,81,137,.07)' : '#fff') + ';font:inherit;font-size:12px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#405189' : '#495057') + ';cursor:pointer;white-space:nowrap;' }; }),
+      likeWords: this.txt('like'), onLike: (e) => this.setTxt('like', e.target.value),
+      banWords: this.txt('ban'), onBan: (e) => this.setTxt('ban', e.target.value),
+      sampleText: this.txt('sample'), onSample: (e) => this.setTxt('sample', e.target.value),
+      samplePh: L.src ? 'Dán một đoạn bạn đã viết, đúng giọng bạn muốn giữ.' : ('Chưa có bản ' + L.name + ' — bấm “' + (L.src ? '' : 'Dịch bản ' + L.name) + '” để AI dịch từ bản nguồn, rồi sửa lại.'),
+
+      authors: authors, eeatLine: authors.filter(a => a.ok).length + '/' + authors.length + ' tác giả đủ dữ liệu',
+      defaultAuthorName: (this.AUTHORS.find(a => a.k === S.defAuthor) || this.AUTHORS[0]).name,
+
+      bots: this.BOTS.map(b => {
+        const on = eff(b);
+        return Object.assign({}, b, {
+          groupLabel: b.g === 'cite' ? 'Có dẫn nguồn' : 'Chỉ thu dữ liệu',
+          allowed: on, blocked: !on, editable: isCustom, locked: !isCustom,
+          stateText: on ? 'Cho phép' : 'Đang chặn', stateColor: on ? '#0a8f7f' : '#878a99',
+          title: on ? ('Chặn ' + b.name + ' — sẽ hỏi lại trước khi áp dụng') : ('Cho phép ' + b.name + ' đọc website'),
+          on: () => this.toggleBot(b.k)
+        });
+      }),
+      botSummary: allowed + '/' + this.BOTS.length + ' công cụ đã biết được phép đọc',
+      isCustom: isCustom,
+      polAllOn: pol === 'all', polAllOff: pol !== 'all',
+      polCiteOn: pol === 'cite', polCiteOff: pol !== 'cite',
+      polNoneOn: pol === 'none', polNoneOff: pol !== 'none',
+      polCustomOn: isCustom, polCustomOff: !isCustom,
+      onPolAll: () => this.setPolicy('all'), onPolCite: () => this.setPolicy('cite'),
+      onPolNone: () => this.setPolicy('none'), onPolCustom: () => this.setPolicy('custom'),
+      registryLine: 'Nền tảng đang theo dõi ' + this.BOTS.length + ' công cụ AI đã biết · danh sách cập nhật tự động, lần gần nhất 12/07/2026 · robots.txt và llms.txt được viết lại theo lựa chọn của bạn' + (isCustom ? '' : ' — kể cả công cụ mới, bạn không phải làm gì thêm'),
+      listOpen: S.listOpen,
+      listBtnLabel: S.listOpen ? 'Ẩn danh sách' : 'Xem danh sách ' + this.BOTS.length + ' công cụ',
+      onToggleList: () => this.setState(s => ({ listOpen: !s.listOpen })),
+      newBotOn: S.newBotAllow, newBotOff: !S.newBotAllow,
+      newBotText: S.newBotAllow ? 'Cho phép' : 'Đang chặn',
+      newBotColor: S.newBotAllow ? '#0a8f7f' : '#878a99',
+      newBotTitle: S.newBotAllow ? 'Chặn mọi công cụ AI mới cho tới khi bạn xét từng cái' : 'Tự cho phép công cụ AI mới xuất hiện',
+      onNewBot: () => { this.setState(s => ({ newBotAllow: !s.newBotAllow })); this.touch(); },
+      unknowns: this.UNKNOWNS.map(u => {
+        const d = S.unknownDec[u.k];
+        return Object.assign({}, u, {
+          pending: !d, done: !!d,
+          doneText: d === 'allow' ? 'Đã cho đọc' : 'Đã chặn',
+          doneColor: d === 'allow' ? '#0a8f7f' : '#878a99',
+          allow: () => this.decideUnknown(u, 'allow'), block: () => this.decideUnknown(u, 'block')
+        });
+      }),
+      unknownSummary: (() => { const n = this.UNKNOWNS.filter(u => !S.unknownDec[u.k]).length; return n ? n + ' công cụ chờ bạn quyết định' : 'Đã xử lý hết'; })(),
+      llmsPath: 'nuocsachanbinh.vn/llms.txt',
+      discloseOn: S.disclose, discloseOff: !S.disclose,
+      discloseTitle: S.disclose ? 'Tắt dòng ghi chú AI ở cuối bài' : 'Bật dòng ghi chú AI ở cuối bài',
+      onDisclose: () => { this.setState(s => ({ disclose: !s.disclose })); this.touch(); },
+
+      planLine: 'Gói Cơ bản — ' + limit.toLocaleString('vi-VN') + ' từ AI mỗi tháng',
+      usedBarStyle: 'display:block;height:100%;width:' + pct + '%;background:#405189;border-radius:20px;',
+      usedLine: 'Đã dùng ' + used.toLocaleString('vi-VN') + ' từ (' + pct + '%) · làm mới ngày 1 hằng tháng · trần mỗi ngày ' + Math.round(limit * 0.15).toLocaleString('vi-VN') + ' từ',
+      plans: this.PLANS.map(p => Object.assign({}, p, {
+        current: !!p.current,
+        style: 'display:flex;flex-direction:column;gap:6px;padding:13px;border:1px solid ' + (p.current ? '#405189' : '#eff2f7') + ';border-radius:6px;background:' + (p.current ? 'rgba(64,81,137,.04)' : '#fff') + ';'
+      })),
+      rules: this.RULES,
+      matrixHead: [{ text: 'Loại bài' }, { text: 'Người đọc' }, { text: 'Giọng' }, { text: 'Độ dài' }, { text: 'Khối cấu trúc bật sẵn' }, { text: '' }],
+      matrix: this.MATRIX.map(m => Object.assign({}, m, {
+        editTitle: 'Sửa mặc định cho “' + m.type + '” — áp dụng cho mọi bài mới thuộc loại này',
+        onEdit: () => this.toast('Mở bảng sửa mặc định cho “' + m.type + '” — bài đã đăng không bị đổi', 'ri-pencil-line')
+      })),
+
+      infoOpen: !!info, infoTitle: info ? info.t : '', infoText: info ? info.x : '',
+      onInfoVoice: () => this.setState({ info: 'voice' }), onInfoAuthor: () => this.setState({ info: 'author' }),
+      onInfoBots: () => this.setState({ info: 'bots' }), onInfoQuota: () => this.setState({ info: 'quota' }),
+      onInfoMatrix: () => this.setState({ info: 'matrix' }), onInfoClose: () => this.setState({ info: null }),
+
+      askOpen: !!ask, askTitle: ask ? ask.title : '', askText: ask ? ask.text : '', askOk: ask ? ask.ok : '',
+      onAskCancel: () => this.setState({ ask: null }),
+      onAskOk: () => {
+        if (ask && ask.kind === 'bot') {
+          const b = this.BOTS.find(x => x.k === ask.k);
+          this.setState(s => ({ bots: Object.assign({}, s.bots, { [ask.k]: false }), ask: null }));
+          this.touch();
+          this.toast('Đã chặn ' + b.name + ' — bật lại lúc nào cũng được, không mất nội dung', 'ri-shield-keyhole-line');
+          return;
+        }
+        this.setState({ ask: null });
+      },
+
+      dirtyText: S.dirty ? (S.dirty + ' thay đổi chưa lưu') : 'Chưa có thay đổi',
+      dirtyStyle: 'display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap;flex-shrink:0;color:' + (S.dirty ? '#b57d13' : '#878a99') + ';background:' + (S.dirty ? 'rgba(247,184,75,.14)' : '#f8f9fb') + ';',
+      saveLabel: S.dirty ? ('Lưu ' + S.dirty + ' thay đổi — hiệu lực ngay') : 'Lưu — hiệu lực ngay',
+      saveTitle: S.dirty ? 'Áp dụng ngay cho các bài viết sau; bài đã đăng không bị đổi' : 'Chưa có gì để lưu',
+      saveStyle: 'display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border:0;border-radius:4px;background:' + (S.dirty ? '#405189' : '#e9ebec') + ';font:inherit;font-size:13px;font-weight:600;color:' + (S.dirty ? '#fff' : '#adb5bd') + ';cursor:' + (S.dirty ? 'pointer' : 'not-allowed') + ';white-space:nowrap;',
+      onSave: () => { if (!S.dirty) { this.toast('Chưa có thay đổi nào để lưu', 'ri-information-line'); return; } this.setState({ dirty: 0 }); this.toast('Đã lưu — các bài viết sau sẽ dùng cấu hình mới ngay', 'ri-check-line'); },
+      toast: !!S.toast, toastText: S.toast ? S.toast.text : '', toastIcon: S.toast ? S.toast.icon : 'ri-check-line'
+    };
+  }
+}
+</script>
+</body>
+</html>

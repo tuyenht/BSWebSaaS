@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<script src="./ai-quota.js"></script>
+<style>
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:#f4f4f5;}a{color:#405189;}a:hover{color:#364574;}
+input::placeholder{color:#adb5bd;}
+</style>
+</helmet>
+
+<div style="position:fixed;inset:0;z-index:330;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:Inter,system-ui,sans-serif;">
+  <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onClose }}"></div>
+  <div style="position:relative;z-index:1;width:600px;max-width:100%;max-height:100%;background:#fff;border-radius:8px;box-shadow:0 20px 50px rgba(0,0,0,0.3);display:flex;flex-direction:column;overflow:hidden;">
+
+    <div style="display:flex;align-items:center;gap:11px;padding:14px 18px;border-bottom:1px solid #eff2f7;flex:0 0 auto;">
+      <span style="width:34px;height:34px;border-radius:8px;background:rgba(64,81,137,.10);color:#405189;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-magic-line"></i></span>
+      <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+        <span style="font-size:15px;font-weight:600;color:#343a40;">{{ heading }}</span>
+        <span style="font-size:11.5px;color:#878a99;">{{ contextText }}</span>
+      </span>
+      <span title="{{ quotaTitle }}" style="{{ quotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaChip }}</span>
+      <button title="Đóng" style="border:0;background:transparent;color:#878a99;cursor:pointer;font-size:19px;line-height:1;flex:0 0 auto;" onClick="{{ onClose }}"><i class="ri-close-line"></i></button>
+    </div>
+
+    <sc-if value="{{ atPick }}" hint-placeholder-val="{{ true }}">
+      <div style="padding:14px 18px;display:flex;flex-direction:column;gap:14px;overflow:auto;min-height:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <button type="button" style="{{ quickStyle }}" onClick="{{ onPickSafe }}"><i class="ri-checkbox-multiple-line" style="font-size:13px;"></i>Chọn việc nên làm</button>
+          <button type="button" style="{{ quickStyle }}" onClick="{{ onClearAll }}"><i class="ri-checkbox-blank-line" style="font-size:13px;"></i>Bỏ chọn tất cả</button>
+          <span style="margin-left:auto;font-size:11.5px;color:#878a99;white-space:nowrap;">{{ growText }}</span>
+        </div>
+        <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;line-height:1.45;">
+              <i class="{{ g.icon }}" style="font-size:14px;color:#878a99;flex:0 0 auto;"></i>
+              <span style="font-size:11px;font-weight:700;color:#878a99;text-transform:uppercase;letter-spacing:0.03em;">{{ g.title }}</span>
+              <span style="flex:1 1 auto;min-width:0;font-size:11.5px;color:#adb5bd;">{{ g.note }}</span>
+            </div>
+            <sc-for list="{{ g.tasks }}" as="t" hint-placeholder-count="3">
+              <div title="{{ t.title }}" role="checkbox" aria-checked="{{ t.aria }}" aria-disabled="{{ t.ariaOff }}" tabIndex="{{ t.tab }}" onKeyDown="{{ t.onKey }}" style="{{ t.rowStyle }}" onClick="{{ t.on }}">
+                <span style="{{ t.boxStyle }}"><sc-if value="{{ t.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span>
+                <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+                  <span style="font-size:13.5px;color:#343a40;line-height:1.35;">{{ t.label }}</span>
+                  <span style="font-size:11.5px;color:#878a99;line-height:1.45;">{{ t.hint }}</span>
+                </span>
+                <span style="flex:0 0 auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;font-variant-numeric:tabular-nums;">≈ {{ t.words }} từ AI</span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+
+        <div style="display:flex;flex-direction:column;gap:7px;">
+          <div style="display:flex;align-items:center;gap:7px;">
+            <i class="ri-alert-line" style="font-size:14px;color:#c78729;"></i>
+            <span style="font-size:11px;font-weight:700;color:#c78729;text-transform:uppercase;letter-spacing:0.03em;">Việc lớn — hỏi xác nhận trước khi chạy</span>
+          </div>
+          <div title="{{ heavy.title }}" role="checkbox" aria-checked="{{ heavy.aria }}" aria-disabled="{{ heavy.ariaOff }}" tabIndex="{{ heavy.tab }}" onKeyDown="{{ heavy.onKey }}" style="{{ heavy.rowStyle }}" onClick="{{ heavy.on }}">
+            <span style="{{ heavy.boxStyle }}"><sc-if value="{{ heavy.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+              <span style="font-size:13.5px;color:#343a40;line-height:1.35;">{{ heavy.label }}</span>
+              <span style="font-size:11.5px;color:#a9761d;line-height:1.45;">{{ heavy.hint }}</span>
+            </span>
+            <span style="flex:0 0 auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;font-variant-numeric:tabular-nums;">≈ {{ heavy.words }} từ AI</span>
+          </div>
+        </div>
+
+        <div style="{{ barStyle }}"><i class="{{ barIcon }}" style="font-size:15px;flex:0 0 auto;"></i><span style="min-width:0;">{{ barText }}</span></div>
+
+        <div style="display:flex;align-items:center;gap:7px;padding-top:2px;font-size:11.5px;color:#adb5bd;">
+          <i class="ri-search-eye-line" style="font-size:14px;"></i>
+          <span style="min-width:0;">Mô tả ngắn &amp; tiêu đề/mô tả trên Google có nút AI riêng ngay tại ô của nó.</span>
+          <button style="margin-left:auto;border:0;background:transparent;font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;white-space:nowrap;padding:2px;" style-hover="text-decoration:underline;" onClick="{{ onJumpSeo }}">Đi tới ô đó</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid #eff2f7;background:#fbfcfd;flex:0 0 auto;">
+        <span style="flex:1 1 120px;min-width:0;font-size:11.5px;color:#adb5bd;line-height:1.45;">{{ safeNote }}</span>
+        <button style="min-height:38px;padding:8px 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13.5px;color:#495057;cursor:pointer;white-space:nowrap;" style-hover="background:#f3f6f9;" onClick="{{ onClose }}">Để sau</button>
+        <button title="{{ runTitle }}" style="{{ runStyle }}" onClick="{{ onRun }}"><i class="{{ runIcon }}" style="font-size:15px;"></i>{{ runLabel }}</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ atConfirm }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;gap:9px;padding:11px 13px;border-radius:4px;background:rgba(247,184,75,0.14);border:1px solid rgba(247,184,75,0.3);font-size:13px;line-height:1.55;color:#a9761d;">
+          <i class="ri-alert-line" style="font-size:16px;flex:0 0 auto;margin-top:1px;"></i>
+          <span>{{ confirmText }}</span>
+        </div>
+        <div style="font-size:12.5px;color:#878a99;line-height:1.55;">Bản mới hiện ra để bạn so; giữ hay hoàn tác từng đoạn ở bước sau. Chữ cũ không mất.</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid #eff2f7;background:#fbfcfd;">
+        <span style="flex:1;min-width:0;font-size:11.5px;color:#adb5bd;">{{ barText }}</span>
+        <button style="min-height:38px;padding:8px 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13.5px;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onBack }}">Quay lại</button>
+        <button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;" style-hover="filter:brightness(0.95);" onClick="{{ onConfirmRun }}"><i class="ri-sparkling-2-line" style="font-size:15px;"></i>Vẫn chạy</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ atDone }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px;overflow:auto;min-height:0;">
+        <div style="display:flex;gap:9px;padding:10px 12px;border-radius:4px;background:rgba(10,179,156,0.08);border:1px solid rgba(10,179,156,0.25);font-size:12.5px;line-height:1.5;color:#0a7f70;">
+          <i class="ri-checkbox-circle-line" style="font-size:15px;flex:0 0 auto;"></i><span>{{ doneText }}</span>
+        </div>
+        <sc-for list="{{ results }}" as="r" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #eff2f7;border-radius:4px;background:#fff;">
+            <i class="{{ r.icon }}" style="font-size:15px;color:{{ r.color }};flex:0 0 auto;"></i>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+              <span style="font-size:13px;color:#343a40;line-height:1.35;">{{ r.label }}</span>
+              <span style="font-size:11.5px;color:#878a99;line-height:1.45;">{{ r.state }}</span>
+            </span>
+            <button title="{{ r.btnTitle }}" style="{{ r.btnStyle }}" onClick="{{ r.on }}"><i class="{{ r.btnIcon }}" style="font-size:13px;"></i>{{ r.btnLabel }}</button>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid #eff2f7;background:#fbfcfd;">
+        <span style="flex:1;min-width:0;font-size:11.5px;color:#adb5bd;line-height:1.45;">{{ spentText }}</span>
+        <button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ onClose }}"><i class="ri-check-line" style="font-size:15px;"></i>Xong</button>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:600,&quot;height&quot;:620},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;post&quot;,&quot;page&quot;],&quot;default&quot;:&quot;post&quot;,&quot;tsType&quot;:&quot;'post' | 'page'&quot;},&quot;words&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:420,&quot;tsType&quot;:&quot;number&quot;},&quot;blocks&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;tsType&quot;:&quot;number&quot;},&quot;images&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;wordsLeft&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:18500,&quot;tsType&quot;:&quot;number&quot;},&quot;wordsLimit&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:60000,&quot;tsType&quot;:&quot;number&quot;},&quot;seoJobs&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;Array&lt;{k: string; label: string; hint?: string; w: number; grow?: number}&gt;&quot;},&quot;onRun&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(keys: string[], cost: number) =&gt; void&quot;},&quot;onUndo&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(key: string) =&gt; void&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;},&quot;onNotify&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(msg: string, icon?: string) =&gt; void&quot;},&quot;onJumpSeo&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+/* Hộp "Nâng cấp nội dung" dùng chung cho Bài viết và Trang (gộp ưu điểm hai bản cũ):
+   · chọn nhiều việc + cộng dồn chi phí trước khi bấm (bản Bài viết)
+   · mỗi việc nói rõ hệ quả & vị trí chèn, có ngữ cảnh bài + chip hạn ngạch (bản Page Editor)
+   · thêm: tách nhóm an toàn / nhóm ghi đè, xác nhận cho việc lớn, bước giữ–hoàn tác từng việc,
+     không sinh chữ thì không trừ từ AI, và trỏ việc SEO về đúng ô của nó. */
+class Component extends DCLogic {
+  state = { sel: null, step: 'pick', kept: {}, spent: 0 };
+
+  blocks() { return Math.max(0, Number(this.props.blocks) || 0); }
+  words() { return Math.max(0, Number(this.props.words) || 0); }
+  left() { return Math.max(0, Number(this.props.wordsLeft) || 0); }
+  nfm(v) { return window.BSAI ? window.BSAI.nfm(v) : Math.round(v).toLocaleString('vi-VN'); }
+  noun() { return this.props.kind === 'page' ? 'trang' : 'bài'; }
+  empty() { return this.words() < 20; }
+
+  /* Việc SEO: do màn gọi truyền vào (BSSEO.plan → các mục còn đỏ phải sinh chữ). Tự tick sẵn. */
+  seoDefs() {
+    if (this.empty()) return [];
+    return (this.props.seoJobs || []).map(j => ({
+      g: 'seo', k: 'seo-' + j.k, label: j.label, hint: j.hint || '', w: Math.max(20, Number(j.w) || 40), grow: Number(j.grow) || 0
+    }));
+  }
+  /* Chi phí suy từ độ dài nội dung thật, không hardcode */
+  defs() {
+    const w = this.words(), noun = this.noun();
+    if (this.empty()) {
+      return [
+        { g: 'add', k: 'outline', label: 'Dựng dàn ý theo chủ đề', hint: 'Tạo các tiêu đề mục trước, bạn sửa dàn ý rồi mới viết', w: 120, grow: 40 },
+        { g: 'add', k: 'body', label: 'Viết nội dung theo dàn ý', hint: 'Viết bản nháp đủ mục — bạn soát lại trước khi đăng', w: 620, grow: 520 },
+        { g: 'add', k: 'outro', label: 'Viết đoạn kết & lời mời liên hệ', hint: 'Một đoạn khép ' + noun + ', mời khách để lại thông tin — đặt ở cuối', w: 150, grow: 60 }
+      ];
+    }
+    return this.seoDefs().concat([
+      { g: 'add', k: 'heads', label: 'Thêm tiêu đề phụ cho các đoạn dài', hint: 'Chỉ chèn tiêu đề, không sửa chữ đang có', w: Math.max(40, this.blocks() * 25), grow: 0, na: (w < 120), why: 'Chưa có đoạn nào đủ dài để cần tiêu đề phụ (bài đang ' + this.nfm(w) + ' từ)' },
+      { g: 'add', k: 'sections', label: 'Bổ sung mục còn thiếu', hint: 'Thêm vào cuối: Quy trình làm việc, Vì sao chọn chúng tôi', w: 150, grow: 130 },
+      { g: 'add', k: 'outro', label: 'Viết đoạn kết & lời mời liên hệ', hint: 'Một đoạn khép ' + noun + ' — đặt ở cuối, không sửa phần trên', w: Math.max(55, Math.round(w * 0.4)), grow: 55 },
+      { g: 'edit', k: 'intro', label: 'Viết lại phần mở đầu cho cuốn hút hơn', hint: 'Chỉ thay 1–2 đoạn đầu; phần còn lại giữ nguyên', w: Math.max(90, Math.round(w * 0.5)), grow: 0, na: (w < 60), why: 'Bài còn quá ngắn để tách phần mở đầu riêng' },
+      { g: 'edit', k: 'polish', label: 'Rà chính tả & làm câu văn gọn hơn', hint: 'Đi qua từng đoạn — bạn giữ hoặc hoàn tác từng đoạn ở bước sau', w: Math.max(90, Math.round(w * 1.1)), grow: 0, na: (w < 40), why: 'Bài còn quá ngắn để rà văn phong' }
+    ]);
+  }
+  heavyDef() {
+    const w = this.words();
+    return this.empty()
+      ? { k: 'rewrite', label: 'Viết mới toàn bộ ' + this.noun(), hint: this.noun() === 'bài' ? 'Bài đang trống nên không mất chữ nào' : 'Trang đang trống nên không mất chữ nào', w: 980 }
+      : { k: 'rewrite', label: 'Viết lại toàn ' + this.noun() + ', giữ nguyên ý và bố cục', hint: 'Thay chữ ở mọi đoạn — sẽ hỏi xác nhận, và giữ–hoàn tác được từng đoạn', w: Math.max(300, Math.round(w * 2)) };
+  }
+  /* Việc không áp dụng được vào nội dung này thì khóa lại kèm lý do; chọn "viết lại toàn bài" thì các việc sửa chữ nằm trong đó. */
+  taskState(t) {
+    if (t.na) return { off: true, why: t.why };
+    if (t.g === 'edit' && this.selMap()[this.heavyDef().k]) return { off: true, why: 'Đã chọn viết lại toàn ' + this.noun() + ' — việc này nằm trong đó' };
+    return { off: false, why: '' };
+  }
+  /* mặc định: bật các việc an toàn làm được, tắt việc ghi đè và việc lớn */
+  selMap() {
+    if (this.state.sel) return this.state.sel;
+    const m = {};
+    this.defs().forEach(t => { m[t.k] = (t.g === 'add' || t.g === 'seo') && !t.na; });
+    m[this.heavyDef().k] = false;
+    return m;
+  }
+  pickSafe() {
+    const m = {};
+    this.defs().forEach(t => { m[t.k] = (t.g === 'add' || t.g === 'seo') && !t.na; });
+    m[this.heavyDef().k] = false;
+    this.setState({ sel: m });
+  }
+  clearAll() {
+    const m = {};
+    this.defs().forEach(t => { m[t.k] = false; });
+    m[this.heavyDef().k] = false;
+    this.setState({ sel: m });
+  }
+  toggle(k) {
+    const m = Object.assign({}, this.selMap());
+    m[k] = !m[k];
+    this.setState({ sel: m });
+  }
+  picked() {
+    const m = this.selMap(), out = this.defs().filter(t => m[t.k] && !this.taskState(t).off);
+    const h = this.heavyDef();
+    if (m[h.k]) out.push(Object.assign({ g: 'heavy' }, h));
+    return out;
+  }
+  /* đứng trước: nội dung sẽ dài thêm bao nhiêu */
+  grown() {
+    const h = this.heavyDef(), m = this.selMap();
+    const add = this.picked().filter(t => t.g === 'add').reduce((a, t) => a + (t.grow || 0), 0);
+    if (m[h.k]) return (this.empty() ? 620 : Math.round(this.words() * 1.1)) + add;
+    return this.words() + add;
+  }
+  cost() { return this.picked().reduce((a, t) => a + t.w, 0); }
+  enough() { return this.left() >= this.cost(); }
+  notify(m, i) { const f = this.props.onNotify; if (f) f(m, i); }
+
+  run(skipConfirm) {
+    const list = this.picked(), cost = this.cost();
+    if (!list.length) { this.notify('Hãy chọn ít nhất một việc.', 'ri-information-line'); return; }
+    if (!this.enough()) { this.notify('Không đủ từ AI cho các việc đang chọn — bỏ bớt việc hoặc mua thêm.', 'ri-error-warning-line'); return; }
+    const m = this.selMap();
+    if (!skipConfirm && m[this.heavyDef().k]) { this.setState({ step: 'confirm' }); return; }
+    const f = this.props.onRun;
+    if (f) f(list.map(t => t.k), cost);
+    const kept = {};
+    list.forEach(t => { kept[t.k] = true; });
+    this.setState({ step: 'done', kept: kept, spent: cost });
+  }
+  undoOne(k) {
+    const kept = Object.assign({}, this.state.kept);
+    kept[k] = !kept[k];
+    this.setState({ kept: kept });
+    const f = this.props.onUndo;
+    if (f && !kept[k]) f(k);
+    this.notify(kept[k] ? 'Đã dùng lại bản mới của việc này' : 'Đã trả lại chữ cũ của việc này — không hoàn từ AI vì chữ đã sinh ra', kept[k] ? 'ri-check-line' : 'ri-arrow-go-back-line');
+  }
+
+  renderVals() {
+    const S = this.state, m = this.selMap(), w = this.words(), left = this.left(), cost = this.cost(), enough = this.enough();
+    const defs = this.defs(), heavy = this.heavyDef(), picked = this.picked();
+    const box = (ck) => 'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;flex:0 0 auto;' + (ck ? 'border:1px solid #405189;background:#405189;color:#fff;' : 'border:1px solid #ced4da;background:#fff;');
+    const row = (ck, warn) => 'display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid ' + (ck ? (warn ? 'rgba(247,184,75,0.5)' : '#405189') : '#eff2f7') + ';border-radius:4px;background:' + (ck ? (warn ? 'rgba(247,184,75,0.10)' : 'rgba(64,81,137,0.04)') : '#fff') + ';cursor:pointer;min-height:44px;box-sizing:border-box;';
+    const mk = (t) => {
+      const st = this.taskState(t), ck = !!m[t.k] && !st.off;
+      return {
+        label: t.label, hint: st.off ? st.why : t.hint, words: this.nfm(t.w), checked: ck,
+        title: st.off ? st.why : ((ck ? 'Bỏ chọn' : 'Chọn') + ' việc này · ≈ ' + this.nfm(t.w) + ' từ AI'),
+        boxStyle: box(ck) + (st.off ? 'opacity:0.4;' : ''),
+        rowStyle: row(ck, false) + (st.off ? 'opacity:0.55;cursor:not-allowed;' : ''),
+        tab: st.off ? -1 : 0, aria: ck ? 'true' : 'false', ariaOff: st.off ? 'true' : 'false',
+        on: () => { if (st.off) { this.notify(st.why + '.', 'ri-information-line'); return; } this.toggle(t.k); },
+        onKey: (e) => { if (!st.off && (e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); this.toggle(t.k); } }
+      };
+    };
+    const lowPct = left / Math.max(1, Number(this.props.wordsLimit) || left || 1);
+    return {
+      heading: this.empty() ? ('Viết ' + this.noun() + ' mới bằng AI') : ('Nâng cấp ' + this.noun() + ' này'),
+      contextText: this.empty()
+        ? (this.noun() === 'bài' ? 'Bài đang trống — AI dựng dàn ý rồi viết bản nháp' : 'Trang đang trống — AI dựng dàn ý rồi viết bản nháp')
+        : ('Đang có ' + this.nfm(w) + ' từ · ' + (Number(this.props.blocks) || 0) + ' mục · ' + (Number(this.props.images) || 0) + ' ảnh — AI lấy chính nội dung này làm nguyên liệu'),
+      quotaChip: left > 0 ? ('Còn ' + this.nfm(left) + ' từ AI') : 'Hết từ AI tháng này',
+      quotaStyle: 'flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap;' + (left <= 0 ? 'background:rgba(240,101,72,0.12);color:#f06548;' : (lowPct <= 0.2 ? 'background:rgba(247,184,75,0.18);color:#a9761d;' : 'background:rgba(64,81,137,0.08);color:#405189;')),
+      quotaTitle: 'Sổ chữ: còn ' + this.nfm(left) + ' từ AI' + (window.BSAI ? (' — ' + window.BSAI.enough(left, ['post', 'rewrite'])) : ''),
+
+      atPick: S.step === 'pick', atConfirm: S.step === 'confirm', atDone: S.step === 'done',
+      groups: [
+        { title: 'Việc SEO còn thiếu', note: '— tự tick các mục đang đỏ trong bảng kiểm', icon: 'ri-search-eye-line', tasks: defs.filter(t => t.g === 'seo').map(mk) },
+        { title: 'Thêm phần còn thiếu', note: '— không sửa chữ đang có', icon: 'ri-add-circle-line', tasks: defs.filter(t => t.g === 'add').map(mk) },
+        { title: 'Sửa chữ đang có', note: '— chạy ở chế độ đề xuất, giữ/hoàn tác từng đoạn', icon: 'ri-edit-2-line', tasks: defs.filter(t => t.g === 'edit').map(mk) }
+      ].filter(g => g.tasks.length),
+      heavy: {
+        label: heavy.label, hint: heavy.hint, words: this.nfm(heavy.w), checked: !!m[heavy.k],
+        title: (m[heavy.k] ? 'Bỏ chọn' : 'Chọn') + ' việc lớn này · ≈ ' + this.nfm(heavy.w) + ' từ AI',
+        boxStyle: box(!!m[heavy.k]), rowStyle: row(!!m[heavy.k], true), on: () => this.toggle(heavy.k),
+        tab: 0, aria: m[heavy.k] ? 'true' : 'false', ariaOff: 'false',
+        onKey: (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); this.toggle(heavy.k); } }
+      },
+
+      pickCount: picked.length,
+      onPickSafe: () => this.pickSafe(), onClearAll: () => this.clearAll(),
+      quickStyle: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:5px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12px;color:#495057;cursor:pointer;',
+      growText: (!cost || this.grown() === w) ? '' : (this.empty()
+        ? ('Dự kiến sau khi chạy: khoảng ' + this.nfm(this.grown()) + ' từ')
+        : (this.noun() === 'bài' ? 'Bài' : 'Trang') + ' sẽ dài khoảng ' + this.nfm(w) + ' → ' + this.nfm(this.grown()) + ' từ'),
+      barStyle: 'display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:4px;font-size:12.5px;line-height:1.5;' + (!cost ? 'background:#f8f9fb;color:#878a99;' : (enough ? 'background:rgba(64,81,137,0.06);color:#405189;' : 'background:rgba(240,101,72,0.10);color:#c9412a;')),
+      barIcon: !cost ? 'ri-information-line' : (enough ? 'ri-sparkling-2-line' : 'ri-error-warning-line'),
+      barText: !cost ? 'Chưa chọn việc nào — chọn ít nhất một việc để chạy.'
+        : (enough ? ('Sẽ dùng khoảng ' + this.nfm(cost) + ' từ AI · còn lại ' + this.nfm(left - cost) + ' từ sau khi chạy')
+          : ('Cần ' + this.nfm(cost) + ' từ AI nhưng chỉ còn ' + this.nfm(left) + ' — bỏ bớt việc, hoặc mua thêm từ AI.')),
+      safeNote: 'Chữ cũ không mất: mỗi việc đều giữ hoặc hoàn tác được ngay sau khi chạy.',
+      runLabel: !cost ? 'Chọn việc để chạy' : (enough ? ('Chạy ' + picked.length + ' việc') : 'Không đủ từ AI'),
+      runIcon: enough && cost ? 'ri-sparkling-2-line' : 'ri-error-warning-line',
+      runTitle: !cost ? 'Hãy chọn ít nhất một việc' : (enough ? ('Trừ khoảng ' + this.nfm(cost) + ' từ AI') : 'Hãy bỏ bớt việc hoặc mua thêm từ AI'),
+      runStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border:0;border-radius:4px;font:inherit;font-size:13.5px;font-weight:600;white-space:nowrap;' + ((cost && enough) ? 'background:#405189;color:#fff;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);' : 'background:#eef0f3;color:#adb5bd;cursor:not-allowed;'),
+      onRun: () => this.run(false),
+      onClose: () => { const f = this.props.onClose; if (f) f(); },
+      onJumpSeo: () => { const f = this.props.onJumpSeo; if (f) f(); else this.notify('Nút AI cho mô tả ngắn & SEO nằm ngay cạnh ô đó.', 'ri-information-line'); },
+
+      confirmText: 'Việc “' + heavy.label + '” sẽ thay chữ ở mọi đoạn của ' + this.noun() + ' này (≈ ' + this.nfm(heavy.w) + ' từ AI).',
+      onBack: () => this.setState({ step: 'pick' }),
+      onConfirmRun: () => this.run(true),
+
+      doneText: 'Đã chạy ' + picked.length + ' việc. Xem lại từng việc bên dưới — chưa ưng thì hoàn tác riêng việc đó.',
+      spentText: 'Đã dùng ' + this.nfm(S.spent) + ' từ AI · còn ' + this.nfm(Math.max(0, left)) + ' từ. Việc nào không sinh ra chữ thì không bị trừ.',
+      results: picked.map(t => {
+        const on = S.kept[t.k] !== false;
+        return {
+          label: t.label, state: on ? 'Đang dùng bản mới' : 'Đã trả lại chữ cũ',
+          icon: on ? 'ri-checkbox-circle-fill' : 'ri-arrow-go-back-line', color: on ? '#0ab39c' : '#adb5bd',
+          btnLabel: on ? 'Hoàn tác' : 'Dùng lại',
+          btnIcon: on ? 'ri-arrow-go-back-line' : 'ri-refresh-line',
+          btnTitle: on ? 'Trả lại chữ cũ của việc này' : 'Dùng lại bản AI của việc này',
+          btnStyle: 'flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:7px 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:' + (on ? '#495057' : '#405189') + ';cursor:pointer;white-space:nowrap;',
+          on: () => this.undoOne(t.k)
+        };
+      })
+    };
+  }
+}
+
+</script>
+</body>
+</html>

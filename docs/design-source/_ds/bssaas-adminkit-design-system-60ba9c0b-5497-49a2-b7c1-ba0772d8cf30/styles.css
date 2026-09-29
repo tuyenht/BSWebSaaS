@@ -1,0 +1,21 @@
+/* Global CSS entry point — consumers link THIS file only.
+   Compiler ships everything reachable from here (tokens + @font-face). */
+@import "./fonts/inter.css";
+@import "./tokens/colors.css";
+@import "./tokens/typography.css";
+@import "./tokens/shape.css";
+
+/* Base element defaults so specimen cards + kits render with the real look. */
+html, body {
+    font-family: var(--font-stack);
+    font-size: var(--text-body-size);
+    line-height: var(--text-body-lh);
+    color: var(--color-body-text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-synthesis: none;
+}
+
+a { color: var(--color-admin-primary); text-decoration: none; }
+a:hover { color: var(--color-admin-secondary); }

@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+.op-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.op-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
+.op-t{font-size:14px;font-weight:600;color:#343a40;}
+.op-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;}
+.op-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.op-tab:hover{background:#f3f6f9;}
+.op-tab.on{border-color:#405189;background:rgba(64,81,137,.08);font-weight:600;color:#405189;}
+.op-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
+.op-btn:hover{background:#f3f6f9;}
+.op-ai{border-color:rgba(64,81,137,.28);background:rgba(64,81,137,.10);color:#405189;}
+.op-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.op-pri:disabled{background:#e9ebec;color:#adb5bd;cursor:not-allowed;}
+.op-cb{width:18px;height:18px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#fff;}
+.op-cb.on{border-color:#405189;background:#405189;color:#fff;}
+.op-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
+.op-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
+.op-src{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid #eff2f7;border-radius:6px;background:#fff;cursor:pointer;text-align:left;font:inherit;min-height:44px;box-sizing:border-box;}
+.op-src:hover{background:#fbfcfe;}
+.op-src.on{border-color:#405189;background:rgba(64,81,137,.05);}
+.op-srd{width:16px;height:16px;border-radius:50%;border:1.5px solid #ccd0d8;flex-shrink:0;margin-top:2px;position:relative;}
+.op-src.on .op-srd{border-color:#405189;}
+.op-src.on .op-srd:after{content:'';position:absolute;inset:3px;border-radius:50%;background:#405189;}
+.op-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.op-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;}
+@media (max-width:900px){.op-4{grid-template-columns:repeat(2,minmax(0,1fr));}.op-2{grid-template-columns:1fr;}}
+@keyframes opFade{from{opacity:0}to{opacity:1}}
+@keyframes opSpin{to{transform:rotate(360deg)}}
+.op-spin{display:inline-block;animation:opSpin 1s linear infinite;}
+</style>
+</helmet>
+
+<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+
+  <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
+      <span style="font-size:11.5px;color:#adb5bd;">Nội dung › Vận hành nội dung AI</span>
+      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Vận hành nội dung AI</span>
+      <span style="font-size:13px;color:#878a99;line-height:1.65;">Hệ thống tự theo dõi bài nào đang được trợ lý AI trích dẫn, bài nào tụt hạng hay đã cũ, rồi nói thẳng nên làm gì. Cần viết nhiều thì đưa vào hàng đợi, máy chủ chạy nền — bạn tắt máy vẫn chạy.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;">
+      <span title="{{ quotaTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:20px;background:#fff;border:1px solid #eff2f7;font-size:12px;font-weight:600;color:#878a99;white-space:nowrap;"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ quotaChip }}</span>
+      <button class="op-pri" onClick="{{ onOpenWriter }}"><i class="ri-quill-pen-line" style="font-size:16px;"></i>Viết một bài mới</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <sc-if value="{{ tabWatchOn }}"><button class="op-tab on" onClick="{{ onTabWatch }}"><i class="ri-line-chart-line" style="font-size:16px;"></i>Theo dõi &amp; việc nên làm<span style="font-weight:700;">{{ todoCount }}</span></button></sc-if>
+    <sc-if value="{{ tabWatchOff }}"><button class="op-tab" onClick="{{ onTabWatch }}"><i class="ri-line-chart-line" style="font-size:16px;"></i>Theo dõi &amp; việc nên làm<span style="font-weight:700;">{{ todoCount }}</span></button></sc-if>
+    <sc-if value="{{ tabBulkOn }}"><button class="op-tab on" onClick="{{ onTabBulk }}"><i class="ri-stack-line" style="font-size:16px;"></i>Viết hàng loạt</button></sc-if>
+    <sc-if value="{{ tabBulkOff }}"><button class="op-tab" onClick="{{ onTabBulk }}"><i class="ri-stack-line" style="font-size:16px;"></i>Viết hàng loạt</button></sc-if>
+    <sc-if value="{{ tabQueueOn }}"><button class="op-tab on" onClick="{{ onTabQueue }}"><i class="ri-loader-4-line" style="font-size:16px;"></i>Hàng đợi<span style="font-weight:700;">{{ queueBadge }}</span></button></sc-if>
+    <sc-if value="{{ tabQueueOff }}"><button class="op-tab" onClick="{{ onTabQueue }}"><i class="ri-loader-4-line" style="font-size:16px;"></i>Hàng đợi<span style="font-weight:700;">{{ queueBadge }}</span></button></sc-if>
+  </div>
+
+  <sc-if value="{{ tabWatchOn }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="op-4">
+        <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
+          <div class="op-card" style="padding:14px;display:flex;flex-direction:column;gap:6px;">
+            <span style="display:flex;align-items:center;gap:7px;"><i class="{{ s.icon }}" style="font-size:15px;color:#878a99;"></i><span style="font-size:11.5px;color:#878a99;line-height:1.4;">{{ s.label }}</span></span>
+            <span style="font-size:22px;font-weight:600;color:#343a40;font-variant-numeric:tabular-nums;">{{ s.value }}</span>
+            <span style="font-size:11.5px;color:{{ s.deltaColor }};font-weight:600;">{{ s.delta }}</span>
+            <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ s.hint }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div class="op-card">
+        <div class="op-h">
+          <i class="ri-tools-line" style="font-size:17px;color:#405189;"></i>
+          <span class="op-t">Việc nên làm</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span style="font-size:11.5px;color:#878a99;white-space:nowrap;">{{ todoSummary }}</span>
+            <button class="op-btn op-ai" onClick="{{ onFixAll }}" title="{{ fixAllTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ fixAllLabel }}</button>
+          </span>
+        </div>
+        <sc-for list="{{ todos }}" as="t" hint-placeholder-count="4">
+          <div class="op-row">
+            <span style="width:8px;height:8px;border-radius:50%;background:{{ t.sevColor }};flex-shrink:0;"></span>
+            <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 300px;min-width:0;">
+              <span style="font-size:13px;font-weight:600;color:#343a40;line-height:1.4;">{{ t.title }}</span>
+              <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span class="op-chip" style="background:#f3f6f9;color:#878a99;">{{ t.kind }}</span><span style="font-size:11.5px;color:#878a99;line-height:1.5;">{{ t.issue }}</span></span>
+            </span>
+            <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 220px;min-width:0;">
+              <span style="font-size:12px;color:#495057;line-height:1.55;">{{ t.why }}</span>
+              <span style="font-size:11px;color:#adb5bd;">{{ t.cost }}</span>
+            </span>
+            <span style="display:flex;gap:8px;flex-shrink:0;">
+              <sc-if value="{{ t.pending }}">
+                <button class="op-btn op-ai" style="min-height:34px;" onClick="{{ t.onFix }}" title="{{ t.fixTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ t.act }}</button>
+              </sc-if>
+              <sc-if value="{{ t.queued }}">
+                <span class="op-chip" style="height:34px;background:rgba(41,156,219,.12);color:#1c7ba8;">Đã đưa vào hàng đợi</span>
+              </sc-if>
+              <button class="op-btn" style="min-height:34px;" onClick="{{ t.onSkip }}" title="Ẩn việc này, không nhắc lại trong 30 ngày">Bỏ qua</button>
+            </span>
+          </div>
+        </sc-for>
+        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+          <i class="ri-lightbulb-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Danh sách này do hệ thống tự dò mỗi ngày: so thứ hạng từ khoá, đối chiếu bài của bạn với bài đang đứng trên, đếm số lần được trợ lý AI trích dẫn và tuổi nội dung. Bạn không phải tự đi tìm bài nào có vấn đề. Mọi bản AI viết lại đều vào Nháp để bạn soát trước khi đăng.</span>
+        </div>
+      </div>
+
+      <div class="op-card">
+        <div class="op-h">
+          <i class="ri-double-quotes-l" style="font-size:17px;color:#405189;"></i>
+          <span class="op-t">Bài đang được trợ lý AI trích dẫn</span>
+          <span style="margin-left:auto;font-size:11.5px;color:#878a99;white-space:nowrap;">{{ citedSummary }}</span>
+        </div>
+        <sc-for list="{{ cited }}" as="c" hint-placeholder-count="4">
+          <div class="op-row">
+            <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 280px;min-width:0;">
+              <span style="font-size:13px;font-weight:500;color:#343a40;line-height:1.4;">{{ c.title }}</span>
+              <span style="font-size:11.5px;color:#878a99;line-height:1.55;">Khách hỏi: “{{ c.q }}”</span>
+            </span>
+            <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:0 1 260px;">
+              <sc-for list="{{ c.tools }}" as="tl" hint-placeholder-count="2"><span class="op-chip" style="background:#f3f6f9;color:#495057;">{{ tl.name }}<span style="color:#adb5bd;font-weight:600;">{{ tl.n }}</span></span></sc-for>
+            </span>
+            <span style="font-size:12px;font-weight:600;color:#0a8f7f;white-space:nowrap;flex-shrink:0;">{{ c.visits }}</span>
+            <button class="op-btn" style="min-height:34px;flex-shrink:0;" onClick="{{ c.onView }}">Xem bài</button>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tabBulkOn }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="op-card">
+        <div class="op-h">
+          <i class="ri-folders-line" style="font-size:17px;color:#405189;"></i>
+          <span class="op-t">Chọn việc cần viết</span>
+          <span style="margin-left:auto;font-size:11.5px;color:#878a99;">Hệ thống đã dò sẵn những chỗ thiếu nội dung trên website của bạn</span>
+        </div>
+        <div class="op-2">
+          <sc-for list="{{ sources }}" as="s" hint-placeholder-count="4">
+            <sc-if value="{{ s.on2 }}"><button class="op-src on" onClick="{{ s.on }}" title="{{ s.title }}"><span class="op-srd"></span><span style="display:flex;flex-direction:column;gap:3px;min-width:0;"><span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ s.name }}<span style="margin-left:6px;color:#405189;">{{ s.count }}</span></span><span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ s.hint }}</span></span></button></sc-if>
+            <sc-if value="{{ s.off }}"><button class="op-src" onClick="{{ s.on }}" title="{{ s.title }}"><span class="op-srd"></span><span style="display:flex;flex-direction:column;gap:3px;min-width:0;"><span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ s.name }}<span style="margin-left:6px;color:#405189;">{{ s.count }}</span></span><span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ s.hint }}</span></span></button></sc-if>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="op-card">
+        <div class="op-h">
+          <button class="op-hit" onClick="{{ onSelectAll }}" title="{{ selectAllTitle }}" style="width:36px;height:36px;">
+            <sc-if value="{{ allChecked }}"><span class="op-cb on"><i class="ri-check-line" style="font-size:13px;"></i></span></sc-if>
+            <sc-if value="{{ allUnchecked }}"><span class="op-cb"></span></sc-if>
+          </button>
+          <span class="op-t">{{ itemsTitle }}</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span style="font-size:11.5px;color:#878a99;white-space:nowrap;">{{ pickedLine }}</span>
+            <span class="op-chip" style="background:#f3f6f9;color:#495057;height:26px;">{{ defaultsChip }}</span>
+            <button class="op-btn" onClick="{{ onEditDefaults }}" title="Mở Cài đặt › Nội dung AI để đổi bộ mặc định cho loại bài này">Đổi mặc định</button>
+          </span>
+        </div>
+        <sc-for list="{{ items }}" as="it" hint-placeholder-count="6">
+          <div class="op-row" style="padding:9px 16px;">
+            <button class="op-hit" onClick="{{ it.on }}" title="{{ it.title }}" style="width:36px;height:36px;">
+              <sc-if value="{{ it.checked }}"><span class="op-cb on"><i class="ri-check-line" style="font-size:13px;"></i></span></sc-if>
+              <sc-if value="{{ it.unchecked }}"><span class="op-cb"></span></sc-if>
+            </button>
+            <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 260px;min-width:0;">
+              <span style="font-size:13px;font-weight:500;color:#343a40;line-height:1.4;">{{ it.name }}</span>
+              <span style="font-size:11.5px;color:#878a99;line-height:1.5;">{{ it.meta }}</span>
+            </span>
+            <span style="font-size:11.5px;color:#adb5bd;white-space:nowrap;flex-shrink:0;">{{ it.est }}</span>
+          </div>
+        </sc-for>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;">
+          <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1;min-width:0;">{{ moreLine }}</span>
+          <button class="op-btn" onClick="{{ onSelectAll }}">{{ selectAllLabel }}</button>
+        </div>
+      </div>
+
+      <div class="op-card">
+        <div style="{{ estNoteStyle }}"><i class="{{ estIcon }}" style="font-size:15px;flex-shrink:0;margin-top:1px;"></i><span>{{ estNote }}</span></div>
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;flex-wrap:wrap;">
+          <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 260px;min-width:0;">
+            <span style="font-size:13px;font-weight:600;color:#343a40;">{{ estLine }}</span>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.6;">Kết quả vào Nháp, không tự đăng. Mỗi mục dùng đúng văn phong thương hiệu, tác giả mặc định và bộ khối cấu trúc của loại bài — bạn không phải nhập lại gì.</span>
+          </span>
+          <sc-if value="{{ canRun }}"><button class="op-pri" onClick="{{ onQueue }}" title="{{ runTitle }}"><i class="ri-play-circle-line" style="font-size:17px;"></i>{{ runLabel }}</button></sc-if>
+          <sc-if value="{{ cannotRun }}">
+            <span style="display:flex;gap:8px;flex-wrap:wrap;">
+              <sc-if value="{{ overQuota }}"><a class="op-btn" style="min-height:38px;text-decoration:none;" href="{{ quotaHref }}" title="Mở Cài đặt › Mức dùng AI để mua thêm từ AI hoặc nâng gói"><i class="ri-add-circle-line" style="font-size:16px;"></i>Mua thêm từ AI</a></sc-if>
+              <sc-if value="{{ overQuota }}"><button class="op-btn op-ai" style="min-height:38px;" onClick="{{ onPartial }}" title="{{ partialTitle }}"><i class="ri-scissors-cut-line" style="font-size:15px;"></i>{{ partialLabel }}</button></sc-if>
+              <button class="op-pri" disabled="{{ true }}" title="{{ runTitle }}"><i class="ri-play-circle-line" style="font-size:17px;"></i>{{ runLabel }}</button>
+            </span>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tabQueueOn }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div class="op-card">
+        <div class="op-h">
+          <sc-if value="{{ running }}"><i class="ri-loader-4-line op-spin" style="font-size:17px;color:#405189;"></i></sc-if>
+          <sc-if value="{{ paused }}"><i class="ri-pause-circle-line" style="font-size:17px;color:#f7b84b;"></i></sc-if>
+          <span class="op-t">{{ queueTitle }}</span>
+          <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <sc-if value="{{ running }}"><button class="op-btn" onClick="{{ onPause }}" title="Tạm dừng sau khi xong mục đang chạy — phần chưa chạy không bị trừ lượt"><i class="ri-pause-line" style="font-size:14px;"></i>Tạm dừng</button></sc-if>
+            <sc-if value="{{ paused }}"><button class="op-btn op-ai" onClick="{{ onResume }}" title="Chạy tiếp từ mục còn lại"><i class="ri-play-line" style="font-size:14px;"></i>Chạy tiếp</button></sc-if>
+            <button class="op-btn" onClick="{{ onCancel }}" title="Huỷ các mục chưa chạy — mục đã xong vẫn giữ trong Nháp">Huỷ phần còn lại</button>
+          </span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:7px;padding:14px 16px;border-bottom:1px solid #eff2f7;">
+          <span style="height:8px;border-radius:20px;background:#eff2f7;overflow:hidden;"><span style="{{ barStyle }}"></span></span>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ progressLine }}</span>
+        </div>
+        <sc-for list="{{ queue }}" as="q" hint-placeholder-count="6">
+          <div class="op-row" style="padding:10px 16px;">
+            <i class="{{ q.icon }}" style="font-size:16px;color:{{ q.color }};flex-shrink:0;"></i>
+            <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 260px;min-width:0;">
+              <span style="font-size:13px;font-weight:500;color:#343a40;line-height:1.4;">{{ q.name }}</span>
+              <span style="font-size:11.5px;color:#878a99;line-height:1.5;">{{ q.meta }}</span>
+            </span>
+            <span style="font-size:11.5px;font-weight:600;color:{{ q.color }};white-space:nowrap;flex-shrink:0;">{{ q.state }}</span>
+            <span style="display:flex;gap:8px;flex-shrink:0;">
+              <sc-if value="{{ q.canOpen }}"><button class="op-btn" style="min-height:34px;" onClick="{{ q.onOpen }}">Soát &amp; đăng</button></sc-if>
+              <sc-if value="{{ q.canRetry }}"><button class="op-btn op-ai" style="min-height:34px;" onClick="{{ q.onRetry }}" title="Chạy lại mục này — lần lỗi không bị trừ lượt">Thử lại</button></sc-if>
+            </span>
+          </div>
+        </sc-for>
+        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+          <i class="ri-server-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Hàng đợi chạy trên máy chủ: bạn đóng tab hay tắt máy vẫn chạy tiếp, xong sẽ có thông báo. Lượt AI chỉ trừ khi một mục viết xong; mục lỗi được hoàn lượt và tự thử lại hai lần trước khi báo lên đây.</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ askOpen }}">
+    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
+      <div style="position:relative;z-index:1;width:460px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:opFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-sparkling-2-line" style="font-size:17px;color:#405189;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ askTitle }}</span></div>
+        <span style="font-size:12.5px;color:#878a99;line-height:1.7;">{{ askText }}</span>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+          <button class="op-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Huỷ</button>
+          <button class="op-pri" onClick="{{ onAskOk }}">{{ askOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toast }}">
+    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#343a40;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:opFade .16s ease;max-width:min(620px,calc(100vw - 32px));">
+      <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
+      <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;quota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:41500,&quot;limit&quot;:60000},&quot;tsType&quot;:&quot;{used:number,limit:number}&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'watch', src: 'prod', picked: {}, skipped: {}, fixed: {}, paused: false, toast: null, ask: null, retried: {} };
+
+  STATS = [
+    { icon: 'ri-double-quotes-l', label: 'Lần được trợ lý AI trích dẫn', value: '312', delta: '+48% so với 30 ngày trước', up: true, hint: 'ChatGPT, Perplexity, Google AI · 30 ngày' },
+    { icon: 'ri-user-follow-line', label: 'Khách vào từ trợ lý AI', value: '1.847', delta: '+21%', up: true, hint: 'Đã trừ lượt của chính bot' },
+    { icon: 'ri-arrow-down-line', label: 'Bài đang tụt hạng', value: '6', delta: '3 bài tụt trên 5 bậc', up: false, hint: 'So với 4 tuần trước' },
+    { icon: 'ri-history-line', label: 'Bài cần làm mới', value: '11', delta: 'cũ hơn 12 tháng', up: false, hint: 'Có số liệu, giá hoặc quy định đã lỗi' }
+  ];
+  TODOS = [
+    { k: 't1', sev: 'bad', title: 'Máy lọc nước RO 9 cấp có thật sự cần thiết?', kind: 'Bài hướng dẫn', issue: 'Tụt 9 bậc từ khoá “máy lọc RO 9 cấp”', why: 'Ba bài đang đứng trên đều có bảng so sánh cấp lọc và phần hỏi đáp; bài của bạn thiếu cả hai.', cost: 'Thêm ~380 từ AI · còn giữ nguyên phần bạn đã viết', act: 'Bổ sung bằng AI' },
+    { k: 't2', sev: 'bad', title: 'Bảng giá lắp đặt hệ lọc tổng đầu nguồn', kind: 'Trang dịch vụ', issue: 'Không còn được trợ lý AI trích dẫn từ tháng 4', why: 'Giá trong bài là giá năm ngoái nên trợ lý AI bỏ qua vì thiếu mốc thời gian rõ ràng.', cost: 'Viết lại ~260 từ AI', act: 'Làm mới bằng AI' },
+    { k: 't3', sev: 'warn', title: '28 sản phẩm chưa có mô tả', kind: 'Mô tả sản phẩm', issue: 'Trang sản phẩm trống phần mô tả', why: 'Trang không có mô tả gần như không bao giờ được trợ lý AI dẫn nguồn và cũng khó lên tìm kiếm.', cost: '~22.400 từ AI · nên đưa vào hàng đợi', act: 'Viết hàng loạt' },
+    { k: 't4', sev: 'warn', title: 'Nước nhiễm phèn xử lý thế nào?', kind: 'Bài hướng dẫn', issue: 'Được hỏi nhiều nhưng bài chỉ trả lời một nửa', why: 'Khách hỏi trợ lý AI kèm “giá bao nhiêu” và “mất bao lâu”; bài của bạn chưa có hai phần đó.', cost: 'Thêm ~300 từ AI', act: 'Bổ sung bằng AI' },
+    { k: 't5', sev: 'info', title: 'Cách thay lõi lọc tại nhà', kind: 'Blog trải nghiệm', issue: 'Nội dung tốt nhưng thiếu tác giả và mốc cập nhật', why: 'Chỉ cần gắn tác giả mặc định và ngày cập nhật — không tốn lượt AI.', cost: 'Không dùng lượt AI', act: 'Gắn tự động' }
+  ];
+  CITED = [
+    { k: 'c1', title: 'So sánh máy lọc RO và Nano cho nước máy thành phố', q: 'nên dùng RO hay nano cho nước máy hà nội', tools: [{ name: 'ChatGPT', n: '64' }, { name: 'Perplexity', n: '39' }], visits: '412 khách' },
+    { k: 'c2', title: 'Dấu hiệu nước nhiễm phèn và cách xử lý tại nhà', q: 'nước có mùi tanh vàng áo là bị gì', tools: [{ name: 'ChatGPT', n: '51' }, { name: 'Google AI', n: '22' }], visits: '338 khách' },
+    { k: 'c3', title: 'Chi phí lắp hệ lọc tổng cho nhà 4 người', q: 'lắp hệ lọc tổng hết bao nhiêu tiền', tools: [{ name: 'Perplexity', n: '30' }, { name: 'Claude', n: '11' }], visits: '206 khách' },
+    { k: 'c4', title: 'Bao lâu nên thay lõi lọc số 1?', q: 'lõi lọc thô thay mấy tháng một lần', tools: [{ name: 'ChatGPT', n: '28' }], visits: '154 khách' }
+  ];
+  SOURCES = [
+    { k: 'prod', name: 'Sản phẩm chưa có mô tả', count: '28 mục', type: 'Mô tả sản phẩm', per: 800, hint: 'Viết từ tên, thông số và danh mục sẵn có — mỗi mục ~800 từ.' },
+    { k: 'cat', name: 'Danh mục thiếu mô tả', count: '9 mục', type: 'Trang dịch vụ', per: 350, hint: 'Đoạn giới thiệu đầu trang danh mục, giúp danh mục lên tìm kiếm.' },
+    { k: 'old', name: 'Bài cần làm mới', count: '11 bài', type: 'Bài hướng dẫn', per: 420, hint: 'Chỉ viết lại phần đã cũ, giữ nguyên chữ bạn đã sửa tay.' },
+    { k: 'seo', name: 'Trang thiếu tiêu đề & mô tả SEO', count: '34 trang', type: 'Chỉ tiêu đề & mô tả SEO', per: 60, hint: 'Rẻ nhất: chỉ sinh tiêu đề và mô tả, không dựng khối nội dung.' }
+  ];
+  ITEMS = {
+    prod: [
+      { k: 'p1', name: 'Máy lọc nước RO Karofi KAQ-U95', meta: 'Máy lọc nước gia đình · 9 thông số đã có' },
+      { k: 'p2', name: 'Lõi lọc thô PP 5 micron 10 inch', meta: 'Lõi & vật tư · 4 thông số đã có' },
+      { k: 'p3', name: 'Hệ lọc tổng đầu nguồn 3 cột inox', meta: 'Hệ lọc tổng · 11 thông số đã có' },
+      { k: 'p4', name: 'Cột làm mềm nước Cation 1054', meta: 'Xử lý nước cứng · 7 thông số đã có' },
+      { k: 'p5', name: 'Bơm tăng áp Aquatec 8800', meta: 'Phụ kiện · 5 thông số đã có' },
+      { k: 'p6', name: 'Van điện từ 24V cho máy RO', meta: 'Phụ kiện · 3 thông số đã có' },
+      { k: 'p7', name: 'Đèn UV diệt khuẩn 12GPM', meta: 'Khử khuẩn · 6 thông số đã có' },
+      { k: 'p8', name: 'Bình áp 11 lít inox', meta: 'Phụ kiện · 4 thông số đã có' }
+    ],
+    cat: [
+      { k: 'g1', name: 'Máy lọc nước gia đình', meta: '42 sản phẩm trong danh mục' },
+      { k: 'g2', name: 'Hệ lọc tổng đầu nguồn', meta: '18 sản phẩm' },
+      { k: 'g3', name: 'Lõi lọc & vật tư thay thế', meta: '76 sản phẩm' },
+      { k: 'g4', name: 'Xử lý nước nhiễm phèn', meta: '12 sản phẩm' },
+      { k: 'g5', name: 'Máy lọc nước công nghiệp', meta: '9 sản phẩm' }
+    ],
+    old: [
+      { k: 'o1', name: 'Bảng giá lắp đặt hệ lọc tổng đầu nguồn', meta: 'Cập nhật lần cuối 14 tháng trước · giá đã lỗi' },
+      { k: 'o2', name: 'Máy lọc nước RO 9 cấp có cần thiết?', meta: '16 tháng trước · thiếu bảng so sánh' },
+      { k: 'o3', name: 'Tiêu chuẩn nước sinh hoạt mới nhất', meta: '19 tháng trước · quy định đã thay' },
+      { k: 'o4', name: 'Nên chọn lõi lọc của hãng nào?', meta: '13 tháng trước · danh sách hãng đã cũ' },
+      { k: 'o5', name: 'Nước cứng ảnh hưởng thiết bị thế nào', meta: '15 tháng trước' },
+      { k: 'o6', name: 'Kinh nghiệm lắp máy lọc cho nhà thuê', meta: '12 tháng trước' }
+    ],
+    seo: [
+      { k: 's1', name: 'Trang chủ', meta: 'Thiếu mô tả SEO' },
+      { k: 's2', name: 'Giới thiệu', meta: 'Thiếu tiêu đề SEO và mô tả' },
+      { k: 's3', name: 'Liên hệ', meta: 'Thiếu mô tả SEO' },
+      { k: 's4', name: 'Dịch vụ bảo trì định kỳ', meta: 'Tiêu đề SEO quá dài' },
+      { k: 's5', name: 'Chính sách bảo hành', meta: 'Thiếu mô tả SEO' },
+      { k: 's6', name: 'Danh mục: Lõi lọc & vật tư', meta: 'Thiếu mô tả SEO' }
+    ]
+  };
+  QUEUE = [
+    { k: 'q1', name: 'Máy lọc nước RO Karofi KAQ-U95', meta: 'Mô tả sản phẩm · 812 từ AI · xong 09:41', st: 'done' },
+    { k: 'q2', name: 'Lõi lọc thô PP 5 micron 10 inch', meta: 'Mô tả sản phẩm · 774 từ AI · xong 09:43', st: 'done' },
+    { k: 'q3', name: 'Hệ lọc tổng đầu nguồn 3 cột inox', meta: 'Mô tả sản phẩm · đang viết phần thông số', st: 'run' },
+    { k: 'q4', name: 'Cột làm mềm nước Cation 1054', meta: 'Mô tả sản phẩm · ~800 từ AI', st: 'wait' },
+    { k: 'q5', name: 'Bơm tăng áp Aquatec 8800', meta: 'Thiếu thông số công suất nên AI không dám viết — bổ sung rồi chạy lại', st: 'err' },
+    { k: 'q6', name: 'Van điện từ 24V cho máy RO', meta: 'Mô tả sản phẩm · ~800 từ AI', st: 'wait' },
+    { k: 'q7', name: 'Đèn UV diệt khuẩn 12GPM', meta: 'Mô tả sản phẩm · ~800 từ AI', st: 'wait' },
+    { k: 'q8', name: 'Bình áp 11 lít inox', meta: 'Mô tả sản phẩm · ~800 từ AI', st: 'wait' }
+  ];
+
+  componentDidMount() {
+    this._key = (e) => { if (e.key === 'Escape' && this.state.ask) this.setState({ ask: null }); };
+    window.addEventListener('keydown', this._key);
+  }
+  componentWillUnmount() { clearTimeout(this._t); if (this._key) window.removeEventListener('keydown', this._key); }
+  toast(text, icon) { clearTimeout(this._t); this.setState({ toast: { text: text, icon: icon || 'ri-check-line' } }); this._t = setTimeout(() => this.setState({ toast: null }), 4200); }
+  srcOf() { return this.SOURCES.find(s => s.k === this.state.src) || this.SOURCES[0]; }
+  itemsOf() { return this.ITEMS[this.state.src] || []; }
+  pickedKeys() { const p = this.state.picked[this.state.src] || {}; return this.itemsOf().filter(i => p[i.k]).map(i => i.k); }
+  totalOf() { return parseInt(this.srcOf().count, 10) || this.itemsOf().length; }
+  setSrc(k) { this.setState({ src: k }); }
+  togglePick(k) {
+    this.setState(s => {
+      const cur = Object.assign({}, s.picked[s.src] || {});
+      cur[k] = !cur[k];
+      return { picked: Object.assign({}, s.picked, { [s.src]: cur }) };
+    });
+  }
+  selectAll() {
+    const items = this.itemsOf(), keys = this.pickedKeys();
+    const all = keys.length >= items.length;
+    this.setState(s => {
+      const cur = {};
+      if (!all) items.forEach(i => { cur[i.k] = true; });
+      return { picked: Object.assign({}, s.picked, { [s.src]: cur }) };
+    });
+  }
+
+  renderVals() {
+    const S = this.state, src = this.srcOf(), items = this.itemsOf();
+    const pk = this.state.picked[S.src] || {};
+    const nPicked = items.filter(i => pk[i.k]).length;
+    const total = this.totalOf();
+    const q = this.props.quota || { used: 41500, limit: 60000 };
+    const limit = q.limit, used = q.used, left = Math.max(0, limit - used);
+    const effPicked = (items.length && nPicked >= items.length) ? total : nPicked;
+    const words = effPicked * src.per;
+    const over = words > left;
+    const fits = Math.floor(left / src.per);
+    const todos = this.TODOS.filter(t => !S.skipped[t.k]);
+    const qDone = this.QUEUE.filter(q => q.st === 'done').length;
+    const qTotal = this.QUEUE.length;
+    const pct = Math.round(qDone / qTotal * 100);
+    const ask = S.ask;
+    const noteBase = 'display:flex;align-items:flex-start;gap:8px;padding:10px 16px;border-bottom:1px solid #eff2f7;font-size:11.5px;line-height:1.65;';
+
+    return {
+      quotaChip: 'Còn ' + left.toLocaleString('vi-VN') + ' từ AI',
+      quotaTitle: 'Gói Cơ bản: ' + limit.toLocaleString('vi-VN') + ' từ AI mỗi tháng. Đã dùng ' + used.toLocaleString('vi-VN') + ' từ. Làm mới ngày 1 hằng tháng.',
+      onOpenWriter: () => this.toast('Mở trợ lý viết bài — bài mới dùng sẵn văn phong và bộ mặc định của website', 'ri-quill-pen-line'),
+
+      tabWatchOn: S.tab === 'watch', tabWatchOff: S.tab !== 'watch',
+      tabBulkOn: S.tab === 'bulk', tabBulkOff: S.tab !== 'bulk',
+      tabQueueOn: S.tab === 'queue', tabQueueOff: S.tab !== 'queue',
+      onTabWatch: () => this.setState({ tab: 'watch' }), onTabBulk: () => this.setState({ tab: 'bulk' }), onTabQueue: () => this.setState({ tab: 'queue' }),
+      todoCount: todos.length, queueBadge: (qTotal - qDone) + ' đang chờ',
+
+      stats: this.STATS.map(s => Object.assign({}, s, { deltaColor: s.up ? '#0a8f7f' : '#b57d13' })),
+      todos: todos.map(t => Object.assign({}, t, {
+        sevColor: t.sev === 'bad' ? '#f06548' : (t.sev === 'warn' ? '#f7b84b' : '#299cdb'),
+        pending: !S.fixed[t.k], queued: !!S.fixed[t.k],
+        fixTitle: t.cost.indexOf('Không') === 0 ? 'Không dùng lượt AI' : (t.act + ' — ' + t.cost + '; kết quả vào Nháp để bạn soát'),
+        onFix: () => {
+          this.setState(s => ({ fixed: Object.assign({}, s.fixed, { [t.k]: true }) }));
+          this.toast(t.act === 'Viết hàng loạt' ? 'Đã đưa 28 mô tả sản phẩm vào hàng đợi, chạy theo từng đợt 8 mục — xem tiến độ ở thẻ Hàng đợi' : ('Đã đưa “' + t.title + '” vào hàng đợi — bản viết lại sẽ nằm trong Nháp'), 'ri-check-line');
+        },
+        onSkip: () => { this.setState(s => ({ skipped: Object.assign({}, s.skipped, { [t.k]: true }) })); this.toast('Đã bỏ qua — hệ thống không nhắc lại việc này trong 30 ngày', 'ri-eye-off-line'); }
+      })),
+      todoSummary: todos.filter(t => t.sev === 'bad').length + ' việc gấp · ' + todos.length + ' việc tổng',
+      fixAllLabel: 'Làm tất cả bằng AI',
+      fixAllTitle: 'Đưa cả ' + todos.length + ' việc vào hàng đợi — ước tính 12.400 từ AI, còn lại ' + (left - 12400).toLocaleString('vi-VN') + ' từ',
+      onFixAll: () => this.setState({ ask: { kind: 'all', title: 'Đưa ' + todos.length + ' việc vào hàng đợi?', text: 'Ước tính dùng 12.400 từ AI trong ' + left.toLocaleString('vi-VN') + ' từ còn lại. Máy chủ chạy nền, bạn tắt máy vẫn chạy. Mọi bản viết lại vào Nháp — không có gì tự đăng, và phần chữ bạn đã sửa tay không bị đè.', ok: 'Đưa vào hàng đợi' } }),
+
+      cited: this.CITED.map(c => Object.assign({}, c, { onView: () => this.toast('Mở “' + c.title + '”', 'ri-external-link-line') })),
+      citedSummary: '30 ngày qua · nguồn: log trợ lý AI và tham chiếu đến website',
+
+      sources: this.SOURCES.map(s => Object.assign({}, s, {
+        on2: s.k === S.src, off: s.k !== S.src, on: () => this.setSrc(s.k),
+        title: s.name + ' — loại nội dung: ' + s.type + ', khoảng ' + s.per + ' từ AI mỗi mục'
+      })),
+      itemsTitle: src.name,
+      defaultsChip: src.type + ' · bộ mặc định của website',
+      onEditDefaults: () => this.toast('Mở Cài đặt › Nội dung AI › Mặc định theo loại bài', 'ri-external-link-line'),
+      items: items.map(i => Object.assign({}, i, {
+        checked: !!pk[i.k], unchecked: !pk[i.k],
+        title: (pk[i.k] ? 'Bỏ chọn' : 'Chọn') + ' “' + i.name + '”',
+        est: '~' + src.per.toLocaleString('vi-VN') + ' từ AI',
+        on: () => this.togglePick(i.k)
+      })),
+      allChecked: nPicked > 0 && nPicked >= items.length, allUnchecked: !(nPicked > 0 && nPicked >= items.length),
+      selectAllTitle: nPicked >= items.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả ' + items.length + ' mục đang hiện',
+      selectAllLabel: nPicked >= items.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả ' + total + ' mục',
+      onSelectAll: () => this.selectAll(),
+      pickedLine: nPicked ? ('đã chọn ' + effPicked + '/' + total) : 'chưa chọn mục nào',
+      moreLine: items.length < total ? ('Đang hiện ' + items.length + ' mục đầu trong ' + total + '. Chọn tất cả sẽ áp cho cả ' + total + ' mục.') : ('Tất cả ' + total + ' mục đang hiện.'),
+
+      estLine: nPicked ? (effPicked + ' mục · ước tính ' + words.toLocaleString('vi-VN') + ' từ AI · ' + (over ? ('thiếu ' + (words - left).toLocaleString('vi-VN') + ' từ so với hạn ngạch còn lại') : ('còn lại sau khi chạy ' + (left - words).toLocaleString('vi-VN') + ' từ'))) : 'Chọn mục ở trên để xem ước tính lượt AI',
+      estNote: nPicked === 0 ? 'Chưa chọn mục nào. Chọn vài mục hoặc bấm “Chọn tất cả” — hệ thống sẽ nói rõ tốn bao nhiêu từ AI trước khi chạy.' : (over ? ('Vượt hạn ngạch: cần ' + words.toLocaleString('vi-VN') + ' từ nhưng chỉ còn ' + left.toLocaleString('vi-VN') + ' từ. Chạy ' + fits + ' mục trước cũng được — phần còn lại để sang kỳ sau, hoặc mua thêm từ AI ở Cài đặt › Mức dùng AI.') : ('Đủ hạn ngạch. Lượt chỉ bị trừ khi từng mục viết xong; mục lỗi được hoàn lượt.')),
+      estNoteStyle: noteBase + (nPicked === 0 ? 'background:#f8f9fb;color:#878a99;' : (over ? 'background:rgba(240,101,72,.07);color:#a5402c;' : 'background:rgba(10,179,156,.07);color:#0a7d6f;')),
+      estIcon: nPicked === 0 ? 'ri-information-line' : (over ? 'ri-error-warning-line' : 'ri-checkbox-circle-line'),
+      quotaHref: encodeURI('Hạn ngạch AI và mua thêm.dc.html'),
+      canRun: nPicked > 0 && !over, cannotRun: !(nPicked > 0 && !over), overQuota: over && nPicked > 0,
+      runLabel: nPicked ? ('Đưa ' + effPicked + ' mục vào hàng đợi') : 'Đưa vào hàng đợi',
+      runTitle: nPicked === 0 ? 'Chọn ít nhất một mục' : (over ? 'Không đủ từ AI cho ' + effPicked + ' mục — chạy từng phần, hoặc mua thêm ở Cài đặt › Mức dùng AI' : 'Dùng ' + words.toLocaleString('vi-VN') + ' từ AI, còn lại ' + (left - words).toLocaleString('vi-VN') + ' từ'),
+      partialLabel: 'Chạy ' + fits + ' mục vừa hạn ngạch',
+      partialTitle: 'Chạy ' + fits + ' mục đầu (' + (fits * src.per).toLocaleString('vi-VN') + ' từ AI), phần còn lại giữ nguyên lựa chọn cho kỳ sau',
+      onPartial: () => { this.setState({ tab: 'queue' }); this.toast('Đã đưa ' + fits + ' mục vào hàng đợi — phần còn lại vẫn được ghi nhớ, chạy tiếp khi hạn ngạch làm mới', 'ri-scissors-cut-line'); },
+      onQueue: () => this.setState({ ask: { kind: 'bulk', title: 'Đưa ' + effPicked + ' mục vào hàng đợi?', text: 'Dùng khoảng ' + words.toLocaleString('vi-VN') + ' từ AI trong ' + left.toLocaleString('vi-VN') + ' từ còn lại. Tất cả kết quả vào Nháp để bạn soát trước khi đăng; nội dung sẵn có không bị đè.', ok: 'Chạy nền' } }),
+
+      running: !S.paused, paused: S.paused,
+      queueTitle: S.paused ? 'Hàng đợi đang tạm dừng' : 'Đang chạy nền — đợt ' + qTotal + ' mô tả sản phẩm',
+      barStyle: 'display:block;height:100%;width:' + pct + '%;background:#405189;border-radius:20px;',
+      progressLine: 'Xong ' + qDone + '/' + qTotal + ' mục (' + pct + '%) · ' + (S.paused ? 'đã tạm dừng, phần chưa chạy không bị trừ lượt' : 'còn khoảng 14 phút · đã dùng 1.586 từ AI trong lần chạy này'),
+      onPause: () => { this.setState({ paused: true }); this.toast('Đã tạm dừng sau mục đang chạy — bấm “Chạy tiếp” lúc nào cũng được', 'ri-pause-line'); },
+      onResume: () => { this.setState({ paused: false }); this.toast('Đang chạy tiếp từ mục còn lại', 'ri-play-line'); },
+      onCancel: () => this.setState({ ask: { kind: 'cancel', title: 'Huỷ phần còn lại của hàng đợi?', text: 'Các mục đã viết xong vẫn nằm trong Nháp và không bị xoá. Phần chưa chạy sẽ bị bỏ và không trừ lượt AI — bạn xếp lại hàng đợi lúc nào cũng được.', ok: 'Huỷ phần còn lại' } }),
+      queue: this.QUEUE.map(q => {
+        const st = S.retried[q.k] ? 'wait' : q.st;
+        const M = {
+          done: { icon: 'ri-checkbox-circle-fill', color: '#0a8f7f', state: 'Xong · chờ soát' },
+          run: { icon: 'ri-loader-4-line', color: '#405189', state: S.paused ? 'Dừng sau mục này' : 'Đang viết' },
+          wait: { icon: 'ri-time-line', color: '#878a99', state: 'Đang chờ' },
+          err: { icon: 'ri-error-warning-fill', color: '#c0392b', state: 'Thiếu dữ liệu' }
+        }[st];
+        return Object.assign({}, q, M, {
+          canOpen: st === 'done', canRetry: st === 'err',
+          onOpen: () => this.toast('Mở bản nháp “' + q.name + '” để soát và đăng', 'ri-external-link-line'),
+          onRetry: () => { this.setState(s => ({ retried: Object.assign({}, s.retried, { [q.k]: true }) })); this.toast('Đã xếp lại “' + q.name + '” vào hàng đợi — lần lỗi không bị trừ lượt', 'ri-refresh-line'); }
+        });
+      }),
+
+      askOpen: !!ask, askTitle: ask ? ask.title : '', askText: ask ? ask.text : '', askOk: ask ? ask.ok : '',
+      onAskCancel: () => this.setState({ ask: null }),
+      onAskOk: () => {
+        const k = ask ? ask.kind : '';
+        this.setState({ ask: null, tab: k === 'cancel' ? 'queue' : 'queue' });
+        if (k === 'cancel') this.toast('Đã huỷ phần còn lại — các mục đã xong vẫn nằm trong Nháp', 'ri-close-circle-line');
+        else if (k === 'bulk') this.toast('Đã xếp ' + effPicked + ' mục vào hàng đợi — máy chủ chạy nền, xong sẽ có thông báo', 'ri-check-line');
+        else this.toast('Đã xếp ' + todos.length + ' việc vào hàng đợi — máy chủ chạy nền, xong sẽ có thông báo', 'ri-check-line');
+      },
+      toast: !!S.toast, toastText: S.toast ? S.toast.text : '', toastIcon: S.toast ? S.toast.icon : 'ri-check-line'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

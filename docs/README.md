@@ -13,6 +13,7 @@
 | `adr/` | Bản chi tiết ADR-19..22 (Draft). Chỉ mục chính thức vẫn ở `design.md` | Theo từng ADR |
 | `builder_v3_spec.md`, `builder_v3_section_catalog.md`, `reusable_blocks_spec.md`, `tracking_*.md`, `admin-architecture-decision.md` | Spec theo mạch (Builder v3, khối tái dùng, tracking, admin) | Theo mạch |
 | `design-briefs/` | Brief và bộ prompt gửi Claude Design (đã được owner duyệt) | Khi đặt thiết kế mới |
+| `design-source/` | Bản export đầy đủ dự án Claude Design (màn `.dc.html`, script dùng chung, token, ghi chú của dự án thiết kế) — nguồn sự thật về giao diện; mỗi lần export mới = 1 commit, `git diff` thấy đúng phần đổi | Khi owner gửi file .zip export |
 | `design_handoff_<slug>/` | Handoff thiết kế đã nhận: `.dc.html` + `README.md` — port 1:1 (CLAUDE.md §8) | Khi nhận export từ Claude Design |
 | `runbooks/` | Quy trình vận hành (deploy ứng dụng prod, deploy media worker, backup/restore DB) | Khi quy trình đổi |
 | `archive/` | Tài liệu hết vai trò, giữ làm lịch sử — KHÔNG phải nguồn sự thật | Chỉ thêm |
@@ -55,14 +56,17 @@ Luật: **thiết kế dẫn, backend theo** (CLAUDE.md §8). Mỗi bên chỉ g
 
 | Chiều | Kênh | Ai ghi |
 |---|---|---|
-| Thiết kế → code | Bản publish của màn (link claude.ai/artifact) | Owner publish trong Claude Design |
-| Thiết kế → code | Bản chụp `design_handoff_<slug>/<Màn>.dc.html` + README "Việc cho backend" | Claude Code |
+| Thiết kế → code | File .zip export cả dự án Claude Design (đã gửi 17/09, 18/09, 23/09) → `design-source/` | Owner export; Claude Code nhập |
+| Thiết kế → code | Link publish một màn (claude.ai/artifact) — đường tắt khi chỉ sửa 1 màn | Owner publish; Claude Code nhập |
+| Thiết kế → code | README `design_handoff_<slug>/` — bảng "Việc cho backend" của từng màn | Claude Code |
 | Code → thiết kế | `main` trên GitHub: prompt `design-briefs/`, README handoff, mã lỗi, bảng/cột | Claude Code (owner merge) |
-| Trạng thái | `saas-starter-screen-map.md` — mục "Bản thiết kế đã chụp" | Claude Code |
+| Trạng thái | `saas-starter-screen-map.md` — mục "Nguồn thiết kế" | Claude Code |
 
 Vòng nhận thiết kế (Claude Code làm, mở đầu mỗi `/bs:next` và khi owner gửi link):
-1. Liệt kê bản publish của owner (Artifact `list`); bản nào mới hơn ngày ghi trong sổ màn → đọc.
-2. Chụp: `python3 scripts/design_snapshot.py <file đã đọc> "docs/design_handoff_<slug>/<Màn>.dc.html"`; `git diff` = đúng phần thiết kế đổi.
+1. Đọc `design-source/` trước mọi audit/prompt/build một màn — thiết kế đã có thì KHÔNG đặt vẽ lại.
+2. Nhận bản mới: file .zip → `python3 scripts/design_snapshot.py <file.zip>`; link publish một màn → đọc bằng Artifact `read`
+   rồi `python3 scripts/design_snapshot.py <file đã lưu> "docs/design-source/<Màn>.dc.html"`. `git diff docs/design-source`
+   = đúng phần thiết kế đổi. Mở đầu mỗi `/bs:next`: liệt kê bản publish (Artifact `list`) — bản nào mới hơn ngày trong sổ màn → nhập.
 3. Cập nhật bảng "Việc cho backend" của màn; phần đổi cấu trúc dữ liệu → đặc tả COUNCIL (bàn cách làm, không bàn có làm hay không).
 4. Làm backend → build giao diện 1:1 → đánh dấu ✅ trong README và sổ màn.
 5. Thiết kế cần một điều backend không được phép (tách dữ liệu giữa website, bảo mật, pháp lý, danh sách rất lớn) → không tự cắt: ghi "Cần owner chốt" và hỏi owner.

@@ -1,0 +1,116 @@
+/* ============================================================================
+   COLORS — the Velzon v4.4.4 admin language + An Vinh storefront palette.
+   Base values are fixed platform identity; semantic roles alias them by intent.
+   Raw hex is never used in components — reference the semantic roles below.
+   ============================================================================ */
+:root {
+    /* ---- Admin brand (fixed platform identity, separate from tenant brand) ---- */
+    --color-admin-primary: #405189;   /* navy — brand primary, buttons/links/active */
+    --color-admin-secondary: #3577f1;
+    --color-admin-success: #0ab39c;
+    --color-admin-info: #299cdb;
+    --color-admin-warning: #f7b84b;
+    --color-admin-danger: #f06548;
+    --color-admin-light: #f3f6f9;
+    --color-admin-dark: #212529;
+
+    /* ---- Velzon neutral gray ramp ---- */
+    --color-gray-100: #f3f6f9;
+    --color-gray-200: #eff2f7;
+    --color-gray-300: #e9ebec;
+    --color-gray-400: #ced4da;
+    --color-gray-500: #adb5bd;
+    --color-gray-600: #878a99;
+    --color-gray-700: #495057;
+    --color-gray-800: #343a40;
+    --color-gray-900: #212529;
+
+    /* ---- Semantic roles — content plane (flip under [data-bs-theme=dark]) ---- */
+    --color-body: #f3f3f9;             /* page background (light lavender-gray) */
+    --color-surface: #ffffff;          /* card / popover / panel bg */
+    --color-surface-hover: #f3f6f9;    /* item hover / soft fill on a surface */
+    --color-surface-muted: #f8f9fb;    /* zebra rows, muted panels */
+    --color-border: #eff2f7;           /* generic divider (gray-200) */
+    --color-border-strong: #e9ebec;    /* input/select borders (gray-300) */
+    --color-border-soft: #f3f6f9;      /* hairline list dividers (gray-100) */
+    --color-heading: #343a40;          /* page/card/section headings (gray-800) */
+    --color-body-text: #495057;        /* base text (gray-700) */
+    --color-body-muted: #878a99;       /* secondary text (gray-600) */
+    --color-body-faint: #adb5bd;       /* meta/hint text, timestamps (gray-500) */
+    --color-placeholder: #ced4da;      /* input placeholder + disabled glyphs (gray-400) */
+    --color-ink-ghost: #e9ebec;        /* decorative/empty-state glyphs — WCAG-exempt */
+    --color-accent: var(--color-admin-primary); /* chrome accent as text/ring */
+
+    /* ---- Chrome zones — sidebar (default = Velzon dark navy preset) ---- */
+    --color-sidebar: #405189;
+    --color-sidebar-fg: #abb9e8;               /* resting item — muted periwinkle */
+    --color-sidebar-fg-hover: #ffffff;
+    --color-sidebar-fg-active: #ffffff;
+    --color-sidebar-hover: rgb(255 255 255 / 0.10);
+    --color-sidebar-active: rgb(255 255 255 / 0.15);
+    --color-sidebar-title: rgb(255 255 255 / 0.60);
+    --color-sidebar-brand: #ffffff;
+
+    /* ---- Chrome zones — topbar (default = light) ---- */
+    --color-topbar: #ffffff;
+    --color-topbar-border: #e9ebec;
+    --color-topbar-fg: #878a99;                /* icon buttons */
+    --color-topbar-fg-strong: #495057;         /* user name */
+    --color-topbar-fg-hover: #212529;
+    --color-topbar-hover: #f3f6f9;
+    --color-topbar-search: #f3f3f9;
+    --color-footer: #adb5bd;
+
+    /* ---- Storefront (An Vinh tenant — slate + amber, secondary surface) ---- */
+    --color-sf-ink: #0f172a;           /* header/footer/hero bg, slate-900 */
+    --color-sf-ink-2: #1e293b;         /* secondary dark surface, slate-800 */
+    --color-sf-accent: #d6a43a;        /* brass gold — CTA, section flourishes (An Vinh v2) */
+    --color-sf-accent-hover: #bd8b28;  /* gold hover */
+    --color-sf-page: #f8fafc;          /* slate-50 page bg */
+    --color-sf-body: #334155;          /* slate-700 body copy */
+    --color-sf-muted: #64748b;         /* slate-500 secondary text */
+    --color-sf-on-dark: #cbd5e1;       /* slate-300 nav links on dark */
+    --color-sf-footer: #94a3b8;        /* slate-400 footer text */
+}
+
+/* Dark scheme — Velzon [data-bs-theme=dark]; content-plane roles retuned for AA. */
+:root[data-bs-theme='dark'] {
+    color-scheme: dark;
+    --color-body: #1a1d21;
+    --color-surface: #292e33;
+    --color-surface-hover: #2f343a;
+    --color-surface-muted: #24282d;
+    --color-border: #32383e;
+    --color-border-strong: #3a4149;
+    --color-border-soft: #2c3237;
+    --color-heading: #e9ecef;
+    --color-body-text: #ced4da;
+    --color-body-muted: #98a0ae;
+    --color-body-faint: #98a0ae;
+    --color-placeholder: #98a0ae;
+    --color-ink-ghost: #4a5058;
+    --color-accent: #96a1c0;
+    --color-sidebar: #212529;
+    --color-sidebar-fg: #8f94a5;
+    --color-sidebar-title: #7d8294;
+    --color-topbar: #292e32;
+    --color-topbar-border: #292e32;
+    --color-topbar-fg: #878a99;
+    --color-topbar-fg-strong: #e9ecef;
+    --color-topbar-fg-hover: #ffffff;
+    --color-topbar-hover: #31363c;
+    --color-topbar-search: #202328;
+    --color-footer: #878a99;
+}
+
+/* Light sidebar variant (Customizer data-sidebar=light). */
+:root[data-sidebar='light'] {
+    --color-sidebar: #ffffff;
+    --color-sidebar-fg: #6c6f80;
+    --color-sidebar-fg-hover: var(--color-admin-primary);
+    --color-sidebar-fg-active: var(--color-admin-primary);
+    --color-sidebar-hover: rgb(64 81 137 / 0.10);
+    --color-sidebar-active: rgb(64 81 137 / 0.15);
+    --color-sidebar-title: #8a92a0;
+    --color-sidebar-brand: #343a40;
+}

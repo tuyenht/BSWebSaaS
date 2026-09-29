@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="ai-quota.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+html,body{margin:0;background:var(--color-body);}*{box-sizing:border-box;}
+.fc-scroll::-webkit-scrollbar{width:8px;height:8px}.fc-scroll::-webkit-scrollbar-thumb{background:#ced4da;border-radius:8px}
+.fc-wrap{container-type:inline-size;}
+.dsw{width:38px;height:22px;border-radius:20px;position:relative;flex-shrink:0;display:inline-block;background:#ced4da;transition:background .18s;cursor:pointer;}
+.dsw.on{background:#0ab39c;}
+.dsw>span{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .18s;}
+.dsw.on>span{left:19px;}
+
+.fc-sbox:focus-within{border-color:var(--brand,#405189)!important;box-shadow:0 0 0 3px color-mix(in srgb, var(--brand,#405189) 14%, transparent);}
+@container (max-width:860px){.fc-status{display:none!important}}
+@container (max-width:700px){.fc-pills{display:none!important}.fc-ovf{display:none!important}}
+@container (min-width:701px){.fc-cursel{display:none!important}}
+@container (max-width:600px){.fc-quota{display:none!important}}
+@container (max-width:520px){.fc-div{display:none!important}.fc-prog{display:none!important}
+  .fc-cursel,.fc-ovf,.fc-trbtn{min-height:44px!important;height:44px!important}
+  .fc-trbtn{min-width:44px!important;justify-content:center}
+  .fc-panelbtn{min-height:44px!important;padding:12px 12px!important}
+  .fc-panel{left:0!important;right:auto!important;min-width:0!important;max-width:min(296px, calc(100cqw - 92px), calc(100vw - 32px))!important;}
+}
+.fc-selcode{display:none}
+.fc-btnshort{display:none}
+@container (max-width:960px){.fc-btnlong{display:none}.fc-btnshort{display:inline}}
+@container (max-width:400px){.fc-selname{display:none}.fc-selcode{display:inline}.fc-btnshort{display:none}}
+@container (max-width:900px){.fc-grid{grid-template-columns:1fr!important;}}
+@keyframes fc-pg{0%{box-shadow:0 0 0 0 rgba(76,175,80,.7)}70%{box-shadow:0 0 0 13px rgba(76,175,80,0)}100%{box-shadow:0 0 0 0 rgba(76,175,80,0)}}
+@keyframes fc-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.fc-bp{transition:transform .25s,filter .25s;cursor:pointer;position:relative;}.fc-bp:hover{transform:scale(1.08);filter:brightness(1.08);}
+.fc-bp::before{content:attr(data-tip);position:absolute;background:#fff;color:#333;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s;box-shadow:0 4px 14px rgba(0,0,0,.16);pointer-events:none;z-index:9;}
+.fc-bp:hover::before{opacity:1;visibility:visible;}
+.fc-tl::before{right:100%;top:50%;transform:translateY(-50%);margin-right:12px;}
+.fc-tr::before{left:100%;top:50%;transform:translateY(-50%);margin-left:12px;}
+.fc-tt::before{bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:10px;}
+</style>
+</helmet>
+
+<div class="fc-wrap" style="font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text);font-size:14px;">
+  <sc-if value="{{ showLang }}">
+    <div style="padding:18px 26px 0;">
+      <div style="border:1px solid var(--color-border-strong, #e9ebec);border-radius:8px;background:var(--color-surface-muted, #f8f9fb);">
+        <div ref="{{ langBarRef }}" style="display:flex;align-items:center;gap:10px;padding:7px 10px;">
+          <i class="ri-translate-2" title="Ngôn ngữ đang sửa nội dung" style="font-size:16px;color:var(--color-body-muted, #878a99);flex-shrink:0;"></i>
+          <sc-if value="{{ langInline }}">
+            <div class="fc-pills" ref="{{ langPillsRef }}" style="display:flex;align-items:center;gap:6px;flex:0 1 auto;min-width:0;overflow:hidden;padding:1px;">
+              <sc-for list="{{ langPills }}" as="lg" hint-placeholder-count="3">
+                <button onClick="{{ lg.onPick }}" title="{{ lg.title }}" style="{{ lg.style }}"><span style="{{ lg.dot }}"></span>{{ lg.name }}<sc-if value="{{ lg.isSrc }}"><i class="ri-star-fill" title="Ngôn ngữ nguồn" style="font-size:11px;color:#f7b84b;flex-shrink:0;"></i></sc-if></button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <div data-langzone="1" style="position:relative;display:flex;flex:0 0 auto;">
+            <button class="fc-cursel" onClick="{{ onToggleLangPanel }}" title="{{ langCurTitle }}" style="{{ langCurStyle }}"><span style="{{ langCurDot }}"></span><span class="fc-selname">{{ langCurName }}</span><span class="fc-selcode">{{ langCode }}</span><sc-if value="{{ langCurIsSrc }}"><i class="ri-star-fill" title="Ngôn ngữ nguồn" style="font-size:11px;color:#f7b84b;flex-shrink:0;"></i></sc-if><i class="ri-arrow-down-s-line" style="font-size:15px;color:var(--color-body-muted, #878a99);"></i></button>
+            <sc-if value="{{ langHasOverflow }}">
+              <button class="fc-ovf" onClick="{{ onToggleLangPanel }}" title="Xem tất cả ngôn ngữ" style="{{ langOverflowStyle }}">{{ langOverflowText }}<i class="ri-arrow-down-s-line" style="font-size:15px;color:var(--color-body-muted, #878a99);"></i></button>
+            </sc-if>
+            <sc-if value="{{ langPanelOpen }}">
+              <div class="fc-panel" style="position:absolute;top:calc(100% + 6px);left:0;z-index:90;width:max-content;min-width:240px;max-width:min(296px, calc(100vw - 32px));max-height:340px;overflow-y:auto;background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:8px;box-shadow:0 12px 30px rgba(30,32,55,.16);padding:5px;">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:8px 9px 6px;">
+                  <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted, #878a99);">Ngôn ngữ nội dung</span>
+                  <span style="font-size:11px;color:var(--color-body-muted, #878a99);white-space:nowrap;">{{ langProg }} đủ nhãn</span>
+                </div>
+                <sc-if value="{{ langShowSearch }}">
+                  <div class="fc-sbox" style="display:flex;align-items:center;gap:8px;margin:0 5px 6px;padding:0 10px;height:34px;border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;background:var(--color-surface, #fff);">
+                    <i class="ri-search-line" style="font-size:14px;color:var(--color-body-faint, #adb5bd);flex-shrink:0;"></i>
+                    <input value="{{ langQ }}" onInput="{{ onLangQ }}" placeholder="Tìm ngôn ngữ…" style="flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:13px;color:var(--color-heading, #343a40);">
+                  </div>
+                </sc-if>
+                <sc-for list="{{ langPanelItems }}" as="pi" hint-placeholder-count="3">
+                  <button onClick="{{ pi.onPick }}" style="{{ pi.rowStyle }}"><span style="{{ pi.dot }}"></span><span style="display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;text-align:left;"><span style="{{ pi.nameStyle }}">{{ pi.name }}</span><span style="font-size:11px;color:var(--color-body-muted, #878a99);">{{ pi.status }}</span></span><span style="font-size:11px;color:var(--color-body-faint, #adb5bd);white-space:nowrap;">{{ pi.count }}</span></button>
+                </sc-for>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:5px;padding:8px 6px 4px;border-top:1px solid var(--color-border, #eff2f7);">
+                  <sc-if value="{{ langHasMissing }}">
+                    <button class="fc-panelbtn" onClick="{{ onFillMissing }}" style="display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:8px 12px;border:0;border-radius:5px;background:var(--brand, #405189);font:inherit;font-size:12px;font-weight:500;color:#fff;cursor:pointer;"><i class="ri-translate-2" style="font-size:14px;"></i>{{ langFillText }}</button>
+                  </sc-if>
+                  <button class="fc-panelbtn" onClick="{{ onManageLangs }}" style="margin-left:auto;display:inline-flex;align-items:center;min-height:36px;padding:8px 10px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:12px;font-weight:500;color:var(--brand-fg, #405189);cursor:pointer;">Quản lý ngôn ngữ</button>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+          <span class="fc-status" style="{{ langStatusStyle }}"><span style="{{ langCurDot }}"></span>{{ langStatusText }}</span>
+          <span style="flex:1 1 auto;min-width:8px;"></span>
+          <span class="fc-div" style="width:1px;height:20px;background:var(--color-border-strong, #e9ebec);flex-shrink:0;"></span>
+          <span class="fc-prog" title="{{ langProgTitle }}" style="font-size:11.5px;color:var(--color-body-muted, #878a99);white-space:nowrap;flex-shrink:0;">{{ langProg }}</span>
+          <span class="fc-quota" title="{{ aiQuotaTitle }}" style="{{ aiQuotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ aiQuotaText }}</span>
+          <button class="fc-trbtn" onClick="{{ onTranslateLang }}" title="{{ translateTitle }}" style="{{ translateStyle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i><span class="fc-btnlong">{{ translateLabel }}</span><span class="fc-btnshort">Dịch</span></button>
+        </div>
+        <sc-if value="{{ langNote }}">
+          <div style="{{ langNoteStyle }}"><i class="{{ langNoteIcon }}" style="font-size:14px;flex-shrink:0;"></i><span style="min-width:0;">{{ langNote }}</span></div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <div class="fc-grid" style="padding:14px 26px 24px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:22px;align-items:start;">
+
+    <div style="display:flex;flex-direction:column;gap:18px;min-width:0;">
+      <div style="{{ card }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;border-bottom:1px solid var(--color-border, #eff2f7);">
+          <div style="display:flex;align-items:center;gap:11px;"><span style="width:36px;height:36px;border-radius:8px;background:color-mix(in srgb, var(--brand) 9%, transparent);display:inline-flex;align-items:center;justify-content:center;"><i class="ri-customer-service-2-line" style="font-size:19px;color:var(--brand-fg);"></i></span><div><div style="font-size:14.5px;font-weight:600;color:var(--color-heading, #343a40);">Kích hoạt nút liên hệ nổi</div><div style="font-size:12px;color:var(--color-body-faint, #adb5bd);">Tự chèn vào mọi trang — cấu hình một lần.</div></div></div>
+          <sc-if value="{{ enabled }}"><span class="dsw on" onClick="{{ onEnabled }}"><span></span></span></sc-if><sc-if value="{{ enabledOff }}"><span class="dsw" onClick="{{ onEnabled }}"><span></span></span></sc-if>
+        </div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:18px;">
+          <div><label style="{{ lbl }}">Kiểu hiển thị</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;">
+            <button onClick="{{ onThemeV }}" style="{{ themeVStyle }}"><span style="display:flex;align-items:center;gap:8px;"><i class="ri-apps-2-line" style="font-size:18px;"></i><span style="font-size:13.5px;font-weight:600;">Nút tròn nổi</span></span><span style="font-size:11.5px;color:var(--color-body-muted, #878a99);text-align:left;line-height:1.4;">Cụm nút tròn · hiện mọi thiết bị</span></button>
+            <button onClick="{{ onThemeH }}" style="{{ themeHStyle }}"><span style="display:flex;align-items:center;gap:8px;"><i class="ri-layout-bottom-2-line" style="font-size:18px;"></i><span style="font-size:13.5px;font-weight:600;">Thanh dưới (mobile)</span></span><span style="font-size:11.5px;color:var(--color-body-muted, #878a99);text-align:left;line-height:1.4;">Thanh cuối màn hình · hợp bán hàng</span></button>
+          </div></div>
+          <sc-if value="{{ isVertical }}"><div style="display:flex;flex-direction:column;gap:16px;"><div><label style="{{ lbl }}">Vị trí hiển thị</label><div style="display:inline-flex;background:var(--color-border-soft, #f0f1f4);border-radius:7px;padding:3px;"><button onClick="{{ onPosRight }}" style="{{ posRightStyle }}"><i class="ri-align-right" style="font-size:14px;margin-right:5px;"></i>Bên phải</button><button onClick="{{ onPosLeft }}" style="{{ posLeftStyle }}"><i class="ri-align-left" style="font-size:14px;margin-right:5px;"></i>Bên trái</button><button onClick="{{ onPosBottom }}" style="{{ posBottomStyle }}"><i class="ri-align-bottom" style="font-size:14px;margin-right:5px;"></i>Giữa dưới</button></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;"><div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;"><label style="font-size:12px;font-weight:600;color:var(--color-body-text, #495057);">Cách lề ngang</label><span style="font-size:11.5px;color:var(--color-body-muted, #878a99);">{{ offsetX }}px</span></div><input type="range" min="0" max="60" step="2" value="{{ offsetX }}" onInput="{{ onOffsetX }}" style="width:100%;accent-color:var(--brand-fg);cursor:pointer;"></div><div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;"><label style="font-size:12px;font-weight:600;color:var(--color-body-text, #495057);">Cách lề dưới</label><span style="font-size:11.5px;color:var(--color-body-muted, #878a99);">{{ offsetY }}px</span></div><input type="range" min="0" max="120" step="2" value="{{ offsetY }}" onInput="{{ onOffsetY }}" style="width:100%;accent-color:var(--brand-fg);cursor:pointer;"></div></div><div style="font-size:11px;color:var(--color-body-faint, #adb5bd);line-height:1.4;">Không chỉnh sẽ dùng mặc định: 20px lề ngang · 24px lề dưới.</div></div></sc-if>
+        </div>
+      </div>
+
+      <div style="{{ card }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;border-bottom:1px solid var(--color-border, #eff2f7);"><div style="font-size:14.5px;font-weight:600;color:var(--color-heading, #343a40);">Kênh liên hệ</div><span style="font-size:12px;color:var(--color-body-muted, #878a99);">Đang bật: <b style="color:#0ab39c;">{{ activeCount }}</b> · ↑↓ đổi thứ tự</span></div>
+        <sc-if value="{{ phoneWarn }}"><div style="margin:14px 18px 0;"><x-import component-from-global-scope="BSSaaSAdminKitDesignSystem_60ba9c.Alert" color="warning" icon="ri-error-warning" hint-size="100%,auto">Cần một <b>Số điện thoại (Gọi điện)</b> hợp lệ. Định dạng <code style="font-family:ui-monospace,monospace;">0912345678</code> hoặc <code style="font-family:ui-monospace,monospace;">+84912345678</code>.</x-import></div></sc-if>
+        <div style="padding:12px 18px 18px;display:flex;flex-direction:column;gap:9px;">
+          <sc-for list="{{ channels }}" as="c" hint-placeholder-count="5">
+            <sc-if value="{{ c.dropBefore }}"><div style="height:56px;border:2px dashed var(--brand);border-radius:8px;background:color-mix(in srgb, var(--brand) 7%, transparent);margin:2px 0;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--brand-fg);font-size:12px;font-weight:600;transition:all .12s;"><i class="ri-arrow-down-line" style="font-size:15px;"></i>Thả vào đây</div></sc-if>
+            <div draggable="true" onDragStart="{{ c.onDragStart }}" onDragOver="{{ c.onDragOver }}" onDrop="{{ c.onDrop }}" onDragEnd="{{ c.onDragEnd }}" style="{{ c.rowStyle }}">
+              <span title="Kéo để đổi thứ tự" style="display:flex;align-items:center;color:var(--color-border-strong, #c2c8d2);cursor:grab;flex-shrink:0;"><i class="ri-draggable" style="font-size:16px;"></i></span>
+              <div style="display:flex;flex-direction:column;gap:1px;flex-shrink:0;"><button onClick="{{ c.onUp }}" style="{{ c.upStyle }}"><i class="ri-arrow-up-s-line" style="font-size:15px;"></i></button><button onClick="{{ c.onDown }}" style="{{ c.downStyle }}"><i class="ri-arrow-down-s-line" style="font-size:15px;"></i></button></div>
+              <label title="Bấm để đổi màu" style="{{ c.iconWrap }}cursor:pointer;position:relative;"><i class="{{ c.icon }}" style="font-size:17px;"></i><input type="color" value="{{ c.iconColorVal }}" onInput="{{ c.onIconColor }}" style="position:absolute;inset:0;opacity:0;cursor:pointer;border:0;padding:0;"></label>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><sc-if value="{{ c.custom }}"><input value="{{ c.rawLabel }}" onInput="{{ c.onLabel }}" placeholder="Đặt tên kênh, vd: Telegram" style="flex:1;min-width:0;max-width:280px;padding:5px 9px;border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;background:var(--color-surface, #fff);font:inherit;font-size:13.5px;font-weight:600;color:var(--color-heading, #343a40);outline:none;"></sc-if><span style="font-size:13.5px;font-weight:600;color:var(--color-heading, #343a40);"><sc-if value="{{ c.notCustom }}">{{ c.label }}</sc-if><sc-if value="{{ c.dimmed }}"><span style="font-size:11px;font-weight:500;color:var(--color-body-faint, #adb5bd);margin-left:6px;">· ẩn ở kiểu thanh dưới</span></sc-if></span><div style="display:flex;align-items:center;gap:8px;flex-shrink:0;"><sc-if value="{{ c.on }}"><span class="dsw on" onClick="{{ c.onToggle }}"><span></span></span></sc-if><sc-if value="{{ c.off }}"><span class="dsw" onClick="{{ c.onToggle }}"><span></span></span></sc-if><sc-if value="{{ c.canDelete }}"><button onClick="{{ c.onDelete }}" title="Xoá kênh" style="width:26px;height:26px;border:1px solid var(--color-border, #eff2f7);border-radius:6px;background:var(--color-surface, #fff);color:#f06548;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button></sc-if></div></div>
+                <sc-if value="{{ c.on }}">
+                  <sc-if value="{{ c.custom }}">
+                    <div style="display:grid;grid-template-columns:repeat(9,1fr);gap:5px;"><sc-for list="{{ c.brandIcons }}" as="bi" hint-placeholder-count="9"><button onClick="{{ bi.on }}" style="{{ bi.style }}"><i class="{{ bi.icon }}" style="font-size:16px;"></i></button></sc-for></div>
+                    <input value="{{ c.icon }}" onInput="{{ c.onIcon }}" placeholder="Hoặc dán mã icon: ri-telegram-line" style="{{ c.inputStyle }}font-family:ui-monospace,monospace;font-size:12px;">
+                  </sc-if>
+                  <div style="display:flex;gap:8px;align-items:flex-start;">
+                    <div style="flex:1.35;min-width:0;"><input value="{{ c.value }}" onInput="{{ c.onInput }}" placeholder="{{ c.placeholder }}" style="{{ c.inputStyle }}"><div style="{{ c.hintStyle }}margin-top:4px;">{{ c.hintText }}</div></div>
+                    <span style="flex:1;min-width:0;display:flex;align-items:center;gap:6px;"><i class="ri-price-tag-3-line" style="font-size:13px;color:var(--color-body-faint, #adb5bd);flex-shrink:0;" title="Nhãn tooltip khi di chuột"></i><input value="{{ c.tipLabel }}" onInput="{{ c.onTip }}" placeholder="{{ c.tipPh }}" style="{{ c.inputStyle }}"><sc-if value="{{ showLang }}"><span title="Nhãn này theo từng ngôn ngữ" style="{{ langChip }}">{{ langCode }}</span></sc-if></span>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ presetMenuOpen }}"><div style="border:1px solid var(--color-border, #eff2f7);border-radius:8px;padding:9px;background:var(--color-surface-muted, #fbfcfe);display:grid;grid-template-columns:1fr 1fr;gap:7px;"><sc-for list="{{ presetOptions }}" as="po" hint-placeholder-count="4"><button onClick="{{ po.on }}" style="{{ po.style }}"><span style="{{ po.iconStyle }}"><i class="{{ po.icon }}"></i></span>{{ po.label }}</button></sc-for><sc-if value="{{ presetEmpty }}"><div style="grid-column:1 / -1;text-align:center;font-size:12px;color:var(--color-body-faint, #adb5bd);padding:8px;">Đã thêm hết các kênh có sẵn.</div></sc-if></div></sc-if>
+          <div style="margin-top:8px;padding-top:14px;border-top:1px dashed var(--color-border-strong, #e9ebec);">
+            <div style="font-size:12.5px;font-weight:600;color:var(--color-body-text, #495057);margin-bottom:9px;display:flex;align-items:center;gap:6px;"><i class="ri-add-circle-line" style="font-size:16px;color:var(--brand-fg);"></i>Thêm kênh liên hệ mới</div>
+            <div style="display:flex;gap:8px;">
+              <button onClick="{{ onTogglePreset }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;border:1.5px dashed var(--color-border-strong, #cbd3e0);border-radius:8px;background:var(--color-surface-muted, #fbfcfe);color:var(--brand-fg);font:inherit;cursor:pointer;" style-hover="background:color-mix(in srgb, var(--brand) 11%, transparent);"><span style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;"><i class="ri-apps-2-line" style="font-size:15px;"></i>Chọn kênh có sẵn</span><span style="font-size:10.5px;font-weight:400;color:var(--color-body-faint, #adb5bd);">Zalo, WhatsApp, TikTok…</span></button>
+              <button onClick="{{ onAddCustom }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 8px;border:1.5px dashed var(--color-border-strong, #cbd3e0);border-radius:8px;background:var(--color-surface-muted, #fbfcfe);color:var(--brand-fg);font:inherit;cursor:pointer;" style-hover="background:color-mix(in srgb, var(--brand) 11%, transparent);"><span style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;"><i class="ri-add-line" style="font-size:15px;"></i>Tạo kênh riêng</span><span style="font-size:10.5px;font-weight:400;color:var(--color-body-faint, #adb5bd);">Tự đặt icon + liên kết</span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{ isHorizontal }}"><div style="{{ card }}"><div style="padding:15px 18px;border-bottom:1px solid var(--color-border, #eff2f7);font-size:14.5px;font-weight:600;color:var(--color-heading, #343a40);">Tùy chọn thanh dưới</div><div style="padding:18px;display:flex;flex-direction:column;gap:16px;"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><div style="min-width:0;"><div style="font-size:13.5px;font-weight:600;color:var(--color-heading, #343a40);">Nút “Mua hàng”</div><div style="font-size:12px;color:var(--color-body-faint, #adb5bd);line-height:1.5;">Thêm nút mua hàng vào cuối thanh — hợp trang bán hàng.</div></div><sc-if value="{{ buyOn }}"><span class="dsw on" onClick="{{ onToggleBuy }}"><span></span></span></sc-if><sc-if value="{{ buyOff }}"><span class="dsw" onClick="{{ onToggleBuy }}"><span></span></span></sc-if></div><sc-if value="{{ buyOn }}"><div style="padding-top:14px;border-top:1px solid var(--color-border-soft, #f0f1f3);"><label style="display:block;font-size:12.5px;font-weight:600;color:var(--color-body-text, #495057);margin-bottom:8px;">Màu nút Mua hàng <span style="font-weight:400;color:var(--color-body-faint, #adb5bd);">· gợi ý theo thương hiệu</span></label><div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;"><sc-for list="{{ buyField.swatches }}" as="sw" hint-placeholder-count="6"><button onClick="{{ sw.on }}" style="{{ sw.style }}"></button></sc-for><label title="Màu tuỳ chọn" style="{{ buyField.chipStyle }}"><i class="ri-add-line" style="color:#fff;font-size:14px;text-shadow:0 0 3px rgba(0,0,0,.6);pointer-events:none;"></i><input type="color" value="{{ buyField.customVal }}" onInput="{{ buyField.onCustom }}" style="position:absolute;inset:0;opacity:0;cursor:pointer;border:0;"></label></div><div style="font-size:11px;color:var(--color-body-faint, #adb5bd);margin-top:7px;line-height:1.45;">Chữ trên nút tự đổi trắng/đậm cho tương phản tốt.</div></div></sc-if><div style="font-size:11.5px;color:var(--color-body-faint, #adb5bd);line-height:1.45;display:flex;align-items:flex-start;gap:7px;"><i class="ri-information-line" style="font-size:14px;color:#3577f1;flex-shrink:0;margin-top:1px;"></i>Thanh dưới hiển thị tối đa 3 nút (gồm cả nút Mua hàng) — lấy theo các kênh đang bật ở trên, mỗi kênh giữ màu thương hiệu riêng.</div></div></div></sc-if>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:18px;min-width:0;position:sticky;top:22px;">
+      <div style="{{ card }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--color-border, #eff2f7);"><span style="font-size:13.5px;font-weight:600;color:var(--color-heading, #343a40);">Xem trước</span><div style="display:inline-flex;background:var(--color-border-soft, #f0f1f4);border-radius:7px;padding:3px;"><button onClick="{{ onDeskDev }}" style="{{ deskStyle }}"><i class="ri-computer-line" style="font-size:15px;"></i></button><button onClick="{{ onMobDev }}" style="{{ mobStyle }}"><i class="ri-smartphone-line" style="font-size:15px;"></i></button></div></div>
+        <div data-scheme="light" style="padding:20px;background:var(--color-surface-muted, #eceef3);display:flex;justify-content:center;">
+          <div style="{{ frameStyle }}">
+            <div style="height:28px;background:var(--color-surface, #fff);border-bottom:1px solid #eef2f7;display:flex;align-items:center;gap:5px;padding:0 12px;flex-shrink:0;"><span style="width:8px;height:8px;border-radius:50%;background:#f06548;"></span><span style="width:8px;height:8px;border-radius:50%;background:#f7b84b;"></span><span style="width:8px;height:8px;border-radius:50%;background:#0ab39c;"></span></div>
+            <div style="flex:1;position:relative;overflow:hidden;background:linear-gradient(180deg,var(--color-surface-muted, #fbfcfe),var(--color-surface-muted, #eef1f6));">
+              <div style="padding:16px;display:flex;flex-direction:column;gap:9px;"><div style="height:11px;width:55%;border-radius:4px;background:var(--color-border, #dde3ec);"></div><div style="height:8px;width:88%;border-radius:4px;background:var(--color-border, #e6eaf1);"></div><div style="height:8px;width:78%;border-radius:4px;background:var(--color-border, #e6eaf1);"></div><div style="height:64px;border-radius:8px;background:var(--color-border, #e6eaf1);margin-top:4px;"></div><div style="height:8px;width:70%;border-radius:4px;background:var(--color-border, #e6eaf1);margin-top:4px;"></div></div>
+              <sc-if value="{{ showVertical }}"><div style="{{ vertWrap }}"><sc-for list="{{ previewButtons }}" as="b" hint-placeholder-count="4"><span class="{{ b.cls }}" data-tip="{{ b.tip }}" style="{{ b.style }}"><sc-if value="{{ b.useText }}"><span style="{{ b.textStyle }}">{{ b.text }}</span></sc-if><sc-if value="{{ b.useIcon }}"><i class="{{ b.icon }}" style="{{ b.iconStyle }}"></i></sc-if></span></sc-for></div></sc-if>
+              <sc-if value="{{ showBar }}"><div style="position:absolute;left:0;right:0;bottom:0;height:60px;display:flex;background:var(--color-surface, #fff);border-top:1px solid var(--color-surface-muted, #eef0f3);box-shadow:0 -3px 16px rgba(32,21,18,.13);"><sc-for list="{{ barButtons }}" as="h" hint-placeholder-count="3"><span style="{{ h.wrapStyle }}"><span style="{{ h.circleStyle }}"><sc-if value="{{ h.isZalo }}"><span style="{{ h.zTextStyle }}">Zalo</span></sc-if><sc-if value="{{ h.showIcon }}"><i class="{{ h.icon }}" style="{{ h.iconStyle }}"></i></sc-if></span><span style="{{ h.labelStyle }}">{{ h.label }}</span></span></sc-for></div></sc-if>
+              <sc-if value="{{ showNote }}"><div style="position:absolute;left:14px;right:14px;bottom:14px;display:flex;align-items:flex-start;gap:8px;padding:10px 12px;background:rgba(53,119,241,.1);border:1px solid rgba(53,119,241,.25);border-radius:7px;"><i class="ri-information-line" style="font-size:15px;color:#3577f1;flex-shrink:0;margin-top:1px;"></i><span style="font-size:11.5px;color:#2b5cc4;line-height:1.45;">Kiểu thanh dưới chỉ hiện trên điện thoại — chuyển sang xem Mobile.</span></div></sc-if>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="{{ card }}"><div style="padding:15px 16px;display:flex;align-items:flex-start;gap:10px;"><span style="width:34px;height:34px;border-radius:8px;background:rgba(10,179,156,.1);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-checkbox-circle-line" style="font-size:18px;color:#0ab39c;"></i></span><div><div style="font-size:13.5px;font-weight:600;color:var(--color-heading, #343a40);margin-bottom:3px;">Tự động áp dụng toàn website</div><div style="font-size:12px;color:var(--color-body-muted, #878a99);line-height:1.55;">Khi bấm <b>Lưu thay đổi</b>, nút liên hệ tự hiển thị trên mọi trang. Không cần dán mã thủ công.</div></div></div></div>
+    </div>
+  </div>
+
+  <sc-if value="{{ toast }}"><div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:600;background:var(--color-heading, #212529);color:#fff;padding:10px 16px;border-radius:6px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;align-items:center;gap:8px;animation:fc-fade .15s ease;"><i class="ri-checkbox-circle-line" style="font-size:16px;color:#0ab39c;"></i>{{ toast }}</div></sc-if>
+<sc-if value="{{ showOwnBar }}"><div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:16px 26px;border-top:1px solid var(--color-border-light, var(--color-border-strong, #e9ebec));">
+      <x-import component-from-global-scope="BSSaaSAdminKitDesignSystem_60ba9c.Badge" color="{{ savedBadgeColor }}" soft="{{ true }}" pill="{{ true }}" hint-size="auto,24px">{{ savedText }}</x-import>
+      <x-import component-from-global-scope="BSSaaSAdminKitDesignSystem_60ba9c.Button" color="primary" onClick="{{ onSave }}" hint-size="auto,38px"><i class="ri-save-3-line" style="font-size:16px;"></i>Lưu thay đổi</x-import>
+    </div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:880}}">
+class Component extends DCLogic {
+  // Lưu/hoàn nguyên do shell điều khiển qua sự kiện 'bs-embed-cmd' (xem componentDidMount).
+  // Không dùng prevProps/prevState: runtime chỉ truyền 1 tham số nên mọi so sánh đều không đáng tin.
+  componentDidUpdate() { this.emitDirty(); if(this._sync)this._sync(); }
+  emitDirty() { const d = !!this.state.dirty; if (this._lastDirty === d) return; this._lastDirty = d; if (typeof this.props.onDirty === 'function') this.props.onDirty(d); try { document.dispatchEvent(new CustomEvent('bs-embed-dirty', { detail: { id: 'floating', dirty: d } })); } catch (e) {} }
+  componentDidMount(){ this._cmd=(e)=>{ const d=e.detail||{}; if(d.id!=='floating') return; if(d.act==='save') this.save(); else if(d.act==='reset') this.reset(); }; document.addEventListener('bs-embed-cmd',this._cmd);
+    this.seedVi();
+    this._doc=(e)=>{if(!this.state.langPanel)return;const el=e.target;if(el&&el.closest&&el.closest('[data-langzone]'))return;this.setState({langPanel:false});};document.addEventListener('mousedown',this._doc);
+    this._esc=(e)=>{if(e.key==='Escape'&&this.state.langPanel)this.setState({langPanel:false});};document.addEventListener('keydown',this._esc); }
+  constructor(props){
+    super(props);
+    this.META={
+      zalo:{label:'Zalo',icon:'ri-chat-smile-2-line',color:'#0084FF',type:'phone',ph:'0912345678',hint:'Số đã đăng ký Zalo'},
+      phone:{label:'Gọi điện',icon:'ri-phone-line',color:'#4CAF50',type:'phone',ph:'0912345678',hint:'Số hiển thị khi bấm gọi',pulse:true},
+      messenger:{label:'Messenger',icon:'ri-messenger-line',color:'#0078FF',type:'messenger',ph:'100063789074118',hint:'ID trang/username (m.me/…)'},
+      email:{label:'Email',icon:'ri-mail-line',color:'#FF4B4B',type:'email',ph:'lienhe@congty.com',hint:'Địa chỉ nhận email'},
+      sms:{label:'SMS',icon:'ri-message-2-line',color:'#E91E63',type:'phone',ph:'0912345678',hint:'Số nhận tin SMS'},
+      whatsapp:{label:'WhatsApp',icon:'ri-whatsapp-line',color:'#25D366',type:'phone',ph:'0912345678',hint:'Số WhatsApp (wa.me/…)'},
+      telegram:{label:'Telegram',icon:'ri-telegram-line',color:'#229ED9',type:'user',ph:'@username',hint:'Username Telegram (t.me/…)'},
+      viber:{label:'Viber',icon:'ri-chat-1-line',color:'#7360F2',type:'phone',ph:'0912345678',hint:'Số Viber'},
+      tiktok:{label:'TikTok',icon:'ri-tiktok-line',color:'#111111',type:'url',ph:'https://tiktok.com/@…',hint:'Link kênh TikTok'},
+      youtube:{label:'YouTube',icon:'ri-youtube-line',color:'#FF0000',type:'url',ph:'https://youtube.com/@…',hint:'Link kênh YouTube'},
+      instagram:{label:'Instagram',icon:'ri-instagram-line',color:'#E1306C',type:'url',ph:'https://instagram.com/…',hint:'Link Instagram'},
+      maps:{label:'Bản đồ',icon:'ri-map-pin-line',color:'#EA4335',type:'url',ph:'https://maps.google.com/…',hint:'Link Google Maps / chỉ đường'}
+    };
+    this.TXT={vi:{call:'Gọi điện',sms:'Nhắn tin',zalo:'Zalo',buy:'Mua hàng',messenger:'Messenger',email:'Gửi Email'},en:{call:'Phone',sms:'SMS',zalo:'Zalo',buy:'Buy Now',messenger:'Messenger',email:'Email'},ja:{call:'電話する',sms:'SMS',zalo:'Zalo',buy:'購入する',messenger:'Messenger',email:'メール'}};
+    this.siteLocales=['vi','en','ja'];this.pubLocales=['vi','en'];this._cid=0;
+    this.AIQ={used:8400,limit:(window.BSAI?window.BSAI.plan().words:60000)};
+    if(!window.BSAI)document.addEventListener('bs-ai-quota-ready',()=>{try{this.forceUpdate();}catch(e){}},{once:true});
+    this.DICT={
+      en:{'gọi điện':'Call us','nhắn tin':'Send a message','gửi email':'Email us','email':'Email','mua hàng':'Buy now','bản đồ':'Get directions','chỉ đường':'Get directions','liên hệ':'Contact us','tư vấn':'Get advice','hỗ trợ':'Support','chat zalo':'Chat on Zalo','nhắn zalo':'Chat on Zalo','gọi ngay':'Call now','đặt hàng':'Order now','báo giá':'Request a quote','hotline':'Hotline'},
+      ja:{'gọi điện':'電話する','nhắn tin':'メッセージを送る','gửi email':'メールを送る','email':'メール','mua hàng':'購入する','bản đồ':'地図・アクセス','chỉ đường':'地図・アクセス','liên hệ':'お問い合わせ','tư vấn':'相談する','hỗ trợ':'サポート','chat zalo':'Zaloでチャット','nhắn zalo':'Zaloでチャット','gọi ngay':'今すぐ電話','đặt hàng':'注文する','báo giá':'見積り依頼','hotline':'ホットライン'}
+    };
+    this.PRESET_KEYS=['whatsapp','telegram','viber','tiktok','youtube','instagram','maps'];
+    this.BRAND=[['#f7b84b'],['var(--brand)'],['#16223f'],['#0ab39c'],['#f06548'],['var(--color-surface, #fff)']];
+    this.BRANDICONS=['ri-whatsapp-line','ri-telegram-line','ri-messenger-line','ri-facebook-circle-line','ri-instagram-line','ri-youtube-line','ri-tiktok-line','ri-twitter-x-line','ri-linkedin-box-line','ri-skype-line','ri-wechat-line','ri-discord-line','ri-github-line','ri-phone-line','ri-mail-line','ri-map-pin-line','ri-global-line','ri-chat-3-line'];
+    this.state={enabled:true,theme:'vertical',pos:'right',lang:'vi',device:'desktop',offsetX:20,offsetY:24,presetMenu:false,buyOn:true,dragKey:null,dragOverKey:null,
+      channels:[{key:'phone',on:true,value:'0914132668'},{key:'zalo',on:true,value:'0914132668'},{key:'messenger',on:true,value:'100063789074118'},{key:'email',on:true,value:'trungtamcodien.net@gmail.com'},{key:'sms',on:false,value:''}],
+      bg1:'#c32f45',bg2:'#e84c3d',bg3:'#ff7a46',dirty:false,copied:false,toast:null,
+      langBarW:0,langFit:null,langPanel:false,langQ:''};
+  }
+  tr(text,lg){const s=(text||'').trim();if(!s)return '';const d=this.DICT[lg];if(!d)return s;
+    const hit=d[s.toLowerCase()];if(hit)return hit;
+    if(/^[A-Za-z0-9 .@_\-]+$/.test(s))return s;
+    return lg==='ja'?(s+'（自動翻訳）'):(s+' (auto)');}
+  get AIW(){ return (window.BSAI||{}).RATES||{perField:140,perTpl:120,perLabel:12,perPost:980,perSeoPair:45}; }
+  aiLeftW(){ return Math.max(0,this.AIQ.limit-this.AIQ.used); }
+  nfm(v){ return window.BSAI?window.BSAI.nfm(v):Math.round(v).toLocaleString('vi-VN'); }
+  aiEnough(v){ return window.BSAI?window.BSAI.enough(v,["label","post"]):(v>0?'':'đã hết từ AI trong tháng này'); }
+  fillMissing(targets){const st=this.state;const tg=targets||this.siteLocales.filter(l=>l!=='vi');
+    const src=(c)=>((c.tips||{}).vi||'').trim()||(c.custom?(c.label||'Liên hệ'):(this.META[c.key]?this.META[c.key].label:''));
+    let jobs=0;st.channels.forEach(c=>{if(!c.on)return;tg.forEach(lg=>{if((((c.tips||{})[lg])||'').trim()==='')jobs++;});});
+    const left=this.aiLeftW();const cost=jobs*this.AIW.perLabel;
+    if(jobs===0){this.notify('Tất cả nhãn đã có bản dịch — sửa trực tiếp nếu muốn đổi');return;}
+    if(cost>left){this.notify('Cần khoảng '+this.nfm(cost)+' từ AI nhưng chỉ còn '+this.nfm(left)+' — hãy dịch từng ngôn ngữ hoặc mua thêm từ AI');return;}
+    this.AIQ.used+=cost;
+    this.mark({channels:st.channels.map(c=>{if(!c.on)return c;
+      const t=Object.assign({},c.tips);const mt=Object.assign({},c.mt);let touched=false;
+      tg.forEach(lg=>{if((t[lg]||'').trim()===''){t[lg]=this.tr(src(c),lg);mt[lg]=true;touched=true;}});
+      return touched?Object.assign({},c,{tips:t,mt:mt}):c;})});
+    this.notify('Đã dịch '+jobs+' nhãn — dùng '+this.nfm(cost)+' từ AI, còn '+this.nfm(this.aiLeftW())+' từ ('+this.aiEnough(this.aiLeftW())+')');}
+  seedVi(){const vi=this.TXT.vi;const dmap={phone:vi.call,sms:vi.sms,zalo:vi.zalo,messenger:vi.messenger,email:vi.email};
+    this.setState(st=>({channels:st.channels.map(c=>{if(((c.tips||{}).vi||'').trim()!=='')return c;
+      const d=c.custom?(c.label||'Liên hệ'):(dmap[c.key]||(this.META[c.key]?this.META[c.key].label:''));
+      return Object.assign({},c,{tips:Object.assign({},c.tips,{vi:d})});})}));}
+  save(){ this.setState({dirty:false}); this.notify('Đã lưu cấu hình nút liên hệ'); }
+  defaults(){ return {enabled:true,theme:'vertical',pos:'right',lang:'vi',device:'desktop',offsetX:20,offsetY:24,presetMenu:false,buyOn:true,dragKey:null,dragOverKey:null,
+      channels:[{key:'phone',on:true,value:'0914132668'},{key:'zalo',on:true,value:'0914132668'},{key:'messenger',on:true,value:'100063789074118'},{key:'email',on:true,value:'trungtamcodien.net@gmail.com'},{key:'sms',on:false,value:''}],
+      bg1:'#c32f45',bg2:'#e84c3d',bg3:'#ff7a46',dirty:false,copied:false}; }
+  reset(){ this.setState(this.defaults()); this.notify('Đã hoàn nguyên thay đổi'); }
+  notify(m){this.setState({toast:m});clearTimeout(this._t);this._t=setTimeout(()=>this.setState({toast:null}),2000);}
+  componentWillUnmount(){document.removeEventListener('bs-embed-cmd',this._cmd);clearTimeout(this._t);clearTimeout(this._c);
+    document.removeEventListener('mousedown',this._doc);document.removeEventListener('keydown',this._esc);
+    if(this._barRO)this._barRO.disconnect();if(this._raf)cancelAnimationFrame(this._raf);if(this._winRz)window.removeEventListener('resize',this._winRz);}
+  mark(p){this.setState(Object.assign({dirty:true},p));}
+  vPhone(v){return /^(0[0-9]{9}|\+84[0-9]{9})$/.test((v||'').trim());}
+  vEmail(v){return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test((v||'').trim());}
+  vMsgr(v){return (v||'').replace(/[^a-zA-Z0-9_\-\.]/g,'').length>0;}
+  ok(k,v){const t=this.META[k].type;if(t==='email')return this.vEmail(v);if(t==='messenger')return this.vMsgr(v);if(t==='user'||t==='url')return (v||'').trim().length>0;return this.vPhone(v);}
+  setCh(k,p){this.setState(st=>({dirty:true,channels:st.channels.map(c=>c.key===k?Object.assign({},c,p):c)}));}
+  moveCh(k,d){this.setState(st=>{const a=st.channels.slice();const i=a.findIndex(c=>c.key===k);const j=i+d;if(i<0||j<0||j>=a.length)return{};const t=a[i];a[i]=a[j];a[j]=t;return{dirty:true,channels:a};});}
+  reorderTo(fromKey,toKey){if(!fromKey||fromKey===toKey)return;this.setState(st=>{const a=st.channels.slice();const fi=a.findIndex(c=>c.key===fromKey);if(fi<0)return{};const it=a.splice(fi,1)[0];const ni=a.findIndex(c=>c.key===toKey);a.splice(ni<0?a.length:ni,0,it);return{dirty:true,channels:a};});}
+  okCh(c){return c.custom?((c.value||'').trim().length>0):this.ok(c.key,c.value);}
+  addCustom(){this.setState(st=>{
+    const used=st.channels.map(c=>(c.color||(this.META[c.key]?this.META[c.key].color:'')||'').toLowerCase());
+    const pool=['#7c3aed','#0ea5e9','#f59e0b','#14b8a6','#ec4899','#64748b','#84cc16','#405189'];
+    const color=pool.find(x=>used.indexOf(x)<0)||pool[st.channels.length%pool.length];
+    return {dirty:true,channels:st.channels.concat([{key:'c'+(++this._cid),custom:true,on:true,icon:'ri-global-line',label:'',value:'',color:color,tips:{}}])};});}
+  delCh(k){this.setState(st=>({dirty:true,channels:st.channels.filter(c=>c.key!==k)}));}
+  addPreset(k){this.setState(st=>({dirty:true,presetMenu:false,channels:st.channels.concat([{key:k,on:true,value:'',tips:{vi:(this.META[k]?this.META[k].label:'')}}])}));}
+  embed(){const st=this.state;const p=['theme='+st.theme];if(st.theme==='vertical'){p.push('pos='+st.pos);p.push('ox='+(st.offsetX==null?20:st.offsetX));p.push('oy='+(st.offsetY==null?24:st.offsetY));}st.channels.forEach(c=>{if(c.custom)return;if(c.on&&this.ok(c.key,c.value))p.push(c.key+'='+encodeURIComponent(c.value.trim()));});if(this.siteLocales.length>1)p.push('lang='+st.lang);if(st.theme==='horizontal'){p.push('bg1='+st.bg1.replace('#',''));p.push('bg2='+st.bg2.replace('#',''));p.push('bg3='+st.bg3.replace('#',''));}const tag='scr'+'ipt';return '<'+tag+' async src="https://baoson.net/support/?'+p.join('&')+'"></'+tag+'>';}
+  copy(){const code=this.embed();const done=()=>{this.setState({copied:true});clearTimeout(this._c);this._c=setTimeout(()=>this.setState({copied:false}),1600);this.notify('Đã sao chép mã nhúng');};try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(code).then(done,()=>this.fb(code,done));}else this.fb(code,done);}catch(e){this.fb(code,done);}}
+  fb(code,done){try{const ta=document.createElement('textarea');ta.value=code;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);done();}catch(e){this.notify('Hãy chọn & Ctrl+C');}}
+  seg(a){return 'padding:7px 13px;border:0;border-radius:6px;font:inherit;font-size:12.5px;font-weight:'+(a?'600':'500')+';color:'+(a?'var(--brand-fg)':'var(--color-body-muted, #878a99)')+';background:'+(a?'var(--color-surface, #fff)':'transparent')+';cursor:pointer;'+(a?'box-shadow:0 1px 2px rgba(56,65,74,.15);':'');}
+  segI(a){return 'width:36px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;cursor:pointer;color:'+(a?'var(--brand-fg)':'var(--color-body-muted, #878a99)')+';background:'+(a?'var(--color-surface, #fff)':'transparent')+';'+(a?'box-shadow:0 1px 2px rgba(56,65,74,.15);':'');}
+  tc(a){return 'display:flex;flex-direction:column;gap:9px;align-items:flex-start;padding:13px 14px;border:1.5px solid '+(a?'var(--brand)':'var(--color-border-strong, #e9ebec)')+';border-radius:8px;background:'+(a?'color-mix(in srgb, var(--brand) 8%, transparent)':'var(--color-surface, #fff)')+';color:'+(a?'var(--brand-fg)':'var(--color-body-text, #495057)')+';cursor:pointer;text-align:left;';}
+  sw(on){return 'width:38px;height:22px;border-radius:20px;background:'+(on?'#0ab39c':'var(--color-border-strong, #ced4da)')+';position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;display:inline-block;';}
+  knob(on){return 'position:absolute;top:3px;left:'+(on?'19px':'3px')+';width:16px;height:16px;border-radius:50%;background:var(--color-surface, #fff);transition:left .2s;box-shadow:0 1px 2px rgba(0,0,0,.25);';}
+  arr(d){return 'width:22px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;cursor:'+(d?'not-allowed':'pointer')+';color:'+(d?'var(--color-border-strong, #ced4da)':'var(--color-body-muted, #878a99)')+';padding:0;';}
+  contrastText(hex){if(!hex||hex[0]!=='#')return 'var(--color-heading, #1b2a4a)';let h=hex.slice(1);if(h.length===3)h=h.split('').map(c=>c+c).join('');const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return (0.299*r+0.587*g+0.114*b)/255<0.62?'var(--color-surface, #fff)':'var(--color-heading, #1b2a4a)';}
+  cfield(cur,applyFn,pal,auto){pal=pal||this.BRAND;const items=(auto?[['']]:[]).concat(pal);const isCustom=!!(cur&&cur[0]==='#'&&!pal.some(x=>x[0]===cur));const sw26=(v,sel)=>'width:26px;height:26px;border-radius:7px;cursor:pointer;border:0;background:'+(v||'var(--color-surface, #fff)')+';box-shadow:'+(sel?'0 0 0 2px var(--color-surface, #fff),0 0 0 3px var(--brand)':'inset 0 0 0 1px rgba(0,0,0,0.18)')+';'+(v===''?'background:linear-gradient(135deg,#fff 42%,var(--brand) 43%,var(--brand) 57%,#fff 58%);':'');return {swatches:items.map(o=>({on:()=>applyFn(o[0]),style:sw26(o[0],cur===o[0])})),chipStyle:'position:relative;width:26px;height:26px;border-radius:7px;cursor:pointer;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;'+(isCustom?('background:'+cur+';box-shadow:0 0 0 2px var(--color-surface, #fff),0 0 0 3px var(--brand);'):'background:conic-gradient(from 0deg,#f43f5e,#f59e0b,#22c55e,#06b6d4,#3b82f6,#a855f7,#f43f5e);box-shadow:inset 0 0 0 1px var(--color-border-strong, #ced4da);'),customVal:isCustom?cur:'#3577f1',onCustom:(e)=>applyFn(e&&e.target?e.target.value:'')};}
+  renderVals(){
+    const st=this.state;const INP='width:100%;padding:9px 11px;border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;font:inherit;font-size:13px;color:var(--color-body-text, #495057);background:var(--color-surface-muted, #f8f9fb);outline:none;';
+    const isV=st.theme==='vertical',isH=st.theme==='horizontal';
+    const tl=this.TXT[st.lang]||this.TXT.vi;const tipMap={phone:tl.call,sms:tl.sms,zalo:tl.zalo,messenger:tl.messenger,email:tl.email};
+    const active=st.channels.filter(c=>c.on&&this.okCh(c));
+    const phoneCh=st.channels.find(c=>c.key==='phone');const phoneWarn=!(phoneCh&&phoneCh.on&&this.vPhone(phoneCh.value));
+    const channels=st.channels.map((c,i)=>{const cus=!!c.custom;const m=this.META[c.key];const dimmed=isH&&(c.key==='messenger'||c.key==='email');const val=(c.value||'').trim();const bad=c.on&&val!==''&&!this.okCh(c);const color=c.color||(cus?'var(--brand)':m.color);const defTip=cus?(c.label||'Liên hệ'):(tipMap[c.key]||(m?m.label:''));const icon=cus?(c.icon||'ri-global-line'):m.icon;const label=cus?(c.label||'Kênh tùy chỉnh'):m.label;const ph=cus?'https://…  ·  tel:  ·  mailto:':m.ph;const hint=cus?'Liên kết khi bấm nút (URL, tel:, mailto:…)':m.hint;const core=['phone','zalo','messenger','email','sms'].indexOf(c.key)>=0;const brandIcons=cus?this.BRANDICONS.map(ic=>({icon:ic,on:()=>this.setCh(c.key,{icon:ic}),style:'width:100%;aspect-ratio:1/1;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;border:1px solid '+(c.icon===ic?'var(--brand)':'var(--color-border, #eff2f7)')+';background:'+(c.icon===ic?'color-mix(in srgb, var(--brand) 8%, transparent)':'var(--color-surface, #fff)')+';color:'+(c.icon===ic?'var(--brand-fg)':'var(--color-body-text, #495057)')+';'})):[];
+      return {key:c.key,custom:cus,notCustom:!cus,rawLabel:c.label||'',label:label,icon:icon,color:c.color||'var(--brand)',colorBox:'width:40px;flex-shrink:0;border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;overflow:hidden;position:relative;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;background:'+(c.color||'var(--brand)')+';',canDelete:(cus||!core),dropBefore:(!!st.dragKey&&st.dragOverKey===c.key&&st.dragKey!==c.key),brandIcons:brandIcons,iconColorVal:color,onIconColor:(e)=>this.setCh(c.key,{color:e.target.value}),tipLabel:(c.tips&&c.tips[st.lang])||'',tipPh:'Nhãn hover · '+defTip,onTip:(e)=>{const mt=Object.assign({},c.mt);delete mt[st.lang];this.setCh(c.key,{tips:Object.assign({},c.tips,{[st.lang]:e.target.value}),mt:mt});},on:c.on,off:!c.on,value:c.value,placeholder:ph,dimmed:dimmed,
+        rowStyle:'display:flex;align-items:flex-start;gap:11px;padding:11px 12px;border:1px solid '+(bad?'color-mix(in srgb, #f06548 34%, transparent)':'var(--color-border, #eff2f7)')+';border-radius:8px;background:'+(dimmed?'var(--color-surface-muted, #fafbfc)':(c.on?'var(--color-surface, #fff)':'var(--color-surface-muted, #fafbfc)'))+';'+(dimmed?'opacity:.6;':'')+(st.dragKey===c.key?'opacity:.4;':'')+'transition:opacity .12s;',
+        iconWrap:'width:34px;height:34px;border-radius:8px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;background:'+color+';margin-top:1px;',
+        onToggle:()=>this.setCh(c.key,{on:!c.on}),sw:this.sw(c.on),knob:this.knob(c.on),
+        onInput:(e)=>this.setCh(c.key,{value:e.target.value}),onLabel:(e)=>this.setCh(c.key,{label:e.target.value}),onIcon:(e)=>this.setCh(c.key,{icon:e.target.value}),onColor:(e)=>this.setCh(c.key,{color:e.target.value}),onDelete:()=>this.delCh(c.key),onDragStart:(e)=>{this.setState({dragKey:c.key,dragOverKey:c.key});if(e&&e.dataTransfer)e.dataTransfer.effectAllowed='move';},onDragOver:(e)=>{if(e)e.preventDefault();if(this.state.dragOverKey!==c.key)this.setState({dragOverKey:c.key});},onDrop:(e)=>{if(e)e.preventDefault();this.reorderTo(this.state.dragKey,c.key);this.setState({dragKey:null,dragOverKey:null});},onDragEnd:()=>{this.setState({dragKey:null,dragOverKey:null});},
+        inputStyle:INP+(bad?'border-color:#f06548;background:color-mix(in srgb, #f06548 12%, transparent);':''),
+        hintStyle:'font-size:11.5px;line-height:1.4;color:'+(bad?'#f06548':'var(--color-body-faint, #adb5bd)')+';',hintText:bad?('Định dạng chưa hợp lệ — '+hint):hint,
+        onUp:()=>this.moveCh(c.key,-1),onDown:()=>this.moveCh(c.key,1),upStyle:this.arr(i===0),downStyle:this.arr(i===st.channels.length-1)};});
+    const dev=st.device;const sz=dev==='mobile'?44:50;const isz=dev==='mobile'?23:27;
+    const tipCls='fc-bp '+(st.pos==='left'?'fc-tr':(st.pos==='bottom'?'fc-tt':'fc-tl'));
+    const previewButtons=active.map(c=>{const cus=!!c.custom;const m=cus?null:this.META[c.key];const color=c.color||(cus?'var(--brand)':m.color);const icon=cus?(c.icon||'ri-global-line'):m.icon;const useText=!cus&&(c.key==='zalo'||c.key==='sms');
+      return {tip:(c.tips&&c.tips[st.lang])||(cus?(c.label||'Liên hệ'):(tipMap[c.key]||(m?m.label:''))),cls:tipCls,useText:useText,text:c.key==='zalo'?'Zalo':'SMS',textStyle:'font-weight:800;font-size:'+(dev==='mobile'?10:11)+'px;color:#fff;',useIcon:!useText,icon:icon,iconStyle:'font-size:'+isz+'px;color:#fff;',
+        style:'width:'+sz+'px;height:'+sz+'px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.25);background:'+color+';'+((!cus&&m&&m.pulse)?'animation:fc-pg 2.5s infinite;':'')};});
+    const gap=dev==='mobile'?10:12;const ox=(st.offsetX==null?20:st.offsetX),oy=(st.offsetY==null?24:st.offsetY);
+    const vertWrap=st.pos==='bottom'?('position:absolute;left:0;right:0;bottom:'+oy+'px;display:flex;flex-direction:row;gap:'+gap+'px;align-items:center;justify-content:center;z-index:5;'):('position:absolute;'+(st.pos==='left'?'left:'+ox+'px;':'right:'+ox+'px;')+'bottom:'+oy+'px;display:flex;flex-direction:column;gap:'+gap+'px;align-items:center;z-index:5;');
+    const t=this.TXT[st.lang]||this.TXT.vi;const zaloOn=st.channels.find(c=>c.key==='zalo'&&c.on&&this.vPhone(c.value));
+    const barCap=st.buyOn?2:3;
+    const barSrc=active.slice(0,barCap).map(c=>{const cus=!!c.custom;const m=cus?null:this.META[c.key];return {isZalo:c.key==='zalo',color:c.color||(cus?'var(--brand)':m.color),icon:cus?(c.icon||'ri-global-line'):m.icon,label:(c.tips&&c.tips[st.lang])||(cus?(c.label||'Liên hệ'):(tipMap[c.key]||(m?m.label:'')))};});
+    if(st.buyOn) barSrc.push({isZalo:false,color:st.bg3||'#f97316',icon:'ri-shopping-bag-fill',label:t.buy});
+    const barButtons=barSrc.map((b,i)=>{const isZ=b.isZalo;return {isZalo:isZ,showIcon:!isZ,icon:b.icon,label:b.label,wrapStyle:'flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;padding:6px 2px;'+(i>0?'border-left:1px solid var(--color-border-soft, #f0f1f3);':''),circleStyle:'width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:'+b.color+';box-shadow:0 2px 5px -1px '+b.color+'aa;',iconStyle:'font-size:14px;color:#fff;',zTextStyle:'font-size:7.5px;font-weight:800;color:#fff;letter-spacing:.1px;',labelStyle:'font-size:10.5px;font-weight:600;color:var(--color-body-text, #495057);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;'};});
+    const colorFields=[['bg1','Nền chính'],['bg2','Nút thứ 2'],['bg3','Nút mua']].map(o=>({label:o[1],value:st[o[0]],onInput:(e)=>this.mark({[o[0]]:e.target.value})}));
+    const has=(k)=>st.channels.some(c=>c.key===k);const presetOptions=this.PRESET_KEYS.filter(k=>!has(k)).map(k=>{const m=this.META[k];return {label:m.label,on:()=>this.addPreset(k),style:'display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--color-border, #eff2f7);border-radius:7px;background:var(--color-surface, #fff);cursor:pointer;font:inherit;font-size:12.5px;font-weight:600;color:var(--color-body-text, #495057);',iconStyle:'width:24px;height:24px;border-radius:6px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:14px;background:'+m.color+';',icon:m.icon};});
+    const NAMES={vi:'Tiếng Việt',en:'English',ja:'日本語'};
+    const LS=this.siteLocales.map(lc=>{const nm=NAMES[lc]||lc;
+      const filled=st.channels.filter(c=>c.on).length;
+      const done=st.channels.filter(c=>c.on&&(lc==='vi'||((c.tips||{})[lc]||'').trim()!=='')).length;
+      const mtn=st.channels.filter(c=>c.on&&(c.mt||{})[lc]).length;
+      const kind=lc==='vi'?'src':(done===0?'empty':(done<filled?'partial':(mtn>0?'mt':'ok')));
+      const col=({src:'#0ab39c',ok:'#0ab39c',mt:'#299cdb',partial:'#f7b84b',empty:'#adb5bd'})[kind];
+      const label=({src:'Bản nguồn — nhãn gốc',ok:'Đủ nhãn cho kênh đang bật',mt:'AI vừa dịch '+mtn+' nhãn — nên đọc lại',partial:'Còn '+(filled-done)+' nhãn chưa dịch',empty:'Chưa có nhãn nào'})[kind];
+      return {code:lc,name:nm,isSrc:lc==='vi',kind:kind,done:done,filled:filled,label:label,
+        pub:(this.pubLocales||this.siteLocales).indexOf(lc)>=0,
+        title:nm+' — '+label+' · '+done+'/'+filled+' nhãn'+((this.pubLocales||this.siteLocales).indexOf(lc)<0?' · chưa hiển thị ra ngoài':''),
+        dot:'width:8px;height:8px;border-radius:50%;flex-shrink:0;'+(kind==='empty'?('border:1.5px dashed '+col+';'):('background:'+col+';'))};});
+    const cur=LS.find(x=>x.code===st.lang)||LS[0];
+    const must=['vi',st.lang].filter((v,i,a)=>a.indexOf(v)===i);
+    const barW=st.langBarW||900;
+    const compact=barW<650||this.siteLocales.length>10;
+    const wOf=(s)=>{let n=0;for(const ch of String(s))n+=(ch.charCodeAt(0)>0x2e80?16.5:8.2);return 52+n;};
+    const fitIn=(reserve)=>{const room=Math.max(120,barW-46-(barW>=1010?390:300)-reserve);
+      let est=0;const keep=[];
+      must.forEach(c=>{const L=LS.find(x=>x.code===c);if(L){est+=wOf(L.name)+6;keep.push(c);}});
+      LS.forEach(L=>{if(keep.indexOf(L.code)>=0)return;const w=wOf(L.name)+6;if(est+w<=room){est+=w;keep.push(L.code);}});
+      const cap=(typeof st.langFit==='number')?Math.max(must.length,st.langFit):keep.length;
+      const ordered=LS.filter(x=>keep.indexOf(x.code)>=0).map(x=>x.code);
+      const trimmed=ordered.filter(c=>must.indexOf(c)>=0);
+      ordered.forEach(c=>{if(trimmed.indexOf(c)<0&&trimmed.length<cap)trimmed.push(c);});
+      return LS.filter(x=>trimmed.indexOf(x.code)>=0).map(x=>x.code);};
+    let fitCodes=[],statusOn=false;
+    if(!compact){const withChip=barW>=810?fitIn(165):[];
+      if(withChip.length===LS.length){statusOn=true;fitCodes=withChip;}
+      else fitCodes=fitIn(0);}
+    const overflowN=LS.length-fitCodes.length-(compact?1:0);
+    const aiLeft=Math.max(0,this.AIQ.limit-this.AIQ.used);
+    const aiLow=aiLeft>0&&aiLeft<=Math.max(5,Math.round(this.AIQ.limit*0.2));
+    const note=(()=>{
+      if(aiLeft<=0)return {text:'Đã hết từ AI trong tháng này — bạn vẫn nhập tay bình thường, hoặc mua thêm từ AI để dịch tiếp.',icon:'ri-lock-line',fg:'#b42318',bg:'rgba(240,101,72,.10)'};
+      if(aiLow)return {text:'Chỉ còn '+this.nfm(aiLeft)+' từ AI trong tháng ('+this.aiEnough(aiLeft)+') — cân nhắc dịch từng ngôn ngữ.',icon:'ri-flashlight-line',fg:'#b57d13',bg:'rgba(247,184,75,.10)'};
+      if(cur.kind==='mt')return {text:'Bản '+cur.name+' do AI dịch từ Tiếng Việt — sửa chỗ nào chưa ưng rồi bấm Lưu.',icon:'ri-sparkling-2-line',fg:'#227fb0',bg:'rgba(41,156,219,.10)'};
+      if(cur.kind==='empty')return {text:'Bản '+cur.name+' chưa có nhãn hover nào — bấm Dịch để lấy từ Tiếng Việt, hoặc tự nhập.',icon:'ri-translate-2',fg:'#b57d13',bg:'rgba(247,184,75,.10)'};
+      if(cur.kind==='partial')return {text:'Còn '+(cur.filled-cur.done)+' nhãn hover chưa có bản '+cur.name+'.',icon:'ri-error-warning-line',fg:'#b57d13',bg:'rgba(247,184,75,.10)'};
+      if(cur.isSrc){const miss=LS.filter(x=>!x.isSrc&&x.done<x.filled).length;
+        return {text:'Đây là bản nguồn — nhập đủ và chuẩn các nhãn có chip '+cur.code.toUpperCase()+', rồi bấm Dịch để đổ sang '+(LS.length-1)+' ngôn ngữ còn lại.'+(miss?' Hiện còn '+miss+' bản chưa đủ nhãn.':''),icon:'ri-star-fill',fg:'#5a6a86',bg:'rgba(64,81,137,.07)'};}
+      if(!statusOn)return {text:'Bản '+cur.name+' — '+cur.label.toLowerCase()+'.',icon:'ri-checkbox-circle-line',fg:'#0a8f7f',bg:'rgba(10,179,156,.10)'};
+      return {text:'',icon:'',fg:'#b57d13',bg:'rgba(247,184,75,.10)'};})();
+    const trTargets=cur.isSrc?LS.filter(x=>!x.isSrc).map(x=>x.code):[cur.code];
+    let trJobs=0;st.channels.forEach(c=>{if(!c.on)return;trTargets.forEach(lg=>{if((((c.tips||{})[lg])||'').trim()==='')trJobs++;});});
+    const trBlocked=aiLeft<=0||trJobs===0||trJobs*this.AIW.perLabel>aiLeft;
+    const trLabel=cur.isSrc?('Dịch sang '+trTargets.length+' ngôn ngữ'):('Dịch bản '+cur.name);
+    return { showOwnBar: !this.props.embedded,
+      langBarRef:(el)=>{if(!el)return;this._barEl=el;
+        this._sync=()=>{const n=this._barEl;if(!n||!n.isConnected)return;const w=n.clientWidth;
+          if(w&&Math.abs((this.state.langBarW||0)-w)>2)this.setState({langBarW:w,langFit:null});};
+        this._sync();
+        if(this._barRO)this._barRO.disconnect();
+        if(typeof ResizeObserver!=='undefined'){this._barRO=new ResizeObserver(()=>this._sync());this._barRO.observe(el);}
+        if(!this._winRz){this._winRz=()=>this._sync();window.addEventListener('resize',this._winRz);}},
+      langPillsRef:(el)=>{this._pillsEl=el;if(!el)return;const n=fitCodes.length,floor=must.length;
+        const key=barW+':'+must.join(',')+':'+(st.langFit==null?'n':st.langFit)+':'+n;
+        this._measKey=key;if(this._raf)cancelAnimationFrame(this._raf);
+        this._raf=requestAnimationFrame(()=>{this._raf=null;
+          if(this._pillsEl!==el||this._measKey!==key)return;
+          if((this.state.langBarW||900)!==barW)return;
+          if(el.scrollWidth>el.clientWidth+1&&n>floor)this.setState({langFit:n-1});});},
+      langInline:this.siteLocales.length<=10,langCompact:compact,
+      langStatusText:cur.label,
+      langStatusStyle:!statusOn?'display:none;':('display:inline-flex;align-items:center;gap:6px;margin-left:2px;padding:0 9px;height:24px;border-radius:20px;font-size:11.5px;font-weight:500;white-space:nowrap;flex-shrink:0;color:'+({src:'#0a8f7f',ok:'#0a8f7f',mt:'#227fb0',partial:'#b57d13',empty:'#878a99'})[cur.kind]+';background:'+({src:'rgba(10,179,156,.12)',ok:'rgba(10,179,156,.12)',mt:'rgba(41,156,219,.12)',partial:'rgba(247,184,75,.16)',empty:'rgba(173,181,189,.16)'})[cur.kind]+';'),
+      langCurName:cur.name,langCurIsSrc:cur.isSrc,langCurTitle:cur.title,langCurDot:cur.dot,
+      langCurStyle:'display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 9px 0 11px;border:1px solid var(--brand, #405189);border-radius:6px;background:var(--color-surface, #fff);font:inherit;font-size:13px;font-weight:600;color:var(--color-heading, #343a40);cursor:pointer;white-space:nowrap;box-shadow:0 0 0 3px color-mix(in srgb, var(--brand, #405189) 14%, transparent);',
+      langHasOverflow:!compact&&overflowN>0,langOverflowText:'+'+overflowN,
+      langOverflowStyle:'display:inline-flex;align-items:center;gap:2px;height:32px;padding:0 7px 0 10px;border:1px solid var(--color-border, #eff2f7);border-radius:6px;background:var(--color-surface-muted, #f3f6f9);font:inherit;font-size:13px;font-weight:600;color:var(--color-body-text, #495057);cursor:pointer;white-space:nowrap;flex-shrink:0;',
+      langPanelOpen:!!st.langPanel,onToggleLangPanel:()=>this.setState({langPanel:!st.langPanel,langQ:''}),
+      langShowSearch:this.siteLocales.length>=6,langQ:st.langQ||'',onLangQ:(e)=>this.setState({langQ:e.target.value}),
+      langPanelItems:LS.filter(x=>{const q=(st.langQ||'').trim().toLowerCase();return !q||x.name.toLowerCase().indexOf(q)>=0||x.code.indexOf(q)>=0;}).map(x=>({
+        name:x.name+(x.isSrc?' ★':''),status:x.label+(x.pub?'':' · chưa hiển thị ra ngoài'),count:x.done+'/'+x.filled+' nhãn',dot:x.dot,
+        nameStyle:'font-size:13px;font-weight:'+(x.code===st.lang?600:500)+';color:var(--color-heading, #343a40);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
+        rowStyle:'display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;border:0;border-radius:6px;background:'+(x.code===st.lang?'var(--color-surface-muted, #f3f6f9)':'transparent')+';font:inherit;cursor:pointer;',
+        onPick:()=>this.setState({langPanel:false,langQ:'',lang:x.code})})),
+      langHasMissing:LS.some(x=>!x.isSrc&&x.done<x.filled),
+      langFillText:'Dịch '+LS.filter(x=>!x.isSrc&&x.done<x.filled).length+' bản còn thiếu',
+      onFillMissing:()=>{this.setState({langPanel:false});this.fillMissing();},
+      onManageLangs:()=>{this.setState({langPanel:false});this.notify('Mở Cài đặt › Ngôn ngữ website');},
+      langPills:LS.filter(x=>fitCodes.indexOf(x.code)>=0).map(x=>({code:x.code,name:x.name,isSrc:x.isSrc,title:x.title,dot:x.dot,
+        style:'display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:6px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;'+(x.code===st.lang?'border:1px solid var(--brand, #405189);background:var(--color-surface, #fff);font-weight:600;color:var(--color-heading, #343a40);box-shadow:0 0 0 3px color-mix(in srgb, var(--brand, #405189) 14%, transparent);':(x.kind==='empty'?'border:1px dashed var(--color-border-strong, #ced4da);background:var(--color-surface, #fff);font-weight:500;color:var(--color-body-muted, #878a99);':'border:1px solid var(--color-border, #eff2f7);background:var(--color-surface-muted, #f3f6f9);font-weight:500;color:var(--color-body-text, #495057);')),
+        onPick:()=>this.mark({lang:x.code})})),
+      langProg:LS.filter(x=>x.done===x.filled).length+'/'+LS.length,
+      langProgTitle:'Số ngôn ngữ đã có đủ nhãn hover cho các kênh đang bật',
+      langNote:note.text,langNoteIcon:note.icon,
+      langNoteStyle:'display:flex;align-items:center;gap:8px;padding:7px 11px;border-top:1px solid var(--color-border-strong, #e9ebec);border-radius:0 0 8px 8px;font-size:12px;line-height:1.5;color:'+note.fg+';background:'+note.bg+';',
+      langChip:'display:inline-flex;align-items:center;padding:1px 5px;border-radius:3px;font-size:9.5px;font-weight:700;letter-spacing:.02em;color:#7d8bb3;background:rgba(64,81,137,.10);flex-shrink:0;',
+      langCode:st.lang.toUpperCase(),
+      aiQuotaText:'Còn '+this.nfm(aiLeft)+' từ AI',
+      aiQuotaTitle:'Sổ nội dung chữ — Gói Cơ bản: '+this.nfm(this.AIQ.limit)+' từ AI mỗi tháng, đã dùng '+this.nfm(this.AIQ.used)+'. Còn '+this.nfm(aiLeft)+' từ — '+this.aiEnough(aiLeft)+'.',
+      aiQuotaStyle:'display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:500;color:'+(aiLeft<=0?'#f06548':(aiLow?'#b57d13':'var(--color-body-muted, #878a99)'))+';white-space:nowrap;flex-shrink:0;',
+      onTranslateLang:()=>this.fillMissing(trTargets),
+      translateLabel:trLabel,
+      translateStyle:'display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid '+(trBlocked?'var(--color-border-strong, #e9ebec)':'color-mix(in srgb, var(--brand, #405189) 28%, transparent)')+';border-radius:5px;background:'+(trBlocked?'var(--color-surface-muted, #f3f6f9)':'color-mix(in srgb, var(--brand, #405189) 10%, transparent)')+';font:inherit;font-size:12.5px;font-weight:600;color:'+(trBlocked?'var(--color-body-faint, #adb5bd)':'var(--brand-fg, #405189)')+';cursor:'+(trBlocked?'not-allowed':'pointer')+';white-space:nowrap;flex-shrink:0;',
+      translateTitle:(aiLeft<=0?'Đã hết từ AI tháng này — mua thêm từ AI hoặc nâng gói để dịch tiếp':(trJobs===0?'Mọi nhãn đã có bản dịch — không tốn từ AI nào':(trJobs*this.AIW.perLabel>aiLeft?('Cần khoảng '+this.nfm(trJobs*this.AIW.perLabel)+' từ AI nhưng chỉ còn '+this.nfm(aiLeft)+' — dịch từng ngôn ngữ hoặc mua thêm từ AI'):(trLabel+' · '+trJobs+' nhãn còn thiếu, dùng ~'+this.nfm(trJobs*this.AIW.perLabel)+' từ AI, còn '+this.nfm(Math.max(0,aiLeft-trJobs*this.AIW.perLabel))+' từ')))),
+      card:'background:var(--color-surface, #fff);border:1px solid var(--color-border-strong, #e9ebec);border-radius:6px;box-shadow:0 1px 2px rgb(56 65 74 / 0.06);overflow:hidden;',
+      lbl:'display:block;font-size:12px;font-weight:600;color:var(--color-body-text, #495057);margin-bottom:8px;',
+      savedDot:'width:8px;height:8px;border-radius:50%;background:'+(st.dirty?'var(--tone-warn-fg)':'#0ab39c')+';',savedText:st.dirty?'Chưa lưu':'Đã lưu',savedBadgeColor:st.dirty?'warning':'success',onSave:()=>this.save(),
+      onEnabled:()=>this.mark({enabled:!st.enabled}),enabled:st.enabled,enabledOff:!st.enabled,buyOff:!st.buyOn,enSw:this.sw(st.enabled),enKnob:this.knob(st.enabled),
+      onThemeV:()=>this.mark({theme:'vertical'}),onThemeH:()=>this.mark({theme:'horizontal'}),themeVStyle:this.tc(isV),themeHStyle:this.tc(isH),isVertical:isV,isHorizontal:isH,
+      onPosRight:()=>this.mark({pos:'right'}),onPosLeft:()=>this.mark({pos:'left'}),onPosBottom:()=>this.mark({pos:'bottom'}),posRightStyle:this.seg(st.pos==='right'),posLeftStyle:this.seg(st.pos==='left'),posBottomStyle:this.seg(st.pos==='bottom'),offsetX:ox,offsetY:oy,onOffsetX:(e)=>this.mark({offsetX:parseInt(e.target.value,10)}),onOffsetY:(e)=>this.mark({offsetY:parseInt(e.target.value,10)}),
+      showLang:this.siteLocales.length>1,hasEn:this.siteLocales.indexOf('en')>=0,hasJa:this.siteLocales.indexOf('ja')>=0,
+      onLangVi:()=>this.mark({lang:'vi'}),onLangEn:()=>this.mark({lang:'en'}),onLangJa:()=>this.mark({lang:'ja'}),langViStyle:this.seg(st.lang==='vi'),langEnStyle:this.seg(st.lang==='en'),langJaStyle:this.seg(st.lang==='ja'),
+      activeCount:active.length,phoneWarn:phoneWarn,channels:channels,colorFields:colorFields,onAddCustom:()=>this.addCustom(),presetOptions:presetOptions,presetEmpty:presetOptions.length===0,presetMenuOpen:st.presetMenu,onTogglePreset:()=>this.setState({presetMenu:!st.presetMenu}),
+      onDeskDev:()=>this.setState({device:'desktop'}),onMobDev:()=>this.setState({device:'mobile'}),deskStyle:this.segI(dev==='desktop'),mobStyle:this.segI(dev==='mobile'),
+      frameStyle:dev==='mobile'?'width:230px;height:410px;border-radius:26px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 12px 30px -10px rgba(0,0,0,.35);background:var(--color-surface, #fff);border:7px solid var(--color-surface-muted, #1b2027);':'width:100%;height:290px;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 10px 30px -12px rgba(0,0,0,.3);background:var(--color-surface, #fff);',
+      showVertical:isV,vertWrap:vertWrap,previewButtons:previewButtons,showBar:isH&&dev==='mobile'&&barButtons.length>0,barButtons:barButtons,showNote:isH&&dev==='desktop',buyOn:st.buyOn,onToggleBuy:()=>this.mark({buyOn:!st.buyOn}),buySw:this.sw(st.buyOn),buyKnob:this.knob(st.buyOn),buyColor:st.bg3||'#f97316',onBuyColor:(e)=>this.mark({bg3:e.target.value}),buyField:this.cfield(st.bg3||'#f97316',(v)=>this.mark({bg3:v||'#f97316'}),this.BRAND),
+      onCopy:()=>this.copy(),copyBtn:'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid var(--color-border-strong, #e9ebec);border-radius:5px;background:var(--color-surface, #fff);font:inherit;font-size:12px;font-weight:600;color:'+(st.copied?'#0ab39c':'var(--brand)')+';cursor:pointer;',copyIcon:st.copied?'ri-check-line':'ri-file-copy-line',copyLabel:st.copied?'Đã chép':'Sao chép',
+      embedCode:this.embed(),toast:st.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

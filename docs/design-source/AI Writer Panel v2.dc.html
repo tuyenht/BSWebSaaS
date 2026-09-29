@@ -1,0 +1,2126 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<script src="ai-quota.js"></script>
+<style>
+.aw-wrap{container-type:inline-size;font-family:Inter,'Segoe UI',sans-serif;}
+@keyframes awSpin{to{transform:rotate(360deg)}}
+@keyframes awBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes awFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.aw-pop{animation:awFade .14s ease;}
+.aw-scroll::-webkit-scrollbar{width:8px;height:8px}
+.aw-scroll::-webkit-scrollbar-thumb{background:#dfe2e8;border-radius:8px}
+.aw-scroll::-webkit-scrollbar-track{background:transparent}
+.aw-2col{display:grid;grid-template-columns:1fr;gap:12px;align-items:start;}
+@container (min-width:660px){.aw-2col{grid-template-columns:minmax(0,1fr) 268px;}}
+.aw-fld{display:flex;flex-direction:column;gap:6px;}
+.aw-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #e9ebec;border-radius:4px;font:inherit;font-size:13px;line-height:1.6;color:#343a40;background:#fff;outline:none;resize:vertical;}
+.aw-in:focus{border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.10);}
+.aw-in::placeholder{color:#b9bec7;}
+.aw-cardh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #eff2f7;}
+.aw-card{border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(56,65,74,.10);}
+.aw-body h2{font-size:15px;font-weight:600;color:#343a40;margin:16px 0 6px;line-height:1.4;}
+.aw-body p{margin:0 0 10px;font-size:13px;line-height:1.75;color:#495057;}
+.aw-body ul{margin:0 0 10px;padding-left:20px;font-size:13px;line-height:1.75;color:#495057;}
+</style>
+</helmet>
+
+<div class="aw-wrap" style="position:relative;display:flex;flex-direction:column;flex:1 1 auto;height:100%;max-height:100%;min-height:0;overflow:hidden;background:#fff;color:#495057;">
+
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px 12px;border-bottom:1px solid #eff2f7;flex-shrink:0;">
+    <span style="width:32px;height:32px;border-radius:6px;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-quill-pen-line" style="font-size:17px;color:#405189;"></i></span>
+    <div style="display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0;">
+      <span style="display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;color:#343a40;line-height:1.3;">Trợ lý viết nội dung<span style="display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:3px;background:rgba(10,179,156,.12);font-size:10px;font-weight:700;letter-spacing:.03em;color:#0a8f7f;">v2</span></span>
+      <span style="font-size:11.5px;color:#878a99;line-height:1.45;">{{ ctxLine }}</span>
+    </div>
+    <button onClick="{{ onPrompt }}" title="Xem đúng những yêu cầu hệ thống gửi cho AI thay bạn" style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border:1px solid #eff2f7;border-radius:20px;background:#fff;font:inherit;font-size:11px;font-weight:600;color:#878a99;cursor:pointer;white-space:nowrap;flex-shrink:0;" style-hover="border-color:#405189;color:#405189;"><i class="ri-file-shield-2-line" style="font-size:13px;"></i>Yêu cầu chất lượng</button>
+    <span title="{{ quotaTitle }}" style="{{ quotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaText }}</span>
+    <sc-if value="{{ canMin }}"><button onClick="{{ onMinimize }}" title="{{ minTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;" style-hover="background:#f3f6f9;color:#405189;"><i class="ri-subtract-line" style="font-size:18px;"></i></button></sc-if>
+    <sc-if value="{{ canResize }}"><button onClick="{{ onToggleExpand }}" title="{{ expandTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;" style-hover="background:#f3f6f9;color:#405189;"><i class="{{ expandIcon }}" style="font-size:17px;"></i></button></sc-if>
+    <button onClick="{{ onClose }}" title="Đóng — nội dung đã nhập vẫn giữ" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;" style-hover="background:#f3f6f9;color:#495057;"><i class="ri-close-line" style="font-size:18px;"></i></button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:3px;padding:9px 16px;border-bottom:1px solid #eff2f7;background:#fbfcfe;flex-shrink:0;overflow-x:auto;">
+    <sc-for list="{{ steps }}" as="st" hint-placeholder-count="5">
+      <button onClick="{{ st.on }}" title="{{ st.title }}" style="{{ st.style }}"><span style="{{ st.numStyle }}">{{ st.num }}</span>{{ st.label }}</button>
+      <sc-if value="{{ st.sep }}"><i class="ri-arrow-right-s-line" style="font-size:15px;color:#ced4da;flex-shrink:0;"></i></sc-if>
+    </sc-for>
+  </div>
+
+  <div class="aw-scroll" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px;">
+
+    <!-- BƯỚC 1 — ĐỀ BÀI -->
+    <sc-if value="{{ isBrief }}">
+      <sc-if value="{{ srcOn }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(64,81,137,.07);">
+          <i class="ri-file-text-line" style="font-size:15px;color:#405189;flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:#405189;line-height:1.55;min-width:0;">{{ srcNote }}</span>
+        </div>
+      </sc-if>
+      <div class="aw-fld">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+          <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Bạn muốn viết về điều gì?</span>
+          <sc-if value="{{ topicFromTitle }}"><span title="Lấy từ tiêu đề bạn đã nhập trong trang" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:600;color:#1d7fb8;background:rgba(41,156,219,.10);"><i class="ri-magic-line" style="font-size:11px;"></i>Lấy từ tiêu đề trang</span></sc-if>
+        </div>
+        <textarea class="aw-in" rows="2" value="{{ topic }}" onChange="{{ onTopic }}" placeholder="{{ topicPh }}"></textarea>
+        <span style="display:flex;align-items:flex-start;gap:6px;font-size:11.5px;color:#878a99;line-height:1.5;"><i class="ri-magic-line" style="font-size:13px;color:#adb5bd;flex-shrink:0;margin-top:2px;"></i><span>Chỉ cần một câu. Ví dụ và gợi ý bên dưới đã lấy theo ngành <span title="{{ indTitle }}" style="font-weight:600;color:#495057;cursor:help;">{{ indName }}</span> và chủ đề bạn nhập — không phải điền tay.</span></span>
+      </div>
+
+      <sc-if value="{{ dupWarn }}">
+        <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border:1px solid rgba(247,184,75,.35);border-radius:6px;background:rgba(247,184,75,.09);">
+          <i class="ri-git-merge-line" style="font-size:16px;color:#b57d13;flex-shrink:0;margin-top:1px;"></i>
+          <div style="display:flex;flex-direction:column;gap:7px;min-width:0;">
+            <span style="font-size:12px;color:#8a6109;line-height:1.6;">Website đã có bài <strong style="font-weight:600;">“{{ dupTitle }}”</strong> nhắm cùng ý định tìm kiếm. Viết thêm một bài gần giống sẽ khiến hai bài chia lượt truy cập của nhau.</span>
+            <div style="display:flex;gap:7px;flex-wrap:wrap;">
+              <button onClick="{{ onDupOpen }}" style="display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid rgba(64,81,137,.28);border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;"><i class="ri-external-link-line" style="font-size:13px;"></i>Mở bài đó để bổ sung thay vì viết mới</button>
+              <button onClick="{{ onDupDismiss }}" style="min-height:30px;padding:6px 10px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:11.5px;font-weight:500;color:#8a6109;cursor:pointer;">Chủ đề của tôi khác, cứ viết</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;position:relative;">
+        <sc-for list="{{ chips }}" as="ch" hint-placeholder-count="4">
+          <div style="position:relative;">
+            <button onClick="{{ ch.on }}" title="{{ ch.title }}" style="{{ ch.style }}"><i class="{{ ch.icon }}" style="font-size:13px;color:#878a99;flex-shrink:0;"></i><span style="color:#878a99;">{{ ch.label }}</span><span style="font-weight:600;color:#343a40;">{{ ch.value }}</span><i class="ri-arrow-down-s-line" style="font-size:14px;color:#adb5bd;flex-shrink:0;"></i></button>
+            <sc-if value="{{ ch.open }}">
+              <div class="aw-pop" style="position:absolute;top:calc(100% + 5px);left:0;z-index:20;min-width:212px;max-width:min(280px,calc(100vw - 32px));background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 28px rgba(33,37,41,.16);padding:4px;">
+                <sc-for list="{{ ch.opts }}" as="op" hint-placeholder-count="3">
+                  <button onClick="{{ op.on }}" style="{{ op.style }}" style-hover="background:#f3f6f9;"><span style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;text-align:left;"><span style="font-size:12.5px;font-weight:500;color:#343a40;">{{ op.label }}</span><sc-if value="{{ op.hint }}"><span style="font-size:11px;color:#878a99;line-height:1.4;">{{ op.hint }}</span></sc-if></span><sc-if value="{{ op.on2 }}"><i class="ri-check-line" style="font-size:15px;color:#405189;flex-shrink:0;"></i></sc-if></button>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <span title="Lấy từ Cài đặt › Thông tin doanh nghiệp — dùng để viết đúng ngành và đúng tên" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed #e0e3e9;border-radius:5px;background:#fbfcfe;font-size:12px;color:#878a99;white-space:nowrap;"><i class="ri-store-2-line" style="font-size:13px;"></i>{{ bizLine }}</span>
+        <span title="{{ langTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed #e0e3e9;border-radius:5px;background:#fbfcfe;font-size:12px;color:#878a99;white-space:nowrap;"><i class="ri-translate-2" style="font-size:13px;"></i>{{ langName }}<sc-if value="{{ langIsSource }}"><i class="ri-star-fill" style="font-size:10.5px;color:#f7b84b;"></i></sc-if></span>
+      </div>
+
+      <div class="aw-card" style="box-shadow:none;">
+        <div class="aw-cardh">
+          <i class="ri-robot-2-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i>
+          <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Viết để cả Google và trợ lý AI trích dẫn được</span>
+          <span title="Ngành gọi là AEO / GEO — tối ưu cho công cụ trả lời và AI tạo sinh. Bộ khối tự đổi theo loại nội dung, bạn không cần biết thuật ngữ." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;white-space:nowrap;cursor:help;"><i class="ri-information-line" style="font-size:13px;"></i>{{ aeoSummary }}</span>
+        </div>
+        <sc-if value="{{ aeoEmpty }}">
+          <div style="display:flex;gap:8px;padding:12px;">
+            <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ aeoWhy }}</span>
+          </div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:11px 12px;">
+          <sc-for list="{{ aeoBlocks }}" as="ab" hint-placeholder-count="6">
+            <button onClick="{{ ab.on }}" title="{{ ab.title }}" style="{{ ab.style }}"><i class="{{ ab.icon }}" style="font-size:13px;flex-shrink:0;"></i>{{ ab.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px;padding:0 12px 12px;">
+          <i class="ri-lightbulb-line" style="font-size:14px;color:#adb5bd;flex-shrink:0;margin-top:2px;"></i>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ aeoWhy }} Viền liền là khối đề xuất, viền nét đứt là tuỳ chọn — khối không phù hợp thì không hiện.</span>
+        </div>
+      </div>
+
+      <div class="aw-fld">
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+          <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Từ khoá muốn lên hạng</span>
+          <sc-if value="{{ kwAuto }}"><span title="Rút từ chủ đề bạn vừa nhập — gõ vào ô để đổi" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:600;color:#1d7fb8;background:rgba(41,156,219,.10);"><i class="ri-magic-line" style="font-size:11px;"></i>tự nhận từ chủ đề</span></sc-if>
+          <span style="font-size:11.5px;color:#adb5bd;">sửa được — hoặc để nguyên mức hệ thống đề xuất</span>
+        </div>
+        <input class="aw-in" value="{{ kwMain }}" onChange="{{ onKwMain }}" placeholder="{{ kwPh }}">
+        <sc-if value="{{ hasKwSug }}">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#adb5bd;white-space:nowrap;"><i class="ri-magic-line" style="font-size:13px;"></i>Gợi ý theo chủ đề của bạn:</span>
+            <sc-for list="{{ kwSug }}" as="ks" hint-placeholder-count="4">
+              <button onClick="{{ ks.on }}" title="{{ ks.title }}" style="display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:4px 9px;border:1px dashed #dfe2e8;border-radius:20px;background:#fff;font:inherit;font-size:11.5px;font-weight:500;color:#405189;cursor:pointer;white-space:nowrap;" style-hover="border-color:#405189;background:rgba(64,81,137,.05);"><i class="ri-add-line" style="font-size:12px;"></i>{{ ks.label }}</button>
+            </sc-for>
+            <button onClick="{{ onMoreKw }}" title="Lấy thêm gợi ý sát chủ đề hơn — không trừ hạn ngạch từ AI" style="display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:4px 8px;border:0;background:transparent;font:inherit;font-size:11px;font-weight:600;color:#878a99;cursor:pointer;white-space:nowrap;" style-hover="color:#405189;"><i class="ri-refresh-line" style="font-size:12px;"></i>gợi ý khác</button>
+          </div>
+        </sc-if>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+          <sc-for list="{{ kwSub }}" as="k" hint-placeholder-count="3">
+            <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 5px 0 9px;border:1px solid #eff2f7;border-radius:20px;background:#f8f9fb;font-size:11.5px;color:#495057;white-space:nowrap;">{{ k.label }}<button onClick="{{ k.off }}" title="Bỏ từ khoá này" style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;" style-hover="background:#e9ebec;color:#495057;"><i class="ri-close-line" style="font-size:12px;"></i></button></span>
+          </sc-for>
+          <input value="{{ kwDraft }}" onChange="{{ onKwDraft }}" onKeyDown="{{ onKwKey }}" placeholder="+ từ khoá phụ, Enter để thêm" style="min-width:190px;flex:1 1 190px;height:26px;box-sizing:border-box;padding:0 8px;border:1px dashed #dfe2e8;border-radius:20px;font:inherit;font-size:11.5px;color:#495057;background:transparent;outline:none;">
+        </div>
+      </div>
+
+      <div style="border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
+        <button onClick="{{ onToggleAdv }}" style="{{ advHeadStyle }}"><i class="{{ advIcon }}" style="font-size:16px;color:#878a99;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Đưa thêm chất liệu để bài viết không chung chung</span><span style="margin-left:auto;font-size:11.5px;color:#878a99;white-space:nowrap;">{{ advSummary }}</span></button>
+        <sc-if value="{{ advOpen }}">
+          <div style="display:flex;flex-direction:column;gap:13px;padding:13px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+            <div class="aw-fld">
+              <span style="font-size:12px;font-weight:600;color:#495057;">Ý chính của riêng bạn</span>
+              <textarea class="aw-in" rows="3" value="{{ notes }}" onChange="{{ onNotes }}" placeholder="{{ notePh }}"></textarea>
+              <span style="font-size:11px;color:#878a99;line-height:1.5;">Đây là phần tạo ra khác biệt: kinh nghiệm thật, con số thật, câu khách hay hỏi. Cũng là phần AI không tự có được.</span>
+            </div>
+            <div class="aw-fld">
+              <span style="font-size:12px;font-weight:600;color:#495057;">Tài liệu tham khảo</span>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <sc-for list="{{ refs }}" as="r" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #eff2f7;border-radius:5px;background:#fff;"><i class="{{ r.icon }}" style="font-size:15px;color:#878a99;flex-shrink:0;"></i><span style="flex:1;min-width:0;font-size:12px;color:#495057;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.label }}</span><span style="font-size:11px;color:#adb5bd;white-space:nowrap;">{{ r.meta }}</span><button onClick="{{ r.off }}" title="Bỏ tài liệu này" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:#adb5bd;cursor:pointer;" style-hover="background:#f3f6f9;color:#f06548;"><i class="ri-close-line" style="font-size:13px;"></i></button></div>
+                </sc-for>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                  <input value="{{ refDraft }}" onChange="{{ onRefDraft }}" onKeyDown="{{ onRefKey }}" placeholder="Dán link bài viết, hoặc kéo file vào đây" style="flex:1 1 200px;min-width:0;height:34px;box-sizing:border-box;padding:0 10px;border:1px dashed #dfe2e8;border-radius:5px;font:inherit;font-size:12px;color:#495057;background:#fff;outline:none;">
+                  <button onClick="{{ onPickFile }}" style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 11px;border:1px solid #e9ebec;border-radius:5px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;" style-hover="background:#f3f6f9;"><i class="ri-attachment-2" style="font-size:14px;"></i>Chọn file</button>
+                </div>
+              </div>
+            </div>
+            <div class="aw-fld">
+              <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                <span style="font-size:12px;font-weight:600;color:#495057;">Chuẩn văn phong</span>
+                <span style="font-size:11px;color:#adb5bd;">bật sẵn để bài viết không nghe như máy đọc</span>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                <sc-for list="{{ rules }}" as="ru" hint-placeholder-count="4">
+                  <button onClick="{{ ru.on }}" title="{{ ru.title }}" style="{{ ru.style }}"><i class="{{ ru.icon }}" style="font-size:13px;flex-shrink:0;"></i>{{ ru.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div class="aw-fld">
+              <span style="font-size:12px;font-weight:600;color:#495057;">Học văn phong từ bài đã có</span>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                <sc-for list="{{ samples }}" as="sp" hint-placeholder-count="3">
+                  <button onClick="{{ sp.on }}" style="{{ sp.style }}"><i class="{{ sp.icon }}" style="font-size:13px;flex-shrink:0;"></i>{{ sp.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <!-- BƯỚC 2 — PHÂN TÍCH -->
+    <sc-if value="{{ isResearch }}">
+      <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border-radius:6px;background:rgba(41,156,219,.07);">
+        <i class="ri-search-eye-line" style="font-size:16px;color:#1d7fb8;flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:12px;color:#1d7fb8;line-height:1.6;min-width:0;">Hệ thống đã đọc trang tìm kiếm, 6 bài đang xếp trên và toàn bộ nội dung website của bạn. Bỏ tick những ý bạn không muốn đưa vào bài — phần còn lại sẽ thành dàn ý.</span>
+      </div>
+
+      <div class="aw-card">
+        <div class="aw-cardh"><i class="ri-user-search-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Người tìm từ khoá này đang muốn gì</span><span style="margin-left:auto;display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;background:rgba(64,81,137,.08);font-size:11px;font-weight:600;color:#405189;white-space:nowrap;">{{ intentKind }}</span></div>
+        <div style="display:flex;flex-direction:column;gap:9px;padding:11px 12px;">
+          <span style="font-size:12.5px;color:#495057;line-height:1.65;">{{ intentLine }}</span>
+          <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Câu hỏi họ thật sự gõ vào ô tìm kiếm</span>
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <sc-for list="{{ questions }}" as="q" hint-placeholder-count="5">
+              <div style="display:flex;align-items:flex-start;gap:8px;"><i class="ri-corner-down-right-line" style="font-size:14px;color:#ced4da;flex-shrink:0;margin-top:2px;"></i><span style="font-size:12px;color:#495057;line-height:1.6;">{{ q.text }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+
+      <div class="aw-card">
+        <div class="aw-cardh"><i class="ri-focus-3-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Điều các bài đang xếp trên chưa nói</span><span style="margin-left:auto;font-size:11px;color:#adb5bd;white-space:nowrap;">{{ gapSummary }}</span></div>
+        <div style="display:flex;flex-direction:column;">
+          <sc-for list="{{ gaps }}" as="g" hint-placeholder-count="4">
+            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
+              <button onClick="{{ g.on }}" title="{{ g.title }}" style="{{ g.box }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.55;">{{ g.text }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ g.why }}</span></span>
+              <span style="{{ g.tagStyle }}">{{ g.tag }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="aw-card">
+        <div class="aw-cardh"><i class="ri-node-tree" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Khái niệm bài cần nhắc để AI hiểu đúng chủ đề</span><span title="Ngành gọi là entity — thực thể. Thiếu các khái niệm này, máy đọc không nối được bài của bạn với chủ đề." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>{{ entSummary }}</span></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding:11px 12px;">
+          <sc-for list="{{ ents }}" as="en" hint-placeholder-count="8">
+            <button onClick="{{ en.on }}" title="{{ en.title }}" style="{{ en.style }}"><i class="{{ en.icon }}" style="font-size:12px;flex-shrink:0;"></i>{{ en.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="aw-card">
+        <div class="aw-cardh"><i class="ri-stack-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Nhánh chủ đề còn thiếu trên website</span><span title="Ngành gọi là topic cluster / topical authority. Một chủ đề phủ đủ các nhánh thì cả Google và trợ lý AI đều coi website là nguồn đáng tin của chủ đề đó." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>gợi ý bài viết tiếp</span></div>
+        <div style="display:flex;flex-direction:column;">
+          <sc-for list="{{ cluster }}" as="cl" hint-placeholder-count="3">
+            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
+              <i class="ri-add-circle-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
+              <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.5;">{{ cl.text }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ cl.why }}</span></span>
+            </div>
+          </sc-for>
+          <span style="padding:9px 12px;border-top:1px solid #f6f7f9;font-size:11px;color:#adb5bd;line-height:1.6;">Không viết bây giờ. Hệ thống lưu vào danh sách “bài nên viết” và tự đề xuất dẫn liên kết qua lại khi bạn viết chúng.</span>
+        </div>
+      </div>
+
+      <div class="aw-2col">
+        <div class="aw-card">
+          <div class="aw-cardh"><i class="ri-links-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Bài trên website bạn nên dẫn tới</span></div>
+          <div style="display:flex;flex-direction:column;">
+            <sc-for list="{{ ilinks }}" as="il" hint-placeholder-count="3">
+              <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
+                <button onClick="{{ il.on }}" title="{{ il.title }}" style="{{ il.box }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+                <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.5;">{{ il.text }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ il.why }}</span></span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div class="aw-card">
+          <div class="aw-cardh"><i class="ri-verified-badge-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Nguồn dẫn được</span></div>
+          <div style="display:flex;flex-direction:column;">
+            <sc-for list="{{ srcs }}" as="sr" hint-placeholder-count="3">
+              <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
+                <button onClick="{{ sr.on }}" title="{{ sr.title }}" style="{{ sr.box }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+                <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.5;">{{ sr.text }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ sr.why }}</span></span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- BƯỚC 3 — DÀN Ý -->
+    <sc-if value="{{ isOutline }}">
+      <sc-if value="{{ srcOn }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(64,81,137,.07);">
+          <i class="ri-file-text-line" style="font-size:15px;color:#405189;flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:#405189;line-height:1.55;min-width:0;">{{ srcNote }}</span>
+        </div>
+      </sc-if>
+      <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(41,156,219,.07);">
+        <i class="ri-list-check-2" style="font-size:15px;color:#1d7fb8;flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:12px;color:#1d7fb8;line-height:1.55;min-width:0;">Mỗi mục là một câu hỏi có câu trả lời ngắn ngay đầu mục — đó là dạng trợ lý AI trích dẫn được. Sửa dàn ý ở đây không tốn lượt AI.</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <sc-for list="{{ outline }}" as="o" hint-placeholder-count="7">
+          <div style="{{ o.cardStyle }}">
+            <div style="display:flex;align-items:center;gap:8px;padding:8px 9px 8px 11px;">
+              <span style="font-size:11px;font-weight:700;color:#adb5bd;width:16px;flex-shrink:0;font-variant-numeric:tabular-nums;">{{ o.num }}</span>
+              <input value="{{ o.text }}" onChange="{{ o.onText }}" style="flex:1;min-width:0;padding:5px 7px;border:1px solid transparent;border-radius:4px;font:inherit;font-size:13px;font-weight:600;color:#343a40;background:transparent;outline:none;" style-focus="border-color:#405189;background:#fff;">
+              <sc-if value="{{ o.lock }}"><span title="Khối giúp Google và trợ lý AI trích dẫn — hệ thống tự viết, bạn không cần soạn" style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:20px;background:rgba(10,179,156,.10);font-size:10.5px;font-weight:700;color:#0a8f7f;white-space:nowrap;flex-shrink:0;"><i class="ri-robot-2-line" style="font-size:12px;"></i>khối cho AI</span></sc-if>
+              <span title="Số từ dự kiến cho mục này" style="font-size:11px;color:#adb5bd;white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums;">{{ o.words }}</span>
+              <button onClick="{{ o.up }}" title="Chuyển lên" style="{{ o.upStyle }}"><i class="ri-arrow-up-s-line" style="font-size:16px;"></i></button>
+              <button onClick="{{ o.down }}" title="Chuyển xuống" style="{{ o.downStyle }}"><i class="ri-arrow-down-s-line" style="font-size:16px;"></i></button>
+              <button onClick="{{ o.del }}" title="{{ o.delTitle }}" style="{{ o.delStyle }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button>
+            </div>
+            <sc-if value="{{ o.hasQ }}">
+              <div style="display:flex;align-items:flex-start;gap:7px;padding:0 11px 8px 38px;">
+                <i class="ri-question-line" style="font-size:13px;color:#c3c8d0;flex-shrink:0;margin-top:2px;"></i>
+                <span style="font-size:11.5px;color:#878a99;line-height:1.55;">Trả lời câu hỏi: {{ o.q }}</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{ o.hasSubs }}">
+              <div style="display:flex;flex-wrap:wrap;gap:5px;padding:0 11px 10px 38px;">
+                <sc-for list="{{ o.subs }}" as="sb" hint-placeholder-count="2">
+                  <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 5px 3px 9px;border:1px solid #f0f1f3;border-radius:20px;background:#f8f9fb;font-size:11.5px;color:#878a99;">{{ sb.label }}<button onClick="{{ sb.off }}" title="Bỏ ý này" style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#c3c8d0;cursor:pointer;" style-hover="background:#e9ebec;color:#495057;"><i class="ri-close-line" style="font-size:11px;"></i></button></span>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <button onClick="{{ onAddOutline }}" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:9px;border:1px dashed #dfe2e8;border-radius:6px;background:#fbfcfe;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="border-color:#405189;color:#405189;background:rgba(64,81,137,.04);"><i class="ri-add-line" style="font-size:15px;"></i>Thêm mục</button>
+      </div>
+    </sc-if>
+
+    <!-- BƯỚC 4 — BẢN NHÁP -->
+    <sc-if value="{{ isDraft }}">
+      <div class="aw-2col">
+        <div style="display:flex;flex-direction:column;gap:12px;min-width:0;">
+
+          <div class="aw-card">
+            <div class="aw-cardh">
+              <button onClick="{{ tPick }}" title="{{ tPickTitle }}" style="{{ tBoxStyle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Tiêu đề</span>
+              <span style="font-size:11px;color:#adb5bd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">3 phương án, chấm theo 5 tiêu chí</span>
+              <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
+                <button onClick="{{ tRedo }}" title="Viết lại 3 phương án khác" style="{{ redoStyle }}"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
+                <button onClick="{{ tInsert }}" title="{{ tInsertTitle }}" style="{{ tInsStyle }}">{{ tInsLabel }}</button>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;padding:5px;">
+              <sc-for list="{{ titleOpts }}" as="t" hint-placeholder-count="3">
+                <button onClick="{{ t.on }}" style="{{ t.style }}" style-hover="background:#f8f9fb;"><i class="{{ t.icon }}" style="font-size:15px;color:{{ t.iconColor }};flex-shrink:0;margin-top:1px;"></i><span style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:500;color:#343a40;line-height:1.5;">{{ t.text }}</span><sc-if value="{{ t.best }}"><span title="Đạt nhiều tiêu chí nhất trong ba phương án" style="display:inline-flex;align-items:center;gap:4px;height:19px;padding:0 7px;border-radius:20px;background:rgba(64,81,137,.10);font-size:10px;font-weight:700;color:#405189;white-space:nowrap;"><i class="ri-star-fill" style="font-size:10px;color:#f7b84b;"></i>nên chọn</span></sc-if></span><span style="font-size:11px;color:#adb5bd;">{{ t.meta }}</span><span style="display:flex;flex-wrap:wrap;gap:4px;"><sc-for list="{{ t.crits }}" as="cr" hint-placeholder-count="5"><span style="{{ cr.style }}"><i class="{{ cr.icon }}" style="font-size:11px;"></i>{{ cr.label }}</span></sc-for></span></span></button>
+              </sc-for>
+            </div>
+          </div>
+
+          <div class="aw-card">
+            <div class="aw-cardh">
+              <button onClick="{{ ePick }}" title="{{ ePickTitle }}" style="{{ eBoxStyle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Mô tả ngắn</span>
+              <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
+                <button onClick="{{ eRedo }}" title="Viết lại đoạn mô tả" style="{{ redoStyle }}"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
+                <button onClick="{{ eInsert }}" title="{{ eInsertTitle }}" style="{{ eInsStyle }}">{{ eInsLabel }}</button>
+              </span>
+            </div>
+            <div style="padding:11px 12px;"><textarea class="aw-in" rows="3" value="{{ excerpt }}" onChange="{{ onExcerpt }}" style="border-color:#f0f1f3;background:#fbfcfe;"></textarea></div>
+          </div>
+
+          <sc-if value="{{ showBody }}">
+          <div class="aw-card">
+            <div class="aw-cardh">
+              <button onClick="{{ bPick }}" title="{{ bPickTitle }}" style="{{ bBoxStyle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Nội dung chi tiết</span>
+              <span style="font-size:11px;color:#adb5bd;white-space:nowrap;">{{ wordCount }}</span>
+              <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
+                <sc-if value="{{ streaming }}"><button onClick="{{ onStop }}" style="display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#f06548;cursor:pointer;white-space:nowrap;" style-hover="background:rgba(240,101,72,.06);"><i class="ri-stop-circle-line" style="font-size:14px;"></i>Dừng</button></sc-if>
+                <sc-if value="{{ notStreaming }}"><button onClick="{{ bRedo }}" title="Viết lại phần nội dung" style="{{ redoStyle }}"><i class="ri-refresh-line" style="font-size:14px;"></i></button></sc-if>
+                <button onClick="{{ bInsert }}" title="{{ bInsertTitle }}" style="{{ bInsStyle }}">{{ bInsLabel }}</button>
+              </span>
+            </div>
+            <div class="aw-body aw-scroll" style="padding:4px 14px 14px;max-height:340px;overflow-y:auto;">
+              <sc-for list="{{ bodyBlocks }}" as="bb" hint-placeholder-count="6">
+                <sc-if value="{{ bb.isTldr }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;margin:12px 0 12px;padding:11px 12px;border:1px solid rgba(10,179,156,.28);border-radius:6px;background:rgba(10,179,156,.06);">
+                    <span style="display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#0a8f7f;"><i class="ri-flashlight-line" style="font-size:13px;"></i>Tóm tắt nhanh</span>
+                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="3"><span style="font-size:12.5px;color:#495057;line-height:1.7;">• {{ li.text }}</span></sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ bb.isH }}"><h2>{{ bb.text }}</h2></sc-if>
+                <sc-if value="{{ bb.isAns }}">
+                  <div style="display:flex;gap:9px;margin:0 0 10px;padding:9px 11px;border-left:3px solid #405189;border-radius:0 5px 5px 0;background:#f8f9fb;">
+                    <span title="Câu trả lời ngắn ngay đầu mục — phần trợ lý AI thường lấy nguyên văn" style="font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#405189;white-space:nowrap;flex-shrink:0;padding-top:2px;">Trả lời</span>
+                    <span style="font-size:12.5px;color:#343a40;line-height:1.7;font-weight:500;">{{ bb.text }}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ bb.isP }}"><p>{{ bb.text }}</p></sc-if>
+                <sc-if value="{{ bb.isL }}"><ul><sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="2"><li>{{ li.text }}</li></sc-for></ul></sc-if>
+                <sc-if value="{{ bb.isTbl }}">
+                  <div style="margin:0 0 12px;border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
+                    <div style="display:flex;background:#f8f9fb;border-bottom:1px solid #eff2f7;">
+                      <sc-for list="{{ bb.head }}" as="hc" hint-placeholder-count="4"><span style="flex:1;min-width:0;padding:8px 10px;font-size:11.5px;font-weight:700;color:#495057;">{{ hc.text }}</span></sc-for>
+                    </div>
+                    <sc-for list="{{ bb.rows }}" as="rw" hint-placeholder-count="3">
+                      <div style="display:flex;border-top:1px solid #f6f7f9;">
+                        <sc-for list="{{ rw.cells }}" as="cl" hint-placeholder-count="4"><span style="flex:1;min-width:0;padding:8px 10px;font-size:12px;color:#495057;line-height:1.55;">{{ cl.text }}</span></sc-for>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ bb.isChk }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;padding:11px 12px;border:1px solid #eff2f7;border-radius:6px;background:#fbfcfe;">
+                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="4"><span style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#495057;line-height:1.65;"><i class="ri-checkbox-circle-line" style="font-size:14px;color:#0ab39c;flex-shrink:0;margin-top:2px;"></i>{{ li.text }}</span></sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ bb.isFaq }}">
+                  <div style="display:flex;flex-direction:column;gap:4px;margin:0 0 11px;">
+                    <span style="font-size:12.5px;font-weight:600;color:#343a40;line-height:1.55;">{{ bb.q }}</span>
+                    <span style="font-size:12.5px;color:#495057;line-height:1.7;">{{ bb.text }}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ bb.isTake }}">
+                  <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;padding:11px 12px;border:1px solid rgba(64,81,137,.20);border-radius:6px;background:rgba(64,81,137,.04);">
+                    <span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#405189;">Ý chính cần nhớ</span>
+                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="3"><span style="font-size:12.5px;color:#495057;line-height:1.7;">• {{ li.text }}</span></sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ bb.isCta }}">
+                  <div style="margin:0 0 12px;padding:11px 12px;border:1px solid rgba(64,81,137,.22);border-radius:6px;background:rgba(64,81,137,.05);">
+                    <span style="font-size:12.5px;color:#343a40;line-height:1.7;">{{ bb.text }}</span>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ bb.isSrc }}">
+                  <div style="display:flex;flex-direction:column;gap:5px;margin:0 0 12px;">
+                    <span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;">Nguồn tham khảo</span>
+                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="2"><span style="font-size:12px;color:#878a99;line-height:1.65;">{{ li.text }}</span></sc-for>
+                  </div>
+                </sc-if>
+              </sc-for>
+              <sc-if value="{{ streaming }}"><span style="display:inline-block;width:7px;height:15px;background:#405189;vertical-align:-2px;animation:awBlink 1s steps(1) infinite;"></span></sc-if>
+            </div>
+          </div>
+          </sc-if>
+
+          <div class="aw-card">
+            <div class="aw-cardh">
+              <button onClick="{{ sPick }}" title="{{ sPickTitle }}" style="{{ sBoxStyle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Tiêu đề &amp; mô tả SEO</span>
+              <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
+                <button onClick="{{ sRedo }}" title="Viết lại phần SEO" style="{{ redoStyle }}"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
+                <button onClick="{{ sInsert }}" title="{{ sInsertTitle }}" style="{{ sInsStyle }}">{{ sInsLabel }}</button>
+              </span>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:11px;padding:11px 12px;">
+              <div class="aw-fld">
+                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:11.5px;font-weight:600;color:#495057;">Tiêu đề SEO</span><span style="margin-left:auto;font-size:11px;color:{{ seoTColor }};font-variant-numeric:tabular-nums;">{{ seoTLen }}</span></div>
+                <input class="aw-in" value="{{ seoTitle }}" onChange="{{ onSeoTitle }}" style="border-color:#f0f1f3;background:#fbfcfe;">
+              </div>
+              <div class="aw-fld">
+                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:11.5px;font-weight:600;color:#495057;">Mô tả SEO</span><span style="margin-left:auto;font-size:11px;color:{{ seoDColor }};font-variant-numeric:tabular-nums;">{{ seoDLen }}</span></div>
+                <textarea class="aw-in" rows="2" value="{{ seoDesc }}" onChange="{{ onSeoDesc }}" style="border-color:#f0f1f3;background:#fbfcfe;"></textarea>
+              </div>
+              <div class="aw-fld">
+                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:11.5px;font-weight:600;color:#495057;">Đường dẫn trang</span><span title="Đường dẫn ngắn, không mốc năm thì sang năm không phải đổi link" style="margin-left:auto;font-size:11px;color:{{ slugColor }};">{{ slugLen }}</span></div>
+                <input class="aw-in" value="{{ slug }}" onChange="{{ onSlug }}" style="border-color:#f0f1f3;background:#fbfcfe;font-size:12px;">
+              </div>
+              <div style="display:flex;flex-direction:column;gap:5px;padding:9px 11px;border-radius:5px;background:#fbfcfe;border:1px solid #f0f1f3;">
+                <span style="font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Xem như trên Google</span>
+                <span style="font-size:11px;color:#0d7a3e;">{{ previewUrl }}</span>
+                <span style="font-size:14px;color:#1a0dab;line-height:1.35;">{{ seoTitle }}</span>
+                <span style="font-size:11.5px;color:#4d5156;line-height:1.55;">{{ seoDesc }}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px;min-width:0;">
+          <div class="aw-card" style="overflow:hidden;">
+            <div style="display:flex;align-items:center;gap:9px;padding:11px 12px;border-bottom:1px solid #eff2f7;">
+              <span title="{{ scoreTitle }}" style="{{ scoreStyle }}">{{ seoScore }}</span>
+              <span style="display:flex;flex-direction:column;gap:1px;min-width:0;"><span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Bảng kiểm &amp; tự chỉnh</span><span style="font-size:11px;color:#878a99;">{{ seoSummary }}</span></span>
+            </div>
+            <div style="padding:10px 12px;border-bottom:1px solid #f6f7f9;">
+              <button onClick="{{ onFixChecks }}" title="{{ fixChecksTitle }}" style="{{ fixChecksStyle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ fixChecksLabel }}</button>
+            </div>
+            <div style="display:flex;flex-direction:column;">
+              <sc-for list="{{ checks }}" as="c" hint-placeholder-count="8">
+                <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-top:1px solid #f6f7f9;">
+                  <i class="{{ c.icon }}" style="font-size:15px;color:{{ c.color }};flex-shrink:0;margin-top:1px;"></i>
+                  <span style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
+                    <span style="font-size:12px;color:#495057;line-height:1.5;">{{ c.label }}</span>
+                    <sc-if value="{{ c.done }}"><span style="display:flex;align-items:flex-start;gap:5px;font-size:10.5px;color:#0a8f7f;line-height:1.55;"><i class="ri-magic-line" style="font-size:12px;flex-shrink:0;margin-top:1px;"></i>đã chỉnh: {{ c.diff }}</span></sc-if>
+                    <sc-if value="{{ c.fixable }}"><button onClick="{{ c.fix }}" title="{{ c.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:28px;padding:5px 9px;border:1px solid rgba(64,81,137,.28);border-radius:4px;background:rgba(64,81,137,.10);font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;" style-hover="background:rgba(64,81,137,.16);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ c.fixLabel }}</button></sc-if>
+                  </span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;padding:10px 11px;border:1px solid #eff2f7;border-radius:6px;background:#fbfcfe;">
+            <i class="ri-shield-check-line" style="font-size:15px;color:#0ab39c;flex-shrink:0;margin-top:1px;"></i>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.6;">Bản nháp do AI viết. Bước Kiểm định ở sau sẽ tự soát chất lượng, nhưng số liệu, giá và tên riêng vẫn cần bạn đọc lại. Phần do AI tạo được ghi nhận trong lịch sử sửa bài.</span>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- BƯỚC 5 — KIỂM ĐỊNH -->
+    <sc-if value="{{ isAudit }}">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 14px;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(56,65,74,.10);">
+        <span style="{{ bigScoreStyle }}">{{ bigScore }}</span>
+        <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 220px;min-width:0;">
+          <span style="font-size:13px;font-weight:600;color:#343a40;">{{ auditHead }}</span>
+          <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ auditSub }}</span>
+        </span>
+        <button onClick="{{ onFixAll }}" title="{{ fixAllTitle }}" style="{{ fixAllStyle }}"><i class="ri-sparkling-2-line" style="font-size:15px;"></i>{{ fixAllLabel }}</button>
+      </div>
+
+      <div class="aw-card">
+        <div class="aw-cardh"><i class="ri-award-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Hệ thống tự cho điểm bài này</span><span style="margin-left:auto;font-size:11px;color:#adb5bd;white-space:nowrap;">dưới {{ minScoreText }} điểm thì nên sửa</span></div>
+        <div style="display:flex;flex-direction:column;">
+          <sc-for list="{{ audits }}" as="a" hint-placeholder-count="6">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-top:1px solid #f6f7f9;">
+              <span style="{{ a.pillStyle }}">{{ a.score }}</span>
+              <span style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
+                <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ a.label }}</span><span title="{{ a.term }}" style="font-size:10.5px;color:#c3c8d0;cursor:help;white-space:nowrap;">{{ a.termShort }}</span></span>
+                <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ a.hint }}</span>
+                <sc-if value="{{ a.fixable }}"><button onClick="{{ a.fix }}" title="{{ a.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:30px;padding:6px 10px;border:1px solid rgba(64,81,137,.28);border-radius:4px;background:rgba(64,81,137,.10);font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;" style-hover="background:rgba(64,81,137,.16);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ a.fixLabel }}</button></sc-if>
+              </span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="aw-card">
+        <div class="aw-cardh"><i class="ri-rocket-2-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Sau khi đăng — việc giúp bài được index nhanh và giữ hạng</span><span title="Những việc này nằm ngoài nội dung bài nhưng ảnh hưởng lớn tới tốc độ index và thứ hạng. Nền tảng làm thay, bạn chỉ cần biết là nó đang chạy." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>nền tảng làm thay</span></div>
+        <div style="display:flex;flex-direction:column;">
+          <sc-for list="{{ afterPub }}" as="ap" hint-placeholder-count="6">
+            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
+              <i class="{{ ap.icon }}" style="font-size:15px;color:#405189;flex-shrink:0;margin-top:2px;"></i>
+              <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;font-weight:500;color:#343a40;line-height:1.5;">{{ ap.label }}</span><span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ ap.hint }}</span></span>
+              <span style="{{ ap.tagStyle }}">{{ ap.tag }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div class="aw-2col">
+        <div class="aw-card">
+          <div class="aw-cardh"><i class="ri-code-box-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Dữ liệu để máy đọc hiểu bài</span><span title="Ngành gọi là schema / structured data. Hệ thống tự gắn theo dạng nội dung, bạn không phải chèn mã." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>tự gắn</span></div>
+          <div style="display:flex;flex-direction:column;">
+            <sc-for list="{{ schemas }}" as="sc" hint-placeholder-count="4">
+              <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
+                <i class="{{ sc.icon }}" style="font-size:15px;color:{{ sc.color }};flex-shrink:0;margin-top:1px;"></i>
+                <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.5;">{{ sc.label }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ sc.hint }}</span></span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div class="aw-card">
+          <div class="aw-cardh"><i class="ri-file-history-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Sẽ chèn vào trang</span></div>
+          <div style="display:flex;flex-direction:column;gap:7px;padding:11px 12px;">
+            <sc-for list="{{ pickList }}" as="p" hint-placeholder-count="4">
+              <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:{{ p.color }};line-height:1.5;"><i class="{{ p.icon }}" style="font-size:14px;flex-shrink:0;"></i>{{ p.label }}</span>
+            </sc-for>
+            <span style="font-size:11px;color:#adb5bd;line-height:1.6;margin-top:2px;">Quay lại bước Bản nháp để bỏ tick phần không muốn chèn. Chèn xong vẫn hoàn tác được.</span>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <!-- CHÂN: HÀNH ĐỘNG CHÍNH -->
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid #eff2f7;background:#fff;flex-shrink:0;">
+    <sc-if value="{{ isDraft }}">
+      <button onClick="{{ onToggleAll }}" style="display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 4px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:#878a99;cursor:pointer;white-space:nowrap;" style-hover="color:#405189;"><i class="{{ allIcon }}" style="font-size:15px;"></i>{{ allLabel }}</button>
+    </sc-if>
+    <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;"><span style="font-size:11.5px;color:#878a99;line-height:1.5;">{{ footNote }}</span><span style="font-size:10.5px;color:#c3c8d0;line-height:1.4;">⌘/Ctrl + Enter để chạy bước này · Esc để đóng</span></span>
+    <sc-if value="{{ showSkip }}"><button onClick="{{ onSkip }}" style="display:inline-flex;align-items:center;min-height:36px;padding:8px 10px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:#878a99;cursor:pointer;white-space:nowrap;text-decoration:underline;" style-hover="color:#405189;">{{ skipLabel }}</button></sc-if>
+    <button onClick="{{ onPrimary }}" title="{{ primaryTitle }}" style="{{ primaryStyle }}"><i class="{{ primaryIcon }}" style="{{ primaryIconStyle }}"></i>{{ primaryLabel }}</button>
+  </div>
+
+  <!-- HỘP THOẠI: YÊU CẦU CHẤT LƯỢNG -->
+  <sc-if value="{{ promptOpen }}">
+    <div style="position:absolute;inset:0;z-index:97;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div onClick="{{ onPromptClose }}" style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
+      <div style="position:relative;z-index:1;width:520px;max-width:100%;max-height:100%;display:flex;flex-direction:column;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);overflow:hidden;">
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:15px 16px;border-bottom:1px solid #eff2f7;">
+          <i class="ri-file-shield-2-line" style="font-size:18px;color:#405189;flex-shrink:0;margin-top:1px;"></i>
+          <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;"><span style="font-size:14px;font-weight:600;color:#343a40;">Yêu cầu hệ thống gửi cho AI thay bạn</span><span style="font-size:11.5px;color:#878a99;line-height:1.6;">Bạn không cần nhập những điều này — nền tảng đã cài sẵn và giữ nguyên qua mọi bài viết.</span></span>
+          <button onClick="{{ onPromptClose }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;" style-hover="background:#f3f6f9;"><i class="ri-close-line" style="font-size:18px;"></i></button>
+        </div>
+        <div class="aw-scroll" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:14px;">
+          <sc-for list="{{ promptGroups }}" as="pg" hint-placeholder-count="4">
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#343a40;"><i class="{{ pg.icon }}" style="font-size:15px;color:#405189;"></i>{{ pg.title }}</span>
+              <sc-for list="{{ pg.items }}" as="pi" hint-placeholder-count="4">
+                <span style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#495057;line-height:1.65;"><i class="ri-check-line" style="font-size:14px;color:#0ab39c;flex-shrink:0;margin-top:2px;"></i>{{ pi.text }}</span>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;">
+          <span style="font-size:11px;color:#adb5bd;line-height:1.5;flex:1;min-width:0;">Muốn đổi giọng văn cho toàn website? Cài đặt › Văn phong thương hiệu.</span>
+          <button onClick="{{ onPromptClose }}" style="display:inline-flex;align-items:center;min-height:36px;padding:8px 14px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">Đã hiểu</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ closeAskOpen }}">
+    <div style="position:absolute;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
+      <div style="position:relative;z-index:1;width:400px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:#b57d13;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">Đóng trợ lý khi chưa chèn?</span></div>
+        <span style="font-size:12.5px;color:#878a99;line-height:1.6;">Bản nháp này chưa được chèn vào trang. Đóng bây giờ là mất, và viết lại sẽ trừ thêm hạn ngạch từ AI.</span>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+          <button onClick="{{ onCloseInsert }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:0;border-radius:6px;background:#405189;font:inherit;cursor:pointer;" style-hover="filter:brightness(.95);"><i class="ri-arrow-left-down-line" style="font-size:16px;color:#fff;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#fff;text-align:left;">Chèn phần đã chọn rồi đóng</span></button>
+          <button onClick="{{ onCloseDrop }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font:inherit;cursor:pointer;" style-hover="border-color:rgba(240,101,72,.3);background:rgba(240,101,72,.05);"><i class="ri-delete-bin-line" style="font-size:16px;color:#f06548;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#f06548;text-align:left;">Đóng và bỏ bản nháp</span></button>
+        </div>
+        <button onClick="{{ onCloseStay }}" style="align-self:flex-end;margin-top:6px;min-height:36px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="color:#495057;">Ở lại</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ conflictOpen }}">
+    <div style="position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+      <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
+      <div style="position:relative;z-index:1;width:400px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:#b57d13;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ conflictTitle }}</span></div>
+        <span style="font-size:12.5px;color:#878a99;line-height:1.6;">{{ conflictText }}</span>
+        <span style="display:flex;align-items:flex-start;gap:7px;padding:8px 10px;border-radius:5px;background:rgba(64,81,137,.05);font-size:11.5px;color:#405189;line-height:1.6;"><i class="ri-lightbulb-line" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i>{{ conflictHint }}</span>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+          <sc-for list="{{ conflictOpts }}" as="co" hint-placeholder-count="3">
+            <button onClick="{{ co.on }}" style="{{ co.style }}" style-hover="border-color:#405189;background:rgba(64,81,137,.08);"><i class="{{ co.icon }}" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ co.label }}</span><sc-if value="{{ co.rec }}"><span style="display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:20px;background:#405189;font-size:9.5px;font-weight:700;letter-spacing:.03em;color:#fff;white-space:nowrap;">KHUYẾN NGHỊ</span></sc-if></span><span style="font-size:11px;color:#878a99;line-height:1.45;">{{ co.hint }}</span></span></button>
+          </sc-for>
+        </div>
+        <button onClick="{{ onConflictCancel }}" style="align-self:flex-end;margin-top:6px;min-height:36px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="color:#495057;">Huỷ</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:760,&quot;height&quot;:800},&quot;contextLabel&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Bài viết&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;pageTitle&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Cách chọn máy lọc nước cho gia đình 4 người&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;topicSeed&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;focusField&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;&quot;,&quot;title&quot;,&quot;excerpt&quot;,&quot;body&quot;,&quot;seo&quot;],&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;industry&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;water&quot;,&quot;cnc&quot;,&quot;service&quot;],&quot;default&quot;:&quot;water&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngữ cảnh khách hàng&quot;},&quot;showResearch&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Chất lượng nội dung&quot;},&quot;aeoOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Chất lượng nội dung&quot;},&quot;minScore&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:7,&quot;max&quot;:10,&quot;step&quot;:1,&quot;default&quot;:9,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Chất lượng nội dung&quot;},&quot;langName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Tiếng Việt&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;langIsSource&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;bizLine&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;siteHost&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;nuocsachanbinh.vn&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;quota&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{used:number,limit:number}&quot;},&quot;filled&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;onInsert&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(payload:any,keys:string[],mode:string)=&gt;void&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;()=&gt;void&quot;},&quot;onNotify&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(text:string,icon:string)=&gt;void&quot;},&quot;onSpend&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;}}">
+class Component extends DCLogic {
+  state = {
+    step: 'brief', topic: '', kwMain: '', kwSub: null, kwDraft: '',
+    chips: { type: 'guide', audience: 'retail', tone: 'pro', length: 'med' },
+    openChip: null, advOpen: false, notes: '', refDraft: '',
+    refs: null, ruleOv: {}, sampleOv: {}, pickOv: {},
+    aeoOv: {}, kwSugSet: 0,
+    gapOff: {}, entOff: {}, linkOff: {}, srcOff: {},
+    outline: null, streaming: false, streamAt: 0, stopped: false,
+    titleIdx: 0, titleSet: 0, excIdx: 0, seoIdx: 0, excerpt: '', seoTitle: '', seoDesc: '', slug: '',
+    pick: { title: true, excerpt: true, body: true, seo: true },
+    conflict: null, fixed: {}, audFixed: {}, dupSeen: false, closeAsk: false, inserted: false, promptOpen: false, ins: {}, lastIns: null, redoUsed: {}, held: 0
+  };
+
+  AEO = [
+    { k: 'tldr', l: 'Tóm tắt nhanh đầu bài', i: 'ri-flashlight-line', t: 'Ba câu chốt ngay đầu bài — phần trợ lý AI hay lấy nguyên văn để trả lời' },
+    { k: 'def', l: 'Câu trả lời ngắn mỗi mục', i: 'ri-chat-check-line', t: 'Mỗi mục mở bằng 40–60 từ trả lời thẳng câu hỏi, giải thích dài để sau' },
+    { k: 'tbl', l: 'Bảng so sánh', i: 'ri-table-2', t: 'Dạng máy đọc dễ trích xuất nhất khi người đọc đang so sánh lựa chọn' },
+    { k: 'chk', l: 'Bảng kiểm', i: 'ri-list-check', t: 'Danh sách việc cần làm trước khi quyết định' },
+    { k: 'faq', l: 'Hỏi đáp + dữ liệu cấu trúc', i: 'ri-question-answer-line', t: 'Kèm dữ liệu FAQ để Google và trợ lý AI hiện dạng câu hỏi' },
+    { k: 'take', l: 'Ý chính cần nhớ', i: 'ri-bookmark-line', t: 'Khối tổng kết cuối bài, cũng là phần hay bị trích dẫn' },
+    { k: 'src', l: 'Nguồn tham khảo', i: 'ri-verified-badge-line', t: 'Dẫn nguồn chính thống — yếu tố làm bài đáng tin trong mắt cả Google và AI' },
+    { k: 'cta', l: 'Lời mời hành động', i: 'ri-cursor-line', t: 'Một lời mời cuối bài theo dịch vụ thật của bạn, không hứa quá' }
+  ];
+  BLOCKMAP = {
+    guide: { on: ['tldr', 'def', 'tbl', 'chk', 'faq', 'take', 'src'], opt: ['cta'], why: 'Bài hướng dẫn cần đủ khối để trả lời trọn câu hỏi' },
+    news: { on: ['tldr', 'def', 'src'], opt: ['take'], why: 'Tin tức cần nhanh và có nguồn — bảng, bảng kiểm, hỏi đáp không phù hợp' },
+    product: { on: ['def', 'tbl', 'chk', 'faq', 'cta'], opt: ['tldr', 'take'], why: 'Mô tả sản phẩm cần so sánh phiên bản, thông số dạng bảng kiểm và lời mời mua' },
+    page: { on: ['def', 'faq', 'take', 'cta'], opt: ['tldr', 'tbl'], why: 'Trang dịch vụ cần trả lời thẳng, hỏi đáp và lời mời liên hệ' },
+    landing: { on: ['def', 'chk', 'faq', 'cta'], opt: ['tldr'], why: 'Landing page cần câu ngắn, bằng chứng và một lời mời rõ' },
+    blog: { on: ['tldr', 'def', 'take'], opt: ['chk', 'faq', 'src', 'cta'], why: 'Blog trải nghiệm mạnh nhờ chuyện thật và bài học rút ra — không cần bảng biểu' },
+    social: { on: ['def'], opt: ['take', 'cta'], why: 'Bài đăng mạng xã hội chỉ cần câu mở hút mắt, ý chính và một lời mời' },
+    deep: { on: ['tldr', 'def', 'tbl', 'chk', 'faq', 'take', 'src'], opt: ['cta'], why: 'Bài chuyên sâu cần đủ dữ liệu, bảng và nguồn dẫn để chịu được người đọc khó tính' },
+    seo: { on: [], opt: [], why: 'Chỉ sinh tiêu đề và mô tả SEO — không dựng khối nội dung' }
+  };
+  TYPEDEF = {
+    guide: { audience: 'retail', tone: 'pro', length: 'med', why: 'Người đọc đang tìm hiểu để quyết định — giọng gần gũi, ~1.200 từ là mức đủ sâu để lên hạng mà không loãng.' },
+    news: { audience: 'retail', tone: 'plain', length: 'med', why: 'Tin đọc nhanh — chỉ dữ kiện, ~500 từ, có mốc thời gian và nguồn.' },
+    product: { audience: 'retail', tone: 'sell', length: 'med', why: 'Khách đang so sánh trước khi mua — nhấn lợi ích, ~800 từ; mô tả dài hơn thường bị bỏ giữa.' },
+    page: { audience: 'biz', tone: 'pro', length: 'med', why: 'Trang dịch vụ nói với người ra quyết định — giọng ổn định, ~900 từ, kết bằng lời mời liên hệ.' },
+    landing: { audience: 'retail', tone: 'sell', length: 'med', why: 'Landing chỉ có một việc: dẫn tới một hành động — câu ngắn, ~600 từ.' },
+    blog: { audience: 'retail', tone: 'warm', length: 'med', why: 'Blog trải nghiệm: giọng người thật, ~900 từ, mở bằng chuyện cụ thể chứ không bằng định nghĩa.' },
+    social: { audience: 'retail', tone: 'warm', length: 'short', why: 'Bài đăng: ~150 từ, câu đầu phải giữ được người đọc, kết bằng một lời mời.' },
+    deep: { audience: 'tech', tone: 'plain', length: 'med', why: 'Bài chuyên sâu: giọng khô, ~2.500 từ, mọi nhận định có dữ liệu và nguồn.' },
+    seo: { audience: 'retail', tone: 'pro', length: 'short', why: 'Chỉ sinh tiêu đề và mô tả SEO, không viết nội dung dài.' }
+  };
+  LENMAP = {
+    guide: [[600, 'Trả lời một câu hỏi hẹp'], [1200, 'Đủ sâu để lên hạng chủ đề này'], [2000, 'Bài trụ, cần nhiều chất liệu thật']],
+    news: [[300, 'Tin ngắn, một sự việc'], [500, 'Tin có bối cảnh và nguồn'], [800, 'Bài phân tích ngắn']],
+    product: [[500, 'Sản phẩm đơn giản, ít thông số'], [800, 'Có so sánh phiên bản và hỏi đáp'], [1200, 'Sản phẩm phức tạp, nhiều biến thể']],
+    page: [[500, 'Một dịch vụ, một lời mời'], [900, 'Có quy trình và hỏi đáp'], [1500, 'Trang trụ cho cả nhóm dịch vụ']],
+    landing: [[400, 'Một chiến dịch ngắn'], [600, 'Có bằng chứng và hỏi đáp'], [900, 'Nhiều khối bán hàng']],
+    blog: [[500, 'Một câu chuyện, một bài học'], [900, 'Có bối cảnh và bài học rút ra'], [1500, 'Bài dài kể cả quá trình']],
+    social: [[150, 'Bài đăng ngắn, một ý'], [300, 'Bài đăng dài có bối cảnh'], [600, 'Bài dài trên LinkedIn / Facebook note']],
+    deep: [[1500, 'Chuyên sâu một khía cạnh'], [2500, 'Bài trụ có dữ liệu và bảng'], [4000, 'Báo cáo dài, nhiều nguồn']],
+    seo: [[600, 'Không dùng — chỉ sinh tiêu đề và mô tả'], [1200, 'Không dùng'], [2000, 'Không dùng']]
+  };
+  RULEDEF = {
+    guide: ['cliche', 'hype', 'data', 'short', 'ans'],
+    news: ['cliche', 'hype', 'data', 'short', 'ans'],
+    product: ['cliche', 'hype', 'data', 'short', 'ans', 'we'],
+    page: ['cliche', 'hype', 'data', 'short', 'ans', 'we'],
+    landing: ['cliche', 'hype', 'short', 'ans', 'we'],
+    blog: ['cliche', 'hype', 'short', 'ans', 'we'],
+    social: ['cliche', 'hype', 'short', 'we'],
+    deep: ['cliche', 'hype', 'data', 'short', 'ans'],
+    seo: ['cliche', 'hype']
+  };
+  BLOCKLBL = {
+    product: { tbl: 'Bảng so sánh phiên bản', chk: 'Bảng thông số chọn nhanh', faq: 'Hỏi đáp trước khi mua + dữ liệu cấu trúc', cta: 'Lời mời mua / nhận tư vấn', take: 'Lý do nên chọn' },
+    news: { tldr: 'Tóm tắt 3 câu đầu tin', def: 'Câu trả lời ngắn mỗi mục', src: 'Nguồn tin' },
+    page: { faq: 'Hỏi đáp về dịch vụ + dữ liệu cấu trúc', cta: 'Lời mời liên hệ', chk: 'Quy trình làm việc dạng bảng kiểm' },
+    landing: { chk: 'Bằng chứng dạng bảng kiểm', cta: 'Lời mời hành động chính', faq: 'Xử lý băn khoăn thường gặp + dữ liệu cấu trúc' },
+    blog: { tldr: 'Mở bài bằng chuyện thật', def: 'Ý chính mỗi đoạn nói thẳng', take: 'Bài học rút ra', src: 'Dẫn nguồn khi nêu số' },
+    social: { def: 'Câu mở hút mắt + ý chính', take: 'Ba gạch đầu dòng đáng lưu', cta: 'Lời mời ở cuối bài đăng' },
+    deep: { tldr: 'Tóm tắt cho người đọc nhanh', tbl: 'Bảng dữ liệu so sánh', chk: 'Phương pháp / cách kiểm chứng', src: 'Danh mục nguồn dẫn' }
+  };
+  INDUS = {
+    water: {
+      name: 'Thiết bị lọc nước', biz: 'Nước Sạch An Bình · thiết bị lọc nước',
+      topicPh: 'Ví dụ: cách chọn máy lọc nước cho gia đình 4 người ở khu vực nước nhiễm phèn',
+      kwPh: 'máy lọc nước gia đình',
+      notePh: 'Mỗi dòng một ý. Ví dụ:\n- Nước khu Bình Chánh nhiễm phèn, khách hay hỏi lõi số 1 bao lâu thay\n- Bảo hành tận nhà trong 24h',
+      kw: [['lõi lọc RO', 'nước nhiễm phèn', 'công suất 10 lít/giờ', 'chi phí thay lõi'], ['nano hay ro', 'máy lọc nước để bàn', 'nước cứng', 'xét nghiệm nước tại nhà']],
+      ents: [
+        { l: 'Màng RO', w: ['ro', 'phèn', 'giếng', 'lọc'] }, { l: 'Lọc Nano / UF', w: ['nano', 'lọc', 'khoáng'] },
+        { l: 'Than hoạt tính', w: ['mùi', 'clo', 'lọc'] }, { l: 'Nước nhiễm phèn', w: ['phèn', 'giếng', 'vàng'] },
+        { l: 'Độ cứng của nước', w: ['cứng', 'cặn', 'vôi'] }, { l: 'QCVN 01-1:2018/BYT', w: ['sạch', 'sinh hoạt', 'chuẩn', 'lọc'] },
+        { l: 'TDS', w: ['tds', 'chỉ số'] }, { l: 'Bình áp', w: ['áp', 'yếu'] },
+        { l: 'Lõi tạo khoáng', w: ['khoáng'] }, { l: 'Nước thải RO', w: ['thải', 'ro'] }
+      ],
+      qs: ['{kw} nên chọn loại nào', 'RO và Nano khác nhau thế nào, loại nào giữ khoáng', 'công suất bao nhiêu lít một giờ là đủ', 'một năm tốn bao nhiêu tiền thay lõi', '{kw} có cần xét nghiệm nước trước không'],
+      refs: [{ k: 'r1', kind: 'link', label: 'QCVN 01-1:2018/BYT — chất lượng nước sạch sinh hoạt', meta: 'văn bản' }],
+      samples: [{ k: 's1', l: '5 dấu hiệu nước nhiễm phèn', rel: true }, { k: 's2', l: 'Bảng giá lắp đặt 2026', rel: false }, { k: 's3', l: 'Câu chuyện khách hàng — quán cà phê Đo Đo', rel: false }]
+    },
+    cnc: {
+      name: 'Cơ khí chính xác', biz: 'Cơ Khí Chính Xác An Vinh · gia công CNC',
+      topicPh: 'Ví dụ: chọn dung sai gia công CNC cho chi tiết nhôm dùng trong dây chuyền lắp ráp',
+      kwPh: 'gia công cnc chính xác',
+      notePh: 'Mỗi dòng một ý. Ví dụ:\n- Máy 5 trục, dung sai giữ được ±0,01 mm\n- Đã làm chi tiết nhôm 6061 cho 3 nhà máy FDI',
+      kw: [['dung sai ±0,01 mm', 'gia công 5 trục', 'nhôm 6061', 'kiểm tra CMM'], ['tiện CNC', 'phay CNC', 'đơn hàng loạt nhỏ', 'bản vẽ 2D 3D']],
+      ents: [
+        { l: 'Dung sai gia công', w: ['dung sai', 'chính xác', 'cnc'] }, { l: 'ISO 2768', w: ['dung sai', 'tiêu chuẩn'] },
+        { l: 'Máy CNC 5 trục', w: ['5 trục', 'phay', 'cnc'] }, { l: 'Nhôm 6061', w: ['nhôm', 'vật liệu'] },
+        { l: 'Thép không gỉ 304', w: ['thép', 'inox', 'vật liệu'] }, { l: 'Máy đo CMM', w: ['kiểm tra', 'đo', 'cmm'] },
+        { l: 'Độ nhám bề mặt Ra', w: ['bề mặt', 'nhám'] }, { l: 'Bản vẽ 2D / 3D', w: ['bản vẽ', 'thiết kế'] },
+        { l: 'Đơn hàng loạt nhỏ', w: ['loạt nhỏ', 'số lượng'] }, { l: 'Xử lý nhiệt', w: ['nhiệt', 'độ cứng'] }
+      ],
+      qs: ['{kw} giữ được dung sai bao nhiêu', 'chi tiết của tôi nên chọn vật liệu nào', 'báo giá gia công tính theo gì', 'thời gian làm mẫu đầu tiên bao lâu', 'kiểm tra chất lượng bằng cách nào'],
+      refs: [{ k: 'r1', kind: 'link', label: 'ISO 2768 — dung sai chung cho chi tiết gia công', meta: 'tiêu chuẩn' }],
+      samples: [{ k: 's1', l: 'Năng lực máy và dung sai giữ được', rel: true }, { k: 's2', l: 'Quy trình kiểm tra CMM', rel: false }, { k: 's3', l: 'Dự án chi tiết nhôm cho nhà máy FDI', rel: false }]
+    },
+    service: {
+      name: 'Dịch vụ tại nhà', biz: 'Bảo Sơn Home · dịch vụ sửa chữa tại nhà',
+      topicPh: 'Ví dụ: bảng giá và quy trình vệ sinh máy lạnh cho căn hộ 2 phòng ngủ',
+      kwPh: 'vệ sinh máy lạnh tại nhà',
+      notePh: 'Mỗi dòng một ý. Ví dụ:\n- Thợ đến trong 2 giờ ở nội thành\n- Bảo hành công 30 ngày, có hoá đơn',
+      kw: [['bảng giá vệ sinh máy lạnh', 'bao lâu vệ sinh một lần', 'thợ tại nhà', 'bảo hành công'], ['máy lạnh chảy nước', 'máy lạnh không lạnh', 'nạp gas', 'chi phí thay linh kiện']],
+      ents: [
+        { l: 'Vệ sinh dàn lạnh', w: ['vệ sinh', 'máy lạnh', 'dàn'] }, { l: 'Nạp gas R32 / R410a', w: ['gas', 'nạp', 'lạnh'] },
+        { l: 'Chu kỳ bảo dưỡng', w: ['bao lâu', 'định kỳ', 'bảo dưỡng'] }, { l: 'Bảo hành công', w: ['bảo hành', 'cam kết'] },
+        { l: 'Bảng giá dịch vụ', w: ['giá', 'chi phí', 'bảng giá'] }, { l: 'Thời gian có mặt', w: ['nhanh', 'giờ', 'tại nhà'] },
+        { l: 'Máy lạnh chảy nước', w: ['chảy nước', 'lỗi'] }, { l: 'Máy lạnh không lạnh', w: ['không lạnh', 'lỗi'] },
+        { l: 'Tiêu thụ điện', w: ['điện', 'tiết kiệm'] }, { l: 'Hoá đơn và bảo hiểm', w: ['hoá đơn', 'công ty'] }
+      ],
+      qs: ['{kw} giá bao nhiêu', 'bao lâu nên làm một lần', 'thợ đến trong bao lâu', 'có bảo hành sau khi làm không', 'tự làm được không hay phải gọi thợ'],
+      refs: [{ k: 'r1', kind: 'note', label: 'Bảng giá dịch vụ 2026 (đã tải lên Thư viện)', meta: 'ghi chú' }],
+      samples: [{ k: 's1', l: 'Bảng giá và thời gian phục vụ', rel: true }, { k: 's2', l: 'Quy trình 6 bước vệ sinh máy lạnh', rel: false }, { k: 's3', l: 'Cam kết bảo hành công', rel: false }]
+    }
+  };
+  CLUSTER = [
+    { t: 'Cách tự kiểm tra nước nhiễm phèn tại nhà', why: 'nhánh còn thiếu · dẫn từ mục 1 của bài này' },
+    { t: 'Lịch thay lõi và chi phí từng loại lõi', why: 'nhánh còn thiếu · dẫn từ mục chi phí 3 năm' },
+    { t: 'Nano hay RO cho nước máy nội thành', why: 'nhánh còn thiếu · gom lượt tìm kiếm so sánh' }
+  ];
+
+  INTENT = { kind: 'Tìm hiểu để chọn mua', line: 'Người đọc chưa biết chọn loại nào và sợ chọn sai. Họ cần cơ sở để quyết định — chưa cần bảng giá, chưa cần khuyến mãi. Bài chốt bằng lời khuyên theo tình huống sẽ giữ được họ.' };
+  GAP = [
+    { k: 'g1', t: 'Chi phí thật trong 3 năm, tính cả từng loại lõi', why: '6 bài đang xếp trên chỉ ghi giá máy, không ai tính tổng chi phí', tag: 'chưa ai nói', gap: true },
+    { k: 'g2', t: 'Cách đọc dấu hiệu nguồn nước tại nhà trước khi chọn máy', why: 'Chỉ 1 bài nhắc, rất sơ sài', tag: 'nói còn thiếu', gap: true },
+    { k: 'g3', t: 'Khi nào không nên dùng RO', why: 'Không bài nào dám viết vì sợ mất đơn — đây là phần tạo niềm tin', tag: 'chưa ai nói', gap: true },
+    { k: 'g4', t: 'So sánh RO — Nano — than hoạt tính', why: 'Bài nào cũng có, vẫn cần để đủ ý nhưng đừng viết dài', tag: 'ai cũng có', gap: false },
+    { k: 'g5', t: 'Bảng công suất theo số người trong nhà', why: 'Có ở 4 bài, bạn nên có bản gọn hơn', tag: 'ai cũng có', gap: false }
+  ];
+  LINKS = [
+    { k: 'l1', t: '5 dấu hiệu nước nhiễm phèn', why: 'dẫn ở mục nhận biết nguồn nước' },
+    { k: 'l2', t: 'Bảng giá lắp đặt 2026', why: 'dẫn ở mục chi phí 3 năm' },
+    { k: 'l3', t: 'Lịch thay lõi cho từng dòng máy', why: 'dẫn ở mục chi phí và bảng kiểm' }
+  ];
+  SRCS = [
+    { k: 's1', t: 'QCVN 01-1:2018/BYT — chất lượng nước sạch sinh hoạt', why: 'ngưỡng sắt, mangan, độ cứng' },
+    { k: 's2', t: 'WHO — Guidelines for drinking-water quality', why: 'khuyến nghị về khoáng trong nước uống' },
+    { k: 's3', t: 'Sawaco — thông báo chất lượng nước theo khu vực', why: 'số liệu nước máy từng quận' }
+  ];
+  AUD = [
+    { k: 'intent', l: 'Đúng ý người tìm', term: 'Search Intent — bài trả lời đúng việc người đọc muốn làm', ts: 'search intent', s: 9, h: 'Trả lời trực tiếp cả 5 câu hỏi chính, không lạc sang chuyện khác.' },
+    { k: 'gain', l: 'Có thứ bài khác chưa có', term: 'Information Gain — phần nội dung không lặp lại đối thủ', ts: 'information gain', s: 8, h: 'Đã có mục chi phí 3 năm, nhưng đang là khoảng ước lượng. Số thật từ bảng giá của bạn sẽ mạnh hơn nhiều.', fix: 'Lấy số thật từ bảng giá', fl: 'Bổ sung số thật' },
+    { k: 'trust', l: 'Đáng tin', term: 'E-E-A-T — kinh nghiệm, chuyên môn, uy tín, tin cậy', ts: 'E-E-A-T', s: 7, h: 'Hai con số về ngưỡng sắt và mangan chưa dẫn nguồn. Không dẫn nguồn thì cả Google và trợ lý AI đều hạ mức tin.', fix: 'Chèn 2 nguồn đã chọn ở bước phân tích', fl: 'Chèn nguồn dẫn' },
+    { k: 'cite', l: 'Dễ được trợ lý AI trích dẫn', term: 'AEO / GEO — tối ưu cho công cụ trả lời và AI tạo sinh', ts: 'AEO / GEO', s: 8, h: 'Hai mục chưa có câu trả lời ngắn ở đầu, máy đọc phải tự đoán ý chính.', fix: 'AI viết câu trả lời ngắn cho 2 mục còn thiếu', fl: 'Viết câu trả lời ngắn' },
+    { k: 'read', l: 'Dễ đọc trên điện thoại', term: 'Readability — độ dài câu, độ dài đoạn', ts: 'readability', s: 9, h: 'Câu trung bình 17 từ, không đoạn nào quá 4 dòng.' },
+    { k: 'struct', l: 'Máy đọc hiểu được cấu trúc', term: 'Structured data — dữ liệu có cấu trúc gắn vào trang', ts: 'structured data', s: 10, h: 'Đã gắn Article, FAQPage, HowTo và đường dẫn phân cấp.' },
+    { k: 'topical', l: 'Phủ đủ chủ đề', term: 'Topical authority — website phủ đủ các nhánh của một chủ đề', ts: 'topical authority', s: 8, h: 'Bài này phủ 6/9 nhánh của chủ đề lọc nước. Còn thiếu 3 nhánh nên viết thành bài riêng và dẫn qua lại.', fix: 'Tạo 3 bài nháp cho các nhánh còn thiếu và dẫn liên kết qua lại', fl: 'Lên kế hoạch 3 bài còn thiếu' },
+    { k: 'fact', l: 'Số liệu đã kiểm chứng', term: 'Fact check — mọi con số đều truy được về nguồn', ts: 'fact check', s: 7, h: 'Bài có 9 con số. 7 số truy được về nguồn hoặc bảng giá của bạn, 2 số về ngưỡng sắt và mangan chưa có nguồn.', fix: 'Gắn nguồn cho 2 con số còn lại, hoặc bỏ nếu không có nguồn', fl: 'Kiểm chứng 2 con số' },
+    { k: 'aivoice', l: 'Không giống văn AI', term: 'AI writing detection — dấu vết văn máy: câu đều nhau, mở bài chung chung, sáo ngữ', ts: 'dấu vết văn AI', s: 8, h: 'Còn 2 chỗ mang nhịp văn máy: một câu mở đoạn kiểu “trong thời đại hiện nay” và 4 câu liên tiếp dài gần bằng nhau.', fix: 'Viết lại 2 chỗ mang nhịp văn máy, giữ nguyên ý', fl: 'Sửa nhịp văn' }
+  ];
+
+  TYPES = [
+    { v: 'guide', l: 'Bài hướng dẫn', h: 'Giải thích từng bước, hợp với tìm kiếm "cách…"' },
+    { v: 'news', l: 'Tin tức', h: 'Ngắn, có mốc thời gian' },
+    { v: 'product', l: 'Mô tả sản phẩm', h: 'Lợi ích + thông số + lý do chọn' },
+    { v: 'page', l: 'Trang giới thiệu / dịch vụ', h: 'Giọng ổn định, có lời mời hành động' },
+    { v: 'landing', l: 'Landing page', h: 'Từng khối bán hàng, câu ngắn' },
+    { v: 'blog', l: 'Blog chia sẻ trải nghiệm', h: 'Kể việc thật của bạn, giọng người thật' },
+    { v: 'social', l: 'Bài đăng mạng xã hội', h: 'Ngắn, có câu mở hút mắt, một lời mời' },
+    { v: 'deep', l: 'Bài chuyên sâu / nghiên cứu', h: 'Dài, nhiều dữ liệu, buộc dẫn nguồn' },
+    { v: 'seo', l: 'Chỉ tiêu đề & mô tả SEO', h: 'Không viết nội dung dài' }
+  ];
+  AUDS = [
+    { v: 'retail', l: 'Khách lẻ', h: 'Tránh thuật ngữ, ví dụ đời thường' },
+    { v: 'biz', l: 'Doanh nghiệp', h: 'Nói về chi phí, vận hành, bảo trì' },
+    { v: 'tech', l: 'Người có chuyên môn', h: 'Được dùng thông số kỹ thuật' },
+    { v: 'student', l: 'Học sinh, sinh viên', h: 'Câu ngắn, giải nghĩa thuật ngữ ngay khi dùng' },
+    { v: 'scholar', l: 'Học giả, nghiên cứu', h: 'Dùng thuật ngữ chuẩn, mọi nhận định phải dẫn nguồn' }
+  ];
+  AUDDEF = {
+    retail: { on: [], rules: [], why: '' },
+    biz: { on: ['tbl'], rules: ['data'], why: 'Người đọc là doanh nghiệp: thêm bảng so sánh chi phí và bắt buộc số liệu có nguồn.' },
+    tech: { on: ['tbl', 'src'], rules: ['data'], why: 'Người đọc có chuyên môn: được dùng thông số, mọi con số phải dẫn nguồn.' },
+    student: { on: ['chk'], rules: ['ans', 'short'], why: 'Người đọc là học sinh, sinh viên: câu ngắn, đoạn ngắn, giải nghĩa thuật ngữ ngay khi dùng, thêm bảng kiểm để tự học.' },
+    scholar: { on: ['src', 'tbl'], rules: ['data', 'hype'], why: 'Người đọc là học giả: bắt buộc dẫn nguồn, không cường điệu, không lời quảng cáo.' }
+  };
+  TONES = [
+    { v: 'pro', l: 'Chuyên nghiệp, gần gũi', h: 'Mặc định an toàn nhất' },
+    { v: 'warm', l: 'Thân thiện', h: 'Như đang tư vấn trực tiếp' },
+    { v: 'sell', l: 'Thiên bán hàng', h: 'Nhấn lợi ích và lời mời hành động' },
+    { v: 'plain', l: 'Ngắn gọn, khô', h: 'Chỉ dữ kiện, không hình ảnh ví von' }
+  ];
+  RULES = [
+    { k: 'cliche', l: 'Bỏ sáo ngữ', i: 'ri-scissors-cut-line', t: 'Cấm các cụm như "trong thời đại ngày nay", "không thể phủ nhận rằng", "giải pháp toàn diện"' },
+    { k: 'hype', l: 'Không cường điệu', i: 'ri-volume-down-line', t: 'Không "tốt nhất thị trường", không hứa hẹn tuyệt đối' },
+    { k: 'data', l: 'Số liệu phải có nguồn', i: 'ri-file-list-3-line', t: 'Chỉ dùng con số bạn cung cấp hoặc có trong tài liệu tham khảo — không tự bịa' },
+    { k: 'short', l: 'Câu dài ngắn xen kẽ', i: 'ri-text-spacing', t: 'Nhịp câu tự nhiên, tránh mọi câu dài đều nhau như văn máy' },
+    { k: 'ans', l: 'Đoạn dưới 4 dòng', i: 'ri-paragraph', t: 'Đoạn ngắn, mỗi đoạn một ý — cả người và máy đọc đều dễ lấy ý' },
+    { k: 'we', l: 'Gọi "chúng tôi – bạn"', i: 'ri-user-voice-line', t: 'Viết ở ngôi thứ nhất số nhiều, gọi người đọc là "bạn"' }
+  ];
+
+  OUTLINE0 = [
+    { id: 'b-tldr', blk: 'tldr', text: 'Tóm tắt nhanh — 3 câu chốt', words: 60, subs: [] },
+    { id: 'o1', text: 'Nước sinh hoạt nhà bạn đang có vấn đề gì', q: 'làm sao biết nước nhà mình có vấn đề gì', words: 180, subs: ['Dấu hiệu thấy được bằng mắt', 'Khi nào nên đi xét nghiệm nước'] },
+    { id: 'o2', text: 'Ba công nghệ lọc và khác nhau thật sự ở đâu', q: 'RO và Nano khác nhau thế nào, loại nào giữ khoáng', words: 320, subs: ['Bảng so sánh 3 công nghệ', 'RO', 'Nano / UF'] },
+    { id: 'o3', text: 'Chọn công suất theo số người trong nhà', q: 'công suất bao nhiêu lít/giờ là đủ cho 4 người', words: 200, subs: ['Bảng 2–4 người', 'Nhà có trẻ nhỏ hoặc người bệnh'] },
+    { id: 'o4', text: 'Chi phí thật trong 3 năm, gồm cả thay lõi', q: 'một năm tốn bao nhiêu tiền thay lõi', words: 240, subs: ['Giá máy', 'Lịch thay từng lõi'] },
+    { id: 'o5', text: 'Khi nào không nên dùng RO', q: 'có trường hợp nào không nên dùng RO', words: 160, subs: [] },
+    { id: 'o6', text: 'Chọn nhanh theo tình huống của bạn', q: 'nhà tôi thuộc trường hợp nào thì chọn gì', words: 140, subs: [] },
+    { id: 'b-chk', blk: 'chk', text: 'Bảng kiểm trước khi xuống tiền', words: 110, subs: [] },
+    { id: 'b-faq', blk: 'faq', text: 'Câu hỏi thường gặp (3 câu)', words: 170, subs: [] },
+    { id: 'b-take', blk: 'take', text: 'Ý chính cần nhớ', words: 70, subs: [] },
+    { id: 'b-cta', blk: 'cta', text: 'Lời mời hành động cuối bài', words: 50, subs: [] },
+    { id: 'b-src', blk: 'src', text: 'Nguồn tham khảo', words: 40, subs: [] }
+  ];
+
+  TCRIT = ['Từ khoá chính ở đầu', 'Dưới 60 ký tự', 'Nêu rõ ai đọc / tình huống', 'Có lợi ích hoặc con số', 'Không sáo ngữ, không hứa quá'];
+  OUTMAP = {
+    social: [
+      { id: 'so1', text: 'Câu mở khiến người đọc dừng lại', q: 'vì sao tôi nên đọc tiếp', words: 40, subs: [] },
+      { id: 'so2', text: 'Ý chính kèm một bằng chứng ngắn', q: 'bạn muốn nói điều gì', words: 70, subs: [] },
+      { id: 'so3', text: 'Lời mời ở cuối bài đăng', q: 'tôi nên làm gì tiếp', words: 40, subs: [] }
+    ],
+    news: [
+      { id: 'ne1', text: 'Chuyện gì vừa xảy ra', q: 'sự việc là gì, khi nào', words: 120, subs: [] },
+      { id: 'ne2', text: 'Vì sao việc này liên quan tới bạn', q: 'nó ảnh hưởng gì tới tôi', words: 150, subs: [] },
+      { id: 'ne3', text: 'Diễn tiến và mốc thời gian', q: 'trước đó đã có gì', words: 130, subs: [] },
+      { id: 'ne4', text: 'Điều nên theo dõi tiếp', q: 'sắp tới sẽ thế nào', words: 100, subs: [] }
+    ],
+    blog: [
+      { id: 'bl1', text: 'Chuyện thật mở đầu — bối cảnh cụ thể', q: 'chuyện gì đã xảy ra với bạn', words: 160, subs: [] },
+      { id: 'bl2', text: 'Việc tôi đã thử và kết quả thật', q: 'bạn đã làm gì', words: 260, subs: ['Cái gì hiệu quả', 'Cái gì không'] },
+      { id: 'bl3', text: 'Chỗ tôi làm sai và cái giá phải trả', q: 'bạn học được gì từ sai sót', words: 200, subs: [] },
+      { id: 'bl4', text: 'Nếu bạn đang ở tình huống này thì nên làm gì', q: 'tôi nên bắt đầu từ đâu', words: 180, subs: [] }
+    ],
+    product: [
+      { id: 'pr1', text: 'Sản phẩm này giải quyết việc gì cho bạn', q: 'nó dùng để làm gì', words: 150, subs: [] },
+      { id: 'pr2', text: 'So sánh các phiên bản, nên chọn bản nào', q: 'bản nào phù hợp với tôi', words: 230, subs: ['Theo nhu cầu', 'Theo ngân sách'] },
+      { id: 'pr3', text: 'Thông số cần quan tâm, thông số bỏ qua được', q: 'thông số nào thật sự quan trọng', words: 180, subs: [] },
+      { id: 'pr4', text: 'Lắp đặt, bảo hành và chi phí dùng lâu dài', q: 'dùng lâu tốn thêm gì', words: 170, subs: [] },
+      { id: 'pr5', text: 'Trường hợp không nên chọn sản phẩm này', q: 'khi nào tôi nên chọn cái khác', words: 120, subs: [] }
+    ],
+    landing: [
+      { id: 'la1', text: 'Lời hứa chính và ai phù hợp', q: 'tôi được gì', words: 120, subs: [] },
+      { id: 'la2', text: 'Bằng chứng: số liệu, khách đã dùng', q: 'có gì chứng minh', words: 180, subs: [] },
+      { id: 'la3', text: 'Cách làm việc trong 3 bước', q: 'quy trình thế nào', words: 150, subs: [] },
+      { id: 'la4', text: 'Xử lý băn khoăn khiến khách chần chừ', q: 'rủi ro của tôi là gì', words: 150, subs: [] }
+    ],
+    page: [
+      { id: 'pa1', text: 'Dịch vụ này dành cho ai và giải quyết việc gì', q: 'có phù hợp với tôi không', words: 170, subs: [] },
+      { id: 'pa2', text: 'Quy trình làm việc và thời gian', q: 'làm việc với các bạn thế nào', words: 220, subs: [] },
+      { id: 'pa3', text: 'Chi phí tính theo gì', q: 'tốn khoảng bao nhiêu', words: 180, subs: [] },
+      { id: 'pa4', text: 'Cam kết và bảo hành', q: 'nếu có sự cố thì sao', words: 160, subs: [] }
+    ],
+    seo: [],
+    deep: [
+      { id: 'de1', text: 'Vấn đề và phạm vi bài này xét tới', q: 'bài trả lời câu hỏi nào', words: 220, subs: [] },
+      { id: 'de2', text: 'Cách kiểm chứng: dữ liệu và phương pháp', q: 'số liệu lấy từ đâu', words: 300, subs: ['Nguồn dữ liệu', 'Giới hạn của dữ liệu'] },
+      { id: 'de3', text: 'Kết quả chính, đọc theo bảng', q: 'dữ liệu cho thấy điều gì', words: 420, subs: [] },
+      { id: 'de4', text: 'Các cách giải thích khác và phản biện', q: 'còn cách hiểu nào khác', words: 380, subs: [] },
+      { id: 'de5', text: 'Áp dụng được gì trong thực tế', q: 'tôi dùng kết quả này thế nào', words: 300, subs: [] },
+      { id: 'de6', text: 'Điều còn chưa rõ, cần nghiên cứu thêm', q: 'giới hạn của bài này là gì', words: 200, subs: [] }
+    ]
+  };
+  TITLESETS = [
+    [
+      { t: 'Máy lọc nước cho gia đình 4 người: chọn theo nguồn nước', c: [1, 1, 1, 1, 1] },
+      { t: 'Chọn máy lọc nước gia đình 4 người: RO hay Nano, công suất bao nhiêu', c: [1, 0, 1, 1, 1] },
+      { t: '4 người, một máy lọc nước: chọn sao cho không phải đổi lại', c: [0, 1, 1, 1, 1] }
+    ],
+    [
+      { t: 'Máy lọc nước gia đình 4 người: chọn đúng ngay lần đầu', c: [1, 1, 1, 1, 1] },
+      { t: 'Máy lọc nước cho nhà 4 người: bảng chọn theo nguồn nước và chi phí 3 năm', c: [1, 0, 1, 1, 1] },
+      { t: 'Nhà 4 người nên dùng máy lọc nước loại nào?', c: [0, 1, 1, 0, 1] }
+    ],
+    [
+      { t: 'Máy lọc nước 4 người: 5 bước chọn không sai', c: [1, 1, 1, 1, 1] },
+      { t: 'Máy lọc nước gia đình 4 người: RO hay Nano, chọn thế nào', c: [1, 1, 1, 0, 1] },
+      { t: 'Giải pháp lọc nước toàn diện cho gia đình 4 người hiện nay', c: [0, 1, 1, 0, 0] }
+    ]
+  ];
+  EXCERPTS = [
+    'Nước mỗi khu một kiểu, nên chiếc máy phù hợp với nhà người khác chưa chắc phù hợp với nhà bạn. Bài này đi từ việc đọc nguồn nước, chọn công nghệ lọc, tính công suất cho gia đình 4 người, đến chi phí thay lõi trong ba năm đầu.',
+    'Chọn máy lọc nước không bắt đầu từ giá máy mà từ nguồn nước nhà bạn. Bài này chỉ cách đọc ba dấu hiệu tại nhà, so RO với Nano, tính công suất cho bốn người và cộng đủ chi phí lõi trong ba năm.',
+    'Bốn người trong nhà dùng 8–12 lít nước uống mỗi ngày, nhưng loại máy phù hợp lại phụ thuộc nguồn nước chứ không phải số lõi. Đây là cách chọn một lần dùng nhiều năm, kèm bảng kiểm trước khi xuống tiền.'
+  ];
+  SEOSETS = [
+    { t: 'Cách chọn máy lọc nước cho gia đình 4 người theo nguồn nước và chi phí', d: 'Hướng dẫn chọn máy lọc nước cho gia đình 4 người: đọc nguồn nước, so RO với Nano, tính công suất và chi phí thay lõi trong 3 năm. Kèm bảng kiểm trước khi mua.', s: 'cach-chon-may-loc-nuoc-cho-gia-dinh-4-nguoi-theo-nguon-nuoc-2026' },
+    { t: 'Chọn máy lọc nước cho gia đình 4 người (2026)', d: 'Chọn máy lọc nước cho nhà 4 người: 3 dấu hiệu đọc nguồn nước, so RO với Nano, công suất 10 lít/giờ và chi phí lõi 3 năm. Kèm bảng kiểm trước khi mua.', s: 'chon-may-loc-nuoc-gia-dinh-4-nguoi' },
+    { t: 'Máy lọc nước gia đình 4 người: chọn theo nguồn nước', d: 'Nhà 4 người nên dùng RO hay Nano? Bài viết so sánh 3 công nghệ, hướng dẫn tính công suất theo số người và cộng đủ chi phí thay lõi trong 3 năm đầu.', s: 'may-loc-nuoc-gia-dinh-4-nguoi' }
+  ];
+  FIXES = {
+    seoTitle: { b: '70 ký tự — Google cắt mất phần cuối', a: '45 ký tự, từ khoá chính ở đầu, có năm', v: 'Chọn máy lọc nước cho gia đình 4 người (2026)', m: 'Đã viết lại tiêu đề SEO còn 45 ký tự — giữ từ khoá chính ở đầu, thêm mốc năm để tăng tỉ lệ bấm' },
+    slug: { b: 'cach-chon-may-loc-nuoc-cho-gia-dinh-4-nguoi-theo-nguon-nuoc-2026', a: 'chon-may-loc-nuoc-gia-dinh-4-nguoi', v: 'chon-may-loc-nuoc-gia-dinh-4-nguoi', m: 'Đã chuẩn hoá đường dẫn: bỏ từ thừa và mốc năm để không phải đổi link sang năm sau' },
+    links: { b: 'chưa có liên kết nội bộ', a: '2 liên kết đặt trong mục nhận biết nguồn nước và mục chi phí', m: 'Đã chèn 2 liên kết nội bộ vào đúng đoạn liên quan, chữ neo lấy theo tiêu đề bài đích' },
+    alt: { b: 'ảnh đại diện không có chữ thay thế', a: '“Máy lọc nước RO 10 lít/giờ lắp dưới tủ bếp gia đình 4 người”', m: 'Đã viết chữ thay thế mô tả đúng ảnh, có từ khoá tự nhiên, không nhồi' },
+    img: { b: 'bài chưa có ảnh minh hoạ', a: '3 vị trí được đánh dấu, kèm chú thích và chữ thay thế sẵn', m: 'Đã đánh dấu 3 chỗ nên chèn ảnh: dấu hiệu nguồn nước, bảng so sánh, sơ đồ lắp đặt' },
+    cta: { b: 'bài kết thúc bằng lời khuyên chung', a: 'lời mời hành động theo dịch vụ thật của bạn, không hứa quá', m: 'Đã viết lời mời hành động cuối bài dựa trên dịch vụ kiểm tra nước tại nhà' },
+    longSent: { b: '3 câu dài trên 30 từ, 1 đoạn 6 dòng', a: 'câu dài nhất còn 24 từ, đoạn dài nhất 4 dòng', m: 'Đã tách 3 câu dài và chia lại 1 đoạn — giữ nguyên ý, chỉ đổi nhịp câu' },
+    srcNum: { b: '2 con số chưa dẫn nguồn (ngưỡng sắt, mangan)', a: 'dẫn QCVN 01-1:2018/BYT ngay tại câu chứa số', m: 'Đã gắn nguồn cho 2 con số và thêm vào mục Nguồn tham khảo' },
+    depth: { b: 'bản nháp ngắn hơn mục tiêu', a: 'đã viết sâu thêm ở các mục mỏng, có ví dụ và số liệu', m: 'Đã viết sâu thêm cho các mục còn mỏng — thêm ví dụ thật và số liệu, không thêm chữ rỗng' },
+    kwStuff: { b: 'từ khoá chính xuất hiện 14 lần, 2 đoạn liền nhau bị lặp', a: 'còn 8 lần, thay 6 chỗ bằng cách gọi khác tự nhiên', m: 'Đã giảm mật độ từ khoá và thay bằng cách diễn đạt khác — không đổi ý' }
+  };
+
+
+  BLOCKDATA = {
+    tldr: { title: '', blocks: [{ k: 'tldr', items: ['Nguồn nước quyết định loại máy, không phải số lõi ghi trên vỏ.', 'Nhiễm phèn hoặc nước giếng: RO 10 lít/giờ có bình áp. Nước máy nội thành: Nano 4 cấp là đủ.', 'Chi phí lõi trong 3 năm thường bằng 40–60% giá máy — tính trước để không bất ngờ.'] }] },
+    chk: { title: 'Bảng kiểm trước khi xuống tiền', blocks: [{ k: 'chk', items: ['Đã biết nguồn nước nhà mình là nước máy, nước giếng hay nước bồn chứa.', 'Đã xét nghiệm nước hoặc ít nhất đối chiếu 3 dấu hiệu nhận biết.', 'Đã tính công suất theo số người, cộng thêm 20% nếu hay có khách.', 'Đã hỏi giá từng lõi và lịch thay, không chỉ hỏi giá máy.', 'Đã xác nhận có van khoá trước máy và chỗ đặt tránh nắng.'] }] },
+    faq: { title: 'Câu hỏi thường gặp', blocks: [
+      { k: 'faq', q: 'Máy lọc RO có làm mất hết khoáng không?', t: 'Có, RO giữ lại rất ít khoáng. Muốn giữ khoáng thì thêm lõi tạo khoáng, hoặc dùng Nano khi nguồn nước đã sạch.' },
+      { k: 'faq', q: 'Bao lâu phải thay lõi một lần?', t: 'Ba lõi thô 6–12 tháng, màng RO 24–36 tháng. Nhà dùng nhiều hoặc nước đục thì rút ngắn lại.' },
+      { k: 'faq', q: 'Nhà thuê có lắp được không?', t: 'Được. Chọn máy để bàn không cần khoan tủ, tháo mang đi khi chuyển chỗ.' }
+    ] },
+    take: { title: '', blocks: [{ k: 'take', items: ['Xem nước trước, xem máy sau.', 'Công suất tính theo số người, không theo giá.', 'Tính chi phí lõi ba năm ngay khi chọn máy.'] }] },
+    cta: { title: '', blocks: [{ k: 'cta', t: 'Chưa chắc nguồn nước nhà mình thuộc loại nào? Gửi địa chỉ khu vực, kỹ thuật viên kiểm tra nước tại nhà miễn phí và đề xuất đúng một phương án — không bán kèm thứ bạn không cần.' }] },
+    src: { title: '', blocks: [{ k: 'src', items: ['QCVN 01-1:2018/BYT — Quy chuẩn chất lượng nước sạch sinh hoạt.', 'WHO — Guidelines for drinking-water quality, ấn bản thứ tư.'] }] }
+  };
+  BANK = {
+    o1: [
+      { k: 'ans', t: 'Có ba dấu hiệu nhìn thấy được: vết vàng ở đáy chậu rửa, quần áo trắng ngả vàng, và cặn trắng đọng đáy ấm. Thấy hai trong ba dấu hiệu thì nên xét nghiệm nước trước khi chọn máy.' },
+      { k: 'p', t: 'Nhà bốn người ở Bình Chánh và nhà bốn người ở Cầu Giấy cần hai chiếc máy khác nhau. Trước khi xem máy, hãy xem nước.' },
+      { k: 'l', items: ['Vết vàng, mùi tanh kim loại: nghi nhiễm sắt hoặc phèn.', 'Cặn trắng, xà phòng khó tạo bọt: nước cứng, nhiều canxi và magie.', 'Mùi clo nồng: nước máy vừa xử lý mạnh, cần than hoạt tính.'] },
+      { k: 'p', t: 'Một lần xét nghiệm khoảng 300–500 nghìn đồng sẽ tiết kiệm cho bạn nhiều hơn thế. Ngưỡng sắt và mangan cho nước sinh hoạt được quy định trong QCVN 01-1:2018/BYT.' }
+    ],
+    o2: [
+      { k: 'ans', t: 'RO lọc sạch nhất nhưng giữ lại rất ít khoáng và có nước thải. Nano/UF giữ khoáng, không cần điện, chỉ dùng được khi nguồn nước đã tương đối sạch. Than hoạt tính xử lý mùi clo, không thay được hai loại trên.' },
+      { k: 'tbl', head: ['Công nghệ', 'Giữ khoáng', 'Cần điện', 'Phù hợp khi'], rows: [['RO', 'Rất ít', 'Có', 'Nước giếng, nhiễm phèn, chưa rõ chất lượng'], ['Nano / UF', 'Giữ', 'Không', 'Nước máy nội thành đã đạt chuẩn'], ['Than hoạt tính', 'Giữ', 'Không', 'Nước có mùi clo, dùng kèm hai loại trên']] },
+      { k: 'p', t: 'Với nước nhiễm phèn hoặc nước giếng, RO là lựa chọn thực tế. Với nước máy nội thành đã đạt chuẩn, Nano thường đủ và tiền điện, tiền nước thải đều thấp hơn.' }
+    ],
+    o3: [
+      { k: 'ans', t: 'Gia đình bốn người dùng 8–12 lít nước uống và nấu mỗi ngày, máy 10 lít/giờ là dư. Nhà hay có khách hoặc dùng cho quán nhỏ thì tính lên 15 lít/giờ.' },
+      { k: 'p', t: 'Chọn công suất dư một chút giúp máy không phải chạy liên tục, màng RO bền hơn và nước ra không bị yếu vào giờ cao điểm.' }
+    ],
+    o4: [
+      { k: 'ans', t: 'Ngoài giá máy, ba lõi thô thay mỗi 6–12 tháng, màng RO mỗi 24–36 tháng, lõi chức năng mỗi 12–24 tháng. Cộng lại, chi phí lõi ba năm thường bằng 40–60% giá máy.' },
+      { k: 'p', t: 'Ghi ngày thay lõi ngay trên vỏ máy. Phần lớn trường hợp “máy yếu dần” mà khách gọi bảo hành thực ra chỉ là lõi quá hạn.' }
+    ],
+    o5: [
+      { k: 'ans', t: 'Nếu nước máy nhà bạn đã đạt chuẩn và bạn muốn giữ khoáng tự nhiên, RO là lựa chọn thừa: tốn điện, có nước thải và phải bù khoáng lại. Nano 4 cấp đủ và rẻ hơn về lâu dài.' }
+    ],
+    o6: [
+      { k: 'ans', t: 'Nước giếng hoặc nhiễm phèn: RO 10 lít/giờ có bình áp. Nước máy nội thành, muốn giữ khoáng: Nano 4 cấp. Nhà thuê, hay chuyển chỗ: máy để bàn không cần khoan tủ.' }
+    ],
+    so1: [{ k: 'ans', t: 'Ba nhà trong cùng một con hẻm, ba chiếc máy lọc nước khác nhau — và chỉ một nhà chọn đúng. Khác biệt không nằm ở giá máy.' }],
+    so2: [{ k: 'ans', t: 'Nguồn nước quyết định loại máy: nhiễm phèn thì RO có bình áp, nước máy nội thành thì Nano 4 cấp là đủ. Chi phí lõi ba năm thường bằng 40–60% giá máy, nên hỏi giá lõi trước khi chốt.' }],
+    so3: [{ k: 'ans', t: 'Nhắn cho chúng tôi tên khu bạn đang ở, chúng tôi nói luôn nguồn nước khu đó thường gặp vấn đề gì và nên dùng loại nào.' }],
+    ne1: [
+      { k: 'ans', t: 'Từ ngày 1/7, nước sinh hoạt tại ba phường thuộc khu vực phía nam thành phố được ghi nhận có độ đục và hàm lượng sắt cao hơn ngưỡng cho phép trong QCVN 01-1:2018/BYT.' },
+      { k: 'p', t: 'Thông báo được đơn vị cấp nước phát đi kèm khuyến nghị người dân xả nước đầu vòi trước khi dùng và không dùng trực tiếp cho ăn uống.' }
+    ],
+    ne2: [
+      { k: 'ans', t: 'Với hộ đang dùng máy lọc, hàm lượng sắt cao làm ba lõi thô nghẹt nhanh hơn bình thường 2–3 lần, nước ra yếu dần chứ không mất hẳn nên rất dễ bỏ qua.' },
+      { k: 'p', t: 'Hộ chưa có máy nên tránh dùng nước chưa xử lý cho ăn uống trong thời gian này.' }
+    ],
+    ne3: [
+      { k: 'ans', t: 'Đây là lần thứ hai trong năm khu vực này có thông báo tương tự: lần trước vào tháng 3, kéo dài chín ngày trước khi các chỉ số trở lại mức cho phép.' }
+    ],
+    ne4: [
+      { k: 'ans', t: 'Đơn vị cấp nước cho biết sẽ công bố kết quả kiểm tra hằng tuần. Nếu nước còn đục sau hai tuần, hộ dùng nước giếng và nước bồn chứa nên xét nghiệm lại trước khi thay lõi.' }
+    ],
+    bl1: [
+      { k: 'ans', t: 'Chiếc máy lọc nước đầu tiên tôi lắp cho nhà mình phải bỏ sau mười bốn tháng. Không phải vì máy dở — vì tôi chọn khi chưa biết nước nhà mình có gì.' },
+      { k: 'p', t: 'Nhà tôi ở khu nước nhiễm phèn nhẹ, nhưng lúc mua tôi chỉ so số lõi và giá.' }
+    ],
+    bl2: [
+      { k: 'ans', t: 'Tôi thử ba cách: đổi lõi dày hơn, lắp thêm bộ tiền xử lý, và cuối cùng là xét nghiệm nước rồi chọn lại máy. Chỉ cách thứ ba giải quyết được vấn đề.' },
+      { k: 'p', t: 'Xét nghiệm tốn 380 nghìn và bốn ngày chờ kết quả. Nếu làm ngay từ đầu, tôi tiết kiệm được gần bảy triệu.' }
+    ],
+    bl3: [
+      { k: 'ans', t: 'Sai lớn nhất của tôi là tin vào con số “9 cấp lọc” trên vỏ máy. Số cấp không nói được gì nếu không đúng loại nước, và tôi đã trả giá bằng một lần thay cả bộ.' }
+    ],
+    bl4: [
+      { k: 'ans', t: 'Nếu bạn đang chuẩn bị mua: xét nghiệm nước trước, hỏi giá từng lõi, rồi mới xem máy. Ba việc đó tốn một tuần và giúp bạn không phải làm lại như tôi.' }
+    ],
+    pr1: [
+      { k: 'ans', t: 'Máy lọc nước RO 10 lít/giờ này dành cho gia đình 3–5 người dùng nước máy hoặc nước giếng đã qua bể lắng, cho nước uống trực tiếp không cần đun.' }
+    ],
+    pr2: [
+      { k: 'ans', t: 'Bản tiêu chuẩn đủ cho nước máy nội thành. Bản có bình áp phù hợp nhà dùng nhiều hoặc áp nước yếu. Bản tủ đứng dành cho nhà không có chỗ dưới bồn rửa.' },
+      { k: 'tbl', head: ['Phiên bản', 'Công suất', 'Bình áp', 'Phù hợp'], rows: [['Tiêu chuẩn', '10 l/giờ', 'Không', 'Nước máy, 3–4 người'], ['Có bình áp', '10 l/giờ', 'Có', 'Áp yếu, dùng nhiều'], ['Tủ đứng', '15 l/giờ', 'Có', 'Nhà đông người, quán nhỏ']] }
+    ],
+    pr3: [
+      { k: 'ans', t: 'Ba thông số cần xem: công suất lít/giờ, loại màng RO và lịch thay từng lõi. Số cấp lọc và màu vỏ máy gần như không ảnh hưởng tới chất lượng nước.' }
+    ],
+    pr4: [
+      { k: 'ans', t: 'Lắp đặt miễn phí trong nội thành, bảo hành máy 24 tháng và bảo hành công 12 tháng. Chi phí lõi trung bình 900 nghìn–1,4 triệu mỗi năm tuỳ nguồn nước.' }
+    ],
+    pr5: [
+      { k: 'ans', t: 'Không nên chọn bản RO nếu nước nhà bạn đã đạt chuẩn và bạn muốn giữ khoáng tự nhiên — khi đó Nano 4 cấp hợp hơn và rẻ hơn khi dùng lâu.' }
+    ],
+    la1: [
+      { k: 'ans', t: 'Kiểm tra nước tại nhà miễn phí, có kết quả trong 15 phút, và chỉ đề xuất đúng một phương án phù hợp. Dành cho gia đình đang nghi nước nhiễm phèn hoặc nước cứng.' }
+    ],
+    la2: [
+      { k: 'ans', t: '1.240 hộ đã kiểm tra trong 12 tháng qua; 31% trong số đó không cần đổi máy, chỉ cần thay đúng lõi. Chúng tôi nói rõ cả khi bạn chưa cần mua.' }
+    ],
+    la3: [
+      { k: 'ans', t: 'Ba bước: bạn gửi địa chỉ khu vực, kỹ thuật viên tới đo tại nhà, bạn nhận một đề xuất kèm chi phí ba năm. Không thu phí ở cả ba bước.' }
+    ],
+    la4: [
+      { k: 'ans', t: 'Bạn không phải mua gì sau khi kiểm tra. Nếu chọn lắp, có 7 ngày đổi ý và được hoàn tiền lắp đặt nếu nước ra không đạt như cam kết.' }
+    ],
+    pa1: [
+      { k: 'ans', t: 'Dịch vụ kiểm tra và xử lý nước sinh hoạt dành cho hộ gia đình, quán ăn nhỏ và văn phòng dưới 30 người, ở khu vực nội thành và các huyện lân cận.' }
+    ],
+    pa2: [
+      { k: 'ans', t: 'Quy trình bốn bước: tiếp nhận trong 2 giờ, đo tại nhà, báo phương án kèm chi phí ba năm, thi công trong 1 ngày. Mọi bước có biên bản gửi qua Zalo.' }
+    ],
+    pa3: [
+      { k: 'ans', t: 'Chi phí tính theo nguồn nước và số điểm dùng, không tính theo số lõi. Kiểm tra miễn phí; xử lý nước cứng từ 4,2 triệu; lắp máy uống trực tiếp từ 6,5 triệu.' }
+    ],
+    pa4: [
+      { k: 'ans', t: 'Bảo hành thiết bị 24 tháng, bảo hành công 12 tháng, có mặt trong 24 giờ nếu nước ra không đạt. Nếu xử lý không đạt cam kết, chúng tôi hoàn phí công.' }
+    ],
+    de1: [
+      { k: 'ans', t: 'Bài này xét một câu hỏi hẹp: với nước sinh hoạt đô thị đã đạt QCVN 01-1:2018/BYT, lọc RO có mang lại lợi ích đo được so với Nano/UF hay không.' },
+      { k: 'p', t: 'Phạm vi giới hạn ở nước máy đô thị, không xét nước giếng, nước bồn chứa lâu ngày hay nước có nguy cơ vi sinh cao.' }
+    ],
+    de2: [
+      { k: 'ans', t: 'Dữ liệu gồm 214 mẫu nước máy tại 9 quận, đo TDS, độ cứng, sắt, mangan và clo dư trước và sau lọc, so giữa hai công nghệ trên cùng nguồn.' },
+      { k: 'p', t: 'Giới hạn: mẫu lấy trong mùa khô, không phản ánh giai đoạn nước đục sau mưa lớn; thiết bị đo có sai số ±3% với chỉ tiêu TDS.' }
+    ],
+    de3: [
+      { k: 'ans', t: 'Với các mẫu đã đạt chuẩn đầu vào, RO giảm TDS trung bình 94% còn Nano giảm 21%, nhưng cả hai đều đưa sắt và mangan xuống dưới ngưỡng phát hiện.' },
+      { k: 'p', t: 'Nói cách khác, phần chênh lệch của RO nằm ở khoáng bị loại bỏ chứ không nằm ở chỉ tiêu an toàn.' }
+    ],
+    de4: [
+      { k: 'ans', t: 'Có hai cách hiểu khác: chênh lệch đến từ chất lượng màng, hoặc từ khác biệt áp lực nước giữa các quận. Kiểm tra chéo theo cụm quận cho thấy cả hai yếu tố này chỉ giải thích được 6% phương sai.' }
+    ],
+    de5: [
+      { k: 'ans', t: 'Hệ quả thực tế: với nước máy đô thị đạt chuẩn, chọn Nano tiết kiệm điện và không có nước thải, còn RO chỉ đáng chọn khi nguồn nước biến động hoặc chưa rõ chất lượng.' }
+    ],
+    de6: [
+      { k: 'ans', t: 'Chưa trả lời được: ảnh hưởng dài hạn của việc uống nước ít khoáng ở nhóm trẻ nhỏ, và diễn biến chất lượng nước trong mùa mưa. Hai câu hỏi này cần bộ dữ liệu theo mùa.' }
+    ]
+  };
+  PROMPT = [
+    { icon: 'ri-search-eye-line', title: 'Trước khi viết — hệ thống tự làm', items: [
+      { text: 'Đọc trang tìm kiếm và các bài đang xếp trên để xác định người đọc muốn gì.' },
+      { text: 'Tìm phần các bài đó chưa nói, để bài của bạn có thứ mới.' },
+      { text: 'Liệt kê khái niệm bắt buộc phải nhắc để máy đọc nối bài với chủ đề.' },
+      { text: 'Soát nội dung website của bạn để không viết trùng và để chọn chỗ liên kết nội bộ.' }
+    ] },
+    { icon: 'ri-layout-2-line', title: 'Cấu trúc bắt buộc', items: [
+      { text: 'Tóm tắt nhanh 3 câu ngay đầu bài.' },
+      { text: 'Mỗi mục là một câu hỏi thật, mở đầu bằng câu trả lời ngắn 40–60 từ.' },
+      { text: 'Có bảng so sánh, bảng kiểm, hỏi đáp, ý chính cần nhớ và nguồn tham khảo.' },
+      { text: 'Đoạn dưới 4 dòng; ưu tiên bảng và danh sách hơn đoạn văn dài.' }
+    ] },
+    { icon: 'ri-shield-star-line', title: 'Giữ chất lượng và độ tin', items: [
+      { text: 'Không sáo ngữ, không cường điệu, không nhồi từ khoá.' },
+      { text: 'Chỉ dùng con số có nguồn — nguồn bạn cung cấp hoặc nguồn chính thống đã chọn.' },
+      { text: 'Ưu tiên kinh nghiệm thật và ví dụ cụ thể của doanh nghiệp bạn.' },
+      { text: 'Không viết theo văn mẫu AI: nhịp câu xen kẽ, tránh mở bài chung chung.' }
+    ] },
+    { icon: 'ri-award-line', title: 'Sau khi viết — tự chấm rồi tự sửa', items: [
+      { text: 'Tự cho điểm 6 tiêu chí; mục nào dưới ngưỡng thì đề xuất sửa đúng chỗ đó.' },
+      { text: 'Tự gắn dữ liệu có cấu trúc theo dạng nội dung (bài viết, hỏi đáp, hướng dẫn).' },
+      { text: 'Đánh dấu chỗ nên chèn ảnh và viết chú thích sẵn.' },
+      { text: 'Ghi nhận phần do AI tạo vào lịch sử sửa bài để bạn luôn biết cái gì là của máy.' }
+    ] }
+  ];
+
+  componentDidMount() {
+    this._syncTopic();
+    this._key = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); this.askClose(); return; }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { e.preventDefault(); this._primary(); }
+    };
+    window.addEventListener('keydown', this._key);
+  }
+  componentDidUpdate(p) { if (p.focusField !== this.props.focusField || p.topicSeed !== this.props.topicSeed) this._syncTopic(); }
+  componentWillUnmount() { clearTimeout(this._s); if (this._key) window.removeEventListener('keydown', this._key); }
+  askClose() {
+    if (this.state.promptOpen) { this.setState({ promptOpen: false }); return; }
+    if (this.state.closeAsk) { this.setState({ closeAsk: false }); return; }
+    if (this.state.conflict) { this.setState({ conflict: null }); return; }
+    if ((this.state.step === 'draft' || this.state.step === 'audit') && !this.state.inserted) { this.setState({ closeAsk: true }); return; }
+    this.props.onClose && this.props.onClose();
+  }
+  // Loại nội dung suy từ nơi mở trợ lý — không bắt người dùng tự chọn
+  autoType() {
+    const k = String(this.props.contentKind || '').toLowerCase();
+    const map = { page: 'page', trang: 'page', post: 'guide', 'bài viết': 'guide', news: 'news', 'tin tức': 'news', product: 'product', 'sản phẩm': 'product', landing: 'landing', blog: 'blog', social: 'social', seo: 'seo' };
+    if (map[k]) return map[k];
+    const c = String(this.props.contextLabel || '').toLowerCase();
+    if (/trang/.test(c)) return 'page';
+    if (/tin/.test(c)) return 'news';
+    if (/sản phẩm/.test(c)) return 'product';
+    if (/bài/.test(c)) return 'guide';
+    return '';
+  }
+  _syncTopic() {
+    const at = this.autoType();
+    if (at && !this._typeSet && this.state.chips.type !== at) {
+      this._typeSet = true;
+      const d = this.TYPEDEF && this.TYPEDEF[at];
+      this.setState(s => ({
+        chips: Object.assign({}, s.chips, { type: at }, d ? { audience: d.audience, tone: d.tone, length: d.length } : {}),
+        outline: null, aeoOv: {}, ruleOv: {}
+      }));
+    }
+    const seed = this.props.topicSeed || '';
+    if (seed && !this.state.topic) this.setState({ topic: seed });
+    if (this.props.focusField === 'seo') this.setState(s => ({ chips: Object.assign({}, s.chips, { type: 'seo' }) }));
+  }
+
+  COST = { research: 350, outline: 120, fix: 130, audit: 160, seo: 90, excerpt: 110, title: 80 };
+  quota() { const dflt = { used: 4200, limit: (window.BSAI ? window.BSAI.plan().words : 60000) }; const q = this.props.quota || dflt; return { used: q.used, limit: q.limit, left: Math.max(0, q.limit - q.used) }; }
+  fmt(n) { return Number(Math.round(n)).toLocaleString('vi-VN'); }
+  spend(n) { if (this.props.onSpend) this.props.onSpend(n); }
+  notify(t, i) { if (this.props.onNotify) this.props.onNotify(t, i); }
+  costTip(n) { return 'Dùng ~' + this.fmt(n) + ' từ AI · còn lại ~' + this.fmt(Math.max(0, this.quota().left - n)); }
+  canSpend(n) {
+    const L = this.quota().left;
+    if (n > L) { this.notify('Không đủ hạn ngạch: lần chạy này cần ~' + this.fmt(n) + ' từ AI, còn ~' + this.fmt(L) + '. Chạy từng phần, hoặc mua thêm ở Cài đặt › Mức dùng AI.', 'ri-lock-line'); return false; }
+    return true;
+  }
+  noQuota() { return !this.canSpend(1); }
+  seoOnly() { return this.state.chips.type === 'seo'; }
+  useResearch() { return this.props.showResearch !== false && !this.seoOnly(); }
+  minScore() { const m = this.props.minScore; return typeof m === 'number' ? m : 9; }
+  ind() { return this.INDUS[this.props.industry || 'water'] || this.INDUS.water; }
+  blockMap() { return this.BLOCKMAP[this.state.chips.type] || this.BLOCKMAP.guide; }
+  audDef() { return this.AUDDEF[this.state.chips.audience] || this.AUDDEF.retail; }
+  blockState(k) {
+    const m = this.blockMap(), a = this.audDef();
+    if (m.on.indexOf(k) >= 0) return 'on';
+    if ((m.opt || []).indexOf(k) >= 0) return a.on.indexOf(k) >= 0 ? 'on' : 'opt';
+    return 'off';
+  }
+  aeoOn(k) {
+    if (this.props.aeoOn === false) return false;
+    const st = this.blockState(k);
+    if (st === 'off') return false;
+    const ov = this.state.aeoOv[k];
+    return ov === undefined ? st === 'on' : !!ov;
+  }
+  targetWords() {
+    const rows = this.LENMAP[this.state.chips.type] || this.LENMAP.guide;
+    const i = ['short', 'med', 'long'].indexOf(this.state.chips.length);
+    return rows[i < 0 ? 1 : i][0];
+  }
+  fitOutline(list) {
+    const target = this.targetWords();
+    let items = list.slice();
+    const sum = () => items.reduce((a, o) => a + o.words, 0);
+    if (sum() > 0) {
+      while (items.filter(o => !o.blk).length > 3 && sum() * 0.7 > target) {
+        let idx = -1;
+        for (let i = items.length - 1; i >= 0; i--) { if (!items[i].blk) { idx = i; break; } }
+        if (idx < 0) break;
+        items.splice(idx, 1);
+      }
+      const k = target / sum();
+      items = items.map(o => Object.assign({}, o, { words: Math.max(30, Math.round(o.words * k / 10) * 10) }));
+    }
+    return items;
+  }
+  srcSubj() {
+    const t = String(this.props.topicSeed || this.state.topic || '').trim();
+    return t.replace(/^(giới thiệu về|giới thiệu|về|trang|liên hệ)\s+/i, '').trim() || t;
+  }
+  srcSents() {
+    const t = String(this.props.sourceText || '').replace(/\s+/g, ' ').trim();
+    if (!t) return [];
+    return t.split(/(?<=[.!?])\s/).map(s => s.trim()).filter(s => this.wcOf(s) >= 6);
+  }
+  wcOf(s) { return String(s || '').split(/\s+/).filter(Boolean).length; }
+  cut(s, n) { s = String(s || '').replace(/\s+/g, ' ').trim(); if (s.length <= n) return s; const c = s.slice(0, n); return c.slice(0, c.lastIndexOf(' ')).replace(/[,;:–—-]$/, '').trim(); }
+  srcHeads() { const h = this.props.sourceHeads; return Array.isArray(h) ? h.filter(Boolean) : []; }
+  hasSource() { return this.srcHeads().length > 0 || (this.props.sourceWords || 0) > 0; }
+  baseOutline() {
+    const t = this.state.chips.type;
+    if (t === 'seo') return [];
+    let secs = this.OUTMAP[t] || this.OUTLINE0.filter(o => !o.blk);
+    // Có bài cũ → giữ đúng các mục đang có làm xương sống, chỉ bổ sung mục còn thiếu
+    const heads = this.srcHeads();
+    if (heads.length) {
+      const kept = heads.map((h, i) => ({ id: 'src' + i, text: h, q: '', words: 170, subs: [], fromSrc: true }));
+      const low = heads.map(x => x.toLowerCase());
+      const subj = this.srcSubj();
+      // Có bài cũ → mục bổ sung lấy từ bộ mục trung tính, KHÔNG dùng dàn ý mẫu của ngành
+      const POOL = [
+        { id: 'ex-proc', text: 'Quy trình làm việc', k: 'quy trình' },
+        { id: 'ex-why', text: 'Vì sao chọn ' + subj, k: 'vì sao' },
+        { id: 'ex-warr', text: 'Cam kết & bảo hành', k: 'cam kết' },
+        { id: 'ex-faq', text: 'Câu hỏi thường gặp', k: 'câu hỏi' }
+      ];
+      const extra = POOL
+        .filter(o => !low.some(h => h.indexOf(o.k) >= 0))
+        .map(o => ({ id: o.id, text: o.text, q: o.text + ' của ' + subj + ' thế nào', words: 150, subs: [] }));
+      secs = kept.concat(extra);
+    }
+    const blks = this.OUTLINE0.filter(o => o.blk && this.aeoOn(o.blk));
+    const head = blks.filter(b => b.blk === 'tldr'), tail = blks.filter(b => b.blk !== 'tldr');
+    return this.fitOutline(head.concat(secs, tail));
+  }
+  outlineOf() { return this.state.outline || this.baseOutline(); }
+  bodyOf() {
+    const out = this.outlineOf(), res = [];
+    const ansOn = this.aeoOn('def'), tblOn = this.aeoOn('tbl');
+    out.forEach(row => {
+      if (row.blk) {
+        const bd = this.BLOCKDATA[row.blk];
+        if (!bd) return;
+        if (bd.title) {
+          const clean = String(row.text || '').replace(/\s*[\(（][^\)）]*[\)）]\s*$/, '').replace(/\s*[—–-]\s*\d+\s*câu.*$/i, '').trim();
+          res.push({ k: 'h', t: clean || bd.title });
+        }
+        if (this.hasSource()) { this.srcBlocks(row.blk).forEach(b => res.push(b)); return; }
+        bd.blocks.forEach(b => res.push(b));
+        return;
+      }
+      res.push({ k: 'h', t: row.text });
+      const subj = this.srcSubj();
+      const bank = row.fromSrc
+        ? this.srcBank(row)
+        : (this.hasSource()
+          ? [{ k: 'ans', t: row.text + ' của ' + subj + ' được trình bày rõ ràng để khách biết trước mình nhận được gì.' },
+             { k: 'p', t: 'Mọi cam kết đều gắn với phạm vi công việc, mốc thời gian và người phụ trách cụ thể — không nói chung chung.' }]
+          : (this.BANK[row.id] || [{ k: 'ans', t: row.q ? ('Trả lời ngắn cho: ' + row.q + '.') : row.text }]));
+      const budget = row.words || 150;
+      let used = 0;
+      bank.forEach(b => {
+        if (b.k === 'ans' && !ansOn) return;
+        if (b.k === 'tbl' && !tblOn) return;
+        const w = this.blockWords(b);
+        if (used > 0 && used + w > budget * 1.35) return;
+        res.push(b);
+        used += w;
+      });
+    });
+    return res;
+  }
+  // Khối AEO (tóm tắt, hỏi đáp, bảng…) viết theo nguyên liệu, không dùng dữ liệu mẫu
+  srcBlocks(blk) {
+    const s = this.srcSubj(), ss = this.srcSents();
+    if (blk === 'tldr') {
+      return [{ k: 'ul', items: [
+        this.cut(ss[0] || (s + ' — hồ sơ năng lực'), 150),
+        this.cut(ss[1] || ('Phạm vi công việc, mốc thời gian và người phụ trách đều rõ trước khi bắt đầu.'), 150),
+        'Cần tư vấn hoặc báo giá: liên hệ trong 24 giờ.'
+      ] }];
+    }
+    if (blk === 'faq') {
+      return [
+        { k: 'q', q: s + ' có những dịch vụ nào?', t: this.cut(ss[0] || ('Các nhóm dịch vụ chính của ' + s + ' cùng phạm vi từng nhóm.'), 220) },
+        { k: 'q', q: 'Bao lâu thì nhận được báo giá?', t: 'Trong vòng 24 giờ làm việc kể từ khi có đủ thông tin.' },
+        { k: 'q', q: 'Có hỗ trợ sau khi bàn giao không?', t: 'Có — bảo hành theo hạng mục, kèm hướng dẫn bảo trì và đầu mối liên hệ cố định.' }
+      ];
+    }
+    if (blk === 'tbl') {
+      return [{ k: 'tbl', rows: [
+        ['Hạng mục', 'Bạn nhận được', 'Thời gian'],
+        ['Khảo sát & tư vấn', 'Ghi nhận yêu cầu, đề xuất phương án', 'Trong 24 giờ'],
+        ['Báo giá', 'Bảng giá chi tiết theo từng hạng mục', '1–2 ngày'],
+        ['Bàn giao', 'Hồ sơ, hướng dẫn bảo trì, bảo hành', 'Theo hợp đồng']
+      ] }];
+    }
+    return [{ k: 'p', t: this.cut(ss[0] || (s + '.'), 220) }];
+  }
+  srcBank(row) {
+    const ss = this.srcSents();
+    const i = Math.max(0, this.srcHeads().indexOf(row.text));
+    const a = ss[i] || ss[0] || '';
+    const b = ss[i + 1] || ss[1] || '';
+    const out = [];
+    if (a) out.push({ k: 'ans', t: this.cut(a, 220) });
+    if (b) out.push({ k: 'p', t: this.cut(b, 260) });
+    if (!out.length) out.push({ k: 'ans', t: row.text + ' — ' + this.srcSubj() + '.' });
+    return out;
+  }
+  blockWords(b) {
+    let s = b.t || '';
+    if (b.items) s = b.items.join(' ');
+    if (b.rows) s = b.rows.map(r => r.join(' ')).join(' ');
+    if (b.q) s = b.q + ' ' + (b.t || '');
+    return String(s).split(/\s+/).filter(Boolean).length;
+  }
+  titleList() {
+    if (this.hasSource()) {
+      const s = this.srcSubj(), set = this.state.titleSet % 2;
+      const a = set === 0
+        ? [
+          { t: this.cut(s + ' — tư vấn tận nơi, báo giá trong 24 giờ', 60), c: [1, 1, 1, 1, 1] },
+          { t: this.cut(s + ': năng lực, giá trị và đội ngũ', 60), c: [1, 0, 1, 1, 1] },
+          { t: this.cut(s + ' — chọn đúng ngay từ đầu', 60), c: [0, 1, 1, 1, 1] }
+        ]
+        : [
+          { t: this.cut(s + ' — hồ sơ năng lực và cam kết', 60), c: [1, 1, 1, 1, 1] },
+          { t: this.cut('Vì sao khách hàng chọn ' + s, 60), c: [1, 1, 1, 0, 1] },
+          { t: this.cut(s + ': những gì bạn nhận được', 60), c: [0, 1, 1, 1, 1] }
+        ];
+      return a;
+    }
+    return this.TITLESETS[this.state.titleSet % this.TITLESETS.length];
+  }
+  titleBest() { const l = this.titleList(); let bi = 0, bs = -1; l.forEach((t, i) => { const s = t.c.reduce((a, b) => a + b, 0); if (s > bs) { bs = s; bi = i; } }); return bi; }
+  titleText() { const l = this.titleList(); return (l[this.state.titleIdx] || l[0]).t; }
+  excerptText() {
+    if (this.state.excerpt) return this.state.excerpt;
+    if (this.hasSource()) {
+      const ss = this.srcSents();
+      const base = ss[this.state.excIdx % Math.max(1, ss.length)] || this.srcSubj();
+      return this.cut(base, 158);
+    }
+    return this.EXCERPTS[this.state.excIdx % this.EXCERPTS.length];
+  }
+  seoSet() {
+    if (this.hasSource()) {
+      const s = this.srcSubj(), first = this.srcSents()[0] || '';
+      const slug = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+      return { t: this.cut(s + ' — hồ sơ năng lực & cam kết', 58), d: this.cut((first || s) + ' Liên hệ để được tư vấn và báo giá.', 158), s: slug };
+    }
+    return this.SEOSETS[this.state.seoIdx % this.SEOSETS.length];
+  }
+  seoTitleText() { if (this.state.fixed.seoTitle) return this.FIXES.seoTitle.v; return this.state.seoTitle || this.seoSet().t; }
+  seoDescText() { return this.state.seoDesc || this.seoSet().d; }
+  slugText() { if (this.state.fixed.slug) return this.FIXES.slug.v; return this.state.slug || this.seoSet().s; }
+  visibleBody() { const b = this.bodyOf(); return this.state.streaming || this.state.stopped ? b.slice(0, this.state.streamAt) : b; }
+  bodyWords() { let n = 0; this.visibleBody().forEach(b => { n += this.blockWords(b); }); return n; }
+
+  typeDef(t) { return this.TYPEDEF[t || this.state.chips.type] || this.TYPEDEF.guide; }
+  lens() {
+    const rows = this.LENMAP[this.state.chips.type] || this.LENMAP.guide;
+    const keys = ['short', 'med', 'long'];
+    return rows.map((r, i) => ({ v: keys[i], l: '~' + r[0].toLocaleString('vi-VN') + ' từ', h: r[1] }));
+  }
+  setChip(k, v) {
+    if (k === 'type') {
+      const d = this.typeDef(v), m = this.BLOCKMAP[v] || this.BLOCKMAP.guide;
+      this.setState(s => ({
+        chips: { type: v, audience: d.audience, tone: d.tone, length: d.length },
+        aeoOv: {}, ruleOv: {}, outline: null, openChip: null, fixed: {}, audFixed: {},
+        pick: v === 'seo' ? { title: false, excerpt: false, body: false, seo: true } : { title: true, excerpt: true, body: true, seo: true }
+      }));
+      const A = this.AUDS.find(x => x.v === d.audience), T = this.TONES.find(x => x.v === d.tone);
+      const L = (this.LENMAP[v] || this.LENMAP.guide)[['short', 'med', 'long'].indexOf(d.length)];
+      this.notify('Đã đặt mặc định tốt nhất cho loại này: ' + (A ? A.l.toLowerCase() : '') + ' · ' + (T ? T.l.toLowerCase() : '') + ' · ~' + L[0].toLocaleString('vi-VN') + ' từ · ' + (m.on.length ? (m.on.length + ' khối') : 'không dựng khối') + '. Bạn đổi lại được bất cứ mục nào.', 'ri-magic-line');
+      return;
+    }
+    this.setState(s => ({ chips: Object.assign({}, s.chips, { [k]: v }), openChip: null, outline: null, fixed: k === 'length' ? {} : s.fixed, audFixed: k === 'length' ? {} : s.audFixed }));
+    if (k === 'audience') {
+      const a = this.AUDDEF[v] || this.AUDDEF.retail;
+      if (a.why) this.notify(a.why, 'ri-magic-line');
+    }
+  }
+  resetChip(k) {
+    const d = this.typeDef();
+    this.setState(s => ({ chips: Object.assign({}, s.chips, { [k]: d[k] }), openChip: null }));
+    this.notify('Đã trả “' + (k === 'audience' ? 'Người đọc' : (k === 'tone' ? 'Giọng' : 'Độ dài')) + '” về mức đề xuất cho loại nội dung này', 'ri-arrow-go-back-line');
+  }
+  toggleChip(k) { this.setState(s => ({ openChip: s.openChip === k ? null : k })); }
+  ruleOn(k) {
+    const d = this.RULEDEF[this.state.chips.type] || this.RULEDEF.guide;
+    const ov = this.state.ruleOv[k];
+    if (ov !== undefined) return !!ov;
+    return d.indexOf(k) >= 0 || this.audDef().rules.indexOf(k) >= 0;
+  }
+  toggleRule(k) { const cur = this.ruleOn(k); this.setState(s => ({ ruleOv: Object.assign({}, s.ruleOv, { [k]: !cur }) })); }
+  sampleList() { if (this.hasSource()) { const h = this.srcHeads(); return [{ k: 's-a', l: 'Bài hiện có: ' + this.srcSubj(), rel: true }].concat(h.slice(0, 2).map((x, i) => ({ k: 's-h' + i, l: 'Mục “' + x + '” trong bài', rel: true }))); } return this.ind().samples; }
+  sampleOn(k) { const ov = this.state.sampleOv[k]; if (ov !== undefined) return !!ov; const s = this.sampleList().find(x => x.k === k); return !!(s && s.rel); }
+  toggleSample(k) { const cur = this.sampleOn(k); this.setState(s => ({ sampleOv: Object.assign({}, s.sampleOv, { [k]: !cur }) })); }
+  kwList() {
+    if (this.state.kwSub) return this.state.kwSub;
+    if (this.hasSource()) {
+      const h = this.srcHeads().map(x => String(x).toLowerCase()).slice(0, 2);
+      return h.length ? h : ['quy trình làm việc', 'cam kết bảo hành'];
+    }
+    return this.ind().kw[0].slice(0, 2);
+  }
+  refList() {
+    if (this.state.refs) return this.state.refs;
+    if (this.hasSource()) return [{ k: 'r-src', kind: 'note', label: 'Bài hiện có trên trang — ' + this.srcSubj(), meta: 'nguyên liệu' }];
+    return this.ind().refs;
+  }
+  topicLow() { return (this.state.topic || '').toLowerCase(); }
+  entsFor() {
+    const bank = this.ind().ents || [], t = this.topicLow();
+    const list = bank.map((e, i) => {
+      const hit = (e.w || []).some(w => t.indexOf(w) >= 0);
+      return { k: 'e' + i, l: e.l, need: hit, src: hit ? 'topic' : 'ind' };
+    });
+    const m = t.match(/(\d+)\s*(người|phòng|chi tiết|máy|nhân viên)/);
+    if (m) list.unshift({ k: 'et0', l: 'Quy mô ' + m[1] + ' ' + m[2], need: true, src: 'topic' });
+    list.sort((a, b) => (b.need ? 1 : 0) - (a.need ? 1 : 0));
+    return list;
+  }
+  gapList() {
+    if (!this.hasSource()) return this.GAP;
+    const s = this.srcSubj();
+    return [
+      { k: 'gs1', t: 'Con số chứng minh năng lực (số công trình, số năm, quy mô)', why: 'Bài hiện có nói định tính, chưa có số liệu kiểm chứng được', tag: 'chưa ai nói', gap: true },
+      { k: 'gs2', t: 'Quy trình làm việc theo từng bước, kèm mốc thời gian', why: 'Khách hay hỏi trước khi liên hệ, bài chưa trả lời', tag: 'nói còn thiếu', gap: true },
+      { k: 'gs3', t: 'Cam kết & bảo hành viết rõ theo hạng mục', why: 'Đối thủ đều có, ' + s + ' chưa nêu', tag: 'nói còn thiếu', gap: true },
+      { k: 'gs4', t: 'Hỏi đáp ngắn về báo giá và thời gian phản hồi', why: 'Giúp Google và trợ lý AI trích dẫn được', tag: 'chưa ai nói', gap: true },
+      { k: 'gs5', t: 'Giới thiệu đội ngũ và giá trị cốt lõi', why: 'Bài hiện có đã có phần này, chỉ cần viết gọn hơn', tag: 'ai cũng có', gap: false }
+    ];
+  }
+  entsList() {
+    if (!this.hasSource()) return this.entsFor();
+    const s = this.srcSubj();
+    return [
+      { k: 'e-s1', l: s, src: 'topic' },
+      { k: 'e-s2', l: 'Năng lực & kinh nghiệm', src: 'topic' },
+      { k: 'e-s3', l: 'Quy trình làm việc', src: 'topic' },
+      { k: 'e-s4', l: 'Cam kết & bảo hành', src: 'topic' },
+      { k: 'e-s5', l: 'Báo giá & thời gian phản hồi', src: 'topic' }
+    ];
+  }
+  qsFor() {
+    const kw = (this.state.kwMain || this.autoKw() || 'chủ đề này').trim();
+    if (this.hasSource()) {
+      const s = this.srcSubj();
+      return [s + ' làm những gì', s + ' có gì khác với bên khác', 'quy trình làm việc của ' + s + ' thế nào', 'báo giá của ' + s + ' tính theo gì', 'liên hệ ' + s + ' bằng cách nào'];
+    }
+    return (this.ind().qs || []).map(q => q.replace('{kw}', kw));
+  }
+  HALF = ['gia', 'bảo', 'vệ', 'kinh', 'sinh', 'chuyên', 'doanh', 'thay', 'xét', 'lắp', 'dung'];
+  autoKw() {
+    const raw = (this.state.topic || '').toLowerCase().replace(/[?.,!;:]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!raw) return '';
+    const IND = this.ind();
+    let bank = [IND.kwPh];
+    (IND.kw || []).forEach(set => { bank = bank.concat(set); });
+    (IND.ents || []).forEach(e => bank.push(e.l.toLowerCase()));
+    let best = '';
+    bank.forEach(p => { const s = String(p || '').toLowerCase(); if (s && raw.indexOf(s) >= 0 && s.split(' ').length >= 2 && s.length > best.length) best = s; });
+    if (best) return best;
+    const lead = ['cách', 'hướng', 'dẫn', 'review', 'top', 'kinh', 'nghiệm', 'tìm', 'hiểu'];
+    const stop = ['cho', 'ở', 'của', 'và', 'với', 'các', 'một', 'những', 'khu', 'vực', 'tại', 'là', 'khi', 'nên', 'thì'];
+    let ws = raw.split(' ');
+    while (ws.length > 3 && lead.indexOf(ws[0]) >= 0) ws.shift();
+    ws = ws.filter(w => stop.indexOf(w) < 0).slice(0, 4);
+    while (ws.length > 2 && this.HALF.indexOf(ws[ws.length - 1]) >= 0) ws.pop();
+    return ws.length >= 2 ? ws.join(' ') : (IND.kwPh || '');
+  }
+  toggleAeo(k) { const cur = this.aeoOn(k); this.setState(s => ({ aeoOv: Object.assign({}, s.aeoOv, { [k]: !cur }), outline: null })); }
+  addKwSug(v) { const l = this.kwList(); this.setState({ kwSub: l.indexOf(v) < 0 ? l.concat([v]) : l }); }
+  moreKw() { this.setState(s => ({ kwSugSet: s.kwSugSet + 1 })); this.notify('Đã lấy thêm gợi ý từ khoá theo chủ đề bạn vừa nhập', 'ri-magic-line'); }
+  toggleOff(group, k) { this.setState(s => { const m = Object.assign({}, s[group]); if (m[k]) delete m[k]; else m[k] = true; return { [group]: m }; }); }
+  addKw() { const v = (this.state.kwDraft || '').trim(); if (!v) return; const l = this.kwList(); this.setState({ kwSub: l.indexOf(v) < 0 ? l.concat([v]) : l, kwDraft: '' }); }
+  addRef() { const v = (this.state.refDraft || '').trim(); if (!v) return; const link = /^https?:/i.test(v) || v.indexOf('.') > 0; this.setState({ refs: this.refList().concat([{ k: 'r' + Date.now(), kind: link ? 'link' : 'note', label: v, meta: link ? 'link' : 'ghi chú' }]), refDraft: '' }); }
+
+  needTopic() { if (!(this.state.topic || '').trim()) { this.notify('Hãy cho biết bài viết nói về điều gì trước đã', 'ri-error-warning-line'); return true; } return false; }
+  goResearch() {
+    if (this.needTopic() || !this.canSpend(this.COST.research)) return;
+    this.spend(this.COST.research);
+    this.setState({ step: 'research', openChip: null });
+    this.notify('Đã phân tích ý định tìm kiếm, 6 bài đang xếp trên và nội dung website của bạn · dùng ~' + this.fmt(this.COST.research) + ' từ AI', 'ri-search-eye-line');
+  }
+  goOutline() {
+    if (this.needTopic() || !this.canSpend(this.COST.outline)) return;
+    this.spend(this.COST.outline);
+    this.setState({ step: 'outline', openChip: null, outline: null });
+    this.notify('Đã lập dàn ý — mỗi mục là một câu hỏi có câu trả lời ngắn · dùng ~' + this.fmt(this.COST.outline) + ' từ AI', 'ri-list-check-2');
+  }
+  goDraft() {
+    if (this.needTopic() || !this.canSpend(this.targetWords())) return;
+    this.spend(this.targetWords());
+    this.setState({ held: this.targetWords() });
+    this.setState({ step: 'draft', streaming: true, streamAt: 0, stopped: false, openChip: null });
+    this._stream();
+  }
+  goAudit() { this.setState({ step: 'audit' }); this.notify('Đã tự chấm ' + this.AUD.length + ' tiêu chí chất lượng — chấm không trừ hạn ngạch', 'ri-award-line'); }
+  _stream() {
+    clearTimeout(this._s);
+    const total = this.bodyOf().length;
+    const tick = () => {
+      this.setState(s => {
+        if (!s.streaming) return {};
+        const n = s.streamAt + 1;
+        if (n >= total) return { streamAt: total, streaming: false };
+        return { streamAt: n };
+      });
+      if (this.state.streaming) this._s = setTimeout(tick, 190);
+    };
+    this._s = setTimeout(tick, 180);
+  }
+  stopStream() {
+    clearTimeout(this._s);
+    const held = this.state.held || 0;
+    const produced = this.bodyWords();
+    const keep = Math.max(produced, Math.round(held * 0.2));
+    const back = Math.max(0, held - keep);
+    this.setState({ streaming: false, stopped: true, held: 0 });
+    if (back > 0) this.spend(-back);
+    this.notify(back > 0
+      ? ('Đã dừng ở ' + this.fmt(produced) + ' từ — hoàn lại ~' + this.fmt(back) + ' từ AI vào hạn ngạch (giữ tối thiểu 20% cho phần đã chạy)')
+      : 'Đã dừng — phần đã viết vẫn giữ lại', 'ri-stop-circle-line');
+  }
+  redoBase(part) { return part === 'body' ? this.targetWords() : (this.COST[part] || this.COST.fix); }
+  redoFree(part) { return !this.state.redoUsed[part]; }
+  redoCost(part) { const b = this.redoBase(part); return this.redoFree(part) ? Math.round(b * 0.5) : b; }
+  redo(part) {
+    const c = this.redoCost(part), half = this.redoFree(part);
+    if (!this.canSpend(c)) return;
+    this.spend(c);
+    this.setState(s => ({ redoUsed: Object.assign({}, s.redoUsed, { [part]: true }) }));
+    const tail = ' · dùng ~' + this.fmt(c) + ' từ AI' + (half ? ' (giảm nửa giá cho lần viết lại đầu của phần này)' : '');
+    if (part === 'body') { this.setState({ streaming: true, streamAt: 0, stopped: false, held: c }); this._stream(); this.notify('Đang viết lại phần nội dung…' + tail, 'ri-refresh-line'); return; }
+    if (part === 'title') {
+      this.setState(s => ({ titleSet: (s.titleSet + 1) % this.TITLESETS.length, titleIdx: 0 }));
+      const n = this.TITLESETS[(this.state.titleSet + 1) % this.TITLESETS.length];
+      this.notify('Đã viết 3 phương án tiêu đề mới, chấm theo 5 tiêu chí — phương án “' + n[0].t + '” đang đạt cao nhất' + tail, 'ri-refresh-line');
+      return;
+    }
+    if (part === 'excerpt') { this.setState(s => ({ excIdx: (s.excIdx + 1) % this.EXCERPTS.length, excerpt: '' })); this.notify('Đã viết lại mô tả ngắn theo hướng khác — vẫn giữ từ khoá và con số chính' + tail, 'ri-refresh-line'); return; }
+    if (part === 'seo') {
+      this.setState(s => ({ seoIdx: (s.seoIdx + 1) % this.SEOSETS.length, seoTitle: '', seoDesc: '', slug: '', fixed: Object.assign({}, s.fixed, { seoTitle: null, slug: null }) }));
+      const n = this.SEOSETS[(this.state.seoIdx + 1) % this.SEOSETS.length];
+      this.notify('Đã viết lại bộ SEO: tiêu đề ' + n.t.length + ' ký tự · mô tả ' + n.d.length + ' ký tự · đường dẫn mới' + tail, 'ri-refresh-line');
+      return;
+    }
+    this.notify('Đã viết lại phần này' + tail, 'ri-refresh-line');
+  }
+  fixCost(k) { return k === 'depth' ? Math.max(200, Math.round(this.targetWords() * 0.3)) : this.COST.fix; }
+  fix(k) {
+    const c = this.fixCost(k);
+    if (!this.canSpend(c)) return;
+    this.spend(c);
+    this.setState(s => ({ fixed: Object.assign({}, s.fixed, { [k]: true }) }));
+    const f = this.FIXES[k];
+    this.notify(f ? f.m : 'Đã chỉnh lại theo gợi ý', 'ri-sparkling-2-line');
+  }
+  fixAllChecks(all) {
+    const keys = (all || []).filter(Boolean);
+    if (!keys.length) { this.notify('Bảng kiểm không còn cảnh báo nào', 'ri-check-line'); return; }
+    const c = keys.reduce((a, k) => a + (k === 'depth' ? Math.max(200, Math.round(this.targetWords() * 0.3)) : this.COST.fix), 0);
+    if (!this.canSpend(c)) return;
+    this.spend(c);
+    const m = Object.assign({}, this.state.fixed);
+    keys.forEach(k => { m[k] = true; });
+    this.setState({ fixed: m });
+    this.notify('Đã tự chỉnh ' + keys.length + ' chỗ trong bảng kiểm · dùng ~' + this.fmt(c) + ' từ AI. Xem phần “đã chỉnh” dưới từng dòng để biết đổi gì.', 'ri-sparkling-2-line');
+  }
+  audFix(k, msg) {
+    if (!this.canSpend(this.COST.audit)) return;
+    this.spend(this.COST.audit);
+    this.setState(s => ({ audFixed: Object.assign({}, s.audFixed, { [k]: true }) }));
+    this.notify(msg + ' · dùng ~' + this.fmt(this.COST.audit) + ' từ AI', 'ri-sparkling-2-line');
+  }
+  fixAll() {
+    const low = this.AUD.filter(a => a.fix && !this.state.audFixed[a.k]);
+    if (!low.length) { this.notify('Mọi tiêu chí đã đạt — không cần chỉnh thêm', 'ri-check-line'); return; }
+    const c = low.length * this.COST.audit;
+    if (!this.canSpend(c)) return;
+    this.spend(c);
+    const m = Object.assign({}, this.state.audFixed);
+    low.forEach(a => { m[a.k] = true; });
+    this.setState({ audFixed: m });
+    this.notify('Đã chỉnh ' + low.length + ' tiêu chí chưa đạt · dùng ~' + this.fmt(c) + ' từ AI', 'ri-sparkling-2-line');
+  }
+
+  outMove(i, d) { this.setState(s => { const a = (s.outline || this.baseOutline()).slice(); const j = i + d; if (j < 0 || j >= a.length) return {}; const t = a[i]; a[i] = a[j]; a[j] = t; return { outline: a }; }); }
+  outDel(i) { this.setState(s => { const a = (s.outline || this.baseOutline()).slice(); a.splice(i, 1); return { outline: a }; }); }
+  outText(i, v) { this.setState(s => { const a = (s.outline || this.baseOutline()).slice(); a[i] = Object.assign({}, a[i], { text: v }); return { outline: a }; }); }
+  outSubDel(i, j) { this.setState(s => { const a = (s.outline || this.baseOutline()).slice(); const subs = a[i].subs.slice(); subs.splice(j, 1); a[i] = Object.assign({}, a[i], { subs: subs }); return { outline: a }; }); }
+  outAdd() { this.setState(s => ({ outline: (s.outline || this.baseOutline()).concat([{ id: 'n' + Date.now(), text: 'Mục mới — gõ tên mục', q: '', words: 150, subs: [] }]) })); }
+
+  LBL = { title: 'Tiêu đề', excerpt: 'Mô tả ngắn', body: 'Nội dung chi tiết', seo: 'Tiêu đề & mô tả SEO' };
+  payload(keys) {
+    const p = {};
+    if (keys.indexOf('title') >= 0) p.title = this.titleText();
+    if (keys.indexOf('excerpt') >= 0) p.excerpt = this.excerptText();
+    if (keys.indexOf('body') >= 0) p.body = this.visibleBody();
+    if (keys.indexOf('seo') >= 0) { p.seoTitle = this.seoTitleText(); p.seoDesc = this.seoDescText(); }
+    return p;
+  }
+  insert(keys) {
+    const ks = keys.filter(k => this.LBL[k]);
+    if (!ks.length) { this.notify('Chưa chọn phần nào để chèn', 'ri-error-warning-line'); return; }
+    const filled = this.props.filled || [];
+    const clash = ks.filter(k => filled.indexOf(k) >= 0);
+    if (clash.length) { this.setState({ conflict: { keys: ks, clash: clash } }); return; }
+    this._commit(ks, 'replace');
+  }
+  _commit(ks, mode) {
+    if (this.props.onInsert) this.props.onInsert(this.payload(ks), ks, mode);
+    this.setState(s => {
+      const ins = Object.assign({}, s.ins);
+      ks.forEach(k => { ins[k] = true; });
+      return { conflict: null, inserted: true, ins: ins, lastIns: ks.slice() };
+    });
+  }
+  resolve(mode) {
+    const c = this.state.conflict; if (!c) return;
+    const ks = mode === 'skip' ? c.keys.filter(k => c.clash.indexOf(k) < 0) : c.keys;
+    if (!ks.length) { this.setState({ conflict: null }); this.notify('Không có phần nào được chèn', 'ri-information-line'); return; }
+    this._commit(ks, mode);
+  }
+
+  _primary() {
+    const S = this.state;
+    if (S.closeAsk || S.conflict || S.promptOpen) return;
+    if (S.step === 'brief') { if (this.seoOnly()) { this.goDraft(); return; } if (this.useResearch()) this.goResearch(); else this.goOutline(); return; }
+    if (S.step === 'research') { this.goOutline(); return; }
+    if (S.step === 'outline') { this.goDraft(); return; }
+    if (S.step === 'draft') { if (S.streaming) return; this.goAudit(); return; }
+    this.insert(Object.keys(S.pick).filter(k => S.pick[k]));
+  }
+
+  renderVals() {
+    const S = this.state, Q = this.quota(), seoOnly = this.seoOnly(), MIN = this.minScore();
+    const stepKeys = seoOnly ? ['brief', 'draft'] : (this.useResearch() ? ['brief', 'research', 'outline', 'draft', 'audit'] : ['brief', 'outline', 'draft', 'audit']);
+    const stepLbl = { brief: 'Đề bài', research: 'Phân tích', outline: 'Dàn ý', draft: 'Bản nháp', audit: 'Kiểm định' };
+    const stepRole = { brief: 'Bạn nêu chủ đề — phần còn lại hệ thống tự nhận', research: 'Hệ thống đọc trang tìm kiếm và website của bạn', outline: 'Chốt dàn ý — bước rẻ nhất để bài ra đúng ý', draft: 'AI viết theo dàn ý đã chốt', audit: 'Hệ thống tự chấm và tự sửa chỗ chưa đạt' };
+    const cIdx = stepKeys.indexOf(S.step);
+    const steps = stepKeys.map((k, i) => {
+      const on = k === S.step, done = i < cIdx;
+      return {
+        num: String(i + 1), label: stepLbl[k], sep: i < stepKeys.length - 1,
+        title: stepRole[k] + (done ? ' · bấm để quay lại' : ''),
+        numStyle: 'width:17px;height:17px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;background:' + (on ? '#405189' : (done ? 'rgba(10,179,156,.16)' : '#eff2f7')) + ';color:' + (on ? '#fff' : (done ? '#0a8f7f' : '#adb5bd')) + ';',
+        style: 'display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:0;border-radius:5px;background:' + (on ? 'rgba(64,81,137,.08)' : 'transparent') + ';font:inherit;font-size:12px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#405189' : (done ? '#495057' : '#adb5bd')) + ';cursor:' + (done ? 'pointer' : 'default') + ';white-space:nowrap;flex-shrink:0;',
+        on: () => { if (done) this.setState({ step: k, openChip: null }); }
+      };
+    });
+
+    const chipDefs = [
+      { k: 'type', label: 'Loại', icon: 'ri-article-line', list: this.TYPES, t: 'Tự nhận từ danh mục của bài — đổi nếu chưa đúng' },
+      { k: 'audience', label: 'Người đọc', icon: 'ri-group-line', list: this.AUDS, t: 'Quyết định cách dùng thuật ngữ và ví dụ' },
+      { k: 'tone', label: 'Giọng', icon: 'ri-mic-line', list: this.TONES, t: 'Tự chọn theo loại nội dung' },
+      { k: 'length', label: 'Độ dài', icon: 'ri-text-wrap', list: this.lens(), t: 'Độ dài mục tiêu, AI vẫn ưu tiên đủ ý hơn đủ chữ' }
+    ];
+    const TD = this.typeDef();
+    const chips = chipDefs.filter(d => !(seoOnly && (d.k === 'length' || d.k === 'tone'))).map(d => {
+      const cv = S.chips[d.k], open = S.openChip === d.k;
+      const cur = d.list.find(o => o.v === cv) || d.list[0];
+      const rec = d.k === 'type' ? null : TD[d.k];
+      const off = rec && rec !== cv;
+      const recLbl = rec ? ((d.list.find(o => o.v === rec) || d.list[0]).l) : '';
+      const optStyle = (sel) => 'display:flex;align-items:flex-start;gap:8px;width:100%;box-sizing:border-box;min-height:38px;padding:7px 9px;border:0;border-radius:6px;background:' + (sel ? '#f3f6f9' : 'transparent') + ';font:inherit;text-align:left;cursor:pointer;';
+      const opts = d.list.map(o => ({
+        label: o.l + (o.v === rec ? ' — đề xuất' : ''), hint: o.h, on2: o.v === cv,
+        style: optStyle(o.v === cv), on: () => this.setChip(d.k, o.v)
+      }));
+      if (off) opts.unshift({ label: '↺ Về mức đề xuất: ' + recLbl, hint: TD.why, on2: false, style: optStyle(false), on: () => this.resetChip(d.k) });
+      return {
+        label: d.label + ':', value: cur.l, icon: d.icon, open: open,
+        title: d.k === 'type'
+          ? 'Tự nhận từ danh mục của bài. Đổi loại là người đọc, giọng, độ dài và bộ khối tự đặt lại theo mức tốt nhất cho loại đó.'
+          : (off ? ('Bạn đã đổi khỏi mức đề xuất (' + recLbl + '). Mở ra chọn “Về mức đề xuất” để trả lại.') : ('Đang ở mức đề xuất cho loại nội dung này. ' + TD.why)),
+        style: 'display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 8px 0 10px;border:1px ' + (off ? 'dashed #e6c98a' : 'solid ' + (open ? '#405189' : '#eff2f7')) + ';border-radius:5px;background:#fff;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap;',
+        on: () => this.toggleChip(d.k),
+        opts: opts
+      };
+    });
+
+    const IND = this.ind(), BM = this.blockMap();
+    const aeoVisible = this.AEO.filter(a => this.blockState(a.k) !== 'off');
+    const aeoActive = aeoVisible.filter(a => this.aeoOn(a.k)).length;
+    const srcPool = [this.srcSubj().toLowerCase(), 'quy trình làm việc', 'cam kết bảo hành', 'báo giá chi tiết', 'kinh nghiệm thi công'];
+    const kwPool = (this.hasSource() ? srcPool : IND.kw[S.kwSugSet % IND.kw.length]).filter(k => this.kwList().indexOf(k) < 0);
+    const activeRules = this.RULES.filter(r => this.ruleOn(r.k)).length;
+    const activeSamples = this.sampleList().filter(s => this.sampleOn(s.k)).length;
+    const kwSubList = this.kwList(), refItems = this.refList();
+    const advBits = [];
+    if ((S.notes || '').trim()) advBits.push('có ý riêng');
+    if (refItems.length) advBits.push(refItems.length + ' tài liệu');
+    advBits.push(activeRules + ' quy tắc văn phong');
+    if (activeSamples) advBits.push(activeSamples + ' bài mẫu');
+
+    const chipBox = (on) => 'width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:1px solid ' + (on ? '#405189' : '#dfe2e8') + ';border-radius:4px;background:' + (on ? '#405189' : '#fff') + ';color:' + (on ? '#fff' : 'transparent') + ';cursor:pointer;flex-shrink:0;';
+
+    const gaps = this.gapList().map(g => {
+      const on = !S.gapOff[g.k];
+      return {
+        text: g.t, why: g.why, tag: g.tag, box: chipBox(on),
+        title: on ? 'Bỏ ý này khỏi dàn ý' : 'Đưa ý này vào dàn ý',
+        on: () => this.toggleOff('gapOff', g.k),
+        tagStyle: 'display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (g.gap ? '#0a8f7f' : '#878a99') + ';background:' + (g.gap ? 'rgba(10,179,156,.10)' : '#f3f6f9') + ';'
+      };
+    });
+    const gapKeep = this.gapList().filter(g => !S.gapOff[g.k]).length;
+
+    const entList = this.hasSource()
+      ? [
+        { k: 'e-s1', l: this.srcSubj(), src: 'topic' },
+        { k: 'e-s2', l: 'Năng lực & kinh nghiệm', src: 'topic' },
+        { k: 'e-s3', l: 'Quy trình làm việc', src: 'topic' },
+        { k: 'e-s4', l: 'Cam kết & bảo hành', src: 'topic' },
+        { k: 'e-s5', l: 'Báo giá & thời gian', src: 'topic' }
+      ]
+      : this.entsList();
+    const ents = entList.map(e => {
+      const on = !S.entOff[e.k];
+      return {
+        label: e.l, icon: e.src === 'topic' ? (on ? 'ri-magic-line' : 'ri-add-line') : (on ? 'ri-check-line' : 'ri-add-line'),
+        title: e.src === 'topic' ? 'Rút ra từ chủ đề bạn nhập — nên có, thiếu thì bài dễ bị hiểu sai chủ đề' : 'Khái niệm chung của ngành, có thì tốt, không bắt buộc',
+        on: () => this.toggleOff('entOff', e.k),
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? (e.need ? 'rgba(10,179,156,.35)' : 'rgba(64,81,137,.25)') : '#e9ebec') + ';border-radius:20px;background:' + (on ? (e.need ? 'rgba(10,179,156,.08)' : 'rgba(64,81,137,.05)') : '#fff') + ';font:inherit;font-size:11.5px;font-weight:500;color:' + (on ? (e.need ? '#0a8f7f' : '#405189') : '#878a99') + ';cursor:pointer;white-space:nowrap;'
+      };
+    });
+
+    const LINKS = this.hasSource()
+      ? [
+        { k: 'l-s1', t: 'Trang Liên hệ', why: 'dẫn ở đoạn kết, chỗ mời khách để lại thông tin' },
+        { k: 'l-s2', t: 'Trang Dịch vụ / Sản phẩm', why: 'dẫn ở mục nói về năng lực' },
+        { k: 'l-s3', t: 'Bài viết mới nhất trên website', why: 'dẫn ở mục kinh nghiệm thực tế' }
+      ]
+      : this.LINKS;
+    const ilinks = LINKS.map(l => { const on = !S.linkOff[l.k]; return { text: l.t, why: l.why, box: chipBox(on), title: on ? 'Bỏ liên kết này' : 'Thêm liên kết này', on: () => this.toggleOff('linkOff', l.k) }; });
+    const SRCS = this.hasSource() ? [{ k: 'sr-s1', t: 'Nội dung bài hiện có trên trang', why: 'nguyên liệu chính, không cần dẫn nguồn ngoài' }] : this.SRCS;
+    const srcs = SRCS.map(s => { const on = !S.srcOff[s.k]; return { text: s.t, why: s.why, box: chipBox(on), title: on ? 'Bỏ nguồn này' : 'Dẫn nguồn này', on: () => this.toggleOff('srcOff', s.k) }; });
+
+    const out = this.outlineOf();
+    const estWords = out.reduce((a, o) => a + o.words, 0);
+    const seoT = this.seoTitleText(), seoD = this.seoDescText(), slug = this.slugText();
+    const mk = (k, badLabel, okLabel, fixLabel, hint, sev, diff) => {
+      const done = !!S.fixed[k], f = this.FIXES[k] || {};
+      if (done) return { k: k, icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: okLabel, done: true, before: (diff && diff.b) || f.b || '', after: (diff && diff.a) || f.a || '' };
+      return {
+        k: k, icon: sev === 'bad' ? 'ri-close-circle-fill' : 'ri-error-warning-fill', color: sev === 'bad' ? '#f06548' : '#f7b84b',
+        label: badLabel, fixable: true, fixLabel: fixLabel,
+        fixTitle: hint + ' · ' + this.costTip(this.fixCost(k)), fix: () => this.fix(k)
+      };
+    };
+    const CHECKSET = {
+      guide: ['kwTitle', 'depth', 'ansAll', 'seoTitle', 'slug', 'links', 'srcNum', 'longSent', 'kwStuff', 'img', 'alt', 'cta', 'dupIn'],
+      news: ['kwTitle', 'depth', 'seoTitle', 'slug', 'links', 'srcNum', 'longSent', 'img', 'alt', 'dupIn'],
+      product: ['kwTitle', 'depth', 'ansAll', 'seoTitle', 'slug', 'links', 'longSent', 'img', 'alt', 'cta', 'dupIn'],
+      page: ['kwTitle', 'depth', 'ansAll', 'seoTitle', 'slug', 'links', 'longSent', 'img', 'alt', 'cta', 'dupIn'],
+      landing: ['depth', 'ansAll', 'longSent', 'img', 'alt', 'cta'],
+      blog: ['depth', 'ansAll', 'longSent', 'srcNum', 'img', 'alt', 'dupIn'],
+      social: ['depth', 'longSent', 'cta'],
+      deep: ['kwTitle', 'depth', 'ansAll', 'seoTitle', 'slug', 'links', 'srcNum', 'longSent', 'kwStuff', 'dupIn'],
+      seo: ['seoTitle', 'slug']
+    };
+    const bodyNow = this.visibleBody();
+    const texts = bodyNow.filter(b => b.k !== 'tbl').map(b => b.items ? b.items.join('. ') : ((b.q ? b.q + '. ' : '') + (b.t || ''))).filter(Boolean);
+    const allText = texts.join(' ');
+    const sents = allText.split(/[.!?]+/).map(x => x.trim()).filter(Boolean);
+    const sentLens = sents.map(x => x.split(/\s+/).length);
+    const longSents = sentLens.filter(x => x > 30).length;
+    const maxSent = sentLens.length ? Math.max.apply(null, sentLens) : 0;
+    const kwTerm = (S.kwMain || this.autoKw() || '').trim().toLowerCase();
+    const kwWords = kwTerm ? kwTerm.split(/\s+/) : [];
+    const lowText = allText.toLowerCase();
+    const kwFullHits = kwTerm ? lowText.split(kwTerm).length - 1 : 0;
+    let kwCore = kwTerm, kwHits = 0;
+    for (let n = kwWords.length; n >= 2 && !kwHits; n--) {
+      for (let i = 0; i + n <= kwWords.length; i++) {
+        const p = kwWords.slice(i, i + n).join(' ');
+        const c = lowText.split(p).length - 1;
+        if (c > kwHits) { kwHits = c; kwCore = p; }
+      }
+    }
+    const bw = this.bodyWords();
+    const kwDens = bw && kwCore ? (kwHits * kwCore.split(/\s+/).length) / bw : 0;
+    const numHits = allText.split(/[\s,;()]+/).filter(w => /^\d+([.,]\d+)?$/.test(w.replace(/[.…]+$/, ''))).length;
+    const headRows = out.filter(o => !o.blk).length;
+    const ansRows = bodyNow.filter(b => b.k === 'ans').length;
+    const okRow = (label) => ({ icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: label });
+    const depthRow = (function (n, t) {
+        if (this.state.fixed.depth) return { k: 'depth', icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: 'Độ sâu đã khớp mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', done: true, before: n + ' từ', after: '~' + t.toLocaleString('vi-VN') + ' từ, thêm ví dụ và số liệu ở các mục mỏng' };
+        if (n < t * 0.75) return { k: 'depth', icon: 'ri-error-warning-fill', color: '#f7b84b', label: 'Bản nháp ' + n + ' từ, ngắn hơn mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fixable: true, fixLabel: 'Viết sâu thêm', fixTitle: 'AI viết thêm ví dụ và số liệu cho các mục còn mỏng, tới sát mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fix: () => this.fix('depth') };
+        if (n > t * 1.3) return { k: 'depth', icon: 'ri-error-warning-fill', color: '#f7b84b', label: 'Bản nháp ' + n + ' từ, dài hơn mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fixable: true, fixLabel: 'Rút gọn', fixTitle: 'AI rút các đoạn lặp ý để về sát mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fix: () => this.fix('depth') };
+        return { icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: n + ' từ — đúng mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ' };
+      }).call(this, bw, this.targetWords());
+    const imgNeed = Math.max(1, Math.round(bw / 400));
+    const linkKeep = this.LINKS.length - Object.keys(S.linkOff).length;
+    const rowFor = {
+      kwTitle: () => {
+        if (S.fixed.kwTitle) return { k: 'kwTitle', icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: 'Từ khoá chính “' + kwTerm + '” đã có trong bài', done: true, before: kwHits ? ('chỉ có “' + kwCore + '” ' + kwHits + ' lần') : 'chưa nhắc cụm nào', after: 'cụm đầy đủ “' + kwTerm + '” trong câu mở đầu và một tiêu đề mục' };
+        if (!kwTerm) return { icon: 'ri-information-line', color: '#adb5bd', label: 'Chưa có từ khoá chính để đối chiếu' };
+        if (kwFullHits > 0) return okRow('Từ khoá chính “' + kwTerm + '” xuất hiện ' + kwFullHits + ' lần, có ngay câu mở đầu');
+        const warn = kwHits
+          ? 'Bài chưa nhắc đúng cụm “' + kwTerm + '” — chỉ có “' + kwCore + '” (' + kwHits + ' lần)'
+          : 'Bài chưa nhắc cụm từ khoá “' + kwTerm + '” lần nào';
+        return { k: 'kwTitle', icon: 'ri-error-warning-fill', color: '#f7b84b', label: warn, fixable: true, fixLabel: 'Đưa từ khoá vào bài', fixTitle: 'AI đưa đúng cụm “' + kwTerm + '” vào câu mở đầu và một tiêu đề mục, giữ câu tự nhiên · ' + this.costTip(this.COST.fix), fix: () => this.fix('kwTitle') };
+      },
+      depth: () => depthRow,
+      ansAll: () => ansRows >= headRows
+        ? okRow(headRows + ' mục, mục nào cũng mở bằng câu trả lời ngắn')
+        : mk('ansAll', (headRows - ansRows) + '/' + headRows + ' mục chưa có câu trả lời ngắn ở đầu', 'Mọi mục đã mở bằng câu trả lời ngắn', 'Viết câu trả lời ngắn', 'AI viết câu trả lời 40–60 từ mở đầu các mục còn thiếu', null, { b: (headRows - ansRows) + '/' + headRows + ' mục thiếu câu trả lời ngắn', a: headRows + '/' + headRows + ' mục có câu trả lời ngắn ở đầu' }),
+      seoTitle: () => seoT.length > 60
+        ? mk('seoTitle', 'Tiêu đề SEO ' + seoT.length + ' ký tự — Google sẽ cắt phần cuối', 'Tiêu đề SEO ' + this.seoTitleText().length + ' ký tự — vừa khung Google', 'Viết lại ngắn hơn', 'AI viết lại tiêu đề SEO: giữ từ khoá chính ở đầu, dưới 60 ký tự', null, { b: seoT.length + ' ký tự', a: this.FIXES.seoTitle.v.length + ' ký tự, từ khoá chính ở đầu' })
+        : okRow('Tiêu đề SEO ' + seoT.length + ' ký tự — vừa khung Google'),
+      slug: () => slug.length > 45
+        ? mk('slug', 'Đường dẫn dài ' + slug.length + ' ký tự và có mốc năm — sang năm phải đổi link', 'Đường dẫn đã chuẩn hoá còn ' + this.slugText().length + ' ký tự', 'Chuẩn hoá đường dẫn', 'AI viết lại đường dẫn: bỏ từ thừa và mốc năm, giữ từ khoá chính', null, { b: slug.length + ' ký tự, có mốc năm', a: this.FIXES.slug.v.length + ' ký tự, không mốc năm' })
+        : okRow('Đường dẫn ' + slug.length + ' ký tự — gọn, không mốc năm'),
+      links: () => mk('links', 'Chưa chèn ' + linkKeep + ' liên kết nội bộ đã chọn ở bước phân tích', linkKeep + ' liên kết nội bộ đã chèn đúng đoạn liên quan', 'Chèn liên kết', 'AI chèn ' + linkKeep + ' liên kết nội bộ bạn đã tick, tự chọn chữ neo theo tiêu đề bài đích', null, { b: '0 liên kết nội bộ', a: linkKeep + ' liên kết đặt trong các mục liên quan' }),
+      srcNum: () => numHits === 0
+        ? okRow('Bản nháp không có con số nào cần dẫn nguồn')
+        : mk('srcNum', 'Bài có ' + numHits + ' con số — cần chắc mọi số đều dẫn được về nguồn', 'Cả ' + numHits + ' con số đều dẫn được về nguồn', 'Gắn nguồn cho số liệu', 'AI gắn nguồn đã chọn vào đúng câu chứa số và thêm vào mục Nguồn tham khảo', null, { b: numHits + ' con số chưa gắn nguồn', a: numHits + ' con số đã gắn nguồn tại chỗ và trong mục Nguồn tham khảo' }),
+      longSent: () => longSents === 0
+        ? okRow('Câu dài nhất ' + maxSent + ' từ — dễ đọc trên điện thoại')
+        : mk('longSent', longSents + ' câu dài trên 30 từ (dài nhất ' + maxSent + ' từ) — khó đọc trên điện thoại', 'Câu dài nhất còn dưới 30 từ', 'Tách câu', 'AI tách các câu dài, giữ nguyên ý', null, { b: longSents + ' câu trên 30 từ, dài nhất ' + maxSent + ' từ', a: 'đã tách ' + longSents + ' câu, dài nhất còn dưới 30 từ' }),
+      kwStuff: () => kwDens <= 0.025
+        ? okRow('Mật độ cụm “' + kwCore + '” là ' + (kwDens * 100).toFixed(1) + '% — tự nhiên, không nhồi')
+        : mk('kwStuff', 'Cụm “' + kwCore + '” lặp ' + kwHits + ' lần (' + (kwDens * 100).toFixed(1) + '%) — có dấu hiệu nhồi từ khoá', 'Mật độ từ khoá đã về mức tự nhiên', 'Giảm lặp từ khoá', 'AI thay các chỗ lặp bằng cách diễn đạt khác, không đổi ý', null, { b: kwHits + ' lần (' + (kwDens * 100).toFixed(1) + '%)', a: Math.max(1, Math.round(bw * 0.02 / Math.max(1, kwCore.split(/\s+/).length))) + ' lần (~2%), các chỗ còn lại diễn đạt khác' }),
+      img: () => mk('img', 'Bài chưa có ảnh — nên chèn ' + imgNeed + ' ảnh minh hoạ', imgNeed + ' vị trí ảnh đã đánh dấu, kèm chú thích sẵn', 'Đánh dấu chỗ chèn ảnh', 'AI đánh dấu ' + imgNeed + ' vị trí nên có ảnh, viết chú thích và chữ thay thế sẵn', null, { b: '0 ảnh', a: imgNeed + ' vị trí ảnh kèm chú thích và chữ thay thế' }),
+      alt: () => mk('alt', 'Ảnh đại diện chưa có chữ thay thế (alt)', 'Ảnh đại diện đã có chữ thay thế', 'Viết chữ thay thế', 'AI viết chữ thay thế mô tả đúng ảnh, có từ khoá tự nhiên', 'bad'),
+      cta: () => this.aeoOn('cta')
+        ? mk('cta', 'Lời mời hành động còn chung, chưa gắn dịch vụ thật', 'Lời mời hành động đã viết theo dịch vụ thật của bạn', 'Viết lại lời mời', 'AI viết lại lời mời hành động dựa trên dịch vụ thật của bạn')
+        : { icon: 'ri-information-line', color: '#adb5bd', label: 'Khối lời mời hành động đang tắt ở bước Đề bài' },
+      dupIn: () => okRow('Không trùng đoạn với 42 bài đã có trên website')
+    };
+    const checks = (CHECKSET[S.chips.type] || CHECKSET.guide).map(k => rowFor[k] ? rowFor[k]() : null).filter(Boolean);
+    const badList = checks.filter(c => c.fixable && c.k);
+    const bad = badList.length;
+    const scoreColor = bad === 0 ? '#0ab39c' : (bad <= 3 ? '#f7b84b' : '#e08a1e');
+
+    const audits = this.AUD.map(a => {
+      const done = !!S.audFixed[a.k];
+      const sc = done ? 10 : a.s;
+      const low = sc < MIN;
+      const col = low ? (sc <= 7 ? '#f06548' : '#f7b84b') : '#0ab39c';
+      return {
+        label: a.l, term: a.term, termShort: a.ts, score: sc + '/10',
+        hint: done ? 'Đã chỉnh theo gợi ý — tiêu chí này đạt.' : a.h,
+        fixable: low && !!a.fix, fixLabel: a.fl,
+        fixTitle: a.fix ? (a.fix + ' · ' + this.costTip(this.COST.audit)) : '',
+        fix: () => this.audFix(a.k, 'Đã chỉnh: ' + a.l.toLowerCase()),
+        pillStyle: 'display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:26px;padding:0 8px;border-radius:20px;font-size:11.5px;font-weight:700;flex-shrink:0;font-variant-numeric:tabular-nums;color:' + col + ';background:color-mix(in srgb, ' + col + ' 13%, transparent);'
+      };
+    });
+    const audScores = this.AUD.map(a => (S.audFixed[a.k] ? 10 : a.s));
+    const avg = audScores.reduce((x, y) => x + y, 0) / audScores.length;
+    const bigNum = (Math.round(avg * 10) / 10).toFixed(1);
+    const lowCount = this.AUD.filter(a => (S.audFixed[a.k] ? 10 : a.s) < MIN).length;
+    const fixableCount = this.AUD.filter(a => a.fix && !S.audFixed[a.k] && a.s < MIN).length;
+    const bigColor = avg >= MIN ? '#0ab39c' : (avg >= 8 ? '#f7b84b' : '#f06548');
+
+    const pickKeys = Object.keys(S.pick).filter(k => S.pick[k]);
+    const allOn = pickKeys.length === 4;
+    const box = chipBox;
+    const pickTitle = (k, on) => (on ? 'Bỏ chọn' : 'Chọn') + ' "' + this.LBL[k] + '" để chèn cùng lúc';
+    const toggle = (k) => () => this.setState(s => ({ pick: Object.assign({}, s.pick, { [k]: !s.pick[k] }) }));
+    const lowLbl = (k) => k === 'seo' ? 'tiêu đề & mô tả SEO' : this.LBL[k].toLowerCase();
+    const insTitle = (k) => S.ins[k]
+      ? ('Đã chèn ' + lowLbl(k) + ' vào trang — bấm để chèn lại bản hiện tại')
+      : ('Chèn ' + lowLbl(k) + ' vào trang' + ((this.props.filled || []).indexOf(k) >= 0 ? ' — trường này đang có nội dung, sẽ hỏi trước' : ''));
+    const insLbl = (k) => S.ins[k] ? 'Đã chèn' : 'Chèn';
+    const insSty = (k) => 'display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border:1px solid ' + (S.ins[k] ? 'rgba(10,179,156,.35)' : '#e9ebec') + ';border-radius:4px;background:' + (S.ins[k] ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:11.5px;font-weight:600;color:' + (S.ins[k] ? '#0a8f7f' : '#405189') + ';cursor:pointer;white-space:nowrap;';
+
+    const primary = (() => {
+      if (S.step === 'audit' && S.inserted) return { l: 'Xong — đóng trợ lý', i: 'ri-check-line', on: () => this.props.onClose && this.props.onClose(), t: 'Nội dung đã nằm trong trang. Đóng trợ lý và bấm Lưu ở đầu trang để phát hành.' };
+      if (S.step === 'brief') {
+        if (seoOnly) return { l: 'Viết tiêu đề & mô tả SEO', i: 'ri-sparkling-2-line', on: () => this.goDraft(), t: this.costTip(this.targetWords()) };
+        if (this.useResearch()) return { l: 'Phân tích trước khi viết', i: 'ri-search-eye-line', on: () => this.goResearch(), t: 'Đọc trang tìm kiếm, 6 bài đang xếp trên và nội dung website của bạn · ' + this.costTip(this.COST.research) };
+        return { l: 'Lập dàn ý', i: 'ri-list-check-2', on: () => this.goOutline(), t: this.costTip(this.COST.outline) };
+      }
+      if (S.step === 'research') return { l: 'Lập dàn ý theo kết quả phân tích', i: 'ri-list-check-2', on: () => this.goOutline(), t: 'Dàn ý dựng từ ' + gapKeep + ' ý bạn đang giữ · ' + this.costTip(this.COST.outline) };
+      if (S.step === 'outline') return { l: 'Viết đầy đủ ' + out.length + ' mục', i: 'ri-sparkling-2-line', on: () => this.goDraft(), t: 'Viết đúng ' + this.fmt(this.targetWords()) + ' từ theo dàn ý · ' + this.costTip(this.targetWords()) };
+      if (S.step === 'draft') return { l: 'Kiểm định chất lượng', i: 'ri-award-line', on: () => this.goAudit(), t: 'Hệ thống tự chấm ' + this.AUD.length + ' tiêu chí — chấm không trừ hạn ngạch, chỉ khi bấm tự chỉnh mới tính từ AI' };
+      return { l: 'Chèn ' + pickKeys.length + ' phần vào trang', i: 'ri-arrow-left-down-line', on: () => this.insert(pickKeys), t: pickKeys.length ? ('Chèn: ' + pickKeys.map(k => this.LBL[k]).join(', ')) : 'Chọn ít nhất một phần' };
+    })();
+    const needsQuota = (S.step === 'brief' && !seoOnly && this.useResearch()) || (S.step === 'outline') || (S.step === 'brief' && seoOnly);
+    const primaryOff = (S.step === 'audit' && !pickKeys.length) || (S.step === 'draft' && S.streaming) || (S.step === 'brief' && !(S.topic || '').trim()) || (needsQuota && Q.left <= 0);
+
+    const conflict = S.conflict;
+    const clashLbl = conflict ? conflict.clash.map(k => this.LBL[k]).join(', ') : '';
+
+    return {
+      ctxLine: (this.props.contextLabel || 'Bài viết') + ' · ' + (this.props.pageTitle || 'Bài viết mới'),
+      quotaText: 'Còn ' + this.fmt(Q.left) + ' từ AI',
+      quotaTitle: 'Gói hiện tại ' + this.fmt(Q.limit) + ' từ AI mỗi tháng, tính riêng với hạn ngạch dịch. Đã dùng ' + this.fmt(Q.used) + '. Tính theo số từ AI thật sự sinh ra: phân tích ~' + this.fmt(this.COST.research) + ', dàn ý ~' + this.fmt(this.COST.outline) + ', viết bản nháp bằng đúng độ dài mục tiêu, mỗi lần tự chỉnh ~' + this.fmt(this.COST.fix) + '. Hạn ngạch trừ ở máy chủ khi tạo yêu cầu, con số này chỉ là bản hiển thị.',
+      quotaStyle: 'display:inline-flex;align-items:center;gap:5px;padding:0 9px;height:24px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap;flex-shrink:0;color:' + (Q.left <= 0 ? '#f06548' : (Q.left <= Q.limit * 0.2 ? '#b57d13' : '#878a99')) + ';background:' + (Q.left <= 0 ? 'rgba(240,101,72,.10)' : (Q.left <= Q.limit * 0.2 ? 'rgba(247,184,75,.14)' : '#f8f9fb')) + ';',
+      onClose: () => this.askClose(),
+      canMin: !!this.props.onMinimize,
+      minTitle: S.inserted ? 'Thu xuống thanh dưới để xem nội dung vừa chèn — bấm thanh đó là mở lại, không mất gì' : 'Thu xuống thanh dưới để xem trang — trợ lý giữ nguyên mọi thứ bạn đang làm',
+      onMinimize: () => { if (this.props.onMinimize) this.props.onMinimize(); },
+      expanded: !!this.props.expanded, canResize: !!this.props.onToggleExpand,
+      expandIcon: this.props.expanded ? 'ri-collapse-diagonal-line' : 'ri-expand-diagonal-line',
+      expandTitle: this.props.expanded ? 'Thu về khổ chuẩn' : 'Phóng to hết trang để dễ soát nội dung',
+      onToggleExpand: () => { if (this.props.onToggleExpand) this.props.onToggleExpand(); },
+      srcOn: this.hasSource(),
+      srcNote: this.hasSource()
+        ? ('Dàn ý dựng từ bài hiện có: ' + this.fmt(this.props.sourceWords || 0) + ' từ, ' + this.srcHeads().length + ' mục (' + (this.srcHeads().slice(0, 3).join(', ') || 'chưa có mục') + '). Các mục cũ được giữ nguyên tên, trợ lý chỉ viết lại nội dung cho chuẩn hơn và bổ sung mục còn thiếu.')
+        : '',
+      steps: steps, isBrief: S.step === 'brief', isResearch: S.step === 'research', isOutline: S.step === 'outline', isDraft: S.step === 'draft', isAudit: S.step === 'audit',
+      showBody: !seoOnly,
+
+      topic: S.topic, onTopic: (e) => this.setState({ topic: e.target.value }), topicFromTitle: !!(this.props.topicSeed && S.topic === this.props.topicSeed),
+      typeAuto: !!this.autoType() && this.state.chips.type === this.autoType(),
+      typeAutoTitle: 'Loại tự nhận theo nơi bạn mở trợ lý (' + (this.props.contextLabel || 'nội dung') + ') — đổi được nếu cần',
+      chips: chips, bizLine: this.hasSource() ? (this.srcSubj() + ' · nội dung lấy từ bài hiện có của trang') : (this.props.bizLine || IND.biz),
+      langName: this.props.langName || 'Tiếng Việt', langIsSource: this.props.langIsSource !== false,
+      langTitle: this.props.langIsSource !== false ? 'Đang viết cho bản nguồn — viết xong dùng nút Dịch để đổ sang các ngôn ngữ khác' : 'Đang viết trực tiếp cho bản dịch này, không lấy từ bản nguồn',
+      aeoSummary: aeoVisible.length ? (aeoActive + '/' + aeoVisible.length + ' khối phù hợp với “' + (this.TYPES.find(t => t.v === S.chips.type) || this.TYPES[0]).l.toLowerCase() + '”') : 'loại này không dựng khối nội dung',
+      aeoWhy: BM.why + '. ' + (this.audDef().why ? this.audDef().why + ' ' : '') + 'Đổi “Loại” hoặc “Người đọc” là bộ khối tự đổi theo.',
+      aeoEmpty: aeoVisible.length === 0,
+      aeoBlocks: aeoVisible.map(a => {
+        const on = this.aeoOn(a.k), rec = this.blockState(a.k) === 'on';
+        const lblMap = this.BLOCKLBL[S.chips.type] || {};
+        return {
+          label: lblMap[a.k] || a.l, icon: on ? 'ri-check-line' : 'ri-add-line', on: () => this.toggleAeo(a.k),
+          title: a.t + (rec ? ' · đề xuất cho loại nội dung này' : ' · tuỳ chọn với loại nội dung này'),
+          style: 'display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:7px 11px;border:1px ' + (rec ? 'solid' : 'dashed') + ' ' + (on ? 'rgba(10,179,156,.35)' : '#e0e3e9') + ';border-radius:20px;background:' + (on ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:11.5px;font-weight:500;color:' + (on ? '#0a8f7f' : '#878a99') + ';cursor:pointer;white-space:nowrap;'
+        };
+      }),
+      topicPh: this.hasSource() ? ('Ví dụ: ' + this.srcSubj() + ' — năng lực, quy trình và cam kết') : IND.topicPh,
+      kwPh: this.hasSource() ? this.srcSubj().toLowerCase() : IND.kwPh,
+      notePh: IND.notePh,
+      indName: this.hasSource() ? (this.srcSubj() + ' (bài hiện có)') : IND.name,
+      indTitle: this.hasSource() ? ('Gợi ý rút từ chính bài hiện có của trang “' + this.srcSubj() + '” — không phải điền tay.') : ('Gợi ý lấy theo ngành “' + IND.name + '” trong Cài đặt › Thông tin doanh nghiệp, rồi thu hẹp theo chủ đề bạn nhập. Không phải điền tay.'),
+      kwSug: kwPool.map(k => ({ label: k, title: 'Thêm “' + k + '” vào từ khoá phụ', on: () => this.addKwSug(k) })),
+      hasKwSug: kwPool.length > 0, onMoreKw: () => this.moreKw(),
+      kwMain: S.kwMain || this.autoKw(), onKwMain: (e) => this.setState({ kwMain: e.target.value }),
+      kwAuto: !S.kwMain && !!this.autoKw(),
+      kwSub: kwSubList.map((k, i) => ({ label: k, off: () => this.setState({ kwSub: kwSubList.filter((_, j) => j !== i) }) })),
+      kwDraft: S.kwDraft, onKwDraft: (e) => this.setState({ kwDraft: e.target.value }), onKwKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.addKw(); } },
+      advOpen: S.advOpen, onToggleAdv: () => this.setState(s => ({ advOpen: !s.advOpen })),
+      advIcon: S.advOpen ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line',
+      advHeadStyle: 'display:flex;align-items:center;gap:7px;width:100%;box-sizing:border-box;min-height:44px;padding:11px 12px;border:0;background:' + (S.advOpen ? '#fbfcfe' : '#fff') + ';font:inherit;text-align:left;cursor:pointer;',
+      advSummary: advBits.join(' · '),
+      notes: S.notes, onNotes: (e) => this.setState({ notes: e.target.value }),
+      refs: refItems.map((r, i) => ({ label: r.label, meta: r.meta, icon: r.kind === 'link' ? 'ri-links-line' : 'ri-sticky-note-line', off: () => this.setState({ refs: refItems.filter((_, j) => j !== i) }) })),
+      refDraft: S.refDraft, onRefDraft: (e) => this.setState({ refDraft: e.target.value }), onRefKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.addRef(); } },
+      onPickFile: () => this.setState({ refs: this.refList().concat([{ k: 'f' + Date.now(), kind: 'file', label: 'Bao-gia-2026.pdf', meta: '412 KB' }]) }),
+      rules: this.RULES.map(r => { const on = this.ruleOn(r.k); return { label: r.l, icon: on ? 'ri-check-line' : 'ri-add-line', title: r.t + (on ? ' · bật sẵn cho loại nội dung này' : ''), on: () => this.toggleRule(r.k),
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'rgba(10,179,156,.35)' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:11.5px;font-weight:500;color:' + (on ? '#0a8f7f' : '#878a99') + ';cursor:pointer;white-space:nowrap;' }; }),
+      samples: this.sampleList().map(s => { const on = this.sampleOn(s.k); return { label: s.l + (s.rel ? ' · gần chủ đề nhất' : ''), icon: on ? 'ri-check-line' : 'ri-add-line', on: () => this.toggleSample(s.k),
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'rgba(64,81,137,.3)' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(64,81,137,.07)' : '#fff') + ';font:inherit;font-size:11.5px;font-weight:500;color:' + (on ? '#405189' : '#878a99') + ';cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;' }; }),
+
+      intentKind: this.INTENT.kind, intentLine: this.INTENT.line,
+      questions: this.qsFor().map(q => ({ text: q })),
+      gaps: gaps, gapSummary: 'giữ ' + gapKeep + '/' + this.gapList().length + ' ý',
+      ents: ents, entSummary: (entList.filter(e => !S.entOff[e.k]).length) + '/' + entList.length + ' khái niệm · ' + entList.filter(e => e.src === 'topic').length + ' rút từ chủ đề',
+      ilinks: ilinks, srcs: srcs,
+
+      outline: out.map((o, i) => ({
+        num: String(i + 1), text: o.text, words: '~' + o.words + ' từ', lock: !!o.blk,
+        q: o.q || '', hasQ: !!o.q, hasSubs: o.subs.length > 0,
+        subs: o.subs.map((sb, j) => ({ label: sb, off: () => this.outSubDel(i, j) })),
+        onText: (e) => this.outText(i, e.target.value),
+        up: () => this.outMove(i, -1), down: () => this.outMove(i, 1), del: () => this.outDel(i),
+        cardStyle: 'border:1px solid ' + (o.blk ? 'rgba(10,179,156,.22)' : '#eff2f7') + ';border-radius:6px;background:' + (o.blk ? 'rgba(10,179,156,.03)' : '#fff') + ';box-shadow:0 1px 2px rgba(56,65,74,.06);',
+        delTitle: o.blk ? 'Bỏ khối này — bài sẽ khó được trợ lý AI trích dẫn hơn' : 'Bỏ mục này',
+        delStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:#adb5bd;cursor:pointer;flex-shrink:0;',
+        upStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:' + (i === 0 ? '#e0e3e9' : '#adb5bd') + ';cursor:' + (i === 0 ? 'default' : 'pointer') + ';flex-shrink:0;',
+        downStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:' + (i === out.length - 1 ? '#e0e3e9' : '#adb5bd') + ';cursor:' + (i === out.length - 1 ? 'default' : 'pointer') + ';flex-shrink:0;'
+      })),
+      onAddOutline: () => this.outAdd(),
+
+      titleOpts: this.titleList().map((t, i) => {
+        const sc = t.c.reduce((a, b) => a + b, 0);
+        return {
+          text: t.t, on: () => this.setState({ titleIdx: i }), best: i === this.titleBest(),
+          meta: t.t.length + ' ký tự · đạt ' + sc + '/5 tiêu chí',
+          crits: this.TCRIT.map((l, j) => ({
+            label: l, icon: t.c[j] ? 'ri-check-line' : 'ri-close-line',
+            style: 'display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;color:' + (t.c[j] ? '#0a8f7f' : '#b57d13') + ';background:' + (t.c[j] ? 'rgba(10,179,156,.09)' : 'rgba(247,184,75,.13)') + ';'
+          })),
+          icon: i === S.titleIdx ? 'ri-radio-button-line' : 'ri-circle-line', iconColor: i === S.titleIdx ? '#405189' : '#dfe2e8',
+          style: 'display:flex;align-items:flex-start;gap:9px;width:100%;box-sizing:border-box;padding:9px 10px;border:0;border-radius:5px;background:' + (i === S.titleIdx ? 'rgba(64,81,137,.05)' : 'transparent') + ';font:inherit;cursor:pointer;'
+        };
+      }),
+      excerpt: this.excerptText(), onExcerpt: (e) => this.setState({ excerpt: e.target.value }),
+      bodyBlocks: this.visibleBody().map(b => ({
+        isTldr: b.k === 'tldr', isH: b.k === 'h', isAns: b.k === 'ans', isP: b.k === 'p', isL: b.k === 'l',
+        isTbl: b.k === 'tbl', isChk: b.k === 'chk', isFaq: b.k === 'faq', isTake: b.k === 'take', isSrc: b.k === 'src', isCta: b.k === 'cta',
+        text: b.t || '', q: b.q || '',
+        items: (b.items || []).map(t => ({ text: t })),
+        head: (b.head || []).map(t => ({ text: t })),
+        rows: (b.rows || []).map(r => ({ cells: r.map(c => ({ text: c })) }))
+      })),
+      wordCount: this.bodyWords() + ' / ~' + this.targetWords().toLocaleString('vi-VN') + ' từ', streaming: S.streaming, notStreaming: !S.streaming, onStop: () => this.stopStream(),
+      seoTitle: seoT, seoDesc: seoD, onSeoTitle: (e) => this.setState({ seoTitle: e.target.value, fixed: Object.assign({}, S.fixed, { seoTitle: null }) }), onSeoDesc: (e) => this.setState({ seoDesc: e.target.value }),
+      seoTLen: seoT.length + '/60', seoTColor: seoT.length > 60 ? '#f7b84b' : '#0ab39c',
+      seoDLen: seoD.length + '/160', seoDColor: seoD.length > 160 ? '#f7b84b' : '#0ab39c',
+      previewUrl: (this.props.siteHost || 'nuocsachanbinh.vn') + ' › ' + slug,
+
+      tBoxStyle: box(S.pick.title), tPick: toggle('title'), tPickTitle: pickTitle('title', S.pick.title),
+      eBoxStyle: box(S.pick.excerpt), ePick: toggle('excerpt'), ePickTitle: pickTitle('excerpt', S.pick.excerpt),
+      bBoxStyle: box(S.pick.body), bPick: toggle('body'), bPickTitle: pickTitle('body', S.pick.body),
+      sBoxStyle: box(S.pick.seo), sPick: toggle('seo'), sPickTitle: pickTitle('seo', S.pick.seo),
+      redoStyle: 'width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #eff2f7;border-radius:4px;background:#fff;color:#878a99;cursor:pointer;flex-shrink:0;',
+      insOneStyle: 'display:inline-flex;align-items:center;height:28px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;white-space:nowrap;',
+      tRedo: () => this.redo('title'), eRedo: () => this.redo('excerpt'), bRedo: () => this.redo('body'), sRedo: () => this.redo('seo'),
+      tInsert: () => this.insert(['title']), eInsert: () => this.insert(['excerpt']), bInsert: () => this.insert(['body']), sInsert: () => this.insert(['seo']),
+      tInsertTitle: insTitle('title'), eInsertTitle: insTitle('excerpt'), bInsertTitle: insTitle('body'), sInsertTitle: insTitle('seo'),
+      tInsLabel: insLbl('title'), eInsLabel: insLbl('excerpt'), bInsLabel: insLbl('body'), sInsLabel: insLbl('seo'),
+      tInsStyle: insSty('title'), eInsStyle: insSty('excerpt'), bInsStyle: insSty('body'), sInsStyle: insSty('seo'),
+
+      checks: checks.map(c => ({ icon: c.icon, color: c.color, label: c.label, fixable: !!c.fixable, fixLabel: c.fixLabel, fixTitle: c.fixTitle, fix: c.fix,
+        done: !!c.done, diff: c.done ? (c.before + ' → ' + c.after) : '' })),
+      fixChecksLabel: bad ? ('Tự chỉnh cả ' + bad + ' chỗ') : 'Không còn chỗ nào cần chỉnh',
+      fixChecksTitle: bad ? ('AI sửa lần lượt ' + bad + ' chỗ và ghi rõ đã đổi gì · ' + this.costTip(badList.reduce((a, c) => a + this.fixCost(c.k), 0))) : 'Bảng kiểm đã sạch',
+      fixChecksStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;box-sizing:border-box;min-height:36px;padding:8px 10px;border:1px solid ' + (bad ? 'rgba(64,81,137,.28)' : '#eff2f7') + ';border-radius:4px;background:' + (bad ? 'rgba(64,81,137,.10)' : '#f8f9fb') + ';font:inherit;font-size:11.5px;font-weight:600;color:' + (bad ? '#405189' : '#adb5bd') + ';cursor:' + (bad ? 'pointer' : 'not-allowed') + ';white-space:nowrap;',
+      onFixChecks: () => { if (bad) this.fixAllChecks(badList.map(c => c.k)); },
+      slug: slug, onSlug: (e) => this.setState({ slug: e.target.value, fixed: Object.assign({}, S.fixed, { slug: null }) }),
+      slugLen: slug.length + ' ký tự', slugColor: slug.length > 45 ? '#f7b84b' : '#0ab39c',
+      cluster: this.CLUSTER.map(c => ({ text: c.t, why: c.why })),
+      seoScore: bad ? String(bad) : '✓', seoSummary: bad ? (bad + ' chỗ nên sửa trước khi đăng') : 'Không còn cảnh báo nào',
+      scoreTitle: bad ? ('Số chỗ nên sửa trước khi đăng — không phải điểm chất lượng bài. Điểm chất lượng nằm ở bước Kiểm định.') : 'Bảng kiểm đã sạch',
+      scoreStyle: 'width:38px;height:38px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;color:' + scoreColor + ';background:color-mix(in srgb, ' + scoreColor + ' 14%, transparent);',
+
+      audits: audits, minScoreText: String(MIN),
+      bigScore: bigNum,
+      bigScoreStyle: 'width:52px;height:52px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;font-variant-numeric:tabular-nums;color:' + bigColor + ';background:color-mix(in srgb, ' + bigColor + ' 13%, transparent);',
+      auditHead: lowCount ? (lowCount + ' tiêu chí chưa đạt ' + MIN + '/10') : ('Bài đã đạt cả ' + this.AUD.length + ' tiêu chí'),
+      auditSub: lowCount
+        ? 'Hệ thống chấm theo cách Google và các trợ lý AI đánh giá. Bấm sửa từng mục, hoặc để hệ thống chỉnh hết một lượt.'
+        : 'Có thể chèn vào trang. Số liệu, giá và tên riêng vẫn nên đọc lại một lần trước khi đăng.',
+      fixAllLabel: fixableCount ? ('Tự chỉnh ' + fixableCount + ' mục chưa đạt') : 'Không còn mục cần chỉnh',
+      fixAllTitle: fixableCount ? ('Chỉnh ' + fixableCount + ' tiêu chí · ' + this.costTip(fixableCount * this.COST.audit)) : 'Mọi tiêu chí đã đạt',
+      fixAllStyle: 'display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:9px 14px;border:1px solid ' + (fixableCount ? 'rgba(64,81,137,.28)' : '#eff2f7') + ';border-radius:4px;background:' + (fixableCount ? 'rgba(64,81,137,.10)' : '#f8f9fb') + ';font:inherit;font-size:12.5px;font-weight:600;color:' + (fixableCount ? '#405189' : '#adb5bd') + ';cursor:' + (fixableCount ? 'pointer' : 'not-allowed') + ';white-space:nowrap;flex-shrink:0;',
+      onFixAll: () => { if (fixableCount) this.fixAll(); },
+      schemas: [
+        { label: 'Bài viết (Article)', hint: 'tên tác giả, ngày cập nhật, ảnh đại diện', icon: 'ri-checkbox-circle-fill', color: '#0ab39c' },
+        { label: 'Hỏi đáp (FAQPage)', hint: this.aeoOn('faq') ? '3 câu hỏi trong bài — Google có thể hiện dạng câu hỏi' : 'chưa bật khối hỏi đáp ở bước Đề bài', icon: this.aeoOn('faq') ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill', color: this.aeoOn('faq') ? '#0ab39c' : '#f7b84b' },
+        { label: 'Hướng dẫn (HowTo)', hint: 'các bước chọn máy theo nguồn nước', icon: 'ri-checkbox-circle-fill', color: '#0ab39c' },
+        { label: 'Đường dẫn phân cấp (Breadcrumb)', hint: 'Trang chủ › Cẩm nang chọn máy › bài này', icon: 'ri-checkbox-circle-fill', color: '#0ab39c' }
+      ],
+      afterPub: [
+        { icon: 'ri-send-plane-line', label: 'Báo chỉ mục ngay khi bấm Lưu', hint: 'Gửi đường dẫn qua IndexNow (Bing, Yandex) và cập nhật sitemap kèm ngày sửa — cách nhanh nhất để bài được đọc trong vài giờ thay vì vài ngày.', tag: 'tự động', ok: true },
+        { icon: 'ri-links-line', label: 'Chèn liên kết từ 2 trang đang có nhiều truy cập', hint: 'Bài mới được dẫn từ trang đã có thứ hạng thì lên nhanh hơn hẳn. Hệ thống chọn sẵn “Bảng giá lắp đặt 2026” và trang chủ mục Cẩm nang.', tag: 'tự động', ok: true },
+        { icon: 'ri-robot-2-line', label: 'Cho trợ lý AI đọc bài này', hint: 'Khai báo llms.txt và cho phép GPTBot, ClaudeBot, PerplexityBot, Google-Extended — nếu chặn thì bài không bao giờ được các trợ lý AI trích dẫn.', tag: 'kiểm tra ở Cài đặt SEO', ok: false },
+        { icon: 'ri-image-line', label: 'Nén ảnh và đặt tên ảnh theo nội dung', hint: 'Chuyển WebP, giới hạn 1.600px, tên tệp có từ khoá — ảnh nhẹ giúp trang mở nhanh, phần Google chấm điểm trải nghiệm.', tag: 'tự động', ok: true },
+        { icon: 'ri-calendar-check-line', label: 'Hẹn soát lại sau 45 ngày', hint: 'Nếu thứ hạng hoặc lượt hiển thị tụt, hệ thống nhắc cập nhật bài và đổi ngày cập nhật — bài cũ được làm mới thường lên lại nhanh hơn viết bài mới.', tag: 'tự động', ok: true },
+        { icon: 'ri-share-forward-line', label: 'Gợi ý nơi chia sẻ để có nguồn dẫn ngoài', hint: 'Các trợ lý AI hay trích nội dung được nhắc ở diễn đàn, hội nhóm ngành và trang tổng hợp. Hệ thống gợi ý 3 nơi phù hợp với ngành của bạn.', tag: 'gợi ý', ok: false }
+      ].map(x => Object.assign({}, x, {
+        tagStyle: 'display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (x.ok ? '#0a8f7f' : '#b57d13') + ';background:' + (x.ok ? 'rgba(10,179,156,.10)' : 'rgba(247,184,75,.14)') + ';'
+      })),
+      pickList: ['title', 'excerpt', 'body', 'seo'].map(k => ({
+        label: this.LBL[k] + (S.pick[k] ? '' : ' — không chèn'),
+        icon: S.pick[k] ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line',
+        color: S.pick[k] ? '#0a8f7f' : '#adb5bd'
+      })),
+
+      allIcon: allOn ? 'ri-checkbox-multiple-line' : 'ri-checkbox-multiple-blank-line', allLabel: allOn ? 'Bỏ chọn tất cả' : 'Chọn tất cả',
+      onToggleAll: () => this.setState({ pick: { title: !allOn, excerpt: !allOn, body: !allOn, seo: !allOn } }),
+      footNote: S.step === 'brief'
+        ? (seoOnly ? 'Chỉ sinh tiêu đề và mô tả SEO — không viết nội dung dài.' : 'Hệ thống phân tích trước rồi mới viết. Bước này quyết định bài có gì mà bài khác không có.')
+        : (S.step === 'research' ? ('Giữ ' + gapKeep + ' ý khác biệt · ' + entList.filter(e => !S.entOff[e.k]).length + '/' + entList.length + ' khái niệm · ' + (this.SRCS.length - Object.keys(S.srcOff).length) + ' nguồn dẫn')
+        : (S.step === 'outline' ? ('Dự kiến ' + estWords.toLocaleString('vi-VN') + ' từ · ' + out.length + ' mục · sửa dàn ý tại đây không trừ hạn ngạch')
+        : (S.step === 'draft' ? 'Kiểm định không trừ hạn ngạch. Chỉ khi bấm tự chỉnh mới tính từ AI.'
+        : (S.inserted ? ('Đã chèn ' + (S.lastIns || []).map(k => (k === 'seo' ? 'tiêu đề & mô tả SEO' : this.LBL[k].toLowerCase())).join(', ') + ' vào trang. Hoàn tác được ngay trong trang; bấm Lưu ở đầu trang để phát hành.') : 'Chèn xong bạn vẫn hoàn tác được ngay trong trang.')))),
+      showSkip: (S.step === 'brief' && !seoOnly) || S.step === 'draft' || (S.step === 'audit' && S.inserted),
+      skipLabel: S.step === 'audit' ? (this.props.onMinimize ? 'Thu xuống để xem trang' : 'Chèn lại phần đã chọn') : (S.step === 'draft' ? 'Chèn luôn, bỏ kiểm định' : 'Viết luôn, bỏ qua phân tích và dàn ý'),
+      onSkip: () => {
+        if (S.step === 'audit') { if (this.props.onMinimize) this.props.onMinimize(); else this.insert(Object.keys(S.pick).filter(k => S.pick[k])); return; }
+        if (S.step === 'draft') { this.insert(Object.keys(S.pick).filter(k => S.pick[k])); return; }
+        this.goDraft();
+      },
+      primaryLabel: primary.l, primaryIcon: S.streaming ? 'ri-loader-4-line' : primary.i,
+      primaryIconStyle: 'font-size:15px;' + (S.streaming ? 'animation:awSpin .7s linear infinite;' : ''),
+      primaryTitle: (needsQuota && Q.left <= 0) ? 'Đã dùng hết từ AI tháng này — mua thêm hoặc nâng gói ở Cài đặt › Mức dùng AI' : primary.t,
+      primaryStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:9px 15px;border:0;border-radius:4px;background:' + (primaryOff ? '#e9ebec' : '#405189') + ';font:inherit;font-size:13px;font-weight:600;color:' + (primaryOff ? '#adb5bd' : '#fff') + ';cursor:' + (primaryOff ? 'not-allowed' : 'pointer') + ';white-space:nowrap;flex-shrink:0;',
+      onPrimary: () => { if (primaryOff) { if (Q.left <= 0) this.notify('Đã dùng hết từ AI tháng này — mua thêm hoặc nâng gói ở Cài đặt › Mức dùng AI', 'ri-lock-line'); return; } primary.on(); },
+
+      promptOpen: S.promptOpen, onPrompt: () => this.setState({ promptOpen: true }), onPromptClose: () => this.setState({ promptOpen: false }),
+      promptGroups: this.PROMPT,
+
+      conflictOpen: !!conflict,
+      conflictTitle: conflict ? (conflict.clash.length > 1 ? (conflict.clash.length + ' trường đang có nội dung') : (clashLbl + ' đang có nội dung')) : '',
+      conflictText: conflict ? ('Trong trang, ' + clashLbl.toLowerCase() + ' đã có chữ. Bạn muốn xử lý thế nào?') : '',
+      conflictHint: conflict
+        ? (conflict.clash.indexOf('body') >= 0
+          ? 'Khuyến nghị: nội dung chi tiết bạn đã viết là chất liệu riêng, nên giữ lại và đặt bản AI xuống dưới rồi trộn tay.'
+          : 'Khuyến nghị: các trường ngắn nên để bản AI thay hẳn — đã tối ưu độ dài và từ khoá, và bạn vẫn hoàn tác được ngay sau khi chèn.')
+        : '',
+      conflictOpts: (function (recKey) {
+        const list = [
+          { key: 'replace', label: 'Ghi đè bằng bản AI', hint: 'Thay hẳn nội dung cũ — vẫn hoàn tác được sau khi chèn', icon: 'ri-file-transfer-line', on: () => this.resolve('replace') },
+          { key: 'append', label: 'Thêm vào cuối', hint: 'Giữ nội dung cũ, đặt bản AI xuống dưới', icon: 'ri-insert-row-bottom', on: () => this.resolve('append') },
+          { key: 'skip', label: 'Bỏ qua trường đã có', hint: 'Chỉ chèn những trường còn trống', icon: 'ri-skip-forward-line', on: () => this.resolve('skip') }
+        ];
+        list.sort((a, b) => (b.key === recKey ? 1 : 0) - (a.key === recKey ? 1 : 0));
+        return list.map(o => Object.assign(o, {
+          rec: o.key === recKey,
+          style: 'display:flex;align-items:flex-start;gap:10px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid ' + (o.key === recKey ? '#405189' : '#e9ebec') + ';border-radius:6px;background:' + (o.key === recKey ? 'rgba(64,81,137,.05)' : '#fff') + ';font:inherit;cursor:pointer;'
+        }));
+      }).call(this, conflict && conflict.clash.indexOf('body') >= 0 ? 'append' : 'replace'),
+      onConflictCancel: () => this.setState({ conflict: null }),
+      dupWarn: !this.hasSource() && !S.dupSeen && (S.topic || '').trim().length > 8 && S.step === 'brief',
+      dupTitle: this.hasSource() ? (this.srcSubj() + ' (bản cũ)') : 'Chọn máy lọc nước loại nào cho nhà 4 người',
+      onDupDismiss: () => this.setState({ dupSeen: true }),
+      onDupOpen: () => { this.setState({ dupSeen: true }); this.notify('Mở bài “Chọn máy lọc nước loại nào cho nhà 4 người” trong tab mới', 'ri-external-link-line'); },
+      closeAskOpen: S.closeAsk,
+      onCloseStay: () => this.setState({ closeAsk: false }),
+      onCloseDrop: () => { this.setState({ closeAsk: false }); this.props.onClose && this.props.onClose(); },
+      onCloseInsert: () => { this.setState({ closeAsk: false }); this.insert(Object.keys(S.pick).filter(k => S.pick[k])); this.props.onClose && this.props.onClose(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./ai-quota.js"></script>
+<script src="./block-library.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+input::placeholder{color:#adb5bd;}
+.mn-rt b,.mn-rt strong{font-weight:600;color:#212529;}
+.mn-rt a{color:#405189;text-decoration:underline;}
+.mn-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.mn-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:nowrap;}
+.mn-t{font-size:14px;font-weight:600;color:#343a40;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mn-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.mn-btn:hover{background:#f3f6f9;}
+.mn-btn:disabled{opacity:.55;cursor:not-allowed;background:#fff;}
+.mn-ai{border-color:rgba(64,81,137,.28);background:rgba(64,81,137,.10);color:#405189;font-weight:600;}
+.mn-ai:hover{background:rgba(64,81,137,.16);}
+.mn-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.mn-pri:hover{filter:brightness(.95);}
+.mn-pri:disabled{background:#e9ebec;color:#adb5bd;cursor:not-allowed;filter:none;}
+.mn-hit{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;}
+.mn-hit:hover{background:#f3f6f9;color:#405189;}
+.mn-hit:disabled{opacity:.3;cursor:not-allowed;background:transparent;color:#adb5bd;}
+@media (pointer:coarse){.mn-hit{width:44px;height:44px;}}
+.mn-chip{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;height:19px;padding:0 7px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.02em;white-space:nowrap;}
+.mn-lg{background:#f3f6f9;color:#878a99;border:1px solid #eff2f7;}
+.mn-inp{width:100%;box-sizing:border-box;min-height:38px;padding:8px 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;color:#343a40;outline:none;}
+.mn-inp:focus{border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.14);}
+.mn-inp:disabled{background:#f8f9fb;color:#adb5bd;cursor:not-allowed;}
+.mn-tab{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.mn-tab:hover{background:#f3f6f9;}
+.mn-tab.on{border-color:#405189;background:rgba(64,81,137,.08);font-weight:600;color:#405189;}
+.mn-sw{position:relative;width:38px;height:22px;border-radius:20px;background:#dfe2e6;flex-shrink:0;transition:background .15s;}
+.mn-sw.on{background:#405189;}
+.mn-kn{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(56,65,74,.3);transition:left .15s;}
+.mn-sw.on .mn-kn{left:19px;}
+.mn-swrap{display:flex;align-items:center;gap:10px;min-height:44px;border:0;background:transparent;padding:0;font:inherit;cursor:pointer;text-align:left;}
+.mn-grip{display:inline-flex;align-items:center;justify-content:center;width:20px;height:32px;color:#dee2e6;cursor:grab;flex-shrink:0;}
+.mn-grip:hover{color:#878a99;}
+/* Điện thoại: kéo–thả HTML5 không chạy bằng ngón tay và dễ chạm nhầm khi cuộn →
+   thay tay cầm kéo bằng nút Sắp xếp mở đúng menu Lên/Xuống/Vào trong/Ra ngoài. */
+/* MỘT luật chạm duy nhất cho cả trang: mọi thứ bấm được đều ≥44px khi dùng ngón tay
+   hoặc khi khung hẹp — không đặt kích thước lẻ trên từng nút nữa (WCAG 2.2 AA · §8, §11). */
+.mn-touch .mn-grip{display:none!important;}
+.mn-touch .mn-hit,.mn-touch .mn-pi,.mn-touch .mn-btn,.mn-touch .mn-name,.mn-touch select,.mn-touch .mn-swrap{min-height:44px!important;}
+.mn-touch .mn-hit{min-width:44px!important;}
+.mn-touch .mn-item{padding-top:3px;padding-bottom:3px;}
+@media (pointer:coarse){
+  .mn-grip{display:none!important;}
+  .mn-hit,.mn-pi,.mn-btn,.mn-name,select,.mn-swrap{min-height:44px!important;}
+  .mn-hit{min-width:44px!important;}
+}
+.mn-item{position:relative;display:flex;align-items:center;gap:5px;padding:6px 10px 6px 6px;flex-wrap:nowrap;}
+.mn-item:hover{background:#fbfcfd;}
+.mn-name{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;border:0;background:transparent;font:inherit;color:#343a40;cursor:pointer;padding:7px 4px;border-radius:4px;text-align:left;overflow:hidden;}
+.mn-name:hover{color:#405189;}
+.mn-src{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;white-space:nowrap;flex:0 0 auto;}
+.mn-pop{position:absolute;top:100%;right:8px;z-index:20;min-width:214px;padding:5px 0;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 6px 18px rgba(56,65,74,.18);}
+.mn-pi{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:0 13px;border:0;background:transparent;font:inherit;font-size:12.5px;color:#495057;cursor:pointer;text-align:left;white-space:nowrap;}
+.mn-pi:hover{background:#f3f6f9;color:#405189;}
+.mn-pi:disabled{opacity:.45;cursor:not-allowed;background:transparent;color:#adb5bd;}
+.mn-pk{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:0;border-top:1px solid #f6f7f9;background:transparent;font:inherit;font-size:12.5px;color:#495057;cursor:pointer;text-align:left;}
+.mn-pk:hover{background:#f8f9fb;}
+.mn-pk:disabled{cursor:not-allowed;background:#fff;}
+.mn-cb{width:17px;height:17px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#fff;font-size:12px;}
+.mn-cb.on{border-color:#405189;background:#405189;}
+.mn-sl{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 10px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:11.5px;font-weight:500;color:#878a99;cursor:pointer;white-space:nowrap;}
+.mn-sl:hover{background:#f3f6f9;}
+.mn-sl.on{border-color:#405189;background:rgba(64,81,137,.08);color:#405189;font-weight:600;}
+.mn-grid{display:grid;grid-template-columns:262px minmax(0,1fr) 288px;gap:16px;align-items:start;}
+@media (max-width:1260px){.mn-grid{grid-template-columns:262px minmax(0,1fr);}.mn-colR{grid-column:2;}}
+@media (max-width:920px){.mn-grid{grid-template-columns:minmax(0,1fr);}.mn-colR{grid-column:1;}}
+.mn-bar,.mn-tree,.mn-card{container-type:inline-size;}
+/* Phụ đề tiêu đề thẻ chỉ là chú thích — hết chỗ thì nó biến mất trước, tiêu đề luôn được giữ. */
+.mn-sub{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+@container (max-width:620px){.mn-sub{display:none!important;}}
+@container (max-width:560px){
+  .mn-pills{display:none!important;}
+  .mn-langsel{display:inline-flex!important;min-width:150px;}
+  .mn-bar .mn-ai .mn-blab{display:none;}
+  .mn-bar .mn-ai{min-width:0;flex:0 0 auto;padding:0 12px;}
+  .mn-bar select,.mn-bar .mn-btn,.mn-bar .mn-hit{min-height:44px!important;}
+  .mn-bar .mn-hit,.mn-bar .mn-ai{min-width:44px!important;width:auto;height:auto;}
+}
+@container (max-width:840px){.mn-prog{display:none!important;}}
+@container (max-width:660px){.mn-quota{display:none!important;}}
+@container (max-width:380px){.mn-blab{display:none;}}
+@container (max-width:520px){.mn-flagt{display:none!important;}}
+@container (max-width:430px){.mn-src{display:none!important;}}
+/* Nhúng trong Admin Shell: Shell đã có lề 24px và tiêu đề riêng. */
+.mn-emb > div{padding:0!important;max-width:none!important;}
+</style>
+</helmet>
+
+<div class="{{ pageCls }}" style="{{ pageStyle }}" onClick="{{ onPageClick }}">
+  <div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1400px;margin:0 auto;width:100%;box-sizing:border-box;">
+
+    <sc-if value="{{ headerOn }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
+        <span style="font-size:11.5px;color:#adb5bd;">Công cụ › Trình đơn</span>
+        <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Trình đơn</span>
+        <span style="font-size:13px;color:#878a99;line-height:1.65;text-wrap:pretty;">Sắp xếp những mục khách nhìn thấy trên website. Kéo để đổi vị trí, kéo vào trong để thành mục con. Đường dẫn và liên kết hỏng do hệ thống tự trông, bạn chỉ lo tên mục và thứ tự.</span>
+      </div>
+      <div style="display:flex;gap:8px;flex:0 1 auto;min-width:0;max-width:100%;margin-top:22px;flex-wrap:wrap;">
+        <button class="mn-btn" style="min-height:38px;" onClick="{{ onOpenSite }}"><i class="ri-external-link-line" style="font-size:15px;"></i>Xem trên website</button>
+        <button class="mn-pri" onClick="{{ onSave }}" disabled="{{ saveOff }}" title="{{ saveTitle }}"><i class="ri-save-3-line" style="font-size:16px;"></i>{{ saveLabel }}</button>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ multiLocale }}" hint-placeholder-val="{{ true }}">
+    <div class="mn-card mn-bar">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;flex-wrap:nowrap;overflow:hidden;">
+        <i class="ri-translate-2" title="Ngôn ngữ của bản nội dung đang sửa" style="font-size:17px;color:#878a99;flex-shrink:0;"></i>
+        <span class="mn-langsel" style="display:none;align-items:center;gap:6px;min-width:0;flex:1 1 auto;">
+          <select class="mn-inp" style="font-size:12.5px;flex:1 1 auto;min-width:0;" value="{{ loc }}" onChange="{{ onPickLoc }}" title="Chọn bản nội dung đang sửa">
+            <sc-for list="{{ langOptions }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
+          </select>
+          <button class="mn-hit" style="flex-shrink:0;" onClick="{{ onOpenLangs }}" title="Xem tiến độ từng ngôn ngữ"><i class="ri-list-check-2" style="font-size:16px;"></i></button>
+        </span>
+        <div class="mn-pills" style="display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;overflow:hidden;">
+          <sc-for list="{{ langPills }}" as="lp" hint-placeholder-count="3">
+            <button onClick="{{ lp.onClick }}" title="{{ lp.title }}" style="{{ lp.style }}"><span style="{{ lp.dot }}"></span><span style="{{ lp.nameStyle }}">{{ lp.name }}</span><sc-if value="{{ lp.isDef }}"><i class="ri-star-fill" style="font-size:10px;color:#f7b84b;"></i></sc-if></button>
+          </sc-for>
+          <sc-if value="{{ moreOn }}" hint-placeholder-val="{{ false }}">
+            <button onClick="{{ onOpenLangs }}" title="Xem tất cả ngôn ngữ đang soạn" style="display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:12px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;">{{ moreLabel }}<i class="ri-arrow-down-s-line" style="font-size:14px;"></i></button>
+          </sc-if>
+        </div>
+        <span style="flex:1 1 auto;"></span>
+        <span class="mn-prog" style="display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:#878a99;white-space:nowrap;"><i class="{{ progIcon }}" style="font-size:14px;color:{{ progColor }};"></i>{{ progText }}</span>
+        <span style="width:1px;height:22px;background:#eff2f7;flex-shrink:0;"></span>
+        <span class="mn-quota" title="{{ quotaTitle }}" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:{{ quotaColor }};white-space:nowrap;"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaText }}</span>
+        <button class="mn-btn mn-ai" onClick="{{ onTranslate }}" disabled="{{ trOff }}" title="{{ trTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i><span class="mn-blab">{{ trLabel }}</span></button>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 14px;border-top:1px solid #f6f7f9;background:{{ noteBg }};">
+        <i class="{{ noteIcon }}" style="font-size:14px;color:{{ noteFg }};margin-top:1px;flex-shrink:0;"></i>
+        <span style="font-size:12px;color:{{ noteFg }};line-height:1.6;text-wrap:pretty;">{{ noteText }}</span>
+      </div>
+    </div>
+    </sc-if>
+
+    <div class="mn-card">
+      <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCCheck }}">
+        <i class="{{ cCheckIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i>
+        <i class="{{ checkIcon }}" style="font-size:16px;color:{{ checkColor }};flex-shrink:0;"></i>
+        <span class="mn-t">{{ checkTitle }}</span>
+        <span class="mn-sub" style="margin-left:auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;">Hệ thống tự kiểm mỗi khi bạn mở trang</span>
+      </button>
+      <sc-if value="{{ cCheckOn }}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ noIssues }}" hint-placeholder-val="{{ false }}">
+        <div style="padding:13px 16px;font-size:12.5px;color:#878a99;line-height:1.6;">Không có gì cần bạn xử lý. Trình đơn đang gắn đúng vị trí, mọi mục đều dẫn tới trang còn sống.</div>
+      </sc-if>
+      <sc-for list="{{ issues }}" as="q" hint-placeholder-count="2">
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;">
+          <i class="{{ q.icon }}" style="font-size:15px;color:{{ q.color }};flex-shrink:0;"></i>
+          <span style="flex:1 1 260px;min-width:0;font-size:12.5px;color:#495057;line-height:1.6;text-wrap:pretty;">{{ q.text }}</span>
+          <sc-if value="{{ q.goOn }}"><button class="mn-btn" onClick="{{ q.onGo }}"><i class="ri-focus-3-line" style="font-size:14px;"></i>Xem mục</button></sc-if>
+          <button class="mn-btn" onClick="{{ q.onFix }}" title="{{ q.fixTitle }}"><i class="{{ q.fixIcon }}" style="font-size:14px;"></i>{{ q.fix }}</button>
+          <sc-if value="{{ q.dismissOn }}"><button class="mn-hit" style="width:32px;height:32px;" onClick="{{ q.onDismiss }}" title="{{ q.dismissTitle }}"><i class="ri-close-line" style="font-size:15px;"></i></button></sc-if>
+        </div>
+      </sc-for>
+      </sc-if>
+    </div>
+
+    <div class="mn-grid">
+
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="mn-card">
+          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCMenus }}"><i class="{{ cMenusIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i><span class="mn-t">Trình đơn</span><span style="margin-left:auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;">{{ menuCountText }}</span></button>
+          <sc-if value="{{ cMenusOn }}" hint-placeholder-val="{{ true }}">
+          <sc-for list="{{ menuList }}" as="m" hint-placeholder-count="2">
+            <div style="{{ m.wrap }}" onClick="{{ m.onSelect }}" title="{{ m.selTitle }}">
+              <span style="{{ m.nameStyle }}">{{ m.name }}</span>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <span style="flex:1 1 auto;min-width:0;font-size:11px;color:#adb5bd;white-space:nowrap;">{{ m.count }}</span>
+                <span style="display:flex;align-items:center;gap:4px;flex-shrink:0;" onClick="{{ stop }}" onMouseDown="{{ stop }}" onPointerDown="{{ stop }}">
+                <button class="mn-hit" style="width:30px;height:30px;" onClick="{{ m.onRename }}" title="Đổi tên trình đơn (chỉ bạn nhìn thấy tên này)"><i class="ri-edit-line" style="font-size:14px;"></i></button>
+                <button class="mn-hit" style="width:30px;height:30px;" onClick="{{ m.onDup }}" title="{{ m.dupTitle }}"><i class="ri-file-copy-line" style="font-size:14px;"></i></button>
+                <button class="mn-hit" style="width:30px;height:30px;" onClick="{{ m.onDel }}" disabled="{{ m.delOff }}" title="{{ m.delTitle }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button>
+                </span>
+              </div>
+              <sc-if value="{{ m.renaming }}" hint-placeholder-val="{{ false }}">
+                <input class="mn-inp" onClick="{{ stop }}" ref="{{ renameRef }}" value="{{ renameVal }}" onChange="{{ onRenameChange }}" onKeyDown="{{ onRenameKey }}" onBlur="{{ onRenameDone }}" placeholder="Tên trình đơn" />
+              </sc-if>
+
+              <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:{{ m.useColor }};line-height:1.55;"><i class="{{ m.useIcon }}" style="font-size:13px;flex-shrink:0;"></i>{{ m.useText }}</span>
+            </div>
+          </sc-for>
+          <div style="padding:10px 12px;border-top:1px solid #f6f7f9;">
+            <button class="mn-btn" style="width:100%;justify-content:center;" onClick="{{ onNewMenu }}"><i class="ri-add-line" style="font-size:15px;"></i>Tạo trình đơn mới</button>
+          </div>
+          </sc-if>
+        </div>
+
+        <div class="mn-card">
+          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCAreas }}"><i class="{{ cAreasIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i><span class="mn-t">Vị trí trên website</span><span style="margin-left:auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;">{{ areaCountText }}</span></button>
+          <sc-if value="{{ cAreasOn }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:10px 14px;font-size:11.5px;color:#878a99;line-height:1.6;border-bottom:1px solid #f6f7f9;text-wrap:pretty;">{{ areaIntro }}</div>
+          <sc-for list="{{ areas }}" as="a" hint-placeholder-count="6">
+            <sc-if value="{{ a.headOn }}">
+              <div style="padding:9px 14px 3px;border-top:1px solid #f6f7f9;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#c3c7cf;">{{ a.headLabel }}</div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:5px;padding:5px 14px 9px;">
+              <span style="display:flex;align-items:center;gap:6px;" title="{{ a.desc }}">
+                <i class="{{ a.icon }}" style="font-size:14px;color:#878a99;flex-shrink:0;"></i>
+                <span style="font-size:12px;font-weight:600;color:#343a40;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.label }}</span>
+                <sc-if value="{{ a.warnOn }}"><i class="ri-subtract-line" style="font-size:13px;color:#ced4da;margin-left:auto;flex-shrink:0;" title="Chưa dùng trình đơn nào"></i></sc-if>
+              </span>
+              <sc-if value="{{ devOn }}">
+                <button onClick="{{ a.onCopyCode }}" title="{{ a.codeTitle }}" style="display:flex;align-items:center;gap:4px;align-self:flex-start;max-width:100%;padding:1px 6px;border:1px solid #f3f3f9;border-radius:4px;background:#fbfcfd;font:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:#b6bac2;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.code }}<i class="ri-file-copy-line" style="font-size:10px;flex-shrink:0;"></i></button>
+              </sc-if>
+              <select class="mn-inp" style="min-height:36px;font-size:12.5px;" value="{{ a.value }}" onChange="{{ a.onChange }}" title="{{ a.title }}">
+                <sc-for list="{{ a.options }}" as="o" hint-placeholder-count="3">
+                  <option value="{{ o.value }}">{{ o.label }}</option>
+                </sc-for>
+              </select>
+            </div>
+          </sc-for>
+          <div style="display:flex;flex-direction:column;gap:9px;padding:8px 12px 12px;border-top:1px solid #f6f7f9;">
+            <button class="mn-btn" style="width:100%;justify-content:center;min-height:32px;font-size:11.5px;" onClick="{{ onAreaAdv }}"><i class="{{ areaAdvIcon }}" style="font-size:14px;"></i>{{ areaAdvLabel }}</button>
+            <button class="mn-btn" style="width:100%;justify-content:center;min-height:32px;font-size:11.5px;" onClick="{{ onDev }}" title="Mã vị trí và mã trình đơn dùng khi lập trình giao diện hoặc chèn trình đơn vào trang"><i class="{{ devIcon }}" style="font-size:14px;"></i>{{ devLabel }}</button>
+            <sc-if value="{{ devOn }}"><span style="font-size:11px;color:#adb5bd;line-height:1.6;text-wrap:pretty;">{{ areaFoot }}</span></sc-if>
+          </div>
+          </sc-if>
+        </div>
+
+        <div class="mn-card">
+          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCAuto }}"><i class="{{ cAutoIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i><span class="mn-t">Việc hệ thống tự lo</span><span style="margin-left:auto;font-size:11px;color:#adb5bd;white-space:nowrap;flex-shrink:0;">{{ autoCountText }}</span></button>
+          <sc-if value="{{ cAutoOn }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:8px 12px 12px;display:flex;flex-direction:column;gap:4px;">
+            <sc-if value="{{ autoAddOn }}" hint-placeholder-val="{{ false }}">
+              <button class="mn-swrap" onClick="{{ onToggleAuto }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;line-height:1.5;">Tự thêm trang mới vào cuối trình đơn</span></button>
+            </sc-if>
+            <sc-if value="{{ autoAddOff }}" hint-placeholder-val="{{ true }}">
+              <button class="mn-swrap" onClick="{{ onToggleAuto }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;line-height:1.5;">Tự thêm trang mới vào cuối trình đơn</span></button>
+            </sc-if>
+            <span style="font-size:11.5px;color:#878a99;line-height:1.6;text-wrap:pretty;padding-left:52px;margin:-2px 0 6px;">{{ autoAddNote }}</span>
+            <span style="display:flex;flex-direction:column;gap:7px;padding:9px 11px;border-radius:4px;background:#fbfcfd;">
+              <sc-for list="{{ autoAlways }}" as="a" hint-placeholder-count="3">
+                <span style="display:flex;align-items:flex-start;gap:8px;">
+                  <i class="ri-checkbox-circle-fill" style="font-size:14px;color:#0ab39c;flex-shrink:0;margin-top:1px;"></i>
+                  <span style="display:flex;flex-direction:column;gap:1px;min-width:0;">
+                    <span style="font-size:12px;color:#495057;line-height:1.5;text-wrap:pretty;">{{ a.t }}</span>
+                    <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ a.s }}</span>
+                  </span>
+                </span>
+              </sc-for>
+            </span>
+          </div>
+          </sc-if>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
+        <div class="mn-card mn-tree">
+          <div class="mn-h" style="flex-wrap:wrap;">
+            <span class="mn-t">{{ curName }}</span>
+            <span class="mn-chip mn-lg">{{ curCountLabel }}</span>
+            <span class="mn-chip mn-lg" title="{{ depthChipTitle }}"><i class="ri-node-tree" style="font-size:10px;"></i>{{ depthChip }}</span>
+            <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;">
+              <sc-if value="{{ trashBtnOn }}"><button class="mn-btn" onClick="{{ onTrash }}" title="Các mục đã gỡ, giữ 30 ngày"><i class="ri-delete-bin-line" style="font-size:14px;"></i><span class="mn-blab">Thùng rác </span>{{ trashN }}</button></sc-if>
+              <button class="mn-hit" onClick="{{ onUndo }}" disabled="{{ undoOff }}" title="{{ undoTitle }}"><i class="ri-arrow-go-back-line" style="font-size:16px;"></i></button>
+              <button class="mn-hit" onClick="{{ onRedo }}" disabled="{{ redoOff }}" title="{{ redoTitle }}"><i class="ri-arrow-go-forward-line" style="font-size:16px;"></i></button>
+              <button class="mn-btn" onClick="{{ onExpandAll }}" title="Mở hoặc thu gọn toàn bộ mục con"><i class="{{ expandIcon }}" style="font-size:15px;"></i><span class="mn-blab">{{ expandLabel }}</span></button>
+            </span>
+          </div>
+
+          <sc-if value="{{ trashOpenOn }}" hint-placeholder-val="{{ false }}">
+            <div style="border-bottom:1px solid #eff2f7;background:#fbfcfd;">
+              <div style="display:flex;align-items:center;gap:8px;padding:10px 14px 6px;">
+                <i class="ri-delete-bin-line" style="font-size:14px;color:#878a99;"></i>
+                <span style="flex:1 1 auto;font-size:11.5px;color:#878a99;line-height:1.55;">Mục đã gỡ được giữ 30 ngày rồi mới xoá hẳn.</span>
+                <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onTrash }}" title="Đóng thùng rác"><i class="ri-close-line" style="font-size:15px;"></i></button>
+              </div>
+              <sc-for list="{{ trashList }}" as="t" hint-placeholder-count="1">
+                <div style="display:flex;align-items:center;gap:9px;padding:8px 14px;border-top:1px solid #f3f3f9;">
+                  <i class="{{ t.icon }}" style="font-size:15px;color:#adb5bd;flex-shrink:0;"></i>
+                  <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;">
+                    <span style="font-size:12.5px;color:#343a40;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.label }}</span>
+                    <span style="font-size:11px;color:#adb5bd;">{{ t.meta }}</span>
+                  </span>
+                  <button class="mn-btn" onClick="{{ t.onRestore }}"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Lấy lại</button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:7px;flex:1 1 190px;min-width:0;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;" style-focus-within="border-color:#405189;">
+              <i class="ri-search-line" style="font-size:15px;color:#adb5bd;"></i>
+              <input value="{{ treeQuery }}" onChange="{{ onTreeQuery }}" placeholder="Tìm mục trong trình đơn…" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:#343a40;" />
+            </div>
+            <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+              <button class="{{ f.cls }}" onClick="{{ f.onClick }}" title="{{ f.title }}"><i class="{{ f.icon }}" style="font-size:13px;"></i>{{ f.label }}</button>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{ filteringOn }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #eff2f7;background:#f8f9fb;">
+              <i class="ri-filter-3-line" style="font-size:14px;color:#878a99;"></i>
+              <span style="flex:1 1 auto;font-size:11.5px;color:#878a99;line-height:1.5;">{{ filterNote }}</span>
+              <button class="mn-btn" onClick="{{ onClearFilter }}">Bỏ lọc</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ dragOn }}" hint-placeholder-val="{{ false }}">
+            <div style="position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid rgba(64,81,137,.2);background:rgba(64,81,137,.08);">
+              <i class="ri-drag-move-2-line" style="font-size:15px;color:#405189;flex-shrink:0;"></i>
+              <span style="font-size:11.5px;color:#405189;line-height:1.55;text-wrap:pretty;">{{ dragHint }}</span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ emptyOn }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:34px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;">
+              <i class="ri-node-tree" style="font-size:26px;color:#ced4da;"></i>
+              <span style="font-size:13px;font-weight:600;color:#495057;">{{ emptyTitle }}</span>
+              <span style="font-size:12px;color:#878a99;line-height:1.6;max-width:340px;text-wrap:pretty;">{{ emptyText }}</span>
+            </div>
+          </sc-if>
+
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="7">
+            <sc-if value="{{ r.slotBeforeOn }}">
+              <div style="{{ r.slotStyle }}" onDragOver="{{ r.onSlotOver }}" onDrop="{{ r.onSlotDrop }}"><i class="ri-download-line" style="font-size:14px;"></i>Thả vào đây</div>
+            </sc-if>
+            <div class="mn-item" ref="{{ r.rowRef }}" style="{{ r.wrap }}" draggable="{{ r.drag }}" onDragStart="{{ r.onDragStart }}" onDragEnter="{{ r.onDragEnter }}" onDragOver="{{ r.onDragOver }}" onDrop="{{ r.onDrop }}" onDragEnd="{{ r.onDragEnd }}">
+              <span style="{{ r.indent }}"></span>
+              <sc-if value="{{ r.gripOn }}"><span class="mn-grip" title="Kéo để đổi vị trí — thả vào giữa một mục để thành mục con"><i class="ri-draggable" style="font-size:15px;"></i></span></sc-if>
+              <sc-if value="{{ r.hasKids }}"><button class="mn-hit" style="width:24px;" onClick="{{ r.onFold }}" title="{{ r.foldTitle }}"><i class="{{ r.chev }}" style="font-size:16px;"></i></button></sc-if>
+              <sc-if value="{{ r.noKids }}"><span style="width:24px;flex-shrink:0;"></span></sc-if>
+              <i class="{{ r.icon }}" style="font-size:15px;color:{{ r.iconColor }};flex-shrink:0;"></i>
+              <button class="mn-name" onClick="{{ r.onSelect }}" title="Mở phần chỉnh sửa mục này">
+                <span style="{{ r.labelStyle }}">{{ r.label }}</span>
+                <sc-if value="{{ r.pathOn }}"><span style="font-size:11px;color:#adb5bd;white-space:nowrap;flex:0 0 auto;">{{ r.pathText }}</span></sc-if>
+                <sc-if value="{{ r.unsavedOn }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:#a9750a;" title="Mục này đã sửa nhưng chưa lưu"><i class="ri-circle-fill" style="font-size:7px;"></i><span class="mn-flagt">Chưa lưu</span></span></sc-if>
+                <sc-if value="{{ r.mtOn }}"><span class="mn-chip" style="background:rgba(41,156,219,.14);color:#1d7fb8;" title="Nhãn này do AI dịch, bạn chưa kiểm lại"><i class="ri-sparkling-2-line" style="font-size:10px;"></i><span class="mn-flagt">AI dịch</span></span></sc-if>
+                <sc-if value="{{ r.hiddenOn }}"><span class="mn-chip" style="background:#f3f6f9;color:#878a99;" title="{{ r.hiddenTitle }}"><i class="ri-eye-off-line" style="font-size:11px;"></i><span class="mn-flagt">{{ r.hiddenLabel }}</span></span></sc-if>
+                <sc-if value="{{ r.ctaOn }}"><span class="mn-chip" style="background:rgba(64,81,137,.10);color:#405189;" title="Hiển thị như nút nổi bật"><i class="ri-cursor-fill" style="font-size:10px;"></i><span class="mn-flagt">Nút nổi bật</span></span></sc-if>
+                <sc-if value="{{ r.badgeOn }}"><span class="mn-chip" style="background:#f06548;color:#fff;" title="{{ r.badgeTitle }}">{{ r.badgeText }}</span></sc-if>
+                <sc-if value="{{ r.badgeExpOn }}"><span class="mn-chip mn-lg" title="{{ r.badgeExpTitle }}"><i class="ri-time-line" style="font-size:10px;"></i><span class="mn-flagt">Nhãn hết hạn</span></span></sc-if>
+                <sc-if value="{{ r.overDeepOn }}"><span class="mn-chip" style="background:rgba(240,101,72,.12);color:#d84a2f;" title="{{ r.overDeepTitle }}"><i class="ri-node-tree" style="font-size:10px;"></i><span class="mn-flagt">Vượt cấp</span></span></sc-if>
+                <sc-if value="{{ r.megaRowOn }}"><span class="mn-chip" style="background:rgba(64,81,137,.10);color:#405189;" title="{{ r.megaRowTitle }}"><i class="ri-layout-grid-line" style="font-size:10px;"></i><span class="mn-flagt">{{ r.megaRowLabel }}</span></span></sc-if>
+                <sc-if value="{{ r.descRowOn }}"><span class="mn-chip mn-lg" title="{{ r.descRowTitle }}"><i class="ri-text" style="font-size:10px;"></i><span class="mn-flagt">Có mô tả</span></span></sc-if>
+                <sc-if value="{{ r.onlyOn }}"><span class="mn-chip mn-lg" title="{{ r.onlyTitle }}"><i class="ri-device-line" style="font-size:10px;"></i><span class="mn-flagt">{{ r.onlyLabel }}</span></span></sc-if>
+                <sc-if value="{{ r.fixedOn }}"><span class="mn-chip" style="background:rgba(10,179,156,.12);color:#0a8f7f;" title="{{ r.fixedTitle }}"><i class="ri-check-line" style="font-size:11px;"></i><span class="mn-flagt">Đã tự sửa đường dẫn</span></span></sc-if>
+                <sc-if value="{{ r.draftOn }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:#a9750a;" title="{{ r.draftTitle }}"><i class="ri-eye-off-line" style="font-size:11px;"></i><span class="mn-flagt">Trang chưa đăng</span></span></sc-if>
+                <sc-if value="{{ r.brokenOn }}"><span class="mn-chip" style="background:rgba(240,101,72,.12);color:#d84a2f;" title="{{ r.brokenTitle }}"><i class="ri-error-warning-line" style="font-size:11px;"></i><span class="mn-flagt">Trang không còn</span></span></sc-if>
+              </button>
+              <span class="mn-src">{{ r.srcText }}</span>
+              <button class="mn-hit" onClick="{{ r.onUp }}" disabled="{{ r.moveOff }}" title="{{ r.upTitle }}"><i class="ri-arrow-up-s-line" style="font-size:17px;"></i></button>
+              <button class="mn-hit" onClick="{{ r.onDown }}" disabled="{{ r.moveOff }}" title="{{ r.downTitle }}"><i class="ri-arrow-down-s-line" style="font-size:17px;"></i></button>
+              <button class="mn-hit" onClick="{{ r.onMenu }}" title="{{ r.menuTitle }}"><i class="ri-more-2-fill" style="font-size:16px;"></i></button>
+
+              <sc-if value="{{ r.menuOn }}" hint-placeholder-val="{{ false }}">
+                <div class="mn-pop" onClick="{{ stop }}">
+                  <button class="mn-pi" onClick="{{ r.onSelect }}"><i class="ri-pencil-line" style="font-size:15px;"></i>Sửa nhãn &amp; tuỳ chọn</button>
+                  <button class="mn-pi" onClick="{{ r.onToggleHide }}"><i class="{{ r.hideIcon }}" style="font-size:15px;"></i>{{ r.hideLabel }}</button>
+                  <div style="height:1px;margin:5px 0;background:#f3f3f9;"></div>
+                  <button class="mn-pi" onClick="{{ r.onIn }}" disabled="{{ r.inOff }}" title="{{ r.inTitle }}"><i class="ri-indent-increase" style="font-size:15px;"></i>Thành mục con<span style="margin-left:auto;font-size:10.5px;color:#adb5bd;">Alt →</span></button>
+                  <button class="mn-pi" onClick="{{ r.onOut }}" disabled="{{ r.outOff }}" title="{{ r.outTitle }}"><i class="ri-indent-decrease" style="font-size:15px;"></i>Đưa ra ngoài<span style="margin-left:auto;font-size:10.5px;color:#adb5bd;">Alt ←</span></button>
+                  <button class="mn-pi" onClick="{{ r.onDup }}"><i class="ri-file-copy-line" style="font-size:15px;"></i>Nhân bản</button>
+                  <div style="height:1px;margin:5px 0;background:#f3f3f9;"></div>
+                  <button class="mn-pi" onClick="{{ r.onRevert }}" disabled="{{ r.revertOff }}" title="{{ r.revertTitle }}"><i class="ri-history-line" style="font-size:15px;"></i>Đưa về như lần lưu</button>
+                  <button class="mn-pi" style="color:#d84a2f;" onClick="{{ r.onDel }}"><i class="ri-delete-bin-line" style="font-size:15px;"></i>Gỡ khỏi trình đơn</button>
+                </div>
+              </sc-if>
+            </div>
+
+            <sc-if value="{{ r.slotAfterOn }}">
+              <div style="{{ r.slotStyle }}" onDragOver="{{ r.onSlotOver }}" onDrop="{{ r.onSlotDrop }}"><i class="ri-download-line" style="font-size:14px;"></i>Thả vào đây</div>
+            </sc-if>
+
+            <sc-if value="{{ r.editOn }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:14px 16px 16px;border-top:1px solid #eff2f7;background:#fbfcfd;">
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
+                  <label style="display:flex;flex-direction:column;gap:6px;min-width:0;">
+                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#495057;">Nhãn hiển thị<span class="mn-chip mn-lg">{{ locCode }}</span></span>
+                    <input class="mn-inp" value="{{ edLabel }}" onChange="{{ onEdLabel }}" placeholder="{{ edLabelPh }}" />
+                    <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ edLabelHint }}</span>
+                  </label>
+                  <label style="display:flex;flex-direction:column;gap:6px;min-width:0;">
+                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#495057;">Đường dẫn<sc-if value="{{ sharedLocked }}"><span class="mn-chip" style="background:#f3f6f9;color:#878a99;"><i class="ri-lock-line" style="font-size:11px;"></i>Chung</span></sc-if></span>
+                    <input class="mn-inp" value="{{ edUrl }}" onChange="{{ onEdUrl }}" disabled="{{ edUrlOff }}" placeholder="/lien-he" />
+                    <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ edUrlHint }}</span>
+                  </label>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;">
+                  <div style="display:flex;flex-direction:column;gap:6px;min-width:0;">
+                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#495057;">Mô tả ngắn<span class="mn-chip mn-lg">{{ locCode }}</span><span style="margin-left:auto;font-size:11px;color:{{ edDescCountColor }};font-weight:400;">{{ edDescCount }}</span></span>
+                    <span style="display:flex;flex-direction:column;border:1px solid #e9ebec;border-radius:4px;background:#fff;overflow:hidden;" style-focus-within="border-color:#405189;">
+                      <span style="display:flex;align-items:center;gap:2px;padding:4px 5px;border-bottom:1px solid #f3f3f9;background:#fbfcfd;">
+                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescBold }}" title="Chữ đậm (Ctrl+B)"><i class="ri-bold" style="font-size:15px;"></i></button>
+                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescItalic }}" title="Chữ nghiêng (Ctrl+I)"><i class="ri-italic" style="font-size:15px;"></i></button>
+                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescLink }}" title="Chèn liên kết"><i class="ri-link" style="font-size:15px;"></i></button>
+                        <span style="width:1px;height:16px;margin:0 3px;background:#eff2f7;"></span>
+                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescClear }}" title="Xoá định dạng, giữ nguyên chữ"><i class="ri-format-clear" style="font-size:15px;"></i></button>
+                      </span>
+                      <span style="position:relative;">
+                        <div class="mn-rt" ref="{{ descRef }}" contentEditable="{{ true }}" onInput="{{ onDescInput }}" onFocus="{{ onDescFocus }}" onBlur="{{ onDescBlur }}" onPaste="{{ onDescPaste }}" style="min-height:78px;padding:9px 11px;outline:none;font-size:13px;line-height:1.65;color:#343a40;overflow:auto;"></div>
+                        <sc-if value="{{ descEmptyOn }}"><span style="position:absolute;top:9px;left:11px;font-size:13px;color:#adb5bd;pointer-events:none;">{{ edDescPh }}</span></sc-if>
+                      </span>
+                    </span>
+                    <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <span style="flex:1 1 160px;min-width:0;font-size:11px;color:#adb5bd;line-height:1.5;text-wrap:pretty;">{{ edDescHint }}</span>
+                      <sc-if value="{{ edDescSrcOn }}"><button class="mn-btn" style="min-height:30px;font-size:11.5px;" onClick="{{ onEdDescSrc }}" title="Lấy mô tả đã có sẵn của trang, không phải gõ lại"><i class="ri-magic-line" style="font-size:13px;"></i>Lấy từ mô tả trang</button></sc-if>
+                    </span>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:6px;min-width:0;">
+                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#495057;">Biểu tượng<span style="font-size:11px;color:#adb5bd;font-weight:400;">không bắt buộc</span></span>
+                    <span style="position:relative;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                      <button class="mn-btn" style="min-height:38px;" onClick="{{ onEdIconOpen }}" title="{{ edIconTitle }}"><i class="{{ edIconClass }}" style="font-size:17px;"></i>{{ edIconLabel }}<i class="ri-arrow-down-s-line" style="font-size:14px;"></i></button>
+                      <sc-if value="{{ iconTipOn }}"><button class="mn-btn" style="min-height:38px;" onClick="{{ onIconTip }}" title="Hệ thống đoán theo tên mục — bấm là gán"><i class="{{ iconTipClass }}" style="font-size:16px;color:#405189;"></i>Gợi ý</button></sc-if>
+                      <sc-if value="{{ iconOpenOn }}">
+                        <span onClick="{{ stop }}" style="position:absolute;top:100%;right:0;z-index:30;width:min(308px, calc(100cqw - 40px), calc(100vw - 32px));box-sizing:border-box;margin-top:6px;padding:10px;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 6px 18px rgba(56,65,74,.18);">
+                          <input class="mn-inp" style="min-height:34px;font-size:12px;" value="{{ iconQ }}" onChange="{{ onIconQ }}" placeholder="Tìm: điện thoại, khuyến mãi, nhà máy…" />
+                          <span style="display:flex;flex-direction:column;gap:8px;margin-top:9px;max-height:230px;overflow:auto;">
+                            <sc-for list="{{ iconGroups }}" as="ig" hint-placeholder-count="3">
+                              <span style="display:flex;flex-direction:column;gap:6px;">
+                                <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#c3c7cf;">{{ ig.g }}</span>
+                                <span style="display:flex;flex-wrap:wrap;gap:6px;">
+                                  <sc-for list="{{ ig.icons }}" as="ic" hint-placeholder-count="12">
+                                    <button style="{{ ic.style }}" onClick="{{ ic.onClick }}" title="{{ ic.title }}"><i class="{{ ic.cls }}"></i></button>
+                                  </sc-for>
+                                </span>
+                              </span>
+                            </sc-for>
+                            <sc-if value="{{ iconEmptyOn }}"><span style="padding:14px 4px;text-align:center;font-size:11.5px;color:#adb5bd;line-height:1.6;">Không có biểu tượng nào khớp — thử từ khác như “giao hàng”, “bảo hành”.</span></sc-if>
+                          </span>
+                          <span style="display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid #f6f7f9;">
+                            <span style="flex:1 1 auto;font-size:10.5px;color:#c3c7cf;">{{ iconCountText }}</span>
+                            <sc-if value="{{ iconNoneOn }}"><button class="mn-btn" style="min-height:30px;font-size:11.5px;" onClick="{{ onEdIconClear }}"><i class="ri-close-line" style="font-size:14px;"></i>Bỏ biểu tượng</button></sc-if>
+                          </span>
+                        </span>
+                      </sc-if>
+                    </span>
+                  </div>
+                </div>
+                <sc-if value="{{ edMegaRowOn }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px;padding:11px 13px;border:1px solid #eff2f7;border-radius:6px;background:#fff;">
+                    <sc-if value="{{ edMegaOn }}"><button class="mn-swrap" onClick="{{ onEdMega }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Mở dạng bảng lớn</span></button></sc-if>
+                    <sc-if value="{{ edMegaOff }}"><button class="mn-swrap" onClick="{{ onEdMega }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Mở dạng bảng lớn</span></button></sc-if>
+                    <sc-if value="{{ edMegaOn }}">
+                      <select class="mn-inp" style="width:auto;min-height:34px;font-size:12.5px;" value="{{ edMegaKind }}" onChange="{{ onEdMegaKind }}" title="Cách dựng nội dung bên trong bảng lớn">
+                        <sc-for list="{{ megaKindOptions }}" as="mk" hint-placeholder-count="2"><option value="{{ mk.value }}">{{ mk.label }}</option></sc-for>
+                      </select>
+                    </sc-if>
+                    <sc-if value="{{ edColsOn }}">
+                      <select class="mn-inp" style="width:auto;min-height:34px;font-size:12.5px;" value="{{ edCols }}" onChange="{{ onEdCols }}" title="Số cột xếp mục con trong bảng lớn">
+                        <sc-for list="{{ colOptions }}" as="c" hint-placeholder-count="3"><option value="{{ c.value }}">{{ c.label }}</option></sc-for>
+                      </select>
+                    </sc-if>
+                    <sc-if value="{{ edMegaBlockOn }}">
+                      <select class="mn-inp" style="width:auto;min-height:34px;font-size:12.5px;" value="{{ edMegaBlock }}" onChange="{{ onEdMegaBlock }}" title="Khối đã dựng sẵn ở Thư viện khối">
+                        <sc-for list="{{ megaBlockOptions }}" as="mb" hint-placeholder-count="3"><option value="{{ mb.value }}">{{ mb.label }}</option></sc-for>
+                      </select>
+                    </sc-if>
+                    <sc-if value="{{ edMegaBlockOn }}"><button class="mn-btn" style="min-height:34px;font-size:11.5px;" onClick="{{ onOpenBuilder }}"><i class="ri-layout-masonry-line" style="font-size:14px;"></i>Dựng khối mới</button></sc-if>
+                    <span style="flex:1 1 200px;min-width:0;font-size:11px;color:#adb5bd;line-height:1.55;text-wrap:pretty;">{{ edMegaKindHint }}</span>
+                  </div>
+                </sc-if>
+                <div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-top:12px;">
+                  <sc-if value="{{ edShowOn }}"><button class="mn-swrap" onClick="{{ onEdShow }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Hiện cho khách</span></button></sc-if>
+                  <sc-if value="{{ edShowOff }}"><button class="mn-swrap" onClick="{{ onEdShow }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Hiện cho khách</span></button></sc-if>
+                  <sc-if value="{{ edBlankOn }}"><button class="mn-swrap" onClick="{{ onEdBlank }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Mở ở cửa sổ mới</span></button></sc-if>
+                  <sc-if value="{{ edBlankOff }}"><button class="mn-swrap" onClick="{{ onEdBlank }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Mở ở cửa sổ mới</span></button></sc-if>
+                  <sc-if value="{{ edCtaOn }}"><button class="mn-swrap" onClick="{{ onEdCta }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Hiển thị như nút nổi bật</span></button></sc-if>
+                  <sc-if value="{{ edCtaOff }}"><button class="mn-swrap" onClick="{{ onEdCta }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Hiển thị như nút nổi bật</span></button></sc-if>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;">
+                  <span style="font-size:12px;font-weight:600;color:#495057;">Nhãn</span>
+                  <select class="mn-inp" style="width:auto;min-height:34px;font-size:12.5px;" value="{{ edBadge }}" onChange="{{ onEdBadge }}" title="Nhãn nhỏ hiện cạnh tên mục trên website">
+                    <sc-for list="{{ badgeOptions }}" as="b" hint-placeholder-count="5"><option value="{{ b.value }}">{{ b.label }}</option></sc-for>
+                  </select>
+                  <sc-if value="{{ edBadgeDateOn }}">
+                    <input class="mn-inp" type="date" style="width:auto;min-height:34px;font-size:12.5px;" value="{{ edBadgeDate }}" onChange="{{ onEdBadgeDate }}" title="Ngày cuối cùng nhãn còn hiện" />
+                  </sc-if>
+                  <sc-if value="{{ edBadgeDateOn }}"><span style="flex:1 1 180px;min-width:0;font-size:11px;color:#adb5bd;line-height:1.55;">{{ edBadgeHint }}</span></sc-if>
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;">
+                  <span style="font-size:12px;font-weight:600;color:#495057;">Hiện trên</span>
+                  <sc-for list="{{ devicePills }}" as="dv" hint-placeholder-count="3">
+                    <button class="{{ dv.cls }}" onClick="{{ dv.onClick }}" title="{{ dv.title }}"><i class="{{ dv.icon }}" style="font-size:14px;"></i>{{ dv.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid #eff2f7;">
+                  <span style="font-size:11.5px;color:#adb5bd;line-height:1.6;flex:1 1 220px;min-width:0;">{{ edFoot }}</span>
+                  <button class="mn-btn" onClick="{{ onEdClose }}">Xong</button>
+                </div>
+              </div>
+            </sc-if>
+          </sc-for>
+
+          <sc-if value="{{ endZoneOn }}" hint-placeholder-val="{{ false }}">
+            <div style="{{ endZoneStyle }}" onDragOver="{{ onEndOver }}" onDrop="{{ onEndDrop }}">
+              <i class="ri-corner-left-down-line" style="font-size:15px;"></i>Thả vào đây để đưa ra cấp ngoài cùng, xuống cuối danh sách
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ depthNoteOn }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #eff2f7;background:{{ depthNoteBg }};">
+              <i class="{{ depthNoteIcon }}" style="font-size:14px;color:{{ depthNoteFg }};flex-shrink:0;"></i>
+              <span style="font-size:11.5px;color:{{ depthNoteFg }};line-height:1.6;text-wrap:pretty;">{{ depthNote }}</span>
+            </div>
+          </sc-if>
+
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid #eff2f7;">
+            <i class="ri-keyboard-line" style="font-size:14px;color:#ced4da;flex-shrink:0;"></i>
+            <span style="font-size:11px;color:#adb5bd;line-height:1.6;">Kéo bằng chuột, hoặc dùng nút mũi tên và phím Alt + mũi tên khi đang mở một mục. Ctrl+Z hoàn tác.</span>
+          </div>
+        </div>
+
+        <sc-if value="{{ previewOn }}" hint-placeholder-val="{{ true }}">
+        <div class="mn-card">
+          <div class="mn-h" style="flex-wrap:wrap;">
+            <span class="mn-t">Khách sẽ thấy</span>
+            <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;">
+              <sc-for list="{{ devices }}" as="d" hint-placeholder-count="2">
+                <button class="{{ d.cls }}" onClick="{{ d.onClick }}" title="{{ d.title }}"><i class="{{ d.icon }}" style="font-size:14px;"></i>{{ d.label }}</button>
+              </sc-for>
+            </span>
+          </div>
+          <div style="padding:16px;">
+            <sc-if value="{{ pcOn }}" hint-placeholder-val="{{ true }}">
+              <div style="position:relative;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:12px 14px;border:1px solid #eff2f7;border-radius:6px;">
+                <span style="font-size:13px;font-weight:700;color:#0f172a;letter-spacing:-.2px;margin-right:8px;">An Vinh</span>
+                <sc-for list="{{ preview }}" as="p" hint-placeholder-count="5">
+                  <span style="{{ p.wrapStyle }}">
+                    <button onClick="{{ p.onClick }}" style="{{ p.style }}"><sc-if value="{{ p.iconOn }}"><i class="{{ p.icon }}" style="font-size:15px;"></i></sc-if>{{ p.label }}<sc-if value="{{ p.badgeOn }}"><span style="display:inline-flex;align-items:center;height:15px;padding:0 5px;border-radius:20px;background:#f06548;font-size:9px;font-weight:700;color:#fff;">{{ p.badgeText }}</span></sc-if><sc-if value="{{ p.hasKids }}"><i class="{{ p.chev }}" style="font-size:14px;"></i></sc-if></button>
+                    <sc-if value="{{ p.openOn }}">
+                      <span style="position:absolute;top:100%;left:0;z-index:10;display:flex;flex-direction:column;min-width:186px;padding:5px 0;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 6px 18px rgba(56,65,74,.18);">
+                        <sc-for list="{{ p.kids }}" as="k" hint-placeholder-count="3">
+                          <span style="display:flex;flex-direction:column;gap:2px;padding:8px 13px;">
+                            <span style="font-size:12.5px;color:#334155;white-space:nowrap;">{{ k.label }}</span>
+                            <sc-if value="{{ k.descOn }}"><span style="font-size:11px;color:#94a3b8;line-height:1.5;max-width:230px;text-wrap:pretty;">{{ k.desc }}</span></sc-if>
+                          </span>
+                        </sc-for>
+                      </span>
+                    </sc-if>
+                    <sc-if value="{{ p.blockOn }}">
+                      <span style="position:absolute;top:100%;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:center;gap:9px;box-sizing:border-box;margin-top:6px;padding:26px 20px;border:1.5px dashed #cbd5e1;border-radius:6px;background:#f8fafc;font-size:12px;color:#64748b;text-align:center;">
+                        <i class="ri-layout-masonry-line" style="font-size:17px;"></i>Khối tự dựng: {{ p.blockName }} — nội dung hiển thị theo đúng khối trong Thư viện khối.
+                      </span>
+                    </sc-if>
+                    <sc-if value="{{ p.megaOn }}">
+                      <span style="{{ p.megaStyle }}">
+                        <sc-if value="{{ p.megaIntroOn }}">
+                          <span style="display:flex;flex-direction:column;gap:8px;padding-right:18px;border-right:1px solid #eff2f7;">
+                            <span style="font-size:16px;font-weight:700;color:#0f172a;letter-spacing:-.2px;">{{ p.megaTitle }}</span>
+                            <span style="font-size:12px;color:#475569;line-height:1.75;text-wrap:pretty;">{{ p.megaDesc }}</span>
+                          </span>
+                        </sc-if>
+                        <sc-for list="{{ p.megaCols }}" as="col" hint-placeholder-count="3">
+                          <span style="display:flex;flex-direction:column;gap:14px;">
+                            <sc-for list="{{ col.kids }}" as="k" hint-placeholder-count="3">
+                              <span style="display:flex;flex-direction:column;gap:3px;">
+                                <span style="font-size:12.5px;font-weight:600;color:#0f172a;">{{ k.label }}</span>
+                                <sc-if value="{{ k.descOn }}"><span style="font-size:11.5px;color:#64748b;line-height:1.6;text-wrap:pretty;">{{ k.desc }}</span></sc-if>
+                              </span>
+                            </sc-for>
+                          </span>
+                        </sc-for>
+                      </span>
+                    </sc-if>
+                  </span>
+                </sc-for>
+              </div>
+              <sc-if value="{{ crowdedOn }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+                  <i class="ri-error-warning-line" style="font-size:14px;color:#b57d0a;"></i>
+                  <span style="font-size:11.5px;color:#b57d0a;line-height:1.6;">{{ crowdedText }}</span>
+                </div>
+              </sc-if>
+            </sc-if>
+            <sc-if value="{{ mbOn }}" hint-placeholder-val="{{ false }}">
+              <div style="width:100%;max-width:300px;margin:0 auto;border:1px solid #eff2f7;border-radius:8px;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid #eff2f7;"><i class="ri-menu-2-line" style="font-size:16px;color:#334155;"></i><span style="font-size:13px;font-weight:700;color:#0f172a;">An Vinh</span></div>
+                <sc-for list="{{ previewMobile }}" as="p" hint-placeholder-count="6">
+                  <div style="{{ p.style }}">{{ p.label }}<sc-if value="{{ p.hasKids }}"><i class="ri-arrow-right-s-line" style="font-size:15px;color:#94a3b8;margin-left:auto;"></i></sc-if></div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+        </sc-if>
+      </div>
+
+      <div class="mn-colR" style="display:flex;flex-direction:column;gap:16px;">
+        <div class="mn-card">
+          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCAdd }}"><i class="{{ cAddIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i><span class="mn-t">Thêm vào trình đơn</span></button>
+          <sc-if value="{{ cAddOn }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;">
+            <sc-for list="{{ srcTabs }}" as="t" hint-placeholder-count="5">
+              <button class="{{ t.cls }}" onClick="{{ t.onClick }}">{{ t.label }}</button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ addTargetOn }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0 12px 10px;">
+              <span style="font-size:11px;color:#878a99;">Thêm vào</span>
+              <sc-if value="{{ addToEndOn }}"><button class="mn-tab on" onClick="{{ onAddToEnd }}">Cuối trình đơn</button></sc-if>
+              <sc-if value="{{ addToSelOn }}"><button class="mn-tab" onClick="{{ onAddToEnd }}">Cuối trình đơn</button></sc-if>
+              <sc-if value="{{ addToSelOn }}"><button class="mn-tab on" onClick="{{ onAddToSel }}" title="Thêm làm mục con của mục đang mở">Trong “{{ addTargetName }}”</button></sc-if>
+              <sc-if value="{{ addToEndOn }}"><button class="mn-tab" onClick="{{ onAddToSel }}" title="Thêm làm mục con của mục đang mở">Trong “{{ addTargetName }}”</button></sc-if>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ urlTabOn }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:4px 12px 14px;display:flex;flex-direction:column;gap:10px;">
+              <input class="mn-inp" value="{{ newLabel }}" onChange="{{ onNewLabel }}" placeholder="Nhãn hiển thị, ví dụ: Bảng giá" />
+              <input class="mn-inp" value="{{ newUrl }}" onChange="{{ onNewUrl }}" placeholder="https://… · /duong-dan · số điện thoại · email" />
+              <sc-if value="{{ urlHintOn }}"><span style="font-size:11px;color:{{ urlHintColor }};line-height:1.55;text-wrap:pretty;">{{ urlHint }}</span></sc-if>
+              <button class="mn-btn" style="justify-content:center;" onClick="{{ onAddUrl }}" disabled="{{ addUrlOff }}"><i class="ri-add-line" style="font-size:15px;"></i>Thêm liên kết</button>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ listTabOn }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:0 12px 10px;">
+              <div style="display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;" style-focus-within="border-color:#405189;">
+                <i class="ri-search-line" style="font-size:15px;color:#adb5bd;"></i>
+                <input value="{{ search }}" onChange="{{ onSearch }}" placeholder="{{ searchPh }}" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:#343a40;" />
+              </div>
+            </div>
+            <div style="max-height:300px;overflow:auto;border-top:1px solid #eff2f7;">
+              <sc-for list="{{ srcRows }}" as="s" hint-placeholder-count="6">
+                <button class="mn-pk" onClick="{{ s.onClick }}" disabled="{{ s.used }}" title="{{ s.title }}">
+                  <sc-if value="{{ s.on }}"><span class="mn-cb on"><i class="ri-check-line"></i></span></sc-if>
+                  <sc-if value="{{ s.off }}"><span class="mn-cb"></span></sc-if>
+                  <sc-if value="{{ s.iconOn }}"><i class="{{ s.icon }}" style="font-size:15px;color:#878a99;flex-shrink:0;"></i></sc-if>
+                  <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;">
+                    <span style="{{ s.labelStyle }}">{{ s.label }}</span>
+                    <span style="font-size:11px;color:#adb5bd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.meta }}</span>
+                  </span>
+                  <sc-if value="{{ s.used }}"><span class="mn-chip mn-lg">Đã có</span></sc-if>
+                  <sc-if value="{{ s.draft }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:#a9750a;">Chưa đăng</span></sc-if>
+                </button>
+              </sc-for>
+              <sc-if value="{{ srcEmpty }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:20px 14px;text-align:center;font-size:12px;color:#adb5bd;line-height:1.6;">Không có mục nào khớp với từ bạn tìm.</div>
+              </sc-if>
+            </div>
+            <div style="padding:10px 12px;border-top:1px solid #eff2f7;">
+              <button class="mn-btn" style="width:100%;justify-content:center;" onClick="{{ onAddPicked }}" disabled="{{ addPickedOff }}"><i class="ri-add-line" style="font-size:15px;"></i>{{ addPickedLabel }}</button>
+            </div>
+          </sc-if>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ barOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 24px;border-top:1px solid #eff2f7;background:#fff;box-shadow:0 -1px 2px rgba(56,65,74,.08);">
+      <i class="ri-error-warning-line" style="font-size:16px;color:#f7b84b;flex-shrink:0;"></i>
+      <span style="font-size:12.5px;color:#495057;line-height:1.6;">{{ dirtyText }}</span>
+      <span style="flex:1 1 auto;"></span>
+      <button class="mn-btn" onClick="{{ onReset }}" title="Trả toàn bộ trình đơn về đúng lần lưu gần nhất"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Bỏ mọi thay đổi</button>
+      <button class="mn-pri" onClick="{{ onSave }}"><i class="ri-save-3-line" style="font-size:16px;"></i>Lưu — hiệu lực ngay</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ askOn }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onAskCancel }}" style="position:fixed;inset:0;z-index:60;background:rgba(33,37,41,.45);display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div onClick="{{ stop }}" class="mn-card" style="width:100%;max-width:470px;box-shadow:0 10px 30px rgba(56,65,74,.25);">
+        <div class="mn-h"><span class="mn-t">{{ askTitle }}</span></div>
+        <div style="padding:16px;font-size:13px;color:#495057;line-height:1.7;text-wrap:pretty;">{{ askBody }}</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #eff2f7;">
+          <button class="mn-btn" style="min-height:38px;" onClick="{{ onAskCancel }}">Huỷ</button>
+          <sc-if value="{{ askAltOn }}"><button class="mn-btn" style="min-height:38px;" onClick="{{ onAskAlt }}">{{ askAlt }}</button></sc-if>
+          <button class="mn-pri" onClick="{{ onAskOk }}">{{ askOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ ghostOn }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ ghostStyle }}">
+      <sc-for list="{{ ghostRows }}" as="g" hint-placeholder-count="2">
+        <div style="{{ g.style }}"><i class="{{ g.icon }}" style="font-size:15px;color:#878a99;flex-shrink:0;"></i>{{ g.label }}</div>
+      </sc-for>
+      <sc-if value="{{ ghostCountOn }}">
+        <div style="padding:5px 12px;border-top:1px solid #eff2f7;background:rgba(64,81,137,.06);font-size:10.5px;font-weight:600;color:#405189;">{{ ghostCount }}</div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:11px;padding:11px 16px;border-radius:6px;background:#343a40;color:#fff;box-shadow:0 6px 20px rgba(56,65,74,.3);max-width:min(560px,calc(100vw - 32px));">
+      <i class="{{ toastIcon }}" style="font-size:16px;flex-shrink:0;"></i>
+      <span style="font-size:12.5px;line-height:1.6;">{{ toastText }}</span>
+      <sc-if value="{{ toastUndoOn }}"><button onClick="{{ onUndo }}" style="min-height:30px;padding:0 10px;border:1px solid rgba(255,255,255,.28);border-radius:4px;background:transparent;font:inherit;font-size:12px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;">Hoàn tác</button></sc-if>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;siteLangs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1 ngôn ngữ&quot;,&quot;3 ngôn ngữ&quot;,&quot;8 ngôn ngữ&quot;],&quot;default&quot;:&quot;3 ngôn ngữ&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngữ cảnh website&quot;},&quot;quotaState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Còn nhiều&quot;,&quot;Sắp hết&quot;,&quot;Đã hết&quot;],&quot;default&quot;:&quot;Còn nhiều&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngữ cảnh website&quot;},&quot;showPreview&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Nhúng vào Admin Shell&quot;},&quot;embedId&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;menus&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Nhúng vào Admin Shell&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(dirty: boolean) =&gt; void&quot;}}">
+/* Trình đơn — mô hình (CLAUDE.md §1)
+   Thực thể: Menu {id,name,items} · Vị trí {header,footer,mobile} → trỏ tới đúng 1 menu ·
+   Mục {kind,ref,label(i18n),url,hidden,blank,cta,children}.
+   Nguồn tham chiếu (page/cat/prod) → đường dẫn do hệ thống giữ; kind 'url' → khách tự nhập.
+   Trạng thái mục: bình thường · đang ẩn · ẩn theo mục cha · nguồn đổi đường dẫn (đã tự sửa) ·
+   nguồn chưa đăng · nguồn đã xoá · thiếu nhãn ở bản đang sửa · đã sửa chưa lưu.
+   Vòng đời: sửa → Lưu (hiệu lực ngay, không có nháp/duyệt — §6). Mọi thao tác hoàn tác được (§12). */
+class Component extends DCLogic {
+  LANGS = { VI: 'Tiếng Việt', EN: 'English', JA: '日本語', KO: '한국어', ZH: '中文', FR: 'Français', DE: 'Deutsch', ES: 'Español' };
+  defLang = 'VI';
+  NOTPUB = ['JA'];
+  /* Vị trí KHÔNG cố định trong màn này — do giao diện đang dùng khai báo (theme.menuAreas).
+     Đổi giao diện thì danh sách chỗ này đổi theo; backend cấp qua API, đây là dữ liệu mẫu. */
+  /* Tên vị trí = gọi đúng chỗ khách nhìn thấy, không mượn từ kỹ thuật (§14).
+     main = trình đơn chính, đúng như theme và shortcode vẫn gọi. */
+  /* Vị trí do GIAO DIỆN khai báo (theme.json → menu_areas), không phải màn này quy định.
+     Mỗi vị trí tự khai luôn số cấp nó dựng nổi (dp) — thanh ngang 3 cấp, bảng trượt di động 4,
+     chân trang 2, dải chữ nhỏ 1. Trình đơn dùng ở nhiều chỗ thì lấy mức CHẶT NHẤT. */
+  THEME = { name: 'An Vinh — Cơ khí', version: '2.4', areas: [
+    { k: 'topbar', g: 'Đầu trang', l: 'Thanh tiện ích', d: 'Dải mảnh phía trên logo — hotline, giờ làm việc, đổi ngôn ngữ', i: 'ri-layout-top-2-line', dp: 1, mg: false },
+    { k: 'primary', g: 'Đầu trang', l: 'Trình đơn chính', d: 'Hàng trình đơn ngang cạnh logo — khách nhìn thấy đầu tiên', i: 'ri-layout-top-line', dp: 3, mg: true },
+    { k: 'handheld', g: 'Đầu trang', l: 'Trình đơn di động', d: 'Bảng trượt ra khi khách bấm nút ba gạch trên điện thoại', i: 'ri-smartphone-line', canSame: 'primary', dp: 4, mg: false },
+    { k: 'footer-1', g: 'Chân trang', l: 'Chân trang — cột 1', d: 'Cột liên kết thứ nhất dưới cùng mọi trang', i: 'ri-layout-bottom-line', dp: 2, mg: false },
+    { k: 'footer-2', g: 'Chân trang', l: 'Chân trang — cột 2', d: 'Cột liên kết thứ hai, thường là hỗ trợ khách hàng', i: 'ri-layout-bottom-line', dp: 2, mg: false },
+    { k: 'footer-bottom', g: 'Chân trang', l: 'Thanh cuối trang', d: 'Hàng chữ nhỏ nhất: điều khoản, chính sách, sơ đồ site', i: 'ri-more-line', adv: true, dp: 1, mg: false },
+    { k: 'sidebar', g: 'Nơi khác', l: 'Cột bên trang tin', d: 'Chỉ hiện ở trang tin tức và trang bài viết', i: 'ri-layout-right-line', adv: true, dp: 3, mg: false },
+    { k: 'social', g: 'Nơi khác', l: 'Mạng xã hội', d: 'Hàng biểu tượng Facebook, Zalo, YouTube…', i: 'ri-share-line', adv: true, dp: 1, mg: false },
+    { k: 'my-account', g: 'Nơi khác', l: 'Tài khoản khách', d: 'Hiện trong hộp tài khoản khi khách đã đăng nhập', i: 'ri-user-line', adv: true, dp: 2, mg: false }
+  ] };
+  FALLBACK_DEPTH = 3;
+  /* Giới hạn cấp của trình đơn đang mở: chỗ chặt nhất trong các vị trí đang dùng nó.
+     Chưa gắn chỗ nào → mức chung; gọi bằng shortcode ở trang riêng cũng theo mức chung. */
+  depthLimit(menuId) {
+    const id = menuId || this.state.cur;
+    const used = this.areasOf().filter(a => this.menuAt(a.k) === id);
+    if (!used.length) return { n: this.FALLBACK_DEPTH, why: 'mức chung của giao diện', area: null, mega: true };
+    let min = used[0];
+    used.forEach(a => { if ((a.dp || this.FALLBACK_DEPTH) < (min.dp || this.FALLBACK_DEPTH)) min = a; });
+    // mega ở đây = "có ít nhất một chỗ bung được bảng lớn" (chỗ không bung được tự rơi về danh sách lồng).
+    return { n: min.dp || this.FALLBACK_DEPTH, why: min.l.toLowerCase(), area: min, mega: used.some(a => !!a.mg) };
+  }
+  areasUsing(menuId) {
+    const used = this.areasOf().filter(a => this.menuAt(a.k) === (menuId || this.state.cur));
+    return used.length ? used : [{ k: '', l: '', dp: this.FALLBACK_DEPTH, mg: true }];
+  }
+  /* Miễn trừ độ sâu tính THEO TỪNG VỊ TRÍ: nhánh trong bảng lớn được tha ở chỗ bung được panel,
+     nhưng vẫn tính là vượt ở chỗ chỉ dựng được danh sách lồng. Trả về vị trí đầu tiên không chứa nổi. */
+  violatingArea(absDepth, um, menuId) {
+    const areas = this.areasUsing(menuId);
+    for (let i = 0; i < areas.length; i++) {
+      const a = areas[i], cap = a.dp || this.FALLBACK_DEPTH;
+      if (a.mg && um) continue;
+      if (absDepth > cap - 1) return a;
+    }
+    return null;
+  }
+  // Bảng lớn bung thành panel riêng nên nhánh bên trong nó không bị luật cấp của thanh siết.
+  underMega(id, items) {
+    let c = this.ctx(id, items), p = c ? c.parent : null;
+    while (p) { if (p.mega) return true; const pc = this.ctx(p.id, items); p = pc ? pc.parent : null; }
+    return false;
+  }
+  areasOf() { return this.THEME.areas; }
+  // Vị trí có thể "dùng chung" với vị trí khác (điện thoại theo thanh đầu trang) — giá trị '@same'.
+  menuAt(k) { const v = this.state.slots[k]; if (v === '@same') { const a = this.areasOf().find(x => x.k === k); return a && a.canSame ? (this.state.slots[a.canSame] || '') : ''; } return v || ''; }
+
+  /* Icon: bộ chọn sẵn, gọn — không mở cả thư viện nghìn biểu tượng cho chủ tiệm.
+     kw = từ khoá tiếng Việt để tìm và để hệ thống tự gợi ý theo tên mục. */
+  ICON_GROUPS = [
+    { g: 'Hay dùng', list: [
+      ['ri-home-4-line', 'trang chủ nhà home'], ['ri-information-line', 'giới thiệu thông tin về chúng tôi'],
+      ['ri-building-2-line', 'công ty toà nhà trụ sở'], ['ri-building-4-line', 'nhà máy xưởng sản xuất'],
+      ['ri-tools-line', 'dịch vụ gia công sửa chữa kỹ thuật'], ['ri-hammer-line', 'thi công lắp đặt sửa'],
+      ['ri-box-3-line', 'sản phẩm hàng hoá'], ['ri-price-tag-3-line', 'bảng giá báo giá khuyến mãi'],
+      ['ri-newspaper-line', 'tin tức bài viết blog'], ['ri-phone-line', 'điện thoại gọi hotline'],
+      ['ri-mail-line', 'email thư liên hệ'], ['ri-map-pin-line', 'địa chỉ bản đồ đường đi']
+    ] },
+    { g: 'Sản phẩm & bán hàng', list: [
+      ['ri-shopping-cart-2-line', 'giỏ hàng mua bán'], ['ri-shopping-bag-3-line', 'cửa hàng mua sắm'],
+      ['ri-store-2-line', 'cửa hàng showroom đại lý'], ['ri-coupon-3-line', 'phiếu giảm giá khuyến mãi voucher'],
+      ['ri-percent-line', 'giảm giá ưu đãi'], ['ri-wallet-3-line', 'thanh toán ví tiền'],
+      ['ri-bank-card-line', 'thẻ thanh toán chuyển khoản'], ['ri-exchange-dollar-line', 'đổi trả hoàn tiền'],
+      ['ri-truck-line', 'vận chuyển giao hàng'], ['ri-archive-2-line', 'kho hàng tồn'],
+      ['ri-barcode-line', 'mã vạch mã sản phẩm'], ['ri-scales-3-line', 'so sánh cân đo']
+    ] },
+    { g: 'Sản xuất & kỹ thuật', list: [
+      ['ri-settings-5-line', 'máy móc thiết bị vận hành cnc'], ['ri-cpu-line', 'công nghệ điều khiển tự động'],
+      ['ri-ruler-2-line', 'bản vẽ đo đạc thiết kế kích thước'], ['ri-compasses-2-line', 'thiết kế kỹ thuật cad'],
+      ['ri-flask-line', 'thí nghiệm vật liệu kiểm nghiệm'], ['ri-shield-check-line', 'bảo hành cam kết kiểm tra chất lượng'],
+      ['ri-recycle-line', 'tái chế môi trường bền vững'], ['ri-fire-line', 'nhiệt luyện hàn lò'],
+      ['ri-scissors-cut-line', 'cắt laser gia công tấm'], ['ri-focus-3-line', 'chính xác dung sai'],
+      ['ri-stack-line', 'vật liệu tấm lớp'], ['ri-oil-line', 'dầu bôi trơn hoá chất']
+    ] },
+    { g: 'Nội dung & tài liệu', list: [
+      ['ri-file-list-3-line', 'dự án hồ sơ năng lực danh sách'], ['ri-file-text-line', 'trang tài liệu văn bản'],
+      ['ri-image-2-line', 'thư viện ảnh hình'], ['ri-gallery-line', 'bộ sưu tập ảnh'],
+      ['ri-vidicon-line', 'video clip'], ['ri-play-circle-line', 'xem video phát'],
+      ['ri-download-2-line', 'tải về catalogue tài liệu'], ['ri-book-open-line', 'hướng dẫn cẩm nang kiến thức'],
+      ['ri-question-line', 'câu hỏi thường gặp hỏi đáp faq'], ['ri-lightbulb-line', 'giải pháp ý tưởng'],
+      ['ri-presentation-line', 'hội thảo đào tạo'], ['ri-newspaper-line', 'báo chí truyền thông']
+    ] },
+    { g: 'Khách hàng & công ty', list: [
+      ['ri-customer-service-2-line', 'hỗ trợ chăm sóc khách hàng tư vấn'], ['ri-team-line', 'đội ngũ nhân sự'],
+      ['ri-user-line', 'tài khoản đăng nhập'], ['ri-user-star-line', 'khách hàng thân thiết'],
+      ['ri-briefcase-4-line', 'tuyển dụng việc làm nghề nghiệp'], ['ri-award-line', 'chứng nhận giải thưởng'],
+      ['ri-medal-line', 'thành tích danh hiệu'], ['ri-handshake-line', 'đối tác hợp tác'],
+      ['ri-group-line', 'cộng đồng thành viên'], ['ri-heart-line', 'yêu thích quan tâm'],
+      ['ri-star-line', 'nổi bật đánh giá'], ['ri-chat-quote-line', 'cảm nhận khách hàng nhận xét']
+    ] },
+    { g: 'Liên hệ & mạng xã hội', list: [
+      ['ri-phone-line', 'gọi điện thoại'], ['ri-whatsapp-line', 'whatsapp nhắn tin'],
+      ['ri-messenger-line', 'messenger chat'], ['ri-facebook-circle-line', 'facebook fanpage'],
+      ['ri-youtube-line', 'youtube kênh'], ['ri-instagram-line', 'instagram'],
+      ['ri-linkedin-box-line', 'linkedin'], ['ri-tiktok-line', 'tiktok'],
+      ['ri-send-plane-line', 'gửi yêu cầu liên hệ'], ['ri-calendar-check-line', 'đặt lịch hẹn'],
+      ['ri-time-line', 'giờ làm việc thời gian'], ['ri-global-line', 'ngôn ngữ quốc tế xuất khẩu']
+    ] },
+    { g: 'Khác', list: [
+      ['ri-search-line', 'tìm kiếm'], ['ri-links-line', 'liên kết đường dẫn'],
+      ['ri-flashlight-line', 'mới nổi bật hot'], ['ri-gift-line', 'quà tặng ưu đãi'],
+      ['ri-shield-user-line', 'chính sách bảo mật riêng tư'], ['ri-file-shield-2-line', 'điều khoản pháp lý'],
+      ['ri-node-tree', 'sơ đồ website'], ['ri-road-map-line', 'lộ trình hành trình'],
+      ['ri-leaf-line', 'môi trường xanh'], ['ri-24-hours-line', 'hỗ trợ 24/7'],
+      ['ri-verified-badge-line', 'xác thực uy tín'], ['ri-more-line', 'khác thêm']
+    ] }
+  ];
+  get ICONS() { const o = []; this.ICON_GROUPS.forEach(g => g.list.forEach(x => o.push({ i: x[0], kw: x[1], g: g.g }))); return o; }
+  /* Thư viện khối là nguồn duy nhất (block-library.js) — trình đơn chỉ đọc, không tự khai. */
+  menuBlocks() { return window.BSBLOCKS ? window.BSBLOCKS.menu() : []; }
+  blockOf(key) { return key && window.BSBLOCKS ? window.BSBLOCKS.get(key) : null; }
+  /* Rời màn khi còn thay đổi chưa lưu là mất chữ (§12) → hỏi trước.
+     Khi nhúng trong Admin Shell thì KHÔNG tự đổi địa chỉ cả cửa sổ — Shell là chủ điều hướng. */
+  openBlocks() {
+    const go = () => {
+      if (this.props.embedded) { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: 'blocks', region: 'menu' } })); } catch (e) {} this.toast('Mở Nội dung › Thư viện khối, vùng “Bảng lớn trình đơn”.', 'ri-layout-masonry-line'); return; }
+      try { window.location.href = 'Block%20Library%20-%20Options.dc.html?region=menu&return=' + encodeURIComponent('Trình đơn.dc.html'); } catch (e) {}
+    };
+    if (this.dirty().n) {
+      this.setState({ ask: { title: 'Sang Thư viện khối?', body: 'Trình đơn đang có thay đổi chưa lưu. Lưu lại trước khi đi để không mất công sắp xếp.', ok: 'Lưu rồi đi', run: () => { this.save(); go(); }, alt: 'Đi mà không lưu', runAlt: go } });
+      return;
+    }
+    go();
+  }
+  suggestIcon(label) {
+    const t = String(label || '').toLowerCase(); if (!t) return '';
+    let best = '', score = 0;
+    this.ICONS.forEach(ic => { ic.kw.split(' ').forEach(w => { if (w.length > 2 && t.indexOf(w) >= 0 && w.length > score) { score = w.length; best = ic.i; } }); });
+    return best;
+  }
+  SOURCES = {
+    page: [
+      { ref: 'p-home', label: 'Trang chủ', meta: '/' },
+      { ref: 'p-about', label: 'Giới thiệu', meta: '/gioi-thieu' },
+      { ref: 'p-cap', label: 'Năng lực sản xuất', meta: '/nang-luc-san-xuat', sum: 'Dây chuyền CNC 5 trục, sản lượng 40.000 chi tiết mỗi tháng' },
+      { ref: 'p-fac', label: 'Nhà máy & thiết bị', meta: '/nha-may-thiet-bi', sum: 'Xưởng 6.000m² tại Bắc Ninh cùng danh sách máy đang chạy' },
+      { ref: 'p-qc', label: 'Kiểm tra chất lượng', meta: '/kiem-tra-chat-luong' },
+      { ref: 'p-price', label: 'Bảng giá gia công', meta: '/bang-gia-gia-cong', draft: true },
+      { ref: 'p-contact', label: 'Liên hệ', meta: '/lien-he' },
+      { ref: 'p-policy', label: 'Chính sách bảo hành', meta: '/chinh-sach-bao-hanh' },
+      { ref: 'p-jobs', label: 'Tuyển dụng', meta: '/tuyen-dung' }
+    ],
+    cat: [
+      { ref: 'c-cnc', label: 'Gia công CNC', meta: 'Chuyên mục dịch vụ · 14 bài', sum: 'Tiện, phay, mài chi tiết chính xác theo bản vẽ' },
+      { ref: 'c-laser', label: 'Cắt laser CNC', meta: 'Chuyên mục dịch vụ · 9 bài', sum: 'Cắt tấm thép, inox, nhôm dày tới 20mm' },
+      { ref: 'c-mold', label: 'Chế tạo khuôn mẫu', meta: 'Chuyên mục dịch vụ · 6 bài', sum: 'Thiết kế và chế tạo khuôn nhựa, khuôn dập' },
+      { ref: 'c-news', label: 'Tin tức', meta: 'Chuyên mục tin tức · 22 bài' },
+      { ref: 'c-tech', label: 'Kiến thức kỹ thuật', meta: 'Chuyên mục tin tức · 31 bài' }
+    ],
+    /* Liên kết đặc biệt: nền tảng tự biết địa chỉ (số máy, email lấy từ Cài đặt) — khách không phải
+       nhớ cú pháp tel:/mailto: (§0). 'group' = mục chỉ để gom nhóm, bấm không đi đâu. */
+    special: [
+      { ref: 's-home', label: 'Trang chủ', meta: '/', icon: 'ri-home-4-line', url: '/' },
+      { ref: 's-search', label: 'Tìm kiếm', meta: 'Mở ô tìm kiếm của website', icon: 'ri-search-line', url: '/tim-kiem' },
+      { ref: 's-cart', label: 'Giỏ hàng', meta: 'Tự ẩn nếu website chưa bật bán hàng', icon: 'ri-shopping-cart-2-line', url: '/gio-hang' },
+      { ref: 's-account', label: 'Tài khoản của tôi', meta: 'Chỉ hiện khi khách đã đăng nhập', icon: 'ri-user-line', url: '/tai-khoan' },
+      { ref: 's-login', label: 'Đăng nhập / Đăng xuất', meta: 'Tự đổi chữ theo trạng thái của khách', icon: 'ri-login-box-line', url: '/dang-nhap' },
+      { ref: 's-call', label: 'Gọi hotline', meta: '024 6655 6789 — lấy từ Cài đặt, bấm là gọi', icon: 'ri-phone-line', url: 'tel:02466556789' },
+      { ref: 's-zalo', label: 'Chat Zalo', meta: '0912 345 678 — lấy từ Cài đặt', icon: 'ri-message-3-line', url: 'https://zalo.me/0912345678' },
+      { ref: 's-mail', label: 'Gửi email', meta: 'info@anvinh.vn — lấy từ Cài đặt', icon: 'ri-mail-line', url: 'mailto:info@anvinh.vn' },
+      { ref: 's-map', label: 'Chỉ đường tới xưởng', meta: 'Mở bản đồ theo địa chỉ trong Cài đặt', icon: 'ri-map-pin-line', url: 'https://maps.google.com/?q=An+Vinh' },
+      { ref: 's-sitemap', label: 'Sơ đồ website', meta: 'Trang liệt kê toàn bộ mục', icon: 'ri-node-tree', url: '/so-do-website' },
+      { ref: 's-group', label: 'Mục gom nhóm', meta: 'Chỉ để chứa mục con — khách bấm không đi đâu', icon: 'ri-folder-2-line', url: '#', group: true }
+    ],
+    prod: [
+      { ref: 'g-shaft', label: 'Trục truyền động', meta: 'Nhóm sản phẩm · 18 mã' },
+      { ref: 'g-gear', label: 'Sản phẩm', meta: 'Nhóm sản phẩm · 26 mã' },
+      { ref: 'g-plate', label: 'Chi tiết dạng tấm', meta: 'Nhóm sản phẩm · 11 mã' }
+    ]
+  };
+  KIND = {
+    page: { icon: 'ri-file-text-line', src: 'Trang' },
+    cat: { icon: 'ri-price-tag-3-line', src: 'Chuyên mục' },
+    prod: { icon: 'ri-box-3-line', src: 'Sản phẩm' },
+    url: { icon: 'ri-links-line', src: 'Liên kết' }
+  };
+  TR = {
+    EN: { 'Trang chủ': 'Home', 'Giới thiệu': 'About us', 'Năng lực sản xuất': 'Our capabilities', 'Nhà máy & thiết bị': 'Plant & equipment', 'Dịch vụ': 'Services', 'Gia công CNC': 'CNC machining', 'Cắt laser CNC': 'Laser cutting', 'Chế tạo khuôn mẫu': 'Mould making', 'Sản phẩm': 'Products', 'Tin tức': 'News', 'Liên hệ': 'Contact us', 'Bảng giá gia công': 'Pricing', 'Kiểm tra chất lượng': 'Quality control', 'Chính sách bảo hành': 'Warranty policy', 'Tuyển dụng': 'Careers', 'Kiến thức kỹ thuật': 'Technical notes', 'Trục truyền động': 'Drive shafts', 'Chi tiết dạng tấm': 'Sheet parts' },
+    JA: { 'Trang chủ': 'ホーム', 'Giới thiệu': '会社概要', 'Năng lực sản xuất': '生産能力', 'Nhà máy & thiết bị': '工場・設備', 'Dịch vụ': 'サービス', 'Gia công CNC': 'CNC加工', 'Cắt laser CNC': 'レーザー切断', 'Chế tạo khuôn mẫu': '金型製作', 'Sản phẩm': '製品', 'Tin tức': 'ニュース', 'Liên hệ': 'お問い合わせ', 'Bảng giá gia công': '価格表', 'Kiểm tra chất lượng': '品質管理', 'Chính sách bảo hành': '保証規定', 'Tuyển dụng': '採用情報', 'Kiến thức kỹ thuật': '技術情報', 'Trục truyền động': 'ドライブシャフト', 'Chi tiết dạng tấm': '板金部品' }
+  };
+
+  mk(kind, ref, vi, url, extra) {
+    return Object.assign({ id: 'i' + (++this._seq), kind: kind, ref: ref, label: { VI: vi }, url: url, hidden: false, blank: false, cta: false, children: [] }, extra || {});
+  }
+  constructor(props) {
+    super(props);
+    this._seq = 0;
+    const menus = [
+      { id: 'main', key: 'trinh-don-chinh', name: 'Trình đơn chính', items: [
+        this.mk('page', 'p-home', 'Trang chủ', '/', { label: { VI: 'Trang chủ', EN: 'Home', JA: 'ホーム' } }),
+        this.mk('page', 'p-about', 'Giới thiệu', '/gioi-thieu', { label: { VI: 'Giới thiệu', EN: 'About us' }, children: [
+          this.mk('page', 'p-cap', 'Năng lực sản xuất', '/nang-luc-san-xuat', { label: { VI: 'Năng lực sản xuất', EN: 'Our capabilities' } }),
+          this.mk('page', 'p-fac', 'Nhà máy & thiết bị', '/nha-may-thiet-bi', { fixed: true })
+        ] }),
+        this.mk('url', '', 'Dịch vụ', '#', { label: { VI: 'Dịch vụ', EN: 'Services' }, mega: true, cols: 3,
+          desc: { VI: 'Gia công chi tiết cơ khí chính xác theo bản vẽ, từ mẫu đơn chiếc tới lô hàng nghìn sản phẩm, có bộ phận kiểm tra chất lượng riêng.' }, children: [
+          this.mk('cat', 'c-cnc', 'Gia công CNC', '/dich-vu/gia-cong-cnc', { label: { VI: 'Gia công CNC', EN: 'CNC machining' }, desc: { VI: 'Tiện, phay, mài chi tiết chính xác theo bản vẽ' } }),
+          this.mk('cat', 'c-laser', 'Cắt laser CNC', '/dich-vu/cat-laser-cnc', { desc: { VI: 'Cắt tấm thép, inox, nhôm dày tới 20mm' } }),
+          this.mk('cat', 'c-mold', 'Chế tạo khuôn mẫu', '/dich-vu/che-tao-khuon-mau')
+        ] }),
+        this.mk('prod', 'g-gear', 'Sản phẩm', '/san-pham', { label: { VI: 'Sản phẩm', EN: 'Products' } }),
+        this.mk('page', 'p-price', 'Bảng giá gia công', '/bang-gia-gia-cong'),
+        this.mk('cat', 'c-news', 'Tin tức', '/tin-tuc', { label: { VI: 'Tin tức', EN: 'News' } }),
+        this.mk('page', 'p-contact', 'Liên hệ', '/lien-he', { label: { VI: 'Liên hệ', EN: 'Contact us' }, cta: true })
+      ] },
+      { id: 'foot', key: 'trinh-don-chan-trang', name: 'Trình đơn chân trang', items: [
+        this.mk('page', 'p-policy', 'Chính sách bảo hành', '/chinh-sach-bao-hanh'),
+        this.mk('page', 'p-qc', 'Kiểm tra chất lượng', '/kiem-tra-chat-luong', { broken: true }),
+        this.mk('url', '', 'Fanpage', 'https://facebook.com/anvinh.cokhi', { blank: true, label: { VI: 'Fanpage', EN: 'Fanpage', JA: 'Fanpage' } })
+      ] }
+    ];
+    const slots = { topbar: '', primary: 'main', handheld: '@same', 'footer-1': 'foot', 'footer-2': '', 'footer-bottom': '', sidebar: '', social: '', 'my-account': '' };
+    this.state = {
+      menus: menus, slots: slots, saved: JSON.stringify({ menus: menus, slots: slots }),
+      past: [], future: [], cur: 'main', loc: this.defLang,
+      sel: null, fold: {}, trash: [], rowMenu: null, renaming: null, renameVal: '',
+      // Vị trí là việc đặt một lần rồi thôi → gập sẵn, nhường chỗ cho danh sách trình đơn.
+      fold2: { areas: true, auto: true },
+      filter: 'all', tq: '', device: 'pc', pvOpen: null,
+      aiUsed: 0, autoAdd: false, dismissed: {},
+      tab: 'page', search: '', picked: {}, newLabel: '', newUrl: '',
+      drag: null, over: null, ask: null, toast: null
+    };
+  }
+  componentDidMount() {
+    // Cảm ứng hoặc khung hẹp → cả trang chuyển sang cỡ chạm; đo một lần, không rải luật khắp nơi.
+    const touch = () => {
+      const on = (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) || window.innerWidth <= 620;
+      if (this._touch !== on) { this._touch = on; this.forceUpdate(); }
+    };
+    touch(); window.addEventListener('resize', this._rz = touch);
+    document.addEventListener('bs-ai-quota-ready', this._q = () => this.forceUpdate());
+    document.addEventListener('bs-blocks-ready', this._bk = () => this.forceUpdate());
+    window.addEventListener('beforeunload', this._bu = (e) => { if (this.dirty().n) { e.preventDefault(); e.returnValue = ''; } });
+    document.addEventListener('bs-embed-cmd', this._cmd = (e) => {
+      const d = e.detail || {}; if (d.id !== this.props.embedId) return;
+      if (d.act === 'save') this.save(); if (d.act === 'reset') this.reset();
+    });
+    document.addEventListener('dragover', this._dov = (e) => {
+      if (!this.state.drag) return;
+      this._gx = e.clientX; this._gy = e.clientY;
+      if (this._raf) return;
+      this._raf = requestAnimationFrame(() => { this._raf = null; if (this.state.drag) this.setState({ ghost: { x: this._gx, y: this._gy } }); });
+    });
+    document.addEventListener('dragend', this._dend = () => this.setState({ drag: null, over: null, ghost: null, ghostRows: [] }));
+    document.addEventListener('keydown', this._key = (e) => {
+      const k = (e.key || '').toLowerCase();
+      if (k === 'escape') { this.setState({ rowMenu: null, ask: null, pvOpen: null }); return; }
+      // Đang gõ trong ô nhập → nhường mọi phím tắt cho trình duyệt (Ctrl+Z là hoàn tác chữ của người dùng — §12).
+      const t = e.target, tag = ((t && t.tagName) || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || (t && t.isContentEditable)) return;
+      if ((e.metaKey || e.ctrlKey) && k === 'z') { e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo(); return; }
+      if (!e.altKey || !this.state.sel) return;
+      if (k === 'arrowright') { e.preventDefault(); this.indent(this.state.sel); }
+      if (k === 'arrowleft') { e.preventDefault(); this.outdent(this.state.sel); }
+      if (k === 'arrowup') { e.preventDefault(); this.move(this.state.sel, -1); }
+      if (k === 'arrowdown') { e.preventDefault(); this.move(this.state.sel, 1); }
+    });
+  }
+  componentWillUnmount() {
+    document.removeEventListener('bs-ai-quota-ready', this._q);
+    document.removeEventListener('bs-blocks-ready', this._bk);
+    window.removeEventListener('beforeunload', this._bu);
+    document.removeEventListener('bs-embed-cmd', this._cmd);
+    document.removeEventListener('dragover', this._dov);
+    document.removeEventListener('dragend', this._dend);
+    document.removeEventListener('keydown', this._key);
+    clearTimeout(this._t);
+  }
+
+  // ---------- ngôn ngữ ----------
+  codes() {
+    const n = parseInt(String(this.props.siteLangs || '3 ngôn ngữ').replace(/\D/g, ''), 10) || 3;
+    return ['VI', 'EN', 'JA', 'KO', 'ZH', 'FR', 'DE', 'ES'].slice(0, Math.max(1, Math.min(8, n)));
+  }
+  locName(c) { return this.LANGS[c] || c; }
+  isPub(c) { return this.NOTPUB.indexOf(c) < 0; }
+  lbl(it, loc) { return (it.label || {})[loc || this.state.loc] || ''; }
+
+  // ---------- cây ----------
+  cur() { return this.state.menus.find(m => m.id === this.state.cur) || this.state.menus[0]; }
+  walk(items, fn, depth, parent) { (items || []).forEach((it, i) => { fn(it, depth || 0, items, i, parent || null); this.walk(it.children, fn, (depth || 0) + 1, it); }); }
+  all(items) { const o = []; this.walk(items, (it, d, list, i, p) => o.push({ it: it, depth: d, list: list, i: i, parent: p })); return o; }
+  ctx(id, items) { return this.all(items || this.cur().items).find(x => x.it.id === id) || null; }
+  count(items) { let n = 0; this.walk(items, () => n++); return n; }
+  maxDepth(it) { let m = 0; this.walk(it.children, (x, d) => { m = Math.max(m, d + 1); }); return m; }
+  clone(o) { return JSON.parse(JSON.stringify(o)); }
+  src(it) { return (this.SOURCES[it.kind] || []).find(s => s.ref === it.ref) || null; }
+
+  // ---------- hoàn tác ----------
+  snap() { return JSON.stringify({ menus: this.state.menus, slots: this.state.slots }); }
+  mutate(fn) {
+    const before = this.snap();
+    this.setState(s => {
+      const menus = this.clone(s.menus), slots = Object.assign({}, s.slots);
+      const m = menus.find(x => x.id === s.cur);
+      if (fn(m, menus, slots) === false) return null;
+      return { menus: menus, slots: slots, past: s.past.concat([before]).slice(-60), future: [] };
+    }, () => { if (this.props.onDirty) this.props.onDirty(this.dirty().n > 0); });
+  }
+  undo() {
+    if (!this.state.past.length) return;
+    const cur = this.snap();
+    this.setState(s => {
+      const past = s.past.slice(), prev = JSON.parse(past.pop());
+      return { menus: prev.menus, slots: prev.slots, past: past, future: s.future.concat([cur]), sel: null, rowMenu: null };
+    }, () => { if (this.props.onDirty) this.props.onDirty(this.dirty().n > 0); });
+    this.toast('Đã hoàn tác thao tác vừa rồi.', 'ri-arrow-go-back-line');
+  }
+  redo() {
+    if (!this.state.future.length) return;
+    const cur = this.snap();
+    this.setState(s => {
+      const fut = s.future.slice(), nxt = JSON.parse(fut.pop());
+      return { menus: nxt.menus, slots: nxt.slots, future: fut, past: s.past.concat([cur]), sel: null, rowMenu: null };
+    });
+    this.toast('Đã làm lại thao tác.', 'ri-arrow-go-forward-line');
+  }
+  toast(text, icon, undo) { clearTimeout(this._t); this.setState({ toast: { text: text, icon: icon || 'ri-check-line', undo: !!undo } }); this._t = setTimeout(() => this.setState({ toast: null }), 4200); }
+
+  // ---------- thao tác ----------
+  move(id, dir) { this.mutate(m => { const c = this.ctx(id, m.items); if (!c) return false; const j = c.i + dir; if (j < 0 || j >= c.list.length) return false; const [n] = c.list.splice(c.i, 1); c.list.splice(j, 0, n); }); }
+  indent(id) {
+    const lim = this.depthLimit();
+    this.mutate(m => {
+      const c = this.ctx(id, m.items); if (!c || c.i === 0) return false;
+      const prevItem = c.list[c.i - 1];
+      const um = prevItem.mega || this.underMega(prevItem.id, m.items);
+      if (this.violatingArea(c.depth + 1 + this.maxDepth(c.it), um)) return false;
+      const prev = c.list[c.i - 1]; const [n] = c.list.splice(c.i, 1);
+      prev.children = prev.children || []; prev.children.push(n);
+    });
+  }
+  outdent(id) {
+    this.mutate(m => {
+      const c = this.ctx(id, m.items); if (!c || !c.parent) return false;
+      const pc = this.ctx(c.parent.id, m.items); if (!pc) return false;
+      const [n] = c.list.splice(c.i, 1); pc.list.splice(pc.i + 1, 0, n);
+    });
+  }
+  drop(dragId, overId, pos) {
+    if (!dragId || !overId || dragId === overId) return;
+    let blocked = '';
+    this.mutate(m => {
+      const d = this.ctx(dragId, m.items); if (!d) return false;
+      let inside = false; this.walk(d.it.children, x => { if (x.id === overId) inside = true; });
+      if (inside) { blocked = 'Không thể đưa một mục vào bên trong chính nó.'; return false; }
+      const node = this.clone(d.it); d.list.splice(d.i, 1);
+      const t = this.ctx(overId, m.items); if (!t) return false;
+      const depth = pos === 'in' ? t.depth + 1 : t.depth;
+      const um = pos === 'in' ? (t.it.mega || this.underMega(t.it.id, m.items)) : this.underMega(t.it.id, m.items);
+      const bad = this.violatingArea(depth + this.maxDepth(node), um);
+      if (bad) {
+        const where = bad.k ? '“' + bad.l + '” chỉ dựng được ' + (bad.dp || this.FALLBACK_DEPTH) + ' cấp' : 'Giao diện dựng được tối đa ' + (bad.dp || this.FALLBACK_DEPTH) + ' cấp';
+        blocked = bad.mg
+          ? (where + ' — muốn sâu hơn thì bật “Mở dạng bảng lớn” cho mục cha.')
+          : (where + ' và chỗ đó không bung được bảng lớn — hãy đưa mục ra ngoài một cấp, hoặc bỏ trình đơn này khỏi ' + (bad.l || '').toLowerCase() + '.');
+        return false;
+      }
+      if (pos === 'in') { t.it.children = t.it.children || []; t.it.children.push(node); }
+      else t.list.splice(pos === 'before' ? t.i : t.i + 1, 0, node);
+    });
+    if (blocked) this.toast(blocked, 'ri-error-warning-line');
+  }
+  moveEnd(id) {
+    this.mutate(m => { const c = this.ctx(id, m.items); if (!c) return false; const [n] = c.list.splice(c.i, 1); m.items.push(n); });
+  }
+  today() { return new Date(2026, 7, 2); }
+  badgeLive(it) {
+    const b = it && it.badge; if (!b || !b.t) return null;
+    if (b.u && new Date(b.u + 'T23:59:59') < this.today()) return null;
+    return b;
+  }
+  badgeExpired(it) { const b = it && it.badge; return !!(b && b.t && b.u && new Date(b.u + 'T23:59:59') < this.today()); }
+  /* Thùng rác 30 ngày (§12): gỡ mục không phải là mất — vẫn lấy lại được sau khi đóng tab. */
+  remove(id) {
+    const c = this.ctx(id); if (!c) return;
+    const kids = this.count(c.it.children);
+    const run = () => {
+      const snapshot = this.clone(c.it), menuId = this.state.cur;
+      this.mutate(m => { const x = this.ctx(id, m.items); if (!x) return false; x.list.splice(x.i, 1); });
+      this.setState(st => ({ sel: null, ask: null, rowMenu: null, trash: [{ it: snapshot, menu: menuId, at: this.today().getTime() }].concat(st.trash || []).slice(0, 50) }));
+      this.toast('Đã gỡ “' + this.lbl(c.it) + '” — giữ trong thùng rác 30 ngày, lấy lại được bất cứ lúc nào.', 'ri-delete-bin-line', true);
+    };
+    if (kids) this.setState({ rowMenu: null, ask: { title: 'Gỡ mục này và ' + kids + ' mục con?', body: '“' + this.lbl(c.it) + '” cùng ' + kids + ' mục bên trong sẽ biến mất khỏi trình đơn. Trang và nội dung vẫn còn nguyên — chỉ là khách không còn lối vào từ trình đơn. Cả khối được giữ trong thùng rác 30 ngày, lấy lại lúc nào cũng được.', ok: 'Gỡ tất cả', run: run } });
+    else run();
+  }
+  dup(id) {
+    this.mutate(m => {
+      const c = this.ctx(id, m.items); if (!c) return false;
+      const n = this.clone(c.it); const re = (x) => { x.id = 'i' + (++this._seq); (x.children || []).forEach(re); }; re(n);
+      Object.keys(n.label).forEach(k => { n.label[k] = n.label[k] + ' (bản sao)'; });
+      c.list.splice(c.i + 1, 0, n);
+    });
+    this.setState({ rowMenu: null });
+    this.toast('Đã nhân bản mục.', 'ri-file-copy-line', true);
+  }
+  setField(id, f, v) { this.mutate(m => { const c = this.ctx(id, m.items); if (!c) return false; c.it[f] = v; }); }
+  setLabel(id, v) { const loc = this.state.loc; this.mutate(m => { const c = this.ctx(id, m.items); if (!c) return false; c.it.label = Object.assign({}, c.it.label, { [loc]: v }); c.it.mt = false; }); }
+  setDesc(id, v) { const loc = this.state.loc; this.mutate(m => { const c = this.ctx(id, m.items); if (!c) return false; c.it.desc = Object.assign({}, c.it.desc || {}, { [loc]: v }); }); }
+  /* Gõ từng phím không đẩy vào sổ hoàn tác — cả lần soạn là MỘT mốc, chụp lúc đặt con trỏ vào ô. */
+  setDescLive(id, v) {
+    const loc = this.state.loc;
+    this.setState(s => {
+      const menus = this.clone(s.menus), m = menus.find(x => x.id === s.cur);
+      const c = this.ctx(id, m.items); if (!c) return null;
+      c.it.desc = Object.assign({}, c.it.desc || {}, { [loc]: v });
+      return { menus: menus };
+    }, () => { if (this.props.onDirty) this.props.onDirty(this.dirty().n > 0); });
+  }
+  dsc(it, loc) { return ((it || {}).desc || {})[loc || this.state.loc] || ''; }
+  plain(html) { return String(html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim(); }
+  dscText(it, loc) { return this.plain(this.dsc(it, loc)); }
+  dscMax(it) { const c = it && this.ctx(it.id); return c && c.depth === 0 ? 200 : 90; }
+  exec(cmd, val) { try { document.execCommand(cmd, false, val || null); } catch (e) {} if (this._descEl) this.setDescLive(this.state.sel, this._descEl.innerHTML); }
+  // §0: mô tả trang đã có sẵn trong hệ thống — không bắt khách gõ lại.
+  descFromSource(id) {
+    const c = this.ctx(id); if (!c) return;
+    const s = this.src(c.it); if (!s || !s.sum) return;
+    this.setDesc(id, s.sum);
+    this.toast('Đã lấy mô tả sẵn có của “' + s.label + '” — sửa lại cho hợp giọng của bạn nếu cần.', 'ri-magic-line', true);
+  }
+  revert(id) {
+    const saved = JSON.parse(this.state.saved);
+    let old = null; saved.menus.forEach(m => this.walk(m.items, it => { if (it.id === id) old = it; }));
+    if (!old) return;
+    this.mutate(m => { const c = this.ctx(id, m.items); if (!c) return false; const kids = c.it.children; c.list[c.i] = Object.assign(this.clone(old), { children: kids }); });
+    this.setState({ rowMenu: null });
+    this.toast('Đã đưa mục về đúng nội dung lần lưu gần nhất.', 'ri-history-line', true);
+  }
+  // Đích thêm: cuối trình đơn, hoặc vào trong mục đang chọn — khỏi phải thêm rồi kéo.
+  addTarget() {
+    const s = this.state;
+    if (s.addTo === 'sel' && s.sel) { const c = this.ctx(s.sel); if (c) return { id: s.sel, name: this.lbl(c.it) || this.lbl(c.it, this.defLang) }; }
+    return null;
+  }
+  add(list, note) {
+    if (!list.length) return;
+    const t = this.addTarget();
+    this.mutate(m => {
+      if (t) { const c = this.ctx(t.id, m.items); if (c) { c.it.children = c.it.children || []; list.forEach(x => c.it.children.push(x)); return; } }
+      list.forEach(x => m.items.push(x));
+    });
+    this.toast(note + (t ? ' vào trong “' + t.name + '”.' : ' vào cuối trình đơn.'), 'ri-add-line', true);
+  }
+  addPicked() {
+    const tab = this.state.tab, src = this.SOURCES[tab] || [];
+    const items = src.filter(x => this.state.picked[x.ref]).map(x => {
+      const extra = { icon: x.icon || '' };
+      if (x.group) { extra.url = '#'; extra.group = true; }
+      return this.mk(tab === 'special' ? 'url' : tab, x.ref, x.label, this.srcUrl(x), extra);
+    });
+    this.setState({ picked: {} });
+    this.add(items, 'Đã thêm ' + items.length + ' mục');
+  }
+  srcUrl(x) {
+    const t = this.state.tab;
+    if (t === 'special') return x.url;
+    if (t === 'page') return x.meta;
+    return '/' + (t === 'cat' ? 'chuyen-muc' : 'san-pham') + '/' + x.ref.slice(2);
+  }
+  /* Tự sửa địa chỉ thay khách: thiếu https://, thừa khoảng trắng, gõ số điện thoại hay email
+     đều tự thành tel:/mailto: — chỉ báo lỗi khi thật sự không hiểu nổi. */
+  normUrl(raw) {
+    let u = String(raw || '').trim().replace(/\s+/g, '');
+    if (!u) return { ok: false, url: '', msg: 'Chưa nhập địa chỉ.' };
+    if (/^[0-9+][0-9.\-() ]{7,}$/.test(raw.trim())) return { ok: true, url: 'tel:' + u.replace(/[^0-9+]/g, ''), note: 'Đã nhận là số điện thoại — khách bấm sẽ gọi luôn.' };
+    if (/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(u)) return { ok: true, url: 'mailto:' + u, note: 'Đã nhận là email — khách bấm sẽ mở thư.' };
+    if (/^(https?:|mailto:|tel:|#|\/)/i.test(u)) return { ok: true, url: u };
+    if (/^[a-z0-9.-]+\.[a-z]{2,}(\/|$)/i.test(u)) return { ok: true, url: 'https://' + u, note: 'Đã thêm https:// giúp bạn.' };
+    return { ok: false, url: u, msg: 'Địa chỉ chưa đúng — dán đường dẫn đầy đủ (https://…) hoặc đường dẫn nội bộ bắt đầu bằng /.' };
+  }
+  addUrl() {
+    const l = this.state.newLabel.trim(), r = this.normUrl(this.state.newUrl);
+    if (!l || !r.ok) return;
+    this.setState({ newLabel: '', newUrl: '' });
+    this.add([this.mk('url', '', l, r.url, { blank: /^https?:/i.test(r.url) })], 'Đã thêm liên kết “' + l + '”' + (r.note ? ' (' + r.note + ')' : ''));
+  }
+  deepest(menuId) { const m = this.state.menus.find(x => x.id === menuId); if (!m) return 0; let d = 0; this.walk(m.items, (it, dp) => { d = Math.max(d, dp); }); return d + 1; }
+  overDeep(menuId) {
+    const lim = this.depthLimit(menuId), m = this.state.menus.find(x => x.id === menuId);
+    if (!m) return { n: 0, ids: [], lim: lim };
+    const ids = []; let worst = null;
+    this.walk(m.items, (it, dp) => {
+      const a = this.violatingArea(dp, this.underMega(it.id, m.items), menuId);
+      if (a && a.k) { ids.push(it.id); if (!worst || (a.dp || 9) < (worst.dp || 9)) worst = a; }
+    });
+    return { n: ids.length, ids: ids, lim: lim, area: worst };
+  }
+  setSlot(slot, menuId, confirmed) {
+    const prev = this.state.slots[slot];
+    if (prev === menuId) return;
+    const a = this.areasOf().find(s => s.k === slot);
+    const cap = (a && a.dp) || this.FALLBACK_DEPTH;
+    // Đếm theo đúng luật của chỗ sắp gán: chỗ bung được bảng lớn thì nhánh trong bảng lớn không tính.
+    let deep = 0;
+    if (menuId && menuId !== '@same') {
+      const mm = this.state.menus.find(x => x.id === menuId);
+      if (mm) this.walk(mm.items, (it, dp) => { if (a && a.mg && this.underMega(it.id, mm.items)) return; deep = Math.max(deep, dp + 1); });
+    }
+    // Nói trước hệ quả: gán vào chỗ nông hơn thì mục sâu sẽ không dựng được ở đó.
+    if (!confirmed && deep > cap) {
+      const nm = (this.state.menus.find(m => m.id === menuId) || {}).name;
+      this.setState({ ask: {
+        title: 'Đặt “' + nm + '” vào ' + a.l.toLowerCase() + '?',
+        body: '“' + a.l + '” chỉ dựng được ' + cap + ' cấp, mà trình đơn này đang sâu ' + deep + ' cấp. Những mục từ cấp ' + (cap + 1) + ' trở xuống sẽ không hiện ở chỗ đó — nội dung vẫn còn nguyên và các vị trí khác không bị ảnh hưởng. Sau khi đổi, khung kiểm tra sẽ liệt kê đúng các mục bị ảnh hưởng để bạn xử lý.',
+        ok: 'Vẫn đặt vào đây', run: () => { this.setState({ ask: null }); this.setSlot(slot, menuId, true); }
+      } });
+      return;
+    }
+    this.mutate((m, menus, slots) => { slots[slot] = menuId; });
+    const nameOf = (id) => (this.state.menus.find(m => m.id === id) || {}).name;
+    this.toast(menuId
+      ? (a.l + ' nay dùng “' + nameOf(menuId) + '”' + (prev ? ' thay cho “' + nameOf(prev) + '”' : '') + ' — bấm Lưu để khách thấy.')
+      : (a.l + ' sẽ không hiển thị trình đơn nào.'), a.i, true);
+  }
+  restore(idx) {
+    const t = (this.state.trash || [])[idx]; if (!t) return;
+    const node = this.clone(t.it);
+    const re = (x) => { x.id = 'i' + (++this._seq); (x.children || []).forEach(re); }; re(node);
+    this.mutate((m, menus) => { const tgt = menus.find(x => x.id === t.menu) || m; tgt.items.push(node); });
+    this.setState(st => ({ trash: (st.trash || []).filter((_, i) => i !== idx) }));
+    this.toast('Đã lấy lại “' + this.lbl(node) + '” — nằm ở cuối trình đơn.', 'ri-arrow-go-back-line', true);
+  }
+  dupMenu(id) {
+    const m = this.state.menus.find(x => x.id === id); if (!m) return;
+    const nid = 'm' + Date.now();
+    const copy = this.clone(m);
+    copy.id = nid; copy.name = m.name + ' (bản nháp)'; copy.key = this.uniqueKey(this.slugify(copy.name), nid);
+    const re = (x) => { x.id = 'i' + (++this._seq); (x.children || []).forEach(re); };
+    copy.items.forEach(re);
+    this.mutate((cm, menus) => { menus.push(copy); });
+    this.setState({ cur: nid, sel: null });
+    this.toast('Đã tạo “' + copy.name + '” — sửa thoải mái, xong thì gán vào vị trí để thay bản đang chạy.', 'ri-file-copy-line', true);
+  }
+  delMenu(id) {
+    const m = this.state.menus.find(x => x.id === id); if (!m) return;
+    const usedIn = this.areasOf().filter(a => this.menuAt(a.k) === id);
+    if (usedIn.length) { this.toast('“' + m.name + '” đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).join(', ') + ' — chọn trình đơn khác cho chỗ đó trước đã.', 'ri-error-warning-line'); return; }
+    this.setState({ ask: { title: 'Xoá “' + m.name + '”?', body: 'Cách sắp xếp ' + this.count(m.items) + ' mục trong trình đơn này sẽ mất. Trang và nội dung vẫn còn nguyên, và bạn hoàn tác lại được ngay sau đó.', ok: 'Xoá trình đơn', run: () => {
+      this.mutate((cm, menus) => { const i = menus.findIndex(x => x.id === id); if (i < 0) return false; menus.splice(i, 1); });
+      this.setState(st => ({ cur: st.cur === id ? ((st.menus.find(x => x.id !== id) || {}).id || st.cur) : st.cur, ask: null }));
+      this.toast('Đã xoá trình đơn.', 'ri-delete-bin-line', true);
+    } } });
+  }
+  /* HAI mã khác nhau, đừng lẫn (đúng mô hình WordPress):
+     · Mã trình đơn (menu slug) — bạn đặt, đi theo trình đơn: gọi thẳng một trình đơn cụ thể.
+     · Mã vị trí (theme location) — giao diện đăng ký, chỉ đọc: giao diện gọi "chỗ này", quản trị viên
+       đổi trình đơn nào nằm ở chỗ đó mà không phải sửa mã. Đây mới là cách theme nên gọi. */
+  slugify(s) {
+    const t = String(s || '').toLowerCase()
+      .replace(/[àáạảãâầấậẩẫăằắặẳẵ]/g, 'a').replace(/[èéẹẻẽêềếệểễ]/g, 'e').replace(/[ìíịỉĩ]/g, 'i')
+      .replace(/[òóọỏõôồốộổỗơờớợởỡ]/g, 'o').replace(/[ùúụủũưừứựửữ]/g, 'u').replace(/[ỳýỵỷỹ]/g, 'y').replace(/đ/g, 'd')
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return t || 'trinh-don';
+  }
+  uniqueKey(base, selfId) {
+    let k = base, n = 2;
+    while (this.state.menus.some(m => m.key === k && m.id !== selfId)) { k = base + '-' + n; n++; }
+    return k;
+  }
+  setKey(id, raw) {
+    const base = this.slugify(raw), k = this.uniqueKey(base, id);
+    this.mutate((cm, menus) => { const t = menus.find(x => x.id === id); if (!t || t.key === k) return false; t.key = k; });
+  }
+  copyArea(a) {
+    const sc = '[menu location="' + a.k + '"]';
+    try { if (navigator.clipboard) navigator.clipboard.writeText(sc); } catch (e) {}
+    this.toast('Đã chép ' + sc + ' — chèn theo vị trí: sau này đổi trình đơn ở chỗ này thì trang tự đổi theo.', 'ri-file-copy-line');
+  }
+  newMenu() {
+    const id = 'm' + Date.now();
+    const key = this.uniqueKey('trinh-don-moi', id);
+    this.mutate((m, menus) => { menus.push({ id: id, key: key, name: 'Trình đơn mới', items: [] }); });
+    this._focusRename = true;
+    this.setState({ cur: id, renaming: id, renameVal: 'Trình đơn mới' });
+  }
+
+  // ---------- chưa lưu (đếm theo mục thật — §7c) ----------
+  dirty() {
+    const saved = JSON.parse(this.state.saved);
+    const map = (ms) => { const o = {}; ms.forEach(m => this.walk(m.items, it => { o[it.id] = JSON.stringify(Object.assign({}, it, { children: undefined })); })); return o; };
+    const A = map(saved.menus), B = map(this.state.menus);
+    const changed = [], added = [], removed = [];
+    Object.keys(B).forEach(k => { if (!(k in A)) added.push(k); else if (A[k] !== B[k]) changed.push(k); });
+    Object.keys(A).forEach(k => { if (!(k in B)) removed.push(k); });
+    // So theo TỪNG trình đơn có ở cả hai bên — thêm/xoá trình đơn không được tính nhầm thành đổi thứ tự hay đổi tên.
+    const byId = (ms) => { const o = {}; ms.forEach(m => { o[m.id] = m; }); return o; };
+    const SA = byId(saved.menus), SB = byId(this.state.menus);
+    const menusAdded = Object.keys(SB).filter(k => !(k in SA));
+    const menusRemoved = Object.keys(SA).filter(k => !(k in SB));
+    const both = Object.keys(SB).filter(k => k in SA);
+    const sig = (m) => this.all(m.items).map(x => x.depth + '-' + x.it.id).join(',');
+    const order = both.some(k => sig(SA[k]) !== sig(SB[k])) && !added.length && !removed.length;
+    const slots = JSON.stringify(saved.slots) !== JSON.stringify(this.state.slots);
+    const names = both.some(k => SA[k].name !== SB[k].name);
+    const keys = false;
+    const n = changed.length + added.length + removed.length + menusAdded.length + menusRemoved.length + (order ? 1 : 0) + (slots ? 1 : 0) + (names ? 1 : 0) + (keys ? 1 : 0);
+    const parts = [];
+    if (changed.length) parts.push(changed.length + ' mục đã sửa');
+    if (added.length) parts.push(added.length + ' mục mới');
+    if (removed.length) parts.push(removed.length + ' mục đã gỡ');
+    if (menusAdded.length) parts.push(menusAdded.length + ' trình đơn mới');
+    if (menusRemoved.length) parts.push(menusRemoved.length + ' trình đơn đã xoá');
+    if (order) parts.push('thứ tự đã đổi');
+    if (slots) parts.push('vị trí hiển thị đã đổi');
+    if (names) parts.push('tên trình đơn đã đổi');
+    if (keys) parts.push('mã trình đơn đã đổi');
+    return { n: n, changed: changed, added: added, text: parts.join(' · ') };
+  }
+  save() {
+    this.setState(s => ({ saved: JSON.stringify({ menus: s.menus, slots: s.slots }) }), () => { if (this.props.onDirty) this.props.onDirty(false); });
+    this.toast('Đã lưu — trình đơn trên website đổi ngay bây giờ.', 'ri-check-double-line');
+  }
+  reset() {
+    const before = this.snap();
+    this.setState(s => { const o = JSON.parse(s.saved); return { menus: o.menus, slots: o.slots, sel: null, past: s.past.concat([before]).slice(-60), future: [] }; }, () => { if (this.props.onDirty) this.props.onDirty(false); });
+    this.toast('Đã trả trình đơn về đúng lần lưu gần nhất.', 'ri-arrow-go-back-line', true);
+  }
+
+  // ---------- dịch ----------
+  missing() {
+    const codes = this.codes().filter(c => c !== this.defLang);
+    const targets = this.state.loc === this.defLang ? codes : [this.state.loc];
+    const out = [];
+    this.state.menus.forEach(m => this.walk(m.items, it => targets.forEach(c => {
+      if (!(it.label || {})[c]) out.push({ id: it.id, c: c, f: 'label' });
+      // Mô tả cũng là nội dung khách đọc → cũng phải có bản dịch, nhưng chỉ khi bản nguồn có.
+      if ((it.desc || {})[this.defLang] && !(it.desc || {})[c]) out.push({ id: it.id, c: c, f: 'desc' });
+    })));
+    return out;
+  }
+  aiLimit() { return (window.BSAI ? window.BSAI.plan().words : 60000); }
+  demoUsed() { const q = this.props.quotaState || 'Còn nhiều'; if (q === 'Sắp hết') return Math.round(this.aiLimit() * 0.87); if (q === 'Đã hết') return this.aiLimit(); return Math.round(this.aiLimit() * 0.31); }
+  aiLeft() { return Math.max(0, this.aiLimit() - this.state.aiUsed - this.demoUsed()); }
+  trCost(n) { return window.BSAI ? window.BSAI.cost('label', n) : n * 12; }
+  translate() {
+    const miss = this.missing(); if (!miss.length) return;
+    const cost = this.trCost(miss.length); if (cost > this.aiLeft()) return;
+    const before = this.snap();
+    this.setState(s => {
+      const menus = this.clone(s.menus);
+      menus.forEach(m => this.walk(m.items, it => {
+        miss.filter(x => x.id === it.id).forEach(x => {
+          if (x.f === 'desc') { const s = (it.desc || {})[this.defLang] || ''; it.desc = Object.assign({}, it.desc, { [x.c]: s }); it.mt = true; return; }
+          const vi = (it.label || {})[this.defLang] || '';
+          it.label[x.c] = (this.TR[x.c] && this.TR[x.c][vi]) || vi; it.mt = true;
+        });
+      }));
+      return { menus: menus, aiUsed: s.aiUsed + cost, past: s.past.concat([before]).slice(-60), future: [] };
+    }, () => { if (this.props.onDirty) this.props.onDirty(true); });
+    this.toast('Đã dịch ' + miss.length + ' nhãn · dùng ' + (window.BSAI ? window.BSAI.nfm(cost) : cost) + ' từ AI. Sửa chỗ nào chưa ưng rồi bấm Lưu.', 'ri-sparkling-2-line', true);
+  }
+
+  renderVals() {
+    const S = this.state, DEF = this.defLang, codes = this.codes(), multi = codes.length > 1;
+    const menu = this.cur(), items = menu.items, D = this.dirty(), LIM = this.depthLimit();
+    const nfm = (v) => (window.BSAI ? window.BSAI.nfm(v) : String(v));
+    const rowsAll = this.all(items);
+    const onDefault = S.loc === DEF;
+
+    // --- trạng thái ngôn ngữ theo từng nhãn ---
+    const total = this.count(items);
+    const stat = {};
+    codes.forEach(c => { let done = 0, mt = 0; this.walk(items, it => { if ((it.label || {})[c]) { done++; if (it.mt && c !== DEF) mt++; } }); stat[c] = { done: c === DEF ? total : done, total: total, mt: mt }; });
+    const kindOf = (c) => { const s = stat[c]; if (c === DEF) return 'ok'; if (!s.done) return 'empty'; if (s.done < s.total) return 'part'; return s.mt ? 'mt' : 'ok'; };
+    const DOT = { empty: { css: 'border:1.5px dashed #adb5bd;background:transparent;', l: 'chưa có nội dung' }, mt: { css: 'background:#299cdb;', l: 'AI vừa dịch, chưa kiểm' }, part: { css: 'background:#f7b84b;', l: 'còn thiếu nhãn' }, ok: { css: 'background:#0ab39c;', l: 'đủ nội dung' } };
+    const fit = [DEF, S.loc].filter((v, i, a) => a.indexOf(v) === i).concat(codes.filter(c => c !== DEF && c !== S.loc).slice(0, 2)).filter((v, i, a) => a.indexOf(v) === i);
+    const langPills = codes.filter(c => fit.indexOf(c) >= 0).map(c => {
+      const on = c === S.loc, k = kindOf(c);
+      return {
+        name: this.locName(c), isDef: c === DEF, onClick: () => this.setState({ loc: c, sel: null, rowMenu: null }),
+        title: this.locName(c) + ' — ' + DOT[k].l + ' · ' + stat[c].done + '/' + stat[c].total + ' nhãn' + (this.isPub(c) ? '' : ' · chưa hiển thị ra ngoài'),
+        style: 'display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border:1px solid ' + (on ? '#405189' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(64,81,137,.07)' : '#fff') + ';font:inherit;cursor:pointer;white-space:nowrap;',
+        dot: 'width:8px;height:8px;border-radius:50%;flex-shrink:0;' + DOT[k].css,
+        nameStyle: 'font-size:12.5px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#343a40' : '#495057') + ';'
+      };
+    });
+    const miss = this.missing(), cost = this.trCost(miss.length), left = this.aiLeft();
+    const out = left <= 0, low = !out && left <= this.aiLimit() * 0.2;
+    const enough = window.BSAI ? window.BSAI.enough(left, ['label', 'post']) : '';
+    const trOff = !miss.length || cost > left;
+    const curStat = stat[S.loc], curKind = kindOf(S.loc);
+    let note;
+    if (out) note = { t: 'Đã hết từ AI trong tháng — mua thêm từ AI hoặc nâng gói để dịch tiếp. Bạn vẫn tự nhập nhãn được bình thường.', i: 'ri-error-warning-line', fg: '#d84a2f', bg: 'rgba(240,101,72,.07)' };
+    else if (low) note = { t: 'Sắp hết từ AI — còn ' + nfm(left) + ' từ (' + enough + ').', i: 'ri-error-warning-line', fg: '#b57d0a', bg: 'rgba(247,184,75,.09)' };
+    else if (onDefault) note = { t: 'Đây là bản nguồn — đặt tên mục thật rõ ở đây, rồi bấm Dịch để đổ sang ' + (codes.length - 1) + ' ngôn ngữ còn lại.', i: 'ri-information-line', fg: '#5e6a85', bg: '#f8f9fb' };
+    else if (curKind === 'mt') note = { t: 'Bản ' + this.locName(S.loc) + ' do AI dịch từ ' + this.locName(DEF) + ' — sửa chỗ nào chưa ưng rồi bấm Lưu.', i: 'ri-sparkling-2-line', fg: '#1d7fb8', bg: 'rgba(41,156,219,.07)' };
+    else if (curKind === 'empty') note = { t: 'Bản ' + this.locName(S.loc) + ' chưa có nhãn nào — bấm Dịch để lấy từ ' + this.locName(DEF) + ', hoặc tự nhập.', i: 'ri-translate-2', fg: '#b57d0a', bg: 'rgba(247,184,75,.09)' };
+    else if (curKind === 'part') note = { t: 'Bản ' + this.locName(S.loc) + ' còn ' + (curStat.total - curStat.done) + ' nhãn trống — bấm Dịch để đổ nốt.', i: 'ri-error-warning-line', fg: '#b57d0a', bg: 'rgba(247,184,75,.09)' };
+    else note = { t: 'Bản ' + this.locName(S.loc) + ' đã đủ nhãn' + (this.isPub(S.loc) ? ' và đang hiển thị cho khách.' : ' nhưng chưa hiển thị ra ngoài — bật ở Cài đặt › Ngôn ngữ website.'), i: 'ri-check-line', fg: '#0a8f7f', bg: 'rgba(10,179,156,.07)' };
+
+    // --- máy soát: mỗi vấn đề một hàng, có đường xử lý ngay ---
+    const usedRefs = {}; this.walk(items, it => { if (it.ref) usedRefs[it.ref] = true; });
+    const OD = this.overDeep(S.cur), overIds = {}; OD.ids.forEach(id => { overIds[id] = true; });
+    const issues = [];
+    const focus = (id) => () => { const c = this.ctx(id); const fold = Object.assign({}, S.fold); let p = c && c.parent; while (p) { delete fold[p.id]; const pc = this.ctx(p.id); p = pc ? pc.parent : null; } this.setState({ sel: id, fold: fold, filter: 'all', tq: '' }); };
+    rowsAll.forEach(x => {
+      const it = x.it;
+      if (it.broken) issues.push({ id: 'b' + it.id, icon: 'ri-close-circle-line', color: '#f06548', text: '“' + (this.lbl(it) || this.lbl(it, DEF)) + '” trỏ tới một trang đã bị xoá — khách bấm vào sẽ không xem được gì.', go: it.id, fix: 'Gỡ mục này', fixIcon: 'ri-delete-bin-line', fixTitle: 'Gỡ khỏi trình đơn (hoàn tác được)', run: () => this.remove(it.id) });
+      const s = this.src(it);
+      if (s && s.draft && !it.hidden) issues.push({ id: 'd' + it.id, icon: 'ri-eye-off-line', color: '#f7b84b', text: '“' + (this.lbl(it) || this.lbl(it, DEF)) + '” trỏ tới trang chưa đăng — nên ẩn mục này cho tới khi trang lên sóng.', go: it.id, fix: 'Ẩn mục này', fixIcon: 'ri-eye-off-line', fixTitle: 'Ẩn khỏi trình đơn cho tới khi trang được đăng', run: () => { this.setField(it.id, 'hidden', true); this.toast('Đã ẩn mục — bật lại bất cứ lúc nào.', 'ri-eye-off-line', true); } });
+      /* Bảng lớn trỏ sang Thư viện khối: khối biến mất hoặc còn nháp thì khách thấy bảng trống.
+         Trình đơn không tự sửa được — chỉ dẫn thẳng sang chỗ dựng khối. */
+      if (it.mega && it.megaKind === 'block' && !it.hidden) {
+        const nm = '“' + (this.lbl(it) || this.lbl(it, DEF)) + '”';
+        const bl = this.blockOf(it.megaBlock);
+        if (!bl) issues.push({ id: 'mb' + it.id, icon: 'ri-layout-masonry-line', color: '#f06548', text: nm + ' bật bảng lớn dùng khối tự dựng nhưng chưa chọn được khối — khách mở ra sẽ thấy bảng trống.', go: it.id, fix: 'Mở Thư viện khối', fixIcon: 'ri-layout-masonry-line', fixTitle: 'Dựng khối ở vùng “Bảng lớn trình đơn” rồi quay lại chọn', run: () => this.openBlocks() });
+        else if (bl.status !== 'published') issues.push({ id: 'mb' + it.id, icon: 'ri-layout-masonry-line', color: '#f7b84b', text: 'Khối “' + bl.name + '” dùng cho ' + nm + ' còn nháp — bảng lớn sẽ trống cho tới khi khối được xuất bản.', go: it.id, fix: 'Mở Thư viện khối', fixIcon: 'ri-layout-masonry-line', fixTitle: 'Xuất bản khối này ở Thư viện khối', run: () => this.openBlocks() });
+      }
+    });
+    this.state.menus.forEach(m => {
+      const has = this.areasOf().some(sl => this.menuAt(sl.k) === m.id);
+      if (!has && !S.dismissed['slot-' + m.id]) issues.push({ id: 'slot' + m.id, icon: 'ri-layout-top-line', color: '#f7b84b', text: '“' + m.name + '” chưa gắn vào chỗ nào nên khách không nhìn thấy trình đơn này.', fix: 'Gắn vào chân trang', fixIcon: 'ri-layout-bottom-line', fixTitle: 'Cho trình đơn này hiển thị ở chân trang — cột 1', run: () => this.setSlot('footer-1', m.id) });
+    
+    });
+    if (OD.n && OD.area) {
+      const A = OD.area, first = this.ctx(OD.ids[0]), par = first ? first.parent : null;
+      // Lối thoát phải hiệu lực ở ĐÚNG vị trí đang siết: bảng lớn chỉ khi chỗ đó bung được panel.
+      const useMega = !!(A.mg && par && !par.mega);
+      issues.push({
+        id: 'deep', icon: 'ri-node-tree', color: '#f06548',
+        text: OD.n + ' mục nằm sâu quá mức “' + A.l + '” dựng được (' + (A.dp || 3) + ' cấp)'
+          + (A.mg ? '' : ' và chỗ đó không bung được bảng lớn')
+          + ' — khách vào chỗ đó sẽ không thấy những mục này.',
+        go: OD.ids[0],
+        fix: useMega ? 'Bật bảng lớn cho “' + (this.lbl(par) || this.lbl(par, DEF)) + '”' : 'Đưa ' + OD.n + ' mục ra ngoài một cấp',
+        fixIcon: useMega ? 'ri-layout-grid-line' : 'ri-indent-decrease',
+        fixTitle: useMega
+          ? 'Bảng lớn bung thành panel riêng nên không bị giới hạn cấp của thanh'
+          : ('Rút các mục vượt lên một cấp cho vừa mức hiển thị — hoặc bỏ trình đơn khỏi ' + A.l.toLowerCase() + ' ở thẻ Vị trí bên trái'),
+        run: useMega
+          ? () => { this.setField(par.id, 'mega', true); if (!par.cols) this.setField(par.id, 'cols', 3); this.toast('Đã bật bảng lớn cho “' + (this.lbl(par) || this.lbl(par, DEF)) + '” — các nhánh con nay hiện hết trong một lần mở.', 'ri-layout-grid-line', true); }
+          : () => { OD.ids.slice().reverse().forEach(id => this.outdent(id)); this.toast('Đã rút ' + OD.n + ' mục lên một cấp — nay hiện được ở ' + A.l.toLowerCase() + '.', 'ri-indent-decrease', true); }
+      });
+    }
+    const topN = items.length;
+    if (topN > 7 && !S.dismissed.crowd) issues.push({ id: 'crowd', icon: 'ri-alert-line', color: '#f7b84b', text: 'Trình đơn có ' + topN + ' mục ở cấp ngoài cùng — thanh đầu trang dễ tràn trên màn hình nhỏ. Gom bớt vào mục con sẽ dễ nhìn hơn.', fix: 'Để sau', fixIcon: 'ri-close-line', fixTitle: 'Bỏ qua nhắc này trong phiên làm việc', run: () => this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { crowd: true }) })) });
+    const newPages = this.SOURCES.page.filter(p => !usedRefs[p.ref] && !p.draft).slice(0, 2);
+    // Trang chưa đưa vào trình đơn là GỢI Ý, không phải lỗi: nhiều trang (chính sách, cảm ơn)
+    // cố tình không nằm trong trình đơn → xếp hạng nhẹ và bỏ qua được hẳn.
+    if (newPages.length && !S.dismissed.newpages) issues.push({ id: 'new', icon: 'ri-lightbulb-flash-line', color: '#299cdb', tip: true, text: newPages.length + ' trang chưa có trong “' + menu.name + '”: ' + newPages.map(p => p.label).join(', ') + '.', fix: 'Thêm vào cuối', fixIcon: 'ri-add-line', fixTitle: 'Thêm các trang này vào cuối trình đơn', run: () => { this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { newpages: true }) })); this.add(newPages.map(p => this.mk('page', p.ref, p.label, p.meta)), 'Đã thêm ' + newPages.length + ' trang vào cuối trình đơn.'); }, dismiss: () => this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { newpages: true }) })) });
+    /* Chỉ nhắc dịch khi bản thiếu ĐANG hiển thị cho khách: bản chưa công khai (JA) thì không ai
+       xem được, nhắc chỉ gây nhiễu. Nói rõ khách nào chịu ảnh hưởng, không nói chung chung. */
+    const missPub = miss.filter(x => this.isPub(x.c));
+    const pubLangs = [];
+    missPub.forEach(x => { if (pubLangs.indexOf(x.c) < 0) pubLangs.push(x.c); });
+    if (multi && missPub.length && !S.dismissed.tr) issues.push({
+      id: 'tr', icon: 'ri-translate-2', color: '#299cdb', tip: true,
+      text: missPub.length + ' nhãn chưa có bản ' + pubLangs.map(c => this.locName(c)).join(', ') + ' — khách xem bản đó sẽ thấy trống hoặc thấy tiếng Việt.',
+      fix: 'Dịch ngay', fixIcon: 'ri-sparkling-2-line',
+      fixTitle: trOff ? 'Không đủ từ AI cho lần chạy này' : ('Dùng khoảng ' + nfm(cost) + ' từ AI'),
+      run: () => this.translate(),
+      dismiss: () => this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { tr: true }) }))
+    });
+
+    // --- lọc & tìm trong cây ---
+    const q = S.tq.trim().toLowerCase();
+    const issueIds = {}; rowsAll.forEach(x => { const s = this.src(x.it); if (x.it.broken || (s && s.draft) || overIds[x.it.id]) issueIds[x.it.id] = true; });
+    const hiddenIds = {}; rowsAll.forEach(x => { if (x.it.hidden) hiddenIds[x.it.id] = true; });
+    const untrIds = {}; rowsAll.forEach(x => { if (!this.lbl(x.it)) untrIds[x.it.id] = true; });
+    const filtering = !!q || S.filter !== 'all';
+    const pathOf = (x) => { const p = []; let cur = x.parent; while (cur) { p.unshift(this.lbl(cur) || this.lbl(cur, DEF)); const pc = this.ctx(cur.id); cur = pc ? pc.parent : null; } return p.length ? p.join(' › ') + ' ›' : ''; };
+    let list;
+    if (filtering) {
+      list = rowsAll.filter(x => {
+        const hit = !q || (this.lbl(x.it) + ' ' + this.lbl(x.it, DEF) + ' ' + (x.it.url || '')).toLowerCase().indexOf(q) >= 0;
+        const f = S.filter === 'all' || (S.filter === 'issue' && issueIds[x.it.id]) || (S.filter === 'hidden' && hiddenIds[x.it.id]) || (S.filter === 'untr' && untrIds[x.it.id]);
+        return hit && f;
+      });
+    } else {
+      list = rowsAll.filter(x => { let p = x.parent, hide = false; while (p) { if (S.fold[p.id]) hide = true; const pc = this.ctx(p.id); p = pc ? pc.parent : null; } return !hide; });
+    }
+    const savedMap = {}; JSON.parse(S.saved).menus.forEach(m => this.walk(m.items, it => { savedMap[it.id] = true; }));
+
+    const rows = list.map(x => {
+      const it = x.it, kids = (it.children || []).length, folded = !!S.fold[it.id], label = this.lbl(it);
+      const prevIt = x.i > 0 ? x.list[x.i - 1] : null;
+      const badIn = prevIt ? this.violatingArea(x.depth + 1 + this.maxDepth(it), prevIt.mega || this.underMega(prevIt.id, items)) : null;
+      const canIn = x.i > 0 && !badIn;
+      const over = S.over && S.over.id === it.id && !filtering;
+      let parentHidden = false; let p = x.parent; while (p) { if (p.hidden) parentHidden = true; const pc = this.ctx(p.id); p = pc ? pc.parent : null; }
+      // Đang kéo mục cha → cả nhánh con mờ theo, cho thấy rõ "cả khối cùng đi".
+      let inDrag = S.drag === it.id;
+      if (!inDrag && S.drag) { let q = x.parent; while (q) { if (q.id === S.drag) inDrag = true; const qc = this.ctx(q.id); q = qc ? qc.parent : null; } }
+      const s = this.src(it);
+      const unsaved = D.changed.indexOf(it.id) >= 0 || D.added.indexOf(it.id) >= 0;
+      return {
+        // Khoảng trống chèn thật (như Page Builder v3) — hàng không nhảy, mắt thấy đúng chỗ sẽ nằm.
+        slotBeforeOn: !!(over && S.over.pos === 'before'),
+        slotAfterOn: !!(over && S.over.pos === 'after'),
+        slotStyle: 'height:38px;margin:3px 12px 3px ' + (12 + (filtering ? 0 : x.depth * 22)) + 'px;border:1.5px dashed #405189;border-radius:6px;background:rgba(64,81,137,.06);display:flex;align-items:center;justify-content:center;gap:6px;font-size:11.5px;font-weight:500;color:#405189;',
+        onSlotOver: (e) => { if (e && e.preventDefault) e.preventDefault(); },
+        onSlotDrop: (e) => { if (e && e.preventDefault) e.preventDefault(); const d = S.drag, pos = S.over ? S.over.pos : 'after'; this.setState({ drag: null, over: null, ghost: null, ghostRows: [] }); this.drop(d, it.id, pos); },
+        wrap: 'background:' + (over && S.over.pos === 'in' ? 'rgba(64,81,137,.09)' : (S.sel === it.id ? 'rgba(64,81,137,.05)' : 'transparent')) + ';opacity:' + (inDrag ? '.4' : '1') + ';border-top:1px solid #f6f7f9;box-shadow:' + (over && S.over.pos === 'in' ? 'inset 0 0 0 2px #405189' : 'none') + ';border-radius:' + (over && S.over.pos === 'in' ? '6px' : '0') + ';',
+        drag: !filtering, gripOn: !filtering,
+        // setTimeout: đặt state sau khi trình duyệt đã chụp ảnh kéo, nếu không hàng biến mất giữa chừng.
+        rowRef: (el) => { this._rowEls = this._rowEls || {}; if (el) this._rowEls[it.id] = el; },
+        onDragStart: (e) => {
+          /* Ảnh kéo do TA tự vẽ (khối cha + con, đục, bám con trỏ) — ảnh chụp DOM của trình duyệt
+             hay bị trong suốt và cắt cụt. Tắt ảnh mặc định bằng một điểm ảnh trong suốt. */
+          const src = (this._rowEls || {})[it.id];
+          const w = src ? src.offsetWidth : 420;
+          try {
+            e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', it.id);
+            const px = new Image(); px.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+            e.dataTransfer.setDragImage(px, 0, 0);
+          } catch (_) {}
+          const rows = [{ label: this.lbl(it) || this.lbl(it, DEF), icon: it.icon || this.KIND[it.kind].icon, depth: 0 }];
+          this.walk(it.children, (k, d) => rows.push({ label: this.lbl(k) || this.lbl(k, DEF), icon: k.icon || this.KIND[k.kind].icon, depth: d + 1 }));
+          setTimeout(() => this.setState({ drag: it.id, sel: null, rowMenu: null, ghostRows: rows, ghostW: w, ghost: { x: e.clientX, y: e.clientY } }), 0);
+        },
+        onDragEnter: (e) => { if (e && e.preventDefault) e.preventDefault(); },
+        onDragOver: (e) => {
+          if (filtering) return; e.preventDefault();
+          const r = e.currentTarget.getBoundingClientRect(), y = e.clientY - r.top;
+          // 3 vùng thả: mép trên = trước · giữa = thành mục con · mép dưới = sau
+          const pos = y < r.height * 0.3 ? 'before' : (y > r.height * 0.7 ? 'after' : 'in');
+          if (!S.over || S.over.id !== it.id || S.over.pos !== pos) this.setState({ over: { id: it.id, pos: pos } });
+          if (kids && folded) { clearTimeout(this._dwell); this._dwell = setTimeout(() => this.setState(st => ({ fold: Object.assign({}, st.fold, { [it.id]: false }) })), 600); }
+          // Kéo tới sát mép màn hình thì tự cuộn — danh sách dài không phải thả ra kéo lại.
+          const vh = window.innerHeight || 800;
+          if (e.clientY < 96) window.scrollBy(0, -16); else if (e.clientY > vh - 96) window.scrollBy(0, 16);
+        },
+        onDrop: (e) => { e.preventDefault(); clearTimeout(this._dwell); const d = S.drag, pos = S.over ? S.over.pos : 'after'; this.setState({ drag: null, over: null, ghost: null, ghostRows: [] }); this.drop(d, it.id, pos); },
+        onDragEnd: () => { clearTimeout(this._dwell); this.setState({ drag: null, over: null, ghost: null, ghostRows: [] }); },
+        indent: 'width:' + (filtering ? 0 : x.depth * 22) + 'px;flex-shrink:0;',
+        hasKids: kids > 0 && !filtering, noKids: !(kids > 0 && !filtering),
+        chev: folded ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line',
+        foldTitle: folded ? 'Mở ' + kids + ' mục con' : 'Thu gọn ' + kids + ' mục con',
+        onFold: () => this.setState(st => ({ fold: Object.assign({}, st.fold, { [it.id]: !st.fold[it.id] }) })),
+        icon: it.icon || this.KIND[it.kind].icon, iconColor: (it.hidden || parentHidden) ? '#ced4da' : (it.icon ? '#405189' : '#878a99'),
+        onlyOn: !!it.only, onlyLabel: it.only === 'pc' ? 'Chỉ máy tính' : 'Chỉ điện thoại',
+        onlyTitle: it.only === 'pc' ? 'Mục này chỉ hiện trên máy tính' : 'Mục này chỉ hiện trên điện thoại',
+        label: label || 'Chưa có nhãn ' + S.loc,
+        labelStyle: 'flex:1 1 auto;min-width:5.5em;font-size:13px;font-weight:' + (x.depth && !filtering ? 400 : 500) + ';color:' + (label ? ((it.hidden || parentHidden) ? '#878a99' : '#343a40') : '#adb5bd') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (label ? '' : 'font-style:italic;'),
+        pathOn: filtering && !!pathOf(x), pathText: pathOf(x),
+        unsavedOn: unsaved,
+        mtOn: !!it.mt && !onDefault && !!label,
+        hiddenOn: it.hidden || parentHidden,
+        hiddenLabel: it.hidden ? 'Đang ẩn' : 'Ẩn theo mục cha',
+        hiddenTitle: it.hidden ? 'Mục này đang ẩn — khách không nhìn thấy' : 'Mục cha đang ẩn nên mục này cũng không hiển thị',
+        badgeOn: !!this.badgeLive(it), badgeText: (this.badgeLive(it) || {}).t,
+        badgeTitle: this.badgeLive(it) && this.badgeLive(it).u ? ('Nhãn “' + this.badgeLive(it).t + '” tự tắt sau ngày ' + this.badgeLive(it).u.split('-').reverse().join('/')) : 'Nhãn hiển thị cạnh tên mục',
+        badgeExpOn: this.badgeExpired(it), badgeExpTitle: 'Nhãn đã hết hạn nên khách không còn thấy — bấm sửa mục để gỡ hoặc đặt hạn mới',
+        overDeepOn: !!overIds[it.id],
+        overDeepTitle: OD.lim.area ? ('Nằm sâu quá mức “' + OD.lim.area.l + '” dựng được (' + OD.lim.n + ' cấp) — khách ở chỗ đó không thấy mục này.') : '',
+        ctaOn: !!it.cta,
+        megaRowOn: !!it.mega,
+        megaRowLabel: it.megaKind === 'block' ? 'Khối tự dựng' : 'Bảng lớn',
+        megaRowTitle: it.megaKind === 'block' ? 'Bảng lớn dùng khối tự dựng ở Thư viện khối' : ('Mở dạng bảng lớn ' + (it.cols || 3) + ' cột'),
+        descRowOn: !!this.dscText(it), descRowTitle: this.dscText(it),
+        fixedOn: !!it.fixed, fixedTitle: 'Trang này đã đổi đường dẫn, hệ thống tự cập nhật liên kết nên khách không gặp trang lỗi.',
+        draftOn: !!(s && s.draft), draftTitle: 'Trang nguồn chưa đăng — khách bấm vào sẽ không xem được.',
+        brokenOn: !!it.broken, brokenTitle: 'Trang nguồn đã bị xoá — hãy gỡ mục này hoặc trỏ sang trang khác.',
+        srcText: this.KIND[it.kind].src,
+        onSelect: () => this.setState(st => ({ sel: st.sel === it.id ? null : it.id, rowMenu: null })),
+        moveOff: filtering,
+        upTitle: filtering ? 'Bỏ lọc để sắp xếp lại thứ tự' : 'Đưa lên trên (Alt ↑)',
+        downTitle: filtering ? 'Bỏ lọc để sắp xếp lại thứ tự' : 'Đưa xuống dưới (Alt ↓)',
+        onUp: () => this.move(it.id, -1), onDown: () => this.move(it.id, 1),
+        onMenu: (e) => { e.stopPropagation(); this.setState(st => ({ rowMenu: st.rowMenu === it.id ? null : it.id })); },
+        menuOn: S.rowMenu === it.id,
+        menuTitle: this._touch ? 'Sắp xếp và thao tác với mục này' : 'Thao tác khác với mục này',
+        onToggleHide: () => { this.setField(it.id, 'hidden', !it.hidden); this.setState({ rowMenu: null }); this.toast(it.hidden ? 'Đã hiện lại mục cho khách.' : 'Đã ẩn mục — nội dung vẫn còn, chỉ khách không thấy.', it.hidden ? 'ri-eye-line' : 'ri-eye-off-line', true); },
+        hideIcon: it.hidden ? 'ri-eye-line' : 'ri-eye-off-line', hideLabel: it.hidden ? 'Hiện lại cho khách' : 'Ẩn khỏi trình đơn',
+        onIn: () => { this.indent(it.id); this.setState({ rowMenu: null }); }, inOff: !canIn || filtering,
+        inTitle: filtering ? 'Bỏ lọc để đổi cấp' : (x.i === 0 ? 'Mục đầu tiên không có mục nào để nằm vào' : (canIn ? 'Đưa vào làm mục con của mục ngay trên' : ((badIn && badIn.k ? '“' + badIn.l + '” chỉ dựng được ' + (badIn.dp || 3) + ' cấp' : 'Giao diện dựng được tối đa ' + LIM.n + ' cấp') + (badIn && badIn.mg ? ' — bật bảng lớn cho mục cha để đi sâu hơn' : ' và chỗ đó không bung được bảng lớn')))),
+        onOut: () => { this.outdent(it.id); this.setState({ rowMenu: null }); }, outOff: !x.parent || filtering,
+        outTitle: filtering ? 'Bỏ lọc để đổi cấp' : (x.parent ? 'Đưa ra ngoài một cấp' : 'Mục này đã ở cấp ngoài cùng'),
+        onDup: () => this.dup(it.id),
+        onRevert: () => this.revert(it.id), revertOff: D.changed.indexOf(it.id) < 0,
+        revertTitle: D.changed.indexOf(it.id) < 0 ? 'Mục này chưa có gì thay đổi so với lần lưu' : 'Bỏ mọi sửa đổi chưa lưu của riêng mục này',
+        onDel: () => this.remove(it.id),
+        editOn: S.sel === it.id
+      };
+    });
+
+    const sel = S.sel ? (this.ctx(S.sel) || {}).it : null;
+    const selSrc = sel ? this.src(sel) : null;
+
+    // --- xem trước ---
+    const vis = (arr, dev) => (arr || []).filter(it => !it.hidden && it.only !== (dev === 'pc' ? 'mb' : 'pc'));
+    const preview = vis(items, 'pc').map(it => {
+      const kids = vis(it.children, 'pc').map(k => ({ label: this.lbl(k) || this.lbl(k, DEF), desc: this.dscText(k) || this.dscText(k, DEF), descOn: !!(this.dscText(k) || this.dscText(k, DEF)) }));
+      const nc = Math.max(2, Math.min(4, it.cols || 3));
+      const per = Math.ceil(kids.length / nc) || 1;
+      const cols = []; for (let ci = 0; ci < nc; ci++) { const part = kids.slice(ci * per, (ci + 1) * per); if (part.length) cols.push({ kids: part }); }
+      const open = S.pvOpen === it.id;
+      return {
+      label: this.lbl(it) || this.lbl(it, DEF), hasKids: kids.length > 0,
+      iconOn: !!it.icon, icon: it.icon || '',
+      badgeOn: !!this.badgeLive(it), badgeText: (this.badgeLive(it) || {}).t,
+      chev: open ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line',
+      openOn: open && !it.mega, megaOn: open && !!it.mega && it.megaKind !== 'block',
+      blockOn: open && !!it.mega && it.megaKind === 'block',
+      blockName: ((this.blockOf(it.megaBlock) || {}).name) || 'chưa chọn khối nào',
+      megaIntroOn: !!(this.dscText(it) || this.dscText(it, DEF)),
+      megaTitle: this.lbl(it) || this.lbl(it, DEF), megaDesc: this.dscText(it) || this.dscText(it, DEF),
+      // Bảng lớn trải ngang cả thanh (như mega menu thật), không neo theo một mục → không bao giờ tràn thẻ.
+      wrapStyle: (open && it.mega) ? 'position:static;' : 'position:relative;',
+      megaRowChip: it.megaKind === 'block' ? 'Khối tự dựng' : 'Bảng lớn',
+      megaStyle: 'position:absolute;top:100%;left:0;right:0;width:auto;box-sizing:border-box;z-index:10;display:grid;grid-template-columns:' + ((this.dscText(it) || this.dscText(it, DEF)) ? 'minmax(0,1.15fr) ' : '') + 'repeat(' + cols.length + ',minmax(0,1fr));gap:18px 20px;margin-top:6px;padding:18px 20px;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 8px 24px rgba(56,65,74,.16);',
+      megaCols: cols,
+      kids: kids,
+      onClick: (e) => { e.stopPropagation(); this.setState(st => ({ pvOpen: st.pvOpen === it.id ? null : it.id })); },
+      style: it.cta
+        ? 'display:inline-flex;align-items:center;gap:5px;padding:8px 14px;border:0;border-radius:4px;background:#f59e0b;font:inherit;font-size:12.5px;font-weight:600;color:#1f2937;cursor:pointer;'
+        : 'display:inline-flex;align-items:center;gap:5px;padding:8px 10px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#334155;cursor:pointer;'
+      };
+    });
+    const previewMobile = [];
+    const mbCap = (this.areasOf().find(a => a.k === 'handheld') || { dp: 4 }).dp - 1;
+    this.walk(items, (it, d) => { if (it.hidden || d > mbCap || it.only === 'pc') return; let ph = false; const c = this.ctx(it.id); let p = c ? c.parent : null; while (p) { if (p.hidden) ph = true; const pc = this.ctx(p.id); p = pc ? pc.parent : null; } if (ph) return;
+      previewMobile.push({ label: this.lbl(it) || this.lbl(it, DEF), hasKids: vis(it.children, 'mb').length > 0, style: 'display:flex;align-items:center;gap:8px;padding:' + (d ? '10px 14px 10px ' + (16 + d * 14) + 'px' : '12px 14px') + ';border-bottom:1px solid #f1f5f9;font-size:' + (d ? '12.5' : '13') + 'px;font-weight:' + (d ? 400 : 500) + ';color:' + (d ? '#475569' : '#0f172a') + ';' }); });
+    const chars = vis(items, 'pc').reduce((a, it) => a + (this.lbl(it) || this.lbl(it, DEF)).length + 4, 8);
+
+    // --- nguồn để thêm ---
+    const sq = S.search.trim().toLowerCase();
+    const srcList = (this.SOURCES[S.tab] || []).filter(x => !sq || x.label.toLowerCase().indexOf(sq) >= 0);
+    const pickedN = Object.keys(S.picked).filter(k => S.picked[k]).length;
+    const F = [
+      { k: 'all', l: 'Tất cả', i: 'ri-list-check', n: rowsAll.length, t: 'Hiện toàn bộ cây trình đơn' },
+      { k: 'issue', l: 'Cần xem', i: 'ri-error-warning-line', n: Object.keys(issueIds).length, t: 'Mục trỏ tới trang đã xoá, trang chưa đăng, hoặc nằm sâu quá mức hiển thị được' },
+      { k: 'hidden', l: 'Đang ẩn', i: 'ri-eye-off-line', n: Object.keys(hiddenIds).length, t: 'Mục khách không nhìn thấy' },
+      // Bản nguồn luôn đủ nhãn theo định nghĩa → bộ lọc này vô nghĩa ở đó, ẩn đi cho khỏi đọc nhầm số 0.
+      { k: 'untr', l: 'Thiếu nhãn ' + S.loc, i: 'ri-translate-2', n: Object.keys(untrIds).length, t: 'Mục chưa có nhãn ở bản ' + this.locName(S.loc), off: S.loc === DEF }
+    ].filter(f => !f.off);
+
+    return {
+      pageCls: (this._touch ? 'mn-touch' : '') + (this.props.embedded ? ' mn-emb' : ''),
+      pageStyle: this.props.embedded ? 'display:flex;flex-direction:column;' : 'min-height:100vh;display:flex;flex-direction:column;',
+      onPageClick: () => { if (S.rowMenu || S.pvOpen) this.setState({ rowMenu: null, pvOpen: null }); },
+      stop: (e) => e.stopPropagation(),
+      headerOn: !this.props.embedded,
+      onOpenSite: () => this.toast('Mở website ở tab mới để xem trình đơn đang chạy.', 'ri-external-link-line'),
+      onSave: () => this.save(), saveOff: D.n === 0,
+      saveLabel: D.n ? ('Lưu ' + D.n + ' thay đổi — hiệu lực ngay') : 'Lưu — hiệu lực ngay',
+      saveTitle: D.n ? D.text : 'Chưa có thay đổi nào để lưu',
+
+      multiLocale: multi, locCode: S.loc, sharedLocked: !onDefault,
+      langPills: langPills, moreOn: codes.length - langPills.length > 0, moreLabel: '+' + (codes.length - langPills.length),
+      onOpenLangs: () => this.toast('Website đang bật ' + codes.length + ' ngôn ngữ — quản lý ở Cài đặt › Ngôn ngữ website.', 'ri-translate-2'),
+      progIcon: curKind === 'ok' ? 'ri-check-line' : 'ri-time-line', progColor: curKind === 'ok' ? '#0ab39c' : '#f7b84b',
+      progText: curStat.done + '/' + curStat.total + ' nhãn đã có',
+      quotaText: 'Còn ' + nfm(left) + ' từ AI', quotaColor: out ? '#d84a2f' : (low ? '#b57d0a' : '#878a99'),
+      quotaTitle: 'Gói ' + (window.BSAI ? window.BSAI.plan().name : 'Cơ bản') + ' · đã dùng ' + nfm(this.aiLimit() - left) + '/' + nfm(this.aiLimit()) + ' từ AI trong tháng — ' + enough,
+      onTranslate: () => this.translate(), trOff: trOff,
+      trLabel: onDefault ? ('Dịch sang ' + (codes.length - 1) + ' ngôn ngữ') : ('Dịch bản ' + this.locName(S.loc)),
+      trTitle: !miss.length ? 'Mọi nhãn đã có bản dịch' : (cost > left ? ('Cần khoảng ' + nfm(cost) + ' từ AI, chỉ còn ' + nfm(left) + ' — mua thêm từ AI hoặc nâng gói để chạy.') : ('Điền ' + miss.length + ' nhãn còn trống · dùng khoảng ' + nfm(cost) + ' từ AI, còn lại ' + nfm(left - cost) + ' từ. Nhãn bạn đã sửa không bị đè.')),
+      noteText: note.t, noteIcon: note.i, noteFg: note.fg, noteBg: note.bg,
+
+      // Lỗi thật và gợi ý là hai hạng khác nhau — tiêu đề chỉ đếm lỗi thật để con số luôn đáng tin.
+      checkTitle: (() => {
+        const bad = issues.filter(q => !q.tip).length, tip = issues.length - bad;
+        if (!issues.length) return 'Trình đơn đang ổn';
+        if (!bad) return 'Gợi ý — ' + tip + ' việc nên xem';
+        return 'Cần bạn xem — ' + bad + ' việc' + (tip ? ' · ' + tip + ' gợi ý' : '');
+      })(),
+      checkIcon: issues.some(q => !q.tip) ? 'ri-error-warning-line' : (issues.length ? 'ri-lightbulb-flash-line' : 'ri-shield-check-line'),
+      checkColor: issues.some(q => !q.tip) ? '#f7b84b' : (issues.length ? '#299cdb' : '#0ab39c'),
+      /* Mặc định: có lỗi thật thì bung (phải xử lý mới hết), chỉ còn gợi ý thì gập cho gọn.
+         Người dùng bấm một lần là quyền của họ được giữ nguyên. */
+      cCheckOn: (S.fold2 || {}).check === undefined ? issues.some(q => !q.tip) : !S.fold2.check,
+      cCheckIcon: ((S.fold2 || {}).check === undefined ? issues.some(q => !q.tip) : !S.fold2.check) ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line',
+      onCCheck: () => this.setState(st => {
+        const cur = (st.fold2 || {}).check === undefined ? !issues.some(q => !q.tip) : st.fold2.check;
+        return { fold2: Object.assign({}, st.fold2, { check: !cur }) };
+      }),
+      noIssues: issues.length === 0,
+      issues: issues.map(q2 => ({
+        icon: q2.icon, color: q2.color, text: q2.text,
+        goOn: !!q2.go, onGo: q2.go ? focus(q2.go) : () => {},
+        fix: q2.fix, fixIcon: q2.fixIcon, fixTitle: q2.fixTitle, onFix: q2.run,
+        dismissOn: !!q2.dismiss, onDismiss: q2.dismiss || (() => {}),
+        dismissTitle: 'Bỏ qua gợi ý này — không hiện lại trong phiên làm việc'
+      })),
+
+      // Gập thẻ: chỗ làm việc chính (cây) luôn mở, các thẻ phụ gập được để đỡ rối.
+      card: (k) => !(S.fold2 || {})[k],
+      cMenusOn: !(S.fold2 || {}).menus, cMenusIcon: (S.fold2 || {}).menus ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line',
+      onCMenus: () => this.setState(st => ({ fold2: Object.assign({}, st.fold2, { menus: !(st.fold2 || {}).menus }) })),
+      cAreasOn: !(S.fold2 || {}).areas, cAreasIcon: (S.fold2 || {}).areas ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line',
+      onCAreas: () => this.setState(st => ({ fold2: Object.assign({}, st.fold2, { areas: !(st.fold2 || {}).areas }) })),
+      // Việc nền tảng tự làm: nói bằng bằng chứng đang chạy trên chính trình đơn này, không nói suông (§0).
+      autoAddNote: S.autoAdd
+        ? 'Trang mới đăng sẽ tự nằm ở cuối trình đơn, bạn kéo lại chỗ nào tuỳ ý.'
+        : 'Đang tắt — trang mới đăng không tự vào trình đơn, bạn tự thêm khi cần.',
+      autoAlways: (() => {
+        let fixed = 0, broken = 0, draft = 0;
+        this.state.menus.forEach(m => this.walk(m.items, it => {
+          if (it.fixed) fixed++;
+          const s = this.src(it); if (it.broken) broken++; else if (s && s.draft) draft++;
+        }));
+        return [
+          { t: 'Trang đổi địa chỉ — liên kết tự sửa theo', s: fixed ? 'Đã tự sửa ' + fixed + ' liên kết, khách không gặp trang lỗi' : 'Chưa có liên kết nào phải sửa' },
+          { t: 'Trang bị xoá hoặc chưa đăng — báo ngay ở khung “Cần bạn xem”', s: (broken + draft) ? 'Đang có ' + (broken + draft) + ' mục cần bạn xử lý' : 'Hiện không có mục nào hỏng' },
+          { t: 'Mọi thay đổi đều hoàn tác được, mục đã gỡ giữ 30 ngày', s: (S.trash || []).length ? 'Thùng rác đang giữ ' + S.trash.length + ' mục' : 'Thùng rác đang trống' }
+        ];
+      })(),
+      autoCountText: S.autoAdd ? '4 việc' : '3 việc',
+      cAutoOn: !(S.fold2 || {}).auto, cAutoIcon: (S.fold2 || {}).auto ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line',
+      onCAuto: () => this.setState(st => ({ fold2: Object.assign({}, st.fold2, { auto: !(st.fold2 || {}).auto }) })),
+      cAddOn: !(S.fold2 || {}).add, cAddIcon: (S.fold2 || {}).add ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line',
+      onCAdd: () => this.setState(st => ({ fold2: Object.assign({}, st.fold2, { add: !(st.fold2 || {}).add }) })),
+      // Mã kỹ thuật chỉ hiện khi cần — chủ tiệm không phải nhìn blog_sidebar (§14).
+      devOn: !!S.dev,
+      devLabel: S.dev ? 'Ẩn mã kỹ thuật' : 'Hiện mã cho lập trình viên',
+      devIcon: S.dev ? 'ri-eye-off-line' : 'ri-code-s-slash-line',
+      onDev: () => this.setState(st => ({ dev: !st.dev })),
+      areaCountText: (() => {
+        const as = this.areasOf(), on = as.filter(a => !!this.menuAt(a.k)).length;
+        return on + '/' + as.length + ' đã đặt';
+      })(),
+      areaIntro: 'Mỗi chỗ chỉ nhận một trình đơn. Chỗ để trống thì khách không thấy gì ở đó.',
+      areaFoot: 'Mã dưới mỗi chỗ là mã vị trí do giao diện đăng ký — đây là mã duy nhất bạn cần khi lập trình giao diện. Trình đơn không có mã riêng để gõ: muốn chèn một trình đơn vào giữa trang, dùng khối “Trình đơn” trong Trình dựng trang rồi chọn theo tên. Giao diện khác sẽ có nhiều hoặc ít chỗ hơn.',
+      areaAdvOn: !!S.areaAdv,
+      areaAdvLabel: S.areaAdv ? 'Ẩn bớt' : ('Còn ' + this.areasOf().filter(a => a.adv).length + ' chỗ ít dùng'),
+      areaAdvIcon: S.areaAdv ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line',
+      onAreaAdv: () => this.setState(st => ({ areaAdv: !st.areaAdv })),
+      areas: this.areasOf().filter(a => !a.adv || S.areaAdv).map((a, ai, arr) => {
+        const raw = S.slots[a.k] || '', eff = this.menuAt(a.k);
+        const same = a.canSame ? this.areasOf().find(x => x.k === a.canSame) : null;
+        const opts = [{ value: '', label: '— Không hiển thị —' }];
+        if (same) opts.push({ value: '@same', label: 'Giống ' + same.l.toLowerCase() + ' (tự đồng bộ)' });
+        return {
+          headOn: ai === 0 || arr[ai - 1].g !== a.g, headLabel: a.g,
+          label: a.l, desc: a.d + ' · dựng được ' + (a.dp || this.FALLBACK_DEPTH) + ' cấp', icon: a.i, value: raw, warnOn: !eff,
+          code: a.k,
+          codeTitle: 'Mã vị trí do giao diện đăng ký: ' + a.k + ' — giao diện gọi theo mã này, bạn chỉ đổi trình đơn nằm ở đây. Bấm để chép mã chèn theo vị trí.',
+          onCopyCode: () => this.copyArea(a),
+          title: eff ? (a.l + ' đang dùng “' + ((S.menus.find(m => m.id === eff) || {}).name || '') + '”' + (raw === '@same' ? ' (đồng bộ theo ' + same.l.toLowerCase() + ')' : '') + ' — chọn trình đơn khác để đổi') : (a.l + ' chưa hiển thị trình đơn nào'),
+          options: opts.concat(S.menus.map(m => ({ value: m.id, label: m.name + ' (' + this.count(m.items) + ' mục)' }))),
+          onChange: (e) => this.setSlot(a.k, e.target.value)
+        };
+      }),
+      menuCountText: S.menus.length + ' trình đơn',
+      menuList: S.menus.map(m => {
+        const on = m.id === S.cur;
+        const usedIn = this.areasOf().filter(a => this.menuAt(a.k) === m.id);
+        return {
+          name: m.name, count: this.count(m.items) + ' mục',
+          useText: usedIn.length ? ('Đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).join(' · ')) : 'Chưa dùng ở chỗ nào — khách không nhìn thấy',
+          useIcon: usedIn.length ? 'ri-checkbox-circle-line' : 'ri-error-warning-line',
+          useColor: usedIn.length ? '#0a8f7f' : '#a9750a',
+          onDup: (e) => { e.stopPropagation(); this.dupMenu(m.id); },
+          dupTitle: 'Nhân bản thành bản nháp để sửa lớn mà không đụng bản đang chạy',
+          onDel: (e) => { e.stopPropagation(); this.delMenu(m.id); }, delOff: S.menus.length < 2 || usedIn.length > 0,
+          delTitle: S.menus.length < 2 ? 'Website cần ít nhất một trình đơn' : (usedIn.length ? ('Đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).join(', ') + ' — đổi chỗ đó sang trình đơn khác trước') : 'Xoá trình đơn này'),
+          wrap: 'display:flex;flex-direction:column;gap:8px;padding:11px 12px;border-top:1px solid #f6f7f9;border-left:3px solid ' + (on ? '#405189' : 'transparent') + ';background:' + (on ? 'rgba(64,81,137,.05)' : 'transparent') + ';cursor:pointer;user-select:none;',
+          nameStyle: 'width:100%;min-height:22px;border:0;background:transparent;padding:0;font:inherit;font-size:13px;font-weight:' + (on ? 600 : 500) + ';color:#343a40;cursor:pointer;text-align:left;line-height:1.4;text-wrap:pretty;',
+          selTitle: m.name + ' — mở để sắp xếp các mục bên trong',
+          onSelect: () => this.setState({ cur: m.id, sel: null, picked: {}, filter: 'all', tq: '' }),
+          renaming: S.renaming === m.id,
+          onRename: (e) => { e.stopPropagation(); this._focusRename = true; this.setState({ renaming: m.id, renameVal: m.name, cur: m.id }); }
+        };
+      }),
+      renameVal: S.renameVal,
+      renameRef: (el) => { if (el && this._focusRename) { this._focusRename = false; try { el.focus(); el.select(); } catch (e) {} } },
+      onRenameChange: (e) => this.setState({ renameVal: e.target.value }),
+      onRenameKey: (e) => { if (e.key === 'Enter') { e.target.blur(); } if (e.key === 'Escape') this.setState({ renaming: null, renameVal: '' }); },
+      onRenameDone: () => {
+        // Đọc state SỐNG, không đọc ảnh chụp lúc render — nếu không, blur ghi lại giá trị của lần sửa trước (§12).
+        const st = this.state, id = st.renaming, v = (st.renameVal || '').trim();
+        this.setState({ renaming: null, renameVal: '' }); if (!id) return;
+        const cur = st.menus.find(x => x.id === id); if (!cur || !v || v === cur.name) return;
+        // Slug là khoá nội bộ (như term slug của WordPress) — tự bám theo tên, không hiện ra cho người dùng.
+        this.mutate((m, menus) => { const t = menus.find(x => x.id === id); if (!t) return false; t.name = v; t.key = this.uniqueKey(this.slugify(v), id); });
+      },
+      onNewMenu: () => this.newMenu(),
+
+      autoAddOn: !!S.autoAdd, autoAddOff: !S.autoAdd,
+      onToggleAuto: () => { const nv = !S.autoAdd; this.setState({ autoAdd: nv }); this.toast(nv ? 'Từ giờ trang mới sẽ tự vào cuối trình đơn chính — bạn vẫn kéo đổi vị trí được.' : 'Đã tắt — trang mới sẽ chỉ được gợi ý ở khung kiểm tra.', 'ri-magic-line'); },
+
+      curName: menu.name, curCountLabel: total + ' mục',
+      depthChip: LIM.n + ' cấp',
+      depthChip2On: false,
+      depthChipTitle: LIM.area
+        ? ('Sâu tối đa ' + LIM.n + ' cấp vì trình đơn này đang dùng ở “' + LIM.area.l + '” — chỗ chặt nhất quyết định. Bỏ khỏi chỗ đó thì mức nới theo các chỗ còn lại.')
+        : ('Chưa gắn vị trí nào nên áp mức chung của giao diện: ' + LIM.n + ' cấp.'),
+      trashN: (S.trash || []).length,
+      trashBtnOn: (S.trash || []).length > 0,
+      trashOpenOn: !!S.trashOpen,
+      onTrash: () => this.setState(st => ({ trashOpen: !st.trashOpen })),
+      trashList: (S.trash || []).map((t, i) => {
+        const days = 30 - Math.floor((this.today().getTime() - t.at) / 86400000);
+        const mm = S.menus.find(x => x.id === t.menu);
+        const kids = this.count(t.it.children);
+        return {
+          label: this.lbl(t.it) || this.lbl(t.it, DEF) || 'Mục không tên',
+          meta: (mm ? mm.name : 'trình đơn đã xoá') + (kids ? ' · kèm ' + kids + ' mục con' : '') + ' · còn ' + days + ' ngày',
+          icon: t.it.icon || this.KIND[t.it.kind].icon,
+          onRestore: () => this.restore(i)
+        };
+      }),
+      // §11: khi hẹp, dải pill nhường chỗ cho một ô chọn + nút mở panel tiến độ.
+      loc: S.loc,
+      langOptions: this.codes().map(c => ({ v: c, l: this.locName(c) + (c === DEF ? ' ★' : '') })),
+      onPickLoc: (e) => this.setState({ loc: e.target.value, sel: null, rowMenu: null }),
+      onUndo: () => this.undo(), undoOff: S.past.length === 0, undoTitle: S.past.length ? 'Hoàn tác thao tác vừa rồi (Ctrl+Z)' : 'Chưa có thao tác nào để hoàn tác',
+      onRedo: () => this.redo(), redoOff: S.future.length === 0, redoTitle: S.future.length ? 'Làm lại thao tác (Ctrl+Shift+Z)' : 'Không có gì để làm lại',
+      expandLabel: Object.keys(S.fold).some(k => S.fold[k]) ? 'Mở hết' : 'Thu gọn hết',
+      expandIcon: Object.keys(S.fold).some(k => S.fold[k]) ? 'ri-node-tree' : 'ri-collapse-diagonal-line',
+      onExpandAll: () => this.setState(st => { const any = Object.keys(st.fold).some(k => st.fold[k]); if (any) return { fold: {} }; const f = {}; this.walk(items, it => { if ((it.children || []).length) f[it.id] = true; }); return { fold: f }; }),
+
+      treeQuery: S.tq, onTreeQuery: (e) => this.setState({ tq: e.target.value, sel: null }),
+      filters: F.map(f => ({ label: f.l + ' ' + f.n, icon: f.i, title: f.t, cls: 'mn-tab' + (S.filter === f.k ? ' on' : ''), onClick: () => this.setState({ filter: f.k, sel: null }) })),
+      filteringOn: filtering,
+      filterNote: 'Đang xem ' + list.length + ' mục lọc ra từ cả cây — không kéo sắp xếp được khi còn lọc.',
+      onClearFilter: () => this.setState({ filter: 'all', tq: '' }),
+
+      emptyOn: list.length === 0,
+      emptyTitle: filtering ? 'Không có mục nào khớp' : 'Trình đơn này chưa có mục nào',
+      emptyText: filtering ? 'Thử từ khoá khác, hoặc bỏ lọc để xem lại toàn bộ.' : 'Chọn trang, chuyên mục hoặc sản phẩm ở khung “Thêm vào trình đơn” để bắt đầu.',
+      rows: rows,
+      ghostOn: !!(S.drag && S.ghost && (S.ghostRows || []).length),
+      ghostStyle: (() => {
+        /* Neo lật quanh con trỏ (như tooltip): nửa dưới thì neo bằng `bottom`, nửa phải neo bằng `right`.
+           Không cần biết chiều cao khối nên không bao giờ đoán sai → không bị cắt dòng cuối. */
+        const vw = window.innerWidth || 1200, vh = window.innerHeight || 800;
+        const cx = S.ghost ? S.ghost.x : 0, cy = S.ghost ? S.ghost.y : 0;
+        const gw = Math.min(S.ghostW || 420, 420, vw - 24);
+        const horiz = (cx + 14 + gw <= vw - 8) ? ('left:' + Math.max(8, cx + 14) + 'px;') : ('right:' + Math.max(8, vw - cx + 14) + 'px;');
+        const vert = (cy > vh / 2) ? ('bottom:' + Math.max(8, vh - cy + 12) + 'px;') : ('top:' + Math.max(8, cy + 12) + 'px;');
+        return 'position:fixed;' + horiz + vert + 'z-index:200;pointer-events:none;width:' + gw + 'px;max-height:' + (vh - 24) + 'px;box-sizing:border-box;border:1px solid #cbd2da;border-radius:6px;background:#fff;box-shadow:0 12px 28px rgba(56,65,74,.30);overflow:hidden;';
+      })(),
+      ghostRows: (S.ghostRows || []).map(g => ({
+        label: g.label, icon: g.icon,
+        style: 'display:flex;align-items:center;gap:8px;padding:9px 12px 9px ' + (12 + g.depth * 22) + 'px;border-top:' + (g.depth ? '1px solid #f6f7f9' : '0') + ';font-size:13px;font-weight:' + (g.depth ? 400 : 500) + ';color:#343a40;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+      })),
+      ghostCountOn: (S.ghostRows || []).length > 1,
+      ghostCount: ((S.ghostRows || []).length - 1) + ' mục con đi cùng',
+      dragOn: !!S.drag,
+      dragHint: (() => {
+        const dc = S.drag ? this.ctx(S.drag) : null;
+        const dn = dc ? (this.lbl(dc.it) || this.lbl(dc.it, DEF)) : '';
+        const nk = dc ? this.count(dc.it.children) : 0;
+        const what = '“' + dn + '”' + (nk ? ' kèm ' + nk + ' mục con (cả khối cùng đi)' : '');
+        if (!S.over) return 'Đang chuyển ' + what + ' — thả vào khoảng trống để đổi thứ tự, hoặc thả vào giữa một mục để thành mục con của nó.';
+        if (S.over.id === '@end') return 'Thả ra: đưa ' + what + ' ra cấp ngoài cùng, xuống cuối danh sách.';
+        const t = this.ctx(S.over.id); const nm = t ? (this.lbl(t.it) || this.lbl(t.it, DEF)) : '';
+        if (S.over.pos === 'in') return 'Thả ra: “' + nm + '” sẽ nhận ' + what + ' làm mục con.';
+        return 'Thả ra: đặt ' + what + ' ' + (S.over.pos === 'before' ? 'ngay trên' : 'ngay dưới') + ' “' + nm + '”, cùng cấp với nó.';
+      })(),
+      endZoneOn: !filtering && !!S.drag,
+      endZoneStyle: 'display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 14px 14px;padding:14px;border:1.5px dashed ' + (S.over && S.over.id === '@end' ? '#405189' : '#dde1e6') + ';border-radius:6px;background:' + (S.over && S.over.id === '@end' ? 'rgba(64,81,137,.06)' : '#fbfcfd') + ';font-size:12px;color:' + (S.over && S.over.id === '@end' ? '#405189' : '#adb5bd') + ';',
+      onEndOver: (e) => { e.preventDefault(); if (!S.over || S.over.id !== '@end') this.setState({ over: { id: '@end', pos: 'after' } }); },
+      onEndDrop: (e) => { e.preventDefault(); const d = S.drag; this.setState({ drag: null, over: null, ghost: null, ghostRows: [] }); if (d) this.moveEnd(d); },
+      depthNoteOn: rowsAll.some(x => x.depth >= LIM.n - 1),
+      depthNoteBg: OD.n ? 'rgba(240,101,72,.07)' : '#fffaf0',
+      depthNoteFg: OD.n ? '#d84a2f' : '#b57d0a',
+      depthNoteIcon: OD.n ? 'ri-error-warning-line' : 'ri-information-line',
+      depthNote: OD.n
+        ? (OD.n + ' mục đang nằm sâu quá mức ' + (OD.area ? '“' + OD.area.l + '” ' : '') + 'dựng được (' + (OD.area ? OD.area.dp : LIM.n) + ' cấp) nên khách sẽ không thấy. Xử lý ở khung “Cần bạn xem” phía trên.')
+        : ((LIM.area ? 'Đang ở mức sâu nhất mà “' + LIM.area.l + '” dựng được (' + LIM.n + ' cấp). ' : 'Giao diện này dựng được ' + LIM.n + ' cấp. ')
+          + (LIM.mega
+            ? 'Cần sâu hơn: bật “Mở dạng bảng lớn” cho mục cha — bảng lớn xếp được nhiều nhánh mà khách vẫn thấy hết trong một lần mở.'
+            : 'Chỗ này không bung được bảng lớn, nên muốn sâu hơn phải đặt trình đơn ở vị trí khác.')),
+
+      edLabel: sel ? this.lbl(sel) : '',
+      edLabelPh: onDefault ? 'Ví dụ: Liên hệ' : ('Nhãn ' + this.locName(S.loc)),
+      edLabelHint: onDefault ? 'Đây là chữ khách nhìn thấy trên website.' : ('Bản nguồn: “' + (sel ? this.lbl(sel, DEF) : '') + '”'),
+      onEdLabel: (e) => this.setLabel(S.sel, e.target.value),
+      edUrl: sel ? sel.url : '', edUrlOff: !onDefault || !sel || sel.kind !== 'url',
+      edUrlHint: !onDefault ? ('Đường dẫn dùng chung cho mọi ngôn ngữ — sửa ở bản ' + this.locName(DEF) + '.')
+        : (sel && sel.kind !== 'url' ? ('Theo ' + this.KIND[sel ? sel.kind : 'page'].src.toLowerCase() + ' đã chọn — hệ thống tự giữ đúng khi trang đổi địa chỉ.') : 'Dán địa chỉ đầy đủ, hoặc đường dẫn nội bộ bắt đầu bằng /.'),
+      onEdUrl: (e) => this.setField(S.sel, 'url', e.target.value),
+      edShowOn: !!sel && !sel.hidden, edShowOff: !!sel && !!sel.hidden, onEdShow: () => this.setField(S.sel, 'hidden', !(sel && sel.hidden)),
+      edBlankOn: !!sel && !!sel.blank, edBlankOff: !!sel && !sel.blank, onEdBlank: () => this.setField(S.sel, 'blank', !(sel && sel.blank)),
+      edCtaOn: !!sel && !!sel.cta, edCtaOff: !!sel && !sel.cta, onEdCta: () => this.setField(S.sel, 'cta', !(sel && sel.cta)),
+      edDesc: sel ? this.dsc(sel) : '',
+      edDescPh: sel && (this.ctx(sel.id) || {}).depth === 0 ? 'Đoạn giới thiệu ngắn cho nhóm này…' : 'Một câu nói rõ mục này dẫn tới đâu…',
+      // Mô tả trình đơn KHÔNG phải meta description — không giới hạn cứng, chỉ gợi ý độ dài
+      // theo chỗ nó hiện ra: dòng phụ dưới tên mục thì phải rất ngắn, đoạn dẫn bảng lớn được dài hơn.
+      edDescCount: sel ? (this.dscText(sel).length + ' ký tự' + (this.dscText(sel).length > this.dscMax(sel) ? ' — dài hơn mức gợi ý (' + this.dscMax(sel) + ')' : '')) : '',
+      edDescCountColor: sel && this.dscText(sel).length > this.dscMax(sel) ? '#d99e28' : '#adb5bd',
+      descRef: (el) => {
+        this._descEl = el; if (!el) return;
+        const key = (S.sel || '') + '|' + S.loc;
+        if (this._descKey !== key) { this._descKey = key; el.innerHTML = sel ? this.dsc(sel) : ''; }
+      },
+      descEmptyOn: !!(sel && !this.dscText(sel)),
+      onDescInput: (e) => this.setDescLive(S.sel, e.currentTarget.innerHTML),
+      onDescFocus: () => { this._descSnap = this.snap(); },
+      onDescBlur: () => { const b = this._descSnap; this._descSnap = null; if (b && b !== this.snap()) this.setState(st => ({ past: st.past.concat([b]).slice(-60), future: [] })); },
+      onDescPaste: (e) => { e.preventDefault(); const t = (e.clipboardData || window.clipboardData).getData('text/plain'); this.exec('insertText', t); },
+      onDescBold: () => this.exec('bold'), onDescItalic: () => this.exec('italic'),
+      onDescLink: () => { const u = window.prompt('Dán địa chỉ liên kết (bắt đầu bằng https:// hoặc /)'); if (u) this.exec('createLink', u); },
+      onDescClear: () => this.exec('removeFormat'),
+      onEdDesc: (e) => this.setDesc(S.sel, String(e.target.value)),
+      edDescHint: sel && this.dscText(sel).length > this.dscMax(sel)
+        ? 'Trình đơn không giới hạn ký tự, nhưng chỗ này chỉ hiện được khoảng ' + this.dscMax(sel) + ' ký tự trước khi bị cắt bớt — phần giải thích dài nên để trong nội dung trang.'
+        : (sel && (this.ctx(sel.id) || {}).depth === 0
+          ? 'Đoạn dẫn bên trái bảng lớn — một, hai câu nói rõ nhóm này gồm những gì.'
+          : 'Dòng chữ nhỏ dưới tên mục — một câu ngắn giúp khách chọn đúng chỗ.'),
+      edDescSrcOn: !!(sel && this.src(sel) && this.src(sel).sum && !this.dscText(sel)),
+      onEdDescSrc: () => this.descFromSource(S.sel),
+      edMegaRowOn: !!(sel && (this.ctx(sel.id) || {}).depth === 0 && (sel.children || []).length > 0),
+      edMegaOn: !!(sel && sel.mega), edMegaOff: !!(sel && !sel.mega),
+      onEdMega: () => { const nv = !(sel && sel.mega); this.setField(S.sel, 'mega', nv); if (nv && sel && !sel.cols) this.setField(S.sel, 'cols', 3); },
+      /* Mega phức tạp (ảnh, banner, sản phẩm nổi bật): KHÔNG dựng thêm trình sửa bố cục ở màn này —
+         khối dựng ở **Thư viện khối** (vùng "Bảng lớn trình đơn"), trình đơn chỉ trỏ tới. Một chỗ dựng, một chỗ dùng (§0). */
+      edMegaKind: sel && sel.megaKind === 'block' ? 'block' : 'cols',
+      megaKindOptions: [
+        { value: 'cols', label: 'Cột tự động từ mục con' },
+        { value: 'block', label: 'Khối tự dựng (Thư viện khối)' }
+      ],
+      onEdMegaKind: (e) => this.setField(S.sel, 'megaKind', e.target.value),
+      edColsOn: !!(sel && sel.mega && sel.megaKind !== 'block'),
+      edMegaBlockOn: !!(sel && sel.mega && sel.megaKind === 'block'),
+      edMegaBlock: sel && sel.megaBlock ? sel.megaBlock : '',
+      megaBlockOptions: [{ value: '', label: this.menuBlocks().length ? '— Chọn khối đã dựng —' : '— Chưa có khối nào ở vùng này —' }].concat(
+        this.menuBlocks().map(b => ({ value: b.key, label: b.name + (b.status === 'published' ? '' : ' — còn nháp, chưa hiện cho khách') }))),
+      onEdMegaBlock: (e) => this.setField(S.sel, 'megaBlock', e.target.value),
+      onOpenBuilder: () => this.openBlocks(),
+      edMegaKindHint: sel && sel.megaKind === 'block'
+        ? 'Bảng lớn sẽ hiển thị đúng khối bạn dựng ở Thư viện khối — ảnh, banner, sản phẩm nổi bật đều được. Mục con vẫn giữ để dùng cho trình đơn di động.'
+        : 'Đủ cho hầu hết website: mục con tự xếp thành cột, kèm mô tả ngắn của từng mục.',
+      edCols: sel && sel.cols ? String(sel.cols) : '3',
+      onEdCols: (e) => this.setField(S.sel, 'cols', parseInt(e.target.value, 10) || 3),
+      colOptions: [{ value: '2', label: '2 cột' }, { value: '3', label: '3 cột' }, { value: '4', label: '4 cột' }],
+      edBadge: sel && sel.badge ? sel.badge.t : '',
+      badgeOptions: ['', 'Mới', 'Hot', 'Giảm giá', 'Sắp có'].map(t => ({ value: t, label: t || '— Không có nhãn —' })),
+      onEdBadge: (e) => { const t = e.target.value; this.setField(S.sel, 'badge', t ? { t: t, u: (sel && sel.badge && sel.badge.u) || '' } : null); },
+      edBadgeDateOn: !!(sel && sel.badge && sel.badge.t),
+      edBadgeDate: sel && sel.badge ? (sel.badge.u || '') : '',
+      onEdBadgeDate: (e) => { const u = e.target.value; this.setField(S.sel, 'badge', Object.assign({}, sel.badge, { u: u })); },
+      edBadgeHint: sel && sel.badge && sel.badge.u
+        ? 'Hết ngày này hệ thống tự gỡ nhãn, bạn không phải nhớ.'
+        : 'Đặt ngày hết hạn để nhãn tự tắt — bỏ trống thì nhãn hiện mãi.',
+      edIconClass: sel ? (sel.icon || this.KIND[sel.kind].icon) : 'ri-links-line',
+      edIconLabel: sel && sel.icon ? 'Đổi icon' : 'Chọn icon',
+      edIconTitle: sel && sel.icon ? 'Đổi biểu tượng đứng trước tên mục' : 'Thêm biểu tượng nhỏ đứng trước tên mục (không bắt buộc)',
+      edIconMuted: !(sel && sel.icon),
+      onEdIconOpen: (e) => { e.stopPropagation(); this.setState(st => ({ iconOpen: !st.iconOpen, iconQ: '' })); },
+      iconOpenOn: !!S.iconOpen,
+      iconQ: S.iconQ || '', onIconQ: (e) => this.setState({ iconQ: e.target.value }),
+      iconGroups: (() => {
+        const qq = (S.iconQ || '').trim().toLowerCase();
+        const mk = (ic) => ({
+          cls: ic.i, title: ic.kw.split(' ').slice(0, 4).join(', '),
+          style: 'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid ' + (sel && sel.icon === ic.i ? '#405189' : '#eff2f7') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'rgba(64,81,137,.08)' : '#fff') + ';color:' + (sel && sel.icon === ic.i ? '#405189' : '#495057') + ';font-size:17px;cursor:pointer;',
+          onClick: () => { this.setField(S.sel, 'icon', ic.i); this.setState({ iconOpen: false }); }
+        });
+        if (qq) { const hit = this.ICONS.filter(ic => ic.kw.indexOf(qq) >= 0); return hit.length ? [{ g: hit.length + ' biểu tượng khớp', icons: hit.map(mk) }] : []; }
+        return this.ICON_GROUPS.map(g => ({ g: g.g, icons: g.list.map(x => mk({ i: x[0], kw: x[1] })) }));
+      })(),
+      iconEmptyOn: !!((S.iconQ || '').trim() && !this.ICONS.some(ic => ic.kw.indexOf((S.iconQ || '').trim().toLowerCase()) >= 0)),
+      iconCountText: this.ICONS.length + ' biểu tượng',
+      iconList: this.ICONS.filter(ic => { const qq = (S.iconQ || '').trim().toLowerCase(); return !qq || ic.kw.indexOf(qq) >= 0; }).map(ic => ({
+        cls: ic.i, title: ic.kw.split(' ').slice(0, 3).join(', '),
+        style: 'display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid ' + (sel && sel.icon === ic.i ? '#405189' : '#eff2f7') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'rgba(64,81,137,.08)' : '#fff') + ';color:' + (sel && sel.icon === ic.i ? '#405189' : '#495057') + ';font-size:17px;cursor:pointer;',
+        onClick: () => { this.setField(S.sel, 'icon', ic.i); this.setState({ iconOpen: false }); }
+      })),
+      iconNoneOn: !!(sel && sel.icon),
+      onEdIconClear: () => { this.setField(S.sel, 'icon', ''); this.setState({ iconOpen: false }); },
+      iconTipOn: !!(sel && !sel.icon && this.suggestIcon(this.lbl(sel) || this.lbl(sel, DEF))),
+      iconTipClass: sel ? this.suggestIcon(this.lbl(sel) || this.lbl(sel, DEF)) : '',
+      onIconTip: () => { const g = this.suggestIcon(this.lbl(sel) || this.lbl(sel, DEF)); if (g) { this.setField(S.sel, 'icon', g); this.setState({ iconOpen: false }); this.toast('Đã gán icon gợi ý theo tên mục — đổi lại bất cứ lúc nào.', 'ri-magic-line', true); } },
+      devicePills: [
+        { k: '', l: 'Mọi thiết bị', i: 'ri-device-line' },
+        { k: 'pc', l: 'Chỉ máy tính', i: 'ri-computer-line' },
+        { k: 'mb', l: 'Chỉ điện thoại', i: 'ri-smartphone-line' }
+      ].map(d => ({
+        label: d.l, icon: d.i, cls: 'mn-tab' + ((sel && (sel.only || '')) === d.k ? ' on' : ''),
+        title: d.k === '' ? 'Hiện ở mọi nơi trình đơn này xuất hiện' : ('Chỉ hiện khi khách xem trên ' + (d.k === 'pc' ? 'máy tính' : 'điện thoại')),
+        onClick: () => this.setField(S.sel, 'only', d.k)
+      })),
+      edFoot: sel ? ('Nguồn: ' + this.KIND[sel.kind].src + (selSrc ? ' · ' + selSrc.label : '') + ' · thao tác khác nằm ở nút ⋮ của hàng.') : '',
+      onEdClose: () => this.setState({ sel: null }),
+
+      previewOn: this.props.showPreview !== false,
+      devices: [
+        { k: 'pc', l: 'Máy tính', i: 'ri-computer-line', t: 'Xem như trên máy tính' },
+        { k: 'mb', l: 'Điện thoại', i: 'ri-smartphone-line', t: 'Xem như trên điện thoại' }
+      ].map(d => ({ label: d.l, icon: d.i, title: d.t, cls: 'mn-tab' + (S.device === d.k ? ' on' : ''), onClick: () => this.setState({ device: d.k }) })),
+      pcOn: S.device === 'pc', mbOn: S.device === 'mb',
+      preview: preview, previewMobile: previewMobile,
+      crowdedOn: chars > 68,
+      crowdedText: 'Tổng chữ ở cấp ngoài cùng khá dài — trên màn hình 1280px thanh có thể xuống dòng. Gom bớt vào mục con hoặc rút gọn tên mục.',
+
+      addToEndOn: !(S.addTo === 'sel' && S.sel), addToSelOn: !!(S.addTo === 'sel' && S.sel),
+      addTargetOn: !!S.sel,
+      addTargetName: sel ? (this.lbl(sel) || this.lbl(sel, DEF)) : '',
+      onAddToEnd: () => this.setState({ addTo: 'end' }),
+      onAddToSel: () => this.setState({ addTo: 'sel' }),
+      srcTabs: [{ k: 'page', l: 'Trang' }, { k: 'cat', l: 'Chuyên mục' }, { k: 'prod', l: 'Sản phẩm' }, { k: 'special', l: 'Đặc biệt' }, { k: 'url', l: 'Liên kết' }]
+        .map(t => ({ label: t.l, cls: 'mn-tab' + (S.tab === t.k ? ' on' : ''), onClick: () => this.setState({ tab: t.k, search: '', picked: {} }) })),
+      urlTabOn: S.tab === 'url', listTabOn: S.tab !== 'url',
+      search: S.search, onSearch: (e) => this.setState({ search: e.target.value }),
+      searchPh: S.tab === 'page' ? 'Tìm trang…' : (S.tab === 'cat' ? 'Tìm chuyên mục…' : (S.tab === 'special' ? 'Tìm liên kết đặc biệt…' : 'Tìm nhóm sản phẩm…')),
+      srcRows: srcList.map(x => ({
+        label: x.label, meta: x.meta, used: !!usedRefs[x.ref] && !x.group, draft: !!x.draft,
+        iconOn: !!x.icon, icon: x.icon || '',
+        title: (usedRefs[x.ref] && !x.group) ? 'Đã có trong trình đơn này — thêm nữa sẽ trùng mục' : (x.draft ? 'Trang chưa đăng — thêm được, nhưng nên ẩn cho tới khi đăng' : 'Chọn để thêm vào trình đơn'),
+        labelStyle: 'font-size:12.5px;color:' + (usedRefs[x.ref] ? '#adb5bd' : '#343a40') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
+        on: !!S.picked[x.ref], off: !S.picked[x.ref],
+        onClick: () => this.setState(st => ({ picked: Object.assign({}, st.picked, { [x.ref]: !st.picked[x.ref] }) }))
+      })),
+      srcEmpty: srcList.length === 0,
+      onAddPicked: () => this.addPicked(), addPickedOff: pickedN === 0,
+      addPickedLabel: pickedN ? ('Thêm ' + pickedN + ' mục đã chọn') : 'Chọn mục để thêm',
+      newLabel: S.newLabel, onNewLabel: (e) => this.setState({ newLabel: e.target.value }),
+      newUrl: S.newUrl, onNewUrl: (e) => this.setState({ newUrl: e.target.value }),
+      onAddUrl: () => this.addUrl(),
+      addUrlOff: !S.newLabel.trim() || !this.normUrl(S.newUrl).ok,
+      urlHintOn: !!S.newUrl.trim(),
+      urlHint: S.newUrl.trim() ? (this.normUrl(S.newUrl).ok ? ('Sẽ lưu thành: ' + this.normUrl(S.newUrl).url + (this.normUrl(S.newUrl).note ? ' — ' + this.normUrl(S.newUrl).note : '')) : this.normUrl(S.newUrl).msg) : '',
+      urlHintColor: S.newUrl.trim() && !this.normUrl(S.newUrl).ok ? '#d84a2f' : '#adb5bd',
+
+      barOn: D.n > 0 && !this.props.embedded,
+      dirtyText: 'Chưa lưu: ' + D.text,
+      onReset: () => this.reset(),
+
+      askOn: !!S.ask, askTitle: S.ask ? S.ask.title : '', askBody: S.ask ? S.ask.body : '', askOk: S.ask ? S.ask.ok : '',
+      onAskOk: () => { const r = S.ask && S.ask.run; this.setState({ ask: null }); if (r) r(); },
+      askAltOn: !!(S.ask && S.ask.alt), askAlt: S.ask ? (S.ask.alt || '') : '',
+      onAskAlt: () => { const r = S.ask && S.ask.runAlt; this.setState({ ask: null }); if (r) r(); },
+      onAskCancel: () => this.setState({ ask: null }),
+
+      toastOn: !!S.toast, toastText: S.toast ? S.toast.text : '', toastIcon: S.toast ? S.toast.icon : '',
+      toastUndoOn: !!(S.toast && S.toast.undo && S.past.length)
+    };
+  }
+}
+
+</script>
+</body>
+</html>

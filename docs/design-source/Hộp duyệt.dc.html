@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./content-workflow.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
+a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+.sp-wrap{container-type:inline-size;display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1280px;margin:0 auto;}
+.sp-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.sp-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
+.sp-t{font-size:14px;font-weight:600;color:#343a40;}
+.sp-grid{display:grid;grid-template-columns:352px minmax(0,1fr);gap:16px;align-items:start;}
+.sp-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
+.sp-tab:hover{background:#f3f6f9;}
+.sp-tab.on{border-color:#405189;background:rgba(64,81,137,.08);font-weight:600;color:#405189;}
+.sp-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:20px;background:#405189;color:#fff;font-size:10.5px;font-weight:700;}
+.sp-item{display:grid;grid-template-columns:4px 44px minmax(0,1fr);gap:9px;align-items:stretch;width:100%;border:0;border-top:1px solid #f6f7f9;background:#fff;padding:0;font:inherit;text-align:left;cursor:pointer;box-sizing:border-box;}
+.sp-item:focus-visible{outline:2px solid #405189;outline-offset:-2px;}
+.sp-pick{display:flex;align-items:flex-start;justify-content:center;padding-top:13px;min-width:44px;min-height:44px;}
+.sp-cb{width:18px;height:18px;border:1.5px solid #ccd0d8;border-radius:3px;background:#fff;display:inline-flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;}
+.sp-cb.on{border-color:#405189;background:#405189;}
+.sp-tools{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
+.sp-search{display:flex;align-items:center;gap:7px;flex:1 1 150px;min-width:0;min-height:36px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;color:#adb5bd;}
+.sp-search:focus-within{border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.2);}
+.sp-search input{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:12.5px;color:#495057;}
+.sp-filter{min-height:36px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;color:#495057;padding:0 8px;flex:0 1 auto;max-width:150px;}
+.sp-bulk{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #eff2f7;background:rgba(64,81,137,.055);}
+.sp-item:hover{background:#fbfcfd;}
+.sp-item.on{background:rgba(64,81,137,.055);}
+.sp-bar{background:transparent;}
+.sp-item.on .sp-bar{background:#405189;}
+.sp-body{display:flex;flex-direction:column;gap:4px;min-width:0;padding:13px 14px 13px 0;}
+.sp-title{font-size:13px;font-weight:600;color:#343a40;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.sp-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;color:#878a99;line-height:1.5;}
+.sp-meta > span{white-space:nowrap;}
+.sp-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.sp-step{font-size:11.5px;font-weight:600;color:#495057;}
+.sp-sep{color:#dfe2e8;}
+.sp-late{color:#8a5f18;font-weight:600;}
+.sp-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;width:fit-content;}
+.sp-chip.sec{background:#f3f6f9;color:#5c5f6e;}
+.sp-chip.wf{background:rgba(64,81,137,.10);color:#405189;}
+.sp-chip.warn{background:rgba(247,184,75,.18);color:#8a5f18;}
+.sp-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
+.sp-btn:hover{background:#f3f6f9;}
+.sp-pri{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 18px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.sp-pri:hover{filter:brightness(.95);}
+.sp-dgr{border-color:rgba(240,101,72,.45);color:#c0432c;}
+.sp-dgr:hover{background:rgba(240,101,72,.08);}
+.sp-ghost{border-color:transparent;background:transparent;color:#405189;}
+.sp-ghost:hover{background:rgba(64,81,137,.07);}
+.sp-foot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid #eff2f7;background:#fcfcfd;position:sticky;bottom:0;border-radius:0 0 6px 6px;}
+.sp-read{padding:16px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 250px);min-height:300px;overflow:auto;}
+.sp-read > *{flex:0 0 auto;}
+.sp-sk{height:14px;border-radius:4px;background:linear-gradient(90deg,#f3f6f9,#eaeef3,#f3f6f9);background-size:200% 100%;animation:spsk 1.2s linear infinite;}
+@keyframes spsk{from{background-position:200% 0}to{background-position:-200% 0}}
+.sp-excerpt{font-size:13.5px;color:#495057;line-height:1.85;}
+.sp-fld{border:1px solid #eff2f7;border-radius:6px;overflow:hidden;background:#fff;}
+.sp-fhd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;width:100%;box-sizing:border-box;padding:8px 12px;background:#f8f9fb;border:0;border-bottom:1px solid #eff2f7;font:inherit;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#6c6f80;text-align:left;cursor:pointer;min-height:38px;}
+.sp-fhd:hover{background:#f1f4f8;}
+.sp-fhd:focus-visible{outline:2px solid #405189;outline-offset:-2px;}
+.sp-chev{font-size:15px;color:#878a99;transition:transform .15s;align-self:center;}
+.sp-fld.off .sp-fbd{display:none;}
+.sp-fld.off .sp-fhd{border-bottom:0;}
+.sp-fld.off .sp-chev{transform:rotate(-90deg);}
+.sp-warn{display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 8px;border-radius:20px;background:rgba(247,184,75,.18);color:#8a5f18;font-size:10px;font-weight:700;letter-spacing:0;text-transform:none;}
+.sp-fbd{padding:12px;display:flex;flex-direction:column;gap:9px;}
+.sp-miss{font-size:12.5px;color:#8a5f18;line-height:1.7;}
+.sp-lb{font-size:11px;font-weight:700;letter-spacing:.06em;color:#878a99;text-transform:uppercase;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.sp-hint{font-size:11px;font-weight:500;letter-spacing:0;color:#5c5f6e;text-transform:none;white-space:nowrap;}
+.sp-cover{width:112px;height:auto;max-width:112px;border:1px solid #eff2f7;border-radius:4px;background:#f8f9fb;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sp-cover.empty{aspect-ratio:4 / 3;border-style:dashed;border-color:#e6cf9b;background:rgba(247,184,75,.08);}
+.sp-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;}
+.sp-serp{display:flex;flex-direction:column;gap:4px;padding:12px 13px;border:1px solid #eff2f7;border-radius:4px;background:#fcfcfd;}
+.sp-fields{border-top:0;}
+.sp-flabel{font-size:11.5px;color:#5c5f6e;}
+.sp-sm{min-height:36px;}
+@container (max-width: 700px){.sp-sm{min-height:44px;}.sp-fhd{min-height:44px;}}
+.sp-quote{display:flex;gap:10px;padding:12px 13px;background:#f8f9fb;border-left:2px solid #e9ebec;border-radius:0 4px 4px 0;font-size:12.5px;color:#495057;line-height:1.7;}
+.sp-av{width:30px;height:30px;border-radius:50%;background:rgba(64,81,137,.10);color:#405189;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sp-wfhd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.sp-wfstep{font-size:12.5px;font-weight:700;color:#405189;}
+.sp-wfname{font-size:11.5px;color:#5c5f6e;}
+.sp-track{display:flex;align-items:flex-start;width:100%;}
+.sp-cell{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;}
+.sp-rail{display:flex;align-items:center;width:100%;}
+.sp-l{flex:1 1 auto;height:2px;background:#e9ebec;}
+.sp-cell:first-child .sp-l.left{visibility:hidden;}
+.sp-cell:last-child .sp-l.right{visibility:hidden;}
+.sp-cell.done .sp-l,.sp-cell.cur .sp-l.left{background:#405189;}
+.sp-node{width:26px;height:26px;border-radius:50%;border:2px solid #e9ebec;background:#fff;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:#878a99;font-size:13px;}
+.sp-cell.done .sp-node{border-color:#405189;background:#405189;color:#fff;}
+.sp-cell.cur .sp-node{border-color:#405189;background:#fff;color:#405189;box-shadow:0 0 0 4px rgba(64,81,137,.14);}
+.sp-cell.pub.cur .sp-node{border-color:#0ab39c;color:#0a6d60;box-shadow:0 0 0 4px rgba(10,179,156,.16);}
+.sp-cell.pub.todo .sp-node{border-color:rgba(10,179,156,.45);color:#0a6d60;}
+.sp-cap{font-size:11.5px;line-height:1.45;text-align:center;color:#5c5f6e;padding:0 4px;text-wrap:pretty;}
+.sp-cell.done .sp-cap{color:#495057;}
+.sp-cell.cur .sp-cap{color:#405189;font-weight:700;}
+.sp-cell.pub.cur .sp-cap{color:#0a6d60;}
+.sp-prog{display:none;}
+@container (max-width: 600px){
+  .sp-track{display:none;}
+  .sp-prog{display:flex !important;flex-direction:column;gap:7px;width:100%;}
+  .sp-progline{height:6px;border-radius:20px;background:#eff2f7;overflow:hidden;display:flex;}
+  .sp-progfill{display:block;flex:0 0 auto;height:6px;border-radius:20px;background:#405189;}
+}
+.sp-ta{width:100%;box-sizing:border-box;min-height:96px;border:1px solid #e9ebec;border-radius:4px;padding:10px 12px;font:inherit;font-size:13px;color:#495057;resize:vertical;}
+.sp-ta:focus{outline:0;border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.2);}
+.sp-ta.bad{border-color:#f06548;box-shadow:0 0 0 3px rgba(240,101,72,.16);}
+.sp-sel{width:100%;box-sizing:border-box;min-height:40px;border:1px solid #e9ebec;border-radius:4px;padding:0 10px;font:inherit;font-size:13px;color:#495057;background:#fff;}
+.sp-ov{position:fixed;inset:0;background:rgba(33,37,41,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60;}
+.sp-modal{background:#fff;border-radius:6px;box-shadow:0 5px 20px rgba(56,65,74,.28);width:100%;max-width:520px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;}
+.sp-mb{padding:16px;overflow:auto;display:flex;flex-direction:column;gap:13px;}
+.sp-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #eff2f7;background:#fcfcfd;flex-wrap:wrap;}
+.sp-back{display:none;}
+@container (max-width: 940px){
+  .sp-grid{grid-template-columns:minmax(0,1fr);}
+  .sp-hide{display:none !important;}
+  .sp-back{display:inline-flex !important;}
+  .sp-read{max-height:none;}
+}
+@container (max-width: 560px){
+  .sp-wrap{padding:16px;}
+  .sp-fields{grid-template-columns:minmax(0,1fr);}
+  .sp-tab,.sp-search,.sp-filter,.sp-btn,.sp-pri{min-height:44px;}
+  .sp-foot .sp-btn,.sp-foot .sp-pri{flex:1 1 140px;}
+}
+@media (pointer:coarse){.sp-btn,.sp-pri,.sp-tab,.sp-sel,.sp-item{min-height:44px;}}
+</style>
+</helmet>
+
+<div class="sp-wrap">
+
+  <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
+      <span style="font-size:11.5px;color:#adb5bd;">Nội dung › Hộp duyệt</span>
+      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Hộp duyệt</span>
+      <span style="font-size:13px;color:#878a99;line-height:1.65;">Chọn một bài ở danh sách bên trái để đọc, rồi bấm việc cần làm ở cuối khung đọc.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;">
+      <button class="sp-btn" onClick="{{ onReload }}"><i class="ri-refresh-line" style="font-size:15px;"></i>Tải lại</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <sc-if value="{{ tabMineOn }}"><button class="sp-tab on" onClick="{{ onTabMine }}"><i class="ri-user-follow-line" style="font-size:16px;"></i>Giao cho tôi<span class="sp-cnt">{{ mineCount }}</span></button></sc-if>
+    <sc-if value="{{ tabMineOff }}"><button class="sp-tab" onClick="{{ onTabMine }}"><i class="ri-user-follow-line" style="font-size:16px;"></i>Giao cho tôi<span style="font-weight:700;color:#878a99;">{{ mineCount }}</span></button></sc-if>
+    <sc-if value="{{ tabQueueOn }}"><button class="sp-tab on" onClick="{{ onTabQueue }}"><i class="ri-inbox-line" style="font-size:16px;"></i>Hàng chờ duyệt<span class="sp-cnt">{{ queueCount }}</span></button></sc-if>
+    <sc-if value="{{ tabQueueOff }}"><button class="sp-tab" onClick="{{ onTabQueue }}"><i class="ri-inbox-line" style="font-size:16px;"></i>Hàng chờ duyệt<span style="font-weight:700;color:#878a99;">{{ queueCount }}</span></button></sc-if>
+  </div>
+
+  <sc-if value="{{ isLoading }}">
+    <div class="sp-grid">
+      <div class="sp-card">
+        <div class="sp-h"><span class="sp-t">{{ listTitle }}</span></div>
+        <sc-for list="{{ skeletons }}" as="s" hint-placeholder-count="4">
+          <div style="padding:14px;border-top:1px solid #f6f7f9;display:flex;flex-direction:column;gap:7px;">
+            <span class="sp-sk" style="width:82%;"></span>
+            <span class="sp-sk" style="width:54%;height:10px;"></span>
+            <span class="sp-sk" style="width:64%;height:10px;"></span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="sp-card">
+        <div class="sp-h"><span class="sp-sk" style="width:46%;height:16px;"></span></div>
+        <div class="sp-read">
+          <span class="sp-sk" style="width:30%;height:30px;border-radius:20px;"></span>
+          <span class="sp-sk" style="width:92%;"></span>
+          <span class="sp-sk" style="width:86%;"></span>
+          <span class="sp-sk" style="width:74%;"></span>
+          <span style="font-size:12px;color:#5c5f6e;">Đang lấy danh sách bài chờ…</span>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isError }}">
+    <div class="sp-card" style="padding:20px;display:flex;flex-direction:column;gap:12px;align-items:flex-start;border-color:rgba(240,101,72,.35);">
+      <span style="display:flex;align-items:center;gap:9px;"><i class="ri-error-warning-line" style="font-size:20px;color:#f06548;"></i><span class="sp-t">Chưa tải được hộp duyệt</span></span>
+      <span style="font-size:13px;color:#878a99;line-height:1.7;max-width:560px;">Máy chủ chưa trả lời. Không có bài nào bị mất, bạn bấm thử lại sau vài giây.</span>
+      <button class="sp-pri" onClick="{{ onReload }}"><i class="ri-refresh-line" style="font-size:16px;"></i>Thử lại</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isEmpty }}">
+    <div class="sp-card" style="padding:32px 24px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;">
+      <span style="width:52px;height:52px;border-radius:50%;background:rgba(10,179,156,.12);display:inline-flex;align-items:center;justify-content:center;"><i class="ri-check-double-line" style="font-size:24px;color:#0a6d60;"></i></span>
+      <span class="sp-t" style="font-size:16px;">Không có bài nào chờ bạn — thảnh thơi nhé ☕</span>
+      <span style="font-size:13px;color:#878a99;line-height:1.7;max-width:520px;">{{ emptyText }}</span>
+      <button class="sp-btn" onClick="{{ onOtherTab }}"><i class="ri-arrow-left-right-line" style="font-size:15px;"></i>{{ otherTabLabel }}</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isReady }}">
+    <div class="sp-grid">
+
+      <div class="sp-card {{ listCls }}">
+        <div class="sp-h">
+          <span class="sp-t">{{ listTitle }}</span>
+          <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ shownLine }}</span>
+        </div>
+        <sc-if value="{{ hasPicked }}">
+          <div class="sp-bulk">
+            <span style="font-size:12.5px;font-weight:600;color:#405189;">Đã chọn {{ pickedCount }} bài</span>
+            <span style="margin-left:auto;display:flex;gap:7px;flex-wrap:wrap;">
+              <button class="sp-pri sp-sm" style="padding:0 13px;" onClick="{{ onBulk }}" disabled="{{ bulkOff }}" title="{{ bulkTitle }}"><i class="ri-check-double-line" style="font-size:15px;"></i>{{ bulkLabel }}</button>
+              <button class="sp-btn sp-sm" style="padding:0 11px;" onClick="{{ onClearPick }}">Bỏ chọn</button>
+            </span>
+          </div>
+        </sc-if>
+        <div class="sp-tools">
+          <span class="sp-search">
+            <i class="ri-search-line" style="font-size:15px;"></i>
+            <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Tìm theo tiêu đề hoặc người gửi">
+          </span>
+          <select class="sp-filter" value="{{ secFilter }}" onChange="{{ onSec }}">
+            <option value="">Mọi thể loại</option>
+            <sc-for list="{{ sections }}" as="s" hint-placeholder-count="3">
+              <option value="{{ s.name }}">{{ s.label }}</option>
+            </sc-for>
+          </select>
+        </div>
+        <sc-if value="{{ noHit }}">
+          <div style="padding:26px 16px;display:flex;flex-direction:column;gap:9px;align-items:center;text-align:center;">
+            <i class="ri-search-eye-line" style="font-size:22px;color:#adb5bd;"></i>
+            <span style="font-size:13px;color:#878a99;line-height:1.7;max-width:280px;">Không có bài nào khớp. Thử bớt chữ tìm kiếm hoặc chọn lại “Mọi thể loại”.</span>
+            <button class="sp-btn sp-sm" onClick="{{ onClearFilter }}">Xoá lọc</button>
+          </div>
+        </sc-if>
+        <sc-for list="{{ items }}" as="it" hint-placeholder-count="5">
+          <div class="sp-item {{ it.cls }}" onClick="{{ it.onSelect }}" role="button" tabIndex="0">
+            <span class="sp-bar"></span>
+            <span class="sp-pick" onClick="{{ it.onPick }}" title="{{ it.pickTitle }}">
+              <sc-if value="{{ it.checked }}"><span class="sp-cb on"><i class="ri-check-line" style="font-size:13px;"></i></span></sc-if>
+              <sc-if value="{{ it.unchecked }}"><span class="sp-cb"></span></sc-if>
+            </span>
+            <span class="sp-body">
+              <span class="sp-title">{{ it.title }}</span>
+              <span class="sp-meta">
+                <span class="sp-dot" style="background:{{ it.dotColor }};"></span>
+                <span class="sp-step">{{ it.stepLine }}</span>
+                <span class="sp-sep">·</span>
+                <span>{{ it.section }}</span>
+              </span>
+              <span class="sp-meta">
+                <span>{{ it.sender }}</span>
+                <span class="sp-sep">·</span>
+                <sc-if value="{{ it.late }}"><span class="sp-late">{{ it.waitLine }}</span></sc-if>
+                <sc-if value="{{ it.onTime }}"><span>{{ it.waitLine }}</span></sc-if>
+              </span>
+            </span>
+          </div>
+        </sc-for>
+        <sc-if value="{{ hasMore }}">
+          <div style="padding:12px 16px;border-top:1px solid #f6f7f9;display:flex;justify-content:center;">
+            <button class="sp-btn" onClick="{{ onMore }}"><i class="ri-arrow-down-line" style="font-size:15px;"></i>Tải thêm {{ moreCount }} bài</button>
+          </div>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ noPick }}">
+        <div class="sp-card {{ detailCls }}" style="padding:40px 24px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;">
+          <span style="width:52px;height:52px;border-radius:50%;background:rgba(64,81,137,.09);display:inline-flex;align-items:center;justify-content:center;"><i class="ri-file-text-line" style="font-size:24px;color:#405189;"></i></span>
+          <span class="sp-t" style="font-size:15px;">Chọn một bài ở danh sách bên trái</span>
+          <span style="font-size:13px;color:#878a99;line-height:1.7;max-width:420px;">Bài sẽ mở ở khung này để bạn đọc. Các việc làm được với bài nằm ở cuối khung đọc.</span>
+        </div>
+      </sc-if>
+
+      <div class="sp-card {{ detailCls }} {{ detailHide }}">
+        <div class="sp-h">
+          <button class="sp-btn sp-back sp-sm" style="padding:0 10px;" onClick="{{ onBack }}"><i class="ri-arrow-left-line" style="font-size:16px;"></i>Danh sách</button>
+          <span class="sp-t" style="line-height:1.45;">{{ curTitle }}</span>
+          <span class="sp-chip sec" style="margin-left:auto;"><i class="{{ curSecIcon }}" style="font-size:11px;"></i>{{ curSection }}</span>
+        </div>
+        <div class="sp-read">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span class="sp-av">{{ curIni }}</span>
+            <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+              <span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ curSender }}</span>
+              <span style="font-size:11.5px;color:#878a99;">{{ curSentLine }}</span>
+            </span>
+            <sc-if value="{{ curLate }}"><span class="sp-chip warn" style="margin-left:auto;"><i class="ri-alarm-warning-line" style="font-size:11px;"></i>{{ curWaitLine }}</span></sc-if>
+          </div>
+
+          <div class="sp-wfhd">
+            <span class="sp-wfstep"><i class="{{ curStepIcon }}" style="font-size:14px;"></i> Bước {{ curStepNo }}/{{ curStepCount }} — {{ curStepLabel }}</span>
+            <span class="sp-wfname"><i class="ri-flow-chart" style="font-size:12px;"></i> {{ curWf }}</span>
+          </div>
+
+          <div class="sp-track">
+            <sc-for list="{{ curSteps }}" as="s" hint-placeholder-count="4">
+              <span class="sp-cell {{ s.cls }}">
+                <span class="sp-rail">
+                  <span class="sp-l left"></span>
+                  <span class="sp-node">
+                    <sc-if value="{{ s.isDone }}"><i class="ri-check-line"></i></sc-if>
+                    <sc-if value="{{ s.notDone }}"><i class="{{ s.icon }}"></i></sc-if>
+                  </span>
+                  <span class="sp-l right"></span>
+                </span>
+                <span class="sp-cap">{{ s.label }}</span>
+              </span>
+            </sc-for>
+          </div>
+
+          <div class="sp-prog">
+            <span class="sp-progline"><span class="sp-progfill" style="width:{{ curPct }};"></span></span>
+            <span style="font-size:11.5px;color:#5c5f6e;">{{ curNextLine }}</span>
+          </div>
+
+          <sc-if value="{{ curHasNote }}">
+            <span class="sp-quote"><i class="ri-chat-quote-line" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i><span>{{ curNote }}</span></span>
+          </sc-if>
+
+          <sc-if value="{{ curHasMissing }}">
+            <span class="sp-quote" style="background:rgba(247,184,75,.14);border-left-color:#f7b84b;color:#8a5f18;"><i class="ri-error-warning-line" style="font-size:16px;flex-shrink:0;"></i><span>{{ curMissingLine }}</span></span>
+          </sc-if>
+
+          <div class="sp-fld {{ foldCover }}">
+            <button class="sp-fhd" aria-expanded="{{ ariaCover }}" onClick="{{ onFoldCover }}"><i class="ri-arrow-down-s-line sp-chev"></i>Ảnh đại diện<sc-if value="{{ warnCover }}"><span class="sp-warn"><i class="ri-error-warning-line" style="font-size:11px;"></i>chưa có</span></sc-if></button>
+            <div class="sp-fbd">
+              <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;">
+                <sc-if value="{{ curHasCover }}">
+                  <span class="sp-cover" style="aspect-ratio:{{ curCoverRatio }};"><i class="ri-image-2-line" style="font-size:20px;color:#adb5bd;"></i></span>
+                  <span style="display:flex;flex-direction:column;gap:4px;flex:1 1 200px;min-width:0;">
+                    <span style="font-size:12.5px;color:#495057;line-height:1.6;">{{ curCoverAlt }}</span>
+                    <span style="font-size:11.5px;color:#5c5f6e;">Tỷ lệ gốc {{ curCoverRatioLabel }} — khung hiển thị tự canh theo ảnh thật, không cắt.</span>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ curNoCover }}">
+                  <span class="sp-cover empty"><i class="ri-image-add-line" style="font-size:20px;color:#c9ab6a;"></i></span>
+                  <span class="sp-miss" style="flex:1 1 200px;">Chưa có ảnh đại diện. Thẻ tin trong danh sách sẽ hiện ô trắng — nên yêu cầu người viết bổ sung trước khi đăng.</span>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+
+          <sc-if value="{{ curHasFields }}">
+            <div class="sp-fld {{ foldFields }}">
+              <button class="sp-fhd" aria-expanded="{{ ariaFields }}" onClick="{{ onFoldFields }}"><i class="ri-arrow-down-s-line sp-chev"></i>Thông tin chính <span class="sp-hint">{{ curSectionLower }}</span></button>
+              <div class="sp-fbd">
+                <div class="sp-fields">
+                  <sc-for list="{{ curFields }}" as="f" hint-placeholder-count="3">
+                    <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+                      <span class="sp-flabel">{{ f.label }}</span>
+                      <span style="font-size:12.5px;font-weight:500;color:#343a40;line-height:1.55;">{{ f.value }}</span>
+                    </span>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <div class="sp-fld {{ foldDesc }}">
+            <button class="sp-fhd" aria-expanded="{{ ariaDesc }}" onClick="{{ onFoldDesc }}"><i class="ri-arrow-down-s-line sp-chev"></i>Mô tả ngắn <span class="sp-hint">hiện ở thẻ tin trong danh sách</span><sc-if value="{{ curNoDesc }}"><span class="sp-warn"><i class="ri-error-warning-line" style="font-size:11px;"></i>chưa nhập</span></sc-if><span class="sp-hint" style="margin-left:auto;">{{ curDescLen }}</span></button>
+            <div class="sp-fbd">
+              <sc-if value="{{ curHasDesc }}">
+                <span style="font-size:13px;color:#495057;line-height:1.75;">{{ curDesc }}</span>
+              </sc-if>
+              <sc-if value="{{ curNoDesc }}">
+                <span class="sp-miss">Chưa nhập. Danh sách tin sẽ tự cắt hai dòng đầu của nội dung, thường ra câu lửng.</span>
+              </sc-if>
+            </div>
+          </div>
+
+          <div class="sp-fld {{ foldBody }}">
+            <button class="sp-fhd" aria-expanded="{{ ariaBody }}" onClick="{{ onFoldBody }}"><i class="ri-arrow-down-s-line sp-chev"></i>Nội dung chi tiết <span class="sp-hint" style="margin-left:auto;">{{ curBodyLen }}</span></button>
+            <div class="sp-fbd" style="gap:11px;">
+              <sc-for list="{{ curBody }}" as="p" hint-placeholder-count="3">
+                <span class="sp-excerpt">{{ p.text }}</span>
+              </sc-for>
+            </div>
+          </div>
+
+          <div class="sp-fld {{ foldSeo }}">
+            <button class="sp-fhd" aria-expanded="{{ ariaSeo }}" onClick="{{ onFoldSeo }}"><i class="ri-arrow-down-s-line sp-chev"></i>Khi đăng, khách và Google sẽ thấy<sc-if value="{{ warnSeo }}"><span class="sp-warn"><i class="ri-error-warning-line" style="font-size:11px;"></i>cần xem</span></sc-if></button>
+            <div class="sp-fbd">
+              <div class="sp-serp">
+                <span style="font-size:11.5px;color:#0a6d60;word-break:break-all;">{{ curSlug }}</span>
+                <sc-if value="{{ curHasSeoTitle }}"><span style="font-size:14px;color:#3577f1;line-height:1.45;">{{ curSeoTitle }}</span></sc-if>
+                <sc-if value="{{ curNoSeoTitle }}"><span class="sp-miss" style="font-size:13px;">Chưa có tiêu đề SEO — Google sẽ lấy tiêu đề bài, có thể bị cắt giữa câu.</span></sc-if>
+                <sc-if value="{{ curHasSeoDesc }}"><span style="font-size:12.5px;color:#5c5f6e;line-height:1.7;">{{ curSeoDesc }}</span></sc-if>
+                <sc-if value="{{ curNoSeoDesc }}"><span class="sp-miss">Chưa có mô tả SEO — Google sẽ tự cắt một đoạn trong bài.</span></sc-if>
+              </div>
+            </div>
+          </div>
+
+          <button class="sp-btn sp-ghost" style="align-self:flex-start;" onClick="{{ onOpenFull }}"><i class="ri-external-link-line" style="font-size:15px;"></i>Mở bài viết đầy đủ để sửa</button>
+
+          <div class="sp-fld {{ foldLog }}">
+            <button class="sp-fhd" aria-expanded="{{ ariaLog }}" onClick="{{ onFoldLog }}"><i class="ri-arrow-down-s-line sp-chev"></i>Lịch sử duyệt <span class="sp-hint" style="margin-left:auto;">{{ logCountLine }}</span></button>
+            <div class="sp-fbd" style="gap:12px;">
+            <sc-for list="{{ curLogs }}" as="l" hint-placeholder-count="3">
+              <span style="display:flex;gap:10px;">
+                <span class="sp-av" style="width:26px;height:26px;font-size:10.5px;">{{ l.ini }}</span>
+                <span style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto;">
+                  <span style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;">
+                    <span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ l.who }}</span>
+                    <span style="font-size:12px;color:#495057;">{{ l.what }}</span>
+                    <span style="font-size:11px;color:#5c5f6e;">{{ l.when }}</span>
+                  </span>
+                  <span style="font-size:11.5px;color:#878a99;">{{ l.flow }}</span>
+                  <sc-if value="{{ l.hasNote }}"><span class="sp-quote" style="padding:9px 11px;font-size:12px;">{{ l.note }}</span></sc-if>
+                </span>
+              </span>
+            </sc-for>
+            <sc-if value="{{ hasMoreLogs }}">
+              <button class="sp-btn sp-ghost sp-sm" style="align-self:flex-start;" onClick="{{ onMoreLogs }}"><i class="ri-arrow-down-line" style="font-size:15px;"></i>Xem thêm {{ moreLogs }} lần chuyển</button>
+            </sc-if>
+            </div>
+          </div>
+        </div>
+        <div class="sp-foot">
+          <sc-for list="{{ curActions }}" as="a" hint-placeholder-count="2">
+            <sc-if value="{{ a.isPri }}"><button class="sp-pri" onClick="{{ a.onRun }}" title="{{ a.title }}"><i class="{{ a.icon }}" style="font-size:16px;"></i>{{ a.label }}</button></sc-if>
+            <sc-if value="{{ a.isDanger }}"><button class="sp-btn sp-dgr" onClick="{{ a.onRun }}" title="{{ a.title }}"><i class="{{ a.icon }}" style="font-size:15px;"></i>{{ a.label }}</button></sc-if>
+            <sc-if value="{{ a.isPlain }}"><button class="sp-btn" onClick="{{ a.onRun }}" title="{{ a.title }}"><i class="{{ a.icon }}" style="font-size:15px;"></i>{{ a.label }}</button></sc-if>
+          </sc-for>
+          <span style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+            <button class="sp-btn sp-ghost" style="padding:0 10px;" onClick="{{ onPrev }}" disabled="{{ prevOff }}" title="Bài trước trong danh sách"><i class="ri-arrow-up-s-line" style="font-size:18px;"></i></button>
+            <button class="sp-btn sp-ghost" style="padding:0 10px;" onClick="{{ onNext }}" disabled="{{ nextOff }}" title="Bài tiếp theo trong danh sách"><i class="ri-arrow-down-s-line" style="font-size:18px;"></i></button>
+            <span style="font-size:11.5px;color:#5c5f6e;white-space:nowrap;">{{ posLine }}</span>
+          </span>
+        </div>
+      </div>
+
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ mOpen }}">
+    <div class="sp-ov">
+      <div class="sp-modal" role="dialog" aria-modal="true">
+        <div class="sp-h" style="padding:14px 16px;">
+          <i class="{{ mIcon }}" style="font-size:17px;color:#c0432c;"></i>
+          <span class="sp-t">{{ mTitle }}</span>
+          <button style="margin-left:auto;border:0;background:transparent;font-size:18px;color:#878a99;cursor:pointer;" onClick="{{ onMClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
+        </div>
+        <div class="sp-mb">
+          <span style="font-size:12.5px;color:#495057;font-weight:600;line-height:1.55;">{{ mPost }}</span>
+          <span class="sp-quote" style="background:rgba(247,184,75,.14);border-left-color:#f7b84b;color:#8a5f18;"><i class="ri-alert-line" style="font-size:16px;flex-shrink:0;"></i><span>{{ mDangerText }}</span></span>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:12px;font-weight:600;color:#495057;">Lý do <span style="color:#f06548;">*</span></span>
+            <textarea class="sp-ta {{ mTaCls }}" placeholder="{{ mPlaceholder }}" value="{{ mNote }}" onChange="{{ onMNote }}"></textarea>
+            <sc-if value="{{ mErr }}">
+              <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#c0432c;font-weight:600;"><i class="ri-error-warning-line" style="font-size:14px;"></i>Bạn cần ghi rõ lý do để người viết biết đường sửa.</span>
+            </sc-if>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <span style="font-size:12px;font-weight:600;color:#495057;">Giao cho <span style="font-weight:400;color:#5c5f6e;">(không bắt buộc)</span></span>
+            <select class="sp-sel" value="{{ mWho }}" onChange="{{ onMWho }}">
+              <option value="">Không giao riêng cho ai</option>
+              <sc-for list="{{ members }}" as="m" hint-placeholder-count="3">
+                <option value="{{ m.id }}">{{ m.label }}</option>
+              </sc-for>
+            </select>
+          </div>
+        </div>
+        <div class="sp-mf">
+          <button class="sp-btn" onClick="{{ onMClose }}" ref="{{ cancelRef }}">Huỷ</button>
+          <button class="sp-btn sp-dgr" onClick="{{ onMOk }}">{{ mOkLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ cfOpen }}">
+    <div class="sp-ov">
+      <div class="sp-modal" style="max-width:440px;" role="alertdialog" aria-modal="true">
+        <div class="sp-mb" style="align-items:center;text-align:center;padding:24px 20px 8px;">
+          <span style="width:56px;height:56px;border-radius:50%;background:rgba(10,179,156,.14);display:inline-flex;align-items:center;justify-content:center;"><i class="ri-global-line" style="font-size:26px;color:#0a6d60;"></i></span>
+          <span class="sp-t" style="font-size:17px;">{{ cfTitle }}</span>
+          <span style="font-size:13px;color:#878a99;line-height:1.7;">{{ cfText }}</span>
+        </div>
+        <div class="sp-mf" style="justify-content:center;">
+          <button class="sp-btn" onClick="{{ onCfCancel }}" ref="{{ cancelRef }}">Để tôi đọc lại đã</button>
+          <button class="sp-pri" onClick="{{ onCfOk }}">{{ cfOk }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ toastOn }}">
+    <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:4px;background:#343a40;color:#fff;font-size:13px;box-shadow:0 5px 20px rgba(56,65,74,.3);max-width:calc(100vw - 32px);">
+      <i class="{{ toastIcon }}" style="font-size:16px;"></i><span>{{ toast }}</span>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Biên tập&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Dữ liệu từ DB&quot;},&quot;loadState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Bình thường&quot;,&quot;Đang tải&quot;,&quot;Lỗi tải&quot;],&quot;default&quot;:&quot;Bình thường&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trường hợp đặc biệt&quot;}}">
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = {
+      tab: 'mine', shown: 5, items: this.seed(), cur: 1, mobileDetail: false,
+      q: '', sec: '', picked: [], logShown: 3, fold: this.loadFold(),
+      modal: null, note: '', who: '', err: false, confirm: null,
+      toast: '', toastIcon: 'ri-check-line'
+    };
+  }
+  seed() {
+    return [
+      {
+        id: 1, title: 'Bàn giao dây chuyền phay CNC cho khách Bắc Ninh', section: 'Dự án', secIcon: 'ri-building-4-line',
+        wf: 'Quy trình biên tập', step: 'reviewing', sender: 'Trần Văn Nam', wait: 2, mine: true,
+        note: 'Đã bổ sung ảnh xưởng và thông số máy như anh Hà góp ý.',
+        cover: true, coverRatio: '16 / 9', coverAlt: 'Dây chuyền phay CNC bốn trục tại xưởng khách Bắc Ninh',
+        fields: [{ label: 'Khách hàng', value: 'Công ty TNHH Linh kiện Bắc Ninh' }, { label: 'Thời gian thực hiện', value: '18 ngày · tháng 8/2026' }, { label: 'Hạng mục', value: 'Lắp đặt · chạy thử · bàn giao' }],
+        desc: 'Xưởng hoàn tất lắp đặt và bàn giao dây chuyền phay CNC bốn trục cho khách sản xuất linh kiện tại Bắc Ninh sau 18 ngày.',
+        body: [
+          'Tháng 8 vừa qua, xưởng đã hoàn tất lắp đặt và bàn giao dây chuyền phay CNC bốn trục cho một khách hàng sản xuất linh kiện tại Bắc Ninh. Toàn bộ quá trình từ đo đạc mặt bằng đến chạy thử lô hàng đầu tiên mất 18 ngày, sớm hơn 4 ngày so với hợp đồng.',
+          'Điểm khó nhất là dung sai của chi tiết đế máy chỉ 0,02 mm. Tổ kỹ thuật phải kiểm bằng máy đo CMM sau mỗi mẻ gia công thay vì kiểm theo lô như thường lệ, đồng thời ghi lại nhiệt độ xưởng vì giãn nở nhiệt đủ để làm lệch kết quả đo.',
+          'Sau bàn giao, khách vận hành hai ca mỗi ngày. Xưởng cử một kỹ thuật viên theo máy trong tuần đầu để hướng dẫn tổ vận hành và hiệu chỉnh lại dao khi cần.',
+          'Dây chuyền này là hạng mục thứ ba chúng tôi thực hiện cho cùng khách trong hai năm, sau hai đơn hàng gia công chi tiết đơn lẻ.'
+        ],
+        slug: '/du-an/ban-giao-day-chuyen-phay-cnc-bac-ninh',
+        seoTitle: 'Bàn giao dây chuyền phay CNC 4 trục tại Bắc Ninh',
+        seoDesc: 'Hành trình 18 ngày lắp đặt, chạy thử và bàn giao dây chuyền phay CNC bốn trục cho khách sản xuất linh kiện tại Bắc Ninh.'
+      },
+      {
+        id: 2, title: 'Tuyển 3 thợ tiện CNC, làm việc tại Hưng Yên', section: 'Tuyển dụng', secIcon: 'ri-user-add-line',
+        wf: 'Duyệt trước khi đăng', step: 'pending', sender: 'Lê Đăng Khoa', wait: 4, mine: true, note: '',
+        cover: false, coverRatio: '4 / 3', coverAlt: '',
+        fields: [{ label: 'Vị trí', value: 'Thợ tiện CNC (3 người)' }, { label: 'Nơi làm việc', value: 'Nhà máy Hưng Yên' }, { label: 'Thu nhập', value: '12 – 18 triệu/tháng' }, { label: 'Hạn nhận hồ sơ', value: '30/09/2026' }],
+        desc: '',
+        body: [
+          'Xưởng cần tuyển 3 thợ tiện CNC làm việc tại nhà máy Hưng Yên, ưu tiên người đã chạy máy Doosan hoặc Mazak từ một năm trở lên.',
+          'Thu nhập 12–18 triệu tuỳ tay nghề, có xe đưa đón từ Hà Nội, ăn trưa tại xưởng, đóng bảo hiểm đầy đủ từ tháng thứ hai.',
+          'Hồ sơ gửi về phòng nhân sự trước ngày 30 tháng này, hoặc đến trực tiếp xưởng phỏng vấn vào thứ Ba và thứ Năm hàng tuần.'
+        ],
+        slug: '/tuyen-dung/tuyen-3-tho-tien-cnc-hung-yen',
+        seoTitle: 'Tuyển 3 thợ tiện CNC tại Hưng Yên, 12–18 triệu',
+        seoDesc: ''
+      },
+      {
+        id: 3, title: 'Quy trình kiểm tra dung sai trước khi xuất hàng', section: 'Tin tức', secIcon: 'ri-newspaper-line',
+        wf: 'Duyệt trước khi đăng', step: 'pending', sender: 'Trần Văn Nam', wait: 1, mine: false,
+        note: 'Nhờ anh xem lại đoạn về máy đo CMM.',
+        cover: true, coverRatio: '1 / 1', coverAlt: 'Kỹ thuật viên kiểm dung sai bằng máy đo CMM',
+        fields: [],
+        desc: 'Ba vòng kiểm trước khi xuất hàng và cách khách đối chiếu kết quả trên phiếu đi kèm lô hàng.',
+        body: [
+          'Mỗi lô hàng trước khi xuất đều đi qua ba vòng kiểm: kiểm kích thước bằng thước cặp và panme, kiểm dung sai hình học bằng máy đo CMM, và kiểm ngoại quan bề mặt.',
+          'Kết quả từng vòng được ghi vào phiếu đi kèm lô hàng. Khách nhận hàng có thể đối chiếu trực tiếp từng con số với bản vẽ đã ký.',
+          'Với chi tiết dung sai dưới 0,05 mm, xưởng kiểm 100% thay vì kiểm mẫu xác suất.'
+        ],
+        slug: '/tin-tuc/quy-trinh-kiem-tra-dung-sai-truoc-khi-xuat-hang',
+        seoTitle: 'Quy trình kiểm dung sai trước khi xuất hàng',
+        seoDesc: 'Ba vòng kiểm kích thước, dung sai hình học và ngoại quan bề mặt, kèm phiếu kết quả cho từng lô hàng.'
+      },
+      {
+        id: 4, title: 'Gia công chi tiết inox 304 cho thiết bị thực phẩm', section: 'Dịch vụ', secIcon: 'ri-tools-line',
+        wf: 'Quy trình biên tập', step: 'pending', sender: 'Phạm Mỹ Linh', wait: 6, mine: false,
+        note: 'Bản này viết lại từ trang dịch vụ cũ.',
+        cover: true, coverRatio: '3 / 4', coverAlt: 'Chi tiết inox 304 sau khi đánh bóng',
+        fields: [{ label: 'Vật liệu', value: 'Inox 304 · 316' }, { label: 'Độ nhám hoàn thiện', value: 'Ra 0,8' }, { label: 'Sản lượng nhận', value: 'Từ 10 chi tiết' }],
+        desc: 'Gia công chi tiết inox 304 cho thiết bị thực phẩm từ bản vẽ hoặc từ mẫu có sẵn, hoàn thiện đạt Ra 0,8.',
+        body: [
+          'Inox 304 là vật liệu bắt buộc với các chi tiết tiếp xúc trực tiếp thực phẩm. Xưởng nhận gia công từ bản vẽ hoặc từ mẫu có sẵn.',
+          'Bề mặt hoàn thiện đạt độ nhám Ra 0,8, đủ tiêu chuẩn vệ sinh cho thiết bị chế biến. Với chi tiết cần tiệt trùng thường xuyên, chúng tôi tư vấn chuyển sang inox 316.'
+        ],
+        slug: '/dich-vu/gia-cong-inox-304-thiet-bi-thuc-pham',
+        seoTitle: '', seoDesc: ''
+      },
+      {
+        id: 5, title: 'Đầu tư thêm máy mài phẳng khổ lớn trong quý tới', section: 'Tin tức', secIcon: 'ri-newspaper-line',
+        wf: 'Duyệt trước khi đăng', step: 'pending', sender: 'Lê Đăng Khoa', wait: 3, mine: false, note: '',
+        cover: false, coverRatio: '16 / 9', coverAlt: '',
+        fields: [],
+        desc: 'Xưởng bổ sung máy mài phẳng khổ 600×1200 mm, nhận được các chi tiết khuôn lớn trước đây phải gửi gia công ngoài.',
+        body: [
+          'Quý tới xưởng sẽ bổ sung một máy mài phẳng khổ 600×1200 mm, mở rộng khả năng nhận các chi tiết khuôn lớn mà trước đây phải gửi gia công ngoài.',
+          'Việc này rút ngắn thời gian giao hàng khoảng 3–5 ngày cho mỗi đơn khuôn lớn và giữ được kiểm soát chất lượng trong nội bộ.'
+        ],
+        slug: '/tin-tuc/dau-tu-may-mai-phang-kho-lon',
+        seoTitle: 'Đầu tư máy mài phẳng khổ 600×1200 mm', seoDesc: ''
+      },
+      {
+        id: 6, title: 'Cách chọn vật liệu cho khuôn dập nguội', section: 'Tin tức', secIcon: 'ri-newspaper-line',
+        wf: 'Quy trình biên tập', step: 'reviewing', sender: 'Trần Văn Nam', wait: 5, mine: false,
+        note: 'Phần so sánh vật liệu cần thêm bảng giá tham khảo.',
+        cover: true, coverRatio: '16 / 9', coverAlt: 'Ba mẫu thép làm khuôn dập nguội',
+        fields: [],
+        desc: 'So sánh SKD11, D2 và Cr12MoV theo độ cứng, độ dai và chi phí để chọn vật liệu khuôn dập nguội.',
+        body: [
+          'Khuôn dập nguội chịu tải va đập lớn nên vật liệu phải cân bằng giữa độ cứng và độ dai. Ba nhóm thép thường dùng là SKD11, D2 và Cr12MoV.',
+          'SKD11 giữ lưỡi tốt, phù hợp dập tấm mỏng sản lượng lớn. D2 rẻ hơn nhưng dai kém hơn khi chiều dày tăng. Cr12MoV nằm giữa, hay dùng cho khuôn vừa.',
+          'Chọn sai nhóm thép thường không lộ ra ngay mà xuất hiện sau vài vạn nhịp dập, dưới dạng nứt chân răng hoặc sứt lưỡi cắt.'
+        ],
+        slug: '/tin-tuc/cach-chon-vat-lieu-khuon-dap-nguoi',
+        seoTitle: 'Chọn vật liệu khuôn dập nguội: SKD11, D2 hay Cr12MoV',
+        seoDesc: 'So sánh ba nhóm thép làm khuôn dập nguội theo độ cứng, độ dai và chi phí, kèm lưu ý khi chiều dày tấm tăng.'
+      },
+      {
+        id: 7, title: 'Hồ sơ năng lực 2026 — bản rút gọn cho khách mới', section: 'Dự án', secIcon: 'ri-building-4-line',
+        wf: 'Duyệt trước khi đăng', step: 'pending', sender: 'Phạm Mỹ Linh', wait: 1, mine: false, note: '',
+        cover: true, coverRatio: '4 / 3', coverAlt: 'Bìa hồ sơ năng lực 2026',
+        fields: [{ label: 'Số trang', value: '6 trang' }, { label: 'Dùng cho', value: 'Khách hỏi báo giá lần đầu' }],
+        desc: 'Bản rút gọn 6 trang gồm năng lực máy móc, khách hàng tiêu biểu và chứng nhận hiện có.',
+        body: [
+          'Bản rút gọn 6 trang gồm năng lực máy móc, danh sách khách hàng tiêu biểu và các chứng nhận hiện có, dùng để gửi kèm báo giá cho khách mới.',
+          'Bản đầy đủ 18 trang vẫn giữ nguyên cho các gói thầu cần hồ sơ pháp lý chi tiết.'
+        ],
+        slug: '/du-an/ho-so-nang-luc-2026-ban-rut-gon',
+        seoTitle: 'Hồ sơ năng lực 2026 (bản rút gọn)', seoDesc: ''
+      }
+    ];
+  }
+  missingOf(it) {
+    const out = [];
+    if (!it.cover) out.push('ảnh đại diện');
+    if (!it.desc) out.push('mô tả ngắn');
+    if (!it.seoTitle) out.push('tiêu đề SEO');
+    if (!it.seoDesc) out.push('mô tả SEO');
+    return out;
+  }
+  words(it) {
+    return (it.body || []).join(' ').split(/\s+/).filter(Boolean).length;
+  }
+  componentDidMount() {
+    this._onCw = () => this.forceUpdate();
+    document.addEventListener('bs-cw-ready', this._onCw);
+    this._onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      if (this.state.confirm) this.setState({ confirm: null });
+      else if (this.state.modal) this.closeModal();
+    };
+    document.addEventListener('keydown', this._onKey);
+    this._onNav = (e) => {
+      if (this.state.modal || this.state.confirm) return;
+      const t = e.target && e.target.tagName;
+      if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
+      if (e.key === 'ArrowDown') { e.preventDefault(); this.step(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); this.step(-1); }
+      else if (e.key === 'Enter') {
+        /* Nút/liên kết đã tự xử lý Enter — phím tắt duyệt nhanh chỉ áp khi focus
+           ở ngoài mọi điều khiển (body) hoặc trên một hàng của danh sách. */
+        const el = e.target;
+        const inCtrl = el && el.closest && el.closest('button, a, [role="button"], input, textarea, select');
+        const onRow = el && el.closest && el.closest('.sp-item');
+        if (inCtrl && !onRow) return;
+        const cw = this.cw();
+        const cur = this.curItem();
+        if (!cw || !cur) return;
+        const pri = cw.allowed(cur.wf, cur.step, this.role()).filter((x) => x.primary)[0];
+        if (pri) { e.preventDefault(); this.run(cur, pri); }
+      }
+    };
+    document.addEventListener('keydown', this._onNav);
+  }
+  curItem() {
+    const list = this.visible().slice(0, this.state.shown);
+    return list.filter((x) => x.id === this.state.cur)[0] || list[0] || null;
+  }
+  componentWillUnmount() {
+    document.removeEventListener('bs-cw-ready', this._onCw);
+    document.removeEventListener('keydown', this._onKey);
+    document.removeEventListener('keydown', this._onNav);
+  }
+  /* Gập/mở từng thẻ trường — mặc định mở thứ phải đọc, gập hai thẻ tra cứu.
+     Ghi nhớ theo người dùng để lần sau mở đúng như họ để lại. */
+  loadFold() {
+    const def = { cover: false, fields: false, desc: false, body: false, seo: true, log: true };
+    try {
+      const raw = localStorage.getItem('bs-inbox-fold');
+      return raw ? Object.assign(def, JSON.parse(raw)) : def;
+    } catch (e) { return def; }
+  }
+  toggleFold(k) {
+    const f = Object.assign({}, this.state.fold);
+    f[k] = !f[k];
+    this.setState({ fold: f });
+    try { localStorage.setItem('bs-inbox-fold', JSON.stringify(f)); } catch (e) {}
+  }
+  foldCls(k) { return this.state.fold[k] ? 'off' : ''; }
+  aria(k) { return this.state.fold[k] ? 'false' : 'true'; }
+  cw() { return window.BSCW || null; }
+  role() { return this.props.role || 'Biên tập'; }
+  members(perm) {
+    const cw = this.cw();
+    const all = [
+      { id: 'ha', name: 'Ngô Thị Hà', role: 'Biên tập' },
+      { id: 'nam', name: 'Trần Văn Nam', role: 'Người viết' },
+      { id: 'linh', name: 'Phạm Mỹ Linh', role: 'Quản trị' },
+      { id: 'khoa', name: 'Lê Đăng Khoa', role: 'Cộng tác viên' }
+    ];
+    if (!cw || !perm) return all;
+    return all.filter((m) => cw.can(m.role, perm));
+  }
+  notify(msg, icon) {
+    clearTimeout(this._tt);
+    this.setState({ toast: msg, toastIcon: icon || 'ri-check-line' });
+    this._tt = setTimeout(() => this.setState({ toast: '' }), 3200);
+  }
+  inScope() {
+    const cw = this.cw();
+    if (!cw) return [];
+    return this.state.items.filter((it) => {
+      if (!cw.allowed(it.wf, it.step, this.role()).length) return false;
+      return this.state.tab === 'mine' ? it.mine : true;
+    });
+  }
+  visible() {
+    const q = (this.state.q || '').trim().toLowerCase();
+    const sec = this.state.sec;
+    return this.inScope().filter((it) => {
+      if (sec && it.section !== sec) return false;
+      if (!q) return true;
+      return (it.title + ' ' + it.sender).toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  logsOf(it) {
+    const cw = this.cw();
+    const ss = cw ? cw.steps(it.wf) : [];
+    const i = ss.map((s) => s.key).indexOf(it.step);
+    const stepLabel = ss[i] ? ss[i].label : it.step;
+    const prev = ss[i - 1] ? ss[i - 1].label : 'Bản nháp';
+    const out = [];
+    if (i > 1) out.push({ who: 'Ngô Thị Hà', what: 'chuyển bước', from: prev, to: stepLabel, note: '', when: it.wait + ' ngày trước' });
+    out.push({ who: it.sender, what: 'gửi duyệt', from: 'Bản nháp', to: prev, note: it.note, when: (it.wait + 1) + ' ngày trước' });
+    out.push({ who: it.sender, what: 'sửa nội dung', from: 'Bản nháp', to: 'Bản nháp', note: '', when: (it.wait + 2) + ' ngày trước' });
+    out.push({ who: it.sender, what: 'tạo bài', from: '—', to: 'Bản nháp', note: '', when: (it.wait + 3) + ' ngày trước' });
+    return out;
+  }
+  ini(name) { return (name || '?').trim().split(' ').slice(-1)[0].slice(0, 1).toUpperCase(); }
+  togglePick(id) {
+    const p = this.state.picked;
+    this.setState({ picked: p.indexOf(id) >= 0 ? p.filter((x) => x !== id) : p.concat([id]) });
+  }
+  bulkItems() {
+    const cw = this.cw();
+    if (!cw) return [];
+    return this.state.items.filter((it) => this.state.picked.indexOf(it.id) >= 0)
+      .filter((it) => cw.allowed(it.wf, it.step, this.role()).filter((t) => t.primary).length);
+  }
+  runBulk() {
+    const list = this.bulkItems();
+    if (!list.length) return;
+    this.setState({
+      confirm: {
+        title: 'Duyệt đăng ' + list.length + ' bài?',
+        text: list.length + ' bài sẽ hiện ngay trên website cho khách đọc. Bài nào cần sửa thì gỡ xuống lại được, nội dung không mất.',
+        ok: 'Duyệt đăng ' + list.length + ' bài',
+        run: () => {
+          const ids = list.map((x) => x.id);
+          this.setState({ items: this.state.items.filter((x) => ids.indexOf(x.id) < 0), picked: [], cur: null, mobileDetail: false });
+          this.notify('Đã duyệt đăng ' + ids.length + ' bài', 'ri-check-double-line');
+        }
+      }
+    });
+  }
+  short(t) { return t.length > 42 ? t.slice(0, 42) + '…' : t; }
+  select(id) { this.setState({ cur: id, mobileDetail: true, logShown: 3 }); }
+  step(id) {
+    const list = this.visible().slice(0, this.state.shown);
+    const i = list.map((x) => x.id).indexOf(this.state.cur);
+    const n = list[i + id];
+    if (n) this.setState({ cur: n.id });
+  }
+  run(it, tr) {
+    if (tr.note) { this.setState({ modal: { it: it, tr: tr }, note: '', who: '', err: false }); return; }
+    if (tr.toPublished) {
+      this.setState({
+        confirm: {
+          title: 'Duyệt đăng “' + this.short(it.title) + '”?',
+          text: 'Bài sẽ hiện ngay trên website cho khách đọc. Nếu cần sửa sau, bạn vẫn gỡ bài xuống được.',
+          ok: 'Duyệt đăng ngay', run: () => this.commit(it, tr, '', '')
+        }
+      });
+      return;
+    }
+    this.commit(it, tr, '', '');
+  }
+  closeModal() { this.setState({ modal: null, note: '', who: '', err: false }); }
+  submitModal() {
+    const m = this.state.modal;
+    if (!m) return;
+    if (!this.state.note.trim()) { this.setState({ err: true }); return; }
+    this.commit(m.it, m.tr, this.state.note.trim(), this.state.who);
+    this.closeModal();
+  }
+  commit(it, tr, note, who) {
+    const whoName = (this.members(null).filter((m) => m.id === who)[0] || {}).name || '';
+    const list = this.visible();
+    const i = list.map((x) => x.id).indexOf(it.id);
+    const next = list[i + 1] || list[i - 1] || null;
+    this.setState({
+      items: this.state.items.filter((x) => x.id !== it.id),
+      cur: next ? next.id : null, mobileDetail: false
+    });
+    this.notify(tr.label + ' xong — “' + this.short(it.title) + '” sang bước “' + tr.toLabel + '”' + (whoName ? ', đã giao cho ' + whoName : ''), 'ri-check-double-line');
+  }
+  renderVals() {
+    const stepIcon = (s) => s.published ? 'ri-global-line'
+      : (s.initial ? 'ri-draft-line' : (s.terminal ? 'ri-archive-line' : 'ri-user-search-line'));
+    const cw = this.cw();
+    const tab = this.state.tab;
+    const all = this.visible();
+    const list = all.slice(0, this.state.shown);
+    const rest = all.length - list.length;
+    const mineN = cw ? this.state.items.filter((it) => it.mine && cw.allowed(it.wf, it.step, this.role()).length).length : 0;
+    const queueN = cw ? this.state.items.filter((it) => cw.allowed(it.wf, it.step, this.role()).length).length : 0;
+    const cur = list.filter((x) => x.id === this.state.cur)[0] || list[0] || null;
+    const curIdx = cur ? list.map((x) => x.id).indexOf(cur.id) : -1;
+    const steps = cur && cw ? cw.steps(cur.wf) : [];
+    const sIdx = cur ? steps.map((s) => s.key).indexOf(cur.step) : -1;
+    const trs = cur && cw ? cw.allowed(cur.wf, cur.step, this.role()) : [];
+    const m = this.state.modal;
+    const perm = m ? (m.tr.to === 'draft' ? 'entries.submit' : 'entries.review') : null;
+    const cf = this.state.confirm;
+    const scopeSecs = this.inScope().map((x) => x.section).filter((s, i, a) => a.indexOf(s) === i);
+    const bulkN = this.bulkItems().length;
+    const missing = cur ? this.missingOf(cur) : [];
+    const allLogs = cur ? this.logsOf(cur) : [];
+    const logs = allLogs.slice(0, this.state.logShown);
+
+    const st = this.props.loadState || 'Bình thường';
+    return {
+      isLoading: st === 'Đang tải',
+      isError: st === 'Lỗi tải',
+      isEmpty: st === 'Bình thường' && this.inScope().length === 0,
+      isReady: st === 'Bình thường' && this.inScope().length > 0,
+      skeletons: [1, 2, 3, 4],
+      noPick: !cur,
+      detailHide: cur ? '' : 'sp-hide',
+      tabMineOn: tab === 'mine', tabMineOff: tab !== 'mine',
+      tabQueueOn: tab === 'queue', tabQueueOff: tab !== 'queue',
+      mineCount: mineN, queueCount: queueN,
+      onTabMine: () => this.setState({ tab: 'mine', shown: 5, cur: null, mobileDetail: false }),
+      onTabQueue: () => this.setState({ tab: 'queue', shown: 5, cur: null, mobileDetail: false }),
+      listTitle: tab === 'mine' ? 'Bài giao riêng cho bạn' : 'Bài đang ở bước bạn xử lý được',
+      shownLine: list.length + '/' + all.length + ' bài',
+      emptyText: tab === 'mine'
+        ? 'Chưa có ai giao bài riêng cho bạn. Bài nào cả nhóm cùng xử lý được thì nằm ở tab Hàng chờ duyệt.'
+        : 'Mọi bài đã qua bước của bạn. Khi có người gửi duyệt, bài sẽ xuất hiện ở đây và trên chuông thông báo.',
+      otherTabLabel: tab === 'mine' ? 'Xem Hàng chờ duyệt' : 'Xem bài giao cho tôi',
+      onOtherTab: () => this.setState({ tab: tab === 'mine' ? 'queue' : 'mine', shown: 5, cur: null }),
+
+      listCls: this.state.mobileDetail ? 'sp-hide' : '',
+      detailCls: this.state.mobileDetail ? '' : 'sp-hide',
+      onBack: () => this.setState({ mobileDetail: false }),
+
+      q: this.state.q, secFilter: this.state.sec,
+      onQ: (e) => this.setState({ q: e.target.value, cur: null }),
+      onSec: (e) => this.setState({ sec: e.target.value, cur: null }),
+      onClearFilter: () => this.setState({ q: '', sec: '' }),
+      sections: scopeSecs.map((s) => ({ name: s, label: s })),
+      noHit: all.length === 0 && this.inScope().length > 0,
+
+      hasPicked: this.state.picked.length > 0,
+      pickedCount: this.state.picked.length,
+      bulkOff: bulkN === 0,
+      bulkLabel: bulkN > 0 ? 'Duyệt đăng ' + bulkN + ' bài' : 'Không bài nào duyệt được',
+      bulkTitle: bulkN === 0
+        ? 'Các bài đang chọn chưa tới bước bạn được duyệt đăng'
+        : (bulkN < this.state.picked.length
+          ? bulkN + '/' + this.state.picked.length + ' bài đang ở bước bạn duyệt đăng được, số còn lại giữ nguyên'
+          : 'Tất cả bài đang chọn sẽ hiện ra ngoài cho khách'),
+      onBulk: () => this.runBulk(),
+      onClearPick: () => this.setState({ picked: [] }),
+
+      items: list.map((it) => {
+        const ss = cw ? cw.steps(it.wf) : [];
+        const st = cw ? cw.stepOf(it.wf, it.step) : null;
+        const on = this.state.picked.indexOf(it.id) >= 0;
+        return {
+          title: it.title, section: it.section,
+          checked: on, unchecked: !on,
+          pickTitle: on ? 'Bỏ chọn bài này' : 'Chọn bài này để duyệt cùng lúc',
+          onPick: (e) => { e.stopPropagation(); this.togglePick(it.id); },
+          sender: it.sender + ' gửi',
+          stepLine: st ? st.label : it.step,
+          dotColor: (cw && cw.UI[it.step] && cw.UI[it.step].c) || '#405189',
+          late: it.wait > 3, onTime: it.wait <= 3,
+          waitLine: it.wait > 3 ? 'chờ ' + it.wait + ' ngày — quá lâu' : 'chờ ' + it.wait + ' ngày',
+          cls: cur && cur.id === it.id ? 'on' : '',
+          onSelect: () => this.select(it.id)
+        };
+      }),
+      hasMore: rest > 0, moreCount: rest,
+      onMore: () => this.setState({ shown: this.state.shown + 5 }),
+
+      curTitle: cur ? cur.title : '',
+      curSection: cur ? cur.section : '', curSecIcon: cur ? cur.secIcon : '',
+      curSender: cur ? cur.sender : '',
+      curIni: cur ? cur.sender.trim().split(' ').slice(-1)[0].slice(0, 1).toUpperCase() : '',
+      curSentLine: cur ? 'gửi ' + cur.wait + ' ngày trước' : '',
+      curLate: !!(cur && cur.wait > 3),
+      curWaitLine: cur ? 'chờ ' + cur.wait + ' ngày — quá lâu' : '',
+      curWf: cur ? cur.wf : '',
+      curSteps: steps.map((s, i) => ({
+        label: s.label, isDone: i < sIdx, notDone: i >= sIdx,
+        icon: stepIcon(s),
+        cls: (i === sIdx ? 'cur' : (i < sIdx ? 'done' : 'todo')) + (s.published ? ' pub' : '')
+      })),
+      curStepIcon: steps[sIdx] ? stepIcon(steps[sIdx]) : 'ri-time-line',
+      curStepNo: sIdx + 1,
+      curStepCount: steps.length,
+      curStepLabel: steps[sIdx] ? steps[sIdx].label : '',
+      curPct: steps.length > 1 ? Math.round((sIdx / (steps.length - 1)) * 100) + '%' : '100%',
+      curNextLine: steps[sIdx + 1]
+        ? 'Bước kế tiếp: ' + steps[sIdx + 1].label
+        : 'Đây là bước cuối của quy trình',
+      curHasNote: !!(cur && cur.note), curNote: cur ? cur.note : '',
+      curLogs: logs.map((l) => ({
+        who: l.who, what: l.what, when: l.when, ini: this.ini(l.who),
+        flow: l.from + ' → ' + l.to, hasNote: !!l.note, note: l.note
+      })),
+      hasMoreLogs: allLogs.length > logs.length,
+      moreLogs: allLogs.length - logs.length,
+      onMoreLogs: () => this.setState({ logShown: this.state.logShown + 3 }),
+      curMissingLine: cur && missing.length
+        ? 'Bài này còn thiếu ' + missing.join(', ') + '. Duyệt đăng vẫn được, nhưng nên yêu cầu bổ sung trước.'
+        : '',
+      curHasMissing: !!(cur && missing.length),
+      ariaCover: this.aria('cover'), ariaFields: this.aria('fields'), ariaDesc: this.aria('desc'),
+      ariaBody: this.aria('body'), ariaSeo: this.aria('seo'), ariaLog: this.aria('log'),
+      foldCover: this.foldCls('cover'), onFoldCover: () => this.toggleFold('cover'),
+      foldFields: this.foldCls('fields'), onFoldFields: () => this.toggleFold('fields'),
+      foldDesc: this.foldCls('desc'), onFoldDesc: () => this.toggleFold('desc'),
+      foldBody: this.foldCls('body'), onFoldBody: () => this.toggleFold('body'),
+      foldSeo: this.foldCls('seo'), onFoldSeo: () => this.toggleFold('seo'),
+      foldLog: this.foldCls('log'), onFoldLog: () => this.toggleFold('log'),
+      warnCover: !!(cur && !cur.cover),
+      warnSeo: !!(cur && (!cur.seoTitle || !cur.seoDesc)),
+      logCountLine: allLogs.length + ' lần chuyển',
+      curHasCover: !!(cur && cur.cover), curNoCover: !!(cur && !cur.cover),
+      curCoverRatio: cur ? cur.coverRatio : '16 / 9',
+      curCoverRatioLabel: cur ? (cur.coverRatio || '').replace(/\s/g, '').replace('/', ':') : '',
+      curCoverAlt: cur ? cur.coverAlt : '',
+      curHasFields: !!(cur && cur.fields && cur.fields.length),
+      curFields: cur && cur.fields ? cur.fields : [],
+      curSectionLower: cur ? 'theo thể loại ' + cur.section : '',
+      curHasDesc: !!(cur && cur.desc), curNoDesc: !!(cur && !cur.desc),
+      curDesc: cur ? cur.desc : '',
+      curDescLen: cur && cur.desc ? cur.desc.length + ' ký tự — thẻ tin cắt gọn ở khoảng 200' : '',
+      curBody: cur ? (cur.body || []).map((t) => ({ text: t })) : [],
+      curBodyLen: cur ? this.words(cur) + ' từ · ' + (cur.body || []).length + ' đoạn' : '',
+      curSlug: cur ? 'anvinh.vn' + cur.slug : '',
+      curSeoTitle: cur ? cur.seoTitle : '', curSeoDesc: cur ? cur.seoDesc : '',
+      curHasSeoTitle: !!(cur && cur.seoTitle), curNoSeoTitle: !!(cur && !cur.seoTitle),
+      curHasSeoDesc: !!(cur && cur.seoDesc), curNoSeoDesc: !!(cur && !cur.seoDesc),
+      curActions: trs.filter((t) => t.primary || t.note).slice(0, 2).map((t) => ({
+        label: t.label, isPri: t.primary, isDanger: !t.primary && t.note, isPlain: !t.primary && !t.note,
+        icon: t.primary ? 'ri-check-double-line' : (t.note ? 'ri-arrow-go-back-line' : 'ri-send-plane-line'),
+        title: (t.note ? 'Cần ghi lý do. ' : '') + 'Bài sẽ sang bước “' + t.toLabel + '”' + (t.toPublished ? ' và hiện ra ngoài cho khách' : ''),
+        onRun: () => this.run(cur, t)
+      })),
+      onOpenFull: () => this.notify('Đang mở “' + (cur ? this.short(cur.title) : '') + '” trong trang soạn thảo…', 'ri-external-link-line'),
+      posLine: curIdx >= 0 ? 'bài ' + (curIdx + 1) + '/' + list.length : '',
+      prevOff: curIdx <= 0, nextOff: curIdx < 0 || curIdx >= list.length - 1,
+      onPrev: () => this.step(-1), onNext: () => this.step(1),
+
+      mOpen: !!m,
+      mTitle: m ? m.tr.label : '',
+      mIcon: m && m.tr.key === 'retract' ? 'ri-eye-off-line' : 'ri-arrow-go-back-line',
+      mPost: m ? m.it.title : '',
+      mDangerText: m
+        ? (m.tr.key === 'retract'
+          ? 'Khách truy cập sẽ không thấy bài này nữa. Nội dung vẫn còn nguyên trong bản nháp.'
+          : 'Bài quay về cho người viết ở bước “' + m.tr.toLabel + '”. Chữ đã viết không mất.')
+        : '',
+      mPlaceholder: 'Ví dụ: Phần báo giá thiếu đơn vị tiền, nhờ bạn ghi rõ giá theo chi tiết.',
+      mNote: this.state.note, mTaCls: this.state.err ? 'bad' : '', mErr: this.state.err,
+      mWho: this.state.who, mOkLabel: m ? m.tr.label : '',
+      members: this.members(perm).map((x) => ({ id: x.id, label: x.name + ' — ' + x.role })),
+      onMNote: (e) => this.setState({ note: e.target.value, err: false }),
+      onMWho: (e) => this.setState({ who: e.target.value }),
+      onMClose: () => this.closeModal(),
+      onMOk: () => this.submitModal(),
+
+      cfOpen: !!cf, cfTitle: cf ? cf.title : '', cfText: cf ? cf.text : '', cfOk: cf ? cf.ok : '',
+      onCfCancel: () => this.setState({ confirm: null }),
+      onCfOk: () => { const r = cf && cf.run; this.setState({ confirm: null }); if (r) r(); },
+      cancelRef: (el) => { if (el) setTimeout(() => { try { el.focus(); } catch (e) {} }, 0); },
+
+      onReload: () => this.notify('Đang tải lại hộp duyệt…', 'ri-refresh-line'),
+      toastOn: !!this.state.toast, toast: this.state.toast, toastIcon: this.state.toastIcon
+    };
+  }
+}
+
+</script>
+</body>
+</html>
