@@ -6,11 +6,11 @@ Luật cứng:
 - Token AdminKit — bậc WCAG AA đã chuẩn hoá (PR #87 trong repo); DÙNG ĐÚNG bộ này, không tự thêm màu ngoài bộ: navy #405189 · Inter 14px · bo 4px ô nhập / 6px thẻ · 1 bóng thẻ · nền #f3f3f9.
   · Chữ phụ: --color-body-muted #6b6e7f (≥4.5:1 trên trắng và trên nền trang). --color-body-faint CHỈ cho chi tiết trang trí, KHÔNG cho chữ có nghĩa.
   · Navy làm CHỮ / VIỀN / VÒNG FOCUS = role "accent" (sáng #405189 · tối #96a1c0); navy làm NỀN dưới chữ trắng vẫn là --color-admin-primary.
-  · Màu ngữ nghĩa 2 bậc: --color-admin-{success,info,warning,danger}-text (chữ + kiểu soft + viền, ≥4.5:1, lật theo sáng/tối) và -solid (nền dưới chữ trắng, ≥4.5:1). Nút/badge warning solid dùng chữ #212529.
-  · Viền ô nhập: --color-border-input (≥3:1 trên nền ô, cả sáng lẫn tối).
+  · Màu ngữ nghĩa 2 bậc: --color-admin-{secondary,success,info,warning,danger}-text (chữ + kiểu soft + viền, ≥4.5:1, lật theo sáng/tối) và -solid (nền dưới chữ trắng, ≥4.5:1; secondary nền #2f69d4, KHÔNG dùng #3577f1 làm nền chữ). Nút/badge warning solid dùng chữ #212529. Badge "dark" kiểu soft dùng chữ --color-admin-dark-text (lật sáng ở chế độ tối) (PR #92).
+  · Viền ô nhập: --color-border-input (≥3:1 trên nền ô, cả sáng lẫn tối). Placeholder = --color-placeholder (= muted) và CHỈ chứa ví dụ ("0912 345 678"); hướng dẫn/điều kiện đặt ở dòng gợi ý dưới ô, không nhét vào placeholder (PR #92).
   · Focus: --focus-ring-width 2px · --focus-ring-offset 2px · --focus-ring-color (accent; vùng nền đậm như sidebar/header đổi màu vòng theo chữ của vùng). KHÔNG outline:none mà không thay bằng ring.
   · Sidebar: chữ mục thường trắng .85; MỤC ĐANG CHỌN = chữ trắng + nền active + vạch chỉ báo bên trái + aria-current="page" (phân biệt bằng HÌNH, không chỉ bằng màu).
-  · Storefront: chữ màu thương hiệu trên nền sáng dùng --primary-text (tự làm tối tới ≥4.5:1 trên thẻ và trên nền trang); --primary giữ cho nền/viền và chữ trên nền tối (header/hero/footer).
+  · Storefront: chữ màu thương hiệu trên nền sáng dùng --primary-text (tự làm tối tới ≥4.5:1 trên thẻ và trên nền trang); chữ màu thương hiệu trên nền tối --ink (link footer, menu con, nút phụ ở hero) dùng --primary-on-ink (tự làm sáng tới ≥4.5:1, PR #92); --primary giữ cho nền/viền.
 - Đích build: Livewire 4 + Blade + Tailwind 4 + <x-admin::*>; icon Remix inline-SVG (prototype dùng CDN được, README liệt kê tên icon). Không Bootstrap, không Flux.
 - Mỗi màn đủ trạng thái: trống · đang tải · lỗi (có "Thử lại") · không có quyền · khoá theo gói · thành công. Không ngõ cụt.
 - 3 bề rộng 1240 / 768 / 390, sáng + tối, WCAG 2.2 AA.
@@ -23,7 +23,7 @@ TIÊU CHÍ DỄ DÙNG — kiểm từng màn trước khi giao, ghi kết quả 
  3. Không thuật ngữ kỹ thuật trần (SMTP, OAuth, DNS, CNAME, SSL, API, webhook, token, slug, meta, robots…). Buộc phải có thì để trong khối "Nâng cao" và kèm 1 câu giải thích đời thường. Tên thương hiệu quen (Google, Zalo, Facebook) giữ nguyên nhưng nói rõ công dụng ("Facebook Pixel — đo hiệu quả quảng cáo Facebook").
  4. Icon luôn kèm chữ; chỉ icon rất quen (tìm kiếm, chuông, đóng, thêm) mới được đứng một mình, và phải có tooltip + aria-label.
  5. Ô nhập có gợi ý bằng ví dụ thật; lỗi nói cách sửa ("Số điện thoại cần 10 số, ví dụ 0901 234 567"), không nói lỗi kỹ thuật.
- 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu, xoá = vào Thùng rác kèm toast "Hoàn tác".
+ 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu. Xoá thứ CÓ Thùng rác (bài, trang, sản phẩm, ảnh & tệp) = vào Thùng rác kèm toast "Hoàn tác"; xoá thứ KHÔNG có Thùng rác (trình đơn, mục trình đơn, chuyên mục, nhóm quyền…) = hộp xác nhận nói rõ hệ quả bằng số và tên ("Xoá mục này và 3 mục con", "12 bài sẽ chuyển sang Tin công ty") — không hứa "Hoàn tác" cho thứ đã xoá hẳn.
  7. Trạng thái luôn có màu + hình + chữ — không bao giờ chỉ dùng màu.
  8. Không cắt chữ: nhãn nút, chip, tab, nút lọc luôn 1 dòng (dài thì "…" + tooltip) — nút KHÔNG bao giờ xuống 2 dòng; nhãn ô nhập được xuống dòng nhưng không bị che. Không thanh cuộn ngang trong thẻ/khung đọc.
  9. Điện thoại: việc hay làm (trả lời khách liên hệ, duyệt bài, đăng tin nhanh, xem thông báo) làm trọn được ở 390px; vùng bấm ≥ 44px; không thành phần nổi nào che nút Lưu hay nội dung.
@@ -37,18 +37,26 @@ Không sửa CLAUDE.md (chỉ owner sửa) — bài học mới ghi 1 dòng vào
 
 # D1-1 · Chuyên mục (quản lý cây phân loại theo từng loại nội dung)
 
-Hiện trạng repo: route `admin.taxonomies.index` đang là trang "sắp có" (`routes/web.php:217`). Menu đặt "Chuyên mục" DƯỚI từng loại nội dung và Sản phẩm, lọc theo `?section=` (`app/Modules/Admin/Navigation/AdminNav.php:117-125,163-171`).
+Hiện trạng repo: route `admin.taxonomies.index` vẫn là trang "sắp có" (`routes/web.php`) — nhưng BACKEND ĐƯỜNG GHI ĐÃ CÓ từ 26/09 (`app/Modules/Cms/Actions/Taxonomies/{Create,Update,Move,Delete}Taxonomy.php`, luật chung `app/Modules/Cms/Taxonomy/TaxonomyRules.php`, `docs/design.md` §9) → vẽ theo đúng các luật dưới, KHÔNG gắn "Chờ backend" cho tạo/sửa/chuyển/xoá. Menu đặt "Chuyên mục" DƯỚI từng loại nội dung và Sản phẩm, lọc theo `?section=` (`app/Modules/Admin/Navigation/AdminNav.php:117-125,163-171`).
 Dữ liệu thật (`database/migrations/2002_01_01_000000_create_taxonomy_tables.php`):
 - `taxonomies`: bộ phân loại (post_cat · product_cat · sector…), cha, mẫu hiển thị danh sách / chi tiết, thứ tự, meta, đường cây.
 - `taxonomy_translations`: tên + đường dẫn THEO TỪNG NGÔN NGỮ.
 - Gắn nội dung: `entry_taxonomies` / `product_taxonomies` (có thứ tự). Một bài thuộc nhiều chuyên mục, có 1 chuyên mục CHÍNH (LESSONS #11) — chuyên mục chính quyết định đường dẫn khi site chọn kiểu `/{chuyên-mục}/{bài}`.
-- `content_sections.taxonomy_id` nối loại nội dung ↔ bộ chuyên mục.
+- `content_sections.taxonomy_id` nối loại nội dung ↔ bộ chuyên mục. Loại nội dung ("section") mang QUYỀN và QUY TRÌNH DUYỆT của bài.
+Luật as-built (màn phải thể hiện, không tự đặt luật khác):
+- Cây tối đa 3 cấp (`TaxonomyRules::MAX_DEPTH`). Đường dẫn chuyên mục là DUY NHẤT trong từng ngôn ngữ; trang chuyên mục ở `/{đường-dẫn}`.
+- Đổi tên/đường dẫn, chuyển cha, xoá → bài và sản phẩm có chuyên mục CHÍNH trong nhánh đó tự đổi địa chỉ + tự tạo chuyển hướng 301, cùng lúc lưu (không cần người dùng làm gì) → màn chỉ cần báo kết quả bằng số ("Đã cập nhật địa chỉ 24 bài, tự tạo chuyển hướng").
+- Bài RỜI loại nội dung của nó (chuyển nhánh sang loại khác, hoặc xoá kèm chuyển bài sang chuyên mục thuộc loại khác/bỏ gắn) → hệ thống TỪ CHỐI (`section_changed`) trừ khi người dùng xác nhận → hộp xác nhận: "N bài sẽ chuyển từ Tin tức sang Dịch vụ — quyền và quy trình duyệt sẽ theo Dịch vụ".
+- Chuyên mục GỐC của một loại nội dung KHÔNG BAO GIỜ xoá được (`section_bound`) → nút Xoá khoá + lý do.
+- Xoá chuyên mục còn mục con / còn bài mà chưa chọn cách xử lý → từ chối (`has_children` / `has_items`). Mục con: "Đưa lên cấp trên" hoặc "Xoá theo". Bài & sản phẩm: "Chuyển sang chuyên mục …" (giữ nguyên chuyên mục chính) hoặc "Bỏ gắn". Trang chuyên mục bị xoá (mỗi ngôn ngữ) tự chuyển hướng tới chuyên mục đích → chuyên mục cha gần nhất → trang chủ. Mục trình đơn trỏ tới chuyên mục bị xoá tự trỏ theo chuyên mục đích; không có đích thì website tự ẩn mục đó.
+- Xoá là XOÁ HẲN (không có Thùng rác) → hộp xác nhận nói hệ quả bằng số, không toast "Hoàn tác". Mỗi thay đổi đều ghi nhật ký.
+- Lỗi có mã lý do để màn nói bằng lời thường (`app/Modules/Cms/Exceptions/TaxonomyChangeRejectedException.php`): name_invalid · slug_invalid · slug_taken ("Đường dẫn này đã có chuyên mục/trang khác dùng — thử thêm -2") · parent_invalid · depth_exceeded ("Chỉ được lồng tối đa 3 cấp") · path_taken · has_children · has_items · section_bound · section_changed · template_invalid · locale_invalid. Viết câu tiếng Việt đời thường cho từng mã vào README (mục Chuỗi cần dịch).
 
 Vẽ `Chuyên mục.dc.html`:
-1. Cây của 1 loại (tiêu đề "Chuyên mục · Tin tức" + 1 dòng "Chuyên mục giúp khách tìm bài theo chủ đề"): kéo-thả sắp xếp + lồng cấp (giới hạn độ sâu, báo khi vượt; có cách làm KHÔNG cần kéo: nút "Chuyển lên/xuống", "Đưa vào trong…" cho người không quen kéo-thả và cho điện thoại), số bài mỗi mục, cột ngôn ngữ (chấm §3), tìm kiếm (tự hiện khi >15 mục), thu gọn/mở tất cả.
+1. Cây của 1 loại (tiêu đề "Chuyên mục · Tin tức" + 1 dòng "Chuyên mục giúp khách tìm bài theo chủ đề"): kéo-thả sắp xếp + lồng cấp (tối đa 3 cấp, báo khi vượt; có cách làm KHÔNG cần kéo: nút "Chuyển lên/xuống", "Đưa vào trong…" cho người không quen kéo-thả và cho điện thoại), số bài mỗi mục, cột ngôn ngữ (chấm §3), tìm kiếm (tự hiện khi >15 mục), thu gọn/mở tất cả.
 2. Panel thêm/sửa (trượt phải): tên + đường dẫn theo thanh ngôn ngữ (đường dẫn tự sinh, sửa được, kiểm trùng ngay tại ô; nói trước "đổi đường dẫn của chuyên mục đang có bài sẽ tự tạo chuyển hướng" — LESSONS #12), chọn cha, mẫu hiển thị danh sách + chi tiết (danh sách mẫu lấy từ giao diện đang dùng; mặc định chọn sẵn, giấu trong "Thêm tuỳ chọn"), mô tả + ảnh (tuỳ chọn), SEO ngắn.
-3. Xoá: còn bài → bắt chọn "chuyển bài sang chuyên mục …" trước; mục con → chọn đưa lên cấp trên hoặc xoá theo; toast "Hoàn tác". Gộp 2 chuyên mục (chuyển bài + tự tạo chuyển hướng).
+3. Xoá (hộp xác nhận nhiều lựa chọn, theo luật trên): còn bài → chọn "Chuyển bài sang chuyên mục …" (mặc định, có ô chọn) hoặc "Bỏ gắn"; còn mục con → "Đưa lên cấp trên" (mặc định) hoặc "Xoá theo"; hiện trước hệ quả bằng số. "Gộp vào chuyên mục khác" = cùng luồng xoá với bài chuyển sang chuyên mục đích (backend đã làm đúng việc này: giữ chuyên mục chính, tự chuyển hướng trang cũ) — đặt làm lối tắt riêng trong menu của mục.
 4. Sản phẩm dùng đúng màn này với bộ `product_cat`.
 5. Trạng thái: trống lần đầu ("Tạo chuyên mục đầu tiên" + 3 ví dụ theo loại, bấm là tạo) · đang tải · lỗi · không có quyền (`taxonomies.manage`) · site 1 ngôn ngữ (ẩn thanh ngôn ngữ).
-Câu hỏi cho backend (ghi vào README): cột đường cây `path` hiện chưa có code nào cập nhật; đường dẫn chuyên mục chưa duy nhất theo ngôn ngữ.
+(Hai câu hỏi backend cũ đã xong 26/09: đường cây `path` do `app/Modules/Cms/Taxonomy/TaxonomyPaths.php` ghi; đường dẫn duy nhất theo ngôn ngữ — lỗi `slug_taken`.) Câu hỏi còn mở ghi vào README nếu màn cần: số bài mỗi chuyên mục (đếm theo chuyên mục chính hay mọi chuyên mục).
 Gắn vào Shell: khoá `<loại>.cats` và `catalog.cats`.

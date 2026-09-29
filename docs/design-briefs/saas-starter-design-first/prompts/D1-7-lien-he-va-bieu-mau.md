@@ -6,11 +6,11 @@ Luật cứng:
 - Token AdminKit — bậc WCAG AA đã chuẩn hoá (PR #87 trong repo); DÙNG ĐÚNG bộ này, không tự thêm màu ngoài bộ: navy #405189 · Inter 14px · bo 4px ô nhập / 6px thẻ · 1 bóng thẻ · nền #f3f3f9.
   · Chữ phụ: --color-body-muted #6b6e7f (≥4.5:1 trên trắng và trên nền trang). --color-body-faint CHỈ cho chi tiết trang trí, KHÔNG cho chữ có nghĩa.
   · Navy làm CHỮ / VIỀN / VÒNG FOCUS = role "accent" (sáng #405189 · tối #96a1c0); navy làm NỀN dưới chữ trắng vẫn là --color-admin-primary.
-  · Màu ngữ nghĩa 2 bậc: --color-admin-{success,info,warning,danger}-text (chữ + kiểu soft + viền, ≥4.5:1, lật theo sáng/tối) và -solid (nền dưới chữ trắng, ≥4.5:1). Nút/badge warning solid dùng chữ #212529.
-  · Viền ô nhập: --color-border-input (≥3:1 trên nền ô, cả sáng lẫn tối).
+  · Màu ngữ nghĩa 2 bậc: --color-admin-{secondary,success,info,warning,danger}-text (chữ + kiểu soft + viền, ≥4.5:1, lật theo sáng/tối) và -solid (nền dưới chữ trắng, ≥4.5:1; secondary nền #2f69d4, KHÔNG dùng #3577f1 làm nền chữ). Nút/badge warning solid dùng chữ #212529. Badge "dark" kiểu soft dùng chữ --color-admin-dark-text (lật sáng ở chế độ tối) (PR #92).
+  · Viền ô nhập: --color-border-input (≥3:1 trên nền ô, cả sáng lẫn tối). Placeholder = --color-placeholder (= muted) và CHỈ chứa ví dụ ("0912 345 678"); hướng dẫn/điều kiện đặt ở dòng gợi ý dưới ô, không nhét vào placeholder (PR #92).
   · Focus: --focus-ring-width 2px · --focus-ring-offset 2px · --focus-ring-color (accent; vùng nền đậm như sidebar/header đổi màu vòng theo chữ của vùng). KHÔNG outline:none mà không thay bằng ring.
   · Sidebar: chữ mục thường trắng .85; MỤC ĐANG CHỌN = chữ trắng + nền active + vạch chỉ báo bên trái + aria-current="page" (phân biệt bằng HÌNH, không chỉ bằng màu).
-  · Storefront: chữ màu thương hiệu trên nền sáng dùng --primary-text (tự làm tối tới ≥4.5:1 trên thẻ và trên nền trang); --primary giữ cho nền/viền và chữ trên nền tối (header/hero/footer).
+  · Storefront: chữ màu thương hiệu trên nền sáng dùng --primary-text (tự làm tối tới ≥4.5:1 trên thẻ và trên nền trang); chữ màu thương hiệu trên nền tối --ink (link footer, menu con, nút phụ ở hero) dùng --primary-on-ink (tự làm sáng tới ≥4.5:1, PR #92); --primary giữ cho nền/viền.
 - Đích build: Livewire 4 + Blade + Tailwind 4 + <x-admin::*>; icon Remix inline-SVG (prototype dùng CDN được, README liệt kê tên icon). Không Bootstrap, không Flux.
 - Mỗi màn đủ trạng thái: trống · đang tải · lỗi (có "Thử lại") · không có quyền · khoá theo gói · thành công. Không ngõ cụt.
 - 3 bề rộng 1240 / 768 / 390, sáng + tối, WCAG 2.2 AA.
@@ -23,7 +23,7 @@ TIÊU CHÍ DỄ DÙNG — kiểm từng màn trước khi giao, ghi kết quả 
  3. Không thuật ngữ kỹ thuật trần (SMTP, OAuth, DNS, CNAME, SSL, API, webhook, token, slug, meta, robots…). Buộc phải có thì để trong khối "Nâng cao" và kèm 1 câu giải thích đời thường. Tên thương hiệu quen (Google, Zalo, Facebook) giữ nguyên nhưng nói rõ công dụng ("Facebook Pixel — đo hiệu quả quảng cáo Facebook").
  4. Icon luôn kèm chữ; chỉ icon rất quen (tìm kiếm, chuông, đóng, thêm) mới được đứng một mình, và phải có tooltip + aria-label.
  5. Ô nhập có gợi ý bằng ví dụ thật; lỗi nói cách sửa ("Số điện thoại cần 10 số, ví dụ 0901 234 567"), không nói lỗi kỹ thuật.
- 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu, xoá = vào Thùng rác kèm toast "Hoàn tác".
+ 6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu. Xoá thứ CÓ Thùng rác (bài, trang, sản phẩm, ảnh & tệp) = vào Thùng rác kèm toast "Hoàn tác"; xoá thứ KHÔNG có Thùng rác (trình đơn, mục trình đơn, chuyên mục, nhóm quyền…) = hộp xác nhận nói rõ hệ quả bằng số và tên ("Xoá mục này và 3 mục con", "12 bài sẽ chuyển sang Tin công ty") — không hứa "Hoàn tác" cho thứ đã xoá hẳn.
  7. Trạng thái luôn có màu + hình + chữ — không bao giờ chỉ dùng màu.
  8. Không cắt chữ: nhãn nút, chip, tab, nút lọc luôn 1 dòng (dài thì "…" + tooltip) — nút KHÔNG bao giờ xuống 2 dòng; nhãn ô nhập được xuống dòng nhưng không bị che. Không thanh cuộn ngang trong thẻ/khung đọc.
  9. Điện thoại: việc hay làm (trả lời khách liên hệ, duyệt bài, đăng tin nhanh, xem thông báo) làm trọn được ở 390px; vùng bấm ≥ 44px; không thành phần nổi nào che nút Lưu hay nội dung.
@@ -41,10 +41,12 @@ Repo: `app/Modules/Admin/Livewire/Forms/{Inbox,Detail}.php` — hộp thư chỉ
 Dữ liệu thật (`database/migrations/2005_01_01_000000_create_forms_tables.php`):
 - `forms`: tên + lời cảm ơn THEO NGÔN NGỮ, email nhận thông báo (nhiều), trạng thái bật|tắt.
 - `form_fields`: nhãn THEO NGÔN NGỮ, loại ∈ {text, email, tel, textarea, select, checkbox} (chỉ 6 loại), bắt buộc, lựa chọn, thứ tự.
+- Ô ĐỒNG Ý (as-built 26–27/09, Luật Bảo vệ dữ liệu cá nhân hiệu lực 01/01/2026 — `app/Modules/Forms/Actions/EnsureContactForm.php`, `SubmitForm.php`): form liên hệ luôn có ô `consent` (loại checkbox, bắt buộc); bài gửi lưu NGUYÊN VĂN câu khách đã tick làm bằng chứng (thời điểm = lúc gửi). Câu đồng ý do nền tảng quản lý theo ngôn ngữ (vận hành viên viết lại hàng loạt khi lời văn pháp lý đổi) — nhãn và lời mặc định của form có đủ mọi ngôn ngữ website đang dùng.
 - `form_submissions`: dữ liệu, tên, email, SĐT, trang gửi, IP, trạng thái new|read|archived|spam + cờ is_spam = kết luận của bộ lọc tự động (giữ riêng, không đổi theo người duyệt). Chống spam tự động (ô bẫy + xác minh chống bot) — người dùng không phải cấu hình.
 Vẽ:
-1. Hộp thư khách liên hệ (mẫu Hộp hai khung): nhãn trạng thái đời thường — Mới · Đã xem · Đã xử lý (archived) · Thư rác (spam) — kèm "Bộ lọc tự động cho là thư rác" khi is_spam; lọc biểu mẫu/trạng thái/khoảng ngày, tìm theo tên/email/SĐT, chọn nhiều → đã xem / đã xử lý / thư rác, xuất CSV (nói rõ đây là dữ liệu cá nhân), "Tải thêm". Mở 1 liên hệ → khung đọc: dữ liệu, trang gửi, thời gian, nút GỌI · ZALO · EMAIL một chạm (ưu tiên điện thoại), chuyển trạng thái.
+1. Hộp thư khách liên hệ (mẫu Hộp hai khung): nhãn trạng thái đời thường — Mới · Đã xem · Đã xử lý (archived) · Thư rác (spam) — kèm "Bộ lọc tự động cho là thư rác" khi is_spam; lọc biểu mẫu/trạng thái/khoảng ngày, tìm theo tên/email/SĐT, chọn nhiều → đã xem / đã xử lý / thư rác, xuất CSV (nói rõ đây là dữ liệu cá nhân), "Tải thêm". Mở 1 liên hệ → khung đọc: dữ liệu, trang gửi, thời gian, dòng "Khách đã đồng ý: «câu đã tick» — lúc …" (bằng chứng, chỉ đọc), nút GỌI · ZALO · EMAIL một chạm (ưu tiên điện thoại), chuyển trạng thái.
 2. Điện thoại là chính: 390px = danh sách → chạm mở chi tiết toàn màn + nút gọi to ở dưới.
-3. Danh sách biểu mẫu + Trình sửa biểu mẫu: kéo-thả trường (chỉ 6 loại trên; có nút lên/xuống), nhãn/lựa chọn theo thanh ngôn ngữ, bắt buộc, email nhận thông báo, lời cảm ơn theo ngôn ngữ, bật/tắt, xem trước; cách đặt biểu mẫu vào trang (qua Trình dựng — 1 câu hướng dẫn + nút mở).
+3. Danh sách biểu mẫu + Trình sửa biểu mẫu: kéo-thả trường (chỉ 6 loại trên; có nút lên/xuống; ô đồng ý hiện KHOÁ ở cuối form — không xoá, không bỏ bắt buộc, không sửa câu — kèm 1 dòng "Bắt buộc theo luật bảo vệ dữ liệu cá nhân; câu chữ do hệ thống cập nhật"), nhãn/lựa chọn theo thanh ngôn ngữ, bắt buộc, email nhận thông báo, lời cảm ơn theo ngôn ngữ, bật/tắt, xem trước; cách đặt biểu mẫu vào trang (qua Trình dựng — 1 câu hướng dẫn + nút mở).
 4. Trạng thái: chưa có liên hệ (hướng dẫn gắn form + nút "Xem trang Liên hệ") · biểu mẫu đang tắt · không có quyền (forms.view xem · forms.manage đổi trạng thái/sửa).
+Câu hỏi cho backend (ghi README): câu đồng ý chưa có liên kết tới "Chính sách bảo mật" (trang pháp lý đang chờ luật sư, đợt 1 — `docs/design.md` §33 #3) → vẽ chỗ cho liên kết đó, gắn "Chờ nội dung pháp lý".
 Gắn vào Shell: `contacts` (+ số mới), `forms`.
