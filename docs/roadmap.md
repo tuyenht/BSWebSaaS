@@ -38,9 +38,12 @@
 | ⏭ Sau | lệnh nạp cấu hình site từ một file (trình đơn, chuyên mục, trang, thông tin doanh nghiệp, màu) để giao website khách không phải chờ màn quản trị — cần số site đang chờ · An Vinh mở en (khi khách dịch xong, duyệt qua xem trước) rồi ja · nợ khái niệm của lõi (FK `workflow_log.entry_id`, `ContentSection`/`PermalinkConfig` trong Tenancy, quyền nội dung trong Rbac) — ghi thành danh sách chỉ-giảm, gỡ khi có dự án phi-website · chuỗi hiển thị còn viết cứng tiếng Việt: nhãn danh mục module/tính năng (`ModuleCatalog`/`FeatureRegistry`, làm cùng D4) + chuỗi dự phòng trong `resources/js/media-*.js` |
 
 ## 3. Mạch khác đang mở
-- **Lịch sử phiên bản bài/trang (D1-4b):** backend ✅ lên prod 28/09 (`entry_revisions`, khôi phục, giữ ≥ 20 bản/90 ngày;
-  design §8 v2.29) — màn chờ handoff D1-4b. Còn mở, cần quyết cùng handoff D1-4: **bản nháp đè bản công khai** (sửa bài
+- **Lịch sử phiên bản bài/trang (D1-4c):** backend ✅ lên prod 28/09 (`entry_revisions`, khôi phục, giữ ≥ 20 bản/90 ngày;
+  design §8 v2.29) — màn chờ handoff D1-4c. Còn mở, cần quyết cùng handoff D1-4d: **bản nháp đè bản công khai** (sửa bài
   đang công khai chưa hiện ra ngay mà chờ "Cập nhật"/duyệt) — đổi hành vi storefront + trình soạn ⇒ COUNCIL riêng.
+  ⚠ Rủi ro đang có (29/09): website BẬT quy trình duyệt thì người có quyền sửa bài vẫn lưu thẳng thay đổi lên bài đang
+  công khai, không qua duyệt (`Entries/Editor.php` `save()`). Khuyến nghị C5: tắt duyệt → lên ngay; bật duyệt → bản chờ
+  duyệt. Chưa bật quy trình duyệt cho website khách nào trước khi COUNCIL này xong.
 - **RBAC Console:** backend nhóm quyền tuỳ chỉnh xong (`rbac.custom_roles`, mặc định tắt); UI = lượt D2-1.
 - **Core Web Vitals:** job `cwv` là gate từ 24/09 cho `/`, `/lien-he`, `/tin-tuc` (LCP ≤ 1,5s · JS ≤ 30KB · axe 0 vi phạm).
 - **Đăng nhập 3 cửa (§LR B1–B6):** tường minh mặt phẳng · cửa owner · đăng nhập chung + chọn website · chuyển website ·
