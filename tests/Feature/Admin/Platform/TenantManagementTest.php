@@ -53,7 +53,9 @@ it('filters the tenant list by search', function (): void {
     $this->actingAs($user)->get("http://{$host}/tenants?q=Acme")
         ->assertOk()
         ->assertSee('Acme Corp')
-        ->assertDontSee('T1');
+        // By T1's detail link, not its two-letter name: "T1" can turn up anywhere in the page (a token, a hash).
+        ->assertSee(route('platform.tenants.show', 'TENANT0000000000000000002'))
+        ->assertDontSee(route('platform.tenants.show', 'TENANT0000000000000000001'));
 });
 
 it('shows a tenant detail with its sites and primary domain', function (): void {
