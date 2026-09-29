@@ -7,12 +7,18 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use App\Modules\Workflow\Services\WorkflowTrail;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /*
  * The read side of the approval trail (design_handoff_workflow screen 2 "Lịch sử duyệt"). It
  * renders what the engine SNAPSHOTTED into workflow_log.labels at write time — never a live join
  * onto states, which would print raw keys once a template swap renamed a stage — and pages by
  * keyset on (created_at, id), newest first, so "Xem thêm" never re-reads what is already shown.
+ * Each row also says what moved — the entry, or a pending change to it — so a change passing
+ * through review never reads as the live entry leaving the site.
  */
 
 beforeEach(function (): void {
@@ -147,4 +153,72 @@ it('never leaks another site trail', function (): void {
         $page = app(WorkflowTrail::class)->forEntry($foreignEntryId);
         expect($page['rows'])->toBe([])->and($page['total'])->toBe(0);
     });
+});
+
+it('records what moved: the entry by default, a pending change when the caller says so', function (): void {
+    $author = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author): void {
+        grantRole($author, 'author', ['entries.submit']);
+        $workflow = trailWorkflow();
+        $engine = app(WorkflowEngine::class);
+        $entryMoved = Entry::query()->create(['type' => 'post', 'status' => 'draft'])->id;
+        $changeMoved = Entry::query()->create(['type' => 'post', 'status' => 'published'])->id;
+
+        $engine->apply($workflow, 'submit', 'draft', $author->fresh(), $entryMoved, 'vi');
+        $engine->apply($workflow, 'submit', 'draft', $author->fresh(), $changeMoved, 'vi', target: WorkflowEngine::TARGET_CHANGE);
+
+        $trail = app(WorkflowTrail::class);
+        expect($trail->forEntry($entryMoved)['rows'][0]['target'])->toBe('entry')
+            ->and($trail->forEntry($changeMoved)['rows'][0])->toMatchArray(['target' => 'change', 'transition' => 'Gửi duyệt']);
+    });
+});
+
+it('refuses an unknown target before writing anything', function (): void {
+    $author = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author): void {
+        grantRole($author, 'author', ['entries.submit']);
+        $workflow = trailWorkflow();
+        $entryId = Entry::query()->create(['type' => 'post', 'status' => 'draft'])->id;
+
+        expect(fn () => app(WorkflowEngine::class)->apply($workflow, 'submit', 'draft', $author->fresh(), $entryId, target: 'product'))
+            ->toThrow(InvalidArgumentException::class);
+
+        expect(app(WorkflowTrail::class)->forEntry($entryId)['total'])->toBe(0);
+    });
+});
+
+it('defaults a trail row to the entry and rejects any other target at the database', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $entryId = Entry::query()->create(['type' => 'post', 'status' => 'draft'])->id;
+        $row = ['site_id' => 1, 'entry_id' => $entryId, 'transition_key' => 'submit', 'from_state' => 'draft', 'to_state' => 'pending'];
+
+        $id = DB::table('workflow_log')->insertGetId($row);
+        expect(DB::table('workflow_log')->where('id', $id)->value('target'))->toBe('entry');
+
+        expect(fn () => DB::transaction(fn () => DB::table('workflow_log')->insert($row + ['target' => 'product'])))
+            ->toThrow(QueryException::class, 'workflow_log_target_check');
+    });
+});
+
+it('adds and removes the target column reversibly', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2027_01_01_000000_add_target_to_workflow_log.php');
+
+    // Migrations run on the privileged connection (DDL needs table ownership). Restore the column
+    // before asserting so a failing assertion never leaves it dropped for the rest of the suite.
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        $dropped = ! Schema::hasColumn('workflow_log', 'target');
+        $migration->up();
+        $migration->up();   // re-runnable after a mid-run failure
+    } finally {
+        DB::setDefaultConnection($original);
+    }
+
+    expect($dropped)->toBeTrue()
+        ->and(Schema::hasColumn('workflow_log', 'target'))->toBeTrue();
 });

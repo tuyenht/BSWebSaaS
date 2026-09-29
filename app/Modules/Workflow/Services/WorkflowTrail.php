@@ -31,7 +31,7 @@ final readonly class WorkflowTrail
     /**
      * @param  string|null  $after  the `cursor` of the previous page; null for the first page
      * @return array{
-     *     rows: list<array{id: int, at: CarbonInterface, actor: string|null, transition: string, from: string, to: string, note: string|null}>,
+     *     rows: list<array{id: int, at: CarbonInterface, actor: string|null, target: string, transition: string, from: string, to: string, note: string|null}>,
      *     cursor: string|null,
      *     total: int,
      * }
@@ -50,7 +50,7 @@ final readonly class WorkflowTrail
         }
 
         // Fetch one past the page so "is there more?" costs no extra query.
-        $logs = $query->limit($limit + 1)->get(['id', 'transition_key', 'from_state', 'to_state', 'labels', 'actor_id', 'note', 'created_at']);
+        $logs = $query->limit($limit + 1)->get(['id', 'target', 'transition_key', 'from_state', 'to_state', 'labels', 'actor_id', 'note', 'created_at']);
         $hasMore = $logs->count() > $limit;
         $logs = $logs->take($limit);
 
@@ -69,6 +69,8 @@ final readonly class WorkflowTrail
                 'id' => (int) $log->id,
                 'at' => $at,
                 'actor' => $log->actor_id !== null ? ($actorNames[$log->actor_id] ?? null) : null,
+                // What moved: the entry itself, or a pending change to it (WorkflowEngine::TARGET_*).
+                'target' => $log->target,
                 // Fall back to the raw key only when the snapshot is missing (pre-provenance rows).
                 'transition' => $labels['transition'] ?? $log->transition_key,
                 'from' => $labels['from'] ?? $log->from_state,
