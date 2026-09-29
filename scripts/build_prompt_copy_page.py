@@ -113,14 +113,26 @@ for mod, screen, d, c in MATRIX:
 
 # Open calls the 29/09 audit left for the owner: the prompts draw the safest default and tag it "Cần owner chốt".
 OPEN = [
-    ('C1', 'Khoá màn hình', 'Prompt giữ như đã vẽ (menu người dùng) và ghi Việc cho backend. Bỏ thì owner nói — vì lý do dễ dùng, không phải vì thiếu backend.'),
-    ('C2', 'Dữ liệu & Phục hồi', 'Màn đã vẽ (khôi phục về thời điểm, xuất, nhập). Prompt giữ + Việc cho backend; sổ màn đang ghi ⏸ — owner chọn giữ hay hoãn.'),
-    ('C3', 'Ai được "Đăng nhập hỗ trợ"', 'Mặc định vẽ: quyền riêng cho super_admin + support, không cho billing; bắt lý do, có thời hạn, ghi nhật ký. Quyết định bảo mật — build chỉ sau khi owner duyệt.'),
-    ('C4', 'Màu trang quản trị theo từng người', 'Mặc định vẽ: một màu cho cả nền tảng (Thương hiệu trắng, tự đạt AA); tuỳ biến cá nhân không có ô màu.'),
-    ('C5', 'Bản nháp đè bản công khai', 'D1-4d vẽ cả hai phương án A/B kèm so sánh — owner chọn một rồi mới build.'),
-    ('C6', 'Dữ liệu cá nhân của khách liên hệ (pháp lý)', 'D1-7 vẽ mặc định: chỉ người quản lý biểu mẫu được xuất CSV, có xác nhận + ghi nhật ký; thời hạn tự xoá để trống (giữ); xoá theo yêu cầu khách = Thùng rác 30 ngày. Owner chốt theo tư vấn pháp lý.'),
-    ('C7', 'Việc owner làm trong project Claude Design', 'Sửa CLAUDE.md của project: §8 thêm token AA (muted #6b6e7f, bậc -text/-solid, vòng focus 2px) và bộ bề rộng 1240/768/390; §13 thêm cách nhúng màn toàn trang. Claude Design không được tự sửa file này.'),
+    ('C1', 'Khoá màn hình', 'Khuyến nghị: GIỮ (đã vẽ) — khoá thật ở máy chủ, mở bằng mật khẩu, trang đang soạn giữ nguyên; thêm tuỳ chọn tự khoá khi không thao tác (mặc định Tắt) ở Bảo mật & Nâng cao. Hợp máy tính dùng chung ở văn phòng, không làm mất việc như đăng xuất.'),
+    ('C2', 'Dữ liệu & Phục hồi', 'Khuyến nghị: GIỮ màn đã vẽ, build theo thứ tự Xuất dữ liệu → Khôi phục (chạy nền từ bản sao lưu đêm, trích đúng dữ liệu của website đó) → Nhập. Chỉ bước Khôi phục cần họp COUNCIL (đụng tách dữ liệu giữa website) trước khi code.'),
+    ('C3', 'Ai được "Đăng nhập hỗ trợ"', 'Khuyến nghị: quyền riêng cho super_admin + support (không billing); bắt lý do, 15/30/60 phút, banner đếm ngược, ghi nhật ký, báo chủ website; trong phiên không đổi mật khẩu/2 lớp/thành viên/tên miền, không xuất dữ liệu cá nhân; chủ website có công tắc tắt quyền này (mặc định bật). Build qua COUNCIL bảo mật.'),
+    ('C4', 'Màu trang quản trị theo từng người', 'Khuyến nghị: KHÔNG cho từng người — một màu cho cả nền tảng ở Thương hiệu trắng (tự đạt AA). Cá nhân vẫn chọn sáng/tối, cỡ chữ, bố cục.'),
+    ('C5', 'Bản nháp đè bản công khai', 'Khuyến nghị: lai theo chế độ duyệt — website KHÔNG bật quy trình: sửa là lên ngay (A, như WordPress) + lịch sử để khôi phục; website BẬT quy trình: sửa bài đang công khai thành bản chờ duyệt (B), khách vẫn thấy bản cũ. Lý do: hiện lưu bài đang công khai là lên website ngay kể cả khi bật duyệt — quy trình duyệt bị lách. Build qua COUNCIL.'),
+    ('C6', 'Dữ liệu cá nhân của khách liên hệ (pháp lý)', 'Khuyến nghị: xuất CSV chỉ cho người quản lý biểu mẫu, xác nhận lại mật khẩu/2 lớp, ghi nhật ký; tự xoá liên hệ sau 24 tháng (đổi được), thư rác 30 ngày; "Xoá theo yêu cầu của khách" xoá hẳn ngay (không để 30 ngày trong Thùng rác). Nhờ luật sư xác nhận thời hạn trước khi build.'),
+    ('C7', 'Bước 0 của owner trong project Claude Design', 'Khuyến nghị: dán đoạn "Bước 0" bên dưới vào CLAUDE.md của project TRƯỚC khi chạy D0-1 — để CLAUDE.md và prompt nói cùng một luật (token AA, bề rộng kiểm, cách nhúng màn toàn trang).'),
 ]
+
+CLAUDE_PATCH = """Sửa CLAUDE.md của project Claude Design BSWebSaaS (3 chỗ, giữ nguyên phần còn lại):
+
+1) §8, THAY dòng "Token AdminKit: primary `#405189`, bo 4px control / 6px card, …, Inter 14px, canvas `#f3f3f9`. Không tự chế màu mới." bằng:
+- Token AdminKit (đồng bộ repo PR #87/#92, đạt WCAG AA): primary `#405189` = nền dưới chữ trắng · accent `#405189` (tối `#96a1c0`) = chữ, viền, vòng focus · chữ phụ `--color-body-muted` `#6b6e7f` (tối `#98a0ae`); `--color-body-faint` chỉ cho chi tiết trang trí · viền ô nhập `--color-border-input` · màu ngữ nghĩa 2 bậc: `-text` (chữ, kiểu soft) và `-solid` (nền dưới chữ trắng; secondary `#2f69d4`, không dùng `#3577f1` làm nền chữ) · focus: vòng 2px cách 2px, không `outline:none`. Bo 4px control / 6px card, shadow `0 1px 2px rgba(56,65,74,.15)`, Inter 14px, canvas `#f3f3f9`. Không tự chế màu mới.
+
+2) §8, THAY "mở thử từng popover ở 3 bề rộng 1180 / 700 / 440px" bằng "mở thử từng popover ở 3 bề rộng 1240 / 768 / 390px", và THÊM dòng:
+- Mỗi màn kiểm ở 1240 / 768 / 390px × sáng + tối × chữ thường + chữ lớn trước khi giao.
+
+3) Cuối §13, THÊM:
+- Màn TOÀN TRANG (danh sách, trình soạn, hộp duyệt, thư viện) cũng nhận `embedded`, nhưng chỉ ẩn phần trùng Shell (breadcrumb, tiêu đề trang, khung 100vh); GIỮ thanh thao tác và nút quy trình của chính màn; vẫn báo `onDirty` và nghe `bs-embed-cmd`. Shell chỉ mount màn toàn trang đang mở (`sc-if`); panel Cài đặt giữ cách `xWrapStyle` ở trên.
+"""
 
 open_rows = ''.join(
     f'<li class="dec"><span class="qid">{q}</span><div><p class="dq">{e(t)}</p><p class="da">{e(a)}</p></div></li>'
@@ -164,7 +176,7 @@ page = f'''<title>Gói prompt SaaS Starter</title>
 <style>
 :root {{
   --canvas:#f3f3f9; --surface:#ffffff; --surface-2:#f8f9fb; --border:#e9ebec; --line:#eff2f7;
-  --heading:#343a40; --text:#495057; --muted:#878a99; --brand:#405189; --brand-soft:rgba(64,81,137,.10);
+  --heading:#343a40; --text:#495057; --muted:#6b6e7f; --brand:#405189; --brand-soft:rgba(64,81,137,.10);
   --ok:#0a6d60; --ok-bg:rgba(10,179,156,.14); --warn:#8a5f18; --warn-bg:rgba(247,184,75,.20);
   --bad:#c0432c; --bad-bg:rgba(240,101,72,.14); --info:#22688f; --info-bg:rgba(41,156,219,.14);
   --neutral:#5c5f6e; --neutral-bg:#eef0f4; --shadow:0 1px 2px rgba(56,65,74,.15); --code:#f4f6fa;
@@ -269,10 +281,10 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
 
 <div class="wrap">
   <header class="top">
-    <span class="eyebrow">BSWebSaaS · Audit độ phủ thiết kế · 23/09/2026</span>
+    <span class="eyebrow">BSWebSaaS · Gói prompt Claude Design · cập nhật 29/09/2026</span>
     <h1>Gói prompt SaaS Starter</h1>
     <p class="lede">{len(prompts)} lượt chat cho Claude Design để hoàn thiện và chuẩn hoá toàn bộ màn hình của bộ khung SaaS Starter, rồi nối tất cả vào Admin Shell thành một prototype bấm xuyên được. Mỗi nút <b>Sao chép prompt</b> chép đủ phần bối cảnh chung + việc của lượt đó. Chạy đúng thứ tự, mỗi prompt một cửa sổ chat mới.</p>
-    <p class="meta">Nguồn: export Claude Design 18/09 (32 màn .dc.html) đối chiếu repo main <code>13281cb</code> · Báo cáo đầy đủ: <code>plans/reports/council-audit-260923-2254-saas-starter-design-coverage-and-docs-report.md</code></p>
+    <p class="meta">Nguồn: export Claude Design 18/09 (32 màn .dc.html, lưu ở <code>docs/design-source/</code>) đối chiếu repo main · Audit 29/09: <code>plans/reports/from-design-audit-*-260929-1600-*</code> · Audit gốc 23/09: <code>plans/reports/council-audit-260923-2254-…</code></p>
   </header>
 
   <section class="panel steps" aria-labelledby="how-h">
@@ -282,7 +294,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       <li><b>Mở một cửa sổ chat MỚI</b> trong project Claude Design BSWebSaaS, dán và gửi. Không gộp 2 lượt vào 1 cửa sổ.</li>
       <li><b>Xong thì tích ô "Xong"</b> và gửi bản export cho Claude Code để đối chiếu với code trước khi build.</li>
     </ol>
-    <p class="hint">Bản 3.5 (29/09, chưa chạy lượt nào): audit khắt khe cả 25 prompt với bản export thiết kế + repo. Tách D0-4 → D0-4a/4b và D1-4b → D1-4b/4c/4d cho vừa một lượt; D0-1 đồng bộ token AA vào design system + nguồn thương hiệu duy nhất (platform-config.js) + nối "lượt AI" của Shell với ai-quota.js; giữ Khoá màn hình, Dữ liệu & Phục hồi, 9 nguồn ảnh của MediaPicker (không cắt vì backend); xoá vào Thùng rác không hỏi (Hoàn tác 8 giây), chỉ hỏi khi kéo theo mục khác hoặc không hoàn tác được; màn toàn trang khi nhúng GIỮ thanh thao tác của mình; thêm mã lỗi thật còn thiếu (Chuyên mục, Thư viện 16/16, Lời mời); kiểm bằng lưới mẫu thay tích số đầy đủ; mỗi lượt lớn có điểm dừng "phần 2". Bản 3.4 (29/09): THIẾT KẾ DẪN, BACKEND THEO — màn cần gì mà repo chưa có thì cứ vẽ, ghi vào "Việc cho backend" của README; không cắt tính năng, không vẽ trạng thái tạm. mọi lượt nhận token #92 (màu secondary/dark 2 bậc, placeholder chỉ chứa ví dụ, --primary-on-ink) và "Mẫu DANH SÁCH dùng chung" lấy từ thiết kế Bài viết/Trang đã build (mọi màn danh sách dùng lại, không chế mới); tiêu chí 6 giữ Thùng rác + Hoàn tác, chỗ backend chưa có thì ghi Chờ backend; D1-2 Trình đơn = thiết kế đã có, chỉ khớp (trục ngôn ngữ, trạng thái nguồn sản phẩm, bảng tính năng chờ backend); D1-1 Chuyên mục, D1-4b Lịch sử phiên bản theo backend đã lên prod; D1-3, D1-6, D1-7 (ô đồng ý), D0-2/D3-1 (bảng màu 10 bậc), D3-2 (tên miền riêng để sau), D4-1 (cấp thêm ngôn ngữ). Bản 3.2 (26/09): D0-4, D3-1, D4-2 — website mặc định 1 ngôn ngữ, thêm ngôn ngữ do Bảo Sơn cấp riêng. Bản 3 (24/09): 10 lượt (D0-1, D0-4, D1-2, D1-5, D2-2, D2-3, D2-4, D3-1, D4-2, D5-1) đã sửa theo backend vừa lên prod — bỏ các nhãn "Chờ backend" không còn đúng, thêm giới hạn và thông báo lỗi thật mà màn phải hiện. Bản 2 (23/09): 12 tiêu chí dễ dùng cho người không rành CNTT ở mọi lượt.</p>
+    <p class="hint">Bản 3.6 (29/09 tối): soát lại lần 2 — luật AI theo quyết định Q12 vào bối cảnh chung (nút AI chỉ hiện khi website được cấp); mọi mã màu cứng ở phần lượt chạm đổi sang token; 7 mục "Cần owner chốt" có khuyến nghị và prompt vẽ đúng khuyến nghị (khoá màn hình khoá thật ở máy chủ, khôi phục chạy nền, phiên hỗ trợ bị giới hạn + chủ website tắt được, xoá theo yêu cầu khách là xoá hẳn); D4 ghi đúng quyền registry; thêm Bước 0 cho CLAUDE.md của project. Bản 3.5 (29/09, chưa chạy lượt nào): audit khắt khe cả 25 prompt với bản export thiết kế + repo. Tách D0-4 → D0-4a/4b và D1-4b → D1-4b/4c/4d cho vừa một lượt; D0-1 đồng bộ token AA vào design system + nguồn thương hiệu duy nhất (platform-config.js) + nối "lượt AI" của Shell với ai-quota.js; giữ Khoá màn hình, Dữ liệu & Phục hồi, 9 nguồn ảnh của MediaPicker (không cắt vì backend); xoá vào Thùng rác không hỏi (Hoàn tác 8 giây), chỉ hỏi khi kéo theo mục khác hoặc không hoàn tác được; màn toàn trang khi nhúng GIỮ thanh thao tác của mình; thêm mã lỗi thật còn thiếu (Chuyên mục, Thư viện 16/16, Lời mời); kiểm bằng lưới mẫu thay tích số đầy đủ; mỗi lượt lớn có điểm dừng "phần 2". Bản 3.4 (29/09): THIẾT KẾ DẪN, BACKEND THEO — màn cần gì mà repo chưa có thì cứ vẽ, ghi vào "Việc cho backend" của README; không cắt tính năng, không vẽ trạng thái tạm. mọi lượt nhận token #92 (màu secondary/dark 2 bậc, placeholder chỉ chứa ví dụ, --primary-on-ink) và "Mẫu DANH SÁCH dùng chung" lấy từ thiết kế Bài viết/Trang đã build (mọi màn danh sách dùng lại, không chế mới); tiêu chí 6 giữ Thùng rác + Hoàn tác, chỗ backend chưa có thì ghi Chờ backend; D1-2 Trình đơn = thiết kế đã có, chỉ khớp (trục ngôn ngữ, trạng thái nguồn sản phẩm, bảng tính năng chờ backend); D1-1 Chuyên mục, D1-4b Lịch sử phiên bản theo backend đã lên prod; D1-3, D1-6, D1-7 (ô đồng ý), D0-2/D3-1 (bảng màu 10 bậc), D3-2 (tên miền riêng để sau), D4-1 (cấp thêm ngôn ngữ). Bản 3.2 (26/09): D0-4, D3-1, D4-2 — website mặc định 1 ngôn ngữ, thêm ngôn ngữ do Bảo Sơn cấp riêng. Bản 3 (24/09): 10 lượt (D0-1, D0-4, D1-2, D1-5, D2-2, D2-3, D2-4, D3-1, D4-2, D5-1) đã sửa theo backend vừa lên prod — bỏ các nhãn "Chờ backend" không còn đúng, thêm giới hạn và thông báo lỗi thật mà màn phải hiện. Bản 2 (23/09): 12 tiêu chí dễ dùng cho người không rành CNTT ở mọi lượt.</p>
   </section>
 
   <div class="facts" role="list">
@@ -298,8 +310,16 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
   </section>
 
   <section class="panel" aria-labelledby="open-h">
-    <div class="panel-head"><h2 id="open-h">🟡 Cần owner chốt — prompt đã vẽ mặc định an toàn</h2><span class="hint">Không chặn việc chạy prompt: Claude Design vẽ mặc định dưới đây và gắn "Cần owner chốt" trong README. Owner trả lời bất cứ lúc nào trước khi build màn đó.</span></div>
+    <div class="panel-head"><h2 id="open-h">🟡 Cần owner chốt — kèm khuyến nghị</h2><span class="hint">Không chặn việc chạy prompt: prompt đã vẽ đúng khuyến nghị và gắn "Cần owner chốt" trong README. Owner đồng ý hoặc đổi trước khi build màn đó.</span></div>
     <ul class="decs">{open_rows}</ul>
+  </section>
+
+  <section class="panel" aria-labelledby="step0-h">
+    <div class="panel-head"><h2 id="step0-h">Bước 0 — owner dán vào CLAUDE.md của project (một lần, trước D0-1)</h2><button type="button" class="btn-copy" data-copy="step0" data-raw="1">Sao chép đoạn sửa</button></div>
+    <details>
+      <summary>Xem đoạn sửa (3 chỗ)</summary>
+      <pre id="step0">{e(CLAUDE_PATCH)}</pre>
+    </details>
   </section>
 
   <section class="panel" aria-labelledby="run-h">
@@ -377,7 +397,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
   document.querySelectorAll('[data-copy]').forEach(function (btn) {{
     btn.addEventListener('click', function () {{
       var pre = document.getElementById(btn.getAttribute('data-copy'));
-      var text = preamble + '\\n' + pre.textContent + '\\n';
+      var text = btn.hasAttribute('data-raw') ? pre.textContent : preamble + '\\n' + pre.textContent + '\\n';
       var done2 = function (ok) {{
         if (ok) {{ flash(btn, 'Đã chép'); return; }}
         var det = pre.closest('details'); if (det) det.open = true;

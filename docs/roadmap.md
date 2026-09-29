@@ -12,7 +12,7 @@
 ⬜ đóng gói core v1.0.
 
 ## 1. Mạch chính — thiết kế đủ & chuẩn hoá 100% màn SaaS Starter (từ 24/09)
-- Brief: `design-briefs/saas-starter-design-first/` — 25 lượt Claude Design, 6 sóng: D0 nền (5) → D1 nội dung (8) →
+- Brief: `design-briefs/saas-starter-design-first/` — 28 lượt Claude Design, 6 sóng: D0 nền (6) → D1 nội dung (10) →
   D2 người dùng (5) → D3 cài đặt (2) → D4 nền tảng (3) → D5 lỗi + QA liền mạch (2).
 - Khu đăng nhập giữ nguyên (owner 23/09). Bộ AI, mặt TMĐT, Khối tái dùng, Builder v3: ngoài bộ này.
 - Cổng nghiệm thu mỗi handoff: đối chiếu code + 12 tiêu chí dễ dùng → `design_handoff_<slug>/` → cập nhật
