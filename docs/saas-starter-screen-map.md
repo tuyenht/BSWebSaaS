@@ -70,5 +70,6 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 57 | Cài đặt nền tảng | ✅ | — | 🟡 | D4-3 | |
 | 58–59 | Trang lỗi quản trị · website | ❌ | — | 🟡 404 đã white-label (PR #67) | D5-1 | các mã lỗi khác chưa có |
 | 60 | Kết quả tìm kiếm | ❌ | — | ❌ | D5-1 | |
+| 61 | Nhật ký hoạt động của website | ❌ | — | ❌ | D4-3 | thêm 29/09: cùng component với Nhật ký hệ thống, lọc theo website; chỉ Chủ website/Quản trị |
 | — | Khu đăng nhập | giữ nguyên | — | ✅ + dòng báo thành công (PR #68) | — | màn mới cùng khu: dựng theo khung login |
 | ⏸ | Bộ AI · mặt TMĐT · Khối tái dùng | ✅/🟡 | — | ❌ | — | ngoài core v1 |
