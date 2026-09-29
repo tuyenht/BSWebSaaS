@@ -118,7 +118,8 @@ OPEN = [
     ('C3', 'Ai được "Đăng nhập hỗ trợ"', 'Mặc định vẽ: quyền riêng cho super_admin + support, không cho billing; bắt lý do, có thời hạn, ghi nhật ký. Quyết định bảo mật — build chỉ sau khi owner duyệt.'),
     ('C4', 'Màu trang quản trị theo từng người', 'Mặc định vẽ: một màu cho cả nền tảng (Thương hiệu trắng, tự đạt AA); tuỳ biến cá nhân không có ô màu.'),
     ('C5', 'Bản nháp đè bản công khai', 'D1-4d vẽ cả hai phương án A/B kèm so sánh — owner chọn một rồi mới build.'),
-    ('C6', 'Việc owner làm trong project Claude Design', 'Sửa CLAUDE.md của project: §8 thêm token AA (muted #6b6e7f, bậc -text/-solid, vòng focus 2px) và bộ bề rộng 1240/768/390; §13 thêm cách nhúng màn toàn trang. Claude Design không được tự sửa file này.'),
+    ('C6', 'Dữ liệu cá nhân của khách liên hệ (pháp lý)', 'D1-7 vẽ mặc định: chỉ người quản lý biểu mẫu được xuất CSV, có xác nhận + ghi nhật ký; thời hạn tự xoá để trống (giữ); xoá theo yêu cầu khách = Thùng rác 30 ngày. Owner chốt theo tư vấn pháp lý.'),
+    ('C7', 'Việc owner làm trong project Claude Design', 'Sửa CLAUDE.md của project: §8 thêm token AA (muted #6b6e7f, bậc -text/-solid, vòng focus 2px) và bộ bề rộng 1240/768/390; §13 thêm cách nhúng màn toàn trang. Claude Design không được tự sửa file này.'),
 ]
 
 open_rows = ''.join(

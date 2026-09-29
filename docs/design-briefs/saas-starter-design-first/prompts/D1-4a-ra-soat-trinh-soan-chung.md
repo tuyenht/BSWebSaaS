@@ -47,4 +47,5 @@ Làm đúng "LƯỢT C — Rà 1‑1 từng nút của trình soạn chung" tron
 - Người mới: đổi mặc định `toolbarFull` từ true → false (quanh dòng 367): mặc định chỉ hiện nhóm hay dùng (Kiểu chữ · Đậm/Nghiêng · Danh sách · Liên kết · Ảnh · Video · Hoàn tác); phần còn lại trong nút "Thêm công cụ" (`onToggleToolbar` đã có) — THÊM phần nhớ lựa chọn theo người dùng (chưa có). Mọi nút có tooltip tiếng Việt + phím tắt, và `aria-label` tiếng Việt cho mọi nút chỉ-icon.
 - Điện thoại (390px): thanh công cụ 1 hàng cuộn ngang có mũi tên gợi ý, vùng bấm ≥ 44px (NGOẠI LỆ có chủ đích — luật cấm cuộn ngang áp cho thẻ/khung đọc nội dung, không áp cho thanh điều khiển; hiện thanh đang xuống dòng). Bôi đen trên cảm ứng vẫn gọi được AI (§15) — CHƯA CÓ: `onSelChange` chỉ nghe mouseup/keyup (quanh dòng 128) → thêm `selectionchange`/`touchend`.
 - Dán từ Word/Zalo/trang web: đã có toast "Đã dán và làm sạch định dạng thừa" (quanh dòng 630) — chỉ xác nhận đúng với 3 nguồn dán thật, không viết lại toast.
-Báo cáo nút nào lỗi rồi sửa.
+- Sửa lỗi có sẵn: panel "Viết lại đoạn đã chọn" (`aiPanelOn`, quanh dòng 152) đang mở giữa màn → đổi thành popup neo ngay dưới đoạn bôi đen như bong bóng gọi AI (§15).
+Báo cáo nút nào lỗi rồi sửa. Sắp hết lượt: xong phần rà 20 nhóm nút trước; các việc thêm ở trên ghi TODO.md "D1-4a phần 2".
