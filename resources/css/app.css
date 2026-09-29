@@ -12,6 +12,9 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/* docs/ holds design exports and handoffs full of prototype classes the app never renders. */
+@source not '../../docs';
+
 /*
  | Admin design tokens — the Velzon visual language expressed as Tailwind 4 tokens
  | (design source only; no Bootstrap/SCSS imported). Brand semantics are admin-namespaced
