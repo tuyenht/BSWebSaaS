@@ -211,6 +211,7 @@ entry_translations(
   UNIQUE(entry_id, locale)
 )
 entry_revisions(id, ulid, site_id, entry_id, locale, kind, snapshot JSONB, created_by, created_at)  -- as-built v2.29; 1 dòng = 1 ngôn ngữ
+entry_drafts(id, site_id, entry_id UNIQUE, workflow_state NULL, assigned_to, content JSONB{v, shared, locales}, created_by, updated_by, created_at, updated_at)  -- as-built 30/09, chưa nối UI; ≤1 thay đổi chờ/bài, storefront không đọc
 ```
 - **Lịch sử phiên bản (as-built 28/09, backend — màn sổ 14 chờ D1-4b):** mỗi lần bài lên public (mọi đường: `PublishEntry`, `PublishScheduledEntry`, `ApplyEntryWorkflowTransition`) và mỗi lần lưu khi bài đang public (trình soạn, sửa nhanh tiêu đề/slug ở danh sách) ⇒ `Cms\Actions\RecordEntryRevision` ghi 1 bản/ngôn ngữ **trong cùng giao dịch** (`kind` publish/edit; bản giống hệt bản mới nhất ⇒ bỏ qua). Snapshot = trường dịch (tiêu đề, slug, body, excerpt, SEO, ảnh OG) + trường chung (template, ảnh bìa, meta); KHÔNG chụp trạng thái/quy trình/chuyên mục. Đổi trường chung ⇒ ghi cho **mọi** ngôn ngữ (lịch sử luôn khớp trang thật). `RestoreEntryRevision` (quyền = sửa bài): ghi lại qua đúng luật của trình soạn (`EntryContentRules`, `ValidPageJson`), slug đổi ⇒ route + 301, ảnh đã mất ⇒ bỏ tham chiếu + báo số, không đổi trạng thái, `kind=restore` + audit; từ chối có mã lý do (`slug_taken`, `locale_disabled`, `snapshot_incompatible`, `entry_trashed`). Danh sách keyset không đọc `snapshot`; id ra ngoài = `ulid`. Giữ ≥ 20 bản/(bài, ngôn ngữ), xoá bản ngoài 20 **và** cũ hơn 90 ngày (`cms:prune-revisions` hằng ngày, theo lô) — `config/cms.php`. Bài công khai có từ trước: `cms:snapshot-published` (idempotent). **Chưa làm (quyết định sau, cùng handoff D1-4):** bản nháp đè bản công khai — sửa bài đang public vẫn hiện ra ngay; lịch sử chỉ cho phép quay lại.
 - **Slug ↔ routes:** `slug` (admin sửa) ở `*_translations`; **`routes`** = đường dẫn ĐẦY ĐỦ đã resolve (path danh mục + slug) + lịch sử 301. Sửa slug → cập nhật route + tạo 301 từ path cũ. (Cùng quy tắc cho entries và products.)
@@ -431,7 +432,7 @@ site_types(id BIGINT PK, key UNIQUE, label JSONB{vi,en,ja}, meta JSONB)   -- GLO
 workflows(id, site_id, key, name, applies_to_type, is_active)        -- template: none|admin_approval|editorial
 workflow_states(id, workflow_id, key, label, sort_order, is_initial, is_published, is_terminal)
 workflow_transitions(id, workflow_id, key, label, from_state, to_state, required_permission, requires_note)  -- guard = permission
-workflow_log(id, site_id, workflow_id NULL, entry_id, locale NULL, transition_key, from_state, to_state, labels jsonb, actor_id, assigned_to NULL, note, created_at)
+workflow_log(id, site_id, workflow_id NULL, entry_id, locale NULL, target ∈ {entry, change} DEFAULT entry, transition_key, from_state, to_state, labels jsonb, actor_id, assigned_to NULL, note, created_at)
 ```
 - Transition guard = permission (submit/review/approve/publish); assign + note (phản biện) + log + notification (Mục 27). Chỉ trạng thái `is_published` mới ra public.
 - **Trail tự mô tả:** `workflow_log.workflow_id` (soft-ref, SET NULL như `actor_id` — xóa workflow KHÔNG xóa lịch sử) trả lời "dòng này thuộc quy trình nào" khi site chạy NHIỀU workflow (mỗi thể loại 1). `labels` jsonb `{transition, from, to}` chụp **nguyên văn hiển thị lúc ghi**: áp template = rebuild states/transitions và đổi template = dùng lại chính workflow row đó, nên key ghi hôm nay có thể không còn tên ngày mai — join sống sẽ in key thô ra timeline. Chỉ để hiển thị, không lọc/sắp → jsonb (lệ "tốt nghiệp" §17).
@@ -458,7 +459,7 @@ workflow_log(id, site_id, workflow_id NULL, entry_id, locale NULL, transition_ke
 | **Workflow** | workflows, workflow_states, workflow_transitions, workflow_log |
 | **Module/Menu động** | site_types(global catalog), site_modules, content_sections |
 | **Sites** | sites, domains, site_locales, site_profiles, site_profile_translations, site_settings |
-| **Content** | entries(type ∈ {page, post} — page lưu Page-JSON layout ở entry_translations.body), entry_translations, entry_revisions · *(product = bảng riêng, Commerce)* |
+| **Content** | entries(type ∈ {page, post} — page lưu Page-JSON layout ở entry_translations.body), entry_translations, entry_revisions, entry_drafts · *(product = bảng riêng, Commerce)* |
 | **Taxonomy** | taxonomies(ltree, templates), taxonomy_translations, entry_taxonomies, product_taxonomies |
 | **i18n/Route** | translation_overrides, routes |
 | **Commerce** | products, product_translations, product_options, product_variants, product_images, carts, cart_items, orders, order_items, order_status_logs, customers, customer_addresses, shipping_zones, shipping_rates, reviews, coupons, coupon_redemptions, payments |

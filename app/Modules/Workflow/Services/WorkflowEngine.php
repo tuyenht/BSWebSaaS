@@ -29,6 +29,12 @@ use Illuminate\Database\Eloquent\Collection;
  */
 final readonly class WorkflowEngine
 {
+    /** The subject itself moved (an entry through its workflow). */
+    public const string TARGET_ENTRY = 'entry';
+
+    /** A pending change to a live subject moved; the subject itself stays where it is. */
+    public const string TARGET_CHANGE = 'change';
+
     /**
      * The ACTIVE workflow governing a content type, or null when the site never opted in (or
      * disabled it) — null is the signal to fall back to tier-1, never an error.
@@ -61,6 +67,12 @@ final readonly class WorkflowEngine
      * state on its subject, inside its own transaction, so the move and the subject's status can
      * never diverge.
      *
+     * $target records WHAT moved, so the trail can tell a live entry leaving the site apart from a
+     * pending change to it passing through the same stages. The engine does not interpret it.
+     *
+     * @param  self::TARGET_*  $target
+     *
+     * @throws \InvalidArgumentException an unknown $target (a programming error, never user input)
      * @throws InvalidTransitionException unknown edge, wrong origin, or a missing required note
      * @throws AuthorizationException the actor lacks the transition's required_permission
      */
@@ -73,7 +85,12 @@ final readonly class WorkflowEngine
         ?string $locale = null,
         ?string $note = null,
         ?int $assignTo = null,
+        string $target = self::TARGET_ENTRY,
     ): WorkflowState {
+        if (! in_array($target, [self::TARGET_ENTRY, self::TARGET_CHANGE], true)) {
+            throw new \InvalidArgumentException("Unknown workflow target [{$target}].");
+        }
+
         $transition = $workflow->transitions()->where('key', $transitionKey)->first()
             ?? throw InvalidTransitionException::notDefined($transitionKey);
 
@@ -108,6 +125,7 @@ final readonly class WorkflowEngine
             'workflow_id' => $workflow->id,
             'entry_id' => $entryId,
             'locale' => $locale,
+            'target' => $target,
             'transition_key' => $transition->key,
             'from_state' => $fromState,
             'to_state' => $transition->to_state,

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property int|null $workflow_id
  * @property int|null $entry_id
  * @property string|null $locale
+ * @property string $target what moved: 'entry' (the subject) or 'change' (a pending change to it)
  * @property string $transition_key
  * @property string $from_state
  * @property string $to_state
