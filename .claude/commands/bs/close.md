@@ -12,6 +12,8 @@ Tiêu điểm ưu tiên khi quét (nếu có): $ARGUMENTS
 
 ── DÙNG CHUNG (làm 1 lần cho cả A và B) ──
 - Xác minh thực địa, đừng dựa trí nhớ: `git status -s`, `git log --oneline -8`, nhánh, ahead/behind.
+- Phiên song song có thể đổi repo giữa chừng: `git fetch` + `gh pr list --state open` + `git worktree list`
+  + `tmux ls`; đọc memory ghi sau lần đóng trước. PR/worktree/file của phiên khác → ghi chủ sở hữu, không nhận làm.
 - Chỉ xét phần CÒN trong context. Đầu session đã rơi → ghi "có thể sót phần đầu" VÀ bơm cảnh báo
   đó vào payload RESUME (để session mới cũng biết).
 - CẤM đưa bí mật vào BẤT KỲ khối nào (mật khẩu · credential · token · IP/host nội bộ · dữ liệu
@@ -76,8 +78,10 @@ Dự án BSWebSaaS. Trước khi làm BẤT CỨ GÌ: theo [GIAO THỨC] ở cu�
 [VIỆC ĐỖ (parked)] <thread phụ — đừng làm ngay>
 
 [GIAO THỨC TIẾP TỤC — session mới PHẢI theo, đúng thứ tự]
-1. XÁC MINH THỰC ĐỊA trước khi tin gói: `git status -s` + `git log --oneline -5` + nhánh; có
-   test/lệnh nêu trên → chạy lại. Đối chiếu [MỐC GIT].
+1. XÁC MINH THỰC ĐỊA trước khi tin gói: `git status -s` + `git log --oneline -5` + nhánh +
+   `git fetch` + `gh pr list --state open` + `git worktree list` + `tmux ls`; đọc memory mới (ghi sau
+   ngày gói); có test/lệnh nêu trên → chạy lại. Đối chiếu [MỐC GIT]. Lặp lại bước này trước mỗi
+   báo cáo trình tôi quyết định (phiên song song có thể merge giữa chừng).
 2. RECONCILE — thực địa THẮNG gói: "HÀNH ĐỘNG KẾ TIẾP" đã xong (evidence trong repo) → bỏ, nhảy
    mục kế. Nếu tree BẨN / `git status` thấy file sửa dở → `git diff` đọc phần đã làm TRƯỚC khi
    tiếp, đừng ghi đè/lặp. Lệch vật chất (quyết định frozen bị đụng / task đổi bản chất) → DỪNG,
