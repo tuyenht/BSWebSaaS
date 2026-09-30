@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Tenancy\Context\SiteLocale;
 
 /**
  * Writes a pending change's content onto its entry (design.md §8): the primary category first, so
@@ -20,8 +21,10 @@ use App\Modules\Cms\Routing\RouteSync;
  * effects (route + 301 on a live slug change, block media usage). A changed category moves every
  * live language's address.
  *
- * It never touches the status, records no revision and does not delete the change: approving,
- * applying and folding differ exactly there, so each caller decides. Runs in the caller's
+ * On a live entry every language the change carries goes live with it, one that was still a draft
+ * included: what the reviewer approved is what visitors get, and a live entry offers no other way
+ * to publish a language. Otherwise it never touches a status, records no revision and does not
+ * delete the change: approving, applying and folding differ exactly there, so each caller decides. Runs in the caller's
  * transaction, after the caller locked the entry row.
  *
  * @phpstan-type AppliedChange array{locales: list<string>, all_locales: bool, translations: list<EntryTranslation>, dropped_media: int, skipped: list<string>}
@@ -35,20 +38,21 @@ final readonly class EntryDraftApplier
         private EntryContentWriter $writer,
         private EntryWorkflowResolver $workflows,
         private RouteSync $routes,
+        private SiteLocale $siteLocales,
     ) {}
 
     /**
-     * Apply the change. Strict (approving, applying): content that no longer passes the checks
-     * refuses the whole change. Lenient (folding into content that is leaving the website): such a
-     * language, or such a category, is skipped and reported, so taking content offline never fails
-     * on it.
+     * Apply the change. Strict (approving, applying): content that no longer passes the checks, or
+     * a language the site has switched off since, refuses the whole change. Lenient (folding into
+     * content that is leaving the website): such a language, or such a category, is skipped and
+     * reported, so taking content offline never fails on it.
      *
      * `all_locales` is true when a field every language shares (template, cover, meta, category)
      * changed — the caller then records every language's revision.
      *
      * @return AppliedChange
      *
-     * @throws EntryDraftRejectedException content_invalid|category_governed (strict only)
+     * @throws EntryDraftRejectedException content_invalid|category_governed|locale_disabled (strict only)
      * @throws RouteConflictException a new address of live content belongs to other content
      */
     public function apply(Entry $entry, EntryDraft $change, bool $lenient = false): array
@@ -75,6 +79,16 @@ final readonly class EntryDraftApplier
 
         foreach ($locales as $locale => $text) {
             $locale = (string) $locale;
+
+            if (! $this->siteLocales->isEnabled($locale)) {
+                if (! $lenient) {
+                    throw new EntryDraftRejectedException('locale_disabled');
+                }
+                $skipped[] = $locale;
+
+                continue;
+            }
+
             $content = $this->writer->read(
                 ['v' => RecordEntryRevision::FORMAT] + $snapshotShared + array_intersect_key($text, array_flip(EntryDraft::LOCALE_FIELDS)),
             );
@@ -90,6 +104,11 @@ final readonly class EntryDraftApplier
 
             [$content, $droppedHere] = $this->writer->withoutMissingMedia($content);
             $result = $this->writer->write($entry, $locale, $content);
+
+            if ($entry->status === 'published' && $result['translation']->status !== 'published') {
+                $result['translation']->update(['status' => 'published']);
+                $this->routes->sync($entry, $locale, $result['translation']->slug);
+            }
 
             $dropped += $droppedHere;
             $sharedChanged = $sharedChanged || $result['shared_changed'];

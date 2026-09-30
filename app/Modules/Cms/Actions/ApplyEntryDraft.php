@@ -53,15 +53,16 @@ final readonly class ApplyEntryDraft
             throw new AuthorizationException(__('entries.err_publish_forbidden'));
         }
 
-        if ($this->workflows->forEntry($entry) !== null) {
-            throw new EntryDraftRejectedException('workflow_governed');
-        }
-
         try {
             /** @var array{0: EntryDraft, 1: list<string>} $done */
             $done = DB::transaction(function () use ($entry, $actor, $seenVersion): array {
                 Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
                 $entry->refresh();
+
+                // Read under the lock: a workflow switched on a moment ago must not be skipped.
+                if ($this->workflows->forEntry($entry) !== null) {
+                    throw new EntryDraftRejectedException('workflow_governed');
+                }
 
                 if ($entry->status !== 'published' || $entry->trashed()) {
                     throw new EntryDraftRejectedException('not_live');
