@@ -6,6 +6,8 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Spatie\Permission\PermissionRegistrar;
 
 /*
  * Centralized OAuth2 — social login + email-sender connect. ONE canonical redirect URI is
@@ -121,3 +123,86 @@ it('refuses oauth finish when the browser nonce does not match the token', funct
 
     $this->assertGuest();
 });
+
+// ── email-sender connect is a site setting ──────────────────────────────────────────
+// Connecting a mailbox changes how the whole website sends mail — sign-in codes, invitations —
+// so it takes the same right as the Email settings screen (settings.manage on THIS site), checked
+// when the flow starts and again when the provider answers. Signing in on a site's host does not
+// require membership, so "signed in" alone would let any account hijack another site's sender.
+
+/** Site $site has its own mail OAuth app, so a connect can start there. */
+function configureEmailOAuth(int $site): void
+{
+    config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
+
+    app(Tenancy::class)->enter($site, fn () => app(SettingsRepository::class)->put('email', 'config', [
+        'method' => 'smtp_password',
+        'oauth' => ['client_id' => 'mail-client', 'client_secret' => SecretCipher::encrypt('mail-secret')],
+    ]));
+}
+
+/** @param  list<string>  $permissions */
+function oauthMember(int $site, array $permissions): User
+{
+    $user = User::factory()->create();
+    app(Tenancy::class)->enter($site, fn () => grantRole($user, 'role-'.$user->getKey(), $permissions));
+    app(TeamContext::class)->forget();
+
+    return $user;
+}
+
+/** @return array<string, mixed> site $site's email settings */
+function siteEmailConfig(int $site): array
+{
+    return app(Tenancy::class)->enter($site, fn (): array => app(SettingsRepository::class)->get('email') ?? []);
+}
+
+it('refuses an email-sender connect from a member who may not manage settings', function (): void {
+    configureEmailOAuth(1);
+    $viewer = oauthMember(1, ['entries.view']);
+
+    $this->actingAs($viewer)->get('http://a.test/admin/oauth/google/start?purpose=email')
+        ->assertForbidden();
+});
+
+it('refuses an email-sender connect from an account that is not a member of this site', function (): void {
+    configureEmailOAuth(1);
+    $otherSiteManager = oauthMember(2, ['settings.manage']);
+
+    $this->actingAs($otherSiteManager)->get('http://a.test/admin/oauth/google/start?purpose=email')
+        ->assertForbidden();
+});
+
+it('sends a settings manager to the provider to connect the site sender', function (): void {
+    configureEmailOAuth(1);
+    $manager = oauthMember(1, ['settings.manage']);
+
+    $this->actingAs($manager)->get('http://a.test/admin/oauth/google/start?purpose=email')
+        ->assertRedirectContains('accounts.google.com')
+        ->assertRedirectContains('client_id=mail-client');
+});
+
+it('connects the sender only if the person still manages settings when the provider answers', function (bool $keepsRight): void {
+    configureEmailOAuth(1);
+    $manager = oauthMember(1, ['settings.manage']);
+    Http::fake([
+        'oauth2.googleapis.com/*' => Http::response(['access_token' => 'at', 'refresh_token' => 'rt']),
+        'openidconnect.googleapis.com/*' => Http::response(['sub' => '42', 'email' => 'box@example.com']),
+    ]);
+
+    $location = (string) $this->actingAs($manager)->get('http://a.test/admin/oauth/google/start?purpose=email')->headers->get('Location');
+    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+    if (! $keepsRight) {
+        app(Tenancy::class)->enter(1, fn () => $manager->roles()->detach());
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        app(TeamContext::class)->forget();
+    }
+
+    $this->get('http://a.test/oauth/callback?code=the-code&state='.$query['state'])
+        ->assertRedirectContains('/admin/settings/email');
+
+    $email = siteEmailConfig(1);
+    expect($email['method'] ?? null)->toBe($keepsRight ? 'oauth2' : 'smtp_password')
+        ->and(isset($email['oauth']['refresh_token']))->toBe($keepsRight);
+})->with(['still a manager' => [true], 'right removed meanwhile' => [false]]);
