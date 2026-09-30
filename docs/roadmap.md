@@ -12,7 +12,7 @@
 ⬜ đóng gói core v1.0.
 
 ## 1. Mạch chính — thiết kế đủ & chuẩn hoá 100% màn SaaS Starter (từ 24/09)
-- Brief: `design-briefs/saas-starter-design-first/` — 28 lượt Claude Design, 6 sóng: D0 nền (6) → D1 nội dung (10) →
+- Brief: `design-briefs/saas-starter-design-first/` — 31 lượt Claude Design, 6 sóng: D0 nền (9, gồm 3 lượt rà hiển thị đa thiết bị cho mọi màn đã có — owner 30/09) → D1 nội dung (10) →
   D2 người dùng (5) → D3 cài đặt (2) → D4 nền tảng (3) → D5 lỗi + QA liền mạch (2).
 - Khu đăng nhập giữ nguyên (owner 23/09). Bộ AI, mặt TMĐT, Khối tái dùng, Builder v3: ngoài bộ này.
 - Cổng nghiệm thu mỗi handoff: đối chiếu code + 12 tiêu chí dễ dùng → `design_handoff_<slug>/` → cập nhật
@@ -46,6 +46,7 @@
   lên ngay, người không có quyền chờ "Cập nhật website"; bật duyệt → thay đổi chờ duyệt; backend dựng xong 30/09 (#126–#128,
   chưa nối màn — PR4–5 chờ handoff D1-4d); đặc tả COUNCIL `plans/reports/council-260930-0025-c5-draft-over-live-spec-report.md`. Chưa bật quy trình
   duyệt cho website khách nào trước khi C5 lên prod.
+- **Hiển thị đa thiết bị (owner 30/09):** màn đã build phải đạt như thiết kế ở 360→1440px trên Chrome/Safari iOS/Firefox. Owner thấy `Quy trình duyệt` vỡ ở điện thoại (bản thiết kế). Sau lượt D0-6a/6b/6c, port phần sửa vào màn đã build (đầu tiên `workflow-settings.blade.php`, Cài đặt › Quy trình duyệt) theo mục "Việc cho backend" của handoff.
 - **RBAC Console:** backend nhóm quyền tuỳ chỉnh xong (`rbac.custom_roles`, mặc định tắt); UI = lượt D2-1.
 - **Core Web Vitals:** job `cwv` là gate từ 24/09 cho `/`, `/lien-he`, `/tin-tuc` (LCP ≤ 1,5s · JS ≤ 30KB · axe 0 vi phạm).
 - **Đăng nhập 3 cửa (§LR B1–B6):** tường minh mặt phẳng · cửa owner · đăng nhập chung + chọn website · chuyển website ·
