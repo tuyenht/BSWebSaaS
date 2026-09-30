@@ -7,6 +7,12 @@
 
 ## 2026
 
+### 2026-09-30 — Deploy lô #124–#130 (thay đổi chờ duyệt, còn trơ) + siết cấu hình auto-mode
+
+- **Deploy:** `15:30 (+07)` — prod `a1bc675` → `ff75886` (23 commit: gói prompt thiết kế + nguồn thiết kế #124/#130 · test #125 · C5 PR1–3 #126–#128 = bảng + action cho thay đổi chờ duyệt, chưa nối vào trình soạn · docs #123 #129). 2 migration chỉ thêm: `2026_01_01_000000_create_entry_drafts_table` (26 ms) · `2027_01_01_000000_add_target_to_workflow_log` (5 ms, DEFAULT hằng số + CHECK `NOT VALID` → `VALIDATE`). Dump: `prod-predeploy-a1bc675-20260930-083043.sql.gz`. Rà phản biện C5 trước deploy: 0 critical/high; lỗi medium M1 đã sửa ở `668d3b0`.
+- **Hậu kiểm:** `/` `/lien-he` (có ô đồng ý) `/admin/login` → 200, `/admin` → 302, qua Caddy → 200; 30/30 địa chỉ sitemap → 200; `entry_drafts` bật RLS + FORCE, 1 policy; `workflow_log_target_check` đã validate; 0 index INVALID; log app + horizon 0 lỗi, `laravel.log` không có dòng mới.
+- **Cấu hình auto-mode (owner, 13:41):** `~/.claude/settings.json` cấp user — thêm 3 luật soft_deny (đổi máy chủ chung · thao tác prod ngoài đọc · xoá sạch DB dev dùng chung) + 1 hard_deny (huỷ dữ liệu prod), viết lại 5 mục môi trường; sao lưu `settings.json.bak-automode-20260930-134106`.
+
 ### 2026-09-28 — Deploy 3 lần (Q14 · lịch sử phiên bản · index tra FK) + dọn phiên Claude nhàn rỗi
 
 - **Máy chủ (sáng):** swap đầy (2042/2047 MB) vì 12 phiên Claude nhàn rỗi trong tmux (~3,2 GB, mỗi phiên kèm 1 container `boost:mcp`). Owner cho đóng hết, chỉ giữ phiên đang làm → RAM dùng 5,3 → 2,4 GB, swap 2,0 → 0,7 GB. Prod không bị đụng.
