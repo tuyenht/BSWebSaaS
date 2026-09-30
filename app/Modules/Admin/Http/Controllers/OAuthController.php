@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Cookie;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -70,6 +71,13 @@ final readonly class OAuthController
         // 'email' (sender connect) and 'connect' (social link) act on the current account.
         if (in_array($purpose, ['email', 'connect'], true) && ! Auth::check()) {
             return redirect()->route('admin.login');
+        }
+
+        // The sender is a SITE setting — it carries every mail the site sends (sign-in codes,
+        // invitations) — so it takes the Email screen's right on this site. Signing in on a site's
+        // host does not require membership, so being signed in is not enough.
+        if ($purpose === 'email' && ! Gate::allows('settings.manage')) {
+            abort(403);
         }
 
         // start runs on the tenant host (tenant context resolved) — its OAuth app lives there.
@@ -171,6 +179,15 @@ final readonly class OAuthController
 
     private function complete(Request $request, string $origin, string $provider, string $purpose, string $verifier, int $userId, string $nonceHash): RedirectResponse
     {
+        // The right may have been taken away while the person was at the provider: check again, in
+        // the origin site's context, before the site's sender is replaced.
+        if ($purpose === 'email') {
+            $user = User::find($userId);
+            if (! $user instanceof User || ! Gate::forUser($user)->allows('settings.manage')) {
+                return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
+            }
+        }
+
         [$clientId, $clientSecret] = $this->creds($provider, $purpose);
         if ($clientId === null || $clientSecret === null) {
             return $this->failTo($origin, $purpose, __('admin.oauth_provider_not_configured'));
