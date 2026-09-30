@@ -6,6 +6,7 @@ namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Invitation;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -52,6 +53,8 @@ final readonly class AcceptInvitation
      */
     public function asSignedInUser(#[SensitiveParameter] string $token, User $user): Invitation
     {
+        app(SupportSession::class)->forbid();   // membership never changes on someone's behalf
+
         return DB::transaction(function () use ($token, $user): Invitation {
             $invitation = $this->lockOpen($token);
 
@@ -72,6 +75,8 @@ final readonly class AcceptInvitation
      */
     public function withNewAccount(#[SensitiveParameter] string $token, string $name, #[SensitiveParameter] string $password): User
     {
+        app(SupportSession::class)->forbid();   // membership never changes on someone's behalf
+
         return DB::transaction(function () use ($token, $name, $password): User {
             $invitation = $this->lockOpen($token);
 

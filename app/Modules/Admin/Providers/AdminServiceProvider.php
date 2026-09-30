@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Providers;
 
 use App\Modules\Admin\Console\ReconcileContentUsage;
+use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
 use App\Modules\Admin\Livewire\AppearanceSettings;
@@ -172,6 +173,6 @@ final class AdminServiceProvider extends ServiceProvider
         // the admin is on the tenant's own domain). Auth stays at the component/page
         // level: the guest login and the authed admin share this single route.
         Livewire::setUpdateRoute(fn (array $handle) => Route::post('/livewire/update', $handle)
-            ->middleware(['web', ResolveLivewireContext::class]));
+            ->middleware(['web', ResolveLivewireContext::class, EnforceSupportSession::class]));
     }
 }

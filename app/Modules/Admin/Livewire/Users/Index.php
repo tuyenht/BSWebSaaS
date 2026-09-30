@@ -4,6 +4,7 @@ namespace App\Modules\Admin\Livewire\Users;
 
 use App\Modules\Admin\Notifications\MemberInvitationNotification;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Actions\AssignRole;
 use App\Modules\Rbac\Actions\InviteMember;
 use App\Modules\Rbac\Actions\RevokeRole;
@@ -128,7 +129,7 @@ final class Index extends Component
                 }
             });
         } catch (AuthorizationException) {
-            session()->flash('error', __('admin.role_change_denied'));
+            session()->flash('error', app(SupportSession::class)->active() ? __('admin.support.locked') : __('admin.role_change_denied'));
 
             return;
         }
@@ -162,7 +163,7 @@ final class Index extends Component
                 }
             });
         } catch (AuthorizationException) {
-            session()->flash('error', __('admin.member_remove_denied'));
+            session()->flash('error', app(SupportSession::class)->active() ? __('admin.support.locked') : __('admin.member_remove_denied'));
 
             return;
         }

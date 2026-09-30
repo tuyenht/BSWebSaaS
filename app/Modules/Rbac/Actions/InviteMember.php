@@ -7,6 +7,7 @@ namespace App\Modules\Rbac\Actions;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Invitation;
 use App\Modules\Rbac\Models\Role;
@@ -70,6 +71,7 @@ final readonly class InviteMember
      */
     public function handle(User $actor, string $email, array $roles, ?string $message = null): IssuedInvitation
     {
+        app(SupportSession::class)->forbid();   // membership never changes on someone's behalf
         Gate::forUser($actor)->authorize('users.invite');
 
         if ($roles === []) {

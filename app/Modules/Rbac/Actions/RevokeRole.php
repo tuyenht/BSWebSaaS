@@ -6,6 +6,7 @@ namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 
@@ -21,6 +22,7 @@ final readonly class RevokeRole
 
     public function handle(User $actor, User $target, Role $role): void
     {
+        app(SupportSession::class)->forbid();   // membership never changes on someone's behalf
         $this->guard->assertCanGrant($actor, $role);
 
         $target->removeRole($role);

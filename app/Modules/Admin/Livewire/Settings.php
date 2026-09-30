@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire;
 use App\Modules\Admin\Notifications\TwoFactorDisabledNotification;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Identity\TwoFactor\TwoFactorService;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -47,6 +48,8 @@ final class Settings extends Component
         // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so re-assert
         // an authenticated session on every request (each action also scopes to auth()->user()).
         abort_unless(auth()->check(), 403);
+        // Never on someone's behalf: staff signed in for support cannot change this.
+        app(SupportSession::class)->forbid();
     }
 
     public function mount(): void
