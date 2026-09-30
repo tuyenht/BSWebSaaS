@@ -29,6 +29,7 @@ final class NotificationKinds
             'lead.new' => ['group' => 'lead', 'in_app' => true, 'mail' => false, 'locked' => false],
             'security.new_device_login' => ['group' => 'security', 'in_app' => true, 'mail' => true, 'locked' => true],
             'security.two_factor_disabled' => ['group' => 'security', 'in_app' => true, 'mail' => true, 'locked' => true],
+            'security.support_sign_in' => ['group' => 'security', 'in_app' => true, 'mail' => true, 'locked' => true],
             'system.storage_near_limit' => ['group' => 'system', 'in_app' => true, 'mail' => true, 'locked' => false],
         ];
     }

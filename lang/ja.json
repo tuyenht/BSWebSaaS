@@ -842,6 +842,7 @@
     "notifications.lead.new": ":name さんから新しいお問い合わせがあります。",
     "notifications.security.new_device_login": "あなたのアカウントが新しい端末からログインしました。",
     "notifications.security.two_factor_disabled": ":at にアカウントの2段階認証がオフになりました。",
+    "notifications.security.support_sign_in": ":platform サポートの :staff が :at に :member としてサインインしました（理由: :reason）。",
     "notifications.system.storage_near_limit": "メディアライブラリの容量がプランの上限に近づいています。",
     "notifications.mail.two_factor_disabled_subject": "2段階認証がオフになりました",
     "notifications.mail.two_factor_disabled_intro": ":at にアカウントの2段階認証がオフになりました。",

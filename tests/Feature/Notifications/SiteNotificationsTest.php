@@ -18,6 +18,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -78,6 +79,31 @@ it('keeps the kind registry and the database CHECK in step', function (): void {
     expect(fn () => DB::connection('pgsql_admin')->table('site_notifications')->insert([
         'ulid' => (string) str()->ulid(), 'site_id' => 1, 'user_id' => $user->id, 'kind' => 'made.up', 'data' => '{}',
     ]))->toThrow(QueryException::class, 'site_notifications_kind_check');
+});
+
+it('adds the support sign-in kind reversibly, dropping only its own notices on the way down', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2029_01_01_000000_add_support_sign_in_notification_kind.php');
+    $user = User::factory()->create();
+    $insert = fn (string $kind) => DB::connection('pgsql_admin')->table('site_notifications')->insert([
+        'ulid' => (string) str()->ulid(), 'site_id' => 1, 'user_id' => $user->id, 'kind' => $kind, 'data' => '{}',
+    ]);
+    $insert('security.support_sign_in');
+    $insert('lead.new');
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        $kindsAfterDown = DB::table('site_notifications')->pluck('kind')->all();
+        $migration->up();
+        $migration->up();   // re-runnable after a mid-run failure
+    } finally {
+        DB::setDefaultConnection($original);
+    }
+
+    expect($kindsAfterDown)->toBe(['lead.new'])
+        ->and(fn () => $insert('security.support_sign_in'))->not->toThrow(QueryException::class);
 });
 
 it('keeps a notice on its own site', function (): void {

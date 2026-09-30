@@ -842,6 +842,7 @@
     "notifications.lead.new": "Có khách liên hệ mới: :name.",
     "notifications.security.new_device_login": "Tài khoản của bạn vừa đăng nhập từ một thiết bị mới.",
     "notifications.security.two_factor_disabled": "Xác thực 2 lớp của tài khoản đã được tắt lúc :at.",
+    "notifications.security.support_sign_in": ":staff (hỗ trợ :platform) đã đăng nhập dưới tên :member lúc :at (lý do: :reason).",
     "notifications.system.storage_near_limit": "Thư viện ảnh & tệp sắp đầy dung lượng của gói.",
     "notifications.mail.two_factor_disabled_subject": "Xác thực 2 lớp đã được tắt",
     "notifications.mail.two_factor_disabled_intro": "Xác thực 2 lớp trên tài khoản của bạn đã được tắt lúc :at.",

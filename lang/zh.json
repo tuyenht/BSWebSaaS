@@ -842,6 +842,7 @@
     "notifications.lead.new": "新的客户咨询：:name。",
     "notifications.security.new_device_login": "您的账号刚刚在新设备上登录。",
     "notifications.security.two_factor_disabled": "您的账号已于 :at 关闭两步验证。",
+    "notifications.security.support_sign_in": ":platform 支持人员 :staff 于 :at 以 :member 的身份登录（原因：:reason）。",
     "notifications.system.storage_near_limit": "媒体库即将达到套餐的存储上限。",
     "notifications.mail.two_factor_disabled_subject": "两步验证已关闭",
     "notifications.mail.two_factor_disabled_intro": "您的账号已于 :at 关闭两步验证。",

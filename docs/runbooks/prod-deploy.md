@@ -30,7 +30,9 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
    - From the merge until this reload, the old workers serve old PHP against the new files on disk (Blade compiles on demand; a class moved in the delta is gone). Run steps 2–5 back to back.
    - Commands that write data only the new code understands (a new field type, a new setting) run **after** the reload — never before — and the rollback must remove that data.
    - Idempotent data commands, safe to run on every deploy: `forms:sync-contact-fields`, `cms:rebuild-taxonomy-paths`, `cms:snapshot-published` (a baseline revision for each public post/page with none — needed once after `entry_revisions` first lands).
-6. If a migration changed a column type on a table with prepared statements in flight, the logs may show "cached plan must not change result type". In that case run `docker restart bsweb_prod_pgbouncer` to drop the server connections.
+6. A migration that adds, drops or retypes a column changes what `select *` on that table returns. PgBouncer keeps prepared statements per server connection (`MAX_PREPARED_STATEMENTS`), so an old plan fails with "cached plan must not change result type" until that connection closes (08/07: the scheduler failed every minute for 10 minutes).
+   - After such a migration, run `docker restart bsweb_prod_pgbouncer` right after step 5 — a few seconds without database connections.
+   - The same applies to the shared dev database: `docker compose restart pgbouncer` after migrating from a worktree, before running tests.
 
 ## `.env` changes and the image
 

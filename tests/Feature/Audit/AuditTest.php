@@ -3,7 +3,9 @@
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /*
  * P0.7 — audit trail (design.md §29). Records sensitive actions with a ulid + action
@@ -59,3 +61,29 @@ it('drops a request id that is not a plain token instead of losing the entry', f
     'too long' => [str_repeat('a', 300), null],
     'markup' => ['<script>alert(1)</script>', null],
 ]);
+
+it('adds and removes the impersonator columns reversibly', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2028_01_01_000000_add_impersonator_to_audit_logs.php');
+    $columns = ['impersonator_id', 'impersonator_label'];
+
+    // Migrations run on the privileged connection (DDL needs table ownership). Restore the columns
+    // before asserting so a failing assertion never leaves them dropped for the rest of the suite.
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        $dropped = ! Schema::hasColumns('audit_logs', $columns);
+        $migration->up();
+        $migration->up();   // re-runnable after a mid-run failure
+    } finally {
+        DB::setDefaultConnection($original);
+    }
+
+    Audit::record('cms.entry.updated');
+
+    expect($dropped)->toBeTrue()
+        ->and(Schema::hasColumns('audit_logs', $columns))->toBeTrue()
+        ->and(DB::table('audit_logs')->select($columns)->sole())
+        ->toEqual((object) ['impersonator_id' => null, 'impersonator_label' => null]);
+});
