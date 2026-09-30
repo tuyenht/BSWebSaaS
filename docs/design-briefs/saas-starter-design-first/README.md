@@ -10,10 +10,10 @@
 - Mỗi file đã chứa sẵn phần **BỐI CẢNH CHUNG** (luật cứng + 12 tiêu chí dễ dùng + hợp đồng nhúng Admin Shell + mẫu README handoff).
 - Xong mỗi lượt: export → Claude Code đối chiếu với code + 12 tiêu chí → lưu `docs/design_handoff_<slug>/` → cập nhật sổ màn → mới build.
 
-## Sóng (28 lượt)
+## Sóng (31 lượt)
 | Sóng | Lượt | Cần trước |
 |---|---|---|
-| D0 Nền | D0-1 Dọn & đồng bộ project · D0-2 Chuẩn giao diện: component · D0-3 Chuẩn giao diện: mẫu trang + Bảng thuật ngữ + tiêu chí dễ dùng · D0-4a Admin Shell v2: menu + topbar + Cài đặt · D0-4b Admin Shell v2: Tweaks + registry màn + điều hướng · D0-5 Nối màn đã có | bắt đầu ngay · chạy đúng thứ tự D0-1 → D0-5 (lượt sau dùng kết quả lượt trước) |
+| D0 Nền | D0-1 Dọn & đồng bộ project · D0-2 Chuẩn giao diện: component · D0-3 Chuẩn giao diện: mẫu trang + Bảng thuật ngữ + tiêu chí dễ dùng · D0-4a Admin Shell v2: menu + topbar + Cài đặt · D0-4b Admin Shell v2: Tweaks + registry màn + điều hướng · D0-5 Nối màn đã có · D0-6a/6b/6c Hiển thị đa thiết bị: rà & sửa mọi màn đã có (6c = bộ AI, không chặn D1–D4) | bắt đầu ngay · chạy đúng thứ tự D0-1 → D0-6b (lượt sau dùng kết quả lượt trước) |
 | D1 Nội dung | D1-1 Chuyên mục · D1-2 Trình đơn · D1-3 Danh sách nội dung · D1-4a Rà trình soạn chung · D1-4b Trình soạn một khuôn · D1-4c SEO còn lại + Lịch sử phiên bản · D1-4d Rời trang + nháp đè bản công khai · D1-5 Sản phẩm · D1-6 Thư viện ảnh & tệp · D1-7 Khách liên hệ & Biểu mẫu | D0 |
 | D2 Người dùng | D2-1 Nhóm quyền & Thành viên · D2-2 Lời mời · D2-3 Tài khoản của tôi · D2-4 Thông báo · D2-5 Tổng quan theo vai trò | D0 |
 | D3 Cài đặt | D3-1 Chung & Nội dung · D3-2 Tiếp thị & Hệ thống | D0 |
@@ -31,7 +31,7 @@ Ngoài phạm vi: khu đăng nhập (giữ nguyên) · bộ AI (module sau core 
 6. Không mất việc — tự lưu nháp, chặn rời trang khi chưa lưu, xoá có "Hoàn tác".
 7. Trạng thái = màu + hình + chữ.
 8. Không cắt chữ — nút/chip/tab 1 dòng; không thanh cuộn ngang trong thẻ.
-9. Việc hay làm làm trọn được trên điện thoại (390px), vùng bấm ≥ 44px, không gì nổi che nội dung.
+9. Mọi việc trên màn làm trọn được ở điện thoại (360–390px) và máy tính bảng (768px); vùng bấm ≥ 44px, không gì nổi che nội dung. Bảng thiết bị: 360·390·768·1024·1240·1440 + xoay ngang, Chrome/Safari iOS/Firefox/Samsung Internet (bối cảnh chung, owner 30/09).
 10. Hai tầng người dùng: mặc định gọn cho người mới; người thạo có phím tắt, thao tác hàng loạt.
 11. Chế độ "Chữ lớn" không vỡ bố cục.
 12. Đúng Bảng thuật ngữ chung (lượt D0-3).
