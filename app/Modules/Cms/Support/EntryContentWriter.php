@@ -14,6 +14,7 @@ use App\Modules\Media\Models\Media;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\View;
 
 /**
  * Writes one language's content, in the shape RecordEntryRevision::snapshot takes it, onto an entry
@@ -47,8 +48,9 @@ final readonly class EntryContentWriter
 
     /**
      * The snapshot as content that may be written today, or null when it cannot be. Its format
-     * version must be one this code reads, every field must have its type and fit its column, and
-     * the title, slug and blocks must pass the rules an editor save passes (title/slug ≤ 200).
+     * version must be one this code reads, every field must have its type and fit its column, a
+     * template must name a layout the theme has, and the title, slug and blocks must pass the rules
+     * an editor save passes (title/slug ≤ 200).
      *
      * @param  array<array-key, mixed>  $snapshot
      * @return EntryContent|null
@@ -70,6 +72,12 @@ final readonly class EntryContentWriter
                 return null;
             }
             $strings[$key] = $value;
+        }
+
+        // A template names a layout view: one that does not exist would break the live page.
+        $template = $strings['template_override'];
+        if ($template !== null && (preg_match('/^[a-z0-9_-]+$/', $template) !== 1 || ! View::exists("theme::layouts.{$template}"))) {
+            return null;
         }
 
         foreach (['og_image_id', 'cover_media_id'] as $key) {

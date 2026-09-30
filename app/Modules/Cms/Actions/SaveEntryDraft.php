@@ -146,7 +146,7 @@ final readonly class SaveEntryDraft
 
     /**
      * The change's primary category: none for a page; for a post, one of the site's post
-     * categories that keeps it under its approval workflow.
+     * categories that keeps it under its approval workflow, or none while the live post has none.
      *
      * @throws EntryDraftRejectedException content_invalid · category_governed
      */
@@ -157,6 +157,11 @@ final readonly class SaveEntryDraft
         }
 
         if (! is_int($categoryId) || $categoryId <= 0) {
+            // A post the website shows under no category may stay so; it may not lose the one it has.
+            if ($categoryId === null && $entry->primaryCategory() === null) {
+                return null;
+            }
+
             throw new EntryDraftRejectedException('content_invalid');
         }
 

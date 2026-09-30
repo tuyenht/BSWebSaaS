@@ -22,6 +22,7 @@ use App\Modules\Cms\Support\EntryDraftFolder;
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
@@ -210,6 +211,9 @@ it('refuses a save it cannot hold', function (): void {
             ->and(changeRejection(fn () => $save->handle($entry, $author, 'fr', ['title' => 'x'])))->toBe('locale_disabled')
             ->and(changeRejection(fn () => $save->handle($entry, $author, 'vi', ['slug' => 'Không Hợp Lệ'])))->toBe('content_invalid')
             ->and(changeRejection(fn () => $save->handle($entry, $author, 'vi', [], ['primary_category_id' => $elsewhere->id])))->toBe('category_governed')
+            // A template names a layout: one the theme lacks would break the live page once applied.
+            ->and(changeRejection(fn () => $save->handle($entry, $author, 'vi', [], ['template_override' => 'khong-co'])))->toBe('content_invalid')
+            ->and(changeRejection(fn () => $save->handle($entry, $author, 'vi', [], ['template_override' => '../page'])))->toBe('content_invalid')
             ->and(fn () => $save->handle($entry, $other->fresh(), 'vi', ['title' => 'x']))->toThrow(AuthorizationException::class)
             ->and(EntryDraft::query()->count())->toBe(0);
     });
@@ -398,6 +402,76 @@ it('puts a language the change added online with its own address once approved',
     });
 });
 
+it('puts a language that was still a draft online when the change that edited it is approved', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $reviewer] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        // Approving a post publishes the language it was approved from: its other languages can
+        // stay drafts while the post is live.
+        $entry->translations()->create([
+            'locale' => 'en', 'title' => 'Draft news', 'slug' => 'draft-news', 'status' => 'draft', 'body' => ['blocks' => []],
+        ]);
+        changeWorkflow();
+        $move = app(ApplyEntryDraftTransition::class);
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'en', ['title' => 'News']);
+        $move->handle($entry, 'en', $author, 'submit', $change->version());
+
+        $move->handle($entry, 'en', $reviewer, 'approve', changeOf($entry)->version());
+
+        $en = $entry->fresh()->translationFor('en');
+        expect($en->title)->toBe('News')
+            ->and($en->status)->toBe('published')
+            ->and(SiteRoute::query()->where('entry_id', $entry->id)->where('locale', 'en')->value('path'))->toBe('/draft-news')
+            ->and(EntryRevision::query()->where('entry_id', $entry->id)->where('locale', 'en')->where('kind', RevisionKind::Publish)->exists())->toBeTrue();
+    });
+
+    $this->get('http://a.test/en/draft-news')->assertOk()->assertSee('News');
+});
+
+it('refuses to approve a language the site switched off since, and leaves it out of a fold', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $reviewer] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        changeWorkflow();
+        $move = app(ApplyEntryDraftTransition::class);
+        $save = app(SaveEntryDraft::class);
+        $save->handle($entry, $author, 'vi', ['title' => 'Tiếng Việt mới']);
+        $change = $save->handle($entry, $author, 'en', ['title' => 'News', 'slug' => 'news']);
+        $move->handle($entry, 'vi', $author, 'submit', $change->version());
+
+        DB::connection('pgsql_admin')->table('site_locales')->where('site_id', 1)->where('locale', 'en')->update(['enabled' => false, 'is_public' => false]);
+        app(SiteLocale::class)->forget();
+
+        expect(changeRejection(fn () => $move->handle($entry, 'vi', $reviewer, 'approve', changeOf($entry)->version())))->toBe('locale_disabled')
+            ->and(changeOf($entry)->workflow_state)->toBe('pending');
+
+        DB::transaction(function () use ($entry, $reviewer): void {
+            $entry->update(['status' => 'draft']);
+            app(EntryDraftFolder::class)->fold($entry, $reviewer);
+        });
+
+        expect($entry->fresh()->translationFor('vi')->title)->toBe('Tiếng Việt mới')
+            ->and($entry->fresh()->translationFor('en'))->toBeNull()
+            ->and(AuditLog::query()->where('action', EntryDraftAudit::FOLDED)->sole()->meta)->toMatchArray(['skipped_locales' => ['en']]);
+    });
+});
+
+it('lets a live post filed under no category keep none in its change', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author, $publisher] = changeCast();
+        $entry = changeLivePost($author, changeNewsCategory());
+        $entry->assignCategories([]);
+        $entry = $entry->fresh();
+
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Không chuyên mục']);
+        app(ApplyEntryDraft::class)->handle($entry, $publisher, $change->version());
+
+        expect($change->content['shared']['primary_category_id'])->toBeNull()
+            ->and($entry->fresh()->translationFor('vi')->title)->toBe('Không chuyên mục')
+            ->and($entry->fresh()->primaryCategory())->toBeNull();
+    });
+});
+
 it('rolls an approval back whole when the new address belongs to other content', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         [$author, $reviewer] = changeCast();
@@ -506,6 +580,8 @@ it('lets only a publisher put a change online where no workflow governs the entr
             ->and(SiteNotification::query()->where('user_id', $publisher->id)->where('kind', 'workflow.pending_review')->sole()->data)
             ->toMatchArray(['change' => true]);
 
+        // No workflow to move it through: the change goes online only by being applied.
+        expect(fn () => app(ApplyEntryDraftTransition::class)->handle($entry, 'vi', $publisher, 'submit', $change->version()))->toThrow(EntryNotGovernedException::class);
         expect(fn () => $apply->handle($entry, $author, $change->version()))->toThrow(AuthorizationException::class);
         expect($entry->fresh()->translationFor('vi')->title)->toBe('Bản tin vi');
 
@@ -587,7 +663,7 @@ it('keeps each site to its own pending changes', function (): void {
 
         expect(EntryDraft::query()->count())->toBe(0)
             ->and(fn () => app(SaveEntryDraft::class)->handle($entry, $intruder, 'vi', ['title' => 'Chiếm']))->toThrow(ModelNotFoundException::class)
-            ->and(fn () => app(ApplyEntryDraftTransition::class)->handle($entry, 'vi', $intruder, 'submit', $version))->toThrow(EntryNotGovernedException::class)
+            ->and(fn () => app(ApplyEntryDraftTransition::class)->handle($entry, 'vi', $intruder, 'submit', $version))->toThrow(ModelNotFoundException::class)
             ->and(fn () => app(ApplyEntryDraft::class)->handle($entry, $intruder, $version))->toThrow(ModelNotFoundException::class)
             ->and(fn () => app(DiscardEntryDraft::class)->handle($entry, $intruder, $version))->toThrow(ModelNotFoundException::class);
     });

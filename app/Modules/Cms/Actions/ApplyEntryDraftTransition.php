@@ -67,16 +67,17 @@ final readonly class ApplyEntryDraftTransition
         ?string $note = null,
         ?int $assignTo = null,
     ): string {
-        $workflow = $this->workflows->forEntry($entry)
-            ?? throw EntryNotGovernedException::for($entry->id);
-
         try {
             /** @var array{0: WorkflowState, 1: EntryDraft} $moved */
-            $moved = DB::transaction(function () use ($entry, $locale, $actor, $workflow, $transitionKey, $seenVersion, $note, $assignTo): array {
+            $moved = DB::transaction(function () use ($entry, $locale, $actor, $transitionKey, $seenVersion, $note, $assignTo): array {
                 // Lock the entry FIRST, then read the change: two reviewers acting on the same
                 // change queue here, and the second one reads the first one's result.
                 Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
                 $entry->refresh();
+
+                // Read under the lock, like the change: the workflow is the one governing now.
+                $workflow = $this->workflows->forEntry($entry)
+                    ?? throw EntryNotGovernedException::for($entry->id);
 
                 if ($entry->status !== 'published' || $entry->trashed()) {
                     throw new EntryDraftRejectedException('not_live');

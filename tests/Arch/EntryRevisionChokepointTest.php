@@ -9,8 +9,11 @@ use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Actions\PublishScheduledEntry;
 use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Actions\RestoreEntryRevision;
+use App\Modules\Cms\Actions\SaveEntryDraft;
 use App\Modules\Cms\Actions\TransitionEntryStatus;
 use App\Modules\Cms\Models\EntryRevision;
+use App\Modules\Cms\Support\EntryDraftApplier;
+use App\Modules\Cms\Support\EntryDraftFolder;
 use App\Modules\Cms\Support\EntryStatusAudit;
 use Illuminate\Support\Facades\File;
 
@@ -47,6 +50,13 @@ foreach ([...$publishingRoads, ...$changeRoads, Editor::class, Index::class, Res
         ->toUse(RecordEntryRevision::class);
 }
 
+// Applying a change to a live entry publishes each language it carries, which the applier does for
+// its callers: the two change roads, which record the revision; the folder, which only runs once
+// the entry is offline (so it publishes nothing); and the save, which borrows its category check.
+arch('a pending change is written onto an entry only by the change roads and the fold')
+    ->expect(EntryDraftApplier::class)
+    ->toOnlyBeUsedIn([...$changeRoads, EntryDraftFolder::class, SaveEntryDraft::class]);
+
 arch('the revision model stays inside the Cms module (other modules go through its actions and queries)')
     ->expect(EntryRevision::class)
     ->toOnlyBeUsedIn(['App\\Modules\\Cms']);
@@ -54,7 +64,7 @@ arch('the revision model stays inside the Cms module (other modules go through i
 it('marks entries published only inside a road that records a revision', function () use ($publishingRoads): void {
     $allowed = array_map(
         fn (string $class): string => (string) (new ReflectionClass($class))->getFileName(),
-        $publishingRoads,
+        [...$publishingRoads, EntryDraftApplier::class],   // for the change roads, fenced in above
     );
 
     $violations = [];
