@@ -842,6 +842,7 @@
     "notifications.lead.new": "New enquiry from :name.",
     "notifications.security.new_device_login": "Your account just signed in from a new device.",
     "notifications.security.two_factor_disabled": "Two-step sign-in was turned off on your account at :at.",
+    "notifications.security.support_sign_in": ":staff from :platform support signed in as :member at :at (reason: :reason).",
     "notifications.system.storage_near_limit": "The media library is almost at your plan’s storage limit.",
     "notifications.mail.two_factor_disabled_subject": "Two-step sign-in was turned off",
     "notifications.mail.two_factor_disabled_intro": "Two-step sign-in on your account was turned off at :at.",
