@@ -19,7 +19,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 
 | # | Màn | Thiết kế | Handoff repo | Code | Lượt | Ghi chú |
 |---|---|---|---|---|---|---|
-| 1 | Admin Shell mặt site | 🟠 menu cũ, 8/13 mục trống | — | ✅ | D0-4a, D0-4b, D0-5 | thiếu Hộp duyệt, tab Quy trình duyệt, Sản phẩm trong Cài đặt |
+| 1 | Admin Shell mặt site | 🟠 menu cũ, 8/13 mục trống | — | ✅ | D0-4a, D0-4b, D0-5 | thiếu Hộp duyệt, Sản phẩm trong Cài đặt (Quy trình duyệt dời lên console — #46) |
 | 2 | Mặt Nền tảng chung Shell | 🟡 | — | 🟠 layout top-nav riêng | D0-4a | không có nút chuyển mặt trong phiên |
 | 3 | Tìm kiếm toàn cục | 🟡 | — | ❌ ô chết | D0-4a | |
 | 4 | Tổng quan theo vai trò | 🟡 | — | 🔴 stub | D2-5 | |
@@ -57,7 +57,7 @@ Ký hiệu: ✅ đủ · 🟡 một phần · 🟠 có nhưng lệch repo/quyế
 | 43 | Đăng nhập nhanh | ✅ | — | ✅ | — | |
 | 44 | Tên miền | 🟠 form chung | — | ❌ | D3-2 | |
 | 45 | Cài đặt Sản phẩm | ❌ | — | ✅ | D3-1 | |
-| 46 | Quy trình duyệt (vận hành viên) | ✅ | `design_handoff_workflow/` | ✅ | D0-5 | |
+| 46 | Quy trình duyệt (nền tảng cấp cho từng website) | ✅ | `design_handoff_workflow/` | ✅ (đang ở Cài đặt website — dời lên console) | D0-5, D4-1 | owner 30/09: tab của chi tiết website ở console, không ở Cài đặt website |
 | 47 | Gói & mức dùng (phía khách) | ❌ | — | ❌ | D3-2 | |
 | 48 | Bảo mật & Nâng cao | 🟠 mã `<head>` | — | ❌ | D3-2 | |
 | 49 | Dữ liệu & Phục hồi | ✅ | — | ❌ | D3-2 | 29/09: prompt giữ màn đã vẽ + Việc cho backend; owner chốt giữ hay hoãn build (⏸) |

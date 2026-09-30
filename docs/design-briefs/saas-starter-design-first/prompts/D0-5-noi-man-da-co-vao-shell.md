@@ -53,7 +53,7 @@ Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm n
 Dùng registry của D0-4b. Nối (embedded, trạng thái ready):
 - Danh sách + Thêm/Sửa của Tin tức · Dịch vụ · Dự án → `Quản lý Bài viết - Options` (props theo loại nội dung; chuyên mục đọc theo loại; Dịch vụ/Dự án dùng lại khuôn Bài viết).
 - Trang → `Quản lý Trang - Options` (danh sách) + `Page Editor - Options` (thêm/sửa). Chuẩn hoá cặp này để D1-3/D1-4b — lượt này chỉ nối.
-- Hộp duyệt → `Hộp duyệt`; Cài đặt › Nội dung › Quy trình duyệt → `Quy trình duyệt` (embedded, embed:'workflow' — việc còn lại #1 trong "README - Quy trình duyệt nội dung.md").
+- Hộp duyệt → `Hộp duyệt`; mặt Nền tảng › Website › chi tiết › tab "Quy trình duyệt" → `Quy trình duyệt` (owner 30/09: KHÔNG còn ở Cài đặt website; embedded, embed:'workflow' — việc còn lại #1 trong "README - Quy trình duyệt nội dung.md").
 - Trình đơn · Email · Đăng nhập nhanh · Tích hợp & Theo dõi · Nút liên hệ nổi → giữ như đang nhúng.
 - Thư viện ảnh & tệp → tạm nhúng `MediaPicker` trong khung trang (D1-6 sẽ thay).
 - Thông tin chung · Giao diện website (phần "Thương hiệu & Giao diện" đang có) · Ngôn ngữ website · SEO & Chia sẻ · Tên miền · Dữ liệu & Phục hồi · Bảo mật & Nâng cao → giữ phần FIELDS hiện có (D3 sẽ sửa). Hộp Tài khoản của tôi, chuông thông báo, hộp Đăng xuất → giữ như đang có.
