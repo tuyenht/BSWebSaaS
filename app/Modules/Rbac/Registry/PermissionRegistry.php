@@ -50,6 +50,7 @@ final class PermissionRegistry
         'platform.tenants.manage',
         'platform.sites.view',
         'platform.sites.manage',
+        'platform.sites.impersonate',
         'platform.entitlements.manage',
         'platform.workflows.manage',
         'platform.site_types.manage',
@@ -142,7 +143,7 @@ final class PermissionRegistry
         return [
             'super_admin' => ['level' => 100, 'permissions' => '*'],
             'support' => ['level' => 50, 'permissions' => [
-                'platform.tenants.view', 'platform.sites.view', 'platform.audit.view',
+                'platform.tenants.view', 'platform.sites.view', 'platform.audit.view', 'platform.sites.impersonate',
             ]],
             'billing' => ['level' => 40, 'permissions' => [
                 'platform.billing.manage', 'platform.tenants.view',

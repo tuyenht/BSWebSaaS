@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire;
 use App\Modules\Admin\Support\OAuthFlow;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
@@ -36,6 +37,8 @@ final class SocialSettings extends Component
         // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so
         // re-check the site-settings permission on every request (mount + every action).
         abort_unless(Gate::allows('settings.manage'), 403);
+        // Never on someone's behalf: staff signed in for support cannot change this.
+        app(SupportSession::class)->forbid();
     }
 
     public function mount(): void

@@ -6,6 +6,7 @@ namespace App\Modules\Admin\Livewire;
 
 use App\Modules\Admin\Livewire\Concerns\SwitchesLocale;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Actions\AcceptInvitation as AcceptInvitationAction;
 use App\Modules\Rbac\Exceptions\InvitationRejectedException;
 use App\Modules\Rbac\Models\Invitation;
@@ -47,6 +48,12 @@ final class AcceptInvitation extends Component
     public string $password = '';
 
     public string $password_confirmation = '';
+
+    public function boot(): void
+    {
+        // Never on someone's behalf: staff signed in for support cannot change this.
+        app(SupportSession::class)->forbid();
+    }
 
     public function mount(string $token): void
     {

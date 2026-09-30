@@ -9,6 +9,7 @@ use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\SocialAuth;
 use App\Modules\Identity\Models\SocialIdentity;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\Tenancy;
@@ -71,6 +72,11 @@ final readonly class OAuthController
         // 'email' (sender connect) and 'connect' (social link) act on the current account.
         if (in_array($purpose, ['email', 'connect'], true) && ! Auth::check()) {
             return redirect()->route('admin.login');
+        }
+
+        // Linking a sign-in account or connecting the site's sender is never done on someone's behalf.
+        if (in_array($purpose, ['email', 'connect'], true)) {
+            app(SupportSession::class)->forbid();
         }
 
         // The sender is a SITE setting — it carries every mail the site sends (sign-in codes,

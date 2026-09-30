@@ -6,6 +6,7 @@ use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\SettingsRepository;
 use App\Modules\Admin\Support\TenantMailer;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Http\RedirectResponse;
@@ -76,6 +77,8 @@ final class EmailSettings extends Component
         // Defense-in-depth: the livewire/update endpoint bypasses route middleware, so
         // re-check the baseline site-settings permission on every request.
         abort_unless(Gate::allows('settings.manage'), 403);
+        // Never on someone's behalf: staff signed in for support cannot change this.
+        app(SupportSession::class)->forbid();
     }
 
     public function mount(string $scope = 'site'): void

@@ -4,6 +4,7 @@ namespace App\Modules\Audit;
 
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Support\Facades\Auth;
 use Throwable;
@@ -11,7 +12,8 @@ use Throwable;
 /**
  * Audit trail (design.md §29). Best-effort: records every sensitive action
  * (role/permission/entitlement/domain/billing) but NEVER throws — auditing must not
- * break the business flow. Actor + site + request-id are resolved from context.
+ * break the business flow. Actor + site + request-id are resolved from context, and during a
+ * support session the staff member behind the member's account (impersonator_*).
  *
  * The insert runs in its own savepoint: every tenant request is one PostgreSQL transaction,
  * and a failed statement aborts it — swallowing the error alone would leave the caller's next
@@ -32,11 +34,15 @@ final class AuditService
             $user = Auth::user();
             $current = app(CurrentSite::class);
             $request = request();
+            // Signed in as a member for support: the member is the actor, the staff member stands behind.
+            $support = app(SupportSession::class)->current();
 
             $entry = new AuditLog([
                 'request_id' => $this->requestId($request->headers->get('X-Request-Id')),
                 'actor_id' => $context['actor_id'] ?? $user?->getAuthIdentifier(),
                 'actor_label' => $context['actor_label'] ?? ($user instanceof User ? $user->email : null),
+                'impersonator_id' => $support['staff_id'] ?? null,
+                'impersonator_label' => $support['staff_label'] ?? null,
                 'site_id' => $context['site_id'] ?? ($current->hasId() ? $current->id() : null),
                 'action' => $action,
                 'auditable_type' => $context['auditable_type'] ?? null,

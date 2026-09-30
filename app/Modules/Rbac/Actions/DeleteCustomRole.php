@@ -6,6 +6,7 @@ namespace App\Modules\Rbac\Actions;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Exceptions\RoleChangeRejectedException;
 use App\Modules\Rbac\Models\Invitation;
 use App\Modules\Rbac\Models\Role;
@@ -35,6 +36,7 @@ final readonly class DeleteCustomRole
      */
     public function handle(User $actor, Role $role): void
     {
+        app(SupportSession::class)->forbid();   // membership never changes on someone's behalf
         Gate::forUser($actor)->authorize('delete', $role);
         $this->rules->assertManageable($actor, $role);
 

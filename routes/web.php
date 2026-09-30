@@ -1,7 +1,9 @@
 <?php
 
 use App\Modules\Admin\Http\Controllers\OAuthController;
+use App\Modules\Admin\Http\Controllers\SupportSignInController;
 use App\Modules\Admin\Http\Controllers\ThemePreferenceController;
+use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\SetLocale;
 use App\Modules\Admin\Livewire\AcceptInvitation;
 use App\Modules\Admin\Livewire\AppearanceSettings;
@@ -34,7 +36,9 @@ use App\Modules\Admin\Livewire\TwoFactorChallenge;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Admin\Livewire\WorkflowSettings;
 use App\Modules\Admin\Support\Locales;
+use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Media\Http\Controllers\MediaUploadController;
 use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
@@ -149,6 +153,12 @@ Route::prefix(config('admin.prefix', 'admin'))
         // centralized callback — see the global oauth.callback route below.
         Route::get('/oauth/finish', [OAuthController::class, 'finish'])->name('admin.oauth.finish');
 
+        // Support sign-in: the console's single-use link lands here (a GET — CSP form-action 'self'
+        // forbids a cross-host form post) and signs the staff member in as the chosen member.
+        Route::get('/support/enter', [SupportSignInController::class, 'enter'])
+            ->middleware('throttle:30,1')
+            ->name('admin.support.enter');
+
         // Email verification link target (signed, no auth — verification happens BEFORE the
         // email+password login is allowed to complete).
         Route::get('/email/verify/{id}/{hash}', function (Request $request, string $id, string $hash) {
@@ -180,7 +190,7 @@ Route::prefix(config('admin.prefix', 'admin'))
 
 // ── Tenant admin plane — protected (auth + tenant context + site membership) ───
 Route::prefix(config('admin.prefix', 'admin'))
-    ->middleware(['web', SetCurrentSite::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class])
+    ->middleware(['web', SetCurrentSite::class, EnforceSupportSession::class, 'site.active', 'auth', 'auth.session', 'tenant.member', SetLocale::class])
     ->group(function (): void {
         Route::get('/', Dashboard::class)->name('admin.dashboard');
         Route::get('/settings', fn () => redirect()->route('admin.settings.security'))->name('admin.settings');
@@ -242,7 +252,12 @@ Route::prefix(config('admin.prefix', 'admin'))
         Route::post('/media/register', [MediaUploadController::class, 'register'])->middleware('can:media.upload')->name('admin.media.register');
         Route::post('/media/upload', [MediaUploadController::class, 'upload'])->middleware('can:media.upload')->name('admin.media.upload');
 
+        Route::post('/support/leave', [SupportSignInController::class, 'leave'])->name('admin.support.leave');
+
         Route::post('/logout', function () {
+            if (app(SupportSession::class)->active()) {
+                Audit::record('support.session.ended', ['meta' => ['why' => 'logged_out']]);
+            }
             Auth::logout();
             request()->session()->invalidate();
             request()->session()->regenerateToken();
