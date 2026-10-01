@@ -1,4 +1,4 @@
-# Roadmap — BSWebSaaS (cập nhật 30/09/2026)
+# Roadmap — BSWebSaaS (cập nhật 01/10/2026)
 
 > Nguồn "đang ở đâu / làm gì tiếp" DUY NHẤT được theo dõi trong git (thay master backlog 24/06 trong `plans/`,
 > vốn bị `.gitignore` và đã lỗi thời). Chi tiết thiết kế ở `design.md`; tiến độ từng commit ở `git log`.
@@ -52,12 +52,19 @@
 - **Đăng nhập 3 cửa (§LR B1–B6):** tường minh mặt phẳng · cửa owner · đăng nhập chung + chọn website · chuyển website ·
   đăng nhập hỗ trợ = đăng nhập dưới tên khách (owner 30/09, design v2.33; thiết kế ở D4-3) — làm TRƯỚC trong làn backend,
   spec đang soạn, chưa code.
+- **Tên miền riêng tự phục vụ (owner 01/10, design §28 v2.37):** chủ website và nền tảng đều gắn được tên miền riêng +
+  bật HTTPS; khách trỏ tên miền về MỘT tên chung của dịch vụ, không ghi IP. Thứ tự làm (backend + test trước, màn chờ
+  handoff D3-2 mục 3 và D4-1 tab Tên miền): mở rộng bảng `domains` → một chỗ phân giải host → site (chỉ tên đã xác minh,
+  có cache) → gắn / kiểm tra / bật HTTPS / đặt làm chính / gỡ + quyền + nhật ký + hạn mức → 301 về tên miền chính, địa chỉ
+  công khai theo tên miền chính. Chưa code.
 - **Builder v3:** danh mục section v3.1 chờ phía thiết kế; PR 1a.1: bộ sinh bảng màu `--brand-50..900` ✅ 26/09 (chưa stylesheet nào đọc) — còn thang spacing + chuyển website sang các vai màu.
 - **Đa ngôn ngữ giao diện:** vi/en/ja/zh đủ khoá (24/09), CI chặn lệch bằng `lang:check`. Trang 404 chung còn chỉ tiếng Việt → thiết kế ở D5-1.
 - **Còn mở (nhỏ, chưa gấp):** xem trước ngôn ngữ chưa công khai (câu hỏi cho D3-1) · sitemap > 50.000 địa chỉ cần sitemap index (khi có site lớn) · nhập lại mật khẩu trước khi tắt 2 lớp (làm cùng D2-3) · `tenant_users` chưa có chỗ đọc (chốt ở D4-1). (Trần thư mời theo từng địa chỉ: ✅ ≤ 3 thư / địa chỉ / site / 24 giờ — v2.26.)
 
 ## 4. Để sau (có chủ đích)
 Commerce GĐ1 (giỏ hàng + COD + VietQR — các website đang chờ đều là site giới thiệu, chưa cần) · thanh toán/billing (chỉ để
-chỗ chờ) · bộ AI (dịch hỗ trợ cho khách + chuyển nội dung website cũ) · Meilisearch · tên miền riêng tự phục vụ (khi có
-khách cần) · đóng gói core v1.0 (installer, quét white-label — gồm đổi tiền tố token CSS mượn tên template tham khảo
-`--vz-*` cùng lúc đồng bộ design system với Claude Design —, tài liệu EN, bench 1M bản ghi/tenant, versioning — backlog "G-P").
+chỗ chờ, gồm thu phí khi bật HTTPS cho tên miền riêng) · bộ AI (dịch hỗ trợ cho khách + chuyển nội dung website cũ) ·
+Meilisearch · đóng gói core v1.0 (installer, quét white-label — gồm đổi tiền tố token CSS mượn tên template tham khảo
+`--vz-*` cùng lúc đồng bộ design system với Claude Design —, tài liệu EN, bench 1M bản ghi/tenant, versioning — backlog "G-P") ·
+chạy Claude Code bằng user không phải root + tách dev khỏi prod (giải pháp gốc thay host-guard; nhánh lưu trữ
+`ops/host-guard-and-deploy-scripts`).
