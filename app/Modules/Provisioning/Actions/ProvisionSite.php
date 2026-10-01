@@ -73,6 +73,8 @@ final readonly class ProvisionSite
                 'hostname' => $data->hostname,
                 'kind' => 'subdomain',
                 'is_primary' => true,
+                // A platform subdomain is ours by construction: verified from birth.
+                'verified_at' => now(),
             ]);
         } else {
             $site = $domain->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");

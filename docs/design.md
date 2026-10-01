@@ -143,7 +143,10 @@ tenant_users(tenant_id, user_id, created_at, UNIQUE(tenant_id, user_id))        
 sites(id BIGINT PK, ulid, tenant_id, name, status,             -- status: provisioning|active|suspended|archived
       site_type_id NULL FK→site_types,                         -- hình-dạng-chức-năng: bộ module + role-template theo loại (§15.2), kế thừa LIVE
       theme_id NULL, created_at, updated_at, deleted_at NULL)   -- default-locale: site_locales.is_default (§10/ADR-11)
-domains(id BIGINT PK, site_id, hostname UNIQUE, kind, is_primary, ssl_status, verified_at NULL, created_at, updated_at)
+domains(id BIGINT PK, site_id, hostname UNIQUE, kind, is_primary, ssl_status NULL, verified_at NULL,
+        checked_at NULL, failing_since NULL, failure_reason NULL, pointing_method NULL, created_at, updated_at)
+  -- verified_at = được phép phục vụ (tên miền phụ nền tảng có từ lúc tạo); ssl_status ∈ pending|active|failed, NULL = chưa bật HTTPS
+  -- pointing_method ∈ alias|a_record; UNIQUE(site_id) WHERE is_primary · UNIQUE(hostname) WHERE verified_at IS NOT NULL · UNIQUE(site_id, hostname)
        -- kind: subdomain|custom ; is_primary: 1 domain chính/site (cho canonical + redirect)
 ```
 - **`sites.id` = khóa tenant** (`site_id`) dùng trên MỌI bảng tenant. `tenant_id` chỉ ở `sites` (gián tiếp qua site cho dữ liệu nội dung) — RLS lọc theo `site_id`, không theo tenant_id.
