@@ -58,8 +58,8 @@ function seedTenancy(): void
         ['ulid' => 'SITEB000000000000000000001', 'tenant_id' => 1, 'name' => 'B', 'status' => 'active', 'created_at' => now(), 'updated_at' => now()],
     ]);
     $admin->table('domains')->insert([
-        ['site_id' => 1, 'hostname' => 'a.test', 'kind' => 'subdomain', 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
-        ['site_id' => 2, 'hostname' => 'b.test', 'kind' => 'subdomain', 'is_primary' => true, 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 1, 'hostname' => 'a.test', 'kind' => 'subdomain', 'is_primary' => true, 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+        ['site_id' => 2, 'hostname' => 'b.test', 'kind' => 'subdomain', 'is_primary' => true, 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now()],
     ]);
     // Default-locale source of truth (site_locales.is_default): one vi default per site, so
     // SiteLocale::default() resolves without hitting the fallback path.

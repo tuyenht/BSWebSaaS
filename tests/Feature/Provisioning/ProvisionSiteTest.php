@@ -63,6 +63,17 @@ it('provisions a full, active site stack', function (): void {
     expect($tenancy->enter($site->id, fn () => $owner->fresh()->can('entries.publish')))->toBeTrue();
 });
 
+it('creates the platform subdomain already verified and primary', function (): void {
+    $site = provisionAnVinh();
+
+    $domain = Domain::query()->where('site_id', $site->id)->sole();
+
+    expect($domain->kind)->toBe('subdomain')
+        ->and($domain->is_primary)->toBeTrue()
+        ->and($domain->verified_at)->not->toBeNull()
+        ->and($domain->ssl_status)->toBeNull();
+});
+
 it('is idempotent — re-running provisions nothing new', function (): void {
     $first = provisionAnVinh();
     $second = provisionAnVinh();
