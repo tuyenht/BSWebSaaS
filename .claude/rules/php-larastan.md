@@ -10,6 +10,7 @@ paths:
   - A runtime guard on an attribute the PHPDoc already narrows: read it through `getAttribute()` (`mixed`) and guard that value. `is_array()` on the typed property fails `function.alreadyNarrowedType`.
 - `max(...$list)` on a list that may be empty → seed a floor: `max(0, ...$list)`. `Collection::map()->all()` is `array<int, X>` → wrap it in `array_values()` for `list<X>`.
 - `Collection::filter()` with a builtin → wrap it: `fn (mixed $v): bool => is_string($v)` (filter passes both value and key).
+- Casting a mixed value (a model key, a session or cache read) uses `Cast::int()`/`Cast::string()` (`App\Modules\Shared\Support\Cast`), never `(int)`/`(string)`: Larastan max rejects `cast.int` on `mixed`.
 - Numeric ids in cache or rate-limit keys use `Cast::int()`, never `Cast::string()`. It returns `''` for ints, merging every user into one slot — the cross-user 2FA bypass fixed in `ba09a92`.
 - Cache values:
   - Cast what you read back (Valkey returns strings).
