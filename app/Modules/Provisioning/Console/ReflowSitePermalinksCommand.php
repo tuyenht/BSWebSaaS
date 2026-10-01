@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Provisioning\Actions\ReflowSitePermalinks;
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
@@ -47,8 +47,8 @@ final class ReflowSitePermalinksCommand extends Command
             return self::FAILURE;
         }
 
-        $domain = Domain::query()->where('hostname', $host)->first();
-        if ($domain === null) {
+        $resolved = app(SiteResolver::class)->resolve($host);
+        if ($resolved === null) {
             $this->error("No site found for host '{$host}'.");
 
             return self::FAILURE;
@@ -57,16 +57,16 @@ final class ReflowSitePermalinksCommand extends Command
         $dryRun = (bool) $this->option('dry-run');
 
         // Name the target in the prompt so an operator confirms the site they meant, not a default.
-        $name = Site::query()->whereKey($domain->site_id)->value('name');
+        $name = Site::query()->whereKey($resolved->siteId)->value('name');
         $siteName = is_string($name) ? $name : '(site)';
         if (! $dryRun && ! $this->confirmToProceed(
-            "This moves live post + product URLs to /{slug} on {$siteName} (site #{$domain->site_id} · {$host}). Old paths keep working via 301."
+            "This moves live post + product URLs to /{slug} on {$siteName} (site #{$resolved->siteId} · {$host}). Old paths keep working via 301."
         )) {
             return self::FAILURE;
         }
 
         /** @var list<array{type: string, title: string, locale: string, old: string, new: string, status: string}> $summary */
-        $summary = $tenancy->enter($domain->site_id, fn (): array => $action->handle($dryRun));
+        $summary = $tenancy->enter($resolved->siteId, fn (): array => $action->handle($dryRun));
 
         $this->table(
             ['Type', 'Title', 'Locale', 'Old path', 'New path', 'Status'],

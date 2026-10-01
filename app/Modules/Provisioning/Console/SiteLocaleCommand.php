@@ -6,10 +6,10 @@ namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Tenancy\Actions\ConfigureSiteLocale;
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Exceptions\SiteLocaleChangeRejectedException;
-use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Console\Command;
@@ -65,19 +65,19 @@ final class SiteLocaleCommand extends Command
             return self::FAILURE;
         }
 
-        $domain = Domain::query()->where('hostname', $host)->first();
-        if ($domain === null) {
+        $resolved = app(SiteResolver::class)->resolve($host);
+        if ($resolved === null) {
             $this->error("No site found for host '{$host}'.");
 
             return self::FAILURE;
         }
 
-        return $tenancy->enter($domain->site_id, function () use ($domain, $locale, $limit, $flags): int {
+        return $tenancy->enter($resolved->siteId, function () use ($resolved, $locale, $limit, $flags): int {
             if ($limit !== null) {
-                $this->grantLimit($domain->site_id, (int) $limit);
+                $this->grantLimit($resolved->siteId, (int) $limit);
             }
 
-            if ($locale !== null && ! $this->changeLocale($domain->site_id, $locale, array_key_first($flags))) {
+            if ($locale !== null && ! $this->changeLocale($resolved->siteId, $locale, array_key_first($flags))) {
                 return self::FAILURE;
             }
 

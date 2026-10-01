@@ -2,8 +2,8 @@
 
 namespace App\Modules\Admin\Http\Middleware;
 
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Models\Domain;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class ResolveLivewireContext
 {
-    public function __construct(private Tenancy $tenancy) {}
+    public function __construct(private Tenancy $tenancy, private SiteResolver $sites) {}
 
     /**
      * @param  Closure(Request): Response  $next
@@ -29,10 +29,10 @@ final readonly class ResolveLivewireContext
             return $next($request);
         }
 
-        $domain = Domain::query()->where('hostname', $request->getHost())->first();
+        $resolved = $this->sites->resolve($request->getHost());
 
-        abort_if($domain === null, 404);
+        abort_if($resolved === null, 404);
 
-        return $this->tenancy->enter($domain->site_id, fn (): Response => $next($request));
+        return $this->tenancy->enter($resolved->siteId, fn (): Response => $next($request));
     }
 }

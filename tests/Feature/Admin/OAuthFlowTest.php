@@ -6,6 +6,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -66,6 +67,25 @@ it('rejects an OAuth callback carrying an unknown state', function (): void {
 // The single-use login token alone is not enough: finish() also requires the HttpOnly nonce
 // cookie set on the initiating browser at start(). A captured/replayed/forged token completing
 // into a different browser has no matching cookie and is refused.
+
+it('never sends the browser back to an origin that is not a verified domain of a site', function (string $origin): void {
+    DB::connection('pgsql_admin')->table('domains')->insert([
+        'site_id' => 1, 'hostname' => 'waiting.example', 'kind' => 'custom', 'is_primary' => false,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+    Cache::put('oauth-state:the-state', [
+        'origin' => $origin, 'provider' => 'google', 'purpose' => 'login',
+        'verifier' => 'v', 'user_id' => null, 'nonce' => 'n',
+    ], 600);
+
+    $response = $this->get('http://a.test/oauth/callback?code=the-code&state=the-state');
+
+    $response->assertRedirectContains('/admin/login')->assertSessionHasErrors('oauth');
+    expect((string) $response->headers->get('Location'))->not->toContain(parse_url($origin, PHP_URL_HOST));
+})->with([
+    'attached but not verified' => ['https://waiting.example'],
+    'not attached at all' => ['https://evil.example'],
+]);
 
 it('sets a browser-bound nonce cookie when starting social login', function (): void {
     config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
