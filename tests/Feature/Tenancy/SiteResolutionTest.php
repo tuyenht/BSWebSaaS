@@ -31,3 +31,21 @@ it('resolves the site from the request host and isolates data', function (): voi
 it('fail-closes with 404 for an unknown host', function (): void {
     $this->get('http://unknown.test/_probe')->assertNotFound();
 });
+
+it('fail-closes with 404 for a domain that is attached to a site but not verified', function (): void {
+    DB::connection('pgsql_admin')->table('domains')->insert([
+        'site_id' => 1, 'hostname' => 'waiting.example', 'kind' => 'custom', 'is_primary' => false,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $this->get('http://waiting.example/_probe')->assertNotFound();
+});
+
+it('serves a verified customer domain as its site', function (): void {
+    DB::connection('pgsql_admin')->table('domains')->insert([
+        'site_id' => 2, 'hostname' => 'shop.example', 'kind' => 'custom', 'is_primary' => false,
+        'verified_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    $this->get('http://shop.example/_probe')->assertOk()->assertExactJson(['values' => ['B']]);
+});

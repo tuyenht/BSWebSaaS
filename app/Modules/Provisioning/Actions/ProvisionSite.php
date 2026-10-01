@@ -19,6 +19,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
@@ -51,6 +52,7 @@ final readonly class ProvisionSite
         private PermissionRegistrar $registrar,
         private RouteSync $routes,
         private TaxonomyPaths $paths,
+        private SiteResolver $sites,
     ) {}
 
     public function handle(ProvisionSiteData $data): Site
@@ -76,6 +78,8 @@ final readonly class ProvisionSite
                 // A platform subdomain is ours by construction: verified from birth.
                 'verified_at' => now(),
             ]);
+            // The host may be remembered as unknown from a request made before it existed.
+            $this->sites->forget($data->hostname);
         } else {
             $site = $domain->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
         }

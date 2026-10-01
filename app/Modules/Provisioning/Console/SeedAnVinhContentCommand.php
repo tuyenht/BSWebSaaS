@@ -3,8 +3,8 @@
 namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Console\Command;
 
 /**
@@ -24,14 +24,14 @@ final class SeedAnVinhContentCommand extends Command
         $host = $this->option('host');
         $host = is_string($host) ? $host : '';
 
-        $domain = Domain::query()->where('hostname', $host)->first();
-        if ($domain === null) {
+        $resolved = app(SiteResolver::class)->resolve($host);
+        if ($resolved === null) {
             $this->error("No site found for host '{$host}'.");
 
             return self::FAILURE;
         }
 
-        $tenancy->enter($domain->site_id, fn () => $action->handle());
+        $tenancy->enter($resolved->siteId, fn () => $action->handle());
 
         $this->info("Seeded An Vinh project content for {$host}.");
 

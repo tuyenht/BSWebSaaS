@@ -12,8 +12,8 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -54,6 +54,7 @@ final readonly class OAuthController
         private PlatformSettings $platform,
         private PlatformAccess $platformAccess,
         private Tenancy $tenancy,
+        private SiteResolver $sites,
     ) {}
 
     public function start(Request $request, string $provider): RedirectResponse
@@ -142,14 +143,16 @@ final readonly class OAuthController
             return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
         }
 
-        $domain = Domain::query()->where('hostname', $host)->first();
-        if ($domain === null) {
-            return $this->failTo($origin, $purpose, __('admin.oauth_failed'));
+        // The origin rode along in server-side state, but it is still a redirect target: only a
+        // verified domain of a site is one. Anything else lands on this host's own sign-in page.
+        $resolved = $this->sites->resolve($host);
+        if ($resolved === null) {
+            return redirect()->route('admin.login')->withErrors(['oauth' => __('admin.oauth_failed')]);
         }
 
         // Re-enter the originating tenant's context to read its app + store/verify.
         return $this->tenancy->enter(
-            $domain->site_id,
+            $resolved->siteId,
             fn (): RedirectResponse => $this->complete($request, $origin, $provider, $purpose, $verifier, $userId, $nonceHash),
         );
     }

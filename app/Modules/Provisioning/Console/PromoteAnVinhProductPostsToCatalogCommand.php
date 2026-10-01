@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Provisioning\Actions\PromoteAnVinhProductPostsToCatalog;
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
-use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
 
@@ -39,8 +39,8 @@ final class PromoteAnVinhProductPostsToCatalogCommand extends Command
         $host = $this->option('host');
         $host = is_string($host) ? $host : '';
 
-        $domain = Domain::query()->where('hostname', $host)->first();
-        if ($domain === null) {
+        $resolved = app(SiteResolver::class)->resolve($host);
+        if ($resolved === null) {
             $this->error("No site found for host '{$host}'.");
 
             return self::FAILURE;
@@ -53,7 +53,7 @@ final class PromoteAnVinhProductPostsToCatalogCommand extends Command
         }
 
         /** @var list<array{postSlug: string, productUrl: string, action: string, error?: string}> $summary */
-        $summary = $tenancy->enter($domain->site_id, fn (): array => $action->handle($dryRun));
+        $summary = $tenancy->enter($resolved->siteId, fn (): array => $action->handle($dryRun));
 
         $this->table(
             ['Post slug', 'Product URL', 'Action', 'Error'],

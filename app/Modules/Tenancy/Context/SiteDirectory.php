@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Context;
 
 use App\Modules\Shared\Support\Cast;
-use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 
 /**
@@ -17,14 +16,20 @@ use App\Modules\Tenancy\Models\Site;
  */
 final readonly class SiteDirectory
 {
+    public function __construct(private SiteResolver $sites) {}
+
     /**
      * The display name of the site that owns $host, or null when the host is not a site domain.
      */
     public function nameForHost(string $host): ?string
     {
-        $name = Site::query()
-            ->whereIn('id', Domain::query()->select('site_id')->where('hostname', $host))
-            ->value('name');
+        $resolved = $this->sites->resolve($host);
+
+        if ($resolved === null) {
+            return null;
+        }
+
+        $name = Site::query()->whereKey($resolved->siteId)->value('name');
 
         return is_string($name) && trim($name) !== '' ? $name : null;
     }
