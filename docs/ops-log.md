@@ -7,6 +7,25 @@
 
 ## 2026
 
+### 2026-10-01 — Deploy lô #135–#137 (lõi đăng nhập dưới tên khách, chưa có nút ở console)
+
+- **Deploy:** `16:12 (+07)`, owner chạy. Prod `ff75886` → `1dc066c`. Gồm:
+  - #135: 2 migration chỉ thêm, đều xong dưới 5 ms. `2028_01_01_000000_add_impersonator_to_audit_logs` thêm 2 cột nullable. `2029_01_01_000000_add_support_sign_in_notification_kind`: CHECK `NOT VALID` → `VALIDATE`.
+  - #136: kết nối hộp thư gửi của site cần quyền `settings.manage`.
+  - #137: lõi đăng nhập dưới tên thành viên, thêm quyền `platform.sites.impersonate`.
+  - Còn lại là commit docs.
+  - Script deploy lần đầu tự restart PgBouncer sau migration và tự chạy `rbac:sync`: 36 quyền, 3 vai trò nền tảng.
+  - Dump: `prod-predeploy-ff75886-20261001-091207.sql.gz`.
+- **Trước deploy:**
+  - CI của main xanh.
+  - QA cục bộ trên mã đã gộp #136 + #137: 1436 test.
+  - Bài thử tải Octane có thêm nhánh phiên hỗ trợ: 200 + 200 lượt xen kẽ hai site, không lộ dữ liệu.
+- **Hậu kiểm:**
+  - `/`, `/lien-he` (có ô đồng ý), `/admin/login` → 200; `/admin` → 302; qua Caddy → 200.
+  - `audit_logs.impersonator_id/_label` có mặt; CHECK loại thông báo mới đã validate; quyền mới có trong `permissions`; 0 index INVALID.
+  - Log app + horizon 0 lỗi, không có lỗi "cached plan".
+  - Khách chưa thấy gì mới: chưa có nút cấp link ở console (PR3 chờ thiết kế D3-2/D4-1).
+
 ### 2026-09-30 — Deploy lô #124–#130 (thay đổi chờ duyệt, còn trơ) + siết cấu hình auto-mode
 
 - **Deploy:** `15:30 (+07)` — prod `a1bc675` → `ff75886` (23 commit: gói prompt thiết kế + nguồn thiết kế #124/#130 · test #125 · C5 PR1–3 #126–#128 = bảng + action cho thay đổi chờ duyệt, chưa nối vào trình soạn · docs #123 #129). 2 migration chỉ thêm: `2026_01_01_000000_create_entry_drafts_table` (26 ms) · `2027_01_01_000000_add_target_to_workflow_log` (5 ms, DEFAULT hằng số + CHECK `NOT VALID` → `VALIDATE`). Dump: `prod-predeploy-a1bc675-20260930-083043.sql.gz`. Rà phản biện C5 trước deploy: 0 critical/high; lỗi medium M1 đã sửa ở `668d3b0`.
