@@ -6,6 +6,8 @@ paths:
   - "config/octane.php"
   - "config/tenancy.php"
   - "tests/Concurrency/**"
+  - "app/Modules/Identity/Support/SupportSession.php"
+  - "app/Modules/Admin/Http/Middleware/EnforceSupportSession.php"
 ---
 
 # Tenancy + Octane
@@ -17,4 +19,7 @@ paths:
 - CI's `ContextIsolationTest` only interleaves sites over one pooled connection. When changing tenancy middleware, Octane listeners or site resolution, also run the real worker-pool hammer: `docker compose run --rm --no-deps app bash tests/Concurrency/octane-hammer.sh`.
   - ⚠ It runs `migrate:fresh` on the shared dev/test DB and takes no Pest lock.
   - Run it only when no Pest run or other session is using the DB, and with the owner's OK.
+  - It covers the storefront and support sign-in (staff signed in as each site's owner, two cookie jars). It reports FAIL (server error) apart from LEAK (wrong site's content).
+  - It needs `public/build/manifest.json`: in a worktree, copy the dev tree's built assets in first. Afterwards run `docker compose restart pgbouncer`, because `migrate:fresh` leaves stale prepared plans.
+  - Also run it when changing support sign-in (`SupportSession`, `EnforceSupportSession`).
 - D14 (PgBouncer transaction mode + prepared statements) is exercised only by local Pest runs (dev `DB_HOST=pgbouncer`); CI talks to Postgres directly.
