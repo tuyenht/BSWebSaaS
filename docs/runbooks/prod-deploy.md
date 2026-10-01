@@ -33,6 +33,7 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 6. A migration that adds, drops or retypes a column changes what `select *` on that table returns. PgBouncer keeps prepared statements per server connection (`MAX_PREPARED_STATEMENTS`), so an old plan fails with "cached plan must not change result type" until that connection closes (08/07: the scheduler failed every minute for 10 minutes).
    - After such a migration, run `docker restart bsweb_prod_pgbouncer` right after step 5 — a few seconds without database connections.
    - The same applies to the shared dev database: `docker compose restart pgbouncer` after migrating from a worktree, before running tests.
+7. The delta changes `PermissionRegistry.php` (a new permission or role grant) → `docker exec bsweb_prod_app php artisan rbac:sync` right after the migrations. It is idempotent. Without it, a new permission does not exist on prod and every check for it is denied.
 
 ## `.env` changes and the image
 

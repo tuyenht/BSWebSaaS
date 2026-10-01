@@ -12,6 +12,7 @@ paths:
 - A TestCase advisory lock serializes Pest runs; still, don't start a full run while a subagent is running Pest.
 - `phpunit.xml`: every value is a forced `<env>` + `<server>` twin (Laravel reads `$_SERVER` first) — keep new values in that form.
 - Red first: read the failure and confirm it shows the bug's symptom — a TypeError or harness error is not a valid red.
+  - New features too: run the new tests red before writing the implementation. Tests first run only after the code was written get checked by hand-made mutations instead.
 - Before adding tests, grep by module/directory name, not only the class name: HTTP-level tests exercise classes without importing them.
 - Assertions:
   - jsonb read back → compare by content (`toMatchArray`), not `toBe` (jsonb normalizes key order).

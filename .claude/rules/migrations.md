@@ -18,3 +18,4 @@ paths:
   - Test the migration's own `down()` → insert the awkward pre-existing row → `up()` (pattern: `tests/Feature/Tenancy/DropDefaultLocaleTest.php`).
   - CI migrates an empty database and cannot catch this.
 - Prod deploys with migrations take a `pg_dump` first (`docs/runbooks/prod-deploy.md`).
+- A migration that adds, drops or retypes a column leaves PgBouncer holding plans that no longer fit ("cached plan must not change result type"). After running it on the shared dev DB (from a worktree too), run `docker compose restart pgbouncer` before Pest; on prod, the runbook's PgBouncer step.
