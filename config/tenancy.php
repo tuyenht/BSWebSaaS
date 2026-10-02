@@ -44,4 +44,21 @@ return [
 
     'platform_host' => env('PLATFORM_HOST', 'platform.bswebsaas.test'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Customers' own domains (design.md §28)
+    |--------------------------------------------------------------------------
+    |
+    | target — the ONE host every customer points their domain at (CNAME for www / a subdomain,
+    | ALIAS or CNAME flattening for the root). It must stay DNS-only and resolve to the web
+    | server: moving servers then means changing this host's single A record. Defaults to the
+    | platform host. txt_label — the DNS label of the TXT record that settles a contested domain
+    | ({label}.{domain}); neutral by default so nothing names the platform (white-label).
+    */
+
+    'custom_domains' => [
+        'target' => env('CUSTOM_DOMAIN_TARGET') ?: env('PLATFORM_HOST', 'platform.bswebsaas.test'),
+        'txt_label' => env('CUSTOM_DOMAIN_TXT_LABEL', '_site-verification'),
+    ],
+
 ];

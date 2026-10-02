@@ -62,7 +62,8 @@ final readonly class ProvisionSite
             ? Tenant::query()->findOrFail($data->tenantId)
             : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
 
-        $domain = Domain::query()->firstWhere('hostname', $data->hostname);
+        // Only a live domain identifies a site: a name merely waiting on a site is not one.
+        $domain = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
 
         if ($domain === null) {
             $site = Site::query()->create([

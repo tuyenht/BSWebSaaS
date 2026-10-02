@@ -32,6 +32,8 @@ final class FeatureRegistry
             // one foreign language. Checked only when a language is switched on, so a site already
             // above its plan keeps what it has.
             'locales.max' => ['name' => 'Số ngôn ngữ tối đa', 'kind' => 'limit', 'default' => 1],
+            // Customer-owned domains a site may attach. A root domain and its `www` count as one.
+            'custom_domains.max' => ['name' => 'Số tên miền riêng tối đa', 'kind' => 'limit', 'default' => 1],
             // Whether the site may create its own roles (fork a system role or start blank). The
             // six system roles stay available and locked either way.
             'rbac.custom_roles' => ['name' => 'Nhóm quyền tùy chỉnh', 'kind' => 'boolean', 'default' => false],

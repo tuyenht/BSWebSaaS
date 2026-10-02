@@ -1,0 +1,175 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Provisioning\Console;
+
+use App\Modules\Audit\Facades\Audit;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Actions\AttachDomain;
+use App\Modules\Tenancy\Actions\CheckDomain;
+use App\Modules\Tenancy\Actions\RemoveDomain;
+use App\Modules\Tenancy\Context\SiteResolver;
+use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Tenancy\Domains\PointingMethod;
+use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
+use App\Modules\Tenancy\Models\Domain;
+use Illuminate\Console\Command;
+
+/**
+ * Operator tool for a site's own domains until the Domains screens exist (design.md §28):
+ *
+ *   site:domain av1.baoson.net                         list the site's domains and their state
+ *   site:domain av1.baoson.net attach example.vn       attach example.vn (and www.example.vn)
+ *   site:domain av1.baoson.net attach example.vn --a-record   …the customer copied the server IP
+ *   site:domain av1.baoson.net check example.vn        does it point here? verify it if so
+ *   site:domain av1.baoson.net remove example.vn       remove it (and its www)
+ *
+ * Every change goes through the Tenancy actions — the single write path — so the name rules, the
+ * plan limit and the contested-domain proof hold here as they will on the screens. Every change is
+ * audited, on the site that gained or lost the domain.
+ */
+final class SiteDomainCommand extends Command
+{
+    #[\Override]
+    protected $signature = 'site:domain
+        {host : A hostname the site already answers on}
+        {action? : attach, check or remove}
+        {domain? : The customer\'s domain}
+        {--a-record : The customer pointed the domain with an A record (the server IP) instead of following the target host by name}';
+
+    #[\Override]
+    protected $description = 'List a site\'s domains; attach, check or remove a customer\'s own domain.';
+
+    public function handle(Tenancy $tenancy): int
+    {
+        $host = $this->argument('host');
+        $action = $this->argument('action');
+        $domain = $this->argument('domain');
+
+        if ($action !== null && ! in_array($action, ['attach', 'check', 'remove'], true)) {
+            $this->error('The action is attach, check or remove.');
+
+            return self::FAILURE;
+        }
+        if ($action !== null && ($domain === null || $domain === '')) {
+            $this->error("Give the domain to {$action}.");
+
+            return self::FAILURE;
+        }
+
+        $resolved = app(SiteResolver::class)->resolve($host);
+        if ($resolved === null) {
+            $this->error("No site found for host '{$host}'.");
+
+            return self::FAILURE;
+        }
+
+        return $tenancy->enter($resolved->siteId, function () use ($resolved, $action, $domain): int {
+            try {
+                // The stored form of what was typed, so the audit trail and the actions agree.
+                $name = $action === null ? '' : DomainName::parse((string) $domain);
+
+                match ($action) {
+                    'attach' => $this->attach($resolved->siteId, $name),
+                    'check' => $this->check($resolved->siteId, $name),
+                    'remove' => $this->remove($resolved->siteId, $name),
+                    default => null,
+                };
+            } catch (DomainChangeRejectedException $e) {
+                $this->error(match ($e->reason) {
+                    'invalid' => 'invalid — that is not a domain name.',
+                    'reserved' => 'reserved — that name belongs to the platform.',
+                    'already_attached' => 'already_attached — the site already has that domain.',
+                    'limit_reached' => 'limit_reached — the site already uses every domain it was granted.',
+                    'platform_subdomain' => 'platform_subdomain — the platform subdomain cannot be removed.',
+                    default => "{$e->reason} — the site has no such domain.",
+                });
+
+                return self::FAILURE;
+            }
+
+            $this->report($resolved->siteId);
+
+            return self::SUCCESS;
+        });
+    }
+
+    private function attach(int $siteId, string $domain): void
+    {
+        $pointing = $this->option('a-record') ? PointingMethod::ARecord : PointingMethod::Alias;
+        $created = app(AttachDomain::class)->handle($domain, $pointing);
+        $names = array_map(fn (Domain $row): string => $row->hostname, $created);
+
+        Audit::record('tenancy.domain.attached', [
+            'site_id' => $siteId,
+            'actor_label' => 'console',
+            'meta' => ['hostnames' => $names, 'pointing' => $pointing->value],
+        ]);
+
+        $this->info('Attached, waiting to be pointed at '.Cast::string(config('tenancy.custom_domains.target')).': '.implode(', ', $names));
+    }
+
+    private function check(int $siteId, string $domain): void
+    {
+        $check = app(CheckDomain::class)->handle($domain);
+
+        if (! $check->verified()) {
+            $this->warn(match ($check->status) {
+                'not_pointing' => 'not_pointing — the domain does not resolve to anything yet.',
+                'points_elsewhere' => 'points_elsewhere — the domain resolves, but not to this platform.',
+                default => "needs_proof — another site also claims this domain. Publish a TXT record: {$check->txtName} = {$check->txtValue}",
+            });
+
+            return;
+        }
+
+        Audit::record('tenancy.domain.verified', [
+            'site_id' => $siteId,
+            'actor_label' => 'console',
+            'meta' => ['hostname' => $domain, 'took_over_from' => count($check->evictedSiteIds)],
+        ]);
+
+        foreach ($check->evictedSiteIds as $evicted) {
+            Audit::record('tenancy.domain.taken_over', [
+                'site_id' => $evicted,
+                'actor_label' => 'console',
+                'meta' => ['hostname' => $domain],
+            ]);
+        }
+
+        $this->info('Verified: the domain points here and belongs to this site.');
+    }
+
+    private function remove(int $siteId, string $domain): void
+    {
+        $removed = app(RemoveDomain::class)->handle($domain);
+
+        Audit::record('tenancy.domain.removed', [
+            'site_id' => $siteId,
+            'actor_label' => 'console',
+            'meta' => ['hostnames' => $removed],
+        ]);
+
+        $this->info('Removed: '.implode(', ', $removed).'. Remind the owner to delete the DNS record.');
+    }
+
+    private function report(int $siteId): void
+    {
+        $rows = Domain::query()->where('site_id', $siteId)->orderBy('id')->get();
+
+        $this->table(
+            ['Domain', 'Kind', 'Primary', 'Verified', 'HTTPS', 'Pointed by', 'Problem'],
+            $rows->map(fn (Domain $row): array => [
+                $row->hostname,
+                $row->kind,
+                $row->is_primary ? 'yes' : '',
+                $row->verified_at !== null ? 'yes' : 'waiting',
+                $row->ssl_status ?? ($row->kind === 'subdomain' ? 'on' : 'off'),
+                $row->pointing_method ?? '',
+                $row->failure_reason ?? '',
+            ])->all(),
+        );
+    }
+}
