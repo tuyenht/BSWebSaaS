@@ -7,6 +7,28 @@
 
 ## 2026
 
+### 2026-10-02 — Deploy lô #142–#152 (backend tên miền riêng, chưa có màn)
+
+- **Deploy:** `23:52 (+07)`, owner chạy. Prod `1dc066c` → `e32e138`. Gồm:
+  - #143: migration `2030_01_01_000000_add_verification_and_https_state_to_domains` (21 ms) — thêm cột xác minh / HTTPS / cách trỏ, đánh dấu tên miền phụ nền tảng là đã xác minh, 3 index duy nhất.
+  - #145: migration `2031_01_01_000000_let_sites_wait_for_the_same_domain` (2 ms) — bỏ ràng buộc duy nhất cũ trên `hostname`.
+  - #144 một chỗ phân giải host → website (chỉ tên đã xác minh, có cache) · #146 bật HTTPS + tên miền chính + `domains:recheck` hằng ngày · #148 cổng quyền + nhật ký · #149 chuyển 301 về tên miền chính · #151 HSTS theo loại tên miền · #152 sửa sau rà soát độc lập · #147 sửa khoá Pest · còn lại là docs.
+  - Script tự restart PgBouncer sau migration. `PermissionRegistry` không đổi nên không chạy `rbac:sync`.
+  - Dump: `prod-predeploy-1dc066c-20261002-165243.sql.gz`.
+- **Trước deploy:**
+  - CI của main xanh ở `e32e138`.
+  - QA cục bộ: 1603 test.
+  - Bài thử tải Octane trên nhánh #149: 200 + 200 lượt xen kẽ hai site, không lộ dữ liệu.
+  - Prod chỉ có một dòng `domains` (`av1.baoson.net`, tên miền phụ, tên chính); không website nào có hai tên chính.
+- **Hậu kiểm (23:53):**
+  - `/` 200 · `/lien-he` 200 · `/admin/login` 200 · `/admin` 302 · qua Caddy `https://av1.baoson.net/` 200 · 0 dòng lỗi trong log 10 phút.
+  - `av1.baoson.net` đã được đánh dấu xác minh; đủ 3 index mới.
+  - `/caddy/ask`: `av1.baoson.net` 200, tên chưa gắn 404. Host lạ 404.
+  - HSTS trên `av1.baoson.net` giữ `max-age=31536000; includeSubDomains`; không có `X-Robots-Tag` (công tắc `NOINDEX_PLATFORM_SUBDOMAINS` chưa bật).
+  - `domains:recheck` có trong lịch (00:00 hằng ngày theo giờ container).
+- **Trạng thái tính năng:** ngủ. Chưa có màn; chỉ lệnh `site:domain` gắn được tên miền. Cấp chứng chỉ thật cho tên miền khách chưa từng chạy — lần gắn đầu tiên dùng một tên miền thử. `.env` prod chưa đặt `CUSTOM_DOMAIN_TARGET` (mặc định = `PLATFORM_HOST`).
+- **Sự cố trên dev trong ngày:** hai lượt Pest chồng nhau treo 4 giờ (lượt chờ khoá chặn `CREATE INDEX CONCURRENTLY` của lượt đang chạy), chặn mọi lượt Pest trên máy. Owner dừng hai container; #147 sửa cách chờ khoá, đã kiểm lại bằng hai lượt chồng nhau.
+
 ### 2026-10-01 — Deploy lô #135–#137 (lõi đăng nhập dưới tên khách, chưa có nút ở console)
 
 - **Deploy:** `16:12 (+07)`, owner chạy. Prod `ff75886` → `1dc066c`. Gồm:
