@@ -7,6 +7,18 @@
 
 ## 2026
 
+### 2026-10-03 — Tên miền riêng đầu tiên chạy thật trên prod (`giuonggapdep.com`, gắn thử vào An Vinh)
+
+- **Thao tác:** `00:47–00:48 (+07)`, owner chạy lệnh `site:domain` trên `bsweb_prod_app`: gắn → kiểm → bật HTTPS. Không đặt làm tên miền chính.
+- **DNS của tên miền** (máy chủ DNS `dns1/dns2.baoson.net`): tên gốc → `103.82.27.129` (trùng `website.baoson.net`); `www` → CNAME `website.baoson.net`; không có CAA.
+- **Kết quả (đọc từ prod):**
+  - Xác minh tự động đạt ngay khi kiểm.
+  - Chứng chỉ Let's Encrypt cấp qua Caddy on-demand trong 7 giây (job `IssueDomainCertificate` DONE), hiệu lực 02/10 → 31/12/2026. Không cần đặt `CUSTOM_DOMAIN_TLS_ENDPOINT`: container tự gọi được địa chỉ công khai của máy chủ.
+  - `http://giuonggapdep.com/` → 308 sang HTTPS (Caddy) → 301 sang `https://av1.baoson.net/` giữ nguyên đường dẫn và tham số; `/admin/login` mở tại chỗ (200), không bị chuyển.
+  - HSTS trên tên miền khách: `max-age=2592000`; trên `av1.baoson.net` giữ `max-age=31536000; includeSubDomains`.
+  - Nhật ký có đủ 3 dòng `tenancy.domain.attached` / `verified` / `https_requested`. 0 dòng lỗi trong log app và Horizon.
+- **Còn lại:** `www.giuonggapdep.com` đã gắn nhưng chưa kiểm + chưa bật HTTPS (mở bằng HTTPS sẽ lỗi bắt tay cho tới khi làm; để nguyên thì dòng chờ tự xoá sau 7 ngày). Đây là tên miền thử — gỡ bằng `site:domain av1.baoson.net remove giuonggapdep.com` khi không dùng nữa.
+
 ### 2026-10-02 — Deploy lô #142–#152 (backend tên miền riêng, chưa có màn)
 
 - **Deploy:** `23:52 (+07)`, owner chạy. Prod `1dc066c` → `e32e138`. Gồm:
