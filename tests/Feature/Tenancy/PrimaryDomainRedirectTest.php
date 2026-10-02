@@ -128,10 +128,25 @@ it('commits a customer\'s domain to HTTPS for 30 days and for itself only', func
         expect($this->get($url)->headers->get('Strict-Transport-Security'))->toBe('max-age=2592000');
     }
 
-    foreach (['http://b.test/', 'http://b.test/admin/login', 'http://nobody.example/'] as $url) {
+    foreach (['http://b.test/', 'http://b.test/admin/login', 'http://sub.platform.test/'] as $url) {
         expect($this->get($url)->headers->get('Strict-Transport-Security'))->toBe('max-age=31536000; includeSubDomains');
     }
 });
+
+it('never sends the platform\'s year-long, subdomain-wide HTTPS commitment from a customer\'s domain', function (string $method, string $url): void {
+    giveSiteOneItsOwnDomain();
+
+    // A redirect, a Livewire update, a sign-in post, a page that does not exist: none of them runs
+    // the whole tenancy stack, and one strong header would bind the customer's other subdomains.
+    $response = $this->call($method, $url);
+
+    expect($response->headers->get('Strict-Transport-Security'))->toBe('max-age=2592000');
+})->with([
+    'redirect to the primary' => ['GET', 'http://www.shop.example/gioi-thieu'],
+    'Livewire update' => ['POST', 'http://shop.example/livewire/update'],
+    'missing page' => ['GET', 'http://shop.example/khong-co-trang-nay'],
+    'a host nobody verified' => ['GET', 'http://nobody.example/'],
+]);
 
 it('keeps a platform subdomain out of search engines only while the platform switch is on', function (): void {
     giveSiteOneItsOwnDomain();

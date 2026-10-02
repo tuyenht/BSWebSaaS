@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Modules\Tenancy\Context\ResolvedHost;
+use App\Modules\Tenancy\Context\SiteResolver;
+use App\Modules\Tenancy\Domains\DomainName;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -29,8 +31,10 @@ use Symfony\Component\HttpFoundation\Response;
  * dedicated platform console host OR when its URL path starts with the
  * configured admin prefix.
  */
-final class AddSecurityHeaders
+final readonly class AddSecurityHeaders
 {
+    public function __construct(private SiteResolver $sites) {}
+
     /**
      * @param  Closure(Request): Response  $next
      */
@@ -54,18 +58,25 @@ final class AddSecurityHeaders
     }
 
     /**
-     * The platform's own names commit to HTTPS for a year, subdomains included. A customer's
-     * domain commits for 30 days and speaks for itself only: its subdomains may be served
-     * elsewhere (mail, another website), and the customer can still move the domain away.
-     * The tenancy middleware leaves what the host resolved to on the request.
+     * The platform's own names commit to HTTPS for a year, subdomains included. Any other host —
+     * a customer's domain above all — commits for 30 days and speaks for itself only: its
+     * subdomains may be served elsewhere (mail, another website), and the customer can still move
+     * the domain away. One strong header on a customer's root domain would bind all of that for a
+     * year, so the kind of host is decided here for EVERY response (redirects, Livewire updates,
+     * errors), not only where the tenancy middleware ran.
      */
     private function hsts(Request $request): string
     {
-        $host = $request->attributes->get(ResolvedHost::class);
+        $resolved = $request->attributes->get(ResolvedHost::class);
+        $host = strtolower($request->getHost());
 
-        return $host instanceof ResolvedHost && ! $host->isPlatformSubdomain
-            ? 'max-age=2592000'
-            : 'max-age=31536000; includeSubDomains';
+        if (! $resolved instanceof ResolvedHost) {
+            $resolved = $this->sites->resolve($host);
+        }
+
+        return $resolved?->isPlatformSubdomain === true || DomainName::isReserved($host)
+            ? 'max-age=31536000; includeSubDomains'
+            : 'max-age=2592000';
     }
 
     /**
