@@ -59,6 +59,10 @@ return [
     'custom_domains' => [
         'target' => env('CUSTOM_DOMAIN_TARGET') ?: env('PLATFORM_HOST', 'platform.bswebsaas.test'),
         'txt_label' => env('CUSTOM_DOMAIN_TXT_LABEL', '_site-verification'),
+        // Where the first HTTPS request for a domain is sent (host:port of the web server), with
+        // the customer's host kept as SNI. Blank = the domain's public address.
+        'tls_endpoint' => env('CUSTOM_DOMAIN_TLS_ENDPOINT', ''),
+        'tls_timeout' => (int) env('CUSTOM_DOMAIN_TLS_TIMEOUT', 45),
     ],
 
 ];
