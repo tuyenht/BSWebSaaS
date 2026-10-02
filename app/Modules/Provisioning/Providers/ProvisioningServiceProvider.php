@@ -9,6 +9,7 @@ use App\Modules\Provisioning\Console\PromoteAnVinhProductPostsToCatalogCommand;
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;
 use App\Modules\Provisioning\Console\ReflowSitePermalinksCommand;
 use App\Modules\Provisioning\Console\SeedAnVinhContentCommand;
+use App\Modules\Provisioning\Console\SiteDomainCommand;
 use App\Modules\Provisioning\Console\SiteLocaleCommand;
 use App\Modules\Provisioning\Console\SyncProductRoutesCommand;
 use App\Modules\Provisioning\Console\SyncSiteProfilesFromBrandCommand;
@@ -28,6 +29,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 ImportAdminUnitsCommand::class,
                 SyncProductRoutesCommand::class,
                 SiteLocaleCommand::class,
+                SiteDomainCommand::class,
             ]);
         }
     }

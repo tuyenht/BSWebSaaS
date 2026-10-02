@@ -7,12 +7,15 @@ use Illuminate\Support\Facades\File;
  * holds the rule "only a verified domain resolves" and the cache. Code that read `domains` by
  * hostname on its own would resolve a name that is merely waiting on a site — and, once two sites
  * may wait for the same name, pick one of them at random. So nothing outside the Tenancy module
- * touches the Domain model, except ProvisionSite, which creates a site's platform subdomain.
+ * touches the Domain model, except ProvisionSite, which creates a site's platform subdomain, and
+ * the operator's site:domain command, which lists one site's rows.
  */
 
 it('resolves hostnames only through SiteResolver', function (): void {
     $allowed = [
         'app/Modules/Provisioning/Actions/ProvisionSite.php',
+        // Lists one site's rows by site_id for the operator; it resolves its host through SiteResolver.
+        'app/Modules/Provisioning/Console/SiteDomainCommand.php',
     ];
 
     $violations = [];
@@ -33,16 +36,20 @@ it('resolves hostnames only through SiteResolver', function (): void {
     expect($violations)->toBe([], 'Ask App\Modules\Tenancy\Context\SiteResolver instead of reading domains directly.');
 });
 
-it('keeps the hostname lookup inside SiteResolver within Tenancy', function (): void {
+it('keeps the request path of Tenancy on SiteResolver', function (): void {
+    // The write actions (Tenancy\Actions) read rows by hostname to change them, under a lock. What
+    // serves a request — middleware, controllers, context readers — must not: it asks SiteResolver.
     $violations = [];
 
-    foreach (File::allFiles(base_path('app/Modules/Tenancy')) as $file) {
-        if ($file->getFilename() === 'SiteResolver.php') {
-            continue;
-        }
+    foreach (['Http', 'Context'] as $area) {
+        foreach (File::allFiles(base_path('app/Modules/Tenancy/'.$area)) as $file) {
+            if ($file->getFilename() === 'SiteResolver.php') {
+                continue;
+            }
 
-        if (preg_match('/[\'"]hostname[\'"]\s*,\s*\$/', File::get($file->getPathname())) === 1) {
-            $violations[] = $file->getRelativePathname();
+            if (preg_match('/[\'"]hostname[\'"]\s*,\s*\$/', File::get($file->getPathname())) === 1) {
+                $violations[] = $area.'/'.$file->getRelativePathname();
+            }
         }
     }
 

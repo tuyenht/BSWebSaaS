@@ -8,6 +8,8 @@ use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Domains\DnsLookup;
+use App\Modules\Tenancy\Domains\SystemDnsLookup;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
@@ -33,6 +35,9 @@ final class TenancyServiceProvider extends ServiceProvider
         // SiteTime memoizes the per-site display timezone; scoped so the memo never leaks a
         // stale zone across requests.
         $this->app->scoped(SiteTime::class);
+
+        // Public DNS, behind an interface so tests answer without the network.
+        $this->app->bind(DnsLookup::class, SystemDnsLookup::class);
     }
 
     public function boot(): void
