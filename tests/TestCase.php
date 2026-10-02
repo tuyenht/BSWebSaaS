@@ -63,7 +63,14 @@ abstract class TestCase extends BaseTestCase
         $acquired = $pdo->query(sprintf('select pg_try_advisory_lock(%d)::int', self::SUITE_LOCK_KEY));
         if ($acquired === false || (int) $acquired->fetchColumn() !== 1) {
             fwrite(STDERR, PHP_EOL.'Another Pest run is using the shared test database — waiting for it to finish…'.PHP_EOL);
-            $pdo->query(sprintf('select pg_advisory_lock(%d)', self::SUITE_LOCK_KEY));
+
+            // Ask again every few seconds instead of blocking inside pg_advisory_lock(): a statement
+            // left waiting holds a snapshot, and the run that owns the lock can then never finish a
+            // CREATE INDEX CONCURRENTLY (it waits for every older snapshot) — both runs hang.
+            do {
+                sleep(3);
+                $acquired = $pdo->query(sprintf('select pg_try_advisory_lock(%d)::int', self::SUITE_LOCK_KEY));
+            } while ($acquired === false || (int) $acquired->fetchColumn() !== 1);
         }
 
         self::$suiteLock = $pdo;
