@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Tenancy\Providers;
 
+use App\Modules\Shared\Contracts\DomainProvisioner;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\PermalinkConfig;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
+use App\Modules\Tenancy\Domains\CaddyOnDemandProvisioner;
 use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\SystemDnsLookup;
 use Illuminate\Database\Connection;
@@ -38,6 +40,9 @@ final class TenancyServiceProvider extends ServiceProvider
 
         // Public DNS, behind an interface so tests answer without the network.
         $this->app->bind(DnsLookup::class, SystemDnsLookup::class);
+
+        // ADR-07: how a customer's domain gets its certificate stays swappable.
+        $this->app->bind(DomainProvisioner::class, CaddyOnDemandProvisioner::class);
     }
 
     public function boot(): void

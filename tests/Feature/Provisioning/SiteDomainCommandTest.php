@@ -2,8 +2,11 @@
 
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\OwnershipProof;
+use App\Modules\Tenancy\Jobs\IssueDomainCertificate;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\Fixtures\FakeDns;
 
 /*
@@ -101,9 +104,42 @@ it('explains a refusal and changes nothing', function (array $arguments, string 
     'a platform name' => [['action' => 'attach', 'domain' => 'other.platform.test'], 'reserved'],
     'not a domain' => [['action' => 'attach', 'domain' => 'localhost'], 'invalid'],
     'removing the platform subdomain' => [['action' => 'remove', 'domain' => 'a.test'], 'platform_subdomain'],
-    'an unknown action' => [['action' => 'promote', 'domain' => 'shop.example'], 'attach, check or remove'],
+    'an unknown action' => [['action' => 'promote', 'domain' => 'shop.example'], 'attach, check, https, primary or remove'],
     'no domain given' => [['action' => 'attach'], 'Give the domain'],
 ]);
+
+it('turns HTTPS on and makes the domain primary once its certificate is active', function (): void {
+    Queue::fake();
+    RateLimiter::clear('domain-https:shop.example');
+    $this->artisan('site:domain', ['host' => 'a.test', 'action' => 'attach', 'domain' => 'shop.example'])->assertSuccessful();
+
+    $this->artisan('site:domain', ['host' => 'a.test', 'action' => 'https', 'domain' => 'shop.example'])
+        ->expectsOutputToContain('not_verified')
+        ->assertFailed();
+
+    $this->dns->pointHere('shop.example');
+    $this->artisan('site:domain', ['host' => 'a.test', 'action' => 'check', 'domain' => 'shop.example'])->assertSuccessful();
+
+    $this->artisan('site:domain', ['host' => 'a.test', 'action' => 'https', 'domain' => 'shop.example'])
+        ->expectsOutputToContain('HTTPS requested')
+        ->assertSuccessful();
+    Queue::assertPushed(IssueDomainCertificate::class, 1);
+
+    $this->artisan('site:domain', ['host' => 'a.test', 'action' => 'primary', 'domain' => 'shop.example'])
+        ->expectsOutputToContain('https_not_on')
+        ->assertFailed();
+
+    DB::connection('pgsql_admin')->table('domains')->where('hostname', 'shop.example')->update(['ssl_status' => 'active']);
+
+    $this->artisan('site:domain', ['host' => 'a.test', 'action' => 'primary', 'domain' => 'shop.example'])
+        ->expectsOutputToContain('Primary domain is now shop.example')
+        ->assertSuccessful();
+
+    expect(DB::connection('pgsql_admin')->table('domains')->where('site_id', 1)->where('is_primary', true)->value('hostname'))->toBe('shop.example')
+        ->and(auditedDomainActions(1))->toBe([
+            'tenancy.domain.attached', 'tenancy.domain.verified', 'tenancy.domain.https_requested', 'tenancy.domain.primary_changed',
+        ]);
+});
 
 it('fails for a host that is not a site', function (): void {
     $this->artisan('site:domain', ['host' => 'nobody.example'])->assertFailed();

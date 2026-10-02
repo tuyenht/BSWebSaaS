@@ -7,6 +7,7 @@ namespace App\Modules\Provisioning\Providers;
 use App\Modules\Provisioning\Console\ImportAdminUnitsCommand;
 use App\Modules\Provisioning\Console\PromoteAnVinhProductPostsToCatalogCommand;
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;
+use App\Modules\Provisioning\Console\RecheckDomainsCommand;
 use App\Modules\Provisioning\Console\ReflowSitePermalinksCommand;
 use App\Modules\Provisioning\Console\SeedAnVinhContentCommand;
 use App\Modules\Provisioning\Console\SiteDomainCommand;
@@ -30,6 +31,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 SyncProductRoutesCommand::class,
                 SiteLocaleCommand::class,
                 SiteDomainCommand::class,
+                RecheckDomainsCommand::class,
             ]);
         }
     }

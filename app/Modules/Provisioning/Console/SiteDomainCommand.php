@@ -8,7 +8,9 @@ use App\Modules\Audit\Facades\Audit;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Actions\AttachDomain;
 use App\Modules\Tenancy\Actions\CheckDomain;
+use App\Modules\Tenancy\Actions\EnableHttps;
 use App\Modules\Tenancy\Actions\RemoveDomain;
+use App\Modules\Tenancy\Actions\SetPrimaryDomain;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Domains\DomainName;
@@ -24,6 +26,8 @@ use Illuminate\Console\Command;
  *   site:domain av1.baoson.net attach example.vn       attach example.vn (and www.example.vn)
  *   site:domain av1.baoson.net attach example.vn --a-record   …the customer copied the server IP
  *   site:domain av1.baoson.net check example.vn        does it point here? verify it if so
+ *   site:domain av1.baoson.net https example.vn        turn HTTPS on (the certificate is requested in the background)
+ *   site:domain av1.baoson.net primary example.vn      make it the site's primary domain
  *   site:domain av1.baoson.net remove example.vn       remove it (and its www)
  *
  * Every change goes through the Tenancy actions — the single write path — so the name rules, the
@@ -35,12 +39,12 @@ final class SiteDomainCommand extends Command
     #[\Override]
     protected $signature = 'site:domain
         {host : A hostname the site already answers on}
-        {action? : attach, check or remove}
+        {action? : attach, check, https, primary or remove}
         {domain? : The customer\'s domain}
         {--a-record : The customer pointed the domain with an A record (the server IP) instead of following the target host by name}';
 
     #[\Override]
-    protected $description = 'List a site\'s domains; attach, check or remove a customer\'s own domain.';
+    protected $description = 'List a site\'s domains; attach, check, secure, promote or remove a customer\'s own domain.';
 
     public function handle(Tenancy $tenancy): int
     {
@@ -48,8 +52,8 @@ final class SiteDomainCommand extends Command
         $action = $this->argument('action');
         $domain = $this->argument('domain');
 
-        if ($action !== null && ! in_array($action, ['attach', 'check', 'remove'], true)) {
-            $this->error('The action is attach, check or remove.');
+        if ($action !== null && ! in_array($action, ['attach', 'check', 'https', 'primary', 'remove'], true)) {
+            $this->error('The action is attach, check, https, primary or remove.');
 
             return self::FAILURE;
         }
@@ -74,6 +78,8 @@ final class SiteDomainCommand extends Command
                 match ($action) {
                     'attach' => $this->attach($resolved->siteId, $name),
                     'check' => $this->check($resolved->siteId, $name),
+                    'https' => $this->https($resolved->siteId, $name),
+                    'primary' => $this->primary($resolved->siteId, $name),
                     'remove' => $this->remove($resolved->siteId, $name),
                     default => null,
                 };
@@ -84,6 +90,9 @@ final class SiteDomainCommand extends Command
                     'already_attached' => 'already_attached — the site already has that domain.',
                     'limit_reached' => 'limit_reached — the site already uses every domain it was granted.',
                     'platform_subdomain' => 'platform_subdomain — the platform subdomain cannot be removed.',
+                    'not_verified' => 'not_verified — the domain does not point here yet; run check first.',
+                    'https_not_on' => 'https_not_on — turn HTTPS on for the domain first, and wait until it is active.',
+                    'too_many_attempts' => 'too_many_attempts — HTTPS was requested moments ago; try again in 5 minutes.',
                     default => "{$e->reason} — the site has no such domain.",
                 });
 
@@ -140,6 +149,38 @@ final class SiteDomainCommand extends Command
         }
 
         $this->info('Verified: the domain points here and belongs to this site.');
+    }
+
+    private function https(int $siteId, string $domain): void
+    {
+        $row = app(EnableHttps::class)->handle($domain);
+
+        if ($row->ssl_status === 'active') {
+            $this->info('HTTPS is already on for this domain.');
+
+            return;
+        }
+
+        Audit::record('tenancy.domain.https_requested', [
+            'site_id' => $siteId,
+            'actor_label' => 'console',
+            'meta' => ['hostname' => $domain],
+        ]);
+
+        $this->info('HTTPS requested. The certificate is being issued in the background; list the domains again in a minute.');
+    }
+
+    private function primary(int $siteId, string $domain): void
+    {
+        app(SetPrimaryDomain::class)->handle($domain);
+
+        Audit::record('tenancy.domain.primary_changed', [
+            'site_id' => $siteId,
+            'actor_label' => 'console',
+            'meta' => ['hostname' => $domain],
+        ]);
+
+        $this->info('Primary domain is now '.$domain.'.');
     }
 
     private function remove(int $siteId, string $domain): void

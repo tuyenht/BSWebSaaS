@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Modules\Tenancy\Actions;
 
-use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteResolver;
-use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\DomainCheck;
 use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Domains\OwnershipProof;
+use App\Modules\Tenancy\Domains\Pointing;
 use App\Modules\Tenancy\Domains\PrimaryDomain;
 use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\Domain;
@@ -36,7 +35,7 @@ final readonly class CheckDomain
 {
     public function __construct(
         private CurrentSite $current,
-        private DnsLookup $dns,
+        private Pointing $pointing,
         private OwnershipProof $proof,
         private SiteResolver $sites,
     ) {}
@@ -51,7 +50,7 @@ final readonly class CheckDomain
         $txtName = $this->proof->recordName($host);
         $txtValue = $this->proof->recordValue($siteId, $host);
 
-        $pointing = $this->pointing($host);
+        $pointing = $this->pointing->problem($host);
         $proved = $pointing === null && $this->proof->published($siteId, $host);
 
         $check = DB::transaction(function () use ($host, $siteId, $txtName, $txtValue, $pointing, $proved): DomainCheck {
@@ -104,23 +103,5 @@ final readonly class CheckDomain
         $this->sites->forget($host);
 
         return $check;
-    }
-
-    /**
-     * Null when the domain points at the platform, else why not.
-     *
-     * @return 'not_pointing'|'points_elsewhere'|null
-     */
-    private function pointing(string $host): ?string
-    {
-        $addresses = $this->dns->addresses($host);
-
-        if ($addresses === []) {
-            return 'not_pointing';
-        }
-
-        $target = $this->dns->addresses(Cast::string(config('tenancy.custom_domains.target')));
-
-        return array_diff($addresses, $target) === [] ? null : 'points_elsewhere';
     }
 }

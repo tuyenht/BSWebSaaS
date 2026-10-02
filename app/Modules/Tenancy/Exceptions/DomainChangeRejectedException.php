@@ -9,7 +9,8 @@ use DomainException;
 /**
  * A change to a site's domains refused for a BUSINESS reason the caller should explain in plain
  * words. Its own type so no broad `catch (RuntimeException)` swallows it. The message IS the reason
- * key, one of: invalid · reserved · already_attached · limit_reached · not_found · platform_subdomain.
+ * key, one of: invalid · reserved · already_attached · limit_reached · not_found · platform_subdomain ·
+ * not_verified · https_not_on · too_many_attempts.
  */
 final class DomainChangeRejectedException extends DomainException
 {
