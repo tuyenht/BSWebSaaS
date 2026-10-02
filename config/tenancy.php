@@ -56,6 +56,18 @@ return [
     | ({label}.{domain}); neutral by default so nothing names the platform (white-label).
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Keep platform subdomains out of search engines
+    |--------------------------------------------------------------------------
+    | On: a site still served on its platform subdomain ({slug}.{base}) tells
+    | search engines not to index it (X-Robots-Tag: noindex) — it is a working
+    | address, not the customer's brand. A customer's own domain, and any
+    | subdomain of it, is always indexed normally. Off by default so a live site
+    | that has no domain of its own yet does not drop out of search by surprise.
+    */
+    'noindex_platform_subdomains' => (bool) env('NOINDEX_PLATFORM_SUBDOMAINS', false),
+
     'custom_domains' => [
         'target' => env('CUSTOM_DOMAIN_TARGET') ?: env('PLATFORM_HOST', 'platform.bswebsaas.test'),
         'txt_label' => env('CUSTOM_DOMAIN_TXT_LABEL', '_site-verification'),

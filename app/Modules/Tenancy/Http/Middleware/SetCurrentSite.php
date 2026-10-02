@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Tenancy\Http\Middleware;
 
+use App\Modules\Tenancy\Context\ResolvedHost;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use Closure;
@@ -24,9 +25,17 @@ final readonly class SetCurrentSite
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $resolved = $this->sites->resolve($request->getHost());
+        // ServeOnPrimaryDomain, when it ran first, already resolved this request's host.
+        $resolved = $request->attributes->get(ResolvedHost::class);
+
+        if (! $resolved instanceof ResolvedHost) {
+            $resolved = $this->sites->resolve($request->getHost());
+        }
 
         abort_if($resolved === null, 404);
+
+        // Request-scoped (never worker state): the security headers read the kind of host from it.
+        $request->attributes->set(ResolvedHost::class, $resolved);
 
         return $this->tenancy->enter($resolved->siteId, fn (): Response => $next($request));
     }
