@@ -68,7 +68,7 @@ final readonly class AddSecurityHeaders
     private function hsts(Request $request): string
     {
         $resolved = $request->attributes->get(ResolvedHost::class);
-        $host = strtolower($request->getHost());
+        $host = rtrim(strtolower($request->getHost()), '.');
 
         if (! $resolved instanceof ResolvedHost) {
             $resolved = $this->sites->resolve($host);

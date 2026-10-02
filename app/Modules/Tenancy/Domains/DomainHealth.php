@@ -7,6 +7,7 @@ namespace App\Modules\Tenancy\Domains;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Throwable;
 
 /**
@@ -41,6 +42,14 @@ final readonly class DomainHealth
     {
         $events = [];
 
+        // Without the target's own addresses every domain would look as if it pointed elsewhere:
+        // a resolver outage must not mark the whole platform's domains as failing.
+        if (! $this->pointing->targetResolves()) {
+            report(new RuntimeException('domains:recheck skipped — the target host did not resolve.'));
+
+            return [];
+        }
+
         Domain::query()->where('kind', 'custom')->orderBy('id')->lazyById(200)->each(function (Domain $domain) use (&$events): void {
             try {
                 $event = $this->look($domain);
@@ -64,7 +73,9 @@ final readonly class DomainHealth
     private function look(Domain $domain): ?string
     {
         if ($domain->verified_at === null) {
-            if ($domain->created_at !== null && $domain->created_at->lt(now()->subDays(self::WAIT_DAYS))) {
+            // A domain that was live and then lost stays, with its reason, for the owner to see
+            // and check again; only a domain that never pointed here expires.
+            if ($domain->failing_since === null && $domain->created_at !== null && $domain->created_at->lt(now()->subDays(self::WAIT_DAYS))) {
                 $domain->delete();
 
                 return 'wait_expired';
