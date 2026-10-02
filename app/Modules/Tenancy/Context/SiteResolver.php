@@ -7,6 +7,7 @@ namespace App\Modules\Tenancy\Context;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Contracts\Cache\Repository as Cache;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
@@ -72,19 +73,28 @@ final readonly class SiteResolver
     /** Drop what is remembered about these hosts — call after any write to `domains`. */
     public function forget(string ...$hosts): void
     {
+        $keys = [];
+
         foreach ($hosts as $host) {
             $host = self::normalize($host);
 
-            if ($host === null) {
-                continue;
-            }
-
-            try {
-                $this->cache->forget(self::KEY.$host);
-            } catch (Throwable $e) {
-                report($e);
+            if ($host !== null) {
+                $keys[] = self::KEY.$host;
             }
         }
+
+        // Only once the write is committed (at once when no transaction is open). Every request
+        // and command runs in one transaction; forgetting earlier would let a concurrent request
+        // read the row as it still was and remember that stale answer for the full five minutes.
+        DB::afterCommit(function () use ($keys): void {
+            foreach ($keys as $key) {
+                try {
+                    $this->cache->forget($key);
+                } catch (Throwable $e) {
+                    report($e);
+                }
+            }
+        });
     }
 
     /**

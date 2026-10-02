@@ -255,6 +255,49 @@ it('stops serving a domain that has been failing for 30 days and hands the prima
         ->and(app(SiteResolver::class)->resolve('shop.example'))->toBeNull();
 });
 
+it('keeps the row of a lost domain on later sweeps, so its owner can see why and check it again', function (): void {
+    liveDomain(1, 'shop.example', $this->dns);
+    $this->dns->addresses['shop.example'] = [];
+    DB::connection('pgsql_admin')->table('domains')->where('hostname', 'shop.example')
+        ->update(['failing_since' => now()->subDays(31), 'created_at' => now()->subDays(60)]);
+
+    expect(array_column(app(DomainHealth::class)->sweep(), 'event'))->toBe(['lost'])
+        ->and(app(DomainHealth::class)->sweep())->toBe([])
+        ->and(httpsRow('shop.example')?->failure_reason)->toBe('not_pointing');
+
+    // Pointed back and checked: it serves again.
+    $this->dns->pointHere('shop.example');
+    httpsOnSite(1, fn () => app(CheckDomain::class)->handle('shop.example'));
+
+    expect(app(SiteResolver::class)->resolve('shop.example')?->siteId)->toBe(1)
+        ->and(httpsRow('shop.example')->failing_since)->toBeNull();
+});
+
+it('skips the whole re-check when the target host itself does not resolve', function (): void {
+    liveDomain(1, 'shop.example', $this->dns);
+    $this->dns->addresses['target.platform.test'] = [];   // a resolver outage, not the customers' fault
+
+    expect(app(DomainHealth::class)->sweep())->toBe([])
+        ->and(httpsRow('shop.example')->failing_since)->toBeNull();
+});
+
+it('forgets a host only once the change is committed', function (): void {
+    liveDomain(1, 'shop.example', $this->dns);
+    $sites = app(SiteResolver::class);
+    $sites->resolve('shop.example');   // remembered
+
+    DB::transaction(function () use ($sites): void {
+        DB::connection('pgsql_admin')->table('domains')->where('hostname', 'shop.example')->delete();
+        $sites->forget('shop.example');
+
+        // Still inside the transaction: a concurrent request must not be able to re-read the old
+        // row and remember it again, so the remembered answer stays until the commit.
+        expect($sites->resolve('shop.example'))->not->toBeNull();
+    });
+
+    expect($sites->resolve('shop.example'))->toBeNull();
+});
+
 it('keeps a domain that has been failing for less than 30 days', function (): void {
     liveDomain(1, 'shop.example', $this->dns);
     $this->dns->addresses['shop.example'] = [];

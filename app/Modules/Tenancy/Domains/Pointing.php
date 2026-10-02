@@ -16,6 +16,12 @@ final readonly class Pointing
 {
     public function __construct(private DnsLookup $dns) {}
 
+    /** Can the host customers point at be resolved right now? If not, no verdict can be trusted. */
+    public function targetResolves(): bool
+    {
+        return $this->dns->addresses(Cast::string(config('tenancy.custom_domains.target'))) !== [];
+    }
+
     /**
      * Null when the domain points at the platform, else why not.
      *
