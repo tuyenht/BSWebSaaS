@@ -1,0 +1,188 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Admin\Support;
+
+use App\Modules\Audit\Facades\Audit;
+use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Actions\AttachDomain;
+use App\Modules\Tenancy\Actions\CheckDomain;
+use App\Modules\Tenancy\Actions\EnableHttps;
+use App\Modules\Tenancy\Actions\RemoveDomain;
+use App\Modules\Tenancy\Actions\SetPrimaryDomain;
+use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Domains\DomainCheck;
+use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Tenancy\Domains\PointingMethod;
+use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
+use App\Modules\Tenancy\Models\Domain;
+use App\Modules\Tenancy\Models\Site;
+use Closure;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Gate;
+
+/**
+ * Who may change a site's own domains, and the trail each change leaves (design.md §28) — the one
+ * entry point for the site's Domains screen and for the platform console.
+ *
+ *  - On the site's admin ($site omitted): the member holds `domains.manage` in the current site.
+ *    Staff signed in for support can look but never change a domain (design.md v2.33).
+ *  - On the platform console ($site given): the staff member holds `platform.sites.manage`.
+ *
+ * The rules of a domain change itself (names, plan limit, proof of a contested domain, HTTPS
+ * before primary) live in the Tenancy actions this calls; a refused change throws their
+ * DomainChangeRejectedException and leaves no trail.
+ */
+final readonly class SiteDomains
+{
+    public function __construct(
+        private Tenancy $tenancy,
+        private CurrentSite $current,
+        private PlatformAccess $platform,
+        private SupportSession $support,
+    ) {}
+
+    /**
+     * @return list<Domain> the rows created — the name asked for first
+     *
+     * @throws AuthorizationException
+     * @throws DomainChangeRejectedException invalid · reserved · already_attached · limit_reached
+     */
+    public function attach(User $actor, string $domain, PointingMethod $pointing = PointingMethod::Alias, ?Site $site = null): array
+    {
+        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain, $pointing): array {
+            $created = app(AttachDomain::class)->handle($domain, $pointing);
+
+            $this->audit($actor, $siteId, 'tenancy.domain.attached', [
+                'hostnames' => array_map(fn (Domain $row): string => $row->hostname, $created),
+                'pointing' => $pointing->value,
+            ]);
+
+            return $created;
+        });
+    }
+
+    /**
+     * Does the domain point here? Verifies it when it does. A site that loses a contested domain
+     * gets its own trail entry.
+     *
+     * @throws AuthorizationException
+     * @throws DomainChangeRejectedException invalid · not_found
+     */
+    public function check(User $actor, string $domain, ?Site $site = null): DomainCheck
+    {
+        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain): DomainCheck {
+            $check = app(CheckDomain::class)->handle($domain);
+
+            if ($check->verified()) {
+                $host = DomainName::parse($domain);
+
+                $this->audit($actor, $siteId, 'tenancy.domain.verified', [
+                    'hostname' => $host,
+                    'took_over_from' => count($check->evictedSiteIds),
+                ]);
+
+                foreach ($check->evictedSiteIds as $evicted) {
+                    $this->audit($actor, $evicted, 'tenancy.domain.taken_over', ['hostname' => $host]);
+                }
+            }
+
+            return $check;
+        });
+    }
+
+    /**
+     * @throws AuthorizationException
+     * @throws DomainChangeRejectedException invalid · not_found · not_verified · too_many_attempts
+     */
+    public function enableHttps(User $actor, string $domain, ?Site $site = null): Domain
+    {
+        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain): Domain {
+            $row = app(EnableHttps::class)->handle($domain);
+
+            if ($row->ssl_status !== 'active') {
+                $this->audit($actor, $siteId, 'tenancy.domain.https_requested', ['hostname' => $row->hostname]);
+            }
+
+            return $row;
+        });
+    }
+
+    /**
+     * @throws AuthorizationException
+     * @throws DomainChangeRejectedException invalid · not_found · not_verified · https_not_on
+     */
+    public function makePrimary(User $actor, string $domain, ?Site $site = null): Domain
+    {
+        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain): Domain {
+            $row = app(SetPrimaryDomain::class)->handle($domain);
+
+            $this->audit($actor, $siteId, 'tenancy.domain.primary_changed', ['hostname' => $row->hostname]);
+
+            return $row;
+        });
+    }
+
+    /**
+     * @return list<string> the hostnames removed
+     *
+     * @throws AuthorizationException
+     * @throws DomainChangeRejectedException invalid · not_found · platform_subdomain
+     */
+    public function remove(User $actor, string $domain, ?Site $site = null): array
+    {
+        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain): array {
+            $removed = app(RemoveDomain::class)->handle($domain);
+
+            $this->audit($actor, $siteId, 'tenancy.domain.removed', ['hostnames' => $removed]);
+
+            return $removed;
+        });
+    }
+
+    /**
+     * Authorize, then run the change in the site it is about.
+     *
+     * @template TReturn
+     *
+     * @param  Closure(int): TReturn  $change  receives the site id
+     * @return TReturn
+     *
+     * @throws AuthorizationException
+     * @throws DomainChangeRejectedException whatever the change itself refuses
+     */
+    private function within(User $actor, ?Site $site, Closure $change): mixed
+    {
+        if ($site === null) {
+            // Never on someone's behalf: a domain decides where the whole website lives.
+            $this->support->forbid();
+            Gate::forUser($actor)->authorize('domains.manage');
+
+            return $change($this->current->id());
+        }
+
+        if (! $this->platform->isSuperAdmin($actor) && ! $this->platform->can($actor, 'platform.sites.manage')) {
+            throw new AuthorizationException;
+        }
+
+        $siteId = Cast::int($site->getKey());
+
+        return $this->tenancy->enter($siteId, fn () => $change($siteId));
+    }
+
+    /** @param  array<string, mixed>  $meta */
+    private function audit(User $actor, int $siteId, string $action, array $meta): void
+    {
+        Audit::record($action, [
+            'site_id' => $siteId,
+            'actor_id' => Cast::int($actor->getKey()),
+            'actor_label' => $actor->email,
+            'meta' => $meta,
+        ]);
+    }
+}

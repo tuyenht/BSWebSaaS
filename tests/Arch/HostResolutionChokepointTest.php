@@ -16,6 +16,8 @@ it('resolves hostnames only through SiteResolver', function (): void {
         'app/Modules/Provisioning/Actions/ProvisionSite.php',
         // Lists one site's rows by site_id for the operator; it resolves its host through SiteResolver.
         'app/Modules/Provisioning/Console/SiteDomainCommand.php',
+        // Names the rows the domain actions hand back; it never queries them.
+        'app/Modules/Admin/Support/SiteDomains.php',
     ];
 
     $violations = [];
@@ -54,4 +56,29 @@ it('keeps the request path of Tenancy on SiteResolver', function (): void {
     }
 
     expect($violations)->toBe([]);
+});
+
+it('changes a site\'s domains only behind the permission check and the audit trail', function (): void {
+    // The domain actions trust their caller to have asked "may this person?". Two callers do:
+    // SiteDomains (screens and console, gated and audited) and the operator's command.
+    $allowed = [
+        'app/Modules/Admin/Support/SiteDomains.php',
+        'app/Modules/Provisioning/Console/SiteDomainCommand.php',
+    ];
+
+    $violations = [];
+
+    foreach (File::allFiles(base_path('app')) as $file) {
+        $relative = 'app/'.str_replace('\\', '/', $file->getRelativePathname());
+
+        if ($file->getExtension() !== 'php' || str_starts_with($relative, 'app/Modules/Tenancy/') || in_array($relative, $allowed, true)) {
+            continue;
+        }
+
+        if (preg_match('/Tenancy\\\\Actions\\\\(AttachDomain|CheckDomain|EnableHttps|SetPrimaryDomain|RemoveDomain)\b/', File::get($file->getPathname())) === 1) {
+            $violations[] = $relative;
+        }
+    }
+
+    expect($violations)->toBe([], 'Change a site\'s domains through App\Modules\Admin\Support\SiteDomains.');
 });
