@@ -44,6 +44,7 @@ use App\Modules\Storefront\Http\Controllers\FormSubmissionController;
 use App\Modules\Storefront\Http\Controllers\SitemapController;
 use App\Modules\Storefront\Http\Controllers\StorefrontController;
 use App\Modules\Tenancy\Http\Controllers\CaddyAskController;
+use App\Modules\Tenancy\Http\Middleware\ServeOnPrimaryDomain;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\Request;
@@ -298,15 +299,15 @@ Route::post('/forms/{key}', FormSubmissionController::class)
 //    fallback so these explicit routes win). public/robots.txt is deleted; this route
 //    emits the dynamic per-host Sitemap: line instead. ─────────────────────────────
 Route::get('/sitemap.xml', SitemapController::class)
-    ->middleware([SetCurrentSite::class, 'site.active']);
+    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
 
 Route::get('/robots.txt', function (Request $request) {
     $sitemap = $request->getScheme().'://'.$request->getHost().'/sitemap.xml';
 
     return response("User-agent: *\nDisallow:\nSitemap: {$sitemap}", 200, ['Content-Type' => 'text/plain']);
-})->middleware([SetCurrentSite::class, 'site.active']);
+})->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
 
 // ── Storefront plane — public, tenant context. A fallback so it never shadows a
 //    defined route; resolves dynamic content for any other path (404 if none). ─────
 Route::fallback(StorefrontController::class)
-    ->middleware([SetCurrentSite::class, 'site.active']);
+    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);

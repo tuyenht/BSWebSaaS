@@ -21,14 +21,15 @@ use Throwable;
  * The answer is cached in the shared cache (never in the worker: Octane keeps workers alive and
  * one worker could not invalidate another). A hit lives 5 minutes; a miss 60 seconds, so a flood
  * of unknown hosts costs one query per host per minute. Whoever writes `domains` calls forget()
- * for the hosts it touched — the TTL is only the backstop. A host that is not even shaped like a
+ * for the hosts it touched — the TTL is only the backstop — and forgetSite() when the site's
+ * primary domain may have changed, since every host of the site remembers it. A host that is not even shaped like a
  * hostname is refused without touching the cache or the database, so junk Host headers cannot
  * fill the cache. If the cache is down the database answers: resolution must not depend on it.
  */
 final readonly class SiteResolver
 {
     /** Bump when the SHAPE of the cached value changes — the old value outlives the deploy. */
-    private const string KEY = 'tenancy:host:v1:';
+    private const string KEY = 'tenancy:host:v2:';
 
     private const int HIT_TTL = 300;
 
@@ -51,7 +52,7 @@ final readonly class SiteResolver
         }
 
         $domain = Domain::query()
-            ->select(['site_id', 'kind', 'ssl_status'])
+            ->select(['site_id', 'kind', 'ssl_status', 'is_primary'])
             ->where('hostname', $host)
             ->whereNotNull('verified_at')
             ->first();
@@ -60,6 +61,7 @@ final readonly class SiteResolver
             siteId: $domain->site_id,
             isPlatformSubdomain: $domain->kind === 'subdomain',
             httpsOn: $domain->ssl_status !== null,
+            primaryHost: $domain->is_primary ? $host : $this->primaryOf($domain->site_id, $host),
         );
 
         $this->write($host, $resolved);
@@ -86,6 +88,15 @@ final readonly class SiteResolver
     }
 
     /**
+     * Drop every host of the site — call when its primary domain may have changed (a new primary,
+     * or a domain removed, lost or taken over, after which the site falls back to another one).
+     */
+    public function forgetSite(int $siteId): void
+    {
+        $this->forget(...Cast::strings(Domain::query()->where('site_id', $siteId)->pluck('hostname')->all()));
+    }
+
+    /**
      * Lower-case, without a trailing dot; null when it cannot be a public hostname (empty, too
      * long, an IP, a single label, characters outside letters/digits/hyphen). Punycode labels
      * (xn--…) pass, in the name and in the top-level label.
@@ -103,6 +114,23 @@ final readonly class SiteResolver
         }
 
         return $host;
+    }
+
+    /**
+     * The site's primary domain — the host itself while the site has none that is verified, or
+     * while its primary is marked failing by the daily re-check: nobody is sent to an address that
+     * stopped pointing here, the site stays readable on the hosts that still work.
+     */
+    private function primaryOf(int $siteId, string $host): string
+    {
+        $primary = Domain::query()
+            ->where('site_id', $siteId)
+            ->where('is_primary', true)
+            ->whereNotNull('verified_at')
+            ->whereNull('failing_since')
+            ->value('hostname');
+
+        return is_string($primary) && $primary !== '' ? $primary : $host;
     }
 
     /** A resolved host, false for a remembered miss, null when nothing is remembered. */
@@ -126,10 +154,13 @@ final readonly class SiteResolver
             return false;
         }
 
+        $primary = $value['primary'] ?? null;
+
         return new ResolvedHost(
             siteId: $siteId,
             isPlatformSubdomain: ($value['subdomain'] ?? null) === true,
             httpsOn: ($value['https'] ?? null) === true,
+            primaryHost: is_string($primary) && $primary !== '' ? $primary : $host,
         );
     }
 
@@ -146,6 +177,7 @@ final readonly class SiteResolver
                 'site_id' => $resolved->siteId,
                 'subdomain' => $resolved->isPlatformSubdomain,
                 'https' => $resolved->httpsOn,
+                'primary' => $resolved->primaryHost,
             ], self::HIT_TTL);
         } catch (Throwable $e) {
             report($e);

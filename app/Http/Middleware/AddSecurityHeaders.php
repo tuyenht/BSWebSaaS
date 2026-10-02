@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Modules\Tenancy\Context\ResolvedHost;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Adds HTTP security headers to every web response on both planes.
  *
  * Five baseline headers apply unconditionally (storefront + admin + platform):
- *   Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options,
+ *   Strict-Transport-Security (by kind of host, see hsts()), X-Content-Type-Options, X-Frame-Options,
  *   Referrer-Policy, Permissions-Policy.
  *
  * Content-Security-Policy is plane-specific:
@@ -38,7 +39,7 @@ final class AddSecurityHeaders
         $response = $next($request);
 
         // ── Five baseline headers (every web response, both planes) ─────────
-        $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+        $response->headers->set('Strict-Transport-Security', $this->hsts($request));
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -50,6 +51,21 @@ final class AddSecurityHeaders
         }
 
         return $response;
+    }
+
+    /**
+     * The platform's own names commit to HTTPS for a year, subdomains included. A customer's
+     * domain commits for 30 days and speaks for itself only: its subdomains may be served
+     * elsewhere (mail, another website), and the customer can still move the domain away.
+     * The tenancy middleware leaves what the host resolved to on the request.
+     */
+    private function hsts(Request $request): string
+    {
+        $host = $request->attributes->get(ResolvedHost::class);
+
+        return $host instanceof ResolvedHost && ! $host->isPlatformSubdomain
+            ? 'max-age=2592000'
+            : 'max-age=31536000; includeSubDomains';
     }
 
     /**

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Modules\Tenancy\Domains;
 
-use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Support\Facades\DB;
@@ -80,6 +79,10 @@ final readonly class DomainHealth
             $recovered = $domain->failing_since !== null;
             $domain->forceFill(['checked_at' => now(), 'failing_since' => null, 'failure_reason' => null])->save();
 
+            if ($recovered && $domain->is_primary) {
+                $this->sites->forgetSite($domain->site_id);   // the site's other hosts send visitors here again
+            }
+
             return $recovered ? 'recovered' : null;
         }
 
@@ -93,13 +96,18 @@ final readonly class DomainHealth
                 ])->save();
                 PrimaryDomain::fallBackToSubdomain($domain->site_id);
             });
-            $this->sites->forget(...Cast::strings(Domain::query()->where('site_id', $domain->site_id)->pluck('hostname')->all()));
+            $this->sites->forget($domain->hostname);
+            $this->sites->forgetSite($domain->site_id);
 
             return 'lost';
         }
 
         $first = $domain->failing_since === null;
         $domain->forceFill(['checked_at' => now(), 'failing_since' => $since, 'failure_reason' => $problem])->save();
+
+        if ($first && $domain->is_primary) {
+            $this->sites->forgetSite($domain->site_id);   // the site's other hosts stop sending visitors here
+        }
 
         return $first ? 'failing' : null;
     }

@@ -71,7 +71,9 @@ final readonly class RemoveDomain
             return $removed;
         });
 
+        // The removed names, and every other host of the site: its primary may have just changed.
         $this->sites->forget(...$removed);
+        $this->sites->forgetSite($siteId);
 
         return $removed;
     }

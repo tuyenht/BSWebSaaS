@@ -102,6 +102,11 @@ final readonly class CheckDomain
 
         $this->sites->forget($host);
 
+        // A site that lost the domain fell back to another primary: its other hosts must learn it.
+        foreach ($check->evictedSiteIds as $evicted) {
+            $this->sites->forgetSite($evicted);
+        }
+
         return $check;
     }
 }
