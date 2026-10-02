@@ -56,7 +56,7 @@
   bật HTTPS; khách trỏ tên miền về MỘT tên chung của dịch vụ, không ghi IP. Thứ tự làm (backend + test trước, màn chờ
   handoff D3-2 mục 3 và D4-1 tab Tên miền): mở rộng bảng `domains` → một chỗ phân giải host → site (chỉ tên đã xác minh,
   có cache) → gắn / kiểm tra / bật HTTPS / đặt làm chính / gỡ + quyền + nhật ký + hạn mức → 301 về tên miền chính, địa chỉ
-  công khai theo tên miền chính. Chưa code.
+  công khai theo tên miền chính. Backend xong 02/10 (#142–#149, design v2.38); còn: triển khai, màn, báo chủ website khi tên miền hỏng.
 - **Builder v3:** danh mục section v3.1 chờ phía thiết kế; PR 1a.1: bộ sinh bảng màu `--brand-50..900` ✅ 26/09 (chưa stylesheet nào đọc) — còn thang spacing + chuyển website sang các vai màu.
 - **Đa ngôn ngữ giao diện:** vi/en/ja/zh đủ khoá (24/09), CI chặn lệch bằng `lang:check`. Trang 404 chung còn chỉ tiếng Việt → thiết kế ở D5-1.
 - **Còn mở (nhỏ, chưa gấp):** xem trước ngôn ngữ chưa công khai (câu hỏi cho D3-1) · sitemap > 50.000 địa chỉ cần sitemap index (khi có site lớn) · nhập lại mật khẩu trước khi tắt 2 lớp (làm cùng D2-3) · `tenant_users` chưa có chỗ đọc (chốt ở D4-1). (Trần thư mời theo từng địa chỉ: ✅ ≤ 3 thư / địa chỉ / site / 24 giờ — v2.26.)
