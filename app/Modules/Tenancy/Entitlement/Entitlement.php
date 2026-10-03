@@ -83,10 +83,14 @@ final class Entitlement
             return FeatureRegistry::default($key);
         }
 
-        // A per-site override wins over the plan (BelongsToSite scopes it to the current site).
-        $override = SiteFeature::query()->where('feature_key', $key)->first();
-        if ($override !== null) {
-            return $this->coerce($override->value, $key);
+        // A per-site override wins over the plan (BelongsToSite scopes it to the current site) —
+        // for a feature one website can hold. A customer-wide one is the plan's alone, whatever a
+        // stray override row says.
+        if ((FeatureRegistry::all()[$key]['scope'] ?? 'site') === 'site') {
+            $override = SiteFeature::query()->where('feature_key', $key)->first();
+            if ($override !== null) {
+                return $this->coerce($override->value, $key);
+            }
         }
 
         // Else the tenant's plan grant. sites/tenants are global (D6) so this join is context-free;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Provisioning\Providers;
 
 use App\Modules\Provisioning\Console\ImportAdminUnitsCommand;
+use App\Modules\Provisioning\Console\PlatformPlanCommand;
 use App\Modules\Provisioning\Console\PromoteAnVinhProductPostsToCatalogCommand;
 use App\Modules\Provisioning\Console\ProvisionSiteCommand;
 use App\Modules\Provisioning\Console\RecheckDomainsCommand;
@@ -32,6 +33,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 SyncProductRoutesCommand::class,
                 SiteLocaleCommand::class,
                 SiteFeatureCommand::class,
+                PlatformPlanCommand::class,
                 SiteDomainCommand::class,
                 RecheckDomainsCommand::class,
             ]);

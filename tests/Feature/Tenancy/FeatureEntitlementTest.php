@@ -57,16 +57,16 @@ it("grants a feature from the tenant's plan", function (): void {
 });
 
 it('lets a per-site override beat the plan — both raising and denying', function (): void {
-    planGranting(['workflow.editorial' => true, 'sites.max' => 10]);
+    planGranting(['workflow.editorial' => true, 'locales.max' => 10]);
 
     app(Tenancy::class)->enter(1, function (): void {
         // Deny a feature the plan grants, and cap a limit below the plan.
         SiteFeature::query()->create(['feature_key' => 'workflow.editorial', 'value' => false]);
-        SiteFeature::query()->create(['feature_key' => 'sites.max', 'value' => 3]);
+        SiteFeature::query()->create(['feature_key' => 'locales.max', 'value' => 3]);
 
         $entitlement = app(Entitlement::class);
         expect($entitlement->featureEnabled('workflow.editorial'))->toBeFalse();
-        expect($entitlement->featureValue('sites.max'))->toBe(3);
+        expect($entitlement->featureValue('locales.max'))->toBe(3);
     });
 });
 

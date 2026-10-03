@@ -59,6 +59,10 @@
   công khai theo tên miền chính. Backend xong và đã lên prod 03/10 (#142–#159: thêm cặp có / không `www`,
   báo người quản lý tên miền qua chuông + mail khi tên miền hỏng hoặc bị lấy lại); còn: màn D3-2 mục 3 và D4-1 tab Tên miền
   (kèm giới hạn số lần bấm "Kiểm tra" và mục "Cần chú ý" ở console).
+- **Gói + ghi đè tính năng theo website (design §15.2 v2.42–v2.43):** backend xong 04/10, không migration — ghi đè theo
+  website (#163, lệnh `site:feature`) và danh mục gói + đổi gói của khách (lệnh `platform:plan`); chưa lên prod. Còn: màn
+  D4-1 tab Tính năng và D4-2 (kèm đếm khách bị ảnh hưởng, nguồn "theo gói / ghi đè", tên + lợi ích theo ngôn ngữ, công tắc
+  "Lời mời nâng gói"); `sites.max` và `media.storage_mb` chưa có chỗ nào kiểm.
 - **Builder v3:** danh mục section v3.1 chờ phía thiết kế; PR 1a.1: bộ sinh bảng màu `--brand-50..900` ✅ 26/09 (chưa stylesheet nào đọc) — còn thang spacing + chuyển website sang các vai màu.
 - **Đa ngôn ngữ giao diện:** vi/en/ja/zh đủ khoá (24/09), CI chặn lệch bằng `lang:check`. Trang 404 chung còn chỉ tiếng Việt → thiết kế ở D5-1.
 - **Còn mở (nhỏ, chưa gấp):** xem trước ngôn ngữ chưa công khai (câu hỏi cho D3-1) · sitemap > 50.000 địa chỉ cần sitemap index (khi có site lớn) · nhập lại mật khẩu trước khi tắt 2 lớp (làm cùng D2-3) · `tenant_users` chưa có chỗ đọc (chốt ở D4-1). (Trần thư mời theo từng địa chỉ: ✅ ≤ 3 thư / địa chỉ / site / 24 giờ — v2.26.)
