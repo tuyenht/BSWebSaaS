@@ -28,6 +28,10 @@ use Illuminate\Support\Facades\DB;
  *  - A domain already verified on this site stays verified while it points here: a newcomer
  *    waiting for the same name does not push the holder back to proving.
  *
+ * Both spellings of the name (with and without `www.`) are checked together: the one that runs and
+ * the one that only redirects to it. The twin's outcome rides along; it may lag behind (the owner
+ * has not created its record yet) without holding the name back.
+ *
  * Returns the outcome instead of throwing for DNS states — those are ordinary, the caller shows
  * them. Who may manage a site's domains is the caller's check. Runs inside the tenant context.
  */
@@ -47,6 +51,20 @@ final readonly class CheckDomain
     {
         $host = DomainName::parse($input);
         $siteId = $this->current->id();
+        $check = $this->checkOne($host, $siteId);
+
+        $twin = DomainName::sibling($host);
+        $twinWaits = Domain::query()
+            ->where('site_id', $siteId)->where('hostname', $twin)->where('kind', 'custom')
+            ->whereNull('verified_at')
+            ->exists();
+
+        return $twinWaits ? $check->withTwin($this->checkOne($twin, $siteId)) : $check;
+    }
+
+    /** @throws DomainChangeRejectedException not_found */
+    private function checkOne(string $host, int $siteId): DomainCheck
+    {
         $txtName = $this->proof->recordName($host);
         $txtValue = $this->proof->recordValue($siteId, $host);
 

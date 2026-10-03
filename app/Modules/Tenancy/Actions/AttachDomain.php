@@ -6,7 +6,7 @@ namespace App\Modules\Tenancy\Actions;
 
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
-use App\Modules\Tenancy\Domains\DnsLookup;
+use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Domains\PointingMethod;
 use App\Modules\Tenancy\Entitlement\Entitlement;
@@ -22,8 +22,10 @@ use Illuminate\Support\Facades\DB;
  *
  *  - the name is stored as a plain lower-case hostname (punycode for names with diacritics);
  *  - names that belong to the platform can never be attached;
- *  - a root domain brings its `www` along (and `www.` brings its root), and the pair counts as ONE
- *    against the plan's `custom_domains.max`;
+ *  - every name comes as a pair of spellings, with and without `www.` (`shop.example.com` and
+ *    `www.shop.example.com`). The owner picks the one that runs — by default the one without
+ *    `www.` — and the other only redirects to it (is_redirect). The pair counts as ONE against
+ *    the plan's `custom_domains.max`;
  *  - the new rows are only WAITING: they resolve to nothing and get no certificate until
  *    CheckDomain sees the domain pointing at the platform. A waiting row holds no claim — another
  *    site may wait for the same name.
@@ -35,78 +37,67 @@ final readonly class AttachDomain
     public function __construct(
         private CurrentSite $current,
         private Entitlement $entitlement,
-        private DnsLookup $dns,
     ) {}
 
     /**
-     * @return list<Domain> the rows created — the name asked for first
+     * @param  bool  $useWww  run the `www.` spelling and redirect the bare one to it
+     * @return list<Domain> the rows created — the spelling that runs first
      *
      * @throws DomainChangeRejectedException invalid · reserved · already_attached · limit_reached
      */
-    public function handle(string $input, ?PointingMethod $pointing = null): array
+    public function handle(string $input, ?PointingMethod $pointing = null, bool $useWww = false): array
     {
         $host = DomainName::parse($input);
+        $bare = DomainName::pairKey($host);
+        $runs = $useWww ? 'www.'.$bare : $bare;
 
-        if (DomainName::isReserved($host)) {
+        if (DomainName::isReserved($host) || DomainName::isReserved($runs)) {
             throw new DomainChangeRejectedException('reserved');
         }
 
-        $names = [$host, ...$this->pairedName($host)];
+        if (SiteResolver::normalize($runs) === null) {
+            throw new DomainChangeRejectedException('invalid');
+        }
+
+        $twin = DomainName::sibling($runs);
+        $names = [$runs => false];
+
+        if (SiteResolver::normalize($twin) !== null && ! DomainName::isReserved($twin)) {
+            $names[$twin] = true;
+        }
+
         $siteId = $this->current->id();
 
-        return DB::transaction(function () use ($siteId, $host, $names, $pointing): array {
+        return DB::transaction(function () use ($siteId, $names, $pointing): array {
             // Serialize a site's domain changes: two concurrent attaches must not both pass the limit.
             Site::query()->whereKey($siteId)->lockForUpdate()->value('id');
 
             $existing = Cast::strings(Domain::query()->where('site_id', $siteId)->where('kind', 'custom')->pluck('hostname')->all());
 
-            if (in_array($host, $existing, true)) {
+            if (array_intersect(array_keys($names), $existing) !== []) {
                 throw new DomainChangeRejectedException('already_attached');
             }
 
             $pairs = array_unique(array_map(DomainName::pairKey(...), $existing));
 
-            if (! in_array(DomainName::pairKey($host), $pairs, true)
-                && count($pairs) >= (int) $this->entitlement->featureValue('custom_domains.max')) {
+            if (count($pairs) >= (int) $this->entitlement->featureValue('custom_domains.max')) {
                 throw new DomainChangeRejectedException('limit_reached');
             }
 
             $created = [];
 
-            foreach ($names as $name) {
-                if (in_array($name, $existing, true)) {
-                    continue;
-                }
-
+            foreach ($names as $name => $redirects) {
                 $created[] = Domain::query()->create([
                     'site_id' => $siteId,
                     'hostname' => $name,
                     'kind' => 'custom',
                     'is_primary' => false,
+                    'is_redirect' => $redirects,
                     'pointing_method' => $pointing?->value,
                 ]);
             }
 
             return $created;
         });
-    }
-
-    /**
-     * The other half of a root-and-www pair, when there is one. Only a root domain has a `www`
-     * worth serving: `shop.example.com` does not get `www.shop.example.com`.
-     *
-     * @return list<string>
-     */
-    private function pairedName(string $host): array
-    {
-        $root = DomainName::pairKey($host);
-
-        if (! $this->dns->isZoneApex($root)) {
-            return [];
-        }
-
-        $sibling = DomainName::sibling($host);
-
-        return DomainName::isReserved($sibling) ? [] : [$sibling];
     }
 }

@@ -11,6 +11,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Actions\AttachDomain;
 use App\Modules\Tenancy\Actions\CheckDomain;
+use App\Modules\Tenancy\Actions\ChooseRunningSpelling;
 use App\Modules\Tenancy\Actions\EnableHttps;
 use App\Modules\Tenancy\Actions\RemoveDomain;
 use App\Modules\Tenancy\Actions\SetPrimaryDomain;
@@ -48,18 +49,20 @@ final readonly class SiteDomains
     ) {}
 
     /**
-     * @return list<Domain> the rows created — the name asked for first
+     * @param  bool  $useWww  run the `www.` spelling; by default the one without `www.` runs
+     * @return list<Domain> the rows created — the spelling that runs first
      *
      * @throws AuthorizationException
      * @throws DomainChangeRejectedException invalid · reserved · already_attached · limit_reached
      */
-    public function attach(User $actor, string $domain, PointingMethod $pointing = PointingMethod::Alias, ?Site $site = null): array
+    public function attach(User $actor, string $domain, PointingMethod $pointing = PointingMethod::Alias, bool $useWww = false, ?Site $site = null): array
     {
-        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain, $pointing): array {
-            $created = app(AttachDomain::class)->handle($domain, $pointing);
+        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain, $pointing, $useWww): array {
+            $created = app(AttachDomain::class)->handle($domain, $pointing, $useWww);
 
             $this->audit($actor, $siteId, 'tenancy.domain.attached', [
                 'hostnames' => array_map(fn (Domain $row): string => $row->hostname, $created),
+                'runs' => $created[0]->hostname,
                 'pointing' => $pointing->value,
             ]);
 
@@ -79,6 +82,14 @@ final readonly class SiteDomains
         return $this->within($actor, $site, function (int $siteId) use ($actor, $domain): DomainCheck {
             $check = app(CheckDomain::class)->handle($domain);
 
+            if ($check->twin?->verified() === true) {
+                $this->audit($actor, $siteId, 'tenancy.domain.verified', ['hostname' => DomainName::sibling(DomainName::parse($domain)), 'took_over_from' => count($check->twin->evictedSiteIds)]);
+
+                foreach ($check->twin->evictedSiteIds as $evicted) {
+                    $this->audit($actor, $evicted, 'tenancy.domain.taken_over', ['hostname' => DomainName::sibling(DomainName::parse($domain))]);
+                }
+            }
+
             if ($check->verified()) {
                 $host = DomainName::parse($domain);
 
@@ -97,25 +108,27 @@ final readonly class SiteDomains
     }
 
     /**
+     * @return list<string> the names whose certificate was requested now
+     *
      * @throws AuthorizationException
      * @throws DomainChangeRejectedException invalid · not_found · not_verified · too_many_attempts
      */
-    public function enableHttps(User $actor, string $domain, ?Site $site = null): Domain
+    public function enableHttps(User $actor, string $domain, ?Site $site = null): array
     {
-        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain): Domain {
-            $row = app(EnableHttps::class)->handle($domain);
+        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain): array {
+            $requested = app(EnableHttps::class)->handle($domain);
 
-            if ($row->ssl_status !== 'active') {
-                $this->audit($actor, $siteId, 'tenancy.domain.https_requested', ['hostname' => $row->hostname]);
+            if ($requested !== []) {
+                $this->audit($actor, $siteId, 'tenancy.domain.https_requested', ['hostnames' => $requested]);
             }
 
-            return $row;
+            return $requested;
         });
     }
 
     /**
      * @throws AuthorizationException
-     * @throws DomainChangeRejectedException invalid · not_found · not_verified · https_not_on
+     * @throws DomainChangeRejectedException invalid · not_found · not_verified · redirect_only · https_not_on
      */
     public function makePrimary(User $actor, string $domain, ?Site $site = null): Domain
     {
@@ -123,6 +136,23 @@ final readonly class SiteDomains
             $row = app(SetPrimaryDomain::class)->handle($domain);
 
             $this->audit($actor, $siteId, 'tenancy.domain.primary_changed', ['hostname' => $row->hostname]);
+
+            return $row;
+        });
+    }
+
+    /**
+     * Run this spelling of the name (with or without `www.`); the other one redirects to it.
+     *
+     * @throws AuthorizationException
+     * @throws DomainChangeRejectedException invalid · not_found · not_verified · https_not_on
+     */
+    public function chooseRunningSpelling(User $actor, string $domain, ?Site $site = null): Domain
+    {
+        return $this->within($actor, $site, function (int $siteId) use ($actor, $domain): Domain {
+            $row = app(ChooseRunningSpelling::class)->handle($domain);
+
+            $this->audit($actor, $siteId, 'tenancy.domain.spelling_changed', ['runs' => $row->hostname]);
 
             return $row;
         });

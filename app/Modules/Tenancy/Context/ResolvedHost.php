@@ -7,7 +7,8 @@ namespace App\Modules\Tenancy\Context;
 /**
  * What a verified hostname resolves to (SiteResolver): the site it serves, whether it is the
  * platform's own subdomain or a customer's domain, whether HTTPS has been turned on for it, and
- * the site's primary domain — the one address its public pages live on.
+ * the site's primary domain — the one address its public pages live on — and, for the spelling of
+ * a name that only redirects (with or without `www.`), the spelling that runs.
  */
 final readonly class ResolvedHost
 {
@@ -16,6 +17,7 @@ final readonly class ResolvedHost
         public bool $isPlatformSubdomain,
         public bool $httpsOn,
         public string $primaryHost,
+        public ?string $redirectTo = null,
     ) {}
 
     /**

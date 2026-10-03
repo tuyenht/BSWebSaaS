@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Context;
 
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Support\Facades\DB;
@@ -30,7 +31,7 @@ use Throwable;
 final readonly class SiteResolver
 {
     /** Bump when the SHAPE of the cached value changes — the old value outlives the deploy. */
-    private const string KEY = 'tenancy:host:v2:';
+    private const string KEY = 'tenancy:host:v3:';
 
     private const int HIT_TTL = 300;
 
@@ -53,7 +54,7 @@ final readonly class SiteResolver
         }
 
         $domain = Domain::query()
-            ->select(['site_id', 'kind', 'ssl_status', 'is_primary'])
+            ->select(['site_id', 'kind', 'ssl_status', 'is_primary', 'is_redirect'])
             ->where('hostname', $host)
             ->whereNotNull('verified_at')
             ->first();
@@ -63,6 +64,7 @@ final readonly class SiteResolver
             isPlatformSubdomain: $domain->kind === 'subdomain',
             httpsOn: $domain->ssl_status !== null,
             primaryHost: $domain->is_primary ? $host : $this->primaryOf($domain->site_id, $host),
+            redirectTo: $domain->is_redirect ? $this->runningSpellingOf($domain->site_id, $host) : null,
         );
 
         $this->write($host, $resolved);
@@ -143,6 +145,24 @@ final readonly class SiteResolver
         return is_string($primary) && $primary !== '' ? $primary : $host;
     }
 
+    /**
+     * The spelling that runs for a spelling that only redirects — null while that one cannot
+     * answer (not verified, or marked failing), so the redirecting spelling serves rather than
+     * sending visitors to a dead name.
+     */
+    private function runningSpellingOf(int $siteId, string $host): ?string
+    {
+        $running = Domain::query()
+            ->where('site_id', $siteId)
+            ->where('hostname', DomainName::sibling($host))
+            ->where('is_redirect', false)
+            ->whereNotNull('verified_at')
+            ->whereNull('failing_since')
+            ->value('hostname');
+
+        return is_string($running) && $running !== '' ? $running : null;
+    }
+
     /** A resolved host, false for a remembered miss, null when nothing is remembered. */
     private function read(string $host): ResolvedHost|false|null
     {
@@ -165,12 +185,14 @@ final readonly class SiteResolver
         }
 
         $primary = $value['primary'] ?? null;
+        $redirect = $value['redirect'] ?? null;
 
         return new ResolvedHost(
             siteId: $siteId,
             isPlatformSubdomain: ($value['subdomain'] ?? null) === true,
             httpsOn: ($value['https'] ?? null) === true,
             primaryHost: is_string($primary) && $primary !== '' ? $primary : $host,
+            redirectTo: is_string($redirect) && $redirect !== '' ? $redirect : null,
         );
     }
 
@@ -188,6 +210,7 @@ final readonly class SiteResolver
                 'subdomain' => $resolved->isPlatformSubdomain,
                 'https' => $resolved->httpsOn,
                 'primary' => $resolved->primaryHost,
+                'redirect' => $resolved->redirectTo,
             ], self::HIT_TTL);
         } catch (Throwable $e) {
             report($e);

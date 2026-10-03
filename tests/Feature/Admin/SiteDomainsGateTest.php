@@ -35,7 +35,6 @@ beforeEach(function (): void {
     RateLimiter::clear('domain-https:shop.example');
     config(['tenancy.custom_domains.target' => 'target.platform.test', 'tenancy.base_domains' => ['platform.test']]);
     $this->dns = FakeDns::install();
-    $this->dns->apexes = ['shop.example', 'kept.example'];
     Queue::fake();
 });
 
@@ -112,7 +111,7 @@ it('lets a member who manages domains take a domain from attached to primary, na
         expect(array_map(fn ($row) => $row->hostname, $created))->toBe(['shop.example', 'www.shop.example']);
 
         expect($domains->check($member, 'shop.example')->verified())->toBeTrue();
-        expect($domains->enableHttps($member, 'shop.example')->ssl_status)->toBe('pending');
+        expect($domains->enableHttps($member, 'shop.example'))->toBe(['shop.example']);
     });
 
     DB::connection('pgsql_admin')->table('domains')->where('hostname', 'shop.example')->update(['ssl_status' => 'active']);
@@ -153,10 +152,11 @@ it('refuses a member without domains.manage, changing nothing', function (string
         'https' => app(SiteDomains::class)->enableHttps($editor, 'kept.example'),
         'primary' => app(SiteDomains::class)->makePrimary($editor, 'kept.example'),
         'remove' => app(SiteDomains::class)->remove($editor, 'kept.example'),
+        'switch spelling' => app(SiteDomains::class)->chooseRunningSpelling($editor, 'www.kept.example'),
     }))->toThrow(AuthorizationException::class);
 
     expect(sdCustomDomains())->toBe(2)->and(sdTrail())->toBe([]);
-})->with(['attach', 'check', 'https', 'primary', 'remove']);
+})->with(['attach', 'check', 'https', 'primary', 'remove', 'switch spelling']);
 
 it('refuses a member of another site: the permission counts only where it was granted', function (): void {
     $ownerOfB = sdMember(2, 'owner');
@@ -178,10 +178,11 @@ it('locks every domain change while staff are signed in as a member', function (
         'https' => app(SiteDomains::class)->enableHttps($owner, 'kept.example'),
         'primary' => app(SiteDomains::class)->makePrimary($owner, 'kept.example'),
         'remove' => app(SiteDomains::class)->remove($owner, 'kept.example'),
+        'switch spelling' => app(SiteDomains::class)->chooseRunningSpelling($owner, 'www.kept.example'),
     }, support: true))->toThrow(AuthorizationException::class, __('admin.support.locked'));
 
     expect(sdCustomDomains())->toBe(2)->and(sdTrail())->toBe([]);
-})->with(['attach', 'check', 'https', 'primary', 'remove']);
+})->with(['attach', 'check', 'https', 'primary', 'remove', 'switch spelling']);
 
 it('lets platform staff who manage sites change a site\'s domains from the console', function (): void {
     $staff = sdStaff('super_admin');

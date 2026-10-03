@@ -44,20 +44,6 @@ final class SystemDnsLookup implements DnsLookup
         return $values;
     }
 
-    #[\Override]
-    public function isZoneApex(string $host): bool
-    {
-        // The resolver follows an alias, so `www` aliased to its root would answer with the
-        // root's NS records: count only records owned by the name that was asked.
-        foreach ($this->records($host, DNS_NS) as $record) {
-            if (is_string($record['host'] ?? null) && strtolower($record['host']) === $host) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /**
      * @return list<array<mixed>>
      */

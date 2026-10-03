@@ -104,7 +104,7 @@ it('explains a refusal and changes nothing', function (array $arguments, string 
     'a platform name' => [['action' => 'attach', 'domain' => 'other.platform.test'], 'reserved'],
     'not a domain' => [['action' => 'attach', 'domain' => 'localhost'], 'invalid'],
     'removing the platform subdomain' => [['action' => 'remove', 'domain' => 'a.test'], 'platform_subdomain'],
-    'an unknown action' => [['action' => 'promote', 'domain' => 'shop.example'], 'attach, check, https, primary or remove'],
+    'an unknown action' => [['action' => 'promote', 'domain' => 'shop.example'], 'attach, check, https, primary, run or remove'],
     'no domain given' => [['action' => 'attach'], 'Give the domain'],
 ]);
 

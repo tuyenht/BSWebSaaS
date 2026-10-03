@@ -14,7 +14,8 @@ use Illuminate\Support\Carbon;
  *
  * verified_at is the "may be served" marker: a platform subdomain carries it from birth, a
  * customer's own domain once it points at the platform (design.md §28). ssl_status is null until
- * HTTPS is turned on for the domain.
+ * HTTPS is turned on for the domain. is_redirect marks the spelling of a name (with or without
+ * `www.`) that only redirects to the other one, which the owner chose to run.
  *
  * @property int $id
  * @property int $site_id
@@ -27,6 +28,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $failing_since
  * @property string|null $failure_reason
  * @property string|null $pointing_method
+ * @property bool $is_redirect
  */
 final class Domain extends Model
 {
@@ -38,6 +40,7 @@ final class Domain extends Model
     {
         return [
             'is_primary' => 'boolean',
+            'is_redirect' => 'boolean',
             'verified_at' => 'datetime',
             'checked_at' => 'datetime',
             'failing_since' => 'datetime',

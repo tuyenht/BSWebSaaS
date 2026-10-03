@@ -34,11 +34,11 @@ function cdOnSite(int $siteId, Closure $run): mixed
 }
 
 /** @return list<string> */
-function cdAttach(int $siteId, string $input, ?PointingMethod $pointing = null): array
+function cdAttach(int $siteId, string $input, ?PointingMethod $pointing = null, bool $useWww = false): array
 {
     return cdOnSite($siteId, fn (): array => array_map(
         fn ($row): string => $row->hostname,
-        app(AttachDomain::class)->handle($input, $pointing),
+        app(AttachDomain::class)->handle($input, $pointing, $useWww),
     ));
 }
 
@@ -95,7 +95,7 @@ it('never lets a customer attach a name that belongs to the platform', function 
 // ── Attaching ───────────────────────────────────────────────────────────────────────────────
 
 it('attaches a domain as waiting: not verified, not primary, not resolving', function (): void {
-    expect(cdAttach(1, 'shop.example', PointingMethod::ARecord))->toBe(['shop.example']);
+    expect(cdAttach(1, 'shop.example', PointingMethod::ARecord))->toBe(['shop.example', 'www.shop.example']);
 
     $row = cdRow(1, 'shop.example');
 
@@ -107,20 +107,19 @@ it('attaches a domain as waiting: not verified, not primary, not resolving', fun
         ->and(app(SiteResolver::class)->resolve('shop.example'))->toBeNull();
 });
 
-it('brings www along with a root domain, and the root along with www', function (string $typed, array $attached): void {
-    $this->dns->apexes = ['example.vn'];
+it('attaches both spellings of any name; the one without www runs unless the owner chose www', function (string $typed, bool $useWww, array $attached): void {
+    expect(cdAttach(1, $typed, useWww: $useWww))->toBe($attached);
 
-    expect(cdAttach(1, $typed))->toBe($attached);
+    $redirects = DB::connection('pgsql_admin')->table('domains')->where('site_id', 1)->where('is_redirect', true)->pluck('hostname')->all();
+
+    expect($redirects)->toBe([$attached[1]]);
 })->with([
-    'root typed' => ['example.vn', ['example.vn', 'www.example.vn']],
-    'www typed' => ['www.example.vn', ['www.example.vn', 'example.vn']],
+    'root, default' => ['example.vn', false, ['example.vn', 'www.example.vn']],
+    'www typed, default' => ['www.example.vn', false, ['example.vn', 'www.example.vn']],
+    'root, www chosen' => ['example.vn', true, ['www.example.vn', 'example.vn']],
+    'subdomain, default' => ['shop.example.vn', false, ['shop.example.vn', 'www.shop.example.vn']],
+    'subdomain, www chosen' => ['shop.example.vn', true, ['www.shop.example.vn', 'shop.example.vn']],
 ]);
-
-it('does not invent a www for a name that is not a root domain', function (): void {
-    $this->dns->apexes = ['example.vn'];
-
-    expect(cdAttach(1, 'shop.example.vn'))->toBe(['shop.example.vn']);
-});
 
 it('refuses a domain the site already has', function (): void {
     cdAttach(1, 'shop.example');
@@ -128,28 +127,27 @@ it('refuses a domain the site already has', function (): void {
     expect(cdReason(fn () => cdAttach(1, 'SHOP.example')))->toBe('already_attached');
 });
 
-it('stops at the plan limit, counting a root and its www as one', function (): void {
-    $this->dns->apexes = ['example.vn'];
+it('stops at the plan limit, counting a name and its www as one', function (): void {
     cdAttach(1, 'example.vn');
 
     expect(cdReason(fn () => cdAttach(1, 'second.example')))->toBe('limit_reached');
 
     cdOnSite(1, fn () => SiteFeature::query()->updateOrCreate(['feature_key' => 'custom_domains.max'], ['value' => 2]));
 
-    expect(cdAttach(1, 'second.example'))->toBe(['second.example'])
+    expect(cdAttach(1, 'second.example'))->toBe(['second.example', 'www.second.example'])
         ->and(cdReason(fn () => cdAttach(1, 'third.example')))->toBe('limit_reached');
 });
 
-it('lets the missing half of an attached pair be added at the limit', function (): void {
-    cdAttach(1, 'example.vn');   // not known as a root yet → attached alone
+it('refuses the other spelling of a name the site already has', function (): void {
+    cdAttach(1, 'example.vn');
 
-    expect(cdAttach(1, 'www.example.vn'))->toBe(['www.example.vn']);
+    expect(cdReason(fn () => cdAttach(1, 'www.example.vn', useWww: true)))->toBe('already_attached');
 });
 
 it('lets two sites wait for the same name', function (): void {
     cdAttach(1, 'shop.example');
 
-    expect(cdAttach(2, 'shop.example'))->toBe(['shop.example']);
+    expect(cdAttach(2, 'shop.example'))->toBe(['shop.example', 'www.shop.example']);
 });
 
 // ── Checking ────────────────────────────────────────────────────────────────────────────────
@@ -290,12 +288,10 @@ it('marks a live domain as failing when it stops pointing here, without unverify
 
 // ── Removing ────────────────────────────────────────────────────────────────────────────────
 
-it('removes a root domain together with its www, and they stop resolving', function (): void {
-    $this->dns->apexes = ['example.vn'];
+it('removes a name together with its www, and they stop resolving', function (): void {
     cdAttach(1, 'example.vn');
     $this->dns->pointHere('example.vn', 'www.example.vn');
     cdCheck(1, 'example.vn');
-    cdCheck(1, 'www.example.vn');
 
     $removed = cdOnSite(1, fn (): array => app(RemoveDomain::class)->handle('www.example.vn'));
 

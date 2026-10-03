@@ -24,7 +24,4 @@ interface DnsLookup
      * @return list<string>
      */
     public function txt(string $host): array;
-
-    /** Whether the host is the root of its own DNS zone (it has NS records): a root domain. */
-    public function isZoneApex(string $host): bool;
 }

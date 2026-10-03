@@ -14,6 +14,8 @@ namespace App\Modules\Tenancy\Domains;
  *                    domain is theirs by publishing the TXT record named here.
  *
  * `evictedSiteIds` lists the sites that lost the domain because this site proved ownership.
+ * `twin` is the outcome for the name's other spelling (with or without `www.`) when it was checked
+ * along with it.
  */
 final readonly class DomainCheck
 {
@@ -26,7 +28,13 @@ final readonly class DomainCheck
         public string $txtName,
         public string $txtValue,
         public array $evictedSiteIds = [],
+        public ?DomainCheck $twin = null,
     ) {}
+
+    public function withTwin(DomainCheck $twin): self
+    {
+        return new self($this->status, $this->txtName, $this->txtValue, $this->evictedSiteIds, $twin);
+    }
 
     public function verified(): bool
     {
