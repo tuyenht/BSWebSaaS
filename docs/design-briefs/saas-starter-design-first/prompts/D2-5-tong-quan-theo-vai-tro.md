@@ -52,7 +52,7 @@ Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm n
 
 Hiện trạng: repo chỉ có dòng chào (`app/Modules/Admin/resources/views/livewire/dashboard.blade.php`). Admin Shell đã vẽ 1 bản (thẻ số liệu, biểu đồ, hộp duyệt, hoạt động gần đây) — giữ và mở rộng.
 Vẽ 4 biến thể; số liệu lấy từ số tổng hợp theo website (không đếm sống bảng lớn):
-1. Chủ website/Quản trị: "Việc cần làm hôm nay" lên đầu (khách liên hệ chưa xem, bài chờ duyệt, bài bị trả lại) · thẻ số liệu (trang/bài/sản phẩm, khách liên hệ 7 ngày, dung lượng thư viện so với gói) · "Bắt đầu" cho website mới: danh sách kiểm 6 việc (thông tin chung · logo · ngôn ngữ · trang chủ · trình đơn · tên miền), mỗi việc 1 nút đi thẳng tới chỗ làm, tự ẩn khi xong, có vòng tiến độ.
+1. Chủ website/Quản trị: "Việc cần làm hôm nay" lên đầu (khách liên hệ chưa xem, bài chờ duyệt, bài bị trả lại, tên miền cần sửa — kèm hạn "sửa trước <ngày>", chỉ người quản lý tên miền thấy) · thẻ số liệu (trang/bài/sản phẩm, khách liên hệ 7 ngày, dung lượng thư viện so với gói) · "Bắt đầu" cho website mới: danh sách kiểm 6 việc (thông tin chung · logo · ngôn ngữ · trang chủ · trình đơn · tên miền), mỗi việc 1 nút đi thẳng tới chỗ làm, tự ẩn khi xong, có vòng tiến độ.
 2. Biên tập: hàng chờ duyệt, bài giao cho tôi, bài đã hẹn giờ.
 3. Tác giả/Cộng tác viên: bài của tôi theo trạng thái, bài bị trả lại (kèm lý do) + nút "Viết bài mới".
 4. Chỉ xem: nội dung mới, không có nút tạo.
