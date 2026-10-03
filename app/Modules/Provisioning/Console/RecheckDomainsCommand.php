@@ -13,6 +13,7 @@ use Illuminate\Console\Command;
  * pointing at the platform, clears the mark when they come back, stops serving a domain that has
  * been failing for 30 days, and drops the ones nobody pointed here within 7 days. The rules live
  * in Tenancy\Domains\DomainHealth; this runs it and puts each change on the site's audit trail.
+ * The site's domain managers are told by the admin's listener on DomainNeedsAttention.
  */
 final class RecheckDomainsCommand extends Command
 {

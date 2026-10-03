@@ -12,7 +12,8 @@ namespace App\Modules\Notifications\Registry;
  *  - in_app / mail: what a person gets until they choose otherwise (users.preferences).
  *  - locked: security notices cannot be switched off — someone changing your account must not be
  *    able to silence the warning first.
- *  - mail is only honoured where the kind's sender can mail (security notices, today).
+ *  - mail is only honoured where the kind's sender can mail (security notices and domain problems, today).
+ *  - one kind may read several sentences: `data.variant` picks `notifications.<kind>.<variant>`.
  */
 final class NotificationKinds
 {
@@ -30,7 +31,9 @@ final class NotificationKinds
             'security.new_device_login' => ['group' => 'security', 'in_app' => true, 'mail' => true, 'locked' => true],
             'security.two_factor_disabled' => ['group' => 'security', 'in_app' => true, 'mail' => true, 'locked' => true],
             'security.support_sign_in' => ['group' => 'security', 'in_app' => true, 'mail' => true, 'locked' => true],
+            'security.domain_taken_over' => ['group' => 'security', 'in_app' => true, 'mail' => true, 'locked' => true],
             'system.storage_near_limit' => ['group' => 'system', 'in_app' => true, 'mail' => true, 'locked' => false],
+            'system.domain_problem' => ['group' => 'system', 'in_app' => true, 'mail' => true, 'locked' => false],
         ];
     }
 

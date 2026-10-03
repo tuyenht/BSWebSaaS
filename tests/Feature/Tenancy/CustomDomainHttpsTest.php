@@ -303,7 +303,8 @@ it('keeps a domain that has been failing for less than 30 days', function (): vo
     $this->dns->addresses['shop.example'] = [];
     DB::connection('pgsql_admin')->table('domains')->where('hostname', 'shop.example')->update(['failing_since' => now()->subDays(29)]);
 
-    expect(app(DomainHealth::class)->sweep())->toBe([])
+    expect(array_column(app(DomainHealth::class)->sweep(), 'event'))->toBe(['expiring'])   // the last week: warned, once
+        ->and(app(DomainHealth::class)->sweep())->toBe([])
         ->and(httpsRow('shop.example')->verified_at)->not->toBeNull();
 });
 

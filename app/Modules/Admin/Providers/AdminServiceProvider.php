@@ -6,6 +6,7 @@ use App\Modules\Admin\Console\ReconcileContentUsage;
 use App\Modules\Admin\Http\Middleware\EnforceSupportSession;
 use App\Modules\Admin\Http\Middleware\ResolveLivewireContext;
 use App\Modules\Admin\Listeners\SetTenantReplyTo;
+use App\Modules\Admin\Listeners\TellSiteAboutDomain;
 use App\Modules\Admin\Livewire\AppearanceSettings;
 use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Catalog\Index as CatalogIndex;
@@ -38,6 +39,7 @@ use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Contracts\View\View as ViewContract;
 use Illuminate\Mail\Events\MessageSending;
@@ -142,6 +144,9 @@ final class AdminServiceProvider extends ServiceProvider
         // Stamp the tenant's reply-to onto outgoing mail so replies reach the customer, not the
         // shared platform inbox (stateless per-message — no Octane reply-to leak).
         Event::listen(MessageSending::class, SetTenantReplyTo::class);
+
+        // A website's own domain needs its managers (design.md §28): bell + mail.
+        Event::listen(DomainNeedsAttention::class, TellSiteAboutDomain::class);
 
         // The dynamic menu (content_sections ∩ permissions) for every admin layout render.
         View::composer('admin::layouts.app', function (ViewContract $view): void {
