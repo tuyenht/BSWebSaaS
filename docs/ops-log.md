@@ -7,6 +7,21 @@
 
 ## 2026
 
+### 2026-10-03 — Deploy #155 (có `www` / không `www`: chỉ một cách viết chạy, cách kia chuyển 301) + hoàn tất `www.giuonggapdep.com`
+
+- **Deploy:** `12:18 (+07)`, owner chạy. Prod `e32e138` → `8089e28`.
+  - Migration `2032_01_01_000000_add_redirect_flag_to_domains` (11 ms): thêm `domains.is_redirect` + 2 CHECK; tự đánh dấu `www.giuonggapdep.com` là cách viết chuyển hướng.
+  - Script tự restart PgBouncer sau migration; `PermissionRegistry` không đổi.
+  - Dump: `prod-predeploy-e32e138-20261003-051837.sql.gz`.
+- **Trước deploy:** CI của main xanh ở `8089e28`. QA cục bộ 1623 test. Bài thử tải Octane đạt (lần chạy đầu dừng ngay sau `migrate:fresh`; restart PgBouncer rồi chạy lại thì đạt — #156 làm script báo rõ bước nào lỗi).
+- **Hậu kiểm (script):** `/` 200 · `/lien-he` 200 · `/admin/login` 200 · `/admin` 302 · qua Caddy `https://av1.baoson.net/` 200 · 0 dòng lỗi trong log 10 phút.
+- **Hoàn tất `www` (`12:33`, owner chạy `site:domain … check` rồi `https`):**
+  - Lệnh kiểm xác minh cả hai cách viết một lượt; lệnh HTTPS chỉ xin chứng chỉ cho `www` (tên gốc đã có).
+  - Chứng chỉ Let's Encrypt cho `www.giuonggapdep.com` cấp ngay, hiệu lực 03/10/2026 → 01/01/2027; `ssl_status` = `active`.
+  - `http://www.giuonggapdep.com/lien-he?a=1` → 308 (Caddy) → `https://www.giuonggapdep.com/lien-he?a=1` → **301 thẳng** `https://av1.baoson.net/lien-he?a=1` (trang công khai đi một bước tới tên chính của website), `Cache-Control: max-age=3600, public`, HSTS `max-age=2592000`.
+  - `https://www.giuonggapdep.com/admin/login` → 301 `https://giuonggapdep.com/admin/login` (khu quản trị về cách viết đang chạy, không về tên chính).
+- **Còn lại:** `giuonggapdep.com` vẫn là tên miền thử — gỡ bằng `site:domain av1.baoson.net remove giuonggapdep.com` khi không dùng nữa (gỡ cả hai cách viết).
+
 ### 2026-10-03 — Tên miền riêng đầu tiên chạy thật trên prod (`giuonggapdep.com`, gắn thử vào An Vinh)
 
 - **Thao tác:** `00:47–00:48 (+07)`, owner chạy lệnh `site:domain` trên `bsweb_prod_app`: gắn → kiểm → bật HTTPS. Không đặt làm tên miền chính.
