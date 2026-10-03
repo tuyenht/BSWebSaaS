@@ -26,8 +26,17 @@ if [[ ! -f public/build/manifest.json ]]; then
 fi
 
 echo "▶ migrate:fresh (privileged role) + provision two sites…"
-php artisan migrate:fresh --database=pgsql_admin --force >/dev/null
-php artisan rbac:sync >/dev/null
+# Quiet when it works, loud when it does not: a setup step that fails must say why, not just stop.
+quietly() {
+    local out
+    if ! out=$("$@" 2>&1); then
+        echo "❌ setup step failed: $*" >&2
+        echo "${out}" | tail -20 >&2
+        exit 1
+    fi
+}
+quietly php artisan migrate:fresh --database=pgsql_admin --force
+quietly php artisan rbac:sync
 
 php artisan tinker --execute '
 use App\Modules\Provisioning\Actions\ProvisionSite;
