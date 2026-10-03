@@ -31,7 +31,11 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class ServeOnPrimaryDomain
 {
-    public const int REDIRECT_MAX_AGE = 3600;
+    /**
+     * `private`: the redirect leaves through the session middleware, so it carries the visitor's
+     * session and XSRF cookies — only that visitor's browser may store it, never a shared cache.
+     */
+    public const string REDIRECT_CACHE = 'private, max-age=3600';
 
     public function __construct(private SiteResolver $sites) {}
 
@@ -51,7 +55,7 @@ final readonly class ServeOnPrimaryDomain
             return new RedirectResponse(
                 $request->getScheme().'://'.$resolved->primaryHost.$request->getRequestUri(),
                 Response::HTTP_MOVED_PERMANENTLY,
-                ['Cache-Control' => 'public, max-age='.self::REDIRECT_MAX_AGE],
+                ['Cache-Control' => self::REDIRECT_CACHE],
             );
         }
 

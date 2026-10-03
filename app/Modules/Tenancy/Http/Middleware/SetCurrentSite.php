@@ -45,7 +45,7 @@ final readonly class SetCurrentSite
             return new RedirectResponse(
                 $request->getScheme().'://'.$resolved->redirectTo.$request->getRequestUri(),
                 Response::HTTP_MOVED_PERMANENTLY,
-                ['Cache-Control' => 'public, max-age='.ServeOnPrimaryDomain::REDIRECT_MAX_AGE],
+                ['Cache-Control' => ServeOnPrimaryDomain::REDIRECT_CACHE],
             );
         }
 

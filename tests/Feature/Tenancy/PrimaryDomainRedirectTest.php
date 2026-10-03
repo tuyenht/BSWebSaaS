@@ -47,8 +47,20 @@ it('sends every other host of the site to the same page on the primary domain', 
     $response = $this->get("http://{$from}/gioi-thieu?utm=x");
 
     $response->assertStatus(301)->assertHeader('Location', 'http://shop.example/gioi-thieu?utm=x');
-    expect($response->headers->get('Cache-Control'))->toContain('max-age=3600')->toContain('public');
+    expect($response->headers->get('Cache-Control'))->toContain('max-age=3600')->toContain('private')->not->toContain('public');
 })->with(['a.test', 'www.shop.example']);
+
+it('lets only the visitor\'s browser remember the redirect of a spelling that only redirects', function (): void {
+    // The response leaves with the session and XSRF cookies: a shared cache must not store it.
+    giveSiteOneItsOwnDomain();
+    DB::connection('pgsql_admin')->table('domains')->where('hostname', 'www.shop.example')->update(['is_redirect' => true]);
+    Cache::flush();
+
+    $response = $this->get('http://www.shop.example/admin/login?next=x');
+
+    $response->assertStatus(301)->assertHeader('Location', 'http://shop.example/admin/login?next=x');
+    expect($response->headers->get('Cache-Control'))->toContain('max-age=3600')->toContain('private')->not->toContain('public');
+});
 
 it('serves the site on its primary domain, which the canonical link, sitemap and robots.txt name', function (): void {
     giveSiteOneItsOwnDomain();
