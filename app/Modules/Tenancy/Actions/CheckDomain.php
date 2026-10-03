@@ -7,6 +7,7 @@ namespace App\Modules\Tenancy\Actions;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Domains\DomainCheck;
+use App\Modules\Tenancy\Domains\DomainHealth;
 use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Domains\OwnershipProof;
 use App\Modules\Tenancy\Domains\Pointing;
@@ -14,6 +15,7 @@ use App\Modules\Tenancy\Domains\PrimaryDomain;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\Domain;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -33,7 +35,9 @@ use Illuminate\Support\Facades\DB;
  * the one that only redirects to it. The twin's outcome rides along; it may lag behind (the owner
  * has not created its record yet) without holding the name back.
  *
- * A site that loses the name is announced (DomainNeedsAttention 'taken_over') once the change commits.
+ * A site that loses the name is announced (DomainNeedsAttention 'taken_over') once the change
+ * commits; so is a check that starts or ends a live domain's failing streak ('failing' /
+ * 'recovered'), since the daily sweep will then see nothing new.
  *
  * Returns the outcome instead of throwing for DNS states — those are ordinary, the caller shows
  * them. Who may manage a site's domains is the caller's check. Runs inside the tenant context.
@@ -56,19 +60,44 @@ final readonly class CheckDomain
         $siteId = $this->current->id();
         $check = $this->checkOne($host, $siteId);
 
+        // The other spelling is checked too while it waits — and when this check found the name
+        // failing or back, so both spellings move (and are announced) together.
         $twin = DomainName::sibling($host);
-        $twinWaits = Domain::query()
+        $twinVerifiedAt = Domain::query()
             ->where('site_id', $siteId)->where('hostname', $twin)->where('kind', 'custom')
-            ->whereNull('verified_at')
-            ->exists();
+            ->first(['verified_at']);
 
-        if ($twinWaits) {
+        if ($twinVerifiedAt !== null && ($twinVerifiedAt->verified_at === null || $check->streak !== null)) {
             $check = $check->withTwin($this->checkOne($twin, $siteId));
         }
 
         $this->announceTakeovers($check, $host, $twin);
+        $this->announceStreaks($siteId, $check, $host, $twin);
 
         return $check;
+    }
+
+    /** The news the daily sweep would have given, had nobody checked first: one notice per change. */
+    private function announceStreaks(int $siteId, DomainCheck $check, string $host, string $twin): void
+    {
+        /** @var array<'started'|'ended', list<string>> $changed */
+        $changed = [];
+        if ($check->streak !== null) {
+            $changed[$check->streak][] = $host;
+        }
+        $twinStreak = $check->twin !== null ? $check->twin->streak : null;
+        if ($twinStreak !== null) {
+            $changed[$twinStreak][] = $twin;
+        }
+
+        foreach ($changed as $streak => $hostnames) {
+            event(new DomainNeedsAttention(
+                $siteId,
+                $streak === 'started' ? 'failing' : 'recovered',
+                $hostnames,
+                $streak === 'started' ? CarbonImmutable::now()->addDays(DomainHealth::LOST_AFTER_DAYS) : null,
+            ));
+        }
     }
 
     /** Each site that lost the name hears it once, for both spellings it lost. */
@@ -106,13 +135,16 @@ final readonly class CheckDomain
             }
 
             if ($pointing !== null) {
+                // A live domain starts its failing streak here; a lost one keeps the streak that
+                // marks it as once live (so the daily sweep never drops it as a never-pointed one).
+                $starts = $mine->verified_at !== null && $mine->failing_since === null;
                 $mine->forceFill([
                     'checked_at' => now(),
                     'failure_reason' => $pointing,
-                    'failing_since' => $mine->verified_at !== null ? ($mine->failing_since ?? now()) : null,
+                    'failing_since' => $starts ? now() : $mine->failing_since,
                 ])->save();
 
-                return new DomainCheck($pointing, $txtName, $txtValue);
+                return new DomainCheck($pointing, $txtName, $txtValue, streak: $starts ? 'started' : null);
             }
 
             $others = $rows->where('site_id', '!==', $siteId);
@@ -124,6 +156,7 @@ final readonly class CheckDomain
             }
 
             $evicted = [];
+            $ends = $mine->failing_since !== null;
 
             if ($mine->verified_at === null) {
                 foreach ($others as $other) {
@@ -140,7 +173,7 @@ final readonly class CheckDomain
                 'failing_since' => null,
             ])->save();
 
-            return new DomainCheck('verified', $txtName, $txtValue, array_values(array_unique($evicted)));
+            return new DomainCheck('verified', $txtName, $txtValue, array_values(array_unique($evicted)), streak: $ends ? 'ended' : null);
         });
 
         $this->sites->forget($host);

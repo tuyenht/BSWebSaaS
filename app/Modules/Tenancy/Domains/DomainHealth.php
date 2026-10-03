@@ -8,6 +8,7 @@ use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use App\Modules\Tenancy\Models\Domain;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -50,7 +51,6 @@ final readonly class DomainHealth
     public function sweep(): array
     {
         $events = [];
-        $notices = [];
 
         // Without the target's own addresses every domain would look as if it pointed elsewhere:
         // a resolver outage must not mark the whole platform's domains as failing.
@@ -60,39 +60,60 @@ final readonly class DomainHealth
             return [];
         }
 
-        Domain::query()->where('kind', 'custom')->orderBy('id')->lazyById(200)->each(function (Domain $domain) use (&$events, &$notices): void {
-            try {
-                $event = $this->look($domain);
-            } catch (Throwable $e) {
-                report($e);
+        // Announced chunk by chunk: a sweep that dies half-way has already told about what it changed.
+        Domain::query()->where('kind', 'custom')->chunkById(200, function (Collection $chunk) use (&$events): void {
+            $notices = [];
+            $warned = [];
 
-                return;
+            foreach ($chunk as $domain) {
+                try {
+                    $event = $this->look($domain);
+                } catch (Throwable $e) {
+                    report($e);
+
+                    continue;
+                }
+
+                if ($event === null) {
+                    continue;
+                }
+
+                $events[] = ['site_id' => $domain->site_id, 'hostname' => $domain->hostname, 'event' => $event];
+
+                if ($event === 'expiring') {
+                    $warned[] = self::warningKey($domain);
+                }
+
+                // Both spellings of a name usually change together: one notice for the pair.
+                $key = $domain->site_id.'|'.DomainName::pairKey($domain->hostname).'|'.$event;
+                $notices[$key] ??= [
+                    'site_id' => $domain->site_id,
+                    'event' => $event,
+                    'hostnames' => [],
+                    'until' => in_array($event, ['failing', 'expiring'], true) && $domain->failing_since !== null
+                        ? CarbonImmutable::instance($domain->failing_since)->addDays(self::LOST_AFTER_DAYS)
+                        : null,
+                ];
+                $notices[$key]['hostnames'][] = $domain->hostname;
             }
 
-            if ($event === null) {
-                return;
+            foreach ($notices as $notice) {
+                event(new DomainNeedsAttention($notice['site_id'], $notice['event'], $notice['hostnames'], $notice['until']));
             }
 
-            $events[] = ['site_id' => $domain->site_id, 'hostname' => $domain->hostname, 'event' => $event];
-
-            // Both spellings of a name usually change together: one notice for the pair.
-            $key = $domain->site_id.'|'.DomainName::pairKey($domain->hostname).'|'.$event;
-            $notices[$key] ??= [
-                'site_id' => $domain->site_id,
-                'event' => $event,
-                'hostnames' => [],
-                'until' => in_array($event, ['failing', 'expiring'], true) && $domain->failing_since !== null
-                    ? CarbonImmutable::instance($domain->failing_since)->addDays(self::LOST_AFTER_DAYS)
-                    : null,
-            ];
-            $notices[$key]['hostnames'][] = $domain->hostname;
+            // The reminder counts as given only once it went out.
+            foreach ($warned as $key) {
+                Cache::put($key, true, now()->addDays(self::WARN_DAYS_BEFORE_LOST + 1));
+            }
         });
 
-        foreach ($notices as $notice) {
-            event(new DomainNeedsAttention($notice['site_id'], $notice['event'], $notice['hostnames'], $notice['until']));
-        }
-
         return $events;
+    }
+
+    /** One reminder per failing streak: a later streak warns again. */
+    private static function warningKey(Domain $domain): string
+    {
+        return "tenancy:domain-expiring:{$domain->id}:".($domain->failing_since?->getTimestamp() ?? 0);
     }
 
     /**
@@ -154,12 +175,10 @@ final readonly class DomainHealth
             return 'failing';
         }
 
-        // Once, a week before the end: the key carries the failing streak, so a later streak warns again.
+        // Once, a week before the end (the sweep marks it given after telling).
         $warnFrom = now()->subDays(self::LOST_AFTER_DAYS - self::WARN_DAYS_BEFORE_LOST);
 
-        return $since->lte($warnFrom) && Cache::add("tenancy:domain-expiring:{$domain->id}:{$since->getTimestamp()}", true, now()->addDays(self::WARN_DAYS_BEFORE_LOST + 1))
-            ? 'expiring'
-            : null;
+        return $since->lte($warnFrom) && ! Cache::has(self::warningKey($domain)) ? 'expiring' : null;
     }
 
     private function twinIsLive(Domain $domain): bool

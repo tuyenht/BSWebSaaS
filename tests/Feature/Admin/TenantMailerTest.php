@@ -4,6 +4,7 @@ use App\Modules\Admin\Support\PlatformSettings;
 use App\Modules\Admin\Support\SecretCipher;
 use App\Modules\Admin\Support\TenantMailer;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 
 /*
  * A platform SMTP config without a usable password must NOT count as configured — the mailer
@@ -14,6 +15,12 @@ use App\Modules\Tenancy\Context\Tenancy;
 beforeEach(function (): void {
     config(['admin.encryption_key' => 'base64:'.base64_encode('0123456789abcdef0123456789abcdef')]);
     seedTenancy();
+});
+
+// The database is shared and never rolled back: a made-up SMTP server left behind would be dialled
+// by every later test that really sends a mail.
+afterEach(function (): void {
+    DB::connection('pgsql_admin')->statement('truncate platform_settings restart identity cascade');
 });
 
 it('is not configured when the platform SMTP password is blank', function (): void {
