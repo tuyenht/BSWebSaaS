@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $ulid
  * @property string $name
  * @property string $status
+ * @property int|null $plan_id
  */
 final class Tenant extends Model
 {

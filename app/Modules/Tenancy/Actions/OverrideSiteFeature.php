@@ -41,8 +41,7 @@ final readonly class OverrideSiteFeature
             throw new FeatureChangeRejectedException('customer_wide');
         }
 
-        $ofKind = $feature['kind'] === 'limit' ? is_int($value) && $value >= 0 : is_bool($value);
-        if ($value !== null && ! $ofKind) {
+        if ($value !== null && FeatureRegistry::refusal($key, $value) !== null) {
             throw new FeatureChangeRejectedException('wrong_kind');
         }
 

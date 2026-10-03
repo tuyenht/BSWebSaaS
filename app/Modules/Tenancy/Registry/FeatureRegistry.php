@@ -49,6 +49,25 @@ final class FeatureRegistry
         return array_key_exists($key, self::all());
     }
 
+    /**
+     * Why $value cannot be stored for $key, or null when it can: the feature must exist, a switch
+     * takes true/false, a limit a whole number of 0 or more.
+     *
+     * @return 'unknown_feature'|'wrong_kind'|null
+     */
+    public static function refusal(string $key, bool|int $value): ?string
+    {
+        $feature = self::all()[$key] ?? null;
+
+        if ($feature === null) {
+            return 'unknown_feature';
+        }
+
+        $ofKind = $feature['kind'] === 'limit' ? is_int($value) && $value >= 0 : is_bool($value);
+
+        return $ofKind ? null : 'wrong_kind';
+    }
+
     /** The fail-closed default for a feature, or false for an unknown key. */
     public static function default(string $key): bool|int
     {
