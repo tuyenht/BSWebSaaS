@@ -43,8 +43,14 @@ class SiteNotification extends Model
         }
 
         // A notice about a pending change to a subject (rather than the subject itself) reads its
-        // own sentence: "a change to «…»", since the subject stays as it was until approved.
-        $key = 'notifications.'.$this->kind.(($this->data['change'] ?? false) === true ? '.change' : '');
+        // own sentence: "a change to «…»", since the subject stays as it was until approved. A
+        // kind with several sentences (a domain failing, lost, back…) names one as its variant.
+        $variant = $this->data['variant'] ?? null;
+        $key = 'notifications.'.$this->kind.match (true) {
+            is_string($variant) && $variant !== '' => '.'.$variant,
+            ($this->data['change'] ?? false) === true => '.change',
+            default => '',
+        };
         $line = __($key, $placeholders);
 
         return is_string($line) ? $line : $key;

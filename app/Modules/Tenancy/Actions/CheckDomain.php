@@ -11,6 +11,7 @@ use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Domains\OwnershipProof;
 use App\Modules\Tenancy\Domains\Pointing;
 use App\Modules\Tenancy\Domains\PrimaryDomain;
+use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\Domain;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,8 @@ use Illuminate\Support\Facades\DB;
  * Both spellings of the name (with and without `www.`) are checked together: the one that runs and
  * the one that only redirects to it. The twin's outcome rides along; it may lag behind (the owner
  * has not created its record yet) without holding the name back.
+ *
+ * A site that loses the name is announced (DomainNeedsAttention 'taken_over') once the change commits.
  *
  * Returns the outcome instead of throwing for DNS states — those are ordinary, the caller shows
  * them. Who may manage a site's domains is the caller's check. Runs inside the tenant context.
@@ -59,7 +62,29 @@ final readonly class CheckDomain
             ->whereNull('verified_at')
             ->exists();
 
-        return $twinWaits ? $check->withTwin($this->checkOne($twin, $siteId)) : $check;
+        if ($twinWaits) {
+            $check = $check->withTwin($this->checkOne($twin, $siteId));
+        }
+
+        $this->announceTakeovers($check, $host, $twin);
+
+        return $check;
+    }
+
+    /** Each site that lost the name hears it once, for both spellings it lost. */
+    private function announceTakeovers(DomainCheck $check, string $host, string $twin): void
+    {
+        $lost = [];
+        foreach ($check->evictedSiteIds as $siteId) {
+            $lost[$siteId][] = $host;
+        }
+        foreach ($check->twin->evictedSiteIds ?? [] as $siteId) {
+            $lost[$siteId][] = $twin;
+        }
+
+        foreach ($lost as $siteId => $hostnames) {
+            event(new DomainNeedsAttention($siteId, 'taken_over', $hostnames));
+        }
     }
 
     /** @throws DomainChangeRejectedException not_found */

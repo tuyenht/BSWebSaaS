@@ -99,12 +99,51 @@ it('adds the support sign-in kind reversibly, dropping only its own notices on t
         $migration->up();
         $migration->up();   // re-runnable after a mid-run failure
     } finally {
+        latestNotificationKinds();
         DB::setDefaultConnection($original);
     }
 
     expect($kindsAfterDown)->toBe(['lead.new'])
         ->and(fn () => $insert('security.support_sign_in'))->not->toThrow(QueryException::class);
 });
+
+it('adds the domain kinds reversibly, dropping only their own notices on the way down', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2033_01_01_000000_add_domain_notification_kinds.php');
+    $user = User::factory()->create();
+    $insert = fn (string $kind) => DB::connection('pgsql_admin')->table('site_notifications')->insert([
+        'ulid' => (string) str()->ulid(), 'site_id' => 1, 'user_id' => $user->id, 'kind' => $kind, 'data' => '{}',
+    ]);
+    $insert('system.domain_problem');
+    $insert('security.domain_taken_over');
+    $insert('security.support_sign_in');
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        $kindsAfterDown = DB::table('site_notifications')->pluck('kind')->all();
+        $migration->up();
+        $migration->up();   // re-runnable after a mid-run failure
+    } finally {
+        latestNotificationKinds();
+        DB::setDefaultConnection($original);
+    }
+
+    expect($kindsAfterDown)->toBe(['security.support_sign_in'])
+        ->and(fn () => $insert('system.domain_problem'))->not->toThrow(QueryException::class);
+});
+
+/**
+ * The kind CHECK as the newest migration leaves it: a test that replays an older one must not leave
+ * the shared database refusing kinds added since.
+ */
+function latestNotificationKinds(): void
+{
+    /** @var Migration $latest */
+    $latest = require database_path('migrations/2033_01_01_000000_add_domain_notification_kinds.php');
+    $latest->up();
+}
 
 it('keeps a notice on its own site', function (): void {
     $user = noticeMember(1, 'viewer');
