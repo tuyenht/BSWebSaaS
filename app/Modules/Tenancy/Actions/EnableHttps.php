@@ -21,7 +21,8 @@ use Illuminate\Support\Facades\RateLimiter;
  *  - the row goes to `pending` — from then on the certificate gate lets the web server request the
  *    certificate — and a queued job makes the first HTTPS request and records `active` or `failed`;
  *  - one attempt per domain every 5 minutes: the certificate authority allows 5 failures an hour;
- *  - a domain whose HTTPS is already on is left alone.
+ *  - a domain whose HTTPS is already on is left alone;
+ *  - both spellings of a name (with and without `www.`) get HTTPS from one request.
  *
  * Who may manage a site's domains is the caller's check. Runs inside the tenant context.
  */
@@ -35,9 +36,16 @@ final readonly class EnableHttps
     ) {}
 
     /**
+     * The name's other spelling (with or without `www.`) gets HTTPS too once it is verified: it
+     * needs a certificate to redirect `https://` visitors. It follows quietly — a twin that is not
+     * pointed yet, or asked moments ago, never fails the request for the name itself.
+     *
+     * @return list<string> the names whose certificate was requested now — empty when HTTPS was
+     *                      already on for both spellings
+     *
      * @throws DomainChangeRejectedException invalid · not_found · not_verified · too_many_attempts
      */
-    public function handle(string $input): Domain
+    public function handle(string $input): array
     {
         $host = DomainName::parse($input);
         $siteId = $this->current->id();
@@ -52,21 +60,42 @@ final readonly class EnableHttps
             throw new DomainChangeRejectedException('not_verified');
         }
 
-        if ($domain->ssl_status === 'active') {
-            return $domain;
+        $twin = Domain::query()
+            ->where('site_id', $siteId)->where('hostname', DomainName::sibling($host))->where('kind', 'custom')
+            ->whereNotNull('verified_at')
+            ->lockForUpdate()->first();
+
+        $requested = [];
+
+        if ($domain->ssl_status !== 'active') {
+            if (! $this->request($siteId, $domain)) {
+                throw new DomainChangeRejectedException('too_many_attempts');
+            }
+
+            $requested[] = $domain->hostname;
         }
 
-        if (! RateLimiter::attempt('domain-https:'.$host, 1, fn (): bool => true, self::RETRY_AFTER_SECONDS)) {
-            throw new DomainChangeRejectedException('too_many_attempts');
+        if ($twin !== null && $twin->ssl_status !== 'active' && $this->request($siteId, $twin)) {
+            $requested[] = $twin->hostname;
+        }
+
+        return $requested;
+    }
+
+    /** Ask for the certificate, unless it was asked for moments ago. */
+    private function request(int $siteId, Domain $domain): bool
+    {
+        if (! RateLimiter::attempt('domain-https:'.$domain->hostname, 1, fn (): bool => true, self::RETRY_AFTER_SECONDS)) {
+            return false;
         }
 
         $domain->forceFill(['ssl_status' => 'pending', 'failure_reason' => null])->save();
 
         // The certificate gate reads the resolver: it must see HTTPS on before the job asks.
-        $this->sites->forget($host);
+        $this->sites->forget($domain->hostname);
 
-        IssueDomainCertificate::dispatch($siteId, $host)->afterCommit();
+        IssueDomainCertificate::dispatch($siteId, $domain->hostname)->afterCommit();
 
-        return $domain;
+        return true;
     }
 }

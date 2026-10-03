@@ -32,7 +32,7 @@ final readonly class SetPrimaryDomain
     ) {}
 
     /**
-     * @throws DomainChangeRejectedException invalid · not_found · not_verified · https_not_on
+     * @throws DomainChangeRejectedException invalid · not_found · not_verified · redirect_only · https_not_on
      */
     public function handle(string $input): Domain
     {
@@ -51,6 +51,11 @@ final readonly class SetPrimaryDomain
 
             if ($domain->verified_at === null) {
                 throw new DomainChangeRejectedException('not_verified');
+            }
+
+            // The spelling that only redirects never runs, so it cannot be the site's address.
+            if ($domain->is_redirect) {
+                throw new DomainChangeRejectedException('redirect_only');
             }
 
             if ($domain->kind === 'custom' && $domain->ssl_status !== 'active') {

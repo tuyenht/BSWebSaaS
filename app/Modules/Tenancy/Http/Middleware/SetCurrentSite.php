@@ -9,12 +9,14 @@ use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use Closure;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Defense layer #1 (design.md §5): resolve hostname -> site, then run the whole
  * request inside Tenancy::enter (transaction + SET LOCAL + assertion + cleanup).
- * Unknown host = fail-closed 404; so is a domain that is attached but not yet verified.
+ * Unknown host = fail-closed 404; so is a domain that is attached but not yet verified. The
+ * spelling of a name that only redirects answers 301 to the one that runs, before any tenant work.
  */
 final readonly class SetCurrentSite
 {
@@ -36,6 +38,16 @@ final readonly class SetCurrentSite
 
         // Request-scoped (never worker state): the security headers read the kind of host from it.
         $request->attributes->set(ResolvedHost::class, $resolved);
+
+        // The spelling of a name that only redirects (with or without `www.`) sends every page —
+        // admin included — to the spelling that runs, path and query kept (design.md §28).
+        if ($resolved->redirectTo !== null && $request->isMethodSafe()) {
+            return new RedirectResponse(
+                $request->getScheme().'://'.$resolved->redirectTo.$request->getRequestUri(),
+                Response::HTTP_MOVED_PERMANENTLY,
+                ['Cache-Control' => 'public, max-age='.ServeOnPrimaryDomain::REDIRECT_MAX_AGE],
+            );
+        }
 
         return $this->tenancy->enter($resolved->siteId, fn (): Response => $next($request));
     }

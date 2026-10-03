@@ -57,14 +57,18 @@ final class DomainName
     }
 
     /**
-     * The other half of a root-and-www pair: `www.example.com` for `example.com` and the reverse.
+     * The other spelling of a name: `www.example.com` for `example.com`, `www.shop.example.com`
+     * for `shop.example.com`, and the reverse.
      */
     public static function sibling(string $host): string
     {
         return str_starts_with($host, 'www.') ? substr($host, 4) : 'www.'.$host;
     }
 
-    /** What a root domain and its `www` share — the unit a plan's domain limit counts. */
+    /**
+     * What a name and its `www.` spelling share — the spelling without `www.`, which runs by
+     * default; the pair is the unit a plan's domain limit counts.
+     */
     public static function pairKey(string $host): string
     {
         return str_starts_with($host, 'www.') ? substr($host, 4) : $host;

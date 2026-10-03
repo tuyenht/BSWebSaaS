@@ -20,9 +20,6 @@ final class FakeDns implements DnsLookup
     /** @var array<string, list<string>> */
     public array $txt = [];
 
-    /** @var list<string> */
-    public array $apexes = [];
-
     public static function install(): self
     {
         $dns = new self;
@@ -52,11 +49,5 @@ final class FakeDns implements DnsLookup
     public function txt(string $host): array
     {
         return $this->txt[$host] ?? [];
-    }
-
-    #[\Override]
-    public function isZoneApex(string $host): bool
-    {
-        return in_array($host, $this->apexes, true);
     }
 }
