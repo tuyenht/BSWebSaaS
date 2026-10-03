@@ -19,7 +19,8 @@ use Throwable;
  *  - after 30 days of failing it stops being verified: it no longer resolves or renews its
  *    certificate, and if it was the primary the platform subdomain takes over. The row stays, so
  *    the owner sees what happened and can check it again;
- *  - a domain that was attached but never pointed here is dropped after 7 days of waiting.
+ *  - a domain that was attached but never pointed here is dropped after 7 days of waiting, unless
+ *    the other spelling of its name (with or without `www.`) is live on the same site.
  *
  * Returns what changed, for the caller to audit. `domains` is a GLOBAL table (D6): no tenant
  * context. One domain failing to process never stops the rest.
@@ -74,8 +75,10 @@ final readonly class DomainHealth
     {
         if ($domain->verified_at === null) {
             // A domain that was live and then lost stays, with its reason, for the owner to see
-            // and check again; only a domain that never pointed here expires.
-            if ($domain->failing_since === null && $domain->created_at !== null && $domain->created_at->lt(now()->subDays(self::WAIT_DAYS))) {
+            // and check again; only a domain that never pointed here expires — and not while the
+            // other spelling of its name is live on the same site: pointing it later is enough.
+            if ($domain->failing_since === null && $domain->created_at !== null && $domain->created_at->lt(now()->subDays(self::WAIT_DAYS))
+                && ! $this->twinIsLive($domain)) {
                 $domain->delete();
 
                 return 'wait_expired';
@@ -121,5 +124,14 @@ final readonly class DomainHealth
         }
 
         return $first ? 'failing' : null;
+    }
+
+    private function twinIsLive(Domain $domain): bool
+    {
+        return Domain::query()
+            ->where('site_id', $domain->site_id)
+            ->where('hostname', DomainName::sibling($domain->hostname))
+            ->whereNotNull('verified_at')
+            ->exists();
     }
 }

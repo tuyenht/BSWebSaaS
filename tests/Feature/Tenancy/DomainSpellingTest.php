@@ -7,6 +7,7 @@ use App\Modules\Tenancy\Actions\EnableHttps;
 use App\Modules\Tenancy\Actions\SetPrimaryDomain;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Domains\DomainHealth;
 use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
@@ -94,6 +95,32 @@ it('lets the twin lag behind: the name runs while its www is not pointed yet', f
     expect($check->verified())->toBeTrue()
         ->and($check->twin?->status)->toBe('not_pointing')
         ->and(app(SiteResolver::class)->resolve('shop.example')?->siteId)->toBe(1);
+});
+
+it('keeps a spelling waiting as long as its twin is live, so pointing it later is enough', function (): void {
+    $this->dns->pointHere('shop.example');
+    spOnSite(function (): void {
+        app(AttachDomain::class)->handle('shop.example');
+        app(CheckDomain::class)->handle('shop.example');
+    });
+    DB::connection('pgsql_admin')->table('domains')->where('kind', 'custom')->update(['created_at' => now()->subDays(8)]);
+
+    expect(app(DomainHealth::class)->sweep())->toBe([])
+        ->and(spRow('www.shop.example'))->not->toBeNull();
+
+    $this->dns->pointHere('www.shop.example');
+    spOnSite(fn () => app(CheckDomain::class)->handle('shop.example'));
+
+    expect(spRow('www.shop.example')->verified_at)->not->toBeNull();
+});
+
+it('still drops a pair nobody pointed here within 7 days', function (): void {
+    spOnSite(fn () => app(AttachDomain::class)->handle('shop.example'));
+    DB::connection('pgsql_admin')->table('domains')->where('kind', 'custom')->update(['created_at' => now()->subDays(8)]);
+
+    expect(array_column(app(DomainHealth::class)->sweep(), 'hostname'))->toBe(['shop.example', 'www.shop.example'])
+        ->and(spRow('shop.example'))->toBeNull()
+        ->and(spRow('www.shop.example'))->toBeNull();
 });
 
 it('turns HTTPS on for both spellings at once, skipping a twin that is not verified', function (): void {
