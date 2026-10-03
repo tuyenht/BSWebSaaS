@@ -81,7 +81,10 @@ final class DomainNoticeNotification extends Notification implements ShouldQueue
 
     public function toSiteDatabase(object $notifiable): array
     {
-        return ['kind' => $this->kind(), 'data' => ['variant' => $this->variant, ...$this->facts()]];
+        // The domain-problem kind reads one sentence per variant; a takeover has a kind of its own.
+        $sentence = $this->variant === 'taken_over' ? [] : ['sentence' => $this->variant];
+
+        return ['kind' => $this->kind(), 'data' => [...$sentence, ...$this->facts()]];
     }
 
     public function toMail(object $notifiable): MailMessage

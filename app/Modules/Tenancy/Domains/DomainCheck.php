@@ -15,13 +15,15 @@ namespace App\Modules\Tenancy\Domains;
  *
  * `evictedSiteIds` lists the sites that lost the domain because this site proved ownership.
  * `twin` is the outcome for the name's other spelling (with or without `www.`) when it was checked
- * along with it.
+ * along with it. `streak` says whether this check began a live domain's failing streak ('started')
+ * or ended one ('ended') — the same news the daily sweep would otherwise have given.
  */
 final readonly class DomainCheck
 {
     /**
      * @param  'verified'|'not_pointing'|'points_elsewhere'|'needs_proof'  $status
      * @param  list<int>  $evictedSiteIds
+     * @param  'started'|'ended'|null  $streak
      */
     public function __construct(
         public string $status,
@@ -29,11 +31,12 @@ final readonly class DomainCheck
         public string $txtValue,
         public array $evictedSiteIds = [],
         public ?DomainCheck $twin = null,
+        public ?string $streak = null,
     ) {}
 
     public function withTwin(DomainCheck $twin): self
     {
-        return new self($this->status, $this->txtName, $this->txtValue, $this->evictedSiteIds, $twin);
+        return new self($this->status, $this->txtName, $this->txtValue, $this->evictedSiteIds, $twin, $this->streak);
     }
 
     public function verified(): bool

@@ -13,7 +13,7 @@ namespace App\Modules\Notifications\Registry;
  *  - locked: security notices cannot be switched off — someone changing your account must not be
  *    able to silence the warning first.
  *  - mail is only honoured where the kind's sender can mail (security notices and domain problems, today).
- *  - one kind may read several sentences: `data.variant` picks `notifications.<kind>.<variant>`.
+ *  - one kind may read several sentences: `data.sentence` picks `notifications.<kind>.<sentence>`.
  */
 final class NotificationKinds
 {

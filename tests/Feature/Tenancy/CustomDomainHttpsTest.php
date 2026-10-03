@@ -273,6 +273,19 @@ it('keeps the row of a lost domain on later sweeps, so its owner can see why and
         ->and(httpsRow('shop.example')->failing_since)->toBeNull();
 });
 
+it('keeps a lost domain that someone checks while it still does not point here', function (): void {
+    liveDomain(1, 'shop.example', $this->dns);
+    $this->dns->addresses['shop.example'] = [];
+    DB::connection('pgsql_admin')->table('domains')->where('hostname', 'shop.example')
+        ->update(['failing_since' => now()->subDays(31), 'created_at' => now()->subDays(60)]);
+    app(DomainHealth::class)->sweep();   // lost
+
+    httpsOnSite(1, fn () => app(CheckDomain::class)->handle('shop.example'));
+
+    expect(app(DomainHealth::class)->sweep())->toBe([])
+        ->and(httpsRow('shop.example'))->not->toBeNull();
+});
+
 it('skips the whole re-check when the target host itself does not resolve', function (): void {
     liveDomain(1, 'shop.example', $this->dns);
     $this->dns->addresses['target.platform.test'] = [];   // a resolver outage, not the customers' fault

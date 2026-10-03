@@ -170,6 +170,30 @@ it('tells the site that lost a name to an ownership proof, with a notice nobody 
         ->and(noticesTo($winner))->toBe([]);
 });
 
+it('tells them when a check finds the domain no longer points here, and when a check finds it back', function (): void {
+    $owner = domainManager(1, 'owner');
+    noticeLivePair($this->dns);
+    unset($this->dns->addresses['shop.example'], $this->dns->addresses['www.shop.example']);
+
+    app(Tenancy::class)->enter(1, fn () => app(CheckDomain::class)->handle('shop.example'));
+    app(DomainHealth::class)->sweep();   // the streak is already known: not told twice
+
+    $this->dns->pointHere('shop.example', 'www.shop.example');
+    app(Tenancy::class)->enter(1, fn () => app(CheckDomain::class)->handle('shop.example'));
+
+    expect(array_column(noticesTo($owner), 'variant'))->toBe(['failing', 'recovered']);
+});
+
+it('reads every notice in plain words', function (string $variant): void {
+    $owner = domainManager(1, 'owner');
+    $data = (new DomainNoticeNotification($variant, ['shop.example', 'www.shop.example'], '01/01/2027'))->toSiteDatabase($owner);
+    $notice = new SiteNotification(['kind' => $data['kind'], 'data' => $data['data']]);
+
+    expect($notice->summary())->toContain('shop.example, www.shop.example')
+        ->and($notice->summary())->not->toContain('notifications.')
+        ->and($notice->summary())->not->toContain(':until');
+})->with(['failing', 'expiring', 'lost', 'recovered', 'wait_expired', 'taken_over']);
+
 it('writes the bell entry in plain words on the site it concerns', function (): void {
     Notification::swap(new ChannelManager(app()));   // really send: queue is sync in tests
     $owner = domainManager(1, 'owner');
