@@ -17,8 +17,9 @@ use Illuminate\Auth\Access\AuthorizationException;
 
 /**
  * Who may give ONE website its own value for a feature, and the trail it leaves (design.md §15.2)
- * — the entry point for the platform console. Only platform staff holding `platform.sites.manage`:
- * what a website is granted is the platform's call, never the website's own.
+ * — the entry point for the platform console. Only platform staff holding
+ * `platform.entitlements.manage` (managing websites is not enough): what a website is granted is
+ * the platform's call, never the website's own.
  *
  * The rules of the change itself live in OverrideSiteFeature; a refused change throws its
  * FeatureChangeRejectedException and leaves no trail.
@@ -52,7 +53,7 @@ final readonly class SiteFeatures
 
     private function change(User $actor, Site $site, string $key, bool|int|null $value, string $action): void
     {
-        if (! $this->platform->isSuperAdmin($actor) && ! $this->platform->can($actor, 'platform.sites.manage')) {
+        if (! $this->platform->isSuperAdmin($actor) && ! $this->platform->can($actor, 'platform.entitlements.manage')) {
             throw new AuthorizationException;
         }
 

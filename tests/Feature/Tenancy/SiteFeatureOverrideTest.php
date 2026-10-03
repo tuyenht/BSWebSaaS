@@ -109,7 +109,24 @@ it('lets platform staff who manage websites set and clear an override, and names
         ->and($trail[1]->meta)->toMatchArray(['feature' => 'locales.max', 'was' => 4]);
 });
 
-it('refuses staff who do not manage websites, and anyone who is not staff', function (string $who): void {
+it('asks for the permission to grant features — managing websites is not enough', function (): void {
+    $grant = function (string $permission): User {
+        $user = User::factory()->create();
+        app(PlatformAccess::class)->onPlatform(fn () => $user->givePermissionTo($permission));
+        app(PlatformAccess::class)->forgetMemo();
+
+        return $user;
+    };
+    $site = Site::query()->findOrFail(1);
+
+    expect(fn () => app(SiteFeatures::class)->override($grant('platform.sites.manage'), $site, 'locales.max', 4))->toThrow(AuthorizationException::class);
+    expect(sfState(1, 'locales.max'))->toBe([1, null]);
+
+    app(SiteFeatures::class)->override($grant('platform.entitlements.manage'), $site, 'locales.max', 4);
+    expect(sfState(1, 'locales.max'))->toBe([4, 4]);
+});
+
+it('refuses staff who may not grant features, and anyone who is not staff', function (string $who): void {
     $actor = $who === 'member' ? User::factory()->create() : sfStaff($who);
     $site = Site::query()->findOrFail(1);
 
