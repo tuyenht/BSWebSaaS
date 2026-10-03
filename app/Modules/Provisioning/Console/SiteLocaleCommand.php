@@ -6,11 +6,11 @@ namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Tenancy\Actions\ConfigureSiteLocale;
+use App\Modules\Tenancy\Actions\OverrideSiteFeature;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Exceptions\SiteLocaleChangeRejectedException;
-use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteLocale;
 use Illuminate\Console\Command;
 
@@ -89,7 +89,7 @@ final class SiteLocaleCommand extends Command
 
     private function grantLimit(int $siteId, int $limit): void
     {
-        SiteFeature::query()->updateOrCreate(['feature_key' => 'locales.max'], ['value' => $limit]);
+        app(OverrideSiteFeature::class)->handle('locales.max', $limit);
 
         Audit::record('provisioning.site.feature_overridden', [
             'site_id' => $siteId,

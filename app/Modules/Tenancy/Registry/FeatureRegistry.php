@@ -17,26 +17,30 @@ namespace App\Modules\Tenancy\Registry;
 final class FeatureRegistry
 {
     /**
-     * @return array<string, array{name: string, kind: 'boolean'|'limit', default: bool|int}>
+     * `scope` says whose the feature is: `site` — one website holds it, so a single website can be
+     * given its own value; `tenant` — it belongs to the customer across all their websites, so only
+     * the plan sets it.
+     *
+     * @return array<string, array{name: string, kind: 'boolean'|'limit', default: bool|int, scope: 'site'|'tenant'}>
      */
     public static function all(): array
     {
         return [
             // Whether a site may run the multi-stage editorial workflow (vs the simple gate).
-            'workflow.editorial' => ['name' => 'Quy trình biên tập đa cấp', 'kind' => 'boolean', 'default' => false],
+            'workflow.editorial' => ['name' => 'Quy trình biên tập đa cấp', 'kind' => 'boolean', 'default' => false, 'scope' => 'site'],
             // Max sites a tenant may provision (0 = unset → caller treats as its own baseline).
-            'sites.max' => ['name' => 'Số site tối đa', 'kind' => 'limit', 'default' => 1],
+            'sites.max' => ['name' => 'Số site tối đa', 'kind' => 'limit', 'default' => 1, 'scope' => 'tenant'],
             // Media storage ceiling in megabytes.
-            'media.storage_mb' => ['name' => 'Dung lượng media (MB)', 'kind' => 'limit', 'default' => 500],
+            'media.storage_mb' => ['name' => 'Dung lượng media (MB)', 'kind' => 'limit', 'default' => 500, 'scope' => 'site'],
             // Content languages a site may have enabled, its default included — 2 = Vietnamese plus
             // one foreign language. Checked only when a language is switched on, so a site already
             // above its plan keeps what it has.
-            'locales.max' => ['name' => 'Số ngôn ngữ tối đa', 'kind' => 'limit', 'default' => 1],
+            'locales.max' => ['name' => 'Số ngôn ngữ tối đa', 'kind' => 'limit', 'default' => 1, 'scope' => 'site'],
             // Customer-owned domains a site may attach. A root domain and its `www` count as one.
-            'custom_domains.max' => ['name' => 'Số tên miền riêng tối đa', 'kind' => 'limit', 'default' => 1],
+            'custom_domains.max' => ['name' => 'Số tên miền riêng tối đa', 'kind' => 'limit', 'default' => 1, 'scope' => 'site'],
             // Whether the site may create its own roles (fork a system role or start blank). The
             // six system roles stay available and locked either way.
-            'rbac.custom_roles' => ['name' => 'Nhóm quyền tùy chỉnh', 'kind' => 'boolean', 'default' => false],
+            'rbac.custom_roles' => ['name' => 'Nhóm quyền tùy chỉnh', 'kind' => 'boolean', 'default' => false, 'scope' => 'site'],
         ];
     }
 

@@ -11,6 +11,7 @@ use App\Modules\Provisioning\Console\RecheckDomainsCommand;
 use App\Modules\Provisioning\Console\ReflowSitePermalinksCommand;
 use App\Modules\Provisioning\Console\SeedAnVinhContentCommand;
 use App\Modules\Provisioning\Console\SiteDomainCommand;
+use App\Modules\Provisioning\Console\SiteFeatureCommand;
 use App\Modules\Provisioning\Console\SiteLocaleCommand;
 use App\Modules\Provisioning\Console\SyncProductRoutesCommand;
 use App\Modules\Provisioning\Console\SyncSiteProfilesFromBrandCommand;
@@ -30,6 +31,7 @@ final class ProvisioningServiceProvider extends ServiceProvider
                 ImportAdminUnitsCommand::class,
                 SyncProductRoutesCommand::class,
                 SiteLocaleCommand::class,
+                SiteFeatureCommand::class,
                 SiteDomainCommand::class,
                 RecheckDomainsCommand::class,
             ]);
