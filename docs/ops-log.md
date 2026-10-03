@@ -7,6 +7,19 @@
 
 ## 2026
 
+### 2026-10-03 — Deploy #158–#159 (giữ `www` chờ trỏ + báo khi tên miền gặp vấn đề)
+
+- **Deploy:** `15:51 (+07)`, owner chạy. Prod `8089e28` → `1b34c7c`.
+  - Migration `2033_01_01_000000_add_domain_notification_kinds` (8 ms): thêm `system.domain_problem` và `security.domain_taken_over` vào CHECK `site_notifications.kind`.
+  - Dump: `prod-predeploy-8089e28-20261003-085125.sql.gz`.
+- **Gồm:** #158 cách viết chưa trỏ được giữ khi cách viết kia đang chạy (trước đó bị xoá sau 7 ngày, không thêm lại được) · #159 người quản lý tên miền của website được báo bằng chuông + mail (hỏng, còn 7 ngày, đã ngừng, bị lấy lại; khỏi lại và dòng chờ bị xoá chỉ báo chuông) · #156 script thử tải báo rõ bước lỗi · #157 docs.
+- **Trước deploy:** CI của main xanh ở `1b34c7c`. QA cục bộ 1642 test. #159 được rà soát độc lập (Opus, chỉ đọc), các lỗi tìm ra đã sửa trong cùng PR.
+- **Hậu kiểm:**
+  - Script: `/` 200 · `/lien-he` 200 · `/admin/login` 200 · `/admin` 302 · qua Caddy `https://av1.baoson.net/` 200 · 0 dòng lỗi trong log 10 phút.
+  - CHECK mới có đủ 2 loại và đã VALIDATE; `event:list` có `TellSiteAboutDomain` (hàng đợi) nghe `DomainNeedsAttention`.
+  - Website An Vinh có 1 người giữ quyền `domains.manage` (người sẽ nhận thông báo).
+  - `giuonggapdep.com` và `www.giuonggapdep.com` vẫn 301 về `av1.baoson.net` giữ đường dẫn và tham số.
+
 ### 2026-10-03 — Deploy #155 (có `www` / không `www`: chỉ một cách viết chạy, cách kia chuyển 301) + hoàn tất `www.giuonggapdep.com`
 
 - **Deploy:** `12:18 (+07)`, owner chạy. Prod `e32e138` → `8089e28`.
