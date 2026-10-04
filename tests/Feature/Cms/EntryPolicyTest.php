@@ -110,3 +110,37 @@ it('lets a platform super_admin pass every entry gate via Gate::before', functio
             ->and($u->can('publish', $entry))->toBeTrue();
     });
 });
+
+it('lets a person send for review only an entry they may edit', function (): void {
+    $tenancy = app(Tenancy::class);
+    $author = User::factory()->create();
+    $colleague = User::factory()->create();
+    $copyEditor = User::factory()->create();
+    $sender = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($author, $colleague, $copyEditor, $sender): void {
+        grantRole($author, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        // Custom roles may mix any permissions: edit anything and send it on, but never publish.
+        grantRole($copyEditor, 'copy-editor', ['entries.view', 'entries.edit.any', 'entries.submit']);
+        // Sending without any right to edit — a custom role nobody should be able to use to move work.
+        grantRole($sender, 'sender', ['entries.view', 'entries.submit']);
+
+        $mine = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $author->id]);
+        $theirs = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $colleague->id]);
+        $orphan = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => null]);
+        $sendersOwn = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'author_id' => $sender->id]);
+
+        $a = $author->fresh();
+        $c = $copyEditor->fresh();
+        $s = $sender->fresh();
+        expect($a->can('submit', $mine))->toBeTrue()
+            ->and($a->can('submit', $theirs))->toBeFalse()
+            // No author: nobody owns it, so only someone who may edit ANY entry can send it.
+            ->and($a->can('submit', $orphan))->toBeFalse()
+            ->and($c->can('submit', $theirs))->toBeTrue()
+            ->and($c->can('submit', $orphan))->toBeTrue()
+            ->and($c->can('publish', $theirs))->toBeFalse()
+            ->and($s->can('submit', $sendersOwn))->toBeFalse()
+            ->and($s->can('submit', $theirs))->toBeFalse();
+    });
+});

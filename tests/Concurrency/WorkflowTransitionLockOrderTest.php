@@ -48,16 +48,16 @@ it('locks the entry row before reading its workflow stage', function (): void {
             'required_permission' => 'entries.submit',
         ]);
 
-        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft']);
+        $author = User::factory()->create();
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        $author = $author->fresh() ?? throw new RuntimeException('Author vanished after creation.');
+
+        $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
         $entry->translations()->create([
             'locale' => 'vi', 'title' => 'Bản tin', 'slug' => 'ban-tin', 'status' => 'draft', 'body' => ['blocks' => []],
         ]);
         $entry->assignCategories([$category->id]);
         $entry = $entry->fresh() ?? throw new RuntimeException('Entry vanished after creation.');
-
-        $author = User::factory()->create();
-        grantRole($author, 'author', ['entries.submit']);
-        $author = $author->fresh() ?? throw new RuntimeException('Author vanished after creation.');
 
         /** @var list<string> $queries */
         $queries = [];

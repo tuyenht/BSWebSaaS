@@ -80,6 +80,29 @@ it('replaces the tier-1 publish button with the approval block on a governed pos
     });
 });
 
+it('never lists a submit move the person could not apply', function (): void {
+    $sender = User::factory()->create();
+    $author = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($sender, $author): void {
+        // May start a post and holds the send permission, but may edit nothing — not even their own.
+        grantRole($sender, 'sender', ['entries.view', 'entries.create', 'entries.submit']);
+        grantRole($author, 'author', ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit']);
+        wfEditorCollection();
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+
+        // The button list and the guard read one rule: a button here would only ever be refused.
+        Livewire::actingAs($sender->fresh())
+            ->test(Editor::class, ['section' => 'posts'])
+            ->assertSee(__('admin.wfb.title'))
+            ->assertDontSeeHtml('wf-action-submit');
+
+        Livewire::actingAs($author->fresh())
+            ->test(Editor::class, ['section' => 'posts'])
+            ->assertSeeHtml('wf-action-submit');
+    });
+});
+
 it('keeps tier-1 publishing untouched where no workflow is active', function (): void {
     $author = User::factory()->create();
 
@@ -128,7 +151,7 @@ it('refuses a return without a reason and leaves the post where it was', functio
     $reviewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($reviewer, 'reviewer', ['entries.view', 'entries.edit.any', 'entries.review']);
         $post = wfEditorPost(wfEditorCollection(), $author);
         app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
@@ -155,7 +178,7 @@ it('returns the post with a reason and hands it to a chosen member', function ()
     });
 
     app(Tenancy::class)->enter(1, function () use ($author, $reviewer, $viewer): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($reviewer, 'reviewer', ['entries.view', 'entries.edit.any', 'entries.review']);
         grantRole($viewer, 'viewer', ['entries.view']);
         $post = wfEditorPost(wfEditorCollection(), $author);
@@ -234,7 +257,7 @@ it('approves into the public stage: status, route and the live chip', function (
     $approver = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $approver): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($approver, 'approver', ['entries.view', 'entries.edit.any', 'entries.approve']);
         $post = wfEditorPost(wfEditorCollection(), $author);
         app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
@@ -524,7 +547,7 @@ it('sums up a mixed bulk publish in one toast — governed posts counted, not pu
             ->test(Index::class)
             ->set('selected', [$page->ulid, $governedPost->ulid])
             ->call('bulkPublish')
-            ->assertDispatched('bs-toast', text: __('entries.bulk_done_governed', ['count' => 1, 'governed' => 1]));
+            ->assertDispatched('bs-toast', text: __('entries.bulk_published', ['count' => 1]).' '.__('entries.bulk_governed', ['count' => 1]));
 
         expect($page->fresh()->status)->toBe('published')
             ->and($governedPost->fresh()->status)->toBe('draft');

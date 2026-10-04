@@ -20,6 +20,7 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -374,38 +375,62 @@ final class Index extends Component
         $this->selected = [];
     }
 
+    /**
+     * Publish the selected rows, or — for someone without publish rights — send their drafts for
+     * review. A row counts as done only when its status actually moved; everything else is
+     * reported as skipped, never as an error: a row this person may not send or publish (a
+     * colleague's draft), one already in the state asked for, one that is not a draft to send, and
+     * one in the trash (a forged selection must not put trashed content on the website).
+     */
     public function bulkPublish(): void
     {
         $user = $this->actingUser();
         $locale = app(SiteLocale::class)->default();
         $publish = app(PublishEntry::class);
-        // Runs its own loop rather than bulkApply(): the outcome is two numbers, and a second
+        $publisher = $user->can('entries.publish');
+        // Runs its own loop rather than bulkApply(): the outcome is several numbers, and a second
         // toast would simply replace the first, so what did publish would never be read.
         $entries = $this->selectedEntries();
         $done = 0;
+        $skipped = 0;
         $governed = 0;
         $failed = 0;
         foreach ($entries as $entry) {
+            if ($entry->trashed()) {
+                $skipped++;
+
+                continue;
+            }
+
+            $before = $entry->status;
             try {
-                $publish->handle($entry, $locale, $user);
-                $done++;
+                if ($publish->handle($entry, $locale, $user) !== $before) {
+                    $done++;
+                } else {
+                    $skipped++;   // already in that state, or not a draft to send
+                }
             } catch (WorkflowGovernedException) {
                 $governed++;   // left as is: only the editor's approval block may move it
+            } catch (AuthorizationException) {
+                $skipped++;    // not theirs to send or publish: an expected answer, not a fault
             } catch (Throwable $e) {
-                // A slug clash, or a row this user may neither publish nor submit: report it and
-                // keep going. Aborting here would leave the selection half-applied, the checkbox
-                // state stale and no toast at all — the user could not tell what had happened.
+                // A slug clash or a database failure: report it and keep going. Aborting here
+                // would leave the selection half-applied, the checkbox state stale and no toast
+                // at all — the user could not tell what had happened.
                 report($e);
                 $failed++;
             }
         }
         $this->selected = [];
 
-        $this->toast(match (true) {
-            $governed > 0 => __('entries.bulk_done_governed', ['count' => $done, 'governed' => $governed]),
-            $failed > 0 => __('entries.bulk_done_failed', ['count' => $done, 'failed' => $failed]),
-            default => __('entries.bulk_done', ['count' => $done]),
-        });
+        // One toast carrying every count: a second toast would replace the first.
+        $parts = [__($publisher ? 'entries.bulk_published' : 'entries.bulk_sent', ['count' => $done])];
+        foreach (['entries.bulk_skipped' => $skipped, 'entries.bulk_governed' => $governed, 'entries.bulk_failed' => $failed] as $key => $count) {
+            if ($count > 0) {
+                $parts[] = __($key, ['count' => $count]);
+            }
+        }
+        $this->toast(implode(' ', $parts));
     }
 
     public function bulkDraft(): void

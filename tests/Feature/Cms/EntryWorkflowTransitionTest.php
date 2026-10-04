@@ -13,6 +13,7 @@ use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Exceptions\InvalidTransitionException;
 use App\Modules\Workflow\Models\Workflow;
+use App\Modules\Workflow\Models\WorkflowLog;
 use Illuminate\Auth\Access\AuthorizationException;
 
 /*
@@ -29,11 +30,11 @@ beforeEach(function (): void {
     app(TeamContext::class)->forget();
 });
 
-/** A `tin-tuc` post section + one draft post filed under it; returns the entry. */
-function newsPost(): Entry
+/** A `tin-tuc` post section + one draft post filed under it (written by $author, or by nobody); returns the entry. */
+function newsPost(?User $author = null, string $slug = 'ban-tin'): Entry
 {
-    $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
-    $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
+    $category = Taxonomy::query()->firstOrCreate(['vocabulary' => 'post_cat', 'position' => 0]);
+    $category->translations()->firstOrCreate(['locale' => 'vi'], ['name' => 'Tin tức', 'slug' => 'tin-tuc']);
 
     ContentSection::query()->firstOrCreate(
         ['key' => 'tin-tuc'],
@@ -46,9 +47,9 @@ function newsPost(): Entry
         ['value' => ['pattern' => 'category']],
     );
 
-    $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft']);
+    $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author?->id]);
     $entry->translations()->create([
-        'locale' => 'vi', 'title' => 'Bản tin', 'slug' => 'ban-tin', 'status' => 'draft', 'body' => ['blocks' => []],
+        'locale' => 'vi', 'title' => 'Bản tin', 'slug' => $slug, 'status' => 'draft', 'body' => ['blocks' => []],
     ]);
     $entry->assignCategories([$category->id]);
 
@@ -128,9 +129,9 @@ it('walks a post draft → pending → published, going live only at the publish
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($editor, 'editor', ['entries.approve']);
-        $entry = newsPost();
+        $entry = newsPost($author);
         activeNewsWorkflow();
         $action = app(ApplyEntryWorkflowTransition::class);
 
@@ -159,7 +160,7 @@ it('takes live content back offline when it is retracted', function (): void {
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.submit', 'entries.approve', 'entries.review']);
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.submit', 'entries.approve', 'entries.review']);
         $entry = newsPost();
         activeNewsWorkflow();
         $action = app(ApplyEntryWorkflowTransition::class);
@@ -182,8 +183,8 @@ it('enforces the engine guard through the action — no permission, no move', fu
     $author = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author): void {
-        grantRole($author, 'author', ['entries.submit']);   // cannot approve
-        $entry = newsPost();
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);   // cannot approve
+        $entry = newsPost($author);
         activeNewsWorkflow();
         $action = app(ApplyEntryWorkflowTransition::class);
 
@@ -203,9 +204,9 @@ it('keeps a live post that predates the workflow at the published stage — join
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($editor, 'editor', ['entries.publish', 'entries.review']);
-        $entry = newsPost();
+        $entry = newsPost($author);
         app(PublishEntry::class)->handle($entry, 'vi', $editor->fresh());   // live under tier-1
         activeNewsWorkflow();                                               // switched on afterwards
         $action = app(ApplyEntryWorkflowTransition::class);
@@ -230,8 +231,8 @@ it('re-derives the stage when the stored pointer is not one this workflow define
     $author = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author): void {
-        grantRole($author, 'author', ['entries.submit']);
-        $entry = newsPost();
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        $entry = newsPost($author);
         activeNewsWorkflow();
 
         // A stage key from another flow (template swapped, or the post re-filed): no transition
@@ -248,14 +249,38 @@ it('starts an entry that predates the workflow at the initial stage', function (
     $author = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author): void {
-        grantRole($author, 'author', ['entries.submit']);
-        $entry = newsPost();          // created with workflow_state = null
-        activeNewsWorkflow();         // switched on afterwards
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        $entry = newsPost($author);   // created with workflow_state = null
+        activeNewsWorkflow();        // switched on afterwards
 
         expect($entry->workflow_state)->toBeNull();
 
         // Content that existed before the gate must not be stranded outside the machine.
         expect(app(ApplyEntryWorkflowTransition::class)->handle($entry, 'vi', $author->fresh(), 'submit'))
+            ->toBe('pending');
+    });
+});
+
+it('refuses a submit move on a draft the actor may not edit', function (): void {
+    $author = User::factory()->create();
+    $colleague = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $colleague): void {
+        grantRole($author, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        $theirs = newsPost($colleague);
+        activeNewsWorkflow();
+
+        // The engine only knows the permission; sending someone else's draft along is still not
+        // this author's move to make.
+        expect(fn () => app(ApplyEntryWorkflowTransition::class)->handle($theirs, 'vi', $author->fresh(), 'submit'))
+            ->toThrow(AuthorizationException::class);
+
+        expect(WorkflowLog::query()->count())->toBe(0)
+            ->and($theirs->fresh()->status)->toBe('draft')
+            ->and($theirs->fresh()->workflow_state)->toBeNull();
+
+        // The same author sends their own post as before.
+        expect(app(ApplyEntryWorkflowTransition::class)->handle(newsPost($author, 'ban-tin-2'), 'vi', $author->fresh(), 'submit'))
             ->toBe('pending');
     });
 });

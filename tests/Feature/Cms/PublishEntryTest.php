@@ -1,12 +1,17 @@
 <?php
 
+use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Redirect;
 use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Identity\Models\User;
+use App\Modules\Notifications\Models\SiteNotification;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\DB;
 
 /*
  * W6 — Publish workflow Tầng-1 + route sync + 301 (design.md §15.4, §213). An actor
@@ -16,6 +21,7 @@ use App\Modules\Tenancy\Context\Tenancy;
  */
 
 beforeEach(function (): void {
+    DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity');
     truncateRbac();
     seedTenancy();
     $this->artisan('rbac:sync')->assertSuccessful();
@@ -186,4 +192,68 @@ it('resolves a case-variant inbound path on the storefront', function (): void {
     });
 
     $this->get('http://a.test/GIOI-THIEU')->assertOk();
+});
+
+it("refuses to send a colleague's draft for review", function (): void {
+    $tenancy = app(Tenancy::class);
+    $author = User::factory()->create();
+    $colleague = User::factory()->create();
+    $publisher = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($author, $colleague, $publisher): void {
+        grantRole($author, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        grantRole($colleague, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        grantRole($publisher, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $theirs = makeDraftPage($colleague, 'ban-nhap-cua-dong-nghiep');
+
+        // Sending is part of working on an entry: a half-written draft that is not yours stays yours to leave.
+        expect(fn () => app(PublishEntry::class)->handle($theirs->fresh(), 'vi', $author->fresh()))
+            ->toThrow(AuthorizationException::class);
+
+        expect($theirs->fresh()->status)->toBe('draft')
+            ->and($theirs->translationFor('vi')->status)->toBe('draft')
+            ->and(AuditLog::query()->where('action', EntryStatusAudit::ACTION)->where('auditable_id', $theirs->id)->exists())->toBeFalse()
+            ->and(SiteNotification::query()->where('user_id', $publisher->id)->where('kind', 'workflow.pending_review')->exists())->toBeFalse();
+    });
+});
+
+it("lets someone who may edit any entry, without publish, send anyone's draft for review", function (): void {
+    $tenancy = app(Tenancy::class);
+    $copyEditor = User::factory()->create();
+    $author = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($copyEditor, $author): void {
+        grantRole($copyEditor, 'copy-editor', ['entries.view', 'entries.edit.any', 'entries.submit']);
+        $theirs = makeDraftPage($author, 'bai-cua-tac-gia');
+
+        expect(app(PublishEntry::class)->handle($theirs->fresh(), 'vi', $copyEditor->fresh()))->toBe('pending')
+            ->and($theirs->fresh()->status)->toBe('pending')
+            ->and(SiteRoute::query()->where('entry_id', $theirs->id)->exists())->toBeFalse();
+    });
+});
+
+it('sends only a draft: a scheduled or already pending entry is left as it is', function (): void {
+    $tenancy = app(Tenancy::class);
+    $author = User::factory()->create();
+    $publisher = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($author, $publisher): void {
+        grantRole($author, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        grantRole($publisher, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $goLive = now()->addDay()->startOfMinute();
+        $scheduled = makeDraftPage($author, 'len-lich');
+        $scheduled->update(['status' => 'scheduled', 'published_at' => $goLive]);
+        $pending = makeDraftPage($author, 'cho-duyet');
+        $pending->update(['status' => 'pending']);
+
+        $publish = app(PublishEntry::class);
+
+        // A publisher set this go-live: re-sending must not quietly cancel it.
+        expect($publish->handle($scheduled->fresh(), 'vi', $author->fresh()))->toBe('scheduled')
+            ->and($scheduled->fresh()->status)->toBe('scheduled')
+            ->and($scheduled->fresh()->published_at->equalTo($goLive))->toBeTrue()
+            ->and($publish->handle($pending->fresh(), 'vi', $author->fresh()))->toBe('pending')
+            ->and(AuditLog::query()->where('action', EntryStatusAudit::ACTION)->exists())->toBeFalse()
+            ->and(SiteNotification::query()->where('user_id', $publisher->id)->exists())->toBeFalse();
+    });
 });

@@ -12,6 +12,7 @@ use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Workflow\Services\WorkflowEngine;
 use DateTimeInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -43,6 +44,7 @@ final readonly class ApplyEntryWorkflowTransition
      * Move an entry along its workflow; returns the destination state key.
      *
      * @throws EntryNotGovernedException no workflow governs this entry (the caller should use tier-1)
+     * @throws AuthorizationException the actor lacks the move's permission, or sends an entry they may not edit
      */
     public function handle(
         Entry $entry,
@@ -74,6 +76,10 @@ final readonly class ApplyEntryWorkflowTransition
             // content stands at the published stage, anything else at the initial one — never
             // stranded outside the machine, never hidden by joining it.
             $fromState = $this->workflows->originFor($workflow, $entry);
+
+            // The engine knows the move's permission, not the entry: sending someone else's
+            // draft along also needs the right to edit it. Judged on the locked row.
+            $this->workflows->authorizeMove($workflow, $transitionKey, $entry, $actor);
 
             $destination = $this->engine->apply(
                 $workflow, $transitionKey, $fromState, $actor, $entry->id, $locale, $note, $assignTo,

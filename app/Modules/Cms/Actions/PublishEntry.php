@@ -19,9 +19,9 @@ use RuntimeException;
  * Workflow Tầng-1 (design.md §15.4 — permission-driven, no configuration). An actor
  * carrying entries.publish publishes straight through: entry + translation go
  * `published`, published_at is stamped, and the route is synced (with a 301 on a slug
- * change). Anyone else who can submit parks the entry as `pending` for a publisher to
- * review. Only published entries with a published translation reach the public
- * (RouteResolver).
+ * change). Anyone else who may send this entry (EntryPolicy::submit: entries.submit plus the
+ * right to edit it) parks a DRAFT as `pending` for a publisher to review. Only published
+ * entries with a published translation reach the public (RouteResolver).
  *
  * Tầng-1 remains the behaviour for every site that has not switched a workflow on — which is
  * all of them by default. Where one IS active, this straight-through path would be a hole
@@ -38,8 +38,11 @@ final readonly class PublishEntry
     ) {}
 
     /**
-     * @return 'published'|'pending' the resulting lifecycle status
+     * @return string the entry's lifecycle status afterwards: 'published' or 'pending' when this
+     *                call moved it; a submitter's call on anything but a draft returns the status
+     *                it left unchanged, so a caller can tell "sent" from "not sent"
      *
+     * @throws AuthorizationException the actor may neither publish nor send this entry
      * @throws WorkflowGovernedException a workflow governs this entry — move it via a transition
      */
     public function handle(Entry $entry, string $locale, User $actor): string
@@ -81,10 +84,11 @@ final readonly class PublishEntry
         }
 
         if ($gate->allows('submit', $entry)) {
-            // Never demote a live page: a submitter without publish rights must not be
-            // able to take a published entry offline by re-submitting it.
-            if ($entry->status === 'published') {
-                return 'published';
+            // Only a draft is sent. Anything else is left exactly as it is: a live page must not
+            // be taken offline by a re-send, a scheduled one must not lose the go-live a
+            // publisher set, and an entry already waiting is not sent (or announced) twice.
+            if ($from !== 'draft') {
+                return $from;
             }
 
             $entry->update(['status' => 'pending']);
@@ -92,9 +96,7 @@ final readonly class PublishEntry
 
             EntryStatusAudit::record($entry, $from, 'pending', 'submit', $actor);
 
-            if ($from !== 'pending') {
-                $this->notifier->awaitingReview($entry, $locale, $actor, 'entries.publish');   // the publishers
-            }
+            $this->notifier->awaitingReview($entry, $locale, $actor, 'entries.publish');   // the publishers
 
             return 'pending';
         }

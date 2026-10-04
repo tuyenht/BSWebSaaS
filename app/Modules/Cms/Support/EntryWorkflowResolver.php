@@ -8,8 +8,12 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Identity\Models\User;
 use App\Modules\Workflow\Models\Workflow;
+use App\Modules\Workflow\Models\WorkflowTransition;
 use App\Modules\Workflow\Services\WorkflowEngine;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Gate;
 use RuntimeException;
 
 /**
@@ -28,9 +32,17 @@ use RuntimeException;
  * switching a workflow on can never hide what visitors already see), and everything else starts
  * at the initial stage. The action and the editor both read this one definition, so the buttons
  * a user sees are exactly the moves the engine will accept.
+ *
+ * MAY this person make this move on THIS entry? The engine checks only the move's permission,
+ * because it knows nothing of entries. Sending for review is also working on the entry, so a
+ * move guarded by entries.submit additionally needs EntryPolicy::submit (the right to edit this
+ * entry). The actions enforce it and the button lists filter by it, from this one definition.
  */
 final readonly class EntryWorkflowResolver
 {
+    /** The permission that means "send for review", wherever a site's workflow uses it. */
+    private const string SUBMIT_PERMISSION = 'entries.submit';
+
     public function __construct(
         private SectionResolver $sections,
         private WorkflowEngine $engine,
@@ -117,5 +129,31 @@ final readonly class EntryWorkflowResolver
         return $initial === null
             || $change->workflow_state === $initial->key
             || ! $workflow->definesState($change->workflow_state);
+    }
+
+    /**
+     * Whether $actor may make $transition on $entry, on top of the permission the engine checks
+     * itself (see class doc). Answered in memory: the permission cache and the loaded entry.
+     */
+    public function mayApply(WorkflowTransition $transition, Entry $entry, User $actor): bool
+    {
+        return $transition->required_permission !== self::SUBMIT_PERMISSION
+            || Gate::forUser($actor)->allows('submit', $entry);
+    }
+
+    /**
+     * Refuse the move named $transitionKey when mayApply() says no. A key the workflow does not
+     * define passes through, so the engine reports it as the invalid move it is. Call it inside
+     * the subject's row lock, right before WorkflowEngine::apply().
+     *
+     * @throws AuthorizationException
+     */
+    public function authorizeMove(Workflow $workflow, string $transitionKey, Entry $entry, User $actor): void
+    {
+        $transition = $workflow->transitions()->where('key', $transitionKey)->first();
+
+        if ($transition !== null && ! $this->mayApply($transition, $entry, $actor)) {
+            throw new AuthorizationException(__('workflow.err_transition_forbidden'));
+        }
     }
 }
