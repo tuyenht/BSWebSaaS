@@ -10,7 +10,7 @@
 - Admin UI = **Tailwind 4 + Livewire 4 + Blade**, all-in. **KHÔNG Bootstrap**, KHÔNG trộn 2 CSS framework trong 1 project. Builder = React island (Inertia v2) — theo ADR-02.
 - **KHÔNG Flux** (lean-deps, own-code). Primitive tự dựng bằng Tailwind + Blade component.
 - **Velzon = design reference READ-ONLY**: lấy visual + token, KHÔNG port Bootstrap/jQuery/SCSS, KHÔNG nạp CSS framework thứ 2.
-- Icon = inline-SVG `<x-admin::icon>`, KHÔNG nạp icon webfont.
+- Icon = inline-SVG `<x-bs-admin::icon>`, KHÔNG nạp icon webfont.
 
 ## ADR-A2 — Token SSOT (LOCKED — đã build GĐ1–GĐ3, CI xanh)
 
@@ -90,7 +90,7 @@ Interactive scope shipped BEYOND the original four axes; recorded so this ADR ma
   **Preloader axis was designed then dropped via audit**: under Octane + SPA `wire:navigate` the overlay never
   re-cleared (bricked nav), and it earns nothing in worker-mode SPA (YAGNI). Horizontal / two-column layouts
   stay a separate workstream (different DOM), still deferred.
-- **Branding (V-A2):** config-driven logo (`admin.brand.logo` + `<x-admin::brand-logo>` — three variants +
+- **Branding (V-A2):** config-driven logo (`admin.brand.logo` + `<x-bs-admin::brand-logo>` — three variants +
   initials fallback), sized to the Velzon reference (**48px full / 22px collapsed mark**) and centered. The
   default dark sidebar is decoupled from the brand primary (#405189) to variant-one blue, then **darkened
   #3577f1 → #286ef0** so white 14px menu text clears WCAG AA (4.59; #3577f1 capped at 4.15). Opt-in gradient

@@ -7,10 +7,10 @@
     running a tenant's markup inside the admin shell would hand them the page.
 --}}
 <div class="space-y-4">
-    <x-admin::page-header :title="__('admin.inbox.title')" :subtitle="__('admin.inbox.subtitle')" />
+    <x-bs-admin::page-header :title="__('admin.inbox.title')" :subtitle="__('admin.inbox.subtitle')" />
 
     @error('inbox')
-        <x-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-admin::alert>
+        <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-bs-admin::alert>
     @enderror
 
     {{-- Tabs --}}
@@ -21,7 +21,7 @@
                 'border-accent bg-admin-primary/5 text-accent' => $tab === $key,
                 'border-border text-body-muted hover:border-border-strong' => $tab !== $key,
             ])>
-                <x-admin::icon :name="$icon" class="size-4" />
+                <x-bs-admin::icon :name="$icon" class="size-4" />
                 {{ __('admin.inbox.tab_'.$key) }}
                 <span @class([
                     'rounded-full px-1.5 text-[11px] font-bold',
@@ -34,7 +34,7 @@
 
     <div class="grid gap-4 @container lg:grid-cols-[352px_1fr]">
         {{-- LEFT: the queue --}}
-        <x-admin::card class="{{ $reader !== null ? 'hidden lg:block' : '' }}">
+        <x-bs-admin::card class="{{ $reader !== null ? 'hidden lg:block' : '' }}">
             <x-slot:header>
                 <div class="flex min-w-0 flex-1 items-center gap-2">
                     <span class="text-sm font-semibold text-heading">{{ __('admin.inbox.tab_'.$tab) }}</span>
@@ -45,7 +45,7 @@
             {{-- Search + type filter --}}
             <div class="mb-3 flex flex-col gap-2">
                 <label class="flex items-center gap-2 rounded border border-border px-2.5 focus-within:border-accent focus-within:ring-[3px] focus-within:ring-admin-primary/20">
-                    <x-admin::icon name="ri-search" class="size-4 shrink-0 text-body-muted" />
+                    <x-bs-admin::icon name="ri-search" class="size-4 shrink-0 text-body-muted" />
                     <input type="search" wire:model.live.debounce.300ms="search" class="min-h-9 w-full border-0 bg-transparent p-0 text-[13px] text-body-text"
                            placeholder="{{ __('admin.inbox.search_placeholder') }}" aria-label="{{ __('admin.inbox.search_placeholder') }}">
                 </label>
@@ -61,12 +61,12 @@
 
             @if ($rows === [])
                 <div class="flex flex-col items-center gap-2.5 px-4 py-7 text-center">
-                    <x-admin::icon :name="$search !== '' || $sectionFilter !== '' ? 'ri-search-eye' : 'ri-checkbox-circle'" class="size-6 text-placeholder" />
+                    <x-bs-admin::icon :name="$search !== '' || $sectionFilter !== '' ? 'ri-search-eye' : 'ri-checkbox-circle'" class="size-6 text-placeholder" />
                     <p class="max-w-[280px] text-[13px] leading-relaxed text-body-muted">
                         {{ $search !== '' || $sectionFilter !== '' ? __('admin.inbox.no_match') : __('admin.inbox.empty_'.$tab) }}
                     </p>
                     @if ($search !== '' || $sectionFilter !== '')
-                        <x-admin::button color="light" size="sm" wire:click="clearFilters">{{ __('admin.inbox.clear_filters') }}</x-admin::button>
+                        <x-bs-admin::button color="light" size="sm" wire:click="clearFilters">{{ __('admin.inbox.clear_filters') }}</x-bs-admin::button>
                     @endif
                 </div>
             @else
@@ -100,32 +100,32 @@
 
                 @if ($total > count($rows))
                     <div class="mt-3 flex justify-center">
-                        <x-admin::button color="light" size="sm" wire:click="loadMore" wire:loading.attr="disabled">
-                            <x-admin::icon name="ri-arrow-down" class="size-4" />{{ __('admin.inbox.load_more', ['count' => $total - count($rows)]) }}
-                        </x-admin::button>
+                        <x-bs-admin::button color="light" size="sm" wire:click="loadMore" wire:loading.attr="disabled">
+                            <x-bs-admin::icon name="ri-arrow-down" class="size-4" />{{ __('admin.inbox.load_more', ['count' => $total - count($rows)]) }}
+                        </x-bs-admin::button>
                     </div>
                 @endif
             @endif
-        </x-admin::card>
+        </x-bs-admin::card>
 
         {{-- RIGHT: the reader --}}
         @if ($reader === null)
-            <x-admin::card class="hidden lg:block">
+            <x-bs-admin::card class="hidden lg:block">
                 <div class="flex flex-col items-center gap-3 px-6 py-10 text-center">
                     <span class="flex size-13 items-center justify-center rounded-full bg-admin-primary/10">
-                        <x-admin::icon name="ri-file-list-3" class="size-6 text-accent" />
+                        <x-bs-admin::icon name="ri-file-list-3" class="size-6 text-accent" />
                     </span>
                     <p class="text-[15px] font-semibold text-heading">{{ __('admin.inbox.pick_title') }}</p>
                     <p class="max-w-[420px] text-[13px] leading-relaxed text-body-muted">{{ __('admin.inbox.pick_body') }}</p>
                 </div>
-            </x-admin::card>
+            </x-bs-admin::card>
         @else
-            <x-admin::card>
+            <x-bs-admin::card>
                 <x-slot:header>
                     <div class="flex min-w-0 flex-1 items-center gap-2">
-                        <x-admin::button color="light" size="sm" class="lg:hidden" wire:click="closeReader">
-                            <x-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.inbox.back') }}
-                        </x-admin::button>
+                        <x-bs-admin::button color="light" size="sm" class="lg:hidden" wire:click="closeReader">
+                            <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.inbox.back') }}
+                        </x-bs-admin::button>
                         <span class="min-w-0 truncate text-sm font-semibold text-heading">{{ $reader['title'] }}</span>
                         @if ($reader['section'] !== '')
                             <span class="ml-auto shrink-0 rounded-full bg-surface-hover px-2.5 py-0.5 text-[10.5px] font-bold text-body-muted">{{ $reader['section'] }}</span>
@@ -169,7 +169,7 @@
                         <img src="{{ $reader['cover'] }}" alt="{{ __('entries.cover_alt') }}" class="max-h-64 w-auto rounded border border-border-soft" loading="lazy">
                     @else
                         <p class="flex items-center gap-2 rounded bg-admin-warning/15 px-3 py-2.5 text-[12.5px] text-[#8a5f18]">
-                            <x-admin::icon name="ri-image-add" class="size-4 shrink-0" />{{ __('admin.inbox.no_cover') }}
+                            <x-bs-admin::icon name="ri-image-add" class="size-4 shrink-0" />{{ __('admin.inbox.no_cover') }}
                         </p>
                     @endif
 
@@ -233,32 +233,32 @@
                             <div class="flex flex-wrap gap-2">
                                 @foreach ($reader['actions'] as $action)
                                     @if ($action['to_published'])
-                                        <x-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled"
+                                        <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled"
                                                          x-on:click="$bsConfirm({
                                                              icon: 'question',
                                                              text: @js(__('admin.inbox.confirm_publish', ['title' => $reader['title']])),
                                                              confirm: @js($action['label']),
                                                              cancel: @js(__('admin.cancel')),
                                                          }).then(ok => ok && $wire.apply(@js($action['key'])))">
-                                            <x-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
-                                        </x-admin::button>
+                                            <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
+                                        </x-bs-admin::button>
                                     @elseif ($action['note'])
-                                        <x-admin::button color="danger" variant="outline" wire:key="act-{{ $action['key'] }}"
+                                        <x-bs-admin::button color="danger" variant="outline" wire:key="act-{{ $action['key'] }}"
                                                          wire:click="apply(@js($action['key']))" wire:loading.attr="disabled">
-                                            <x-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $action['label'] }}
-                                        </x-admin::button>
+                                            <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $action['label'] }}
+                                        </x-bs-admin::button>
                                     @else
-                                        <x-admin::button color="light" wire:key="act-{{ $action['key'] }}"
+                                        <x-bs-admin::button color="light" wire:key="act-{{ $action['key'] }}"
                                                          wire:click="apply(@js($action['key']))" wire:loading.attr="disabled">
-                                            <x-admin::icon name="ri-send-plane" class="size-4" />{{ $action['label'] }}
-                                        </x-admin::button>
+                                            <x-bs-admin::icon name="ri-send-plane" class="size-4" />{{ $action['label'] }}
+                                        </x-bs-admin::button>
                                     @endif
                                 @endforeach
                             </div>
                         </div>
                     @endif
                 </x-slot:footer>
-            </x-admin::card>
+            </x-bs-admin::card>
         @endif
     </div>
 </div>

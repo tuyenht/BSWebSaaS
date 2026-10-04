@@ -1,4 +1,4 @@
-<x-admin::settings-shell active="appearance">
+<x-bs-admin::settings-shell active="appearance">
     <form wire:submit="save">
         <div class="overflow-hidden rounded-md border border-border bg-surface shadow-card">
             <div class="border-b border-border px-5 py-3">
@@ -25,7 +25,7 @@
                                 <span class="mt-1.5 block text-center text-xs font-medium text-body-muted group-has-[:checked]:text-accent">{{ __('admin.theme_default') }}</span>
                             </label>
                             @foreach (\App\Modules\Admin\Theme\AdminChromeResolver::FIELDS[$axis] as $value)
-                                <x-admin::theme-option :axis="$axis" :value="$value" name="st-{{ $axis }}"
+                                <x-bs-admin::theme-option :axis="$axis" :value="$value" name="st-{{ $axis }}"
                                                        :label="__('admin.theme_'.str_replace('-', '_', $value))" wire:model="{{ $axis }}" />
                             @endforeach
                         </div>
@@ -113,13 +113,13 @@
             </div>
 
             <div class="flex items-center gap-3 border-t border-border bg-surface-muted px-5 py-3">
-                <x-admin::button type="submit" wire:loading.attr="disabled" wire:target="save">
+                <x-bs-admin::button type="submit" wire:loading.attr="disabled" wire:target="save">
                     {{ __('admin.save') }}
-                </x-admin::button>
+                </x-bs-admin::button>
                 @if ($saved)
                     <span class="text-xs font-medium text-admin-success-text">{{ __('admin.theme_saved_note') }}</span>
                 @endif
             </div>
         </div>
     </form>
-</x-admin::settings-shell>
+</x-bs-admin::settings-shell>

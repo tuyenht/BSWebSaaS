@@ -5,7 +5,7 @@
         <div class="w-full max-w-md rounded-md border border-border bg-surface p-4 shadow-card">
             <div class="mb-3 flex items-center justify-between gap-3">
                 <h5 class="text-[1rem] font-semibold text-body-text">{{ __('catalog.video_title') }}</h5>
-                <x-admin::button size="sm" variant="soft" color="primary" wire:click="closeVideoDialog">{{ __('admin.dismiss') }}</x-admin::button>
+                <x-bs-admin::button size="sm" variant="soft" color="primary" wire:click="closeVideoDialog">{{ __('admin.dismiss') }}</x-bs-admin::button>
             </div>
             <label for="video-embed-url" class="mb-1.5 block text-sm font-medium text-body-text">{{ __('catalog.video_url_label') }}</label>
             <input type="url" id="video-embed-url" wire:model="videoUrl" wire:keydown.enter="insertVideo"
@@ -18,7 +18,7 @@
             </label>
             <p class="mt-1 text-xs text-body-muted">{{ __('catalog.video_autoplay_hint') }}</p>
             <div class="mt-4 flex justify-end">
-                <x-admin::button color="primary" wire:click="insertVideo" wire:loading.attr="disabled">{{ __('catalog.video_insert') }}</x-admin::button>
+                <x-bs-admin::button color="primary" wire:click="insertVideo" wire:loading.attr="disabled">{{ __('catalog.video_insert') }}</x-bs-admin::button>
             </div>
         </div>
     </div>

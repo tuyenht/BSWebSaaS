@@ -6,10 +6,10 @@
 <div class="flex shrink-0 items-center gap-3 border-b border-border px-[18px] py-[11px]">
     <button type="button" wire:click="backToPickerSources"
             class="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-[11px] py-1.5 text-[12.5px] text-body-text">
-        <x-admin::icon name="ri-arrow-left" class="size-3.5" />{{ __('media.picker_back_sources') }}
+        <x-bs-admin::icon name="ri-arrow-left" class="size-3.5" />{{ __('media.picker_back_sources') }}
     </button>
     <span class="flex size-[30px] items-center justify-center rounded-lg" style="background: #4051891a; color: #405189;">
-        <x-admin::icon name="ri-computer" class="size-4" />
+        <x-bs-admin::icon name="ri-computer" class="size-4" />
     </span>
     <span class="text-sm font-semibold text-heading">{{ __('media.picker_source_device') }}</span>
 </div>
@@ -30,14 +30,14 @@
     <div data-drop
          class="flex cursor-pointer flex-col items-center gap-3.5 rounded-[14px] border-2 border-dashed border-placeholder bg-surface-muted px-6 py-10 text-center transition-colors hover:border-accent">
         <div class="flex size-16 items-center justify-center rounded-full bg-admin-primary/8">
-            <x-admin::icon name="ri-upload-cloud-2" class="size-[30px] text-accent" />
+            <x-bs-admin::icon name="ri-upload-cloud-2" class="size-[30px] text-accent" />
         </div>
         <div>
             <div class="text-base font-semibold text-heading">{{ __('media.picker_drop_title') }}</div>
             <div class="mt-0.5 text-[13px] text-body-muted">{{ __('media.picker_device_or') }}</div>
         </div>
         <span class="inline-flex items-center gap-1.5 rounded-lg bg-admin-primary px-[18px] py-[9px] text-[13.5px] font-semibold text-white">
-            <x-admin::icon name="ri-folder-open" class="size-[15px]" />{{ __('media.picker_device_browse') }}
+            <x-bs-admin::icon name="ri-folder-open" class="size-[15px]" />{{ __('media.picker_device_browse') }}
         </span>
         <div class="text-[11.5px] text-body-muted">{{ __('media.picker_device_hint', ['size' => \App\Modules\Media\Actions\UploadMedia::MAX_KB / 1024]) }}</div>
     </div>

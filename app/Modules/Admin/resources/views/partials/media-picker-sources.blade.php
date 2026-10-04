@@ -22,7 +22,7 @@
          @if ($canUpload) x-data="pickerQuickUpload" x-on:dragover.prevent x-on:drop.prevent="onDrop($event)" @endif>
         <div class="mb-4 flex flex-col items-center gap-[5px] text-center">
             <div class="flex size-[46px] items-center justify-center rounded-full bg-admin-primary/8">
-                <x-admin::icon name="ri-upload-cloud-2" class="size-[22px] text-accent" />
+                <x-bs-admin::icon name="ri-upload-cloud-2" class="size-[22px] text-accent" />
             </div>
             <div class="text-[15px] font-semibold text-heading">{{ __('media.picker_drop_title') }}</div>
             <div class="text-[12.5px] text-body-muted">
@@ -48,7 +48,7 @@
                         ])>
                     <span class="flex size-11 items-center justify-center rounded-xl"
                           style="background: {{ $source['color'] }}1a; color: {{ $source['color'] }};">
-                        <x-admin::icon :name="$source['icon']" class="size-[22px]" />
+                        <x-bs-admin::icon :name="$source['icon']" class="size-[22px]" />
                     </span>
                     <span class="max-w-full truncate text-center text-xs font-medium leading-snug text-body-text">{{ $source['label'] }}</span>
                 </button>
@@ -66,19 +66,19 @@
             </div>
             <div class="mx-auto mt-2.5 flex w-full max-w-[640px] gap-2">
                 <div class="relative min-w-0 flex-1">
-                    <x-admin::icon name="ri-link" class="absolute left-3 top-1/2 size-[15px] -translate-y-1/2 text-body-muted" />
+                    <x-bs-admin::icon name="ri-link" class="absolute left-3 top-1/2 size-[15px] -translate-y-1/2 text-body-muted" />
                     <input type="url" wire:model="pickerUrlInput" wire:keydown.enter="previewPickerUrl"
                            placeholder="{{ __('media.picker_url_placeholder') }}"
                            class="block w-full rounded-lg border border-border-strong bg-surface py-[9px] pl-[35px] pr-3 text-[13px] text-body-text placeholder:text-placeholder focus:border-accent">
                 </div>
                 <button type="button" wire:click="previewPickerUrl"
                         class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-admin-primary/20 bg-admin-primary/4 px-[15px] py-[9px] text-[12.5px] font-semibold text-accent">
-                    <x-admin::icon name="ri-eye" class="size-3.5" />{{ __('media.picker_url_preview') }}
+                    <x-bs-admin::icon name="ri-eye" class="size-3.5" />{{ __('media.picker_url_preview') }}
                 </button>
             </div>
             @error('pickerUrlInput')
                 <div class="mx-auto mt-2 flex w-full max-w-[640px] items-center gap-1.5 text-xs text-admin-danger-text">
-                    <x-admin::icon name="ri-error-warning" class="size-3.5 shrink-0" />{{ $message }}
+                    <x-bs-admin::icon name="ri-error-warning" class="size-3.5 shrink-0" />{{ $message }}
                 </div>
             @enderror
         @endcan

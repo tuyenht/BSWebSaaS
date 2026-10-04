@@ -1,7 +1,7 @@
 // Admin rich-text editor (lazy chunk — mounted from app.js on any admin page that carries a
 // [data-rich-editor] textarea). ONE call-site contract, zero per-page config:
 //
-//   <x-admin::rich-editor target="description" profile="full|basic" :value="$description" />
+//   <x-bs-admin::rich-editor target="description" profile="full|basic" :value="$description" />
 //
 // `full` = the product/article body toolbar (headings, sub/sup, font/size/color, lists,
 // align, link, LIBRARY image, youtube/vimeo video, table, hr, Ω, source, fullsize);

@@ -10,13 +10,13 @@
             'border-border-strong bg-surface text-body-text hover:border-accent' => $activeCount === 0,
         ])>
         @if ($icon)
-            <x-admin::icon :name="$icon" class="size-4" />
+            <x-bs-admin::icon :name="$icon" class="size-4" />
         @endif
         {{ $label }}
         @if ($activeCount > 0)
             <span class="rounded bg-admin-primary px-1.5 text-xs font-semibold leading-5 text-white">{{ $activeCount }}</span>
         @endif
-        <x-admin::icon name="chevron-down" class="size-3.5 transition-transform" ::class="open && 'rotate-180'" />
+        <x-bs-admin::icon name="chevron-down" class="size-3.5 transition-transform" ::class="open && 'rotate-180'" />
     </button>
     <div x-show="open" x-cloak x-transition
         class="absolute left-0 z-30 mt-1 max-h-72 w-60 overflow-auto rounded-lg border border-border bg-surface p-1.5 shadow-lg">
@@ -31,7 +31,7 @@
                     'border-admin-primary bg-admin-primary text-white' => $opt['active'],
                     'border-border-strong' => ! $opt['active'],
                 ])>
-                    @if ($opt['active'])<x-admin::icon name="ri-check" class="size-3" />@endif
+                    @if ($opt['active'])<x-bs-admin::icon name="ri-check" class="size-3" />@endif
                 </span>
                 <span @class(['flex-1 truncate', 'font-medium text-accent' => $opt['active'], 'text-body-text' => ! $opt['active']])>{{ $opt['label'] }}</span>
                 <span class="text-xs text-placeholder">{{ $opt['count'] }}</span>

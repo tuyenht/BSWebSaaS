@@ -32,23 +32,23 @@
     x-on:workflow-moved.window="close()"
 >
     @error('workflow')
-        <x-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-admin::alert>
+        <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-bs-admin::alert>
     @enderror
 
     {{-- Card 1: stage + actions --}}
-    <x-admin::card>
+    <x-bs-admin::card>
         <x-slot:header>
             <div class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                <x-admin::icon name="ri-flow-chart" class="size-4 text-accent" />
+                <x-bs-admin::icon name="ri-flow-chart" class="size-4 text-accent" />
                 <span class="text-sm font-semibold text-heading">{{ __('admin.wfb.title') }}</span>
                 @if ($workflow['is_live'])
                     <span class="inline-flex h-[22px] items-center gap-1 rounded-full bg-admin-success/10 px-2.5 text-[10.5px] font-bold text-[#0a6d60]">
-                        <x-admin::icon name="ri-global" class="size-3" />{{ __('admin.wfb.live_chip') }}
+                        <x-bs-admin::icon name="ri-global" class="size-3" />{{ __('admin.wfb.live_chip') }}
                     </span>
                 @endif
                 @if ($workflow['assignee'] !== null)
                     <span class="ml-auto inline-flex h-[22px] items-center gap-1 rounded-full bg-admin-primary/10 px-2.5 text-[10.5px] font-bold text-accent">
-                        <x-admin::icon name="ri-user-follow" class="size-3" />{{ __('admin.wfb.assigned_to', ['name' => $workflow['assignee']]) }}
+                        <x-bs-admin::icon name="ri-user-follow" class="size-3" />{{ __('admin.wfb.assigned_to', ['name' => $workflow['assignee']]) }}
                     </span>
                 @endif
             </div>
@@ -58,11 +58,11 @@
             {{-- Step headline --}}
             <div class="flex flex-wrap items-baseline gap-2">
                 <span class="inline-flex items-center gap-1 text-[12.5px] font-bold text-accent">
-                    <x-admin::icon :name="$stepIcon($current)" class="size-3.5" />
+                    <x-bs-admin::icon :name="$stepIcon($current)" class="size-3.5" />
                     {{ __('admin.wfb.step_of', ['n' => $workflow['current']['index'] + 1, 'total' => $stepCount, 'label' => $workflow['current']['label']]) }}
                 </span>
                 <span class="inline-flex items-center gap-1 text-[11.5px] text-body-muted">
-                    <x-admin::icon name="ri-flow-chart" class="size-3" />{{ $workflow['name'] }}
+                    <x-bs-admin::icon name="ri-flow-chart" class="size-3" />{{ $workflow['name'] }}
                 </span>
             </div>
 
@@ -85,7 +85,7 @@
                                 'border-admin-success/45 bg-surface text-[#0a6d60]' => ! $done && ! $cur && $pub,
                                 'border-border bg-surface text-body-muted' => ! $done && ! $cur && ! $pub,
                             ])>
-                                <x-admin::icon :name="$done ? 'ri-check' : $stepIcon($step)" class="size-3.5" />
+                                <x-bs-admin::icon :name="$done ? 'ri-check' : $stepIcon($step)" class="size-3.5" />
                             </span>
                             <span class="h-0.5 flex-1 {{ $i === $stepCount - 1 ? 'invisible' : '' }} {{ $done ? 'bg-admin-primary' : 'bg-border' }}"></span>
                         </span>
@@ -111,14 +111,14 @@
 
             @if ($workflow['pre_workflow'])
                 <p class="flex items-start gap-2 rounded bg-surface-hover px-3 py-2.5 text-[12.5px] leading-relaxed text-body-muted">
-                    <x-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" />
+                    <x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" />
                     <span>{{ __('admin.wfb.pre_workflow') }}</span>
                 </p>
             @endif
 
             @if ($workflow['missing'] !== [] && $workflow['actions'] !== [] && ! $workflow['current']['is_published'])
                 <p class="flex items-start gap-2 rounded bg-admin-warning/15 px-3 py-2.5 text-[12.5px] leading-relaxed text-[#8a5f18]">
-                    <x-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" />
+                    <x-bs-admin::icon name="ri-error-warning" class="mt-0.5 size-4 shrink-0" />
                     <span>{{ __('admin.wfb.missing_line', ['fields' => implode(', ', $workflow['missing'])]) }}</span>
                 </p>
             @endif
@@ -135,17 +135,17 @@
                                     .($workflow['is_live'] && ! $action['to_published'] ? ' '.__('admin.wfb.tip_offline') : '');
                             @endphp
                             @if ($action['to_published'])
-                                <x-admin::button color="primary" wire:click="applyTransition(@js($action['key']))" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
-                                    <x-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
-                                </x-admin::button>
+                                <x-bs-admin::button color="primary" wire:click="applyTransition(@js($action['key']))" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
+                                    <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
+                                </x-bs-admin::button>
                             @elseif ($action['note'])
-                                <x-admin::button color="danger" variant="outline" x-on:click="open(@js($action['key']))" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
-                                    <x-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $action['label'] }}
-                                </x-admin::button>
+                                <x-bs-admin::button color="danger" variant="outline" x-on:click="open(@js($action['key']))" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
+                                    <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $action['label'] }}
+                                </x-bs-admin::button>
                             @else
-                                <x-admin::button color="light" wire:click="applyTransition(@js($action['key']))" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
-                                    <x-admin::icon name="ri-send-plane" class="size-4" />{{ $action['label'] }}
-                                </x-admin::button>
+                                <x-bs-admin::button color="light" wire:click="applyTransition(@js($action['key']))" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
+                                    <x-bs-admin::icon name="ri-send-plane" class="size-4" />{{ $action['label'] }}
+                                </x-bs-admin::button>
                             @endif
                         @endforeach
                     </div>
@@ -155,25 +155,25 @@
                     @if ($workflow['is_live'])
                         {{-- No revisions yet: a saved edit to live content is live at once. Say so. --}}
                         <p class="flex items-start gap-2 rounded bg-surface-hover px-3 py-2.5 text-[12.5px] leading-relaxed text-body-muted">
-                            <x-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" />
+                            <x-bs-admin::icon name="ri-information" class="mt-0.5 size-4 shrink-0" />
                             <span>{{ __('admin.wfb.live_edit_hint') }}</span>
                         </p>
                     @endif
                 </div>
             @else
                 <p class="flex items-start gap-2 rounded bg-admin-info/10 px-3 py-2.5 text-[12.5px] leading-relaxed text-[#22688f]">
-                    <x-admin::icon name="ri-time" class="mt-0.5 size-4 shrink-0" />
+                    <x-bs-admin::icon name="ri-time" class="mt-0.5 size-4 shrink-0" />
                     <span>{{ $workflow['current']['is_published'] ? __('admin.wfb.wait_line_live') : __('admin.wfb.wait_line') }}</span>
                 </p>
             @endif
         </div>
-    </x-admin::card>
+    </x-bs-admin::card>
 
     {{-- Card 2: trail --}}
-    <x-admin::card>
+    <x-bs-admin::card>
         <x-slot:header>
             <div class="flex min-w-0 flex-1 items-center gap-2">
-                <x-admin::icon name="ri-history" class="size-4 text-body-muted" />
+                <x-bs-admin::icon name="ri-history" class="size-4 text-body-muted" />
                 <span class="text-sm font-semibold text-heading">{{ __('admin.wfb.trail_title') }}</span>
                 <span class="ml-auto text-[11.5px] text-body-muted">{{ __('admin.wfb.trail_count', ['count' => $trailTotal]) }}</span>
             </div>
@@ -206,12 +206,12 @@
                 @endforeach
             </ol>
             @if ($trailCursor !== null)
-                <x-admin::button color="light" size="sm" wire:click="loadMoreTrail" wire:loading.attr="disabled">
-                    <x-admin::icon name="ri-arrow-down" class="size-4" />{{ __('admin.wfb.trail_more', ['count' => $trailTotal - count($trail)]) }}
-                </x-admin::button>
+                <x-bs-admin::button color="light" size="sm" wire:click="loadMoreTrail" wire:loading.attr="disabled">
+                    <x-bs-admin::icon name="ri-arrow-down" class="size-4" />{{ __('admin.wfb.trail_more', ['count' => $trailTotal - count($trail)]) }}
+                </x-bs-admin::button>
             @endif
         @endif
-    </x-admin::card>
+    </x-bs-admin::card>
 
     {{-- Note + hand-off modal, one per transition that requires a reason --}}
     @foreach ($noteActions as $action)
@@ -219,15 +219,15 @@
             <div class="absolute inset-0 bg-gray-900/50" x-on:click="close()"></div>
             <div class="relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-md bg-surface shadow-[0_5px_20px_rgba(56,65,74,.28)]">
                 <div class="flex items-center gap-2 border-b border-border-soft px-4 py-3.5">
-                    <x-admin::icon :name="$action['key'] === 'retract' ? 'ri-eye-off' : 'ri-arrow-go-back'" class="size-4 text-[#c0432c]" />
+                    <x-bs-admin::icon :name="$action['key'] === 'retract' ? 'ri-eye-off' : 'ri-arrow-go-back'" class="size-4 text-[#c0432c]" />
                     <span class="text-sm font-semibold text-heading">{{ $action['label'] }}</span>
                     <button type="button" class="ml-auto flex size-9 items-center justify-center rounded text-body-muted hover:bg-surface-hover" x-on:click="close()" aria-label="{{ __('admin.close') }}">
-                        <x-admin::icon name="ri-close" class="size-5" />
+                        <x-bs-admin::icon name="ri-close" class="size-5" />
                     </button>
                 </div>
                 <div class="flex flex-col gap-3 overflow-auto p-4">
                     <p class="flex items-start gap-2 rounded bg-admin-warning/15 px-3 py-2.5 text-[12.5px] leading-relaxed text-[#8a5f18]">
-                        <x-admin::icon name="ri-alert" class="mt-0.5 size-4 shrink-0" />
+                        <x-bs-admin::icon name="ri-alert" class="mt-0.5 size-4 shrink-0" />
                         <span>{{ $workflow['is_live'] && ! $action['to_published'] ? __('admin.wfb.modal_retract') : __('admin.wfb.modal_return', ['label' => $action['to_label']]) }}</span>
                     </p>
                     <p class="text-[12.5px] leading-relaxed text-body-muted">{{ __('admin.wfb.modal_hint') }}</p>
@@ -239,7 +239,7 @@
                                   :class="bad ? 'border-admin-danger-text ring-[3px] ring-admin-danger/15' : 'border-border focus:border-accent'"
                                   placeholder="{{ __('admin.wfb.note_placeholder') }}"></textarea>
                         <p x-cloak x-show="bad" class="flex items-center gap-1.5 text-xs font-semibold text-[#c0432c]">
-                            <x-admin::icon name="ri-error-warning" class="size-3.5" />{{ __('admin.wfb.note_missing') }}
+                            <x-bs-admin::icon name="ri-error-warning" class="size-3.5" />{{ __('admin.wfb.note_missing') }}
                         </p>
                         @error('transitionNote') <p class="text-xs font-semibold text-[#c0432c]">{{ $message }}</p> @enderror
                     </div>
@@ -256,8 +256,8 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap justify-end gap-2 border-t border-border-soft bg-surface-muted px-4 py-3">
-                    <x-admin::button color="light" x-on:click="close()" x-ref="cancel-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">{{ __('admin.cancel') }}</x-admin::button>
-                    <x-admin::button color="danger" variant="outline" x-on:click="submit(@js($action['key']))" wire:loading.attr="disabled" class="@max-[560px]:w-full pointer-coarse:min-h-11">{{ $action['label'] }}</x-admin::button>
+                    <x-bs-admin::button color="light" x-on:click="close()" x-ref="cancel-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button color="danger" variant="outline" x-on:click="submit(@js($action['key']))" wire:loading.attr="disabled" class="@max-[560px]:w-full pointer-coarse:min-h-11">{{ $action['label'] }}</x-bs-admin::button>
                 </div>
             </div>
         </div>

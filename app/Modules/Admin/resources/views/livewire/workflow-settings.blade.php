@@ -1,9 +1,9 @@
-<x-admin::settings-shell active="workflow">
+<x-bs-admin::settings-shell active="workflow">
     @if (session('status'))
-        <x-admin::alert color="success" icon="shield">{{ session('status') }}</x-admin::alert>
+        <x-bs-admin::alert color="success" icon="shield">{{ session('status') }}</x-bs-admin::alert>
     @endif
     @error('template')
-        <x-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-admin::alert>
+        <x-bs-admin::alert color="danger" icon="ri-error-warning">{{ $message }}</x-bs-admin::alert>
     @enderror
 
     <div
@@ -40,23 +40,23 @@
     >
         @if (! $hasAnyWorkflow && $rows !== [])
             {{-- First-run explainer: what an approval flow is, one primary CTA (no dead-end). --}}
-            <x-admin::card>
+            <x-bs-admin::card>
                 <div class="flex flex-col items-start gap-3 py-2 sm:flex-row sm:items-center">
                     <span class="flex size-11 shrink-0 items-center justify-center rounded-full bg-admin-primary/10 text-accent">
-                        <x-admin::icon name="ri-flow-chart" class="size-5" />
+                        <x-bs-admin::icon name="ri-flow-chart" class="size-5" />
                     </span>
                     <div class="min-w-0 flex-1">
                         <p class="text-sm font-semibold text-heading">{{ __('admin.wf.empty_title') }}</p>
                         <p class="mt-0.5 text-sm text-body-muted">{{ __('admin.wf.empty_body') }}</p>
                     </div>
-                    <x-admin::button color="primary" x-on:click="openFor(@js($rows[0]))">
+                    <x-bs-admin::button color="primary" x-on:click="openFor(@js($rows[0]))">
                         {{ __('admin.wf.empty_cta') }}
-                    </x-admin::button>
+                    </x-bs-admin::button>
                 </div>
-            </x-admin::card>
+            </x-bs-admin::card>
         @endif
 
-        <x-admin::card :title="__('admin.workflow_settings_title')">
+        <x-bs-admin::card :title="__('admin.workflow_settings_title')">
             <p class="mb-4 text-sm text-body-muted">{{ __('admin.wf.subtitle') }}</p>
 
             @if ($rows === [])
@@ -68,7 +68,7 @@
                             {{-- Section name + volume --}}
                             <div class="flex min-w-0 flex-1 items-center gap-3">
                                 <span class="flex size-9 shrink-0 items-center justify-center rounded bg-surface-hover text-body-muted">
-                                    <x-admin::icon :name="$row['icon'] ?? 'newspaper'" class="size-4.5" />
+                                    <x-bs-admin::icon :name="$row['icon'] ?? 'newspaper'" class="size-4.5" />
                                 </span>
                                 <div class="min-w-0">
                                     <p class="truncate text-sm font-medium text-heading">{{ $row['label'] }}</p>
@@ -86,11 +86,11 @@
                                     </div>
                                     @if ($row['active'])
                                         <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-admin-success/10 px-2.5 py-0.5 text-[11px] font-bold text-[#0a6d60]">
-                                            <x-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ __('admin.wf.enabled') }}
+                                            <x-bs-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ __('admin.wf.enabled') }}
                                         </span>
                                     @else
                                         <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-hover px-2.5 py-0.5 text-[11px] font-bold text-body-muted">
-                                            <x-admin::icon name="ri-pause-circle" class="size-3.5" />{{ __('admin.wf.disabled') }}
+                                            <x-bs-admin::icon name="ri-pause-circle" class="size-3.5" />{{ __('admin.wf.disabled') }}
                                         </span>
                                     @endif
                                     @if ($row['pending'] > 0)
@@ -105,10 +105,10 @@
 
                             {{-- Actions --}}
                             <div class="flex shrink-0 items-center gap-2">
-                                <x-admin::button color="light" size="sm" x-on:click="openFor(@js($row))">
-                                    <x-admin::icon :name="$row['template'] ? 'ri-repeat-2' : 'ri-add'" class="size-4" />
+                                <x-bs-admin::button color="light" size="sm" x-on:click="openFor(@js($row))">
+                                    <x-bs-admin::icon :name="$row['template'] ? 'ri-repeat-2' : 'ri-add'" class="size-4" />
                                     {{ $row['template'] ? __('admin.wf.change') : __('admin.wf.choose') }}
-                                </x-admin::button>
+                                </x-bs-admin::button>
                                 @if ($row['template'] !== null)
                                     @if ($row['active'] && $row['pending'] > 0)
                                         <button type="button" role="switch" aria-checked="true"
@@ -136,7 +136,7 @@
                     @endforeach
                 </ul>
             @endif
-        </x-admin::card>
+        </x-bs-admin::card>
 
         {{-- Template picker + step-map preview (design: "Xem sơ đồ các bước") --}}
         <div x-cloak x-show="open" class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
@@ -148,7 +148,7 @@
                         <p class="mt-0.5 text-sm text-body-muted">{{ __('admin.wf.modal_hint') }}</p>
                     </div>
                     <button type="button" class="flex size-9 items-center justify-center rounded text-body-muted hover:bg-surface-hover" x-on:click="open = false" aria-label="{{ __('admin.close') }}">
-                        <x-admin::icon name="x" class="size-5" />
+                        <x-bs-admin::icon name="x" class="size-5" />
                     </button>
                 </div>
 
@@ -166,7 +166,7 @@
                             <span class="flex items-center justify-between gap-2">
                                 <span class="text-sm font-medium text-heading" x-text="t.name"></span>
                                 <span x-show="t.locked" class="inline-flex items-center gap-1 rounded-full bg-surface-hover px-2 py-0.5 text-[10.5px] font-bold text-body-muted">
-                                    <x-admin::icon name="lock" class="size-3" />{{ __('admin.wf.locked') }}
+                                    <x-bs-admin::icon name="lock" class="size-3" />{{ __('admin.wf.locked') }}
                                 </span>
                             </span>
                             <span class="mt-1 block text-xs text-body-muted" x-text="t.states.length + ' {{ __('admin.wf.steps_unit') }}'"></span>
@@ -211,7 +211,7 @@
                                         <span x-text="s.label"></span>
                                         <span x-show="s.is_published" class="font-bold">· {{ __('admin.wf.public_step') }}</span>
                                     </span>
-                                    <x-admin::icon x-show="i < tpl().states.length - 1" name="chevron-right" class="size-3.5 text-placeholder" />
+                                    <x-bs-admin::icon x-show="i < tpl().states.length - 1" name="chevron-right" class="size-3.5 text-placeholder" />
                                 </li>
                             </template>
                         </ol>
@@ -247,15 +247,15 @@
                 </template>
 
                 <div class="mt-5 flex flex-wrap justify-end gap-2 border-t border-border pt-4">
-                    <x-admin::button color="light" x-on:click="open = false">{{ __('admin.cancel') }}</x-admin::button>
-                    <x-admin::button color="light"
+                    <x-bs-admin::button color="light" x-on:click="open = false">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button color="light"
                                      x-bind:disabled="tpl() === null || tpl().locked || (row && row.template === selected)"
-                                     x-on:click="submit(false)" wire:loading.attr="disabled">{{ __('admin.wf.apply') }}</x-admin::button>
-                    <x-admin::button color="primary"
+                                     x-on:click="submit(false)" wire:loading.attr="disabled">{{ __('admin.wf.apply') }}</x-bs-admin::button>
+                    <x-bs-admin::button color="primary"
                                      x-bind:disabled="tpl() === null || tpl().locked || (row && row.template === selected && row.active)"
-                                     x-on:click="submit(true)" wire:loading.attr="disabled">{{ __('admin.wf.apply_on') }}</x-admin::button>
+                                     x-on:click="submit(true)" wire:loading.attr="disabled">{{ __('admin.wf.apply_on') }}</x-bs-admin::button>
                 </div>
             </div>
         </div>
     </div>
-</x-admin::settings-shell>
+</x-bs-admin::settings-shell>

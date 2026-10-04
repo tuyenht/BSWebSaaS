@@ -14,7 +14,7 @@
             aria-label="{{ __('admin.customize_theme') }}"
             class="fixed bottom-6 end-6 z-40 hidden size-12 place-items-center rounded-full bg-admin-info-solid text-white shadow-lg transition-transform hover:scale-105 md:grid">
         {{-- Slow continuous spin draws the eye to the launcher (Velzon parity); paused for reduced-motion. --}}
-        <x-admin::icon name="settings" class="size-5 customizer-gear" />
+        <x-bs-admin::icon name="settings" class="size-5 customizer-gear" />
     </button>
 
     <div x-show="$store.adminTheme.open" x-transition.opacity @click="$store.adminTheme.open = false" x-cloak
@@ -31,7 +31,7 @@
             <h2 class="text-sm font-semibold">{{ __('admin.customize_theme') }}</h2>
             <button type="button" @click="$store.adminTheme.open = false" aria-label="{{ __('admin.close') }}"
                     class="ms-auto grid size-8 place-items-center rounded transition-colors hover:bg-white/10">
-                <x-admin::icon name="x" class="size-4" />
+                <x-bs-admin::icon name="x" class="size-4" />
             </button>
         </header>
 
@@ -40,8 +40,8 @@
                 <legend class="text-[11px] font-semibold uppercase tracking-wider text-body-muted">{{ __('admin.theme_scheme') }}</legend>
                 <p class="mb-2 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_scheme_desc') }}</p>
                 <div class="grid grid-cols-2 gap-3">
-                    <x-admin::theme-option axis="scheme" value="light" name="ct-scheme" :label="__('admin.theme_light')" store />
-                    <x-admin::theme-option axis="scheme" value="dark" name="ct-scheme" :label="__('admin.theme_dark')" store />
+                    <x-bs-admin::theme-option axis="scheme" value="light" name="ct-scheme" :label="__('admin.theme_light')" store />
+                    <x-bs-admin::theme-option axis="scheme" value="dark" name="ct-scheme" :label="__('admin.theme_dark')" store />
                 </div>
             </fieldset>
 
@@ -63,8 +63,8 @@
                     <legend class="text-[11px] font-semibold uppercase tracking-wider text-body-muted">{{ __('admin.theme_topbar') }}</legend>
                     <p class="mb-2 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_topbar_desc') }}</p>
                     <div class="grid grid-cols-2 gap-3">
-                        <x-admin::theme-option axis="topbar" value="light" name="ct-topbar" :label="__('admin.theme_light')" store />
-                        <x-admin::theme-option axis="topbar" value="dark" name="ct-topbar" :label="__('admin.theme_dark')" store />
+                        <x-bs-admin::theme-option axis="topbar" value="light" name="ct-topbar" :label="__('admin.theme_light')" store />
+                        <x-bs-admin::theme-option axis="topbar" value="dark" name="ct-topbar" :label="__('admin.theme_dark')" store />
                     </div>
                 </fieldset>
 
@@ -85,12 +85,12 @@
                     <legend class="text-[11px] font-semibold uppercase tracking-wider text-body-muted">{{ __('admin.theme_sidebar') }}</legend>
                     <p class="mb-2 mt-0.5 text-xs text-body-muted">{{ __('admin.theme_sidebar_desc') }}</p>
                     <div class="grid grid-cols-2 gap-3">
-                        <x-admin::theme-option axis="sidebar" value="dark" name="ct-sidebar" :label="__('admin.theme_dark')" store />
-                        <x-admin::theme-option axis="sidebar" value="light" name="ct-sidebar" :label="__('admin.theme_light')" store />
-                        <x-admin::theme-option axis="sidebar" value="gradient" name="ct-sidebar" :label="__('admin.theme_gradient')" store />
-                        <x-admin::theme-option axis="sidebar" value="gradient-2" name="ct-sidebar" :label="__('admin.theme_gradient_2')" store />
-                        <x-admin::theme-option axis="sidebar" value="gradient-3" name="ct-sidebar" :label="__('admin.theme_gradient_3')" store />
-                        <x-admin::theme-option axis="sidebar" value="gradient-4" name="ct-sidebar" :label="__('admin.theme_gradient_4')" store />
+                        <x-bs-admin::theme-option axis="sidebar" value="dark" name="ct-sidebar" :label="__('admin.theme_dark')" store />
+                        <x-bs-admin::theme-option axis="sidebar" value="light" name="ct-sidebar" :label="__('admin.theme_light')" store />
+                        <x-bs-admin::theme-option axis="sidebar" value="gradient" name="ct-sidebar" :label="__('admin.theme_gradient')" store />
+                        <x-bs-admin::theme-option axis="sidebar" value="gradient-2" name="ct-sidebar" :label="__('admin.theme_gradient_2')" store />
+                        <x-bs-admin::theme-option axis="sidebar" value="gradient-3" name="ct-sidebar" :label="__('admin.theme_gradient_3')" store />
+                        <x-bs-admin::theme-option axis="sidebar" value="gradient-4" name="ct-sidebar" :label="__('admin.theme_gradient_4')" store />
                     </div>
                 </fieldset>
 

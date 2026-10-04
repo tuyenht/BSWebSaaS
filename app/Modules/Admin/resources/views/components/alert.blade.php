@@ -21,7 +21,7 @@
      @if ($dismissible) x-data="{ show: true }" x-show="show" @endif
      {{ $attributes->merge(['class' => 'flex items-start gap-2.5 rounded px-3.5 py-3 text-sm '.$tone]) }}>
     @if ($icon)
-        <x-admin::icon :name="$icon" class="mt-0.5 size-5 shrink-0" />
+        <x-bs-admin::icon :name="$icon" class="mt-0.5 size-5 shrink-0" />
     @endif
     <div class="flex-1">{{ $slot }}</div>
     @if ($dismissible)

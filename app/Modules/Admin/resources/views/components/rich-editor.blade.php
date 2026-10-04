@@ -4,7 +4,7 @@
     'value' => '',
     'rows' => 8,
 ])
-{{-- ONE-LINE rich editor: <x-admin::rich-editor target="description" profile="full" :value="$description" />
+{{-- ONE-LINE rich editor: <x-bs-admin::rich-editor target="description" profile="full" :value="$description" />
      Livewire 4 bridge, DOM-only by design ($wire.$set defaults to live = a request per
      keystroke, and the island must not depend on Livewire JS internals):
      · content OUT:  the island mirrors Jodit's HTML into the hidden [data-rich-sync] input

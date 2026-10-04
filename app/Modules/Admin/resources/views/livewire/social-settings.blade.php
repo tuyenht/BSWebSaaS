@@ -1,4 +1,4 @@
-<x-admin::settings-shell active="social">
+<x-bs-admin::settings-shell active="social">
     @if (session('status'))
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>
     @endif
@@ -16,11 +16,11 @@
             <div class="flex items-center gap-2" x-data="{ copied: false }">
                 <input type="text" readonly value="{{ $redirectUri }}"
                        class="block w-full select-all rounded border border-border-strong bg-surface-muted px-3 py-2 font-mono text-xs text-body-text">
-                <x-admin::button type="button" variant="soft" size="sm"
+                <x-bs-admin::button type="button" variant="soft" size="sm"
                                  x-on:click="navigator.clipboard.writeText('{{ $redirectUri }}'); copied = true; setTimeout(() => copied = false, 1500)">
                     <span x-show="!copied">{{ __('admin.copy') }}</span>
                     <span x-show="copied" x-cloak>{{ __('admin.copied') }}</span>
-                </x-admin::button>
+                </x-bs-admin::button>
             </div>
             <p class="text-xs text-body-muted">{{ __('admin.redirect_uri_hint') }}</p>
             <ol class="list-decimal space-y-1 pl-5 text-xs text-body-muted">
@@ -45,18 +45,18 @@
                 </label>
             </div>
             <div class="grid gap-4 p-5 sm:grid-cols-2">
-                <x-admin::input :label="__('admin.client_id')" wire:model="forms.{{ $provider }}.client_id" />
+                <x-bs-admin::input :label="__('admin.client_id')" wire:model="forms.{{ $provider }}.client_id" />
                 <div>
-                    <x-admin::input :label="__('admin.client_secret')" type="password" wire:model="forms.{{ $provider }}.client_secret" autocomplete="new-password"
+                    <x-bs-admin::input :label="__('admin.client_secret')" type="password" wire:model="forms.{{ $provider }}.client_secret" autocomplete="new-password"
                                     :placeholder="($secretSet[$provider] ?? false) ? __('admin.secret_stored') : ''" />
                     @if ($secretSet[$provider] ?? false)
                         <p class="mt-1 text-xs text-body-muted">{{ __('admin.leave_blank_keep') }}</p>
                     @endif
                 </div>
                 <div class="sm:col-span-2">
-                    <x-admin::button type="submit" size="sm" wire:loading.attr="disabled" wire:target="save('{{ $provider }}')">{{ __('admin.save') }}</x-admin::button>
+                    <x-bs-admin::button type="submit" size="sm" wire:loading.attr="disabled" wire:target="save('{{ $provider }}')">{{ __('admin.save') }}</x-bs-admin::button>
                 </div>
             </div>
         </form>
     @endforeach
-</x-admin::settings-shell>
+</x-bs-admin::settings-shell>

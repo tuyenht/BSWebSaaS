@@ -34,7 +34,7 @@
         {{-- Brand (from config — white-label safe) --}}
         <div class="flex h-[var(--spacing-header)] shrink-0 items-center px-4">
             <a href="{{ route('admin.dashboard') }}" wire:navigate class="sidebar-brand-link flex w-full items-center justify-center gap-2.5 text-sidebar-brand">
-                <x-admin::brand-logo />
+                <x-bs-admin::brand-logo />
             </a>
         </div>
 
@@ -73,14 +73,14 @@
                                             'group flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
                                             $currentRow => $item->active,
                                         ])>
-                                    <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
+                                    <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                     <span class="sidebar-label flex-1 text-start">{{ $item->label }}</span>
                                     {{-- Slim reference glyph (~1.05rem), color:inherit — brightens with the states
                                          above; rotates down when open OR when this is the active page's group. --}}
                                     {{-- 12px frame: the reference's font glyph fills only ~half its 1.05rem em-box,
                                          so an SVG at the same frame size reads ~1.5× bigger — measured against the
                                          reference screenshot, 12px lands the same visual arrow size. --}}
-                                    <x-admin::icon name="arrow-right-s" class="sidebar-label size-3 shrink-0 transition-transform" ::class="(openGroup === '{{ $item->key }}' || {{ $item->active ? 'true' : 'false' }}) && 'rotate-90'" />
+                                    <x-bs-admin::icon name="arrow-right-s" class="sidebar-label size-3 shrink-0 transition-transform" ::class="(openGroup === '{{ $item->key }}' || {{ $item->active ? 'true' : 'false' }}) && 'rotate-90'" />
                                 </button>
                                 <ul x-show="openGroup === '{{ $item->key }}'" x-cloak class="mt-1 space-y-0.5 ps-4">
                                     @foreach ($item->children as $child)
@@ -103,7 +103,7 @@
                                    'group flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors hover:text-sidebar-fg-hover',
                                    $currentRow => $item->active,
                                ])>
-                                <x-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
+                                <x-bs-admin::icon :name="$item->icon ?? 'doc'" class="size-5 shrink-0" />
                                 <span class="sidebar-label">{{ $item->label }}</span>
                                 @if ($item->badge !== null)
                                     {{-- Work waiting on this person; hidden with the labels when the rail collapses. --}}
@@ -126,17 +126,17 @@
         <header class="admin-topbar sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar ps-3 pe-6 shadow-card">
             <button type="button" @click="open = true" aria-label="{{ __('admin.open_menu') }}"
                     class="grid size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:hidden">
-                <x-admin::icon name="menu" class="size-5" />
+                <x-bs-admin::icon name="menu" class="size-5" />
             </button>
             <button type="button" @click="$store.adminTheme.set('sidebar_size', $store.adminTheme.state.sidebar_size === 'sm' ? 'lg' : 'sm')" aria-label="{{ __('admin.collapse_menu') }}"
                     class="hidden size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg lg:grid">
-                <x-admin::icon name="menu" class="size-5" />
+                <x-bs-admin::icon name="menu" class="size-5" />
             </button>
 
             {{-- Search --}}
             <div class="relative hidden sm:block">
                 <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-topbar-search-placeholder">
-                    <x-admin::icon name="search" class="size-4" />
+                    <x-bs-admin::icon name="search" class="size-4" />
                 </span>
                 <input type="search" aria-label="{{ __('admin.search') }}" placeholder="{{ __('admin.search_placeholder') }}"
                        class="w-56 rounded border border-topbar-search-border bg-topbar-search py-2 pl-9 pr-3 text-sm text-topbar-search-fg placeholder:text-topbar-search-placeholder transition-colors focus:border-topbar-search-accent focus:bg-topbar-search-focus lg:w-72">

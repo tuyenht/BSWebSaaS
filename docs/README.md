@@ -45,7 +45,7 @@ Claude Design đọc repo qua GitHub (nhánh `main`) nhưng không chạy code; 
 3. Đối tượng không rành công nghệ: trạng thái trống · đang tải · lỗi bằng lời thường · không ngõ cụt · mobile-first ·
    tương phản WCAG AA (CLAUDE.md §10.3 mục 6).
 4. Mô hình dữ liệu thật của repo (bảng/cột/registry; không lộ id số).
-5. Ràng buộc kỹ thuật: Livewire 4 + Blade + Tailwind 4, component `<x-admin::*>`, icon Remix dạng inline-SVG,
+5. Ràng buộc kỹ thuật: Livewire 4 + Blade + Tailwind 4, component `<x-bs-admin::*>`, icon Remix dạng inline-SVG,
    KHÔNG Bootstrap/Flux; chỉ dùng token AdminKit (`admin-architecture-decision.md`).
 6. Đầu ra: prototype tương tác `.dc.html` + README theo mẫu ở trên, lưu vào `design_handoff_<slug>/`.
 
