@@ -40,6 +40,10 @@ for f in sorted((SRC / 'fixes').glob('*.md')):
     pid, name = title.lstrip('# ').strip().split(' · ', 1)
     fixes.append({'id': pid, 'name': name, 'file': 'fixes/' + f.name, 'body': body.strip()})
 
+# Corrective prompts the owner has already run, with the day they ran it. Their cards fold away
+# on every device; the browser-local "Xong" boxes would only hide them on one browser.
+FIXES_RUN = {'D0-2s': '04/10'}
+
 WAVES = [
     ('D0', 'Nền', 'Làm trước mọi thứ: dọn project, chuẩn giao diện (component + mẫu trang + thuật ngữ + tiêu chí dễ dùng), Shell v2 + registry màn, nối màn đã có, rồi rà & sửa hiển thị điện thoại/máy tính bảng cho mọi màn đã có (D0-6a/6b/6c).', 'Bắt đầu được ngay'),
     ('D1', 'Nội dung', 'Chuyên mục, trình đơn, danh sách + trình soạn nội dung, sản phẩm, thư viện, liên hệ & biểu mẫu.', 'Cần D0 · backend trình đơn + sản phẩm đã sẵn'),
@@ -139,8 +143,9 @@ dec_rows = ''.join(
     f'<li class="dec"><span class="qid">{q}</span><div><p class="dq">{e(t)}</p><p class="da">{e(a)}</p></div></li>'
     for q, t, a in DECISIONS)
 
-fix_cards = ''.join(f'''
-<article class="card is-next" data-id="{p['id']}">
+def fix_card(p, ran):
+    return f'''
+<article class="card{'' if ran else ' is-next'}" data-id="{p['id']}">
   <div class="card-head">
     <span class="pid">{p['id']}</span>
     <h3>{e(p['name'])}</h3>
@@ -150,7 +155,18 @@ fix_cards = ''.join(f'''
     <summary>Xem nội dung <span class="file">{e(p['file'])}</span></summary>
     <pre id="b-{p['id']}">{e(p['body'])}</pre>
   </details>
-</article>''' for p in fixes)
+</article>'''
+
+fixes_open = [p for p in fixes if p['id'] not in FIXES_RUN]
+fixes_ran = [p for p in fixes if p['id'] in FIXES_RUN]
+ran_list = ' · '.join(f"{p['id']} ({FIXES_RUN[p['id']]})" for p in fixes_ran)
+fix_cards = ''.join(fix_card(p, False) for p in fixes_open) or '<p class="hint">Không có prompt sửa nào đang chờ chạy.</p>'
+if fixes_ran:
+    fix_cards += f'''
+    <details class="ran">
+      <summary>Đã chạy ({len(fixes_ran)}): {e(ran_list)} — bấm để xem lại</summary>
+      {''.join(fix_card(p, True) for p in fixes_ran)}
+    </details>'''
 fix_panel = f'''
   <section class="panel" aria-labelledby="fix-h">
     <div class="panel-head"><h2 id="fix-h">Prompt sửa sau kiểm — dán vào CHÍNH chat của lượt đó</h2><span class="hint">Không mở chat mới. Sửa xong thì xuất zip gửi Claude Code kiểm lại rồi mới sang lượt tiếp theo.</span></div>
@@ -259,6 +275,9 @@ td.mod {{ color:var(--muted); font-weight:600; width:110px; }}
 .need {{ font-size:12px; color:var(--muted); border:1px solid var(--border); border-radius:20px; padding:3px 10px; white-space:nowrap; }}
 .card {{ background:var(--surface); border:1px solid var(--border); border-radius:6px; }}
 .card.is-done {{ opacity:.62; }}
+.ran {{ display:flex; flex-direction:column; gap:10px; }}
+.ran > summary {{ font-size:13px; color:var(--muted); cursor:pointer; min-height:34px; display:flex; align-items:center; }}
+.ran .card {{ opacity:.75; }}
 .card-head {{ display:grid; grid-template-columns:auto auto auto 1fr auto; align-items:center; gap:10px; padding:10px 12px; }}
 .card.is-next {{ border-color:var(--brand); box-shadow:0 0 0 2px var(--brand-soft); }}
 .next-tag {{ font-size:11px; font-weight:700; color:#fff; background:#405189; padding:2px 8px; border-radius:20px; white-space:nowrap; }}
@@ -309,7 +328,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       <li><b>Mở một cửa sổ chat MỚI</b> trong project Claude Design BSWebSaaS, dán và gửi. Không gộp 2 lượt vào 1 cửa sổ.</li>
       <li><b>Xong thì tích ô "Xong"</b> và gửi bản export cho Claude Code để đối chiếu với code trước khi build.</li>
     </ol>
-    <p class="hint">Bản 3.15 (04/10 trưa): D0-1 đạt; D0-2 chạy "D0-2s" ở khung dưới trong CHÍNH chat D0-2 trước khi sang D0-3. D0-3 viết lại sau 4 vòng audit: làm 2 phần trong cùng một chat (phần 1 chữ & luật: thuật ngữ · định dạng · giọng văn · trạng thái · tiêu chí · người dùng mẫu; phần 2 mẫu trang — nếu lượt dừng sau phần 1, nhắn "Làm D0-3 phần 2"); bảng thuật ngữ đã chốt sẵn: nhóm quyền theo thiết kế (Chủ website · Quản trị · Biên tập · Người viết · Cộng tác viên · Chỉ xem), "Hẹn giờ đăng", "Đưa về nháp" ≠ "Gỡ khỏi website", "Không công khai", Hạn ngạch ≠ Hạn mức, "Đăng nhập dưới tên khách hàng". Bối cảnh chung mọi lượt: màu CHỈ qua token (tông Bảo Sơn Hoàng gia); chính tả Xóa · Hủy · Khóa · tùy · Bỏ lọc (kiểu dấu cũ cho vần oa/oe/uy không có phụ âm cuối; viết hoa theo vị trí); mẫu danh sách "Bỏ lọc" + "Hẹn giờ đăng"; dòng TODO.md gắn tên lượt là việc của lượt đó.</p>
+    <p class="hint">Bản 3.15 (04/10 trưa): D0-1 đạt; D0-2s đã chạy (04/10) — gửi zip cho Claude Code kiểm, đạt thì sang D0-3. D0-3 viết lại sau 4 vòng audit: làm 2 phần trong cùng một chat (phần 1 chữ & luật: thuật ngữ · định dạng · giọng văn · trạng thái · tiêu chí · người dùng mẫu; phần 2 mẫu trang — nếu lượt dừng sau phần 1, nhắn "Làm D0-3 phần 2"); bảng thuật ngữ đã chốt sẵn: nhóm quyền theo thiết kế (Chủ website · Quản trị · Biên tập · Người viết · Cộng tác viên · Chỉ xem), "Hẹn giờ đăng", "Đưa về nháp" ≠ "Gỡ khỏi website", "Không công khai", Hạn ngạch ≠ Hạn mức, "Đăng nhập dưới tên khách hàng". Bối cảnh chung mọi lượt: màu CHỈ qua token (tông Bảo Sơn Hoàng gia); chính tả Xóa · Hủy · Khóa · tùy · Bỏ lọc (kiểu dấu cũ cho vần oa/oe/uy không có phụ âm cuối; viết hoa theo vị trí); mẫu danh sách "Bỏ lọc" + "Hẹn giờ đăng"; dòng TODO.md gắn tên lượt là việc của lượt đó.</p>
     <p class="hint">Bản 3.13 (04/10): theo code 01–03/10, CHỈ đổi các lượt D2–D4 (D0, D1 không đổi — cứ chạy tiếp). D3-2 mục Tên miền và D4-1 tab Tên miền: khách TỰ gắn tên miền riêng, trỏ về MỘT địa chỉ chung (không ghi IP), cặp có / không www, Bật HTTPS là bước riêng, tranh chấp chỉ xử bằng bản ghi TXT, vẽ đủ trạng thái tên miền hỏng / còn 7 ngày / đã ngừng / hoạt động lại. D2-4 thêm thông báo tên miền (chuông + thư) và thông báo đăng nhập dưới tên khách đã có thật (11 loại). D4-1 tab Tính năng và D4-2: ghi đè theo website có nút "Bỏ ghi đè", "Số website tối đa" chỉ đặt theo gói khách hàng, thêm "Số tên miền riêng tối đa"; hạ hạn mức không gỡ thứ đang có. D2-5 thêm việc "tên miền cần sửa".</p>
     <p class="hint">Bản 3.12 (30/09 22:5x): QUY TRÌNH DUYỆT dời lên console — nền tảng cấp riêng cho từng website ở Nền tảng › Website › chi tiết › tab "Quy trình duyệt" (D4-1), KHÔNG còn ở Cài đặt website (D0-4a, D0-5, D3-1 sửa theo); người của nền tảng chỉ vào admin website bằng "Đăng nhập dưới tên khách" (design.md v2.36). D0-1 đã chạy: dán đoạn bổ sung owner nhận trong phiên R43.</p>
     <p class="hint">Bản 3.11 (30/09 tối): đăng nhập hỗ trợ = ĐĂNG NHẬP DƯỚI TÊN KHÁCH (owner làm rõ C3, design.md v2.33 — kiểu "Log In as Customer" của Plesk): D4-3 vẽ lại hộp, thanh "Đang đăng nhập với tên … · Quay lại quản trị", danh sách các lần đăng nhập, nhật ký "thay mặt"; D4-1 thêm hành động trên từng dòng Website; D3-2 đổi tên công tắc của chủ website; D2-4 thêm loại thông báo bảo mật; D0-4b, D5-2 đổi tên theo. D0-1, D0-2, D0-3, D0-4a, D0-5, D0-6 KHÔNG đổi. Bản 3.10 (30/09 chiều): luật bảng cuộn trong khung ghi rõ là ngoại lệ của tiêu chí 8 (chỉ bảng dữ liệu); D1-2 kiểm hồi quy theo bảng thiết bị; D1-4d mục 1 khớp quyết định Q4. Bản 3.9 (30/09 chiều): HIỂN THỊ ĐA THIẾT BỊ (owner báo màn Quy trình duyệt vỡ trên điện thoại) — bối cảnh chung của mọi lượt có bảng thiết bị 360→1440 + xoay ngang × Chrome/Safari iOS/Firefox/Samsung Internet, luật "bảng → thẻ gọn, không xếp mỗi cột một dòng", công tắc đứng cạnh tên việc, hộp thoại trượt từ đáy, README có bảng Kiểm hiển thị; D0-2 thêm mẫu co giãn dùng chung; thêm D0-6a/6b/6c rà & sửa toàn bộ 32 màn đã vẽ (trình soạn ở D1-4d, 6c bộ AI không chặn D1–D4). Cũng trong bản này: D1-4d vẽ đủ ba trường hợp của thay đổi chờ — tắt duyệt có quyền Đăng (lên ngay), tắt duyệt không có quyền Đăng ("Lưu thay đổi" → chờ "Cập nhật website", theo quyết định Q4), bật duyệt (gửi duyệt, khoá sau khi gửi) — cùng câu báo lỗi thật của backend C5. Bản 3.8 (30/09): owner chốt C1–C7 theo khuyến nghị; D1-4d vẽ thẳng hai chế độ tắt/bật duyệt (không còn A/B để chọn); Bước 0 gộp vào D0-1 (Claude Design tự sửa CLAUDE.md đúng 3 chỗ) — chỉ còn việc chép–dán từng prompt. Bản 3.7 (29/09 khuya): công tắc "Lời mời nâng gói" theo ý owner (mặc định tắt, vẽ ở D4-2, hiện ở mọi màn có tính năng ngoài gói); thêm màn Nhật ký hoạt động của website (D4-3, menu Hệ thống); báo khi hai người cùng sửa một bài (D1-4d); ô nhập tiếng Ả Rập viết phải-sang-trái; chuẩn định dạng ngày/giờ/tiền (D0-3); trợ năng cho component (D0-2); bắt buộc thành viên bật 2 lớp (D3-2). Bản 3.6 (29/09 tối): soát lại lần 2 — luật AI theo quyết định Q12 vào bối cảnh chung (nút AI chỉ hiện khi website được cấp); mọi mã màu cứng ở phần lượt chạm đổi sang token; 7 mục "Cần owner chốt" có khuyến nghị và prompt vẽ đúng khuyến nghị (khoá màn hình khoá thật ở máy chủ, khôi phục chạy nền, phiên hỗ trợ bị giới hạn + chủ website tắt được, xoá theo yêu cầu khách là xoá hẳn); D4 ghi đúng quyền registry; thêm Bước 0 cho CLAUDE.md của project. Bản 3.5 (29/09, chưa chạy lượt nào): audit khắt khe cả 25 prompt với bản export thiết kế + repo. Tách D0-4 → D0-4a/4b và D1-4b → D1-4b/4c/4d cho vừa một lượt; D0-1 đồng bộ token AA vào design system + nguồn thương hiệu duy nhất (platform-config.js) + nối "lượt AI" của Shell với ai-quota.js; giữ Khoá màn hình, Dữ liệu & Phục hồi, 9 nguồn ảnh của MediaPicker (không cắt vì backend); xoá vào Thùng rác không hỏi (Hoàn tác 8 giây), chỉ hỏi khi kéo theo mục khác hoặc không hoàn tác được; màn toàn trang khi nhúng GIỮ thanh thao tác của mình; thêm mã lỗi thật còn thiếu (Chuyên mục, Thư viện 16/16, Lời mời); kiểm bằng lưới mẫu thay tích số đầy đủ; mỗi lượt lớn có điểm dừng "phần 2". Bản 3.4 (29/09): THIẾT KẾ DẪN, BACKEND THEO — màn cần gì mà repo chưa có thì cứ vẽ, ghi vào "Việc cho backend" của README; không cắt tính năng, không vẽ trạng thái tạm. mọi lượt nhận token #92 (màu secondary/dark 2 bậc, placeholder chỉ chứa ví dụ, --primary-on-ink) và "Mẫu DANH SÁCH dùng chung" lấy từ thiết kế Bài viết/Trang đã build (mọi màn danh sách dùng lại, không chế mới); tiêu chí 6 giữ Thùng rác + Hoàn tác, chỗ backend chưa có thì ghi Chờ backend; D1-2 Trình đơn = thiết kế đã có, chỉ khớp (trục ngôn ngữ, trạng thái nguồn sản phẩm, bảng tính năng chờ backend); D1-1 Chuyên mục, D1-4b Lịch sử phiên bản theo backend đã lên prod; D1-3, D1-6, D1-7 (ô đồng ý), D0-2/D3-1 (bảng màu 10 bậc), D3-2 (tên miền riêng để sau), D4-1 (cấp thêm ngôn ngữ). Bản 3.2 (26/09): D0-4, D3-1, D4-2 — website mặc định 1 ngôn ngữ, thêm ngôn ngữ do Bảo Sơn cấp riêng. Bản 3 (24/09): 10 lượt (D0-1, D0-4, D1-2, D1-5, D2-2, D2-3, D2-4, D3-1, D4-2, D5-1) đã sửa theo backend vừa lên prod — bỏ các nhãn "Chờ backend" không còn đúng, thêm giới hạn và thông báo lỗi thật mà màn phải hiện. Bản 2 (23/09): 12 tiêu chí dễ dùng cho người không rành CNTT ở mọi lượt.</p>
