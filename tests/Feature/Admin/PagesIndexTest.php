@@ -9,6 +9,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
+use Illuminate\Support\Facades\Exceptions;
 use Livewire\Livewire;
 
 /*
@@ -387,6 +388,70 @@ it('bulk-publishes the selected rows', function (): void {
 
         expect($a->fresh()->status)->toBe('published')
             ->and($b->fresh()->status)->toBe('published');
+    });
+});
+
+it('bulk send skips rows the person may not send and counts only what moved', function (): void {
+    $author = User::factory()->create();
+    $colleague = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $colleague): void {
+        grantRole($author, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        $mine = makePageEntry($author, 'Bản nháp của tôi', 'cua-toi', 'draft');
+        $theirs = makePageEntry($colleague, 'Bản nháp đồng nghiệp', 'dong-nghiep', 'draft');
+        $live = makePageEntry($author, 'Trang đang chạy', 'dang-chay', 'published');
+        Exceptions::fake();
+
+        // A row the author may not send is not an error: it is skipped, and the toast says what was sent.
+        Livewire::actingAs($author->fresh())->test(Index::class)
+            ->set('selected', [$mine->ulid, $theirs->ulid, $live->ulid])
+            ->call('bulkPublish')
+            ->assertSet('selected', [])
+            ->assertDispatched('bs-toast', text: __('entries.bulk_sent', ['count' => 1]).' '.__('entries.bulk_skipped', ['count' => 2]));
+
+        Exceptions::assertNothingReported();
+        expect($mine->fresh()->status)->toBe('pending')
+            ->and($theirs->fresh()->status)->toBe('draft')
+            ->and($live->fresh()->status)->toBe('published');
+    });
+});
+
+it('never bulk-publishes or sends a row that is in the trash', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $draft = makePageEntry($editor, 'Bản nháp', 'ban-nhap', 'draft');
+        $trashed = makePageEntry($editor, 'Đã xóa', 'da-xoa', 'draft');
+        $trashed->delete();
+
+        // A selection forged with a trashed ulid: the trash is not a road to the website.
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->set('selected', [$draft->ulid, $trashed->ulid])
+            ->call('bulkPublish')
+            ->assertDispatched('bs-toast', text: __('entries.bulk_published', ['count' => 1]).' '.__('entries.bulk_skipped', ['count' => 1]));
+
+        $trashed = Entry::withTrashed()->whereKey($trashed->id)->first();
+        expect($draft->fresh()->status)->toBe('published')
+            ->and($trashed->trashed())->toBeTrue()
+            ->and($trashed->status)->toBe('draft')
+            ->and(SiteRoute::query()->where('entry_id', $trashed->id)->exists())->toBeFalse();
+    });
+});
+
+it("refuses a forged status change that would send a colleague's draft", function (): void {
+    $author = User::factory()->create();
+    $colleague = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $colleague): void {
+        grantRole($author, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        $theirs = makePageEntry($colleague, 'Bản nháp đồng nghiệp', 'dong-nghiep', 'draft');
+
+        Livewire::actingAs($author->fresh())->test(Index::class)
+            ->call('changeStatus', $theirs->ulid, 'published')
+            ->assertForbidden();
+
+        expect($theirs->fresh()->status)->toBe('draft');
     });
 });
 

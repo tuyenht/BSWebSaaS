@@ -509,8 +509,18 @@ final class Editor extends Component
         $current = $states->get($currentKey);
         $nextState = $states->values()->get($currentIndex + 1);
 
+        // A post not saved yet will be this user's own once the move persists it, so it is judged
+        // as theirs; the per-entry rule (EntryWorkflowResolver::mayApply) then hides a move the
+        // action would refuse.
+        $user = $this->user();
+        $subject = $entry ?? new Entry(['author_id' => $user->id]);
+        $resolver = app(EntryWorkflowResolver::class);
+
         $actions = [];
-        foreach (app(WorkflowEngine::class)->allowedTransitions($workflow, $fromState, $this->user()) as $transition) {
+        foreach (app(WorkflowEngine::class)->allowedTransitions($workflow, $fromState, $user) as $transition) {
+            if (! $resolver->mayApply($transition, $subject, $user)) {
+                continue;
+            }
             $destination = $states->get($transition->to_state);
             $actions[] = [
                 'key' => $transition->key,

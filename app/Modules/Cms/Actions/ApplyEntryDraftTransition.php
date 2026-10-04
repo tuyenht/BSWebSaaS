@@ -56,7 +56,7 @@ final readonly class ApplyEntryDraftTransition
      * @throws EntryNotGovernedException no workflow governs this entry (apply with ApplyEntryDraft)
      * @throws EntryDraftRejectedException not_live · change_stale · content_invalid · category_governed · slug_taken
      * @throws InvalidTransitionException unknown move, wrong origin, or a missing required note
-     * @throws AuthorizationException the actor lacks the move's permission
+     * @throws AuthorizationException the actor lacks the move's permission, or sends a change to an entry they may not edit
      */
     public function handle(
         Entry $entry,
@@ -87,6 +87,9 @@ final readonly class ApplyEntryDraftTransition
                 if ($change === null || ! hash_equals($change->version(), $seenVersion)) {
                     throw new EntryDraftRejectedException('change_stale');
                 }
+
+                // Sending a change on is working on its entry: the same per-entry rule as the entry's own moves.
+                $this->workflows->authorizeMove($workflow, $transitionKey, $entry, $actor);
 
                 $destination = $this->engine->apply(
                     $workflow, $transitionKey, $this->workflows->changeOriginFor($workflow, $change), $actor,

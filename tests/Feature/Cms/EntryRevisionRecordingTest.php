@@ -77,7 +77,7 @@ function revisionTally(Entry $entry): array
 }
 
 /** A news post under an ACTIVE draft → pending → published workflow. */
-function revisionGovernedPost(): Entry
+function revisionGovernedPost(?User $author = null): Entry
 {
     $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
     $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
@@ -87,7 +87,7 @@ function revisionGovernedPost(): Entry
     );
     SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'tin-tuc'], ['value' => ['pattern' => 'category']]);
 
-    $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft']);
+    $entry = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author?->id]);
     $entry->translations()->create(['locale' => 'vi', 'title' => 'Bản tin', 'slug' => 'ban-tin', 'status' => 'draft', 'body' => ['blocks' => []]]);
     $entry->assignCategories([$category->id]);
 
@@ -182,9 +182,9 @@ it('records a publish revision only when a workflow transition reaches the publi
     $approver = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $approver): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($approver, 'approver', ['entries.approve']);
-        $post = revisionGovernedPost();
+        $post = revisionGovernedPost($author);
         $action = app(ApplyEntryWorkflowTransition::class);
 
         $action->handle($post, 'vi', $author->fresh(), 'submit');

@@ -99,11 +99,11 @@ it('shows only what is waiting for me — not drafts, not live posts, not anothe
     $tenancy->enter(2, function (): void {
         $other = User::factory()->create();
         $categoryId = inboxCollection();
-        submittedPost($categoryId, tap($other, fn (User $u) => grantRole($u, 'author', ['entries.submit']))->fresh(), 'Bài site khác', 'bai-site-khac');
+        submittedPost($categoryId, tap($other, fn (User $u) => grantRole($u, 'author', ['entries.edit.own', 'entries.submit']))->fresh(), 'Bài site khác', 'bai-site-khac');
     });
 
     $tenancy->enter(1, function () use ($author, $reviewer): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
         $categoryId = inboxCollection();
 
@@ -135,7 +135,7 @@ it('separates "assigned to me" from the shared queue', function (): void {
     $colleague = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $reviewer, $colleague): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
         grantRole($colleague, 'colleague', ['entries.review', 'entries.approve']);
         $categoryId = inboxCollection();
@@ -166,7 +166,7 @@ it('demands a reason before sending a post back, and records who asked', functio
     $reviewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($reviewer, 'reviewer', ['entries.review']);
         $post = submittedPost(inboxCollection(), $author);
 
@@ -224,7 +224,7 @@ it('renders the inbox on a flat query budget regardless of how many posts are wa
     $reviewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
         $categoryId = inboxCollection();
         submittedPost($categoryId, $author, 'Bài 1', 'bai-1');
@@ -251,7 +251,7 @@ it('keeps the shared-queue count visible while the assigned-to-me tab is open', 
     $reviewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
         $categoryId = inboxCollection();
 
@@ -277,7 +277,7 @@ it('does not mix content types that share a stage key', function (): void {
     $newsOnly = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $newsOnly): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         // Can approve, cannot review: in `admin_approval` that is only the pending→published edge.
         grantRole($newsOnly, 'approver', ['entries.approve']);
 
@@ -305,7 +305,7 @@ it('approves a post that exists only in a non-default language instead of failin
     $reviewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
         $categoryId = inboxCollection();
 
@@ -336,7 +336,7 @@ it('carries the reviewer down the list, not back to the top', function (): void 
     $reviewer = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author, $reviewer): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
         grantRole($reviewer, 'reviewer', ['entries.review', 'entries.approve']);
         $categoryId = inboxCollection();
 

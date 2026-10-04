@@ -452,8 +452,13 @@ final class ReviewInbox extends Component
             ];
         }
 
+        $actor = $this->actor();
+        $resolver = app(EntryWorkflowResolver::class);
         $actions = [];
-        foreach (app(WorkflowEngine::class)->allowedTransitions($workflow, $fromState, $this->actor()) as $transition) {
+        foreach (app(WorkflowEngine::class)->allowedTransitions($workflow, $fromState, $actor) as $transition) {
+            if (! $resolver->mayApply($transition, $entry, $actor)) {
+                continue;   // a move the action would refuse is never offered
+            }
             $destination = $states->firstWhere('key', $transition->to_state);
             $actions[] = [
                 'key' => $transition->key,

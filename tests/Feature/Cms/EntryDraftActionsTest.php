@@ -249,6 +249,26 @@ it('moves the change through the entry workflow as a change, and only an approve
     });
 });
 
+it('refuses to send a pending change on an entry the actor may not edit', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        [$author] = changeCast();
+        $colleague = User::factory()->create();
+        grantRole($colleague, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        $entry = changeLivePost($author, changeNewsCategory());
+        changeWorkflow();
+        $change = app(SaveEntryDraft::class)->handle($entry, $author, 'vi', ['title' => 'Bản tin mới']);
+
+        // The change belongs to an entry the colleague may not edit: sending it on is not theirs to do.
+        expect(fn () => app(ApplyEntryDraftTransition::class)->handle($entry, 'vi', $colleague->fresh(), 'submit', $change->version()))
+            ->toThrow(AuthorizationException::class);
+
+        expect(WorkflowLog::query()->count())->toBe(0)
+            ->and(changeOf($entry)->workflow_state)->toBeNull()
+            ->and($entry->fresh()->status)->toBe('published')
+            ->and($entry->fresh()->workflow_state)->toBeNull();
+    });
+});
+
 it('locks a submitted change against edits and discarding until it is returned', function (): void {
     app(Tenancy::class)->enter(1, function (): void {
         [$author, $reviewer] = changeCast();

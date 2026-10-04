@@ -99,14 +99,14 @@ it('records a workflow transition alongside its workflow_log row, naming the tra
     $author = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($author): void {
-        grantRole($author, 'author', ['entries.submit']);
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
 
         $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
         $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
         ContentSection::query()->create(['key' => 'tin-tuc', 'label' => 'Tin tức', 'entry_type' => 'post', 'taxonomy_id' => $category->id]);
         app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
 
-        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft']);
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
         $post->translations()->create(['locale' => 'vi', 'title' => 'Bản tin', 'slug' => 'ban-tin', 'status' => 'draft', 'body' => ['blocks' => []]]);
         $post->assignCategories([$category->id]);
 

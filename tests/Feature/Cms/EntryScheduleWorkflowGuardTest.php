@@ -81,7 +81,7 @@ it('stamps today as the publication date when approving a post whose old slot is
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.submit', 'entries.approve', 'entries.publish']);
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.submit', 'entries.approve', 'entries.publish']);
 
         // Scheduled for next week while tier-1 was in force…
         $entry = schedulableNewsPost();
@@ -106,7 +106,7 @@ it('keeps the original publication date when live content is approved again afte
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.submit', 'entries.approve', 'entries.review', 'entries.publish']);
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.submit', 'entries.approve', 'entries.review', 'entries.publish']);
         $entry = schedulableNewsPost();
         app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
         $move = app(ApplyEntryWorkflowTransition::class);
@@ -129,7 +129,7 @@ it('sends a governed post back to the flow start when the status menu takes it o
     $editor = User::factory()->create();
 
     app(Tenancy::class)->enter(1, function () use ($editor): void {
-        grantRole($editor, 'editor', ['entries.submit', 'entries.approve', 'entries.publish']);
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.submit', 'entries.approve', 'entries.publish']);
         $entry = schedulableNewsPost();
         app(InstantiateWorkflow::class)->handle('admin_approval', 'tin-tuc', active: true);
         $move = app(ApplyEntryWorkflowTransition::class);

@@ -54,10 +54,16 @@ final class EntryPolicy
         return $this->delete($user, $entry);
     }
 
-    /** Submit for review (workflow Tầng-1): the path for authors without publish rights. */
-    public function submit(User $user): bool
+    /**
+     * Send for review: the path for authors without publish rights. Sending is part of working
+     * on THIS entry, so it needs entries.submit AND the right to edit it — edit.any, or edit.own
+     * while being its author (an entry with no author: only edit.any). Without the second half an
+     * author could park a colleague's half-written draft in the review queue. The same rule
+     * guards every workflow move whose permission is entries.submit (EntryWorkflowResolver::mayApply).
+     */
+    public function submit(User $user, Entry $entry): bool
     {
-        return $user->can('entries.submit');
+        return $user->can('entries.submit') && $this->update($user, $entry);
     }
 
     /** Publish straight through (workflow Tầng-1): only grants carrying entries.publish. */
