@@ -47,6 +47,18 @@ final readonly class PublishEntry
      */
     public function handle(Entry $entry, string $locale, User $actor): string
     {
+        return DB::transaction(fn (): string => $this->handleLocked($entry, $locale, $actor));
+    }
+
+    private function handleLocked(Entry $entry, string $locale, User $actor): string
+    {
+        // Take the row lock FIRST, then read, like the workflow actions: the status and Trash
+        // checks below must judge the row as it is now, not as the screen loaded it. Otherwise
+        // a send racing a publish could take the live page back to pending, and a publish
+        // racing a delete could put a trashed entry on the website.
+        Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
+        $entry->refresh();
+
         $translation = $entry->translationFor($locale)
             ?? throw new RuntimeException("Entry {$entry->id} has no '{$locale}' translation to publish.");
 
@@ -66,7 +78,8 @@ final readonly class PublishEntry
 
         if ($gate->allows('publish', $entry)) {
             // Atomic: a RouteConflictException from sync must roll back the status flip, or the
-            // entry is left `published` with no reachable route — a silent 404.
+            // entry is left `published` with no reachable route — a silent 404. A savepoint, so
+            // the caller can catch that and carry on (the bulk bar does).
             DB::transaction(function () use ($entry, $translation, $locale, $actor): void {
                 $entry->update([
                     'status' => 'published',

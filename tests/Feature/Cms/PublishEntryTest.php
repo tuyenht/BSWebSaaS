@@ -282,3 +282,34 @@ it('never publishes or sends an entry from the Trash, whoever calls', function (
             ->and(SiteRoute::query()->where('path', '/trong-thung-rac')->exists())->toBeFalse();
     });
 });
+
+it('judges a send or a publish on the entry as it is now, not as the screen loaded it', function (): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+    $author = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor, $author): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish', 'entries.submit']);
+        grantRole($author, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        $publish = app(PublishEntry::class);
+
+        // The author's screen still shows a draft, but a publisher has just put it live: a late
+        // "send" must not take the live page back to waiting.
+        $live = makeDraftPage($author, 'vua-dang');
+        $stale = Entry::query()->find($live->id);
+        $publish->handle(Entry::query()->find($live->id), 'vi', $editor->fresh());
+
+        expect($publish->handle($stale, 'vi', $author->fresh()))->toBe('published')
+            ->and(Entry::query()->find($live->id)->status)->toBe('published');
+
+        // The publisher's screen still shows the page, but it has just been moved to the Trash.
+        $gone = makeDraftPage($editor, 'vua-xoa');
+        $staleGone = Entry::query()->find($gone->id);
+        Entry::query()->find($gone->id)->delete();
+
+        expect(fn () => $publish->handle($staleGone, 'vi', $editor->fresh()))
+            ->toThrow(AuthorizationException::class)
+            ->and(Entry::withTrashed()->find($gone->id)->status)->toBe('draft')
+            ->and(SiteRoute::query()->where('path', '/vua-xoa')->exists())->toBeFalse();
+    });
+});
