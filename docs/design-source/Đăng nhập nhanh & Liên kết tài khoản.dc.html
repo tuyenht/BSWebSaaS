@@ -8,69 +8,73 @@
 <body>
 <x-dc>
 <helmet>
+<link rel="stylesheet" href="admin-base.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <style>
-html,body{margin:0;background:#f3f3f9;}*{box-sizing:border-box;}
+html,body{margin:0;background:var(--color-body,#f4f5fa);}*{box-sizing:border-box;}
 .sl-wrap{container-type:inline-size;font-family:Inter,'Segoe UI',sans-serif;}
-a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
+a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--color-accent,#334166);}
 .dsw{width:38px;height:22px;border-radius:20px;position:relative;flex-shrink:0;display:inline-block;background:#ced4da;transition:background .18s;cursor:pointer;border:0;padding:0;}
 .dsw.on{background:#0ab39c;}.dsw.lock{cursor:not-allowed;opacity:.5;}
-.dsw>span{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .18s;}
+.dsw>span{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--color-surface,#fff);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .18s;}
 .dsw.on>span{left:19px;}
-.sl-row{transition:background .12s;}.sl-row:hover{background:#f8f9fb;}
-.sl-gbtn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 15px;border:1px solid #d0d3da;border-radius:4px;background:#fff;color:#495057;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
-.sl-gbtn:hover:not(:disabled){background:#f6f7f9;}
-.sl-gbtn:disabled{cursor:not-allowed!important;background:#f6f7f9!important;border-color:#e9ebec!important;color:#9aa0ab!important;}
-.sl-gbtn.primary{border-color:#405189;background:#405189;color:#fff;}
-.sl-gbtn.primary:hover:not(:disabled){filter:brightness(.95);background:#405189;}
-.sl-gbtn.danger{border-color:rgba(240,101,72,.45);color:#b42318;}
+.sl-row{transition:background .12s;}.sl-row:hover{background:var(--color-surface-muted,#f8f9fb);}
+.sl-gbtn{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 15px;border:1px solid #d0d3da;border-radius:4px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+.sl-gbtn:hover:not(:disabled){background:var(--color-surface-hover,#f6f7f9);}
+.sl-gbtn:disabled{cursor:not-allowed!important;background:var(--color-surface-hover,#f6f7f9)!important;border-color:var(--color-border-strong,#e9ebec)!important;color:#9aa0ab!important;}
+.sl-gbtn.primary{border-color:#2050a0;background:#2050a0;color:#fff;}
+.sl-gbtn.primary:hover:not(:disabled){filter:brightness(.95);background:#2050a0;}
+.sl-gbtn.danger{border-color:rgba(240,101,72,.45);color:var(--color-admin-danger-text,#b42318);}
 .sl-gbtn.danger:hover:not(:disabled){background:rgba(240,101,72,.08);}
-.sl-editbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:84px;padding:7px 14px;border:1px solid #d0d3da;border-radius:6px;background:#fff;color:#405189;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;flex-shrink:0;}
-.sl-editbtn:hover{background:rgba(64,81,137,.06);}
-.sl-editbtn:disabled{cursor:not-allowed;background:#f6f7f9;border-color:#e9ebec;color:#9aa0ab;}
-.sl-inp{width:100%;padding:9px 11px;border:1px solid #ced4da;border-radius:4px;font:inherit;font-size:13.5px;color:#495057;outline:none;}
-.sl-inp:focus{border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.14);}
-.sl-lockchip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border:1px solid #e0e3e9;border-radius:20px;background:#f6f7f9;color:#5b6270;font-size:11.5px;font-weight:600;white-space:nowrap;}
+.sl-editbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:84px;padding:7px 14px;border:1px solid #d0d3da;border-radius:6px;background:var(--color-surface,#fff);color:var(--color-accent,#2050a0);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;flex-shrink:0;}
+.sl-editbtn:hover{background:rgba(32,80,160,.06);}
+.sl-editbtn:disabled{cursor:not-allowed;background:var(--color-surface-hover,#f6f7f9);border-color:var(--color-border-strong,#e9ebec);color:#9aa0ab;}
+.sl-inp{width:100%;padding:9px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);outline:none;}
+.sl-inp:focus{border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.14);}
+.sl-lockchip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border:1px solid #e0e3e9;border-radius:20px;background:var(--color-surface-hover,#f6f7f9);color:#5b6270;font-size:12px;font-weight:600;white-space:nowrap;}
 .sl-vchip{display:flex;align-items:stretch;border:1px solid #e4e6ee;border-radius:6px;background:#f4f5f9;overflow:hidden;}
-.sl-vins{padding:8px 4px 8px 12px;color:#405189;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.sl-vcopy{display:inline-flex;align-items:center;justify-content:center;width:34px;border:0;border-left:1px solid #e4e6ee;background:transparent;color:#878a99;cursor:pointer;font-size:14px;}
-.sl-vcopy:hover{color:#405189;background:rgba(64,81,137,.10);}
-.sl-vcopy.ok{color:#0ab39c;}
+.sl-vins{padding:8px 4px 8px 12px;color:var(--color-accent,#2050a0);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sl-vcopy{display:inline-flex;align-items:center;justify-content:center;width:34px;border:0;border-left:1px solid #e4e6ee;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;font-size:14px;}
+.sl-vcopy:hover{color:var(--color-accent,#2050a0);background:rgba(32,80,160,.10);}
+.sl-vcopy.ok{color:var(--color-admin-success-text,#0ab39c);}
 .sl-2col{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start;}
 @container (max-width:1000px){.sl-2col{grid-template-columns:1fr!important;}}
-.sl-prevwrap{position:sticky;top:18px;}
+.sl-prevwrap{position:sticky;top:calc(var(--sticky-top,0px) + 18px);}
 @container (max-width:1000px){.sl-prevwrap{position:static;}}
 .sl-wrap button{white-space:nowrap;}
 .sl-nw{white-space:nowrap;}
 .sl-wrap label>span:first-child{white-space:nowrap;}
 .sl-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px;}
 @container (max-width:640px){.sl-fields{grid-template-columns:1fr!important;}}
-.sl-eye{border:0;background:transparent;color:#878a99;cursor:pointer;font-size:15px;padding:0 8px;}
-.sl-eye:hover{color:#405189;}
+.sl-eye{border:0;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;font-size:15px;padding:0 8px;}
+.sl-eye:hover{color:var(--color-accent,#2050a0);}
 .sl-help{position:relative;}
 .sl-help:has(.sl-helppop){z-index:90;}
-.sl-helppop{position:absolute;top:28px;left:0;z-index:90;width:min(320px,calc(100cqw - 64px));padding:12px 13px;border:1px solid #e9ebec;border-radius:6px;background:#fff;box-shadow:0 6px 18px rgba(56,65,74,.22);font-size:12.5px;font-weight:400;color:#5b6270;line-height:1.6;white-space:normal!important;text-transform:none!important;letter-spacing:normal!important;text-align:left;}
+.sl-helppop{position:absolute;top:28px;left:0;z-index:90;width:min(320px,calc(100cqw - 64px));padding:12px 13px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 6px 18px rgba(56,65,74,.22);font-size:12.5px;font-weight:400;color:#5b6270;line-height:1.6;white-space:normal!important;text-transform:none!important;letter-spacing:normal!important;text-align:left;}
 .sl-helppop.r{left:auto;right:0;}
-.sl-helppop b{color:#212529;}
-.sl-info{width:26px;height:26px;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
-.sl-info:hover{background:rgba(64,81,137,.08);color:#405189;}
+.sl-helppop b{color:var(--color-heading,#212529);}
+.sl-info{width:26px;height:26px;border:0;border-radius:50%;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sl-info:hover{background:rgba(32,80,160,.08);color:var(--color-accent,#2050a0);}
 .sl-wrap.embed{min-height:0!important;}
 .sl-wrap.embed.prof .sl-body{padding:0!important;max-width:none!important;}
 .sl-wrap.embed.prof .sl-body>div{max-width:none!important;}
-.sl-blk{border:1px solid #e6e9f2;border-radius:6px;background:#fff;}
-.sl-blkhead{padding:10px 14px;border-bottom:1px solid #f2f3f6;background:#fafbfc;font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;line-height:1.45;}
-.sl-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;border-radius:50%;background:rgba(64,81,137,.10);color:#405189;font-size:11.5px;font-weight:700;margin-top:1px;}
-.sl-ta{width:100%;padding:9px 11px;border:1px dashed #b9c0cf;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;color:#495057;outline:none;resize:vertical;line-height:1.5;}
-.sl-ta:focus{border-style:solid;border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.14);}
-.sl-ta::placeholder{color:#adb5bd;}
+.sl-blk{border:1px solid #e6e9f2;border-radius:6px;background:var(--color-surface,#fff);}
+.sl-blkhead{padding:10px 14px;border-bottom:1px solid #f2f3f6;background:var(--color-surface-muted,#fafbfc);font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--color-body-muted,#5b6275);text-transform:uppercase;line-height:1.45;}
+.sl-num{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex-shrink:0;border-radius:50%;background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);font-size:12px;font-weight:700;margin-top:1px;}
+.sl-ta{width:100%;padding:9px 11px;border:1px dashed #b9c0cf;border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);outline:none;resize:vertical;line-height:1.5;}
+.sl-ta:focus{border-style:solid;border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.14);}
+.sl-ta::placeholder{color:var(--color-body-muted,#5b6275);}
 .sl-toast{position:fixed;right:22px;bottom:22px;z-index:190;display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:6px;background:#212529;color:#fff;font-size:13px;font-weight:500;box-shadow:0 8px 22px rgba(33,37,41,.3);}
 .sl-scrim{position:fixed;inset:0;z-index:180;background:rgba(33,37,41,.45);display:flex;align-items:center;justify-content:center;padding:24px;}
-.sl-modal{width:min(468px,100%);background:#fff;border-radius:6px;box-shadow:0 12px 34px rgba(33,37,41,.28);overflow:hidden;}
+.sl-modal{width:min(468px,100%);background:var(--color-surface,#fff);border-radius:6px;box-shadow:0 12px 34px rgba(33,37,41,.28);overflow:hidden;}
 .sl-qbtn{height:38px;border-radius:4px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12.5px;font-weight:600;}
 .sl-lrow{display:grid!important;grid-template-columns:26px minmax(0,1fr) auto;gap:14px;align-items:center;}
 .sl-lrow .sl-rowact{margin-left:0!important;}
@@ -78,7 +82,7 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
   .sl-lrow{grid-template-columns:26px minmax(0,1fr);}
   .sl-lrow .sl-rowact{grid-column:2;justify-self:start;margin-top:4px;}
 }
-.sl-subnote{font-size:12px;color:#adb5bd;line-height:1.5;}
+.sl-subnote{font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;}
 @container (max-width:520px){.sl-subnote{display:none;}}
 @container (max-width:440px){
   .sl-wrap button:not(.dsw){min-height:44px;min-width:44px;}
@@ -93,20 +97,21 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
   .sl-actions button{flex:1;justify-content:center;}
 }
 </style>
+<script src="./platform-config.js"></script>
 </helmet>
 
-<div class="sl-wrap {{ wrapCls }}" style="min-height:100vh;color:#495057;font-size:14px;">
+<div class="sl-wrap {{ wrapCls }}" style="min-height:100vh;color:var(--color-body-text,#3c4765);font-size:14px;">
 
   <sc-if value="{{ showOwnHeader }}" hint-placeholder-val="{{ true }}">
   <div style="max-width:1180px;margin:0 auto;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 26px 0;flex-wrap:wrap;">
     <div style="flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:4px;">
-      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#878a99;flex-wrap:wrap;"><span class="sl-nw">{{ crumb1 }}</span><i class="ri-arrow-right-s-line" style="font-size:14px;color:#ced4da;"></i><span class="sl-nw" style="color:#495057;">{{ crumb2 }}</span></div>
-      <h1 style="margin:0;font-size:20px;font-weight:600;color:#212529;">{{ pageTitle }}</h1>
-      <p style="margin:0;font-size:13px;color:#878a99;max-width:640px;line-height:1.55;">{{ pageDesc }}</p>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);flex-wrap:wrap;"><span class="sl-nw">{{ crumb1 }}</span><i class="ri-arrow-right-s-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i><span class="sl-nw" style="color:var(--color-body-text,#3c4765);">{{ crumb2 }}</span></div>
+      <h1 style="margin:0;font-size:20px;font-weight:600;color:var(--color-heading,#212529);">{{ pageTitle }}</h1>
+      <p style="margin:0;font-size:13px;color:var(--color-body-muted,#5b6275);max-width:640px;line-height:1.55;">{{ pageDesc }}</p>
     </div>
     <div class="sl-actions" style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-top:22px;">
-      <sc-if value="{{ dirty }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#b57d13;white-space:nowrap;"><span style="width:8px;height:8px;border-radius:50%;background:#f7b84b;"></span>Chưa lưu</span></sc-if>
-      <sc-if value="{{ showSave }}"><button onClick="{{ onSave }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;"><i class="ri-save-3-line"></i>Lưu — hiệu lực ngay</button></sc-if>
+      <sc-if value="{{ dirty }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--color-admin-warning-text,#b57d13);white-space:nowrap;"><span style="width:8px;height:8px;border-radius:50%;background:#f7b84b;"></span>Chưa lưu</span></sc-if>
+      <sc-if value="{{ showSave }}"><button onClick="{{ onSave }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border:0;border-radius:4px;background:#2050a0;color:#fff;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;"><i class="ri-save-3-line"></i>Lưu — hiệu lực ngay</button></sc-if>
     </div>
   </div>
   </sc-if>
@@ -115,15 +120,15 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
 
     <!-- ===== SETTINGS ===== -->
     <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ true }}">
-    <sc-if value="{{ saasBanner }}"><div style="display:flex;align-items:flex-start;gap:11px;padding:13px 16px;border:1px solid color-mix(in srgb, #299cdb 40%, transparent);border-radius:6px;background:color-mix(in srgb, #299cdb 9%, transparent);margin-bottom:18px;"><i class="ri-information-line" style="margin-top:1px;color:#2a6fb8;font-size:16px;flex-shrink:0;"></i><div style="font-size:13px;color:#31485f;line-height:1.6;">Chỉ cần <b>một</b> ứng dụng Google và <b>một</b> ứng dụng Facebook đăng ký cho tên miền gốc. Website dùng tên miền riêng đi qua cùng địa chỉ trả về rồi được đưa về đúng site của khách — không phải đăng ký cho từng tên miền.</div></div></sc-if>
+    <sc-if value="{{ saasBanner }}"><div style="display:flex;align-items:flex-start;gap:11px;padding:13px 16px;border:1px solid color-mix(in srgb, #299cdb 40%, transparent);border-radius:6px;background:color-mix(in srgb, #299cdb 9%, transparent);margin-bottom:18px;"><i class="ri-information-line" style="margin-top:1px;color:var(--color-admin-info-text,#2a6fb8);font-size:16px;flex-shrink:0;"></i><div style="font-size:13px;color:var(--color-admin-info-text,#31485f);line-height:1.6;">Chỉ cần <b>một</b> ứng dụng Google và <b>một</b> ứng dụng Facebook đăng ký cho tên miền gốc. Website dùng tên miền riêng đi qua cùng địa chỉ trả về rồi được đưa về đúng site của khách — không phải đăng ký cho từng tên miền.</div></div></sc-if>
 
     <div class="sl-2col">
       <div style="display:flex;flex-direction:column;gap:16px;min-width:0;">
 
-        <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid #eff2f7;">
-            <span style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;">{{ providersTitle }}</span>
-            <sc-if value="{{ isSaas }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#adb5bd;white-space:nowrap;"><i class="ri-refresh-line" style="font-size:13px;"></i>Hệ thống tự kiểm tra kết nối mỗi 6 giờ</span></sc-if>
+        <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:13px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);">
+            <span style="font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--color-body-muted,#5b6275);text-transform:uppercase;">{{ providersTitle }}</span>
+            <sc-if value="{{ isSaas }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-refresh-line" style="font-size:13px;"></i>Hệ thống tự kiểm tra kết nối mỗi 6 giờ</span></sc-if>
           </div>
           <div style="padding:6px 16px;">
             <sc-for list="{{ providers }}" as="p" hint-placeholder-count="2">
@@ -132,10 +137,10 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
                   <i class="{{ p.icon }}" style="font-size:24px;color:{{ p.color }};flex-shrink:0;width:26px;text-align:center;"></i>
                   <div class="sl-rowtext" style="min-width:0;display:flex;flex-direction:column;gap:2px;">
                     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                      <span style="font-size:14px;font-weight:600;color:#212529;">{{ p.name }}</span>
+                      <span style="font-size:14px;font-weight:600;color:var(--color-heading,#212529);">{{ p.name }}</span>
                       <span style="{{ p.statusStyle }}"><span style="{{ p.statusDot }}"></span>{{ p.statusText }}</span>
                     </div>
-                    <span style="font-size:12.5px;color:#878a99;line-height:1.45;">{{ p.meta }}</span>
+                    <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ p.meta }}</span>
                   </div>
                   <div class="sl-rowact" style="margin-left:auto;display:flex;align-items:center;gap:14px;flex-shrink:0;">
                     <sc-if value="{{ p.showConfigBtn }}"><button type="button" class="sl-editbtn" onClick="{{ p.onConfig }}"><i class="{{ p.configIcon }}"></i>{{ p.configLabel }}</button></sc-if>
@@ -145,15 +150,15 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
                 </div>
                 <sc-if value="{{ p.errorOpen }}">
                   <div style="margin:0 4px 10px;padding:11px 14px;border:1px solid rgba(240,101,72,.35);border-radius:6px;background:rgba(240,101,72,.07);display:flex;align-items:flex-start;gap:10px;">
-                    <i class="ri-error-warning-line" style="color:#c0392b;font-size:15px;flex-shrink:0;margin-top:1px;"></i>
-                    <div style="min-width:0;font-size:12.5px;color:#7d2c1c;line-height:1.6;">{{ p.errorText }}<button type="button" class="sl-editbtn" style="margin-left:10px;min-height:30px;padding:4px 11px;" onClick="{{ p.onRetry }}"><i class="ri-refresh-line"></i>Kiểm tra lại</button></div>
+                    <i class="ri-error-warning-line" style="color:var(--color-admin-danger-text,#c0392b);font-size:15px;flex-shrink:0;margin-top:1px;"></i>
+                    <div style="min-width:0;font-size:12.5px;color:var(--color-admin-danger-text,#7d2c1c);line-height:1.6;">{{ p.errorText }}<button type="button" class="sl-editbtn" style="margin-left:10px;min-height:30px;padding:4px 11px;" onClick="{{ p.onRetry }}"><i class="ri-refresh-line"></i>Kiểm tra lại</button></div>
                   </div>
                 </sc-if>
                 <sc-if value="{{ p.configOpen }}">
-                  <div style="margin:0 4px 12px;padding:16px 18px;border:1px solid rgba(64,81,137,.32);border-radius:6px;background:#fbfcfe;">
+                  <div style="margin:0 4px 12px;padding:16px 18px;border:1px solid rgba(32,80,160,.32);border-radius:6px;background:var(--color-surface-muted,#fbfcfe);">
 
                     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
-                      <span class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:12.5px;color:#5b6270;line-height:1.5;">Cấu hình một lần, dùng cho cả hệ thống<button type="button" class="sl-info" aria-label="Giải thích" onClick="{{ p.onInfoIntro }}"><i class="ri-question-line"></i></button><sc-if value="{{ p.introOpen }}"><span class="sl-helppop">Khoảng 3 phút: mở console của {{ p.consoleName }}, chép vài giá trị nền tảng sinh sẵn sang đó, rồi dán khoá lấy về vào hai ô dưới. Mọi website trong hệ thống — kể cả tên miền riêng — dùng chung ứng dụng này, không phải làm lại lần nào nữa. Bấm “Hướng dẫn cài đặt” để xem đầy đủ.</span></sc-if></span>
+                      <span class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:12.5px;color:#5b6270;line-height:1.5;">Cấu hình một lần, dùng cho cả hệ thống<button type="button" class="sl-info" aria-label="Giải thích" onClick="{{ p.onInfoIntro }}"><i class="ri-question-line"></i></button><sc-if value="{{ p.introOpen }}"><span class="sl-helppop">Khoảng 3 phút: mở console của {{ p.consoleName }}, chép vài giá trị nền tảng sinh sẵn sang đó, rồi dán khóa lấy về vào hai ô dưới. Mọi website trong hệ thống — kể cả tên miền riêng — dùng chung ứng dụng này, không phải làm lại lần nào nữa. Bấm “Hướng dẫn cài đặt” để xem đầy đủ.</span></sc-if></span>
                       <span style="flex:1;"></span>
                       <a class="sl-gbtn" href="{{ p.consoleUrl }}" target="_blank" rel="noopener" style="text-decoration:none;min-height:32px;padding:0 12px;font-size:12.5px;"><i class="ri-external-link-line"></i>Mở {{ p.consoleName }}</a>
                       <button type="button" class="sl-gbtn" style="min-height:32px;padding:0 12px;font-size:12.5px;" onClick="{{ p.onGuide }}"><i class="{{ p.guideIcon }}"></i>{{ p.guideLabel }}</button>
@@ -166,18 +171,18 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
                           <sc-for list="{{ p.guideSteps }}" as="g" hint-placeholder-count="4">
                             <div style="display:flex;align-items:flex-start;gap:10px;">
                               <span class="sl-num">{{ g.n }}</span>
-                              <div style="min-width:0;font-size:12.5px;line-height:1.6;color:#5b6270;"><b style="color:#212529;">{{ g.t }}</b> — {{ g.d }}</div>
+                              <div style="min-width:0;font-size:12.5px;line-height:1.6;color:#5b6270;"><b style="color:var(--color-heading,#212529);">{{ g.t }}</b> — {{ g.d }}</div>
                             </div>
                           </sc-for>
                         </div>
                         <div class="sl-blkhead" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px solid #f2f3f6;">
                           <span>2 · GIÁ TRỊ CẦN CHÉP SANG ĐÓ</span>
-                          <button type="button" class="sl-gbtn" style="min-height:28px;padding:0 10px;font-size:11.5px;" onClick="{{ p.onCopyAll }}"><i class="{{ p.copyAllIcon }}"></i>Chép tất cả</button>
+                          <button type="button" class="sl-gbtn" style="min-height:28px;padding:0 10px;font-size:12px;" onClick="{{ p.onCopyAll }}"><i class="{{ p.copyAllIcon }}"></i>Chép tất cả</button>
                         </div>
                         <div style="padding:6px 14px 12px;">
                           <sc-for list="{{ p.copyRows }}" as="c" hint-placeholder-count="3">
                             <div style="padding:9px 0;border-top:1px solid #f2f3f6;display:flex;flex-direction:column;gap:5px;">
-                              <span class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:#212529;">{{ c.label }}<button type="button" class="sl-info" aria-label="Dán giá trị này vào đâu" onClick="{{ c.onInfo }}"><i class="ri-question-line"></i></button><sc-if value="{{ c.infoOpen }}"><span class="sl-helppop"><b style="color:#212529;">Dán vào:</b> {{ c.where }}<br>{{ c.why }}</span></sc-if></span>
+                              <span class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:var(--color-heading,#212529);">{{ c.label }}<button type="button" class="sl-info" aria-label="Dán giá trị này vào đâu" onClick="{{ c.onInfo }}"><i class="ri-question-line"></i></button><sc-if value="{{ c.infoOpen }}"><span class="sl-helppop"><b style="color:var(--color-heading,#212529);">Dán vào:</b> {{ c.where }}<br>{{ c.why }}</span></sc-if></span>
                               <span class="sl-vchip"><span class="sl-vins">{{ c.value }}</span><button type="button" class="sl-vcopy {{ c.cls }}" aria-label="Sao chép {{ c.label }}" onClick="{{ c.onCopy }}"><i class="{{ c.icon }}"></i></button></span>
                             </div>
                           </sc-for>
@@ -192,13 +197,13 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
 
                     <div>
                         <div class="sl-fields">
-                          <label style="display:flex;flex-direction:column;gap:5px;"><span class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:#212529;">{{ p.idLabel }}<button type="button" class="sl-info" aria-label="Tìm giá trị này ở đâu" onClick="{{ p.onInfoId }}"><i class="ri-question-line"></i></button><sc-if value="{{ p.idInfoOpen }}"><span class="sl-helppop">{{ p.idHelp }}</span></sc-if></span><input class="sl-inp" value="{{ p.clientId }}" onInput="{{ p.onClientId }}" placeholder="{{ p.clientIdPh }}" autocomplete="off" spellcheck="false"><sc-if value="{{ p.idErr }}"><span style="font-size:11.5px;color:#b42318;line-height:1.5;">{{ p.idErrText }}</span></sc-if></label>
-                          <label style="display:flex;flex-direction:column;gap:5px;"><span class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:#212529;">{{ p.secretLabel }}<button type="button" class="sl-info" aria-label="Tìm khoá này ở đâu" onClick="{{ p.onInfoSecret }}"><i class="ri-question-line"></i></button><sc-if value="{{ p.secretInfoOpen }}"><span class="sl-helppop r">{{ p.secretHelp }}</span></sc-if></span>
-                            <span style="display:flex;align-items:stretch;border:1px solid #ced4da;border-radius:4px;background:#fff;overflow:hidden;">
-                              <input type="{{ p.secretType }}" value="{{ p.clientSecret }}" onInput="{{ p.onClientSecret }}" placeholder="{{ p.secretPh }}" autocomplete="new-password" style="flex:1;min-width:0;padding:9px 11px;border:0;font:inherit;font-size:13.5px;color:#495057;outline:none;">
-                              <button type="button" class="sl-eye" aria-label="Hiện / ẩn khoá bí mật" onClick="{{ p.onToggleSecretShow }}"><i class="{{ p.eyeIcon }}"></i></button>
+                          <label style="display:flex;flex-direction:column;gap:5px;"><span class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:var(--color-heading,#212529);">{{ p.idLabel }}<button type="button" class="sl-info" aria-label="Tìm giá trị này ở đâu" onClick="{{ p.onInfoId }}"><i class="ri-question-line"></i></button><sc-if value="{{ p.idInfoOpen }}"><span class="sl-helppop">{{ p.idHelp }}</span></sc-if></span><input class="sl-inp" value="{{ p.clientId }}" onInput="{{ p.onClientId }}" placeholder="{{ p.clientIdPh }}" autocomplete="off" spellcheck="false"><sc-if value="{{ p.idErr }}"><span style="font-size:12px;color:var(--color-admin-danger-text,#b42318);line-height:1.5;">{{ p.idErrText }}</span></sc-if></label>
+                          <label style="display:flex;flex-direction:column;gap:5px;"><span class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:12.5px;font-weight:600;color:var(--color-heading,#212529);">{{ p.secretLabel }}<button type="button" class="sl-info" aria-label="Tìm khóa này ở đâu" onClick="{{ p.onInfoSecret }}"><i class="ri-question-line"></i></button><sc-if value="{{ p.secretInfoOpen }}"><span class="sl-helppop r">{{ p.secretHelp }}</span></sc-if></span>
+                            <span style-focus-within="border-color:var(--color-accent,#2050a0);box-shadow:0 0 0 3px rgba(32,80,160,.16);" style="display:flex;align-items:stretch;border:1px solid var(--color-border-strong,#ced4da);border-radius:4px;background:var(--color-surface,#fff);overflow:hidden;">
+                              <input type="{{ p.secretType }}" value="{{ p.clientSecret }}" onInput="{{ p.onClientSecret }}" placeholder="{{ p.secretPh }}" autocomplete="new-password" style="flex:1;min-width:0;padding:9px 11px;border:0;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);outline:none;">
+                              <button type="button" class="sl-eye" aria-label="Hiện / ẩn khóa bí mật" onClick="{{ p.onToggleSecretShow }}"><i class="{{ p.eyeIcon }}"></i></button>
                             </span>
-                            <sc-if value="{{ p.secretErr }}"><span style="font-size:11.5px;color:#b42318;line-height:1.5;">{{ p.secretErrText }}</span></sc-if>
+                            <sc-if value="{{ p.secretErr }}"><span style="font-size:12px;color:var(--color-admin-danger-text,#b42318);line-height:1.5;">{{ p.secretErrText }}</span></sc-if>
                           </label>
                         </div>
                     </div>
@@ -206,16 +211,16 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
                     <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                       <button type="button" class="sl-gbtn primary" disabled="{{ p.testDisabled }}" onClick="{{ p.onTest }}"><i class="{{ p.testIcon }}"></i>{{ p.testLabel }}</button>
                       <sc-if value="{{ p.connected }}"><button type="button" class="sl-gbtn danger" onClick="{{ p.onDisconnect }}"><i class="ri-link-unlink-m"></i>Ngắt kết nối</button></sc-if>
-                      <span style="font-size:12px;color:#878a99;line-height:1.5;">{{ p.testHint }}</span>
+                      <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ p.testHint }}</span>
                     </div>
 
                     <div style="margin-top:12px;padding-top:12px;border-top:1px solid #e6e9f2;">
-                      <button type="button" onClick="{{ p.onTrouble }}" style="display:inline-flex;align-items:center;gap:6px;padding:0;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:600;color:#405189;cursor:pointer;"><i class="{{ p.troubleIcon }}"></i>Xử lý lỗi thường gặp</button>
+                      <button type="button" onClick="{{ p.onTrouble }}" style="display:inline-flex;align-items:center;gap:6px;padding:0;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;"><i class="{{ p.troubleIcon }}"></i>Xử lý lỗi thường gặp</button>
                       <sc-if value="{{ p.troubleOpen }}">
                         <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px;">
                           <sc-for list="{{ p.trouble }}" as="t" hint-placeholder-count="3">
-                            <div style="padding:11px 13px;border:1px solid #e9ebec;border-radius:6px;background:#fff;">
-                              <div style="font-size:12.5px;font-weight:600;color:#212529;line-height:1.5;">{{ t.q }}</div>
+                            <div style="padding:11px 13px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);">
+                              <div style="font-size:12.5px;font-weight:600;color:var(--color-heading,#212529);line-height:1.5;">{{ t.q }}</div>
                               <div style="margin-top:4px;font-size:12.5px;color:#5b6270;line-height:1.6;">{{ t.a }}</div>
                             </div>
                           </sc-for>
@@ -227,21 +232,21 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
               </div>
             </sc-for>
           </div>
-          <sc-if value="{{ tenantDomainNote }}"><div style="display:flex;align-items:flex-start;gap:8px;padding:12px 16px;border-top:1px solid #f4f5f8;background:#fafbfc;font-size:12.5px;color:#878a99;line-height:1.6;"><i class="ri-global-line" style="font-size:14px;color:#adb5bd;flex-shrink:0;margin-top:2px;"></i><span>Dùng tên miền riêng cũng không cần làm gì thêm — nền tảng lo phần xác thực với Google và Facebook.</span></div></sc-if>
+          <sc-if value="{{ tenantDomainNote }}"><div style="display:flex;align-items:flex-start;gap:8px;padding:12px 16px;border-top:1px solid #f4f5f8;background:var(--color-surface-muted,#fafbfc);font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.6;"><i class="ri-global-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:2px;"></i><span>Dùng tên miền riêng cũng không cần làm gì thêm — nền tảng lo phần xác thực với Google và Facebook.</span></div></sc-if>
         </div>
 
-        <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);padding:16px;">
+        <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);padding:16px;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
-            <span style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;">LIÊN KẾT TÀI KHOẢN TRÙNG EMAIL</span>
+            <span style="font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--color-body-muted,#5b6275);text-transform:uppercase;">LIÊN KẾT TÀI KHOẢN TRÙNG EMAIL</span>
             <sc-if value="{{ linkLocked }}"><span class="sl-lockchip"><i class="ri-shield-check-line"></i>Hệ thống</span></sc-if>
           </div>
           <div style="display:flex;align-items:flex-start;gap:14px;">
             <sc-if value="{{ linkEditable }}"><button class="{{ linkSwClass }}" role="switch" aria-checked="{{ linkAriaOn }}" aria-label="Tự động liên kết khi email trùng khớp" onClick="{{ onToggleLinkAuto }}" style="margin-top:2px;"><span></span></button></sc-if>
             <sc-if value="{{ linkLocked }}"><span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:#0ab39c;margin-top:8px;flex-shrink:0;"></span></sc-if>
             <div style="min-width:0;">
-              <div class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:13.5px;font-weight:600;color:#212529;">Tự động liên kết khi email trùng khớp và đã xác minh<button type="button" class="sl-info" aria-label="Giải thích quy tắc liên kết" onClick="{{ onHelpLink }}"><i class="ri-question-line"></i></button><sc-if value="{{ helpLinkOpen }}"><span class="sl-helppop">Email chưa xác minh ở một trong hai bên sẽ luôn cần xác nhận thêm, kể cả khi bật tự động liên kết — đây là nguyên tắc an toàn cố định, không tắt được.</span></sc-if></div>
-              <p style="margin:6px 0 0;font-size:12.5px;color:#878a99;line-height:1.6;max-width:560px;">{{ linkExplain }}</p>
-              <sc-if value="{{ linkLocked }}"><p style="margin:8px 0 0;font-size:12px;color:#adb5bd;line-height:1.6;">Áp dụng chung cho toàn hệ thống — liên hệ hỗ trợ nếu cần thay đổi.</p></sc-if>
+              <div class="sl-help" style="display:flex;align-items:center;gap:4px;font-size:13.5px;font-weight:600;color:var(--color-heading,#212529);">Tự động liên kết khi email trùng khớp và đã xác minh<button type="button" class="sl-info" aria-label="Giải thích quy tắc liên kết" onClick="{{ onHelpLink }}"><i class="ri-question-line"></i></button><sc-if value="{{ helpLinkOpen }}"><span class="sl-helppop">Email chưa xác minh ở một trong hai bên sẽ luôn cần xác nhận thêm, kể cả khi bật tự động liên kết — đây là nguyên tắc an toàn cố định, không tắt được.</span></sc-if></div>
+              <p style="margin:6px 0 0;font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.6;max-width:560px;">{{ linkExplain }}</p>
+              <sc-if value="{{ linkLocked }}"><p style="margin:8px 0 0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Áp dụng chung cho toàn hệ thống — liên hệ hỗ trợ nếu cần thay đổi.</p></sc-if>
             </div>
           </div>
         </div>
@@ -249,29 +254,29 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
       </div>
 
       <div class="sl-prevwrap">
-        <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);padding:18px;">
-          <div style="font-size:11px;font-weight:700;letter-spacing:.04em;color:#878a99;text-transform:uppercase;margin-bottom:14px;">XEM TRƯỚC MÀN ĐĂNG NHẬP</div>
-          <div style="border:1px solid #eff2f7;border-radius:8px;padding:18px 16px;background:#fafbfc;display:flex;flex-direction:column;gap:12px;">
-            <div style="text-align:center;font-size:15px;font-weight:600;color:#212529;">Đăng nhập Hệ thống</div>
+        <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);padding:18px;">
+          <div style="font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--color-body-muted,#5b6275);text-transform:uppercase;margin-bottom:14px;">XEM TRƯỚC MÀN ĐĂNG NHẬP</div>
+          <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:8px;padding:18px 16px;background:var(--color-surface-muted,#fafbfc);display:flex;flex-direction:column;gap:12px;">
+            <div style="text-align:center;font-size:15px;font-weight:600;color:var(--color-heading,#212529);">Đăng nhập Hệ thống</div>
             <div style="display:flex;flex-direction:column;gap:5px;">
-              <span class="sl-nw" style="font-size:12px;font-weight:500;color:#495057;">Tài khoản</span>
-              <span style="display:flex;align-items:stretch;border:1px solid #e0e3e9;border-radius:4px;background:#fff;overflow:hidden;"><span style="display:inline-flex;align-items:center;padding:0 10px;background:#f6f7f9;border-right:1px solid #e0e3e9;color:#adb5bd;font-size:12.5px;">@</span><span style="flex:1;height:34px;"></span></span>
+              <span class="sl-nw" style="font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);">Tài khoản</span>
+              <span style="display:flex;align-items:stretch;border:1px solid #e0e3e9;border-radius:4px;background:var(--color-surface,#fff);overflow:hidden;"><span style="display:inline-flex;align-items:center;padding:0 10px;background:var(--color-surface-hover,#f6f7f9);border-right:1px solid #e0e3e9;color:var(--color-body-muted,#5b6275);font-size:12.5px;">@</span><span style="flex:1;height:34px;"></span></span>
             </div>
             <div style="display:flex;flex-direction:column;gap:5px;">
-              <span style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;"><span class="sl-nw" style="font-size:12px;font-weight:500;color:#495057;">Mật khẩu</span><span class="sl-nw" style="font-size:11.5px;color:#405189;">Quên mật khẩu?</span></span>
-              <span style="display:block;height:34px;border:1px solid #e0e3e9;border-radius:4px;background:#fff;"></span>
+              <span style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;"><span class="sl-nw" style="font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);">Mật khẩu</span><span class="sl-nw" style="font-size:12px;color:var(--color-accent,#2050a0);">Quên mật khẩu?</span></span>
+              <span style="display:block;height:34px;border:1px solid #e0e3e9;border-radius:4px;background:var(--color-surface,#fff);"></span>
             </div>
-            <div class="sl-qbtn" style="background:#405189;color:#fff;">Đăng nhập</div>
+            <div class="sl-qbtn" style="background:#2050a0;color:#fff;">Đăng nhập</div>
             <sc-if value="{{ showQuickBlock }}">
-              <div style="display:flex;align-items:center;gap:10px;color:#adb5bd;font-size:11.5px;"><span style="flex:1;height:1px;background:#e9ebec;"></span>Đăng nhập nhanh<span style="flex:1;height:1px;background:#e9ebec;"></span></div>
+              <div style="display:flex;align-items:center;gap:10px;color:var(--color-body-muted,#5b6275);font-size:12px;"><span style="flex:1;height:1px;background:var(--color-border-strong,#e9ebec);"></span>Đăng nhập nhanh<span style="flex:1;height:1px;background:var(--color-border-strong,#e9ebec);"></span></div>
               <div style="{{ quickGridStyle }}">
-                <sc-if value="{{ showPreviewGoogle }}"><div class="sl-qbtn" style="border:1px solid #dadce0;background:#fff;color:#3c4043;"><i class="ri-google-fill" style="color:#EA4335;font-size:16px;"></i>Google</div></sc-if>
+                <sc-if value="{{ showPreviewGoogle }}"><div class="sl-qbtn" style="border:1px solid #dadce0;background:var(--color-surface,#fff);color:#3c4043;"><i class="ri-google-fill" style="color:#ea4335;font-size:16px;"></i>Google</div></sc-if>
                 <sc-if value="{{ showPreviewFacebook }}"><div class="sl-qbtn" style="background:#1877F2;color:#fff;"><i class="ri-facebook-fill" style="font-size:16px;"></i>Facebook</div></sc-if>
               </div>
             </sc-if>
           </div>
-          <p style="margin:12px 0 0;font-size:12px;color:#878a99;line-height:1.6;">{{ previewNote }}</p>
-          <p style="margin:8px 0 0;padding-top:10px;border-top:1px solid #f4f5f8;font-size:12px;color:#adb5bd;line-height:1.6;">Nhà cung cấp chưa cấu hình hoặc đang tắt được <b>ẩn hẳn</b> — không để nút bấm không dùng được trên màn đăng nhập.</p>
+          <p style="margin:12px 0 0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ previewNote }}</p>
+          <p style="margin:8px 0 0;padding-top:10px;border-top:1px solid #f4f5f8;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Nhà cung cấp chưa cấu hình hoặc đang tắt được <b>ẩn hẳn</b> — không để nút bấm không dùng được trên màn đăng nhập.</p>
         </div>
       </div>
     </div>
@@ -280,9 +285,9 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
     <!-- ===== PROFILE ===== -->
     <sc-if value="{{ isProfile }}">
     <div style="max-width:720px;display:flex;flex-direction:column;gap:16px;">
-      <div style="background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);">
-        <div style="padding:13px 16px;border-bottom:1px solid #eff2f7;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-          <span style="font-size:12.5px;font-weight:700;letter-spacing:.03em;color:#878a99;text-transform:uppercase;">LIÊN KẾT MẠNG XÃ HỘI</span>
+      <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);">
+        <div style="padding:13px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+          <span style="font-size:12.5px;font-weight:700;letter-spacing:.03em;color:var(--color-body-muted,#5b6275);text-transform:uppercase;">LIÊN KẾT MẠNG XÃ HỘI</span>
           <span class="sl-subnote">Mật khẩu và 2FA ở phần trên</span>
         </div>
         <div style="padding:6px 16px;">
@@ -291,16 +296,16 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
               <i class="{{ l.icon }}" style="font-size:24px;color:{{ l.color }};flex-shrink:0;width:26px;text-align:center;"></i>
               <div class="sl-rowtext" style="min-width:0;display:flex;flex-direction:column;gap:2px;">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                  <span style="font-size:14px;font-weight:600;color:#212529;">{{ l.name }}</span>
+                  <span style="font-size:14px;font-weight:600;color:var(--color-heading,#212529);">{{ l.name }}</span>
                   <span style="{{ l.chipStyle }}"><span style="{{ l.chipDot }}"></span>{{ l.chipText }}</span>
                 </div>
-                <span style="font-size:12.5px;color:#878a99;line-height:1.45;">{{ l.meta }}</span>
+                <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ l.meta }}</span>
               </div>
               <div class="sl-rowact" style="margin-left:auto;flex-shrink:0;"><button type="button" class="{{ l.btnCls }}" disabled="{{ l.btnDisabled }}" title="{{ l.btnTip }}" onClick="{{ l.onAction }}"><i class="{{ l.btnIcon }}"></i>{{ l.btnLabel }}</button></div>
             </div>
           </sc-for>
         </div>
-        <div style="display:flex;align-items:flex-start;gap:8px;padding:12px 16px;border-top:1px solid #f4f5f8;background:#fafbfc;font-size:12.5px;color:#878a99;line-height:1.6;"><i class="ri-magic-line" style="font-size:14px;color:#adb5bd;flex-shrink:0;margin-top:2px;"></i><span>Lần sau đăng nhập bằng Google hay Facebook có cùng email này, hệ thống tự nối vào tài khoản của bạn — không tạo tài khoản trùng, không cần làm gì thêm.</span></div>
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:12px 16px;border-top:1px solid #f4f5f8;background:var(--color-surface-muted,#fafbfc);font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.6;"><i class="ri-magic-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:2px;"></i><span>Lần sau đăng nhập bằng Google hay Facebook có cùng email này, hệ thống tự nối vào tài khoản của bạn — không tạo tài khoản trùng, không cần làm gì thêm.</span></div>
       </div>
     </div>
     </sc-if>
@@ -312,59 +317,60 @@ a{color:#405189;text-decoration:none;}a:hover{color:#334166;}
         <div style="display:flex;align-items:flex-start;gap:12px;padding:18px 20px 0;">
           <span style="{{ confirmIconWrap }}"><i class="{{ confirmIcon }}" style="font-size:18px;"></i></span>
           <div style="min-width:0;">
-            <div style="font-size:15px;font-weight:600;color:#212529;line-height:1.4;">{{ confirmTitle }}</div>
+            <div style="font-size:15px;font-weight:600;color:var(--color-heading,#212529);line-height:1.4;">{{ confirmTitle }}</div>
             <p style="margin:8px 0 0;font-size:13px;color:#5b6270;line-height:1.65;">{{ confirmBody }}</p>
-            <sc-if value="{{ confirmNote }}"><p style="margin:8px 0 0;font-size:12.5px;color:#878a99;line-height:1.6;">{{ confirmNote }}</p></sc-if>
+            <sc-if value="{{ confirmNote }}"><p style="margin:8px 0 0;font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ confirmNote }}</p></sc-if>
           </div>
         </div>
-        <div style="display:flex;justify-content:flex-end;gap:10px;padding:18px 20px;margin-top:14px;border-top:1px solid #eff2f7;background:#fafbfc;">
-          <button type="button" class="sl-gbtn" onClick="{{ onCancelConfirm }}">Huỷ</button>
+        <div style="display:flex;justify-content:flex-end;gap:10px;padding:18px 20px;margin-top:14px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fafbfc);">
+          <button type="button" class="sl-gbtn" onClick="{{ onCancelConfirm }}">Hủy</button>
           <button type="button" class="{{ confirmBtnCls }}" onClick="{{ onAcceptConfirm }}"><i class="{{ confirmBtnIcon }}"></i>{{ confirmBtnLabel }}</button>
         </div>
       </div>
     </div>
   </sc-if>
 
-  <sc-if value="{{ toastOpen }}"><div class="sl-toast" role="status"><i class="ri-checkbox-circle-line" style="font-size:16px;color:#0ab39c;"></i>{{ toastText }}</div></sc-if>
+  <sc-if value="{{ toastOpen }}"><div class="sl-toast" role="status"><i class="ri-checkbox-circle-line" style="font-size:16px;color:var(--color-admin-success-text,#0ab39c);"></i>{{ toastText }}</div></sc-if>
 </div>
 
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:820},&quot;accountType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;saas&quot;,&quot;options&quot;:[&quot;saas&quot;,&quot;site&quot;,&quot;ecom&quot;],&quot;tsType&quot;:&quot;'saas'|'site'|'ecom'&quot;,&quot;section&quot;:&quot;Ngữ cảnh&quot;},&quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;settings&quot;,&quot;options&quot;:[&quot;settings&quot;,&quot;profile&quot;],&quot;tsType&quot;:&quot;'settings'|'profile'&quot;,&quot;section&quot;:&quot;Ngữ cảnh&quot;},&quot;demoAuthError&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Trạng thái minh hoạ&quot;},&quot;embedded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Nhúng vào Admin Shell&quot;},&quot;embedId&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;social-login&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Nhúng vào Admin Shell&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(dirty: boolean) =&gt; void&quot;}}">
 class Component extends DCLogic {
+  get ROOT(){ return window.BSPLAT ? window.BSPLAT.sub('website') : 'website.example.net'; }
   constructor(props){
     super(props);
     this.PROVMETA = {
       google:{n:'Google',icon:'ri-google-fill',color:'#EA4335',console:'Google Cloud Console',consoleUpper:'GOOGLE CLOUD CONSOLE',
         consoleUrl:'https://console.cloud.google.com/apis/credentials',
-        idLabel:'Client ID',secretLabel:'Client Secret',clientIdPh:'812734-abcxyz.apps.googleusercontent.com',secretPh:'Khoá bắt đầu bằng GOCSPX-',users:128,
-        pastePh:'Dán tệp JSON hoặc cặp khoá vào đây…',
+        idLabel:'Client ID',secretLabel:'Client Secret',clientIdPh:'812734-abcxyz.apps.googleusercontent.com',secretPh:'Khóa bắt đầu bằng GOCSPX-',users:128,
+        pastePh:'Dán tệp JSON hoặc cặp khóa vào đây…',
         pasteHelp:'Dán được: nguyên nội dung tệp client_secret….json tải từ Google, hoặc chỉ cần copy cả đoạn có Client ID và Client secret. Hệ thống tự nhận ra từng phần và điền vào hai ô bên dưới — bạn không phải tách tay.',
-        idHelp:'Credentials › OAuth 2.0 Client IDs › cột Client ID, dạng 812734-….apps.googleusercontent.com. Trong tệp JSON là khoá client_id.',
-        secretHelp:'Bấm vào tên client ở Credentials rồi copy Client secret (bắt đầu bằng GOCSPX-). Google chỉ cho xem lại trong tệp JSON đã tải, nên nếu mất thì tạo khoá mới.',
+        idHelp:'Credentials › OAuth 2.0 Client IDs › cột Client ID, dạng 812734-….apps.googleusercontent.com. Trong tệp JSON là khóa client_id.',
+        secretHelp:'Bấm vào tên client ở Credentials rồi copy Client secret (bắt đầu bằng GOCSPX-). Google chỉ cho xem lại trong tệp JSON đã tải, nên nếu mất thì tạo khóa mới.',
         guideSteps:[
           {n:1,t:'Chọn dự án',d:'Mở Google Cloud Console, chọn dự án cũ hoặc bấm New project và đặt tên bất kỳ (ví dụ: BSWebSaaS).'},
           {n:2,t:'Khai màn hình đồng ý',d:'APIs & Services › OAuth consent screen: chọn External, điền tên ứng dụng + email hỗ trợ, dán 2 địa chỉ chính sách lấy ở mục 2 bên dưới.'},
           {n:3,t:'Tạo OAuth client ID',d:'Credentials › Create credentials › OAuth client ID › Application type = Web application, rồi dán 2 địa chỉ đầu ở mục 2 bên dưới vào đúng ô.'},
-          {n:4,t:'Lấy khoá về',d:'Bấm Download JSON rồi dán nguyên nội dung tệp vào ô dán nhanh ở mục 3 — không cần tự tách Client ID và Secret.'},
+          {n:4,t:'Lấy khóa về',d:'Bấm Download JSON rồi dán nguyên nội dung tệp vào ô dán nhanh ở mục 3 — không cần tự tách Client ID và Secret.'},
           {n:5,t:'Xuất bản',d:'Quay lại OAuth consent screen bấm Publish app, nếu không thì chỉ tài khoản trong đội bạn đăng nhập được.'}
         ],
         trouble:[
           {q:'Google báo lỗi redirect_uri_mismatch',a:'Địa chỉ trả về dán vào Google chưa khớp tuyệt đối. Mở Hướng dẫn cài đặt › mục 2, chép lại đúng dòng Authorized redirect URI (đủ https://, không thêm dấu / ở cuối), lưu trong Google rồi chờ 1–2 phút.'},
-          {q:'Lỗi invalid_client hoặc Unauthorized',a:'Client ID hoặc khoá bí mật sai, hoặc khoá đã bị xoá trong Google. Tạo khoá mới ở Credentials, dán lại vào hai ô Client ID / Client Secret rồi bấm Kiểm tra & lưu.'},
+          {q:'Lỗi invalid_client hoặc Unauthorized',a:'Client ID hoặc khóa bí mật sai, hoặc khóa đã bị xóa trong Google. Tạo khóa mới ở Credentials, dán lại vào hai ô Client ID / Client Secret rồi bấm Kiểm tra & lưu.'},
           {q:'Google cảnh báo “ứng dụng chưa được xác minh”',a:'Ứng dụng còn ở chế độ Testing. Vào OAuth consent screen bấm Publish app — chỉ xin tên và email thì Google không cần xét duyệt thêm.'}
         ]},
       facebook:{n:'Facebook',icon:'ri-facebook-fill',color:'#1877F2',console:'Meta for Developers',consoleUpper:'META FOR DEVELOPERS',
         consoleUrl:'https://developers.facebook.com/apps/',
-        idLabel:'Mã ứng dụng (App ID)',secretLabel:'Khoá bí mật (App Secret)',clientIdPh:'1234567890123456',secretPh:'Chuỗi 32 ký tự',users:54,
+        idLabel:'Mã ứng dụng (App ID)',secretLabel:'Khóa bí mật (App Secret)',clientIdPh:'1234567890123456',secretPh:'Chuỗi 32 ký tự',users:54,
         pastePh:'Dán App ID và App Secret vào đây…',
         pasteHelp:'Copy cả đoạn chứa App ID và App Secret ở Settings › Basic rồi dán vào đây — hệ thống tự nhận ra dãy số App ID và chuỗi 32 ký tự App Secret, tự điền vào hai ô bên dưới.',
         idHelp:'Settings › Basic › App ID — dãy 15–16 chữ số ngay đầu trang ứng dụng.',
-        secretHelp:'Settings › Basic › App secret, bấm Show và nhập lại mật khẩu Facebook để xem. Nếu mất thì bấm Reset để lấy khoá mới.',
+        secretHelp:'Settings › Basic › App secret, bấm Show và nhập lại mật khẩu Facebook để xem. Nếu mất thì bấm Reset để lấy khóa mới.',
         guideSteps:[
           {n:1,t:'Tạo ứng dụng',d:'developers.facebook.com › My Apps › Create app, chọn mục có Facebook Login (Consumer / Authenticate users).'},
           {n:2,t:'Thêm Facebook Login',d:'Trong ứng dụng: Add product › Facebook Login › Settings, dán Valid OAuth Redirect URI lấy ở mục 2 bên dưới.'},
           {n:3,t:'Điền thông tin bắt buộc',d:'Settings › Basic: dán App domain, Site URL, 2 địa chỉ chính sách và Data deletion callback lấy ở mục 2 bên dưới — thiếu là Facebook không cho chuyển sang Live.'},
-          {n:4,t:'Lấy khoá về',d:'Settings › Basic: copy App ID, bấm Show ở App Secret rồi dán cả hai vào ô dán nhanh ở mục 3.'},
+          {n:4,t:'Lấy khóa về',d:'Settings › Basic: copy App ID, bấm Show ở App Secret rồi dán cả hai vào ô dán nhanh ở mục 3.'},
           {n:5,t:'Chuyển sang Live',d:'Bật App Mode từ Development sang Live ở đầu trang ứng dụng, nếu không chỉ tài khoản trong đội bạn đăng nhập được.'}
         ],
         trouble:[
@@ -373,7 +379,6 @@ class Component extends DCLogic {
           {q:'Facebook đòi xét duyệt quyền',a:'Quyền email và public_profile không cần xét duyệt. Nếu vẫn bị đòi, kiểm tra ứng dụng có xin thêm quyền nào khác và bỏ bớt.'}
         ]}
     };
-    this.ROOT='website.baoson.net';
     this.SAAS_ENABLED = { google:true, facebook:false }; // do Admin SaaS quyết định — tenant chỉ đọc
     this.state = {
       dirty:false, copied:null, helpLinkOpen:false, confirm:null, toast:null, pop:null,
@@ -423,7 +428,7 @@ class Component extends DCLogic {
       {label:'Valid OAuth Redirect URI',value:this.uri('facebook'),where:'Facebook Login › Settings › Valid OAuth Redirect URIs',why:'Facebook chỉ trả người dùng về đúng địa chỉ này, thiếu là báo “URL bị chặn”.'},
       {label:'App domain',value:this.ROOT,where:'Settings › Basic › App domains',why:'Khai tên miền được phép dùng ứng dụng.'},
       {label:'Site URL',value:base,where:'Settings › Basic › Website › Site URL',why:'Địa chỉ website đại diện cho ứng dụng.'},
-      {label:'Data deletion callback URL',value:base+'/oauth/facebook/data-deletion',where:'Settings › Basic › Data deletion callback URL',why:'Facebook yêu cầu có chỗ nhận lệnh xoá dữ liệu. Nền tảng đã xử lý tự động ở địa chỉ này.'},
+      {label:'Data deletion callback URL',value:base+'/oauth/facebook/data-deletion',where:'Settings › Basic › Data deletion callback URL',why:'Facebook yêu cầu có chỗ nhận lệnh xóa dữ liệu. Nền tảng đã xử lý tự động ở địa chỉ này.'},
       {label:'Trang chính sách bảo mật',value:base+'/chinh-sach-bao-mat',where:'Settings › Basic › Privacy Policy URL',why:'Bắt buộc để chuyển ứng dụng sang chế độ Live.'},
       {label:'Trang điều khoản sử dụng',value:base+'/dieu-khoan',where:'Settings › Basic › Terms of Service URL',why:'Bắt buộc như trên — nền tảng đã sinh sẵn trang.'}
     ];
@@ -432,7 +437,7 @@ class Component extends DCLogic {
     const out={id:'',sec:''};
     if(k==='google'){
       if(id && !/\.apps\.googleusercontent\.com$/i.test(id)) out.id='Client ID của Google luôn kết thúc bằng .apps.googleusercontent.com — bạn dán thiếu hoặc dán sai ô.';
-      if(sec && !/^GOCSPX-/.test(sec)) out.sec='Khoá bí mật của Google bắt đầu bằng GOCSPX- — kiểm tra lại xem có dán lẫn Client ID không.';
+      if(sec && !/^GOCSPX-/.test(sec)) out.sec='Khóa bí mật của Google bắt đầu bằng GOCSPX- — kiểm tra lại xem có dán lẫn Client ID không.';
     } else {
       if(id && !/^\d{13,18}$/.test(id)) out.id='App ID của Facebook chỉ gồm chữ số (khoảng 15–16 số).';
       if(sec && !/^[a-f0-9]{32}$/i.test(sec)) out.sec='App Secret của Facebook dài đúng 32 ký tự chữ và số.';
@@ -455,7 +460,7 @@ class Component extends DCLogic {
     let msg=null;
     if(id&&sec) msg={ok:true,text:'Đã tự tách '+m.idLabel+' và '+m.secretLabel+' — chỉ cần bấm Kiểm tra & lưu.'};
     else if(id||sec) msg={ok:false,text:'Chỉ nhận ra được '+(id?m.idLabel:m.secretLabel)+'. Dán thêm phần còn thiếu hoặc điền tay ở ô bên dưới.'};
-    else if(t) msg={ok:false,text:'Chưa nhận ra khoá nào trong đoạn vừa dán — thử dán nguyên tệp JSON, hoặc điền tay hai ô bên dưới.'};
+    else if(t) msg={ok:false,text:'Chưa nhận ra khóa nào trong đoạn vừa dán — thử dán nguyên tệp JSON, hoặc điền tay hai ô bên dưới.'};
     this.patchProv(k,{pasteRaw:raw,pasteMsg:msg,clientId:id||st.clientId,clientSecret:sec||st.clientSecret},(id||sec)?{dirty:true}:null);
   }
   copyAll(k){
@@ -499,8 +504,8 @@ class Component extends DCLogic {
           showLock:false, showToggle:st.connected,
           swClass:'dsw'+(st.masterOn?' on':''), ariaOn:st.masterOn?'true':'false', swLabel:(st.masterOn?'Tắt':'Bật')+' đăng nhập '+meta.n+' cho toàn hệ thống',
           onToggle:()=>{ if(S.prov[k].masterOn) self.setState({confirm:{kind:'off',prov:k}}); else self.patchProv(k,{masterOn:true},{dirty:true}); },
-          errorOpen:isErr, errorText:'Khoá bí mật đã bị thu hồi hoặc hết hạn. Nút '+meta.n+' đang tạm ẩn khỏi màn đăng nhập, người dùng vẫn vào được bằng mật khẩu — dán khoá mới rồi bấm Kiểm tra & lưu.',
-          onRetry:()=>{ self.patchProv(k,{testing:true}); setTimeout(()=>{ self.patchProv(k,{testing:false,configOpen:true}); self.notify('Vẫn chưa xác thực được — dán khoá bí mật mới của '+meta.n); },900); },
+          errorOpen:isErr, errorText:'Khóa bí mật đã bị thu hồi hoặc hết hạn. Nút '+meta.n+' đang tạm ẩn khỏi màn đăng nhập, người dùng vẫn vào được bằng mật khẩu — dán khóa mới rồi bấm Kiểm tra & lưu.',
+          onRetry:()=>{ self.patchProv(k,{testing:true}); setTimeout(()=>{ self.patchProv(k,{testing:false,configOpen:true}); self.notify('Vẫn chưa xác thực được — dán khóa bí mật mới của '+meta.n); },900); },
           configOpen:st.configOpen, consoleName:meta.console, consoleUpper:meta.consoleUpper, consoleUrl:meta.consoleUrl,
           idLabel:meta.idLabel, secretLabel:meta.secretLabel,
           guideOpen:st.guideOpen, guideIcon:st.guideOpen?'ri-arrow-up-s-line':'ri-book-open-line',
@@ -574,13 +579,13 @@ class Component extends DCLogic {
         title:'Tắt đăng nhập '+meta.n+'?',
         body:isSaas?(meta.users+' người đang dùng '+meta.n+' để vào hệ thống. Ai chưa có mật khẩu sẽ được nền tảng tự gửi thư đặt mật khẩu, nên không ai bị mất đường đăng nhập.')
           :('Nút '+meta.n+' sẽ biến khỏi màn đăng nhập của bạn. Khách đang dùng cách này sẽ được hướng dẫn đặt mật khẩu qua email.'),
-        note:'Liên kết đã có không bị xoá — bật lại là dùng được ngay.',
+        note:'Liên kết đã có không bị xóa — bật lại là dùng được ngay.',
         btn:'Tắt '+meta.n, btnIcon:'ri-toggle-line', danger:true,
         accept:()=>{ if(isSaas){ self.patchProv(cf.prov,{masterOn:false},{dirty:true,confirm:null}); } else { const t=Object.assign({},S.tenant); t[cf.prov+'On']=false; self.setState({tenant:t,dirty:true,confirm:null}); } }
       };
       if(cf.kind==='disconnect') confirm={
         title:'Ngắt kết nối ứng dụng '+meta.n+'?',
-        body:'Client ID và khoá bí mật sẽ bị xoá khỏi hệ thống, mọi website đang bật '+meta.n+' sẽ ẩn nút này ngay lập tức.',
+        body:'Client ID và khóa bí mật sẽ bị xóa khỏi hệ thống, mọi website đang bật '+meta.n+' sẽ ẩn nút này ngay lập tức.',
         note:'Liên kết của người dùng vẫn giữ — kết nối lại đúng ứng dụng cũ là chạy tiếp.',
         btn:'Ngắt kết nối', btnIcon:'ri-link-unlink-m', danger:true,
         accept:()=>self.patchProv(cf.prov,{connected:false,masterOn:false,clientId:'',clientSecret:''},{dirty:true,confirm:null})
@@ -627,7 +632,7 @@ class Component extends DCLogic {
       confirmOpen:!!confirm, stopClick:(e)=>e.stopPropagation(),
       confirmTitle:confirm?confirm.title:'', confirmBody:confirm?confirm.body:'', confirmNote:confirm?confirm.note:'',
       confirmIcon:'ri-alert-line',
-      confirmIconWrap:'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;flex-shrink:0;background:rgba(247,184,75,.16);color:#b57d13;',
+      confirmIconWrap:'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;flex-shrink:0;background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#b57d13);',
       confirmBtnCls:'sl-gbtn danger', confirmBtnIcon:confirm?confirm.btnIcon:'', confirmBtnLabel:confirm?confirm.btn:'',
       onCancelConfirm:()=>self.setState({confirm:null}),
       onAcceptConfirm:()=>{ if(confirm) confirm.accept(); }

@@ -2,17 +2,35 @@
    COLORS — the Velzon v4.4.4 admin language + An Vinh storefront palette.
    Base values are fixed platform identity; semantic roles alias them by intent.
    Raw hex is never used in components — reference the semantic roles below.
+   AA tiers synced with repo resources/css/app.css + admin-chrome.css (PR #87 / #92).
    ============================================================================ */
 :root {
     /* ---- Admin brand (fixed platform identity, separate from tenant brand) ---- */
-    --color-admin-primary: #405189;   /* navy — brand primary, buttons/links/active */
-    --color-admin-secondary: #3577f1;
+    --color-admin-primary: #405189;   /* navy — FILL under white text only (buttons, active pills) */
+    --color-admin-secondary: #3577f1; /* base hue — 10% tints + status dots only, never a fill under text */
     --color-admin-success: #0ab39c;
     --color-admin-info: #299cdb;
     --color-admin-warning: #f7b84b;
     --color-admin-danger: #f06548;
     --color-admin-light: #f3f6f9;
     --color-admin-dark: #212529;
+
+    /* ---- Semantic tiers (PR #87) ----
+       -solid = fill under white text (≥4.5:1, both schemes)
+       -text  = text, soft style, borders (≥4.5:1 on white, page and 10% tint; flips in dark) */
+    --color-admin-secondary-solid: #2f69d4;
+    --color-admin-success-solid: #038573;
+    --color-admin-info-solid: #057db6;
+    --color-admin-warning-solid: #f7b84b;   /* warning fill keeps base; text on it = --color-on-warning */
+    --color-admin-danger-solid: #d0472b;
+    --color-on-warning: #212529;
+
+    --color-admin-secondary-text: #2f69d4;
+    --color-admin-success-text: #047767;
+    --color-admin-info-text: #026fa2;
+    --color-admin-warning-text: #906405;
+    --color-admin-danger-text: #bf371a;
+    --color-admin-dark-text: #212529;       /* soft "dark" badge (PR #92) */
 
     /* ---- Velzon neutral gray ramp ---- */
     --color-gray-100: #f3f6f9;
@@ -31,40 +49,46 @@
     --color-surface-hover: #f3f6f9;    /* item hover / soft fill on a surface */
     --color-surface-muted: #f8f9fb;    /* zebra rows, muted panels */
     --color-border: #eff2f7;           /* generic divider (gray-200) */
-    --color-border-strong: #e9ebec;    /* input/select borders (gray-300) */
+    --color-border-strong: #e9ebec;    /* card / table hairlines (gray-300) — NOT for field edges */
+    --color-border-input: #878a99;     /* input/select/textarea edge — ≥3:1 on field + page (PR #87) */
     --color-border-soft: #f3f6f9;      /* hairline list dividers (gray-100) */
     --color-heading: #343a40;          /* page/card/section headings (gray-800) */
     --color-body-text: #495057;        /* base text (gray-700) */
-    --color-body-muted: #878a99;       /* secondary text (gray-600) */
-    --color-body-faint: #adb5bd;       /* meta/hint text, timestamps (gray-500) */
-    --color-placeholder: #ced4da;      /* input placeholder + disabled glyphs (gray-400) */
+    --color-body-muted: #6b6e7f;       /* secondary text a reader needs — 5.04 white · 4.56 page */
+    --color-body-faint: #adb5bd;       /* DECORATIVE ONLY — never meaningful text */
+    --color-placeholder: var(--color-body-muted); /* placeholder = examples only (PR #92) */
     --color-ink-ghost: #e9ebec;        /* decorative/empty-state glyphs — WCAG-exempt */
-    --color-accent: var(--color-admin-primary); /* chrome accent as text/ring */
+    --color-accent: #405189;           /* navy as ink: links, active tab, borders, focus ring */
+
+    /* ---- Focus (PR #87) — one global :focus-visible ring ---- */
+    --focus-ring-width: 2px;
+    --focus-ring-offset: 2px;
+    --focus-ring-color: var(--color-accent);
 
     /* ---- Chrome zones — sidebar (default = Velzon dark navy preset) ---- */
     --color-sidebar: #405189;
-    --color-sidebar-fg: #abb9e8;               /* resting item — muted periwinkle */
+    --color-sidebar-fg: rgb(255 255 255 / 0.85); /* resting item — 6.05 on navy (C5) */
     --color-sidebar-fg-hover: #ffffff;
     --color-sidebar-fg-active: #ffffff;
     --color-sidebar-hover: rgb(255 255 255 / 0.10);
     --color-sidebar-active: rgb(255 255 255 / 0.15);
-    --color-sidebar-title: rgb(255 255 255 / 0.60);
+    --color-sidebar-title: rgb(255 255 255 / 0.75); /* ≥4.5 on navy */
     --color-sidebar-brand: #ffffff;
 
     /* ---- Chrome zones — topbar (default = light) ---- */
     --color-topbar: #ffffff;
     --color-topbar-border: #e9ebec;
-    --color-topbar-fg: #878a99;                /* icon buttons */
+    --color-topbar-fg: #6b6e7f;                /* icon buttons + role line (E3) */
     --color-topbar-fg-strong: #495057;         /* user name */
     --color-topbar-fg-hover: #212529;
     --color-topbar-hover: #f3f6f9;
     --color-topbar-search: #f3f3f9;
-    --color-footer: #adb5bd;
+    --color-footer: #6b6e7f;
 
-    /* ---- Storefront (An Vinh tenant — slate + amber, secondary surface) ---- */
+    /* ---- Storefront (An Vinh tenant — PREVIEW values only; source = site_settings.theme.tokens) ---- */
     --color-sf-ink: #0f172a;           /* header/footer/hero bg, slate-900 */
     --color-sf-ink-2: #1e293b;         /* secondary dark surface, slate-800 */
-    --color-sf-accent: #d6a43a;        /* brass gold — CTA, section flourishes (An Vinh v2) */
+    --color-sf-accent: #d6a43a;        /* brass gold — CTA, section flourishes (An Vinh v2 preview) */
     --color-sf-accent-hover: #bd8b28;  /* gold hover */
     --color-sf-page: #f8fafc;          /* slate-50 page bg */
     --color-sf-body: #334155;          /* slate-700 body copy */
@@ -82,6 +106,7 @@
     --color-surface-muted: #24282d;
     --color-border: #32383e;
     --color-border-strong: #3a4149;
+    --color-border-input: #71777f;
     --color-border-soft: #2c3237;
     --color-heading: #e9ecef;
     --color-body-text: #ced4da;
@@ -90,27 +115,35 @@
     --color-placeholder: #98a0ae;
     --color-ink-ghost: #4a5058;
     --color-accent: #96a1c0;
+
+    --color-admin-secondary-text: #6e9df5;
+    --color-admin-success-text: #0db49d;
+    --color-admin-info-text: #39a8e8;
+    --color-admin-warning-text: #f7b84b;
+    --color-admin-danger-text: #ff7355;
+    --color-admin-dark-text: #dce0e6;
+
     --color-sidebar: #212529;
     --color-sidebar-fg: #8f94a5;
-    --color-sidebar-title: #7d8294;
+    --color-sidebar-title: #8f94a5;            /* was #7d8294 (≈4.0, E5) */
     --color-topbar: #292e32;
     --color-topbar-border: #292e32;
-    --color-topbar-fg: #878a99;
+    --color-topbar-fg: #98a0ae;
     --color-topbar-fg-strong: #e9ecef;
     --color-topbar-fg-hover: #ffffff;
     --color-topbar-hover: #31363c;
     --color-topbar-search: #202328;
-    --color-footer: #878a99;
+    --color-footer: #98a0ae;
 }
 
 /* Light sidebar variant (Customizer data-sidebar=light). */
 :root[data-sidebar='light'] {
     --color-sidebar: #ffffff;
     --color-sidebar-fg: #6c6f80;
-    --color-sidebar-fg-hover: var(--color-admin-primary);
-    --color-sidebar-fg-active: var(--color-admin-primary);
+    --color-sidebar-fg-hover: var(--color-accent);
+    --color-sidebar-fg-active: var(--color-accent);
     --color-sidebar-hover: rgb(64 81 137 / 0.10);
     --color-sidebar-active: rgb(64 81 137 / 0.15);
-    --color-sidebar-title: #8a92a0;
+    --color-sidebar-title: #6c6f80;            /* 4.97 on white (C5) */
     --color-sidebar-brand: #343a40;
 }

@@ -6,7 +6,9 @@ Two inputs:
   python3 scripts/design_snapshot.py <project export .zip>
       The whole Claude Design project, exported as a zip. Replaces docs/design-source/ with its
       text files (screens, shared scripts, design-system tokens, the project's notes). Images and
-      fonts are left out: they are not read and would bloat the repo. The project's CLAUDE.md is
+      fonts are left out: they are not read and would bloat the repo. So are `uploads/` (whatever was
+      ever attached to a chat, including files from other projects) and `_audit/` (the design tool's
+      own test harness and backups): neither is design. The project's CLAUDE.md is
       renamed, because Claude Code would otherwise load it as instructions for this repo.
 
   python3 scripts/design_snapshot.py <saved artifact .html> "docs/design-source/<Screen>.dc.html"
@@ -23,6 +25,7 @@ from pathlib import Path
 TARGET = Path("docs/design-source")
 TEXT_SUFFIXES = {".html", ".md", ".js", ".css", ".json"}
 RENAMES = {"CLAUDE.md": "design-project-CLAUDE.md"}
+SKIPPED_FOLDERS = {"uploads", "_audit"}
 
 
 def from_zip(source: str) -> None:
@@ -33,6 +36,8 @@ def from_zip(source: str) -> None:
         for info in archive.infolist():
             name = Path(info.filename)
             if info.is_dir() or name.suffix not in TEXT_SUFFIXES or name.name.startswith("."):
+                continue
+            if name.parts[0] in SKIPPED_FOLDERS:
                 continue
             out = TARGET / RENAMES.get(str(name), str(name))
             out.parent.mkdir(parents=True, exist_ok=True)

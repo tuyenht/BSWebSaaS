@@ -8,6 +8,9 @@
 <body>
 <x-dc>
 <helmet>
+<link rel="stylesheet" href="admin-base.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
@@ -15,43 +18,44 @@
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
 <script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <style>
-body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
-a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
-.kp-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
-.kp-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
-.kp-t{font-size:14px;font-weight:600;color:#343a40;}
-.kp-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;}
-.kp-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
-.kp-tab:hover{background:#f3f6f9;}
-.kp-search:focus-within{border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.12);}
-.kp-tab.on{border-color:#405189;background:rgba(64,81,137,.08);font-weight:600;color:#405189;}
-.kp-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
-.kp-btn:hover{background:#f3f6f9;}
-.kp-ai{border-color:rgba(64,81,137,.28);background:rgba(64,81,137,.10);color:#405189;}
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);}
+a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--color-accent,#2f3d69);text-decoration:underline;}
+.kp-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.kp-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;}
+.kp-t{font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);}
+.kp-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);flex-wrap:wrap;}
+.kp-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
+.kp-tab:hover{background:var(--color-surface-hover,#f3f6f9);}
+.kp-search:focus-within{border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.12);}
+.kp-tab.on{border-color:#2050a0;background:rgba(32,80,160,.08);font-weight:600;color:var(--color-accent,#2050a0);}
+.kp-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
+.kp-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
+.kp-ai{border-color:rgba(32,80,160,.28);background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);}
 .kp-btn:disabled{opacity:.6;cursor:not-allowed;}
-.kp-ai:disabled{border-color:#eff2f7;background:#f8f9fb;color:#adb5bd;cursor:not-allowed;opacity:1;}
-.kp-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
-.kp-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
-.kp-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
-.kp-pill:hover{background:#f3f6f9;}
-.kp-pill.on{border-color:#405189;background:rgba(64,81,137,.07);font-weight:600;color:#405189;}
-.kp-kw{display:grid;grid-template-columns:2fr minmax(116px,auto) 84px 72px 1.5fr minmax(164px,auto);gap:0;align-items:center;border-top:1px solid #f6f7f9;}
-.kp-kw span{padding:9px 12px;font-size:12px;color:#495057;min-width:0;}
+.kp-ai:disabled{border-color:var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);cursor:not-allowed;opacity:1;}
+.kp-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.kp-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
+.kp-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
+.kp-pill:hover{background:var(--color-surface-hover,#f3f6f9);}
+.kp-pill.on{border-color:#2050a0;background:rgba(32,80,160,.07);font-weight:600;color:var(--color-accent,#2050a0);}
+.kp-kw{display:grid;grid-template-columns:2fr minmax(116px,auto) 84px 72px 1.5fr minmax(164px,auto);gap:0;align-items:center;border-top:1px solid var(--color-border-soft,#f6f7f9);}
+.kp-kw span{padding:9px 12px;font-size:12px;color:var(--color-body-text,#3c4765);min-width:0;}
 .kp-kw span:nth-child(2){padding-left:4px;padding-right:4px;}
-.kp-hd{display:grid;grid-template-columns:2fr minmax(116px,auto) 84px 72px 1.5fr minmax(164px,auto);gap:0;background:#f8f9fb;border-top:1px solid #eff2f7;}
+.kp-hd{display:grid;grid-template-columns:2fr minmax(116px,auto) 84px 72px 1.5fr minmax(164px,auto);gap:0;background:var(--color-surface-muted,#f8f9fb);border-top:1px solid var(--color-border,#e9ecf4);}
 .kp-hd span:nth-child(2){padding-left:4px;padding-right:4px;}
-.kp-hd span{padding:8px 12px;font-size:10.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#878a99;}
+.kp-hd span{padding:8px 12px;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);}
 .kp-sw{width:38px;height:20px;border-radius:20px;background:#dfe2e8;position:relative;display:inline-block;flex-shrink:0;transition:background .15s;}
-.kp-sw.on{background:#405189;}
-.kp-sk{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.15);}
+.kp-sw.on{background:#2050a0;}
+.kp-sk{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--color-surface,#fff);transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.15);}
 .kp-sw.on .kp-sk{left:20px;}
 .kp-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
-.kp-week{display:grid;grid-template-columns:88px 1fr;gap:0;border-top:1px solid #f6f7f9;}
-.kp-slot{display:flex;flex-direction:column;gap:3px;padding:9px 11px;border:1px solid #eff2f7;border-radius:5px;background:#fbfcfe;min-width:0;}
+.kp-week{display:grid;grid-template-columns:88px 1fr;gap:0;border-top:1px solid var(--color-border-soft,#f6f7f9);}
+.kp-slot{display:flex;flex-direction:column;gap:3px;padding:9px 11px;border:1px solid var(--color-border,#e9ecf4);border-radius:5px;background:var(--color-surface-muted,#fbfcfe);min-width:0;}
 .kp-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
 @media (max-width:1000px){.kp-4{grid-template-columns:repeat(2,minmax(0,1fr));}.kp-kw,.kp-hd{grid-template-columns:1.6fr minmax(116px,auto) 1.4fr minmax(164px,auto);}.kp-kw span:nth-child(3),.kp-kw span:nth-child(4),.kp-hd span:nth-child(3),.kp-hd span:nth-child(4){display:none;}}
+@media (max-width:600px){.kp-4{grid-template-columns:minmax(0,1fr);}.kp-hd{display:none;}.kp-kw{grid-template-columns:minmax(0,1fr) auto;}.kp-kw span:nth-child(1){grid-column:1/-1;}}
 @keyframes kpFade{from{opacity:0}to{opacity:1}}
 </style>
 </helmet>
@@ -60,26 +64,26 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
   <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
     <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
-      <span style="font-size:11.5px;color:#adb5bd;">Nội dung › Kế hoạch nội dung SEO</span>
-      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Kế hoạch nội dung SEO</span>
-      <span style="font-size:13px;color:#878a99;line-height:1.65;">Bạn đưa vài từ khoá gốc. Hệ thống mở rộng thành các cụm chủ đề, gộp những từ trùng ý định về một bài, xếp lịch viết đều đặn rồi tự viết và đưa vào hàng đợi. Bài đạt chuẩn có thể tự đăng theo lịch — bài chưa chuẩn luôn chờ bạn.</span>
+      <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Nội dung › Kế hoạch nội dung SEO</span>
+      <span style="font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.35;">Kế hoạch nội dung SEO</span>
+      <span style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Bạn đưa vài từ khóa gốc. Hệ thống mở rộng thành các cụm chủ đề, gộp những từ trùng ý định về một bài, xếp lịch viết đều đặn rồi tự viết và đưa vào hàng đợi. Bài đạt chuẩn có thể tự đăng theo lịch — bài chưa chuẩn luôn chờ bạn.</span>
     </div>
-    <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;flex-wrap:wrap;">
-      <span title="{{ quotaTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:20px;background:#fff;border:1px solid #eff2f7;font-size:12px;font-weight:600;color:#878a99;white-space:nowrap;"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ quotaChip }}</span>
+    <div style="display:flex;gap:8px;flex:0 1 auto;min-width:0;flex-wrap:wrap;margin-top:22px;">
+      <span title="{{ quotaTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 12px;border-radius:20px;background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ quotaChip }}</span>
       <button class="kp-btn" style="min-height:38px;font-size:13px;" onClick="{{ onOpenQueue }}" title="Mở Vận hành nội dung AI › Hàng đợi để xem các bài đang được viết và tiến độ"><i class="ri-list-check-2" style="font-size:16px;"></i>Xem hàng đợi</button>
     </div>
   </div>
 
   <div class="kp-card">
     <div style="display:flex;align-items:center;gap:9px;padding:10px 16px;flex-wrap:wrap;">
-      <i class="ri-translate-2" title="Bộ từ khoá và lịch lên bài của bản nội dung đang chọn" style="font-size:16px;color:#878a99;flex-shrink:0;"></i>
+      <i class="ri-translate-2" title="Bộ từ khóa và lịch lên bài của bản nội dung đang chọn" style="font-size:16px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
       <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
         <sc-for list="{{ langs }}" as="lg" hint-placeholder-count="3">
-          <sc-if value="{{ lg.on2 }}"><button class="kp-pill on" onClick="{{ lg.on }}" title="{{ lg.title }}"><span style="{{ lg.dotStyle }}"></span>{{ lg.name }}<sc-if value="{{ lg.isSrc }}"><i class="ri-star-fill" style="font-size:11px;color:#f7b84b;"></i></sc-if></button></sc-if>
-          <sc-if value="{{ lg.off }}"><button class="kp-pill" onClick="{{ lg.on }}" title="{{ lg.title }}"><span style="{{ lg.dotStyle }}"></span>{{ lg.name }}<sc-if value="{{ lg.isSrc }}"><i class="ri-star-fill" style="font-size:11px;color:#f7b84b;"></i></sc-if></button></sc-if>
+          <sc-if value="{{ lg.on2 }}"><button class="kp-pill on" onClick="{{ lg.on }}" title="{{ lg.title }}"><span style="{{ lg.dotStyle }}"></span>{{ lg.name }}<sc-if value="{{ lg.isSrc }}"><i class="ri-star-fill" style="font-size:12px;color:#f7b84b;"></i></sc-if></button></sc-if>
+          <sc-if value="{{ lg.off }}"><button class="kp-pill" onClick="{{ lg.on }}" title="{{ lg.title }}"><span style="{{ lg.dotStyle }}"></span>{{ lg.name }}<sc-if value="{{ lg.isSrc }}"><i class="ri-star-fill" style="font-size:12px;color:#f7b84b;"></i></sc-if></button></sc-if>
         </sc-for>
       </span>
-      <span style="margin-left:auto;font-size:11.5px;color:#878a99;white-space:nowrap;">{{ langScope }}</span>
+      <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;text-align:right;">{{ langScope }}</span>
     </div>
     <div style="{{ langNoteStyle }}"><i class="{{ langNoteIcon }}" style="font-size:15px;flex-shrink:0;margin-top:1px;"></i><span>{{ langNote }}</span></div>
   </div>
@@ -87,16 +91,16 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   <sc-if value="{{ langEmpty }}">
     <div class="kp-card">
       <div class="kp-h">
-        <i class="ri-seedling-line" style="font-size:17px;color:#405189;"></i>
-        <span class="kp-t">Bắt đầu bộ từ khoá cho bản này</span>
-        <span style="margin-left:auto;font-size:11.5px;color:#878a99;">Chọn một cách — hệ thống làm phần còn lại</span>
+        <i class="ri-seedling-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
+        <span class="kp-t">Bắt đầu bộ từ khóa cho bản này</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">Chọn một cách — hệ thống làm phần còn lại</span>
       </div>
       <sc-for list="{{ langOpts }}" as="o" hint-placeholder-count="3">
         <div class="kp-row" style="padding:12px 16px;">
-          <i class="{{ o.icon }}" style="font-size:17px;color:#405189;flex-shrink:0;"></i>
+          <i class="{{ o.icon }}" style="font-size:17px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
           <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 320px;min-width:0;">
-            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ o.name }}</span><sc-if value="{{ o.best }}"><span class="kp-chip" style="background:rgba(10,179,156,.12);color:#0a7d6f;">KHUYÊN DÙNG</span></sc-if></span>
-            <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ o.hint }}</span>
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ o.name }}</span><sc-if value="{{ o.best }}"><span class="kp-chip" style="background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);">KHUYÊN DÙNG</span></sc-if></span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ o.hint }}</span>
           </span>
           <button class="kp-btn kp-ai" style="min-height:34px;flex-shrink:0;" onClick="{{ o.go }}">Chọn cách này</button>
         </div>
@@ -106,8 +110,8 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
   <sc-if value="{{ langHas }}" hint-placeholder-val="{{ true }}">
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
-    <sc-if value="{{ tabMapOn }}"><button class="kp-tab on" onClick="{{ onTabMap }}"><i class="ri-node-tree" style="font-size:16px;"></i>Bản đồ từ khoá</button></sc-if>
-    <sc-if value="{{ tabMapOff }}"><button class="kp-tab" onClick="{{ onTabMap }}"><i class="ri-node-tree" style="font-size:16px;"></i>Bản đồ từ khoá</button></sc-if>
+    <sc-if value="{{ tabMapOn }}"><button class="kp-tab on" onClick="{{ onTabMap }}"><i class="ri-node-tree" style="font-size:16px;"></i>Bản đồ từ khóa</button></sc-if>
+    <sc-if value="{{ tabMapOff }}"><button class="kp-tab" onClick="{{ onTabMap }}"><i class="ri-node-tree" style="font-size:16px;"></i>Bản đồ từ khóa</button></sc-if>
     <sc-if value="{{ tabPlanOn }}"><button class="kp-tab on" onClick="{{ onTabPlan }}"><i class="ri-calendar-schedule-line" style="font-size:16px;"></i>Lịch lên bài</button></sc-if>
     <sc-if value="{{ tabPlanOff }}"><button class="kp-tab" onClick="{{ onTabPlan }}"><i class="ri-calendar-schedule-line" style="font-size:16px;"></i>Lịch lên bài</button></sc-if>
     <sc-if value="{{ tabGateOn }}"><button class="kp-tab on" onClick="{{ onTabGate }}"><i class="ri-shield-check-line" style="font-size:16px;"></i>Cổng tự duyệt</button></sc-if>
@@ -116,11 +120,11 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
     <sc-if value="{{ tabDestOff }}"><button class="kp-tab" onClick="{{ onTabDest }}"><i class="ri-inbox-archive-line" style="font-size:16px;"></i>Bài lưu vào đâu</button></sc-if>
   </div>
 
-  <div class="kp-card" style="display:flex;align-items:center;gap:12px;padding:13px 16px;flex-wrap:wrap;border-left:3px solid #405189;">
-    <span style="width:32px;height:32px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ nxIcon }}" style="font-size:16px;color:#405189;"></i></span>
+  <div class="kp-card" style="display:flex;align-items:center;gap:12px;padding:13px 16px;flex-wrap:wrap;border-left:3px solid #2050a0;">
+    <span style="width:32px;height:32px;border-radius:50%;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ nxIcon }}" style="font-size:16px;color:var(--color-accent,#2050a0);"></i></span>
     <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 300px;min-width:0;">
-      <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Việc nên làm tiếp</span>
-      <span style="font-size:12.5px;color:#495057;line-height:1.6;">{{ nxText }}</span>
+      <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">Việc nên làm tiếp</span>
+      <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.6;">{{ nxText }}</span>
     </span>
     <button class="kp-pri" onClick="{{ onNx }}" style="flex-shrink:0;"><i class="ri-arrow-right-line" style="font-size:16px;"></i>{{ nxLabel }}</button>
   </div>
@@ -129,65 +133,65 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-folder-settings-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-folder-settings-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Mỗi cụm chủ đề đổ vào đâu</span>
           <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:11.5px;color:#878a99;">{{ catsLine }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ catsLine }}</span>
             <sc-if value="{{ catsOn }}"><button class="kp-btn kp-ai" onClick="{{ onApproveCats }}" title="Duyệt tạo các danh mục còn thiếu, kèm mô tả danh mục và breadcrumb"><i class="ri-check-double-line" style="font-size:14px;"></i>Duyệt tạo danh mục</button></sc-if>
           </span>
         </div>
         <sc-for list="{{ dests }}" as="d" hint-placeholder-count="4">
           <div class="kp-row" style="padding:11px 16px;">
             <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 260px;min-width:0;">
-              <span style="font-size:13px;font-weight:600;color:#343a40;">{{ d.c }}</span>
-              <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><i class="ri-folder-3-line" style="font-size:14px;color:#878a99;"></i><span style="font-size:12px;color:#495057;">{{ d.cat }}</span><span class="kp-chip" style="{{ d.catChipStyle }}">{{ d.catChip }}</span></span>
+              <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ d.c }}</span>
+              <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><i class="ri-folder-3-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i><span style="font-size:12px;color:var(--color-body-text,#3c4765);">{{ d.cat }}</span><span class="kp-chip" style="{{ d.catChipStyle }}">{{ d.catChip }}</span></span>
             </span>
             <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 240px;min-width:0;">
-              <span style="font-size:11.5px;color:#878a99;line-height:1.55;">Thẻ: {{ d.tag }} · Mẫu: {{ d.tpl }}</span>
-              <span style="font-size:11.5px;color:#878a99;line-height:1.55;">Tác giả: {{ d.author }} · {{ d.prod }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Thẻ: {{ d.tag }} · Mẫu: {{ d.tpl }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Tác giả: {{ d.author }} · {{ d.prod }}</span>
             </span>
             <sc-if value="{{ d.tracked }}"><button class="kp-btn" style="min-height:34px;flex-shrink:0;" onClick="{{ d.onEdit }}">Đổi</button></sc-if>
-            <sc-if value="{{ d.untracked }}"><span class="kp-chip" title="{{ d.untrackedNote }}" style="background:#f3f6f9;color:#adb5bd;height:30px;flex-shrink:0;"><i class="ri-eye-off-line" style="font-size:12px;"></i>Tạm ngưng</span></sc-if>
+            <sc-if value="{{ d.untracked }}"><span class="kp-chip" title="{{ d.untrackedNote }}" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);height:30px;flex-shrink:0;"><i class="ri-eye-off-line" style="font-size:12px;"></i>Tạm ngưng</span></sc-if>
           </div>
         </sc-for>
-        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
-          <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Bạn chỉ chọn một lần cho mỗi cụm. Từ đó mọi bài của cụm tự vào đúng danh mục, đúng mẫu trang, đúng tác giả, tự gắn thẻ và tự gắn sản phẩm liên quan — không phải chọn lại cho từng bài.</span>
+        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
+          <i class="ri-information-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Bạn chỉ chọn một lần cho mỗi cụm. Từ đó mọi bài của cụm tự vào đúng danh mục, đúng mẫu trang, đúng tác giả, tự gắn thẻ và tự gắn sản phẩm liên quan — không phải chọn lại cho từng bài.</span>
         </div>
       </div>
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-node-tree" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-node-tree" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Từng loại nội dung được ghi vào đâu</span>
         </div>
         <sc-for list="{{ wheres }}" as="w" hint-placeholder-count="6">
           <div class="kp-row" style="padding:11px 16px;">
             <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 250px;min-width:0;">
-              <span style="font-size:12.5px;font-weight:600;color:#343a40;line-height:1.45;">{{ w.type }}</span>
-              <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ w.extra }}</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.45;">{{ w.type }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ w.extra }}</span>
             </span>
             <span style="display:flex;flex-direction:column;gap:2px;flex:0 1 200px;min-width:0;">
-              <span style="font-size:12px;font-weight:500;color:#495057;">{{ w.post }}</span>
-              <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ w.place }} · {{ w.tpl }}</span>
+              <span style="font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);">{{ w.post }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ w.place }} · {{ w.tpl }}</span>
             </span>
-            <span style="font-size:11.5px;color:#878a99;white-space:normal;flex:0 1 190px;line-height:1.55;">{{ w.init }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:normal;flex:0 1 190px;line-height:1.55;">{{ w.init }}</span>
           </div>
         </sc-for>
       </div>
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-magic-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-magic-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Thuộc tính nào tự điền, thuộc tính nào cần bạn</span>
-          <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ attrSummary }}</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ attrSummary }}</span>
         </div>
         <sc-for list="{{ attrs }}" as="a" hint-placeholder-count="8">
           <div class="kp-row" style="padding:10px 16px;">
             <span class="kp-chip" style="{{ a.modeStyle }}">{{ a.modeLabel }}</span>
             <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 300px;min-width:0;">
-              <span style="font-size:12.5px;font-weight:500;color:#343a40;line-height:1.45;">{{ a.name }}</span>
-              <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ a.hint }}</span>
+              <span style="font-size:12.5px;font-weight:500;color:var(--color-heading,#1f2b4d);line-height:1.45;">{{ a.name }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ a.hint }}</span>
             </span>
           </div>
         </sc-for>
@@ -199,67 +203,67 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-key-2-line" style="font-size:17px;color:#405189;"></i>
-          <span class="kp-t">Từ khoá gốc của bạn</span>
+          <i class="ri-key-2-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
+          <span class="kp-t">Từ khóa gốc của bạn</span>
           <span style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <span style="font-size:11.5px;color:#878a99;">{{ mapSummary }}</span>
-            <button class="kp-btn" onClick="{{ onImport }}" title="{{ importTitle }}"><i class="ri-file-excel-2-line" style="font-size:14px;"></i>Nhập danh sách từ khoá</button>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ mapSummary }}</span>
+            <button class="kp-btn" onClick="{{ onImport }}" title="{{ importTitle }}"><i class="ri-file-excel-2-line" style="font-size:14px;"></i>Nhập danh sách từ khóa</button>
             <button class="kp-btn kp-ai" onClick="{{ onExpand }}" title="{{ expandTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>Mở rộng lại bằng AI</button>
           </span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:13px 16px;">
           <sc-for list="{{ roots }}" as="r" hint-placeholder-count="4">
             <sc-if value="{{ r.isOld }}">
-              <span class="kp-chip" title="{{ r.title }}" style="height:30px;background:rgba(64,81,137,.08);color:#405189;font-size:12px;">{{ r.name }}<button onClick="{{ r.onRemove }}" title="Bỏ từ khoá gốc này" style="border:0;background:transparent;color:#7d8bb3;cursor:pointer;padding:0 0 0 2px;display:inline-flex;"><i class="ri-close-line" style="font-size:13px;"></i></button></span>
+              <span class="kp-chip" title="{{ r.title }}" style="height:30px;background:rgba(32,80,160,.08);color:var(--color-accent,#2050a0);font-size:12px;">{{ r.name }}<button onClick="{{ r.onRemove }}" title="Bỏ từ khóa gốc này" style="border:0;background:transparent;color:#7d8bb3;cursor:pointer;padding:0 0 0 2px;display:inline-flex;" aria-label="Bỏ từ khóa gốc này"><i class="ri-close-line" style="font-size:13px;"></i></button></span>
             </sc-if>
             <sc-if value="{{ r.isNew }}">
-              <span class="kp-chip" title="{{ r.title }}" style="height:30px;background:rgba(247,184,75,.14);border:1px dashed rgba(181,125,19,.55);color:#8a6115;font-size:12px;">{{ r.name }}<span style="font-size:10px;font-weight:700;letter-spacing:.03em;opacity:.75;">MỚI</span><button onClick="{{ r.onRemove }}" title="Bỏ từ khoá gốc này" style="border:0;background:transparent;color:#b58b3a;cursor:pointer;padding:0 0 0 2px;display:inline-flex;"><i class="ri-close-line" style="font-size:13px;"></i></button></span>
+              <span class="kp-chip" title="{{ r.title }}" style="height:30px;background:rgba(247,184,75,.14);border:1px dashed rgba(181,125,19,.55);color:var(--color-admin-warning-text,#8a6115);font-size:12px;">{{ r.name }}<span style="font-size:12px;font-weight:700;letter-spacing:.03em;opacity:.75;">MỚI</span><button onClick="{{ r.onRemove }}" title="Bỏ từ khóa gốc này" style="border:0;background:transparent;color:var(--color-admin-warning-text,#b58b3a);cursor:pointer;padding:0 0 0 2px;display:inline-flex;" aria-label="Bỏ từ khóa gốc này"><i class="ri-close-line" style="font-size:13px;"></i></button></span>
             </sc-if>
           </sc-for>
           <sc-if value="{{ notAdding }}">
-            <button class="kp-btn" style="min-height:30px;border-style:dashed;" onClick="{{ onOpenAdd }}" title="Gõ một từ, hoặc dán cả danh sách cách nhau bằng dấu phẩy, chấm phẩy hay xuống dòng — hệ thống tự tách và bỏ từ trùng"><i class="ri-add-line" style="font-size:14px;"></i>Thêm từ khoá gốc</button>
+            <button class="kp-btn" style="min-height:30px;border-style:dashed;" onClick="{{ onOpenAdd }}" title="Gõ một từ, hoặc dán cả danh sách cách nhau bằng dấu phẩy, chấm phẩy hay xuống dòng — hệ thống tự tách và bỏ từ trùng"><i class="ri-add-line" style="font-size:14px;"></i>Thêm từ khóa gốc</button>
           </sc-if>
           <sc-if value="{{ adding }}">
             <span style="display:flex;align-items:center;gap:7px;flex:1 1 320px;min-width:0;">
-              <label class="kp-search" style="display:flex;align-items:center;gap:7px;height:34px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;flex:1;min-width:0;">
-                <i class="ri-key-2-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;"></i>
-                <input type="text" value="{{ rootDraft }}" onChange="{{ onRootDraft }}" onKeyDown="{{ onRootKey }}" onPaste="{{ onRootPaste }}" autoFocus="{{ true }}" placeholder="Dán cả danh sách, cách nhau bằng , hoặc ; — hoặc gõ một từ rồi Enter" style="border:0;outline:0;background:transparent;font:inherit;font-size:12.5px;color:#343a40;flex:1;min-width:0;" />
+              <label class="kp-search" style="display:flex;align-items:center;gap:7px;height:34px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);flex:1;min-width:0;">
+                <i class="ri-key-2-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
+                <input type="text" value="{{ rootDraft }}" onChange="{{ onRootDraft }}" onKeyDown="{{ onRootKey }}" onPaste="{{ onRootPaste }}" autoFocus="{{ true }}" placeholder="Dán cả danh sách, cách nhau bằng , hoặc ; — hoặc gõ một từ rồi Enter" style="border:0;outline:0;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);flex:1;min-width:0;" />
               </label>
               <button class="kp-btn kp-ai" style="min-height:34px;" onClick="{{ onCommitRoots }}" disabled="{{ commitOff }}">{{ commitLabel }}</button>
-              <button class="kp-btn" style="min-height:34px;padding:0 8px;" onClick="{{ onCancelAdd }}" title="Huỷ"><i class="ri-close-line" style="font-size:14px;"></i></button>
+              <button class="kp-btn" style="min-height:34px;padding:0 8px;" onClick="{{ onCancelAdd }}" title="Hủy" aria-label="Hủy"><i class="ri-close-line" style="font-size:14px;"></i></button>
             </span>
           </sc-if>
         </div>
         <sc-if value="{{ pendOn }}">
-          <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;background:rgba(64,81,137,.05);flex-wrap:wrap;">
-            <i class="ri-loader-4-line" style="font-size:15px;color:#405189;flex-shrink:0;margin-top:2px;"></i>
-            <span style="font-size:11.5px;color:#495057;line-height:1.65;flex:1 1 260px;min-width:0;">{{ pendText }}</span>
-            <button class="kp-btn" style="min-height:34px;flex-shrink:0;" onClick="{{ onPendCancel }}" title="Dừng lần mở rộng này — lượt AI chưa dùng được hoàn"><i class="ri-close-line" style="font-size:14px;"></i>Dừng</button>
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:rgba(32,80,160,.05);flex-wrap:wrap;">
+            <i class="ri-loader-4-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:2px;"></i>
+            <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.65;flex:1 1 260px;min-width:0;">{{ pendText }}</span>
+            <button class="kp-btn" style="min-height:34px;flex-shrink:0;" onClick="{{ onPendCancel }}" title="Dừng lần mở rộng này — từ AI chưa dùng được hoàn lại"><i class="ri-close-line" style="font-size:14px;"></i>Dừng</button>
           </div>
         </sc-if>
         <sc-if value="{{ staleOn }}">
-          <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;background:rgba(247,184,75,.10);flex-wrap:wrap;">
-            <i class="ri-alert-line" style="font-size:15px;color:#8a6115;flex-shrink:0;margin-top:2px;"></i>
-            <span style="font-size:11.5px;color:#8a6115;line-height:1.65;flex:1 1 260px;min-width:0;">{{ staleText }}</span>
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:rgba(247,184,75,.10);flex-wrap:wrap;">
+            <i class="ri-alert-line" style="font-size:15px;color:var(--color-admin-warning-text,#8a6115);flex-shrink:0;margin-top:2px;"></i>
+            <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6115);line-height:1.65;flex:1 1 260px;min-width:0;">{{ staleText }}</span>
             <button class="kp-btn kp-ai" style="min-height:34px;flex-shrink:0;" onClick="{{ onStaleExpand }}" title="{{ staleTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ staleBtn }}</button>
           </div>
         </sc-if>
         <sc-if value="{{ rootsEmpty }}">
-          <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:rgba(247,184,75,.10);">
-            <i class="ri-alert-line" style="font-size:15px;color:#8a6115;flex-shrink:0;margin-top:1px;"></i>
-            <span style="font-size:11.5px;color:#8a6115;line-height:1.65;">Chưa có từ khoá gốc nào nên không mở rộng được. Các cụm và bài đã có vẫn giữ nguyên trong cơ sở dữ liệu — thêm lại từ khoá gốc là kế hoạch chạy tiếp.</span>
+          <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:rgba(247,184,75,.10);">
+            <i class="ri-alert-line" style="font-size:15px;color:var(--color-admin-warning-text,#8a6115);flex-shrink:0;margin-top:1px;"></i>
+            <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6115);line-height:1.65;">Chưa có từ khóa gốc nào nên không mở rộng được. Các cụm và bài đã có vẫn giữ nguyên trong cơ sở dữ liệu — thêm lại từ khóa gốc là kế hoạch chạy tiếp.</span>
           </div>
         </sc-if>
-        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
-          <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Từ khoá mở rộng lấy từ nhiều nguồn cùng lúc: gợi ý tìm kiếm, câu hỏi liên quan, từ khoá đối thủ đang có bài, ô tìm kiếm trên website bạn, và câu khách thật sự hỏi trợ lý AI. Sau đó hệ thống <b>gộp các từ cùng ý định về một bài</b> — đây là chỗ khiến nhiều website tự ăn thịt nhau khi viết mỗi từ khoá một bài.</span>
+        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
+          <i class="ri-information-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Từ khóa mở rộng lấy từ nhiều nguồn cùng lúc: gợi ý tìm kiếm, câu hỏi liên quan, từ khóa đối thủ đang có bài, ô tìm kiếm trên website bạn, và câu khách thật sự hỏi trợ lý AI. Sau đó hệ thống <b>gộp các từ cùng ý định về một bài</b> — đây là chỗ khiến nhiều website tự ăn thịt nhau khi viết mỗi từ khóa một bài.</span>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid #eff2f7;flex-wrap:wrap;">
-          <i class="ri-refresh-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;"></i>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1 1 240px;min-width:0;">{{ refreshLine }} — tự thêm từ khoá mới khách đang tìm, cập nhật độ khó và trạng thái trùng ý định.</span>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-top:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;">
+          <i class="ri-refresh-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;flex:1 1 240px;min-width:0;">{{ refreshLine }} — tự thêm từ khóa mới khách đang tìm, cập nhật độ khó và trạng thái trùng ý định.</span>
           <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-            <sc-if value="{{ autoRefreshOn }}"><span style="font-size:11.5px;font-weight:600;color:#0a8f7f;">Tự làm mới: bật</span></sc-if>
-            <sc-if value="{{ autoRefreshOff }}"><span style="font-size:11.5px;font-weight:600;color:#878a99;">Tự làm mới: tắt</span></sc-if>
+            <sc-if value="{{ autoRefreshOn }}"><span style="font-size:12px;font-weight:600;color:var(--color-admin-success-text,#0a8f7f);">Tự làm mới: bật</span></sc-if>
+            <sc-if value="{{ autoRefreshOff }}"><span style="font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);">Tự làm mới: tắt</span></sc-if>
             <button class="kp-hit" onClick="{{ onAutoRefresh }}" title="{{ autoRefreshTitle }}">
               <sc-if value="{{ autoRefreshOn }}"><span class="kp-sw on"><span class="kp-sk"></span></span></sc-if>
               <sc-if value="{{ autoRefreshOff }}"><span class="kp-sw"><span class="kp-sk"></span></span></sc-if>
@@ -271,44 +275,44 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
       <div class="kp-4">
         <sc-for list="{{ mapStats }}" as="s" hint-placeholder-count="4">
           <div class="kp-card" style="padding:14px;display:flex;flex-direction:column;gap:5px;">
-            <span style="font-size:11.5px;color:#878a99;line-height:1.4;">{{ s.label }}</span>
-            <span style="font-size:22px;font-weight:600;color:#343a40;font-variant-numeric:tabular-nums;">{{ s.value }}</span>
-            <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ s.hint }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.4;">{{ s.label }}</span>
+            <span style="font-size:22px;font-weight:600;color:var(--color-heading,#1f2b4d);font-variant-numeric:tabular-nums;">{{ s.value }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ s.hint }}</span>
           </div>
         </sc-for>
       </div>
 
       <div class="kp-card">
         <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;flex-wrap:wrap;">
-          <label class="kp-search" style="display:flex;align-items:center;gap:7px;height:34px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;flex:1 1 240px;min-width:0;">
-            <i class="ri-search-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;"></i>
-            <input type="text" value="{{ kwQuery }}" onChange="{{ onKwQuery }}" placeholder="Tìm từ khoá hoặc biến thể…" style="border:0;outline:0;background:transparent;font:inherit;font-size:12.5px;color:#343a40;flex:1;min-width:0;" />
+          <label class="kp-search" style="display:flex;align-items:center;gap:7px;height:34px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);flex:1 1 240px;min-width:0;">
+            <i class="ri-search-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
+            <input type="text" value="{{ kwQuery }}" onChange="{{ onKwQuery }}" placeholder="Tìm từ khóa hoặc biến thể…" style="border:0;outline:0;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);flex:1;min-width:0;" />
           </label>
           <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
             <sc-for list="{{ kwFilters }}" as="f" hint-placeholder-count="5">
               <sc-if value="{{ f.on2 }}"><button class="kp-pill on" onClick="{{ f.on }}" title="{{ f.title }}">{{ f.label }}<span style="font-weight:700;">{{ f.n }}</span></button></sc-if>
-              <sc-if value="{{ f.off }}"><button class="kp-pill" onClick="{{ f.on }}" title="{{ f.title }}">{{ f.label }}<span style="color:#adb5bd;font-weight:600;">{{ f.n }}</span></button></sc-if>
+              <sc-if value="{{ f.off }}"><button class="kp-pill" onClick="{{ f.on }}" title="{{ f.title }}">{{ f.label }}<span style="color:var(--color-body-muted,#5b6275);font-weight:600;">{{ f.n }}</span></button></sc-if>
             </sc-for>
           </span>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #f6f7f9;background:#fbfcfe;flex-wrap:wrap;">
-          <i class="ri-flashlight-line" style="font-size:15px;color:#405189;flex-shrink:0;"></i>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1 1 220px;min-width:0;">{{ filterInfo }} — chọn trạng thái rồi xếp lịch cả loạt, hệ thống tự đặt bài trụ trước bài ngách.</span>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);background:var(--color-surface-muted,#fbfcfe);flex-wrap:wrap;">
+          <i class="ri-flashlight-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;flex:1 1 220px;min-width:0;">{{ filterInfo }} — chọn trạng thái rồi xếp lịch cả loạt, hệ thống tự đặt bài trụ trước bài ngách.</span>
           <sc-if value="{{ bulkOn }}"><button class="kp-btn kp-ai" style="min-height:34px;flex-shrink:0;" onClick="{{ onBulk }}" title="{{ bulkTitle }}"><i class="ri-calendar-check-line" style="font-size:14px;"></i>{{ bulkLabel }}</button></sc-if>
         </div>
       </div>
 
       <sc-if value="{{ noActOn }}">
         <div class="kp-card" style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-left:3px solid #f7b84b;flex-wrap:wrap;">
-          <i class="ri-eye-off-line" style="font-size:16px;color:#8a6115;flex-shrink:0;margin-top:1px;"></i>
-          <span style="font-size:12px;color:#8a6115;line-height:1.7;flex:1 1 300px;min-width:0;">{{ noActText }}</span>
+          <i class="ri-eye-off-line" style="font-size:16px;color:var(--color-admin-warning-text,#8a6115);flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6115);line-height:1.7;flex:1 1 300px;min-width:0;">{{ noActText }}</span>
         </div>
       </sc-if>
 
       <sc-if value="{{ clustersEmpty }}">
         <div class="kp-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:9px;padding:22px 16px;">
-          <span style="font-size:13px;font-weight:600;color:#343a40;">Không tìm thấy từ khoá nào</span>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.65;max-width:600px;">{{ emptyText }}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Không tìm thấy từ khóa nào</span>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;max-width:600px;">{{ emptyText }}</span>
           <button class="kp-btn" onClick="{{ onClearFilter }}"><i class="ri-filter-off-line" style="font-size:14px;"></i>Bỏ tìm kiếm và bộ lọc</button>
         </div>
       </sc-if>
@@ -316,73 +320,73 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
       <sc-for list="{{ clusters }}" as="c" hint-placeholder-count="4">
         <div class="kp-card">
           <div class="kp-h" style="align-items:flex-start;">
-            <button class="kp-hit" onClick="{{ c.onToggle }}" title="{{ c.toggleTitle }}" style="width:32px;height:32px;margin-top:-4px;"><i class="{{ c.caret }}" style="font-size:18px;color:#878a99;"></i></button>
+            <button class="kp-hit" onClick="{{ c.onToggle }}" title="{{ c.toggleTitle }}" style="width:32px;height:32px;margin-top:-4px;" aria-label="{{ c.toggleTitle }}"><i class="{{ c.caret }}" style="font-size:18px;color:var(--color-body-muted,#5b6275);"></i></button>
             <span style="display:flex;flex-direction:column;gap:4px;flex:1 1 300px;min-width:0;">
               <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <span class="kp-t">{{ c.pillar }}</span>
-                <span class="kp-chip" style="background:rgba(64,81,137,.10);color:#405189;">Bài trụ</span>
+                <span class="kp-chip" style="background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);">Bài trụ</span>
                 <sc-if value="{{ c.tracked }}"><span class="kp-chip" style="{{ c.pillarChipStyle }}">{{ c.pillarState }}</span></sc-if>
-                <sc-if value="{{ c.untracked }}"><span class="kp-chip" title="{{ c.untrackedTitle }}" style="background:#f3f6f9;color:#878a99;"><i class="ri-eye-off-line" style="font-size:12px;"></i>Không còn theo dõi</span></sc-if>
+                <sc-if value="{{ c.untracked }}"><span class="kp-chip" title="{{ c.untrackedTitle }}" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);"><i class="ri-eye-off-line" style="font-size:12px;"></i>Không còn theo dõi</span></sc-if>
               </span>
-              <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ c.line }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ c.line }}</span>
             </span>
             <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
               <sc-if value="{{ c.tracked }}">
                 <span style="display:flex;align-items:center;gap:8px;">
-                  <span style="font-size:11.5px;color:#adb5bd;white-space:nowrap;">{{ c.cost }}</span>
+                  <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">{{ c.cost }}</span>
                   <button class="kp-btn kp-ai" style="min-height:34px;" onClick="{{ c.onPlan }}" title="{{ c.planTitle }}"><i class="ri-calendar-check-line" style="font-size:14px;"></i>{{ c.planLabel }}</button>
                 </span>
               </sc-if>
               <sc-if value="{{ c.untracked }}">
-                <button class="kp-btn" style="min-height:34px;" onClick="{{ c.onRetrack }}" title="Thêm lại từ khoá gốc và theo dõi cụm này trở lại"><i class="ri-eye-line" style="font-size:14px;"></i>Theo dõi lại cụm</button>
+                <button class="kp-btn" style="min-height:34px;" onClick="{{ c.onRetrack }}" title="Thêm lại từ khóa gốc và theo dõi cụm này trở lại"><i class="ri-eye-line" style="font-size:14px;"></i>Theo dõi lại cụm</button>
               </sc-if>
             </span>
           </div>
           <sc-if value="{{ c.open }}">
             <div>
-              <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #f6f7f9;background:rgba(64,81,137,.04);flex-wrap:wrap;">
-                <i class="ri-flag-2-line" style="font-size:17px;color:#405189;flex-shrink:0;"></i>
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);background:rgba(32,80,160,.04);flex-wrap:wrap;">
+                <i class="ri-flag-2-line" style="font-size:17px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
                 <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 320px;min-width:0;">
-                  <span style="font-size:12.5px;font-weight:600;color:#343a40;line-height:1.45;">{{ c.pTitle }}</span>
-                  <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ c.pSub }}</span>
-                  <span style="font-size:11px;color:#adb5bd;">{{ c.pMeta }}</span>
+                  <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.45;">{{ c.pTitle }}</span>
+                  <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ c.pSub }}</span>
+                  <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ c.pMeta }}</span>
                 </span>
-                <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;">
-                  <sc-if value="{{ c.pOk }}"><span class="kp-chip" style="background:rgba(10,179,156,.12);color:#0a7d6f;height:30px;">Không cần làm gì</span></sc-if>
+                <span style="display:flex;align-items:center;gap:8px;flex-shrink:1;min-width:0;flex-wrap:wrap;">
+                  <sc-if value="{{ c.pOk }}"><span class="kp-chip" style="background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);height:30px;">Không cần làm gì</span></sc-if>
                   <sc-if value="{{ c.pNeedAction }}">
                     <button class="kp-btn kp-ai" style="min-height:34px;" onClick="{{ c.onPAction }}" title="{{ c.pActionTitle }}"><i class="ri-check-double-line" style="font-size:14px;"></i>{{ c.pActionLabel }}</button>
                   </sc-if>
                   <sc-if value="{{ c.pSched }}">
-                    <span class="kp-chip" style="background:rgba(64,81,137,.12);color:#405189;height:30px;">{{ c.pSchedText }}</span>
-                    <button class="kp-btn" style="min-height:34px;" onClick="{{ c.onPUndo }}" title="Bỏ bài trụ khỏi lịch"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i></button>
+                    <span class="kp-chip" style="background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);height:30px;">{{ c.pSchedText }}</span>
+                    <button class="kp-btn" style="min-height:34px;" onClick="{{ c.onPUndo }}" title="Bỏ bài trụ khỏi lịch" aria-label="Bỏ bài trụ khỏi lịch"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i></button>
                   </sc-if>
-                  <sc-if value="{{ c.pFrozen }}"><span class="kp-chip" title="{{ c.pFrozenTitle }}" style="background:#f3f6f9;color:#adb5bd;height:30px;"><i class="ri-eye-off-line" style="font-size:12px;"></i>Tạm ngưng đề xuất</span></sc-if>
+                  <sc-if value="{{ c.pFrozen }}"><span class="kp-chip" title="{{ c.pFrozenTitle }}" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);height:30px;"><i class="ri-eye-off-line" style="font-size:12px;"></i>Tạm ngưng đề xuất</span></sc-if>
                   <sc-if value="{{ c.pAltOn }}"><button class="kp-btn" style="min-height:34px;" onClick="{{ c.onPAlt }}">{{ c.pAltLabel }}</button></sc-if>
                 </span>
               </div>
-              <div class="kp-hd"><span>Từ khoá đại diện</span><span>Ý định</span><span>Lượt/tháng</span><span>Độ khó</span><span>Trạng thái</span><span></span></div>
+              <div class="kp-hd"><span>Từ khóa đại diện</span><span>Ý định</span><span>Lượt/tháng</span><span>Độ khó</span><span>Trạng thái</span><span></span></div>
               <sc-for list="{{ c.kws }}" as="k" hint-placeholder-count="5">
                 <div class="kp-kw">
-                  <span style="display:flex;flex-direction:column;gap:2px;"><span style="font-weight:500;color:#343a40;">{{ k.kw }}</span><span style="font-size:11px;color:#adb5bd;">{{ k.variants }}</span></span>
+                  <span style="display:flex;flex-direction:column;gap:2px;"><span style="font-weight:500;color:var(--color-heading,#1f2b4d);">{{ k.kw }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ k.variants }}</span></span>
                   <span><span class="kp-chip" style="{{ k.intentStyle }}">{{ k.intent }}</span></span>
                   <span style="font-variant-numeric:tabular-nums;">{{ k.vol }}</span>
                   <span style="font-variant-numeric:tabular-nums;color:{{ k.kdColor }};font-weight:600;">{{ k.kd }}</span>
-                  <span style="display:flex;flex-direction:column;gap:2px;"><span style="color:{{ k.stColor }};font-weight:600;font-size:11.5px;">{{ k.stText }}</span><span style="font-size:11px;color:#adb5bd;line-height:1.45;">{{ k.stHint }}</span></span>
+                  <span style="display:flex;flex-direction:column;gap:2px;"><span style="color:{{ k.stColor }};font-weight:600;font-size:12px;">{{ k.stText }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ k.stHint }}</span></span>
                   <span style="display:flex;justify-content:flex-end;min-width:0;">
                     <sc-if value="{{ k.canAdd }}"><button class="kp-btn" onClick="{{ k.onAdd }}" title="{{ k.addTitle }}">{{ k.addLabel }}</button></sc-if>
-                    <sc-if value="{{ k.frozen }}"><span class="kp-chip" title="{{ k.frozenTitle }}" style="background:#f3f6f9;color:#adb5bd;height:30px;"><i class="ri-eye-off-line" style="font-size:12px;"></i>Tạm ngưng đề xuất</span></sc-if>
+                    <sc-if value="{{ k.frozen }}"><span class="kp-chip" title="{{ k.frozenTitle }}" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);height:30px;"><i class="ri-eye-off-line" style="font-size:12px;"></i>Tạm ngưng đề xuất</span></sc-if>
                     <sc-if value="{{ k.added }}">
                       <span style="display:flex;align-items:center;gap:6px;">
-                        <span class="kp-chip" style="background:rgba(41,156,219,.12);color:#1c7ba8;height:30px;">{{ k.schedText }}</span>
-                        <button class="kp-btn" style="min-height:30px;padding:0 7px;" onClick="{{ k.onUndo }}" title="{{ k.undoTitle }}"><i class="ri-arrow-go-back-line" style="font-size:13px;"></i></button>
+                        <span class="kp-chip" style="background:rgba(41,156,219,.12);color:var(--color-admin-info-text,#1c7ba8);height:30px;">{{ k.schedText }}</span>
+                        <button class="kp-btn" style="min-height:30px;padding:0 7px;" onClick="{{ k.onUndo }}" title="{{ k.undoTitle }}" aria-label="{{ k.undoTitle }}"><i class="ri-arrow-go-back-line" style="font-size:13px;"></i></button>
                       </span>
                     </sc-if>
                   </span>
                 </div>
               </sc-for>
-              <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
-                <i class="ri-links-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-                <span style="font-size:11.5px;color:#878a99;line-height:1.65;">{{ c.linkNote }}</span>
+              <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
+                <i class="ri-links-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+                <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">{{ c.linkNote }}</span>
               </div>
             </div>
           </sc-if>
@@ -395,20 +399,20 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-speed-up-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-speed-up-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Tần suất lên bài</span>
-          <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ cadenceSummary }}</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ cadenceSummary }}</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:12px;padding:14px 16px;">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <span style="font-size:12px;font-weight:600;color:#495057;min-width:96px;">Mỗi tuần</span>
+            <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);min-width:96px;">Mỗi tuần</span>
             <sc-for list="{{ cadences }}" as="cd" hint-placeholder-count="3">
               <sc-if value="{{ cd.on2 }}"><button class="kp-pill on" onClick="{{ cd.on }}" title="{{ cd.title }}">{{ cd.label }}</button></sc-if>
               <sc-if value="{{ cd.off }}"><button class="kp-pill" onClick="{{ cd.on }}" title="{{ cd.title }}">{{ cd.label }}</button></sc-if>
             </sc-for>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <span style="font-size:12px;font-weight:600;color:#495057;min-width:96px;">Trộn loại bài</span>
+            <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);min-width:96px;">Trộn loại bài</span>
             <sc-for list="{{ mixes }}" as="mx" hint-placeholder-count="3">
               <sc-if value="{{ mx.on2 }}"><button class="kp-pill on" onClick="{{ mx.on }}" title="{{ mx.title }}">{{ mx.label }}</button></sc-if>
               <sc-if value="{{ mx.off }}"><button class="kp-pill" onClick="{{ mx.on }}" title="{{ mx.title }}">{{ mx.label }}</button></sc-if>
@@ -416,21 +420,21 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
           </div>
           <div style="{{ cadenceNoteStyle }}"><i class="{{ cadenceIcon }}" style="font-size:15px;flex-shrink:0;margin-top:1px;"></i><span>{{ cadenceNote }}</span></div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;flex-wrap:wrap;">
-          <i class="ri-user-heart-line" style="font-size:15px;color:#405189;flex-shrink:0;"></i>
-          <span style="font-size:11.5px;color:#495057;line-height:1.65;flex:1 1 260px;min-width:0;">{{ loadLine }}</span>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;">
+          <i class="ri-user-heart-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
+          <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.65;flex:1 1 260px;min-width:0;">{{ loadLine }}</span>
         </div>
         <sc-if value="{{ pausedOff }}">
-          <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;flex-wrap:wrap;">
-            <i class="ri-pause-circle-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;"></i>
-            <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1 1 240px;min-width:0;">Nghỉ lễ, hết hàng hoặc muốn dừng chiến dịch? Tạm dừng cả kế hoạch — không xoá lịch, không mất bài, không trừ hạn ngạch trong lúc dừng.</span>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);flex-wrap:wrap;">
+            <i class="ri-pause-circle-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;flex:1 1 240px;min-width:0;">Nghỉ lễ, hết hàng hoặc muốn dừng chiến dịch? Tạm dừng cả kế hoạch — không xóa lịch, không mất bài, không trừ hạn ngạch trong lúc dừng.</span>
             <button class="kp-btn" style="min-height:34px;flex-shrink:0;" onClick="{{ onPause }}" title="Ngừng viết và ngừng đăng, giữ nguyên lịch và bài đang chờ duyệt"><i class="ri-pause-circle-line" style="font-size:14px;"></i>Tạm dừng kế hoạch</button>
           </div>
         </sc-if>
         <sc-if value="{{ pausedOn }}">
-          <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;background:rgba(247,184,75,.10);flex-wrap:wrap;">
-            <i class="ri-pause-circle-fill" style="font-size:15px;color:#8a6115;flex-shrink:0;"></i>
-            <span style="font-size:11.5px;color:#8a6115;line-height:1.6;flex:1 1 240px;min-width:0;">{{ pauseText }}</span>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:rgba(247,184,75,.10);flex-wrap:wrap;">
+            <i class="ri-pause-circle-fill" style="font-size:15px;color:var(--color-admin-warning-text,#8a6115);flex-shrink:0;"></i>
+            <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6115);line-height:1.6;flex:1 1 240px;min-width:0;">{{ pauseText }}</span>
             <button class="kp-btn kp-ai" style="min-height:34px;flex-shrink:0;" onClick="{{ onResume }}"><i class="ri-play-circle-line" style="font-size:14px;"></i>Tiếp tục kế hoạch</button>
           </div>
         </sc-if>
@@ -438,42 +442,42 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-road-map-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-road-map-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Các làn xuất bản — vì sao 10 trang/ngày không phá nhịp cụm SEO</span>
         </div>
-        <div style="display:flex;gap:9px;padding:11px 16px;border-bottom:1px solid #f6f7f9;background:#fbfcfe;">
-          <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.65;">{{ laneNote }}</span>
+        <div style="display:flex;gap:9px;padding:11px 16px;border-bottom:1px solid var(--color-border-soft,#f6f7f9);background:var(--color-surface-muted,#fbfcfe);">
+          <i class="ri-information-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">{{ laneNote }}</span>
         </div>
         <sc-for list="{{ lanes }}" as="ln" hint-placeholder-count="5">
           <div class="kp-row" style="padding:11px 16px;">
             <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 300px;min-width:0;">
-              <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:#343a40;">{{ ln.name }}</span><span class="kp-chip" style="{{ ln.countsStyle }}">{{ ln.countsText }} vào tần suất tuần</span></span>
-              <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ ln.hint }}</span>
+              <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ ln.name }}</span><span class="kp-chip" style="{{ ln.countsStyle }}">{{ ln.countsText }} vào tần suất tuần</span></span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ ln.hint }}</span>
             </span>
             <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 220px;min-width:0;">
-              <span style="font-size:12px;color:#495057;line-height:1.5;">{{ ln.types }}</span>
-              <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ ln.rate }} · {{ ln.capText }} · {{ ln.budgetText }}</span>
+              <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.5;">{{ ln.types }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ ln.rate }} · {{ ln.capText }} · {{ ln.budgetText }}</span>
             </span>
-            <span style="font-size:11.5px;color:#878a99;white-space:nowrap;flex-shrink:0;">{{ ln.gate }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;flex-shrink:0;">{{ ln.gate }}</span>
           </div>
         </sc-for>
       </div>
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-compass-3-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-compass-3-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Làn khác lập kế hoạch ở đâu</span>
-          <span style="margin-left:auto;font-size:11.5px;color:#878a99;">Trang này chỉ lo làn cụm SEO</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">Trang này chỉ lo làn cụm SEO</span>
         </div>
         <sc-for list="{{ planners }}" as="p" hint-placeholder-count="3">
           <div class="kp-row" style="padding:11px 16px;">
-            <i class="{{ p.icon }}" style="font-size:16px;color:#405189;flex-shrink:0;"></i>
+            <i class="{{ p.icon }}" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
             <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 300px;min-width:0;">
-              <span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ p.name }}</span>
-              <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ p.hint }}</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ p.name }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ p.hint }}</span>
             </span>
-            <span style="font-size:11.5px;color:#495057;white-space:normal;flex:0 1 210px;line-height:1.55;">{{ p.where }}</span>
+            <span style="font-size:12px;color:var(--color-body-text,#3c4765);white-space:normal;flex:0 1 210px;line-height:1.55;">{{ p.where }}</span>
             <button class="kp-btn" style="min-height:34px;flex-shrink:0;" onClick="{{ p.onGo }}">Mở</button>
           </div>
         </sc-for>
@@ -481,23 +485,23 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-git-pull-request-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-git-pull-request-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Van tổng toàn website</span>
-          <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ todayLine }}</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ todayLine }}</span>
         </div>
         <sc-for list="{{ guard }}" as="g" hint-placeholder-count="5">
           <div class="kp-row" style="padding:10px 16px;">
-            <i class="{{ g.icon }}" style="font-size:16px;color:#405189;flex-shrink:0;"></i>
-            <span style="font-size:12.5px;color:#495057;line-height:1.6;flex:1;min-width:0;">{{ g.text }}</span>
+            <i class="{{ g.icon }}" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
+            <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.6;flex:1;min-width:0;">{{ g.text }}</span>
           </div>
         </sc-for>
-        <div style="padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;display:flex;flex-direction:column;gap:8px;">
-          <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">{{ deferTitle }}</span>
+        <div style="padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);display:flex;flex-direction:column;gap:8px;">
+          <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">{{ deferTitle }}</span>
           <sc-for list="{{ defers }}" as="d" hint-placeholder-count="3">
             <span style="display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap;">
-              <i class="ri-time-line" style="font-size:14px;color:#878a99;flex-shrink:0;margin-top:2px;"></i>
-              <span style="font-size:12px;color:#495057;line-height:1.55;flex:1 1 260px;min-width:0;">{{ d.name }} — <span style="color:#878a99;">{{ d.why }}</span></span>
-              <span class="kp-chip" style="background:#f3f6f9;color:#878a99;">{{ d.lane }}</span>
+              <i class="ri-time-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:2px;"></i>
+              <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.55;flex:1 1 260px;min-width:0;">{{ d.name }} — <span style="color:var(--color-body-muted,#5b6275);">{{ d.why }}</span></span>
+              <span class="kp-chip" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);">{{ d.lane }}</span>
             </span>
           </sc-for>
         </div>
@@ -505,65 +509,65 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-calendar-2-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-calendar-2-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">{{ planTitleLine }}</span>
           <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-size:11.5px;color:#878a99;">{{ planSummary }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ planSummary }}</span>
             <button class="kp-btn" onClick="{{ onShowAll }}" title="Xem cả các làn không tính vào tần suất tuần"><i class="ri-layout-row-line" style="font-size:14px;"></i>{{ showAllLabel }}</button>
             <sc-if value="{{ clearOn }}"><button class="kp-btn" onClick="{{ onClear }}" title="{{ clearTitle }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i>{{ clearLabel }}</button></sc-if>
             <button class="kp-btn kp-ai" onClick="{{ onRunPlan }}" title="{{ runPlanTitle }}" disabled="{{ runOff }}"><i class="ri-play-circle-line" style="font-size:14px;"></i>{{ runLabel }}</button>
           </span>
         </div>
         <sc-if value="{{ partOn }}">
-          <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;background:rgba(247,184,75,.10);flex-wrap:wrap;">
-            <i class="ri-error-warning-line" style="font-size:15px;color:#8a6115;flex-shrink:0;margin-top:2px;"></i>
-            <span style="font-size:11.5px;color:#8a6115;line-height:1.65;flex:1 1 260px;min-width:0;">{{ partText }}</span>
-            <span style="display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap;">
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:rgba(247,184,75,.10);flex-wrap:wrap;">
+            <i class="ri-error-warning-line" style="font-size:15px;color:var(--color-admin-warning-text,#8a6115);flex-shrink:0;margin-top:2px;"></i>
+            <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6115);line-height:1.65;flex:1 1 260px;min-width:0;">{{ partText }}</span>
+            <span style="display:flex;gap:7px;flex-shrink:1;min-width:0;flex-wrap:wrap;">
               <button class="kp-btn kp-ai" style="min-height:34px;" onClick="{{ onPart }}" title="{{ partTitle }}" disabled="{{ partOff }}"><i class="ri-play-circle-line" style="font-size:14px;"></i>{{ partLabel }}</button>
               <a class="kp-btn" style="min-height:34px;text-decoration:none;" href="{{ quotaHref }}" title="Mở Cài đặt › Mức dùng AI để mua thêm từ AI — cộng vào sổ nội dung chữ, dùng trong 12 tháng"><i class="ri-add-circle-line" style="font-size:14px;"></i>Mua thêm từ AI</a>
             </span>
           </div>
         </sc-if>
         <sc-if value="{{ planPausedOn }}">
-          <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;background:rgba(247,184,75,.10);flex-wrap:wrap;">
-            <i class="ri-pause-circle-fill" style="font-size:15px;color:#8a6115;flex-shrink:0;"></i>
-            <span style="font-size:11.5px;color:#8a6115;line-height:1.6;flex:1 1 240px;min-width:0;">{{ planPausedText }}</span>
+          <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:rgba(247,184,75,.10);flex-wrap:wrap;">
+            <i class="ri-pause-circle-fill" style="font-size:15px;color:var(--color-admin-warning-text,#8a6115);flex-shrink:0;"></i>
+            <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6115);line-height:1.6;flex:1 1 240px;min-width:0;">{{ planPausedText }}</span>
             <button class="kp-btn kp-ai" style="min-height:34px;flex-shrink:0;" onClick="{{ onResume }}"><i class="ri-play-circle-line" style="font-size:14px;"></i>Tiếp tục kế hoạch</button>
           </div>
         </sc-if>
         <sc-if value="{{ planEmpty }}">
-          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:9px;padding:22px 16px;border-top:1px solid #f6f7f9;">
-            <span style="font-size:13px;font-weight:600;color:#343a40;">{{ emptyPlanTitle }}</span>
-            <span style="font-size:11.5px;color:#878a99;line-height:1.65;max-width:640px;">{{ emptyPlanText }}</span>
+          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:9px;padding:22px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
+            <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ emptyPlanTitle }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;max-width:640px;">{{ emptyPlanText }}</span>
             <sc-if value="{{ planAllOn }}"><button class="kp-pri" onClick="{{ onPlanAll }}" title="{{ planAllTitle }}"><i class="ri-magic-line" style="font-size:16px;"></i>{{ planAllLabel }}</button></sc-if>
-            <sc-if value="{{ planAllOff }}"><button class="kp-btn" style="min-height:38px;font-size:13px;" onClick="{{ onGoMap }}"><i class="ri-arrow-left-line" style="font-size:15px;"></i>Sang thẻ Bản đồ từ khoá</button></sc-if>
+            <sc-if value="{{ planAllOff }}"><button class="kp-btn" style="min-height:38px;font-size:13px;" onClick="{{ onGoMap }}"><i class="ri-arrow-left-line" style="font-size:15px;"></i>Sang thẻ Bản đồ từ khóa</button></sc-if>
           </div>
         </sc-if>
         <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="4">
           <div class="kp-week">
-            <span style="display:flex;flex-direction:column;gap:2px;padding:12px;background:#fbfcfe;border-right:1px solid #f6f7f9;">
-              <span style="font-size:12px;font-weight:600;color:#343a40;">{{ w.name }}</span>
-              <span style="font-size:11px;color:#adb5bd;">{{ w.dates }}</span>
+            <span style="display:flex;flex-direction:column;gap:2px;padding:12px;background:var(--color-surface-muted,#fbfcfe);border-right:1px solid var(--color-border-soft,#f6f7f9);">
+              <span style="font-size:12px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ w.name }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ w.dates }}</span>
             </span>
             <span style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;padding:10px 12px;">
               <sc-for list="{{ w.slots }}" as="sl" hint-placeholder-count="3">
                 <span class="kp-slot" style="{{ sl.slotStyle }}">
                   <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     <span class="kp-chip" style="{{ sl.typeStyle }}">{{ sl.type }}</span>
-                    <span style="font-size:10.5px;color:#adb5bd;">{{ sl.day }}</span>
-                    <sc-if value="{{ sl.canDrop }}"><button class="kp-hit" onClick="{{ sl.onDrop }}" title="{{ sl.dropTitle }}" style="width:24px;height:24px;margin-left:auto;"><i class="ri-close-line" style="font-size:14px;color:#adb5bd;"></i></button></sc-if>
+                    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ sl.day }}</span>
+                    <sc-if value="{{ sl.canDrop }}"><button class="kp-hit" onClick="{{ sl.onDrop }}" title="{{ sl.dropTitle }}" style="width:24px;height:24px;margin-left:auto;" aria-label="{{ sl.dropTitle }}"><i class="ri-close-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i></button></sc-if>
                   </span>
-                  <span style="font-size:12px;font-weight:500;color:#343a40;line-height:1.4;">{{ sl.kw }}</span>
-                  <span style="font-size:10.5px;color:#adb5bd;line-height:1.4;">{{ sl.cluster }}</span>
-                  <span style="font-size:11px;color:{{ sl.stColor }};font-weight:600;">{{ sl.state }}</span>
+                  <span style="font-size:12px;font-weight:500;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ sl.kw }}</span>
+                  <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.4;">{{ sl.cluster }}</span>
+                  <span style="font-size:12px;color:{{ sl.stColor }};font-weight:600;">{{ sl.state }}</span>
                 </span>
               </sc-for>
             </span>
           </div>
         </sc-for>
-        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
-          <i class="ri-git-branch-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Thứ tự không phải ngẫu nhiên: bài trụ của mỗi cụm lên trước để các bài ngách có đích liên kết, sau đó mỗi bài ngách mới lên tự chèn liên kết về bài trụ và bài trụ tự thêm liên kết xuống. Giờ đăng rải ngẫu nhiên trong khung 8–17h, không đăng dồn cùng lúc.</span>
+        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
+          <i class="ri-git-branch-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Thứ tự không phải ngẫu nhiên: bài trụ của mỗi cụm lên trước để các bài ngách có đích liên kết, sau đó mỗi bài ngách mới lên tự chèn liên kết về bài trụ và bài trụ tự thêm liên kết xuống. Giờ đăng rải ngẫu nhiên trong khung 8–17h, không đăng dồn cùng lúc.</span>
         </div>
       </div>
     </div>
@@ -573,10 +577,10 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-robot-2-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-robot-2-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Tự đăng bài đạt chuẩn</span>
           <span style="margin-left:auto;display:flex;align-items:center;gap:10px;">
-            <span style="font-size:11.5px;font-weight:600;color:{{ autoColor }};white-space:nowrap;">{{ autoText }}</span>
+            <span style="font-size:12px;font-weight:600;color:{{ autoColor }};white-space:nowrap;">{{ autoText }}</span>
             <button class="kp-hit" onClick="{{ onAuto }}" title="{{ autoTitle }}">
               <sc-if value="{{ autoOn }}"><span class="kp-sw on"><span class="kp-sk"></span></span></sc-if>
               <sc-if value="{{ autoOff }}"><span class="kp-sw"><span class="kp-sk"></span></span></sc-if>
@@ -585,14 +589,14 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
         </div>
         <div style="display:flex;flex-direction:column;gap:12px;padding:14px 16px;">
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <span style="font-size:12px;font-weight:600;color:#495057;min-width:150px;">Ngưỡng điểm tự đăng</span>
+            <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);min-width:150px;">Ngưỡng điểm tự đăng</span>
             <sc-for list="{{ thresholds }}" as="th" hint-placeholder-count="3">
               <sc-if value="{{ th.on2 }}"><button class="kp-pill on" onClick="{{ th.on }}" title="{{ th.title }}">{{ th.label }}</button></sc-if>
               <sc-if value="{{ th.off }}"><button class="kp-pill" onClick="{{ th.on }}" title="{{ th.title }}">{{ th.label }}</button></sc-if>
             </sc-for>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            <span style="font-size:12px;font-weight:600;color:#495057;min-width:150px;">Soát tay ngẫu nhiên</span>
+            <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);min-width:150px;">Soát tay ngẫu nhiên</span>
             <sc-for list="{{ samples }}" as="sp" hint-placeholder-count="3">
               <sc-if value="{{ sp.on2 }}"><button class="kp-pill on" onClick="{{ sp.on }}" title="{{ sp.title }}">{{ sp.label }}</button></sc-if>
               <sc-if value="{{ sp.off }}"><button class="kp-pill" onClick="{{ sp.on }}" title="{{ sp.title }}">{{ sp.label }}</button></sc-if>
@@ -600,56 +604,56 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
           </div>
           <div style="{{ gateNoteStyle }}"><i class="{{ gateIcon }}" style="font-size:15px;flex-shrink:0;margin-top:1px;"></i><span>{{ gateNote }}</span></div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;flex-wrap:wrap;">
-          <i class="ri-inbox-line" style="font-size:15px;color:#405189;flex-shrink:0;"></i>
-          <span style="font-size:11.5px;color:#495057;line-height:1.6;flex:1 1 240px;min-width:0;">{{ pendLine }}</span>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);flex-wrap:wrap;">
+          <i class="ri-inbox-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
+          <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.6;flex:1 1 240px;min-width:0;">{{ pendLine }}</span>
           <button class="kp-btn" style="min-height:34px;flex-shrink:0;" onClick="{{ onPend }}" title="{{ pendTitle }}"><i class="ri-external-link-line" style="font-size:14px;"></i>Mở hộp duyệt</button>
         </div>
         <sc-if value="{{ thScopeOn }}">
-          <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;background:rgba(41,156,219,.07);flex-wrap:wrap;">
-            <i class="ri-information-line" style="font-size:15px;color:#1c7ba8;flex-shrink:0;margin-top:2px;"></i>
-            <span style="font-size:11.5px;color:#1c7ba8;line-height:1.65;flex:1 1 260px;min-width:0;">{{ thScopeText }}</span>
-            <button class="kp-btn" style="min-height:34px;flex-shrink:0;" onClick="{{ onRescore }}" title="Chấm lại bài đã viết theo ngưỡng mới — không tốn lượt AI"><i class="ri-refresh-line" style="font-size:14px;"></i>Tính điểm lại bài đang chờ</button>
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:rgba(41,156,219,.07);flex-wrap:wrap;">
+            <i class="ri-information-line" style="font-size:15px;color:var(--color-admin-info-text,#1c7ba8);flex-shrink:0;margin-top:2px;"></i>
+            <span style="font-size:12px;color:var(--color-admin-info-text,#1c7ba8);line-height:1.65;flex:1 1 260px;min-width:0;">{{ thScopeText }}</span>
+            <button class="kp-btn" style="min-height:34px;flex-shrink:0;" onClick="{{ onRescore }}" title="Chấm lại bài đã viết theo ngưỡng mới — không tốn từ AI nào"><i class="ri-refresh-line" style="font-size:14px;"></i>Tính điểm lại bài đang chờ</button>
           </div>
         </sc-if>
       </div>
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-list-check-3" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-list-check-3" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Bài phải qua những gì mới được tự đăng</span>
-          <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ gateSummary }}</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ gateSummary }}</span>
         </div>
         <sc-for list="{{ checks }}" as="ck" hint-placeholder-count="6">
           <div class="kp-row" style="padding:10px 16px;">
             <span class="kp-chip" style="{{ ck.groupStyle }}">{{ ck.group }}</span>
             <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 300px;min-width:0;">
-              <span style="font-size:12.5px;font-weight:500;color:#343a40;line-height:1.45;">{{ ck.name }}</span>
-              <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ ck.hint }}</span>
+              <span style="font-size:12.5px;font-weight:500;color:var(--color-heading,#1f2b4d);line-height:1.45;">{{ ck.name }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">{{ ck.hint }}</span>
             </span>
             <span class="kp-chip" style="{{ ck.levelStyle }}">{{ ck.level }}</span>
           </div>
         </sc-for>
-        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
-          <i class="ri-alarm-warning-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Ba loại bài <b>luôn cần bạn duyệt</b>, dù điểm cao: bài có giá, bài so sánh với đối thủ, và bài liên quan sức khoẻ hoặc tiền bạc. Bài tự duyệt vẫn nằm ở “chờ đăng” 24 giờ để bạn kịp chặn. Trần tự đăng {{ dailyCap }} bài/ngày — đăng dồn quá nhiều bài giống nhau là dấu hiệu bị công cụ tìm kiếm coi là nội dung sản xuất máy móc.</span>
+        <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
+          <i class="ri-alarm-warning-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Ba loại bài <b>luôn cần bạn duyệt</b>, dù điểm cao: bài có giá, bài so sánh với đối thủ, và bài liên quan sức khoẻ hoặc tiền bạc. Bài tự duyệt vẫn nằm ở “chờ đăng” 24 giờ để bạn kịp chặn. Trần tự đăng {{ dailyCap }} bài/ngày — đăng dồn quá nhiều bài giống nhau là dấu hiệu bị công cụ tìm kiếm coi là nội dung sản xuất máy móc.</span>
         </div>
       </div>
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-stack-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-stack-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Cổng riêng cho từng loại nội dung</span>
-          <span style="margin-left:auto;font-size:11.5px;color:#878a99;">Mỗi loại một bảng kiểm — không dùng chung một chuẩn</span>
+          <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">Mỗi loại một bảng kiểm — không dùng chung một chuẩn</span>
         </div>
         <sc-for list="{{ gates }}" as="g" hint-placeholder-count="8">
           <div class="kp-row" style="padding:10px 16px;">
             <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 250px;min-width:0;">
-              <span style="font-size:12.5px;font-weight:600;color:#343a40;line-height:1.45;">{{ g.type }}</span>
-              <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ g.note }}</span>
+              <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.45;">{{ g.type }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">{{ g.note }}</span>
             </span>
-            <span style="font-size:11.5px;color:#495057;white-space:nowrap;flex-shrink:0;">{{ g.checks }}</span>
-            <span style="font-size:11.5px;font-weight:600;color:#495057;white-space:nowrap;flex-shrink:0;min-width:64px;text-align:right;">{{ g.thText }}</span>
+            <span style="font-size:12px;color:var(--color-body-text,#3c4765);white-space:nowrap;flex-shrink:0;">{{ g.checks }}</span>
+            <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);white-space:nowrap;flex-shrink:0;min-width:64px;text-align:right;">{{ g.thText }}</span>
             <span class="kp-chip" style="{{ g.autoStyle }}">{{ g.auto }}</span>
           </div>
         </sc-for>
@@ -657,39 +661,39 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-file-check-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-file-check-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Bài vừa qua cổng — ví dụ</span>
           <span style="margin-left:auto;display:flex;align-items:center;gap:8px;">
             <span style="font-size:20px;font-weight:700;color:{{ sampleColor }};font-variant-numeric:tabular-nums;">{{ sampleScore }}</span>
             <span class="kp-chip" style="{{ sampleChipStyle }}">{{ sampleVerdict }}</span>
           </span>
         </div>
-        <div style="padding:12px 16px;border-bottom:1px solid #f6f7f9;">
-          <span style="font-size:13px;font-weight:600;color:#343a40;">Nước nhiễm phèn xử lý thế nào? Chi phí và thời gian thực tế</span>
-          <span style="display:block;margin-top:3px;font-size:11.5px;color:#878a99;">Bài hướng dẫn · cụm “xử lý nước nhiễm phèn” · 1.180 từ · 4 liên kết nội bộ · tác giả Nguyễn Bảo Sơn</span>
+        <div style="padding:12px 16px;border-bottom:1px solid var(--color-border-soft,#f6f7f9);">
+          <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Nước nhiễm phèn xử lý thế nào? Chi phí và thời gian thực tế</span>
+          <span style="display:block;margin-top:3px;font-size:12px;color:var(--color-body-muted,#5b6275);">Bài hướng dẫn · cụm “xử lý nước nhiễm phèn” · 1.180 từ · 4 liên kết nội bộ · tác giả Nguyễn Bảo Sơn</span>
         </div>
         <sc-for list="{{ sampleRows }}" as="sr" hint-placeholder-count="5">
           <div class="kp-row" style="padding:9px 16px;">
             <i class="{{ sr.icon }}" style="font-size:15px;color:{{ sr.color }};flex-shrink:0;"></i>
-            <span style="font-size:12.5px;color:#495057;flex:1 1 280px;min-width:0;line-height:1.5;">{{ sr.text }}</span>
-            <span style="font-size:11.5px;font-weight:600;color:{{ sr.color }};white-space:nowrap;">{{ sr.score }}</span>
+            <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);flex:1 1 280px;min-width:0;line-height:1.5;">{{ sr.text }}</span>
+            <span style="font-size:12px;font-weight:600;color:{{ sr.color }};white-space:nowrap;">{{ sr.score }}</span>
           </div>
         </sc-for>
-        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid #eff2f7;flex-wrap:wrap;">
-          <span style="font-size:11.5px;color:#878a99;line-height:1.6;flex:1;min-width:0;">{{ sampleNote }}</span>
+        <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;flex:1;min-width:0;">{{ sampleNote }}</span>
           <button class="kp-btn" onClick="{{ onOpenSample }}">Xem toàn bộ bảng kiểm</button>
         </div>
       </div>
 
       <div class="kp-card">
         <div class="kp-h">
-          <i class="ri-refresh-line" style="font-size:17px;color:#405189;"></i>
+          <i class="ri-refresh-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
           <span class="kp-t">Sau khi đăng, hệ thống tự đo và tự sửa kế hoạch</span>
         </div>
         <sc-for list="{{ loops }}" as="lp" hint-placeholder-count="4">
           <div class="kp-row" style="padding:10px 16px;">
-            <i class="{{ lp.icon }}" style="font-size:16px;color:#405189;flex-shrink:0;"></i>
-            <span style="font-size:12.5px;color:#495057;line-height:1.6;flex:1;min-width:0;">{{ lp.text }}</span>
+            <i class="{{ lp.icon }}" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
+            <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.6;flex:1;min-width:0;">{{ lp.text }}</span>
           </div>
         </sc-for>
       </div>
@@ -700,11 +704,11 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   <sc-if value="{{ askOpen }}">
     <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:kpFade .16s ease;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:#405189;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ askTitle }}</span></div>
-        <span style="font-size:12.5px;color:#878a99;line-height:1.7;">{{ askText }}</span>
+      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:kpFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
+        <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.7;">{{ askText }}</span>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
-          <button class="kp-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Huỷ</button>
+          <button class="kp-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Hủy</button>
           <button class="kp-pri" onClick="{{ onAskOk }}">{{ askOk }}</button>
         </div>
       </div>
@@ -712,7 +716,7 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   </sc-if>
 
   <sc-if value="{{ toast }}">
-    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#343a40;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:kpFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:kpFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
       <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
     </div>
@@ -735,7 +739,7 @@ class Component extends DCLogic {
         { k: 'k6', kw: 'máy lọc RO loại nào tốt nhất', variants: 'gộp 6 biến thể: ro tốt nhất, top máy lọc ro…', intent: 'So sánh', vol: '4.200', kd: 52, st: 'dupe', stHint: 'Trùng ý định với “RO 9 cấp có tốt không” — nên bổ sung vào bài đó, không viết bài mới' }
       ] },
     { k: 'c2', pillar: 'Xử lý nước nhiễm phèn', pstate: 'none',
-      pillarKw: { kw: 'cách xử lý nước nhiễm phèn tại nhà', vol: '4.800', words: 1650, why: 'Từ khoá bao trùm cả cụm và có lượt tìm cao nhất — hệ thống chọn làm bài trụ. Bài này là đích liên kết cho 4 bài ngách còn lại.' },
+      pillarKw: { kw: 'cách xử lý nước nhiễm phèn tại nhà', vol: '4.800', words: 1650, why: 'Từ khóa bao trùm cả cụm và có lượt tìm cao nhất — hệ thống chọn làm bài trụ. Bài này là đích liên kết cho 4 bài ngách còn lại.' },
       kws: [
         { k: 'k7', kw: 'dấu hiệu nước nhiễm phèn', variants: 'gộp 8 biến thể: nước vàng áo, nước mùi tanh…', intent: 'Thông tin', vol: '2.900', kd: 18, st: 'thin', stHint: 'Bài hiện có tốt nhưng thiếu phần chi phí và thời gian' },
         { k: 'k9', kw: 'vật liệu lọc phèn loại nào tốt', variants: 'gộp 6 biến thể: cát mangan, hạt birm…', intent: 'So sánh', vol: '1.300', kd: 22, st: 'none', stHint: 'Chưa có bài — độ khó thấp, nên lên ngay sau bài trụ' },
@@ -793,13 +797,13 @@ class Component extends DCLogic {
     { type: 'Bài đăng mạng xã hội', post: 'Không lưu trên website', place: 'Hàng đợi mạng xã hội', tpl: '—', init: 'Chờ đăng theo lịch riêng', extra: 'Kèm ảnh cắt đúng tỷ lệ từng nền tảng' }
   ];
   ATTRS = [
-    { name: 'Tiêu đề bài và tiêu đề SEO', mode: 'auto', hint: 'Sinh 3 phương án, chọn phương án bám từ khoá đại diện và dưới 60 ký tự.' },
-    { name: 'Đường dẫn (slug)', mode: 'auto', hint: 'Không dấu, gọn, theo từ khoá đại diện; đã tồn tại thì thêm hậu tố có nghĩa, không thêm số.' },
-    { name: 'Mô tả SEO', mode: 'auto', hint: 'Dưới 155 ký tự, có từ khoá và một lý do để bấm vào.' },
+    { name: 'Tiêu đề bài và tiêu đề SEO', mode: 'auto', hint: 'Sinh 3 phương án, chọn phương án bám từ khóa đại diện và dưới 60 ký tự.' },
+    { name: 'Đường dẫn (slug)', mode: 'auto', hint: 'Không dấu, gọn, theo từ khóa đại diện; đã tồn tại thì thêm hậu tố có nghĩa, không thêm số.' },
+    { name: 'Mô tả SEO', mode: 'auto', hint: 'Dưới 155 ký tự, có từ khóa và một lý do để bấm vào.' },
     { name: 'Danh mục · thẻ', mode: 'once', hint: 'Theo bảng “cụm → danh mục đích” ở trên. Danh mục chưa có thì hệ thống đề xuất tạo, bạn duyệt một lần rồi mọi bài sau tự vào đúng chỗ.' },
     { name: 'Tác giả', mode: 'once', hint: 'Lấy tác giả mặc định của cụm; bài chuyên môn cao thì cần tác giả có chứng chỉ ngành.' },
     { name: 'Ảnh đại diện · ảnh trong bài', mode: 'ask', hint: 'Lấy từ thư viện theo cụm và theo sản phẩm. Không có ảnh phù hợp thì để chỗ trống kèm ghi chú “cần ảnh thật” — không dùng ảnh minh hoạ giả hay ảnh AI cho nội dung kỹ thuật.' },
-    { name: 'Chữ thay thế ảnh (alt) · chú thích', mode: 'auto', hint: 'Viết theo nội dung ảnh thật, không nhồi từ khoá.' },
+    { name: 'Chữ thay thế ảnh (alt) · chú thích', mode: 'auto', hint: 'Viết theo nội dung ảnh thật, không nhồi từ khóa.' },
     { name: 'Dữ liệu có cấu trúc (schema)', mode: 'auto', hint: 'Article + Author + Breadcrumb, thêm FAQ khi có phần hỏi đáp, Product khi là mô tả sản phẩm.' },
     { name: 'Liên kết nội bộ · sản phẩm liên quan', mode: 'auto', hint: 'Tối thiểu 3 liên kết đúng cụm, có liên kết về bài trụ; gắn sản phẩm theo cột “sản phẩm gắn kèm” của cụm.' },
     { name: 'Mục lục · khối hỏi đáp · lời mời', mode: 'auto', hint: 'Bật theo bộ mặc định của loại bài trong Cài đặt › Nội dung AI.' },
@@ -838,10 +842,10 @@ class Component extends DCLogic {
   ];
   LOOPS = [
     { icon: 'ri-search-eye-line', text: 'Sau 14 ngày chưa được index: tự gửi lại yêu cầu index, kiểm tra lại chất lượng bài và báo lên “việc nên làm”.' },
-    { icon: 'ri-line-chart-line', text: 'Sau 30 ngày: đo thứ hạng của từ khoá đại diện, lượng khách vào và số lần được trợ lý AI trích dẫn.' },
+    { icon: 'ri-line-chart-line', text: 'Sau 30 ngày: đo thứ hạng của từ khóa đại diện, lượng khách vào và số lần được trợ lý AI trích dẫn.' },
     { icon: 'ri-arrow-down-line', text: 'Cụm không lên sau 2 tháng sẽ bị hạ ưu tiên, nhường tần suất cho cụm đang lên — không viết thêm cho cụm chết.' },
-    { icon: 'ri-links-line', text: 'Bài ngách nào lên hạng tốt sẽ tự được bài trụ liên kết xuống, dồn thẩm quyền về từ khoá chính.' },
-    { icon: 'ri-user-search-line', text: 'Câu hỏi mới khách hỏi trợ lý AI được tự thêm vào cơ sở dữ liệu từ khoá của cụm tương ứng mỗi tuần.' }
+    { icon: 'ri-links-line', text: 'Bài ngách nào lên hạng tốt sẽ tự được bài trụ liên kết xuống, dồn thẩm quyền về từ khóa chính.' },
+    { icon: 'ri-user-search-line', text: 'Câu hỏi mới khách hỏi trợ lý AI được tự thêm vào cơ sở dữ liệu từ khóa của cụm tương ứng mỗi tuần.' }
   ];
 
   componentDidMount() {
@@ -902,7 +906,7 @@ class Component extends DCLogic {
     });
     this.setState({ roots: cur.concat(added), adding: false, draft: '' });
     this.toast(added.length
-      ? ('Đã thêm ' + added.length + ' từ khoá gốc' + (dup.length ? ' · bỏ ' + dup.length + ' từ trùng' : '') + ' — bấm “Mở rộng theo danh sách mới” để hệ thống tìm từ khoá và gom cụm cho phần mới')
+      ? ('Đã thêm ' + added.length + ' từ khóa gốc' + (dup.length ? ' · bỏ ' + dup.length + ' từ trùng' : '') + ' — bấm “Mở rộng theo danh sách mới” để hệ thống tìm từ khóa và gom cụm cho phần mới')
       : ('Cả ' + dup.length + ' từ đều đã có trong danh sách — không thêm gì'), added.length ? 'ri-add-line' : 'ri-information-line');
   }
   needKeys(c) {
@@ -937,10 +941,10 @@ class Component extends DCLogic {
       dupe: { text: 'Trùng ý định', color: '#c0392b', add: 'Bổ sung bài cũ' }
     };
     const IN = {
-      'Thông tin': 'background:#f3f6f9;color:#495057;',
-      'So sánh': 'background:rgba(41,156,219,.12);color:#1c7ba8;',
-      'Giao dịch': 'background:rgba(64,81,137,.12);color:#405189;',
-      'Sức khoẻ': 'background:rgba(240,101,72,.10);color:#a5402c;'
+      'Thông tin': 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);',
+      'So sánh': 'background:rgba(41,156,219,.12);color:var(--color-admin-info-text,#1c7ba8);',
+      'Giao dịch': 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);',
+      'Sức khoẻ': 'background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);'
     };
     const cadenceOpts = [
       { v: 2, label: '2 bài', title: 'An toàn nhất cho website mới hoặc ít người soát' },
@@ -954,12 +958,12 @@ class Component extends DCLogic {
     ];
     const words = cadence * 4 * 950;
     const overQuota = words > left;
-    const noteBase = 'display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:5px;font-size:11.5px;line-height:1.65;';
+    const noteBase = 'display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:5px;font-size:12px;line-height:1.65;';
     const TYPES = [
-      { t: 'Bài trụ', s: 'background:rgba(64,81,137,.12);color:#405189;' },
-      { t: 'Bài ngách', s: 'background:#f3f6f9;color:#495057;' },
-      { t: 'So sánh', s: 'background:rgba(41,156,219,.12);color:#1c7ba8;' },
-      { t: 'Giao dịch', s: 'background:rgba(247,184,75,.16);color:#b57d13;' }
+      { t: 'Bài trụ', s: 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);' },
+      { t: 'Bài ngách', s: 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);' },
+      { t: 'So sánh', s: 'background:rgba(41,156,219,.12);color:var(--color-admin-info-text,#1c7ba8);' },
+      { t: 'Giao dịch', s: 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#b57d13);' }
     ];
     const DAYS = ['Thứ 3', 'Thứ 5', 'Thứ 7', 'Thứ 2', 'Thứ 6'];
     const ITEM = {};
@@ -972,10 +976,10 @@ class Component extends DCLogic {
       });
     });
     const OTHER = [
-      { kw: '12 mô tả sản phẩm (làn sản phẩm)', t: 'Sản phẩm', s: 'background:rgba(10,179,156,.12);color:#0a7d6f;', day: 'rải cả tuần' },
-      { kw: '3 mô tả danh mục', t: 'Danh mục', s: 'background:rgba(10,179,156,.12);color:#0a7d6f;', day: 'rải cả tuần' },
-      { kw: 'Làm mới 4 bài cũ', t: 'Làm mới', s: 'background:rgba(41,156,219,.12);color:#1c7ba8;', day: 'thứ 4 · thứ 6' },
-      { kw: 'Tin tức khi có sự kiện thật', t: 'Tin tức', s: 'background:rgba(247,184,75,.16);color:#b57d13;', day: 'không cố định' }
+      { kw: '12 mô tả sản phẩm (làn sản phẩm)', t: 'Sản phẩm', s: 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);', day: 'rải cả tuần' },
+      { kw: '3 mô tả danh mục', t: 'Danh mục', s: 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);', day: 'rải cả tuần' },
+      { kw: 'Làm mới 4 bài cũ', t: 'Làm mới', s: 'background:rgba(41,156,219,.12);color:var(--color-admin-info-text,#1c7ba8);', day: 'thứ 4 · thứ 6' },
+      { kw: 'Tin tức khi có sự kiện thật', t: 'Tin tức', s: 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#b57d13);', day: 'không cố định' }
     ];
     const sched = this.sched();
     const schedWords = sched.reduce((a, k) => a + this.itemWords(k), 0);
@@ -988,7 +992,7 @@ class Component extends DCLogic {
         if (gi < sched.length) {
           const it = ITEM[sched[gi]] || { kw: sched[gi], t: 'Bài ngách', s: TYPES[1].s, cluster: '' };
           const d = this.slotDate(gi, cadence);
-          const st = gi === 0 ? { s: 'Đang viết · vào hàng đợi', c: '#405189' } : { s: 'Sẽ tự viết trước 2 ngày', c: '#878a99' };
+          const st = gi === 0 ? { s: 'Đang viết · vào hàng đợi', c: '#2050a0' } : { s: 'Sẽ tự viết trước 2 ngày', c: '#878a99' };
           const key = sched[gi];
           const isP = key.indexOf('P:') === 0;
           const pc = isP ? this.CLUSTERS.find(x => 'P:' + x.k === key) : null;
@@ -998,14 +1002,14 @@ class Component extends DCLogic {
           slots.push({ kw: it.kw, type: it.t, typeStyle: it.s, day: d.day + ' · ' + d.date,
             state: unSlot ? 'Cụm không còn theo dõi — sẽ không viết' : (orphan ? 'Chờ bài trụ của cụm' : st.s),
             stColor: unSlot ? '#878a99' : (orphan ? '#b57d13' : st.c),
-            slotStyle: unSlot ? 'border-style:dashed;background:#fbfcfe;opacity:.75;' : (orphan ? 'border-color:rgba(247,184,75,.55);background:rgba(247,184,75,.07);' : ''),
+            slotStyle: unSlot ? 'border-style:dashed;background:var(--color-surface-muted,#fbfcfe);opacity:.75;' : (orphan ? 'border-color:rgba(247,184,75,.55);background:rgba(247,184,75,.07);' : ''),
             canDrop: true, cluster: it.cluster,
             dropTitle: isP && nDep
               ? ('Bỏ bài trụ “' + it.kw + '” — ' + nDep + ' bài ngách của cụm sẽ mất đích liên kết và phải chờ bài trụ')
               : ('Bỏ “' + it.kw + '” khỏi lịch — các mục sau dồn lên một slot'),
             onDrop: () => this.unschedule(key, isP && nDep
               ? ('Đã bỏ bài trụ “' + it.kw + '” — ' + nDep + ' bài ngách của cụm “' + it.cluster + '” chuyển sang “chờ bài trụ” và tạm dừng cho tới khi có bài trụ. Dải “Việc nên làm tiếp” có nút duyệt lại bằng một chạm.')
-              : ('Đã bỏ “' + it.kw + '” khỏi lịch — các mục sau dồn lên, xếp lại lúc nào cũng được ở thẻ Bản đồ từ khoá')) });
+              : ('Đã bỏ “' + it.kw + '” khỏi lịch — các mục sau dồn lên, xếp lại lúc nào cũng được ở thẻ Bản đồ từ khóa')) });
         }
       }
       if (S.showAll) OTHER.forEach(o => slots.push({ kw: o.kw, type: o.t, typeStyle: o.s, day: o.day, state: 'Không tính vào tần suất tuần', stColor: '#adb5bd', canDrop: false, cluster: '', slotStyle: '' }));
@@ -1031,10 +1035,10 @@ class Component extends DCLogic {
     const noPillar = ACT.filter(c => c.pstate !== 'ok' && sched.indexOf('P:' + c.k) < 0);
     let nx;
     if (S.paused) nx = { icon: 'ri-pause-circle-line', text: 'Kế hoạch đang tạm dừng nên không bài nào được viết hay đăng. Lịch và bài đang chờ duyệt vẫn giữ nguyên — tiếp tục là chạy lại từ đúng chỗ đã dừng.', label: 'Tiếp tục kế hoạch', go: () => { this.setState({ paused: false }); this.toast('Đã tiếp tục kế hoạch — chạy lại từ đúng slot đã dừng', 'ri-play-circle-line'); } };
-    else if (S.roots.length && (S.roots.some(r => this.baseRoots().every(b => this.norm(b) !== this.norm(r))) || this.baseRoots().some(b => !S.roots.some(r => this.norm(r) === this.norm(b))))) nx = { icon: 'ri-sparkling-2-line', text: 'Danh sách từ khoá gốc vừa đổi nhưng bản đồ bên dưới vẫn của lần mở rộng trước. Mở rộng lại là hệ thống tự tìm từ khoá, gom cụm và chọn bài trụ cho phần mới.', label: 'Mở rộng theo danh sách mới', go: () => this.setState({ ask: { kind: 'expand', icon: 'ri-sparkling-2-line', title: 'Mở rộng theo danh sách từ khoá gốc mới?', text: 'Hệ thống quét gợi ý tìm kiếm, câu hỏi liên quan, từ khoá đối thủ và câu khách hỏi trợ lý AI cho phần mới, rồi gom cụm và chọn bài trụ. Cụm cũ và bài đã đăng không bị xoá — cụm không còn từ khoá gốc chỉ được đánh dấu “không còn theo dõi”.', ok: 'Mở rộng ngay' } }) };
-    else if (!S.roots.length) nx = { icon: 'ri-key-2-line', text: 'Chưa có từ khoá gốc nào. Thêm 3–5 từ khoá mô tả đúng việc bạn làm, hệ thống lo phần mở rộng và gom cụm.', label: 'Thêm từ khoá gốc', go: () => this.toast('Nhập từ khoá gốc mới — hệ thống mở rộng và tự gộp từ trùng ý định trong khoảng 2 phút', 'ri-add-line') };
-    else if (ACT.length === 0) nx = { icon: 'ri-eye-off-line', text: (UN.length ? UN.length + ' cụm hiện không được theo dõi nên không có việc nào để làm. Dữ liệu từ khoá và bài đã đăng vẫn còn nguyên: bật lại cụm bạn muốn dùng tiếp, hoặc thêm từ khoá gốc mới rồi mở rộng.' : 'Chưa có cụm nào để làm. Thêm từ khoá gốc rồi bấm mở rộng, hệ thống sẽ gom cụm và đề xuất bài trụ.'), label: UN.length ? 'Xem các cụm để bật lại' : 'Thêm từ khoá gốc', go: () => { this.setState({ tab: 'map', q: '', filt: 'all' }); this.toast(UN.length ? 'Mỗi cụm có nút “Theo dõi lại cụm” — bật lại là có ngay toàn bộ từ khoá và bài cũ của cụm đó' : 'Thêm từ khoá gốc ở thẻ “Từ khoá gốc của bạn”, dán cả danh sách cũng được', 'ri-information-line'); } };
-    else if (!sched.length) nx = { icon: 'ri-magic-line', text: 'Có ' + (nNone + nThin) + ' việc nên làm trong ' + ACT.length + ' cụm đang theo dõi. Để hệ thống xếp sẵn cả kế hoạch, bạn chỉ xem lại và bỏ mục không muốn.', label: 'Tự lập kế hoạch cả ' + ACT.length + ' cụm', go: () => this.setState({ tab: 'plan', ask: { kind: 'all', icon: 'ri-magic-line', title: 'Để hệ thống tự lập kế hoạch cho cả ' + ACT.length + ' cụm?', text: 'Hệ thống xếp bài trụ của từng cụm lên trước, rồi rải các bài ngách theo độ dễ lên hạng và tần suất bạn đã đặt. Từ khoá trùng ý định được gộp vào bài cũ thay vì viết mới. Bài có giá và bài sức khoẻ vẫn luôn chờ bạn duyệt.', ok: 'Tự lập kế hoạch' } }) };
+    else if (S.roots.length && (S.roots.some(r => this.baseRoots().every(b => this.norm(b) !== this.norm(r))) || this.baseRoots().some(b => !S.roots.some(r => this.norm(r) === this.norm(b))))) nx = { icon: 'ri-sparkling-2-line', text: 'Danh sách từ khóa gốc vừa đổi nhưng bản đồ bên dưới vẫn của lần mở rộng trước. Mở rộng lại là hệ thống tự tìm từ khóa, gom cụm và chọn bài trụ cho phần mới.', label: 'Mở rộng theo danh sách mới', go: () => this.setState({ ask: { kind: 'expand', icon: 'ri-sparkling-2-line', title: 'Mở rộng theo danh sách từ khóa gốc mới?', text: 'Hệ thống quét gợi ý tìm kiếm, câu hỏi liên quan, từ khóa đối thủ và câu khách hỏi trợ lý AI cho phần mới, rồi gom cụm và chọn bài trụ. Cụm cũ và bài đã đăng không bị xóa — cụm không còn từ khóa gốc chỉ được đánh dấu “không còn theo dõi”.', ok: 'Mở rộng ngay' } }) };
+    else if (!S.roots.length) nx = { icon: 'ri-key-2-line', text: 'Chưa có từ khóa gốc nào. Thêm 3–5 từ khóa mô tả đúng việc bạn làm, hệ thống lo phần mở rộng và gom cụm.', label: 'Thêm từ khóa gốc', go: () => this.toast('Nhập từ khóa gốc mới — hệ thống mở rộng và tự gộp từ trùng ý định trong khoảng 2 phút', 'ri-add-line') };
+    else if (ACT.length === 0) nx = { icon: 'ri-eye-off-line', text: (UN.length ? UN.length + ' cụm hiện không được theo dõi nên không có việc nào để làm. Dữ liệu từ khóa và bài đã đăng vẫn còn nguyên: bật lại cụm bạn muốn dùng tiếp, hoặc thêm từ khóa gốc mới rồi mở rộng.' : 'Chưa có cụm nào để làm. Thêm từ khóa gốc rồi bấm mở rộng, hệ thống sẽ gom cụm và đề xuất bài trụ.'), label: UN.length ? 'Xem các cụm để bật lại' : 'Thêm từ khóa gốc', go: () => { this.setState({ tab: 'map', q: '', filt: 'all' }); this.toast(UN.length ? 'Mỗi cụm có nút “Theo dõi lại cụm” — bật lại là có ngay toàn bộ từ khóa và bài cũ của cụm đó' : 'Thêm từ khóa gốc ở thẻ “Từ khóa gốc của bạn”, dán cả danh sách cũng được', 'ri-information-line'); } };
+    else if (!sched.length) nx = { icon: 'ri-magic-line', text: 'Có ' + (nNone + nThin) + ' việc nên làm trong ' + ACT.length + ' cụm đang theo dõi. Để hệ thống xếp sẵn cả kế hoạch, bạn chỉ xem lại và bỏ mục không muốn.', label: 'Tự lập kế hoạch cả ' + ACT.length + ' cụm', go: () => this.setState({ tab: 'plan', ask: { kind: 'all', icon: 'ri-magic-line', title: 'Để hệ thống tự lập kế hoạch cho cả ' + ACT.length + ' cụm?', text: 'Hệ thống xếp bài trụ của từng cụm lên trước, rồi rải các bài ngách theo độ dễ lên hạng và tần suất bạn đã đặt. Từ khóa trùng ý định được gộp vào bài cũ thay vì viết mới. Bài có giá và bài sức khoẻ vẫn luôn chờ bạn duyệt.', ok: 'Tự lập kế hoạch' } }) };
     else if (noPillar.length) nx = { icon: 'ri-flag-2-line', text: noPillar.length + ' cụm còn thiếu bài trụ nên các bài ngách của cụm đó chưa có đích liên kết. Duyệt bài trụ là hệ thống tự nối liên kết hai chiều.', label: 'Duyệt ' + noPillar.length + ' bài trụ còn thiếu', go: () => this.schedule(noPillar.map(c => 'P:' + c.k), 'Đã xếp ' + noPillar.length + ' bài trụ lên các slot đầu — mọi bài ngách trong các cụm đó sẽ tự trỏ về bài trụ tương ứng', 'ri-flag-2-line') };
     else if (overQuota) nx = { icon: 'ri-error-warning-line', text: 'Tần suất hiện tại vượt hạn ngạch từ AI còn lại trong tháng. Hạ tần suất hoặc mua thêm từ AI để kế hoạch không dừng giữa cụm.', label: 'Xem tần suất', go: () => this.setState({ tab: 'plan' }) };
     else nx = { icon: 'ri-play-circle-line', text: 'Kế hoạch đã sẵn: ' + sched.length + ' mục phủ ' + Math.ceil(sched.length / cadence) + ' tuần, bài trụ đứng trước bài ngách. Đưa vào hàng đợi là hệ thống tự viết trước ngày đăng 2 ngày.', label: 'Đưa cả kế hoạch vào hàng đợi', go: () => this.setState({ tab: 'plan', ask: { kind: 'plan', icon: 'ri-play-circle-line', title: 'Đưa cả kế hoạch vào hàng đợi?', text: sched.length + ' mục, ước tính ' + schedWords.toLocaleString('vi-VN') + ' từ AI. Hệ thống viết trước ngày đăng 2 ngày để bạn có thời gian soát. Bài đạt chuẩn tự đăng đúng lịch nếu bạn đang bật tự đăng; bài chưa đạt luôn chờ bạn.', ok: 'Chạy kế hoạch' } }) };
@@ -1055,19 +1059,19 @@ class Component extends DCLogic {
     const ask = S.ask;
     return {
       noActOn: ACT.length === 0 && this.CLUSTERS.length > 0,
-      noActText: 'Không còn cụm nào được theo dõi vì bạn đã bỏ hết từ khoá gốc cũ. ' + this.CLUSTERS.length + ' cụm, ' + this.CLUSTERS.reduce((a, c) => a + c.kws.length, 0) + ' từ khoá và toàn bộ bài đã đăng vẫn nằm nguyên trong cơ sở dữ liệu — không mất gì. Thêm từ khoá gốc mới rồi bấm mở rộng để có cụm mới, hoặc bấm “Theo dõi lại cụm” ở cụm bạn muốn dùng tiếp.',
+      noActText: 'Không còn cụm nào được theo dõi vì bạn đã bỏ hết từ khóa gốc cũ. ' + this.CLUSTERS.length + ' cụm, ' + this.CLUSTERS.reduce((a, c) => a + c.kws.length, 0) + ' từ khóa và toàn bộ bài đã đăng vẫn nằm nguyên trong cơ sở dữ liệu — không mất gì. Thêm từ khóa gốc mới rồi bấm mở rộng để có cụm mới, hoặc bấm “Theo dõi lại cụm” ở cụm bạn muốn dùng tiếp.',
       pendOn: !stale && !!S.pending,
-      pendText: 'Đang mở rộng ' + (S.pending || 0) + ' từ khoá gốc mới — hệ thống đang tìm từ khoá, gom cụm và chọn bài trụ. Cụm mới sẽ hiện ngay ở danh sách bên dưới khi xong (khoảng 2 phút), số cụm và số từ khoá đại diện cập nhật cùng lúc. Bạn có thể rời trang, xong sẽ có thông báo.',
-      onPendCancel: () => { this.setState({ pending: null }); this.toast('Đã dừng lần mở rộng này — từ khoá gốc vẫn giữ, bấm mở rộng lại lúc nào cũng được, lượt AI chưa dùng được hoàn', 'ri-close-circle-line'); },
+      pendText: 'Đang mở rộng ' + (S.pending || 0) + ' từ khóa gốc mới — hệ thống đang tìm từ khóa, gom cụm và chọn bài trụ. Cụm mới sẽ hiện ngay ở danh sách bên dưới khi xong (khoảng 2 phút), số cụm và số từ khóa đại diện cập nhật cùng lúc. Bạn có thể rời trang, xong sẽ có thông báo.',
+      onPendCancel: () => { this.setState({ pending: null }); this.toast('Đã dừng lần mở rộng này — từ khóa gốc vẫn giữ, bấm mở rộng lại lúc nào cũng được, từ AI chưa dùng được hoàn lại', 'ri-close-circle-line'); },
       staleOn: stale, staleOff: !stale,
-      staleText: (newRoots.length ? (newRoots.length + ' từ khoá gốc mới chưa được mở rộng') : '')
+      staleText: (newRoots.length ? (newRoots.length + ' từ khóa gốc mới chưa được mở rộng') : '')
         + (newRoots.length && goneRoots.length ? ' · ' : '')
-        + (goneRoots.length ? (goneRoots.length + ' từ khoá gốc đã bỏ') : '')
-        + '. Bản đồ và lịch bên dưới vẫn là kết quả của lần mở rộng trước — bấm mở rộng để hệ thống tìm từ khoá, gom cụm và đề xuất bài trụ cho phần mới. Cụm cũ và bài đã đăng không bị xoá.',
-      staleBtn: 'Mở rộng ' + (newRoots.length || 'lại') + (newRoots.length ? ' từ khoá mới' : ''),
+        + (goneRoots.length ? (goneRoots.length + ' từ khóa gốc đã bỏ') : '')
+        + '. Bản đồ và lịch bên dưới vẫn là kết quả của lần mở rộng trước — bấm mở rộng để hệ thống tìm từ khóa, gom cụm và đề xuất bài trụ cho phần mới. Cụm cũ và bài đã đăng không bị xóa.',
+      staleBtn: 'Mở rộng ' + (newRoots.length || 'lại') + (newRoots.length ? ' từ khóa mới' : ''),
       staleTitle: 'Dùng ~' + expandWords.toLocaleString('vi-VN') + ' từ AI · chỉ thêm cụm mới, không đụng cụm và bài đã có'
         + (goneRoots.length ? (' · các cụm sinh từ ' + goneRoots.length + ' từ đã bỏ sẽ được đánh dấu “không còn theo dõi”, bài vẫn giữ nguyên') : ''),
-      onStaleExpand: () => this.setState({ ask: { kind: 'expand', icon: 'ri-sparkling-2-line', title: 'Mở rộng cho ' + (newRoots.length ? newRoots.length + ' từ khoá gốc mới' : 'danh sách vừa đổi') + '?', text: 'Hệ thống quét gợi ý tìm kiếm, câu hỏi liên quan, từ khoá đối thủ và câu khách hỏi trợ lý AI cho phần mới, rồi gom cụm và chọn bài trụ. Dùng ~' + expandWords.toLocaleString('vi-VN') + ' từ AI.' + (goneRoots.length ? ' Các cụm sinh từ ' + goneRoots.length + ' từ khoá đã bỏ chỉ được đánh dấu “không còn theo dõi” — bài đã đăng và lịch của chúng không bị xoá.' : ' Cụm cũ và bài đã có không bị đổi.'), ok: 'Mở rộng ngay' } }),
+      onStaleExpand: () => this.setState({ ask: { kind: 'expand', icon: 'ri-sparkling-2-line', title: 'Mở rộng cho ' + (newRoots.length ? newRoots.length + ' từ khóa gốc mới' : 'danh sách vừa đổi') + '?', text: 'Hệ thống quét gợi ý tìm kiếm, câu hỏi liên quan, từ khóa đối thủ và câu khách hỏi trợ lý AI cho phần mới, rồi gom cụm và chọn bài trụ. Dùng ~' + expandWords.toLocaleString('vi-VN') + ' từ AI.' + (goneRoots.length ? ' Các cụm sinh từ ' + goneRoots.length + ' từ khóa đã bỏ chỉ được đánh dấu “không còn theo dõi” — bài đã đăng và lịch của chúng không bị xóa.' : ' Cụm cũ và bài đã có không bị đổi.'), ok: 'Mở rộng ngay' } }),
       nxIcon: nx.icon, nxText: nx.text, nxLabel: nx.label, onNx: nx.go,
       kwQuery: S.q || '',
       onKwQuery: (e) => this.setState({ q: e.target.value }),
@@ -1077,35 +1081,35 @@ class Component extends DCLogic {
         { v: 'thin', label: 'Còn mỏng', n: nThin },
         { v: 'dupe', label: 'Trùng ý định', n: nDupe },
         { v: 'have', label: 'Đã đủ', n: nHave }
-      ].map(f => ({ label: f.label, n: f.n, on2: f.v === filt, off: f.v !== filt, title: f.label + ' — ' + f.n + ' từ khoá', on: () => this.setState({ filt: f.v }) })),
-      filterInfo: (filtering ? ('Đang xem ' + shownKws.length + '/' + allKws.length + ' từ khoá') : (allKws.length + ' từ khoá trong ' + ACT.length + ' cụm đang theo dõi')) + (UN.length ? ' · đã trừ ' + UN.length + ' cụm không còn theo dõi' : ''),
+      ].map(f => ({ label: f.label, n: f.n, on2: f.v === filt, off: f.v !== filt, title: f.label + ' — ' + f.n + ' từ khóa', on: () => this.setState({ filt: f.v }) })),
+      filterInfo: (filtering ? ('Đang xem ' + shownKws.length + '/' + allKws.length + ' từ khóa') : (allKws.length + ' từ khóa trong ' + ACT.length + ' cụm đang theo dõi')) + (UN.length ? ' · đã trừ ' + UN.length + ' cụm không còn theo dõi' : ''),
       bulkOn: bulkKeys.length > 0,
       bulkLabel: 'Xếp lịch ' + bulkKeys.length + ' việc đang hiện',
       bulkTitle: 'Xếp tất cả việc đang hiện vào lịch theo đúng thứ tự (bài trụ trước) · ~' + (bulkKeys.reduce((a, k) => a + this.itemWords(k), 0)).toLocaleString('vi-VN') + ' từ AI',
       onBulk: () => this.schedule(bulkKeys, 'Đã xếp ' + bulkKeys.length + ' việc đang hiện vào lịch — bài trụ của mỗi cụm tự đứng trước bài ngách của cụm đó', 'ri-calendar-check-line'),
       rootsEmpty: S.roots.length === 0, rootsHas: S.roots.length > 0,
       clustersEmpty: CL.length === 0,
-      emptyText: qStr ? ('Không có từ khoá nào khớp “' + (S.q || '').trim() + '”. Thử từ ngắn hơn, hoặc bỏ bộ lọc trạng thái.') : 'Không có từ khoá nào ở trạng thái này.',
+      emptyText: qStr ? ('Không có từ khóa nào khớp “' + (S.q || '').trim() + '”. Thử từ ngắn hơn, hoặc bỏ bộ lọc trạng thái.') : 'Không có từ khóa nào ở trạng thái này.',
       onClearFilter: () => this.setState({ q: '', filt: 'all' }),
       langs: this.LANGS.map(l => {
         const on = l.v === L.v;
         return {
           name: l.name, on2: on, off: !on, isSrc: l.src,
           dotStyle: 'width:8px;height:8px;border-radius:50%;flex-shrink:0;' + (l.clusters ? 'background:#0ab39c;' : 'border:1px dashed #adb5bd;'),
-          title: l.name + (l.src ? ' — ngôn ngữ chính, bộ từ khoá gốc' : (l.clusters ? ' — đã có bộ từ khoá riêng' : ' — chưa có bộ từ khoá riêng')) + (l.pub ? '' : ' · chưa hiển thị ra ngoài'),
+          title: l.name + (l.src ? ' — ngôn ngữ chính, bộ từ khóa gốc' : (l.clusters ? ' — đã có bộ từ khóa riêng' : ' — chưa có bộ từ khóa riêng')) + (l.pub ? '' : ' · chưa hiển thị ra ngoài'),
           on: () => this.setState({ lang: l.v })
         };
       }),
-      langNoteStyle: 'display:flex;align-items:flex-start;gap:8px;padding:10px 16px;border-top:1px solid #eff2f7;font-size:11.5px;line-height:1.65;' + (isSrc ? 'background:#f8f9fb;color:#878a99;' : 'background:rgba(247,184,75,.10);color:#8a6115;'),
+      langNoteStyle: 'display:flex;align-items:flex-start;gap:8px;padding:10px 16px;border-top:1px solid var(--color-border,#e9ecf4);font-size:12px;line-height:1.65;' + (isSrc ? 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);' : 'background:rgba(247,184,75,.10);color:var(--color-admin-warning-text,#8a6115);'),
       langNoteIcon: isSrc ? 'ri-information-line' : 'ri-alert-line',
       langNote: isSrc
-        ? 'Đây là ngôn ngữ chính — bộ từ khoá gốc và lịch lên bài của bản này. Mỗi ngôn ngữ có bộ từ khoá và lịch riêng, vì từ khoá không dịch được: lượt tìm, độ khó và đối thủ ở mỗi thị trường đều khác nhau.'
-        : 'Bản ' + L.name + ' chưa có bộ từ khoá riêng nên chưa lên lịch được. Không dùng bản dịch từ khoá tiếng Việt làm kế hoạch — người ' + (L.v === 'en' ? 'nói tiếng Anh' : 'Nhật') + ' tìm bằng cách khác. Hãy chọn một trong ba cách bên dưới.',
+        ? 'Đây là ngôn ngữ chính — bộ từ khóa gốc và lịch lên bài của bản này. Mỗi ngôn ngữ có bộ từ khóa và lịch riêng, vì từ khóa không dịch được: lượt tìm, độ khó và đối thủ ở mỗi thị trường đều khác nhau.'
+        : 'Bản ' + L.name + ' chưa có bộ từ khóa riêng nên chưa lên lịch được. Không dùng bản dịch từ khóa tiếng Việt làm kế hoạch — người ' + (L.v === 'en' ? 'nói tiếng Anh' : 'Nhật') + ' tìm bằng cách khác. Hãy chọn một trong ba cách bên dưới.',
       langEmpty: !isSrc, langHas: isSrc,
-      langScope: isSrc ? (ACT.length + ' cụm đang theo dõi · ' + (allKws.length + ACT.length) + ' từ khoá · lịch riêng của bản này' + (UN.length ? ' · ' + UN.length + ' cụm không còn theo dõi' : '')) : ('0 cụm · chưa có lịch riêng' + (L.pub ? '' : ' · chưa hiển thị ra ngoài')),
+      langScope: isSrc ? (ACT.length + ' cụm đang theo dõi · ' + (allKws.length + ACT.length) + ' từ khóa · lịch riêng của bản này' + (UN.length ? ' · ' + UN.length + ' cụm không còn theo dõi' : '')) : ('0 cụm · chưa có lịch riêng' + (L.pub ? '' : ' · chưa hiển thị ra ngoài')),
       langOpts: [
-        { icon: 'ri-search-eye-line', name: 'Nghiên cứu từ khoá riêng cho ' + L.name, hint: 'Chính xác nhất: quét gợi ý tìm kiếm, câu hỏi liên quan và đối thủ ở đúng thị trường đó, rồi gộp theo ý định. Dùng ~1.500 từ AI.', best: true, go: () => this.toast('Đang nghiên cứu từ khoá cho bản ' + L.name + ' — khoảng 3 phút, xong sẽ có cụm và bài trụ đề xuất riêng', 'ri-search-eye-line') },
-        { icon: 'ri-git-branch-line', name: 'Lấy cụm của bản nguồn làm khung, rồi tìm từ khoá thật', hint: 'Nhanh hơn: giữ nguyên cấu trúc ' + ACT.length + ' cụm của bản nguồn, nhưng từ khoá trong mỗi cụm vẫn được tìm lại theo thị trường đó — không dịch máy móc.', best: false, go: () => this.toast('Đã tạo ' + ACT.length + ' cụm khung cho bản ' + L.name + ' — hệ thống đang tìm từ khoá thật cho từng cụm', 'ri-git-branch-line') },
+        { icon: 'ri-search-eye-line', name: 'Nghiên cứu từ khóa riêng cho ' + L.name, hint: 'Chính xác nhất: quét gợi ý tìm kiếm, câu hỏi liên quan và đối thủ ở đúng thị trường đó, rồi gộp theo ý định. Dùng ~1.500 từ AI.', best: true, go: () => this.toast('Đang nghiên cứu từ khóa cho bản ' + L.name + ' — khoảng 3 phút, xong sẽ có cụm và bài trụ đề xuất riêng', 'ri-search-eye-line') },
+        { icon: 'ri-git-branch-line', name: 'Lấy cụm của bản nguồn làm khung, rồi tìm từ khóa thật', hint: 'Nhanh hơn: giữ nguyên cấu trúc ' + ACT.length + ' cụm của bản nguồn, nhưng từ khóa trong mỗi cụm vẫn được tìm lại theo thị trường đó — không dịch máy móc.', best: false, go: () => this.toast('Đã tạo ' + ACT.length + ' cụm khung cho bản ' + L.name + ' — hệ thống đang tìm từ khóa thật cho từng cụm', 'ri-git-branch-line') },
         { icon: 'ri-translate-2', name: 'Chỉ dịch các bài đã đăng, chưa làm SEO cho ngôn ngữ này', hint: 'Phù hợp khi bản này chỉ để khách đọc, không nhắm lên hạng. Bài dịch không tính vào tần suất tuần nhưng vẫn qua cổng chất lượng.', best: false, go: () => this.toast('Đã đặt bản ' + L.name + ' ở chế độ chỉ dịch — không lập kế hoạch SEO riêng, bài dịch vẫn phải qua cổng', 'ri-translate-2') }
       ],
       onOpenQueue: () => this.toast('Mở Vận hành nội dung AI › Hàng đợi — xem bài đang viết, bài chờ duyệt và nhật ký xuất bản', 'ri-external-link-line'),
@@ -1121,7 +1125,7 @@ class Component extends DCLogic {
         return Object.assign({}, d, {
           untracked: un, tracked: !un,
           catChip: un ? 'Không còn theo dõi' : (d.catNew ? 'Sẽ tạo mới' : 'Đã có'),
-          catChipStyle: un ? 'background:#f3f6f9;color:#adb5bd;' : (d.catNew ? 'background:rgba(247,184,75,.16);color:#8a6115;' : 'background:rgba(10,179,156,.12);color:#0a7d6f;'),
+          catChipStyle: un ? 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);' : (d.catNew ? 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#8a6115);' : 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);'),
           untrackedNote: 'Cụm không còn theo dõi — không tạo danh mục mới và không viết bài cho cụm này. Cài đặt đích vẫn được giữ, bật lại cụm là dùng ngay.',
           onEdit: () => this.toast('Đổi danh mục đích, thẻ, mẫu trang và tác giả cho cụm “' + d.c + '” — đổi một lần, mọi bài sau của cụm tự theo', 'ri-edit-line')
         });
@@ -1135,10 +1139,10 @@ class Component extends DCLogic {
       wheres: this.WHERE,
       attrs: this.ATTRS.map(a => {
         const M = {
-          auto: { label: 'Tự điền', style: 'background:rgba(10,179,156,.12);color:#0a7d6f;' },
-          once: { label: 'Chọn một lần', style: 'background:rgba(64,81,137,.12);color:#405189;' },
-          ask: { label: 'Hỏi khi cần', style: 'background:rgba(41,156,219,.12);color:#1c7ba8;' },
-          never: { label: 'AI không tự điền', style: 'background:rgba(240,101,72,.10);color:#a5402c;' }
+          auto: { label: 'Tự điền', style: 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' },
+          once: { label: 'Chọn một lần', style: 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);' },
+          ask: { label: 'Hỏi khi cần', style: 'background:rgba(41,156,219,.12);color:var(--color-admin-info-text,#1c7ba8);' },
+          never: { label: 'AI không tự điền', style: 'background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);' }
         }[a.mode];
         return Object.assign({}, a, { modeLabel: M.label, modeStyle: M.style });
       }),
@@ -1148,16 +1152,16 @@ class Component extends DCLogic {
         const isNew = base.indexOf(this.norm(r)) < 0;
         return {
           name: r, isNew: isNew, isOld: !isNew,
-          title: isNew ? 'Từ khoá gốc mới — chưa được mở rộng thành cụm' : 'Đã mở rộng thành cụm trong lần chạy trước',
-          onRemove: () => { this.setState(s => ({ roots: s.roots.filter(x => x !== r) })); this.toast('Đã bỏ “' + r + '” — cụm và bài sinh từ từ khoá này vẫn giữ nguyên, chỉ thôi theo dõi sau khi bạn bấm mở rộng lại', 'ri-close-line'); }
+          title: isNew ? 'Từ khóa gốc mới — chưa được mở rộng thành cụm' : 'Đã mở rộng thành cụm trong lần chạy trước',
+          onRemove: () => { this.setState(s => ({ roots: s.roots.filter(x => x !== r) })); this.toast('Đã bỏ “' + r + '” — cụm và bài sinh từ từ khóa này vẫn giữ nguyên, chỉ thôi theo dõi sau khi bạn bấm mở rộng lại', 'ri-close-line'); }
         };
       }),
-      onImport: () => this.setState({ ask: { kind: 'import', icon: 'ri-file-excel-2-line', title: 'Nhập danh sách từ khoá gốc của bạn', text: 'Kéo file Excel/CSV vào, hoặc dán danh sách mỗi dòng một từ khoá — hệ thống tự nhận cột từ khoá, bỏ dòng trùng, gộp từ cùng ý định rồi xếp vào cụm. Có sẵn lượt tìm và độ khó thì hệ thống dùng luôn số của bạn; không có thì tự tra. Từ khoá và bài đã có không bị đổi.', ok: 'Chọn file hoặc dán danh sách' } }),
+      onImport: () => this.setState({ ask: { kind: 'import', icon: 'ri-file-excel-2-line', title: 'Nhập danh sách từ khóa gốc của bạn', text: 'Kéo file Excel/CSV vào, hoặc dán danh sách mỗi dòng một từ khóa — hệ thống tự nhận cột từ khóa, bỏ dòng trùng, gộp từ cùng ý định rồi xếp vào cụm. Có sẵn lượt tìm và độ khó thì hệ thống dùng luôn số của bạn; không có thì tự tra. Từ khóa và bài đã có không bị đổi.', ok: 'Chọn file hoặc dán danh sách' } }),
       importTitle: 'Nhận file Excel/CSV hoặc danh sách dán vào — tự nhận cột, tự bỏ trùng, tự gộp theo ý định',
-      refreshLine: 'Cơ sở dữ liệu từ khoá cập nhật lần cuối 6 ngày trước · tự làm mới mỗi tuần',
+      refreshLine: 'Cơ sở dữ liệu từ khóa cập nhật lần cuối 6 ngày trước · tự làm mới mỗi tuần',
       autoRefreshOn: S.noAuto !== true, autoRefreshOff: S.noAuto === true,
-      autoRefreshTitle: S.noAuto === true ? 'Bật tự làm mới hằng tuần — thêm từ khoá mới khách đang tìm, cập nhật độ khó, không tốn thao tác của bạn' : 'Tắt tự làm mới — bạn sẽ phải tự bấm mở rộng khi muốn cập nhật',
-      onAutoRefresh: () => { const off = S.noAuto !== true; this.setState({ noAuto: off }); this.toast(off ? 'Đã tắt tự làm mới — từ khoá mới của khách sẽ không được thêm vào cho tới khi bạn tự bấm mở rộng' : 'Đã bật tự làm mới hằng tuần — hệ thống tự thêm từ khoá mới khách đang tìm và cập nhật độ khó, dùng ~300 từ AI mỗi lần', off ? 'ri-pause-circle-line' : 'ri-refresh-line'); },
+      autoRefreshTitle: S.noAuto === true ? 'Bật tự làm mới hằng tuần — thêm từ khóa mới khách đang tìm, cập nhật độ khó, không tốn thao tác của bạn' : 'Tắt tự làm mới — bạn sẽ phải tự bấm mở rộng khi muốn cập nhật',
+      onAutoRefresh: () => { const off = S.noAuto !== true; this.setState({ noAuto: off }); this.toast(off ? 'Đã tắt tự làm mới — từ khóa mới của khách sẽ không được thêm vào cho tới khi bạn tự bấm mở rộng' : 'Đã bật tự làm mới hằng tuần — hệ thống tự thêm từ khóa mới khách đang tìm và cập nhật độ khó, dùng ~300 từ AI mỗi lần', off ? 'ri-pause-circle-line' : 'ri-refresh-line'); },
       adding: !!S.adding, notAdding: !S.adding,
       rootDraft: S.draft || '',
       onRootDraft: (e) => this.setState({ draft: e.target.value }),
@@ -1174,17 +1178,17 @@ class Component extends DCLogic {
       },
       onOpenAdd: () => this.setState({ adding: true, draft: '' }),
       onCommitRoots: () => this.commitRoots(),
-      commitLabel: this.parseRoots(S.draft).length > 1 ? ('Thêm ' + this.parseRoots(S.draft).length + ' từ khoá') : 'Thêm',
+      commitLabel: this.parseRoots(S.draft).length > 1 ? ('Thêm ' + this.parseRoots(S.draft).length + ' từ khóa') : 'Thêm',
       commitOff: this.parseRoots(S.draft).length === 0,
       onCancelAdd: () => this.setState({ adding: false, draft: '' }),
-      onAddRoot: () => this.toast('Nhập từ khoá gốc mới — hệ thống mở rộng và tự gộp từ trùng ý định trong khoảng 2 phút', 'ri-add-line'),
-      onExpand: () => this.setState({ ask: { kind: 'expand', icon: 'ri-sparkling-2-line', title: 'Mở rộng lại toàn bộ từ khoá?', text: 'Hệ thống quét lại gợi ý tìm kiếm, câu hỏi liên quan, từ khoá đối thủ và câu khách hỏi trợ lý AI, rồi gộp về từ khoá đại diện. Việc này dùng 1.200 từ AI. Từ khoá cũ và bài đã có không bị xoá — chỉ thêm từ mới và cập nhật trạng thái trùng ý định.', ok: 'Mở rộng lại' } }),
-      expandTitle: 'Dùng 1.200 từ AI · không xoá dữ liệu cũ',
-      mapSummary: S.roots.length + ' từ khoá gốc → ' + ACT.length + ' cụm đang theo dõi → ' + (allKws.length + ACT.length) + ' từ khoá đại diện'
+      onAddRoot: () => this.toast('Nhập từ khóa gốc mới — hệ thống mở rộng và tự gộp từ trùng ý định trong khoảng 2 phút', 'ri-add-line'),
+      onExpand: () => this.setState({ ask: { kind: 'expand', icon: 'ri-sparkling-2-line', title: 'Mở rộng lại toàn bộ từ khóa?', text: 'Hệ thống quét lại gợi ý tìm kiếm, câu hỏi liên quan, từ khóa đối thủ và câu khách hỏi trợ lý AI, rồi gộp về từ khóa đại diện. Việc này dùng 1.200 từ AI. Từ khóa cũ và bài đã có không bị xóa — chỉ thêm từ mới và cập nhật trạng thái trùng ý định.', ok: 'Mở rộng lại' } }),
+      expandTitle: 'Dùng 1.200 từ AI · không xóa dữ liệu cũ',
+      mapSummary: S.roots.length + ' từ khóa gốc → ' + ACT.length + ' cụm đang theo dõi → ' + (allKws.length + ACT.length) + ' từ khóa đại diện'
         + (UN.length ? ' · ' + UN.length + ' cụm không còn theo dõi (không tính vào việc cần làm)' : '')
         + (stale ? ' · chưa tính phần mới' : (S.pending ? ' · đang mở rộng, số cụm cập nhật khi xong' : '')),
       mapStats: [
-        { label: 'Từ khoá đại diện', value: String(allKws.length + this.CLUSTERS.length), hint: this.CLUSTERS.length + ' bài trụ + ' + allKws.length + ' từ khoá ngách · mỗi ý định một bài' },
+        { label: 'Từ khóa đại diện', value: String(allKws.length + this.CLUSTERS.length), hint: this.CLUSTERS.length + ' bài trụ + ' + allKws.length + ' từ khóa ngách · mỗi ý định một bài' },
         { label: 'Chưa có bài', value: String(nNone), hint: 'Việc cần viết, đã xếp theo độ dễ lên hạng' },
         { label: 'Có bài nhưng còn mỏng', value: String(nThin), hint: 'Nên bổ sung, rẻ hơn viết mới nhiều lần' },
         { label: 'Cụm thiếu bài trụ', value: String(ACT.filter(c => c.pstate !== 'ok').length), hint: 'Bài trụ luôn được xếp lên trước bài ngách · ' + nDupe + ' từ trùng ý định gộp vào bài cũ' + (UN.length ? ' · không tính ' + UN.length + ' cụm không còn theo dõi' : '') }
@@ -1197,22 +1201,22 @@ class Component extends DCLogic {
         const pIdx = sched.indexOf(pKey);
         const pSched = pIdx >= 0;
         const PS = {
-          ok: { chip: 'Bài trụ khoẻ', style: 'background:rgba(10,179,156,.12);color:#0a7d6f;' },
-          thin: { chip: 'Bài trụ còn mỏng', style: 'background:rgba(41,156,219,.12);color:#1c7ba8;' },
-          none: { chip: 'Chưa có bài trụ', style: 'background:rgba(247,184,75,.16);color:#b57d13;' }
+          ok: { chip: 'Bài trụ khoẻ', style: 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' },
+          thin: { chip: 'Bài trụ còn mỏng', style: 'background:rgba(41,156,219,.12);color:var(--color-admin-info-text,#1c7ba8);' },
+          none: { chip: 'Chưa có bài trụ', style: 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#b57d13);' }
         }[c.pstate];
         const nNeed = need.length;
         return {
           pillar: c.pillar, open: open, caret: open ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line',
-          toggleTitle: open ? 'Thu gọn cụm' : 'Xem từ khoá trong cụm',
+          toggleTitle: open ? 'Thu gọn cụm' : 'Xem từ khóa trong cụm',
           onToggle: () => this.setState({ open: open ? '' : c.k }),
           untracked: untracked, tracked: !untracked,
-          untrackedTitle: 'Từ khoá gốc sinh ra cụm này đã bị bỏ. Bài đã đăng và lịch đã xếp vẫn giữ nguyên — chỉ thôi đề xuất viết thêm cho cụm.',
-          onRetrack: () => { this.setState(s => ({ roots: s.roots.concat([c.pillar.toLowerCase()]), untracked: (s.untracked || []).filter(x => x !== c.k) })); this.toast('Đã theo dõi lại cụm “' + c.pillar + '” và thêm lại từ khoá gốc — bấm mở rộng để cập nhật từ khoá mới cho cụm', 'ri-eye-line'); },
+          untrackedTitle: 'Từ khóa gốc sinh ra cụm này đã bị bỏ. Bài đã đăng và lịch đã xếp vẫn giữ nguyên — chỉ thôi đề xuất viết thêm cho cụm.',
+          onRetrack: () => { this.setState(s => ({ roots: s.roots.concat([c.pillar.toLowerCase()]), untracked: (s.untracked || []).filter(x => x !== c.k) })); this.toast('Đã theo dõi lại cụm “' + c.pillar + '” và thêm lại từ khóa gốc — bấm mở rộng để cập nhật từ khóa mới cho cụm', 'ri-eye-line'); },
           pillarState: PS.chip, pillarChipStyle: PS.style,
           line: untracked
-            ? (c.kws.length + ' từ khoá và mọi bài đã đăng của cụm vẫn được giữ nguyên trong cơ sở dữ liệu — hệ thống chỉ thôi đề xuất viết thêm và không tính cụm này vào việc cần làm. Thêm lại từ khoá gốc là có ngay tất cả.')
-            : (c.kws.length + ' từ khoá ngách · ' + nNeed + ' việc cần làm · ' + (c.pstate === 'ok' ? 'bài trụ đã sẵn làm đích liên kết' : (c.pstate === 'thin' ? 'bài trụ cần làm dày trước' : 'phải viết bài trụ trước'))
+            ? (c.kws.length + ' từ khóa và mọi bài đã đăng của cụm vẫn được giữ nguyên trong cơ sở dữ liệu — hệ thống chỉ thôi đề xuất viết thêm và không tính cụm này vào việc cần làm. Thêm lại từ khóa gốc là có ngay tất cả.')
+            : (c.kws.length + ' từ khóa ngách · ' + nNeed + ' việc cần làm · ' + (c.pstate === 'ok' ? 'bài trụ đã sẵn làm đích liên kết' : (c.pstate === 'thin' ? 'bài trụ cần làm dày trước' : 'phải viết bài trụ trước'))
               + ' · đủ bài sau ~' + Math.max(1, Math.ceil(nNeed / cadence)) + ' tuần, thường thấy hạng chuyển động sau 8–12 tuần'),
           cost: '~' + ((c.pstate === 'ok' ? 0 : c.pillarKw.words) + (nNeed - (c.pstate === 'ok' ? 0 : 1)) * 950).toLocaleString('vi-VN') + ' từ AI',
           planLabel: 'Xếp cả cụm vào lịch', planTitle: 'Xếp ' + nNeed + ' việc theo đúng thứ tự: ' + (c.pstate === 'ok' ? 'các bài ngách rải đều' : 'bài trụ trước, rồi các bài ngách'),
@@ -1223,7 +1227,7 @@ class Component extends DCLogic {
             ? ('Bài trụ của cụm — đang tạm ngưng đề xuất' + (c.pillarUrl ? ': ' + c.pillarUrl : ''))
             : (c.pstate === 'ok' || c.pstate === 'thin' ? (c.pillar + ' — ' + c.pillarUrl) : ('Đề xuất bài trụ: “' + c.pillarKw.kw + '”')),
           pSub: untracked
-            ? ('Từ khoá “' + c.pillarKw.kw + '” và mọi dữ liệu của cụm vẫn được giữ. Hệ thống không đề xuất viết hay làm dày bài trụ khi cụm không còn theo dõi — không tính chi phí nào.')
+            ? ('Từ khóa “' + c.pillarKw.kw + '” và mọi dữ liệu của cụm vẫn được giữ. Hệ thống không đề xuất viết hay làm dày bài trụ khi cụm không còn theo dõi — không tính chi phí nào.')
             : c.pillarKw.why,
           pMeta: untracked
             ? (c.pillarKw.vol + ' lượt tìm/tháng · giữ nguyên trong cơ sở dữ liệu')
@@ -1238,8 +1242,8 @@ class Component extends DCLogic {
           onPAction: () => this.schedule([pKey], c.pstate === 'thin' ? 'Đã xếp làm dày bài trụ “' + c.pillar + '” lên slot đầu — các bài ngách trong cụm giữ nguyên đích liên kết' : 'Đã xếp bài trụ “' + c.pillarKw.kw + '” · dự kiến ' + this.slotDate(sched.length, cadence).date + ' — mọi bài ngách của cụm sẽ tự trỏ về bài này', 'ri-calendar-check-line'),
           pSchedText: '#' + (pIdx + 1) + ' · dự kiến ' + this.slotDate(Math.max(0, pIdx), cadence).date,
           onPUndo: () => this.unschedule(pKey, 'Đã bỏ bài trụ khỏi lịch — các bài ngách của cụm này sẽ tạm dừng cho tới khi có bài trụ'),
-          pAltLabel: c.pstate === 'none' ? 'Chọn từ khoá khác làm bài trụ' : 'Chọn bài khác làm bài trụ',
-          onPAlt: () => this.toast(c.pstate === 'none' ? 'Mở danh sách từ khoá trong cụm để bạn chọn bài trụ khác — hệ thống sẽ tính lại toàn bộ liên kết nội bộ theo lựa chọn mới' : 'Mở danh sách bài đã có trong cụm để nâng một bài thành bài trụ — rẻ hơn viết bài trụ mới', 'ri-swap-box-line'),
+          pAltLabel: c.pstate === 'none' ? 'Chọn từ khóa khác làm bài trụ' : 'Chọn bài khác làm bài trụ',
+          onPAlt: () => this.toast(c.pstate === 'none' ? 'Mở danh sách từ khóa trong cụm để bạn chọn bài trụ khác — hệ thống sẽ tính lại toàn bộ liên kết nội bộ theo lựa chọn mới' : 'Mở danh sách bài đã có trong cụm để nâng một bài thành bài trụ — rẻ hơn viết bài trụ mới', 'ri-swap-box-line'),
 
           linkNote: c.pstate === 'ok'
             ? ('Mỗi bài ngách trong cụm tự chèn liên kết về bài trụ “' + c.pillar + '” với anchor khác nhau, và bài trụ tự thêm liên kết xuống 5–8 bài ngách mạnh nhất.')
@@ -1254,7 +1258,7 @@ class Component extends DCLogic {
               stText: st.text, stColor: st.color, stHint: k.stHint,
               canAdd: !untracked && !!st.add && idx < 0, added: idx >= 0, addLabel: st.add,
               frozen: untracked && idx < 0,
-              frozenTitle: 'Cụm không còn theo dõi nên hệ thống không đề xuất viết thêm cho từ khoá này. Dữ liệu từ khoá vẫn giữ — bấm “Theo dõi lại cụm” là dùng được ngay.',
+              frozenTitle: 'Cụm không còn theo dõi nên hệ thống không đề xuất viết thêm cho từ khóa này. Dữ liệu từ khóa vẫn giữ — bấm “Theo dõi lại cụm” là dùng được ngay.',
               schedText: '#' + (idx + 1) + ' · ' + this.slotDate(Math.max(0, idx), cadence).date,
               undoTitle: 'Bỏ “' + k.kw + '” khỏi lịch',
               onUndo: () => this.unschedule(k.k, 'Đã bỏ “' + k.kw + '” khỏi lịch'),
@@ -1275,12 +1279,12 @@ class Component extends DCLogic {
       planAllOff: ACT.length === 0,
       planAllLabel: 'Tự lập kế hoạch cả ' + ACT.length + ' cụm',
       emptyPlanText: ACT.length
-        ? ('Bấm “Tự lập kế hoạch cả ' + ACT.length + ' cụm” để hệ thống xếp sẵn: bài trụ của từng cụm lên trước, rồi các bài ngách rải theo tần suất tuần. Bạn xem lại và bỏ mục không muốn — hoặc xếp lẻ từng từ khoá ở thẻ Bản đồ từ khoá.')
-        : 'Chưa có cụm nào được theo dõi nên chưa xếp được việc gì. Sang thẻ Bản đồ từ khoá, thêm từ khoá gốc rồi bấm mở rộng — hoặc bấm “Theo dõi lại cụm” ở cụm bạn muốn dùng tiếp. Dữ liệu cũ vẫn còn nguyên.',
+        ? ('Bấm “Tự lập kế hoạch cả ' + ACT.length + ' cụm” để hệ thống xếp sẵn: bài trụ của từng cụm lên trước, rồi các bài ngách rải theo tần suất tuần. Bạn xem lại và bỏ mục không muốn — hoặc xếp lẻ từng từ khóa ở thẻ Bản đồ từ khóa.')
+        : 'Chưa có cụm nào được theo dõi nên chưa xếp được việc gì. Sang thẻ Bản đồ từ khóa, thêm từ khóa gốc rồi bấm mở rộng — hoặc bấm “Theo dõi lại cụm” ở cụm bạn muốn dùng tiếp. Dữ liệu cũ vẫn còn nguyên.',
       emptyPlanTitle: ACT.length ? 'Chưa xếp mục nào vào lịch' : 'Chưa có cụm nào được theo dõi',
       onGoMap: () => this.setState({ tab: 'map' }),
       planAllTitle: 'Xếp toàn bộ: bài trụ của ' + ACT.length + ' cụm trước, rồi các bài ngách theo độ dễ lên hạng',
-      onPlanAll: () => this.setState({ ask: { kind: 'all', icon: 'ri-magic-line', title: 'Để hệ thống tự lập kế hoạch cho cả ' + ACT.length + ' cụm?', text: 'Hệ thống xếp bài trụ của từng cụm lên trước, rồi rải các bài ngách theo độ dễ lên hạng và tần suất bạn đã đặt. Từ khoá trùng ý định được gộp vào bài cũ thay vì viết mới. Bài có giá và bài sức khoẻ vẫn luôn chờ bạn duyệt. Bạn xem lại và bỏ bất kỳ mục nào trước khi chạy.', ok: 'Tự lập kế hoạch' } }),
+      onPlanAll: () => this.setState({ ask: { kind: 'all', icon: 'ri-magic-line', title: 'Để hệ thống tự lập kế hoạch cho cả ' + ACT.length + ' cụm?', text: 'Hệ thống xếp bài trụ của từng cụm lên trước, rồi rải các bài ngách theo độ dễ lên hạng và tần suất bạn đã đặt. Từ khóa trùng ý định được gộp vào bài cũ thay vì viết mới. Bài có giá và bài sức khoẻ vẫn luôn chờ bạn duyệt. Bạn xem lại và bỏ bất kỳ mục nào trước khi chạy.', ok: 'Tự lập kế hoạch' } }),
       schedCount: this.sched().length,
 
       cadences: cadenceOpts.map(o => ({ label: o.label, title: o.title, on2: o.v === cadence, off: o.v !== cadence, on: () => { this.setState({ cadence: o.v }); this.toast('Tần suất: ' + o.label + '/tuần — lịch 4 tuần đã xếp lại', 'ri-speed-up-line'); } })),
@@ -1290,27 +1294,27 @@ class Component extends DCLogic {
         ? ('Việc của bạn mỗi tuần: soát khoảng ' + Math.max(1, Math.round(cadence * 0.4)) + '/' + cadence + ' bài (số còn lại tự đăng nếu đạt ngưỡng) — chừng ' + (Math.max(1, Math.round(cadence * 0.4)) * 7) + ' phút. Bài có giá và bài sức khoẻ luôn nằm trong phần bạn phải xem.')
         : ('Việc của bạn mỗi tuần: soát và bấm đăng cả ' + cadence + ' bài — chừng ' + (cadence * 7) + ' phút. Bật tự đăng ở thẻ Cổng tự duyệt sẽ giảm còn khoảng ' + (Math.max(1, Math.round(cadence * 0.4)) * 7) + ' phút.'),
       pausedOn: !!S.paused, pausedOff: !S.paused,
-      pauseText: 'Kế hoạch đang tạm dừng — không bài nào được viết hay đăng. Bạn vẫn xếp và sửa lịch được bình thường; lịch, từ khoá và bài đang chờ duyệt giữ nguyên. Tiếp tục là chạy lại từ đúng chỗ đã dừng, không mất slot nào.',
-      onPause: () => this.setState({ ask: { kind: 'pause', icon: 'ri-pause-circle-line', title: 'Tạm dừng cả kế hoạch?', text: 'Dùng khi nghỉ lễ, hết hàng hoặc muốn dừng chiến dịch. Hệ thống ngừng viết và ngừng đăng, nhưng không xoá gì: lịch giữ nguyên thứ tự, bài đã viết vẫn nằm ở hàng chờ duyệt, hạn ngạch AI không bị trừ khi dừng. Bấm tiếp tục là chạy lại từ đúng chỗ.', ok: 'Tạm dừng kế hoạch' } }),
+      pauseText: 'Kế hoạch đang tạm dừng — không bài nào được viết hay đăng. Bạn vẫn xếp và sửa lịch được bình thường; lịch, từ khóa và bài đang chờ duyệt giữ nguyên. Tiếp tục là chạy lại từ đúng chỗ đã dừng, không mất slot nào.',
+      onPause: () => this.setState({ ask: { kind: 'pause', icon: 'ri-pause-circle-line', title: 'Tạm dừng cả kế hoạch?', text: 'Dùng khi nghỉ lễ, hết hàng hoặc muốn dừng chiến dịch. Hệ thống ngừng viết và ngừng đăng, nhưng không xóa gì: lịch giữ nguyên thứ tự, bài đã viết vẫn nằm ở hàng chờ duyệt, hạn ngạch AI không bị trừ khi dừng. Bấm tiếp tục là chạy lại từ đúng chỗ.', ok: 'Tạm dừng kế hoạch' } }),
       onResume: () => { this.setState({ paused: false }); this.toast('Đã tiếp tục kế hoạch — chạy lại từ đúng slot đã dừng, giờ đăng vẫn rải trong khung 8–17h', 'ri-play-circle-line'); },
       cadenceNote: overQuota
         ? ('Tần suất này cần ~' + words.toLocaleString('vi-VN') + ' từ AI mỗi tháng nhưng bạn chỉ còn ' + left.toLocaleString('vi-VN') + ' từ. Hạ xuống ' + Math.max(1, Math.floor(left / 4 / 950)) + ' bài/tuần hoặc nâng gói AI — hệ thống sẽ không tự dừng giữa cụm.')
         : (cadence >= 5
           ? 'Đăng 5 bài/tuần chỉ nên chọn khi có người soát mỗi ngày. Đăng dồn nhiều bài giống nhau bị công cụ tìm kiếm coi là nội dung sản xuất máy móc — đều đặn quan trọng hơn nhiều.'
           : 'Đều đặn quan trọng hơn số lượng: cùng số bài, rải đều mỗi tuần thì được index nhanh và giữ hạng tốt hơn dồn một đợt. Giờ đăng rải ngẫu nhiên trong khung 8–17h.'),
-      cadenceNoteStyle: noteBase + (overQuota ? 'background:rgba(240,101,72,.07);color:#a5402c;' : (cadence >= 5 ? 'background:rgba(247,184,75,.10);color:#8a6115;' : 'background:#f8f9fb;color:#878a99;')),
+      cadenceNoteStyle: noteBase + (overQuota ? 'background:rgba(240,101,72,.07);color:var(--color-admin-danger-text,#a5402c);' : (cadence >= 5 ? 'background:rgba(247,184,75,.10);color:var(--color-admin-warning-text,#8a6115);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);')),
       cadenceIcon: overQuota ? 'ri-error-warning-line' : (cadence >= 5 ? 'ri-alert-line' : 'ri-information-line'),
       weeks: weeks.filter(w => w.slots.length > 0),
       lanes: this.LANES.map(l => Object.assign({}, l, {
         countsText: l.counts ? 'Có tính' : 'Không tính',
-        countsStyle: l.counts ? 'background:rgba(64,81,137,.12);color:#405189;' : 'background:#f3f6f9;color:#878a99;',
+        countsStyle: l.counts ? 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);',
         capText: l.cap ? (l.k === 'seo' ? 'tối đa 1 bài/cụm/ngày' : 'trần ' + l.cap + '/ngày') : 'không tạo trang',
         budgetText: l.budget + '% ngân sách AI'
       })),
       laneNote: 'Tần suất ' + cadence + ' bài/tuần ở trên chỉ áp cho làn “Cụm SEO chủ đề”. Website vẫn có thể lên 5–10 trang mỗi ngày từ các làn khác — mô tả sản phẩm, danh mục, làm mới bài cũ — mà không phá nhịp của cụm SEO, vì mỗi làn có trần và ngân sách riêng.',
       guard: this.GUARD,
       planners: [
-        { icon: 'ri-price-tag-3-line', name: 'Sản phẩm & danh mục — nhiều nhóm hàng', where: 'Vận hành nội dung AI › Viết hàng loạt', hint: 'Chọn theo nhóm sản phẩm, ưu tiên nhóm có truy cập và đơn hàng cao. Không lập cụm từ khoá cho từng sản phẩm — sản phẩm ăn theo cụm của danh mục mẹ.', onGo: () => this.toast('Mở Vận hành nội dung AI › Viết hàng loạt — chọn nhóm sản phẩm cần viết mô tả', 'ri-external-link-line') },
+        { icon: 'ri-price-tag-3-line', name: 'Sản phẩm & danh mục — nhiều nhóm hàng', where: 'Vận hành nội dung AI › Viết hàng loạt', hint: 'Chọn theo nhóm sản phẩm, ưu tiên nhóm có truy cập và đơn hàng cao. Không lập cụm từ khóa cho từng sản phẩm — sản phẩm ăn theo cụm của danh mục mẹ.', onGo: () => this.toast('Mở Vận hành nội dung AI › Viết hàng loạt — chọn nhóm sản phẩm cần viết mô tả', 'ri-external-link-line') },
         { icon: 'ri-broadcast-line', name: 'Tin tức — nhiều chủ đề tin', where: 'Nguồn sự kiện thật, không lập lịch cứng', hint: 'Hệ thống tự nhắc khi có sự kiện thật: sản phẩm mới, khuyến mại, dự án hoàn thành, lịch nghỉ lễ, thay đổi chính sách. Không có sự kiện thì không đăng — bịa tin để giữ nhịp làm loãng website.', onGo: () => this.toast('Mở Nguồn sự kiện — chọn loại sự kiện muốn được nhắc viết tin', 'ri-external-link-line') },
         { icon: 'ri-inbox-line', name: 'Bài viết xong duyệt ở đâu', where: 'Nội dung › Duyệt & xuất bản', hint: 'Mọi loại nội dung đổ về một hộp duyệt: điểm bảng kiểm, lý do cần bạn xem, hàng chờ 24 giờ trước khi tự đăng và nhật ký xuất bản.', onGo: () => this.toast('Mở Nội dung › Duyệt & xuất bản', 'ri-external-link-line') }
       ],
@@ -1324,7 +1328,7 @@ class Component extends DCLogic {
       onShowAll: () => this.setState(s => ({ showAll: !s.showAll })),
       gates: this.GATES.map(g => Object.assign({}, g, {
         thText: g.th === 'ngưỡng bạn đặt' ? threshold + ' điểm' : (g.th === 'ngưỡng +5' ? Math.min(95, threshold + 5) + ' điểm' : (g.th === 'ngưỡng −5' ? (threshold - 5) + ' điểm' : (g.th === '—' ? '—' : g.th + ' điểm'))),
-        autoStyle: g.auto === 'Luôn chờ người duyệt' ? 'background:rgba(247,184,75,.16);color:#8a6115;' : (g.auto === 'Tự đăng nếu đạt' ? 'background:rgba(10,179,156,.12);color:#0a7d6f;' : 'background:#f3f6f9;color:#878a99;')
+        autoStyle: g.auto === 'Luôn chờ người duyệt' ? 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#8a6115);' : (g.auto === 'Tự đăng nếu đạt' ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);')
       })),
       planSummary: sched.length ? (sched.length + ' mục cụm SEO đã xếp · ' + cadence + ' bài/tuần · phủ ' + Math.ceil(sched.length / cadence) + ' tuần') : 'Chưa xếp mục nào',
       planEmpty: sched.length === 0, planFilled: sched.length > 0,
@@ -1340,12 +1344,12 @@ class Component extends DCLogic {
       onPart: () => { if (!affordN) { this.toast('Không còn đủ từ AI cho dù một mục — mua thêm từ AI hoặc chờ hạn ngạch tháng mới', 'ri-error-warning-line'); return; } this.setState({ ask: { kind: 'part', icon: 'ri-play-circle-line', title: 'Đưa ' + affordN + '/' + sched.length + ' mục đầu vào hàng đợi?', text: 'Dùng ~' + affordWords.toLocaleString('vi-VN') + ' từ AI, vừa trong hạn ngạch còn lại. Thứ tự giữ nguyên nên bài trụ vẫn đứng trước bài ngách của cùng cụm. ' + (sched.length - affordN) + ' mục còn lại vẫn nằm trong lịch và tự vào hàng đợi khi có thêm hạn ngạch — không mất mục nào.', ok: 'Chạy ' + affordN + ' mục' } }); },
       quotaHref: encodeURI('Hạn ngạch AI và mua thêm.dc.html'),
       clearOn: sched.length > 0,
-      clearLabel: 'Xoá cả lịch',
-      clearTitle: 'Bỏ toàn bộ ' + sched.length + ' mục khỏi lịch — từ khoá, cụm và bài đã đăng không bị xoá, xếp lại lúc nào cũng được',
-      onClear: () => this.setState({ ask: { kind: 'clear', icon: 'ri-delete-bin-line', title: 'Xoá toàn bộ ' + sched.length + ' mục khỏi lịch?', text: 'Chỉ xoá lịch dự kiến. Từ khoá, cụm, bài đã đăng và bài đang chờ duyệt đều không bị ảnh hưởng, và bạn xếp lại bằng một chạm ở dải “Việc nên làm tiếp”. Mục đã vào hàng đợi viết thì không bị rút ra.', ok: 'Xoá cả lịch' } }),
+      clearLabel: 'Xóa cả lịch',
+      clearTitle: 'Bỏ toàn bộ ' + sched.length + ' mục khỏi lịch — từ khóa, cụm và bài đã đăng không bị xóa, xếp lại lúc nào cũng được',
+      onClear: () => this.setState({ ask: { kind: 'clear', icon: 'ri-delete-bin-line', title: 'Xóa toàn bộ ' + sched.length + ' mục khỏi lịch?', text: 'Chỉ xóa lịch dự kiến. Từ khóa, cụm, bài đã đăng và bài đang chờ duyệt đều không bị ảnh hưởng, và bạn xếp lại bằng một chạm ở dải “Việc nên làm tiếp”. Mục đã vào hàng đợi viết thì không bị rút ra.', ok: 'Xóa cả lịch' } }),
       planPausedOn: !!S.paused,
       planPausedText: 'Kế hoạch đang tạm dừng: vẫn xếp và sửa lịch được, nhưng không viết và không đăng bài nào. Tiếp tục là chạy lại từ đúng slot đã dừng.',
-      onRunPlan: () => { if (S.paused) { this.toast('Kế hoạch đang tạm dừng nên chưa đưa vào hàng đợi được — bấm “Tiếp tục kế hoạch” ở thẻ Tần suất lên bài trước. Lịch bạn vừa xếp vẫn giữ nguyên', 'ri-pause-circle-line'); return; } if (!sched.length) { this.toast(ACT.length ? ('Chưa có gì trong lịch — bấm “Tự lập kế hoạch cả ' + ACT.length + ' cụm” trước') : 'Chưa có cụm nào được theo dõi nên chưa xếp được việc gì — sang thẻ Bản đồ từ khoá, thêm từ khoá gốc rồi bấm mở rộng, hoặc bấm “Theo dõi lại cụm”', 'ri-information-line'); return; } this.setState({ ask: { kind: 'plan', icon: 'ri-play-circle-line', title: 'Đưa cả kế hoạch ' + nWeeks + ' tuần vào hàng đợi?', text: sched.length + ' mục, ước tính ' + schedWords.toLocaleString('vi-VN') + ' từ AI. Hệ thống viết trước ngày đăng 2 ngày để bạn có thời gian soát. Bài đạt chuẩn sẽ tự đăng đúng lịch nếu bạn đang bật tự đăng; bài chưa đạt luôn chờ bạn.', ok: 'Chạy kế hoạch' } }); },
+      onRunPlan: () => { if (S.paused) { this.toast('Kế hoạch đang tạm dừng nên chưa đưa vào hàng đợi được — bấm “Tiếp tục kế hoạch” ở thẻ Tần suất lên bài trước. Lịch bạn vừa xếp vẫn giữ nguyên', 'ri-pause-circle-line'); return; } if (!sched.length) { this.toast(ACT.length ? ('Chưa có gì trong lịch — bấm “Tự lập kế hoạch cả ' + ACT.length + ' cụm” trước') : 'Chưa có cụm nào được theo dõi nên chưa xếp được việc gì — sang thẻ Bản đồ từ khóa, thêm từ khóa gốc rồi bấm mở rộng, hoặc bấm “Theo dõi lại cụm”', 'ri-information-line'); return; } this.setState({ ask: { kind: 'plan', icon: 'ri-play-circle-line', title: 'Đưa cả kế hoạch ' + nWeeks + ' tuần vào hàng đợi?', text: sched.length + ' mục, ước tính ' + schedWords.toLocaleString('vi-VN') + ' từ AI. Hệ thống viết trước ngày đăng 2 ngày để bạn có thời gian soát. Bài đạt chuẩn sẽ tự đăng đúng lịch nếu bạn đang bật tự đăng; bài chưa đạt luôn chờ bạn.', ok: 'Chạy kế hoạch' } }); },
 
       autoOn: auto, autoOff: !auto, autoText: auto ? 'Đang bật' : 'Đang tắt',
       autoColor: auto ? '#0a8f7f' : '#878a99',
@@ -1366,25 +1370,25 @@ class Component extends DCLogic {
         : (auto
         ? ('Với ngưỡng ' + threshold + ' điểm, khoảng ' + (threshold === 80 ? '7' : threshold === 85 ? '6' : '4') + '/10 bài sẽ tự đăng đúng lịch; số còn lại nằm ở hàng đợi kèm danh sách chỗ cần sửa. ' + S.sample + '% bài tự đăng vẫn được giữ lại cho bạn đọc để đối chiếu chất lượng.')
         : 'Tự đăng đang tắt: hệ thống vẫn viết và tính điểm, nhưng mọi bài chờ bạn bấm đăng. Nên tắt trong 2–3 tuần đầu để bạn thấy chất lượng thực tế trước khi giao quyền.'),
-      gateNoteStyle: noteBase + (S.paused ? 'background:rgba(247,184,75,.10);color:#8a6115;' : (auto ? 'background:rgba(10,179,156,.07);color:#0a7d6f;' : 'background:#f8f9fb;color:#878a99;')),
+      gateNoteStyle: noteBase + (S.paused ? 'background:rgba(247,184,75,.10);color:var(--color-admin-warning-text,#8a6115);' : (auto ? 'background:rgba(10,179,156,.07);color:var(--color-admin-success-text,#0a7d6f);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);')),
       gateIcon: S.paused ? 'ri-pause-circle-line' : (auto ? 'ri-checkbox-circle-line' : 'ri-information-line'),
       gateSummary: this.CHECKS.filter(c => c.level === 'Chặn').length + ' điều kiện chặn · ' + this.CHECKS.filter(c => c.level !== 'Chặn').length + ' cảnh báo',
       pendLine: S.paused
         ? '5 bài đã viết xong vẫn nằm nguyên ở hộp duyệt. Kế hoạch đang tạm dừng nên không bài nào tự đăng, kể cả bài đã đạt ngưỡng — bạn vẫn duyệt và đăng tay được từng bài.'
         : (auto ? '5 bài đang chờ bạn duyệt · 2 bài đã đạt ngưỡng, đang trong 24 giờ chờ tự đăng' : '7 bài đã viết xong đang chờ bạn bấm đăng — tự đăng đang tắt nên không bài nào tự lên'),
       thScopeOn: S.thTouched === true,
-      thScopeText: 'Ngưỡng mới chỉ áp cho bài viết từ giờ. 5 bài đang chờ trong hộp duyệt vẫn giữ quyết định theo ngưỡng cũ — muốn áp ngưỡng mới cho chúng thì mở hộp duyệt và bấm tính điểm lại, không tốn lượt AI.',
-      onRescore: () => this.toast('Đã tính điểm lại 5 bài đang chờ theo ngưỡng ' + threshold + ' điểm — không tốn lượt AI vì chỉ chấm lại bản đã viết', 'ri-refresh-line'),
+      thScopeText: 'Ngưỡng mới chỉ áp cho bài viết từ giờ. 5 bài đang chờ trong hộp duyệt vẫn giữ quyết định theo ngưỡng cũ — muốn áp ngưỡng mới cho chúng thì mở hộp duyệt và bấm tính điểm lại, không tốn từ AI nào.',
+      onRescore: () => this.toast('Đã tính điểm lại 5 bài đang chờ theo ngưỡng ' + threshold + ' điểm — không tốn từ AI nào vì chỉ chấm lại bản đã viết', 'ri-refresh-line'),
       pendTitle: 'Mở Nội dung › Duyệt & xuất bản — nơi mọi loại nội dung đổ về, kèm điểm bảng kiểm và lý do cần bạn xem',
       onPend: () => this.toast('Mở Nội dung › Duyệt & xuất bản — xem bài chờ duyệt, điểm bảng kiểm và hàng chờ 24 giờ', 'ri-external-link-line'),
       dailyCap: Math.max(1, Math.min(3, Math.ceil(cadence / 2))),
       checks: this.CHECKS.map(c => Object.assign({}, c, {
-        groupStyle: c.group === 'Nội dung' ? 'background:#f3f6f9;color:#495057;' : (c.group === 'Kỹ thuật' ? 'background:rgba(41,156,219,.12);color:#1c7ba8;' : 'background:rgba(64,81,137,.12);color:#405189;'),
-        levelStyle: c.level === 'Chặn' ? 'background:rgba(240,101,72,.10);color:#a5402c;' : 'background:rgba(247,184,75,.16);color:#8a6115;'
+        groupStyle: c.group === 'Nội dung' ? 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);' : (c.group === 'Kỹ thuật' ? 'background:rgba(41,156,219,.12);color:var(--color-admin-info-text,#1c7ba8);' : 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);'),
+        levelStyle: c.level === 'Chặn' ? 'background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);' : 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#8a6115);'
       })),
       sampleScore: '87', sampleColor: 87 >= threshold ? '#0a8f7f' : '#b57d13',
       sampleVerdict: 87 >= threshold ? (S.paused ? 'Đạt ngưỡng — chờ tiếp tục kế hoạch' : (auto ? 'Đạt ngưỡng — tự đăng sau 24 giờ' : 'Đạt ngưỡng — chờ bạn bấm đăng')) : 'Dưới ngưỡng ' + threshold + ' — chờ bạn duyệt',
-      sampleChipStyle: 87 >= threshold ? 'background:rgba(10,179,156,.12);color:#0a7d6f;height:26px;' : 'background:rgba(247,184,75,.16);color:#8a6115;height:26px;',
+      sampleChipStyle: 87 >= threshold ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);height:26px;' : 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#8a6115);height:26px;',
       sampleRows: this.SAMPLE.map(r => Object.assign({}, r, { icon: r.ok ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill', color: r.ok ? '#0a8f7f' : '#b57d13' })),
       sampleNote: S.paused
         ? 'Bài này không có lỗi chặn nào và đủ điều kiện tự đăng, nhưng kế hoạch đang tạm dừng nên nó nằm chờ ở hộp duyệt. Tiếp tục kế hoạch là bài tự lên theo lịch, hoặc bạn đăng tay ngay bây giờ.'
@@ -1399,8 +1403,8 @@ class Component extends DCLogic {
       onAskOk: () => {
         const k = ask ? ask.kind : '';
         this.setState({ ask: null });
-        if (k === 'import') this.toast('Mở bảng nhập từ khoá — hỗ trợ .xlsx, .csv hoặc dán trực tiếp; hệ thống báo trước số từ khoá mới, số dòng trùng bỏ đi trước khi bạn xác nhận', 'ri-file-excel-2-line');
-        else if (k === 'clear') { this.setState({ sched: [] }); this.toast('Đã xoá lịch — từ khoá, cụm và bài đã đăng vẫn nguyên. Bấm “Tự lập kế hoạch” là hệ thống xếp lại theo đúng thứ tự bài trụ trước', 'ri-delete-bin-line'); }
+        if (k === 'import') this.toast('Mở bảng nhập từ khóa — hỗ trợ .xlsx, .csv hoặc dán trực tiếp; hệ thống báo trước số từ khóa mới, số dòng trùng bỏ đi trước khi bạn xác nhận', 'ri-file-excel-2-line');
+        else if (k === 'clear') { this.setState({ sched: [] }); this.toast('Đã xóa lịch — từ khóa, cụm và bài đã đăng vẫn nguyên. Bấm “Tự lập kế hoạch” là hệ thống xếp lại theo đúng thứ tự bài trụ trước', 'ri-delete-bin-line'); }
         else if (k === 'part') { this.toast('Đã đưa phần đầu kế hoạch vào hàng đợi — phần còn lại giữ trong lịch, tự chạy tiếp khi có thêm hạn ngạch từ AI', 'ri-check-line'); }
         else if (k === 'pause') { this.setState({ paused: true }); this.toast('Đã tạm dừng kế hoạch — không viết, không đăng. Lịch và bài đang chờ duyệt vẫn giữ nguyên, không trừ hạn ngạch AI trong lúc dừng', 'ri-pause-circle-line'); }
         else if (k === 'expand') {
@@ -1412,12 +1416,12 @@ class Component extends DCLogic {
           const un = (this.state.untracked || []).slice();
           goneKeys.forEach(k => { if (un.indexOf(k) < 0) un.push(k); });
           this.setState({ base: this.state.roots.slice(), untracked: un, pending: nNew });
-          this.toast('Đang mở rộng — khoảng 2 phút. Xong sẽ có cụm và bài trụ đề xuất cho ' + (nNew || 'danh sách') + (nNew ? ' từ khoá gốc mới' : '') + (goneKeys.length ? '; ' + goneKeys.length + ' cụm cũ chuyển sang “không còn theo dõi”, bài đã đăng vẫn giữ' : '') + '. Lịch đã xếp không bị đụng.', 'ri-sparkling-2-line');
+          this.toast('Đang mở rộng — khoảng 2 phút. Xong sẽ có cụm và bài trụ đề xuất cho ' + (nNew || 'danh sách') + (nNew ? ' từ khóa gốc mới' : '') + (goneKeys.length ? '; ' + goneKeys.length + ' cụm cũ chuyển sang “không còn theo dõi”, bài đã đăng vẫn giữ' : '') + '. Lịch đã xếp không bị đụng.', 'ri-sparkling-2-line');
         }
         else if (k === 'all') {
           const un = this.state.untracked || [];
           const keys = this.CLUSTERS.filter(c => un.indexOf(c.k) < 0).reduce((a, c) => a.concat(this.needKeys(c)), []);
-          if (!keys.length) { this.toast('Chưa có cụm nào được theo dõi nên không có việc để xếp — thêm từ khoá gốc rồi bấm mở rộng, hoặc bấm “Theo dõi lại cụm”', 'ri-information-line'); return; }
+          if (!keys.length) { this.toast('Chưa có cụm nào được theo dõi nên không có việc để xếp — thêm từ khóa gốc rồi bấm mở rộng, hoặc bấm “Theo dõi lại cụm”', 'ri-information-line'); return; }
           const nP = keys.filter(x => x.indexOf('P:') === 0).length;
           this.schedule(keys, 'Đã lập kế hoạch ' + keys.length + ' việc' + (nP ? ': ' + nP + ' bài trụ lên trước, các bài ngách rải theo tần suất tuần' : ', rải theo tần suất tuần') + '. Xem và bỏ mục không muốn ở thẻ Lịch lên bài.', 'ri-magic-line');
         }

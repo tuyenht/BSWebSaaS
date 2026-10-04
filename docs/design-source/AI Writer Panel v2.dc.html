@@ -8,6 +8,9 @@
 <body>
 <x-dc>
 <helmet>
+<link rel="stylesheet" href="admin-base.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
@@ -15,7 +18,7 @@
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
 <script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <script src="ai-quota.js"></script>
 <style>
 .aw-wrap{container-type:inline-size;font-family:Inter,'Segoe UI',sans-serif;}
@@ -29,36 +32,36 @@
 .aw-2col{display:grid;grid-template-columns:1fr;gap:12px;align-items:start;}
 @container (min-width:660px){.aw-2col{grid-template-columns:minmax(0,1fr) 268px;}}
 .aw-fld{display:flex;flex-direction:column;gap:6px;}
-.aw-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid #e9ebec;border-radius:4px;font:inherit;font-size:13px;line-height:1.6;color:#343a40;background:#fff;outline:none;resize:vertical;}
-.aw-in:focus{border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.10);}
+.aw-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;font:inherit;font-size:13px;line-height:1.6;color:var(--color-heading,#1f2b4d);background:var(--color-surface,#fff);outline:none;resize:vertical;}
+.aw-in:focus{border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.10);}
 .aw-in::placeholder{color:#b9bec7;}
-.aw-cardh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #eff2f7;}
-.aw-card{border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(56,65,74,.10);}
-.aw-body h2{font-size:15px;font-weight:600;color:#343a40;margin:16px 0 6px;line-height:1.4;}
-.aw-body p{margin:0 0 10px;font-size:13px;line-height:1.75;color:#495057;}
-.aw-body ul{margin:0 0 10px;padding-left:20px;font-size:13px;line-height:1.75;color:#495057;}
+.aw-cardh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);}
+.aw-card{border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 1px 2px rgba(56,65,74,.10);}
+.aw-body h2{font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);margin:16px 0 6px;line-height:1.4;}
+.aw-body p{margin:0 0 10px;font-size:13px;line-height:1.75;color:var(--color-body-text,#3c4765);}
+.aw-body ul{margin:0 0 10px;padding-left:20px;font-size:13px;line-height:1.75;color:var(--color-body-text,#3c4765);}
 </style>
 </helmet>
 
-<div class="aw-wrap" style="position:relative;display:flex;flex-direction:column;flex:1 1 auto;height:100%;max-height:100%;min-height:0;overflow:hidden;background:#fff;color:#495057;">
+<div class="aw-wrap" style="position:relative;display:flex;flex-direction:column;flex:1 1 auto;height:100%;max-height:100%;min-height:0;overflow:hidden;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);">
 
-  <div style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px 12px;border-bottom:1px solid #eff2f7;flex-shrink:0;">
-    <span style="width:32px;height:32px;border-radius:6px;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-quill-pen-line" style="font-size:17px;color:#405189;"></i></span>
+  <div style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-shrink:0;">
+    <span style="width:32px;height:32px;border-radius:6px;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-quill-pen-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span>
     <div style="display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0;">
-      <span style="display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;color:#343a40;line-height:1.3;">Trợ lý viết nội dung<span style="display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:3px;background:rgba(10,179,156,.12);font-size:10px;font-weight:700;letter-spacing:.03em;color:#0a8f7f;">v2</span></span>
-      <span style="font-size:11.5px;color:#878a99;line-height:1.45;">{{ ctxLine }}</span>
+      <span style="display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.3;">Trợ lý viết nội dung<span style="display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:3px;background:rgba(10,179,156,.12);font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--color-admin-success-text,#0a8f7f);">v2</span></span>
+      <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ ctxLine }}</span>
     </div>
-    <button onClick="{{ onPrompt }}" title="Xem đúng những yêu cầu hệ thống gửi cho AI thay bạn" style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border:1px solid #eff2f7;border-radius:20px;background:#fff;font:inherit;font-size:11px;font-weight:600;color:#878a99;cursor:pointer;white-space:nowrap;flex-shrink:0;" style-hover="border-color:#405189;color:#405189;"><i class="ri-file-shield-2-line" style="font-size:13px;"></i>Yêu cầu chất lượng</button>
+    <button onClick="{{ onPrompt }}" title="Xem đúng những yêu cầu hệ thống gửi cho AI thay bạn" style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border:1px solid var(--color-border,#e9ecf4);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;flex-shrink:0;" style-hover="border-color:#2050a0;color:var(--color-accent,#2050a0);"><i class="ri-file-shield-2-line" style="font-size:13px;"></i>Yêu cầu chất lượng</button>
     <span title="{{ quotaTitle }}" style="{{ quotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaText }}</span>
-    <sc-if value="{{ canMin }}"><button onClick="{{ onMinimize }}" title="{{ minTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;" style-hover="background:#f3f6f9;color:#405189;"><i class="ri-subtract-line" style="font-size:18px;"></i></button></sc-if>
-    <sc-if value="{{ canResize }}"><button onClick="{{ onToggleExpand }}" title="{{ expandTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;" style-hover="background:#f3f6f9;color:#405189;"><i class="{{ expandIcon }}" style="font-size:17px;"></i></button></sc-if>
-    <button onClick="{{ onClose }}" title="Đóng — nội dung đã nhập vẫn giữ" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;" style-hover="background:#f3f6f9;color:#495057;"><i class="ri-close-line" style="font-size:18px;"></i></button>
+    <sc-if value="{{ canMin }}"><button onClick="{{ onMinimize }}" title="{{ minTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" aria-label="{{ minTitle }}"><i class="ri-subtract-line" style="font-size:18px;"></i></button></sc-if>
+    <sc-if value="{{ canResize }}"><button onClick="{{ onToggleExpand }}" title="{{ expandTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" aria-label="{{ expandTitle }}"><i class="{{ expandIcon }}" style="font-size:17px;"></i></button></sc-if>
+    <button onClick="{{ onClose }}" title="Đóng — nội dung đã nhập vẫn giữ" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);" aria-label="Đóng — nội dung đã nhập vẫn giữ"><i class="ri-close-line" style="font-size:18px;"></i></button>
   </div>
 
-  <div style="display:flex;align-items:center;gap:3px;padding:9px 16px;border-bottom:1px solid #eff2f7;background:#fbfcfe;flex-shrink:0;overflow-x:auto;">
+  <div style="display:flex;align-items:center;gap:3px;padding:9px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);flex-shrink:0;overflow-x:auto;">
     <sc-for list="{{ steps }}" as="st" hint-placeholder-count="5">
       <button onClick="{{ st.on }}" title="{{ st.title }}" style="{{ st.style }}"><span style="{{ st.numStyle }}">{{ st.num }}</span>{{ st.label }}</button>
-      <sc-if value="{{ st.sep }}"><i class="ri-arrow-right-s-line" style="font-size:15px;color:#ced4da;flex-shrink:0;"></i></sc-if>
+      <sc-if value="{{ st.sep }}"><i class="ri-arrow-right-s-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i></sc-if>
     </sc-for>
   </div>
 
@@ -67,28 +70,28 @@
     <!-- BƯỚC 1 — ĐỀ BÀI -->
     <sc-if value="{{ isBrief }}">
       <sc-if value="{{ srcOn }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(64,81,137,.07);">
-          <i class="ri-file-text-line" style="font-size:15px;color:#405189;flex-shrink:0;margin-top:1px;"></i>
-          <span style="font-size:12px;color:#405189;line-height:1.55;min-width:0;">{{ srcNote }}</span>
+        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(32,80,160,.07);">
+          <i class="ri-file-text-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:var(--color-accent,#2050a0);line-height:1.55;min-width:0;">{{ srcNote }}</span>
         </div>
       </sc-if>
       <div class="aw-fld">
         <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
-          <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Bạn muốn viết về điều gì?</span>
-          <sc-if value="{{ topicFromTitle }}"><span title="Lấy từ tiêu đề bạn đã nhập trong trang" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:600;color:#1d7fb8;background:rgba(41,156,219,.10);"><i class="ri-magic-line" style="font-size:11px;"></i>Lấy từ tiêu đề trang</span></sc-if>
+          <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Bạn muốn viết về điều gì?</span>
+          <sc-if value="{{ topicFromTitle }}"><span title="Lấy từ tiêu đề bạn đã nhập trong trang" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:12px;font-weight:600;color:var(--color-admin-info-text,#1d7fb8);background:rgba(41,156,219,.10);"><i class="ri-magic-line" style="font-size:12px;"></i>Lấy từ tiêu đề trang</span></sc-if>
         </div>
         <textarea class="aw-in" rows="2" value="{{ topic }}" onChange="{{ onTopic }}" placeholder="{{ topicPh }}"></textarea>
-        <span style="display:flex;align-items:flex-start;gap:6px;font-size:11.5px;color:#878a99;line-height:1.5;"><i class="ri-magic-line" style="font-size:13px;color:#adb5bd;flex-shrink:0;margin-top:2px;"></i><span>Chỉ cần một câu. Ví dụ và gợi ý bên dưới đã lấy theo ngành <span title="{{ indTitle }}" style="font-weight:600;color:#495057;cursor:help;">{{ indName }}</span> và chủ đề bạn nhập — không phải điền tay.</span></span>
+        <span style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;"><i class="ri-magic-line" style="font-size:13px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:2px;"></i><span>Chỉ cần một câu. Ví dụ và gợi ý bên dưới đã lấy theo ngành <span title="{{ indTitle }}" style="font-weight:600;color:var(--color-body-text,#3c4765);cursor:help;">{{ indName }}</span> và chủ đề bạn nhập — không phải điền tay.</span></span>
       </div>
 
       <sc-if value="{{ dupWarn }}">
         <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border:1px solid rgba(247,184,75,.35);border-radius:6px;background:rgba(247,184,75,.09);">
-          <i class="ri-git-merge-line" style="font-size:16px;color:#b57d13;flex-shrink:0;margin-top:1px;"></i>
+          <i class="ri-git-merge-line" style="font-size:16px;color:var(--color-admin-warning-text,#b57d13);flex-shrink:0;margin-top:1px;"></i>
           <div style="display:flex;flex-direction:column;gap:7px;min-width:0;">
-            <span style="font-size:12px;color:#8a6109;line-height:1.6;">Website đã có bài <strong style="font-weight:600;">“{{ dupTitle }}”</strong> nhắm cùng ý định tìm kiếm. Viết thêm một bài gần giống sẽ khiến hai bài chia lượt truy cập của nhau.</span>
+            <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6109);line-height:1.6;">Website đã có bài <strong style="font-weight:600;">“{{ dupTitle }}”</strong> nhắm cùng ý định tìm kiếm. Viết thêm một bài gần giống sẽ khiến hai bài chia lượt truy cập của nhau.</span>
             <div style="display:flex;gap:7px;flex-wrap:wrap;">
-              <button onClick="{{ onDupOpen }}" style="display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid rgba(64,81,137,.28);border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;"><i class="ri-external-link-line" style="font-size:13px;"></i>Mở bài đó để bổ sung thay vì viết mới</button>
-              <button onClick="{{ onDupDismiss }}" style="min-height:30px;padding:6px 10px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:11.5px;font-weight:500;color:#8a6109;cursor:pointer;">Chủ đề của tôi khác, cứ viết</button>
+              <button onClick="{{ onDupOpen }}" style="display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid rgba(32,80,160,.28);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;"><i class="ri-external-link-line" style="font-size:13px;"></i>Mở bài đó để bổ sung thay vì viết mới</button>
+              <button onClick="{{ onDupDismiss }}" style="min-height:30px;padding:6px 10px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:12px;font-weight:500;color:var(--color-admin-warning-text,#8a6109);cursor:pointer;">Chủ đề của tôi khác, cứ viết</button>
             </div>
           </div>
         </div>
@@ -97,30 +100,30 @@
       <div style="display:flex;flex-wrap:wrap;gap:6px;position:relative;">
         <sc-for list="{{ chips }}" as="ch" hint-placeholder-count="4">
           <div style="position:relative;">
-            <button onClick="{{ ch.on }}" title="{{ ch.title }}" style="{{ ch.style }}"><i class="{{ ch.icon }}" style="font-size:13px;color:#878a99;flex-shrink:0;"></i><span style="color:#878a99;">{{ ch.label }}</span><span style="font-weight:600;color:#343a40;">{{ ch.value }}</span><i class="ri-arrow-down-s-line" style="font-size:14px;color:#adb5bd;flex-shrink:0;"></i></button>
+            <button onClick="{{ ch.on }}" title="{{ ch.title }}" style="{{ ch.style }}"><i class="{{ ch.icon }}" style="font-size:13px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i><span style="color:var(--color-body-muted,#5b6275);">{{ ch.label }}</span><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">{{ ch.value }}</span><i class="ri-arrow-down-s-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i></button>
             <sc-if value="{{ ch.open }}">
-              <div class="aw-pop" style="position:absolute;top:calc(100% + 5px);left:0;z-index:20;min-width:212px;max-width:min(280px,calc(100vw - 32px));background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 28px rgba(33,37,41,.16);padding:4px;">
+              <div class="aw-pop" style="position:absolute;top:calc(100% + 5px);left:0;z-index:20;min-width:212px;max-width:min(280px,calc(100vw - 32px));background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 28px rgba(33,37,41,.16);padding:4px;">
                 <sc-for list="{{ ch.opts }}" as="op" hint-placeholder-count="3">
-                  <button onClick="{{ op.on }}" style="{{ op.style }}" style-hover="background:#f3f6f9;"><span style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;text-align:left;"><span style="font-size:12.5px;font-weight:500;color:#343a40;">{{ op.label }}</span><sc-if value="{{ op.hint }}"><span style="font-size:11px;color:#878a99;line-height:1.4;">{{ op.hint }}</span></sc-if></span><sc-if value="{{ op.on2 }}"><i class="ri-check-line" style="font-size:15px;color:#405189;flex-shrink:0;"></i></sc-if></button>
+                  <button onClick="{{ op.on }}" style="{{ op.style }}" style-hover="background:var(--color-surface-hover,#f3f6f9);"><span style="display:flex;flex-direction:column;gap:1px;flex:1;min-width:0;text-align:left;"><span style="font-size:12.5px;font-weight:500;color:var(--color-heading,#1f2b4d);">{{ op.label }}</span><sc-if value="{{ op.hint }}"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.4;">{{ op.hint }}</span></sc-if></span><sc-if value="{{ op.on2 }}"><i class="ri-check-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i></sc-if></button>
                 </sc-for>
               </div>
             </sc-if>
           </div>
         </sc-for>
-        <span title="Lấy từ Cài đặt › Thông tin doanh nghiệp — dùng để viết đúng ngành và đúng tên" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed #e0e3e9;border-radius:5px;background:#fbfcfe;font-size:12px;color:#878a99;white-space:nowrap;"><i class="ri-store-2-line" style="font-size:13px;"></i>{{ bizLine }}</span>
-        <span title="{{ langTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed #e0e3e9;border-radius:5px;background:#fbfcfe;font-size:12px;color:#878a99;white-space:nowrap;"><i class="ri-translate-2" style="font-size:13px;"></i>{{ langName }}<sc-if value="{{ langIsSource }}"><i class="ri-star-fill" style="font-size:10.5px;color:#f7b84b;"></i></sc-if></span>
+        <span title="Lấy từ Cài đặt › Thông tin doanh nghiệp — dùng để viết đúng ngành và đúng tên" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed #e0e3e9;border-radius:5px;background:var(--color-surface-muted,#fbfcfe);font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-store-2-line" style="font-size:13px;"></i>{{ bizLine }}</span>
+        <span title="{{ langTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed #e0e3e9;border-radius:5px;background:var(--color-surface-muted,#fbfcfe);font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-translate-2" style="font-size:13px;"></i>{{ langName }}<sc-if value="{{ langIsSource }}"><i class="ri-star-fill" style="font-size:12px;color:#f7b84b;"></i></sc-if></span>
       </div>
 
       <div class="aw-card" style="box-shadow:none;">
         <div class="aw-cardh">
-          <i class="ri-robot-2-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i>
-          <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Viết để cả Google và trợ lý AI trích dẫn được</span>
-          <span title="Ngành gọi là AEO / GEO — tối ưu cho công cụ trả lời và AI tạo sinh. Bộ khối tự đổi theo loại nội dung, bạn không cần biết thuật ngữ." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;white-space:nowrap;cursor:help;"><i class="ri-information-line" style="font-size:13px;"></i>{{ aeoSummary }}</span>
+          <i class="ri-robot-2-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
+          <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Viết để cả Google và trợ lý AI trích dẫn được</span>
+          <span title="Ngành gọi là AEO / GEO — tối ưu cho công cụ trả lời và AI tạo sinh. Bộ khối tự đổi theo loại nội dung, bạn không cần biết thuật ngữ." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;cursor:help;"><i class="ri-information-line" style="font-size:13px;"></i>{{ aeoSummary }}</span>
         </div>
         <sc-if value="{{ aeoEmpty }}">
           <div style="display:flex;gap:8px;padding:12px;">
-            <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-            <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ aeoWhy }}</span>
+            <i class="ri-information-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ aeoWhy }}</span>
           </div>
         </sc-if>
         <div style="display:flex;flex-wrap:wrap;gap:6px;padding:11px 12px;">
@@ -129,60 +132,60 @@
           </sc-for>
         </div>
         <div style="display:flex;gap:8px;padding:0 12px 12px;">
-          <i class="ri-lightbulb-line" style="font-size:14px;color:#adb5bd;flex-shrink:0;margin-top:2px;"></i>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ aeoWhy }} Viền liền là khối đề xuất, viền nét đứt là tuỳ chọn — khối không phù hợp thì không hiện.</span>
+          <i class="ri-lightbulb-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:2px;"></i>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ aeoWhy }} Viền liền là khối đề xuất, viền nét đứt là tùy chọn — khối không phù hợp thì không hiện.</span>
         </div>
       </div>
 
       <div class="aw-fld">
         <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
-          <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Từ khoá muốn lên hạng</span>
-          <sc-if value="{{ kwAuto }}"><span title="Rút từ chủ đề bạn vừa nhập — gõ vào ô để đổi" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:10.5px;font-weight:600;color:#1d7fb8;background:rgba(41,156,219,.10);"><i class="ri-magic-line" style="font-size:11px;"></i>tự nhận từ chủ đề</span></sc-if>
-          <span style="font-size:11.5px;color:#adb5bd;">sửa được — hoặc để nguyên mức hệ thống đề xuất</span>
+          <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Từ khóa muốn lên hạng</span>
+          <sc-if value="{{ kwAuto }}"><span title="Rút từ chủ đề bạn vừa nhập — gõ vào ô để đổi" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:12px;font-weight:600;color:var(--color-admin-info-text,#1d7fb8);background:rgba(41,156,219,.10);"><i class="ri-magic-line" style="font-size:12px;"></i>tự nhận từ chủ đề</span></sc-if>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">sửa được — hoặc để nguyên mức hệ thống đề xuất</span>
         </div>
         <input class="aw-in" value="{{ kwMain }}" onChange="{{ onKwMain }}" placeholder="{{ kwPh }}">
         <sc-if value="{{ hasKwSug }}">
           <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
-            <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#adb5bd;white-space:nowrap;"><i class="ri-magic-line" style="font-size:13px;"></i>Gợi ý theo chủ đề của bạn:</span>
+            <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-magic-line" style="font-size:13px;"></i>Gợi ý theo chủ đề của bạn:</span>
             <sc-for list="{{ kwSug }}" as="ks" hint-placeholder-count="4">
-              <button onClick="{{ ks.on }}" title="{{ ks.title }}" style="display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:4px 9px;border:1px dashed #dfe2e8;border-radius:20px;background:#fff;font:inherit;font-size:11.5px;font-weight:500;color:#405189;cursor:pointer;white-space:nowrap;" style-hover="border-color:#405189;background:rgba(64,81,137,.05);"><i class="ri-add-line" style="font-size:12px;"></i>{{ ks.label }}</button>
+              <button onClick="{{ ks.on }}" title="{{ ks.title }}" style="display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:4px 9px;border:1px dashed var(--color-border-strong,#dfe2e8);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap;" style-hover="border-color:#2050a0;background:rgba(32,80,160,.05);"><i class="ri-add-line" style="font-size:12px;"></i>{{ ks.label }}</button>
             </sc-for>
-            <button onClick="{{ onMoreKw }}" title="Lấy thêm gợi ý sát chủ đề hơn — không trừ hạn ngạch từ AI" style="display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:4px 8px;border:0;background:transparent;font:inherit;font-size:11px;font-weight:600;color:#878a99;cursor:pointer;white-space:nowrap;" style-hover="color:#405189;"><i class="ri-refresh-line" style="font-size:12px;"></i>gợi ý khác</button>
+            <button onClick="{{ onMoreKw }}" title="Lấy thêm gợi ý sát chủ đề hơn — không trừ hạn ngạch từ AI" style="display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:4px 8px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;" style-hover="color:var(--color-accent,#2050a0);"><i class="ri-refresh-line" style="font-size:12px;"></i>gợi ý khác</button>
           </div>
         </sc-if>
         <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
           <sc-for list="{{ kwSub }}" as="k" hint-placeholder-count="3">
-            <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 5px 0 9px;border:1px solid #eff2f7;border-radius:20px;background:#f8f9fb;font-size:11.5px;color:#495057;white-space:nowrap;">{{ k.label }}<button onClick="{{ k.off }}" title="Bỏ từ khoá này" style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#adb5bd;cursor:pointer;" style-hover="background:#e9ebec;color:#495057;"><i class="ri-close-line" style="font-size:12px;"></i></button></span>
+            <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 5px 0 9px;border:1px solid var(--color-border,#e9ecf4);border-radius:20px;background:var(--color-surface-muted,#f8f9fb);font-size:12px;color:var(--color-body-text,#3c4765);white-space:nowrap;">{{ k.label }}<button onClick="{{ k.off }}" title="Bỏ từ khóa này" style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="background:var(--color-border-strong,#e9ebec);color:var(--color-body-text,#3c4765);" aria-label="Bỏ từ khóa này"><i class="ri-close-line" style="font-size:12px;"></i></button></span>
           </sc-for>
-          <input value="{{ kwDraft }}" onChange="{{ onKwDraft }}" onKeyDown="{{ onKwKey }}" placeholder="+ từ khoá phụ, Enter để thêm" style="min-width:190px;flex:1 1 190px;height:26px;box-sizing:border-box;padding:0 8px;border:1px dashed #dfe2e8;border-radius:20px;font:inherit;font-size:11.5px;color:#495057;background:transparent;outline:none;">
+          <input value="{{ kwDraft }}" onChange="{{ onKwDraft }}" onKeyDown="{{ onKwKey }}" placeholder="+ từ khóa phụ, Enter để thêm" style="min-width:190px;flex:1 1 190px;height:26px;box-sizing:border-box;padding:0 8px;border:1px dashed var(--color-border-input,#878a99);border-radius:20px;font:inherit;font-size:12px;color:var(--color-body-text,#3c4765);background:transparent;outline:none;">
         </div>
       </div>
 
-      <div style="border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
-        <button onClick="{{ onToggleAdv }}" style="{{ advHeadStyle }}"><i class="{{ advIcon }}" style="font-size:16px;color:#878a99;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Đưa thêm chất liệu để bài viết không chung chung</span><span style="margin-left:auto;font-size:11.5px;color:#878a99;white-space:nowrap;">{{ advSummary }}</span></button>
+      <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden;">
+        <button onClick="{{ onToggleAdv }}" style="{{ advHeadStyle }}"><i class="{{ advIcon }}" style="font-size:16px;color:var(--color-body-muted,#5b6275);"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Đưa thêm chất liệu để bài viết không chung chung</span><span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;text-align:right;">{{ advSummary }}</span></button>
         <sc-if value="{{ advOpen }}">
-          <div style="display:flex;flex-direction:column;gap:13px;padding:13px;border-top:1px solid #eff2f7;background:#fbfcfe;">
+          <div style="display:flex;flex-direction:column;gap:13px;padding:13px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
             <div class="aw-fld">
-              <span style="font-size:12px;font-weight:600;color:#495057;">Ý chính của riêng bạn</span>
+              <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Ý chính của riêng bạn</span>
               <textarea class="aw-in" rows="3" value="{{ notes }}" onChange="{{ onNotes }}" placeholder="{{ notePh }}"></textarea>
-              <span style="font-size:11px;color:#878a99;line-height:1.5;">Đây là phần tạo ra khác biệt: kinh nghiệm thật, con số thật, câu khách hay hỏi. Cũng là phần AI không tự có được.</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">Đây là phần tạo ra khác biệt: kinh nghiệm thật, con số thật, câu khách hay hỏi. Cũng là phần AI không tự có được.</span>
             </div>
             <div class="aw-fld">
-              <span style="font-size:12px;font-weight:600;color:#495057;">Tài liệu tham khảo</span>
+              <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Tài liệu tham khảo</span>
               <div style="display:flex;flex-direction:column;gap:6px;">
                 <sc-for list="{{ refs }}" as="r" hint-placeholder-count="2">
-                  <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid #eff2f7;border-radius:5px;background:#fff;"><i class="{{ r.icon }}" style="font-size:15px;color:#878a99;flex-shrink:0;"></i><span style="flex:1;min-width:0;font-size:12px;color:#495057;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.label }}</span><span style="font-size:11px;color:#adb5bd;white-space:nowrap;">{{ r.meta }}</span><button onClick="{{ r.off }}" title="Bỏ tài liệu này" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:#adb5bd;cursor:pointer;" style-hover="background:#f3f6f9;color:#f06548;"><i class="ri-close-line" style="font-size:13px;"></i></button></div>
+                  <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--color-border,#e9ecf4);border-radius:5px;background:var(--color-surface,#fff);"><i class="{{ r.icon }}" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i><span style="flex:1;min-width:0;font-size:12px;color:var(--color-body-text,#3c4765);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.label }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">{{ r.meta }}</span><button onClick="{{ r.off }}" title="Bỏ tài liệu này" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-admin-danger-text,#f06548);" aria-label="Bỏ tài liệu này"><i class="ri-close-line" style="font-size:13px;"></i></button></div>
                 </sc-for>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                  <input value="{{ refDraft }}" onChange="{{ onRefDraft }}" onKeyDown="{{ onRefKey }}" placeholder="Dán link bài viết, hoặc kéo file vào đây" style="flex:1 1 200px;min-width:0;height:34px;box-sizing:border-box;padding:0 10px;border:1px dashed #dfe2e8;border-radius:5px;font:inherit;font-size:12px;color:#495057;background:#fff;outline:none;">
-                  <button onClick="{{ onPickFile }}" style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 11px;border:1px solid #e9ebec;border-radius:5px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;" style-hover="background:#f3f6f9;"><i class="ri-attachment-2" style="font-size:14px;"></i>Chọn file</button>
+                  <input value="{{ refDraft }}" onChange="{{ onRefDraft }}" onKeyDown="{{ onRefKey }}" placeholder="Dán link bài viết, hoặc kéo file vào đây" style="flex:1 1 200px;min-width:0;height:34px;box-sizing:border-box;padding:0 10px;border:1px dashed var(--color-border-input,#878a99);border-radius:5px;font:inherit;font-size:12px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);outline:none;">
+                  <button onClick="{{ onPickFile }}" style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:5px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;" style-hover="background:var(--color-surface-hover,#f3f6f9);"><i class="ri-attachment-2" style="font-size:14px;"></i>Chọn file</button>
                 </div>
               </div>
             </div>
             <div class="aw-fld">
               <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
-                <span style="font-size:12px;font-weight:600;color:#495057;">Chuẩn văn phong</span>
-                <span style="font-size:11px;color:#adb5bd;">bật sẵn để bài viết không nghe như máy đọc</span>
+                <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Chuẩn văn phong</span>
+                <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">bật sẵn để bài viết không nghe như máy đọc</span>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:6px;">
                 <sc-for list="{{ rules }}" as="ru" hint-placeholder-count="4">
@@ -191,7 +194,7 @@
               </div>
             </div>
             <div class="aw-fld">
-              <span style="font-size:12px;font-weight:600;color:#495057;">Học văn phong từ bài đã có</span>
+              <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Học văn phong từ bài đã có</span>
               <div style="display:flex;flex-wrap:wrap;gap:6px;">
                 <sc-for list="{{ samples }}" as="sp" hint-placeholder-count="3">
                   <button onClick="{{ sp.on }}" style="{{ sp.style }}"><i class="{{ sp.icon }}" style="font-size:13px;flex-shrink:0;"></i>{{ sp.label }}</button>
@@ -206,30 +209,30 @@
     <!-- BƯỚC 2 — PHÂN TÍCH -->
     <sc-if value="{{ isResearch }}">
       <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border-radius:6px;background:rgba(41,156,219,.07);">
-        <i class="ri-search-eye-line" style="font-size:16px;color:#1d7fb8;flex-shrink:0;margin-top:1px;"></i>
-        <span style="font-size:12px;color:#1d7fb8;line-height:1.6;min-width:0;">Hệ thống đã đọc trang tìm kiếm, 6 bài đang xếp trên và toàn bộ nội dung website của bạn. Bỏ tick những ý bạn không muốn đưa vào bài — phần còn lại sẽ thành dàn ý.</span>
+        <i class="ri-search-eye-line" style="font-size:16px;color:var(--color-admin-info-text,#1d7fb8);flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:12px;color:var(--color-admin-info-text,#1d7fb8);line-height:1.6;min-width:0;">Hệ thống đã đọc trang tìm kiếm, 6 bài đang xếp trên và toàn bộ nội dung website của bạn. Bỏ tick những ý bạn không muốn đưa vào bài — phần còn lại sẽ thành dàn ý.</span>
       </div>
 
       <div class="aw-card">
-        <div class="aw-cardh"><i class="ri-user-search-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Người tìm từ khoá này đang muốn gì</span><span style="margin-left:auto;display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;background:rgba(64,81,137,.08);font-size:11px;font-weight:600;color:#405189;white-space:nowrap;">{{ intentKind }}</span></div>
+        <div class="aw-cardh"><i class="ri-user-search-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Người tìm từ khóa này đang muốn gì</span><span style="margin-left:auto;display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;background:rgba(32,80,160,.08);font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);min-width:0;text-align:right;">{{ intentKind }}</span></div>
         <div style="display:flex;flex-direction:column;gap:9px;padding:11px 12px;">
-          <span style="font-size:12.5px;color:#495057;line-height:1.65;">{{ intentLine }}</span>
-          <span style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Câu hỏi họ thật sự gõ vào ô tìm kiếm</span>
+          <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.65;">{{ intentLine }}</span>
+          <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">Câu hỏi họ thật sự gõ vào ô tìm kiếm</span>
           <div style="display:flex;flex-direction:column;gap:5px;">
             <sc-for list="{{ questions }}" as="q" hint-placeholder-count="5">
-              <div style="display:flex;align-items:flex-start;gap:8px;"><i class="ri-corner-down-right-line" style="font-size:14px;color:#ced4da;flex-shrink:0;margin-top:2px;"></i><span style="font-size:12px;color:#495057;line-height:1.6;">{{ q.text }}</span></div>
+              <div style="display:flex;align-items:flex-start;gap:8px;"><i class="ri-corner-down-right-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:2px;"></i><span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.6;">{{ q.text }}</span></div>
             </sc-for>
           </div>
         </div>
       </div>
 
       <div class="aw-card">
-        <div class="aw-cardh"><i class="ri-focus-3-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Điều các bài đang xếp trên chưa nói</span><span style="margin-left:auto;font-size:11px;color:#adb5bd;white-space:nowrap;">{{ gapSummary }}</span></div>
+        <div class="aw-cardh"><i class="ri-focus-3-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Điều các bài đang xếp trên chưa nói</span><span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;text-align:right;">{{ gapSummary }}</span></div>
         <div style="display:flex;flex-direction:column;">
           <sc-for list="{{ gaps }}" as="g" hint-placeholder-count="4">
-            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
-              <button onClick="{{ g.on }}" title="{{ g.title }}" style="{{ g.box }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
-              <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.55;">{{ g.text }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ g.why }}</span></span>
+            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
+              <button onClick="{{ g.on }}" title="{{ g.title }}" style="{{ g.box }}" aria-label="{{ g.title }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;"><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.55;">{{ g.text }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ g.why }}</span></span>
               <span style="{{ g.tagStyle }}">{{ g.tag }}</span>
             </div>
           </sc-for>
@@ -237,7 +240,7 @@
       </div>
 
       <div class="aw-card">
-        <div class="aw-cardh"><i class="ri-node-tree" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Khái niệm bài cần nhắc để AI hiểu đúng chủ đề</span><span title="Ngành gọi là entity — thực thể. Thiếu các khái niệm này, máy đọc không nối được bài của bạn với chủ đề." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>{{ entSummary }}</span></div>
+        <div class="aw-cardh"><i class="ri-node-tree" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Khái niệm bài cần nhắc để AI hiểu đúng chủ đề</span><span title="Ngành gọi là entity — thực thể. Thiếu các khái niệm này, máy đọc không nối được bài của bạn với chủ đề." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--color-body-muted,#5b6275);cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>{{ entSummary }}</span></div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;padding:11px 12px;">
           <sc-for list="{{ ents }}" as="en" hint-placeholder-count="8">
             <button onClick="{{ en.on }}" title="{{ en.title }}" style="{{ en.style }}"><i class="{{ en.icon }}" style="font-size:12px;flex-shrink:0;"></i>{{ en.label }}</button>
@@ -246,37 +249,37 @@
       </div>
 
       <div class="aw-card">
-        <div class="aw-cardh"><i class="ri-stack-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Nhánh chủ đề còn thiếu trên website</span><span title="Ngành gọi là topic cluster / topical authority. Một chủ đề phủ đủ các nhánh thì cả Google và trợ lý AI đều coi website là nguồn đáng tin của chủ đề đó." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>gợi ý bài viết tiếp</span></div>
+        <div class="aw-cardh"><i class="ri-stack-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Nhánh chủ đề còn thiếu trên website</span><span title="Ngành gọi là topic cluster / topical authority. Một chủ đề phủ đủ các nhánh thì cả Google và trợ lý AI đều coi website là nguồn đáng tin của chủ đề đó." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--color-body-muted,#5b6275);cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>gợi ý bài viết tiếp</span></div>
         <div style="display:flex;flex-direction:column;">
           <sc-for list="{{ cluster }}" as="cl" hint-placeholder-count="3">
-            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
-              <i class="ri-add-circle-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-              <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.5;">{{ cl.text }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ cl.why }}</span></span>
+            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
+              <i class="ri-add-circle-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+              <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.5;">{{ cl.text }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ cl.why }}</span></span>
             </div>
           </sc-for>
-          <span style="padding:9px 12px;border-top:1px solid #f6f7f9;font-size:11px;color:#adb5bd;line-height:1.6;">Không viết bây giờ. Hệ thống lưu vào danh sách “bài nên viết” và tự đề xuất dẫn liên kết qua lại khi bạn viết chúng.</span>
+          <span style="padding:9px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Không viết bây giờ. Hệ thống lưu vào danh sách “bài nên viết” và tự đề xuất dẫn liên kết qua lại khi bạn viết chúng.</span>
         </div>
       </div>
 
       <div class="aw-2col">
         <div class="aw-card">
-          <div class="aw-cardh"><i class="ri-links-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Bài trên website bạn nên dẫn tới</span></div>
+          <div class="aw-cardh"><i class="ri-links-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Bài trên website bạn nên dẫn tới</span></div>
           <div style="display:flex;flex-direction:column;">
             <sc-for list="{{ ilinks }}" as="il" hint-placeholder-count="3">
-              <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
-                <button onClick="{{ il.on }}" title="{{ il.title }}" style="{{ il.box }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
-                <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.5;">{{ il.text }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ il.why }}</span></span>
+              <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
+                <button onClick="{{ il.on }}" title="{{ il.title }}" style="{{ il.box }}" aria-label="{{ il.title }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+                <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.5;">{{ il.text }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ il.why }}</span></span>
               </div>
             </sc-for>
           </div>
         </div>
         <div class="aw-card">
-          <div class="aw-cardh"><i class="ri-verified-badge-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Nguồn dẫn được</span></div>
+          <div class="aw-cardh"><i class="ri-verified-badge-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Nguồn dẫn được</span></div>
           <div style="display:flex;flex-direction:column;">
             <sc-for list="{{ srcs }}" as="sr" hint-placeholder-count="3">
-              <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
-                <button onClick="{{ sr.on }}" title="{{ sr.title }}" style="{{ sr.box }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
-                <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.5;">{{ sr.text }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ sr.why }}</span></span>
+              <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
+                <button onClick="{{ sr.on }}" title="{{ sr.title }}" style="{{ sr.box }}" aria-label="{{ sr.title }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+                <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.5;">{{ sr.text }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ sr.why }}</span></span>
               </div>
             </sc-for>
           </div>
@@ -287,43 +290,43 @@
     <!-- BƯỚC 3 — DÀN Ý -->
     <sc-if value="{{ isOutline }}">
       <sc-if value="{{ srcOn }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(64,81,137,.07);">
-          <i class="ri-file-text-line" style="font-size:15px;color:#405189;flex-shrink:0;margin-top:1px;"></i>
-          <span style="font-size:12px;color:#405189;line-height:1.55;min-width:0;">{{ srcNote }}</span>
+        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(32,80,160,.07);">
+          <i class="ri-file-text-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:1px;"></i>
+          <span style="font-size:12px;color:var(--color-accent,#2050a0);line-height:1.55;min-width:0;">{{ srcNote }}</span>
         </div>
       </sc-if>
       <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(41,156,219,.07);">
-        <i class="ri-list-check-2" style="font-size:15px;color:#1d7fb8;flex-shrink:0;margin-top:1px;"></i>
-        <span style="font-size:12px;color:#1d7fb8;line-height:1.55;min-width:0;">Mỗi mục là một câu hỏi có câu trả lời ngắn ngay đầu mục — đó là dạng trợ lý AI trích dẫn được. Sửa dàn ý ở đây không tốn lượt AI.</span>
+        <i class="ri-list-check-2" style="font-size:15px;color:var(--color-admin-info-text,#1d7fb8);flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:12px;color:var(--color-admin-info-text,#1d7fb8);line-height:1.55;min-width:0;">Mỗi mục là một câu hỏi có câu trả lời ngắn ngay đầu mục — đó là dạng trợ lý AI trích dẫn được. Sửa dàn ý ở đây không tốn từ AI nào.</span>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;">
         <sc-for list="{{ outline }}" as="o" hint-placeholder-count="7">
           <div style="{{ o.cardStyle }}">
             <div style="display:flex;align-items:center;gap:8px;padding:8px 9px 8px 11px;">
-              <span style="font-size:11px;font-weight:700;color:#adb5bd;width:16px;flex-shrink:0;font-variant-numeric:tabular-nums;">{{ o.num }}</span>
-              <input value="{{ o.text }}" onChange="{{ o.onText }}" style="flex:1;min-width:0;padding:5px 7px;border:1px solid transparent;border-radius:4px;font:inherit;font-size:13px;font-weight:600;color:#343a40;background:transparent;outline:none;" style-focus="border-color:#405189;background:#fff;">
-              <sc-if value="{{ o.lock }}"><span title="Khối giúp Google và trợ lý AI trích dẫn — hệ thống tự viết, bạn không cần soạn" style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:20px;background:rgba(10,179,156,.10);font-size:10.5px;font-weight:700;color:#0a8f7f;white-space:nowrap;flex-shrink:0;"><i class="ri-robot-2-line" style="font-size:12px;"></i>khối cho AI</span></sc-if>
-              <span title="Số từ dự kiến cho mục này" style="font-size:11px;color:#adb5bd;white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums;">{{ o.words }}</span>
-              <button onClick="{{ o.up }}" title="Chuyển lên" style="{{ o.upStyle }}"><i class="ri-arrow-up-s-line" style="font-size:16px;"></i></button>
-              <button onClick="{{ o.down }}" title="Chuyển xuống" style="{{ o.downStyle }}"><i class="ri-arrow-down-s-line" style="font-size:16px;"></i></button>
-              <button onClick="{{ o.del }}" title="{{ o.delTitle }}" style="{{ o.delStyle }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button>
+              <span style="font-size:12px;font-weight:700;color:var(--color-body-muted,#5b6275);width:16px;flex-shrink:0;font-variant-numeric:tabular-nums;">{{ o.num }}</span>
+              <input value="{{ o.text }}" onChange="{{ o.onText }}" style="flex:1;min-width:0;padding:5px 7px;border:1px solid transparent;border-radius:4px;font:inherit;font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);background:transparent;outline:none;" style-focus="border-color:#2050a0;background:var(--color-surface,#fff);">
+              <sc-if value="{{ o.lock }}"><span title="Khối giúp Google và trợ lý AI trích dẫn — hệ thống tự viết, bạn không cần soạn" style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:20px;background:rgba(10,179,156,.10);font-size:12px;font-weight:700;color:var(--color-admin-success-text,#0a8f7f);white-space:nowrap;flex-shrink:0;"><i class="ri-robot-2-line" style="font-size:12px;"></i>khối cho AI</span></sc-if>
+              <span title="Số từ dự kiến cho mục này" style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums;">{{ o.words }}</span>
+              <button onClick="{{ o.up }}" title="Chuyển lên" style="{{ o.upStyle }}" aria-label="Chuyển lên"><i class="ri-arrow-up-s-line" style="font-size:16px;"></i></button>
+              <button onClick="{{ o.down }}" title="Chuyển xuống" style="{{ o.downStyle }}" aria-label="Chuyển xuống"><i class="ri-arrow-down-s-line" style="font-size:16px;"></i></button>
+              <button onClick="{{ o.del }}" title="{{ o.delTitle }}" style="{{ o.delStyle }}" aria-label="{{ o.delTitle }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button>
             </div>
             <sc-if value="{{ o.hasQ }}">
               <div style="display:flex;align-items:flex-start;gap:7px;padding:0 11px 8px 38px;">
                 <i class="ri-question-line" style="font-size:13px;color:#c3c8d0;flex-shrink:0;margin-top:2px;"></i>
-                <span style="font-size:11.5px;color:#878a99;line-height:1.55;">Trả lời câu hỏi: {{ o.q }}</span>
+                <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Trả lời câu hỏi: {{ o.q }}</span>
               </div>
             </sc-if>
             <sc-if value="{{ o.hasSubs }}">
               <div style="display:flex;flex-wrap:wrap;gap:5px;padding:0 11px 10px 38px;">
                 <sc-for list="{{ o.subs }}" as="sb" hint-placeholder-count="2">
-                  <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 5px 3px 9px;border:1px solid #f0f1f3;border-radius:20px;background:#f8f9fb;font-size:11.5px;color:#878a99;">{{ sb.label }}<button onClick="{{ sb.off }}" title="Bỏ ý này" style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#c3c8d0;cursor:pointer;" style-hover="background:#e9ebec;color:#495057;"><i class="ri-close-line" style="font-size:11px;"></i></button></span>
+                  <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 5px 3px 9px;border:1px solid #f0f1f3;border-radius:20px;background:var(--color-surface-muted,#f8f9fb);font-size:12px;color:var(--color-body-muted,#5b6275);">{{ sb.label }}<button onClick="{{ sb.off }}" title="Bỏ ý này" style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#c3c8d0;cursor:pointer;" style-hover="background:var(--color-border-strong,#e9ebec);color:var(--color-body-text,#3c4765);" aria-label="Bỏ ý này"><i class="ri-close-line" style="font-size:12px;"></i></button></span>
                 </sc-for>
               </div>
             </sc-if>
           </div>
         </sc-for>
-        <button onClick="{{ onAddOutline }}" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:9px;border:1px dashed #dfe2e8;border-radius:6px;background:#fbfcfe;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="border-color:#405189;color:#405189;background:rgba(64,81,137,.04);"><i class="ri-add-line" style="font-size:15px;"></i>Thêm mục</button>
+        <button onClick="{{ onAddOutline }}" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:9px;border:1px dashed var(--color-border-strong,#dfe2e8);border-radius:6px;background:var(--color-surface-muted,#fbfcfe);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="border-color:#2050a0;color:var(--color-accent,#2050a0);background:rgba(32,80,160,.04);"><i class="ri-add-line" style="font-size:15px;"></i>Thêm mục</button>
       </div>
     </sc-if>
 
@@ -334,42 +337,42 @@
 
           <div class="aw-card">
             <div class="aw-cardh">
-              <button onClick="{{ tPick }}" title="{{ tPickTitle }}" style="{{ tBoxStyle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
-              <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Tiêu đề</span>
-              <span style="font-size:11px;color:#adb5bd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">3 phương án, chấm theo 5 tiêu chí</span>
+              <button onClick="{{ tPick }}" title="{{ tPickTitle }}" style="{{ tBoxStyle }}" aria-label="{{ tPickTitle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Tiêu đề</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">3 phương án, chấm theo 5 tiêu chí</span>
               <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
-                <button onClick="{{ tRedo }}" title="Viết lại 3 phương án khác" style="{{ redoStyle }}"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
+                <button onClick="{{ tRedo }}" title="Viết lại 3 phương án khác" style="{{ redoStyle }}" aria-label="Viết lại 3 phương án khác"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
                 <button onClick="{{ tInsert }}" title="{{ tInsertTitle }}" style="{{ tInsStyle }}">{{ tInsLabel }}</button>
               </span>
             </div>
             <div style="display:flex;flex-direction:column;padding:5px;">
               <sc-for list="{{ titleOpts }}" as="t" hint-placeholder-count="3">
-                <button onClick="{{ t.on }}" style="{{ t.style }}" style-hover="background:#f8f9fb;"><i class="{{ t.icon }}" style="font-size:15px;color:{{ t.iconColor }};flex-shrink:0;margin-top:1px;"></i><span style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:500;color:#343a40;line-height:1.5;">{{ t.text }}</span><sc-if value="{{ t.best }}"><span title="Đạt nhiều tiêu chí nhất trong ba phương án" style="display:inline-flex;align-items:center;gap:4px;height:19px;padding:0 7px;border-radius:20px;background:rgba(64,81,137,.10);font-size:10px;font-weight:700;color:#405189;white-space:nowrap;"><i class="ri-star-fill" style="font-size:10px;color:#f7b84b;"></i>nên chọn</span></sc-if></span><span style="font-size:11px;color:#adb5bd;">{{ t.meta }}</span><span style="display:flex;flex-wrap:wrap;gap:4px;"><sc-for list="{{ t.crits }}" as="cr" hint-placeholder-count="5"><span style="{{ cr.style }}"><i class="{{ cr.icon }}" style="font-size:11px;"></i>{{ cr.label }}</span></sc-for></span></span></button>
+                <button onClick="{{ t.on }}" style="{{ t.style }}" style-hover="background:var(--color-surface-muted,#f8f9fb);"><i class="{{ t.icon }}" style="font-size:15px;color:{{ t.iconColor }};flex-shrink:0;margin-top:1px;"></i><span style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:500;color:var(--color-heading,#1f2b4d);line-height:1.5;">{{ t.text }}</span><sc-if value="{{ t.best }}"><span title="Đạt nhiều tiêu chí nhất trong ba phương án" style="display:inline-flex;align-items:center;gap:4px;height:19px;padding:0 7px;border-radius:20px;background:rgba(32,80,160,.10);font-size:12px;font-weight:700;color:var(--color-accent,#2050a0);white-space:nowrap;"><i class="ri-star-fill" style="font-size:12px;color:#f7b84b;"></i>nên chọn</span></sc-if></span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ t.meta }}</span><span style="display:flex;flex-wrap:wrap;gap:4px;"><sc-for list="{{ t.crits }}" as="cr" hint-placeholder-count="5"><span style="{{ cr.style }}"><i class="{{ cr.icon }}" style="font-size:12px;"></i>{{ cr.label }}</span></sc-for></span></span></button>
               </sc-for>
             </div>
           </div>
 
           <div class="aw-card">
             <div class="aw-cardh">
-              <button onClick="{{ ePick }}" title="{{ ePickTitle }}" style="{{ eBoxStyle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
-              <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Mô tả ngắn</span>
+              <button onClick="{{ ePick }}" title="{{ ePickTitle }}" style="{{ eBoxStyle }}" aria-label="{{ ePickTitle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Mô tả ngắn</span>
               <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
-                <button onClick="{{ eRedo }}" title="Viết lại đoạn mô tả" style="{{ redoStyle }}"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
+                <button onClick="{{ eRedo }}" title="Viết lại đoạn mô tả" style="{{ redoStyle }}" aria-label="Viết lại đoạn mô tả"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
                 <button onClick="{{ eInsert }}" title="{{ eInsertTitle }}" style="{{ eInsStyle }}">{{ eInsLabel }}</button>
               </span>
             </div>
-            <div style="padding:11px 12px;"><textarea class="aw-in" rows="3" value="{{ excerpt }}" onChange="{{ onExcerpt }}" style="border-color:#f0f1f3;background:#fbfcfe;"></textarea></div>
+            <div style="padding:11px 12px;"><textarea class="aw-in" rows="3" value="{{ excerpt }}" onChange="{{ onExcerpt }}" style="border-color:#f0f1f3;background:var(--color-surface-muted,#fbfcfe);"></textarea></div>
           </div>
 
           <sc-if value="{{ showBody }}">
           <div class="aw-card">
             <div class="aw-cardh">
-              <button onClick="{{ bPick }}" title="{{ bPickTitle }}" style="{{ bBoxStyle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
-              <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Nội dung chi tiết</span>
-              <span style="font-size:11px;color:#adb5bd;white-space:nowrap;">{{ wordCount }}</span>
+              <button onClick="{{ bPick }}" title="{{ bPickTitle }}" style="{{ bBoxStyle }}" aria-label="{{ bPickTitle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Nội dung chi tiết</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">{{ wordCount }}</span>
               <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
-                <sc-if value="{{ streaming }}"><button onClick="{{ onStop }}" style="display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#f06548;cursor:pointer;white-space:nowrap;" style-hover="background:rgba(240,101,72,.06);"><i class="ri-stop-circle-line" style="font-size:14px;"></i>Dừng</button></sc-if>
-                <sc-if value="{{ notStreaming }}"><button onClick="{{ bRedo }}" title="Viết lại phần nội dung" style="{{ redoStyle }}"><i class="ri-refresh-line" style="font-size:14px;"></i></button></sc-if>
+                <sc-if value="{{ streaming }}"><button onClick="{{ onStop }}" style="display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-admin-danger-text,#f06548);cursor:pointer;white-space:nowrap;" style-hover="background:rgba(240,101,72,.06);"><i class="ri-stop-circle-line" style="font-size:14px;"></i>Dừng</button></sc-if>
+                <sc-if value="{{ notStreaming }}"><button onClick="{{ bRedo }}" title="Viết lại phần nội dung" style="{{ redoStyle }}" aria-label="Viết lại phần nội dung"><i class="ri-refresh-line" style="font-size:14px;"></i></button></sc-if>
                 <button onClick="{{ bInsert }}" title="{{ bInsertTitle }}" style="{{ bInsStyle }}">{{ bInsLabel }}</button>
               </span>
             </div>
@@ -377,92 +380,92 @@
               <sc-for list="{{ bodyBlocks }}" as="bb" hint-placeholder-count="6">
                 <sc-if value="{{ bb.isTldr }}">
                   <div style="display:flex;flex-direction:column;gap:6px;margin:12px 0 12px;padding:11px 12px;border:1px solid rgba(10,179,156,.28);border-radius:6px;background:rgba(10,179,156,.06);">
-                    <span style="display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#0a8f7f;"><i class="ri-flashlight-line" style="font-size:13px;"></i>Tóm tắt nhanh</span>
-                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="3"><span style="font-size:12.5px;color:#495057;line-height:1.7;">• {{ li.text }}</span></sc-for>
+                    <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-admin-success-text,#0a8f7f);"><i class="ri-flashlight-line" style="font-size:13px;"></i>Tóm tắt nhanh</span>
+                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="3"><span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.7;">• {{ li.text }}</span></sc-for>
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isH }}"><h2>{{ bb.text }}</h2></sc-if>
                 <sc-if value="{{ bb.isAns }}">
-                  <div style="display:flex;gap:9px;margin:0 0 10px;padding:9px 11px;border-left:3px solid #405189;border-radius:0 5px 5px 0;background:#f8f9fb;">
-                    <span title="Câu trả lời ngắn ngay đầu mục — phần trợ lý AI thường lấy nguyên văn" style="font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#405189;white-space:nowrap;flex-shrink:0;padding-top:2px;">Trả lời</span>
-                    <span style="font-size:12.5px;color:#343a40;line-height:1.7;font-weight:500;">{{ bb.text }}</span>
+                  <div style="display:flex;gap:9px;margin:0 0 10px;padding:9px 11px;border-left:3px solid #2050a0;border-radius:0 5px 5px 0;background:var(--color-surface-muted,#f8f9fb);">
+                    <span title="Câu trả lời ngắn ngay đầu mục — phần trợ lý AI thường lấy nguyên văn" style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-accent,#2050a0);white-space:nowrap;flex-shrink:0;padding-top:2px;">Trả lời</span>
+                    <span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.7;font-weight:500;">{{ bb.text }}</span>
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isP }}"><p>{{ bb.text }}</p></sc-if>
                 <sc-if value="{{ bb.isL }}"><ul><sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="2"><li>{{ li.text }}</li></sc-for></ul></sc-if>
                 <sc-if value="{{ bb.isTbl }}">
-                  <div style="margin:0 0 12px;border:1px solid #eff2f7;border-radius:6px;overflow:hidden;">
-                    <div style="display:flex;background:#f8f9fb;border-bottom:1px solid #eff2f7;">
-                      <sc-for list="{{ bb.head }}" as="hc" hint-placeholder-count="4"><span style="flex:1;min-width:0;padding:8px 10px;font-size:11.5px;font-weight:700;color:#495057;">{{ hc.text }}</span></sc-for>
+                  <div style="margin:0 0 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden;">
+                    <div style="display:flex;background:var(--color-surface-muted,#f8f9fb);border-bottom:1px solid var(--color-border,#e9ecf4);">
+                      <sc-for list="{{ bb.head }}" as="hc" hint-placeholder-count="4"><span style="flex:1;min-width:0;padding:8px 10px;font-size:12px;font-weight:700;color:var(--color-body-text,#3c4765);">{{ hc.text }}</span></sc-for>
                     </div>
                     <sc-for list="{{ bb.rows }}" as="rw" hint-placeholder-count="3">
-                      <div style="display:flex;border-top:1px solid #f6f7f9;">
-                        <sc-for list="{{ rw.cells }}" as="cl" hint-placeholder-count="4"><span style="flex:1;min-width:0;padding:8px 10px;font-size:12px;color:#495057;line-height:1.55;">{{ cl.text }}</span></sc-for>
+                      <div style="display:flex;border-top:1px solid var(--color-border-soft,#f6f7f9);">
+                        <sc-for list="{{ rw.cells }}" as="cl" hint-placeholder-count="4"><span style="flex:1;min-width:0;padding:8px 10px;font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.55;">{{ cl.text }}</span></sc-for>
                       </div>
                     </sc-for>
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isChk }}">
-                  <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;padding:11px 12px;border:1px solid #eff2f7;border-radius:6px;background:#fbfcfe;">
-                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="4"><span style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#495057;line-height:1.65;"><i class="ri-checkbox-circle-line" style="font-size:14px;color:#0ab39c;flex-shrink:0;margin-top:2px;"></i>{{ li.text }}</span></sc-for>
+                  <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;padding:11px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface-muted,#fbfcfe);">
+                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="4"><span style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.65;"><i class="ri-checkbox-circle-line" style="font-size:14px;color:var(--color-admin-success-text,#0ab39c);flex-shrink:0;margin-top:2px;"></i>{{ li.text }}</span></sc-for>
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isFaq }}">
                   <div style="display:flex;flex-direction:column;gap:4px;margin:0 0 11px;">
-                    <span style="font-size:12.5px;font-weight:600;color:#343a40;line-height:1.55;">{{ bb.q }}</span>
-                    <span style="font-size:12.5px;color:#495057;line-height:1.7;">{{ bb.text }}</span>
+                    <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.55;">{{ bb.q }}</span>
+                    <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.7;">{{ bb.text }}</span>
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isTake }}">
-                  <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;padding:11px 12px;border:1px solid rgba(64,81,137,.20);border-radius:6px;background:rgba(64,81,137,.04);">
-                    <span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#405189;">Ý chính cần nhớ</span>
-                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="3"><span style="font-size:12.5px;color:#495057;line-height:1.7;">• {{ li.text }}</span></sc-for>
+                  <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;padding:11px 12px;border:1px solid rgba(32,80,160,.20);border-radius:6px;background:rgba(32,80,160,.04);">
+                    <span style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-accent,#2050a0);">Ý chính cần nhớ</span>
+                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="3"><span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.7;">• {{ li.text }}</span></sc-for>
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isCta }}">
-                  <div style="margin:0 0 12px;padding:11px 12px;border:1px solid rgba(64,81,137,.22);border-radius:6px;background:rgba(64,81,137,.05);">
-                    <span style="font-size:12.5px;color:#343a40;line-height:1.7;">{{ bb.text }}</span>
+                  <div style="margin:0 0 12px;padding:11px 12px;border:1px solid rgba(32,80,160,.22);border-radius:6px;background:rgba(32,80,160,.05);">
+                    <span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.7;">{{ bb.text }}</span>
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isSrc }}">
                   <div style="display:flex;flex-direction:column;gap:5px;margin:0 0 12px;">
-                    <span style="font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#adb5bd;">Nguồn tham khảo</span>
-                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="2"><span style="font-size:12px;color:#878a99;line-height:1.65;">{{ li.text }}</span></sc-for>
+                    <span style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">Nguồn tham khảo</span>
+                    <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="2"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">{{ li.text }}</span></sc-for>
                   </div>
                 </sc-if>
               </sc-for>
-              <sc-if value="{{ streaming }}"><span style="display:inline-block;width:7px;height:15px;background:#405189;vertical-align:-2px;animation:awBlink 1s steps(1) infinite;"></span></sc-if>
+              <sc-if value="{{ streaming }}"><span style="display:inline-block;width:7px;height:15px;background:#2050a0;vertical-align:-2px;animation:awBlink 1s steps(1) infinite;"></span></sc-if>
             </div>
           </div>
           </sc-if>
 
           <div class="aw-card">
             <div class="aw-cardh">
-              <button onClick="{{ sPick }}" title="{{ sPickTitle }}" style="{{ sBoxStyle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
-              <span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Tiêu đề &amp; mô tả SEO</span>
+              <button onClick="{{ sPick }}" title="{{ sPickTitle }}" style="{{ sBoxStyle }}" aria-label="{{ sPickTitle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
+              <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Tiêu đề &amp; mô tả SEO</span>
               <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
-                <button onClick="{{ sRedo }}" title="Viết lại phần SEO" style="{{ redoStyle }}"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
+                <button onClick="{{ sRedo }}" title="Viết lại phần SEO" style="{{ redoStyle }}" aria-label="Viết lại phần SEO"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
                 <button onClick="{{ sInsert }}" title="{{ sInsertTitle }}" style="{{ sInsStyle }}">{{ sInsLabel }}</button>
               </span>
             </div>
             <div style="display:flex;flex-direction:column;gap:11px;padding:11px 12px;">
               <div class="aw-fld">
-                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:11.5px;font-weight:600;color:#495057;">Tiêu đề SEO</span><span style="margin-left:auto;font-size:11px;color:{{ seoTColor }};font-variant-numeric:tabular-nums;">{{ seoTLen }}</span></div>
-                <input class="aw-in" value="{{ seoTitle }}" onChange="{{ onSeoTitle }}" style="border-color:#f0f1f3;background:#fbfcfe;">
+                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Tiêu đề SEO</span><span style="margin-left:auto;font-size:12px;color:{{ seoTColor }};font-variant-numeric:tabular-nums;">{{ seoTLen }}</span></div>
+                <input class="aw-in" value="{{ seoTitle }}" onChange="{{ onSeoTitle }}" style="border-color:#f0f1f3;background:var(--color-surface-muted,#fbfcfe);">
               </div>
               <div class="aw-fld">
-                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:11.5px;font-weight:600;color:#495057;">Mô tả SEO</span><span style="margin-left:auto;font-size:11px;color:{{ seoDColor }};font-variant-numeric:tabular-nums;">{{ seoDLen }}</span></div>
-                <textarea class="aw-in" rows="2" value="{{ seoDesc }}" onChange="{{ onSeoDesc }}" style="border-color:#f0f1f3;background:#fbfcfe;"></textarea>
+                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Mô tả SEO</span><span style="margin-left:auto;font-size:12px;color:{{ seoDColor }};font-variant-numeric:tabular-nums;">{{ seoDLen }}</span></div>
+                <textarea class="aw-in" rows="2" value="{{ seoDesc }}" onChange="{{ onSeoDesc }}" style="border-color:#f0f1f3;background:var(--color-surface-muted,#fbfcfe);"></textarea>
               </div>
               <div class="aw-fld">
-                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:11.5px;font-weight:600;color:#495057;">Đường dẫn trang</span><span title="Đường dẫn ngắn, không mốc năm thì sang năm không phải đổi link" style="margin-left:auto;font-size:11px;color:{{ slugColor }};">{{ slugLen }}</span></div>
-                <input class="aw-in" value="{{ slug }}" onChange="{{ onSlug }}" style="border-color:#f0f1f3;background:#fbfcfe;font-size:12px;">
+                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Đường dẫn trang</span><span title="Đường dẫn ngắn, không mốc năm thì sang năm không phải đổi link" style="margin-left:auto;font-size:12px;color:{{ slugColor }};">{{ slugLen }}</span></div>
+                <input class="aw-in" value="{{ slug }}" onChange="{{ onSlug }}" style="border-color:#f0f1f3;background:var(--color-surface-muted,#fbfcfe);font-size:12px;">
               </div>
-              <div style="display:flex;flex-direction:column;gap:5px;padding:9px 11px;border-radius:5px;background:#fbfcfe;border:1px solid #f0f1f3;">
-                <span style="font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#adb5bd;">Xem như trên Google</span>
-                <span style="font-size:11px;color:#0d7a3e;">{{ previewUrl }}</span>
+              <div style="display:flex;flex-direction:column;gap:5px;padding:9px 11px;border-radius:5px;background:var(--color-surface-muted,#fbfcfe);border:1px solid #f0f1f3;">
+                <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">Xem như trên Google</span>
+                <span style="font-size:12px;color:#0d7a3e;">{{ previewUrl }}</span>
                 <span style="font-size:14px;color:#1a0dab;line-height:1.35;">{{ seoTitle }}</span>
-                <span style="font-size:11.5px;color:#4d5156;line-height:1.55;">{{ seoDesc }}</span>
+                <span style="font-size:12px;color:#4d5156;line-height:1.55;">{{ seoDesc }}</span>
               </div>
             </div>
           </div>
@@ -471,29 +474,29 @@
 
         <div style="display:flex;flex-direction:column;gap:10px;min-width:0;">
           <div class="aw-card" style="overflow:hidden;">
-            <div style="display:flex;align-items:center;gap:9px;padding:11px 12px;border-bottom:1px solid #eff2f7;">
+            <div style="display:flex;align-items:center;gap:9px;padding:11px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);">
               <span title="{{ scoreTitle }}" style="{{ scoreStyle }}">{{ seoScore }}</span>
-              <span style="display:flex;flex-direction:column;gap:1px;min-width:0;"><span style="font-size:12.5px;font-weight:600;color:#343a40;white-space:nowrap;">Bảng kiểm &amp; tự chỉnh</span><span style="font-size:11px;color:#878a99;">{{ seoSummary }}</span></span>
+              <span style="display:flex;flex-direction:column;gap:1px;min-width:0;"><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Bảng kiểm &amp; tự chỉnh</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ seoSummary }}</span></span>
             </div>
-            <div style="padding:10px 12px;border-bottom:1px solid #f6f7f9;">
+            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border-soft,#f6f7f9);">
               <button onClick="{{ onFixChecks }}" title="{{ fixChecksTitle }}" style="{{ fixChecksStyle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ fixChecksLabel }}</button>
             </div>
             <div style="display:flex;flex-direction:column;">
               <sc-for list="{{ checks }}" as="c" hint-placeholder-count="8">
-                <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-top:1px solid #f6f7f9;">
+                <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
                   <i class="{{ c.icon }}" style="font-size:15px;color:{{ c.color }};flex-shrink:0;margin-top:1px;"></i>
                   <span style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
-                    <span style="font-size:12px;color:#495057;line-height:1.5;">{{ c.label }}</span>
-                    <sc-if value="{{ c.done }}"><span style="display:flex;align-items:flex-start;gap:5px;font-size:10.5px;color:#0a8f7f;line-height:1.55;"><i class="ri-magic-line" style="font-size:12px;flex-shrink:0;margin-top:1px;"></i>đã chỉnh: {{ c.diff }}</span></sc-if>
-                    <sc-if value="{{ c.fixable }}"><button onClick="{{ c.fix }}" title="{{ c.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:28px;padding:5px 9px;border:1px solid rgba(64,81,137,.28);border-radius:4px;background:rgba(64,81,137,.10);font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;" style-hover="background:rgba(64,81,137,.16);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ c.fixLabel }}</button></sc-if>
+                    <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.5;">{{ c.label }}</span>
+                    <sc-if value="{{ c.done }}"><span style="display:flex;align-items:flex-start;gap:5px;font-size:12px;color:var(--color-admin-success-text,#0a8f7f);line-height:1.55;"><i class="ri-magic-line" style="font-size:12px;flex-shrink:0;margin-top:1px;"></i>đã chỉnh: {{ c.diff }}</span></sc-if>
+                    <sc-if value="{{ c.fixable }}"><button onClick="{{ c.fix }}" title="{{ c.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:28px;padding:5px 9px;border:1px solid rgba(32,80,160,.28);border-radius:4px;background:rgba(32,80,160,.10);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;" style-hover="background:rgba(32,80,160,.16);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ c.fixLabel }}</button></sc-if>
                   </span>
                 </div>
               </sc-for>
             </div>
           </div>
-          <div style="display:flex;gap:8px;padding:10px 11px;border:1px solid #eff2f7;border-radius:6px;background:#fbfcfe;">
-            <i class="ri-shield-check-line" style="font-size:15px;color:#0ab39c;flex-shrink:0;margin-top:1px;"></i>
-            <span style="font-size:11.5px;color:#878a99;line-height:1.6;">Bản nháp do AI viết. Bước Kiểm định ở sau sẽ tự soát chất lượng, nhưng số liệu, giá và tên riêng vẫn cần bạn đọc lại. Phần do AI tạo được ghi nhận trong lịch sử sửa bài.</span>
+          <div style="display:flex;gap:8px;padding:10px 11px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface-muted,#fbfcfe);">
+            <i class="ri-shield-check-line" style="font-size:15px;color:var(--color-admin-success-text,#0ab39c);flex-shrink:0;margin-top:1px;"></i>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Bản nháp do AI viết. Bước Kiểm định ở sau sẽ tự soát chất lượng, nhưng số liệu, giá và tên riêng vẫn cần bạn đọc lại. Phần do AI tạo được ghi nhận trong lịch sử sửa bài.</span>
           </div>
         </div>
       </div>
@@ -501,25 +504,25 @@
 
     <!-- BƯỚC 5 — KIỂM ĐỊNH -->
     <sc-if value="{{ isAudit }}">
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 14px;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 1px 2px rgba(56,65,74,.10);">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 14px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 1px 2px rgba(56,65,74,.10);">
         <span style="{{ bigScoreStyle }}">{{ bigScore }}</span>
         <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 220px;min-width:0;">
-          <span style="font-size:13px;font-weight:600;color:#343a40;">{{ auditHead }}</span>
-          <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ auditSub }}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ auditHead }}</span>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ auditSub }}</span>
         </span>
         <button onClick="{{ onFixAll }}" title="{{ fixAllTitle }}" style="{{ fixAllStyle }}"><i class="ri-sparkling-2-line" style="font-size:15px;"></i>{{ fixAllLabel }}</button>
       </div>
 
       <div class="aw-card">
-        <div class="aw-cardh"><i class="ri-award-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Hệ thống tự cho điểm bài này</span><span style="margin-left:auto;font-size:11px;color:#adb5bd;white-space:nowrap;">dưới {{ minScoreText }} điểm thì nên sửa</span></div>
+        <div class="aw-cardh"><i class="ri-award-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Hệ thống tự cho điểm bài này</span><span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;text-align:right;">dưới {{ minScoreText }} điểm thì nên sửa</span></div>
         <div style="display:flex;flex-direction:column;">
           <sc-for list="{{ audits }}" as="a" hint-placeholder-count="6">
-            <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-top:1px solid #f6f7f9;">
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
               <span style="{{ a.pillStyle }}">{{ a.score }}</span>
               <span style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
-                <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ a.label }}</span><span title="{{ a.term }}" style="font-size:10.5px;color:#c3c8d0;cursor:help;white-space:nowrap;">{{ a.termShort }}</span></span>
-                <span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ a.hint }}</span>
-                <sc-if value="{{ a.fixable }}"><button onClick="{{ a.fix }}" title="{{ a.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:30px;padding:6px 10px;border:1px solid rgba(64,81,137,.28);border-radius:4px;background:rgba(64,81,137,.10);font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;" style-hover="background:rgba(64,81,137,.16);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ a.fixLabel }}</button></sc-if>
+                <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ a.label }}</span><span title="{{ a.term }}" style="font-size:12px;color:#c3c8d0;cursor:help;white-space:nowrap;">{{ a.termShort }}</span></span>
+                <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ a.hint }}</span>
+                <sc-if value="{{ a.fixable }}"><button onClick="{{ a.fix }}" title="{{ a.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:30px;padding:6px 10px;border:1px solid rgba(32,80,160,.28);border-radius:4px;background:rgba(32,80,160,.10);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;" style-hover="background:rgba(32,80,160,.16);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ a.fixLabel }}</button></sc-if>
               </span>
             </div>
           </sc-for>
@@ -527,12 +530,12 @@
       </div>
 
       <div class="aw-card">
-        <div class="aw-cardh"><i class="ri-rocket-2-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Sau khi đăng — việc giúp bài được index nhanh và giữ hạng</span><span title="Những việc này nằm ngoài nội dung bài nhưng ảnh hưởng lớn tới tốc độ index và thứ hạng. Nền tảng làm thay, bạn chỉ cần biết là nó đang chạy." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>nền tảng làm thay</span></div>
+        <div class="aw-cardh"><i class="ri-rocket-2-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Sau khi đăng — việc giúp bài được index nhanh và giữ hạng</span><span title="Những việc này nằm ngoài nội dung bài nhưng ảnh hưởng lớn tới tốc độ index và thứ hạng. Nền tảng làm thay, bạn chỉ cần biết là nó đang chạy." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--color-body-muted,#5b6275);cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>nền tảng làm thay</span></div>
         <div style="display:flex;flex-direction:column;">
           <sc-for list="{{ afterPub }}" as="ap" hint-placeholder-count="6">
-            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
-              <i class="{{ ap.icon }}" style="font-size:15px;color:#405189;flex-shrink:0;margin-top:2px;"></i>
-              <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;font-weight:500;color:#343a40;line-height:1.5;">{{ ap.label }}</span><span style="font-size:11.5px;color:#878a99;line-height:1.6;">{{ ap.hint }}</span></span>
+            <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
+              <i class="{{ ap.icon }}" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:2px;"></i>
+              <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;font-weight:500;color:var(--color-heading,#1f2b4d);line-height:1.5;">{{ ap.label }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ ap.hint }}</span></span>
               <span style="{{ ap.tagStyle }}">{{ ap.tag }}</span>
             </div>
           </sc-for>
@@ -541,23 +544,23 @@
 
       <div class="aw-2col">
         <div class="aw-card">
-          <div class="aw-cardh"><i class="ri-code-box-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Dữ liệu để máy đọc hiểu bài</span><span title="Ngành gọi là schema / structured data. Hệ thống tự gắn theo dạng nội dung, bạn không phải chèn mã." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>tự gắn</span></div>
+          <div class="aw-cardh"><i class="ri-code-box-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Dữ liệu để máy đọc hiểu bài</span><span title="Ngành gọi là schema / structured data. Hệ thống tự gắn theo dạng nội dung, bạn không phải chèn mã." style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--color-body-muted,#5b6275);cursor:help;white-space:nowrap;"><i class="ri-information-line" style="font-size:13px;"></i>tự gắn</span></div>
           <div style="display:flex;flex-direction:column;">
             <sc-for list="{{ schemas }}" as="sc" hint-placeholder-count="4">
-              <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid #f6f7f9;">
+              <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
                 <i class="{{ sc.icon }}" style="font-size:15px;color:{{ sc.color }};flex-shrink:0;margin-top:1px;"></i>
-                <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:#343a40;line-height:1.5;">{{ sc.label }}</span><span style="font-size:11px;color:#878a99;line-height:1.5;">{{ sc.hint }}</span></span>
+                <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;"><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.5;">{{ sc.label }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ sc.hint }}</span></span>
               </div>
             </sc-for>
           </div>
         </div>
         <div class="aw-card">
-          <div class="aw-cardh"><i class="ri-file-history-line" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#343a40;">Sẽ chèn vào trang</span></div>
+          <div class="aw-cardh"><i class="ri-file-history-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Sẽ chèn vào trang</span></div>
           <div style="display:flex;flex-direction:column;gap:7px;padding:11px 12px;">
             <sc-for list="{{ pickList }}" as="p" hint-placeholder-count="4">
               <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:{{ p.color }};line-height:1.5;"><i class="{{ p.icon }}" style="font-size:14px;flex-shrink:0;"></i>{{ p.label }}</span>
             </sc-for>
-            <span style="font-size:11px;color:#adb5bd;line-height:1.6;margin-top:2px;">Quay lại bước Bản nháp để bỏ tick phần không muốn chèn. Chèn xong vẫn hoàn tác được.</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;margin-top:2px;">Quay lại bước Bản nháp để bỏ tick phần không muốn chèn. Chèn xong vẫn hoàn tác được.</span>
           </div>
         </div>
       </div>
@@ -565,12 +568,12 @@
   </div>
 
   <!-- CHÂN: HÀNH ĐỘNG CHÍNH -->
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid #eff2f7;background:#fff;flex-shrink:0;">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff);flex-shrink:0;">
     <sc-if value="{{ isDraft }}">
-      <button onClick="{{ onToggleAll }}" style="display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 4px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:#878a99;cursor:pointer;white-space:nowrap;" style-hover="color:#405189;"><i class="{{ allIcon }}" style="font-size:15px;"></i>{{ allLabel }}</button>
+      <button onClick="{{ onToggleAll }}" style="display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 4px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;" style-hover="color:var(--color-accent,#2050a0);"><i class="{{ allIcon }}" style="font-size:15px;"></i>{{ allLabel }}</button>
     </sc-if>
-    <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;"><span style="font-size:11.5px;color:#878a99;line-height:1.5;">{{ footNote }}</span><span style="font-size:10.5px;color:#c3c8d0;line-height:1.4;">⌘/Ctrl + Enter để chạy bước này · Esc để đóng</span></span>
-    <sc-if value="{{ showSkip }}"><button onClick="{{ onSkip }}" style="display:inline-flex;align-items:center;min-height:36px;padding:8px 10px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:#878a99;cursor:pointer;white-space:nowrap;text-decoration:underline;" style-hover="color:#405189;">{{ skipLabel }}</button></sc-if>
+    <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ footNote }}</span><span style="font-size:12px;color:#c3c8d0;line-height:1.4;">⌘/Ctrl + Enter để chạy bước này · Esc để đóng</span></span>
+    <sc-if value="{{ showSkip }}"><button onClick="{{ onSkip }}" style="display:inline-flex;align-items:center;min-height:36px;padding:8px 10px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;text-decoration:underline;" style-hover="color:var(--color-accent,#2050a0);">{{ skipLabel }}</button></sc-if>
     <button onClick="{{ onPrimary }}" title="{{ primaryTitle }}" style="{{ primaryStyle }}"><i class="{{ primaryIcon }}" style="{{ primaryIconStyle }}"></i>{{ primaryLabel }}</button>
   </div>
 
@@ -578,25 +581,25 @@
   <sc-if value="{{ promptOpen }}">
     <div style="position:absolute;inset:0;z-index:97;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div onClick="{{ onPromptClose }}" style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:520px;max-width:100%;max-height:100%;display:flex;flex-direction:column;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);overflow:hidden;">
-        <div style="display:flex;align-items:flex-start;gap:10px;padding:15px 16px;border-bottom:1px solid #eff2f7;">
-          <i class="ri-file-shield-2-line" style="font-size:18px;color:#405189;flex-shrink:0;margin-top:1px;"></i>
-          <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;"><span style="font-size:14px;font-weight:600;color:#343a40;">Yêu cầu hệ thống gửi cho AI thay bạn</span><span style="font-size:11.5px;color:#878a99;line-height:1.6;">Bạn không cần nhập những điều này — nền tảng đã cài sẵn và giữ nguyên qua mọi bài viết.</span></span>
-          <button onClick="{{ onPromptClose }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;" style-hover="background:#f3f6f9;"><i class="ri-close-line" style="font-size:18px;"></i></button>
+      <div style="position:relative;z-index:1;width:520px;max-width:100%;max-height:100%;display:flex;flex-direction:column;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);overflow:hidden;">
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:15px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);">
+          <i class="ri-file-shield-2-line" style="font-size:18px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:1px;"></i>
+          <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;"><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);">Yêu cầu hệ thống gửi cho AI thay bạn</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Bạn không cần nhập những điều này — nền tảng đã cài sẵn và giữ nguyên qua mọi bài viết.</span></span>
+          <button onClick="{{ onPromptClose }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);" aria-label="Đóng" title="Đóng"><i class="ri-close-line" style="font-size:18px;"></i></button>
         </div>
         <div class="aw-scroll" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:14px;">
           <sc-for list="{{ promptGroups }}" as="pg" hint-placeholder-count="4">
             <div style="display:flex;flex-direction:column;gap:7px;">
-              <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:#343a40;"><i class="{{ pg.icon }}" style="font-size:15px;color:#405189;"></i>{{ pg.title }}</span>
+              <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--color-heading,#1f2b4d);"><i class="{{ pg.icon }}" style="font-size:15px;color:var(--color-accent,#2050a0);"></i>{{ pg.title }}</span>
               <sc-for list="{{ pg.items }}" as="pi" hint-placeholder-count="4">
-                <span style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#495057;line-height:1.65;"><i class="ri-check-line" style="font-size:14px;color:#0ab39c;flex-shrink:0;margin-top:2px;"></i>{{ pi.text }}</span>
+                <span style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.65;"><i class="ri-check-line" style="font-size:14px;color:var(--color-admin-success-text,#0ab39c);flex-shrink:0;margin-top:2px;"></i>{{ pi.text }}</span>
               </sc-for>
             </div>
           </sc-for>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #eff2f7;">
-          <span style="font-size:11px;color:#adb5bd;line-height:1.5;flex:1;min-width:0;">Muốn đổi giọng văn cho toàn website? Cài đặt › Văn phong thương hiệu.</span>
-          <button onClick="{{ onPromptClose }}" style="display:inline-flex;align-items:center;min-height:36px;padding:8px 14px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">Đã hiểu</button>
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);">
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;flex:1;min-width:0;">Muốn đổi giọng văn cho toàn website? Cài đặt › Văn phong thương hiệu.</span>
+          <button onClick="{{ onPromptClose }}" style="display:inline-flex;align-items:center;min-height:36px;padding:8px 14px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">Đã hiểu</button>
         </div>
       </div>
     </div>
@@ -605,14 +608,14 @@
   <sc-if value="{{ closeAskOpen }}">
     <div style="position:absolute;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:400px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:#b57d13;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">Đóng trợ lý khi chưa chèn?</span></div>
-        <span style="font-size:12.5px;color:#878a99;line-height:1.6;">Bản nháp này chưa được chèn vào trang. Đóng bây giờ là mất, và viết lại sẽ trừ thêm hạn ngạch từ AI.</span>
+      <div style="position:relative;z-index:1;width:400px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:var(--color-admin-warning-text,#b57d13);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">Đóng trợ lý khi chưa chèn?</span></div>
+        <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Bản nháp này chưa được chèn vào trang. Đóng bây giờ là mất, và viết lại sẽ trừ thêm hạn ngạch từ AI.</span>
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
-          <button onClick="{{ onCloseInsert }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:0;border-radius:6px;background:#405189;font:inherit;cursor:pointer;" style-hover="filter:brightness(.95);"><i class="ri-arrow-left-down-line" style="font-size:16px;color:#fff;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#fff;text-align:left;">Chèn phần đã chọn rồi đóng</span></button>
-          <button onClick="{{ onCloseDrop }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font:inherit;cursor:pointer;" style-hover="border-color:rgba(240,101,72,.3);background:rgba(240,101,72,.05);"><i class="ri-delete-bin-line" style="font-size:16px;color:#f06548;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#f06548;text-align:left;">Đóng và bỏ bản nháp</span></button>
+          <button onClick="{{ onCloseInsert }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:0;border-radius:6px;background:#2050a0;font:inherit;cursor:pointer;" style-hover="filter:brightness(.95);"><i class="ri-arrow-left-down-line" style="font-size:16px;color:#fff;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#fff;text-align:left;">Chèn phần đã chọn rồi đóng</span></button>
+          <button onClick="{{ onCloseDrop }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);font:inherit;cursor:pointer;" style-hover="border-color:rgba(240,101,72,.3);background:rgba(240,101,72,.05);"><i class="ri-delete-bin-line" style="font-size:16px;color:var(--color-admin-danger-text,#f06548);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-admin-danger-text,#f06548);text-align:left;">Đóng và bỏ bản nháp</span></button>
         </div>
-        <button onClick="{{ onCloseStay }}" style="align-self:flex-end;margin-top:6px;min-height:36px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="color:#495057;">Ở lại</button>
+        <button onClick="{{ onCloseStay }}" style="align-self:flex-end;margin-top:6px;min-height:36px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="color:var(--color-body-text,#3c4765);">Ở lại</button>
       </div>
     </div>
   </sc-if>
@@ -620,16 +623,16 @@
   <sc-if value="{{ conflictOpen }}">
     <div style="position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:400px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:#b57d13;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ conflictTitle }}</span></div>
-        <span style="font-size:12.5px;color:#878a99;line-height:1.6;">{{ conflictText }}</span>
-        <span style="display:flex;align-items:flex-start;gap:7px;padding:8px 10px;border-radius:5px;background:rgba(64,81,137,.05);font-size:11.5px;color:#405189;line-height:1.6;"><i class="ri-lightbulb-line" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i>{{ conflictHint }}</span>
+      <div style="position:relative;z-index:1;width:400px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:var(--color-admin-warning-text,#b57d13);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ conflictTitle }}</span></div>
+        <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ conflictText }}</span>
+        <span style="display:flex;align-items:flex-start;gap:7px;padding:8px 10px;border-radius:5px;background:rgba(32,80,160,.05);font-size:12px;color:var(--color-accent,#2050a0);line-height:1.6;"><i class="ri-lightbulb-line" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i>{{ conflictHint }}</span>
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
           <sc-for list="{{ conflictOpts }}" as="co" hint-placeholder-count="3">
-            <button onClick="{{ co.on }}" style="{{ co.style }}" style-hover="border-color:#405189;background:rgba(64,81,137,.08);"><i class="{{ co.icon }}" style="font-size:16px;color:#405189;flex-shrink:0;"></i><span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:#343a40;">{{ co.label }}</span><sc-if value="{{ co.rec }}"><span style="display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:20px;background:#405189;font-size:9.5px;font-weight:700;letter-spacing:.03em;color:#fff;white-space:nowrap;">KHUYẾN NGHỊ</span></sc-if></span><span style="font-size:11px;color:#878a99;line-height:1.45;">{{ co.hint }}</span></span></button>
+            <button onClick="{{ co.on }}" style="{{ co.style }}" style-hover="border-color:#2050a0;background:rgba(32,80,160,.08);"><i class="{{ co.icon }}" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ co.label }}</span><sc-if value="{{ co.rec }}"><span style="display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:20px;background:#2050a0;font-size:12px;font-weight:700;letter-spacing:.03em;color:#fff;white-space:nowrap;">Khuyến nghị</span></sc-if></span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ co.hint }}</span></span></button>
           </sc-for>
         </div>
-        <button onClick="{{ onConflictCancel }}" style="align-self:flex-end;margin-top:6px;min-height:36px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;" style-hover="color:#495057;">Huỷ</button>
+        <button onClick="{{ onConflictCancel }}" style="align-self:flex-end;margin-top:6px;min-height:36px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="color:var(--color-body-text,#3c4765);">Hủy</button>
       </div>
     </div>
   </sc-if>
@@ -752,14 +755,14 @@ class Component extends DCLogic {
       name: 'Dịch vụ tại nhà', biz: 'Bảo Sơn Home · dịch vụ sửa chữa tại nhà',
       topicPh: 'Ví dụ: bảng giá và quy trình vệ sinh máy lạnh cho căn hộ 2 phòng ngủ',
       kwPh: 'vệ sinh máy lạnh tại nhà',
-      notePh: 'Mỗi dòng một ý. Ví dụ:\n- Thợ đến trong 2 giờ ở nội thành\n- Bảo hành công 30 ngày, có hoá đơn',
+      notePh: 'Mỗi dòng một ý. Ví dụ:\n- Thợ đến trong 2 giờ ở nội thành\n- Bảo hành công 30 ngày, có hóa đơn',
       kw: [['bảng giá vệ sinh máy lạnh', 'bao lâu vệ sinh một lần', 'thợ tại nhà', 'bảo hành công'], ['máy lạnh chảy nước', 'máy lạnh không lạnh', 'nạp gas', 'chi phí thay linh kiện']],
       ents: [
         { l: 'Vệ sinh dàn lạnh', w: ['vệ sinh', 'máy lạnh', 'dàn'] }, { l: 'Nạp gas R32 / R410a', w: ['gas', 'nạp', 'lạnh'] },
         { l: 'Chu kỳ bảo dưỡng', w: ['bao lâu', 'định kỳ', 'bảo dưỡng'] }, { l: 'Bảo hành công', w: ['bảo hành', 'cam kết'] },
         { l: 'Bảng giá dịch vụ', w: ['giá', 'chi phí', 'bảng giá'] }, { l: 'Thời gian có mặt', w: ['nhanh', 'giờ', 'tại nhà'] },
         { l: 'Máy lạnh chảy nước', w: ['chảy nước', 'lỗi'] }, { l: 'Máy lạnh không lạnh', w: ['không lạnh', 'lỗi'] },
-        { l: 'Tiêu thụ điện', w: ['điện', 'tiết kiệm'] }, { l: 'Hoá đơn và bảo hiểm', w: ['hoá đơn', 'công ty'] }
+        { l: 'Tiêu thụ điện', w: ['điện', 'tiết kiệm'] }, { l: 'Hóa đơn và bảo hiểm', w: ['hóa đơn', 'công ty'] }
       ],
       qs: ['{kw} giá bao nhiêu', 'bao lâu nên làm một lần', 'thợ đến trong bao lâu', 'có bảo hành sau khi làm không', 'tự làm được không hay phải gọi thợ'],
       refs: [{ k: 'r1', kind: 'note', label: 'Bảng giá dịch vụ 2026 (đã tải lên Thư viện)', meta: 'ghi chú' }],
@@ -857,7 +860,7 @@ class Component extends DCLogic {
     { id: 'b-src', blk: 'src', text: 'Nguồn tham khảo', words: 40, subs: [] }
   ];
 
-  TCRIT = ['Từ khoá chính ở đầu', 'Dưới 60 ký tự', 'Nêu rõ ai đọc / tình huống', 'Có lợi ích hoặc con số', 'Không sáo ngữ, không hứa quá'];
+  TCRIT = ['Từ khóa chính ở đầu', 'Dưới 60 ký tự', 'Nêu rõ ai đọc / tình huống', 'Có lợi ích hoặc con số', 'Không sáo ngữ, không hứa quá'];
   OUTMAP = {
     social: [
       { id: 'so1', text: 'Câu mở khiến người đọc dừng lại', q: 'vì sao tôi nên đọc tiếp', words: 40, subs: [] },
@@ -933,22 +936,22 @@ class Component extends DCLogic {
     { t: 'Máy lọc nước gia đình 4 người: chọn theo nguồn nước', d: 'Nhà 4 người nên dùng RO hay Nano? Bài viết so sánh 3 công nghệ, hướng dẫn tính công suất theo số người và cộng đủ chi phí thay lõi trong 3 năm đầu.', s: 'may-loc-nuoc-gia-dinh-4-nguoi' }
   ];
   FIXES = {
-    seoTitle: { b: '70 ký tự — Google cắt mất phần cuối', a: '45 ký tự, từ khoá chính ở đầu, có năm', v: 'Chọn máy lọc nước cho gia đình 4 người (2026)', m: 'Đã viết lại tiêu đề SEO còn 45 ký tự — giữ từ khoá chính ở đầu, thêm mốc năm để tăng tỉ lệ bấm' },
-    slug: { b: 'cach-chon-may-loc-nuoc-cho-gia-dinh-4-nguoi-theo-nguon-nuoc-2026', a: 'chon-may-loc-nuoc-gia-dinh-4-nguoi', v: 'chon-may-loc-nuoc-gia-dinh-4-nguoi', m: 'Đã chuẩn hoá đường dẫn: bỏ từ thừa và mốc năm để không phải đổi link sang năm sau' },
+    seoTitle: { b: '70 ký tự — Google cắt mất phần cuối', a: '45 ký tự, từ khóa chính ở đầu, có năm', v: 'Chọn máy lọc nước cho gia đình 4 người (2026)', m: 'Đã viết lại tiêu đề SEO còn 45 ký tự — giữ từ khóa chính ở đầu, thêm mốc năm để tăng tỉ lệ bấm' },
+    slug: { b: 'cach-chon-may-loc-nuoc-cho-gia-dinh-4-nguoi-theo-nguon-nuoc-2026', a: 'chon-may-loc-nuoc-gia-dinh-4-nguoi', v: 'chon-may-loc-nuoc-gia-dinh-4-nguoi', m: 'Đã chuẩn hóa đường dẫn: bỏ từ thừa và mốc năm để không phải đổi link sang năm sau' },
     links: { b: 'chưa có liên kết nội bộ', a: '2 liên kết đặt trong mục nhận biết nguồn nước và mục chi phí', m: 'Đã chèn 2 liên kết nội bộ vào đúng đoạn liên quan, chữ neo lấy theo tiêu đề bài đích' },
-    alt: { b: 'ảnh đại diện không có chữ thay thế', a: '“Máy lọc nước RO 10 lít/giờ lắp dưới tủ bếp gia đình 4 người”', m: 'Đã viết chữ thay thế mô tả đúng ảnh, có từ khoá tự nhiên, không nhồi' },
+    alt: { b: 'ảnh đại diện không có chữ thay thế', a: '“Máy lọc nước RO 10 lít/giờ lắp dưới tủ bếp gia đình 4 người”', m: 'Đã viết chữ thay thế mô tả đúng ảnh, có từ khóa tự nhiên, không nhồi' },
     img: { b: 'bài chưa có ảnh minh hoạ', a: '3 vị trí được đánh dấu, kèm chú thích và chữ thay thế sẵn', m: 'Đã đánh dấu 3 chỗ nên chèn ảnh: dấu hiệu nguồn nước, bảng so sánh, sơ đồ lắp đặt' },
     cta: { b: 'bài kết thúc bằng lời khuyên chung', a: 'lời mời hành động theo dịch vụ thật của bạn, không hứa quá', m: 'Đã viết lời mời hành động cuối bài dựa trên dịch vụ kiểm tra nước tại nhà' },
     longSent: { b: '3 câu dài trên 30 từ, 1 đoạn 6 dòng', a: 'câu dài nhất còn 24 từ, đoạn dài nhất 4 dòng', m: 'Đã tách 3 câu dài và chia lại 1 đoạn — giữ nguyên ý, chỉ đổi nhịp câu' },
     srcNum: { b: '2 con số chưa dẫn nguồn (ngưỡng sắt, mangan)', a: 'dẫn QCVN 01-1:2018/BYT ngay tại câu chứa số', m: 'Đã gắn nguồn cho 2 con số và thêm vào mục Nguồn tham khảo' },
     depth: { b: 'bản nháp ngắn hơn mục tiêu', a: 'đã viết sâu thêm ở các mục mỏng, có ví dụ và số liệu', m: 'Đã viết sâu thêm cho các mục còn mỏng — thêm ví dụ thật và số liệu, không thêm chữ rỗng' },
-    kwStuff: { b: 'từ khoá chính xuất hiện 14 lần, 2 đoạn liền nhau bị lặp', a: 'còn 8 lần, thay 6 chỗ bằng cách gọi khác tự nhiên', m: 'Đã giảm mật độ từ khoá và thay bằng cách diễn đạt khác — không đổi ý' }
+    kwStuff: { b: 'từ khóa chính xuất hiện 14 lần, 2 đoạn liền nhau bị lặp', a: 'còn 8 lần, thay 6 chỗ bằng cách gọi khác tự nhiên', m: 'Đã giảm mật độ từ khóa và thay bằng cách diễn đạt khác — không đổi ý' }
   };
 
 
   BLOCKDATA = {
     tldr: { title: '', blocks: [{ k: 'tldr', items: ['Nguồn nước quyết định loại máy, không phải số lõi ghi trên vỏ.', 'Nhiễm phèn hoặc nước giếng: RO 10 lít/giờ có bình áp. Nước máy nội thành: Nano 4 cấp là đủ.', 'Chi phí lõi trong 3 năm thường bằng 40–60% giá máy — tính trước để không bất ngờ.'] }] },
-    chk: { title: 'Bảng kiểm trước khi xuống tiền', blocks: [{ k: 'chk', items: ['Đã biết nguồn nước nhà mình là nước máy, nước giếng hay nước bồn chứa.', 'Đã xét nghiệm nước hoặc ít nhất đối chiếu 3 dấu hiệu nhận biết.', 'Đã tính công suất theo số người, cộng thêm 20% nếu hay có khách.', 'Đã hỏi giá từng lõi và lịch thay, không chỉ hỏi giá máy.', 'Đã xác nhận có van khoá trước máy và chỗ đặt tránh nắng.'] }] },
+    chk: { title: 'Bảng kiểm trước khi xuống tiền', blocks: [{ k: 'chk', items: ['Đã biết nguồn nước nhà mình là nước máy, nước giếng hay nước bồn chứa.', 'Đã xét nghiệm nước hoặc ít nhất đối chiếu 3 dấu hiệu nhận biết.', 'Đã tính công suất theo số người, cộng thêm 20% nếu hay có khách.', 'Đã hỏi giá từng lõi và lịch thay, không chỉ hỏi giá máy.', 'Đã xác nhận có van khóa trước máy và chỗ đặt tránh nắng.'] }] },
     faq: { title: 'Câu hỏi thường gặp', blocks: [
       { k: 'faq', q: 'Máy lọc RO có làm mất hết khoáng không?', t: 'Có, RO giữ lại rất ít khoáng. Muốn giữ khoáng thì thêm lõi tạo khoáng, hoặc dùng Nano khi nguồn nước đã sạch.' },
       { k: 'faq', q: 'Bao lâu phải thay lõi một lần?', t: 'Ba lõi thô 6–12 tháng, màng RO 24–36 tháng. Nhà dùng nhiều hoặc nước đục thì rút ngắn lại.' },
@@ -1026,7 +1029,7 @@ class Component extends DCLogic {
       { k: 'ans', t: 'Ba thông số cần xem: công suất lít/giờ, loại màng RO và lịch thay từng lõi. Số cấp lọc và màu vỏ máy gần như không ảnh hưởng tới chất lượng nước.' }
     ],
     pr4: [
-      { k: 'ans', t: 'Lắp đặt miễn phí trong nội thành, bảo hành máy 24 tháng và bảo hành công 12 tháng. Chi phí lõi trung bình 900 nghìn–1,4 triệu mỗi năm tuỳ nguồn nước.' }
+      { k: 'ans', t: 'Lắp đặt miễn phí trong nội thành, bảo hành máy 24 tháng và bảo hành công 12 tháng. Chi phí lõi trung bình 900 nghìn–1,4 triệu mỗi năm tùy nguồn nước.' }
     ],
     pr5: [
       { k: 'ans', t: 'Không nên chọn bản RO nếu nước nhà bạn đã đạt chuẩn và bạn muốn giữ khoáng tự nhiên — khi đó Nano 4 cấp hợp hơn và rẻ hơn khi dùng lâu.' }
@@ -1091,7 +1094,7 @@ class Component extends DCLogic {
       { text: 'Đoạn dưới 4 dòng; ưu tiên bảng và danh sách hơn đoạn văn dài.' }
     ] },
     { icon: 'ri-shield-star-line', title: 'Giữ chất lượng và độ tin', items: [
-      { text: 'Không sáo ngữ, không cường điệu, không nhồi từ khoá.' },
+      { text: 'Không sáo ngữ, không cường điệu, không nhồi từ khóa.' },
       { text: 'Chỉ dùng con số có nguồn — nguồn bạn cung cấp hoặc nguồn chính thống đã chọn.' },
       { text: 'Ưu tiên kinh nghiệm thật và ví dụ cụ thể của doanh nghiệp bạn.' },
       { text: 'Không viết theo văn mẫu AI: nhịp câu xen kẽ, tránh mở bài chung chung.' }
@@ -1481,7 +1484,7 @@ class Component extends DCLogic {
   }
   toggleAeo(k) { const cur = this.aeoOn(k); this.setState(s => ({ aeoOv: Object.assign({}, s.aeoOv, { [k]: !cur }), outline: null })); }
   addKwSug(v) { const l = this.kwList(); this.setState({ kwSub: l.indexOf(v) < 0 ? l.concat([v]) : l }); }
-  moreKw() { this.setState(s => ({ kwSugSet: s.kwSugSet + 1 })); this.notify('Đã lấy thêm gợi ý từ khoá theo chủ đề bạn vừa nhập', 'ri-magic-line'); }
+  moreKw() { this.setState(s => ({ kwSugSet: s.kwSugSet + 1 })); this.notify('Đã lấy thêm gợi ý từ khóa theo chủ đề bạn vừa nhập', 'ri-magic-line'); }
   toggleOff(group, k) { this.setState(s => { const m = Object.assign({}, s[group]); if (m[k]) delete m[k]; else m[k] = true; return { [group]: m }; }); }
   addKw() { const v = (this.state.kwDraft || '').trim(); if (!v) return; const l = this.kwList(); this.setState({ kwSub: l.indexOf(v) < 0 ? l.concat([v]) : l, kwDraft: '' }); }
   addRef() { const v = (this.state.refDraft || '').trim(); if (!v) return; const link = /^https?:/i.test(v) || v.indexOf('.') > 0; this.setState({ refs: this.refList().concat([{ k: 'r' + Date.now(), kind: link ? 'link' : 'note', label: v, meta: link ? 'link' : 'ghi chú' }]), refDraft: '' }); }
@@ -1549,7 +1552,7 @@ class Component extends DCLogic {
       this.notify('Đã viết 3 phương án tiêu đề mới, chấm theo 5 tiêu chí — phương án “' + n[0].t + '” đang đạt cao nhất' + tail, 'ri-refresh-line');
       return;
     }
-    if (part === 'excerpt') { this.setState(s => ({ excIdx: (s.excIdx + 1) % this.EXCERPTS.length, excerpt: '' })); this.notify('Đã viết lại mô tả ngắn theo hướng khác — vẫn giữ từ khoá và con số chính' + tail, 'ri-refresh-line'); return; }
+    if (part === 'excerpt') { this.setState(s => ({ excIdx: (s.excIdx + 1) % this.EXCERPTS.length, excerpt: '' })); this.notify('Đã viết lại mô tả ngắn theo hướng khác — vẫn giữ từ khóa và con số chính' + tail, 'ri-refresh-line'); return; }
     if (part === 'seo') {
       this.setState(s => ({ seoIdx: (s.seoIdx + 1) % this.SEOSETS.length, seoTitle: '', seoDesc: '', slug: '', fixed: Object.assign({}, s.fixed, { seoTitle: null, slug: null }) }));
       const n = this.SEOSETS[(this.state.seoIdx + 1) % this.SEOSETS.length];
@@ -1655,8 +1658,8 @@ class Component extends DCLogic {
       return {
         num: String(i + 1), label: stepLbl[k], sep: i < stepKeys.length - 1,
         title: stepRole[k] + (done ? ' · bấm để quay lại' : ''),
-        numStyle: 'width:17px;height:17px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;background:' + (on ? '#405189' : (done ? 'rgba(10,179,156,.16)' : '#eff2f7')) + ';color:' + (on ? '#fff' : (done ? '#0a8f7f' : '#adb5bd')) + ';',
-        style: 'display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:0;border-radius:5px;background:' + (on ? 'rgba(64,81,137,.08)' : 'transparent') + ';font:inherit;font-size:12px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#405189' : (done ? '#495057' : '#adb5bd')) + ';cursor:' + (done ? 'pointer' : 'default') + ';white-space:nowrap;flex-shrink:0;',
+        numStyle: 'width:17px;height:17px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;background:' + (on ? '#2050a0' : (done ? 'rgba(10,179,156,.16)' : '#e9ecf4')) + ';color:' + (on ? '#fff' : (done ? '#0a8f7f' : '#adb5bd')) + ';',
+        style: 'display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:0;border-radius:5px;background:' + (on ? 'rgba(32,80,160,.08)' : 'transparent') + ';font:inherit;font-size:12px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#2050a0' : (done ? '#3c4765' : '#adb5bd')) + ';cursor:' + (done ? 'pointer' : 'default') + ';white-space:nowrap;flex-shrink:0;',
         on: () => { if (done) this.setState({ step: k, openChip: null }); }
       };
     });
@@ -1685,7 +1688,7 @@ class Component extends DCLogic {
         title: d.k === 'type'
           ? 'Tự nhận từ danh mục của bài. Đổi loại là người đọc, giọng, độ dài và bộ khối tự đặt lại theo mức tốt nhất cho loại đó.'
           : (off ? ('Bạn đã đổi khỏi mức đề xuất (' + recLbl + '). Mở ra chọn “Về mức đề xuất” để trả lại.') : ('Đang ở mức đề xuất cho loại nội dung này. ' + TD.why)),
-        style: 'display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 8px 0 10px;border:1px ' + (off ? 'dashed #e6c98a' : 'solid ' + (open ? '#405189' : '#eff2f7')) + ';border-radius:5px;background:#fff;font:inherit;font-size:12px;cursor:pointer;white-space:nowrap;',
+        style: 'display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 8px 0 10px;border:1px ' + (off ? 'dashed #e6c98a' : 'solid ' + (open ? '#2050a0' : '#e9ecf4')) + ';border-radius:5px;background:var(--color-surface,#fff);font:inherit;font-size:12px;cursor:pointer;white-space:nowrap;',
         on: () => this.toggleChip(d.k),
         opts: opts
       };
@@ -1705,7 +1708,7 @@ class Component extends DCLogic {
     advBits.push(activeRules + ' quy tắc văn phong');
     if (activeSamples) advBits.push(activeSamples + ' bài mẫu');
 
-    const chipBox = (on) => 'width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:1px solid ' + (on ? '#405189' : '#dfe2e8') + ';border-radius:4px;background:' + (on ? '#405189' : '#fff') + ';color:' + (on ? '#fff' : 'transparent') + ';cursor:pointer;flex-shrink:0;';
+    const chipBox = (on) => 'width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:1px solid ' + (on ? '#2050a0' : '#dfe2e8') + ';border-radius:4px;background:' + (on ? '#2050a0' : '#fff') + ';color:' + (on ? '#fff' : 'transparent') + ';cursor:pointer;flex-shrink:0;';
 
     const gaps = this.gapList().map(g => {
       const on = !S.gapOff[g.k];
@@ -1713,7 +1716,7 @@ class Component extends DCLogic {
         text: g.t, why: g.why, tag: g.tag, box: chipBox(on),
         title: on ? 'Bỏ ý này khỏi dàn ý' : 'Đưa ý này vào dàn ý',
         on: () => this.toggleOff('gapOff', g.k),
-        tagStyle: 'display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (g.gap ? '#0a8f7f' : '#878a99') + ';background:' + (g.gap ? 'rgba(10,179,156,.10)' : '#f3f6f9') + ';'
+        tagStyle: 'display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (g.gap ? '#0a8f7f' : '#878a99') + ';background:' + (g.gap ? 'rgba(10,179,156,.10)' : '#f3f6f9') + ';'
       };
     });
     const gapKeep = this.gapList().filter(g => !S.gapOff[g.k]).length;
@@ -1733,7 +1736,7 @@ class Component extends DCLogic {
         label: e.l, icon: e.src === 'topic' ? (on ? 'ri-magic-line' : 'ri-add-line') : (on ? 'ri-check-line' : 'ri-add-line'),
         title: e.src === 'topic' ? 'Rút ra từ chủ đề bạn nhập — nên có, thiếu thì bài dễ bị hiểu sai chủ đề' : 'Khái niệm chung của ngành, có thì tốt, không bắt buộc',
         on: () => this.toggleOff('entOff', e.k),
-        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? (e.need ? 'rgba(10,179,156,.35)' : 'rgba(64,81,137,.25)') : '#e9ebec') + ';border-radius:20px;background:' + (on ? (e.need ? 'rgba(10,179,156,.08)' : 'rgba(64,81,137,.05)') : '#fff') + ';font:inherit;font-size:11.5px;font-weight:500;color:' + (on ? (e.need ? '#0a8f7f' : '#405189') : '#878a99') + ';cursor:pointer;white-space:nowrap;'
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? (e.need ? 'rgba(10,179,156,.35)' : 'rgba(32,80,160,.25)') : '#e9ebec') + ';border-radius:20px;background:' + (on ? (e.need ? 'rgba(10,179,156,.08)' : 'rgba(32,80,160,.05)') : '#fff') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? (e.need ? '#0a8f7f' : '#2050a0') : '#878a99') + ';cursor:pointer;white-space:nowrap;'
       };
     });
 
@@ -1806,23 +1809,23 @@ class Component extends DCLogic {
     const linkKeep = this.LINKS.length - Object.keys(S.linkOff).length;
     const rowFor = {
       kwTitle: () => {
-        if (S.fixed.kwTitle) return { k: 'kwTitle', icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: 'Từ khoá chính “' + kwTerm + '” đã có trong bài', done: true, before: kwHits ? ('chỉ có “' + kwCore + '” ' + kwHits + ' lần') : 'chưa nhắc cụm nào', after: 'cụm đầy đủ “' + kwTerm + '” trong câu mở đầu và một tiêu đề mục' };
-        if (!kwTerm) return { icon: 'ri-information-line', color: '#adb5bd', label: 'Chưa có từ khoá chính để đối chiếu' };
-        if (kwFullHits > 0) return okRow('Từ khoá chính “' + kwTerm + '” xuất hiện ' + kwFullHits + ' lần, có ngay câu mở đầu');
+        if (S.fixed.kwTitle) return { k: 'kwTitle', icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: 'Từ khóa chính “' + kwTerm + '” đã có trong bài', done: true, before: kwHits ? ('chỉ có “' + kwCore + '” ' + kwHits + ' lần') : 'chưa nhắc cụm nào', after: 'cụm đầy đủ “' + kwTerm + '” trong câu mở đầu và một tiêu đề mục' };
+        if (!kwTerm) return { icon: 'ri-information-line', color: 'var(--color-body-muted,#5b6275)', label: 'Chưa có từ khóa chính để đối chiếu' };
+        if (kwFullHits > 0) return okRow('Từ khóa chính “' + kwTerm + '” xuất hiện ' + kwFullHits + ' lần, có ngay câu mở đầu');
         const warn = kwHits
           ? 'Bài chưa nhắc đúng cụm “' + kwTerm + '” — chỉ có “' + kwCore + '” (' + kwHits + ' lần)'
-          : 'Bài chưa nhắc cụm từ khoá “' + kwTerm + '” lần nào';
-        return { k: 'kwTitle', icon: 'ri-error-warning-fill', color: '#f7b84b', label: warn, fixable: true, fixLabel: 'Đưa từ khoá vào bài', fixTitle: 'AI đưa đúng cụm “' + kwTerm + '” vào câu mở đầu và một tiêu đề mục, giữ câu tự nhiên · ' + this.costTip(this.COST.fix), fix: () => this.fix('kwTitle') };
+          : 'Bài chưa nhắc cụm từ khóa “' + kwTerm + '” lần nào';
+        return { k: 'kwTitle', icon: 'ri-error-warning-fill', color: '#f7b84b', label: warn, fixable: true, fixLabel: 'Đưa từ khóa vào bài', fixTitle: 'AI đưa đúng cụm “' + kwTerm + '” vào câu mở đầu và một tiêu đề mục, giữ câu tự nhiên · ' + this.costTip(this.COST.fix), fix: () => this.fix('kwTitle') };
       },
       depth: () => depthRow,
       ansAll: () => ansRows >= headRows
         ? okRow(headRows + ' mục, mục nào cũng mở bằng câu trả lời ngắn')
         : mk('ansAll', (headRows - ansRows) + '/' + headRows + ' mục chưa có câu trả lời ngắn ở đầu', 'Mọi mục đã mở bằng câu trả lời ngắn', 'Viết câu trả lời ngắn', 'AI viết câu trả lời 40–60 từ mở đầu các mục còn thiếu', null, { b: (headRows - ansRows) + '/' + headRows + ' mục thiếu câu trả lời ngắn', a: headRows + '/' + headRows + ' mục có câu trả lời ngắn ở đầu' }),
       seoTitle: () => seoT.length > 60
-        ? mk('seoTitle', 'Tiêu đề SEO ' + seoT.length + ' ký tự — Google sẽ cắt phần cuối', 'Tiêu đề SEO ' + this.seoTitleText().length + ' ký tự — vừa khung Google', 'Viết lại ngắn hơn', 'AI viết lại tiêu đề SEO: giữ từ khoá chính ở đầu, dưới 60 ký tự', null, { b: seoT.length + ' ký tự', a: this.FIXES.seoTitle.v.length + ' ký tự, từ khoá chính ở đầu' })
+        ? mk('seoTitle', 'Tiêu đề SEO ' + seoT.length + ' ký tự — Google sẽ cắt phần cuối', 'Tiêu đề SEO ' + this.seoTitleText().length + ' ký tự — vừa khung Google', 'Viết lại ngắn hơn', 'AI viết lại tiêu đề SEO: giữ từ khóa chính ở đầu, dưới 60 ký tự', null, { b: seoT.length + ' ký tự', a: this.FIXES.seoTitle.v.length + ' ký tự, từ khóa chính ở đầu' })
         : okRow('Tiêu đề SEO ' + seoT.length + ' ký tự — vừa khung Google'),
       slug: () => slug.length > 45
-        ? mk('slug', 'Đường dẫn dài ' + slug.length + ' ký tự và có mốc năm — sang năm phải đổi link', 'Đường dẫn đã chuẩn hoá còn ' + this.slugText().length + ' ký tự', 'Chuẩn hoá đường dẫn', 'AI viết lại đường dẫn: bỏ từ thừa và mốc năm, giữ từ khoá chính', null, { b: slug.length + ' ký tự, có mốc năm', a: this.FIXES.slug.v.length + ' ký tự, không mốc năm' })
+        ? mk('slug', 'Đường dẫn dài ' + slug.length + ' ký tự và có mốc năm — sang năm phải đổi link', 'Đường dẫn đã chuẩn hóa còn ' + this.slugText().length + ' ký tự', 'Chuẩn hóa đường dẫn', 'AI viết lại đường dẫn: bỏ từ thừa và mốc năm, giữ từ khóa chính', null, { b: slug.length + ' ký tự, có mốc năm', a: this.FIXES.slug.v.length + ' ký tự, không mốc năm' })
         : okRow('Đường dẫn ' + slug.length + ' ký tự — gọn, không mốc năm'),
       links: () => mk('links', 'Chưa chèn ' + linkKeep + ' liên kết nội bộ đã chọn ở bước phân tích', linkKeep + ' liên kết nội bộ đã chèn đúng đoạn liên quan', 'Chèn liên kết', 'AI chèn ' + linkKeep + ' liên kết nội bộ bạn đã tick, tự chọn chữ neo theo tiêu đề bài đích', null, { b: '0 liên kết nội bộ', a: linkKeep + ' liên kết đặt trong các mục liên quan' }),
       srcNum: () => numHits === 0
@@ -1833,12 +1836,12 @@ class Component extends DCLogic {
         : mk('longSent', longSents + ' câu dài trên 30 từ (dài nhất ' + maxSent + ' từ) — khó đọc trên điện thoại', 'Câu dài nhất còn dưới 30 từ', 'Tách câu', 'AI tách các câu dài, giữ nguyên ý', null, { b: longSents + ' câu trên 30 từ, dài nhất ' + maxSent + ' từ', a: 'đã tách ' + longSents + ' câu, dài nhất còn dưới 30 từ' }),
       kwStuff: () => kwDens <= 0.025
         ? okRow('Mật độ cụm “' + kwCore + '” là ' + (kwDens * 100).toFixed(1) + '% — tự nhiên, không nhồi')
-        : mk('kwStuff', 'Cụm “' + kwCore + '” lặp ' + kwHits + ' lần (' + (kwDens * 100).toFixed(1) + '%) — có dấu hiệu nhồi từ khoá', 'Mật độ từ khoá đã về mức tự nhiên', 'Giảm lặp từ khoá', 'AI thay các chỗ lặp bằng cách diễn đạt khác, không đổi ý', null, { b: kwHits + ' lần (' + (kwDens * 100).toFixed(1) + '%)', a: Math.max(1, Math.round(bw * 0.02 / Math.max(1, kwCore.split(/\s+/).length))) + ' lần (~2%), các chỗ còn lại diễn đạt khác' }),
+        : mk('kwStuff', 'Cụm “' + kwCore + '” lặp ' + kwHits + ' lần (' + (kwDens * 100).toFixed(1) + '%) — có dấu hiệu nhồi từ khóa', 'Mật độ từ khóa đã về mức tự nhiên', 'Giảm lặp từ khóa', 'AI thay các chỗ lặp bằng cách diễn đạt khác, không đổi ý', null, { b: kwHits + ' lần (' + (kwDens * 100).toFixed(1) + '%)', a: Math.max(1, Math.round(bw * 0.02 / Math.max(1, kwCore.split(/\s+/).length))) + ' lần (~2%), các chỗ còn lại diễn đạt khác' }),
       img: () => mk('img', 'Bài chưa có ảnh — nên chèn ' + imgNeed + ' ảnh minh hoạ', imgNeed + ' vị trí ảnh đã đánh dấu, kèm chú thích sẵn', 'Đánh dấu chỗ chèn ảnh', 'AI đánh dấu ' + imgNeed + ' vị trí nên có ảnh, viết chú thích và chữ thay thế sẵn', null, { b: '0 ảnh', a: imgNeed + ' vị trí ảnh kèm chú thích và chữ thay thế' }),
-      alt: () => mk('alt', 'Ảnh đại diện chưa có chữ thay thế (alt)', 'Ảnh đại diện đã có chữ thay thế', 'Viết chữ thay thế', 'AI viết chữ thay thế mô tả đúng ảnh, có từ khoá tự nhiên', 'bad'),
+      alt: () => mk('alt', 'Ảnh đại diện chưa có chữ thay thế (alt)', 'Ảnh đại diện đã có chữ thay thế', 'Viết chữ thay thế', 'AI viết chữ thay thế mô tả đúng ảnh, có từ khóa tự nhiên', 'bad'),
       cta: () => this.aeoOn('cta')
         ? mk('cta', 'Lời mời hành động còn chung, chưa gắn dịch vụ thật', 'Lời mời hành động đã viết theo dịch vụ thật của bạn', 'Viết lại lời mời', 'AI viết lại lời mời hành động dựa trên dịch vụ thật của bạn')
-        : { icon: 'ri-information-line', color: '#adb5bd', label: 'Khối lời mời hành động đang tắt ở bước Đề bài' },
+        : { icon: 'ri-information-line', color: 'var(--color-body-muted,#5b6275)', label: 'Khối lời mời hành động đang tắt ở bước Đề bài' },
       dupIn: () => okRow('Không trùng đoạn với 42 bài đã có trên website')
     };
     const checks = (CHECKSET[S.chips.type] || CHECKSET.guide).map(k => rowFor[k] ? rowFor[k]() : null).filter(Boolean);
@@ -1857,7 +1860,7 @@ class Component extends DCLogic {
         fixable: low && !!a.fix, fixLabel: a.fl,
         fixTitle: a.fix ? (a.fix + ' · ' + this.costTip(this.COST.audit)) : '',
         fix: () => this.audFix(a.k, 'Đã chỉnh: ' + a.l.toLowerCase()),
-        pillStyle: 'display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:26px;padding:0 8px;border-radius:20px;font-size:11.5px;font-weight:700;flex-shrink:0;font-variant-numeric:tabular-nums;color:' + col + ';background:color-mix(in srgb, ' + col + ' 13%, transparent);'
+        pillStyle: 'display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:26px;padding:0 8px;border-radius:20px;font-size:12px;font-weight:700;flex-shrink:0;font-variant-numeric:tabular-nums;color:' + col + ';background:color-mix(in srgb, ' + col + ' 13%, transparent);'
       };
     });
     const audScores = this.AUD.map(a => (S.audFixed[a.k] ? 10 : a.s));
@@ -1877,7 +1880,7 @@ class Component extends DCLogic {
       ? ('Đã chèn ' + lowLbl(k) + ' vào trang — bấm để chèn lại bản hiện tại')
       : ('Chèn ' + lowLbl(k) + ' vào trang' + ((this.props.filled || []).indexOf(k) >= 0 ? ' — trường này đang có nội dung, sẽ hỏi trước' : ''));
     const insLbl = (k) => S.ins[k] ? 'Đã chèn' : 'Chèn';
-    const insSty = (k) => 'display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border:1px solid ' + (S.ins[k] ? 'rgba(10,179,156,.35)' : '#e9ebec') + ';border-radius:4px;background:' + (S.ins[k] ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:11.5px;font-weight:600;color:' + (S.ins[k] ? '#0a8f7f' : '#405189') + ';cursor:pointer;white-space:nowrap;';
+    const insSty = (k) => 'display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border:1px solid ' + (S.ins[k] ? 'rgba(10,179,156,.35)' : '#e9ebec') + ';border-radius:4px;background:' + (S.ins[k] ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:12px;font-weight:600;color:' + (S.ins[k] ? '#0a8f7f' : '#2050a0') + ';cursor:pointer;white-space:nowrap;';
 
     const primary = (() => {
       if (S.step === 'audit' && S.inserted) return { l: 'Xong — đóng trợ lý', i: 'ri-check-line', on: () => this.props.onClose && this.props.onClose(), t: 'Nội dung đã nằm trong trang. Đóng trợ lý và bấm Lưu ở đầu trang để phát hành.' };
@@ -1901,7 +1904,7 @@ class Component extends DCLogic {
       ctxLine: (this.props.contextLabel || 'Bài viết') + ' · ' + (this.props.pageTitle || 'Bài viết mới'),
       quotaText: 'Còn ' + this.fmt(Q.left) + ' từ AI',
       quotaTitle: 'Gói hiện tại ' + this.fmt(Q.limit) + ' từ AI mỗi tháng, tính riêng với hạn ngạch dịch. Đã dùng ' + this.fmt(Q.used) + '. Tính theo số từ AI thật sự sinh ra: phân tích ~' + this.fmt(this.COST.research) + ', dàn ý ~' + this.fmt(this.COST.outline) + ', viết bản nháp bằng đúng độ dài mục tiêu, mỗi lần tự chỉnh ~' + this.fmt(this.COST.fix) + '. Hạn ngạch trừ ở máy chủ khi tạo yêu cầu, con số này chỉ là bản hiển thị.',
-      quotaStyle: 'display:inline-flex;align-items:center;gap:5px;padding:0 9px;height:24px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap;flex-shrink:0;color:' + (Q.left <= 0 ? '#f06548' : (Q.left <= Q.limit * 0.2 ? '#b57d13' : '#878a99')) + ';background:' + (Q.left <= 0 ? 'rgba(240,101,72,.10)' : (Q.left <= Q.limit * 0.2 ? 'rgba(247,184,75,.14)' : '#f8f9fb')) + ';',
+      quotaStyle: 'display:inline-flex;align-items:center;gap:5px;padding:0 9px;height:24px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0;color:' + (Q.left <= 0 ? '#f06548' : (Q.left <= Q.limit * 0.2 ? '#b57d13' : '#878a99')) + ';background:' + (Q.left <= 0 ? 'rgba(240,101,72,.10)' : (Q.left <= Q.limit * 0.2 ? 'rgba(247,184,75,.14)' : '#f8f9fb')) + ';',
       onClose: () => this.askClose(),
       canMin: !!this.props.onMinimize,
       minTitle: S.inserted ? 'Thu xuống thanh dưới để xem nội dung vừa chèn — bấm thanh đó là mở lại, không mất gì' : 'Thu xuống thanh dưới để xem trang — trợ lý giữ nguyên mọi thứ bạn đang làm',
@@ -1931,8 +1934,8 @@ class Component extends DCLogic {
         const lblMap = this.BLOCKLBL[S.chips.type] || {};
         return {
           label: lblMap[a.k] || a.l, icon: on ? 'ri-check-line' : 'ri-add-line', on: () => this.toggleAeo(a.k),
-          title: a.t + (rec ? ' · đề xuất cho loại nội dung này' : ' · tuỳ chọn với loại nội dung này'),
-          style: 'display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:7px 11px;border:1px ' + (rec ? 'solid' : 'dashed') + ' ' + (on ? 'rgba(10,179,156,.35)' : '#e0e3e9') + ';border-radius:20px;background:' + (on ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:11.5px;font-weight:500;color:' + (on ? '#0a8f7f' : '#878a99') + ';cursor:pointer;white-space:nowrap;'
+          title: a.t + (rec ? ' · đề xuất cho loại nội dung này' : ' · tùy chọn với loại nội dung này'),
+          style: 'display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:7px 11px;border:1px ' + (rec ? 'solid' : 'dashed') + ' ' + (on ? 'rgba(10,179,156,.35)' : '#e0e3e9') + ';border-radius:20px;background:' + (on ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? '#0a8f7f' : '#878a99') + ';cursor:pointer;white-space:nowrap;'
         };
       }),
       topicPh: this.hasSource() ? ('Ví dụ: ' + this.srcSubj() + ' — năng lực, quy trình và cam kết') : IND.topicPh,
@@ -1940,7 +1943,7 @@ class Component extends DCLogic {
       notePh: IND.notePh,
       indName: this.hasSource() ? (this.srcSubj() + ' (bài hiện có)') : IND.name,
       indTitle: this.hasSource() ? ('Gợi ý rút từ chính bài hiện có của trang “' + this.srcSubj() + '” — không phải điền tay.') : ('Gợi ý lấy theo ngành “' + IND.name + '” trong Cài đặt › Thông tin doanh nghiệp, rồi thu hẹp theo chủ đề bạn nhập. Không phải điền tay.'),
-      kwSug: kwPool.map(k => ({ label: k, title: 'Thêm “' + k + '” vào từ khoá phụ', on: () => this.addKwSug(k) })),
+      kwSug: kwPool.map(k => ({ label: k, title: 'Thêm “' + k + '” vào từ khóa phụ', on: () => this.addKwSug(k) })),
       hasKwSug: kwPool.length > 0, onMoreKw: () => this.moreKw(),
       kwMain: S.kwMain || this.autoKw(), onKwMain: (e) => this.setState({ kwMain: e.target.value }),
       kwAuto: !S.kwMain && !!this.autoKw(),
@@ -1955,9 +1958,9 @@ class Component extends DCLogic {
       refDraft: S.refDraft, onRefDraft: (e) => this.setState({ refDraft: e.target.value }), onRefKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.addRef(); } },
       onPickFile: () => this.setState({ refs: this.refList().concat([{ k: 'f' + Date.now(), kind: 'file', label: 'Bao-gia-2026.pdf', meta: '412 KB' }]) }),
       rules: this.RULES.map(r => { const on = this.ruleOn(r.k); return { label: r.l, icon: on ? 'ri-check-line' : 'ri-add-line', title: r.t + (on ? ' · bật sẵn cho loại nội dung này' : ''), on: () => this.toggleRule(r.k),
-        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'rgba(10,179,156,.35)' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:11.5px;font-weight:500;color:' + (on ? '#0a8f7f' : '#878a99') + ';cursor:pointer;white-space:nowrap;' }; }),
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'rgba(10,179,156,.35)' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? '#0a8f7f' : '#878a99') + ';cursor:pointer;white-space:nowrap;' }; }),
       samples: this.sampleList().map(s => { const on = this.sampleOn(s.k); return { label: s.l + (s.rel ? ' · gần chủ đề nhất' : ''), icon: on ? 'ri-check-line' : 'ri-add-line', on: () => this.toggleSample(s.k),
-        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'rgba(64,81,137,.3)' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(64,81,137,.07)' : '#fff') + ';font:inherit;font-size:11.5px;font-weight:500;color:' + (on ? '#405189' : '#878a99') + ';cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;' }; }),
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'rgba(32,80,160,.3)' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(32,80,160,.07)' : '#fff') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? '#2050a0' : '#878a99') + ';cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;' }; }),
 
       intentKind: this.INTENT.kind, intentLine: this.INTENT.line,
       questions: this.qsFor().map(q => ({ text: q })),
@@ -1971,9 +1974,9 @@ class Component extends DCLogic {
         subs: o.subs.map((sb, j) => ({ label: sb, off: () => this.outSubDel(i, j) })),
         onText: (e) => this.outText(i, e.target.value),
         up: () => this.outMove(i, -1), down: () => this.outMove(i, 1), del: () => this.outDel(i),
-        cardStyle: 'border:1px solid ' + (o.blk ? 'rgba(10,179,156,.22)' : '#eff2f7') + ';border-radius:6px;background:' + (o.blk ? 'rgba(10,179,156,.03)' : '#fff') + ';box-shadow:0 1px 2px rgba(56,65,74,.06);',
+        cardStyle: 'border:1px solid ' + (o.blk ? 'rgba(10,179,156,.22)' : '#e9ecf4') + ';border-radius:6px;background:' + (o.blk ? 'rgba(10,179,156,.03)' : '#fff') + ';box-shadow:0 1px 2px rgba(56,65,74,.06);',
         delTitle: o.blk ? 'Bỏ khối này — bài sẽ khó được trợ lý AI trích dẫn hơn' : 'Bỏ mục này',
-        delStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:#adb5bd;cursor:pointer;flex-shrink:0;',
+        delStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;',
         upStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:' + (i === 0 ? '#e0e3e9' : '#adb5bd') + ';cursor:' + (i === 0 ? 'default' : 'pointer') + ';flex-shrink:0;',
         downStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:' + (i === out.length - 1 ? '#e0e3e9' : '#adb5bd') + ';cursor:' + (i === out.length - 1 ? 'default' : 'pointer') + ';flex-shrink:0;'
       })),
@@ -1986,10 +1989,10 @@ class Component extends DCLogic {
           meta: t.t.length + ' ký tự · đạt ' + sc + '/5 tiêu chí',
           crits: this.TCRIT.map((l, j) => ({
             label: l, icon: t.c[j] ? 'ri-check-line' : 'ri-close-line',
-            style: 'display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap;color:' + (t.c[j] ? '#0a8f7f' : '#b57d13') + ';background:' + (t.c[j] ? 'rgba(10,179,156,.09)' : 'rgba(247,184,75,.13)') + ';'
+            style: 'display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;color:' + (t.c[j] ? '#0a8f7f' : '#b57d13') + ';background:' + (t.c[j] ? 'rgba(10,179,156,.09)' : 'rgba(247,184,75,.13)') + ';'
           })),
-          icon: i === S.titleIdx ? 'ri-radio-button-line' : 'ri-circle-line', iconColor: i === S.titleIdx ? '#405189' : '#dfe2e8',
-          style: 'display:flex;align-items:flex-start;gap:9px;width:100%;box-sizing:border-box;padding:9px 10px;border:0;border-radius:5px;background:' + (i === S.titleIdx ? 'rgba(64,81,137,.05)' : 'transparent') + ';font:inherit;cursor:pointer;'
+          icon: i === S.titleIdx ? 'ri-radio-button-line' : 'ri-circle-line', iconColor: i === S.titleIdx ? '#2050a0' : '#dfe2e8',
+          style: 'display:flex;align-items:flex-start;gap:9px;width:100%;box-sizing:border-box;padding:9px 10px;border:0;border-radius:5px;background:' + (i === S.titleIdx ? 'rgba(32,80,160,.05)' : 'transparent') + ';font:inherit;cursor:pointer;'
         };
       }),
       excerpt: this.excerptText(), onExcerpt: (e) => this.setState({ excerpt: e.target.value }),
@@ -2011,8 +2014,8 @@ class Component extends DCLogic {
       eBoxStyle: box(S.pick.excerpt), ePick: toggle('excerpt'), ePickTitle: pickTitle('excerpt', S.pick.excerpt),
       bBoxStyle: box(S.pick.body), bPick: toggle('body'), bPickTitle: pickTitle('body', S.pick.body),
       sBoxStyle: box(S.pick.seo), sPick: toggle('seo'), sPickTitle: pickTitle('seo', S.pick.seo),
-      redoStyle: 'width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #eff2f7;border-radius:4px;background:#fff;color:#878a99;cursor:pointer;flex-shrink:0;',
-      insOneStyle: 'display:inline-flex;align-items:center;height:28px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#405189;cursor:pointer;white-space:nowrap;',
+      redoStyle: 'width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;',
+      insOneStyle: 'display:inline-flex;align-items:center;height:28px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap;',
       tRedo: () => this.redo('title'), eRedo: () => this.redo('excerpt'), bRedo: () => this.redo('body'), sRedo: () => this.redo('seo'),
       tInsert: () => this.insert(['title']), eInsert: () => this.insert(['excerpt']), bInsert: () => this.insert(['body']), sInsert: () => this.insert(['seo']),
       tInsertTitle: insTitle('title'), eInsertTitle: insTitle('excerpt'), bInsertTitle: insTitle('body'), sInsertTitle: insTitle('seo'),
@@ -2023,7 +2026,7 @@ class Component extends DCLogic {
         done: !!c.done, diff: c.done ? (c.before + ' → ' + c.after) : '' })),
       fixChecksLabel: bad ? ('Tự chỉnh cả ' + bad + ' chỗ') : 'Không còn chỗ nào cần chỉnh',
       fixChecksTitle: bad ? ('AI sửa lần lượt ' + bad + ' chỗ và ghi rõ đã đổi gì · ' + this.costTip(badList.reduce((a, c) => a + this.fixCost(c.k), 0))) : 'Bảng kiểm đã sạch',
-      fixChecksStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;box-sizing:border-box;min-height:36px;padding:8px 10px;border:1px solid ' + (bad ? 'rgba(64,81,137,.28)' : '#eff2f7') + ';border-radius:4px;background:' + (bad ? 'rgba(64,81,137,.10)' : '#f8f9fb') + ';font:inherit;font-size:11.5px;font-weight:600;color:' + (bad ? '#405189' : '#adb5bd') + ';cursor:' + (bad ? 'pointer' : 'not-allowed') + ';white-space:nowrap;',
+      fixChecksStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;box-sizing:border-box;min-height:36px;padding:8px 10px;border:1px solid ' + (bad ? 'rgba(32,80,160,.28)' : '#e9ecf4') + ';border-radius:4px;background:' + (bad ? 'rgba(32,80,160,.10)' : '#f8f9fb') + ';font:inherit;font-size:12px;font-weight:600;color:' + (bad ? '#2050a0' : '#adb5bd') + ';cursor:' + (bad ? 'pointer' : 'not-allowed') + ';white-space:nowrap;',
       onFixChecks: () => { if (bad) this.fixAllChecks(badList.map(c => c.k)); },
       slug: slug, onSlug: (e) => this.setState({ slug: e.target.value, fixed: Object.assign({}, S.fixed, { slug: null }) }),
       slugLen: slug.length + ' ký tự', slugColor: slug.length > 45 ? '#f7b84b' : '#0ab39c',
@@ -2041,7 +2044,7 @@ class Component extends DCLogic {
         : 'Có thể chèn vào trang. Số liệu, giá và tên riêng vẫn nên đọc lại một lần trước khi đăng.',
       fixAllLabel: fixableCount ? ('Tự chỉnh ' + fixableCount + ' mục chưa đạt') : 'Không còn mục cần chỉnh',
       fixAllTitle: fixableCount ? ('Chỉnh ' + fixableCount + ' tiêu chí · ' + this.costTip(fixableCount * this.COST.audit)) : 'Mọi tiêu chí đã đạt',
-      fixAllStyle: 'display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:9px 14px;border:1px solid ' + (fixableCount ? 'rgba(64,81,137,.28)' : '#eff2f7') + ';border-radius:4px;background:' + (fixableCount ? 'rgba(64,81,137,.10)' : '#f8f9fb') + ';font:inherit;font-size:12.5px;font-weight:600;color:' + (fixableCount ? '#405189' : '#adb5bd') + ';cursor:' + (fixableCount ? 'pointer' : 'not-allowed') + ';white-space:nowrap;flex-shrink:0;',
+      fixAllStyle: 'display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:9px 14px;border:1px solid ' + (fixableCount ? 'rgba(32,80,160,.28)' : '#e9ecf4') + ';border-radius:4px;background:' + (fixableCount ? 'rgba(32,80,160,.10)' : '#f8f9fb') + ';font:inherit;font-size:12.5px;font-weight:600;color:' + (fixableCount ? '#2050a0' : '#adb5bd') + ';cursor:' + (fixableCount ? 'pointer' : 'not-allowed') + ';white-space:nowrap;flex-shrink:0;',
       onFixAll: () => { if (fixableCount) this.fixAll(); },
       schemas: [
         { label: 'Bài viết (Article)', hint: 'tên tác giả, ngày cập nhật, ảnh đại diện', icon: 'ri-checkbox-circle-fill', color: '#0ab39c' },
@@ -2053,11 +2056,11 @@ class Component extends DCLogic {
         { icon: 'ri-send-plane-line', label: 'Báo chỉ mục ngay khi bấm Lưu', hint: 'Gửi đường dẫn qua IndexNow (Bing, Yandex) và cập nhật sitemap kèm ngày sửa — cách nhanh nhất để bài được đọc trong vài giờ thay vì vài ngày.', tag: 'tự động', ok: true },
         { icon: 'ri-links-line', label: 'Chèn liên kết từ 2 trang đang có nhiều truy cập', hint: 'Bài mới được dẫn từ trang đã có thứ hạng thì lên nhanh hơn hẳn. Hệ thống chọn sẵn “Bảng giá lắp đặt 2026” và trang chủ mục Cẩm nang.', tag: 'tự động', ok: true },
         { icon: 'ri-robot-2-line', label: 'Cho trợ lý AI đọc bài này', hint: 'Khai báo llms.txt và cho phép GPTBot, ClaudeBot, PerplexityBot, Google-Extended — nếu chặn thì bài không bao giờ được các trợ lý AI trích dẫn.', tag: 'kiểm tra ở Cài đặt SEO', ok: false },
-        { icon: 'ri-image-line', label: 'Nén ảnh và đặt tên ảnh theo nội dung', hint: 'Chuyển WebP, giới hạn 1.600px, tên tệp có từ khoá — ảnh nhẹ giúp trang mở nhanh, phần Google chấm điểm trải nghiệm.', tag: 'tự động', ok: true },
+        { icon: 'ri-image-line', label: 'Nén ảnh và đặt tên ảnh theo nội dung', hint: 'Chuyển WebP, giới hạn 1.600px, tên tệp có từ khóa — ảnh nhẹ giúp trang mở nhanh, phần Google chấm điểm trải nghiệm.', tag: 'tự động', ok: true },
         { icon: 'ri-calendar-check-line', label: 'Hẹn soát lại sau 45 ngày', hint: 'Nếu thứ hạng hoặc lượt hiển thị tụt, hệ thống nhắc cập nhật bài và đổi ngày cập nhật — bài cũ được làm mới thường lên lại nhanh hơn viết bài mới.', tag: 'tự động', ok: true },
         { icon: 'ri-share-forward-line', label: 'Gợi ý nơi chia sẻ để có nguồn dẫn ngoài', hint: 'Các trợ lý AI hay trích nội dung được nhắc ở diễn đàn, hội nhóm ngành và trang tổng hợp. Hệ thống gợi ý 3 nơi phù hợp với ngành của bạn.', tag: 'gợi ý', ok: false }
       ].map(x => Object.assign({}, x, {
-        tagStyle: 'display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (x.ok ? '#0a8f7f' : '#b57d13') + ';background:' + (x.ok ? 'rgba(10,179,156,.10)' : 'rgba(247,184,75,.14)') + ';'
+        tagStyle: 'display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (x.ok ? '#0a8f7f' : '#b57d13') + ';background:' + (x.ok ? 'rgba(10,179,156,.10)' : 'rgba(247,184,75,.14)') + ';'
       })),
       pickList: ['title', 'excerpt', 'body', 'seo'].map(k => ({
         label: this.LBL[k] + (S.pick[k] ? '' : ' — không chèn'),
@@ -2083,7 +2086,7 @@ class Component extends DCLogic {
       primaryLabel: primary.l, primaryIcon: S.streaming ? 'ri-loader-4-line' : primary.i,
       primaryIconStyle: 'font-size:15px;' + (S.streaming ? 'animation:awSpin .7s linear infinite;' : ''),
       primaryTitle: (needsQuota && Q.left <= 0) ? 'Đã dùng hết từ AI tháng này — mua thêm hoặc nâng gói ở Cài đặt › Mức dùng AI' : primary.t,
-      primaryStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:9px 15px;border:0;border-radius:4px;background:' + (primaryOff ? '#e9ebec' : '#405189') + ';font:inherit;font-size:13px;font-weight:600;color:' + (primaryOff ? '#adb5bd' : '#fff') + ';cursor:' + (primaryOff ? 'not-allowed' : 'pointer') + ';white-space:nowrap;flex-shrink:0;',
+      primaryStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:9px 15px;border:0;border-radius:4px;background:' + (primaryOff ? '#e9ebec' : '#2050a0') + ';font:inherit;font-size:13px;font-weight:600;color:' + (primaryOff ? '#adb5bd' : '#fff') + ';cursor:' + (primaryOff ? 'not-allowed' : 'pointer') + ';white-space:nowrap;flex-shrink:0;',
       onPrimary: () => { if (primaryOff) { if (Q.left <= 0) this.notify('Đã dùng hết từ AI tháng này — mua thêm hoặc nâng gói ở Cài đặt › Mức dùng AI', 'ri-lock-line'); return; } primary.on(); },
 
       promptOpen: S.promptOpen, onPrompt: () => this.setState({ promptOpen: true }), onPromptClose: () => this.setState({ promptOpen: false }),
@@ -2095,7 +2098,7 @@ class Component extends DCLogic {
       conflictHint: conflict
         ? (conflict.clash.indexOf('body') >= 0
           ? 'Khuyến nghị: nội dung chi tiết bạn đã viết là chất liệu riêng, nên giữ lại và đặt bản AI xuống dưới rồi trộn tay.'
-          : 'Khuyến nghị: các trường ngắn nên để bản AI thay hẳn — đã tối ưu độ dài và từ khoá, và bạn vẫn hoàn tác được ngay sau khi chèn.')
+          : 'Khuyến nghị: các trường ngắn nên để bản AI thay hẳn — đã tối ưu độ dài và từ khóa, và bạn vẫn hoàn tác được ngay sau khi chèn.')
         : '',
       conflictOpts: (function (recKey) {
         const list = [
@@ -2106,7 +2109,7 @@ class Component extends DCLogic {
         list.sort((a, b) => (b.key === recKey ? 1 : 0) - (a.key === recKey ? 1 : 0));
         return list.map(o => Object.assign(o, {
           rec: o.key === recKey,
-          style: 'display:flex;align-items:flex-start;gap:10px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid ' + (o.key === recKey ? '#405189' : '#e9ebec') + ';border-radius:6px;background:' + (o.key === recKey ? 'rgba(64,81,137,.05)' : '#fff') + ';font:inherit;cursor:pointer;'
+          style: 'display:flex;align-items:flex-start;gap:10px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid ' + (o.key === recKey ? '#2050a0' : '#e9ebec') + ';border-radius:6px;background:' + (o.key === recKey ? 'rgba(32,80,160,.05)' : '#fff') + ';font:inherit;cursor:pointer;'
         }));
       }).call(this, conflict && conflict.clash.indexOf('body') >= 0 ? 'append' : 'replace'),
       onConflictCancel: () => this.setState({ conflict: null }),

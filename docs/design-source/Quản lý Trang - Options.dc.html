@@ -8,38 +8,42 @@
 <body>
 <x-dc>
 <helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="admin-base.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+
 <meta name="design_doc_mode" content="canvas">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
-<style>body{margin:0;background:#f4f4f5;}a{color:#405189;}a:hover{color:#364574;}</style>
+<style>body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{color:var(--color-accent,#364574);}</style>
 </helmet>
-<section style="padding:40px;font-family:Inter,'Segoe UI',sans-serif;color:#495057;display:flex;justify-content:center;">
-    <div id="3a" style="position:relative;width:1240px;background:#f3f3f9;border:1px solid #e9ebec;border-radius:12px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
+<section style="padding:40px;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);display:flex;justify-content:center;">
+    <div id="3a" style="position:relative;width:1240px;background:var(--color-body,#f4f5fa);border:1px solid var(--color-border-strong,#e9ebec);border-radius:12px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
 
       <!-- turn badge -->
       <div style="display:flex;align-items:center;gap:10px;">
-        <span style="display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:20px;background:#405189;color:#fff;font-size:12px;font-weight:700;">3a</span>
-        <span style="font-size:12.5px;color:#878a99;">Bản tương tác — lọc, sắp xếp, chọn nhiều, đổi trạng thái, và bấm mã ngôn ngữ để sửa từng bản dịch</span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:20px;background:#2050a0;color:#fff;font-size:12px;font-weight:700;">3a</span>
+        <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);">Bản tương tác — lọc, sắp xếp, chọn nhiều, đổi trạng thái, và bấm mã ngôn ngữ để sửa từng bản dịch</span>
       </div>
 
       <!-- page header -->
       <div style="display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#adb5bd;">
-          <a href="#3a" style="display:inline-flex;align-items:center;gap:4px;color:#878a99;text-decoration:none;" style-hover="color:#405189;"><i class="ri-home-4-line" style="font-size:13px;"></i>Trang chủ</a>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);">
+          <a href="#3a" style="display:inline-flex;align-items:center;gap:4px;color:var(--color-body-muted,#5b6275);text-decoration:none;" style-hover="color:var(--color-accent,#2050a0);"><i class="ri-home-4-line" style="font-size:13px;"></i>Trang chủ</a>
           <i class="ri-arrow-right-s-line" style="font-size:13px;"></i>
-          <span style="color:#878a99;font-weight:500;">Trang</span>
+          <span style="color:var(--color-body-muted,#5b6275);font-weight:500;">Trang</span>
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-          <h1 style="margin:0;font-size:20px;font-weight:600;color:#343a40;line-height:1.2;">Quản lý Trang</h1>
-          <button style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);" style-hover="filter:brightness(0.95);" onClick="{{ onAddPage }}"><i class="ri-add-line" style="font-size:16px;"></i>Thêm trang mới</button>
+          <h1 style="margin:0;font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.2;">Quản lý Trang</h1>
+          <button style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:0;border-radius:4px;background:#2050a0;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);" style-hover="filter:brightness(0.95);" onClick="{{ onAddPage }}"><i class="ri-add-line" style="font-size:16px;"></i>Thêm trang mới</button>
         </div>
       </div>
 
       <!-- card -->
-      <div style="background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);">
+      <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);">
 
         <!-- status tabs -->
-        <div style="display:flex;align-items:center;gap:2px;padding:4px 16px 0;border-bottom:1px solid #e9ebec;">
+        <div style="display:flex;align-items:center;gap:2px;padding:4px 16px 0;border-bottom:1px solid var(--color-border-strong,#e9ebec);">
           <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
             <button style="{{ t.btnStyle }}" onClick="{{ t.on }}"><sc-if value="{{ t.icon }}"><i class="{{ t.icon }}" style="font-size:15px;"></i></sc-if>{{ t.label }}<span style="{{ t.badgeStyle }}">{{ t.count }}</span></button>
           </sc-for>
@@ -49,23 +53,23 @@
         <!-- toolbar: search + inline filter dropdowns -->
         <div style="display:flex;align-items:center;gap:10px;padding:12px 16px 10px;">
           <div style="position:relative;flex:1;max-width:340px;">
-            <i class="ri-search-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#adb5bd;font-size:15px;"></i>
-            <input placeholder="Tìm theo tiêu đề, đường dẫn…" value="{{ searchVal }}" onChange="{{ onSearch }}" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 34px;border:1px solid #e9ebec;border-radius:6px;font:inherit;font-size:13px;color:#495057;background:#f8f9fb;outline:none;" style-focus="border-color:#405189;background:#fff;box-shadow:0 0 0 3px rgba(64,81,137,0.12);">
+            <i class="ri-search-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-body-muted,#5b6275);font-size:15px;"></i>
+            <input placeholder="Tìm theo tiêu đề, đường dẫn…" value="{{ searchVal }}" onChange="{{ onSearch }}" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 34px;border:1px solid var(--color-border-input,#878a99);border-radius:6px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);background:var(--color-surface-muted,#f8f9fb);outline:none;" style-focus="border-color:#2050a0;background:var(--color-surface,#fff);box-shadow:0 0 0 3px rgba(32,80,160,0.12);">
           </div>
           <div style="margin-left:auto;display:flex;align-items:center;gap:8px;position:relative;z-index:50;">
             <!-- Ngôn ngữ -->
             <sc-if value="{{ multiLang }}">
             <div style="position:relative;">
-              <button style="{{ fLang.btnStyle }}" onClick="{{ fLang.on }}"><i class="ri-translate-2" style="font-size:15px;"></i>Ngôn ngữ<sc-if value="{{ fLang.hasCount }}"><span style="background:#405189;color:#fff;font-size:11px;font-weight:700;padding:1px 6px;border-radius:20px;line-height:1.4;">{{ fLang.count }}</span></sc-if><i class="{{ fLang.arrow }}" style="font-size:15px;"></i></button>
+              <button style="{{ fLang.btnStyle }}" onClick="{{ fLang.on }}"><i class="ri-translate-2" style="font-size:15px;"></i>Ngôn ngữ<sc-if value="{{ fLang.hasCount }}"><span style="background:#2050a0;color:#fff;font-size:12px;font-weight:700;padding:1px 6px;border-radius:20px;line-height:1.4;">{{ fLang.count }}</span></sc-if><i class="{{ fLang.arrow }}" style="font-size:15px;"></i></button>
               <sc-if value="{{ fLang.open }}">
-                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:238px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
-                  <div style="padding:10px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Lọc theo ngôn ngữ</div>
+                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:238px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+                  <div style="padding:10px 14px 6px;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);text-transform:uppercase;letter-spacing:0.03em;">Lọc theo ngôn ngữ</div>
                   <sc-for list="{{ fLang.items }}" as="it" hint-placeholder-count="4">
-                    <div style="{{ it.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span><span style="font-size:11px;color:#adb5bd;font-variant-numeric:tabular-nums;">{{ it.count }}</span></div>
+                    <div style="{{ it.rowStyle }}" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);font-variant-numeric:tabular-nums;">{{ it.count }}</span></div>
                   </sc-for>
                   <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #f0f1f3;">
-                    <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;padding:0;" style-hover="color:#405189;" onClick="{{ fLang.onReset }}">Đặt lại</button>
-                    <button style="margin-left:auto;padding:7px 16px;border:0;border-radius:6px;background:#405189;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ fLang.onApply }}">Xong</button>
+                    <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;padding:0;" style-hover="color:var(--color-accent,#2050a0);" onClick="{{ fLang.onReset }}">Đặt lại</button>
+                    <button style="margin-left:auto;padding:7px 16px;border:0;border-radius:6px;background:#2050a0;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ fLang.onApply }}">Xong</button>
                   </div>
                 </div>
               </sc-if>
@@ -73,50 +77,50 @@
             </sc-if>
             <!-- Người tạo -->
             <div style="position:relative;">
-              <button style="{{ fCreator.btnStyle }}" onClick="{{ fCreator.on }}"><i class="ri-user-3-line" style="font-size:15px;"></i>Người tạo<sc-if value="{{ fCreator.hasCount }}"><span style="background:#405189;color:#fff;font-size:11px;font-weight:700;padding:1px 6px;border-radius:20px;line-height:1.4;">{{ fCreator.count }}</span></sc-if><i class="{{ fCreator.arrow }}" style="font-size:15px;"></i></button>
+              <button style="{{ fCreator.btnStyle }}" onClick="{{ fCreator.on }}"><i class="ri-user-3-line" style="font-size:15px;"></i>Người tạo<sc-if value="{{ fCreator.hasCount }}"><span style="background:#2050a0;color:#fff;font-size:12px;font-weight:700;padding:1px 6px;border-radius:20px;line-height:1.4;">{{ fCreator.count }}</span></sc-if><i class="{{ fCreator.arrow }}" style="font-size:15px;"></i></button>
               <sc-if value="{{ fCreator.open }}">
-                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:238px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
-                  <div style="padding:10px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Lọc theo người tạo</div>
+                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:238px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+                  <div style="padding:10px 14px 6px;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);text-transform:uppercase;letter-spacing:0.03em;">Lọc theo người tạo</div>
                   <sc-for list="{{ fCreator.items }}" as="it" hint-placeholder-count="3">
-                    <div style="{{ it.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span><span style="font-size:11px;color:#adb5bd;font-variant-numeric:tabular-nums;">{{ it.count }}</span></div>
+                    <div style="{{ it.rowStyle }}" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);font-variant-numeric:tabular-nums;">{{ it.count }}</span></div>
                   </sc-for>
                   <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #f0f1f3;">
-                    <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;padding:0;" style-hover="color:#405189;" onClick="{{ fCreator.onReset }}">Đặt lại</button>
-                    <button style="margin-left:auto;padding:7px 16px;border:0;border-radius:6px;background:#405189;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ fCreator.onApply }}">Xong</button>
+                    <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;padding:0;" style-hover="color:var(--color-accent,#2050a0);" onClick="{{ fCreator.onReset }}">Đặt lại</button>
+                    <button style="margin-left:auto;padding:7px 16px;border:0;border-radius:6px;background:#2050a0;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ fCreator.onApply }}">Xong</button>
                   </div>
                 </div>
               </sc-if>
             </div>
             <!-- Mẫu trang -->
             <div style="position:relative;">
-              <button style="{{ fTemplate.btnStyle }}" onClick="{{ fTemplate.on }}"><i class="ri-layout-2-line" style="font-size:15px;"></i>Mẫu trang<sc-if value="{{ fTemplate.hasCount }}"><span style="background:#405189;color:#fff;font-size:11px;font-weight:700;padding:1px 6px;border-radius:20px;line-height:1.4;">{{ fTemplate.count }}</span></sc-if><i class="{{ fTemplate.arrow }}" style="font-size:15px;"></i></button>
+              <button style="{{ fTemplate.btnStyle }}" onClick="{{ fTemplate.on }}"><i class="ri-layout-2-line" style="font-size:15px;"></i>Mẫu trang<sc-if value="{{ fTemplate.hasCount }}"><span style="background:#2050a0;color:#fff;font-size:12px;font-weight:700;padding:1px 6px;border-radius:20px;line-height:1.4;">{{ fTemplate.count }}</span></sc-if><i class="{{ fTemplate.arrow }}" style="font-size:15px;"></i></button>
               <sc-if value="{{ fTemplate.open }}">
-                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:250px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
-                  <div style="padding:10px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Lọc theo mẫu trang</div>
+                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:250px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+                  <div style="padding:10px 14px 6px;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);text-transform:uppercase;letter-spacing:0.03em;">Lọc theo mẫu trang</div>
                   <div style="max-height:240px;overflow:auto;">
                     <sc-for list="{{ fTemplate.items }}" as="it" hint-placeholder-count="5">
-                      <div style="{{ it.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span><span style="font-size:11px;color:#adb5bd;font-variant-numeric:tabular-nums;">{{ it.count }}</span></div>
+                      <div style="{{ it.rowStyle }}" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);font-variant-numeric:tabular-nums;">{{ it.count }}</span></div>
                     </sc-for>
                   </div>
                   <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #f0f1f3;">
-                    <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;padding:0;" style-hover="color:#405189;" onClick="{{ fTemplate.onReset }}">Đặt lại</button>
-                    <button style="margin-left:auto;padding:7px 16px;border:0;border-radius:6px;background:#405189;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ fTemplate.onApply }}">Xong</button>
+                    <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;padding:0;" style-hover="color:var(--color-accent,#2050a0);" onClick="{{ fTemplate.onReset }}">Đặt lại</button>
+                    <button style="margin-left:auto;padding:7px 16px;border:0;border-radius:6px;background:#2050a0;color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ fTemplate.onApply }}">Xong</button>
                   </div>
                 </div>
               </sc-if>
             </div>
-            <span style="width:1px;height:20px;background:#e9ebec;margin:0 2px;"></span>
+            <span style="width:1px;height:20px;background:var(--color-border-strong,#e9ebec);margin:0 2px;"></span>
             <div style="position:relative;">
               <button title="Tùy chọn cột hiển thị" style="{{ fCols.btnStyle }}" onClick="{{ fCols.on }}"><i class="ri-layout-column-line" style="font-size:15px;"></i>Cột<i class="{{ fCols.arrow }}" style="font-size:15px;"></i></button>
               <sc-if value="{{ fCols.open }}">
-                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:230px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
-                  <div style="padding:10px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Cột bắt buộc</div>
+                <div style="position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:230px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+                  <div style="padding:10px 14px 6px;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);text-transform:uppercase;letter-spacing:0.03em;">Cột bắt buộc</div>
                   <sc-for list="{{ fCols.locked }}" as="it" hint-placeholder-count="3">
-                    <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;opacity:0.65;"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid #ced4da;border-radius:4px;background:#eef0f3;color:#adb5bd;"><i class="ri-check-line" style="font-size:12px;"></i></span><span style="flex:1;font-size:13px;color:#878a99;">{{ it.label }}</span><i class="ri-lock-line" style="font-size:13px;color:#ced4da;"></i></div>
+                    <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;opacity:0.65;"><span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid var(--color-border-strong,#ced4da);border-radius:4px;background:#eef0f3;color:var(--color-body-muted,#5b6275);"><i class="ri-check-line" style="font-size:12px;"></i></span><span style="flex:1;font-size:13px;color:var(--color-body-muted,#5b6275);">{{ it.label }}</span><i class="ri-lock-line" style="font-size:13px;color:#ced4da;"></i></div>
                   </sc-for>
-                  <div style="padding:8px 14px 6px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;border-top:1px solid #f0f1f3;">Tùy chọn</div>
+                  <div style="padding:8px 14px 6px;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);text-transform:uppercase;letter-spacing:0.03em;border-top:1px solid #f0f1f3;">Tùy chọn</div>
                   <sc-for list="{{ fCols.toggles }}" as="it" hint-placeholder-count="3">
-                    <div style="{{ it.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span></div>
+                    <div style="{{ it.rowStyle }}" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ it.on }}"><span style="{{ it.boxStyle }}"><sc-if value="{{ it.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span><span style="{{ it.textStyle }}">{{ it.label }}</span></div>
                   </sc-for>
                 </div>
               </sc-if>
@@ -127,105 +131,105 @@
         <!-- active filter chips -->
         <sc-if value="{{ hasFilter }}">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 16px 12px;">
-            <span style="font-size:12.5px;color:#878a99;">Đang lọc:</span>
+            <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);">Đang lọc:</span>
             <sc-for list="{{ chips }}" as="c" hint-placeholder-count="1">
-              <span style="display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 10px;background:rgba(64,81,137,0.08);border:1px solid rgba(64,81,137,0.18);border-radius:20px;font-size:12px;font-weight:500;color:#405189;">{{ c.label }}<button title="Bỏ lọc" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:2px;border:0;border-radius:50%;background:transparent;color:#405189;cursor:pointer;" style-hover="background:rgba(64,81,137,0.18);" onClick="{{ c.on }}"><i class="ri-close-line" style="font-size:13px;"></i></button></span>
+              <span style="display:inline-flex;align-items:center;gap:2px;padding:4px 4px 4px 10px;background:rgba(32,80,160,0.08);border:1px solid rgba(32,80,160,0.18);border-radius:20px;font-size:12px;font-weight:500;color:var(--color-accent,#2050a0);">{{ c.label }}<button title="Bỏ lọc" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:2px;border:0;border-radius:50%;background:transparent;color:var(--color-accent,#2050a0);cursor:pointer;" style-hover="background:rgba(32,80,160,0.18);" onClick="{{ c.on }}" aria-label="Bỏ lọc"><i class="ri-close-line" style="font-size:13px;"></i></button></span>
             </sc-for>
-            <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;padding:2px 4px;" style-hover="color:#f06548;" onClick="{{ onClearAll }}">Xóa tất cả</button>
-            <span style="margin-left:auto;font-size:12.5px;color:#878a99;">Khớp <strong style="color:#495057;font-weight:600;">{{ matchCount }}</strong> / {{ baseCount }} trang</span>
+            <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;padding:2px 4px;" style-hover="color:var(--color-admin-danger-text,#f06548);" onClick="{{ onClearAll }}">Xóa tất cả</button>
+            <span style="margin-left:auto;font-size:12.5px;color:var(--color-body-muted,#5b6275);">Khớp <strong style="color:var(--color-body-text,#3c4765);font-weight:600;">{{ matchCount }}</strong> / {{ baseCount }} trang</span>
           </div>
         </sc-if>
 
         <!-- bulk action bar -->
         <sc-if value="{{ bulkVisible }}">
-          <div style="display:flex;align-items:center;gap:8px;margin:0 16px 12px;padding:7px 12px;background:rgba(64,81,137,0.06);border:1px solid rgba(64,81,137,0.18);border-radius:6px;">
-            <span style="font-size:13px;font-weight:600;color:#405189;">Đã chọn {{ bulkCount }} trang</span>
-            <span style="width:1px;height:16px;background:rgba(64,81,137,0.2);"></span>
+          <div style="display:flex;align-items:center;gap:8px;margin:0 16px 12px;padding:7px 12px;background:rgba(32,80,160,0.06);border:1px solid rgba(32,80,160,0.18);border-radius:6px;">
+            <span style="font-size:13px;font-weight:600;color:var(--color-accent,#2050a0);">Đã chọn {{ bulkCount }} trang</span>
+            <span style="width:1px;height:16px;background:rgba(32,80,160,0.2);"></span>
             <sc-if value="{{ isTrashTab }}">
-              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onBulkRestore }}"><i class="ri-arrow-go-back-line" style="font-size:14px;color:#878a99;"></i>Khôi phục</button>
-              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(240,101,72,0.3);border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#f06548;cursor:pointer;" style-hover="background:rgba(240,101,72,0.08);" onClick="{{ onBulkDestroy }}"><i class="ri-delete-bin-2-line" style="font-size:14px;"></i>Xoá vĩnh viễn</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ onBulkRestore }}"><i class="ri-arrow-go-back-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i>Khôi phục</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(240,101,72,0.3);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-admin-danger-text,#f06548);cursor:pointer;" style-hover="background:rgba(240,101,72,0.08);" onClick="{{ onBulkDestroy }}"><i class="ri-delete-bin-2-line" style="font-size:14px;"></i>Xóa vĩnh viễn</button>
             </sc-if>
             <sc-if value="{{ notTrashTab }}">
-              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onBulkPublish }}"><i class="ri-check-double-line" style="font-size:14px;color:#0ab39c;"></i>Xuất bản</button>
-              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onBulkDraft }}"><i class="ri-draft-line" style="font-size:14px;color:#878a99;"></i>Chuyển nháp</button>
-              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onBulkDuplicate }}"><i class="ri-file-copy-line" style="font-size:14px;color:#878a99;"></i>Nhân bản</button>
-              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(240,101,72,0.3);border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#f06548;cursor:pointer;" style-hover="background:rgba(240,101,72,0.08);" onClick="{{ onBulkTrash }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i>Thùng rác</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ onBulkPublish }}"><i class="ri-check-double-line" style="font-size:14px;color:var(--color-admin-success-text,#0ab39c);"></i>Xuất bản</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ onBulkDraft }}"><i class="ri-draft-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i>Chuyển nháp</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ onBulkDuplicate }}"><i class="ri-file-copy-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i>Nhân bản</button>
+              <button style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid rgba(240,101,72,0.3);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-admin-danger-text,#f06548);cursor:pointer;" style-hover="background:rgba(240,101,72,0.08);" onClick="{{ onBulkTrash }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i>Thùng rác</button>
             </sc-if>
-            <button style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:12.5px;color:#878a99;cursor:pointer;" style-hover="color:#405189;" onClick="{{ onClearSel }}">Bỏ chọn<i class="ri-close-line" style="font-size:14px;"></i></button>
+            <button style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;padding:6px 8px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:12.5px;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="color:var(--color-accent,#2050a0);" onClick="{{ onClearSel }}">Bỏ chọn<i class="ri-close-line" style="font-size:14px;"></i></button>
           </div>
         </sc-if>
 
         <!-- table -->
-        <table style="width:100%;border-collapse:collapse;font-size:13px;color:#495057;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;color:var(--color-body-text,#3c4765);">
           <thead>
             <tr>
-              <th style="width:40px;padding:0 0 0 16px;border-bottom:1px solid #e9ebec;text-align:left;height:40px;vertical-align:middle;"><span style="{{ headerBoxStyle }}" onClick="{{ onHeaderToggle }}"><sc-if value="{{ headerHasIcon }}"><i class="{{ headerIconClass }}" style="font-size:12px;"></i></sc-if></span></th>
-              <th style="width:100%;text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.name.btnStyle }}" onClick="{{ sortUI.name.on }}">Tiêu đề<i class="{{ sortUI.name.iconClass }}" style="{{ sortUI.name.iconStyle }}"></i></button></th>
-              <sc-if value="{{ colSlug }}"><th style="width:1%;min-width:190px;text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;">Đường dẫn</th></sc-if>
-              <th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.status.btnStyle }}" onClick="{{ sortUI.status.on }}">Trạng thái<i class="{{ sortUI.status.iconClass }}" style="{{ sortUI.status.iconStyle }}"></i></button></th>
-              <sc-if value="{{ colLangs }}"><th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:4px;" title="Bấm mã ngôn ngữ trong mỗi hàng để mở/sửa đúng bản dịch đó">Ngôn ngữ<i class="ri-question-line" style="font-size:13px;color:#ced4da;"></i></span></th></sc-if>
-              <sc-if value="{{ colCreator }}"><th style="text-align:left;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.creator.btnStyle }}" onClick="{{ sortUI.creator.on }}">Người tạo<i class="{{ sortUI.creator.iconClass }}" style="{{ sortUI.creator.iconStyle }}"></i></button></th></sc-if>
-              <sc-if value="{{ colViews }}"><th style="text-align:right;padding:10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.views.btnStyle }}justify-content:flex-end;width:100%;" onClick="{{ sortUI.views.on }}">Lượt xem<i class="{{ sortUI.views.iconClass }}" style="{{ sortUI.views.iconStyle }}"></i></button></th></sc-if>
-              <th style="width:132px;text-align:right;padding:10px 16px 10px 12px;border-bottom:1px solid #e9ebec;font-size:12.5px;font-weight:600;color:#878a99;white-space:nowrap;">Hành động</th>
+              <th style="width:40px;padding:0 0 0 16px;border-bottom:1px solid var(--color-border-strong,#e9ebec);text-align:left;height:40px;vertical-align:middle;"><span style="{{ headerBoxStyle }}" onClick="{{ onHeaderToggle }}"><sc-if value="{{ headerHasIcon }}"><i class="{{ headerIconClass }}" style="font-size:12px;"></i></sc-if></span></th>
+              <th style="width:100%;text-align:left;padding:10px 12px;border-bottom:1px solid var(--color-border-strong,#e9ebec);font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.name.btnStyle }}" onClick="{{ sortUI.name.on }}">Tiêu đề<i class="{{ sortUI.name.iconClass }}" style="{{ sortUI.name.iconStyle }}"></i></button></th>
+              <sc-if value="{{ colSlug }}"><th style="width:1%;min-width:190px;text-align:left;padding:10px 12px;border-bottom:1px solid var(--color-border-strong,#e9ebec);font-size:12.5px;font-weight:600;color:var(--color-body-muted,#5b6275);white-space:nowrap;">Đường dẫn</th></sc-if>
+              <th style="text-align:left;padding:10px 12px;border-bottom:1px solid var(--color-border-strong,#e9ebec);font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.status.btnStyle }}" onClick="{{ sortUI.status.on }}">Trạng thái<i class="{{ sortUI.status.iconClass }}" style="{{ sortUI.status.iconStyle }}"></i></button></th>
+              <sc-if value="{{ colLangs }}"><th style="text-align:left;padding:10px 12px;border-bottom:1px solid var(--color-border-strong,#e9ebec);font-size:12.5px;font-weight:600;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><span style="display:inline-flex;align-items:center;gap:4px;" title="Bấm mã ngôn ngữ trong mỗi hàng để mở/sửa đúng bản dịch đó">Ngôn ngữ<i class="ri-question-line" style="font-size:13px;color:#ced4da;"></i></span></th></sc-if>
+              <sc-if value="{{ colCreator }}"><th style="text-align:left;padding:10px 12px;border-bottom:1px solid var(--color-border-strong,#e9ebec);font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.creator.btnStyle }}" onClick="{{ sortUI.creator.on }}">Người tạo<i class="{{ sortUI.creator.iconClass }}" style="{{ sortUI.creator.iconStyle }}"></i></button></th></sc-if>
+              <sc-if value="{{ colViews }}"><th style="text-align:right;padding:10px 12px;border-bottom:1px solid var(--color-border-strong,#e9ebec);font-size:12.5px;white-space:nowrap;"><button style="{{ sortUI.views.btnStyle }}justify-content:flex-end;width:100%;" onClick="{{ sortUI.views.on }}">Lượt xem<i class="{{ sortUI.views.iconClass }}" style="{{ sortUI.views.iconStyle }}"></i></button></th></sc-if>
+              <th style="width:132px;text-align:right;padding:10px 16px 10px 12px;border-bottom:1px solid var(--color-border-strong,#e9ebec);font-size:12.5px;font-weight:600;color:var(--color-body-muted,#5b6275);white-space:nowrap;">Hành động</th>
             </tr>
           </thead>
           <tbody>
             <sc-for list="{{ rowsD }}" as="r" hint-placeholder-count="7">
-              <tr style="{{ r.rowStyle }}" style-hover="background:#f8f9fa;">
-                <td style="width:40px;padding:0 0 0 16px;border-bottom:1px solid #eff2f7;vertical-align:middle;"><span style="{{ r.checkStyle }}" onClick="{{ r.onToggle }}"><sc-if value="{{ r.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span></td>
-                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+              <tr style="{{ r.rowStyle }}" style-hover="background:var(--color-surface-muted,#f8f9fa);">
+                <td style="width:40px;padding:0 0 0 16px;border-bottom:1px solid var(--color-border,#e9ecf4);vertical-align:middle;"><span style="{{ r.checkStyle }}" onClick="{{ r.onToggle }}"><sc-if value="{{ r.checked }}"><i class="ri-check-line" style="font-size:12px;"></i></sc-if></span></td>
+                <td style="padding:9px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);">
                   <div style="display:flex;align-items:center;gap:8px;padding-left:{{ r.pad }};">
                     <sc-if value="{{ r.isChild }}"><i class="ri-corner-down-right-line" style="color:#ced4da;font-size:13px;"></i></sc-if>
                     <sc-if value="{{ r.editingName }}">
-                    <input value="{{ draft }}" autoFocus="{{ true }}" onChange="{{ onEditChange }}" onFocus="{{ onEditFocus }}" onBlur="{{ onCommitEdit }}" onKeyDown="{{ onEditKey }}" style="width:260px;max-width:100%;padding:5px 8px;border:1px solid #405189;border-radius:4px;font:inherit;font-size:13px;font-weight:500;color:#495057;outline:0;box-shadow:0 0 0 3px rgba(64,81,137,0.2);" />
+                    <input value="{{ draft }}" autoFocus="{{ true }}" onChange="{{ onEditChange }}" onFocus="{{ onEditFocus }}" onBlur="{{ onCommitEdit }}" onKeyDown="{{ onEditKey }}" style="width:260px;max-width:100%;padding:5px 8px;border:1px solid #2050a0;border-radius:4px;font:inherit;font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);outline:0;box-shadow:0 0 0 3px rgba(32,80,160,0.2);" />
                   </sc-if>
                   <sc-if value="{{ r.notEditingName }}">
                     <span class="rowedit" style="display:inline-flex;align-items:center;gap:6px;min-width:0;">
-                      <span title="Bấm để sửa tiêu đề" style="font-weight:500;color:#495057;white-space:nowrap;cursor:text;" style-hover="color:#405189;" onClick="{{ r.onEditName }}">{{ r.name }}</span>
-                      <button title="Sửa nhanh tiêu đề" class="rowbtn" style="width:22px;height:22px;border:0;border-radius:4px;background:transparent;color:#adb5bd;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;" onClick="{{ r.onEditName }}"><i class="ri-pencil-line" style="font-size:13px;"></i></button>
+                      <span title="Bấm để sửa tiêu đề" style="font-weight:500;color:var(--color-body-text,#3c4765);white-space:nowrap;cursor:text;" style-hover="color:var(--color-accent,#2050a0);" onClick="{{ r.onEditName }}">{{ r.name }}</span>
+                      <button title="Sửa nhanh tiêu đề" class="rowbtn" style="width:22px;height:22px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" onClick="{{ r.onEditName }}" aria-label="Sửa nhanh tiêu đề"><i class="ri-pencil-line" style="font-size:13px;"></i></button>
                     </span>
                   </sc-if>
                   </div>
                 </td>
                 <sc-if value="{{ colSlug }}">
-                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                <td style="padding:9px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);">
                   <sc-if value="{{ r.editingSlug }}">
-                    <span style="display:inline-flex;align-items:center;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#adb5bd;">{{ r.slugPrefix }}<input value="{{ draft }}" autoFocus="{{ true }}" onChange="{{ onEditChange }}" onFocus="{{ onEditFocus }}" onBlur="{{ onCommitEdit }}" onKeyDown="{{ onEditKey }}" style="width:150px;padding:4px 7px;border:1px solid #405189;border-radius:4px;font:inherit;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#495057;outline:0;box-shadow:0 0 0 3px rgba(64,81,137,0.2);" /></span>
+                    <span style="display:inline-flex;align-items:center;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ r.slugPrefix }}<input value="{{ draft }}" autoFocus="{{ true }}" onChange="{{ onEditChange }}" onFocus="{{ onEditFocus }}" onBlur="{{ onCommitEdit }}" onKeyDown="{{ onEditKey }}" style="width:150px;padding:4px 7px;border:1px solid #2050a0;border-radius:4px;font:inherit;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--color-body-text,#3c4765);outline:0;box-shadow:0 0 0 3px rgba(32,80,160,0.2);" /></span>
                   </sc-if>
                   <sc-if value="{{ r.notEditingSlug }}">
                     <sc-if value="{{ r.slugEditable }}">
-                      <code title="{{ r.slugTitle }}" style="display:inline-block;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#878a99;cursor:text;border-bottom:1px dashed #e3e6ea;" style-hover="color:#405189;border-bottom-color:#405189;" onClick="{{ r.onEditSlug }}">{{ r.slug }}</code>
+                      <code title="{{ r.slugTitle }}" style="display:inline-block;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--color-body-muted,#5b6275);cursor:text;border-bottom:1px dashed #e3e6ea;" style-hover="color:var(--color-accent,#2050a0);border-bottom-color:#2050a0;" onClick="{{ r.onEditSlug }}">{{ r.slug }}</code>
                     </sc-if>
                     <sc-if value="{{ r.slugLocked }}">
-                      <span title="Trang chủ luôn nằm ở đường dẫn gốc “/” — không đổi được." style="display:inline-flex;align-items:center;gap:5px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:#adb5bd;">{{ r.slug }}<i class="ri-lock-2-line" style="font-size:12px;"></i></span>
+                      <span title="Trang chủ luôn nằm ở đường dẫn gốc “/” — không đổi được." style="display:inline-flex;align-items:center;gap:5px;font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ r.slug }}<i class="ri-lock-2-line" style="font-size:12px;"></i></span>
                     </sc-if>
                   </sc-if>
                 </td>
                 </sc-if>
-                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;position:relative;">
+                <td style="padding:9px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);position:relative;">
                   <button title="Bấm để đổi trạng thái" style="{{ r.badgeStyle }}" onClick="{{ r.onBadge }}"><span style="{{ r.dotStyle }}"></span>{{ r.statusLabel }}<i class="{{ r.badgeArrow }}" style="font-size:13px;opacity:0.7;"></i></button>
-                  <div title="{{ r.metaTitle }}" style="margin-top:4px;font-size:11.5px;color:#adb5bd;display:flex;align-items:center;gap:4px;white-space:nowrap;"><i class="{{ r.metaIcon }}" style="font-size:12px;"></i>{{ r.metaText }}</div>
+                  <div title="{{ r.metaTitle }}" style="margin-top:4px;font-size:12px;color:var(--color-body-muted,#5b6275);display:flex;align-items:center;gap:4px;white-space:nowrap;"><i class="{{ r.metaIcon }}" style="font-size:12px;"></i>{{ r.metaText }}</div>
                   <sc-if value="{{ r.schedOpen }}">
                     <div style="margin-top:8px;width:232px;">
-                      <div style="font-size:12px;color:#878a99;margin-bottom:6px;">Chọn thời điểm đăng</div>
-                      <input type="datetime-local" value="{{ r.schedValue }}" autoFocus="{{ true }}" onChange="{{ r.onSchedChange }}" onKeyDown="{{ r.onSchedKey }}" style="width:100%;box-sizing:border-box;padding:8px 9px;border:1px solid #ced4da;border-radius:4px;background:#fff;font:inherit;font-size:13px;color:#495057;outline:0;" style-focus="border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,0.2);" />
+                      <div style="font-size:12px;color:var(--color-body-muted,#5b6275);margin-bottom:6px;">Chọn thời điểm đăng</div>
+                      <input type="datetime-local" value="{{ r.schedValue }}" autoFocus="{{ true }}" onChange="{{ r.onSchedChange }}" onKeyDown="{{ r.onSchedKey }}" style="width:100%;box-sizing:border-box;padding:8px 9px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:0;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.2);" />
                       <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
-                        <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:#878a99;cursor:pointer;padding:0;" style-hover="color:#405189;" onClick="{{ r.onSchedCancel }}">Huỷ</button>
-                        <button style="margin-left:auto;padding:7px 14px;border:0;border-radius:4px;background:#405189;color:#fff;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ r.onSchedSave }}">Đặt lịch</button>
+                        <button style="border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;padding:0;" style-hover="color:var(--color-accent,#2050a0);" onClick="{{ r.onSchedCancel }}">Hủy</button>
+                        <button style="margin-left:auto;padding:7px 14px;border:0;border-radius:4px;background:#2050a0;color:#fff;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ r.onSchedSave }}">Đặt lịch</button>
                       </div>
                     </div>
                   </sc-if>
                   <sc-if value="{{ r.menuOpen }}">
-                    <div style="position:absolute;top:calc(100% - 2px);left:12px;z-index:60;width:206px;background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 5px 15px rgba(30,32,37,0.15);padding:4px 0;">
-                      <div style="padding:6px 12px 4px;font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;">Chuyển trạng thái</div>
+                    <div style="position:absolute;top:calc(100% - 2px);left:12px;z-index:60;width:206px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;box-shadow:0 5px 15px rgba(30,32,37,0.15);padding:4px 0;">
+                      <div style="padding:6px 12px 4px;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);text-transform:uppercase;letter-spacing:0.03em;">Chuyển trạng thái</div>
                       <sc-for list="{{ r.statusItems }}" as="si" hint-placeholder-count="4">
-                        <button title="{{ si.title }}" style="{{ si.rowStyle }}" style-hover="background:#f3f6f9;" onClick="{{ si.on }}"><span style="{{ si.dotStyle }}"></span>{{ si.label }}<sc-if value="{{ si.locked }}"><i class="ri-lock-line" style="margin-left:auto;font-size:13px;"></i></sc-if><sc-if value="{{ si.active }}"><i class="ri-check-line" style="margin-left:auto;font-size:14px;color:#405189;"></i></sc-if></button>
+                        <button title="{{ si.title }}" style="{{ si.rowStyle }}" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ si.on }}"><span style="{{ si.dotStyle }}"></span>{{ si.label }}<sc-if value="{{ si.locked }}"><i class="ri-lock-line" style="margin-left:auto;font-size:13px;"></i></sc-if><sc-if value="{{ si.active }}"><i class="ri-check-line" style="margin-left:auto;font-size:14px;color:var(--color-accent,#2050a0);"></i></sc-if></button>
                       </sc-for>
                     </div>
                   </sc-if>
                 </td>
                 <sc-if value="{{ colLangs }}">
-                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                <td style="padding:9px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);">
                   <div style="display:flex;gap:4px;">
                     <sc-for list="{{ r.langs }}" as="lg" hint-placeholder-count="4">
                       <div style="position:relative;display:inline-flex;" style-hover="--pop:1;--pe:auto;">
@@ -239,27 +243,27 @@
                 </td>
                 </sc-if>
                 <sc-if value="{{ colCreator }}">
-                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;">
+                <td style="padding:9px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);">
                   <div style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
                     <span style="{{ r.avStyle }}">{{ r.creatorInit }}</span>
-                    <span style="color:#495057;">{{ r.creator }}</span>
+                    <span style="color:var(--color-body-text,#3c4765);">{{ r.creator }}</span>
                   </div>
                 </td>
                 </sc-if>
                 <sc-if value="{{ colViews }}">
-                <td style="padding:9px 12px;border-bottom:1px solid #eff2f7;text-align:right;color:#495057;font-variant-numeric:tabular-nums;">{{ r.views }}</td>
+                <td style="padding:9px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);text-align:right;color:var(--color-body-text,#3c4765);font-variant-numeric:tabular-nums;">{{ r.views }}</td>
                 </sc-if>
-                <td style="padding:9px 16px 9px 12px;border-bottom:1px solid #eff2f7;">
+                <td style="padding:9px 16px 9px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);">
                   <div style="display:flex;gap:2px;justify-content:flex-end;">
                     <sc-if value="{{ r.trashed }}">
-                      <button title="Khôi phục" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#0ab39c;" onClick="{{ r.onRestore }}"><i class="ri-arrow-go-back-line" style="font-size:15px;"></i></button>
-                      <button title="Xoá vĩnh viễn" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(240,101,72,0.1);color:#f06548;" onClick="{{ r.onDestroy }}"><i class="ri-delete-bin-2-line" style="font-size:15px;"></i></button>
+                      <button title="Khôi phục" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-admin-success-text,#0ab39c);" onClick="{{ r.onRestore }}" aria-label="Khôi phục"><i class="ri-arrow-go-back-line" style="font-size:15px;"></i></button>
+                      <button title="Xóa vĩnh viễn" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(240,101,72,0.1);color:var(--color-admin-danger-text,#f06548);" onClick="{{ r.onDestroy }}" aria-label="Xóa vĩnh viễn"><i class="ri-delete-bin-2-line" style="font-size:15px;"></i></button>
                     </sc-if>
                     <sc-if value="{{ r.notTrashed }}">
-                      <button title="Xem trước" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;" onClick="{{ r.onPreview }}"><i class="ri-eye-line" style="font-size:15px;"></i></button>
-                      <button title="Sửa" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;" onClick="{{ r.onEdit }}"><i class="ri-pencil-line" style="font-size:15px;"></i></button>
-                      <button title="Nhân bản" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:#f3f6f9;color:#405189;" onClick="{{ r.onDup }}"><i class="ri-file-copy-line" style="font-size:15px;"></i></button>
-                      <button title="Chuyển vào thùng rác" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(240,101,72,0.1);color:#f06548;" onClick="{{ r.onTrash }}"><i class="ri-delete-bin-line" style="font-size:15px;"></i></button>
+                      <button title="Xem trước" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" onClick="{{ r.onPreview }}" aria-label="Xem trước"><i class="ri-eye-line" style="font-size:15px;"></i></button>
+                      <button title="Sửa" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" onClick="{{ r.onEdit }}" aria-label="Sửa"><i class="ri-pencil-line" style="font-size:15px;"></i></button>
+                      <button title="Nhân bản" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" onClick="{{ r.onDup }}" aria-label="Nhân bản"><i class="ri-file-copy-line" style="font-size:15px;"></i></button>
+                      <button title="Chuyển vào thùng rác" style="width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;display:flex;align-items:center;justify-content:center;" style-hover="background:rgba(240,101,72,0.1);color:var(--color-admin-danger-text,#f06548);" onClick="{{ r.onTrash }}" aria-label="Chuyển vào thùng rác"><i class="ri-delete-bin-line" style="font-size:15px;"></i></button>
                     </sc-if>
                   </div>
                 </td>
@@ -267,11 +271,11 @@
             </sc-for>
             <sc-if value="{{ isEmpty }}">
               <tr>
-                <td colspan="{{ emptyColspan }}" style="padding:48px 16px;text-align:center;color:#878a99;">
+                <td colspan="{{ emptyColspan }}" style="padding:48px 16px;text-align:center;color:var(--color-body-muted,#5b6275);">
                   <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
                     <i class="ri-inbox-2-line" style="font-size:32px;color:#ced4da;"></i>
                     <div style="font-size:14px;">Không tìm thấy trang nào khớp bộ lọc.</div>
-                    <button style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid #e9ebec;border-radius:6px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#405189;cursor:pointer;" style-hover="background:#f3f6f9;" onClick="{{ onClearAll }}"><i class="ri-refresh-line" style="font-size:15px;"></i>Xoá bộ lọc</button>
+                    <button style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-accent,#2050a0);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ onClearAll }}"><i class="ri-refresh-line" style="font-size:15px;"></i>Xóa bộ lọc</button>
                   </div>
                 </td>
               </tr>
@@ -281,16 +285,16 @@
 
         <!-- pagination footer -->
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;">
-          <span style="font-size:12.5px;color:#878a99;">{{ footerText }}</span>
+          <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);">{{ footerText }}</span>
           <div style="display:flex;align-items:center;gap:16px;">
-            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#878a99;">Dòng/trang
-              <span title="Bấm để đổi" style="display:inline-flex;align-items:center;gap:5px;border:1px solid #e9ebec;border-radius:4px;padding:5px 9px;background:#fff;color:#495057;font-weight:500;cursor:pointer;" style-hover="border-color:#dfe2e6;background:#f8f9fb;" onClick="{{ onCyclePerPage }}">{{ perPageVal }}<i class="ri-arrow-down-s-line" style="color:#878a99;"></i></span>
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--color-body-muted,#5b6275);">Dòng/trang
+              <span title="Bấm để đổi" style="display:inline-flex;align-items:center;gap:5px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;padding:5px 9px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font-weight:500;cursor:pointer;" style-hover="border-color:#dfe2e6;background:var(--color-surface-muted,#f8f9fb);" onClick="{{ onCyclePerPage }}">{{ perPageVal }}<i class="ri-arrow-down-s-line" style="color:var(--color-body-muted,#5b6275);"></i></span>
             </div>
             <div style="display:flex;align-items:center;gap:4px;">
               <span style="{{ prevStyle }}" onClick="{{ onPrev }}"><i class="ri-arrow-left-s-line" style="font-size:16px;"></i></span>
               <sc-for list="{{ pager }}" as="pg" hint-placeholder-count="1">
                 <sc-if value="{{ pg.ell }}"><span style="padding:0 4px;color:#ced4da;">…</span></sc-if>
-                <sc-if value="{{ pg.num }}"><span style="{{ pg.style }}" style-hover="background:#f3f6f9;" onClick="{{ pg.on }}">{{ pg.label }}</span></sc-if>
+                <sc-if value="{{ pg.num }}"><span style="{{ pg.style }}" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ pg.on }}">{{ pg.label }}</span></sc-if>
               </sc-for>
               <span style="{{ nextStyle }}" onClick="{{ onNext }}"><i class="ri-arrow-right-s-line" style="font-size:16px;"></i></span>
             </div>
@@ -301,7 +305,7 @@
       <!-- outside-click backdrop for open menus -->
       <sc-if value="{{ anyOverlay }}"><div style="position:fixed;inset:0;z-index:40;" onClick="{{ onCloseOverlays }}"></div></sc-if>
       <!-- toast -->
-      <sc-if value="{{ showToast }}"><div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:200;background:#212529;color:#fff;padding:10px 16px;border-radius:6px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:8px;"><i class="ri-checkbox-circle-line" style="font-size:16px;color:#0ab39c;"></i>{{ toastMsg }}</div></sc-if>
+      <sc-if value="{{ showToast }}"><div style="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:200;background:#212529;color:#fff;padding:10px 16px;border-radius:6px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.25);display:flex;align-items:center;gap:8px;"><i class="ri-checkbox-circle-line" style="font-size:16px;color:var(--color-admin-success-text,#0ab39c);"></i>{{ toastMsg }}</div></sc-if>
     </div>
 </section>
 </x-dc>
@@ -463,7 +467,7 @@ class Component extends DCLogic {
     this.notify('Đã chuyển vào thùng rác');
   }
   restore(id) { this.setState(s => ({ pages: s.pages.map(p => p.id === id ? Object.assign({}, p, { trashed: false }) : p) })); this.notify('Đã khôi phục trang'); }
-  destroy(id) { this.setState(s => { const sel = Object.assign({}, s.selected); delete sel[id]; return { pages: s.pages.filter(p => p.id !== id), selected: sel }; }); this.notify('Đã xoá vĩnh viễn'); }
+  destroy(id) { this.setState(s => { const sel = Object.assign({}, s.selected); delete sel[id]; return { pages: s.pages.filter(p => p.id !== id), selected: sel }; }); this.notify('Đã xóa vĩnh viễn'); }
   duplicate(id) {
     this.setState(s => {
       const src = s.pages.find(p => p.id === id);
@@ -486,7 +490,7 @@ class Component extends DCLogic {
   }
   bulkTrash() { this.setState(s => { const ids = Object.keys(s.selected); return { pages: s.pages.map(p => ids.indexOf(p.id) >= 0 ? Object.assign({}, p, { trashed: true }) : p), selected: {} }; }); this.notify('Đã chuyển các trang đã chọn vào thùng rác'); }
   bulkRestore() { this.setState(s => { const ids = Object.keys(s.selected); return { pages: s.pages.map(p => ids.indexOf(p.id) >= 0 ? Object.assign({}, p, { trashed: false }) : p), selected: {} }; }); this.notify('Đã khôi phục các trang đã chọn'); }
-  bulkDestroy() { this.setState(s => { const ids = Object.keys(s.selected); return { pages: s.pages.filter(p => ids.indexOf(p.id) < 0), selected: {} }; }); this.notify('Đã xoá vĩnh viễn các trang đã chọn'); }
+  bulkDestroy() { this.setState(s => { const ids = Object.keys(s.selected); return { pages: s.pages.filter(p => ids.indexOf(p.id) < 0), selected: {} }; }); this.notify('Đã xóa vĩnh viễn các trang đã chọn'); }
   bulkStatus(st) { this.setState(s => { const ids = Object.keys(s.selected); return { pages: s.pages.map(p => ids.indexOf(p.id) >= 0 ? Object.assign({}, p, { st: st }) : p), selected: {} }; }); this.notify('Đã đổi trạng thái các trang đã chọn'); }
   bulkDuplicate() {
     this.setState(s => {
@@ -569,7 +573,7 @@ class Component extends DCLogic {
     const canPublish = this.props.canPublish !== false;
     const STATUS = {
       pub:   { label: 'Đã xuất bản', c: '#0ab39c', bg: 'rgba(10,179,156,0.1)' },
-      draft: { label: 'Bản nháp',    c: '#495057', bg: 'rgba(33,37,41,0.08)' },
+      draft: { label: 'Bản nháp',    c: '#3c4765', bg: 'rgba(33,37,41,0.08)' },
       sched: { label: 'Đã lên lịch', c: '#c78729', bg: 'rgba(247,184,75,0.15)' },
       priv:  { label: 'Riêng tư',    c: '#3577f1', bg: 'rgba(53,119,241,0.1)' }
     };
@@ -655,7 +659,7 @@ class Component extends DCLogic {
         statusItems: STATUS_ORDER.map(k => ({
           label: k === 'sched' ? 'Lên lịch xuất bản…' : STATUS[k].label, active: p.st === k, locked: k === 'pub' && !canPublish, title: (k === 'pub' && !canPublish) ? 'Bạn không có quyền xuất bản' : ('Chuyển sang “' + STATUS[k].label + '”'),
           dotStyle: 'width:7px;height:7px;border-radius:50%;background:' + STATUS[k].c + ';flex-shrink:0;',
-          rowStyle: 'display:flex;align-items:center;gap:8px;width:100%;padding:7px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:' + ((k === 'pub' && !canPublish) ? '#ced4da' : (p.st === k ? '#405189' : '#495057')) + ';' + (p.st === k ? 'font-weight:600;' : '') + 'cursor:' + ((k === 'pub' && !canPublish) ? 'not-allowed' : 'pointer') + ';text-align:left;',
+          rowStyle: 'display:flex;align-items:center;gap:8px;width:100%;padding:7px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:' + ((k === 'pub' && !canPublish) ? '#ced4da' : (p.st === k ? '#2050a0' : '#3c4765')) + ';' + (p.st === k ? 'font-weight:600;' : '') + 'cursor:' + ((k === 'pub' && !canPublish) ? 'not-allowed' : 'pointer') + ';text-align:left;',
           on: (k === 'pub' && !canPublish) ? () => this.notify('Bạn không có quyền xuất bản trang.') : (k === 'sched' ? () => this.openSched(p.id) : () => this.setStatus(p.id, k))
         })),
         langs: ALL_LANGS.map(code => {
@@ -663,23 +667,23 @@ class Component extends DCLogic {
           return {
             code: code,
             chipStyle: on
-              ? 'display:inline-flex;align-items:center;font-size:10px;font-weight:700;color:#495057;background:#f3f6f9;border:1px solid #e9ebec;border-radius:4px;padding:2px 6px;line-height:1.4;'
-              : 'display:inline-flex;align-items:center;font-size:10px;font-weight:700;color:#c8ccd2;background:#fcfcfd;border:1px dashed #e3e6ea;border-radius:4px;padding:2px 6px;line-height:1.4;',
-            popStyle: 'display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:0;border-radius:6px;background:' + (on ? '#405189' : '#0ab39c') + ';color:#fff;font:inherit;font-size:11px;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(30,32,37,0.28);',
+              ? 'display:inline-flex;align-items:center;font-size:12px;font-weight:700;color:var(--color-body-text,#3c4765);background:var(--color-surface-hover,#f3f6f9);border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;padding:2px 6px;line-height:1.4;'
+              : 'display:inline-flex;align-items:center;font-size:12px;font-weight:700;color:#c8ccd2;background:var(--color-surface-muted,#fcfcfd);border:1px dashed #e3e6ea;border-radius:4px;padding:2px 6px;line-height:1.4;',
+            popStyle: 'display:inline-flex;align-items:center;gap:4px;padding:5px 9px;border:0;border-radius:6px;background:' + (on ? '#2050a0' : '#0ab39c') + ';color:#fff;font:inherit;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 6px 16px rgba(30,32,37,0.28);',
             popIcon: on ? 'ri-pencil-line' : 'ri-add-line',
             popLabel: on ? 'Sửa' : 'Thêm',
             title: (on ? 'Sửa nội dung ' : 'Thêm bản ') + this.langLabel(code) + ' · ' + p.name,
             on: on ? () => this.openLocale(p.id, code) : () => this.addLocale(p.id, code)
           };
         }),
-        avStyle: 'width:26px;height:26px;border-radius:50%;background:' + a.bg + ';color:' + a.c + ';border:1px solid ' + a.c + '33;font-size:10.5px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;',
+        avStyle: 'width:26px;height:26px;border-radius:50%;background:' + a.bg + ';color:' + a.c + ';border:1px solid ' + a.c + '33;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;',
         creatorInit: a.init,
         updated: this.relTime(p.updatedExact), updatedExact: p.updatedExact,
         checked: sel,
-        rowStyle: sel ? 'background:rgba(64,81,137,0.05);' : '',
+        rowStyle: sel ? 'background:rgba(32,80,160,0.05);' : '',
         checkStyle: sel
-          ? 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #405189;border-radius:4px;background:#405189;color:#fff;vertical-align:middle;cursor:pointer;'
-          : 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #ced4da;border-radius:4px;background:#fff;vertical-align:middle;cursor:pointer;',
+          ? 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #2050a0;border-radius:4px;background:#2050a0;color:#fff;vertical-align:middle;cursor:pointer;'
+          : 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid var(--color-border-strong,#ced4da);border-radius:4px;background:var(--color-surface,#fff);vertical-align:middle;cursor:pointer;',
         onToggle: () => this.toggleSel(p.id),
         schedOpen: !!(S.schedFor && S.schedFor.id === p.id),
         badgeArrow: (S.statusMenu === p.id || (S.schedFor && S.schedFor.id === p.id)) ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line',
@@ -697,30 +701,30 @@ class Component extends DCLogic {
 
     // tabs
     const tabDefs = [
-      { key: 'all', label: 'Tất cả', icon: 'ri-file-list-3-line', c: '#405189', bg: 'rgba(64,81,137,0.1)' },
+      { key: 'all', label: 'Tất cả', icon: 'ri-file-list-3-line', c: '#2050a0', bg: 'rgba(32,80,160,0.1)' },
       { key: 'pub', label: 'Đã xuất bản', icon: 'ri-global-line', c: '#0ab39c', bg: 'rgba(10,179,156,0.1)' },
-      { key: 'draft', label: 'Bản nháp', icon: 'ri-draft-line', c: '#495057', bg: 'rgba(33,37,41,0.08)' },
+      { key: 'draft', label: 'Bản nháp', icon: 'ri-draft-line', c: '#3c4765', bg: 'rgba(33,37,41,0.08)' },
       { key: 'sched', label: 'Đã lên lịch', icon: 'ri-calendar-schedule-line', c: '#c78729', bg: 'rgba(247,184,75,0.15)' },
       { key: 'priv', label: 'Riêng tư', icon: 'ri-lock-line', c: '#3577f1', bg: 'rgba(53,119,241,0.1)' }
     ];
-    const tabBtn = (active) => 'display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid ' + (active ? '#405189' : 'transparent') + ';background:transparent;font:inherit;font-size:13.5px;font-weight:' + (active ? '600' : '500') + ';color:' + (active ? '#405189' : '#878a99') + ';cursor:pointer;';
+    const tabBtn = (active) => 'display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid ' + (active ? '#2050a0' : 'transparent') + ';background:transparent;font:inherit;font-size:13.5px;font-weight:' + (active ? '600' : '500') + ';color:' + (active ? '#2050a0' : '#878a99') + ';cursor:pointer;';
     const tabs = tabDefs.map(t => ({
       label: t.label, icon: t.icon, count: cnt[t.key], on: () => this.setTab(t.key),
       btnStyle: tabBtn(S.tab === t.key),
-      badgeStyle: 'background:' + t.bg + ';color:' + t.c + ';font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;'
+      badgeStyle: 'background:' + t.bg + ';color:' + t.c + ';font-size:12px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;'
     }));
     const trA = S.tab === 'trash';
     const trashTab = {
       count: cnt.trash, on: () => this.setTab('trash'),
       btnStyle: 'margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:11px 12px;border:0;border-bottom:2px solid ' + (trA ? '#f06548' : 'transparent') + ';background:transparent;font:inherit;font-size:13.5px;font-weight:' + (trA ? '600' : '500') + ';color:' + (trA ? '#f06548' : '#878a99') + ';cursor:pointer;',
-      badgeStyle: 'background:rgba(240,101,72,0.1);color:#f06548;font-size:11px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;'
+      badgeStyle: 'background:rgba(240,101,72,0.1);color:var(--color-admin-danger-text,#f06548);font-size:12px;font-weight:600;padding:2px 6px;border-radius:4px;line-height:1;'
     };
 
     // filters
-    const dBox = (ck) => ck ? 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid #405189;border-radius:4px;background:#405189;color:#fff;flex-shrink:0;' : 'display:inline-flex;width:16px;height:16px;border:1px solid #ced4da;border-radius:4px;background:#fff;flex-shrink:0;';
+    const dBox = (ck) => ck ? 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1px solid #2050a0;border-radius:4px;background:#2050a0;color:#fff;flex-shrink:0;' : 'display:inline-flex;width:16px;height:16px;border:1px solid var(--color-border-strong,#ced4da);border-radius:4px;background:var(--color-surface,#fff);flex-shrink:0;';
     const dRow = (ck) => 'display:flex;align-items:center;gap:10px;padding:8px 14px;cursor:pointer;' + (ck ? 'background:#f6f8fc;' : '');
-    const dText = (ck) => 'flex:1;font-size:13px;' + (ck ? 'font-weight:600;color:#405189;' : 'color:#495057;');
-    const fBtn = (active, open) => 'display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border:1px solid ' + ((active || open) ? '#405189' : '#e9ebec') + ';border-radius:6px;background:' + ((active || open) ? 'rgba(64,81,137,0.06)' : '#fff') + ';font:inherit;font-size:13px;font-weight:500;color:' + ((active || open) ? '#405189' : '#495057') + ';cursor:pointer;';
+    const dText = (ck) => 'flex:1;font-size:13px;' + (ck ? 'font-weight:600;color:var(--color-accent,#2050a0);' : 'color:var(--color-body-text,#3c4765);');
+    const fBtn = (active, open) => 'display:inline-flex;align-items:center;gap:6px;padding:9px 11px;border:1px solid ' + ((active || open) ? '#2050a0' : '#e9ebec') + ';border-radius:6px;background:' + ((active || open) ? 'rgba(32,80,160,0.06)' : '#fff') + ';font:inherit;font-size:13px;font-weight:500;color:' + ((active || open) ? '#2050a0' : '#3c4765') + ';cursor:pointer;';
     const arrow = (open) => open ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line';
 
     const langItems = ALL_LANGS.map(code => { const ck = S.langF.indexOf(code) >= 0; const c2 = notTrashed.filter(p => p.langs.indexOf(code) >= 0).length; return { label: this.langLabel(code) + ' (' + code + ')', checked: ck, count: c2, boxStyle: dBox(ck), rowStyle: dRow(ck), textStyle: dText(ck), on: () => this.toggleIn('langF', code) }; });
@@ -755,20 +759,20 @@ class Component extends DCLogic {
     const hasFilter = chips.length > 0;
 
     // sort UI
-    const sBtn = (active) => 'display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:600;color:' + (active ? '#405189' : '#878a99') + ';cursor:pointer;padding:0;';
+    const sBtn = (active) => 'display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:600;color:' + (active ? '#2050a0' : '#878a99') + ';cursor:pointer;padding:0;';
     const sIcon = (active) => active ? (S.sortDir === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line') : 'ri-expand-up-down-line';
-    const sIconStyle = (active) => 'font-size:13px;color:' + (active ? '#405189' : '#ced4da') + ';';
+    const sIconStyle = (active) => 'font-size:13px;color:' + (active ? '#2050a0' : '#ced4da') + ';';
     const mkSort = (k) => { const active = S.sortKey === k; return { on: () => this.sortBy(k), btnStyle: sBtn(active), iconClass: sIcon(active), iconStyle: sIconStyle(active) }; };
     const sortUI = { name: mkSort('name'), status: mkSort('status'), creator: mkSort('creator'), updated: mkSort('updated'), views: mkSort('views') };
 
     // header checkbox
     const headerBoxStyle = (allSel || someSel)
-      ? 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #405189;border-radius:4px;background:#405189;color:#fff;vertical-align:middle;cursor:pointer;'
-      : 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #ced4da;border-radius:4px;background:#fff;vertical-align:middle;cursor:pointer;';
+      ? 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid #2050a0;border-radius:4px;background:#2050a0;color:#fff;vertical-align:middle;cursor:pointer;'
+      : 'display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border:1px solid var(--color-border-strong,#ced4da);border-radius:4px;background:var(--color-surface,#fff);vertical-align:middle;cursor:pointer;';
     const headerIconClass = allSel ? 'ri-check-line' : (someSel ? 'ri-subtract-line' : '');
 
     // pagination
-    const pageBtn = (active) => 'display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;font-size:13px;cursor:pointer;' + (active ? 'background:#405189;color:#fff;font-weight:500;' : 'color:#878a99;');
+    const pageBtn = (active) => 'display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;font-size:13px;cursor:pointer;' + (active ? 'background:#2050a0;color:#fff;font-weight:500;' : 'color:var(--color-body-muted,#5b6275);');
     const buildPager = (cur, last) => {
       const out = [];
       if (last <= 7) { for (let i = 1; i <= last; i++) out.push(i); }
@@ -778,8 +782,8 @@ class Component extends DCLogic {
     const pager = buildPager(page, pageCount).map(x => x === '…' ? { ell: true, num: false } : { ell: false, num: true, label: String(x), active: x === page, style: pageBtn(x === page), on: () => this.goPage(x) });
     const prevDisabled = page <= 1, nextDisabled = page >= pageCount;
     const navBase = 'display:inline-flex;height:32px;min-width:32px;align-items:center;justify-content:center;border-radius:4px;padding:0 10px;';
-    const prevStyle = navBase + (prevDisabled ? 'color:#e9ebec;cursor:not-allowed;' : 'color:#878a99;cursor:pointer;');
-    const nextStyle = navBase + (nextDisabled ? 'color:#e9ebec;cursor:not-allowed;' : 'color:#878a99;cursor:pointer;');
+    const prevStyle = navBase + (prevDisabled ? 'color:#e9ebec;cursor:not-allowed;' : 'color:var(--color-body-muted,#5b6275);cursor:pointer;');
+    const nextStyle = navBase + (nextDisabled ? 'color:#e9ebec;cursor:not-allowed;' : 'color:var(--color-body-muted,#5b6275);cursor:pointer;');
     const footerText = total === 0 ? 'Không có trang nào' : ('Hiển thị ' + (start + 1) + '–' + (start + pageRows.length) + ' trong ' + total + ' trang' + ((hasFilter || S.tab !== 'all') ? ' đã lọc' : ''));
 
     return {

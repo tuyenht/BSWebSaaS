@@ -45,15 +45,15 @@
   };
 
   /* Trạng thái công khai (entries.status) + `reviewing`: chỉ là BƯỚC của quy trình biên tập,
-     không phải giá trị của entries.status (nó quy về 'pending'). Màu lấy trong token AdminKit. */
+     không phải giá trị của entries.status (nó quy về 'pending'). Màu chữ lấy bậc -text của token AdminKit (PR #87); nền giữ tint 10% của màu gốc. */
   var UI = {
-    published: { label: 'Đã đăng', c: '#0ab39c', bg: 'rgba(10,179,156,0.10)', icon: 'ri-global-line', pub: true },
-    scheduled: { label: 'Đã lên lịch', c: '#3577f1', bg: 'rgba(53,119,241,0.10)', icon: 'ri-calendar-schedule-line' },
-    pending: { label: 'Chờ duyệt', c: '#c78729', bg: 'rgba(247,184,75,0.15)', icon: 'ri-inbox-unarchive-line' },
-    reviewing: { label: 'Đang phản biện', c: '#299cdb', bg: 'rgba(41,156,219,0.12)', icon: 'ri-chat-check-line', wfOnly: true },
+    published: { label: 'Đã đăng', c: '#047767', bg: 'rgba(10,179,156,0.10)', icon: 'ri-global-line', pub: true },
+    scheduled: { label: 'Đã lên lịch', c: '#2f69d4', bg: 'rgba(53,119,241,0.10)', icon: 'ri-calendar-schedule-line' },
+    pending: { label: 'Chờ duyệt', c: '#906405', bg: 'rgba(247,184,75,0.15)', icon: 'ri-inbox-unarchive-line' },
+    reviewing: { label: 'Đang phản biện', c: '#026fa2', bg: 'rgba(41,156,219,0.12)', icon: 'ri-chat-check-line', wfOnly: true },
     draft: { label: 'Bản nháp', c: '#495057', bg: 'rgba(33,37,41,0.08)', icon: 'ri-draft-line' },
     private: { label: 'Riêng tư', c: '#405189', bg: 'rgba(64,81,137,0.10)', icon: 'ri-lock-2-line' },
-    archived: { label: 'Lưu trữ', c: '#878a99', bg: 'rgba(135,138,153,0.12)', icon: 'ri-archive-line' }
+    archived: { label: 'Lưu trữ', c: '#6b6e7f', bg: 'rgba(135,138,153,0.12)', icon: 'ri-archive-line' }
   };
 
   var WF = {

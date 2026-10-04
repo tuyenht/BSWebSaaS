@@ -199,7 +199,21 @@ tỷ lệ trước khi coi là xong.
   Không để dòng chữ dưới ô làm lệch chiều cao các cột.
   Popover phải `white-space:normal` (thoát quy tắc nowrap của nhãn), `z-index` cao hơn ô nhập và chip,
   neo phải (`right:0`) khi nằm ở cột phải để không tràn thẻ; mỗi lúc chỉ một popover mở.
-  Trước khi giao, mở thử từng popover ở 3 bề rộng 1180 / 700 / 440px.
+  Trước khi giao, mở thử từng popover ở 3 bề rộng 1240 / 768 / 390px.
+- **Font Inter (chốt L1-21a-3b, 03/10/2026)**: chữ thường Inter dùng Google qua đúng URL CHUẨN
+  `https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap`. Trang mới phải có link URL CHUẨN
+  trong helmet, đặt **sau** link `fonts/inter.css` / `styles.css` của design system. Giữ `inter.css` (Google URL CHUẨN
+  không có chữ nghiêng). Chữ nghiêng giữ nguyên nguồn hiện có của từng trang: trang có inter.css dùng Inter-italic.woff2;
+  Page Builder v3 dùng nghiêng tổng hợp từ Google Inter (không có face nghiêng). inter.css cho chữ thường rộng hơn Google Inter
+  khoảng 4,07–4,70 % tuỳ weight (đo bề rộng CHUỖI A cỡ 14px, lượt 3b, H.stable cũ (bản ẩn)). Ký tự `→` (U+2192) nằm ngoài dải của cả hai nguồn
+  nên vẽ bằng font dự phòng. Bỏ hẳn `inter.css` / tự host Google: việc L1-F-04, chưa làm.
+- **Màu luôn qua token, không hex cứng cho nền/viền/chữ**: `var(--color-surface|surface-muted|surface-hover|body|border|border-strong|border-input|heading|body-text|accent|admin-*-text, #giá-trị-sáng)` — để chế độ tối tự lật. Mọi DC nạp `admin-base.css` (vùng bấm 44px cảm ứng, chữ ô nhập 16px, vòng focus) và đọc `localStorage['bs-scheme']`.
+- **Màu section của storefront = BỘ MÀU, không chọn nền/chữ rời** (theo Shopify color schemes + Material 3):
+  từ màu thương hiệu tự sinh 4 bộ Sáng · Nhạt · Thương hiệu · Tối (+ "Màu phụ" nếu khai màu thứ hai; tùy chỉnh từng bộ ở phần nâng cao, tự chỉnh về mức đạt) (chữ đậm dùng ink `#0f172a`, không pha màu thương hiệu với đen — ra màu bẩn); mỗi bộ gồm nền, tiêu đề, đoạn văn, chữ phụ,
+  liên kết, nút chính (nền + chữ + hover), nút viền, thẻ con, ô nhập, đường kẻ, icon, vòng focus; sắc nhạt/đậm sinh bằng OKLCH (không trộn RGB với đen/trắng) — đo WCAG, chữ ≥4,5:1, nền nút ≥3:1. Section chỉ chọn một bộ (thẻ xem trước có
+  tiêu đề + chữ + nút thật); không có ô chọn màu chữ riêng. Nền ảnh: chữ trắng + lớp phủ tự tăng tới mức đạt.
+  Nút chính trên nền sáng/tối = nền màu thương hiệu + chữ tự chọn; trên nền thương hiệu = nút trắng hoặc ink `#0f172a`, chọn cái đạt ≥3:1 với nền. Ảnh nền là mục riêng, không nằm trong bộ màu. Đổi màu thương hiệu → cả 4 bộ tự tính lại. Chuẩn: `Page Builder v3` (`schemes()`, `inkOn()`, `fitInk()`).
+- Mỗi màn kiểm trước khi giao ở 360 / 390 / 768 / 1024 / 1240 / 1440px + điện thoại xoay ngang × sáng + tối × chữ thường + chữ lớn, trên Chrome, Safari iOS và Firefox; bố cục co theo khung chứa (container query); dưới 768px bảng/hàng nhiều cột thành thẻ gọn (không xếp mỗi cột một dòng), công tắc đứng cạnh tên việc nó bật/tắt; trang không cuộn ngang.
 - Đầu trang = cột trái (breadcrumb → tiêu đề → mô tả) + cụm nút bên phải **ngang hàng tiêu đề**
   (`margin-top` bù chiều cao breadcrumb). Cột trái phải co được (`flex:1 1 320px; min-width:0`),
   cụm nút `flex:0 0 auto` — nếu không, mô tả giữ nguyên bề rộng và đẩy nút xuống dòng dù còn chỗ trống.
@@ -209,8 +223,7 @@ tỷ lệ trước khi coi là xong.
 - Ô tìm kiếm: khung bao ngoài sáng lên khi focus (`:focus-within`), input bên trong không viền/outline riêng.
 - Điều khiển co theo nội dung, chỉ đặt max-width; không fix width.
 - Vùng bấm ≥ 44×44px trên cảm ứng; mọi trạng thái có màu + hình dạng + nhãn chữ (WCAG 2.2 AA).
-- Token AdminKit: primary `#405189`, bo 4px control / 6px card, shadow `0 1px 2px rgba(56,65,74,.15)`,
-  Inter 14px, canvas `#f3f3f9`. Không tự chế màu mới.
+- **Tông Bảo Sơn Hoàng gia (3b, duyệt 01/10/2026)** — màu từ logo: primary/accent `#2050a0` (tối `#96a1c0`) = nền dưới chữ trắng, chữ, viền, vòng focus; vàng `#e0b028` chỉ điểm nhấn (vạch mục đang chọn ở thanh bên, chip hạn ngạch), chữ vàng dùng `#8a6200`; thanh bên = brand pha `#0b1d45` (≈`#1c3c7a`); chữ màu mực xanh: tiêu đề `#1f2b4d` · chữ `#3c4765` · chữ phụ `--color-body-muted` `#5b6275` (tối `#98a0ae`); nền trang `#f4f5fa`, kẻ `#e9ecf4`. Không dùng xám than/slate lạnh. Tối: nền `#0f1729`, thẻ `#16203a`, thanh bên `#111a30`, chữ `#eef2fa`/`#c5cde0`/`#9aa5bf`, accent chữ `#8fb0ec` (`--brand-ink`) — màu thương hiệu làm chữ trên nền tối luôn qua `--brand-ink`. Lớp chuyển tiếp ở `admin-base.css`. Token cũ; `--color-body-faint` chỉ cho chi tiết trang trí · viền ô nhập `--color-border-input` · màu ngữ nghĩa 2 bậc: `-text` (chữ, kiểu soft) và `-solid` (nền dưới chữ trắng; secondary `#2f69d4`, không dùng `#3577f1` làm nền chữ) · focus: vòng 2px cách 2px, không `outline:none`. Bo 4px control / 6px card, shadow `0 1px 2px rgba(56,65,74,.15)`, Inter 14px, canvas `#f4f5fa`. Không tự chế màu mới.
 
 ## 9. Nút Dịch: phạm vi theo ngữ cảnh (bắt buộc)
 - Đứng ở **bản nguồn** → nút ghi "Dịch sang N ngôn ngữ", chạy cho **tất cả** bản còn lại.
@@ -219,7 +232,7 @@ tỷ lệ trước khi coi là xong.
   Không còn gì thiếu → nút mờ + `cursor:not-allowed`, tooltip "Mọi nhãn đã có bản dịch".
 - Không đủ từ AI cho lần chạy này → mờ + chặn, tooltip nêu số từ cần và cách mua thêm. Chạy hàng loạt đặt trong panel
   ("Dịch N bản còn thiếu").
-- Kiểu nút: nền brand nhạt (`rgba(64,81,137,.10)`) + icon `ri-sparkling-2-line` — nổi hơn nút phụ
+- Kiểu nút: nền brand nhạt (`rgba(32,80,160,.10)`) + icon `ri-sparkling-2-line` — nổi hơn nút phụ
   nhưng vẫn dưới nút Lưu. Ô sửa nội dung của bản nguồn phải **có sẵn giá trị mặc định** (không để
   placeholder rỗng) để AI có nguồn chuẩn mà dịch.
 
@@ -255,6 +268,7 @@ Panel phải chạy được cả khi **đứng riêng** lẫn khi **nhúng tron
 - Chặn `beforeunload` khi còn dirty; Esc và bấm ra ngoài đóng modal/popover; z-index modal panel < modal cấp Shell.
 - Nối vào Shell: thêm `embed:'<id>'` vào mục trong `settingsGroupsAll()`, thêm `<div style="{{ xWrapStyle }}">`
   + `<dc-import … embedded on-dirty>` cạnh các panel cũ, và `mkEmbedDirty('<id>')` trong `renderVals`.
+- Màn TOÀN TRANG (danh sách, trình soạn, hộp duyệt, thư viện) cũng nhận `embedded`, nhưng chỉ ẩn phần trùng Shell (breadcrumb, tiêu đề trang, khung 100vh); GIỮ thanh thao tác và nút quy trình của chính màn; vẫn báo `onDirty` và nghe `bs-embed-cmd`. Shell chỉ mount màn toàn trang đang mở (`sc-if`); panel Cài đặt giữ cách `xWrapStyle` ở trên.
 
 ## 14. Chuẩn câu chữ & tiêu mục
 - Tiêu mục = danh từ mô tả đúng việc đang làm; không thuật ngữ kỹ thuật, không tiếng Anh lẫn lộn
@@ -286,3 +300,25 @@ Màn chuẩn: `Page Editor - Options.dc.html`. Mọi module có ô nội dung d�
   và phải hỏi xác nhận nếu sẽ mất chữ đang có.
 - **Không sinh ra chữ thì không trừ từ AI**: đoạn quá ngắn, không tìm được phương án khác, người dùng huỷ giữa lúc
   chạy, hoặc lỗi → nói rõ "không trừ từ AI nào". Alt ảnh, cắt/nén, gán bài là hậu xử lý, không trừ lượt.
+
+## 16. Khung admin: ngưỡng, menu, lưu tùy biến (chốt 01/10/2026)
+- Ngưỡng mobile **1024px** (không 992). ≥1280px sidebar đầy đủ. 1024–1279px tự thu về rail 76px; mở rộng tạm thời thì **phủ lên nội dung, không đẩy nội dung** (2 cột: rail + cột menu con dạng phủ; Ngang: dồn mục thừa vào "Khác").
+- Dưới 1024px: drawer, nút mở có icon + chữ **"Menu"**. **Không làm BottomNav**, vì admin có nhiều mục chính, 4–5 ô không chứa đủ.
+- **Màu thương hiệu áp toàn admin — 3 token, tra BẢNG TĨNH** (`BRAND_TOKENS` trong Admin Shell, bảng hex + tỷ lệ ở AUDIT.md 5.L1-A; không tính lúc chạy):
+  - `--brand-solid` — **nền dưới chữ trắng**: nút chính, badge, công tắc bật, topbar Đậm, sidebar Đậm (pha `#0b1d45`), điểm sáng sidebar Gradient. Đạt trắng và trắng .85 ≥ 4,5 kể cả trên chip phủ trắng .08; vạch vàng ≥ 3 trên sidebar Đậm/Gradient.
+  - `--brand-ink` — **chữ, link, viền nhấn, vòng focus**. Sáng: ≥ 4,5 trên `#fff`, `#f4f5fa`, nền brand 10%. Tối: `color-mix(in oklab, brand 38%, #e6eeff)`, ≥ 4,5 trên nền tối. Cùng tên token, giá trị theo `data-bs-theme`.
+  - `--brand` (màu gốc) — **chỉ trang trí**: tint 5–12%, viền mảnh, thanh tiến độ, scrollbar. **Cấm dùng `--brand` thô cho chữ hoặc nền có chữ.**
+  - `admin-base.css`: `--color-accent`/`--focus-ring-color` = `var(--brand-ink, …)`, `--color-admin-primary` = `var(--brand-solid, …)`, khai lại trên khung `[data-brand-scope]` của Shell. Dự phòng khi mở DC độc lập = giá trị cũ (`#2050a0`, tối `#8fb0ec`).
+  - Panel/trang dùng `var(--color-accent, #2050a0)` cho chữ và `var(--brand-solid, #2050a0)` cho nền dưới chữ trắng; **không hex cứng `#2050a0`**, không tự khai `--brand`/accent riêng. Thêm màu thương hiệu mới = thêm một dòng vào bảng (tính trong OKLCH, giữ sắc độ, chỉ làm đậm tới khi vừa đạt).
+  - **Bảng màu (Đợt C, 01/10/2026): cùng độ đậm, khác sắc độ, mỗi họ một màu, có một màu trung tính** — 6 màu: Bảo Sơn `#2050a0` (mặc định, mốc độ đậm) · Xanh cổ vịt `#0e7490` · Xanh lá `#15803d` · Chàm `#4338ca` · Mận `#9d174d` · Than chì `#334155`. Điều kiện để thêm màu: L (OKLCH) của `--brand-solid` trong ±0,06 so với Bảo Sơn (màu trung tính miễn), ΔE OKLab giữa mọi cặp solid ≥ 0,06 (bảng hiện tại min 0,091). Ô màu trong Tùy biến hiển thị `--brand-solid`, tooltip giữ tên. Vạch active vàng dùng chung cho mọi màu.
+- Tùy biến giao diện lưu ở `localStorage['bs-ui']` (một key, có `version`, đọc lỗi thì dùng mặc định), vẫn giữ `bs-scheme` + `data-bs-theme` cho các DC khác. "Đặt lại" xoá key. Bản thật lưu phía server theo người dùng.
+- Plane `platform` hiển thị là **"Nền tảng"**, không gọi "SaaS". Plane là bộ chọn xem thử của prototype; bản thật lấy theo tài khoản, không lưu theo trình duyệt.
+- **Ngữ nghĩa không chỉ bằng màu (bắt buộc mọi màn):** nút nguy hiểm (Xóa, Hủy, Khóa…) luôn có icon + chữ; thao tác không hoàn tác được thì có hộp xác nhận. Chip trạng thái = nền nhạt + chữ đậm + icon; nút chính = nền đặc. Hai loại khác nhau về hình thức, không chỉ khác màu (vì màu thương hiệu có thể gần màu trạng thái).
+- **Vòng focus trên vùng nền đậm** (sidebar Đậm/Gradient, rail, cột menu con, topbar Đậm ở chế độ Sáng): `--focus-ring-color: #fff`; popover `.pop` khai lại `var(--brand-ink)`. Phần tử cuộn của Shell có `scroll-padding-top: var(--sticky-top)`.
+
+## 17. Quy trình rà soát (AUDIT.md)
+- Mọi kết quả rà soát ghi vào `AUDIT.md`. Tóm tắt trong chat phải **khớp số liệu** với file.
+- Mỗi lỗi ghi bằng chứng đúng một loại: [ĐÃ RENDER VÀ THẤY] / [ĐO BẰNG SCRIPT] / [SUY RA TỪ CODE] / [CHƯA KIỂM ĐƯỢC + lý do]. Không bỏ qua tổ hợp ngầm.
+- Mức độ: Chặn · Cao · Trung bình · Thấp (định nghĩa ở AUDIT.md §4f). Sửa ở tầng gốc: token → `admin-base.css` → component dùng chung → shell → trang.
+- Sau mỗi đợt sửa, kiểm lại các trang phụ thuộc + Shell ở 4 tổ hợp: Dọc-Sáng-1440, Ngang-Tối-1280, 2 cột-Sáng-1024, Dọc-Tối-390. Ghi changelog.
+- Công cụ đo: `_audit/harness.html` (iframe theo bề rộng + đo tràn, tương phản, vùng bấm, cỡ chữ).

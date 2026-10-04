@@ -8,6 +8,9 @@
 <body>
 <x-dc>
 <helmet>
+<link rel="stylesheet" href="admin-base.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
@@ -17,43 +20,43 @@
 <script src="./ai-quota.js"></script>
 <script src="./block-library.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <style>
-body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
-a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
-input::placeholder{color:#adb5bd;}
-.mn-rt b,.mn-rt strong{font-weight:600;color:#212529;}
-.mn-rt a{color:#405189;text-decoration:underline;}
-.mn-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
-.mn-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:nowrap;}
-.mn-t{font-size:14px;font-weight:600;color:#343a40;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.mn-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
-.mn-btn:hover{background:#f3f6f9;}
-.mn-btn:disabled{opacity:.55;cursor:not-allowed;background:#fff;}
-.mn-ai{border-color:rgba(64,81,137,.28);background:rgba(64,81,137,.10);color:#405189;font-weight:600;}
-.mn-ai:hover{background:rgba(64,81,137,.16);}
-.mn-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);}
+a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--color-accent,#2f3d69);text-decoration:underline;}
+input::placeholder{color:var(--color-body-muted,#5b6275);}
+.mn-rt b,.mn-rt strong{font-weight:600;color:var(--color-heading,#212529);}
+.mn-rt a{color:var(--color-accent,#2050a0);text-decoration:underline;}
+.mn-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.mn-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:nowrap;}
+.mn-t{font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mn-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
+.mn-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
+.mn-btn:disabled{opacity:.55;cursor:not-allowed;background:var(--color-surface,#fff);}
+.mn-ai{border-color:rgba(32,80,160,.28);background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);font-weight:600;}
+.mn-ai:hover{background:rgba(32,80,160,.16);}
+.mn-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
 .mn-pri:hover{filter:brightness(.95);}
-.mn-pri:disabled{background:#e9ebec;color:#adb5bd;cursor:not-allowed;filter:none;}
-.mn-hit{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:4px;background:transparent;color:#878a99;cursor:pointer;flex-shrink:0;}
-.mn-hit:hover{background:#f3f6f9;color:#405189;}
-.mn-hit:disabled{opacity:.3;cursor:not-allowed;background:transparent;color:#adb5bd;}
+.mn-pri:disabled{background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;filter:none;}
+.mn-hit{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;}
+.mn-hit:hover{background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);}
+.mn-hit:disabled{opacity:.3;cursor:not-allowed;background:transparent;color:var(--color-body-muted,#5b6275);}
 @media (pointer:coarse){.mn-hit{width:44px;height:44px;}}
-.mn-chip{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;height:19px;padding:0 7px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.02em;white-space:nowrap;}
-.mn-lg{background:#f3f6f9;color:#878a99;border:1px solid #eff2f7;}
-.mn-inp{width:100%;box-sizing:border-box;min-height:38px;padding:8px 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;color:#343a40;outline:none;}
-.mn-inp:focus{border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.14);}
-.mn-inp:disabled{background:#f8f9fb;color:#adb5bd;cursor:not-allowed;}
-.mn-tab{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
-.mn-tab:hover{background:#f3f6f9;}
-.mn-tab.on{border-color:#405189;background:rgba(64,81,137,.08);font-weight:600;color:#405189;}
+.mn-chip{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;height:19px;padding:0 7px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.02em;white-space:nowrap;}
+.mn-lg{background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);border:1px solid var(--color-border,#e9ecf4);}
+.mn-inp{width:100%;box-sizing:border-box;min-height:38px;padding:8px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;color:var(--color-heading,#1f2b4d);outline:none;}
+.mn-inp:focus{border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.14);}
+.mn-inp:disabled{background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
+.mn-tab{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
+.mn-tab:hover{background:var(--color-surface-hover,#f3f6f9);}
+.mn-tab.on{border-color:#2050a0;background:rgba(32,80,160,.08);font-weight:600;color:var(--color-accent,#2050a0);}
 .mn-sw{position:relative;width:38px;height:22px;border-radius:20px;background:#dfe2e6;flex-shrink:0;transition:background .15s;}
-.mn-sw.on{background:#405189;}
-.mn-kn{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(56,65,74,.3);transition:left .15s;}
+.mn-sw.on{background:#2050a0;}
+.mn-kn{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--color-surface,#fff);box-shadow:0 1px 2px rgba(56,65,74,.3);transition:left .15s;}
 .mn-sw.on .mn-kn{left:19px;}
 .mn-swrap{display:flex;align-items:center;gap:10px;min-height:44px;border:0;background:transparent;padding:0;font:inherit;cursor:pointer;text-align:left;}
 .mn-grip{display:inline-flex;align-items:center;justify-content:center;width:20px;height:32px;color:#dee2e6;cursor:grab;flex-shrink:0;}
-.mn-grip:hover{color:#878a99;}
+.mn-grip:hover{color:var(--color-body-muted,#5b6275);}
 /* Điện thoại: kéo–thả HTML5 không chạy bằng ngón tay và dễ chạm nhầm khi cuộn →
    thay tay cầm kéo bằng nút Sắp xếp mở đúng menu Lên/Xuống/Vào trong/Ra ngoài. */
 /* MỘT luật chạm duy nhất cho cả trang: mọi thứ bấm được đều ≥44px khi dùng ngón tay
@@ -69,21 +72,21 @@ input::placeholder{color:#adb5bd;}
 }
 .mn-item{position:relative;display:flex;align-items:center;gap:5px;padding:6px 10px 6px 6px;flex-wrap:nowrap;}
 .mn-item:hover{background:#fbfcfd;}
-.mn-name{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;border:0;background:transparent;font:inherit;color:#343a40;cursor:pointer;padding:7px 4px;border-radius:4px;text-align:left;overflow:hidden;}
-.mn-name:hover{color:#405189;}
-.mn-src{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#adb5bd;white-space:nowrap;flex:0 0 auto;}
-.mn-pop{position:absolute;top:100%;right:8px;z-index:20;min-width:214px;padding:5px 0;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 6px 18px rgba(56,65,74,.18);}
-.mn-pi{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:0 13px;border:0;background:transparent;font:inherit;font-size:12.5px;color:#495057;cursor:pointer;text-align:left;white-space:nowrap;}
-.mn-pi:hover{background:#f3f6f9;color:#405189;}
-.mn-pi:disabled{opacity:.45;cursor:not-allowed;background:transparent;color:#adb5bd;}
-.mn-pk{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:0;border-top:1px solid #f6f7f9;background:transparent;font:inherit;font-size:12.5px;color:#495057;cursor:pointer;text-align:left;}
-.mn-pk:hover{background:#f8f9fb;}
-.mn-pk:disabled{cursor:not-allowed;background:#fff;}
-.mn-cb{width:17px;height:17px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#fff;font-size:12px;}
-.mn-cb.on{border-color:#405189;background:#405189;}
-.mn-sl{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 10px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:11.5px;font-weight:500;color:#878a99;cursor:pointer;white-space:nowrap;}
-.mn-sl:hover{background:#f3f6f9;}
-.mn-sl.on{border-color:#405189;background:rgba(64,81,137,.08);color:#405189;font-weight:600;}
+.mn-name{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;border:0;background:transparent;font:inherit;color:var(--color-heading,#1f2b4d);cursor:pointer;padding:7px 4px;border-radius:4px;text-align:left;overflow:hidden;}
+.mn-name:hover{color:var(--color-accent,#2050a0);}
+.mn-src{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;flex:0 0 auto;}
+.mn-pop{position:absolute;top:100%;right:8px;z-index:20;min-width:214px;padding:5px 0;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 6px 18px rgba(56,65,74,.18);}
+.mn-pi{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:0 13px;border:0;background:transparent;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);cursor:pointer;text-align:left;white-space:nowrap;}
+.mn-pi:hover{background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);}
+.mn-pi:disabled{opacity:.45;cursor:not-allowed;background:transparent;color:var(--color-body-muted,#5b6275);}
+.mn-pk{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:0;border-top:1px solid var(--color-border-soft,#f6f7f9);background:transparent;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);cursor:pointer;text-align:left;}
+.mn-pk:hover{background:var(--color-surface-muted,#f8f9fb);}
+.mn-pk:disabled{cursor:not-allowed;background:var(--color-surface,#fff);}
+.mn-cb{width:17px;height:17px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);color:#fff;font-size:12px;}
+.mn-cb.on{border-color:#2050a0;background:#2050a0;}
+.mn-sl{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;}
+.mn-sl:hover{background:var(--color-surface-hover,#f3f6f9);}
+.mn-sl.on{border-color:#2050a0;background:rgba(32,80,160,.08);color:var(--color-accent,#2050a0);font-weight:600;}
 .mn-grid{display:grid;grid-template-columns:262px minmax(0,1fr) 288px;gap:16px;align-items:start;}
 @media (max-width:1260px){.mn-grid{grid-template-columns:262px minmax(0,1fr);}.mn-colR{grid-column:2;}}
 @media (max-width:920px){.mn-grid{grid-template-columns:minmax(0,1fr);}.mn-colR{grid-column:1;}}
@@ -115,9 +118,9 @@ input::placeholder{color:#adb5bd;}
     <sc-if value="{{ headerOn }}" hint-placeholder-val="{{ true }}">
     <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
       <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
-        <span style="font-size:11.5px;color:#adb5bd;">Công cụ › Trình đơn</span>
-        <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Trình đơn</span>
-        <span style="font-size:13px;color:#878a99;line-height:1.65;text-wrap:pretty;">Sắp xếp những mục khách nhìn thấy trên website. Kéo để đổi vị trí, kéo vào trong để thành mục con. Đường dẫn và liên kết hỏng do hệ thống tự trông, bạn chỉ lo tên mục và thứ tự.</span>
+        <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Công cụ › Trình đơn</span>
+        <span style="font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.35;">Trình đơn</span>
+        <span style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.65;text-wrap:pretty;">Sắp xếp những mục khách nhìn thấy trên website. Kéo để đổi vị trí, kéo vào trong để thành mục con. Đường dẫn và liên kết hỏng do hệ thống tự trông, bạn chỉ lo tên mục và thứ tự.</span>
       </div>
       <div style="display:flex;gap:8px;flex:0 1 auto;min-width:0;max-width:100%;margin-top:22px;flex-wrap:wrap;">
         <button class="mn-btn" style="min-height:38px;" onClick="{{ onOpenSite }}"><i class="ri-external-link-line" style="font-size:15px;"></i>Xem trên website</button>
@@ -129,28 +132,28 @@ input::placeholder{color:#adb5bd;}
     <sc-if value="{{ multiLocale }}" hint-placeholder-val="{{ true }}">
     <div class="mn-card mn-bar">
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;flex-wrap:nowrap;overflow:hidden;">
-        <i class="ri-translate-2" title="Ngôn ngữ của bản nội dung đang sửa" style="font-size:17px;color:#878a99;flex-shrink:0;"></i>
+        <i class="ri-translate-2" title="Ngôn ngữ của bản nội dung đang sửa" style="font-size:17px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
         <span class="mn-langsel" style="display:none;align-items:center;gap:6px;min-width:0;flex:1 1 auto;">
           <select class="mn-inp" style="font-size:12.5px;flex:1 1 auto;min-width:0;" value="{{ loc }}" onChange="{{ onPickLoc }}" title="Chọn bản nội dung đang sửa">
             <sc-for list="{{ langOptions }}" as="o" hint-placeholder-count="3"><option value="{{ o.v }}">{{ o.l }}</option></sc-for>
           </select>
-          <button class="mn-hit" style="flex-shrink:0;" onClick="{{ onOpenLangs }}" title="Xem tiến độ từng ngôn ngữ"><i class="ri-list-check-2" style="font-size:16px;"></i></button>
+          <button class="mn-hit" style="flex-shrink:0;" onClick="{{ onOpenLangs }}" title="Xem tiến độ từng ngôn ngữ" aria-label="Xem tiến độ từng ngôn ngữ"><i class="ri-list-check-2" style="font-size:16px;"></i></button>
         </span>
         <div class="mn-pills" style="display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;overflow:hidden;">
           <sc-for list="{{ langPills }}" as="lp" hint-placeholder-count="3">
-            <button onClick="{{ lp.onClick }}" title="{{ lp.title }}" style="{{ lp.style }}"><span style="{{ lp.dot }}"></span><span style="{{ lp.nameStyle }}">{{ lp.name }}</span><sc-if value="{{ lp.isDef }}"><i class="ri-star-fill" style="font-size:10px;color:#f7b84b;"></i></sc-if></button>
+            <button onClick="{{ lp.onClick }}" title="{{ lp.title }}" style="{{ lp.style }}"><span style="{{ lp.dot }}"></span><span style="{{ lp.nameStyle }}">{{ lp.name }}</span><sc-if value="{{ lp.isDef }}"><i class="ri-star-fill" style="font-size:12px;color:#f7b84b;"></i></sc-if></button>
           </sc-for>
           <sc-if value="{{ moreOn }}" hint-placeholder-val="{{ false }}">
-            <button onClick="{{ onOpenLangs }}" title="Xem tất cả ngôn ngữ đang soạn" style="display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:12px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;">{{ moreLabel }}<i class="ri-arrow-down-s-line" style="font-size:14px;"></i></button>
+            <button onClick="{{ onOpenLangs }}" title="Xem tất cả ngôn ngữ đang soạn" style="display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;">{{ moreLabel }}<i class="ri-arrow-down-s-line" style="font-size:14px;"></i></button>
           </sc-if>
         </div>
         <span style="flex:1 1 auto;"></span>
-        <span class="mn-prog" style="display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:#878a99;white-space:nowrap;"><i class="{{ progIcon }}" style="font-size:14px;color:{{ progColor }};"></i>{{ progText }}</span>
-        <span style="width:1px;height:22px;background:#eff2f7;flex-shrink:0;"></span>
-        <span class="mn-quota" title="{{ quotaTitle }}" style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:{{ quotaColor }};white-space:nowrap;"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaText }}</span>
+        <span class="mn-prog" style="display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="{{ progIcon }}" style="font-size:14px;color:{{ progColor }};"></i>{{ progText }}</span>
+        <span style="width:1px;height:22px;background:var(--color-border,#e9ecf4);flex-shrink:0;"></span>
+        <span class="mn-quota" title="{{ quotaTitle }}" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:{{ quotaColor }};white-space:nowrap;"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaText }}</span>
         <button class="mn-btn mn-ai" onClick="{{ onTranslate }}" disabled="{{ trOff }}" title="{{ trTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i><span class="mn-blab">{{ trLabel }}</span></button>
       </div>
-      <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 14px;border-top:1px solid #f6f7f9;background:{{ noteBg }};">
+      <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 14px;border-top:1px solid var(--color-border-soft,#f6f7f9);background:{{ noteBg }};">
         <i class="{{ noteIcon }}" style="font-size:14px;color:{{ noteFg }};margin-top:1px;flex-shrink:0;"></i>
         <span style="font-size:12px;color:{{ noteFg }};line-height:1.6;text-wrap:pretty;">{{ noteText }}</span>
       </div>
@@ -158,23 +161,23 @@ input::placeholder{color:#adb5bd;}
     </sc-if>
 
     <div class="mn-card">
-      <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCCheck }}">
-        <i class="{{ cCheckIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i>
+      <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid var(--color-border,#e9ecf4);background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCCheck }}">
+        <i class="{{ cCheckIcon }}" style="font-size:16px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
         <i class="{{ checkIcon }}" style="font-size:16px;color:{{ checkColor }};flex-shrink:0;"></i>
         <span class="mn-t">{{ checkTitle }}</span>
-        <span class="mn-sub" style="margin-left:auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;">Hệ thống tự kiểm mỗi khi bạn mở trang</span>
+        <span class="mn-sub" style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">Hệ thống tự kiểm mỗi khi bạn mở trang</span>
       </button>
       <sc-if value="{{ cCheckOn }}" hint-placeholder-val="{{ true }}">
       <sc-if value="{{ noIssues }}" hint-placeholder-val="{{ false }}">
-        <div style="padding:13px 16px;font-size:12.5px;color:#878a99;line-height:1.6;">Không có gì cần bạn xử lý. Trình đơn đang gắn đúng vị trí, mọi mục đều dẫn tới trang còn sống.</div>
+        <div style="padding:13px 16px;font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Không có gì cần bạn xử lý. Trình đơn đang gắn đúng vị trí, mọi mục đều dẫn tới trang còn sống.</div>
       </sc-if>
       <sc-for list="{{ issues }}" as="q" hint-placeholder-count="2">
-        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);flex-wrap:wrap;">
           <i class="{{ q.icon }}" style="font-size:15px;color:{{ q.color }};flex-shrink:0;"></i>
-          <span style="flex:1 1 260px;min-width:0;font-size:12.5px;color:#495057;line-height:1.6;text-wrap:pretty;">{{ q.text }}</span>
+          <span style="flex:1 1 260px;min-width:0;font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.6;text-wrap:pretty;">{{ q.text }}</span>
           <sc-if value="{{ q.goOn }}"><button class="mn-btn" onClick="{{ q.onGo }}"><i class="ri-focus-3-line" style="font-size:14px;"></i>Xem mục</button></sc-if>
           <button class="mn-btn" onClick="{{ q.onFix }}" title="{{ q.fixTitle }}"><i class="{{ q.fixIcon }}" style="font-size:14px;"></i>{{ q.fix }}</button>
-          <sc-if value="{{ q.dismissOn }}"><button class="mn-hit" style="width:32px;height:32px;" onClick="{{ q.onDismiss }}" title="{{ q.dismissTitle }}"><i class="ri-close-line" style="font-size:15px;"></i></button></sc-if>
+          <sc-if value="{{ q.dismissOn }}"><button class="mn-hit" style="width:32px;height:32px;" onClick="{{ q.onDismiss }}" title="{{ q.dismissTitle }}" aria-label="{{ q.dismissTitle }}"><i class="ri-close-line" style="font-size:15px;"></i></button></sc-if>
         </div>
       </sc-for>
       </sc-if>
@@ -184,48 +187,48 @@ input::placeholder{color:#adb5bd;}
 
       <div style="display:flex;flex-direction:column;gap:16px;">
         <div class="mn-card">
-          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCMenus }}"><i class="{{ cMenusIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i><span class="mn-t">Trình đơn</span><span style="margin-left:auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;">{{ menuCountText }}</span></button>
+          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid var(--color-border,#e9ecf4);background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCMenus }}"><i class="{{ cMenusIcon }}" style="font-size:16px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i><span class="mn-t">Trình đơn</span><span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;text-align:right;">{{ menuCountText }}</span></button>
           <sc-if value="{{ cMenusOn }}" hint-placeholder-val="{{ true }}">
           <sc-for list="{{ menuList }}" as="m" hint-placeholder-count="2">
             <div style="{{ m.wrap }}" onClick="{{ m.onSelect }}" title="{{ m.selTitle }}">
               <span style="{{ m.nameStyle }}">{{ m.name }}</span>
               <div style="display:flex;align-items:center;gap:4px;">
-                <span style="flex:1 1 auto;min-width:0;font-size:11px;color:#adb5bd;white-space:nowrap;">{{ m.count }}</span>
+                <span style="flex:1 1 auto;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">{{ m.count }}</span>
                 <span style="display:flex;align-items:center;gap:4px;flex-shrink:0;" onClick="{{ stop }}" onMouseDown="{{ stop }}" onPointerDown="{{ stop }}">
-                <button class="mn-hit" style="width:30px;height:30px;" onClick="{{ m.onRename }}" title="Đổi tên trình đơn (chỉ bạn nhìn thấy tên này)"><i class="ri-edit-line" style="font-size:14px;"></i></button>
-                <button class="mn-hit" style="width:30px;height:30px;" onClick="{{ m.onDup }}" title="{{ m.dupTitle }}"><i class="ri-file-copy-line" style="font-size:14px;"></i></button>
-                <button class="mn-hit" style="width:30px;height:30px;" onClick="{{ m.onDel }}" disabled="{{ m.delOff }}" title="{{ m.delTitle }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button>
+                <button class="mn-hit" style="width:30px;height:30px;" onClick="{{ m.onRename }}" title="Đổi tên trình đơn (chỉ bạn nhìn thấy tên này)" aria-label="Đổi tên trình đơn (chỉ bạn nhìn thấy tên này)"><i class="ri-edit-line" style="font-size:14px;"></i></button>
+                <button class="mn-hit" style="width:30px;height:30px;" onClick="{{ m.onDup }}" title="{{ m.dupTitle }}" aria-label="{{ m.dupTitle }}"><i class="ri-file-copy-line" style="font-size:14px;"></i></button>
+                <button class="mn-hit" style="width:30px;height:30px;" onClick="{{ m.onDel }}" disabled="{{ m.delOff }}" title="{{ m.delTitle }}" aria-label="{{ m.delTitle }}"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button>
                 </span>
               </div>
               <sc-if value="{{ m.renaming }}" hint-placeholder-val="{{ false }}">
                 <input class="mn-inp" onClick="{{ stop }}" ref="{{ renameRef }}" value="{{ renameVal }}" onChange="{{ onRenameChange }}" onKeyDown="{{ onRenameKey }}" onBlur="{{ onRenameDone }}" placeholder="Tên trình đơn" />
               </sc-if>
 
-              <span style="display:flex;align-items:center;gap:6px;font-size:11px;color:{{ m.useColor }};line-height:1.55;"><i class="{{ m.useIcon }}" style="font-size:13px;flex-shrink:0;"></i>{{ m.useText }}</span>
+              <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:{{ m.useColor }};line-height:1.55;"><i class="{{ m.useIcon }}" style="font-size:13px;flex-shrink:0;"></i>{{ m.useText }}</span>
             </div>
           </sc-for>
-          <div style="padding:10px 12px;border-top:1px solid #f6f7f9;">
+          <div style="padding:10px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
             <button class="mn-btn" style="width:100%;justify-content:center;" onClick="{{ onNewMenu }}"><i class="ri-add-line" style="font-size:15px;"></i>Tạo trình đơn mới</button>
           </div>
           </sc-if>
         </div>
 
         <div class="mn-card">
-          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCAreas }}"><i class="{{ cAreasIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i><span class="mn-t">Vị trí trên website</span><span style="margin-left:auto;font-size:11.5px;color:#adb5bd;white-space:nowrap;">{{ areaCountText }}</span></button>
+          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid var(--color-border,#e9ecf4);background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCAreas }}"><i class="{{ cAreasIcon }}" style="font-size:16px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i><span class="mn-t">Vị trí trên website</span><span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;text-align:right;">{{ areaCountText }}</span></button>
           <sc-if value="{{ cAreasOn }}" hint-placeholder-val="{{ true }}">
-          <div style="padding:10px 14px;font-size:11.5px;color:#878a99;line-height:1.6;border-bottom:1px solid #f6f7f9;text-wrap:pretty;">{{ areaIntro }}</div>
+          <div style="padding:10px 14px;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;border-bottom:1px solid var(--color-border-soft,#f6f7f9);text-wrap:pretty;">{{ areaIntro }}</div>
           <sc-for list="{{ areas }}" as="a" hint-placeholder-count="6">
             <sc-if value="{{ a.headOn }}">
-              <div style="padding:9px 14px 3px;border-top:1px solid #f6f7f9;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#c3c7cf;">{{ a.headLabel }}</div>
+              <div style="padding:9px 14px 3px;border-top:1px solid var(--color-border-soft,#f6f7f9);font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#c3c7cf;">{{ a.headLabel }}</div>
             </sc-if>
             <div style="display:flex;flex-direction:column;gap:5px;padding:5px 14px 9px;">
               <span style="display:flex;align-items:center;gap:6px;" title="{{ a.desc }}">
-                <i class="{{ a.icon }}" style="font-size:14px;color:#878a99;flex-shrink:0;"></i>
-                <span style="font-size:12px;font-weight:600;color:#343a40;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.label }}</span>
+                <i class="{{ a.icon }}" style="font-size:14px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
+                <span style="font-size:12px;font-weight:600;color:var(--color-heading,#1f2b4d);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.label }}</span>
                 <sc-if value="{{ a.warnOn }}"><i class="ri-subtract-line" style="font-size:13px;color:#ced4da;margin-left:auto;flex-shrink:0;" title="Chưa dùng trình đơn nào"></i></sc-if>
               </span>
               <sc-if value="{{ devOn }}">
-                <button onClick="{{ a.onCopyCode }}" title="{{ a.codeTitle }}" style="display:flex;align-items:center;gap:4px;align-self:flex-start;max-width:100%;padding:1px 6px;border:1px solid #f3f3f9;border-radius:4px;background:#fbfcfd;font:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:#b6bac2;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.code }}<i class="ri-file-copy-line" style="font-size:10px;flex-shrink:0;"></i></button>
+                <button onClick="{{ a.onCopyCode }}" title="{{ a.codeTitle }}" style="display:flex;align-items:center;gap:4px;align-self:flex-start;max-width:100%;padding:1px 6px;border:1px solid #f4f5fa;border-radius:4px;background:#fbfcfd;font:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#b6bac2;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.code }}<i class="ri-file-copy-line" style="font-size:12px;flex-shrink:0;"></i></button>
               </sc-if>
               <select class="mn-inp" style="min-height:36px;font-size:12.5px;" value="{{ a.value }}" onChange="{{ a.onChange }}" title="{{ a.title }}">
                 <sc-for list="{{ a.options }}" as="o" hint-placeholder-count="3">
@@ -234,32 +237,32 @@ input::placeholder{color:#adb5bd;}
               </select>
             </div>
           </sc-for>
-          <div style="display:flex;flex-direction:column;gap:9px;padding:8px 12px 12px;border-top:1px solid #f6f7f9;">
-            <button class="mn-btn" style="width:100%;justify-content:center;min-height:32px;font-size:11.5px;" onClick="{{ onAreaAdv }}"><i class="{{ areaAdvIcon }}" style="font-size:14px;"></i>{{ areaAdvLabel }}</button>
-            <button class="mn-btn" style="width:100%;justify-content:center;min-height:32px;font-size:11.5px;" onClick="{{ onDev }}" title="Mã vị trí và mã trình đơn dùng khi lập trình giao diện hoặc chèn trình đơn vào trang"><i class="{{ devIcon }}" style="font-size:14px;"></i>{{ devLabel }}</button>
-            <sc-if value="{{ devOn }}"><span style="font-size:11px;color:#adb5bd;line-height:1.6;text-wrap:pretty;">{{ areaFoot }}</span></sc-if>
+          <div style="display:flex;flex-direction:column;gap:9px;padding:8px 12px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
+            <button class="mn-btn" style="width:100%;justify-content:center;min-height:32px;font-size:12px;" onClick="{{ onAreaAdv }}"><i class="{{ areaAdvIcon }}" style="font-size:14px;"></i>{{ areaAdvLabel }}</button>
+            <button class="mn-btn" style="width:100%;justify-content:center;min-height:32px;font-size:12px;" onClick="{{ onDev }}" title="Mã vị trí và mã trình đơn dùng khi lập trình giao diện hoặc chèn trình đơn vào trang"><i class="{{ devIcon }}" style="font-size:14px;"></i>{{ devLabel }}</button>
+            <sc-if value="{{ devOn }}"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;text-wrap:pretty;">{{ areaFoot }}</span></sc-if>
           </div>
           </sc-if>
         </div>
 
         <div class="mn-card">
-          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCAuto }}"><i class="{{ cAutoIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i><span class="mn-t">Việc hệ thống tự lo</span><span style="margin-left:auto;font-size:11px;color:#adb5bd;white-space:nowrap;flex-shrink:0;">{{ autoCountText }}</span></button>
+          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid var(--color-border,#e9ecf4);background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCAuto }}"><i class="{{ cAutoIcon }}" style="font-size:16px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i><span class="mn-t">Việc hệ thống tự lo</span><span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;text-align:right;flex-shrink:0;">{{ autoCountText }}</span></button>
           <sc-if value="{{ cAutoOn }}" hint-placeholder-val="{{ true }}">
           <div style="padding:8px 12px 12px;display:flex;flex-direction:column;gap:4px;">
             <sc-if value="{{ autoAddOn }}" hint-placeholder-val="{{ false }}">
-              <button class="mn-swrap" onClick="{{ onToggleAuto }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;line-height:1.5;">Tự thêm trang mới vào cuối trình đơn</span></button>
+              <button class="mn-swrap" onClick="{{ onToggleAuto }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.5;">Tự thêm trang mới vào cuối trình đơn</span></button>
             </sc-if>
             <sc-if value="{{ autoAddOff }}" hint-placeholder-val="{{ true }}">
-              <button class="mn-swrap" onClick="{{ onToggleAuto }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;line-height:1.5;">Tự thêm trang mới vào cuối trình đơn</span></button>
+              <button class="mn-swrap" onClick="{{ onToggleAuto }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.5;">Tự thêm trang mới vào cuối trình đơn</span></button>
             </sc-if>
-            <span style="font-size:11.5px;color:#878a99;line-height:1.6;text-wrap:pretty;padding-left:52px;margin:-2px 0 6px;">{{ autoAddNote }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;text-wrap:pretty;padding-left:52px;margin:-2px 0 6px;">{{ autoAddNote }}</span>
             <span style="display:flex;flex-direction:column;gap:7px;padding:9px 11px;border-radius:4px;background:#fbfcfd;">
               <sc-for list="{{ autoAlways }}" as="a" hint-placeholder-count="3">
                 <span style="display:flex;align-items:flex-start;gap:8px;">
-                  <i class="ri-checkbox-circle-fill" style="font-size:14px;color:#0ab39c;flex-shrink:0;margin-top:1px;"></i>
+                  <i class="ri-checkbox-circle-fill" style="font-size:14px;color:var(--color-admin-success-text,#0ab39c);flex-shrink:0;margin-top:1px;"></i>
                   <span style="display:flex;flex-direction:column;gap:1px;min-width:0;">
-                    <span style="font-size:12px;color:#495057;line-height:1.5;text-wrap:pretty;">{{ a.t }}</span>
-                    <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ a.s }}</span>
+                    <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.5;text-wrap:pretty;">{{ a.t }}</span>
+                    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ a.s }}</span>
                   </span>
                 </span>
               </sc-for>
@@ -274,28 +277,28 @@ input::placeholder{color:#adb5bd;}
           <div class="mn-h" style="flex-wrap:wrap;">
             <span class="mn-t">{{ curName }}</span>
             <span class="mn-chip mn-lg">{{ curCountLabel }}</span>
-            <span class="mn-chip mn-lg" title="{{ depthChipTitle }}"><i class="ri-node-tree" style="font-size:10px;"></i>{{ depthChip }}</span>
+            <span class="mn-chip mn-lg" title="{{ depthChipTitle }}"><i class="ri-node-tree" style="font-size:12px;"></i>{{ depthChip }}</span>
             <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;">
               <sc-if value="{{ trashBtnOn }}"><button class="mn-btn" onClick="{{ onTrash }}" title="Các mục đã gỡ, giữ 30 ngày"><i class="ri-delete-bin-line" style="font-size:14px;"></i><span class="mn-blab">Thùng rác </span>{{ trashN }}</button></sc-if>
-              <button class="mn-hit" onClick="{{ onUndo }}" disabled="{{ undoOff }}" title="{{ undoTitle }}"><i class="ri-arrow-go-back-line" style="font-size:16px;"></i></button>
-              <button class="mn-hit" onClick="{{ onRedo }}" disabled="{{ redoOff }}" title="{{ redoTitle }}"><i class="ri-arrow-go-forward-line" style="font-size:16px;"></i></button>
+              <button class="mn-hit" onClick="{{ onUndo }}" disabled="{{ undoOff }}" title="{{ undoTitle }}" aria-label="{{ undoTitle }}"><i class="ri-arrow-go-back-line" style="font-size:16px;"></i></button>
+              <button class="mn-hit" onClick="{{ onRedo }}" disabled="{{ redoOff }}" title="{{ redoTitle }}" aria-label="{{ redoTitle }}"><i class="ri-arrow-go-forward-line" style="font-size:16px;"></i></button>
               <button class="mn-btn" onClick="{{ onExpandAll }}" title="Mở hoặc thu gọn toàn bộ mục con"><i class="{{ expandIcon }}" style="font-size:15px;"></i><span class="mn-blab">{{ expandLabel }}</span></button>
             </span>
           </div>
 
           <sc-if value="{{ trashOpenOn }}" hint-placeholder-val="{{ false }}">
-            <div style="border-bottom:1px solid #eff2f7;background:#fbfcfd;">
+            <div style="border-bottom:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
               <div style="display:flex;align-items:center;gap:8px;padding:10px 14px 6px;">
-                <i class="ri-delete-bin-line" style="font-size:14px;color:#878a99;"></i>
-                <span style="flex:1 1 auto;font-size:11.5px;color:#878a99;line-height:1.55;">Mục đã gỡ được giữ 30 ngày rồi mới xoá hẳn.</span>
-                <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onTrash }}" title="Đóng thùng rác"><i class="ri-close-line" style="font-size:15px;"></i></button>
+                <i class="ri-delete-bin-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i>
+                <span style="flex:1 1 auto;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Mục đã gỡ được giữ 30 ngày rồi mới xóa hẳn.</span>
+                <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onTrash }}" title="Đóng thùng rác" aria-label="Đóng thùng rác"><i class="ri-close-line" style="font-size:15px;"></i></button>
               </div>
               <sc-for list="{{ trashList }}" as="t" hint-placeholder-count="1">
-                <div style="display:flex;align-items:center;gap:9px;padding:8px 14px;border-top:1px solid #f3f3f9;">
-                  <i class="{{ t.icon }}" style="font-size:15px;color:#adb5bd;flex-shrink:0;"></i>
+                <div style="display:flex;align-items:center;gap:9px;padding:8px 14px;border-top:1px solid #f4f5fa;">
+                  <i class="{{ t.icon }}" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
                   <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;">
-                    <span style="font-size:12.5px;color:#343a40;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.label }}</span>
-                    <span style="font-size:11px;color:#adb5bd;">{{ t.meta }}</span>
+                    <span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.label }}</span>
+                    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ t.meta }}</span>
                   </span>
                   <button class="mn-btn" onClick="{{ t.onRestore }}"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Lấy lại</button>
                 </div>
@@ -303,10 +306,10 @@ input::placeholder{color:#adb5bd;}
             </div>
           </sc-if>
 
-          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:7px;flex:1 1 190px;min-width:0;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;" style-focus-within="border-color:#405189;">
-              <i class="ri-search-line" style="font-size:15px;color:#adb5bd;"></i>
-              <input value="{{ treeQuery }}" onChange="{{ onTreeQuery }}" placeholder="Tìm mục trong trình đơn…" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:#343a40;" />
+          <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:7px;flex:1 1 190px;min-width:0;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);" style-focus-within="border-color:#2050a0;">
+              <i class="ri-search-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);"></i>
+              <input value="{{ treeQuery }}" onChange="{{ onTreeQuery }}" placeholder="Tìm mục trong trình đơn…" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);" />
             </div>
             <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
               <button class="{{ f.cls }}" onClick="{{ f.onClick }}" title="{{ f.title }}"><i class="{{ f.icon }}" style="font-size:13px;"></i>{{ f.label }}</button>
@@ -314,25 +317,25 @@ input::placeholder{color:#adb5bd;}
           </div>
 
           <sc-if value="{{ filteringOn }}" hint-placeholder-val="{{ false }}">
-            <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid #eff2f7;background:#f8f9fb;">
-              <i class="ri-filter-3-line" style="font-size:14px;color:#878a99;"></i>
-              <span style="flex:1 1 auto;font-size:11.5px;color:#878a99;line-height:1.5;">{{ filterNote }}</span>
+            <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);">
+              <i class="ri-filter-3-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i>
+              <span style="flex:1 1 auto;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ filterNote }}</span>
               <button class="mn-btn" onClick="{{ onClearFilter }}">Bỏ lọc</button>
             </div>
           </sc-if>
 
           <sc-if value="{{ dragOn }}" hint-placeholder-val="{{ false }}">
-            <div style="position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid rgba(64,81,137,.2);background:rgba(64,81,137,.08);">
-              <i class="ri-drag-move-2-line" style="font-size:15px;color:#405189;flex-shrink:0;"></i>
-              <span style="font-size:11.5px;color:#405189;line-height:1.55;text-wrap:pretty;">{{ dragHint }}</span>
+            <div style="position:sticky;top:var(--sticky-top,0px);z-index:15;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid rgba(32,80,160,.2);background:rgba(32,80,160,.08);">
+              <i class="ri-drag-move-2-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
+              <span style="font-size:12px;color:var(--color-accent,#2050a0);line-height:1.55;text-wrap:pretty;">{{ dragHint }}</span>
             </div>
           </sc-if>
 
           <sc-if value="{{ emptyOn }}" hint-placeholder-val="{{ false }}">
             <div style="padding:34px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;">
               <i class="ri-node-tree" style="font-size:26px;color:#ced4da;"></i>
-              <span style="font-size:13px;font-weight:600;color:#495057;">{{ emptyTitle }}</span>
-              <span style="font-size:12px;color:#878a99;line-height:1.6;max-width:340px;text-wrap:pretty;">{{ emptyText }}</span>
+              <span style="font-size:13px;font-weight:600;color:var(--color-body-text,#3c4765);">{{ emptyTitle }}</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;max-width:340px;text-wrap:pretty;">{{ emptyText }}</span>
             </div>
           </sc-if>
 
@@ -343,42 +346,42 @@ input::placeholder{color:#adb5bd;}
             <div class="mn-item" ref="{{ r.rowRef }}" style="{{ r.wrap }}" draggable="{{ r.drag }}" onDragStart="{{ r.onDragStart }}" onDragEnter="{{ r.onDragEnter }}" onDragOver="{{ r.onDragOver }}" onDrop="{{ r.onDrop }}" onDragEnd="{{ r.onDragEnd }}">
               <span style="{{ r.indent }}"></span>
               <sc-if value="{{ r.gripOn }}"><span class="mn-grip" title="Kéo để đổi vị trí — thả vào giữa một mục để thành mục con"><i class="ri-draggable" style="font-size:15px;"></i></span></sc-if>
-              <sc-if value="{{ r.hasKids }}"><button class="mn-hit" style="width:24px;" onClick="{{ r.onFold }}" title="{{ r.foldTitle }}"><i class="{{ r.chev }}" style="font-size:16px;"></i></button></sc-if>
+              <sc-if value="{{ r.hasKids }}"><button class="mn-hit" style="width:24px;" onClick="{{ r.onFold }}" title="{{ r.foldTitle }}" aria-label="{{ r.foldTitle }}"><i class="{{ r.chev }}" style="font-size:16px;"></i></button></sc-if>
               <sc-if value="{{ r.noKids }}"><span style="width:24px;flex-shrink:0;"></span></sc-if>
               <i class="{{ r.icon }}" style="font-size:15px;color:{{ r.iconColor }};flex-shrink:0;"></i>
               <button class="mn-name" onClick="{{ r.onSelect }}" title="Mở phần chỉnh sửa mục này">
                 <span style="{{ r.labelStyle }}">{{ r.label }}</span>
-                <sc-if value="{{ r.pathOn }}"><span style="font-size:11px;color:#adb5bd;white-space:nowrap;flex:0 0 auto;">{{ r.pathText }}</span></sc-if>
-                <sc-if value="{{ r.unsavedOn }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:#a9750a;" title="Mục này đã sửa nhưng chưa lưu"><i class="ri-circle-fill" style="font-size:7px;"></i><span class="mn-flagt">Chưa lưu</span></span></sc-if>
-                <sc-if value="{{ r.mtOn }}"><span class="mn-chip" style="background:rgba(41,156,219,.14);color:#1d7fb8;" title="Nhãn này do AI dịch, bạn chưa kiểm lại"><i class="ri-sparkling-2-line" style="font-size:10px;"></i><span class="mn-flagt">AI dịch</span></span></sc-if>
-                <sc-if value="{{ r.hiddenOn }}"><span class="mn-chip" style="background:#f3f6f9;color:#878a99;" title="{{ r.hiddenTitle }}"><i class="ri-eye-off-line" style="font-size:11px;"></i><span class="mn-flagt">{{ r.hiddenLabel }}</span></span></sc-if>
-                <sc-if value="{{ r.ctaOn }}"><span class="mn-chip" style="background:rgba(64,81,137,.10);color:#405189;" title="Hiển thị như nút nổi bật"><i class="ri-cursor-fill" style="font-size:10px;"></i><span class="mn-flagt">Nút nổi bật</span></span></sc-if>
+                <sc-if value="{{ r.pathOn }}"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;flex:0 0 auto;">{{ r.pathText }}</span></sc-if>
+                <sc-if value="{{ r.unsavedOn }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#a9750a);" title="Mục này đã sửa nhưng chưa lưu"><i class="ri-circle-fill" style="font-size:12px;"></i><span class="mn-flagt">Chưa lưu</span></span></sc-if>
+                <sc-if value="{{ r.mtOn }}"><span class="mn-chip" style="background:rgba(41,156,219,.14);color:var(--color-admin-info-text,#1d7fb8);" title="Nhãn này do AI dịch, bạn chưa kiểm lại"><i class="ri-sparkling-2-line" style="font-size:12px;"></i><span class="mn-flagt">AI dịch</span></span></sc-if>
+                <sc-if value="{{ r.hiddenOn }}"><span class="mn-chip" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);" title="{{ r.hiddenTitle }}"><i class="ri-eye-off-line" style="font-size:12px;"></i><span class="mn-flagt">{{ r.hiddenLabel }}</span></span></sc-if>
+                <sc-if value="{{ r.ctaOn }}"><span class="mn-chip" style="background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);" title="Hiển thị như nút nổi bật"><i class="ri-cursor-fill" style="font-size:12px;"></i><span class="mn-flagt">Nút nổi bật</span></span></sc-if>
                 <sc-if value="{{ r.badgeOn }}"><span class="mn-chip" style="background:#f06548;color:#fff;" title="{{ r.badgeTitle }}">{{ r.badgeText }}</span></sc-if>
-                <sc-if value="{{ r.badgeExpOn }}"><span class="mn-chip mn-lg" title="{{ r.badgeExpTitle }}"><i class="ri-time-line" style="font-size:10px;"></i><span class="mn-flagt">Nhãn hết hạn</span></span></sc-if>
-                <sc-if value="{{ r.overDeepOn }}"><span class="mn-chip" style="background:rgba(240,101,72,.12);color:#d84a2f;" title="{{ r.overDeepTitle }}"><i class="ri-node-tree" style="font-size:10px;"></i><span class="mn-flagt">Vượt cấp</span></span></sc-if>
-                <sc-if value="{{ r.megaRowOn }}"><span class="mn-chip" style="background:rgba(64,81,137,.10);color:#405189;" title="{{ r.megaRowTitle }}"><i class="ri-layout-grid-line" style="font-size:10px;"></i><span class="mn-flagt">{{ r.megaRowLabel }}</span></span></sc-if>
-                <sc-if value="{{ r.descRowOn }}"><span class="mn-chip mn-lg" title="{{ r.descRowTitle }}"><i class="ri-text" style="font-size:10px;"></i><span class="mn-flagt">Có mô tả</span></span></sc-if>
-                <sc-if value="{{ r.onlyOn }}"><span class="mn-chip mn-lg" title="{{ r.onlyTitle }}"><i class="ri-device-line" style="font-size:10px;"></i><span class="mn-flagt">{{ r.onlyLabel }}</span></span></sc-if>
-                <sc-if value="{{ r.fixedOn }}"><span class="mn-chip" style="background:rgba(10,179,156,.12);color:#0a8f7f;" title="{{ r.fixedTitle }}"><i class="ri-check-line" style="font-size:11px;"></i><span class="mn-flagt">Đã tự sửa đường dẫn</span></span></sc-if>
-                <sc-if value="{{ r.draftOn }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:#a9750a;" title="{{ r.draftTitle }}"><i class="ri-eye-off-line" style="font-size:11px;"></i><span class="mn-flagt">Trang chưa đăng</span></span></sc-if>
-                <sc-if value="{{ r.brokenOn }}"><span class="mn-chip" style="background:rgba(240,101,72,.12);color:#d84a2f;" title="{{ r.brokenTitle }}"><i class="ri-error-warning-line" style="font-size:11px;"></i><span class="mn-flagt">Trang không còn</span></span></sc-if>
+                <sc-if value="{{ r.badgeExpOn }}"><span class="mn-chip mn-lg" title="{{ r.badgeExpTitle }}"><i class="ri-time-line" style="font-size:12px;"></i><span class="mn-flagt">Nhãn hết hạn</span></span></sc-if>
+                <sc-if value="{{ r.overDeepOn }}"><span class="mn-chip" style="background:rgba(240,101,72,.12);color:var(--color-admin-danger-text,#d84a2f);" title="{{ r.overDeepTitle }}"><i class="ri-node-tree" style="font-size:12px;"></i><span class="mn-flagt">Vượt cấp</span></span></sc-if>
+                <sc-if value="{{ r.megaRowOn }}"><span class="mn-chip" style="background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);" title="{{ r.megaRowTitle }}"><i class="ri-layout-grid-line" style="font-size:12px;"></i><span class="mn-flagt">{{ r.megaRowLabel }}</span></span></sc-if>
+                <sc-if value="{{ r.descRowOn }}"><span class="mn-chip mn-lg" title="{{ r.descRowTitle }}"><i class="ri-text" style="font-size:12px;"></i><span class="mn-flagt">Có mô tả</span></span></sc-if>
+                <sc-if value="{{ r.onlyOn }}"><span class="mn-chip mn-lg" title="{{ r.onlyTitle }}"><i class="ri-device-line" style="font-size:12px;"></i><span class="mn-flagt">{{ r.onlyLabel }}</span></span></sc-if>
+                <sc-if value="{{ r.fixedOn }}"><span class="mn-chip" style="background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a8f7f);" title="{{ r.fixedTitle }}"><i class="ri-check-line" style="font-size:12px;"></i><span class="mn-flagt">Đã tự sửa đường dẫn</span></span></sc-if>
+                <sc-if value="{{ r.draftOn }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#a9750a);" title="{{ r.draftTitle }}"><i class="ri-eye-off-line" style="font-size:12px;"></i><span class="mn-flagt">Trang chưa đăng</span></span></sc-if>
+                <sc-if value="{{ r.brokenOn }}"><span class="mn-chip" style="background:rgba(240,101,72,.12);color:var(--color-admin-danger-text,#d84a2f);" title="{{ r.brokenTitle }}"><i class="ri-error-warning-line" style="font-size:12px;"></i><span class="mn-flagt">Trang không còn</span></span></sc-if>
               </button>
               <span class="mn-src">{{ r.srcText }}</span>
-              <button class="mn-hit" onClick="{{ r.onUp }}" disabled="{{ r.moveOff }}" title="{{ r.upTitle }}"><i class="ri-arrow-up-s-line" style="font-size:17px;"></i></button>
-              <button class="mn-hit" onClick="{{ r.onDown }}" disabled="{{ r.moveOff }}" title="{{ r.downTitle }}"><i class="ri-arrow-down-s-line" style="font-size:17px;"></i></button>
-              <button class="mn-hit" onClick="{{ r.onMenu }}" title="{{ r.menuTitle }}"><i class="ri-more-2-fill" style="font-size:16px;"></i></button>
+              <button class="mn-hit" onClick="{{ r.onUp }}" disabled="{{ r.moveOff }}" title="{{ r.upTitle }}" aria-label="{{ r.upTitle }}"><i class="ri-arrow-up-s-line" style="font-size:17px;"></i></button>
+              <button class="mn-hit" onClick="{{ r.onDown }}" disabled="{{ r.moveOff }}" title="{{ r.downTitle }}" aria-label="{{ r.downTitle }}"><i class="ri-arrow-down-s-line" style="font-size:17px;"></i></button>
+              <button class="mn-hit" onClick="{{ r.onMenu }}" title="{{ r.menuTitle }}" aria-label="{{ r.menuTitle }}"><i class="ri-more-2-fill" style="font-size:16px;"></i></button>
 
               <sc-if value="{{ r.menuOn }}" hint-placeholder-val="{{ false }}">
                 <div class="mn-pop" onClick="{{ stop }}">
-                  <button class="mn-pi" onClick="{{ r.onSelect }}"><i class="ri-pencil-line" style="font-size:15px;"></i>Sửa nhãn &amp; tuỳ chọn</button>
+                  <button class="mn-pi" onClick="{{ r.onSelect }}"><i class="ri-pencil-line" style="font-size:15px;"></i>Sửa nhãn &amp; tùy chọn</button>
                   <button class="mn-pi" onClick="{{ r.onToggleHide }}"><i class="{{ r.hideIcon }}" style="font-size:15px;"></i>{{ r.hideLabel }}</button>
-                  <div style="height:1px;margin:5px 0;background:#f3f3f9;"></div>
-                  <button class="mn-pi" onClick="{{ r.onIn }}" disabled="{{ r.inOff }}" title="{{ r.inTitle }}"><i class="ri-indent-increase" style="font-size:15px;"></i>Thành mục con<span style="margin-left:auto;font-size:10.5px;color:#adb5bd;">Alt →</span></button>
-                  <button class="mn-pi" onClick="{{ r.onOut }}" disabled="{{ r.outOff }}" title="{{ r.outTitle }}"><i class="ri-indent-decrease" style="font-size:15px;"></i>Đưa ra ngoài<span style="margin-left:auto;font-size:10.5px;color:#adb5bd;">Alt ←</span></button>
+                  <div style="height:1px;margin:5px 0;background:var(--color-body,#f4f5fa);"></div>
+                  <button class="mn-pi" onClick="{{ r.onIn }}" disabled="{{ r.inOff }}" title="{{ r.inTitle }}"><i class="ri-indent-increase" style="font-size:15px;"></i>Thành mục con<span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">Alt →</span></button>
+                  <button class="mn-pi" onClick="{{ r.onOut }}" disabled="{{ r.outOff }}" title="{{ r.outTitle }}"><i class="ri-indent-decrease" style="font-size:15px;"></i>Đưa ra ngoài<span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">Alt ←</span></button>
                   <button class="mn-pi" onClick="{{ r.onDup }}"><i class="ri-file-copy-line" style="font-size:15px;"></i>Nhân bản</button>
-                  <div style="height:1px;margin:5px 0;background:#f3f3f9;"></div>
+                  <div style="height:1px;margin:5px 0;background:var(--color-body,#f4f5fa);"></div>
                   <button class="mn-pi" onClick="{{ r.onRevert }}" disabled="{{ r.revertOff }}" title="{{ r.revertTitle }}"><i class="ri-history-line" style="font-size:15px;"></i>Đưa về như lần lưu</button>
-                  <button class="mn-pi" style="color:#d84a2f;" onClick="{{ r.onDel }}"><i class="ri-delete-bin-line" style="font-size:15px;"></i>Gỡ khỏi trình đơn</button>
+                  <button class="mn-pi" style="color:var(--color-admin-danger-text,#d84a2f);" onClick="{{ r.onDel }}"><i class="ri-delete-bin-line" style="font-size:15px;"></i>Gỡ khỏi trình đơn</button>
                 </div>
               </sc-if>
             </div>
@@ -388,64 +391,64 @@ input::placeholder{color:#adb5bd;}
             </sc-if>
 
             <sc-if value="{{ r.editOn }}" hint-placeholder-val="{{ false }}">
-              <div style="padding:14px 16px 16px;border-top:1px solid #eff2f7;background:#fbfcfd;">
+              <div style="padding:14px 16px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
                   <label style="display:flex;flex-direction:column;gap:6px;min-width:0;">
-                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#495057;">Nhãn hiển thị<span class="mn-chip mn-lg">{{ locCode }}</span></span>
+                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Nhãn hiển thị<span class="mn-chip mn-lg">{{ locCode }}</span></span>
                     <input class="mn-inp" value="{{ edLabel }}" onChange="{{ onEdLabel }}" placeholder="{{ edLabelPh }}" />
-                    <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ edLabelHint }}</span>
+                    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ edLabelHint }}</span>
                   </label>
                   <label style="display:flex;flex-direction:column;gap:6px;min-width:0;">
-                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#495057;">Đường dẫn<sc-if value="{{ sharedLocked }}"><span class="mn-chip" style="background:#f3f6f9;color:#878a99;"><i class="ri-lock-line" style="font-size:11px;"></i>Chung</span></sc-if></span>
+                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Đường dẫn<sc-if value="{{ sharedLocked }}"><span class="mn-chip" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);"><i class="ri-lock-line" style="font-size:12px;"></i>Chung</span></sc-if></span>
                     <input class="mn-inp" value="{{ edUrl }}" onChange="{{ onEdUrl }}" disabled="{{ edUrlOff }}" placeholder="/lien-he" />
-                    <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ edUrlHint }}</span>
+                    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ edUrlHint }}</span>
                   </label>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;">
                   <div style="display:flex;flex-direction:column;gap:6px;min-width:0;">
-                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#495057;">Mô tả ngắn<span class="mn-chip mn-lg">{{ locCode }}</span><span style="margin-left:auto;font-size:11px;color:{{ edDescCountColor }};font-weight:400;">{{ edDescCount }}</span></span>
-                    <span style="display:flex;flex-direction:column;border:1px solid #e9ebec;border-radius:4px;background:#fff;overflow:hidden;" style-focus-within="border-color:#405189;">
-                      <span style="display:flex;align-items:center;gap:2px;padding:4px 5px;border-bottom:1px solid #f3f3f9;background:#fbfcfd;">
-                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescBold }}" title="Chữ đậm (Ctrl+B)"><i class="ri-bold" style="font-size:15px;"></i></button>
-                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescItalic }}" title="Chữ nghiêng (Ctrl+I)"><i class="ri-italic" style="font-size:15px;"></i></button>
-                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescLink }}" title="Chèn liên kết"><i class="ri-link" style="font-size:15px;"></i></button>
-                        <span style="width:1px;height:16px;margin:0 3px;background:#eff2f7;"></span>
-                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescClear }}" title="Xoá định dạng, giữ nguyên chữ"><i class="ri-format-clear" style="font-size:15px;"></i></button>
+                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Mô tả ngắn<span class="mn-chip mn-lg">{{ locCode }}</span><span style="margin-left:auto;font-size:12px;color:{{ edDescCountColor }};font-weight:400;">{{ edDescCount }}</span></span>
+                    <span style="display:flex;flex-direction:column;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);overflow:hidden;" style-focus-within="border-color:#2050a0;">
+                      <span style="display:flex;align-items:center;gap:2px;padding:4px 5px;border-bottom:1px solid #f4f5fa;background:#fbfcfd;">
+                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescBold }}" title="Chữ đậm (Ctrl+B)" aria-label="Chữ đậm (Ctrl+B)"><i class="ri-bold" style="font-size:15px;"></i></button>
+                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescItalic }}" title="Chữ nghiêng (Ctrl+I)" aria-label="Chữ nghiêng (Ctrl+I)"><i class="ri-italic" style="font-size:15px;"></i></button>
+                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescLink }}" title="Chèn liên kết" aria-label="Chèn liên kết"><i class="ri-link" style="font-size:15px;"></i></button>
+                        <span style="width:1px;height:16px;margin:0 3px;background:var(--color-border,#e9ecf4);"></span>
+                        <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescClear }}" title="Xóa định dạng, giữ nguyên chữ" aria-label="Xóa định dạng, giữ nguyên chữ"><i class="ri-format-clear" style="font-size:15px;"></i></button>
                       </span>
                       <span style="position:relative;">
-                        <div class="mn-rt" ref="{{ descRef }}" contentEditable="{{ true }}" onInput="{{ onDescInput }}" onFocus="{{ onDescFocus }}" onBlur="{{ onDescBlur }}" onPaste="{{ onDescPaste }}" style="min-height:78px;padding:9px 11px;outline:none;font-size:13px;line-height:1.65;color:#343a40;overflow:auto;"></div>
-                        <sc-if value="{{ descEmptyOn }}"><span style="position:absolute;top:9px;left:11px;font-size:13px;color:#adb5bd;pointer-events:none;">{{ edDescPh }}</span></sc-if>
+                        <div class="mn-rt" ref="{{ descRef }}" contentEditable="{{ true }}" onInput="{{ onDescInput }}" onFocus="{{ onDescFocus }}" onBlur="{{ onDescBlur }}" onPaste="{{ onDescPaste }}" style="min-height:78px;padding:9px 11px;outline:none;font-size:13px;line-height:1.65;color:var(--color-heading,#1f2b4d);overflow:auto;"></div>
+                        <sc-if value="{{ descEmptyOn }}"><span style="position:absolute;top:9px;left:11px;font-size:13px;color:var(--color-body-muted,#5b6275);pointer-events:none;">{{ edDescPh }}</span></sc-if>
                       </span>
                     </span>
                     <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                      <span style="flex:1 1 160px;min-width:0;font-size:11px;color:#adb5bd;line-height:1.5;text-wrap:pretty;">{{ edDescHint }}</span>
-                      <sc-if value="{{ edDescSrcOn }}"><button class="mn-btn" style="min-height:30px;font-size:11.5px;" onClick="{{ onEdDescSrc }}" title="Lấy mô tả đã có sẵn của trang, không phải gõ lại"><i class="ri-magic-line" style="font-size:13px;"></i>Lấy từ mô tả trang</button></sc-if>
+                      <span style="flex:1 1 160px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;text-wrap:pretty;">{{ edDescHint }}</span>
+                      <sc-if value="{{ edDescSrcOn }}"><button class="mn-btn" style="min-height:30px;font-size:12px;" onClick="{{ onEdDescSrc }}" title="Lấy mô tả đã có sẵn của trang, không phải gõ lại"><i class="ri-magic-line" style="font-size:13px;"></i>Lấy từ mô tả trang</button></sc-if>
                     </span>
                   </div>
                   <div style="display:flex;flex-direction:column;gap:6px;min-width:0;">
-                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#495057;">Biểu tượng<span style="font-size:11px;color:#adb5bd;font-weight:400;">không bắt buộc</span></span>
+                    <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Biểu tượng<span style="font-size:12px;color:var(--color-body-muted,#5b6275);font-weight:400;">không bắt buộc</span></span>
                     <span style="position:relative;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                       <button class="mn-btn" style="min-height:38px;" onClick="{{ onEdIconOpen }}" title="{{ edIconTitle }}"><i class="{{ edIconClass }}" style="font-size:17px;"></i>{{ edIconLabel }}<i class="ri-arrow-down-s-line" style="font-size:14px;"></i></button>
-                      <sc-if value="{{ iconTipOn }}"><button class="mn-btn" style="min-height:38px;" onClick="{{ onIconTip }}" title="Hệ thống đoán theo tên mục — bấm là gán"><i class="{{ iconTipClass }}" style="font-size:16px;color:#405189;"></i>Gợi ý</button></sc-if>
+                      <sc-if value="{{ iconTipOn }}"><button class="mn-btn" style="min-height:38px;" onClick="{{ onIconTip }}" title="Hệ thống đoán theo tên mục — bấm là gán"><i class="{{ iconTipClass }}" style="font-size:16px;color:var(--color-accent,#2050a0);"></i>Gợi ý</button></sc-if>
                       <sc-if value="{{ iconOpenOn }}">
-                        <span onClick="{{ stop }}" style="position:absolute;top:100%;right:0;z-index:30;width:min(308px, calc(100cqw - 40px), calc(100vw - 32px));box-sizing:border-box;margin-top:6px;padding:10px;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 6px 18px rgba(56,65,74,.18);">
+                        <span onClick="{{ stop }}" style="position:absolute;top:100%;right:0;z-index:30;width:min(308px, calc(100cqw - 40px), calc(100vw - 32px));box-sizing:border-box;margin-top:6px;padding:10px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 6px 18px rgba(56,65,74,.18);">
                           <input class="mn-inp" style="min-height:34px;font-size:12px;" value="{{ iconQ }}" onChange="{{ onIconQ }}" placeholder="Tìm: điện thoại, khuyến mãi, nhà máy…" />
                           <span style="display:flex;flex-direction:column;gap:8px;margin-top:9px;max-height:230px;overflow:auto;">
                             <sc-for list="{{ iconGroups }}" as="ig" hint-placeholder-count="3">
                               <span style="display:flex;flex-direction:column;gap:6px;">
-                                <span style="font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#c3c7cf;">{{ ig.g }}</span>
+                                <span style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#c3c7cf;">{{ ig.g }}</span>
                                 <span style="display:flex;flex-wrap:wrap;gap:6px;">
                                   <sc-for list="{{ ig.icons }}" as="ic" hint-placeholder-count="12">
-                                    <button style="{{ ic.style }}" onClick="{{ ic.onClick }}" title="{{ ic.title }}"><i class="{{ ic.cls }}"></i></button>
+                                    <button style="{{ ic.style }}" onClick="{{ ic.onClick }}" title="{{ ic.title }}" aria-label="{{ ic.title }}"><i class="{{ ic.cls }}"></i></button>
                                   </sc-for>
                                 </span>
                               </span>
                             </sc-for>
-                            <sc-if value="{{ iconEmptyOn }}"><span style="padding:14px 4px;text-align:center;font-size:11.5px;color:#adb5bd;line-height:1.6;">Không có biểu tượng nào khớp — thử từ khác như “giao hàng”, “bảo hành”.</span></sc-if>
+                            <sc-if value="{{ iconEmptyOn }}"><span style="padding:14px 4px;text-align:center;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Không có biểu tượng nào khớp — thử từ khác như “giao hàng”, “bảo hành”.</span></sc-if>
                           </span>
-                          <span style="display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid #f6f7f9;">
-                            <span style="flex:1 1 auto;font-size:10.5px;color:#c3c7cf;">{{ iconCountText }}</span>
-                            <sc-if value="{{ iconNoneOn }}"><button class="mn-btn" style="min-height:30px;font-size:11.5px;" onClick="{{ onEdIconClear }}"><i class="ri-close-line" style="font-size:14px;"></i>Bỏ biểu tượng</button></sc-if>
+                          <span style="display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
+                            <span style="flex:1 1 auto;font-size:12px;color:#c3c7cf;">{{ iconCountText }}</span>
+                            <sc-if value="{{ iconNoneOn }}"><button class="mn-btn" style="min-height:30px;font-size:12px;" onClick="{{ onEdIconClear }}"><i class="ri-close-line" style="font-size:14px;"></i>Bỏ biểu tượng</button></sc-if>
                           </span>
                         </span>
                       </sc-if>
@@ -453,9 +456,9 @@ input::placeholder{color:#adb5bd;}
                   </div>
                 </div>
                 <sc-if value="{{ edMegaRowOn }}" hint-placeholder-val="{{ false }}">
-                  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px;padding:11px 13px;border:1px solid #eff2f7;border-radius:6px;background:#fff;">
-                    <sc-if value="{{ edMegaOn }}"><button class="mn-swrap" onClick="{{ onEdMega }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Mở dạng bảng lớn</span></button></sc-if>
-                    <sc-if value="{{ edMegaOff }}"><button class="mn-swrap" onClick="{{ onEdMega }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Mở dạng bảng lớn</span></button></sc-if>
+                  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px;padding:11px 13px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);">
+                    <sc-if value="{{ edMegaOn }}"><button class="mn-swrap" onClick="{{ onEdMega }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);">Mở dạng bảng lớn</span></button></sc-if>
+                    <sc-if value="{{ edMegaOff }}"><button class="mn-swrap" onClick="{{ onEdMega }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);">Mở dạng bảng lớn</span></button></sc-if>
                     <sc-if value="{{ edMegaOn }}">
                       <select class="mn-inp" style="width:auto;min-height:34px;font-size:12.5px;" value="{{ edMegaKind }}" onChange="{{ onEdMegaKind }}" title="Cách dựng nội dung bên trong bảng lớn">
                         <sc-for list="{{ megaKindOptions }}" as="mk" hint-placeholder-count="2"><option value="{{ mk.value }}">{{ mk.label }}</option></sc-for>
@@ -471,36 +474,36 @@ input::placeholder{color:#adb5bd;}
                         <sc-for list="{{ megaBlockOptions }}" as="mb" hint-placeholder-count="3"><option value="{{ mb.value }}">{{ mb.label }}</option></sc-for>
                       </select>
                     </sc-if>
-                    <sc-if value="{{ edMegaBlockOn }}"><button class="mn-btn" style="min-height:34px;font-size:11.5px;" onClick="{{ onOpenBuilder }}"><i class="ri-layout-masonry-line" style="font-size:14px;"></i>Dựng khối mới</button></sc-if>
-                    <span style="flex:1 1 200px;min-width:0;font-size:11px;color:#adb5bd;line-height:1.55;text-wrap:pretty;">{{ edMegaKindHint }}</span>
+                    <sc-if value="{{ edMegaBlockOn }}"><button class="mn-btn" style="min-height:34px;font-size:12px;" onClick="{{ onOpenBuilder }}"><i class="ri-layout-masonry-line" style="font-size:14px;"></i>Dựng khối mới</button></sc-if>
+                    <span style="flex:1 1 200px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;text-wrap:pretty;">{{ edMegaKindHint }}</span>
                   </div>
                 </sc-if>
                 <div style="display:flex;align-items:center;gap:22px;flex-wrap:wrap;margin-top:12px;">
-                  <sc-if value="{{ edShowOn }}"><button class="mn-swrap" onClick="{{ onEdShow }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Hiện cho khách</span></button></sc-if>
-                  <sc-if value="{{ edShowOff }}"><button class="mn-swrap" onClick="{{ onEdShow }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Hiện cho khách</span></button></sc-if>
-                  <sc-if value="{{ edBlankOn }}"><button class="mn-swrap" onClick="{{ onEdBlank }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Mở ở cửa sổ mới</span></button></sc-if>
-                  <sc-if value="{{ edBlankOff }}"><button class="mn-swrap" onClick="{{ onEdBlank }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Mở ở cửa sổ mới</span></button></sc-if>
-                  <sc-if value="{{ edCtaOn }}"><button class="mn-swrap" onClick="{{ onEdCta }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Hiển thị như nút nổi bật</span></button></sc-if>
-                  <sc-if value="{{ edCtaOff }}"><button class="mn-swrap" onClick="{{ onEdCta }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:#343a40;">Hiển thị như nút nổi bật</span></button></sc-if>
+                  <sc-if value="{{ edShowOn }}"><button class="mn-swrap" onClick="{{ onEdShow }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);">Hiện cho khách</span></button></sc-if>
+                  <sc-if value="{{ edShowOff }}"><button class="mn-swrap" onClick="{{ onEdShow }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);">Hiện cho khách</span></button></sc-if>
+                  <sc-if value="{{ edBlankOn }}"><button class="mn-swrap" onClick="{{ onEdBlank }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);">Mở ở cửa sổ mới</span></button></sc-if>
+                  <sc-if value="{{ edBlankOff }}"><button class="mn-swrap" onClick="{{ onEdBlank }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);">Mở ở cửa sổ mới</span></button></sc-if>
+                  <sc-if value="{{ edCtaOn }}"><button class="mn-swrap" onClick="{{ onEdCta }}"><span class="mn-sw on"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);">Hiển thị như nút nổi bật</span></button></sc-if>
+                  <sc-if value="{{ edCtaOff }}"><button class="mn-swrap" onClick="{{ onEdCta }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);">Hiển thị như nút nổi bật</span></button></sc-if>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;">
-                  <span style="font-size:12px;font-weight:600;color:#495057;">Nhãn</span>
+                  <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Nhãn</span>
                   <select class="mn-inp" style="width:auto;min-height:34px;font-size:12.5px;" value="{{ edBadge }}" onChange="{{ onEdBadge }}" title="Nhãn nhỏ hiện cạnh tên mục trên website">
                     <sc-for list="{{ badgeOptions }}" as="b" hint-placeholder-count="5"><option value="{{ b.value }}">{{ b.label }}</option></sc-for>
                   </select>
                   <sc-if value="{{ edBadgeDateOn }}">
                     <input class="mn-inp" type="date" style="width:auto;min-height:34px;font-size:12.5px;" value="{{ edBadgeDate }}" onChange="{{ onEdBadgeDate }}" title="Ngày cuối cùng nhãn còn hiện" />
                   </sc-if>
-                  <sc-if value="{{ edBadgeDateOn }}"><span style="flex:1 1 180px;min-width:0;font-size:11px;color:#adb5bd;line-height:1.55;">{{ edBadgeHint }}</span></sc-if>
+                  <sc-if value="{{ edBadgeDateOn }}"><span style="flex:1 1 180px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">{{ edBadgeHint }}</span></sc-if>
                 </div>
                 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;">
-                  <span style="font-size:12px;font-weight:600;color:#495057;">Hiện trên</span>
+                  <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Hiện trên</span>
                   <sc-for list="{{ devicePills }}" as="dv" hint-placeholder-count="3">
                     <button class="{{ dv.cls }}" onClick="{{ dv.onClick }}" title="{{ dv.title }}"><i class="{{ dv.icon }}" style="font-size:14px;"></i>{{ dv.label }}</button>
                   </sc-for>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid #eff2f7;">
-                  <span style="font-size:11.5px;color:#adb5bd;line-height:1.6;flex:1 1 220px;min-width:0;">{{ edFoot }}</span>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--color-border,#e9ecf4);">
+                  <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;flex:1 1 220px;min-width:0;">{{ edFoot }}</span>
                   <button class="mn-btn" onClick="{{ onEdClose }}">Xong</button>
                 </div>
               </div>
@@ -514,15 +517,15 @@ input::placeholder{color:#adb5bd;}
           </sc-if>
 
           <sc-if value="{{ depthNoteOn }}" hint-placeholder-val="{{ false }}">
-            <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #eff2f7;background:{{ depthNoteBg }};">
+            <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--color-border,#e9ecf4);background:{{ depthNoteBg }};">
               <i class="{{ depthNoteIcon }}" style="font-size:14px;color:{{ depthNoteFg }};flex-shrink:0;"></i>
-              <span style="font-size:11.5px;color:{{ depthNoteFg }};line-height:1.6;text-wrap:pretty;">{{ depthNote }}</span>
+              <span style="font-size:12px;color:{{ depthNoteFg }};line-height:1.6;text-wrap:pretty;">{{ depthNote }}</span>
             </div>
           </sc-if>
 
-          <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid #eff2f7;">
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid var(--color-border,#e9ecf4);">
             <i class="ri-keyboard-line" style="font-size:14px;color:#ced4da;flex-shrink:0;"></i>
-            <span style="font-size:11px;color:#adb5bd;line-height:1.6;">Kéo bằng chuột, hoặc dùng nút mũi tên và phím Alt + mũi tên khi đang mở một mục. Ctrl+Z hoàn tác.</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Kéo bằng chuột, hoặc dùng nút mũi tên và phím Alt + mũi tên khi đang mở một mục. Ctrl+Z hoàn tác.</span>
           </div>
         </div>
 
@@ -530,7 +533,7 @@ input::placeholder{color:#adb5bd;}
         <div class="mn-card">
           <div class="mn-h" style="flex-wrap:wrap;">
             <span class="mn-t">Khách sẽ thấy</span>
-            <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;">
+            <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:1;min-width:0;flex-wrap:wrap;">
               <sc-for list="{{ devices }}" as="d" hint-placeholder-count="2">
                 <button class="{{ d.cls }}" onClick="{{ d.onClick }}" title="{{ d.title }}"><i class="{{ d.icon }}" style="font-size:14px;"></i>{{ d.label }}</button>
               </sc-for>
@@ -538,17 +541,17 @@ input::placeholder{color:#adb5bd;}
           </div>
           <div style="padding:16px;">
             <sc-if value="{{ pcOn }}" hint-placeholder-val="{{ true }}">
-              <div style="position:relative;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:12px 14px;border:1px solid #eff2f7;border-radius:6px;">
+              <div style="position:relative;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;">
                 <span style="font-size:13px;font-weight:700;color:#0f172a;letter-spacing:-.2px;margin-right:8px;">An Vinh</span>
                 <sc-for list="{{ preview }}" as="p" hint-placeholder-count="5">
                   <span style="{{ p.wrapStyle }}">
-                    <button onClick="{{ p.onClick }}" style="{{ p.style }}"><sc-if value="{{ p.iconOn }}"><i class="{{ p.icon }}" style="font-size:15px;"></i></sc-if>{{ p.label }}<sc-if value="{{ p.badgeOn }}"><span style="display:inline-flex;align-items:center;height:15px;padding:0 5px;border-radius:20px;background:#f06548;font-size:9px;font-weight:700;color:#fff;">{{ p.badgeText }}</span></sc-if><sc-if value="{{ p.hasKids }}"><i class="{{ p.chev }}" style="font-size:14px;"></i></sc-if></button>
+                    <button onClick="{{ p.onClick }}" style="{{ p.style }}"><sc-if value="{{ p.iconOn }}"><i class="{{ p.icon }}" style="font-size:15px;"></i></sc-if>{{ p.label }}<sc-if value="{{ p.badgeOn }}"><span style="display:inline-flex;align-items:center;height:15px;padding:0 5px;border-radius:20px;background:#f06548;font-size:12px;font-weight:700;color:#fff;">{{ p.badgeText }}</span></sc-if><sc-if value="{{ p.hasKids }}"><i class="{{ p.chev }}" style="font-size:14px;"></i></sc-if></button>
                     <sc-if value="{{ p.openOn }}">
-                      <span style="position:absolute;top:100%;left:0;z-index:10;display:flex;flex-direction:column;min-width:186px;padding:5px 0;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 6px 18px rgba(56,65,74,.18);">
+                      <span style="position:absolute;top:100%;left:0;z-index:10;display:flex;flex-direction:column;min-width:186px;padding:5px 0;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 6px 18px rgba(56,65,74,.18);">
                         <sc-for list="{{ p.kids }}" as="k" hint-placeholder-count="3">
                           <span style="display:flex;flex-direction:column;gap:2px;padding:8px 13px;">
                             <span style="font-size:12.5px;color:#334155;white-space:nowrap;">{{ k.label }}</span>
-                            <sc-if value="{{ k.descOn }}"><span style="font-size:11px;color:#94a3b8;line-height:1.5;max-width:230px;text-wrap:pretty;">{{ k.desc }}</span></sc-if>
+                            <sc-if value="{{ k.descOn }}"><span style="font-size:12px;color:#94a3b8;line-height:1.5;max-width:230px;text-wrap:pretty;">{{ k.desc }}</span></sc-if>
                           </span>
                         </sc-for>
                       </span>
@@ -561,7 +564,7 @@ input::placeholder{color:#adb5bd;}
                     <sc-if value="{{ p.megaOn }}">
                       <span style="{{ p.megaStyle }}">
                         <sc-if value="{{ p.megaIntroOn }}">
-                          <span style="display:flex;flex-direction:column;gap:8px;padding-right:18px;border-right:1px solid #eff2f7;">
+                          <span style="display:flex;flex-direction:column;gap:8px;padding-right:18px;border-right:1px solid var(--color-border,#e9ecf4);">
                             <span style="font-size:16px;font-weight:700;color:#0f172a;letter-spacing:-.2px;">{{ p.megaTitle }}</span>
                             <span style="font-size:12px;color:#475569;line-height:1.75;text-wrap:pretty;">{{ p.megaDesc }}</span>
                           </span>
@@ -571,7 +574,7 @@ input::placeholder{color:#adb5bd;}
                             <sc-for list="{{ col.kids }}" as="k" hint-placeholder-count="3">
                               <span style="display:flex;flex-direction:column;gap:3px;">
                                 <span style="font-size:12.5px;font-weight:600;color:#0f172a;">{{ k.label }}</span>
-                                <sc-if value="{{ k.descOn }}"><span style="font-size:11.5px;color:#64748b;line-height:1.6;text-wrap:pretty;">{{ k.desc }}</span></sc-if>
+                                <sc-if value="{{ k.descOn }}"><span style="font-size:12px;color:#64748b;line-height:1.6;text-wrap:pretty;">{{ k.desc }}</span></sc-if>
                               </span>
                             </sc-for>
                           </span>
@@ -583,14 +586,14 @@ input::placeholder{color:#adb5bd;}
               </div>
               <sc-if value="{{ crowdedOn }}" hint-placeholder-val="{{ false }}">
                 <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
-                  <i class="ri-error-warning-line" style="font-size:14px;color:#b57d0a;"></i>
-                  <span style="font-size:11.5px;color:#b57d0a;line-height:1.6;">{{ crowdedText }}</span>
+                  <i class="ri-error-warning-line" style="font-size:14px;color:var(--color-admin-warning-text,#b57d0a);"></i>
+                  <span style="font-size:12px;color:var(--color-admin-warning-text,#b57d0a);line-height:1.6;">{{ crowdedText }}</span>
                 </div>
               </sc-if>
             </sc-if>
             <sc-if value="{{ mbOn }}" hint-placeholder-val="{{ false }}">
-              <div style="width:100%;max-width:300px;margin:0 auto;border:1px solid #eff2f7;border-radius:8px;overflow:hidden;">
-                <div style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid #eff2f7;"><i class="ri-menu-2-line" style="font-size:16px;color:#334155;"></i><span style="font-size:13px;font-weight:700;color:#0f172a;">An Vinh</span></div>
+              <div style="width:100%;max-width:300px;margin:0 auto;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;overflow:hidden;">
+                <div style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--color-border,#e9ecf4);"><i class="ri-menu-2-line" style="font-size:16px;color:#334155;"></i><span style="font-size:13px;font-weight:700;color:#0f172a;">An Vinh</span></div>
                 <sc-for list="{{ previewMobile }}" as="p" hint-placeholder-count="6">
                   <div style="{{ p.style }}">{{ p.label }}<sc-if value="{{ p.hasKids }}"><i class="ri-arrow-right-s-line" style="font-size:15px;color:#94a3b8;margin-left:auto;"></i></sc-if></div>
                 </sc-for>
@@ -603,7 +606,7 @@ input::placeholder{color:#adb5bd;}
 
       <div class="mn-colR" style="display:flex;flex-direction:column;gap:16px;">
         <div class="mn-card">
-          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid #eff2f7;background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCAdd }}"><i class="{{ cAddIcon }}" style="font-size:16px;color:#adb5bd;flex-shrink:0;"></i><span class="mn-t">Thêm vào trình đơn</span></button>
+          <button class="mn-h" style="width:100%;border:0;border-bottom:1px solid var(--color-border,#e9ecf4);background:transparent;font:inherit;cursor:pointer;text-align:left;" onClick="{{ onCAdd }}"><i class="{{ cAddIcon }}" style="font-size:16px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i><span class="mn-t">Thêm vào trình đơn</span></button>
           <sc-if value="{{ cAddOn }}" hint-placeholder-val="{{ true }}">
           <div style="display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;">
             <sc-for list="{{ srcTabs }}" as="t" hint-placeholder-count="5">
@@ -612,7 +615,7 @@ input::placeholder{color:#adb5bd;}
           </div>
           <sc-if value="{{ addTargetOn }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:0 12px 10px;">
-              <span style="font-size:11px;color:#878a99;">Thêm vào</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Thêm vào</span>
               <sc-if value="{{ addToEndOn }}"><button class="mn-tab on" onClick="{{ onAddToEnd }}">Cuối trình đơn</button></sc-if>
               <sc-if value="{{ addToSelOn }}"><button class="mn-tab" onClick="{{ onAddToEnd }}">Cuối trình đơn</button></sc-if>
               <sc-if value="{{ addToSelOn }}"><button class="mn-tab on" onClick="{{ onAddToSel }}" title="Thêm làm mục con của mục đang mở">Trong “{{ addTargetName }}”</button></sc-if>
@@ -624,37 +627,37 @@ input::placeholder{color:#adb5bd;}
             <div style="padding:4px 12px 14px;display:flex;flex-direction:column;gap:10px;">
               <input class="mn-inp" value="{{ newLabel }}" onChange="{{ onNewLabel }}" placeholder="Nhãn hiển thị, ví dụ: Bảng giá" />
               <input class="mn-inp" value="{{ newUrl }}" onChange="{{ onNewUrl }}" placeholder="https://… · /duong-dan · số điện thoại · email" />
-              <sc-if value="{{ urlHintOn }}"><span style="font-size:11px;color:{{ urlHintColor }};line-height:1.55;text-wrap:pretty;">{{ urlHint }}</span></sc-if>
+              <sc-if value="{{ urlHintOn }}"><span style="font-size:12px;color:{{ urlHintColor }};line-height:1.55;text-wrap:pretty;">{{ urlHint }}</span></sc-if>
               <button class="mn-btn" style="justify-content:center;" onClick="{{ onAddUrl }}" disabled="{{ addUrlOff }}"><i class="ri-add-line" style="font-size:15px;"></i>Thêm liên kết</button>
             </div>
           </sc-if>
 
           <sc-if value="{{ listTabOn }}" hint-placeholder-val="{{ true }}">
             <div style="padding:0 12px 10px;">
-              <div style="display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid #e9ebec;border-radius:4px;background:#fff;" style-focus-within="border-color:#405189;">
-                <i class="ri-search-line" style="font-size:15px;color:#adb5bd;"></i>
-                <input value="{{ search }}" onChange="{{ onSearch }}" placeholder="{{ searchPh }}" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:#343a40;" />
+              <div style="display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);" style-focus-within="border-color:#2050a0;">
+                <i class="ri-search-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);"></i>
+                <input value="{{ search }}" onChange="{{ onSearch }}" placeholder="{{ searchPh }}" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);" />
               </div>
             </div>
-            <div style="max-height:300px;overflow:auto;border-top:1px solid #eff2f7;">
+            <div style="max-height:300px;overflow:auto;border-top:1px solid var(--color-border,#e9ecf4);">
               <sc-for list="{{ srcRows }}" as="s" hint-placeholder-count="6">
                 <button class="mn-pk" onClick="{{ s.onClick }}" disabled="{{ s.used }}" title="{{ s.title }}">
                   <sc-if value="{{ s.on }}"><span class="mn-cb on"><i class="ri-check-line"></i></span></sc-if>
                   <sc-if value="{{ s.off }}"><span class="mn-cb"></span></sc-if>
-                  <sc-if value="{{ s.iconOn }}"><i class="{{ s.icon }}" style="font-size:15px;color:#878a99;flex-shrink:0;"></i></sc-if>
+                  <sc-if value="{{ s.iconOn }}"><i class="{{ s.icon }}" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i></sc-if>
                   <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;">
                     <span style="{{ s.labelStyle }}">{{ s.label }}</span>
-                    <span style="font-size:11px;color:#adb5bd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.meta }}</span>
+                    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.meta }}</span>
                   </span>
                   <sc-if value="{{ s.used }}"><span class="mn-chip mn-lg">Đã có</span></sc-if>
-                  <sc-if value="{{ s.draft }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:#a9750a;">Chưa đăng</span></sc-if>
+                  <sc-if value="{{ s.draft }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#a9750a);">Chưa đăng</span></sc-if>
                 </button>
               </sc-for>
               <sc-if value="{{ srcEmpty }}" hint-placeholder-val="{{ false }}">
-                <div style="padding:20px 14px;text-align:center;font-size:12px;color:#adb5bd;line-height:1.6;">Không có mục nào khớp với từ bạn tìm.</div>
+                <div style="padding:20px 14px;text-align:center;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Không có mục nào khớp với từ bạn tìm.</div>
               </sc-if>
             </div>
-            <div style="padding:10px 12px;border-top:1px solid #eff2f7;">
+            <div style="padding:10px 12px;border-top:1px solid var(--color-border,#e9ecf4);">
               <button class="mn-btn" style="width:100%;justify-content:center;" onClick="{{ onAddPicked }}" disabled="{{ addPickedOff }}"><i class="ri-add-line" style="font-size:15px;"></i>{{ addPickedLabel }}</button>
             </div>
           </sc-if>
@@ -665,9 +668,9 @@ input::placeholder{color:#adb5bd;}
   </div>
 
   <sc-if value="{{ barOn }}" hint-placeholder-val="{{ false }}">
-    <div style="position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 24px;border-top:1px solid #eff2f7;background:#fff;box-shadow:0 -1px 2px rgba(56,65,74,.08);">
+    <div data-sticky-savebar="" style="position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 24px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff);box-shadow:0 -1px 2px rgba(56,65,74,.08);">
       <i class="ri-error-warning-line" style="font-size:16px;color:#f7b84b;flex-shrink:0;"></i>
-      <span style="font-size:12.5px;color:#495057;line-height:1.6;">{{ dirtyText }}</span>
+      <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.6;">{{ dirtyText }}</span>
       <span style="flex:1 1 auto;"></span>
       <button class="mn-btn" onClick="{{ onReset }}" title="Trả toàn bộ trình đơn về đúng lần lưu gần nhất"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Bỏ mọi thay đổi</button>
       <button class="mn-pri" onClick="{{ onSave }}"><i class="ri-save-3-line" style="font-size:16px;"></i>Lưu — hiệu lực ngay</button>
@@ -678,9 +681,9 @@ input::placeholder{color:#adb5bd;}
     <div onClick="{{ onAskCancel }}" style="position:fixed;inset:0;z-index:60;background:rgba(33,37,41,.45);display:flex;align-items:center;justify-content:center;padding:20px;">
       <div onClick="{{ stop }}" class="mn-card" style="width:100%;max-width:470px;box-shadow:0 10px 30px rgba(56,65,74,.25);">
         <div class="mn-h"><span class="mn-t">{{ askTitle }}</span></div>
-        <div style="padding:16px;font-size:13px;color:#495057;line-height:1.7;text-wrap:pretty;">{{ askBody }}</div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #eff2f7;">
-          <button class="mn-btn" style="min-height:38px;" onClick="{{ onAskCancel }}">Huỷ</button>
+        <div style="padding:16px;font-size:13px;color:var(--color-body-text,#3c4765);line-height:1.7;text-wrap:pretty;">{{ askBody }}</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4);">
+          <button class="mn-btn" style="min-height:38px;" onClick="{{ onAskCancel }}">Hủy</button>
           <sc-if value="{{ askAltOn }}"><button class="mn-btn" style="min-height:38px;" onClick="{{ onAskAlt }}">{{ askAlt }}</button></sc-if>
           <button class="mn-pri" onClick="{{ onAskOk }}">{{ askOk }}</button>
         </div>
@@ -691,16 +694,16 @@ input::placeholder{color:#adb5bd;}
   <sc-if value="{{ ghostOn }}" hint-placeholder-val="{{ false }}">
     <div style="{{ ghostStyle }}">
       <sc-for list="{{ ghostRows }}" as="g" hint-placeholder-count="2">
-        <div style="{{ g.style }}"><i class="{{ g.icon }}" style="font-size:15px;color:#878a99;flex-shrink:0;"></i>{{ g.label }}</div>
+        <div style="{{ g.style }}"><i class="{{ g.icon }}" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>{{ g.label }}</div>
       </sc-for>
       <sc-if value="{{ ghostCountOn }}">
-        <div style="padding:5px 12px;border-top:1px solid #eff2f7;background:rgba(64,81,137,.06);font-size:10.5px;font-weight:600;color:#405189;">{{ ghostCount }}</div>
+        <div style="padding:5px 12px;border-top:1px solid var(--color-border,#e9ecf4);background:rgba(32,80,160,.06);font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);">{{ ghostCount }}</div>
       </sc-if>
     </div>
   </sc-if>
 
   <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
-    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:11px;padding:11px 16px;border-radius:6px;background:#343a40;color:#fff;box-shadow:0 6px 20px rgba(56,65,74,.3);max-width:min(560px,calc(100vw - 32px));">
+    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:11px;padding:11px 16px;border-radius:6px;background:#1f2b4d;color:#fff;box-shadow:0 6px 20px rgba(56,65,74,.3);max-width:min(560px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;flex-shrink:0;"></i>
       <span style="font-size:12.5px;line-height:1.6;">{{ toastText }}</span>
       <sc-if value="{{ toastUndoOn }}"><button onClick="{{ onUndo }}" style="min-height:30px;padding:0 10px;border:1px solid rgba(255,255,255,.28);border-radius:4px;background:transparent;font:inherit;font-size:12px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;">Hoàn tác</button></sc-if>
@@ -715,7 +718,7 @@ input::placeholder{color:#adb5bd;}
    Mục {kind,ref,label(i18n),url,hidden,blank,cta,children}.
    Nguồn tham chiếu (page/cat/prod) → đường dẫn do hệ thống giữ; kind 'url' → khách tự nhập.
    Trạng thái mục: bình thường · đang ẩn · ẩn theo mục cha · nguồn đổi đường dẫn (đã tự sửa) ·
-   nguồn chưa đăng · nguồn đã xoá · thiếu nhãn ở bản đang sửa · đã sửa chưa lưu.
+   nguồn chưa đăng · nguồn đã xóa · thiếu nhãn ở bản đang sửa · đã sửa chưa lưu.
    Vòng đời: sửa → Lưu (hiệu lực ngay, không có nháp/duyệt — §6). Mọi thao tác hoàn tác được (§12). */
 class Component extends DCLogic {
   LANGS = { VI: 'Tiếng Việt', EN: 'English', JA: '日本語', KO: '한국어', ZH: '中文', FR: 'Français', DE: 'Deutsch', ES: 'Español' };
@@ -777,13 +780,13 @@ class Component extends DCLogic {
   menuAt(k) { const v = this.state.slots[k]; if (v === '@same') { const a = this.areasOf().find(x => x.k === k); return a && a.canSame ? (this.state.slots[a.canSame] || '') : ''; } return v || ''; }
 
   /* Icon: bộ chọn sẵn, gọn — không mở cả thư viện nghìn biểu tượng cho chủ tiệm.
-     kw = từ khoá tiếng Việt để tìm và để hệ thống tự gợi ý theo tên mục. */
+     kw = từ khóa tiếng Việt để tìm và để hệ thống tự gợi ý theo tên mục. */
   ICON_GROUPS = [
     { g: 'Hay dùng', list: [
       ['ri-home-4-line', 'trang chủ nhà home'], ['ri-information-line', 'giới thiệu thông tin về chúng tôi'],
       ['ri-building-2-line', 'công ty toà nhà trụ sở'], ['ri-building-4-line', 'nhà máy xưởng sản xuất'],
       ['ri-tools-line', 'dịch vụ gia công sửa chữa kỹ thuật'], ['ri-hammer-line', 'thi công lắp đặt sửa'],
-      ['ri-box-3-line', 'sản phẩm hàng hoá'], ['ri-price-tag-3-line', 'bảng giá báo giá khuyến mãi'],
+      ['ri-box-3-line', 'sản phẩm hàng hóa'], ['ri-price-tag-3-line', 'bảng giá báo giá khuyến mãi'],
       ['ri-newspaper-line', 'tin tức bài viết blog'], ['ri-phone-line', 'điện thoại gọi hotline'],
       ['ri-mail-line', 'email thư liên hệ'], ['ri-map-pin-line', 'địa chỉ bản đồ đường đi']
     ] },
@@ -801,7 +804,7 @@ class Component extends DCLogic {
       ['ri-flask-line', 'thí nghiệm vật liệu kiểm nghiệm'], ['ri-shield-check-line', 'bảo hành cam kết kiểm tra chất lượng'],
       ['ri-recycle-line', 'tái chế môi trường bền vững'], ['ri-fire-line', 'nhiệt luyện hàn lò'],
       ['ri-scissors-cut-line', 'cắt laser gia công tấm'], ['ri-focus-3-line', 'chính xác dung sai'],
-      ['ri-stack-line', 'vật liệu tấm lớp'], ['ri-oil-line', 'dầu bôi trơn hoá chất']
+      ['ri-stack-line', 'vật liệu tấm lớp'], ['ri-oil-line', 'dầu bôi trơn hóa chất']
     ] },
     { g: 'Nội dung & tài liệu', list: [
       ['ri-file-list-3-line', 'dự án hồ sơ năng lực danh sách'], ['ri-file-text-line', 'trang tài liệu văn bản'],
@@ -815,7 +818,7 @@ class Component extends DCLogic {
       ['ri-customer-service-2-line', 'hỗ trợ chăm sóc khách hàng tư vấn'], ['ri-team-line', 'đội ngũ nhân sự'],
       ['ri-user-line', 'tài khoản đăng nhập'], ['ri-user-star-line', 'khách hàng thân thiết'],
       ['ri-briefcase-4-line', 'tuyển dụng việc làm nghề nghiệp'], ['ri-award-line', 'chứng nhận giải thưởng'],
-      ['ri-medal-line', 'thành tích danh hiệu'], ['ri-handshake-line', 'đối tác hợp tác'],
+      ['ri-medal-line', 'thành tích danh hiệu'], ['ri-shake-hands-line', 'đối tác hợp tác'],
       ['ri-group-line', 'cộng đồng thành viên'], ['ri-heart-line', 'yêu thích quan tâm'],
       ['ri-star-line', 'nổi bật đánh giá'], ['ri-chat-quote-line', 'cảm nhận khách hàng nhận xét']
     ] },
@@ -1268,10 +1271,10 @@ class Component extends DCLogic {
     const m = this.state.menus.find(x => x.id === id); if (!m) return;
     const usedIn = this.areasOf().filter(a => this.menuAt(a.k) === id);
     if (usedIn.length) { this.toast('“' + m.name + '” đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).join(', ') + ' — chọn trình đơn khác cho chỗ đó trước đã.', 'ri-error-warning-line'); return; }
-    this.setState({ ask: { title: 'Xoá “' + m.name + '”?', body: 'Cách sắp xếp ' + this.count(m.items) + ' mục trong trình đơn này sẽ mất. Trang và nội dung vẫn còn nguyên, và bạn hoàn tác lại được ngay sau đó.', ok: 'Xoá trình đơn', run: () => {
+    this.setState({ ask: { title: 'Xóa “' + m.name + '”?', body: 'Cách sắp xếp ' + this.count(m.items) + ' mục trong trình đơn này sẽ mất. Trang và nội dung vẫn còn nguyên, và bạn hoàn tác lại được ngay sau đó.', ok: 'Xóa trình đơn', run: () => {
       this.mutate((cm, menus) => { const i = menus.findIndex(x => x.id === id); if (i < 0) return false; menus.splice(i, 1); });
       this.setState(st => ({ cur: st.cur === id ? ((st.menus.find(x => x.id !== id) || {}).id || st.cur) : st.cur, ask: null }));
-      this.toast('Đã xoá trình đơn.', 'ri-delete-bin-line', true);
+      this.toast('Đã xóa trình đơn.', 'ri-delete-bin-line', true);
     } } });
   }
   /* HAI mã khác nhau, đừng lẫn (đúng mô hình WordPress):
@@ -1315,7 +1318,7 @@ class Component extends DCLogic {
     const changed = [], added = [], removed = [];
     Object.keys(B).forEach(k => { if (!(k in A)) added.push(k); else if (A[k] !== B[k]) changed.push(k); });
     Object.keys(A).forEach(k => { if (!(k in B)) removed.push(k); });
-    // So theo TỪNG trình đơn có ở cả hai bên — thêm/xoá trình đơn không được tính nhầm thành đổi thứ tự hay đổi tên.
+    // So theo TỪNG trình đơn có ở cả hai bên — thêm/xóa trình đơn không được tính nhầm thành đổi thứ tự hay đổi tên.
     const byId = (ms) => { const o = {}; ms.forEach(m => { o[m.id] = m; }); return o; };
     const SA = byId(saved.menus), SB = byId(this.state.menus);
     const menusAdded = Object.keys(SB).filter(k => !(k in SA));
@@ -1332,7 +1335,7 @@ class Component extends DCLogic {
     if (added.length) parts.push(added.length + ' mục mới');
     if (removed.length) parts.push(removed.length + ' mục đã gỡ');
     if (menusAdded.length) parts.push(menusAdded.length + ' trình đơn mới');
-    if (menusRemoved.length) parts.push(menusRemoved.length + ' trình đơn đã xoá');
+    if (menusRemoved.length) parts.push(menusRemoved.length + ' trình đơn đã xóa');
     if (order) parts.push('thứ tự đã đổi');
     if (slots) parts.push('vị trí hiển thị đã đổi');
     if (names) parts.push('tên trình đơn đã đổi');
@@ -1402,9 +1405,9 @@ class Component extends DCLogic {
       return {
         name: this.locName(c), isDef: c === DEF, onClick: () => this.setState({ loc: c, sel: null, rowMenu: null }),
         title: this.locName(c) + ' — ' + DOT[k].l + ' · ' + stat[c].done + '/' + stat[c].total + ' nhãn' + (this.isPub(c) ? '' : ' · chưa hiển thị ra ngoài'),
-        style: 'display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border:1px solid ' + (on ? '#405189' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(64,81,137,.07)' : '#fff') + ';font:inherit;cursor:pointer;white-space:nowrap;',
+        style: 'display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border:1px solid ' + (on ? '#2050a0' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(32,80,160,.07)' : '#fff') + ';font:inherit;cursor:pointer;white-space:nowrap;',
         dot: 'width:8px;height:8px;border-radius:50%;flex-shrink:0;' + DOT[k].css,
-        nameStyle: 'font-size:12.5px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#343a40' : '#495057') + ';'
+        nameStyle: 'font-size:12.5px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#1f2b4d' : '#3c4765') + ';'
       };
     });
     const miss = this.missing(), cost = this.trCost(miss.length), left = this.aiLeft();
@@ -1428,7 +1431,7 @@ class Component extends DCLogic {
     const focus = (id) => () => { const c = this.ctx(id); const fold = Object.assign({}, S.fold); let p = c && c.parent; while (p) { delete fold[p.id]; const pc = this.ctx(p.id); p = pc ? pc.parent : null; } this.setState({ sel: id, fold: fold, filter: 'all', tq: '' }); };
     rowsAll.forEach(x => {
       const it = x.it;
-      if (it.broken) issues.push({ id: 'b' + it.id, icon: 'ri-close-circle-line', color: '#f06548', text: '“' + (this.lbl(it) || this.lbl(it, DEF)) + '” trỏ tới một trang đã bị xoá — khách bấm vào sẽ không xem được gì.', go: it.id, fix: 'Gỡ mục này', fixIcon: 'ri-delete-bin-line', fixTitle: 'Gỡ khỏi trình đơn (hoàn tác được)', run: () => this.remove(it.id) });
+      if (it.broken) issues.push({ id: 'b' + it.id, icon: 'ri-close-circle-line', color: '#f06548', text: '“' + (this.lbl(it) || this.lbl(it, DEF)) + '” trỏ tới một trang đã bị xóa — khách bấm vào sẽ không xem được gì.', go: it.id, fix: 'Gỡ mục này', fixIcon: 'ri-delete-bin-line', fixTitle: 'Gỡ khỏi trình đơn (hoàn tác được)', run: () => this.remove(it.id) });
       const s = this.src(it);
       if (s && s.draft && !it.hidden) issues.push({ id: 'd' + it.id, icon: 'ri-eye-off-line', color: '#f7b84b', text: '“' + (this.lbl(it) || this.lbl(it, DEF)) + '” trỏ tới trang chưa đăng — nên ẩn mục này cho tới khi trang lên sóng.', go: it.id, fix: 'Ẩn mục này', fixIcon: 'ri-eye-off-line', fixTitle: 'Ẩn khỏi trình đơn cho tới khi trang được đăng', run: () => { this.setField(it.id, 'hidden', true); this.toast('Đã ẩn mục — bật lại bất cứ lúc nào.', 'ri-eye-off-line', true); } });
       /* Bảng lớn trỏ sang Thư viện khối: khối biến mất hoặc còn nháp thì khách thấy bảng trống.
@@ -1520,10 +1523,10 @@ class Component extends DCLogic {
         // Khoảng trống chèn thật (như Page Builder v3) — hàng không nhảy, mắt thấy đúng chỗ sẽ nằm.
         slotBeforeOn: !!(over && S.over.pos === 'before'),
         slotAfterOn: !!(over && S.over.pos === 'after'),
-        slotStyle: 'height:38px;margin:3px 12px 3px ' + (12 + (filtering ? 0 : x.depth * 22)) + 'px;border:1.5px dashed #405189;border-radius:6px;background:rgba(64,81,137,.06);display:flex;align-items:center;justify-content:center;gap:6px;font-size:11.5px;font-weight:500;color:#405189;',
+        slotStyle: 'height:38px;margin:3px 12px 3px ' + (12 + (filtering ? 0 : x.depth * 22)) + 'px;border:1.5px dashed #2050a0;border-radius:6px;background:rgba(32,80,160,.06);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:500;color:var(--color-accent,#2050a0);',
         onSlotOver: (e) => { if (e && e.preventDefault) e.preventDefault(); },
         onSlotDrop: (e) => { if (e && e.preventDefault) e.preventDefault(); const d = S.drag, pos = S.over ? S.over.pos : 'after'; this.setState({ drag: null, over: null, ghost: null, ghostRows: [] }); this.drop(d, it.id, pos); },
-        wrap: 'background:' + (over && S.over.pos === 'in' ? 'rgba(64,81,137,.09)' : (S.sel === it.id ? 'rgba(64,81,137,.05)' : 'transparent')) + ';opacity:' + (inDrag ? '.4' : '1') + ';border-top:1px solid #f6f7f9;box-shadow:' + (over && S.over.pos === 'in' ? 'inset 0 0 0 2px #405189' : 'none') + ';border-radius:' + (over && S.over.pos === 'in' ? '6px' : '0') + ';',
+        wrap: 'background:' + (over && S.over.pos === 'in' ? 'rgba(32,80,160,.09)' : (S.sel === it.id ? 'rgba(32,80,160,.05)' : 'transparent')) + ';opacity:' + (inDrag ? '.4' : '1') + ';border-top:1px solid var(--color-border-soft,#f6f7f9);box-shadow:' + (over && S.over.pos === 'in' ? 'inset 0 0 0 2px #2050a0' : 'none') + ';border-radius:' + (over && S.over.pos === 'in' ? '6px' : '0') + ';',
         drag: !filtering, gripOn: !filtering,
         // setTimeout: đặt state sau khi trình duyệt đã chụp ảnh kéo, nếu không hàng biến mất giữa chừng.
         rowRef: (el) => { this._rowEls = this._rowEls || {}; if (el) this._rowEls[it.id] = el; },
@@ -1560,11 +1563,11 @@ class Component extends DCLogic {
         chev: folded ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line',
         foldTitle: folded ? 'Mở ' + kids + ' mục con' : 'Thu gọn ' + kids + ' mục con',
         onFold: () => this.setState(st => ({ fold: Object.assign({}, st.fold, { [it.id]: !st.fold[it.id] }) })),
-        icon: it.icon || this.KIND[it.kind].icon, iconColor: (it.hidden || parentHidden) ? '#ced4da' : (it.icon ? '#405189' : '#878a99'),
+        icon: it.icon || this.KIND[it.kind].icon, iconColor: (it.hidden || parentHidden) ? '#ced4da' : (it.icon ? '#2050a0' : '#878a99'),
         onlyOn: !!it.only, onlyLabel: it.only === 'pc' ? 'Chỉ máy tính' : 'Chỉ điện thoại',
         onlyTitle: it.only === 'pc' ? 'Mục này chỉ hiện trên máy tính' : 'Mục này chỉ hiện trên điện thoại',
         label: label || 'Chưa có nhãn ' + S.loc,
-        labelStyle: 'flex:1 1 auto;min-width:5.5em;font-size:13px;font-weight:' + (x.depth && !filtering ? 400 : 500) + ';color:' + (label ? ((it.hidden || parentHidden) ? '#878a99' : '#343a40') : '#adb5bd') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (label ? '' : 'font-style:italic;'),
+        labelStyle: 'flex:1 1 auto;min-width:5.5em;font-size:13px;font-weight:' + (x.depth && !filtering ? 400 : 500) + ';color:' + (label ? ((it.hidden || parentHidden) ? '#878a99' : '#1f2b4d') : '#adb5bd') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (label ? '' : 'font-style:italic;'),
         pathOn: filtering && !!pathOf(x), pathText: pathOf(x),
         unsavedOn: unsaved,
         mtOn: !!it.mt && !onDefault && !!label,
@@ -1583,7 +1586,7 @@ class Component extends DCLogic {
         descRowOn: !!this.dscText(it), descRowTitle: this.dscText(it),
         fixedOn: !!it.fixed, fixedTitle: 'Trang này đã đổi đường dẫn, hệ thống tự cập nhật liên kết nên khách không gặp trang lỗi.',
         draftOn: !!(s && s.draft), draftTitle: 'Trang nguồn chưa đăng — khách bấm vào sẽ không xem được.',
-        brokenOn: !!it.broken, brokenTitle: 'Trang nguồn đã bị xoá — hãy gỡ mục này hoặc trỏ sang trang khác.',
+        brokenOn: !!it.broken, brokenTitle: 'Trang nguồn đã bị xóa — hãy gỡ mục này hoặc trỏ sang trang khác.',
         srcText: this.KIND[it.kind].src,
         onSelect: () => this.setState(st => ({ sel: st.sel === it.id ? null : it.id, rowMenu: null })),
         moveOff: filtering,
@@ -1631,7 +1634,7 @@ class Component extends DCLogic {
       // Bảng lớn trải ngang cả thanh (như mega menu thật), không neo theo một mục → không bao giờ tràn thẻ.
       wrapStyle: (open && it.mega) ? 'position:static;' : 'position:relative;',
       megaRowChip: it.megaKind === 'block' ? 'Khối tự dựng' : 'Bảng lớn',
-      megaStyle: 'position:absolute;top:100%;left:0;right:0;width:auto;box-sizing:border-box;z-index:10;display:grid;grid-template-columns:' + ((this.dscText(it) || this.dscText(it, DEF)) ? 'minmax(0,1.15fr) ' : '') + 'repeat(' + cols.length + ',minmax(0,1fr));gap:18px 20px;margin-top:6px;padding:18px 20px;border:1px solid #eff2f7;border-radius:6px;background:#fff;box-shadow:0 8px 24px rgba(56,65,74,.16);',
+      megaStyle: 'position:absolute;top:100%;left:0;right:0;width:auto;box-sizing:border-box;z-index:10;display:grid;grid-template-columns:' + ((this.dscText(it) || this.dscText(it, DEF)) ? 'minmax(0,1.15fr) ' : '') + 'repeat(' + cols.length + ',minmax(0,1fr));gap:18px 20px;margin-top:6px;padding:18px 20px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 8px 24px rgba(56,65,74,.16);',
       megaCols: cols,
       kids: kids,
       onClick: (e) => { e.stopPropagation(); this.setState(st => ({ pvOpen: st.pvOpen === it.id ? null : it.id })); },
@@ -1652,7 +1655,7 @@ class Component extends DCLogic {
     const pickedN = Object.keys(S.picked).filter(k => S.picked[k]).length;
     const F = [
       { k: 'all', l: 'Tất cả', i: 'ri-list-check', n: rowsAll.length, t: 'Hiện toàn bộ cây trình đơn' },
-      { k: 'issue', l: 'Cần xem', i: 'ri-error-warning-line', n: Object.keys(issueIds).length, t: 'Mục trỏ tới trang đã xoá, trang chưa đăng, hoặc nằm sâu quá mức hiển thị được' },
+      { k: 'issue', l: 'Cần xem', i: 'ri-error-warning-line', n: Object.keys(issueIds).length, t: 'Mục trỏ tới trang đã xóa, trang chưa đăng, hoặc nằm sâu quá mức hiển thị được' },
       { k: 'hidden', l: 'Đang ẩn', i: 'ri-eye-off-line', n: Object.keys(hiddenIds).length, t: 'Mục khách không nhìn thấy' },
       // Bản nguồn luôn đủ nhãn theo định nghĩa → bộ lọc này vô nghĩa ở đó, ẩn đi cho khỏi đọc nhầm số 0.
       { k: 'untr', l: 'Thiếu nhãn ' + S.loc, i: 'ri-translate-2', n: Object.keys(untrIds).length, t: 'Mục chưa có nhãn ở bản ' + this.locName(S.loc), off: S.loc === DEF }
@@ -1715,7 +1718,7 @@ class Component extends DCLogic {
       onCAreas: () => this.setState(st => ({ fold2: Object.assign({}, st.fold2, { areas: !(st.fold2 || {}).areas }) })),
       // Việc nền tảng tự làm: nói bằng bằng chứng đang chạy trên chính trình đơn này, không nói suông (§0).
       autoAddNote: S.autoAdd
-        ? 'Trang mới đăng sẽ tự nằm ở cuối trình đơn, bạn kéo lại chỗ nào tuỳ ý.'
+        ? 'Trang mới đăng sẽ tự nằm ở cuối trình đơn, bạn kéo lại chỗ nào tùy ý.'
         : 'Đang tắt — trang mới đăng không tự vào trình đơn, bạn tự thêm khi cần.',
       autoAlways: (() => {
         let fixed = 0, broken = 0, draft = 0;
@@ -1725,7 +1728,7 @@ class Component extends DCLogic {
         }));
         return [
           { t: 'Trang đổi địa chỉ — liên kết tự sửa theo', s: fixed ? 'Đã tự sửa ' + fixed + ' liên kết, khách không gặp trang lỗi' : 'Chưa có liên kết nào phải sửa' },
-          { t: 'Trang bị xoá hoặc chưa đăng — báo ngay ở khung “Cần bạn xem”', s: (broken + draft) ? 'Đang có ' + (broken + draft) + ' mục cần bạn xử lý' : 'Hiện không có mục nào hỏng' },
+          { t: 'Trang bị xóa hoặc chưa đăng — báo ngay ở khung “Cần bạn xem”', s: (broken + draft) ? 'Đang có ' + (broken + draft) + ' mục cần bạn xử lý' : 'Hiện không có mục nào hỏng' },
           { t: 'Mọi thay đổi đều hoàn tác được, mục đã gỡ giữ 30 ngày', s: (S.trash || []).length ? 'Thùng rác đang giữ ' + S.trash.length + ' mục' : 'Thùng rác đang trống' }
         ];
       })(),
@@ -1777,9 +1780,9 @@ class Component extends DCLogic {
           onDup: (e) => { e.stopPropagation(); this.dupMenu(m.id); },
           dupTitle: 'Nhân bản thành bản nháp để sửa lớn mà không đụng bản đang chạy',
           onDel: (e) => { e.stopPropagation(); this.delMenu(m.id); }, delOff: S.menus.length < 2 || usedIn.length > 0,
-          delTitle: S.menus.length < 2 ? 'Website cần ít nhất một trình đơn' : (usedIn.length ? ('Đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).join(', ') + ' — đổi chỗ đó sang trình đơn khác trước') : 'Xoá trình đơn này'),
-          wrap: 'display:flex;flex-direction:column;gap:8px;padding:11px 12px;border-top:1px solid #f6f7f9;border-left:3px solid ' + (on ? '#405189' : 'transparent') + ';background:' + (on ? 'rgba(64,81,137,.05)' : 'transparent') + ';cursor:pointer;user-select:none;',
-          nameStyle: 'width:100%;min-height:22px;border:0;background:transparent;padding:0;font:inherit;font-size:13px;font-weight:' + (on ? 600 : 500) + ';color:#343a40;cursor:pointer;text-align:left;line-height:1.4;text-wrap:pretty;',
+          delTitle: S.menus.length < 2 ? 'Website cần ít nhất một trình đơn' : (usedIn.length ? ('Đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).join(', ') + ' — đổi chỗ đó sang trình đơn khác trước') : 'Xóa trình đơn này'),
+          wrap: 'display:flex;flex-direction:column;gap:8px;padding:11px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);border-left:3px solid ' + (on ? '#2050a0' : 'transparent') + ';background:' + (on ? 'rgba(32,80,160,.05)' : 'transparent') + ';cursor:pointer;user-select:none;',
+          nameStyle: 'width:100%;min-height:22px;border:0;background:transparent;padding:0;font:inherit;font-size:13px;font-weight:' + (on ? 600 : 500) + ';color:var(--color-heading,#1f2b4d);cursor:pointer;text-align:left;line-height:1.4;text-wrap:pretty;',
           selTitle: m.name + ' — mở để sắp xếp các mục bên trong',
           onSelect: () => this.setState({ cur: m.id, sel: null, picked: {}, filter: 'all', tq: '' }),
           renaming: S.renaming === m.id,
@@ -1795,7 +1798,7 @@ class Component extends DCLogic {
         const st = this.state, id = st.renaming, v = (st.renameVal || '').trim();
         this.setState({ renaming: null, renameVal: '' }); if (!id) return;
         const cur = st.menus.find(x => x.id === id); if (!cur || !v || v === cur.name) return;
-        // Slug là khoá nội bộ (như term slug của WordPress) — tự bám theo tên, không hiện ra cho người dùng.
+        // Slug là khóa nội bộ (như term slug của WordPress) — tự bám theo tên, không hiện ra cho người dùng.
         this.mutate((m, menus) => { const t = menus.find(x => x.id === id); if (!t) return false; t.name = v; t.key = this.uniqueKey(this.slugify(v), id); });
       },
       onNewMenu: () => this.newMenu(),
@@ -1819,7 +1822,7 @@ class Component extends DCLogic {
         const kids = this.count(t.it.children);
         return {
           label: this.lbl(t.it) || this.lbl(t.it, DEF) || 'Mục không tên',
-          meta: (mm ? mm.name : 'trình đơn đã xoá') + (kids ? ' · kèm ' + kids + ' mục con' : '') + ' · còn ' + days + ' ngày',
+          meta: (mm ? mm.name : 'trình đơn đã xóa') + (kids ? ' · kèm ' + kids + ' mục con' : '') + ' · còn ' + days + ' ngày',
           icon: t.it.icon || this.KIND[t.it.kind].icon,
           onRestore: () => this.restore(i)
         };
@@ -1842,7 +1845,7 @@ class Component extends DCLogic {
 
       emptyOn: list.length === 0,
       emptyTitle: filtering ? 'Không có mục nào khớp' : 'Trình đơn này chưa có mục nào',
-      emptyText: filtering ? 'Thử từ khoá khác, hoặc bỏ lọc để xem lại toàn bộ.' : 'Chọn trang, chuyên mục hoặc sản phẩm ở khung “Thêm vào trình đơn” để bắt đầu.',
+      emptyText: filtering ? 'Thử từ khóa khác, hoặc bỏ lọc để xem lại toàn bộ.' : 'Chọn trang, chuyên mục hoặc sản phẩm ở khung “Thêm vào trình đơn” để bắt đầu.',
       rows: rows,
       ghostOn: !!(S.drag && S.ghost && (S.ghostRows || []).length),
       ghostStyle: (() => {
@@ -1853,11 +1856,11 @@ class Component extends DCLogic {
         const gw = Math.min(S.ghostW || 420, 420, vw - 24);
         const horiz = (cx + 14 + gw <= vw - 8) ? ('left:' + Math.max(8, cx + 14) + 'px;') : ('right:' + Math.max(8, vw - cx + 14) + 'px;');
         const vert = (cy > vh / 2) ? ('bottom:' + Math.max(8, vh - cy + 12) + 'px;') : ('top:' + Math.max(8, cy + 12) + 'px;');
-        return 'position:fixed;' + horiz + vert + 'z-index:200;pointer-events:none;width:' + gw + 'px;max-height:' + (vh - 24) + 'px;box-sizing:border-box;border:1px solid #cbd2da;border-radius:6px;background:#fff;box-shadow:0 12px 28px rgba(56,65,74,.30);overflow:hidden;';
+        return 'position:fixed;' + horiz + vert + 'z-index:200;pointer-events:none;width:' + gw + 'px;max-height:' + (vh - 24) + 'px;box-sizing:border-box;border:1px solid #cbd2da;border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 12px 28px rgba(56,65,74,.30);overflow:hidden;';
       })(),
       ghostRows: (S.ghostRows || []).map(g => ({
         label: g.label, icon: g.icon,
-        style: 'display:flex;align-items:center;gap:8px;padding:9px 12px 9px ' + (12 + g.depth * 22) + 'px;border-top:' + (g.depth ? '1px solid #f6f7f9' : '0') + ';font-size:13px;font-weight:' + (g.depth ? 400 : 500) + ';color:#343a40;background:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+        style: 'display:flex;align-items:center;gap:8px;padding:9px 12px 9px ' + (12 + g.depth * 22) + 'px;border-top:' + (g.depth ? '1px solid #f6f7f9' : '0') + ';font-size:13px;font-weight:' + (g.depth ? 400 : 500) + ';color:var(--color-heading,#1f2b4d);background:var(--color-surface,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
       })),
       ghostCountOn: (S.ghostRows || []).length > 1,
       ghostCount: ((S.ghostRows || []).length - 1) + ' mục con đi cùng',
@@ -1874,7 +1877,7 @@ class Component extends DCLogic {
         return 'Thả ra: đặt ' + what + ' ' + (S.over.pos === 'before' ? 'ngay trên' : 'ngay dưới') + ' “' + nm + '”, cùng cấp với nó.';
       })(),
       endZoneOn: !filtering && !!S.drag,
-      endZoneStyle: 'display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 14px 14px;padding:14px;border:1.5px dashed ' + (S.over && S.over.id === '@end' ? '#405189' : '#dde1e6') + ';border-radius:6px;background:' + (S.over && S.over.id === '@end' ? 'rgba(64,81,137,.06)' : '#fbfcfd') + ';font-size:12px;color:' + (S.over && S.over.id === '@end' ? '#405189' : '#adb5bd') + ';',
+      endZoneStyle: 'display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 14px 14px;padding:14px;border:1.5px dashed ' + (S.over && S.over.id === '@end' ? '#2050a0' : '#dde1e6') + ';border-radius:6px;background:' + (S.over && S.over.id === '@end' ? 'rgba(32,80,160,.06)' : '#fbfcfd') + ';font-size:12px;color:' + (S.over && S.over.id === '@end' ? '#2050a0' : '#adb5bd') + ';',
       onEndOver: (e) => { e.preventDefault(); if (!S.over || S.over.id !== '@end') this.setState({ over: { id: '@end', pos: 'after' } }); },
       onEndDrop: (e) => { e.preventDefault(); const d = S.drag; this.setState({ drag: null, over: null, ghost: null, ghostRows: [] }); if (d) this.moveEnd(d); },
       depthNoteOn: rowsAll.some(x => x.depth >= LIM.n - 1),
@@ -1970,7 +1973,7 @@ class Component extends DCLogic {
         const qq = (S.iconQ || '').trim().toLowerCase();
         const mk = (ic) => ({
           cls: ic.i, title: ic.kw.split(' ').slice(0, 4).join(', '),
-          style: 'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid ' + (sel && sel.icon === ic.i ? '#405189' : '#eff2f7') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'rgba(64,81,137,.08)' : '#fff') + ';color:' + (sel && sel.icon === ic.i ? '#405189' : '#495057') + ';font-size:17px;cursor:pointer;',
+          style: 'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid ' + (sel && sel.icon === ic.i ? '#2050a0' : '#e9ecf4') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'rgba(32,80,160,.08)' : '#fff') + ';color:' + (sel && sel.icon === ic.i ? '#2050a0' : '#3c4765') + ';font-size:17px;cursor:pointer;',
           onClick: () => { this.setField(S.sel, 'icon', ic.i); this.setState({ iconOpen: false }); }
         });
         if (qq) { const hit = this.ICONS.filter(ic => ic.kw.indexOf(qq) >= 0); return hit.length ? [{ g: hit.length + ' biểu tượng khớp', icons: hit.map(mk) }] : []; }
@@ -1980,7 +1983,7 @@ class Component extends DCLogic {
       iconCountText: this.ICONS.length + ' biểu tượng',
       iconList: this.ICONS.filter(ic => { const qq = (S.iconQ || '').trim().toLowerCase(); return !qq || ic.kw.indexOf(qq) >= 0; }).map(ic => ({
         cls: ic.i, title: ic.kw.split(' ').slice(0, 3).join(', '),
-        style: 'display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid ' + (sel && sel.icon === ic.i ? '#405189' : '#eff2f7') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'rgba(64,81,137,.08)' : '#fff') + ';color:' + (sel && sel.icon === ic.i ? '#405189' : '#495057') + ';font-size:17px;cursor:pointer;',
+        style: 'display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid ' + (sel && sel.icon === ic.i ? '#2050a0' : '#e9ecf4') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'rgba(32,80,160,.08)' : '#fff') + ';color:' + (sel && sel.icon === ic.i ? '#2050a0' : '#3c4765') + ';font-size:17px;cursor:pointer;',
         onClick: () => { this.setField(S.sel, 'icon', ic.i); this.setState({ iconOpen: false }); }
       })),
       iconNoneOn: !!(sel && sel.icon),
@@ -2024,7 +2027,7 @@ class Component extends DCLogic {
         label: x.label, meta: x.meta, used: !!usedRefs[x.ref] && !x.group, draft: !!x.draft,
         iconOn: !!x.icon, icon: x.icon || '',
         title: (usedRefs[x.ref] && !x.group) ? 'Đã có trong trình đơn này — thêm nữa sẽ trùng mục' : (x.draft ? 'Trang chưa đăng — thêm được, nhưng nên ẩn cho tới khi đăng' : 'Chọn để thêm vào trình đơn'),
-        labelStyle: 'font-size:12.5px;color:' + (usedRefs[x.ref] ? '#adb5bd' : '#343a40') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
+        labelStyle: 'font-size:12.5px;color:' + (usedRefs[x.ref] ? '#adb5bd' : '#1f2b4d') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
         on: !!S.picked[x.ref], off: !S.picked[x.ref],
         onClick: () => this.setState(st => ({ picked: Object.assign({}, st.picked, { [x.ref]: !st.picked[x.ref] }) }))
       })),
