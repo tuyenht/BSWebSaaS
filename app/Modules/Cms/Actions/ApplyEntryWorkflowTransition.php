@@ -69,8 +69,13 @@ final readonly class ApplyEntryWorkflowTransition
             // two trail rows, two audit rows, a last-writer-wins status, and one reviewer told
             // their decision stuck when it did not. Reading after the lock makes the second
             // caller see the first one's result and be refused, which is the point.
-            Entry::query()->whereKey($entry->id)->lockForUpdate()->first();
+            Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
             $entry->refresh();
+
+            // Trashed content stays off the website until it is restored, whichever tier moves it.
+            if ($entry->trashed()) {
+                throw new AuthorizationException(__('entries.err_publish_forbidden'));
+            }
 
             // An entry created before the workflow was switched on carries no state yet: live
             // content stands at the published stage, anything else at the initial one — never

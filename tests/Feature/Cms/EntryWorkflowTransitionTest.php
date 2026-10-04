@@ -284,3 +284,29 @@ it('refuses a submit move on a draft the actor may not edit', function (): void 
             ->toBe('pending');
     });
 });
+
+it('never moves an entry that sits in the Trash, even one the screen loaded before it was deleted', function (): void {
+    $author = User::factory()->create();
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $editor): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        grantRole($editor, 'editor', ['entries.approve']);
+        $entry = newsPost($author);
+        activeNewsWorkflow();
+        $action = app(ApplyEntryWorkflowTransition::class);
+        expect($action->handle($entry, 'vi', $author->fresh(), 'submit'))->toBe('pending');
+
+        // The reviewer's screen still holds the entry; meanwhile someone moves it to the Trash.
+        $stale = Entry::query()->find($entry->id);
+        Entry::query()->find($entry->id)->delete();
+
+        expect(fn () => $action->handle($stale, 'vi', $editor->fresh(), 'approve'))
+            ->toThrow(AuthorizationException::class);
+
+        $row = Entry::withTrashed()->find($entry->id);
+        expect($row->status)->toBe('pending')
+            ->and($row->workflow_state)->toBe('pending')
+            ->and(SiteRoute::query()->count())->toBe(0);
+    });
+});
