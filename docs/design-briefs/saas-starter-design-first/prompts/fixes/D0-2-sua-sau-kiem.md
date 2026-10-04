@@ -35,4 +35,6 @@ Lượt D0-2 — sửa sau kiểm của Claude Code (04/10). Sửa tại chỗ `
    (a) Chính tả: kiểu dấu cũ Xóa · Hủy · khóa và "Bỏ lọc" — giữ như trang đang làm (LESSONS 04/10).
    (b) Khi "Lời mời nâng gói" TẮT: ẩn hẳn nút "Nâng gói" cạnh "Mua thêm" ở Thanh mức dùng và Chip hạn ngạch, thay bằng câu trung tính "Cần thêm? Liên hệ hỗ trợ" (đọc kênh hỗ trợ từ BSPLAT) — không để ngõ cụt; BẬT thì hiện "Xem gói nâng cấp" như hiện có. Vẽ cả hai theo Tweak `upsell`.
 
+15. `uploads/` chỉ là tệp đính kèm cũ của các chat (có bản sao màn cũ ở `uploads/import_ready/` và tệp của dự án khác). Thêm 1 dòng vào TODO.md mục "Lộ trình D0", ngay dưới dòng `_audit/`: "uploads/ · tệp đính kèm cũ, không phải thiết kế: mọi lượt bỏ qua uploads/ khi grep, sửa, tìm bản trùng hay đối chiếu; không xóa · áp mọi lượt D0–D5".
+
 Xong khi: ở khung 390 và 768 đổi được ngôn ngữ (có số đo getComputedStyle trong README), không còn nhãn "Chờ backend" cho tính năng repo đã có, không còn lý do chỉ nằm trong title, có `admin-components.css`, README cập nhật Ánh xạ dữ liệu + Việc cho backend + Kiểm hiển thị. Gọi ready_for_verification và sửa hết lỗi verifier báo. Xong thì xuất zip gửi Claude Code kiểm lại trước khi sang D0-3.
