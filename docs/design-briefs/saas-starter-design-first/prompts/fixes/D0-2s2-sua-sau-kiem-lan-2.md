@@ -9,6 +9,7 @@ Lượt D0-2s2 — sửa sau lần kiểm thứ hai của Claude Code (04/10, b�
 - `content-seo.js` — đúng 2 khóa ở mục 11;
 - `README - D0-2 Chuẩn giao diện.md`;
 - `TODO.md`;
+- `LESSONS.md` — đúng 1 dòng ở mục 13;
 - `AUDIT.md` — chỉ thêm ở bước 0.
 
 **Không được:**
@@ -78,10 +79,9 @@ Lượt D0-2s2 — sửa sau lần kiểm thứ hai của Claude Code (04/10, b�
    - Chip trạng thái dùng lại `.sc[data-s]` (dòng 158–162, đã theo token và đổi theo nền tối), chữ lấy `BSCW.UI[st].label`. Không dùng màu hex trong `BSCW.UI`.
    - Mỗi câu "bỏ qua" mở đầu bằng tên nút, để người dùng biết câu nói về nút nào: "Gửi duyệt: 3 bài sẽ được bỏ qua — …", "Chuyển vào Thùng rác: 2 bài của người khác sẽ được bỏ qua — …".
    - README "Quyền & gói": ghi đúng luật này.
-   - README "Việc cho backend", thay dòng bulkTrash hiện có bằng:
-     - (a) mọi thao tác hàng loạt (Thùng rác · Khôi phục · Xóa vĩnh viễn · Đưa về nháp · Nhân bản) bỏ qua dòng không đủ quyền rồi báo số. Hiện cả 5 hàm dừng ở dòng đầu tiên không đủ quyền và giữ thay đổi của các dòng trước: `app/Modules/Admin/Livewire/Entries/Index.php` `bulkApply`;
-     - (b) Gửi duyệt chỉ cho bài của mình: `EntryPolicy::submit` chưa xét bài của ai. Đây là đổi quyền, Claude Code đưa ra COUNCIL;
-     - (c) Đăng / Gửi duyệt hàng loạt xét quyền sửa từng dòng; bài đã đăng không được đếm là "đã làm".
+   - README "Việc cho backend":
+     - dòng "Chuyển vào Thùng rác hàng loạt" (dòng 252): chỉ thay ý (a) bằng "(a) mọi thao tác hàng loạt (Thùng rác · Khôi phục · Xóa vĩnh viễn · Đưa về nháp · Nhân bản) bỏ qua dòng không đủ quyền rồi báo số — hiện cả 5 hàm dừng ở dòng đầu tiên không đủ quyền và giữ thay đổi của các dòng trước (`app/Modules/Admin/Livewire/Entries/Index.php` `bulkApply`)". GIỮ nguyên ý (b) toast Hoàn tác và ý (c) bỏ hộp xác nhận;
+     - thêm ngay dưới một dòng mới "Gửi duyệt / Đăng hàng loạt": cột Dữ liệu cần lưu ghi "—"; cột Luật viết liền trong một ô: "(1) Gửi duyệt = có quyền gửi duyệt VÀ được sửa đúng bài đó, và chỉ từ Bản nháp (owner chốt theo khuyến nghị 04/10 tối; Claude Code đang làm PR: `EntryPolicy::submit` + quy trình duyệt + thao tác hàng loạt) — với nhóm Người viết / Cộng tác viên nghĩa là chỉ bản nháp của mình. (2) Đăng / Gửi duyệt hàng loạt: dòng không làm được thì bỏ qua và báo số; chỉ đếm dòng thật sự đổi trạng thái — Gửi duyệt chỉ đếm bản nháp; Đăng không đếm bài đã đăng (bài đang chờ duyệt được Đăng thì có đếm); không đụng bài trong Thùng rác."
 
 7. **CAO — Sửa trạng thái trong bảng tra (dòng 1559–1591) và bảng tương ứng trong README.** Repo thật: `app/Modules/Admin/resources/views/components/`.
 
@@ -139,6 +139,10 @@ Lượt D0-2s2 — sửa sau lần kiểm thứ hai của Claude Code (04/10, b�
     - Dòng 1636–1639: `let th = null; try { th = localStorage.getItem('bs-scheme'); } catch (e) {}` rồi `theme: th || this.props.theme || 'light'`. Mở riêng phải theo nền đã chọn ở Shell; đổi Tweak lúc đang mở vẫn áp (dòng 1744).
     - Ô `.sPlain` trong khung `.sx-search` (CSS dòng 114–119; ví dụ dòng 506, 819): giữ khung là div; khi cảm ứng, ô cao hết khung (`.sx-search>input{align-self:stretch}`); bấm vào icon / đệm của khung thì focus ô. Không đổi khung thành label (khung dòng 504 có nút "Bỏ từ khóa").
     - Dòng 2152: bỏ danh sách nhóm quyền dự phòng (`'Tác giả','Hỗ trợ','Xem'` sai tên). Chỉ dùng `Object.keys(W.ROLES)`; thiếu BSCW thì hiện một dòng "Chưa tải được danh sách nhóm quyền — tải lại trang." thay cho bảng không cột.
+    - Tên nhóm component — owner chốt 04/10 tối: repo đổi HẲN thẻ sang `<x-bs-admin::…>` trong một lần, không giữ thẻ `<x-admin::…>` song song (Claude Code làm PR #167, kèm test chặn tên cũ). Sửa 3 chỗ cho khớp:
+      - README dòng 73: thay câu "Repo hiện dùng `admin::`: khai thêm `bs-admin` trỏ cùng thư mục, giữ `admin::` làm tên phụ tới khi đổi xong mọi view (xem Việc cho backend)." bằng "Repo đổi hẳn thẻ `<x-admin::…>` sang `<x-bs-admin::…>` trong một lần (owner chốt 04/10 tối) — không còn thẻ `<x-admin::…>`; namespace view `admin::` (đường dẫn view) là chuyện khác, giữ nguyên.";
+      - README dòng 257 (Việc cho backend, dòng `bs-admin`): cột Luật ghi "Đổi hẳn `<x-admin::…>` → `<x-bs-admin::…>` trong một PR, không giữ thẻ `<x-admin::…>` (namespace view `admin::` giữ nguyên); test chặn thẻ `<x-admin::` mới";
+      - LESSONS.md: KHÔNG sửa dòng 34 (LESSONS chỉ thêm, không sửa). Thêm 1 dòng cuối: "WHEN nói repo dùng tên nhóm component nào THEN repo đã đổi hẳn thẻ sang <x-bs-admin::…> một lần, không còn thẻ <x-admin::…> (thay vế 'song song rồi chuyển dần' của dòng 34) NOT ghi repo giữ thẻ <x-admin::…> song song | evidence: owner chốt 04/10 tối 'Đổi luôn sang bs-admin cho chuẩn luôn' | 2026-10-04".
     - README dòng 255 (múi giờ): ghi dạng giá trị `{"tz":"<tên IANA>"}`. SiteTime (`app/Modules/Tenancy/Context/SiteTime.php`) chỉ nhận dạng này; ghi chuỗi trần sẽ bị bỏ qua mà không báo lỗi.
 
 14. **TODO.md.**
@@ -157,13 +161,14 @@ Xong khi:
 - (2) Thanh ngôn ngữ cao ≥ 44px ở 768 và 1024 cảm ứng.
 - (3) Câu lý do ô khóa, 4 mẫu Dải thông báo và chữ tắt avatar đều ≥ 4,5:1 ở sáng và tối; mẫu Dải thông báo lớn lên khi bật Chữ lớn.
 - (4) Chọn cả 5 bài:
-  - Xem như "Người viết" → "Gửi duyệt (2)" và câu "3 bài sẽ được bỏ qua…";
-  - Xem như "Biên tập" → "Đăng (4)" và câu "1 bài đã đăng sẽ được bỏ qua.".
+  - Xem như "Người viết" → "Gửi duyệt (2)" và câu "Gửi duyệt: 3 bài sẽ được bỏ qua…";
+  - Xem như "Biên tập" → "Đăng (4)" và câu "Đăng: 1 bài đã đăng sẽ được bỏ qua.".
 - (5) Bảng tra + README đã sửa đúng 12 dòng ở mục 7.
 - (6) Menu ngôn ngữ mở ra thì focus vào mục đang chọn; Esc trả focus về nút.
 - (7) `BSSEO.hardCap('slug')` = 200; ô Mô tả ngắn dừng ở 255 (trang bổ sung, Page Editor, Quản lý Bài viết).
 - (8) Trang bổ sung có Chữ lớn; ô nhập ≥ 44px khi cảm ứng; ở 360 bản ghi SPF đọc đủ.
 - (9) TODO.md có dòng DS và 6 việc theo màn ở mục 14.
+- (10) README dòng 73 + 257 không còn "song song" / "đổi dần" / "tên phụ"; LESSONS.md có dòng mới ở cuối (dòng 34 giữ nguyên); README "Việc cho backend" có dòng "Gửi duyệt / Đăng hàng loạt", và dòng Thùng rác hàng loạt vẫn giữ Hoàn tác + bỏ hộp xác nhận.
 
 Gọi ready_for_verification và sửa hết lỗi verifier báo. Phần verifier không chạy được thì ghi [CHƯA KIỂM ĐƯỢC + lý do] vào README. Xong thì xuất zip gửi Claude Code kiểm lại trước khi sang D0-3.
 
@@ -263,6 +268,7 @@ Chưa kiểm được: Safari iOS / iPadOS / Firefox / máy cảm ứng thật, 
       - `Index::changeStatus` / `bulkPublish` không gọi `authorize('update')`;
       - bài đã đăng vẫn bị đếm là "xong" (`PublishEntry.php:86-88`, `Index.php:390-391`).
     - Thiết kế đang chép đúng lỗ hổng quyền này của repo.
+    - Owner đã chốt (04/10 tối, theo khuyến nghị): gửi duyệt = có `entries.submit` VÀ được sửa bài đó, chỉ từ Bản nháp; Claude Code làm PR riêng.
     - Cao · [SUY RA TỪ CODE]
 12. **C12 · repo `app/Modules/Admin/Livewire/Entries/Index.php:457-466`** · `bulkApply`
     - Dòng đầu tiên không đủ quyền là dừng (403).
@@ -324,7 +330,7 @@ Chưa kiểm được: Safari iOS / iPadOS / Firefox / máy cảm ứng thật, 
   - Repo chưa khai. Hiện chỉ có `Blade::anonymousComponentPath(…/components, 'admin')` ở `app/Modules/Admin/Providers/AdminServiceProvider.php:84`. Namespace view `admin::` (dòng 77) là chuyện khác, không đổi.
   - Thêm `Blade::anonymousComponentPath($components, 'bs-admin')` là đủ. Đã thử: `<x-bs-admin::badge>` ra HTML giống `<x-admin::badge>`.
   - Cách Claude Code khuyến nghị: đổi một lần trong một PR (393 thẻ / 34 file + test), kèm test chặn `<x-admin::` mới. Lý do: README đang định giữ hai tên song song rồi chuyển dần, nghĩa là cùng một component có hai tên mà không có gì ngăn code mới dùng tên cũ.
-  - Owner chốt.
+  - Owner đã chốt (04/10 tối): đổi hẳn thẻ trong một PR, không giữ thẻ `<x-admin::…>` (namespace view `admin::` giữ nguyên). Claude Code làm PR #167.
 - **Bảng tra ↔ `components/`:**
   - Có 18 file Blade, bảng tra có đủ cả 18; 50 dòng MỚI đều chưa có file.
   - Sai trạng thái: Icon, Pagination (Cao), Tooltip (TB), Badge (Thấp).
@@ -376,7 +382,7 @@ Chưa kiểm được: Safari iOS / iPadOS / Firefox / máy cảm ứng thật, 
   - C8 Page Editor `width:min(1240px,100%)`.
 - Repo:
   - C12 bulk bỏ qua dòng không đủ quyền và báo số (5 hàm);
-  - C11 phía repo: `submit` xét bài của mình — đổi quyền, COUNCIL.
+  - C11 phía repo: `submit` đòi quyền sửa bài + chỉ từ Bản nháp (đã chốt, PR riêng).
 
 **Trung bình**
 - D0-2s2: TB 1–10, 18, 19 (độ dài đường dẫn / mô tả ngắn trong `content-seo.js`), 21, 22.
@@ -397,7 +403,7 @@ Chưa kiểm được: Safari iOS / iPadOS / Firefox / máy cảm ứng thật, 
     - người đứng tên một bài: "tác giả", giữ "Trả lại tác giả".
   - Repo đổi giá trị khóa theo sau.
 - **Bộ từ nút AI.**
-  - Hiện có hơn 20 nhãn cho vài việc: "Viết lại" 31 · "AI dịch" 16 · "Dịch bằng AI" 9 · "Viết mô tả" 8 · "Gợi ý tiêu đề" 6 · "Viết bằng AI" 4 · "Nhờ AI" 4 · "Viết cả bài bằng AI" 2 · "Mở rộng lại bằng AI" 2 · "Bổ sung / Làm mới bằng AI" · "Viết tiêu đề & mô tả" · "Tạo lại" · "Tạo bằng AI" · "Gợi ý bằng AI" · "AI gợi ý" · "Viết giúp" · "Viết lại đoạn bằng AI" · "Ghi đè bằng bản AI".
+  - Hiện có hơn 20 nhãn cho vài việc: "Viết lại" 31 · "AI dịch" 16 · "Dịch bằng AI" 9 · "Viết mô tả" 8 · "Gợi ý tiêu đề" 6 · "Viết bằng AI" 4 · "Nhờ AI" 4 · "Viết cả bài bằng AI" 2 · "Mở rộng lại bằng AI" 2 · "Bổ sung / Làm mới bằng AI" · "Viết tiêu đề & mô tả" · "Tạo bằng AI" · "Gợi ý bằng AI" · "AI gợi ý" · "Viết giúp" · "Viết lại đoạn bằng AI" · "Ghi đè bằng bản AI".
   - Đề xuất theo TODO "D0-2 phần 3": "<động từ> <đối tượng>", không thêm "AI" / "bằng AI" vì icon đã nói. Cụ thể:
     - ô trống → "Gợi ý <tên trường>";
     - ô có chữ → "Viết lại";
