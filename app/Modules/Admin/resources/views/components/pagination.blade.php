@@ -27,10 +27,10 @@
         @if ($current > 1)
             <a href="{{ $urlFor($current - 1) }}" @if ($paginator) wire:navigate @endif
                aria-label="{{ __('admin.pagination.previous') }}" class="{{ $navlink }}">
-                <x-admin::icon name="chevron-left" class="size-4" />
+                <x-bs-admin::icon name="chevron-left" class="size-4" />
             </a>
         @else
-            <span aria-hidden="true" class="{{ $disabled }}"><x-admin::icon name="chevron-left" class="size-4" /></span>
+            <span aria-hidden="true" class="{{ $disabled }}"><x-bs-admin::icon name="chevron-left" class="size-4" /></span>
         @endif
 
         @if ($from > 1)
@@ -50,10 +50,10 @@
         @if ($current < $last)
             <a href="{{ $urlFor($current + 1) }}" @if ($paginator) wire:navigate @endif
                aria-label="{{ __('admin.pagination.next') }}" class="{{ $navlink }}">
-                <x-admin::icon name="chevron-right" class="size-4" />
+                <x-bs-admin::icon name="chevron-right" class="size-4" />
             </a>
         @else
-            <span aria-hidden="true" class="{{ $disabled }}"><x-admin::icon name="chevron-right" class="size-4" /></span>
+            <span aria-hidden="true" class="{{ $disabled }}"><x-bs-admin::icon name="chevron-right" class="size-4" /></span>
         @endif
     </nav>
 @endif

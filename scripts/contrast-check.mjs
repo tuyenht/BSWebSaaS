@@ -305,8 +305,8 @@ const ROWS = [
     { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên nền trang', fg: '--color-body-muted', bg: ['--color-body'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Footer', fg: '--vz-footer-color', bg: ['--color-body'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Breadcrumb + phụ đề (page-header, trang Nội dung)', fg: '--color-body-muted', bg: ['--color-body'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Tab chưa chọn (x-admin::tabs, trang Nội dung)', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Đầu cột bảng — x-admin::table', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Tab chưa chọn (x-bs-admin::tabs, trang Nội dung)', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Đầu cột bảng — x-bs-admin::table', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Đầu cột bảng — thead nền surface-muted (7 trang danh sách) · bộ đếm Jodit', fg: '--color-body-muted', bg: ['--color-surface-muted'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Tiêu đề nhóm Customizer', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
 

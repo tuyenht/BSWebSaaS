@@ -1,4 +1,4 @@
-<x-admin::settings-shell active="login-security">
+<x-bs-admin::settings-shell active="login-security">
     @if (session('status'))
         <div class="rounded border border-admin-success/30 bg-admin-success/10 px-4 py-3 text-sm text-admin-success-text">{{ session('status') }}</div>
     @endif
@@ -23,7 +23,7 @@
         </div>
 
         <div class="flex justify-end border-t border-border px-5 py-3">
-            <x-admin::button type="submit">{{ __('admin.save') }}</x-admin::button>
+            <x-bs-admin::button type="submit">{{ __('admin.save') }}</x-bs-admin::button>
         </div>
     </form>
-</x-admin::settings-shell>
+</x-bs-admin::settings-shell>

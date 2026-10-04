@@ -55,8 +55,8 @@
         @click="document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()"
         aria-label="{{ __('admin.fullscreen') }}"
         class="hidden size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg sm:grid">
-    <x-admin::icon name="fullscreen" class="size-5" x-show="! full" />
-    <x-admin::icon name="minimize" class="size-5" x-show="full" x-cloak />
+    <x-bs-admin::icon name="fullscreen" class="size-5" x-show="! full" />
+    <x-bs-admin::icon name="minimize" class="size-5" x-show="full" x-cloak />
 </button>
 
 {{-- Light / dark — shares the Customizer's scheme axis + adminTheme store --}}
@@ -64,8 +64,8 @@
         @click="$store.adminTheme.set('scheme', $store.adminTheme.state.scheme === 'dark' ? 'light' : 'dark')"
         :aria-label="$store.adminTheme.state.scheme === 'dark' ? @js(__('admin.theme_light')) : @js(__('admin.theme_dark'))"
         class="grid size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
-    <x-admin::icon name="moon" class="size-5" x-show="$store.adminTheme.state.scheme !== 'dark'" />
-    <x-admin::icon name="sun" class="size-5" x-show="$store.adminTheme.state.scheme === 'dark'" x-cloak />
+    <x-bs-admin::icon name="moon" class="size-5" x-show="$store.adminTheme.state.scheme !== 'dark'" />
+    <x-bs-admin::icon name="sun" class="size-5" x-show="$store.adminTheme.state.scheme === 'dark'" x-cloak />
 </button>
 
 {{-- Notifications — GĐ1 placeholder (no notification system yet → no fake badge) --}}
@@ -73,14 +73,14 @@
     <button type="button" @click="notifOpen = ! notifOpen" :aria-expanded="notifOpen"
             aria-label="{{ __('admin.notifications') }}"
             class="grid size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
-        <x-admin::icon name="bell" class="size-5" />
+        <x-bs-admin::icon name="bell" class="size-5" />
     </button>
     <div x-show="notifOpen" @click.outside="notifOpen = false" x-transition x-cloak
          class="absolute end-0 z-30 mt-1 w-72 rounded-md border border-border bg-surface shadow-card">
         <p class="border-b border-border px-4 py-2.5 text-sm font-semibold text-body-text">{{ __('admin.notifications') }}</p>
         <div class="grid place-items-center gap-2 px-4 py-8 text-center">
             <span class="grid size-10 place-items-center rounded-full bg-surface-muted text-body-muted">
-                <x-admin::icon name="bell" class="size-5" />
+                <x-bs-admin::icon name="bell" class="size-5" />
             </span>
             <p class="text-sm text-body-muted">{{ __('admin.notifications_empty') }}</p>
         </div>

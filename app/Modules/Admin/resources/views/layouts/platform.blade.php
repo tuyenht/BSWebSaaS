@@ -24,12 +24,12 @@
             <button type="button" @click="open = ! open" aria-label="{{ __('admin.open_menu') }}"
                     :aria-expanded="open"
                     class="grid size-9 shrink-0 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg md:hidden">
-                <x-admin::icon name="menu" class="size-5" />
+                <x-bs-admin::icon name="menu" class="size-5" />
             </button>
         @endif
         <a href="{{ route('platform.dashboard') }}" wire:navigate class="flex items-center gap-2.5">
             {{-- Brand mark stays literal brand: an identity mark, fixed across every scheme. --}}
-            <x-admin::brand-logo context="topbar" />
+            <x-bs-admin::brand-logo context="topbar" />
             <span class="text-[11px] font-semibold uppercase tracking-wider text-accent">{{ __('admin.platform_console') }}</span>
         </a>
 

@@ -1,9 +1,9 @@
-<x-admin::settings-shell active="catalog">
+<x-bs-admin::settings-shell active="catalog">
     @if (session('status'))
-        <x-admin::alert color="success" icon="shield">{{ session('status') }}</x-admin::alert>
+        <x-bs-admin::alert color="success" icon="shield">{{ session('status') }}</x-bs-admin::alert>
     @endif
 
-    <x-admin::card :title="__('admin.catalog_settings')">
+    <x-bs-admin::card :title="__('admin.catalog_settings')">
         <p class="mb-4 text-sm text-body-muted">{{ __('catalog.mode_intro') }}</p>
 
         <div class="space-y-3">
@@ -27,8 +27,8 @@
 
         <x-slot:footer>
             <div class="flex justify-end">
-                <x-admin::button color="primary" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-admin::button>
+                <x-bs-admin::button color="primary" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-bs-admin::button>
             </div>
         </x-slot:footer>
-    </x-admin::card>
-</x-admin::settings-shell>
+    </x-bs-admin::card>
+</x-bs-admin::settings-shell>

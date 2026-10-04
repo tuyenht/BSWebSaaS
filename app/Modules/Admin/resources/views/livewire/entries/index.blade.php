@@ -1,21 +1,21 @@
 <div class="entries-index">
     @php $sectionLabel = $sectionModel?->localizedLabel() ?? __('entries.section_fallback'); @endphp
-    <x-admin::page-header :title="__('entries.manage_title', ['label' => $sectionLabel])">
+    <x-bs-admin::page-header :title="__('entries.manage_title', ['label' => $sectionLabel])">
         <x-slot:breadcrumbs>
             <div class="flex items-center gap-1.5">
                 <a href="{{ route('admin.dashboard') }}" wire:navigate class="inline-flex items-center gap-1 text-body-muted transition-colors hover:text-accent">
-                    <x-admin::icon name="home" class="size-3.5" /> {{ __('admin.breadcrumb_home') }}
+                    <x-bs-admin::icon name="home" class="size-3.5" /> {{ __('admin.breadcrumb_home') }}
                 </a>
-                <x-admin::icon name="chevron-right" class="size-3.5 text-placeholder" />
+                <x-bs-admin::icon name="chevron-right" class="size-3.5 text-placeholder" />
                 <span class="font-medium text-body-muted">{{ $sectionLabel }}</span>
             </div>
         </x-slot:breadcrumbs>
         <x-slot:actions>
-            <x-admin::button size="sm" color="primary" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])">
-                <x-admin::icon name="ri-add" class="size-4" /> {{ __('entries.create_new') }}
-            </x-admin::button>
+            <x-bs-admin::button size="sm" color="primary" :href="route('admin.entries.create', $sectionKey ? ['section' => $sectionKey] : [])">
+                <x-bs-admin::icon name="ri-add" class="size-4" /> {{ __('entries.create_new') }}
+            </x-bs-admin::button>
         </x-slot:actions>
-    </x-admin::page-header>
+    </x-bs-admin::page-header>
 
     @php
         $tabDefs = [
@@ -85,7 +85,7 @@
         };
     @endphp
 
-    <x-admin::card class="mt-4">
+    <x-bs-admin::card class="mt-4">
         {{-- Status tabs + Trash (server-driven; counts are live) --}}
         <div class="-mt-1 mb-4 flex flex-wrap items-center gap-1 border-b border-border">
             @foreach ($tabDefs as $key => $label)
@@ -95,7 +95,7 @@
                         'border-accent text-accent' => $tab === $key,
                         'border-transparent text-body-muted hover:text-body-text' => $tab !== $key,
                     ])>
-                    <x-admin::icon :name="$tabIcon($key)" class="size-4" />
+                    <x-bs-admin::icon :name="$tabIcon($key)" class="size-4" />
                     {{ $label }}
                     <span class="rounded px-1.5 py-0.5 text-xs font-semibold leading-none {{ $tabBadgeClass($key) }}">{{ $counts[$key] ?? 0 }}</span>
                 </button>
@@ -106,7 +106,7 @@
                     'border-admin-danger-text text-admin-danger-text' => $tab === 'trash',
                     'border-transparent text-body-muted hover:text-body-text' => $tab !== 'trash',
                 ])>
-                <x-admin::icon name="ri-delete-bin" class="size-4" /> {{ __('entries.tab_trash') }}
+                <x-bs-admin::icon name="ri-delete-bin" class="size-4" /> {{ __('entries.tab_trash') }}
                 <span class="rounded px-1.5 py-0.5 text-xs font-semibold leading-none {{ $tabBadgeClass('trash') }}">{{ $counts['trash'] }}</span>
             </button>
         </div>
@@ -120,7 +120,7 @@
             <div class="mb-3 flex flex-wrap items-center gap-2">
                 <div class="relative w-full max-w-xs">
                     <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-placeholder">
-                        <x-admin::icon name="ri-search" class="size-4" />
+                        <x-bs-admin::icon name="ri-search" class="size-4" />
                     </span>
                     <label for="pages-search" class="sr-only">{{ __('entries.search_placeholder') }}</label>
                     <input id="pages-search" type="search" wire:model.live.debounce.300ms="search"
@@ -137,8 +137,8 @@
                 <div x-data="{ open: false }" @click.outside="open = false" class="relative">
                     <button type="button" @click="open = !open"
                         class="inline-flex items-center gap-2 rounded border border-border-strong bg-surface px-3 py-2 text-sm font-medium text-body-text transition-colors hover:border-accent">
-                        <x-admin::icon name="ri-layout-column" class="size-4" /> {{ __('entries.cols_button') }}
-                        <x-admin::icon name="chevron-down" class="size-3.5 transition-transform" ::class="open && 'rotate-180'" />
+                        <x-bs-admin::icon name="ri-layout-column" class="size-4" /> {{ __('entries.cols_button') }}
+                        <x-bs-admin::icon name="chevron-down" class="size-3.5 transition-transform" ::class="open && 'rotate-180'" />
                     </button>
                     <div x-show="open" x-cloak x-transition
                         class="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1.5 shadow-lg">
@@ -168,7 +168,7 @@
                     @foreach ($activeChips as $chip)
                         <button type="button" wire:click="toggleFilterValue('{{ $chip['group'] }}', '{{ $chip['value'] }}')"
                             class="inline-flex items-center gap-1 rounded-full bg-admin-primary/10 py-1 pl-2.5 pr-1.5 text-xs font-medium text-accent transition-colors hover:bg-admin-primary/20">
-                            {{ $chip['label'] }} <x-admin::icon name="ri-close" class="size-3.5" />
+                            {{ $chip['label'] }} <x-bs-admin::icon name="ri-close" class="size-3.5" />
                         </button>
                     @endforeach
                     <button type="button" wire:click="clearAllFilters" class="ml-1 text-xs text-admin-danger-text hover:underline">{{ __('entries.filter_clear_all') }}</button>
@@ -184,46 +184,46 @@
                         @if ($canDelete)
                             <button type="button" wire:click="bulkRestore"
                                 class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
-                                <x-admin::icon name="ri-refresh" class="size-3.5 text-body-muted" /> {{ __('entries.action_restore') }}
+                                <x-bs-admin::icon name="ri-refresh" class="size-3.5 text-body-muted" /> {{ __('entries.action_restore') }}
                             </button>
                             <button type="button"
                                 x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm')), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkForceDelete())"
                                 class="inline-flex items-center gap-1.5 rounded border border-admin-danger/30 bg-surface px-2.5 py-1 text-sm font-medium text-admin-danger-text transition-colors hover:bg-admin-danger/10">
-                                <x-admin::icon name="ri-delete-bin" class="size-3.5" /> {{ __('entries.action_destroy') }}
+                                <x-bs-admin::icon name="ri-delete-bin" class="size-3.5" /> {{ __('entries.action_destroy') }}
                             </button>
                         @endif
                     @else
                         @if ($canPublish)
                             <button type="button" wire:click="bulkPublish"
                                 class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
-                                <x-admin::icon name="ri-check" class="size-3.5 text-admin-success-text" /> {{ __('entries.bulk_publish') }}
+                                <x-bs-admin::icon name="ri-check" class="size-3.5 text-admin-success-text" /> {{ __('entries.bulk_publish') }}
                             </button>
                             <button type="button" wire:click="bulkDraft"
                                 class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
-                                <x-admin::icon name="ri-pencil" class="size-3.5 text-body-muted" /> {{ __('entries.bulk_draft') }}
+                                <x-bs-admin::icon name="ri-pencil" class="size-3.5 text-body-muted" /> {{ __('entries.bulk_draft') }}
                             </button>
                         @endif
                         @if ($canCreate)
                             <button type="button" wire:click="bulkDuplicate"
                                 class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 text-sm font-medium text-body-text transition-colors hover:border-accent hover:text-accent">
-                                <x-admin::icon name="ri-file-copy" class="size-3.5 text-body-muted" /> {{ __('entries.action_duplicate') }}
+                                <x-bs-admin::icon name="ri-file-copy" class="size-3.5 text-body-muted" /> {{ __('entries.action_duplicate') }}
                             </button>
                         @endif
                         @if ($canDelete)
                             <button type="button"
                                 x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('entries.trash_confirm')), confirm: @js(__('entries.action_trash')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.bulkTrash())"
                                 class="inline-flex items-center gap-1.5 rounded border border-admin-danger/30 bg-surface px-2.5 py-1 text-sm font-medium text-admin-danger-text transition-colors hover:bg-admin-danger/10">
-                                <x-admin::icon name="ri-delete-bin" class="size-3.5" /> {{ __('entries.action_trash') }}
+                                <x-bs-admin::icon name="ri-delete-bin" class="size-3.5" /> {{ __('entries.action_trash') }}
                             </button>
                         @endif
                     @endif
                     <button type="button" wire:click="clearSelection" class="ml-auto inline-flex items-center gap-1 text-sm text-body-muted transition-colors hover:text-body-text">
-                        <x-admin::icon name="ri-close" class="size-3.5" /> {{ __('entries.bulk_deselect') }}
+                        <x-bs-admin::icon name="ri-close" class="size-3.5" /> {{ __('entries.bulk_deselect') }}
                     </button>
                 </div>
             @endif
 
-            <x-admin::table>
+            <x-bs-admin::table>
                 <thead>
                     <tr>
                         <th class="w-10">
@@ -233,19 +233,19 @@
                         </th>
                         <th class="w-full">
                             <button type="button" wire:click="sortBy('name')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.title_label') }} <x-admin::icon :name="$sortIcon('name')" class="size-3.5 {{ $sortKey === 'name' ? 'text-accent' : '' }}" />
+                                {{ __('entries.title_label') }} <x-bs-admin::icon :name="$sortIcon('name')" class="size-3.5 {{ $sortKey === 'name' ? 'text-accent' : '' }}" />
                             </button>
                         </th>
                         <th x-show="cols.path">{{ __('entries.col_path') }}</th>
                         <th>
                             <button type="button" wire:click="sortBy('status')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.col_status') }} <x-admin::icon :name="$sortIcon('status')" class="size-3.5 {{ $sortKey === 'status' ? 'text-accent' : '' }}" />
+                                {{ __('entries.col_status') }} <x-bs-admin::icon :name="$sortIcon('status')" class="size-3.5 {{ $sortKey === 'status' ? 'text-accent' : '' }}" />
                             </button>
                         </th>
                         <th x-show="cols.langs">{{ __('entries.col_language') }}</th>
                         <th x-show="cols.creator">
                             <button type="button" wire:click="sortBy('creator')" class="inline-flex items-center gap-1 hover:text-body-text">
-                                {{ __('entries.col_creator') }} <x-admin::icon :name="$sortIcon('creator')" class="size-3.5 {{ $sortKey === 'creator' ? 'text-accent' : '' }}" />
+                                {{ __('entries.col_creator') }} <x-bs-admin::icon :name="$sortIcon('creator')" class="size-3.5 {{ $sortKey === 'creator' ? 'text-accent' : '' }}" />
                             </button>
                         </th>
                         <th class="w-[132px] text-center">{{ __('entries.col_actions') }}</th>
@@ -279,14 +279,14 @@
                             <td class="w-full">
                                 <div @class(['flex items-center gap-1.5', 'pl-5' => $depth]) x-data="{ editing: false, value: @js($t?->title ?? ''), cancel: false }">
                                     @if ($depth)
-                                        <x-admin::icon name="chevron-right" class="size-3.5 shrink-0 text-placeholder" />
+                                        <x-bs-admin::icon name="chevron-right" class="size-3.5 shrink-0 text-placeholder" />
                                     @endif
                                     @if ($canEdit)
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.titleInput.focus(); $refs.titleInput.select() })"
                                             title="{{ __('entries.edit_name_hint') }}"
                                             class="group relative -mx-1 rounded py-0.5 pl-1 pr-5 text-left font-medium text-body-text transition-colors hover:bg-[#eef2fb] hover:text-accent">{{ $t?->title ?? __('entries.untitled') }}
-                                            <x-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
+                                            <x-bs-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
                                         </button>
                                         <input type="text" x-show="editing" x-cloak x-ref="titleInput" x-model="value"
                                             @keydown.enter.prevent="cancel = false; $el.blur()"
@@ -298,20 +298,20 @@
                                     @endif
                                 </div>
                                 <div @class(['mt-0.5 flex items-center gap-1 text-[11px] text-placeholder', 'pl-5' => $depth])>
-                                    <x-admin::icon name="ri-eye" class="size-3" />
+                                    <x-bs-admin::icon name="ri-eye" class="size-3" />
                                     {{ $entry->view_count > 0 ? __('entries.views_count', ['count' => number_format($entry->view_count)]) : __('entries.no_views') }}
                                 </div>
                             </td>
                             <td x-show="cols.path" class="align-top font-mono text-xs text-body-muted">
                                 @if ($isHome)
-                                    <span class="inline-flex items-center gap-1 text-placeholder" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-admin::icon name="ri-lock" class="size-3" /></span>
+                                    <span class="inline-flex items-center gap-1 text-placeholder" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
                                 @elseif ($canEdit)
                                     <div wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }" class="flex max-w-[240px] items-center">
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
                                             title="{{ $path }} · {{ __('entries.edit_hint') }}"
                                             class="group relative -mx-1 truncate rounded py-0.5 pl-1 pr-4 text-body-muted transition-colors hover:bg-[#eef2fb] hover:text-accent">{{ $path ?? '—' }}
-                                            <x-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
+                                            <x-bs-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
                                         </button>
                                         <span x-show="editing" x-cloak class="flex w-full items-center gap-0.5">
                                             <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
@@ -330,31 +330,31 @@
                                 @if ($canPublish && ! $entry->trashed())
                                     <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" class="relative inline-block">
                                         <button type="button" @click="open = ! open" class="inline-flex items-center" aria-label="{{ __('entries.status_menu_label') }}">
-                                            <x-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">
+                                            <x-bs-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">
                                                 <span class="size-1.5 shrink-0 rounded-full {{ $dotClass($statusColor[$status] ?? 'secondary') }}"></span>
-                                                {{ __('entries.status_'.$status) }} <x-admin::icon name="chevron-down" class="size-3" />
-                                            </x-admin::badge>
+                                                {{ __('entries.status_'.$status) }} <x-bs-admin::icon name="chevron-down" class="size-3" />
+                                            </x-bs-admin::badge>
                                         </button>
                                         <div x-show="open" x-cloak x-transition
                                             class="absolute left-0 z-30 mt-1 w-48 rounded-lg border border-border bg-surface p-1 shadow-lg">
                                             @foreach (['published', 'draft', 'private'] as $opt)
                                                 <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), @js($opt)); open = false"
                                                     class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-hover">
-                                                    <x-admin::badge soft :color="$statusColor[$opt]">
+                                                    <x-bs-admin::badge soft :color="$statusColor[$opt]">
                                                         <span class="size-1.5 shrink-0 rounded-full {{ $dotClass($statusColor[$opt]) }}"></span>
                                                         {{ __('entries.status_'.$opt) }}
-                                                    </x-admin::badge>
-                                                    @if ($status === $opt)<x-admin::icon name="ri-check" class="ml-auto size-3.5 text-accent" />@endif
+                                                    </x-bs-admin::badge>
+                                                    @if ($status === $opt)<x-bs-admin::icon name="ri-check" class="ml-auto size-3.5 text-accent" />@endif
                                                 </button>
                                             @endforeach
                                             <div class="mt-0.5 border-t border-border pt-0.5">
                                                 <button type="button" @click="sched = ! sched"
                                                     class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-hover">
-                                                    <x-admin::badge soft color="warning">
+                                                    <x-bs-admin::badge soft color="warning">
                                                         <span class="size-1.5 shrink-0 rounded-full {{ $dotClass('warning') }}"></span>
                                                         {{ __('entries.status_scheduled') }}
-                                                    </x-admin::badge>
-                                                    <x-admin::icon name="chevron-down" class="ml-auto size-3.5 text-placeholder transition-transform" ::class="sched && 'rotate-180'" />
+                                                    </x-bs-admin::badge>
+                                                    <x-bs-admin::icon name="chevron-down" class="ml-auto size-3.5 text-placeholder transition-transform" ::class="sched && 'rotate-180'" />
                                                 </button>
                                                 <div x-show="sched" x-cloak class="px-2 pb-1.5 pt-1">
                                                     <label class="mb-1 block text-[11px] text-body-muted">{{ __('entries.schedule_at') }}</label>
@@ -367,14 +367,14 @@
                                         </div>
                                     </div>
                                 @else
-                                    <x-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">
+                                    <x-bs-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">
                                         <span class="size-1.5 shrink-0 rounded-full {{ $dotClass($statusColor[$status] ?? 'secondary') }}"></span>
                                         {{ __('entries.status_'.$status) }}
-                                    </x-admin::badge>
+                                    </x-bs-admin::badge>
                                 @endif
                                 @if ($when)
                                     <div class="mt-1 flex items-center gap-1 text-[11px] text-placeholder">
-                                        <x-admin::icon :name="$isScheduled ? 'ri-time' : 'ri-history'" class="size-3" />
+                                        <x-bs-admin::icon :name="$isScheduled ? 'ri-time' : 'ri-history'" class="size-3" />
                                         @if ($isScheduled)
                                             {{ __('entries.scheduled_prefix') }} {{ $when->locale(app()->getLocale())->isoFormat('D MMM, Y') }} · {{ $when->format('H:i') }}
                                         @else
@@ -401,7 +401,7 @@
                                                     <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) }}" wire:navigate
                                                         title="{{ $has ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) }}"
                                                         class="inline-flex items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-white shadow-lg {{ $has ? 'bg-admin-primary' : 'bg-admin-success-solid' }}">
-                                                        <x-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
+                                                        <x-bs-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
                                                         {{ $has ? __('entries.edit_action') : __('entries.add_translation') }}
                                                     </a>
                                                 </span>
@@ -422,36 +422,36 @@
                                         @if ($canDelete)
                                             <button type="button" wire:click="restore('{{ $entry->ulid }}')" title="{{ __('entries.action_restore') }}"
                                                 class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-body-text">
-                                                <x-admin::icon name="ri-refresh" class="size-4" />
+                                                <x-bs-admin::icon name="ri-refresh" class="size-4" />
                                             </button>
                                             <button type="button" title="{{ __('entries.action_destroy') }}"
                                                 x-on:click="$bsConfirm({ icon: 'trash-danger', text: @js(__('entries.force_delete_confirm')), confirm: @js(__('entries.action_destroy')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.forceDelete(@js($entry->ulid)))"
                                                 class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-admin-danger-text">
-                                                <x-admin::icon name="ri-delete-bin" class="size-4" />
+                                                <x-bs-admin::icon name="ri-delete-bin" class="size-4" />
                                             </button>
                                         @endif
                                     @else
                                         @if ($path)
                                             <a href="{{ $path }}" target="_blank" rel="noopener" title="{{ __('entries.action_preview') }}"
                                                 class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-body-text">
-                                                <x-admin::icon name="ri-eye" class="size-4" />
+                                                <x-bs-admin::icon name="ri-eye" class="size-4" />
                                             </a>
                                         @endif
                                         <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid]) }}" wire:navigate title="{{ __('entries.edit_action') }}"
                                             class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-body-text">
-                                            <x-admin::icon name="ri-pencil" class="size-4" />
+                                            <x-bs-admin::icon name="ri-pencil" class="size-4" />
                                         </a>
                                         @if ($canCreate)
                                             <button type="button" wire:click="duplicate('{{ $entry->ulid }}')" title="{{ __('entries.action_duplicate') }}"
                                                 class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-body-text">
-                                                <x-admin::icon name="ri-file-copy" class="size-4" />
+                                                <x-bs-admin::icon name="ri-file-copy" class="size-4" />
                                             </button>
                                         @endif
                                         @if ($canDelete)
                                             <button type="button" title="{{ __('entries.action_trash') }}"
                                                 x-on:click="$bsConfirm({ icon: 'trash', text: @js(__('entries.trash_confirm')), confirm: @js(__('entries.action_trash')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.trash(@js($entry->ulid)))"
                                                 class="grid size-7 place-items-center rounded text-body-muted transition-colors hover:bg-surface-hover hover:text-admin-danger-text">
-                                                <x-admin::icon name="ri-delete-bin" class="size-4" />
+                                                <x-bs-admin::icon name="ri-delete-bin" class="size-4" />
                                             </button>
                                         @endif
                                     @endif
@@ -472,7 +472,7 @@
                         </tr>
                     @endforelse
                 </tbody>
-            </x-admin::table>
+            </x-bs-admin::table>
 
             <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
                 <span class="text-xs text-body-muted">
@@ -483,7 +483,7 @@
                         {{ __('entries.rows_per_page') }}
                         <button type="button" wire:click="cyclePerPage" title="{{ __('entries.rows_per_page') }}"
                             class="inline-flex items-center gap-1.5 rounded border border-border-strong bg-surface px-2.5 py-1 font-medium text-body-text transition-colors hover:bg-surface-hover">
-                            {{ $perPage }} <x-admin::icon name="chevron-down" class="size-3.5 text-body-muted" />
+                            {{ $perPage }} <x-bs-admin::icon name="chevron-down" class="size-3.5 text-body-muted" />
                         </button>
                     </div>
                     @php
@@ -495,7 +495,7 @@
                         <button type="button" wire:click="gotoPage({{ max(1, $pgCurrent - 1) }})" @disabled($pgCurrent <= 1)
                             aria-label="{{ __('admin.pagination.previous') }}"
                             @class([$pgBase, 'text-body-muted hover:bg-surface-hover' => $pgCurrent > 1, 'cursor-not-allowed text-ink-ghost' => $pgCurrent <= 1])>
-                            <x-admin::icon name="chevron-left" class="size-4" />
+                            <x-bs-admin::icon name="chevron-left" class="size-4" />
                         </button>
                         @foreach ($pagerWindow($pgCurrent, $pgLast) as $cell)
                             @if ($cell === null)
@@ -510,11 +510,11 @@
                         <button type="button" wire:click="gotoPage({{ min($pgLast, $pgCurrent + 1) }})" @disabled($pgCurrent >= $pgLast)
                             aria-label="{{ __('admin.pagination.next') }}"
                             @class([$pgBase, 'text-body-muted hover:bg-surface-hover' => $pgCurrent < $pgLast, 'cursor-not-allowed text-ink-ghost' => $pgCurrent >= $pgLast])>
-                            <x-admin::icon name="chevron-right" class="size-4" />
+                            <x-bs-admin::icon name="chevron-right" class="size-4" />
                         </button>
                     </nav>
                 </div>
             </div>
         </div>
-    </x-admin::card>
+    </x-bs-admin::card>
 </div>

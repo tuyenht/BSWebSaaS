@@ -18,7 +18,7 @@
             <div class="flex shrink-0 items-center justify-between gap-4 px-5 pb-[9px] pt-[15px]">
                 <div class="flex items-center gap-3">
                     <div class="flex size-[34px] items-center justify-center rounded-[9px] bg-admin-primary/8">
-                        <x-admin::icon name="ri-image-add" class="size-[19px] text-accent" />
+                        <x-bs-admin::icon name="ri-image-add" class="size-[19px] text-accent" />
                     </div>
                     <div class="flex flex-col gap-px">
                         <span class="text-[15.5px] font-semibold leading-tight text-heading">{{ __('media.picker_title') }}</span>
@@ -27,7 +27,7 @@
                 </div>
                 <button type="button" wire:click="closeImagePicker" title="{{ __('admin.dismiss') }}"
                         class="flex size-8 items-center justify-center rounded-lg bg-surface-hover text-body-muted transition-colors hover:text-body-text">
-                    <x-admin::icon name="ri-close" class="size-[17px]" />
+                    <x-bs-admin::icon name="ri-close" class="size-[17px]" />
                 </button>
             </div>
 
@@ -35,12 +35,12 @@
             <div class="flex shrink-0 gap-6 overflow-x-auto border-b border-border-strong bg-surface px-5">
                 <button type="button" wire:click="setPickerTab('upload')"
                         class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-1 py-3 text-[13.5px] {{ $pickerTab === 'upload' ? 'font-semibold text-accent shadow-[inset_0_-2.5px_0_var(--color-admin-primary)]' : 'font-medium text-body-muted' }}">
-                    <x-admin::icon name="ri-upload-2" class="size-4 {{ $pickerTab === 'upload' ? 'text-accent' : 'text-body-muted' }}" />
+                    <x-bs-admin::icon name="ri-upload-2" class="size-4 {{ $pickerTab === 'upload' ? 'text-accent' : 'text-body-muted' }}" />
                     {{ __('media.picker_tab_upload') }}
                 </button>
                 <button type="button" wire:click="setPickerTab('library')"
                         class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap px-1 py-3 text-[13.5px] {{ $pickerTab === 'library' ? 'font-semibold text-accent shadow-[inset_0_-2.5px_0_var(--color-admin-primary)]' : 'font-medium text-body-muted' }}">
-                    <x-admin::icon name="ri-image-2" class="size-4 {{ $pickerTab === 'library' ? 'text-accent' : 'text-body-muted' }}" />
+                    <x-bs-admin::icon name="ri-image-2" class="size-4 {{ $pickerTab === 'library' ? 'text-accent' : 'text-body-muted' }}" />
                     {{ __('media.picker_tab_library') }}
                     <span class="rounded-[10px] px-[7px] py-px text-[10.5px] font-semibold {{ $pickerTab === 'library' ? 'bg-admin-primary/8 text-accent' : 'bg-surface-hover text-body-muted' }}">{{ $mp['total'] }}</span>
                 </button>
@@ -104,7 +104,7 @@
                         class="shrink-0 rounded-lg border border-border-strong bg-surface px-4 py-[9px] text-[13px] font-medium text-body-text">{{ __('media.picker_cancel') }}</button>
                 <button type="button" wire:click="insertPicked" @disabled($pickCount === 0)
                         class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border-0 px-[18px] py-[9px] text-[13px] font-semibold text-white {{ $pickCount === 0 ? 'cursor-not-allowed bg-placeholder' : 'bg-admin-primary' }}">
-                    <x-admin::icon name="ri-check" class="size-[15px]" />
+                    <x-bs-admin::icon name="ri-check" class="size-[15px]" />
                     {{ $imagePickerMode === 'gallery' && $pickCount > 1
                         ? __('media.picker_insert_count', ['count' => $pickCount])
                         : __('media.picker_insert') }}

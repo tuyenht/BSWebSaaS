@@ -80,8 +80,8 @@ final class AdminServiceProvider extends ServiceProvider
             $this->commands([ReconcileContentUsage::class]);
         }
 
-        // Admin UI primitives as anonymous Blade components: <x-admin::icon />, etc.
-        Blade::anonymousComponentPath($this->app->basePath('app/Modules/Admin/resources/views/components'), 'admin');
+        // Admin UI primitives as anonymous Blade components: <x-bs-admin::icon />, etc.
+        Blade::anonymousComponentPath($this->app->basePath('app/Modules/Admin/resources/views/components'), 'bs-admin');
 
         Livewire::component('admin.login', Login::class);
         Livewire::component('admin.forgot-password', ForgotPassword::class);

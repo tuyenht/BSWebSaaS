@@ -8,7 +8,7 @@
         <span class="text-[13px] font-semibold text-heading">{{ __('media.picker_detail_title') }}</span>
         <button type="button" wire:click="closePickerDetail" title="{{ __('media.picker_cancel') }}"
                 class="flex size-[26px] items-center justify-center rounded-md text-body-muted hover:text-body-text">
-            <x-admin::icon name="ri-close" class="size-4" />
+            <x-bs-admin::icon name="ri-close" class="size-4" />
         </button>
     </div>
 
@@ -23,7 +23,7 @@
                     : (str_starts_with($d->mime, 'audio/') ? ['ri-music-2', '#8b5cf6']
                         : ($d->mime === 'application/pdf' ? ['ri-file-pdf-2', '#f06548'] : ['ri-file-excel-2', '#0ab39c'])))
                 <span class="absolute inset-0 flex items-center justify-center" style="background: {{ $glyph[1] }}14;">
-                    <x-admin::icon :name="$glyph[0]" class="size-[46px]" style="color: {{ $glyph[1] }}" />
+                    <x-bs-admin::icon :name="$glyph[0]" class="size-[46px]" style="color: {{ $glyph[1] }}" />
                 </span>
             @endif
         </div>
@@ -98,11 +98,11 @@
                      (a full-width outline button read heavy for a metadata save). --}}
                 <div class="mt-2 flex items-center justify-between gap-2">
                     <span class="flex items-center gap-1 text-[11.5px] text-admin-success-text" @if (! session('media-status')) hidden @endif>
-                        <x-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ __('media.picker_detail_saved') }}
+                        <x-bs-admin::icon name="ri-checkbox-circle" class="size-3.5" />{{ __('media.picker_detail_saved') }}
                     </span>
                     <button type="button" wire:click="savePickerDetailAlt"
                             class="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-admin-primary px-3.5 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-admin-primary/90">
-                        <x-admin::icon name="ri-save" class="size-3.5" />{{ __('media.picker_detail_save') }}
+                        <x-bs-admin::icon name="ri-save" class="size-3.5" />{{ __('media.picker_detail_save') }}
                     </button>
                 </div>
             @else

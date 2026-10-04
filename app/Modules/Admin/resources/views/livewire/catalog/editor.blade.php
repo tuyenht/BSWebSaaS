@@ -4,39 +4,39 @@
      are mounted as Jodit islands (lazy chunk, see resources/js/app.js) inside wire:ignore so
      Livewire morphs never clobber the editor DOM; content syncs back DEFERRED via $wire.set. --}}
 <div class="catalog-editor" data-catalog-editor>
-    <x-admin::page-header :title="$ulid ? __('catalog.edit_title') : __('catalog.create_title')">
+    <x-bs-admin::page-header :title="$ulid ? __('catalog.edit_title') : __('catalog.create_title')">
         <x-slot:actions>
-            <x-admin::button color="primary" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-admin::button>
+            <x-bs-admin::button color="primary" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-bs-admin::button>
         </x-slot:actions>
-    </x-admin::page-header>
+    </x-bs-admin::page-header>
 
     @if (session('saved'))
         <div class="mt-4">
-            <x-admin::alert color="success" icon="shield">{{ __('catalog.saved') }}</x-admin::alert>
+            <x-bs-admin::alert color="success" icon="shield">{{ __('catalog.saved') }}</x-bs-admin::alert>
         </div>
     @endif
 
     <div class="mt-4 grid items-start gap-4 lg:grid-cols-3">
         <div class="space-y-4 lg:col-span-2">
-            <x-admin::card :title="__('catalog.card_product')">
+            <x-bs-admin::card :title="__('catalog.card_product')">
                 <div class="space-y-4">
                     <div>
-                        <x-admin::input :label="__('catalog.name_label')" name="catalog-name" wire:model="name" />
+                        <x-bs-admin::input :label="__('catalog.name_label')" name="catalog-name" wire:model="name" />
                         @error('name') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                     <div>
-                        <x-admin::input :label="__('catalog.slug_label')" name="catalog-slug" wire:model="slug" />
+                        <x-bs-admin::input :label="__('catalog.slug_label')" name="catalog-slug" wire:model="slug" />
                         @error('slug') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="mb-1.5 block text-sm font-medium text-body-text" for="rich-editor-description">{{ __('catalog.description_label') }}</label>
-                        <x-admin::rich-editor target="description" profile="full" :value="$description" rows="10" />
+                        <x-bs-admin::rich-editor target="description" profile="full" :value="$description" rows="10" />
                         @error('description') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                     </div>
                 </div>
-            </x-admin::card>
+            </x-bs-admin::card>
 
-            <x-admin::card :title="__('catalog.card_gallery')">
+            <x-bs-admin::card :title="__('catalog.card_gallery')">
                 <div class="space-y-3">
                     @if ($galleryImages === [])
                         <p class="text-sm text-body-muted">{{ __('catalog.gallery_empty') }}</p>
@@ -67,29 +67,29 @@
                     @endif
 
                     @can('media.view')
-                        <x-admin::button variant="soft" color="primary" wire:click="openImagePicker">{{ __('catalog.gallery_add') }}</x-admin::button>
+                        <x-bs-admin::button variant="soft" color="primary" wire:click="openImagePicker">{{ __('catalog.gallery_add') }}</x-bs-admin::button>
                     @endcan
                     <p class="text-sm text-body-muted">{{ __('catalog.gallery_hint') }}</p>
                     @error('imageMediaIds.*') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                 </div>
-            </x-admin::card>
+            </x-bs-admin::card>
 
-            <x-admin::card>
-                <x-admin::tabs :tabs="['general' => __('catalog.tab_general'), 'seo' => __('catalog.tab_seo')]">
+            <x-bs-admin::card>
+                <x-bs-admin::tabs :tabs="['general' => __('catalog.tab_general'), 'seo' => __('catalog.tab_seo')]">
                     <div x-show="active === 'general'" role="tabpanel" class="space-y-4">
                         <div>
-                            <x-admin::input :label="__('catalog.price_label')" name="catalog-price" type="number" min="0" step="1" inputmode="numeric" wire:model="price" />
+                            <x-bs-admin::input :label="__('catalog.price_label')" name="catalog-price" type="number" min="0" step="1" inputmode="numeric" wire:model="price" />
                             <p class="mt-1 text-sm text-body-muted">{{ __('catalog.price_hint') }}</p>
                             @error('price') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                         <div>
-                            <x-admin::input :label="__('catalog.sku_label')" name="catalog-sku" wire:model="sku" />
+                            <x-bs-admin::input :label="__('catalog.sku_label')" name="catalog-sku" wire:model="sku" />
                             @error('sku') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                     </div>
                     <div x-show="active === 'seo'" role="tabpanel" class="space-y-4" x-cloak>
                         <div>
-                            <x-admin::input :label="__('catalog.seo_title_label')" name="catalog-seo-title" wire:model="seoTitle" />
+                            <x-bs-admin::input :label="__('catalog.seo_title_label')" name="catalog-seo-title" wire:model="seoTitle" />
                             @error('seoTitle') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                         <div>
@@ -99,12 +99,12 @@
                             @error('seoDescription') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
                         </div>
                     </div>
-                </x-admin::tabs>
-            </x-admin::card>
+                </x-bs-admin::tabs>
+            </x-bs-admin::card>
         </div>
 
         <div class="space-y-4">
-            <x-admin::card :title="__('catalog.card_publish')">
+            <x-bs-admin::card :title="__('catalog.card_publish')">
                 <label class="mb-1.5 block text-sm font-medium text-body-text" for="catalog-status">{{ __('catalog.status_label') }}</label>
                 <select id="catalog-status" wire:model="status"
                         class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text transition-colors focus:border-accent">
@@ -113,9 +113,9 @@
                     <option value="archived">{{ __('catalog.status_archived') }}</option>
                 </select>
                 @error('status') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
-            </x-admin::card>
+            </x-bs-admin::card>
 
-            <x-admin::card :title="__('catalog.category_label')">
+            <x-bs-admin::card :title="__('catalog.category_label')">
                 <select id="catalog-category" wire:model="categoryId"
                         class="block w-full rounded border border-border-strong bg-surface px-3 py-2 text-sm text-body-text transition-colors focus:border-accent">
                     <option value="">{{ __('catalog.category_placeholder') }}</option>
@@ -124,15 +124,15 @@
                     @endforeach
                 </select>
                 @error('categoryId') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
-            </x-admin::card>
+            </x-bs-admin::card>
 
-            <x-admin::card :title="__('catalog.summary_label')">
-                <x-admin::rich-editor target="summary" profile="basic" :value="$summary" rows="4" />
+            <x-bs-admin::card :title="__('catalog.summary_label')">
+                <x-bs-admin::rich-editor target="summary" profile="basic" :value="$summary" rows="4" />
                 <p class="mt-2 text-sm text-body-muted">{{ __('catalog.summary_hint') }}</p>
                 @error('summary') <p class="mt-1 text-sm text-admin-danger-text">{{ $message }}</p> @enderror
-            </x-admin::card>
+            </x-bs-admin::card>
 
-            <x-admin::button color="primary" class="w-full" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-admin::button>
+            <x-bs-admin::button color="primary" class="w-full" wire:click="save" wire:loading.attr="disabled">{{ __('catalog.save') }}</x-bs-admin::button>
         </div>
     </div>
 
