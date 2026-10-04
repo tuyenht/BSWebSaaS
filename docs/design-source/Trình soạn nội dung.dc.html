@@ -8,29 +8,33 @@
 <body>
 <x-dc>
 <helmet>
+<link rel="stylesheet" href="admin-base.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <script src="./ai-quota.js"></script>
 <style>
-.pe-tb{width:32px;height:32px;min-width:32px;border:0;border-radius:4px;background:transparent;color:#495057;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;}
-.pe-tb:hover{background:#f3f6f9;color:#405189;}
-.pe-tb-txt{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 9px;border:0;border-radius:4px;background:transparent;color:#495057;cursor:pointer;font:inherit;font-size:13px;}
-.pe-tb-txt:hover{background:#f3f6f9;color:#405189;}
-.pe-tb-sep{width:1px;height:20px;background:#e9ebec;margin:0 5px;flex:0 0 auto;}
+.pe-tb{width:32px;height:32px;min-width:32px;border:0;border-radius:4px;background:transparent;color:var(--color-body-text,#3c4765);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;}
+.pe-tb:hover{background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);}
+.pe-tb-txt{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 9px;border:0;border-radius:4px;background:transparent;color:var(--color-body-text,#3c4765);cursor:pointer;font:inherit;font-size:13px;}
+.pe-tb-txt:hover{background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);}
+.pe-tb-sep{width:1px;height:20px;background:var(--color-border-strong,#e9ebec);margin:0 5px;flex:0 0 auto;}
 .pe-rte{outline:none;}
-.pe-rte:empty:before{content:attr(data-placeholder);color:#adb5bd;}
-.pe-rte h2{font-size:20px;font-weight:600;color:#343a40;margin:18px 0 8px;}
-.pe-rte h3{font-size:16.5px;font-weight:600;color:#343a40;margin:14px 0 6px;}
-.pe-rte h4{font-size:14.5px;font-weight:600;color:#495057;margin:12px 0 5px;}
-.pe-rte h5{font-size:13.5px;font-weight:600;color:#495057;margin:10px 0 4px;}
+.pe-rte:empty:before{content:attr(data-placeholder);color:var(--color-body-muted,#5b6275);}
+.pe-rte h2{font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);margin:18px 0 8px;}
+.pe-rte h3{font-size:16.5px;font-weight:600;color:var(--color-heading,#1f2b4d);margin:14px 0 6px;}
+.pe-rte h4{font-size:14.5px;font-weight:600;color:var(--color-body-text,#3c4765);margin:12px 0 5px;}
+.pe-rte h5{font-size:13.5px;font-weight:600;color:var(--color-body-text,#3c4765);margin:10px 0 4px;}
 .pe-rte p{margin:0 0 12px;line-height:1.7;}
 .pe-rte ul,.pe-rte ol{margin:0 0 12px;padding-left:22px;line-height:1.7;}
 .pe-rte li{margin-bottom:4px;}
-.pe-rte blockquote{margin:0 0 12px;padding:8px 14px;border-left:3px solid #405189;background:#f8f9fb;color:#495057;}
+.pe-rte blockquote{margin:0 0 12px;padding:8px 14px;border-left:3px solid #2050a0;background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-text,#3c4765);}
 .pe-rte table{border-collapse:collapse;width:100%;margin:0 0 12px;font-size:13.5px;}
-.pe-rte td,.pe-rte th{border:1px solid #e9ebec;padding:7px 10px;}
-.pe-rte hr{border:0;border-top:1px solid #e9ebec;margin:18px 0;}
+.pe-rte td,.pe-rte th{border:1px solid var(--color-border-strong,#e9ebec);padding:7px 10px;}
+.pe-rte hr{border:0;border-top:1px solid var(--color-border-strong,#e9ebec);margin:18px 0;}
 .pe-rte img{max-width:100%;border-radius:6px;}
 .pe-rte figure{margin:0 0 12px;}
 .pe-rte .pe-video{cursor:pointer;}
@@ -39,50 +43,50 @@
 </helmet>
 <div class="rte-wrap" style="font-family:Inter,'Segoe UI',sans-serif;">
   <div style="{{ frameStyle }}">
-    <div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding:7px 10px;border-bottom:1px solid #eff2f7;background:#fbfcfd;">
+    <div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding:7px 10px;border-bottom:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
       <div style="position:relative;">
-        <button title="Kiểu đoạn" class="pe-tb-txt" onMouseDown="{{ keep }}" onClick="{{ onTogglePara }}"><i class="ri-paragraph" style="font-size:15px;"></i>Kiểu<i class="{{ paraArrow }}" style="font-size:14px;color:#878a99;"></i></button>
+        <button title="Kiểu đoạn" class="pe-tb-txt" onMouseDown="{{ keep }}" onClick="{{ onTogglePara }}"><i class="ri-paragraph" style="font-size:15px;"></i>Kiểu<i class="{{ paraArrow }}" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i></button>
         <sc-if value="{{ paraMenuOpen }}">
-          <div style="position:absolute;top:calc(100% + 5px);left:0;z-index:60;width:190px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;padding:4px 0;">
+          <div style="position:absolute;top:calc(100% + 5px);left:0;z-index:60;width:190px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;padding:4px 0;">
             <sc-for list="{{ paraItems }}" as="pa" hint-placeholder-count="6">
-              <button style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:38px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:#495057;cursor:pointer;text-align:left;" style-hover="background:#f3f6f9;" onMouseDown="{{ keep }}" onClick="{{ pa.on }}"><i class="{{ pa.icon }}" style="font-size:15px;color:#878a99;"></i>{{ pa.label }}</button>
+              <button style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:38px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);cursor:pointer;text-align:left;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onMouseDown="{{ keep }}" onClick="{{ pa.on }}"><i class="{{ pa.icon }}" style="font-size:15px;color:var(--color-body-muted,#5b6275);"></i>{{ pa.label }}</button>
             </sc-for>
           </div>
         </sc-if>
       </div>
       <span class="pe-tb-sep"></span>
-      <button title="Đậm (Ctrl+B)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.bold }}"><i class="ri-bold"></i></button>
-      <button title="Nghiêng (Ctrl+I)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.italic }}"><i class="ri-italic"></i></button>
-      <button title="Gạch chân (Ctrl+U)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.underline }}"><i class="ri-underline"></i></button>
+      <button title="Đậm (Ctrl+B)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.bold }}" aria-label="Đậm (Ctrl+B)"><i class="ri-bold"></i></button>
+      <button title="Nghiêng (Ctrl+I)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.italic }}" aria-label="Nghiêng (Ctrl+I)"><i class="ri-italic"></i></button>
+      <button title="Gạch chân (Ctrl+U)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.underline }}" aria-label="Gạch chân (Ctrl+U)"><i class="ri-underline"></i></button>
       <span class="pe-tb-sep"></span>
-      <button title="Danh sách" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.ul }}"><i class="ri-list-unordered"></i></button>
-      <button title="Danh sách đánh số" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.ol }}"><i class="ri-list-ordered-2"></i></button>
+      <button title="Danh sách" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.ul }}" aria-label="Danh sách"><i class="ri-list-unordered"></i></button>
+      <button title="Danh sách đánh số" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.ol }}" aria-label="Danh sách đánh số"><i class="ri-list-ordered-2"></i></button>
       <span class="pe-tb-sep"></span>
-      <button title="Chèn liên kết" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.link }}"><i class="ri-link"></i></button>
-      <button title="Xoá liên kết" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.unlink }}"><i class="ri-link-unlink"></i></button>
+      <button title="Chèn liên kết" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.link }}" aria-label="Chèn liên kết"><i class="ri-link"></i></button>
+      <button title="Xóa liên kết" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.unlink }}" aria-label="Xóa liên kết"><i class="ri-link-unlink"></i></button>
       <span class="pe-tb-sep"></span>
-      <button title="Xoá định dạng" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.clear }}"><i class="ri-format-clear"></i></button>
-      <button title="Hoàn tác (Ctrl+Z)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.undo }}"><i class="ri-arrow-go-back-line"></i></button>
-      <button title="Làm lại (Ctrl+Y)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.redo }}"><i class="ri-arrow-go-forward-line"></i></button>
+      <button title="Xóa định dạng" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.clear }}" aria-label="Xóa định dạng"><i class="ri-format-clear"></i></button>
+      <button title="Hoàn tác (Ctrl+Z)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.undo }}" aria-label="Hoàn tác (Ctrl+Z)"><i class="ri-arrow-go-back-line"></i></button>
+      <button title="Làm lại (Ctrl+Y)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.redo }}" aria-label="Làm lại (Ctrl+Y)"><i class="ri-arrow-go-forward-line"></i></button>
       <sc-if value="{{ toolbarFull }}">
         <span class="pe-tb-sep"></span>
-        <button title="Gạch ngang" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.strike }}"><i class="ri-strikethrough"></i></button>
-        <button title="Chỉ số trên" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.sup }}"><i class="ri-superscript"></i></button>
-        <button title="Chỉ số dưới" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.sub }}"><i class="ri-subscript"></i></button>
+        <button title="Gạch ngang" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.strike }}" aria-label="Gạch ngang"><i class="ri-strikethrough"></i></button>
+        <button title="Chỉ số trên" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.sup }}" aria-label="Chỉ số trên"><i class="ri-superscript"></i></button>
+        <button title="Chỉ số dưới" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.sub }}" aria-label="Chỉ số dưới"><i class="ri-subscript"></i></button>
         <div style="position:relative;">
-          <button title="Cỡ chữ" class="pe-tb-txt" onMouseDown="{{ keep }}" onClick="{{ onToggleSize }}"><i class="ri-font-size-2" style="font-size:15px;"></i><i class="{{ sizeArrow }}" style="font-size:14px;color:#878a99;"></i></button>
+          <button title="Cỡ chữ" class="pe-tb-txt" onMouseDown="{{ keep }}" onClick="{{ onToggleSize }}"><i class="ri-font-size-2" style="font-size:15px;"></i><i class="{{ sizeArrow }}" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i></button>
           <sc-if value="{{ sizeMenuOpen }}">
-            <div style="position:absolute;top:calc(100% + 5px);left:0;z-index:60;width:170px;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;padding:4px 0;">
+            <div style="position:absolute;top:calc(100% + 5px);left:0;z-index:60;width:170px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;padding:4px 0;">
               <sc-for list="{{ sizeItems }}" as="sz" hint-placeholder-count="6">
-                <button style="{{ sz.style }}" style-hover="background:#f3f6f9;" onMouseDown="{{ keep }}" onClick="{{ sz.on }}">{{ sz.label }}</button>
+                <button style="{{ sz.style }}" style-hover="background:var(--color-surface-hover,#f3f6f9);" onMouseDown="{{ keep }}" onClick="{{ sz.on }}">{{ sz.label }}</button>
               </sc-for>
             </div>
           </sc-if>
         </div>
         <div style="position:relative;">
-          <button title="Màu chữ" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onToggleColor }}"><i class="ri-font-color"></i></button>
+          <button title="Màu chữ" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onToggleColor }}" aria-label="Màu chữ"><i class="ri-font-color"></i></button>
           <sc-if value="{{ colorMenuOpen }}">
-            <div style="position:absolute;top:calc(100% + 5px);left:0;z-index:60;width:296px;max-width:90cqw;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+            <div style="position:absolute;top:calc(100% + 5px);left:0;z-index:60;width:296px;max-width:90cqw;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
               <div style="display:flex;">
                 <button style="{{ colorTabTextStyle }}" onMouseDown="{{ keep }}" onClick="{{ onColorText }}">Chữ hiển thị</button>
                 <button style="{{ colorTabBgStyle }}" onMouseDown="{{ keep }}" onClick="{{ onColorBg }}">Màu nền</button>
@@ -94,72 +98,72 @@
                   </sc-for>
                 </div>
                 <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
-                  <label title="Màu tuỳ chọn" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid #e9ebec;border-radius:6px;cursor:pointer;"><i class="ri-palette-line" style="font-size:16px;color:#405189;"></i><input type="color" onChange="{{ onCustomColor }}" style="width:0;height:0;opacity:0;position:absolute;"></label>
-                  <span style="font-size:11.5px;color:#adb5bd;">Chọn màu tuỳ chọn</span>
+                  <label title="Màu tùy chọn" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;cursor:pointer;"><i class="ri-palette-line" style="font-size:16px;color:var(--color-accent,#2050a0);"></i><input type="color" onChange="{{ onCustomColor }}" style="width:0;height:0;opacity:0;position:absolute;"></label>
+                  <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Chọn màu tùy chọn</span>
                 </div>
               </div>
             </div>
           </sc-if>
         </div>
         <span class="pe-tb-sep"></span>
-        <button title="Căn trái" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignL }}"><i class="ri-align-left"></i></button>
-        <button title="Căn giữa" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignC }}"><i class="ri-align-center"></i></button>
-        <button title="Căn phải" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignR }}"><i class="ri-align-right"></i></button>
-        <button title="Căn đều 2 bên" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.justify }}"><i class="ri-align-justify"></i></button>
+        <button title="Căn trái" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignL }}" aria-label="Căn trái"><i class="ri-align-left"></i></button>
+        <button title="Căn giữa" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignC }}" aria-label="Căn giữa"><i class="ri-align-center"></i></button>
+        <button title="Căn phải" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignR }}" aria-label="Căn phải"><i class="ri-align-right"></i></button>
+        <button title="Căn đều 2 bên" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.justify }}" aria-label="Căn đều 2 bên"><i class="ri-align-justify"></i></button>
         <span class="pe-tb-sep"></span>
-        <button title="Giảm thụt lề" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.outdent }}"><i class="ri-indent-decrease"></i></button>
-        <button title="Tăng thụt lề" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.indent }}"><i class="ri-indent-increase"></i></button>
+        <button title="Giảm thụt lề" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.outdent }}" aria-label="Giảm thụt lề"><i class="ri-indent-decrease"></i></button>
+        <button title="Tăng thụt lề" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.indent }}" aria-label="Tăng thụt lề"><i class="ri-indent-increase"></i></button>
         <span class="pe-tb-sep"></span>
-        <button title="Chèn ảnh — mở bảng thuộc tính ảnh" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onOpenImg }}"><i class="ri-image-add-line"></i></button>
-        <button title="Chèn video" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.video }}"><i class="ri-video-add-line"></i></button>
-        <button title="Chèn bảng" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.table }}"><i class="ri-table-2"></i></button>
-        <button title="Đường kẻ ngang" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.hr }}"><i class="ri-separator"></i></button>
-        <button title="Ký tự đặc biệt" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.char }}"><i class="ri-omega"></i></button>
+        <button title="Chèn ảnh — mở bảng thuộc tính ảnh" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onOpenImg }}" aria-label="Chèn ảnh — mở bảng thuộc tính ảnh"><i class="ri-image-add-line"></i></button>
+        <button title="Chèn video" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.video }}" aria-label="Chèn video"><i class="ri-video-add-line"></i></button>
+        <button title="Chèn bảng" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.table }}" aria-label="Chèn bảng"><i class="ri-table-2"></i></button>
+        <button title="Đường kẻ ngang" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.hr }}" aria-label="Đường kẻ ngang"><i class="ri-separator"></i></button>
+        <button title="Ký tự đặc biệt" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.char }}" aria-label="Ký tự đặc biệt"><i class="ri-omega"></i></button>
         <span class="pe-tb-sep"></span>
-        <button title="Xem / sửa HTML" class="pe-tb" style="{{ sourceBtnStyle }}" onMouseDown="{{ keep }}" onClick="{{ onToggleSource }}"><i class="ri-code-s-slash-line"></i></button>
-        <button title="Toàn màn hình" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onToggleRteFull }}"><i class="{{ rteFullIcon }}"></i></button>
+        <button title="Xem / sửa HTML" class="pe-tb" style="{{ sourceBtnStyle }}" onMouseDown="{{ keep }}" onClick="{{ onToggleSource }}" aria-label="Xem / sửa HTML"><i class="ri-code-s-slash-line"></i></button>
+        <button title="Toàn màn hình" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onToggleRteFull }}" aria-label="Toàn màn hình"><i class="{{ rteFullIcon }}"></i></button>
       </sc-if>
       <span style="margin-left:auto;"></span>
-      <button title="Thu gọn / mở rộng thanh công cụ" class="pe-tb-txt" style="color:#878a99;" onMouseDown="{{ keep }}" onClick="{{ onToggleToolbar }}"><i class="{{ toolbarToggleIcon }}" style="font-size:15px;"></i>{{ toolbarToggleLabel }}</button>
+      <button title="Thu gọn / mở rộng thanh công cụ" class="pe-tb-txt" style="color:var(--color-body-muted,#5b6275);" onMouseDown="{{ keep }}" onClick="{{ onToggleToolbar }}"><i class="{{ toolbarToggleIcon }}" style="font-size:15px;"></i>{{ toolbarToggleLabel }}</button>
     </div>
 
     <div style="padding:16px 20px;position:relative;">
       <div style="display:{{ editorDisp }};">
-        <div ref="{{ bodyRef }}" class="pe-rte" contentEditable="{{ editable }}" spellCheck="{{ false }}" suppressContentEditableWarning="{{ true }}" data-placeholder="{{ rtePlaceholder }}" onInput="{{ onContentInput }}" onKeyDown="{{ onKey }}" onMouseUp="{{ onSelChange }}" onKeyUp="{{ onSelChange }}" onPaste="{{ onPaste }}" onClick="{{ onBodyClick }}" onScroll="{{ onBodyScroll }}" style="min-height:{{ editorMinH }};max-height:{{ editorMaxH }};overflow:auto;overscroll-behavior:contain;font-size:14px;color:#495057;line-height:1.7;"></div>
+        <div ref="{{ bodyRef }}" class="pe-rte" contentEditable="{{ editable }}" spellCheck="{{ false }}" suppressContentEditableWarning="{{ true }}" data-placeholder="{{ rtePlaceholder }}" onInput="{{ onContentInput }}" onKeyDown="{{ onKey }}" onMouseUp="{{ onSelChange }}" onKeyUp="{{ onSelChange }}" onPaste="{{ onPaste }}" onClick="{{ onBodyClick }}" onScroll="{{ onBodyScroll }}" style="min-height:{{ editorMinH }};max-height:{{ editorMaxH }};overflow:auto;overscroll-behavior:contain;font-size:14px;color:var(--color-body-text,#3c4765);line-height:1.7;"></div>
       </div>
       <sc-if value="{{ aiBubbleOn }}" hint-placeholder-val="{{ false }}">
         <div style="{{ aiBubbleStyle }}">
-          <button disabled="{{ aiBlocked }}" title="{{ aiBubbleTitle }}" style="{{ aiBubbleBtnStyle }}" onMouseDown="{{ keep }}" onClick="{{ onAiRewrite }}"><i class="ri-sparkling-2-line" style="font-size:15px;"></i>Viết lại<span style="font-weight:400;color:#adb5bd;margin-left:4px;">{{ aiSelWords }}</span></button>
+          <button disabled="{{ aiBlocked }}" title="{{ aiBubbleTitle }}" style="{{ aiBubbleBtnStyle }}" onMouseDown="{{ keep }}" onClick="{{ onAiRewrite }}"><i class="ri-sparkling-2-line" style="font-size:15px;"></i>Viết lại<span style="font-weight:400;color:var(--color-body-muted,#5b6275);margin-left:4px;">{{ aiSelWords }}</span></button>
         </div>
       </sc-if>
       <sc-if value="{{ rteSource }}">
-        <textarea value="{{ sourceHtml }}" onChange="{{ onSourceInput }}" spellCheck="{{ false }}" style="width:100%;box-sizing:border-box;min-height:{{ editorMinH }};max-height:{{ editorMaxH }};padding:14px 16px;border:1px solid #e9ebec;border-radius:8px;background:#f8f9fb;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;color:#343a40;outline:none;resize:vertical;" style-focus="border-color:#405189;background:#fff;box-shadow:0 0 0 3px rgba(64,81,137,0.12);"></textarea>
+        <textarea value="{{ sourceHtml }}" onChange="{{ onSourceInput }}" spellCheck="{{ false }}" style="width:100%;box-sizing:border-box;min-height:{{ editorMinH }};max-height:{{ editorMaxH }};padding:14px 16px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;background:var(--color-surface-muted,#f8f9fb);font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;color:var(--color-heading,#1f2b4d);outline:none;resize:vertical;" style-focus="border-color:#2050a0;background:var(--color-surface,#fff);box-shadow:0 0 0 3px rgba(32,80,160,0.12);"></textarea>
       </sc-if>
     </div>
 
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 20px;border-top:1px solid #f4f5f7;font-size:11px;color:#adb5bd;">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 20px;border-top:1px solid #f4f5f7;font-size:12px;color:var(--color-body-muted,#5b6275);">
       <span title="{{ quotaTitle }}" style="{{ quotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaChip }}</span>
-      <span style="width:1px;height:14px;background:#e9ebec;"></span>
+      <span style="width:1px;height:14px;background:var(--color-border-strong,#e9ebec);"></span>
       <span style="display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap;">
         <sc-for list="{{ tagPath }}" as="tg" hint-placeholder-count="3">
           <button title="{{ tg.title }}" style="{{ tg.style }}" onMouseDown="{{ keep }}" onClick="{{ tg.on }}">{{ tg.name }}</button>
         </sc-for>
       </span>
-      <span style="margin-left:auto;display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:0.03em;"><span>Ký tự: <strong style="color:#878a99;font-weight:600;font-variant-numeric:tabular-nums;">{{ charCount }}</strong></span><span style="color:#e2e5ea;">·</span><span>Từ: <strong style="color:#878a99;font-weight:600;font-variant-numeric:tabular-nums;">{{ wordCount }}</strong></span><span style="color:#e2e5ea;">·</span><span>Đọc: <strong style="color:#878a99;font-weight:600;">{{ readMin }} phút</strong></span></span>
+      <span style="margin-left:auto;display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:0.03em;"><span>Ký tự: <strong style="color:var(--color-body-muted,#5b6275);font-weight:600;font-variant-numeric:tabular-nums;">{{ charCount }}</strong></span><span style="color:#e2e5ea;">·</span><span>Từ: <strong style="color:var(--color-body-muted,#5b6275);font-weight:600;font-variant-numeric:tabular-nums;">{{ wordCount }}</strong></span><span style="color:#e2e5ea;">·</span><span>Đọc: <strong style="color:var(--color-body-muted,#5b6275);font-weight:600;">{{ readMin }} phút</strong></span></span>
     </div>
   </div>
 
   <sc-if value="{{ aiPanelOn }}">
     <div style="position:fixed;inset:0;z-index:330;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onAiClose }}"></div>
-      <div style="position:relative;z-index:1;width:560px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);overflow:hidden;">
-        <div style="display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid #eff2f7;">
-          <span style="width:34px;height:34px;border-radius:8px;background:rgba(64,81,137,.10);color:#405189;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-sparkling-2-line"></i></span>
+      <div style="position:relative;z-index:1;width:560px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid var(--color-border,#e9ecf4);">
+          <span style="width:34px;height:34px;border-radius:8px;background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-sparkling-2-line"></i></span>
           <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
-            <span style="font-size:14.5px;font-weight:600;color:#343a40;">Viết lại đoạn đã chọn</span>
-            <span style="font-size:12px;color:#878a99;">Chữ hiện tại vẫn giữ nguyên cho tới khi bạn bấm thay.</span>
+            <span style="font-size:14.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Viết lại đoạn đã chọn</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Chữ hiện tại vẫn giữ nguyên cho tới khi bạn bấm thay.</span>
           </span>
-          <button title="Đóng" style="border:0;background:transparent;color:#878a99;cursor:pointer;font-size:18px;line-height:1;" onClick="{{ onAiClose }}"><i class="ri-close-line"></i></button>
+          <button title="Đóng" style="border:0;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;font-size:18px;line-height:1;" onClick="{{ onAiClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
         </div>
         <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -167,20 +171,20 @@
               <button title="{{ m.title }}" style="{{ m.style }}" onClick="{{ m.on }}"><i class="{{ m.icon }}" style="font-size:14px;"></i>{{ m.label }}</button>
             </sc-for>
           </div>
-          <div style="padding:10px 12px;background:#f8f9fb;border:1px dashed #e3e6ea;border-radius:6px;">
-            <div style="font-size:11px;font-weight:600;color:#adb5bd;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;">Đoạn hiện tại</div>
-            <div style="font-size:13px;color:#878a99;line-height:1.6;max-height:88px;overflow:auto;">{{ aiCurrent }}</div>
+          <div style="padding:10px 12px;background:var(--color-surface-muted,#f8f9fb);border:1px dashed #e3e6ea;border-radius:6px;">
+            <div style="font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;">Đoạn hiện tại</div>
+            <div style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.6;max-height:88px;overflow:auto;">{{ aiCurrent }}</div>
           </div>
           <sc-if value="{{ aiHasResult }}">
-            <div style="padding:10px 12px;background:rgba(64,81,137,0.05);border:1px solid rgba(64,81,137,0.2);border-radius:6px;">
-              <div style="font-size:11px;font-weight:600;color:#405189;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;">Phương án AI · {{ aiModeLabel }}</div>
-              <div style="font-size:13px;color:#343a40;line-height:1.6;max-height:150px;overflow:auto;">{{ aiSuggestion }}</div>
+            <div style="padding:10px 12px;background:rgba(32,80,160,0.05);border:1px solid rgba(32,80,160,0.2);border-radius:6px;">
+              <div style="font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;">Phương án AI · {{ aiModeLabel }}</div>
+              <div style="font-size:13px;color:var(--color-heading,#1f2b4d);line-height:1.6;max-height:150px;overflow:auto;">{{ aiSuggestion }}</div>
             </div>
           </sc-if>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid #eff2f7;background:#fbfcfd;">
-          <span style="flex:1 1 160px;min-width:0;font-size:11.5px;color:#adb5bd;">{{ aiSpent }}</span>
-          <button style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid #e9ebec;background:#fff;color:#495057;font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onAiClose }}">Huỷ</button>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
+          <span style="flex:1 1 160px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ aiSpent }}</span>
+          <button style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onAiClose }}">Hủy</button>
           <button style="{{ aiApplyStyle }}" onClick="{{ onAiApply }}"><i class="ri-check-line"></i>Thay đoạn này</button>
         </div>
       </div>
@@ -191,7 +195,7 @@
     <div style="position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:32px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onCloseMedia }}"></div>
       <div style="position:relative;z-index:1;width:1020px;max-width:100%;height:660px;max-height:100%;">
-        <button title="Đóng" style="position:absolute;top:-12px;right:-12px;z-index:2;width:32px;height:32px;border-radius:50%;border:0;background:#fff;color:#495057;font-size:17px;cursor:pointer;box-shadow:0 4px 12px rgba(56,65,74,.24);" onClick="{{ onCloseMedia }}"><i class="ri-close-line"></i></button>
+        <button title="Đóng" style="position:absolute;top:-12px;right:-12px;z-index:2;width:32px;height:32px;border-radius:50%;border:0;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font-size:17px;cursor:pointer;box-shadow:0 4px 12px rgba(56,65,74,.24);" onClick="{{ onCloseMedia }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
         <dc-import name="MediaPicker" on-insert="{{ onMediaInsert }}" on-close="{{ onCloseMedia }}" hint-size="1020px,660px"></dc-import>
       </div>
     </div>
@@ -200,37 +204,37 @@
   <sc-if value="{{ imgOpen }}">
     <div style="position:fixed;inset:0;z-index:340;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onImgClose }}"></div>
-      <div style="position:relative;z-index:1;width:560px;max-width:100%;max-height:100%;background:#fff;border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);display:flex;flex-direction:column;overflow:hidden;">
-        <div style="display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid #eff2f7;flex:0 0 auto;">
-          <span style="width:34px;height:34px;border-radius:8px;background:rgba(64,81,137,.10);color:#405189;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-image-2-line"></i></span>
+      <div style="position:relative;z-index:1;width:560px;max-width:100%;max-height:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid var(--color-border,#e9ecf4);flex:0 0 auto;">
+          <span style="width:34px;height:34px;border-radius:8px;background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-image-2-line"></i></span>
           <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
-            <span style="font-size:14.5px;font-weight:600;color:#343a40;">{{ imgTitle }}</span>
-            <span style="font-size:11.5px;color:#adb5bd;">Ảnh thật bạn tải lên không tốn lượt tạo ảnh AI nào.</span>
+            <span style="font-size:14.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ imgTitle }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Ảnh thật bạn tải lên không tốn lượt tạo ảnh AI nào.</span>
           </span>
-          <button title="Đóng" style="margin-left:auto;border:0;background:transparent;color:#878a99;cursor:pointer;font-size:19px;line-height:1;flex:0 0 auto;" onClick="{{ onImgClose }}"><i class="ri-close-line"></i></button>
+          <button title="Đóng" style="margin-left:auto;border:0;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;font-size:19px;line-height:1;flex:0 0 auto;" onClick="{{ onImgClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
         </div>
         <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;overflow:auto;min-height:0;">
           <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
             <div style="{{ imgThumbStyle }}"></div>
             <div style="display:flex;flex-direction:column;gap:8px;min-width:0;flex:1 1 220px;">
-              <span style="font-size:12.5px;color:#495057;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ imgNameText }}</span>
+              <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ imgNameText }}</span>
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button title="Lấy ảnh đã có trong Thư viện" style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#405189;cursor:pointer;white-space:nowrap;" style-hover="background:#f3f6f9;" onClick="{{ onImgLib }}"><i class="ri-folder-image-line" style="font-size:15px;"></i>Chọn ảnh có sẵn</button>
-                <button title="Mở Thư viện ở chức năng tải tệp lên" style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#405189;cursor:pointer;white-space:nowrap;" style-hover="background:#f3f6f9;" onClick="{{ onImgUpload }}"><i class="ri-upload-2-line" style="font-size:15px;"></i>Tải ảnh mới lên</button>
+                <button title="Lấy ảnh đã có trong Thư viện" style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ onImgLib }}"><i class="ri-folder-image-line" style="font-size:15px;"></i>Chọn ảnh có sẵn</button>
+                <button title="Mở Thư viện ở chức năng tải tệp lên" style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ onImgUpload }}"><i class="ri-upload-2-line" style="font-size:15px;"></i>Tải ảnh mới lên</button>
               </div>
             </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;">
-            <label style="font-size:12.5px;font-weight:500;color:#495057;">Mô tả ảnh — cho SEO và người khiếm thị</label>
-            <input value="{{ imgAlt }}" onChange="{{ onImgAlt }}" placeholder="Máy phay CNC 5 trục đang gia công chi tiết thép" style="width:100%;box-sizing:border-box;min-height:38px;padding:9px 12px;border:1px solid #e9ebec;border-radius:4px;font:inherit;font-size:13px;color:#495057;outline:none;" style-focus="border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,0.15);">
+            <label style="font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);">Mô tả ảnh — cho SEO và người khiếm thị</label>
+            <input value="{{ imgAlt }}" onChange="{{ onImgAlt }}" placeholder="Máy phay CNC 5 trục đang gia công chi tiết thép" style="width:100%;box-sizing:border-box;min-height:38px;padding:9px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);">
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;">
-            <label style="font-size:12.5px;font-weight:500;color:#495057;">Chú thích dưới ảnh — không bắt buộc</label>
-            <input value="{{ imgCaption }}" onChange="{{ onImgCaption }}" placeholder="Ảnh: xưởng An Vinh, tháng 7/2026" style="width:100%;box-sizing:border-box;min-height:38px;padding:9px 12px;border:1px solid #e9ebec;border-radius:4px;font:inherit;font-size:13px;color:#495057;outline:none;" style-focus="border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,0.15);">
+            <label style="font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);">Chú thích dưới ảnh — không bắt buộc</label>
+            <input value="{{ imgCaption }}" onChange="{{ onImgCaption }}" placeholder="Ảnh: xưởng An Vinh, tháng 7/2026" style="width:100%;box-sizing:border-box;min-height:38px;padding:9px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);">
           </div>
           <div style="display:flex;gap:16px;flex-wrap:wrap;">
             <div style="display:flex;flex-direction:column;gap:6px;flex:1 1 240px;min-width:0;">
-              <label style="font-size:12.5px;font-weight:500;color:#495057;">Cỡ hiển thị trong bài</label>
+              <label style="font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);">Cỡ hiển thị trong bài</label>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <sc-for list="{{ imgSizes }}" as="sz" hint-placeholder-count="4">
                   <button title="{{ sz.title }}" style="{{ sz.style }}" onClick="{{ sz.on }}">{{ sz.label }}</button>
@@ -238,19 +242,19 @@
               </div>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;flex:0 0 auto;">
-              <label style="font-size:12.5px;font-weight:500;color:#495057;">Căn ảnh</label>
+              <label style="font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);">Căn ảnh</label>
               <div style="display:flex;gap:6px;">
                 <sc-for list="{{ imgAligns }}" as="al" hint-placeholder-count="3">
-                  <button title="{{ al.label }}" style="{{ al.style }}" onClick="{{ al.on }}"><i class="{{ al.icon }}" style="font-size:16px;"></i></button>
+                  <button title="{{ al.label }}" style="{{ al.style }}" onClick="{{ al.on }}" aria-label="{{ al.label }}"><i class="{{ al.icon }}" style="font-size:16px;"></i></button>
                 </sc-for>
               </div>
             </div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid #eff2f7;background:#fbfcfd;flex:0 0 auto;">
-          <span style="flex:1 1 150px;min-width:0;font-size:11.5px;color:#adb5bd;line-height:1.45;">Bấm vào ảnh trong bài để mở lại bảng này.</span>
-          <sc-if value="{{ imgEdit }}"><button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border-radius:4px;border:1px solid #f7d3ce;background:#fff;color:#f06548;font:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;" onClick="{{ onImgRemove }}"><i class="ri-delete-bin-line"></i>Xoá ảnh</button></sc-if>
-          <button style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid #e9ebec;background:#fff;color:#495057;font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onImgClose }}">Huỷ</button>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;flex:0 0 auto;">
+          <span style="flex:1 1 150px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">Bấm vào ảnh trong bài để mở lại bảng này.</span>
+          <sc-if value="{{ imgEdit }}"><button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border-radius:4px;border:1px solid #f7d3ce;background:var(--color-surface,#fff);color:var(--color-admin-danger-text,#f06548);font:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;" onClick="{{ onImgRemove }}"><i class="ri-delete-bin-line"></i>Xóa ảnh</button></sc-if>
+          <button style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onImgClose }}">Hủy</button>
           <button style="{{ imgSaveStyle }}" onClick="{{ onImgSave }}"><i class="ri-check-line"></i>{{ imgSaveLabel }}</button>
         </div>
       </div>
@@ -261,7 +265,7 @@
     <div style="position:fixed;inset:0;z-index:360;display:flex;align-items:center;justify-content:center;padding:32px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onImgPickClose }}"></div>
       <div style="position:relative;z-index:1;width:1020px;max-width:100%;height:660px;max-height:100%;">
-        <button title="Đóng" style="position:absolute;top:-12px;right:-12px;z-index:2;width:32px;height:32px;border-radius:50%;border:0;background:#fff;color:#495057;font-size:17px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.18);" onClick="{{ onImgPickClose }}"><i class="ri-close-line"></i></button>
+        <button title="Đóng" style="position:absolute;top:-12px;right:-12px;z-index:2;width:32px;height:32px;border-radius:50%;border:0;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font-size:17px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.18);" onClick="{{ onImgPickClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
         <dc-import name="MediaPicker" tab="{{ imgPickTab }}" on-insert="{{ onImgPicked }}" on-close="{{ onImgPickClose }}" hint-size="1020px,660px"></dc-import>
       </div>
     </div>
@@ -270,56 +274,56 @@
   <sc-if value="{{ vidOpen }}">
     <div style="position:fixed;inset:0;z-index:340;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onVidClose }}"></div>
-      <div style="position:relative;z-index:1;width:520px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);display:flex;flex-direction:column;overflow:hidden;">
-        <div style="display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid #eff2f7;">
-          <span style="width:34px;height:34px;border-radius:8px;background:rgba(64,81,137,.10);color:#405189;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-video-add-line"></i></span>
+      <div style="position:relative;z-index:1;width:520px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid var(--color-border,#e9ecf4);">
+          <span style="width:34px;height:34px;border-radius:8px;background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-video-add-line"></i></span>
           <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
-            <span style="font-size:14.5px;font-weight:600;color:#343a40;">{{ vidTitle }}</span>
-            <span style="font-size:12px;color:#878a99;">Dán liên kết YouTube, Vimeo hoặc tệp MP4</span>
+            <span style="font-size:14.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ vidTitle }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Dán liên kết YouTube, Vimeo hoặc tệp MP4</span>
           </span>
         </div>
         <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;">
           <div style="display:flex;flex-direction:column;gap:6px;">
-            <label style="font-size:12.5px;font-weight:500;color:#495057;">Liên kết video</label>
-            <input ref="{{ vidInputRef }}" value="{{ vidUrl }}" onChange="{{ onVidUrl }}" onKeyDown="{{ onVidKey }}" placeholder="https://www.youtube.com/watch?v=…" style="width:100%;box-sizing:border-box;min-height:40px;padding:9px 11px;border:1px solid #e9ebec;border-radius:4px;font:inherit;font-size:13px;color:#495057;outline:none;" style-focus="border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.15);">
-            <sc-if value="{{ vidOk }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#0ab39c;"><i class="ri-checkbox-circle-line"></i>Nhận ra: {{ vidName }}</span></sc-if>
+            <label style="font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);">Liên kết video</label>
+            <input ref="{{ vidInputRef }}" value="{{ vidUrl }}" onChange="{{ onVidUrl }}" onKeyDown="{{ onVidKey }}" placeholder="https://www.youtube.com/watch?v=…" style="width:100%;box-sizing:border-box;min-height:40px;padding:9px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.15);">
+            <sc-if value="{{ vidOk }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-admin-success-text,#0ab39c);"><i class="ri-checkbox-circle-line"></i>Nhận ra: {{ vidName }}</span></sc-if>
             <sc-if value="{{ vidBad }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#f7b84b;"><i class="ri-error-warning-line"></i>Chưa nhận ra liên kết — dán địa chỉ đầy đủ bắt đầu bằng https://</span></sc-if>
           </div>
-          <div style="display:flex;flex-direction:column;gap:2px;border:1px solid #eff2f7;border-radius:6px;">
+          <div style="display:flex;flex-direction:column;gap:2px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;">
             <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;">
               <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;">
-                <span style="font-size:13px;color:#343a40;">Tự động phát khi mở trang</span>
-                <span style="font-size:11.5px;color:#adb5bd;line-height:1.45;">Trình duyệt chỉ cho tự phát khi video <b>tắt tiếng</b> — nền tảng tự bật tắt tiếng giúp bạn.</span>
+                <span style="font-size:13px;color:var(--color-heading,#1f2b4d);">Tự động phát khi mở trang</span>
+                <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">Trình duyệt chỉ cho tự phát khi video <b>tắt tiếng</b> — nền tảng tự bật tắt tiếng giúp bạn.</span>
               </span>
-              <sc-if value="{{ vidAutoplay }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#405189;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidAutoplayOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:#fff;"></span></button></sc-if>
-              <sc-if value="{{ vidAutoplayOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#ced4da;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidAutoplayOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;"></span></button></sc-if>
+              <sc-if value="{{ vidAutoplay }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#2050a0;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidAutoplayOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
+              <sc-if value="{{ vidAutoplayOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#ced4da;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidAutoplayOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
             </div>
-            <div style="height:1px;background:#eff2f7;"></div>
+            <div style="height:1px;background:var(--color-border,#e9ecf4);"></div>
             <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;">
-              <span style="font-size:13px;color:#343a40;flex:1;">Phát lại liên tục</span>
-              <sc-if value="{{ vidLoop }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#405189;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidLoopOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:#fff;"></span></button></sc-if>
-              <sc-if value="{{ vidLoopOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#ced4da;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidLoopOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;"></span></button></sc-if>
+              <span style="font-size:13px;color:var(--color-heading,#1f2b4d);flex:1;">Phát lại liên tục</span>
+              <sc-if value="{{ vidLoop }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#2050a0;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidLoopOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
+              <sc-if value="{{ vidLoopOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#ced4da;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidLoopOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
             </div>
-            <div style="height:1px;background:#eff2f7;"></div>
+            <div style="height:1px;background:var(--color-border,#e9ecf4);"></div>
             <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;">
-              <span style="font-size:13px;color:#343a40;flex:1;">Hiện thanh điều khiển</span>
-              <sc-if value="{{ vidControls }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#405189;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidControlsOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:#fff;"></span></button></sc-if>
-              <sc-if value="{{ vidControlsOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#ced4da;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidControlsOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;"></span></button></sc-if>
+              <span style="font-size:13px;color:var(--color-heading,#1f2b4d);flex:1;">Hiện thanh điều khiển</span>
+              <sc-if value="{{ vidControls }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#2050a0;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidControlsOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
+              <sc-if value="{{ vidControlsOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#ced4da;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidControlsOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:12.5px;color:#495057;">Tỷ lệ khung</span>
-            <span style="display:inline-flex;background:#f3f3f9;border-radius:5px;padding:2px;gap:2px;">
+            <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);">Tỷ lệ khung</span>
+            <span style="display:inline-flex;background:var(--color-body,#f4f5fa);border-radius:5px;padding:2px;gap:2px;">
               <sc-for list="{{ vidRatios }}" as="r" hint-placeholder-count="3">
                 <button style="{{ r.style }}" onClick="{{ r.onClick }}">{{ r.label }}</button>
               </sc-for>
             </span>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid #eff2f7;background:#fbfcfd;">
-          <span style="flex:1 1 170px;min-width:0;font-size:11.5px;color:#adb5bd;line-height:1.45;">Khung soạn thảo hiện thẻ xem trước — bấm vào thẻ để sửa lại thuộc tính. Video phát thật khi xem trang.</span>
-          <sc-if value="{{ vidEdit }}"><button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border-radius:4px;border:1px solid #f7d3ce;background:#fff;color:#f06548;font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onVidRemove }}"><i class="ri-delete-bin-line"></i>Xoá video</button></sc-if>
-          <button style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid #e9ebec;background:#fff;color:#495057;font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onVidClose }}">Huỷ</button>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
+          <span style="flex:1 1 170px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">Khung soạn thảo hiện thẻ xem trước — bấm vào thẻ để sửa lại thuộc tính. Video phát thật khi xem trang.</span>
+          <sc-if value="{{ vidEdit }}"><button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border-radius:4px;border:1px solid #f7d3ce;background:var(--color-surface,#fff);color:var(--color-admin-danger-text,#f06548);font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onVidRemove }}"><i class="ri-delete-bin-line"></i>Xóa video</button></sc-if>
+          <button style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onVidClose }}">Hủy</button>
           <button style="{{ vidInsertStyle }}" onClick="{{ onVidInsert }}"><i class="ri-check-line"></i>{{ vidBtnLabel }}</button>
         </div>
       </div>
@@ -329,13 +333,13 @@
   <sc-if value="{{ linkOpen }}">
     <div style="position:fixed;inset:0;z-index:340;display:flex;align-items:center;justify-content:center;padding:24px;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onLinkClose }}"></div>
-      <div style="position:relative;z-index:1;width:480px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);padding:20px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><i class="ri-link" style="font-size:19px;color:#405189;"></i><span style="font-size:16px;font-weight:600;color:#343a40;">Chèn liên kết</span></div>
-        <div style="font-size:13px;color:#878a99;line-height:1.6;margin-bottom:12px;">Dán địa chỉ trang muốn liên kết tới. Chữ đang bôi đen sẽ trở thành liên kết.</div>
-        <input value="{{ linkUrl }}" placeholder="https://anvinh.vn/lien-he" onChange="{{ onLinkUrl }}" onKeyDown="{{ onLinkKey }}" style="width:100%;box-sizing:border-box;min-height:42px;padding:10px 12px;border:1px solid #e9ebec;border-radius:4px;font:inherit;font-size:13.5px;color:#495057;outline:none;" style-focus="border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,0.15);">
+      <div style="position:relative;z-index:1;width:480px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);padding:20px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><i class="ri-link" style="font-size:19px;color:var(--color-accent,#2050a0);"></i><span style="font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">Chèn liên kết</span></div>
+        <div style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.6;margin-bottom:12px;">Dán địa chỉ trang muốn liên kết tới. Chữ đang bôi đen sẽ trở thành liên kết.</div>
+        <input value="{{ linkUrl }}" placeholder="https://anvinh.vn/lien-he" onChange="{{ onLinkUrl }}" onKeyDown="{{ onLinkKey }}" style="width:100%;box-sizing:border-box;min-height:42px;padding:10px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);">
         <div style="{{ linkNoteStyle }}"><i class="{{ linkNoteIcon }}" style="font-size:14px;"></i>{{ linkNote }}</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:14px;">
-          <button style="border:0;background:transparent;font:inherit;font-size:13.5px;color:#878a99;cursor:pointer;padding:9px 4px;" style-hover="color:#405189;" onClick="{{ onLinkClose }}">Huỷ</button>
+          <button style="border:0;background:transparent;font:inherit;font-size:13.5px;color:var(--color-body-muted,#5b6275);cursor:pointer;padding:9px 4px;" style-hover="color:var(--color-accent,#2050a0);" onClick="{{ onLinkClose }}">Hủy</button>
           <button style="{{ linkOkStyle }}" onClick="{{ onLinkOk }}"><i class="ri-check-line" style="font-size:15px;"></i>Chèn liên kết</button>
         </div>
       </div>
@@ -345,11 +349,11 @@
   <sc-if value="{{ charOpen }}">
     <div style="position:fixed;inset:0;z-index:340;display:flex;align-items:center;justify-content:center;padding:24px;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onCharClose }}"></div>
-      <div style="position:relative;z-index:1;width:420px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);padding:18px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><i class="ri-omega" style="font-size:19px;color:#405189;"></i><span style="font-size:16px;font-weight:600;color:#343a40;">Ký tự đặc biệt</span></div>
+      <div style="position:relative;z-index:1;width:420px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);padding:18px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><i class="ri-omega" style="font-size:19px;color:var(--color-accent,#2050a0);"></i><span style="font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">Ký tự đặc biệt</span></div>
         <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;">
           <sc-for list="{{ chars }}" as="ch" hint-placeholder-count="32">
-            <button title="{{ ch.title }}" style="min-height:40px;border:1px solid #eff2f7;border-radius:4px;background:#fff;font:inherit;font-size:16px;color:#495057;cursor:pointer;" style-hover="background:#f3f6f9;border-color:#405189;color:#405189;" onClick="{{ ch.on }}">{{ ch.c }}</button>
+            <button title="{{ ch.title }}" style="min-height:40px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:16px;color:var(--color-body-text,#3c4765);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);border-color:#2050a0;color:var(--color-accent,#2050a0);" onClick="{{ ch.on }}">{{ ch.c }}</button>
           </sc-for>
         </div>
       </div>
@@ -475,7 +479,7 @@ class Component extends DCLogic {
       if (!(p.textContent || '').trim() && !p.querySelector('img,iframe')) p.parentNode.removeChild(p);
     });
   }
-  /* Trình duyệt hay chèn <div> khi bấm Enter nếu không khai báo defaultParagraphSeparator — chuẩn hoá
+  /* Trình duyệt hay chèn <div> khi bấm Enter nếu không khai báo defaultParagraphSeparator — chuẩn hóa
      mọi <div> văn bản thường (không phải khối video/bảng/hình) về <p> để khớp .pe-rte p và nút "Đoạn văn". */
   fixDivs() {
     const el = this._body; if (!el) return;
@@ -534,7 +538,7 @@ class Component extends DCLogic {
       this.push();
       el.innerHTML = this.sanitize(el.innerHTML);
       this.push(); this.emit(); this.count(); this.readTags();
-      this.notify('Đã xoá định dạng toàn bài — bỏ hết class, style và thẻ lạ, chỉ giữ thẻ được hỗ trợ.', 'ri-format-clear');
+      this.notify('Đã xóa định dạng toàn bài — bỏ hết class, style và thẻ lạ, chỉ giữ thẻ được hỗ trợ.', 'ri-format-clear');
       return;
     }
     const range = s.getRangeAt(0).cloneRange();
@@ -555,7 +559,7 @@ class Component extends DCLogic {
     } catch (_) {}
     this.fixLists();
     this.push(); this.emit(); this.count(); this.readTags();
-    this.notify('Đã xoá định dạng đoạn đã chọn', 'ri-format-clear');
+    this.notify('Đã xóa định dạng đoạn đã chọn', 'ri-format-clear');
   }
   setPara(tag, label) { this.cmd('formatBlock', '<' + tag + '>'); this.setState({ para: label, openMenu: null }); }
   setSize(px) {
@@ -745,13 +749,13 @@ class Component extends DCLogic {
     const pad = V.ratio === '4/3' ? '75%' : V.ratio === '1/1' ? '100%' : '56.25%';
     const bg = p.thumb ? 'background-image:url(' + p.thumb + ');background-size:cover;background-position:center;' : '';
     const tags = [p.name].concat(V.autoplay ? ['tự phát · tắt tiếng'] : [], V.loop ? ['phát lại liên tục'] : [], V.controls === false ? ['ẩn thanh điều khiển'] : [], [V.ratio.replace('/', ':')]).join(' · ');
-    return '<div class="pe-video" contenteditable="false" data-url="' + V.url.trim().replace(/"/g, '&quot;') + '" data-kind="' + p.kind + '" data-autoplay="' + (V.autoplay ? 1 : 0) + '" data-loop="' + (V.loop ? 1 : 0) + '" data-controls="' + (V.controls === false ? 0 : 1) + '" data-ratio="' + V.ratio + '" style="position:relative;margin:0 0 14px;border-radius:6px;overflow:hidden;background:#212529;padding-bottom:' + pad + ';' + bg + '"><span style="position:absolute;inset:0;background:rgba(20,23,28,.45);"></span><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.92);color:#212529;display:flex;align-items:center;justify-content:center;font-size:25px;"><i class="ri-play-fill"></i></span><span style="position:absolute;left:12px;bottom:11px;padding:4px 9px;border-radius:4px;background:rgba(0,0,0,.55);color:#fff;font-size:11.5px;font-weight:500;">' + tags + '</span><span class="pe-video-del" title="Xoá video" style="position:absolute;top:10px;right:10px;padding:5px 9px;border-radius:4px;background:rgba(255,255,255,.94);color:#f06548;font-size:11.5px;font-weight:600;"><i class="ri-delete-bin-line"></i> Xoá</span></div>';
+    return '<div class="pe-video" contenteditable="false" data-url="' + V.url.trim().replace(/"/g, '&quot;') + '" data-kind="' + p.kind + '" data-autoplay="' + (V.autoplay ? 1 : 0) + '" data-loop="' + (V.loop ? 1 : 0) + '" data-controls="' + (V.controls === false ? 0 : 1) + '" data-ratio="' + V.ratio + '" style="position:relative;margin:0 0 14px;border-radius:6px;overflow:hidden;background:#212529;padding-bottom:' + pad + ';' + bg + '"><span style="position:absolute;inset:0;background:rgba(20,23,28,.45);"></span><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.92);color:var(--color-heading,#212529);display:flex;align-items:center;justify-content:center;font-size:25px;"><i class="ri-play-fill"></i></span><span style="position:absolute;left:12px;bottom:11px;padding:4px 9px;border-radius:4px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:500;">' + tags + '</span><span class="pe-video-del" title="Xóa video" style="position:absolute;top:10px;right:10px;padding:5px 9px;border-radius:4px;background:rgba(255,255,255,.94);color:var(--color-admin-danger-text,#f06548);font-size:12px;font-weight:600;"><i class="ri-delete-bin-line"></i> Xóa</span></div>';
   }
   vidRemove(node) {
     if (!node || !node.parentNode) return;
     this.push(); node.parentNode.removeChild(node); this._vidNode = null;
     this.setState({ vid: null }); this.push(); this.emit(); this.count();
-    this.notify('Đã xoá video khỏi bài — Ctrl+Z để lấy lại', 'ri-delete-bin-line');
+    this.notify('Đã xóa video khỏi bài — Ctrl+Z để lấy lại', 'ri-delete-bin-line');
   }
   vidInsert() {
     const V = this.state.vid; if (!V) return;
@@ -828,7 +832,7 @@ class Component extends DCLogic {
       + '" style="margin:0 0 14px;text-align:' + al + ';">'
       + '<span class="pe-img-pic" contenteditable="false" title="Bấm để sửa thuộc tính ảnh" style="display:inline-block;width:' + w + ';max-width:100%;cursor:pointer;">'
       + '<span style="display:block;width:100%;aspect-ratio:' + esc(I.ratio || '16/9') + ';border-radius:6px;background:' + bg + ';"></span></span>'
-      + (cap ? '<figcaption style="margin-top:6px;font-size:12px;color:#878a99;text-align:' + al + ';">' + esc(cap) + '</figcaption>' : '')
+      + (cap ? '<figcaption style="margin-top:6px;font-size:12px;color:var(--color-body-muted,#5b6275);text-align:' + al + ';">' + esc(cap) + '</figcaption>' : '')
       + '</figure>';
   }
   imgSave() {
@@ -853,7 +857,7 @@ class Component extends DCLogic {
     if (!node || !node.parentNode) { this.imgClose(); return; }
     this.push(); node.parentNode.removeChild(node); this._imgNode = null;
     this.setState({ img: null }); this.push(); this.emit(); this.count();
-    this.notify('Đã xoá ảnh khỏi bài — Ctrl+Z để lấy lại', 'ri-delete-bin-line');
+    this.notify('Đã xóa ảnh khỏi bài — Ctrl+Z để lấy lại', 'ri-delete-bin-line');
   }
   /* Chọn 1 ảnh → đổ vào bảng thuộc tính; chọn nhiều tệp → chèn thẳng như cũ (không bắt khai từng ảnh) */
   imgPicked(payload) {
@@ -887,10 +891,10 @@ class Component extends DCLogic {
       const name = esc(it.name || 'tep-media');
       const ratio = (it.w && it.h) ? (it.w + '/' + it.h) : '16/9';
       if (it.mediaType === 'video') {
-        return '<div class="pe-video" contenteditable="false" data-url="' + name + '" data-kind="file" data-autoplay="0" data-loop="0" data-controls="1" data-ratio="16/9" style="position:relative;margin:0 0 14px;border-radius:6px;overflow:hidden;background:#212529;padding-bottom:56.25%;"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.92);color:#212529;display:flex;align-items:center;justify-content:center;font-size:25px;"><i class="ri-play-fill"></i></span><span style="position:absolute;left:12px;bottom:11px;padding:4px 9px;border-radius:4px;background:rgba(0,0,0,.55);color:#fff;font-size:11.5px;font-weight:500;">' + name + '</span><span class="pe-video-del" title="Xoá" style="position:absolute;top:10px;right:10px;padding:5px 9px;border-radius:4px;background:rgba(255,255,255,.94);color:#f06548;font-size:11.5px;font-weight:600;"><i class="ri-delete-bin-line"></i> Xoá</span></div>';
+        return '<div class="pe-video" contenteditable="false" data-url="' + name + '" data-kind="file" data-autoplay="0" data-loop="0" data-controls="1" data-ratio="16/9" style="position:relative;margin:0 0 14px;border-radius:6px;overflow:hidden;background:#212529;padding-bottom:56.25%;"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.92);color:var(--color-heading,#212529);display:flex;align-items:center;justify-content:center;font-size:25px;"><i class="ri-play-fill"></i></span><span style="position:absolute;left:12px;bottom:11px;padding:4px 9px;border-radius:4px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:500;">' + name + '</span><span class="pe-video-del" title="Xóa" style="position:absolute;top:10px;right:10px;padding:5px 9px;border-radius:4px;background:rgba(255,255,255,.94);color:var(--color-admin-danger-text,#f06548);font-size:12px;font-weight:600;"><i class="ri-delete-bin-line"></i> Xóa</span></div>';
       }
       if (it.mediaType && it.mediaType !== 'image') {
-        return '<p><a href="#" title="' + name + '" style="display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid #e9ebec;border-radius:6px;background:#fcfcfd;color:#405189;text-decoration:none;font-weight:500;"><i class="' + esc(it.icon || 'ri-attachment-2') + '" style="font-size:17px;color:' + esc(it.iconColor || '#878a99') + ';"></i>' + name + (it.size ? ' <span style="color:#adb5bd;font-weight:400;">· ' + it.size + ' MB</span>' : '') + '</a></p>';
+        return '<p><a href="#" title="' + name + '" style="display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface-muted,#fcfcfd);color:var(--color-accent,#2050a0);text-decoration:none;font-weight:500;"><i class="' + esc(it.icon || 'ri-attachment-2') + '" style="font-size:17px;color:' + esc(it.iconColor || '#878a99') + ';"></i>' + name + (it.size ? ' <span style="color:var(--color-body-muted,#5b6275);font-weight:400;">· ' + it.size + ' MB</span>' : '') + '</a></p>';
       }
       const bg = it.bg ? esc(it.bg) : 'linear-gradient(135deg,#e9ecf3,#d5dae6)';
       /* dùng đúng một khuôn ảnh với bảng thuộc tính → ảnh nào cũng bấm vào sửa lại được */
@@ -915,14 +919,14 @@ class Component extends DCLogic {
     const SIZES = [[12, 'Rất nhỏ'], [14, 'Nhỏ'], [16, 'Bình thường'], [20, 'Lớn'], [24, 'Rất lớn']];
     const HUE = [0, 30, 45, 90, 150, 190, 210, 260, 300, 330];
     const COLORS = [];
-    ['#212529', '#495057', '#878a99', '#ced4da', '#e9ebec', '#ffffff', '#405189', '#3577f1', '#0ab39c', '#f06548'].forEach(h => COLORS.push(h));
+    ['#212529', '#3c4765', '#878a99', '#ced4da', '#e9ebec', '#ffffff', '#2050a0', '#3577f1', '#0ab39c', '#f06548'].forEach(h => COLORS.push(h));
     HUE.forEach(h => { [72, 58, 44].forEach(l => COLORS.push(this.hsl(h, 70, l))); });
     const CHARS = ['©', '®', '™', '°', '±', '×', '÷', '≈', '≤', '≥', '≠', 'µ', 'Ø', 'Ω', 'α', 'β', 'π', '½', '¼', '¾', '€', '₫', '§', '→', '←', '↑', '↓', '•', '–', '—', '«', '»'];
     const MODES = [['rewrite', 'Viết lại', 'ri-magic-line'], ['short', 'Ngắn gọn', 'ri-scissors-cut-line'], ['longer', 'Dài hơn', 'ri-text-wrap'], ['simple', 'Dễ hiểu', 'ri-lightbulb-line'], ['formal', 'Trang trọng', 'ri-quill-pen-line']];
     const A = S.ai, si = S.selInfo, V = S.vid || { url: '', controls: true, ratio: '16/9' };
     const I = S.img || {};
-    const segS = (on) => 'min-height:34px;padding:7px 12px;border-radius:4px;border:1px solid ' + (on ? '#405189' : '#e9ebec') + ';background:' + (on ? 'rgba(64,81,137,0.06)' : '#fff') + ';font:inherit;font-size:12.5px;font-weight:600;color:' + (on ? '#405189' : '#495057') + ';cursor:pointer;white-space:nowrap;';
-    const segI = (on) => 'width:40px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;border:1px solid ' + (on ? '#405189' : '#e9ebec') + ';background:' + (on ? 'rgba(64,81,137,0.06)' : '#fff') + ';color:' + (on ? '#405189' : '#878a99') + ';cursor:pointer;';
+    const segS = (on) => 'min-height:34px;padding:7px 12px;border-radius:4px;border:1px solid ' + (on ? '#2050a0' : '#e9ebec') + ';background:' + (on ? 'rgba(32,80,160,0.06)' : '#fff') + ';font:inherit;font-size:12.5px;font-weight:600;color:' + (on ? '#2050a0' : '#3c4765') + ';cursor:pointer;white-space:nowrap;';
+    const segI = (on) => 'width:40px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;border:1px solid ' + (on ? '#2050a0' : '#e9ebec') + ';background:' + (on ? 'rgba(32,80,160,0.06)' : '#fff') + ';color:' + (on ? '#2050a0' : '#878a99') + ';cursor:pointer;';
     const VP = this.vidParse(V.url);
     const vidOk = !!(VP.kind && VP.kind !== 'bad');
     const linkVal = S.link == null ? '' : S.link;
@@ -930,8 +934,8 @@ class Component extends DCLogic {
     const aiCost = this.aiCost();
     return {
       frameStyle: S.rteFull
-        ? 'position:fixed;inset:16px;z-index:250;display:flex;flex-direction:column;background:#fff;border:1px solid #e9ebec;border-radius:8px;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:auto;'
-        : 'border:1px solid #e9ebec;border-radius:8px;background:#fff;overflow:visible;',
+        ? 'position:fixed;inset:16px;z-index:250;display:flex;flex-direction:column;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:auto;'
+        : 'border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;background:var(--color-surface,#fff);overflow:visible;',
       keep: (e) => this.keep(e),
       bodyRef: this.bodyRef, editable: !ro && !S.rteSource,
       editorDisp: S.rteSource ? 'none' : 'block',
@@ -964,18 +968,18 @@ class Component extends DCLogic {
       aiBlocked: !!si && (!canAi || ro || left <= 0),
       aiBubbleStyle: 'position:absolute;z-index:80;top:' + ((si && si.top) || 0) + 'px;left:' + (20 + ((si && si.left) || 0)) + 'px;',
       aiBubbleTitle: !si ? '' : (!canAi ? 'Vai trò của bạn chưa được dùng trợ lý AI' : (ro ? 'Nội dung này bạn chỉ được xem' : (left <= 0 ? 'Hết từ AI trong tháng này — mua thêm hoặc nâng gói' : ('Dùng khoảng ' + this.nfm(aiCost) + ' từ AI')))),
-      aiBubbleBtnStyle: 'display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border-radius:6px;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;' + ((!canAi || ro || left <= 0) ? 'border:1px solid #eff2f7;background:#f3f3f9;color:#adb5bd;cursor:not-allowed;' : 'border:1px solid rgba(64,81,137,0.28);background:#fff;box-shadow:0 6px 18px rgba(56,65,74,0.20);color:#405189;cursor:pointer;'),
+      aiBubbleBtnStyle: 'display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border-radius:6px;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;' + ((!canAi || ro || left <= 0) ? 'border:1px solid var(--color-border,#e9ecf4);background:var(--color-body,#f4f5fa);color:var(--color-body-muted,#5b6275);cursor:not-allowed;' : 'border:1px solid rgba(32,80,160,0.28);background:var(--color-surface,#fff);box-shadow:0 6px 18px rgba(56,65,74,0.20);color:var(--color-accent,#2050a0);cursor:pointer;'),
       aiSelWords: si ? (this.wc(si.text) + ' từ') : '',
       aiPanelOn: !!A, onAiClose: () => this.setState({ ai: null }),
       aiCurrent: A ? A.text : '', aiHasResult: !!(A && A.out), aiSuggestion: A ? A.out : '',
       aiModeLabel: A && A.mode ? ({ rewrite: 'Viết lại', short: 'Ngắn gọn', longer: 'Dài hơn', simple: 'Dễ hiểu', formal: 'Trang trọng' }[A.mode]) : '',
       aiModes: MODES.map(([k, l, i]) => ({
         label: l, icon: i, title: 'Dùng khoảng ' + this.nfm(aiCost) + ' từ AI',
-        style: 'display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:7px 11px;border-radius:20px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid ' + (A && A.mode === k ? '#405189' : '#e9ebec') + ';background:' + (A && A.mode === k ? 'rgba(64,81,137,.08)' : '#fff') + ';color:' + (A && A.mode === k ? '#405189' : '#495057') + ';',
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:7px 11px;border-radius:20px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid ' + (A && A.mode === k ? '#2050a0' : '#e9ebec') + ';background:' + (A && A.mode === k ? 'rgba(32,80,160,.08)' : '#fff') + ';color:' + (A && A.mode === k ? '#2050a0' : '#3c4765') + ';',
         on: () => this.aiRun(k)
       })),
       aiSpent: A ? (A.spent ? ('Đã dùng ' + this.nfm(A.spent) + ' từ AI · còn ' + this.nfm(left) + ' từ') : ('Chọn một cách viết — mỗi lần chạy dùng khoảng ' + this.nfm(aiCost) + ' từ AI')) : '',
-      aiApplyStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (A && A.out ? 'background:#405189;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:#adb5bd;cursor:not-allowed;'),
+      aiApplyStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (A && A.out ? 'background:#2050a0;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
       onAiApply: () => { if (A && A.out) this.aiApply(); },
 
       toolbarFull: S.toolbarFull,
@@ -986,17 +990,17 @@ class Component extends DCLogic {
       sizeArrow: S.openMenu === 'size' ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line',
       sizeMenuOpen: S.openMenu === 'size',
       onToggleSize: () => { this.saveRange(); this.setState(s => ({ openMenu: s.openMenu === 'size' ? null : 'size' })); },
-      sizeItems: SIZES.map(([px, label]) => ({ label: label + ' · ' + px + 'px', style: 'display:block;width:100%;box-sizing:border-box;min-height:36px;padding:7px 12px;border:0;background:transparent;text-align:left;cursor:pointer;font:inherit;color:#495057;font-size:' + Math.min(px, 18) + 'px;', on: () => this.setSize(px) })),
+      sizeItems: SIZES.map(([px, label]) => ({ label: label + ' · ' + px + 'px', style: 'display:block;width:100%;box-sizing:border-box;min-height:36px;padding:7px 12px;border:0;background:transparent;text-align:left;cursor:pointer;font:inherit;color:var(--color-body-text,#3c4765);font-size:' + Math.min(px, 18) + 'px;', on: () => this.setSize(px) })),
 
       colorMenuOpen: S.openMenu === 'color',
       onToggleColor: () => { this.saveRange(); this.setState(s => ({ openMenu: s.openMenu === 'color' ? null : 'color' })); },
-      colorTabTextStyle: 'flex:1;min-height:36px;border:0;border-bottom:2px solid ' + (S.colorTab === 'text' ? '#405189' : 'transparent') + ';background:#fff;font:inherit;font-size:12.5px;font-weight:600;color:' + (S.colorTab === 'text' ? '#405189' : '#878a99') + ';cursor:pointer;',
-      colorTabBgStyle: 'flex:1;min-height:36px;border:0;border-bottom:2px solid ' + (S.colorTab === 'bg' ? '#405189' : 'transparent') + ';background:#fff;font:inherit;font-size:12.5px;font-weight:600;color:' + (S.colorTab === 'bg' ? '#405189' : '#878a99') + ';cursor:pointer;',
+      colorTabTextStyle: 'flex:1;min-height:36px;border:0;border-bottom:2px solid ' + (S.colorTab === 'text' ? '#2050a0' : 'transparent') + ';background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:600;color:' + (S.colorTab === 'text' ? '#2050a0' : '#878a99') + ';cursor:pointer;',
+      colorTabBgStyle: 'flex:1;min-height:36px;border:0;border-bottom:2px solid ' + (S.colorTab === 'bg' ? '#2050a0' : 'transparent') + ';background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:600;color:' + (S.colorTab === 'bg' ? '#2050a0' : '#878a99') + ';cursor:pointer;',
       onColorText: () => this.setState({ colorTab: 'text' }), onColorBg: () => this.setState({ colorTab: 'bg' }),
       colorItems: COLORS.map(hex => ({ bg: 'width:100%;aspect-ratio:1;min-height:20px;border:1px solid rgba(0,0,0,.08);border-radius:4px;cursor:pointer;background:' + hex + ';', on: () => this.applyColor(hex) })),
       onCustomColor: (e) => { const v = e && e.target ? e.target.value : ''; if (v) this.applyColor(v); },
 
-      sourceBtnStyle: S.rteSource ? 'background:rgba(64,81,137,.10);color:#405189;' : '',
+      sourceBtnStyle: S.rteSource ? 'background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);' : '',
       onToggleSource: () => this.toggleSource(), rteSource: S.rteSource, sourceHtml: S.sourceHtml,
       onSourceInput: (e) => this.setState({ sourceHtml: e.target.value }),
       rteFullIcon: S.rteFull ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line',
@@ -1004,12 +1008,12 @@ class Component extends DCLogic {
 
       tagPath: (S.tags || []).map((name, i) => ({
         name: name, title: 'Chọn trọn thẻ <' + name + '>',
-        style: 'border:1px solid ' + (i === S.tags.length - 1 ? '#ced4da' : 'transparent') + ';background:' + (i === S.tags.length - 1 ? '#eef1f8' : 'transparent') + ';color:' + (i === S.tags.length - 1 ? '#405189' : '#878a99') + ';border-radius:3px;padding:2px 6px;font:inherit;font-size:11px;font-family:ui-monospace,Menlo,monospace;cursor:pointer;',
+        style: 'border:1px solid ' + (i === S.tags.length - 1 ? '#ced4da' : 'transparent') + ';background:' + (i === S.tags.length - 1 ? '#eef1f8' : 'transparent') + ';color:' + (i === S.tags.length - 1 ? '#2050a0' : '#878a99') + ';border-radius:3px;padding:2px 6px;font:inherit;font-size:12px;font-family:ui-monospace,Menlo,monospace;cursor:pointer;',
         on: () => this.selectTag(i)
       })),
       charCount: this.nfm(S.chars), wordCount: this.nfm(S.words), readMin: Math.max(1, Math.round(S.words / 200)),
       quotaChip: left > 0 ? ('Còn ' + this.nfm(left) + ' từ AI') : 'Hết từ AI tháng này',
-      quotaStyle: 'display:inline-flex;align-items:center;gap:5px;font-size:11px;white-space:nowrap;' + (left <= 0 ? 'padding:4px 9px;border-radius:20px;font-weight:600;background:rgba(240,101,72,.12);color:#f06548;' : (pct <= 0.2 ? 'padding:4px 9px;border-radius:20px;font-weight:600;background:rgba(247,184,75,.18);color:#a9761d;' : 'font-weight:400;color:#adb5bd;')),
+      quotaStyle: 'display:inline-flex;align-items:center;gap:5px;font-size:12px;white-space:nowrap;' + (left <= 0 ? 'padding:4px 9px;border-radius:20px;font-weight:600;background:rgba(240,101,72,.12);color:var(--color-admin-danger-text,#f06548);' : (pct <= 0.2 ? 'padding:4px 9px;border-radius:20px;font-weight:600;background:rgba(247,184,75,.18);color:var(--color-admin-warning-text,#a9761d);' : 'font-weight:400;color:var(--color-body-muted,#5b6275);')),
       quotaTitle: 'Còn ' + this.nfm(left) + ' từ AI trong tháng này' + (window.BSAI ? ' — ' + window.BSAI.enough(left, ['post', 'rewrite']) : ''),
 
       linkOpen: S.link != null, linkVal: linkVal,
@@ -1018,7 +1022,7 @@ class Component extends DCLogic {
       linkNote: !String(linkVal).trim() || linkVal === 'https://' ? 'Dán địa chỉ trang muốn liên kết tới.' : (linkOk ? 'Địa chỉ hợp lệ.' : 'Địa chỉ phải bắt đầu bằng https:// và có tên miền.'),
       linkNoteStyle: 'display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:' + (!String(linkVal).trim() || linkVal === 'https://' ? '#adb5bd' : (linkOk ? '#0ab39c' : '#c9412a')) + ';',
       linkNoteIcon: !String(linkVal).trim() || linkVal === 'https://' ? 'ri-information-line' : (linkOk ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'),
-      linkOkStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (linkOk ? 'background:#405189;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:#adb5bd;cursor:not-allowed;'),
+      linkOkStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (linkOk ? 'background:#2050a0;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
       onLinkOk: () => { if (linkOk) this.linkOk(); }, onLinkClose: () => this.setState({ link: null }),
 
       mediaOpen: S.mediaOpen, onCloseMedia: () => { this.clearMark(); this.setState({ mediaOpen: false }); },
@@ -1038,7 +1042,7 @@ class Component extends DCLogic {
       onImgPicked: (p) => this.imgPicked(p), onImgPickClose: () => this.setState({ imgPick: false }),
       onImgClose: () => this.imgClose(), onImgSave: () => this.imgSave(), onImgRemove: () => this.imgRemove(),
       imgSaveLabel: I.edit ? 'Lưu thay đổi' : 'Chèn ảnh',
-      imgSaveStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;' + (I.name ? 'background:#405189;color:#fff;cursor:pointer;' : 'background:#e9ebec;color:#adb5bd;cursor:not-allowed;'),
+      imgSaveStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;' + (I.name ? 'background:#2050a0;color:#fff;cursor:pointer;' : 'background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
 
       vidOpen: !!S.vid, vidUrl: V.url, onVidUrl: (e) => this.vidSet('url', e.target.value),
       vidInputRef: (el) => { this._vidInput = el; },
@@ -1051,12 +1055,12 @@ class Component extends DCLogic {
       onVidControlsOn: () => this.vidSet('controls', true), onVidControlsOff: () => this.vidSet('controls', false),
       vidRatios: [['16/9', '16:9'], ['4/3', '4:3'], ['1/1', '1:1']].map(([k, lb]) => ({
         label: lb, onClick: () => this.vidSet('ratio', k),
-        style: 'min-height:32px;padding:5px 11px;border-radius:4px;border:0;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;' + ((V.ratio || '16/9') === k ? 'background:#fff;color:#405189;box-shadow:0 1px 2px rgba(56,65,74,.15);' : 'background:transparent;color:#878a99;')
+        style: 'min-height:32px;padding:5px 11px;border-radius:4px;border:0;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;' + ((V.ratio || '16/9') === k ? 'background:var(--color-surface,#fff);color:var(--color-accent,#2050a0);box-shadow:0 1px 2px rgba(56,65,74,.15);' : 'background:transparent;color:var(--color-body-muted,#5b6275);')
       })),
       vidTitle: V.edit ? 'Sửa video' : 'Chèn video', vidBtnLabel: V.edit ? 'Lưu thay đổi' : 'Chèn video',
       vidEdit: !!V.edit, onVidRemove: () => this.vidRemove(this._vidNode),
       onVidClose: () => this.vidClose(), onVidInsert: () => { if (vidOk) this.vidInsert(); },
-      vidInsertStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (vidOk ? 'background:#405189;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:#adb5bd;cursor:not-allowed;'),
+      vidInsertStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (vidOk ? 'background:#2050a0;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
 
       charOpen: S.charOpen, onCharClose: () => { this.clearMark(); this.setState({ charOpen: false }); },
       chars: CHARS.map(c => ({ c: c, title: 'Chèn ' + c, on: () => { this.setState({ charOpen: false }, () => this.cmd('insertText', c)); } })),

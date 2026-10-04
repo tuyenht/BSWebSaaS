@@ -8,6 +8,9 @@
 <body>
 <x-dc>
 <helmet>
+<link rel="stylesheet" href="admin-base.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
@@ -15,28 +18,28 @@
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
 <script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <style>
-body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
-a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
-.rv-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
-.rv-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
-.rv-t{font-size:14px;font-weight:600;color:#343a40;}
-.rv-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid #f6f7f9;flex-wrap:wrap;}
-.rv-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
-.rv-tab:hover{background:#f3f6f9;}
-.rv-tab.on{border-color:#405189;background:rgba(64,81,137,.08);font-weight:600;color:#405189;}
-.rv-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
-.rv-btn:hover{background:#f3f6f9;}
-.rv-ai{border-color:rgba(64,81,137,.28);background:rgba(64,81,137,.10);color:#405189;}
-.rv-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
-.rv-pri:disabled{background:#e9ebec;color:#adb5bd;cursor:not-allowed;}
-.rv-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
-.rv-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid #e9ebec;border-radius:20px;background:#fff;font:inherit;font-size:12px;font-weight:500;color:#495057;cursor:pointer;white-space:nowrap;}
-.rv-pill:hover{background:#f3f6f9;}
-.rv-pill.on{border-color:#405189;background:rgba(64,81,137,.07);font-weight:600;color:#405189;}
-.rv-cb{width:18px;height:18px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:#fff;}
-.rv-cb.on{border-color:#405189;background:#405189;color:#fff;}
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);}
+a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--color-accent,#2f3d69);text-decoration:underline;}
+.rv-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.rv-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;}
+.rv-t{font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);}
+.rv-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);flex-wrap:wrap;}
+.rv-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
+.rv-tab:hover{background:var(--color-surface-hover,#f3f6f9);}
+.rv-tab.on{border-color:#2050a0;background:rgba(32,80,160,.08);font-weight:600;color:var(--color-accent,#2050a0);}
+.rv-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
+.rv-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
+.rv-ai{border-color:rgba(32,80,160,.28);background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);}
+.rv-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.rv-pri:disabled{background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
+.rv-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
+.rv-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
+.rv-pill:hover{background:var(--color-surface-hover,#f3f6f9);}
+.rv-pill.on{border-color:#2050a0;background:rgba(32,80,160,.07);font-weight:600;color:var(--color-accent,#2050a0);}
+.rv-cb{width:18px;height:18px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);}
+.rv-cb.on{border-color:#2050a0;background:#2050a0;color:#fff;}
 .rv-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
 .rv-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
 @media (max-width:900px){.rv-4{grid-template-columns:repeat(2,minmax(0,1fr));}}
@@ -48,11 +51,11 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
   <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
     <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
-      <span style="font-size:11.5px;color:#adb5bd;">Nội dung › Duyệt &amp; xuất bản</span>
-      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Duyệt &amp; xuất bản</span>
-      <span style="font-size:13px;color:#878a99;line-height:1.65;">Một chỗ duy nhất cho mọi bài AI đã viết xong — bài viết, mô tả sản phẩm, tin tức. Bài đã qua cổng chất lượng thì chỉ cần bạn xem và bấm đăng; bài chưa đạt có sẵn danh sách chỗ cần sửa.</span>
+      <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Nội dung › Duyệt &amp; xuất bản</span>
+      <span style="font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.35;">Duyệt &amp; xuất bản</span>
+      <span style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Một chỗ duy nhất cho mọi bài AI đã viết xong — bài viết, mô tả sản phẩm, tin tức. Bài đã qua cổng chất lượng thì chỉ cần bạn xem và bấm đăng; bài chưa đạt có sẵn danh sách chỗ cần sửa.</span>
     </div>
-    <div style="display:flex;gap:8px;flex:0 0 auto;margin-top:22px;flex-wrap:wrap;">
+    <div style="display:flex;gap:8px;flex:0 1 auto;min-width:0;flex-wrap:wrap;margin-top:22px;">
       <button class="rv-btn" style="min-height:38px;" onClick="{{ onSettings }}"><i class="ri-settings-3-line" style="font-size:15px;"></i>Cài đặt xuất bản</button>
       <button class="rv-pri" onClick="{{ onApproveReady }}" title="{{ approveReadyTitle }}" disabled="{{ approveReadyOff }}"><i class="ri-check-double-line" style="font-size:16px;"></i>{{ approveReadyLabel }}</button>
     </div>
@@ -61,9 +64,9 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   <div class="rv-4">
     <sc-for list="{{ stats }}" as="s" hint-placeholder-count="4">
       <div class="rv-card" style="padding:14px;display:flex;flex-direction:column;gap:5px;">
-        <span style="display:flex;align-items:center;gap:7px;"><i class="{{ s.icon }}" style="font-size:15px;color:{{ s.color }};"></i><span style="font-size:11.5px;color:#878a99;line-height:1.4;">{{ s.label }}</span></span>
-        <span style="font-size:22px;font-weight:600;color:#343a40;font-variant-numeric:tabular-nums;">{{ s.value }}</span>
-        <span style="font-size:11px;color:#adb5bd;line-height:1.5;">{{ s.hint }}</span>
+        <span style="display:flex;align-items:center;gap:7px;"><i class="{{ s.icon }}" style="font-size:15px;color:{{ s.color }};"></i><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.4;">{{ s.label }}</span></span>
+        <span style="font-size:22px;font-weight:600;color:var(--color-heading,#1f2b4d);font-variant-numeric:tabular-nums;">{{ s.value }}</span>
+        <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ s.hint }}</span>
       </div>
     </sc-for>
   </div>
@@ -86,17 +89,17 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
         </button>
         <span class="rv-t">Bài đã viết xong, chờ bạn</span>
         <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span style="font-size:11.5px;color:#878a99;white-space:nowrap;">{{ pickedLine }}</span>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">{{ pickedLine }}</span>
           <sc-if value="{{ hasPicked }}">
             <button class="rv-btn rv-ai" onClick="{{ onBulkApprove }}" title="{{ bulkApproveTitle }}"><i class="ri-check-double-line" style="font-size:14px;"></i>{{ bulkApproveLabel }}</button>
-            <button class="rv-btn" onClick="{{ onBulkReturn }}" title="Trả lại cho AI sửa theo bảng kiểm, không tốn lượt cho phần đã viết"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Trả lại AI sửa</button>
+            <button class="rv-btn" onClick="{{ onBulkReturn }}" title="Trả lại cho AI sửa theo bảng kiểm, không tốn thêm từ AI cho phần đã viết"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Trả lại AI sửa</button>
           </sc-if>
         </span>
       </div>
-      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid #f6f7f9;">
+      <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:11px 16px;border-bottom:1px solid var(--color-border-soft,#f6f7f9);">
         <sc-for list="{{ filters }}" as="f" hint-placeholder-count="6">
           <sc-if value="{{ f.on2 }}"><button class="rv-pill on" onClick="{{ f.on }}" title="{{ f.title }}">{{ f.label }}<span style="font-weight:700;">{{ f.n }}</span></button></sc-if>
-          <sc-if value="{{ f.off }}"><button class="rv-pill" onClick="{{ f.on }}" title="{{ f.title }}">{{ f.label }}<span style="color:#adb5bd;font-weight:600;">{{ f.n }}</span></button></sc-if>
+          <sc-if value="{{ f.off }}"><button class="rv-pill" onClick="{{ f.on }}" title="{{ f.title }}">{{ f.label }}<span style="color:var(--color-body-muted,#5b6275);font-weight:600;">{{ f.n }}</span></button></sc-if>
         </sc-for>
       </div>
       <sc-for list="{{ items }}" as="it" hint-placeholder-count="6">
@@ -107,27 +110,27 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
           </button>
           <span style="display:flex;flex-direction:column;gap:4px;flex:1 1 320px;min-width:0;">
             <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
-              <span style="font-size:13px;font-weight:600;color:#343a40;line-height:1.4;">{{ it.title }}</span>
+              <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ it.title }}</span>
               <span class="rv-chip" style="{{ it.typeStyle }}">{{ it.type }}</span>
             </span>
-            <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ it.dest }}</span>
-            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><i class="{{ it.whyIcon }}" style="font-size:13px;color:{{ it.whyColor }};"></i><span style="font-size:11.5px;color:{{ it.whyColor }};font-weight:600;line-height:1.5;">{{ it.why }}</span></span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">{{ it.dest }}</span>
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><i class="{{ it.whyIcon }}" style="font-size:13px;color:{{ it.whyColor }};"></i><span style="font-size:12px;color:{{ it.whyColor }};font-weight:600;line-height:1.5;">{{ it.why }}</span></span>
           </span>
           <span style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;flex-shrink:0;min-width:96px;">
             <span style="font-size:18px;font-weight:700;color:{{ it.scoreColor }};font-variant-numeric:tabular-nums;">{{ it.score }}</span>
-            <span style="font-size:11px;color:#adb5bd;white-space:nowrap;">{{ it.when }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">{{ it.when }}</span>
           </span>
-          <span style="display:flex;gap:7px;flex-shrink:0;flex-wrap:wrap;">
+          <span style="display:flex;gap:7px;flex-shrink:1;min-width:0;flex-wrap:wrap;">
             <button class="rv-btn" style="min-height:34px;" onClick="{{ it.onView }}">Xem bài</button>
             <sc-if value="{{ it.canPublish }}"><button class="rv-btn rv-ai" style="min-height:34px;" onClick="{{ it.onPublish }}" title="{{ it.publishTitle }}">{{ it.publishLabel }}</button></sc-if>
             <sc-if value="{{ it.needsFix }}"><button class="rv-btn rv-ai" style="min-height:34px;" onClick="{{ it.onFix }}" title="{{ it.fixTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ it.fixLabel }}</button></sc-if>
-            <button class="rv-btn" style="min-height:34px;padding:0 8px;" onClick="{{ it.onDrop }}" title="Bỏ bài này — chuyển vào thùng rác, giữ 30 ngày"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button>
+            <button class="rv-btn" style="min-height:34px;padding:0 8px;" onClick="{{ it.onDrop }}" title="Bỏ bài này — chuyển vào thùng rác, giữ 30 ngày" aria-label="Bỏ bài này — chuyển vào thùng rác, giữ 30 ngày"><i class="ri-delete-bin-line" style="font-size:14px;"></i></button>
           </span>
         </div>
       </sc-for>
-      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
-        <i class="ri-information-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-        <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Điểm là kết quả bảng kiểm của đúng loại nội dung đó. Bài “đạt cổng” chỉ cần bạn xem rồi bấm đăng — hoặc để hệ thống tự đăng đúng lịch. Bài thiếu ảnh thật hoặc thiếu thông số thì AI không đoán: bạn bổ sung rồi bấm chạy lại, phần đã viết không phải viết lại.</span>
+      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
+        <i class="ri-information-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Điểm là kết quả bảng kiểm của đúng loại nội dung đó. Bài “đạt cổng” chỉ cần bạn xem rồi bấm đăng — hoặc để hệ thống tự đăng đúng lịch. Bài thiếu ảnh thật hoặc thiếu thông số thì AI không đoán: bạn bổ sung rồi bấm chạy lại, phần đã viết không phải viết lại.</span>
       </div>
     </div>
   </sc-if>
@@ -135,19 +138,19 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   <sc-if value="{{ tabHoldOn }}" hint-placeholder-val="{{ false }}">
     <div class="rv-card">
       <div class="rv-h">
-        <i class="ri-timer-2-line" style="font-size:17px;color:#405189;"></i>
+        <i class="ri-timer-2-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
         <span class="rv-t">Đã qua cổng — sẽ tự đăng nếu bạn không chặn</span>
-        <span style="margin-left:auto;font-size:11.5px;color:#878a99;">{{ holdSummary }}</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ holdSummary }}</span>
       </div>
       <sc-for list="{{ holds }}" as="h" hint-placeholder-count="4">
         <div class="rv-row" style="padding:12px 16px;">
           <span style="display:flex;flex-direction:column;gap:4px;flex:1 1 320px;min-width:0;">
-            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:#343a40;line-height:1.4;">{{ h.title }}</span><span class="rv-chip" style="{{ h.typeStyle }}">{{ h.type }}</span><span class="rv-chip" style="background:rgba(10,179,156,.12);color:#0a7d6f;">{{ h.score }} điểm · đạt cổng</span></span>
-            <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ h.dest }}</span>
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ h.title }}</span><span class="rv-chip" style="{{ h.typeStyle }}">{{ h.type }}</span><span class="rv-chip" style="background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);">{{ h.score }} điểm · đạt cổng</span></span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">{{ h.dest }}</span>
           </span>
           <span style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;flex-shrink:0;">
-            <span style="font-size:12.5px;font-weight:600;color:#b57d13;white-space:nowrap;">{{ h.left }}</span>
-            <span style="font-size:11px;color:#adb5bd;white-space:nowrap;">{{ h.when }}</span>
+            <span style="font-size:12.5px;font-weight:600;color:var(--color-admin-warning-text,#b57d13);white-space:nowrap;">{{ h.left }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">{{ h.when }}</span>
           </span>
           <span style="display:flex;gap:7px;flex-shrink:0;">
             <button class="rv-btn" style="min-height:34px;" onClick="{{ h.onView }}">Xem bài</button>
@@ -156,9 +159,9 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
           </span>
         </div>
       </sc-for>
-      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
-        <i class="ri-shield-check-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-        <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Hàng chờ 24 giờ là chốt an toàn cuối: bài đã đạt mọi điều kiện vẫn nằm đây một ngày để bạn kịp chặn. Bạn nhận thông báo mỗi sáng kèm danh sách bài sắp lên. Bài có giá, bài so sánh đối thủ và bài sức khoẻ không bao giờ vào hàng này.</span>
+      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
+        <i class="ri-shield-check-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Hàng chờ 24 giờ là chốt an toàn cuối: bài đã đạt mọi điều kiện vẫn nằm đây một ngày để bạn kịp chặn. Bạn nhận thông báo mỗi sáng kèm danh sách bài sắp lên. Bài có giá, bài so sánh đối thủ và bài sức khoẻ không bao giờ vào hàng này.</span>
       </div>
     </div>
   </sc-if>
@@ -166,10 +169,10 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   <sc-if value="{{ tabLogOn }}" hint-placeholder-val="{{ false }}">
     <div class="rv-card">
       <div class="rv-h">
-        <i class="ri-history-line" style="font-size:17px;color:#405189;"></i>
+        <i class="ri-history-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i>
         <span class="rv-t">Nhật ký xuất bản 7 ngày</span>
         <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span style="font-size:11.5px;color:#878a99;">{{ logSummary }}</span>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ logSummary }}</span>
           <button class="rv-btn" onClick="{{ onExport }}"><i class="ri-download-2-line" style="font-size:14px;"></i>Xuất file</button>
         </span>
       </div>
@@ -177,19 +180,19 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
         <div class="rv-row" style="padding:11px 16px;">
           <span class="rv-chip" style="{{ l.byStyle }}">{{ l.by }}</span>
           <span style="display:flex;flex-direction:column;gap:3px;flex:1 1 300px;min-width:0;">
-            <span style="font-size:12.5px;font-weight:500;color:#343a40;line-height:1.45;">{{ l.title }}</span>
-            <span style="font-size:11.5px;color:#878a99;line-height:1.55;">{{ l.meta }}</span>
+            <span style="font-size:12.5px;font-weight:500;color:var(--color-heading,#1f2b4d);line-height:1.45;">{{ l.title }}</span>
+            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">{{ l.meta }}</span>
           </span>
-          <span style="font-size:11.5px;font-weight:600;color:{{ l.idxColor }};white-space:nowrap;flex-shrink:0;">{{ l.idx }}</span>
+          <span style="font-size:12px;font-weight:600;color:{{ l.idxColor }};white-space:nowrap;flex-shrink:0;">{{ l.idx }}</span>
           <span style="display:flex;gap:7px;flex-shrink:0;">
             <button class="rv-btn" style="min-height:32px;" onClick="{{ l.onOpen }}">Mở</button>
-            <sc-if value="{{ l.canRevert }}"><button class="rv-btn" style="min-height:32px;" onClick="{{ l.onRevert }}" title="Gỡ khỏi website, chuyển về Nháp — không xoá nội dung">Gỡ về nháp</button></sc-if>
+            <sc-if value="{{ l.canRevert }}"><button class="rv-btn" style="min-height:32px;" onClick="{{ l.onRevert }}" title="Gỡ khỏi website, chuyển về Nháp — không xóa nội dung">Gỡ về nháp</button></sc-if>
           </span>
         </div>
       </sc-for>
-      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid #eff2f7;background:#fbfcfe;">
-        <i class="ri-fingerprint-line" style="font-size:15px;color:#adb5bd;flex-shrink:0;margin-top:1px;"></i>
-        <span style="font-size:11.5px;color:#878a99;line-height:1.65;">Mỗi dòng ghi: ai hoặc máy nào đăng, lúc nào, điểm bảng kiểm khi đăng, số từ AI đã dùng và tình trạng index. Đây là chỗ để truy vết khi chất lượng trôi dần hoặc khi cần chứng minh nội dung có người kiểm.</span>
+      <div style="display:flex;gap:9px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
+        <i class="ri-fingerprint-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;"></i>
+        <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Mỗi dòng ghi: ai hoặc máy nào đăng, lúc nào, điểm bảng kiểm khi đăng, số từ AI đã dùng và tình trạng index. Đây là chỗ để truy vết khi chất lượng trôi dần hoặc khi cần chứng minh nội dung có người kiểm.</span>
       </div>
     </div>
   </sc-if>
@@ -197,11 +200,11 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   <sc-if value="{{ askOpen }}">
     <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:#fff;border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:rvFade .16s ease;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(64,81,137,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:#405189;"></i></span><span style="font-size:14px;font-weight:600;color:#343a40;line-height:1.4;">{{ askTitle }}</span></div>
-        <span style="font-size:12.5px;color:#878a99;line-height:1.7;">{{ askText }}</span>
+      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:rvFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
+        <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.7;">{{ askText }}</span>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
-          <button class="rv-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Huỷ</button>
+          <button class="rv-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Hủy</button>
           <button class="rv-pri" onClick="{{ onAskOk }}">{{ askOk }}</button>
         </div>
       </div>
@@ -209,7 +212,7 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   </sc-if>
 
   <sc-if value="{{ toast }}">
-    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#343a40;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:rvFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:rvFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
       <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
     </div>
@@ -292,10 +295,10 @@ class Component extends DCLogic {
       image: { icon: 'ri-image-add-line', color: '#1c7ba8' },
       data: { icon: 'ri-alert-fill', color: '#c0392b' }
     };
-    const TY = (t) => t === 'Mô tả sản phẩm' ? 'background:rgba(10,179,156,.12);color:#0a7d6f;'
-      : (t === 'Tin tức' ? 'background:rgba(247,184,75,.16);color:#b57d13;'
-        : (t === 'Bài có giá' || t === 'Sức khoẻ' ? 'background:rgba(240,101,72,.10);color:#a5402c;'
-          : (t === 'Bài trụ' ? 'background:rgba(64,81,137,.12);color:#405189;' : 'background:#f3f6f9;color:#495057;')));
+    const TY = (t) => t === 'Mô tả sản phẩm' ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);'
+      : (t === 'Tin tức' ? 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#b57d13);'
+        : (t === 'Bài có giá' || t === 'Sức khoẻ' ? 'background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);'
+          : (t === 'Bài trụ' ? 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);')));
     const ask = S.ask;
     const F = [
       { v: 'all', label: 'Tất cả', n: live.length, title: 'Mọi bài đang chờ bạn' },
@@ -308,7 +311,7 @@ class Component extends DCLogic {
 
     return {
       stats: [
-        { icon: 'ri-inbox-line', color: '#405189', label: 'Chờ bạn duyệt', value: String(live.length), hint: ready.length + ' bài chỉ cần bấm đăng' },
+        { icon: 'ri-inbox-line', color: '#2050a0', label: 'Chờ bạn duyệt', value: String(live.length), hint: ready.length + ' bài chỉ cần bấm đăng' },
         { icon: 'ri-timer-2-line', color: '#b57d13', label: 'Sắp tự đăng trong 24 giờ', value: String(holds.length), hint: 'Chặn lại được bất cứ lúc nào' },
         { icon: 'ri-image-add-line', color: '#1c7ba8', label: 'Đang chờ ảnh hoặc thông số thật', value: String(live.filter(i => i.kind === 'image' || i.kind === 'data').length), hint: 'AI không tự bịa — cần bạn bổ sung' },
         { icon: 'ri-send-plane-line', color: '#0a8f7f', label: 'Đã đăng 7 ngày qua', value: '18', hint: '11 bài tự động · 7 bài duyệt tay' }
@@ -340,7 +343,7 @@ class Component extends DCLogic {
           onPublish: () => { this.setState(s => ({ done: Object.assign({}, s.done, { [i.k]: true }) })); this.addLog([i], this.USER); this.toast('Đã duyệt “' + i.title + '” — sẽ đăng theo lịch, đã ghi vào nhật ký xuất bản', 'ri-check-line'); },
           needsFix: i.kind === 'low' || i.kind === 'image' || i.kind === 'data',
           fixLabel: i.kind === 'image' ? 'Chọn ảnh' : (i.kind === 'data' ? 'Nhập thông số' : 'Cho AI sửa lại'),
-          fixTitle: i.kind === 'image' ? 'Mở thư viện ảnh, chọn ảnh thật cho bài này' : (i.kind === 'data' ? 'Nhập thông số còn thiếu rồi hệ thống viết tiếp phần dở, không viết lại từ đầu' : 'AI sửa đúng các dòng chưa đạt trong bảng kiểm — lần sửa đầu chỉ tính nửa lượt'),
+          fixTitle: i.kind === 'image' ? 'Mở thư viện ảnh, chọn ảnh thật cho bài này' : (i.kind === 'data' ? 'Nhập thông số còn thiếu rồi hệ thống viết tiếp phần dở, không viết lại từ đầu' : 'AI sửa đúng các dòng chưa đạt trong bảng kiểm — lần sửa đầu chỉ tính nửa số từ AI'),
           onFix: () => this.toast(i.kind === 'image' ? 'Mở thư viện ảnh cho “' + i.title + '” — chọn xong hệ thống tự viết chú thích và chữ thay thế' : (i.kind === 'data' ? 'Mở form thông số của “' + i.title + '” — nhập xong bấm chạy lại, phần đã viết được giữ' : 'AI đang sửa 3 dòng chưa đạt của “' + i.title + '” — xong sẽ hiện “cũ → mới” để bạn đối chiếu'), 'ri-sparkling-2-line'),
           onView: () => this.toast('Mở “' + i.title + '” kèm bảng kiểm và các chỗ AI đã tự sửa', 'ri-external-link-line'),
           onDrop: () => { this.setState(s => ({ done: Object.assign({}, s.done, { [i.k]: true }) })); this.toast('Đã bỏ “' + i.title + '” vào thùng rác — giữ 30 ngày, khôi phục được', 'ri-delete-bin-line'); }
@@ -364,17 +367,17 @@ class Component extends DCLogic {
         this.addLog(okItems, this.USER);
         this.toast('Đã duyệt ' + okItems.length + ' bài' + (skip ? ' · bỏ qua ' + skip + ' bài chưa đạt (thiếu ảnh, thiếu thông số hoặc dưới ngưỡng) — chúng vẫn nằm trong hàng chờ' : ' — đăng theo lịch, không đăng dồn'), 'ri-check-double-line');
       },
-      onBulkReturn: () => { this.setState({ picked: {} }); this.toast('Đã trả ' + picked.length + ' bài cho AI sửa theo bảng kiểm — lần sửa đầu của mỗi bài chỉ tính nửa lượt', 'ri-arrow-go-back-line'); },
+      onBulkReturn: () => { this.setState({ picked: {} }); this.toast('Đã trả ' + picked.length + ' bài cho AI sửa theo bảng kiểm — lần sửa đầu của mỗi bài chỉ tính nửa số từ AI', 'ri-arrow-go-back-line'); },
 
       holds: holds.map(h => Object.assign({}, h, {
         typeStyle: TY(h.type),
         onView: () => this.toast('Mở “' + h.title + '” — còn kịp sửa trước giờ đăng', 'ri-external-link-line'),
         onNow: () => { this.setState(s => ({ blocked: Object.assign({}, s.blocked, { [h.k]: 'now' }) })); this.addLog([h], this.USER); this.toast('Đã đăng ngay “' + h.title + '” — nhật ký ghi là bạn đăng, không phải tự động', 'ri-send-plane-line'); },
-        onBlock: () => { this.setState(s => ({ blocked: Object.assign({}, s.blocked, { [h.k]: 'block' }), tab: 'inbox' })); this.toast('Đã chặn “' + h.title + '” — bài chuyển sang hàng “Chờ bạn duyệt”, không bị xoá', 'ri-hand'); }
+        onBlock: () => { this.setState(s => ({ blocked: Object.assign({}, s.blocked, { [h.k]: 'block' }), tab: 'inbox' })); this.toast('Đã chặn “' + h.title + '” — bài chuyển sang hàng “Chờ bạn duyệt”, không bị xóa', 'ri-hand'); }
       })),
       holdSummary: holds.length + ' bài · sớm nhất trong 5 giờ 40 phút',
       logs: S.logs.concat(this.LOGS).map(l => Object.assign({}, l, {
-        byStyle: l.by === 'Tự động' ? 'background:rgba(64,81,137,.12);color:#405189;' : 'background:#f3f6f9;color:#495057;',
+        byStyle: l.by === 'Tự động' ? 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);',
         idxColor: l.ok ? '#0a8f7f' : '#b57d13',
         canRevert: l.revert,
         onOpen: () => this.toast('Mở “' + l.title + '” kèm bảng kiểm lúc đăng', 'ri-external-link-line'),

@@ -74,13 +74,23 @@
   }
 
   function cost(kind, n) { return Math.round(unit(kind) * (n || 1)); }
+
+  /* Dịch theo SỐ TỪ THẬT của bản nguồn (§7: so chi phí thực trước khi cho bấm).
+     texts = mảng chữ nguồn của từng (trường × ngôn ngữ đích) còn trống.
+     Bản dịch thường dài hơn nguồn ~15% → nhân TR_GROW; mỗi trường tính tối thiểu 1 từ. */
+  var TR_GROW = 1.15;
+  function words(s) { var m = String(s == null ? '' : s).trim().match(/\S+/g); return m ? m.length : 0; }
+  function translateCost(texts) {
+    var w = 0; (texts || []).forEach(function (t) { w += Math.max(1, words(t)); });
+    return Math.ceil(w * TR_GROW);
+  }
   function imageCost(slots, key) { return (slots || 1) * variants(key); }
 
   g.BSAI = {
     PLANS: PLANS, ORDER: ORDER, RATES: RATES, LABEL: LABEL,
     plan: plan, plans: plans, variants: variants,
     nfm: nfm, unit: unit, enough: enough, enoughImages: enoughImages,
-    cost: cost, imageCost: imageCost,
+    cost: cost, imageCost: imageCost, words: words, translateCost: translateCost,
     usage30: function () { return USAGE30; },
     setUsage30: function (u) { USAGE30 = Object.assign({}, USAGE30, u || {}); },
     currentPlan: function () { return CURRENT; },

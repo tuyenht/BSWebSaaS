@@ -8,75 +8,79 @@
 <body>
 <x-dc>
 <helmet>
+<link rel="stylesheet" href="admin-base.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
 <script src="./content-workflow.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <style>
-body{margin:0;background:#f3f3f9;font-family:Inter,'Segoe UI',sans-serif;color:#495057;}
-a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:underline;}
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);}
+a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--color-accent,#2f3d69);text-decoration:underline;}
 .ws-wrap{container-type:inline-size;display:flex;flex-direction:column;gap:16px;padding:24px;max-width:760px;margin:0 auto;}
-.ws-card{background:#fff;border:1px solid #eff2f7;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
-.ws-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid #eff2f7;flex-wrap:wrap;}
-.ws-t{font-size:14px;font-weight:600;color:#343a40;}
+.ws-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
+.ws-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;}
+.ws-t{font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);}
 .ws-b{padding:16px;display:flex;flex-direction:column;gap:14px;}
 .ws-arrow{color:#ccd0d8;font-size:14px;flex-shrink:0;}
-.ws-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid #e9ebec;border-radius:4px;background:#fff;font:inherit;font-size:13px;font-weight:600;color:#495057;cursor:pointer;white-space:nowrap;}
-.ws-btn:hover{background:#f3f6f9;}
-.ws-pri{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#405189;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.ws-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
+.ws-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
+.ws-pri{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
 .ws-pri:hover{filter:brightness(.95);}
-.ws-pri:disabled{background:#e9ebec;color:#adb5bd;cursor:not-allowed;}
-.ws-dgr{border-color:rgba(240,101,72,.45);color:#c0432c;}
+.ws-pri:disabled{background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
+.ws-dgr{border-color:rgba(240,101,72,.45);color:var(--color-admin-danger-text,#c0432c);}
 .ws-dgr:hover{background:rgba(240,101,72,.08);}
 .ws-note{display:flex;align-items:flex-start;gap:9px;padding:11px 13px;border-radius:4px;font-size:12.5px;line-height:1.65;}
-.ws-note.info{background:rgba(41,156,219,.08);color:#22688f;}
-.ws-note.warn{background:rgba(247,184,75,.14);color:#8a5f18;}
-.ws-note.calm{background:#f6f7f9;color:#6c6f80;}
-.ws-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;}
-.ws-chip.on{background:rgba(10,179,156,.12);color:#0a6d60;}
-.ws-chip.who{background:rgba(64,81,137,.10);color:#405189;}
-.ws-av{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#405189;background:rgba(64,81,137,.10);}
+.ws-note.info{background:rgba(41,156,219,.08);color:var(--color-admin-info-text,#22688f);}
+.ws-note.warn{background:rgba(247,184,75,.14);color:var(--color-admin-warning-text,#8a5f18);}
+.ws-note.calm{background:var(--color-surface-hover,#f6f7f9);color:#6c6f80;}
+.ws-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
+.ws-chip.on{background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a6d60);}
+.ws-chip.who{background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);}
+.ws-av{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--color-accent,#2050a0);background:rgba(32,80,160,.10);}
 .ws-line{position:relative;display:flex;gap:11px;padding:0 0 14px 0;}
-.ws-line:before{content:"";position:absolute;left:14px;top:32px;bottom:0;width:1px;background:#eff2f7;}
+.ws-line:before{content:"";position:absolute;left:14px;top:32px;bottom:0;width:1px;background:var(--color-border,#e9ecf4);}
 .ws-line:last-of-type:before{display:none;}
-.ws-ta{width:100%;box-sizing:border-box;min-height:96px;border:1px solid #e9ebec;border-radius:4px;padding:10px 12px;font:inherit;font-size:13px;color:#495057;resize:vertical;}
-.ws-ta:focus{outline:0;border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.2);}
+.ws-ta{width:100%;box-sizing:border-box;min-height:96px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;padding:10px 12px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);resize:vertical;}
+.ws-ta:focus{outline:0;border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.2);}
 .ws-ta.bad{border-color:#f06548;box-shadow:0 0 0 3px rgba(240,101,72,.16);}
-.ws-sel{width:100%;box-sizing:border-box;min-height:38px;border:1px solid #e9ebec;border-radius:4px;padding:0 10px;font:inherit;font-size:13px;color:#495057;background:#fff;}
-.ws-sel:focus{outline:0;border-color:#405189;box-shadow:0 0 0 3px rgba(64,81,137,.2);}
-.ws-lb{font-size:12px;font-weight:600;color:#495057;display:flex;align-items:center;gap:6px;}
+.ws-sel{width:100%;box-sizing:border-box;min-height:38px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;padding:0 10px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);}
+.ws-sel:focus{outline:0;border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.2);}
+.ws-lb{font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);display:flex;align-items:center;gap:6px;}
 .ws-ov{position:fixed;inset:0;background:rgba(33,37,41,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60;}
-.ws-modal{background:#fff;border-radius:6px;box-shadow:0 5px 20px rgba(56,65,74,.28);width:100%;max-width:520px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;}
+.ws-modal{background:var(--color-surface,#fff);border-radius:6px;box-shadow:0 5px 20px rgba(56,65,74,.28);width:100%;max-width:520px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;}
 .ws-mb{padding:16px;overflow:auto;display:flex;flex-direction:column;gap:13px;}
-.ws-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #eff2f7;background:#fcfcfd;flex-wrap:wrap;}
+.ws-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fcfcfd);flex-wrap:wrap;}
 .ws-sk{height:14px;border-radius:4px;background:linear-gradient(90deg,#f3f6f9,#eaeef3,#f3f6f9);background-size:200% 100%;animation:wssk 1.2s linear infinite;}
 @keyframes wssk{from{background-position:200% 0}to{background-position:-200% 0}}
 .ws-wfhd{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-.ws-wfstep{font-size:12.5px;font-weight:700;color:#405189;}
-.ws-wfname{font-size:11.5px;color:#5c5f6e;}
+.ws-wfstep{font-size:12.5px;font-weight:700;color:var(--color-accent,#2050a0);}
+.ws-wfname{font-size:12px;color:#5c5f6e;}
 .ws-track{display:flex;align-items:flex-start;width:100%;}
 .ws-cell{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;}
 .ws-rail{display:flex;align-items:center;width:100%;}
-.ws-l{flex:1 1 auto;height:2px;background:#e9ebec;}
+.ws-l{flex:1 1 auto;height:2px;background:var(--color-border-strong,#e9ebec);}
 .ws-cell:first-child .ws-l.left{visibility:hidden;}
 .ws-cell:last-child .ws-l.right{visibility:hidden;}
-.ws-cell.done .ws-l,.ws-cell.cur .ws-l.left{background:#405189;}
-.ws-node{width:26px;height:26px;border-radius:50%;border:2px solid #e9ebec;background:#fff;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:#878a99;font-size:13px;}
-.ws-cell.done .ws-node{border-color:#405189;background:#405189;color:#fff;}
-.ws-cell.cur .ws-node{border-color:#405189;background:#fff;color:#405189;box-shadow:0 0 0 4px rgba(64,81,137,.14);}
-.ws-cell.pub.cur .ws-node{border-color:#0ab39c;color:#0a6d60;box-shadow:0 0 0 4px rgba(10,179,156,.16);}
-.ws-cell.pub.todo .ws-node{border-color:rgba(10,179,156,.45);color:#0a6d60;}
-.ws-cap{font-size:11.5px;line-height:1.45;text-align:center;color:#5c5f6e;padding:0 4px;text-wrap:pretty;}
-.ws-cell.done .ws-cap{color:#495057;}
-.ws-cell.cur .ws-cap{color:#405189;font-weight:700;}
-.ws-cell.pub.cur .ws-cap{color:#0a6d60;}
+.ws-cell.done .ws-l,.ws-cell.cur .ws-l.left{background:#2050a0;}
+.ws-node{width:26px;height:26px;border-radius:50%;border:2px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:var(--color-body-muted,#5b6275);font-size:13px;}
+.ws-cell.done .ws-node{border-color:#2050a0;background:#2050a0;color:#fff;}
+.ws-cell.cur .ws-node{border-color:#2050a0;background:var(--color-surface,#fff);color:var(--color-accent,#2050a0);box-shadow:0 0 0 4px rgba(32,80,160,.14);}
+.ws-cell.pub.cur .ws-node{border-color:#0ab39c;color:var(--color-admin-success-text,#0a6d60);box-shadow:0 0 0 4px rgba(10,179,156,.16);}
+.ws-cell.pub.todo .ws-node{border-color:rgba(10,179,156,.45);color:var(--color-admin-success-text,#0a6d60);}
+.ws-cap{font-size:12px;line-height:1.45;text-align:center;color:#5c5f6e;padding:0 4px;text-wrap:pretty;}
+.ws-cell.done .ws-cap{color:var(--color-body-text,#3c4765);}
+.ws-cell.cur .ws-cap{color:var(--color-accent,#2050a0);font-weight:700;}
+.ws-cell.pub.cur .ws-cap{color:var(--color-admin-success-text,#0a6d60);}
 .ws-prog{display:none;}
-.ws-progline{height:6px;border-radius:20px;background:#eff2f7;overflow:hidden;display:flex;}
-.ws-progfill{display:block;flex:0 0 auto;height:6px;border-radius:20px;background:#405189;}
+.ws-progline{height:6px;border-radius:20px;background:var(--color-border,#e9ecf4);overflow:hidden;display:flex;}
+.ws-progfill{display:block;flex:0 0 auto;height:6px;border-radius:20px;background:#2050a0;}
 @container (max-width: 560px){
   .ws-wrap{padding:16px;}
   .ws-track{display:none;}
@@ -93,9 +97,9 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
   <sc-if value="{{ showHeader }}">
     <div style="display:flex;flex-direction:column;gap:5px;">
-      <span style="font-size:11.5px;color:#adb5bd;">Nội dung › Tin tức › Sửa bài</span>
-      <span style="font-size:20px;font-weight:600;color:#343a40;line-height:1.35;">Quy trình mới cho xưởng cơ khí chính xác</span>
-      <span style="font-size:13px;color:#878a99;line-height:1.65;">Khối dưới đây thay cho nút Đăng khi thể loại này có bước duyệt.</span>
+      <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Nội dung › Tin tức › Sửa bài</span>
+      <span style="font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.35;">Quy trình mới cho xưởng cơ khí chính xác</span>
+      <span style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Khối dưới đây thay cho nút Đăng khi thể loại này có bước duyệt.</span>
     </div>
   </sc-if>
 
@@ -115,8 +119,8 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
     <div class="ws-card" style="border-color:rgba(240,101,72,.35);">
       <div class="ws-h"><span class="ws-t">Trạng thái duyệt</span></div>
       <div class="ws-b">
-        <span style="display:flex;align-items:center;gap:9px;"><i class="ri-error-warning-line" style="font-size:19px;color:#f06548;"></i><span style="font-size:13px;font-weight:600;color:#343a40;">Chưa lấy được trạng thái duyệt</span></span>
-        <span style="font-size:13px;color:#878a99;line-height:1.7;">Bài của bạn vẫn an toàn, chữ đã nhập không mất. Bấm thử lại để lấy lại trạng thái, hoặc lưu nháp rồi quay lại sau.</span>
+        <span style="display:flex;align-items:center;gap:9px;"><i class="ri-error-warning-line" style="font-size:19px;color:var(--color-admin-danger-text,#f06548);"></i><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Chưa lấy được trạng thái duyệt</span></span>
+        <span style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.7;">Bài của bạn vẫn an toàn, chữ đã nhập không mất. Bấm thử lại để lấy lại trạng thái, hoặc lưu nháp rồi quay lại sau.</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="ws-pri" onClick="{{ onReload }}"><i class="ri-refresh-line" style="font-size:16px;"></i>Thử lại</button>
           <button class="ws-btn" onClick="{{ onDraft }}"><i class="ri-save-3-line" style="font-size:15px;"></i>Lưu nháp</button>
@@ -128,10 +132,10 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   <sc-if value="{{ isReady }}">
     <div class="ws-card">
       <div class="ws-h">
-        <i class="ri-flow-chart" style="font-size:16px;color:#405189;"></i>
+        <i class="ri-flow-chart" style="font-size:16px;color:var(--color-accent,#2050a0);"></i>
         <span class="ws-t">Trạng thái duyệt</span>
-        <sc-if value="{{ isPublic }}"><span class="ws-chip on"><i class="ri-global-line" style="font-size:11px;"></i>Khách đang thấy bài này</span></sc-if>
-        <sc-if value="{{ hasAssignee }}"><span class="ws-chip who" style="margin-left:auto;"><i class="ri-user-follow-line" style="font-size:11px;"></i>{{ assigneeLine }}</span></sc-if>
+        <sc-if value="{{ isPublic }}"><span class="ws-chip on"><i class="ri-global-line" style="font-size:12px;"></i>Khách đang thấy bài này</span></sc-if>
+        <sc-if value="{{ hasAssignee }}"><span class="ws-chip who" style="margin-left:auto;"><i class="ri-user-follow-line" style="font-size:12px;"></i>{{ assigneeLine }}</span></sc-if>
       </div>
       <div class="ws-b">
         <div class="ws-wfhd">
@@ -157,7 +161,7 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
         <div class="ws-prog">
           <span class="ws-progline"><span class="ws-progfill" style="width:{{ curPct }};"></span></span>
-          <span style="font-size:11.5px;color:#5c5f6e;">{{ compactLine }} · {{ nextLine }}</span>
+          <span style="font-size:12px;color:#5c5f6e;">{{ compactLine }} · {{ nextLine }}</span>
         </div>
 
         <sc-if value="{{ preWf }}">
@@ -170,7 +174,7 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
         <sc-if value="{{ hasActions }}">
           <div style="display:flex;flex-direction:column;gap:9px;">
-            <span style="font-size:11px;font-weight:700;letter-spacing:.06em;color:#5c5f6e;text-transform:uppercase;">Việc bạn làm được ở bước này</span>
+            <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#5c5f6e;text-transform:uppercase;">Việc bạn làm được ở bước này</span>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <sc-for list="{{ actions }}" as="a" hint-placeholder-count="2">
                 <sc-if value="{{ a.isPri }}"><button class="ws-pri" onClick="{{ a.onRun }}" title="{{ a.title }}"><i class="{{ a.icon }}" style="font-size:16px;"></i>{{ a.label }}</button></sc-if>
@@ -178,7 +182,7 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
                 <sc-if value="{{ a.isPlain }}"><button class="ws-btn" onClick="{{ a.onRun }}" title="{{ a.title }}"><i class="{{ a.icon }}" style="font-size:15px;"></i>{{ a.label }}</button></sc-if>
               </sc-for>
             </div>
-            <span style="font-size:11.5px;color:#5c5f6e;line-height:1.6;">{{ actionsHint }}</span>
+            <span style="font-size:12px;color:#5c5f6e;line-height:1.6;">{{ actionsHint }}</span>
           </div>
         </sc-if>
 
@@ -190,26 +194,26 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
 
     <div class="ws-card">
       <div class="ws-h">
-        <i class="ri-history-line" style="font-size:16px;color:#878a99;"></i>
+        <i class="ri-history-line" style="font-size:16px;color:var(--color-body-muted,#5b6275);"></i>
         <span class="ws-t">Lịch sử duyệt</span>
-        <span style="margin-left:auto;font-size:11.5px;color:#5c5f6e;">{{ logCountLine }}</span>
+        <span style="margin-left:auto;font-size:12px;color:#5c5f6e;">{{ logCountLine }}</span>
       </div>
       <div class="ws-b">
         <sc-if value="{{ logEmpty }}">
-          <span style="font-size:13px;color:#878a99;line-height:1.7;">Chưa có lần chuyển bước nào. Khi bạn hoặc người khác chuyển bước, ai làm gì và lý do sẽ hiện ở đây.</span>
+          <span style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.7;">Chưa có lần chuyển bước nào. Khi bạn hoặc người khác chuyển bước, ai làm gì và lý do sẽ hiện ở đây.</span>
         </sc-if>
         <sc-for list="{{ logs }}" as="l" hint-placeholder-count="3">
           <div class="ws-line">
             <span class="ws-av">{{ l.ini }}</span>
             <span style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto;">
               <span style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;">
-                <span style="font-size:13px;font-weight:600;color:#343a40;">{{ l.who }}</span>
-                <span style="font-size:12.5px;color:#495057;">{{ l.what }}</span>
-                <span style="font-size:11px;color:#5c5f6e;">{{ l.when }}</span>
+                <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ l.who }}</span>
+                <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);">{{ l.what }}</span>
+                <span style="font-size:12px;color:#5c5f6e;">{{ l.when }}</span>
               </span>
-              <span style="font-size:11.5px;color:#5c5f6e;">{{ l.flow }}</span>
+              <span style="font-size:12px;color:#5c5f6e;">{{ l.flow }}</span>
               <sc-if value="{{ l.hasNote }}">
-                <span style="font-size:12.5px;color:#495057;line-height:1.65;padding:8px 11px;background:#f8f9fb;border-left:2px solid #e9ebec;border-radius:0 4px 4px 0;">{{ l.note }}</span>
+                <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.65;padding:8px 11px;background:var(--color-surface-muted,#f8f9fb);border-left:2px solid var(--color-border-strong,#e9ebec);border-radius:0 4px 4px 0;">{{ l.note }}</span>
               </sc-if>
             </span>
           </div>
@@ -227,18 +231,18 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
         <div class="ws-h" style="padding:14px 16px;">
           <i class="{{ mIcon }}" style="font-size:17px;color:{{ mIconColor }};"></i>
           <span class="ws-t">{{ mTitle }}</span>
-          <button style="margin-left:auto;border:0;background:transparent;font-size:18px;color:#878a99;cursor:pointer;" onClick="{{ onMClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
+          <button style="margin-left:auto;border:0;background:transparent;font-size:18px;color:var(--color-body-muted,#5b6275);cursor:pointer;" onClick="{{ onMClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
         </div>
         <div class="ws-mb">
           <sc-if value="{{ mDanger }}">
             <span class="ws-note warn"><i class="ri-alert-line" style="font-size:16px;flex-shrink:0;"></i><span>{{ mDangerText }}</span></span>
           </sc-if>
-          <span style="font-size:12.5px;color:#878a99;line-height:1.65;">{{ mHint }}</span>
+          <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.65;">{{ mHint }}</span>
           <div style="display:flex;flex-direction:column;gap:6px;">
-            <span class="ws-lb">Lý do <span style="color:#f06548;">*</span></span>
+            <span class="ws-lb">Lý do <span style="color:var(--color-admin-danger-text,#f06548);">*</span></span>
             <textarea class="ws-ta {{ mTaCls }}" placeholder="{{ mPlaceholder }}" value="{{ mNote }}" onChange="{{ onMNote }}"></textarea>
             <sc-if value="{{ mErr }}">
-              <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#c0432c;font-weight:600;"><i class="ri-error-warning-line" style="font-size:14px;"></i>Bạn cần ghi rõ lý do để người viết biết đường sửa.</span>
+              <span style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-admin-danger-text,#c0432c);font-weight:600;"><i class="ri-error-warning-line" style="font-size:14px;"></i>Bạn cần ghi rõ lý do để người viết biết đường sửa.</span>
             </sc-if>
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;">
@@ -249,11 +253,11 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
                 <option value="{{ m.id }}">{{ m.label }}</option>
               </sc-for>
             </select>
-            <span style="font-size:11.5px;color:#5c5f6e;line-height:1.6;">{{ membersHint }}</span>
+            <span style="font-size:12px;color:#5c5f6e;line-height:1.6;">{{ membersHint }}</span>
           </div>
         </div>
         <div class="ws-mf">
-          <button class="ws-btn" onClick="{{ onMClose }}" ref="{{ cancelRef }}">Huỷ</button>
+          <button class="ws-btn" onClick="{{ onMClose }}" ref="{{ cancelRef }}">Hủy</button>
           <sc-if value="{{ mDanger }}"><button class="ws-btn ws-dgr" onClick="{{ onMOk }}">{{ mOkLabel }}</button></sc-if>
           <sc-if value="{{ mSafe }}"><button class="ws-pri" onClick="{{ onMOk }}">{{ mOkLabel }}</button></sc-if>
         </div>
@@ -262,7 +266,7 @@ a{color:#405189;text-decoration:none;}a:hover{color:#2f3d69;text-decoration:unde
   </sc-if>
 
   <sc-if value="{{ toastOn }}">
-    <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:4px;background:#343a40;color:#fff;font-size:13px;box-shadow:0 5px 20px rgba(56,65,74,.3);max-width:calc(100vw - 32px);">
+    <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:4px;background:#1f2b4d;color:#fff;font-size:13px;box-shadow:0 5px 20px rgba(56,65,74,.3);max-width:calc(100vw - 32px);">
       <i class="{{ toastIcon }}" style="font-size:16px;"></i><span>{{ toast }}</span>
     </div>
   </sc-if>
@@ -344,7 +348,7 @@ class Component extends DCLogic {
     const log = {
       who: this.props.role || 'Biên tập', role: this.props.role || 'Biên tập',
       what: tr.label.toLowerCase(), from: from ? from.label : '', to: to ? to.label : tr.to,
-      note: note, when: 'vừa xong', color: '#405189'
+      note: note, when: 'vừa xong', color: '#2050a0'
     };
     this.setState({ cur: tr.to, logs: [log].concat(this.state.logs), shown: Math.max(3, this.state.shown) });
     this.notify(tr.label + ' xong — bài đang ở bước “' + (to ? to.label : tr.to) + '”' + (whoName ? ', đã giao cho ' + whoName : ''), 'ri-check-double-line');

@@ -1,0 +1,90 @@
+/* BSWebSaaS — lớp nền dùng chung cho mọi màn admin (CLAUDE.md §8, UX P10/P14).
+   Chỉ chứa thứ không viết inline được: vùng bấm cảm ứng, chữ ô nhập trên iOS, chuyển động giảm. */
+
+/* Vùng bấm ≥44px trên cảm ứng mà không đổi bố cục: nới vùng nhận bấm bằng ::after */
+@media (pointer: coarse) {
+  :where(button, [role="button"], a[href], summary, label[for]) { position: relative; }
+  :where(button, [role="button"], a[href], summary)::after {
+    content: ""; position: absolute;
+    top: min(0px, calc((100% - 44px) / 2)); bottom: min(0px, calc((100% - 44px) / 2));
+    left: min(0px, calc((100% - 44px) / 2)); right: min(0px, calc((100% - 44px) / 2));
+  }
+  /* iOS tự phóng to khi chữ ô nhập < 16px (P14.g) */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px !important; }
+}
+
+/* Vòng focus: không để outline:none của nút nuốt mất vòng bàn phím */
+:where(button, a, [role="button"], [tabindex]):focus-visible {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-accent, #405189)) !important;
+  outline-offset: var(--focus-ring-offset, 2px) !important;
+}
+
+/* Ô nhập có viền: nhiều ô tắt outline inline → luôn đổi viền sang accent + quầng nhẹ khi focus (B5).
+   Ô không viền (nằm trong khung bao) để khung bao lo bằng :focus-within. */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus:not([style*="border:0"]):not([style*="border: 0"]):not([style*="border:none"]):not(.sPlain):not(.em-plain) {
+  border-color: var(--color-accent, #405189) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent, #405189) 18%, transparent) !important;
+}
+[contenteditable="true"]:focus-visible:not([class*="rte"]):not([class*="-ce"]) {
+  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-accent, #405189));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+html[data-bs-theme="dark"] { color-scheme: dark; }
+html[data-bs-theme="dark"] img, html[data-bs-theme="dark"] video { filter: none; }
+
+/* ===== Tông Bảo Sơn Hoàng gia (3b, duyệt 01/10/2026) — chuyển tiếp, chờ đồng bộ DS: "DS - Prompt G2.md" =====
+   Màu lấy từ logo: xanh hoàng gia #2050a0, vàng #e0b028. Chữ màu mực xanh thay xám than. Mọi cặp đạt WCAG AA. */
+:root:root:not([data-bs-theme="dark"]) {
+  --color-body: #f4f5fa;
+  --color-heading: #1f2b4d;        /* 13.9:1 */
+  --color-body-text: #3c4765;      /* 9.2:1 */
+  --color-body-muted: #5b6275;     /* 6.1:1 trắng · 5.5:1 nền trang */
+  --color-border: #e9ecf4;
+  --color-border-strong: #e3e7f0;
+  --color-border-input: #8a90a2;   /* 3.2:1 */
+  --color-surface-hover: #f1f3f9;
+  --color-accent: var(--brand-ink, #2050a0);          /* 7.7:1 — Shell cấp --brand-ink theo bảng tĩnh */
+  --color-admin-primary: var(--brand-solid, #2050a0); /* nền dưới chữ trắng */
+  --color-brand-gold: #e0b028;     /* chỉ trang trí / nền dưới chữ đậm */
+  --color-brand-gold-text: #8a6200;/* 5.5:1 */
+  --focus-ring-color: var(--brand-ink, #2050a0);
+}
+/* Nhãn nhỏ viết HOA + giãn chữ (di sản Velzon, C4) → viết thường, đậm 600, không giãn */
+[style*="text-transform:uppercase"], [style*="text-transform: uppercase"] {
+  text-transform: none !important; letter-spacing: 0 !important; font-weight: 600 !important;
+}
+
+/* Tông Bảo Sơn — chế độ tối (01/10/2026): nền xanh đêm thay xám than, accent xanh sáng. Mọi cặp đạt AA. */
+:root:root[data-bs-theme="dark"] {
+  --color-body: #0f1729;
+  --color-surface: #16203a;
+  --color-surface-muted: #131c33;
+  --color-surface-hover: #1d2845;
+  --color-border: #202b45;
+  --color-border-strong: #24304d;
+  --color-border-soft: #1b2642;
+  --color-border-input: #6b7896;   /* 3.7:1 trên thẻ */
+  --color-heading: #eef2fa;        /* 14.4:1 */
+  --color-body-text: #c5cde0;      /* 10.1:1 */
+  --color-body-muted: #9aa5bf;     /* 6.5:1 */
+  --color-accent: var(--brand-ink, #8fb0ec);         /* 7.4:1 */
+  --focus-ring-color: var(--brand-ink, #8fb0ec);
+  --color-brand-gold-text: #e0b028;/* 8.6:1 trên nền tối */
+}
+html[data-bs-theme="dark"] body { background: #0b1222; }
+
+/* ===== Token màu thương hiệu (Q1, AUDIT §4f Đợt A, 01/10/2026) =====
+   Shell đặt --brand (màu gốc, chỉ trang trí/tint), --brand-solid (nền dưới chữ trắng) và --brand-ink (chữ/link/viền nhấn/vòng focus)
+   trên khung [data-brand-scope], tra từ BẢNG TĨNH 9 màu (AUDIT.md). Biến var() ở :root được giải tại :root, nên phải khai lại
+   ngay trên khung để panel nhúng bên trong nhận đúng màu. Mở DC độc lập (không có khung) → giữ nguyên giá trị dự phòng ở trên.
+   Cấm dùng --brand thô cho chữ hoặc cho nền có chữ. */
+[data-brand-scope][data-brand-scope] {
+  --color-accent: var(--brand-ink, #2050a0);
+  --color-admin-primary: var(--brand-solid, #2050a0);
+  --focus-ring-color: var(--brand-ink, #2050a0);
+}
