@@ -50,6 +50,12 @@ final readonly class PublishEntry
         $translation = $entry->translationFor($locale)
             ?? throw new RuntimeException("Entry {$entry->id} has no '{$locale}' translation to publish.");
 
+        // Trashed content stays off the website until it is restored: no caller (row menu, bulk
+        // bar, editor) may publish it or send it for review from the Trash.
+        if ($entry->trashed()) {
+            throw new AuthorizationException(__('entries.err_publish_forbidden'));
+        }
+
         // Tier-2 wins where it is active: publishing must not skip the stages a site configured.
         if ($this->workflows->forEntry($entry) !== null) {
             throw new WorkflowGovernedException;
