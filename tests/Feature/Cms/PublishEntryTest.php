@@ -257,3 +257,28 @@ it('sends only a draft: a scheduled or already pending entry is left as it is', 
             ->and(SiteNotification::query()->where('user_id', $publisher->id)->exists())->toBeFalse();
     });
 });
+
+it('never publishes or sends an entry from the Trash, whoever calls', function (): void {
+    $tenancy = app(Tenancy::class);
+    $editor = User::factory()->create();
+    $author = User::factory()->create();
+
+    $tenancy->enter(1, function () use ($editor, $author): void {
+        grantRole($editor, 'editor', ['entries.edit.any', 'entries.publish', 'entries.submit']);
+        grantRole($author, 'author', ['entries.view', 'entries.edit.own', 'entries.submit']);
+        $published = makeDraftPage($editor, 'trong-thung-rac');
+        $published->delete();
+        $sent = makeDraftPage($author, 'nhap-trong-thung-rac');
+        $sent->delete();
+
+        $publish = app(PublishEntry::class);
+
+        expect(fn () => $publish->handle(Entry::withTrashed()->find($published->id), 'vi', $editor->fresh()))
+            ->toThrow(AuthorizationException::class)
+            ->and(fn () => $publish->handle(Entry::withTrashed()->find($sent->id), 'vi', $author->fresh()))
+            ->toThrow(AuthorizationException::class)
+            ->and(Entry::withTrashed()->find($published->id)->status)->toBe('draft')
+            ->and(Entry::withTrashed()->find($sent->id)->status)->toBe('draft')
+            ->and(SiteRoute::query()->where('path', '/trong-thung-rac')->exists())->toBeFalse();
+    });
+});
