@@ -236,20 +236,20 @@
                                         <x-bs-admin::button color="primary" wire:key="act-{{ $action['key'] }}" wire:loading.attr="disabled"
                                                          x-on:click="$bsConfirm({
                                                              icon: 'question',
-                                                             text: @js(__('admin.inbox.confirm_publish', ['title' => $reader['title']])),
-                                                             confirm: @js($action['label']),
-                                                             cancel: @js(__('admin.cancel')),
-                                                         }).then(ok => ok && $wire.apply(@js($action['key'])))">
+                                                             text: {{ \Illuminate\Support\Js::from(__('admin.inbox.confirm_publish', ['title' => $reader['title']])) }},
+                                                             confirm: {{ \Illuminate\Support\Js::from($action['label']) }},
+                                                             cancel: {{ \Illuminate\Support\Js::from(__('admin.cancel')) }},
+                                                         }).then(ok => ok && $wire.apply({{ \Illuminate\Support\Js::from($action['key']) }}))">
                                             <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
                                         </x-bs-admin::button>
                                     @elseif ($action['note'])
                                         <x-bs-admin::button color="danger" variant="outline" wire:key="act-{{ $action['key'] }}"
-                                                         wire:click="apply(@js($action['key']))" wire:loading.attr="disabled">
+                                                         wire:click="apply({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled">
                                             <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $action['label'] }}
                                         </x-bs-admin::button>
                                     @else
                                         <x-bs-admin::button color="light" wire:key="act-{{ $action['key'] }}"
-                                                         wire:click="apply(@js($action['key']))" wire:loading.attr="disabled">
+                                                         wire:click="apply({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled">
                                             <x-bs-admin::icon name="ri-send-plane" class="size-4" />{{ $action['label'] }}
                                         </x-bs-admin::button>
                                     @endif

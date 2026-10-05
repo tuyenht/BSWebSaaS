@@ -49,7 +49,7 @@
                         <p class="text-sm font-semibold text-heading">{{ __('admin.wf.empty_title') }}</p>
                         <p class="mt-0.5 text-sm text-body-muted">{{ __('admin.wf.empty_body') }}</p>
                     </div>
-                    <x-bs-admin::button color="primary" x-on:click="openFor(@js($rows[0]))">
+                    <x-bs-admin::button color="primary" x-on:click="openFor({{ \Illuminate\Support\Js::from($rows[0]) }})">
                         {{ __('admin.wf.empty_cta') }}
                     </x-bs-admin::button>
                 </div>
@@ -105,7 +105,7 @@
 
                             {{-- Actions --}}
                             <div class="flex shrink-0 items-center gap-2">
-                                <x-bs-admin::button color="light" size="sm" x-on:click="openFor(@js($row))">
+                                <x-bs-admin::button color="light" size="sm" x-on:click="openFor({{ \Illuminate\Support\Js::from($row) }})">
                                     <x-bs-admin::icon :name="$row['template'] ? 'ri-repeat-2' : 'ri-add'" class="size-4" />
                                     {{ $row['template'] ? __('admin.wf.change') : __('admin.wf.choose') }}
                                 </x-bs-admin::button>
