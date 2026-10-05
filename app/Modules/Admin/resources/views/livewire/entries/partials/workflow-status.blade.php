@@ -80,7 +80,7 @@
                             <span @class([
                                 'inline-flex size-[26px] shrink-0 items-center justify-center rounded-full border-2 text-[13px]',
                                 'border-admin-primary bg-admin-primary text-white' => $done,
-                                'border-accent bg-surface text-accent shadow-[0_0_0_4px_rgba(64,81,137,.14)]' => $cur && ! $pub,
+                                'border-accent bg-surface text-accent shadow-[0_0_0_4px_color-mix(in_oklab,var(--color-accent)_14%,transparent)]' => $cur && ! $pub,
                                 'border-admin-success-text bg-surface text-[#0a6d60] shadow-[0_0_0_4px_rgba(10,179,156,.16)]' => $cur && $pub,
                                 'border-admin-success/45 bg-surface text-[#0a6d60]' => ! $done && ! $cur && $pub,
                                 'border-border bg-surface text-body-muted' => ! $done && ! $cur && ! $pub,
