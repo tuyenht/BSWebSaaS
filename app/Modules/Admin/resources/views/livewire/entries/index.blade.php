@@ -387,14 +387,15 @@
                                 <div class="flex flex-wrap items-center gap-1">
                                     @foreach ($locales as $lc)
                                         @php $has = $entry->translations->contains(fn ($tr) => $tr->locale === $lc); @endphp
-                                        {{-- The code itself isn't clickable; hover reveals a floating Sửa/Thêm that opens the editor for that locale. --}}
+                                        {{-- The code itself isn't clickable; hover reveals a floating Sửa/Thêm that opens the editor for that locale
+                                             (not on a Trash row: the editor does not open trashed content). --}}
                                         <div class="group relative">
-                                            <span @if ($canEdit) title="{{ $has ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) }}" @endif @class([
+                                            <span @if ($canEdit && ! $entry->trashed()) title="{{ $has ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']) }}" @endif @class([
                                                 'inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none',
                                                 'border border-border bg-surface-muted text-body-text' => $has,
                                                 'border border-dashed border-border-strong text-placeholder' => ! $has,
                                             ])>{{ strtoupper($lc) }}</span>
-                                            @if ($canEdit)
+                                            @if ($canEdit && ! $entry->trashed())
                                                 {{-- §3a: the popover is wrapped with a padding-gap (not a margin) + pointer-events so the
                                                      cursor can travel from the chip onto the Sửa/Thêm button without the hover dropping. --}}
                                                 <span class="pointer-events-none absolute bottom-full left-1/2 z-20 -translate-x-1/2 pb-1.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
