@@ -1,12 +1,15 @@
 <?php
 
+use App\Modules\Admin\Livewire\Catalog\Editor as CatalogEditor;
 use App\Modules\Admin\Livewire\Login;
+use App\Modules\Admin\Livewire\ResetPassword;
 use App\Modules\Admin\Livewire\Settings;
 use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 
 /*
@@ -85,4 +88,41 @@ it('capitalises a field name only where it opens the sentence', function (): voi
 
     expect($errors->first('password'))->toBe('Hai lần nhập mật khẩu chưa khớp nhau.')
         ->and($errors->first('phone'))->toBe('Số điện thoại không được để trống.');
+});
+
+it('names the product field by the product label, not the shared person-name label', function (string $locale, string $expected): void {
+    $editor = User::factory()->create();
+    app()->setLocale($locale);
+
+    $message = app(Tenancy::class)->enter(1, function () use ($editor): string {
+        grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage']);
+
+        return Livewire::actingAs($editor->fresh())
+            ->test(CatalogEditor::class)
+            ->set('name', '')
+            ->call('save')
+            ->errors()->first('name');
+    });
+
+    expect($message)->toBe($expected);
+})->with([
+    'vi' => ['vi', 'Tên sản phẩm không được để trống.'],
+    'zh' => ['zh', '产品名称不能为空。'],
+]);
+
+it('names the reset-password email field by its visible label', function (): void {
+    $message = Livewire::test(ResetPassword::class)
+        ->set('token', 'any')->set('email', 'not-an-email')
+        ->set('password', 'a-fresh-secure-pass')->set('password_confirmation', 'a-fresh-secure-pass')
+        ->call('resetPassword')
+        ->errors()->first('email');
+
+    expect($message)->toBe('Tài khoản chưa đúng dạng email.');
+});
+
+it('keeps the "and N more errors" tail of a summarised message in the site language', function (): void {
+    $validator = Validator::make(['phone' => '', 'email' => ''], ['phone' => 'required', 'email' => 'required']);
+
+    expect((new ValidationException($validator))->getMessage())
+        ->toBe('Số điện thoại không được để trống. (và 1 lỗi khác)');
 });

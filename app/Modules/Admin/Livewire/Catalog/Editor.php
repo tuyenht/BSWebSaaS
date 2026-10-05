@@ -15,6 +15,7 @@ use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -187,6 +188,16 @@ final class Editor extends Component
             'pickerMedia' => $this->pickerMedia(),
             'urls' => $urls,
         ]);
+    }
+
+    /**
+     * The shared "name" label means a person's name (the contact form); here it is the product's.
+     *
+     * @return array<string, string>
+     */
+    protected function validationAttributes(): array
+    {
+        return ['name' => Str::lower(__('catalog.name_label'))];
     }
 
     /**

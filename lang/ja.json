@@ -930,6 +930,8 @@
     "validation.max.file": ":attributeは:maxキロバイト以内にしてください。",
     "validation.min.string": ":attributeは:min文字以上で入力してください。",
     "validation.min.numeric": ":attributeは:min以上にしてください。",
+    "(and :count more error)": "(他 :count 件のエラー)",
+    "(and :count more errors)": "(他 :count 件のエラー)",
     "validation.attributes": {
         "email": "メールアドレス",
         "password": "パスワード",
