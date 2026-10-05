@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Arr;
 
 /**
  * Validates the JSON language files against the canonical locale (en): reports missing
@@ -88,6 +89,9 @@ class LangCheck extends Command
     }
 
     /**
+     * A nested object (validation.attributes) is flattened so each of its keys is compared on
+     * its own: a field name added to en.json alone must fail here, not show raw in another language.
+     *
      * @return array<string, string>
      */
     private function load(string $file): array
@@ -98,8 +102,10 @@ class LangCheck extends Command
             return [];
         }
 
-        /** @var array<string, string> $json */
-        return $json;
+        /** @var array<string, string> $flat */
+        $flat = Arr::dot($json);
+
+        return $flat;
     }
 
     /**

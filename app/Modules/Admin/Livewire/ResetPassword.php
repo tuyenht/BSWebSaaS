@@ -9,6 +9,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Contracts\Auth\CanResetPassword;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -40,11 +41,12 @@ final class ResetPassword extends Component
 
     public function resetPassword(): mixed
     {
+        // The email shows as "Account" on this page too: name it the same way in its error message.
         $this->validate([
             'token' => 'required',
             'email' => 'required|email',
             'password' => ['required', 'confirmed', PasswordRule::defaults()],
-        ]);
+        ], [], ['email' => Str::lower(__('auth.email_label'))]);
 
         $status = Password::reset(
             [

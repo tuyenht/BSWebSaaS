@@ -930,6 +930,8 @@
     "validation.max.file": ":Attribute tối đa :max KB.",
     "validation.min.string": ":Attribute cần tối thiểu :min ký tự.",
     "validation.min.numeric": ":Attribute tối thiểu là :min.",
+    "(and :count more error)": "(và :count lỗi khác)",
+    "(and :count more errors)": "(và :count lỗi khác)",
     "validation.attributes": {
         "email": "email",
         "password": "mật khẩu",
