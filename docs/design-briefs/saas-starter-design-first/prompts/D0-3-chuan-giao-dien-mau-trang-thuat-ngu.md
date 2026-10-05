@@ -50,7 +50,7 @@ Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm n
 ═══ VIỆC CỦA LƯỢT NÀY ═══
 # D0-3 · Chuẩn giao diện SaaS Starter (tiếp sau D0-2): thuật ngữ · định dạng · giọng văn · trạng thái · tiêu chí dễ dùng · mẫu trang
 
-Thêm vào `Chuẩn giao diện SaaS Starter.dc.html` (đã có component của D0-2 + phần sửa D0-2s). Trang đã nặng (≈220 KB; công cụ chụp/verifier từng quá giờ — LESSONS #28), nên:
+Thêm vào `Chuẩn giao diện SaaS Starter.dc.html` (đã có component của D0-2 + phần sửa D0-2s, D0-2s2, D0-2s3). Trang đã nặng (≈260 KB ngày 05/10; công cụ chụp/verifier từng quá giờ từ lúc ≈220 KB — LESSONS #28), nên:
 - Mỗi phần mới là 1 mục có anchor riêng: `#thuat-ngu` · `#dinh-dang` · `#giong-van` · `#tieu-chi` · `#nguoi-dung-mau` · `#mau-trang` (+ `#mau-1` … `#mau-8`); trạng thái chuẩn bổ sung vào mục có sẵn `#phan-hoi`. Mục lục đầu trang trỏ đúng. Không dùng `#mau` (đã là mục Màu).
 - CSS mới để trong 1 khối `<style>` riêng, lớp có tiền tố `tp-`. KHÔNG tách CSS ra file ở lượt này (lượt riêng sau D0-3, trước D0-4a — dòng TODO của D0-2s).
 - Mẫu trang = SƠ ĐỒ VÙNG (khung ghi tên vùng + quy tắc) + liên kết tới màn gốc; KHÔNG chép markup màn gốc vào trang chuẩn. Khung tĩnh, không animation (LESSONS #28).
