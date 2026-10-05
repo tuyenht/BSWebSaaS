@@ -1,7 +1,9 @@
 {{--
     One Customizer choice as a card-radio with a miniature admin-layout preview
-    (Velzon's card-radio pattern). Colors inside the thumbnail are DELIBERATE literals:
-    each card illustrates one fixed choice, so it must NOT repaint with the live scheme.
+    (Velzon's card-radio pattern). The canvas, bar and non-brand gradient colours inside the
+    thumbnail are DELIBERATE literals: each card illustrates one fixed choice, so it must NOT
+    repaint with the live light/dark scheme. The brand colour reads the token ($brand below), so
+    a palette change repaints the swatches that show it.
 
     $axis:   scheme|sidebar|topbar     $value: the axis value this card selects
     $name:   radio group name          $label: visible caption

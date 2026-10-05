@@ -43,7 +43,7 @@
                         @if ($active) wire:click="openPickerSource('device')" @else title="{{ __('media.picker_source_soon') }}" @endif
                         @class([
                             'relative flex min-w-0 flex-col items-center gap-2 rounded-[13px] border bg-surface px-2 py-[13px] transition-all',
-                            'cursor-pointer border-border hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_6px_16px_-8px_rgba(64,81,137,0.4)]' => $active,
+                            'cursor-pointer border-border hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_6px_16px_-8px_color-mix(in_oklab,var(--color-accent)_40%,transparent)]' => $active,
                             'cursor-not-allowed border-border opacity-60' => ! $active,
                         ])>
                     {{-- Our own 'device' source is the admin-brand token (its hex is not fixed, so
