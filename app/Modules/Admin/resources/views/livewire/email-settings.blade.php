@@ -28,7 +28,7 @@
                 <div class="flex flex-wrap items-center gap-3">
                     <span class="inline-flex items-center rounded bg-admin-success/10 px-2 py-0.5 text-xs font-semibold text-admin-success-text">{{ __('admin.tenant_override_active') }}</span>
                     <x-bs-admin::button color="danger" variant="soft" size="sm"
-                                     x-on:click="$bsConfirm({ text: @js(__('admin.clear_override_confirm')), confirm: @js(__('admin.clear_override')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.clearOverride())">{{ __('admin.clear_override') }}</x-bs-admin::button>
+                                     x-on:click="$bsConfirm({ text: {{ \Illuminate\Support\Js::from(__('admin.clear_override_confirm')) }}, confirm: {{ \Illuminate\Support\Js::from(__('admin.clear_override')) }}, cancel: {{ \Illuminate\Support\Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.clearOverride())">{{ __('admin.clear_override') }}</x-bs-admin::button>
                 </div>
             @elseif ($platformConfigured)
                 <span class="inline-flex items-center rounded bg-admin-info/10 px-2 py-0.5 text-xs font-semibold text-admin-info-text">{{ __('admin.platform_default_active') }}</span>

@@ -46,7 +46,7 @@
                 <span class="inline-flex items-center rounded bg-admin-success/10 px-2 py-0.5 text-xs font-semibold text-admin-success-text">{{ __('admin.two_factor_on') }}</span>
                 <p class="text-sm text-body-muted">{{ __('admin.two_factor_enabled_desc') }}</p>
                 <x-bs-admin::button color="danger" variant="soft"
-                                 x-on:click="$bsConfirm({ text: @js(__('admin.disable_2fa_confirm')), confirm: @js(__('admin.disable_2fa')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.disableTwoFactor())">
+                                 x-on:click="$bsConfirm({ text: {{ \Illuminate\Support\Js::from(__('admin.disable_2fa_confirm')) }}, confirm: {{ \Illuminate\Support\Js::from(__('admin.disable_2fa')) }}, cancel: {{ \Illuminate\Support\Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.disableTwoFactor())">
                     {{ __('admin.disable_2fa') }}
                 </x-bs-admin::button>
             @elseif ($tfaQr)
@@ -95,7 +95,7 @@
                     </div>
                     @if ($connected->has($key))
                         <x-bs-admin::button color="danger" variant="soft"
-                                         x-on:click="$bsConfirm({ text: @js(__('admin.social_disconnect_confirm')), confirm: @js(__('admin.disconnect')), cancel: @js(__('admin.cancel')) }).then(ok => ok && $wire.disconnect(@js($key)))">
+                                         x-on:click="$bsConfirm({ text: {{ \Illuminate\Support\Js::from(__('admin.social_disconnect_confirm')) }}, confirm: {{ \Illuminate\Support\Js::from(__('admin.disconnect')) }}, cancel: {{ \Illuminate\Support\Js::from(__('admin.cancel')) }} }).then(ok => ok && $wire.disconnect({{ \Illuminate\Support\Js::from($key) }}))">
                             {{ __('admin.disconnect') }}
                         </x-bs-admin::button>
                     @else
