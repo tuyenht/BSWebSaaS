@@ -13,7 +13,7 @@
             <div>
                 <h1 class="text-lg font-semibold text-heading">{{ $submission->name ?: __('forms.lead_title') }}</h1>
                 <p class="mt-1 text-sm text-body-muted">
-                    {{ $submission->created_at?->format('d/m/Y H:i') ?? '—' }}
+                    {{ $siteTime->forDisplay($submission->created_at)?->format('d/m/Y H:i') ?? '—' }}
                 </p>
             </div>
             <span class="rounded px-2 py-0.5 text-xs font-semibold

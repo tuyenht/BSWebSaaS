@@ -23,7 +23,7 @@
     $disabled = $linkBase.' cursor-not-allowed text-ink-ghost';
 @endphp
 @if ($last > 1)
-    <nav aria-label="Pagination" {{ $attributes->merge(['class' => 'flex items-center gap-1']) }}>
+    <nav aria-label="{{ __('admin.pagination.nav') }}" {{ $attributes->merge(['class' => 'flex items-center gap-1']) }}>
         @if ($current > 1)
             <a href="{{ $urlFor($current - 1) }}" @if ($paginator) wire:navigate @endif
                aria-label="{{ __('admin.pagination.previous') }}" class="{{ $navlink }}">

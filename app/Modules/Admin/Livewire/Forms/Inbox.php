@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Tenancy\Context\SiteTime;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -45,7 +46,10 @@ final class Inbox extends Component
 
         $submissions = $query->orderByDesc('created_at')->paginate(20);
 
-        $view = view('admin::livewire.forms.inbox', ['submissions' => $submissions]);
+        $view = view('admin::livewire.forms.inbox', [
+            'submissions' => $submissions,
+            'siteTime' => app(SiteTime::class),
+        ]);
         $view->title(__('forms.inbox_title'));
 
         return $view;

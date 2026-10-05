@@ -2,7 +2,7 @@
      tiles activate per phase (device+camera → Phase 3, clouds/Unsplash → Phase 5 behind their
      OAuth keys). Until wired, a tile is visibly inert (muted + tooltip) — never a silent no-op. --}}
 @php($sources = [
-    ['key' => 'device',   'icon' => 'ri-computer',      'label' => __('media.picker_source_device'), 'color' => '#405189'],
+    ['key' => 'device',   'icon' => 'ri-computer',      'label' => __('media.picker_source_device'), 'color' => 'var(--color-admin-primary)'],
     ['key' => 'camera',   'icon' => 'ri-camera',        'label' => __('media.picker_source_camera'), 'color' => '#0ab39c'],
     ['key' => 'dropbox',  'icon' => 'ri-dropbox',       'label' => 'Dropbox',       'color' => '#0061FF'],
     ['key' => 'gdrive',   'icon' => 'ri-drive',         'label' => 'Google Drive',  'color' => '#1a73e8'],
@@ -46,8 +46,10 @@
                             'cursor-pointer border-border hover:-translate-y-0.5 hover:border-accent hover:shadow-[0_6px_16px_-8px_rgba(64,81,137,0.4)]' => $active,
                             'cursor-not-allowed border-border opacity-60' => ! $active,
                         ])>
+                    {{-- Our own 'device' source is the admin-brand token (its hex is not fixed, so
+                         it can't be alpha-suffixed like the third-party brand hexes below). --}}
                     <span class="flex size-11 items-center justify-center rounded-xl"
-                          style="background: {{ $source['color'] }}1a; color: {{ $source['color'] }};">
+                          style="background: {{ $source['key'] === 'device' ? 'color-mix(in oklab, var(--color-admin-primary) 10%, transparent)' : $source['color'].'1a' }}; color: {{ $source['color'] }};">
                         <x-bs-admin::icon :name="$source['icon']" class="size-[22px]" />
                     </span>
                     <span class="max-w-full truncate text-center text-xs font-medium leading-snug text-body-text">{{ $source['label'] }}</span>

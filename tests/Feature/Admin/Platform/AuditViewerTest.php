@@ -56,6 +56,25 @@ it('filters audit entries by action', function (): void {
         ->assertDontSee('site.provision');
 });
 
+it('shows the audit time in the platform default zone, not UTC', function (): void {
+    AuditLog::query()->create([
+        'action' => 'platform.entitlement.toggle',
+        'actor_label' => 'admin@baoson.net',
+        'site_id' => 1,
+        'meta' => [],
+        'created_at' => '2026-07-10 07:30:00',
+    ]);
+    $host = (string) config('tenancy.platform_host');
+
+    // The platform plane resolves no site (no SetCurrentSite in its route group), so SiteTime
+    // falls back to the platform default zone (Asia/Ho_Chi_Minh, UTC+7) — there is no single
+    // "right" site to render a cross-site log in: 07:30 UTC stored -> 14:30 shown.
+    $this->actingAs(auditOperator('support'))->get("http://{$host}/audit")
+        ->assertOk()
+        ->assertSee('10/07/2026 14:30')
+        ->assertDontSee('10/07/2026 07:30');
+});
+
 it('forbids billing (no audit.view) from the audit log', function (): void {
     $host = (string) config('tenancy.platform_host');
 

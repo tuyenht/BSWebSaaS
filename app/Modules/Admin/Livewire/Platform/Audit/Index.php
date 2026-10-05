@@ -5,6 +5,7 @@ namespace App\Modules\Admin\Livewire\Platform\Audit;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Tenancy\Context\SiteTime;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -50,7 +51,14 @@ final class Index extends Component
 
         $entries = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(50);
 
-        $view = view('admin::livewire.platform.audit.index', ['entries' => $entries]);
+        // This is the platform plane: no site is resolved here (route group carries no
+        // SetCurrentSite middleware), so SiteTime's own fail-safe already gives the platform
+        // default zone (GMT+7) instead of a site's zone — there is no single "right" site for a
+        // cross-site log. Reusing that fallback keeps one time funnel instead of a second rule.
+        $view = view('admin::livewire.platform.audit.index', [
+            'entries' => $entries,
+            'siteTime' => app(SiteTime::class),
+        ]);
         $view->title(__('admin.platform_audit'));
 
         return $view;

@@ -22,7 +22,7 @@
             <tbody class="divide-y divide-border-soft">
                 @forelse ($entries as $entry)
                     <tr wire:key="audit-{{ $entry->id }}">
-                        <td class="whitespace-nowrap px-4 py-3 text-body-muted">{{ $entry->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-body-muted">{{ $siteTime->forDisplay($entry->created_at)?->format('d/m/Y H:i') ?? '—' }}</td>
                         <td class="px-4 py-3 font-mono text-xs text-heading">{{ $entry->action }}</td>
                         <td class="px-4 py-3 text-body-muted">{{ $entry->actor_label ?? '—' }}</td>
                         <td class="px-4 py-3 text-body-muted">{{ $entry->site_id ?? '—' }}</td>

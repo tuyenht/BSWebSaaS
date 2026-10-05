@@ -10,16 +10,18 @@
 --}}
 @props(['axis', 'value', 'name', 'label', 'store' => false])
 @php
-    $brand = '#405189';
+    // The admin brand is token-driven (--color-admin-primary, resources/css/app.css) — read it
+    // here instead of duplicating its hex so a palette change never leaves a stale swatch.
+    $brand = 'var(--color-admin-primary)';
     $isDarkScheme = $axis === 'scheme' && $value === 'dark';
     $canvas = $isDarkScheme ? '#212529' : '#ffffff';
     $bar = $isDarkScheme ? 'rgb(255 255 255 / 0.14)' : '#eff2f7';
     $sidebar = match (true) {
         $axis === 'sidebar' && $value === 'light' => '#ffffff',
-        $axis === 'sidebar' && $value === 'gradient' => 'linear-gradient(to right, #405189, #0ab39c)',
+        $axis === 'sidebar' && $value === 'gradient' => "linear-gradient(to right, {$brand}, #0ab39c)",
         $axis === 'sidebar' && $value === 'gradient-2' => 'linear-gradient(to right, #299cdb, #3577f1)',
         $axis === 'sidebar' && $value === 'gradient-3' => 'linear-gradient(to right, #299cdb, #0ab39c)',
-        $axis === 'sidebar' && $value === 'gradient-4' => 'linear-gradient(to right, #1a1d21, #405189)',
+        $axis === 'sidebar' && $value === 'gradient-4' => "linear-gradient(to right, #1a1d21, {$brand})",
         $isDarkScheme => 'rgb(255 255 255 / 0.08)',
         default => $brand,
     };

@@ -3,6 +3,7 @@
 namespace App\Modules\Admin\Livewire\Forms;
 
 use App\Modules\Forms\Models\FormSubmission;
+use App\Modules\Tenancy\Context\SiteTime;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -49,7 +50,10 @@ final class Detail extends Component
 
     public function render(): View
     {
-        $view = view('admin::livewire.forms.detail', ['submission' => $this->submission]);
+        $view = view('admin::livewire.forms.detail', [
+            'submission' => $this->submission,
+            'siteTime' => app(SiteTime::class),
+        ]);
         $view->title(__('forms.lead_title'));
 
         return $view;
