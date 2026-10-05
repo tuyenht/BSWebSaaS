@@ -135,3 +135,31 @@ it('adds and removes the impersonator columns reversibly', function (): void {
         ->and(DB::table('audit_logs')->select($columns)->sole())
         ->toEqual((object) ['impersonator_id' => null, 'impersonator_label' => null]);
 });
+
+it('stays best-effort for a lock conflict outside any transaction, where nothing is left aborted', function (): void {
+    // A CLI command or a queued job's failed() hook writes its audit line at transaction level 0.
+    // Laravel has then rolled the insert back in full, so the caller's flow must carry on.
+    $admin = DB::connection('pgsql_admin');
+    $admin->unprepared(<<<'SQL'
+        create or replace function test_audit_lock_conflict() returns trigger language plpgsql as $fn$
+        begin
+            raise exception 'could not serialize access due to concurrent update' using errcode = '40001';
+        end
+        $fn$;
+        drop trigger if exists test_audit_lock_conflict on audit_logs;
+        create trigger test_audit_lock_conflict before insert on audit_logs
+            for each row when (new.action = 'test.audit.conflict')
+            execute function test_audit_lock_conflict();
+        SQL);
+
+    try {
+        expect(DB::transactionLevel())->toBe(0);
+        Audit::record('test.audit.conflict');   // must not throw
+        expect(DB::transactionLevel())->toBe(0)
+            ->and(DB::selectOne('select 1 as ok')->ok)->toBe(1);
+    } finally {
+        $admin->unprepared('drop trigger if exists test_audit_lock_conflict on audit_logs; drop function if exists test_audit_lock_conflict();');
+    }
+
+    expect(AuditLog::count())->toBe(0);
+});
