@@ -281,7 +281,7 @@
                                     @if ($depth)
                                         <x-bs-admin::icon name="chevron-right" class="size-3.5 shrink-0 text-placeholder" />
                                     @endif
-                                    @if ($canEdit)
+                                    @if ($canEdit && ! $entry->trashed())
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.titleInput.focus(); $refs.titleInput.select() })"
                                             title="{{ __('entries.edit_name_hint') }}"
@@ -305,7 +305,7 @@
                             <td x-show="cols.path" class="align-top font-mono text-xs text-body-muted">
                                 @if ($isHome)
                                     <span class="inline-flex items-center gap-1 text-placeholder" title="{{ __('entries.home_locked') }}">{{ $path ?? '/' }} <x-bs-admin::icon name="ri-lock" class="size-3" /></span>
-                                @elseif ($canEdit)
+                                @elseif ($canEdit && ! $entry->trashed())
                                     <div wire:key="slug-{{ $entry->ulid }}-{{ $slugLeaf }}" x-data="{ editing: false, value: @js($slugLeaf ?? ''), cancel: false }" class="flex max-w-[240px] items-center">
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"

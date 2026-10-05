@@ -15,6 +15,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
@@ -30,6 +31,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -207,6 +209,11 @@ final class Index extends Component
     public function changeStatus(string $ulid, string $status): void
     {
         $entry = $this->findLiveEntry($ulid);
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
         $user = $this->actingUser();
 
         try {
@@ -237,8 +244,15 @@ final class Index extends Component
             return;
         }
 
+        $entry = $this->findLiveEntry($ulid);
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+
         try {
-            app(TransitionEntryStatus::class)->handle($this->findLiveEntry($ulid), EntryStatus::Scheduled, $this->actingUser(), $when);
+            app(TransitionEntryStatus::class)->handle($entry, EntryStatus::Scheduled, $this->actingUser(), $when);
         } catch (WorkflowGovernedException) {
             $this->toast(__('entries.workflow_governed'));
 
@@ -262,15 +276,27 @@ final class Index extends Component
         }
     }
 
-    /** Inline rename — updates the default-locale translation title. */
+    /**
+     * Inline rename — updates the default-locale translation title, under the editor's own title
+     * rule. Only live rows: the Trash offers no inline editing.
+     */
     public function saveTitle(string $ulid, string $value): void
     {
-        $entry = $this->findEntry($ulid);
+        $entry = $this->findLiveEntry($ulid);
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
         $this->authorize('update', $entry);
 
         $value = trim($value);
         $translation = $entry->translationFor(app(SiteLocale::class)->default());
         if ($value === '' || $translation === null || $translation->title === $value) {
+            return;
+        }
+
+        if (! $this->passesContentRule('title', $value)) {
             return;
         }
 
@@ -283,10 +309,17 @@ final class Index extends Component
      * Inline slug edit — slugifies the leaf server-side (VN-aware), updates the default-locale
      * translation, and (for a published page) moves its route + cascades 301s to descendants,
      * all in one transaction so a slug clash rolls back cleanly. The home page slug is locked.
+     * Only live rows: a trashed page keeps its routes, so moving its slug would move the URLs of
+     * its live children.
      */
     public function saveSlug(string $ulid, string $value): void
     {
-        $entry = $this->findEntry($ulid);
+        $entry = $this->findLiveEntry($ulid);
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
         $this->authorize('update', $entry);
 
         $locale = app(SiteLocale::class)->default();
@@ -302,7 +335,7 @@ final class Index extends Component
         }
 
         $slug = Str::slug($value);
-        if ($slug === '' || $slug === $translation->slug) {
+        if ($slug === '' || $slug === $translation->slug || ! $this->passesContentRule('slug', $slug)) {
             return;
         }
 
@@ -325,6 +358,24 @@ final class Index extends Component
         $this->toast(__('entries.slug_saved'));
     }
 
+    /**
+     * The editor's rule for one field (EntryContentRules), so an inline edit cannot store what the
+     * editor would refuse. A refusal is the rule's plain-language message, as a toast: the list's
+     * inline fields have no error line of their own.
+     */
+    private function passesContentRule(string $field, string $value): bool
+    {
+        $rules = app(EntryContentRules::class);
+        $validator = Validator::make([$field => $value], [$field => $rules->rules()[$field]], $rules->messages());
+        if ($validator->fails()) {
+            $this->toast($validator->errors()->first($field));
+
+            return false;
+        }
+
+        return true;
+    }
+
     /** An inline rename of live content changes what visitors see — keep that version, like an editor save. */
     private function recordLiveEdit(Entry $entry, EntryTranslation $translation): void
     {
@@ -335,7 +386,13 @@ final class Index extends Component
 
     public function duplicate(string $ulid): void
     {
-        $copy = app(DuplicateEntry::class)->handle($this->findLiveEntry($ulid), $this->actingUser());
+        $entry = $this->findLiveEntry($ulid);
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
+        $copy = app(DuplicateEntry::class)->handle($entry, $this->actingUser());
         // Materialize the copied block images into the usage index, exactly as the editor does on save.
         app(EntryBlockMediaReconciler::class)->reconcile($copy);
 
@@ -345,6 +402,11 @@ final class Index extends Component
     public function trash(string $ulid): void
     {
         $entry = $this->findLiveEntry($ulid);   // trashing it again would restart its purge clock
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
         $this->authorize('delete', $entry);
         $entry->delete();
 
@@ -354,6 +416,11 @@ final class Index extends Component
     public function restore(string $ulid): void
     {
         $entry = $this->findTrashedEntry($ulid);
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
         $this->authorize('restore', $entry);
         $entry->restore();
 
@@ -363,6 +430,11 @@ final class Index extends Component
     public function forceDelete(string $ulid): void
     {
         $entry = $this->findTrashedEntry($ulid);   // only what is in the Trash is ever purged
+        if ($entry === null) {
+            $this->toastStaleRow();
+
+            return;
+        }
         $this->authorize('forceDelete', $entry);
         $entry->forceDelete(); // EntryObserver clears the block-image usage index
 
@@ -646,21 +718,28 @@ final class Index extends Component
         return Entry::withTrashed()->whereIn('ulid', $this->selected)->orderBy('id')->lockForUpdate()->get();
     }
 
-    private function findEntry(string $ulid): Entry
+    /*
+     * A row action names its row by ulid, as the list showed it. By the click the row may have
+     * changed kind (a colleague trashed or restored it) or be gone; a forged ulid looks the same.
+     * The finders then return null and the action answers toastStaleRow(): one plain message for
+     * every case, and the list re-renders as it is now — never a 404 over the page.
+     */
+
+    /** A row that is not in the Trash — anything else is null, like an unknown ulid. */
+    private function findLiveEntry(string $ulid): ?Entry
     {
-        return Entry::withTrashed()->where('ulid', $ulid)->firstOrFail();
+        return Entry::query()->where('ulid', $ulid)->first();
     }
 
-    /** A row that is not in the Trash — anything else is not found, like an unknown ulid. */
-    private function findLiveEntry(string $ulid): Entry
+    /** A row in the Trash — a live row is null here, so it can never be restored or purged by mistake. */
+    private function findTrashedEntry(string $ulid): ?Entry
     {
-        return Entry::query()->where('ulid', $ulid)->firstOrFail();
+        return Entry::onlyTrashed()->where('ulid', $ulid)->first();
     }
 
-    /** A row in the Trash — a live row is not found here, so it can never be restored or purged by mistake. */
-    private function findTrashedEntry(string $ulid): Entry
+    private function toastStaleRow(): void
     {
-        return Entry::onlyTrashed()->where('ulid', $ulid)->firstOrFail();
+        $this->toast(__('entries.row_stale'));
     }
 
     private function actingUser(): User

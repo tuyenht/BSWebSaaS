@@ -331,6 +331,7 @@ trait WithMediaLibraryPicker
 
         $this->pickerDetailId = $media->id;
         $this->pickerDetailAlt = $media->alt[$this->pickerContentLocale()] ?? '';
+        $this->resetErrorBag('pickerDetailAlt');   // a refusal shown for the previous image
     }
 
     public function closePickerDetail(): void
@@ -352,9 +353,17 @@ trait WithMediaLibraryPicker
             return;
         }
 
+        $this->resetErrorBag('pickerDetailAlt');
+        $text = trim($this->pickerDetailAlt);
+        if (mb_strlen($text) > Media::ALT_MAX_LENGTH) {
+            $this->addError('pickerDetailAlt', __('media.picker_detail_alt_too_long', ['max' => Media::ALT_MAX_LENGTH]));
+
+            return;
+        }
+
         // Per-locale JSONB — only this locale's key changes; other locales' alt survive.
         $alt = $media->alt;
-        $alt[$this->pickerContentLocale()] = trim($this->pickerDetailAlt);
+        $alt[$this->pickerContentLocale()] = $text;
         $media->update(['alt' => $alt]);
 
         session()->flash('media-status', __('media.picker_detail_saved'));

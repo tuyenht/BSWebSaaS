@@ -9,7 +9,9 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\SiteLocale;
+use App\Modules\Tenancy\Models\SiteSetting;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 
 /*
@@ -512,6 +514,159 @@ it('slugifies a Vietnamese slug server-side', function (): void {
             ->call('saveSlug', $page->ulid, 'Đặt lịch hẹn');
 
         expect($page->translationFor('vi')->fresh()->slug)->toBe('dat-lich-hen');
+    });
+});
+
+it('never moves a live child when the slug of its trashed parent is edited inline', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        SiteSetting::query()->updateOrCreate(['group_name' => 'permalinks', 'key' => 'pages'], ['value' => ['pattern' => 'nested']]);
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish']);
+        $parent = makePageEntry($editor, 'Dịch vụ', 'dich-vu', 'draft');
+        app(PublishEntry::class)->handle($parent->fresh(), 'vi', $editor->fresh());
+        $child = makePageEntry($editor, 'Gia công', 'gia-cong', 'draft', $parent->id);
+        app(PublishEntry::class)->handle($child->fresh(), 'vi', $editor->fresh());
+        $parent->delete(); // trashing keeps the routes: the child stays live at /dich-vu/gia-cong
+        expect(SiteRoute::query()->where('entry_id', $child->id)->value('path'))->toBe('/dich-vu/gia-cong');
+
+        $component = Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('setTab', 'trash')
+            ->call('saveSlug', $parent->ulid, 'dich-vu-moi');
+
+        expect(SiteRoute::query()->where('entry_id', $child->id)->value('path'))->toBe('/dich-vu/gia-cong')
+            ->and(Entry::withTrashed()->find($parent->id)?->translationFor('vi')?->slug)->toBe('dich-vu');
+        $component->assertOk()->assertDispatched('bs-toast', text: __('entries.row_stale'));
+    });
+});
+
+it('never renames a trashed row inline', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        $page = makePageEntry($editor, 'Tên cũ', 'ten-cu');
+        $page->delete();
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('setTab', 'trash')
+            ->call('saveTitle', $page->ulid, 'Tên mới')
+            ->assertOk()
+            ->assertDispatched('bs-toast', text: __('entries.row_stale'));
+
+        expect(Entry::withTrashed()->find($page->id)?->translationFor('vi')?->title)->toBe('Tên cũ');
+    });
+});
+
+it('offers no inline title or slug editor on the Trash tab', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        makePageEntry($editor, 'Trang trong thùng rác', 'trang-thung-rac')->delete();
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('setTab', 'trash')
+            ->assertSee('Trang trong thùng rác')
+            ->assertDontSeeHtml('$wire.saveTitle(')
+            ->assertDontSeeHtml('$wire.saveSlug(');
+    });
+});
+
+it('refuses an inline title longer than the editor allows, and saves one at the limit', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        $page = makePageEntry($editor, 'Tên cũ', 'ten-cu', 'draft');
+
+        $component = Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('saveTitle', $page->ulid, str_repeat('ă', 201));
+
+        expect($page->translationFor('vi')->fresh()->title)->toBe('Tên cũ');
+        $component->assertDispatched('bs-toast', text: __('entries.title_too_long', ['max' => 200]));
+
+        $component->call('saveTitle', $page->ulid, str_repeat('ă', 200))
+            ->assertDispatched('bs-toast', text: __('entries.title_saved'));
+        expect($page->translationFor('vi')->fresh()->title)->toBe(str_repeat('ă', 200));
+    });
+});
+
+it('refuses an inline slug longer than the editor allows, and saves one at the limit', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        $page = makePageEntry($editor, 'Trang', 'trang', 'draft');
+
+        $component = Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('saveSlug', $page->ulid, str_repeat('a', 201));
+
+        expect($page->translationFor('vi')->fresh()->slug)->toBe('trang');
+        $component->assertDispatched('bs-toast', text: __('entries.slug_too_long', ['max' => 200]));
+
+        $component->call('saveSlug', $page->ulid, str_repeat('a', 200))
+            ->assertDispatched('bs-toast', text: __('entries.slug_saved'));
+        expect($page->translationFor('vi')->fresh()->slug)->toBe(str_repeat('a', 200));
+    });
+});
+
+it('answers a Trash-row action on a page someone restored meanwhile with a toast, not a 404', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.delete.any']);
+        $page = makePageEntry($editor, 'Vừa khôi phục', 'vua-khoi-phuc');
+        $page->delete();
+
+        $component = Livewire::actingAs($editor->fresh())->test(Index::class)->call('setTab', 'trash');
+        Entry::withTrashed()->find($page->id)?->restore(); // a colleague restores it from their screen
+
+        $component->call('forceDelete', $page->ulid)
+            ->assertOk()
+            ->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        $component->call('restore', $page->ulid)
+            ->assertOk()
+            ->assertDispatched('bs-toast', text: __('entries.row_stale'));
+
+        expect(Entry::query()->whereKey($page->id)->exists())->toBeTrue(); // still live, never purged
+    });
+});
+
+it('answers a live-row action on a page someone trashed meanwhile with a toast, not a 404', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.delete.any', 'entries.create', 'entries.publish']);
+        $page = makePageEntry($editor, 'Vừa xoá', 'vua-xoa', 'draft');
+
+        $component = Livewire::actingAs($editor->fresh())->test(Index::class);
+        $page->delete(); // a colleague trashes it from their screen
+
+        $component->call('trash', $page->ulid)->assertOk()->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        $component->call('duplicate', $page->ulid)->assertOk()->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        $component->call('changeStatus', $page->ulid, 'private')->assertOk()->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        $component->call('scheduleEntry', $page->ulid, now()->addDay()->format('Y-m-d\TH:i'))
+            ->assertOk()
+            ->assertDispatched('bs-toast', text: __('entries.row_stale'));
+
+        $fresh = Entry::withTrashed()->find($page->id);
+        expect($fresh?->status)->toBe('draft')
+            ->and($fresh?->published_at)->toBeNull()
+            ->and(Entry::withTrashed()->where('type', 'page')->count())->toBe(1); // nothing duplicated
+    });
+});
+
+it('answers an unknown row the same way as a row that changed', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.delete.any']);
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('restore', (string) Str::ulid())
+            ->assertOk()
+            ->assertDispatched('bs-toast', text: __('entries.row_stale'));
     });
 });
 

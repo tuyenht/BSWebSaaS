@@ -545,6 +545,29 @@ it('saves alt for the site locale without touching other locales (media.upload)'
     });
 });
 
+it('refuses an alt text longer than the SEO hard cap and saves one at the cap', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $media = seedPickerMedia('altcap', ['alt' => ['vi' => 'giữ nguyên']]);
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->call('openPickerDetail', $media->id)
+            ->set('pickerDetailAlt', str_repeat('ả', 189))
+            ->call('savePickerDetailAlt');
+
+        expect($media->fresh()?->alt)->toBe(['vi' => 'giữ nguyên']);
+        $component->assertHasErrors(['pickerDetailAlt' => __('media.picker_detail_alt_too_long', ['max' => 188])])
+            ->assertSeeHtml(e(__('media.picker_detail_alt_too_long', ['max' => 188])));
+
+        $component->set('pickerDetailAlt', str_repeat('ả', 188))
+            ->call('savePickerDetailAlt')
+            ->assertHasNoErrors();
+        expect($media->fresh()?->alt)->toBe(['vi' => str_repeat('ả', 188)]);
+    });
+});
+
 it('403s saving alt without media.upload', function (): void {
     $user = pickerManager(); // media.view only
 

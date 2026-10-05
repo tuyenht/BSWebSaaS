@@ -27,4 +27,19 @@ final readonly class EntryContentRules
             'blocks' => [$this->blocks],
         ];
     }
+
+    /**
+     * Plain-language messages for the rules above (the framework's own are English only); `:max`
+     * is filled in by the validator from the rule, so the limit is stated once.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'title.max' => __('entries.title_too_long'),
+            'slug.max' => __('entries.slug_too_long'),
+            'slug.regex' => __('entries.slug_format'),
+        ];
+    }
 }

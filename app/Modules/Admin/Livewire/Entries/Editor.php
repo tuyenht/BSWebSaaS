@@ -780,7 +780,7 @@ final class Editor extends Component
     protected function messages(): array
     {
         return [
-            'slug.regex' => __('entries.slug_format'),
+            ...app(EntryContentRules::class)->messages(),
             'categoryId.required' => __('entries.category_required'),
             'categoryId.exists' => __('entries.category_invalid'),
         ];

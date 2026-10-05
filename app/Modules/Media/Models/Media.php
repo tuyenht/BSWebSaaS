@@ -36,6 +36,13 @@ final class Media extends Model
     use HasUlidColumn;
     use SoftDeletes;
 
+    /**
+     * The longest alt text (one locale) an admin may save: the design's SEO hard cap for alt,
+     * BSSEO.hardCap('alt') = round(150 × 1.25) — 150 is the recommended length, 25% over it the
+     * point where screen readers and search snippets cut it off.
+     */
+    public const int ALT_MAX_LENGTH = 188;
+
     /** Sniffed mime → the extension label the library groups/badges by ("Định dạng" filter). */
     public const array MIME_EXT_LABELS = [
         'image/jpeg' => 'jpg',
