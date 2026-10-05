@@ -13,7 +13,6 @@ use App\Modules\Tenancy\Events\DomainNeedsAttention;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification;
-use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 use Throwable;
 
 /**
@@ -49,11 +48,8 @@ final class TellSiteAboutDomain implements ShouldQueue
     {
         /** @var array{0: Collection<int, User>, 1: string|null} $found */
         $found = $this->tenancy->enter($event->siteId, function () use ($event): array {
-            try {
-                $managers = User::permission('domains.manage')->get();
-            } catch (PermissionDoesNotExist) {
-                $managers = new Collection;   // a site whose permissions were never synced has nobody to tell
-            }
+            // A site whose permissions were never synced has no holders: nobody to tell.
+            $managers = User::query()->holdingPermission('domains.manage')->get();
 
             $until = $event->until?->setTimezone(app(SiteTime::class)->zone())->format('d/m/Y');
 

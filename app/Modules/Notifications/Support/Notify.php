@@ -7,7 +7,6 @@ namespace App\Modules\Notifications\Support;
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Messages\SiteNotice;
 use Illuminate\Support\Facades\Notification;
-use Spatie\Permission\Exceptions\PermissionDoesNotExist;
 
 /**
  * Sends in-app notices on the current site — the one way content modules notify people. Never
@@ -23,13 +22,10 @@ final class Notify
      */
     public static function holdersOf(string $permission, string $kind, array $data, ?User $except = null): void
     {
-        try {
-            $users = User::permission($permission)
-                ->when($except instanceof User, fn ($query) => $query->whereKeyNot($except?->getKey()))
-                ->get();
-        } catch (PermissionDoesNotExist) {
-            return;   // a site whose permission set has not been synced yet has nobody to tell
-        }
+        // A permission a site has not been synced with yet has no holders: nobody to tell.
+        $users = User::query()->holdingPermission($permission)
+            ->when($except instanceof User, fn ($query) => $query->whereKeyNot($except?->getKey()))
+            ->get();
 
         Notification::send($users, new SiteNotice($kind, $data));
     }

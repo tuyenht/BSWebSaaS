@@ -148,7 +148,7 @@ final readonly class EntryWorkflowResolver
      * engine's permission check plus mayApply(), as one query for lists of people (a hand-off
      * picker) that must not run the gate member by member. The policy's edit rule is restated
      * here in SQL: entries.edit.any, or entries.edit.own while being the entry's author (an entry
-     * with no author: edit.any only). Spatie's permission scope honours the team (site) on both
+     * with no author: edit.any only). User::holdingPermission() honours the team (site) on both
      * the role and the direct grant. A platform super_admin passes the gate through
      * Gate::before without holding the grants, so is listed only as far as their grants reach.
      *
@@ -172,16 +172,16 @@ final readonly class EntryWorkflowResolver
 
         return User::query()->where(function (Builder $members) use ($others, $sends, $authorId): void {
             if ($others !== []) {
-                $members->orWhere(fn (Builder $holder) => $holder->permission($others));
+                $members->orWhere(fn (Builder $holder) => $holder->holdingPermission($others));
             }
             if ($sends) {
                 $members->orWhere(fn (Builder $sender) => $sender
-                    ->permission(self::SUBMIT_PERMISSION)
+                    ->holdingPermission(self::SUBMIT_PERMISSION)
                     ->where(fn (Builder $editor) => $editor
-                        ->permission('entries.edit.any')
+                        ->holdingPermission('entries.edit.any')
                         ->when($authorId !== null, fn (Builder $any) => $any->orWhere(fn (Builder $own) => $own
                             ->whereKey($authorId)
-                            ->permission('entries.edit.own')))));
+                            ->holdingPermission('entries.edit.own')))));
             }
         });
     }
