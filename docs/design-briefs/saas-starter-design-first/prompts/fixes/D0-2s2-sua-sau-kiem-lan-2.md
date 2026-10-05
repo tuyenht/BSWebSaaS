@@ -81,7 +81,7 @@ Lượt D0-2s2 — sửa sau lần kiểm thứ hai của Claude Code (04/10, b�
    - README "Quyền & gói": ghi đúng luật này.
    - README "Việc cho backend":
      - dòng "Chuyển vào Thùng rác hàng loạt" (dòng 252): chỉ thay ý (a) bằng "(a) mọi thao tác hàng loạt (Thùng rác · Khôi phục · Xóa vĩnh viễn · Đưa về nháp · Nhân bản) bỏ qua dòng không đủ quyền rồi báo số — hiện cả 5 hàm dừng ở dòng đầu tiên không đủ quyền và giữ thay đổi của các dòng trước (`app/Modules/Admin/Livewire/Entries/Index.php` `bulkApply`)". GIỮ nguyên ý (b) toast Hoàn tác và ý (c) bỏ hộp xác nhận;
-     - thêm ngay dưới một dòng mới "Gửi duyệt / Đăng hàng loạt": cột Dữ liệu cần lưu ghi "—"; cột Luật viết liền trong một ô: "(1) Gửi duyệt = có quyền gửi duyệt VÀ được sửa đúng bài đó, và chỉ từ Bản nháp (owner chốt theo khuyến nghị 04/10 tối; Claude Code đang làm PR: `EntryPolicy::submit` + quy trình duyệt + thao tác hàng loạt) — với nhóm Người viết / Cộng tác viên nghĩa là chỉ bản nháp của mình. (2) Đăng / Gửi duyệt hàng loạt: dòng không làm được thì bỏ qua và báo số; chỉ đếm dòng thật sự đổi trạng thái — Gửi duyệt chỉ đếm bản nháp; Đăng không đếm bài đã đăng (bài đang chờ duyệt được Đăng thì có đếm); không đụng bài trong Thùng rác."
+     - thêm ngay dưới một dòng mới "Gửi duyệt / Đăng hàng loạt": cột Dữ liệu cần lưu ghi "—"; cột Luật viết liền trong một ô: "(1) Gửi duyệt = có quyền gửi duyệt VÀ được sửa đúng bài đó, và chỉ từ Bản nháp (owner chốt theo khuyến nghị 04/10 tối; repo ĐÃ CÓ từ 04/10, PR #168: `EntryPolicy::submit` + quy trình duyệt + thao tác hàng loạt) — với nhóm Người viết / Cộng tác viên nghĩa là chỉ bản nháp của mình. (2) Đăng / Gửi duyệt hàng loạt: dòng không làm được thì bỏ qua và báo số; chỉ đếm dòng thật sự đổi trạng thái — Gửi duyệt chỉ đếm bản nháp; Đăng không đếm bài đã đăng (bài đang chờ duyệt được Đăng thì có đếm); không đụng bài trong Thùng rác."
 
 7. **CAO — Sửa trạng thái trong bảng tra (dòng 1559–1591) và bảng tương ứng trong README.** Repo thật: `app/Modules/Admin/resources/views/components/`.
 
@@ -268,7 +268,7 @@ Chưa kiểm được: Safari iOS / iPadOS / Firefox / máy cảm ứng thật, 
       - `Index::changeStatus` / `bulkPublish` không gọi `authorize('update')`;
       - bài đã đăng vẫn bị đếm là "xong" (`PublishEntry.php:86-88`, `Index.php:390-391`).
     - Thiết kế đang chép đúng lỗ hổng quyền này của repo.
-    - Owner đã chốt (04/10 tối, theo khuyến nghị): gửi duyệt = có `entries.submit` VÀ được sửa bài đó, chỉ từ Bản nháp; Claude Code làm PR riêng.
+    - Owner đã chốt (04/10 tối, theo khuyến nghị): gửi duyệt = có `entries.submit` VÀ được sửa bài đó, chỉ từ Bản nháp; repo đã sửa xong 04/10 (PR #168).
     - Cao · [SUY RA TỪ CODE]
 12. **C12 · repo `app/Modules/Admin/Livewire/Entries/Index.php:457-466`** · `bulkApply`
     - Dòng đầu tiên không đủ quyền là dừng (403).
@@ -382,7 +382,7 @@ Chưa kiểm được: Safari iOS / iPadOS / Firefox / máy cảm ứng thật, 
   - C8 Page Editor `width:min(1240px,100%)`.
 - Repo:
   - C12 bulk bỏ qua dòng không đủ quyền và báo số (5 hàm);
-  - C11 phía repo: `submit` đòi quyền sửa bài + chỉ từ Bản nháp (đã chốt, PR riêng).
+  - C11 phía repo: `submit` đòi quyền sửa bài + chỉ từ Bản nháp (đã chốt, đã có ở repo từ 04/10 — PR #168).
 
 **Trung bình**
 - D0-2s2: TB 1–10, 18, 19 (độ dài đường dẫn / mô tả ngắn trong `content-seo.js`), 21, 22.
