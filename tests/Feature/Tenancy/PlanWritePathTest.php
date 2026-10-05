@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Admin\Support\PlatformPlans;
+use App\Modules\Admin\Support\UpgradeInvitation;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
@@ -29,6 +30,7 @@ beforeEach(function (): void {
     seedTenancy();   // tenant 1 owns sites 1 (a.test) + 2 (b.test)
     DB::connection('pgsql_admin')->statement('truncate users, audit_logs restart identity cascade');
     DB::connection('pgsql_admin')->statement('delete from plans');
+    DB::connection('pgsql_admin')->statement("delete from platform_settings where group_name = 'plans'");
     $this->artisan('rbac:sync')->assertSuccessful();
     app(TeamContext::class)->forget();
     Cache::flush();
@@ -221,6 +223,43 @@ it('ignores a website\'s own value for a customer-wide feature: only the plan se
     app(Tenancy::class)->enter(1, fn () => SiteFeature::query()->create(['feature_key' => 'sites.max', 'value' => 99]));
 
     expect(pwFeature(1, 'sites.max'))->toBe(5);
+});
+
+it('keeps the upgrade invitation off until staff who manage billing switch it on', function (): void {
+    $staff = pwStaff('billing');
+    expect(app(UpgradeInvitation::class)->isOn())->toBeFalse();
+
+    app(PlatformPlans::class)->setUpgradeInvitation($staff, true);
+    expect(app(UpgradeInvitation::class)->isOn())->toBeTrue();
+
+    app(PlatformPlans::class)->setUpgradeInvitation($staff, true);   // already on: nothing to record
+    app(PlatformPlans::class)->setUpgradeInvitation($staff, false);
+    expect(app(UpgradeInvitation::class)->isOn())->toBeFalse();
+
+    $trail = AuditLog::query()->where('action', 'tenancy.plan.upgrade_invitation_changed')->orderBy('id')->get();
+    expect($trail)->toHaveCount(2)
+        ->and($trail[0]->actor_id)->toBe($staff->id)
+        ->and($trail[0]->meta)->toMatchArray(['on' => true])
+        ->and($trail[1]->meta)->toMatchArray(['on' => false]);
+});
+
+it('refuses the upgrade invitation switch to anyone who does not manage billing', function (string $who): void {
+    $actor = $who === 'member' ? User::factory()->create() : pwStaff($who);
+
+    expect(fn () => app(PlatformPlans::class)->setUpgradeInvitation($actor, true))->toThrow(AuthorizationException::class);
+    expect(app(UpgradeInvitation::class)->isOn())->toBeFalse()
+        ->and(AuditLog::query()->count())->toBe(0);
+})->with(['support', 'member']);
+
+it('lets the operator switch the upgrade invitation from the console', function (): void {
+    $this->artisan('platform:plan', ['--invitation' => 'on'])->expectsOutputToContain('Upgrade invitation: on')->assertSuccessful();
+    expect(app(UpgradeInvitation::class)->isOn())->toBeTrue();
+
+    $this->artisan('platform:plan', ['--invitation' => 'off'])->expectsOutputToContain('Upgrade invitation: off')->assertSuccessful();
+    expect(app(UpgradeInvitation::class)->isOn())->toBeFalse()
+        ->and(AuditLog::query()->where('action', 'provisioning.plan.upgrade_invitation_changed')->count())->toBe(2);
+
+    $this->artisan('platform:plan', ['--invitation' => 'maybe'])->expectsOutputToContain('on or off')->assertFailed();
 });
 
 it('lets the operator list, create, fill and assign a plan from the console', function (): void {

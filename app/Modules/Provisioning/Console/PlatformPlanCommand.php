@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\Console;
 
+use App\Modules\Admin\Support\UpgradeInvitation;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Actions\ChangeCustomerPlan;
@@ -29,6 +30,8 @@ use Illuminate\Support\Facades\DB;
  *   platform:plan pro --retire                      stop selling it; its customers keep it (--sell puts it back)
  *   platform:plan pro --assign-to=av1.baoson.net --reason="Ký hợp đồng"
  *                                                   put the customer who owns that website on the plan
+ *   platform:plan --invitation=on                   websites see features outside their plan as locked, with a way
+ *                                                   to see the plans (off, the default: hidden or a neutral lock)
  *
  * Every change goes through the same actions as the console screen will, and is audited.
  */
@@ -44,7 +47,8 @@ final class PlatformPlanCommand extends Command
         {--retire : Stop selling the plan; its customers keep it}
         {--sell : Sell the plan again}
         {--assign-to= : Put the customer who owns the website on this host on the plan}
-        {--reason= : Why the customer changes plan (required with --assign-to)}';
+        {--reason= : Why the customer changes plan (required with --assign-to)}
+        {--invitation= : on / off — show features outside a plan as locked with a way to see the plans}';
 
     #[\Override]
     protected $description = 'List the plans; add one, set what it grants, stop selling it, put a customer on it.';
@@ -68,6 +72,23 @@ final class PlatformPlanCommand extends Command
 
     private function run_(): int
     {
+        $invitation = $this->option('invitation');
+        if (is_string($invitation)) {
+            if (! in_array($invitation, ['on', 'off'], true)) {
+                $this->error('--invitation takes on or off.');
+
+                return self::FAILURE;
+            }
+
+            $switch = app(UpgradeInvitation::class);
+            if ($switch->isOn() !== ($invitation === 'on')) {
+                $switch->set($invitation === 'on');
+                $this->audit('provisioning.plan.upgrade_invitation_changed', ['on' => $invitation === 'on']);
+            }
+
+            return $this->done();
+        }
+
         $name = $this->option('create');
         if (is_string($name)) {
             $plan = app(SavePlan::class)->handle(null, $name, true);
@@ -187,6 +208,7 @@ final class PlatformPlanCommand extends Command
         $grants = PlanFeature::query()->orderBy('feature_key')->get()->groupBy('plan_id');
         $show = fn (mixed $v): string => is_bool($v) ? ($v ? 'on' : 'off') : (is_int($v) ? (string) $v : '—');
 
+        $this->line('Upgrade invitation: '.(app(UpgradeInvitation::class)->isOn() ? 'on' : 'off'));
         $this->table(['Plan', 'Name', 'Sold', 'Customers', 'Grants'], Plan::query()->orderBy('sort_order')->orderBy('id')->get()
             ->map(fn (Plan $plan): array => [
                 $plan->key,
