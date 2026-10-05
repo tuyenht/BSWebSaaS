@@ -140,6 +140,24 @@ final readonly class PlatformPlans
         ], fn (mixed $v): bool => $v !== null));
     }
 
+    /**
+     * Switch the upgrade invitation on or off for the whole platform (see UpgradeInvitation).
+     *
+     * @throws AuthorizationException
+     */
+    public function setUpgradeInvitation(User $actor, bool $on): void
+    {
+        $this->authorize($actor);
+
+        $switch = app(UpgradeInvitation::class);
+        if ($switch->isOn() === $on) {
+            return;
+        }
+
+        $switch->set($on);
+        $this->audit($actor, 'tenancy.plan.upgrade_invitation_changed', ['on' => $on]);
+    }
+
     /** @throws AuthorizationException */
     private function authorize(User $actor): void
     {
