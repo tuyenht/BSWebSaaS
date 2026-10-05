@@ -14,6 +14,7 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Services\EnsureMediaFromKey;
 use App\Modules\Provisioning\Exceptions\DryRunRollback;
+use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Shared\Support\RichTextSanitizer;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
@@ -43,7 +44,9 @@ use Throwable;
  * transaction the caller's Tenancy::enter() opened (Gate #1 mandates exactly one top-level
  * transaction per tenant-context entry, so "per item" here means failure-isolated, not
  * independently durable: a bad item rolls back to its own savepoint and is reported as failed,
- * without discarding items already processed in the same run). Idempotent: a post already
+ * without discarding items already processed in the same run). A concurrency error
+ * (Shared\Support\ConcurrencyError) is not isolated: it leaves the caller's transaction aborted,
+ * so it is rethrown and the whole run rolls back — the command is re-run. Idempotent: a post already
  * promoted no longer matches the source query (it is trashed), and a Product that already
  * exists at the target slug is updated in place rather than duplicated.
  *
@@ -254,6 +257,10 @@ final readonly class PromoteAnVinhProductPostsToCatalog
                 ];
             });
         } catch (Throwable $e) {
+            if (ConcurrencyError::is($e)) {
+                throw $e;   // the transaction is aborted: nothing more can run in it
+            }
+
             return [
                 'postSlug' => $slug,
                 'productUrl' => $intendedUrl,

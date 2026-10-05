@@ -5,10 +5,9 @@ namespace App\Modules\Cms\Console;
 use App\Modules\Cms\Actions\PublishScheduledEntry;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
-use Illuminate\Database\DeadlockException;
-use Illuminate\Database\DetectsConcurrencyErrors;
 use Throwable;
 
 /**
@@ -17,8 +16,9 @@ use Throwable;
  * (a CLI has no site context otherwise) — the same shape as media:purge-trash. Scheduled every
  * minute so a page goes live within a minute of its slot.
  *
- * A lock conflict (deadlock, serialization failure) ends that site's batch: Postgres has aborted
- * the site's whole transaction by then, so nothing more can run in it. The site is rolled back as
+ * A lock conflict (deadlock, serialization failure, or a statement refused because one already
+ * aborted the transaction — Shared\Support\ConcurrencyError) ends that site's batch: Postgres has
+ * aborted the site's whole transaction by then, so nothing more can run in it. The site is rolled back as
  * one and its entries stay due, so the next minute's run publishes them; the sites after it are
  * swept as usual.
  *
@@ -27,8 +27,6 @@ use Throwable;
  */
 class PublishDueEntries extends Command
 {
-    use DetectsConcurrencyErrors;
-
     #[\Override]
     protected $signature = 'entries:publish-due';
 
@@ -48,7 +46,7 @@ class PublishDueEntries extends Command
                 // lock conflict published nothing.
                 [$sitePublished, $siteSkipped, $siteFailed] = $tenancy->enter($siteId, fn (): array => $this->sweepSite($publisher));
             } catch (Throwable $e) {
-                if (! $this->isLockConflict($e)) {
+                if (! ConcurrencyError::is($e)) {
                     throw $e;
                 }
 
@@ -99,7 +97,7 @@ class PublishDueEntries extends Command
             } catch (Throwable $e) {
                 // Postgres has aborted the site's transaction: rethrow so it rolls back as one
                 // (caught per site in handle()) instead of running more rows in it.
-                if ($this->isLockConflict($e)) {
+                if (ConcurrencyError::is($e)) {
                     throw $e;
                 }
 
@@ -115,15 +113,5 @@ class PublishDueEntries extends Command
         }
 
         return [$published, $skipped, $failed];
-    }
-
-    /**
-     * A deadlock or serialization failure. Laravel rethrows one raised inside a nested transaction
-     * as DeadlockException without rolling back to the savepoint, and that wrapper loses the
-     * SQLSTATE the detector reads, so it is matched by class as well.
-     */
-    private function isLockConflict(Throwable $e): bool
-    {
-        return $e instanceof DeadlockException || $this->causedByConcurrencyError($e);
     }
 }

@@ -256,3 +256,101 @@ it('stops a site at a lock conflict, leaves its batch for the next run, and stil
             ->and(Entry::query()->whereKey($ids['after'])->value('status'))->toBe('published');
     });
 });
+
+it('rolls back the rows a site already published in its batch when a later row hits a lock conflict', function (): void {
+    // The conflict comes on the SECOND due row: the first one has gone live inside the site's
+    // transaction by then (route, revision, audit line) and must go back with the rest.
+    $admin = DB::connection('pgsql_admin');
+    $admin->unprepared(<<<'SQL'
+        create or replace function test_publish_due_second_row_conflict() returns trigger language plpgsql as $fn$
+        begin
+            raise exception 'could not serialize access due to concurrent update' using errcode = '40001';
+        end
+        $fn$;
+        drop trigger if exists test_publish_due_second_row_conflict on entry_translations;
+        create trigger test_publish_due_second_row_conflict before update on entry_translations
+            for each row when (new.slug = 'xung-dot-sau' and new.status = 'published')
+            execute function test_publish_due_second_row_conflict();
+        SQL);
+
+    try {
+        $ids = [];
+        app(Tenancy::class)->enter(1, function () use (&$ids): void {
+            $ids['first'] = dueScheduledPage('len-truoc')->id;
+            $ids['conflict'] = dueScheduledPage('xung-dot-sau')->id;
+        });
+
+        Exceptions::fake();
+
+        $this->artisan('entries:publish-due')
+            ->expectsOutputToContain('Published 0 scheduled entr(y/ies), skipped 0 governed by an approval workflow, 0 failed, 1 site(s) left for the next run after a lock conflict.')
+            ->assertSuccessful();
+
+        app(Tenancy::class)->enter(1, function () use ($ids): void {
+            $first = Entry::query()->whereKey($ids['first'])->firstOrFail();
+            expect($first->status)->toBe('scheduled')
+                ->and(Entry::query()->whereKey($ids['conflict'])->value('status'))->toBe('scheduled');
+            expectNotPublished($first);
+        });
+    } finally {
+        $admin->unprepared('drop trigger if exists test_publish_due_second_row_conflict on entry_translations; drop function if exists test_publish_due_second_row_conflict();');
+    }
+});
+
+it('defers the site instead of claiming success when its audit line hits a lock conflict', function (): void {
+    // The audit trail is best-effort, but a lock conflict in its savepoint leaves the site's
+    // transaction aborted: swallowed there, the sweep counted the site as published while its
+    // COMMIT silently rolled everything back. A trigger raises the real SQLSTATE for site 1's
+    // audit lines only.
+    $admin = DB::connection('pgsql_admin');
+    $admin->unprepared(<<<'SQL'
+        create or replace function test_publish_due_audit_conflict() returns trigger language plpgsql as $fn$
+        begin
+            raise exception 'could not serialize access due to concurrent update' using errcode = '40001';
+        end
+        $fn$;
+        drop trigger if exists test_publish_due_audit_conflict on audit_logs;
+        create trigger test_publish_due_audit_conflict before insert on audit_logs
+            for each row when (new.site_id = 1)
+            execute function test_publish_due_audit_conflict();
+        SQL);
+
+    try {
+        $tenancy = app(Tenancy::class);
+        $ids = [];
+
+        $tenancy->enter(1, function () use (&$ids): void {
+            $ids['audited'] = dueScheduledPage('ghi-nhat-ky')->id;
+            $ids['after'] = dueScheduledPage('ghi-sau')->id;
+        });
+        $tenancy->enter(2, function () use (&$ids): void {
+            $ids['other_site'] = dueScheduledPage('site-khac')->id;
+        });
+
+        Exceptions::fake();
+
+        $this->artisan('entries:publish-due')
+            ->expectsOutputToContain('Published 1 scheduled entr(y/ies), skipped 0 governed by an approval workflow, 0 failed, 1 site(s) left for the next run after a lock conflict.')
+            ->assertSuccessful();
+
+        Exceptions::assertReported(DeadlockException::class);
+        Exceptions::assertReportedCount(1);
+
+        $tenancy->enter(1, function () use ($ids): void {
+            $audited = Entry::query()->whereKey($ids['audited'])->firstOrFail();
+            expect($audited->status)->toBe('scheduled')
+                ->and(Entry::query()->whereKey($ids['after'])->value('status'))->toBe('scheduled');
+            expectNotPublished($audited);
+        });
+        $tenancy->enter(2, function () use ($ids): void {
+            expect(Entry::query()->whereKey($ids['other_site'])->value('status'))->toBe('published');
+        });
+    } finally {
+        $admin->unprepared('drop trigger if exists test_publish_due_audit_conflict on audit_logs; drop function if exists test_publish_due_audit_conflict();');
+    }
+
+    // The next run publishes the site's whole batch.
+    $this->artisan('entries:publish-due')
+        ->expectsOutputToContain('Published 2 scheduled entr(y/ies)')
+        ->assertSuccessful();
+});

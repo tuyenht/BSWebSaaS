@@ -8,6 +8,7 @@ use App\Modules\Cms\Actions\RecordEntryRevision;
 use App\Modules\Cms\Enums\RevisionKind;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
@@ -23,7 +24,9 @@ use Throwable;
  *
  * Site by site inside each site's tenant context (Tenancy::eachSite), published entries read by
  * keyset in batches. Each row is written in its own savepoint and a failure is reported and
- * counted, so one bad row never rolls back its site or stops the sites after it.
+ * counted, so one bad row never rolls back its site or stops the sites after it. A concurrency
+ * error (Shared\Support\ConcurrencyError) is the exception: it leaves the site's transaction
+ * aborted, so it stops the run; being idempotent, the command is simply run again.
  */
 final class SnapshotPublishedEntries extends Command
 {
@@ -79,6 +82,9 @@ final class SnapshotPublishedEntries extends Command
                         $recorded = DB::transaction(fn (): bool => $revisions->forLocale($entry, $translation, RevisionKind::Baseline, null));
                         $written += $recorded ? 1 : 0;
                     } catch (Throwable $e) {
+                        if (ConcurrencyError::is($e)) {
+                            throw $e;   // the site's transaction is aborted: nothing more can run in it
+                        }
                         report($e);
                         $failed++;
                     }

@@ -5,19 +5,26 @@ namespace App\Modules\Audit;
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Support\Facades\Auth;
 use Throwable;
 
 /**
  * Audit trail (design.md §29). Best-effort: records every sensitive action
- * (role/permission/entitlement/domain/billing) but NEVER throws — auditing must not
- * break the business flow. Actor + site + request-id are resolved from context, and during a
+ * (role/permission/entitlement/domain/billing) and never lets its own failure break the
+ * business flow. Actor + site + request-id are resolved from context, and during a
  * support session the staff member behind the member's account (impersonator_*).
  *
  * The insert runs in its own savepoint: every tenant request is one PostgreSQL transaction,
  * and a failed statement aborts it — swallowing the error alone would leave the caller's next
  * query failing, or its COMMIT silently rolling back everything the request wrote.
+ *
+ * The one failure it does not swallow is a concurrency error (deadlock, serialization failure, a
+ * transaction already aborted — Shared\Support\ConcurrencyError). Laravel rethrows one raised in
+ * the savepoint without rolling back to it, so the caller's transaction is aborted and cannot be
+ * rescued here: hiding it would let the caller report success while its COMMIT rolls everything
+ * back. It is rethrown so the owner of the transaction rolls back and retries or defers.
  */
 final class AuditService
 {
@@ -55,6 +62,10 @@ final class AuditService
 
             $entry->getConnection()->transaction(fn (): bool => $entry->save());
         } catch (Throwable $e) {
+            if (ConcurrencyError::is($e)) {
+                throw $e;
+            }
+
             report($e); // best-effort — swallow so the caller's flow is never blocked
         }
     }

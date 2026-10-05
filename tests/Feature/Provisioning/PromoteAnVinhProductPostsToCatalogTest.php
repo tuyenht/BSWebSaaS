@@ -14,6 +14,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteSetting;
+use Illuminate\Database\DeadlockException;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -317,4 +318,37 @@ it('records a 301 when a source post lived at a different path than the product'
         ->assertStatus(301)
         ->assertRedirect("http://anvinh-promo-g.test/san-pham/{$slug}");
     $this->get("http://anvinh-promo-g.test/san-pham/{$slug}")->assertOk();
+});
+
+it('rolls the whole run back at a lock conflict instead of reporting it as one failed post', function (): void {
+    // A lock conflict in a post's savepoint leaves the caller's transaction aborted (Laravel
+    // rethrows it without rolling the savepoint back): the next posts could not run, and COMMIT
+    // would silently undo the ones listed as promoted. A trigger raises the real SQLSTATE.
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-conflict.test', 2);
+
+    $admin = DB::connection('pgsql_admin');
+    $admin->unprepared(<<<'SQL'
+        create or replace function test_promote_lock_conflict() returns trigger language plpgsql as $fn$
+        begin
+            raise exception 'could not serialize access due to concurrent update' using errcode = '40001';
+        end
+        $fn$;
+        drop trigger if exists test_promote_lock_conflict on products;
+        create trigger test_promote_lock_conflict before insert on products
+            for each row execute function test_promote_lock_conflict();
+        SQL);
+
+    try {
+        expect(fn () => app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle()))
+            ->toThrow(DeadlockException::class);
+    } finally {
+        $admin->unprepared('drop trigger if exists test_promote_lock_conflict on products; drop function if exists test_promote_lock_conflict();');
+    }
+
+    app(Tenancy::class)->enter($site->id, function () use ($slugs): void {
+        expect(Product::query()->count())->toBe(0);
+        foreach ($slugs as $slug) {
+            expect(SiteRoute::query()->where('path', "/san-pham/{$slug}")->value('entry_id'))->not->toBeNull();
+        }
+    });
 });
