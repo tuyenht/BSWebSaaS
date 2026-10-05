@@ -39,7 +39,8 @@ final class ForgotPassword extends Component
 
     public function submit(): void
     {
-        $this->validate(['email' => 'required|email']);
+        // The field is labelled "Account", not "Email": name it the same way in its error message.
+        $this->validate(['email' => 'required|email'], [], ['email' => Str::lower(__('auth.email_label'))]);
 
         $ip = (string) request()->ip();
         $key = 'admin-forgot:'.sha1(Str::lower($this->email).'|'.$ip);
