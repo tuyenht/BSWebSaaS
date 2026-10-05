@@ -7,6 +7,23 @@
 
 ## 2026
 
+### 2026-10-05 — Deploy #161–#175 (sửa CMS + nút quản trị, gói và ghi đè tính năng theo website, 301 tên miền `private`)
+
+- **Deploy:** `13:38 (+07)`, owner chạy. Prod `1b34c7c` → `57dc5ea` (28 commit).
+  - Không có migration. Không đổi config, routes, dependency.
+  - Dump: `prod-predeploy-1b34c7c-20261005-063832.sql.gz`.
+- **Gồm:**
+  - Sửa CMS và màn quản trị (#167–#174): nút viết dưới dạng component bấm được trở lại (Tắt 2 lớp, Ngắt MXH, Xóa ghi đè email) · thao tác hàng loạt chỉ chạm đúng các dòng của tab đang mở ("Xóa vĩnh viễn" không còn xóa bài đang hiển thị) · gửi duyệt cần quyền sửa chính bài đó, không đăng hay gửi duyệt từ Thùng rác, xét bài dưới khóa dòng · bộ hẹn giờ chỉ đăng bài còn đến hạn · bài bị trả về chỉ giao cho người gửi duyệt được · giờ hiển thị theo múi giờ website · component quản trị chỉ còn tiền tố `<x-bs-admin::…>`.
+  - Tên miền (#162): 301 về tên chính trả `Cache-Control: private, max-age=3600` (trước là `public`).
+  - Gói + ghi đè tính năng theo website, chỉ backend, chưa có màn (#163, #165, #175): lệnh `site:feature` và `platform:plan`; công tắc "Lời mời nâng gói" mặc định tắt.
+  - Docs và gói prompt thiết kế (#161, #164, #166, #169).
+- **Trước deploy:** CI của main xanh ở `57dc5ea`. QA cục bộ 1733 test.
+- **Hậu kiểm:**
+  - Script: `/` 200 · `/lien-he` 200 · `/admin/login` 200 · `/admin` 302 · qua Caddy `https://av1.baoson.net/` 200 · 0 dòng lỗi trong log 10 phút.
+  - `https://giuonggapdep.com/lien-he` → 301 `https://av1.baoson.net/lien-he`; header `cache-control: max-age=3600, private`.
+  - `site:feature av1.baoson.net` in đủ 6 tính năng, chưa có giá trị riêng nào; `platform:plan` in "Upgrade invitation: off", chưa có gói nào.
+  - Chưa kiểm bằng tay trên trình duyệt: các nút đã sửa ở #172 và thao tác hàng loạt ở #173.
+
 ### 2026-10-03 — Deploy #158–#159 (giữ `www` chờ trỏ + báo khi tên miền gặp vấn đề)
 
 - **Deploy:** `15:51 (+07)`, owner chạy. Prod `8089e28` → `1b34c7c`.
