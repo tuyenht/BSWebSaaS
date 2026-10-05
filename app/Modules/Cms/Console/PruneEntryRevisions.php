@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Cms\Console;
 
 use App\Modules\Cms\Models\EntryRevision;
+use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -18,7 +19,10 @@ use Throwable;
  * Site by site inside each site's tenant context; ranked deletes walking the (site_id, entry_id,
  * locale, created_at DESC, id DESC) index in its own order, --batch rows per statement until none is
  * left. Each batch runs in its own savepoint; a failure is reported and the sweep moves on to the
- * next site (batches already removed on that site stay removed).
+ * next site (batches already removed on that site stay removed). A concurrency error
+ * (Shared\Support\ConcurrencyError) is the exception: it leaves the site's transaction aborted, so
+ * its batches would be rolled back at COMMIT while counted as removed — it stops the run instead,
+ * and the next daily run picks up where it left off.
  */
 final class PruneEntryRevisions extends Command
 {
@@ -62,6 +66,9 @@ final class PruneEntryRevisions extends Command
                     $deleted += $removed;
                 } while ($removed > 0);
             } catch (Throwable $e) {
+                if (ConcurrencyError::is($e)) {
+                    throw $e;   // the site's transaction is aborted: nothing more can run in it
+                }
                 report($e);
                 $failed++;
             }

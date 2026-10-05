@@ -16,15 +16,14 @@ use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Identity\Models\User;
+use App\Modules\Shared\Support\ConcurrencyError;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Database\DeadlockException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -578,7 +577,7 @@ final class Index extends Component
             DB::commit();
         } catch (Throwable $e) {
             DB::rollBack();
-            if (! $this->isConcurrencyError($e)) {
+            if (! ConcurrencyError::is($e)) {
                 throw $e;
             }
             $this->toast(__('entries.bulk_conflict'));
@@ -617,7 +616,7 @@ final class Index extends Component
         } catch (AuthorizationException) {
             return $skippedKey;               // not theirs to change: an expected answer, not a fault
         } catch (Throwable $e) {
-            if ($this->isConcurrencyError($e)) {
+            if (ConcurrencyError::is($e)) {
                 throw $e;                     // the transaction is aborted: runBulk() abandons the run
             }
             // A slug clash or a database failure: its savepoint is rolled back, so report it and
@@ -626,13 +625,6 @@ final class Index extends Component
 
             return 'entries.bulk_failed';
         }
-    }
-
-    /** A deadlock or serialization failure, or a statement refused because one already aborted the transaction. */
-    private function isConcurrencyError(Throwable $e): bool
-    {
-        return $e instanceof DeadlockException
-            || ($e instanceof QueryException && in_array((string) $e->getCode(), ['40001', '40P01', '25P02'], true));
     }
 
     /**

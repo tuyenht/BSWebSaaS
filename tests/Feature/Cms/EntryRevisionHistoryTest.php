@@ -5,6 +5,8 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryRevision;
 use App\Modules\Cms\Queries\EntryRevisions;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Database\DeadlockException;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -176,6 +178,63 @@ it('never removes the newest revision, even with a keep of zero', function (): v
 
     app(Tenancy::class)->enter(1, function (): void {
         expect(EntryRevision::query()->pluck('snapshot')->map(fn (array $s): string => $s['title'])->all())->toBe(['r2']);
+    });
+});
+
+/**
+ * Make every $event on entry_revisions fail with a real serialization failure while $run runs. A
+ * lock conflict inside a savepoint leaves the site's transaction aborted (Laravel rethrows it
+ * without rolling the savepoint back), so the command must stop rather than count it as one
+ * failed row and carry on into a COMMIT that silently rolls the site back.
+ */
+function withRevisionLockConflict(string $event, Closure $run): void
+{
+    $admin = DB::connection('pgsql_admin');
+    $admin->unprepared(<<<SQL
+        create or replace function test_revision_lock_conflict() returns trigger language plpgsql as \$fn\$
+        begin
+            raise exception 'could not serialize access due to concurrent update' using errcode = '40001';
+        end
+        \$fn\$;
+        drop trigger if exists test_revision_lock_conflict on entry_revisions;
+        create trigger test_revision_lock_conflict before {$event} on entry_revisions
+            for each row execute function test_revision_lock_conflict();
+        SQL);
+
+    try {
+        $run();
+    } finally {
+        $admin->unprepared('drop trigger if exists test_revision_lock_conflict on entry_revisions; drop function if exists test_revision_lock_conflict();');
+    }
+}
+
+it('stops the baseline run at a lock conflict instead of counting it as a failed row', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        historyPage('mot');
+        historyPage('hai');
+    });
+
+    withRevisionLockConflict('insert', function (): void {
+        expect(fn () => Artisan::call('cms:snapshot-published'))->toThrow(DeadlockException::class);
+    });
+
+    // Being idempotent, the run is simply repeated.
+    $this->artisan('cms:snapshot-published')
+        ->expectsOutputToContain('Recorded 2 baseline revision(s) on 2 site(s), 0 failed.')
+        ->assertSuccessful();
+});
+
+it('stops the retention run at a lock conflict instead of counting rolled-back batches as removed', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        seedRevisions(historyPage('cu'), 'vi', 5, 100);
+    });
+
+    withRevisionLockConflict('delete', function (): void {
+        expect(fn () => Artisan::call('cms:prune-revisions', ['--keep' => 1, '--days' => 1]))->toThrow(DeadlockException::class);
+    });
+
+    app(Tenancy::class)->enter(1, function (): void {
+        expect(EntryRevision::query()->count())->toBe(5);
     });
 });
 
