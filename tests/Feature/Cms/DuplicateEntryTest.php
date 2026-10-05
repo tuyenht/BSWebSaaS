@@ -107,3 +107,19 @@ it('denies duplication without the create ability', function (): void {
             ->toThrow(AuthorizationException::class);
     });
 });
+
+it('refuses to copy an entry that is in the Trash', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.create', 'entries.edit.any']);
+        $page = Entry::query()->create(['type' => 'page', 'status' => 'published']);
+        $page->translations()->create(['locale' => 'vi', 'title' => 'Trang', 'slug' => 'trang', 'status' => 'published', 'body' => ['blocks' => []]]);
+        $page->delete();
+
+        expect(fn () => app(DuplicateEntry::class)->handle(Entry::withTrashed()->findOrFail($page->id), $editor->fresh()))
+            ->toThrow(AuthorizationException::class, __('entries.err_duplicate_trashed'));
+
+        expect(Entry::withTrashed()->where('type', 'page')->count())->toBe(1);
+    });
+});

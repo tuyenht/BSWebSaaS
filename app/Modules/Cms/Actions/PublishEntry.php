@@ -38,19 +38,39 @@ final readonly class PublishEntry
     ) {}
 
     /**
-     * @return string the entry's lifecycle status afterwards: 'published' or 'pending' when this
-     *                call moved it; a submitter's call on anything but a draft returns the status
-     *                it left unchanged, so a caller can tell "sent" from "not sent"
+     * @return string the entry's lifecycle status afterwards: 'published' after a publish (also
+     *                when it was live already — the publish runs again), 'pending' when a draft
+     *                was sent, and for a submitter's call on anything but a draft the status it
+     *                left unchanged. The status alone cannot say whether THIS call changed
+     *                anything (someone else may have published the entry meanwhile) — a caller
+     *                that counts changes uses attempt()
      *
      * @throws AuthorizationException the actor may neither publish nor send this entry
      * @throws WorkflowGovernedException a workflow governs this entry — move it via a transition
      */
     public function handle(Entry $entry, string $locale, User $actor): string
     {
-        return DB::transaction(fn (): string => $this->handleLocked($entry, $locale, $actor));
+        return $this->attempt($entry, $locale, $actor)['status'];
     }
 
-    private function handleLocked(Entry $entry, string $locale, User $actor): string
+    /**
+     * handle(), plus whether this call moved the entry: `moved` is true only when the entry's
+     * status or the locale's translation status was different before, judged on the row as it is
+     * under the lock — so a row that someone else published a moment ago is not counted as this
+     * person's publish.
+     *
+     * @return array{status: string, moved: bool}
+     *
+     * @throws AuthorizationException the actor may neither publish nor send this entry
+     * @throws WorkflowGovernedException a workflow governs this entry — move it via a transition
+     */
+    public function attempt(Entry $entry, string $locale, User $actor): array
+    {
+        return DB::transaction(fn (): array => $this->handleLocked($entry, $locale, $actor));
+    }
+
+    /** @return array{status: string, moved: bool} */
+    private function handleLocked(Entry $entry, string $locale, User $actor): array
     {
         // Take the row lock FIRST, then read, like the workflow actions: the status and Trash
         // checks below must judge the row as it is now, not as the screen loaded it. Otherwise
@@ -77,6 +97,8 @@ final readonly class PublishEntry
         $from = $entry->status;
 
         if ($gate->allows('publish', $entry)) {
+            $moved = $from !== 'published' || $translation->status !== 'published';
+
             // Atomic: a RouteConflictException from sync must roll back the status flip, or the
             // entry is left `published` with no reachable route — a silent 404. A savepoint, so
             // the caller can catch that and carry on (the bulk bar does).
@@ -99,7 +121,7 @@ final readonly class PublishEntry
                 $this->notifier->published($entry, $locale, $actor);   // tells the author, unless they published it
             }
 
-            return 'published';
+            return ['status' => 'published', 'moved' => $moved];
         }
 
         if ($gate->allows('submit', $entry)) {
@@ -107,7 +129,7 @@ final readonly class PublishEntry
             // be taken offline by a re-send, a scheduled one must not lose the go-live a
             // publisher set, and an entry already waiting is not sent (or announced) twice.
             if ($from !== 'draft') {
-                return $from;
+                return ['status' => $from, 'moved' => false];
             }
 
             $entry->update(['status' => 'pending']);
@@ -117,7 +139,7 @@ final readonly class PublishEntry
 
             $this->notifier->awaitingReview($entry, $locale, $actor, 'entries.publish');   // the publishers
 
-            return 'pending';
+            return ['status' => 'pending', 'moved' => true];
         }
 
         throw new AuthorizationException(__('entries.err_publish_forbidden'));

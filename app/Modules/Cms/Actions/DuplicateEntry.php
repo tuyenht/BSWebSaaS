@@ -15,8 +15,9 @@ use Illuminate\Support\Str;
  * parent_id is cleared so it never lands under the original's parent — with every translation
  * copied (title suffixed " (bản sao)", slug suffixed to stay unique per locale) and the same
  * categories. No route is created: a draft has no public URL until PublishEntry runs. Requires
- * the `create` ability; the whole copy runs in one transaction so a half-copied entry can never
- * surface. Block image usage (mediables) is the caller's concern — reconcile the returned copy
+ * the `create` ability, and a source that is not in the Trash (trashed content stays there until
+ * it is restored — a copy would bring it back as a live draft); the whole copy runs in one
+ * transaction so a half-copied entry can never surface. Block image usage (mediables) is the caller's concern — reconcile the returned copy
  * exactly as the editor does on save (EntryBlockMediaReconciler). Returns the new draft for a
  * redirect-to-edit.
  */
@@ -26,6 +27,10 @@ final class DuplicateEntry
     {
         if (! Gate::forUser($actor)->allows('create', Entry::class)) {
             throw new AuthorizationException(__('entries.err_create_forbidden'));
+        }
+
+        if ($entry->trashed()) {
+            throw new AuthorizationException(__('entries.err_duplicate_trashed'));
         }
 
         /** @var Entry $copy */
