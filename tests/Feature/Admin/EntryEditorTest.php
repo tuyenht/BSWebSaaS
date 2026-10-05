@@ -54,6 +54,26 @@ it('creates a draft page and persists its Page-JSON translation (no route yet)',
     });
 });
 
+it('refuses a title or slug over the limit with a plain-language message', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.create', 'entries.edit.any']);
+
+        Livewire::actingAs($editor->fresh())
+            ->test(Editor::class)
+            ->set('title', str_repeat('ă', 201))
+            ->set('slug', str_repeat('a', 201))
+            ->call('save')
+            ->assertHasErrors([
+                'title' => __('entries.title_too_long', ['max' => 200]),
+                'slug' => __('entries.slug_too_long', ['max' => 200]),
+            ]);
+
+        expect(Entry::query()->where('type', 'page')->count())->toBe(0);
+    });
+});
+
 it('adds, reorders and removes blocks from the registry', function (): void {
     $tenancy = app(Tenancy::class);
     $editor = User::factory()->create();

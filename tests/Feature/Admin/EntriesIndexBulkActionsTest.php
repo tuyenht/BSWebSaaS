@@ -8,7 +8,6 @@ use App\Modules\Cms\Support\EntryStatusAudit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
@@ -107,12 +106,12 @@ it('refuses a single-row permanent delete or restore of a row that is not in the
         $trashed = bulkRow($editor, 'Trang đã xóa', trashed: true);
         $deletedAt = bulkFind($trashed)->deleted_at?->toIso8601String();
 
-        // Not found, exactly like an unknown ulid (the HTTP layer answers 404).
+        // Not found, exactly like an unknown ulid: a plain "this changed" toast, nothing done.
         $index = Livewire::actingAs($editor->fresh())->test(Index::class);
-        expect(fn () => $index->call('forceDelete', $live->ulid))->toThrow(ModelNotFoundException::class)
-            ->and(fn () => $index->call('restore', $live->ulid))->toThrow(ModelNotFoundException::class)
-            // The reverse: trashing a row already in the Trash would restart its 30-day clock.
-            ->and(fn () => $index->call('trash', $trashed->ulid))->toThrow(ModelNotFoundException::class);
+        $index->call('forceDelete', $live->ulid)->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        $index->call('restore', $live->ulid)->assertDispatched('bs-toast', text: __('entries.row_stale'));
+        // The reverse: trashing a row already in the Trash would restart its 30-day clock.
+        $index->call('trash', $trashed->ulid)->assertDispatched('bs-toast', text: __('entries.row_stale'));
 
         expect(bulkFind($live)?->trashed())->toBeFalse()
             ->and(bulkFind($trashed)->deleted_at?->toIso8601String())->toBe($deletedAt);
