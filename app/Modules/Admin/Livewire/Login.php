@@ -65,10 +65,11 @@ final class Login extends Component
 
     public function login(): mixed
     {
+        // The field is labelled "Account", not "Email": name it the same way in its error message.
         $this->validate([
             'email' => 'required|email',
             'password' => 'required',
-        ]);
+        ], [], ['email' => Str::lower(__('auth.email_label'))]);
 
         $ip = (string) request()->ip();
 

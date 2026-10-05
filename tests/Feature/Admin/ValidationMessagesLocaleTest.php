@@ -6,6 +6,7 @@ use App\Modules\Admin\Livewire\Users\Index as UsersIndex;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\Validator;
 use Livewire\Livewire;
 
 /*
@@ -26,7 +27,7 @@ beforeEach(function (): void {
     app()->setLocale('vi');
 });
 
-it('shows the Vietnamese required message on an empty login, not the English default', function (): void {
+it('shows the Vietnamese required message on an empty login, naming the field by its visible label', function (): void {
     $component = Livewire::test(Login::class)
         ->set('email', '')
         ->set('password', '')
@@ -35,7 +36,7 @@ it('shows the Vietnamese required message on an empty login, not the English def
     $emailMessage = $component->errors()->first('email');
     $passwordMessage = $component->errors()->first('password');
 
-    expect($emailMessage)->toBe('Email không được để trống.')
+    expect($emailMessage)->toBe('Tài khoản không được để trống.')
         ->and($emailMessage)->not->toContain('field is required');
 
     expect($passwordMessage)->toBe('Mật khẩu không được để trống.')
@@ -74,4 +75,14 @@ it('shows the Vietnamese email-format message on an invalid member invite, not t
 
     expect($message)->toBe('Email chưa đúng dạng email.')
         ->and($message)->not->toContain('must be a valid email address');
+});
+
+it('capitalises a field name only where it opens the sentence', function (): void {
+    $errors = Validator::make(
+        ['password' => 'a', 'password_confirmation' => 'b', 'phone' => ''],
+        ['password' => 'confirmed', 'phone' => 'required'],
+    )->errors();
+
+    expect($errors->first('password'))->toBe('Hai lần nhập mật khẩu chưa khớp nhau.')
+        ->and($errors->first('phone'))->toBe('Số điện thoại không được để trống.');
 });
