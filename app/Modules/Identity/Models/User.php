@@ -7,6 +7,7 @@ use App\Modules\Tenancy\Models\Tenant;
 use Database\Factories\UserFactory;
 use Illuminate\Auth\MustVerifyEmail as MustVerifyEmailTrait;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -70,6 +71,35 @@ class User extends Authenticatable implements MustVerifyEmail
     public function socialIdentities(): HasMany
     {
         return $this->hasMany(SocialIdentity::class);
+    }
+
+    /**
+     * Users who hold any of $permissions on the current team (site): granted directly, or through
+     * a role of that site or a role every site shares (site_id NULL). The same people as spatie's
+     * permission() scope, asked by NAME through the same team-scoped relations: spatie's scope
+     * first binds the id of every role on every site holding the permission — one parameter per
+     * site, past PostgreSQL's 65,535 limit at scale — while this one binds a fixed handful. No team
+     * set: nobody (fail closed). A name that does not exist: nobody, where spatie's scope throws.
+     *
+     * @param  Builder<self>  $query
+     * @param  string|list<string>  $permissions
+     */
+    public function scopeHoldingPermission(Builder $query, string|array $permissions): void
+    {
+        if (getPermissionsTeamId() === null) {
+            $query->whereRaw('false');
+
+            return;
+        }
+
+        $guard = $this->getDefaultGuardName();
+        $named = static fn (Builder $permission): Builder => $permission
+            ->whereIn($permission->qualifyColumn('name'), (array) $permissions)
+            ->where($permission->qualifyColumn('guard_name'), $guard);
+
+        $query->where(static fn (Builder $holder): Builder => $holder
+            ->whereHas('permissions', $named)
+            ->orWhereHas('roles', static fn (Builder $role): Builder => $role->whereHas('permissions', $named)));
     }
 
     /**
