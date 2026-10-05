@@ -7,8 +7,10 @@ use Illuminate\Support\Facades\File;
  * is missing for the active locale — and this repo deliberately has none (lang/*.json only,
  * lang:check enforces equal keys across them). A rule used somewhere in app/ without a matching
  * "validation.<rule>" line in lang/vi.json would silently leak English to Vietnamese admins. This
- * scans every PHP file under app/ for the rule names this product actually uses and fails the
- * moment a new one ships without its vi.json line, so the gap can't come back one rule at a time.
+ * scans every PHP file under app/ for the rule names listed below and fails when one of them is
+ * used without its vi.json line. The list is the rules this product uses today, not all of
+ * Laravel's: a quoted-string scan over the whole set would also match casts ('date', 'boolean',
+ * 'json'). Using a rule that is not listed here means adding it here and its line to lang/*.json.
  */
 
 it('has a vi.json message for every validation rule name used in app/', function (): void {
