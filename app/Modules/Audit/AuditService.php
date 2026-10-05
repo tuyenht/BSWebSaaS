@@ -62,7 +62,10 @@ final class AuditService
 
             $entry->getConnection()->transaction(fn (): bool => $entry->save());
         } catch (Throwable $e) {
-            if (ConcurrencyError::is($e)) {
+            // Inside a transaction a lock conflict has already aborted it (Laravel rethrows without
+            // rolling back to the savepoint), so the caller must hear about it. At level 0 Laravel
+            // rolled the insert back in full and nothing is left aborted: stay best-effort there.
+            if (ConcurrencyError::is($e) && (new AuditLog)->getConnection()->transactionLevel() > 0) {
                 throw $e;
             }
 
