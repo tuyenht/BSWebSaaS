@@ -61,7 +61,7 @@ Giao nộp: README có bảng "Kiểm hiển thị" từng màn (bề rộng × 
 Màn của lượt này:
 1. `Quy trình duyệt` — LÀM MẪU TRƯỚC: dưới 768px mỗi thể loại là 1 thẻ: dòng 1 icon + tên + công tắc "Duyệt trước khi đăng" ở bên phải (nhãn Đang bật/Đã tắt ngay cạnh); dòng 2 "148 bài · 3 người viết · 4 bài chờ duyệt"; dòng 3 tên quy trình + "Xem sơ đồ các bước"; dòng 4 nút "Đổi quy trình" rộng hết (thể loại chưa có quy trình: nút "Chọn quy trình" ở đúng chỗ đó). 768–1023px: bảng 3 cột (tên + số · quy trình · công tắc + nút). Sửa luôn lỗi độ ưu tiên `.qd-c4 .qd-btn{width:auto}`. Hộp "Đổi quy trình" và sơ đồ các bước: trượt từ đáy ở điện thoại. Màn này ĐÃ BUILD (`app/Modules/Admin/resources/views/livewire/workflow-settings.blade.php`) ⇒ ghi vào Việc cho backend.
 2. `Admin Shell` — menu trái thành ngăn kéo ở < 1024px, topbar không tràn (ô tìm thu thành nút), bảng SCREENS/nhúng không cuộn ngang, safe-area.
-3. `Quản lý Bài viết - Options` và `Quản lý Trang - Options` — mẫu DANH SÁCH dùng chung: hàng → thẻ gọn, tab trạng thái cuộn trong dải, thanh lọc gập vào nút "Lọc (2)", thao tác hàng loạt dính đáy.
+3. `Quản lý Bài viết - Options` và `Quản lý Trang - Options` — mẫu DANH SÁCH dùng chung: hàng → thẻ gọn, tab trạng thái cuộn trong dải, thanh lọc gập vào nút "Lọc (2)", thao tác hàng loạt dính đáy. Kèm: `Quản lý Bài viết - Options` còn 2 khung tự vẽ focus viết thẳng (`style-focus-within` với `#2050a0` / `rgba(32,80,160,…)`; Claude Code đọc code 05/10) → bỏ, gắn `data-focus-wrap` cho khung bao (Focus 1b); không viết focus riêng.
 4. `Hộp duyệt` — hàng chờ → thẻ; xem bài + so sánh khác biệt toàn màn; nút Duyệt/Trả lại dính đáy.
 5. `Trạng thái duyệt (khối soạn thảo)` · 6. `Trình đơn` (cây kéo-thả dùng được bằng ngón tay + nút lên/xuống).
 
