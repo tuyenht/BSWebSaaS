@@ -5,6 +5,8 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 ## Before
 
 1. Merge to `origin/main` first, with **the commit's CI green**. Deploy a pinned SHA — `main` moves fast because parallel sessions push to it.
+   - Check the exact commit: `gh run list --commit <full sha> --json status,conclusion` must show `completed` + `success` and nothing else.
+   - PRs merged in a burst cancel each other's runs on `main`, so a commit in the middle of a burst has a cancelled run and is not deployable — take the last commit of the burst, once its run is green.
 2. If another session may deploy too, tell it first so two deploys don't overlap.
 3. Read the delta: `git -C /opt/bswebsaas/prod fetch origin && git -C /opt/bswebsaas/prod diff --stat HEAD <sha>`. Look for migrations, routes/middleware, config, events, Blade views and front-end assets.
 4. Migrations in the delta → dump first:
