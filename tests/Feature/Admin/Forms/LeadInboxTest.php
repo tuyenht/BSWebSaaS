@@ -135,6 +135,29 @@ it('forbids a view-only member from changing a lead status', function (): void {
     });
 });
 
+it('shows the inbox received time in the site zone, not UTC', function (): void {
+    $viewer = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['forms.view']));
+    seedLead(1, ['name' => 'Zone Co', 'created_at' => '2026-07-10 07:30:00']);
+
+    // Default site zone is Asia/Ho_Chi_Minh (UTC+7): 07:30 UTC stored -> 14:30 local shown.
+    $this->actingAs($viewer)->get('http://a.test/admin/forms')
+        ->assertOk()
+        ->assertSee('10/07/2026 14:30')
+        ->assertDontSee('10/07/2026 07:30');
+});
+
+it('shows a lead detail time in the site zone, not UTC', function (): void {
+    $viewer = User::factory()->create();
+    app(Tenancy::class)->enter(1, fn () => grantRole($viewer, 'editor', ['forms.view']));
+    $lead = seedLead(1, ['status' => 'read', 'created_at' => '2026-07-10 07:30:00']);
+
+    $this->actingAs($viewer)->get('http://a.test/admin/forms/'.$lead->ulid)
+        ->assertOk()
+        ->assertSee('10/07/2026 14:30')
+        ->assertDontSee('10/07/2026 07:30');
+});
+
 it('lists leads on a flat query budget (no N+1 across rows)', function (): void {
     $viewer = User::factory()->create();
     app(Tenancy::class)->enter(1, function () use ($viewer): void {
@@ -152,5 +175,7 @@ it('lists leads on a flat query budget (no N+1 across rows)', function (): void 
 
     $count = countQueries(fn () => $this->actingAs($viewer)->get('http://a.test/admin/forms')->assertOk());
 
-    expect($count)->toBeLessThanOrEqual(18); // flat; an N+1 over the form relation would exceed this
+    // 18 flat + 1 one-time SiteTime zone lookup (site_settings, memoized for the request) = 19;
+    // an N+1 over the form relation or a per-row zone lookup would exceed this.
+    expect($count)->toBeLessThanOrEqual(19);
 });

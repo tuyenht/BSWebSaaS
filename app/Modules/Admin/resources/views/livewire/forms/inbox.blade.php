@@ -32,7 +32,7 @@
                     <tr wire:key="lead-{{ $submission->id }}" @class(['bg-admin-primary/5' => $submission->status === 'new'])>
                         <td class="px-4 py-3 font-medium text-heading">{{ $submission->name ?: '—' }}</td>
                         <td class="px-4 py-3 text-body-muted">{{ $submission->email ?: $submission->phone ?: '—' }}</td>
-                        <td class="px-4 py-3 text-body-muted">{{ $submission->created_at?->format('d/m/Y H:i') ?? '—' }}</td>
+                        <td class="px-4 py-3 text-body-muted">{{ $siteTime->forDisplay($submission->created_at)?->format('d/m/Y H:i') ?? '—' }}</td>
                         <td class="px-4 py-3">
                             <span class="rounded px-2 py-0.5 text-xs font-semibold
                                 @class([

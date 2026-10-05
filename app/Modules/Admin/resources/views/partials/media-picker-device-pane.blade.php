@@ -8,7 +8,7 @@
             class="inline-flex items-center gap-1.5 rounded-lg border border-border-strong bg-surface px-[11px] py-1.5 text-[12.5px] text-body-text">
         <x-bs-admin::icon name="ri-arrow-left" class="size-3.5" />{{ __('media.picker_back_sources') }}
     </button>
-    <span class="flex size-[30px] items-center justify-center rounded-lg" style="background: #4051891a; color: #405189;">
+    <span class="flex size-[30px] items-center justify-center rounded-lg" style="background: color-mix(in oklab, var(--color-admin-primary) 10%, transparent); color: var(--color-admin-primary);">
         <x-bs-admin::icon name="ri-computer" class="size-4" />
     </span>
     <span class="text-sm font-semibold text-heading">{{ __('media.picker_source_device') }}</span>
