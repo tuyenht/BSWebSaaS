@@ -7,13 +7,17 @@ use App\Modules\Cms\Actions\PublishEntry;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowLog;
+use App\Modules\Workflow\Models\WorkflowTransition;
+use App\Modules\Workflow\Services\WorkflowEngine;
 use Livewire\Livewire;
 
 /*
@@ -252,6 +256,102 @@ it('rejects a forged hand-off target and ignores a stale one on a plain move', f
     });
 });
 
+it('offers a returned post only to people who could move it on — the same answer the policy gives', function (): void {
+    $writer = User::factory()->create(['name' => 'Tác giả bài']);
+    $colleague = User::factory()->create(['name' => 'Đồng nghiệp']);
+    $senior = User::factory()->create(['name' => 'Biên tập chính']);
+    $sender = User::factory()->create(['name' => 'Chỉ gửi']);
+    $approver = User::factory()->create(['name' => 'Người duyệt']);
+    $reviewer = User::factory()->create(['name' => 'Người phản biện']);
+
+    app(Tenancy::class)->enter(1, function () use ($writer, $colleague, $senior, $sender, $approver, $reviewer): void {
+        // One role per person: grantRole() syncs a role's permissions by name.
+        grantRole($writer, 'own-writer', ['entries.edit.own', 'entries.submit']);
+        grantRole($colleague, 'own-writer-2', ['entries.edit.own', 'entries.submit']);
+        grantRole($senior, 'any-writer', ['entries.edit.any', 'entries.submit']);
+        grantRole($sender, 'sender', ['entries.submit']);
+        grantRole($approver, 'fast-approver', ['entries.approve']);
+        grantRole($reviewer, 'reviewer', ['entries.view', 'entries.edit.any', 'entries.review']);
+        $post = wfEditorPost(wfEditorCollection(), $writer);
+
+        // Two ways out of the draft stage: send (entries.submit) and a fast track that needs a
+        // different permission, so membership through a non-submit move is measured too.
+        $workflow = Workflow::query()->create([
+            'key' => 'fast', 'name' => 'Quy trình nhanh', 'applies_to_type' => 'posts', 'is_active' => true,
+        ]);
+        foreach ([
+            ['key' => 'draft', 'label' => 'Bản nháp', 'is_initial' => true, 'sort_order' => 1],
+            ['key' => 'pending', 'label' => 'Chờ duyệt', 'sort_order' => 2],
+            ['key' => 'published', 'label' => 'Đã đăng', 'is_published' => true, 'sort_order' => 3],
+        ] as $state) {
+            $workflow->states()->create($state);
+        }
+        foreach ([
+            ['key' => 'submit', 'label' => 'Gửi duyệt', 'from_state' => 'draft', 'to_state' => 'pending', 'required_permission' => 'entries.submit'],
+            ['key' => 'fast_track', 'label' => 'Đăng nhanh', 'from_state' => 'draft', 'to_state' => 'published', 'required_permission' => 'entries.approve'],
+            ['key' => 'approve', 'label' => 'Duyệt đăng', 'from_state' => 'pending', 'to_state' => 'published', 'required_permission' => 'entries.approve'],
+            ['key' => 'reject', 'label' => 'Trả lại', 'from_state' => 'pending', 'to_state' => 'draft', 'required_permission' => 'entries.review', 'requires_note' => true],
+        ] as $transition) {
+            $workflow->transitions()->create($transition);
+        }
+        app(ApplyEntryWorkflowTransition::class)->handle($post, 'vi', $writer->fresh(), 'submit');
+
+        $members = [$writer, $colleague, $senior, $sender, $approver, $reviewer];
+
+        // Who the policy says could act on THIS post once it is back at the draft stage: the
+        // engine's permission check plus EntryWorkflowResolver::mayApply, user by user.
+        $policyAnswer = function (Entry $entry) use ($workflow, $members): array {
+            $engine = app(WorkflowEngine::class);
+            $resolver = app(EntryWorkflowResolver::class);
+
+            return collect($members)
+                ->filter(fn (User $member): bool => $engine->allowedTransitions($workflow, 'draft', $member->fresh())
+                    ->contains(fn (WorkflowTransition $move): bool => $resolver->mayApply($move, $entry, $member->fresh())))
+                ->map(fn (User $member): string => $member->name)
+                ->values()
+                ->all();
+        };
+        $offered = function (Entry $entry) use ($reviewer, $members): array {
+            $html = Livewire::actingAs($reviewer->fresh())->test(Editor::class, ['ulid' => $entry->ulid])->html();
+
+            return collect($members)
+                ->filter(fn (User $member): bool => str_contains($html, '<option value="'.$member->id.'">'))
+                ->map(fn (User $member): string => $member->name)
+                ->values()
+                ->all();
+        };
+
+        // The author with edit.own on their own post, anyone with edit.any, and anyone who
+        // leaves the stage by another move. Not a colleague with edit.own, not submit alone.
+        $post = $post->fresh();
+        expect($offered($post))->toBe(['Tác giả bài', 'Biên tập chính', 'Người duyệt'])
+            ->and($offered($post))->toBe($policyAnswer($post));
+
+        // A post with no author: edit.own no longer reaches it, edit.any still does.
+        Entry::query()->whereKey($post->id)->update(['author_id' => null]);
+        $orphan = $post->fresh();
+        expect($offered($orphan))->toBe(['Biên tập chính', 'Người duyệt'])
+            ->and($offered($orphan))->toBe($policyAnswer($orphan));
+
+        // The hand-off check reads the same list: a member who holds entries.submit but could
+        // not send this post is refused, and the post stays where it was.
+        $component = Livewire::actingAs($reviewer->fresh())
+            ->test(Editor::class, ['ulid' => $post->ulid])
+            ->set('transitionNote', 'Thiếu ảnh')
+            ->set('assignTo', $colleague->id)
+            ->call('applyTransition', 'reject')
+            ->assertHasErrors('assignTo');
+        expect($post->fresh()->workflow_state)->toBe('pending');
+
+        $component->set('assignTo', $senior->id)
+            ->call('applyTransition', 'reject')
+            ->assertHasNoErrors();
+        expect($post->fresh())
+            ->workflow_state->toBe('draft')
+            ->assigned_to->toBe($senior->id);
+    });
+});
+
 it('approves into the public stage: status, route and the live chip', function (): void {
     $author = User::factory()->create();
     $approver = User::factory()->create();
@@ -434,21 +534,30 @@ it('renders the governed editor on a flat query budget regardless of trail lengt
     $this->actingAs($reviewer)->get($url)->assertOk();
     $lean = countQueries(fn () => $this->actingAs($reviewer)->get($url)->assertOk());
 
-    app(Tenancy::class)->enter(1, function () use ($post, $author, $reviewer): void {
+    $team = app(Tenancy::class)->enter(1, function () use ($post, $author, $reviewer): array {
         // Eight more moves on the trail + six more members who could be handed the post.
         $action = app(ApplyEntryWorkflowTransition::class);
         foreach (range(1, 4) as $i) {
             $action->handle($post->fresh(), 'vi', $reviewer->fresh(), 'send_back', "Sửa {$i}");
             $action->handle($post->fresh(), 'vi', $author->fresh(), 'submit');
         }
+        // They can edit, so they really can take a returned post on: the hand-off list leaves out
+        // anyone who holds entries.submit but could not send THIS post. Their own role, because
+        // grantRole() syncs a role's permissions by name and would rewrite the author's.
+        $team = [];
         foreach (range(1, 6) as $i) {
-            grantRole(User::factory()->create(), 'author', ['entries.submit']);
+            grantRole($team[] = User::factory()->create(), 'co-author', ['entries.edit.any', 'entries.submit']);
         }
+
+        return $team;
     });
 
     // Granting roles flushes the permission cache; warm it again so the second measurement is
-    // not charged for reloading it.
-    $this->actingAs($reviewer)->get($url)->assertOk();
+    // not charged for reloading it. The warm-up also proves the measured page lists the whole team.
+    $page = $this->actingAs($reviewer)->get($url)->assertOk();
+    foreach ([$author, ...$team] as $member) {
+        $page->assertSee('<option value="'.$member->id.'">', false);
+    }
     $loaded = countQueries(fn () => $this->actingAs($reviewer)->get($url)->assertOk());
 
     expect($loaded)->toBe($lean);

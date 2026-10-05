@@ -12,6 +12,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Workflow\Actions\InstantiateWorkflow;
+use App\Modules\Workflow\Models\Workflow;
 use App\Modules\Workflow\Models\WorkflowLog;
 use Livewire\Livewire;
 
@@ -28,8 +29,8 @@ beforeEach(function (): void {
     app(TeamContext::class)->forget();
 });
 
-/** A governed `posts` collection; returns the primary category id. */
-function inboxCollection(): int
+/** A `posts` collection, governed by the bundled approval flow unless told otherwise; returns the primary category id. */
+function inboxCollection(bool $approvalFlow = true): int
 {
     $category = Taxonomy::query()->create(['vocabulary' => 'post_cat', 'position' => 0]);
     $category->translations()->create(['locale' => 'vi', 'name' => 'Tin tức', 'slug' => 'tin-tuc']);
@@ -39,7 +40,9 @@ function inboxCollection(): int
         'permission_prefix' => 'entries', 'sort_order' => 1,
     ]);
     SiteSetting::query()->create(['group_name' => 'permalinks', 'key' => 'posts', 'value' => ['pattern' => 'category']]);
-    app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+    if ($approvalFlow) {
+        app(InstantiateWorkflow::class)->handle('admin_approval', 'posts', active: true);
+    }
 
     return $category->id;
 }
@@ -355,5 +358,68 @@ it('carries the reviewer down the list, not back to the top', function (): void 
 
         expect($b->fresh()->status)->toBe('published')
             ->and($c->fresh()->workflow_state)->toBe('pending');
+    });
+});
+
+it('offers a send move only to a reviewer who could also edit the post', function (): void {
+    $author = User::factory()->create(['name' => 'Người viết']);
+    $deskhand = User::factory()->create();
+    $copyEditor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($author, $deskhand, $copyEditor): void {
+        grantRole($author, 'author', ['entries.edit.own', 'entries.submit']);
+        // Both review, and both hold entries.submit; only one may edit the post.
+        grantRole($deskhand, 'deskhand', ['entries.review', 'entries.submit']);
+        grantRole($copyEditor, 'copy-editor', ['entries.review', 'entries.submit', 'entries.edit.any']);
+        $categoryId = inboxCollection(approvalFlow: false);
+
+        // A stage after the draft whose way on is a SEND (entries.submit), not an approval.
+        $workflow = Workflow::query()->create([
+            'key' => 'copy_desk', 'name' => 'Quy trình biên tập lại', 'applies_to_type' => 'posts', 'is_active' => true,
+        ]);
+        foreach ([
+            ['key' => 'draft', 'label' => 'Bản nháp', 'is_initial' => true, 'sort_order' => 1],
+            ['key' => 'copyedit', 'label' => 'Biên tập lại', 'sort_order' => 2],
+            ['key' => 'pending', 'label' => 'Chờ duyệt', 'sort_order' => 3],
+            ['key' => 'published', 'label' => 'Đã đăng', 'is_published' => true, 'sort_order' => 4],
+        ] as $state) {
+            $workflow->states()->create($state);
+        }
+        foreach ([
+            ['key' => 'to_desk', 'label' => 'Gửi biên tập', 'from_state' => 'draft', 'to_state' => 'copyedit', 'required_permission' => 'entries.submit'],
+            ['key' => 'send_on', 'label' => 'Gửi duyệt', 'from_state' => 'copyedit', 'to_state' => 'pending', 'required_permission' => 'entries.submit'],
+            ['key' => 'send_back', 'label' => 'Trả lại', 'from_state' => 'copyedit', 'to_state' => 'draft', 'required_permission' => 'entries.review', 'requires_note' => true],
+            ['key' => 'approve', 'label' => 'Duyệt đăng', 'from_state' => 'pending', 'to_state' => 'published', 'required_permission' => 'entries.approve'],
+        ] as $transition) {
+            $workflow->transitions()->create($transition);
+        }
+
+        $post = Entry::query()->create(['type' => 'post', 'status' => 'draft', 'author_id' => $author->id]);
+        $post->translations()->create([
+            'locale' => 'vi', 'title' => 'Bản tin', 'slug' => 'ban-tin', 'status' => 'draft',
+            'body' => ['blocks' => [['type' => 'richtext', 'props' => ['body' => 'Nội dung bài']]]],
+        ]);
+        $post->assignCategories([$categoryId]);
+        app(ApplyEntryWorkflowTransition::class)->handle($post->fresh(), 'vi', $author->fresh(), 'to_desk');
+        $post = $post->fresh();
+        expect($post->workflow_state)->toBe('copyedit');
+
+        // The post is in both queues and both may send it back, but sending it on is working on
+        // it: a button the action would refuse is not shown to the one who cannot edit it.
+        Livewire::actingAs($deskhand->fresh())
+            ->test(ReviewInbox::class)
+            ->call('open', $post->ulid)
+            ->assertSee('Nội dung bài')
+            ->assertSeeHtml('wire:key="act-send_back"')
+            ->assertDontSeeHtml('wire:key="act-send_on"')
+            ->call('apply', 'send_on')
+            ->assertHasErrors('inbox');
+        expect($post->fresh()->workflow_state)->toBe('copyedit');
+
+        Livewire::actingAs($copyEditor->fresh())
+            ->test(ReviewInbox::class)
+            ->call('open', $post->ulid)
+            ->assertSeeHtml('wire:key="act-send_back"')
+            ->assertSeeHtml('wire:key="act-send_on"');
     });
 });
