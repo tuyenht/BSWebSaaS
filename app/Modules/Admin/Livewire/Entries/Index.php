@@ -21,8 +21,10 @@ use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\DeadlockException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -92,6 +94,9 @@ final class Index extends Component
     /** Sentinel value for the "no template" (null template_override) filter option. */
     private const string TEMPLATE_NONE = '__default__';
 
+    /** The most rows one bulk action takes: every one is locked and worked through in a single request. */
+    private const int BULK_LIMIT = 200;
+
     public function mount(?string $section = null): void
     {
         $this->section = $section ?? request()->query('section');
@@ -114,6 +119,9 @@ final class Index extends Component
     {
         $this->tab = $tab;
         $this->page = 1;
+        // A selection made on one tab is not shown on the next, and the next tab's bar offers
+        // other actions (the Trash's is "Xóa vĩnh viễn") — never let it act on rows out of sight.
+        $this->selected = [];
     }
 
     public function sortBy(string $key): void
@@ -198,7 +206,7 @@ final class Index extends Component
      */
     public function changeStatus(string $ulid, string $status): void
     {
-        $entry = $this->findEntry($ulid);
+        $entry = $this->findLiveEntry($ulid);
         $user = $this->actingUser();
 
         try {
@@ -230,7 +238,7 @@ final class Index extends Component
         }
 
         try {
-            app(TransitionEntryStatus::class)->handle($this->findEntry($ulid), EntryStatus::Scheduled, $this->actingUser(), $when);
+            app(TransitionEntryStatus::class)->handle($this->findLiveEntry($ulid), EntryStatus::Scheduled, $this->actingUser(), $when);
         } catch (WorkflowGovernedException) {
             $this->toast(__('entries.workflow_governed'));
 
@@ -327,7 +335,7 @@ final class Index extends Component
 
     public function duplicate(string $ulid): void
     {
-        $copy = app(DuplicateEntry::class)->handle($this->findEntry($ulid), $this->actingUser());
+        $copy = app(DuplicateEntry::class)->handle($this->findLiveEntry($ulid), $this->actingUser());
         // Materialize the copied block images into the usage index, exactly as the editor does on save.
         app(EntryBlockMediaReconciler::class)->reconcile($copy);
 
@@ -336,7 +344,7 @@ final class Index extends Component
 
     public function trash(string $ulid): void
     {
-        $entry = $this->findEntry($ulid);
+        $entry = $this->findLiveEntry($ulid);   // trashing it again would restart its purge clock
         $this->authorize('delete', $entry);
         $entry->delete();
 
@@ -345,7 +353,7 @@ final class Index extends Component
 
     public function restore(string $ulid): void
     {
-        $entry = $this->findEntry($ulid);
+        $entry = $this->findTrashedEntry($ulid);
         $this->authorize('restore', $entry);
         $entry->restore();
 
@@ -354,7 +362,7 @@ final class Index extends Component
 
     public function forceDelete(string $ulid): void
     {
-        $entry = $this->findEntry($ulid);
+        $entry = $this->findTrashedEntry($ulid);   // only what is in the Trash is ever purged
         $this->authorize('forceDelete', $entry);
         $entry->forceDelete(); // EntryObserver clears the block-image usage index
 
@@ -377,67 +385,38 @@ final class Index extends Component
 
     /**
      * Publish the selected rows, or — for someone without publish rights — send their drafts for
-     * review. A row counts as done only when its status actually moved; everything else is
-     * reported as skipped, never as an error: a row this person may not send or publish (a
-     * colleague's draft), one already in the state asked for, one that is not a draft to send, and
-     * one in the trash (a forged selection must not put trashed content on the website).
+     * review. A row counts as done only when this run moved it (PublishEntry::attempt judges that
+     * under the row lock); everything else is reported as skipped, never as an error.
      */
     public function bulkPublish(): void
     {
         $user = $this->actingUser();
         $locale = app(SiteLocale::class)->default();
         $publish = app(PublishEntry::class);
-        $publisher = $user->can('entries.publish');
-        // Runs its own loop rather than bulkApply(): the outcome is several numbers, and a second
-        // toast would simply replace the first, so what did publish would never be read.
-        $entries = $this->selectedEntries();
-        $done = 0;
-        $skipped = 0;
-        $governed = 0;
-        $failed = 0;
-        foreach ($entries as $entry) {
-            if ($entry->trashed()) {
-                $skipped++;
 
-                continue;
-            }
-
-            $before = $entry->status;
-            try {
-                if ($publish->handle($entry, $locale, $user) !== $before) {
-                    $done++;
-                } else {
-                    $skipped++;   // already in that state, or not a draft to send
-                }
-            } catch (WorkflowGovernedException) {
-                $governed++;   // left as is: only the editor's approval block may move it
-            } catch (AuthorizationException) {
-                $skipped++;    // not theirs to send or publish: an expected answer, not a fault
-            } catch (Throwable $e) {
-                // A slug clash or a database failure: report it and keep going. Aborting here
-                // would leave the selection half-applied, the checkbox state stale and no toast
-                // at all — the user could not tell what had happened.
-                report($e);
-                $failed++;
-            }
-        }
-        $this->selected = [];
-
-        // One toast carrying every count: a second toast would replace the first.
-        $parts = [__($publisher ? 'entries.bulk_published' : 'entries.bulk_sent', ['count' => $done])];
-        foreach (['entries.bulk_skipped' => $skipped, 'entries.bulk_governed' => $governed, 'entries.bulk_failed' => $failed] as $key => $count) {
-            if ($count > 0) {
-                $parts[] = __($key, ['count' => $count]);
-            }
-        }
-        $this->toast(implode(' ', $parts));
+        $this->runBulk(
+            $user->can('entries.publish') ? 'entries.bulk_published' : 'entries.bulk_sent',
+            'entries.bulk_skipped',
+            fn (Entry $entry): bool => $this->mayPublishOrSend($entry, $user, $locale),
+            fn (Entry $entry): bool => $publish->attempt($entry, $locale, $user)['moved'],
+        );
     }
 
     public function bulkDraft(): void
     {
         $user = $this->actingUser();
         $transition = app(TransitionEntryStatus::class);
-        $this->bulkApply(fn (Entry $entry) => $transition->handle($entry, EntryStatus::Draft, $user));
+
+        $this->runBulk(
+            'entries.bulk_drafted',
+            'entries.bulk_skipped',
+            fn (Entry $entry): bool => $this->mayDraft($entry, $user),
+            function (Entry $entry) use ($transition, $user): bool {
+                $transition->handle($entry, EntryStatus::Draft, $user);
+
+                return true;
+            },
+        );
     }
 
     public function bulkDuplicate(): void
@@ -445,59 +424,243 @@ final class Index extends Component
         $user = $this->actingUser();
         $duplicate = app(DuplicateEntry::class);
         $reconciler = app(EntryBlockMediaReconciler::class);
-        $this->bulkApply(function (Entry $entry) use ($duplicate, $reconciler, $user): void {
-            $reconciler->reconcile($duplicate->handle($entry, $user));
-        });
+
+        $this->runBulk(
+            'entries.bulk_duplicated',
+            'entries.bulk_skipped',
+            fn (Entry $entry): bool => $this->mayDuplicate($entry, $user),
+            function (Entry $entry) use ($duplicate, $reconciler, $user): bool {
+                $reconciler->reconcile($duplicate->handle($entry, $user));
+
+                return true;
+            },
+        );
     }
 
     public function bulkTrash(): void
     {
-        $this->bulkApply(function (Entry $entry): void {
-            $this->authorize('delete', $entry);
-            $entry->delete();
-        });
+        $user = $this->actingUser();
+
+        $this->runBulk(
+            'entries.bulk_trashed',
+            'entries.bulk_skipped',
+            fn (Entry $entry): bool => $this->mayTrash($entry, $user),
+            function (Entry $entry): bool {
+                $this->authorize('delete', $entry);
+
+                return (bool) $entry->delete();
+            },
+        );
     }
 
     public function bulkRestore(): void
     {
-        $this->bulkApply(function (Entry $entry): void {
-            $this->authorize('restore', $entry);
-            $entry->restore();
-        });
+        $user = $this->actingUser();
+
+        $this->runBulk(
+            'entries.bulk_restored',
+            'entries.bulk_skipped_trash',
+            fn (Entry $entry): bool => $this->mayRestore($entry, $user),
+            function (Entry $entry): bool {
+                $this->authorize('restore', $entry);
+
+                return $entry->restore();
+            },
+        );
     }
 
     public function bulkForceDelete(): void
     {
-        $this->bulkApply(function (Entry $entry): void {
-            $this->authorize('forceDelete', $entry);
-            $entry->forceDelete();
-        });
+        $user = $this->actingUser();
+
+        $this->runBulk(
+            'entries.bulk_destroyed',
+            'entries.bulk_skipped_trash',
+            fn (Entry $entry): bool => $this->mayForceDelete($entry, $user),
+            function (Entry $entry): bool {
+                $this->authorize('forceDelete', $entry);
+
+                return (bool) $entry->forceDelete();
+            },
+        );
+    }
+
+    /*
+     * Which rows each bulk action is for: the row's kind (in the Trash or not), its state, and
+     * this person's right to change it. One rule per action, so a count shown on a button before
+     * the click can use the very same rule. Restore and Xóa vĩnh viễn are for the Trash only;
+     * everything else is for live content only ("không đụng bài trong Thùng rác"). The actions
+     * still check the right themselves — these rules only keep the wrong rows out.
+     */
+
+    private function mayTrash(Entry $entry, User $user): bool
+    {
+        return ! $entry->trashed() && $user->can('delete', $entry);
+    }
+
+    private function mayRestore(Entry $entry, User $user): bool
+    {
+        return $entry->trashed() && $user->can('restore', $entry);
+    }
+
+    private function mayForceDelete(Entry $entry, User $user): bool
+    {
+        return $entry->trashed() && $user->can('forceDelete', $entry);
+    }
+
+    /** A draft is already a draft: "moving" it again would only write a misleading audit row. */
+    private function mayDraft(Entry $entry, User $user): bool
+    {
+        return ! $entry->trashed() && $entry->status !== EntryStatus::Draft->value && $user->can('publish', $entry);
+    }
+
+    private function mayDuplicate(Entry $entry, User $user): bool
+    {
+        return ! $entry->trashed() && $user->can('create', Entry::class);
     }
 
     /**
-     * Apply an action to every selected entry, then clear the selection and toast the count.
-     *
-     * @param  callable(Entry): void  $action
+     * A publisher's Đăng is for anything not yet fully live. Fully live means the entry AND its
+     * default-language text are published: the default language can change, so an entry can be
+     * live while the text visitors now get by default is still a draft — Đăng has work to do
+     * there. Skipping a live row here, before PublishEntry, keeps a re-click from writing another
+     * Publish version, audit row and route sync for nothing. A sender's Gửi duyệt is for their
+     * own drafts only (EntryPolicy::submit).
      */
-    private function bulkApply(callable $action): void
+    private function mayPublishOrSend(Entry $entry, User $user, string $locale): bool
     {
-        $entries = $this->selectedEntries();
-        foreach ($entries as $entry) {
-            $action($entry);
+        if ($entry->trashed()) {
+            return false;
         }
-        $this->selected = [];
-        $this->toast(__('entries.bulk_done', ['count' => $entries->count()]));
+
+        if ($user->can('publish', $entry)) {
+            return $entry->status !== EntryStatus::Published->value
+                || $entry->translationFor($locale)?->status !== EntryStatus::Published->value;
+        }
+
+        return $entry->status === EntryStatus::Draft->value && $user->can('submit', $entry);
     }
 
-    /** @return EloquentCollection<int, Entry> */
+    /**
+     * Run one bulk action over the selection and report it in ONE toast — a second toast would
+     * replace the first: what was done, then what was skipped, governed or failed.
+     *
+     * - The rows are locked up front, in id order: two overlapping runs queue behind each other
+     *   instead of deadlocking, and every rule judges the row as it is now.
+     * - A row the rule rejects is skipped, never acted on: it may have been selected on another
+     *   tab, or forged. A row the action refuses (AuthorizationException) is skipped too.
+     * - Each row runs in its own savepoint, so a row that fails leaves nothing half-done; it is
+     *   reported for the logs and counted, and the rest carry on.
+     * - A deadlock or serialization failure is different. PostgreSQL has aborted the transaction,
+     *   and Laravel rethrows it out of a nested transaction WITHOUT rolling back to the savepoint,
+     *   so not one more statement could run. The whole run is rolled back to the savepoint taken
+     *   before it — the request transaction is usable again (the list still renders) — the
+     *   selection is kept, and the person is asked to try again.
+     *
+     * @param  callable(Entry): bool  $eligible  the row is one this action is for
+     * @param  callable(Entry): bool  $action  runs the action; true when the row really changed
+     */
+    private function runBulk(string $doneKey, string $skippedKey, callable $eligible, callable $action): void
+    {
+        if (count($this->selected) > self::BULK_LIMIT) {
+            $this->toast(__('entries.bulk_too_many', ['max' => self::BULK_LIMIT]));
+
+            return;
+        }
+
+        $tally = [$doneKey => 0, $skippedKey => 0, 'entries.bulk_governed' => 0, 'entries.bulk_failed' => 0];
+
+        DB::beginTransaction();
+        try {
+            foreach ($this->selectedEntries() as $entry) {
+                $tally[$this->bulkRow($entry, $eligible, $action, $doneKey, $skippedKey)]++;
+            }
+            DB::commit();
+        } catch (Throwable $e) {
+            DB::rollBack();
+            if (! $this->isConcurrencyError($e)) {
+                throw $e;
+            }
+            $this->toast(__('entries.bulk_conflict'));
+
+            return;
+        }
+
+        $this->selected = [];
+
+        $parts = [__($doneKey, ['count' => $tally[$doneKey]])];
+        foreach ([$skippedKey, 'entries.bulk_governed', 'entries.bulk_failed'] as $key) {
+            if ($tally[$key] > 0) {
+                $parts[] = __($key, ['count' => $tally[$key]]);
+            }
+        }
+        $this->toast(implode(' ', $parts));
+    }
+
+    /**
+     * One row of a bulk run, in its own savepoint.
+     *
+     * @param  callable(Entry): bool  $eligible
+     * @param  callable(Entry): bool  $action
+     * @return string the tally key the row counts under
+     */
+    private function bulkRow(Entry $entry, callable $eligible, callable $action, string $doneKey, string $skippedKey): string
+    {
+        if (! $eligible($entry)) {
+            return $skippedKey;
+        }
+
+        try {
+            return DB::transaction(fn (): bool => $action($entry)) ? $doneKey : $skippedKey;
+        } catch (WorkflowGovernedException) {
+            return 'entries.bulk_governed';   // left as is: only the editor's approval block may move it
+        } catch (AuthorizationException) {
+            return $skippedKey;               // not theirs to change: an expected answer, not a fault
+        } catch (Throwable $e) {
+            if ($this->isConcurrencyError($e)) {
+                throw $e;                     // the transaction is aborted: runBulk() abandons the run
+            }
+            // A slug clash or a database failure: its savepoint is rolled back, so report it and
+            // carry on — the toast says how many rows failed.
+            report($e);
+
+            return 'entries.bulk_failed';
+        }
+    }
+
+    /** A deadlock or serialization failure, or a statement refused because one already aborted the transaction. */
+    private function isConcurrencyError(Throwable $e): bool
+    {
+        return $e instanceof DeadlockException
+            || ($e instanceof QueryException && in_array((string) $e->getCode(), ['40001', '40P01', '25P02'], true));
+    }
+
+    /**
+     * The selection, locked in id order (see runBulk()). Trashed rows are loaded too, so each
+     * rule can tell a row of the wrong kind (skipped) from one that no longer exists (left out).
+     *
+     * @return EloquentCollection<int, Entry>
+     */
     private function selectedEntries(): EloquentCollection
     {
-        return Entry::withTrashed()->whereIn('ulid', $this->selected)->get();
+        return Entry::withTrashed()->whereIn('ulid', $this->selected)->orderBy('id')->lockForUpdate()->get();
     }
 
     private function findEntry(string $ulid): Entry
     {
         return Entry::withTrashed()->where('ulid', $ulid)->firstOrFail();
+    }
+
+    /** A row that is not in the Trash — anything else is not found, like an unknown ulid. */
+    private function findLiveEntry(string $ulid): Entry
+    {
+        return Entry::query()->where('ulid', $ulid)->firstOrFail();
+    }
+
+    /** A row in the Trash — a live row is not found here, so it can never be restored or purged by mistake. */
+    private function findTrashedEntry(string $ulid): Entry
+    {
+        return Entry::onlyTrashed()->where('ulid', $ulid)->firstOrFail();
     }
 
     private function actingUser(): User
