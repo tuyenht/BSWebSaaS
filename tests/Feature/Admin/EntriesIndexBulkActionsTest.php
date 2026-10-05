@@ -352,3 +352,21 @@ it('refuses a selection over the bulk limit without touching any row', function 
         expect(bulkFind($live)->trashed())->toBeFalse();
     });
 });
+
+it('offers no editor link on a Trash row, since the editor does not open trashed content', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any', 'entries.delete.any']);
+        $trashed = bulkRow($editor, 'Bài đã bỏ', trashed: true);
+        $live = bulkRow($editor, 'Bài đang chạy');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('setTab', 'trash')
+            ->assertSee('Bài đã bỏ')
+            ->assertDontSee(route('admin.entries.edit', ['ulid' => $trashed->ulid, 'locale' => 'vi']), false);
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->assertSee(route('admin.entries.edit', ['ulid' => $live->ulid, 'locale' => 'vi']), false);
+    });
+});
