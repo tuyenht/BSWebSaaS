@@ -137,9 +137,9 @@ final class Editor extends Component
     public int $trailTotal = 0;
 
     /**
-     * Per-request memo of hand-off candidates by destination stage (protected = not Livewire state).
+     * Per-request memo of hand-off candidates by destination stage and entry (protected = not Livewire state).
      *
-     * @var array<string, array<int, array{id: int, name: string}>> keyed "{workflow}:{stage}"
+     * @var array<string, array<int, array{id: int, name: string}>> keyed "{workflow}:{stage}:{entry}"
      */
     protected array $memberMemo = [];
 
@@ -348,7 +348,7 @@ final class Editor extends Component
         // can act at the destination — never an arbitrary (or another site's) users.id from the
         // wire payload.
         $assignTo = $transition->requires_note ? $this->assignTo : null;
-        if ($assignTo !== null && ! array_key_exists($assignTo, $this->assignableMembers($workflow, $transition->to_state))) {
+        if ($assignTo !== null && ! array_key_exists($assignTo, $this->assignableMembers($workflow, $transition->to_state, $entry))) {
             $this->addError('assignTo', __('admin.wfb.assignee_invalid'));
 
             return;
@@ -529,7 +529,7 @@ final class Editor extends Component
                 'to_published' => $destination instanceof WorkflowState && $destination->is_published,
                 'note' => $transition->requires_note,
                 'members' => $transition->requires_note
-                    ? array_values($this->assignableMembers($workflow, $transition->to_state))
+                    ? array_values($this->assignableMembers($workflow, $transition->to_state, $subject))
                     : [],
             ];
         }
@@ -556,35 +556,35 @@ final class Editor extends Component
     }
 
     /**
-     * Members of THIS site who hold a permission some transition out of $stateKey requires — the
-     * people a returned post can be handed to. Keyed by users.id for the validity check.
+     * Members of THIS site who could move $entry on from $stateKey — the people a returned post
+     * can be handed to. A member qualifies through at least one transition out of that stage:
+     * its permission, and for a send (entries.submit) also the right to edit THIS entry, so a
+     * post is never handed to someone the send would then refuse (EntryWorkflowResolver::
+     * membersWhoMayApply, the SQL form of mayApply). Keyed by users.id for the validity check.
      *
      * @return array<int, array{id: int, name: string}>
      */
-    private function assignableMembers(Workflow $workflow, string $stateKey): array
+    private function assignableMembers(Workflow $workflow, string $stateKey, Entry $entry): array
     {
         // Memo on the instance (one per request) — never a static: under Octane a static would
-        // outlive the request and hand one site's members to the next.
-        $memoKey = $workflow->id.':'.$stateKey;
+        // outlive the request and hand one site's members to the next. The entry is part of the
+        // key because who may send depends on its author; an unsaved post is the actor's own.
+        $memoKey = $workflow->id.':'.$stateKey.':'.($entry->exists ? $entry->id : 'new:'.$entry->author_id);
         if (isset($this->memberMemo[$memoKey])) {
             return $this->memberMemo[$memoKey];
         }
 
-        $permissions = $workflow->transitions
-            ->where('from_state', $stateKey)
-            ->pluck('required_permission')
-            ->unique()
-            ->values()
-            ->all();
+        $query = app(EntryWorkflowResolver::class)
+            ->membersWhoMayApply($workflow->transitions->where('from_state', $stateKey), $entry);
 
-        if ($permissions === []) {
+        if ($query === null) {
             return $this->memberMemo[$memoKey] = [];
         }
 
-        // Spatie's permission scope honours the team (site) on both the role and the direct
-        // grant, so a member of another site never shows up here.
+        // Filtered in SQL before the cap, so the cap never hides a member behind people who
+        // could not take the post on.
         $members = [];
-        foreach (User::query()->permission($permissions)->orderBy('name')->limit(self::ASSIGNEE_LIMIT)->get(['users.id', 'users.name']) as $member) {
+        foreach ($query->orderBy('name')->limit(self::ASSIGNEE_LIMIT)->get(['users.id', 'users.name']) as $member) {
             $members[(int) $member->id] = ['id' => (int) $member->id, 'name' => (string) $member->name];
         }
 
