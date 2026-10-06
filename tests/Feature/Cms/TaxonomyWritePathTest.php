@@ -23,6 +23,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\SiteLocale;
 use App\Modules\Tenancy\Models\SiteSetting;
+use App\Modules\Workflow\Models\Workflow;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -315,6 +316,58 @@ it('moves posts to another section once the caller confirms it, each with a 301'
 
         expect(twRoute($post))->toBe('/du-an/su-kien/hoi-thao')
             ->and(twRedirect('/tin-tuc/su-kien/hoi-thao'))->toBe('/du-an/su-kien/hoi-thao');
+    });
+});
+
+it('never moves posts out of a section whose approval workflow is on, even when confirmed', function (): void {
+    twSiteOne(function (): void {
+        $news = twCreate('Tin tức');
+        $projects = twCreate('Dự án');
+        twSection($news, 'category_path');
+        twSection($projects, 'category_path', 'projects');
+        Workflow::query()->create(['key' => 'review', 'name' => 'Duyệt bài', 'applies_to_type' => 'posts', 'is_active' => true]);
+        $events = twCreate('Sự kiện', $news);
+        $post = twPost('hoi-thao', [$events]);
+
+        // The editor refuses re-filing such a post one by one; a category move is no way around it.
+        expect(twRefusal(fn () => app(MoveTaxonomy::class)->handle($events, $projects, 0, evenIfSectionChanges: true)))->toBe('workflow_governed')
+            ->and(twRefusal(fn () => app(MoveTaxonomy::class)->handle($events, null, 0, evenIfSectionChanges: true)))->toBe('workflow_governed')
+            ->and($events->fresh()?->parent_id)->toBe($news->id)
+            ->and(twRoute($post))->toBe('/tin-tuc/su-kien/hoi-thao');
+
+        // Inside the section, or with no posts to take along, nothing escapes the workflow.
+        $archive = twCreate('Lưu trữ', $news);
+        $empty = twCreate('Trống', $news);
+        expect(twRefusal(fn () => twMove($events, $archive)))->toBeNull()
+            ->and(twRefusal(fn () => twMove($empty, $projects)))->toBeNull();
+
+        // A section without an active workflow still only asks for confirmation.
+        $sites = twCreate('Công trình', $projects);
+        twPost('cong-trinh', [$sites]);
+        expect(twRefusal(fn () => twMove($sites, $news)))->toBe('section_changed');
+    });
+});
+
+it('never re-files or detaches posts out of a section whose approval workflow is on, even when confirmed', function (): void {
+    twSiteOne(function (): void {
+        $news = twCreate('Tin tức');
+        $projects = twCreate('Dự án');
+        twSection($news, 'category');
+        twSection($projects, 'category', 'projects');
+        Workflow::query()->create(['key' => 'review', 'name' => 'Duyệt bài', 'applies_to_type' => 'posts', 'is_active' => true]);
+        $events = twCreate('Sự kiện', $news);
+        $talks = twCreate('Hội thảo', $news);
+        $sites = twCreate('Công trình', $projects);
+        $post = twPost('bai', [$events]);
+        $delete = app(DeleteTaxonomy::class);
+
+        expect(twRefusal(fn () => $delete->handle($events, CategoryItemsOnDelete::Reassign, $sites, evenIfSectionChanges: true)))->toBe('workflow_governed')
+            ->and(twRefusal(fn () => $delete->handle($events, CategoryItemsOnDelete::Detach, evenIfSectionChanges: true)))->toBe('workflow_governed')
+            ->and(twFiled($post))->toBe([$events->id => 0]);
+
+        // Onto a category of the same section is ordinary filing.
+        expect(twRefusal(fn () => $delete->handle($events, CategoryItemsOnDelete::Reassign, $talks)))->toBeNull()
+            ->and(twFiled($post))->toBe([$talks->id => 0]);
     });
 });
 

@@ -12,6 +12,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
@@ -28,7 +29,10 @@ use Illuminate\Support\Facades\DB;
  * not exceed TaxonomyRules::MAX_DEPTH. A section carries its posts' permissions and approval workflow,
  * so a move that would take posts out of their section (to another one, or to none) is refused as
  * section_changed unless the caller confirms it ($evenIfSectionChanges — the screen shows what moves
- * where first); a branch without posts, or posts joining a section from none, move freely.
+ * where first); a branch without posts, or posts joining a section from none, move freely. Posts whose
+ * section runs an active approval workflow never leave it this way, confirmed or not
+ * (workflow_governed): the editor refuses the same re-filing post by post, and a category move must
+ * not be the way around it.
  * Reordering under the current parent skips those checks, so a tree that predates the rules can
  * still be sorted. On a new parent the branch's structural paths are
  * rewritten and — where the permalink presets carry the category chain — the posts and products
@@ -45,6 +49,7 @@ final readonly class MoveTaxonomy
         private TaxonomyPaths $paths,
         private CategoryRelinker $relinker,
         private SectionResolver $sections,
+        private EntryWorkflowResolver $workflows,
         private CurrentSite $site,
     ) {}
 
@@ -73,7 +78,11 @@ final readonly class MoveTaxonomy
             if ($reparented && $parentLevel + TaxonomyTree::heightOf($branch) > TaxonomyRules::MAX_DEPTH) {
                 throw new TaxonomyChangeRejectedException('depth_exceeded');
             }
-            if ($reparented && ! $evenIfSectionChanges && $this->postsLeaveSection($taxonomy, $parent, array_keys($branch))) {
+            $leaving = $reparented ? $this->postsLeavingSection($taxonomy, $parent, array_keys($branch)) : false;
+            if ($leaving && $this->workflows->forCategory($taxonomy) !== null) {
+                throw new TaxonomyChangeRejectedException('workflow_governed');
+            }
+            if ($leaving && ! $evenIfSectionChanges) {
                 throw new TaxonomyChangeRejectedException('section_changed');
             }
 
@@ -117,7 +126,7 @@ final readonly class MoveTaxonomy
      *
      * @param  list<int>  $branch
      */
-    private function postsLeaveSection(Taxonomy $taxonomy, ?Taxonomy $parent, array $branch): bool
+    private function postsLeavingSection(Taxonomy $taxonomy, ?Taxonomy $parent, array $branch): bool
     {
         $before = $this->sections->forCategory($taxonomy);
         if ($before === null || $this->sections->boundAmong([$taxonomy->id]) !== []) {

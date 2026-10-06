@@ -18,6 +18,7 @@ use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Shared\Support\Cast;
@@ -36,7 +37,9 @@ use Illuminate\Support\Facades\DB;
  * would lose their home. Posts filed primarily under a deleted category that belongs to a section
  * must not leave it as a side effect — moved onto a category of another section (or of none), or
  * detached — unless the caller confirms it ($evenIfSectionChanges): a section carries their
- * permissions and approval workflow (section_changed).
+ * permissions and approval workflow (section_changed). Posts whose section runs an active approval
+ * workflow never leave it this way, confirmed or not (workflow_governed): the editor refuses the same
+ * re-filing post by post, and a category change must not be the way around it.
  *
  * Every address that stops existing answers with a 301: each deleted category page (per language)
  * points to the target's page, else the nearest remaining category above, else the home page; posts
@@ -57,6 +60,7 @@ final readonly class DeleteTaxonomy
         private RouteSync $routes,
         private TaxonomyPaths $paths,
         private SectionResolver $sections,
+        private EntryWorkflowResolver $workflows,
         private CurrentSite $site,
     ) {}
 
@@ -87,7 +91,12 @@ final readonly class DeleteTaxonomy
                 throw new TaxonomyChangeRejectedException('section_bound');
             }
             $targetId = $this->targetId($deleted, $items, $target);
-            if (! $evenIfSectionChanges && $this->postsLeaveSection($deleted, $targetId)) {
+            $leaving = $this->leavingSection($deleted, $targetId);
+            $governed = array_values(array_filter($leaving, fn (Taxonomy $category): bool => $this->workflows->forCategory($category) !== null));
+            if ($this->relinker->hasPrimaryPosts($this->ids($governed))) {
+                throw new TaxonomyChangeRejectedException('workflow_governed');
+            }
+            if (! $evenIfSectionChanges && $this->relinker->hasPrimaryPosts($this->ids($leaving))) {
                 throw new TaxonomyChangeRejectedException('section_changed');
             }
 
@@ -180,26 +189,34 @@ final readonly class DeleteTaxonomy
     }
 
     /**
-     * Whether re-filing takes posts out of their section: posts filed primarily under a deleted
-     * category that belongs to a section, when they move onto a category of another section (or of
-     * none) — or are detached, since whatever category ranks next may sit anywhere.
+     * The deleted categories whose posts would end up outside the section they are in now: moved
+     * onto a category of another section (or of none), or detached — since whatever category ranks
+     * next may sit anywhere.
      *
      * @param  list<int>  $deleted
+     * @return list<Taxonomy>
      */
-    private function postsLeaveSection(array $deleted, ?int $targetId): bool
+    private function leavingSection(array $deleted, ?int $targetId): array
     {
         $target = $targetId === null ? null : Taxonomy::query()->whereKey($targetId)->first();
         $after = $target === null ? null : $this->sections->forCategory($target);
 
-        $leaving = Taxonomy::query()->whereKey($deleted)->get()
+        return array_values(Taxonomy::query()->whereKey($deleted)->get()
             ->filter(function (Taxonomy $category) use ($target, $after): bool {
                 $before = $this->sections->forCategory($category);
 
                 return $before !== null && ($target === null || $before !== $after);
             })
-            ->modelKeys();
+            ->all());
+    }
 
-        return $this->relinker->hasPrimaryPosts(array_values(array_map(static fn (mixed $id): int => Cast::int($id), $leaving)));
+    /**
+     * @param  list<Taxonomy>  $categories
+     * @return list<int>
+     */
+    private function ids(array $categories): array
+    {
+        return array_map(static fn (Taxonomy $category): int => $category->id, $categories);
     }
 
     /**
