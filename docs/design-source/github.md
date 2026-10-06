@@ -2,7 +2,14 @@ repo: tuyenht/BSWebSaaS
 branch: main
 
 ## Last sync
-date: 2026-10-03T18:01:38Z
+date: 2026-10-05T16:33:17Z
+
+### Updated in this project
+- D0-3s: bảng thuật ngữ + README D0-3 đối chiếu `lang/vi.json` (số dòng từng khóa), `PermissionRegistry.php:141–206` (6 nhóm website, 3 nhóm nền tảng), migration trạng thái 2005/2009/2012.
+
+## Sync history
+
+### 2026-10-03T18:01:38Z
 
 ### Updated in this project
 - D0-2: `Chuẩn giao diện SaaS Starter.dc.html` — thuật toán màu chép từ `BrandPalette.php`, `ReadableColor.php`, `ThemeResolver.php:85/89` vào `content-ui.js`; bảng 18 Blade từ `app/Modules/Admin/resources/views/components/`.

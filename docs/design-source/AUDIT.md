@@ -2498,3 +2498,356 @@ X3B2-QĐ4 XONG
 - File đã ghi: `_audit/x3b-lines.js` (mới, đóng băng), `_audit/x3b-lines/*.json` (20 file ĐO + 2 file -thu), `AUDIT.md`. Không sửa sản phẩm, CLAUDE.md, harness, hidden-mode, script đóng băng khác, sao lưu.
 - Lệch thủ tục: tên file kết quả dùng tên không dấu (công cụ file từ chối đường dẫn có dấu); 3 file ghi đầu qua `saveFile` bị đổi `@` thành `-` rồi chuyển lại đúng tên bằng công cụ chép (fetch lại KHỚP sha). Trường `near` (tiêu đề gần nhất) rỗng ở một số trang không có thẻ heading — vị trí ghi theo CSS path + đoạn chữ.
 - **Chờ duyệt:** NHÓM Đ — xem tay cả 10 trang ở 390 và 1440 (ưu tiên 2 mục TĂNG + nút "Đi tới ô đó") và các phép thử trên máy thật; phải xong trước 3c.
+
+## Kiểm D0-2 bởi Claude Code (04/10/2026)
+
+Bản kiểm: zip xuất 04/10 17:21, sau D0-2s và D0-2 phần 3 (Component bổ sung). Chỉ kiểm và báo — không sửa file thiết kế. Bỏ qua `_audit/` và `uploads/`. Repo đối chiếu: `tuyenht/BSWebSaaS` nhánh main `70afa11` (chỉ đọc).
+Cách kiểm: Chromium 154 không giao diện, điều khiển qua DevTools Protocol. Bấm, gõ, rê chuột và nhấn phím đều là sự kiện nhập thật, không gọi `element.click()`. Giả lập `prefers-color-scheme`, `pointer:coarse` / `hover:none` và viewport điện thoại. Đã chạy 56 lượt cho 3 trang chuẩn (28 + 14 + 14 — hai trang sau không có Chữ lớn): 7 bề rộng (360 / 390 / 768 / 1024 / 1024 cảm ứng / 1240 / 1440) × sáng + tối × chữ thường + Chữ lớn. Với 9 màn đã chạm, đo ở 1240 và 390. Danh sách D0-2s được kiểm từng mục.
+Bằng chứng: [ĐÃ RENDER VÀ THẤY] = đã chụp ảnh và nhìn · [ĐO BẰNG SCRIPT] = số đo của script · [SUY RA TỪ CODE] = đọc mã · [CHƯA KIỂM ĐƯỢC + lý do].
+Chưa kiểm được: Safari iOS / iPadOS / Firefox / máy cảm ứng thật, xoay ngang, phóng 200%, trình đọc màn hình (chỉ có một nhân Chromium giả lập). Chữ lớn ở `Chuẩn giao diện - Component bổ sung` và `Danh sách co giãn - Đã chốt` không đo được vì hai trang không có công tắc này.
+
+**Tổng: Chặn 0 · Cao 12 · Trung bình 23 · Thấp 21 (56 dòng).**
+- D0-2s: đủ 16/16 mục và 8/8 tiêu chí "Xong khi", nhưng mục 2 (nhãn hẹp tỉnh/phường) gây cuộn ngang ở 360/390 (dòng C1).
+- Kết luận của bước kiểm D0-2s về mục 11 "không cuộn ngang" là SAI: bước đó so `scrollWidth` với `innerWidth`, mà `innerWidth` đã bị nới theo chỗ tràn.
+
+### Đã đạt (đo thật)
+- Nút Sao chép mục 3 trang Component bổ sung, đủ 4 kiểu (chữ cố định · chỉ icon · ô nhập sửa được · ô nhiều dòng chỉ đọc), ở 1240 (chuột) và 390 (cảm ứng):
+  - chữ đổi "Đã sao chép", `aria-label` đổi theo, sau 2,0 giây trở về "Sao chép";
+  - clipboard khớp đúng từng ký tự;
+  - sửa ô nhập rồi bấm chép thì ra đúng chữ VỪA GÕ;
+  - bấm Space trên nút được, `role="status"` đọc đúng câu;
+  - khi chặn cả hai cách chép: tự bôi đen + hiện câu hướng dẫn, Esc đóng;
+  - chép được cả khi trang không được cấp quyền Clipboard. [ĐO BẰNG SCRIPT]
+- `content-ui.js`:
+  - `BSUI.slugify` cắt 200 rồi mới bỏ "-" hai đầu, đúng với tiếng Việt có dấu, đ/Đ, chuỗi 250 ký tự, ký tự thứ 200 là dấu cách, chuỗi toàn ký hiệu, emoji;
+  - `BSUI.trapFocus`: Tab / Shift+Tab đi vòng, Esc đóng, trả focus về nút đã mở;
+  - `BSUI.watchBottomBar`: đặt `--sbar-h` và `--kb`, hàm gỡ đưa cả hai về 0. Chưa màn nào gọi, đúng như README ghi.
+  [ĐO BẰNG SCRIPT]
+- `content-seo.js`:
+  - BANDS chỉ còn `var(--token, dự phòng)`;
+  - `meter()` trả đủ icon / band / lo / hi / tick ở mọi mốc biên của 6 trường: 0 ký tự luôn `empty`, vượt max luôn `over`, lo ≤ hi, tick nằm trong 0–100.
+  [ĐO BẰNG SCRIPT]
+- Page Editor, ô "Mô tả ngắn": gõ thật 150 / 199 / 200 / 201 / 260 ký tự. Thước có mốc 200, chữ và màu khớp `content-seo.js` (đạt ≤ 200, vàng 201–240, đỏ > 240). [ĐÃ RENDER VÀ THẤY]
+- Thứ tự Tab = thứ tự nhìn ở mọi bề rộng, 0 chỗ đảo. [ĐO BẰNG SCRIPT]
+- Esc đóng popover / menu / hộp thoại / trượt đáy / lịch và trả focus về nút đã mở: đạt 236/238 lượt. 2 lượt trượt là do trang rộng hơn màn ở 390 (dòng C1); Enter / Space trên đúng 2 nút đó vẫn đạt. [ĐO BẰNG SCRIPT]
+- Không còn chức năng chỉ hiện khi rê chuột: 0 luật `:hover` làm hiện phần tử, 0 trình nghe `mouseenter`. [ĐO BẰNG SCRIPT]
+- Chữ < 12px: 0, trừ chữ trong khung xem thu nhỏ (có chủ ý). [ĐO BẰNG SCRIPT]
+- Lỗi console:
+  - 0 lỗi JS ở 3 trang chuẩn và 9 màn đã chạm;
+  - chỉ có cảnh báo "does not conform" lúc nạp trước khi JS gán giá trị (DOM cuối đúng) và favicon 404.
+  [ĐO BẰNG SCRIPT]
+- Chữ "Đã sao chép" đã thống nhất ở các nút chép thật: Hàng đợi ảnh, Block Library, Page Editor, Trình đơn, Floating Contact (toast), Quản lý Bài viết, Đăng nhập nhanh, 2 trang chuẩn. "Đã chép trình bày" ở Page Builder là cặp chép/dán định dạng, README giữ có chủ ý. [ĐO BẰNG SCRIPT]
+
+### Lỗi — Cao (12)
+1. **C1 · `Chuẩn giao diện SaaS Starter.dc.html`** · `.sx-note` (CSS dòng 90, `white-space:nowrap`), chỗ dùng ở dòng 1133 "Chờ backend: lưu tỉnh/phường đã chọn ở Thông tin chung"
+   - Trang cuộn ngang ở 360 và 390, cả sáng lẫn tối: scrollWidth 396.
+   - Bật Chữ lớn: scrollWidth 454, thêm `.sx-code` (dòng 89, nowrap) ở "Bảng tra cho build" (dòng 1368).
+   - Toast `.tst-wrap` cũng lòi theo.
+   - Cao · [ĐO BẰNG SCRIPT]
+2. **C2 · trang chuẩn** · "Dải thông báo trong trang", dòng 725–728 (DS `Alert`)
+   - Chữ dùng màu gốc thay cho `-text`. Tương phản nền sáng: cảnh báo 1,65:1 · thành công 2,35 · thông tin 2,70 · nguy hiểm 2,77. Nền tối: thông tin 4,43 · nguy hiểm 4,45.
+   - Bảng tra (dòng 1560) ghi "-text", tức mẫu vẽ trái với chính chuẩn.
+   - Cao · [ĐO BẰNG SCRIPT]
+3. **C3 · trang chuẩn** · Thanh ngôn ngữ `.lb-pill` (dòng 244, cao 36px)
+   - Chỉ lên 44px qua `@container (max-width:520px)` (dòng 257), tức xét theo bề rộng chứ không xét `pointer:coarse`.
+   - Vùng bấm nới bằng `::after` bị `.lb-l{overflow:hidden}` (dòng 242) cắt mất.
+   - Hậu quả: trên tablet cảm ứng (768 / 1024), pill và `.lb-sel` chỉ bấm được 36px.
+   - Cao · [ĐO BẰNG SCRIPT]
+4. **C4 · trang chuẩn** · Ô tích khóa, dòng 447 (`.sx-check.off{opacity:.6}`, dòng 102)
+   - Câu lý do "Gói hiện tại chưa có bình luận." chỉ đạt 2,59:1 (sáng) / 3,25:1 (tối).
+   - Đây là thông tin người dùng cần đọc, không phải nút tắt.
+   - Cao · [ĐO BẰNG SCRIPT]
+5. **C5 · trang chuẩn** · DS `Avatar` ở nhóm "Xem cả 8 người", dòng 1299
+   - Nền tối: chữ tắt `#405189` trên `#1b2643` chỉ đạt 1,96:1.
+   - Nguồn màu là design system: `_ds/…/tokens/colors.css` còn `#405189`, chưa sang G2.
+   - Cao · [ĐO BẰNG SCRIPT]
+6. **C6 · `Block Library - Options.dc.html`** · `copyRef` dòng 203 + nút dòng 91
+   - Nút báo "Đã sao chép mã tham chiếu…" nhưng không chép gì. Thử: đặt sẵn chữ mẫu vào clipboard, bấm nút, clipboard vẫn giữ chữ mẫu.
+   - Nhãn nút còn "Chép mã tham chiếu".
+   - Có từ trước; lượt này chỉ đổi chữ.
+   - Cao · [ĐO BẰNG SCRIPT]
+7. **C7 · 8/9 màn đã chạm** · Page Editor, Quản lý Bài viết, Page Builder v3, Email Settings, Trình đơn, Floating Contact, Block Library, Language Context
+   - Không có `role="status"` / `aria-live` cho toast, nên "Đã sao chép…" và mọi toast khác không được trình đọc màn hình đọc.
+   - Chỉ Đăng nhập nhanh (dòng 334) làm đúng.
+   - Có từ trước.
+   - Cao · [ĐO BẰNG SCRIPT]
+8. **C8 · `Page Editor - Options.dc.html`** · dòng 66 `id="1a"`
+   - Khung gốc rộng cứng `width:1240px`, trong khi màn chị em Quản lý Bài viết (dòng 100) dùng `min(1240px,100%)`.
+   - Ở 390 tràn ngang 185px.
+   - Có từ trước.
+   - Cao · [ĐO BẰNG SCRIPT]
+9. **C9 · trang chuẩn + README** · Bảng tra dòng 1563 "Icon · có sẵn" là sai
+   - Repo `app/Modules/Admin/resources/views/components/icon.blade.php` chỉ có Heroicons + 60 khóa `ri-*` không hậu tố (`ri-close`).
+   - Tên lạ tự thành hình tài liệu (dòng 114).
+   - Trong 74 tên icon thiết kế dùng, 50 tên không có.
+   - Đúng phải là "cần sửa".
+   - Cao · [ĐO BẰNG SCRIPT]
+10. **C10 · trang chuẩn + README** · Bảng tra dòng 1568 "Pagination · có sẵn, per-page 10/20/50 · mode pages|cursor" là sai
+    - `pagination.blade.php:1-5` chỉ có paginator / current / last: không chọn số dòng, không có kiểu cursor.
+    - Danh sách lớn phải dùng cursor (CLAUDE.md §3.1).
+    - Đúng phải là "cần sửa".
+    - Cao · [SUY RA TỪ CODE]
+11. **C11 · trang chuẩn** · Thanh hàng loạt, Xem như "Người viết", dòng 2007 (`'Gửi duyệt (' + nSel + ')'`)
+    - Đếm mọi dòng đang chọn, kể cả bài của người khác và bài đã đăng / đang chờ duyệt.
+    - Ở repo:
+      - `EntryPolicy::submit` (`app/Modules/Cms/Policies/EntryPolicy.php:58-61`) không xét bài của ai;
+      - `Index::changeStatus` / `bulkPublish` không gọi `authorize('update')`;
+      - bài đã đăng vẫn bị đếm là "xong" (`PublishEntry.php:86-88`, `Index.php:390-391`).
+    - Thiết kế đang chép đúng lỗ hổng quyền này của repo.
+    - Owner đã chốt (04/10 tối, theo khuyến nghị): gửi duyệt = có `entries.submit` VÀ được sửa bài đó, chỉ từ Bản nháp; Claude Code làm PR riêng.
+    - Cao · [SUY RA TỪ CODE]
+12. **C12 · repo `app/Modules/Admin/Livewire/Entries/Index.php:457-466`** · `bulkApply`
+    - Dòng đầu tiên không đủ quyền là dừng (403).
+    - Các dòng trước đó đã đổi vẫn được lưu: Laravel biến lỗi thành phản hồi 403 ngay bên trong transaction của request, nên transaction không bị hủy.
+    - Không có toast, ô chọn vẫn giữ.
+    - Cùng mẫu này ở 5 hàm: bulkTrash, bulkRestore, bulkForceDelete, bulkDraft, bulkDuplicate. README mới ghi bulkTrash.
+    - Cao · [SUY RA TỪ CODE]
+
+### Lỗi — Trung bình (23)
+1. Trang chuẩn · danh sách "Chuyển vào Thùng rác" dòng 707 · Ở 360 / 390 tên bài bị cắt còn "Khuyến m…", không có cách xem đủ tên nên người dùng không biết mình đang xóa bài nào · TB · [ĐÃ RENDER VÀ THẤY]
+2. Component bổ sung · `.cp code` dòng 131 (nowrap + ellipsis) · Ở 360 / 390, giá trị cần chép (đường dẫn, bản ghi SPF) bị cắt và không có cách xem đủ · TB · [ĐÃ RENDER VÀ THẤY]
+3. Component bổ sung · ô `.in` dòng 79 (`min-height:40px`) · Ô của length-field / alt ảnh cao 42px trên cảm ứng · TB · [ĐO BẰNG SCRIPT]
+4. Component bổ sung · ô `.cp-in` dòng 128 / 253 · Cao 28px, nằm trong `div.cp` không phải `label` nên chạm vào phần đệm sẽ trượt · TB · [ĐO BẰNG SCRIPT]
+5. Trang chuẩn · 4 nút chỉ có icon ở hàng bảng ≥ 1024 (Xem · Sửa · Nhân bản · Thùng rác), dòng 831–832 · Tên nút chỉ nằm trong `title`, mà `title` không hiện trên cảm ứng · Bảng tra dòng 1572 hứa Tooltip "bấm được trên cảm ứng" · TB · [SUY RA TỪ CODE]
+6. Trang chuẩn + Danh sách co giãn · Có 2 kiểu focus cho menu: ở trang chuẩn (lọc dòng 563, panel ngôn ngữ dòng 1209–1225, lịch) focus ở lại nút mở; ở Danh sách co giãn (`.m5` dòng 305) focus vào mục đầu · TB · [ĐO BẰNG SCRIPT]
+7. Trang chuẩn dòng 32 + Danh sách co giãn dòng 24 · `a:hover{color:var(--color-admin-primary)}` ở nền tối chỉ đạt 2,12:1 (đo ở Danh sách co giãn) · TB · [ĐO BẰNG SCRIPT]
+8. Danh sách co giãn · `.srch5 input` dòng 214 · Chữ gợi ý không theo token, ở nền tối chỉ đạt 3,5:1 · TB · [ĐO BẰNG SCRIPT]
+9. Trang chuẩn · chữ DS `Alert` · Không lớn lên khi bật Chữ lớn (12/1468 nút chữ không đổi, đều là mẫu Alert) · TB · [ĐO BẰNG SCRIPT]
+10. Component bổ sung · cả trang · Không có công tắc Chữ lớn, 0 chỗ dùng `--fsp`, mọi cỡ chữ là px cố định → 7 component "Làm ngay" chưa có hành vi chữ lớn · TB · [SUY RA TỪ CODE]
+11. `Email Settings.dc.html` · nút chép biến `.em-vcopy` dòng 549 / JS 1472–1474 · Chép xong chỉ đổi icon; `title` / `aria-label` vẫn là "Sao chép {token}" và trang không có vùng `role="status"` → không có phản hồi bằng chữ · TB · [ĐÃ RENDER VÀ THẤY]
+12. `Quản lý Bài viết - Options.dc.html` · `.ptabs` dòng 129 · Ở 390 tràn ngang 228px. Đã có trong TODO "đồng bộ thẻ gọn dưới 1024px" · TB · [ĐO BẰNG SCRIPT]
+13. `Language Context - Design Spec.dc.html` · mẫu Thanh ngôn ngữ `.lc-pill` dòng 274–283 · Ở 390 năm pill không chuyển sang "+N" / ô chọn, trang tràn 54px · TB · [ĐO BẰNG SCRIPT]
+14. Repo `livewire/entries/index.blade.php:184-214, 330, 450` · Nút theo hàng và nút hàng loạt hiện theo cờ chung của website (`Index.php:573-576`), không xét quyền từng hàng → nhóm quyền author vẫn thấy "Chuyển vào Thùng rác" ở bài người khác và bị 403 · TB · [SUY RA TỪ CODE]
+15. Repo `Index.php:257-271` · `saveTitle` (sửa nhanh) không giới hạn độ dài, cột `entry_translations.title` là varchar(255) → tiêu đề > 255 ký tự gây lỗi DB · TB · [SUY RA TỪ CODE]
+16. Repo `Index.php:278-300` · `saveSlug` bỏ qua `max:200` của `EntryContentRules.php:26`; `routes.path` là varchar(255) · TB · [SUY RA TỪ CODE]
+17. Repo `Concerns/WithMediaLibraryPicker.php:343-358` · Alt ảnh không có giới hạn ở máy chủ · TB · [SUY RA TỪ CODE]
+18. `content-seo.js:69` / `content-ui.js` slugify / repo · Đường dẫn có 3 mức trần khác nhau: thước max 90 (chặn cứng 113), slugify 200, repo `max:200` → mốc chặn của thước (113) lệch với repo (200); hiện chưa ô đường dẫn nào áp mốc chặn · TB · [SUY RA TỪ CODE]
+19. `content-seo.js:67,88` · Mô tả ngắn chặn cứng ở 300 (240 × 1,25), nhưng cột `entry_translations.excerpt` là varchar(255) và `EntryContentWriter.php:68-73` từ chối > 255 · TB · [SUY RA TỪ CODE]
+20. Repo `forms/inbox.blade.php:35`, `forms/detail.blade.php:16`, `platform/audit/index.blade.php:25` · Hiện giờ theo UTC (`config/app.php` timezone UTC), lệch 7 tiếng · Chỉ 3 chỗ này bỏ qua SiteTime · TB · [SUY RA TỪ CODE]
+21. README dòng 111–112 + bảng tra dòng 1590–1591 · Thông báo nổi / Hộp xác nhận ghi "MỚI", nhưng repo đã có lớp JS (`resources/js/sweet-toast.js`: chỉ chữ, 2,4 giây, không Hoàn tác; `resources/js/sweet-confirm.js`) → bản build phải THAY, không thêm hệ thứ hai · TB · [SUY RA TỪ CODE]
+22. Bảng tra dòng 1572 "Tooltip · có sẵn · placement" · Repo `tooltip.blade.php` dùng prop `position`, chỉ hiện khi rê chuột / focus, không chạm được → phải là "cần sửa" · TB · [SUY RA TỪ CODE]
+23. README "Quyền & gói" (quyền mới mặc định TẮT trừ Chủ website) · `PermissionRegistry.php:191` cho Quản trị mọi quyền website, nên quyền mới tự BẬT cho Quản trị → cần danh sách loại trừ (đổi RBAC, COUNCIL) · TB · [SUY RA TỪ CODE]
+
+### Lỗi — Thấp (21)
+1. Trang chuẩn · Chữ bị cắt "…" mà không có `title`: đường dẫn dòng 1083 (360 / 390); nhãn bậc màu dòng 653 khi bật Chữ lớn; mục cây dòng 1056 khi bật Chữ lớn ở 360 · Thấp · [ĐO BẰNG SCRIPT]
+2. Danh sách co giãn · `.ttl` (line-clamp 2, dòng 41) · Cắt gọn 2 dòng, không cắt nửa chữ, nhưng không có `title` · Thấp · [ĐÃ RENDER VÀ THẤY]
+3. Component bổ sung · menu mục lục đầu trang (link cao 21px) · Ở 360 / 390 vùng bấm 44px của các link liền nhau chồng lên nhau (6 cặp) · Thấp · [ĐO BẰNG SCRIPT]
+4. Trang chuẩn · `.bt-row` dòng 270 (`order:3/4/5` dưới 640px) · Thứ tự nhìn ô bảng tra khác thứ tự DOM; mỗi hàng chỉ có 1 điểm focus nên Tab không bị đảo · Thấp · [SUY RA TỪ CODE]
+5. Trang chuẩn · dòng 641 `<input type="color" value="{{ brand }}">` · Cảnh báo console mỗi lần nạp · Thấp · [ĐO BẰNG SCRIPT]
+6. Trang chuẩn · dòng 1636 · `props.theme` thắng `localStorage['bs-scheme']` → mở riêng không theo nền đã chọn ở Shell · Thấp · [ĐO BẰNG SCRIPT]
+7. Trang chuẩn · thanh "Xem thử" dính (khoảng dòng 327) · Ở 360 + Chữ lớn cao khoảng 190px, chiếm 22% màn · Thấp · [ĐÃ RENDER VÀ THẤY]
+8. Trang chuẩn · ô `.sPlain` (dòng 116 / 819) cao 38px nằm trong `div` cao 44px không phải `label` → chạm mép trượt · Thấp · [ĐO BẰNG SCRIPT]
+9. Trang chuẩn · khung 390 · Vùng bấm của `a.dl-tl` chồng lên chip trạng thái `button.sc.bt` (mẫu tĩnh) · Thấp · [ĐO BẰNG SCRIPT]
+10. `Floating Contact Panel.dc.html:439` · Mã chết `copyLabel` còn chữ "Đã chép" · Thấp · [SUY RA TỪ CODE]
+11. Component bổ sung dòng 262 · Props của copy ghi "thử Clipboard API, không được thì vùng chọn ẩn", ngược với `content-ui.js` và README (vùng chọn ẩn trước, Clipboard API sau) · Thấp · [SUY RA TỪ CODE]
+12. Bảng tra dòng 1559 "Badge · có sẵn" thêm `icon` [MỚI] · Repo `badge.blade.php` chưa có icon → "cần sửa" · Thấp · [SUY RA TỪ CODE]
+13. Bảng tra dòng 1562 "Card · title · actions · padding" · Repo có `title` + slot `header` / `footer`, chưa có actions / padding · Thấp · [SUY RA TỪ CODE]
+14. Bảng tra dòng 1577 settings-shell "cần sửa chữ mục đang chọn → accent (E9)" · Đã lỗi thời: repo đã dùng `text-accent` (`settings-shell.blade.php:61`) · Thấp · [SUY RA TỪ CODE]
+15. Bảng tra dòng 1575 / 1576 / 1578 · Props ghi sai so với file Blade: brand-logo là `context` (sidebar / topbar); rich-editor là `target · profile · value · rows`; theme-option là `axis · value · name · label · store` · Thấp · [SUY RA TỪ CODE]
+16. Repo `theme-option.blade.php:13` · Ảnh thu nhỏ gắn cứng `#405189` (màu cũ) · Thấp · [SUY RA TỪ CODE]
+17. Bảng tra dòng 1574 "Breadcrumb · DS chưa Blade" · Repo đã có một phần: slot `breadcrumbs` trong `page-header.blade.php:12-16` · Thấp · [SUY RA TỪ CODE]
+18. Repo `pagination.blade.php:26` · `aria-label="Pagination"` tiếng Anh cứng, không qua `__()` · Thấp · [SUY RA TỪ CODE]
+19. Trang chuẩn dòng 2152 · Danh sách nhóm quyền dự phòng `['…','Tác giả','Hỗ trợ','Xem']` không khớp BSCW / registry · Thấp · [SUY RA TỪ CODE]
+20. README dòng 255 (múi giờ) · Không ghi dạng giá trị: SiteTime chỉ nhận `{"tz":"<IANA>"}` (`SiteTime.php:86-95`); ghi chuỗi trần sẽ bị bỏ qua mà không báo lỗi · Thấp · [SUY RA TỪ CODE]
+21. Repo `lang/vi.json:550` `catalog.price_hint` · Gọi giá trống là "chế độ giới thiệu sản phẩm", trái README dòng 254 (giá trống ≠ chế độ giới thiệu) · Thấp · [SUY RA TỪ CODE]
+
+### Đối chiếu repo — trả lời từng câu
+- **`bs-admin`:**
+  - Repo chưa khai. Hiện chỉ có `Blade::anonymousComponentPath(…/components, 'admin')` ở `app/Modules/Admin/Providers/AdminServiceProvider.php:84`. Namespace view `admin::` (dòng 77) là chuyện khác, không đổi.
+  - Thêm `Blade::anonymousComponentPath($components, 'bs-admin')` là đủ. Đã thử: `<x-bs-admin::badge>` ra HTML giống `<x-admin::badge>`.
+  - Cách Claude Code khuyến nghị: đổi một lần trong một PR (393 thẻ / 34 file + test), kèm test chặn `<x-admin::` mới. Lý do: README đang định giữ hai tên song song rồi chuyển dần, nghĩa là cùng một component có hai tên mà không có gì ngăn code mới dùng tên cũ.
+  - Owner đã chốt (04/10 tối): đổi hẳn thẻ trong một PR, không giữ thẻ `<x-admin::…>` (namespace view `admin::` giữ nguyên). Claude Code làm PR #167.
+- **Bảng tra ↔ `components/`:**
+  - Có 18 file Blade, bảng tra có đủ cả 18; 50 dòng MỚI đều chưa có file.
+  - Sai trạng thái: Icon, Pagination (Cao), Tooltip (TB), Badge (Thấp).
+  - Chưa chính xác: Card, Breadcrumb, Toast / Hộp xác nhận (có JS), props của 3 dòng "Blade chưa DS", ghi chú E9.
+- **Quyền theo dòng:**
+  - README đúng ở cả 3 ý: `publish` chỉ xét `entries.publish` (`EntryPolicy.php:64-67`); `delete` phân biệt `.own` / `.any` (`:39-43`); người không có `entries.publish` mà có `entries.submit` bấm Đăng thì bài thành chờ duyệt (`PublishEntry.php:83-99`).
+  - Kèm 3 lưu ý: bài đã đăng vẫn bị đếm là xong; bài theo quy trình duyệt bị bỏ qua; `submit` không xét bài của ai (C11).
+  - `bulkTrash` có xét quyền từng dòng nhưng dừng ở dòng đầu bị từ chối (C12).
+- **Giới hạn ký tự** (thiết kế max / chặn cứng → repo):
+
+  | Trường | Thiết kế | Repo |
+  |---|---|---|
+  | title | 100 / 125 | `max:200`, cột 255 (sửa nhanh không giới hạn) |
+  | seoTitle | 80 / 100 | sản phẩm `max:255` |
+  | seoDesc | 200 / 250 | 255 |
+  | excerpt | 240 / **300** | cột **255** |
+  | alt | 150 / 188 | không giới hạn |
+  | slug | 90 / **113** | **200** |
+
+  Lệch ở excerpt, slug và alt (TB 17–19).
+- **Múi giờ:**
+  - SiteTime đọc nhóm `general`, khóa `timezone`, giá trị `{"tz":…}`, mặc định Asia/Ho_Chi_Minh (`app/Modules/Tenancy/Context/SiteTime.php:28-33,79-95`).
+  - Đã dùng ở danh sách bài, hẹn giờ, Cài đặt và mail mời.
+  - Chưa có chỗ ghi. 3 trang hiện giờ UTC (TB 20).
+- **"Việc cho backend" trong README:**
+
+  | Tình trạng | Mục |
+  |---|---|
+  | Đã có ở repo | Thùng rác cho bài / trang / sản phẩm / ảnh (SoftDeletes); khóa `rbac.role.author` (chờ chốt tên) |
+  | Có một phần | Hoàn tác (đã có restore, chưa có toast kèm nút); `users.preferences` (đã có cột, chưa có khóa tz / coach) |
+  | Còn thiếu thật | `--brand-N-ink` · đường ghi tỉnh / phường · bỏ qua dòng không đủ quyền và báo số · bỏ hộp xác nhận Thùng rác · "Liên hệ báo giá" ngoài website · chỗ ghi + nhãn múi giờ · `can.*` theo dòng · `bs-admin` · `help_faqs` |
+  | Mâu thuẫn | "quyền mới mặc định TẮT" (TB 23) |
+
+### Việc cần sửa — xếp theo mức độ
+**Cao**
+- Lượt sửa trang chuẩn kế tiếp (D0-2s2):
+  - C1 cuộn ngang;
+  - C3 pill 44px trên cảm ứng;
+  - C4 câu lý do ô khóa;
+  - C9 / C10 sửa trạng thái Icon / Pagination trong bảng tra;
+  - C11 "Gửi duyệt (N)" / "Đăng (N)" chỉ đếm dòng làm được.
+- Prompt DS (G2):
+  - C2 Alert dùng `-text` và theo `--fsp`;
+  - C5 token chữ tắt Avatar.
+  Trong lúc chờ, trang chuẩn vẽ mẫu Alert bằng markup của trang.
+- D0-2 phần 3, theo từng màn:
+  - C6 Block Library chép thật bằng `BSUI.copy`, nhãn "Sao chép mã tham chiếu";
+  - C7 vùng `role="status"` cho toast ở 8 màn;
+  - C8 Page Editor `width:min(1240px,100%)`.
+- Repo:
+  - C12 bulk bỏ qua dòng không đủ quyền và báo số (5 hàm);
+  - C11 phía repo: `submit` đòi quyền sửa bài + chỉ từ Bản nháp (đã chốt, PR riêng).
+
+**Trung bình**
+- D0-2s2: TB 1–10, 18, 19 (độ dài đường dẫn / mô tả ngắn trong `content-seo.js`), 21, 22.
+- D0-2 phần 3: TB 11, 13. TB 12 đã có trong TODO.
+- Repo: TB 14–17, 20, 23 (COUNCIL).
+
+**Thấp**
+- D0-2s2: Thấp 1, 3, 6, 8, 11–15, 17, 19, 20.
+- Màn: Thấp 10.
+- Repo: Thấp 16, 18, 21.
+- Ghi nhận, không sửa: Thấp 2, 4, 5, 7, 9.
+
+### Chuyển sang D0-3 (Bảng thuật ngữ)
+- **Tên nhóm quyền `author`.**
+  - Thiết kế dùng "Người viết" 23 lần / 7 file (`content-workflow.js:33`). Repo `lang/vi.json:793` `rbac.role.author` = "Tác giả" (ja 投稿者, zh 作者). Repo cũng dùng "Trả lại tác giả" (`:841`) và "người viết" trong 5 câu.
+  - D0-3 chốt hai từ khác nhau:
+    - tên nhóm quyền: "Người viết" — đã chốt ở D0-3 mục C.1;
+    - người đứng tên một bài: "tác giả", giữ "Trả lại tác giả".
+  - Repo đổi giá trị khóa theo sau.
+- **Bộ từ nút AI.**
+  - Hiện có hơn 20 nhãn cho vài việc: "Viết lại" 31 · "AI dịch" 16 · "Dịch bằng AI" 9 · "Viết mô tả" 8 · "Gợi ý tiêu đề" 6 · "Viết bằng AI" 4 · "Nhờ AI" 4 · "Viết cả bài bằng AI" 2 · "Mở rộng lại bằng AI" 2 · "Bổ sung / Làm mới bằng AI" · "Viết tiêu đề & mô tả" · "Tạo bằng AI" · "Gợi ý bằng AI" · "AI gợi ý" · "Viết giúp" · "Viết lại đoạn bằng AI" · "Ghi đè bằng bản AI".
+  - Đề xuất theo TODO "D0-2 phần 3": "<động từ> <đối tượng>", không thêm "AI" / "bằng AI" vì icon đã nói. Cụ thể:
+    - ô trống → "Gợi ý <tên trường>";
+    - ô có chữ → "Viết lại";
+    - bài có chữ → "Nâng cấp bài viết";
+    - bài trống → "Viết mới";
+    - dịch → "Dịch";
+    - ảnh → "Tạo ảnh".
+  - D0-3 chốt, rồi gom ở lượt riêng sau D0-3.
+- Chữ nút chép đã thống nhất "Sao chép" / "Đã sao chép" — đưa vào bảng thuật ngữ.
+- Tên định dạng icon (`ri-x-line` như Remix, hay `ri-x` như repo): chốt ở lượt build. Claude Code khuyến nghị dùng tên Remix đủ hậu tố, vì thiết kế đã dùng và gói `remixicon` đã có trong `package.json`.
+
+## Kiểm D0-2s2 bởi Claude Code (05/10/2026)
+
+Bản zip 05/10 10:58. Cách kiểm: so diff với bản 04/10 17:21 + đọc code + dựng hình thật (Chromium + DevTools Protocol) ở 360 / 390 / 768 / 1024 / 1240 / 1440 × sáng + tối × chữ thường + Chữ lớn × con trỏ chuột (giả lập) + cảm ứng.
+
+- Mục 1–14 của D0-2s2: ĐẠT (mục cần dựng hình đều qua; mục 7, 14 và phần chữ kiểm bằng đọc). Chỉ sửa trong 8 file được phép; cú pháp JS đúng; không mất tính năng. Bước cuối CHƯA ĐẠT: README không có kết quả verifier mà zip vẫn được xuất.
+- Lệch quy trình (giữ nội dung): lượt tự sửa 1 dòng và thêm 4 dòng "Việc cho backend", thêm "Ngoại lệ tạm với P1" ở bảng tra README, thêm một mục TODO — lấy từ khối AUDIT. Nội dung khớp repo ở chỗ đã kiểm, trừ `saveTitle max:255` (đúng là 200) → sửa ở D0-2s3 mục 8. Một sửa ngoài yêu cầu ở trang dòng 1757 (`'theme' in pp`) → kiểm ở D0-2s3 "Xong khi" (7).
+- Lỗi mới, sửa ở D0-2s3: TB 1 (nút Sao chép đường dẫn / tên miền ở trang báo thành công khi không chép được — có từ trước, các lần kiểm trước bỏ sót) · Thấp 5 (tab "Khác ⌄" tràn ở khung 390 khi Chữ lớn; cảnh báo console `{{ brand }}`; dấu ")" thừa ở trang bổ sung; công tắc Chữ lớn đọc trạng thái hai lần; bảng README nuốt đoạn văn).
+- Mang sang lượt sau (không sửa ở D0-2s3): 6 màn gọi `BSUI.copy` nhưng không chờ kết quả, nên vẫn báo "Đã sao chép" khi không chép được — Floating Contact Panel:292 · Đăng nhập nhanh & Liên kết tài khoản:469, 475 · Page Editor - Options:2026, 2719 · Trình đơn:1303 · Quản lý Bài viết - Options:2259 · Email Settings:950. Trang bổ sung bật Chữ lớn bằng `data-bs-big`, trang bằng `--fsp` — nên thống nhất một cách.
+- Ghi chú: zip thiếu `assets/` (3 logo), owner đã gửi lại. Ô email ở 360 + Chữ lớn cuộn chữ bên trong ô là hành vi bình thường của ô nhập, không tính lỗi.
+- Chưa kiểm được: Safari iOS, Firefox, máy thật; chuột có hover ở ≥ 1024 (Chromium không giả lập được); trình đọc màn hình thật (VoiceOver / NVDA); popover "+N" của thanh ngôn ngữ; đổi Tweak theme khi trang đang mở.
+
+## Kiểm D0-2s3 bởi Claude Code (05/10/2026)
+- Bản zip 05/10 20:05, kiểm bằng Chromium + DevTools Protocol, đối chiếu từng mục với prompt D0-2s3.
+- ĐẠT cả 9 mục và "Xong khi" (1)–(6). Mục (7) đạt theo code: bấm chế độ tối / Chữ lớn ngay trong trang thì console sạch; đổi Tweak lúc trang đang mở chưa dựng hình.
+  - Hàng tab 390 + Chữ lớn: 364/364px, 1 dòng, đệm tab 4px, khoảng cách trong tab 2px, đệm số đếm 3px. 390 chữ thường, 768, 1240 không đổi.
+  - Sao chép: 5 tình huống, 0 lỗi. Khi bị chặn thì không báo "Đã sao chép", chữ được bôi đen, có câu chép tay.
+  - Console trang chuẩn 0 lỗi, 0 cảnh báo (hết cảnh báo `{{ brand }}`).
+- Admin Shell còn 9 cảnh báo khuôn chữ (có từ trước, chưa sửa ở lượt này).
+- Ngoài phạm vi D0-2s3 nhưng giữ lại:
+  - kéo thả cây có thả trước / sau / vào trong (đọc code thấy đúng);
+  - hộp thoại từ 768px trở lên rộng theo nội dung 360–560px.
+- Focus theo luật chung CŨ (trước D0-2s4), trên trang chuẩn, trang bổ sung và Admin Shell: mọi chỉ báo ≥ 3:1 với nền kề (đo được 7,1–9,7:1; vòng mặc định của ô tích 13,9–19:1). Trang Focus: bấm Tab thật trong khung 1b thì ghost, tab, liên kết, công tắc, ô chọn chỉ còn quầng ≈1,34:1, khác ảnh tĩnh; ô lỗi thành xanh.
+- Lỗi sửa ở D0-2s4:
+  - luật chung khác hình đã duyệt; Tab thật ở trang Focus;
+  - ô lỗi (cả ô tích) thành xanh; vòng đen mặc định ở ô tích / radio;
+  - khung bao sáng đôi; `.pop`; focus xóa trạng thái;
+  - hộp thoại 480–767;
+  - chữ dòng 1379/510;
+  - chép tay đường dẫn thiếu `https://`, và toast tự đóng.
+- Chưa kiểm được: chuột có hover, chế độ tương phản cao của Windows, Safari / Firefox, trình đọc màn hình thật.
+
+## Tự rà lượt D0-3 phần 1 (05/10/2026, Claude Design)
+Rà quá trình làm và câu trả lời trong chat của lượt D0-3 phần 1, đối chiếu với prompt D0-3. Lượt này chưa sửa gì: các lỗi dưới đây chờ owner cho sửa.
+
+**A. Quy trình (làm sai hoặc làm thiếu so với bối cảnh chung)**
+1. Không mở repo GitHub, không đọc `github.md`, không mở Admin Shell. Nhãn trạng thái khách liên hệ (`new · read · spam`), tên khóa nền tảng và các khóa/giá trị `lang/vi.json` ở README D0-3 chỉ chép theo prompt hoặc tự đặt, không đối chiếu repo. Trái luật "KHÔNG bịa" · Cao · [SUY RA TỪ CODE]
+2. LESSONS.md chỉ đọc 3 dòng cuối (lần đọc đầu bị cắt), nên có thể bỏ sót luật ở các dòng #5 / #27 / #28 · TB · [SUY RA TỪ CODE]
+3. Dừng ở phần 1 khi chưa hết lượt. Prompt chỉ cho dừng khi sắp hết lượt. Cũng chưa xuất .zip gửi Claude Code dù prompt yêu cầu · Cao · [SUY RA TỪ CODE]
+4. Câu trong chat "phần 1 đã xong" nói trước khi verifier báo kết quả. README ghi "Đạt" cho tiêu chí 1–8, 10–12 mà không dựng hình, không đo · TB · [SUY RA TỪ CODE]
+5. Tiêu chí 4 của prompt (mở Hộp duyệt + Quản lý Bài viết, xem Tweak nhóm quyền và huy hiệu ở sáng/tối) chưa làm · Cao · [CHƯA KIỂM ĐƯỢC — chưa mở 2 màn]
+6. Chỉ gọi verifier cho trang chuẩn. Trang Component bổ sung đã sửa mà không ai kiểm · TB · [SUY RA TỪ CODE]
+
+**B. Lỗi trong file**
+7. Trang chuẩn dòng 889: ô `#sf-t` có `value` nhưng không có `onChange` / `readOnly` (React sẽ cảnh báo, ô không gõ được) → đổi sang `defaultValue` · Cao · [ĐO BẰNG SCRIPT — grep]
+8. Trạng thái "Không lưu được": nút "Lưu lại" gọi `scrRetry`, toast hiện "Đang thử tải lại…" là sai việc · TB · [SUY RA TỪ CODE]
+9. Trạng thái "Chỉ được xem" dùng chip "Chỉ đọc", là từ mới chưa có trong Bảng thuật ngữ (dễ lẫn với nhóm "Chỉ xem") · TB · [SUY RA TỪ CODE]
+10. `#tieu-chi` tiêu chí 12, ví dụ "Sai" chứa chữ "Đặt lịch" và "Lên lịch" nằm ngoài cột "Không dùng". Vì vậy "Xong khi" 3 không đạt nguyên văn, và README D0-3 ghi "grep 0" là sai · Cao · [SUY RA TỪ CODE]
+11. `BSUI.fmtCompact` với ja / zh sai: Intl compact của tiếng Nhật và tiếng Trung không rút gọn hàng nghìn, và dùng 万 / 億 (1e4 / 1e8). Cách lấy hậu tố rồi chia cho 1e3 / 1e6 ra số sai bậc · Cao · [SUY RA TỪ CODE]
+12. `fmtCompact(45000, {max: 2,5e9})` ra "0Tỷ". README coi là chủ đích, nhưng giá trị thật mà hiện 0 trên biểu đồ dễ gây hiểu nhầm. Cần owner chọn: "<0,1Tỷ" hay giữ 1 chữ số có nghĩa · TB · [SUY RA TỪ CODE]
+13. `fmtAgo` từ 24 giờ trở đi (và `fmtDate`) luôn ra dd/mm/yyyy cả với en, chưa "theo ngôn ngữ giao diện" như C2 yêu cầu · TB · [SUY RA TỪ CODE]
+14. Số rút gọn mẫu: `aria-label` đặt trên `<span>` không có role nên trình đọc màn hình không chắc đọc. Cần `role="img"` hoặc chữ ẩn `.sr` · TB · [SUY RA TỪ CODE]
+15. `content-workflow.js`: màu `c` / `bg` đổi thành chuỗi `var(…)` / `color-mix(…)`. Mới grep một mẫu nối chuỗi; chưa rà chỗ dùng làm thuộc tính SVG `fill` hoặc chỗ tính tương phản. `color-mix` cần Safari 16.2+, chưa có dự phòng · Cao · [CHƯA KIỂM ĐƯỢC — chưa mở các màn dùng BSCW.ui]
+16. `content-workflow.js` đổi thêm mấy chỗ prompt không yêu cầu: "Đăng ngay" → "Đăng", "Để nháp" → "Lưu nháp"; màu Bản nháp `#495057` → `--color-admin-dark-text` (đậm hơn) · Thấp · [SUY RA TỪ CODE]
+17. Mục tiêu chí E: tiêu chí 2, 3, 9, 11 và vài ví dụ "Sai" chỉ có chữ, không có "hình nhỏ dựng từ component" như prompt · TB · [SUY RA TỪ CODE]
+18. Tooltip `.tp-tip` dùng bóng `rgba(0,0,0,.18)` ngoài bộ bóng chuẩn. `.tp-ok{border-left-width:1px}` là mã thừa · Thấp · [SUY RA TỪ CODE]
+
+**C. Nội dung cần owner chốt**
+19. Cột "Không dùng" có nhiều từ tự thêm ngoài danh sách của owner: Admin · Editor · Trình duyệt · Phê duyệt · Từ chối · Phục hồi · Xóa hẳn · OK · Cập nhật · Tenant · Visitor · Lead… Riêng "Cập nhật" và "Từ chối" có thể đang dùng đúng ở màn khác · TB
+20. Tự đặt chữ cho `archived` của sản phẩm ("Đã gỡ khỏi website") và tên 3 nhóm quyền nền tảng (Quản trị nền tảng · Hỗ trợ khách hàng · Thanh toán) · TB
+21. Bảng thuật ngữ của DS ghi "Không dùng động từ 'Gỡ'", còn prompt chốt "Gỡ khỏi website". Chưa ghi dòng LESSONS nêu điểm khác này · TB
+22. Khối "Từ không dùng" của README có mục grep sẽ trúng nhầm: `site` (tên prop `site-langs`), `chép` (trúng "Chép trình bày" được phép giữ), `slug`, `media` (tên khóa, đường dẫn file) → cần ghi phạm vi "chỉ chữ hiện trên màn" · TB
+23. README D0-3 mục "Ánh xạ dữ liệu" thiếu số dòng `file:dòng`. AUDIT mục "Kiểm D0-2" đã có sẵn số dòng cho 3 chỗ giờ UTC (dòng 2626) nhưng không được dùng · Thấp
+24. TODO.md có 2 tiêu đề cấp 1 "Việc còn lại" (05/10 và 04/10) · Thấp
+
+**Tổng:** 24 điểm: Cao 7 · TB 13 · Thấp 4
+
+### Kết quả D0-3s (05/10/2026, theo chốt của Claude Code)
+1. Đã sửa — đối chiếu repo f0a78d79cee1: PermissionRegistry.php, 3 migration trạng thái, `lang/vi.json` (bảng số dòng ở README D0-3). Chỗ không đối chiếu được ghi [CHƯA ĐỐI CHIẾU REPO]. **Phát hiện:** repo có 3 nhóm quyền nền tảng (`super_admin` · `support` · `billing`, PermissionRegistry.php:141–152), khác giả định "chỉ có super_admin" của chốt A2 — đã làm theo chốt, ghi lệch vào README.
+2. Đã sửa — LESSONS.md đọc đủ 37 dòng đầu lượt (dòng 1–37).
+3. Đã sửa — lượt D0-3s làm tiếp phần 2 sau khi sửa (theo chốt); zip không xuất ở chat này.
+4. Đã sửa — README chỉ ghi "Đạt" cho tiêu chí đã đo (12); còn lại [SUY RA TỪ CODE] / [CHƯA KIỂM ĐƯỢC].
+5. Đã sửa — [ĐÃ RENDER VÀ THẤY] Hộp duyệt + Quản lý Bài viết sáng/tối, console 0 lỗi.
+6. Đã sửa — verifier gọi cho cả 2 trang.
+7. Đã sửa — `defaultValue`.
+8. Đã sửa — nút gọi `scrSave`, toast "Đã lưu thay đổi…".
+9. Đã sửa — chip "Chỉ được xem"; cặp "Chỉ được xem" ≠ "Chỉ xem" có trong bảng thuật ngữ.
+10. Đã sửa — luật `data-term-bad`; grep 0 [ĐO BẰNG SCRIPT].
+11. Đã sửa — ja 12.3万 · zh 2.5亿 · en 1.2M [ĐO BẰNG SCRIPT].
+12. Đã sửa — "<0,1Tỷ".
+13. Giữ theo prompt — C2 chốt dd/mm/yyyy cho mọi ngôn ngữ; repo chưa có định dạng ngày theo ngôn ngữ.
+14. Đã sửa — chữ rút gọn `aria-hidden` + chữ ẩn `.sr`.
+15. Đã sửa — rà nơi đọc `c`/`bg` (3 nơi, đều chuỗi CSS); không cần dự phòng Safari < 16.2.
+16. Giữ theo prompt — nhãn "Đăng", "Lưu nháp…" khớp bảng thuật ngữ đã chốt; ghi vào "Chuỗi cần dịch".
+17. Đã sửa — 12 tiêu chí đều có hình nhỏ đúng/sai dựng từ component của trang.
+18. Đã sửa — bóng `--shadow-pop`; bỏ `.tp-ok{border-left-width}`.
+19. Chờ owner — các từ không gắn điểm nào chuyển sang "Đề xuất chờ owner" (README D0-3); bỏ "Cập nhật".
+20. Đã sửa — sản phẩm `archived` = "Đã gỡ khỏi website" (giữ); `catalog.status_archived` vào Việc cho backend; `forms.status_archived`, `workflow.state_archived` "rà theo nghĩa".
+21. Đã sửa — dòng LESSONS "Gỡ khỏi website" khác Bảng thuật ngữ DS.
+22. Đã sửa — "Từ không dùng" chỉ cụm sai mọi ngữ cảnh; từ ngắn sang "Soát bằng mắt" kèm ví dụ sai/đúng.
+23. Đã sửa — Ánh xạ dữ liệu ghi `file:dòng`.
+24. Đã sửa — TODO.md gộp tiêu đề cấp 1.
+Thêm khi rà: trang Component bổ sung còn nút "Tạo bằng AI" → "Tạo ảnh" (lượt phần 1 grep sót vì chỉ xét JS). (mục C không gắn bằng chứng vì là việc chờ owner chốt).
+
+## Kiểm D0-2s4 bởi Claude Code (05/10/2026)
+- Bản zip 05/10 22:04, kiểm bằng Chromium + DevTools Protocol (bấm Tab thật), sáng và tối, đối chiếu với prompt D0-2s4.
+- Đúng 10 tệp được phép; không thêm màu viết thẳng hay `outline: none` mới.
+- Trang Focus, khung 1b: Tab tới mọi phần tử có mẫu tĩnh thì khác 0 pixel, trừ liên kết (gạch chân mỏng lại).
+- Đạt:
+  - ô lỗi (cả ô tích, khung bao) giữ đỏ: #bf371a sáng, #ff7355 tối;
+  - hết khung đôi ở `.sx-search` / `.cp`;
+  - ô tích / radio gốc dùng vòng tách; thanh bên Shell nền đậm (chế độ sáng) ra vòng trắng; nút "Áp dụng" viết style inline vẫn thấy focus;
+  - giữ trạng thái khi focus (thẻ đã chọn, ngày hôm nay, dòng kéo, mục đang chọn), trừ hai ca ghi ở dòng "Sửa ở D0-2s5";
+  - hộp thoại dưới 768px tràn bề rộng;
+  - chép tay đường dẫn có `https://`, toast đứng đến khi đóng;
+  - console 0 lỗi (Admin Shell vẫn 9 cảnh báo khuôn chữ có từ trước);
+  - hàng tab không đổi.
+- Mọi chỉ báo đạt 4,55–9,7:1 với nền kề.
+- Sửa ở D0-2s5: ghost 3px, "Chữ lớn" hai đường, gạch chân liên kết, viền "hôm nay", hộp thoại 768–799, màu nút đặc chế độ tối, vạch vàng thanh bên tối, chữ `&gt;` và README.
+- Để lượt sau (ngoài D0-2): thân trình soạn `.pe-rte` (đo) và `.pb3-ce` (đọc code) khi focus không có chỉ báo (luật chung đang loại trừ); `.em-ce` (Email) còn vòng cũ viết thẳng `#2050a0` lệch 2px, ở tối khoảng 2:1 (đọc code); khung tự vẽ focus viết thẳng (`style-focus-within`) ở Trình đơn (3, có `.mn-rt` hai khung — đo), Quản lý Bài viết - Options (2), Page Editor - Options (1), Page Builder v3 (3), Đăng nhập nhanh (1) — đã ghi vào D0-6a, D1-2, D1-4a, D1-4b, D3-2.
+- Chưa kiểm được: chuột có hover, Safari / Firefox (vòng tách trên ô tích gốc), chế độ tương phản cao của Windows, trình đọc màn hình thật.

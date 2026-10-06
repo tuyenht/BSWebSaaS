@@ -7,8 +7,8 @@ Trạng thái: **ready** = thiết kế xong, dùng được để build · **ch
 **để sau** = ngoài core v1 · **giữ nguyên** = không thiết kế lại.
 
 **Trang chuẩn (không phải màn trong menu):** `Chuẩn giao diện SaaS Starter.dc.html` — D0-2 phần Component, ready (04/10/2026).
-Mọi màn từ D0-3 trở đi chỉ dùng component ở đây; bảng tra component → `<x-admin::…>` ở cuối trang + `README - D0-2 Chuẩn giao diện.md`.
-Phần 2 (Bảng thuật ngữ, quy ước số rút gọn, mẫu bảng điều khiển) = D0-3.
+Mọi màn từ D0-3 trở đi chỉ dùng component ở đây; bảng tra component → `<x-bs-admin::…>` ở cuối trang + `README - D0-2 Chuẩn giao diện.md`.
+D0-3 ready (05/10/2026): phần 1 `#thuat-ngu` · `#dinh-dang` · `#giong-van` · `#tieu-chi` · `#nguoi-dung-mau` + trạng thái màn bổ sung ở `#phan-hoi`; phần 2 `#mau-trang` (`#mau-1` … `#mau-8`: Danh sách · Chi tiết · Soạn/sửa · Mục cài đặt · Hộp hai khung · Hướng dẫn nhiều bước · Bảng điều khiển · Trang lỗi/tiện ích) — `README - D0-3 Chuẩn giao diện.md`. Màn mới chọn một mẫu trang, chỉ thêm phần riêng.
 
 | # | Màn | Lượt | Mục menu | File thiết kế | Trạng thái |
 |---|---|---|---|---|---|

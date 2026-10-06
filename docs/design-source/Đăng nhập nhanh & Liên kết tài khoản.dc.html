@@ -98,6 +98,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 }
 </style>
 <script src="./platform-config.js"></script>
+<script src="./content-ui.js"></script>
 </helmet>
 
 <div class="sl-wrap {{ wrapCls }}" style="min-height:100vh;color:var(--color-body-text,#3c4765);font-size:14px;">
@@ -465,13 +466,13 @@ class Component extends DCLogic {
   }
   copyAll(k){
     const txt=this.copyRows(k).map(r=>r.label+': '+r.value).join('\n');
-    if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>{});
+    (window.BSUI&&window.BSUI.copy?window.BSUI.copy:function(t){return navigator.clipboard.writeText(t)})(txt).catch(()=>{});
     this.setState({copied:'all-'+k});
-    this.notify('Đã chép '+this.copyRows(k).length+' giá trị — dán lần lượt vào '+this.PROVMETA[k].console);
+    this.notify('Đã sao chép '+this.copyRows(k).length+' giá trị — dán lần lượt vào '+this.PROVMETA[k].console);
     setTimeout(()=>{ if(this.state.copied==='all-'+k) this.setState({copied:null}); },1600);
   }
   copyUri(u){
-    if(navigator.clipboard) navigator.clipboard.writeText(u).catch(()=>{});
+    (window.BSUI&&window.BSUI.copy?window.BSUI.copy:function(t){return navigator.clipboard.writeText(t)})(u).catch(()=>{});
     this.setState({copied:u});
     setTimeout(()=>{ if(this.state.copied===u) this.setState({copied:null}); },1600);
   }

@@ -17,7 +17,7 @@
     'roles.manage', 'domains.manage'
   ];
 
-  /* 6 vai trò tenant. Nhãn tiếng Việt = tên hiển thị cho chủ SME; `key` = tên trong repo. */
+  /* 6 nhóm quyền tenant. Nhãn tiếng Việt = tên hiển thị cho chủ SME; `key` = tên trong repo. */
   var ROLES = {
     'Chủ website': { key: 'owner', level: 90, perms: '*' },
     'Quản trị': { key: 'admin', level: 70, perms: TENANT_PERMS },
@@ -45,15 +45,15 @@
   };
 
   /* Trạng thái công khai (entries.status) + `reviewing`: chỉ là BƯỚC của quy trình biên tập,
-     không phải giá trị của entries.status (nó quy về 'pending'). Màu chữ lấy bậc -text của token AdminKit (PR #87); nền giữ tint 10% của màu gốc. */
+     không phải giá trị của entries.status (nó quy về 'pending'). Màu = token (D0-3): chữ bậc -text, nền pha 8–14% cùng token → tự lật sáng/tối. */
   var UI = {
-    published: { label: 'Đã đăng', c: '#047767', bg: 'rgba(10,179,156,0.10)', icon: 'ri-global-line', pub: true },
-    scheduled: { label: 'Đã lên lịch', c: '#2f69d4', bg: 'rgba(53,119,241,0.10)', icon: 'ri-calendar-schedule-line' },
-    pending: { label: 'Chờ duyệt', c: '#906405', bg: 'rgba(247,184,75,0.15)', icon: 'ri-inbox-unarchive-line' },
-    reviewing: { label: 'Đang phản biện', c: '#026fa2', bg: 'rgba(41,156,219,0.12)', icon: 'ri-chat-check-line', wfOnly: true },
-    draft: { label: 'Bản nháp', c: '#495057', bg: 'rgba(33,37,41,0.08)', icon: 'ri-draft-line' },
-    private: { label: 'Riêng tư', c: '#405189', bg: 'rgba(64,81,137,0.10)', icon: 'ri-lock-2-line' },
-    archived: { label: 'Lưu trữ', c: '#6b6e7f', bg: 'rgba(135,138,153,0.12)', icon: 'ri-archive-line' }
+    published: { label: 'Đã đăng', c: 'var(--color-admin-success-text,#047767)', bg: 'color-mix(in srgb,var(--color-admin-success-text,#047767) 10%,transparent)', icon: 'ri-global-line', pub: true },
+    scheduled: { label: 'Đã hẹn giờ', c: 'var(--color-admin-secondary-text,#2f69d4)', bg: 'color-mix(in srgb,var(--color-admin-secondary-text,#2f69d4) 10%,transparent)', icon: 'ri-calendar-schedule-line' },
+    pending: { label: 'Chờ duyệt', c: 'var(--color-admin-warning-text,#906405)', bg: 'color-mix(in srgb,var(--color-admin-warning-text,#906405) 14%,transparent)', icon: 'ri-inbox-unarchive-line' },
+    reviewing: { label: 'Đang phản biện', c: 'var(--color-admin-info-text,#026fa2)', bg: 'color-mix(in srgb,var(--color-admin-info-text,#026fa2) 12%,transparent)', icon: 'ri-chat-check-line', wfOnly: true },
+    draft: { label: 'Bản nháp', c: 'var(--color-admin-dark-text,#212529)', bg: 'color-mix(in srgb,var(--color-admin-dark-text,#212529) 8%,transparent)', icon: 'ri-draft-line' },
+    private: { label: 'Không công khai', c: 'var(--color-accent,#2050a0)', bg: 'color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent)', icon: 'ri-lock-2-line' },
+    archived: { label: 'Đã gỡ khỏi website', c: 'var(--color-body-muted,#5b6275)', bg: 'color-mix(in srgb,var(--color-body-muted,#5b6275) 12%,transparent)', icon: 'ri-archive-line' }
   };
 
   var WF = {
@@ -64,14 +64,14 @@
         draft: { label: 'Bản nháp', initial: true },
         pending: { label: 'Chờ duyệt' },
         published: { label: 'Đã đăng', published: true },
-        archived: { label: 'Lưu trữ', terminal: true }
+        archived: { label: 'Đã gỡ khỏi website', terminal: true }
       },
       transitions: [
         { key: 'submit', label: 'Gửi duyệt', from: 'draft', to: 'pending', perm: 'entries.submit' },
         { key: 'approve', label: 'Duyệt đăng', from: 'pending', to: 'published', perm: 'entries.approve' },
         { key: 'reject', label: 'Trả lại', from: 'pending', to: 'draft', perm: 'entries.review', note: true },
-        { key: 'retract', label: 'Gỡ bài', from: 'published', to: 'draft', perm: 'entries.review', note: true },
-        { key: 'archive', label: 'Lưu trữ', from: 'published', to: 'archived', perm: 'entries.approve' }
+        { key: 'retract', label: 'Đưa về nháp', from: 'published', to: 'draft', perm: 'entries.review', note: true },
+        { key: 'archive', label: 'Gỡ khỏi website', from: 'published', to: 'archived', perm: 'entries.approve' }
       ]
     },
     'Quy trình biên tập': {
@@ -81,7 +81,7 @@
         pending: { label: 'Chờ biên tập' },
         reviewing: { label: 'Đang phản biện' },
         published: { label: 'Đã đăng', published: true },
-        archived: { label: 'Lưu trữ', terminal: true }
+        archived: { label: 'Đã gỡ khỏi website', terminal: true }
       },
       transitions: [
         { key: 'submit', label: 'Gửi biên tập', from: 'draft', to: 'pending', perm: 'entries.submit' },
@@ -89,20 +89,20 @@
         { key: 'approve', label: 'Duyệt đăng', from: 'reviewing', to: 'published', perm: 'entries.approve' },
         { key: 'request_changes', label: 'Yêu cầu sửa', from: 'reviewing', to: 'draft', perm: 'entries.review', note: true },
         { key: 'send_back', label: 'Trả lại tác giả', from: 'pending', to: 'draft', perm: 'entries.review', note: true },
-        { key: 'retract', label: 'Gỡ bài', from: 'published', to: 'draft', perm: 'entries.review', note: true },
-        { key: 'archive', label: 'Lưu trữ', from: 'published', to: 'archived', perm: 'entries.approve' }
+        { key: 'retract', label: 'Đưa về nháp', from: 'published', to: 'draft', perm: 'entries.review', note: true },
+        { key: 'archive', label: 'Gỡ khỏi website', from: 'published', to: 'archived', perm: 'entries.approve' }
       ]
     }
   };
 
   /* Tier-1 (không quy trình): mỗi trạng thái cần quyền gì — theo EntryPolicy.
-     'archived' không nằm ở đây: chỉ lưu trữ được bài ĐANG đăng (xem archiveTr). */
+     'archived' không nằm ở đây: chỉ gỡ khỏi website được bài ĐANG đăng (xem archiveTr). */
   var TIER1 = [
-    { key: 'draft', label: 'Để nháp — chỉ mình bạn thấy', perm: null, why: '' },
-    { key: 'pending', label: 'Gửi duyệt', perm: 'entries.submit', why: 'Vai trò của bạn không được gửi duyệt' },
+    { key: 'draft', label: 'Lưu nháp — chưa hiện trên website', perm: null, why: '' },
+    { key: 'pending', label: 'Gửi duyệt', perm: 'entries.submit', why: 'Nhóm quyền của bạn không được gửi duyệt' },
     { key: 'scheduled', label: 'Hẹn giờ đăng', perm: 'entries.publish', why: 'Bạn chỉ được gửi duyệt, không được hẹn giờ đăng' },
-    { key: 'published', label: 'Đăng ngay', perm: 'entries.publish', why: 'Bạn chỉ được gửi duyệt, không được đăng' },
-    { key: 'private', label: 'Riêng tư — lưu xong nhưng không hiện ra ngoài', perm: 'entries.publish', why: 'Bạn chỉ được gửi duyệt, không được đổi cách hiển thị' }
+    { key: 'published', label: 'Đăng', perm: 'entries.publish', why: 'Bạn chỉ được gửi duyệt, không được đăng' },
+    { key: 'private', label: 'Để không công khai — thành viên có quyền vẫn xem được', perm: 'entries.publish', why: 'Bạn chỉ được gửi duyệt, không được đổi cách hiển thị' }
   ];
 
   function role(label) { return ROLES[label] || ROLES['Biên tập']; }
@@ -145,10 +145,10 @@
       return { key: it.key, label: it.label, allowed: ok, why: it.why, perm: it.perm };
     });
   }
-  /* Lưu trữ ở tier-1: chỉ từ 'published', cùng mức quyền với đăng. */
+  /* Gỡ khỏi website ở tier-1: chỉ từ 'published', cùng mức quyền với đăng. */
   function archiveTr(roleLabel, curKey) {
     if (curKey !== 'published') return null;
-    return { key: 'archived', label: 'Lưu trữ — gỡ khỏi website, giữ lại nội dung', to: 'archived', allowed: can(roleLabel, 'entries.publish'), why: 'Chỉ vai trò được đăng bài mới lưu trữ được' };
+    return { key: 'archived', label: 'Gỡ khỏi website — giữ lại nội dung', to: 'archived', allowed: can(roleLabel, 'entries.publish'), why: 'Chỉ nhóm quyền được đăng bài mới gỡ khỏi website được' };
   }
 
   /* Metadata của 2 mẫu nền tảng: gói tối thiểu + một câu giải thích cho chủ SME.
@@ -169,7 +169,7 @@
         reviewing: { label: 'Đang phản biện chuyên môn' },
         copyedit: { label: 'Soát chính tả và trình bày' },
         published: { label: 'Đã đăng lên trang chủ', published: true },
-        archived: { label: 'Lưu trữ toà soạn', terminal: true }
+        archived: { label: 'Đã gỡ khỏi website', terminal: true }
       },
       transitions: [
         { key: 'submit', label: 'Gửi trưởng ban', from: 'draft', to: 'pending', perm: 'entries.submit' },
@@ -178,8 +178,8 @@
         { key: 'approve', label: 'Duyệt đăng', from: 'copyedit', to: 'published', perm: 'entries.approve' },
         { key: 'request_changes', label: 'Yêu cầu sửa lại nội dung', from: 'reviewing', to: 'draft', perm: 'entries.review', note: true },
         { key: 'send_back', label: 'Trả lại phóng viên', from: 'pending', to: 'draft', perm: 'entries.review', note: true },
-        { key: 'retract', label: 'Gỡ bài', from: 'published', to: 'draft', perm: 'entries.review', note: true },
-        { key: 'archive', label: 'Lưu trữ', from: 'published', to: 'archived', perm: 'entries.approve' }
+        { key: 'retract', label: 'Đưa về nháp', from: 'published', to: 'draft', perm: 'entries.review', note: true },
+        { key: 'archive', label: 'Gỡ khỏi website', from: 'published', to: 'archived', perm: 'entries.approve' }
       ]
     },
     'Duyệt nhanh (2 bước)': {
@@ -190,7 +190,7 @@
       },
       transitions: [
         { key: 'approve', label: 'Duyệt đăng', from: 'draft', to: 'published', perm: 'entries.approve' },
-        { key: 'retract', label: 'Gỡ bài', from: 'published', to: 'draft', perm: 'entries.review', note: true }
+        { key: 'retract', label: 'Đưa về nháp', from: 'published', to: 'draft', perm: 'entries.review', note: true }
       ]
     }
   };

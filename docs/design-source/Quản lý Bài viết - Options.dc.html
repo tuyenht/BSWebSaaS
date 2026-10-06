@@ -94,6 +94,7 @@ body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{c
 @container (max-width: 660px){.lgbar .lg-quota{display:none;}}
 @container (max-width: 560px){.lgbar .lg-trlabel{display:none;}}
 </style>
+<script src="./content-ui.js"></script>
 </helmet>
 <section style="padding:40px;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);display:flex;justify-content:center;">
   <div id="1a" class="pcard" style="position:relative;width:min(1240px, 100%);background:var(--color-body,#f4f5fa);border:1px solid var(--color-border-strong,#e9ebec);border-radius:12px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
@@ -465,7 +466,7 @@ body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{c
                   <label style="font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);white-space:nowrap;">Tiêu đề bài viết</label>
                   <sc-if value="{{ multiLang }}"><span style="{{ langChipStyle }}">{{ curLangCode }}</span></sc-if>
                   <button title="{{ aiTitleTitle }}" style="{{ aiTitleStyle }}" onClick="{{ onAiTitle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>Gợi ý tiêu đề</button>
-                  <span style="{{ mTitle.countStyle }}">{{ mTitle.text }}</span>
+                  <span style="{{ mTitle.countStyle }}"><i class="{{ mTitle.icon }}" aria-hidden="true" style="margin-right:3px;"></i>{{ mTitle.text }}</span>
                 </div>
                 <sc-if value="{{ showTitleInput }}" hint-placeholder-val="{{ true }}"><input value="{{ fTitle }}" placeholder="Ví dụ: 5 lưu ý khi chọn xưởng gia công CNC" onChange="{{ onTitleChange }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:15px;font-weight:500;color:var(--color-heading,#1f2b4d);background:var(--color-surface,#fff);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);">
                 <span style="{{ mTitle.trackStyle }}"><span style="{{ mTitle.fillStyle }}"></span><span style="{{ mTitle.tickStyle }}"></span></span></sc-if>
@@ -543,7 +544,7 @@ body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{c
                   <label style="font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);white-space:nowrap;">Mô tả ngắn</label>
                   <sc-if value="{{ multiLang }}"><span style="{{ langChipStyle }}">{{ curLangCode }}</span></sc-if>
                   <button title="{{ aiExcTitle }}" style="{{ aiExcStyle }}" onClick="{{ onAiExcerpt }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>Viết mô tả từ nội dung bài</button>
-                  <span style="{{ mExc.countStyle }}">{{ mExc.text }}</span>
+                  <span style="{{ mExc.countStyle }}"><i class="{{ mExc.icon }}" aria-hidden="true" style="margin-right:3px;"></i>{{ mExc.text }}</span>
                 </div>
                 <sc-if value="{{ showExcInput }}" hint-placeholder-val="{{ true }}"><textarea rows="3" value="{{ fExcerpt }}" placeholder="Một hai câu tóm tắt, hiện ở danh sách tin và khi chia sẻ lên mạng xã hội." onChange="{{ onExcChange }}" style="width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);line-height:1.6;resize:vertical;outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);"></textarea>
                 <span style="{{ mExc.trackStyle }}"><span style="{{ mExc.fillStyle }}"></span><span style="{{ mExc.tickStyle }}"></span></span>
@@ -634,7 +635,7 @@ body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{c
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
                   <label style="font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);white-space:nowrap;">Tiêu đề trên Google</label>
                   <sc-if value="{{ multiLang }}"><span style="{{ langChipStyle }}">{{ curLangCode }}</span></sc-if>
-                  <span style="{{ mSeoTitle.countStyle }}">{{ mSeoTitle.text }}</span>
+                  <span style="{{ mSeoTitle.countStyle }}"><i class="{{ mSeoTitle.icon }}" aria-hidden="true" style="margin-right:3px;"></i>{{ mSeoTitle.text }}</span>
                 </div>
                 <input value="{{ fSeoTitle }}" placeholder="Để trống thì lấy đúng tiêu đề bài viết" onChange="{{ onSeoTitleChange }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);">
                 <span style="{{ mSeoTitle.trackStyle }}"><span style="{{ mSeoTitle.fillStyle }}"></span><span style="{{ mSeoTitle.tickStyle }}"></span></span>
@@ -643,7 +644,7 @@ body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{c
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
                   <label style="font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);white-space:nowrap;">Mô tả trên Google</label>
                   <sc-if value="{{ multiLang }}"><span style="{{ langChipStyle }}">{{ curLangCode }}</span></sc-if>
-                  <span style="{{ mSeoDesc.countStyle }}">{{ mSeoDesc.text }}</span>
+                  <span style="{{ mSeoDesc.countStyle }}"><i class="{{ mSeoDesc.icon }}" aria-hidden="true" style="margin-right:3px;"></i>{{ mSeoDesc.text }}</span>
                 </div>
                 <textarea rows="2" value="{{ fSeoDesc }}" placeholder="Câu chào khách đọc thấy dưới tiêu đề trên Google — nên 150–160 ký tự để hiện đủ." onChange="{{ onSeoDescChange }}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);line-height:1.6;resize:vertical;outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);"></textarea>
                 <span style="{{ mSeoDesc.trackStyle }}"><span style="{{ mSeoDesc.fillStyle }}"></span><span style="{{ mSeoDesc.tickStyle }}"></span></span>
@@ -1458,7 +1459,7 @@ class Component extends DCLogic {
   /* Số đếm + dải màu theo giới hạn ký tự — bảng giới hạn nằm ở content-seo.js, không khai lại ở màn nào */
   mtr(field, len) {
     if (window.BSSEO) return window.BSSEO.meter(field, len);
-    return { text: (len || 0) + ' ký tự', countStyle: 'margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);', trackStyle: 'display:none;', fillStyle: '', tickStyle: '' };
+    return { icon: '', text: (len || 0) + ' ký tự', countStyle: 'margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);', trackStyle: 'display:none;', fillStyle: '', tickStyle: '' };
   }
   seoTierOpen(k) { const o = this.state.seoTier || {}; return o[k] === undefined ? (k === 'must') : !!o[k]; }
   toggleSeoTier(k) { const o = Object.assign({}, this.state.seoTier || {}); o[k] = !this.seoTierOpen(k); this.setState({ seoTier: o }); }
@@ -2255,7 +2256,7 @@ class Component extends DCLogic {
       urlHref: 'https://anvinh.vn/' + this.catSlug(c) + '/' + (d.slug || ''),
       urlLive: !!(c && c.st === 'published'), urlNotLive: !(c && c.st === 'published'),
       cjkLang: S.lang === 'JA' || S.lang === 'ZH',
-      onCopyUrl: () => { const u = 'https://anvinh.vn/' + this.catSlug(c) + '/' + (d.slug || ''); try { if (navigator.clipboard) navigator.clipboard.writeText(u); } catch (e) {} this.notify('Đã sao chép: ' + u, 'ri-file-copy-line'); },
+      onCopyUrl: () => { const u = 'https://anvinh.vn/' + this.catSlug(c) + '/' + (d.slug || ''); try { (window.BSUI&&window.BSUI.copy?window.BSUI.copy:function(t){return navigator.clipboard.writeText(t)})(u); } catch (e) {} this.notify('Đã sao chép: ' + u, 'ri-file-copy-line'); },
       slugDup: slugDup,
       fExcerpt: d.excerpt || '', onExcChange: (e) => this.setDoc({ excerpt: e.target.value.slice(0, this.cap('excerpt')) }),
       mExc: this.mtr('excerpt', excLen),

@@ -1,7 +1,7 @@
 # Quy trình duyệt nội dung — handoff (hi-fi)
 
 3 màn, mỗi màn 1 file `.dc.html`, dùng chung registry `content-workflow.js` (`window.BSCW`).
-Stack đích: **Livewire 4 + Blade + Tailwind 4 + `<x-admin::*>`**, icon Remix **inline-SVG** (prototype dùng
+Stack đích: **Livewire 4 + Blade + Tailwind 4 + `<x-bs-admin::*>`**, icon Remix **inline-SVG** (prototype dùng
 remixicon CDN; bảng ánh xạ icon ở §4 để thay bằng inline-SVG khi hiện thực hoá).
 
 | Màn | File | Vai trò thấy được | Nhúng |

@@ -105,7 +105,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
 @media (hover:none){.hdd::before{display:none;}}
 [data-brand-scope]{--topbar-h:70px;}
 @media (max-width:1023px),(max-height:480px){[data-brand-scope]{--topbar-h:56px;}}
-.pop{--focus-ring-color:var(--brand-ink,var(--brand));max-width:calc(100vw - 16px);max-height:calc(100vh - var(--topbar-h,70px) - 16px);overflow-y:auto!important;overscroll-behavior:contain;}
+.pop{--focus-ring-color:var(--brand-ink,var(--brand));--focus-inner:var(--color-surface);max-width:calc(100vw - 16px);max-height:calc(100vh - var(--topbar-h,70px) - 16px);overflow-y:auto!important;overscroll-behavior:contain;}
 @media (max-width:519px){.pop{position:fixed!important;left:8px!important;right:8px!important;width:auto!important;top:calc(var(--topbar-h,70px) + 8px)!important;}}
 </style>
 </helmet>
@@ -1469,7 +1469,7 @@ class Component extends DCLogic {
     const scrollable = S.layoutPosition === 'scrollable' && !isMobile;
     const mainColStyle = 'flex:1;min-width:0;display:flex;flex-direction:column;height:100%;overflow-y:auto;scroll-padding-top:var(--sticky-top,var(--topbar-h,70px));'; // P10: focus/neo không bị topbar dính che (cột này là phần tử cuộn của Shell)
     const contentScrollStyle = 'background:' + K.appBg + ';display:flex;flex-direction:column;flex:1 0 auto;';
-    const ringOnDark = (!dark && !sbIsLight) ? '--focus-ring-color:#fff;' : ''; // vùng nền đậm: vòng focus trắng (≥3:1 với nền đậm), như DS B5
+    const ringOnDark = (!dark && !sbIsLight) ? '--focus-ring-color:#fff;--focus-inner:transparent;' : (dark ? '--focus-inner:transparent;' : ''); // tối: bỏ khe để vạch vàng mục đang chọn còn 2px, màu vòng giữ --brand-ink // vùng nền đậm: vòng focus trắng (≥3:1 với nền đậm), như DS B5
     const sidebarStyle = ringOnDark + 'width:' + (isMobile ? 268 : sidebarW) + 'px;flex-shrink:0;position:relative;z-index:45;height:100%;display:flex;flex-direction:column;background:' + sb.bg + ';border-right:1px solid ' + sb.edge + ';--navHoverBg:' + (sbIsLight ? 'color-mix(in srgb, var(--brand) 6%, transparent)' : 'rgba(255,255,255,0.07)') + ';--navHoverFg:' + (sbIsLight ? 'var(--brand-ink,var(--brand))' : '#fff') + ';--sbThumb:' + sbThumb + ';transition:transform .25s ease,width .18s ease;' + (isMobile ? 'position:absolute;left:0;top:0;bottom:0;z-index:130;transform:translateX(' + (S.mobileNavOpen ? '0' : '-101%') + ');box-shadow:6px 0 34px rgba(15,18,30,0.32);' : '') + (railOpen && isVertical ? 'position:absolute;left:0;top:0;bottom:0;z-index:130;box-shadow:6px 0 34px rgba(15,18,30,0.32);' : '');
     const sidebarLogoStyle = 'display:flex;align-items:center;gap:11px;height:var(--topbar-h,70px);padding:0 ' + (small ? '0' : '20px') + ';justify-content:center;flex-shrink:0;border-bottom:1px solid ' + sb.logoBorder + ';';
     const sbNavStyle = small ? 'flex:1;overflow-y:auto;overflow-x:hidden;padding:10px 0 16px;' : 'flex:1;overflow-y:auto;padding:10px 0 24px;';
@@ -1502,7 +1502,7 @@ class Component extends DCLogic {
         // nên không cần flyout — tránh trùng lặp.
         showFlyout: small,
         label: it.l, iconClass: it.i, ariaCur: (S.activeMenu === it.k) ? 'page' : undefined, ariaExp: hasChildren && showLabels ? String(!!isOpen) : undefined,
-        itemStyle: 'display:flex;align-items:center;gap:' + NAV.gap + 'px;width:100%;margin:0;padding:' + (small ? '11px 0' : (NAV.padY + 'px 20px')) + ';justify-content:' + (small ? 'center' : 'flex-start') + ';border:0;background:' + (on ? NAV.activeBg + ';box-shadow:inset 3px 0 0 ' + NAV.activeBar : 'transparent') + ';font:inherit;font-size:' + NAV.fontSize + 'px;font-weight:' + (on ? NAV.activeWeight : NAV.weight) + ';color:' + (on ? NAV.fgActive : NAV.fg) + ';cursor:pointer;transition:background .12s,color .12s;',
+        itemStyle: 'display:flex;align-items:center;gap:' + NAV.gap + 'px;width:100%;margin:0;padding:' + (small ? '11px 0' : (NAV.padY + 'px 20px')) + ';justify-content:' + (small ? 'center' : 'flex-start') + ';border:0;background:' + (on ? 'linear-gradient(to right,' + NAV.activeBar + ' 3px,transparent 3px),' + NAV.activeBg : 'transparent') + ';font:inherit;font-size:' + NAV.fontSize + 'px;font-weight:' + (on ? NAV.activeWeight : NAV.weight) + ';color:' + (on ? NAV.fgActive : NAV.fg) + ';cursor:pointer;transition:background .12s,color .12s;',
         hoverBg: NAV.hoverBg, hoverFg: NAV.hoverFg,
         iconStyle: 'font-size:' + NAV.iconSize + 'px;flex-shrink:0;',
         showBadge: !!it.b && showLabels, badgeText: it.b || '', badgeStyle: badgeStyle,
@@ -1567,7 +1567,7 @@ class Component extends DCLogic {
     const moreBtnStyle = 'display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:13px;font-weight:500;color:' + K.text + ';cursor:pointer;white-space:nowrap;';
     const hNavStyle = 'display:flex;align-items:center;gap:3px;padding:8px 16px;background:' + K.card + ';border-bottom:1px solid ' + K.line + ';overflow:visible;';
 
-    const topbarStyle = (S.topbarColor === 'dark' && !dark ? '--focus-ring-color:#fff;' : '') + 'display:flex;align-items:center;justify-content:space-between;gap:16px;height:var(--topbar-h,70px);flex-shrink:0;padding:0 ' + (isMobile ? '12px' : '24px') + ';background:' + tb.bg + ';border-bottom:1px solid ' + tb.border + ';z-index:70;' + (scrollable ? 'position:relative;' : 'position:sticky;top:0;');
+    const topbarStyle = (S.topbarColor === 'dark' && !dark ? '--focus-ring-color:#fff;--focus-inner:transparent;' : '') + 'display:flex;align-items:center;justify-content:space-between;gap:16px;height:var(--topbar-h,70px);flex-shrink:0;padding:0 ' + (isMobile ? '12px' : '24px') + ';background:' + tb.bg + ';border-bottom:1px solid ' + tb.border + ';z-index:70;' + (scrollable ? 'position:relative;' : 'position:sticky;top:0;');
     const iconBtnStyle = 'position:relative;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:0;border-radius:8px;background:transparent;color:' + tb.text + ';cursor:pointer;transition:background .12s;';
     const hamburgerStyle = 'display:inline-flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;min-width:44px;height:44px;padding:0 ' + (isMobile ? '12px 0 10px' : '0') + ';border:0;border-radius:8px;background:transparent;font:inherit;font-size:14px;font-weight:600;line-height:1.3;color:' + tb.text + ';cursor:pointer;';
     const tbDarkBar = S.topbarColor === 'dark' && !dark;

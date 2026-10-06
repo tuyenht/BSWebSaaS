@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link rel="stylesheet" href="admin-base.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./platform-config.js"></script>
+<script src="./content-seo.js"></script>
+<script src="./ai-quota.js"></script>
+<script src="./content-ui.js"></script>
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,system-ui,sans-serif;color:var(--color-body-text,#3c4765);-webkit-text-size-adjust:100%}
+a{color:var(--color-accent,#2050a0)}a:hover{color:var(--color-accent,#2050a0);text-decoration-thickness:2px}
+*{box-sizing:border-box}
+.pg{max-width:1160px;margin:0 auto;padding:24px 20px 64px;display:flex;flex-direction:column;gap:20px;container-type:inline-size}
+.h1{margin:0;font-size:calc(22px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.35}
+.lead{margin:6px 0 0;font-size:calc(14px + var(--fsp));line-height:1.6;color:var(--color-body-muted,#5b6275);max-width:820px;text-wrap:pretty}
+.cd{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);min-width:0}
+.cd-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.cd-t{margin:0;font-size:calc(16px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.cd-b{padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0;container-type:inline-size}
+.rk{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:24px;padding:0 7px;border-radius:12px;background:var(--color-admin-primary,#2050a0);color:#fff;font-size:calc(12px + var(--fsp));font-weight:700}
+.tag{display:inline-flex;align-items:center;gap:4px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(12px + var(--fsp));color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,var(--color-surface,#fff));border-radius:4px;padding:2px 6px}
+.rule{margin:0;font-size:calc(14px + var(--fsp));line-height:1.6;color:var(--color-body-text,#3c4765);text-wrap:pretty}
+.mut{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);line-height:1.55}
+.g2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+@container (max-width:860px){.g2{grid-template-columns:minmax(0,1fr)}}
+.span{grid-column:1/-1}
+.tb{display:grid;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;font-size:calc(13px + var(--fsp));overflow:hidden}
+.tb>div{padding:8px 10px;border-top:1px solid var(--color-border,#e9ecf4);min-width:0;text-wrap:pretty}
+.tb .hd{font-weight:600;color:var(--color-heading,#1f2b4d);background:var(--color-surface-muted,#f8f9fb);border-top:0}
+.tb .num{text-align:right;font-variant-numeric:tabular-nums}
+@container (max-width:640px){.tb.rs{grid-template-columns:minmax(0,1fr) auto !important}.tb.rs .opt{display:none}}
+.pick{color:var(--color-admin-success-text,#047767);font-weight:600}
+.drop{color:var(--color-body-muted,#5b6275)}
+/* nút + chọn đoạn */
+.b{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:calc(14px + var(--fsp));font-weight:500;cursor:pointer;white-space:nowrap}
+.b:hover{background:var(--color-surface-hover,#f1f3f9)}
+.b.pri{background:var(--color-admin-primary,#2050a0);border-color:var(--color-admin-primary,#2050a0);color:#fff;font-weight:600}
+.b.pri:hover{filter:brightness(.95)}
+.b.gh{border-color:transparent;background:transparent}
+.b.ic{width:36px;padding:0}
+.b.dan{color:var(--color-admin-danger-text,#bf371a);border-color:var(--color-admin-danger-text,#bf371a)}
+.b[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+.seg{display:flex;width:fit-content;max-width:100%;flex-wrap:wrap;align-content:flex-start;gap:2px;padding:2px;border:1px solid var(--color-border-input,#8a90a2);border-radius:6px;background:var(--color-surface,#fff)}
+.seg button{min-height:32px;padding:0 10px;border:0;border-radius:4px;background:transparent;color:var(--color-body-text,#3c4765);font:inherit;font-size:calc(13px + var(--fsp));font-weight:500;cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--color-admin-primary,#2050a0);color:#fff;font-weight:600}
+@media (pointer:coarse){.b,.seg button{min-height:44px}.b.ic{width:44px}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* 1 · ô có thước độ dài */
+.lf{display:flex;flex-direction:column;gap:6px;min-width:0}
+.lf-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;min-width:0}
+.lf-lab{font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.lc{display:inline-flex;align-items:center;height:22px;padding:0 6px;border-radius:4px;background:var(--color-surface-hover,#f1f3f9);font-size:calc(12px + var(--fsp));font-weight:700;color:var(--color-body-text,#3c4765)}
+.ai{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 10px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 30%,transparent);border-radius:14px;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font:inherit;font-size:calc(13px + var(--fsp));font-weight:600;cursor:pointer;white-space:nowrap}
+.ai[aria-disabled="true"]{opacity:.6;cursor:not-allowed}
+@media (pointer:coarse){.ai{min-height:44px}}
+.cnt{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:calc(13px + var(--fsp));font-variant-numeric:tabular-nums;white-space:nowrap}
+.cnt[data-b="empty"]{color:var(--color-body-muted,#5b6275)}
+.cnt[data-b="short"],.cnt[data-b="long"]{color:var(--color-admin-warning-text,#906405)}
+.cnt[data-b="near"]{color:var(--color-admin-info-text,#026fa2)}
+.cnt[data-b="good"]{color:var(--color-admin-success-text,#047767)}
+.cnt[data-b="over"]{color:var(--color-admin-danger-text,#bf371a);font-weight:600}
+.in{width:100%;min-height:40px;padding:8px 12px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-heading,#1f2b4d);font:inherit;font-size:calc(16px + var(--fsp));line-height:1.5;resize:vertical}
+.in:focus{border-color:var(--color-accent,#2050a0);outline:2px solid transparent;box-shadow:inset 0 0 0 1px var(--color-accent,#2050a0),0 0 0 3px color-mix(in srgb,var(--color-accent,#2050a0) 18%,transparent)}
+.in[data-b="over"]{border-color:var(--color-admin-danger-text,#bf371a)}
+.trk{position:relative;display:block;height:4px;border-radius:2px;background:var(--color-surface-hover,#eef0f6);overflow:hidden}
+.trk .zone{position:absolute;top:0;bottom:0;background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 22%,transparent)}
+.trk .tick{position:absolute;top:0;bottom:0;width:2px;background:var(--color-body-muted,#5b6275)}
+.trk .fill{position:absolute;left:0;top:0;bottom:0;border-radius:2px}
+.trk[data-b="empty"] .fill{background:transparent}
+.trk[data-b="short"] .fill,.trk[data-b="long"] .fill{background:var(--color-admin-warning,#f7b84b)}
+.trk[data-b="near"] .fill{background:var(--color-admin-info,#299cdb)}
+.trk[data-b="good"] .fill{background:var(--color-admin-success,#0ab39c)}
+.trk[data-b="over"] .fill{background:var(--color-admin-danger,#f06548)}
+.hint{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);line-height:1.5}
+/* 2 · xem trước Google */
+.serp{border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);padding:14px 16px;min-width:0}
+.serp.m{max-width:380px}
+.serp-site{display:flex;align-items:center;gap:8px;min-width:0}
+.serp-fav{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-muted,#5b6275);flex:0 0 auto}
+.serp-n{font-size:14px;color:var(--color-heading,#1f2b4d);line-height:1.3}
+.serp-u{font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.serp-t{margin:8px 0 4px;font-size:20px;line-height:1.3;color:#1a0dab;font-family:Arial,sans-serif;font-weight:400;overflow-wrap:anywhere}
+.serp.m .serp-t{font-size:18px}
+.serp-d{margin:0;font-size:14px;line-height:1.58;color:#4d5156;font-family:Arial,sans-serif;overflow-wrap:anywhere}
+[data-bs-theme="dark"] .serp{background:#202124;border-color:#3c4043}[data-bs-theme="dark"] .serp-t{color:#8ab4f8}[data-bs-theme="dark"] .serp-d{color:#bdc1c6}
+.cut{display:inline-flex;align-items:center;gap:4px;font-size:calc(13px + var(--fsp));color:var(--color-admin-warning-text,#906405)}
+.share{display:grid;grid-template-columns:minmax(0,1fr);max-width:420px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden;background:var(--color-surface,#fff)}
+.share-img{aspect-ratio:1.91/1;background:var(--color-surface-hover,#f1f3f9);display:flex;align-items:center;justify-content:center;color:var(--color-body-muted,#5b6275);font-size:calc(13px + var(--fsp));gap:6px}
+.share-b{padding:10px 12px;display:flex;flex-direction:column;gap:2px;background:var(--color-surface-muted,#f8f9fb)}
+.share-u{font-size:calc(12px + var(--fsp));letter-spacing:.02em;color:var(--color-body-muted,#5b6275)}
+.share-t{font-size:calc(15px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* 3 · AI cạnh trường */
+.cmp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@container (max-width:520px){.cmp{grid-template-columns:minmax(0,1fr)}}
+.cmp>div{border:1px solid var(--color-border,#e9ecf4);border-radius:6px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.cmp .new{border-color:color-mix(in srgb,var(--color-accent,#2050a0) 40%,transparent);background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,var(--color-surface,#fff))}
+.cmp .k{font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.cmp .v{font-size:calc(14px + var(--fsp));color:var(--color-heading,#1f2b4d);line-height:1.5;overflow-wrap:anywhere}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.note{display:flex;align-items:flex-start;gap:8px;padding:10px 12px;border-radius:6px;font-size:calc(13px + var(--fsp));line-height:1.5}
+.note i{font-size:calc(16px + var(--fsp));line-height:1.3}
+.note[data-t="info"]{background:color-mix(in srgb,var(--color-admin-info,#299cdb) 10%,var(--color-surface,#fff));color:var(--color-admin-info-text,#026fa2)}
+.note[data-t="warn"]{background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 18%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405)}
+.note[data-t="err"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+.note[data-t="ok"]{background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 10%,var(--color-surface,#fff));color:var(--color-admin-success-text,#047767)}
+.undo{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 4px 0 10px;border-radius:14px;background:var(--color-surface-hover,#f1f3f9);font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765)}
+/* 4 · sao chép */
+.cp{display:flex;align-items:center;gap:8px;min-width:0;padding:6px 6px 6px 12px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:4px;background:var(--color-surface-muted,#f8f9fb)}
+.cp-w{display:flex;flex-direction:column;gap:6px;min-width:0}
+.cp .cp-in,.cp .cp-in:focus,.cp .cp-in:focus-visible{border:0 !important;outline:0 !important;box-shadow:none !important}
+.cp-in{flex:1 1 auto;min-width:0;border:0;outline:0;background:transparent;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(16px + var(--fsp));color:var(--color-heading,#1f2b4d);resize:none;line-height:1.5;padding:2px 0}
+.cp:has(textarea){align-items:flex-start}
+.cp code{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(13px + var(--fsp));color:var(--color-heading,#1f2b4d)}
+.cp .b.done{color:var(--color-admin-success-text,#047767);border-color:var(--color-admin-success-text,#047767)}
+/* 5 · trạng thái lưu */
+.sv{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 10px;border-radius:16px;font-size:calc(13px + var(--fsp));font-weight:600;white-space:nowrap}
+.sv[data-s="saved"]{background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 10%,var(--color-surface,#fff));color:var(--color-admin-success-text,#047767)}
+.sv[data-s="dirty"]{background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 20%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405)}
+.sv[data-s="saving"]{background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765)}
+.sv[data-s="auto"]{background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765);font-weight:500}
+.sv[data-s="error"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+.sv[data-s="offline"]{background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765);border:1px dashed var(--color-border-input,#8a90a2)}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px}
+/* 6 · thẻ kết nối */
+.cn{display:grid;grid-template-columns:40px minmax(0,1fr);gap:4px 12px;align-items:start;padding:14px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px}
+.cn-ic{grid-row:1/3;width:40px;height:40px;border-radius:8px;background:var(--color-surface-hover,#f1f3f9);display:flex;align-items:center;justify-content:center;font-size:calc(20px + var(--fsp));color:var(--color-heading,#1f2b4d)}
+.cn-h{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;min-width:0}
+.cn-n{font-size:calc(15px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.cn-acts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.st{display:inline-flex;align-items:center;gap:6px;min-height:24px;padding:2px 9px;border-radius:12px;font-size:calc(12.5px + var(--fsp));font-weight:600;white-space:nowrap}
+.st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st[data-s="off"]{background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765)}
+.st[data-s="off"]::before{background:transparent;border:1.5px dashed currentColor;width:6px;height:6px}
+.st[data-s="busy"]{background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765)}
+.st[data-s="on"]{background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,var(--color-surface,#fff));color:var(--color-admin-success-text,#047767)}
+.st[data-s="re"]{background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 20%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405)}
+.st[data-s="err"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+.chk{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--color-border,#e9ecf4);font-size:calc(13px + var(--fsp))}
+.chk i{font-size:calc(16px + var(--fsp))}
+.chk .ok{color:var(--color-admin-success-text,#047767)}.chk .no{color:var(--color-admin-warning-text,#906405)}.chk .wait{color:var(--color-body-muted,#5b6275)}
+.grp{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border-radius:11px;font-size:calc(12px + var(--fsp));font-weight:600;margin-left:auto}
+.grp[data-g="a"]{background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,var(--color-surface,#fff));color:var(--color-admin-success-text,#047767)}
+.grp[data-g="b"]{background:color-mix(in srgb,var(--color-admin-info,#299cdb) 12%,var(--color-surface,#fff));color:var(--color-admin-info-text,#026fa2)}
+.grp[data-g="c"]{background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765)}
+.jb{position:relative;display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:10px 12px;align-items:center;padding:14px 14px 16px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden}
+@container (max-width:640px){.jb{grid-template-columns:36px minmax(0,1fr);align-items:start}.jb-a{grid-column:2}}
+.jb-ic{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:calc(18px + var(--fsp));background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765)}
+.jb-ic[data-s="done"]{background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,var(--color-surface,#fff));color:var(--color-admin-success-text,#047767)}
+.jb-ic[data-s="failed"],.jb-ic[data-s="blocked"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+.jb-t{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.45}.jb-t .u{font-size:calc(13px + var(--fsp));font-weight:500;color:var(--color-body-muted,#5b6275)}
+.jb-s{margin-top:2px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);line-height:1.5;text-wrap:pretty}
+.jb-s[data-s="failed"],.jb-s[data-s="blocked"]{color:var(--color-admin-danger-text,#bf371a)}
+.jb-s[data-s="done"]{color:var(--color-admin-success-text,#047767)}
+.jb-a{display:flex;flex-wrap:wrap;gap:8px}
+.jb-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--color-surface-hover,#eef0f6)}
+.jb-bar span{display:block;height:100%;background:var(--color-admin-info,#299cdb)}
+.im{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+.im-box{width:240px;max-width:100%;height:240px;border:1px dashed var(--color-border-input,#8a90a2);border-radius:6px;display:flex;align-items:center;justify-content:center;background:var(--color-surface-muted,#f8f9fb);overflow:hidden}
+.im-pic{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;background:color-mix(in srgb,var(--color-accent,#2050a0) 14%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-size:calc(13px + var(--fsp));font-weight:600}
+.im-acts{display:flex;flex-direction:column;gap:8px;min-width:0}
+
+:root{--fsp:0px}:root[data-bs-big="1"]{--fsp:2px}
+@media (pointer:coarse){.in{min-height:44px;opacity:1}.cp-in{min-height:44px;align-self:stretch}nav[aria-label="Mục lục"] a{display:inline-flex;align-items:center;min-height:44px}}
+@media (max-width:479px){.cp code{white-space:normal;overflow-wrap:anywhere;text-overflow:clip}.cp:has(code){align-items:flex-start}}
+.bigsw{display:inline-flex;align-items:center;gap:8px;align-self:flex-start}
+</style>
+</helmet>
+<div class="pg">
+  <header style="display:flex;flex-direction:column;gap:6px;">
+    <nav aria-label="Đường dẫn" class="mut"><a href="Chuẩn giao diện SaaS Starter.dc.html">Chuẩn giao diện SaaS Starter</a> › Component bổ sung</nav>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;"><h1 class="h1" style="margin:0;">Chuẩn giao diện — Component bổ sung</h1><button class="b bigsw" role="switch" aria-checked="{{ big }}" onClick="{{ toggleBig }}"><i class="ri-font-size" aria-hidden="true"></i>Chữ lớn<span aria-hidden="true">: {{ bigLabel }}</span></button></div>
+    <p class="lead">Phần 2 của <a href="Chuẩn giao diện SaaS Starter.dc.html">trang chuẩn</a>: 7 component chọn qua rà 30 màn (cách chọn ở cuối trang). Mỗi component chạy thật — bấm các nút để xem từng trạng thái. Nhóm <b>Làm ngay</b> là chuẩn bắt buộc cho màn mới từ hôm nay; nhóm <b>Làm tiếp</b> đã chốt mẫu, áp khi sửa màn có dùng.</p>
+    <nav aria-label="Mục lục" class="row" style="gap:6px 14px;font-size:calc(14px + var(--fsp));"><a href="#h-lf">Ô có thước độ dài</a><a href="#h-ai">Nút AI cạnh nhãn</a><a href="#h-cp">Sao chép</a><a href="#h-jb">Việc AI đang chạy</a><a href="#h-sv">Trạng thái lưu</a><a href="#h-sp">Xem trước Google</a><a href="#h-im">Ô ảnh + mô tả ảnh</a><a href="#h-loop">Cách chọn</a></nav>
+  </header>
+
+
+
+  <div class="g2">
+    <section class="cd span" aria-labelledby="h-lf">
+      <div class="cd-h"><span class="rk">1</span><h2 id="h-lf" class="cd-t">Ô có thước độ dài</h2><span class="tag">&lt;x-bs-admin::length-field&gt;</span><span class="grp" data-g="a">Làm ngay</span></div>
+      <div class="cd-b">
+        <p class="rule">Một component cho mọi ô có giới hạn đọc được (tiêu đề, tiêu đề / mô tả trên Google, mô tả ngắn, mô tả ảnh, đường dẫn). Mốc lấy từ <span class="tag">BSSEO.limits(field)</span> — không màn nào tự khai số. Chữ đếm đổi theo 6 mức, mỗi mức có <b>màu + icon + chữ</b>; thước có vùng đẹp nhất tô mờ và vạch chỗ Google cắt.</p>
+        <div class="row"><span class="mut">Xem nhanh từng mức:</span><div class="seg" role="group" aria-label="Mẫu độ dài"><sc-for list="{{ lfJumps }}" as="j" hint-placeholder-count="6"><button aria-pressed="{{ j.on }}" onClick="{{ j.pick }}">{{ j.l }}</button></sc-for></div></div>
+        <sc-for list="{{ lfFields }}" as="f" hint-placeholder-count="3">
+          <div class="lf">
+            <div class="lf-top">
+              <label class="lf-lab" for="{{ f.id }}">{{ f.label }}</label><span class="lc" title="Đang sửa bản Tiếng Việt">VI</span>
+              <button class="ai" aria-label="{{ f.aiAria }}" title="{{ f.aiTip }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>{{ f.ai }}</button>
+              <span class="cnt" data-b="{{ f.m.band }}" id="{{ f.cid }}"><i class="{{ f.m.icon }}" aria-hidden="true"></i>{{ f.m.text }}</span>
+            </div>
+            <sc-if value="{{ f.area }}" hint-placeholder-val="{{ false }}"><textarea id="{{ f.id }}" class="in" rows="2" data-b="{{ f.m.band }}" maxlength="{{ f.cap }}" aria-describedby="{{ f.cid }} {{ f.hid }}" placeholder="{{ f.ph }}" value="{{ f.v }}" onChange="{{ f.on }}"></textarea></sc-if>
+            <sc-if value="{{ f.line }}" hint-placeholder-val="{{ true }}"><input id="{{ f.id }}" class="in" data-b="{{ f.m.band }}" maxlength="{{ f.cap }}" aria-describedby="{{ f.cid }} {{ f.hid }}" placeholder="{{ f.ph }}" value="{{ f.v }}" onChange="{{ f.on }}"></sc-if>
+            <span class="trk" data-b="{{ f.m.band }}" aria-hidden="true"><span class="zone" style="left:{{ f.m.lo }}%;width:{{ f.m.zw }}%;"></span><span class="fill" style="width:{{ f.m.pct }}%;"></span><span class="tick" style="left:{{ f.m.tick }}%;"></span></span>
+            <span class="hint" id="{{ f.hid }}">{{ f.hint }}</span>
+            <span class="sr" aria-live="polite">{{ f.m.say }}</span>
+          </div>
+        </sc-for>
+        <div class="tb" style="grid-template-columns:minmax(0,1fr) minmax(0,1.6fr);">
+          <div class="hd">Lỗi đang có ở màn hiện tại</div><div class="hd">Component sửa thế nào</div>
+          <div>"Mô tả ngắn" ở Page Editor ghi <b>102/160</b>, không có thước — chuẩn của mô tả ngắn là 120–200 (<span class="tag">BSSEO excerpt</span>)</div><div>Mọi ô gọi cùng component với <span class="tag">field="excerpt"</span> → tự đúng mốc, tự có thước</div>
+          <div>Chữ "Nên 35–60 ký tự" khi ô trống dùng <span class="tag">#adb5bd</span> — 2,07:1. "còn quá ngắn"/"hơi dài" <span class="tag">#a9761d</span> — 3,97:1 (dưới 4,5)</div><div>Chữ đếm dùng token <span class="tag">--color-admin-*-text</span> / <span class="tag">--color-body-muted</span> — ≥4,5:1 cả sáng lẫn tối</div>
+          <div>Chế độ tối: "gần đủ / vừa đẹp / quá dài" chỉ 3,28–3,43:1 vì mã màu gắn cứng</div><div>Token tự lật theo <span class="tag">data-bs-theme</span></div>
+          <div><span class="tag">BSSEO.meter</span> trả chuỗi style (countStyle, trackStyle…) đưa qua hole — trái §8 (trạng thái qua hole style trễ một nhịp)</div><div>Mức đi qua <span class="tag">data-b</span> + lớp CSS; chỉ bề rộng thanh là giá trị sống</div>
+          <div>Chữ đếm 12px nhưng là chữ để thao tác</div><div>13px; icon kèm theo để không chỉ khác màu</div>
+          <div>Không báo cho trình đọc màn hình</div><div><span class="tag">aria-describedby</span> trỏ chữ đếm + một vùng <span class="tag">aria-live="polite"</span> chỉ đọc khi <b>đổi mức</b> (không đọc mỗi phím)</div>
+        </div>
+        <p class="mut" style="margin:0;"><b>Props:</b> field (title · seoTitle · seoDesc · excerpt · alt · slug) · label · multiline · lang · ai-action (slot nút AI ở mục 3) · hint · wire:model. Gõ không bị chặn tới <span class="tag">BSSEO.hardCap</span> (rộng hơn mức đỏ một quãng) để người dùng thấy lý do thay vì bị khóa phím.</p>
+      </div>
+    </section>
+
+    <section class="cd" aria-labelledby="h-ai">
+      <div class="cd-h"><span class="rk">2</span><h2 id="h-ai" class="cd-t">Nút AI cạnh nhãn trường</h2><span class="tag">&lt;x-bs-admin::ai-assist&gt;</span><span class="grp" data-g="a">Làm ngay</span></div>
+      <div class="cd-b">
+        <p class="rule">Gom luật §7 và §15 vào một nút: tooltip nói trước số từ AI sẽ dùng và còn lại; ô có chữ thì đặt <b>chữ hiện tại cạnh gợi ý</b>, bấm mới đổi; đổi xong luôn còn "Hoàn tác gợi ý AI".</p>
+        <div class="seg" role="group" aria-label="Trạng thái nút AI"><sc-for list="{{ aiStates }}" as="s" hint-placeholder-count="6"><button aria-pressed="{{ s.on }}" onClick="{{ s.pick }}">{{ s.l }}</button></sc-for></div>
+        <div class="lf-top"><span class="lf-lab">Tiêu đề trên Google</span>
+          <sc-if value="{{ aiIdle }}" hint-placeholder-val="{{ true }}"><button class="ai" title="{{ aiTip }}" aria-label="Gợi ý tiêu đề — {{ aiTip }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Gợi ý tiêu đề</button><span class="mut">Còn {{ aiLeft }} từ AI</span></sc-if>
+          <sc-if value="{{ aiRun }}" hint-placeholder-val="{{ false }}"><span class="ai" aria-busy="true" role="status"><i class="ri-loader-4-line" aria-hidden="true"></i>Đang viết…</span><button class="b gh">Hủy</button></sc-if>
+          <sc-if value="{{ aiOff }}" hint-placeholder-val="{{ false }}"><button class="ai" aria-disabled="true" aria-describedby="ai-why"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Gợi ý tiêu đề</button></sc-if>
+        </div>
+        <sc-if value="{{ aiCmp }}" hint-placeholder-val="{{ false }}">
+          <div class="cmp"><div><span class="k">Đang dùng</span><span class="v">Giới thiệu An Vinh — Vật liệu xây dựng uy tín</span></div><div class="new"><span class="k">Gợi ý AI · 52 ký tự · có từ khóa</span><span class="v">Gia công cơ khí chính xác An Vinh — 15 năm kinh nghiệm</span></div></div>
+          <div class="row"><button class="b pri"><i class="ri-check-line" aria-hidden="true"></i>Dùng gợi ý này</button><button class="b">Giữ như cũ</button><button class="b gh"><i class="ri-refresh-line" aria-hidden="true"></i>Phương án khác</button></div>
+        </sc-if>
+        <sc-if value="{{ aiDone }}" hint-placeholder-val="{{ false }}"><div class="row"><span class="undo"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Đã dùng gợi ý AI<button class="b gh" style="min-height:28px;">Hoàn tác gợi ý AI</button></span></div></sc-if>
+        <sc-if value="{{ aiOff }}" hint-placeholder-val="{{ false }}"><div class="note" data-t="{{ aiWhyT }}" id="ai-why"><i class="{{ aiWhyI }}" aria-hidden="true"></i><span>{{ aiWhy }}</span></div></sc-if>
+        <p class="mut" style="margin:0;"><b>Props:</b> label · field (để biết ràng buộc độ dài) · source (trường làm nguyên liệu) · words (ước tính) · quota · on-apply · on-undo. Không sinh ra chữ thì báo "không trừ từ AI nào".</p>
+      </div>
+    </section>
+
+    <section class="cd" aria-labelledby="h-cp">
+      <div class="cd-h"><span class="rk">3</span><h2 id="h-cp" class="cd-t">Nút Sao chép</h2><span class="tag">&lt;x-bs-admin::copy&gt;</span><span class="grp" data-g="a">Làm ngay</span></div>
+      <div class="cd-b">
+        <p class="rule">Chốt một cặp chữ cho mọi màn: "Sao chép" → "Đã sao chép" (bỏ "Đã chép"). Chữ đổi thành "Đã sao chép" + dấu tích 2 giây, trình đọc màn hình đọc qua <span class="tag">role="status"</span>. Trình duyệt chặn thì không im lặng: tự bôi đen sẵn và chỉ cách chép tay.</p>
+        <sc-for list="{{ cpRows }}" as="c" hint-placeholder-count="4">
+          <div class="cp-w">
+            <sc-if value="{{ c.hasLab }}" hint-placeholder-val="{{ false }}"><label class="lf-lab" for="{{ c.id }}">{{ c.lab }}</label></sc-if>
+            <div class="cp">
+              <sc-if value="{{ c.isText }}" hint-placeholder-val="{{ true }}"><code id="{{ c.id }}">{{ c.v }}</code></sc-if>
+              <sc-if value="{{ c.isInput }}" hint-placeholder-val="{{ false }}"><input id="{{ c.id }}" class="cp-in" value="{{ c.v }}" onChange="{{ c.edit }}" spellcheck="false"></sc-if>
+              <sc-if value="{{ c.isArea }}" hint-placeholder-val="{{ false }}"><textarea id="{{ c.id }}" class="cp-in" rows="3" readonly="readonly" value="{{ c.v }}"></textarea></sc-if>
+              <button class="{{ c.cls }}" onClick="{{ c.go }}" aria-label="{{ c.aria }}" title="{{ c.tip }}"><i class="{{ c.ic }}" aria-hidden="true"></i><sc-if value="{{ c.showL }}" hint-placeholder-val="{{ true }}"><span>{{ c.l }}</span></sc-if></button>
+            </div>
+          </div>
+        </sc-for>
+        <span class="sr" role="status">{{ cpSay }}</span>
+        <sc-if value="{{ cpFail }}" hint-placeholder-val="{{ false }}"><div class="note" data-t="warn"><i class="ri-error-warning-line" aria-hidden="true"></i><span>Trình duyệt không cho sao chép tự động. Nội dung đã được bôi đen — bấm Ctrl+C (máy Mac: ⌘+C), hoặc nhấn giữ trên điện thoại.</span></div></sc-if>
+        <div class="row"><button class="b gh" onClick="{{ simFail }}"><i class="ri-error-warning-line" aria-hidden="true"></i>Thử trường hợp không chép được</button></div>
+        <p class="mut" style="margin:0;"><b>Props:</b> value (chữ cố định) <i>hoặc</i> target (id của ô nhập / ô nhiều dòng — chép đúng giá trị đang gõ) · label (mặc định "Sao chép") · icon-only (bắt buộc aria-label + tooltip) · success-text. Chép qua <span class="tag">BSUI.copy(text)</span> trong content-ui.js: chép bằng vùng chọn ẩn trước, không được thì dùng Clipboard API; cả hai đều bị chặn thì mới bôi đen + chỉ cách chép tay. Ô trống thì nút mờ, nói "Chưa có gì để sao chép".</p>
+      </div>
+    </section>
+
+
+
+    <section class="cd" aria-labelledby="h-jb">
+      <div class="cd-h"><span class="rk">4</span><h2 id="h-jb" class="cd-t">Dòng việc AI đang chạy</h2><span class="tag">&lt;x-bs-admin::ai-job&gt;</span><span class="grp" data-g="a">Làm ngay</span></div>
+      <div class="cd-b">
+        <p class="rule">Cho việc AI chạy lâu hoặc chạy nhiều ô (dịch nhiều bản, tạo ảnh, viết lại cả bài). <b>Mỗi dòng một giao dịch riêng</b> (§7a): dòng này lỗi không làm dòng khác kẹt. Lỗi hoặc hủy thì hoàn đủ và nói rõ số đã hoàn; không sinh ra chữ thì "không trừ từ AI nào".</p>
+        <div class="seg" role="group" aria-label="Trạng thái việc AI"><sc-for list="{{ jbStates }}" as="s" hint-placeholder-count="6"><button aria-pressed="{{ s.on }}" onClick="{{ s.pick }}">{{ s.l }}</button></sc-for></div>
+        <div class="jb" role="status" aria-live="polite">
+          <span class="jb-ic" data-s="{{ jb.k }}"><i class="{{ jb.ic }}" aria-hidden="true"></i></span>
+          <div style="min-width:0;"><div class="jb-t"><span>Dịch bản English</span><span class="u">{{ jb.unit }}</span></div><div class="jb-s" data-s="{{ jb.k }}">{{ jb.t }}</div></div>
+          <div class="jb-a"><sc-for list="{{ jb.acts }}" as="a"><button class="{{ a.cls }}" aria-disabled="{{ a.off }}"><i class="{{ a.ic }}" aria-hidden="true"></i>{{ a.l }}</button></sc-for></div>
+          <sc-if value="{{ jb.bar }}" hint-placeholder-val="{{ false }}"><span class="jb-bar" aria-hidden="true"><span style="width:{{ jb.pct }}%;"></span></span></sc-if>
+        </div>
+        <p class="mut" style="margin:0;"><b>Props:</b> kind (words · images) · label · units (số ô) · cost (theo đúng sổ, §7a) · state (queued · running · done · failed · cancelled · blocked) · progress · on-cancel · on-retry · on-undo. Một chữ chung cho mọi màn: "Đang dịch… 4/6", "Lỗi — đã hoàn N từ AI", "Đã hủy — đã hoàn N lượt tạo ảnh".</p>
+      </div>
+    </section>
+
+    <section class="cd" aria-labelledby="h-sv">
+      <div class="cd-h"><span class="rk">5</span><h2 id="h-sv" class="cd-t">Dòng trạng thái lưu</h2><span class="tag">&lt;x-bs-admin::save-status&gt;</span><span class="grp" data-g="a">Làm ngay</span></div>
+      <div class="cd-b">
+        <p class="rule">Ba màn đang ghi ba kiểu chữ. Chốt 6 trạng thái, mỗi trạng thái một icon + chữ; lỗi và mất mạng nói rõ chữ chưa mất. Đặt cạnh nút Lưu (trình soạn) hoặc trong <span class="tag">save-bar</span>.</p>
+        <div class="seg" role="group" aria-label="Trạng thái lưu"><sc-for list="{{ svStates }}" as="s" hint-placeholder-count="6"><button aria-pressed="{{ s.on }}" onClick="{{ s.pick }}">{{ s.l }}</button></sc-for></div>
+        <div class="bar"><span class="sv" data-s="{{ sv.k }}" role="status" aria-live="polite"><i class="{{ sv.ic }}" aria-hidden="true"></i>{{ sv.t }}</span><sc-if value="{{ sv.hasAct }}" hint-placeholder-val="{{ false }}"><button class="b">{{ sv.act }}</button></sc-if><span class="mut" style="flex:1 1 200px;min-width:0;">{{ sv.sub }}</span></div>
+        <p class="mut" style="margin:0;"><b>Props:</b> state (saved · dirty · saving · autosaved · error · offline) · count · at (giờ theo múi giờ website) · on-retry. Tự lưu nháp không thay nút Lưu ở Cài đặt (§6: Lưu — hiệu lực ngay).</p>
+      </div>
+    </section>
+
+    <section class="cd span" aria-labelledby="h-sp">
+      <div class="cd-h"><span class="rk">6</span><h2 id="h-sp" class="cd-t">Xem trước trên Google &amp; khi chia sẻ</h2><span class="tag">&lt;x-bs-admin::search-preview&gt;</span><span class="grp" data-g="b">Làm tiếp</span></div>
+      <div class="cd-b">
+        <p class="rule">Đọc thẳng từ các ô ở mục 1 (sửa ô trên là thấy ngay). Cắt theo <b>bề rộng thật</b> của chữ như Google (đo bằng chữ Arial: 1 dòng ~600px trên máy tính, 2 dòng ~330px trên điện thoại), không cắt theo số ký tự — chữ "W" và chữ "i" chiếm chỗ khác nhau. Bị cắt thì nói ngay dưới khung.</p>
+        <div class="row"><div class="seg" role="group" aria-label="Thiết bị xem trước"><sc-for list="{{ spDev }}" as="d" hint-placeholder-count="3"><button aria-pressed="{{ d.on }}" onClick="{{ d.pick }}">{{ d.l }}</button></sc-for></div></div>
+        <sc-if value="{{ spGoogle }}" hint-placeholder-val="{{ true }}">
+          <div class="{{ spCls }}" role="img" aria-label="{{ spAria }}">
+            <div class="serp-site"><span class="serp-fav"><i class="ri-global-line" aria-hidden="true"></i></span><div style="min-width:0;"><div class="serp-n">An Vinh</div><div class="serp-u">anvinh.vn › gioi-thieu</div></div></div>
+            <p class="serp-t">{{ spTitle }}</p>
+            <p class="serp-d">{{ spDesc }}</p>
+          </div>
+          <sc-for list="{{ spCuts }}" as="c"><span class="cut"><i class="ri-scissors-cut-line" aria-hidden="true"></i>{{ c }}</span></sc-for>
+        </sc-if>
+        <sc-if value="{{ spShare }}" hint-placeholder-val="{{ false }}">
+          <div class="share" role="img" aria-label="{{ spAria }}">
+            <div class="share-img"><i class="ri-image-line" aria-hidden="true"></i>Ảnh chia sẻ 1200 × 630 — đang dùng ảnh đại diện</div>
+            <div class="share-b"><span class="share-u">ANVINH.VN</span><span class="share-t">{{ spShareTitle }}</span></div>
+          </div>
+          <span class="mut">Facebook, Zalo cắt tiêu đề ở 2 dòng. Không có ảnh thì khung chỉ hiện chữ.</span>
+        </sc-if>
+        <p class="mut" style="margin:0;"><b>Props:</b> title · description · url · site-name · image · device (desktop · mobile · share). Chế độ tối giữ màu của Google để đúng thứ khách thấy.</p>
+      </div>
+    </section>
+    <section class="cd" aria-labelledby="h-im">
+      <div class="cd-h"><span class="rk">7</span><h2 id="h-im" class="cd-t">Ô ảnh + mô tả ảnh</h2><span class="tag">&lt;x-bs-admin::image-field&gt;</span><span class="grp" data-g="b">Làm tiếp</span></div>
+      <div class="cd-b">
+        <p class="rule">Khung tối đa cố định, ảnh fit theo tỷ lệ thật (§7d) — không cắt, không méo. Ảnh tải lên là đường đầu tiên, ảnh AI đứng sau (§7a). Mô tả ảnh dùng lại thước độ dài (<span class="tag">field="alt"</span>).</p>
+        <div class="seg" role="group" aria-label="Tỷ lệ ảnh mẫu"><sc-for list="{{ imRatios }}" as="r" hint-placeholder-count="4"><button aria-pressed="{{ r.on }}" onClick="{{ r.pick }}">{{ r.l }}</button></sc-for></div>
+        <div class="im">
+          <div class="im-box" style="max-width:240px;"><sc-if value="{{ imHas }}" hint-placeholder-val="{{ true }}"><span class="im-pic" style="width:{{ imWH.w }}px;height:{{ imWH.h }}px;" role="img" aria-label="Ảnh mẫu tỷ lệ {{ imARL }}"><i class="ri-image-line" aria-hidden="true"></i>{{ imARL }}</span></sc-if><sc-if value="{{ imNone }}" hint-placeholder-val="{{ false }}"><span class="mut" style="text-align:center;padding:0 12px;">Chưa có ảnh</span></sc-if></div>
+          <div class="im-acts"><button class="b pri"><i class="ri-upload-2-line" aria-hidden="true"></i>Tải ảnh lên</button><button class="b"><i class="ri-image-2-line" aria-hidden="true"></i>Chọn từ thư viện</button><button class="b gh" title="Dùng 1 lượt tạo ảnh · còn 54 lượt"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Tạo ảnh</button></div>
+        </div>
+        <div class="lf"><div class="lf-top"><label class="lf-lab" for="im-alt">Mô tả ảnh</label><span class="lc">VI</span><span class="cnt" data-b="{{ imM.band }}" id="im-altc"><i class="{{ imM.icon }}" aria-hidden="true"></i>{{ imM.text }}</span></div>
+        <input id="im-alt" class="in" data-b="{{ imM.band }}" aria-describedby="im-altc" value="{{ imAlt }}" onChange="{{ onImAlt }}" placeholder="Một câu tả đúng nội dung ảnh — ví dụ: Thợ đứng máy tiện CNC tại xưởng An Vinh">
+        <span class="trk" data-b="{{ imM.band }}" aria-hidden="true"><span class="zone" style="left:{{ imM.lo }}%;width:{{ imM.zw }}%;"></span><span class="fill" style="width:{{ imM.pct }}%;"></span><span class="tick" style="left:{{ imM.tick }}%;"></span></span></div>
+        <p class="mut" style="margin:0;"><b>Props:</b> value · alt · max-box (mặc định 240×240) · sources (upload · library · ai) · image-quota · required-alt. Tạo mô tả ảnh tự động là hậu xử lý — không tính lượt.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="cd" aria-labelledby="h-loop">
+    <div class="cd-h"><h2 id="h-loop" class="cd-t">Cách chọn — 3 vòng chấm (rà 04/10)</h2></div>
+    <div class="cd-b">
+      <p class="rule"><b>Vòng 1 — đếm và chấm.</b> Số màn đếm bằng script trên 30 màn (lượt 1 chỉ đọc được 12 màn — các tên có dấu bị bỏ sót). Điểm = lặp lại (×3, quy từ số màn) · đang lệch hoặc lỗi (×3) · giúp người không rành IT (×3) · rủi ro tiếp cận nếu mỗi màn tự làm (×2) · dễ làm (×1). <b>Vòng 2 — lọc:</b> gộp cái nằm trọn trong component khác, bỏ cái chỉ 1 màn hoặc chưa ai yêu cầu (P16). <b>Vòng 3 — độ vững:</b> 70 bộ trọng số (mỗi trọng số ±1, ±2 và 50 bộ ngẫu nhiên 0–4); lọt top 7 ở ≥90% bộ → làm ngay, 70–89% → làm tiếp, dưới 70% → đợt sau.</p>
+      <div class="tb rs" style="grid-template-columns:28px minmax(0,1.2fr) minmax(0,2fr) 48px 52px minmax(0,1.3fr);" role="table" aria-label="Kết quả chấm lượt 2">
+        <div class="hd" role="columnheader">#</div><div class="hd" role="columnheader">Ứng viên</div><div class="hd opt" role="columnheader">Bằng chứng (đếm bằng script)</div><div class="hd num opt" role="columnheader">Màn</div><div class="hd num" role="columnheader">Điểm</div><div class="hd opt" role="columnheader">Vòng 2 · 3</div>
+        <sc-for list="{{ rank }}" as="r" hint-placeholder-count="12">
+          <div class="num">{{ r.i }}</div><div><b style="color:var(--color-heading,#1f2b4d);">{{ r.n }}</b><div><span class="tag">{{ r.tag }}</span></div></div><div class="opt">{{ r.ev }}</div><div class="num opt">{{ r.m }}</div><div class="num"><b>{{ r.s }}</b></div><div class="opt"><span class="{{ r.vc }}">{{ r.v }}</span></div>
+        </sc-for>
+      </div>
+      <div class="tb" style="grid-template-columns:minmax(0,1fr) minmax(0,2fr);">
+        <div class="hd">So với lượt 1</div><div class="hd">Vì sao đổi</div>
+        <div><b>Thêm</b> Dòng việc AI đang chạy</div><div>Lượt 1 bỏ sót vì không đọc được 18 màn có tên tiếng Việt. Việc dài (dịch nhiều bản, tạo ảnh) có ở 8 màn, hoàn lượt / Thử lại ở 8 màn, mỗi màn một câu khác nhau.</div>
+        <div><b>Lên</b> Nút Sao chép (4 → 11 màn)</div><div>11 màn có nút hoặc chữ Sao chép; 6 màn tự gọi lệnh chép. Chữ lẫn "Đã chép" / "Đã sao chép" — chốt "Sao chép" · "Đã sao chép". <b>Đã áp 04/10:</b> 6 màn chuyển sang <span class="tag">BSUI.copy</span>, 4 màn đổi chữ.</div>
+        <div><b>Lên</b> Ô ảnh + mô tả ảnh</div><div>5 màn; dùng lại thước độ dài cho mô tả ảnh nên làm sau mục 1 rất rẻ.</div>
+        <div><b>Xuống</b> Thẻ kết nối dịch vụ</div><div>Chỉ vững {{ pc.cn }} bộ trọng số: ít màn (6) và các màn đó đã gần giống nhau. Giữ mẫu, làm đợt sau.</div>
+        <div><b>Bỏ khỏi danh sách</b> Nhãn đa ngữ / 🔒 Chung</div><div>Có ở 12 màn nhưng không phải component riêng: thành prop bắt buộc <span class="tag">lang</span> · <span class="tag">shared</span> của Input / Textarea / length-field (§5).</div>
+      </div>
+    </div>
+  </section>
+  <section class="cd" aria-labelledby="h-next">
+    <div class="cd-h"><h2 id="h-next" class="cd-t">Áp dụng</h2></div>
+    <div class="cd-b">
+      <p class="rule"><b>Làm ngay</b> (vững ≥ 90% trong 70 bộ trọng số): 1 · Ô có thước độ dài — kèm sửa <span class="tag">content-seo.js</span> (<span class="tag">BANDS</span> sang token, <span class="tag">meter()</span> trả <span class="tag">band</span> + số thay chuỗi style) · 2 · Nút AI cạnh nhãn · 3 · Sao chép · 4 · Dòng việc AI · 5 · Trạng thái lưu. Ba cái AI + lưu dùng chung một máy trạng thái (chờ · chạy · xong · lỗi-hoàn · hủy · chặn) nên làm cùng lượt.</p>
+      <p class="rule"><b>Làm tiếp:</b> 6 · Xem trước trên Google ({{ pc.serp }}) · 7 · Ô ảnh + mô tả ảnh ({{ pc.img }}, làm sau mục 1 vì dùng lại thước). <b>Đợt sau (chưa vẽ ở đây):</b> Thẻ kết nối ({{ pc.cn }}) — mẫu tạm theo màn Email / Đăng nhập nhanh; Ô khóa bí mật ({{ pc.sec }}). <b>Prop bắt buộc, không phải component:</b> <span class="tag">lang</span> · <span class="tag">shared</span> (chip VI / 🔒 Chung) cho Input, Textarea, length-field — 12 màn đang tự vẽ.</p>
+      <p class="mut" style="margin:0;">Câu "mua thêm từ AI" ở các mẫu trên tuân theo Tweak "Lời mời nâng gói" của trang chuẩn: khi tắt thì đổi thành "Cần thêm? Liên hệ hỗ trợ".</p>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+/* Lượt rà 2 (04/10): số màn ĐẾM BẰNG SCRIPT trên 30 màn (chép tên ASCII để đọc được cả màn có dấu) — không chấm tay.
+   [key, tên, số màn, D lệch/lỗi, U lợi cho người không rành IT, A rủi ro tiếp cận, E dễ làm, bằng chứng] */
+const CANDS = [
+  ['length-field', 'Ô có thước độ dài', 7, 5, 5, 4, 4, '4 màn đang có (Page Editor, Quản lý Bài viết, AI Writer, Hộp duyệt) + 3 sắp có (Sản phẩm, Cài đặt SEO, mô tả ảnh). Page Editor còn đếm Mô tả ngắn /160 (chuẩn 200), không thước'],
+  ['ai-assist', 'Nút AI cạnh nhãn trường', 18, 4, 5, 3, 3, '18 màn; hơn 12 nhãn khác nhau cho cùng một việc ("Dịch", "Dịch bằng AI", "Viết lại", "Mở rộng lại bằng AI"…)'],
+  ['copy', 'Nút Sao chép', 11, 4, 4, 3, 5, '11 màn có nút/chữ Sao chép, 6 màn tự gọi lệnh chép (mỗi màn một cách dự phòng); chữ lẫn "Đã chép" và "Đã sao chép" — trái P15'],
+  ['ai-job', 'Dòng việc AI đang chạy', 8, 4, 5, 3, 3, '8 màn chạy việc dài (dịch nhiều bản, tạo ảnh, viết lại); 8 màn có hoàn lượt / Thử lại — mỗi màn một câu, §7a đòi mỗi ô một giao dịch riêng'],
+  ['search-preview', 'Xem trước trên Google / khi chia sẻ', 7, 4, 5, 2, 3, '7 màn tự vẽ khung Google, cắt theo số ký tự'],
+  ['image-field', 'Ô ảnh + mô tả ảnh', 5, 3, 4, 4, 3, '5 màn có "Mô tả ảnh"; §7d ảnh fit tỷ lệ thật; alt dùng lại thước độ dài'],
+  ['save-status', 'Dòng trạng thái lưu', 5, 3, 4, 3, 4, '5 màn; "Đã lưu tự động / Đã lưu lúc / Lưu lỗi" mỗi nơi một kiểu'],
+  ['connection-card', 'Thẻ kết nối dịch vụ', 6, 3, 5, 2, 3, '6 màn: Email, Đăng nhập nhanh, Tích hợp, Thư viện ảnh, Admin Shell, Palette'],
+  ['secret-input', 'Ô khóa bí mật có hiện/ẩn', 3, 2, 3, 4, 5, '3 màn có ô ẩn/hiện khóa (P8)'],
+  ['auto-check', 'Dòng kiểm tra tự động', 3, 2, 4, 2, 4, '3 màn SPF/DKIM/DMARC'],
+  ['version-list', 'Lịch sử phiên bản', 1, 1, 3, 1, 3, '1 màn (Page Editor)'],
+  ['word-count', 'Số từ / thời gian đọc', 1, 1, 2, 1, 5, 'Mới là ý tưởng ở TODO đợt 4']
+];
+const W0 = { R: 3, D: 3, U: 3, A: 2, E: 1 };
+const DROP = { 'auto-check': 'Gộp → Thẻ kết nối', 'version-list': 'Bỏ — chỉ 1 màn', 'word-count': 'Bỏ — P16, chưa ai yêu cầu' };
+const Rof = n => n >= 10 ? 5 : n >= 7 ? 4 : n >= 5 ? 3 : n >= 3 ? 2 : 1;
+const sc = (c, W) => W.R * Rof(c[2]) + W.D * c[3] + W.U * c[4] + W.A * c[5] + W.E * c[6];
+const CPR = [
+  { k: 'url', t: 'text', v: 'https://anvinh.vn/gioi-thieu', what: 'đường dẫn' },
+  { k: 'spf', t: 'text', v: 'v=spf1 include:_spf.baoson.net ~all', what: 'bản ghi SPF', icon: true },
+  { k: 'in', t: 'input', v: 'hotro@anvinh.vn', lab: 'Ô nhập — chép đúng chữ đang gõ', what: 'email' },
+  { k: 'emb', t: 'area', v: '<' + 'script src="https://anvinh.vn/lien-he.js" defer><' + '/script>', lab: 'Mã nhúng (chỉ đọc)', what: 'mã nhúng' }
+];
+const PCT = {};
+function rankAll() {
+  const keep = CANDS.filter(c => !DROP[c[0]]), hit = {}; let runs = 0, seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const tally = W => { runs++; keep.map(c => ({ k: c[0], s: sc(c, W) })).sort((a, b) => b.s - a.s).slice(0, 7).forEach(x => { hit[x.k] = (hit[x.k] || 0) + 1; }); };
+  Object.keys(W0).forEach(k => [-2, -1, 1, 2].forEach(d => { const W = Object.assign({}, W0); W[k] = Math.max(0, W[k] + d); tally(W); }));
+  for (let i = 0; i < 50; i++) { const W = {}; Object.keys(W0).forEach(k => { W[k] = Math.round(rnd() * 4); }); tally(W); }
+  return CANDS.map(c => ({ c, s: sc(c, W0) })).sort((a, b) => b.s - a.s).map((x, i) => {
+    const d = DROP[x.c[0]], h = hit[x.c[0]] || 0, p = Math.round(h / runs * 100);
+    const grp = d ? d : (p >= 90 ? 'Làm ngay' : (p >= 70 ? 'Làm tiếp' : 'Đợt sau'));
+    PCT[x.c[0]] = p + '%';
+    return { i: i + 1, n: x.c[1], tag: x.c[0], ev: x.c[7], m: x.c[2], s: x.s, v: d ? d : (grp + ' · top 7 ở ' + h + '/' + runs + ' bộ (' + p + '%)'), vc: d ? 'drop' : (p >= 90 ? 'pick' : '') };
+  });
+}
+const SAMPLES = {
+  empty: '', short: 'An Vinh', near: 'Giới thiệu An Vinh — gia công',
+  good: 'Giới thiệu An Vinh — Gia công cơ khí chính xác uy tín',
+  long: 'Giới thiệu An Vinh — Gia công cơ khí chính xác uy tín tại TP.HCM',
+  over: 'Giới thiệu Công ty Cơ khí Chính xác An Vinh — Gia công CNC, tiện, phay, mài theo bản vẽ tại TP.HCM'
+};
+const BAND = {
+  empty: ['ri-edit-line', ''], short: ['ri-arrow-up-line', 'còn quá ngắn'], near: ['ri-arrow-right-up-line', 'gần đủ'],
+  good: ['ri-check-line', 'vừa đẹp'], long: ['ri-error-warning-line', ''], over: ['ri-close-circle-line', 'quá dài, nên rút bớt']
+};
+const FB = { title: { min: 20, best: [30, 60], display: 60, max: 100, cut: 'Google sẽ cắt bớt khi hiện' }, seoTitle: { min: 20, best: [35, 60], display: 60, max: 80, cut: 'Google sẽ cắt bớt khi hiện' }, seoDesc: { min: 70, best: [150, 160], display: 160, max: 200, cut: 'Google chỉ hiện khoảng 160 ký tự đầu' }, excerpt: { min: 80, best: [120, 200], display: 200, max: 240, cut: 'thẻ tin sẽ cắt bớt' } };
+class Component extends DCLogic {
+  state = {
+    big: !!this.props.bigText,
+    v: { seoTitle: 'Giới thiệu An Vinh — Vật liệu xây dựng uy tín', seoDesc: 'Tìm hiểu về An Vinh: lịch sử hình thành, giá trị cốt lõi và đội ngũ đứng sau thương hiệu gia công cơ khí chính xác.', excerpt: 'An Vinh — hơn 15 năm đồng hành cùng khách hàng trong lĩnh vực gia công cơ khí chính xác.' },
+    jump: '', dev: 'desktop', ai: 'idle', copied: null, cpFail: false, sv: 'dirty', cn: 'on'
+  };
+  lim(f) { return (window.BSSEO && window.BSSEO.limits(f)) || FB[f] || FB.title; }
+  cap(f) { return (window.BSSEO && window.BSSEO.hardCap(f)) || Math.round(this.lim(f).max * 1.25); }
+  meter(f, len) {
+    const L = this.lim(f); let b = 'good';
+    if (!len) b = 'empty'; else if (len < L.min) b = 'short'; else if (len < L.best[0]) b = 'near'; else if (len <= L.best[1]) b = 'good'; else if (len <= L.max) b = 'long'; else b = 'over';
+    const note = b === 'long' ? L.cut : BAND[b][1];
+    const text = !len ? ('Nên ' + L.best[0] + '–' + L.best[1] + ' ký tự') : (len > L.display ? (len + ' ký tự — ' + note) : (len + '/' + L.display + ' ký tự' + (note ? ' — ' + note : '')));
+    const r = v => (Math.min(100, v / L.max * 100)).toFixed(1);
+    const say = !len ? 'Ô đang trống' : ({ short: 'Còn quá ngắn', near: 'Gần đủ', good: 'Vừa đẹp', long: 'Hơi dài — ' + L.cut, over: 'Quá dài, nên rút bớt' })[b];
+    return { band: b, icon: BAND[b][0], text, say, pct: r(len), tick: r(L.display), lo: r(L.best[0]), zw: (r(L.best[1]) - r(L.best[0])).toFixed(1) };
+  }
+  textW(t, px) { try { const c = this._cv || (this._cv = document.createElement('canvas')).getContext('2d'); c.font = px + 'px Arial'; return c.measureText(t).width; } catch (e) { return t.length * px * 0.5; } }
+  fitW(t, px, max) { if (this.textW(t, px) <= max) return [t, false]; let s = t; while (s.length && this.textW(s + ' …', px) > max) s = s.slice(0, -1); return [s.replace(/\s+\S*$/, '') + ' …', true]; }
+  componentDidMount() {
+    this.applyBig();
+    /* bấm vào chỗ trống của khung .cp (đệm) thì focus ô — khung vẫn là div vì còn chứa nút Sao chép */
+    this._onCpDown = e => { const t = e.target; if (t && t.classList && t.classList.contains('cp')) { const i = t.querySelector('.cp-in'); if (i) { e.preventDefault(); i.focus(); } } };
+    document.addEventListener('pointerdown', this._onCpDown);
+    this._onKey = e => { if (e.key === 'Escape' && this.state.cpFail) this.setState({ cpFail: false }); };
+    document.addEventListener('keydown', this._onKey);
+  }
+  applyBig() { try { document.documentElement.setAttribute('data-bs-big', this.state.big ? '1' : '0'); } catch (e) {} }
+  componentDidUpdate() { if (this._bigP !== this.state.big) { this._bigP = this.state.big; this.applyBig(); } if (this._bigProp !== this.props.bigText) { this._bigProp = this.props.bigText; if (this.props.bigText !== undefined && !!this.props.bigText !== this.state.big) this.setState({ big: !!this.props.bigText }); } }
+  componentWillUnmount() { document.removeEventListener('pointerdown', this._onCpDown); document.removeEventListener('keydown', this._onKey); clearTimeout(this._ct); }
+  renderVals() {
+    const s = this.state, Q = window.BSAI, left = 18500;
+    const bigVals = { big: s.big, bigLabel: s.big ? 'Bật' : 'Tắt', toggleBig: () => this.setState({ big: !s.big }) };
+    const nf = n => (Q && Q.nfm) ? Q.nfm(n) : String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    const FIELDS = [
+      { k: 'seoTitle', label: 'Tiêu đề trên Google', ai: 'Gợi ý tiêu đề', w: 30, ph: 'Tên trang + điều khách tìm — ví dụ: Gia công CNC theo bản vẽ | An Vinh' },
+      { k: 'seoDesc', label: 'Mô tả hiện trên Google', ai: 'Gợi ý mô tả hiện trên Google', w: 40, area: true, ph: 'Một câu nói khách được gì khi bấm vào — nên 150–160 ký tự' },
+      { k: 'excerpt', label: 'Mô tả ngắn', ai: 'Gợi ý mô tả ngắn', w: 60, area: true, ph: 'Hiện ở thẻ tin trong danh sách và khi chia sẻ' }
+    ];
+    const lfFields = FIELDS.map(f => {
+      const v = s.v[f.k] || '', m = this.meter(f.k, v.length), L = this.lim(f.k);
+      f = Object.assign({}, f, { ai: v.trim() ? 'Viết lại' : f.ai }); /* C.15: ô trống → Gợi ý <trường> · có chữ → Viết lại */
+      return { id: 'lf-' + f.k, cid: 'lfc-' + f.k, hid: 'lfh-' + f.k, label: f.label, ai: f.ai, area: !!f.area, line: !f.area, v, m, cap: this.cap(f.k), ph: f.ph,
+        aiAria: f.ai + ' — dùng khoảng ' + f.w + ' từ AI, còn ' + nf(left - f.w) + ' sau khi chạy', aiTip: 'Dùng khoảng ' + f.w + ' từ AI · còn ' + nf(left) + ' từ AI — ' + ((Q && Q.enough) ? Q.enough(left, ['post']) : 'đủ khoảng 19 bài'),
+        hint: f.k === 'excerpt' ? 'Thẻ tin cắt ở 2 dòng — vùng đẹp ' + L.best[0] + '–' + L.best[1] + ' ký tự.' : ('Vạch đứng là chỗ Google cắt (' + L.display + ' ký tự). Vùng tô mờ là độ dài đẹp nhất.'),
+        on: e => { const val = e.target.value; this.setState(x => ({ v: Object.assign({}, x.v, { [f.k]: val }), jump: '' })); } };
+    });
+    const JL = [['empty', 'Trống'], ['short', 'Quá ngắn'], ['near', 'Gần đủ'], ['good', 'Vừa đẹp'], ['long', 'Hơi dài'], ['over', 'Quá dài']];
+    const lfJumps = JL.map(j => ({ l: j[1], on: s.jump === j[0], pick: () => this.setState(x => ({ jump: j[0], v: Object.assign({}, x.v, { seoTitle: SAMPLES[j[0]] }) })) }));
+    /* xem trước */
+    const mob = s.dev === 'mobile', T = (s.v.seoTitle || '').trim() || 'Giới thiệu', D = (s.v.seoDesc || '').trim();
+    const [tt, tCut] = this.fitW(T, mob ? 18 : 20, mob ? 660 : 600); /* điện thoại: 2 dòng × ~330px */
+    const dMax = mob ? 120 : 160, dCut = D.length > dMax, dd = dCut ? D.slice(0, dMax).replace(/\s+\S*$/, '') + ' …' : (D || 'Google sẽ tự lấy một đoạn trong trang — nên viết mô tả riêng.');
+    const spCuts = [].concat(tCut ? ['Tiêu đề bị cắt trên ' + (mob ? 'điện thoại' : 'máy tính') + ' — rút còn khoảng ' + (mob ? 45 : 60) + ' ký tự hoặc đưa ý chính lên đầu.'] : [], dCut ? ['Mô tả bị cắt sau ' + dMax + ' ký tự.'] : []);
+    const spDev = [['desktop', 'Máy tính'], ['mobile', 'Điện thoại'], ['share', 'Khi chia sẻ']].map(d => ({ l: d[1], on: s.dev === d[0], pick: () => this.setState({ dev: d[0] }) }));
+    /* AI */
+    const AIS = [['idle', 'Sẵn sàng'], ['run', 'Đang chạy'], ['cmp', 'Có chữ sẵn'], ['done', 'Đã dùng'], ['low', 'Không đủ từ'], ['nosrc', 'Chưa có nguồn']];
+    const aiOff = s.ai === 'low' || s.ai === 'nosrc';
+    /* lưu */
+    const SV = {
+      saved: ['ri-check-line', 'Đã lưu', 'Lúc 10:42 · giờ Việt Nam', ''], dirty: ['ri-edit-circle-line', 'Chưa lưu · 3 thay đổi', 'Rời trang sẽ được hỏi trước — chữ không mất.', ''],
+      saving: ['ri-loader-4-line', 'Đang lưu…', 'Vẫn sửa tiếp được trong lúc lưu.', ''], auto: ['ri-time-line', 'Đã tự lưu nháp lúc 10:45', 'Bản nháp chỉ mình bạn thấy cho tới khi bấm Lưu.', ''],
+      error: ['ri-error-warning-line', 'Chưa lưu được', 'Mạng chập chờn — chữ vẫn còn ở đây.', 'Thử lại'], offline: ['ri-wifi-off-line', 'Mất mạng', 'Thay đổi giữ trên máy này, sẽ tự lưu khi có mạng.', '']
+    };
+    const svk = s.sv, svx = SV[svk];
+    const SVL = [['saved', 'Đã lưu'], ['dirty', 'Chưa lưu'], ['saving', 'Đang lưu'], ['auto', 'Tự lưu nháp'], ['error', 'Lỗi'], ['offline', 'Mất mạng']];
+    /* kết nối */
+    const CN = {
+      off: ['Chưa kết nối', 'Thư sẽ gửi từ hộp thư chung của nền tảng cho tới khi bạn kết nối.', [['b pri', 'ri-google-fill', 'Kết nối với Google']], false],
+      busy: ['Đang kết nối…', 'Đang mở cửa sổ đăng nhập Google. Đóng cửa sổ đó là hủy.', [['b', 'ri-close-line', 'Hủy']], false],
+      on: ['Đã kết nối', 'hotro@anvinh.vn · kiểm tra tự động lúc 09:12 · nền tảng tự làm mới quyền', [['b', 'ri-mail-check-line', 'Gửi thư thử'], ['b dan', 'ri-link-unlink-m', 'Ngắt kết nối']], true],
+      re: ['Cần kết nối lại', 'Google đã thu hồi quyền gửi thư (đổi mật khẩu hoặc hết hạn). Thư tạm gửi từ hộp thư chung.', [['b pri', 'ri-refresh-line', 'Kết nối lại']], true],
+      err: ['Không kết nối được', 'Google từ chối đăng nhập — tài khoản này chưa bật quyền gửi thư. Bật ở Google rồi bấm Thử lại.', [['b pri', 'ri-refresh-line', 'Thử lại'], ['b gh', 'ri-question-line', 'Xem cách bật']], false]
+    };
+    const cx = CN[s.cn];
+    const CNL = [['off', 'Chưa'], ['busy', 'Đang kết nối'], ['on', 'Đã kết nối'], ['re', 'Cần kết nối lại'], ['err', 'Lỗi']];
+    const cnChecks = s.cn === 're'
+      ? [['ri-checkbox-circle-line', 'SPF', 'ok', 'Đạt'], ['ri-checkbox-circle-line', 'DKIM', 'ok', 'Đạt'], ['ri-time-line', 'Gửi thư thử', 'wait', 'Chờ kết nối lại']]
+      : [['ri-checkbox-circle-line', 'SPF', 'ok', 'Đạt'], ['ri-checkbox-circle-line', 'DKIM', 'ok', 'Đạt'], ['ri-error-warning-line', 'DMARC', 'no', 'Chưa có — nền tảng tự thêm']];
+    /* việc AI */
+    const JB = {
+      queued: ['ri-time-line', 'Đang chờ chạy — sẽ dùng khoảng 840 từ AI', [['b', 'ri-close-line', 'Hủy', false]], false, 0],
+      running: ['ri-loader-4-line', 'Đang dịch… 4/6 ô — đã trừ khi xong từng ô', [['b', 'ri-close-line', 'Hủy', false]], true, 66],
+      done: ['ri-check-line', 'Xong 6/6 ô — dùng 812 từ AI, còn ' + nf(left - 812) + ' từ', [['b', 'ri-eye-line', 'Xem bản dịch', false], ['b gh', 'ri-arrow-go-back-line', 'Hoàn tác', false]], false, 100],
+      failed: ['ri-error-warning-line', 'Lỗi ở ô 5 — đã hoàn 140 từ AI. 4 ô đã dịch vẫn giữ.', [['b pri', 'ri-refresh-line', 'Thử lại 2 ô', false]], false, 0],
+      cancelled: ['ri-close-circle-line', 'Đã hủy — 2 ô chưa chạy, không trừ từ AI nào cho 2 ô đó', [['b', 'ri-play-line', 'Chạy tiếp', false]], false, 0],
+      blocked: ['ri-forbid-line', 'Cần khoảng 840 từ AI, còn 300. Dịch từng bản hoặc mua thêm từ AI.', [['b', 'ri-translate-2', 'Dịch từng bản', false]], false, 0]
+    };
+    const jbx = JB[s.jb || 'running'];
+    const JBL = [['queued', 'Chờ chạy'], ['running', 'Đang chạy'], ['done', 'Xong'], ['failed', 'Lỗi'], ['cancelled', 'Đã hủy'], ['blocked', 'Không đủ từ']];
+    /* ô ảnh */
+    const RT = [['16/9', 'Ngang 16:9'], ['1/1', 'Vuông'], ['3/4', 'Dọc 3:4'], ['none', 'Trống']];
+    const ir = s.ir || '16/9', alt = s.alt == null ? 'Thợ đứng máy tiện CNC tại xưởng An Vinh' : s.alt;
+    return { ...bigVals,
+      jbStates: JBL.map(a => ({ l: a[1], on: (s.jb || 'running') === a[0], pick: () => this.setState({ jb: a[0] }) })),
+      jb: { k: s.jb || 'running', unit: ({ done: '6 ô', failed: '6 ô', cancelled: '6 ô' })[s.jb] || '6 ô còn trống', ic: jbx[0], t: jbx[1], acts: jbx[2].map(a => ({ cls: a[0], ic: a[1], l: a[2], off: a[3] })), bar: jbx[3], pct: jbx[4] },
+      imRatios: RT.map(r => ({ l: r[1], on: ir === r[0], pick: () => this.setState({ ir: r[0] }) })),
+      imHas: ir !== 'none', imNone: ir === 'none', imAR: ir === 'none' ? '1/1' : ir,
+      /* fit trong khung 238px: trục dài chạy 100%, trục kia suy ra từ tỷ lệ — không đặt max cả hai chiều */
+      imWH: (() => { if (ir === 'none') return { w: 0, h: 0 }; const [a, b] = ir.split('/').map(Number), B = 238; return a >= b ? { w: B, h: Math.round(B * b / a) } : { w: Math.round(B * a / b), h: B }; })(), imARL: (RT.find(r => r[0] === ir) || RT[0])[1],
+      imAlt: alt, imM: this.meter('alt', alt.length), onImAlt: e => this.setState({ alt: e.target.value }),
+      rank: rankAll(), pc: { serp: PCT['search-preview'], img: PCT['image-field'], cn: PCT['connection-card'], sec: PCT['secret-input'] }, lfFields, lfJumps,
+      spDev, spGoogle: s.dev !== 'share', spShare: s.dev === 'share', spCls: mob ? 'serp m' : 'serp', spTitle: tt, spDesc: dd, spCuts, spShareTitle: T,
+      spAria: 'Xem trước: ' + T + '. ' + (D || ''),
+      aiStates: AIS.map(a => ({ l: a[1], on: s.ai === a[0], pick: () => this.setState({ ai: a[0] }) })),
+      aiIdle: s.ai === 'idle' || s.ai === 'cmp' || s.ai === 'done', aiRun: s.ai === 'run', aiOff, aiCmp: s.ai === 'cmp', aiDone: s.ai === 'done', aiLeft: nf(s.ai === 'low' ? 12 : left),
+      aiTip: 'Dùng khoảng 30 từ AI · còn ' + nf(left) + ' → ' + nf(left - 30) + ' sau khi chạy',
+      aiWhy: s.ai === 'low' ? 'Còn 12 từ AI, lần này cần khoảng 30. Mua thêm từ AI hoặc nâng gói ở Hạn ngạch AI.' : 'Trang chưa có nội dung để làm nguyên liệu. Viết vài câu ở phần nội dung rồi bấm lại — không trừ từ AI nào.',
+      aiWhyT: s.ai === 'low' ? 'err' : 'info', aiWhyI: s.ai === 'low' ? 'ri-forbid-line' : 'ri-information-line',
+      cpRows: CPR.map(c => { const v = c.k === 'in' ? (s.cpIn == null ? c.v : s.cpIn) : c.v, done = s.copied === c.k, empty = !String(v).trim();
+        return { id: 'cp-' + c.k, lab: c.lab || '', hasLab: !!c.lab, v, isText: c.t === 'text', isInput: c.t === 'input', isArea: c.t === 'area', showL: !c.icon,
+          cls: 'b' + (c.icon ? ' ic' : '') + (done ? ' done' : ''), ic: done ? 'ri-check-line' : 'ri-file-copy-line', l: done ? 'Đã sao chép' : 'Sao chép',
+          aria: empty ? 'Chưa có gì để sao chép' : (done ? 'Đã sao chép ' + c.what : 'Sao chép ' + c.what), tip: empty ? 'Chưa có gì để sao chép' : 'Sao chép ' + c.what,
+          edit: e => this.setState({ cpIn: e.target.value, copied: null }),
+          go: () => { if (empty) return; this.doCopy(c.k, c.what, v); } }; }),
+      cpSay: s.copied ? 'Đã sao chép ' + ((CPR.find(c => c.k === s.copied) || {}).what || '') : '', cpFail: s.cpFail,
+      simFail: () => this.failCopy('url'),
+      svStates: SVL.map(a => ({ l: a[1], on: s.sv === a[0], pick: () => this.setState({ sv: a[0] }) })),
+      sv: { k: svk === 'auto' ? 'auto' : svk, ic: svx[0], t: svx[1], sub: svx[2], act: svx[3], hasAct: !!svx[3] },
+      cnStates: CNL.map(a => ({ l: a[1], on: s.cn === a[0], pick: () => this.setState({ cn: a[0] }) })),
+      cn: { k: s.cn, t: cx[0], sub: cx[1], acts: cx[2].map(a => ({ cls: a[0], ic: a[1], l: a[2] })), checks: cx[3] },
+      cnChecks: cnChecks.map(c => ({ ic: c[0] + ' ' + c[2], l: c[1], cls: c[2], st: c[3] }))
+    };
+  }
+  doCopy(k, what, text) {
+    const U = window.BSUI, p = (U && U.copy) ? U.copy(text) : Promise.resolve(false);
+    p.then(ok => { if (!ok) { this.failCopy(k); return; } clearTimeout(this._ct); this.setState({ copied: k, cpFail: false }); this._ct = setTimeout(() => this.setState({ copied: null }), 2000); });
+  }
+  failCopy(k) { this.setState({ cpFail: true, copied: null }); setTimeout(() => { const el = document.getElementById('cp-' + (k || 'url')); if (!el) return;
+    if (el.select) { el.focus(); el.select(); return; } const r = document.createRange(); r.selectNodeContents(el); const sl = window.getSelection(); sl.removeAllRanges(); sl.addRange(r); }, 0); }
+}
+</script>
+</body>
+</html>

@@ -5,7 +5,9 @@
      · ai-quota.js        (window.BSAI)  — gói, hạn ngạch, quy đổi "đủ khoảng N …"
      · content-workflow.js(window.BSCW)  — trạng thái, vai trò, quy trình duyệt
      · content-ui.js      (window.BSUI)  — token + pattern giao diện  ← file này
-   Dùng: window.BSUI (+ event 'bs-ui-ready'). Mọi hàm trả về CHUỖI style để gắn inline. */
+   Dùng: window.BSUI (+ event 'bs-ui-ready'). Hầu hết hàm trả về CHUỖI style để gắn inline.
+   Ngoại lệ — hàm THAO TÁC DOM (D0-2s): trapFocus(e) giữ Tab trong hộp thoại; watchBottomBar(el) đo --sbar-h + --kb, trả về hàm gỡ;
+   copy(text) chép vào bộ nhớ tạm, trả Promise<boolean> (04/10). */
 (function () {
   var T = {
     /* màu — chỉ lấy trong token AdminKit */
@@ -302,10 +304,104 @@
     var g = {}; p.forEach(function (x) { g[x.type] = x.value; });
     return g.day + '/' + g.month + '/' + g.year + (withTime === false ? '' : ' ' + g.hour + ':' + g.minute);
   }
+  /* ===== D0-3 C2: định dạng theo ngôn ngữ giao diện (vi mặc định) ===== */
+  function loc(l) { l = String(l || 'vi').slice(0, 2); return l === 'en' ? 'en-US' : l === 'ja' ? 'ja-JP' : l === 'zh' ? 'zh-CN' : 'vi-VN'; }
+  function fmtNum(n, l) { var v = Number(n) || 0; if (loc(l) !== 'vi-VN') return v.toLocaleString(loc(l), { maximumFractionDigits: 2 }); return v.toLocaleString('en-US', { maximumFractionDigits: 2 }).replace(/,/g, '§').replace(/\./g, ',').replace(/§/g, '.'); }
+  function dec1(x, l) { var r = Math.round(x * 10) / 10; return (r % 1 === 0 ? String(r) : r.toFixed(1)).replace('.', loc(l) === 'vi-VN' ? ',' : '.'); }
+  /* 1 MB = 1.048.576 byte (như repo) */
+  function fmtBytes(b, l) {
+    var v = Math.max(0, Number(b) || 0), u = ['B', 'KB', 'MB', 'GB', 'TB'], i = 0;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return (i === 0 ? fmtNum(v, l) : dec1(v, l)) + ' ' + u[i];
+  }
+  /* dưới 24 giờ: "5 phút trước"; từ 24 giờ: ngày của fmtDate. opt {locale, tz, now} */
+  function fmtAgo(d, opt) {
+    opt = opt || {}; var t = new Date(d), now = opt.now ? new Date(opt.now) : new Date(), s = Math.round((now - t) / 1000), l = loc(opt.locale);
+    if (s >= 86400 || s < 0) return fmtDate(t, opt.tz, true);
+    if (s < 60) return l === 'vi-VN' ? 'Vừa xong' : l === 'en-US' ? 'Just now' : new Intl.RelativeTimeFormat(l).format(0, 'second');
+    var m = Math.floor(s / 60);
+    if (l === 'vi-VN') return m < 60 ? m + ' phút trước' : Math.floor(m / 60) + ' giờ trước';
+    var rtf = new Intl.RelativeTimeFormat(l, { numeric: 'always' });
+    return m < 60 ? rtf.format(-m, 'minute') : rtf.format(-Math.floor(m / 60), 'hour');
+  }
+  /* số rút gọn cho biểu đồ: vi K/Tr/Tỷ không khoảng trắng; en/ja/zh theo Intl compact của CHÍNH ngôn ngữ đó (ja 万/億, zh 万/亿);
+     `max` = giá trị lớn nhất của biểu đồ → cả biểu đồ 1 đơn vị (đơn vị suy từ max). Giá trị > 0 mà làm tròn ra 0 → "<0,1<đơn vị>".
+     Trình đọc màn hình: chữ rút gọn aria-hidden + chữ ẩn ghi fmtNum(n) (D0-3s). */
+  function fmtCompact(n, opt) {
+    opt = opt || {}; var v = Number(n) || 0, l = loc(opt.locale), ref = Math.abs(opt.max != null ? Number(opt.max) : v), div, sfx;
+    if (l === 'vi-VN') {
+      if (ref < 1000) return fmtNum(v, 'vi');
+      var U = ref >= 1e9 ? [1e9, 'Tỷ'] : ref >= 1e6 ? [1e6, 'Tr'] : [1e3, 'K']; div = U[0]; sfx = U[1];
+    } else {
+      var parts = new Intl.NumberFormat(l, { notation: 'compact', maximumFractionDigits: 1 }).formatToParts(ref);
+      sfx = parts.filter(function (p) { return p.type === 'compact'; }).map(function (p) { return p.value; }).join('');
+      if (!sfx) return fmtNum(v, opt.locale);
+      var x = Number(parts.filter(function (p) { return p.type === 'integer' || p.type === 'fraction' || p.type === 'decimal'; }).map(function (p) { return p.type === 'decimal' ? '.' : p.value; }).join(''));
+      div = Math.pow(10, Math.round(Math.log10(ref / x)));
+    }
+    var r = Math.round(v / div * 10) / 10;
+    if (r === 0 && v > 0) return '<' + (l === 'vi-VN' ? '0,1' : new Intl.NumberFormat(l).format(0.1)) + sfx;
+    return (l === 'vi-VN' ? dec1(r, 'vi') : new Intl.NumberFormat(l, { maximumFractionDigits: 1 }).format(r)) + sfx;
+  }
   /* đường dẫn tiếng Việt: bỏ dấu, đ→d, chữ thường, số, gạch nối */
+  /* cắt 200 ký tự (khớp repo max:200) RỒI mới bỏ "-" hai đầu — không để "-" cuối (repo từ chối) */
   function slugify(s) {
     return String(s || '').toLowerCase().replace(/đ/g, 'd').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+      .replace(/[^a-z0-9]+/g, '-').slice(0, 200).replace(/^-+|-+$/g, '');
+  }
+
+  /* ===== D0-2s: hàm thao tác DOM dùng chung ===== */
+  /* Gọi trong onKeyDown của hộp thoại: Tab/Shift+Tab vòng trong hộp (e.currentTarget là gốc hộp) */
+  function trapFocus(e) {
+    if (!e || e.key !== 'Tab') return;
+    var root = e.currentTarget; if (!root || !root.querySelectorAll) return;
+    var f = Array.prototype.slice.call(root.querySelectorAll('button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea,[tabindex]:not([tabindex="-1"])'))
+      .filter(function (x) { return x.offsetParent !== null; });
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+  /* Thanh dính đáy: --sbar-h = chiều cao thật (ResizeObserver), --kb = phần bàn phím ảo che (visualViewport). Trả về hàm gỡ. */
+  function watchBottomBar(el) {
+    var d = document.documentElement, ro = null, vv = window.visualViewport, onVv = null;
+    if (el && window.ResizeObserver) {
+      ro = new ResizeObserver(function (en) { d.style.setProperty('--sbar-h', Math.round(en[0].target.offsetHeight) + 'px'); });
+      ro.observe(el);
+    }
+    if (vv) {
+      onVv = function () { var kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop); d.style.setProperty('--kb', Math.round(kb) + 'px'); };
+      vv.addEventListener('resize', onVv); vv.addEventListener('scroll', onVv); onVv();
+    }
+    return function () {
+      if (ro) ro.disconnect();
+      if (vv && onVv) { vv.removeEventListener('resize', onVv); vv.removeEventListener('scroll', onVv); }
+      d.style.setProperty('--sbar-h', '0px'); d.style.setProperty('--kb', '0px');
+    };
+  }
+
+  /* Chép chữ: vùng chọn ẩn + execCommand → không được thì Clipboard API.
+     Trả Promise<true|false>; false = cả hai cách đều bị chặn → màn tự bôi đen nội dung + chỉ cách chép tay. */
+  function copy(text) {
+    text = String(text == null ? '' : text);
+    var legacy = function () {
+      try {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;';
+        var act = document.activeElement; document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+        var ok = document.execCommand && document.execCommand('copy'); document.body.removeChild(ta);
+        if (act && act.focus) act.focus(); return !!ok;
+      } catch (e) { return false; }
+    };
+    if (!text) return Promise.resolve(false);
+    /* Thử vùng chọn ẩn TRƯỚC, đồng bộ trong lúc bấm — còn giữ "thao tác của người dùng" nên chạy được cả khi
+       Clipboard API bị chặn (khung nhúng không có quyền). Không được mới thử Clipboard API. */
+    if (legacy()) return Promise.resolve(true);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText)
+        return navigator.clipboard.writeText(text).then(function () { return true; }, function () { return false; });
+    } catch (e) {}
+    return Promise.resolve(false);
   }
 
   window.BSUI = {
@@ -320,7 +416,11 @@
     /* D0-2 */
     ratio: ratio, mix: mix, readable: readable, readableOnAll: readableOnAll, brandPalette: brandPalette, inkOn: inkOn,
     primaryText: primaryText, primaryOnInk: primaryOnInk,
-    vnd: vnd, parseVnd: parseVnd, groupVnd: groupVnd, fmtDate: fmtDate, slugify: slugify
+    vnd: vnd, parseVnd: parseVnd, groupVnd: groupVnd, fmtDate: fmtDate, slugify: slugify,
+    /* D0-3 C2 */
+    fmtNum: fmtNum, fmtBytes: fmtBytes, fmtAgo: fmtAgo, fmtCompact: fmtCompact,
+    /* D0-2s — thao tác DOM */
+    trapFocus: trapFocus, watchBottomBar: watchBottomBar, copy: copy
   };
   try { document.dispatchEvent(new CustomEvent('bs-ui-ready')); } catch (e) {}
 })();
