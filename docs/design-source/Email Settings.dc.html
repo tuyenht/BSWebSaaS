@@ -19,6 +19,7 @@
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <script src="ai-quota.js"></script>
 <script src="./platform-config.js"></script>
+<script src="./content-ui.js"></script>
 <style>
 html,body{margin:0;background:var(--color-body,#f4f5fa);}*{box-sizing:border-box;}
 .em-wrap{container-type:inline-size;font-family:Inter,'Segoe UI',sans-serif;}
@@ -946,7 +947,7 @@ class Component extends DCLogic {
     try{ document.execCommand('insertHTML',false,this.chip(v)+'&nbsp;'); }catch(e){} this.captureEd(); this.captureSig(); }
   copyVar(v){
     const done=()=>{ this.setState({copied:v}); clearTimeout(this._cp); this._cp=setTimeout(()=>this.setState({copied:null}),1600); };
-    try{ navigator.clipboard.writeText(v).then(done,()=>done()); }
+    try{ (window.BSUI&&window.BSUI.copy?window.BSUI.copy:function(t){return navigator.clipboard.writeText(t)})(v).then(done,()=>done()); }
     catch(e){ const t=document.createElement('textarea'); t.value=v; document.body.appendChild(t); t.select(); try{document.execCommand('copy');}catch(err){} t.remove(); done(); }
   }
   openLinkDlg(mode,tvars){

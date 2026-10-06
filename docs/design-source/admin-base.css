@@ -13,22 +13,78 @@
   input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px !important; }
 }
 
-/* Vòng focus: không để outline:none của nút nuốt mất vòng bàn phím */
-:where(button, a, [role="button"], [tabindex]):focus-visible {
-  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-accent, #405189)) !important;
-  outline-offset: var(--focus-ring-offset, 2px) !important;
+/* Focus 1b (chốt 05/10/2026, mẫu tĩnh ở Focus - Đề xuất.dc.html). Màu vòng --bs-fr = --focus-ring-color (vùng nền đậm tự khai #fff),
+   ô lỗi đổi --bs-fr sang đỏ; --bs-fi = --focus-inner (khe/viền trong, vùng nền đậm đặt transparent).
+   Mọi kiểu vẽ bằng box-shadow đều giữ outline 2px trong suốt cho chế độ tương phản cao của Windows.
+   Thứ tự loại (sau thắng trước, cùng độ ưu tiên): không nhận ra → liên kết → nút viền → ghost/tab → nút đặc → điều khiển nhỏ. */
+:focus, :focus-within {
+  --bs-fr: var(--focus-ring-color, var(--color-accent, #405189));
+  --bs-fi: var(--focus-inner, var(--color-surface, #fff));
 }
+[aria-invalid="true"]:focus, :is(.sx-search, .srch, .cp, [data-focus-wrap]):has([aria-invalid="true"]:focus) {
+  --bs-fr: var(--color-admin-danger-text, #bf371a);
+}
+/* Không nhận ra loại (vd. nút đặc viết style inline): outline 2px lệch -1px + viền trong màu nền + quầng */
+:where(button, a, [role="button"], [tabindex], summary):focus-visible {
+  outline: var(--focus-ring-width, 2px) solid var(--bs-fr) !important;
+  outline-offset: -1px !important;
+  box-shadow: inset 0 0 0 2px var(--bs-fi), 0 0 0 4px color-mix(in srgb, var(--bs-fr) 18%, transparent) !important;
+}
+/* Liên kết (thẻ a không mang class nút): nền 10% + viền NGOÀI 2px + gạch chân 2px */
+:where(a[href]:not(.sx-btn, .b, .btn, [class*="btn"], [role="button"], [role="tab"], [role="menuitem"], [data-focus-kind])):focus-visible {
+  outline: 2px solid transparent !important;
+  box-shadow: 0 0 0 2px var(--bs-fr) !important;
+  background-color: color-mix(in srgb, var(--bs-fr) 10%, transparent);
+  text-decoration-thickness: 2px !important; /* trang viết text-decoration rút gọn sẽ đè mất nếu thiếu !important */
+}
+/* Nút viền (kể cả viền đỏ .b.dan): viền thành 2px màu vòng + quầng 3px 18%, giống ô nhập. Không áp lên ghost và nút đặc. */
+:where(.sx-btn:not(.gho, .pri, .dan), .b:not(.gh, .pri), .btn.sec, .btn.dout, [data-focus-kind="outline"]):focus-visible {
+  outline: 2px solid transparent !important;
+  border-color: var(--bs-fr) !important;
+  box-shadow: inset 0 0 0 1px var(--bs-fr), 0 0 0 3px color-mix(in srgb, var(--bs-fr) 18%, transparent) !important;
+}
+/* Ghost, tab, đoạn/ngày chưa chọn: nền 8% + viền trong 2px, không quầng */
+:where(.sx-btn.gho, .b.gh, .btn.gho, .tab, .sx-tab, [role="tab"], .sx-seg button, .seg button, .cal-d, [data-focus-kind="ghost"]):focus-visible {
+  outline: 2px solid transparent !important;
+  box-shadow: inset 0 0 0 2px var(--bs-fr) !important;
+}
+:is(.sx-btn.gho, .b.gh, .btn.gho, .tab, .sx-tab, [role="tab"], .sx-seg button:not([aria-checked="true"]), .seg button:not([aria-pressed="true"]), .cal-d:not([aria-selected="true"]), [data-focus-kind="ghost"]):focus-visible {
+  background-color: color-mix(in srgb, var(--bs-fr) 8%, transparent);
+}
+/* Nút đặc + trạng thái nền đặc: viền trắng 2px bên trong (currentColor) + quầng ngoài 3px 30% */
+:where(.sx-btn.pri, .sx-btn.dan, .b.pri, .btn.pri, .btn.dan, .sx-seg button[aria-checked="true"], .seg button[aria-pressed="true"], .cal-d[aria-selected="true"], [data-focus-kind="solid"]):focus-visible {
+  outline: 2px solid transparent !important;
+  box-shadow: inset 0 0 0 2px currentColor, 0 0 0 3px color-mix(in srgb, var(--bs-fr) 30%, transparent) !important;
+}
+/* Ngày hôm nay (viền 1px) vừa được chọn giữ dấu hôm nay khi focus */
+:where(.sx-btn.pri, .sx-btn.dan, .b.pri, .btn.pri, .btn.dan, .sx-seg button[aria-checked="true"], .seg button[aria-pressed="true"], .cal-d[aria-selected="true"], [data-focus-kind="solid"]):not([aria-current="date"]):focus-visible {
+  border-color: transparent !important;
+}
+/* Công tắc, ô chọn, radio: vòng tách quanh PHẦN HÌNH (khe 2px --bs-fi + vòng 2px), không quanh chữ.
+   Nút bọc cả chữ đánh dấu phần hình bằng [data-focus-shape] (con trực tiếp). [role=switch] dạng nút có chữ (.b/.sx-btn/.btn) vẽ như nút viền. */
+:where(input[type="checkbox"], input[type="radio"], .dsw, [role="switch"]:not(:has([data-focus-shape])):not(.b, .sx-btn, .btn)):focus-visible,
+:focus-visible > [data-focus-shape] {
+  outline: 2px solid transparent !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 2px var(--bs-fi), 0 0 0 4px var(--bs-fr) !important;
+}
+:where(input[type="radio"]):focus-visible { border-radius: 50%; }
+:where([role="switch"], [role="checkbox"], [role="radio"], label):focus-visible:has(> [data-focus-shape]) { outline: 2px solid transparent !important; box-shadow: none !important; }
 
-/* Ô nhập có viền: nhiều ô tắt outline inline → luôn đổi viền sang accent + quầng nhẹ khi focus (B5).
-   Ô không viền (nằm trong khung bao) để khung bao lo bằng :focus-within. */
-:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):focus:not([style*="border:0"]):not([style*="border: 0"]):not([style*="border:none"]):not(.sPlain):not(.em-plain) {
-  border-color: var(--color-accent, #405189) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent, #405189) 18%, transparent) !important;
+/* Ô nhập, select, ô soạn thảo: viền 2px (viền 1px + bóng trong 1px, không đổi kích thước) + quầng 3px.
+   Ô KHÔNG viền nằm trong khung bao bỏ qua (khung bao vẽ). Loại trừ bọc trong :where để ô lỗi thắng đúng. */
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select, [contenteditable="true"]:not([class*="rte"]):not([class*="-ce"])):focus:where(:not(:is(.sx-search, .srch, .cp, [data-focus-wrap]) *):not([style*="border:0"]):not([style*="border: 0"]):not([style*="border:none"]):not(.sPlain):not(.em-plain)) {
+  border-color: var(--bs-fr) !important;
+  outline: 2px solid transparent !important;
+  box-shadow: inset 0 0 0 1px var(--bs-fr), 0 0 0 3px color-mix(in srgb, var(--bs-fr) 18%, transparent) !important;
 }
-[contenteditable="true"]:focus-visible:not([class*="rte"]):not([class*="-ce"]) {
-  outline: var(--focus-ring-width, 2px) solid var(--focus-ring-color, var(--color-accent, #405189));
-  outline-offset: 2px;
+/* Khung bao: chỉ sáng khi Ô NHẬP bên trong được focus; nút bên trong tự vẽ focus của nó */
+:is(.sx-search, .srch, .cp, [data-focus-wrap]):has(:is(input, textarea, select, [contenteditable="true"]):focus) {
+  border-color: var(--bs-fr) !important;
+  outline: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px var(--bs-fr), 0 0 0 3px color-mix(in srgb, var(--bs-fr) 18%, transparent) !important;
 }
+:is(.sx-search, .srch, .cp, [data-focus-wrap]) :where(input, textarea):focus-visible { outline: 0 !important; box-shadow: none !important; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -73,6 +129,7 @@ html[data-bs-theme="dark"] img, html[data-bs-theme="dark"] video { filter: none;
   --color-body-text: #c5cde0;      /* 10.1:1 */
   --color-body-muted: #9aa5bf;     /* 6.5:1 */
   --color-accent: var(--brand-ink, #8fb0ec);         /* 7.4:1 */
+  --color-admin-primary: var(--brand-solid, #2050a0); /* nền dưới chữ trắng — như chế độ sáng */
   --focus-ring-color: var(--brand-ink, #8fb0ec);
   --color-brand-gold-text: #e0b028;/* 8.6:1 trên nền tối */
 }

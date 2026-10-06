@@ -110,6 +110,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 /* Nhúng trong Admin Shell: Shell đã có lề 24px và tiêu đề riêng. */
 .mn-emb > div{padding:0!important;max-width:none!important;}
 </style>
+<script src="./content-ui.js"></script>
 </helmet>
 
 <div class="{{ pageCls }}" style="{{ pageStyle }}" onClick="{{ onPageClick }}">
@@ -1299,8 +1300,8 @@ class Component extends DCLogic {
   }
   copyArea(a) {
     const sc = '[menu location="' + a.k + '"]';
-    try { if (navigator.clipboard) navigator.clipboard.writeText(sc); } catch (e) {}
-    this.toast('Đã chép ' + sc + ' — chèn theo vị trí: sau này đổi trình đơn ở chỗ này thì trang tự đổi theo.', 'ri-file-copy-line');
+    try { (window.BSUI&&window.BSUI.copy?window.BSUI.copy:function(t){return navigator.clipboard.writeText(t)})(sc); } catch (e) {}
+    this.toast('Đã sao chép ' + sc + ' — chèn theo vị trí: sau này đổi trình đơn ở chỗ này thì trang tự đổi theo.', 'ri-file-copy-line');
   }
   newMenu() {
     const id = 'm' + Date.now();

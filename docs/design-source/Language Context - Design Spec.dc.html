@@ -536,7 +536,7 @@ input[type=range]{accent-color:#2050a0;}
         <div>
           <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);margin-bottom:9px;">Triển khai (Livewire 4 · Alpine)</div>
           <div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:var(--color-body-muted,#5b6275);">
-            <div>Một component Blade duy nhất: <code style="font-size:12px;color:var(--color-accent,#2050a0);">&lt;x-admin::language-context :item="$item" role="editor|compact|readonly" /&gt;</code>; biến thể A/B/C do Alpine + ResizeObserver quyết định ở client, <code style="font-size:12px;">role</code> chỉ đặt trần trên.</div>
+            <div>Một component Blade duy nhất: <code style="font-size:12px;color:var(--color-accent,#2050a0);">&lt;x-bs-admin::language-context :item="$item" role="editor|compact|readonly" /&gt;</code>; biến thể A/B/C do Alpine + ResizeObserver quyết định ở client, <code style="font-size:12px;">role</code> chỉ đặt trần trên.</div>
             <div>Chuyển ngôn ngữ = điều hướng có URL riêng <code style="font-size:12px;">?locale=en</code> (deep-link, chia sẻ được, back/forward hoạt động) — không phải state ẩn.</div>
             <div>Server trả <code style="font-size:12px;">localeSummary</code> một lần cho mọi module: <code style="font-size:12px;">[{code,name,status,sourceRev,updatedAt,can}]</code> — module mới không cần code UI.</div>
             <div>Dịch AI chạy qua queue + Echo; UI hiện trạng thái “Đang dịch…” theo từng ngôn ngữ, cho phép dịch hàng loạt nhiều ngôn ngữ cùng lúc.</div>

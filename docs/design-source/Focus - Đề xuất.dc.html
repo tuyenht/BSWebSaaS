@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link rel="stylesheet" href="admin-base.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,system-ui,sans-serif;color:var(--color-body-text,#3c4765)}
+a{color:var(--color-accent,#2050a0)}a:hover{color:var(--color-accent,#2050a0)}
+[data-bs-theme="dark"].fa,[data-bs-theme="dark"].fb{--color-body:#0f1729;--color-surface:#16203a;--color-surface-hover:#1d2845;--color-border:#202b45;--color-border-input:#6b7896;--color-heading:#eef2fa;--color-body-text:#c5cde0;--color-body-muted:#9aa5bf;--brand-ink:#8fb0ec;--color-accent:#8fb0ec;--color-admin-danger-text:#ff7355;--focus-ring-color:var(--brand-ink);color-scheme:dark}
+.pn{background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;padding:20px;display:flex;flex-direction:column;gap:18px}
+.pn h4{margin:0;font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d)}
+.it{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+.it>small{font-size:13px;color:var(--color-body-muted,#5b6275)}
+.rw{display:flex;flex-wrap:wrap;gap:20px 24px;align-items:flex-start}
+.btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:4px;font:inherit;font-size:15px;font-weight:600;cursor:pointer;border:1px solid transparent;background:transparent;transition:box-shadow .15s,background .15s}
+.btn.pri{background:var(--brand-solid,#2050a0);color:#fff}
+.btn.sec{background:var(--color-surface,#fff);border-color:var(--color-border-input,#878a99);color:var(--color-heading,#1f2b4d);font-weight:500}
+.btn.gho{color:var(--color-accent,#2050a0);font-weight:500}
+.btn.dout{background:var(--color-surface,#fff);border-color:var(--color-admin-danger-text,#c43d1f);color:var(--color-admin-danger-text,#c43d1f);font-weight:500}
+.btn.dan{background:var(--color-admin-danger-solid,#d0411e);color:#fff}
+.inp{box-sizing:border-box;width:240px;max-width:100%;min-height:44px;padding:0 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-heading,#1f2b4d);font:inherit;font-size:16px}
+.inp.err{border-color:var(--color-admin-danger-text,#c43d1f)}
+.srch{box-sizing:border-box;display:flex;align-items:center;gap:8px;width:240px;max-width:100%;min-height:44px;padding:0 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-body-muted,#5b6275)}
+.srch input{flex:1;min-width:0;border:0;outline:0 !important;box-shadow:none !important;background:transparent;font:inherit;font-size:16px;color:var(--color-heading,#1f2b4d)}
+.lnk{font-weight:500;text-decoration:underline;text-underline-offset:3px;border-radius:2px}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.tab{min-height:40px;padding:0 12px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:transparent;font:inherit;font-size:14px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;border-radius:4px 4px 0 0}
+.tab.on{color:var(--color-accent,#2050a0);border-bottom-color:var(--color-accent,#2050a0);font-weight:600}
+.sw{display:inline-flex;align-items:center;gap:10px;border:0;background:transparent;padding:0;font:inherit;font-size:14px;color:var(--color-heading,#1f2b4d);cursor:pointer;border-radius:4px}
+.sw .tr{position:relative;width:36px;height:20px;border-radius:10px;background:var(--brand-solid,#2050a0);transition:box-shadow .15s}
+.sw .tr::after{content:"";position:absolute;top:2px;left:18px;width:16px;height:16px;border-radius:50%;background:#fff}
+.cb{display:inline-flex;align-items:center;gap:10px;border:0;background:transparent;padding:0;font:inherit;font-size:14px;color:var(--color-heading,#1f2b4d);cursor:pointer;border-radius:4px}
+.cb .bx{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:var(--brand-solid,#2050a0);color:#fff;font-size:14px;transition:box-shadow .15s}
+/* A — hiện tại: vòng 2px tách 2px cho mọi phần tử */
+.fa .f,.fa :focus-visible{outline:2px solid var(--color-accent,#2050a0) !important;outline-offset:2px !important;box-shadow:none !important}
+.fa .inp.f,.fa .inp:focus-visible,.fa .srch.f,.fa .srch:focus-within{outline:2px solid var(--color-accent,#2050a0) !important;outline-offset:2px !important}
+.fa .srch input:focus-visible{outline:0 !important}
+.fa .sw.f .tr,.fa .sw:focus-visible .tr,.fa .cb.f .bx,.fa .cb:focus-visible .bx{box-shadow:none}
+/* B — đề xuất: một đường viền nhấn + quầng nhạt, không vòng tách */
+.fb .f:not(:focus-within){outline:2px solid transparent !important;outline-offset:2px !important}
+.fb .btn.pri.f:not(:focus-within),.fb .btn.dan.f:not(:focus-within){box-shadow:inset 0 0 0 2px currentColor,0 0 0 3px color-mix(in srgb,var(--focus-ring-color,var(--color-accent,#2050a0)) 30%,transparent)}
+.fb .btn.sec.f:not(:focus-within),.fb .btn.dout.f:not(:focus-within){border-color:var(--focus-ring-color,var(--color-accent,#2050a0));box-shadow:inset 0 0 0 1px var(--focus-ring-color,var(--color-accent,#2050a0)),0 0 0 3px color-mix(in srgb,var(--focus-ring-color,var(--color-accent,#2050a0)) 18%,transparent)}
+.fb .btn.gho.f:not(:focus-within){background:color-mix(in srgb,var(--focus-ring-color,var(--color-accent,#2050a0)) 8%,transparent);box-shadow:inset 0 0 0 2px var(--focus-ring-color,var(--color-accent,#2050a0))}
+.fb .inp.f:not(:focus-within),.fb .srch.f:not(:focus-within){border-color:var(--focus-ring-color,var(--color-accent,#2050a0)) !important;box-shadow:inset 0 0 0 1px var(--focus-ring-color,var(--color-accent,#2050a0)),0 0 0 3px color-mix(in srgb,var(--focus-ring-color,var(--color-accent,#2050a0)) 18%,transparent) !important;outline:2px solid transparent !important}
+.fb .inp.err.f:not(:focus-within){border-color:var(--color-admin-danger-text,#c43d1f) !important;box-shadow:inset 0 0 0 1px var(--color-admin-danger-text,#c43d1f),0 0 0 3px color-mix(in srgb,var(--color-admin-danger-text,#c43d1f) 18%,transparent) !important}
+.fb .lnk.f:not(:focus-within){background:color-mix(in srgb,var(--focus-ring-color,var(--color-accent,#2050a0)) 10%,transparent);box-shadow:0 0 0 2px var(--focus-ring-color,var(--color-accent,#2050a0));text-decoration-thickness:2px}
+.fb .tab.f:not(:focus-within){background:color-mix(in srgb,var(--focus-ring-color,var(--color-accent,#2050a0)) 8%,transparent);box-shadow:inset 0 0 0 2px var(--focus-ring-color,var(--color-accent,#2050a0))}
+.fb .sw.f:not(:focus-within) .tr,.fb .cb.f:not(:focus-within) .bx{box-shadow:0 0 0 2px var(--focus-inner,var(--color-surface,#fff)),0 0 0 4px var(--focus-ring-color,var(--color-accent,#2050a0))}
+@media (prefers-reduced-motion:reduce){.btn,.sw .tr,.cb .bx{transition:none}}
+</style>
+</helmet>
+<section id="t1" style="padding:32px;display:flex;flex-direction:column;gap:20px;">
+  <header style="display:flex;flex-direction:column;gap:6px;max-width:880px;">
+    <h1 style="margin:0;font-size:22px;font-weight:600;color:var(--color-heading,#1f2b4d);">Kiểu focus — so sánh</h1>
+    <p style="margin:0;font-size:15px;line-height:1.55;color:var(--color-body-muted,#5b6275);text-wrap:pretty;">Mọi phần tử bên dưới đang ở trạng thái focus. Bấm Tab trong từng khung để thử thật. Đề xuất <a href="#1b">1b</a>: bỏ vòng tách khỏi nút và ô nhập — focus chỉ là một đường viền nhấn 2px + quầng nhạt, nên không còn cảm giác "viền đôi".</p>
+  </header>
+  <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+    <sc-for list="{{ opts }}" as="o" hint-placeholder-count="2">
+      <div id="{{ o.id }}" style="flex:1 1 560px;max-width:720px;min-width:0;display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span style="display:inline-flex;align-items:center;min-height:26px;padding:0 10px;border-radius:13px;background:var(--brand-solid,#2050a0);color:#fff;font-size:13px;font-weight:700;">{{ o.id }}</span>
+          <strong style="font-size:16px;color:var(--color-heading,#1f2b4d);">{{ o.name }}</strong>
+          <span style="font-size:14px;color:var(--color-body-muted,#5b6275);">{{ o.sub }}</span>
+        </div>
+        <sc-for list="{{ o.themes }}" as="t" hint-placeholder-count="2">
+          <div class="{{ t.cls }}" data-bs-theme="{{ t.theme }}">
+            <div class="pn">
+              <h4>{{ t.label }}</h4>
+              <div class="rw">
+                <div class="it"><button class="btn pri f"><i class="ri-save-3-line" aria-hidden="true"></i>Lưu</button><small>Chính</small></div>
+                <div class="it"><button class="btn sec f">Xem trước</button><small>Thường</small></div>
+                <div class="it"><button class="btn gho f">Bỏ chọn</button><small>Ghost</small></div>
+                <div class="it"><button class="btn dout f"><i class="ri-delete-bin-line" aria-hidden="true"></i>Xóa</button><small>Viền đỏ</small></div>
+                <div class="it"><button class="btn dan f"><i class="ri-delete-bin-line" aria-hidden="true"></i>Xóa vĩnh viễn</button><small>Đỏ</small></div>
+              </div>
+              <div class="rw">
+                <div class="it"><input class="inp" value="Cơ khí An Vinh" aria-label="Thường"><small>Ô nhập · thường</small></div>
+                <div class="it"><input class="inp f" value="Cơ khí An Vinh" aria-label="Focus"><small>Ô nhập · focus</small></div>
+                <div class="it"><input class="inp err f" value="anvinh@" aria-label="Lỗi" aria-invalid="true"><small>Ô lỗi · focus (giữ màu lỗi)</small></div>
+                <div class="it"><div class="srch f" data-focus-wrap=""><i class="ri-search-line" aria-hidden="true"></i><input placeholder="Tìm bài viết" aria-label="Tìm kiếm" style="border:0;"></div><small>Khung tìm kiếm · focus</small></div>
+              </div>
+              <div class="rw" style="align-items:center;">
+                <div class="it"><a href="#t1" class="lnk f">Quản lý ngôn ngữ</a><small>Liên kết</small></div>
+                <div class="it"><div class="tabs" role="tablist"><button class="tab on" role="tab" aria-selected="true">Tất cả</button><button class="tab f" role="tab" aria-selected="false">Đã đăng</button></div><small>Tab</small></div>
+                <div class="it"><button class="sw f" role="switch" aria-checked="true"><span class="tr" aria-hidden="true" data-focus-shape=""></span>Hiển thị cho khách</button><small>Công tắc</small></div>
+                <div class="it"><button class="cb f" role="checkbox" aria-checked="true"><span class="bx" aria-hidden="true" data-focus-shape=""><i class="ri-check-line"></i></span>Chọn bài</button><small>Ô chọn</small></div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ o.hasAudit }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);">
+            <strong style="font-size:15px;color:var(--color-heading,#1f2b4d);">Rà soát 1b (05/10)</strong>
+            <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6;color:var(--color-body-text,#3c4765);display:flex;flex-direction:column;gap:4px;">
+              <sc-for list="{{ o.audit }}" as="a" hint-placeholder-count="4"><li>{{ a }}</li></sc-for>
+            </ul>
+          </div>
+        </sc-if>
+        <ul style="margin:0;padding-left:18px;font-size:14px;line-height:1.6;color:var(--color-body-text,#3c4765);display:flex;flex-direction:column;gap:4px;">
+          <sc-for list="{{ o.notes }}" as="n" hint-placeholder-count="3"><li>{{ n }}</li></sc-for>
+        </ul>
+      </div>
+    </sc-for>
+  </div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const th = cls => [{ cls, theme: 'light', label: 'Sáng' }, { cls, theme: 'dark', label: 'Tối' }];
+    return {
+      opts: [
+        { id: '1a', name: 'Hiện tại', sub: 'vòng 2px tách 2px', themes: th('fa'), notes: [
+          'Nút có viền và ô nhập thành hai đường song song (viền + vòng) — chỗ trông "viền đôi".',
+          'Khe 2px để lộ nền: trên thẻ tối hay hàng chọn, khe đổi màu và vòng trông rời khỏi nút.',
+          'Vòng tràn ra ngoài 4px, dễ bị cắt bởi khung có overflow:hidden.' ] },
+        { id: '1b', name: 'Đề xuất', sub: 'viền nhấn + quầng nhạt', themes: th('fb'), notes: [
+          'Nút viền, ô nhập, khung tìm kiếm: viền chính nó thành 2px màu nhấn + quầng 3px nhạt. Một đường, không khe.',
+          'Nút đặc (Chính, Đỏ): viền trắng 2px bên trong + quầng ngoài — không lệch kích thước, không bị cắt.',
+          'Ghost, tab, liên kết: nền nhạt + viền 2px sát chữ. Ô lỗi giữ màu đỏ khi focus.',
+          'Công tắc và ô chọn nhỏ hơn 24px nên vẫn giữ vòng tách — viền sát sẽ quá mảnh để thấy.',
+          'Tương phản viền focus ≥ 3:1 ở cả sáng và tối (màu nhấn qua --color-accent / --brand-ink). Chỉ hiện khi dùng bàn phím (:focus-visible); ô nhập hiện cả khi bấm chuột.' ],
+          hasAudit: true, audit: [
+            'Đã sửa — khung tìm kiếm có hai khung lồng nhau (ảnh của bạn): ô bên trong bị luật chung của admin-base.css tô viền + quầng. Luật đó chỉ bỏ qua ô có chữ "border:0" viết inline, nên ô không viền viết bằng class vẫn bị tô. Khi áp chuẩn: đổi sang bỏ qua mọi ô nằm trong khung bao (.sx-search, .srch…), không dựa vào chuỗi style.',
+            'Đã sửa — chế độ tương phản cao của Windows xóa box-shadow, nên outline:0 làm mất hẳn focus. Nay giữ outline 2px trong suốt: bình thường không thấy, ở chế độ đó hệ thống tự tô màu.',
+            'Lệch hiện trạng — admin-base.css hiện đã dùng viền nhấn + quầng cho ô nhập, nhưng trang chuẩn vẽ ô "Focus" bằng vòng tách. Áp 1b là thống nhất cả hai về một kiểu.',
+            'Giới hạn — quầng 3px nằm ngoài phần tử nên khung có overflow:hidden vẫn cắt quầng; viền 2px bên trong không bị cắt nên focus vẫn đủ thấy. Quầng chỉ để trang trí, không tính vào tương phản.',
+            'Chưa kiểm được — Safari iOS, Firefox, trình đọc màn hình thật.' ] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -200,7 +200,7 @@ class Component extends DCLogic {
   edit(b){ const rk=b.region||'inline'; this.setState({ addOpen:true, editId:b.id, newName:b.name, newRegion:rk }); }
   openContent(){ const b=this.BLOCKS.find(x=>x.id===this.state.editId); this.setState({addOpen:false,editId:null}); this.notify('Mở "'+(b?b.name:'khối')+'" trong Trình dựng…','ri-edit-2-line'); try{ window.location.href='Page%20Builder%20v3.dc.html?block='+(b?b.id:'')+'&name='+encodeURIComponent(b?b.name:'')+'&return='+encodeURIComponent('Block Library - Options.dc.html'); }catch(e){} }
   dup(b){ this.notify('Đã nhân bản "'+b.name+'"'); }
-  copyRef(b){ this.notify('Đã chép mã tham chiếu: block_id '+b.id,'ri-file-copy-line'); }
+  copyRef(b){ this.notify('Đã sao chép mã tham chiếu: block_id '+b.id,'ri-file-copy-line'); }
   openUsage(b){ this.setState({usageId:b.id}); }
   askDel(b){ this.setState({delId:b.id}); }
   confirmDel(){ const b=this.BLOCKS.find(x=>x.id===this.state.delId); this.setState({delId:null}); if(b) this.notify('Đã xóa "'+b.name+'"','ri-delete-bin-line'); }

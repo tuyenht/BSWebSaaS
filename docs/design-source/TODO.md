@@ -1,19 +1,67 @@
-# Việc còn lại — cập nhật 04/10/2026
+# Việc còn lại — cập nhật 05/10/2026
+
+## ~~D0-3 phần 2~~ — xong 05/10: 8 mẫu trang `#mau-trang` (`#mau-1` … `#mau-8`) + kiểm hiển thị đo bằng `_audit/w360.html` — xem README D0-3 › Phần 2.
+
+## D0-3 — chuyển màn sang chuẩn về bố cục (05/10, từ `#mau-trang`)
+- Admin Shell: cụm "Chưa lưu · Bỏ thay đổi · Lưu thay đổi" ở đầu trang Cài đặt → thanh Lưu dính đáy ("N thay đổi chưa lưu · N lỗi · Xem lỗi đầu tiên · Bỏ thay đổi · Lưu"); `onDirty` nhận SỐ (Shell đang ép true/false) + `onInvalid(n)` + lệnh `bs-embed-cmd {act:'firstError'}` · D0-4a (mẫu 4)
+- Hộp duyệt: khung đọc giãn hết chiều cao (`100dvh` trừ khung Shell), bỏ `max-height:calc(100vh - 250px)` · D0-6a (mẫu 5)
+- Quản lý Bài viết + Quản lý Trang: chuyển vào Thùng rác không hỏi + toast "Hoàn tác" 8 giây; khung chứa dưới 768px → thẻ gọn (600–767 hai cột) · lượt sửa màn danh sách (mẫu 1)
+- Page Editor - Options: co theo khung chứa (bỏ Tweak thiết bị làm chuẩn co giãn) + dòng "đã lưu" bỏ "Bản nháp #id" · D1-4d (mẫu 3)
+- Trang chuẩn: vùng cuộn bên trong `.tw` ở `#he-thong` (khung 390/768/1240) và phần tử `overflow:hidden` ở `#dieu-khien` khi bật "Chữ lớn" — soát bằng mắt xem có cắt chữ không · lượt tách CSS (sau D0-3)
+
+## D0-3 — chuyển màn sang chuẩn về chữ (05/10, từ Bảng thuật ngữ `#thuat-ngu`)
+- Quản lý Bài viết - Options + Quản lý Trang - Options: "Xóa tất cả" → "Bỏ lọc"; "Đặt lịch" → "Hẹn giờ đăng"; nhãn trạng thái đọc từ BSCW.UI (Đã hẹn giờ · Không công khai · Đã gỡ khỏi website) · lượt sửa màn danh sách
+- Quản lý Trang - Options: bỏ nhãn tự khai "Đã xuất bản / Đã lên lịch / Riêng tư" → BSCW.UI · lượt sửa màn danh sách
+- Page Editor - Options: "Lưu trữ" → "Gỡ khỏi website" / "Đã gỡ khỏi website" · D1-4d
+- Admin Shell: mục "Khách hàng" của nhóm bán hàng (người đặt hàng) → "Người mua" · D0-4a
+- 18 màn còn lại: nhãn nút AI theo C.15 (gộp vào dòng "D0-2 · component bổ sung" — lượt riêng sau D0-3)
+- Đồng bộ Bảng thuật ngữ (P15) của design system theo `#thuat-ngu` (bản xuất của project không có file đó) · prompt DS riêng
+- Quản lý Bài viết - Options: câu "Vai trò … không được tạo bài" (addTitle, onAdd) → "Nhóm quyền …"; chế độ tối còn nền/chữ gắn cứng (băng thông tin trắng, chữ menu "Khác" mờ #878a99/#ced4da) → token · lượt sửa màn danh sách (thấy khi kiểm D0-3s)
+- ~~Owner xem lại: repo có 3 nhóm quyền nền tảng~~ → chốt 06/10: `super_admin` Quản trị nền tảng · `support` Nhân viên hỗ trợ · `billing` Nhân viên thanh toán (bảng thuật ngữ + README D0-3)
+- Owner chốt "Đề xuất chờ owner" của bảng thuật ngữ (README D0-3)
+- Hộp duyệt: trạng thái trống "Không có bài nào chờ bạn — thành thơi nhé" có emoji (CLAUDE/DS: không emoji trong khung quản trị) · D0-6a
+
+## Cập nhật 04/10/2026
 
 ## Đã xong 04/10/2026 — D0-2 Chuẩn giao diện (phần 1: Component)
 Xem `README - D0-2 Chuẩn giao diện.md`. Kèm: L1-21a-3c (Remix 4.9.1 ở 15 file), L1-I01, L1-I02 xong; L1-I04 đóng (grep: mọi .dc.html gốc chỉ còn 4.9.1). X3B2 thanh ngôn ngữ: trang chuẩn không có nhãn chữ "Trình biên tập" — bản mới không xuống dòng.
-Còn lại từ lượt này:
-- D0-2 · kiểm hiển thị 360 / 1024 / 1440 / xoay ngang / 200% bằng `_audit/harness.html` (công cụ chụp quá giờ với trang ≈3.300 phần tử) · D0-3
-- D0-2 · đưa trang chuẩn vào registry màn của Shell khi có D0-4b · D0-4b
-- D0-2 · DS: thêm các component MỚI + sửa Button/Input/Modal/Table/Dropdown theo bảng tra · prompt DS riêng
+Còn lại từ lượt này: đã chuyển vào "Lộ trình D0" (D0-2s, 04/10).
+
+## D0-2 phần 3 — áp component bổ sung vào màn thật (rà 04/10, làm TRƯỚC D0-4a, có thể song song D0-3)
+Nguồn mẫu: `Chuẩn giao diện - Component bổ sung.dc.html`. Làm THEO CỤM MÀN — mỗi màn sửa một lần, xong một màn mới sang màn kế; mỗi màn kiểm 390 / 768 / 1240 × sáng + tối, ghi README "Kiểm hiển thị".
+Thứ tự (theo số component chạm tới / màn): 
+1. Page Editor - Options · length-field (tiêu đề, tiêu đề + mô tả Google — bỏ countStyle/trackStyle qua hole, dùng data-b + lớp CSS) · search-preview (cắt theo bề rộng chữ, 2 dòng trên điện thoại) · ai-assist (nhãn theo bảng dưới) · save-status (6 trạng thái) · image-field cho ảnh đại diện + OG.
+2. Quản lý Bài viết - Options · cùng 5 component như (1).
+3. AI Writer Panel v2 · Hộp duyệt · length-field + ai-assist.
+4. Việc AI đang chạy (ai-job) ở 8 màn: Language Context, Hàng đợi ảnh, Kế hoạch SEO, Vận hành AI, Cài đặt nội dung AI, Admin Shell (thanh ngôn ngữ), AI Writer, Page Editor — một câu chung: "Đang dịch… 4/6", "Lỗi — đã hoàn N từ AI", "Đã hủy — không trừ từ AI nào cho N ô chưa chạy".
+5. Integrations Panel · save-status.
+6. Prop `lang` · `shared` (chip VI / 🔒 Chung) thay chip tự vẽ ở 12 màn — làm kèm khi chạm màn đó ở 1–5, phần còn lại quét cuối.
+Đợt sau (chưa dựng mẫu, điểm vững thấp): Thẻ kết nối dịch vụ (6 màn) · Ô khóa bí mật (3 màn) — dựng khi sửa Email / Đăng nhập nhanh / Integrations.
+Bảng từ nút AI (đề xuất, owner chốt ở D0-3 Bảng thuật ngữ): ô trống → "Gợi ý <tên trường>" · ô đã có chữ → "Viết lại" · cả bài có chữ → "Nâng cấp bài viết" · bài trống → "Viết mới" · dịch → "Dịch" (không thêm "bằng AI" — icon ri-sparkling-2-line đã nói) · ảnh → "Tạo ảnh". Bỏ: "Dịch bằng AI", "Mở rộng lại bằng AI", "Viết tiêu đề & mô tả" (→ "Gợi ý tiêu đề & mô tả").
+Câu "mua thêm" trong ai-assist / ai-job phải đi theo Tweak "Lời mời nâng gói" (tắt → "Cần thêm? Liên hệ hỗ trợ").
+Sửa kèm khi chạm màn (từ kiểm Claude Code 04/10):
+- Block Library: nút chép mã tham chiếu phải chép thật bằng `BSUI.copy` (hiện chỉ báo, không chép — `copyRef` dòng 203), nhãn "Sao chép mã tham chiếu";
+- toast có vùng `role="status"` ở 8 màn: Page Editor · Quản lý Bài viết · Page Builder v3 · Email Settings · Trình đơn · Floating Contact · Block Library · Language Context;
+- Page Editor - Options: khung gốc dòng 66 `width:min(1240px,100%)` (hiện tràn 185px ở 390);
+- Email Settings: nút chép biến (dòng 549, JS dòng 1472–1474) đổi `aria-label` / `title` thành "Đã sao chép <biến>";
+- Language Context: mẫu thanh ngôn ngữ dòng 274–283 ở 390 chuyển sang "+N" / ô chọn như trang chuẩn (hiện tràn 54px);
+- Floating Contact: xóa mã chết `copyLabel` (dòng 439, còn chữ "Đã chép").
 
 ## Lộ trình D0 — chuyển từ track L1-21a (04/10/2026)
 Lượt D0 không đọc AUDIT.md — mọi chỉ dẫn cần thiết nằm ở đây. Định dạng: mã · việc · lượt.
 - _audit/ · thư mục kiểm thử đóng băng: mọi lượt bỏ qua _audit/ khi grep, sửa, xoá, chuyển, tìm bản trùng; không xoá · áp mọi lượt D0–D5
-- L1-21a-4 / L1-C-08 · số rút gọn cho biểu đồ (Tổng quan Shell): một hàm dùng chung trong content-ui.js; vi: K/Tr/Tỷ không khoảng trắng; en/ja/zh: Intl.NumberFormat compact; 1 chữ số thập phân chỉ khi đã rút gọn; 1 đơn vị cho cả biểu đồ theo giá trị lớn nhất; số đầy đủ qua aria-label; quy ước ghi ở trang chuẩn mục C2 + README, KHÔNG ghi CLAUDE.md · D0-3 (C2 + mẫu 7 Bảng điều khiển)
+- uploads/ · tệp đính kèm cũ của các chat (có bản sao màn cũ ở uploads/import_ready/ và tệp của dự án khác), không phải thiết kế: mọi lượt bỏ qua uploads/ khi grep, sửa, tìm bản trùng hay đối chiếu; không xóa · áp mọi lượt D0–D5
+- ~~D0-2 · kiểm hiển thị 360 / 1024 / 1440 / xoay ngang / 200% · D0-3~~ → đo xong 05/10 bằng `_audit/w360.html` (360 · 390 · 640 · 768 · 844 · 1024 · 1440, chữ thường + Chữ lớn): trang không cuộn ngang; chế độ tối, Safari/Firefox chưa kiểm — README D0-3
+- D0-2 · đưa trang chuẩn vào registry màn của Shell khi có D0-4b · D0-4b
+- D0-2 · DS: thêm các component MỚI + sửa Button/Input/Modal/Table/Dropdown theo bảng tra · prompt DS riêng · Alert: chữ dùng -text (hiện màu gốc, cảnh báo 1,65:1) và theo --fsp · Avatar: chữ tắt dùng token G2 (tokens/colors.css còn #405189, nền tối 1,96:1)
+- D0-2 · component bổ sung — ĐÃ CHỐT 04/10 ở `Chuẩn giao diện - Component bổ sung.dc.html` (phần 2 trang chuẩn, bảng tra trỏ tới). Còn: thay khung đếm ký tự tự vẽ ở Page Editor (tiêu đề, SEO) / Quản lý Bài viết / AI Writer / Hộp duyệt bằng length-field (bỏ chuỗi countStyle qua hole, §8); gom nhãn nút AI ở 18 màn theo Bảng thuật ngữ; save-status ở Page Editor / Integrations (Page Builder đã đổi chữ + màu token 04/10) · lượt riêng sau D0-3
+- D0-2 · đưa bản tương tác của Danh sách co giãn (#5a: menu trạng thái, menu bản ngôn ngữ, tab + Khác, Lọc, Sắp xếp, Chọn nhiều, hộp Đặt lịch) vào trang chuẩn mục Co giãn, kèm mẫu Bài viết / Sản phẩm / dòng Chỉ xem; xong thì xóa `Danh sách co giãn - Đã chốt.dc.html` · lượt riêng sau D0-3
+- D0-2 · Quản lý Trang: sửa/thêm bản ngôn ngữ chỉ hiện khi rê chuột lên chip mã (P14.f) → đổi thành bấm nhóm chip mở menu Sửa bản / Thêm bản như Danh sách co giãn 5a; đồng bộ thẻ gọn dưới 1024px (tab + "Khác", một nút Lọc, Sắp xếp, Chọn) cho Quản lý Trang / Bài viết / Sản phẩm; màu + nhãn trạng thái theo BSCW.UI ("Đã lên lịch" đang vàng #c78729 ~2,8:1, "Đã xuất bản" → "Đã đăng") · lượt sửa màn danh sách
+- D0-2 · tách CSS component của trang chuẩn ra admin-components.css: biến --fsp phải có mặc định trong file; lớp trùng tên .dsw (6 màn) / .st (4 màn) đổi tên hoặc gộp trước; container query cần khung chứa ở màn dùng · lượt riêng sau D0-3, trước D0-4a
+- ~~L1-21a-4 / L1-C-08 · số rút gọn cho biểu đồ~~ → xong ở D0-3 phần 1 (05/10): `BSUI.fmtCompact(n, {locale, max})` trong content-ui.js + quy ước ở trang chuẩn `#dinh-dang` + README D0-3. Áp vào Tổng quan Shell: mẫu 7 (D0-3 phần 2) rồi D0-4a.
 - L1-C-09 · `Nâng cấp nội dung.dc.html` và trình soạn (`Trình soạn nội dung.dc.html`, kiểm cả `Page Editor - Options`) không link styles.css: chèn link styles.css NGAY TRƯỚC link Google URL CHUẨN (Google phải đứng sau inter.css/styles.css theo CLAUDE.md), xong xem tay chữ nút/ô nhập · Nâng cấp nội dung: D0-6c; trình soạn: D1-4d mục 4
 - X3B2 · nút "Đi tới ô đó" ở Nâng cấp nội dung cao 19,2 px (< 44 px vùng bấm) · D0-6c
-- X3B2 · Language Context @390 "Trình biên tập" xuống 2 dòng: nếu là nút/chip/tab thì sửa để không xuống dòng (tiêu chí 8) khi đưa Thanh ngôn ngữ vào trang chuẩn · D0-2. ("ẩn hẳn" ở Đăng nhập nhanh: nếu chỉ là chữ trong đoạn văn thì không cần làm.)
+- ~~X3B2 · Language Context @390 "Trình biên tập" xuống 2 dòng: nếu là nút/chip/tab thì sửa để không xuống dòng (tiêu chí 8) khi đưa Thanh ngôn ngữ vào trang chuẩn · D0-2. ("ẩn hẳn" ở Đăng nhập nhanh: nếu chỉ là chữ trong đoạn văn thì không cần làm.)~~ → xong ở D0-2
 - Việc cho build (Claude Code xử lý khi dựng Livewire/Tailwind, không làm ở prototype): L1-F-02 chữ nghiêng; L1-F-04 tự host font Google + bỏ inter.css; L1-F-05 link font do helmet DC con gắn vào Shell; Inter-italic.woff2 được tải dù trang không dùng (từ L1-T-08) · build
 - L1-T-03 · theo dõi mã chèn của harness · đóng theo track, chỉ mở lại khi đo hồi quy font
 - L1-T-08 · face nghiêng inter.css 'loaded' ở Shell (theo dõi thụ động) · đóng theo track, chỉ mở lại khi đo hồi quy font
@@ -118,3 +166,27 @@ Xem `README - D0-1 Dọn project.md`. Còn lại từ lượt này:
    số từ hoặc tự khai hạn ngạch.
 5. **Dòng seed dự phòng** `(window.BSAI ? … : 60000)` còn lặp ở 6 file — chỉ để vẽ khung hình đầu trước khi
    `ai-quota.js` nạp xong. Bỏ được nếu runtime cho phép chờ script helmet trước lần vẽ đầu.
+
+## D0-2s2 — đã sửa, chờ đo (05/10)
+Đã sửa đủ mục 0–14 của prompt D0-2s2 + B1–B5 (rà 05/10). Trạng thái "[~]" = đã sửa trong file, chưa có số đo; chỉ đổi sang [x] khi có số đo ghi ở README "Kiểm hiển thị".
+- [x] 0 · AUDIT.md có "Kiểm D0-2 bởi Claude Code (04/10/2026)" (ký tự &lt; &gt; &amp; của bản dán đã giải mã thành < > &).
+- [~] 1 · cuộn ngang 360/390 (.sx-note, .sx-code) — chờ đo scrollWidth = clientWidth × sáng/tối × Chữ lớn.
+- [~] 2 · pill / +N / nút Dịch 44px khi pointer:coarse (.lb-sel là .lb-pill nên đã phủ) — chờ đo 768/1024 cảm ứng.
+- [~] 3 · ô tích khóa: chỉ ô mờ, tên việc màu chữ phụ — chờ đo ≥ 4,5:1.
+- [~] 4 · Dải thông báo vẽ bằng markup trang (.sx-al) + bảng tra/README ghi lý do + ngoại lệ tạm P1 — chờ đo 4 loại × sáng/tối.
+- [~] 5 · nhóm avatar dùng .avi (nền pha surface để chồng không lộ) — chờ đo.
+- [~] 6 · thanh hàng loạt chỉ đếm dòng làm được (chọn cả 5: Người viết "Gửi duyệt (2)" + bỏ qua 3; Biên tập "Đăng (4)" + bỏ qua 1); nút khóa dùng aria-disabled.
+- [x] 7 · bảng tra + README: 12 dòng.
+- [~] 8 · hover:none ở ≥1024: hiện .dl-acts thay .dl-icons — chờ đo 1024 cảm ứng.
+- [~] 9 · focus lớp bật lên (panel ngôn ngữ, Home/End, lọc, lịch); ô tìm của panel nằm ngoài role="menu" (B3 phương án A, đã đúng sẵn).
+- [x] 10 · Danh sách co giãn a:hover + placeholder; trang chuẩn a:hover.
+- [~] 11 · content-seo.js slug.hard 200 · excerpt.hard 255 — chờ kiểm BSSEO.hardCap + ô Mô tả ngắn dừng 255 ở trang bổ sung, Page Editor, Quản lý Bài viết.
+- [~] 12 · trang bổ sung: Chữ lớn (--fsp, trừ khung xem trước Google giữ cỡ thật để mô phỏng chỗ cắt), .cp code xuống dòng < 480, ô 44px khi cảm ứng, bấm đệm khung focus ô, mục lục 44px, dòng Props Sao chép.
+- [~] 13 · trang: Thùng rác xuống dòng đủ tên, đường dẫn xuống dòng < 480, title cho chỗ "…", theme đọc bs-scheme trước, bấm khung .sx-search focus ô, bỏ danh sách nhóm quyền dự phòng; README 73/255/257; LESSONS thêm 1 dòng.
+- [x] 14 · TODO: dòng DS + 6 việc "Sửa kèm khi chạm màn".
+- [x] B1 · README Việc cho backend: mâu thuẫn "quyền mới mặc định TẮT" vs PermissionRegistry.php:191 (COUNCIL).
+- [x] B2 · README Việc cho backend: các việc repo TB 14–17, 20, Thấp 16/18/21 (alt đề xuất max:188).
+- [x] B4 · nút hàng loạt khóa bằng aria-disabled + câu lý do.
+- [x] B5 · README Alert: ngoại lệ tạm P1, gỡ khi DS sửa.
+- [ ] Đo: 360/390/768/1024/1240/1440 × sáng/tối × Chữ lớn (harness `_audit/harness.html`); pointer:coarse / hover:none → Claude Code (DevTools Protocol) vì môi trường thiết kế không giả lập được.
+- [ ] Xuất zip gửi Claude Code sau khi verifier không còn báo lỗi.

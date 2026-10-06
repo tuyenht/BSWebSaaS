@@ -19,6 +19,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
 <script src="./platform-config.js"></script>
+<script src="./content-ui.js"></script>
 <script src="ai-quota.js"></script>
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <style>
@@ -288,7 +289,7 @@ class Component extends DCLogic {
   delCh(k){this.setState(st=>({dirty:true,channels:st.channels.filter(c=>c.key!==k)}));}
   addPreset(k){this.setState(st=>({dirty:true,presetMenu:false,channels:st.channels.concat([{key:k,on:true,value:'',tips:{vi:(this.META[k]?this.META[k].label:'')}}])}));}
   embed(){const st=this.state;const p=['theme='+st.theme];if(st.theme==='vertical'){p.push('pos='+st.pos);p.push('ox='+(st.offsetX==null?20:st.offsetX));p.push('oy='+(st.offsetY==null?24:st.offsetY));}st.channels.forEach(c=>{if(c.custom)return;if(c.on&&this.ok(c.key,c.value))p.push(c.key+'='+encodeURIComponent(c.value.trim()));});if(this.siteLocales.length>1)p.push('lang='+st.lang);if(st.theme==='horizontal'){p.push('bg1='+st.bg1.replace('#',''));p.push('bg2='+st.bg2.replace('#',''));p.push('bg3='+st.bg3.replace('#',''));}const tag='scr'+'ipt';return '<'+tag+' async src="https://'+(window.BSPLAT?window.BSPLAT.rootDomain():'example.net')+'/support/?'+p.join('&')+'"></'+tag+'>';}
-  copy(){const code=this.embed();const done=()=>{this.setState({copied:true});clearTimeout(this._c);this._c=setTimeout(()=>this.setState({copied:false}),1600);this.notify('Đã sao chép mã nhúng');};try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(code).then(done,()=>this.fb(code,done));}else this.fb(code,done);}catch(e){this.fb(code,done);}}
+  copy(){const code=this.embed();const done=()=>{this.setState({copied:true});clearTimeout(this._c);this._c=setTimeout(()=>this.setState({copied:false}),1600);this.notify('Đã sao chép mã nhúng');};try{if(navigator.clipboard&&navigator.clipboard.writeText){(window.BSUI&&window.BSUI.copy?window.BSUI.copy:function(t){return navigator.clipboard.writeText(t)})(code).then(done,()=>this.fb(code,done));}else this.fb(code,done);}catch(e){this.fb(code,done);}}
   fb(code,done){try{const ta=document.createElement('textarea');ta.value=code;ta.style.position='fixed';ta.style.opacity='0';document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);done();}catch(e){this.notify('Hãy chọn & Ctrl+C');}}
   seg(a){return 'padding:7px 13px;border:0;border-radius:6px;font:inherit;font-size:12.5px;font-weight:'+(a?'600':'500')+';color:'+(a?'var(--brand-fg)':'var(--color-body-muted, #878a99)')+';background:'+(a?'var(--color-surface, #fff)':'transparent')+';cursor:pointer;'+(a?'box-shadow:0 1px 2px rgba(56,65,74,.15);':'');}
   segI(a){return 'width:36px;height:28px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:6px;cursor:pointer;color:'+(a?'var(--brand-fg)':'var(--color-body-muted, #878a99)')+';background:'+(a?'var(--color-surface, #fff)':'transparent')+';'+(a?'box-shadow:0 1px 2px rgba(56,65,74,.15);':'');}

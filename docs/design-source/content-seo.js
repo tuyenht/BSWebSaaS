@@ -64,20 +64,21 @@
     title: { min: 20, best: [30, 60], display: 60, max: 100, cut: 'Google sẽ cắt bớt khi hiện' },
     seoTitle: { min: 20, best: [35, 60], display: 60, max: 80, cut: 'Google sẽ cắt bớt khi hiện' },
     seoDesc: { min: 70, best: [150, 160], display: 160, max: 200, cut: 'Google chỉ hiện khoảng 160 ký tự đầu' },
-    excerpt: { min: 80, best: [120, 200], display: 200, max: 240, cut: 'thẻ tin sẽ cắt bớt' },
+    excerpt: { min: 80, best: [120, 200], display: 200, max: 240, hard: 255, cut: 'thẻ tin sẽ cắt bớt' },
     alt: { min: 10, best: [25, 125], display: 125, max: 150, cut: 'trình đọc sẽ cắt bớt' },
-    slug: { min: 3, best: [10, 60], display: 75, max: 90, cut: 'dài quá khó chia sẻ' }
+    slug: { min: 3, best: [10, 60], display: 75, max: 90, hard: 200, cut: 'dài quá khó chia sẻ' }
   };
 
   /* Dải màu theo độ dài: xám (trống) → vàng (ngắn) → xanh dương (gần đủ) → xanh lá (đẹp)
      → vàng (vượt vùng hiển thị) → đỏ (vượt giới hạn). Luôn kèm nhãn chữ — không bao giờ chỉ dùng màu. */
   var BANDS = {
-    empty: { ink: '#adb5bd', fill: '#dee2e6', note: '' },
-    short: { ink: '#a9761d', fill: '#f7b84b', note: 'còn quá ngắn' },
-    near: { ink: '#1c7ab0', fill: '#299cdb', note: 'gần đủ' },
-    good: { ink: '#0a7f70', fill: '#0ab39c', note: 'vừa đẹp' },
-    long: { ink: '#a9761d', fill: '#f7b84b', note: '' },
-    over: { ink: '#c9412a', fill: '#f06548', note: 'quá dài, nên rút bớt' }
+    /* 04/10: chữ đếm qua token -text (≥4,5:1 sáng + tối); trước đây hex cứng: trống 2,07 · ngắn/dài 3,97 · tối 3,3 */
+    empty: { ink: 'var(--color-body-muted,#5b6275)', fill: 'transparent', note: '', icon: 'ri-edit-line' },
+    short: { ink: 'var(--color-admin-warning-text,#906405)', fill: 'var(--color-admin-warning,#f7b84b)', note: 'còn quá ngắn', icon: 'ri-arrow-up-line' },
+    near: { ink: 'var(--color-admin-info-text,#026fa2)', fill: 'var(--color-admin-info,#299cdb)', note: 'gần đủ', icon: 'ri-arrow-right-up-line' },
+    good: { ink: 'var(--color-admin-success-text,#047767)', fill: 'var(--color-admin-success,#0ab39c)', note: 'vừa đẹp', icon: 'ri-check-line' },
+    long: { ink: 'var(--color-admin-warning-text,#906405)', fill: 'var(--color-admin-warning,#f7b84b)', note: '', icon: 'ri-error-warning-line' },
+    over: { ink: 'var(--color-admin-danger-text,#bf371a)', fill: 'var(--color-admin-danger,#f06548)', note: 'quá dài, nên rút bớt', icon: 'ri-close-circle-line' }
   };
 
   function limits(field) { return LIMITS[field] || LIMITS.title; }
@@ -110,12 +111,14 @@
     return {
       band: band, len: len, note: note, text: text, over: len > L.display, limits: L,
       ink: B.ink, fill: B.fill, pct: pct,
-      countStyle: 'margin-left:auto;min-width:0;font-size:12px;font-variant-numeric:tabular-nums;text-align:right;color:' + B.ink + ';',
+      icon: B.icon, lo: lo, hi: hi, tick: tick,
+      /* chuỗi style giữ để màn cũ chạy tiếp; màn mới dùng band + data-b (CLAUDE.md §8) — xem <x-bs-admin::length-field> */
+      countStyle: 'margin-left:auto;min-width:0;font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right;color:' + B.ink + ';',
       /* vùng đẹp nhất vẽ mờ trên nền rãnh để mắt thấy ngay đích cần tới */
       trackStyle: 'position:relative;display:block;height:4px;margin-top:7px;border-radius:2px;overflow:hidden;'
-        + 'background:linear-gradient(90deg,#eff2f7 0,#eff2f7 ' + lo.toFixed(2) + '%,rgba(10,179,156,0.18) ' + lo.toFixed(2) + '%,rgba(10,179,156,0.18) ' + hi.toFixed(2) + '%,#eff2f7 ' + hi.toFixed(2) + '%);',
+        + 'background:linear-gradient(90deg,var(--color-surface-hover,#eef0f6) 0,var(--color-surface-hover,#eef0f6) ' + lo.toFixed(2) + '%,color-mix(in srgb,var(--color-admin-success,#0ab39c) 22%,transparent) ' + lo.toFixed(2) + '%,color-mix(in srgb,var(--color-admin-success,#0ab39c) 22%,transparent) ' + hi.toFixed(2) + '%,var(--color-surface-hover,#eef0f6) ' + hi.toFixed(2) + '%);',
       fillStyle: 'position:absolute;left:0;top:0;bottom:0;border-radius:2px;transition:width .15s,background-color .15s;background:' + B.fill + ';width:' + pct.toFixed(2) + '%;',
-      tickStyle: 'position:absolute;top:0;bottom:0;width:1px;background:#adb5bd;left:' + tick.toFixed(2) + '%;'
+      tickStyle: 'position:absolute;top:0;bottom:0;width:2px;background:var(--color-body-muted,#5b6275);left:' + tick.toFixed(2) + '%;'
     };
   }
 
