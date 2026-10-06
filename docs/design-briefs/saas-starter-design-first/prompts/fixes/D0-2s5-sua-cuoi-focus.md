@@ -1,6 +1,8 @@
-# D0-2s5 · Sửa cuối Focus 1b, chốt D0-2 (dán vào CHÍNH chat D0-2, SAU khi D0-3 xong)
+# D0-2s5 · Sửa cuối Focus 1b, chốt D0-2 (dán vào một CHAT MỚI, SAU khi D0-3 xong)
 
-Lượt D0-2s5: Claude Code kiểm bản zip 05/10 22:04 bằng Chromium thật (số dòng dưới đây là của bản đó). D0-2s4 đạt gần hết:
+Trước khi làm: đọc CLAUDE.md, LESSONS.md, AUDIT.md, `README - D0-2 Chuẩn giao diện.md` và `admin-base.css`. Prompt này tự đủ, không cần ngữ cảnh của chat D0-2 cũ.
+
+Lượt D0-2s5: Claude Code kiểm bản zip 05/10 22:04 bằng Chromium thật. Số dòng dưới đây là của bản đó; D0-3 đã sửa trang chuẩn và README sau đó, nên số dòng lệch thì tìm theo nội dung được nêu. D0-2s4 đạt gần hết:
 - trong khung 1b của trang Focus, Tab tới mọi phần tử có mẫu tĩnh thì khác 0 pixel, cả sáng lẫn tối (trừ liên kết);
 - ô lỗi giữ đỏ; hết khung đôi;
 - mọi chỉ báo đạt 4,55–9,7:1;
@@ -68,6 +70,6 @@ Còn 7 chỗ nhỏ. Làm xong là chốt D0-2.
 - (6) Chế độ tối không còn #405189 ở nút đặc; vạch vàng thanh bên tối khi focus rộng 2px, vòng vẫn ≥ 3:1 với nền thanh bên.
 - (7) CLAUDE.md hết `&gt;` và hết "tối `#96a1c0`"; README dòng Verifier đúng; AUDIT.md có khối "Kiểm D0-2s4 bởi Claude Code (05/10/2026)".
 
-Gọi ready_for_verification, sửa hết lỗi verifier báo. Thay dòng "Verifier 05/10 (D0-2s4)" trong README bằng dòng "Verifier 05/10 (D0-2s5): …", ghi rõ mục nào thấy tận mắt, mục nào suy ra từ code.
+Gọi ready_for_verification, sửa hết lỗi verifier báo. Verifier không trả kết quả (trang nặng, công cụ chụp quá giờ) thì không chờ: ghi [CHƯA KIỂM ĐƯỢC] vào dòng Verifier, Claude Code kiểm bằng zip. Thay dòng "Verifier 05/10 (D0-2s4)" trong README bằng dòng "Verifier 05/10 (D0-2s5): …", ghi rõ mục nào thấy tận mắt, mục nào suy ra từ code.
 
 Xuất zip project (một zip chung cho D0-3 và D0-2s5) gửi Claude Code kiểm lần chốt D0-2. Xong thì báo owner đúng một câu: "D0-2s5 xong — gửi zip cho Claude Code."
