@@ -38,5 +38,13 @@ Ngoài phạm vi: khu đăng nhập (giữ nguyên — trang lỗi D5-1 chỉ d�
 11. Chế độ "Chữ lớn" không vỡ bố cục.
 12. Đúng Bảng thuật ngữ chung (lượt D0-3).
 
+## Chất lượng hoàn thiện A–E (owner 06/10 — luật chung mọi dự án thiết kế, đi cùng 12 tiêu chí)
+Nguồn đầy đủ: luật toàn cục của Claude Code `~/.claude/rules/design-quality-bar.md`; bản rút gọn nằm trong bối cảnh chung của cả 31 prompt.
+- A. Đẹp & nhất quán — thang 4/8px, 1 nút chính mỗi vùng, cùng việc cùng component, chuyển động nhẹ (tắt khi giảm chuyển động), không giật khi tải.
+- B. Người lớn tuổi & người mới — chữ ≥ 14px (chú thích ≥ 12px), nhãn luôn hiện, (?) giải thích, không việc nào chỉ làm được bằng kéo-thả / nhấn giữ / rê chuột, phản hồi trong 1 giây, báo trước khi hết phiên, mất mạng không mất chữ.
+- C. Bàn phím & trình đọc màn hình — Tab, Esc, trả focus, 1 h1, nhãn thật, `aria-live`.
+- D. Chế độ tối & trình duyệt — chỉ token (không nền viết thẳng), ô nhập giống nhau giữa trình duyệt, chữ có dấu đúng ở font dự phòng, nhãn dài 40% không vỡ.
+- E. Đo thật, không tự khai — tương phản sáng + tối, vùng bấm 44px, bàn phím; không đo được thì [CHƯA KIỂM ĐƯỢC]. Claude Code kiểm lại mọi zip theo A–E.
+
 ## Nghiệm thu toàn bộ
 Mọi mục menu ở 2 mặt mở ra màn đã thiết kế (chỉ còn ô "Để sau" có lý do) · 10 luồng của D5-2 chạy trọn trong Shell · lưới mẫu (không chạy hết tích số): 360–1440 × sáng/tối × chữ thường/lớn, rồi từng trục — 6 nhóm quyền website + 3 nhóm quyền nền tảng · 3 chế độ duyệt · 1/3/8 ngôn ngữ · gói có/không tính năng · 4 người dùng mẫu (`#nguoi-dung-mau`) làm 12 việc chính ≤ 3 bước · Safari, Firefox, Samsung Internet và cảm ứng do Claude Code kiểm bằng zip.
