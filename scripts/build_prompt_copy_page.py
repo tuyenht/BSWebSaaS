@@ -42,6 +42,8 @@ for f in sorted((SRC / 'fixes').glob('*.md')):
 
 # Corrective prompts the owner has already run, with the day they ran it. Their cards fold away
 # on every device; the browser-local "Xong" boxes would only hide them on one browser.
+# The name Claude Design gave each round's chat: it paraphrases the first line and drops the code.
+CHAT_NAMES = {'D0-2s5': 'Focus 1b finalization'}
 FIXES_RUN = {'D0-2s': '04/10', 'D0-2s2': '05/10', 'D0-2s3': '05/10', 'D0-2s4': '05/10', 'D0-3s': '06/10'}
 
 WAVES = [
@@ -148,6 +150,10 @@ def chat_title(p):
     # lists chats in no useful order, so each card offers a short title that starts with the code.
     return p['id'] + ' · ' + re.sub(r'\s*\([^)]*\)', '', p['name']).strip()
 
+def chat_name(p):
+    n = CHAT_NAMES.get(p['id'])
+    return f' <span class="file">· chat: “{e(n)}”</span>' if n else ''
+
 def fix_card(p, ran):
     return f'''
 <article class="card{'' if ran else ' is-next'}" data-id="{p['id']}">
@@ -158,7 +164,7 @@ def fix_card(p, ran):
     <button type="button" class="btn-copy" data-copy="b-{p['id']}" data-raw="1">2 · Sao chép prompt sửa</button></span>
   </div>
   <details>
-    <summary>Xem nội dung <span class="file">{e(p['file'])}</span></summary>
+    <summary>Xem nội dung <span class="file">{e(p['file'])}</span>{chat_name(p)}</summary>
     <pre id="b-{p['id']}">{e(p['body'])}</pre>
   </details>
 </article>'''
@@ -194,7 +200,7 @@ for wid, wname, wdesc, wneed in WAVES:
     <button type="button" class="btn-copy" data-copy="{body_id}">2 · Sao chép prompt</button></span>
   </div>
   <details>
-    <summary>Xem nội dung <span class="file">{e(p['file'])}</span></summary>
+    <summary>Xem nội dung <span class="file">{e(p['file'])}</span>{chat_name(p)}</summary>
     <pre id="{body_id}">{e(p['body'])}</pre>
   </details>
 </article>''')
