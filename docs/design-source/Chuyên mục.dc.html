@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./content-workflow.js"></script>
+<script src="./ai-quota.js"></script>
+<script src="./platform-config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765)}
+a{color:var(--color-accent,#2050a0)}a:hover{color:var(--color-heading,#1f2b4d)}
+.cm-c{container-type:inline-size;min-height:100dvh;box-sizing:border-box}
+.cm-c[data-fs="l"]{--fsp:2px}
+.cm-c[data-emb="1"]{min-height:0}
+.cm{max-width:1240px;margin:0 auto;padding:24px;box-sizing:border-box;font-size:calc(14px + var(--fsp));line-height:1.5}
+.cm-c[data-emb="1"] .cm{padding:0;max-width:none}
+.cm-hd{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-start;margin-bottom:16px}
+.cm-hl{flex:1 1 320px;min-width:0}
+.cm-hr{flex:0 0 auto;margin-top:28px;display:flex;gap:8px}
+.cm-c[data-emb="1"] .cm-hr{margin-top:0;margin-left:auto}
+.cm-bc{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.cm-bc button{border:0;background:transparent;padding:0;font:inherit;color:var(--color-accent,#2050a0);cursor:pointer}
+.cm-h1{margin:4px 0;font-size:calc(20px + var(--fsp));font-weight:600;line-height:1.35;color:var(--color-heading,#1f2b4d)}
+.cm-desc{margin:0;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.cm-tb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.cm-tb .sx-search{flex:1 1 220px;min-width:0;max-width:360px}
+.cm-tot{color:var(--color-body-muted,#5b6275);font-size:calc(13px + var(--fsp));white-space:nowrap}
+.cm-sp{flex:1 1 auto}
+.cm-notes{display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px 0}
+.cm-row{position:relative;display:flex;align-items:center;gap:8px;min-height:52px;padding:6px 12px 6px 8px;border-top:1px solid var(--color-border,#e9ecf4)}
+.cm-tree .cm-row:first-child{border-top:0}
+@media (hover:hover){.cm-row:hover{background:var(--color-surface-muted,#f8f9fb)}}
+.cm-ind{flex:0 0 auto;width:0}
+.cm-row[data-lv="2"] .cm-ind{width:24px}
+.cm-row[data-lv="3"] .cm-ind{width:48px}
+.cm-grip{flex:0 0 auto;width:20px;display:flex;justify-content:center;color:var(--color-body-muted,#5b6275);cursor:grab;font-size:calc(16px + var(--fsp))}
+.cm-row[data-root="1"] .cm-grip{visibility:hidden}
+.cm-tg,.cm-tg0{flex:0 0 auto;width:32px;height:32px}
+.cm-tg{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:var(--color-body-text,#3c4765);cursor:pointer;font-size:calc(18px + var(--fsp))}
+.cm-tg:hover{background:var(--color-surface-hover,#f1f3f9)}
+.cm-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.cm-l1{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0}
+.cm-nm{border:0;background:transparent;padding:0;font:inherit;font-weight:600;color:var(--color-heading,#1f2b4d);text-align:left;cursor:pointer;overflow-wrap:anywhere;border-radius:2px}
+.cm-nm:hover{color:var(--color-accent,#2050a0);text-decoration:underline;text-underline-offset:3px}
+.cm-sub{display:flex;flex-wrap:wrap;gap:0 8px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.cm-path{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(12px + var(--fsp));overflow-wrap:anywhere}
+.cm-cs{display:none}
+.cm-cnt{flex:0 0 auto;width:96px;text-align:right;white-space:nowrap;font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765);font-variant-numeric:tabular-nums}
+.cm-lcs{flex:0 0 auto;display:flex;gap:4px;min-width:72px;justify-content:flex-end}
+.cm-lcs .lc{gap:5px;min-width:44px;justify-content:center;box-sizing:border-box}
+.cm-lcs{width:148px}
+.cm-add{box-sizing:border-box}
+.cm-acts{flex:0 0 auto;position:relative;display:flex;align-items:center;gap:4px}
+.cm-row[data-drop="in"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));box-shadow:inset 0 0 0 2px var(--color-accent,#2050a0)}
+.cm-row[data-drop="before"]::before,.cm-row[data-drop="after"]::after{content:"";position:absolute;left:8px;right:8px;height:3px;border-radius:2px;background:var(--color-accent,#2050a0)}
+.cm-row[data-drop="before"]::before{top:-2px}
+.cm-row[data-drop="after"]::after{bottom:-2px}
+.cm-row[data-drag="1"]{opacity:.55}
+.cm-foot{padding:10px 16px;border-top:1px solid var(--color-border,#e9ecf4);font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);display:flex;gap:8px;align-items:flex-start}
+.cm-menu{width:300px;padding:6px;max-height:min(70dvh,520px);overflow:auto}
+.cm-mi{display:flex;align-items:flex-start;gap:10px;width:100%;min-height:40px;padding:8px 10px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));color:var(--color-body-text,#3c4765);text-align:left;cursor:pointer;line-height:1.45}
+.cm-mi i{font-size:calc(17px + var(--fsp));line-height:1.3;flex:0 0 auto}
+.cm-mi:hover{background:var(--color-surface-hover,#f1f3f9)}
+.cm-mi[data-danger="1"]{color:var(--color-admin-danger-text,#bf371a)}
+.cm-mi[aria-disabled="true"]{cursor:not-allowed;color:var(--color-body-muted,#5b6275)}
+.cm-mi[aria-disabled="true"]:hover{background:transparent}
+.cm-why{display:block;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);line-height:1.45}
+.cm-sep{height:1px;background:var(--color-border,#e9ecf4);margin:4px 0}
+@media (pointer:coarse){.cm-mi{min-height:44px}.cm-tg,.cm-tg0{width:44px;height:44px}.cm-grip{display:none}}
+.cm-box{padding:40px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.cm-box h2{margin:0;font-size:calc(16px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.cm-box p{margin:0;max-width:520px;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.cm-bic{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;font-size:calc(26px + var(--fsp));background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0)}
+.cm-ex{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.cm-skr{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.cm-drw{container-type:inline-size}
+.cm-f{display:flex;flex-direction:column;min-width:0}
+.cm-lb{position:relative;display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff)}
+.cm-pills{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0;overflow:hidden}
+.cm-lbi{color:var(--color-body-muted,#5b6275);font-size:18px;flex:0 0 auto;padding:0 2px}
+.cm-pill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:18px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:calc(13px + var(--fsp));white-space:nowrap;cursor:pointer;flex:0 0 auto}
+.cm-pill:hover{background:var(--color-surface-hover,#f1f3f9)}
+.cm-pill[aria-pressed="true"]{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-weight:600}
+.cm-pill .cd{display:none}
+.cm-star{color:var(--color-brand-gold,#e0b028);font-size:13px}
+.cm-lbr{display:flex;align-items:center;gap:8px;flex:0 0 auto;padding-left:8px;border-left:1px solid var(--color-border,#e9ecf4)}
+.cm-lpop{right:auto;left:0;width:280px;padding:6px}
+.cm-li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:44px;padding:6px 10px;border:0;border-radius:4px;background:transparent;font:inherit;text-align:left;cursor:pointer;color:var(--color-body-text,#3c4765)}
+.cm-li:hover{background:var(--color-surface-hover,#f1f3f9)}
+.cm-li[aria-current="true"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,var(--color-surface,#fff))}
+.cm-li b{font-weight:600;color:var(--color-heading,#1f2b4d)}
+.cm-li small{display:block;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.cm-pfx{display:flex;align-items:center;min-height:40px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);overflow:hidden}
+.cm-pfx>span{flex:0 1 auto;max-width:48%;padding:0 2px 0 12px;color:var(--color-body-muted,#5b6275);font-size:calc(13px + var(--fsp));white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cm-pfx input{flex:1 1 auto;min-width:0;min-height:38px;border:0;background:transparent;padding:8px 12px 8px 0;font:inherit;font-size:calc(14px + var(--fsp));color:var(--color-heading,#1f2b4d)}
+.cm-pfx:has([aria-invalid="true"]){border-color:var(--color-admin-danger-text,#bf371a)}
+.cm-ok{margin:6px 0 0;display:flex;gap:6px;align-items:flex-start;font-size:calc(13px + var(--fsp));color:var(--color-admin-success-text,#047767)}
+.cm-more{align-self:flex-start}
+.cm-img{display:flex;align-items:center;justify-content:center;height:120px;border:1px dashed var(--color-border-input,#8a90a2);border-radius:6px;color:var(--color-body-muted,#5b6275);background:var(--color-surface-muted,#f8f9fb)}
+.cm-cnt2{font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);margin-left:auto;font-variant-numeric:tabular-nums}
+@media (pointer:coarse){.cm-pill{height:44px}.cm-pfx{min-height:44px}}
+@container (max-width:430px){.cm-go .sx-t{display:none}.cm-go{width:44px;padding:0}.cm-quota{display:none}.cm-pill .nm{display:none}.cm-pill .cd{display:inline}}
+.cm-cf{max-width:480px;max-height:calc(100dvh - 32px);overflow:auto;text-align:left;box-sizing:border-box}
+.cm-cf h2{margin:0 0 6px;font-size:calc(18px + var(--fsp));font-weight:600;line-height:1.4;color:var(--color-heading,#1f2b4d);text-align:center;overflow-wrap:anywhere}
+.cm-cf .cm-lead{margin:0 0 12px;text-align:center;color:var(--color-body-text,#3c4765)}
+.cm-cfb{display:flex;flex-direction:column;gap:14px}
+.cm-fs{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+.cm-fs legend{padding:0;margin:0 0 6px;font-weight:600;color:var(--color-heading,#1f2b4d)}
+.cm-os{display:block;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.cm-ul{margin:4px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:2px}
+.cm-cf .cf-f .sx-btn{flex:1 1 auto;max-width:100%}
+.cm-cf .cf-f .sx-btn .sx-t{overflow:hidden;text-overflow:ellipsis}
+@media (max-width:479px){.cm-cf .cf-f .sx-btn{flex:1 1 100%}}
+.cm-mvo[data-lv="2"]{margin-left:20px}
+.cm-mvo[data-lv="3"]{margin-left:40px}
+.cm-mvo .cm-os{font-size:calc(12px + var(--fsp))}
+.cm-fr{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;padding:16px}
+.cm-fr figure{margin:0;display:flex;flex-direction:column;gap:6px}
+.cm-fr figcaption{font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.cm-fr iframe{border:1px solid var(--color-border-strong,#e3e7f0);border-radius:8px;background:var(--color-body,#f4f5fa);height:900px}
+@container (max-width:599px){
+ .cm{padding:16px 12px}
+ .cm-row{padding:6px 6px 6px 2px;gap:4px}
+ .cm-grip,.cm-cnt,.cm-lcs,.cm-add{display:none}
+ .cm-cs{display:inline}
+ .cm-row[data-lv="2"] .cm-ind{width:14px}
+ .cm-row[data-lv="3"] .cm-ind{width:28px}
+ .cm-tb{padding:12px}
+ .cm-tb .sx-search{max-width:none;flex-basis:100%}
+ .cm-hr{margin-top:0;width:100%}
+ .cm-hr .sx-btn{flex:1 1 auto}
+}
+@container (max-width:767px){.cm-lcs{min-width:0}}
+</style>
+</helmet>
+<div class="cm-c" ref="{{ rootRef }}" data-fs="{{ fsAttr }}" data-emb="{{ embAttr }}">
+<sc-if value="{{ showFrames }}" hint-placeholder-val="{{ false }}">
+  <div class="cm-fr">
+    <figure><figcaption>390 px — điện thoại</figcaption><iframe title="Chuyên mục ở 390px" src="{{ frameSrc }}" style="width:390px"></iframe></figure>
+    <figure><figcaption>768 px — máy tính bảng</figcaption><iframe title="Chuyên mục ở 768px" src="{{ frameSrc }}" style="width:768px"></iframe></figure>
+    <figure><figcaption>1240 px — máy tính</figcaption><iframe title="Chuyên mục ở 1240px" src="{{ frameSrc }}" style="width:1240px"></iframe></figure>
+  </div>
+</sc-if>
+<sc-if value="{{ showMain }}" hint-placeholder-val="{{ true }}">
+<main class="cm">
+  <div class="cm-hd">
+    <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}">
+      <div class="cm-hl">
+        <nav class="cm-bc" aria-label="Đường dẫn trang"><button type="button" onClick="{{ goList }}">{{ secLabel }}</button><i class="ri-arrow-right-s-line" aria-hidden="true"></i><span aria-current="page">Chuyên mục</span></nav>
+        <h1 class="cm-h1">Chuyên mục · {{ secLabel }}</h1>
+        <p class="cm-desc">{{ descText }}</p>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showAddBtn }}" hint-placeholder-val="{{ true }}">
+      <div class="cm-hr"><button type="button" class="sx-btn pri" onClick="{{ onAddTop }}"><i class="ri-add-line" aria-hidden="true"></i><span class="sx-t">Thêm chuyên mục</span></button></div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ stLoading }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card" aria-busy="true" aria-label="Đang tải chuyên mục">
+      <div class="cm-tb"><span class="sx-sk" style="width:220px;height:36px"></span></div>
+      <div class="cm-skr" style="border-top:0"><span class="sx-sk" style="width:20px;height:20px"></span><span class="sx-sk" style="flex:1;max-width:280px;height:16px"></span><span class="sx-sk" style="width:60px;height:14px;margin-left:auto"></span></div>
+      <div class="cm-skr"><span class="sx-sk" style="width:20px;height:20px;margin-left:24px"></span><span class="sx-sk" style="flex:1;max-width:220px;height:16px"></span><span class="sx-sk" style="width:60px;height:14px;margin-left:auto"></span></div>
+      <div class="cm-skr"><span class="sx-sk" style="width:20px;height:20px;margin-left:48px"></span><span class="sx-sk" style="flex:1;max-width:180px;height:16px"></span><span class="sx-sk" style="width:60px;height:14px;margin-left:auto"></span></div>
+      <div class="cm-skr"><span class="sx-sk" style="width:20px;height:20px;margin-left:24px"></span><span class="sx-sk" style="flex:1;max-width:240px;height:16px"></span><span class="sx-sk" style="width:60px;height:14px;margin-left:auto"></span></div>
+      <p role="status" style="margin:0;padding:10px 16px;font-size:13px;color:var(--color-body-muted,#5b6275)">Đang tải chuyên mục…</p>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ stError }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card"><div class="cm-box">
+      <span class="cm-bic" style="background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)"><i class="ri-wifi-off-line" aria-hidden="true"></i></span>
+      <h2>Chưa tải được danh sách chuyên mục</h2>
+      <p role="alert">Có thể mạng vừa bị ngắt. Chuyên mục của bạn vẫn an toàn — bấm Thử lại.</p>
+      <button type="button" class="sx-btn pri" onClick="{{ onRetry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button>
+    </div></section>
+  </sc-if>
+
+  <sc-if value="{{ stNoPerm }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card"><div class="cm-box">
+      <span class="cm-bic"><i class="ri-lock-2-line" aria-hidden="true"></i></span>
+      <h2>Bạn chưa có quyền quản lý chuyên mục</h2>
+      <p>{{ noPermText }}</p>
+      <button type="button" class="sx-btn" onClick="{{ goList }}"><i class="ri-arrow-left-line" aria-hidden="true"></i><span class="sx-t">Về danh sách {{ secLower }}</span></button>
+    </div></section>
+  </sc-if>
+
+  <sc-if value="{{ stLocked }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card"><div class="cm-box">
+      <span class="cm-bic"><i class="ri-lock-2-line" aria-hidden="true"></i></span>
+      <h2>{{ lockTitle }}</h2>
+      <p>{{ lockText }}</p>
+      <button type="button" class="sx-btn pri" onClick="{{ onLockBtn }}"><i class="{{ lockIcon }}" aria-hidden="true"></i><span class="sx-t">{{ lockBtn }}</span></button>
+    </div></section>
+  </sc-if>
+
+  <sc-if value="{{ stEmpty }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card"><div class="cm-box">
+      <span class="cm-bic"><i class="ri-folders-line" aria-hidden="true"></i></span>
+      <h2>Tạo chuyên mục đầu tiên</h2>
+      <p>{{ emptyText }}</p>
+      <button type="button" class="sx-btn pri" onClick="{{ onAddTop }}"><i class="ri-add-line" aria-hidden="true"></i><span class="sx-t">Tạo chuyên mục đầu tiên</span></button>
+      <p style="font-size:13px">Hoặc bấm một ví dụ để tạo ngay:</p>
+      <div class="cm-ex">
+        <sc-for list="{{ examples }}" as="ex" hint-placeholder-count="3"><button type="button" class="sx-btn sm" onClick="{{ ex.run }}"><i class="ri-add-line" aria-hidden="true"></i><span class="sx-t">{{ ex.l }}</span></button></sc-for>
+      </div>
+    </div></section>
+  </sc-if>
+
+  <sc-if value="{{ stData }}" hint-placeholder-val="{{ true }}">
+    <section class="sx-card" aria-label="Cây chuyên mục">
+      <div class="cm-tb">
+        <sc-if value="{{ showSearch }}" hint-placeholder-val="{{ false }}">
+          <label class="sx-search"><i class="ri-search-line" aria-hidden="true"></i><input type="search" aria-label="Tìm chuyên mục" placeholder="Phụ tùng" value="{{ q }}" onInput="{{ onQ }}"></label>
+        </sc-if>
+        <span class="cm-tot">{{ totalText }}</span>
+        <span class="cm-sp"></span>
+        <button type="button" class="sx-btn sm gho" onClick="{{ onExpandAll }}"><i class="ri-expand-up-down-line" aria-hidden="true"></i><span class="sx-t">Mở tất cả</span></button>
+        <button type="button" class="sx-btn sm gho" onClick="{{ onCollapseAll }}"><i class="ri-collapse-vertical-line" aria-hidden="true"></i><span class="sx-t">Thu gọn tất cả</span></button>
+      </div>
+      <sc-if value="{{ notes }}" hint-placeholder-val="{{ true }}">
+        <div class="cm-notes"><span class="sx-note"><i class="ri-tools-line" aria-hidden="true"></i>Chờ backend: bộ đếm số {{ noun }} theo website</span><span class="sx-note" data-k="owner"><i class="ri-question-line" aria-hidden="true"></i>Cần owner chốt: đếm theo chuyên mục chính hay mọi chuyên mục</span></div>
+      </sc-if>
+      <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}">
+        <div class="cm-box" style="padding:24px 16px"><p>Không có chuyên mục nào khớp "{{ q }}".</p><button type="button" class="sx-btn sm" onClick="{{ onClearQ }}"><span class="sx-t">Bỏ lọc</span></button></div>
+      </sc-if>
+      <div class="cm-tree" role="list" aria-label="{{ treeLabel }}">
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+          <div class="cm-row" role="listitem" data-lv="{{ r.lv }}" data-root="{{ r.rootAttr }}" data-drop="{{ r.drop }}" data-drag="{{ r.dragAttr }}" draggable="{{ r.draggable }}" onDragStart="{{ r.onDS }}" onDragOver="{{ r.onDO }}" onDragLeave="{{ r.onDL }}" onDrop="{{ r.onDrop }}" onDragEnd="{{ r.onDE }}">
+            <span class="cm-ind" aria-hidden="true"></span>
+            <span class="cm-grip" aria-hidden="true" title="Kéo để sắp xếp hoặc lồng vào mục khác"><i class="ri-draggable"></i></span>
+            <sc-if value="{{ r.hasKids }}"><button type="button" class="cm-tg" aria-expanded="{{ r.expStr }}" aria-label="{{ r.tgLabel }}" title="{{ r.tgLabel }}" onClick="{{ r.onToggle }}"><i class="{{ r.tgIcon }}" aria-hidden="true"></i></button></sc-if>
+            <sc-if value="{{ r.noKids }}"><span class="cm-tg0" aria-hidden="true"></span></sc-if>
+            <div class="cm-main">
+              <div class="cm-l1">
+                <button type="button" class="cm-nm" aria-label="{{ r.aria }}" onClick="{{ r.onEdit }}">{{ r.name }}</button>
+                <sc-if value="{{ r.isRoot }}"><span class="sx-chip" data-t="brand" title="{{ r.rootTip }}"><i class="ri-home-4-line" aria-hidden="true"></i>Gốc</span></sc-if>
+              </div>
+              <div class="cm-sub"><span class="cm-path">{{ r.path }}</span><span class="cm-cs">· {{ r.count }}</span><span class="cm-cs">{{ r.langShort }}</span></div>
+            </div>
+            <span class="cm-cnt" title="Số {{ noun }} gắn chuyên mục này (không tính thẻ lọc)">{{ r.count }}</span>
+            <span class="cm-lcs">
+              <sc-for list="{{ r.lcs }}" as="c"><span class="lc" title="{{ c.tip }}" aria-label="{{ c.tip }}"><span class="sx-dot" data-st="{{ c.st }}" aria-hidden="true"></span>{{ c.cd }}</span></sc-for>
+            </span>
+            <div class="cm-acts">
+              <sc-if value="{{ r.canAdd }}"><button type="button" class="sx-btn sm ic gho cm-add" aria-label="{{ r.addLabel }}" title="{{ r.addLabel }}" onClick="{{ r.onAdd }}"><i class="ri-add-line" aria-hidden="true"></i></button></sc-if>
+              <sc-if value="{{ r.noAdd }}"><span class="sx-btn sm ic gho cm-add" aria-hidden="true" style="visibility:hidden"></span></sc-if>
+              <button type="button" class="sx-btn sm ic cm-mb" aria-label="{{ r.menuLabel }}" title="{{ r.menuLabel }}" aria-haspopup="menu" aria-expanded="{{ r.menuStr }}" onClick="{{ r.onMenu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+              <sc-if value="{{ r.popOpen }}">
+                <div class="sx-pop r cm-menu" role="menu" aria-label="{{ r.menuLabel }}" data-cm-pop="menu">
+                  <sc-for list="{{ menuItems }}" as="it">
+                    <sc-if value="{{ it.sep }}"><div class="cm-sep" role="separator"></div></sc-if>
+                    <sc-if value="{{ it.item }}"><button type="button" role="menuitem" class="cm-mi" data-danger="{{ it.danger }}" aria-disabled="{{ it.dis }}" onClick="{{ it.run }}"><i class="{{ it.i }}" aria-hidden="true"></i><span><span>{{ it.l }}</span><sc-if value="{{ it.hasWhy }}"><span class="cm-why">{{ it.why }}</span></sc-if></span></button></sc-if>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      <p class="cm-foot"><i class="ri-information-line" aria-hidden="true" style="font-size:16px;line-height:1.4"></i><span>{{ footText }}</span></p>
+    </section>
+  </sc-if>
+</main>
+</sc-if>
+
+<sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov sheet" data-cm-ov="menu" onClick="{{ onOvMenu }}">
+    <div class="dlg" role="dialog" aria-modal="true" aria-label="{{ sheetTitle }}" onClick="{{ stop }}">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="dlg-h"><h2 style="margin:0;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);flex:1;min-width:0;overflow-wrap:anywhere">{{ sheetTitle }}</h2><button type="button" class="sx-btn ic gho" aria-label="Đóng" title="Đóng" onClick="{{ closeMenu }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+      <div class="dlg-b" role="menu" aria-label="{{ sheetTitle }}" style="gap:2px">
+        <sc-for list="{{ menuItems }}" as="it">
+          <sc-if value="{{ it.sep }}"><div class="cm-sep" role="separator"></div></sc-if>
+          <sc-if value="{{ it.item }}"><button type="button" role="menuitem" class="cm-mi" data-danger="{{ it.danger }}" aria-disabled="{{ it.dis }}" onClick="{{ it.run }}"><i class="{{ it.i }}" aria-hidden="true"></i><span><span>{{ it.l }}</span><sc-if value="{{ it.hasWhy }}"><span class="cm-why">{{ it.why }}</span></sc-if></span></button></sc-if>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ panOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov right" data-cm-ov="pan" onClick="{{ onOvPan }}">
+    <div class="drw cm-drw" role="dialog" aria-modal="true" aria-labelledby="cm-pan-t" onClick="{{ stop }}">
+      <div class="drw-h">
+        <h2 id="cm-pan-t" style="margin:0;flex:1;min-width:0;font-size:calc(17px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)">{{ panTitle }}</h2>
+        <button type="button" class="sx-btn ic gho" aria-label="Đóng" title="Đóng (Esc)" onClick="{{ onPanClose }}"><i class="ri-close-line" aria-hidden="true"></i></button>
+      </div>
+      <div class="drw-b">
+        <sc-if value="{{ panErrShow }}">
+          <div class="sx-al" data-k="danger" role="alert" style="display:flex;flex-direction:column;gap:8px">
+            <span>{{ panErrText }}</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="sx-btn sm" onClick="{{ panErrAct }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">{{ panErrBtn }}</span></button></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ multiLang }}">
+          <div class="cm-f">
+            <div class="cm-lb">
+              <div class="cm-pills">
+                <i class="ri-translate-2 cm-lbi" title="Bản nội dung đang sửa — đổi bản ở đây" aria-hidden="true"></i>
+                <sc-for list="{{ pills }}" as="p"><button type="button" class="cm-pill" aria-pressed="{{ p.on }}" title="{{ p.tip }}" onClick="{{ p.run }}"><span class="sx-dot" data-st="{{ p.st }}" aria-hidden="true"></span><span class="nm">{{ p.nm }}</span><span class="cd">{{ p.cd }}</span><sc-if value="{{ p.star }}"><i class="ri-star-fill cm-star" aria-label="Ngôn ngữ nguồn"></i></sc-if></button></sc-for>
+                <sc-if value="{{ moreShow }}"><button type="button" class="cm-pill" aria-haspopup="true" aria-expanded="{{ langOpenStr }}" onClick="{{ onLangMore }}" aria-label="Các bản khác"><span>+{{ moreN }}</span><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button></sc-if>
+              </div>
+              <div class="cm-lbr">
+                <span class="sx-chip cm-quota" data-t="gold" title="{{ quotaTip }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>{{ quotaText }}</span>
+                <button type="button" class="sx-btn sm ai cm-go" aria-disabled="{{ trDis }}" title="{{ trTip }}" aria-label="{{ trLabel }}" onClick="{{ onTranslate }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i><span class="sx-t">{{ trLabel }}</span></button>
+              </div>
+              <sc-if value="{{ langOpen }}">
+                <div class="sx-pop cm-lpop" data-cm-pop="lang" role="dialog" aria-label="Chọn bản ngôn ngữ">
+                  <p style="margin:2px 8px 6px;font-size:12px;color:var(--color-body-muted,#5b6275)">{{ langProg }}</p>
+                  <sc-if value="{{ langSearch }}"><label class="sx-search" style="margin:0 4px 6px"><i class="ri-search-line" aria-hidden="true"></i><input type="search" aria-label="Tìm ngôn ngữ" placeholder="English hoặc en" value="{{ langQ }}" onInput="{{ onLangQ }}"></label></sc-if>
+                  <sc-for list="{{ langList }}" as="g"><button type="button" class="cm-li" aria-current="{{ g.cur }}" onClick="{{ g.run }}"><span class="sx-dot" data-st="{{ g.st }}" aria-hidden="true"></span><span><b>{{ g.nm }}</b><small>{{ g.stl }}</small></span><sc-if value="{{ g.star }}"><i class="ri-star-fill cm-star" aria-label="Ngôn ngữ nguồn"></i></sc-if></button></sc-for>
+                  <div class="cm-sep"></div>
+                  <button type="button" class="cm-mi" onClick="{{ goLangs }}"><i class="ri-settings-3-line" aria-hidden="true"></i><span>Quản lý ngôn ngữ</span></button>
+                </div>
+              </sc-if>
+            </div>
+            <p class="lb-line" data-tone="{{ lineTone }}" style="margin-top:8px"><i class="{{ lineIcon }}" aria-hidden="true"></i><span>{{ lineText }}</span></p>
+          </div>
+        </sc-if>
+
+        <div class="cm-f">
+          <label class="sx-lab" for="cm-name">Tên chuyên mục <span class="sx-req" aria-hidden="true">*</span><sc-if value="{{ multiLang }}"><span class="lc">{{ curCd }}</span></sc-if></label>
+          <input id="cm-name" class="sx-in" type="text" maxlength="120" dir="{{ nameDir }}" placeholder="{{ namePh }}" value="{{ fName }}" onInput="{{ onName }}" onBlur="{{ onNameBlur }}" aria-invalid="{{ nameInv }}" aria-required="true" aria-describedby="cm-name-m">
+          <sc-if value="{{ nameErrShow }}"><p class="sx-err" id="cm-name-m" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ nameErr }}</span></p></sc-if>
+          <sc-if value="{{ nameHintShow }}"><p class="sx-hint" id="cm-name-m">Tên hiện ở trang chuyên mục, trình đơn và đường dẫn trang.</p></sc-if>
+        </div>
+
+        <div class="cm-f">
+          <label class="sx-lab" for="cm-slug">Đường dẫn <sc-if value="{{ multiLang }}"><span class="lc">{{ curCd }}</span></sc-if></label>
+          <div class="cm-pfx" data-focus-wrap="true"><span title="{{ slugPfx }}">{{ slugPfx }}</span><input id="cm-slug" type="text" dir="ltr" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="tin-cong-ty" value="{{ fSlug }}" onInput="{{ onSlug }}" aria-invalid="{{ slugInv }}" aria-describedby="cm-slug-m"></div>
+          <sc-if value="{{ slugErrShow }}"><p class="sx-err" id="cm-slug-m" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ slugErr }}</span></p></sc-if>
+          <sc-if value="{{ slugOkShow }}"><p class="cm-ok" id="cm-slug-m"><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span>Đường dẫn dùng được.</span></p></sc-if>
+          <p class="sx-hint">{{ slugHint }}</p>
+          <sc-if value="{{ slugRegen }}"><button type="button" class="sx-btn sm gho" style="align-self:flex-start;margin-top:4px" onClick="{{ onRegen }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Tạo lại từ tên</span></button></sc-if>
+          <sc-if value="{{ slugWarn }}"><p class="sx-al" data-k="warning" style="margin:8px 0 0;display:flex;gap:8px"><i class="ri-route-line" aria-hidden="true"></i><span>{{ slugWarnText }}</span></p></sc-if>
+        </div>
+
+        <div class="cm-f">
+          <label class="sx-lab" for="cm-parent">Chuyên mục cha</label>
+          <sc-if value="{{ parentLocked }}"><p class="sx-in lk" style="margin:0;opacity:1;background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-text,#3c4765)"><i class="ri-lock-line" aria-hidden="true"></i> {{ parentLockText }}</p></sc-if>
+          <sc-if value="{{ parentFree }}">{{ parentSelect }}<p class="sx-hint">Chỉ hiện chỗ còn đủ cấp — chỉ được lồng tối đa 3 cấp.</p></sc-if>
+          <sc-if value="{{ panSecWarn }}"><p class="sx-al" data-k="warning" role="alert" style="margin:8px 0 0">{{ panSecText }}</p></sc-if>
+        </div>
+
+        <button type="button" class="sx-btn gho cm-more" aria-expanded="{{ moreStr }}" aria-controls="cm-more" onClick="{{ onMore }}"><i class="{{ moreIcon }}" aria-hidden="true"></i><span class="sx-t">Thêm tùy chọn</span></button>
+        <sc-if value="{{ moreOpen }}">
+          <div id="cm-more" style="display:flex;flex-direction:column;gap:16px">
+            <div class="cm-f"><label class="sx-lab" for="cm-tl">Mẫu trang danh sách</label>{{ tplListSelect }}<p class="sx-hint">Lấy từ giao diện đang dùng. Để nguyên là đúng.</p></div>
+            <div class="cm-f"><label class="sx-lab" for="cm-td">{{ tplDetailLabel }}</label>{{ tplDetailSelect }}</div>
+            <div class="cm-f">
+              <label class="sx-lab" for="cm-desc">Mô tả <sc-if value="{{ multiLang }}"><span class="lc">{{ curCd }}</span></sc-if><sc-if value="{{ notes }}"><span class="sx-note">Chờ backend</span></sc-if></label>
+              <textarea id="cm-desc" class="sx-in" rows="3" dir="{{ nameDir }}" placeholder="{{ descPh }}" onInput="{{ onDesc }}" value="{{ fDesc }}"></textarea>
+              <p class="sx-hint">Hiện đầu trang chuyên mục, giúp khách hiểu nhóm này có gì.</p>
+            </div>
+            <div class="cm-f">
+              <span class="sx-lab">Ảnh đại diện <sc-if value="{{ notes }}"><span class="sx-note">Chờ backend</span></sc-if></span>
+              <div class="cm-img"><button type="button" class="sx-btn sm" onClick="{{ onPickImg }}"><i class="ri-image-add-line" aria-hidden="true"></i><span class="sx-t">Chọn ảnh</span></button></div>
+            </div>
+            <div class="cm-f">
+              <label class="sx-lab" for="cm-seot">Tiêu đề trên Google <sc-if value="{{ multiLang }}"><span class="lc">{{ curCd }}</span></sc-if><sc-if value="{{ notes }}"><span class="sx-note">Chờ backend</span></sc-if><span class="cm-cnt2">{{ seoTCount }}</span></label>
+              <input id="cm-seot" class="sx-in" type="text" dir="{{ nameDir }}" placeholder="{{ seoTPh }}" value="{{ fSeoT }}" onInput="{{ onSeoT }}">
+              <p class="sx-hint">Để trống thì dùng tên chuyên mục. Nên dưới 60 ký tự.</p>
+            </div>
+            <div class="cm-f">
+              <label class="sx-lab" for="cm-seod">Mô tả trên Google <sc-if value="{{ multiLang }}"><span class="lc">{{ curCd }}</span></sc-if><span class="cm-cnt2">{{ seoDCount }}</span></label>
+              <textarea id="cm-seod" class="sx-in" rows="3" dir="{{ nameDir }}" placeholder="Bài hướng dẫn gia công CNC, chọn vật liệu và kinh nghiệm xưởng." value="{{ fSeoD }}" onInput="{{ onSeoD }}"></textarea>
+              <p class="sx-hint">Dòng chữ dưới tiêu đề khi khách tìm trên Google. Nên 150–160 ký tự.</p>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+      <div class="drw-f">
+        <button type="button" class="sx-btn" onClick="{{ onPanClose }}"><span class="sx-t">Hủy</span></button>
+        <button type="button" class="sx-btn pri" aria-disabled="{{ savingStr }}" onClick="{{ onSave }}"><i class="{{ saveIcon }}" aria-hidden="true"></i><span class="sx-t el">{{ saveLabel }}</span></button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ mvOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov sheet" data-cm-ov="mv" onClick="{{ onOvMv }}">
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="cm-mv-t" onClick="{{ stop }}" style="width:min(520px,100%)">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="dlg-h"><h2 id="cm-mv-t" style="margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere">Đưa "{{ mvName }}" vào trong…</h2><button type="button" class="sx-btn ic gho" aria-label="Đóng" title="Đóng" onClick="{{ closeMv }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+      <div class="dlg-b">
+        <p class="sx-hint" style="margin:0">Chọn chuyên mục cha mới. Chỉ được lồng tối đa 3 cấp.</p>
+        <div role="radiogroup" aria-label="Chuyên mục cha mới" style="display:flex;flex-direction:column;gap:6px">
+          <sc-for list="{{ mvOpts }}" as="o" hint-placeholder-count="4">
+            <label class="sx-opt cm-mvo" data-lv="{{ o.lv }}"><input type="radio" name="cm-mv" checked="{{ o.on }}" disabled="{{ o.cur }}" onChange="{{ o.pick }}"><span style="min-width:0"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere">{{ o.name }}</span><span class="cm-os">{{ o.sub }}</span></span></label>
+          </sc-for>
+        </div>
+        <sc-if value="{{ mvErrShow }}"><p class="sx-al" data-k="danger" role="alert" style="margin:0"><b>Chỉ được lồng tối đa 3 cấp.</b> {{ mvErr }}</p></sc-if>
+        <sc-if value="{{ mvSecShow }}"><p class="sx-al" data-k="warning" role="alert" style="margin:0">{{ mvSec }}</p></sc-if>
+      </div>
+      <div class="dlg-f"><button type="button" class="sx-btn" onClick="{{ closeMv }}"><span class="sx-t">Hủy</span></button><button type="button" class="sx-btn pri" aria-disabled="{{ mvDis }}" onClick="{{ onMvGo }}"><span class="sx-t el">{{ mvBtn }}</span></button></div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ delOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov" data-cm-ov="del">
+    <div class="cf cm-cf" role="alertdialog" aria-modal="true" aria-labelledby="cm-del-t" aria-describedby="cm-del-d">
+      <div style="text-align:center"><span class="cf-ic" data-t="danger"><i class="{{ delIcon }}" aria-hidden="true"></i></span></div>
+      <h2 id="cm-del-t">{{ delTitle }}</h2>
+      <p class="cm-lead" id="cm-del-d">{{ delLead }}</p>
+      <div class="cm-cfb">
+        <sc-if value="{{ delHasKids }}">
+          <fieldset class="cm-fs"><legend>{{ delKidsLegend }}</legend>
+            <label class="sx-opt"><input type="radio" name="cm-dk" checked="{{ dkUp }}" onChange="{{ pickUp }}"><span>Đưa lên cấp trên<span class="cm-os">{{ dkUpSub }}</span></span></label>
+            <label class="sx-opt"><input type="radio" name="cm-dk" checked="{{ dkCas }}" onChange="{{ pickCas }}"><span>Xóa theo<span class="cm-os">{{ dkCasSub }}</span></span></label>
+          </fieldset>
+        </sc-if>
+        <sc-if value="{{ delHasItems }}">
+          <fieldset class="cm-fs"><legend>{{ delItemsLegend }}</legend>
+            <label class="sx-opt" style="flex-wrap:wrap"><input type="radio" name="cm-di" checked="{{ diMove }}" onChange="{{ pickMove }}"><span style="flex:1 1 200px;min-width:0">Chuyển sang chuyên mục<span class="cm-os">Bài giữ nguyên, chỉ đổi chuyên mục.</span></span></label>
+            <sc-if value="{{ diMove }}"><div style="padding-left:28px">{{ delTargetSelect }}</div></sc-if>
+            <sc-if value="{{ delCanDetach }}"><label class="sx-opt"><input type="radio" name="cm-di" checked="{{ diDet }}" onChange="{{ pickDet }}"><span>Bỏ gắn<span class="cm-os">{{ diDetSub }}</span></span></label></sc-if>
+          </fieldset>
+        </sc-if>
+        <sc-if value="{{ delSecShow }}"><p class="sx-al" data-k="warning" role="alert" style="margin:0">{{ delSec }} <sc-if value="{{ delSecOwner }}"><span class="sx-note" data-k="owner">Cần owner chốt</span></sc-if></p></sc-if>
+        <div class="sx-al" data-k="info"><b>Sau khi xóa:</b>
+          <ul class="cm-ul"><sc-for list="{{ delFx }}" as="f" hint-placeholder-count="3"><li>{{ f }}</li></sc-for></ul>
+          <p style="margin:6px 0 0;font-size:13px">Không hoàn tác được. Mỗi thay đổi đều ghi vào nhật ký.</p>
+          <sc-if value="{{ notes }}"><p style="margin:6px 0 0"><span class="sx-note">Chờ backend: số xem trước trước khi xóa</span></p></sc-if>
+        </div>
+      </div>
+      <div class="cf-f">
+        <button type="button" class="sx-btn" id="cm-del-cancel" onClick="{{ closeDel }}"><span class="sx-t">Hủy</span></button>
+        <button type="button" class="sx-btn dan" aria-disabled="{{ delDis }}" title="{{ delBtn }}" onClick="{{ onDelGo }}"><i class="ri-delete-bin-line" aria-hidden="true"></i><span class="sx-t">{{ delBtn }}</span></button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ cxOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov" data-cm-ov="cx">
+    <div class="cf cm-cf" role="alertdialog" aria-modal="true" aria-labelledby="cm-cx-t" aria-describedby="cm-cx-d">
+      <div style="text-align:center"><span class="cf-ic" data-t="warn"><i class="ri-error-warning-line" aria-hidden="true"></i></span></div>
+      <h2 id="cm-cx-t">{{ cxTitle }}</h2>
+      <p class="cm-lead" id="cm-cx-d">{{ cxText }}</p>
+      <div class="cf-f">
+        <button type="button" class="sx-btn" id="cm-cx-cancel" onClick="{{ cxNo }}"><span class="sx-t">{{ cxNoL }}</span></button>
+        <button type="button" class="sx-btn pri" onClick="{{ cxYes }}"><span class="sx-t">{{ cxYesL }}</span></button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<div class="tst-wrap" role="status" aria-live="polite">
+  <sc-if value="{{ toastShow }}">
+    <div class="tst"><i class="{{ toastIcon }} tst-ic" data-t="{{ toastT }}" aria-hidden="true"></i><span style="flex:1;min-width:0">{{ toastText }}</span>
+      <sc-if value="{{ toastUndo }}"><button type="button" class="sx-btn sm gho" onClick="{{ onUndo }}"><span class="sx-t">Hoàn tác</span></button></sc-if>
+      <button type="button" class="sx-btn sm ic gho" aria-label="Đóng thông báo" title="Đóng" onClick="{{ closeToast }}"><i class="ri-close-line" aria-hidden="true"></i></button>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;section&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;posts&quot;,&quot;services&quot;,&quot;projects&quot;,&quot;products&quot;],&quot;default&quot;:&quot;posts&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;siteRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Chủ website&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;langCount&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;3&quot;,&quot;8&quot;],&quot;default&quot;:&quot;3&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;screenState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;data&quot;,&quot;empty&quot;,&quot;loading&quot;,&quot;error&quot;],&quot;default&quot;:&quot;data&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;catalogOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;saveError&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;network&quot;,&quot;taxonomy_invalid&quot;],&quot;default&quot;:&quot;none&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;notes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;frames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;contentType&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;role&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;langCodes&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;siteDomain&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  static SEC() { return {
+    posts: { l: 'Tin tức', v: 'post_cat', noun: 'bài', root: 'r-posts', desc: 'Chuyên mục giúp khách tìm bài theo chủ đề.' },
+    services: { l: 'Dịch vụ', v: 'post_cat', noun: 'bài', root: 'r-services', desc: 'Chuyên mục giúp khách tìm dịch vụ theo nhóm việc.' },
+    projects: { l: 'Dự án', v: 'post_cat', noun: 'bài', root: 'r-projects', desc: 'Chuyên mục giúp khách xem dự án theo loại công trình.' },
+    products: { l: 'Sản phẩm', v: 'product_cat', noun: 'sản phẩm', root: null, desc: 'Chuyên mục giúp khách tìm sản phẩm theo dòng hàng.' } }; }
+  static LANGS() { return { vi: 'Tiếng Việt', en: 'English', ja: '日本語', zh: '中文', ko: '한국어', th: 'ไทย', fr: 'Français', ar: 'العربية' }; }
+  static ORDER() { return ['vi', 'en', 'ja', 'zh', 'ko', 'th', 'fr', 'ar']; }
+  static EX() { return { posts: ['Tin công ty', 'Kiến thức', 'Khuyến mãi'], services: ['Thiết kế', 'Gia công', 'Bảo trì'], projects: ['Nhà xưởng', 'Dân dụng', 'Đã bàn giao'], products: ['Máy móc', 'Phụ tùng', 'Vật tư'] }; }
+  static RESERVED() { return ['gioi-thieu', 'lien-he', 'trang-chu', 'tim-kiem']; }
+  static TR() { return { 'Tin công ty': ['Company news', '会社ニュース'], 'Sự kiện': ['Events', 'イベント'], 'Tuyển dụng': ['Careers', '採用情報'], 'Kiến thức gia công': ['Machining guides', '加工の知識'], 'Gia công CNC': ['CNC machining', 'CNC加工'], 'Vật liệu': ['Materials', '材料'], 'Khuyến mãi': ['Promotions', 'キャンペーン'], 'Kiến thức': ['Guides', '知識'], 'Phụ tùng': ['Spare parts', '部品'], 'Máy móc': ['Machinery', '機械'], 'Vật tư': ['Supplies', '資材'] }; }
+  static MSG() { return {
+    name_invalid: 'Nhập tên chuyên mục, ví dụ "Tin công ty".',
+    slug_invalid: 'Đường dẫn chỉ gồm chữ thường không dấu, số và dấu gạch nối, ví dụ tin-cong-ty.',
+    slug_taken: 'Đường dẫn này đã có chuyên mục/trang khác dùng — thử thêm -2',
+    parent_invalid: 'Không đặt được vào chỗ này — chọn chuyên mục cha khác.',
+    depth_exceeded: 'Chỉ được lồng tối đa 3 cấp.',
+    path_taken: 'Ở chỗ mới đã có chuyên mục cùng đường dẫn — đổi đường dẫn rồi chuyển lại.',
+    has_children: 'Chuyên mục còn mục con — chọn "Đưa lên cấp trên" hoặc "Xóa theo" rồi xóa lại.',
+    has_items: 'Chuyên mục còn bài — chọn chuyển sang chuyên mục khác hoặc bỏ gắn rồi xóa lại.',
+    section_bound: 'Đây là chuyên mục gốc của một loại nội dung — không xóa được, chỉ đổi tên được.',
+    section_changed: 'Thao tác này chuyển bài sang loại nội dung khác — xác nhận để tiếp tục.',
+    template_invalid: 'Mẫu trang này không còn trong giao diện đang dùng — chọn mẫu khác.',
+    locale_invalid: 'Ngôn ngữ này chưa bật cho website — bật ở Cài đặt › Ngôn ngữ website.',
+    target_invalid: 'Chuyên mục đích không hợp lệ — có thể vừa bị xóa, hãy chọn lại.',
+    vocabulary_mismatch: 'Chỉ chuyển được sang chuyên mục cùng loại nội dung.',
+    taxonomy_invalid: 'Chuyên mục này vừa được người khác đổi hoặc xóa — tải lại trang rồi thử lại.',
+    vocabulary_invalid: 'Loại chuyên mục này không còn dùng được — tải lại trang rồi thử lại.' }; }
+  static SEED() {
+    const N = (k, v, parent, vi, slug, n, p, m, o) => Object.assign({ k, v, parent, sec: null, n: n || 0, p: p || 0, m: m || 0, t: { vi: { name: vi, slug } }, st: {}, tpl: ['0', '0'] }, o || {});
+    const T = (en, ens, ja, jas) => { const t = {}; if (en) t.en = { name: en, slug: ens }; if (ja) t.ja = { name: ja, slug: jas }; return t; };
+    const X = (n, t, st) => { n.t = Object.assign(n.t, t || {}); if (st) n.st = st; return n; };
+    return [
+      X(N('r-posts', 'post_cat', null, 'Tin tức', 'tin-tuc', 4, 4, 1, { sec: 'posts' }), T('News', 'news', 'ニュース', 'nyusu')),
+      X(N('a1', 'post_cat', 'r-posts', 'Tin công ty', 'tin-cong-ty', 12, 8, 1), T('Company news', 'company-news', '会社ニュース', 'kaisha-nyusu')),
+      X(N('a1a', 'post_cat', 'a1', 'Sự kiện', 'su-kien', 5, 5, 0), T('Events', 'events', 'イベント', 'ibento')),
+      X(N('a1b', 'post_cat', 'a1', 'Tuyển dụng', 'tuyen-dung', 3, 3, 1), T('Careers', 'careers')),
+      X(N('a2', 'post_cat', 'r-posts', 'Kiến thức gia công', 'kien-thuc', 24, 14, 3), T('Machining guides', 'machining-guides', '加工の知識', 'kako-chishiki'), { en: 'stale' }),
+      X(N('a2a', 'post_cat', 'a2', 'Gia công CNC', 'gia-cong-cnc', 9, 6, 0), T('CNC machining', 'cnc-machining')),
+      X(N('a2b', 'post_cat', 'a2', 'Vật liệu', 'vat-lieu', 6, 4, 0)),
+      X(N('a3', 'post_cat', 'r-posts', 'Khuyến mãi', 'khuyen-mai', 0, 0, 0), T('Promotions', 'promotions')),
+      X(N('r-services', 'post_cat', null, 'Dịch vụ', 'dich-vu', 2, 2, 1, { sec: 'services' }), T('Services', 'services', 'サービス', 'sabisu')),
+      X(N('s1', 'post_cat', 'r-services', 'Gia công theo bản vẽ', 'gia-cong-theo-ban-ve', 7, 7, 1), T('Machining to drawing', 'machining-to-drawing')),
+      X(N('s2', 'post_cat', 'r-services', 'Bảo trì máy', 'bao-tri-may', 4, 4, 0)),
+      X(N('r-projects', 'post_cat', null, 'Dự án', 'du-an', 1, 1, 1, { sec: 'projects' }), T('Projects', 'projects')),
+      X(N('pj1', 'post_cat', 'r-projects', 'Nhà xưởng', 'nha-xuong', 6, 6, 0)),
+      X(N('p1', 'product_cat', null, 'Máy phay CNC', 'may-phay-cnc', 18, 18, 1), T('CNC milling machines', 'cnc-milling-machines', 'CNCフライス盤', 'cnc-furaisuban')),
+      X(N('p1a', 'product_cat', 'p1', 'Phay đứng', 'phay-dung', 7, 7, 0), T('Vertical mills', 'vertical-mills')),
+      X(N('p1b', 'product_cat', 'p1', 'Phay ngang', 'phay-ngang', 4, 4, 0), T('Horizontal mills', 'horizontal-mills')),
+      X(N('p1c', 'product_cat', 'p1', 'Trung tâm gia công', 'trung-tam-gia-cong', 5, 5, 0)),
+      X(N('p2', 'product_cat', null, 'Máy tiện', 'may-tien', 15, 15, 1), T('Lathes', 'lathes')),
+      X(N('p2a', 'product_cat', 'p2', 'Tiện CNC', 'tien-cnc', 9, 9, 0), T('CNC lathes', 'cnc-lathes')),
+      X(N('p2b', 'product_cat', 'p2', 'Tiện cơ', 'tien-co', 6, 6, 0)),
+      X(N('p3', 'product_cat', null, 'Phụ tùng', 'phu-tung', 32, 20, 1), T('Spare parts', 'spare-parts', '部品', 'buhin')),
+      X(N('p3a', 'product_cat', 'p3', 'Dao cụ', 'dao-cu', 20, 12, 0), T('Cutting tools', 'cutting-tools')),
+      X(N('p3a1', 'product_cat', 'p3a', 'Dao phay ngón', 'dao-phay-ngon', 11, 11, 0), T('End mills', 'end-mills')),
+      X(N('p3a2', 'product_cat', 'p3a', 'Mũi khoan', 'mui-khoan', 9, 9, 0)),
+      X(N('p3b', 'product_cat', 'p3', 'Đồ gá', 'do-ga', 8, 8, 0)),
+      X(N('p3c', 'product_cat', 'p3', 'Ê tô', 'e-to', 4, 4, 0)),
+      X(N('p4', 'product_cat', null, 'Vật tư tiêu hao', 'vat-tu-tieu-hao', 27, 27, 0), T('Consumables', 'consumables')),
+      X(N('p4a', 'product_cat', 'p4', 'Dầu cắt gọt', 'dau-cat-got', 12, 12, 0)),
+      X(N('p4b', 'product_cat', 'p4', 'Đá mài', 'da-mai', 15, 15, 0)),
+      X(N('p5', 'product_cat', null, 'Máy cũ đã qua sử dụng, thanh lý giá tốt cho xưởng nhỏ', 'may-cu-thanh-ly', 3, 3, 0))
+    ];
+  }
+
+  state = { nodes: Component.SEED(), collapsed: {}, q: '', menuK: null, dragK: null, dropK: null, dropZ: null, pan: null, mv: null, del: null, cx: null, toast: null, w: 1200, stOver: null, langQ: '', quota: null };
+
+  tw(k) { return (this.props || {})[k]; }
+  isFrame() { try { return /[?&]frame=1/.test(location.search); } catch (e) { return false; } }
+  secKey() { const s = this.tw('contentType') || this.tw('section'); return Component.SEC()[s] ? s : 'posts'; }
+  sec() { return Component.SEC()[this.secKey()]; }
+  roleName() { const r = this.tw('role') || this.tw('siteRole'); return (window.BSCW && window.BSCW.ROLES && window.BSCW.ROLES[r]) ? r : 'Chủ website'; }
+  langs() {
+    const lc = this.tw('langCodes'); const O = Component.ORDER();
+    if (Array.isArray(lc) && lc.length) return lc.filter(c => Component.LANGS()[c]);
+    const n = parseInt(this.tw('langCount') || '3', 10) || 3; return O.slice(0, Math.max(1, Math.min(8, n)));
+  }
+  defLang() { return this.langs()[0] || 'vi'; }
+  noun() { return this.sec().noun; }
+  quotaLeft() { if (this.state.quota != null) return this.state.quota; const P = window.BSAI && window.BSAI.plan ? window.BSAI.plan() : null; return Math.round(((P && P.words) || 60000) * 0.31); }
+  fmt(n) { return Math.round(n).toLocaleString('vi-VN'); }
+  slugify(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80); }
+  words(s) { return String(s || '').trim().split(/\s+/).filter(Boolean).length; }
+
+  /* ---- cây ---- */
+  get(ns, k) { return ns.find(x => x.k === k) || null; }
+  kids(ns, k) { return ns.filter(x => x.parent === k); }
+  level(ns, k) { let l = 0, n = this.get(ns, k); while (n) { l++; n = n.parent ? this.get(ns, n.parent) : null; } return l; }
+  height(ns, k) { const c = this.kids(ns, k); return 1 + (c.length ? Math.max.apply(null, c.map(x => this.height(ns, x.k))) : 0); }
+  sub(ns, k) { const out = [k]; this.kids(ns, k).forEach(c => { out.push.apply(out, this.sub(ns, c.k)); }); return out; }
+  secOf(ns, k) { let n = this.get(ns, k); while (n) { if (n.sec) return n.sec; n = n.parent ? this.get(ns, n.parent) : null; } return null; }
+  sum(ns, keys, f) { return keys.reduce((a, k) => a + ((this.get(ns, k) || {})[f] || 0), 0); }
+  nm(n, lg) { if (!n) return ''; const t = n.t[lg || this.defLang()] || n.t.vi; return (t && t.name) || n.t.vi.name; }
+  sl(n, lg) { if (!n) return ''; const t = n.t[lg || this.defLang()] || n.t.vi; return (t && t.slug) || n.t.vi.slug; }
+  roots(ns) { const s = this.sec(); return s.root ? ns.filter(x => x.k === s.root) : ns.filter(x => x.v === s.v && !x.parent); }
+  vocabNodes(ns) { const v = this.sec().v, out = []; const walk = (n) => { out.push(n); this.kids(ns, n.k).forEach(walk); }; ns.filter(x => x.v === v && !x.parent).forEach(walk); return out; }
+  secLabel(k) { return k ? Component.SEC()[k].l : ''; }
+  langSt(n, c) {
+    if (c === this.defLang()) return 'full';
+    const t = n.t[c]; if (!t || !t.name) return 'empty'; if (!t.slug) return 'miss';
+    return n.st && n.st[c] ? n.st[c] : 'full';
+  }
+  stLabel(st) { return { full: 'đủ nội dung', empty: 'chưa có nội dung', miss: 'còn thiếu trường', ai: 'AI vừa dịch, chưa kiểm', stale: 'lỗi thời so với bản nguồn' }[st] || ''; }
+  /* check(k, parent): luật TaxonomyRules — MAX_DEPTH 3 tính từ đỉnh cây */
+  check(ns, k, parent) {
+    const n = this.get(ns, k), L = Component.MSG();
+    if (!n) return { ok: false, code: 'taxonomy_invalid', msg: L.taxonomy_invalid };
+    if (n.sec) return { ok: false, code: 'parent_invalid', msg: 'Chuyên mục gốc của loại "' + this.secLabel(n.sec) + '" luôn ở cấp 1 — không chuyển được.' };
+    if (!parent && n.v === 'post_cat') return { ok: false, code: 'parent_invalid', msg: 'Chuyên mục bài viết phải nằm trong một loại nội dung.' };
+    if (parent && this.sub(ns, k).indexOf(parent) >= 0) return { ok: false, code: 'parent_invalid', msg: 'Không đưa được một chuyên mục vào trong chính nhánh của nó.' };
+    const P = parent ? this.get(ns, parent) : null;
+    if (P && P.v !== n.v) return { ok: false, code: 'vocabulary_mismatch', msg: L.vocabulary_mismatch };
+    const lvl = P ? this.level(ns, parent) + 1 : 1, h = this.height(ns, k);
+    if (lvl + h - 1 > 3) {
+      const why = h > 2 ? '"' + this.nm(n) + '" có ' + (h - 1) + ' cấp con nên phải ở cấp 1.' : h === 2 ? '"' + this.nm(n) + '" có 1 cấp con nên chỉ đặt được vào mục cấp 1.' : 'Mục cấp 3 không chứa thêm mục con.';
+      return { ok: false, code: 'depth_exceeded', msg: L.depth_exceeded, why };
+    }
+    const sa = this.secOf(ns, k), sb = P ? this.secOf(ns, parent) : sa;
+    return { ok: true, secFrom: sa, secTo: sb, secChange: sa !== sb, items: this.sum(ns, this.sub(ns, k), 'n'), prim: this.sum(ns, this.sub(ns, k), 'p') };
+  }
+  secText(c) { return c.items + ' bài sẽ chuyển từ ' + this.secLabel(c.secFrom) + ' sang ' + this.secLabel(c.secTo) + ' — quyền và quy trình duyệt sẽ theo ' + this.secLabel(c.secTo) + '.'; }
+  moved(ns, k, parent, beforeK, afterK) {
+    const arr = ns.map(x => Object.assign({}, x)); const i = arr.findIndex(x => x.k === k); const n = arr.splice(i, 1)[0]; n.parent = parent;
+    if (beforeK) arr.splice(arr.findIndex(x => x.k === beforeK), 0, n);
+    else if (afterK) arr.splice(arr.findIndex(x => x.k === afterK) + 1, 0, n);
+    else arr.push(n);
+    return arr;
+  }
+  doMove(k, parent, beforeK, afterK, okText) {
+    const ns = this.state.nodes, n = this.get(ns, k), c = this.check(ns, k, parent);
+    if (!c.ok) { this.toast(c.msg + (c.why ? ' ' + c.why : ''), 'err'); return; }
+    const run = () => {
+      const prev = ns, arr = this.moved(ns, k, parent, beforeK, afterK), changed = n.parent !== parent;
+      const P = parent ? this.get(ns, parent) : null;
+      let txt = okText || (changed ? 'Đã chuyển "' + this.nm(n) + '" ' + (P ? 'vào "' + this.nm(P) + '"' : 'lên cấp cao nhất') + '.' : 'Đã đổi thứ tự.');
+      if (changed && c.prim > 0) txt += ' Đã cập nhật địa chỉ ' + c.prim + ' ' + this.noun() + ', tự tạo chuyển hướng.';
+      this.setState({ nodes: arr, mv: null, cx: null, collapsed: Object.assign({}, this.state.collapsed, parent ? { [parent]: false } : {}) });
+      this.toast(txt, 'ok', () => this.setState({ nodes: prev }));
+    };
+    if (c.secChange) this.openCx({ title: 'Chuyển sang loại nội dung khác?', text: this.secText(c), yes: 'Chuyển ' + c.items + ' bài sang ' + this.secLabel(c.secTo), no: 'Hủy', run });
+    else run();
+  }
+  sibs(ns, k) { const n = this.get(ns, k); return ns.filter(x => x.parent === n.parent && x.v === n.v && (n.parent || !x.sec)); }
+  moveUp(k) { const s = this.sibs(this.state.nodes, k), i = s.findIndex(x => x.k === k); if (i > 0) this.doMove(k, s[i].parent, s[i - 1].k, null, 'Đã chuyển lên.'); this.closeMenu(); }
+  moveDown(k) { const s = this.sibs(this.state.nodes, k), i = s.findIndex(x => x.k === k); if (i >= 0 && i < s.length - 1) this.doMove(k, s[i].parent, null, s[i + 1].k, 'Đã chuyển xuống.'); this.closeMenu(); }
+  moveOut(k) { const ns = this.state.nodes, n = this.get(ns, k), P = this.get(ns, n.parent); this.closeMenu(); if (!P) return; this.doMove(k, P.parent, null, P.k); }
+
+  /* ---- toast ---- */
+  toast(text, t, undo) {
+    clearTimeout(this._tt); this._undo = undo || null;
+    this.setState({ toast: { text, t: t || 'ok', undo: !!undo } });
+    this._tt = setTimeout(() => this.setState({ toast: null }), 8000);
+  }
+  /* ---- overlay + focus ---- */
+  remember() { this._ret = document.activeElement; }
+  restore() { const el = this._ret; this._ret = null; setTimeout(() => { try { if (el && document.contains(el)) el.focus(); } catch (e) {} }, 30); }
+  focusIn(sel) { setTimeout(() => { const r = this._root || document; const el = r.querySelector(sel); if (el) try { el.focus(); } catch (e) {} }, 40); }
+  closeMenu() { if (this.state.menuK) this.setState({ menuK: null }); }
+  openMenu(k) { if (this.state.menuK === k) { this.setState({ menuK: null }); return; } this.remember(); this.setState({ menuK: k }, () => this.focusIn('[data-cm-pop="menu"] .cm-mi:not([aria-disabled="true"]), [data-cm-ov="menu"] .cm-mi:not([aria-disabled="true"])')); }
+  openCx(o) { this.remember(); this.setState({ cx: o, menuK: null }, () => this.focusIn('#cm-cx-cancel')); }
+  goto(screen, params) { if (this.tw('embedded')) { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen, params: params || {} } })); } catch (e) {} } else this.toast('Bản thật mở: ' + screen + (params && params.cat ? ' (lọc chuyên mục ' + params.cat + ')' : ''), 'info'); }
+  listKey() { return this.secKey() === 'products' ? 'catalog.list' : this.secKey() + '.list'; }
+
+  /* ---- panel thêm/sửa ---- */
+  openAdd(parent) {
+    const ns = this.state.nodes, L = this.langs(), d = { t: {}, st: {}, parent: parent || (this.sec().root || ''), tpl: ['0', '0'], desc: {}, seoT: {}, seoD: {} };
+    L.forEach(c => { d.t[c] = { name: '', slug: '', auto: true }; });
+    if (parent && this.level(ns, parent) >= 3) { this.toast('Chỉ được lồng tối đa 3 cấp. Mục cấp 3 không chứa thêm mục con.', 'err'); return; }
+    this.remember(); this.setState({ menuK: null, pan: { mode: 'add', k: null, d, init: JSON.stringify(d), lang: this.defLang(), more: false, saving: false, err: null, touched: false, langOpen: false } }, () => this.focusIn('#cm-name'));
+  }
+  openEdit(k) {
+    const n = this.get(this.state.nodes, k); if (!n) return; const L = this.langs();
+    const d = { t: {}, st: Object.assign({}, n.st), parent: n.parent || '', tpl: n.tpl.slice(), desc: Object.assign({}, n.desc || {}), seoT: Object.assign({}, n.seoT || {}), seoD: Object.assign({}, n.seoD || {}) };
+    L.forEach(c => { const t = n.t[c]; d.t[c] = { name: t ? t.name : '', slug: t ? t.slug : '', auto: !t }; });
+    this.remember(); this.setState({ menuK: null, pan: { mode: 'edit', k, d, init: JSON.stringify(d), lang: this.defLang(), more: false, saving: false, err: null, touched: false, langOpen: false } }, () => this.focusIn('#cm-name'));
+  }
+  setPan(fn) { this.setState(s => { if (!s.pan) return null; const p = Object.assign({}, s.pan, { d: JSON.parse(JSON.stringify(s.pan.d)) }); fn(p); return { pan: p }; }); }
+  panDirty() { const p = this.state.pan; return p ? (JSON.stringify(p.d) !== p.init ? 1 : 0) : 0; }
+  closePan(force) {
+    if (!force && this.panDirty()) { this.openCx({ title: 'Đóng mà chưa lưu?', text: 'Thay đổi trong chuyên mục này sẽ mất.', yes: 'Bỏ thay đổi', no: 'Tiếp tục sửa', run: () => { this.setState({ pan: null, cx: null }); this.restore(); }, keepRet: true }); return; }
+    this.setState({ pan: null }); this.restore();
+  }
+  slugErr(ns, k, c, slug, name) {
+    const M = Component.MSG();
+    if (!slug && !name) return null;
+    if (!slug || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug)) return { code: 'slug_invalid', msg: M.slug_invalid };
+    const taken = ns.some(x => x.k !== k && x.t[c] && x.t[c].slug === slug) || (c === this.defLang() && Component.RESERVED().indexOf(slug) >= 0);
+    if (taken) return { code: 'slug_taken', msg: M.slug_taken + ', ví dụ ' + slug + '-2.' };
+    return null;
+  }
+  autoSlug(d, c, name) { let s = this.slugify(name); if (!s && c !== this.defLang()) { const src = d.t[this.defLang()]; s = src && src.slug ? src.slug + '-' + c : ''; } return s; }
+  save() {
+    const P = this.state.pan; if (!P || P.saving) return;
+    const ns = this.state.nodes, d = P.d, src = this.defLang(), L = this.langs();
+    if (!d.t[src].name.trim()) { this.setPan(p => { p.touched = true; p.lang = src; }); this.focusIn('#cm-name'); return; }
+    for (let i = 0; i < L.length; i++) { const c = L[i], t = d.t[c]; if (this.slugErr(ns, P.k, c, t.slug, t.name.trim())) { this.setPan(p => { p.touched = true; p.lang = c; }); this.focusIn('#cm-slug'); return; } }
+    if (P.mode === 'edit' && d.parent !== (this.get(ns, P.k).parent || '')) { const c = this.check(ns, P.k, d.parent || null); if (!c.ok) { this.toast(c.msg + (c.why ? ' ' + c.why : ''), 'err'); return; } }
+    this.setPan(p => { p.saving = true; p.err = null; });
+    clearTimeout(this._st);
+    this._st = setTimeout(() => {
+      const se = this.tw('saveError');
+      if (se === 'network' || se === 'taxonomy_invalid') { this.setPan(p => { p.saving = false; p.err = se; }); this.focusIn('[data-cm-ov="pan"] .sx-al button'); return; }
+      this.commit();
+    }, 700);
+  }
+  commit() {
+    const P = this.state.pan, ns = this.state.nodes, d = P.d, L = this.langs();
+    const t = {}; L.forEach(c => { const x = d.t[c]; if (x.name.trim()) t[c] = { name: x.name.trim(), slug: x.slug }; });
+    const extra = { tpl: d.tpl.slice(), desc: d.desc, seoT: d.seoT, seoD: d.seoD };
+    let arr, msg;
+    if (P.mode === 'add') {
+      const k = 'n' + Date.now().toString(36);
+      arr = ns.concat([Object.assign({ k, v: this.sec().v, parent: d.parent || null, sec: null, n: 0, p: 0, m: 0, t, st: {} }, extra)]);
+      msg = 'Đã thêm "' + t[this.defLang()].name + '".';
+    } else {
+      const old = this.get(ns, P.k), slugCh = L.some(c => old.t[c] && t[c] && old.t[c].slug !== t[c].slug);
+      const st = {}; Object.keys(d.st || {}).forEach(c => { if (d.st[c] === 'ai') st[c] = 'ai'; });
+      const parCh = (old.parent || '') !== d.parent;
+      arr = ns.map(x => x.k === P.k ? Object.assign({}, x, { t, st }, extra) : x);
+      if (parCh) arr = this.moved(arr, P.k, d.parent || null);
+      const prim = this.sum(ns, this.sub(ns, P.k), 'p');
+      msg = (slugCh || parCh) ? 'Đã lưu. ' + (prim ? 'Đã cập nhật địa chỉ ' + prim + ' ' + this.noun() + ', tự tạo chuyển hướng.' : 'Tự tạo chuyển hướng từ địa chỉ cũ.') : 'Đã lưu chuyên mục.';
+    }
+    this.setState({ nodes: arr, pan: null, collapsed: Object.assign({}, this.state.collapsed, d.parent ? { [d.parent]: false } : {}) });
+    this.restore(); this.toast(msg, 'ok');
+  }
+  translate() {
+    const P = this.state.pan; if (!P) return; const src = this.defLang(), cur = P.lang, L = this.langs(), TR = Component.TR(), sn = P.d.t[src].name.trim();
+    const targets = (cur === src ? L.filter(c => c !== src) : [cur]).filter(c => !P.d.t[c].name.trim());
+    const cost = Math.ceil(Math.max(1, this.words(sn)) * 1.15) * targets.length;
+    if (!sn || !targets.length || cost > this.quotaLeft()) return;
+    this.setPan(p => { targets.forEach(c => { const tr = TR[sn]; const nm = tr && c === 'en' ? tr[0] : tr && c === 'ja' ? tr[1] : sn; p.d.t[c] = { name: nm, slug: c === 'en' ? this.slugify(nm) : (p.d.t[src].slug ? p.d.t[src].slug + '-' + c : ''), auto: false }; p.d.st[c] = 'ai'; }); });
+    this.setState({ quota: this.quotaLeft() - cost });
+    this.toast('Đã dịch ' + targets.length + ' bản, dùng ' + this.fmt(cost) + ' từ AI — không đè chữ bạn đã sửa.', 'ok');
+  }
+
+  /* ---- xóa / gộp ---- */
+  openDel(k, mode) {
+    const ns = this.state.nodes, n = this.get(ns, k); if (!n || n.sec) return;
+    const cand = this.targets(ns, k, 'up');
+    this.remember(); this.setState({ menuK: null, del: { k, mode: mode || 'delete', kids: 'up', items: 'move', target: n.parent || (cand[0] ? cand[0].k : '') } }, () => this.focusIn('#cm-del-cancel'));
+  }
+  targets(ns, k, kidsMode) { const ex = kidsMode === 'cascade' ? this.sub(ns, k) : [k]; return this.vocabNodes(ns).filter(x => ex.indexOf(x.k) < 0); }
+  delCalc() {
+    const D = this.state.del, ns = this.state.nodes; if (!D) return null;
+    const n = this.get(ns, D.k), S = this.sub(ns, D.k), kidsN = this.kids(ns, D.k).length, cas = D.kids === 'cascade';
+    const gone = cas ? S : [D.k], items = this.sum(ns, gone, 'n'), prim = this.sum(ns, gone, 'p'), menu = this.sum(ns, gone, 'm');
+    const cand = this.targets(ns, D.k, D.kids), tgt = this.get(ns, D.target), merge = D.mode === 'merge';
+    const mv = merge || D.items === 'move', tgtOk = !mv || items === 0 || (tgt && cand.some(x => x.k === tgt.k));
+    const sa = this.secOf(ns, D.k), sb = tgt ? this.secOf(ns, tgt.k) : null;
+    const secChange = this.sec().root && items > 0 && ((mv && tgt && sa !== sb) || (!mv));
+    const par = this.get(ns, n.parent), noun = this.noun();
+    return { n, S, kidsN, cas, gone, items, prim, menu, cand, tgt, merge, mv, tgtOk, sa, sb, secChange, par, noun };
+  }
+  runDel() {
+    const C = this.delCalc(); if (!C || !C.tgtOk) return; const D = this.state.del;
+    let arr = this.state.nodes.map(x => Object.assign({}, x));
+    if (!C.cas) arr.forEach(x => { if (x.parent === D.k) x.parent = C.n.parent; });
+    if (C.mv && C.tgt && C.items) arr.forEach(x => { if (x.k === C.tgt.k) { x.n += C.items; x.p += C.prim; } });
+    arr = arr.filter(x => C.gone.indexOf(x.k) < 0);
+    const red = C.gone.length + C.prim;
+    let msg = (C.merge ? 'Đã gộp "' + this.nm(C.n) + '" vào "' + this.nm(C.tgt) + '".' : 'Đã xóa "' + this.nm(C.n) + '"' + (C.gone.length > 1 ? ' và ' + (C.gone.length - 1) + ' mục con.' : '.'));
+    if (C.items) msg += C.mv ? ' Đã chuyển ' + C.items + ' ' + C.noun + (C.merge ? '' : ' sang "' + this.nm(C.tgt) + '"') + ',' : ' Đã bỏ gắn ' + C.items + ' ' + C.noun + ',';
+    msg += ' tự tạo ' + red + ' chuyển hướng.';
+    this.setState({ nodes: arr, del: null }); this.restore(); this.toast(msg, 'ok');
+  }
+
+  /* ---- vòng đời ---- */
+  componentDidMount() {
+    this._kd = (e) => {
+      if (e.key === 'Escape') {
+        const S = this.state;
+        if (S.cx) { this.setState({ cx: null }); if (!S.cx.keepRet) this.restore(); }
+        else if (S.del) { this.setState({ del: null }); this.restore(); }
+        else if (S.mv) { this.setState({ mv: null }); this.restore(); }
+        else if (S.menuK) { this.setState({ menuK: null }); this.restore(); }
+        else if (S.pan && S.pan.langOpen) this.setPan(p => { p.langOpen = false; });
+        else if (S.pan) this.closePan();
+        else return;
+        e.preventDefault(); return;
+      }
+      if (e.key === 'Tab') {
+        const r = this._root; if (!r) return; const ovs = r.querySelectorAll('[data-cm-ov]'); const ov = ovs[ovs.length - 1]; if (!ov) return;
+        const f = Array.prototype.filter.call(ov.querySelectorAll('button,input,select,textarea,[tabindex]:not([tabindex="-1"])'), el => !el.disabled && el.offsetParent !== null);
+        if (!f.length) return; const a = f[0], z = f[f.length - 1];
+        if (!ov.contains(document.activeElement)) { e.preventDefault(); a.focus(); }
+        else if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); }
+        else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+      }
+    };
+    document.addEventListener('keydown', this._kd);
+    this._md = (e) => {
+      const t = e.target; if (!t || !t.closest) return;
+      if (this.state.menuK && !this.isNarrow() && !t.closest('[data-cm-pop="menu"]') && !t.closest('.cm-mb')) this.setState({ menuK: null });
+      if (this.state.pan && this.state.pan.langOpen && !t.closest('[data-cm-pop="lang"]') && !t.closest('.cm-pill')) this.setPan(p => { p.langOpen = false; });
+    };
+    document.addEventListener('mousedown', this._md);
+    this._bu = (e) => { if (this.panDirty()) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', this._bu);
+    this._cmd = (e) => { const d = e.detail || {}; if (d.id !== this.tw('embedId')) return; if (d.act === 'save' && this.state.pan) this.save(); if (d.act === 'reset' && this.state.pan) { this.setState({ pan: null }); } if (d.act === 'firstError') this.focusIn('[aria-invalid="true"]'); };
+    document.addEventListener('bs-embed-cmd', this._cmd);
+    this._rs = () => this.measure(); window.addEventListener('resize', this._rs);
+    try { const raw = localStorage.getItem('bs-ui'); const o = raw ? JSON.parse(raw) : null; this._bsBig = !!(o && o.fontSize === 'large'); } catch (e) {}
+    if (this.tw('screenState') === 'loading') { /* giữ khung đang tải để xem */ }
+    this.forceUpdate();
+  }
+  componentWillUnmount() {
+    document.removeEventListener('keydown', this._kd); document.removeEventListener('mousedown', this._md); window.removeEventListener('beforeunload', this._bu);
+    document.removeEventListener('bs-embed-cmd', this._cmd); window.removeEventListener('resize', this._rs); if (this._ro) this._ro.disconnect();
+    clearTimeout(this._tt); clearTimeout(this._st); clearTimeout(this._rt);
+  }
+  componentDidUpdate() { const d = this.panDirty(); if (d !== this._lastDirty) { this._lastDirty = d; const f = this.tw('onDirty'); if (typeof f === 'function') f(d); } }
+  measure() { const r = this._root; if (!r) return; const w = r.clientWidth; if (Math.abs(w - this.state.w) > 1) this.setState({ w }); }
+  isNarrow() { return this.state.w < 600; }
+  setRoot(el) { if (el === this._root) return; if (this._ro) { this._ro.disconnect(); this._ro = null; } this._root = el; if (el && window.ResizeObserver) { this._ro = new ResizeObserver(() => this.measure()); this._ro.observe(el); } if (el) setTimeout(() => this.measure(), 0); }
+
+  sel(id, value, opts, onChange) {
+    const R = React; return R.createElement('select', { id, className: 'sx-in', value, onChange }, opts.map(o => R.createElement('option', { key: o[0], value: o[0], disabled: !!o[2] }, o[1])));
+  }
+
+  renderVals() {
+    const S = this.state, ns = S.nodes, sec = this.sec(), sk = this.secKey(), noun = this.noun(), L = this.langs(), src = this.defLang(), LN = Component.LANGS();
+    const notes = this.tw('notes') !== false, emb = !!this.tw('embedded'), frameMode = this.isFrame();
+    const showFrames = !!this.tw('frames') && !frameMode && !emb, narrow = this.isNarrow();
+    const can = window.BSCW && window.BSCW.can ? window.BSCW.can(this.roleName(), 'taxonomies.manage') : true;
+    const locked = sk === 'products' && this.tw('catalogOn') === false, upsell = !!this.tw('upsell');
+    const roots = this.roots(ns), treeKids = sec.root ? this.kids(ns, sec.root) : roots;
+    let st = S.stOver || this.tw('screenState') || 'data';
+    if (locked) st = 'locked'; else if (!can) st = 'noperm'; else if (st === 'data' && !treeKids.length) st = 'empty';
+    const q = S.q.trim().toLowerCase(), vn = this.vocabNodes(ns).filter(x => !sec.root || this.secOf(ns, x.k) === sk);
+    const showSearch = vn.length > 15;
+    const match = (n) => Object.keys(n.t).some(c => (n.t[c].name || '').toLowerCase().indexOf(q) >= 0 || (n.t[c].slug || '').indexOf(q) >= 0) || this.slugify(this.nm(n)).indexOf(this.slugify(q)) >= 0;
+    const keep = {}; if (q && showSearch) vn.forEach(n => { if (match(n)) { let x = n; while (x) { keep[x.k] = true; x = x.parent ? this.get(ns, x.parent) : null; } } });
+    const rows = [], menuItems = [];
+    const self = this;
+    const walk = (n, lv) => {
+      if (q && showSearch && !keep[n.k]) return;
+      const kids = this.kids(ns, n.k), open = (q && showSearch) ? true : !S.collapsed[n.k], name = this.nm(n), cnt = n.n + ' ' + noun;
+      let lcs = [], langShort = '';
+      if (L.length > 1) {
+        const sts = L.map(c => ({ c, st: this.langSt(n, c) }));
+        if (L.length <= 3) lcs = sts.map(x => ({ cd: x.c.toUpperCase(), st: x.st, tip: LN[x.c] + (x.c === src ? ' (nguồn)' : '') + ' — ' + this.stLabel(x.st) }));
+        else { const ok = sts.filter(x => x.st === 'full').length, rank = ['stale', 'miss', 'empty', 'ai', 'full']; const worst = rank.find(r => sts.some(x => x.st === r)) || 'full'; lcs = [{ cd: ok + '/' + L.length, st: worst, tip: sts.map(x => LN[x.c] + ': ' + this.stLabel(x.st)).join(' · ') }]; }
+        const ok2 = sts.filter(x => x.st === 'full').length; langShort = '· ' + ok2 + '/' + L.length + ' ngôn ngữ';
+      }
+      const lvl = lv, isRoot = !!n.sec, dz = S.dropK === n.k ? S.dropZ : '';
+      rows.push({ k: n.k, lv: String(lvl), name, path: '/' + this.sl(n), count: cnt, lcs, langShort, isRoot, rootAttr: isRoot ? '1' : '0', rootTip: 'Chuyên mục gốc của loại ' + this.secLabel(n.sec) + ' — trang /' + this.sl(n),
+        hasKids: kids.length > 0, noKids: !kids.length, expStr: String(open), tgIcon: open ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line', tgLabel: (open ? 'Thu gọn ' : 'Mở ') + name,
+        aria: name + ', cấp ' + lvl + ', ' + cnt + ' — bấm để sửa',
+        canAdd: lvl < 3, noAdd: lvl >= 3, addLabel: 'Thêm mục con vào ' + name, menuLabel: 'Thao tác cho ' + name, menuStr: String(S.menuK === n.k), popOpen: S.menuK === n.k && !narrow,
+        drop: dz || '', dragAttr: S.dragK === n.k ? '1' : '0', draggable: isRoot || narrow ? 'false' : 'true',
+        onToggle: () => this.setState(s => ({ collapsed: Object.assign({}, s.collapsed, { [n.k]: open }) })),
+        onEdit: () => this.openEdit(n.k), onAdd: () => this.openAdd(n.k), onMenu: () => this.openMenu(n.k),
+        onDS: (e) => { try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', name); } catch (x) {} this.setState({ dragK: n.k, menuK: null }); },
+        onDO: (e) => { const dk = S.dragK; if (!dk || dk === n.k) return; e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(), y = (e.clientY - r.top) / r.height; const z = isRoot ? 'in' : y < 0.28 ? 'before' : y > 0.72 ? 'after' : 'in'; if (S.dropK !== n.k || S.dropZ !== z) this.setState({ dropK: n.k, dropZ: z }); },
+        onDL: () => {},
+        onDrop: (e) => { e.preventDefault(); const dk = this.state.dragK, z = this.state.dropZ; this.setState({ dragK: null, dropK: null, dropZ: null }); if (!dk || dk === n.k) return; if (z === 'in') this.doMove(dk, n.k); else if (z === 'before') this.doMove(dk, n.parent, n.k); else this.doMove(dk, n.parent, null, n.k); },
+        onDE: () => this.setState({ dragK: null, dropK: null, dropZ: null }) });
+      if (open) kids.forEach(c => walk(c, lv + 1));
+    };
+    roots.forEach(r => walk(r, 1));
+    const total = vn.length;
+
+    /* menu */
+    const mk = S.menuK ? this.get(ns, S.menuK) : null;
+    if (mk) {
+      const lv = this.level(ns, mk.k), sb = this.sibs(ns, mk.k), si = sb.findIndex(x => x.k === mk.k), par = this.get(ns, mk.parent);
+      const rootWhy = 'Chuyên mục gốc của loại ' + this.secLabel(mk.sec) + ' luôn ở cấp 1.';
+      const outOk = par && !(mk.v === 'post_cat' && par.sec && !par.parent);
+      const I = (l, i, run, dis, why, danger) => ({ item: true, sep: false, l, i, dis: dis ? 'true' : 'false', why: dis ? why : '', hasWhy: !!(dis && why), danger: danger ? '1' : '0', run: dis ? () => {} : run });
+      const SEP = { sep: true, item: false };
+      menuItems.push(I('Sửa', 'ri-pencil-line', () => this.openEdit(mk.k)));
+      menuItems.push(I('Thêm mục con', 'ri-add-line', () => this.openAdd(mk.k), lv >= 3, 'Chỉ được lồng tối đa 3 cấp — mục cấp 3 không chứa thêm mục con.'));
+      menuItems.push(SEP);
+      menuItems.push(I('Chuyển lên', 'ri-arrow-up-line', () => this.moveUp(mk.k), mk.sec || si <= 0, mk.sec ? rootWhy : 'Đang ở đầu nhóm.'));
+      menuItems.push(I('Chuyển xuống', 'ri-arrow-down-line', () => this.moveDown(mk.k), mk.sec || si < 0 || si >= sb.length - 1, mk.sec ? rootWhy : 'Đang ở cuối nhóm.'));
+      menuItems.push(I('Đưa vào trong…', 'ri-corner-down-right-line', () => { this.setState({ menuK: null, mv: { k: mk.k, to: null } }, () => this.focusIn('[data-cm-ov="mv"] input:not([disabled])')); }, !!mk.sec, rootWhy));
+      menuItems.push(I('Đưa ra ngoài một cấp', 'ri-corner-up-left-line', () => this.moveOut(mk.k), !!mk.sec || !outOk, mk.sec ? rootWhy : 'Đã ở cấp cao nhất có thể.'));
+      menuItems.push(SEP);
+      menuItems.push(I('Xem ' + noun + ' trong chuyên mục', 'ri-file-list-3-line', () => { this.setState({ menuK: null }); this.goto(this.listKey(), { cat: this.sl(mk) }); }));
+      menuItems.push(I('Xem trên website', 'ri-external-link-line', () => { this.setState({ menuK: null }); this.toast('Bản thật mở /' + this.sl(mk) + ' ở thẻ mới.', 'info'); }));
+      menuItems.push(I('Gộp vào chuyên mục khác', 'ri-git-merge-line', () => this.openDel(mk.k, 'merge'), !!mk.sec, 'Chuyên mục gốc không gộp được.'));
+      menuItems.push(SEP);
+      menuItems.push(I('Xóa', 'ri-delete-bin-line', () => this.openDel(mk.k, 'delete'), !!mk.sec, 'Chuyên mục gốc của loại ' + this.secLabel(mk.sec) + ' — không xóa được. Đổi tên thì bấm Sửa.', true));
+    }
+
+    /* panel */
+    const P = S.pan; let pv = {};
+    if (P) {
+      const d = P.d, cur = P.lang, t = d.t[cur] || { name: '', slug: '' }, isSrc = cur === src, node = P.k ? this.get(ns, P.k) : null;
+      const se = this.slugErr(ns, P.k, cur, t.slug, t.name.trim());
+      const nameE = P.touched && isSrc && !t.name.trim();
+      const pst = (c) => { const x = d.t[c]; if (!x.name.trim()) return c === src ? 'miss' : 'empty'; if (!x.slug) return 'miss'; return d.st[c] === 'ai' ? 'ai' : d.st[c] === 'stale' ? 'stale' : 'full'; };
+      const vis = [src].concat(cur !== src ? [cur] : []), rest = L.filter(c => vis.indexOf(c) < 0);
+      const pills = vis.map(c => ({ cd: c.toUpperCase(), nm: LN[c], st: pst(c), on: String(c === cur), star: c === src, tip: LN[c] + ' — ' + this.stLabel(pst(c)) + (c === src ? ' · ngôn ngữ nguồn' : ''), run: () => this.setPan(p => { p.lang = c; p.langOpen = false; }) }));
+      const lq = S.langQ.trim().toLowerCase();
+      const langList = L.filter(c => !lq || LN[c].toLowerCase().indexOf(lq) >= 0 || c.indexOf(lq) >= 0).map(c => ({ nm: LN[c], st: pst(c), stl: this.stLabel(pst(c)) + (c === src ? ' · nguồn' : '') + (c === 'ar' ? ' · viết phải sang trái' : ''), star: c === src, cur: String(c === cur), run: () => { this.setPan(p => { p.lang = c; p.langOpen = false; }); this.setState({ langQ: '' }); this.focusIn('#cm-name'); } }));
+      const done = L.filter(c => pst(c) === 'full' || pst(c) === 'ai').length;
+      const sn = d.t[src].name.trim(), targets = (isSrc ? L.filter(c => c !== src) : [cur]).filter(c => !d.t[c].name.trim());
+      const cost = Math.ceil(Math.max(1, this.words(sn)) * 1.15) * targets.length, left = this.quotaLeft();
+      const trLabel = isSrc ? 'Dịch sang ' + (L.length - 1) + ' ngôn ngữ' : 'Dịch bản ' + LN[cur];
+      let trDis = false, trTip;
+      if (!sn) { trDis = true; trTip = 'Nhập tên ở bản ' + LN[src] + ' trước để có nguồn dịch.'; }
+      else if (!targets.length) { trDis = true; trTip = 'Mọi bản đã có tên — chỉ điền ô còn trống, không đè chữ bạn đã sửa.'; }
+      else if (cost > left) { trDis = true; trTip = 'Cần khoảng ' + cost + ' từ AI, còn ' + this.fmt(left) + '. ' + (upsell ? 'Mua thêm hoặc nâng gói ở Cài đặt › Gói & mức dùng.' : 'Cần thêm? Liên hệ hỗ trợ.'); }
+      else trTip = 'Dùng khoảng ' + cost + ' từ AI cho ' + targets.length + ' bản · còn ' + this.fmt(left - cost) + ' từ sau khi chạy. Chỉ điền ô còn trống.';
+      const curSt = pst(cur);
+      let lineTone = 'src', lineIcon = 'ri-information-line', lineText = 'Đây là bản nguồn — nhập tên và đường dẫn chuẩn, rồi bấm Dịch để điền sẵn ' + (L.length - 1) + ' ngôn ngữ còn lại.';
+      if (!isSrc && curSt === 'ai') { lineTone = 'ai'; lineIcon = 'ri-sparkling-2-line'; lineText = 'Bản ' + LN[cur] + ' do AI dịch từ ' + LN[src] + ' — sửa chỗ nào chưa ưng rồi bấm Lưu.'; }
+      else if (!isSrc && curSt === 'stale') { lineTone = 'warn'; lineIcon = 'ri-error-warning-line'; lineText = 'Tên ' + LN[src] + ' đã đổi sau khi dịch — kiểm lại bản ' + LN[cur] + ' rồi bấm Lưu.'; }
+      else if (!isSrc && (curSt === 'empty' || curSt === 'miss')) { lineTone = 'warn'; lineIcon = 'ri-error-warning-line'; lineText = 'Bản ' + LN[cur] + ' chưa có tên — bấm Dịch hoặc tự nhập.'; }
+      else if (!isSrc) { lineTone = 'src'; lineText = 'Bản ' + LN[cur] + ' đã đủ tên và đường dẫn.'; }
+      /* chọn cha */
+      const isRootNode = node && node.sec;
+      const h = node ? this.height(ns, node.k) : 1, subK = node ? this.sub(ns, node.k) : [];
+      const popts = [];
+      if (sec.v === 'product_cat') popts.push(['', '— Cấp cao nhất —']);
+      this.vocabNodes(ns).forEach(x => { if (subK.indexOf(x.k) >= 0) return; const lv = this.level(ns, x.k); if (lv + h > 3) return; const xs = this.secOf(ns, x.k); popts.push([x.k, '\u00a0\u00a0'.repeat(lv - 1) + (lv > 1 ? '└ ' : '') + this.nm(x) + (sec.root && xs !== sk ? ' (' + this.secLabel(xs) + ')' : '')]); });
+      let panSec = null;
+      if (node && !isRootNode && d.parent !== (node.parent || '')) { const c = this.check(ns, node.k, d.parent || null); if (c.ok && c.secChange) panSec = c; }
+      const slugCh = node && node.t[cur] && t.slug !== node.t[cur].slug;
+      const prim = node ? this.sum(ns, subK, 'p') : 0;
+      const tplL = sk === 'products' ? [['0', 'Theo giao diện — Lưới sản phẩm (mặc định)'], ['1', 'Danh sách có bảng giá']] : [['0', 'Theo giao diện — Lưới 3 cột (mặc định)'], ['1', 'Danh sách dọc có ảnh nhỏ'], ['2', 'Lưới 2 cột ảnh lớn']];
+      const tplD = sk === 'products' ? [['0', 'Theo giao diện — Trang sản phẩm (mặc định)'], ['1', 'Trang sản phẩm có bảng thông số']] : [['0', 'Theo giao diện — Bài viết chuẩn (mặc định)'], ['1', 'Bài viết có cột bên'], ['2', 'Bài viết toàn chiều rộng']];
+      const errMap = { network: ['Chưa lưu được vì mất kết nối. Chữ bạn nhập vẫn còn — bấm Thử lại.', 'Thử lại', () => this.save()], taxonomy_invalid: [Component.MSG().taxonomy_invalid, 'Tải lại', () => { this.setState({ pan: null, nodes: Component.SEED() }); this.restore(); this.toast('Đã tải lại danh sách chuyên mục.', 'info'); }] };
+      const E = P.err ? errMap[P.err] : null;
+      const dom = (window.BSPLAT && window.BSPLAT.siteDomain) || this.tw('siteDomain') || 'tenmien.vn';
+      const seoT = (d.seoT[cur] || ''), seoD = (d.seoD[cur] || '');
+      pv = {
+        panOpen: true, panTitle: P.mode === 'add' ? 'Thêm chuyên mục' : 'Sửa chuyên mục', multiLang: L.length > 1, curCd: cur.toUpperCase(),
+        pills, moreShow: rest.length > 0, moreN: rest.length, langOpen: !!P.langOpen, langOpenStr: String(!!P.langOpen), onLangMore: () => this.setPan(p => { p.langOpen = !p.langOpen; }),
+        langSearch: L.length >= 6, langQ: S.langQ, onLangQ: (e) => this.setState({ langQ: e.target.value }), langList, langProg: done + '/' + L.length + ' bản có tên và đường dẫn',
+        goLangs: () => { this.setPan(p => { p.langOpen = false; }); this.goto('settings', { section: 'languages' }); },
+        quotaText: 'Còn ' + this.fmt(left) + ' từ AI', quotaTip: 'Gói ' + ((window.BSAI && window.BSAI.plan && window.BSAI.plan().name) || 'đang dùng') + ' · còn ' + this.fmt(left) + ' từ AI trong tháng — đủ dịch khoảng ' + this.fmt(left / 3) + ' tên chuyên mục.',
+        trLabel, trTip, trDis: String(trDis), onTranslate: () => { if (!trDis) this.translate(); },
+        lineTone, lineIcon, lineText,
+        fName: t.name, nameDir: cur === 'ar' ? 'rtl' : 'ltr', namePh: cur === src ? (Component.EX()[sk] || ['Tin công ty'])[0] : (cur === 'en' ? 'Company news' : LN[cur]),
+        onName: (e) => { const v = e.target.value; this.setPan(p => { const x = p.d.t[p.lang]; x.name = v; if (x.auto) x.slug = this.autoSlug(p.d, p.lang, v); if (p.d.st[p.lang] === 'ai' || p.d.st[p.lang] === 'stale') p.d.st[p.lang] = 'edited'; }); },
+        onNameBlur: () => this.setPan(p => { if (p.lang === src) p.touched = true; }),
+        nameInv: String(!!nameE), nameErrShow: !!nameE, nameErr: Component.MSG().name_invalid, nameHintShow: !nameE,
+        slugPfx: dom + '/', fSlug: t.slug, slugInv: String(!!se && (P.touched || !!t.slug)),
+        onSlug: (e) => { const v = e.target.value; this.setPan(p => { p.d.t[p.lang].slug = v; p.d.t[p.lang].auto = false; }); },
+        slugErrShow: !!se && (P.touched || !!t.slug), slugErr: se ? se.msg : '', slugOkShow: !se && !!t.slug && (P.mode === 'add' || slugCh),
+        slugHint: (t.slug ? 'Trang chuyên mục: ' + dom + '/' + t.slug + '. ' : '') + 'Tự tạo từ tên; sửa được.',
+        slugRegen: !t.auto && !!t.name.trim() && this.autoSlug(d, cur, t.name) !== t.slug, onRegen: () => this.setPan(p => { const x = p.d.t[p.lang]; x.slug = this.autoSlug(p.d, p.lang, x.name); x.auto = true; }),
+        slugWarn: !!(node && node.n > 0), slugWarnText: slugCh ? 'Đường dẫn sẽ đổi khi bấm Lưu: tự tạo chuyển hướng từ /' + node.t[cur].slug + (prim ? ' và cập nhật địa chỉ ' + prim + ' ' + noun + ' có chuyên mục chính ở đây.' : '.') + ' Khách mở link cũ vẫn tới đúng trang.' : 'Chuyên mục đang có ' + (node ? node.n : 0) + ' ' + noun + '. Đổi đường dẫn của chuyên mục đang có bài sẽ tự tạo chuyển hướng.',
+        parentLocked: !!isRootNode, parentFree: !isRootNode, parentLockText: isRootNode ? 'Chuyên mục gốc của loại ' + this.secLabel(node.sec) + ' — luôn ở cấp 1.' : '',
+        parentSelect: !isRootNode ? this.sel('cm-parent', d.parent, popts, (e) => { const v = e.target.value; this.setPan(p => { p.d.parent = v; }); }) : null,
+        panSecWarn: !!panSec, panSecText: panSec ? this.secText(panSec) : '',
+        moreOpen: !!P.more, moreStr: String(!!P.more), moreIcon: P.more ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line', onMore: () => this.setPan(p => { p.more = !p.more; }),
+        tplListSelect: this.sel('cm-tl', d.tpl[0], tplL, (e) => { const v = e.target.value; this.setPan(p => { p.d.tpl[0] = v; }); }),
+        tplDetailSelect: this.sel('cm-td', d.tpl[1], tplD, (e) => { const v = e.target.value; this.setPan(p => { p.d.tpl[1] = v; }); }),
+        tplDetailLabel: sk === 'products' ? 'Mẫu trang sản phẩm' : 'Mẫu trang bài viết',
+        fDesc: d.desc[cur] || '', descPh: sk === 'products' ? 'Dao phay, mũi khoan và đồ gá chính hãng cho xưởng cơ khí.' : 'Kinh nghiệm gia công, chọn vật liệu và mẹo vận hành máy.', onDesc: (e) => { const v = e.target.value; this.setPan(p => { p.d.desc[p.lang] = v; }); },
+        onPickImg: () => this.toast('Bản thật mở Thư viện ảnh & tệp để chọn ảnh.', 'info'),
+        fSeoT: seoT, seoTPh: t.name || 'Tin công ty', seoTCount: seoT.length + '/60', onSeoT: (e) => { const v = e.target.value; this.setPan(p => { p.d.seoT[p.lang] = v; }); },
+        fSeoD: seoD, seoDCount: seoD.length + '/160', onSeoD: (e) => { const v = e.target.value; this.setPan(p => { p.d.seoD[p.lang] = v; }); },
+        panErrShow: !!E, panErrText: E ? E[0] : '', panErrBtn: E ? E[1] : '', panErrAct: E ? E[2] : null,
+        savingStr: String(!!P.saving), saveIcon: P.saving ? 'ri-loader-4-line' : 'ri-save-3-line',
+        saveLabel: P.saving ? 'Đang lưu…' : panSec ? 'Lưu và chuyển ' + panSec.items + ' bài' : P.mode === 'add' ? 'Thêm chuyên mục' : 'Lưu',
+        onSave: () => this.save(), onPanClose: () => this.closePan(), onOvPan: () => this.closePan()
+      };
+    }
+
+    /* đưa vào trong */
+    const M = S.mv; let mvv = { mvOpen: false };
+    if (M) {
+      const mn = this.get(ns, M.k), opts = [];
+      this.vocabNodes(ns).forEach(x => { if (this.sub(ns, M.k).indexOf(x.k) >= 0) return; const lv = this.level(ns, x.k), c = this.check(ns, M.k, x.k), cur = x.k === mn.parent, xs = this.secOf(ns, x.k);
+        opts.push({ k: x.k, lv: String(lv), name: this.nm(x), on: M.to === x.k, cur, pick: () => this.setState({ mv: { k: M.k, to: x.k } }),
+          sub: cur ? 'Đang ở đây' : (!c.ok && c.code === 'depth_exceeded') ? 'Cấp ' + lv + ' · hết chỗ: chỉ được lồng tối đa 3 cấp' : 'Cấp ' + lv + (sec.root && xs !== sk ? ' · loại ' + this.secLabel(xs) : '') }); });
+      const c = M.to ? this.check(ns, M.k, M.to) : null, to = M.to ? this.get(ns, M.to) : null;
+      mvv = { mvOpen: true, mvName: this.nm(mn), mvOpts: opts, mvErrShow: !!(c && !c.ok), mvErr: c && !c.ok ? (c.why || c.msg) : '', mvSecShow: !!(c && c.ok && c.secChange), mvSec: c && c.ok && c.secChange ? this.secText(c) : '',
+        mvDis: String(!c || !c.ok), mvBtn: !to ? 'Chọn chuyên mục cha' : (c && c.ok && c.secChange) ? 'Chuyển ' + c.items + ' bài sang ' + this.secLabel(c.secTo) : 'Chuyển vào ' + this.nm(to),
+        onMvGo: () => { if (!c || !c.ok) return; const run = () => { const arr = this.moved(ns, M.k, M.to); const prev = ns; this.setState({ nodes: arr, mv: null, collapsed: Object.assign({}, S.collapsed, { [M.to]: false }) }); this.restore(); this.toast('Đã chuyển "' + this.nm(mn) + '" vào "' + this.nm(to) + '".' + (c.prim ? ' Đã cập nhật địa chỉ ' + c.prim + ' ' + noun + ', tự tạo chuyển hướng.' : ''), 'ok', () => this.setState({ nodes: prev })); }; run(); },
+        closeMv: () => { this.setState({ mv: null }); this.restore(); }, onOvMv: () => { this.setState({ mv: null }); this.restore(); } };
+    }
+
+    /* xóa */
+    const C = this.delCalc(); let dv = { delOpen: false };
+    if (C) {
+      const D = S.del, nn = this.nm(C.n), par = C.par;
+      const candK = C.cand.map(x => x.k);
+      const tgtOpts = this.vocabNodes(ns).filter(x => candK.indexOf(x.k) >= 0 || x.k === D.k).map(x => { const lv = this.level(ns, x.k), xs = this.secOf(ns, x.k), self = x.k === D.k; return [x.k, '\u00a0\u00a0'.repeat(lv - 1) + (lv > 1 ? '└ ' : '') + this.nm(x) + (self ? ' (đang xóa)' : '') + (sec.root && xs !== sk ? ' (' + this.secLabel(xs) + ')' : ''), self]; });
+      if (C.mv && !C.tgt) tgtOpts.unshift(['', '— Chọn chuyên mục —']);
+      const fx = [];
+      const pageTo = C.mv && C.tgt ? '/' + this.sl(C.tgt) : par ? '/' + this.sl(par) : 'trang chủ';
+      fx.push('Trang /' + this.sl(C.n) + (C.gone.length > 1 ? ' và ' + (C.gone.length - 1) + ' trang mục con' : '') + ' tự chuyển hướng tới ' + pageTo + '.');
+      if (C.items) fx.push(C.mv ? C.items + ' ' + C.noun + ' chuyển sang "' + (C.tgt ? this.nm(C.tgt) : '…') + '"; ' + C.prim + ' ' + C.noun + ' có chuyên mục chính ở đây tự đổi địa chỉ.' : C.items + ' ' + C.noun + ' bỏ gắn chuyên mục này; ' + C.prim + ' ' + C.noun + ' có chuyên mục chính ở đây tự đổi địa chỉ.');
+      fx.push('Tự tạo ' + (C.gone.length + C.prim) + ' chuyển hướng để link cũ vẫn mở được.');
+      if (C.menu) fx.push(C.menu + ' mục trình đơn ' + (C.mv && C.tgt ? 'trỏ theo "' + this.nm(C.tgt) + '".' : par ? 'trỏ theo "' + this.nm(par) + '".' : 'tự ẩn khỏi website.'));
+      if (!C.cas && C.kidsN) fx.push(C.kidsN + ' mục con thành con của ' + (par ? '"' + this.nm(par) + '"' : 'cấp cao nhất') + '.');
+      let btn;
+      if (C.merge) btn = 'Gộp và chuyển ' + C.items + ' ' + C.noun;
+      else if (C.items) btn = (C.cas && C.gone.length > 1 ? 'Xóa ' + C.gone.length + ' chuyên mục và ' : 'Xóa và ') + (C.mv ? 'chuyển ' : 'bỏ gắn ') + C.items + ' ' + C.noun;
+      else btn = C.cas && C.gone.length > 1 ? 'Xóa ' + C.gone.length + ' chuyên mục' : 'Xóa chuyên mục';
+      const detachN = Math.round(C.items * 0.4);
+      let delSec = '', owner = false;
+      if (C.secChange && C.mv && C.tgt) delSec = C.items + ' bài sẽ chuyển từ ' + this.secLabel(C.sa) + ' sang ' + this.secLabel(C.sb) + ' — quyền và quy trình duyệt sẽ theo ' + this.secLabel(C.sb) + '.';
+      else if (C.secChange && !C.mv) { delSec = detachN + ' bài chỉ thuộc chuyên mục này sẽ rời ' + this.secLabel(C.sa) + ' — quyền và quy trình duyệt sẽ theo mặc định của website.'; owner = notes; }
+      const lead = [C.kidsN ? C.kidsN + ' mục con' : '', C.items ? C.items + ' ' + C.noun : ''].filter(Boolean).join(' và ');
+      dv = { delOpen: true, delIcon: C.merge ? 'ri-git-merge-line' : 'ri-delete-bin-line', delTitle: (C.merge ? 'Gộp "' : 'Xóa chuyên mục "') + nn + (C.merge ? '" vào chuyên mục khác?' : '"?'),
+        delLead: lead ? 'Chuyên mục này có ' + lead + '. Chọn cách xử lý:' : 'Chuyên mục này không có mục con và chưa có ' + C.noun + ' nào.',
+        delHasKids: C.kidsN > 0, delKidsLegend: C.kidsN + ' mục con', dkUp: D.kids === 'up', dkCas: D.kids === 'cascade', dkUpSub: 'Thành mục con của ' + (par ? '"' + this.nm(par) + '"' : 'cấp cao nhất') + '. Bài giữ nguyên.', dkCasSub: 'Xóa luôn ' + (C.S.length - 1) + ' mục con; bài của chúng xử lý như bên dưới.',
+        pickUp: () => this.setState({ del: Object.assign({}, D, { kids: 'up' }) }), pickCas: () => this.setState({ del: Object.assign({}, D, { kids: 'cascade', target: this.sub(ns, D.k).indexOf(D.target) >= 0 ? (C.n.parent || '') : D.target }) }),
+        delHasItems: C.items > 0 || C.merge, delItemsLegend: C.items + ' ' + C.noun + ' đang gắn', diMove: C.mv, diDet: !C.mv, delCanDetach: !C.merge,
+        pickMove: () => this.setState({ del: Object.assign({}, D, { items: 'move' }) }), pickDet: () => this.setState({ del: Object.assign({}, D, { items: 'detach' }) }),
+        diDetSub: C.noun === 'bài' ? 'Bài vẫn còn, chỉ không thuộc chuyên mục này nữa.' : 'Sản phẩm vẫn còn, chỉ không thuộc chuyên mục này nữa.',
+        delTargetSelect: this.sel('cm-dt', D.target || '', tgtOpts, (e) => { const v = e.target.value; this.setState({ del: Object.assign({}, this.state.del, { target: v }) }); }),
+        delSecShow: !!delSec, delSec, delSecOwner: owner, delFx: fx, delBtn: btn, delDis: String(!C.tgtOk),
+        onDelGo: () => this.runDel(), closeDel: () => { this.setState({ del: null }); this.restore(); } };
+    }
+
+    const X = S.cx;
+    const T = S.toast;
+    const MODI = (window.BSAI && window.BSAI.MODULES && window.BSAI.MODULES.catalog) || { name: 'Sản phẩm', benefit: '' };
+    const lowerSec = sec.l.toLowerCase();
+    const ex = (Component.EX()[sk] || []).map(l => ({ l, run: () => {
+      const v = sec.v, base = sec.root ? ns.filter(x => !(x.parent === sec.root) || false) : ns.filter(x => x.v !== v);
+      const keepNs = sec.root ? base.filter(x => this.secOf(ns, x.k) !== sk || x.k === sec.root) : base;
+      const k = 'n' + Date.now().toString(36);
+      const add = [{ k, v, parent: sec.root || null, sec: null, n: 0, p: 0, m: 0, t: { vi: { name: l, slug: this.slugify(l) } }, st: {}, tpl: ['0', '0'] }];
+      const cleared = this.state.stOver === 'data' || this.tw('screenState') !== 'empty' ? ns : keepNs;
+      this.setState({ nodes: cleared.concat(add), stOver: 'data' }); this.toast('Đã tạo "' + l + '". Bấm tên để sửa hoặc thêm mục con.', 'ok');
+    } }));
+
+    return Object.assign({
+      rootRef: (el) => this.setRoot(el), fsAttr: (this.tw('bigText') || this._bsBig) ? 'l' : 'n', embAttr: emb ? '1' : '0',
+      showFrames, showMain: !showFrames, frameSrc: encodeURI('Chuyên mục.dc.html') + '?frame=1',
+      notEmb: !emb, secLabel: sec.l, secLower: lowerSec, descText: sec.desc, noun, notes,
+      showAddBtn: st === 'data' || st === 'empty', onAddTop: () => this.openAdd(sec.root || ''),
+      goList: () => this.goto(this.listKey()),
+      stLoading: st === 'loading', stError: st === 'error', stNoPerm: st === 'noperm', stLocked: st === 'locked', stEmpty: st === 'empty', stData: st === 'data',
+      onRetry: () => { this.setState({ stOver: 'loading' }); clearTimeout(this._rt); this._rt = setTimeout(() => this.setState({ stOver: 'data' }), 700); },
+      noPermText: 'Nhóm quyền "' + this.roleName() + '" không có việc "Quản lý chuyên mục". Hỏi chủ website nếu bạn cần thêm hoặc sắp xếp chuyên mục.',
+      lockTitle: MODI.name, lockText: upsell ? (MODI.benefit || 'Tính năng này có trong gói cao hơn.') : 'Chưa bật cho website này — liên hệ hỗ trợ.', lockBtn: upsell ? 'Xem gói nâng cấp' : 'Liên hệ hỗ trợ', lockIcon: upsell ? 'ri-vip-crown-line' : 'ri-customer-service-2-line',
+      onLockBtn: () => upsell ? this.goto('settings', { section: 'plan' }) : this.toast('Bản thật mở khung liên hệ hỗ trợ.', 'info'),
+      emptyText: sk === 'products' ? 'Chuyên mục giúp khách tìm sản phẩm theo dòng hàng. Tạo vài nhóm lớn trước, mục con thêm sau cũng được.' : 'Chuyên mục giúp khách tìm ' + lowerSec + ' theo chủ đề. Tạo vài nhóm lớn trước, mục con thêm sau cũng được.', examples: ex,
+      showSearch, q: S.q, onQ: (e) => this.setState({ q: e.target.value }), onClearQ: () => this.setState({ q: '' }), noMatch: !!(q && showSearch && !rows.length),
+      totalText: total + ' chuyên mục', treeLabel: 'Chuyên mục ' + lowerSec,
+      onExpandAll: () => this.setState({ collapsed: {} }), onCollapseAll: () => { const c = {}; ns.forEach(x => { if (!x.sec) c[x.k] = true; }); this.setState({ collapsed: c }); },
+      rows, menuItems,
+      footText: narrow ? 'Sắp xếp: bấm ⋯ rồi chọn Chuyển lên, Chuyển xuống hoặc Đưa vào trong…' : 'Sắp xếp: kéo biểu tượng ⠿ ở đầu dòng, hoặc bấm ⋯ rồi chọn Chuyển lên, Chuyển xuống, Đưa vào trong… Tối đa 3 cấp.',
+      sheetOpen: !!mk && narrow, sheetTitle: mk ? this.nm(mk) : '', closeMenu: () => { this.setState({ menuK: null }); this.restore(); }, onOvMenu: () => { this.setState({ menuK: null }); this.restore(); }, stop: (e) => e.stopPropagation(),
+      panOpen: false,
+      cxOpen: !!X, cxTitle: X ? X.title : '', cxText: X ? X.text : '', cxYesL: X ? X.yes : '', cxNoL: X ? X.no : '',
+      cxYes: () => { const r = X && X.run; this.setState({ cx: null }); if (r) r(); }, cxNo: () => { this.setState({ cx: null }); if (!(X && X.keepRet)) this.restore(); else this.focusIn('#cm-name'); },
+      toastShow: !!T, toastText: T ? T.text : '', toastT: T ? T.t : 'ok', toastIcon: T ? (T.t === 'err' ? 'ri-error-warning-line' : T.t === 'info' ? 'ri-information-line' : 'ri-checkbox-circle-line') : '', toastUndo: !!(T && T.undo),
+      onUndo: () => { const u = this._undo; this._undo = null; this.setState({ toast: null }); if (u) { u(); this.toast('Đã hoàn tác.', 'info'); } }, closeToast: () => this.setState({ toast: null })
+    }, pv, mvv, dv);
+  }
+}
+</script>
+</body>
+</html>

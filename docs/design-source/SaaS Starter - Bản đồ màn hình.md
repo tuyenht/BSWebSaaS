@@ -27,7 +27,7 @@ D0-3 ready (05/10/2026): phần 1 `#thuat-ngu` · `#dinh-dang` · `#giong-van` �
 | 12 | Trình soạn chữ | D1-4a | (trong trình soạn) | `Trình soạn nội dung.dc.html` | ready |
 | 13 | Thanh ngôn ngữ nội dung | D1-4b | (trong trình soạn và Cài đặt) | `Language Context - Design Spec.dc.html` | ready |
 | 14 | Lịch sử phiên bản | D1-4c | (trong trình soạn) | `Page Editor - Options.dc.html` (một phần) | chờ thiết kế |
-| 15 | Chuyên mục | D1-1 | [loại nội dung] › Chuyên mục · Sản phẩm › Chuyên mục | — | chờ thiết kế |
+| 15 | Chuyên mục | D1-1 | [loại nội dung] › Chuyên mục · Sản phẩm › Chuyên mục | `Chuyên mục.dc.html` (một file cho mọi loại + Sản phẩm `product_cat`) | ready (D1-1, 06/10) — registry `<loại>.cats` / `catalog.cats` (khóa repo `<loại>.taxonomy` / `catalog.taxonomy`); kind `mount` — Shell mount `Chuyên mục.dc.html` (embedded, embed-id `taxonomy`); README `README - D1-1 Chuyên mục.md` |
 | 16 | Trình đơn | D1-2 | Trình đơn | `Trình đơn.dc.html` | ready — còn thiếu gán theo ngôn ngữ |
 | 17 | Page builder | ⏸ track Builder v3 | — (Khối tái dùng: khóa `blocks`, Trình đơn mở tới) | `Page Builder v3.dc.html` | để sau (track riêng, không sửa) |
 | 18–19 | Hộp duyệt · Khối trạng thái duyệt | — | Hộp duyệt | `Hộp duyệt.dc.html`, `Trạng thái duyệt (khối soạn thảo).dc.html` | ready — nối vào Shell (D0-5: hàng chờ + số trên menu đọc kho BSCW.store) |

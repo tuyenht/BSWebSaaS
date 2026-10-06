@@ -1,5 +1,11 @@
 # Việc còn lại — cập nhật 06/10/2026
 
+## ~~D1-1~~ — xong 06/10 (README `README - D1-1 Chuyên mục.md`): `Chuyên mục.dc.html` cho mọi loại + Sản phẩm; registry `<loại>.cats` / `catalog.cats` ready
+- ~~Đã nối vào Shell 06/10 (kind mount)~~ Admin Shell · thêm khe `<dc-import name="Chuyên mục" embedded embed-id="taxonomy" content-type="{{ ctType }}" role="{{ roleName }}" lang-codes="{{ langCodes }}" on-dirty>` cho `<loại>.cats` + `catalog.cats` (`content-type="products"`), rồi đổi `kind: 'design'` → `'mount'` trong `shell-screens.js`; bỏ `zoom` Chữ lớn cho màn này (màn đã dùng `--fsp`) · lượt sửa Shell kế tiếp
+- Đo `_audit/harness.html` 360/390/768/1024/1440 × thường/Chữ lớn + trong Shell 390; chế độ tối; Safari/Firefox/Samsung · Claude Code bằng zip
+- Owner chốt: bộ đếm theo chuyên mục chính hay mọi chuyên mục; bài "Bỏ gắn" rời loại nội dung thì theo quyền/quy trình nào · Cần owner chốt
+- Lượt kế tiếp: **D1-2**.
+
 ## ~~D0-6c~~ — xong 06/10 (README `README - D0-6 Hiển thị đa thiết bị.md` › D0-6c phần 1 + phần 2): 12 màn bộ AI, 120 lượt đo 0 tràn
 - Nhãn nút AI còn sót (grep 35 tệp, 06/10) — đổi theo C.15 khi chạm màn:
   - `Quản lý Bài viết - Options`: "Viết tiêu đề & mô tả", "Nhờ AI viết…", "Viết bài mới bằng AI" → "Gợi ý tiêu đề & mô tả" · "Nâng cấp bài viết"/"Viết mới" · D1-3

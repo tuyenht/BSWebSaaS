@@ -793,6 +793,9 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
               <sc-if value="{{ mPageEd }}">
                 <dc-import name="Page Editor - Options" embedded="{{ true }}" embed-id="page-editor" start="{{ ctStart }}" slug="{{ ctSlug }}" role="{{ roleName }}" workflow="{{ wfName }}" lang-codes="{{ langCodes }}" plan-key="{{ planK }}" upsell="{{ upsellOn }}" on-dirty="{{ onEmbedDirtyPe }}" hint-size="100%,900px"></dc-import>
               </sc-if>
+              <sc-if value="{{ mCats }}">
+                <dc-import name="Chuyên mục" embedded="{{ true }}" embed-id="taxonomy" content-type="{{ catType }}" role="{{ roleName }}" lang-codes="{{ langCodes }}" upsell="{{ upsellOn }}" catalog-on="{{ catalogOnCats }}" big-text="{{ catsBig }}" on-dirty="{{ onEmbedDirtyTx }}" hint-size="100%,720px"></dc-import>
+              </sc-if>
               <sc-if value="{{ mWorkflow }}">
                 <dc-import name="Quy trình duyệt" embedded="{{ true }}" embed-id="workflow" viewer="Vận hành nền tảng" on-dirty="{{ onEmbedDirtyWf }}" hint-size="100%,720px"></dc-import>
               </sc-if>
@@ -2055,6 +2058,9 @@ class Component extends DCLogic {
     const mPages = mountOn && SCR.dc === 'Quản lý Trang - Options';
     const mPageEd = mountOn && SCR.dc === 'Page Editor - Options';
     const mWorkflow = mountOn && am === 'p-workflow';
+    const _cmM = /^([a-z0-9_-]+)\.cats$/.exec(am); /* D1-1: Chuyên mục của từng loại + Sản phẩm (catalog.cats → products) */
+    const mCats = mountOn && !!_cmM && SCR.dc === 'Chuyên mục';
+    const catType = _cmM ? (_cmM[1] === 'catalog' ? 'products' : _cmM[1]) : '';
     const mReview = mountOn && am === 'review';
     const mStd = mountOn && am === 'ui-standard';
     const showBlank = !showSettings && !showDashboard && !mountOn;
@@ -2980,7 +2986,7 @@ class Component extends DCLogic {
     const onEmbedDirtySl = mkEmbedDirty('social');
     const onEmbedDirtySls = mkEmbedDirty('social-saas');
     const onEmbedDirtyMn = mkEmbedDirty('menus');
-    const onEmbedDirtyCt = mkEmbedDirty('content'), onEmbedDirtyPe = mkEmbedDirty('page-editor'), onEmbedDirtyWf = mkEmbedDirty('workflow');
+    const onEmbedDirtyCt = mkEmbedDirty('content'), onEmbedDirtyPe = mkEmbedDirty('page-editor'), onEmbedDirtyWf = mkEmbedDirty('workflow'), onEmbedDirtyTx = mkEmbedDirty('taxonomy');
     /* D0-5: cụm Lưu của Shell cho màn mount có shellSave (Trình đơn · Quy trình duyệt) — màn toàn trang tự giữ thanh thao tác của mình */
     const mSaveId = (mountOn && SCR.shellSave && SCR.embedId) ? SCR.embedId : 'menus';
     const mEmbId = this.mountEmbedId();
@@ -3024,7 +3030,7 @@ class Component extends DCLogic {
       navEmpty: sgGroups.every(g => g.items.every(it => q && it.l.toLowerCase().indexOf(q) < 0 && (it.desc || '').toLowerCase().indexOf(q) < 0)), settingsBackToDash, onMarkDirty, onSaveSection, onCancelSection,
       settingsSaveStyle: ((settingsActive.isEmbed ? curEmbedDirty : settingsActive.dirty) && !(!settingsActive.isEmbed && secErrCount > 0)) ? settingsActive.saveBtnStyle : settingsActive.saveBtnStyleOff,
       settingsResetStyle: (settingsActive.isEmbed ? curEmbedDirty : settingsActive.dirty) ? settingsActive.resetBtnStyle : settingsActive.resetBtnStyleOff,
-      showMenus, menusMounted, menusHidden: !showMenus, onEmbedDirtyMn, onEmbedDirtyCt, onEmbedDirtyPe, onEmbedDirtyWf, mReview, mStd, mContent, mPages, mPageEd, mWorkflow, roleName: this.roleName(), hdrShow, scrDescShow, scrDesc,
+      showMenus, menusMounted, menusHidden: !showMenus, onEmbedDirtyMn, onEmbedDirtyCt, onEmbedDirtyPe, onEmbedDirtyWf, onEmbedDirtyTx, mCats, catType, catalogOnCats: true, catsBig: false, mReview, mStd, mContent, mPages, mPageEd, mWorkflow, roleName: this.roleName(), hdrShow, scrDescShow, scrDesc,
       ctType: _ctM ? _ctM[1] : '', ctStart: SCR && SCR.start ? SCR.start : 'list', ctSlug: (S.screenParams || {}).slug || '', wfName: this.wfMode(), langCodes: (S.siteLangs || []).slice(), planK: this.planKey(), upsellOn: upsell,
       cardBtn3Show: !!C.b3, cardBtn3Text: C.b3 || '', cardBtn3Icon: C.b3i || '', cardBtn3Click: C.b3c || null, mediaPickShow: S.pickerFor === '__media',
       cardKind, cardIcon: C.icon, cardTitle: C.title, cardText: C.text, cardDataShow: !!C.data, cardData: C.data, cardFeatShow: featOff, cardFeatText: featText,
