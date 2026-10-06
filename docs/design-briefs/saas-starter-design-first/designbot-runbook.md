@@ -26,6 +26,7 @@ Bạn luôn chạy **một chat một lúc**, nên mọi lượt đều là "ch�
    Không thêm, bớt hay sửa chữ nào. Trước khi bấm Send, kiểm ô nhập có đủ câu **cuối cùng** của tệp. Thiếu thì xóa và dán lại.
 3. **Chờ chạy xong**, kiểm tra vài phút một lần bằng ảnh chụp, không bấm vào khung thiết kế khi đang chạy.
    - Bị ngắt ("We got interrupted") thì bấm **Resume**.
+   - Tab hiện **"Aw, Snap!"** hoặc trang trắng (Chrome bị hệ điều hành tắt vì máy chung hết RAM): bấm **Reload**, mở lại đúng chat của lượt, bấm **Resume** nếu có, rồi chờ tiếp. Ghi giờ sập vào log. Sập 3 lần trong một lượt thì DỪNG và báo owner.
    - Chat báo còn phần 2 (hoặc TODO.md có dòng `<mã> phần 2`) thì gửi `Làm <mã> phần 2` trong **cùng** chat. Riêng D5-2: mỗi phần một chat mới, theo prompt.
    - Claude Design hỏi lại thì trả lời theo đúng chữ trong prompt. Prompt không nói thì chọn phương án **giữ nguyên thứ đang có**, ghi câu hỏi vào log. Câu hỏi về gỡ hay ẩn một nút hoặc tính năng đang có thì **dừng**, không trả lời.
 4. **Kiểm "Xong khi"**: đọc từng mục "Xong khi" của prompt, đối chiếu với câu trả lời **và** màn hình thật trong khung xem trước (chụp ảnh).
@@ -33,6 +34,11 @@ Bạn luôn chạy **một chat một lúc**, nên mọi lượt đều là "ch�
    - Mục cần cỡ màn khác, trình duyệt khác hoặc verifier quá giờ ([CHƯA KIỂM ĐƯỢC]) thì không ép Claude Design. Ghi vào log để Claude Code kiểm bằng zip.
 5. **Tải zip** (mục dưới) với mã lượt.
 6. **Ghi log**, rồi sang lượt kế.
+
+## Giữ Chrome nhẹ (máy chủ dùng chung với website thật, RAM có hạn)
+- Chỉ giữ **một tab**: project BSWebSaaS trong Claude Design. Đóng mọi tab khác (Design - Claude, Claude, tab tải xuống…) trước mỗi lượt.
+- Sau mỗi lần tải zip: chuyển zip đi (không để bản thừa trong `~/Downloads`), rồi **tải lại tab project** (Reload) trước khi mở chat lượt kế. Xuất zip làm tab phình bộ nhớ, tải lại sẽ giải phóng.
+- Không mở cùng lúc nhiều file thiết kế nặng trong khung xem trước.
 
 ## Tải zip
 Trong Claude Design: Share → Download project (zip cả project). Chuyển tệp vừa tải (thường ở `~/Downloads/`) sang `/home/designbot/zips/<mã>-<HHMM>.zip`. Kiểm `unzip -l` mở được và có `Admin Shell.dc.html`. Không có thì tải lại một lần, vẫn lỗi thì dừng và báo owner.
