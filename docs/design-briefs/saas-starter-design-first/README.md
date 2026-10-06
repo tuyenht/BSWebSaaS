@@ -6,6 +6,7 @@
 **Sổ đo độ phủ:** `docs/saas-starter-screen-map.md` · **Quyết định dữ liệu đi kèm:** `docs/design.md` changelog v2.23 (quyết định) · v2.25 (as-built sau audit).
 
 ## Cách dùng
+- **Chạy tự động (từ 06/10):** phiên Claude Code `designbot` (lệnh `ccd`, lái Chrome có Claude Design) làm theo `designbot-runbook.md`: dán prompt, kiểm "Xong khi", tải zip vào `/home/designbot/zips/`. Mọi lượt chạy lần lượt, một mình. Owner giao việc và chuyển prompt sửa bằng một dòng `Đọc và làm theo <tệp>`. Các mục dưới vẫn đúng khi chạy tay.
 - Mỗi file trong `prompts/` = **1 chat mới** trong project Claude Design BSWebSaaS: trên trang copy bấm "1 · Chép tên chat" (dòng mở đầu bằng mã lượt) rồi "2 · Sao chép prompt", dán cả hai vào cùng ô, gửi. Không gộp 2 file vào 1 chat. Lượt dừng giữa chừng: owner gửi "Làm <mã> phần 2" trong CÙNG chat (riêng D5-2: mỗi phần một chat mới — prompt ghi rõ).
 - Mỗi file đã chứa sẵn phần **BỐI CẢNH CHUNG** (luật cứng + 12 tiêu chí dễ dùng + hợp đồng nhúng Admin Shell + mẫu README handoff). (prompt trong `prompts/fixes/` không có phần này)
 - Xong mỗi lượt: chat báo "<mã> xong — gửi zip cho Claude Code." → owner export zip → Claude Code nhập vào `docs/design-source/` (`scripts/design_snapshot.py`), đối chiếu repo + 12 tiêu chí, kiểm hiển thị bằng Chromium thật (cả phần môi trường thiết kế không đo được: Safari, Firefox, cảm ứng) → đạt thì chép handoff vào `docs/design_handoff_<slug>/` + cập nhật sổ màn; chưa đạt thì viết prompt sửa ở `prompts/fixes/`.

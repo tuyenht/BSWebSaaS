@@ -1,0 +1,66 @@
+# Runbook cho phiên "designbot" — tự chạy gói prompt trong Claude Design
+
+Phiên Claude Code của tài khoản `designbot` (lệnh `ccd`), nối Chrome trên màn hình ảo qua Claude in Chrome, đọc file này và chạy các lượt thiết kế thay owner. Owner giao việc bằng một dòng: `Đọc và làm theo /opt/bswebsaas/dev/docs/design-briefs/saas-starter-design-first/designbot-runbook.md`.
+
+Vai trò: **người chuyển prompt và người kiểm bước đầu**. Không tự thiết kế, không tự viết prompt, không quyết thay owner. Kiểm sâu (dựng hình mọi cỡ màn, đo tương phản, nhập vào kho) là việc của phiên Claude Code chính của owner, làm từ zip bạn tải.
+
+## Trước khi bắt đầu
+1. Đọc `README.md` cùng thư mục: cách dùng gói, phần 2, prompt sửa.
+2. Chrome đang kết nối phải là cửa sổ đã đăng nhập claude.ai, đang mở project **BSWebSaaS** trong Claude Design. Không thấy thì dừng và báo owner.
+3. Tạo `/home/designbot/zips/` nếu chưa có. Nhật ký ghi ở `/home/designbot/zips/log.md`.
+4. Các lượt D0-1 → D0-4a và hai prompt sửa D0-4as, D0-4at đã chạy xong (owner chạy tay). Ghi một khối log `## D0-1…D0-4at · ĐẠT (owner chạy tay)` để mục "Cần trước" của các lượt sau đối chiếu được.
+5. Việc 0: tải zip project ngay (mục "Tải zip") với mã `D0-4at`, chưa chạy lượt mới.
+
+## Thứ tự lượt
+Chạy lần lượt, mỗi lượt một **chat mới** trong project:
+
+D0-4b → D0-5 → **[DỪNG — chờ owner gõ "tiếp tục"]** → D0-6a → D0-6b → D0-6c → D1-1 → D1-6 → D1-2 → D2-3 → D1-3 → D1-4a → D1-4b → D1-5 → D1-7 → D1-4c → D2-1 → D1-4d → D2-2 → D2-4 → D2-5 → D3-1 → D3-2 → D4-1 → D4-3 → D4-2 → D5-1 → D5-2
+
+Bạn luôn chạy **một chat một lúc**, nên mọi lượt đều là "chạy một mình": đoạn "CHẠY SONG SONG …" trong prompt **không áp** (prompt tự ghi "chạy một mình thì bỏ qua đoạn này"). Đoạn "Đầu lượt — gộp luồng phụ" sẽ không thấy mục cần gộp và tự bỏ qua. Vẫn dán nguyên văn cả hai đoạn, không xóa.
+
+## Mỗi lượt
+1. **Đọc lại tệp prompt ngay lúc chạy** (`prompts/<mã>-*.md`). Tệp có thể vừa được sửa, không dùng bản nhớ từ trước. Đối chiếu mục "Cần trước" với `log.md`: lượt cần trước chưa đạt thì dừng và báo owner.
+2. **Mở chat mới** trong project BSWebSaaS. Nội dung gửi:
+   - dòng 1: tên chat = dòng `# <mã> · <tên>` ngay dưới `═══ VIỆC CỦA LƯỢT NÀY ═══`, bỏ dấu `#` và phần trong ngoặc tròn;
+   - xuống dòng, rồi **toàn bộ tệp prompt nguyên văn**, từ `═══ BỐI CẢNH CHUNG` đến hết.
+   Không thêm, bớt hay sửa chữ nào. Trước khi bấm Send, kiểm ô nhập có đủ câu **cuối cùng** của tệp. Thiếu thì xóa và dán lại.
+3. **Chờ chạy xong**, kiểm tra vài phút một lần bằng ảnh chụp, không bấm vào khung thiết kế khi đang chạy.
+   - Bị ngắt ("We got interrupted") thì bấm **Resume**.
+   - Chat báo còn phần 2 (hoặc TODO.md có dòng `<mã> phần 2`) thì gửi `Làm <mã> phần 2` trong **cùng** chat. Riêng D5-2: mỗi phần một chat mới, theo prompt.
+   - Claude Design hỏi lại thì trả lời theo đúng chữ trong prompt. Prompt không nói thì chọn phương án **giữ nguyên thứ đang có**, ghi câu hỏi vào log. Câu hỏi về gỡ hay ẩn một nút hoặc tính năng đang có thì **dừng**, không trả lời.
+4. **Kiểm "Xong khi"**: đọc từng mục "Xong khi" của prompt, đối chiếu với câu trả lời **và** màn hình thật trong khung xem trước (chụp ảnh).
+   - Mục chưa đạt: gửi trong cùng chat `Mục <số> "Xong khi" chưa đạt: <điều thấy trên màn>. Sửa đúng mục này.` Tối đa 2 vòng.
+   - Mục cần cỡ màn khác, trình duyệt khác hoặc verifier quá giờ ([CHƯA KIỂM ĐƯỢC]) thì không ép Claude Design. Ghi vào log để Claude Code kiểm bằng zip.
+5. **Tải zip** (mục dưới) với mã lượt.
+6. **Ghi log**, rồi sang lượt kế.
+
+## Tải zip
+Trong Claude Design: Share → Download project (zip cả project). Chuyển tệp vừa tải (thường ở `~/Downloads/`) sang `/home/designbot/zips/<mã>-<HHMM>.zip`. Kiểm `unzip -l` mở được và có `Admin Shell.dc.html`. Không có thì tải lại một lần, vẫn lỗi thì dừng và báo owner.
+
+## Log (`/home/designbot/zips/log.md`, thêm cuối tệp)
+```
+## <mã> · <HH:MM dd/mm> · ĐẠT | CHƯA ĐẠT | DỪNG
+- Xong khi: <các mục đạt> · chưa đạt: <mục + lý do> · [CHƯA KIỂM ĐƯỢC]: <mục>
+- Câu Claude Design hỏi / bạn đã trả lời: <…>
+- zip: <tên tệp> · bất thường: <…>
+```
+
+## Prompt sửa từ Claude Code
+Owner gõ `Đọc và làm theo <đường dẫn tệp trong prompts/fixes/>`:
+- Dòng 1 của tệp (`# <mã> · <tên>`) cho biết chat nào nhận. Tiêu đề hoặc đầu tệp ghi rõ chat cần dán, ví dụ "dán vào chat D0-4b" hoặc "chat mới".
+- Dán phần **từ dòng 2 trở đi**, nguyên văn. Prompt sửa **không** kèm bối cảnh chung. Riêng trường hợp "chat mới" thì dòng đầu là tên chat như bước 2.
+- Chat cần dán đã quá dài (Claude Design hiện "Start a new chat to save … tokens of context") mà prompt sửa không ghi "chat mới": **không** tự chuyển sang chat mới, vì prompt sửa thiếu bối cảnh. Ghi DỪNG vào log với lý do "cần bản sửa tự đủ cho chat mới" để Claude Code viết lại.
+- Kiểm "Xong khi" của prompt sửa, tải zip mã `<mã>`, ghi log, rồi quay lại lượt đang dở.
+
+## Dừng và báo owner (ghi DỪNG vào log)
+- Claude Design định gỡ, ẩn hoặc đổi chỗ một nút hay tính năng **đang có** mà prompt không yêu cầu.
+- 2 vòng sửa vẫn chưa đạt một mục "Xong khi".
+- Bị hỏi về tài khoản, thanh toán, chia sẻ, quyền truy cập, hoặc cần đăng nhập lại.
+- Hết hạn mức Claude Design: ghi giờ, chờ 30 phút thì thử lại; sau 3 lần vẫn hết thì dừng.
+- Hết lượt "[DỪNG — chờ owner]" trong thứ tự.
+
+## Không bao giờ
+- Đổi cài đặt tài khoản hay project, chia sẻ hoặc publish project, xóa tệp thiết kế hay chat cũ.
+- Sửa bất cứ gì trong `/opt/bswebsaas` (chỉ đọc).
+- Tự trả lời mục "Cần owner chốt": prompt đã có phương án an toàn mặc định, Claude Design tự ghi vào README.
+- Thao tác cùng một chat với owner. Thấy owner đang gõ trong chat (tin nhắn mới không phải của bạn) thì dừng và báo.
