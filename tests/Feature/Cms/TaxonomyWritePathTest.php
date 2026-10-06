@@ -341,7 +341,10 @@ it('never moves posts out of a section whose approval workflow is on, even when 
         expect(twRefusal(fn () => twMove($events, $archive)))->toBeNull()
             ->and(twRefusal(fn () => twMove($empty, $projects)))->toBeNull();
 
-        // A section without an active workflow still only asks for confirmation.
+        // A section without an active workflow still only asks for confirmation — a switched-off
+        // workflow included.
+        Workflow::query()->where('key', 'review')->update(['is_active' => false]);
+        expect(twRefusal(fn () => twMove($events, $projects)))->toBe('section_changed');
         $sites = twCreate('Công trình', $projects);
         twPost('cong-trinh', [$sites]);
         expect(twRefusal(fn () => twMove($sites, $news)))->toBe('section_changed');

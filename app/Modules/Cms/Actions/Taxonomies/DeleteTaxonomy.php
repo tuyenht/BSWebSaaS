@@ -92,8 +92,10 @@ final readonly class DeleteTaxonomy
             }
             $targetId = $this->targetId($deleted, $items, $target);
             $leaving = $this->leavingSection($deleted, $targetId);
-            $governed = array_values(array_filter($leaving, fn (Taxonomy $category): bool => $this->workflows->forCategory($category) !== null));
-            if ($this->relinker->hasPrimaryPosts($this->ids($governed))) {
+            // Every deleted category shares one section (a nested section root is refused above as
+            // section_bound), so the first one answers for all: one workflow lookup, not one per row.
+            $governed = $leaving !== [] && $this->workflows->forCategory($leaving[0]) !== null;
+            if ($governed && $this->relinker->hasPrimaryPosts($this->ids($leaving))) {
                 throw new TaxonomyChangeRejectedException('workflow_governed');
             }
             if (! $evenIfSectionChanges && $this->relinker->hasPrimaryPosts($this->ids($leaving))) {
