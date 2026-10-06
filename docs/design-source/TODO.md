@@ -1,16 +1,22 @@
 # Việc còn lại — cập nhật 06/10/2026
 
+## D0-6a phần 1 — xong 06/10 (README `README - D0-6 Hiển thị đa thiết bị.md`): Quy trình duyệt (thẻ gọn / 3 cột / hộp trượt đáy) · Admin Shell (safe-area, activeAs, ai-job thanh ngôn ngữ, link admin-components.css) · `.sx-dot` → token
+## ~~D0-6a phần 2~~ — xong 06/10 (README D0-6 › Phần 2): Hộp duyệt (mẫu 5, khung đọc 100dvh, h1, emoji, "vừa gửi", length-field + ai-assist, token) · Trạng thái duyệt · Trình đơn (data-focus-wrap, role="status", onDirty(n)/onInvalid(n)/firstError, nút lên/xuống) · Shell "N lỗi · Xem lỗi đầu tiên" cho Trình đơn
+- Hộp duyệt: khung so sánh khác biệt chưa có — dựng toàn màn ở điện thoại khi làm · D1-4d
+- Kiểm Safari/Firefox/Samsung, chế độ tối, 200%, cảm ứng thật, safe-area thật của D0-6a · Claude Code bằng zip
+- Lượt kế tiếp: **D0-6b**.
+
 ## ~~D0-5~~ — xong 06/10 (README `README - D0-5 Nối màn.md`)
 - ~~Tách CSS component ra `admin-components.css`~~ → xong: hai trang chuẩn link sau `admin-base.css`, `<style>` chỉ còn reset trang; `--fsp:0px` mặc định; lớp trùng tên của trang bổ sung khoanh trong `[data-cs="sup"]` (không đổi tên). Đo `_audit/d05-std.html`: 0 tràn trang ở 360/390/768/1440 × thường/Chữ lớn; sơ đồ Mẫu 1/8 0 cắt · 0 vỡ từ; ô `--brand-*` 0 cắt.
 - Lượt tách CSS · xem bằng mắt vùng cuộn `.tw` ở `#he-thong` (khung 390/768/1240) và phần tử `overflow:hidden` ở `#dieu-khien` khi bật Chữ lớn — chữ có bị cắt không (môi trường thiết kế chỉ đo bằng script) · Claude Code kiểm bằng zip
-- Màn link `admin-components.css` lần đầu thì bỏ `.dsw` tự khai trong cùng lượt (Shell, Trình đơn, Email Settings, Đăng nhập nhanh, Integrations, Floating Contact) · lượt sửa từng màn (D0-6a/b/c)
-- Chữ lớn: Shell còn phóng `zoom` 16/14 cho cả màn nhúng — màn nhúng đã nối (Bài viết, Trang, Page Editor, Hộp duyệt) chưa dùng `--fsp`; bỏ `zoom` khi màn chuyển sang `--fsp` · D0-6a (chuyển từ "· D0-5")
+- Màn link `admin-components.css` lần đầu thì bỏ `.dsw` tự khai trong cùng lượt (~~Shell~~ xong D0-6a · Trình đơn D0-6a phần 2 · Email Settings, Đăng nhập nhanh, Integrations, Floating Contact D0-6b)
+- Chữ lớn: Shell còn phóng `zoom` 16/14 cho cả màn nhúng — màn nhúng đã nối (Bài viết, Trang, Page Editor, Hộp duyệt) chưa dùng `--fsp`; bỏ `zoom` khi màn chuyển sang `--fsp` · D1-3 (danh sách) · D1-4d (trình soạn) (D0-6a: điều kiện chưa có, chuyển)
 - Tweak "Số ngôn ngữ" 8 chưa có العربية + ô nhập theo ngôn ngữ tự `dir="rtl"` — các trình soạn nhúng chưa có ô theo ngôn ngữ RTL, việc thuộc thanh ngôn ngữ/ô nhập · D1-4b (chuyển từ "· D0-5")
 - Nút AI ẩn khi "Lời mời nâng gói" TẮT: Shell đã truyền `upsell` + `plan-key` vào Bài viết, Trang, Page Editor; màn chưa đọc prop này để ẩn/khóa nút AI · D1-3 (danh sách) · D1-4b (trình soạn)
-- Màn Sửa (`<loại>.edit`) chưa tô mục menu "Danh sách" đang chọn (registry có `activeAs`, Shell chưa đọc) · D0-6a
+- ~~Màn Sửa (`<loại>.edit`) chưa tô mục menu "Danh sách" đang chọn · D0-6a~~ → xong 06/10 (Shell đọc `activeAs`)
 - Kho `BSCW.store`: thân bài (body) chưa lưu vào kho — Hộp duyệt chỉ thấy tiêu đề + tóm tắt của bài vừa gửi · D1-4d
-- Hộp duyệt khi nhúng: "chờ 0 ngày" cho bài vừa gửi trong phiên → "vừa gửi" · D0-6a
-- Lượt kế tiếp: **D0-6a**.
+- Hộp duyệt khi nhúng: "chờ 0 ngày" cho bài vừa gửi trong phiên → "vừa gửi" · ~~D0-6a phần 2~~ xong 06/10
+- ~~Lượt kế tiếp: D0-6a.~~ → phần 1 xong 06/10; còn phần 2.
 
 ## ~~D0-4b~~ — xong 06/10 (README `README - D0-4 Admin Shell v2.md` › D0-4b phần chính)
 - ~~Màn đã có thiết kế nhưng chưa nhận `embedded`: Quản lý Bài viết - Options + Quản lý Trang - Options · D1-3~~ → xong ở D0-5 (phần nhúng)
@@ -24,7 +30,7 @@
 ## ~~D0-4a phần 2~~ — xong 06/10 (README `README - D0-4 Admin Shell v2.md` › Phần 2)
 - ~~Mục 2 topbar · Mục 3 Cài đặt + thanh Lưu dính đáy + onDirty(n)/onInvalid(n)/firstError phía Shell · Mục 5 bản đồ màn hình~~ → xong.
 - Phía panel nhúng (Shell đã nhận số/lỗi và gửi `firstError`): Email Settings · Đăng nhập nhanh · Integrations Panel · Floating Contact Panel — `onDirty(n)` + `onInvalid(n)` + nghe `bs-embed-cmd {act:'firstError'}` · D0-6b
-- Phía panel nhúng: Trình đơn — `onDirty(n)` + `onInvalid(n)` + nghe `firstError` · D0-6a
+- Phía panel nhúng: Trình đơn — `onDirty(n)` + `onInvalid(n)` + nghe `firstError` · ~~D0-6a phần 2~~ xong 06/10
 - Chữ lớn: Shell đặt `--fsp` trên khung gốc + phóng nội dung 16/14 (`zoom`) vì chữ của Shell viết px; khi màn nhúng dùng `--fsp` thì bỏ `zoom` để không phóng hai lần · ~~D0-5~~ → D0-6a (xem mục D0-5)
 - ~~Tweak "Lời mời nâng gói" cho dòng "Tạo website mới — khóa theo gói" + nội dung Trợ giúp theo registry màn · D0-4b~~ → xong 06/10 (bật: "Xem gói nâng cấp"; Trợ giúp đọc `help` của registry)
 - Tổng quan ở 360px: lưới giữa đã đổi `minmax(0,…)`; vẽ lại cả màn · D2-5
@@ -37,7 +43,7 @@
 
 ## D0-3 — chuyển màn sang chuẩn về bố cục (05/10, từ `#mau-trang`)
 - ~~Admin Shell: cụm "Chưa lưu · Bỏ thay đổi · Lưu thay đổi" ở đầu trang Cài đặt → thanh Lưu dính đáy ("N thay đổi chưa lưu · N lỗi · Xem lỗi đầu tiên · Bỏ thay đổi · Lưu"); `onDirty` nhận SỐ (Shell đang ép true/false) + `onInvalid(n)` + lệnh `bs-embed-cmd {act:'firstError'}` · D0-4a phần 2 (mẫu 4)~~ → xong 06/10
-- Hộp duyệt: khung đọc giãn hết chiều cao (`100dvh` trừ khung Shell), bỏ `max-height:calc(100vh - 250px)` · D0-6a (mẫu 5)
+- Hộp duyệt: khung đọc giãn hết chiều cao (`100dvh` trừ khung Shell), bỏ `max-height:calc(100vh - 250px)` · ~~D0-6a phần 2~~ xong 06/10 (mẫu 5)
 - Quản lý Bài viết + Quản lý Trang: chuyển vào Thùng rác không hỏi + toast "Hoàn tác" 8 giây; khung chứa dưới 768px → thẻ gọn (600–767 hai cột) · lượt sửa màn danh sách (mẫu 1)
 - Page Editor - Options: co theo khung chứa (bỏ Tweak thiết bị làm chuẩn co giãn) + dòng "đã lưu" bỏ "Bản nháp #id" · D1-4d (mẫu 3)
 - Trang chuẩn: vùng cuộn bên trong `.tw` ở `#he-thong` (khung 390/768/1240) và phần tử `overflow:hidden` ở `#dieu-khien` khi bật "Chữ lớn" — soát bằng mắt xem có cắt chữ không · lượt tách CSS (sau D0-3)
@@ -52,7 +58,7 @@
 - Quản lý Bài viết - Options: câu "Vai trò … không được tạo bài" (addTitle, onAdd) → "Nhóm quyền …"; chế độ tối còn nền/chữ gắn cứng (băng thông tin trắng, chữ menu "Khác" mờ #878a99/#ced4da) → token · lượt sửa màn danh sách (thấy khi kiểm D0-3s)
 - ~~Owner xem lại: repo có 3 nhóm quyền nền tảng~~ → chốt 06/10: `super_admin` Quản trị nền tảng · `support` Nhân viên hỗ trợ · `billing` Nhân viên thanh toán (bảng thuật ngữ + README D0-3)
 - Owner chốt "Đề xuất chờ owner" của bảng thuật ngữ (README D0-3)
-- Hộp duyệt: trạng thái trống "Không có bài nào chờ bạn — thành thơi nhé" có emoji (CLAUDE/DS: không emoji trong khung quản trị) · D0-6a
+- Hộp duyệt: trạng thái trống "Không có bài nào chờ bạn — thành thơi nhé" có emoji (CLAUDE/DS: không emoji trong khung quản trị) · ~~D0-6a phần 2~~ xong 06/10
 
 ## Cập nhật 04/10/2026
 
@@ -69,9 +75,9 @@ Nguồn mẫu: `Chuẩn giao diện - Component bổ sung.dc.html`. Mỗi màn s
 - Page Editor - Options · toast có vùng `role="status"` · D1-4b
 - Quản lý Bài viết - Options · toast có vùng `role="status"` · D1-3
 - Page Builder v3 · toast có vùng `role="status"` · track Builder v3
-- Hộp duyệt · length-field + ai-assist · D0-6a
-- Trình đơn · toast có vùng `role="status"` · D0-6a
-- Admin Shell · thanh ngôn ngữ: việc AI đang chạy (ai-job) "Đang dịch… 4/6", "Lỗi — đã hoàn N từ AI", "Đã hủy — không trừ từ AI nào cho N ô chưa chạy" · D0-6a
+- Hộp duyệt · length-field + ai-assist · ~~D0-6a phần 2~~ xong 06/10
+- Trình đơn · toast có vùng `role="status"` · ~~D0-6a phần 2~~ xong 06/10
+- ~~Admin Shell · thanh ngôn ngữ: việc AI đang chạy (ai-job) · D0-6a~~ → xong 06/10 (Tweak "Mô phỏng lỗi khi dịch")
 - Integrations Panel · save-status · D0-6b
 - Email Settings · toast `role="status"` + nút chép biến (dòng 549, JS 1472–1474) `aria-label`/`title` "Đã sao chép <biến>" · D0-6b
 - Floating Contact Panel · toast `role="status"` + xóa mã chết `copyLabel` (dòng 439, chữ "Đã chép") · D0-6b

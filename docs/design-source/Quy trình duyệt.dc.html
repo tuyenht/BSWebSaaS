@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
@@ -25,6 +26,7 @@
 body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);}
 a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--color-accent,#2f3d69);text-decoration:underline;}
 .qd-wrap{container-type:inline-size;display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;}
+.qd-wrap.emb{padding:0;max-width:none;}
 .qd-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);}
 .qd-h{display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;}
 .qd-t{font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);}
@@ -41,39 +43,32 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 .qd-c4{display:flex;justify-content:flex-end;align-items:center;}
 .qd-c4 .qd-btn{width:100%;}
 .qd-sw{display:flex;align-items:center;gap:8px;min-height:44px;padding:0;border:0;background:transparent;font:inherit;cursor:pointer;}
-.qd-swlb{font-size:12.5px;font-weight:600;color:#5c5f6e;white-space:nowrap;}
+.qd-swlb{font-size:12.5px;font-weight:600;color:var(--color-body-muted,#5b6275);white-space:nowrap;}
 .qd-sw.on .qd-swlb{color:var(--color-accent,#2050a0);}
 .qd-name{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;}
-.qd-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:#5c5f6e;line-height:1.5;}
+.qd-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;}
 .qd-pend{display:inline-flex;align-items:center;gap:5px;border:0;background:transparent;padding:0;font:inherit;font-size:12px;font-weight:600;color:var(--color-admin-warning-text,#8a5f18);white-space:nowrap;cursor:pointer;}
 .qd-pend:hover{text-decoration:underline;}
 .qd-wf{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);line-height:1.45;}
-.qd-none{font-size:12.5px;color:#5c5f6e;line-height:1.5;}
+.qd-none{font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.5;}
 .qd-link{border:0;background:transparent;padding:0;font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;text-align:left;}
 .qd-link:hover{text-decoration:underline;}
 .qd-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;width:fit-content;}
 .qd-chip.on{background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a6d60);}
-.qd-chip.off{background:rgba(135,138,153,.14);color:#5c5f6e;}
+.qd-chip.off{background:rgba(135,138,153,.14);color:var(--color-body-muted,#5b6275);}
 .qd-chip.warn{background:rgba(247,184,75,.18);color:var(--color-admin-warning-text,#8a5f18);}
 .qd-chip.plan{background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);}
-.qd-chip.perm{background:var(--color-surface-hover,#f3f6f9);color:#6c6f80;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
-.qd-dot{color:#dfe2e8;font-size:12px;}
+.qd-chip.perm{background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+.qd-dot{color:var(--color-body-faint,#dfe2e8);font-size:12px;}
 .qd-na{font-size:12px;color:var(--color-body-muted,#5b6275);}
 .qd-naw{display:flex;align-items:center;gap:9px;min-height:44px;}
 .qd-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:0 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .qd-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
-.qd-pri{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.qd-pri{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
 .qd-pri:hover{filter:brightness(.95);}
 .qd-pri:disabled{background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
 .qd-dgr{border-color:rgba(240,101,72,.45);color:var(--color-admin-danger-text,#c0432c);background:var(--color-surface,#fff);}
 .qd-dgr:hover{background:rgba(240,101,72,.08);}
-.dsw{position:relative;width:38px;height:22px;border-radius:20px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-border,#e9ecf4);padding:0;flex-shrink:0;display:inline-block;}
-.dsw:after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--color-surface,#fff);box-shadow:0 1px 2px rgba(56,65,74,.25);transition:left .15s;}
-.dsw.on{background:#2050a0;border-color:#2050a0;}
-.dsw.on:after{left:18px;}
-.qd-sw:hover .dsw{border-color:#ccd0d8;}
-.qd-sw:hover .dsw.on{filter:brightness(.95);}
-.qd-sw:focus-visible{outline:2px solid #2050a0;outline-offset:2px;border-radius:4px;}
 .qd-track{display:flex;align-items:flex-start;width:100%;}
 .qd-cell{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:7px;}
 .qd-rail{display:flex;align-items:center;width:100%;}
@@ -82,14 +77,14 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 .qd-cell:last-child .qd-l.right{visibility:hidden;}
 .qd-node{width:26px;height:26px;border-radius:50%;border:2px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;color:var(--color-body-muted,#5b6275);font-size:13px;}
 .qd-cell.init .qd-node{border-color:rgba(32,80,160,.5);color:var(--color-accent,#2050a0);}
-.qd-cell.pub .qd-node{border-color:#0ab39c;color:var(--color-admin-success-text,#0a6d60);background:rgba(10,179,156,.08);}
-.qd-cap{font-size:12px;line-height:1.45;text-align:center;color:#5c5f6e;padding:0 4px;text-wrap:pretty;}
+.qd-cell.pub .qd-node{border-color:var(--color-admin-success,#0ab39c);color:var(--color-admin-success-text,#0a6d60);background:rgba(10,179,156,.08);}
+.qd-cap{font-size:12px;line-height:1.45;text-align:center;color:var(--color-body-muted,#5b6275);padding:0 4px;text-wrap:pretty;}
 .qd-cell.pub .qd-cap{color:var(--color-admin-success-text,#0a6d60);font-weight:600;}
 .qd-pills{display:none;}
-.qd-trgrp{font-size:12px;font-weight:700;letter-spacing:.04em;color:#5c5f6e;text-transform:uppercase;}
+.qd-trgrp{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--color-body-muted,#5b6275);text-transform:uppercase;}
 .qd-tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:9px 11px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface,#fff);}
 .qd-trname{font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.45;}
-.qd-trflow{font-size:12px;color:#5c5f6e;line-height:1.5;}
+.qd-trflow{font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;}
 .qd-trmeta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
 @container (max-width: 640px){
   .qd-track{display:none;}
@@ -101,30 +96,49 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 .qd-step.pub{border-color:rgba(10,179,156,.4);background:rgba(10,179,156,.08);color:var(--color-admin-success-text,#0a6d60);font-weight:600;}
 .qd-step.init{border-color:rgba(32,80,160,.3);background:rgba(32,80,160,.06);}
 .qd-ov{position:fixed;inset:0;background:rgba(33,37,41,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:60;}
-.qd-modal{background:var(--color-surface,#fff);border-radius:6px;box-shadow:0 5px 20px rgba(56,65,74,.28);width:100%;max-width:760px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;}
+.qd-modal{background:var(--color-surface,#fff);border-radius:6px;box-shadow:0 5px 20px rgba(56,65,74,.28);width:100%;max-width:760px;max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;overflow:hidden;}
 .qd-modal.sm{max-width:440px;}
 .qd-mb{padding:16px;overflow:auto;display:flex;flex-direction:column;gap:14px;}
 .qd-mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fcfcfd);flex-wrap:wrap;}
 .qd-tpl{box-sizing:border-box;display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);cursor:pointer;text-align:left;font:inherit;width:100%;}
 .qd-tpl:hover{background:var(--color-surface-muted,#f8f9fb);}
-.qd-tpl.sel{border-color:#2050a0;background:rgba(32,80,160,.05);box-shadow:0 0 0 3px rgba(32,80,160,.12);}
+.qd-tpl.sel{border-color:var(--color-accent,#2050a0);background:rgba(32,80,160,.05);box-shadow:0 0 0 3px rgba(32,80,160,.12);}
 .qd-tpl.lock{opacity:.62;}
-.qd-rad{width:18px;height:18px;border-radius:50%;border:1.5px solid #ccd0d8;flex-shrink:0;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;}
-.qd-rad.on{border-color:#2050a0;}
-.qd-rad.on:after{content:"";width:10px;height:10px;border-radius:50%;background:#2050a0;}
+.qd-rad{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--color-border-input,#8a90a2);flex-shrink:0;margin-top:2px;display:inline-flex;align-items:center;justify-content:center;}
+.qd-rad.on{border-color:var(--color-accent,#2050a0);}
+.qd-rad.on:after{content:"";width:10px;height:10px;border-radius:50%;background:var(--color-accent,#2050a0);}
 .qd-ta{width:100%;box-sizing:border-box;min-height:88px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;padding:10px 12px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);resize:vertical;}
-.qd-ta:focus{outline:0;border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.2);}
-.qd-sk{height:14px;border-radius:4px;background:linear-gradient(90deg,#f3f6f9,#eaeef3,#f3f6f9);background-size:200% 100%;animation:qdsk 1.2s linear infinite;}
-@keyframes qdsk{from{background-position:200% 0}to{background-position:-200% 0}}
-@container (max-width: 900px){
-  .qd-row{grid-template-columns:minmax(0,1fr);gap:10px;}
-  .qd-c4{justify-content:flex-start;}
-  .qd-c4 .qd-btn{width:auto;}
-  .qd-hrow{display:none;}
+.qd-sk{height:14px;border-radius:4px;background:var(--color-surface-hover,#f1f3f9);}
+/* D0-6a: >=900 bảng 4 cột · 600–899 bảng 3 cột (tên + số · quy trình · công tắc + nút) · <600 thẻ 4 dòng. Quy tắc hẹp đứng sau và cùng/độ ưu tiên cao hơn quy tắc rộng. */
+@container (max-width: 899px){
+  .qd-hrow,.qd-row{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) 172px;}
+  .qd-hrow .qd-hcell:nth-child(4){display:none;}
+  .qd-row{grid-template-areas:"c1 c2 c3" "c1 c2 c4";row-gap:4px;}
+  .qd-c1{grid-area:c1;}.qd-c2{grid-area:c2;}.qd-c3{grid-area:c3;}.qd-c4{grid-area:c4;}
+  .qd-row .qd-c4{justify-content:stretch;}
+  .qd-row .qd-c4 .qd-btn{width:100%;}
 }
-@container (max-width: 560px){
-  .qd-wrap{padding:16px;}
+@container (max-width: 599px){
+  .qd-wrap:not(.emb){padding:16px;}
   .qd-btn,.qd-pri{width:100%;}
+  .qd-hrow{display:none;}
+  .qd-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name sw" "sub sub" "wf wf" "btn btn";gap:8px 12px;align-items:center;margin:12px 12px 0;padding:10px 12px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;}
+  .qd-row:last-child{margin-bottom:12px;}
+  .qd-row:hover{background:transparent;}
+  .qd-row .qd-c1{display:contents;}
+  .qd-name{grid-area:name;min-width:0;}
+  .qd-sub{grid-area:sub;}
+  .qd-row .qd-c2{grid-area:wf;flex-direction:row;flex-wrap:wrap;align-items:center;gap:2px 12px;}
+  .qd-row .qd-c3{grid-area:sw;justify-self:end;}
+  .qd-row .qd-c4{grid-area:btn;}
+  .qd-row .qd-c4 .qd-btn{width:100%;min-height:44px;}
+  .qd-link{min-height:44px;}
+  .qd-h .qd-t{flex:1 1 100%;}
+  .qd-h span[style*="margin-left:auto"]{margin-left:0 !important;}
+  .qd-ov{align-items:flex-end;padding:0;}
+  .qd-modal,.qd-modal.sm{max-width:none;border-radius:12px 12px 0 0;max-height:92vh;max-height:92dvh;}
+  .qd-mf{padding-bottom:calc(12px + env(safe-area-inset-bottom));}
+  .qd-mf .qd-btn,.qd-mf .qd-pri{flex:1 1 140px;}
 }
 @media (pointer:coarse){
   .qd-btn,.qd-pri,.qd-tpl{min-height:44px;}
@@ -132,7 +146,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 </style>
 </helmet>
 
-<div class="qd-wrap">
+<div class="qd-wrap {{ wrapCls }}">
 
   <sc-if value="{{ showHeader }}">
     <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
@@ -175,7 +189,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           <span class="qd-c4"><span class="qd-sk" style="width:100%;height:34px;"></span></span>
         </div>
       </sc-for>
-      <div style="padding:12px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);font-size:12px;color:#5c5f6e;">Đang tải danh sách thể loại…</div>
+      <div style="padding:12px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);font-size:12px;color:var(--color-body-muted,#5b6275);">Đang tải danh sách thể loại…</div>
     </div>
   </sc-if>
 
@@ -201,7 +215,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
       <div class="qd-h">
         <span class="qd-t">Thể loại nội dung của website</span>
         <span class="qd-chip plan"><i class="ri-vip-crown-2-line" style="font-size:12px;"></i>{{ planLine }}</span>
-        <span style="margin-left:auto;font-size:12px;color:#5c5f6e;">{{ summaryLine }}</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ summaryLine }}</span>
       </div>
       <div class="qd-hrow">
         <span class="qd-hcell">Thể loại nội dung</span>
@@ -232,13 +246,13 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           </span>
           <span class="qd-c3">
             <sc-if value="{{ r.chipOn }}">
-              <button class="qd-sw on" onClick="{{ r.onToggle }}" role="switch" aria-checked="true" title="{{ r.toggleTitle }}">
-                <span class="dsw on"></span><span class="qd-swlb">Đang bật</span>
+              <button class="qd-sw on" onClick="{{ r.onToggle }}" role="switch" aria-checked="true" aria-label="{{ r.swLabel }}" title="{{ r.toggleTitle }}">
+                <span class="dsw" aria-checked="true" aria-hidden="true"></span><span class="qd-swlb">Đang bật</span>
               </button>
             </sc-if>
             <sc-if value="{{ r.chipOff }}">
-              <button class="qd-sw" onClick="{{ r.onToggle }}" role="switch" aria-checked="false" title="{{ r.toggleTitle }}">
-                <span class="dsw"></span><span class="qd-swlb">Đã tắt</span>
+              <button class="qd-sw" onClick="{{ r.onToggle }}" role="switch" aria-checked="false" aria-label="{{ r.swLabel }}" title="{{ r.toggleTitle }}">
+                <span class="dsw" aria-checked="false" aria-hidden="true"></span><span class="qd-swlb">Đã tắt</span>
               </button>
             </sc-if>
             <sc-if value="{{ r.noWf }}"><span class="qd-naw"><span class="qd-na">Chưa bật</span></span></sc-if>
@@ -254,7 +268,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
         </div>
       </sc-for>
     </div>
-    <span style="font-size:12px;color:#5c5f6e;line-height:1.7;">Tắt quy trình không xóa bài nào. Bài đang chờ sẽ quay về cách đăng thường, nội dung và lịch sử vẫn giữ nguyên.</span>
+    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.7;">Tắt quy trình không xóa bài nào. Bài đang chờ sẽ quay về cách đăng thường, nội dung và lịch sử vẫn giữ nguyên.</span>
   </sc-if>
 
   <sc-if value="{{ pickOpen }}">
@@ -266,7 +280,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           <button class="qd-link" style="margin-left:auto;font-size:18px;" onClick="{{ onClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
         </div>
         <div class="qd-mb">
-          <span style="font-size:12.5px;color:#5c5f6e;line-height:1.65;">Chọn một quy trình rồi xem trước các bước bên dưới. Chỉ khi bạn bấm áp dụng thì thể loại này mới đổi cách đăng bài.</span>
+          <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.65;">Chọn một quy trình rồi xem trước các bước bên dưới. Chỉ khi bạn bấm áp dụng thì thể loại này mới đổi cách đăng bài.</span>
           <div style="display:flex;flex-direction:column;gap:8px;">
             <sc-for list="{{ tpls }}" as="t" hint-placeholder-count="3">
               <sc-if value="{{ t.free }}">
@@ -274,7 +288,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
                   <span class="qd-rad {{ t.radCls }}"></span>
                   <span style="display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto;">
                     <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ t.name }}</span><span class="qd-chip off">{{ t.stepLine }}</span></span>
-                    <span style="font-size:12px;color:#5c5f6e;line-height:1.6;">{{ t.desc }}</span>
+                    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ t.desc }}</span>
                   </span>
                 </button>
               </sc-if>
@@ -283,7 +297,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
                   <span style="width:18px;flex-shrink:0;margin-top:2px;"><i class="ri-lock-2-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);"></i></span>
                   <span style="display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto;">
                     <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ t.name }}</span><span class="qd-chip plan"><i class="ri-vip-crown-2-line" style="font-size:12px;"></i>{{ t.lockLine }}</span></span>
-                    <span style="font-size:12px;color:#5c5f6e;line-height:1.6;">{{ t.desc }}</span>
+                    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ t.desc }}</span>
                   </span>
                 </button>
               </sc-if>
@@ -291,7 +305,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           </div>
 
           <sc-if value="{{ prevNone }}">
-            <div style="display:flex;align-items:flex-start;gap:9px;padding:12px 13px;border-radius:4px;background:var(--color-surface-hover,#f6f7f9);color:#6c6f80;font-size:12.5px;line-height:1.65;">
+            <div style="display:flex;align-items:flex-start;gap:9px;padding:12px 13px;border-radius:4px;background:var(--color-surface-hover,#f6f7f9);color:var(--color-body-muted,#5b6275);font-size:12.5px;line-height:1.65;">
               <i class="ri-information-line" style="font-size:16px;flex-shrink:0;"></i>
               <span>Thể loại này sẽ không có bước chờ nào: ai có quyền đăng thì bài lên ngay sau khi lưu. Bài đang chờ duyệt không bị xóa — chỉ chuyển về cách đăng thường.</span>
             </div>
@@ -299,7 +313,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 
           <sc-if value="{{ hasPreview }}">
             <div style="display:flex;flex-direction:column;gap:12px;padding:14px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface-muted,#fcfcfd);">
-              <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#5c5f6e;text-transform:uppercase;">Các bước của {{ prevName }} <span style="font-weight:500;letter-spacing:0;text-transform:none;">· {{ prevStepCount }} bước</span></span>
+              <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--color-body-muted,#5b6275);text-transform:uppercase;">Các bước của {{ prevName }} <span style="font-weight:500;letter-spacing:0;text-transform:none;">· {{ prevStepCount }} bước</span></span>
               <div class="qd-track">
                 <sc-for list="{{ prevSteps }}" as="s" hint-placeholder-count="4">
                   <span class="qd-cell {{ s.cls }}">
@@ -317,9 +331,9 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
                   <sc-if value="{{ s.narrow }}"><span class="qd-step {{ s.cls2 }}"><i class="{{ s.icon }}" style="font-size:13px;"></i>{{ s.label }}</span></sc-if>
                 </sc-for>
               </div>
-              <span style="font-size:12px;color:#5c5f6e;line-height:1.6;"><i class="ri-global-line" style="color:var(--color-admin-success-text,#0a6d60);"></i> Mốc xanh là bước khách truy cập nhìn thấy bài. Các bước trước đó chỉ người trong nhà thấy.</span>
+              <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;"><i class="ri-global-line" style="color:var(--color-admin-success-text,#0a6d60);"></i> Mốc xanh là bước khách truy cập nhìn thấy bài. Các bước trước đó chỉ người trong nhà thấy.</span>
               <div style="height:1px;background:var(--color-border,#e9ecf4);"></div>
-              <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#5c5f6e;text-transform:uppercase;">Các nút chuyển bước và quyền cần có</span>
+              <span style="font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--color-body-muted,#5b6275);text-transform:uppercase;">Các nút chuyển bước và quyền cần có</span>
               <sc-if value="{{ hasFwd }}">
                 <span class="qd-trgrp"><i class="ri-arrow-right-circle-line" style="font-size:13px;"></i> Đưa bài đi tiếp</span>
                 <div style="display:flex;flex-direction:column;gap:7px;">
@@ -397,7 +411,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ toastOn }}">
-    <div style="position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:4px;background:#1f2b4d;color:#fff;font-size:13px;box-shadow:0 5px 20px rgba(56,65,74,.3);max-width:calc(100vw - 32px);">
+    <div role="status" style="position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:4px;background:#1f2b4d;color:#fff;font-size:13px;box-shadow:0 5px 20px rgba(56,65,74,.3);max-width:calc(100vw - 32px);">
       <i class="{{ toastIcon }}" style="font-size:16px;"></i><span>{{ toast }}</span>
     </div>
   </sc-if>
@@ -412,10 +426,20 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
     </div>
   </sc-if>
 
+  <sc-if value="{{ showFrames }}">
+    <section aria-label="Khung xem điện thoại và máy tính bảng" style="display:flex;flex-direction:column;gap:10px;margin-top:24px;padding-top:16px;border-top:1px dashed var(--color-border-strong,#e3e7f0);">
+      <span class="qd-t">Khung xem 390px · 768px (ghi chú thiết kế)</span>
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
+        <figure style="margin:0;display:flex;flex-direction:column;gap:6px;max-width:100%;"><figcaption style="font-size:12px;color:var(--color-body-muted,#5b6275);">Điện thoại 390 × 844 — mỗi thể loại một thẻ 4 dòng</figcaption><iframe title="Quy trình duyệt ở 390px" src="Quy%20tr%C3%ACnh%20duy%E1%BB%87t.dc.html#frame" style="width:390px;max-width:100%;height:844px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-body,#f4f5fa);"></iframe></figure>
+        <figure style="margin:0;display:flex;flex-direction:column;gap:6px;max-width:100%;"><figcaption style="font-size:12px;color:var(--color-body-muted,#5b6275);">Máy tính bảng 768 × 1024 — bảng 3 cột</figcaption><iframe title="Quy trình duyệt ở 768px" src="Quy%20tr%C3%ACnh%20duy%E1%BB%87t.dc.html#frame" style="width:768px;max-width:100%;height:1024px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-body,#f4f5fa);"></iframe></figure>
+      </div>
+    </section>
+  </sc-if>
+
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;embedded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Nhúng&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(dirty: boolean) =&gt; void&quot;},&quot;viewer&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Vận hành nền tảng&quot;,&quot;Quản trị site&quot;],&quot;default&quot;:&quot;Vận hành nền tảng&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;},&quot;plan&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Cơ bản&quot;,&quot;Chuyên nghiệp&quot;],&quot;default&quot;:&quot;Cơ bản&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;},&quot;loadState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Bình thường&quot;,&quot;Đang tải&quot;,&quot;Lỗi tải&quot;,&quot;Chưa bật quy trình nào&quot;],&quot;default&quot;:&quot;Bình thường&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;},&quot;embedded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Nhúng&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(dirty: boolean) =&gt; void&quot;},&quot;viewer&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Vận hành nền tảng&quot;,&quot;Quản trị site&quot;],&quot;default&quot;:&quot;Vận hành nền tảng&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;},&quot;plan&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Cơ bản&quot;,&quot;Chuyên nghiệp&quot;],&quot;default&quot;:&quot;Cơ bản&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;},&quot;loadState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Bình thường&quot;,&quot;Đang tải&quot;,&quot;Lỗi tải&quot;,&quot;Chưa bật quy trình nào&quot;],&quot;default&quot;:&quot;Bình thường&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Thử nghiệm&quot;}}">
 class Component extends DCLogic {
   constructor(p) {
     super(p);
@@ -563,6 +587,8 @@ class Component extends DCLogic {
 
     return {
       showHeader: !this.props.embedded && !isTenant,
+      wrapCls: this.props.embedded ? 'emb' : '',
+      showFrames: !this.props.embedded && this.props.showFrames !== false && (function () { try { return window.location.hash !== '#frame'; } catch (e) { return false; } })(),
       noAccess: isTenant,
       isLoading: !isTenant && st === 'Đang tải',
       isError: !isTenant && st === 'Lỗi tải',
@@ -586,6 +612,7 @@ class Component extends DCLogic {
           : 'Bật lại quy trình cho ' + r.name,
         onPick: () => this.openPick(r.id),
         onView: () => this.openPick(r.id),
+        swLabel: 'Duyệt trước khi đăng cho ' + r.name + ' · ' + (r.on ? 'Đang bật' : 'Đã tắt'),
         onToggle: () => this.toggle(r.id)
       })),
 
