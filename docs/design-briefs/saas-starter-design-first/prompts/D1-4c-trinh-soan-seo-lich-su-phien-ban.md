@@ -49,17 +49,30 @@ Giao nộp: 1 file .dc.html mỗi màn (hoặc gộp có anchor) + README handof
 Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm nào thì lượt này làm theo prompt (owner đã duyệt) và ghi 1 dòng LESSONS.md nêu điểm khác để owner sửa CLAUDE.md; bài học mới cũng ghi 1 dòng vào LESSONS.md. Làm xong gọi ready_for_verification và sửa hết lỗi verifier báo. Lượt này làm ĐÚNG MỘT việc bên dưới.
 ═══ VIỆC CỦA LƯỢT NÀY ═══
 
-# D1-4c · Trình soạn nội dung (phần 2) — SEO còn lại + lịch sử phiên bản
+# D1-4c · Khuôn soạn nội dung (phần 2) — lịch sử phiên bản + SEO còn lại
 
-Cần trước: D1-4b (khuôn chung đã hợp nhất). Làm trên khuôn đó, không tách lại màn.
-Việc:
-1. Làm nốt các mục CHƯA LÀM của TODO đợt 4 (Kiểm định theo BSSEO.audit; ô mô tả ảnh đại diện cho Trang; chốt chặn hay chỉ cảnh báo nhóm SEO bắt buộc — đề xuất: chỉ cảnh báo, không chặn người mới; phân vai "Nâng cấp nội dung" và "AI Writer" — phần AI giữ, chỉ hiện khi website được cấp AI — Q12). TODO đợt 4 còn ghi treo "panel AI giúp gì cho bài này?" cũ — `openBodyAi()` (quanh dòng 2471) đã là cửa duy nhất, không còn panel cũ: xác nhận rồi ghi README là đã đóng.
-2. Lịch sử phiên bản — BACKEND ĐÃ CÓ, lên prod 28/09 (`docs/design.md` §8; `app/Modules/Cms/Queries/EntryRevisions.php`, `app/Modules/Cms/Actions/RestoreEntryRevision.php`, `app/Modules/Cms/Enums/RevisionKind.php`) — KHÔNG gắn "Chờ backend". Luật as-built:
+Cần trước: D1-4b (khuôn = `Page Editor - Options` với prop `kind`). Làm trên khuôn đó, không tách lại màn. Đọc README D1-4 phần D1-4b.
+1. Lịch sử phiên bản — BACKEND ĐÃ CÓ, lên prod 28/09 (`docs/design.md` §8; `app/Modules/Cms/Queries/EntryRevisions.php`, `app/Modules/Cms/Actions/RestoreEntryRevision.php`, `app/Modules/Cms/Enums/RevisionKind.php`) — KHÔNG gắn "Chờ backend". Luật as-built:
    · Mỗi dòng = 1 NGÔN NGỮ (khôi phục bản tiếng Anh không kéo lùi bản tiếng Việt) → lịch sử lọc theo ngôn ngữ đang chọn ở thanh ngôn ngữ.
    · NGOẠI LỆ: bản lưu gồm cả Mẫu hiển thị, Ảnh đại diện và dữ liệu dùng chung (`RecordEntryRevision.php`) — khôi phục mà các trường này khác hiện tại thì chúng đổi cho MỌI ngôn ngữ; hộp xác nhận khi đó thêm câu "Ảnh đại diện và mẫu hiển thị dùng chung — mọi ngôn ngữ sẽ đổi theo".
-   · Chỉ ghi khi nội dung ĐANG CÔNG KHAI: lúc lên website (Đăng, hẹn giờ, duyệt xong) và mỗi lần lưu khi đang công khai; bản nháp chưa đăng không có lịch sử → trạng thái trống nói rõ "Lịch sử bắt đầu từ lần đăng đầu tiên".
-   · 4 lý do (nhãn đời thường): Bản gốc (có sẵn trước khi bật lịch sử) · Đăng · Sửa khi đang công khai · Khôi phục. Mỗi dòng: ai, lúc nào (giờ site), lý do. Danh sách "Tải thêm" (không đánh số trang). Giữ ít nhất 20 bản gần nhất; bản cũ hơn 90 ngày tự dọn.
-   · Mở rộng dropdown "Lịch sử phiên bản" đang có (quanh dòng 499, không vẽ lại): 3 bản gần nhất trong thẻ + "Xem tất cả" mở danh sách đầy đủ.
+   · Chỉ ghi khi nội dung ĐANG CÔNG KHAI: lúc lên website (Đăng, hẹn giờ, duyệt xong) và mỗi lần lưu khi đang công khai; bản nháp chưa đăng không có lịch sử → trạng thái trống "Lịch sử bắt đầu từ lần đăng đầu tiên".
+   · 4 lý do (nhãn đời thường): Bản gốc (có sẵn trước khi bật lịch sử) · Đăng · Sửa khi đang công khai · Khôi phục. Mỗi dòng: ai, lúc nào (giờ website), lý do. Danh sách "Tải thêm" (không đánh số trang). Giữ ít nhất 20 bản gần nhất; bản cũ hơn 90 ngày tự dọn.
+   · Mở rộng dropdown "Lịch sử phiên bản" đang có (tìm `onToggleRev`), không vẽ lại: 3 bản gần nhất trong thẻ + "Xem tất cả" mở danh sách đầy đủ (điện thoại: toàn màn).
    · Xem 1 bản = nội dung đầy đủ của bản đó; tô chỗ khác so với hiện tại là việc của màn.
-   · Xem lịch sử cần quyền xem bài; Khôi phục cần quyền sửa bài (ghi 2 mức trong bảng Quyền & gói của README): KHÔNG đổi trạng thái; nếu bài đang công khai thì khách thấy NGAY (như bấm Lưu) → hộp xác nhận nói đúng điều này + "tạo bản mới, không xoá bản nào". Ảnh đã bị xoá khỏi thư viện thì bị bỏ trống → báo "N ảnh không còn trong thư viện đã được bỏ trống". Từ chối có mã + câu đã dịch sẵn (`lang/vi.json` `entries.revision_err_*`): slug_taken · locale_disabled · snapshot_incompatible · entry_trashed.
-Xong khi: lịch sử lọc đúng ngôn ngữ; trạng thái trống, "Tải thêm", xem 1 bản có tô khác biệt, hộp xác nhận khôi phục, 4 lỗi và "N ảnh không còn trong thư viện" đều có hình; cả ở 390px.
+   · Xem lịch sử cần quyền xem bài; Khôi phục cần quyền sửa bài (ghi 2 mức trong bảng Quyền & gói của README): KHÔNG đổi trạng thái; bài đang công khai thì khách thấy NGAY (như bấm Lưu) → hộp xác nhận nói đúng điều này + "tạo bản mới, không xóa bản nào". Ảnh đã bị xóa khỏi thư viện thì bỏ trống → báo "N ảnh không còn trong thư viện đã được bỏ trống". Từ chối: dùng nguyên văn câu `lang/vi.json` `entries.revision_err_*` (dòng 759–762: slug_taken · locale_disabled · snapshot_incompatible · entry_trashed), không hiện mã.
+2. SEO còn lại — chỉ phần nằm trong khuôn (TODO đợt 4, mục CHƯA LÀM):
+   · nhóm SEO bắt buộc còn đỏ: chỉ cảnh báo, không chặn nút Đăng (README ghi lý do: người mới không bị kẹt);
+   · phân vai 2 công cụ AI ở khuôn (chỉ hiện khi website được cấp AI — Q12): bài có chữ → "Nâng cấp bài viết" mở `Nâng cấp nội dung`; bài trống hoặc "Viết lại toàn bài" → mở `AI Writer Panel v2` với nội dung hiện tại làm nguyên liệu — chỉ sửa chỗ khuôn mở hai hộp;
+   · panel cũ "AI giúp gì cho bài này?": `openBodyAi()` (quanh dòng 2478) đã là cửa duy nhất → xác nhận, ghi README đã đóng; ô mô tả ảnh đại diện cho Trang đã có (`featuredAlt`, D1-4b đổi sang image-field) → xác nhận, đóng;
+   · lời gọi AI viết tiêu đề / mô tả lấy từ khóa (`aiSeoKw()`) làm nguồn.
+   Phần nằm trong tệp bộ AI (bước "Kiểm định" của `AI Writer Panel v2` chấm theo `BSSEO.audit` — tệp này hiện không gọi BSSEO; 2 điểm còn lại của "Nâng cấp bài này"; kiểm tay luồng "Việc lớn → Trợ lý viết") KHÔNG làm ở lượt này: ghi TODO.md "· bộ AI (sau core v1)".
+Được sửa: `Page Editor - Options.dc.html` · `TODO.md` · `TODO - Chuẩn hoá Page Editor & Bài viết (đợt 4).md` (đánh dấu mục đã đóng) · `SaaS Starter - Bản đồ màn hình.md` (dòng 14) · `LESSONS.md` · `README - D1-4 Trình soạn nội dung.md` (viết tiếp phần D1-4c). Không sửa `AI Writer Panel v2`, `Nâng cấp nội dung`, `Trình soạn nội dung`, `admin-base.css`, trang chuẩn, CLAUDE.md.
+Sắp hết lượt: xong mục 1 trước; mục 2 ghi TODO.md "D1-4c phần 2" rồi báo owner; owner gửi "Làm D1-4c phần 2" trong cùng chat.
+Xong khi:
+(1) Đổi ngôn ngữ ở thanh ngôn ngữ → lịch sử chỉ còn bản của ngôn ngữ đó; thẻ hiện 3 bản gần nhất + "Xem tất cả".
+(2) Có hình: trống "Lịch sử bắt đầu từ lần đăng đầu tiên" · "Tải thêm" · xem 1 bản có tô khác biệt · hộp xác nhận khôi phục (bài đang công khai; khác ảnh/mẫu dùng chung) · 4 lỗi đúng nguyên văn `lang/vi.json:759–762` · "N ảnh không còn trong thư viện đã được bỏ trống".
+(3) Tweak nhóm quyền Chỉ xem: thấy lịch sử, không thấy "Khôi phục"; README bảng Quyền & gói ghi 2 mức.
+(4) `_audit/harness.html`: `H.layouts(['Page Editor - Options.dc.html'],[360,390,768,1024,1440])` × chữ thường + Chữ lớn → `scrollWidth = clientWidth`; danh sách đầy đủ và hộp xác nhận ở 390 trượt từ đáy hoặc toàn màn.
+(5) Nhóm SEO bắt buộc đỏ → nút Đăng vẫn bấm được + cảnh báo; TODO đợt 4 đánh dấu mục đã đóng; TODO.md có dòng "· bộ AI (sau core v1)"; Bản đồ dòng 14 → ready; ghi "D1-4d" là lượt kế tiếp.
+Gọi ready_for_verification, sửa hết lỗi verifier báo. Verifier không trả kết quả (Page Editor ≈300 KB, công cụ chụp quá giờ) thì không chờ: ghi [CHƯA KIỂM ĐƯỢC] vào dòng Verifier của README, Claude Code kiểm bằng zip.
+Xuất zip project gửi Claude Code kiểm. Xong thì báo owner đúng một câu: "D1-4c xong — gửi zip cho Claude Code."
