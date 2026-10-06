@@ -1,15 +1,22 @@
 # Việc còn lại — cập nhật 06/10/2026
 
+
+## ~~D0-6b~~ — xong 06/10 (README `README - D0-6 Hiển thị đa thiết bị.md` › D0-6b)
+- Admin Shell · `p-social` mount Đăng nhập nhanh với `account-type="saas"` + `embed-id="social-saas"` → đổi thành `account-type="platform"` (panel đã có nhánh; hiện tự suy từ embed-id) · lượt sửa Shell kế tiếp
+- Admin Shell · hộp chọn ảnh (2 chỗ `dc-import name="MediaPicker"`): khung bao `padding:24px; width:min(1020px,100%); height:min(660px,100%)` → dưới 600px toàn màn (padding 0, `height:100dvh`, chừa safe-area) — MediaPicker đã tự bỏ bo/viền khi khung hẹp · lượt sửa Shell kế tiếp
+- Nút liên hệ nổi (xóa kênh) · Email (đưa mẫu về gốc): rà theo luật "làm ngay + toast Hoàn tác 8 giây / hỏi khi không hoàn tác được" — lượt D0-6b chỉ sửa co giãn, chưa rà hành vi · khi chạm màn
+- Kiểm Safari/Firefox/Samsung, chế độ tối, 200%, cảm ứng thật, bàn phím ảo của D0-6b · Claude Code bằng zip
+
 ## D0-6a phần 1 — xong 06/10 (README `README - D0-6 Hiển thị đa thiết bị.md`): Quy trình duyệt (thẻ gọn / 3 cột / hộp trượt đáy) · Admin Shell (safe-area, activeAs, ai-job thanh ngôn ngữ, link admin-components.css) · `.sx-dot` → token
 ## ~~D0-6a phần 2~~ — xong 06/10 (README D0-6 › Phần 2): Hộp duyệt (mẫu 5, khung đọc 100dvh, h1, emoji, "vừa gửi", length-field + ai-assist, token) · Trạng thái duyệt · Trình đơn (data-focus-wrap, role="status", onDirty(n)/onInvalid(n)/firstError, nút lên/xuống) · Shell "N lỗi · Xem lỗi đầu tiên" cho Trình đơn
 - Hộp duyệt: khung so sánh khác biệt chưa có — dựng toàn màn ở điện thoại khi làm · D1-4d
 - Kiểm Safari/Firefox/Samsung, chế độ tối, 200%, cảm ứng thật, safe-area thật của D0-6a · Claude Code bằng zip
-- Lượt kế tiếp: **D0-6b**.
+- ~~Lượt kế tiếp: **D0-6b**.~~ → xong 06/10. Lượt kế tiếp: **D1-1** (D0-6c chạy lúc nào cũng được).
 
 ## ~~D0-5~~ — xong 06/10 (README `README - D0-5 Nối màn.md`)
 - ~~Tách CSS component ra `admin-components.css`~~ → xong: hai trang chuẩn link sau `admin-base.css`, `<style>` chỉ còn reset trang; `--fsp:0px` mặc định; lớp trùng tên của trang bổ sung khoanh trong `[data-cs="sup"]` (không đổi tên). Đo `_audit/d05-std.html`: 0 tràn trang ở 360/390/768/1440 × thường/Chữ lớn; sơ đồ Mẫu 1/8 0 cắt · 0 vỡ từ; ô `--brand-*` 0 cắt.
 - Lượt tách CSS · xem bằng mắt vùng cuộn `.tw` ở `#he-thong` (khung 390/768/1240) và phần tử `overflow:hidden` ở `#dieu-khien` khi bật Chữ lớn — chữ có bị cắt không (môi trường thiết kế chỉ đo bằng script) · Claude Code kiểm bằng zip
-- Màn link `admin-components.css` lần đầu thì bỏ `.dsw` tự khai trong cùng lượt (~~Shell~~ xong D0-6a · Trình đơn D0-6a phần 2 · Email Settings, Đăng nhập nhanh, Integrations, Floating Contact D0-6b)
+- ~~Màn link `admin-components.css` lần đầu thì bỏ `.dsw` tự khai trong cùng lượt (~~Shell~~ xong D0-6a · Trình đơn D0-6a phần 2 · Email Settings, Đăng nhập nhanh, Integrations, Floating Contact D0-6b)~~ → xong 06/10 (4 panel D0-6b)
 - Chữ lớn: Shell còn phóng `zoom` 16/14 cho cả màn nhúng — màn nhúng đã nối (Bài viết, Trang, Page Editor, Hộp duyệt) chưa dùng `--fsp`; bỏ `zoom` khi màn chuyển sang `--fsp` · D1-3 (danh sách) · D1-4d (trình soạn) (D0-6a: điều kiện chưa có, chuyển)
 - Tweak "Số ngôn ngữ" 8 chưa có العربية + ô nhập theo ngôn ngữ tự `dir="rtl"` — các trình soạn nhúng chưa có ô theo ngôn ngữ RTL, việc thuộc thanh ngôn ngữ/ô nhập · D1-4b (chuyển từ "· D0-5")
 - Nút AI ẩn khi "Lời mời nâng gói" TẮT: Shell đã truyền `upsell` + `plan-key` vào Bài viết, Trang, Page Editor; màn chưa đọc prop này để ẩn/khóa nút AI · D1-3 (danh sách) · D1-4b (trình soạn)
@@ -29,12 +36,12 @@
 
 ## ~~D0-4a phần 2~~ — xong 06/10 (README `README - D0-4 Admin Shell v2.md` › Phần 2)
 - ~~Mục 2 topbar · Mục 3 Cài đặt + thanh Lưu dính đáy + onDirty(n)/onInvalid(n)/firstError phía Shell · Mục 5 bản đồ màn hình~~ → xong.
-- Phía panel nhúng (Shell đã nhận số/lỗi và gửi `firstError`): Email Settings · Đăng nhập nhanh · Integrations Panel · Floating Contact Panel — `onDirty(n)` + `onInvalid(n)` + nghe `bs-embed-cmd {act:'firstError'}` · D0-6b
+- ~~Phía panel nhúng (Shell đã nhận số/lỗi và gửi `firstError`): Email Settings · Đăng nhập nhanh · Integrations Panel · Floating Contact Panel — `onDirty(n)` + `onInvalid(n)` + nghe `bs-embed-cmd {act:'firstError'}` · D0-6b~~ → xong 06/10 (D0-6b; đo trong Shell: sửa sai 1 ô → "1 lỗi · Xem lỗi đầu tiên" → focus đúng ô)
 - Phía panel nhúng: Trình đơn — `onDirty(n)` + `onInvalid(n)` + nghe `firstError` · ~~D0-6a phần 2~~ xong 06/10
 - Chữ lớn: Shell đặt `--fsp` trên khung gốc + phóng nội dung 16/14 (`zoom`) vì chữ của Shell viết px; khi màn nhúng dùng `--fsp` thì bỏ `zoom` để không phóng hai lần · ~~D0-5~~ → D0-6a (xem mục D0-5)
 - ~~Tweak "Lời mời nâng gói" cho dòng "Tạo website mới — khóa theo gói" + nội dung Trợ giúp theo registry màn · D0-4b~~ → xong 06/10 (bật: "Xem gói nâng cấp"; Trợ giúp đọc `help` của registry)
 - Tổng quan ở 360px: lưới giữa đã đổi `minmax(0,…)`; vẽ lại cả màn · D2-5
-- Email Settings ở 390: dải tab cắt chữ ('Chữ ký & thương hiệu' bị che), thẻ trạng thái quá hẹp · D0-6b
+- ~~Email Settings ở 390: dải tab cắt chữ ('Chữ ký & thương hiệu' bị che), thẻ trạng thái quá hẹp · D0-6b~~ → xong 06/10 (tab ngắn "Chữ ký" dưới 600px khung chứa; thẻ trạng thái xuống dòng, nút "Gửi thử" rộng hết)
 - Tổng quan ở 360: nút '7 ngày / 30 ngày' xuống 2 dòng · D2-5
 - Tạo website mới khi chỉ có 1 website: đặt ở Cài đặt › Gói & mức dùng, cạnh số website còn được tạo · D3-2
 - ~~Lượt kế tiếp: D0-4b~~ → xong 06/10; kế tiếp D0-5.
@@ -78,10 +85,10 @@ Nguồn mẫu: `Chuẩn giao diện - Component bổ sung.dc.html`. Mỗi màn s
 - Hộp duyệt · length-field + ai-assist · ~~D0-6a phần 2~~ xong 06/10
 - Trình đơn · toast có vùng `role="status"` · ~~D0-6a phần 2~~ xong 06/10
 - ~~Admin Shell · thanh ngôn ngữ: việc AI đang chạy (ai-job) · D0-6a~~ → xong 06/10 (Tweak "Mô phỏng lỗi khi dịch")
-- Integrations Panel · save-status · D0-6b
-- Email Settings · toast `role="status"` + nút chép biến (dòng 549, JS 1472–1474) `aria-label`/`title` "Đã sao chép <biến>" · D0-6b
-- Floating Contact Panel · toast `role="status"` + xóa mã chết `copyLabel` (dòng 439, chữ "Đã chép") · D0-6b
-- Đăng nhập nhanh & Liên kết tài khoản · chip ngôn ngữ (prop lang/shared) khi chạm màn · D0-6b
+- ~~Integrations Panel · save-status · D0-6b~~ → xong 06/10 (`.sv` role="status" đầu cột + thanh riêng)
+- ~~Email Settings · toast `role="status"` + nút chép biến (dòng 549, JS 1472–1474) `aria-label`/`title` "Đã sao chép <biến>" · D0-6b~~ → xong 06/10
+- ~~Floating Contact Panel · toast `role="status"` + xóa mã chết `copyLabel` (dòng 439, chữ "Đã chép") · D0-6b~~ → xong 06/10 (bỏ copyLabel/copyBtn/copyIcon/onCopy)
+- ~~Đăng nhập nhanh & Liên kết tài khoản · chip ngôn ngữ (prop lang/shared) khi chạm màn · D0-6b~~ → không áp dụng 06/10 — panel không có trường đa ngữ (khóa, công tắc dùng chung)
 - Đợt sau: Thẻ kết nối dịch vụ (6 màn) · Ô khóa bí mật (3 màn) — dựng khi sửa Email / Đăng nhập nhanh / Integrations · D3-2
 - AI Writer Panel v2 · length-field + ai-assist + ai-job · D0-6c
 - Block Library · toast `role="status"` + nút chép mã tham chiếu chép thật bằng `BSUI.copy` (`copyRef` dòng 203), nhãn "Sao chép mã tham chiếu" · D0-6c
@@ -109,8 +116,8 @@ Lượt D0 không đọc AUDIT.md — mọi chỉ dẫn cần thiết nằm ở 
 - L1-T-03 · theo dõi mã chèn của harness · đóng theo track, chỉ mở lại khi đo hồi quy font
 - L1-T-08 · face nghiêng inter.css 'loaded' ở Shell (theo dõi thụ động) · đóng theo track, chỉ mở lại khi đo hồi quy font
 - ~~L1-C-06 · mở Shell với hash lạ (`#profile`) vào mục không tồn tại: không tiêu đề, không nội dung, không về Tổng quan (`applyHash` không kiểm danh sách mục) · chưa xếp lượt~~ → xong 06/10 ở D0-4a (hash lạ bị bỏ qua); D0-4b đổi luật: hash lạ / màn không có trong registry → về Tổng quan + toast "Không tìm thấy trang này"
-- L1-C-P01 · Đăng nhập nhanh & Liên kết TK chưa nhận `accountType='platform'` (thêm nhánh platform trong panel) · D0-6b
-- L1-A-P01 · panel nhúng còn hex cứng `#2050a0` cho nền nút/công tắc/viền, chưa theo màu thương hiệu (đổi sang `var(--brand-solid,…)` / `var(--color-accent,…)`) · chưa xếp lượt
+- ~~L1-C-P01 · Đăng nhập nhanh & Liên kết TK chưa nhận `accountType='platform'` (thêm nhánh platform trong panel) · D0-6b~~ → xong 06/10 phía panel (nhánh `platform`: banner "Bắt buộc cấu hình" + chip loại tài khoản từng dòng). Shell còn truyền `account-type="saas"` cho `social-saas` — panel tự hiểu là mặt nền tảng; đổi thuộc tính ở lượt Shell kế (dòng dưới)
+- ~~L1-A-P01 · panel nhúng còn hex cứng `#2050a0` cho nền nút/công tắc/viền, chưa theo màu thương hiệu (đổi sang `var(--brand-solid,…)` / `var(--color-accent,…)`) · chưa xếp lượt~~ → xong 06/10 ở 4 panel (Email, Đăng nhập nhanh, Integrations, Nút liên hệ nổi) + MediaPicker
 - L1-20 · đổi cỡ chữ px → rem, đo lại ở 125% và 200% · chưa xếp lượt
 - L1-21 / L1-21b · tách Admin Shell (dữ liệu sang `shell-data.js`, chia `renderVals()`, DC con Settings Form), dựng panel khi cần, chụp ảnh bù · chưa xếp lượt
 

@@ -143,4 +143,102 @@ Trình duyệt khác, chế độ tối, 200%, cảm ứng thật: **[CHƯA KI�
 ### Verifier
 Gửi verifier sau phần 2 (Hộp duyệt). Trình đơn ≈190 KB, Shell ≈340 KB: nếu công cụ chụp quá giờ thì **[CHƯA KIỂM ĐƯỢC]**, Claude Code kiểm bằng zip.
 
-Lượt kế tiếp: **D0-6b**.
+
+## D0-6b (06/10/2026) — Panel Cài đặt nhúng · Trình chọn ảnh
+
+### Tổng quan
+Sửa tại chỗ cách co giãn của 4 panel Cài đặt và trình chọn ảnh; nội dung, dữ liệu mẫu, tương tác giữ nguyên. Thêm phía panel của hợp đồng mẫu 4: `onDirty(n)` + `onInvalid(n)` + nghe `bs-embed-cmd {act:'firstError'}`. Đóng các dòng TODO "· D0-6b", L1-C-P01 (phía panel) và L1-A-P01 (4 panel).
+
+### File
+- `Email Settings.dc.html` (cả 3 cách nhúng: Email website · Email hệ thống `only-tab="send"` · Mẫu email hệ thống).
+- `Đăng nhập nhanh & Liên kết tài khoản.dc.html` (mặt website/cửa hàng, SaaS, **nền tảng mới**, hồ sơ cá nhân).
+- `Integrations Panel.dc.html` · `Floating Contact Panel.dc.html`.
+- `MediaPicker.dc.html` (thêm prop `startTab`) · `Image Picker.dc.html` (canvas: khung 1020 · 768 · 390 Tải lên · 390 Thư viện).
+- Đo: `_tmp/m6b.html` (`?set=lay` · `shell` · `sl` · `err`).
+
+### Mức hoàn thiện
+Co giãn + hợp đồng nhúng: hoàn thiện. Thẻ kết nối dịch vụ, ô khóa bí mật: không dựng (D3-2).
+
+### Màn & tương tác
+- **Chung 4 panel**
+  - Link `admin-components.css`; bỏ `.dsw` tự khai — công tắc dùng `.dsw[aria-checked]` chuẩn. Công tắc trước là `<span onClick>` (Nút liên hệ nổi) hoặc nút tô bằng hole style (Integrations) → nay `<button role="switch">` có `aria-label` nói rõ việc ("Hiện kênh Gọi điện · Đang bật"). Vùng bấm 44px bằng `.dsw::after` (cao thêm 10px trên/dưới), hình công tắc không đổi.
+  - Lỗi: Email = "Khách trả lời về" + danh sách "Gửi thông báo tới"; Đăng nhập nhanh (SaaS/nền tảng) = Client ID / khóa bí mật sai dạng; Integrations = ID công cụ đang bật sai dạng; Nút liên hệ nổi = giá trị kênh sai dạng. Ô lỗi có `aria-invalid="true"` + `data-err`. Bấm Lưu khi còn lỗi → không lưu, toast "Còn N ô chưa đúng — sửa rồi bấm Lưu lại", nhảy tới lỗi đầu tiên (mở đúng tab/nhóm/khối cấu hình rồi mới focus).
+  - Đo trong Shell (1240 và 390): sửa sai 1 ô → thanh Lưu "1 thay đổi chưa lưu · 1 lỗi · Xem lỗi đầu tiên" → bấm → focus đúng ô (`INPUT aria-invalid=true`) ở cả 4 panel.
+  - Toast: vùng `role="status" aria-live="polite"` ẩn đọc chữ + hộp hiển thị `aria-hidden`; khi nhúng, toast nâng lên `88px + safe-area` để không che thanh Lưu của Shell. Thanh Lưu của Shell là `position:sticky` trong luồng, nên cuộn hết thì ô cuối nằm trên thanh [SUY RA TỪ CODE].
+  - Hộp thoại (Email: kết nối hộp thư, đưa mẫu về gốc, chèn liên kết, chặn rời trang; Đăng nhập nhanh: tắt/ngắt kết nối/ngắt liên kết; Integrations: đặt lại): < 600px trượt từ đáy, bo trên 12px, `max-height:92dvh`, chân chừa safe-area, 2 nút chia đôi cao 44px. Đăng nhập nhanh + Integrations: nút **Hủy** được focus khi hộp mở.
+  - `min-height:100vh` → `100vh` dự phòng + `100dvh`; khi nhúng = 0. Bỏ mọi `outline:none` trên ô nhập.
+  - Khung xem 390 · 768 (ghi chú thiết kế) ở cuối mỗi panel đứng riêng, tải lười; tắt bằng Tweak `showFrames` (mục Ghi chú thiết kế); không hiện khi nhúng hoặc trong chính khung xem (`#frame`).
+- **Email**: dải tab dưới 600px khung chứa đổi nhãn ngắn ("Chữ ký" thay "Chữ ký & thương hiệu", tên đủ ở `title`), dưới 400px bỏ icon tab — hết cắt chữ ở 360/390. Thẻ trạng thái kết nối xuống dòng < 560px, nút "Gửi thử" rộng hết. Ô soạn (tiêu đề, nội dung thư, chữ ký) bỏ luật focus riêng `.em-ce`, khung bao từng ô có `data-focus-wrap`. Ô tìm biến, ô "Gửi thông báo tới" cũng `data-focus-wrap`. Nút chép biến: `aria-label`/`title` "Sao chép {biến}" → "Đã sao chép {biến}" trong 1,6 giây. Lưới 2 cột → 1 cột dưới 900px khung chứa (đã có, giữ).
+- **Đăng nhập nhanh**: dưới 600px khung chứa mỗi nhà cung cấp là thẻ gọn `grid-template-areas: "ic nl sw" "ic mt mt" "ac ac ac"` — (1) icon + tên + trạng thái · công tắc bên phải (2) dòng phụ (3) "Cấu hình/Sửa cấu hình" rộng hết. Hai ô khóa 1 cột dưới 768px (trước 640). Khung ô khóa bí mật `style-focus-within` → `data-focus-wrap`. **Mặt nền tảng** (`accountType='platform'`, Cài đặt nền tảng › Đăng nhập nhanh): breadcrumb "Cài đặt nền tảng", banner vàng "Bắt buộc cấu hình…", mỗi nhà cung cấp có chip loại tài khoản áp dụng (Website · Cửa hàng · SaaS); hành vi cấu hình như SaaS. Shell hiện mount `p-social` với `account-type="saas" embed-id="social-saas"` → panel tự hiểu là nền tảng (TODO đổi thuộc tính ở Shell). Chip ngôn ngữ: không áp dụng (panel không có trường đa ngữ).
+- **Integrations**: trạng thái lưu `.sv` (`role="status"`) ở đầu cột: "Đã lưu lúc 10:42" / "Thay đổi chưa lưu" / "Đang lưu…" — có cả khi nhúng. Tiêu đề nhóm gập dùng được bằng bàn phím (Enter/Space). Dưới 600px: lề 12px, ô ID rộng hết, nút 44px, chữ ô 16px. Cột tóm tắt xuống dưới khi khung < 820px (đã có). Khối giới thiệu bỏ nền gradient → `--color-admin-primary`. Bỏ emoji "🎉".
+- **Nút liên hệ nổi**: dưới 600px ô giá trị kênh và ô nhãn xếp dọc rộng hết; nút lên/xuống nằm ngang, 44px; lưới 9 biểu tượng tự chia ô 44px; tay cầm kéo ẩn khi cảm ứng (đổi thứ tự bằng nút). ≤ 900px khung xem trước hết dính. Ô tìm ngôn ngữ `data-focus-wrap`. Xóa mã chết `copyLabel` (+ `copyBtn`, `copyIcon`, `onCopy`).
+- **MediaPicker** (theo khung chứa của chính picker, chạy cả trong hộp thoại):
+  - < 600px: hai nút lớn "Chụp ảnh" (mở nguồn Máy ảnh) và "Ảnh trong máy" (mở nguồn Thiết bị) ở đầu; chữ "Kéo & thả" ẩn; **11 nguồn** thành dải cuộn ngang trong khung (thẻ 96px, bắt điểm cuộn) — đo 390: dải 852px cuộn trong 322px, trang không cuộn ngang.
+  - Thư viện: cột thư mục thành dải cuộn ngang ở trên; lưới ảnh **2 cột** (đo); dạng danh sách ẩn cột Kích thước + Loại; ô tìm 100%, 3 ô chọn 2 cột cao 44px chữ 16px.
+  - Xem ảnh: khung Chi tiết phủ toàn picker (ảnh cao `min(56dvh,420px)`), nút đóng 44px; nút "Chi tiết" trên ô ảnh 44px.
+  - Chân: ảnh đã chọn 1 dòng, "Hủy" + "Chèn" chia đôi cao 44px, chừa safe-area. Picker bỏ bo/viền khi khung hẹp. Bo 14px → 6px; `100vh` → `100dvh`.
+- **Image Picker** (canvas): khung máy tính 1020 × 660 + máy tính bảng 768 × 900 + điện thoại 390 × 844 (Tải lên) + 390 × 844 (Thư viện).
+
+### Ánh xạ dữ liệu
+- Email: `app/Modules/Admin/resources/views/livewire/email-settings.blade.php` (đã build).
+- Đăng nhập nhanh: `app/Modules/Admin/resources/views/livewire/social-settings.blade.php` (đã build).
+- Trình chọn ảnh: `app/Modules/Admin/Livewire/Concerns/WithMediaLibraryPicker.php` (đã build).
+- Tích hợp & Theo dõi, Nút liên hệ nổi: chưa build.
+
+### Quyền & gói
+Không đổi. Mặt nền tảng của Đăng nhập nhanh: `super_admin` (như mục `p-social` của Shell).
+
+### Token
+- `#2050a0` nền dưới chữ trắng → `var(--color-admin-primary,#2050a0)`; chữ/viền/chấm chọn → `var(--color-accent,#2050a0)`; `rgba(32,80,160,a)` và hex 8 chữ số `#2050a0XX` → `color-mix(in srgb,var(--color-accent,#2050a0) a%,transparent)`. Integrations/Nút liên hệ nổi: `background:var(--brand)` dưới chữ trắng → `--color-admin-primary`; `--brand-fg` → `--color-accent`; `--brand` chỉ còn ở tint trang trí.
+- Chữ phụ `#878a99` / `#5b6270` / `#9aa0ab` / `--color-body-faint` dùng làm chữ → `var(--color-body-muted)`; faint chỉ còn ở viền/chấm trang trí.
+- Viền ô `#e9ebec` / `#ced4da` / `#b9c0cf` → `--color-border-input`; ô lỗi `#f06548` → `--color-admin-danger-text`.
+- Màu ngữ nghĩa: chip/chấm → token màu gốc; chữ → `-text`; nền dưới chữ trắng → `-solid` (nút "Nhờ cài đặt" Integrations `#0ab39c` 2,6:1 → `--color-admin-success-solid`; nút "Đặt lại" → `--color-admin-danger-solid`).
+- **Ngoại lệ giữ hex (dữ liệu, không phải màu giao diện quản trị)**: Email `siteBrand`, `brandColor` mặc định và bảng `BRANDS` (màu thương hiệu in vào thư HTML gửi khách — thư không đọc được biến CSS); Nút liên hệ nổi bảng `pool` (màu nút trên website khách). Grep (4) vì vậy còn 3 dòng ở Email + 1 dòng ở Nút liên hệ nổi, đều là dữ liệu. Màu nhận diện Google/Facebook/Zalo giữ nguyên. Toast nền `#212529` là nền đảo, giữ (như D0-6a).
+
+### Icon
+Thêm: `ri-camera-line`, `ri-image-line` (MediaPicker), `ri-global-line`, `ri-store-2-line`, `ri-apps-2-line`, `ri-error-warning-line` (mặt nền tảng), `ri-loader-4-line` (trạng thái lưu), `ri-refresh-line` (nút Đặt lại).
+
+### Chuỗi cần dịch
+"Chữ ký" (tab ngắn) · "Còn {n} ô chưa đúng — sửa rồi bấm Lưu lại" · "Còn {n} ô chưa đúng định dạng — sửa rồi bấm Lưu lại" · "Còn {n} kênh chưa đúng định dạng — sửa rồi bấm Lưu lại" · "Đã sao chép {biến}" · "Thêm địa chỉ nhận thông báo" · "Bắt buộc cấu hình. Đây là kết nối gốc của nền tảng — website và cửa hàng của khách chỉ thấy nút Google/Facebook khi mục này đã kết nối. Mỗi dòng ghi rõ loại tài khoản được áp dụng." · "Cài đặt nền tảng" · "Kết nối Google và Facebook một lần cho mọi website, cửa hàng và SaaS của khách, và chọn cách xử lý khi email đăng nhập trùng tài khoản đã có." · "Website · Cửa hàng · SaaS" · "Hiện kênh {tên} · Đang bật/Đã tắt" · "Hiện nút liên hệ nổi trên website · Đang bật/Đã tắt" · "Nhãn khi di chuột của {tên}" · "Đã lưu lúc {giờ}" · "Đặt lại về mẫu ban đầu" · "Không mở nguồn ngoài nào" · "Chụp ảnh" · "Ảnh trong máy" · "Hoặc lấy từ nguồn khác — vuốt ngang để xem hết" · "Thư mục" · "Tìm ảnh theo tên" · "Khung xem 390px · 768px (ghi chú thiết kế)".
+
+### Kết quả 12 tiêu chí (4 panel + trình chọn ảnh)
+1 đạt (tiêu đề/mô tả do Shell; Lưu là nút chính duy nhất) · 2 đạt (Cài đặt › mục › sửa › Lưu) · 3 chưa hết: Integrations còn "CSP", "Server-side", "Consent Mode v2", "webhook", "CNAME" ngoài khối Nâng cao; Đăng nhập nhanh còn "Client ID/Secret" (tên Google bắt buộc) — thuộc D3-2 · 4 đạt · 5 đạt (lỗi nói định dạng đúng kèm ví dụ) · 6 đạt phần chặn rời trang + chặn Lưu khi lỗi; hành vi xóa chưa rà (TODO) · 7 đạt · 8 đạt (tab Email hết cắt; nút 1 dòng; dải nguồn ảnh cuộn trong khung là cuộn có chủ đích của danh sách nguồn) · 9 đạt ở 360/390/768 · 10 đạt · 11 đạt (đo Chữ lớn) · 12 đạt.
+
+### Kiểm hiển thị (D0-6b)
+Đo bằng `_tmp/m6b.html` (iframe theo bề rộng, so `scrollWidth` với `clientWidth` của trang, đếm phần tử vượt `clientWidth` không bị khung cuộn cắt). Chữ lớn = `--fsp:2px` + `zoom:16/14` như Shell.
+
+| Màn | 360 | 390 | 768 | 1024 | 1440 | Chữ lớn |
+|---|---|---|---|---|---|---|
+| Email — đứng riêng | đạt · tab ngắn | đạt | đạt · 1 cột | đạt · 2 cột | đạt | đạt |
+| Email — trong Shell (`#settings/email`, `#p-settings/p-mail`, `#p-settings/p-mail-tpl`) | đạt | đạt | đạt | đạt | đạt | đạt |
+| Đăng nhập nhanh — đứng riêng | đạt · thẻ 3 dòng (lần đo đầu tràn 11px → sửa) | đạt | đạt · ô 1 cột | đạt | đạt | đạt |
+| Đăng nhập nhanh — trong Shell (`#settings/social`, `#p-settings/p-social`) | đạt | đạt | đạt | đạt | đạt | đạt |
+| Integrations — đứng riêng / trong Shell | đạt | đạt | đạt · tóm tắt xuống dưới | đạt | đạt | đạt |
+| Nút liên hệ nổi — đứng riêng / trong Shell | đạt | đạt | đạt · 1 cột | đạt | đạt | đạt |
+| MediaPicker | đạt · 2 cột, dải nguồn cuộn trong khung | đạt · dải 852 > 322 | đạt | đạt | đạt | đạt |
+| Image Picker (canvas) | canvas cố định 1020 + 768 + 390 + 390px, cuộn ngang có chủ đích | — | — | — | — | — |
+
+Tổng: 60 lượt đứng riêng + 70 lượt trong Shell (7 địa chỉ × 5 bề rộng × chữ thường/Chữ lớn) → `scrollWidth = clientWidth`, 0 phần tử tràn, 0 lỗi JS (trừ canvas Image Picker). Lỗi → "Xem lỗi đầu tiên": 5/5 đạt (4 panel ở 1240 + Email ở 390).
+Trình duyệt: Chrome (môi trường thiết kế) — đạt. Safari iPhone/iPad, Firefox, Samsung Internet, chế độ tối, phóng to 200%, cảm ứng thật, bàn phím ảo, safe-area thật: **[CHƯA KIỂM ĐƯỢC]** — môi trường không giả lập được; Claude Code kiểm bằng zip.
+CSS mới: `@container` (Safari 16+), `:has` chỉ qua luật chung `data-focus-wrap` của `admin-base.css`, `dvh` có `vh` dự phòng (trừ `max-height` cột tóm tắt Integrations viết trong chuỗi style — Safari 15.4+).
+
+### Việc cho backend (D0-6b)
+1. **Email** — `…/livewire/email-settings.blade.php` (đã build). Port:
+   - Khung màn là container; tab 2 nhãn (dài/ngắn): `@container (max-width:600px)` hiện nhãn ngắn, `(max-width:400px)` ẩn icon; nhãn đủ ở `title`.
+   - Thẻ trạng thái kết nối `flex-wrap` < 560px, nút "Gửi thử" `width:100%`.
+   - Ô soạn `contenteditable` (tiêu đề, thân thư, chữ ký): bỏ CSS focus riêng, bọc khung `data-focus-wrap`.
+   - Validation server cho "Khách trả lời về" + "Gửi thông báo tới" trả lỗi theo ô; đẩy số lỗi lên khung (`onInvalid`), nhận "Xem lỗi đầu tiên" → focus ô.
+   - Hộp thoại `<x-bs-admin::modal>` trượt từ đáy < 600px; toast `role="status"`; nút chép biến đổi `aria-label` sau khi chép.
+2. **Đăng nhập nhanh** — `…/livewire/social-settings.blade.php` (đã build). Port:
+   - Danh sách nhà cung cấp thành thẻ gọn < 600px (grid areas như trên; `<x-bs-admin::switch>` cạnh tên).
+   - **Mặt nền tảng**: cùng component nhận `accountType='platform'` (không fork): banner bắt buộc cấu hình, chip loại tài khoản (`site`/`ecommerce`/`saas`) từng dòng, breadcrumb "Cài đặt nền tảng". Dữ liệu: một bộ khóa Google/Facebook cấp nền tảng cho tên miền gốc + loại tài khoản được áp dụng — **Chờ backend** nếu repo chưa có cột loại tài khoản.
+   - Validation Client ID / khóa theo định dạng nhà cung cấp, lỗi theo ô + đếm lỗi lên khung.
+3. **Trình chọn ảnh** — `app/Modules/Admin/Livewire/Concerns/WithMediaLibraryPicker.php` + view picker. Port:
+   - Picker là container; < 600px: "Chụp ảnh" = `<input type="file" accept="image/*" capture="environment">`, "Ảnh trong máy" = `<input type="file" accept="image/*" multiple>`; nguồn khác dải cuộn ngang; thư mục dải cuộn; lưới 2 cột; chi tiết ảnh phủ toàn picker; chân 2 nút chia đôi + safe-area.
+   - Hộp thoại chứa picker trong khung quản trị: < 600px toàn màn `100dvh` (Shell prototype chưa sửa — TODO).
+4. Tích hợp & Theo dõi, Nút liên hệ nổi: chưa build — khi build theo prototype (công tắc `role="switch"`, `.sv` trạng thái lưu, đếm lỗi theo ô).
+
+### Verifier
+Gửi verifier sau D0-6b. Email ≈200 KB: nếu công cụ chụp quá giờ thì **[CHƯA KIỂM ĐƯỢC]**, Claude Code kiểm bằng zip.
+
+Lượt kế tiếp: **D1-1** (D0-6c chạy lúc nào cũng được).
