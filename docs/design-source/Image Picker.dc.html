@@ -7,26 +7,49 @@
 </head>
 <body>
 <x-dc>
-
 <helmet>
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
-
 <meta name="design_doc_mode" content="canvas">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:var(--color-body,#f4f5fa);}a{color:var(--color-accent,#2050a0);}a:hover{color:var(--color-accent,#2050a0);text-decoration:underline;}</style>
 </helmet>
-<section style="padding:44px;background:#f4f5fa;font-family:Inter,'Segoe UI',sans-serif;">
+<section style="padding:44px;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;">
   <div id="2a" style="display:flex;flex-direction:column;gap:14px;">
     <div style="display:flex;align-items:center;gap:10px;">
-      <span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;padding:0 9px;border-radius:6px;background:#2050a0;color:#fff;font-size:13px;font-weight:700;">2a</span>
+      <span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:24px;padding:0 9px;border-radius:6px;background:var(--color-admin-primary,#2050a0);color:#fff;font-size:13px;font-weight:700;">2a</span>
       <div style="display:flex;flex-direction:column;">
-        <span style="font-size:15px;font-weight:600;color:#1f2b4d;">Trình chọn ảnh · 2 tab (Tải lên tệp mới · Thư viện ảnh)</span>
-        <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);">Tab "Tải lên" hiện lưới 8 nguồn kiểu Uppy — bấm mỗi nguồn mở giao diện tương ứng, có nút quay lại</span>
+        <span style="font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);">Trình chọn ảnh · 2 tab (Tải lên tệp mới · Thư viện ảnh)</span>
+        <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);">Tab "Tải lên" hiện lưới nguồn kiểu Uppy — bấm mỗi nguồn mở giao diện tương ứng, có nút quay lại</span>
       </div>
     </div>
-    <div style="width:1020px;height:660px;">
-      <dc-import name="MediaPicker" multiple="{{ yes }}" hint-size="1020px,660px"></dc-import>
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+      <figure style="margin:0;display:flex;flex-direction:column;gap:6px;">
+        <figcaption style="font-size:12px;color:var(--color-body-muted,#5b6275);">Máy tính 1020 × 660</figcaption>
+        <div style="width:1020px;height:660px;">
+          <dc-import name="MediaPicker" multiple="{{ yes }}" hint-size="1020px,660px"></dc-import>
+        </div>
+      </figure>
+      <figure style="margin:0;display:flex;flex-direction:column;gap:6px;">
+        <figcaption style="font-size:12px;color:var(--color-body-muted,#5b6275);">Máy tính bảng 768 × 900 — thư mục bên trái, lưới tự chia cột</figcaption>
+        <div style="width:768px;height:900px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden;">
+          <dc-import name="MediaPicker" multiple="{{ yes }}" hint-size="768px,900px"></dc-import>
+        </div>
+      </figure>
+      <figure style="margin:0;display:flex;flex-direction:column;gap:6px;">
+        <figcaption style="font-size:12px;color:var(--color-body-muted,#5b6275);">Điện thoại 390 × 844 — toàn màn, "Chụp ảnh" / "Ảnh trong máy", nguồn khác vuốt ngang</figcaption>
+        <div style="width:390px;height:844px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden;">
+          <dc-import name="MediaPicker" multiple="{{ yes }}" hint-size="390px,844px"></dc-import>
+        </div>
+      </figure>
+      <figure style="margin:0;display:flex;flex-direction:column;gap:6px;">
+        <figcaption style="font-size:12px;color:var(--color-body-muted,#5b6275);">Điện thoại 390 × 844 — Thư viện: thư mục thành dải cuộn, lưới 2 cột</figcaption>
+        <div style="width:390px;height:844px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden;">
+          <dc-import name="MediaPicker" multiple="{{ yes }}" start-tab="library" hint-size="390px,844px"></dc-import>
+        </div>
+      </figure>
     </div>
   </div>
 </section>

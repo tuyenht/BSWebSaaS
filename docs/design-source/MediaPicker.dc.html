@@ -17,17 +17,48 @@
 <style>
 @keyframes mpSpin{to{transform:rotate(360deg)}}
 .mp-scroll::-webkit-scrollbar{width:8px;height:8px}
-.mp-scroll::-webkit-scrollbar-thumb{background:#ced4da;border-radius:8px}
+.mp-scroll::-webkit-scrollbar-thumb{background:var(--color-border-strong,#ced4da);border-radius:8px}
 .mp-scroll::-webkit-scrollbar-track{background:transparent}
 .mp-tabs::-webkit-scrollbar{height:4px}
 .mp-tabs::-webkit-scrollbar-thumb{background:var(--color-border-strong,#e9ebec);border-radius:4px}
+.mp-root{container-type:inline-size;position:relative;height:min(660px,calc(100vh - 96px));height:min(660px,calc(100dvh - 96px));}
+.mp-mob{display:none;}
+.mp-srcstrip{scrollbar-width:thin;}
+/* D0-6b · khung chứa hẹp (điện thoại): toàn màn, lưới 2 cột, thư mục thành dải cuộn, xem ảnh toàn khung, nút 44px */
+@container (max-width:599px){
+  .mp-mob{display:grid;}
+  .mp-dnd{display:none!important;}
+  .mp-srcbox{padding:14px 12px!important;border-radius:6px!important;justify-content:flex-start!important;}
+  .mp-srcpad{padding:12px!important;}
+  .mp-srcstrip{display:flex!important;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;padding-bottom:6px;}
+  .mp-srcstrip>button{flex:0 0 96px;scroll-snap-align:start;}
+  .mp-lib{flex-direction:column!important;}
+  .mp-fold{width:auto!important;flex-direction:row!important;align-items:center;overflow-x:auto;overflow-y:hidden;border-right:0!important;border-bottom:1px solid var(--color-border,#e9ecf4);padding:8px 12px!important;flex-shrink:0;gap:6px!important;}
+  .mp-fold>button{width:auto!important;flex:0 0 auto;margin-top:0!important;min-height:44px;}
+  .mp-foldh{display:none;}
+  .mp-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
+  .mp-gridpad{padding:12px!important;}
+  .mp-tool{padding:10px 12px!important;}
+  .mp-tool>div:first-child{flex:1 1 100%!important;}
+  .mp-tool select{flex:1 1 40%;min-height:44px;font-size:16px!important;}
+  .mp-root input,.mp-root textarea{font-size:16px!important;}
+  .mp-tool button,.mp-open,.mp-detail button{min-width:44px!important;min-height:44px!important;}
+  .mp-lcol{display:none!important;}
+  .mp-masonry{column-count:2!important;}
+  .mp-detail{position:absolute;inset:0;width:auto!important;z-index:6;background:var(--color-surface,#fff)!important;}
+  .mp-detail .mp-dimg{aspect-ratio:auto!important;height:min(56dvh,420px);}
+  .mp-foot{flex-wrap:wrap;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;}
+  .mp-foot>button{flex:1 1 0;justify-content:center;min-height:44px;}
+  .mp-foot>.mp-fsel{flex:1 1 100%!important;}
+}
+@container (max-width:599px){.mp-root{height:100%;border-radius:0!important;border:0!important;}}
 </style>
 </helmet>
-<div style="width:100%;height:min(660px,calc(100vh - 96px));max-height:100%;display:flex;flex-direction:column;background:var(--color-surface,#ffffff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:14px;overflow:hidden;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);box-shadow:0 24px 60px -22px rgba(56,65,74,0.4);">
+<div class="mp-root" style="width:100%;max-height:100%;display:flex;flex-direction:column;background:var(--color-surface,#ffffff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;overflow:hidden;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);box-shadow:0 24px 60px -22px rgba(56,65,74,0.4);">
 
   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 20px 9px;flex-shrink:0;">
     <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:34px;height:34px;border-radius:9px;background:#2050a014;display:flex;align-items:center;justify-content:center;"><i class="ri-image-add-line" style="font-size:19px;color:var(--color-accent,#2050a0);"></i></div>
+      <div style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent);display:flex;align-items:center;justify-content:center;"><i class="ri-image-add-line" style="font-size:19px;color:var(--color-accent,#2050a0);"></i></div>
       <div style="display:flex;flex-direction:column;gap:1px;">
         <span style="font-size:15.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.2;">Chọn ảnh</span>
         <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Chọn từ thư viện hoặc tải lên từ nhiều nguồn</span>
@@ -45,19 +76,20 @@
     <div class="mp-scroll" style="flex:1;min-width:0;overflow:auto;background:var(--color-surface,#fff);display:flex;flex-direction:column;">
 
       <sc-if value="{{ showSources }}">
-        <div style="padding:18px;flex:1 1 auto;display:flex;min-height:0;box-sizing:border-box;overflow:hidden;">
-          <div class="mp-scroll" style="flex:1;min-height:0;border:2px dashed #dfe3ea;border-radius:16px;background:#fbfcfd;padding:24px 22px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:auto;">
-            <div style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px;margin-bottom:16px;">
-              <div style="width:46px;height:46px;border-radius:50%;background:#2050a014;display:flex;align-items:center;justify-content:center;"><i class="ri-upload-cloud-2-line" style="font-size:22px;color:var(--color-accent,#2050a0);"></i></div>
+        <div class="mp-srcpad" style="padding:18px;flex:1 1 auto;display:flex;min-height:0;box-sizing:border-box;overflow:hidden;">
+          <div class="mp-scroll mp-srcbox" style="flex:1;min-height:0;border:2px dashed var(--color-border-strong,var(--color-border-strong,#dfe3ea));border-radius:6px;background:var(--color-surface-muted,#fbfcfd);padding:24px 22px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:auto;">
+            <div class="mp-mob" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;"><button type="button" onClick="{{ openCamera }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:88px;padding:12px 8px;border:0;border-radius:6px;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;"><i class="ri-camera-line" style="font-size:24px;" aria-hidden="true"></i>Chụp ảnh</button><button type="button" onClick="{{ openDevice }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:88px;padding:12px 8px;border:1px solid var(--color-border-input,#878a99);border-radius:6px;background:var(--color-surface,#fff);color:var(--color-accent,#2050a0);font:inherit;font-size:14px;font-weight:600;cursor:pointer;"><i class="ri-image-line" style="font-size:24px;" aria-hidden="true"></i>Ảnh trong máy</button><div style="grid-column:1/-1;font-size:13px;color:var(--color-body-muted,#5b6275);">Hoặc lấy từ nguồn khác — vuốt ngang để xem hết</div></div>
+            <div class="mp-dnd" style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px;margin-bottom:16px;">
+              <div style="width:46px;height:46px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent);display:flex;align-items:center;justify-content:center;"><i class="ri-upload-cloud-2-line" style="font-size:22px;color:var(--color-accent,#2050a0);"></i></div>
               <div style="font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);">Kéo &amp; thả ảnh vào đây</div>
               <div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);">hoặc <span style="color:var(--color-accent,#2050a0);font-weight:600;text-decoration:underline;cursor:pointer;">chọn tệp</span> · nhập từ nguồn bên dưới</div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;max-width:640px;margin:0 auto;width:100%;">
+            <div class="mp-srcstrip" role="list" aria-label="Nguồn ảnh" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;max-width:640px;margin:0 auto;width:100%;">
               <sc-for list="{{ sources }}" as="s" hint-placeholder-count="8">
-                <button onClick="{{ s.onOpen }}" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:13px 8px;border:1px solid var(--color-border,#e9ecf4);border-radius:13px;background:var(--color-surface,#fff);cursor:pointer;transition:all .15s;min-width:0;" style-hover="border-color:#2050a0;box-shadow:0 6px 16px -8px rgba(32,80,160,0.4);transform:translateY(-2px);">
+                <button onClick="{{ s.onOpen }}" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:13px 8px;border:1px solid var(--color-border,#e9ecf4);border-radius:13px;background:var(--color-surface,#fff);cursor:pointer;transition:all .15s;min-width:0;" style-hover="border-color:var(--color-accent,#2050a0);box-shadow:0 6px 16px -8px color-mix(in srgb,var(--color-accent,#2050a0) 40%,transparent);transform:translateY(-2px);">
                   <span style="width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;background:{{ s.tint }};color:{{ s.color }};"><i class="{{ s.icon }}"></i></span>
                   <span style="font-size:12px;color:var(--color-body-text,#3c4765);font-weight:500;text-align:center;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;">{{ s.label }}</span>
-                  <sc-if value="{{ s.showDot }}"><span style="position:absolute;top:10px;right:10px;width:9px;height:9px;border-radius:50%;background:#0ab39c;border:2px solid var(--color-surface,#fff);" title="Đã kết nối"></span></sc-if>
+                  <sc-if value="{{ s.showDot }}"><span style="position:absolute;top:10px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--color-admin-success,#0ab39c);border:2px solid var(--color-surface,#fff);" title="Đã kết nối"></span></sc-if>
                 </button>
               </sc-for>
             </div>
@@ -69,9 +101,9 @@
             <div style="display:flex;gap:8px;max-width:640px;margin:10px auto 0;width:100%;">
               <div style="position:relative;flex:1;min-width:0;">
                 <i class="ri-link" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-body-muted,#5b6275);font-size:15px;"></i>
-                <input value="{{ urlValue }}" onInput="{{ onUrlInput }}" onKeyDown="{{ onUrlKey }}" placeholder="https://vi-du.com/anh-san-pham.jpg" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 35px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:none;background:var(--color-surface,#fff);">
+                <input value="{{ urlValue }}" onInput="{{ onUrlInput }}" onKeyDown="{{ onUrlKey }}" placeholder="https://vi-du.com/anh-san-pham.jpg" style="width:100%;box-sizing:border-box;padding:9px 12px 9px 35px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);">
               </div>
-              <button onClick="{{ onUrlPreview }}" style="display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:8px;border:1px solid #2050a033;background:#2050a008;color:var(--color-accent,#2050a0);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ri-eye-line" style="font-size:14px;"></i>Xem trước</button>
+              <button onClick="{{ onUrlPreview }}" style="display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:8px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 20%,transparent);background:color-mix(in srgb,var(--color-accent,#2050a0) 3.1%,transparent);color:var(--color-accent,#2050a0);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ri-eye-line" style="font-size:14px;"></i>Xem trước</button>
             </div>
             <sc-if value="{{ urlErr }}"><div style="max-width:640px;margin:8px auto 0;width:100%;font-size:12px;color:var(--color-admin-danger-text,#f06548);display:flex;align-items:center;gap:5px;"><i class="ri-error-warning-line"></i>{{ urlErr }}</div></sc-if>
           </div>
@@ -83,9 +115,9 @@
           <div style="display:flex;gap:8px;">
             <div style="position:relative;flex:1;min-width:0;">
               <i class="ri-link" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-body-muted,#5b6275);font-size:15px;"></i>
-              <input value="{{ urlValue }}" onInput="{{ onUrlInput }}" onKeyDown="{{ onUrlKey }}" placeholder="https://vi-du.com/anh-san-pham.jpg" style="width:100%;box-sizing:border-box;padding:10px 12px 10px 35px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:none;">
+              <input value="{{ urlValue }}" onInput="{{ onUrlInput }}" onKeyDown="{{ onUrlKey }}" placeholder="https://vi-du.com/anh-san-pham.jpg" style="width:100%;box-sizing:border-box;padding:10px 12px 10px 35px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);">
             </div>
-            <button onClick="{{ onUrlPreview }}" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:8px;border:0;background:#2050a0;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ri-refresh-line" style="font-size:14px;"></i>Tải xem trước</button>
+            <button onClick="{{ onUrlPreview }}" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:8px;border:0;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ri-refresh-line" style="font-size:14px;"></i>Tải xem trước</button>
           </div>
           <sc-if value="{{ urlErr }}"><div style="font-size:12px;color:var(--color-admin-danger-text,#f06548);display:flex;align-items:center;gap:5px;"><i class="ri-error-warning-line"></i>{{ urlErr }}</div></sc-if>
           <sc-if value="{{ urlHasPreview }}">
@@ -107,8 +139,8 @@
             </div>
           </sc-if>
           <sc-if value="{{ urlNoPreview }}">
-            <div style="border:1.5px dashed #dfe3ea;border-radius:13px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;">
-              <i class="ri-image-2-line" style="font-size:30px;color:#ced4da;"></i>
+            <div style="border:1.5px dashed var(--color-border-strong,#dfe3ea);border-radius:13px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;">
+              <i class="ri-image-2-line" style="font-size:30px;color:var(--color-body-faint,#ced4da);"></i>
               <div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);max-width:340px;">Dán liên kết ảnh công khai (JPG, PNG, WEBP, GIF) rồi bấm <b>Tải xem trước</b> để kiểm tra trước khi chèn.</div>
             </div>
           </sc-if>
@@ -120,19 +152,19 @@
           <button onClick="{{ srcHeader.onBack }}" style="display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:12.5px;cursor:pointer;"><i class="ri-arrow-left-line"></i>Nguồn</button>
           <span style="width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;background:{{ srcHeader.tint }};color:{{ srcHeader.color }};"><i class="{{ srcHeader.icon }}"></i></span>
           <span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ srcHeader.name }}</span>
-          <sc-if value="{{ srcHeader.showChip }}"><span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--color-admin-success-text,#0ab39c);background:#0ab39c14;padding:5px 10px;border-radius:20px;"><i class="ri-checkbox-circle-fill"></i>Đã kết nối</span></sc-if>
+          <sc-if value="{{ srcHeader.showChip }}"><span style="margin-left:auto;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--color-admin-success-text,#0ab39c);background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 7.8%,transparent);padding:5px 10px;border-radius:20px;"><i class="ri-checkbox-circle-fill"></i>Đã kết nối</span></sc-if>
         </div>
       </sc-if>
 
       <sc-if value="{{ isDevice }}">
         <div style="padding:24px;">
           <div style="border:2px dashed var(--color-border-strong,#ced4da);border-radius:14px;background:var(--color-surface-muted,#f8f9fb);padding:40px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;">
-            <div style="width:64px;height:64px;border-radius:50%;background:#2050a014;display:flex;align-items:center;justify-content:center;"><i class="ri-upload-cloud-2-line" style="font-size:30px;color:var(--color-accent,#2050a0);"></i></div>
+            <div style="width:64px;height:64px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent);display:flex;align-items:center;justify-content:center;"><i class="ri-upload-cloud-2-line" style="font-size:30px;color:var(--color-accent,#2050a0);"></i></div>
             <div>
               <div style="font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">Kéo &amp; thả ảnh vào đây</div>
               <div style="font-size:13px;color:var(--color-body-muted,#5b6275);margin-top:3px;">hoặc chọn tệp từ thiết bị của bạn</div>
             </div>
-            <button style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:0;background:#2050a0;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><i class="ri-folder-open-line" style="font-size:15px;"></i>Chọn tệp</button>
+            <button style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:0;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><i class="ri-folder-open-line" style="font-size:15px;"></i>Chọn tệp</button>
             <div style="font-size:12px;color:var(--color-body-muted,#5b6275);">JPG, PNG, WEBP, GIF · tối đa 10MB mỗi tệp</div>
           </div>
           <div style="margin-top:20px;display:flex;flex-direction:column;gap:9px;">
@@ -141,14 +173,14 @@
               <div style="width:38px;height:38px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,oklch(86% 0.05 40),oklch(68% 0.06 70));"></div>
               <div style="flex:1;min-width:0;">
                 <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--color-body-text,#3c4765);"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">banner-mua-he-2026.jpg</span><span style="color:var(--color-body-muted,#5b6275);flex-shrink:0;">62%</span></div>
-                <div style="height:5px;border-radius:5px;background:var(--color-border,#e9ecf4);margin-top:6px;overflow:hidden;"><div style="width:62%;height:100%;background:#2050a0;border-radius:5px;"></div></div>
+                <div style="height:5px;border-radius:5px;background:var(--color-border,#e9ecf4);margin-top:6px;overflow:hidden;"><div style="width:62%;height:100%;background:var(--color-admin-primary,#2050a0);border-radius:5px;"></div></div>
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:10px;">
               <div style="width:38px;height:38px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,oklch(85% 0.05 200),oklch(67% 0.06 240));"></div>
               <div style="flex:1;min-width:0;">
                 <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--color-body-text,#3c4765);"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">san-pham-noi-bat.png</span><span style="color:var(--color-admin-success-text,#0ab39c);flex-shrink:0;display:inline-flex;align-items:center;gap:3px;"><i class="ri-checkbox-circle-fill"></i>Xong</span></div>
-                <div style="height:5px;border-radius:5px;background:var(--color-border,#e9ecf4);margin-top:6px;overflow:hidden;"><div style="width:100%;height:100%;background:#0ab39c;border-radius:5px;"></div></div>
+                <div style="height:5px;border-radius:5px;background:var(--color-border,#e9ecf4);margin-top:6px;overflow:hidden;"><div style="width:100%;height:100%;background:var(--color-admin-success,#0ab39c);border-radius:5px;"></div></div>
               </div>
             </div>
           </div>
@@ -160,11 +192,11 @@
           <div style="width:100%;max-width:520px;aspect-ratio:16/10;border-radius:14px;background:radial-gradient(circle at 50% 40%,#2b3138,#16191d);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;">
             <div style="position:absolute;inset:0;background-image:linear-gradient(#ffffff10 1px,transparent 1px),linear-gradient(90deg,#ffffff10 1px,transparent 1px);background-size:32px 32px;"></div>
             <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:#8b93a1;z-index:1;"><i class="ri-camera-lens-line" style="font-size:44px;"></i><span style="font-size:13px;">Đang xem trước máy ảnh…</span></div>
-            <span style="position:absolute;top:12px;left:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#fff;background:#f0654899;padding:4px 9px;border-radius:20px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-surface,#fff);"></span>LIVE</span>
+            <span style="position:absolute;top:12px;left:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#fff;background:color-mix(in srgb,var(--color-admin-danger,#f06548) 60%,transparent);padding:4px 9px;border-radius:20px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-surface,#fff);"></span>LIVE</span>
           </div>
           <div style="display:flex;align-items:center;gap:22px;">
             <button style="width:42px;height:42px;border-radius:50%;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font-size:18px;cursor:pointer;" title="Đổi camera" aria-label="Đổi camera"><i class="ri-camera-switch-line"></i></button>
-            <button style="width:64px;height:64px;border-radius:50%;border:4px solid #2050a033;background:#2050a0;color:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Chụp" aria-label="Chụp"><i class="ri-camera-fill"></i></button>
+            <button style="width:64px;height:64px;border-radius:50%;border:4px solid color-mix(in srgb,var(--color-accent,#2050a0) 20%,transparent);background:var(--color-admin-primary,#2050a0);color:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Chụp" aria-label="Chụp"><i class="ri-camera-fill"></i></button>
             <button style="width:42px;height:42px;border-radius:50%;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font-size:18px;cursor:pointer;" title="Bộ đếm giờ" aria-label="Bộ đếm giờ"><i class="ri-timer-line"></i></button>
           </div>
           <div style="width:100%;max-width:520px;">
@@ -172,7 +204,7 @@
             <div style="display:flex;gap:10px;">
               <div style="width:64px;height:64px;border-radius:9px;background:linear-gradient(135deg,oklch(85% 0.05 150),oklch(67% 0.06 190));"></div>
               <div style="width:64px;height:64px;border-radius:9px;background:linear-gradient(135deg,oklch(85% 0.05 300),oklch(67% 0.06 340));"></div>
-              <div style="width:64px;height:64px;border-radius:9px;border:1.5px dashed var(--color-border-strong,#ced4da);display:flex;align-items:center;justify-content:center;color:#ced4da;font-size:20px;"><i class="ri-add-line"></i></div>
+              <div style="width:64px;height:64px;border-radius:9px;border:1.5px dashed var(--color-border-strong,#ced4da);display:flex;align-items:center;justify-content:center;color:var(--color-body-faint,#ced4da);font-size:20px;"><i class="ri-add-line"></i></div>
             </div>
           </div>
         </div>
@@ -189,10 +221,10 @@
             <div class="mp-scroll" style="flex:1;overflow:auto;padding:8px 10px;">
               <sc-for list="{{ cloud.rows }}" as="r" hint-placeholder-count="6">
                 <div onClick="{{ r.onToggle }}" style="display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:9px;cursor:pointer;">
-                  <sc-if value="{{ r.isFolder }}"><span style="width:38px;height:38px;border-radius:8px;background:var(--color-body,#f4f5fa);display:flex;align-items:center;justify-content:center;font-size:19px;color:#f7b84b;flex-shrink:0;"><i class="ri-folder-3-fill"></i></span></sc-if>
+                  <sc-if value="{{ r.isFolder }}"><span style="width:38px;height:38px;border-radius:8px;background:var(--color-body,#f4f5fa);display:flex;align-items:center;justify-content:center;font-size:19px;color:var(--color-admin-warning,#f7b84b);flex-shrink:0;"><i class="ri-folder-3-fill"></i></span></sc-if>
                   <sc-if value="{{ r.isFile }}"><span style="width:38px;height:38px;border-radius:8px;flex-shrink:0;{{ r.thumbStyle }}"></span></sc-if>
                   <div style="flex:1;min-width:0;"><div style="font-size:13px;color:var(--color-body-text,#3c4765);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.name }}</div><div style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ r.meta }}</div></div>
-                  <sc-if value="{{ r.isFolder }}"><i class="ri-arrow-right-s-line" style="color:#ced4da;font-size:18px;"></i></sc-if>
+                  <sc-if value="{{ r.isFolder }}"><i class="ri-arrow-right-s-line" style="color:var(--color-body-faint,#ced4da);font-size:18px;"></i></sc-if>
                   <sc-if value="{{ r.isFile }}"><span style="{{ r.checkStyle }}"><sc-if value="{{ r.selected }}"><i class="ri-check-line"></i></sc-if></span></sc-if>
                 </div>
               </sc-for>
@@ -222,7 +254,7 @@
                   <div onClick="{{ item.onToggle }}" style="position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;cursor:pointer;">
                     <div style="{{ item.thumbStyle }}"></div>
                     <span style="{{ item.checkStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
-                    <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid #2050a0;border-radius:9px;pointer-events:none;"></div></sc-if>
+                    <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid var(--color-accent,#2050a0);border-radius:9px;pointer-events:none;"></div></sc-if>
                   </div>
                 </sc-for>
               </div>
@@ -235,20 +267,20 @@
         <div style="padding:18px 22px;">
           <div style="position:relative;margin-bottom:14px;">
             <i class="ri-search-line" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--color-body-muted,#5b6275);font-size:16px;"></i>
-            <input placeholder="Tìm ảnh miễn phí trên Unsplash…" style="width:100%;box-sizing:border-box;padding:11px 14px 11px 38px;border:1px solid var(--color-border-input,#878a99);border-radius:9px;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);outline:none;background:var(--color-surface,#fff);">
+            <input placeholder="Tìm ảnh miễn phí trên Unsplash…" style="width:100%;box-sizing:border-box;padding:11px 14px 11px 38px;border:1px solid var(--color-border-input,#878a99);border-radius:9px;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);">
           </div>
           <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px;">
             <sc-for list="{{ unsplashChips }}" as="c" hint-placeholder-count="5">
               <button style="padding:6px 13px;border-radius:20px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:12.5px;cursor:pointer;">{{ c }}</button>
             </sc-for>
           </div>
-          <div style="column-count:3;column-gap:10px;">
+          <div class="mp-masonry" style="column-count:3;column-gap:10px;">
             <sc-for list="{{ unsplashItems }}" as="item" hint-placeholder-count="9">
               <div onClick="{{ item.onToggle }}" style="position:relative;break-inside:avoid;margin-bottom:10px;border-radius:10px;overflow:hidden;cursor:pointer;">
                 <div style="{{ item.thumbStyle }}"></div>
                 <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 9px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.6));font-size:12px;color:#fff;">{{ item.author }}</div>
                 <span style="{{ item.checkStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
-                <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid #2050a0;border-radius:10px;pointer-events:none;"></div></sc-if>
+                <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid var(--color-accent,#2050a0);border-radius:10px;pointer-events:none;"></div></sc-if>
               </div>
             </sc-for>
           </div>
@@ -256,34 +288,34 @@
       </sc-if>
 
       <sc-if value="{{ isLibrary }}">
-        <div style="display:flex;flex:1;min-height:0;">
-          <div class="mp-scroll" style="width:184px;border-right:1px solid var(--color-border,#e9ecf4);padding:14px 10px;overflow:auto;flex-shrink:0;display:flex;flex-direction:column;gap:2px;">
-            <div style="font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);letter-spacing:.05em;padding:2px 8px 6px;">THƯ MỤC</div>
+        <div class="mp-lib" style="display:flex;flex:1;min-height:0;">
+          <div class="mp-scroll mp-fold" style="width:184px;border-right:1px solid var(--color-border,#e9ecf4);padding:14px 10px;overflow:auto;flex-shrink:0;display:flex;flex-direction:column;gap:2px;">
+            <div class="mp-foldh" style="font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);padding:2px 8px 6px;">Thư mục</div>
             <sc-for list="{{ folders }}" as="f" hint-placeholder-count="5">
               <button onClick="{{ f.onClick }}" style="{{ f.style }}"><i class="{{ f.icon }}" style="font-size:15px;"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">{{ f.label }}</span><span style="{{ f.countStyle }}">{{ f.count }}</span></button>
             </sc-for>
             <button onClick="{{ toggleNewFolder }}" style="display:flex;align-items:center;gap:8px;width:100%;padding:8px 9px;margin-top:6px;border:1px dashed var(--color-border-strong,#ced4da);border-radius:7px;background:transparent;color:var(--color-body-muted,#5b6275);font:inherit;font-size:12.5px;cursor:pointer;"><i class="ri-add-line"></i>Thư mục mới</button>
             <sc-if value="{{ newFolderOpen }}">
               <div style="margin-top:6px;padding:10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:9px;background:var(--color-surface,#fff);display:flex;flex-direction:column;gap:8px;">
-                <input value="{{ nfName }}" onInput="{{ onNfName }}" onKeyDown="{{ onNfKey }}" placeholder="Tên thư mục…" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--color-border-input,#878a99);border-radius:7px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);outline:none;">
+                <input value="{{ nfName }}" onInput="{{ onNfName }}" onKeyDown="{{ onNfKey }}" placeholder="Tên thư mục…" style="width:100%;box-sizing:border-box;padding:7px 9px;border:1px solid var(--color-border-input,#878a99);border-radius:7px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);">
                 <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;">
                   <i class="ri-link" style="flex-shrink:0;"></i>
                   <span style="color:var(--color-accent,#2050a0);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">/{{ nfSlug }}</span>
                   <button onClick="{{ editNfSlug }}" title="Sửa slug" style="border:0;background:transparent;color:var(--color-body-muted,#5b6275);font-size:12px;cursor:pointer;padding:0;flex-shrink:0;" aria-label="Sửa slug"><i class="ri-pencil-line"></i></button>
                 </div>
-                <sc-if value="{{ nfSlugFallback }}"><div style="font-size:12px;color:#f7b84b;line-height:1.4;">Tên không chuyển được sang chữ Latinh — dùng slug tự sinh, có thể sửa.</div></sc-if>
-                <button onClick="{{ createFolder }}" style="padding:7px;border-radius:7px;border:0;background:#2050a0;color:#fff;font:inherit;font-size:12px;font-weight:600;cursor:pointer;">Tạo thư mục</button>
+                <sc-if value="{{ nfSlugFallback }}"><div style="font-size:12px;color:var(--color-admin-warning-text,#906405);line-height:1.4;">Tên không chuyển được sang chữ Latinh — dùng slug tự sinh, có thể sửa.</div></sc-if>
+                <button onClick="{{ createFolder }}" style="padding:7px;border-radius:7px;border:0;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:12px;font-weight:600;cursor:pointer;">Tạo thư mục</button>
               </div>
             </sc-if>
           </div>
 
           <div style="flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;">
-            <div style="display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;flex-shrink:1;min-width:0;">
+            <div class="mp-tool" style="display:flex;align-items:center;gap:9px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;flex-shrink:1;min-width:0;">
               <div style="position:relative;flex:1;min-width:150px;">
                 <i class="ri-search-line" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--color-body-muted,#5b6275);font-size:15px;"></i>
-                <input onInput="{{ onSearch }}" placeholder="Tìm theo tên ảnh…" style="width:100%;box-sizing:border-box;padding:8px 12px 8px 34px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:none;">
+                <input onInput="{{ onSearch }}" aria-label="Tìm ảnh theo tên" placeholder="banner-mua-he" style="width:100%;box-sizing:border-box;padding:8px 12px 8px 34px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);">
               </div>
-              <select onChange="{{ onSort }}" value="{{ sort }}" style="padding:8px 10px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);cursor:pointer;outline:none;">
+              <select onChange="{{ onSort }}" value="{{ sort }}" style="padding:8px 10px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);cursor:pointer;">
                 <option value="recent">Mới nhất</option>
                 <option value="oldest">Cũ nhất</option>
                 <option value="nameAsc">Tên A→Z</option>
@@ -292,7 +324,7 @@
                 <option value="sizeAsc">Kích thước nhỏ → lớn</option>
                 <option value="ext">Theo đuôi tệp</option>
               </select>
-              <select onChange="{{ onType }}" value="{{ typeFilter }}" style="padding:8px 10px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);cursor:pointer;outline:none;">
+              <select onChange="{{ onType }}" value="{{ typeFilter }}" style="padding:8px 10px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);cursor:pointer;">
                 <option value="all">Tất cả loại tệp</option>
                 <option value="image">Hình ảnh</option>
                 <option value="video">Video</option>
@@ -301,7 +333,7 @@
                 <option value="used">Đã dùng trong bài</option>
                 <option value="unused">Chưa sử dụng</option>
               </select>
-              <select onChange="{{ onFilter }}" value="{{ filter }}" style="padding:8px 10px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);cursor:pointer;outline:none;">
+              <select onChange="{{ onFilter }}" value="{{ filter }}" style="padding:8px 10px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);cursor:pointer;">
                 <option value="all">Mọi định dạng</option>
                 <option value="jpg">JPG</option>
                 <option value="png">PNG</option>
@@ -317,27 +349,27 @@
             </div>
 
             <sc-if value="{{ hasSelection }}">
-              <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:#2050a008;border-bottom:1px solid var(--color-border,#e9ecf4);flex-shrink:0;">
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;background:color-mix(in srgb,var(--color-accent,#2050a0) 3.1%,transparent);border-bottom:1px solid var(--color-border,#e9ecf4);flex-shrink:0;">
                 <span style="font-size:12.5px;font-weight:600;color:var(--color-accent,#2050a0);">{{ selCount }} đã chọn</span>
                 <div style="margin-left:auto;display:flex;gap:6px;">
                   <button style="display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:7px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:12px;cursor:pointer;"><i class="ri-folder-transfer-line"></i>Di chuyển</button>
-                  <button style="display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid #f0654833;border-radius:7px;background:var(--color-surface,#fff);color:var(--color-admin-danger-text,#f06548);font:inherit;font-size:12px;cursor:pointer;"><i class="ri-delete-bin-line"></i>Xóa</button>
+                  <button style="display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid color-mix(in srgb,var(--color-admin-danger,#f06548) 20%,transparent);border-radius:7px;background:var(--color-surface,#fff);color:var(--color-admin-danger-text,#f06548);font:inherit;font-size:12px;cursor:pointer;"><i class="ri-delete-bin-line"></i>Xóa</button>
                   <button onClick="{{ clearSel }}" style="padding:6px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:7px;background:var(--color-surface,#fff);color:var(--color-body-muted,#5b6275);font:inherit;font-size:12px;cursor:pointer;">Bỏ chọn</button>
                 </div>
               </div>
             </sc-if>
 
-            <div class="mp-scroll" style="flex:1;overflow:auto;padding:16px;min-height:0;">
+            <div class="mp-scroll mp-gridpad" style="flex:1;overflow:auto;padding:16px;min-height:0;">
               <sc-if value="{{ isGrid }}">
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px;">
+                <div class="mp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:12px;">
                   <sc-for list="{{ libItems }}" as="item" hint-placeholder-count="12">
                     <div draggable="true" onDragStart="{{ item.onDragStart }}" onDragOver="{{ item.allowDrop }}" onDrop="{{ item.onDrop }}" onClick="{{ item.onToggle }}" style="position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;cursor:pointer;border:1px solid var(--color-border,#e9ecf4);background:var(--color-body,#f4f5fa);">
                       <div style="{{ item.thumbStyle }}"></div>
                       <sc-if value="{{ item.showIcon }}"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><i class="{{ item.fileIcon }}" style="font-size:34px;color:{{ item.fileIconColor }};"></i></span></sc-if>
                       <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 8px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.55));font-size:12px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ item.name }}</div>
                       <span style="{{ item.checkStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
-                      <button onClick="{{ item.onOpen }}" style="position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:6px;border:0;background:rgba(0,0,0,0.32);color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Chi tiết" aria-label="Chi tiết"><i class="ri-information-line"></i></button>
-                      <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid #2050a0;border-radius:11px;pointer-events:none;"></div></sc-if>
+                      <button class="mp-open" onClick="{{ item.onOpen }}" style="position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:6px;border:0;background:rgba(0,0,0,0.32);color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Chi tiết" aria-label="Chi tiết"><i class="ri-information-line"></i></button>
+                      <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid var(--color-accent,#2050a0);border-radius:11px;pointer-events:none;"></div></sc-if>
                     </div>
                   </sc-for>
                 </div>
@@ -346,16 +378,16 @@
               <sc-if value="{{ isList }}">
                 <div style="display:flex;flex-direction:column;gap:2px;">
                   <div style="display:flex;align-items:center;gap:12px;padding:7px 10px;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);letter-spacing:.03em;">
-                    <span style="width:22px;"></span><span style="width:42px;"></span><span style="flex:1;">TÊN TỆP</span><span style="width:100px;">KÍCH THƯỚC</span><span style="width:70px;">DUNG LƯỢNG</span><span style="width:52px;">LOẠI</span><span style="width:28px;"></span>
+                    <span style="width:22px;"></span><span style="width:42px;"></span><span style="flex:1;">Tên tệp</span><span class="mp-lcol" style="width:100px;">Kích thước</span><span style="width:70px;">Dung lượng</span><span class="mp-lcol" style="width:52px;">Loại</span><span style="width:28px;"></span>
                   </div>
                   <sc-for list="{{ libItems }}" as="item" hint-placeholder-count="10">
                     <div onClick="{{ item.onToggle }}" style="{{ item.rowStyle }}">
                       <span style="{{ item.rowCheckStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
                       <span style="width:42px;height:42px;border-radius:8px;flex-shrink:0;overflow:hidden;{{ item.thumbBoxStyle }}"><sc-if value="{{ item.showIcon }}"><i class="{{ item.fileIcon }}" style="font-size:20px;color:{{ item.fileIconColor }};"></i></sc-if></span>
                       <span style="flex:1;min-width:0;font-size:13px;color:var(--color-body-text,#3c4765);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ item.name }}</span>
-                      <span style="width:100px;font-size:12.5px;color:var(--color-body-muted,#5b6275);">{{ item.dimsText }}</span>
+                      <span class="mp-lcol" style="width:100px;font-size:12.5px;color:var(--color-body-muted,#5b6275);">{{ item.dimsText }}</span>
                       <span style="width:70px;font-size:12.5px;color:var(--color-body-muted,#5b6275);">{{ item.sizeText }}</span>
-                      <span style="width:52px;"><span style="font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);background:#2050a014;padding:2px 7px;border-radius:5px;">{{ item.typeBadge }}</span></span>
+                      <span class="mp-lcol" style="width:52px;"><span style="font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent);padding:2px 7px;border-radius:5px;">{{ item.typeBadge }}</span></span>
                       <button onClick="{{ item.onOpen }}" style="width:28px;height:28px;border:0;background:transparent;color:var(--color-body-muted,#5b6275);font-size:16px;cursor:pointer;" title="Chi tiết" aria-label="Chi tiết"><i class="ri-information-line"></i></button>
                     </div>
                   </sc-for>
@@ -363,7 +395,7 @@
               </sc-if>
 
               <sc-if value="{{ libEmpty }}">
-                <div style="padding:50px 20px;text-align:center;color:#ced4da;"><i class="ri-image-line" style="font-size:40px;"></i><div style="font-size:13.5px;margin-top:10px;color:var(--color-body-muted,#5b6275);">Không tìm thấy ảnh phù hợp</div></div>
+                <div style="padding:50px 20px;text-align:center;color:var(--color-body-faint,#ced4da);"><i class="ri-image-line" style="font-size:40px;"></i><div style="font-size:13.5px;margin-top:10px;color:var(--color-body-muted,#5b6275);">Không tìm thấy ảnh phù hợp</div></div>
               </sc-if>
             </div>
           </div>
@@ -373,13 +405,13 @@
     </div>
 
     <sc-if value="{{ detailOpen }}">
-      <div class="mp-scroll" style="width:278px;flex-shrink:0;border-left:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;overflow:auto;display:flex;flex-direction:column;">
+      <div class="mp-scroll mp-detail" role="region" aria-label="Chi tiết ảnh" style="width:278px;flex-shrink:0;border-left:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfd);overflow:auto;display:flex;flex-direction:column;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);">
           <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Chi tiết ảnh</span>
           <button onClick="{{ closeDetail }}" style="width:26px;height:26px;border:0;background:transparent;color:var(--color-body-muted,#5b6275);font-size:17px;cursor:pointer;" aria-label="Đóng chi tiết ảnh" title="Đóng chi tiết ảnh"><i class="ri-close-line"></i></button>
         </div>
         <div style="padding:16px;display:flex;flex-direction:column;gap:14px;">
-          <div style="aspect-ratio:4/3;border-radius:10px;overflow:hidden;position:relative;border:1px solid var(--color-border,#e9ecf4);"><div style="position:absolute;inset:0;{{ detail.thumbStyle }}"></div><sc-if value="{{ detail.showIcon }}"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><i class="{{ detail.fileIcon }}" style="font-size:46px;color:{{ detail.fileIconColor }};"></i></span></sc-if></div>
+          <div class="mp-dimg" style="aspect-ratio:4/3;border-radius:6px;overflow:hidden;position:relative;border:1px solid var(--color-border,#e9ecf4);"><div style="position:absolute;inset:0;{{ detail.thumbStyle }}"></div><sc-if value="{{ detail.showIcon }}"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><i class="{{ detail.fileIcon }}" style="font-size:46px;color:{{ detail.fileIconColor }};"></i></span></sc-if></div>
           <div style="font-size:13.5px;font-weight:600;color:var(--color-heading,#1f2b4d);word-break:break-all;">{{ detail.name }}</div>
           <div style="display:flex;flex-direction:column;gap:9px;">
             <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--color-body-muted,#5b6275);">Kích thước</span><span style="color:var(--color-body-text,#3c4765);">{{ detail.dimsText }}</span></div>
@@ -389,7 +421,7 @@
           </div>
           <div>
             <label style="display:block;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);margin-bottom:6px;">Văn bản thay thế (ALT)</label>
-            <textarea style="width:100%;box-sizing:border-box;min-height:64px;padding:9px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);resize:vertical;outline:none;" placeholder="Mô tả ảnh cho SEO &amp; trợ năng…">{{ detail.alt }}</textarea>
+            <textarea style="width:100%;box-sizing:border-box;min-height:64px;padding:9px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);resize:vertical;" placeholder="Mô tả ảnh cho SEO &amp; trợ năng…">{{ detail.alt }}</textarea>
           </div>
           <button style="display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:8px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:12.5px;cursor:pointer;"><i class="ri-save-line"></i>Lưu thông tin</button>
         </div>
@@ -397,9 +429,9 @@
     </sc-if>
   </div>
 
-  <div style="display:flex;align-items:center;gap:14px;padding:12px 18px;border-top:1px solid var(--color-border,#e9ecf4);flex-shrink:0;background:var(--color-surface,#fff);">
+  <div class="mp-foot" style="display:flex;align-items:center;gap:14px;padding:12px 18px;border-top:1px solid var(--color-border,#e9ecf4);flex-shrink:0;background:var(--color-surface,#fff);">
     <sc-if value="{{ hasSelection }}">
-      <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+      <div class="mp-fsel" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
         <div style="display:flex;">
           <sc-for list="{{ selItems }}" as="s" hint-placeholder-count="3">
             <span style="width:32px;height:32px;border-radius:7px;border:2px solid var(--color-surface,#fff);margin-left:-8px;box-shadow:0 1px 3px rgba(0,0,0,0.2);{{ s.thumbStyle }}"></span>
@@ -409,16 +441,16 @@
       </div>
     </sc-if>
     <sc-if value="{{ noSelection }}">
-      <span style="flex:1;font-size:12.5px;color:var(--color-body-muted,#5b6275);">Chọn ảnh để chèn vào nội dung</span>
+      <span class="mp-fsel" style="flex:1;font-size:12.5px;color:var(--color-body-muted,#5b6275);">Chọn ảnh để chèn vào nội dung</span>
     </sc-if>
     <button onClick="{{ onClose }}" style="padding:9px 16px;border-radius:8px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:13px;font-weight:500;cursor:pointer;">Hủy</button>
     <button onClick="{{ onInsert }}" style="{{ insertBtnStyle }}"><i class="ri-check-line" style="font-size:15px;"></i>{{ insertLabel }}</button>
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1020,&quot;height&quot;:660},&quot;multiple&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1020,&quot;height&quot;:660},&quot;multiple&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;upload&quot;,&quot;library&quot;],&quot;default&quot;:&quot;upload&quot;,&quot;tsType&quot;:&quot;'upload'|'library'&quot;}}">
 class Component extends DCLogic {
-  state = { tab:'upload', src:null, view:'grid', sort:'recent', filter:'all', typeFilter:'all', urlValue:'', urlErr:null, urlItem:null, urlSaveCopy:true, newFolderOpen:false, nfName:'', search:'', folder:'all', selected:[], detail:null, dragId:null, conn:{ dropbox:true, gdrive:true, onedrive:true, box:false } };
+  state = { tab:(this.props&&this.props.startTab)||'upload', src:null, view:'grid', sort:'recent', filter:'all', typeFilter:'all', urlValue:'', urlErr:null, urlItem:null, urlSaveCopy:true, newFolderOpen:false, nfName:'', search:'', folder:'all', selected:[], detail:null, dragId:null, conn:{ dropbox:true, gdrive:true, onedrive:true, box:false } };
 
   constructor(...a){ super(...a); const t=this.props.tab; if(t==='library'||t==='upload') this.state=Object.assign({},this.state,{tab:t}); this.seed(); }
 
@@ -498,14 +530,14 @@ class Component extends DCLogic {
   reorder(target){ const s=this.state; if(s.sort!=='recent'||!s.dragId){ this.setState({dragId:null}); return; } const a=this.library; const fi=a.findIndex(x=>x.id===s.dragId); const ti=a.findIndex(x=>x.id===target); if(fi<0||ti<0||fi===ti){ this.setState({dragId:null}); return; } const [m]=a.splice(fi,1); a.splice(ti,0,m); this.setState({dragId:null}); }
 
   tile(it){ const sel=this.state.selected.includes(it.id);
-    const bg=it.bg||((it.iconColor||'#878a99')+'14');
+    const bg=it.bg||((it.iconColor||'var(--color-body-muted,#5b6275)')+'14');
     return { id:it.id, name:it.name, author:it.author, selected:sel,
-      showIcon:!it.bg, fileIcon:it.icon||'ri-file-line', fileIconColor:it.iconColor||'#878a99',
+      showIcon:!it.bg, fileIcon:it.icon||'ri-file-line', fileIconColor:it.iconColor||'var(--color-body-muted,#5b6275)',
       thumbBoxStyle:`background:${bg};background-size:cover;display:flex;align-items:center;justify-content:center;`,
       thumbStyle:`position:absolute;inset:0;background:${bg};background-size:cover;`,
-      checkStyle:`position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${sel?'#2050a0':'rgba(255,255,255,0.9)'};background:${sel?'#2050a0':'rgba(0,0,0,0.18)'};box-shadow:0 1px 3px rgba(0,0,0,0.3);`,
-      rowCheckStyle:`width:22px;height:22px;flex-shrink:0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${sel?'#2050a0':'#ced4da'};background:${sel?'#2050a0':'#fff'};`,
-      rowStyle:`display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:9px;cursor:pointer;background:${sel?'#2050a008':'transparent'};`,
+      checkStyle:`position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${sel?'var(--color-accent,#2050a0)':'rgba(255,255,255,0.9)'};background:${sel?'var(--color-admin-primary,#2050a0)':'rgba(0,0,0,0.18)'};box-shadow:0 1px 3px rgba(0,0,0,0.3);`,
+      rowCheckStyle:`width:22px;height:22px;flex-shrink:0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${sel?'var(--color-accent,#2050a0)':'var(--color-border-input,#878a99)'};background:${sel?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};`,
+      rowStyle:`display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:9px;cursor:pointer;background:${sel?'color-mix(in srgb,var(--color-accent,#2050a0) 3.1%,transparent)':'transparent'};`,
       dimsText: it.w? `${it.w} × ${it.h}` : '—', sizeText: it.size!=null? it.size+' MB':'—', typeBadge:(it.type||'IMG').toUpperCase(),
       onToggle:()=>this.toggle(it.id), onOpen:(e)=>{ e.stopPropagation(); this.openDetail(it.id); },
       onDragStart:()=>this.setState({dragId:it.id}), onDrop:(e)=>{ e.preventDefault(); this.reorder(it.id); }, allowDrop:(e)=>e.preventDefault() };
@@ -513,8 +545,8 @@ class Component extends DCLogic {
 
   folderItem(key){ const active=this.state.folder===key; const count= key==='all'? this.library.length : this.library.filter(x=>x.folder===key).length;
     return { key, label:this.folderLabels[key], count, active, icon: key==='all'?'ri-stack-line':'ri-folder-3-line', onClick:()=>this.setFolder(key),
-      style:`display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:7px 9px;border:0;border-radius:7px;font:inherit;font-size:13px;cursor:pointer;background:${active?'#2050a014':'transparent'};color:${active?'#2050a0':'#3c4765'};font-weight:${active?600:500};`,
-      countStyle:`font-size:12px;color:${active?'#2050a0':'#adb5bd'};` }; }
+      style:`display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:7px 9px;border:0;border-radius:7px;font:inherit;font-size:13px;cursor:pointer;background:${active?'color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent)':'transparent'};color:${active?'var(--color-accent,#2050a0)':'var(--color-body-text,#3c4765)'};font-weight:${active?600:500};`,
+      countStyle:`font-size:12px;color:${active?'var(--color-accent,#2050a0)':'var(--color-body-faint,#adb5bd)'};` }; }
 
   renderVals(){
     const S=this.state; const tab=S.tab; const src=S.src;
@@ -524,19 +556,19 @@ class Component extends DCLogic {
 
     const tabDefs=[ {key:'upload',icon:'ri-upload-2-line',label:'Tải lên tệp mới'}, {key:'library',icon:'ri-image-2-line',label:'Thư viện ảnh'} ];
     const topTabs=tabDefs.map(t=>{ const active=tab===t.key; return { ...t, onClick:()=>this.setTab(t.key),
-      style:`display:inline-flex;align-items:center;gap:8px;padding:12px 4px;border:0;font:inherit;font-size:13.5px;white-space:nowrap;cursor:pointer;flex-shrink:0;background:transparent;color:${active?'#2050a0':'#878a99'};font-weight:${active?600:500};box-shadow:${active?'inset 0 -2.5px 0 #2050a0':'none'};`,
-      iconStyle:`font-size:16px;color:${active?'#2050a0':'#adb5bd'};`,
+      style:`display:inline-flex;align-items:center;gap:8px;padding:12px 4px;border:0;font:inherit;font-size:13.5px;white-space:nowrap;cursor:pointer;flex-shrink:0;background:transparent;color:${active?'var(--color-accent,#2050a0)':'var(--color-body-muted,#5b6275)'};font-weight:${active?600:500};box-shadow:${active?'inset 0 -2.5px 0 var(--color-accent,#2050a0)':'none'};`,
+      iconStyle:`font-size:16px;color:${active?'var(--color-accent,#2050a0)':'var(--color-body-faint,#adb5bd)'};`,
       showBadge:t.key==='library', badge:this.library.length,
-      badgeStyle:`font-size:12px;font-weight:600;padding:1.5px 7px;border-radius:10px;background:${active?'#2050a014':'#f4f5fa'};color:${active?'#2050a0':'#878a99'};` }; });
+      badgeStyle:`font-size:12px;font-weight:600;padding:1.5px 7px;border-radius:10px;background:${active?'color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent)':'var(--color-body,#f4f5fa)'};color:${active?'var(--color-accent,#2050a0)':'var(--color-body-muted,#5b6275)'};` }; });
 
-    const srcDefs=[ {key:'device',icon:'ri-computer-line',label:'Thiết bị của tôi',color:'#2050a0'}, {key:'camera',icon:'ri-camera-line',label:'Máy ảnh',color:'#0ab39c'}, {key:'dropbox',icon:'ri-dropbox-fill',label:'Dropbox',color:'#0061FF'}, {key:'gdrive',icon:'ri-drive-fill',label:'Google Drive',color:'#1a73e8'}, {key:'gphotos',icon:'ri-google-fill',label:'Google Photos',color:'#EA4335'}, {key:'onedrive',icon:'ri-microsoft-fill',label:'OneDrive',color:'#0364B7'}, {key:'unsplash',icon:'ri-camera-lens-line',label:'Unsplash',color:'#111827'}, {key:'box',icon:'ri-inbox-archive-line',label:'Box',color:'#0061D5'} ];
+    const srcDefs=[ {key:'device',icon:'ri-computer-line',label:'Thiết bị của tôi',color:'var(--color-accent,#2050a0)'}, {key:'camera',icon:'ri-camera-line',label:'Máy ảnh',color:'#0ab39c'}, {key:'dropbox',icon:'ri-dropbox-fill',label:'Dropbox',color:'#0061FF'}, {key:'gdrive',icon:'ri-drive-fill',label:'Google Drive',color:'#1a73e8'}, {key:'gphotos',icon:'ri-google-fill',label:'Google Photos',color:'#EA4335'}, {key:'onedrive',icon:'ri-microsoft-fill',label:'OneDrive',color:'#0364B7'}, {key:'unsplash',icon:'ri-camera-lens-line',label:'Unsplash',color:'#111827'}, {key:'box',icon:'ri-inbox-archive-line',label:'Box',color:'#0061D5'} ];
     const connectedMap={ dropbox:!!S.conn.dropbox, gdrive:!!S.conn.gdrive, onedrive:!!S.conn.onedrive, box:!!S.conn.box, gphotos:true };
-    const sources=srcDefs.map(d=>({ ...d, tint:d.color+'1a', onOpen:()=>this.openSrc(d.key), showDot: (d.key in connectedMap) && connectedMap[d.key] }));
+    const sources=srcDefs.map(d=>({ ...d, tint:'color-mix(in srgb,'+d.color+' 10%,transparent)', onOpen:()=>this.openSrc(d.key), showDot: (d.key in connectedMap) && connectedMap[d.key] }));
 
     const urlDef={key:'url',icon:'ri-link',label:'Ảnh từ URL',color:'#6559cc'};
     let srcHeader=null;
     if(inSource){ const d=srcDefs.find(x=>x.key===src)||urlDef; const conn=(src in connectedMap)?connectedMap[src]:null;
-      srcHeader={ name:d.label, icon:d.icon, color:d.color, tint:d.color+'1a', onBack:()=>this.backToSources(), showChip: conn===true }; }
+      srcHeader={ name:d.label, icon:d.icon, color:d.color, tint:'color-mix(in srgb,'+d.color+' 10%,transparent)', onBack:()=>this.backToSources(), showChip: conn===true }; }
 
     const isCloud=inSource && ['dropbox','gdrive','onedrive','box'].includes(src);
 
@@ -556,23 +588,23 @@ class Component extends DCLogic {
       cloud={ name:c.name, color:c.color, tintBg:c.tintBg, icon:c.icon, crumb:c.crumb, onConnect:()=>this.connect(src),
         rows:c.rows.map(r=>({ id:r.id, name:r.name, meta:r.meta, isFolder:r.kind==='folder', isFile:r.kind==='file', selected:S.selected.includes(r.id),
           thumbStyle:r.bg?`background:${r.bg};background-size:cover;`:'', onToggle:r.kind==='file'?()=>this.toggle(r.id):()=>{},
-          checkStyle:`width:20px;height:20px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${S.selected.includes(r.id)?'#2050a0':'#ced4da'};background:${S.selected.includes(r.id)?'#2050a0':'#fff'};` })) };
+          checkStyle:`width:20px;height:20px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${S.selected.includes(r.id)?'var(--color-accent,#2050a0)':'var(--color-border-input,#878a99)'};background:${S.selected.includes(r.id)?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};` })) };
       cloudConnected=conn; cloudDisconnected=!conn; }
 
     let detail=null; if(S.detail && this.index[S.detail]){ const it=this.index[S.detail];
-      const dbg=it.bg||((it.iconColor||'#878a99')+'14');
-      detail={ name:it.name, showIcon:!it.bg, fileIcon:it.icon||'ri-file-line', fileIconColor:it.iconColor||'#878a99', thumbStyle:`background:${dbg};background-size:cover;`, dimsText: it.w?`${it.w} × ${it.h} px`:'—', sizeText: it.size!=null? it.size+' MB':'—', typeText:(it.type||'IMG').toUpperCase(), folderLabel: this.folderLabels[it.folder]||it.folder||'—', alt: it.name.replace(/\.[a-z0-9]+$/i,'').replace(/[-_]/g,' ') }; }
+      const dbg=it.bg||((it.iconColor||'var(--color-body-muted,#5b6275)')+'14');
+      detail={ name:it.name, showIcon:!it.bg, fileIcon:it.icon||'ri-file-line', fileIconColor:it.iconColor||'var(--color-body-muted,#5b6275)', thumbStyle:`background:${dbg};background-size:cover;`, dimsText: it.w?`${it.w} × ${it.h} px`:'—', sizeText: it.size!=null? it.size+' MB':'—', typeText:(it.type||'IMG').toUpperCase(), folderLabel: this.folderLabels[it.folder]||it.folder||'—', alt: it.name.replace(/\.[a-z0-9]+$/i,'').replace(/[-_]/g,' ') }; }
 
     const selCount=S.selected.length; const hasSelection=selCount>0;
-    const selItems=S.selected.slice(0,4).map(id=>({ thumbStyle:`background:${(this.index[id]||{}).bg||'#ced4da'};background-size:cover;` }));
+    const selItems=S.selected.slice(0,4).map(id=>({ thumbStyle:`background:${(this.index[id]||{}).bg||'var(--color-border-input,#878a99)'};background-size:cover;` }));
 
     const gp=this.gphotos.map(g=>({ month:g.month, items:g.items.map(it=>this.tile(it)) }));
     const uns=this.unsplashItems.map(it=>{ const t=this.tile(it); return {...t, thumbStyle:`position:relative;display:block;width:100%;height:${it.h/800*160+80}px;background:${it.bg};background-size:cover;`}; });
 
-    const vb=(active)=>`width:34px;height:32px;border:0;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;background:${active?'#2050a0':'#fff'};color:${active?'#fff':'#878a99'};`;
+    const vb=(active)=>`width:34px;height:32px;border:0;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;background:${active?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};color:${active?'var(--color-surface,#fff)':'var(--color-body-muted,#5b6275)'};`;
 
     return {
-      topTabs, showSources, inSource, srcHeader, sources,
+      topTabs, showSources, inSource, srcHeader, sources, openCamera:()=>this.openSrc('camera'), openDevice:()=>this.openSrc('device'),
       isDevice:inSource && src==='device', isCamera:inSource && src==='camera', isCloud, isGphotos:inSource && src==='gphotos', isUnsplash:inSource && src==='unsplash', isUrl:inSource && src==='url', isLibrary,
       urlValue:S.urlValue, urlErr:S.urlErr, urlHasPreview:!!S.urlItem, urlNoPreview:!S.urlItem,
       urlPrev: S.urlItem? { name:S.urlItem.name, meta:`${S.urlItem.w} × ${S.urlItem.h} · ~${S.urlItem.size} MB`, thumbStyle:`background:${S.urlItem.bg};background-size:cover;` } : null,
@@ -580,7 +612,7 @@ class Component extends DCLogic {
       onUrlKey:(e)=>{ if(e.key==='Enter') this.previewUrl(); },
       onUrlPreview:()=>this.previewUrl(),
       saveCopyOn:S.urlSaveCopy, toggleSaveCopy:()=>this.setState(s=>({urlSaveCopy:!s.urlSaveCopy})),
-      saveCopyBoxStyle:`width:19px;height:19px;flex-shrink:0;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${S.urlSaveCopy?'#2050a0':'#ced4da'};background:${S.urlSaveCopy?'#2050a0':'#fff'};`,
+      saveCopyBoxStyle:`width:19px;height:19px;flex-shrink:0;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${S.urlSaveCopy?'var(--color-accent,#2050a0)':'var(--color-border-input,#878a99)'};background:${S.urlSaveCopy?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};`,
       cloud, cloudConnected, cloudDisconnected,
       folders:this.folderKeys.map(k=>this.folderItem(k)),
       newFolderOpen:S.newFolderOpen, nfName:S.nfName,
@@ -599,7 +631,7 @@ class Component extends DCLogic {
       detail, detailOpen:!!detail, closeDetail:()=>this.closeDetail(),
       hasSelection, noSelection:!hasSelection, selCount, selItems, clearSel:()=>this.clearSel(),
       insertLabel: hasSelection? `Chèn ${selCount} ảnh` : 'Chèn ảnh',
-      insertBtnStyle:`display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;border:0;font:inherit;font-size:13px;font-weight:600;cursor:${hasSelection?'pointer':'not-allowed'};background:${hasSelection?'#2050a0':'#ced4da'};color:#fff;`,
+      insertBtnStyle:`display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;border:0;font:inherit;font-size:13px;font-weight:600;cursor:${hasSelection?'pointer':'not-allowed'};background:${hasSelection?'var(--color-admin-primary,#2050a0)':'var(--color-border-input,#878a99)'};color:#fff;`,
       onClose:()=>{ if(this.props.onClose) this.props.onClose(); try{ document.dispatchEvent(new CustomEvent('bs-media',{detail:{act:'close'}})); }catch(e){} },
       onInsert:()=>{ if(!hasSelection) return; const items=S.selected.map(id=>this.index[id]).filter(Boolean); if(this.props.onInsert) this.props.onInsert(items); try{ document.dispatchEvent(new CustomEvent('bs-media',{detail:{act:'insert',items:items.map(x=>({name:x.name,bg:x.bg,w:x.w,h:x.h}))}})); }catch(e){} },
     };
