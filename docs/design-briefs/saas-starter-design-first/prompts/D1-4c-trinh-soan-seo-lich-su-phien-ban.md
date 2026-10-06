@@ -52,6 +52,7 @@ Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm n
 # D1-4c · Khuôn soạn nội dung (phần 2) — lịch sử phiên bản + SEO còn lại
 
 Cần trước: D1-4b (khuôn = `Page Editor - Options` với prop `kind`). Làm trên khuôn đó, không tách lại màn. Đọc README D1-4 phần D1-4b.
+Đầu lượt — gộp luồng phụ (chỉ khi owner đã chạy D1-7 song song với D1-4b): mở README của D1-7, mục "Gộp vào tệp chung"; nếu dòng cuối là "Xong — chờ gộp" thì áp từng dòng vào đúng tệp (việc gộp được sửa các tệp đó dù không có trong "Được sửa" dưới đây) và đổi dòng cuối thành "Đã gộp ở D1-4c". Không có mục đó thì bỏ qua.
 1. Lịch sử phiên bản — BACKEND ĐÃ CÓ, lên prod 28/09 (`docs/design.md` §8; `app/Modules/Cms/Queries/EntryRevisions.php`, `app/Modules/Cms/Actions/RestoreEntryRevision.php`, `app/Modules/Cms/Enums/RevisionKind.php`) — KHÔNG gắn "Chờ backend". Luật as-built:
    · Mỗi dòng = 1 NGÔN NGỮ (khôi phục bản tiếng Anh không kéo lùi bản tiếng Việt) → lịch sử lọc theo ngôn ngữ đang chọn ở thanh ngôn ngữ.
    · NGOẠI LỆ: bản lưu gồm cả Mẫu hiển thị, Ảnh đại diện và dữ liệu dùng chung (`RecordEntryRevision.php`) — khôi phục mà các trường này khác hiện tại thì chúng đổi cho MỌI ngôn ngữ; hộp xác nhận khi đó thêm câu "Ảnh đại diện và mẫu hiển thị dùng chung — mọi ngôn ngữ sẽ đổi theo".
