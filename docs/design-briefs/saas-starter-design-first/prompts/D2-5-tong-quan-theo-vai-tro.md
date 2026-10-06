@@ -26,7 +26,7 @@ Luật cứng:
   · Điện thoại: hộp thoại/bảng chọn = trượt từ đáy hoặc toàn màn; thanh Lưu dính đáy không che nội dung và ô đang nhập (bàn phím ảo); menu trái thành ngăn kéo; không gì chỉ hiện khi rê chuột (hover) — phải bấm được; vùng bấm ≥ 44px, cách nhau ≥ 8px.
   · Canvas giao nộp: mỗi màn có khung xem 390 và 768 cạnh khung máy tính; README có bảng "Kiểm hiển thị" (bề rộng × trình duyệt → đạt/chưa + lý do).
 - Không hiện mã số nội bộ (id) — chỉ tên, đường dẫn, mã công khai. Không gắn cứng thương hiệu (tên nền tảng/website/"Phát triển bởi" lấy từ cấu hình).
-- Tính năng ngoài gói (Q12 owner 24/09, bổ sung 29/09): website được cấp AI → nút AI (Dịch, Viết mới, Nâng cấp bài viết…) hiện bình thường, hạn ngạch theo §7/§7a (ai-quota.js). Nền tảng có công tắc "Lời mời nâng gói" (Cài đặt nền tảng › Gói & tính năng — mặc định TẮT, owner bật khi đã dựng xong gói): TẮT → nút AI ẩn hẳn, module ngoài gói chỉ hiện khóa trung tính "Chưa bật cho website này — liên hệ hỗ trợ", không chào mua; BẬT → mọi tính năng ngoài gói (kể cả AI) hiện dạng khóa + 1 dòng lợi ích + nút "Xem gói nâng cấp" (mở Cài đặt › Gói & mức dùng). Vẽ cả hai bằng Tweak "Lời mời nâng gói".
+- Tính năng ngoài gói (Q12 owner 24/09, bổ sung 29/09): website được cấp AI → nút AI (Dịch, Viết mới, Nâng cấp bài viết…) hiện bình thường, hạn ngạch theo §7/§7a (ai-quota.js). Nền tảng có công tắc "Lời mời nâng gói" (Nền tảng › Gói & tính năng — mặc định TẮT, owner bật khi đã dựng xong gói): TẮT → nút AI ẩn hẳn, module ngoài gói chỉ hiện khóa trung tính "Chưa bật cho website này — liên hệ hỗ trợ", không chào mua; BẬT → mọi tính năng ngoài gói (kể cả AI) hiện dạng khóa + 1 dòng lợi ích + nút "Xem gói nâng cấp" (mở Cài đặt › Gói & mức dùng). Vẽ cả hai bằng Tweak "Lời mời nâng gói".
 - Ngôn ngữ nội dung viết phải-sang-trái (العربية có trong `config/locales.php`): ô nhập và nội dung của ngôn ngữ đó tự đặt dir="rtl" + căn phải (tiêu đề, nội dung, đường dẫn giữ trái-sang-phải); khung quản trị luôn trái-sang-phải.
 - Dữ liệu động: nhóm quyền, quyền, loại nội dung, ngôn ngữ, gói, bước duyệt đều đọc từ registry/bảng — chịu được 1–20 mục, tên dài. Nhóm quyền, gói, chế độ duyệt, số ngôn ngữ mô phỏng bằng Tweaks đọc registry thật (LESSONS #18) — không bịa cờ kiểu canPublish.
 - Hành động nguy hiểm: chuyển vào Thùng rác thì KHÔNG hỏi — làm ngay + toast "Hoàn tác" 8 giây; chỉ hỏi khi kéo theo mục khác ("Xóa mục này và 3 mục con") hoặc không hoàn tác được (xóa vĩnh viễn, tắt ngôn ngữ, đổi tên miền): hộp xác nhận giữa màn kiểu SweetAlert2, nút Hủy được focus, nút làm ghi đúng việc sẽ xảy ra.
@@ -49,13 +49,28 @@ Giao nộp: 1 file .dc.html mỗi màn (hoặc gộp có anchor) + README handof
 Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm nào thì lượt này làm theo prompt (owner đã duyệt) và ghi 1 dòng LESSONS.md nêu điểm khác để owner sửa CLAUDE.md; bài học mới cũng ghi 1 dòng vào LESSONS.md. Làm xong gọi ready_for_verification và sửa hết lỗi verifier báo. Lượt này làm ĐÚNG MỘT việc bên dưới.
 ═══ VIỆC CỦA LƯỢT NÀY ═══
 
-# D2-5 · Tổng quan (bảng điều khiển) theo vai trò
-
-Hiện trạng: repo chỉ có dòng chào (`app/Modules/Admin/resources/views/livewire/dashboard.blade.php`). Admin Shell đã vẽ 1 bản (thẻ số liệu, biểu đồ, hộp duyệt, hoạt động gần đây) — giữ và mở rộng.
-Vẽ 4 biến thể; số liệu lấy từ số tổng hợp theo website (không đếm sống bảng lớn):
-1. Chủ website/Quản trị: "Việc cần làm hôm nay" lên đầu (khách liên hệ chưa xem, bài chờ duyệt, bài bị trả lại, tên miền cần sửa — kèm hạn "sửa trước <ngày>", chỉ người quản lý tên miền thấy) · thẻ số liệu (trang/bài/sản phẩm, khách liên hệ 7 ngày, dung lượng thư viện so với gói) · "Bắt đầu" cho website mới: danh sách kiểm 6 việc (thông tin chung · logo · ngôn ngữ · trang chủ · trình đơn · tên miền), mỗi việc 1 nút đi thẳng tới chỗ làm, tự ẩn khi xong, có vòng tiến độ.
-2. Biên tập: hàng chờ duyệt, bài giao cho tôi, bài đã hẹn giờ.
-3. Người viết/Cộng tác viên: bài của tôi theo trạng thái, bài bị trả lại (kèm lý do) + nút "Viết bài mới".
-4. Chỉ xem: nội dung mới, không có nút tạo.
-Thẻ "Cần giúp?" nhỏ (Trợ giúp + liên hệ hỗ trợ từ cài đặt nền tảng). Thao tác nhanh theo quyền (không hiện nút người dùng không bấm được). Trạng thái trống cho website mới.
-Gắn vào Shell: `dashboard`.
+# D2-5 · Tổng quan theo quyền (mặt Website)
+Cần trước: D0-4b (Tweak nhóm quyền / chế độ duyệt / gói / "website mới tinh", registry), D0-5 (kho bài BSCW, `admin-components.css`), D2-4 (câu thông báo). Chuẩn: Mẫu 7 "Bảng điều khiển" của trang chuẩn (`#mau-7`: 4 thẻ số liệu, biểu đồ 1 đơn vị, Việc cần làm, Hộp duyệt 3 bài, Hoạt động = dòng thời gian; khung 974 / 720 / 342). Tổng quan nền tảng là D4-1 — không làm ở đây. Focus 1b dùng lại luật chung.
+Hiện trạng: repo chỉ có dòng chào (`app/Modules/Admin/Livewire/Dashboard.php`); Shell đã vẽ 1 bản (thẻ số liệu, biểu đồ, hộp duyệt, hoạt động) — giữ và mở rộng, không vẽ lại. Repo CHƯA có bộ đếm tổng hợp nào và chưa đo dung lượng thư viện đã dùng (`media.storage_mb` chỉ là giới hạn) → mọi con số gắn "Chờ backend" + Việc cho backend: bộ đếm theo website cập nhật cùng giao dịch, không đếm sống bảng lớn (CLAUDE.md §3.1 của repo).
+Dòng TODO "· D2-5" (số rút gọn): mọi số trên Tổng quan qua `BSUI.fmtCompact(n, {locale, max})` (content-ui.js, quy ước `#dinh-dang`); trục + nhãn biểu đồ chung 1 đơn vị theo số lớn nhất; đóng dòng.
+Khối hiện theo QUYỀN (`BSCW.can`, không theo tên nhóm — nhóm tùy chỉnh phải ra đúng):
+1. Việc cần làm hôm nay (đầu trang, ẩn khi không có việc): khách liên hệ chưa xem (`forms.view`) · bài chờ bạn duyệt (khi bật quy trình + quyền duyệt) · bài của bạn bị trả lại · tên miền cần sửa kèm "sửa trước <ngày>" (`domains.manage`) — mỗi dòng 1 nút đi thẳng (`bs-goto`).
+2. Thẻ số liệu: trang / bài / sản phẩm (theo module bật) · khách liên hệ 7 ngày · dung lượng thư viện so với gói (`settings.manage`).
+3. "Bắt đầu" (Tweak "website mới tinh", `settings.manage`): 6 việc — thông tin chung · logo · ngôn ngữ · trang chủ · trình đơn · tên miền — mỗi việc 1 nút tới đúng chỗ làm, tự ẩn khi xong, vòng tiến độ, "Ẩn danh sách này".
+4. Người duyệt (`entries.approve` / `entries.review`, quy trình bật): hàng chờ duyệt · bài giao cho tôi · bài đã hẹn giờ.
+5. Người viết (có `entries.edit.own`, không có `entries.edit.any`): bài của tôi theo trạng thái · bài bị trả lại kèm lý do · "Viết bài mới".
+6. Chỉ xem: nội dung mới, không nút tạo.
+7. Thẻ nhỏ "Cần giúp?" (Trợ giúp + kênh hỗ trợ từ Cài đặt nền tảng — D4-3, Chờ backend). Thao tác nhanh chỉ hiện nút bấm được. "Hoạt động gần đây" chỉ với người xem được nhật ký website (Chờ backend — D0-4a).
+8. Trạng thái: website mới (trống) · đang tải (khung xương từng thẻ) · lỗi từng thẻ + "Thử lại" (một thẻ lỗi không làm hỏng trang) · module tắt theo gói.
+Đặt màn: chuyển khối Tổng quan của Shell sang `Tổng quan.dc.html` (chuyển nguyên rồi mở rộng), Shell mở qua registry `dashboard` → ready; cập nhật dòng 4 của `SaaS Starter - Bản đồ màn hình.md`.
+Được sửa: `Tổng quan.dc.html` (mới) · `Admin Shell.dc.html` (chỉ gỡ khối Tổng quan + mở qua registry) · `shell-screens.js` · `SaaS Starter - Bản đồ màn hình.md` · `TODO.md` · `LESSONS.md` · README mới `README - D2-5 Tổng quan.md`. Không sửa màn khác, `content-ui.js`, `admin-base.css`, `admin-components.css`, trang chuẩn, CLAUDE.md.
+Sắp hết lượt: xong mục 1–3 trước; mục 4–8 ghi TODO.md "D2-5 phần 2" rồi báo owner; owner gửi "Làm D2-5 phần 2" trong cùng chat.
+Xong khi:
+(1) Tweak 6 nhóm × (không duyệt / duyệt trước khi đăng): Chủ website thấy Việc cần làm + Bắt đầu; Biên tập thấy hàng chờ duyệt khi bật quy trình, không thấy dung lượng / Bắt đầu; Người viết thấy bài của tôi + "Viết bài mới"; Chỉ xem 0 nút tạo.
+(2) README bảng khối × điều kiện quyền — không điều kiện nào dùng tên nhóm.
+(3) Mọi số qua `BSUI.fmtCompact`; biểu đồ một đơn vị; TODO đóng dòng "· D2-5".
+(4) Mỗi dòng Việc cần làm mở đúng màn bằng `bs-goto`; grep 0 id số, 0 hex ngoài `var(…)`, 0 `style-focus-within`.
+(5) `_audit/harness.html`: `H.layouts(['Tổng quan.dc.html'], [360,390,768,1024,1440])` × chữ thường + Chữ lớn (bật Chữ lớn qua Tweak / `bs-ui` trước khi gọi), đứng riêng; trong Shell đo `H.mk('s',390,844,0,0,'../Admin Shell.dc.html#/<mặt>/<khóa màn>')` — `scrollWidth = clientWidth` (không sửa tệp trong `_audit/`).
+(6) README có Việc cho backend (bộ đếm, dung lượng đã dùng, trạng thái Bắt đầu), Kiểm hiển thị, 12 tiêu chí; ghi "D3-1" là lượt kế tiếp.
+Gọi ready_for_verification, sửa hết lỗi verifier báo. Verifier không trả kết quả (công cụ chụp quá giờ) thì không chờ: ghi [CHƯA KIỂM ĐƯỢC] vào dòng Verifier của README, Claude Code kiểm bằng zip.
+Xuất zip project gửi Claude Code kiểm. Xong thì báo owner đúng một câu: "D2-5 xong — gửi zip cho Claude Code."
