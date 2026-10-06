@@ -86,11 +86,41 @@
   }
   function imageCost(slots, key) { return (slots || 1) * variants(key); }
 
+  /* D0-4b — tính năng gói (FeatureRegistry.php) + module (ModuleCatalog.php). Nguồn duy nhất phía thiết kế; Shell không khai lại.
+     default = giá trị khi website chưa có gói (fail-closed, đúng repo). */
+  var FEATURES = {
+    'workflow.editorial': { name: 'Quy trình biên tập đa cấp', kind: 'boolean', def: false, scope: 'site' },
+    'sites.max': { name: 'Số website tối đa', kind: 'limit', def: 1, scope: 'tenant' },
+    'media.storage_mb': { name: 'Dung lượng ảnh & tệp (MB)', kind: 'limit', def: 500, scope: 'site' },
+    'locales.max': { name: 'Số ngôn ngữ tối đa', kind: 'limit', def: 1, scope: 'site' },
+    'custom_domains.max': { name: 'Số tên miền riêng tối đa', kind: 'limit', def: 1, scope: 'site' },
+    'rbac.custom_roles': { name: 'Nhóm quyền tùy chỉnh', kind: 'boolean', def: false, scope: 'site' }
+  };
+  /* Giá trị theo gói — ĐỀ XUẤT của thiết kế (repo lưu ở plan_features, chưa có bảng mẫu). Cần owner chốt. */
+  var PLAN_FEATURES = {
+    free:  { 'workflow.editorial': false, 'sites.max': 1,  'media.storage_mb': 500,   'locales.max': 1,  'custom_domains.max': 0,  'rbac.custom_roles': false },
+    basic: { 'workflow.editorial': false, 'sites.max': 3,  'media.storage_mb': 2000,  'locales.max': 3,  'custom_domains.max': 1,  'rbac.custom_roles': false },
+    pro:   { 'workflow.editorial': true,  'sites.max': 8,  'media.storage_mb': 10000, 'locales.max': 8,  'custom_domains.max': 3,  'rbac.custom_roles': true },
+    ent:   { 'workflow.editorial': true,  'sites.max': 20, 'media.storage_mb': 50000, 'locales.max': 20, 'custom_domains.max': 10, 'rbac.custom_roles': true }
+  };
+  /* Module bật/tắt được theo website (site_modules). key = ModuleCatalog; benefit = 1 dòng lợi ích khi "Lời mời nâng gói" bật. */
+  var MODULES = {
+    catalog:  { name: 'Sản phẩm', benefit: 'Giới thiệu sản phẩm có ảnh, giá và thông số — khách xem và gửi yêu cầu báo giá.' },
+    media:    { name: 'Thư viện ảnh & tệp', benefit: 'Một chỗ giữ mọi ảnh và tệp, dùng lại cho nhiều bài mà không phải tải lại.' },
+    contacts: { name: 'Khách liên hệ', benefit: 'Nhận yêu cầu của khách từ biểu mẫu trên website và trả lời ngay trong trang quản trị.' },
+    menus:    { name: 'Trình đơn', benefit: 'Tự sắp xếp menu đầu và chân website mà không cần nhờ kỹ thuật.' },
+    users:    { name: 'Thành viên', benefit: 'Mời đồng nghiệp cùng viết bài, mỗi người một nhóm quyền riêng.' }
+  };
+  function features(key) { var p = PLAN_FEATURES[key || CURRENT] || {}, o = {}; Object.keys(FEATURES).forEach(function (k) { o[k] = (k in p) ? p[k] : FEATURES[k].def; }); return o; }
+  function feature(k, key) { return features(key)[k]; }
+
   g.BSAI = {
     PLANS: PLANS, ORDER: ORDER, RATES: RATES, LABEL: LABEL,
     plan: plan, plans: plans, variants: variants,
     nfm: nfm, unit: unit, enough: enough, enoughImages: enoughImages,
     cost: cost, imageCost: imageCost, words: words, translateCost: translateCost,
+    FEATURES: FEATURES, PLAN_FEATURES: PLAN_FEATURES, MODULES: MODULES, features: features, feature: feature,
+    moduleKeys: function () { return Object.keys(MODULES); },
     usage30: function () { return USAGE30; },
     setUsage30: function (u) { USAGE30 = Object.assign({}, USAGE30, u || {}); },
     currentPlan: function () { return CURRENT; },

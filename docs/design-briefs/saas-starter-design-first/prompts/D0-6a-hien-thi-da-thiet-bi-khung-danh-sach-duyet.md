@@ -68,6 +68,7 @@ Màn của lượt này:
 Màn đã build trong repo (ghi Việc cho backend): Quy trình duyệt (`app/Modules/Admin/resources/views/livewire/workflow-settings.blade.php`), Hộp duyệt (`…/livewire/entries/review-inbox.blade.php`), khối Trạng thái duyệt (`…/livewire/entries/editor.blade.php`). Trình đơn chưa build (`routes/web.php:237` là Placeholder) — không ghi việc port.
 
 Việc chuyển từ D0-3 (dòng TODO.md "· D0-6a"): `Hộp duyệt` — khung đọc giãn hết chiều cao (100dvh trừ khung Shell, bỏ `max-height:calc(100vh - 250px)`), không cuộn ngang. Xong thì đóng dòng.
+Sửa kèm từ kiểm zip D0-5 (Claude Code, 06/10): (a) `Hộp duyệt` khi nhúng trong Shell không có thẻ h1 nào (tiêu đề "Hộp duyệt" là chữ thường) — đổi đúng chữ đó thành h1, giữ nguyên cỡ chữ và vị trí; mọi màn nhúng đúng 1 h1. (b) `admin-components.css` dòng `.sx-dot[data-st="ai|miss|full|stale"]` còn mã màu trần (#299cdb · #f7b84b · #0ab39c · #f06548) → dùng token trạng thái như `.sx-btn.dan` (`var(--color-admin-…-solid, <mã cũ>)`), màu hiển thị không đổi; ghi 1 dòng README.
 Được sửa: 5 màn ở trên · `TODO.md` · `LESSONS.md` · README mới `README - D0-6 Hiển thị đa thiết bị.md` (D0-6b, D0-6c viết tiếp vào cùng file). `admin-components.css` chỉ khi lỗi nằm ở chính component (ghi README). Không sửa màn khác, `admin-base.css`, trang chuẩn, CLAUDE.md.
 Sắp hết lượt: xong mục 1 + 2 trước; mục 3–5 ghi TODO.md "D0-6a phần 2" rồi báo owner; owner gửi "Làm D0-6a phần 2" trong cùng chat.
 Xong khi:

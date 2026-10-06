@@ -45,6 +45,9 @@ body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{c
 .ptbl .ptitle{display:block;}
 .pnw{white-space:nowrap;}
 .pcard{container-type:inline-size;}
+/* D0-5: nhúng trong Shell — bỏ khung canvas (lề, viền, nền) để màn nằm thẳng trong vùng nội dung của Shell */
+section[data-emb="1"]{padding:0!important;display:block!important;}
+section[data-emb="1"]>.pcard{width:100%!important;border:0!important;border-radius:0!important;padding:0!important;background:transparent!important;}
 .phead{flex-wrap:wrap;}
 .phead>div:first-child{flex:1 1 300px!important;min-width:260px!important;}
 .pacts button,.pacts a{white-space:nowrap;}
@@ -96,23 +99,23 @@ body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{c
 </style>
 <script src="./content-ui.js"></script>
 </helmet>
-<section style="padding:40px;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);display:flex;justify-content:center;">
+<section data-emb="{{ embAttr }}" style="padding:40px;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);display:flex;justify-content:center;">
   <div id="1a" class="pcard" style="position:relative;width:min(1240px, 100%);background:var(--color-body,#f4f5fa);border:1px solid var(--color-border-strong,#e9ebec);border-radius:12px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
-    <div style="display:flex;align-items:center;gap:10px;">
+    <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:10px;">
       <span style="display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:20px;background:#2050a0;color:#fff;font-size:12px;font-weight:700;">1a</span>
       <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);">{{ badgeNote }}</span>
-    </div>
+    </div></sc-if>
     <sc-if value="{{ isList }}" hint-placeholder-val="{{ true }}">
       <div style="display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);">
+        <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);">
           <span style="display:inline-flex;align-items:center;gap:4px;color:var(--color-body-muted,#5b6275);"><i class="ri-home-4-line" style="font-size:13px;"></i>Trang chủ</span>
           <i class="ri-arrow-right-s-line" style="font-size:13px;"></i>
           <span style="color:var(--color-body-muted,#5b6275);font-weight:500;">Bài viết</span>
-        </div>
+        </div></sc-if>
         <div class="phead" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
           <div style="flex:1 1 320px;min-width:0;">
-            <h1 style="margin:0;font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.2;">Bài viết</h1>
-            <div style="margin-top:4px;font-size:13px;color:var(--color-body-muted,#5b6275);">Viết bài mới, sửa bài cũ và chọn thời điểm đăng lên website.</div>
+            <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}"><h1 style="margin:0;font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.2;">Bài viết</h1>
+            <div style="margin-top:4px;font-size:13px;color:var(--color-body-muted,#5b6275);">Viết bài mới, sửa bài cũ và chọn thời điểm đăng lên website.</div></sc-if>
           </div>
           <div class="pacts" style="flex:0 0 auto;display:flex;gap:8px;">
             <button title="{{ addTitle }}" style="{{ addStyle }}" onClick="{{ onAdd }}"><i class="ri-add-line" style="font-size:16px;"></i>Viết bài mới</button>
@@ -367,14 +370,14 @@ body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{c
 
     <sc-if value="{{ isEdit }}">
       <div style="display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);">
+        <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);">
           <span style="color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="color:var(--color-accent,#2050a0);" onClick="{{ onBack }}">Bài viết</span>
           <i class="ri-arrow-right-s-line" style="font-size:13px;"></i>
           <span style="color:var(--color-body-muted,#5b6275);font-weight:500;">{{ edTitleCrumb }}</span>
-        </div>
+        </div></sc-if>
         <div class="phead" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">
           <div style="flex:1 1 320px;min-width:0;">
-            <h1 style="margin:0;font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.2;">{{ edHeading }}</h1>
+            <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}"><h1 style="margin:0;font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.2;">{{ edHeading }}</h1></sc-if>
             <div style="margin-top:4px;font-size:13px;color:var(--color-body-muted,#5b6275);">{{ edSub }}</div>
           </div>
           <div class="pacts" style="flex:0 0 auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -1021,9 +1024,12 @@ class Component extends DCLogic {
       { tint: 'linear-gradient(135deg,#f7b84b,#f4a836)', label: 'doi-ngu.jpg' },
       { tint: 'linear-gradient(135deg,#3577f1,#6ea0f7)', label: 'san-pham.jpg' }
     ];
+    /* D0-5: nhúng trong Shell → loại nội dung + chuyên mục theo loại + bài đọc từ kho dùng chung BSCW.store */
+    this._pp = Object.assign({}, props); this._sid = 'ql-bai-viet-' + Math.random().toString(36).slice(2, 7);
+    if (props.embedded && window.BSCW && window.BSCW.store) { const M = window.BSCW.store.meta(props.contentType || 'posts'); if (M.cats && M.cats.length) { this.CAT_TREE = M.cats; this.CATS = M.cats.filter(c => c[1] === 0).map(c => c[0]); } }
     this.state = {
       screen: 'list',
-      posts: this.seedAll(props),
+      posts: (props.embedded && window.BSCW && window.BSCW.store) ? this.fromStore(props) : this.seedAll(props),
       search: '', tab: 'all', catF: [], authorF: [], transF: [], openFilter: null, imgRatio: '16/9',
       sortKey: 'name', sortDir: 'asc', selected: {}, statusMenu: null, editSlug: null, noteFor: null,
       page: 1, perPage: 20, toast: null, toastIcon: 'ri-checkbox-circle-line', seq: 0,
@@ -1052,7 +1058,20 @@ class Component extends DCLogic {
   }
 
   /* ---------- hạn ngạch ---------- */
-  planKey() { return { 'Miễn phí': 'free', 'Cơ bản': 'basic', 'Chuyên nghiệp': 'pro', 'Doanh nghiệp': 'ent' }[this.props.aiPlan] || 'basic'; }
+  /* ---------- D0-5 · nhúng ---------- */
+  ctype(p) { return ((p || this.props).contentType) || 'posts'; }
+  embStore() { return !!(this.props.embedded && window.BSCW && window.BSCW.store); }
+  base() { return this.embStore() ? window.BSCW.store.meta(this.ctype()).base : '/tin-tuc/'; }
+  fromStore(p) { return window.BSCW.store.list(this.ctype(p)).map(r => Object.assign({}, r, { id: r.id || r.slug })); }
+  embGo(screen, params) { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: screen, params: params || {}, force: true } })); } catch (e) {} }
+  toList() { this.setState({ screen: 'list', cur: null, sel: null, aiPanel: null }); if (this.embStore()) this.embGo(this.ctype() + '.list'); }
+  applyStart() {
+    const p = this.props, st = p.start || 'list';
+    if (st === 'new') this.openEditor(null, true);
+    else if (st === 'edit') { const r = this.state.posts.find(x => x.slug === p.slug); if (r) this.openEditor(r.id, true); else { this.setState({ screen: 'list', cur: null }); this.notify('Không tìm thấy bài này — có thể đã chuyển vào Thùng rác.', 'ri-information-line'); } }
+    else if (this.state.screen !== 'list') this.setState({ screen: 'list', cur: null, sel: null, aiPanel: null });
+  }
+  planKey() { if (this.props.planKey && window.BSAI && window.BSAI.PLANS[this.props.planKey]) return this.props.planKey; return { 'Miễn phí': 'free', 'Cơ bản': 'basic', 'Chuyên nghiệp': 'pro', 'Doanh nghiệp': 'ent' }[this.props.aiPlan] || 'basic'; }
   plan() { return window.BSAI ? window.BSAI.plan(this.planKey()) : { words: 60000, images: 20, variants: 1 }; }
   nfm(v) { return window.BSAI ? window.BSAI.nfm(v) : Math.round(v).toLocaleString('vi-VN'); }
   wordsLeft() { const base = this.plan().words; const start = this.props.lowQuota ? Math.round(base * 0.93) : 0; return Math.max(0, base - start - this.state.aiUsed); }
@@ -1113,13 +1132,21 @@ class Component extends DCLogic {
     return Math.round(dd / 365) + ' năm trước';
   }
   componentDidMount() {
+    if (this.props.embedded) {
+      this._lastPosts = this.state.posts;
+      this._store = (e) => { const d = (e && e.detail) || {}; if (d.src === this._sid || !this.embStore()) return; if (d.type && d.type !== this.ctype()) return; const posts = this.fromStore(); this._lastPosts = posts; this.setState({ posts: posts }); };
+      document.addEventListener('bs-cw-store', this._store);
+      this._cmd = (e) => { const d = (e && e.detail) || {}; if (!d.id || d.id !== this.props.embedId) return; if (d.act === 'save' && this.state.screen === 'edit') this.save('draft'); };
+      document.addEventListener('bs-embed-cmd', this._cmd);
+      this.applyStart();
+    }
     this._bu = (e) => { if (this.state.dirty) { e.preventDefault(); e.returnValue = ''; } };
     window.addEventListener('beforeunload', this._bu);
     this._rs = () => this.measureBar();
     window.addEventListener('resize', this._rs);
     this._esc = (e) => {
       if (e.key === 'Escape') this.setState({ panelOpen: false, aiPanel: null, sel: null, schedRow: null, upgradeOpen: false });
-      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && this.state.screen === 'edit') { e.preventDefault(); this.save('draft'); }
+      else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && this.state.screen === 'edit' && !this.props.embedded) { e.preventDefault(); this.save('draft'); } /* nhúng: Shell gửi bs-embed-cmd {act:'save'} */
     };
     document.addEventListener('keydown', this._esc);
   }
@@ -1127,6 +1154,9 @@ class Component extends DCLogic {
     window.removeEventListener('beforeunload', this._bu);
     window.removeEventListener('resize', this._rs);
     document.removeEventListener('keydown', this._esc);
+    if (this._store) document.removeEventListener('bs-cw-store', this._store);
+    if (this._cmd) document.removeEventListener('bs-embed-cmd', this._cmd);
+    if (this.props.embedded && typeof this.props.onDirty === 'function') this.props.onDirty(0);
     if (this._ro) { try { this._ro.disconnect(); } catch (_) {} }
     cancelAnimationFrame(this._raf); clearTimeout(this._t); clearTimeout(this._auto); clearTimeout(this._h);
   }
@@ -1155,6 +1185,15 @@ class Component extends DCLogic {
     });
   }
   componentDidUpdate(prev) {
+    if (this.props.embedded) {
+      const pp = this._pp || {}, p = this.props; this._pp = Object.assign({}, p);
+      if (this.embStore() && this.state.posts !== this._lastPosts) { this._lastPosts = this.state.posts; window.BSCW.store.replace(this.ctype(), this.state.posts, this._sid); }
+      const dn = this.state.screen === 'edit' && this.state.dirty ? 1 : 0;
+      if (dn !== this._embDirty) { this._embDirty = dn; if (typeof p.onDirty === 'function') p.onDirty(dn); }
+      if (pp.contentType !== p.contentType && this.embStore()) { const M = window.BSCW.store.meta(this.ctype()); if (M.cats && M.cats.length) { this.CAT_TREE = M.cats; this.CATS = M.cats.filter(c => c[1] === 0).map(c => c[0]); } const posts = this.fromStore(); this._lastPosts = posts; this.setState({ posts: posts, page: 1, selected: {}, catF: [] }, () => this.applyStart()); return; }
+      if (pp.start !== p.start || pp.slug !== p.slug) this.applyStart();
+      return;
+    }
     if (prev.dataSize !== this.props.dataSize) this.setState({ posts: this.seedAll(this.props), page: 1, selected: {}, screen: 'list' });
     if (prev.siteLangs !== this.props.siteLangs) this.setState({ visN: 99 }, () => this.measureBar());
     /* Runtime chỉ truyền prevProps — theo dõi "vừa chuyển sang chưa lưu" bằng cờ instance */
@@ -1184,9 +1223,9 @@ class Component extends DCLogic {
     for (let j = i - 1; j >= 0 && lvl > 0; j--) if (T[j][1] < lvl) { out.unshift(T[j][0]); lvl = T[j][1]; }
     return out.join(' › ');
   }
-  langName(c) { return { VI: 'Tiếng Việt', EN: 'Tiếng Anh', JA: 'Tiếng Nhật', ZH: 'Tiếng Trung' }[c]; }
+  langName(c) { return { VI: 'Tiếng Việt', EN: 'Tiếng Anh', JA: 'Tiếng Nhật', ZH: 'Tiếng Trung' }[c] || c; }
   stLabel(st) { const C = window.BSCW; return C ? C.ui(st, this.props.workflow).label : st; }
-  siteLangs() { return { '1 ngôn ngữ': ['VI'], '2 ngôn ngữ': ['VI', 'EN'], '4 ngôn ngữ': ['VI', 'EN', 'JA', 'ZH'] }[this.props.siteLangs] || this.LANGS; }
+  siteLangs() { if (Array.isArray(this.props.langCodes) && this.props.langCodes.length) return this.props.langCodes.map(c => String(c).toUpperCase()); return { '1 ngôn ngữ': ['VI'], '2 ngôn ngữ': ['VI', 'EN'], '4 ngôn ngữ': ['VI', 'EN', 'JA', 'ZH'] }[this.props.siteLangs] || this.LANGS; }
   defLang() { return this.siteLangs()[0]; }
   cw() { return window.BSCW || null; }
   roleLabel() { return this.props.role || 'Biên tập'; }
@@ -1267,13 +1306,14 @@ class Component extends DCLogic {
       '<ul><li>Xưởng có máy phù hợp với dung sai bạn cần hay không.</li><li>Thời gian giao hàng cam kết bằng văn bản.</li><li>Chính sách khi hàng không đạt.</li></ul>' +
       '<p>Nếu ba điều trên rõ ràng, phần còn lại chỉ là bàn giá. Gửi bản vẽ để nhận báo giá trong 24 giờ làm việc.</p>';
   }
-  openEditor(id) {
+  openEditor(id, direct) {
+    if (this.embStore() && !direct) { const q = id ? this.state.posts.find(x => x.id === id) : null; this.embGo(this.ctype() + (q ? '.edit' : '.create'), q ? { slug: q.slug } : {}); return; }
     const p = id ? this.state.posts.find(x => x.id === id) : null;
     const def = this.defLang();
     const data = {};
     this.siteLangs().forEach(c => { data[c] = this.emptyDoc(c); });
     if (p) {
-      data[def] = { title: p.name, slug: p.slug.replace(/^\/tin-tuc\//, ''), excerpt: 'Những điều nên biết trước khi đặt gia công — tóm tắt ngắn cho người mới.', body: this.seedBody(p.name), seoTitle: p.name, seoDesc: '', keyword: '', alt: p.img ? 'Xưởng gia công cơ khí An Vinh' : '' };
+      data[def] = { title: p.name, slug: p.slug.slice(this.base().length).replace(/^\/tin-tuc\//, ''), excerpt: 'Những điều nên biết trước khi đặt gia công — tóm tắt ngắn cho người mới.', body: this.seedBody(p.name), seoTitle: p.name, seoDesc: '', keyword: '', alt: p.img ? 'Xưởng gia công cơ khí An Vinh' : '' };
       (p.langs || []).forEach(c => { if (c !== def && data[c]) data[c] = Object.assign(this.emptyDoc(), { title: p.name + ' (' + c + ')', slug: this.slugify(p.name) + '-' + c.toLowerCase() }); });
     }
     const cur = {
@@ -1303,7 +1343,7 @@ class Component extends DCLogic {
     this.notify('Đã chọn ảnh đại diện');
   }
   setShared(patch) { if (this.state.lang !== this.defLang()) { this.notify('Mục này dùng chung cho mọi ngôn ngữ — sửa ở bản ' + this.langName(this.defLang()) + '.', 'ri-lock-2-line'); return; } this.setState(s => ({ cur: Object.assign({}, s.cur, patch), dirty: true })); }
-  back() { if (this.state.dirty) { this.setState({ guard: { go: 'list' } }); return; } this.setState({ screen: 'list', cur: null, sel: null, aiPanel: null }); }
+  back() { if (this.state.dirty) { this.setState({ guard: { go: 'list' } }); return; } this.toList(); }
   switchLang(code) {
     if (code === this.state.lang) return;
     if (this.state.dirty) { this.setState({ guard: { go: 'lang', code: code } }); return; }
@@ -1311,15 +1351,15 @@ class Component extends DCLogic {
   }
   applyLang(code) { this.setState({ lang: code, aiPanel: null, sel: null }); }
   guardCancel() { this.setState({ guard: null }); }
-  guardDiscard() { const g = this.state.guard; this.setState({ guard: null, dirty: false }, () => { if (g.go === 'list') this.setState({ screen: 'list', cur: null }); else this.applyLang(g.code); }); }
-  guardSave() { const g = this.state.guard; this.save('draft', true); this.setState({ guard: null }, () => { if (g.go === 'list') this.setState({ screen: 'list', cur: null }); else this.applyLang(g.code); }); }
+  guardDiscard() { const g = this.state.guard; this.setState({ guard: null, dirty: false }, () => { if (g.go === 'list') this.toList(); else this.applyLang(g.code); }); }
+  guardSave() { const g = this.state.guard; this.save('draft', true); this.setState({ guard: null }, () => { if (g.go === 'list') this.toList(); else this.applyLang(g.code); }); }
 
   save(mode, quiet) {
     this.captureBody();
     const s = this.state, c = s.cur, def = this.defLang();
     const d = c.data[def];
     const title = (d.title || '').trim() || 'Bài viết chưa có tiêu đề';
-    const slug = '/tin-tuc/' + (this.slugify(d.slug || title) || 'bai-viet-moi');
+    const slug = this.base() + (this.slugify(d.slug || title) || 'bai-viet-moi');
     const langs = Object.keys(c.data).filter(k => (c.data[k].title || '').trim());
     const st = mode === 'publish'
       ? (this.can('entries.publish') ? (['scheduled', 'private', 'archived'].indexOf(c.st) >= 0 ? c.st : 'published') : (this.can('entries.submit') ? 'pending' : c.st))
@@ -2166,6 +2206,7 @@ class Component extends DCLogic {
       onNoteOk: () => { const n = S.noteFor; if (n && n.text.trim()) this.applyTransition(n.id, n.tr, n.text.trim()); },
       badgeNote: S.screen === 'list' ? 'Danh sách bài viết — lọc, đổi trạng thái, sửa nhanh tiêu đề; bấm ✎ để mở trình soạn' : 'Trình soạn bài — bôi đen một đoạn để nhờ AI viết lại; mọi gợi ý AI đều hoàn tác được',
       isList: S.screen === 'list', isEdit: S.screen === 'edit', multiLang: multiLang,
+      notEmb: !this.props.embedded, embAttr: this.props.embedded ? '1' : '0',
       onAdd: () => { if (this.can('entries.create')) this.openEditor(null); else this.notify('Vai trò ' + this.props.role + ' không được tạo bài mới.', 'ri-lock-line'); },
       tabs: tabs, trashTab: trashTab, searchVal: S.search, onSearch: (e) => this.setSearch(e.target.value),
       fCat: fCat, fAuthor: fAuthor, fTrans: fTrans, fMore: fMore, chips: chips, hasFilter: chips.length > 0, onClearAll: () => this.clearAll(),
@@ -2210,7 +2251,7 @@ class Component extends DCLogic {
       publishStyle: 'display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:0;border-radius:4px;font:inherit;font-size:13.5px;font-weight:600;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);' + (canSubmit ? 'background:#2050a0;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:var(--color-body-muted,#5b6275);cursor:not-allowed;box-shadow:none;'),
       onPublish: () => {
         if (!canSubmit) { this.notify('Chưa xong — ' + blockers.join('; ') + '.', 'ri-error-warning-line'); return; }
-        if (mainTr) { this.save('draft', true); this.setState(s2 => ({ cur: Object.assign({}, s2.cur, { st: mainTr.to }) })); this.applyTransition(this.state.cur.id, mainTr); }
+        if (mainTr) { this.save('draft', true); this.setState(s2 => ({ cur: Object.assign({}, s2.cur, { st: mainTr.to }) }), () => this.applyTransition(this.state.cur.id, mainTr)); } /* D0-5: chờ lưu xong mới chuyển bước — bài mới chưa có khóa trước lần lưu đầu */
         else this.save('publish');
       },
       wfSteps: governed ? Object.keys(W.states).map(k => ({ label: W.states[k].label, style: 'display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;font-size:12px;font-weight:' + (k === this.wfState(curSt) ? '700' : '500') + ';white-space:nowrap;' + (k === this.wfState(curSt) ? 'background:' + stMeta(k).bg + ';color:' + stMeta(k).c + ';' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);') })) : [],

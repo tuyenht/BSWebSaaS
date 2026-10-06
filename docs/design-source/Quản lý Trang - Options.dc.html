@@ -15,26 +15,26 @@
 <meta name="design_doc_mode" content="canvas">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
-<style>body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{color:var(--color-accent,#364574);}</style>
+<style>section[data-emb="1"]{padding:0!important;display:block!important;}section[data-emb="1"]>.qt-frame{width:100%!important;border:0!important;border-radius:0!important;padding:0!important;background:transparent!important;}body{margin:0;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{color:var(--color-accent,#364574);}</style>
 </helmet>
-<section style="padding:40px;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);display:flex;justify-content:center;">
-    <div id="3a" style="position:relative;width:1240px;background:var(--color-body,#f4f5fa);border:1px solid var(--color-border-strong,#e9ebec);border-radius:12px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
+<section data-emb="{{ embAttr }}" style="padding:40px;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);display:flex;justify-content:center;">
+    <div id="3a" class="qt-frame" style="position:relative;width:1240px;background:var(--color-body,#f4f5fa);border:1px solid var(--color-border-strong,#e9ebec);border-radius:12px;padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
 
       <!-- turn badge -->
-      <div style="display:flex;align-items:center;gap:10px;">
+      <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:10px;">
         <span style="display:inline-flex;align-items:center;justify-content:center;height:22px;padding:0 10px;border-radius:20px;background:#2050a0;color:#fff;font-size:12px;font-weight:700;">3a</span>
         <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);">Bản tương tác — lọc, sắp xếp, chọn nhiều, đổi trạng thái, và bấm mã ngôn ngữ để sửa từng bản dịch</span>
-      </div>
+      </div></sc-if>
 
       <!-- page header -->
       <div style="display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);">
+        <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}"><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);">
           <a href="#3a" style="display:inline-flex;align-items:center;gap:4px;color:var(--color-body-muted,#5b6275);text-decoration:none;" style-hover="color:var(--color-accent,#2050a0);"><i class="ri-home-4-line" style="font-size:13px;"></i>Trang chủ</a>
           <i class="ri-arrow-right-s-line" style="font-size:13px;"></i>
           <span style="color:var(--color-body-muted,#5b6275);font-weight:500;">Trang</span>
-        </div>
+        </div></sc-if>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-          <h1 style="margin:0;font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.2;">Quản lý Trang</h1>
+          <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}"><h1 style="margin:0;font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.2;">Quản lý Trang</h1></sc-if><sc-if value="{{ isEmb }}"><span></span></sc-if>
           <button style="display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:0;border-radius:4px;background:#2050a0;color:#fff;font:inherit;font-size:14px;font-weight:500;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);" style-hover="filter:brightness(0.95);" onClick="{{ onAddPage }}"><i class="ri-add-line" style="font-size:16px;"></i>Thêm trang mới</button>
         </div>
       </div>
@@ -313,8 +313,9 @@
 class Component extends DCLogic {
   constructor(props) {
     super(props);
+    this._sid = 'ql-trang-' + Math.random().toString(36).slice(2, 7); this._pp = Object.assign({}, props);
     this.state = {
-      pages: this.seedAll(props),
+      pages: (props.embedded && window.BSCW && window.BSCW.store) ? this.fromStore() : this.seedAll(props),
       search: '',
       tab: 'all',
       langF: [],
@@ -337,6 +338,25 @@ class Component extends DCLogic {
     this.locale = 'vi-VN';
   }
 
+  /* D0-5: nhúng trong Shell → đọc/ghi kho dùng chung BSCW.store (khóa trạng thái BSCW ↔ khóa riêng của màn). */
+  embStore() { return !!(this.props.embedded && window.BSCW && window.BSCW.store); }
+  fromStore() {
+    const M = { published: 'pub', scheduled: 'sched', private: 'priv' };
+    return window.BSCW.store.list('pages').map(r => { const u = String(r.updated || '').split(' · ');
+      return Object.assign({}, r, { id: r.slug, st: M[r.st] || r.st, creator: r.author, updatedExact: u[0] || '', updatedTime: u[1] || '', parentId: r.parent || undefined, views: r.views || '0', viewsNum: r.viewsNum || 0, template: r.template || 'Mặc định' }); });
+  }
+  toStore(pages) {
+    const M = { pub: 'published', sched: 'scheduled', priv: 'private' };
+    window.BSCW.store.replace('pages', pages.map(p => Object.assign({}, p, { st: M[p.st] || p.st, author: p.creator, updated: (p.updatedExact || '') + (p.updatedTime ? ' · ' + p.updatedTime : ''), parent: p.parentId || undefined })), this._sid);
+  }
+  embGo(screen, params) { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: screen, params: params || {} } })); } catch (e) {} }
+  componentDidMount() {
+    if (!this.props.embedded) return;
+    this._lastPages = this.state.pages;
+    this._store = (e) => { const d = (e && e.detail) || {}; if (d.src === this._sid || !this.embStore() || (d.type && d.type !== 'pages')) return; const pg = this.fromStore(); this._lastPages = pg; this.setState({ pages: pg }); };
+    document.addEventListener('bs-cw-store', this._store);
+  }
+  componentWillUnmount() { if (this._store) document.removeEventListener('bs-cw-store', this._store); }
   sizeOf(props) { const m = { '10 trang': 10, '48 trang': 48, '143 trang': 143 }; return m[(props || {}).dataSize] || 10; }
   seedAll(props) { const base = this.baseSeed(); const n = this.sizeOf(props); return n <= base.length ? base : base.concat(this.filler(n - base.length, base.length)); }
   filler(k, offset) {
@@ -365,6 +385,7 @@ class Component extends DCLogic {
     return out;
   }
   componentDidUpdate(prev) {
+    if (this.props.embedded) { if (this.embStore() && this.state.pages !== this._lastPages) { this._lastPages = this.state.pages; this.toStore(this.state.pages); } return; }
     if (prev.dataSize !== this.props.dataSize) this.setState({ pages: this.seedAll(this.props), page: 1, selected: {}, edit: null, schedFor: null, statusMenu: null });
   }
   baseSeed() {
@@ -383,7 +404,7 @@ class Component extends DCLogic {
   }
 
   langLabel(code) { return { VI:'Tiếng Việt', EN:'Tiếng Anh', JA:'Tiếng Nhật', ZH:'Tiếng Trung' }[code]; }
-  stLabel(st) { return { pub:'Đã xuất bản', draft:'Bản nháp', sched:'Đã lên lịch', priv:'Riêng tư' }[st]; }
+  stLabel(st) { return { pub:'Đã xuất bản', draft:'Bản nháp', sched:'Đã lên lịch', priv:'Riêng tư' }[st] || (window.BSCW ? window.BSCW.ui(st).label : st); }
   toTs(exact) { const a = String(exact).split('/'); return (+a[2]) * 10000 + (+a[1]) * 100 + (+a[0]); }
   relTime(exact) {
     const a = String(exact).split('/');
@@ -577,6 +598,8 @@ class Component extends DCLogic {
       sched: { label: 'Đã lên lịch', c: '#c78729', bg: 'rgba(247,184,75,0.15)' },
       priv:  { label: 'Riêng tư',    c: '#3577f1', bg: 'rgba(53,119,241,0.1)' }
     };
+    /* D0-5: bài từ kho có thể đang Chờ duyệt / Đã gỡ khỏi website (gửi từ trình soạn) — nhãn + màu theo BSCW.UI */
+    if (window.BSCW) ['pending', 'reviewing', 'archived'].forEach(k => { const u = window.BSCW.ui(k); STATUS[k] = { label: u.label, c: u.c, bg: u.bg }; });
     const STATUS_ORDER = ['pub', 'draft', 'sched', 'priv'];
 
     // ================= 3a (interactive) =================
@@ -597,7 +620,7 @@ class Component extends DCLogic {
     if (S.templateF.length) list = list.filter(p => S.templateF.indexOf(p.template) >= 0);
 
     const dir = S.sortDir === 'asc' ? 1 : -1;
-    const rank = { pub: 0, sched: 1, draft: 2, priv: 3 };
+    const rank = { pub: 0, sched: 1, pending: 2, reviewing: 2, draft: 2, priv: 3, archived: 4 };
     const val = (p) => {
       switch (S.sortKey) {
         case 'name': return p.name.toLowerCase();
@@ -691,7 +714,7 @@ class Component extends DCLogic {
         onSchedChange: (e) => this.schedChange(e), onSchedCancel: () => this.schedCancel(), onSchedSave: () => this.schedSave(), onSchedKey: (e) => this.schedKey(e),
         onBadge: () => this.openStatus(p.id),
         onPreview: () => this.notify('Xem trước: ' + p.name),
-        onEdit: () => this.notify('Mở trình chỉnh sửa: ' + p.name),
+        onEdit: () => { if (this.props.embedded) this.embGo('pages.edit', { slug: p.slug }); else this.notify('Mở trình chỉnh sửa: ' + p.name); },
         onDup: () => this.duplicate(p.id),
         onTrash: () => this.trash(p.id),
         onRestore: () => this.restore(p.id),
@@ -787,7 +810,8 @@ class Component extends DCLogic {
     const footerText = total === 0 ? 'Không có trang nào' : ('Hiển thị ' + (start + 1) + '–' + (start + pageRows.length) + ' trong ' + total + ' trang' + ((hasFilter || S.tab !== 'all') ? ' đã lọc' : ''));
 
     return {
-      onAddPage: () => this.addPage(),
+      onAddPage: () => { if (this.props.embedded) this.embGo('pages.create'); else this.addPage(); },
+      notEmb: !this.props.embedded, isEmb: !!this.props.embedded, embAttr: this.props.embedded ? '1' : '0',
       colSlug: cols.slug, colLangs: cols.langs && multiLang, colCreator: cols.creator, colViews: cols.views, multiLang: multiLang, fCols: fCols, emptyColspan: emptyColspan,
       draft: S.draft, onEditChange: (e) => this.editChange(e), onEditFocus: (e) => this.editFocus(e), onCommitEdit: () => this.commitEdit(), onEditKey: (e) => this.editKey(e),
       tabs: tabs, trashTab: trashTab,
