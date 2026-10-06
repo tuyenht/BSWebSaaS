@@ -27,6 +27,8 @@ Owner quyết định 06/10, sau khi xem D0-4a: GIỮ các nút công cụ bên 
    - Ẩn nút Toàn màn hình.
 3. Mã:
    - GIỮ, hoặc khôi phục nếu đã xóa, `onToggleScheme` · `schemeIcon` · `toggleScheme()` · `onToggleFullscreen` · `fsIcon` · `toggleFullscreen()` · listener `fullscreenchange`, rồi nối lại vào markup.
+   - Bộ chuyển website: bỏ cách "dưới 420px đưa vào menu người dùng" mà D0-4as đã làm — thay bằng điểm 4 dưới đây.
+   - Xóa state `focusMode` nếu không còn gì bật nó.
    - Vẫn xóa `czTriggerStyle`, `czPlane`, `czBrand`. Nút Tùy biến nổi vẫn bỏ, vì nó đè nội dung ở màn hẹp và Tùy biến đã nằm ở menu người dùng › Giao diện.
    - Mảng cờ: thay `flagUrl = () => ''` bằng nguồn cờ thật cho kiểu Cờ.
 4. Bộ chuyển website. Thay quy tắc cũ "hiện khi ≥ 2 website HOẶC gói còn chỗ".
@@ -50,7 +52,7 @@ Owner quyết định 06/10, sau khi xem D0-4a: GIỮ các nút công cụ bên 
      · Chân danh sách có "Tạo website mới" (khóa theo gói khi hết chỗ).
      · Chọn website khác = mở trang quản trị của website đó (như D0-4a, Việc cho backend).
    - Chỉ 1 website: không thêm "Tạo website mới" vào menu người dùng. Ghi TODO.md "Tạo website mới khi chỉ có 1 website: đặt ở Cài đặt › Gói & mức dùng, cạnh số website còn được tạo · D3-2".
-   - Tweak: đổi Tweak có sẵn "Số website của người dùng (1/3)" thành 1 · 3 · 8. Không thêm Tweak mới trùng việc.
+   - Tweak "Số website của người dùng: 1 · 3 · 8" trong data-props của Shell. Đã có thì đổi giá trị, chưa có thì tạo; D0-4b sẽ dùng lại, không tạo trùng.
 5. Tài liệu:
    - README D0-4: sửa các dòng nói đã bỏ 3 nút và quy tắc bộ chuyển cũ; ghi thứ tự topbar ở điểm 1, chỗ đặt bộ chuyển ở điểm 4, và ngoại lệ tiêu chí 4.
    - LESSONS.md, 2 dòng:
