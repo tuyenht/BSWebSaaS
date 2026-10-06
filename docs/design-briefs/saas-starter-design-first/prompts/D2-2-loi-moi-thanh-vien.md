@@ -60,6 +60,7 @@ Vẽ trong `Thành viên.dc.html`:
 4. Trạng thái: chưa có lời mời ("Chưa có lời mời nào" + "Mời thành viên") · đang tải · lỗi + "Thử lại" · không có quyền mời (`users.invite`) · chạm giới hạn ngày · đăng nhập dưới tên khách hàng (mọi nút khóa + câu khóa của D2-1).
 Không vẽ "Sao chép liên kết mời" (liên kết không lấy lại được; người cầm liên kết tạo được tài khoản cho địa chỉ đó mà không cần hộp thư) — README ghi "Cần owner chốt" (bảo mật).
 Registry: tab Lời mời trong mục `users`; cập nhật dòng 31 của `SaaS Starter - Bản đồ màn hình.md`.
+CHẠY SONG SONG (chỉ áp khi owner chạy lượt này cùng lúc với D1-4d ở chat khác; chạy một mình thì bỏ qua đoạn này): KHÔNG sửa `TODO.md` · `LESSONS.md` · `SaaS Starter - Bản đồ màn hình.md` · `shell-screens.js`. Mọi thay đổi cần cho các tệp đó ghi vào cuối README của D2-2, mục "Gộp vào tệp chung": chia theo tệp, ghi nguyên văn dòng cần thêm / sửa / đóng để chép thẳng được; dòng cuối mục ghi đúng "Xong — chờ gộp". Lượt D2-4 sẽ gộp. Phép đo trong Shell (màn chưa có trong registry) ghi [CHỜ GỘP] — Claude Code đo bằng zip.
 Được sửa: `Thành viên.dc.html` · `shell-screens.js` (chỉ THÊM) · `SaaS Starter - Bản đồ màn hình.md` · `TODO.md` · `LESSONS.md` · README mới `README - D2-2 Lời mời thành viên.md`. Không sửa `Nhóm quyền.dc.html`, `Email Settings.dc.html`, Admin Shell, `admin-base.css`, `admin-components.css`, trang chuẩn, CLAUDE.md.
 Sắp hết lượt: xong mục 1 + 2 trước; mục 3–4 ghi TODO.md "D2-2 phần 2" rồi báo owner; owner gửi "Làm D2-2 phần 2" trong cùng chat.
 Xong khi:

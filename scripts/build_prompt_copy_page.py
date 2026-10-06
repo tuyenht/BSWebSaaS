@@ -44,6 +44,9 @@ for f in sorted((SRC / 'fixes').glob('*.md')):
 # on every device; the browser-local "Xong" boxes would only hide them on one browser.
 # The name Claude Design gave each round's chat: it paraphrases the first line and drops the code.
 CHAT_NAMES = {'D0-2s5': 'Focus 1b finalization'}
+# Two-chat mode (owner 06/10): each side round runs beside its main-lane partner and leaves shared-file edits for the next main round to merge.
+PAIRS = {'D0-6c': 'D0-6b', 'D1-6': 'D1-1', 'D2-3': 'D1-2', 'D1-5': 'D1-4a', 'D1-7': 'D1-4b', 'D2-1': 'D1-4c', 'D2-2': 'D1-4d', 'D4-2': 'D4-3'}
+PARTNER = {**PAIRS, **{m: s for s, m in PAIRS.items()}}
 FIXES_RUN = {'D0-2s': '04/10', 'D0-2s2': '05/10', 'D0-2s3': '05/10', 'D0-2s4': '05/10', 'D0-3s': '06/10', 'D0-2s5': '06/10'}
 
 WAVES = [
@@ -145,6 +148,14 @@ dec_rows = ''.join(
     f'<li class="dec"><span class="qid">{q}</span><div><p class="dq">{e(t)}</p><p class="da">{e(a)}</p></div></li>'
     for q, t, a in DECISIONS)
 
+def par_tag(p):
+    other = PARTNER.get(p['id'])
+    if not other:
+        return ''
+    role = 'luồng phụ' if p['id'] in PAIRS else 'luồng chính'
+    return f'<span class="par-tag">Song song với {other} · {role}</span>'
+
+
 def chat_title(p):
     # Claude Design names a chat after the first typed line, not after a pasted attachment, and
     # lists chats in no useful order, so each card offers a short title that starts with the code.
@@ -191,11 +202,11 @@ for wid, wname, wdesc, wneed in WAVES:
     for p in [p for p in prompts if p['id'].startswith(wid)]:
         body_id = 'b-' + p['id']
         cards.append(f'''
-<article class="card" data-id="{p['id']}">
+<article class="card" data-id="{p['id']}" data-par="{PARTNER.get(p['id'], '')}">
   <div class="card-head">
     <label class="done"><input type="checkbox" id="done-{p['id']}" data-done="{p['id']}"><span>Xong</span></label>
     <span class="pid">{p['id']}</span><span class="next-tag" hidden>Lượt tiếp theo</span>
-    <h3>{e(p['name'])}</h3>
+    <h3>{e(p['name'])}</h3>{par_tag(p)}
     <span class="btns"><button type="button" class="btn-copy btn-title" data-title="{e(chat_title(p))}">1 · Chép tên chat</button>
     <button type="button" class="btn-copy" data-copy="{body_id}">2 · Sao chép prompt</button></span>
   </div>
@@ -293,6 +304,7 @@ td.mod {{ color:var(--muted); font-weight:600; width:110px; }}
 .ran .card {{ opacity:.75; }}
 .card-head {{ display:grid; grid-template-columns:auto auto auto 1fr auto; align-items:center; gap:10px; padding:10px 12px; }}
 .card.is-next {{ border-color:var(--brand); box-shadow:0 0 0 2px var(--brand-soft); }}
+.par-tag {{ font-size:11px; font-weight:700; color:#405189; background:#eef1fa; padding:2px 8px; border-radius:20px; white-space:nowrap; }}
 .next-tag {{ font-size:11px; font-weight:700; color:#fff; background:#405189; padding:2px 8px; border-radius:20px; white-space:nowrap; }}
 .done {{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted); cursor:pointer; white-space:nowrap; min-height:34px; }}
 .howto {{ margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; }}
@@ -343,6 +355,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       <li><b>Mở một cửa sổ chat MỚI</b> trong project Claude Design BSWebSaaS, dán và gửi. Không gộp 2 lượt vào 1 cửa sổ.</li>
       <li><b>Xong thì tích ô "Xong"</b> và gửi bản export cho Claude Code để đối chiếu với code trước khi build.</li>
     </ol>
+    <p class="hint">Bản 3.24 (06/10 11:4x) — TĂNG TỐC: (1) Từ D0-4b: lượt báo "xong — gửi zip" thì gửi zip cho Claude Code rồi MỞ NGAY lượt kế ở chat mới, không chờ kiểm; lỗi tìm thấy sẽ có đoạn "Sửa thêm trước khi xuất zip: …" để dán vào chat ĐANG chạy. (2) Từ D0-6b: chạy 2 chat cùng lúc theo cặp có nhãn "Song song với …" (8 cặp: D0-6b‖D0-6c · D1-1‖D1-6 · D1-2‖D2-3 · D1-4a‖D1-5 · D1-4b‖D1-7 · D1-4c‖D2-1 · D1-4d‖D2-2 · D4-3‖D4-2). Mở 2 chat cùng lúc, mỗi chat một lượt; xong CẢ HAI mới sang cặp kế; gửi zip của chat xong SAU (zip chứa cả hai). Lượt luồng phụ không sửa tệp chung (TODO, LESSONS, Bản đồ, shell-screens.js) mà ghi mục "Gộp vào tệp chung" trong README của nó; lượt luồng chính kế tiếp tự gộp. Muốn chạy từng lượt như cũ thì cứ chạy — đoạn song song tự bỏ qua. Tối đa 2 chat; hạn mức Claude Design dùng nhanh hơn (tổng không đổi).</p>
     <p class="hint">Bản 3.23 (06/10 11:0x): ĐÃ RÀ KỸ CẢ 28 LƯỢT CHƯA CHẠY (D0-4a → D5-2; mỗi nhóm Opus rà + Sonnet kiểm vòng 2, đối chiếu zip 06/10 và repo). Mọi prompt có: Cần trước · Được sửa · Sắp hết lượt (chia phần 2) · Xong khi đánh số · verifier quá giờ thì ghi [CHƯA KIỂM ĐƯỢC] · xuất zip + câu chốt. Sửa sự thật về repo (gói & tính năng ĐÃ có đường ghi; đăng nhập hỗ trợ ĐÃ có lõi; gửi mail Google/Microsoft ĐÃ có; link lời mời KHÔNG chép được — chỉ lưu mã băm). Câu "Cần owner chốt" ghi trong README của từng lượt, không chặn lượt. README gói prompt: thứ tự đúng D0-4a → D5-2.</p>
     <p class="hint">Bản 3.22 (06/10 10:2x): đã rà kỹ thêm nhóm D1 (D1-1 · D1-2 · D1-3 · D1-4a · D1-4b · D1-4c · D1-4d — Opus rà + Sonnet kiểm vòng 2): đủ khung kết lượt; Trình đơn: mỗi ngôn ngữ chọn rõ trình đơn riêng / dùng của ngôn ngữ mặc định (đúng cách repo hiện trình đơn); `Quản lý Bài viết - Options` = khuôn DANH SÁCH chung, `Page Editor - Options` = khuôn SOẠN chung (gỡ form Thêm/Sửa khỏi danh sách); D1-4b chia 2 phần. Còn chưa rà: D1-5 → D5-2 (15 lượt) — Claude Code rà dần trước khi tới.</p>
     <p class="hint">Bản 3.21 (06/10 10:xx): Claude Code kiểm zip 06/10 bằng Chromium thật — D0-2 (đến D0-2s5) và D0-3 ĐẠT, chốt cả hai; 4 lỗi nhỏ còn lại của trang chuẩn gộp vào D0-5. Đã rà kỹ (2 vòng mỗi nhóm) và viết lại D0-4a · D0-4b · D0-5 · D0-6a · D0-6b · D0-6c: đúng menu/quyền theo repo, việc trong TODO.md chia đúng lượt (không lượt nào sửa một màn hai lần), mỗi prompt có danh sách file được sửa, điểm chia khi sắp hết lượt, luật verifier quá giờ, xuất zip + câu chốt. LƯỢT TIẾP THEO: D0-4a — chat MỚI, bấm "1 · Chép tên chat" rồi "2 · Sao chép prompt".</p>
@@ -411,11 +424,13 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       b.checked = on; if (on) n++;
       var card = b.closest('.card'); if (card) card.classList.toggle('is-done', on);
     }});
-    var nextSet = false;
+    var first = null;
+    boxes.forEach(function (b) {{ if (!first && !b.checked && b.closest('.wave')) first = b.getAttribute('data-done'); }});
     boxes.forEach(function (b) {{
       var card = b.closest('.card'); if (!card) return;
-      var isNext = !nextSet && !b.checked;
-      if (isNext) nextSet = true;
+      var id = b.getAttribute('data-done'), par = card.getAttribute('data-par');
+      // A side round is "next" beside its partner, and stays flagged until ticked once its partner is done.
+      var isNext = !b.checked && card.closest('.wave') !== null && (id === first || (par && (par === first || !!done[par])));
       card.classList.toggle('is-next', isNext);
       var tag = card.querySelector('.next-tag'); if (tag) tag.hidden = !isNext;
     }});
