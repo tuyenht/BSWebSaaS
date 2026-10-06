@@ -5,7 +5,7 @@ Sửa thêm trước khi xuất zip. Claude Code đã kiểm zip D0-4a bằng Ch
 1. Vùng bấm trên topbar ở điện thoại (dưới 768px khung chứa):
    - Tìm kiếm, Trợ giúp, chuông và bộ chuyển website đang chỉ 38×38px, cách nhau 4px.
    - Đổi thành ≥ 44×44px, cách nhau ≥ 8px.
-   - Nếu 390px không đủ chỗ, đưa bộ chuyển website vào menu người dùng ở bề rộng đó, không thu nhỏ nút.
+   - Bộ chuyển website: làm theo D0-4at điểm 4 (rời topbar, ẩn khi chỉ có 1 website).
    - Kiểm: ở 360 và 390, mọi nút topbar ≥ 44px và `scrollWidth = clientWidth`.
 2. Kiểu 2 cột ở 1024px (thanh icon, cột mục con đang ẩn):
    - Ô icon của nhóm đang chọn có vạch và nền nhưng KHÔNG có `aria-current="page"`, nên trang không có mục nào mang `aria-current`.
