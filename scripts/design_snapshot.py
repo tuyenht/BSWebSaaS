@@ -7,8 +7,9 @@ Two inputs:
       The whole Claude Design project, exported as a zip. Replaces docs/design-source/ with its
       text files (screens, shared scripts, design-system tokens, the project's notes). Images and
       fonts are left out: they are not read and would bloat the repo. So are `uploads/` (whatever was
-      ever attached to a chat, including files from other projects) and `_audit/` (the design tool's
-      own test harness and backups): neither is design. The project's CLAUDE.md is
+      ever attached to a chat, including files from other projects), `_audit/` (the design tool's
+      own test harness and backups) and `_tmp/` (scratch pages and screenshots a round left behind):
+      none of them is design. The project's CLAUDE.md is
       renamed, because Claude Code would otherwise load it as instructions for this repo.
 
   python3 scripts/design_snapshot.py <saved artifact .html> "docs/design-source/<Screen>.dc.html"
@@ -25,7 +26,7 @@ from pathlib import Path
 TARGET = Path("docs/design-source")
 TEXT_SUFFIXES = {".html", ".md", ".js", ".css", ".json"}
 RENAMES = {"CLAUDE.md": "design-project-CLAUDE.md"}
-SKIPPED_FOLDERS = {"uploads", "_audit"}
+SKIPPED_FOLDERS = {"uploads", "_audit", "_tmp"}
 
 
 def from_zip(source: str) -> None:

@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
@@ -29,33 +30,41 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 .im-row{display:flex;align-items:flex-start;gap:12px;padding:12px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);flex-wrap:wrap;}
 .im-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .im-tab:hover{background:var(--color-surface-hover,#f3f6f9);}
-.im-tab.on{border-color:#2050a0;background:rgba(32,80,160,.08);font-weight:600;color:var(--color-accent,#2050a0);}
+.im-tab.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);font-weight:600;color:var(--color-accent,#2050a0);}
 .im-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .im-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
-.im-ai{border-color:rgba(32,80,160,.28);background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);}
+.im-ai{border-color:color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent);background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);}
 .im-ai:disabled{border-color:var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
-.im-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.im-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
 .im-pri:disabled{background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
 .im-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
 .im-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .im-pill:hover{background:var(--color-surface-hover,#f3f6f9);}
-.im-pill.on{border-color:#2050a0;background:rgba(32,80,160,.07);font-weight:600;color:var(--color-accent,#2050a0);}
-.im-slot{display:flex;align-items:center;justify-content:center;border:1px dashed #ccd0d8;border-radius:5px;background:var(--color-surface-muted,#fbfcfe);color:var(--color-body-muted,#5b6275);flex-shrink:0;overflow:hidden;}
-.im-cb{width:18px;height:18px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);}
-.im-cb.on{border-color:#2050a0;background:#2050a0;color:#fff;}
+.im-pill.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 7%,transparent);font-weight:600;color:var(--color-accent,#2050a0);}
+.im-slot{display:flex;align-items:center;justify-content:center;border:1px dashed var(--color-border-input,#ccd0d8);border-radius:5px;background:var(--color-surface-muted,#fbfcfe);color:var(--color-body-muted,#5b6275);flex-shrink:0;overflow:hidden;}
+.im-cb{width:18px;height:18px;border:1.5px solid var(--color-border-input,#ccd0d8);border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);}
+.im-cb.on{border-color:var(--color-accent,#2050a0);background:var(--color-admin-primary,#2050a0);color:#fff;}
 .im-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
-.im-ta{width:100%;box-sizing:border-box;min-height:74px;padding:9px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.6;resize:vertical;}
-.im-ta:focus{outline:0;border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.12);}
+.im-ta{width:100%;box-sizing:border-box;min-height:74px;padding:9px 11px;border:1px solid var(--color-border-input,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.6;resize:vertical;}
 .im-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
 .im-cands{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
-@media (max-width:900px){.im-4{grid-template-columns:repeat(2,minmax(0,1fr));}.im-cands{grid-template-columns:1fr;}}
+@container (max-width:599px){.im-row>*{min-width:0;max-width:100%}.im-btn{max-width:100%;white-space:normal;text-align:left;line-height:1.35;padding-top:6px;padding-bottom:6px}}
+@container (max-width:900px){.im-4{grid-template-columns:repeat(2,minmax(0,1fr));}.im-cands{grid-template-columns:1fr;}}
 @keyframes imFade{from{opacity:0}to{opacity:1}}
 @keyframes imSpin{to{transform:rotate(360deg)}}
 .im-spin{display:inline-block;animation:imSpin 1s linear infinite;}
+
+/* D0-6c · co giãn chung */
+.s6-root{container-type:inline-size;box-sizing:border-box}
+.s6-tst{bottom:calc(22px + env(safe-area-inset-bottom))!important;max-width:calc(100% - 24px)!important}
+@media (max-width:599px){.s6-root{padding:12px 12px 24px!important}.s6-ov{align-items:flex-end!important;padding:0!important}.s6-dlg{width:100%!important;max-width:none!important;max-height:92vh;max-height:92dvh!important;overflow:auto!important;border-radius:12px 12px 0 0!important;padding-bottom:env(safe-area-inset-bottom)}}
+@media (max-width:599px),(pointer:coarse){input,textarea,select{font-size:16px!important}}
+@container (max-width:599px){.s6-root button:not(.dsw):not(.s6-sm){min-height:44px}}
+@media (pointer:coarse){.s6-root button:not(.dsw):not(.s6-sm),.s6-dlg button{min-height:44px}}
 </style>
 </helmet>
 
-<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+<div class="s6-root" data-cs="sup" style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
 
   <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
     <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
@@ -70,7 +79,16 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </div>
 
   <sc-if value="{{ needsOn }}">
-    <div class="im-card" style="display:flex;align-items:flex-start;gap:9px;padding:11px 16px;flex-wrap:wrap;">
+    <sc-if value="{{ s6jOn }}" hint-placeholder-val="{{ false }}">
+<div class="jb" style="background:var(--color-surface,#fff);">
+  <span class="jb-ic" data-s="{{ s6j.s }}" aria-hidden="true"><i class="{{ s6j.icon }}"></i></span>
+  <div style="min-width:0;"><div class="jb-t">{{ s6j.title }}</div><div class="jb-s" data-s="{{ s6j.s }}">{{ s6j.sub }}</div></div>
+  <div class="jb-a"><sc-if value="{{ s6j.canStop }}"><button type="button" class="sx-btn" onClick="{{ s6Cancel }}"><i class="ri-close-line" aria-hidden="true"></i><span class="sx-t">Hủy phần còn lại</span></button></sc-if><sc-if value="{{ s6j.canRetry }}"><button type="button" class="sx-btn" onClick="{{ s6Retry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button></sc-if><sc-if value="{{ s6j.canClose }}"><button type="button" class="sx-btn" onClick="{{ s6Close }}"><span class="sx-t">Đóng</span></button></sc-if></div>
+  <sc-if value="{{ s6j.running }}"><span class="jb-bar" aria-hidden="true"><span style="width:{{ s6j.pct }}%;"></span></span></sc-if>
+</div>
+<span role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;">{{ s6j.say }}</span>
+</sc-if>
+<div class="im-card" style="display:flex;align-items:flex-start;gap:9px;padding:11px 16px;flex-wrap:wrap;">
       <i class="ri-camera-line" style="font-size:16px;color:var(--color-admin-danger-text,#a5402c);flex-shrink:0;margin-top:1px;"></i>
       <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.65;flex:1 1 260px;min-width:0;">{{ needsLine }}</span>
       <button class="im-btn" style="min-height:32px;flex-shrink:0;" onClick="{{ onCopyNeeds }}" title="Sao chép danh sách ảnh cần chụp kèm hướng dẫn từng ảnh để gửi cho người chụp"><i class="ri-file-copy-line" style="font-size:14px;"></i>Sao chép danh sách cần chụp</button>
@@ -78,7 +96,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ iqLowOn }}">
-    <div class="im-card" style="display:flex;align-items:flex-start;gap:9px;padding:11px 16px;background:rgba(247,184,75,.10);border-color:rgba(247,184,75,.3);">
+    <div class="im-card" style="display:flex;align-items:flex-start;gap:9px;padding:11px 16px;background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 10%,transparent);border-color:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 30%,transparent);">
       <i class="ri-alert-line" style="font-size:16px;color:var(--color-admin-warning-text,#b57d13);flex-shrink:0;margin-top:1px;"></i>
       <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6115);line-height:1.65;flex:1;min-width:0;">{{ iqWarn }}</span>
       <span style="display:flex;gap:7px;flex-shrink:1;min-width:0;flex-wrap:wrap;">
@@ -89,7 +107,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ doneOn }}">
-    <div class="im-card" style="display:flex;align-items:center;gap:9px;padding:11px 16px;background:rgba(10,179,156,.06);border-color:rgba(10,179,156,.28);flex-wrap:wrap;">
+    <div class="im-card" style="display:flex;align-items:center;gap:9px;padding:11px 16px;background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 6%,transparent);border-color:color-mix(in srgb,var(--color-admin-success,#0ab39c) 28%,transparent);flex-wrap:wrap;">
       <i class="ri-checkbox-circle-fill" style="font-size:16px;color:var(--color-admin-success-text,#0a8f7f);flex-shrink:0;"></i>
       <span style="font-size:12px;color:var(--color-admin-success-text,#0a7d6f);line-height:1.6;flex:1;min-width:0;">{{ doneLine }}</span>
       <button class="im-btn" style="min-height:32px;flex-shrink:0;" onClick="{{ onGoApprove }}">Mở hộp duyệt</button>
@@ -161,7 +179,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
             <span style="display:flex;gap:7px;flex-shrink:1;min-width:0;flex-wrap:wrap;">
               <sc-if value="{{ it.libOn }}"><button class="im-btn" style="min-height:34px;" onClick="{{ it.onLib }}" title="{{ it.libTitle }}"><i class="ri-folder-image-line" style="font-size:14px;"></i>{{ it.libLabel }}</button></sc-if>
               <sc-if value="{{ it.aiAllowed }}"><button class="im-btn im-ai" style="min-height:34px;" onClick="{{ it.onGen }}" title="{{ it.genTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ it.genLabel }}</button></sc-if>
-              <sc-if value="{{ it.aiBlocked }}"><span class="im-chip" style="background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);height:34px;" title="{{ it.blockTitle }}"><i class="ri-camera-line" style="font-size:14px;"></i>Cần ảnh thật</span></sc-if>
+              <sc-if value="{{ it.aiBlocked }}"><span class="im-chip" style="background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,transparent);color:var(--color-admin-danger-text,#a5402c);height:34px;" title="{{ it.blockTitle }}"><i class="ri-camera-line" style="font-size:14px;"></i>Cần ảnh thật</span></sc-if>
             </span>
           </div>
 
@@ -214,7 +232,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
                 <sc-if value="{{ sl.canLib }}"><button class="im-btn" style="min-height:34px;" onClick="{{ sl.onLib }}" title="{{ sl.libTitle }}">{{ sl.libLabel }}</button></sc-if>
                 <sc-if value="{{ sl.running }}">
                   <span style="display:flex;align-items:center;gap:6px;">
-                    <span class="im-chip" style="background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);height:34px;"><i class="ri-loader-4-line im-spin" style="font-size:14px;"></i>Đang tạo…</span>
+                    <span class="im-chip" style="background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);height:34px;"><i class="ri-loader-4-line im-spin" style="font-size:14px;"></i>Đang tạo…</span>
                     <button class="im-btn" style="min-height:34px;padding:0 8px;" onClick="{{ sl.onCancelRun }}" title="Hủy lần tạo này và hoàn lại lượt tạo ảnh" aria-label="Hủy lần tạo này và hoàn lại lượt tạo ảnh"><i class="ri-close-line" style="font-size:14px;"></i></button>
                   </span>
                 </sc-if>
@@ -268,11 +286,11 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
                 <span style="{{ cd.wrapStyle }}">
                   <span class="im-slot" style="{{ cd.boxStyle }}"><i class="ri-image-fill" style="font-size:26px;color:var(--color-accent,#8fa3c7);"></i></span>
                   <span style="display:flex;flex-direction:column;gap:3px;padding:9px 10px;">
-                    <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="font-size:12px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ cd.name }}</span><sc-if value="{{ cd.best }}"><span class="im-chip" style="background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);">AI đề xuất</span></sc-if></span>
+                    <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;"><span style="font-size:12px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ cd.name }}</span><sc-if value="{{ cd.best }}"><span class="im-chip" style="background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);">AI đề xuất</span></sc-if></span>
                     <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">{{ cd.note }}</span>
                     <span style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap;">
                       <sc-if value="{{ cd.canPick }}"><button class="im-btn im-ai" style="min-height:32px;" onClick="{{ cd.onPick }}" title="{{ cd.pickTitle }}">Dùng ảnh này</button></sc-if>
-                      <sc-if value="{{ cd.picked }}"><span class="im-chip" style="background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);height:32px;"><i class="ri-check-line" style="font-size:13px;"></i>Đã chọn</span></sc-if>
+                      <sc-if value="{{ cd.picked }}"><span class="im-chip" style="background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);height:32px;"><i class="ri-check-line" style="font-size:13px;"></i>Đã chọn</span></sc-if>
                       <button class="im-btn" style="min-height:32px;padding:0 8px;" onClick="{{ cd.onZoom }}" title="Xem lớn" aria-label="Xem lớn"><i class="ri-fullscreen-line" style="font-size:13px;"></i></button>
                     </span>
                   </span>
@@ -289,7 +307,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
       <sc-if value="{{ rvEmpty }}">
         <div class="im-card" style="display:flex;flex-direction:column;align-items:flex-start;gap:9px;padding:24px 16px;">
           <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Chưa có ảnh AI nào chờ duyệt</span>
-          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;max-width:620px;">Mở thẻ “Bài đang chờ ảnh”, bấm <b>Xem mô tả</b> ở một ô ảnh minh hoạ rồi bấm <b>Vẽ 3 phương án</b>. Ảnh vẽ xong sẽ hiện ở đây để bạn chọn.</span>
+          <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;max-width:620px;">Mở thẻ “Bài đang chờ ảnh”, bấm <b>Xem mô tả</b> ở một ô ảnh minh hoạ rồi bấm <b>Tạo 3 phương án</b>. Ảnh tạo xong sẽ hiện ở đây để bạn chọn.</span>
           <button class="im-pri" onClick="{{ onTabQ }}"><i class="ri-image-add-line" style="font-size:16px;"></i>Về danh sách bài chờ ảnh</button>
         </div>
       </sc-if>
@@ -334,10 +352,10 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ askOpen }}">
-    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="s6-ov" style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:imFade .16s ease;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
+      <div class="s6-dlg" role="dialog" aria-modal="true" style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:imFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
         <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.7;">{{ askText }}</span>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
           <button class="im-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Hủy</button>
@@ -348,15 +366,25 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ toast }}">
-    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:imFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+    <div class="s6-tst" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:imFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
       <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
     </div>
   </sc-if>
+
+  <sc-if value="{{ s6Frames }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+    <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Khung xem 390px · 768px (ghi chú thiết kế)</span>
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+      <iframe src="Hàng đợi ảnh.dc.html#frame" loading="lazy" title="Khung xem 390px" style="width:390px;max-width:100%;height:844px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+      <iframe src="Hàng đợi ảnh.dc.html#frame" loading="lazy" title="Khung xem 768px" style="width:768px;max-width:100%;height:900px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+    </div>
+  </div>
+  </sc-if>
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;allowAiImages&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ảnh AI&quot;},&quot;variantsPerRun&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[2,3,4],&quot;default&quot;:3,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Ảnh AI&quot;},&quot;imageQuota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:6,&quot;limit&quot;:10,&quot;addon&quot;:50},&quot;tsType&quot;:&quot;{used:number,limit:number,addon:number}&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ghi chú thiết kế&quot;,&quot;label&quot;:&quot;Hiện khung xem 390 · 768&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói &amp; hạn ngạch&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;},&quot;simulateError&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Mô phỏng lỗi khi chạy AI&quot;},&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;allowAiImages&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ảnh AI&quot;},&quot;variantsPerRun&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[2,3,4],&quot;default&quot;:3,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Ảnh AI&quot;},&quot;imageQuota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:6,&quot;limit&quot;:10,&quot;addon&quot;:50},&quot;tsType&quot;:&quot;{used:number,limit:number,addon:number}&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;}}">
 class Component extends DCLogic {
   state = { tab: 'q', group: 'all', picked: {}, open: null, prompts: {}, styles: {}, gen: {}, chosen: {}, skipped: {}, dropped: {}, spent: 0, toast: null, ask: null };
   settled(s) { const S = this.state; return !!S.chosen[s.k] || !!S.skipped[s.k]; }
@@ -496,6 +524,24 @@ class Component extends DCLogic {
     }, 1600);
   }
 
+  /* D0-6c · việc AI đang chạy (mẫu ai-job #h-jb): mỗi ô một giao dịch; hủy = không trừ phần chưa chạy; lỗi = hoàn phần đã giữ */
+  s6Run(lbl, total, w, unit, cur) { clearInterval(this._s6); const fail = !!this.props.simulateError && !this._s6Retry; this._s6Retry = false; this.setState({ s6j: { lbl: lbl, total: total, w: w, unit: unit, cur: cur || 'từ AI', done: 0, base: 0, st: 'run', back: 0 } }); this._s6 = setInterval(() => { const j = this.state.s6j; if (!j || j.st !== 'run') { clearInterval(this._s6); return; } const d = j.done + 1; if (fail && d === Math.max(1, Math.ceil(j.total * 0.6))) { clearInterval(this._s6); this.setState({ s6j: Object.assign({}, j, { st: 'fail', back: (j.total - j.done) * j.w }) }); return; } if (d >= j.total) { clearInterval(this._s6); this.setState({ s6j: Object.assign({}, j, { done: j.total, st: 'done' }) }); return; } this.setState({ s6j: Object.assign({}, j, { done: d }) }); }, 300); }
+  s6CancelJob() { clearInterval(this._s6); const j = this.state.s6j; if (j) this.setState({ s6j: Object.assign({}, j, { st: 'cancel', back: (j.total - j.done) * j.w }) }); }
+  s6RetryJob() { const j = this.state.s6j; if (!j) return; this._s6Retry = true; const done = j.done; clearInterval(this._s6); this.setState({ s6j: Object.assign({}, j, { st: 'run' }) }); this._s6 = setInterval(() => { const k = this.state.s6j; if (!k || k.st !== 'run') { clearInterval(this._s6); return; } const d = k.done + 1; if (d >= k.total) { clearInterval(this._s6); this.setState({ s6j: Object.assign({}, k, { done: k.total, st: 'done' }) }); return; } this.setState({ s6j: Object.assign({}, k, { done: d }) }); }, 300); }
+  s6Vals() {
+    const j = this.state.s6j, nf = n => Number(n).toLocaleString('vi-VN');
+    const B = { s: '', icon: '', title: '', sub: '', say: '', running: false, canStop: false, canRetry: false, canClose: false, pct: 0 };
+    const H = { s6Cancel: () => this.s6CancelJob(), s6Retry: () => this.s6RetryJob(), s6Close: () => { clearInterval(this._s6); this.setState({ s6j: null }); } };
+    if (!j) return Object.assign({ s6jOn: false, s6j: B }, H);
+    const left = j.total - j.done; let J;
+    if (j.st === 'run') J = { s: 'running', icon: 'ri-sparkling-2-line', title: j.lbl + '… ' + j.done + '/' + j.total, sub: 'Mỗi ' + j.unit + ' tính riêng — hủy thì không trừ ' + j.cur + ' cho phần chưa chạy.', running: true, canStop: true, pct: Math.round(j.done / j.total * 100) };
+    else if (j.st === 'done') J = { s: 'done', icon: 'ri-check-double-line', title: 'Xong — ' + j.total + ' ' + j.unit, sub: 'Đã dùng ' + nf(j.total * j.w) + ' ' + j.cur + '.', canClose: true };
+    else if (j.st === 'fail') J = { s: 'failed', icon: 'ri-error-warning-line', title: 'Lỗi — đã hoàn ' + nf(j.back) + ' ' + j.cur, sub: 'Dịch vụ AI đang quá tải ở ' + j.unit + ' ' + (j.done + 1) + '/' + j.total + '. ' + j.done + ' ' + j.unit + ' đã xong vẫn giữ; bấm Thử lại để chạy tiếp ' + left + ' ' + j.unit + ' còn lại.', canRetry: true, canClose: true };
+    else J = { s: 'cancel', icon: 'ri-close-circle-line', title: 'Đã hủy — không trừ ' + j.cur + ' nào cho ' + left + ' ' + j.unit + ' chưa chạy', sub: 'Phần đã xong (' + j.done + ' ' + j.unit + ') vẫn giữ.', canRetry: left > 0, canClose: true };
+    J.say = J.title + '. ' + J.sub;
+    return Object.assign({ s6jOn: true, s6j: Object.assign({}, B, J) }, H);
+  }
+  s6Buy() { return this.props.upsell ? 'mua thêm hoặc nâng gói ở Cài đặt › Gói & mức dùng' : 'Cần thêm? Liên hệ hỗ trợ'; }
   renderVals() {
     const S = this.state;
     const G = S.group;
@@ -510,9 +556,9 @@ class Component extends DCLogic {
     const realNeeded = this.allSlots().filter(s => s.real && !this.settled(s));
     const realReq = realNeeded.filter(s => s.req);
     const realOpt = realNeeded.filter(s => !s.req);
-    const TY = (t) => t === 'Mô tả sản phẩm' || t === 'Mô tả danh mục' ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);'
-      : (t === 'Sức khoẻ' ? 'background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);'
-        : (t === 'Bài trụ' ? 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);'));
+    const TY = (t) => t === 'Mô tả sản phẩm' || t === 'Mô tả danh mục' ? 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);'
+      : (t === 'Sức khoẻ' ? 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,transparent);color:var(--color-admin-danger-text,#a5402c);'
+        : (t === 'Bài trụ' ? 'background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);'));
     const box = (ratio, h) => {
       const R = { '1:1': 1, '4:3': 4 / 3, '16:9': 16 / 9, '21:9': 21 / 9 }[ratio] || 1;
       return 'width:' + Math.round(h * R) + 'px;height:' + h + 'px;';
@@ -534,11 +580,12 @@ class Component extends DCLogic {
     ];
 
     return {
+      s6Frames: (typeof location === 'undefined' || location.hash !== '#frame') && this.props.showFrames !== false, ...this.s6Vals(), s6Upsell: !!this.props.upsell, s6NoUpsell: !this.props.upsell,
       stats: [
-        { icon: 'ri-image-add-line', color: '#1c7ba8', label: 'Bài đang mắc vì thiếu ảnh', value: String(live.length), hint: this.allSlots().filter(s => !this.settled(s)).length + ' ô còn trống · ' + Object.keys(S.skipped).length + ' ô đã bỏ' },
-        { icon: 'ri-sparkling-2-line', color: '#2050a0', label: 'Ô ảnh AI tạo được', value: aiOn ? String(this.aiSlots().filter(s => !S.gen[s.k] && !S.chosen[s.k]).length) : '—', hint: aiOn ? 'Đã có mô tả viết sẵn, chỉ cần bạn duyệt' : 'Ảnh AI đang tắt — mọi ô cần ảnh thật' },
-        { icon: 'ri-camera-line', color: '#a5402c', label: 'Bắt buộc ảnh thật', value: String(realReq.length), hint: realOpt.length ? (realReq.length + ' ô chặn đăng · ' + realOpt.length + ' ô tùy chọn, bỏ được') : 'Ảnh sản phẩm, công trình, người thật, y tế' },
-        { icon: 'ri-folder-image-line', color: '#0a8f7f', label: 'Ảnh khớp trong thư viện', value: String(this.allSlots().reduce((a, s) => a + (S.chosen[s.k] ? 0 : (s.lib || 0)), 0)), hint: autoLibSlots.length ? (autoLibSlots.length + ' ô gán được ngay, chỉ cần bạn duyệt') : 'Hệ thống đã tìm sẵn theo tên và nội dung' }
+        { icon: 'ri-image-add-line', color: 'var(--color-admin-info-text,#1c7ba8)', label: 'Bài đang mắc vì thiếu ảnh', value: String(live.length), hint: this.allSlots().filter(s => !this.settled(s)).length + ' ô còn trống · ' + Object.keys(S.skipped).length + ' ô đã bỏ' },
+        { icon: 'ri-sparkling-2-line', color: 'var(--color-accent,#2050a0)', label: 'Ô ảnh AI tạo được', value: aiOn ? String(this.aiSlots().filter(s => !S.gen[s.k] && !S.chosen[s.k]).length) : '—', hint: aiOn ? 'Đã có mô tả viết sẵn, chỉ cần bạn duyệt' : 'Ảnh AI đang tắt — mọi ô cần ảnh thật' },
+        { icon: 'ri-camera-line', color: 'var(--color-admin-danger-text,#a5402c)', label: 'Bắt buộc ảnh thật', value: String(realReq.length), hint: realOpt.length ? (realReq.length + ' ô chặn đăng · ' + realOpt.length + ' ô tùy chọn, bỏ được') : 'Ảnh sản phẩm, công trình, người thật, y tế' },
+        { icon: 'ri-folder-image-line', color: 'var(--color-admin-success-text,#0a8f7f)', label: 'Ảnh khớp trong thư viện', value: String(this.allSlots().reduce((a, s) => a + (S.chosen[s.k] ? 0 : (s.lib || 0)), 0)), hint: autoLibSlots.length ? (autoLibSlots.length + ' ô gán được ngay, chỉ cần bạn duyệt') : 'Hệ thống đã tìm sẵn theo tên và nội dung' }
       ],
       iqChip: 'Còn ' + iqLeft + ' lượt tạo ảnh',
       iqTitle: (window.BSAI ? window.BSAI.enoughImages(iqLeft) + ' · ' : '') + 'Sổ ảnh AI tách riêng với sổ nội dung chữ. Gói tháng: ' + planLeft + '/' + iq.limit + ' lượt còn lại' + (addon ? ' · addon đã mua: ' + addonLeft + '/' + addon + ' lượt (hạn 12 tháng)' : '') + '. Trừ hạn ngạch gói trước, addon sau. Đã dùng ' + (iq.used + S.spent) + (S.spent ? ', trong đó ' + S.spent + ' lượt ở phiên này' : '') + '. Mỗi phương án tạo ra tính 1 lượt; sửa mô tả rồi tạo lại lần đầu cho mỗi ảnh không tính thêm. Bấm để mở Cài đặt › Mức dùng AI.',
@@ -578,7 +625,7 @@ class Component extends DCLogic {
       autoAllLabel: !aiOn ? 'Ảnh AI đang tắt' : (!aiReady.length ? 'Không còn ô ảnh AI' : (iqLeft < aiReady.length * nVar ? 'Không đủ lượt tạo ảnh' : 'Tạo hết ' + aiReady.length + ' ô ảnh AI')),
       autoAllOff: aiReady.length === 0 || iqLeft < aiReady.length * nVar,
       autoAllTitle: !aiOn ? 'Ảnh AI đang tắt cho website này — mọi ô ảnh phải dùng ảnh thật' : (aiReady.length ? ('Tạo ' + nVar + ' phương án cho từng ô, dùng ' + (aiReady.length * nVar) + ' lượt tạo ảnh — bạn vẫn phải chọn phương án trước khi ảnh vào bài') : 'Mọi ô ảnh AI đã xử lý'),
-      onAutoAll: () => { if (!aiReady.length) return; this.setState({ ask: { kind: 'all', icon: 'ri-magic-line', title: 'Tạo hết ' + aiReady.length + ' ô ảnh minh hoạ?', text: 'Mỗi ô được vẽ ' + nVar + ' phương án, dùng ' + (aiReady.length * nVar) + ' lượt tạo ảnh. Ảnh vẽ xong nằm ở thẻ “Ảnh AI chờ duyệt” — không ảnh nào tự vào bài trước khi bạn chọn. Các ô bắt buộc ảnh thật không bị vẽ.', ok: 'Vẽ tất cả' } }); },
+      onAutoAll: () => { if (!aiReady.length) return; this.setState({ ask: { kind: 'all', icon: 'ri-magic-line', title: 'Tạo hết ' + aiReady.length + ' ô ảnh minh hoạ?', text: 'Mỗi ô được tạo ' + nVar + ' phương án, dùng ' + (aiReady.length * nVar) + ' lượt tạo ảnh. Ảnh tạo xong nằm ở thẻ “Ảnh AI chờ duyệt” — không ảnh nào tự vào bài trước khi bạn chọn. Các ô bắt buộc ảnh thật không bị vẽ.', ok: 'Vẽ tất cả' } }); },
 
       groups: GRP.map(g => Object.assign({}, g, { on2: g.v === G, off: g.v !== G, on: () => this.setState({ group: g.v, picked: {} }) })),
       groupHint: isDoneTab ? (shown.length + ' bài đã đủ ảnh · đổi ảnh không tốn lượt tạo ảnh nào') : (picked.length ? ('đã chọn ' + picked.length + ' bài') : 'Chọn nhóm để làm cả nhóm một lượt'),
@@ -599,7 +646,7 @@ class Component extends DCLogic {
         return {
           title: i.title, type: i.type, typeStyle: TY(i.type), meta: i.meta,
           needText: done ? (optN ? ('Đủ ảnh bắt buộc · còn ' + optN + ' ô tùy chọn') : 'Đủ ảnh') : (realN ? (realN + ' ô cần ảnh thật') : (aiN + ' ô AI tạo được')),
-          needStyle: done ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' : (realN ? 'background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);' : 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);'),
+          needStyle: done ? 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);' : (realN ? 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,transparent);color:var(--color-admin-danger-text,#a5402c);' : 'background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);'),
           checked: !!S.picked[i.k], unchecked: !S.picked[i.k],
           pickTitle: (S.picked[i.k] ? 'Bỏ chọn' : 'Chọn') + ' “' + i.title + '”',
           onPick: () => this.setState(s => ({ picked: Object.assign({}, s.picked, { [i.k]: !s.picked[i.k] }) })),
@@ -608,7 +655,7 @@ class Component extends DCLogic {
           libTitle: libN ? 'Hệ thống đã lọc ' + libN + ' ảnh khớp theo tên và nội dung — mở để gán' : 'Mở thư viện ảnh của bạn',
           onLib: () => this.toast(libN ? ('Mở ' + libN + ' ảnh khớp cho “' + i.title + '” — kéo vào ô ảnh là xong') : ('Mở thư viện ảnh cho “' + i.title + '”'), 'ri-folder-image-line'),
           aiAllowed: aiOn && aiN > 0, aiBlocked: !(aiOn && aiN > 0) && realN > 0,
-          genLabel: 'Tạo ' + aiN + ' ô bằng AI',
+          genLabel: 'Tạo ảnh cho ' + aiN + ' ô',
           genTitle: 'Tạo ' + nVar + ' phương án cho mỗi ô minh hoạ của bài này · ' + (aiN * nVar) + ' lượt tạo ảnh',
           blockTitle: 'Bài này chỉ còn ô bắt buộc ảnh thật — AI không tạo ảnh sản phẩm, công trình, người thật hay ảnh y tế',
           onGen: () => { i.slots.filter(s => !s.real && !S.chosen[s.k] && !S.gen[s.k]).forEach(s => this.run(s)); },
@@ -619,9 +666,9 @@ class Component extends DCLogic {
               role: s.role, ratio: s.ratio, boxStyle: box(s.ratio, 46),
               hasImg: !!chosen,
               reqText: s.req ? 'Bắt buộc' : 'Không bắt buộc',
-              reqStyle: s.req ? 'background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);',
+              reqStyle: s.req ? 'background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);',
               stText: skip ? 'Đã bỏ ô này' : (chosen ? 'Đã có ảnh' : (st === 'run' ? 'Đang tạo' : (st === 'done' ? nVar + ' phương án chờ chọn' : ((s.real || !aiOn) ? 'Chờ ảnh thật' : 'Chờ bạn duyệt mô tả')))),
-              stStyle: skip ? 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);' : (chosen ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' : (st ? 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);' : ((s.real || !aiOn) ? 'background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);' : 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#8a6115);'))),
+              stStyle: skip ? 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);' : (chosen ? 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);' : (st ? 'background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);' : ((s.real || !aiOn) ? 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,transparent);color:var(--color-admin-danger-text,#a5402c);' : 'background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,transparent);color:var(--color-admin-warning-text,#8a6115);'))),
               canSkip: !s.req && !chosen && !st && !skip,
               skipTitle: 'Bỏ ô này — bài không mắc vì ô không bắt buộc, thêm ảnh lại lúc nào cũng được',
               onSkip: () => this.skip(s, true),
@@ -631,7 +678,7 @@ class Component extends DCLogic {
               canDrop: !chosen && !skip,
               why: skip ? 'Ô này đã bỏ nên bài không còn chờ nó. Bật lại bất cứ lúc nào nếu bạn có ảnh.' : (chosen ? 'Đã gán ảnh — hệ thống tự cắt đúng tỷ lệ, nén nhẹ và viết chữ thay thế tiếng Việt.' : s.why),
                   matchOn: !chosen && !st && !skip && !!m, matchText: m ? ('Thư viện khớp ' + m.conf + '% · ' + m.n + ' ảnh') : '',
-              matchStyle: m && m.conf >= 80 ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' : 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#8a6115);',
+              matchStyle: m && m.conf >= 80 ? 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);' : 'background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,transparent);color:var(--color-admin-warning-text,#8a6115);',
               canUseMatch: !chosen && !st && !skip && !!m && m.conf >= 80,
               useMatchTitle: m ? ('Dùng ngay ảnh khớp nhất trong ' + m.n + ' ảnh — đổi được sau, không tốn lượt tạo ảnh nào') : '',
               onUseMatch: () => this.autoLib([s], 'Đã gán ảnh khớp nhất vào “' + s.role + '” — mở thư viện nếu muốn đổi ảnh khác'),
@@ -666,7 +713,7 @@ class Component extends DCLogic {
         onNone: () => { this.setState(st => ({ gen: Object.assign({}, st.gen, { [s.k]: null }) })); this.toast('Không dùng phương án nào — ô “' + s.role + '” quay lại hàng chờ, bạn có thể sửa mô tả hoặc tải ảnh thật', 'ri-close-circle-line'); },
         cands: CANDS.map(c => ({
           name: c.name, note: c.note, best: c.best,
-          wrapStyle: 'display:flex;flex-direction:column;border:1px solid ' + (c.best ? 'rgba(10,179,156,.35)' : '#e9ecf4') + ';border-radius:6px;overflow:hidden;background:var(--color-surface,#fff);',
+          wrapStyle: 'display:flex;flex-direction:column;border:1px solid ' + (c.best ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 35%,transparent)' : 'var(--color-border,#e9ecf4)') + ';border-radius:6px;overflow:hidden;background:var(--color-surface,#fff);',
           boxStyle: 'width:100%;height:112px;border:0;border-bottom:1px solid var(--color-border,#e9ecf4);border-radius:0;',
           canPick: S.chosen[s.k] !== c.k, picked: S.chosen[s.k] === c.k,
           pickTitle: 'Dùng ' + c.name + ' cho ô “' + s.role + '”',
@@ -677,13 +724,13 @@ class Component extends DCLogic {
       rvEmpty: reviews.length === 0,
 
       rules: this.RULES.map(r => Object.assign({}, r, {
-        style: r.ok === true ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' : (r.ok === false ? 'background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);' : 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#8a6115);')
+        style: r.ok === true ? 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);' : (r.ok === false ? 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,transparent);color:var(--color-admin-danger-text,#a5402c);' : 'background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,transparent);color:var(--color-admin-warning-text,#8a6115);')
       })),
       pipeline: this.PIPELINE,
 
       askOpen: !!ask, askTitle: ask ? ask.title : '', askText: ask ? ask.text : '', askOk: ask ? ask.ok : '', askIcon: ask ? ask.icon : 'ri-magic-line',
       onAskCancel: () => this.setState({ ask: null }),
-      onAskOk: () => { this.setState({ ask: null }); aiReady.forEach(s => this.run(s)); },
+      onAskOk: () => { this.setState({ ask: null }); aiReady.forEach(s => this.run(s)); this.s6Run('Đang tạo ảnh', aiReady.length * nVar, 1, 'phương án', 'lượt tạo ảnh'); },
       toast: !!S.toast, toastText: S.toast ? S.toast.text : '', toastIcon: S.toast ? S.toast.icon : 'ri-check-line'
     };
   }

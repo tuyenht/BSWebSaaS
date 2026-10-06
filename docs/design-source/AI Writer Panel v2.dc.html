@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
@@ -20,6 +21,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <script src="ai-quota.js"></script>
+<script src="content-seo.js"></script>
 <style>
 .aw-wrap{container-type:inline-size;font-family:Inter,'Segoe UI',sans-serif;}
 @keyframes awSpin{to{transform:rotate(360deg)}}
@@ -27,35 +29,54 @@
 @keyframes awFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 .aw-pop{animation:awFade .14s ease;}
 .aw-scroll::-webkit-scrollbar{width:8px;height:8px}
-.aw-scroll::-webkit-scrollbar-thumb{background:#dfe2e8;border-radius:8px}
+.aw-scroll::-webkit-scrollbar-thumb{background:var(--color-surface-hover,#dfe2e8);border-radius:8px}
 .aw-scroll::-webkit-scrollbar-track{background:transparent}
 .aw-2col{display:grid;grid-template-columns:1fr;gap:12px;align-items:start;}
 @container (min-width:660px){.aw-2col{grid-template-columns:minmax(0,1fr) 268px;}}
 .aw-fld{display:flex;flex-direction:column;gap:6px;}
-.aw-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;font:inherit;font-size:13px;line-height:1.6;color:var(--color-heading,#1f2b4d);background:var(--color-surface,#fff);outline:none;resize:vertical;}
-.aw-in:focus{border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.10);}
-.aw-in::placeholder{color:#b9bec7;}
+.aw-in{width:100%;box-sizing:border-box;padding:9px 11px;border:1px solid var(--color-border-input,#e9ebec);border-radius:4px;font:inherit;font-size:13px;line-height:1.6;color:var(--color-heading,#1f2b4d);background:var(--color-surface,#fff);resize:vertical;}
+.aw-in::placeholder{color:var(--color-placeholder,var(--color-body-muted,#5b6275));}
 .aw-cardh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);}
 .aw-card{border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 1px 2px rgba(56,65,74,.10);}
 .aw-body h2{font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);margin:16px 0 6px;line-height:1.4;}
 .aw-body p{margin:0 0 10px;font-size:13px;line-height:1.75;color:var(--color-body-text,#3c4765);}
 .aw-body ul{margin:0 0 10px;padding-left:20px;font-size:13px;line-height:1.75;color:var(--color-body-text,#3c4765);}
+/* D0-6c · co giãn theo khung chứa .aw-wrap (panel nằm trong hộp thoại / ngăn trượt của màn chủ) */
+.aw-brk{display:none}
+.aw-ft{padding-bottom:calc(11px + env(safe-area-inset-bottom))!important}
+@container (min-width:561px){.aw-grab{display:none!important}}
+@container (max-width:600px){.aw-ib{width:44px!important;height:44px!important}.aw-pr{height:36px!important}}
+@container (max-width:560px){
+.aw-hd{flex-wrap:wrap;row-gap:8px!important;padding:6px 12px 10px!important}
+.aw-brk{display:block;flex-basis:100%;height:0;order:8}
+.aw-pr,.aw-q{order:9}
+.aw-ft{padding:10px 12px calc(10px + env(safe-area-inset-bottom))!important}
+.aw-ft .aw-pri{flex:1 1 100%;min-height:44px!important}
+.aw-kbd{display:none!important}
+.aw-ov{align-items:flex-end!important;padding:0!important}
+.aw-dlg{width:100%!important;max-width:none!important;border-radius:12px 12px 0 0!important;max-height:92%!important;overflow:auto;padding-bottom:calc(15px + env(safe-area-inset-bottom))!important}
+.aw-cardh{flex-wrap:wrap}
+}
+@container (max-width:600px){.aw-in{font-size:16px!important}}
+@media (pointer:coarse){.aw-in{font-size:16px!important}.aw-ib{width:44px!important;height:44px!important}.aw-pri{min-height:44px!important}.aw-kbd{display:none!important}}
 </style>
 </helmet>
 
-<div class="aw-wrap" style="position:relative;display:flex;flex-direction:column;flex:1 1 auto;height:100%;max-height:100%;min-height:0;overflow:hidden;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);">
+<div class="aw-wrap" data-cs="sup" style="position:relative;display:flex;flex-direction:column;flex:1 1 auto;height:100%;max-height:100%;min-height:0;overflow:hidden;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);">
 
-  <div style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-shrink:0;">
-    <span style="width:32px;height:32px;border-radius:6px;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-quill-pen-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span>
+  <span class="grab aw-grab" aria-hidden="true"></span>
+  <div class="aw-hd" style="display:flex;align-items:flex-start;gap:10px;padding:14px 16px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-shrink:0;">
+    <span style="width:32px;height:32px;border-radius:6px;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-quill-pen-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span>
     <div style="display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0;">
-      <span style="display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.3;">Trợ lý viết nội dung<span style="display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:3px;background:rgba(10,179,156,.12);font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--color-admin-success-text,#0a8f7f);">v2</span></span>
+      <span style="display:flex;align-items:center;gap:7px;font-size:14.5px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.3;">Trợ lý viết nội dung<span style="display:inline-flex;align-items:center;height:18px;padding:0 6px;border-radius:3px;background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);font-size:12px;font-weight:700;letter-spacing:.03em;color:var(--color-admin-success-text,#0a8f7f);">v2</span></span>
       <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ ctxLine }}</span>
     </div>
-    <button onClick="{{ onPrompt }}" title="Xem đúng những yêu cầu hệ thống gửi cho AI thay bạn" style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border:1px solid var(--color-border,#e9ecf4);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;flex-shrink:0;" style-hover="border-color:#2050a0;color:var(--color-accent,#2050a0);"><i class="ri-file-shield-2-line" style="font-size:13px;"></i>Yêu cầu chất lượng</button>
-    <span title="{{ quotaTitle }}" style="{{ quotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaText }}</span>
-    <sc-if value="{{ canMin }}"><button onClick="{{ onMinimize }}" title="{{ minTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" aria-label="{{ minTitle }}"><i class="ri-subtract-line" style="font-size:18px;"></i></button></sc-if>
-    <sc-if value="{{ canResize }}"><button onClick="{{ onToggleExpand }}" title="{{ expandTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" aria-label="{{ expandTitle }}"><i class="{{ expandIcon }}" style="font-size:17px;"></i></button></sc-if>
-    <button onClick="{{ onClose }}" title="Đóng — nội dung đã nhập vẫn giữ" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);" aria-label="Đóng — nội dung đã nhập vẫn giữ"><i class="ri-close-line" style="font-size:18px;"></i></button>
+    <span class="aw-brk" aria-hidden="true"></span>
+    <button class="aw-pr" onClick="{{ onPrompt }}" title="Xem đúng những yêu cầu hệ thống gửi cho AI thay bạn" style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 9px;border:1px solid var(--color-border,#e9ecf4);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;flex-shrink:0;" style-hover="border-color:var(--color-accent,#2050a0);color:var(--color-accent,#2050a0);"><i class="ri-file-shield-2-line" style="font-size:13px;"></i>Yêu cầu chất lượng</button>
+    <span class="aw-q" title="{{ quotaTitle }}" aria-label="{{ quotaTitle }}" style="{{ quotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaText }}</span>
+    <sc-if value="{{ canMin }}"><button class="aw-ib" onClick="{{ onMinimize }}" title="{{ minTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" aria-label="{{ minTitle }}"><i class="ri-subtract-line" style="font-size:18px;"></i></button></sc-if>
+    <sc-if value="{{ canResize }}"><button class="aw-ib" onClick="{{ onToggleExpand }}" title="{{ expandTitle }}" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);" aria-label="{{ expandTitle }}"><i class="{{ expandIcon }}" style="font-size:17px;"></i></button></sc-if>
+    <button class="aw-ib" onClick="{{ onClose }}" title="Đóng — nội dung đã nhập vẫn giữ" style="width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);" aria-label="Đóng — nội dung đã nhập vẫn giữ"><i class="ri-close-line" style="font-size:18px;"></i></button>
   </div>
 
   <div style="display:flex;align-items:center;gap:3px;padding:9px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);flex-shrink:0;overflow-x:auto;">
@@ -70,7 +91,7 @@
     <!-- BƯỚC 1 — ĐỀ BÀI -->
     <sc-if value="{{ isBrief }}">
       <sc-if value="{{ srcOn }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(32,80,160,.07);">
+        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:color-mix(in srgb,var(--color-accent,#2050a0) 7%,transparent);">
           <i class="ri-file-text-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:1px;"></i>
           <span style="font-size:12px;color:var(--color-accent,#2050a0);line-height:1.55;min-width:0;">{{ srcNote }}</span>
         </div>
@@ -78,19 +99,19 @@
       <div class="aw-fld">
         <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
           <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Bạn muốn viết về điều gì?</span>
-          <sc-if value="{{ topicFromTitle }}"><span title="Lấy từ tiêu đề bạn đã nhập trong trang" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:12px;font-weight:600;color:var(--color-admin-info-text,#1d7fb8);background:rgba(41,156,219,.10);"><i class="ri-magic-line" style="font-size:12px;"></i>Lấy từ tiêu đề trang</span></sc-if>
+          <sc-if value="{{ topicFromTitle }}"><span title="Lấy từ tiêu đề bạn đã nhập trong trang" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:12px;font-weight:600;color:var(--color-admin-info-text,#1d7fb8);background:color-mix(in srgb,var(--color-admin-info,#299cdb) 10%,transparent);"><i class="ri-magic-line" style="font-size:12px;"></i>Lấy từ tiêu đề trang</span></sc-if>
         </div>
         <textarea class="aw-in" rows="2" value="{{ topic }}" onChange="{{ onTopic }}" placeholder="{{ topicPh }}"></textarea>
         <span style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;"><i class="ri-magic-line" style="font-size:13px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:2px;"></i><span>Chỉ cần một câu. Ví dụ và gợi ý bên dưới đã lấy theo ngành <span title="{{ indTitle }}" style="font-weight:600;color:var(--color-body-text,#3c4765);cursor:help;">{{ indName }}</span> và chủ đề bạn nhập — không phải điền tay.</span></span>
       </div>
 
       <sc-if value="{{ dupWarn }}">
-        <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border:1px solid rgba(247,184,75,.35);border-radius:6px;background:rgba(247,184,75,.09);">
+        <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border:1px solid color-mix(in srgb,var(--color-admin-warning,#f7b84b) 35%,transparent);border-radius:6px;background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 9%,transparent);">
           <i class="ri-git-merge-line" style="font-size:16px;color:var(--color-admin-warning-text,#b57d13);flex-shrink:0;margin-top:1px;"></i>
           <div style="display:flex;flex-direction:column;gap:7px;min-width:0;">
             <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6109);line-height:1.6;">Website đã có bài <strong style="font-weight:600;">“{{ dupTitle }}”</strong> nhắm cùng ý định tìm kiếm. Viết thêm một bài gần giống sẽ khiến hai bài chia lượt truy cập của nhau.</span>
             <div style="display:flex;gap:7px;flex-wrap:wrap;">
-              <button onClick="{{ onDupOpen }}" style="display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid rgba(32,80,160,.28);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;"><i class="ri-external-link-line" style="font-size:13px;"></i>Mở bài đó để bổ sung thay vì viết mới</button>
+              <button onClick="{{ onDupOpen }}" style="display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;"><i class="ri-external-link-line" style="font-size:13px;"></i>Mở bài đó để bổ sung thay vì viết mới</button>
               <button onClick="{{ onDupDismiss }}" style="min-height:30px;padding:6px 10px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:12px;font-weight:500;color:var(--color-admin-warning-text,#8a6109);cursor:pointer;">Chủ đề của tôi khác, cứ viết</button>
             </div>
           </div>
@@ -110,8 +131,8 @@
             </sc-if>
           </div>
         </sc-for>
-        <span title="Lấy từ Cài đặt › Thông tin doanh nghiệp — dùng để viết đúng ngành và đúng tên" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed #e0e3e9;border-radius:5px;background:var(--color-surface-muted,#fbfcfe);font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-store-2-line" style="font-size:13px;"></i>{{ bizLine }}</span>
-        <span title="{{ langTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed #e0e3e9;border-radius:5px;background:var(--color-surface-muted,#fbfcfe);font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-translate-2" style="font-size:13px;"></i>{{ langName }}<sc-if value="{{ langIsSource }}"><i class="ri-star-fill" style="font-size:12px;color:#f7b84b;"></i></sc-if></span>
+        <span title="Lấy từ Cài đặt › Thông tin doanh nghiệp — dùng để viết đúng ngành và đúng tên" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed var(--color-border-strong,#e0e3e9);border-radius:5px;background:var(--color-surface-muted,#fbfcfe);font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-store-2-line" style="font-size:13px;"></i>{{ bizLine }}</span>
+        <span title="{{ langTitle }}" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px dashed var(--color-border-strong,#e0e3e9);border-radius:5px;background:var(--color-surface-muted,#fbfcfe);font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-translate-2" style="font-size:13px;"></i>{{ langName }}<sc-if value="{{ langIsSource }}"><i class="ri-star-fill" style="font-size:12px;color:var(--color-admin-warning-text,#f7b84b);"></i></sc-if></span>
       </div>
 
       <div class="aw-card" style="box-shadow:none;">
@@ -140,7 +161,7 @@
       <div class="aw-fld">
         <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
           <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Từ khóa muốn lên hạng</span>
-          <sc-if value="{{ kwAuto }}"><span title="Rút từ chủ đề bạn vừa nhập — gõ vào ô để đổi" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:12px;font-weight:600;color:var(--color-admin-info-text,#1d7fb8);background:rgba(41,156,219,.10);"><i class="ri-magic-line" style="font-size:12px;"></i>tự nhận từ chủ đề</span></sc-if>
+          <sc-if value="{{ kwAuto }}"><span title="Rút từ chủ đề bạn vừa nhập — gõ vào ô để đổi" style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;font-size:12px;font-weight:600;color:var(--color-admin-info-text,#1d7fb8);background:color-mix(in srgb,var(--color-admin-info,#299cdb) 10%,transparent);"><i class="ri-magic-line" style="font-size:12px;"></i>tự nhận từ chủ đề</span></sc-if>
           <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">sửa được — hoặc để nguyên mức hệ thống đề xuất</span>
         </div>
         <input class="aw-in" value="{{ kwMain }}" onChange="{{ onKwMain }}" placeholder="{{ kwPh }}">
@@ -148,7 +169,7 @@
           <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
             <span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;"><i class="ri-magic-line" style="font-size:13px;"></i>Gợi ý theo chủ đề của bạn:</span>
             <sc-for list="{{ kwSug }}" as="ks" hint-placeholder-count="4">
-              <button onClick="{{ ks.on }}" title="{{ ks.title }}" style="display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:4px 9px;border:1px dashed var(--color-border-strong,#dfe2e8);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap;" style-hover="border-color:#2050a0;background:rgba(32,80,160,.05);"><i class="ri-add-line" style="font-size:12px;"></i>{{ ks.label }}</button>
+              <button onClick="{{ ks.on }}" title="{{ ks.title }}" style="display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:4px 9px;border:1px dashed var(--color-border-strong,#dfe2e8);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap;" style-hover="border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent);"><i class="ri-add-line" style="font-size:12px;"></i>{{ ks.label }}</button>
             </sc-for>
             <button onClick="{{ onMoreKw }}" title="Lấy thêm gợi ý sát chủ đề hơn — không trừ hạn ngạch từ AI" style="display:inline-flex;align-items:center;gap:4px;min-height:26px;padding:4px 8px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;" style-hover="color:var(--color-accent,#2050a0);"><i class="ri-refresh-line" style="font-size:12px;"></i>gợi ý khác</button>
           </div>
@@ -157,7 +178,7 @@
           <sc-for list="{{ kwSub }}" as="k" hint-placeholder-count="3">
             <span style="display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 5px 0 9px;border:1px solid var(--color-border,#e9ecf4);border-radius:20px;background:var(--color-surface-muted,#f8f9fb);font-size:12px;color:var(--color-body-text,#3c4765);white-space:nowrap;">{{ k.label }}<button onClick="{{ k.off }}" title="Bỏ từ khóa này" style="width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="background:var(--color-border-strong,#e9ebec);color:var(--color-body-text,#3c4765);" aria-label="Bỏ từ khóa này"><i class="ri-close-line" style="font-size:12px;"></i></button></span>
           </sc-for>
-          <input value="{{ kwDraft }}" onChange="{{ onKwDraft }}" onKeyDown="{{ onKwKey }}" placeholder="+ từ khóa phụ, Enter để thêm" style="min-width:190px;flex:1 1 190px;height:26px;box-sizing:border-box;padding:0 8px;border:1px dashed var(--color-border-input,#878a99);border-radius:20px;font:inherit;font-size:12px;color:var(--color-body-text,#3c4765);background:transparent;outline:none;">
+          <input value="{{ kwDraft }}" onChange="{{ onKwDraft }}" onKeyDown="{{ onKwKey }}" placeholder="+ từ khóa phụ, Enter để thêm" style="min-width:190px;flex:1 1 190px;height:26px;box-sizing:border-box;padding:0 8px;border:1px dashed var(--color-border-input,#878a99);border-radius:20px;font:inherit;font-size:12px;color:var(--color-body-text,#3c4765);background:transparent;">
         </div>
       </div>
 
@@ -177,7 +198,7 @@
                   <div style="display:flex;align-items:center;gap:8px;padding:7px 9px;border:1px solid var(--color-border,#e9ecf4);border-radius:5px;background:var(--color-surface,#fff);"><i class="{{ r.icon }}" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i><span style="flex:1;min-width:0;font-size:12px;color:var(--color-body-text,#3c4765);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ r.label }}</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">{{ r.meta }}</span><button onClick="{{ r.off }}" title="Bỏ tài liệu này" style="width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);color:var(--color-admin-danger-text,#f06548);" aria-label="Bỏ tài liệu này"><i class="ri-close-line" style="font-size:13px;"></i></button></div>
                 </sc-for>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                  <input value="{{ refDraft }}" onChange="{{ onRefDraft }}" onKeyDown="{{ onRefKey }}" placeholder="Dán link bài viết, hoặc kéo file vào đây" style="flex:1 1 200px;min-width:0;height:34px;box-sizing:border-box;padding:0 10px;border:1px dashed var(--color-border-input,#878a99);border-radius:5px;font:inherit;font-size:12px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);outline:none;">
+                  <input value="{{ refDraft }}" onChange="{{ onRefDraft }}" onKeyDown="{{ onRefKey }}" placeholder="Dán link bài viết, hoặc kéo file vào đây" style="flex:1 1 200px;min-width:0;height:34px;box-sizing:border-box;padding:0 10px;border:1px dashed var(--color-border-input,#878a99);border-radius:5px;font:inherit;font-size:12px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);">
                   <button onClick="{{ onPickFile }}" style="display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:5px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;" style-hover="background:var(--color-surface-hover,#f3f6f9);"><i class="ri-attachment-2" style="font-size:14px;"></i>Chọn file</button>
                 </div>
               </div>
@@ -208,13 +229,13 @@
 
     <!-- BƯỚC 2 — PHÂN TÍCH -->
     <sc-if value="{{ isResearch }}">
-      <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border-radius:6px;background:rgba(41,156,219,.07);">
+      <div style="display:flex;align-items:flex-start;gap:9px;padding:10px 11px;border-radius:6px;background:color-mix(in srgb,var(--color-admin-info,#299cdb) 7%,transparent);">
         <i class="ri-search-eye-line" style="font-size:16px;color:var(--color-admin-info-text,#1d7fb8);flex-shrink:0;margin-top:1px;"></i>
         <span style="font-size:12px;color:var(--color-admin-info-text,#1d7fb8);line-height:1.6;min-width:0;">Hệ thống đã đọc trang tìm kiếm, 6 bài đang xếp trên và toàn bộ nội dung website của bạn. Bỏ tick những ý bạn không muốn đưa vào bài — phần còn lại sẽ thành dàn ý.</span>
       </div>
 
       <div class="aw-card">
-        <div class="aw-cardh"><i class="ri-user-search-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Người tìm từ khóa này đang muốn gì</span><span style="margin-left:auto;display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;background:rgba(32,80,160,.08);font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);min-width:0;text-align:right;">{{ intentKind }}</span></div>
+        <div class="aw-cardh"><i class="ri-user-search-line" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Người tìm từ khóa này đang muốn gì</span><span style="margin-left:auto;display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);min-width:0;text-align:right;">{{ intentKind }}</span></div>
         <div style="display:flex;flex-direction:column;gap:9px;padding:11px 12px;">
           <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.65;">{{ intentLine }}</span>
           <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">Câu hỏi họ thật sự gõ vào ô tìm kiếm</span>
@@ -290,12 +311,12 @@
     <!-- BƯỚC 3 — DÀN Ý -->
     <sc-if value="{{ isOutline }}">
       <sc-if value="{{ srcOn }}" hint-placeholder-val="{{ false }}">
-        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(32,80,160,.07);">
+        <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:color-mix(in srgb,var(--color-accent,#2050a0) 7%,transparent);">
           <i class="ri-file-text-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:1px;"></i>
           <span style="font-size:12px;color:var(--color-accent,#2050a0);line-height:1.55;min-width:0;">{{ srcNote }}</span>
         </div>
       </sc-if>
-      <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:rgba(41,156,219,.07);">
+      <div style="display:flex;align-items:flex-start;gap:9px;flex-wrap:wrap;padding:9px 11px;border-radius:6px;background:color-mix(in srgb,var(--color-admin-info,#299cdb) 7%,transparent);">
         <i class="ri-list-check-2" style="font-size:15px;color:var(--color-admin-info-text,#1d7fb8);flex-shrink:0;margin-top:1px;"></i>
         <span style="font-size:12px;color:var(--color-admin-info-text,#1d7fb8);line-height:1.55;min-width:0;">Mỗi mục là một câu hỏi có câu trả lời ngắn ngay đầu mục — đó là dạng trợ lý AI trích dẫn được. Sửa dàn ý ở đây không tốn từ AI nào.</span>
       </div>
@@ -304,8 +325,8 @@
           <div style="{{ o.cardStyle }}">
             <div style="display:flex;align-items:center;gap:8px;padding:8px 9px 8px 11px;">
               <span style="font-size:12px;font-weight:700;color:var(--color-body-muted,#5b6275);width:16px;flex-shrink:0;font-variant-numeric:tabular-nums;">{{ o.num }}</span>
-              <input value="{{ o.text }}" onChange="{{ o.onText }}" style="flex:1;min-width:0;padding:5px 7px;border:1px solid transparent;border-radius:4px;font:inherit;font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);background:transparent;outline:none;" style-focus="border-color:#2050a0;background:var(--color-surface,#fff);">
-              <sc-if value="{{ o.lock }}"><span title="Khối giúp Google và trợ lý AI trích dẫn — hệ thống tự viết, bạn không cần soạn" style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:20px;background:rgba(10,179,156,.10);font-size:12px;font-weight:700;color:var(--color-admin-success-text,#0a8f7f);white-space:nowrap;flex-shrink:0;"><i class="ri-robot-2-line" style="font-size:12px;"></i>khối cho AI</span></sc-if>
+              <input value="{{ o.text }}" onChange="{{ o.onText }}" style="flex:1;min-width:0;padding:5px 7px;border:1px solid transparent;border-radius:4px;font:inherit;font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);background:transparent;">
+              <sc-if value="{{ o.lock }}"><span title="Khối giúp Google và trợ lý AI trích dẫn — hệ thống tự viết, bạn không cần soạn" style="display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:20px;background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 10%,transparent);font-size:12px;font-weight:700;color:var(--color-admin-success-text,#0a8f7f);white-space:nowrap;flex-shrink:0;"><i class="ri-robot-2-line" style="font-size:12px;"></i>khối cho AI</span></sc-if>
               <span title="Số từ dự kiến cho mục này" style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums;">{{ o.words }}</span>
               <button onClick="{{ o.up }}" title="Chuyển lên" style="{{ o.upStyle }}" aria-label="Chuyển lên"><i class="ri-arrow-up-s-line" style="font-size:16px;"></i></button>
               <button onClick="{{ o.down }}" title="Chuyển xuống" style="{{ o.downStyle }}" aria-label="Chuyển xuống"><i class="ri-arrow-down-s-line" style="font-size:16px;"></i></button>
@@ -313,20 +334,20 @@
             </div>
             <sc-if value="{{ o.hasQ }}">
               <div style="display:flex;align-items:flex-start;gap:7px;padding:0 11px 8px 38px;">
-                <i class="ri-question-line" style="font-size:13px;color:#c3c8d0;flex-shrink:0;margin-top:2px;"></i>
+                <i class="ri-question-line" style="font-size:13px;color:var(--color-body-muted,#c3c8d0);flex-shrink:0;margin-top:2px;"></i>
                 <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Trả lời câu hỏi: {{ o.q }}</span>
               </div>
             </sc-if>
             <sc-if value="{{ o.hasSubs }}">
               <div style="display:flex;flex-wrap:wrap;gap:5px;padding:0 11px 10px 38px;">
                 <sc-for list="{{ o.subs }}" as="sb" hint-placeholder-count="2">
-                  <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 5px 3px 9px;border:1px solid #f0f1f3;border-radius:20px;background:var(--color-surface-muted,#f8f9fb);font-size:12px;color:var(--color-body-muted,#5b6275);">{{ sb.label }}<button onClick="{{ sb.off }}" title="Bỏ ý này" style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:#c3c8d0;cursor:pointer;" style-hover="background:var(--color-border-strong,#e9ebec);color:var(--color-body-text,#3c4765);" aria-label="Bỏ ý này"><i class="ri-close-line" style="font-size:12px;"></i></button></span>
+                  <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 5px 3px 9px;border:1px solid var(--color-border,#f0f1f3);border-radius:20px;background:var(--color-surface-muted,#f8f9fb);font-size:12px;color:var(--color-body-muted,#5b6275);">{{ sb.label }}<button onClick="{{ sb.off }}" title="Bỏ ý này" style="width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:transparent;color:var(--color-body-muted,#c3c8d0);cursor:pointer;" style-hover="background:var(--color-border-strong,#e9ebec);color:var(--color-body-text,#3c4765);" aria-label="Bỏ ý này"><i class="ri-close-line" style="font-size:12px;"></i></button></span>
                 </sc-for>
               </div>
             </sc-if>
           </div>
         </sc-for>
-        <button onClick="{{ onAddOutline }}" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:9px;border:1px dashed var(--color-border-strong,#dfe2e8);border-radius:6px;background:var(--color-surface-muted,#fbfcfe);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="border-color:#2050a0;color:var(--color-accent,#2050a0);background:rgba(32,80,160,.04);"><i class="ri-add-line" style="font-size:15px;"></i>Thêm mục</button>
+        <button onClick="{{ onAddOutline }}" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;padding:9px;border:1px dashed var(--color-border-strong,#dfe2e8);border-radius:6px;background:var(--color-surface-muted,#fbfcfe);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="border-color:var(--color-accent,#2050a0);color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 4%,transparent);"><i class="ri-add-line" style="font-size:15px;"></i>Thêm mục</button>
       </div>
     </sc-if>
 
@@ -341,13 +362,13 @@
               <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Tiêu đề</span>
               <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">3 phương án, chấm theo 5 tiêu chí</span>
               <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
-                <button onClick="{{ tRedo }}" title="Viết lại 3 phương án khác" style="{{ redoStyle }}" aria-label="Viết lại 3 phương án khác"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
+                <button class="ai" onClick="{{ tRedo }}" title="{{ rTip.title }}" aria-label="{{ rTip.title }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Viết lại</button>
                 <button onClick="{{ tInsert }}" title="{{ tInsertTitle }}" style="{{ tInsStyle }}">{{ tInsLabel }}</button>
               </span>
             </div>
             <div style="display:flex;flex-direction:column;padding:5px;">
               <sc-for list="{{ titleOpts }}" as="t" hint-placeholder-count="3">
-                <button onClick="{{ t.on }}" style="{{ t.style }}" style-hover="background:var(--color-surface-muted,#f8f9fb);"><i class="{{ t.icon }}" style="font-size:15px;color:{{ t.iconColor }};flex-shrink:0;margin-top:1px;"></i><span style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:500;color:var(--color-heading,#1f2b4d);line-height:1.5;">{{ t.text }}</span><sc-if value="{{ t.best }}"><span title="Đạt nhiều tiêu chí nhất trong ba phương án" style="display:inline-flex;align-items:center;gap:4px;height:19px;padding:0 7px;border-radius:20px;background:rgba(32,80,160,.10);font-size:12px;font-weight:700;color:var(--color-accent,#2050a0);white-space:nowrap;"><i class="ri-star-fill" style="font-size:12px;color:#f7b84b;"></i>nên chọn</span></sc-if></span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ t.meta }}</span><span style="display:flex;flex-wrap:wrap;gap:4px;"><sc-for list="{{ t.crits }}" as="cr" hint-placeholder-count="5"><span style="{{ cr.style }}"><i class="{{ cr.icon }}" style="font-size:12px;"></i>{{ cr.label }}</span></sc-for></span></span></button>
+                <button onClick="{{ t.on }}" style="{{ t.style }}" style-hover="background:var(--color-surface-muted,#f8f9fb);"><i class="{{ t.icon }}" style="font-size:15px;color:{{ t.iconColor }};flex-shrink:0;margin-top:1px;"></i><span style="display:flex;flex-direction:column;gap:5px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:baseline;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:500;color:var(--color-heading,#1f2b4d);line-height:1.5;">{{ t.text }}</span><sc-if value="{{ t.best }}"><span title="Đạt nhiều tiêu chí nhất trong ba phương án" style="display:inline-flex;align-items:center;gap:4px;height:19px;padding:0 7px;border-radius:20px;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);font-size:12px;font-weight:700;color:var(--color-accent,#2050a0);white-space:nowrap;"><i class="ri-star-fill" style="font-size:12px;color:var(--color-admin-warning-text,#f7b84b);"></i>nên chọn</span></sc-if></span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ t.meta }}</span><span style="display:flex;flex-wrap:wrap;gap:4px;"><sc-for list="{{ t.crits }}" as="cr" hint-placeholder-count="5"><span style="{{ cr.style }}"><i class="{{ cr.icon }}" style="font-size:12px;"></i>{{ cr.label }}</span></sc-for></span></span></button>
               </sc-for>
             </div>
           </div>
@@ -357,11 +378,15 @@
               <button onClick="{{ ePick }}" title="{{ ePickTitle }}" style="{{ eBoxStyle }}" aria-label="{{ ePickTitle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
               <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Mô tả ngắn</span>
               <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
-                <button onClick="{{ eRedo }}" title="Viết lại đoạn mô tả" style="{{ redoStyle }}" aria-label="Viết lại đoạn mô tả"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
+                <button class="ai" onClick="{{ eRedo }}" title="{{ rTip.excerpt }}" aria-label="{{ rTip.excerpt }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Viết lại</button>
                 <button onClick="{{ eInsert }}" title="{{ eInsertTitle }}" style="{{ eInsStyle }}">{{ eInsLabel }}</button>
               </span>
             </div>
-            <div style="padding:11px 12px;"><textarea class="aw-in" rows="3" value="{{ excerpt }}" onChange="{{ onExcerpt }}" style="border-color:#f0f1f3;background:var(--color-surface-muted,#fbfcfe);"></textarea></div>
+            <div class="lf" style="padding:11px 12px;">
+              <div class="lf-top"><label class="lf-lab" for="aw-exc" style="font-size:12px;">Mô tả ngắn</label><span class="lc" title="{{ langTitle }}">{{ langCode }}</span><span class="cnt" data-b="{{ excM.band }}" id="aw-excc"><i class="{{ excM.icon }}" aria-hidden="true"></i>{{ excM.text }}</span></div>
+              <textarea id="aw-exc" class="aw-in" rows="3" dir="{{ langDir }}" maxlength="{{ excCap }}" aria-describedby="aw-excc" value="{{ excerpt }}" onChange="{{ onExcerpt }}" style="background:var(--color-surface-muted,#fbfcfe);"></textarea>
+              <span class="trk" data-b="{{ excM.band }}" aria-hidden="true"><span class="zone" style="left:{{ excM.lo }}%;width:{{ excM.zw }}%;"></span><span class="fill" style="width:{{ excM.pct }}%;"></span></span>
+            </div>
           </div>
 
           <sc-if value="{{ showBody }}">
@@ -371,22 +396,30 @@
               <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Nội dung chi tiết</span>
               <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;">{{ wordCount }}</span>
               <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
-                <sc-if value="{{ streaming }}"><button onClick="{{ onStop }}" style="display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-admin-danger-text,#f06548);cursor:pointer;white-space:nowrap;" style-hover="background:rgba(240,101,72,.06);"><i class="ri-stop-circle-line" style="font-size:14px;"></i>Dừng</button></sc-if>
-                <sc-if value="{{ notStreaming }}"><button onClick="{{ bRedo }}" title="Viết lại phần nội dung" style="{{ redoStyle }}" aria-label="Viết lại phần nội dung"><i class="ri-refresh-line" style="font-size:14px;"></i></button></sc-if>
+                
+                <sc-if value="{{ notStreaming }}"><button class="ai" onClick="{{ bRedo }}" title="{{ rTip.body }}" aria-label="{{ rTip.body }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Viết lại</button></sc-if>
                 <button onClick="{{ bInsert }}" title="{{ bInsertTitle }}" style="{{ bInsStyle }}">{{ bInsLabel }}</button>
               </span>
             </div>
+            <sc-if value="{{ jbOn }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:10px 12px 0;"><div class="jb" role="status" aria-live="polite">
+              <span class="jb-ic" data-s="{{ jb.s }}" aria-hidden="true"><i class="{{ jb.icon }}"></i></span>
+              <div style="min-width:0;"><div class="jb-t">{{ jb.title }}</div><div class="jb-s" data-s="{{ jb.s }}">{{ jb.sub }}</div></div>
+              <div class="jb-a"><sc-if value="{{ jb.canStop }}"><button class="sx-btn" onClick="{{ onStop }}"><i class="ri-close-line" aria-hidden="true"></i><span class="sx-t">Hủy phần còn lại</span></button></sc-if><sc-if value="{{ jb.canRetry }}"><button class="sx-btn" onClick="{{ onRetry }}" title="{{ jb.retryTip }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button></sc-if><sc-if value="{{ jb.canClose }}"><button class="sx-btn" onClick="{{ onJbClose }}"><span class="sx-t">Đóng</span></button></sc-if></div>
+              <sc-if value="{{ jb.running }}"><span class="jb-bar" aria-hidden="true"><span style="width:{{ jb.pct }}%;"></span></span></sc-if>
+            </div></div>
+            </sc-if>
             <div class="aw-body aw-scroll" style="padding:4px 14px 14px;max-height:340px;overflow-y:auto;">
               <sc-for list="{{ bodyBlocks }}" as="bb" hint-placeholder-count="6">
                 <sc-if value="{{ bb.isTldr }}">
-                  <div style="display:flex;flex-direction:column;gap:6px;margin:12px 0 12px;padding:11px 12px;border:1px solid rgba(10,179,156,.28);border-radius:6px;background:rgba(10,179,156,.06);">
+                  <div style="display:flex;flex-direction:column;gap:6px;margin:12px 0 12px;padding:11px 12px;border:1px solid color-mix(in srgb,var(--color-admin-success,#0ab39c) 28%,transparent);border-radius:6px;background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 6%,transparent);">
                     <span style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-admin-success-text,#0a8f7f);"><i class="ri-flashlight-line" style="font-size:13px;"></i>Tóm tắt nhanh</span>
                     <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="3"><span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.7;">• {{ li.text }}</span></sc-for>
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isH }}"><h2>{{ bb.text }}</h2></sc-if>
                 <sc-if value="{{ bb.isAns }}">
-                  <div style="display:flex;gap:9px;margin:0 0 10px;padding:9px 11px;border-left:3px solid #2050a0;border-radius:0 5px 5px 0;background:var(--color-surface-muted,#f8f9fb);">
+                  <div style="display:flex;gap:9px;margin:0 0 10px;padding:9px 11px;border-left:3px solid var(--color-accent,#2050a0);border-radius:0 5px 5px 0;background:var(--color-surface-muted,#f8f9fb);">
                     <span title="Câu trả lời ngắn ngay đầu mục — phần trợ lý AI thường lấy nguyên văn" style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-accent,#2050a0);white-space:nowrap;flex-shrink:0;padding-top:2px;">Trả lời</span>
                     <span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.7;font-weight:500;">{{ bb.text }}</span>
                   </div>
@@ -417,13 +450,13 @@
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isTake }}">
-                  <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;padding:11px 12px;border:1px solid rgba(32,80,160,.20);border-radius:6px;background:rgba(32,80,160,.04);">
+                  <div style="display:flex;flex-direction:column;gap:6px;margin:0 0 12px;padding:11px 12px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 20%,transparent);border-radius:6px;background:color-mix(in srgb,var(--color-accent,#2050a0) 4%,transparent);">
                     <span style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-accent,#2050a0);">Ý chính cần nhớ</span>
                     <sc-for list="{{ bb.items }}" as="li" hint-placeholder-count="3"><span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.7;">• {{ li.text }}</span></sc-for>
                   </div>
                 </sc-if>
                 <sc-if value="{{ bb.isCta }}">
-                  <div style="margin:0 0 12px;padding:11px 12px;border:1px solid rgba(32,80,160,.22);border-radius:6px;background:rgba(32,80,160,.05);">
+                  <div style="margin:0 0 12px;padding:11px 12px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 22%,transparent);border-radius:6px;background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent);">
                     <span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.7;">{{ bb.text }}</span>
                   </div>
                 </sc-if>
@@ -434,7 +467,7 @@
                   </div>
                 </sc-if>
               </sc-for>
-              <sc-if value="{{ streaming }}"><span style="display:inline-block;width:7px;height:15px;background:#2050a0;vertical-align:-2px;animation:awBlink 1s steps(1) infinite;"></span></sc-if>
+              <sc-if value="{{ streaming }}"><span style="display:inline-block;width:7px;height:15px;background:var(--color-admin-primary,#2050a0);vertical-align:-2px;animation:awBlink 1s steps(1) infinite;"></span></sc-if>
             </div>
           </div>
           </sc-if>
@@ -444,24 +477,26 @@
               <button onClick="{{ sPick }}" title="{{ sPickTitle }}" style="{{ sBoxStyle }}" aria-label="{{ sPickTitle }}"><i class="ri-check-line" style="font-size:14px;"></i></button>
               <span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);white-space:nowrap;">Tiêu đề &amp; mô tả SEO</span>
               <span style="margin-left:auto;display:flex;gap:4px;flex-shrink:0;">
-                <button onClick="{{ sRedo }}" title="Viết lại phần SEO" style="{{ redoStyle }}" aria-label="Viết lại phần SEO"><i class="ri-refresh-line" style="font-size:14px;"></i></button>
+                <button class="ai" onClick="{{ sRedo }}" title="{{ rTip.seo }}" aria-label="{{ rTip.seo }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Viết lại</button>
                 <button onClick="{{ sInsert }}" title="{{ sInsertTitle }}" style="{{ sInsStyle }}">{{ sInsLabel }}</button>
               </span>
             </div>
             <div style="display:flex;flex-direction:column;gap:11px;padding:11px 12px;">
-              <div class="aw-fld">
-                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Tiêu đề SEO</span><span style="margin-left:auto;font-size:12px;color:{{ seoTColor }};font-variant-numeric:tabular-nums;">{{ seoTLen }}</span></div>
-                <input class="aw-in" value="{{ seoTitle }}" onChange="{{ onSeoTitle }}" style="border-color:#f0f1f3;background:var(--color-surface-muted,#fbfcfe);">
+              <div class="lf">
+                <div class="lf-top"><label class="lf-lab" for="aw-seot" style="font-size:12px;">Tiêu đề SEO</label><span class="lc" title="{{ langTitle }}">{{ langCode }}</span><span class="cnt" data-b="{{ seoTM.band }}" id="aw-seotc"><i class="{{ seoTM.icon }}" aria-hidden="true"></i>{{ seoTM.text }}</span></div>
+                <input id="aw-seot" class="aw-in" dir="{{ langDir }}" maxlength="{{ seoTCap }}" aria-describedby="aw-seotc" value="{{ seoTitle }}" onChange="{{ onSeoTitle }}" style="background:var(--color-surface-muted,#fbfcfe);">
+                <span class="trk" data-b="{{ seoTM.band }}" aria-hidden="true"><span class="zone" style="left:{{ seoTM.lo }}%;width:{{ seoTM.zw }}%;"></span><span class="fill" style="width:{{ seoTM.pct }}%;"></span></span>
               </div>
-              <div class="aw-fld">
-                <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Mô tả SEO</span><span style="margin-left:auto;font-size:12px;color:{{ seoDColor }};font-variant-numeric:tabular-nums;">{{ seoDLen }}</span></div>
-                <textarea class="aw-in" rows="2" value="{{ seoDesc }}" onChange="{{ onSeoDesc }}" style="border-color:#f0f1f3;background:var(--color-surface-muted,#fbfcfe);"></textarea>
+              <div class="lf">
+                <div class="lf-top"><label class="lf-lab" for="aw-seod" style="font-size:12px;">Mô tả SEO</label><span class="lc" title="{{ langTitle }}">{{ langCode }}</span><span class="cnt" data-b="{{ seoDM.band }}" id="aw-seodc"><i class="{{ seoDM.icon }}" aria-hidden="true"></i>{{ seoDM.text }}</span></div>
+                <textarea id="aw-seod" class="aw-in" rows="2" dir="{{ langDir }}" maxlength="{{ seoDCap }}" aria-describedby="aw-seodc" value="{{ seoDesc }}" onChange="{{ onSeoDesc }}" style="background:var(--color-surface-muted,#fbfcfe);"></textarea>
+                <span class="trk" data-b="{{ seoDM.band }}" aria-hidden="true"><span class="zone" style="left:{{ seoDM.lo }}%;width:{{ seoDM.zw }}%;"></span><span class="fill" style="width:{{ seoDM.pct }}%;"></span></span>
               </div>
               <div class="aw-fld">
                 <div style="display:flex;align-items:baseline;gap:8px;"><span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Đường dẫn trang</span><span title="Đường dẫn ngắn, không mốc năm thì sang năm không phải đổi link" style="margin-left:auto;font-size:12px;color:{{ slugColor }};">{{ slugLen }}</span></div>
-                <input class="aw-in" value="{{ slug }}" onChange="{{ onSlug }}" style="border-color:#f0f1f3;background:var(--color-surface-muted,#fbfcfe);font-size:12px;">
+                <input class="aw-in" dir="ltr" value="{{ slug }}" onChange="{{ onSlug }}" style="background:var(--color-surface-muted,#fbfcfe);font-size:12px;">
               </div>
-              <div style="display:flex;flex-direction:column;gap:5px;padding:9px 11px;border-radius:5px;background:var(--color-surface-muted,#fbfcfe);border:1px solid #f0f1f3;">
+              <div style="display:flex;flex-direction:column;gap:5px;padding:9px 11px;border-radius:5px;background:var(--color-surface-muted,#fbfcfe);border:1px solid var(--color-border,#f0f1f3);">
                 <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">Xem như trên Google</span>
                 <span style="font-size:12px;color:#0d7a3e;">{{ previewUrl }}</span>
                 <span style="font-size:14px;color:#1a0dab;line-height:1.35;">{{ seoTitle }}</span>
@@ -488,7 +523,7 @@
                   <span style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
                     <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.5;">{{ c.label }}</span>
                     <sc-if value="{{ c.done }}"><span style="display:flex;align-items:flex-start;gap:5px;font-size:12px;color:var(--color-admin-success-text,#0a8f7f);line-height:1.55;"><i class="ri-magic-line" style="font-size:12px;flex-shrink:0;margin-top:1px;"></i>đã chỉnh: {{ c.diff }}</span></sc-if>
-                    <sc-if value="{{ c.fixable }}"><button onClick="{{ c.fix }}" title="{{ c.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:28px;padding:5px 9px;border:1px solid rgba(32,80,160,.28);border-radius:4px;background:rgba(32,80,160,.10);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;" style-hover="background:rgba(32,80,160,.16);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ c.fixLabel }}</button></sc-if>
+                    <sc-if value="{{ c.fixable }}"><button onClick="{{ c.fix }}" title="{{ c.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:28px;padding:5px 9px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent);border-radius:4px;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;" style-hover="background:color-mix(in srgb,var(--color-accent,#2050a0) 16%,transparent);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ c.fixLabel }}</button></sc-if>
                   </span>
                 </div>
               </sc-for>
@@ -520,9 +555,9 @@
             <div style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
               <span style="{{ a.pillStyle }}">{{ a.score }}</span>
               <span style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
-                <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ a.label }}</span><span title="{{ a.term }}" style="font-size:12px;color:#c3c8d0;cursor:help;white-space:nowrap;">{{ a.termShort }}</span></span>
+                <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ a.label }}</span><span title="{{ a.term }}" style="font-size:12px;color:var(--color-body-muted,#c3c8d0);cursor:help;white-space:nowrap;">{{ a.termShort }}</span></span>
                 <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ a.hint }}</span>
-                <sc-if value="{{ a.fixable }}"><button onClick="{{ a.fix }}" title="{{ a.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:30px;padding:6px 10px;border:1px solid rgba(32,80,160,.28);border-radius:4px;background:rgba(32,80,160,.10);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;" style-hover="background:rgba(32,80,160,.16);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ a.fixLabel }}</button></sc-if>
+                <sc-if value="{{ a.fixable }}"><button onClick="{{ a.fix }}" title="{{ a.fixTitle }}" style="align-self:flex-start;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;min-height:30px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent);border-radius:4px;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;" style-hover="background:color-mix(in srgb,var(--color-accent,#2050a0) 16%,transparent);"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ a.fixLabel }}</button></sc-if>
               </span>
             </div>
           </sc-for>
@@ -568,20 +603,20 @@
   </div>
 
   <!-- CHÂN: HÀNH ĐỘNG CHÍNH -->
-  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff);flex-shrink:0;">
+  <div class="aw-ft" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff);flex-shrink:0;">
     <sc-if value="{{ isDraft }}">
       <button onClick="{{ onToggleAll }}" style="display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 4px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;" style-hover="color:var(--color-accent,#2050a0);"><i class="{{ allIcon }}" style="font-size:15px;"></i>{{ allLabel }}</button>
     </sc-if>
-    <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ footNote }}</span><span style="font-size:12px;color:#c3c8d0;line-height:1.4;">⌘/Ctrl + Enter để chạy bước này · Esc để đóng</span></span>
+    <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ footNote }}</span><span class="aw-kbd" style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.4;">⌘/Ctrl + Enter để chạy bước này · Esc để đóng</span></span>
     <sc-if value="{{ showSkip }}"><button onClick="{{ onSkip }}" style="display:inline-flex;align-items:center;min-height:36px;padding:8px 10px;border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;text-decoration:underline;" style-hover="color:var(--color-accent,#2050a0);">{{ skipLabel }}</button></sc-if>
-    <button onClick="{{ onPrimary }}" title="{{ primaryTitle }}" style="{{ primaryStyle }}"><i class="{{ primaryIcon }}" style="{{ primaryIconStyle }}"></i>{{ primaryLabel }}</button>
+    <button class="aw-pri" onClick="{{ onPrimary }}" title="{{ primaryTitle }}" style="{{ primaryStyle }}"><i class="{{ primaryIcon }}" style="{{ primaryIconStyle }}"></i>{{ primaryLabel }}</button>
   </div>
 
   <!-- HỘP THOẠI: YÊU CẦU CHẤT LƯỢNG -->
   <sc-if value="{{ promptOpen }}">
-    <div style="position:absolute;inset:0;z-index:97;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="aw-ov" style="position:absolute;inset:0;z-index:97;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div onClick="{{ onPromptClose }}" style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:520px;max-width:100%;max-height:100%;display:flex;flex-direction:column;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);overflow:hidden;">
+      <div class="aw-dlg" role="dialog" aria-modal="true" aria-label="Yêu cầu hệ thống gửi cho AI thay bạn" style="position:relative;z-index:1;width:520px;max-width:100%;max-height:100%;display:flex;flex-direction:column;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);overflow:hidden;">
         <div style="display:flex;align-items:flex-start;gap:10px;padding:15px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);">
           <i class="ri-file-shield-2-line" style="font-size:18px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:1px;"></i>
           <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0;"><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);">Yêu cầu hệ thống gửi cho AI thay bạn</span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Bạn không cần nhập những điều này — nền tảng đã cài sẵn và giữ nguyên qua mọi bài viết.</span></span>
@@ -599,21 +634,21 @@
         </div>
         <div style="display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);">
           <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;flex:1;min-width:0;">Muốn đổi giọng văn cho toàn website? Cài đặt › Văn phong thương hiệu.</span>
-          <button onClick="{{ onPromptClose }}" style="display:inline-flex;align-items:center;min-height:36px;padding:8px 14px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">Đã hiểu</button>
+          <button onClick="{{ onPromptClose }}" style="display:inline-flex;align-items:center;min-height:36px;padding:8px 14px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">Đã hiểu</button>
         </div>
       </div>
     </div>
   </sc-if>
 
   <sc-if value="{{ closeAskOpen }}">
-    <div style="position:absolute;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="aw-ov" style="position:absolute;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:400px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:var(--color-admin-warning-text,#b57d13);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">Đóng trợ lý khi chưa chèn?</span></div>
+      <div class="aw-dlg" role="dialog" aria-modal="true" style="position:relative;z-index:1;width:400px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:var(--color-admin-warning-text,#b57d13);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">Đóng trợ lý khi chưa chèn?</span></div>
         <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Bản nháp này chưa được chèn vào trang. Đóng bây giờ là mất, và viết lại sẽ trừ thêm hạn ngạch từ AI.</span>
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
-          <button onClick="{{ onCloseInsert }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:0;border-radius:6px;background:#2050a0;font:inherit;cursor:pointer;" style-hover="filter:brightness(.95);"><i class="ri-arrow-left-down-line" style="font-size:16px;color:#fff;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#fff;text-align:left;">Chèn phần đã chọn rồi đóng</span></button>
-          <button onClick="{{ onCloseDrop }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);font:inherit;cursor:pointer;" style-hover="border-color:rgba(240,101,72,.3);background:rgba(240,101,72,.05);"><i class="ri-delete-bin-line" style="font-size:16px;color:var(--color-admin-danger-text,#f06548);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-admin-danger-text,#f06548);text-align:left;">Đóng và bỏ bản nháp</span></button>
+          <button onClick="{{ onCloseInsert }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:0;border-radius:6px;background:var(--color-admin-primary,#2050a0);font:inherit;cursor:pointer;" style-hover="filter:brightness(.95);"><i class="ri-arrow-left-down-line" style="font-size:16px;color:#fff;flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:#fff;text-align:left;">Chèn phần đã chọn rồi đóng</span></button>
+          <button onClick="{{ onCloseDrop }}" style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);font:inherit;cursor:pointer;" style-hover="border-color:color-mix(in srgb,var(--color-admin-danger,#f06548) 30%,transparent);background:color-mix(in srgb,var(--color-admin-danger,#f06548) 5%,transparent);"><i class="ri-delete-bin-line" style="font-size:16px;color:var(--color-admin-danger-text,#f06548);flex-shrink:0;"></i><span style="font-size:12.5px;font-weight:600;color:var(--color-admin-danger-text,#f06548);text-align:left;">Đóng và bỏ bản nháp</span></button>
         </div>
         <button onClick="{{ onCloseStay }}" style="align-self:flex-end;margin-top:6px;min-height:36px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="color:var(--color-body-text,#3c4765);">Ở lại</button>
       </div>
@@ -621,15 +656,15 @@
   </sc-if>
 
   <sc-if value="{{ conflictOpen }}">
-    <div style="position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="aw-ov" style="position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:400px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(247,184,75,.16);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:var(--color-admin-warning-text,#b57d13);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ conflictTitle }}</span></div>
+      <div class="aw-dlg" role="dialog" aria-modal="true" style="position:relative;z-index:1;width:400px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px 20px 15px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-error-warning-line" style="font-size:18px;color:var(--color-admin-warning-text,#b57d13);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ conflictTitle }}</span></div>
         <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ conflictText }}</span>
-        <span style="display:flex;align-items:flex-start;gap:7px;padding:8px 10px;border-radius:5px;background:rgba(32,80,160,.05);font-size:12px;color:var(--color-accent,#2050a0);line-height:1.6;"><i class="ri-lightbulb-line" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i>{{ conflictHint }}</span>
+        <span style="display:flex;align-items:flex-start;gap:7px;padding:8px 10px;border-radius:5px;background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent);font-size:12px;color:var(--color-accent,#2050a0);line-height:1.6;"><i class="ri-lightbulb-line" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i>{{ conflictHint }}</span>
         <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
           <sc-for list="{{ conflictOpts }}" as="co" hint-placeholder-count="3">
-            <button onClick="{{ co.on }}" style="{{ co.style }}" style-hover="border-color:#2050a0;background:rgba(32,80,160,.08);"><i class="{{ co.icon }}" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ co.label }}</span><sc-if value="{{ co.rec }}"><span style="display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:20px;background:#2050a0;font-size:12px;font-weight:700;letter-spacing:.03em;color:#fff;white-space:nowrap;">Khuyến nghị</span></sc-if></span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ co.hint }}</span></span></button>
+            <button onClick="{{ co.on }}" style="{{ co.style }}" style-hover="border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);"><i class="{{ co.icon }}" style="font-size:16px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i><span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0;text-align:left;"><span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ co.label }}</span><sc-if value="{{ co.rec }}"><span style="display:inline-flex;align-items:center;height:18px;padding:0 7px;border-radius:20px;background:var(--color-admin-primary,#2050a0);font-size:12px;font-weight:700;letter-spacing:.03em;color:#fff;white-space:nowrap;">Khuyến nghị</span></sc-if></span><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ co.hint }}</span></span></button>
           </sc-for>
         </div>
         <button onClick="{{ onConflictCancel }}" style="align-self:flex-end;margin-top:6px;min-height:36px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;" style-hover="color:var(--color-body-text,#3c4765);">Hủy</button>
@@ -638,7 +673,7 @@
   </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:760,&quot;height&quot;:800},&quot;contextLabel&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Bài viết&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;pageTitle&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Cách chọn máy lọc nước cho gia đình 4 người&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;topicSeed&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;focusField&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;&quot;,&quot;title&quot;,&quot;excerpt&quot;,&quot;body&quot;,&quot;seo&quot;],&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;industry&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;water&quot;,&quot;cnc&quot;,&quot;service&quot;],&quot;default&quot;:&quot;water&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngữ cảnh khách hàng&quot;},&quot;showResearch&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Chất lượng nội dung&quot;},&quot;aeoOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Chất lượng nội dung&quot;},&quot;minScore&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:7,&quot;max&quot;:10,&quot;step&quot;:1,&quot;default&quot;:9,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Chất lượng nội dung&quot;},&quot;langName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Tiếng Việt&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;langIsSource&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;bizLine&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;siteHost&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;nuocsachanbinh.vn&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;quota&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{used:number,limit:number}&quot;},&quot;filled&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;onInsert&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(payload:any,keys:string[],mode:string)=&gt;void&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;()=&gt;void&quot;},&quot;onNotify&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(text:string,icon:string)=&gt;void&quot;},&quot;onSpend&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:760,&quot;height&quot;:800},&quot;contextLabel&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Bài viết&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;pageTitle&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Cách chọn máy lọc nước cho gia đình 4 người&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;topicSeed&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;focusField&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;&quot;,&quot;title&quot;,&quot;excerpt&quot;,&quot;body&quot;,&quot;seo&quot;],&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;industry&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;water&quot;,&quot;cnc&quot;,&quot;service&quot;],&quot;default&quot;:&quot;water&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngữ cảnh khách hàng&quot;},&quot;showResearch&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Chất lượng nội dung&quot;},&quot;aeoOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Chất lượng nội dung&quot;},&quot;minScore&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:7,&quot;max&quot;:10,&quot;step&quot;:1,&quot;default&quot;:9,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Chất lượng nội dung&quot;},&quot;langName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Tiếng Việt&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;langIsSource&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;bizLine&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;siteHost&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;nuocsachanbinh.vn&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;quota&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;{used:number,limit:number}&quot;},&quot;filled&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;onInsert&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(payload:any,keys:string[],mode:string)=&gt;void&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;()=&gt;void&quot;},&quot;onNotify&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(text:string,icon:string)=&gt;void&quot;},&quot;onSpend&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;langCode&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;VI&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói &amp; hạn ngạch&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;},&quot;simulateError&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Mô phỏng lỗi khi viết&quot;}}">
 class Component extends DCLogic {
   state = {
     step: 'brief', topic: '', kwMain: '', kwSub: null, kwDraft: '',
@@ -647,7 +682,7 @@ class Component extends DCLogic {
     refs: null, ruleOv: {}, sampleOv: {}, pickOv: {},
     aeoOv: {}, kwSugSet: 0,
     gapOff: {}, entOff: {}, linkOff: {}, srcOff: {},
-    outline: null, streaming: false, streamAt: 0, stopped: false,
+    outline: null, streaming: false, streamAt: 0, stopped: false, jb: null, jbBack: 0, jbAt: 0, failedOnce: false,
     titleIdx: 0, titleSet: 0, excIdx: 0, seoIdx: 0, excerpt: '', seoTitle: '', seoDesc: '', slug: '',
     pick: { title: true, excerpt: true, body: true, seo: true },
     conflict: null, fixed: {}, audFixed: {}, dupSeen: false, closeAsk: false, inserted: false, promptOpen: false, ins: {}, lastIns: null, redoUsed: {}, held: 0
@@ -1159,7 +1194,7 @@ class Component extends DCLogic {
   costTip(n) { return 'Dùng ~' + this.fmt(n) + ' từ AI · còn lại ~' + this.fmt(Math.max(0, this.quota().left - n)); }
   canSpend(n) {
     const L = this.quota().left;
-    if (n > L) { this.notify('Không đủ hạn ngạch: lần chạy này cần ~' + this.fmt(n) + ' từ AI, còn ~' + this.fmt(L) + '. Chạy từng phần, hoặc mua thêm ở Cài đặt › Mức dùng AI.', 'ri-lock-line'); return false; }
+    if (n > L) { this.notify('Không đủ hạn ngạch: lần chạy này cần ~' + this.fmt(n) + ' từ AI, còn ~' + this.fmt(L) + '. Chạy từng phần. ' + this.buyLine() + '.', 'ri-lock-line'); return false; }
     return true;
   }
   noQuota() { return !this.canSpend(1); }
@@ -1506,7 +1541,7 @@ class Component extends DCLogic {
     if (this.needTopic() || !this.canSpend(this.targetWords())) return;
     this.spend(this.targetWords());
     this.setState({ held: this.targetWords() });
-    this.setState({ step: 'draft', streaming: true, streamAt: 0, stopped: false, openChip: null });
+    this.setState({ step: 'draft', streaming: true, streamAt: 0, stopped: false, jb: null, failedOnce: false, openChip: null });
     this._stream();
   }
   goAudit() { this.setState({ step: 'audit' }); this.notify('Đã tự chấm ' + this.AUD.length + ' tiêu chí chất lượng — chấm không trừ hạn ngạch', 'ri-award-line'); }
@@ -1514,13 +1549,14 @@ class Component extends DCLogic {
     clearTimeout(this._s);
     const total = this.bodyOf().length;
     const tick = () => {
-      this.setState(s => {
-        if (!s.streaming) return {};
-        const n = s.streamAt + 1;
-        if (n >= total) return { streamAt: total, streaming: false };
-        return { streamAt: n };
-      });
-      if (this.state.streaming) this._s = setTimeout(tick, 190);
+      const s = this.state;
+      if (!s.streaming) return;
+      const n = s.streamAt + 1;
+      /* Tweak "Mô phỏng lỗi khi viết": hỏng ở đoạn ~60% để xem dòng việc AI báo lỗi + hoàn từ */
+      if (this.props.simulateError && !s.failedOnce && n === Math.max(1, Math.ceil(total * 0.6))) { this.failStream(n); return; }
+      if (n >= total) { this.setState({ streamAt: total, streaming: false, jb: 'done' }); return; }
+      this.setState({ streamAt: n });
+      this._s = setTimeout(tick, 190);
     };
     this._s = setTimeout(tick, 180);
   }
@@ -1528,14 +1564,26 @@ class Component extends DCLogic {
     clearTimeout(this._s);
     const held = this.state.held || 0;
     const produced = this.bodyWords();
-    const keep = Math.max(produced, Math.round(held * 0.2));
-    const back = Math.max(0, held - keep);
-    this.setState({ streaming: false, stopped: true, held: 0 });
+    /* §7a: hủy giữa chừng → chỉ tính phần đã sinh ra, hoàn đủ phần chưa chạy (bỏ mức giữ 20% cũ) */
+    const back = Math.max(0, held - produced);
+    this.setState({ streaming: false, stopped: true, held: 0, jb: 'stopped', jbBack: back, jbAt: this.state.streamAt });
     if (back > 0) this.spend(-back);
-    this.notify(back > 0
-      ? ('Đã dừng ở ' + this.fmt(produced) + ' từ — hoàn lại ~' + this.fmt(back) + ' từ AI vào hạn ngạch (giữ tối thiểu 20% cho phần đã chạy)')
-      : 'Đã dừng — phần đã viết vẫn giữ lại', 'ri-stop-circle-line');
   }
+  failStream(n) {
+    clearTimeout(this._s);
+    const held = this.state.held || 0, produced = this.bodyWords();
+    const back = Math.max(0, held - produced);
+    this.setState({ streaming: false, held: 0, jb: 'failed', jbBack: back, jbAt: n, failedOnce: true });
+    if (back > 0) this.spend(-back);
+  }
+  retryStream() {
+    const rest = Math.max(0, this.targetWords() - this.bodyWords());
+    if (!this.canSpend(rest)) return;
+    this.spend(rest);
+    this.setState({ held: rest, streaming: true, stopped: false, jb: null });
+    this._stream();
+  }
+  buyLine() { return this.props.upsell ? 'mua thêm hoặc nâng gói ở Cài đặt › Gói & mức dùng' : 'Cần thêm? Liên hệ hỗ trợ'; }
   redoBase(part) { return part === 'body' ? this.targetWords() : (this.COST[part] || this.COST.fix); }
   redoFree(part) { return !this.state.redoUsed[part]; }
   redoCost(part) { const b = this.redoBase(part); return this.redoFree(part) ? Math.round(b * 0.5) : b; }
@@ -1545,7 +1593,7 @@ class Component extends DCLogic {
     this.spend(c);
     this.setState(s => ({ redoUsed: Object.assign({}, s.redoUsed, { [part]: true }) }));
     const tail = ' · dùng ~' + this.fmt(c) + ' từ AI' + (half ? ' (giảm nửa giá cho lần viết lại đầu của phần này)' : '');
-    if (part === 'body') { this.setState({ streaming: true, streamAt: 0, stopped: false, held: c }); this._stream(); this.notify('Đang viết lại phần nội dung…' + tail, 'ri-refresh-line'); return; }
+    if (part === 'body') { this.setState({ streaming: true, streamAt: 0, stopped: false, held: c, jb: null }); this._stream(); this.notify('Đang viết lại phần nội dung…' + tail, 'ri-refresh-line'); return; }
     if (part === 'title') {
       this.setState(s => ({ titleSet: (s.titleSet + 1) % this.TITLESETS.length, titleIdx: 0 }));
       const n = this.TITLESETS[(this.state.titleSet + 1) % this.TITLESETS.length];
@@ -1658,8 +1706,8 @@ class Component extends DCLogic {
       return {
         num: String(i + 1), label: stepLbl[k], sep: i < stepKeys.length - 1,
         title: stepRole[k] + (done ? ' · bấm để quay lại' : ''),
-        numStyle: 'width:17px;height:17px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;background:' + (on ? '#2050a0' : (done ? 'rgba(10,179,156,.16)' : '#e9ecf4')) + ';color:' + (on ? '#fff' : (done ? '#0a8f7f' : '#adb5bd')) + ';',
-        style: 'display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:0;border-radius:5px;background:' + (on ? 'rgba(32,80,160,.08)' : 'transparent') + ';font:inherit;font-size:12px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#2050a0' : (done ? '#3c4765' : '#adb5bd')) + ';cursor:' + (done ? 'pointer' : 'default') + ';white-space:nowrap;flex-shrink:0;',
+        numStyle: 'width:17px;height:17px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;background:' + (on ? 'var(--color-admin-primary,#2050a0)' : (done ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 16%,transparent)' : 'var(--color-surface-hover,#e9ecf4)')) + ';color:' + (on ? '#fff' : (done ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-body-muted,#adb5bd)')) + ';',
+        style: 'display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 9px;border:0;border-radius:5px;background:' + (on ? 'color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent)' : 'transparent') + ';font:inherit;font-size:12px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? 'var(--color-accent,#2050a0)' : (done ? 'var(--color-body-text,#3c4765)' : 'var(--color-body-muted,#adb5bd)')) + ';cursor:' + (done ? 'pointer' : 'default') + ';white-space:nowrap;flex-shrink:0;',
         on: () => { if (done) this.setState({ step: k, openChip: null }); }
       };
     });
@@ -1677,7 +1725,7 @@ class Component extends DCLogic {
       const rec = d.k === 'type' ? null : TD[d.k];
       const off = rec && rec !== cv;
       const recLbl = rec ? ((d.list.find(o => o.v === rec) || d.list[0]).l) : '';
-      const optStyle = (sel) => 'display:flex;align-items:flex-start;gap:8px;width:100%;box-sizing:border-box;min-height:38px;padding:7px 9px;border:0;border-radius:6px;background:' + (sel ? '#f3f6f9' : 'transparent') + ';font:inherit;text-align:left;cursor:pointer;';
+      const optStyle = (sel) => 'display:flex;align-items:flex-start;gap:8px;width:100%;box-sizing:border-box;min-height:38px;padding:7px 9px;border:0;border-radius:6px;background:' + (sel ? 'var(--color-surface-hover,#f3f6f9)' : 'transparent') + ';font:inherit;text-align:left;cursor:pointer;';
       const opts = d.list.map(o => ({
         label: o.l + (o.v === rec ? ' — đề xuất' : ''), hint: o.h, on2: o.v === cv,
         style: optStyle(o.v === cv), on: () => this.setChip(d.k, o.v)
@@ -1688,7 +1736,7 @@ class Component extends DCLogic {
         title: d.k === 'type'
           ? 'Tự nhận từ danh mục của bài. Đổi loại là người đọc, giọng, độ dài và bộ khối tự đặt lại theo mức tốt nhất cho loại đó.'
           : (off ? ('Bạn đã đổi khỏi mức đề xuất (' + recLbl + '). Mở ra chọn “Về mức đề xuất” để trả lại.') : ('Đang ở mức đề xuất cho loại nội dung này. ' + TD.why)),
-        style: 'display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 8px 0 10px;border:1px ' + (off ? 'dashed #e6c98a' : 'solid ' + (open ? '#2050a0' : '#e9ecf4')) + ';border-radius:5px;background:var(--color-surface,#fff);font:inherit;font-size:12px;cursor:pointer;white-space:nowrap;',
+        style: 'display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 8px 0 10px;border:1px ' + (off ? 'dashed #e6c98a' : 'solid ' + (open ? 'var(--color-accent,#2050a0)' : 'var(--color-border,#e9ecf4)')) + ';border-radius:5px;background:var(--color-surface,#fff);font:inherit;font-size:12px;cursor:pointer;white-space:nowrap;',
         on: () => this.toggleChip(d.k),
         opts: opts
       };
@@ -1708,7 +1756,7 @@ class Component extends DCLogic {
     advBits.push(activeRules + ' quy tắc văn phong');
     if (activeSamples) advBits.push(activeSamples + ' bài mẫu');
 
-    const chipBox = (on) => 'width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:1px solid ' + (on ? '#2050a0' : '#dfe2e8') + ';border-radius:4px;background:' + (on ? '#2050a0' : '#fff') + ';color:' + (on ? '#fff' : 'transparent') + ';cursor:pointer;flex-shrink:0;';
+    const chipBox = (on) => 'width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;border:1px solid ' + (on ? 'var(--color-accent,#2050a0)' : 'var(--color-border-strong,#dfe2e8)') + ';border-radius:4px;background:' + (on ? 'var(--color-admin-primary,#2050a0)' : 'var(--color-surface,#fff)') + ';color:' + (on ? '#fff' : 'transparent') + ';cursor:pointer;flex-shrink:0;';
 
     const gaps = this.gapList().map(g => {
       const on = !S.gapOff[g.k];
@@ -1716,7 +1764,7 @@ class Component extends DCLogic {
         text: g.t, why: g.why, tag: g.tag, box: chipBox(on),
         title: on ? 'Bỏ ý này khỏi dàn ý' : 'Đưa ý này vào dàn ý',
         on: () => this.toggleOff('gapOff', g.k),
-        tagStyle: 'display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (g.gap ? '#0a8f7f' : '#878a99') + ';background:' + (g.gap ? 'rgba(10,179,156,.10)' : '#f3f6f9') + ';'
+        tagStyle: 'display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (g.gap ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-body-muted,#878a99)') + ';background:' + (g.gap ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 10%,transparent)' : 'var(--color-surface-hover,#f3f6f9)') + ';'
       };
     });
     const gapKeep = this.gapList().filter(g => !S.gapOff[g.k]).length;
@@ -1736,7 +1784,7 @@ class Component extends DCLogic {
         label: e.l, icon: e.src === 'topic' ? (on ? 'ri-magic-line' : 'ri-add-line') : (on ? 'ri-check-line' : 'ri-add-line'),
         title: e.src === 'topic' ? 'Rút ra từ chủ đề bạn nhập — nên có, thiếu thì bài dễ bị hiểu sai chủ đề' : 'Khái niệm chung của ngành, có thì tốt, không bắt buộc',
         on: () => this.toggleOff('entOff', e.k),
-        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? (e.need ? 'rgba(10,179,156,.35)' : 'rgba(32,80,160,.25)') : '#e9ebec') + ';border-radius:20px;background:' + (on ? (e.need ? 'rgba(10,179,156,.08)' : 'rgba(32,80,160,.05)') : '#fff') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? (e.need ? '#0a8f7f' : '#2050a0') : '#878a99') + ';cursor:pointer;white-space:nowrap;'
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? (e.need ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 35%,transparent)' : 'color-mix(in srgb,var(--color-accent,#2050a0) 25%,transparent)') : 'var(--color-border-strong,#e9ebec)') + ';border-radius:20px;background:' + (on ? (e.need ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 8%,transparent)' : 'color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent)') : 'var(--color-surface,#fff)') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? (e.need ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-accent,#2050a0)') : 'var(--color-body-muted,#878a99)') + ';cursor:pointer;white-space:nowrap;'
       };
     });
 
@@ -1756,9 +1804,9 @@ class Component extends DCLogic {
     const seoT = this.seoTitleText(), seoD = this.seoDescText(), slug = this.slugText();
     const mk = (k, badLabel, okLabel, fixLabel, hint, sev, diff) => {
       const done = !!S.fixed[k], f = this.FIXES[k] || {};
-      if (done) return { k: k, icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: okLabel, done: true, before: (diff && diff.b) || f.b || '', after: (diff && diff.a) || f.a || '' };
+      if (done) return { k: k, icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0ab39c)', label: okLabel, done: true, before: (diff && diff.b) || f.b || '', after: (diff && diff.a) || f.a || '' };
       return {
-        k: k, icon: sev === 'bad' ? 'ri-close-circle-fill' : 'ri-error-warning-fill', color: sev === 'bad' ? '#f06548' : '#f7b84b',
+        k: k, icon: sev === 'bad' ? 'ri-close-circle-fill' : 'ri-error-warning-fill', color: sev === 'bad' ? 'var(--color-admin-danger-text,#f06548)' : 'var(--color-admin-warning-text,#f7b84b)',
         label: badLabel, fixable: true, fixLabel: fixLabel,
         fixTitle: hint + ' · ' + this.costTip(this.fixCost(k)), fix: () => this.fix(k)
       };
@@ -1798,24 +1846,24 @@ class Component extends DCLogic {
     const numHits = allText.split(/[\s,;()]+/).filter(w => /^\d+([.,]\d+)?$/.test(w.replace(/[.…]+$/, ''))).length;
     const headRows = out.filter(o => !o.blk).length;
     const ansRows = bodyNow.filter(b => b.k === 'ans').length;
-    const okRow = (label) => ({ icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: label });
+    const okRow = (label) => ({ icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0ab39c)', label: label });
     const depthRow = (function (n, t) {
-        if (this.state.fixed.depth) return { k: 'depth', icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: 'Độ sâu đã khớp mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', done: true, before: n + ' từ', after: '~' + t.toLocaleString('vi-VN') + ' từ, thêm ví dụ và số liệu ở các mục mỏng' };
-        if (n < t * 0.75) return { k: 'depth', icon: 'ri-error-warning-fill', color: '#f7b84b', label: 'Bản nháp ' + n + ' từ, ngắn hơn mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fixable: true, fixLabel: 'Viết sâu thêm', fixTitle: 'AI viết thêm ví dụ và số liệu cho các mục còn mỏng, tới sát mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fix: () => this.fix('depth') };
-        if (n > t * 1.3) return { k: 'depth', icon: 'ri-error-warning-fill', color: '#f7b84b', label: 'Bản nháp ' + n + ' từ, dài hơn mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fixable: true, fixLabel: 'Rút gọn', fixTitle: 'AI rút các đoạn lặp ý để về sát mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fix: () => this.fix('depth') };
-        return { icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: n + ' từ — đúng mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ' };
+        if (this.state.fixed.depth) return { k: 'depth', icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0ab39c)', label: 'Độ sâu đã khớp mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', done: true, before: n + ' từ', after: '~' + t.toLocaleString('vi-VN') + ' từ, thêm ví dụ và số liệu ở các mục mỏng' };
+        if (n < t * 0.75) return { k: 'depth', icon: 'ri-error-warning-fill', color: 'var(--color-admin-warning-text,#f7b84b)', label: 'Bản nháp ' + n + ' từ, ngắn hơn mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fixable: true, fixLabel: 'Viết sâu thêm', fixTitle: 'AI viết thêm ví dụ và số liệu cho các mục còn mỏng, tới sát mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fix: () => this.fix('depth') };
+        if (n > t * 1.3) return { k: 'depth', icon: 'ri-error-warning-fill', color: 'var(--color-admin-warning-text,#f7b84b)', label: 'Bản nháp ' + n + ' từ, dài hơn mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fixable: true, fixLabel: 'Rút gọn', fixTitle: 'AI rút các đoạn lặp ý để về sát mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ', fix: () => this.fix('depth') };
+        return { icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0ab39c)', label: n + ' từ — đúng mục tiêu ~' + t.toLocaleString('vi-VN') + ' từ' };
       }).call(this, bw, this.targetWords());
     const imgNeed = Math.max(1, Math.round(bw / 400));
     const linkKeep = this.LINKS.length - Object.keys(S.linkOff).length;
     const rowFor = {
       kwTitle: () => {
-        if (S.fixed.kwTitle) return { k: 'kwTitle', icon: 'ri-checkbox-circle-fill', color: '#0ab39c', label: 'Từ khóa chính “' + kwTerm + '” đã có trong bài', done: true, before: kwHits ? ('chỉ có “' + kwCore + '” ' + kwHits + ' lần') : 'chưa nhắc cụm nào', after: 'cụm đầy đủ “' + kwTerm + '” trong câu mở đầu và một tiêu đề mục' };
+        if (S.fixed.kwTitle) return { k: 'kwTitle', icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0ab39c)', label: 'Từ khóa chính “' + kwTerm + '” đã có trong bài', done: true, before: kwHits ? ('chỉ có “' + kwCore + '” ' + kwHits + ' lần') : 'chưa nhắc cụm nào', after: 'cụm đầy đủ “' + kwTerm + '” trong câu mở đầu và một tiêu đề mục' };
         if (!kwTerm) return { icon: 'ri-information-line', color: 'var(--color-body-muted,#5b6275)', label: 'Chưa có từ khóa chính để đối chiếu' };
         if (kwFullHits > 0) return okRow('Từ khóa chính “' + kwTerm + '” xuất hiện ' + kwFullHits + ' lần, có ngay câu mở đầu');
         const warn = kwHits
           ? 'Bài chưa nhắc đúng cụm “' + kwTerm + '” — chỉ có “' + kwCore + '” (' + kwHits + ' lần)'
           : 'Bài chưa nhắc cụm từ khóa “' + kwTerm + '” lần nào';
-        return { k: 'kwTitle', icon: 'ri-error-warning-fill', color: '#f7b84b', label: warn, fixable: true, fixLabel: 'Đưa từ khóa vào bài', fixTitle: 'AI đưa đúng cụm “' + kwTerm + '” vào câu mở đầu và một tiêu đề mục, giữ câu tự nhiên · ' + this.costTip(this.COST.fix), fix: () => this.fix('kwTitle') };
+        return { k: 'kwTitle', icon: 'ri-error-warning-fill', color: 'var(--color-admin-warning-text,#f7b84b)', label: warn, fixable: true, fixLabel: 'Đưa từ khóa vào bài', fixTitle: 'AI đưa đúng cụm “' + kwTerm + '” vào câu mở đầu và một tiêu đề mục, giữ câu tự nhiên · ' + this.costTip(this.COST.fix), fix: () => this.fix('kwTitle') };
       },
       depth: () => depthRow,
       ansAll: () => ansRows >= headRows
@@ -1847,13 +1895,13 @@ class Component extends DCLogic {
     const checks = (CHECKSET[S.chips.type] || CHECKSET.guide).map(k => rowFor[k] ? rowFor[k]() : null).filter(Boolean);
     const badList = checks.filter(c => c.fixable && c.k);
     const bad = badList.length;
-    const scoreColor = bad === 0 ? '#0ab39c' : (bad <= 3 ? '#f7b84b' : '#e08a1e');
+    const scoreColor = bad === 0 ? 'var(--color-admin-success-text,#0ab39c)' : (bad <= 3 ? 'var(--color-admin-warning-text,#f7b84b)' : 'var(--color-admin-warning-text,#e08a1e)');
 
     const audits = this.AUD.map(a => {
       const done = !!S.audFixed[a.k];
       const sc = done ? 10 : a.s;
       const low = sc < MIN;
-      const col = low ? (sc <= 7 ? '#f06548' : '#f7b84b') : '#0ab39c';
+      const col = low ? (sc <= 7 ? 'var(--color-admin-danger-text,#f06548)' : 'var(--color-admin-warning-text,#f7b84b)') : 'var(--color-admin-success-text,#0ab39c)';
       return {
         label: a.l, term: a.term, termShort: a.ts, score: sc + '/10',
         hint: done ? 'Đã chỉnh theo gợi ý — tiêu chí này đạt.' : a.h,
@@ -1868,7 +1916,7 @@ class Component extends DCLogic {
     const bigNum = (Math.round(avg * 10) / 10).toFixed(1);
     const lowCount = this.AUD.filter(a => (S.audFixed[a.k] ? 10 : a.s) < MIN).length;
     const fixableCount = this.AUD.filter(a => a.fix && !S.audFixed[a.k] && a.s < MIN).length;
-    const bigColor = avg >= MIN ? '#0ab39c' : (avg >= 8 ? '#f7b84b' : '#f06548');
+    const bigColor = avg >= MIN ? 'var(--color-admin-success-text,#0ab39c)' : (avg >= 8 ? 'var(--color-admin-warning-text,#f7b84b)' : 'var(--color-admin-danger-text,#f06548)');
 
     const pickKeys = Object.keys(S.pick).filter(k => S.pick[k]);
     const allOn = pickKeys.length === 4;
@@ -1880,12 +1928,12 @@ class Component extends DCLogic {
       ? ('Đã chèn ' + lowLbl(k) + ' vào trang — bấm để chèn lại bản hiện tại')
       : ('Chèn ' + lowLbl(k) + ' vào trang' + ((this.props.filled || []).indexOf(k) >= 0 ? ' — trường này đang có nội dung, sẽ hỏi trước' : ''));
     const insLbl = (k) => S.ins[k] ? 'Đã chèn' : 'Chèn';
-    const insSty = (k) => 'display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border:1px solid ' + (S.ins[k] ? 'rgba(10,179,156,.35)' : '#e9ebec') + ';border-radius:4px;background:' + (S.ins[k] ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:12px;font-weight:600;color:' + (S.ins[k] ? '#0a8f7f' : '#2050a0') + ';cursor:pointer;white-space:nowrap;';
+    const insSty = (k) => 'display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border:1px solid ' + (S.ins[k] ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 35%,transparent)' : 'var(--color-border-strong,#e9ebec)') + ';border-radius:4px;background:' + (S.ins[k] ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 8%,transparent)' : 'var(--color-surface,#fff)') + ';font:inherit;font-size:12px;font-weight:600;color:' + (S.ins[k] ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-accent,#2050a0)') + ';cursor:pointer;white-space:nowrap;';
 
     const primary = (() => {
       if (S.step === 'audit' && S.inserted) return { l: 'Xong — đóng trợ lý', i: 'ri-check-line', on: () => this.props.onClose && this.props.onClose(), t: 'Nội dung đã nằm trong trang. Đóng trợ lý và bấm Lưu ở đầu trang để phát hành.' };
       if (S.step === 'brief') {
-        if (seoOnly) return { l: 'Viết tiêu đề & mô tả SEO', i: 'ri-sparkling-2-line', on: () => this.goDraft(), t: this.costTip(this.targetWords()) };
+        if (seoOnly) return { l: 'Gợi ý tiêu đề & mô tả SEO', i: 'ri-sparkling-2-line', on: () => this.goDraft(), t: this.costTip(this.targetWords()) };
         if (this.useResearch()) return { l: 'Phân tích trước khi viết', i: 'ri-search-eye-line', on: () => this.goResearch(), t: 'Đọc trang tìm kiếm, 6 bài đang xếp trên và nội dung website của bạn · ' + this.costTip(this.COST.research) };
         return { l: 'Lập dàn ý', i: 'ri-list-check-2', on: () => this.goOutline(), t: this.costTip(this.COST.outline) };
       }
@@ -1904,7 +1952,7 @@ class Component extends DCLogic {
       ctxLine: (this.props.contextLabel || 'Bài viết') + ' · ' + (this.props.pageTitle || 'Bài viết mới'),
       quotaText: 'Còn ' + this.fmt(Q.left) + ' từ AI',
       quotaTitle: 'Gói hiện tại ' + this.fmt(Q.limit) + ' từ AI mỗi tháng, tính riêng với hạn ngạch dịch. Đã dùng ' + this.fmt(Q.used) + '. Tính theo số từ AI thật sự sinh ra: phân tích ~' + this.fmt(this.COST.research) + ', dàn ý ~' + this.fmt(this.COST.outline) + ', viết bản nháp bằng đúng độ dài mục tiêu, mỗi lần tự chỉnh ~' + this.fmt(this.COST.fix) + '. Hạn ngạch trừ ở máy chủ khi tạo yêu cầu, con số này chỉ là bản hiển thị.',
-      quotaStyle: 'display:inline-flex;align-items:center;gap:5px;padding:0 9px;height:24px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0;color:' + (Q.left <= 0 ? '#f06548' : (Q.left <= Q.limit * 0.2 ? '#b57d13' : '#878a99')) + ';background:' + (Q.left <= 0 ? 'rgba(240,101,72,.10)' : (Q.left <= Q.limit * 0.2 ? 'rgba(247,184,75,.14)' : '#f8f9fb')) + ';',
+      quotaStyle: 'display:inline-flex;align-items:center;gap:5px;padding:0 9px;height:24px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;flex-shrink:0;color:' + (Q.left <= 0 ? 'var(--color-admin-danger-text,#f06548)' : (Q.left <= Q.limit * 0.2 ? 'var(--color-admin-warning-text,#b57d13)' : 'var(--color-body-muted,#878a99)')) + ';background:' + (Q.left <= 0 ? 'color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,transparent)' : (Q.left <= Q.limit * 0.2 ? 'color-mix(in srgb,var(--color-admin-warning,#f7b84b) 14%,transparent)' : 'var(--color-surface-muted,#f8f9fb)')) + ';',
       onClose: () => this.askClose(),
       canMin: !!this.props.onMinimize,
       minTitle: S.inserted ? 'Thu xuống thanh dưới để xem nội dung vừa chèn — bấm thanh đó là mở lại, không mất gì' : 'Thu xuống thanh dưới để xem trang — trợ lý giữ nguyên mọi thứ bạn đang làm',
@@ -1935,7 +1983,7 @@ class Component extends DCLogic {
         return {
           label: lblMap[a.k] || a.l, icon: on ? 'ri-check-line' : 'ri-add-line', on: () => this.toggleAeo(a.k),
           title: a.t + (rec ? ' · đề xuất cho loại nội dung này' : ' · tùy chọn với loại nội dung này'),
-          style: 'display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:7px 11px;border:1px ' + (rec ? 'solid' : 'dashed') + ' ' + (on ? 'rgba(10,179,156,.35)' : '#e0e3e9') + ';border-radius:20px;background:' + (on ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? '#0a8f7f' : '#878a99') + ';cursor:pointer;white-space:nowrap;'
+          style: 'display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:7px 11px;border:1px ' + (rec ? 'solid' : 'dashed') + ' ' + (on ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 35%,transparent)' : 'var(--color-border-strong,#e0e3e9)') + ';border-radius:20px;background:' + (on ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 8%,transparent)' : 'var(--color-surface,#fff)') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-body-muted,#878a99)') + ';cursor:pointer;white-space:nowrap;'
         };
       }),
       topicPh: this.hasSource() ? ('Ví dụ: ' + this.srcSubj() + ' — năng lực, quy trình và cam kết') : IND.topicPh,
@@ -1951,16 +1999,16 @@ class Component extends DCLogic {
       kwDraft: S.kwDraft, onKwDraft: (e) => this.setState({ kwDraft: e.target.value }), onKwKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.addKw(); } },
       advOpen: S.advOpen, onToggleAdv: () => this.setState(s => ({ advOpen: !s.advOpen })),
       advIcon: S.advOpen ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line',
-      advHeadStyle: 'display:flex;align-items:center;gap:7px;width:100%;box-sizing:border-box;min-height:44px;padding:11px 12px;border:0;background:' + (S.advOpen ? '#fbfcfe' : '#fff') + ';font:inherit;text-align:left;cursor:pointer;',
+      advHeadStyle: 'display:flex;align-items:center;gap:7px;width:100%;box-sizing:border-box;min-height:44px;padding:11px 12px;border:0;background:' + (S.advOpen ? 'var(--color-surface-muted,#fbfcfe)' : 'var(--color-surface,#fff)') + ';font:inherit;text-align:left;cursor:pointer;',
       advSummary: advBits.join(' · '),
       notes: S.notes, onNotes: (e) => this.setState({ notes: e.target.value }),
       refs: refItems.map((r, i) => ({ label: r.label, meta: r.meta, icon: r.kind === 'link' ? 'ri-links-line' : 'ri-sticky-note-line', off: () => this.setState({ refs: refItems.filter((_, j) => j !== i) }) })),
       refDraft: S.refDraft, onRefDraft: (e) => this.setState({ refDraft: e.target.value }), onRefKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.addRef(); } },
       onPickFile: () => this.setState({ refs: this.refList().concat([{ k: 'f' + Date.now(), kind: 'file', label: 'Bao-gia-2026.pdf', meta: '412 KB' }]) }),
       rules: this.RULES.map(r => { const on = this.ruleOn(r.k); return { label: r.l, icon: on ? 'ri-check-line' : 'ri-add-line', title: r.t + (on ? ' · bật sẵn cho loại nội dung này' : ''), on: () => this.toggleRule(r.k),
-        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'rgba(10,179,156,.35)' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(10,179,156,.08)' : '#fff') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? '#0a8f7f' : '#878a99') + ';cursor:pointer;white-space:nowrap;' }; }),
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 35%,transparent)' : 'var(--color-border-strong,#e9ebec)') + ';border-radius:20px;background:' + (on ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 8%,transparent)' : 'var(--color-surface,#fff)') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-body-muted,#878a99)') + ';cursor:pointer;white-space:nowrap;' }; }),
       samples: this.sampleList().map(s => { const on = this.sampleOn(s.k); return { label: s.l + (s.rel ? ' · gần chủ đề nhất' : ''), icon: on ? 'ri-check-line' : 'ri-add-line', on: () => this.toggleSample(s.k),
-        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'rgba(32,80,160,.3)' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(32,80,160,.07)' : '#fff') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? '#2050a0' : '#878a99') + ';cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;' }; }),
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:6px 10px;border:1px solid ' + (on ? 'color-mix(in srgb,var(--color-accent,#2050a0) 30%,transparent)' : 'var(--color-border-strong,#e9ebec)') + ';border-radius:20px;background:' + (on ? 'color-mix(in srgb,var(--color-accent,#2050a0) 7%,transparent)' : 'var(--color-surface,#fff)') + ';font:inherit;font-size:12px;font-weight:500;color:' + (on ? 'var(--color-accent,#2050a0)' : 'var(--color-body-muted,#878a99)') + ';cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;' }; }),
 
       intentKind: this.INTENT.kind, intentLine: this.INTENT.line,
       questions: this.qsFor().map(q => ({ text: q })),
@@ -1974,11 +2022,11 @@ class Component extends DCLogic {
         subs: o.subs.map((sb, j) => ({ label: sb, off: () => this.outSubDel(i, j) })),
         onText: (e) => this.outText(i, e.target.value),
         up: () => this.outMove(i, -1), down: () => this.outMove(i, 1), del: () => this.outDel(i),
-        cardStyle: 'border:1px solid ' + (o.blk ? 'rgba(10,179,156,.22)' : '#e9ecf4') + ';border-radius:6px;background:' + (o.blk ? 'rgba(10,179,156,.03)' : '#fff') + ';box-shadow:0 1px 2px rgba(56,65,74,.06);',
+        cardStyle: 'border:1px solid ' + (o.blk ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 22%,transparent)' : 'var(--color-border,#e9ecf4)') + ';border-radius:6px;background:' + (o.blk ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 3%,transparent)' : 'var(--color-surface,#fff)') + ';box-shadow:0 1px 2px rgba(56,65,74,.06);',
         delTitle: o.blk ? 'Bỏ khối này — bài sẽ khó được trợ lý AI trích dẫn hơn' : 'Bỏ mục này',
         delStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;',
-        upStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:' + (i === 0 ? '#e0e3e9' : '#adb5bd') + ';cursor:' + (i === 0 ? 'default' : 'pointer') + ';flex-shrink:0;',
-        downStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:' + (i === out.length - 1 ? '#e0e3e9' : '#adb5bd') + ';cursor:' + (i === out.length - 1 ? 'default' : 'pointer') + ';flex-shrink:0;'
+        upStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:' + (i === 0 ? 'var(--color-body-muted,#e0e3e9)' : 'var(--color-body-muted,#adb5bd)') + ';cursor:' + (i === 0 ? 'default' : 'pointer') + ';flex-shrink:0;',
+        downStyle: 'width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:' + (i === out.length - 1 ? 'var(--color-body-muted,#e0e3e9)' : 'var(--color-body-muted,#adb5bd)') + ';cursor:' + (i === out.length - 1 ? 'default' : 'pointer') + ';flex-shrink:0;'
       })),
       onAddOutline: () => this.outAdd(),
 
@@ -1989,10 +2037,10 @@ class Component extends DCLogic {
           meta: t.t.length + ' ký tự · đạt ' + sc + '/5 tiêu chí',
           crits: this.TCRIT.map((l, j) => ({
             label: l, icon: t.c[j] ? 'ri-check-line' : 'ri-close-line',
-            style: 'display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;color:' + (t.c[j] ? '#0a8f7f' : '#b57d13') + ';background:' + (t.c[j] ? 'rgba(10,179,156,.09)' : 'rgba(247,184,75,.13)') + ';'
+            style: 'display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;color:' + (t.c[j] ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-admin-warning-text,#b57d13)') + ';background:' + (t.c[j] ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 9%,transparent)' : 'color-mix(in srgb,var(--color-admin-warning,#f7b84b) 13%,transparent)') + ';'
           })),
-          icon: i === S.titleIdx ? 'ri-radio-button-line' : 'ri-circle-line', iconColor: i === S.titleIdx ? '#2050a0' : '#dfe2e8',
-          style: 'display:flex;align-items:flex-start;gap:9px;width:100%;box-sizing:border-box;padding:9px 10px;border:0;border-radius:5px;background:' + (i === S.titleIdx ? 'rgba(32,80,160,.05)' : 'transparent') + ';font:inherit;cursor:pointer;'
+          icon: i === S.titleIdx ? 'ri-radio-button-line' : 'ri-circle-line', iconColor: i === S.titleIdx ? 'var(--color-accent,#2050a0)' : 'var(--color-body-faint,#dfe2e8)',
+          style: 'display:flex;align-items:flex-start;gap:9px;width:100%;box-sizing:border-box;padding:9px 10px;border:0;border-radius:5px;background:' + (i === S.titleIdx ? 'color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent)' : 'transparent') + ';font:inherit;cursor:pointer;'
         };
       }),
       excerpt: this.excerptText(), onExcerpt: (e) => this.setState({ excerpt: e.target.value }),
@@ -2006,8 +2054,29 @@ class Component extends DCLogic {
       })),
       wordCount: this.bodyWords() + ' / ~' + this.targetWords().toLocaleString('vi-VN') + ' từ', streaming: S.streaming, notStreaming: !S.streaming, onStop: () => this.stopStream(),
       seoTitle: seoT, seoDesc: seoD, onSeoTitle: (e) => this.setState({ seoTitle: e.target.value, fixed: Object.assign({}, S.fixed, { seoTitle: null }) }), onSeoDesc: (e) => this.setState({ seoDesc: e.target.value }),
-      seoTLen: seoT.length + '/60', seoTColor: seoT.length > 60 ? '#f7b84b' : '#0ab39c',
-      seoDLen: seoD.length + '/160', seoDColor: seoD.length > 160 ? '#f7b84b' : '#0ab39c',
+      ...(() => {
+        const M = (f, v) => { const m = window.BSSEO ? window.BSSEO.meter(f, (v || '').length) : { band: 'good', icon: 'ri-check-line', text: (v || '').length + ' ký tự', lo: 0, hi: 0, pct: 0 }; return Object.assign({}, m, { zw: Math.max(0, (m.hi || 0) - (m.lo || 0)) }); };
+        const cap = f => (window.BSSEO ? window.BSSEO.hardCap(f) : 255);
+        const tot = this.bodyOf().length, at = S.streamAt, left = Math.max(0, tot - (S.jbAt || at));
+        const jbs = S.streaming ? 'running' : S.jb;
+        const J = !jbs ? {} : jbs === 'running'
+          ? { s: 'running', icon: 'ri-sparkling-2-line', title: 'Đang viết… ' + at + '/' + tot + ' đoạn', sub: 'Đã viết ~' + this.fmt(this.bodyWords()) + ' từ · giữ tạm ' + this.fmt(S.held || 0) + ' từ AI — phần chưa viết được hoàn lại nếu bạn hủy.', running: true, canStop: true, pct: tot ? Math.round(at / tot * 100) : 0 }
+          : jbs === 'done'
+          ? { s: 'done', icon: 'ri-check-double-line', title: 'Xong — đã viết ' + tot + ' đoạn', sub: 'Dùng ~' + this.fmt(this.bodyWords()) + ' từ AI, còn ' + this.fmt(Q.left) + ' từ AI.', canClose: true }
+          : jbs === 'failed'
+          ? { s: 'failed', icon: 'ri-error-warning-line', title: 'Lỗi ở đoạn ' + (S.jbAt || at) + ' — đã hoàn ' + this.fmt(S.jbBack) + ' từ AI', sub: 'Phần đã viết (' + at + ' đoạn) vẫn giữ. Bấm Thử lại để viết tiếp ' + left + ' đoạn còn lại.', canRetry: true, canClose: true, retryTip: 'Viết tiếp ' + left + ' đoạn — dùng khoảng ' + this.fmt(Math.max(0, this.targetWords() - this.bodyWords())) + ' từ AI' }
+          : { s: 'stopped', icon: 'ri-close-circle-line', title: 'Đã hủy — không trừ từ AI nào cho ' + left + ' đoạn chưa viết', sub: (S.jbBack ? 'Đã hoàn ' + this.fmt(S.jbBack) + ' từ AI giữ tạm. ' : '') + 'Phần đã viết (' + at + ' đoạn) vẫn giữ.', canRetry: left > 0, canClose: true, retryTip: 'Viết tiếp ' + left + ' đoạn — dùng khoảng ' + this.fmt(Math.max(0, this.targetWords() - this.bodyWords())) + ' từ AI' };
+        const rt = k => { const c = this.redoCost(k); return 'Viết lại — dùng khoảng ' + this.fmt(c) + ' từ AI' + (this.redoFree(k) ? ' (lần đầu nửa giá)' : '') + ', còn ' + this.fmt(Math.max(0, Q.left - c)) + ' sau khi chạy'; };
+        return {
+          seoTM: M('seoTitle', seoT), seoDM: M('seoDesc', seoD), excM: M('excerpt', S.excerpt), seoTCap: cap('seoTitle'), seoDCap: cap('seoDesc'), excCap: cap('excerpt'),
+          langCode: (this.props.langCode || 'VI').toUpperCase(), langDir: this.props.langDir || 'auto',
+          jbOn: !!jbs, jb: Object.assign({ s: '', icon: '', title: '', sub: '', running: false, canStop: false, canRetry: false, canClose: false, pct: 0, retryTip: '' }, J),
+          onRetry: () => this.retryStream(), onJbClose: () => this.setState({ jb: null }),
+          rTip: { title: rt('title'), excerpt: rt('excerpt'), body: rt('body'), seo: rt('seo') }
+        };
+      })(),
+      seoTLen: seoT.length + '/60', seoTColor: seoT.length > 60 ? 'var(--color-admin-warning-text,#f7b84b)' : 'var(--color-admin-success-text,#0ab39c)',
+      seoDLen: seoD.length + '/160', seoDColor: seoD.length > 160 ? 'var(--color-admin-warning-text,#f7b84b)' : 'var(--color-admin-success-text,#0ab39c)',
       previewUrl: (this.props.siteHost || 'nuocsachanbinh.vn') + ' › ' + slug,
 
       tBoxStyle: box(S.pick.title), tPick: toggle('title'), tPickTitle: pickTitle('title', S.pick.title),
@@ -2026,10 +2095,10 @@ class Component extends DCLogic {
         done: !!c.done, diff: c.done ? (c.before + ' → ' + c.after) : '' })),
       fixChecksLabel: bad ? ('Tự chỉnh cả ' + bad + ' chỗ') : 'Không còn chỗ nào cần chỉnh',
       fixChecksTitle: bad ? ('AI sửa lần lượt ' + bad + ' chỗ và ghi rõ đã đổi gì · ' + this.costTip(badList.reduce((a, c) => a + this.fixCost(c.k), 0))) : 'Bảng kiểm đã sạch',
-      fixChecksStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;box-sizing:border-box;min-height:36px;padding:8px 10px;border:1px solid ' + (bad ? 'rgba(32,80,160,.28)' : '#e9ecf4') + ';border-radius:4px;background:' + (bad ? 'rgba(32,80,160,.10)' : '#f8f9fb') + ';font:inherit;font-size:12px;font-weight:600;color:' + (bad ? '#2050a0' : '#adb5bd') + ';cursor:' + (bad ? 'pointer' : 'not-allowed') + ';white-space:nowrap;',
+      fixChecksStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:6px;width:100%;box-sizing:border-box;min-height:36px;padding:8px 10px;border:1px solid ' + (bad ? 'color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent)' : 'var(--color-border,#e9ecf4)') + ';border-radius:4px;background:' + (bad ? 'color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent)' : 'var(--color-surface-muted,#f8f9fb)') + ';font:inherit;font-size:12px;font-weight:600;color:' + (bad ? 'var(--color-accent,#2050a0)' : 'var(--color-body-muted,#adb5bd)') + ';cursor:' + (bad ? 'pointer' : 'not-allowed') + ';white-space:nowrap;',
       onFixChecks: () => { if (bad) this.fixAllChecks(badList.map(c => c.k)); },
       slug: slug, onSlug: (e) => this.setState({ slug: e.target.value, fixed: Object.assign({}, S.fixed, { slug: null }) }),
-      slugLen: slug.length + ' ký tự', slugColor: slug.length > 45 ? '#f7b84b' : '#0ab39c',
+      slugLen: slug.length + ' ký tự', slugColor: slug.length > 45 ? 'var(--color-admin-warning-text,#f7b84b)' : 'var(--color-admin-success-text,#0ab39c)',
       cluster: this.CLUSTER.map(c => ({ text: c.t, why: c.why })),
       seoScore: bad ? String(bad) : '✓', seoSummary: bad ? (bad + ' chỗ nên sửa trước khi đăng') : 'Không còn cảnh báo nào',
       scoreTitle: bad ? ('Số chỗ nên sửa trước khi đăng — không phải điểm chất lượng bài. Điểm chất lượng nằm ở bước Kiểm định.') : 'Bảng kiểm đã sạch',
@@ -2044,13 +2113,13 @@ class Component extends DCLogic {
         : 'Có thể chèn vào trang. Số liệu, giá và tên riêng vẫn nên đọc lại một lần trước khi đăng.',
       fixAllLabel: fixableCount ? ('Tự chỉnh ' + fixableCount + ' mục chưa đạt') : 'Không còn mục cần chỉnh',
       fixAllTitle: fixableCount ? ('Chỉnh ' + fixableCount + ' tiêu chí · ' + this.costTip(fixableCount * this.COST.audit)) : 'Mọi tiêu chí đã đạt',
-      fixAllStyle: 'display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:9px 14px;border:1px solid ' + (fixableCount ? 'rgba(32,80,160,.28)' : '#e9ecf4') + ';border-radius:4px;background:' + (fixableCount ? 'rgba(32,80,160,.10)' : '#f8f9fb') + ';font:inherit;font-size:12.5px;font-weight:600;color:' + (fixableCount ? '#2050a0' : '#adb5bd') + ';cursor:' + (fixableCount ? 'pointer' : 'not-allowed') + ';white-space:nowrap;flex-shrink:0;',
+      fixAllStyle: 'display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:9px 14px;border:1px solid ' + (fixableCount ? 'color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent)' : 'var(--color-border,#e9ecf4)') + ';border-radius:4px;background:' + (fixableCount ? 'color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent)' : 'var(--color-surface-muted,#f8f9fb)') + ';font:inherit;font-size:12.5px;font-weight:600;color:' + (fixableCount ? 'var(--color-accent,#2050a0)' : 'var(--color-body-muted,#adb5bd)') + ';cursor:' + (fixableCount ? 'pointer' : 'not-allowed') + ';white-space:nowrap;flex-shrink:0;',
       onFixAll: () => { if (fixableCount) this.fixAll(); },
       schemas: [
-        { label: 'Bài viết (Article)', hint: 'tên tác giả, ngày cập nhật, ảnh đại diện', icon: 'ri-checkbox-circle-fill', color: '#0ab39c' },
-        { label: 'Hỏi đáp (FAQPage)', hint: this.aeoOn('faq') ? '3 câu hỏi trong bài — Google có thể hiện dạng câu hỏi' : 'chưa bật khối hỏi đáp ở bước Đề bài', icon: this.aeoOn('faq') ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill', color: this.aeoOn('faq') ? '#0ab39c' : '#f7b84b' },
-        { label: 'Hướng dẫn (HowTo)', hint: 'các bước chọn máy theo nguồn nước', icon: 'ri-checkbox-circle-fill', color: '#0ab39c' },
-        { label: 'Đường dẫn phân cấp (Breadcrumb)', hint: 'Trang chủ › Cẩm nang chọn máy › bài này', icon: 'ri-checkbox-circle-fill', color: '#0ab39c' }
+        { label: 'Bài viết (Article)', hint: 'tên tác giả, ngày cập nhật, ảnh đại diện', icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0ab39c)' },
+        { label: 'Hỏi đáp (FAQPage)', hint: this.aeoOn('faq') ? '3 câu hỏi trong bài — Google có thể hiện dạng câu hỏi' : 'chưa bật khối hỏi đáp ở bước Đề bài', icon: this.aeoOn('faq') ? 'ri-checkbox-circle-fill' : 'ri-error-warning-fill', color: this.aeoOn('faq') ? 'var(--color-admin-success-text,#0ab39c)' : 'var(--color-admin-warning-text,#f7b84b)' },
+        { label: 'Hướng dẫn (HowTo)', hint: 'các bước chọn máy theo nguồn nước', icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0ab39c)' },
+        { label: 'Đường dẫn phân cấp (Breadcrumb)', hint: 'Trang chủ › Cẩm nang chọn máy › bài này', icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0ab39c)' }
       ],
       afterPub: [
         { icon: 'ri-send-plane-line', label: 'Báo chỉ mục ngay khi bấm Lưu', hint: 'Gửi đường dẫn qua IndexNow (Bing, Yandex) và cập nhật sitemap kèm ngày sửa — cách nhanh nhất để bài được đọc trong vài giờ thay vì vài ngày.', tag: 'tự động', ok: true },
@@ -2060,12 +2129,12 @@ class Component extends DCLogic {
         { icon: 'ri-calendar-check-line', label: 'Hẹn soát lại sau 45 ngày', hint: 'Nếu thứ hạng hoặc lượt hiển thị tụt, hệ thống nhắc cập nhật bài và đổi ngày cập nhật — bài cũ được làm mới thường lên lại nhanh hơn viết bài mới.', tag: 'tự động', ok: true },
         { icon: 'ri-share-forward-line', label: 'Gợi ý nơi chia sẻ để có nguồn dẫn ngoài', hint: 'Các trợ lý AI hay trích nội dung được nhắc ở diễn đàn, hội nhóm ngành và trang tổng hợp. Hệ thống gợi ý 3 nơi phù hợp với ngành của bạn.', tag: 'gợi ý', ok: false }
       ].map(x => Object.assign({}, x, {
-        tagStyle: 'display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (x.ok ? '#0a8f7f' : '#b57d13') + ';background:' + (x.ok ? 'rgba(10,179,156,.10)' : 'rgba(247,184,75,.14)') + ';'
+        tagStyle: 'display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex-shrink:0;color:' + (x.ok ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-admin-warning-text,#b57d13)') + ';background:' + (x.ok ? 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 10%,transparent)' : 'color-mix(in srgb,var(--color-admin-warning,#f7b84b) 14%,transparent)') + ';'
       })),
       pickList: ['title', 'excerpt', 'body', 'seo'].map(k => ({
         label: this.LBL[k] + (S.pick[k] ? '' : ' — không chèn'),
         icon: S.pick[k] ? 'ri-checkbox-circle-fill' : 'ri-checkbox-blank-circle-line',
-        color: S.pick[k] ? '#0a8f7f' : '#adb5bd'
+        color: S.pick[k] ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-body-muted,#adb5bd)'
       })),
 
       allIcon: allOn ? 'ri-checkbox-multiple-line' : 'ri-checkbox-multiple-blank-line', allLabel: allOn ? 'Bỏ chọn tất cả' : 'Chọn tất cả',
@@ -2085,9 +2154,9 @@ class Component extends DCLogic {
       },
       primaryLabel: primary.l, primaryIcon: S.streaming ? 'ri-loader-4-line' : primary.i,
       primaryIconStyle: 'font-size:15px;' + (S.streaming ? 'animation:awSpin .7s linear infinite;' : ''),
-      primaryTitle: (needsQuota && Q.left <= 0) ? 'Đã dùng hết từ AI tháng này — mua thêm hoặc nâng gói ở Cài đặt › Mức dùng AI' : primary.t,
-      primaryStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:9px 15px;border:0;border-radius:4px;background:' + (primaryOff ? '#e9ebec' : '#2050a0') + ';font:inherit;font-size:13px;font-weight:600;color:' + (primaryOff ? '#adb5bd' : '#fff') + ';cursor:' + (primaryOff ? 'not-allowed' : 'pointer') + ';white-space:nowrap;flex-shrink:0;',
-      onPrimary: () => { if (primaryOff) { if (Q.left <= 0) this.notify('Đã dùng hết từ AI tháng này — mua thêm hoặc nâng gói ở Cài đặt › Mức dùng AI', 'ri-lock-line'); return; } primary.on(); },
+      primaryTitle: (needsQuota && Q.left <= 0) ? ('Đã dùng hết từ AI tháng này — ' + this.buyLine()) : primary.t,
+      primaryStyle: 'display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:9px 15px;border:0;border-radius:4px;background:' + (primaryOff ? 'var(--color-surface-hover,#e9ebec)' : 'var(--color-admin-primary,#2050a0)') + ';font:inherit;font-size:13px;font-weight:600;color:' + (primaryOff ? 'var(--color-body-muted,#adb5bd)' : '#fff') + ';cursor:' + (primaryOff ? 'not-allowed' : 'pointer') + ';white-space:nowrap;flex-shrink:0;',
+      onPrimary: () => { if (primaryOff) { if (Q.left <= 0) this.notify('Đã dùng hết từ AI tháng này — ' + this.buyLine(), 'ri-lock-line'); return; } primary.on(); },
 
       promptOpen: S.promptOpen, onPrompt: () => this.setState({ promptOpen: true }), onPromptClose: () => this.setState({ promptOpen: false }),
       promptGroups: this.PROMPT,
@@ -2102,14 +2171,14 @@ class Component extends DCLogic {
         : '',
       conflictOpts: (function (recKey) {
         const list = [
-          { key: 'replace', label: 'Ghi đè bằng bản AI', hint: 'Thay hẳn nội dung cũ — vẫn hoàn tác được sau khi chèn', icon: 'ri-file-transfer-line', on: () => this.resolve('replace') },
+          { key: 'replace', label: 'Thay bằng bản mới', hint: 'Thay hẳn nội dung cũ — vẫn hoàn tác được sau khi chèn', icon: 'ri-file-transfer-line', on: () => this.resolve('replace') },
           { key: 'append', label: 'Thêm vào cuối', hint: 'Giữ nội dung cũ, đặt bản AI xuống dưới', icon: 'ri-insert-row-bottom', on: () => this.resolve('append') },
           { key: 'skip', label: 'Bỏ qua trường đã có', hint: 'Chỉ chèn những trường còn trống', icon: 'ri-skip-forward-line', on: () => this.resolve('skip') }
         ];
         list.sort((a, b) => (b.key === recKey ? 1 : 0) - (a.key === recKey ? 1 : 0));
         return list.map(o => Object.assign(o, {
           rec: o.key === recKey,
-          style: 'display:flex;align-items:flex-start;gap:10px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid ' + (o.key === recKey ? '#2050a0' : '#e9ebec') + ';border-radius:6px;background:' + (o.key === recKey ? 'rgba(32,80,160,.05)' : '#fff') + ';font:inherit;cursor:pointer;'
+          style: 'display:flex;align-items:flex-start;gap:10px;width:100%;box-sizing:border-box;min-height:44px;padding:10px 11px;border:1px solid ' + (o.key === recKey ? 'var(--color-accent,#2050a0)' : 'var(--color-border-strong,#e9ebec)') + ';border-radius:6px;background:' + (o.key === recKey ? 'color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent)' : 'var(--color-surface,#fff)') + ';font:inherit;cursor:pointer;'
         }));
       }).call(this, conflict && conflict.clash.indexOf('body') >= 0 ? 'append' : 'replace'),
       onConflictCancel: () => this.setState({ conflict: null }),

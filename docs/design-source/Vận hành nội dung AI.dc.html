@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
@@ -28,32 +29,40 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 .op-row{display:flex;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);flex-wrap:wrap;}
 .op-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .op-tab:hover{background:var(--color-surface-hover,#f3f6f9);}
-.op-tab.on{border-color:#2050a0;background:rgba(32,80,160,.08);font-weight:600;color:var(--color-accent,#2050a0);}
+.op-tab.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);font-weight:600;color:var(--color-accent,#2050a0);}
 .op-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .op-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
-.op-ai{border-color:rgba(32,80,160,.28);background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);}
-.op-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.op-ai{border-color:color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent);background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);}
+.op-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
 .op-pri:disabled{background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
-.op-cb{width:18px;height:18px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);}
-.op-cb.on{border-color:#2050a0;background:#2050a0;color:#fff;}
+.op-cb{width:18px;height:18px;border:1.5px solid var(--color-border-input,#ccd0d8);border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);}
+.op-cb.on{border-color:var(--color-accent,#2050a0);background:var(--color-admin-primary,#2050a0);color:#fff;}
 .op-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
 .op-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
 .op-src{display:flex;align-items:flex-start;gap:10px;padding:12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);cursor:pointer;text-align:left;font:inherit;min-height:44px;box-sizing:border-box;}
 .op-src:hover{background:var(--color-surface-muted,#fbfcfe);}
-.op-src.on{border-color:#2050a0;background:rgba(32,80,160,.05);}
-.op-srd{width:16px;height:16px;border-radius:50%;border:1.5px solid #ccd0d8;flex-shrink:0;margin-top:2px;position:relative;}
-.op-src.on .op-srd{border-color:#2050a0;}
-.op-src.on .op-srd:after{content:'';position:absolute;inset:3px;border-radius:50%;background:#2050a0;}
+.op-src.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent);}
+.op-srd{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--color-border-input,#ccd0d8);flex-shrink:0;margin-top:2px;position:relative;}
+.op-src.on .op-srd{border-color:var(--color-accent,#2050a0);}
+.op-src.on .op-srd:after{content:'';position:absolute;inset:3px;border-radius:50%;background:var(--color-admin-primary,#2050a0);}
 .op-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
 .op-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;}
-@media (max-width:900px){.op-4{grid-template-columns:repeat(2,minmax(0,1fr));}.op-2{grid-template-columns:1fr;}}
+@container (max-width:900px){.op-4{grid-template-columns:repeat(2,minmax(0,1fr));}.op-2{grid-template-columns:1fr;}}
 @keyframes opFade{from{opacity:0}to{opacity:1}}
 @keyframes opSpin{to{transform:rotate(360deg)}}
 .op-spin{display:inline-block;animation:opSpin 1s linear infinite;}
+
+/* D0-6c · co giãn chung */
+.s6-root{container-type:inline-size;box-sizing:border-box}
+.s6-tst{bottom:calc(22px + env(safe-area-inset-bottom))!important;max-width:calc(100% - 24px)!important}
+@media (max-width:599px){.s6-root{padding:12px 12px 24px!important}.s6-ov{align-items:flex-end!important;padding:0!important}.s6-dlg{width:100%!important;max-width:none!important;max-height:92vh;max-height:92dvh!important;overflow:auto!important;border-radius:12px 12px 0 0!important;padding-bottom:env(safe-area-inset-bottom)}}
+@media (max-width:599px),(pointer:coarse){input,textarea,select{font-size:16px!important}}
+@container (max-width:599px){.s6-root button:not(.dsw):not(.s6-sm){min-height:44px}}
+@media (pointer:coarse){.s6-root button:not(.dsw):not(.s6-sm),.s6-dlg button{min-height:44px}}
 </style>
 </helmet>
 
-<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+<div class="s6-root" data-cs="sup" style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
 
   <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
     <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
@@ -114,7 +123,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
                 <button class="op-btn op-ai" style="min-height:34px;" onClick="{{ t.onFix }}" title="{{ t.fixTitle }}"><i class="ri-sparkling-2-line" style="font-size:14px;"></i>{{ t.act }}</button>
               </sc-if>
               <sc-if value="{{ t.queued }}">
-                <span class="op-chip" style="height:34px;background:rgba(41,156,219,.12);color:var(--color-admin-info-text,#1c7ba8);">Đã đưa vào hàng đợi</span>
+                <span class="op-chip" style="height:34px;background:color-mix(in srgb,var(--color-admin-info,#299cdb) 12%,transparent);color:var(--color-admin-info-text,#1c7ba8);">Đã đưa vào hàng đợi</span>
               </sc-if>
               <button class="op-btn" style="min-height:34px;" onClick="{{ t.onSkip }}" title="Ẩn việc này, không nhắc lại trong 30 ngày">Bỏ qua</button>
             </span>
@@ -207,7 +216,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           <sc-if value="{{ canRun }}"><button class="op-pri" onClick="{{ onQueue }}" title="{{ runTitle }}"><i class="ri-play-circle-line" style="font-size:17px;"></i>{{ runLabel }}</button></sc-if>
           <sc-if value="{{ cannotRun }}">
             <span style="display:flex;gap:8px;flex-wrap:wrap;">
-              <sc-if value="{{ overQuota }}"><a class="op-btn" style="min-height:38px;text-decoration:none;" href="{{ quotaHref }}" title="Mở Cài đặt › Mức dùng AI để mua thêm từ AI hoặc nâng gói"><i class="ri-add-circle-line" style="font-size:16px;"></i>Mua thêm từ AI</a></sc-if>
+              <sc-if value="{{ overUp }}"><a class="op-btn" style="min-height:38px;text-decoration:none;" href="{{ quotaHref }}" title="Mở Cài đặt › Mức dùng AI để mua thêm từ AI hoặc nâng gói"><i class="ri-add-circle-line" style="font-size:16px;"></i>Mua thêm từ AI</a></sc-if><sc-if value="{{ overNoUp }}"><span style="display:inline-flex;align-items:center;gap:6px;min-height:32px;font-size:12.5px;color:var(--color-body-muted,#5b6275);"><i class="ri-customer-service-2-line" aria-hidden="true"></i>Cần thêm? Liên hệ hỗ trợ</span></sc-if>
               <sc-if value="{{ overQuota }}"><button class="op-btn op-ai" style="min-height:38px;" onClick="{{ onPartial }}" title="{{ partialTitle }}"><i class="ri-scissors-cut-line" style="font-size:15px;"></i>{{ partialLabel }}</button></sc-if>
               <button class="op-pri" disabled="{{ true }}" title="{{ runTitle }}"><i class="ri-play-circle-line" style="font-size:17px;"></i>{{ runLabel }}</button>
             </span>
@@ -218,11 +227,20 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ tabQueueOn }}" hint-placeholder-val="{{ false }}">
+    <sc-if value="{{ s6jOn }}" hint-placeholder-val="{{ false }}">
+    <div class="jb" style="margin-bottom:12px;background:var(--color-surface,#fff);">
+      <span class="jb-ic" data-s="{{ s6j.s }}" aria-hidden="true"><i class="{{ s6j.icon }}"></i></span>
+      <div style="min-width:0;"><div class="jb-t">{{ s6j.title }}</div><div class="jb-s" data-s="{{ s6j.s }}">{{ s6j.sub }}</div></div>
+      <div class="jb-a"><sc-if value="{{ s6j.canStop }}"><button type="button" class="sx-btn" onClick="{{ s6Cancel }}"><i class="ri-close-line" aria-hidden="true"></i><span class="sx-t">Hủy phần còn lại</span></button></sc-if><sc-if value="{{ s6j.canRetry }}"><button type="button" class="sx-btn" onClick="{{ s6Retry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button></sc-if><sc-if value="{{ s6j.canClose }}"><button type="button" class="sx-btn" onClick="{{ s6Close }}"><span class="sx-t">Đóng</span></button></sc-if></div>
+      <sc-if value="{{ s6j.running }}"><span class="jb-bar" aria-hidden="true"><span style="width:{{ s6j.pct }}%;"></span></span></sc-if>
+    </div>
+    <span role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;">{{ s6j.say }}</span>
+    </sc-if>
     <div style="display:flex;flex-direction:column;gap:16px;">
       <div class="op-card">
         <div class="op-h">
           <sc-if value="{{ running }}"><i class="ri-loader-4-line op-spin" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></sc-if>
-          <sc-if value="{{ paused }}"><i class="ri-pause-circle-line" style="font-size:17px;color:#f7b84b;"></i></sc-if>
+          <sc-if value="{{ paused }}"><i class="ri-pause-circle-line" style="font-size:17px;color:var(--color-admin-warning-text,#f7b84b);"></i></sc-if>
           <span class="op-t">{{ queueTitle }}</span>
           <span style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <sc-if value="{{ running }}"><button class="op-btn" onClick="{{ onPause }}" title="Tạm dừng sau khi xong mục đang chạy — phần chưa chạy không bị trừ từ AI"><i class="ri-pause-line" style="font-size:14px;"></i>Tạm dừng</button></sc-if>
@@ -257,10 +275,10 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ askOpen }}">
-    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="s6-ov" style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:460px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:opFade .16s ease;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-sparkling-2-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
+      <div class="s6-dlg" role="dialog" aria-modal="true" style="position:relative;z-index:1;width:460px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:opFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-sparkling-2-line" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
         <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.7;">{{ askText }}</span>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
           <button class="op-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Hủy</button>
@@ -271,15 +289,25 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ toast }}">
-    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:opFade .16s ease;max-width:min(620px,calc(100vw - 32px));">
+    <div class="s6-tst" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:opFade .16s ease;max-width:min(620px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
       <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
     </div>
   </sc-if>
+
+  <sc-if value="{{ s6Frames }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+    <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Khung xem 390px · 768px (ghi chú thiết kế)</span>
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+      <iframe src="Vận hành nội dung AI.dc.html#frame" loading="lazy" title="Khung xem 390px" style="width:390px;max-width:100%;height:844px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+      <iframe src="Vận hành nội dung AI.dc.html#frame" loading="lazy" title="Khung xem 768px" style="width:768px;max-width:100%;height:900px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+    </div>
+  </div>
+  </sc-if>
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;quota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:41500,&quot;limit&quot;:60000},&quot;tsType&quot;:&quot;{used:number,limit:number}&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ghi chú thiết kế&quot;,&quot;label&quot;:&quot;Hiện khung xem 390 · 768&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói &amp; hạn ngạch&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;},&quot;simulateError&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Mô phỏng lỗi khi chạy AI&quot;},&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;quota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:41500,&quot;limit&quot;:60000},&quot;tsType&quot;:&quot;{used:number,limit:number}&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;}}">
 class Component extends DCLogic {
   state = { tab: 'watch', src: 'prod', picked: {}, skipped: {}, fixed: {}, paused: false, toast: null, ask: null, retried: {} };
 
@@ -290,10 +318,10 @@ class Component extends DCLogic {
     { icon: 'ri-history-line', label: 'Bài cần làm mới', value: '11', delta: 'cũ hơn 12 tháng', up: false, hint: 'Có số liệu, giá hoặc quy định đã lỗi' }
   ];
   TODOS = [
-    { k: 't1', sev: 'bad', title: 'Máy lọc nước RO 9 cấp có thật sự cần thiết?', kind: 'Bài hướng dẫn', issue: 'Tụt 9 bậc từ khóa “máy lọc RO 9 cấp”', why: 'Ba bài đang đứng trên đều có bảng so sánh cấp lọc và phần hỏi đáp; bài của bạn thiếu cả hai.', cost: 'Thêm ~380 từ AI · còn giữ nguyên phần bạn đã viết', act: 'Bổ sung bằng AI' },
-    { k: 't2', sev: 'bad', title: 'Bảng giá lắp đặt hệ lọc tổng đầu nguồn', kind: 'Trang dịch vụ', issue: 'Không còn được trợ lý AI trích dẫn từ tháng 4', why: 'Giá trong bài là giá năm ngoái nên trợ lý AI bỏ qua vì thiếu mốc thời gian rõ ràng.', cost: 'Viết lại ~260 từ AI', act: 'Làm mới bằng AI' },
+    { k: 't1', sev: 'bad', title: 'Máy lọc nước RO 9 cấp có thật sự cần thiết?', kind: 'Bài hướng dẫn', issue: 'Tụt 9 bậc từ khóa “máy lọc RO 9 cấp”', why: 'Ba bài đang đứng trên đều có bảng so sánh cấp lọc và phần hỏi đáp; bài của bạn thiếu cả hai.', cost: 'Thêm ~380 từ AI · còn giữ nguyên phần bạn đã viết', act: 'Nâng cấp bài viết' },
+    { k: 't2', sev: 'bad', title: 'Bảng giá lắp đặt hệ lọc tổng đầu nguồn', kind: 'Trang dịch vụ', issue: 'Không còn được trợ lý AI trích dẫn từ tháng 4', why: 'Giá trong bài là giá năm ngoái nên trợ lý AI bỏ qua vì thiếu mốc thời gian rõ ràng.', cost: 'Viết lại ~260 từ AI', act: 'Viết lại' },
     { k: 't3', sev: 'warn', title: '28 sản phẩm chưa có mô tả', kind: 'Mô tả sản phẩm', issue: 'Trang sản phẩm trống phần mô tả', why: 'Trang không có mô tả gần như không bao giờ được trợ lý AI dẫn nguồn và cũng khó lên tìm kiếm.', cost: '~22.400 từ AI · nên đưa vào hàng đợi', act: 'Viết hàng loạt' },
-    { k: 't4', sev: 'warn', title: 'Nước nhiễm phèn xử lý thế nào?', kind: 'Bài hướng dẫn', issue: 'Được hỏi nhiều nhưng bài chỉ trả lời một nửa', why: 'Khách hỏi trợ lý AI kèm “giá bao nhiêu” và “mất bao lâu”; bài của bạn chưa có hai phần đó.', cost: 'Thêm ~300 từ AI', act: 'Bổ sung bằng AI' },
+    { k: 't4', sev: 'warn', title: 'Nước nhiễm phèn xử lý thế nào?', kind: 'Bài hướng dẫn', issue: 'Được hỏi nhiều nhưng bài chỉ trả lời một nửa', why: 'Khách hỏi trợ lý AI kèm “giá bao nhiêu” và “mất bao lâu”; bài của bạn chưa có hai phần đó.', cost: 'Thêm ~300 từ AI', act: 'Nâng cấp bài viết' },
     { k: 't5', sev: 'info', title: 'Cách thay lõi lọc tại nhà', kind: 'Blog trải nghiệm', issue: 'Nội dung tốt nhưng thiếu tác giả và mốc cập nhật', why: 'Chỉ cần gắn tác giả mặc định và ngày cập nhật — không tốn từ AI nào.', cost: 'Không dùng từ AI', act: 'Gắn tự động' }
   ];
   CITED = [
@@ -382,6 +410,24 @@ class Component extends DCLogic {
     });
   }
 
+  /* D0-6c · việc AI đang chạy (mẫu ai-job #h-jb): mỗi ô một giao dịch; hủy = không trừ phần chưa chạy; lỗi = hoàn phần đã giữ */
+  s6Run(lbl, total, w, unit, cur) { clearInterval(this._s6); const fail = !!this.props.simulateError && !this._s6Retry; this._s6Retry = false; this.setState({ s6j: { lbl: lbl, total: total, w: w, unit: unit, cur: cur || 'từ AI', done: 0, base: 0, st: 'run', back: 0 } }); this._s6 = setInterval(() => { const j = this.state.s6j; if (!j || j.st !== 'run') { clearInterval(this._s6); return; } const d = j.done + 1; if (fail && d === Math.max(1, Math.ceil(j.total * 0.6))) { clearInterval(this._s6); this.setState({ s6j: Object.assign({}, j, { st: 'fail', back: (j.total - j.done) * j.w }) }); return; } if (d >= j.total) { clearInterval(this._s6); this.setState({ s6j: Object.assign({}, j, { done: j.total, st: 'done' }) }); return; } this.setState({ s6j: Object.assign({}, j, { done: d }) }); }, 300); }
+  s6CancelJob() { clearInterval(this._s6); const j = this.state.s6j; if (j) this.setState({ s6j: Object.assign({}, j, { st: 'cancel', back: (j.total - j.done) * j.w }) }); }
+  s6RetryJob() { const j = this.state.s6j; if (!j) return; this._s6Retry = true; const done = j.done; clearInterval(this._s6); this.setState({ s6j: Object.assign({}, j, { st: 'run' }) }); this._s6 = setInterval(() => { const k = this.state.s6j; if (!k || k.st !== 'run') { clearInterval(this._s6); return; } const d = k.done + 1; if (d >= k.total) { clearInterval(this._s6); this.setState({ s6j: Object.assign({}, k, { done: k.total, st: 'done' }) }); return; } this.setState({ s6j: Object.assign({}, k, { done: d }) }); }, 300); }
+  s6Vals() {
+    const j = this.state.s6j, nf = n => Number(n).toLocaleString('vi-VN');
+    const B = { s: '', icon: '', title: '', sub: '', say: '', running: false, canStop: false, canRetry: false, canClose: false, pct: 0 };
+    const H = { s6Cancel: () => this.s6CancelJob(), s6Retry: () => this.s6RetryJob(), s6Close: () => { clearInterval(this._s6); this.setState({ s6j: null }); } };
+    if (!j) return Object.assign({ s6jOn: false, s6j: B }, H);
+    const left = j.total - j.done; let J;
+    if (j.st === 'run') J = { s: 'running', icon: 'ri-sparkling-2-line', title: j.lbl + '… ' + j.done + '/' + j.total, sub: 'Mỗi ' + j.unit + ' tính riêng — hủy thì không trừ ' + j.cur + ' cho phần chưa chạy.', running: true, canStop: true, pct: Math.round(j.done / j.total * 100) };
+    else if (j.st === 'done') J = { s: 'done', icon: 'ri-check-double-line', title: 'Xong — ' + j.total + ' ' + j.unit, sub: 'Đã dùng ' + nf(j.total * j.w) + ' ' + j.cur + '.', canClose: true };
+    else if (j.st === 'fail') J = { s: 'failed', icon: 'ri-error-warning-line', title: 'Lỗi — đã hoàn ' + nf(j.back) + ' ' + j.cur, sub: 'Dịch vụ AI đang quá tải ở ' + j.unit + ' ' + (j.done + 1) + '/' + j.total + '. ' + j.done + ' ' + j.unit + ' đã xong vẫn giữ; bấm Thử lại để chạy tiếp ' + left + ' ' + j.unit + ' còn lại.', canRetry: true, canClose: true };
+    else J = { s: 'cancel', icon: 'ri-close-circle-line', title: 'Đã hủy — không trừ ' + j.cur + ' nào cho ' + left + ' ' + j.unit + ' chưa chạy', sub: 'Phần đã xong (' + j.done + ' ' + j.unit + ') vẫn giữ.', canRetry: left > 0, canClose: true };
+    J.say = J.title + '. ' + J.sub;
+    return Object.assign({ s6jOn: true, s6j: Object.assign({}, B, J) }, H);
+  }
+  s6Buy() { return this.props.upsell ? 'mua thêm hoặc nâng gói ở Cài đặt › Gói & mức dùng' : 'Cần thêm? Liên hệ hỗ trợ'; }
   renderVals() {
     const S = this.state, src = this.srcOf(), items = this.itemsOf();
     const pk = this.state.picked[S.src] || {};
@@ -401,6 +447,7 @@ class Component extends DCLogic {
     const noteBase = 'display:flex;align-items:flex-start;gap:8px;padding:10px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);font-size:12px;line-height:1.65;';
 
     return {
+      s6Frames: (typeof location === 'undefined' || location.hash !== '#frame') && this.props.showFrames !== false, ...this.s6Vals(), s6Upsell: !!this.props.upsell, s6NoUpsell: !this.props.upsell,
       quotaChip: 'Còn ' + left.toLocaleString('vi-VN') + ' từ AI',
       quotaTitle: 'Gói Cơ bản: ' + limit.toLocaleString('vi-VN') + ' từ AI mỗi tháng. Đã dùng ' + used.toLocaleString('vi-VN') + ' từ. Làm mới ngày 1 hằng tháng.',
       onOpenWriter: () => this.toast('Mở trợ lý viết bài — bài mới dùng sẵn văn phong và bộ mặc định của website', 'ri-quill-pen-line'),
@@ -411,9 +458,9 @@ class Component extends DCLogic {
       onTabWatch: () => this.setState({ tab: 'watch' }), onTabBulk: () => this.setState({ tab: 'bulk' }), onTabQueue: () => this.setState({ tab: 'queue' }),
       todoCount: todos.length, queueBadge: (qTotal - qDone) + ' đang chờ',
 
-      stats: this.STATS.map(s => Object.assign({}, s, { deltaColor: s.up ? '#0a8f7f' : '#b57d13' })),
+      stats: this.STATS.map(s => Object.assign({}, s, { deltaColor: s.up ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-admin-warning-text,#b57d13)' })),
       todos: todos.map(t => Object.assign({}, t, {
-        sevColor: t.sev === 'bad' ? '#f06548' : (t.sev === 'warn' ? '#f7b84b' : '#299cdb'),
+        sevColor: t.sev === 'bad' ? 'var(--color-admin-danger-text,#f06548)' : (t.sev === 'warn' ? 'var(--color-admin-warning-text,#f7b84b)' : 'var(--color-admin-info-text,#299cdb)'),
         pending: !S.fixed[t.k], queued: !!S.fixed[t.k],
         fixTitle: t.cost.indexOf('Không') === 0 ? 'Không dùng từ AI' : (t.act + ' — ' + t.cost + '; kết quả vào Nháp để bạn soát'),
         onFix: () => {
@@ -423,7 +470,7 @@ class Component extends DCLogic {
         onSkip: () => { this.setState(s => ({ skipped: Object.assign({}, s.skipped, { [t.k]: true }) })); this.toast('Đã bỏ qua — hệ thống không nhắc lại việc này trong 30 ngày', 'ri-eye-off-line'); }
       })),
       todoSummary: todos.filter(t => t.sev === 'bad').length + ' việc gấp · ' + todos.length + ' việc tổng',
-      fixAllLabel: 'Làm tất cả bằng AI',
+      fixAllLabel: 'Nâng cấp tất cả',
       fixAllTitle: 'Đưa cả ' + todos.length + ' việc vào hàng đợi — ước tính 12.400 từ AI, còn lại ' + (left - 12400).toLocaleString('vi-VN') + ' từ',
       onFixAll: () => this.setState({ ask: { kind: 'all', title: 'Đưa ' + todos.length + ' việc vào hàng đợi?', text: 'Ước tính dùng 12.400 từ AI trong ' + left.toLocaleString('vi-VN') + ' từ còn lại. Máy chủ chạy nền, bạn tắt máy vẫn chạy. Mọi bản viết lại vào Nháp — không có gì tự đăng, và phần chữ bạn đã sửa tay không bị đè.', ok: 'Đưa vào hàng đợi' } }),
 
@@ -452,12 +499,12 @@ class Component extends DCLogic {
 
       estLine: nPicked ? (effPicked + ' mục · ước tính ' + words.toLocaleString('vi-VN') + ' từ AI · ' + (over ? ('thiếu ' + (words - left).toLocaleString('vi-VN') + ' từ so với hạn ngạch còn lại') : ('còn lại sau khi chạy ' + (left - words).toLocaleString('vi-VN') + ' từ'))) : 'Chọn mục ở trên để xem ước tính số từ AI',
       estNote: nPicked === 0 ? 'Chưa chọn mục nào. Chọn vài mục hoặc bấm “Chọn tất cả” — hệ thống sẽ nói rõ tốn bao nhiêu từ AI trước khi chạy.' : (over ? ('Vượt hạn ngạch: cần ' + words.toLocaleString('vi-VN') + ' từ nhưng chỉ còn ' + left.toLocaleString('vi-VN') + ' từ. Chạy ' + fits + ' mục trước cũng được — phần còn lại để sang kỳ sau, hoặc mua thêm từ AI ở Cài đặt › Mức dùng AI.') : ('Đủ hạn ngạch. Từ AI chỉ bị trừ khi từng mục viết xong; mục lỗi được hoàn lại.')),
-      estNoteStyle: noteBase + (nPicked === 0 ? 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);' : (over ? 'background:rgba(240,101,72,.07);color:var(--color-admin-danger-text,#a5402c);' : 'background:rgba(10,179,156,.07);color:var(--color-admin-success-text,#0a7d6f);')),
+      estNoteStyle: noteBase + (nPicked === 0 ? 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);' : (over ? 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 7%,transparent);color:var(--color-admin-danger-text,#a5402c);' : 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 7%,transparent);color:var(--color-admin-success-text,#0a7d6f);')),
       estIcon: nPicked === 0 ? 'ri-information-line' : (over ? 'ri-error-warning-line' : 'ri-checkbox-circle-line'),
       quotaHref: encodeURI('Hạn ngạch AI và mua thêm.dc.html'),
-      canRun: nPicked > 0 && !over, cannotRun: !(nPicked > 0 && !over), overQuota: over && nPicked > 0,
+      canRun: nPicked > 0 && !over, cannotRun: !(nPicked > 0 && !over), overQuota: over && nPicked > 0, overUp: over && nPicked > 0 && !!this.props.upsell, overNoUp: over && nPicked > 0 && !this.props.upsell,
       runLabel: nPicked ? ('Đưa ' + effPicked + ' mục vào hàng đợi') : 'Đưa vào hàng đợi',
-      runTitle: nPicked === 0 ? 'Chọn ít nhất một mục' : (over ? 'Không đủ từ AI cho ' + effPicked + ' mục — chạy từng phần, hoặc mua thêm ở Cài đặt › Mức dùng AI' : 'Dùng ' + words.toLocaleString('vi-VN') + ' từ AI, còn lại ' + (left - words).toLocaleString('vi-VN') + ' từ'),
+      runTitle: nPicked === 0 ? 'Chọn ít nhất một mục' : (over ? 'Không đủ từ AI cho ' + effPicked + ' mục — chạy từng phần. ' + this.s6Buy() : 'Dùng ' + words.toLocaleString('vi-VN') + ' từ AI, còn lại ' + (left - words).toLocaleString('vi-VN') + ' từ'),
       partialLabel: 'Chạy ' + fits + ' mục vừa hạn ngạch',
       partialTitle: 'Chạy ' + fits + ' mục đầu (' + (fits * src.per).toLocaleString('vi-VN') + ' từ AI), phần còn lại giữ nguyên lựa chọn cho kỳ sau',
       onPartial: () => { this.setState({ tab: 'queue' }); this.toast('Đã đưa ' + fits + ' mục vào hàng đợi — phần còn lại vẫn được ghi nhớ, chạy tiếp khi hạn ngạch làm mới', 'ri-scissors-cut-line'); },
@@ -465,7 +512,7 @@ class Component extends DCLogic {
 
       running: !S.paused, paused: S.paused,
       queueTitle: S.paused ? 'Hàng đợi đang tạm dừng' : 'Đang chạy nền — đợt ' + qTotal + ' mô tả sản phẩm',
-      barStyle: 'display:block;height:100%;width:' + pct + '%;background:#2050a0;border-radius:20px;',
+      barStyle: 'display:block;height:100%;width:' + pct + '%;background:var(--color-admin-primary,#2050a0);border-radius:20px;',
       progressLine: 'Xong ' + qDone + '/' + qTotal + ' mục (' + pct + '%) · ' + (S.paused ? 'đã tạm dừng, phần chưa chạy không bị trừ từ AI' : 'còn khoảng 14 phút · đã dùng 1.586 từ AI trong lần chạy này'),
       onPause: () => { this.setState({ paused: true }); this.toast('Đã tạm dừng sau mục đang chạy — bấm “Chạy tiếp” lúc nào cũng được', 'ri-pause-line'); },
       onResume: () => { this.setState({ paused: false }); this.toast('Đang chạy tiếp từ mục còn lại', 'ri-play-line'); },
@@ -473,10 +520,10 @@ class Component extends DCLogic {
       queue: this.QUEUE.map(q => {
         const st = S.retried[q.k] ? 'wait' : q.st;
         const M = {
-          done: { icon: 'ri-checkbox-circle-fill', color: '#0a8f7f', state: 'Xong · chờ soát' },
-          run: { icon: 'ri-loader-4-line', color: '#2050a0', state: S.paused ? 'Dừng sau mục này' : 'Đang viết' },
+          done: { icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0a8f7f)', state: 'Xong · chờ soát' },
+          run: { icon: 'ri-loader-4-line', color: 'var(--color-accent,#2050a0)', state: S.paused ? 'Dừng sau mục này' : 'Đang viết' },
           wait: { icon: 'ri-time-line', color: 'var(--color-body-muted,#5b6275)', state: 'Đang chờ' },
-          err: { icon: 'ri-error-warning-fill', color: '#c0392b', state: 'Thiếu dữ liệu' }
+          err: { icon: 'ri-error-warning-fill', color: 'var(--color-admin-danger-text,#c0392b)', state: 'Thiếu dữ liệu' }
         }[st];
         return Object.assign({}, q, M, {
           canOpen: st === 'done', canRetry: st === 'err',
@@ -491,7 +538,7 @@ class Component extends DCLogic {
         const k = ask ? ask.kind : '';
         this.setState({ ask: null, tab: k === 'cancel' ? 'queue' : 'queue' });
         if (k === 'cancel') this.toast('Đã hủy phần còn lại — các mục đã xong vẫn nằm trong Nháp', 'ri-close-circle-line');
-        else if (k === 'bulk') this.toast('Đã xếp ' + effPicked + ' mục vào hàng đợi — máy chủ chạy nền, xong sẽ có thông báo', 'ri-check-line');
+        else if (k === 'bulk') { this.setState({ tab: 'queue' }); this.s6Run('Đang viết', effPicked, Math.max(1, Math.round(words / Math.max(1, effPicked))), 'mục', 'từ AI'); }
         else this.toast('Đã xếp ' + todos.length + ' việc vào hàng đợi — máy chủ chạy nền, xong sẽ có thông báo', 'ri-check-line');
       },
       toast: !!S.toast, toastText: S.toast ? S.toast.text : '', toastIcon: S.toast ? S.toast.icon : 'ri-check-line'

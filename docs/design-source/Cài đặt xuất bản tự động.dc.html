@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
@@ -31,36 +32,43 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 .px-x{font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;}
 .px-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .px-pill:hover{background:var(--color-surface-hover,#f3f6f9);}
-.px-pill.on{border-color:#2050a0;background:rgba(32,80,160,.07);font-weight:600;color:var(--color-accent,#2050a0);}
+.px-pill.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 7%,transparent);font-weight:600;color:var(--color-accent,#2050a0);}
 .px-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .px-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
-.px-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.px-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
 .px-pri:disabled{background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
 .px-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
-.px-sw{width:38px;height:20px;border-radius:20px;background:#dfe2e8;position:relative;display:inline-block;flex-shrink:0;transition:background .15s;}
-.px-sw.on{background:#2050a0;}
-.px-sk{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--color-surface,#fff);transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.15);}
-.px-sw.on .px-sk{left:20px;}
 .px-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
 .px-day{width:40px;height:40px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;}
 .px-day:hover{background:var(--color-surface-hover,#f3f6f9);}
-.px-day.on{border-color:#2050a0;background:rgba(32,80,160,.08);color:var(--color-accent,#2050a0);}
+.px-day.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);color:var(--color-accent,#2050a0);}
 .px-hr{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;}
 .px-hb{height:34px;border:1px solid var(--color-border,#e9ecf4);border-radius:3px;background:var(--color-surface-muted,#fbfcfe);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);cursor:pointer;padding:0;}
-.px-hb.on{border-color:#2050a0;background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);}
+.px-hb.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);}
 .px-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;}
 .px-perm{display:grid;grid-template-columns:1.6fr repeat(4,minmax(70px,1fr));gap:0;align-items:center;border-top:1px solid var(--color-border-soft,#f6f7f9);}
 .px-perm>span{padding:10px 12px;font-size:12px;min-width:0;}
 .px-ph{display:grid;grid-template-columns:1.6fr repeat(4,minmax(70px,1fr));gap:0;background:var(--color-surface-muted,#f8f9fb);border-top:1px solid var(--color-border,#e9ecf4);}
 .px-ph>span{padding:8px 12px;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);text-align:center;}
 .px-ph>span:first-child{text-align:left;}
-@media (max-width:520px){.px-perm,.px-ph{grid-template-columns:minmax(0,1.2fr) repeat(4,minmax(44px,1fr));}.px-perm>span,.px-ph>span{padding-left:6px;padding-right:6px;}.px-row,.px-h{padding-left:12px;padding-right:12px;}}
-@media (max-width:1000px){.px-grid{grid-template-columns:minmax(0,1fr);}.px-hr{grid-template-columns:repeat(6,1fr);}.px-perm,.px-ph{grid-template-columns:1.4fr repeat(4,minmax(56px,1fr));}}
+@container (max-width:1000px){.px-grid{grid-template-columns:minmax(0,1fr);}.px-hr{grid-template-columns:repeat(6,1fr);}.px-perm,.px-ph{grid-template-columns:1.4fr repeat(4,minmax(56px,1fr));}}
+.px-row>span{min-width:0;max-width:100%}
+@container (max-width:599px){.px-row>span>span{white-space:normal!important;min-width:0}}
+/* quy tắc hẹp đứng SAU quy tắc rộng để thắng (D0-6c) */
+@container (max-width:520px){.px-perm,.px-ph{grid-template-columns:minmax(0,1fr) repeat(4,48px);}.px-perm>span,.px-ph>span{padding-left:2px!important;padding-right:2px!important;}.px-perm>span:first-child,.px-ph>span:first-child{padding-left:10px!important;}.px-perm>span:not(:first-child){display:flex;justify-content:center}.px-perm .px-hit{width:48px}.px-ph>span{white-space:normal;overflow-wrap:anywhere;font-size:12px!important;letter-spacing:0!important;text-transform:none!important}.px-row,.px-h{padding-left:12px;padding-right:12px;}}
 @keyframes pxFade{from{opacity:0}to{opacity:1}}
+
+/* D0-6c · co giãn chung */
+.s6-root{container-type:inline-size;box-sizing:border-box}
+.s6-tst{bottom:calc(22px + env(safe-area-inset-bottom))!important;max-width:calc(100% - 24px)!important}
+@media (max-width:599px){.s6-root{padding:12px 12px 24px!important}.s6-ov{align-items:flex-end!important;padding:0!important}.s6-dlg{width:100%!important;max-width:none!important;max-height:92vh;max-height:92dvh!important;overflow:auto!important;border-radius:12px 12px 0 0!important;padding-bottom:env(safe-area-inset-bottom)}}
+@media (max-width:599px),(pointer:coarse){input,textarea,select{font-size:16px!important}}
+@container (max-width:599px){.s6-root button:not(.dsw):not(.s6-sm){min-height:44px}}
+@media (pointer:coarse){.s6-root button:not(.dsw):not(.s6-sm),.s6-dlg button{min-height:44px}}
 </style>
 </helmet>
 
-<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+<div class="s6-root" data-cs="sup" style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
 
   <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
     <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
@@ -84,8 +92,8 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
       <span style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
         <span style="font-size:12px;font-weight:600;">{{ masterText }}</span>
         <button class="px-hit" onClick="{{ onMaster }}" title="{{ masterTitle }}">
-          <sc-if value="{{ masterOn }}"><span class="px-sw on"><span class="px-sk"></span></span></sc-if>
-          <sc-if value="{{ masterOff }}"><span class="px-sw"><span class="px-sk"></span></span></sc-if>
+          <sc-if value="{{ masterOn }}"><span class="dsw" aria-checked="true" aria-hidden="true"></span></sc-if>
+          <sc-if value="{{ masterOff }}"><span class="dsw" aria-checked="false" aria-hidden="true"></span></sc-if>
         </button>
       </span>
     </div>
@@ -132,8 +140,8 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           <span class="px-chip" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);height:30px;">GMT+7 · Hồ Chí Minh</span>
           <span style="font-size:12px;font-weight:600;color:{{ holidayColor }};white-space:nowrap;">{{ holidayText }}</span>
           <button class="px-hit" onClick="{{ onHoliday }}" title="{{ holidayTitle }}">
-            <sc-if value="{{ holidayOn }}"><span class="px-sw on"><span class="px-sk"></span></span></sc-if>
-            <sc-if value="{{ holidayOff }}"><span class="px-sw"><span class="px-sk"></span></span></sc-if>
+            <sc-if value="{{ holidayOn }}"><span class="dsw" aria-checked="true" aria-hidden="true"></span></sc-if>
+            <sc-if value="{{ holidayOff }}"><span class="dsw" aria-checked="false" aria-hidden="true"></span></sc-if>
           </button>
         </span>
       </div>
@@ -200,11 +208,11 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
         </span>
         <sc-for list="{{ p.cells }}" as="c" hint-placeholder-count="4">
           <span style="display:flex;justify-content:center;">
-            <sc-if value="{{ c.locked }}"><span title="{{ c.title }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;color:#ccd0d8;"><i class="{{ c.lockIcon }}" style="font-size:16px;"></i></span></sc-if>
+            <sc-if value="{{ c.locked }}"><span title="{{ c.title }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;color:var(--color-body-muted,#ccd0d8);"><i class="{{ c.lockIcon }}" style="font-size:16px;"></i></span></sc-if>
             <sc-if value="{{ c.editable }}">
               <button class="px-hit" onClick="{{ c.on }}" title="{{ c.title }}">
-                <sc-if value="{{ c.on2 }}"><span class="px-sw on" style="width:34px;height:18px;"><span class="px-sk" style="width:14px;height:14px;"></span></span></sc-if>
-                <sc-if value="{{ c.off }}"><span class="px-sw" style="width:34px;height:18px;"><span class="px-sk" style="width:14px;height:14px;"></span></span></sc-if>
+                <sc-if value="{{ c.on2 }}"><span class="dsw" aria-checked="true" aria-hidden="true"></span></sc-if>
+                <sc-if value="{{ c.off }}"><span class="dsw" aria-checked="false" aria-hidden="true"></span></sc-if>
               </button>
             </sc-if>
           </span>
@@ -232,11 +240,11 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           </span>
           <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <span style="font-size:12px;font-weight:600;color:{{ n.color }};white-space:nowrap;">{{ n.stateText }}</span>
-            <sc-if value="{{ n.lockedOn }}"><span title="Không tắt được — đây là thông báo an toàn bắt buộc" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;color:#ccd0d8;"><i class="ri-lock-2-line" style="font-size:15px;"></i></span></sc-if>
+            <sc-if value="{{ n.lockedOn }}"><span title="Không tắt được — đây là thông báo an toàn bắt buộc" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;color:var(--color-body-muted,#ccd0d8);"><i class="ri-lock-2-line" style="font-size:15px;"></i></span></sc-if>
             <sc-if value="{{ n.editable }}">
               <button class="px-hit" onClick="{{ n.on }}" title="{{ n.title }}">
-                <sc-if value="{{ n.on2 }}"><span class="px-sw on"><span class="px-sk"></span></span></sc-if>
-                <sc-if value="{{ n.off }}"><span class="px-sw"><span class="px-sk"></span></span></sc-if>
+                <sc-if value="{{ n.on2 }}"><span class="dsw" aria-checked="true" aria-hidden="true"></span></sc-if>
+                <sc-if value="{{ n.off }}"><span class="dsw" aria-checked="false" aria-hidden="true"></span></sc-if>
               </button>
             </sc-if>
           </span>
@@ -269,11 +277,11 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           </span>
           <span style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <span style="font-size:12px;font-weight:600;color:{{ b.color }};white-space:nowrap;">{{ b.stateText }}</span>
-            <sc-if value="{{ b.lockedOn }}"><span title="Không tắt được — phanh bắt buộc của nền tảng" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;color:#ccd0d8;"><i class="ri-lock-2-line" style="font-size:15px;"></i></span></sc-if>
+            <sc-if value="{{ b.lockedOn }}"><span title="Không tắt được — phanh bắt buộc của nền tảng" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;color:var(--color-body-muted,#ccd0d8);"><i class="ri-lock-2-line" style="font-size:15px;"></i></span></sc-if>
             <sc-if value="{{ b.editable }}">
               <button class="px-hit" onClick="{{ b.on }}" title="{{ b.title }}">
-                <sc-if value="{{ b.on2 }}"><span class="px-sw on"><span class="px-sk"></span></span></sc-if>
-                <sc-if value="{{ b.off }}"><span class="px-sw"><span class="px-sk"></span></span></sc-if>
+                <sc-if value="{{ b.on2 }}"><span class="dsw" aria-checked="true" aria-hidden="true"></span></sc-if>
+                <sc-if value="{{ b.off }}"><span class="dsw" aria-checked="false" aria-hidden="true"></span></sc-if>
               </button>
             </sc-if>
           </span>
@@ -282,16 +290,16 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
       <div style="display:flex;flex-direction:column;gap:9px;padding:13px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfe);">
         <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">Dừng khẩn cấp</span>
         <span class="px-x">Tắt mọi hoạt động tự động ngay: đang viết thì viết xong rồi dừng, chưa đăng thì giữ lại. Không mất bài nào, không mất từ AI nào. Bật lại lúc nào cũng được.</span>
-        <button class="px-btn" style="min-height:38px;align-self:flex-start;border-color:rgba(240,101,72,.35);background:rgba(240,101,72,.07);color:var(--color-admin-danger-text,#a5402c);" onClick="{{ onStopAll }}"><i class="ri-stop-circle-line" style="font-size:15px;"></i>Dừng toàn bộ tự động</button>
+        <button class="px-btn" style="min-height:38px;align-self:flex-start;border-color:color-mix(in srgb,var(--color-admin-danger,#f06548) 35%,transparent);background:color-mix(in srgb,var(--color-admin-danger,#f06548) 7%,transparent);color:var(--color-admin-danger-text,#a5402c);" onClick="{{ onStopAll }}"><i class="ri-stop-circle-line" style="font-size:15px;"></i>Dừng toàn bộ tự động</button>
       </div>
     </div>
   </div>
 
   <sc-if value="{{ askOpen }}">
-    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="s6-ov" style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:pxFade .16s ease;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
+      <div class="s6-dlg" role="dialog" aria-modal="true" style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:pxFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
         <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.7;">{{ askText }}</span>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
           <button class="px-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Hủy</button>
@@ -302,15 +310,25 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ toast }}">
-    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:pxFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+    <div class="s6-tst" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:pxFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
       <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
     </div>
   </sc-if>
+
+  <sc-if value="{{ s6Frames }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+    <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Khung xem 390px · 768px (ghi chú thiết kế)</span>
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+      <iframe src="Cài đặt xuất bản tự động.dc.html#frame" loading="lazy" title="Khung xem 390px" style="width:390px;max-width:100%;height:844px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+      <iframe src="Cài đặt xuất bản tự động.dc.html#frame" loading="lazy" title="Khung xem 768px" style="width:768px;max-width:100%;height:900px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+    </div>
+  </div>
+  </sc-if>
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;autoPublishDefault&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;},&quot;dailyCap&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[6,9,12,20],&quot;default&quot;:12,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;},&quot;pace&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:6,&quot;min&quot;:1,&quot;max&quot;:40,&quot;unit&quot;:&quot;trang/ngày&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ghi chú thiết kế&quot;,&quot;label&quot;:&quot;Hiện khung xem 390 · 768&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói &amp; hạn ngạch&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;},&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;autoPublishDefault&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;},&quot;dailyCap&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[6,9,12,20],&quot;default&quot;:12,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;},&quot;pace&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:6,&quot;min&quot;:1,&quot;max&quot;:40,&quot;unit&quot;:&quot;trang/ngày&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Số liệu chung&quot;}}">
 class Component extends DCLogic {
   QUOTA = { used: 41500, limit: 60000 };
   PACE = 6;
@@ -384,7 +402,7 @@ class Component extends DCLogic {
     const capHigh = c.cap > capMax;
 
     const cell = (code, ri) => {
-      if (code === 'always') return { locked: true, editable: false, lockIcon: 'ri-check-double-line', title: 'Chủ website luôn có toàn quyền — không thể bỏ' };
+      if (code === 'always') return {
       if (code.indexOf('never') === 0) {
         const T = { never_auto: 'Biên tập viên không được tự bật chế độ tự đăng cho cả website', never_ymyl: 'Bài có giá và bài sức khoẻ cần người có quyền cao hơn xác nhận', never_settings: 'Chỉ chủ website và quản lý nội dung được đổi cài đặt này', never_ai: 'Trợ lý AI không bao giờ được tự duyệt bài có giá hay bài sức khoẻ', never_ai2: 'Trợ lý AI không được đổi cài đặt' };
         return { locked: true, editable: false, lockIcon: 'ri-close-line', title: T[code] || 'Không mở được' };
@@ -400,13 +418,14 @@ class Component extends DCLogic {
     };
 
     return {
+      s6Frames: (typeof location === 'undefined' || location.hash !== '#frame') && this.props.showFrames !== false, locked: true, editable: false, lockIcon: 'ri-check-double-line', title: 'Chủ website luôn có toàn quyền — không thể bỏ' };
       masterOn: c.master, masterOff: !c.master, masterText: c.master ? 'Đang bật' : 'Đang tắt',
       masterTitle: c.master ? 'Tắt tự đăng — mọi bài chờ bạn duyệt, kế hoạch và hàng đợi vẫn chạy' : 'Bật tự đăng cho bài đạt cổng chất lượng',
       onMaster: () => {
         if (c.master) { c.master = false; this.touch('Đã tắt tự đăng — mọi bài chờ bạn duyệt, không bài nào bị mất', 'ri-hand'); return; }
         this.setState({ ask: { kind: 'master', icon: 'ri-robot-2-line', title: 'Bật chế độ tự đăng?', text: 'Chỉ bài đạt toàn bộ cổng chất lượng của loại nội dung đó mới được tự lên, và vẫn nằm ở hàng chờ 24 giờ để bạn kịp chặn. Bài có giá, bài so sánh đối thủ và bài sức khoẻ luôn chờ bạn duyệt. Nên chạy 2–3 tuần ở chế độ tắt trước, để bạn thấy chất lượng thực tế.', ok: 'Bật tự đăng' } });
       },
-      heroStyle: 'display:flex;align-items:flex-start;gap:12px;padding:15px 16px;flex-wrap:wrap;' + (c.master ? 'background:rgba(10,179,156,.06);color:var(--color-admin-success-text,#0a7d6f);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);'),
+      heroStyle: 'display:flex;align-items:flex-start;gap:12px;padding:15px 16px;flex-wrap:wrap;' + (c.master ? 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 6%,transparent);color:var(--color-admin-success-text,#0a7d6f);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);'),
       heroIcon: c.master ? 'ri-robot-2-line' : 'ri-hand',
       heroTitle: c.master ? 'Tự đăng đang bật — chỉ bài đạt chuẩn được lên' : 'Tự đăng đang tắt — mọi bài chờ bạn duyệt',
       heroText: c.master
@@ -434,7 +453,7 @@ class Component extends DCLogic {
       }),
       holidayOn: c.holiday, holidayOff: !c.holiday,
       holidayText: c.holiday ? 'Tạm dừng ngày lễ' : 'Đăng cả ngày lễ',
-      holidayColor: c.holiday ? '#0a8f7f' : '#878a99',
+      holidayColor: c.holiday ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-body-muted,#878a99)',
       holidayTitle: c.holiday ? 'Cho đăng cả ngày lễ' : 'Tạm dừng đăng vào ngày lễ Việt Nam',
       onHoliday: () => { c.holiday = !c.holiday; this.touch(); },
 
@@ -447,7 +466,7 @@ class Component extends DCLogic {
       capNote: capHigh
         ? 'Trần ' + c.cap + ' trang/ngày cao hơn 2 lần nhịp thật (' + pace + ' trang/ngày). Tăng đột ngột số trang mới là tín hiệu xấu rõ rệt — nếu cần đẩy nhanh, hãy tăng dần mỗi tuần thay vì đặt trần cao ngay.'
         : 'Trần ' + c.cap + ' trang/ngày nằm trong vùng an toàn so với nhịp thật ' + pace + ' trang/ngày của bạn. Kịch trần thì hệ thống hoãn sang ngày sau, không bỏ bài nào.',
-      capNoteStyle: noteBase + (capHigh ? 'background:rgba(247,184,75,.10);color:var(--color-admin-warning-text,#8a6115);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);'),
+      capNoteStyle: noteBase + (capHigh ? 'background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 10%,transparent);color:var(--color-admin-warning-text,#8a6115);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);'),
       capIcon: capHigh ? 'ri-alert-line' : 'ri-information-line',
       lanes: this.LANES.map(l => Object.assign({}, l, {
         opts: l.opts.map(v => ({
@@ -468,7 +487,7 @@ class Component extends DCLogic {
         return Object.assign({}, n, {
           on2: on, off: !on, editable: !n.lock, lockedOn: n.lock,
           stateText: n.lock ? 'Luôn gửi' : (on ? 'Đang gửi' : 'Đang tắt'),
-          color: (n.lock || on) ? '#0a8f7f' : '#878a99',
+          color: (n.lock || on) ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-body-muted,#878a99)',
           title: on ? 'Tắt thông báo này' : 'Bật thông báo này',
           on: () => { c.notify[n.k] = !on; this.touch(); }
         });
@@ -487,7 +506,7 @@ class Component extends DCLogic {
         return Object.assign({}, b, {
           on2: on, off: !on, editable: !b.lock, lockedOn: b.lock,
           stateText: b.lock ? 'Luôn bật' : (on ? 'Đang bật' : 'Đang tắt'),
-          color: (b.lock || on) ? '#0a8f7f' : '#878a99',
+          color: (b.lock || on) ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-body-muted,#878a99)',
           title: on ? 'Tắt phanh này' : 'Bật phanh này',
           on: () => { c.brakes[b.k] = !on; this.touch(); }
         });

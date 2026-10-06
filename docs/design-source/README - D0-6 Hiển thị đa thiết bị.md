@@ -242,3 +242,125 @@ CSS mới: `@container` (Safari 16+), `:has` chỉ qua luật chung `data-focus-
 Gửi verifier sau D0-6b. Email ≈200 KB: nếu công cụ chụp quá giờ thì **[CHƯA KIỂM ĐƯỢC]**, Claude Code kiểm bằng zip.
 
 Lượt kế tiếp: **D1-1** (D0-6c chạy lúc nào cũng được).
+
+## D0-6c phần 1 (06/10/2026) — bộ AI: AI Writer Panel v2 · Trợ lý viết v2 · Nâng cấp nội dung · Language Context
+
+### Tổng quan
+Sửa tại chỗ cách co giãn của 4 màn đầu; nội dung, dữ liệu mẫu, tương tác giữ nguyên. 8 màn còn lại + quét nhãn AI cuối lượt: **D0-6c phần 2** (TODO.md).
+
+### File
+- `AI Writer Panel v2.dc.html` — link `admin-components.css` + `content-seo.js`; khung gốc `data-cs="sup"` để dùng `.lc` · `.ai` · `.cnt` · `.trk` · `.jb` · `.grab` chuẩn; co theo khung `.aw-wrap`; length-field, ai-assist, ai-job; prop mới `langCode` · `langDir` · `upsell` · `simulateError`; token.
+- `Trợ lý viết nội dung AI v2 - Options.dc.html` — artboard co giãn (rộng 100%, tối đa 1180px), lưới 2 cột → 1 cột dưới 820px khung, trợ lý trượt từ đáy dưới 600px, nhãn nút AI theo C.15, chip `.lc`, thước độ dài, khung xem 390 · 768 (`#frame`, Tweak `showFrames`), Tweak `upsell` truyền xuống panel.
+- `Nâng cấp nội dung.dc.html` — link `styles.css` ngay trước link Google URL CHUẨN (L1-C-09), "Đi tới ô đó" 44px (X3B2), hộp trượt từ đáy dưới 600px, prop `upsell`, token.
+- `Language Context - Design Spec.dc.html` (tham chiếu gốc — chỉ sửa đúng việc được nêu): thanh ngôn ngữ đo bề rộng thật, ai-job, `role="status"`, nhãn nút "Dịch", các chỗ bố cục trang tràn ở 360.
+- Đo: `_tmp/m6c.html?f=<chỉ số tệp>&w=<bề rộng>` · đổi màu: `_tmp/tok.js` (bảng hex → token theo vai trò nền / viền / chữ).
+
+### Màn & tương tác
+- **AI Writer Panel v2** (theo khung chứa `.aw-wrap`, chạy trong hộp thoại của mọi màn chủ)
+  - Dưới 600px: nút đầu panel (thu nhỏ, phóng to, đóng) 44px; chữ ô nhập 16px.
+  - Dưới 560px: đầu panel 2 hàng — (1) icon + tên + nút; (2) "Yêu cầu chất lượng" + chip "Còn N từ AI" (không cắt). Tay nắm `.grab`. Chân: nút chính rộng hết, cao 44px, chừa safe-area; ẩn dòng phím tắt. 3 hộp thoại con (Yêu cầu chất lượng · Đóng khi chưa chèn · Trùng nội dung) trượt từ đáy, bo trên 12px, cao tối đa 92%.
+  - Thước độ dài (`<x-bs-admin::length-field>`): Mô tả ngắn, Tiêu đề SEO, Mô tả SEO ở bước Bản nháp — mốc từ `BSSEO.meter`, chữ + icon + dải màu, `maxlength` = `BSSEO.hardCap`. Nhãn có chip mã ngôn ngữ `.lc` (prop `langCode`); ô theo `langDir` (RTL), đường dẫn luôn `dir="ltr"`.
+  - ai-assist: 4 nút làm mới phương án (Tiêu đề, Mô tả ngắn, Nội dung, SEO) trước chỉ là icon → nút "Viết lại" có chữ; tooltip nói trước số từ AI và số còn lại ("lần đầu nửa giá").
+  - ai-job khi viết nội dung: "Đang viết… 4/12 đoạn" + thanh tiến độ + "Hủy phần còn lại" · "Xong — đã viết N đoạn" · "Lỗi ở đoạn N — đã hoàn X từ AI" + "Thử lại" (viết tiếp phần còn lại) · "Đã hủy — không trừ từ AI nào cho N đoạn chưa viết". Xem lỗi bằng Tweak "Mô phỏng lỗi khi viết". Nút "Dừng" cũ ở đầu thẻ gộp vào dòng này.
+  - Hủy giữa chừng: trước giữ tối thiểu 20% số từ đã giữ tạm → nay chỉ tính phần đã viết, hoàn đủ phần chưa chạy (§7a).
+  - Câu "mua thêm": Tweak "Lời mời nâng gói" (`upsell`, mặc định TẮT) — tắt: "Cần thêm? Liên hệ hỗ trợ"; bật: "mua thêm hoặc nâng gói ở Cài đặt › Gói & mức dùng".
+  - Bỏ `outline:none`, `style-focus` và `.aw-in:focus` tự viết — dùng luật Focus 1b chung.
+- **Trợ lý viết v2 (canvas)**: dưới 820px khung: 1 cột (SEO, Thuộc tính xuống dưới). Dưới 600px: đầu trang 2 hàng, 3 nút chia đều cao 44px; trợ lý là ngăn trượt từ đáy (rộng hết, cao 92%); thanh thu nhỏ trải ngang, chừa safe-area; toast `role="status"`. Nút AI theo C.15: đầu trang "Viết mới" (bài trống) / "Nâng cấp bài viết" (có nội dung); cạnh ô: "Gợi ý tiêu đề" · "Gợi ý mô tả ngắn" · "Gợi ý tiêu đề & mô tả" (ô trống) / "Viết lại" (ô có chữ). Placeholder chỉ còn ví dụ; "Tối đa 160 ký tự" thành thước độ dài, "Để trống thì dùng tiêu đề bài viết." thành dòng gợi ý.
+- **Nâng cấp nội dung**: dưới 600px cửa sổ: ngăn trượt từ đáy (`max-height:92dvh`, tay nắm, bo trên 12px), đầu hộp 2 hàng (chip hạn ngạch xuống hàng 2, không cắt), chân 2 nút chia đôi 44px + safe-area, nút đóng 44px, "Chọn việc nên làm"/"Bỏ chọn tất cả" 44px. Tiêu đề hộp khi trống: "Viết mới bài này/trang này" (bỏ "… bằng AI").
+- **Language Context**: biến thể thanh (dải pill / "+N" / ô chọn) trước tính theo thanh trượt demo (900px) nên ở 390 vẫn vẽ dải pill → tràn 54px. Nay bề rộng hiệu lực = min(thanh trượt, bề rộng khung đo bằng ResizeObserver + `resize`) → 360/390 = ô chọn + panel, 768 = dải pill vừa (280/280). ai-job thay chip "Đang dịch bằng AI…": "Đang dịch… 4/6" + "Hủy phần còn lại" · "Lỗi — đã hoàn N từ AI" + "Thử lại" · "Đã hủy — không trừ từ AI nào cho N ô chưa chạy" · "Xong"; vùng `role="status"` đọc dòng này. Nhãn "Dịch bằng AI" → "Dịch". Bố cục trang: `minmax(min(Npx,100%),1fr)`, cột chú thích co được, bảng 2 cột `minmax(96px,…) minmax(0,1fr)` + `overflow-wrap:anywhere`, bảng so sánh theo trường cuộn trong khung (`min-width:560px`).
+
+### Ánh xạ dữ liệu
+Bộ AI chưa build (Laravel AI SDK chưa cài) — không có file repo. Hạn ngạch đọc `BSAI` (ai-quota.js), mốc độ dài `BSSEO.LIMITS` (content-seo.js).
+
+### Quyền & gói
+Không đổi. `upsell` theo công tắc "Lời mời nâng gói" của Nền tảng › Gói & tính năng.
+
+### Token
+Theo bảng `_tmp/tok.js`: `#2050a0` nền → `--color-admin-primary`, chữ/viền → `--color-accent`; `rgba(32,80,160,a)` → `color-mix(in srgb,var(--color-accent) a%,transparent)` (tương tự success/info/warning/danger); chữ `#878a99`/`#adb5bd`/`#c3c8d0`/`#b9bec7` → `--color-body-muted`; viền ô `.aw-in`/`.tw-in` → `--color-border-input`; placeholder → `--color-placeholder`. AI Writer 184 chỗ · Trợ lý 20 · Nâng cấp 26. Giữ hex có chủ đích: `#fff` chữ trên nền đặc, toast nền đảo `#1f2b4d`, màu khung xem trước Google (`#1a0dab` · `#4d5156` · `#0d7a3e`), `#e6c98a` (trang trí). Language Context: chỉ đổi token ở khối vừa sửa (tham chiếu gốc).
+
+### Icon
+Thêm: `ri-sparkling-2-line` (nút AI thay `ri-quill-pen-line`/`ri-refresh-line`), `ri-check-double-line`, `ri-error-warning-line`, `ri-close-circle-line`, `ri-close-line`, `ri-refresh-line` (ai-job).
+
+### Chuỗi cần dịch
+"Viết mới" · "Nâng cấp bài viết" · "Gợi ý tiêu đề" · "Gợi ý mô tả ngắn" · "Gợi ý tiêu đề & mô tả" · "Gợi ý tiêu đề & mô tả SEO" · "Viết lại" · "Viết lại — dùng khoảng {n} từ AI (lần đầu nửa giá), còn {left} sau khi chạy" · "Đang viết… {at}/{total} đoạn" · "Xong — đã viết {n} đoạn" · "Lỗi ở đoạn {n} — đã hoàn {w} từ AI" · "Đã hủy — không trừ từ AI nào cho {n} đoạn chưa viết" · "Đang dịch… {d}/{t}" · "Đã hủy — không trừ từ AI nào cho {n} ô chưa chạy" · "Hủy phần còn lại" · "Thử lại" · "Đóng" · "Cần thêm? Liên hệ hỗ trợ" · "Viết mới bài này" / "Viết mới trang này" · "Để trống thì dùng tiêu đề bài viết." · "Khung xem 390px · 768px (ghi chú thiết kế)".
+
+### Kết quả 12 tiêu chí (4 màn)
+1 đạt · 2 đạt (Sửa bài → "Viết mới" → 5 bước; trường đơn: 1 bấm) · 3 chưa hết: AI Writer còn "IndexNow", "llms.txt", "GPTBot…" trong gợi ý sau khi đăng (khối cho người thạo — chuyển D1-4d) · 4 đạt (nút làm mới trước chỉ icon → có chữ) · 5 đạt (placeholder là ví dụ) · 6 đạt (hủy hoàn đủ; đóng khi chưa chèn có hỏi) · 7 đạt · 8 đạt · 9 đạt ở 360/390/768 · 10 đạt (⌘/Ctrl + Enter giữ cho chuột) · 11 đạt (đo Chữ lớn) · 12 đạt (C.15; grep 4 tệp: 0 nhãn ở cột "Không dùng").
+
+### Kiểm hiển thị (D0-6c phần 1)
+Đo bằng `_tmp/m6c.html` (cách đo như `_audit/harness.html`). Chữ lớn = `--fsp:2px` + `zoom:16/14`.
+
+| Màn | 360 | 390 | 768 | 1024 | 1440 | Chữ lớn |
+|---|---|---|---|---|---|---|
+| AI Writer Panel v2 (đứng riêng) | đạt | đạt | đạt | đạt | đạt | đạt |
+| Trợ lý viết v2 (canvas) | đạt · trước tràn 875px (artboard 1220px cố định) | đạt · trước tràn | đạt · 1 cột | đạt · 2 cột | đạt | đạt |
+| Nâng cấp nội dung | đạt | đạt | đạt | đạt | đạt | đạt |
+| Language Context | đạt · trước tràn 20–72px → ô chọn | đạt · ô chọn | đạt · dải pill 280/280 | đạt | đạt | đạt |
+
+40 lượt → `scrollWidth = clientWidth`, 0 phần tử tràn (Language Context đo lại 4 lượt 360/390 sau lần sửa cuối). Bảng so sánh theo trường (Language Context mục 9) cuộn trong khung — ngoại lệ bảng dữ liệu.
+Trong Shell: 4 màn chưa có trong registry `shell-screens.js` (bộ AI ngoài core v1) → **[CHỜ GỘP]**, Claude Code đo bằng zip. Panel AI trong Shell chỉ mở qua `Quản lý Bài viết` / `Page Editor` (hộp popup, chưa trượt đáy — TODO D1-3 / D1-4d).
+Trình duyệt khác, chế độ tối, 200%, cảm ứng thật, bàn phím ảo: **[CHƯA KIỂM ĐƯỢC]** — Claude Code kiểm bằng zip.
+
+### Việc cho backend (D0-6c phần 1)
+Không có màn đã build. Khi build bộ AI:
+1. Panel trợ lý viết = `<x-bs-admin::ai-writer>` trong `<x-bs-admin::modal sheet>`: dưới 600px trượt từ đáy (cao 92%, safe-area); đầu panel 2 hàng dưới 560px; nút chính rộng hết.
+2. Viết nội dung theo đoạn: mỗi lần chạy giữ tạm số từ mục tiêu (ledger `words`, `source` gói/addon); hủy = bút toán đảo phần chưa sinh; lỗi = đảo phần chưa sinh + "Thử lại" viết tiếp từ đoạn hỏng (idempotency key theo lần chạy + đoạn). Bỏ mức giữ tối thiểu 20%.
+3. Thước độ dài + `maxlength` đọc cấu hình SEO (LIMITS); ô theo ngôn ngữ RTL tự `dir="rtl"`.
+4. Language Context: biến thể thanh tính theo bề rộng khung thật (Alpine + ResizeObserver), không theo cấu hình; dịch theo từng trường, mỗi trường một giao dịch.
+
+### Verifier
+Gửi verifier sau phần 1. AI Writer ≈ 200 KB: nếu công cụ chụp quá giờ thì **[CHƯA KIỂM ĐƯỢC]**, Claude Code kiểm bằng zip.
+
+## D0-6c phần 2 (06/10/2026) — 8 màn còn lại của bộ AI
+
+### File
+`Cài đặt nội dung AI` · `Vận hành nội dung AI` · `Hạn ngạch AI và mua thêm` · `Hàng đợi ảnh` · `Kế hoạch nội dung SEO` · `Cài đặt xuất bản tự động` · `Duyệt & xuất bản nội dung` · `Block Library - Options`. Công cụ: `_tmp/fix6c.js` (phần co giãn chung) · `_tmp/job6c.js` (dòng việc AI) · `_tmp/tok.js`.
+
+### Chung 8 màn
+- Link `admin-components.css`; khung gốc `.s6-root` là container (`container-type:inline-size`) + `data-cs="sup"`; mọi `@media (max-width)` cũ → `@container` theo khung gốc (chạy đúng khi nhúng).
+- Dưới 600px: lề khung 12px; nút trong khung ≥ 44px; chữ ô nhập 16px (cả `pointer:coarse`).
+- Hộp thoại (`position:fixed`) dưới 600px trượt từ đáy: rộng hết, `max-height:92dvh`, bo trên 12px, chừa safe-area, `role="dialog" aria-modal`. Toast `role="status"` + chừa safe-area.
+- Công tắc tự khai (`.dsw.on`/`.dsk`, `.px-sw`/`.px-sk`) → `.dsw[aria-checked]` chuẩn. Bỏ `outline:none`, luật `:focus` tự viết, `style-focus`. Placeholder → `--color-placeholder`; viền ô → `--color-border-input`.
+- Khung xem 390 · 768 cuối mỗi màn (Tweak `showFrames`, ẩn trong `#frame`).
+- Màu: 73 · 27 · 37 · 42 · 86 · 23 · 31 · 56 chỗ đổi sang token (giữ `#fff` chữ trên nền đặc, toast nền đảo).
+
+### Riêng từng màn
+- **Cài đặt nội dung AI**: ma trận "Mặc định theo loại bài" dưới 768px là thẻ gọn — dòng 1 tên loại + nút Sửa 44px · dòng 2 người đọc · giọng · độ dài nối "·" · dòng 3 khối bật sẵn (trước: mỗi cột một dòng có nhãn). Nút "Dịch sang N ngôn ngữ" chạy dòng việc AI dưới dòng trạng thái thanh ngôn ngữ. "Nâng gói AI" theo Tweak "Lời mời nâng gói".
+- **Vận hành nội dung AI**: "Đưa N mục vào hàng đợi" → mở thẻ Hàng đợi + dòng việc AI "Đang viết… x/N mục". Nhãn "Bổ sung bằng AI" → "Nâng cấp bài viết", "Làm mới bằng AI" → "Viết lại", "Làm tất cả bằng AI" → "Nâng cấp tất cả". "Mua thêm từ AI" theo Tweak.
+- **Hạn ngạch AI và mua thêm**: bảng gói và bảng mức dùng dưới 900px: tên + giá/số trên 1 dòng, cột mô tả xuống dòng 2 (trước bị ẩn — mất thông tin trên điện thoại); dưới 600px nút chọn gói rộng hết; chip "Gói hiện tại" 1 dòng, dài thì "…".
+- **Hàng đợi ảnh**: "Tạo hết N ô" chạy dòng việc AI theo **lượt tạo ảnh** (đơn vị = phương án, §7a). "Vẽ" → "Tạo" (§7a); nhãn "Tạo N ô bằng AI" → "Tạo ảnh cho N ô". Nút hàng dưới 600px xuống dòng được (trước tràn 8px ở 360 Chữ lớn).
+- **Kế hoạch nội dung SEO**: bảng từ khóa dưới 600px là thẻ gọn — dòng 1 từ khóa · dòng 2 lượt tìm · độ khó · ý định · cụm nối "·" (trước ẩn 2 cột) · dòng 3 hành động. "Đưa phần đầu vào hàng đợi" chạy dòng việc AI. "Mở rộng lại bằng AI" → "Mở rộng lại". Câu "mua thêm" theo Tweak.
+- **Cài đặt xuất bản tự động**: lỗi độ ưu tiên — quy tắc 520px đứng trước quy tắc 1000px nên bị đè (bảng quyền 4 cột 56px tràn ở 360/390 Chữ lớn). Đã chuyển quy tắc hẹp xuống sau; bảng quyền dưới 520px: tên co được + 4 ô công tắc 48px; hàng có công tắc cho chữ xuống dòng.
+- **Duyệt & xuất bản nội dung**: chỉ phần chung.
+- **Block Library**: bảng khối (rộng tối thiểu 920px, cuộn ngang) dưới 1024px khung → lưới thẻ 2 cột, dưới 600px 1 cột: dòng 1 icon + tên · trạng thái · dòng 2 mã tham chiếu + "Sao chép" 44px · dòng 3 vùng dùng · ngôn ngữ · số nơi dùng · dòng 4 "Sửa" (có chữ) + Nhân bản + Xóa 44px. Nút chỉ hiện khi rê chuột → luôn hiện trên cảm ứng, khi focus và ở dạng thẻ. "Sao chép mã tham chiếu" chép thật bằng `BSUI.copy` (mã công khai `key`, không phải id); không chép được thì toast chỉ cách bôi đen. Màn không có khung xem trước khối nên không có việc "xem trước toàn màn".
+
+### Dòng việc AI (mẫu `#h-jb`, 4 màn)
+"<việc>… x/N" + thanh tiến độ + "Hủy phần còn lại" · "Xong — N <đơn vị>" · "Lỗi — đã hoàn X từ AI / lượt tạo ảnh" + "Thử lại" (chạy tiếp phần còn lại) · "Đã hủy — không trừ từ AI nào cho N ô chưa chạy". Vùng `role="status"` đọc dòng này. Lỗi xem bằng Tweak "Mô phỏng lỗi khi chạy AI".
+
+### Kiểm hiển thị (D0-6c phần 2)
+| Màn | 360 | 390 | 768 | 1024 | 1440 | Chữ lớn |
+|---|---|---|---|---|---|---|
+| Cài đặt nội dung AI | đạt · ma trận thẻ | đạt | đạt | đạt | đạt | đạt |
+| Vận hành nội dung AI | đạt | đạt | đạt | đạt | đạt | đạt |
+| Hạn ngạch AI và mua thêm | đạt | đạt | đạt | đạt | đạt | đạt |
+| Hàng đợi ảnh | đạt · trước tràn 8px (Chữ lớn) | đạt | đạt | đạt | đạt | đạt |
+| Kế hoạch nội dung SEO | đạt · thẻ | đạt | đạt | đạt | đạt | đạt |
+| Cài đặt xuất bản tự động | đạt · trước tràn 37px (Chữ lớn) | đạt · trước tràn 7px | đạt | đạt | đạt | đạt |
+| Duyệt & xuất bản nội dung | đạt | đạt | đạt | đạt | đạt | đạt |
+| Block Library | đạt · 1 cột thẻ | đạt | đạt · 2 cột thẻ | đạt · bảng | đạt | đạt |
+
+Đo `_tmp/m6c.html`: 80 lượt + 30 lượt đo lại sau lần sửa cuối → `scrollWidth = clientWidth`, 0 phần tử tràn. Cả lượt D0-6c: 12 tệp × 5 bề rộng × chữ thường/Chữ lớn = 120 ô đạt.
+Trong Shell: chưa có trong registry → **[CHỜ GỘP]**. Trình duyệt khác, tối, 200%, cảm ứng thật: **[CHƯA KIỂM ĐƯỢC]** — Claude Code kiểm bằng zip.
+
+### Quét cuối lượt (35 tệp)
+- Nhãn nút AI thuộc cột "Không dùng": còn ở 3 tệp ngoài phạm vi — `Quản lý Bài viết - Options` (D1-3), `Page Editor - Options` (D1-4d), `Admin Shell` ("Dịch bằng AI", lượt Shell kế). 12 tệp của lượt: 0.
+- Chip ngôn ngữ tự vẽ mẫu cũ: 0. Đóng TODO "18 màn còn lại" và mục 6.
+
+### Kết quả 12 tiêu chí (8 màn)
+1 đạt · 2 đạt · 3 chưa hết: Cài đặt nội dung AI còn tên bot (GPTBot, ClaudeBot…) ở mục quyền đọc — tên riêng, có giải thích · 4 đạt (Block Library: Sửa có chữ ở dạng thẻ; Nhân bản/Xóa icon có tooltip + aria-label) · 5 đạt · 6 chưa hết: Block Library xóa vẫn hỏi (TODO, Chờ backend Thùng rác khối) · 7 đạt · 8 đạt · 9 đạt · 10 đạt · 11 đạt · 12 đạt.
+
+### Việc cho backend (D0-6c phần 2)
+Bộ AI chưa build. Khi build: khung màn là container, `@container` thay `@media`; bảng → thẻ gọn như trên (Block Library dùng `<x-bs-admin::table>` dạng thẻ dưới 1024px); `<x-bs-admin::modal>` trượt đáy dưới 600px; `<x-bs-admin::ai-job>` một giao dịch mỗi ô/phương án, hủy = đảo phần chưa chạy, lỗi = đảo + chạy tiếp; ảnh trừ sổ `images` theo phương án; `<x-bs-admin::switch>` thay công tắc tự vẽ; Block Library: chép mã `key` công khai.
+
+### Verifier
+Gửi verifier sau phần 2.

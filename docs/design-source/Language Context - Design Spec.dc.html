@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
@@ -60,20 +61,20 @@ input[type=range]{accent-color:#2050a0;}
 
     <!-- 0. Định vị -->
     <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);display:flex;gap:22px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:340px;">
+      <div style="flex:1;min-width:min(340px,100%);">
         <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);margin-bottom:8px;">Định vị component</div>
         <p style="margin:0 0 10px;font-size:15px;line-height:1.6;color:var(--color-heading,#1f2b4d);">Đây <b>không phải</b> bộ chọn ngôn ngữ giao diện. Component chỉ đổi <b>ngữ cảnh biên tập của một nội dung</b>: cùng một trang, đổi sang bản dịch khác. Giao diện CMS giữ nguyên ngôn ngữ của người dùng.</p>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--color-body-muted,#5b6275);">
           <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface-muted,#f8f9fb);"><i class="ri-file-text-line"></i>Trang “Về chúng tôi”</span>
           <i class="ri-arrow-right-line"></i>
-          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid #cfd8ec;border-radius:4px;background:#eef2fb;color:var(--color-accent,#2050a0);font-weight:600;">Đang biên tập: Tiếng Việt</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 22%,transparent);border-radius:4px;background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-weight:600;">Đang biên tập: Tiếng Việt</span>
           <i class="ri-arrow-right-line"></i>
           <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface-muted,#f8f9fb);">Chuyển sang English</span>
           <i class="ri-arrow-right-line"></i>
           <span style="display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface-muted,#f8f9fb);">Cùng trang · bản English</span>
         </div>
       </div>
-      <div style="width:320px;flex-shrink:0;border-left:1px solid var(--color-border,#e9ecf4);padding-left:22px;">
+      <div style="flex:1 1 280px;max-width:100%;min-width:0;border-left:1px solid var(--color-border,#e9ecf4);padding-left:22px;">
         <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);margin-bottom:10px;">Ba điểm yếu đã sửa trong brief</div>
         <div style="display:flex;flex-direction:column;gap:10px;font-size:12.5px;line-height:1.55;">
           <div><b style="color:var(--color-heading,#1f2b4d);">Dịch máy không được đăng trực tiếp.</b> <span style="color:var(--color-body-muted,#5b6275);">Trạng thái “Dịch máy” là bản chưa soát → buộc qua bước soát trước khi Đăng (tránh nội dung máy dịch lên production).</span></div>
@@ -89,7 +90,7 @@ input[type=range]{accent-color:#2050a0;}
         <h2 style="margin:0;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">1 · Nguyên tắc UX</h2>
         <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Quyết định mọi tranh luận thiết kế sau này</span>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:12px;">
         <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);margin-bottom:4px;">P1 · Ngữ cảnh, không phải tùy chọn</div><div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Nhãn luôn là “Đang biên tập”. Không bao giờ đứng cạnh cờ hay menu ngôn ngữ giao diện.</div></div>
         <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);margin-bottom:4px;">P2 · Nguồn luôn hiện diện</div><div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Ngôn ngữ nguồn được neo đầu danh sách với nhãn “Nguồn”, kể cả khi đang biên tập ngôn ngữ khác.</div></div>
         <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:6px;padding:14px;background:#fcfdfe;"><div style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);margin-bottom:4px;">P3 · Trạng thái ở nền, chi tiết theo yêu cầu</div><div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Một điểm màu 8px trong hàng ngang; nhãn chữ đầy đủ trong panel và tooltip. Không nhồi chữ vào pill.</div></div>
@@ -108,11 +109,11 @@ input[type=range]{accent-color:#2050a0;}
         <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">UI bắt buộc tuân theo — không có ngoại lệ trực quan</span>
       </div>
       <div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);margin-bottom:14px;">Mô hình dữ liệu: <code style="background:var(--color-surface-hover,#f3f6f9);padding:2px 6px;border-radius:4px;color:var(--color-accent,#2050a0);">ContentItem(type, id)</code> → <code style="background:var(--color-surface-hover,#f3f6f9);padding:2px 6px;border-radius:4px;color:var(--color-accent,#2050a0);">LocaleVersion(locale, status, sourceRev, fieldHashes, updatedAt, translatedBy)</code>. Ngôn ngữ được cấu hình ở cấp website, có thể bật/tắt theo từng loại nội dung.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:0 26px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:0 26px;">
         <div style="display:flex;flex-direction:column;">
           <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);"><b style="color:var(--color-accent,#2050a0);font-size:12px;min-width:26px;">R1</b><span style="font-size:12.5px;">Mỗi nội dung có <b>đúng một</b> ngôn ngữ nguồn, mặc định là ngôn ngữ chính của website; đổi nguồn là hành động cấp website, ghi vào audit log.</span></div>
           <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);"><b style="color:var(--color-accent,#2050a0);font-size:12px;min-width:26px;">R2</b><span style="font-size:12.5px;">Mọi bản dịch AI chỉ sinh <b>từ nguồn</b>. Không bao giờ dịch từ một bản đã dịch.</span></div>
-          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);"><b style="color:var(--color-accent,#2050a0);font-size:12px;min-width:26px;">R3</b><span style="font-size:12.5px;">Nút “Dịch bằng AI” chỉ hiện khi: website &gt; 1 ngôn ngữ <b>và</b> nguồn tồn tại <b>và</b> nguồn ở Hoàn tất/Đã đăng <b>và</b> ngôn ngữ hiện tại đang trống. Ngược lại: ẩn (thiếu điều kiện cấu hình) hoặc vô hiệu kèm lý do (nguồn còn nháp).</span></div>
+          <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);"><b style="color:var(--color-accent,#2050a0);font-size:12px;min-width:26px;">R3</b><span style="font-size:12.5px;">Nút “Dịch” chỉ hiện khi: website &gt; 1 ngôn ngữ <b>và</b> nguồn tồn tại <b>và</b> nguồn ở Hoàn tất/Đã đăng <b>và</b> ngôn ngữ hiện tại đang trống. Ngược lại: ẩn (thiếu điều kiện cấu hình) hoặc vô hiệu kèm lý do (nguồn còn nháp).</span></div>
           <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);"><b style="color:var(--color-accent,#2050a0);font-size:12px;min-width:26px;">R4</b><span style="font-size:12.5px;">Đã có bản dịch → thay bằng <b>Dịch lại</b> (đồng bộ) hoặc <b>Cập nhật từ nguồn</b> (lỗi thời). Không bao giờ hiện cả ba.</span></div>
           <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);"><b style="color:var(--color-accent,#2050a0);font-size:12px;min-width:26px;">R5</b><span style="font-size:12.5px;">Nguồn đổi sau khi đã dịch → mọi bản đích thành <b>Lỗi thời</b>, so sánh theo field-hash để biết đúng trường nào lệch.</span></div>
           <div style="display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);"><b style="color:var(--color-accent,#2050a0);font-size:12px;min-width:26px;">R6</b><span style="font-size:12.5px;">Bản <b>Dịch máy chưa soát</b> không được Đăng: phải qua “Đánh dấu đã soát” (một cú nhấp) rồi mới Đăng.</span></div>
@@ -151,7 +152,7 @@ input[type=range]{accent-color:#2050a0;}
         <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);margin-bottom:12px;">Ngôn ngữ đích</div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px dashed var(--color-border-strong,#ced4da);border-radius:6px;background:var(--color-surface,#fff);font-size:13px;font-weight:500;color:var(--color-body-muted,#5b6275);"><span style="width:8px;height:8px;border-radius:50%;border:1.5px dashed #adb5bd;"></span>Trống</span>
-          <span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;color:var(--color-accent,#2050a0);"><span style="font-size:12px;font-weight:600;">Dịch bằng AI</span><i class="ri-arrow-right-line"></i></span>
+          <span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;color:var(--color-accent,#2050a0);"><span style="font-size:12px;font-weight:600;">Dịch</span><i class="ri-arrow-right-line"></i></span>
           <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #b6dcf2;border-radius:6px;background:#eaf5fc;font-size:13px;font-weight:600;color:var(--color-admin-info-text,#1d7fb8);"><span style="width:8px;height:8px;border-radius:50%;background:#299cdb;"></span>Dịch máy</span>
           <span style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;color:var(--color-accent,#2050a0);"><span style="font-size:12px;font-weight:600;">Đã soát</span><i class="ri-arrow-right-line"></i></span>
           <span style="display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px;border:1px solid #fae3ac;border-radius:6px;background:#fef6e7;font-size:13px;font-weight:600;color:var(--color-admin-warning-text,#b57d13);"><span style="width:8px;height:8px;border-radius:50%;background:#f7b84b;"></span>Cần soát</span>
@@ -172,7 +173,7 @@ input[type=range]{accent-color:#2050a0;}
     </div>
 
     <!-- 4. Adaptive + 5. Interaction -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:20px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:20px;">
       <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
         <h2 style="margin:0 0 12px;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">4 · Quy tắc thích ứng</h2>
         <div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);margin-bottom:12px;">Chọn biến thể theo <b>bốn</b> đầu vào — không chỉ theo số lượng ngôn ngữ: <code style="font-size:12px;">contextRole</code>, chiều rộng đo bằng ResizeObserver, số ngôn ngữ bật, và độ dài tên bản địa (中文（繁體） rộng khác Deutsch).</div>
@@ -189,12 +190,12 @@ input[type=range]{accent-color:#2050a0;}
       <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
         <h2 style="margin:0 0 12px;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">5 · Mô hình tương tác</h2>
         <div style="display:flex;flex-direction:column;">
-          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">Tab</code><span>Vào cả nhóm inline như <b>một</b> điểm dừng; mũi tên ←→ di chuyển giữa các ngôn ngữ (mẫu tablist).</span></div>
-          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">Enter / Space</code><span>Chuyển ngữ cảnh; nếu còn thay đổi chưa lưu → mở hộp thoại chặn, focus vào “Lưu nháp”.</span></div>
-          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">↓ / ⌥↓</code><span>Mở panel từ nút hiện tại hoặc chip <code style="font-size:12px;">+N</code>; focus tự vào ô tìm kiếm, gõ để lọc theo tên bản địa, tên tiếng Anh hoặc mã ISO.</span></div>
-          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">↑ ↓ Home End</code><span>Di chuyển trong panel (bỏ qua tiêu đề nhóm); <code style="font-size:12px;">Esc</code> đóng và trả focus về nút mở.</span></div>
-          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">⌘⇧L</code><span>Mở panel từ bất kỳ đâu trong trình biên tập; <code style="font-size:12px;">⌘⌥→</code> nhảy sang ngôn ngữ kế tiếp có nội dung.</span></div>
-          <div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;font-size:12.5px;"><b style="color:var(--color-heading,#1f2b4d);font-size:12.5px;">Sau khi chuyển</b><span>Giữ nguyên vị trí cuộn và tab đang mở của trình biên tập; thông báo qua <code style="font-size:12px;">aria-live="polite"</code>: “Đang biên tập English — Cần soát”.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,150px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">Tab</code><span>Vào cả nhóm inline như <b>một</b> điểm dừng; mũi tên ←→ di chuyển giữa các ngôn ngữ (mẫu tablist).</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,150px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">Enter / Space</code><span>Chuyển ngữ cảnh; nếu còn thay đổi chưa lưu → mở hộp thoại chặn, focus vào “Lưu nháp”.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,150px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">↓ / ⌥↓</code><span>Mở panel từ nút hiện tại hoặc chip <code style="font-size:12px;">+N</code>; focus tự vào ô tìm kiếm, gõ để lọc theo tên bản địa, tên tiếng Anh hoặc mã ISO.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,150px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">↑ ↓ Home End</code><span>Di chuyển trong panel (bỏ qua tiêu đề nhóm); <code style="font-size:12px;">Esc</code> đóng và trả focus về nút mở.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,150px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">⌘⇧L</code><span>Mở panel từ bất kỳ đâu trong trình biên tập; <code style="font-size:12px;">⌘⌥→</code> nhảy sang ngôn ngữ kế tiếp có nội dung.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,150px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;font-size:12.5px;"><b style="color:var(--color-heading,#1f2b4d);font-size:12.5px;">Sau khi chuyển</b><span>Giữ nguyên vị trí cuộn và tab đang mở của trình biên tập; thông báo qua <code style="font-size:12px;">aria-live="polite"</code>: “Đang biên tập English — Cần soát”.</span></div>
         </div>
       </div>
     </div>
@@ -239,7 +240,7 @@ input[type=range]{accent-color:#2050a0;}
 
       <!-- editor mock -->
       <div style="padding:22px;background:var(--color-body,#f4f5fa);position:relative;">
-        <div class="lc-sc" style="{{ boxStyle }}">
+        <div class="lc-sc" ref="{{ boxRef }}" style="{{ boxStyle }}">
           <!-- editor topbar -->
           <div style="padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);display:flex;align-items:center;justify-content:space-between;gap:12px;">
             <div style="display:flex;align-items:center;gap:9px;min-width:0;">
@@ -293,13 +294,14 @@ input[type=range]{accent-color:#2050a0;}
 
             <!-- contextual action bar -->
             <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-              <sc-if value="{{ busy }}">
-                <span style="display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid #cfd8ec;border-radius:4px;background:#eef2fb;font-size:12.5px;font-weight:600;color:var(--color-accent,#2050a0);"><i class="ri-loader-4-line" style="display:inline-block;animation:lc-spin .9s linear infinite;"></i>{{ busyText }}</span>
-                <span style="flex:1;min-width:80px;max-width:220px;height:4px;border-radius:2px;overflow:hidden;background:var(--color-border,#e9ecf4);"><span class="lc-sk" style="display:block;height:100%;background:#2050a0;opacity:.35;"></span></span>
-              </sc-if>
-              <sc-if value="{{ err }}">
-                <span style="display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border:1px solid #f8c3bc;border-radius:4px;background:#fdeceb;font-size:12.5px;font-weight:500;color:var(--color-admin-danger-text,#c0392b);"><i class="ri-error-warning-line"></i>Không dịch được — dịch vụ AI đang quá tải.</span>
-                <button type="button" class="lc-btn" onClick="{{ onRetry }}" style="height:34px;padding:0 13px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;">Thử lại</button>
+              <span role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;">{{ liveText }}</span>
+              <sc-if value="{{ jbOn }}">
+                <div class="jb" style="flex:1 1 100%;">
+                  <span class="jb-ic" data-s="{{ jb.s }}" aria-hidden="true"><i class="{{ jb.icon }}"></i></span>
+                  <div style="min-width:0;"><div class="jb-t">{{ jb.title }}</div><div class="jb-s" data-s="{{ jb.s }}">{{ jb.sub }}</div></div>
+                  <div class="jb-a"><sc-if value="{{ jb.canStop }}"><button type="button" class="sx-btn" onClick="{{ onCancelJob }}"><i class="ri-close-line" aria-hidden="true"></i><span class="sx-t">Hủy phần còn lại</span></button></sc-if><sc-if value="{{ jb.canRetry }}"><button type="button" class="sx-btn" onClick="{{ onRetry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button></sc-if><sc-if value="{{ jb.canClose }}"><button type="button" class="sx-btn" onClick="{{ onJobClose }}"><span class="sx-t">Đóng</span></button></sc-if></div>
+                  <sc-if value="{{ jb.running }}"><span class="jb-bar" aria-hidden="true"><span style="width:{{ jb.pct }}%;"></span></span></sc-if>
+                </div>
               </sc-if>
               <sc-if value="{{ showActions }}" hint-placeholder-val="{{ true }}">
                 <sc-if value="{{ hasNotice }}">
@@ -320,7 +322,7 @@ input[type=range]{accent-color:#2050a0;}
                 <div style="font-size:13.5px;font-weight:600;color:var(--color-heading,#1f2b4d);margin:8px 0 4px;">Chưa có bản {{ curName }} cho trang này</div>
                 <div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);max-width:420px;margin:0 auto 14px;line-height:1.55;">Dịch từ bản nguồn <b>{{ srcName }}</b> ({{ wordCount }} từ) rồi soát lại, hoặc tự viết nội dung mới.</div>
                 <div style="display:inline-flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-                  <button type="button" class="lc-btn" onClick="{{ onTranslate }}" style="display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;"><i class="ri-sparkling-2-line"></i>Dịch bằng AI</button>
+                  <button type="button" class="lc-btn" onClick="{{ onTranslate }}" style="display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Dịch</button>
                   <button type="button" class="lc-btn" onClick="{{ onWriteOwn }}" style="height:38px;padding:0 15px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;">Tự viết nội dung</button>
                 </div>
               </div>
@@ -410,7 +412,7 @@ input[type=range]{accent-color:#2050a0;}
     <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
       <h2 style="margin:0 0 14px;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">7 · Anatomy &amp; trạng thái phần tử</h2>
       <div style="display:flex;gap:22px;flex-wrap:wrap;">
-        <div style="flex:1;min-width:300px;">
+        <div style="flex:1;min-width:min(300px,100%);">
           <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:6px;padding:16px;background:#fcfdfe;display:flex;flex-direction:column;gap:12px;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">Đang biên tập</span>
@@ -425,7 +427,7 @@ input[type=range]{accent-color:#2050a0;}
             </div>
           </div>
         </div>
-        <div style="width:330px;flex-shrink:0;">
+        <div style="flex:0 1 330px;max-width:100%;min-width:0;">
           <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);margin-bottom:8px;">Sáu trạng thái nội dung</div>
           <div style="display:flex;flex-direction:column;gap:7px;">
             <div style="display:flex;align-items:center;gap:9px;font-size:12.5px;"><span style="width:8px;height:8px;border-radius:50%;border:1.5px dashed #adb5bd;flex-shrink:0;"></span><b style="min-width:86px;color:var(--color-heading,#1f2b4d);">Trống</b><span style="color:var(--color-body-muted,#5b6275);">Chưa có bản dịch nào</span></div>
@@ -443,7 +445,7 @@ input[type=range]{accent-color:#2050a0;}
     <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
       <h2 style="margin:0 0 4px;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">8 · Bốn biến thể trong ngữ cảnh thật</h2>
       <div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);margin-bottom:14px;">Cùng một component, cùng một anatomy — chỉ khác mức tiết lộ. Dùng nguyên xi cho Trang, Sản phẩm, Bài viết, Danh mục, Menu, Form, SEO, Media, Template, module tương lai.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:14px;">
         <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden;">
           <div style="padding:8px 12px;background:var(--color-surface-muted,#f8f9fb);border-bottom:1px solid var(--color-border,#e9ecf4);font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);">A · Inline — trình biên tập sản phẩm, 4 ngôn ngữ</div>
           <div style="padding:14px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -487,12 +489,12 @@ input[type=range]{accent-color:#2050a0;}
     <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
       <h2 style="margin:0 0 4px;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">9 · Đồng bộ khi nguồn đổi — diff theo trường</h2>
       <div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);margin-bottom:14px;">Thay vì hỏi “ghi đè hay merge?”, mở bảng so sánh từng trường. Người quản trị chọn đúng trường cần lấy về; các trường đã biên tập kỹ được giữ nguyên. Hoàn tác trong 30 ngày.</div>
-      <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden;">
-        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:0;background:var(--color-surface-muted,#f8f9fb);padding:9px 14px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);"><span>Trường</span><span>Nguồn · Tiếng Việt (v13)</span><span>Bản English (dịch từ v11)</span><span>Hành động</span></div>
-        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;align-items:center;"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">Tiêu đề</span><span style="color:var(--color-body-muted,#5b6275);">Về chúng tôi</span><span style="color:var(--color-body-muted,#5b6275);">About us</span><span style="font-size:12px;color:var(--color-admin-success-text,#0a8a78);display:inline-flex;align-items:center;gap:5px;"><i class="ri-check-line"></i>Khớp</span></div>
-        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;align-items:center;background:#fffaf3;"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">Đoạn mở đầu</span><span style="color:var(--color-heading,#1f2b4d);">…<b style="background:#e6f7f5;">20 năm gia công CNC chính xác</b>…</span><span style="color:var(--color-body-muted,#5b6275);">…<s style="color:var(--color-admin-danger-text,#c0392b);">15 years of CNC machining</s>…</span><label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-accent,#2050a0);font-weight:600;cursor:pointer;"><input type="checkbox" checked="{{ true }}" readOnly="{{ true }}" style="accent-color:#2050a0;width:14px;height:14px;">Lấy về</label></div>
-        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;align-items:center;background:#fffaf3;"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">Meta description</span><span style="color:var(--color-heading,#1f2b4d);">Đã cập nhật</span><span style="color:var(--color-body-muted,#5b6275);">Chưa đổi từ v11</span><label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-accent,#2050a0);font-weight:600;cursor:pointer;"><input type="checkbox" style="accent-color:#2050a0;width:14px;height:14px;">Lấy về</label></div>
-        <div style="display:grid;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;align-items:center;"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">Ảnh bìa (alt)</span><span style="color:var(--color-body-muted,#5b6275);">Xưởng CNC An Vinh</span><span style="color:var(--color-body-muted,#5b6275);">An Vinh CNC workshop</span><span style="font-size:12px;color:var(--color-admin-success-text,#0a8a78);display:inline-flex;align-items:center;gap:5px;"><i class="ri-check-line"></i>Khớp</span></div>
+      <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow-x:auto;">
+        <div style="display:grid;min-width:560px;grid-template-columns:150px 1fr 1fr 120px;gap:0;background:var(--color-surface-muted,#f8f9fb);padding:9px 14px;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);"><span>Trường</span><span>Nguồn · Tiếng Việt (v13)</span><span>Bản English (dịch từ v11)</span><span>Hành động</span></div>
+        <div style="display:grid;min-width:560px;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;align-items:center;"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">Tiêu đề</span><span style="color:var(--color-body-muted,#5b6275);">Về chúng tôi</span><span style="color:var(--color-body-muted,#5b6275);">About us</span><span style="font-size:12px;color:var(--color-admin-success-text,#0a8a78);display:inline-flex;align-items:center;gap:5px;"><i class="ri-check-line"></i>Khớp</span></div>
+        <div style="display:grid;min-width:560px;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;align-items:center;background:#fffaf3;"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">Đoạn mở đầu</span><span style="color:var(--color-heading,#1f2b4d);">…<b style="background:#e6f7f5;">20 năm gia công CNC chính xác</b>…</span><span style="color:var(--color-body-muted,#5b6275);">…<s style="color:var(--color-admin-danger-text,#c0392b);">15 years of CNC machining</s>…</span><label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-accent,#2050a0);font-weight:600;cursor:pointer;"><input type="checkbox" checked="{{ true }}" readOnly="{{ true }}" style="accent-color:#2050a0;width:14px;height:14px;">Lấy về</label></div>
+        <div style="display:grid;min-width:560px;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;align-items:center;background:#fffaf3;"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">Meta description</span><span style="color:var(--color-heading,#1f2b4d);">Đã cập nhật</span><span style="color:var(--color-body-muted,#5b6275);">Chưa đổi từ v11</span><label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-accent,#2050a0);font-weight:600;cursor:pointer;"><input type="checkbox" style="accent-color:#2050a0;width:14px;height:14px;">Lấy về</label></div>
+        <div style="display:grid;min-width:560px;grid-template-columns:150px 1fr 1fr 120px;gap:12px;padding:11px 14px;border-top:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;align-items:center;"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">Ảnh bìa (alt)</span><span style="color:var(--color-body-muted,#5b6275);">Xưởng CNC An Vinh</span><span style="color:var(--color-body-muted,#5b6275);">An Vinh CNC workshop</span><span style="font-size:12px;color:var(--color-admin-success-text,#0a8a78);display:inline-flex;align-items:center;gap:5px;"><i class="ri-check-line"></i>Khớp</span></div>
         <div style="padding:11px 14px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
           <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">2 trong 9 trường lệch so với nguồn · lấy về sẽ đặt bản English về <b>Cần soát</b>.</span>
           <span style="display:inline-flex;gap:8px;"><button type="button" class="lc-btn" onClick="{{ noop }}" style="height:36px;padding:0 13px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;">Giữ nguyên bản dịch</button><button type="button" class="lc-btn" onClick="{{ noop }}" style="height:36px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:12.5px;font-weight:600;color:#fff;cursor:pointer;">Lấy về 1 trường đã chọn</button></span>
@@ -501,17 +503,17 @@ input[type=range]{accent-color:#2050a0;}
     </div>
 
     <!-- 10. Tokens + a11y -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:20px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));gap:20px;">
       <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
         <h2 style="margin:0 0 12px;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">10 · Design token</h2>
         <div style="display:flex;flex-direction:column;">
-          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-radius</code><span>6px (pill &amp; card), 4px (nút, ô nhập) — theo AdminKit, không bo lớn.</span></div>
-          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-height</code><span>32px dense desktop · 40px mặc định · <b>44px</b> compact/mobile (vùng bấm luôn ≥ 44px kể cả khi pill 32px, nhờ padding trong suốt).</span></div>
-          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-gap</code><span>6 / 8 / 12 / 16 / 24 — lưới 4px của AdminKit.</span></div>
-          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-primary</code><span>#2050a0 (navy) — active, focus ring rgba(32,80,160,.22), liên kết.</span></div>
-          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-status-*</code><span>empty #adb5bd · mt #299cdb · review #f7b84b · draft #878a99 · published #0ab39c · outdated #f06548. Chữ trên nền nhạt dùng biến thể đậm (#1d7fb8 / #b57d13 / #0a8a78 / #c0392b) để đạt ≥ 4.5:1.</span></div>
-          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-type</code><span>Inter (nạp đủ dấu tiếng Việt) 12–13.5px; tên bản địa CJK/Thai/Ả Rập dựa vào fallback hệ thống, không ép font.</span></div>
-          <div style="display:grid;grid-template-columns:180px 1fr;gap:12px;padding:8px 0;font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-shadow-pop</code><span>0 6px 22px rgba(33,37,41,.14) cho panel; card chỉ 0 1px 2px rgba(56,65,74,.15).</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,180px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-radius</code><span>6px (pill &amp; card), 4px (nút, ô nhập) — theo AdminKit, không bo lớn.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,180px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-height</code><span>32px dense desktop · 40px mặc định · <b>44px</b> compact/mobile (vùng bấm luôn ≥ 44px kể cả khi pill 32px, nhờ padding trong suốt).</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,180px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-gap</code><span>6 / 8 / 12 / 16 / 24 — lưới 4px của AdminKit.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,180px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-primary</code><span>#2050a0 (navy) — active, focus ring rgba(32,80,160,.22), liên kết.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,180px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-status-*</code><span>empty #adb5bd · mt #299cdb · review #f7b84b · draft #878a99 · published #0ab39c · outdated #f06548. Chữ trên nền nhạt dùng biến thể đậm (#1d7fb8 / #b57d13 / #0a8a78 / #c0392b) để đạt ≥ 4.5:1.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,180px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;border-bottom:1px solid var(--color-border-soft,#f3f6f9);font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-type</code><span>Inter (nạp đủ dấu tiếng Việt) 12–13.5px; tên bản địa CJK/Thai/Ả Rập dựa vào fallback hệ thống, không ép font.</span></div>
+          <div style="display:grid;grid-template-columns:minmax(96px,180px) minmax(0,1fr);overflow-wrap:anywhere;gap:12px;padding:8px 0;font-size:12.5px;"><code style="font-size:12px;color:var(--color-accent,#2050a0);">--lc-shadow-pop</code><span>0 6px 22px rgba(33,37,41,.14) cho panel; card chỉ 0 1px 2px rgba(56,65,74,.15).</span></div>
         </div>
       </div>
       <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
@@ -532,13 +534,13 @@ input[type=range]{accent-color:#2050a0;}
     <!-- 12. Dev + edge + scale -->
     <div style="background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;padding:20px 22px;box-shadow:0 1px 2px rgba(56,65,74,.06);">
       <h2 style="margin:0 0 14px;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">12 · Ghi chú triển khai · Edge case · Mở rộng</h2>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:20px;">
         <div>
           <div style="font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);margin-bottom:9px;">Triển khai (Livewire 4 · Alpine)</div>
           <div style="display:flex;flex-direction:column;gap:8px;font-size:12.5px;color:var(--color-body-muted,#5b6275);">
             <div>Một component Blade duy nhất: <code style="font-size:12px;color:var(--color-accent,#2050a0);">&lt;x-bs-admin::language-context :item="$item" role="editor|compact|readonly" /&gt;</code>; biến thể A/B/C do Alpine + ResizeObserver quyết định ở client, <code style="font-size:12px;">role</code> chỉ đặt trần trên.</div>
             <div>Chuyển ngôn ngữ = điều hướng có URL riêng <code style="font-size:12px;">?locale=en</code> (deep-link, chia sẻ được, back/forward hoạt động) — không phải state ẩn.</div>
-            <div>Server trả <code style="font-size:12px;">localeSummary</code> một lần cho mọi module: <code style="font-size:12px;">[{code,name,status,sourceRev,updatedAt,can}]</code> — module mới không cần code UI.</div>
+            <div>Server trả <code style="font-size:12px;">localeSummary</code> một lần cho mọi module: <code style="font-size:12px;overflow-wrap:anywhere;">[{code,name,status,sourceRev,updatedAt,can}]</code> — module mới không cần code UI.</div>
             <div>Dịch AI chạy qua queue + Echo; UI hiện trạng thái “Đang dịch…” theo từng ngôn ngữ, cho phép dịch hàng loạt nhiều ngôn ngữ cùng lúc.</div>
             <div>Guard dùng <code style="font-size:12px;">wire:dirty</code> + <code style="font-size:12px;">beforeunload</code>; bản nháp tự lưu 20s một lần để hộp thoại gần như không bao giờ mất dữ liệu.</div>
           </div>
@@ -595,10 +597,10 @@ const ST = {
   outdated:{s:'Lỗi thời',l:'Lỗi thời so với nguồn',c:'#f06548',t:'#c0392b',bg:'#fdeceb',bd:'#f8c3bc'}
 };
 const PAT = ['review','empty','mt','outdated','draft','empty','published','empty','mt','empty','review','empty','empty','draft','empty'];
-const META = {empty:'Chưa dịch',mt:'AI dịch · 2 giờ trước',review:'Sửa bởi Minh · 2 giờ trước',draft:'Lưu nháp · hôm qua',published:'Đăng 12/07/2026',outdated:'Dịch từ v11 · nguồn đã là v13'};
+const META = {empty:'Chưa dịch',mt:'AI vừa dịch · 2 giờ trước',review:'Sửa bởi Minh · 2 giờ trước',draft:'Lưu nháp · hôm qua',published:'Đăng 12/07/2026',outdated:'Dịch từ v11 · nguồn đã là v13'};
 
 class Component extends DCLogic {
-  state = {count:5,width:900,ctx:'editor',current:'en',open:false,q:'',dirty:true,guard:null,busy:null,err:false,loading:false,vers:{},ai:0};
+  state = {mw:0,jdone:0,jx:null,jleft:0,count:5,width:900,ctx:'editor',current:'en',open:false,q:'',dirty:true,guard:null,busy:null,err:false,loading:false,vers:{},ai:0};
 
   locales(){ return CAT.slice(0, this.state.count); }
   st(code){ if(code==='vi') return 'published'; if(this.state.vers[code]) return this.state.vers[code]; const i=CAT.findIndex(l=>l[0]===code); return PAT[(i-1)%PAT.length]||'empty'; }
@@ -617,19 +619,30 @@ class Component extends DCLogic {
     this.setState({guard:null,dirty:false,open:false,loading:true,current:to,err:false});
     clearTimeout(this._t); this._t=setTimeout(()=>this.setState({loading:false}),450);
   }
+  /* Việc AI chạy theo từng trường (mẫu ai-job): mỗi trường một giao dịch; hủy = không trừ phần chưa chạy; lỗi = hoàn phần đã giữ */
+  JT=6; JW=140;
   run(kind){
     const cur=this.state.current, n=this.state.ai+1;
-    this.setState({busy:kind,err:false,ai:n});
-    clearTimeout(this._b);
-    this._b=setTimeout(()=>{
-      if(kind==='translate' && n%4===0){ this.setState({busy:null,err:true}); return; }
-      this.setV(cur, kind==='translate'?'mt':'review');
-      this.setState({busy:null,dirty:false});
-    },1500);
+    this.setState({busy:kind,err:false,ai:n,jdone:0,jx:null});
+    clearInterval(this._b);
+    this._b=setInterval(()=>{
+      const d=this.state.jdone+1;
+      if(kind==='translate' && n%4===0 && d===4){ clearInterval(this._b); this.setState({busy:null,err:true,jdone:d-1,jx:'failed'}); return; }
+      if(d>=this.JT){ clearInterval(this._b); this.setV(cur, kind==='translate'?'mt':'review'); this.setState({busy:null,dirty:false,jdone:this.JT,jx:'done'}); return; }
+      this.setState({jdone:d});
+    },260);
   }
+  cancelJob(){ clearInterval(this._b); this.setState({busy:null,jx:'cancel',jleft:this.JT-this.state.jdone}); }
+  boxRef=(el)=>{ if(el===this._box) return; if(this._ro){this._ro.disconnect();this._ro=null;} this._box=el; if(!el) return;
+    const m=()=>{ const w=Math.round(el.clientWidth); if(w && w!==this.state.mw) this.setState({mw:w}); };
+    if(typeof ResizeObserver!=='undefined'){ this._ro=new ResizeObserver(m); this._ro.observe(el); } m(); };
+  componentDidMount(){ this._wr=()=>{ if(this._box){ const w=Math.round(this._box.clientWidth); if(w&&w!==this.state.mw) this.setState({mw:w}); } }; window.addEventListener('resize',this._wr); }
+  componentWillUnmount(){ clearInterval(this._b); if(this._ro) this._ro.disconnect(); window.removeEventListener('resize',this._wr); }
 
   renderVals(){
-    const s=this.state, L=this.locales(), src='vi', cur=s.current, curSt=this.st(cur), isSrc=cur===src;
+    const s0=this.state, L=this.locales(), src='vi', cur=s0.current, curSt=this.st(cur), isSrc=cur===src;
+    /* đo thật: bề rộng hiệu lực = min(thanh trượt demo, bề rộng khung đang vẽ) — ở 390 tự sang ô chọn, không tràn */
+    const s=Object.assign({}, s0, { width: s0.mw ? Math.min(s0.width, s0.mw) : s0.width });
     const lockAuto=this.props.variantLock ?? 'auto';
     const showProg=(this.props.showProgress ?? true) && L.length>1;
 
@@ -705,8 +718,8 @@ class Component extends DCLogic {
       : 'display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;';
     if(!isSrc && L.length>1){
       if(curSt==='empty'){
-        if(srcReady) actions.push({label:'Dịch bằng AI',icon:'ri-sparkling-2-line',style:btn('primary'),onClick:()=>this.run('translate'),title:`Dịch từ ${this.name(src)} · 412 từ`,disabled:false});
-        else actions.push({label:'Dịch bằng AI',icon:'ri-sparkling-2-line',style:btn('primary')+'opacity:.5;cursor:not-allowed;',onClick:()=>{},title:'Bản nguồn còn là nháp — hoàn tất nguồn trước khi dịch',disabled:true});
+        if(srcReady) actions.push({label:'Dịch',icon:'ri-sparkling-2-line',style:btn('primary'),onClick:()=>this.run('translate'),title:`Dịch từ ${this.name(src)} · 412 từ`,disabled:false});
+        else actions.push({label:'Dịch',icon:'ri-sparkling-2-line',style:btn('primary')+'opacity:.5;cursor:not-allowed;',onClick:()=>{},title:'Bản nguồn còn là nháp — hoàn tất nguồn trước khi dịch',disabled:true});
       } else if(curSt==='outdated'){
         notice={text:'Nguồn đã đổi sau lần dịch — 2 trường lệch.',icon:'ri-error-warning-line',style:`display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border:1px solid ${ST.outdated.bd};border-radius:4px;background:${ST.outdated.bg};font-size:12.5px;font-weight:500;color:${ST.outdated.t};`};
         actions.push({label:'Xem và cập nhật từ nguồn',icon:'ri-git-merge-line',style:btn('primary'),onClick:()=>this.run('update'),title:'Mở bảng so sánh theo trường',disabled:false});
@@ -744,7 +757,7 @@ class Component extends DCLogic {
       onDirty:e=>this.setState({dirty:e.target.checked}),
       dirty:s.dirty, noop:e=>{if(e&&e.preventDefault)e.preventDefault();},
 
-      boxStyle:`width:${s.width}px;max-width:100%;margin:0 auto;background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);position:relative;transition:width .15s;`,
+      boxStyle:`width:${s0.width}px;max-width:100%;margin:0 auto;background:#fff;border:1px solid #e9ebec;border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);position:relative;transition:width .15s;`,
       isReadonly:variant==='D', isSingle:variant==='single', showInline:variant==='A'||variant==='B', showCompact:variant==='C',
       pills:pills, hasOverflow:overflow>0, overflowCount:overflow, open:s.open,
       overflowStyle:'display:inline-flex;align-items:center;height:32px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:600;color:'+accent+';cursor:pointer;',
@@ -756,10 +769,17 @@ class Component extends DCLogic {
       showProgress:showProg, progressText:`${done}/${L.length} đã dịch`, progressAria:`Đã có nội dung ở ${done} trong ${L.length} ngôn ngữ (${pct}%)`,
       progressFill:`display:block;height:100%;width:${pct}%;background:${accent};border-radius:2px;`,
 
-      busy:!!s.busy, busyText:s.busy==='update'?'Đang lấy nội dung mới từ nguồn…':'Đang dịch bằng AI…',
-      err:s.err, onRetry:()=>this.run('translate'),
-      showActions:!s.busy&&!s.err&&variant!=='D', actions:actions,
-      hasNotice:!!notice&&!s.busy&&!s.err, noticeText:notice?notice.text:'', noticeIcon:notice?notice.icon:'', noticeStyle:notice?notice.style:'',
+      boxRef:this.boxRef, busy:!!s.busy, busyText:s.busy==='update'?'Đang lấy nội dung mới từ nguồn…':'Đang dịch…',
+      ...(()=>{ const T=this.JT, d=s.jdone, nm=(CAT.find(l=>l[0]===cur)||[cur,cur])[1], W=this.JW, up=s.busy==='update';
+        const J = s.busy ? { s:'running', icon:'ri-sparkling-2-line', title:(up?'Đang lấy từ nguồn… ':'Đang dịch… ')+d+'/'+T, sub:'Đang làm bản '+nm+' — mỗi trường tính riêng; hủy thì không trừ phần chưa chạy.', running:true, canStop:true, pct:Math.round(d/T*100) }
+          : s.jx==='failed' ? { s:'failed', icon:'ri-error-warning-line', title:'Lỗi — đã hoàn '+((T-d)*W).toLocaleString('vi-VN')+' từ AI', sub:'Dịch vụ AI đang quá tải ở trường '+(d+1)+'/'+T+'. '+d+' trường đã dịch vẫn giữ; bấm Thử lại để dịch tiếp phần còn trống.', canRetry:true, canClose:true }
+          : s.jx==='cancel' ? { s:'cancel', icon:'ri-close-circle-line', title:'Đã hủy — không trừ từ AI nào cho '+s.jleft+' ô chưa chạy', sub:'Phần đã dịch ('+(T-s.jleft)+' ô) vẫn giữ.', canRetry:s.jleft>0, canClose:true }
+          : s.jx==='done' ? { s:'done', icon:'ri-check-double-line', title:'Xong — đã dịch '+T+' trường', sub:'Dùng '+(T*W).toLocaleString('vi-VN')+' từ AI. Soát lại rồi bấm Lưu.', canClose:true } : null;
+        return { jbOn:!!J, jb:Object.assign({s:'',icon:'',title:'',sub:'',running:false,canStop:false,canRetry:false,canClose:false,pct:0},J||{}), liveText:J?(J.title+'. '+J.sub):'',
+          onCancelJob:()=>this.cancelJob(), onJobClose:()=>this.setState({jx:null,err:false}) }; })(),
+      err:false, onRetry:()=>this.run('translate'),
+      showActions:!s.busy&&!s.jx&&variant!=='D', actions:actions,
+      hasNotice:!!notice&&!s.busy&&!s.jx, noticeText:notice?notice.text:'', noticeIcon:notice?notice.icon:'', noticeStyle:notice?notice.style:'',
 
       isLoading:s.loading, isEmptyState:!s.loading&&curSt==='empty'&&!s.busy, showFields:!s.loading&&curSt!=='empty',
       isOutdated:curSt==='outdated',
