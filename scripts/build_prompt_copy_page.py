@@ -143,13 +143,19 @@ dec_rows = ''.join(
     f'<li class="dec"><span class="qid">{q}</span><div><p class="dq">{e(t)}</p><p class="da">{e(a)}</p></div></li>'
     for q, t, a in DECISIONS)
 
+def chat_title(p):
+    # Claude Design names a chat after the first typed line, not after a pasted attachment, and
+    # lists chats in no useful order, so each card offers a short title that starts with the code.
+    return p['id'] + ' · ' + re.sub(r'\s*\([^)]*\)', '', p['name']).strip()
+
 def fix_card(p, ran):
     return f'''
 <article class="card{'' if ran else ' is-next'}" data-id="{p['id']}">
   <div class="card-head">
     <span class="pid">{p['id']}</span>
     <h3>{e(p['name'])}</h3>
-    <button type="button" class="btn-copy" data-copy="b-{p['id']}" data-raw="1">Sao chép prompt sửa</button>
+    <span class="btns"><button type="button" class="btn-copy btn-title" data-title="{e(chat_title(p))}">1 · Chép tên chat</button>
+    <button type="button" class="btn-copy" data-copy="b-{p['id']}" data-raw="1">2 · Sao chép prompt sửa</button></span>
   </div>
   <details>
     <summary>Xem nội dung <span class="file">{e(p['file'])}</span></summary>
@@ -169,7 +175,7 @@ if fixes_ran:
     </details>'''
 fix_panel = f'''
   <section class="panel" aria-labelledby="fix-h">
-    <div class="panel-head"><h2 id="fix-h">Prompt sửa sau kiểm — dán vào CHÍNH chat của lượt đó</h2><span class="hint">Không mở chat mới. Sửa xong thì xuất zip gửi Claude Code kiểm lại rồi mới sang lượt tiếp theo.</span></div>
+    <div class="panel-head"><h2 id="fix-h">Prompt sửa sau kiểm</h2><span class="hint">Dán vào chat ghi trong tiêu đề prompt (chat của lượt đó, hoặc chat mới nếu prompt ghi vậy). Sửa xong thì xuất zip gửi Claude Code kiểm lại rồi mới sang lượt tiếp theo.</span></div>
     {fix_cards}
   </section>''' if fixes else ''
 
@@ -184,7 +190,8 @@ for wid, wname, wdesc, wneed in WAVES:
     <label class="done"><input type="checkbox" id="done-{p['id']}" data-done="{p['id']}"><span>Xong</span></label>
     <span class="pid">{p['id']}</span><span class="next-tag" hidden>Lượt tiếp theo</span>
     <h3>{e(p['name'])}</h3>
-    <button type="button" class="btn-copy" data-copy="{body_id}">Sao chép prompt</button>
+    <span class="btns"><button type="button" class="btn-copy btn-title" data-title="{e(chat_title(p))}">1 · Chép tên chat</button>
+    <button type="button" class="btn-copy" data-copy="{body_id}">2 · Sao chép prompt</button></span>
   </div>
   <details>
     <summary>Xem nội dung <span class="file">{e(p['file'])}</span></summary>
@@ -287,6 +294,8 @@ td.mod {{ color:var(--muted); font-weight:600; width:110px; }}
 .pid {{ font:500 12px/1 "JetBrains Mono",ui-monospace,monospace; color:var(--muted); }}
 .done input {{ width:20px; height:20px; accent-color:var(--brand); margin:0; cursor:pointer; }}
 .sr {{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }}
+.btns {{ display:flex; gap:8px; flex-wrap:wrap; }}
+.btn-title {{ background:#fff !important; color:#405189 !important; box-shadow:inset 0 0 0 1px #405189; }}
 .btn-copy {{ font:inherit; font-size:12.5px; font-weight:600; color:#fff; background:#405189; border:0; border-radius:4px; padding:7px 12px; cursor:pointer; min-height:34px; white-space:nowrap; }}
 .btn-copy:hover {{ filter:brightness(.95); }}
 .btn-copy:focus-visible, summary:focus-visible, .done input:focus-visible {{ outline:3px solid rgba(64,81,137,.35); outline-offset:2px; }}
@@ -308,7 +317,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
   .need {{ grid-column:1 / -1; justify-self:start; }}
   .card-head {{ grid-template-columns:auto auto 1fr; }}
   .card-head h3 {{ grid-column:1 / -1; }}
-  .btn-copy {{ grid-column:1 / -1; min-height:44px; }}
+  .btns {{ grid-column:1 / -1; }} .btns .btn-copy {{ flex:1; min-height:44px; }}
 }}
 @media (prefers-reduced-motion: reduce) {{ .bar i {{ transition:none; }} }}
 </style>
@@ -328,6 +337,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       <li><b>Mở một cửa sổ chat MỚI</b> trong project Claude Design BSWebSaaS, dán và gửi. Không gộp 2 lượt vào 1 cửa sổ.</li>
       <li><b>Xong thì tích ô "Xong"</b> và gửi bản export cho Claude Code để đối chiếu với code trước khi build.</li>
     </ol>
+    <p class="hint">Cách dán (06/10): mỗi thẻ có 2 nút. Bấm "1 · Chép tên chat" → dán vào ô nhập của chat (dòng có mã lượt, vd "D0-2s5 · …", để Claude Design đặt tên chat theo mã — tìm lại dễ). Rồi bấm "2 · Sao chép prompt" → dán tiếp vào cùng ô (đoạn dài tự thành tệp đính kèm "Pasted text") → Send.</p>
     <p class="hint">Bản 3.20 (05/10 23:xx) — THỨ TỰ: (1) dán D0-3s vào CHÍNH chat D0-3 (sửa 24 điểm bản tự rà theo chốt của Claude Code, rồi làm luôn phần 2; nếu dừng giữa chừng gửi "Làm D0-3 phần 2"); (2) khi chat báo "D0-3 xong — dán D0-2s5 vào chat D0-2." thì dán D0-2s5 vào một CHAT MỚI (06/10: chat D0-2 cũ đã quá dài; prompt tự đủ); (3) xuất MỘT zip chung gửi Claude Code. Không chạy hai chat cùng lúc. Bản 3.19 (05/10 22:5x): D0-2s4 đạt gần hết (Claude Code dựng hình zip 22:04: khung 1b trang Focus khác 0 pixel khi Tab, ô lỗi giữ đỏ, hết khung đôi, mọi chỉ báo 4,55–9,7:1). Còn 7 chỗ nhỏ (nút ghost 3px, hộp thoại 768–799, màu nút đặc chế độ tối…) → D0-2s5 (đã qua 2 vòng kiểm). D0-6a, D1-2, D1-4a, D1-4b, D3-2 nhận thêm việc focus của màn mình (thân trình soạn chưa có chỉ báo focus; khung tự vẽ focus bằng màu viết thẳng). <p class="hint">Bản 3.18b (05/10 21:4x): D0-2s4 viết lại sau 4 vòng kiểm của Claude Code — nêu HÌNH từng loại phần tử + phép thử thay vì chỉ selector (bản 20:5x làm mất focus ở ~63 nút đặc viết style inline), thêm vạch vàng thanh bên không mất khi focus; dòng bối cảnh chung về màu vòng focus (var(--focus-ring-color)) và Focus 1b sửa ở cả 31 lượt. Nếu đã dán bản D0-2s4 20:5x thì báo Claude Code để nhận prompt bù ngắn. Bản 3.18 (05/10 tối): D0-2s3 ĐẠT cả 9 mục (Claude Code dựng hình thật zip 20:05: hàng tab 390 + Chữ lớn vừa khít, Sao chép đúng cả 5 tình huống, console sạch). Owner chốt chuẩn focus mới "Focus 1b" — nhưng luật chung trong admin-base.css vẽ khác hình 1b đã duyệt, ô lỗi khi focus thành xanh, khung tìm kiếm sáng đôi, hộp thoại 480–767 không còn tràn bề rộng → dán D0-2s4 vào CHÍNH chat D0-2. KHÔNG cần xuất zip riêng: khi chat báo "D0-2s4 xong — mở D0-3 được." thì mở D0-3 (chat mới); Claude Code kiểm D0-2s4 cùng zip sau D0-3. Mọi lượt từ D0-3 trở đi: dòng Focus trong bối cảnh chung đổi sang Focus 1b (dùng lại luật chung, không vẽ focus riêng từng màn).</p>
     <p class="hint">Bản 3.17 (05/10 trưa): D0-2s2 ĐẠT — kiểm lần 3 dựng hình thật 360–1440 × sáng/tối × Chữ lớn × chuột/cảm ứng, mọi mục cần dựng hình đều qua. Còn 1 lỗi TB (nút Sao chép đường dẫn / tên miền báo thành công khi không chép được — có từ trước) + 5 lỗi Thấp → dán D0-2s3 vào CHÍNH chat D0-2 (prompt tự điền số đo của Claude Code vào README và tự chép mục kiểm vào AUDIT.md). KHÔNG cần xuất zip riêng: khi chat D0-2 báo "D0-2s3 xong — mở D0-3 được." thì mở D0-3 (chat mới); Claude Code kiểm D0-2s3 cùng bản zip sau D0-3. D1-3 / D1-4b nhận thêm luật mới của backend (đổi tab thì bỏ chọn; không có nút bấm mà không có gì xảy ra).</p>
     <p class="hint">Bản 3.16 (04/10 tối): D0-2s đã kiểm — đủ 16/16 mục, nhưng lần kiểm 2 (dựng hình thật 360–1440 × sáng/tối × Chữ lớn + đối chiếu repo) còn 12 lỗi Cao (D0-2s2 sửa 6 lỗi ở trang chuẩn + vẽ tạm Alert/Avatar; phần còn lại vào D0-2 phần 3, prompt DS, repo) → dán D0-2s2 vào CHÍNH chat D0-2 (prompt này cũng tự chép mục kiểm vào AUDIT.md), xuất zip gửi Claude Code kiểm, đạt thì sang D0-3. Mọi lượt: tên thẻ component là &lt;x-bs-admin::…&gt;; D0-3 chốt thêm bộ từ nút AI (Gợi ý … · Viết lại · Viết mới · Nâng cấp bài viết / trang · Dịch · Tạo ảnh, không "bằng AI") và "Sao chép / Đã sao chép". Bản 3.15: D0-3 viết lại sau 4 vòng audit: làm 2 phần trong cùng một chat (phần 1 chữ & luật: thuật ngữ · định dạng · giọng văn · trạng thái · tiêu chí · người dùng mẫu; phần 2 mẫu trang — nếu lượt dừng sau phần 1, nhắn "Làm D0-3 phần 2"); bảng thuật ngữ đã chốt sẵn: nhóm quyền theo thiết kế (Chủ website · Quản trị · Biên tập · Người viết · Cộng tác viên · Chỉ xem), "Hẹn giờ đăng", "Đưa về nháp" ≠ "Gỡ khỏi website", "Không công khai", Hạn ngạch ≠ Hạn mức, "Đăng nhập dưới tên khách hàng". Bối cảnh chung mọi lượt: màu CHỈ qua token (tông Bảo Sơn Hoàng gia); chính tả Xóa · Hủy · Khóa · tùy · Bỏ lọc (kiểu dấu cũ cho vần oa/oe/uy không có phụ âm cuối; viết hoa theo vị trí); mẫu danh sách "Bỏ lọc" + "Hẹn giờ đăng"; dòng TODO.md gắn tên lượt là việc của lượt đó.</p>
@@ -426,6 +436,15 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
     btn.textContent = label; btn.classList.add('is-copied');
     setTimeout(function () {{ btn.textContent = old; btn.classList.remove('is-copied'); }}, 1800);
   }}
+  document.querySelectorAll('[data-title]').forEach(function (btn) {{
+    btn.addEventListener('click', function () {{
+      var t = btn.getAttribute('data-title');
+      var fin = function (ok) {{ flash(btn, ok ? 'Đã chép tên' : 'Chưa chép được — gõ tay: ' + t); }};
+      if (navigator.clipboard && navigator.clipboard.writeText) {{
+        navigator.clipboard.writeText(t).then(function () {{ fin(true); }}, function () {{ fin(fallbackCopy(t)); }});
+      }} else {{ fin(fallbackCopy(t)); }}
+    }});
+  }});
   document.querySelectorAll('[data-copy]').forEach(function (btn) {{
     btn.addEventListener('click', function () {{
       var pre = document.getElementById(btn.getAttribute('data-copy'));
