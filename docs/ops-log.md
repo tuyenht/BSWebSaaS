@@ -7,6 +7,15 @@
 
 ## 2026
 
+### 2026-10-06 — Cài màn hình ảo + Google Chrome cho "designbot" (thử cho Claude Code điều khiển Claude Design)
+
+- **Cài:** `2026-10-06 ~13:55 (+07)` — owner chạy `bash /root/designbot-setup.sh` (Claude Code soạn; lệnh cài trực tiếp của Claude Code bị bộ kiểm soát quyền chặn). Owner duyệt trong phiên: "cài tự động cho tôi mọi thứ phù hợp".
+- **Gói:** 41 gói mới cho `xvfb openbox x11vnc fonts-noto-core fonts-noto-cjk` + `google-chrome-stable` 154.0.8037.97 và `fonts-liberation` từ nguồn apt Google (`/etc/apt/sources.list.d/google-chrome.list`, khóa `/etc/apt/keyrings/google-chrome.gpg`). **0 gói nâng cấp, 0 gỡ** (script tự dừng nếu có); bỏ `dbus-x11` vì nó kéo nâng cấp 7 gói dbus. `NEEDRESTART_SUSPEND=1` — không dịch vụ nào khởi động lại. ~684 MB đĩa.
+- **Người dùng:** `designbot` (không sudo). Chrome + Claude Code (2.1.291, `~/.local/bin`) chạy dưới user này; `~/desk-start.sh` / `~/desk-stop.sh` bật/tắt Xvfb `:99` + openbox + x11vnc (chỉ `127.0.0.1:5901`, mật khẩu ở `/root/designbot-vnc-password.txt` 600) + Chrome (`~/chrome-profile`).
+- **Hậu kiểm:** container prod giữ nguyên thời gian chạy (app 8 ngày, pg 2 tháng) — không restart; cổng 5901 chỉ nghe localhost.
+- **Gỡ:** `apt-get remove google-chrome-stable xvfb openbox x11vnc fonts-noto-core fonts-noto-cjk && rm /etc/apt/sources.list.d/google-chrome.list /etc/apt/keyrings/google-chrome.gpg && userdel -r designbot` (không `autoremove` — chỉ đúng bộ đã cài).
+- **Còn chưa biết:** tiện ích Claude in Chrome có thao tác được trên claude.ai không — thử sau khi owner đăng nhập qua VNC. Không chạy được thì gỡ theo dòng trên.
+
 ### 2026-10-05 — Deploy #161–#175 (sửa CMS + nút quản trị, gói và ghi đè tính năng theo website, 301 tên miền `private`)
 
 - **Deploy:** `13:38 (+07)`, owner chạy. Prod `1b34c7c` → `57dc5ea` (28 commit).
