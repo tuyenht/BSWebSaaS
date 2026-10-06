@@ -75,10 +75,10 @@ Verifier: [CHƯA KIỂM ĐƯỢC] nếu công cụ chụp quá giờ — Claude 
 ## Phần 2 (06/10/2026)
 
 ### Topbar
-- Thứ tự 1440: [Menu] · ô tìm "Tìm trang, bài viết, sản phẩm, cài đặt…" (gợi ý phím tắt Ctrl K / ⌘K từ 1024px) · Trợ giúp · chuông · bộ chuyển website · menu người dùng. Mặt Nền tảng: chỗ bộ chuyển website là nhãn "Nền tảng · mọi khách hàng".
+- ~~Thứ tự 1440 (D0-4a): Menu · ô tìm · Trợ giúp · chuông · bộ chuyển website · menu người dùng~~ → thay bằng D0-4at bên dưới (owner 06/10).
 - Dưới 640px: ô tìm thành kính lúp → hộp tìm toàn màn (ô 16px, nút ← đóng, Esc đóng). Ctrl/⌘+K: tới ô tìm, hoặc mở hộp tìm khi ô đang ẩn.
-- Đã bỏ: nút toàn màn hình, nút sáng/tối, nút Tùy biến nổi góc phải, bộ chọn ngôn ngữ có cờ.
-- Bộ chuyển website: hiện khi ≥ 2 website hoặc gói còn chỗ; hết chỗ → "Tạo website mới — khóa theo gói" (chữ trung tính, D0-4b nối Tweak "Lời mời nâng gói"); ô tìm từ 6 website. Chọn website khác = mở trang quản trị của website đó (toast nói rõ; chưa đăng nhập thì qua màn đăng nhập).
+- ~~Đã bỏ: nút toàn màn hình, nút sáng/tối, bộ chọn ngôn ngữ có cờ~~ → owner 06/10 GIỮ lại cả ba (D0-4at). Nút Tùy biến nổi góc phải vẫn bỏ.
+- ~~Bộ chuyển website: hiện khi ≥ 2 website hoặc gói còn chỗ, ở topbar bên phải~~ → quy tắc mới D0-4at: chỉ khi ≥ 2 website, ở đầu vùng điều hướng.
 - Menu người dùng (cả 2 mặt): Tài khoản của tôi (mở hộp `acctShow` đang có, giữ nguyên) · Giao diện · Ngôn ngữ giao diện (tên bản địa, Tiếng Việt trước, không cờ) · Khóa màn hình (giữ nguyên) · Đăng xuất (hộp xác nhận đang có).
 - Giao diện (bảng bên phải): Cỡ chữ Bình thường / Lớn · Bố cục · Chế độ màu Sáng / Tối / Theo máy · Chiều rộng · Vị trí · Độ rộng thanh bên · Màu thanh bên (Sáng · Đậm · Chuyển màu) · Màu thanh trên cùng · "Về mặc định". Đã gỡ khối "Loại tài khoản" (→ Tweak) và "Màu thương hiệu" (→ Cài đặt nền tảng › Thương hiệu trắng). Hai tầng: Cài đặt › Giao diện trang quản trị = mặc định của website; menu người dùng › Giao diện = lựa chọn riêng, đè lên mặc định. Lưu/đặt lại theo người dùng = `admin.theme.save` / `admin.theme.reset` (prototype: `localStorage['bs-ui']`).
 - Chữ lớn: `--fsp: 2px` trên khung gốc (màn nhúng thừa hưởng) + nội dung Shell phóng 16/14 vì chữ Shell viết px (TODO · D0-5 bỏ phóng khi màn nhúng dùng `--fsp`).
@@ -117,6 +117,7 @@ Verifier: [CHƯA KIỂM ĐƯỢC] nếu công cụ chụp quá giờ — Claude 
 4. Đạt [ĐO BẰNG SCRIPT] — 14 mục website ở nhóm mở + 2 trong Nâng cao (gập); mô tả 0 từ cấm; 390 = danh sách trang, bấm "SEO & Chia sẻ" → màn mục, "‹ Cài đặt" → về danh sách; `#settings/email` ở 360 mở thẳng Email + "‹ Cài đặt" + thanh Lưu.
 5. Đạt [ĐO BẰNG SCRIPT] — sửa "Tên công ty (pháp lý)" → "1 thay đổi chưa lưu … Lưu"; nhập "abc" vào "Email liên hệ" rồi đóng nhóm → "2 thay đổi chưa lưu · 1 lỗi · Xem lỗi đầu tiên"; bấm → nhóm mở, focus "Email liên hệ" (`aria-invalid="true"`).
 6. Đạt [ĐO BẰNG SCRIPT] — grep phân biệt hoa thường: 0 "Chủ sở hữu · Biên tập viên · đã xuất bản · hoàn nguyên · 2FA · TLS · Operator" (chỉ còn tên biến `twofa*`); shopMenu 0 "Khách hàng".
+   Phạm vi mục 4: chỉ áp cho mô tả một dòng của mục Cài đặt và nhãn mặt. Chữ SMTP / OAuth / SSL / sitemap / robots trong NỘI DUNG các panel Email, Tên miền, SEO, Tài khoản mạng xã hội là chữ có sẵn, do D0-6b và D3-2 sửa.
 7. Đạt — hộp Tài khoản (`acctShow`) và Khóa màn hình giữ nguyên; TODO đã gắn đuôi; lượt kế tiếp D0-4b.
 
 ## Kiểm hiển thị (phần 2)
@@ -142,5 +143,80 @@ Tìm trang, bài viết, sản phẩm, cài đặt… · Trợ giúp · Đang xe
 - Số website tối đa theo gói cho bộ chuyển website (hết chỗ → khóa "Tạo website mới").
 - Kho bài trợ giúp theo màn + kênh liên hệ hỗ trợ (`BSPLAT.support`).
 - Mục mới cần route/dữ liệu: Đường dẫn (mẫu đường dẫn theo loại nội dung), Chuyển hướng (bảng từ → sang, tự thêm khi đổi đường dẫn bài đã đăng), Cài đặt Sản phẩm, Giao diện trang quản trị (mặc định website).
+
+## D0-4b — sửa sau khi Claude Code kiểm zip D0-4a (06/10)
+Chỉ sửa `Admin Shell.dc.html`. Phần việc chính của D0-4b (Tweaks còn lại, registry màn, bs-goto, ẩn theo perm/mod) chưa có đề bài, chưa làm.
+1. ~~Topbar dưới 1024px: Tìm kiếm · Trợ giúp · Thông báo · Chuyển website 44×44, cụm phải cách nhau 8px (máy tính giữ 38px, cách 8px). Dưới 420px bộ chuyển website vào menu người dùng.~~ → phần bộ chuyển website thay bằng D0-4at; 44×44 + cách 8px giữ.
+2. 2 cột 1024–1279, cột mục con ẩn: ô icon nhóm đang chọn mang `aria-current="page"`; cột mục con hiện → `aria-current` ở mục con.
+3. Ngang: nút "Khác" nhận kiểu "đang ở trong" (chữ + vạch như mục đang chọn) khi trang đang mở nằm trong menu thả "Khác"; không gắn `aria-current`. Nhóm thả xuống ở thanh đã có kiểu này từ D0-4a.
+4. Thanh bên (dọc + cột phụ 2 cột): `revealNav()` cuộn tới mục đang chọn khi nạp và khi đổi trang/bố cục/mở drawer, chỉ khi mục ngoài tầm nhìn. Template vẽ trễ hơn logic nên thử lại ở 150 / 400 / 900ms.
+5. Cài đặt dưới 768px: dạng danh sách → `#settings`; bấm mục → `#settings/<mục>`; "‹ Cài đặt" → `#settings`; nạp lại `#settings` → danh sách. Máy tính: `#settings` → `#settings/general` như cũ.
+6. ~~Đã xóa: onToggleScheme · schemeIcon · toggleScheme() · onToggleFullscreen · fsIcon · toggleFullscreen() · listener fullscreenchange · state isFullscreen~~ → khôi phục và nối lại vào markup ở D0-4at. Vẫn xóa: czTriggerStyle · czPlane · czBrand · fabSync / fabSchedule / _fabScroll / --fab-bottom; D0-4at xóa thêm state `focusMode`.
+
+### Kết quả đo D0-4b (`_audit/d04b.html`, Chrome, Sáng, thanh Đậm mặc định)
+| Bề rộng | Bố cục | (1) nút nhỏ nhất · khe nhỏ nhất · cuộn ngang | (2) `aria-current` đang hiện: Tổng quan / Cài đặt | (3) "Khác" |
+|---|---|---|---|---|
+| 360×740 | dọc · ngang · 2 cột (điện thoại luôn dọc) | 44 · 8 · không | 1 / 1 | — |
+| 390×800 | dọc · ngang · 2 cột | 44 · 8 · không | 1 / 1 | — |
+| 1024×768 | dọc | 38 · 8 · không | 1 / 1 | — |
+| 1024×768 | ngang | 38 · 8 · không | 1 / 0 (*) | vạch + chữ #2050a0, aria-current không có |
+| 1024×768 | 2 cột | 38 · 8 · không | 1 / 1 (ô icon "Hệ thống"); mở cột phụ → 1 (mục "Cài đặt") | — |
+| 1440×900 | dọc · 2 cột | 38 · 8 · không | 1 / 1 | — |
+| 1440×900 | ngang | 38 · 8 · không | 1 / 0 (*) | vạch + chữ #2050a0, aria-current không có |
+| 768×800 | dọc | 44 · 8 · không (bộ chuyển website: xem D0-4at) | — | — |
+
+360 / 390 topbar: Menu 85×44 · Tìm kiếm 44×44 · Trợ giúp 44×44 · Thông báo 44×44 · Tài khoản 50×56; (D0-4as đưa bộ chuyển website vào menu người dùng — D0-4at bỏ, chỉ còn ở đầu ngăn kéo menu). `scrollWidth = clientWidth` ở `html` và `body`; khung gốc `overflow-x:hidden` (bảng Giao diện/Trợ giúp nằm ngoài khung khi đóng).
+(*) Cài đặt nằm trong "Khác": `aria-current` ở mục con của menu thả, đúng 1 trong DOM nhưng ẩn tới khi rê/focus — theo yêu cầu (3) không chuyển lên nút cha. [ĐO BẰNG SCRIPT]
+
+(4) mục đang chọn trong tầm nhìn thanh bên [ĐO BẰNG SCRIPT]:
+| Khung | Nạp `#settings` | → Tổng quan | → Cài đặt |
+|---|---|---|---|
+| 1440×600 dọc | trong (cuộn 314) | trong (0) | trong (314) |
+| 1440×520 2 cột | trong (0, cột phụ ngắn) | trong | trong |
+| 1024×520 dọc (rail) | trong (394) | trong (0) | trong (394) |
+| 390×560 drawer | trong (514) | trong (0) | trong (397) |
+
+(5) 390: `#settings` → bấm Email → `#settings/email` → "‹ Cài đặt" → `#settings` → nạp lại → `#settings`, danh sách. 1440: `#settings` → `#settings/general`. [ĐO BẰNG SCRIPT]
+[CHƯA KIỂM ĐƯỢC]: chế độ tối, thanh Sáng / Chuyển màu cho (3), 768 ở 2 cột/ngang (dưới 1024 luôn dọc), Safari / Firefox — Claude Code kiểm bằng zip.
+
+## D0-4at — khôi phục nút công cụ topbar + đặt lại bộ chuyển website (owner 06/10)
+Thắng mọi chỗ nói khác ở D0-4a mục 2 / "Xong khi (3)" và D0-4as điểm 1 (bộ chuyển), 6.
+
+### Topbar
+- Từ 768px: Tìm · Trợ giúp · Ngôn ngữ giao diện · Toàn màn hình · Sáng / tối · chuông · menu người dùng. Bộ chuyển website không còn ở bên phải.
+- Ngôn ngữ giao diện: danh sách Tiếng Việt · English · 日本語 · 中文, mỗi dòng có `lang`; dòng đang dùng ✓ + `aria-current="true"`; mũi tên lên/xuống đi qua dòng, Esc đóng và trả focus về nút. Tooltip + `aria-label` "Ngôn ngữ giao diện: <tên bản địa>". Tweak "Kiểu nút ngôn ngữ": **Cờ** (mặc định) = cờ tròn 22px, SVG nội tuyến lấy từ repo `public/images/admin/flags/{vi,en,ja,zh}.svg` (bản sao ở `assets/flags/`; en/zh đọc lại vì tệp gốc mã iso-8859-1); **Mã** = icon dịch + "VI". Thanh ngôn ngữ NỘI DUNG không đổi, không cờ.
+- Toàn màn hình: bật/tắt, icon + tooltip "Toàn màn hình" / "Thoát toàn màn hình", `aria-pressed`. Hiện khi trình duyệt có `requestFullscreen` (iPhone không có → ẩn). Sửa 06/10 theo owner: không dùng `fullscreenEnabled` để ẩn, vì khung xem trước/khung nhúng báo `false` dù trình duyệt hỗ trợ → nút biến mất. Bị khung chặn lúc bấm → thông báo "…mở trang ở tab riêng để dùng."
+- Mặt Nền tảng: bỏ khối "Nền tảng · mọi khách hàng" ở topbar (owner 06/10). Chỉ khi "Đăng nhập dưới tên khách hàng" mới có khối báo trên topbar (≥ 768px): icon + "Đăng nhập dưới tên khách hàng" + tên website, nền vàng nhạt, viền chữ vàng.
+- Rê/focus nút công cụ topbar: khối nền bo 8px 44×44 (sáng `#f3f6f9`, tối trắng 8%, thanh Đậm trắng 14%).
+- Sáng / tối: đổi theo giao diện ĐANG HIỆN (kể cả Theo máy → bấm là đổi ngay sang bản ngược). "Theo máy" vẫn ở menu người dùng › Giao diện; chung một state `scheme`.
+- Ngoại lệ tiêu chí 4 (owner duyệt): 3 nút chỉ có icon, mỗi nút có tooltip + `aria-label`, 44×44, cách 8px.
+- Ô tìm: đo chỗ trống thật của topbar (`fitSearch`); dưới 240px thì thu thành kính lúp → tìm toàn màn. Không bỏ nút công cụ nào. Nhãn chữ "Trợ giúp" chỉ hiện từ 1280px.
+- Dưới 768px: Menu · Tìm · Trợ giúp · chuông · menu người dùng. Toàn màn hình ẩn.
+- Menu người dùng (mọi bề rộng): Tài khoản của tôi · Giao diện · Ngôn ngữ giao diện (đọc cùng Tweak — Cờ: cờ 20px + tên; Mã: tên + mã) · Chuyển sang giao diện tối/sáng · Khóa màn hình · Đăng xuất.
+
+### Bộ chuyển website
+- Chỉ mặt Website; ẩn ở mặt Nền tảng, khi Tweak "Đang đăng nhập dưới tên khách hàng" bật, và khi chỉ có 1 website (không thêm "Tạo website mới" vào menu người dùng — TODO D3-2).
+- Ở đầu vùng điều hướng, ngoài vùng menu cuộn. Bảng chọn đặt ở cấp khung gốc, `position:fixed` theo vị trí nút (ngăn kéo điện thoại có transform nên không đặt bên trong).
+  · Dọc, thanh bên đầy đủ: khối 52px rộng hết thanh = ô chữ cái + tên (… + tooltip) + tên miền + mũi tên; nền Đậm/Chuyển màu: viền trắng 24%, chữ trắng / trắng 85%; nền Sáng: viền + chữ token.
+  · Thanh icon thu nhỏ (1024–1279 hoặc "Thu gọn"): ô chữ cái 44×44, tooltip + `aria-label` "Đang quản trị <tên> — đổi website".
+  · 2 cột: ô ở đầu cột icon khi cột menu ẩn; cột menu hiện → khối đầy đủ ở đầu cột menu, ô ở cột icon ẩn.
+  · Ngang: ngay sau logo. < 1280: ô 44×44; ≥ 1280: khối gọn (ô + tên, tối đa 200px, không tên miền, không mũi tên).
+  · 768–1023: ô 44×44 ngay sau "Menu" + khối đầy đủ ở đầu ngăn kéo. < 768: chỉ ở đầu ngăn kéo.
+- Danh sách: ô chữ cái · tên · tên miền · vai trò; đang mở ✓ + `aria-current="true"`; từ 6 website có ô tìm; cuộn trong khung; mũi tên đi qua dòng, Esc đóng + trả focus. Dưới 1024px: bảng trượt từ đáy + nút Đóng 44px. Chân: "Tạo website mới" hoặc "Tạo website mới — khóa theo gói".
+- Tweak mới trong CÙNG data-props: `siteCount` 1 · 3 · 8 (mặc định 3), `langBtn` flag · code, `impersonating`. 8 website có tên dài "Trung tâm Anh ngữ Bình Minh — Chi nhánh Thủ Đức" để thử ca xấu.
+
+### Mã
+- Khôi phục + nối markup: onToggleScheme · schemeIcon · toggleScheme() · onToggleFullscreen · fsIcon · toggleFullscreen() · listener fullscreenchange · state isFullscreen. Xóa state `focusMode` (không còn gì bật). Bỏ cách D0-4as "dưới 420px đưa bộ chuyển vào menu người dùng". `flagUrl` trả cờ thật; bỏ phần tử cờ không dùng ở thanh ngôn ngữ nội dung.
+- Grep: czTriggerStyle 0 · czPlane 0 · czBrand 0 · focusMode 0; toggleScheme 3 (khai báo + nút topbar + mục menu người dùng) · toggleFullscreen 2 (khai báo + nút).
+
+### Kết quả "Xong khi" (`_audit/d04at.html` + `d04at-1/2/4/5`, Chrome, Sáng)
+1. Đạt [ĐO BẰNG SCRIPT] — 1024 / 1280 / 1440 × dọc / ngang / 2 cột, phải: Trợ giúp · Ngôn ngữ · Toàn màn hình · Sáng/tối · Thông báo · Tài khoản; nút nhỏ nhất 44, khe 8, không cuộn ngang. Ô tìm (thường = chữ lớn): 1024 dọc 388 · ngang 297 · 2 cột 388; 1280 dọc 407 · ngang 436 · 2 cột 353; 1440 cả 3 = 440. Sáng/tối: sáng → tối; Theo máy (đang hiện sáng) → tối. Ngôn ngữ: chọn English → `lang=en`, tooltip đổi; Tweak Mã → mặt nút "VI" + icon dịch. Toàn màn hình: môi trường xem trước có `fullscreenEnabled = false` nên nút ẩn đúng luật; thứ tự trên đo bằng cách giả lập trình duyệt hỗ trợ. Bật/tắt toàn màn hình thật: [CHƯA KIỂM ĐƯỢC] — cần thao tác người dùng thật trong trình duyệt cho phép; Claude Code kiểm bằng zip.
+2. Đạt [ĐO BẰNG SCRIPT] — 768×900 và 844×390: trái Menu · ô chuyển website 44 · ô tìm 304 / 380; phải Trợ giúp · Ngôn ngữ · Sáng/tối · Thông báo · Tài khoản; nút Toàn màn hình ẩn vì `fullscreenEnabled = false` (cả khi iframe có `allow="fullscreen"`, do khung ngoài chặn). Hiện nút khi trình duyệt hỗ trợ: [CHƯA KIỂM ĐƯỢC] ở bề rộng này.
+3. Đạt [ĐO BẰNG SCRIPT] — 360 / 390: Menu · Tìm kiếm · Trợ giúp · Thông báo · Tài khoản; nút nhỏ nhất 44, khe 8, `scrollWidth = clientWidth`. Menu người dùng có Ngôn ngữ giao diện (cờ, `lang` vi/en/ja/zh) + Chuyển sang giao diện tối.
+4. Đạt [ĐO BẰNG SCRIPT] — số bộ chuyển đang hiện (1 / 3 / 8): 1440 dọc 0/1/1 (khối 233×52 thanh bên) · 1440 ngang 0/1/1 (khối gọn 107×44 topbar) · 1440 2 cột 0/1/1 (khối 211×52 cột menu) · 1280 ngang 0/1/1 (khối gọn) · 1024 dọc 0/1/1 (ô 44 thanh icon; mở rộng → khối 233×52) · 1024 2 cột 0/1/1 (ô 44 cột icon; mở cột menu → khối 211×52, ô ẩn) · 1024 ngang 0/1/1 (ô 44 topbar) · 800 dọc 0/1/1 (ô 44 sau Menu; mở ngăn kéo → thêm khối 243×52) · 390 0/0/0 (mở ngăn kéo → khối 243×52). 8 website: bảng 300×480 (dưới 1024: bảng đáy 800×560) có ô tìm, focus vào dòng đang mở.
+5. Đạt [ĐO BẰNG SCRIPT] — 8 website: mặt Website 1 · mặt Nền tảng 0 · Đăng nhập dưới tên khách hàng 0.
+6. Đạt [ĐO BẰNG SCRIPT] — danh sách ngôn ngữ: mở → focus "Tiếng Việt", ↓ → English, Esc → đóng + focus về nút. Danh sách website: Esc → đóng + focus về ô/khối ở cả 8 bố cục trên.
+7. Đạt — grep như mục Mã.
+[CHƯA KIỂM ĐƯỢC]: chế độ tối + thanh Sáng/Chuyển màu cho khối bộ chuyển (tương phản tính theo token, chưa đo), Safari iOS (nút Toàn màn hình phải ẩn), Firefox — Claude Code kiểm bằng zip.
 
 Verifier: chạy sau khi giao; nếu quá giờ → [CHƯA KIỂM ĐƯỢC], Claude Code kiểm bằng zip.

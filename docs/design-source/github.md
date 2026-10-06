@@ -2,12 +2,17 @@ repo: tuyenht/BSWebSaaS
 branch: main
 
 ## Last sync
-date: 2026-10-06T04:09:41Z
+date: 2026-10-06T07:46:22Z
+
+### Updated in this project
+- D0-4at: cờ nút Ngôn ngữ giao diện lấy từ `public/images/admin/flags/{vi,en,ja,zh}.svg` (nhúng SVG trong Admin Shell, bản sao ở `assets/flags/`).
+
+## Sync history
+
+### 2026-10-06T04:09:41Z
 
 ### Updated in this project
 - D0-4a phần 1: menu Admin Shell 2 mặt bám `AdminNav.php` (loại nội dung, catalog, Hộp duyệt theo `reviewQueue`, feature leaves) và `PlatformNav.php`; khóa quyền/module gắn trên từng mục.
-
-## Sync history
 
 ### 2026-10-05T16:33:17Z
 
@@ -49,6 +54,7 @@ date: 2026-10-06T04:09:41Z
 | Màn hình | Nguồn trong repo |
 | --- | --- |
 | Admin Shell — menu mặt site / nền tảng | `app/Modules/Admin/Navigation/AdminNav.php`, `app/Modules/Admin/Navigation/PlatformNav.php` |
+| Admin Shell — nút Ngôn ngữ giao diện (cờ) | `public/images/admin/flags/{vi,en,ja,zh}.svg` |
 | Quản lý Bài viết / Trang (danh sách) | `app/Modules/Admin/Livewire/Entries/Index.php` |
 | Page Editor / Trình soạn nội dung | `app/Modules/Admin/Livewire/Entries/Editor.php` |
 | Hộp duyệt | `app/Modules/Admin/Livewire/Entries/ReviewInbox.php` |

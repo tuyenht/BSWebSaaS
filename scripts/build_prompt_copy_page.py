@@ -47,7 +47,7 @@ CHAT_NAMES = {'D0-2s5': 'Focus 1b finalization'}
 # Two-chat mode (owner 06/10): each side round runs beside its main-lane partner and leaves shared-file edits for the next main round to merge.
 PAIRS = {'D0-6c': 'D0-6b', 'D1-6': 'D1-1', 'D2-3': 'D1-2', 'D1-7': 'D1-4b', 'D2-1': 'D1-4c', 'D2-2': 'D1-4d', 'D4-2': 'D4-3'}
 PARTNER = {**PAIRS, **{m: s for s, m in PAIRS.items()}}
-FIXES_RUN = {'D0-2s': '04/10', 'D0-2s2': '05/10', 'D0-2s3': '05/10', 'D0-2s4': '05/10', 'D0-3s': '06/10', 'D0-2s5': '06/10', 'D0-4as': '06/10'}
+FIXES_RUN = {'D0-2s': '04/10', 'D0-2s2': '05/10', 'D0-2s3': '05/10', 'D0-2s4': '05/10', 'D0-3s': '06/10', 'D0-2s5': '06/10', 'D0-4as': '06/10', 'D0-4at': '06/10'}
 
 WAVES = [
     ('D0', 'Nền', 'Làm trước mọi thứ: dọn project, chuẩn giao diện (component + mẫu trang + thuật ngữ + tiêu chí dễ dùng), Shell v2 + registry màn, nối màn đã có, rồi rà & sửa hiển thị điện thoại/máy tính bảng cho mọi màn đã có (D0-6a/6b/6c).', 'Bắt đầu được ngay'),
