@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
@@ -29,32 +30,41 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 .qz-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .qz-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
 .qz-btn:disabled{opacity:.6;cursor:not-allowed;}
-.qz-ai{border-color:rgba(32,80,160,.28);background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);}
-.qz-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.qz-ai{border-color:color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent);background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);}
+.qz-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
 .qz-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
 .qz-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .qz-pill:hover{background:var(--color-surface-hover,#f3f6f9);}
-.qz-pill.on{border-color:#2050a0;background:rgba(32,80,160,.07);font-weight:600;color:var(--color-accent,#2050a0);}
+.qz-pill.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 7%,transparent);font-weight:600;color:var(--color-accent,#2050a0);}
 .qz-bar{height:9px;border-radius:20px;background:var(--color-border,#e9ecf4);overflow:hidden;display:flex;}
 .qz-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;}
 .qz-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
 .qz-pack{display:flex;flex-direction:column;gap:6px;padding:13px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);cursor:pointer;text-align:left;font:inherit;min-width:0;}
 .qz-pack:hover{background:var(--color-surface-muted,#fbfcfe);}
-.qz-pack.on{border-color:#2050a0;background:rgba(32,80,160,.05);box-shadow:0 0 0 1px #2050a0 inset;}
-.qz-sw{width:38px;height:20px;border-radius:20px;background:#dfe2e8;position:relative;display:inline-block;flex-shrink:0;transition:background .15s;}
-.qz-sw.on{background:#2050a0;}
+.qz-pack.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent);box-shadow:0 0 0 1px var(--color-accent,#2050a0) inset;}
+.qz-sw{width:38px;height:20px;border-radius:20px;background:var(--color-surface-hover,#dfe2e8);position:relative;display:inline-block;flex-shrink:0;transition:background .15s;}
+.qz-sw.on{background:var(--color-admin-primary,#2050a0);}
 .qz-sk{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--color-surface,#fff);transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.15);}
 .qz-sw.on .qz-sk{left:20px;}
 .qz-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
 .qz-plan{display:grid;grid-template-columns:minmax(0,1fr) 206px minmax(0,0.95fr) 128px;gap:14px;align-items:start;padding:13px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);}
 .qz-use{display:grid;grid-template-columns:minmax(0,1fr) 132px minmax(0,1.8fr);gap:0;border-top:1px solid var(--color-border-soft,#f6f7f9);align-items:center;}
 .qz-use span{padding:9px 14px;font-size:12px;color:var(--color-body-text,#3c4765);min-width:0;}
-@media (max-width:900px){.qz-2,.qz-3{grid-template-columns:minmax(0,1fr);}.qz-plan{grid-template-columns:minmax(0,1fr) 168px;}.qz-plan span:nth-child(3){display:none;}.qz-use{grid-template-columns:minmax(0,1fr) 118px;}.qz-use span:nth-child(3){display:none;}}
+@container (max-width:900px){.qz-2,.qz-3{grid-template-columns:minmax(0,1fr);}.qz-plan{grid-template-columns:minmax(0,1fr) auto;row-gap:6px;}.qz-plan>span:nth-child(3){grid-column:1/-1;}.qz-use{grid-template-columns:minmax(0,1fr) auto;}.qz-use>span:nth-child(3){grid-column:1/-1;padding-top:0!important;}}
+@container (max-width:599px){.qz-plan>span:nth-child(4),.qz-plan>div:nth-child(4){grid-column:1/-1;}.qz-plan>span:nth-child(4) button,.qz-plan>div:nth-child(4) button{width:100%;justify-content:center;}.qz-row{row-gap:8px}.qz-chip{max-width:100%;overflow:hidden;text-overflow:ellipsis;}}
 @keyframes qzFade{from{opacity:0}to{opacity:1}}
+
+/* D0-6c · co giãn chung */
+.s6-root{container-type:inline-size;box-sizing:border-box}
+.s6-tst{bottom:calc(22px + env(safe-area-inset-bottom))!important;max-width:calc(100% - 24px)!important}
+@media (max-width:599px){.s6-root{padding:12px 12px 24px!important}.s6-ov{align-items:flex-end!important;padding:0!important}.s6-dlg{width:100%!important;max-width:none!important;max-height:92vh;max-height:92dvh!important;overflow:auto!important;border-radius:12px 12px 0 0!important;padding-bottom:env(safe-area-inset-bottom)}}
+@media (max-width:599px),(pointer:coarse){input,textarea,select{font-size:16px!important}}
+@container (max-width:599px){.s6-root button:not(.dsw):not(.s6-sm){min-height:44px}}
+@media (pointer:coarse){.s6-root button:not(.dsw):not(.s6-sm),.s6-dlg button{min-height:44px}}
 </style>
 </helmet>
 
-<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+<div class="s6-root" data-cs="sup" style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
 
   <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
     <sc-if value="{{ showHead }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
@@ -69,8 +79,8 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </div>
 
   <sc-if value="{{ trialOn }}">
-    <div class="qz-card" style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-left:3px solid #2050a0;flex-wrap:wrap;">
-      <span style="width:32px;height:32px;border-radius:50%;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-gift-line" style="font-size:16px;color:var(--color-accent,#2050a0);"></i></span>
+    <div class="qz-card" style="display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-left:3px solid var(--color-accent,#2050a0);flex-wrap:wrap;">
+      <span style="width:32px;height:32px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="ri-gift-line" style="font-size:16px;color:var(--color-accent,#2050a0);"></i></span>
       <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 300px;min-width:0;">
         <span style="font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">Đang dùng gói miễn phí</span>
         <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.7;">{{ trialText }}</span>
@@ -92,12 +102,12 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);padding-bottom:3px;">từ AI còn dùng được</span>
         </div>
         <div class="qz-bar" title="{{ wBarTitle }}">
-          <span style="width:{{ wPlanPct }}%;background:#2050a0;"></span>
-          <span style="width:{{ wAddonPct }}%;background:#7d8bb3;"></span>
+          <span style="width:{{ wPlanPct }}%;background:var(--color-admin-primary,#2050a0);"></span>
+          <span style="width:{{ wAddonPct }}%;background:var(--color-body-faint,#7d8bb3);"></span>
         </div>
         <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--color-body-muted,#5b6275);">
-          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:#2050a0;"></span>Gói tháng: {{ wPlanLine }}</span>
-          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:#7d8bb3;"></span>Đã mua thêm: {{ wAddonLine }}</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--color-admin-primary,#2050a0);"></span>Gói tháng: {{ wPlanLine }}</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--color-body-faint,#7d8bb3);"></span>Đã mua thêm: {{ wAddonLine }}</span>
         </div>
         <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.65;">{{ wEnough }}</span>
         <span style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;"><i class="ri-calendar-close-line" style="font-size:13px;flex-shrink:0;margin-top:1px;"></i><span>{{ resetLine }}</span></span>
@@ -121,12 +131,12 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
           <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);padding-bottom:3px;">lượt tạo ảnh còn dùng được</span>
         </div>
         <div class="qz-bar" title="{{ iBarTitle }}">
-          <span style="width:{{ iPlanPct }}%;background:#2050a0;"></span>
-          <span style="width:{{ iAddonPct }}%;background:#7d8bb3;"></span>
+          <span style="width:{{ iPlanPct }}%;background:var(--color-admin-primary,#2050a0);"></span>
+          <span style="width:{{ iAddonPct }}%;background:var(--color-body-faint,#7d8bb3);"></span>
         </div>
         <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--color-body-muted,#5b6275);">
-          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:#2050a0;"></span>Gói tháng: {{ iPlanLine }}</span>
-          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:#7d8bb3;"></span>Đã mua thêm: {{ iAddonLine }}</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--color-admin-primary,#2050a0);"></span>Gói tháng: {{ iPlanLine }}</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:2px;background:var(--color-body-faint,#7d8bb3);"></span>Đã mua thêm: {{ iAddonLine }}</span>
         </div>
         <span style="font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.65;">{{ iEnough }}</span>
         <span style="display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;"><i class="ri-calendar-close-line" style="font-size:13px;flex-shrink:0;margin-top:1px;"></i><span>{{ resetLine }}</span></span>
@@ -155,7 +165,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
       <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.65;">{{ shopNote }}</span>
     </div>
     <sc-if value="{{ shopBlocked }}">
-      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid var(--color-border-soft,#f6f7f9);background:rgba(247,184,75,.10);flex-wrap:wrap;">
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-bottom:1px solid var(--color-border-soft,#f6f7f9);background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 10%,transparent);flex-wrap:wrap;">
         <i class="ri-lock-line" style="font-size:15px;color:var(--color-admin-warning-text,#8a6115);flex-shrink:0;margin-top:2px;"></i>
         <span style="font-size:12px;color:var(--color-admin-warning-text,#8a6115);line-height:1.65;flex:1 1 260px;min-width:0;">{{ shopBlockText }}</span>
         <button class="qz-btn qz-ai" style="flex-shrink:0;" onClick="{{ onSubscribe }}"><i class="ri-shield-check-line" style="font-size:14px;"></i>Đăng ký gói website</button>
@@ -165,7 +175,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
       <sc-for list="{{ packs }}" as="p" hint-placeholder-count="3">
         <sc-if value="{{ p.on2 }}">
           <button class="qz-pack on" onClick="{{ p.on }}" title="{{ p.title }}">
-            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ p.amount }}</span><sc-if value="{{ p.best }}"><span class="qz-chip" style="background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);">Hay chọn</span></sc-if></span>
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ p.amount }}</span><sc-if value="{{ p.best }}"><span class="qz-chip" style="background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);">Hay chọn</span></sc-if></span>
             <span style="font-size:17px;font-weight:600;color:var(--color-accent,#2050a0);">{{ p.price }}</span>
             <sc-if value="{{ p.enoughOn }}"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ p.enough }}</span></sc-if>
             <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ p.unitPrice }}</span>
@@ -173,7 +183,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
         </sc-if>
         <sc-if value="{{ p.off }}">
           <button class="qz-pack" onClick="{{ p.on }}" title="{{ p.title }}">
-            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ p.amount }}</span><sc-if value="{{ p.best }}"><span class="qz-chip" style="background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);">Hay chọn</span></sc-if></span>
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ p.amount }}</span><sc-if value="{{ p.best }}"><span class="qz-chip" style="background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);">Hay chọn</span></sc-if></span>
             <span style="font-size:17px;font-weight:600;color:var(--color-accent,#2050a0);">{{ p.price }}</span>
             <sc-if value="{{ p.enoughOn }}"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ p.enough }}</span></sc-if>
             <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ p.unitPrice }}</span>
@@ -233,7 +243,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
       <sc-for list="{{ lots }}" as="l" hint-placeholder-count="1">
         <div class="qz-row" style="padding:11px 16px;" title="{{ l.title }}">
           <span style="display:flex;flex-direction:column;gap:2px;flex:1 1 240px;min-width:0;">
-            <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ l.name }}</span><span class="qz-chip" style="background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);">{{ l.book }}</span></span>
+            <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ l.name }}</span><span class="qz-chip" style="background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);">{{ l.book }}</span></span>
             <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ l.line }}</span>
           </span>
           <span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);white-space:nowrap;flex-shrink:0;">{{ l.left }}</span>
@@ -304,7 +314,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
     <sc-for list="{{ plans }}" as="pl" hint-placeholder-count="3">
       <div class="qz-plan">
         <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
-          <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ pl.name }}</span><sc-if value="{{ pl.cur }}"><span class="qz-chip" style="background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);">Gói hiện tại</span></sc-if></span>
+          <span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ pl.name }}</span><sc-if value="{{ pl.cur }}"><span class="qz-chip" style="background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);">Gói hiện tại</span></sc-if></span>
           <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">{{ pl.quota }}</span>
           <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ pl.quota2 }}</span>
         </span>
@@ -323,10 +333,10 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </div>
 
   <sc-if value="{{ askOpen }}">
-    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="s6-ov" style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:qzFade .16s ease;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
+      <div class="s6-dlg" role="dialog" aria-modal="true" style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:qzFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
         <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.7;">{{ askText }}</span>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
           <button class="qz-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Hủy</button>
@@ -337,15 +347,25 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ toast }}">
-    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:qzFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+    <div class="s6-tst" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:qzFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
       <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
     </div>
   </sc-if>
+
+  <sc-if value="{{ s6Frames }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+    <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Khung xem 390px · 768px (ghi chú thiết kế)</span>
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+      <iframe src="Hạn ngạch AI và mua thêm.dc.html#frame" loading="lazy" title="Khung xem 390px" style="width:390px;max-width:100%;height:844px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+      <iframe src="Hạn ngạch AI và mua thêm.dc.html#frame" loading="lazy" title="Khung xem 768px" style="width:768px;max-width:100%;height:900px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+    </div>
+  </div>
+  </sc-if>
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;plan&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;free&quot;,&quot;basic&quot;,&quot;pro&quot;,&quot;ent&quot;],&quot;default&quot;:&quot;basic&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Gói dịch vụ&quot;},&quot;quota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:41500,&quot;limit&quot;:60000,&quot;addon&quot;:0},&quot;tsType&quot;:&quot;{used:number,limit:number,addon:number}&quot;,&quot;section&quot;:&quot;Hạn ngạch&quot;},&quot;imageQuota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:12,&quot;limit&quot;:20,&quot;addon&quot;:50},&quot;tsType&quot;:&quot;{used:number,limit:number,addon:number}&quot;,&quot;section&quot;:&quot;Hạn ngạch&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ghi chú thiết kế&quot;,&quot;label&quot;:&quot;Hiện khung xem 390 · 768&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói &amp; hạn ngạch&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;},&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;plan&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;free&quot;,&quot;basic&quot;,&quot;pro&quot;,&quot;ent&quot;],&quot;default&quot;:&quot;basic&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Gói dịch vụ&quot;},&quot;quota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:41500,&quot;limit&quot;:60000,&quot;addon&quot;:0},&quot;tsType&quot;:&quot;{used:number,limit:number,addon:number}&quot;,&quot;section&quot;:&quot;Hạn ngạch&quot;},&quot;imageQuota&quot;:{&quot;editor&quot;:null,&quot;default&quot;:{&quot;used&quot;:12,&quot;limit&quot;:20,&quot;addon&quot;:50},&quot;tsType&quot;:&quot;{used:number,limit:number,addon:number}&quot;,&quot;section&quot;:&quot;Hạn ngạch&quot;}}">
 class Component extends DCLogic {
   state = { kind: null, pack: null, topup: null, billing: 'month', bought: { w: 0, i: 0 }, toast: null, ask: null };
   YEAR_MONTHS = 10;
@@ -437,7 +457,7 @@ class Component extends DCLogic {
       const addon = (b.addon || 0) + (extra || 0);
       const planLeft = Math.max(0, b.limit - b.used);
       const addonLeft = Math.max(0, addon - Math.max(0, b.used - b.limit));
-      return { addon: addon, planLeft: planLeft, addonLeft: addonLeft, left: planLeft + addonLeft, total: b.limit + addon, limit: b.limit, bought: extra || 0 };
+      return {
     };
     const W = book(q, BT.w), I = book(iq, BT.i);
 
@@ -455,9 +475,9 @@ class Component extends DCLogic {
     const wS = st(W), iS = st(I);
     const noteBase = 'display:flex;align-items:flex-start;gap:8px;padding:11px 16px;border-top:1px solid var(--color-border,#e9ecf4);font-size:12px;line-height:1.65;';
     const CH = {
-      ok: { t: 'Đủ dùng', s: 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' },
-      low: { t: 'Sắp hết', s: 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#8a6115);' },
-      out: { t: 'Đã hết', s: 'background:rgba(240,101,72,.12);color:var(--color-admin-danger-text,#a5402c);' }
+      ok: { t: 'Đủ dùng', s: 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);' },
+      low: { t: 'Sắp hết', s: 'background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,transparent);color:var(--color-admin-warning-text,#8a6115);' },
+      out: { t: 'Đã hết', s: 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,transparent);color:var(--color-admin-danger-text,#a5402c);' }
     };
 
     const kind = S.kind || ((iS === 'out' && wS !== 'out') ? 'i' : 'w');
@@ -486,6 +506,7 @@ class Component extends DCLogic {
 
     const ask = S.ask;
     return {
+      s6Frames: (typeof location === 'undefined' || location.hash !== '#frame') && this.props.showFrames !== false, addon: addon, planLeft: planLeft, addonLeft: addonLeft, left: planLeft + addonLeft, total: b.limit + addon, limit: b.limit, bought: extra || 0 };
       showHead: !this.props.embedded,
       planChip: noPlan ? 'Gói Miễn phí' : ('Gói ' + curPlan.name + ' · ' + this.n(effPrice(curPlan)) + ' ₫/tháng'),
       planChipTitle: noPlan
@@ -512,7 +533,7 @@ class Component extends DCLogic {
         : (wS === 'low'
           ? ('Với nhịp hiện tại, phần còn lại đủ khoảng ' + Math.max(1, Math.round(W.left / (wUsed30 / 30))) + ' ngày.' + (topup ? ' Tự mua thêm đang bật: dưới 10% hệ thống tự mua gói ' + this.n(this.WPACKS[0].n) + ' từ và gửi thư cho bạn.' : ' Tự mua thêm đang tắt: hết là việc đang chạy dừng và chờ bạn.'))
           : ('Nhịp 30 ngày qua ' + this.n(wUsed30) + ' từ, chủ yếu cho ' + this.lcFirst((USES.filter(u => u.kind === 'w').sort((a, b) => b.amount - a.amount)[0] || {}).name || '') + '. Bài dài trừ nhiều, bài ngắn trừ ít, không làm tròn lên.')),
-      wNoteStyle: noteBase + (wS === 'out' ? 'background:rgba(240,101,72,.07);color:var(--color-admin-danger-text,#a5402c);' : (wS === 'low' ? 'background:rgba(247,184,75,.10);color:var(--color-admin-warning-text,#8a6115);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);')),
+      wNoteStyle: noteBase + (wS === 'out' ? 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 7%,transparent);color:var(--color-admin-danger-text,#a5402c);' : (wS === 'low' ? 'background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 10%,transparent);color:var(--color-admin-warning-text,#8a6115);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);')),
       wNoteIcon: wS === 'out' ? 'ri-error-warning-line' : (wS === 'low' ? 'ri-alert-line' : 'ri-information-line'),
       onPickWords: () => { this.setState({ kind: 'w', pack: null }); this.toast('Chọn gói từ AI muốn mua thêm — cộng thẳng vào sổ nội dung chữ, không đụng lượt tạo ảnh', 'ri-add-circle-line'); },
 
@@ -533,7 +554,7 @@ class Component extends DCLogic {
         : (iS === 'low'
           ? ('Nên ưu tiên ảnh bìa và sơ đồ, phần còn lại dùng ảnh thư viện.' + (topup ? ' Tự mua thêm đang bật: dưới 10% hệ thống tự mua gói ' + this.n(this.IPACKS[0].n) + ' lượt và gửi thư cho bạn.' : ''))
           : ('Nhịp 30 ngày qua ' + iUsed30 + ' lượt. Ảnh thật bạn tải lên không tính lượt và luôn được ưu tiên trước ảnh AI.')),
-      iNoteStyle: noteBase + (iS === 'out' ? 'background:rgba(240,101,72,.07);color:var(--color-admin-danger-text,#a5402c);' : (iS === 'low' ? 'background:rgba(247,184,75,.10);color:var(--color-admin-warning-text,#8a6115);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);')),
+      iNoteStyle: noteBase + (iS === 'out' ? 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 7%,transparent);color:var(--color-admin-danger-text,#a5402c);' : (iS === 'low' ? 'background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 10%,transparent);color:var(--color-admin-warning-text,#8a6115);' : 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);')),
       iNoteIcon: iS === 'out' ? 'ri-error-warning-line' : (iS === 'low' ? 'ri-alert-line' : 'ri-information-line'),
       onPickImages: () => { this.setState({ kind: 'i', pack: null }); this.toast('Chọn gói lượt tạo ảnh muốn mua thêm — cộng thẳng vào sổ ảnh, không đụng từ AI', 'ri-add-circle-line'); },
 
@@ -599,7 +620,7 @@ class Component extends DCLogic {
         amount: (amt > 0 ? '+' : '') + (l.kind === 'w' ? this.n(amt) + ' từ' : amt + ' lượt'),
         amountStyle: l.back ? 'color:var(--color-admin-success-text,#0a8f7f);font-weight:600;' : 'color:var(--color-body-text,#3c4765);font-weight:600;',
         src: l.back ? 'Hoàn về ' + l.src.toLowerCase() : ('Trừ từ ' + l.src.toLowerCase()),
-        srcStyle: l.back ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);'
+        srcStyle: l.back ? 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);'
         };
       }),
       useSummary: this.n(wUsed30) + ' từ AI · ' + iUsed30 + ' lượt tạo ảnh',
@@ -608,7 +629,7 @@ class Component extends DCLogic {
         hint: this.n(useN(u)) + ' ' + u.unit + ((u.kind === 'i' && iPerSlot === 1) ? '' : (' · trung bình ' + this.n(Math.round(u.amount / useN(u))) + (u.kind === 'w' ? ' từ mỗi ' : ' lượt mỗi ') + u.unit.split(' ')[0]))
       })),
       rules: this.RULES.map(r => Object.assign({}, r, {
-        tagStyle: r.kind === 'f' ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);' : (r.kind === 'r' ? 'background:rgba(41,156,219,.12);color:var(--color-admin-info-text,#1c7ba8);' : 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);')
+        tagStyle: r.kind === 'f' ? 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);' : (r.kind === 'r' ? 'background:color-mix(in srgb,var(--color-admin-info,#299cdb) 12%,transparent);color:var(--color-admin-info-text,#1c7ba8);' : 'background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);')
       })),
 
       billings: [

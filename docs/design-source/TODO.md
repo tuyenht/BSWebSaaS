@@ -1,5 +1,17 @@
 # Việc còn lại — cập nhật 06/10/2026
 
+## ~~D0-6c~~ — xong 06/10 (README `README - D0-6 Hiển thị đa thiết bị.md` › D0-6c phần 1 + phần 2): 12 màn bộ AI, 120 lượt đo 0 tràn
+- Nhãn nút AI còn sót (grep 35 tệp, 06/10) — đổi theo C.15 khi chạm màn:
+  - `Quản lý Bài viết - Options`: "Viết tiêu đề & mô tả", "Nhờ AI viết…", "Viết bài mới bằng AI" → "Gợi ý tiêu đề & mô tả" · "Nâng cấp bài viết"/"Viết mới" · D1-3
+  - `Page Editor - Options`: "Viết giúp", "Viết lại đoạn bằng AI", "Nhờ AI viết", "Viết bằng AI", "Viết cả bài bằng AI" → "Viết lại" · "Nâng cấp trang" · "Viết mới" · D1-4d
+  - `Admin Shell`: "Dịch bằng AI" → "Dịch" · lượt sửa Shell kế tiếp
+- Chip ngôn ngữ tự vẽ (VI/EN/JA, 🔒 Chung) theo mẫu cũ: grep 35 tệp → 0 chỗ còn mẫu cũ (12 màn D0-6c đã dùng `.lc`). Màn danh sách/trình soạn dùng chip riêng của khuôn danh sách — rà lại khi chạm (D1-3 / D1-4b)
+- Bộ AI: công tắc trong hàng (Cài đặt nội dung AI, Cài đặt xuất bản tự động) đã dùng `.dsw[aria-checked]` chuẩn nhưng nút bọc chưa có `role="switch"` + `aria-checked` — thêm khi build · Claude Code
+- Block Library: xóa khối vẫn hỏi xác nhận (luật mới: vào Thùng rác + toast Hoàn tác, chỉ hỏi khi khối đang dùng ở N nơi) — Chờ backend Thùng rác cho khối · lượt Block Library kế
+- Hạn ngạch AI và mua thêm: khi Tweak "Lời mời nâng gói" TẮT, các màn khác không trỏ tới trang này (đã thay bằng "Cần thêm? Liên hệ hỗ trợ"); bản thân trang không ẩn nút mua — owner chốt có cần mặt "tắt" riêng · Cần owner chốt
+- Kiểm Safari/Firefox/Samsung, chế độ tối, 200%, cảm ứng thật, bàn phím ảo của D0-6c; đo 12 màn trong Shell (chưa có trong registry) · Claude Code bằng zip
+- Màn chủ ngoài phạm vi D0-6c còn hộp trợ lý AI dạng popup giữa màn (chưa trượt đáy ở điện thoại): `Quản lý Bài viết - Options` (dòng ~969, khung `width:min(1080px,100%)`) · `Page Editor - Options` (`writerCardStyle`) — làm như `.tw-ov`/`.tw-modal` của Trợ lý viết v2 · D1-3 / D1-4d
+
 
 ## ~~D0-6b~~ — xong 06/10 (README `README - D0-6 Hiển thị đa thiết bị.md` › D0-6b)
 - Admin Shell · `p-social` mount Đăng nhập nhanh với `account-type="saas"` + `embed-id="social-saas"` → đổi thành `account-type="platform"` (panel đã có nhánh; hiện tự suy từ embed-id) · lượt sửa Shell kế tiếp
@@ -60,7 +72,7 @@
 - Quản lý Trang - Options: bỏ nhãn tự khai "Đã xuất bản / Đã lên lịch / Riêng tư" → BSCW.UI · lượt sửa màn danh sách
 - Page Editor - Options: "Lưu trữ" → "Gỡ khỏi website" / "Đã gỡ khỏi website" · D1-4d
 - ~~Admin Shell: mục "Khách hàng" của nhóm bán hàng (người đặt hàng) → "Người mua" · D0-4a~~ → xong 06/10 (D0-4a phần 1, kèm "Nhóm người mua" + kết quả tìm mẫu)
-- 18 màn còn lại: nhãn nút AI theo C.15 (gộp vào dòng "D0-2 · component bổ sung" — lượt riêng sau D0-3)
+- ~~18 màn còn lại: nhãn nút AI theo C.15 (gộp vào dòng "D0-2 · component bổ sung" — lượt riêng sau D0-3)~~ → đóng 06/10 (D0-6c): 32/35 tệp sạch; 3 tệp còn sót ghi ở mục D0-6c
 - Đồng bộ Bảng thuật ngữ (P15) của design system theo `#thuat-ngu` (bản xuất của project không có file đó) · prompt DS riêng
 - Quản lý Bài viết - Options: câu "Vai trò … không được tạo bài" (addTitle, onAdd) → "Nhóm quyền …"; chế độ tối còn nền/chữ gắn cứng (băng thông tin trắng, chữ menu "Khác" mờ #878a99/#ced4da) → token · lượt sửa màn danh sách (thấy khi kiểm D0-3s)
 - ~~Owner xem lại: repo có 3 nhóm quyền nền tảng~~ → chốt 06/10: `super_admin` Quản trị nền tảng · `support` Nhân viên hỗ trợ · `billing` Nhân viên thanh toán (bảng thuật ngữ + README D0-3)
@@ -90,11 +102,11 @@ Nguồn mẫu: `Chuẩn giao diện - Component bổ sung.dc.html`. Mỗi màn s
 - ~~Floating Contact Panel · toast `role="status"` + xóa mã chết `copyLabel` (dòng 439, chữ "Đã chép") · D0-6b~~ → xong 06/10 (bỏ copyLabel/copyBtn/copyIcon/onCopy)
 - ~~Đăng nhập nhanh & Liên kết tài khoản · chip ngôn ngữ (prop lang/shared) khi chạm màn · D0-6b~~ → không áp dụng 06/10 — panel không có trường đa ngữ (khóa, công tắc dùng chung)
 - Đợt sau: Thẻ kết nối dịch vụ (6 màn) · Ô khóa bí mật (3 màn) — dựng khi sửa Email / Đăng nhập nhanh / Integrations · D3-2
-- AI Writer Panel v2 · length-field + ai-assist + ai-job · D0-6c
-- Block Library · toast `role="status"` + nút chép mã tham chiếu chép thật bằng `BSUI.copy` (`copyRef` dòng 203), nhãn "Sao chép mã tham chiếu" · D0-6c
-- Language Context · toast `role="status"` + ai-job + mẫu thanh ngôn ngữ dòng 274–283 ở 390 chuyển sang "+N" / ô chọn (tràn 54px) · D0-6c
-- Việc AI đang chạy (ai-job) ở các màn AI: Hàng đợi ảnh, Kế hoạch SEO, Vận hành AI, Cài đặt nội dung AI · D0-6c
-- Mục 6 (prop `lang` · `shared` thay chip tự vẽ) — phần chưa làm kèm ở các màn trên: quét cuối · D0-6c
+- ~~AI Writer Panel v2 · length-field + ai-assist + ai-job · D0-6c~~ → xong 06/10 (D0-6c phần 1: thước độ dài mô tả ngắn + tiêu đề/mô tả SEO, nút "Viết lại" kèm chi phí, dòng việc AI khi viết nội dung + Tweak "Mô phỏng lỗi khi viết", "mua thêm" theo Tweak "Lời mời nâng gói")
+- ~~Block Library · toast `role="status"` + nút chép mã tham chiếu chép thật bằng `BSUI.copy` (`copyRef` dòng 203), nhãn "Sao chép mã tham chiếu" · D0-6c~~ → xong 06/10
+- ~~Language Context · toast `role="status"` + ai-job + mẫu thanh ngôn ngữ dòng 274–283 ở 390 chuyển sang "+N" / ô chọn (tràn 54px) · D0-6c~~ → xong 06/10 (đo bề rộng thật bằng ResizeObserver; 360/390 = ô chọn, 0 tràn)
+- ~~Việc AI đang chạy (ai-job) ở các màn AI: Hàng đợi ảnh, Kế hoạch SEO, Vận hành AI, Cài đặt nội dung AI · D0-6c~~ → xong 06/10 (Tweak "Mô phỏng lỗi khi chạy AI")
+- ~~Mục 6 (prop `lang` · `shared` thay chip tự vẽ) — phần chưa làm kèm ở các màn trên: quét cuối · D0-6c~~ → đóng 06/10 (xem mục D0-6c)
 Bảng từ nút AI: theo Bảng thuật ngữ D0-3. Câu "mua thêm" trong ai-assist / ai-job đi theo Tweak "Lời mời nâng gói" (tắt → "Cần thêm? Liên hệ hỗ trợ").
 
 ## Lộ trình D0 — chuyển từ track L1-21a (04/10/2026)
@@ -109,8 +121,8 @@ Lượt D0 không đọc AUDIT.md — mọi chỉ dẫn cần thiết nằm ở 
 - D0-2 · Quản lý Trang: sửa/thêm bản ngôn ngữ chỉ hiện khi rê chuột lên chip mã (P14.f) → đổi thành bấm nhóm chip mở menu Sửa bản / Thêm bản như Danh sách co giãn 5a; đồng bộ thẻ gọn dưới 1024px (tab + "Khác", một nút Lọc, Sắp xếp, Chọn) cho Quản lý Trang / Bài viết / Sản phẩm; màu + nhãn trạng thái theo BSCW.UI ("Đã lên lịch" đang vàng #c78729 ~2,8:1, "Đã xuất bản" → "Đã đăng") · lượt sửa màn danh sách
 - ~~D0-2 · tách CSS component của trang chuẩn ra admin-components.css · D0-5~~ → xong 06/10 (không đổi tên lớp — owner: `.dsw` của trang chuẩn là bản chuẩn; khung chứa ghi ở đầu file)
 - ~~L1-21a-4 / L1-C-08 · số rút gọn cho biểu đồ~~ → xong ở D0-3 phần 1 (05/10): `BSUI.fmtCompact(n, {locale, max})` trong content-ui.js + quy ước ở trang chuẩn `#dinh-dang` + README D0-3. Áp vào Tổng quan Shell: số rút gọn cho Tổng quan Shell · D2-5 (Tổng quan do D2-5 vẽ lại).
-- L1-C-09 · `Nâng cấp nội dung.dc.html` và trình soạn (`Trình soạn nội dung.dc.html`, kiểm cả `Page Editor - Options`) không link styles.css: chèn link styles.css NGAY TRƯỚC link Google URL CHUẨN (Google phải đứng sau inter.css/styles.css theo CLAUDE.md), xong xem tay chữ nút/ô nhập · Nâng cấp nội dung: D0-6c; trình soạn: D1-4d mục 4
-- X3B2 · nút "Đi tới ô đó" ở Nâng cấp nội dung cao 19,2 px (< 44 px vùng bấm) · D0-6c
+- L1-C-09 · `Nâng cấp nội dung.dc.html` và trình soạn (`Trình soạn nội dung.dc.html`, kiểm cả `Page Editor - Options`) không link styles.css: chèn link styles.css NGAY TRƯỚC link Google URL CHUẨN (Google phải đứng sau inter.css/styles.css theo CLAUDE.md), xong xem tay chữ nút/ô nhập · ~~Nâng cấp nội dung: D0-6c~~ xong 06/10; trình soạn: D1-4d mục 4
+- ~~X3B2 · nút "Đi tới ô đó" ở Nâng cấp nội dung cao 19,2 px (< 44 px vùng bấm) · D0-6c~~ → xong 06/10 (44px)
 - ~~X3B2 · Language Context @390 "Trình biên tập" xuống 2 dòng: nếu là nút/chip/tab thì sửa để không xuống dòng (tiêu chí 8) khi đưa Thanh ngôn ngữ vào trang chuẩn · D0-2. ("ẩn hẳn" ở Đăng nhập nhanh: nếu chỉ là chữ trong đoạn văn thì không cần làm.)~~ → xong ở D0-2
 - Việc cho build (Claude Code xử lý khi dựng Livewire/Tailwind, không làm ở prototype): L1-F-02 chữ nghiêng; L1-F-04 tự host font Google + bỏ inter.css; L1-F-05 link font do helmet DC con gắn vào Shell; Inter-italic.woff2 được tải dù trang không dùng (từ L1-T-08) · build
 - L1-T-03 · theo dõi mã chèn của harness · đóng theo track, chỉ mở lại khi đo hồi quy font

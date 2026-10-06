@@ -9,9 +9,11 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
@@ -19,30 +21,52 @@
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <script src="./ai-quota.js"></script>
 <style>
-body{margin:0;font-family:Inter,system-ui,sans-serif;background:#f4f4f5;}a{color:var(--color-accent,#2050a0);}a:hover{color:var(--color-accent,#364574);}
-input::placeholder{color:var(--color-body-muted,#5b6275);}
+body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--color-body,#f4f4f5);}a{color:var(--color-accent,#2050a0);}a:hover{color:var(--color-accent,#364574);}
+input::placeholder{color:var(--color-placeholder,var(--color-body-muted,#5b6275));}
+/* D0-6c · điện thoại: hộp thành ngăn trượt từ đáy */
+.nc-grab{display:none!important}
+.nc-ft{padding-bottom:calc(12px + env(safe-area-inset-bottom))!important}
+.nc-x{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;margin-right:-10px}
+.nc-jump{display:inline-flex;align-items:center;min-height:44px;padding:0 8px!important}
+@media (max-width:599px){
+.nc-ov{align-items:flex-end!important;padding:0!important}
+.nc-grab{display:block!important}
+.nc-box{width:100%!important;max-height:92vh!important;max-height:92dvh!important;border-radius:12px 12px 0 0!important}
+.nc-hd{flex-wrap:wrap;padding:6px 14px 12px!important;row-gap:8px!important}
+.nc-hd .nc-q{order:9;margin-left:45px}
+.nc-hd .nc-x{margin-left:auto}
+.nc-bd{padding:12px 14px!important}
+.nc-ft{padding:10px 14px calc(10px + env(safe-area-inset-bottom))!important}
+.nc-ft>span{flex-basis:100%!important}
+.nc-ft>button{flex:1 1 0;justify-content:center;min-height:44px!important}
+.nc-qk{min-height:44px!important}
+.nc-res{flex-wrap:wrap}
+.nc-res>button{min-height:44px!important}
+}
+@media (pointer:coarse){.nc-qk,.nc-res>button,.nc-ft>button{min-height:44px!important}}
 </style>
 </helmet>
 
-<div style="position:fixed;inset:0;z-index:330;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:Inter,system-ui,sans-serif;">
+<div class="nc-ov" style="position:fixed;inset:0;z-index:330;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;font-family:Inter,system-ui,sans-serif;">
   <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onClose }}"></div>
-  <div style="position:relative;z-index:1;width:600px;max-width:100%;max-height:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 20px 50px rgba(0,0,0,0.3);display:flex;flex-direction:column;overflow:hidden;">
+  <div class="nc-box" role="dialog" aria-modal="true" aria-label="{{ heading }}" style="position:relative;z-index:1;width:600px;max-width:100%;max-height:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 20px 50px rgba(0,0,0,0.3);display:flex;flex-direction:column;overflow:hidden;">
 
-    <div style="display:flex;align-items:center;gap:11px;padding:14px 18px;border-bottom:1px solid var(--color-border,#e9ecf4);flex:0 0 auto;">
-      <span style="width:34px;height:34px;border-radius:8px;background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-magic-line"></i></span>
-      <span style="display:flex;flex-direction:column;gap:2px;min-width:0;">
+    <span class="grab nc-grab" aria-hidden="true"></span>
+    <div class="nc-hd" style="display:flex;align-items:center;gap:11px;padding:14px 18px;border-bottom:1px solid var(--color-border,#e9ecf4);flex:0 0 auto;">
+      <span style="width:34px;height:34px;border-radius:8px;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-magic-line"></i></span>
+      <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 160px;">
         <span style="font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ heading }}</span>
         <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ contextText }}</span>
       </span>
-      <span title="{{ quotaTitle }}" style="{{ quotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaChip }}</span>
-      <button title="Đóng" style="border:0;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;font-size:19px;line-height:1;flex:0 0 auto;" onClick="{{ onClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
+      <span class="nc-q" title="{{ quotaTitle }}" aria-label="{{ quotaTitle }}" style="{{ quotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaChip }}</span>
+      <button class="nc-x" title="Đóng" style="border:0;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;font-size:19px;line-height:1;flex:0 0 auto;" onClick="{{ onClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
     </div>
 
     <sc-if value="{{ atPick }}" hint-placeholder-val="{{ true }}">
-      <div style="padding:14px 18px;display:flex;flex-direction:column;gap:14px;overflow:auto;min-height:0;">
+      <div class="nc-bd" style="padding:14px 18px;display:flex;flex-direction:column;gap:14px;overflow:auto;min-height:0;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <button type="button" style="{{ quickStyle }}" onClick="{{ onPickSafe }}"><i class="ri-checkbox-multiple-line" style="font-size:13px;"></i>Chọn việc nên làm</button>
-          <button type="button" style="{{ quickStyle }}" onClick="{{ onClearAll }}"><i class="ri-checkbox-blank-line" style="font-size:13px;"></i>Bỏ chọn tất cả</button>
+          <button type="button" class="nc-qk" style="{{ quickStyle }}" onClick="{{ onPickSafe }}"><i class="ri-checkbox-multiple-line" style="font-size:13px;"></i>Chọn việc nên làm</button>
+          <button type="button" class="nc-qk" style="{{ quickStyle }}" onClick="{{ onClearAll }}"><i class="ri-checkbox-blank-line" style="font-size:13px;"></i>Bỏ chọn tất cả</button>
           <span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;text-align:right;">{{ growText }}</span>
         </div>
         <sc-for list="{{ groups }}" as="g" hint-placeholder-count="2">
@@ -82,14 +106,14 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 
         <div style="{{ barStyle }}"><i class="{{ barIcon }}" style="font-size:15px;flex:0 0 auto;"></i><span style="min-width:0;">{{ barText }}</span></div>
 
-        <div style="display:flex;align-items:center;gap:7px;padding-top:2px;font-size:12px;color:var(--color-body-muted,#5b6275);">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:7px;padding-top:2px;font-size:12px;color:var(--color-body-muted,#5b6275);">
           <i class="ri-search-eye-line" style="font-size:14px;"></i>
-          <span style="min-width:0;">Mô tả ngắn &amp; tiêu đề/mô tả trên Google có nút AI riêng ngay tại ô của nó.</span>
-          <button style="margin-left:auto;border:0;background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap;padding:2px;" style-hover="text-decoration:underline;" onClick="{{ onJumpSeo }}">Đi tới ô đó</button>
+          <span style="min-width:0;flex:1 1 200px;">Mô tả ngắn &amp; tiêu đề/mô tả trên Google có nút AI riêng ngay tại ô của nó.</span>
+          <button class="nc-jump" style="margin-left:auto;border:0;border-radius:4px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap;" style-hover="text-decoration:underline;" onClick="{{ onJumpSeo }}">Đi tới ô đó</button>
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;flex:0 0 auto;">
+      <div class="nc-ft" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfd);flex:0 0 auto;">
         <span style="flex:1 1 120px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ safeNote }}</span>
         <button style="min-height:38px;padding:8px 14px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ onClose }}">Để sau</button>
         <button title="{{ runTitle }}" style="{{ runStyle }}" onClick="{{ onRun }}"><i class="{{ runIcon }}" style="font-size:15px;"></i>{{ runLabel }}</button>
@@ -97,27 +121,27 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
     </sc-if>
 
     <sc-if value="{{ atConfirm }}" hint-placeholder-val="{{ false }}">
-      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;">
-        <div style="display:flex;gap:9px;padding:11px 13px;border-radius:4px;background:rgba(247,184,75,0.14);border:1px solid rgba(247,184,75,0.3);font-size:13px;line-height:1.55;color:var(--color-admin-warning-text,#a9761d);">
+      <div class="nc-bd" style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;overflow:auto;min-height:0;">
+        <div style="display:flex;gap:9px;padding:11px 13px;border-radius:4px;background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 14%,transparent);border:1px solid color-mix(in srgb,var(--color-admin-warning,#f7b84b) 30%,transparent);font-size:13px;line-height:1.55;color:var(--color-admin-warning-text,#a9761d);">
           <i class="ri-alert-line" style="font-size:16px;flex:0 0 auto;margin-top:1px;"></i>
           <span>{{ confirmText }}</span>
         </div>
         <div style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Bản mới hiện ra để bạn so; giữ hay hoàn tác từng đoạn ở bước sau. Chữ cũ không mất.</div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
+      <div class="nc-ft" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfd);">
         <span style="flex:1;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ barText }}</span>
         <button style="min-height:38px;padding:8px 14px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onClick="{{ onBack }}">Quay lại</button>
-        <button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border:0;border-radius:4px;background:#2050a0;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;" style-hover="filter:brightness(0.95);" onClick="{{ onConfirmRun }}"><i class="ri-sparkling-2-line" style="font-size:15px;"></i>Vẫn chạy</button>
+        <button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;white-space:nowrap;" style-hover="filter:brightness(0.95);" onClick="{{ onConfirmRun }}"><i class="ri-sparkling-2-line" style="font-size:15px;"></i>Vẫn chạy</button>
       </div>
     </sc-if>
 
     <sc-if value="{{ atDone }}" hint-placeholder-val="{{ false }}">
       <div style="padding:14px 18px;display:flex;flex-direction:column;gap:10px;overflow:auto;min-height:0;">
-        <div style="display:flex;gap:9px;padding:10px 12px;border-radius:4px;background:rgba(10,179,156,0.08);border:1px solid rgba(10,179,156,0.25);font-size:12.5px;line-height:1.5;color:var(--color-admin-success-text,#0a7f70);">
+        <div style="display:flex;gap:9px;padding:10px 12px;border-radius:4px;background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 8%,transparent);border:1px solid color-mix(in srgb,var(--color-admin-success,#0ab39c) 25%,transparent);font-size:12.5px;line-height:1.5;color:var(--color-admin-success-text,#0a7f70);">
           <i class="ri-checkbox-circle-line" style="font-size:15px;flex:0 0 auto;"></i><span>{{ doneText }}</span>
         </div>
         <sc-for list="{{ results }}" as="r" hint-placeholder-count="3">
-          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface,#fff);">
+          <div class="nc-res" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface,#fff);">
             <i class="{{ r.icon }}" style="font-size:15px;color:{{ r.color }};flex:0 0 auto;"></i>
             <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
               <span style="font-size:13px;color:var(--color-heading,#1f2b4d);line-height:1.35;">{{ r.label }}</span>
@@ -127,9 +151,9 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
           </div>
         </sc-for>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
+      <div class="nc-ft" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#fbfcfd);">
         <span style="flex:1;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">{{ spentText }}</span>
-        <button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border:0;border-radius:4px;background:#2050a0;color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ onClose }}"><i class="ri-check-line" style="font-size:15px;"></i>Xong</button>
+        <button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ onClose }}"><i class="ri-check-line" style="font-size:15px;"></i>Xong</button>
       </div>
     </sc-if>
 
@@ -137,7 +161,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:600,&quot;height&quot;:620},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;post&quot;,&quot;page&quot;],&quot;default&quot;:&quot;post&quot;,&quot;tsType&quot;:&quot;'post' | 'page'&quot;},&quot;words&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:420,&quot;tsType&quot;:&quot;number&quot;},&quot;blocks&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;tsType&quot;:&quot;number&quot;},&quot;images&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;wordsLeft&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:18500,&quot;tsType&quot;:&quot;number&quot;},&quot;wordsLimit&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:60000,&quot;tsType&quot;:&quot;number&quot;},&quot;seoJobs&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;Array&lt;{k: string; label: string; hint?: string; w: number; grow?: number}&gt;&quot;},&quot;onRun&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(keys: string[], cost: number) =&gt; void&quot;},&quot;onUndo&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(key: string) =&gt; void&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;},&quot;onNotify&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(msg: string, icon?: string) =&gt; void&quot;},&quot;onJumpSeo&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:600,&quot;height&quot;:620},&quot;kind&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;post&quot;,&quot;page&quot;],&quot;default&quot;:&quot;post&quot;,&quot;tsType&quot;:&quot;'post' | 'page'&quot;},&quot;words&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:420,&quot;tsType&quot;:&quot;number&quot;},&quot;blocks&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:4,&quot;tsType&quot;:&quot;number&quot;},&quot;images&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;},&quot;wordsLeft&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:18500,&quot;tsType&quot;:&quot;number&quot;},&quot;wordsLimit&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:60000,&quot;tsType&quot;:&quot;number&quot;},&quot;seoJobs&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;Array&lt;{k: string; label: string; hint?: string; w: number; grow?: number}&gt;&quot;},&quot;onRun&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(keys: string[], cost: number) =&gt; void&quot;},&quot;onUndo&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(key: string) =&gt; void&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;},&quot;onNotify&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(msg: string, icon?: string) =&gt; void&quot;},&quot;onJumpSeo&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói &amp; hạn ngạch&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;}}">
 /* Hộp "Nâng cấp nội dung" dùng chung cho Bài viết và Trang (gộp ưu điểm hai bản cũ):
    · chọn nhiều việc + cộng dồn chi phí trước khi bấm (bản Bài viết)
    · mỗi việc nói rõ hệ quả & vị trí chèn, có ngữ cảnh bài + chip hạn ngạch (bản Page Editor)
@@ -230,12 +254,13 @@ class Component extends DCLogic {
   }
   cost() { return this.picked().reduce((a, t) => a + t.w, 0); }
   enough() { return this.left() >= this.cost(); }
+  buyLine() { return this.props.upsell ? 'Hoặc mua thêm từ AI ở Cài đặt › Gói & mức dùng' : 'Cần thêm? Liên hệ hỗ trợ'; }
   notify(m, i) { const f = this.props.onNotify; if (f) f(m, i); }
 
   run(skipConfirm) {
     const list = this.picked(), cost = this.cost();
     if (!list.length) { this.notify('Hãy chọn ít nhất một việc.', 'ri-information-line'); return; }
-    if (!this.enough()) { this.notify('Không đủ từ AI cho các việc đang chọn — bỏ bớt việc hoặc mua thêm.', 'ri-error-warning-line'); return; }
+    if (!this.enough()) { this.notify('Không đủ từ AI cho các việc đang chọn — bỏ bớt việc. ' + this.buyLine() + '.', 'ri-error-warning-line'); return; }
     const m = this.selMap();
     if (!skipConfirm && m[this.heavyDef().k]) { this.setState({ step: 'confirm' }); return; }
     const f = this.props.onRun;
@@ -256,8 +281,8 @@ class Component extends DCLogic {
   renderVals() {
     const S = this.state, m = this.selMap(), w = this.words(), left = this.left(), cost = this.cost(), enough = this.enough();
     const defs = this.defs(), heavy = this.heavyDef(), picked = this.picked();
-    const box = (ck) => 'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;flex:0 0 auto;' + (ck ? 'border:1px solid #2050a0;background:#2050a0;color:#fff;' : 'border:1px solid var(--color-border-strong,#ced4da);background:var(--color-surface,#fff);');
-    const row = (ck, warn) => 'display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid ' + (ck ? (warn ? 'rgba(247,184,75,0.5)' : '#2050a0') : '#e9ecf4') + ';border-radius:4px;background:' + (ck ? (warn ? 'rgba(247,184,75,0.10)' : 'rgba(32,80,160,0.04)') : '#fff') + ';cursor:pointer;min-height:44px;box-sizing:border-box;';
+    const box = (ck) => 'display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;flex:0 0 auto;' + (ck ? 'border:1px solid var(--color-admin-primary,#2050a0);background:var(--color-admin-primary,#2050a0);color:#fff;' : 'border:1px solid var(--color-border-input,#ced4da);background:var(--color-surface,#fff);');
+    const row = (ck, warn) => 'display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid ' + (ck ? (warn ? 'color-mix(in srgb,var(--color-admin-warning,#f7b84b) 50%,transparent)' : 'var(--color-accent,#2050a0)') : 'var(--color-border,#e9ecf4)') + ';border-radius:4px;background:' + (ck ? (warn ? 'color-mix(in srgb,var(--color-admin-warning,#f7b84b) 10%,transparent)' : 'color-mix(in srgb,var(--color-accent,#2050a0) 4%,transparent)') : 'var(--color-surface,#fff)') + ';cursor:pointer;min-height:44px;box-sizing:border-box;';
     const mk = (t) => {
       const st = this.taskState(t), ck = !!m[t.k] && !st.off;
       return {
@@ -272,12 +297,12 @@ class Component extends DCLogic {
     };
     const lowPct = left / Math.max(1, Number(this.props.wordsLimit) || left || 1);
     return {
-      heading: this.empty() ? ('Viết ' + this.noun() + ' mới bằng AI') : ('Nâng cấp ' + this.noun() + ' này'),
+      heading: this.empty() ? ('Viết mới ' + this.noun() + ' này') : ('Nâng cấp ' + this.noun() + ' này'),
       contextText: this.empty()
         ? (this.noun() === 'bài' ? 'Bài đang trống — AI dựng dàn ý rồi viết bản nháp' : 'Trang đang trống — AI dựng dàn ý rồi viết bản nháp')
         : ('Đang có ' + this.nfm(w) + ' từ · ' + (Number(this.props.blocks) || 0) + ' mục · ' + (Number(this.props.images) || 0) + ' ảnh — AI lấy chính nội dung này làm nguyên liệu'),
       quotaChip: left > 0 ? ('Còn ' + this.nfm(left) + ' từ AI') : 'Hết từ AI tháng này',
-      quotaStyle: 'flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;' + (left <= 0 ? 'background:rgba(240,101,72,0.12);color:var(--color-admin-danger-text,#f06548);' : (lowPct <= 0.2 ? 'background:rgba(247,184,75,0.18);color:var(--color-admin-warning-text,#a9761d);' : 'background:rgba(32,80,160,0.08);color:var(--color-accent,#2050a0);')),
+      quotaStyle: 'flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;' + (left <= 0 ? 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,transparent);color:var(--color-admin-danger-text,#f06548);' : (lowPct <= 0.2 ? 'background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 18%,transparent);color:var(--color-admin-warning-text,#a9761d);' : 'background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);color:var(--color-accent,#2050a0);')),
       quotaTitle: 'Sổ chữ: còn ' + this.nfm(left) + ' từ AI' + (window.BSAI ? (' — ' + window.BSAI.enough(left, ['post', 'rewrite'])) : ''),
 
       atPick: S.step === 'pick', atConfirm: S.step === 'confirm', atDone: S.step === 'done',
@@ -300,16 +325,16 @@ class Component extends DCLogic {
       growText: (!cost || this.grown() === w) ? '' : (this.empty()
         ? ('Dự kiến sau khi chạy: khoảng ' + this.nfm(this.grown()) + ' từ')
         : (this.noun() === 'bài' ? 'Bài' : 'Trang') + ' sẽ dài khoảng ' + this.nfm(w) + ' → ' + this.nfm(this.grown()) + ' từ'),
-      barStyle: 'display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:4px;font-size:12.5px;line-height:1.5;' + (!cost ? 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);' : (enough ? 'background:rgba(32,80,160,0.06);color:var(--color-accent,#2050a0);' : 'background:rgba(240,101,72,0.10);color:var(--color-admin-danger-text,#c9412a);')),
+      barStyle: 'display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:4px;font-size:12.5px;line-height:1.5;' + (!cost ? 'background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);' : (enough ? 'background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,transparent);color:var(--color-accent,#2050a0);' : 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,transparent);color:var(--color-admin-danger-text,#c9412a);')),
       barIcon: !cost ? 'ri-information-line' : (enough ? 'ri-sparkling-2-line' : 'ri-error-warning-line'),
       barText: !cost ? 'Chưa chọn việc nào — chọn ít nhất một việc để chạy.'
         : (enough ? ('Sẽ dùng khoảng ' + this.nfm(cost) + ' từ AI · còn lại ' + this.nfm(left - cost) + ' từ sau khi chạy')
-          : ('Cần ' + this.nfm(cost) + ' từ AI nhưng chỉ còn ' + this.nfm(left) + ' — bỏ bớt việc, hoặc mua thêm từ AI.')),
+          : ('Cần ' + this.nfm(cost) + ' từ AI nhưng chỉ còn ' + this.nfm(left) + ' — bỏ bớt việc. ' + this.buyLine() + '.')),
       safeNote: 'Chữ cũ không mất: mỗi việc đều giữ hoặc hoàn tác được ngay sau khi chạy.',
       runLabel: !cost ? 'Chọn việc để chạy' : (enough ? ('Chạy ' + picked.length + ' việc') : 'Không đủ từ AI'),
       runIcon: enough && cost ? 'ri-sparkling-2-line' : 'ri-error-warning-line',
-      runTitle: !cost ? 'Hãy chọn ít nhất một việc' : (enough ? ('Trừ khoảng ' + this.nfm(cost) + ' từ AI') : 'Hãy bỏ bớt việc hoặc mua thêm từ AI'),
-      runStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border:0;border-radius:4px;font:inherit;font-size:13.5px;font-weight:600;white-space:nowrap;' + ((cost && enough) ? 'background:#2050a0;color:#fff;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);' : 'background:#eef0f3;color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
+      runTitle: !cost ? 'Hãy chọn ít nhất một việc' : (enough ? ('Trừ khoảng ' + this.nfm(cost) + ' từ AI') : 'Hãy bỏ bớt việc. ' + this.buyLine()),
+      runStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border:0;border-radius:4px;font:inherit;font-size:13.5px;font-weight:600;white-space:nowrap;' + ((cost && enough) ? 'background:var(--color-admin-primary,#2050a0);color:#fff;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74 / 0.15);' : 'background:var(--color-surface-hover,#eef0f3);color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
       onRun: () => this.run(false),
       onClose: () => { const f = this.props.onClose; if (f) f(); },
       onJumpSeo: () => { const f = this.props.onJumpSeo; if (f) f(); else this.notify('Nút AI cho mô tả ngắn & SEO nằm ngay cạnh ô đó.', 'ri-information-line'); },
@@ -324,11 +349,11 @@ class Component extends DCLogic {
         const on = S.kept[t.k] !== false;
         return {
           label: t.label, state: on ? 'Đang dùng bản mới' : 'Đã trả lại chữ cũ',
-          icon: on ? 'ri-checkbox-circle-fill' : 'ri-arrow-go-back-line', color: on ? '#0ab39c' : '#adb5bd',
+          icon: on ? 'ri-checkbox-circle-fill' : 'ri-arrow-go-back-line', color: on ? 'var(--color-admin-success-text,#0ab39c)' : 'var(--color-body-muted,#adb5bd)',
           btnLabel: on ? 'Hoàn tác' : 'Dùng lại',
           btnIcon: on ? 'ri-arrow-go-back-line' : 'ri-refresh-line',
           btnTitle: on ? 'Trả lại chữ cũ của việc này' : 'Dùng lại bản AI của việc này',
-          btnStyle: 'flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:7px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:' + (on ? '#3c4765' : '#2050a0') + ';cursor:pointer;white-space:nowrap;',
+          btnStyle: 'flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:7px 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:' + (on ? 'var(--color-body-text,#3c4765)' : 'var(--color-accent,#2050a0)') + ';cursor:pointer;white-space:nowrap;',
           on: () => this.undoOne(t.k)
         };
       })

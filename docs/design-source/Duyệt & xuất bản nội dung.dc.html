@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
@@ -28,26 +29,34 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 .rv-row{display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--color-border-soft,#f6f7f9);flex-wrap:wrap;}
 .rv-tab{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 14px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .rv-tab:hover{background:var(--color-surface-hover,#f3f6f9);}
-.rv-tab.on{border-color:#2050a0;background:rgba(32,80,160,.08);font-weight:600;color:var(--color-accent,#2050a0);}
+.rv-tab.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);font-weight:600;color:var(--color-accent,#2050a0);}
 .rv-btn{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .rv-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
-.rv-ai{border-color:rgba(32,80,160,.28);background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);}
-.rv-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.rv-ai{border-color:color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent);background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);}
+.rv-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
 .rv-pri:disabled{background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
 .rv-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
 .rv-pill{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .rv-pill:hover{background:var(--color-surface-hover,#f3f6f9);}
-.rv-pill.on{border-color:#2050a0;background:rgba(32,80,160,.07);font-weight:600;color:var(--color-accent,#2050a0);}
-.rv-cb{width:18px;height:18px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);}
-.rv-cb.on{border-color:#2050a0;background:#2050a0;color:#fff;}
+.rv-pill.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 7%,transparent);font-weight:600;color:var(--color-accent,#2050a0);}
+.rv-cb{width:18px;height:18px;border:1.5px solid var(--color-border-input,#ccd0d8);border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);}
+.rv-cb.on{border-color:var(--color-accent,#2050a0);background:var(--color-admin-primary,#2050a0);color:#fff;}
 .rv-hit{width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border:0;background:transparent;cursor:pointer;flex-shrink:0;}
 .rv-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
-@media (max-width:900px){.rv-4{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@container (max-width:900px){.rv-4{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @keyframes rvFade{from{opacity:0}to{opacity:1}}
+
+/* D0-6c · co giãn chung */
+.s6-root{container-type:inline-size;box-sizing:border-box}
+.s6-tst{bottom:calc(22px + env(safe-area-inset-bottom))!important;max-width:calc(100% - 24px)!important}
+@media (max-width:599px){.s6-root{padding:12px 12px 24px!important}.s6-ov{align-items:flex-end!important;padding:0!important}.s6-dlg{width:100%!important;max-width:none!important;max-height:92vh;max-height:92dvh!important;overflow:auto!important;border-radius:12px 12px 0 0!important;padding-bottom:env(safe-area-inset-bottom)}}
+@media (max-width:599px),(pointer:coarse){input,textarea,select{font-size:16px!important}}
+@container (max-width:599px){.s6-root button:not(.dsw):not(.s6-sm){min-height:44px}}
+@media (pointer:coarse){.s6-root button:not(.dsw):not(.s6-sm),.s6-dlg button{min-height:44px}}
 </style>
 </helmet>
 
-<div style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
+<div class="s6-root" data-cs="sup" style="display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1180px;margin:0 auto;">
 
   <div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;">
     <div style="display:flex;flex-direction:column;gap:5px;flex:1 1 320px;min-width:0;">
@@ -145,7 +154,7 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
       <sc-for list="{{ holds }}" as="h" hint-placeholder-count="4">
         <div class="rv-row" style="padding:12px 16px;">
           <span style="display:flex;flex-direction:column;gap:4px;flex:1 1 320px;min-width:0;">
-            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ h.title }}</span><span class="rv-chip" style="{{ h.typeStyle }}">{{ h.type }}</span><span class="rv-chip" style="background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);">{{ h.score }} điểm · đạt cổng</span></span>
+            <span style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;"><span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ h.title }}</span><span class="rv-chip" style="{{ h.typeStyle }}">{{ h.type }}</span><span class="rv-chip" style="background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);">{{ h.score }} điểm · đạt cổng</span></span>
             <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">{{ h.dest }}</span>
           </span>
           <span style="display:flex;flex-direction:column;gap:2px;align-items:flex-end;flex-shrink:0;">
@@ -198,10 +207,10 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ askOpen }}">
-    <div style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
+    <div class="s6-ov" style="position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;">
       <div style="position:absolute;inset:0;background:rgba(52,58,64,.45);"></div>
-      <div style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:rvFade .16s ease;">
-        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:rgba(32,80,160,.10);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
+      <div class="s6-dlg" role="dialog" aria-modal="true" style="position:relative;z-index:1;width:470px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);padding:20px;display:flex;flex-direction:column;gap:10px;animation:rvFade .16s ease;">
+        <div style="display:flex;align-items:center;gap:10px;"><span style="width:34px;height:34px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="{{ askIcon }}" style="font-size:17px;color:var(--color-accent,#2050a0);"></i></span><span style="font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;">{{ askTitle }}</span></div>
         <span style="font-size:12.5px;color:var(--color-body-muted,#5b6275);line-height:1.7;">{{ askText }}</span>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
           <button class="rv-btn" style="min-height:38px;font-weight:500;" onClick="{{ onAskCancel }}">Hủy</button>
@@ -212,15 +221,25 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   </sc-if>
 
   <sc-if value="{{ toast }}">
-    <div style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:rvFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
+    <div class="s6-tst" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:99;display:flex;align-items:center;gap:9px;padding:10px 14px;border-radius:6px;background:#1f2b4d;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);animation:rvFade .16s ease;max-width:min(640px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;color:#fff;flex-shrink:0;"></i>
       <span style="font-size:12.5px;color:#fff;line-height:1.5;min-width:0;">{{ toastText }}</span>
     </div>
   </sc-if>
+
+  <sc-if value="{{ s6Frames }}" hint-placeholder-val="{{ false }}">
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px;">
+    <span style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Khung xem 390px · 768px (ghi chú thiết kế)</span>
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;">
+      <iframe src="Duyệt & xuất bản nội dung.dc.html#frame" loading="lazy" title="Khung xem 390px" style="width:390px;max-width:100%;height:844px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+      <iframe src="Duyệt & xuất bản nội dung.dc.html#frame" loading="lazy" title="Khung xem 768px" style="width:768px;max-width:100%;height:900px;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe>
+    </div>
+  </div>
+  </sc-if>
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ghi chú thiết kế&quot;,&quot;label&quot;:&quot;Hiện khung xem 390 · 768&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói &amp; hạn ngạch&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;},&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900}}">
 class Component extends DCLogic {
   state = { tab: 'inbox', filter: 'all', picked: {}, done: {}, blocked: {}, logs: [], toast: null, ask: null };
   USER = 'Bảo Sơn';
@@ -289,16 +308,16 @@ class Component extends DCLogic {
     const nAuto = 11, nHand = 7 + S.logs.filter(l => l.by !== 'Tự động').length;
     const picked = shown.filter(i => S.picked[i.k]);
     const KIND = {
-      ready: { icon: 'ri-checkbox-circle-fill', color: '#0a8f7f' },
-      must: { icon: 'ri-user-star-line', color: '#8a6115' },
-      low: { icon: 'ri-error-warning-fill', color: '#b57d13' },
-      image: { icon: 'ri-image-add-line', color: '#1c7ba8' },
-      data: { icon: 'ri-alert-fill', color: '#c0392b' }
+      ready: { icon: 'ri-checkbox-circle-fill', color: 'var(--color-admin-success-text,#0a8f7f)' },
+      must: { icon: 'ri-user-star-line', color: 'var(--color-admin-warning-text,#8a6115)' },
+      low: { icon: 'ri-error-warning-fill', color: 'var(--color-admin-warning-text,#b57d13)' },
+      image: { icon: 'ri-image-add-line', color: 'var(--color-admin-info-text,#1c7ba8)' },
+      data: { icon: 'ri-alert-fill', color: 'var(--color-admin-danger-text,#c0392b)' }
     };
-    const TY = (t) => t === 'Mô tả sản phẩm' ? 'background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a7d6f);'
-      : (t === 'Tin tức' ? 'background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#b57d13);'
-        : (t === 'Bài có giá' || t === 'Sức khoẻ' ? 'background:rgba(240,101,72,.10);color:var(--color-admin-danger-text,#a5402c);'
-          : (t === 'Bài trụ' ? 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);')));
+    const TY = (t) => t === 'Mô tả sản phẩm' ? 'background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a7d6f);'
+      : (t === 'Tin tức' ? 'background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,transparent);color:var(--color-admin-warning-text,#b57d13);'
+        : (t === 'Bài có giá' || t === 'Sức khoẻ' ? 'background:color-mix(in srgb,var(--color-admin-danger,#f06548) 10%,transparent);color:var(--color-admin-danger-text,#a5402c);'
+          : (t === 'Bài trụ' ? 'background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);')));
     const ask = S.ask;
     const F = [
       { v: 'all', label: 'Tất cả', n: live.length, title: 'Mọi bài đang chờ bạn' },
@@ -310,11 +329,12 @@ class Component extends DCLogic {
     ];
 
     return {
+      s6Frames: (typeof location === 'undefined' || location.hash !== '#frame') && this.props.showFrames !== false,
       stats: [
-        { icon: 'ri-inbox-line', color: '#2050a0', label: 'Chờ bạn duyệt', value: String(live.length), hint: ready.length + ' bài chỉ cần bấm đăng' },
-        { icon: 'ri-timer-2-line', color: '#b57d13', label: 'Sắp tự đăng trong 24 giờ', value: String(holds.length), hint: 'Chặn lại được bất cứ lúc nào' },
-        { icon: 'ri-image-add-line', color: '#1c7ba8', label: 'Đang chờ ảnh hoặc thông số thật', value: String(live.filter(i => i.kind === 'image' || i.kind === 'data').length), hint: 'AI không tự bịa — cần bạn bổ sung' },
-        { icon: 'ri-send-plane-line', color: '#0a8f7f', label: 'Đã đăng 7 ngày qua', value: '18', hint: '11 bài tự động · 7 bài duyệt tay' }
+        { icon: 'ri-inbox-line', color: 'var(--color-accent,#2050a0)', label: 'Chờ bạn duyệt', value: String(live.length), hint: ready.length + ' bài chỉ cần bấm đăng' },
+        { icon: 'ri-timer-2-line', color: 'var(--color-admin-warning-text,#b57d13)', label: 'Sắp tự đăng trong 24 giờ', value: String(holds.length), hint: 'Chặn lại được bất cứ lúc nào' },
+        { icon: 'ri-image-add-line', color: 'var(--color-admin-info-text,#1c7ba8)', label: 'Đang chờ ảnh hoặc thông số thật', value: String(live.filter(i => i.kind === 'image' || i.kind === 'data').length), hint: 'AI không tự bịa — cần bạn bổ sung' },
+        { icon: 'ri-send-plane-line', color: 'var(--color-admin-success-text,#0a8f7f)', label: 'Đã đăng 7 ngày qua', value: '18', hint: '11 bài tự động · 7 bài duyệt tay' }
       ],
       tabInboxOn: S.tab === 'inbox', tabInboxOff: S.tab !== 'inbox',
       tabHoldOn: S.tab === 'hold', tabHoldOff: S.tab !== 'hold',
@@ -332,7 +352,7 @@ class Component extends DCLogic {
         const K = KIND[i.kind];
         return {
           title: i.title, type: i.type, typeStyle: TY(i.type), dest: i.dest, why: i.why, whyIcon: K.icon, whyColor: K.color,
-          score: i.score ? String(i.score) : '—', scoreColor: i.score >= 85 ? '#0a8f7f' : (i.score ? '#b57d13' : '#adb5bd'),
+          score: i.score ? String(i.score) : '—', scoreColor: i.score >= 85 ? 'var(--color-admin-success-text,#0a8f7f)' : (i.score ? 'var(--color-admin-warning-text,#b57d13)' : 'var(--color-body-muted,#adb5bd)'),
           when: i.when,
           checked: !!S.picked[i.k], unchecked: !S.picked[i.k],
           pickTitle: (S.picked[i.k] ? 'Bỏ chọn' : 'Chọn') + ' “' + i.title + '”',
@@ -377,8 +397,8 @@ class Component extends DCLogic {
       })),
       holdSummary: holds.length + ' bài · sớm nhất trong 5 giờ 40 phút',
       logs: S.logs.concat(this.LOGS).map(l => Object.assign({}, l, {
-        byStyle: l.by === 'Tự động' ? 'background:rgba(32,80,160,.12);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);',
-        idxColor: l.ok ? '#0a8f7f' : '#b57d13',
+        byStyle: l.by === 'Tự động' ? 'background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);' : 'background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765);',
+        idxColor: l.ok ? 'var(--color-admin-success-text,#0a8f7f)' : 'var(--color-admin-warning-text,#b57d13)',
         canRevert: l.revert,
         onOpen: () => this.toast('Mở “' + l.title + '” kèm bảng kiểm lúc đăng', 'ri-external-link-line'),
         onRevert: () => this.toast('Đã gỡ “' + l.title + '” về Nháp — nội dung còn nguyên, có thể đăng lại sau khi sửa', 'ri-arrow-go-back-line')
