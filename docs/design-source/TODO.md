@@ -7,6 +7,9 @@
 - Chữ lớn: Shell đặt `--fsp` trên khung gốc + phóng nội dung 16/14 (`zoom`) vì chữ của Shell viết px; khi màn nhúng dùng `--fsp` thì bỏ `zoom` để không phóng hai lần · D0-5
 - Tweak "Lời mời nâng gói" cho dòng "Tạo website mới — khóa theo gói" (hiện ghi "Liên hệ hỗ trợ") + nội dung Trợ giúp theo registry màn · D0-4b
 - Tổng quan ở 360px: lưới giữa đã đổi `minmax(0,…)`; vẽ lại cả màn · D2-5
+- Email Settings ở 390: dải tab cắt chữ ('Chữ ký & thương hiệu' bị che), thẻ trạng thái quá hẹp · D0-6b
+- Tổng quan ở 360: nút '7 ngày / 30 ngày' xuống 2 dòng · D2-5
+- Tạo website mới khi chỉ có 1 website: đặt ở Cài đặt › Gói & mức dùng, cạnh số website còn được tạo · D3-2
 - Lượt kế tiếp: D0-4b (Tweaks còn lại vào CÙNG data-props, registry màn, điều hướng bs-goto, ẩn mục theo perm/mod đã gắn sẵn).
 
 ## ~~D0-3 phần 2~~ — xong 05/10: 8 mẫu trang `#mau-trang` (`#mau-1` … `#mau-8`) + kiểm hiển thị đo bằng `_audit/w360.html` — xem README D0-3 › Phần 2.

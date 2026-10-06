@@ -120,7 +120,9 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
               <sc-if value="{{ showLabels }}">{{ sidebarLogo }}</sc-if>
               <sc-if value="{{ small }}">{{ smLogo26 }}</sc-if>
             </div>
-            <div class="scl scl-side" style="{{ sbNavStyle }}">
+            <sc-if value="{{ swSideFull }}"><div style="padding:10px 12px 6px;flex-shrink:0;"><button data-dz="site" style="{{ swBlockStyle }}" onClick="{{ onSiteOpen }}" aria-haspopup="dialog" aria-expanded="{{ siteOpenStr }}" aria-label="{{ swTip }}" title="{{ siteName }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;background:{{ siteMark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ siteInit }}</span><span style="display:flex;flex-direction:column;align-items:flex-start;min-width:0;flex:1;line-height:1.35;"><span style="max-width:100%;font-size:13.5px;font-weight:600;color:{{ swNameColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ siteName }}</span><span style="max-width:100%;font-size:12px;color:{{ swSubColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ siteDomain }}</span></span><i class="ri-expand-up-down-line" style="font-size:16px;color:{{ swSubColor }};flex-shrink:0;"></i></button></div></sc-if>
+            <sc-if value="{{ swSideTile }}"><div style="display:flex;justify-content:center;padding:10px 0 4px;flex-shrink:0;"><button data-dz="site" style="{{ swTileStyle }}" onClick="{{ onSiteOpen }}" aria-haspopup="dialog" aria-expanded="{{ siteOpenStr }}" aria-label="{{ swTip }}" title="{{ swTip }}">{{ siteInit }}</button></div></sc-if>
+            <div class="scl scl-side" ref="{{ setSbNav }}" style="{{ sbNavStyle }}">
               <sc-for list="{{ navItems }}" as="e" hint-placeholder-count="12">
                 <sc-if value="{{ e.isHeader }}"><sc-if value="{{ showLabels }}"><div style="{{ e.headerStyle }}">{{ e.headerLabel }}</div></sc-if><sc-if value="{{ e.headerDot }}"><div style="height:1px;margin:9px 20px;background:{{ sbLine }};"></div></sc-if></sc-if>
                 <sc-if value="{{ e.isItem }}">
@@ -161,15 +163,17 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
         <sc-if value="{{ twoColShow }}">
           <div style="{{ railStyle }}">
             <div style="display:flex;align-items:center;justify-content:center;height:var(--topbar-h,70px);flex-shrink:0;">{{ smLogo30 }}</div>
+            <sc-if value="{{ swRailTile }}"><div style="display:flex;justify-content:center;padding:8px 0 4px;flex-shrink:0;"><button data-dz="site" style="{{ swTileStyle }}" onClick="{{ onSiteOpen }}" aria-haspopup="dialog" aria-expanded="{{ siteOpenStr }}" aria-label="{{ swTip }}" title="{{ swTip }}">{{ siteInit }}</button></div></sc-if>
             <div class="scl scl-side" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:6px 0;align-items:center;">
               <sc-for list="{{ railGroups }}" as="g" hint-placeholder-count="5">
-                <button style="{{ g.style }}" onClick="{{ g.onClick }}" title="{{ g.label }}" aria-label="{{ g.label }}" aria-pressed="{{ g.ariaPressed }}"><i class="{{ g.icon }}" style="font-size:20px;"></i></button>
+                <button style="{{ g.style }}" onClick="{{ g.onClick }}" title="{{ g.label }}" aria-label="{{ g.label }}" aria-pressed="{{ g.ariaPressed }}" aria-current="{{ g.ariaCur }}"><i class="{{ g.icon }}" style="font-size:20px;"></i></button>
               </sc-for>
             </div>
           </div>
           <sc-if value="{{ twoColSecShow }}"><div style="{{ secondaryStyle }}">
             <div style="height:var(--topbar-h,70px);display:flex;align-items:center;padding:0 22px;flex-shrink:0;border-bottom:1px solid {{ sbLine }};"><span style="font-size:16px;font-weight:600;color:{{ sbActive }};">{{ twoColTitle }}</span></div>
-            <div class="scl scl-side" style="flex:1;overflow-y:auto;padding:14px 0;">
+            <sc-if value="{{ swSecFull }}"><div style="padding:10px 12px 6px;flex-shrink:0;"><button data-dz="site" style="{{ swSecStyle }}" onClick="{{ onSiteOpen }}" aria-haspopup="dialog" aria-expanded="{{ siteOpenStr }}" aria-label="{{ swTip }}" title="{{ siteName }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;background:{{ siteMark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ siteInit }}</span><span style="display:flex;flex-direction:column;align-items:flex-start;min-width:0;flex:1;line-height:1.35;"><span style="max-width:100%;font-size:13.5px;font-weight:600;color:{{ swNameColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ siteName }}</span><span style="max-width:100%;font-size:12px;color:{{ swSubColor }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ siteDomain }}</span></span><i class="ri-expand-up-down-line" style="font-size:16px;color:{{ swSubColor }};flex-shrink:0;"></i></button></div></sc-if>
+            <div class="scl scl-side" ref="{{ setSbSec }}" style="flex:1;overflow-y:auto;padding:14px 0;">
               <sc-for list="{{ twoColItems }}" as="c" hint-placeholder-count="6">
                 <sc-if value="{{ c.isSub }}"><div style="{{ c.subStyle }}"><i class="{{ c.icon }}" style="font-size:15px;width:18px;"></i>{{ c.label }}<sc-if value="{{ c.pendShow }}"><i class="ri-hammer-line" title="Ghi chú thiết kế: Chờ backend" aria-label="Chờ backend" style="font-size:13px;"></i></sc-if></div></sc-if>
                 <sc-if value="{{ c.isRow }}"><button aria-current="{{ c.ariaCur }}" style="{{ c.style2 }}" onClick="{{ c.onClick }}"><sc-if value="{{ c.hasIcon }}"><i class="{{ c.icon }}" style="font-size:16px;width:18px;"></i></sc-if><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.label }}</span><sc-if value="{{ c.pendShow }}"><i class="ri-hammer-line" title="Ghi chú thiết kế: Chờ backend" aria-label="Chờ backend" style="font-size:13px;opacity:.8;"></i></sc-if><sc-if value="{{ c.showBadge }}"><span style="{{ c.badgeStyle }}">{{ c.badgeText }}</span></sc-if></button></sc-if>
@@ -179,11 +183,14 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
         </sc-if>
 
         <div class="scl scl-main" style="{{ mainColStyle }}">
-          <header style="{{ topbarStyle }}">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto;">
-              <sc-if value="{{ isHorizontal }}"><div style="display:flex;align-items:center;padding-right:8px;">{{ topbarLogo }}</div></sc-if>
+          <header ref="{{ setTbEl }}" style="{{ topbarStyle }}">
+            <div ref="{{ setTbLeft }}" style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto;">
+              <sc-if value="{{ isHorizontal }}"><div style="display:flex;align-items:center;padding-right:8px;flex-shrink:0;">{{ topbarLogo }}</div></sc-if>
+              <sc-if value="{{ swTopHTile }}"><button data-dz="site" style="{{ swTileStyle }}" onClick="{{ onSiteOpen }}" aria-haspopup="dialog" aria-expanded="{{ siteOpenStr }}" aria-label="{{ swTip }}" title="{{ swTip }}">{{ siteInit }}</button></sc-if>
+              <sc-if value="{{ swTopCompact }}"><button data-dz="site" style="{{ swCompactStyle }}" onClick="{{ onSiteOpen }}" aria-haspopup="dialog" aria-expanded="{{ siteOpenStr }}" aria-label="{{ swTip }}" title="{{ swTip }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:7px;background:{{ siteMark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ siteInit }}</span><span style="min-width:0;font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ siteName }}</span></button></sc-if>
               <button style="{{ hamburgerStyle }}" onClick="{{ onHamburger }}" aria-label="{{ hamburgerLabel }}" title="{{ hamburgerLabel }}"><i class="ri-menu-2-line" style="font-size:19px;"></i><sc-if value="{{ menuLabelShow }}"><span>Menu</span></sc-if></button>
-              <sc-if value="{{ searchInline }}" hint-placeholder-val="{{ true }}"><div data-dz="search" style="position:relative;flex:0 1 440px;min-width:0;margin-left:6px;">
+              <sc-if value="{{ swTopTile }}"><button data-dz="site" style="{{ swTileStyle }}" onClick="{{ onSiteOpen }}" aria-haspopup="dialog" aria-expanded="{{ siteOpenStr }}" aria-label="{{ swTip }}" title="{{ swTip }}">{{ siteInit }}</button></sc-if>
+              <sc-if value="{{ searchInline }}" hint-placeholder-val="{{ true }}"><div data-dz="search" ref="{{ setSearchWrap }}" style="position:relative;flex:0 1 440px;min-width:0;margin-left:6px;">
                 <i class="ri-search-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:{{ tbMuted }};font-size:15px;pointer-events:none;"></i>
                 <input class="sInput" type="search" ref="{{ setSearchEl }}" aria-label="Tìm kiếm" aria-keyshortcuts="Control+K Meta+K" placeholder="Tìm trang, bài viết, sản phẩm, cài đặt…" value="{{ searchVal }}" onFocus="{{ onSearchFocus }}" onChange="{{ onSearchChange }}" style="{{ searchInputStyle }}">
                 <sc-if value="{{ kbdShow }}"><span aria-hidden="true" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);padding:1px 6px;border:1px solid {{ tbKbdBorder }};border-radius:4px;font-size:12px;line-height:1.4;color:{{ tbMuted }};pointer-events:none;">{{ kbdLabel }}</span></sc-if>
@@ -198,11 +205,22 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                 </sc-if>
               </div></sc-if>
             </div>
-            <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-              <sc-if value="{{ searchIconOnly }}"><button style="{{ iconBtnStyle }}" onClick="{{ onOpenSearchFull }}" aria-label="Tìm kiếm" title="Tìm kiếm"><i class="ri-search-line" style="font-size:19px;"></i></button></sc-if>
-              <button style="{{ helpBtnStyle }}" onClick="{{ onOpenHelp }}" aria-label="Trợ giúp" title="Trợ giúp" aria-haspopup="dialog"><i class="ri-question-line" style="font-size:19px;"></i><sc-if value="{{ topbarWide }}"><span>Trợ giúp</span></sc-if></button>
+            <div ref="{{ setTbRight }}" style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+              <sc-if value="{{ searchIconOnly }}"><button style="{{ iconBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onOpenSearchFull }}" aria-label="Tìm kiếm" title="Tìm kiếm"><i class="ri-search-line" style="font-size:19px;"></i></button></sc-if>
+              <button style="{{ helpBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onOpenHelp }}" aria-label="Trợ giúp" title="Trợ giúp" aria-haspopup="dialog"><i class="ri-question-line" style="font-size:19px;"></i><sc-if value="{{ helpLabel }}"><span>Trợ giúp</span></sc-if></button>
+              <sc-if value="{{ tbTools }}">
+              <div data-dz="lang" style="position:relative;">
+                <button style="{{ langBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onLangOpen }}" aria-haspopup="true" aria-expanded="{{ langOpenStr }}" aria-label="{{ langTip }}" title="{{ langTip }}"><sc-if value="{{ langFaceFlag }}">{{ langFlagEl }}</sc-if><sc-if value="{{ langFaceCode }}"><i class="ri-translate-2" style="font-size:17px;"></i><span style="font-size:12px;font-weight:700;letter-spacing:0.02em;">{{ langCode }}</span></sc-if></button>
+                <sc-if value="{{ langOpen }}"><div class="pop" data-pop="lang" data-dz="lang" onKeyDown="{{ onPopKey }}" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:220px;padding:6px;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);">
+                  <div style="padding:6px 10px 6px;font-size:12px;font-weight:600;color:{{ tMuted }};">Ngôn ngữ giao diện</div>
+                  <sc-for list="{{ langList }}" as="l" hint-placeholder-count="4"><button data-row="" lang="{{ l.lang }}" aria-current="{{ l.cur }}" style="{{ l.style }}" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ l.onClick }}"><sc-if value="{{ l.hasFlag }}">{{ l.flagEl }}</sc-if><sc-if value="{{ l.noFlag }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:{{ tHover }};font-size:12px;font-weight:700;color:{{ tText }};flex-shrink:0;">{{ l.code }}</span></sc-if><span style="flex:1;min-width:0;">{{ l.name }}</span><sc-if value="{{ l.on }}"><i class="ri-check-line" style="font-size:16px;color:var(--color-accent,var(--brand-ink,var(--brand)));"></i></sc-if></button></sc-for>
+                </div></sc-if>
+              </div>
+              <sc-if value="{{ fsShow }}"><button style="{{ iconBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onToggleFullscreen }}" aria-pressed="{{ fsPressed }}" aria-label="{{ fsTip }}" title="{{ fsTip }}"><i class="{{ fsIcon }}" style="font-size:19px;"></i></button></sc-if>
+              <button style="{{ iconBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onToggleScheme }}" aria-label="{{ schemeTip }}" title="{{ schemeTip }}"><i class="{{ schemeIcon }}" style="font-size:19px;"></i></button>
+              </sc-if>
               <div data-dz="notif" style="position:relative;">
-                <button style="{{ iconBtnStyle }}" onClick="{{ onDropNotif }}" title="Thông báo" aria-label="Thông báo — 4 mới"><i class="ri-notification-3-line" style="font-size:19px;"></i><span style="position:absolute;top:6px;right:6px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#c2391b;color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid {{ tbBg }};">4</span></button>
+                <button style="{{ iconBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onDropNotif }}" title="Thông báo" aria-label="Thông báo — 4 mới"><i class="ri-notification-3-line" style="font-size:19px;"></i><span style="position:absolute;top:6px;right:6px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#c2391b;color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid {{ tbBg }};">4</span></button>
                 <sc-if value="{{ notifOpen }}"><div class="pop" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:340px;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
                   <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:linear-gradient(135deg,var(--brand-solid,var(--brand)),#4c5fa3);"><span style="font-size:14px;font-weight:600;color:#fff;">Thông báo</span><span style="font-size:12px;font-weight:600;color:#fff;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:20px;">4 mới</span></div>
                   <div class="scl" style="max-height:300px;overflow-y:auto;">
@@ -211,39 +229,21 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                   <div style="padding:10px;"><button style="width:100%;padding:8px;border:1px solid {{ tPanelBorder }};border-radius:7px;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--brand-ink,var(--brand));cursor:pointer;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onStub }}">Xem tất cả thông báo</button></div>
                 </div></sc-if>
               </div>
-              <sc-if value="{{ siteSwitchShow }}">
-              <div data-dz="site" style="position:relative;">
-                <button style="{{ siteBtnStyle }}" onClick="{{ onDropSite }}" aria-haspopup="true" aria-expanded="{{ siteOpenStr }}" aria-label="Chuyển website — đang ở {{ siteName }}" title="Chuyển website"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:{{ siteMark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ siteInit }}</span><sc-if value="{{ topbarWide }}"><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;min-width:0;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">{{ siteName }}</span><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">{{ planeLabel }}</span></span><i class="ri-arrow-down-s-line" style="font-size:16px;color:{{ tbMuted }};"></i></sc-if></button>
-                <sc-if value="{{ siteOpen }}">
-                  <div class="pop" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:min(300px, calc(100vw - 16px));background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
-                    <div style="padding:11px 15px 7px;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:{{ tMuted }};">Chuyển website</div>
-                    <sc-if value="{{ siteSearchShow }}"><div class="sBox" data-focus-wrap="" style="display:flex;align-items:center;gap:8px;margin:0 10px 6px;padding:0 10px;height:40px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;"><i class="ri-search-line" style="font-size:15px;color:{{ tMuted }};"></i><input class="sPlain" type="search" aria-label="Tìm website" placeholder="An Vinh" value="{{ siteQ }}" onChange="{{ onSiteQ }}" style="flex:1;min-width:0;border:0;outline:2px solid transparent;background:transparent;font:inherit;font-size:14px;color:{{ tHeading }};padding:0;"></div></sc-if>
-                    <sc-for list="{{ siteList }}" as="s" hint-placeholder-count="3">
-                      <button style="{{ s.style }}" style-hover="background:rgba(120,130,150,0.1);" onClick="{{ s.onClick }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;background:{{ s.mark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ s.init }}</span><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.25;flex:1;min-width:0;"><span style="font-size:13px;font-weight:600;color:{{ tHeading }};">{{ s.name }}</span><span style="font-size:12px;color:{{ tMuted }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">{{ s.domain }}</span></span><sc-if value="{{ s.active }}"><i class="ri-check-line" style="font-size:16px;color:var(--brand-ink,var(--brand));"></i></sc-if></button>
-                    </sc-for>
-                    <div style="border-top:1px solid {{ tPanelBorder }};padding:6px;">
-                      <sc-if value="{{ siteCanCreate }}"><button style="display:flex;align-items:center;gap:9px;width:100%;min-height:40px;padding:9px 11px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:var(--color-accent,var(--brand-ink,var(--brand)));cursor:pointer;text-align:left;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onCreateSite }}"><i class="ri-add-circle-line" style="font-size:17px;"></i>Tạo website mới</button></sc-if>
-                      <sc-if value="{{ siteLocked }}"><div style="display:flex;align-items:flex-start;gap:9px;padding:9px 11px;font-size:13px;line-height:1.45;color:var(--color-body-muted,#5b6275);"><i class="ri-lock-2-line" style="font-size:16px;flex-shrink:0;margin-top:1px;"></i><span><span style="display:block;font-weight:600;color:var(--color-heading,#1f2b4d);">Tạo website mới — khóa theo gói</span>{{ siteLockText }}</span></div></sc-if>
-                    </div>
-                  </div>
-                </sc-if>
-              </div>
-              </sc-if>
-              <sc-if value="{{ planeIsPlatform }}">
-              <div style="display:flex;align-items:center;gap:9px;padding:6px 10px;" title="Vào website của một khách hàng ở mục Website › Đăng nhập dưới tên khách hàng">
-                <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:{{ tMuted }};color:#fff;font-size:12px;flex-shrink:0;"><i class="ri-stack-line"></i></span>
-                <sc-if value="{{ topbarWide }}"><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">Nền tảng · mọi khách hàng</span><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">{{ platName }}</span></span></sc-if>
+              <sc-if value="{{ impChip }}">
+              <div role="status" style="display:flex;align-items:center;gap:9px;min-height:44px;padding:4px 10px;border:1px solid var(--color-admin-warning-text,#8a6200);border-radius:8px;background:rgba(247,184,75,0.14);" title="Phiên hỗ trợ: bạn đang thao tác trên website của khách hàng">
+                <i class="ri-user-shared-line" style="font-size:18px;color:var(--tx-warn);flex-shrink:0;"></i>
+                <span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;min-width:0;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">Đăng nhập dưới tên khách hàng</span><sc-if value="{{ topbarWide }}"><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">{{ siteName }}</span></sc-if></span>
               </div>
               </sc-if>
               
-              <div data-dz="user" style="position:relative;margin-left:6px;">
+              <div data-dz="user" style="position:relative;">
                 <button style="{{ userBtnStyle }}" style-hover="{{ userHover }}" onClick="{{ onDropUser }}" aria-haspopup="true" aria-expanded="{{ userOpenStr }}" aria-label="Tài khoản của bạn — Ngọc Anh"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#e0e7ff;color:#4338ca;font-size:12.5px;font-weight:700;">NA</span><sc-if value="{{ topbarWide }}"><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">Ngọc Anh</span><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">{{ roleLabel }}</span></span><i class="ri-arrow-down-s-line" style="font-size:16px;color:{{ tbMuted }};"></i></sc-if></button>
                 <sc-if value="{{ userOpen }}"><div class="pop" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:min(272px, calc(100vw - 16px));background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
                   <div style="padding:13px 16px;border-bottom:1px solid {{ tLine }};"><div style="font-size:12px;color:{{ tMuted }};">Xin chào,</div><div style="font-size:14px;font-weight:600;color:{{ tHeading }};line-height:1.3;">Ngọc Anh</div></div>
                   <div style="padding:6px 0;">
                     <sc-for list="{{ userMenu }}" as="u" hint-placeholder-count="5">
                       <sc-if value="{{ u.isDiv }}"><div style="height:1px;margin:6px 0;background:{{ tLine }};"></div></sc-if>
-                      <sc-if value="{{ u.isItem }}"><button aria-expanded="{{ u.ariaExp }}" aria-current="{{ u.ariaCur }}" style="{{ u.style }}" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ u.onClick }}"><i class="{{ u.icon }}" style="font-size:16px;width:18px;flex-shrink:0;color:{{ u.iconColor }};"></i><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ u.label }}</span><sc-if value="{{ u.hasMeta }}"><span style="font-size:12px;color:{{ tMuted }};white-space:nowrap;">{{ u.meta }}</span></sc-if></button></sc-if>
+                      <sc-if value="{{ u.isItem }}"><button lang="{{ u.lang }}" aria-expanded="{{ u.ariaExp }}" aria-current="{{ u.ariaCur }}" style="{{ u.style }}" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ u.onClick }}"><i class="{{ u.icon }}" style="font-size:16px;width:18px;flex-shrink:0;color:{{ u.iconColor }};"></i><sc-if value="{{ u.hasFlag }}">{{ u.flagEl }}</sc-if><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ u.label }}</span><sc-if value="{{ u.hasMeta }}"><span style="font-size:12px;color:{{ tMuted }};white-space:nowrap;">{{ u.meta }}</span></sc-if></button></sc-if>
                     </sc-for>
                   </div>
                 </div></sc-if>
@@ -772,6 +772,21 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
 
       <sc-if value="{{ anyDrop }}"><div style="position:absolute;inset:0;z-index:60;" onClick="{{ onCloseDrops }}"></div></sc-if>
       <sc-if value="{{ mobileNavShade }}"><div style="position:absolute;inset:0;z-index:125;background:rgba(15,18,30,0.42);" onClick="{{ onCloseMobileNav }}"></div></sc-if>
+      <sc-if value="{{ siteOpen }}">
+        <sc-if value="{{ siteSheet }}"><div style="position:fixed;inset:0;z-index:139;background:rgba(15,18,30,0.42);"></div></sc-if>
+        <div data-dz="site" data-pop="site" role="dialog" aria-label="Chuyển website" onKeyDown="{{ onPopKey }}" style="{{ sitePopStyle }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 10px 6px 15px;flex-shrink:0;"><span style="font-size:13px;font-weight:600;color:{{ tHeading }};">Chuyển website</span><sc-if value="{{ siteSheet }}"><button onClick="{{ onSiteClose }}" aria-label="Đóng" title="Đóng" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;border-radius:8px;background:transparent;color:{{ tMuted }};cursor:pointer;"><i class="ri-close-line" style="font-size:20px;"></i></button></sc-if></div>
+          <sc-if value="{{ siteSearchShow }}"><div class="sBox" data-focus-wrap="" style="display:flex;align-items:center;gap:8px;margin:0 10px 6px;padding:0 10px;height:44px;flex-shrink:0;border:1px solid var(--color-border-input,#878a99);border-radius:4px;"><i class="ri-search-line" style="font-size:15px;color:{{ tMuted }};"></i><input class="sPlain" type="search" aria-label="Tìm website" placeholder="Tên hoặc tên miền" value="{{ siteQ }}" onChange="{{ onSiteQ }}" style="flex:1;min-width:0;border:0;outline:2px solid transparent;background:transparent;font:inherit;font-size:16px;color:{{ tHeading }};padding:0;"></div></sc-if>
+          <div class="scl" style="flex:1 1 auto;min-height:0;overflow-y:auto;padding:0 6px;">
+            <sc-for list="{{ siteList }}" as="s" hint-placeholder-count="3"><button data-row="" aria-current="{{ s.cur }}" style="{{ s.style }}" style-hover="background:rgba(120,130,150,0.1);" onClick="{{ s.onClick }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;background:{{ s.mark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ s.init }}</span><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.35;flex:1;min-width:0;"><span style="max-width:100%;font-size:13.5px;font-weight:600;color:{{ tHeading }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ s.name }}">{{ s.name }}</span><span style="max-width:100%;font-size:12px;color:{{ tMuted }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.domain }}</span><span style="font-size:12px;color:{{ tMuted }};">{{ s.role }}</span></span><sc-if value="{{ s.active }}"><i class="ri-check-line" style="font-size:16px;color:var(--color-accent,var(--brand-ink,var(--brand)));flex-shrink:0;"></i></sc-if></button></sc-for>
+            <sc-if value="{{ siteNone }}"><div style="padding:12px 10px;font-size:13px;color:{{ tMuted }};">Không có website nào khớp. Thử tên khác.</div></sc-if>
+          </div>
+          <div style="border-top:1px solid {{ tPanelBorder }};padding:6px;flex-shrink:0;">
+            <sc-if value="{{ siteCanCreate }}"><button data-row="" style="display:flex;align-items:center;gap:9px;width:100%;min-height:44px;padding:9px 11px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:var(--color-accent,var(--brand-ink,var(--brand)));cursor:pointer;text-align:left;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onCreateSite }}"><i class="ri-add-circle-line" style="font-size:17px;"></i>Tạo website mới</button></sc-if>
+            <sc-if value="{{ siteLocked }}"><div style="display:flex;align-items:flex-start;gap:9px;padding:9px 11px;font-size:13px;line-height:1.45;color:var(--color-body-muted,#5b6275);"><i class="ri-lock-2-line" style="font-size:16px;flex-shrink:0;margin-top:1px;"></i><span><span style="display:block;font-weight:600;color:var(--color-heading,#1f2b4d);">Tạo website mới — khóa theo gói</span>{{ siteLockText }}</span></div></sc-if>
+          </div>
+        </div>
+      </sc-if>
 
 
       <sc-if value="{{ searchFullOpen }}"><div role="dialog" aria-modal="true" aria-label="Tìm kiếm" style="position:fixed;inset:0;z-index:230;display:flex;flex-direction:column;background:{{ tCard }};padding-top:env(safe-area-inset-top);">
@@ -1095,7 +1110,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
     </div>
 </section>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:880},&quot;plane&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;tenant&quot;,&quot;platform&quot;,&quot;shop&quot;],&quot;default&quot;:&quot;tenant&quot;,&quot;tsType&quot;:&quot;'tenant'|'platform'|'shop'&quot;,&quot;label&quot;:&quot;Mặt (xem thử: tenant = Website · platform = Nền tảng · shop = TMĐT — Để sau)&quot;},&quot;accountType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;site&quot;,&quot;ecom&quot;,&quot;saas&quot;],&quot;default&quot;:&quot;site&quot;,&quot;tsType&quot;:&quot;'site'|'ecom'|'saas'&quot;,&quot;label&quot;:&quot;Loại tài khoản (mặt Website)&quot;},&quot;brandPreview&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#2050a0&quot;,&quot;#0e7490&quot;,&quot;#15803d&quot;,&quot;#4338ca&quot;,&quot;#9d174d&quot;,&quot;#334155&quot;],&quot;default&quot;:&quot;#2050a0&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Màu thương hiệu (xem thử — bản thật ở Cài đặt nền tảng › Thương hiệu trắng)&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Hiện ghi chú thiết kế&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:880},&quot;plane&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;tenant&quot;,&quot;platform&quot;,&quot;shop&quot;],&quot;default&quot;:&quot;tenant&quot;,&quot;tsType&quot;:&quot;'tenant'|'platform'|'shop'&quot;,&quot;label&quot;:&quot;Mặt (xem thử: tenant = Website · platform = Nền tảng · shop = TMĐT — Để sau)&quot;},&quot;accountType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;site&quot;,&quot;ecom&quot;,&quot;saas&quot;],&quot;default&quot;:&quot;site&quot;,&quot;tsType&quot;:&quot;'site'|'ecom'|'saas'&quot;,&quot;label&quot;:&quot;Loại tài khoản (mặt Website)&quot;},&quot;brandPreview&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#2050a0&quot;,&quot;#0e7490&quot;,&quot;#15803d&quot;,&quot;#4338ca&quot;,&quot;#9d174d&quot;,&quot;#334155&quot;],&quot;default&quot;:&quot;#2050a0&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Màu thương hiệu (xem thử — bản thật ở Cài đặt nền tảng › Thương hiệu trắng)&quot;},&quot;langBtn&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;flag&quot;,&quot;code&quot;],&quot;default&quot;:&quot;flag&quot;,&quot;tsType&quot;:&quot;'flag'|'code'&quot;,&quot;label&quot;:&quot;Kiểu nút ngôn ngữ (flag = Cờ · code = Mã)&quot;},&quot;siteCount&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[1,3,8],&quot;default&quot;:3,&quot;tsType&quot;:&quot;1|3|8&quot;,&quot;label&quot;:&quot;Số website của người dùng&quot;},&quot;impersonating&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Đang đăng nhập dưới tên khách hàng (phiên hỗ trợ)&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Hiện ghi chú thiết kế&quot;}}">
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -1108,7 +1123,7 @@ class Component extends DCLogic {
       fxList: [{ c: 'USD', rate: '25.400' }], fxAdd: '', ccyAsk: null,
       site: 'anvinh', search: '', lang: 'vi',
       siteLangs: ['vi', 'en', 'zh'], pubLangs: ['vi', 'en'], defLang: 'vi',
-      winW: (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1440, mobileNavOpen: false, isFullscreen: false, focusMode: false,
+      winW: (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1440, mobileNavOpen: false, isFullscreen: false, fsOk: false, searchCollapsed: false,
       acctModal: null, acctDraft: { name: 'Ngọc Anh', title: 'Quản trị viên', phone: '0909 123 456' }, acctSaved: {},
       pwCur: '', pwNew: '', pwConfirm: '', twofaOn: false, killedSessions: [],
       prefLang: 'vi', prefTz: 'Asia/Ho_Chi_Minh', prefEmailNotif: true,
@@ -1123,6 +1138,8 @@ class Component extends DCLogic {
   }
   // Bảng màu thương hiệu (Đợt C, 01/10/2026): [màu gốc, tên, --brand-solid, --brand-ink Sáng]. Tối: color-mix(oklab, gốc 38%, #e6eeff).
   // Cùng độ đậm (L OKLCH của solid trong ±0,06 so với Bảo Sơn; Than chì miễn), khác sắc độ, mọi cặp ΔE OKLab ≥ 0,09. Số đo: AUDIT.md 5.L1-C.
+  // Cờ cho nút Ngôn ngữ GIAO DIỆN (owner 06/10) — SVG nội tuyến từ repo public/images/admin/flags/{vi,en,ja,zh}.svg. Thanh ngôn ngữ NỘI DUNG không dùng cờ (CLAUDE.md §2).
+  static FLAGS() { return {"vi":"data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Cdefs%3E%3CclipPath%3E%3Cpath%20fill-opacity%3D%22.7%22%20d%3D%22M177.2%200h708.6v708.7H177.2z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%3Cg%20fill-rule%3D%22evenodd%22%20clip-path%3D%22url(%23a)%22%20transform%3D%22translate(-128)%20scale(.72249)%22%3E%3Cpath%20fill%3D%22%23da251d%22%20d%3D%22M0%200h1063v708.7H0z%22%3E%3C%2Fpath%3E%3Cpath%20fill%3D%22%23ff0%22%20d%3D%22m661%20527.5-124-92.6-123.3%2093.5%2045.9-152-123.2-93.8%20152.4-1.3L536%20129.8%20584.3%20281l152.4.2-122.5%2094.7L661%20527.5z%22%3E%3C%2Fpath%3E%3C%2Fg%3E%3C%2Fsvg%3E","en":"data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20fill%3D%22%23F5F5F5%22%20width%3D%22512%22%20height%3D%22512%22%2F%3E%3Crect%20y%3D%220.235%22%20fill%3D%22%23FF4B55%22%20width%3D%22512%22%20height%3D%2239.34%22%2F%3E%3Crect%20y%3D%2278.935%22%20fill%3D%22%23FF4B55%22%20width%3D%22512%22%20height%3D%2239.34%22%2F%3E%3Crect%20y%3D%22157.63%22%20fill%3D%22%23FF4B55%22%20width%3D%22512%22%20height%3D%2239.34%22%2F%3E%3Crect%20y%3D%22236.32%22%20fill%3D%22%23FF4B55%22%20width%3D%22512%22%20height%3D%2239.34%22%2F%3E%3Crect%20y%3D%22315.02%22%20fill%3D%22%23FF4B55%22%20width%3D%22512%22%20height%3D%2239.34%22%2F%3E%3Crect%20y%3D%22393.71%22%20fill%3D%22%23FF4B55%22%20width%3D%22512%22%20height%3D%2239.34%22%2F%3E%3Crect%20y%3D%22472.41%22%20fill%3D%22%23FF4B55%22%20width%3D%22512%22%20height%3D%2239.34%22%2F%3E%3Crect%20y%3D%220.235%22%20fill%3D%22%2341479B%22%20width%3D%22275.44%22%20height%3D%22275.44%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2235.2%2C20.4%2037.7%2C28.0%2045.7%2C28.0%2039.2%2C32.7%2041.7%2C40.3%2035.2%2C35.6%2028.7%2C40.3%2031.2%2C32.7%2024.7%2C28.0%2032.7%2C28.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2235.2%2C73.5%2037.7%2C81.1%2045.7%2C81.1%2039.2%2C85.8%2041.7%2C93.4%2035.2%2C88.7%2028.7%2C93.4%2031.2%2C85.8%2024.7%2C81.1%2032.7%2C81.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2235.2%2C132.4%2037.7%2C140.0%2045.7%2C140.0%2039.2%2C144.7%2041.7%2C152.3%2035.2%2C147.6%2028.7%2C152.3%2031.2%2C144.7%2024.7%2C140.0%2032.7%2C140.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2235.2%2C186.5%2037.7%2C194.1%2045.7%2C194.1%2039.2%2C198.8%2041.7%2C206.4%2035.2%2C201.7%2028.7%2C206.4%2031.2%2C198.8%2024.7%2C194.1%2032.7%2C194.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2235.2%2C235.7%2037.7%2C243.3%2045.7%2C243.3%2039.2%2C248.0%2041.7%2C255.6%2035.2%2C250.9%2028.7%2C255.6%2031.2%2C248.0%2024.7%2C243.3%2032.7%2C243.3%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2286.9%2C20.4%2089.4%2C28.0%2097.4%2C28.0%2090.9%2C32.7%2093.4%2C40.3%2086.9%2C35.6%2080.4%2C40.3%2082.9%2C32.7%2076.4%2C28.0%2084.4%2C28.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2286.9%2C73.5%2089.4%2C81.1%2097.4%2C81.1%2090.9%2C85.8%2093.4%2C93.4%2086.9%2C88.7%2080.4%2C93.4%2082.9%2C85.8%2076.4%2C81.1%2084.4%2C81.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2286.9%2C132.4%2089.4%2C140.0%2097.4%2C140.0%2090.9%2C144.7%2093.4%2C152.3%2086.9%2C147.6%2080.4%2C152.3%2082.9%2C144.7%2076.4%2C140.0%2084.4%2C140.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2286.9%2C186.5%2089.4%2C194.1%2097.4%2C194.1%2090.9%2C198.8%2093.4%2C206.4%2086.9%2C201.7%2080.4%2C206.4%2082.9%2C198.8%2076.4%2C194.1%2084.4%2C194.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2286.9%2C235.7%2089.4%2C243.3%2097.4%2C243.3%2090.9%2C248.0%2093.4%2C255.6%2086.9%2C250.9%2080.4%2C255.6%2082.9%2C248.0%2076.4%2C243.3%2084.4%2C243.3%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22138.6%2C20.4%20141.1%2C28.0%20149.1%2C28.0%20142.6%2C32.7%20145.1%2C40.3%20138.6%2C35.6%20132.1%2C40.3%20134.6%2C32.7%20128.1%2C28.0%20136.1%2C28.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22138.6%2C73.5%20141.1%2C81.1%20149.1%2C81.1%20142.6%2C85.8%20145.1%2C93.4%20138.6%2C88.7%20132.1%2C93.4%20134.6%2C85.8%20128.1%2C81.1%20136.1%2C81.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22138.6%2C132.4%20141.1%2C140.0%20149.1%2C140.0%20142.6%2C144.7%20145.1%2C152.3%20138.6%2C147.6%20132.1%2C152.3%20134.6%2C144.7%20128.1%2C140.0%20136.1%2C140.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22138.6%2C186.5%20141.1%2C194.1%20149.1%2C194.1%20142.6%2C198.8%20145.1%2C206.4%20138.6%2C201.7%20132.1%2C206.4%20134.6%2C198.8%20128.1%2C194.1%20136.1%2C194.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22138.6%2C235.7%20141.1%2C243.3%20149.1%2C243.3%20142.6%2C248.0%20145.1%2C255.6%20138.6%2C250.9%20132.1%2C255.6%20134.6%2C248.0%20128.1%2C243.3%20136.1%2C243.3%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22190.3%2C20.4%20192.8%2C28.0%20200.8%2C28.0%20194.3%2C32.7%20196.8%2C40.3%20190.3%2C35.6%20183.8%2C40.3%20186.3%2C32.7%20179.8%2C28.0%20187.8%2C28.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22190.3%2C73.5%20192.8%2C81.1%20200.8%2C81.1%20194.3%2C85.8%20196.8%2C93.4%20190.3%2C88.7%20183.8%2C93.4%20186.3%2C85.8%20179.8%2C81.1%20187.8%2C81.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22190.3%2C132.4%20192.8%2C140.0%20200.8%2C140.0%20194.3%2C144.7%20196.8%2C152.3%20190.3%2C147.6%20183.8%2C152.3%20186.3%2C144.7%20179.8%2C140.0%20187.8%2C140.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22190.3%2C186.5%20192.8%2C194.1%20200.8%2C194.1%20194.3%2C198.8%20196.8%2C206.4%20190.3%2C201.7%20183.8%2C206.4%20186.3%2C198.8%20179.8%2C194.1%20187.8%2C194.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22190.3%2C235.7%20192.8%2C243.3%20200.8%2C243.3%20194.3%2C248.0%20196.8%2C255.6%20190.3%2C250.9%20183.8%2C255.6%20186.3%2C248.0%20179.8%2C243.3%20187.8%2C243.3%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22241.9%2C20.4%20244.4%2C28.0%20252.4%2C28.0%20245.9%2C32.7%20248.4%2C40.3%20241.9%2C35.6%20235.4%2C40.3%20237.9%2C32.7%20231.4%2C28.0%20239.4%2C28.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22241.9%2C73.5%20244.4%2C81.1%20252.4%2C81.1%20245.9%2C85.8%20248.4%2C93.4%20241.9%2C88.7%20235.4%2C93.4%20237.9%2C85.8%20231.4%2C81.1%20239.4%2C81.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22241.9%2C132.4%20244.4%2C140.0%20252.4%2C140.0%20245.9%2C144.7%20248.4%2C152.3%20241.9%2C147.6%20235.4%2C152.3%20237.9%2C144.7%20231.4%2C140.0%20239.4%2C140.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22241.9%2C186.5%20244.4%2C194.1%20252.4%2C194.1%20245.9%2C198.8%20248.4%2C206.4%20241.9%2C201.7%20235.4%2C206.4%20237.9%2C198.8%20231.4%2C194.1%20239.4%2C194.1%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22241.9%2C235.7%20244.4%2C243.3%20252.4%2C243.3%20245.9%2C248.0%20248.4%2C255.6%20241.9%2C250.9%20235.4%2C255.6%20237.9%2C248.0%20231.4%2C243.3%20239.4%2C243.3%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2261.1%2C45.6%2063.6%2C53.2%2071.6%2C53.2%2065.1%2C57.9%2067.6%2C65.5%2061.1%2C60.8%2054.6%2C65.5%2057.1%2C57.9%2050.6%2C53.2%2058.6%2C53.2%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2261.1%2C104.4%2063.6%2C112.0%2071.6%2C112.0%2065.1%2C116.7%2067.6%2C124.3%2061.1%2C119.6%2054.6%2C124.3%2057.1%2C116.7%2050.6%2C112.0%2058.6%2C112.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2261.1%2C160.4%2063.6%2C168.0%2071.6%2C168.0%2065.1%2C172.7%2067.6%2C180.3%2061.1%2C175.6%2054.6%2C180.3%2057.1%2C172.7%2050.6%2C168.0%2058.6%2C168.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%2261.1%2C210.6%2063.6%2C218.2%2071.6%2C218.2%2065.1%2C222.9%2067.6%2C230.5%2061.1%2C225.8%2054.6%2C230.5%2057.1%2C222.9%2050.6%2C218.2%2058.6%2C218.2%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22112.7%2C45.6%20115.2%2C53.2%20123.2%2C53.2%20116.7%2C57.9%20119.2%2C65.5%20112.7%2C60.8%20106.2%2C65.5%20108.7%2C57.9%20102.2%2C53.2%20110.2%2C53.2%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22112.7%2C104.4%20115.2%2C112.0%20123.2%2C112.0%20116.7%2C116.7%20119.2%2C124.3%20112.7%2C119.6%20106.2%2C124.3%20108.7%2C116.7%20102.2%2C112.0%20110.2%2C112.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22112.7%2C160.4%20115.2%2C168.0%20123.2%2C168.0%20116.7%2C172.7%20119.2%2C180.3%20112.7%2C175.6%20106.2%2C180.3%20108.7%2C172.7%20102.2%2C168.0%20110.2%2C168.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22112.7%2C210.6%20115.2%2C218.2%20123.2%2C218.2%20116.7%2C222.9%20119.2%2C230.5%20112.7%2C225.8%20106.2%2C230.5%20108.7%2C222.9%20102.2%2C218.2%20110.2%2C218.2%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22164.4%2C45.6%20166.9%2C53.2%20174.9%2C53.2%20168.4%2C57.9%20170.9%2C65.5%20164.4%2C60.8%20157.9%2C65.5%20160.4%2C57.9%20153.9%2C53.2%20161.9%2C53.2%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22164.4%2C104.4%20166.9%2C112.0%20174.9%2C112.0%20168.4%2C116.7%20170.9%2C124.3%20164.4%2C119.6%20157.9%2C124.3%20160.4%2C116.7%20153.9%2C112.0%20161.9%2C112.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22164.4%2C160.4%20166.9%2C168.0%20174.9%2C168.0%20168.4%2C172.7%20170.9%2C180.3%20164.4%2C175.6%20157.9%2C180.3%20160.4%2C172.7%20153.9%2C168.0%20161.9%2C168.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22164.4%2C210.6%20166.9%2C218.2%20174.9%2C218.2%20168.4%2C222.9%20170.9%2C230.5%20164.4%2C225.8%20157.9%2C230.5%20160.4%2C222.9%20153.9%2C218.2%20161.9%2C218.2%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22216.1%2C45.6%20218.6%2C53.2%20226.6%2C53.2%20220.1%2C57.9%20222.6%2C65.5%20216.1%2C60.8%20209.6%2C65.5%20212.1%2C57.9%20205.6%2C53.2%20213.6%2C53.2%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22216.1%2C104.4%20218.6%2C112.0%20226.6%2C112.0%20220.1%2C116.7%20222.6%2C124.3%20216.1%2C119.6%20209.6%2C124.3%20212.1%2C116.7%20205.6%2C112.0%20213.6%2C112.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22216.1%2C160.4%20218.6%2C168.0%20226.6%2C168.0%20220.1%2C172.7%20222.6%2C180.3%20216.1%2C175.6%20209.6%2C180.3%20212.1%2C172.7%20205.6%2C168.0%20213.6%2C168.0%22%2F%3E%3Cpolygon%20fill%3D%22%23F5F5F5%22%20points%3D%22216.1%2C210.6%20218.6%2C218.2%20226.6%2C218.2%20220.1%2C222.9%20222.6%2C230.5%20216.1%2C225.8%20209.6%2C230.5%20212.1%2C222.9%20205.6%2C218.2%20213.6%2C218.2%22%2F%3E%3C%2Fsvg%3E","ja":"data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Cdefs%3E%3CclipPath%3E%3Cpath%20fill-opacity%3D%22.7%22%20d%3D%22M177.2%200h708.6v708.7H177.2z%22%3E%3C%2Fpath%3E%3C%2FclipPath%3E%3C%2Fdefs%3E%3Cg%20fill-rule%3D%22evenodd%22%20stroke-width%3D%221pt%22%20clip-path%3D%22url(%23a)%22%20transform%3D%22translate(-128)%20scale(.72249)%22%3E%3Cpath%20fill%3D%22%23fff%22%20d%3D%22M0%200h1063v708.7H0z%22%3E%3C%2Fpath%3E%3Ccircle%20cx%3D%22523.1%22%20cy%3D%22344.1%22%20r%3D%22194.9%22%20fill%3D%22%23d30000%22%20transform%3D%22translate(-59.7%20-34.5)%20scale(1.1302)%22%3E%3C%2Fcircle%3E%3C%2Fg%3E%3C%2Fsvg%3E","zh":"data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20512%20512%22%3E%3Crect%20fill%3D%22%23FF4B55%22%20width%3D%22512%22%20height%3D%22512%22%2F%3E%3Cpath%20fill%3D%22%23FFE15A%22%20d%3D%22M114.021%2C87.181l12.722%2C38.146l40.21%2C0.312c5.206%2C0.04%2C7.365%2C6.684%2C3.177%2C9.777l-32.348%2C23.887l12.129%2C38.339c1.57%2C4.964-4.081%2C9.07-8.317%2C6.042l-32.714-23.383l-32.714%2C23.383c-4.235%2C3.027-9.887-1.079-8.317-6.042l12.129-38.339L47.63%2C135.416c-4.188-3.093-2.029-9.736%2C3.177-9.777l40.21-0.312l12.722-38.146C105.388%2C82.243%2C112.374%2C82.243%2C114.021%2C87.181z%22%2F%3E%3Cpath%20fill%3D%22%23FFE15A%22%20d%3D%22M260.037%2C96.582l9.122%2C12.44l14.723-4.604c1.906-0.596%2C3.474%2C1.577%2C2.307%2C3.198l-9.012%2C12.52l8.928%2C12.58c1.156%2C1.629-0.426%2C3.791-2.329%2C3.183l-14.692-4.702l-9.205%2C12.378c-1.192%2C1.603-3.738%2C0.766-3.746-1.231l-0.068-15.426l-14.617-4.929c-1.892-0.638-1.883-3.318%2C0.013-3.944l14.65-4.831l0.171-15.425C256.305%2C95.791%2C258.856%2C94.971%2C260.037%2C96.582z%22%2F%3E%3Cpath%20fill%3D%22%23FFE15A%22%20d%3D%22M204.496%2C59.501l15.336%2C1.667l6.542-13.97c0.847-1.809%2C3.509-1.498%2C3.917%2C0.457l3.154%2C15.1l15.308%2C1.905c1.982%2C0.247%2C2.509%2C2.874%2C0.776%2C3.866l-13.387%2C7.665l2.919%2C15.147c0.378%2C1.961-1.958%2C3.275-3.437%2C1.933l-11.427-10.363l-13.504%2C7.457c-1.748%2C0.965-3.719-0.85-2.901-2.672l6.324-14.07l-11.265-10.539C201.393%2C61.72%2C202.511%2C59.285%2C204.496%2C59.501z%22%2F%3E%3Cpath%20fill%3D%22%23FFE15A%22%20d%3D%22M228.739%2C208.997l-9.122%2C12.44l-14.723-4.604c-1.906-0.596-3.474%2C1.577-2.307%2C3.198l9.012%2C12.52l-8.928%2C12.58c-1.156%2C1.629%2C0.426%2C3.791%2C2.329%2C3.183l14.692-4.702l9.205%2C12.378c1.192%2C1.603%2C3.738%2C0.766%2C3.746-1.231l0.068-15.426l14.617-4.929c1.892-0.638%2C1.883-3.318-0.013-3.943l-14.65-4.831l-0.171-15.425C232.472%2C208.206%2C229.92%2C207.386%2C228.739%2C208.997z%22%2F%3E%3Cpath%20fill%3D%22%23FFE15A%22%20d%3D%22M284.281%2C174.151l-15.336%2C1.667l-6.542-13.97c-0.847-1.809-3.509-1.498-3.917%2C0.457l-3.153%2C15.1l-15.308%2C1.905c-1.982%2C0.247-2.509%2C2.874-0.776%2C3.866l13.387%2C7.665l-2.919%2C15.147c-0.378%2C1.961%2C1.958%2C3.275%2C3.437%2C1.933l11.427-10.363l13.504%2C7.457c1.748%2C0.965%2C3.719-0.85%2C2.901-2.672l-6.324-14.07l11.265-10.539C287.384%2C176.371%2C286.266%2C173.935%2C284.281%2C174.151z%22%2F%3E%3C%2Fsvg%3E"}; }
   static PAL() { return [ ['#2050a0', 'Bảo Sơn', '#2050a0', '#2050a0'], ['#0e7490', 'Xanh cổ vịt', '#00657f', '#05708c'], ['#15803d', 'Xanh lá', '#056b30', '#0a7636'], ['#4338ca', 'Chàm', '#4338ca', '#4338ca'], ['#9d174d', 'Mận', '#9d174d', '#9d174d'], ['#334155', 'Than chì', '#334155', '#334155'] ]; }
   // Q5: lưu 9 thuộc tính Tùy biến vào localStorage['bs-ui'] (có version). Bản thật lưu phía server theo người dùng.
   // RIÊNG plane: chỉ là bộ chọn xem thử của prototype; bản thật lấy theo tài khoản đăng nhập, không lưu theo trình duyệt.
@@ -1160,15 +1177,10 @@ class Component extends DCLogic {
     try { this._chartRO = new ResizeObserver(upd); this._chartRO.observe(el); } catch (e) {} upd(); }
   syncW() { try { var w = window.innerWidth || 1440; if (w !== this.state.winW) this.setState({ winW: w }); } catch (e) {} }
   // L1-16: nút Tùy biến nổi phải nằm trên thanh Lưu dính đáy của màn nhúng (đánh dấu [data-sticky-savebar]), cách 16px. Đo thật, không đoán.
-  fabSync() { try { const fr = document.querySelector('[data-brand-scope]'); if (!fr) return; const fb = fr.getBoundingClientRect(); let lift = 20;
-      fr.querySelectorAll('[data-sticky-savebar]').forEach(b => { const r = b.getBoundingClientRect(); if (r.height < 1 || r.width < 1) return; if (r.top < fb.bottom - 1 && r.bottom > fb.bottom - 80 && r.right > fb.right - 80) lift = Math.max(lift, Math.round(fb.bottom - r.top + 16)); });
-      if (lift !== this._fabLift) { this._fabLift = lift; fr.style.setProperty('--fab-bottom', lift + 'px'); } } catch (e) {} }
-  fabSchedule() { this.fabSync(); try { if (this._fabRaf) cancelAnimationFrame(this._fabRaf); this._fabRaf = requestAnimationFrame(() => this.fabSync()); } catch (e) {} }
   isDark() { const s = this.state.scheme; if (s === 'dark') return true; if (s !== 'auto') return false; try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) { return false; } }
   syncScheme() { try { var m = this.isDark() ? 'dark' : 'light'; document.documentElement.setAttribute('data-bs-theme', m); localStorage.setItem('bs-scheme', m); } catch (e) {} }
   componentDidMount() {
     this.syncScheme(); this._raf = 0; this.syncW();
-    this._fabScroll = () => this.fabSchedule(); try { document.addEventListener('scroll', this._fabScroll, true); window.addEventListener('resize', this._fabScroll); } catch (e) {} this.fabSchedule();
     this._cfgReady = () => this.forceUpdate(); document.addEventListener('bs-ai-quota-ready', this._cfgReady); document.addEventListener('bs-platform-ready', this._cfgReady);
     try { this._mq = window.matchMedia('(prefers-color-scheme: dark)'); this._mqFn = () => { if (this.state.scheme === 'auto') { this.syncScheme(); this.forceUpdate(); } }; this._mq.addEventListener('change', this._mqFn); } catch (e) {}
     // Ctrl/⌘+K = phím tắt phụ của ô tìm; Esc đóng tìm toàn màn / Trợ giúp.
@@ -1185,18 +1197,27 @@ class Component extends DCLogic {
     this._embed = (e) => { const d = (e && e.detail) || {}; if (!d.id) return; if (!!(this.state.embedDirty || {})[d.id] === !!d.dirty) return; this.setState(st => ({ embedDirty: Object.assign({}, st.embedDirty, { [d.id]: !!d.dirty }) })); };
     try { document.addEventListener('bs-embed-dirty', this._embed); } catch (e) {}
     this._outside = (e) => { const S0 = this.state; if (!S0.drop && !S0.langPanel && !S0.infoFor) return; const t = e.target; if (t && t.closest && t.closest('[data-dz]')) return; this.setState({ drop: null, langPanel: false, infoFor: null }); };
-    try { window.addEventListener('keydown', this._key); window.addEventListener('keydown', this._esc); document.addEventListener('mousedown', this._outside, true); window.addEventListener('beforeunload', this._bu); } catch (e) {} try { window.addEventListener('resize', this._onResize = () => { this.syncW(); this.scheduleRecalc(); }); document.addEventListener('fullscreenchange', this._onFs = () => this.setState({ isFullscreen: !!document.fullscreenElement })); } catch (e) {} this.scheduleRecalc(); }
-  componentWillUnmount() { try { document.removeEventListener('scroll', this._fabScroll, true); window.removeEventListener('resize', this._fabScroll); } catch (e) {} try { window.removeEventListener('hashchange', this._hash); document.removeEventListener('bs-media', this._media); document.removeEventListener('bs-embed-dirty', this._embed); window.removeEventListener('resize', this._onResize); document.removeEventListener('fullscreenchange', this._onFs); window.removeEventListener('keydown', this._key); window.removeEventListener('keydown', this._esc); document.removeEventListener('mousedown', this._outside, true); window.removeEventListener('beforeunload', this._bu); clearTimeout(this._toastT); } catch (e) {} }
-  toggleFullscreen() {
-    // Fullscreen thật khi trình duyệt cho phép (admin chạy top-level); nếu bị chặn (iframe xem trước)
-    // → fallback "phóng to vùng làm việc" (ẩn sidebar, nội dung tràn) để nút luôn có tác dụng thấy được.
-    try {
-      if (document.fullscreenEnabled) {
-        if (document.fullscreenElement) { var p = document.exitFullscreen(); if (p && p.catch) p.catch(function () {}); }
-        else { var el = document.documentElement; var r = el.requestFullscreen ? el.requestFullscreen() : null; if (r && r.catch) r.catch(() => this.setState(s => ({ focusMode: !s.focusMode }))); }
-      } else { this.setState(s => ({ focusMode: !s.focusMode })); }
-    } catch (e) { this.setState(s => ({ focusMode: !s.focusMode })); }
-  }
+    try { window.addEventListener('keydown', this._key); window.addEventListener('keydown', this._esc); document.addEventListener('mousedown', this._outside, true); window.addEventListener('beforeunload', this._bu); } catch (e) {} try { window.addEventListener('resize', this._onResize = () => { this.syncW(); this.scheduleRecalc(); this.fitSearchSoon(); }); } catch (e) {} try { document.addEventListener('fullscreenchange', this._onFs = () => this.setState({ isFullscreen: !!document.fullscreenElement })); const fsApi = typeof document.documentElement.requestFullscreen === 'function'; if (fsApi !== this.state.fsOk) this.setState({ fsOk: fsApi }); /* có API = trình duyệt hỗ trợ (iPhone không có → ẩn); khung nhúng chặn thì báo lúc bấm */ } catch (e) {} this.scheduleRecalc(); this.revealNavSoon(); }
+  componentWillUnmount() { try { window.removeEventListener('hashchange', this._hash); document.removeEventListener('bs-media', this._media); document.removeEventListener('bs-embed-dirty', this._embed); window.removeEventListener('resize', this._onResize); document.removeEventListener('fullscreenchange', this._onFs); window.removeEventListener('keydown', this._key); window.removeEventListener('keydown', this._esc); document.removeEventListener('mousedown', this._outside, true); window.removeEventListener('beforeunload', this._bu); clearTimeout(this._toastT); } catch (e) {} }
+  // Cuộn thanh bên tới mục đang chọn khi nạp/đổi trang — chỉ khi mục đang ngoài tầm nhìn.
+  revealNavSoon() { const S = this.state, w = S.winW || 1440; const k = [S.activeMenu, S.layout, S.plane, !!S.mobileNavOpen, !!S.railOpen, w >= 1280 ? 2 : (w >= 1024 ? 1 : 0)].join('|'); if (this._revealK === k) return; this._revealK = k; try { cancelAnimationFrame(this._revealRaf); this._revealRaf = requestAnimationFrame(() => requestAnimationFrame(() => this.revealNav())); (this._revealT || []).forEach(clearTimeout); this._revealT = [150, 400, 900].map(ms => setTimeout(() => this.revealNav(), ms)); /* template vẽ trễ hơn logic — thử lại, mỗi lượt chỉ cuộn khi mục còn ngoài tầm nhìn */ } catch (e) {} }
+  revealNav() { [this._sbNav, this._sbSec].forEach(c => { if (!c || !c.isConnected) return; const a = c.querySelector('[aria-current="page"]'); if (!a) return; const cr = c.getBoundingClientRect(), ar = a.getBoundingClientRect(); if (cr.height < 1 || (ar.top >= cr.top && ar.bottom <= cr.bottom)) return; c.scrollTop += (ar.top - cr.top) - Math.max(0, (cr.height - ar.height) / 2); }); }
+  toggleFullscreen() { try { if (document.fullscreenElement) { const p = document.exitFullscreen(); if (p && p.catch) p.catch(() => {}); } else { const p = document.documentElement.requestFullscreen(); if (p && p.catch) p.catch(() => this.notify('Trang đang nằm trong khung xem trước nên không bật được toàn màn hình. Mở trang ở tab riêng để dùng.')); } } catch (e) { this.notify('Trang đang nằm trong khung xem trước nên không bật được toàn màn hình. Mở trang ở tab riêng để dùng.'); } }
+  toggleScheme() { this.setState({ scheme: this.isDark() ? 'light' : 'dark', drop: null }); } // theo giao diện ĐANG HIỆN (kể cả Theo máy)
+  openPop(e, name, extra) { this._popTrig = e && e.currentTarget; this.setState(s => Object.assign({ drop: s.drop === name ? null : name }, extra || {})); }
+  openSite(e) { const el = e && e.currentTarget; const r = el ? el.getBoundingClientRect() : { left: 8, bottom: 70, width: 0 }; this.openPop(e, 'site', { siteAnchor: { l: r.left, t: r.bottom, w: r.width }, siteQ: '' }); }
+  popKey(e) { const k = e.key; const box = e.currentTarget; if (k === 'Escape') { e.preventDefault(); e.stopPropagation(); this.setState({ drop: null }); const tr = this._popTrig; setTimeout(() => { try { if (tr && tr.isConnected) tr.focus(); } catch (x) {} }, 0); return; }
+    const inInput = e.target && e.target.tagName === 'INPUT'; if (['ArrowDown', 'ArrowUp'].indexOf(k) < 0 && (inInput || ['Home', 'End'].indexOf(k) < 0)) return;
+    const rows = [].slice.call(box.querySelectorAll('[data-row]')); if (!rows.length) return; e.preventDefault(); let i = rows.indexOf(box.ownerDocument.activeElement);
+    if (k === 'Home') i = 0; else if (k === 'End') i = rows.length - 1; else if (k === 'ArrowDown') i = i < 0 ? 0 : Math.min(rows.length - 1, i + 1); else i = i < 0 ? rows.length - 1 : Math.max(0, i - 1); rows[i].focus(); }
+  // Ô tìm luôn ≥ 240px: đo chỗ trống thật của topbar; thiếu thì thu thành nút kính lúp (mở tìm toàn màn), có trễ 8px để không nhấp nháy.
+  fitSearchSoon() { try { cancelAnimationFrame(this._fitRaf); this._fitRaf = requestAnimationFrame(() => this.fitSearch()); } catch (e) {} }
+  fitSearch() { const h = this._tbEl, l = this._tbLeft, r = this._tbRight, S = this.state; if (!h || !l || !r || !h.isConnected) return;
+    if ((S.winW || 1440) < 640) { if (S.searchCollapsed) this.setState({ searchCollapsed: false }); return; }
+    const cs = getComputedStyle(h); const inner = h.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 16; const sw = this._searchWrap && this._searchWrap.isConnected ? this._searchWrap : null;
+    let fixed = 0; [].forEach.call(l.children, c => { if (c !== sw) fixed += c.offsetWidth + 10; });
+    let free = inner - r.offsetWidth - fixed - 6; if (S.searchCollapsed) free += 52; const col = S.searchCollapsed ? free < 248 : free < 240;
+    if (col !== !!S.searchCollapsed) this.setState({ searchCollapsed: col }); }
   setHNavWrap(el) { this.navWrapEl = el; }
   setHMeas(el) { this.measEl = el; }
   scheduleRecalc() { try { if (this._raf) cancelAnimationFrame(this._raf); this._raf = requestAnimationFrame(() => this.recalcHNav()); } catch (e) { this.recalcHNav(); } }
@@ -1228,12 +1249,13 @@ class Component extends DCLogic {
     if (['settings', 'p-settings', 'p-plans'].indexOf(menu) < 0 && !all.some(it => it.k === menu || (it.c && it.c.some(c => c.k === menu)))) return;
     var st = { drop: null };
     if (plane !== this.state.plane) { this.applyPlane(plane); st.plane = plane; }
-    if (menu === 'settings' || menu === 'p-settings') { st.activeMenu = menu; if (sec) { st.settingsSection = sec; st.setList = false; } }
+    if (menu === 'settings' || menu === 'p-settings') { st.activeMenu = menu; if (sec) { st.settingsSection = sec; st.setList = false; } else st.setList = true; }
     else st.activeMenu = menu;
     this.setState(st);
   }
   syncHash() {
-    var S = this.state; var want = this.onSettingsScreen() ? (S.activeMenu + '/' + S.settingsSection) : S.activeMenu;
+    var S = this.state; var listMode = S.activeMenu !== 'p-plans' && (S.winW || 1440) < 768 && S.setList !== false; // điện thoại, đang hiện danh sách → #settings
+    var want = this.onSettingsScreen() && !listMode ? (S.activeMenu + '/' + S.settingsSection) : S.activeMenu;
     try { if (decodeURIComponent((window.location.hash || '').replace(/^#/, '')) !== want) { this._hashSelf = true; window.location.hash = want; } } catch (e) {}
   }
   // Đưa tab cài đặt đang chọn vào giữa dải cuộn ngang; đọc mục hiện tại lúc chạy, không dùng closure.
@@ -1257,7 +1279,7 @@ class Component extends DCLogic {
     this._navSecShown = sec;
   }
   componentDidUpdate(pp, ps) {
-    this.syncScheme(); this.saveUi(); this.fabSchedule();
+    this.syncScheme(); this.saveUi();
     // Tweak "Mặt" đổi lúc chạy (runtime không truyền prevProps — tự giữ bản trước, LESSONS).
     const p0 = this.props || {}, p1 = this._pp || {}; this._pp = Object.assign({}, p0);
     if (p0.plane !== p1.plane && Component.UI_OK().plane.indexOf(p0.plane) >= 0 && p0.plane !== this.state.plane) this.setPlane(p0.plane);
@@ -1267,7 +1289,8 @@ class Component extends DCLogic {
     }
     var S = this.state; var lk = S.layout + '|' + S.plane + '|' + S.lang;
     if (this._lastLayoutKey !== lk) { this._lastLayoutKey = lk; this.scheduleRecalc(); }
-    this.syncHash();
+    this.syncHash(); this.revealNavSoon(); this.fitSearchSoon();
+    if (this.state.drop !== this._dropWas) { const d = this.state.drop; this._dropWas = d; if (d === 'site' || d === 'lang') { let n = 0; const tryFocus = () => { if (this.state.drop !== d) return; const box = document.querySelector('[data-pop="' + d + '"]'); const el = box && (box.querySelector('[data-row][aria-current="true"]') || box.querySelector('[data-row]')); if (el) { el.focus(); return; } if (n++ < 10) setTimeout(tryFocus, 40); }; setTimeout(tryFocus, 0); } } // template vẽ trễ hơn logic — chờ bảng có mặt rồi focus dòng đang dùng
     if (this._pendShown !== (!!this.state.pendingSection || !!this.state.pendingNav)) {
       this._pendShown = !!this.state.pendingSection || !!this.state.pendingNav;
       if (this._pendShown && this._dialog) { try { var b = this._dialog.querySelectorAll('button'); if (b.length) b[b.length - 1].focus(); } catch (e) {} }
@@ -1299,7 +1322,6 @@ class Component extends DCLogic {
   cancelLogout() { this.setState({ logoutAsk: false }); }
   confirmLogout() { this.setState({ logoutAsk: false, loggedOut: true, acctModal: null }); }
   reLogin() { this.setState({ loggedOut: false }); }
-  toggleScheme() { this.setState(s => ({ scheme: s.scheme === 'dark' ? 'light' : 'dark' })); }
   switchPlane() { this.setPlane(this.state.plane === 'tenant' ? 'platform' : 'tenant'); }
   setPlane(p) { if (p === this.state.plane) return; if (this.navGuard(() => this.applyPlane(p))) return; this.applyPlane(p); }
   applyPlane(p) { this.setState({ pendingNav: false, settingsSection: p === 'platform' ? 'p-general' : 'general', settingsDirty: {}, settingsDraft: {}, embedDirty: {}, pendingSection: null, plane: p, activeMenu: p === 'platform' ? 'p-dashboard' : 'dashboard', drop: null, openGroup: p === 'platform' ? '' : (p === 'shop' ? 'products' : 'posts'), twoColGroup: '', mobileNavOpen: false }); }
@@ -1499,7 +1521,7 @@ class Component extends DCLogic {
     const isVertical = layout === 'vertical';
     const isHorizontal = layout === 'horizontal';
     const isTwoCol = layout === 'twocolumn';
-    const railOpen = tablet && !!S.railOpen && !S.focusMode; // ☰ mở sidebar đầy đủ dạng phủ, không đẩy nội dung
+    const railOpen = tablet && !!S.railOpen; // ☰ mở sidebar đầy đủ dạng phủ, không đẩy nội dung
     const small = !isMobile && isVertical && (tablet ? !railOpen : S.sidebarSize === 'small');
     const showLabels = !small;
 
@@ -1522,10 +1544,9 @@ class Component extends DCLogic {
     const boxed = S.width === 'boxed';
     const sbIsLight = S.sidebarColor === 'light' && !dark;
     const sbThumb = sbIsLight ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.42)';
-    const fm = S.focusMode && !isMobile;
-    const vSidebarShow = isVertical && !fm;
-    const twoColShow = isTwoCol && !fm;
-    const hNavShow = isHorizontal && !fm;
+    const vSidebarShow = isVertical;
+    const twoColShow = isTwoCol;
+    const hNavShow = isHorizontal;
 
     const BRAND = (Component.UI_OK().brandColor.indexOf(this.props.brandPreview) >= 0 ? this.props.brandPreview : null) || S.brandColor || '#2050a0'; // Tweak "Màu thương hiệu (xem thử)" — bản thật đặt ở Cài đặt nền tảng › Thương hiệu trắng
     // Bảng tĩnh token thương hiệu (AUDIT §4f Đợt A). Tính sẵn trong OKLCH (giữ sắc độ, chỉ hạ L tới khi vừa đạt), không tính lúc chạy.
@@ -1603,7 +1624,7 @@ class Component extends DCLogic {
     const activeG = railDef.find(g => g.g === S.twoColGroup) || railDef.find(g => hasK(g, S.activeMenu)) || railDef[0];
     const railGroups = railDef.map(g => {
       const open = activeG && g.g === activeG.g, cur = hasK(g, S.activeMenu);
-      return { icon: g.i, label: g.l, ariaPressed: String(!!open), onClick: () => this.setState(st => ({ twoColGroup: g.g, railOpen: tablet ? !(st.railOpen && activeG && activeG.g === g.g) : st.railOpen })),
+      return { icon: g.i, label: g.l, ariaPressed: String(!!open), ariaCur: (cur && tablet && !railOpen) ? 'page' : undefined /* cột mục con ẩn → ô nhóm mang aria-current */, onClick: () => this.setState(st => ({ twoColGroup: g.g, railOpen: tablet ? !(st.railOpen && activeG && activeG.g === g.g) : st.railOpen })),
         style: 'display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border:0;border-radius:10px;background:' + (cur ? ((tablet && !S.railOpen) ? 'linear-gradient(to right,' + NAV.activeBar + ' 3px,transparent 3px),' : '') + sb.activeBg : (open ? NAV.hoverBg : 'transparent')) /* vạch ở ô nhóm chỉ khi cột phụ đang ẩn (1024–1279) — để đúng một vạch */ + ';color:' + (cur || open ? sb.active : sb.icon) + ';cursor:pointer;transition:background .12s;' };
     });
     const tcRow = (c, parentK, child) => { const ca = S.activeMenu === c.k;
@@ -1641,37 +1662,58 @@ class Component extends DCLogic {
     const hAllItems = hFlat.map(it => ({ label: it.l, icon: it.i, hasChildren: !!it.c }));
     const MORE = { vi: 'Khác', en: 'More', ja: 'その他', zh: '更多' };
     const moreLabel = MORE[S.lang] || 'Khác';
-    const moreBtnStyle = 'display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:13px;font-weight:500;color:' + K.text + ';cursor:pointer;white-space:nowrap;';
+    const moreIn = overflowRaw.some(it => it.k === S.activeMenu || (it.c && it.c.some(c => c.k === S.activeMenu)));
+    const moreBtnStyle = hItemStyle(moreIn); // "đang ở trong": cùng chữ + vạch như mục đang chọn, không aria-current
     const hNavStyle = 'display:flex;align-items:center;gap:3px;padding:8px 16px;background:' + K.card + ';border-bottom:1px solid ' + K.line + ';overflow:visible;';
 
     const topbarStyle = (S.topbarColor === 'dark' && !dark ? '--focus-ring-color:#fff;--focus-inner:transparent;' : '') + 'display:flex;align-items:center;justify-content:space-between;gap:16px;height:var(--topbar-h,70px);flex-shrink:0;padding:0 ' + (isMobile ? '12px' : '24px') + ';background:' + tb.bg + ';border-bottom:1px solid ' + tb.border + ';z-index:70;' + (scrollable ? 'position:relative;' : 'position:sticky;top:0;');
-    const iconBtnStyle = 'position:relative;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:0;border-radius:8px;background:transparent;color:' + tb.text + ';cursor:pointer;transition:background .12s;';
+    const iconBtnStyle = 'position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;border:0;border-radius:8px;background:transparent;color:' + tb.text + ';cursor:pointer;transition:background .12s;';
     const hamburgerStyle = 'display:inline-flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;min-width:44px;height:44px;padding:0 ' + (isMobile ? '12px 0 10px' : '0') + ';border:0;border-radius:8px;background:transparent;font:inherit;font-size:14px;font-weight:600;line-height:1.3;color:' + tb.text + ';cursor:pointer;';
     const tbDarkBar = S.topbarColor === 'dark' && !dark;
     const kbdOn = winW >= 1024 && !S.search;
     const searchInputStyle = 'width:100%;min-width:0;height:40px;padding:9px ' + (kbdOn ? '64px' : '14px') + ' 9px 36px;border:1px solid ' + (tbDarkBar ? 'rgba(255,255,255,0.24)' : K.cardBorder) + ';border-radius:8px;font:inherit;font-size:14px;color:' + tb.text + ';background:' + (tbDarkBar ? 'rgba(255,255,255,0.14)' : K.inputBg) + ';outline:2px solid transparent;--ph:' + (tbDarkBar ? 'rgba(255,255,255,0.72)' : '#9aa1ac') + ';';
-    const siteBtnStyle = 'display:flex;align-items:center;gap:9px;max-width:230px;padding:6px 10px;border:1px solid ' + (S.topbarColor === 'dark' && !dark ? 'rgba(255,255,255,0.16)' : K.cardBorder) + ';border-radius:9px;background:' + (S.topbarColor === 'dark' && !dark ? 'rgba(255,255,255,0.08)' : (dark ? K.inputBg : '#fff')) + ';cursor:pointer;';
+    const siteBtnStyle = 'display:flex;align-items:center;justify-content:center;gap:9px;max-width:230px;' + (isMobile ? 'min-width:44px;min-height:44px;' : '') + 'padding:6px 10px;border:1px solid ' + (S.topbarColor === 'dark' && !dark ? 'rgba(255,255,255,0.16)' : K.cardBorder) + ';border-radius:9px;background:' + (S.topbarColor === 'dark' && !dark ? 'rgba(255,255,255,0.08)' : (dark ? K.inputBg : '#fff')) + ';cursor:pointer;';
     const userChipBg = (S.topbarColor === 'dark' || dark) ? 'rgba(255,255,255,0.08)' : '#f3f6f9';
     const userBtnStyle = 'display:flex;align-items:center;gap:9px;height:var(--topbar-h,70px);padding:0 ' + (isMobile ? '8px' : '16px') + ';border:0;background:' + userChipBg + ';cursor:pointer;transition:background .12s;';
     const userHover = 'background:' + ((S.topbarColor === 'dark' || dark) ? 'rgba(255,255,255,0.14)' : '#e9eef4') + ';';
 
     const planeIsTenant = S.plane === 'tenant';
-    const SITES = [
+    // Bộ chuyển website (owner 06/10): chỉ mặt Website, ẩn ở mặt Nền tảng, phiên "Đăng nhập dưới tên khách hàng" và khi chỉ có 1 website.
+    const SITE_ALL = [
       { id: 'anvinh', name: 'An Vinh', domain: 'anvinh.com.vn', role: 'Chủ website', init: 'AV', mark: '#047767' },
-      { id: 'greenfarm', name: 'Green Farm Co.', domain: 'greenfarm.vn', role: 'Quản trị', init: 'GF', mark: 'var(--brand-solid,var(--brand))' },
-      { id: 'medilab', name: 'MediLab Clinic', domain: platSub('medilab'), role: 'Biên tập', init: 'ML', mark: '#2f69d4' }
+      { id: 'greenfarm', name: 'Green Farm Co.', domain: 'greenfarm.vn', role: 'Quản trị', init: 'GF', mark: '#2050a0' },
+      { id: 'medilab', name: 'MediLab Clinic', domain: platSub('medilab'), role: 'Biên tập', init: 'ML', mark: '#2f69d4' },
+      { id: 'senvang', name: 'Nhà hàng Sen Vàng', domain: 'senvang.vn', role: 'Biên tập', init: 'SV', mark: '#9d174d' },
+      { id: 'mocan', name: 'Thời trang Mộc An', domain: 'mocan.vn', role: 'Quản trị', init: 'MA', mark: '#4338ca' },
+      { id: 'hongphuc', name: 'Nha khoa Hồng Phúc', domain: 'nhakhoahongphuc.vn', role: 'Chủ website', init: 'HP', mark: '#0e7490' },
+      { id: 'minhtam', name: 'Công ty Luật Minh Tâm', domain: 'luatminhtam.vn', role: 'Biên tập', init: 'MT', mark: '#334155' },
+      { id: 'binhminh', name: 'Trung tâm Anh ngữ Bình Minh — Chi nhánh Thủ Đức', domain: 'binhminh-english.edu.vn', role: 'Quản trị', init: 'BM', mark: '#15803d' }
     ];
+    const siteN = [1, 3, 8].indexOf(Number(this.props.siteCount)) >= 0 ? Number(this.props.siteCount) : 3;
+    const SITES = SITE_ALL.slice(0, siteN);
     const curSite = SITES.find(s => s.id === S.site) || SITES[0];
     // Mỗi website quản trị ở tên miền riêng: chọn website khác = mở trang quản trị của website đó (chưa đăng nhập thì qua màn đăng nhập).
-    const SITE_LIMIT = 3; const siteRoom = SITES.length < SITE_LIMIT; const sq = (S.siteQ || '').trim().toLowerCase();
-    const siteList = SITES.filter(s => !sq || (s.name + ' ' + s.domain).toLowerCase().indexOf(sq) >= 0).map(s => ({ name: s.name, domain: s.role + ' · ' + s.domain, init: s.init, mark: s.mark, active: s.id === S.site, onClick: () => { const was = S.site; this.setState({ site: s.id, drop: null }); if (s.id !== was) this.notify('Đang mở trang quản trị ' + s.domain + ' — chưa đăng nhập ở đó thì qua màn đăng nhập'); },
-      style: 'display:flex;align-items:center;gap:11px;width:100%;padding:9px 13px;border:0;background:' + (s.id === S.site ? K.hover : 'transparent') + ';font:inherit;cursor:pointer;text-align:left;' }));
+    const SITE_LIMIT = siteN <= 3 ? 3 : 10; const siteRoom = SITES.length < SITE_LIMIT; const sq = (S.siteQ || '').trim().toLowerCase();
+    const siteList = SITES.filter(s => !sq || (s.name + ' ' + s.domain).toLowerCase().indexOf(sq) >= 0).map(s => ({ name: s.name, domain: s.domain, role: s.role, init: s.init, mark: s.mark, active: s.id === S.site, cur: s.id === S.site ? 'true' : undefined, onClick: () => { const was = S.site; this.setState({ site: s.id, drop: null }); if (s.id !== was) this.notify('Đang mở trang quản trị ' + s.domain + ' — chưa đăng nhập ở đó thì qua màn đăng nhập'); },
+      style: 'display:flex;align-items:center;gap:11px;width:100%;min-height:52px;padding:8px 10px;border:0;border-radius:6px;background:' + (s.id === S.site ? K.hover : 'transparent') + ';font:inherit;cursor:pointer;text-align:left;' }));
+    const swOn = planeIsTenant && !this.props.impersonating && SITES.length >= 2;
+    const twoColSecOn = !tablet || railOpen;
+    const swDarkSb = !sbIsLight;
+    const swBase = 'display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:8px 10px;border-radius:6px;font:inherit;cursor:pointer;text-align:left;';
+    const swBlockStyle = swBase + (swDarkSb ? 'border:1px solid rgba(255,255,255,0.24);background:rgba(255,255,255,0.06);' : 'border:1px solid ' + K.cardBorder + ';background:' + K.card + ';');
+    const siteSheet = winW < 1024; const winH = (typeof window !== 'undefined' && window.innerHeight) || 800; const SA = S.siteAnchor || { l: 8, t: 70, w: 0 };
+    const sitePopBase = 'display:flex;flex-direction:column;z-index:140;background:' + K.panel + ';border:1px solid ' + K.panelBorder + ';box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;';
+    const sitePopStyle = siteSheet ? ('position:fixed;left:0;right:0;bottom:0;max-height:min(80dvh,560px);border-radius:12px 12px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);' + sitePopBase)
+      : ('position:fixed;left:' + Math.round(Math.max(8, Math.min(SA.l, winW - 308))) + 'px;top:' + Math.round(SA.t + 6) + 'px;width:300px;max-height:' + Math.round(Math.max(220, Math.min(480, winH - SA.t - 18))) + 'px;border-radius:10px;' + sitePopBase);
 
-    const LANGS = [ { c: 'EN', l: 'English', k: 'en', cc: 'us' }, { c: 'VI', l: 'Tiếng Việt', k: 'vi', cc: 'vn' }, { c: 'JA', l: '日本語', k: 'ja', cc: 'jp' }, { c: 'ZH', l: '中文', k: 'zh', cc: 'cn' } ];
-    const flagUrl = () => '';
+        const LANGS = [ { c: 'EN', l: 'English', k: 'en', cc: 'us' }, { c: 'VI', l: 'Tiếng Việt', k: 'vi', cc: 'vn' }, { c: 'JA', l: '日本語', k: 'ja', cc: 'jp' }, { c: 'ZH', l: '中文', k: 'zh', cc: 'cn' } ];
+    const FLAG = Component.FLAGS(); const flagUrl = (k) => FLAG[k] || '';
+    const flagImg = (k, px) => FLAG[k] ? React.createElement('img', { src: FLAG[k], alt: '', width: px, height: px, style: { width: px + 'px', height: px + 'px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, boxShadow: '0 0 0 1px rgba(0,0,0,0.14)' } }) : null;
+    const langFlagMode = this.props.langBtn !== 'code';
     const curLang = LANGS.find(l => l.k === S.lang) || LANGS[0];
-    const langList = LANGS.map(l => { const on = S.lang === l.k; return { label: l.l, flagEl: null, _f: ({ src: flagUrl(l.cc), alt: '', style: { width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 } }), active: on, onClick: () => this.setState({ lang: l.k, drop: null }),
-      style: 'display:flex;align-items:center;gap:11px;width:100%;padding:8px 11px;border:0;border-radius:7px;background:' + (on ? K.hover : 'transparent') + ';font:inherit;font-size:13px;font-weight:' + (on ? '600' : '400') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;' }; });
+    const LANG_ORDER = LANGS.slice().sort((x, y) => (x.k === 'vi' ? -1 : (y.k === 'vi' ? 1 : 0)));
+    const langList = LANG_ORDER.map(l => { const on = S.lang === l.k; const fl = langFlagMode && !!FLAG[l.k]; return { name: l.l, lang: l.k, code: l.c, on: on, cur: on ? 'true' : undefined, hasFlag: fl, noFlag: !fl, flagEl: fl ? flagImg(l.k, 22) : null, onClick: () => { this.setState({ lang: l.k, drop: null }); const tr = this._popTrig; setTimeout(() => { try { if (tr && tr.isConnected) tr.focus(); } catch (x) {} }, 0); },
+      style: 'display:flex;align-items:center;gap:11px;width:100%;min-height:44px;padding:8px 10px;border:0;border-radius:7px;background:' + (on ? K.hover : 'transparent') + ';font:inherit;font-size:13.5px;font-weight:' + (on ? '600' : '400') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;' }; });
 
     const notifDefs = [
       { icon: 'ri-git-pull-request-line', tint: 'rgba(247,184,75,0.15)', tintFg: 'var(--tx-warn)', text: 'Thu Hà đã gửi “Bảng giá dịch vụ 2026” chờ bạn duyệt.', ago: '2 giờ trước', unread: true },
@@ -1688,13 +1730,14 @@ class Component extends DCLogic {
       { isItem: true, icon: 'ri-user-3-line', label: 'Tài khoản của tôi', onClick: () => this.openAcct('profile') },
       { isItem: true, icon: 'ri-palette-line', label: 'Giao diện', meta: schemeName + (S.fontSize === 'large' ? ' · chữ lớn' : ''), hasMeta: true, onClick: () => this.setState({ customizerOpen: true, drop: null }) },
       { isItem: true, icon: 'ri-translate-2', label: 'Ngôn ngữ giao diện', meta: curLangUi.l, hasMeta: true, ariaExp: String(!!S.userLangOpen), onClick: () => this.setState(st => ({ userLangOpen: !st.userLangOpen })) }
-    ].concat(S.userLangOpen ? LANGS_UI.map(l => ({ isItem: true, sub: true, icon: S.lang === l.k ? 'ri-check-line' : 'ri-checkbox-blank-circle-line', label: l.l, ariaCur: S.lang === l.k ? 'true' : undefined, onClick: () => this.setState({ lang: l.k, userLangOpen: false }) })) : []).concat([
+    ].concat(S.userLangOpen ? LANGS_UI.map(l => ({ isItem: true, sub: true, icon: S.lang === l.k ? 'ri-check-line' : 'ri-checkbox-blank-circle-line', label: l.l, lang: l.k, hasFlag: langFlagMode && !!FLAG[l.k], flagEl: langFlagMode ? flagImg(l.k, 20) : null, meta: langFlagMode ? '' : l.c, hasMeta: !langFlagMode, ariaCur: S.lang === l.k ? 'true' : undefined, onClick: () => this.setState({ lang: l.k, userLangOpen: false }) })) : []).concat([
+      { isItem: true, icon: dark ? 'ri-sun-line' : 'ri-moon-line', label: dark ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối', onClick: () => this.toggleScheme() },
       { isDiv: true },
       { isItem: true, icon: 'ri-lock-2-line', label: 'Khóa màn hình', onClick: () => this.lockScreen() },
       { isItem: true, icon: 'ri-logout-box-r-line', label: 'Đăng xuất', danger: true, onClick: () => this.askLogout() }
-    ]).map(u => u.isDiv ? u : Object.assign({ hasMeta: false, meta: '' }, u, {
-      style: 'display:flex;align-items:center;gap:11px;width:100%;min-height:40px;padding:8px 16px 8px ' + (u.sub ? '30px' : '16px') + ';border:0;background:transparent;font:inherit;font-size:13.5px;color:' + (u.danger ? 'var(--tx-danger)' : K.text) + ';cursor:pointer;text-align:left;',
-      iconColor: u.danger ? 'var(--tx-danger)' : (u.sub ? (S.lang === (LANGS.find(l => l.l === u.label) || {}).k ? 'var(--color-accent,var(--brand-ink,var(--brand)))' : 'transparent') : K.muted) }));
+    ]).map(u => u.isDiv ? u : Object.assign({ hasMeta: false, meta: '', hasFlag: false, flagEl: null }, u, {
+      style: 'display:flex;align-items:center;gap:11px;width:100%;min-height:' + (isMobile ? '44px' : '40px') + ';padding:8px 16px 8px ' + (u.sub ? '30px' : '16px') + ';border:0;background:transparent;font:inherit;font-size:13.5px;color:' + (u.danger ? 'var(--tx-danger)' : K.text) + ';cursor:pointer;text-align:left;',
+      iconColor: u.ic ? u.ic : u.danger ? 'var(--tx-danger)' : (u.sub ? (S.lang === (LANGS.find(l => l.l === u.label) || {}).k ? 'var(--color-accent,var(--brand-ink,var(--brand)))' : 'transparent') : K.muted) }));
 
     // L1-14: kết quả mẫu theo plane (CLAUDE §7b) — console nền tảng không lộ nội dung của một website khách.
     const SR_T = { brand: 'color-mix(in srgb, var(--brand) 10%, transparent)', ok: 'rgba(10,179,156,0.12)', warn: 'rgba(247,184,75,0.15)', info: 'rgba(53,119,241,0.12)' };
@@ -1779,7 +1822,6 @@ class Component extends DCLogic {
     const optBtn = (on) => 'display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border:1.5px solid ' + (on ? 'var(--brand)' : K.cardBorder) + ';border-radius:8px;background:' + (on ? 'color-mix(in srgb, var(--brand) 6%, transparent)' : K.card) + ';font:inherit;font-size:12.5px;font-weight:' + (on ? '600' : '500') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;';
     const tWrap = (on) => 'position:relative;width:108px;display:flex;flex-direction:column;gap:6px;padding:5px;border:1.5px solid ' + (on ? 'var(--brand)' : K.cardBorder) + ';border-radius:10px;background:' + (on ? 'color-mix(in srgb, var(--brand) 6%, transparent)' : K.card) + ';cursor:pointer;transition:border-color .15s,background .15s;';
     const tLabel = (on) => 'font-size:12px;font-weight:' + (on ? '600' : '500') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';text-align:center;';
-    const czPlane = [ { key: 'tenant', label: 'Site', icon: 'ri-global-line' }, { key: 'shop', label: 'TMĐT', icon: 'ri-shopping-bag-3-line' }, { key: 'platform', label: 'Nền tảng', icon: 'ri-terminal-box-line' } ].map(o => ({ label: o.label, icon: o.icon, style: optBtn(S.plane === o.key), onClick: () => this.setPlane(o.key) }));
     const opt = (on, set) => ({ w: tWrap(on), l: tLabel(on), on: on, click: () => this.setState(set) });
     const CZ = {
       lyV: opt(S.layout === 'vertical', { layout: 'vertical' }),
@@ -1800,12 +1842,7 @@ class Component extends DCLogic {
       tbL: opt(S.topbarColor === 'light', { topbarColor: 'light' }),
       tbD: opt(S.topbarColor === 'dark', { topbarColor: 'dark' }),
     };
-    const czBrand = Component.PAL().map((p) => {
-      const on = (BRAND || '').toLowerCase() === p[0];
-      return { hex: p[0], solid: p[2], label: p[1], on: on, pressed: String(on), ring: on ? '0 0 0 2px ' + K.card + ', 0 0 0 4px ' + p[2] : 'inset 0 0 0 1px rgba(0,0,0,0.1)', click: () => this.setState({ brandColor: p[0] }) };
-    });
     const czPanelStyle = 'position:absolute;top:0;right:0;bottom:0;z-index:95;width:min(388px,100%);display:flex;flex-direction:column;background:' + K.card + ';box-shadow:-8px 0 40px rgba(20,22,30,0.25);transform:translateX(' + (S.customizerOpen ? '0' : '110%') + ');transition:transform .26s cubic-bezier(.4,0,.2,1);';
-    const czTriggerStyle = 'position:absolute;bottom:var(--fab-bottom,20px);right:20px;z-index:70;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border:0;border-radius:50%;background:var(--brand-solid,var(--brand));color:#fff;cursor:pointer;box-shadow:0 6px 16px color-mix(in srgb, var(--brand) 42%, transparent);opacity:0.7;transition:opacity .16s ease;';
 
     // Logos/flag rendered as resolved elements so the literal {{…}} never becomes an <img src> during streaming.
     const smLogo26 = React.createElement('img', { src: PLAT.logo.sm, alt: PLAT.name, style: { height: '26px', width: 'auto' } });
@@ -2353,7 +2390,7 @@ class Component extends DCLogic {
     const aiScopeLabel = cLang === defLang ? ('Dịch sang ' + aiTargets.length + ' ngôn ngữ') : ('Dịch bản ' + curStat.n);
     const langBar = { show: multiLang && i18nFields.length > 0, progress: langFull + '/' + CLANGS.length + ' ngôn ngữ đủ nội dung',
       items: langStat.filter(x => fitCodes.indexOf(x.c) >= 0).map(x => { const on = x.c === cLang; const kind = stOf(x); const m = stMeta[kind];
-        return { code: x.c.toUpperCase(), name: useCode ? x.c.toUpperCase() : x.n, flagEl: React.createElement('img', { src: flagUrl(x.cc), alt: '', style: { width: '18px', height: '13px', borderRadius: '2px', objectFit: 'cover', flexShrink: 0 } }), isDef: x.c === defLang, done: false, miss: false,
+        return { code: x.c.toUpperCase(), name: useCode ? x.c.toUpperCase() : x.n, isDef: x.c === defLang, done: false, miss: false,
           dotStyle: 'width:8px;height:8px;border-radius:50%;flex-shrink:0;' + (m.hollow ? ('border:1.5px dashed ' + m.c + ';') : ('background:' + m.c + ';')),
           title: x.n + ' — ' + m.l + ' · ' + x.done + '/' + x.total + ' trường đã có nội dung' + (pubLangs.indexOf(x.c) < 0 ? ' · chưa hiển thị ra ngoài' : ''),
           style: 'display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 10px;border:' + (on ? '1.5px solid var(--brand)' : '1px solid ' + K.cardBorder) + ';border-radius:5px;background:' + (on ? 'color-mix(in srgb, var(--brand) 6%, transparent)' : K.card) + ';cursor:pointer;font:inherit;white-space:nowrap;',
@@ -2779,6 +2816,7 @@ class Component extends DCLogic {
       blankNoteShow, blankPend, blankKeys,
       railStyle, secondaryStyle, railGroups, twoColItems, twoColTitle: activeG ? activeG.l : '',
       hNavStyle, hVisibleItems, hOverflowItems, hAllItems, hasMore, moreLabel, moreBtnStyle,
+      setSbNav: (el) => { this._sbNav = el; }, setSbSec: (el) => { this._sbSec = el; },
       setHNavWrap: (el) => this.setHNavWrap(el), setHMeas: (el) => this.setHMeas(el),
       topbarStyle, iconBtnStyle, hamburgerStyle, searchInputStyle, siteBtnStyle, userBtnStyle,
       tbText: tb.text, tbMuted: tb.muted, tbBg: tb.bg, showSearch: !isMobile,
@@ -2789,7 +2827,6 @@ class Component extends DCLogic {
       siteList, onCreateSite: () => this.setState({ drop: null }),
       searchVal: S.search, onSearchChange: (e) => this.setState({ search: e && e.target ? e.target.value : '' }), onSearchFocus: () => this.setState({ drop: 'search' }),
       searchResults, langList, notifList, userMenu,
-      schemeIcon: dark ? 'ri-sun-line' : 'ri-moon-line',
       onHamburger: () => { if (isMobile) { this.setState(s => ({ mobileNavOpen: !s.mobileNavOpen })); } else if (tablet && (isVertical || isTwoCol)) { this.setState(s => ({ railOpen: !s.railOpen })); } else { this.setState(s => ({ sidebarSize: s.sidebarSize === 'small' ? 'default' : 'small' })); } },
       topbarWide: !isMobile, mobileNavShade: (isMobile && S.mobileNavOpen) || railOpen, onCloseMobileNav: () => this.setState({ mobileNavOpen: false, railOpen: false }), railSpacer: railOpen && isVertical, twoColSecShow: !tablet || railOpen, menuLabelShow: isMobile, hamburgerLabel: isMobile ? 'Mở menu' : (tablet ? (railOpen ? 'Thu gọn menu' : 'Mở rộng menu') : 'Thu gọn/mở rộng menu'), czSizeNote: 'Chỉ có hiệu lực khi màn hình rộng từ 1280px; hẹp hơn luôn thu gọn.', midGrid: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1.6fr) minmax(0,1fr)',
       onDropSite: () => this.toggleDrop('site'), siteOpen: S.drop === 'site',
@@ -2797,9 +2834,7 @@ class Component extends DCLogic {
       onDropNotif: () => this.toggleDrop('notif'), notifOpen: S.drop === 'notif',
       onDropUser: () => this.toggleDrop('user'), userOpen: S.drop === 'user',
       searchOpen: S.drop === 'search',
-      onToggleScheme: () => this.toggleScheme(),
-      onToggleFullscreen: () => this.toggleFullscreen(), fsIcon: (S.isFullscreen || fm) ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line',
-      userHover: userHover,
+      impChip: planeIsTenant && !!this.props.impersonating && winW >= 768, userHover: userHover, tbHover: 'background:' + (tbDarkBar ? 'rgba(255,255,255,0.14)' : (dark ? 'rgba(255,255,255,0.08)' : '#f3f6f9')) + ';',
       anyDrop: !!S.drop, onCloseDrops: () => this.closeDrops(),
       onStub: () => this.setState({ drop: null }),
       tAppBg: K.appBg, tText: K.text, tHeading: K.heading, tMuted: K.muted, tCard: K.card, tCardBorder: K.cardBorder, tLine: K.line, tHover: K.hover, tPanel: K.panel, tPanelBorder: K.panelBorder,
@@ -2851,9 +2886,9 @@ class Component extends DCLogic {
       onRangeApply: () => { const a = S.rangeDraftFrom, b = S.rangeDraftTo; if (!a || !b) { this.setState({ rangeErr: 'Chọn đủ ngày bắt đầu và ngày kết thúc.' }); return; } if (a < rMin || b > rMax) { this.setState({ rangeErr: 'Chỉ có số liệu trong 90 ngày gần nhất. Chọn ngày trong khoảng này.' }); return; } if (a > b) { this.setState({ rangeErr: 'Ngày bắt đầu phải trước ngày kết thúc.' }); return; } this.setState({ range: null, rangeFrom: a, rangeTo: b, drop: null }); },
       reviewBadge: reviewN + ' chờ xử lý', inboxMoreShow: inboxMore > 0, inboxMoreLabel: 'và ' + inboxMore + ' mục khác', cardStyle0, chipA, chipB, contentInnerStyle,
       customizerOpen: S.customizerOpen, onToggleCustomizer: () => this.setState(s => ({ customizerOpen: !s.customizerOpen, drop: null })), onResetCustomizer: () => this.resetCustomizer(),
-      czPanelStyle, czTriggerStyle, cz: CZ, czPlane, czBrand, mainColStyle, contentScrollStyle,
+      czPanelStyle, cz: CZ, mainColStyle, contentScrollStyle,
       notesOn: this.props.showNotes !== false,
-      searchInline: winW >= 640, searchIconOnly: winW < 640, kbdShow: kbdOn && winW >= 640, kbdLabel: (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '')) ? '⌘K' : 'Ctrl K', tbKbdBorder: tbDarkBar ? 'rgba(255,255,255,0.45)' : K.cardBorder,
+      searchInline: winW >= 640 && !S.searchCollapsed, searchIconOnly: winW < 640 || !!S.searchCollapsed, kbdShow: kbdOn && winW >= 640, kbdLabel: (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '')) ? '⌘K' : 'Ctrl K', tbKbdBorder: tbDarkBar ? 'rgba(255,255,255,0.45)' : K.cardBorder,
       setSearchEl: (el) => { this._searchEl = el; }, searchFullOpen: !!S.searchFull, onOpenSearchFull: () => this.setState({ searchFull: true, drop: null }), onCloseSearchFull: () => this.setState({ searchFull: false }),
       setSearchFullEl: (el) => { if (el && el !== this._sfEl) { this._sfEl = el; setTimeout(() => { try { el.focus(); } catch (e) {} }, 0); } if (!el) this._sfEl = null; },
       helpOpen: !!S.helpOpen, onOpenHelp: () => this.setState({ helpOpen: true, drop: null }), onCloseHelp: () => this.setState({ helpOpen: false }),
@@ -2864,8 +2899,20 @@ class Component extends DCLogic {
         : showMenus ? [['Trình đơn là gì?', 'Danh sách liên kết ở đầu và chân website, ví dụ Trang chủ, Giới thiệu, Liên hệ.'], ['Khi nào khách thấy thay đổi?', 'Ngay sau khi bạn bấm Lưu.'], ['Lỡ xóa nhầm một mục?', 'Bấm “Bỏ thay đổi” trước khi lưu để lấy lại.']]
         : [['Màn này dùng để làm gì?', 'Dòng mô tả dưới tiêu đề trang nói ngắn gọn việc làm được ở đây.'], ['Tìm nhanh một mục?', 'Gõ vào ô tìm kiếm trên cùng, hoặc bấm Ctrl+K.'], ['Cần người hướng dẫn?', 'Gọi, nhắn Zalo hoặc gửi email cho bộ phận hỗ trợ ở phần dưới.']]).map(x => ({ q: x[0], a: x[1] }))),
       helpPhone: (window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).phone || '', helpTel: 'tel:' + String((window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).phone || '').replace(/\D/g, ''), helpZalo: (window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).zalo || '', helpZaloUrl: 'https://zalo.me/' + String((window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).zalo || '').replace(/\D/g, ''), helpEmail: (window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).email || '', helpMail: 'mailto:' + ((window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).email || ''),
-      helpBtnStyle: 'position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:38px;height:38px;padding:0 ' + (!isMobile ? '10px' : '0') + ';border:0;border-radius:6px;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:' + tb.text + ';cursor:pointer;white-space:nowrap;',
-      siteSwitchShow: planeIsTenant && (SITES.length >= 2 || siteRoom), siteCanCreate: siteRoom, siteLocked: !siteRoom, siteLockText: 'Gói hiện tại cho tối đa ' + SITE_LIMIT + ' website. Cần thêm? Liên hệ hỗ trợ.', siteSearchShow: SITES.length >= 6, siteQ: S.siteQ || '', onSiteQ: (e) => this.setState({ siteQ: e && e.target ? e.target.value : '' }),
+      helpBtnStyle: 'position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;height:44px;flex-shrink:0;padding:0 ' + (winW >= 1280 ? '10px' : '0') + ';border:0;border-radius:6px;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:' + tb.text + ';cursor:pointer;white-space:nowrap;',
+      swSideFull: swOn && vSidebarShow && showLabels, swSideTile: swOn && vSidebarShow && small, swRailTile: swOn && twoColShow && !twoColSecOn, swSecFull: swOn && twoColShow && twoColSecOn,
+      swTopHTile: swOn && isHorizontal && winW < 1280, swTopCompact: swOn && isHorizontal && winW >= 1280, swTopTile: swOn && isMobile && winW >= 768,
+      swTip: 'Đang quản trị ' + curSite.name + ' — đổi website', siteDomain: curSite.domain, swBlockStyle, swSecStyle: swBlockStyle,
+      swNameColor: swDarkSb ? '#fff' : K.heading, swSubColor: swDarkSb ? 'rgba(255,255,255,0.85)' : K.muted,
+      swTileStyle: 'display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;border:0;border-radius:8px;background:' + curSite.mark + ';color:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;',
+      swCompactStyle: 'display:flex;align-items:center;gap:8px;max-width:200px;min-width:0;height:44px;flex-shrink:0;padding:0 10px 0 6px;border:1px solid ' + (tbDarkBar ? 'rgba(255,255,255,0.16)' : K.cardBorder) + ';border-radius:8px;background:' + (tbDarkBar ? 'rgba(255,255,255,0.08)' : 'transparent') + ';font:inherit;cursor:pointer;',
+      siteSheet, sitePopStyle, siteNone: siteList.length === 0, onSiteOpen: (e) => this.openSite(e), onSiteClose: () => { this.setState({ drop: null }); const tr = this._popTrig; setTimeout(() => { try { if (tr && tr.isConnected) tr.focus(); } catch (x) {} }, 0); }, onPopKey: (e) => this.popKey(e),
+      setTbEl: (el) => { this._tbEl = el; }, setTbLeft: (el) => { this._tbLeft = el; }, setTbRight: (el) => { this._tbRight = el; }, setSearchWrap: (el) => { this._searchWrap = el; },
+      tbTools: winW >= 768, helpLabel: winW >= 1280, fsShow: winW >= 768 && !!S.fsOk, fsPressed: String(!!S.isFullscreen), fsIcon: S.isFullscreen ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line', fsTip: S.isFullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình', onToggleFullscreen: () => this.toggleFullscreen(),
+      schemeIcon: dark ? 'ri-sun-line' : 'ri-moon-line', schemeTip: dark ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối', onToggleScheme: () => this.toggleScheme(),
+      onLangOpen: (e) => this.openPop(e, 'lang'), langOpenStr: String(S.drop === 'lang'), langTip: 'Ngôn ngữ giao diện: ' + (LANGS.find(l => l.k === S.lang) || LANGS[1]).l, langCode: (LANGS.find(l => l.k === S.lang) || LANGS[1]).c, langFaceFlag: langFlagMode && !!FLAG[S.lang], langFaceCode: !(langFlagMode && !!FLAG[S.lang]), langFlagEl: langFlagMode ? flagImg(S.lang, 22) : null,
+      langBtnStyle: 'position:relative;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:44px;height:44px;flex-shrink:0;padding:0 ' + (langFlagMode ? '0' : '8px') + ';border:0;border-radius:8px;background:transparent;font:inherit;color:' + tb.text + ';cursor:pointer;',
+      siteCanCreate: siteRoom, siteLocked: !siteRoom, siteLockText: 'Gói hiện tại cho tối đa ' + SITE_LIMIT + ' website. Cần thêm? Liên hệ hỗ trợ.', siteSearchShow: SITES.length >= 6, siteQ: S.siteQ || '', onSiteQ: (e) => this.setState({ siteQ: e && e.target ? e.target.value : '' }),
       siteOpenStr: String(S.drop === 'site'), userOpenStr: String(S.drop === 'user'),
       czFsN: String(S.fontSize !== 'large'), czFsL: String(S.fontSize === 'large'), onFsNormal: () => this.setState({ fontSize: 'normal' }), onFsLarge: () => this.setState({ fontSize: 'large' }),
       czSbDisabled: isHorizontal ? 'true' : undefined, czSidebarSectStyle: isHorizontal ? 'opacity:0.4;pointer-events:none;' : ''
