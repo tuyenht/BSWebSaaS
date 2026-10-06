@@ -26,7 +26,7 @@ Luật cứng:
   · Điện thoại: hộp thoại/bảng chọn = trượt từ đáy hoặc toàn màn; thanh Lưu dính đáy không che nội dung và ô đang nhập (bàn phím ảo); menu trái thành ngăn kéo; không gì chỉ hiện khi rê chuột (hover) — phải bấm được; vùng bấm ≥ 44px, cách nhau ≥ 8px.
   · Canvas giao nộp: mỗi màn có khung xem 390 và 768 cạnh khung máy tính; README có bảng "Kiểm hiển thị" (bề rộng × trình duyệt → đạt/chưa + lý do).
 - Không hiện mã số nội bộ (id) — chỉ tên, đường dẫn, mã công khai. Không gắn cứng thương hiệu (tên nền tảng/website/"Phát triển bởi" lấy từ cấu hình).
-- Tính năng ngoài gói (Q12 owner 24/09, bổ sung 29/09): website được cấp AI → nút AI (Dịch, Viết mới, Nâng cấp bài viết…) hiện bình thường, hạn ngạch theo §7/§7a (ai-quota.js). Nền tảng có công tắc "Lời mời nâng gói" (Cài đặt nền tảng › Gói & tính năng — mặc định TẮT, owner bật khi đã dựng xong gói): TẮT → nút AI ẩn hẳn, module ngoài gói chỉ hiện khóa trung tính "Chưa bật cho website này — liên hệ hỗ trợ", không chào mua; BẬT → mọi tính năng ngoài gói (kể cả AI) hiện dạng khóa + 1 dòng lợi ích + nút "Xem gói nâng cấp" (mở Cài đặt › Gói & mức dùng). Vẽ cả hai bằng Tweak "Lời mời nâng gói".
+- Tính năng ngoài gói (Q12 owner 24/09, bổ sung 29/09): website được cấp AI → nút AI (Dịch, Viết mới, Nâng cấp bài viết…) hiện bình thường, hạn ngạch theo §7/§7a (ai-quota.js). Nền tảng có công tắc "Lời mời nâng gói" (Nền tảng › Gói & tính năng — mặc định TẮT, owner bật khi đã dựng xong gói): TẮT → nút AI ẩn hẳn, module ngoài gói chỉ hiện khóa trung tính "Chưa bật cho website này — liên hệ hỗ trợ", không chào mua; BẬT → mọi tính năng ngoài gói (kể cả AI) hiện dạng khóa + 1 dòng lợi ích + nút "Xem gói nâng cấp" (mở Cài đặt › Gói & mức dùng). Vẽ cả hai bằng Tweak "Lời mời nâng gói".
 - Ngôn ngữ nội dung viết phải-sang-trái (العربية có trong `config/locales.php`): ô nhập và nội dung của ngôn ngữ đó tự đặt dir="rtl" + căn phải (tiêu đề, nội dung, đường dẫn giữ trái-sang-phải); khung quản trị luôn trái-sang-phải.
 - Dữ liệu động: nhóm quyền, quyền, loại nội dung, ngôn ngữ, gói, bước duyệt đều đọc từ registry/bảng — chịu được 1–20 mục, tên dài. Nhóm quyền, gói, chế độ duyệt, số ngôn ngữ mô phỏng bằng Tweaks đọc registry thật (LESSONS #18) — không bịa cờ kiểu canPublish.
 - Hành động nguy hiểm: chuyển vào Thùng rác thì KHÔNG hỏi — làm ngay + toast "Hoàn tác" 8 giây; chỉ hỏi khi kéo theo mục khác ("Xóa mục này và 3 mục con") hoặc không hoàn tác được (xóa vĩnh viễn, tắt ngôn ngữ, đổi tên miền): hộp xác nhận giữa màn kiểu SweetAlert2, nút Hủy được focus, nút làm ghi đúng việc sẽ xảy ra.
@@ -68,7 +68,7 @@ Xong khi:
 (3) Bấm hết mọi mục ở 2 mặt: 0 lỗi console; mỗi mục ra màn thật hoặc thẻ "Chờ thiết kế" có mã lượt.
 (4) Hash cũ, hash mới và hash lạ đúng như mục 3; lùi/tiến đúng.
 (5) 390: không gì che nội dung (`_audit/harness.html`: `H.mk('f',390,800,0,0,'../Admin Shell.dc.html')` → `scrollWidth = clientWidth`; không sửa tệp trong `_audit/`).
-(6) Cột Trạng thái của Bản đồ màn hình khớp registry từng dòng.
+(6) Cột Trạng thái của Bản đồ màn hình khớp registry từng dòng; ghi "D0-5" là lượt kế tiếp.
 
 Gọi ready_for_verification, sửa hết lỗi verifier báo. Verifier không trả kết quả (Shell nặng, công cụ chụp quá giờ) thì không chờ: ghi [CHƯA KIỂM ĐƯỢC] vào dòng Verifier của README, Claude Code kiểm bằng zip.
 Xuất zip project gửi Claude Code kiểm. Xong thì báo owner đúng một câu: "D0-4b xong — gửi zip cho Claude Code."

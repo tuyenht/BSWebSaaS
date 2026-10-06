@@ -26,7 +26,7 @@ Luật cứng:
   · Điện thoại: hộp thoại/bảng chọn = trượt từ đáy hoặc toàn màn; thanh Lưu dính đáy không che nội dung và ô đang nhập (bàn phím ảo); menu trái thành ngăn kéo; không gì chỉ hiện khi rê chuột (hover) — phải bấm được; vùng bấm ≥ 44px, cách nhau ≥ 8px.
   · Canvas giao nộp: mỗi màn có khung xem 390 và 768 cạnh khung máy tính; README có bảng "Kiểm hiển thị" (bề rộng × trình duyệt → đạt/chưa + lý do).
 - Không hiện mã số nội bộ (id) — chỉ tên, đường dẫn, mã công khai. Không gắn cứng thương hiệu (tên nền tảng/website/"Phát triển bởi" lấy từ cấu hình).
-- Tính năng ngoài gói (Q12 owner 24/09, bổ sung 29/09): website được cấp AI → nút AI (Dịch, Viết mới, Nâng cấp bài viết…) hiện bình thường, hạn ngạch theo §7/§7a (ai-quota.js). Nền tảng có công tắc "Lời mời nâng gói" (Cài đặt nền tảng › Gói & tính năng — mặc định TẮT, owner bật khi đã dựng xong gói): TẮT → nút AI ẩn hẳn, module ngoài gói chỉ hiện khóa trung tính "Chưa bật cho website này — liên hệ hỗ trợ", không chào mua; BẬT → mọi tính năng ngoài gói (kể cả AI) hiện dạng khóa + 1 dòng lợi ích + nút "Xem gói nâng cấp" (mở Cài đặt › Gói & mức dùng). Vẽ cả hai bằng Tweak "Lời mời nâng gói".
+- Tính năng ngoài gói (Q12 owner 24/09, bổ sung 29/09): website được cấp AI → nút AI (Dịch, Viết mới, Nâng cấp bài viết…) hiện bình thường, hạn ngạch theo §7/§7a (ai-quota.js). Nền tảng có công tắc "Lời mời nâng gói" (Nền tảng › Gói & tính năng — mặc định TẮT, owner bật khi đã dựng xong gói): TẮT → nút AI ẩn hẳn, module ngoài gói chỉ hiện khóa trung tính "Chưa bật cho website này — liên hệ hỗ trợ", không chào mua; BẬT → mọi tính năng ngoài gói (kể cả AI) hiện dạng khóa + 1 dòng lợi ích + nút "Xem gói nâng cấp" (mở Cài đặt › Gói & mức dùng). Vẽ cả hai bằng Tweak "Lời mời nâng gói".
 - Ngôn ngữ nội dung viết phải-sang-trái (العربية có trong `config/locales.php`): ô nhập và nội dung của ngôn ngữ đó tự đặt dir="rtl" + căn phải (tiêu đề, nội dung, đường dẫn giữ trái-sang-phải); khung quản trị luôn trái-sang-phải.
 - Dữ liệu động: nhóm quyền, quyền, loại nội dung, ngôn ngữ, gói, bước duyệt đều đọc từ registry/bảng — chịu được 1–20 mục, tên dài. Nhóm quyền, gói, chế độ duyệt, số ngôn ngữ mô phỏng bằng Tweaks đọc registry thật (LESSONS #18) — không bịa cờ kiểu canPublish.
 - Hành động nguy hiểm: chuyển vào Thùng rác thì KHÔNG hỏi — làm ngay + toast "Hoàn tác" 8 giây; chỉ hỏi khi kéo theo mục khác ("Xóa mục này và 3 mục con") hoặc không hoàn tác được (xóa vĩnh viễn, tắt ngôn ngữ, đổi tên miền): hộp xác nhận giữa màn kiểu SweetAlert2, nút Hủy được focus, nút làm ghi đúng việc sẽ xảy ra.
@@ -49,61 +49,35 @@ Giao nộp: 1 file .dc.html mỗi màn (hoặc gộp có anchor) + README handof
 Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm nào thì lượt này làm theo prompt (owner đã duyệt) và ghi 1 dòng LESSONS.md nêu điểm khác để owner sửa CLAUDE.md; bài học mới cũng ghi 1 dòng vào LESSONS.md. Làm xong gọi ready_for_verification và sửa hết lỗi verifier báo. Lượt này làm ĐÚNG MỘT việc bên dưới.
 ═══ VIỆC CỦA LƯỢT NÀY ═══
 
-# D2-1 · Nhóm quyền & Thành viên (4 màn)
-
-Thiết kế **4 màn "Nhóm quyền & Thành viên"** cho admin BSWebSaaS (bộ khung SaaS đa-tenant, admin kiểu Velzon), xuất `.dc.html` + `README.md` ánh xạ data-model — đúng format các handoff trước (MediaPicker, Pages Admin, Workflow).
-
-## Ràng buộc chung (BẮT BUỘC)
-- Đúng design system `bssaas-adminkit-design-system`: token màu (var(--color-admin-primary) / var(--color-accent), không gắn cứng hex), Inter 14px, radius 4/6px, shadow card nhẹ — KHÔNG chế màu/elevation/gradient mới. Giữ nguyên sidebar/topbar hiện có, chỉ thiết kế NỘI DUNG màn.
-- Stack đích: **Livewire 4 + Blade + Tailwind 4 + `<x-bs-admin::*>`**, icon **Remix inline-SVG** (prototype dùng remixicon CDN được, README liệt kê tên icon từng chỗ). KHÔNG Bootstrap, KHÔNG Flux.
-- Người dùng là **chủ doanh nghiệp không rành công nghệ**: copy tiếng Việt đời thường, KHÔNG thuật ngữ "RBAC/permission/role" trên giao diện (dùng "nhóm quyền", "được phép…"). Mobile-first, WCAG AA, mỗi màn đủ **empty / loading / error**, không ngõ cụt.
-- Xác nhận nguy hiểm theo pattern SweetAlert2 (modal giữa màn; hành động nguy hiểm → nút Hủy được focus).
-- **Dữ liệu ĐỘNG:** số nhóm, tên nhóm (tới 60 ký tự), danh sách quyền đều từ hệ thống — chịu được 3–20 nhóm, tên dài. Không hiển thị mã số nội bộ nào.
-
-## Data model thật (README phải ánh xạ đúng)
-- Mỗi website có **6 nhóm hệ thống** theo cấp: Chủ website (90) · Quản trị (70) · Biên tập (50) · Người viết (30) · Cộng tác viên (20) · Chỉ xem (10). Nhóm hệ thống **khóa cứng**: xem được, KHÔNG sửa/xóa/đổi tên.
-- **Nhóm tùy chỉnh** (chỉ khi gói website có tính năng "Nhóm quyền tùy chỉnh" — mặc định TẮT): tạo **từ một nhóm có sẵn** (sao chép quyền rồi chỉnh — ghi nhớ "tạo từ: Biên tập") hoặc **trống**. Sửa tên / cấp / quyền; xóa được khi **không còn ai** trong nhóm. Xóa = vào Thùng rác + toast "Hoàn tác" (tự xóa hẳn sau 30 ngày) như mọi thứ khác — backend hiện xoá hẳn (`roles` chưa có `deleted_at`) → ghi "Việc cho backend": thêm Thùng rác cho nhóm tuỳ chỉnh + lệnh tự dọn.
-- **Luật cấp:** người dùng chỉ tạo/sửa/gán nhóm **thấp hơn cấp của mình**, và chỉ cấp được quyền **mình đang có** (quyền mình không có → ô bị khóa + giải thích).
-- **Quyền theo khu vực** (khu vực website không được bật trong gói → ẩn/khóa cả hàng, nhãn "Ngoài gói"):
-  - Nội dung: Xem · Tạo · Sửa bài của mình · Sửa mọi bài · Xóa bài của mình · Xóa mọi bài · Gửi duyệt · Phản biện · Duyệt · Đăng
-  - Thư viện ảnh/tệp: Xem · Tải lên · Xóa
-  - Chuyên mục: Quản lý · Trình đơn: Quản lý · Tên miền: Quản lý · Cài đặt website: Quản lý
-  - Liên hệ/khách để lại thông tin: Xem · Quản lý · Sản phẩm: Xem · Quản lý
-  - Người dùng: Mời · Quản lý · Nhóm quyền: Quản lý
-- **Quyền kéo theo:** tick "Sửa mọi bài / Xóa / Quản lý / Tải lên" (và mọi quyền hành động: Tạo, Gửi duyệt, Phản biện, Duyệt, Đăng) tự tick "Xem" tương ứng — không bỏ được "Xem" khi quyền lớn còn tick. "Sửa mọi bài" KHÔNG tự tick "Sửa bài của mình" (đã bao hàm — chỉ hiện gợi ý "gồm cả bài của mình"; nhóm Biên tập hệ thống đúng như vậy).
-- Một thành viên có thể thuộc **nhiều nhóm**; quyền thực = hợp các nhóm.
-- Mọi thay đổi nhóm/quyền/gán đều được ghi nhật ký (ai, lúc nào, đổi gì).
-
-## Màn 1 — Danh sách nhóm quyền
-- Bảng: tên nhóm · badge "Hệ thống" (khóa) / "Tùy chỉnh" (+ "tạo từ …") · cấp · số thành viên · mô tả ngắn "làm được gì" (3–4 quyền tiêu biểu) · hành động (Xem / Sửa / Nhân bản / Xóa — theo luật ở trên, không có quyền → ẩn).
-- Nút chính "Tạo nhóm" → chọn "Từ nhóm có sẵn" (liệt kê nhóm thấp hơn cấp mình) hoặc "Nhóm trống".
-- Gói chưa bật nhóm tùy chỉnh: vẫn xem nhóm hệ thống; nút Tạo hiện khóa + dòng "Gói hiện tại chưa có nhóm quyền tùy chỉnh — liên hệ bộ phận hỗ trợ để bật" (không dead-end; KHÔNG ghi tên thương hiệu nhà cung cấp — sản phẩm white-label).
-- Empty (chưa có nhóm tùy chỉnh): 1 đoạn giải thích khi nào cần nhóm riêng (ví dụ "người chỉ duyệt bài, không sửa bài") + CTA.
-
-## Màn 2 — Tạo / sửa nhóm (trọng tâm)
-- Tên nhóm, chọn **cấp** (chỉ các cấp dưới mình, giải thích 1 dòng "Nhóm cấp cao quản lý được nhóm cấp thấp").
-- **Ma trận khu vực × hành động**: tick từng ô, **tick cả hàng**, ô tìm kiếm quyền, mỗi ô có tooltip giải thích đời thường; ô khóa (không có quyền / ngoài gói) có lý do khi hover/tap.
-- Nhóm tạo từ nhóm khác: đánh dấu ô **khác với nhóm gốc** (chấm/nhãn "đã đổi").
-- **Xem trước thay đổi trước khi lưu**: "Thêm: Duyệt, Đăng · Bớt: Sửa mọi bài" + "Ảnh hưởng tới N thành viên đang trong nhóm".
-- Nhóm hệ thống mở ở chế độ chỉ xem (ma trận read-only) + nút "Nhân bản để tùy chỉnh".
-- Mobile: ma trận gập theo khu vực (accordion), mỗi khu vực là danh sách công tắc.
-
-## Màn 3 — "Nhóm này làm được gì?" (xem như nhóm)
-- Checklist đời thường theo khu vực ("Được viết bài mới", "Không được xóa bài người khác"…) cho 1 nhóm, mở từ Màn 1/2. Dành cho chủ website kiểm tra trước khi gán người.
-
-## Màn 4 — Thành viên (thay màn hiện tại)
-- Bảng: tên · email · các nhóm (chip) · trạng thái · hành động. Thêm thành viên bằng email + chọn **nhiều nhóm** (checkbox, chỉ nhóm thấp hơn cấp mình).
-- Sửa nhóm của 1 thành viên = panel checkbox nhiều nhóm + xem trước "quyền thực sau khi đổi".
-- Xóa khỏi website (confirm nguy hiểm; từ theo Bảng thuật ngữ D0-3 — khác "Gỡ khỏi website" của bài). Không sửa được người cấp bằng/cao hơn mình → nút ẩn, hiện dòng "Người này cùng cấp hoặc cao hơn bạn".
-- Lỗi đời thường, ví dụ: "Người này không còn là thành viên của website. Hãy tải lại trang."
-
-## Deliverable
-1 file `.dc.html`/màn (hoặc gộp có anchor) + `README.md`: hi-fi, bảng Design Tokens dùng, bảng icon Remix, ánh xạ data-model theo mục trên, hành vi từng state (empty/loading/error/khóa theo gói/khóa theo cấp), biến thể desktop + mobile.
-
-Bổ sung cho lượt này (audit 23/09):
-- Dùng Chuẩn giao diện SaaS Starter (D0-2, D0-3): ma trận quyền dùng component "Ô quyền"; hộp xác nhận chuẩn.
-- Người mới: màn Thành viên là màn chính (nhóm quyền là màn phụ); khi gán nhóm, mỗi nhóm có 1 dòng "làm được gì" và nút "Xem chi tiết" mở Màn 3; ma trận quyền mặc định hiện theo khu vực, gập các khu vực không liên quan.
-- Màn 4 Thành viên: dùng khuôn "Mẫu DANH SÁCH dùng chung" (tìm + lọc nhóm + Dòng/trang; repo hiện không phân trang, không tìm); tab "Lời mời" để lượt D2-2.
-- Backend đã có (23/09, commit e922240): đường ghi nhóm quyền tuỳ chỉnh có kiểm cấp/trần quyền — đọc `app/Modules/Rbac/Registry/PermissionRegistry.php` (24 quyền site, 6 nhóm mẫu) và `app/Modules/Rbac/Support/RoleHierarchyGuard.php` (luật cấp), **`app/Modules/Rbac/Support/CustomRoleRules.php`** (luật nhóm tuỳ chỉnh: trần theo gói + theo người sửa, cấp, tên trùng/dành riêng, chỉ xoá khi không còn ai giữ nhóm VÀ không còn lời mời đang chờ nào cấp nhóm đó — `in_use` phủ cả hai) + `PermissionRegistry::IMPLIES` (quyền kéo theo). Lỗi nghiệp vụ trả về mã `RoleChangeRejectedException::reason` — `custom_roles_disabled` · `name_invalid` · `name_reserved` · `name_taken` · `level_invalid` · `in_use` — README phải có câu đời thường cho TỪNG mã.
-- Thứ tự: Màn 1 → 2 → 3 → 4. Sắp hết lượt sau Màn 3 thì chốt, ghi "D2-1 phần 2" (= Màn 4) vào TODO.md.
-- Đăng ký vào registry Shell: `users`, `roles`. Handoff đặt tên `design_handoff_rbac`.
+# D2-1 · Nhóm quyền & Thành viên
+Cần trước: D0-4b (registry `shell-screens.js`, Tweak nhóm quyền / gói / "Lời mời nâng gói", `bs-goto`, thanh "Đang đăng nhập với tên …"), D0-5 (`admin-components.css`), D1-3 (khuôn danh sách). Màn MỚI: link `admin-components.css` ngay sau `admin-base.css`; ma trận dùng "Ô quyền" `<x-bs-admin::permission-cell>` (`#he-thong`), hộp xác nhận chuẩn; Focus 1b dùng lại luật chung (ô tích = vòng tách), không viết focus riêng.
+Hiện trạng repo: chỉ có trang Thành viên (`routes/web.php:216`, gate `users.manage`; `app/Modules/Admin/Livewire/Users/Index.php`: mỗi người 1 ô chọn nhóm, không tìm, không phân trang, nút "Mời thành viên"). Nhóm quyền chưa có màn nhưng ĐƯỜNG GHI ĐÃ CÓ (`app/Modules/Rbac/Actions/{Create,Update,Delete}CustomRole.php`, `AssignRole.php`, `RevokeRole.php`) → tạo / sửa / xóa nhóm tùy chỉnh, gán / bỏ nhóm KHÔNG gắn "Chờ backend".
+Luật as-built (màn phải thể hiện, không tự đặt luật khác):
+- 24 quyền website + 6 nhóm mẫu (`app/Modules/Rbac/Registry/PermissionRegistry.php`): Chủ website · Quản trị · Biên tập · Người viết · Cộng tác viên · Chỉ xem; nhóm hệ thống khóa cứng (xem được, không sửa / xóa / đổi tên). Ma trận đọc `BSCW.PERMS` + `BSCW.ROLES`; thêm `BSCW.IMPLIES` chép từ `PermissionRegistry::IMPLIES` (chỉ THÊM).
+- Khu vực × việc: Nội dung (Xem · Tạo · Sửa bài của mình · Sửa mọi bài · Xóa bài của mình · Xóa mọi bài · Gửi duyệt · Phản biện · Duyệt · Đăng) · Thư viện ảnh & tệp (Xem · Tải lên · Xóa) · Chuyên mục · Trình đơn · Tên miền · Cài đặt website (Quản lý) · Khách liên hệ (Xem · Quản lý) · Sản phẩm (Xem · Quản lý) · Thành viên (Mời · Quản lý) · Nhóm quyền (Quản lý). Khu vực có module tắt theo gói → hàng khóa "Ngoài gói" (`Support/RoleCeiling.php`).
+- Quyền kéo theo: mọi việc của Nội dung, Tải lên / Xóa ảnh, Quản lý khách liên hệ, Quản lý sản phẩm tự tick "Xem" cùng khu vực; không bỏ được "Xem" khi việc lớn còn tick. "Sửa mọi bài" không tự tick "Sửa bài của mình" (gợi ý "gồm cả bài của mình").
+- Luật cấp (`Support/RoleHierarchyGuard.php`, `Support/CustomRoleRules.php`): chỉ gán / tạo / sửa / xóa nhóm có cấp THẤP HƠN cấp cao nhất của mình và chỉ chứa quyền mình đang có. Quyền mình không có → ô khóa + lý do, và khi lưu nhóm vẫn GIỮ quyền đó (không thêm, không bỏ được); quyền thuộc module đã tắt bị bỏ khi lưu — xem trước nói rõ cả hai. Cấp hiện bằng vị trí trên thang 6 nhóm ("Giữa Biên tập và Người viết"), không hiện số.
+- Nhóm tùy chỉnh: tạo khi gói có `rbac.custom_roles` (mặc định TẮT) — từ nhóm có sẵn ("Tạo từ: Biên tập", `roles.forked_from_role_id`) hoặc trống; tên 1–60 ký tự, không trùng (không phân biệt hoa thường), không trùng tên nhóm hệ thống / nền tảng. Gói tắt sau đó: nhóm đã có vẫn sửa / xóa được, chỉ nút Tạo khóa (`UpdateCustomRole.php:19`). Xóa khi không còn ai trong nhóm VÀ không còn lời mời đang chờ cấp nhóm đó.
+- Mã lỗi `RoleChangeRejectedException::reason`: custom_roles_disabled · name_invalid · name_reserved · name_taken · level_invalid · in_use — README mục Chuỗi cần dịch: một câu đời thường cho từng mã.
+- Một người thuộc nhiều nhóm; quyền thực = hợp các nhóm. Nhóm nhận ra bằng tên (bảng `roles` không có mã công khai), thành viên bằng mã công khai — `params` của `bs-goto` và hash không chứa id số. Mọi thay đổi ghi nhật ký (có phần quyền thêm / bớt).
+- Đăng nhập dưới tên khách hàng (Tweak D0-4b): mọi nút tạo / sửa / xóa nhóm, gán / bỏ nhóm, mời, "Xóa khỏi website" khóa + câu "Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên." (`SupportSession::forbid()`).
+Vẽ `Nhóm quyền.dc.html` (Màn 1–3, có anchor) và `Thành viên.dc.html` (Màn 4):
+1. Danh sách nhóm: tên · nhãn "Hệ thống" (khóa) / "Tùy chỉnh" + "Tạo từ …" · vị trí cấp · số thành viên · 3–4 việc tiêu biểu · Xem / Sửa / Nhân bản / Xóa theo luật (không được làm → ẩn). Nút chính "Tạo nhóm" → "Từ nhóm có sẵn" (chỉ nhóm mình gán được) / "Nhóm trống". Gói chưa có nhóm tùy chỉnh → mẫu "khóa theo gói" theo Tweak "Lời mời nâng gói". Trống: 1 đoạn khi nào cần nhóm riêng ("người chỉ duyệt bài, không sửa bài") + nút.
+2. Tạo / sửa nhóm (trọng tâm): tên, vị trí cấp (chỉ dưới mình); ma trận — tick ô, tick cả hàng, tìm quyền, mỗi ô 1 câu giải thích, ô khóa bấm / chạm hiện lý do; nhóm tạo từ nhóm khác đánh dấu ô "đã đổi"; xem trước "Thêm: Duyệt, Đăng · Bớt: Sửa mọi bài · Ảnh hưởng tới N thành viên"; nhóm hệ thống chỉ xem + "Nhân bản để tùy chỉnh". Dưới 768: gập theo khu vực, mỗi khu vực là danh sách công tắc. Xóa nhóm: vào Thùng rác + toast "Hoàn tác" (Chờ backend).
+3. "Nhóm này làm được gì?": danh sách đời thường theo khu vực ("Được viết bài mới", "Không được xóa bài người khác"), mở từ Màn 1, 2 và từ chỗ chọn nhóm ở Màn 4.
+4. Thành viên (thay màn repo, Mẫu 1 `#mau-1`): tên · email · các nhóm (chip) · trạng thái · hành động; tìm + lọc nhóm + Dòng/trang. Nút chính "Mời thành viên" (hộp mời do D2-2 vẽ — lượt này mở thẻ "Chờ thiết kế · D2-2"). Sửa nhóm 1 người = panel nhiều ô chọn (chỉ nhóm mình gán được; mỗi nhóm 1 dòng "làm được gì" + "Xem chi tiết" mở Màn 3) + xem trước quyền thực sau khi đổi. "Xóa khỏi website" (không vào Thùng rác, mời lại được) qua hộp xác nhận nguy hiểm. Người cùng cấp / cao hơn → nút ẩn + "Người này cùng cấp hoặc cao hơn bạn". Lỗi đời thường ("Người này không còn là thành viên của website. Hãy tải lại trang.").
+5. Trạng thái mỗi màn: trống · đang tải · lỗi + "Thử lại" · không có quyền (`roles.manage` / `users.manage`) · khóa theo gói · đăng nhập dưới tên khách hàng.
+6. Registry: thêm Thành viên (`users`) và Nhóm quyền (khóa D0-4a đặt), ready, nhận `embedded` + props nhóm quyền / gói; cập nhật dòng 27–30 của `SaaS Starter - Bản đồ màn hình.md`.
+README — Việc cho backend: Thùng rác nhóm tùy chỉnh (bảng `roles` dùng chung mọi website → cách làm là COUNCIL) · tìm + phân trang Thành viên ở CSDL · gán nhiều nhóm một lần (repo 1 ô chọn, `Users/Index.php:102`) · chữ `rbac.role.author` "Tác giả" → "Người viết", "vai trò" → "nhóm quyền".
+Được sửa: `Nhóm quyền.dc.html` (mới) · `Thành viên.dc.html` (mới) · `content-workflow.js` (chỉ THÊM `IMPLIES`) · `shell-screens.js` (chỉ THÊM mục) · `SaaS Starter - Bản đồ màn hình.md` · `TODO.md` · `LESSONS.md` · README mới `README - D2-1 Nhóm quyền & Thành viên.md`. Không sửa màn khác, Admin Shell, `admin-base.css`, `admin-components.css`, trang chuẩn, CLAUDE.md.
+Sắp hết lượt: xong mục 1 → 3 trước; mục 4–6 ghi TODO.md "D2-1 phần 2" rồi báo owner; owner gửi "Làm D2-1 phần 2" trong cùng chat.
+Xong khi:
+(1) Tweak Quản trị: "Từ nhóm có sẵn" không có Chủ website / Quản trị; vị trí cấp chỉ dưới Quản trị; nhóm hệ thống mở chỉ xem + "Nhân bản để tùy chỉnh".
+(2) Tick "Đăng" → "Xem" tự tick, bỏ "Xem" bị chặn có lý do; xem trước ghi đúng Thêm / Bớt + số người.
+(3) Tên "Biên tập" → câu name_reserved; "nhóm A" khi đã có "Nhóm A" → name_taken; xóa nhóm còn người → in_use; README đủ 6 mã.
+(4) Thành viên: người cùng cấp không có nút sửa / xóa; Tweak đăng nhập dưới tên khách hàng → mọi nút ghi khóa + câu khóa; "Xóa khỏi website" mở hộp xác nhận, nút Hủy được focus.
+(5) Grep 2 tệp: 0 id số trong `bs-goto` / hash; 0 `style-focus-within`; 0 hex ngoài `var(…)`; 0 "Vai trò" · "Tác giả" · "RBAC" · "permission" trên màn.
+(6) `_audit/harness.html`: `H.layouts(['Nhóm quyền.dc.html','Thành viên.dc.html'], [360,390,768,1024,1440])` × chữ thường + Chữ lớn (bật Chữ lớn qua Tweak / `bs-ui` trước khi gọi), đứng riêng; trong Shell đo `H.mk('s',390,844,0,0,'../Admin Shell.dc.html#/<mặt>/<khóa màn>')` — `scrollWidth = clientWidth` (không sửa tệp trong `_audit/`).
+(7) README có Việc cho backend, bảng Kiểm hiển thị, 12 tiêu chí; registry + Bản đồ ghi ready; TODO ghi "D2-2" là lượt kế tiếp.
+Gọi ready_for_verification, sửa hết lỗi verifier báo. Verifier không trả kết quả (công cụ chụp quá giờ) thì không chờ: ghi [CHƯA KIỂM ĐƯỢC] vào dòng Verifier của README, Claude Code kiểm bằng zip.
+Xuất zip project gửi Claude Code kiểm. Xong thì báo owner đúng một câu: "D2-1 xong — gửi zip cho Claude Code."
