@@ -220,3 +220,82 @@ Thắng mọi chỗ nói khác ở D0-4a mục 2 / "Xong khi (3)" và D0-4as đi
 [CHƯA KIỂM ĐƯỢC]: chế độ tối + thanh Sáng/Chuyển màu cho khối bộ chuyển (tương phản tính theo token, chưa đo), Safari iOS (nút Toàn màn hình phải ẩn), Firefox — Claude Code kiểm bằng zip.
 
 Verifier: chạy sau khi giao; nếu quá giờ → [CHƯA KIỂM ĐƯỢC], Claude Code kiểm bằng zip.
+
+
+## D0-4b phần chính — Tweaks theo registry · registry màn · điều hướng một cửa (06/10/2026)
+
+### Tổng quan
+Shell không còn tự quyết nhóm quyền theo website mẫu (`siteRole()` cũ đã bỏ). Mọi chỗ ẩn/khóa đọc Tweak → `BSCW` (nhóm quyền) và `BSAI` (tính năng gói, module). Mọi màn đọc một registry `shell-screens.js`. Chuyển màn chỉ bằng `bs-goto {screen, params}`; hash `#/<mặt>/<màn>[/<mục>][?…]`.
+
+### File
+- `shell-screens.js` (MỚI) — `window.BSSCREENS`: `LIST` (khóa → plane · title · desc · crumb · kind · dc · embedId · ownHeader · status · turn · mapRow · purpose · data · help · feature), `TYPE` (khuôn cho mọi loại nội dung: `<loại>.list|create|cats`), `resolve()`, `parse()`, `build()`.
+- `content-workflow.js` — THÊM (không đổi khóa cũ): `PLATFORM_ROLES` (super_admin · support · billing, PermissionRegistry.php:141–152), `PLATFORM_PERMS`, `PROPOSED` (`activity.view` → owner/admin; `platform.staff.manage` → super_admin), `platformRole()`, `platformRoleNames()`, `has(nhóm, 'a|b', plane)`.
+- `ai-quota.js` — THÊM: `FEATURES` (FeatureRegistry.php, đủ 6 khóa + default fail-closed), `PLAN_FEATURES` (đề xuất theo gói — Cần owner chốt), `MODULES` (catalog · media · contacts · menus · users + 1 dòng lợi ích), `features()`, `feature()`, `moduleKeys()`.
+- `Admin Shell.dc.html` — sửa tại chỗ (chi tiết dưới). Helmet nạp thêm `content-workflow.js`, `shell-screens.js`.
+- `_audit/d04b2-run.html`, `_audit/d04b2-perf.html` (MỚI, không sửa tệp cũ trong `_audit/`).
+
+### Tweaks (CÙNG data-props của D0-4a; nhóm "Quyền & gói" · "Dữ liệu" · "Hiển thị")
+Nhóm quyền website (6, `BSCW.ROLES`) · Nhóm quyền nền tảng (3) · Gói (free/basic/pro/ent — `BSAI.PLANS`) · Tắt module (none/catalog/media/contacts/menus/users) · Website được cấp AI · Lời mời nâng gói (mặc định TẮT) · Chế độ duyệt (3, mặc định "Không duyệt — đăng thẳng"; "Quy trình biên tập" khi gói không có `workflow.editorial` tự hạ về "Duyệt trước khi đăng") · Số ngôn ngữ 1/3/8 · Số website 1/3/8 (giữ của D0-4at) · Website mới tinh · Đăng nhập dưới tên khách hàng · Sáng/tối · Chữ lớn · Màu thương hiệu · Kiểu nút ngôn ngữ · Hiện ghi chú thiết kế. Tweak chỉ áp khi ĐỔI (không đè lựa chọn đã lưu ở `bs-ui` lúc nạp). Tweak đọc qua `tw(k)` (có lớp `_twOver` cho bản kiểm thử).
+
+### Ba vòng chặn
+1. **Quyền** — mục có `perm` không thuộc nhóm quyền → ẩn; nhóm hết mục con → ẩn; tiêu đề nhóm rỗng → ẩn. Mở thẳng bằng hash/bs-goto → thẻ "Không có quyền" (nhóm quyền nói bằng tên, nút "Về Tổng quan"). Mục Cài đặt cũng lọc theo `perm` + module.
+2. **Module** (`site_modules`) — mục còn hiện, kèm icon khóa; mở ra: Lời mời TẮT → "Chưa bật — Chưa bật cho website này — liên hệ hỗ trợ." + "Liên hệ hỗ trợ" (mở Trợ giúp); BẬT → "Khóa theo gói" + 1 dòng lợi ích (`BSAI.MODULES`) + "Xem gói nâng cấp" (Cài đặt › Gói & mức dùng; người không có `settings.manage` nhận câu "nhờ Chủ website…").
+3. **Tính năng gói** — `workflow.editorial` (chế độ duyệt) · `sites.max` (bộ chuyển website: "Tạo website mới — khóa theo gói", Lời mời BẬT thêm "Xem gói nâng cấp") · `rbac.custom_roles` (thẻ Nhóm quyền có dòng khóa "Tạo nhóm quyền riêng…; 6 nhóm có sẵn vẫn dùng được") · AI tắt: thanh ngôn ngữ Cài đặt ẩn hạn ngạch + nút Dịch (Lời mời BẬT: nút khóa "Dịch bằng AI — Xem gói nâng cấp"); dòng trạng thái bản nguồn đổi sang "…chuyển sang từng bản để nhập bản dịch". `media.storage_mb`, `locales.max`, `custom_domains.max` có trong `BSAI.features()`; màn dùng chúng (Thư viện D1-6, Ngôn ngữ D3-1, Tên miền D3-2) đọc từ đây.
+
+### Registry màn (thẻ & mount)
+- kind `shell`: Tổng quan · Cài đặt · Cài đặt nền tảng · Gói & tính năng (phần đã vẽ). `mount` (chỉ mount màn đang mở, sc-if): Trình đơn · Hộp duyệt (prop `role` = Tweak) · Chuẩn giao diện SaaS Starter. `design`: danh sách/trình soạn theo loại nội dung — thẻ "Đã có thiết kế — chưa nối vào khung" + "Mở thiết kế" (file là trang canvas, chưa nhận `embedded` — TODO D1-3 / D1-4d). `pending`: thẻ "Chờ thiết kế" chuẩn = tên màn · 1 câu mục đích · "Dữ liệu sẽ hiện" · "Lượt phụ trách: Dx-y". Tắt "Hiện ghi chú thiết kế" → thẻ "Đang xây dựng", không mã lượt. `modal`: Tài khoản của tôi (mở hộp đang có, D2-3 làm trang riêng). `later`: mặt TMĐT, Khối tái dùng (`blocks` — Trình đơn gửi `bs-goto {screen:'blocks', region:'menu'}`, `region` gom vào params).
+- Ngoài menu: `account` · `notifications` (chuông › "Xem tất cả thông báo"; từng thông báo mở đúng màn) · `search` (Enter ở ô tìm, `?q=`) · `impersonate` · `ui-standard` (mở từ ô tìm/Ctrl+K — đóng dòng TODO "· D0-4b").
+- Breadcrumb từ `crumb` của registry (mục cha bấm được → `<loại>.list`); tiêu đề + mô tả 1 dòng từ registry; Trợ giúp "Hay hỏi ở màn này" từ `help`.
+- Hộp duyệt khi website đăng thẳng: thẻ "Chưa bật" — "Website đang đăng thẳng… bật ở Nền tảng › Website › Quy trình duyệt".
+- Website mới tinh: thẻ "Bắt đầu với website của bạn" ở Tổng quan, 4 việc (lọc theo quyền), mỗi việc `bs-goto`.
+- Khe thanh cố định (D4-3 dùng): "Đang đăng nhập với tên Ngọc Anh · <website> (<nhóm quyền>) · còn mm:ss · Quay lại quản trị" — dính đầu cột nội dung, topbar dời xuống `--imp-h` 48px, `--sticky-top` cộng thêm; đồng hồ là phần tử tự đếm (Shell không vẽ lại mỗi giây). "Quay lại quản trị" → Nền tảng › Đăng nhập hỗ trợ + toast. Dưới 520px nút ghi "Quay lại" (aria-label đủ câu).
+
+### Điều hướng
+- `bs-goto {screen, params}` → `goScreen()`: khóa lạ → toast "Không tìm thấy trang này" (ở yên màn); `params.section` cho Cài đặt; qua `navGuard` khi còn thay đổi chưa lưu; khóa của mặt khác → đổi mặt (chỉ prototype).
+- Hash mới `#/site/posts.list` · `#/site/settings/email` · `#/platform/tenants` · `#/platform/settings/mail` · `#/site/search?q=…` (mặt nền tảng bỏ tiền tố `p-`). Dạng cũ vẫn mở: `#<khóa menu>`, `#settings/<mục>`, `#p-<khóa>`, `#p-settings/<mục>` → Shell viết lại sang dạng mới. Hash lạ → Tổng quan + toast. Lùi/tiến: hashchange áp lại; Shell chỉ bỏ qua đúng chuỗi nó vừa ghi.
+- `params` chỉ chứa khóa màn / đường dẫn / mã công khai. Phần `<mặt>` chỉ có ở prototype.
+
+### Kết quả "Xong khi" (`_audit/d04b2-run.html`, Chrome, Sáng, khung 1440×900 và 390×800) [ĐO BẰNG SCRIPT]
+1. Đạt — menu Website theo nhóm quyền (cả 2 chế độ duyệt): Chỉ xem = Tổng quan · Trang/Tin tức/Dịch vụ/Dự án {Danh sách} · Sản phẩm {Danh sách} · Thư viện ảnh & tệp · Khách liên hệ. Người viết = Cộng tác viên = Tổng quan · 4 loại {Thêm mới · Danh sách} · Thư viện ảnh & tệp. Biên tập = 4 loại đủ (Trang không có Chuyên mục) · Sản phẩm đủ · Hộp duyệt (chỉ khi "Duyệt trước khi đăng") · Thư viện · Khách liên hệ · Biểu mẫu · Trình đơn; không Thành viên/Nhóm quyền/Nhật ký/Cài đặt. Quản trị = Chủ website = đủ. Nền tảng: Quản trị nền tảng = 9 mục · Nhân viên hỗ trợ = Tổng quan · Khách hàng · Website · Nhật ký hệ thống · Đăng nhập hỗ trợ · Nhân viên thanh toán = Tổng quan · Khách hàng · Gói & tính năng. Biên tập mở Cài đặt bằng hash → thẻ "Không có quyền".
+2. Đạt — module catalog tắt: Lời mời TẮT → thẻ `lock` "Chưa bật cho website này — liên hệ hỗ trợ" + "Liên hệ hỗ trợ"; BẬT → `lockup` "Khóa theo gói" + lợi ích + "Xem gói nâng cấp". `rbac.custom_roles` (gói Cơ bản) + Lời mời BẬT → dòng khóa "…Có trong gói Chuyên nghiệp trở lên". `workflow.editorial`: Cơ bản → "Duyệt trước khi đăng", Chuyên nghiệp → "Quy trình biên tập".
+3. Đạt — bấm 10 mục Nền tảng + 23 mục Website + 5 màn ngoài menu: mỗi mục ra màn thật (Tổng quan, Cài đặt, Trình đơn, Hộp duyệt, Chuẩn giao diện) hoặc thẻ có trạng thái + mã lượt; **0 lỗi console** (1440 và 390).
+4. Đạt — `#posts.list`→`#/site/posts.list` · `#settings/email`→`#/site/settings/email` · `#p-tenants`→`#/platform/tenants` · `#p-settings/p-mail`→`#/platform/settings/mail` · `#/site/menus` · `#/platform/audit` · `#/site/settings/seo` đúng; `#profile` · `#/xyz/abc` · `#/site/khong-co` → Tổng quan + toast. Tổng quan → Tin tức › Danh sách → Thư viện; lùi → Tin tức › Danh sách; lùi → Tổng quan; tiến → Tin tức › Danh sách.
+5. Đạt — 390×800: `scrollWidth 390 = clientWidth 390` (html và body), cả khi bật thanh đăng nhập hỗ trợ (cao 48, topbar dời xuống 48). Bản kiểm nằm ở `_audit/d04b2-run.html?w=390&h=800` (cùng phép đo `H.mk('f',390,800,…)` của harness).
+6. Đạt — Bản đồ màn hình: cột Trạng thái khớp `status` của registry; ghi "Lượt kế tiếp: D0-5".
+
+### Hiệu năng prototype (mục 4) — `_audit/d04b2-perf.html`, 3 lần, trung vị
+| Mốc | Trước D0-4b | Sau D0-4b |
+|---|---|---|
+| Điều hướng → h1 có chữ | 1.862 ms (2.811 · 1.563 · 1.862) | 1.166 ms (1.121 · 1.821 · 1.166) |
+| Script Shell chạy → mount | — (chưa có mốc) | 83 ms (110 · 83 · 76) |
+| Script Shell chạy → lần vẽ đầu (2 rAF sau mount) | — | 132 ms / 322 ms (lần 3 không có mốc: khung ẩn không chạy rAF) |
+Không import sẵn màn nào: Hộp duyệt / Chuẩn giao diện / Trình đơn chỉ mount khi đang mở (sc-if). Số đo dao động lớn theo tải máy; chỉ dùng để so cùng phiên.
+
+### Quyền & gói (ai thấy gì)
+Bảng ở mục 1 "Xong khi". Quyền đề xuất (Chờ backend): `activity.view` (Chủ website + Quản trị), `platform.staff.manage` (Quản trị nền tảng).
+
+### Token · Icon mới
+Thẻ màn: chip `--color-admin-info-text` (Chờ thiết kế) · `-success-text` (Đã có thiết kế) · `-danger-text` (Không có quyền) · `--color-body-muted` (Chưa bật/Đang xây dựng/Để sau) · `--color-brand-gold-text` + `--color-brand-gold` 16% (Khóa theo gói); nút chính `--color-admin-primary`. Thanh hỗ trợ: `--color-admin-warning` 24% pha `--color-surface`, viền/chữ `--color-admin-warning-text`. Icon: ri-time-line · ri-forbid-line · ri-draft-line · ri-pause-circle-line · ri-vip-crown-2-line · ri-customer-service-2-line · ri-external-link-line · ri-user-shared-line · ri-arrow-go-back-line · ri-arrow-right-up-line.
+
+### Chuỗi cần dịch (mới)
+Chờ thiết kế · Đã có thiết kế — chưa nối vào khung · Đang xây dựng · Không có quyền · Chưa bật · Khóa theo gói · Để sau · Dữ liệu sẽ hiện · Lượt phụ trách · Mở thiết kế · Về Tổng quan · Liên hệ hỗ trợ · Xem gói nâng cấp · Bạn chưa có quyền mở trang này · Chưa bật cho website này — liên hệ hỗ trợ. · Không tìm thấy trang này · Không thấy mục nào khớp. Bấm Enter để tìm trong mọi nội dung. · Màn hình · Bắt đầu với website của bạn (+ 4 việc) · Đang đăng nhập với tên … · còn mm:ss · Quay lại quản trị · Quay lại · Đã kết thúc phiên hỗ trợ — về Nền tảng › Đăng nhập hỗ trợ · Dịch bằng AI — Xem gói nâng cấp · tiêu đề/mô tả/câu hỏi của 30 khóa registry.
+
+### Kết quả 12 tiêu chí dễ dùng (phần D0-4b)
+1. Đạt — mỗi màn có tiêu đề + mô tả 1 dòng từ registry; thẻ có đúng 1 nút chính. 2. Đạt — mọi màn ≤ 2 bước từ menu. 3. Đạt — thẻ và thông báo không thuật ngữ kỹ thuật. 4. Đạt — icon khóa ở menu có tooltip + aria-label. 5. Không áp dụng (không thêm ô nhập). 6. Đạt — chuyển màn qua navGuard; hash cũng qua navGuard. 7. Đạt — trạng thái thẻ = màu + icon + chữ. 8. Đạt — chip/nút 1 dòng (`white-space:nowrap`), chữ dài ở thanh hỗ trợ "…" + title. 9. Đạt ở 390 (đo); 768 chưa đo riêng. 10. Đạt — Tweak không thêm điều khiển cho người dùng thật. 11. [CHƯA KIỂM ĐƯỢC] Chữ lớn với thẻ mới — thẻ dùng px như phần còn lại của Shell (zoom 16/14 đang áp). 12. Đạt — "Xem gói nâng cấp", "Liên hệ hỗ trợ", "Về Tổng quan" theo Bảng thuật ngữ.
+
+### Kiểm hiển thị (D0-4b)
+| Bề rộng × trình duyệt | Kết quả |
+|---|---|
+| 1440 · Chrome · Sáng | Đạt [ĐO BẰNG SCRIPT] — mục 1–4 |
+| 390 · Chrome · Sáng | Đạt [ĐO BẰNG SCRIPT] — không cuộn ngang, thanh hỗ trợ 48px |
+| 360 / 768 / 1024 / 1240 · tối · Chữ lớn · 200% · 844×390 | [CHƯA KIỂM ĐƯỢC] — hết lượt đo; Claude Code kiểm bằng zip |
+| Safari iPhone/iPad · Firefox · Samsung Internet | [CHƯA KIỂM ĐƯỢC] — môi trường thiết kế chỉ có Chrome |
+
+### Việc cho backend (D0-4b)
+- Registry màn phía build: route ↔ khóa màn (`AdminNav`/`PlatformNav` trả thêm khóa màn), breadcrumb + Trợ giúp theo khóa. Kho câu hỏi Trợ giúp theo khóa màn.
+- `plan_features` theo `BSAI.PLAN_FEATURES` (Cần owner chốt: giá trị đề xuất, vì quyết định giá/gói). `site_modules` bật/tắt theo website.
+- Quyền đề xuất `activity.view`, `platform.staff.manage` (thêm vào PermissionRegistry).
+- Phiên "Đăng nhập dưới tên khách hàng": thời hạn (prototype 30 phút), ghi nhật ký bắt đầu/kết thúc, nút "Quay lại quản trị" kết thúc phiên ở máy chủ (D4-3). Cần owner chốt: thời hạn phiên và có báo cho khách không (dữ liệu cá nhân).
+- Lời mời nâng gói: công tắc ở Nền tảng › Gói & tính năng (mặc định TẮT) → cấp cho admin dưới dạng cờ đọc được ở mọi màn.
+
+Verifier: [CHƯA KIỂM ĐƯỢC] nếu công cụ chụp quá giờ (Shell ≈ 425 KB) — Claude Code kiểm bằng zip.

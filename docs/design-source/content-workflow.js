@@ -242,7 +242,133 @@
     return ss[0] || null;
   }
 
+  /* D0-4b — nhóm quyền NỀN TẢNG (PermissionRegistry::platformRoles(), dòng 141–152). Nhãn = tên hiển thị; key = tên repo. */
+  var PLATFORM_PERMS = [
+    'platform.tenants.view', 'platform.tenants.manage', 'platform.sites.view', 'platform.sites.manage',
+    'platform.sites.impersonate', 'platform.entitlements.manage', 'platform.workflows.manage',
+    'platform.site_types.manage', 'platform.themes.manage', 'platform.billing.manage',
+    'platform.users.manage', 'platform.audit.view'
+  ];
+  var PLATFORM_ROLES = {
+    'Quản trị nền tảng': { key: 'super_admin', level: 100, perms: '*' },
+    'Nhân viên hỗ trợ': { key: 'support', level: 50, perms: ['platform.tenants.view', 'platform.sites.view', 'platform.audit.view', 'platform.sites.impersonate'] },
+    'Nhân viên thanh toán': { key: 'billing', level: 40, perms: ['platform.billing.manage', 'platform.tenants.view'] }
+  };
+  /* Quyền ĐỀ XUẤT (chưa có trong repo — Chờ backend): nhóm nào được cấp mặc định. Không thêm vào TENANT_PERMS để khỏi lệch repo. */
+  var PROPOSED = {
+    'activity.view': ['owner', 'admin'],
+    'platform.staff.manage': ['super_admin']
+  };
+  function platformRole(label) { return PLATFORM_ROLES[label] || PLATFORM_ROLES['Quản trị nền tảng']; }
+  function canOne(r, perm) {
+    if (!perm) return true;
+    if (perm === 'super_admin') return r.key === 'super_admin';
+    if (r.perms === '*') return true;
+    if (PROPOSED[perm]) return PROPOSED[perm].indexOf(r.key) >= 0;
+    return r.perms.indexOf(perm) >= 0;
+  }
+  /* has(nhóm, 'a|b') — một trong các quyền là đủ. plane 'platform' đọc PLATFORM_ROLES, còn lại ROLES. */
+  function has(label, expr, plane) {
+    var r = plane === 'platform' ? platformRole(label) : role(label);
+    return !expr || String(expr).split('|').some(function (p) { return canOne(r, p); });
+  }
+
+  /* ---- D0-5 · KHO BÀI MẪU DÙNG CHUNG (prototype) — danh sách, trình soạn, Hộp duyệt cùng đọc/ghi ----
+     Nhận ra bài bằng LOẠI + ĐƯỜNG DẪN (slug công khai), không dùng id số. `st` = khóa của BSCW.UI / bước quy trình
+     (draft · pending · reviewing · published · scheduled · private · archived). Chỉ sống trong phiên trang (không lưu
+     trình duyệt) — bản thật: bảng entries + entry_translations. Mỗi lần ghi phát 'bs-cw-store' {type, slug, act, src}.
+     Mẫu cố ý KHÔNG có bài chờ duyệt: hàng chờ của Hộp duyệt chỉ có bài người dùng vừa gửi trong phiên. */
+  var TYPE_META = {
+    pages: { label: 'Trang', base: '/', icon: 'ri-file-text-line', cats: [] },
+    posts: { label: 'Tin tức', base: '/tin-tuc/', icon: 'ri-newspaper-line', cats: [['Tin công ty', 0], ['Thông báo nội bộ', 1], ['Hoạt động cộng đồng', 1], ['Kiến thức kỹ thuật', 0], ['Gia công CNC', 1], ['Vật liệu & xử lý nhiệt', 1], ['Đo kiểm & dung sai', 2], ['Dự án đã làm', 0], ['Tuyển dụng', 0]] },
+    services: { label: 'Dịch vụ', base: '/dich-vu/', icon: 'ri-briefcase-line', cats: [['Gia công CNC', 0], ['Tiện CNC', 1], ['Phay CNC', 1], ['Khuôn mẫu', 0], ['Xử lý bề mặt', 0], ['Bảo trì máy', 0]] },
+    projects: { label: 'Dự án', base: '/du-an/', icon: 'ri-folder-2-line', cats: [['Khuôn ép nhựa', 0], ['Dây chuyền lắp đặt', 0], ['Chi tiết chính xác', 0], ['Khách hàng nước ngoài', 1]] }
+  };
+  function R(type, name, path, st, cat, langs, au, upd, extra) {
+    var o = { type: type, name: name, slug: TYPE_META[type].base.replace(/\/$/, '') + '/' + path, st: st, cat: cat, langs: langs, author: au, updated: upd, trashed: false, img: true };
+    if (type === 'pages') o.slug = path ? '/' + path : '/';
+    for (var k in (extra || {})) o[k] = extra[k];
+    return o;
+  }
+  var SAMPLE = {
+    posts: [
+      R('posts', '5 lưu ý khi chọn xưởng gia công CNC', 'luu-y-chon-xuong-gia-cong-cnc', 'published', 'Kiến thức kỹ thuật', ['VI', 'EN', 'JA'], 'Ngọc Anh', '28/07/2026 · 09:24'),
+      R('posts', 'An Vinh đầu tư máy phay 5 trục mới', 'dau-tu-may-phay-5-truc', 'published', 'Tin công ty', ['VI', 'EN'], 'Minh Trí', '24/07/2026 · 16:05'),
+      R('posts', 'Dự án khuôn ép nhựa cho khách Nhật', 'du-an-khuon-ep-nhua', 'published', 'Dự án đã làm', ['VI', 'EN', 'JA', 'ZH'], 'Ngọc Anh', '19/07/2026 · 11:40'),
+      R('posts', 'Sai số gia công: hiểu đúng để đặt hàng đúng', 'sai-so-gia-cong', 'draft', 'Kiến thức kỹ thuật', ['VI'], 'Thu Hà', '30/07/2026 · 14:32'),
+      R('posts', 'Tuyển kỹ sư lập trình CNC 2026', 'tuyen-ky-su-cnc-2026', 'scheduled', 'Tuyển dụng', ['VI', 'EN'], 'Thu Hà', '31/07/2026 · 10:07', { schedText: '05/08/2026 · 08:00', schedAt: '2026-08-05T08:00' }),
+      R('posts', 'So sánh thép C45 và SKD11 khi làm khuôn', 'so-sanh-c45-skd11', 'draft', 'Kiến thức kỹ thuật', ['VI'], 'Minh Trí', '01/08/2026 · 15:44'),
+      R('posts', 'Quy trình kiểm tra chất lượng tại An Vinh', 'quy-trinh-kiem-tra-chat-luong', 'published', 'Tin công ty', ['VI', 'EN', 'JA'], 'Ngọc Anh', '12/07/2026 · 08:15'),
+      R('posts', 'Bảng giá gia công tiện CNC tham khảo', 'bang-gia-tien-cnc', 'draft', 'Kiến thức kỹ thuật', ['VI'], 'Thu Hà', '02/08/2026 · 09:10'),
+      R('posts', 'Khách hàng nói gì về An Vinh', 'khach-hang-noi-gi', 'published', 'Dự án đã làm', ['VI', 'EN'], 'Minh Trí', '05/07/2026 · 13:20'),
+      R('posts', 'Bản tin nội bộ tháng 6', 'ban-tin-noi-bo-thang-6', 'draft', 'Tin công ty', ['VI'], 'Ngọc Anh', '28/06/2026 · 17:50', { trashed: true }),
+      R('posts', 'Hội chợ cơ khí Hà Nội 2026', 'hoi-cho-co-khi-ha-noi-2026', 'draft', 'Tin công ty', ['VI', 'EN'], 'Minh Trí', '29/07/2026 · 10:35'),
+      R('posts', 'Cách đọc bản vẽ kỹ thuật cơ bản', 'cach-doc-ban-ve-ky-thuat', 'published', 'Kiến thức kỹ thuật', ['VI', 'EN', 'JA', 'ZH'], 'Thu Hà', '02/07/2026 · 09:58')
+    ],
+    services: [
+      R('services', 'Gia công phay CNC 5 trục', 'gia-cong-phay-cnc-5-truc', 'published', 'Phay CNC', ['VI', 'EN'], 'Ngọc Anh', '20/07/2026 · 09:00'),
+      R('services', 'Tiện CNC chi tiết trục, bạc', 'tien-cnc-chi-tiet-truc', 'published', 'Tiện CNC', ['VI', 'EN'], 'Minh Trí', '18/07/2026 · 14:20'),
+      R('services', 'Thiết kế và chế tạo khuôn ép nhựa', 'che-tao-khuon-ep-nhua', 'published', 'Khuôn mẫu', ['VI', 'EN', 'JA'], 'Ngọc Anh', '11/07/2026 · 10:45'),
+      R('services', 'Anod hóa và mạ kẽm chi tiết nhôm', 'anod-hoa-ma-kem', 'draft', 'Xử lý bề mặt', ['VI'], 'Thu Hà', '30/07/2026 · 16:10'),
+      R('services', 'Bảo trì định kỳ máy CNC tại xưởng khách', 'bao-tri-may-cnc', 'scheduled', 'Bảo trì máy', ['VI'], 'Minh Trí', '01/08/2026 · 08:30', { schedText: '12/08/2026 · 08:00', schedAt: '2026-08-12T08:00' })
+    ],
+    projects: [
+      R('projects', 'Bàn giao dây chuyền phay CNC cho khách Bắc Ninh', 'ban-giao-day-chuyen-phay-cnc-bac-ninh', 'published', 'Dây chuyền lắp đặt', ['VI', 'EN'], 'Minh Trí', '22/07/2026 · 15:00'),
+      R('projects', 'Khuôn ép vỏ thiết bị cho đối tác Nhật Bản', 'khuon-ep-vo-thiet-bi-nhat-ban', 'published', 'Khách hàng nước ngoài', ['VI', 'EN', 'JA'], 'Ngọc Anh', '15/07/2026 · 11:20'),
+      R('projects', 'Chi tiết dung sai 0,01 mm cho ngành y tế', 'chi-tiet-dung-sai-y-te', 'draft', 'Chi tiết chính xác', ['VI'], 'Thu Hà', '29/07/2026 · 09:40'),
+      R('projects', 'Hồ sơ năng lực 2026 — bản rút gọn', 'ho-so-nang-luc-2026-ban-rut-gon', 'private', 'Chi tiết chính xác', ['VI'], 'Ngọc Anh', '27/07/2026 · 17:05')
+    ],
+    pages: [
+      R('pages', 'Trang chủ', '', 'published', '', ['VI', 'EN', 'JA', 'ZH'], 'Ngọc Anh', '02/07/2026 · 09:24', { template: 'Trang chủ', views: '12.480', viewsNum: 12480 }),
+      R('pages', 'Giới thiệu', 'gioi-thieu', 'published', '', ['VI', 'EN', 'JA'], 'Minh Trí', '28/06/2026 · 16:05', { template: 'Mặc định', views: '3.214', viewsNum: 3214 }),
+      R('pages', 'Dịch vụ', 'dich-vu', 'published', '', ['VI', 'EN'], 'Ngọc Anh', '30/06/2026 · 11:40', { template: 'Danh mục dịch vụ', views: '5.902', viewsNum: 5902 }),
+      R('pages', 'Thiết kế website', 'dich-vu/thiet-ke-website', 'published', '', ['VI', 'EN'], 'Minh Trí', '24/06/2026 · 08:15', { template: 'Chi tiết dịch vụ', parent: '/dich-vu', views: '1.876', viewsNum: 1876 }),
+      R('pages', 'Quảng cáo Google', 'dich-vu/quang-cao-google', 'draft', '', ['VI'], 'Thu Hà', '21/06/2026 · 14:32', { template: 'Chi tiết dịch vụ', parent: '/dich-vu', views: '0', viewsNum: 0 }),
+      R('pages', 'SEO tổng thể', 'dich-vu/seo-tong-the', 'scheduled', '', ['VI', 'EN'], 'Thu Hà', '05/07/2026 · 10:07', { template: 'Chi tiết dịch vụ', parent: '/dich-vu', schedAt: '2026-07-08T09:00', schedText: '08/07/2026 · 09:00', views: '0', viewsNum: 0 }),
+      R('pages', 'Tin tức', 'tin-tuc', 'published', '', ['VI', 'EN', 'JA', 'ZH'], 'Ngọc Anh', '01/07/2026 · 17:50', { template: 'Danh sách bài viết', views: '8.655', viewsNum: 8655 }),
+      R('pages', 'Liên hệ', 'lien-he', 'published', '', ['VI', 'EN', 'JA'], 'Minh Trí', '15/06/2026 · 09:58', { template: 'Liên hệ', views: '2.190', viewsNum: 2190 }),
+      R('pages', 'Chính sách bảo mật', 'chinh-sach-bao-mat', 'private', '', ['VI'], 'Thu Hà', '10/06/2026 · 13:20', { template: 'Văn bản', views: '312', viewsNum: 312 }),
+      R('pages', 'Tuyển dụng', 'tuyen-dung', 'draft', '', ['VI'], 'Ngọc Anh', '04/07/2026 · 15:44', { template: 'Mặc định', views: '0', viewsNum: 0 })
+    ]
+  };
+  var ROWS = {};
+  function cp(o) { return JSON.parse(JSON.stringify(o)); }
+  function rowsOf(type) { if (!ROWS[type]) ROWS[type] = cp(SAMPLE[type] || []); return ROWS[type]; }
+  function emit(type, slug, act, src) { try { document.dispatchEvent(new CustomEvent('bs-cw-store', { detail: { type: type, slug: slug, act: act, src: src || null } })); } catch (e) {} }
+  /* Bước "đang chờ người duyệt" của một quy trình = không phải bước đầu, không phải bước đăng, không phải bước kết thúc. */
+  function waitingSteps(wfName) { var w = allWf(wfName); if (!w) return []; return Object.keys(w.states).filter(function (k) { var s = w.states[k]; return !s.initial && !s.published && !s.terminal; }); }
+  var store = {
+    types: function () { return Object.keys(TYPE_META); },
+    meta: function (type) { return TYPE_META[type] || { label: type, base: '/' + type + '/', icon: 'ri-file-line', cats: [] }; },
+    list: function (type) { return cp(rowsOf(type)); },
+    get: function (type, slug) { var r = rowsOf(type).filter(function (x) { return x.slug === slug; })[0]; return r ? cp(r) : null; },
+    /* put: thêm hoặc cập nhật theo đường dẫn; prevSlug khi bài vừa đổi đường dẫn. */
+    put: function (type, row, src, prevSlug) {
+      var a = rowsOf(type), key = prevSlug || row.slug, i = -1;
+      for (var j = 0; j < a.length; j++) if (a[j].slug === key) { i = j; break; }
+      var rec = Object.assign({}, i >= 0 ? a[i] : {}, cp(row), { type: type });
+      if (i >= 0) a[i] = rec; else a.unshift(rec);
+      emit(type, rec.slug, i >= 0 ? 'update' : 'create', src); return cp(rec);
+    },
+    patch: function (type, slug, patch, src) { var cur = store.get(type, slug); if (!cur) return null; return store.put(type, Object.assign(cur, patch), src, slug); },
+    /* replace: màn danh sách ghi cả bảng sau một thao tác (đổi trạng thái, Thùng rác, sửa tại dòng). */
+    replace: function (type, rows, src) { ROWS[type] = cp(rows).map(function (r) { r.type = type; return r; }); emit(type, null, 'replace', src); },
+    remove: function (type, slug, src) { ROWS[type] = rowsOf(type).filter(function (x) { return x.slug !== slug; }); emit(type, slug, 'remove', src); },
+    /* Hàng chờ của Hộp duyệt: bài ở bước chờ của quy trình đang bật; roleLabel → chỉ bài nhóm quyền đó có bước để bấm. */
+    queue: function (wfName, roleLabel) {
+      var ws = waitingSteps(wfName); if (!ws.length) return [];
+      var out = [];
+      store.types().forEach(function (t) { rowsOf(t).forEach(function (r) { if (!r.trashed && ws.indexOf(r.st) >= 0 && (!roleLabel || allowed(wfName, r.st, roleLabel).length)) out.push(cp(r)); }); });
+      return out;
+    },
+    count: function (wfName, roleLabel) { return store.queue(wfName, roleLabel).length; },
+    reset: function () { ROWS = {}; emit(null, null, 'reset', null); }
+  };
+
   window.BSCW = {
+    store: store,
+    PLATFORM_PERMS: PLATFORM_PERMS, PLATFORM_ROLES: PLATFORM_ROLES, PROPOSED: PROPOSED,
+    platformRole: platformRole, platformRoleNames: function () { return Object.keys(PLATFORM_ROLES); }, has: has,
     PERMS: TENANT_PERMS, ROLES: ROLES, UI: UI, WF: WF, TIER1: TIER1,
     WF_META: WF_META, DEMO_WF: DEMO_WF,
     allWf: allWf, templates: templates, steps: steps, allowed: allowed, stepOf: stepOf,

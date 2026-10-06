@@ -2,12 +2,18 @@ repo: tuyenht/BSWebSaaS
 branch: main
 
 ## Last sync
-date: 2026-10-06T07:46:22Z
+date: 2026-10-06T09:46:29Z
+
+### Updated in this project
+- D0-4b: nhóm quyền nền tảng (`PermissionRegistry.php` platformRoles) vào `content-workflow.js`; tính năng gói (`FeatureRegistry.php`) + module (`ModuleCatalog.php`) vào `ai-quota.js`; Admin Shell ẩn/khóa menu theo Tweak.
+- Registry màn `shell-screens.js` + điều hướng `bs-goto` / hash `#/<mặt>/<màn>`.
+
+## Sync history
+
+### 2026-10-06T07:46:22Z
 
 ### Updated in this project
 - D0-4at: cờ nút Ngôn ngữ giao diện lấy từ `public/images/admin/flags/{vi,en,ja,zh}.svg` (nhúng SVG trong Admin Shell, bản sao ở `assets/flags/`).
-
-## Sync history
 
 ### 2026-10-06T04:09:41Z
 
@@ -60,6 +66,7 @@ date: 2026-10-06T07:46:22Z
 | Hộp duyệt | `app/Modules/Admin/Livewire/Entries/ReviewInbox.php` |
 | Quy trình duyệt | `app/Modules/Admin/Livewire/WorkflowSettings.php`, `app/Modules/Workflow/Registry/WorkflowTemplateRegistry.php`, `app/Modules/Cms/Actions/ApplyEntryWorkflowTransition.php` |
 | Phân quyền nội dung (mọi màn) | `app/Modules/Rbac/Registry/PermissionRegistry.php`, `app/Modules/Cms/Policies/EntryPolicy.php` |
+| Admin Shell — ẩn/khóa theo nhóm quyền · gói · module (Tweaks D0-4b) | `app/Modules/Rbac/Registry/PermissionRegistry.php`, `app/Modules/Tenancy/Registry/FeatureRegistry.php`, `app/Modules/Tenancy/Registry/ModuleCatalog.php` |
 | Trạng thái nội dung (mọi màn) | `database/migrations/2000_01_01_000000_create_content_tables.php`, `database/migrations/2012_01_01_000000_expand_entry_status_and_add_view_count.php` |
 | Thành viên (+ lời mời) | `app/Modules/Admin/Livewire/Users/Index.php`, `app/Modules/Admin/Livewire/AcceptInvitation.php` |
 | Thư viện ảnh & tệp · Trình chọn ảnh | `app/Modules/Admin/Livewire/Media/Library.php` |

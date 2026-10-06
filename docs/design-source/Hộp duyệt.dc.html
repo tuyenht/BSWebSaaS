@@ -509,8 +509,11 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 class Component extends DCLogic {
   constructor(p) {
     super(p);
+    this._sid = 'hop-duyet-' + Math.random().toString(36).slice(2, 7); this._pp = Object.assign({}, p);
+    const fromKho = !!(p.embedded && window.BSCW && window.BSCW.store);
+    const items0 = fromKho ? this.fromStore(p) : this.seed();
     this.state = {
-      tab: 'mine', shown: 5, items: this.seed(), cur: 1, mobileDetail: false,
+      tab: 'mine', shown: 5, items: items0, cur: fromKho ? (items0[0] ? items0[0].id : null) : 1, mobileDetail: false,
       q: '', sec: '', picked: [], logShown: 3, fold: this.loadFold(),
       modal: null, note: '', who: '', err: false, confirm: null,
       toast: '', toastIcon: 'ri-check-line'
@@ -624,6 +627,17 @@ class Component extends DCLogic {
       }
     ];
   }
+  /* D0-5: nhúng trong Shell → hàng chờ đọc từ kho dùng chung BSCW.store theo quy trình đang bật (prop workflow). */
+  embStore() { return !!(this.props.embedded && window.BSCW && window.BSCW.store); }
+  fromStore(p) {
+    const P = p || this.props, C = window.BSCW, wf = P.workflow || 'Duyệt trước khi đăng';
+    return C.store.queue(wf).map((r) => { const M = C.store.meta(r.type);
+      return { id: r.slug, kType: r.type, title: r.name, section: M.label, secIcon: M.icon, wf: wf, step: r.st, sender: r.author || 'Thu Hà', wait: 0, mine: true,
+        note: r.lastNote || '', cover: !!r.img, coverRatio: '16 / 9', coverAlt: r.img ? (r.alt || '') : '', fields: [], desc: r.excerpt || '', body: r.bodyText || [], slug: r.slug, seoTitle: r.seoTitle || r.name, seoDesc: r.seoDesc || '' }; });
+  }
+  refreshFromStore() { const items = this.fromStore(); const keep = items.some((x) => x.id === this.state.cur); this.setState({ items: items, cur: keep ? this.state.cur : (items[0] ? items[0].id : null), picked: this.state.picked.filter((id) => items.some((x) => x.id === id)) }); }
+  toStore(it, to, note) { if (!this.embStore() || !it.kType) return; window.BSCW.store.patch(it.kType, it.slug, Object.assign({ st: to }, note ? { lastNote: note } : {}), this._sid); }
+  componentDidUpdate() { const pp = this._pp || {}, p = this.props; this._pp = Object.assign({}, p); if (this.embStore() && (pp.workflow !== p.workflow || pp.role !== p.role)) this.refreshFromStore(); }
   missingOf(it) {
     const out = [];
     if (!it.cover) out.push('ảnh đại diện');
@@ -665,6 +679,8 @@ class Component extends DCLogic {
       }
     };
     document.addEventListener('keydown', this._onNav);
+    this._onStore = (e) => { const d = (e && e.detail) || {}; if (d.src === this._sid || !this.embStore()) return; this.refreshFromStore(); };
+    document.addEventListener('bs-cw-store', this._onStore);
   }
   curItem() {
     const list = this.visible().slice(0, this.state.shown);
@@ -674,6 +690,7 @@ class Component extends DCLogic {
     document.removeEventListener('bs-cw-ready', this._onCw);
     document.removeEventListener('keydown', this._onKey);
     document.removeEventListener('keydown', this._onNav);
+    document.removeEventListener('bs-cw-store', this._onStore);
   }
   /* Gập/mở từng thẻ trường — mặc định mở thứ phải đọc, gập hai thẻ tra cứu.
      Ghi nhớ theo người dùng để lần sau mở đúng như họ để lại. */
@@ -761,6 +778,7 @@ class Component extends DCLogic {
         ok: 'Duyệt đăng ' + list.length + ' bài',
         run: () => {
           const ids = list.map((x) => x.id);
+          list.forEach((x) => { const pri = this.cw().allowed(x.wf, x.step, this.role()).filter((t) => t.primary)[0]; if (pri) this.toStore(x, pri.to, ''); });
           this.setState({ items: this.state.items.filter((x) => ids.indexOf(x.id) < 0), picked: [], cur: null, mobileDetail: false });
           this.notify('Đã duyệt đăng ' + ids.length + ' bài', 'ri-check-double-line');
         }
@@ -802,6 +820,7 @@ class Component extends DCLogic {
     const list = this.visible();
     const i = list.map((x) => x.id).indexOf(it.id);
     const next = list[i + 1] || list[i - 1] || null;
+    this.toStore(it, tr.to, note);
     this.setState({
       items: this.state.items.filter((x) => x.id !== it.id),
       cur: next ? next.id : null, mobileDetail: false

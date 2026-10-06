@@ -1,16 +1,37 @@
 # Việc còn lại — cập nhật 06/10/2026
 
+## ~~D0-5~~ — xong 06/10 (README `README - D0-5 Nối màn.md`)
+- ~~Tách CSS component ra `admin-components.css`~~ → xong: hai trang chuẩn link sau `admin-base.css`, `<style>` chỉ còn reset trang; `--fsp:0px` mặc định; lớp trùng tên của trang bổ sung khoanh trong `[data-cs="sup"]` (không đổi tên). Đo `_audit/d05-std.html`: 0 tràn trang ở 360/390/768/1440 × thường/Chữ lớn; sơ đồ Mẫu 1/8 0 cắt · 0 vỡ từ; ô `--brand-*` 0 cắt.
+- Lượt tách CSS · xem bằng mắt vùng cuộn `.tw` ở `#he-thong` (khung 390/768/1240) và phần tử `overflow:hidden` ở `#dieu-khien` khi bật Chữ lớn — chữ có bị cắt không (môi trường thiết kế chỉ đo bằng script) · Claude Code kiểm bằng zip
+- Màn link `admin-components.css` lần đầu thì bỏ `.dsw` tự khai trong cùng lượt (Shell, Trình đơn, Email Settings, Đăng nhập nhanh, Integrations, Floating Contact) · lượt sửa từng màn (D0-6a/b/c)
+- Chữ lớn: Shell còn phóng `zoom` 16/14 cho cả màn nhúng — màn nhúng đã nối (Bài viết, Trang, Page Editor, Hộp duyệt) chưa dùng `--fsp`; bỏ `zoom` khi màn chuyển sang `--fsp` · D0-6a (chuyển từ "· D0-5")
+- Tweak "Số ngôn ngữ" 8 chưa có العربية + ô nhập theo ngôn ngữ tự `dir="rtl"` — các trình soạn nhúng chưa có ô theo ngôn ngữ RTL, việc thuộc thanh ngôn ngữ/ô nhập · D1-4b (chuyển từ "· D0-5")
+- Nút AI ẩn khi "Lời mời nâng gói" TẮT: Shell đã truyền `upsell` + `plan-key` vào Bài viết, Trang, Page Editor; màn chưa đọc prop này để ẩn/khóa nút AI · D1-3 (danh sách) · D1-4b (trình soạn)
+- Màn Sửa (`<loại>.edit`) chưa tô mục menu "Danh sách" đang chọn (registry có `activeAs`, Shell chưa đọc) · D0-6a
+- Kho `BSCW.store`: thân bài (body) chưa lưu vào kho — Hộp duyệt chỉ thấy tiêu đề + tóm tắt của bài vừa gửi · D1-4d
+- Hộp duyệt khi nhúng: "chờ 0 ngày" cho bài vừa gửi trong phiên → "vừa gửi" · D0-6a
+- Lượt kế tiếp: **D0-6a**.
+
+## ~~D0-4b~~ — xong 06/10 (README `README - D0-4 Admin Shell v2.md` › D0-4b phần chính)
+- ~~Màn đã có thiết kế nhưng chưa nhận `embedded`: Quản lý Bài viết - Options + Quản lý Trang - Options · D1-3~~ → xong ở D0-5 (phần nhúng)
+- ~~Page Editor - Options: nhận `embedded` + `onDirty(n)` + `bs-embed-cmd {act:'save'}` · D1-4d~~ → xong ở D0-5
+- ~~Hộp duyệt: nhận `embedded` + đọc chế độ duyệt từ Shell · D0-6a~~ → xong ở D0-5 (Hộp duyệt không có h1 riêng; Shell giữ `ownHeader`)
+- Chuẩn giao diện SaaS Starter: nhận `embedded` (Shell đang mount nguyên trang, ẩn h1 của Shell) · lượt tách CSS (sau D0-3)
+- Owner chốt bảng `BSAI.PLAN_FEATURES` (giá trị theo gói của workflow.editorial · sites.max · media.storage_mb · locales.max · custom_domains.max · rbac.custom_roles — đề xuất của thiết kế) · Cần owner chốt
+- ~~Tweak "Số ngôn ngữ" 8 chưa có العربية (RTL) · D0-5~~ → chuyển D1-4b (xem mục D0-5)
+- ~~Lượt kế tiếp: D0-5.~~ → xong 06/10; kế tiếp D0-6a.
+
 ## ~~D0-4a phần 2~~ — xong 06/10 (README `README - D0-4 Admin Shell v2.md` › Phần 2)
 - ~~Mục 2 topbar · Mục 3 Cài đặt + thanh Lưu dính đáy + onDirty(n)/onInvalid(n)/firstError phía Shell · Mục 5 bản đồ màn hình~~ → xong.
 - Phía panel nhúng (Shell đã nhận số/lỗi và gửi `firstError`): Email Settings · Đăng nhập nhanh · Integrations Panel · Floating Contact Panel — `onDirty(n)` + `onInvalid(n)` + nghe `bs-embed-cmd {act:'firstError'}` · D0-6b
 - Phía panel nhúng: Trình đơn — `onDirty(n)` + `onInvalid(n)` + nghe `firstError` · D0-6a
-- Chữ lớn: Shell đặt `--fsp` trên khung gốc + phóng nội dung 16/14 (`zoom`) vì chữ của Shell viết px; khi màn nhúng dùng `--fsp` thì bỏ `zoom` để không phóng hai lần · D0-5
-- Tweak "Lời mời nâng gói" cho dòng "Tạo website mới — khóa theo gói" (hiện ghi "Liên hệ hỗ trợ") + nội dung Trợ giúp theo registry màn · D0-4b
+- Chữ lớn: Shell đặt `--fsp` trên khung gốc + phóng nội dung 16/14 (`zoom`) vì chữ của Shell viết px; khi màn nhúng dùng `--fsp` thì bỏ `zoom` để không phóng hai lần · ~~D0-5~~ → D0-6a (xem mục D0-5)
+- ~~Tweak "Lời mời nâng gói" cho dòng "Tạo website mới — khóa theo gói" + nội dung Trợ giúp theo registry màn · D0-4b~~ → xong 06/10 (bật: "Xem gói nâng cấp"; Trợ giúp đọc `help` của registry)
 - Tổng quan ở 360px: lưới giữa đã đổi `minmax(0,…)`; vẽ lại cả màn · D2-5
 - Email Settings ở 390: dải tab cắt chữ ('Chữ ký & thương hiệu' bị che), thẻ trạng thái quá hẹp · D0-6b
 - Tổng quan ở 360: nút '7 ngày / 30 ngày' xuống 2 dòng · D2-5
 - Tạo website mới khi chỉ có 1 website: đặt ở Cài đặt › Gói & mức dùng, cạnh số website còn được tạo · D3-2
-- Lượt kế tiếp: D0-4b (Tweaks còn lại vào CÙNG data-props, registry màn, điều hướng bs-goto, ẩn mục theo perm/mod đã gắn sẵn).
+- ~~Lượt kế tiếp: D0-4b~~ → xong 06/10; kế tiếp D0-5.
 
 ## ~~D0-3 phần 2~~ — xong 05/10: 8 mẫu trang `#mau-trang` (`#mau-1` … `#mau-8`) + kiểm hiển thị đo bằng `_audit/w360.html` — xem README D0-3 › Phần 2.
 
@@ -68,12 +89,12 @@ Lượt D0 không đọc AUDIT.md — mọi chỉ dẫn cần thiết nằm ở 
 - _audit/ · thư mục kiểm thử đóng băng: mọi lượt bỏ qua _audit/ khi grep, sửa, xoá, chuyển, tìm bản trùng; không xoá · áp mọi lượt D0–D5
 - uploads/ · tệp đính kèm cũ của các chat (có bản sao màn cũ ở uploads/import_ready/ và tệp của dự án khác), không phải thiết kế: mọi lượt bỏ qua uploads/ khi grep, sửa, tìm bản trùng hay đối chiếu; không xóa · áp mọi lượt D0–D5
 - ~~D0-2 · kiểm hiển thị 360 / 1024 / 1440 / xoay ngang / 200% · D0-3~~ → đo xong 05/10 bằng `_audit/w360.html` (360 · 390 · 640 · 768 · 844 · 1024 · 1440, chữ thường + Chữ lớn): trang không cuộn ngang; chế độ tối, Safari/Firefox chưa kiểm — README D0-3
-- D0-2 · đưa trang chuẩn vào registry màn của Shell khi có D0-4b · D0-4b
+- ~~D0-2 · đưa trang chuẩn vào registry màn của Shell khi có D0-4b · D0-4b~~ → xong 06/10: khóa `ui-standard`, mở từ ô tìm / Ctrl+K
 - D0-2 · DS: thêm các component MỚI + sửa Button/Input/Modal/Table/Dropdown theo bảng tra · prompt DS riêng · Alert: chữ dùng -text (hiện màu gốc, cảnh báo 1,65:1) và theo --fsp · Avatar: chữ tắt dùng token G2 (tokens/colors.css còn #405189, nền tối 1,96:1)
 - ~~D0-2 · component bổ sung — ĐÃ CHỐT 04/10 … Còn: …~~ → chia theo khối D0-2 phần 3 (06/10)
 - D0-2 · đưa bản tương tác của Danh sách co giãn (#5a: menu trạng thái, menu bản ngôn ngữ, tab + Khác, Lọc, Sắp xếp, Chọn nhiều, hộp Đặt lịch) vào trang chuẩn mục Co giãn, kèm mẫu Bài viết / Sản phẩm / dòng Chỉ xem; xong thì xóa `Danh sách co giãn - Đã chốt.dc.html` · lượt riêng sau D0-3
 - D0-2 · Quản lý Trang: sửa/thêm bản ngôn ngữ chỉ hiện khi rê chuột lên chip mã (P14.f) → đổi thành bấm nhóm chip mở menu Sửa bản / Thêm bản như Danh sách co giãn 5a; đồng bộ thẻ gọn dưới 1024px (tab + "Khác", một nút Lọc, Sắp xếp, Chọn) cho Quản lý Trang / Bài viết / Sản phẩm; màu + nhãn trạng thái theo BSCW.UI ("Đã lên lịch" đang vàng #c78729 ~2,8:1, "Đã xuất bản" → "Đã đăng") · lượt sửa màn danh sách
-- D0-2 · tách CSS component của trang chuẩn ra admin-components.css: biến --fsp phải có mặc định trong file; lớp trùng tên .dsw (6 màn) / .st (4 màn) đổi tên hoặc gộp trước; container query cần khung chứa ở màn dùng · D0-5
+- ~~D0-2 · tách CSS component của trang chuẩn ra admin-components.css · D0-5~~ → xong 06/10 (không đổi tên lớp — owner: `.dsw` của trang chuẩn là bản chuẩn; khung chứa ghi ở đầu file)
 - ~~L1-21a-4 / L1-C-08 · số rút gọn cho biểu đồ~~ → xong ở D0-3 phần 1 (05/10): `BSUI.fmtCompact(n, {locale, max})` trong content-ui.js + quy ước ở trang chuẩn `#dinh-dang` + README D0-3. Áp vào Tổng quan Shell: số rút gọn cho Tổng quan Shell · D2-5 (Tổng quan do D2-5 vẽ lại).
 - L1-C-09 · `Nâng cấp nội dung.dc.html` và trình soạn (`Trình soạn nội dung.dc.html`, kiểm cả `Page Editor - Options`) không link styles.css: chèn link styles.css NGAY TRƯỚC link Google URL CHUẨN (Google phải đứng sau inter.css/styles.css theo CLAUDE.md), xong xem tay chữ nút/ô nhập · Nâng cấp nội dung: D0-6c; trình soạn: D1-4d mục 4
 - X3B2 · nút "Đi tới ô đó" ở Nâng cấp nội dung cao 19,2 px (< 44 px vùng bấm) · D0-6c
@@ -81,7 +102,7 @@ Lượt D0 không đọc AUDIT.md — mọi chỉ dẫn cần thiết nằm ở 
 - Việc cho build (Claude Code xử lý khi dựng Livewire/Tailwind, không làm ở prototype): L1-F-02 chữ nghiêng; L1-F-04 tự host font Google + bỏ inter.css; L1-F-05 link font do helmet DC con gắn vào Shell; Inter-italic.woff2 được tải dù trang không dùng (từ L1-T-08) · build
 - L1-T-03 · theo dõi mã chèn của harness · đóng theo track, chỉ mở lại khi đo hồi quy font
 - L1-T-08 · face nghiêng inter.css 'loaded' ở Shell (theo dõi thụ động) · đóng theo track, chỉ mở lại khi đo hồi quy font
-- ~~L1-C-06 · mở Shell với hash lạ (`#profile`) vào mục không tồn tại: không tiêu đề, không nội dung, không về Tổng quan (`applyHash` không kiểm danh sách mục) · chưa xếp lượt~~ → xong 06/10 ở D0-4a (hash lạ bị bỏ qua)
+- ~~L1-C-06 · mở Shell với hash lạ (`#profile`) vào mục không tồn tại: không tiêu đề, không nội dung, không về Tổng quan (`applyHash` không kiểm danh sách mục) · chưa xếp lượt~~ → xong 06/10 ở D0-4a (hash lạ bị bỏ qua); D0-4b đổi luật: hash lạ / màn không có trong registry → về Tổng quan + toast "Không tìm thấy trang này"
 - L1-C-P01 · Đăng nhập nhanh & Liên kết TK chưa nhận `accountType='platform'` (thêm nhánh platform trong panel) · D0-6b
 - L1-A-P01 · panel nhúng còn hex cứng `#2050a0` cho nền nút/công tắc/viền, chưa theo màu thương hiệu (đổi sang `var(--brand-solid,…)` / `var(--color-accent,…)`) · chưa xếp lượt
 - L1-20 · đổi cỡ chữ px → rem, đo lại ở 125% và 200% · chưa xếp lượt

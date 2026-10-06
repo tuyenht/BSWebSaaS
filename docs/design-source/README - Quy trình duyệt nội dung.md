@@ -146,7 +146,7 @@ Không có màu, gradient hay elevation mới ngoài bảng trên.
 - **Empty riêng từng tab** (“Không có bài nào chờ bạn — thảnh thơi nhé ☕”), **loading** skeleton hai khung, **error** “Thử lại”, **khung đọc trống** khi chưa chọn bài. **Tải thêm** +5 bài/lần, không đánh số trang.
 
 ## 6. Việc còn lại khi hiện thực hoá
-1. Nối màn 1 vào Admin Shell (`settingsGroupsAll()` + `embed:'workflow'` + `mkEmbedDirty('workflow')`).
+1. ~~Nối màn 1 vào Admin Shell (`settingsGroupsAll()` + `embed:'workflow'` + `mkEmbedDirty('workflow')`).~~ → đã đổi chỗ theo owner 30/09 (D0-5, 06/10): màn nằm ở mặt Nền tảng › Website › Quy trình duyệt (khóa `p-workflow` trong `shell-screens.js`, `embed-id="workflow"`, `mkEmbedDirty('workflow')`), KHÔNG nằm trong Cài đặt website; D4-1 đặt vào tab của trang chi tiết website.
 2. Thêm “Hộp duyệt” vào menu Nội dung + badge count trên sidebar.
 3. Bỏ `BSCW.DEMO_WF` khỏi danh sách chọn (chỉ giữ để test N bước).
 4. Thay remixicon CDN bằng inline-SVG theo bảng §4.
