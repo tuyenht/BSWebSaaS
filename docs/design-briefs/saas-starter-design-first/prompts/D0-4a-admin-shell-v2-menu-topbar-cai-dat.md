@@ -51,7 +51,7 @@ Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm n
 
 # D0-4a · Admin Shell v2 (phần 1) — menu 2 mặt + topbar + khung Cài đặt
 
-Cần trước: D0-3 (đã xong 06/10). Mục tiêu: Shell là "bản đồ sống" của toàn sản phẩm — menu và quyền phản ánh đúng repo, người mới nhìn là biết đi đâu. Lượt này làm KHUNG (menu, topbar, Cài đặt); D0-4b làm Tweaks đầy đủ, registry màn hình và điều hướng.
+Cần trước: D0-3 (đã xong 06/10). ĐÃ CHẠY 06/10. Owner 06/10 sau khi chạy: GIỮ nút cờ ngôn ngữ, toàn màn hình, sáng/tối trên topbar (≥ 768px) — xem fixes/D0-4at; các chỗ dưới đây nói bỏ chúng là sai. Mục tiêu: Shell là "bản đồ sống" của toàn sản phẩm — menu và quyền phản ánh đúng repo, người mới nhìn là biết đi đâu. Lượt này làm KHUNG (menu, topbar, Cài đặt); D0-4b làm Tweaks đầy đủ, registry màn hình và điều hướng.
 Hiện trạng (bản xuất 06/10): `Admin Shell.dc.html` (≈340 KB) chỉ vẽ Tổng quan / Cài đặt / Trình đơn; mục khác rơi vào khung "đang được xây dựng" (tìm `showBlank`); chú thích `tenantMenu()` còn ghi "đã bỏ Hộp duyệt…" trong khi repo ĐÃ có Hộp duyệt, tab Quy trình duyệt và Sản phẩm trong Cài đặt. Shell chưa có Tweaks (data-props chỉ có `$preview`), chưa có Trợ giúp, chưa có chữ lớn; ô tìm chỉ ghi "Tìm kiếm…"; chọn ngôn ngữ dùng cờ; nút Tùy biến nổi góc phải đè nội dung trên màn hẹp.
 
 1. Menu 2 mặt, bám code thật (đọc `app/Modules/Admin/Navigation/AdminNav.php` và `PlatformNav.php` — code là nguồn cho LOGIC ẩn/hiện (quyền, gói, điều kiện Hộp duyệt), KHÔNG phải giới hạn danh sách: mục chưa có trong code vẫn vẽ, gắn "Chờ backend"):

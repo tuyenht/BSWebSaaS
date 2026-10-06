@@ -21,7 +21,7 @@ Sửa thêm trước khi xuất zip. Claude Code đã kiểm zip D0-4a bằng Ch
    - Khi đang hiện danh sách nhóm/mục, hash vẫn là `#settings/general`, nên nạp lại trang sẽ mở thẳng "Thông tin chung" thay vì danh sách.
    - Ở dạng danh sách, đặt hash `#settings`; bấm một mục thì đặt `#settings/<mục>`; nút "‹ Cài đặt" thì quay về `#settings`.
    - Ở máy tính, `#settings` mở mục đầu tiên như cũ.
-6. Mã chết còn sót sau khi gỡ 3 nút topbar: `onToggleScheme` · `schemeIcon` · `toggleScheme()` · `onToggleFullscreen` · `fsIcon` · `toggleFullscreen()` và listener `fullscreenchange` · `czTriggerStyle`, cùng các prop của nút Tùy biến nổi đã gỡ. Ngoài ra còn `czPlane` và `czBrand`: tính ra nhưng không còn markup nào dùng. Xóa hết.
+6. (ĐÃ THAY bằng D0-4at điểm 3 — owner giữ nút cờ, toàn màn hình, sáng/tối; chỉ xóa `czTriggerStyle`, `czPlane`, `czBrand`.) Mã chết còn sót sau khi gỡ 3 nút topbar: `onToggleScheme` · `schemeIcon` · `toggleScheme()` · `onToggleFullscreen` · `fsIcon` · `toggleFullscreen()` và listener `fullscreenchange` · `czTriggerStyle`, cùng các prop của nút Tùy biến nổi đã gỡ. Ngoài ra còn `czPlane` và `czBrand`: tính ra nhưng không còn markup nào dùng. Xóa hết.
 7. README D0-4: thêm một dòng nói rằng mục (4) "Xong khi" của D0-4a chỉ áp cho mô tả một dòng của mục Cài đặt và nhãn mặt. Chữ SMTP / OAuth / SSL / sitemap / robots trong NỘI DUNG các panel Email, Tên miền, SEO, Tài khoản mạng xã hội là chữ có sẵn, do D0-6b và D3-2 sửa.
 8. TODO.md: thêm 2 dòng.
    - "Email Settings ở 390: dải tab cắt chữ ('Chữ ký & thương hiệu' bị che), thẻ trạng thái quá hẹp · D0-6b".
