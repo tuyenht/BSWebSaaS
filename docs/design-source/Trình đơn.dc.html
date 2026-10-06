@@ -9,6 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
 <script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
 
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
@@ -88,8 +89,9 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 .mn-sl:hover{background:var(--color-surface-hover,#f3f6f9);}
 .mn-sl.on{border-color:#2050a0;background:rgba(32,80,160,.08);color:var(--color-accent,#2050a0);font-weight:600;}
 .mn-grid{display:grid;grid-template-columns:262px minmax(0,1fr) 288px;gap:16px;align-items:start;}
-@media (max-width:1260px){.mn-grid{grid-template-columns:262px minmax(0,1fr);}.mn-colR{grid-column:2;}}
-@media (max-width:920px){.mn-grid{grid-template-columns:minmax(0,1fr);}.mn-colR{grid-column:1;}}
+/* D0-6a: co theo khung chứa (màn còn được nhúng trong Shell), không theo cửa sổ */
+@container (max-width:1210px){.mn-grid{grid-template-columns:262px minmax(0,1fr);}.mn-colR{grid-column:2;}}
+@container (max-width:860px){.mn-grid{grid-template-columns:minmax(0,1fr);}.mn-colR{grid-column:1;}}
 .mn-bar,.mn-tree,.mn-card{container-type:inline-size;}
 /* Phụ đề tiêu đề thẻ chỉ là chú thích — hết chỗ thì nó biến mất trước, tiêu đề luôn được giữ. */
 .mn-sub{min-width:0;overflow:hidden;text-overflow:ellipsis;}
@@ -308,7 +310,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
           </sc-if>
 
           <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:7px;flex:1 1 190px;min-width:0;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);" style-focus-within="border-color:#2050a0;">
+            <div style="display:flex;align-items:center;gap:7px;flex:1 1 190px;min-width:0;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);" data-focus-wrap="">
               <i class="ri-search-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);"></i>
               <input value="{{ treeQuery }}" onChange="{{ onTreeQuery }}" placeholder="Tìm mục trong trình đơn…" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);" />
             </div>
@@ -396,8 +398,8 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
                   <label style="display:flex;flex-direction:column;gap:6px;min-width:0;">
                     <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Nhãn hiển thị<span class="mn-chip mn-lg">{{ locCode }}</span></span>
-                    <input class="mn-inp" value="{{ edLabel }}" onChange="{{ onEdLabel }}" placeholder="{{ edLabelPh }}" />
-                    <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ edLabelHint }}</span>
+                    <input class="mn-inp" ref="{{ labelRef }}" value="{{ edLabel }}" onChange="{{ onEdLabel }}" placeholder="{{ edLabelPh }}" aria-invalid="{{ edLabelBad }}" aria-describedby="mn-lbl-hint" />
+                    <sc-if value="{{ edLabelErr }}" hint-placeholder-val="{{ false }}"><span id="mn-lbl-hint" style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--color-admin-danger-text,#bf371a);line-height:1.5;"><i class="ri-error-warning-line" aria-hidden="true"></i>Mục này chưa có tên. Nhập chữ khách sẽ thấy, ví dụ: Liên hệ.</span></sc-if><sc-if value="{{ edLabelOk }}" hint-placeholder-val="{{ true }}"><span id="mn-lbl-hint" style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;">{{ edLabelHint }}</span></sc-if>
                   </label>
                   <label style="display:flex;flex-direction:column;gap:6px;min-width:0;">
                     <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Đường dẫn<sc-if value="{{ sharedLocked }}"><span class="mn-chip" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);"><i class="ri-lock-line" style="font-size:12px;"></i>Chung</span></sc-if></span>
@@ -408,7 +410,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;">
                   <div style="display:flex;flex-direction:column;gap:6px;min-width:0;">
                     <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Mô tả ngắn<span class="mn-chip mn-lg">{{ locCode }}</span><span style="margin-left:auto;font-size:12px;color:{{ edDescCountColor }};font-weight:400;">{{ edDescCount }}</span></span>
-                    <span style="display:flex;flex-direction:column;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);overflow:hidden;" style-focus-within="border-color:#2050a0;">
+                    <span style="display:flex;flex-direction:column;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);overflow:hidden;" data-focus-wrap="">
                       <span style="display:flex;align-items:center;gap:2px;padding:4px 5px;border-bottom:1px solid #f4f5fa;background:#fbfcfd;">
                         <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescBold }}" title="Chữ đậm (Ctrl+B)" aria-label="Chữ đậm (Ctrl+B)"><i class="ri-bold" style="font-size:15px;"></i></button>
                         <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescItalic }}" title="Chữ nghiêng (Ctrl+I)" aria-label="Chữ nghiêng (Ctrl+I)"><i class="ri-italic" style="font-size:15px;"></i></button>
@@ -635,7 +637,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 
           <sc-if value="{{ listTabOn }}" hint-placeholder-val="{{ true }}">
             <div style="padding:0 12px 10px;">
-              <div style="display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);" style-focus-within="border-color:#2050a0;">
+              <div style="display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);" data-focus-wrap="">
                 <i class="ri-search-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);"></i>
                 <input value="{{ search }}" onChange="{{ onSearch }}" placeholder="{{ searchPh }}" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);" />
               </div>
@@ -704,7 +706,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
   </sc-if>
 
   <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
-    <div style="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:11px;padding:11px 16px;border-radius:6px;background:#1f2b4d;color:#fff;box-shadow:0 6px 20px rgba(56,65,74,.3);max-width:min(560px,calc(100vw - 32px));">
+    <div role="status" aria-live="polite" style="position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:11px;padding:11px 16px;border-radius:6px;background:#1f2b4d;color:#fff;box-shadow:0 6px 20px rgba(56,65,74,.3);max-width:min(560px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;flex-shrink:0;"></i>
       <span style="font-size:12.5px;line-height:1.6;">{{ toastText }}</span>
       <sc-if value="{{ toastUndoOn }}"><button onClick="{{ onUndo }}" style="min-height:30px;padding:0 10px;border:1px solid rgba(255,255,255,.28);border-radius:4px;background:transparent;font:inherit;font-size:12px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;">Hoàn tác</button></sc-if>
@@ -958,6 +960,7 @@ class Component extends DCLogic {
     };
   }
   componentDidMount() {
+    setTimeout(() => this.report(), 0);
     // Cảm ứng hoặc khung hẹp → cả trang chuyển sang cỡ chạm; đo một lần, không rải luật khắp nơi.
     const touch = () => {
       const on = (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) || window.innerWidth <= 620;
@@ -969,7 +972,7 @@ class Component extends DCLogic {
     window.addEventListener('beforeunload', this._bu = (e) => { if (this.dirty().n) { e.preventDefault(); e.returnValue = ''; } });
     document.addEventListener('bs-embed-cmd', this._cmd = (e) => {
       const d = e.detail || {}; if (d.id !== this.props.embedId) return;
-      if (d.act === 'save') this.save(); if (d.act === 'reset') this.reset();
+      if (d.act === 'save') this.save(); if (d.act === 'reset') this.reset(); if (d.act === 'firstError') this.firstError();
     });
     document.addEventListener('dragover', this._dov = (e) => {
       if (!this.state.drag) return;
@@ -1031,7 +1034,7 @@ class Component extends DCLogic {
       const m = menus.find(x => x.id === s.cur);
       if (fn(m, menus, slots) === false) return null;
       return { menus: menus, slots: slots, past: s.past.concat([before]).slice(-60), future: [] };
-    }, () => { if (this.props.onDirty) this.props.onDirty(this.dirty().n > 0); });
+    }, () => { this.report(); });
   }
   undo() {
     if (!this.state.past.length) return;
@@ -1039,7 +1042,7 @@ class Component extends DCLogic {
     this.setState(s => {
       const past = s.past.slice(), prev = JSON.parse(past.pop());
       return { menus: prev.menus, slots: prev.slots, past: past, future: s.future.concat([cur]), sel: null, rowMenu: null };
-    }, () => { if (this.props.onDirty) this.props.onDirty(this.dirty().n > 0); });
+    }, () => { this.report(); });
     this.toast('Đã hoàn tác thao tác vừa rồi.', 'ri-arrow-go-back-line');
   }
   redo() {
@@ -1141,7 +1144,7 @@ class Component extends DCLogic {
       const c = this.ctx(id, m.items); if (!c) return null;
       c.it.desc = Object.assign({}, c.it.desc || {}, { [loc]: v });
       return { menus: menus };
-    }, () => { if (this.props.onDirty) this.props.onDirty(this.dirty().n > 0); });
+    }, () => { this.report(); });
   }
   dsc(it, loc) { return ((it || {}).desc || {})[loc || this.state.loc] || ''; }
   plain(html) { return String(html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim(); }
@@ -1312,6 +1315,10 @@ class Component extends DCLogic {
   }
 
   // ---------- chưa lưu (đếm theo mục thật — §7c) ----------
+  /* D0-6a · mẫu 4: lỗi = mục chưa có nhãn ở bản nguồn. Báo Shell số thay đổi + số lỗi; Shell gửi {act:'firstError'}. */
+  errs() { const o = []; (this.state.menus || []).forEach(m => this.walk(m.items, it => { if (!String(this.lbl(it, this.defLang) || '').trim()) o.push({ m: m.id, id: it.id }); })); return o; }
+  report() { const n = this.dirty().n, e = this.errs().length; if (this.props.onDirty) this.props.onDirty(n); if (this.props.onInvalid) this.props.onInvalid(e); }
+  firstError() { const e = this.errs()[0]; if (!e) return; this.setState({ cur: e.m, sel: e.id, loc: this.defLang, rowMenu: null }, () => { setTimeout(() => { const el = this._labelEl; if (el) { try { el.focus(); } catch (x) {} } }, 30); }); }
   dirty() {
     const saved = JSON.parse(this.state.saved);
     const map = (ms) => { const o = {}; ms.forEach(m => this.walk(m.items, it => { o[it.id] = JSON.stringify(Object.assign({}, it, { children: undefined })); })); return o; };
@@ -1344,7 +1351,8 @@ class Component extends DCLogic {
     return { n: n, changed: changed, added: added, text: parts.join(' · ') };
   }
   save() {
-    this.setState(s => ({ saved: JSON.stringify({ menus: s.menus, slots: s.slots }) }), () => { if (this.props.onDirty) this.props.onDirty(false); });
+    const E = this.errs(); if (E.length) { this.toast('Còn ' + E.length + ' mục chưa có tên — đặt tên rồi bấm Lưu lại.', 'ri-error-warning-line'); this.firstError(); return; }
+    this.setState(s => ({ saved: JSON.stringify({ menus: s.menus, slots: s.slots }) }), () => this.report());
     this.toast('Đã lưu — trình đơn trên website đổi ngay bây giờ.', 'ri-check-double-line');
   }
   reset() {
@@ -1383,7 +1391,7 @@ class Component extends DCLogic {
         });
       }));
       return { menus: menus, aiUsed: s.aiUsed + cost, past: s.past.concat([before]).slice(-60), future: [] };
-    }, () => { if (this.props.onDirty) this.props.onDirty(true); });
+    }, () => this.report());
     this.toast('Đã dịch ' + miss.length + ' nhãn · dùng ' + (window.BSAI ? window.BSAI.nfm(cost) : cost) + ' từ AI. Sửa chỗ nào chưa ưng rồi bấm Lưu.', 'ri-sparkling-2-line', true);
   }
 
@@ -1664,7 +1672,7 @@ class Component extends DCLogic {
 
     return {
       pageCls: (this._touch ? 'mn-touch' : '') + (this.props.embedded ? ' mn-emb' : ''),
-      pageStyle: this.props.embedded ? 'display:flex;flex-direction:column;' : 'min-height:100vh;display:flex;flex-direction:column;',
+      pageStyle: this.props.embedded ? 'display:flex;flex-direction:column;container-type:inline-size;' : 'min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;container-type:inline-size;',
       onPageClick: () => { if (S.rowMenu || S.pvOpen) this.setState({ rowMenu: null, pvOpen: null }); },
       stop: (e) => e.stopPropagation(),
       headerOn: !this.props.embedded,
@@ -1893,6 +1901,8 @@ class Component extends DCLogic {
             : 'Chỗ này không bung được bảng lớn, nên muốn sâu hơn phải đặt trình đơn ở vị trí khác.')),
 
       edLabel: sel ? this.lbl(sel) : '',
+      labelRef: (el) => { this._labelEl = el; },
+      edLabelErr: !!(sel && !String(this.lbl(sel, DEF) || '').trim()), edLabelOk: !(sel && !String(this.lbl(sel, DEF) || '').trim()), edLabelBad: (sel && !String(this.lbl(sel, DEF) || '').trim()) ? 'true' : 'false',
       edLabelPh: onDefault ? 'Ví dụ: Liên hệ' : ('Nhãn ' + this.locName(S.loc)),
       edLabelHint: onDefault ? 'Đây là chữ khách nhìn thấy trên website.' : ('Bản nguồn: “' + (sel ? this.lbl(sel, DEF) : '') + '”'),
       onEdLabel: (e) => this.setLabel(S.sel, e.target.value),
