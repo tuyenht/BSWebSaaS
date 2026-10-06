@@ -125,9 +125,10 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                 <sc-if value="{{ e.isHeader }}"><sc-if value="{{ showLabels }}"><div style="{{ e.headerStyle }}">{{ e.headerLabel }}</div></sc-if><sc-if value="{{ e.headerDot }}"><div style="height:1px;margin:9px 20px;background:{{ sbLine }};"></div></sc-if></sc-if>
                 <sc-if value="{{ e.isItem }}">
                   <div class="sbw" onMouseEnter="{{ onRailHover }}" onFocus="{{ onRailHover }}">
-                    <button class="sbi" aria-current="{{ e.ariaCur }}" aria-expanded="{{ e.ariaExp }}" style="{{ e.itemStyle }}" onClick="{{ e.onClick }}">
+                    <button class="sbi" aria-current="{{ e.ariaCur }}" aria-expanded="{{ e.ariaExp }}" aria-label="{{ e.ariaLabel }}" title="{{ e.titleTip }}" style="{{ e.itemStyle }}" onClick="{{ e.onClick }}">
                       <i class="{{ e.iconClass }}" style="{{ e.iconStyle }}"></i>
                       <sc-if value="{{ showLabels }}"><span style="flex:1;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ e.label }}</span></sc-if>
+                      <sc-if value="{{ e.pendShow }}"><i class="ri-hammer-line" title="Ghi chú thiết kế: Chờ backend" aria-label="Chờ backend" style="font-size:14px;opacity:.8;flex-shrink:0;"></i></sc-if>
                       <sc-if value="{{ e.showBadge }}"><span style="{{ e.badgeStyle }}">{{ e.badgeText }}</span></sc-if>
                       <sc-if value="{{ e.showCaret }}"><i class="{{ e.caretClass }}" style="{{ e.caretStyle }}"></i></sc-if>
                     </button>
@@ -162,7 +163,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
             <div style="display:flex;align-items:center;justify-content:center;height:var(--topbar-h,70px);flex-shrink:0;">{{ smLogo30 }}</div>
             <div class="scl scl-side" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding:6px 0;align-items:center;">
               <sc-for list="{{ railGroups }}" as="g" hint-placeholder-count="5">
-                <button style="{{ g.style }}" onClick="{{ g.onClick }}" title="{{ g.label }}" aria-label="{{ g.label }}"><i class="{{ g.icon }}" style="font-size:20px;"></i></button>
+                <button style="{{ g.style }}" onClick="{{ g.onClick }}" title="{{ g.label }}" aria-label="{{ g.label }}" aria-pressed="{{ g.ariaPressed }}"><i class="{{ g.icon }}" style="font-size:20px;"></i></button>
               </sc-for>
             </div>
           </div>
@@ -170,7 +171,8 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
             <div style="height:var(--topbar-h,70px);display:flex;align-items:center;padding:0 22px;flex-shrink:0;border-bottom:1px solid {{ sbLine }};"><span style="font-size:16px;font-weight:600;color:{{ sbActive }};">{{ twoColTitle }}</span></div>
             <div class="scl scl-side" style="flex:1;overflow-y:auto;padding:14px 0;">
               <sc-for list="{{ twoColItems }}" as="c" hint-placeholder-count="6">
-                <button style="{{ c.style2 }}" onClick="{{ c.onClick }}"><i class="{{ c.icon }}" style="font-size:16px;width:18px;"></i>{{ c.label }}<sc-if value="{{ c.showBadge }}"><span style="{{ c.badgeStyle }}">{{ c.badgeText }}</span></sc-if></button>
+                <sc-if value="{{ c.isSub }}"><div style="{{ c.subStyle }}"><i class="{{ c.icon }}" style="font-size:15px;width:18px;"></i>{{ c.label }}<sc-if value="{{ c.pendShow }}"><i class="ri-hammer-line" title="Ghi chú thiết kế: Chờ backend" aria-label="Chờ backend" style="font-size:13px;"></i></sc-if></div></sc-if>
+                <sc-if value="{{ c.isRow }}"><button aria-current="{{ c.ariaCur }}" style="{{ c.style2 }}" onClick="{{ c.onClick }}"><sc-if value="{{ c.hasIcon }}"><i class="{{ c.icon }}" style="font-size:16px;width:18px;"></i></sc-if><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.label }}</span><sc-if value="{{ c.pendShow }}"><i class="ri-hammer-line" title="Ghi chú thiết kế: Chờ backend" aria-label="Chờ backend" style="font-size:13px;opacity:.8;"></i></sc-if><sc-if value="{{ c.showBadge }}"><span style="{{ c.badgeStyle }}">{{ c.badgeText }}</span></sc-if></button></sc-if>
               </sc-for>
             </div>
           </div></sc-if>
@@ -178,36 +180,15 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
 
         <div class="scl scl-main" style="{{ mainColStyle }}">
           <header style="{{ topbarStyle }}">
-            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1 1 auto;">
               <sc-if value="{{ isHorizontal }}"><div style="display:flex;align-items:center;padding-right:8px;">{{ topbarLogo }}</div></sc-if>
               <button style="{{ hamburgerStyle }}" onClick="{{ onHamburger }}" aria-label="{{ hamburgerLabel }}" title="{{ hamburgerLabel }}"><i class="ri-menu-2-line" style="font-size:19px;"></i><sc-if value="{{ menuLabelShow }}"><span>Menu</span></sc-if></button>
-              <sc-if value="{{ planeIsTenant }}" hint-placeholder-val="{{ true }}">
-              <div data-dz="site" style="position:relative;">
-                <button style="{{ siteBtnStyle }}" onClick="{{ onDropSite }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:{{ siteMark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ siteInit }}</span><sc-if value="{{ topbarWide }}"><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;min-width:0;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">{{ siteName }}</span><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">{{ planeLabel }}</span></span><i class="ri-arrow-down-s-line" style="font-size:16px;color:{{ tbMuted }};"></i></sc-if></button>
-                <sc-if value="{{ siteOpen }}">
-                  <div class="pop" style="position:absolute;top:calc(100% + 8px);left:0;z-index:80;width:290px;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
-                    <div style="padding:11px 15px 7px;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:{{ tMuted }};">Chuyển site</div>
-                    <sc-for list="{{ siteList }}" as="s" hint-placeholder-count="3">
-                      <button style="{{ s.style }}" style-hover="background:rgba(120,130,150,0.1);" onClick="{{ s.onClick }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;background:{{ s.mark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ s.init }}</span><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.25;flex:1;min-width:0;"><span style="font-size:13px;font-weight:600;color:{{ tHeading }};">{{ s.name }}</span><span style="font-size:12px;color:{{ tMuted }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">{{ s.domain }}</span></span><sc-if value="{{ s.active }}"><i class="ri-check-line" style="font-size:16px;color:var(--brand-ink,var(--brand));"></i></sc-if></button>
-                    </sc-for>
-                    <div style="border-top:1px solid {{ tPanelBorder }};padding:6px;">
-                      <button style="display:flex;align-items:center;gap:9px;width:100%;padding:9px 11px;border:0;border-radius:7px;background:transparent;font:inherit;font-size:12.5px;font-weight:600;color:var(--brand-ink,var(--brand));cursor:pointer;text-align:left;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onCreateSite }}"><i class="ri-add-circle-line" style="font-size:17px;"></i>Tạo website mới</button>
-                    </div>
-                  </div>
-                </sc-if>
-              </div>
-              </sc-if>
-              <sc-if value="{{ planeIsPlatform }}">
-              <div style="display:flex;align-items:center;gap:9px;padding:6px 10px;" title="Chuyển đổi khách hàng cụ thể ở mục Khách hàng — không dùng bộ chuyển site này ở tầng nền tảng">
-                <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:{{ tMuted }};color:#fff;font-size:12px;flex-shrink:0;"><i class="ri-stack-line"></i></span>
-                <sc-if value="{{ topbarWide }}"><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">Nền tảng</span><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">Operator · mọi khách hàng</span></span></sc-if>
-              </div>
-              </sc-if>
-              <div data-dz="search" style="position:relative;margin-left:6px;"><sc-if value="{{ showSearch }}">
+              <sc-if value="{{ searchInline }}" hint-placeholder-val="{{ true }}"><div data-dz="search" style="position:relative;flex:0 1 440px;min-width:0;margin-left:6px;">
                 <i class="ri-search-line" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:{{ tbMuted }};font-size:15px;pointer-events:none;"></i>
-                <input class="sInput" placeholder="Tìm kiếm…" value="{{ searchVal }}" onFocus="{{ onSearchFocus }}" onChange="{{ onSearchChange }}" style="{{ searchInputStyle }}">
+                <input class="sInput" type="search" ref="{{ setSearchEl }}" aria-label="Tìm kiếm" aria-keyshortcuts="Control+K Meta+K" placeholder="Tìm trang, bài viết, sản phẩm, cài đặt…" value="{{ searchVal }}" onFocus="{{ onSearchFocus }}" onChange="{{ onSearchChange }}" style="{{ searchInputStyle }}">
+                <sc-if value="{{ kbdShow }}"><span aria-hidden="true" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);padding:1px 6px;border:1px solid {{ tbKbdBorder }};border-radius:4px;font-size:12px;line-height:1.4;color:{{ tbMuted }};pointer-events:none;">{{ kbdLabel }}</span></sc-if>
                 <sc-if value="{{ searchOpen }}">
-                  <div class="pop" style="position:absolute;top:calc(100% + 8px);left:0;z-index:80;width:360px;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
+                  <div class="pop" style="position:absolute;top:calc(100% + 8px);left:0;z-index:80;width:min(420px, calc(100vw - 16px));background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
                     <div style="padding:10px 15px 6px;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:{{ tMuted }};">Kết quả nhanh</div>
                     <sc-for list="{{ searchResults }}" as="r" hint-placeholder-count="4">
                       <button style="display:flex;align-items:center;gap:11px;width:100%;padding:9px 15px;border:0;background:transparent;font:inherit;cursor:pointer;text-align:left;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ r.onClick }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;background:{{ r.tint }};color:{{ r.tintFg }};flex-shrink:0;"><i class="{{ r.icon }}" style="font-size:15px;"></i></span><span style="display:flex;flex-direction:column;line-height:1.3;min-width:0;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">{{ r.title }}</span><span style="font-size:12px;color:{{ tMuted }};">{{ r.kind }}</span></span></button>
@@ -215,20 +196,13 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                     <div style="border-top:1px solid {{ tPanelBorder }};padding:9px 15px;font-size:12px;color:{{ tMuted }};display:flex;align-items:center;gap:6px;"><i class="ri-corner-down-left-line"></i>Nhấn Enter để xem tất cả kết quả</div>
                   </div>
                 </sc-if>
-              </sc-if></div>
+              </div></sc-if>
             </div>
-
-            <div style="display:flex;align-items:center;gap:3px;">
-              <div data-dz="lang" style="position:relative;">
-                <button style="{{ iconBtnStyle }}" onClick="{{ onDropLang }}" title="Ngôn ngữ">{{ topbarFlag }}</button>
-                <sc-if value="{{ langOpen }}"><div class="pop" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:180px;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);padding:5px;">
-                  <sc-for list="{{ langList }}" as="l" hint-placeholder-count="4"><button style="{{ l.style }}" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ l.onClick }}">{{ l.flagEl }}{{ l.label }}<sc-if value="{{ l.active }}"><i class="ri-check-line" style="margin-left:auto;font-size:15px;color:var(--brand-ink,var(--brand));"></i></sc-if></button></sc-for>
-                </div></sc-if>
-              </div>
-              <button style="{{ iconBtnStyle }}" onClick="{{ onToggleFullscreen }}" title="Toàn màn hình" aria-label="Toàn màn hình"><i class="{{ fsIcon }}" style="font-size:19px;"></i></button>
-              <button style="{{ iconBtnStyle }}" onClick="{{ onToggleScheme }}" title="Chế độ Sáng/Tối" aria-label="Chế độ Sáng/Tối"><i class="{{ schemeIcon }}" style="font-size:19px;"></i></button>
+            <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+              <sc-if value="{{ searchIconOnly }}"><button style="{{ iconBtnStyle }}" onClick="{{ onOpenSearchFull }}" aria-label="Tìm kiếm" title="Tìm kiếm"><i class="ri-search-line" style="font-size:19px;"></i></button></sc-if>
+              <button style="{{ helpBtnStyle }}" onClick="{{ onOpenHelp }}" aria-label="Trợ giúp" title="Trợ giúp" aria-haspopup="dialog"><i class="ri-question-line" style="font-size:19px;"></i><sc-if value="{{ topbarWide }}"><span>Trợ giúp</span></sc-if></button>
               <div data-dz="notif" style="position:relative;">
-                <button style="{{ iconBtnStyle }}" onClick="{{ onDropNotif }}" title="Thông báo"><i class="ri-notification-3-line" style="font-size:19px;"></i><span style="position:absolute;top:6px;right:6px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#c2391b;color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid {{ tbBg }};">4</span></button>
+                <button style="{{ iconBtnStyle }}" onClick="{{ onDropNotif }}" title="Thông báo" aria-label="Thông báo — 4 mới"><i class="ri-notification-3-line" style="font-size:19px;"></i><span style="position:absolute;top:6px;right:6px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#c2391b;color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid {{ tbBg }};">4</span></button>
                 <sc-if value="{{ notifOpen }}"><div class="pop" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:340px;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
                   <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:linear-gradient(135deg,var(--brand-solid,var(--brand)),#4c5fa3);"><span style="font-size:14px;font-weight:600;color:#fff;">Thông báo</span><span style="font-size:12px;font-weight:600;color:#fff;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:20px;">4 mới</span></div>
                   <div class="scl" style="max-height:300px;overflow-y:auto;">
@@ -237,14 +211,39 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                   <div style="padding:10px;"><button style="width:100%;padding:8px;border:1px solid {{ tPanelBorder }};border-radius:7px;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--brand-ink,var(--brand));cursor:pointer;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onStub }}">Xem tất cả thông báo</button></div>
                 </div></sc-if>
               </div>
+              <sc-if value="{{ siteSwitchShow }}">
+              <div data-dz="site" style="position:relative;">
+                <button style="{{ siteBtnStyle }}" onClick="{{ onDropSite }}" aria-haspopup="true" aria-expanded="{{ siteOpenStr }}" aria-label="Chuyển website — đang ở {{ siteName }}" title="Chuyển website"><span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:{{ siteMark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ siteInit }}</span><sc-if value="{{ topbarWide }}"><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;min-width:0;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">{{ siteName }}</span><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">{{ planeLabel }}</span></span><i class="ri-arrow-down-s-line" style="font-size:16px;color:{{ tbMuted }};"></i></sc-if></button>
+                <sc-if value="{{ siteOpen }}">
+                  <div class="pop" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:min(300px, calc(100vw - 16px));background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
+                    <div style="padding:11px 15px 7px;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:{{ tMuted }};">Chuyển website</div>
+                    <sc-if value="{{ siteSearchShow }}"><div class="sBox" data-focus-wrap="" style="display:flex;align-items:center;gap:8px;margin:0 10px 6px;padding:0 10px;height:40px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;"><i class="ri-search-line" style="font-size:15px;color:{{ tMuted }};"></i><input class="sPlain" type="search" aria-label="Tìm website" placeholder="An Vinh" value="{{ siteQ }}" onChange="{{ onSiteQ }}" style="flex:1;min-width:0;border:0;outline:2px solid transparent;background:transparent;font:inherit;font-size:14px;color:{{ tHeading }};padding:0;"></div></sc-if>
+                    <sc-for list="{{ siteList }}" as="s" hint-placeholder-count="3">
+                      <button style="{{ s.style }}" style-hover="background:rgba(120,130,150,0.1);" onClick="{{ s.onClick }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:7px;background:{{ s.mark }};color:#fff;font-size:12px;font-weight:700;flex-shrink:0;">{{ s.init }}</span><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.25;flex:1;min-width:0;"><span style="font-size:13px;font-weight:600;color:{{ tHeading }};">{{ s.name }}</span><span style="font-size:12px;color:{{ tMuted }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">{{ s.domain }}</span></span><sc-if value="{{ s.active }}"><i class="ri-check-line" style="font-size:16px;color:var(--brand-ink,var(--brand));"></i></sc-if></button>
+                    </sc-for>
+                    <div style="border-top:1px solid {{ tPanelBorder }};padding:6px;">
+                      <sc-if value="{{ siteCanCreate }}"><button style="display:flex;align-items:center;gap:9px;width:100%;min-height:40px;padding:9px 11px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:var(--color-accent,var(--brand-ink,var(--brand)));cursor:pointer;text-align:left;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onCreateSite }}"><i class="ri-add-circle-line" style="font-size:17px;"></i>Tạo website mới</button></sc-if>
+                      <sc-if value="{{ siteLocked }}"><div style="display:flex;align-items:flex-start;gap:9px;padding:9px 11px;font-size:13px;line-height:1.45;color:var(--color-body-muted,#5b6275);"><i class="ri-lock-2-line" style="font-size:16px;flex-shrink:0;margin-top:1px;"></i><span><span style="display:block;font-weight:600;color:var(--color-heading,#1f2b4d);">Tạo website mới — khóa theo gói</span>{{ siteLockText }}</span></div></sc-if>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+              </sc-if>
+              <sc-if value="{{ planeIsPlatform }}">
+              <div style="display:flex;align-items:center;gap:9px;padding:6px 10px;" title="Vào website của một khách hàng ở mục Website › Đăng nhập dưới tên khách hàng">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;background:{{ tMuted }};color:#fff;font-size:12px;flex-shrink:0;"><i class="ri-stack-line"></i></span>
+                <sc-if value="{{ topbarWide }}"><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">Nền tảng · mọi khách hàng</span><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">{{ platName }}</span></span></sc-if>
+              </div>
+              </sc-if>
+              
               <div data-dz="user" style="position:relative;margin-left:6px;">
-                <button style="{{ userBtnStyle }}" style-hover="{{ userHover }}" onClick="{{ onDropUser }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#e0e7ff;color:#4338ca;font-size:12.5px;font-weight:700;">NA</span><sc-if value="{{ topbarWide }}"><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">Ngọc Anh</span><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">{{ roleLabel }}</span></span><i class="ri-arrow-down-s-line" style="font-size:16px;color:{{ tbMuted }};"></i></sc-if></button>
-                <sc-if value="{{ userOpen }}"><div class="pop" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:236px;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
+                <button style="{{ userBtnStyle }}" style-hover="{{ userHover }}" onClick="{{ onDropUser }}" aria-haspopup="true" aria-expanded="{{ userOpenStr }}" aria-label="Tài khoản của bạn — Ngọc Anh"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;background:#e0e7ff;color:#4338ca;font-size:12.5px;font-weight:700;">NA</span><sc-if value="{{ topbarWide }}"><span style="display:flex;flex-direction:column;align-items:flex-start;line-height:1.3;"><span style="font-size:13px;font-weight:600;color:{{ tbText }};white-space:nowrap;">Ngọc Anh</span><span style="font-size:12px;color:{{ tbMuted }};white-space:nowrap;">{{ roleLabel }}</span></span><i class="ri-arrow-down-s-line" style="font-size:16px;color:{{ tbMuted }};"></i></sc-if></button>
+                <sc-if value="{{ userOpen }}"><div class="pop" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:min(272px, calc(100vw - 16px));background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
                   <div style="padding:13px 16px;border-bottom:1px solid {{ tLine }};"><div style="font-size:12px;color:{{ tMuted }};">Xin chào,</div><div style="font-size:14px;font-weight:600;color:{{ tHeading }};line-height:1.3;">Ngọc Anh</div></div>
                   <div style="padding:6px 0;">
                     <sc-for list="{{ userMenu }}" as="u" hint-placeholder-count="5">
                       <sc-if value="{{ u.isDiv }}"><div style="height:1px;margin:6px 0;background:{{ tLine }};"></div></sc-if>
-                      <sc-if value="{{ u.isItem }}"><button style="display:flex;align-items:center;gap:11px;width:100%;padding:9px 16px;border:0;background:transparent;font:inherit;font-size:13px;color:{{ u.color }};cursor:pointer;text-align:left;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ u.onClick }}"><i class="{{ u.icon }}" style="font-size:16px;width:18px;color:{{ u.iconColor }};"></i>{{ u.label }}</button></sc-if>
+                      <sc-if value="{{ u.isItem }}"><button aria-expanded="{{ u.ariaExp }}" aria-current="{{ u.ariaCur }}" style="{{ u.style }}" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ u.onClick }}"><i class="{{ u.icon }}" style="font-size:16px;width:18px;flex-shrink:0;color:{{ u.iconColor }};"></i><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ u.label }}</span><sc-if value="{{ u.hasMeta }}"><span style="font-size:12px;color:{{ tMuted }};white-space:nowrap;">{{ u.meta }}</span></sc-if></button></sc-if>
                     </sc-for>
                   </div>
                 </div></sc-if>
@@ -268,10 +267,10 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                     <button class="hnb" aria-haspopup="true" style="{{ moreBtnStyle }}"><i class="ri-more-2-fill" style="font-size:16px;"></i>{{ moreLabel }}<i class="ri-arrow-down-s-line hcar" style="font-size:15px;opacity:0.7;"></i></button>
                     <div class="scl hdd" style="position:absolute;top:calc(100% + 6px);right:0;z-index:70;min-width:236px;max-height:min(440px,calc(100vh - var(--topbar-h,70px) - 110px));overflow-y:auto;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:9px;box-shadow:0 12px 30px rgba(30,32,37,0.2);padding:6px;">
                       <sc-for list="{{ hOverflowItems }}" as="e" hint-placeholder-count="4">
-                        <sc-if value="{{ e.isLeaf }}"><button style="{{ e.rowStyle }}" style-hover="background:color-mix(in srgb, var(--brand) 10%, transparent);color:var(--brand-ink,var(--brand));" onClick="{{ e.onClick }}"><i class="{{ e.icon }}" style="font-size:16px;width:18px;"></i>{{ e.label }}</button></sc-if>
+                        <sc-if value="{{ e.isLeaf }}"><button aria-current="{{ e.ariaCur }}" style="{{ e.rowStyle }}" style-hover="background:color-mix(in srgb, var(--brand) 10%, transparent);color:var(--brand-ink,var(--brand));" onClick="{{ e.onClick }}"><i class="{{ e.icon }}" style="font-size:16px;width:18px;"></i>{{ e.label }}</button></sc-if>
                         <sc-if value="{{ e.isParent }}">
                           <div style="{{ e.groupLabelStyle }}"><i class="{{ e.icon }}" style="font-size:14px;width:18px;"></i>{{ e.label }}</div>
-                          <sc-for list="{{ e.children }}" as="c" hint-placeholder-count="2"><button style="{{ c.style }}" style-hover="background:color-mix(in srgb, var(--brand) 10%, transparent);color:var(--brand-ink,var(--brand));" onClick="{{ c.onClick }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ tMuted }};flex-shrink:0;"></span>{{ c.label }}</button></sc-for>
+                          <sc-for list="{{ e.children }}" as="c" hint-placeholder-count="2"><button aria-current="{{ c.ariaCur }}" style="{{ c.style }}" style-hover="background:color-mix(in srgb, var(--brand) 10%, transparent);color:var(--brand-ink,var(--brand));" onClick="{{ c.onClick }}"><span style="width:5px;height:5px;border-radius:50%;background:{{ tMuted }};flex-shrink:0;"></span>{{ c.label }}</button></sc-for>
                         </sc-if>
                       </sc-for>
                     </div>
@@ -294,11 +293,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                   <sc-if value="{{ showDashboard }}"><div style="font-size:12.5px;color:{{ tMuted }};">Đây là tình hình <strong style="color:{{ tText }};font-weight:600;">{{ siteName }}</strong> hôm nay.</div></sc-if>
                   <sc-if value="{{ showSettings }}"><div style="font-size:12.5px;color:{{ tMuted }};max-width:640px;line-height:1.55;">{{ settingsActive.desc }}</div></sc-if>
                 </div>
-                <sc-if value="{{ settingsShowActions }}"><div style="display:flex;align-items:center;gap:10px;flex:0 1 auto;min-width:0;flex-wrap:wrap;margin-top:22px;">
-                  <sc-if value="{{ settingsHasChanges }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tone-warn-fg);white-space:nowrap;"><i class="ri-error-warning-line" style="font-size:15px;"></i>Chưa lưu</span></sc-if>
-                  <button style="{{ settingsResetStyle }}" disabled="{{ settingsNoChanges }}" onClick="{{ onActionReset }}">Bỏ thay đổi</button>
-                  <button style="{{ settingsSaveStyle }}" disabled="{{ settingsCantSave }}" onClick="{{ onActionSave }}"><i class="ri-save-3-line" style="font-size:15px;"></i>Lưu thay đổi</button>
-                </div></sc-if>
+                
                 <sc-if value="{{ menusShowActions }}"><div style="display:flex;align-items:center;gap:10px;flex:0 1 auto;min-width:0;flex-wrap:wrap;margin-top:22px;">
                   <sc-if value="{{ menusHasChanges }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--tone-warn-fg);white-space:nowrap;"><i class="ri-error-warning-line" style="font-size:15px;"></i>Chưa lưu</span></sc-if>
                   <button style="{{ menusResetStyle }}" disabled="{{ menusNoChanges }}" onClick="{{ onMenusReset }}">Bỏ thay đổi</button>
@@ -432,7 +427,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                       <sc-if value="{{ navEmpty }}"><div style="padding:14px 12px;font-size:12.5px;color:{{ tMuted }};line-height:1.5;">Không có mục nào khớp. Thử từ khóa khác như “email”, “thuế”, “sao lưu”.</div></sc-if>
                       <div class="{{ settingsActive.navListClass }}" ref="{{ settingsActive.navListRef }}" style="{{ settingsActive.navList }}">
                       <sc-for list="{{ settingsNav }}" as="g" hint-placeholder-count="4">
-                        <div style="{{ settingsActive.navHead }}color:{{ tMuted }};">{{ g.h }}</div>
+                        <sc-if value="{{ g.plain }}"><div style="{{ settingsActive.navHead }}color:{{ tMuted }};">{{ g.h }}</div></sc-if><sc-if value="{{ g.fold }}"><button aria-expanded="{{ g.exp }}" onClick="{{ g.onToggle }}" style="display:flex;align-items:center;gap:6px;width:100%;margin:4px 0 0;min-height:36px;padding:9px 12px 5px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:{{ tMuted }};cursor:pointer;text-align:left;"><span style="flex:1;">{{ g.h }}</span><i class="{{ g.caret }}" style="font-size:15px;"></i></button></sc-if>
                         <sc-for list="{{ g.items }}" as="s" hint-placeholder-count="2">
                           <sc-if value="{{ s.on }}">
                             <button class="snav on" data-secitem="{{ s.key }}" onClick="{{ s.onClick }}"><i class="{{ s.icon }}"></i><span style="flex:1;">{{ s.label }}</span><sc-if value="{{ s.dot }}"><span style="width:7px;height:7px;border-radius:50%;background:#f7b84b;flex-shrink:0;" title="Chưa cấu hình"></span></sc-if></button>
@@ -445,32 +440,33 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                       </div>
                     </div>
                   </div>
-                  <div style="flex:1;min-width:300px;">
+                  <div style="{{ settingsActive.mainWrap }}" data-set-form="">
+                    <sc-if value="{{ setBackShow }}"><button onClick="{{ onSetBack }}" style="display:inline-flex;align-items:center;gap:4px;min-height:44px;margin:0 0 10px -8px;padding:0 10px 0 4px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:14px;font-weight:600;color:var(--color-accent,var(--brand-ink,var(--brand)));cursor:pointer;"><i class="ri-arrow-left-s-line" style="font-size:20px;"></i>{{ setRootLabel }}</button></sc-if>
                     <div style="{{ cardStyle0 }}">
                       <div style="padding:22px;">
                         <div style="{{ igWrapStyle }}">
-                          <dc-import name="Integrations Panel" embedded="{{ true }}" on-dirty="{{ onEmbedDirtyIg }}" hint-size="100%,600px"></dc-import>
+                          <dc-import name="Integrations Panel" embedded="{{ true }}" on-dirty="{{ onEmbedDirtyIg }}" on-invalid="{{ embInv.ig }}" hint-size="100%,600px"></dc-import>
                         </div>
                         <div style="{{ fcWrapStyle }}">
-                          <dc-import name="Floating Contact Panel" embedded="{{ true }}" on-dirty="{{ onEmbedDirtyFc }}" hint-size="100%,600px"></dc-import>
+                          <dc-import name="Floating Contact Panel" embedded="{{ true }}" on-dirty="{{ onEmbedDirtyFc }}" on-invalid="{{ embInv.fc }}" hint-size="100%,600px"></dc-import>
                         </div>
                         <div style="{{ emWrapStyle }}">
-                          <dc-import name="Email Settings" embedded="{{ true }}" account-type="{{ emAccType }}" on-dirty="{{ onEmbedDirtyEm }}" hint-size="100%,900px"></dc-import>
+                          <dc-import name="Email Settings" embedded="{{ true }}" account-type="{{ emAccType }}" on-dirty="{{ onEmbedDirtyEm }}" on-invalid="{{ embInv.em }}" hint-size="100%,900px"></dc-import>
                         </div>
                         <div style="{{ ptWrapStyle }}">
-                          <dc-import name="Email Settings" embedded="{{ true }}" account-type="platform" embed-id="platform-tpl" on-dirty="{{ onEmbedDirtyPt }}" hint-size="100%,900px"></dc-import>
+                          <dc-import name="Email Settings" embedded="{{ true }}" account-type="platform" embed-id="platform-tpl" on-dirty="{{ onEmbedDirtyPt }}" on-invalid="{{ embInv.pt }}" hint-size="100%,900px"></dc-import>
                         </div>
                         <div style="{{ psWrapStyle }}">
-                          <dc-import name="Email Settings" embedded="{{ true }}" account-type="platform" only-tab="send" embed-id="platform-send" on-dirty="{{ onEmbedDirtyPs }}" hint-size="100%,900px"></dc-import>
+                          <dc-import name="Email Settings" embedded="{{ true }}" account-type="platform" only-tab="send" embed-id="platform-send" on-dirty="{{ onEmbedDirtyPs }}" on-invalid="{{ embInv.ps }}" hint-size="100%,900px"></dc-import>
                         </div>
                         <div style="{{ slWrapStyle }}">
-                          <dc-import name="Đăng nhập nhanh &amp; Liên kết tài khoản" embedded="{{ true }}" account-type="{{ emAccType }}" embed-id="social" on-dirty="{{ onEmbedDirtySl }}" hint-size="100%,760px"></dc-import>
+                          <dc-import name="Đăng nhập nhanh &amp; Liên kết tài khoản" embedded="{{ true }}" account-type="{{ emAccType }}" embed-id="social" on-dirty="{{ onEmbedDirtySl }}" on-invalid="{{ embInv.sl }}" hint-size="100%,760px"></dc-import>
                         </div>
                         <div style="{{ qtWrapStyle }}">
                           <dc-import name="Hạn ngạch AI và mua thêm" embedded="{{ true }}" hint-size="100%,900px"></dc-import>
                         </div>
                         <div style="{{ slsWrapStyle }}">
-                          <dc-import name="Đăng nhập nhanh &amp; Liên kết tài khoản" embedded="{{ true }}" account-type="saas" embed-id="social-saas" on-dirty="{{ onEmbedDirtySls }}" hint-size="100%,860px"></dc-import>
+                          <dc-import name="Đăng nhập nhanh &amp; Liên kết tài khoản" embedded="{{ true }}" account-type="saas" embed-id="social-saas" on-dirty="{{ onEmbedDirtySls }}" on-invalid="{{ embInv.sls }}" hint-size="100%,860px"></dc-import>
                         </div>
                         <sc-if value="{{ ccyAskUi.show }}">
                           <div style="position:fixed;inset:0;z-index:220;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(15,18,30,0.45);">
@@ -640,16 +636,16 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                                 </div>
                               </sc-if>
                               <sc-if value="{{ f.isText }}">
-                                <label style="display:flex;flex-direction:column;gap:6px;"><span style="position:relative;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:{{ tHeading }};min-height:20px;">{{ f.label }}<sc-if value="{{ f.hasTag }}"><span style="{{ f.tagStyle }}">{{ f.tag }}</span></sc-if><sc-if value="{{ f.isShared }}"><span title="Dùng chung cho mọi ngôn ngữ — sửa ở bản nguồn" style="{{ f.sharedStyle }}"><i class="ri-lock-line" style="font-size:12px;"></i>Chung</span></sc-if><sc-if value="{{ f.hasInfo }}"><span data-dz="finfo" style="position:relative;display:inline-flex;align-items:center;flex-shrink:0;"><button data-dz="finfo" onClick="{{ f.onInfo }}" aria-label="Xem giải thích" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:{{ tMuted }};cursor:pointer;" style-hover="color:var(--brand-ink,var(--brand));background:{{ tHover }};"><i class="ri-information-line" style="font-size:14px;"></i></button><sc-if value="{{ f.infoOpen }}"><span data-dz="finfo" style="{{ f.infoPopStyle }}"><span style="{{ f.infoArrowStyle }}"></span>{{ f.info }}</span></sc-if></span></sc-if></span><input value="{{ f.value }}" placeholder="{{ f.phText }}" onChange="{{ f.onText }}" readOnly="{{ f.ro }}" style="{{ f.fieldStyle }}"><sc-if value="{{ f.hasErr }}"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--tone-danger-fg);"><i class="ri-error-warning-line" style="font-size:13px;"></i>{{ f.err }}</span></sc-if><sc-if value="{{ f.hasHint }}"><span style="font-size:12px;color:{{ tMuted }};">{{ f.hint }}</span></sc-if></label>
+                                <label style="display:flex;flex-direction:column;gap:6px;"><span style="position:relative;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:{{ tHeading }};min-height:20px;">{{ f.label }}<sc-if value="{{ f.hasTag }}"><span style="{{ f.tagStyle }}">{{ f.tag }}</span></sc-if><sc-if value="{{ f.isShared }}"><span title="Dùng chung cho mọi ngôn ngữ — sửa ở bản nguồn" style="{{ f.sharedStyle }}"><i class="ri-lock-line" style="font-size:12px;"></i>Chung</span></sc-if><sc-if value="{{ f.hasInfo }}"><span data-dz="finfo" style="position:relative;display:inline-flex;align-items:center;flex-shrink:0;"><button data-dz="finfo" onClick="{{ f.onInfo }}" aria-label="Xem giải thích" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:{{ tMuted }};cursor:pointer;" style-hover="color:var(--brand-ink,var(--brand));background:{{ tHover }};"><i class="ri-information-line" style="font-size:14px;"></i></button><sc-if value="{{ f.infoOpen }}"><span data-dz="finfo" style="{{ f.infoPopStyle }}"><span style="{{ f.infoArrowStyle }}"></span>{{ f.info }}</span></sc-if></span></sc-if></span><input value="{{ f.value }}" placeholder="{{ f.phText }}" onChange="{{ f.onText }}" readOnly="{{ f.ro }}" aria-invalid="{{ f.ariaInv }}" style="{{ f.fieldStyle }}"><sc-if value="{{ f.hasErr }}"><span data-ferr="" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--tone-danger-fg);"><i class="ri-error-warning-line" style="font-size:13px;"></i>{{ f.err }}</span></sc-if><sc-if value="{{ f.hasHint }}"><span style="font-size:12px;color:{{ tMuted }};">{{ f.hint }}</span></sc-if></label>
                               </sc-if>
                               <sc-if value="{{ f.isTextarea }}">
-                                <label style="{{ f.cell }}display:flex;flex-direction:column;gap:6px;"><span style="position:relative;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:{{ tHeading }};min-height:20px;">{{ f.label }}<sc-if value="{{ f.hasTag }}"><span style="{{ f.tagStyle }}">{{ f.tag }}</span></sc-if><sc-if value="{{ f.isShared }}"><span title="Dùng chung cho mọi ngôn ngữ — sửa ở bản nguồn" style="{{ f.sharedStyle }}"><i class="ri-lock-line" style="font-size:12px;"></i>Chung</span></sc-if><sc-if value="{{ f.hasInfo }}"><span data-dz="finfo" style="position:relative;display:inline-flex;align-items:center;flex-shrink:0;"><button data-dz="finfo" onClick="{{ f.onInfo }}" aria-label="Xem giải thích" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:{{ tMuted }};cursor:pointer;" style-hover="color:var(--brand-ink,var(--brand));background:{{ tHover }};"><i class="ri-information-line" style="font-size:14px;"></i></button><sc-if value="{{ f.infoOpen }}"><span data-dz="finfo" style="{{ f.infoPopStyle }}"><span style="{{ f.infoArrowStyle }}"></span>{{ f.info }}</span></sc-if></span></sc-if></span><textarea rows="3" value="{{ f.value }}" placeholder="{{ f.phText }}" onChange="{{ f.onText }}" readOnly="{{ f.ro }}" style="{{ f.fieldStyle }}resize:vertical;"></textarea><sc-if value="{{ f.hasErr }}"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--tone-danger-fg);"><i class="ri-error-warning-line" style="font-size:13px;"></i>{{ f.err }}</span></sc-if><sc-if value="{{ f.hasHint }}"><span style="font-size:12px;color:{{ tMuted }};">{{ f.hint }}</span></sc-if></label>
+                                <label style="{{ f.cell }}display:flex;flex-direction:column;gap:6px;"><span style="position:relative;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:{{ tHeading }};min-height:20px;">{{ f.label }}<sc-if value="{{ f.hasTag }}"><span style="{{ f.tagStyle }}">{{ f.tag }}</span></sc-if><sc-if value="{{ f.isShared }}"><span title="Dùng chung cho mọi ngôn ngữ — sửa ở bản nguồn" style="{{ f.sharedStyle }}"><i class="ri-lock-line" style="font-size:12px;"></i>Chung</span></sc-if><sc-if value="{{ f.hasInfo }}"><span data-dz="finfo" style="position:relative;display:inline-flex;align-items:center;flex-shrink:0;"><button data-dz="finfo" onClick="{{ f.onInfo }}" aria-label="Xem giải thích" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:{{ tMuted }};cursor:pointer;" style-hover="color:var(--brand-ink,var(--brand));background:{{ tHover }};"><i class="ri-information-line" style="font-size:14px;"></i></button><sc-if value="{{ f.infoOpen }}"><span data-dz="finfo" style="{{ f.infoPopStyle }}"><span style="{{ f.infoArrowStyle }}"></span>{{ f.info }}</span></sc-if></span></sc-if></span><textarea rows="3" value="{{ f.value }}" placeholder="{{ f.phText }}" onChange="{{ f.onText }}" readOnly="{{ f.ro }}" style="{{ f.fieldStyle }}resize:vertical;"></textarea><sc-if value="{{ f.hasErr }}"><span data-ferr="" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--tone-danger-fg);"><i class="ri-error-warning-line" style="font-size:13px;"></i>{{ f.err }}</span></sc-if><sc-if value="{{ f.hasHint }}"><span style="font-size:12px;color:{{ tMuted }};">{{ f.hint }}</span></sc-if></label>
                               </sc-if>
                               <sc-if value="{{ f.isSelect }}">
                                 <label style="display:flex;flex-direction:column;gap:6px;"><span style="position:relative;display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:{{ tHeading }};min-height:20px;">{{ f.label }}<sc-if value="{{ f.isShared }}"><span title="Dùng chung cho mọi ngôn ngữ — sửa ở bản nguồn" style="{{ f.sharedStyle }}"><i class="ri-lock-line" style="font-size:12px;"></i>Chung</span></sc-if><sc-if value="{{ f.hasInfo }}"><span data-dz="finfo" style="position:relative;display:inline-flex;align-items:center;flex-shrink:0;"><button data-dz="finfo" onClick="{{ f.onInfo }}" aria-label="Xem giải thích" style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;border-radius:50%;background:transparent;color:{{ tMuted }};cursor:pointer;" style-hover="color:var(--brand-ink,var(--brand));background:{{ tHover }};"><i class="ri-information-line" style="font-size:14px;"></i></button><sc-if value="{{ f.infoOpen }}"><span data-dz="finfo" style="{{ f.infoPopStyle }}"><span style="{{ f.infoArrowStyle }}"></span>{{ f.info }}</span></sc-if></span></sc-if></span><select value="{{ f.value }}" onChange="{{ f.onText }}" disabled="{{ f.ro }}" style="{{ f.fieldStyle }}cursor:pointer;"><sc-for list="{{ f.opts }}" as="o" hint-placeholder-count="2"><option value="{{ o.o }}">{{ o.o }}</option></sc-for></select></label>
                               </sc-if>
                               <sc-if value="{{ f.isSecret }}">
-                                <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">{{ f.label }}</span><div style="position:relative;display:flex;align-items:center;"><input type="{{ f.secretType }}" value="{{ f.value }}" placeholder="{{ f.secretPh }}" onChange="{{ f.onText }}" style="{{ inputStyle }}padding-right:40px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;"><button onClick="{{ f.onEye }}" title="Hiện/ẩn" style="position:absolute;right:4px;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:5px;background:transparent;color:{{ tMuted }};cursor:pointer;" style-hover="color:var(--brand-ink,var(--brand));" aria-label="Hiện/ẩn"><i class="{{ f.eyeIcon }}" style="font-size:16px;"></i></button></div><sc-if value="{{ f.hasErr }}"><span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--tone-danger-fg);"><i class="ri-error-warning-line" style="font-size:13px;"></i>{{ f.err }}</span></sc-if><sc-if value="{{ f.hasHint }}"><span style="font-size:12px;color:{{ tMuted }};">{{ f.hint }}</span></sc-if></label>
+                                <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">{{ f.label }}</span><div style="position:relative;display:flex;align-items:center;"><input type="{{ f.secretType }}" value="{{ f.value }}" placeholder="{{ f.secretPh }}" onChange="{{ f.onText }}" style="{{ inputStyle }}padding-right:40px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;"><button onClick="{{ f.onEye }}" title="Hiện/ẩn" style="position:absolute;right:4px;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border:0;border-radius:5px;background:transparent;color:{{ tMuted }};cursor:pointer;" style-hover="color:var(--brand-ink,var(--brand));" aria-label="Hiện/ẩn"><i class="{{ f.eyeIcon }}" style="font-size:16px;"></i></button></div><sc-if value="{{ f.hasErr }}"><span data-ferr="" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--tone-danger-fg);"><i class="ri-error-warning-line" style="font-size:13px;"></i>{{ f.err }}</span></sc-if><sc-if value="{{ f.hasHint }}"><span style="font-size:12px;color:{{ tMuted }};">{{ f.hint }}</span></sc-if></label>
                               </sc-if>
                               <sc-if value="{{ f.isNum }}">
                                 <label style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">{{ f.label }}</span><div style="display:flex;align-items:center;gap:0;max-width:240px;"><input type="number" value="{{ f.value }}" min="{{ f.min }}" step="{{ f.step }}" onChange="{{ f.onText }}" style="{{ inputStyle }}border-top-right-radius:0;border-bottom-right-radius:0;"><span style="display:inline-flex;align-items:center;align-self:stretch;padding:0 12px;border:1px solid {{ tCardBorder }};border-left:0;border-radius:0 5px 5px 0;background:color-mix(in srgb, {{ tMuted }} 8%, transparent);font-size:12.5px;font-weight:500;color:{{ tMuted }};white-space:nowrap;">{{ f.unit }}</span></div><sc-if value="{{ f.hasHint }}"><span style="font-size:12px;color:{{ tMuted }};">{{ f.hint }}</span></sc-if></label>
@@ -739,6 +735,17 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                     </div>
                   </div>
                 </div>
+                <sc-if value="{{ saveBarShow }}"><div data-sticky-savebar="" role="region" aria-label="Lưu thay đổi" style="position:sticky;bottom:0;z-index:20;display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;margin:16px -24px -76px;padding:12px 24px calc(12px + env(safe-area-inset-bottom));background:{{ tCard }};border-top:1px solid {{ tCardBorder }};box-shadow:0 -2px 10px rgba(30,32,37,0.07);">
+                  <div role="status" aria-live="polite" style="display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;flex:1 1 auto;min-width:0;font-size:14px;">
+                    <sc-if value="{{ sbHasChanges }}"><span style="display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--color-admin-warning-text,#8a6200);white-space:nowrap;"><i class="ri-error-warning-line" style="font-size:16px;"></i>{{ sbChangesText }}</span></sc-if>
+                    <sc-if value="{{ sbClean }}"><span style="display:inline-flex;align-items:center;gap:6px;color:{{ tMuted }};white-space:nowrap;"><i class="ri-checkbox-circle-line" style="font-size:16px;"></i>Mọi thay đổi đã được lưu</span></sc-if>
+                    <sc-if value="{{ sbHasErr }}"><span style="display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--color-admin-danger-text,#bf371a);white-space:nowrap;"><i class="ri-close-circle-line" style="font-size:16px;"></i>{{ sbErrText }}</span><button onClick="{{ onFirstError }}" style="min-height:36px;padding:0 6px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:14px;font-weight:600;color:var(--color-admin-danger-text,#bf371a);text-decoration:underline;text-underline-offset:3px;cursor:pointer;white-space:nowrap;">Xem lỗi đầu tiên</button></sc-if>
+                  </div>
+                  <div style="display:flex;align-items:center;gap:10px;margin-left:auto;">
+                    <button style="{{ settingsResetStyle }}" disabled="{{ settingsNoChanges }}" onClick="{{ onActionReset }}">Bỏ thay đổi</button>
+                    <button style="{{ settingsSaveStyle }}" aria-disabled="{{ sbSaveAria }}" onClick="{{ onActionSave }}"><i class="ri-save-3-line" style="font-size:15px;"></i>Lưu</button>
+                  </div>
+                </div></sc-if>
               </div>
 
               <sc-if value="{{ showMenus }}">
@@ -750,6 +757,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                   <span style="display:inline-flex;align-items:center;justify-content:center;width:60px;height:60px;border-radius:16px;background:color-mix(in srgb, var(--brand) 9%, transparent);color:var(--brand-ink,var(--brand));"><i class="ri-inbox-2-line" style="font-size:28px;"></i></span>
                   <div style="font-size:16px;font-weight:600;color:{{ tHeading }};">{{ pageTitle }}</div>
                   <div style="font-size:13px;color:{{ tMuted }};max-width:380px;line-height:1.6;">Màn hình này đang được xây dựng. Nội dung của mục sẽ hiển thị tại đây khi bạn ghép trang tương ứng vào.</div>
+                  <sc-if value="{{ blankNoteShow }}"><div style="display:flex;flex-direction:column;gap:4px;max-width:460px;padding:10px 14px;border:1px dashed var(--color-border-input,#878a99);border-radius:6px;font-size:12px;line-height:1.5;color:var(--color-body-muted,#5b6275);text-align:left;"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);">Ghi chú thiết kế<sc-if value="{{ blankPend }}"> · Chờ backend (chưa có trong AdminNav/PlatformNav)</sc-if></span><span>{{ blankKeys }}</span></div></sc-if>
                 </div>
               </sc-if>
             </div>
@@ -765,28 +773,49 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
       <sc-if value="{{ anyDrop }}"><div style="position:absolute;inset:0;z-index:60;" onClick="{{ onCloseDrops }}"></div></sc-if>
       <sc-if value="{{ mobileNavShade }}"><div style="position:absolute;inset:0;z-index:125;background:rgba(15,18,30,0.42);" onClick="{{ onCloseMobileNav }}"></div></sc-if>
 
-      <button style="{{ czTriggerStyle }}" style-hover="opacity:0.92;" onClick="{{ onToggleCustomizer }}" title="Tùy biến giao diện" aria-label="Tùy biến giao diện"><i class="ri-equalizer-line" style="font-size:18px;"></i></button>
+
+      <sc-if value="{{ searchFullOpen }}"><div role="dialog" aria-modal="true" aria-label="Tìm kiếm" style="position:fixed;inset:0;z-index:230;display:flex;flex-direction:column;background:{{ tCard }};padding-top:env(safe-area-inset-top);">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid {{ tLine }};">
+          <button aria-label="Đóng tìm kiếm" title="Đóng tìm kiếm" onClick="{{ onCloseSearchFull }}" style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;flex-shrink:0;border:0;border-radius:6px;background:transparent;color:{{ tText }};cursor:pointer;"><i class="ri-arrow-left-line" style="font-size:20px;"></i></button>
+          <div class="sBox" data-focus-wrap="" style="flex:1;min-width:0;display:flex;align-items:center;gap:8px;height:44px;padding:0 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;background:{{ tCard }};"><i class="ri-search-line" style="font-size:16px;color:{{ tMuted }};flex-shrink:0;"></i><input class="sPlain" type="search" ref="{{ setSearchFullEl }}" aria-label="Tìm kiếm" placeholder="Tìm trang, bài viết, sản phẩm, cài đặt…" value="{{ searchVal }}" onChange="{{ onSearchChange }}" style="flex:1;min-width:0;border:0;outline:2px solid transparent;background:transparent;font:inherit;font-size:16px;color:{{ tHeading }};padding:0;"></div>
+        </div>
+        <div class="scl" style="flex:1;overflow-y:auto;padding:6px 0 calc(16px + env(safe-area-inset-bottom));">
+          <div style="padding:10px 16px 6px;font-size:12px;font-weight:600;color:{{ tMuted }};">Kết quả nhanh</div>
+          <sc-for list="{{ searchResults }}" as="r" hint-placeholder-count="4"><button style="display:flex;align-items:center;gap:12px;width:100%;min-height:52px;padding:8px 16px;border:0;background:transparent;font:inherit;cursor:pointer;text-align:left;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ r.onClick }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:6px;background:{{ r.tint }};color:{{ r.tintFg }};flex-shrink:0;"><i class="{{ r.icon }}" style="font-size:16px;"></i></span><span style="display:flex;flex-direction:column;line-height:1.35;min-width:0;"><span style="font-size:14px;font-weight:500;color:{{ tHeading }};">{{ r.title }}</span><span style="font-size:12px;color:{{ tMuted }};">{{ r.kind }}</span></span></button></sc-for>
+        </div>
+      </div></sc-if>
+
+      <sc-if value="{{ helpOpen }}"><div style="position:absolute;inset:0;z-index:90;background:rgba(20,22,26,0.35);" onClick="{{ onCloseHelp }}"></div>
+      <aside role="dialog" aria-modal="true" aria-label="Trợ giúp" style="position:absolute;top:0;right:0;bottom:0;z-index:95;width:min(388px,100%);display:flex;flex-direction:column;background:{{ tCard }};box-shadow:-8px 0 40px rgba(20,22,30,0.22);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;border-bottom:1px solid {{ tLine }};">
+          <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span style="font-size:15px;font-weight:600;color:{{ tHeading }};">Trợ giúp</span><span style="font-size:12px;color:{{ tMuted }};">Đang xem: {{ helpScreen }}</span></div>
+          <button ref="{{ setHelpCloseEl }}" style="display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;flex-shrink:0;border:0;border-radius:6px;background:{{ tHover }};color:{{ tMuted }};cursor:pointer;" onClick="{{ onCloseHelp }}" aria-label="Đóng trợ giúp" title="Đóng trợ giúp"><i class="ri-close-line" style="font-size:19px;"></i></button>
+        </div>
+        <div class="scl" style="flex:1;overflow-y:auto;padding:18px 20px calc(20px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px;">
+          <div style="font-size:12px;font-weight:600;color:{{ tMuted }};">Hay hỏi ở màn này</div>
+          <sc-for list="{{ helpTopics }}" as="h" hint-placeholder-count="3"><div style="padding:12px 14px;border:1px solid {{ tCardBorder }};border-radius:6px;"><div style="font-size:14px;font-weight:600;line-height:1.4;color:{{ tHeading }};">{{ h.q }}</div><div style="margin-top:4px;font-size:13px;line-height:1.55;color:{{ tText }};">{{ h.a }}</div></div></sc-for>
+          <div style="margin-top:6px;font-size:12px;font-weight:600;color:{{ tMuted }};">Liên hệ hỗ trợ</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <a href="{{ helpTel }}" style="display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border:1px solid {{ tCardBorder }};border-radius:6px;color:{{ tText }};"><i class="ri-phone-line" style="font-size:17px;color:var(--color-accent,var(--brand-ink,var(--brand)));"></i><span style="flex:1;">Gọi tổng đài</span><strong style="font-weight:600;color:{{ tHeading }};">{{ helpPhone }}</strong></a>
+            <a href="{{ helpZaloUrl }}" style="display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border:1px solid {{ tCardBorder }};border-radius:6px;color:{{ tText }};"><i class="ri-chat-3-line" style="font-size:17px;color:var(--color-accent,var(--brand-ink,var(--brand)));"></i><span style="flex:1;">Nhắn Zalo</span><strong style="font-weight:600;color:{{ tHeading }};">{{ helpZalo }}</strong></a>
+            <a href="{{ helpMail }}" style="display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border:1px solid {{ tCardBorder }};border-radius:6px;color:{{ tText }};"><i class="ri-mail-line" style="font-size:17px;color:var(--color-accent,var(--brand-ink,var(--brand)));"></i><span style="flex:1;">Gửi email</span><strong style="font-weight:600;color:{{ tHeading }};word-break:break-all;">{{ helpEmail }}</strong></a>
+          </div>
+          <sc-if value="{{ notesOn }}"><div style="padding:10px 12px;border:1px dashed var(--color-border-input,#878a99);border-radius:6px;font-size:12px;line-height:1.5;color:{{ tMuted }};"><strong style="color:{{ tHeading }};">Ghi chú thiết kế</strong> · Build: &lt;x-bs-admin::help-panel&gt;. Nội dung theo màn lấy từ registry màn (D0-4b) · Chờ backend: kho bài trợ giúp theo màn.</div></sc-if>
+        </div>
+      </aside></sc-if>
 
       <sc-if value="{{ customizerOpen }}"><div style="position:absolute;inset:0;z-index:90;background:rgba(20,22,26,0.35);" onClick="{{ onToggleCustomizer }}"></div></sc-if>
       <aside style="{{ czPanelStyle }}">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid {{ tLine }};background:{{ tCard }};">
-          <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:15px;font-weight:600;color:{{ tHeading }};">Tùy biến giao diện</span><span style="font-size:12px;color:{{ tMuted }};">Tùy biến bố cục & màu sắc</span></div>
-          <button style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:7px;background:{{ tHover }};color:{{ tMuted }};cursor:pointer;" onClick="{{ onToggleCustomizer }}" aria-label="Đóng tùy chỉnh giao diện" title="Đóng tùy chỉnh giao diện"><i class="ri-close-line" style="font-size:19px;"></i></button>
+          <div style="display:flex;flex-direction:column;gap:2px;"><span style="font-size:15px;font-weight:600;color:{{ tHeading }};">Giao diện</span><span style="font-size:12px;color:{{ tMuted }};">Lựa chọn riêng của bạn, đè lên mặc định của website</span></div>
+          <button style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:7px;background:{{ tHover }};color:{{ tMuted }};cursor:pointer;" onClick="{{ onToggleCustomizer }}" aria-label="Đóng" title="Đóng"><i class="ri-close-line" style="font-size:19px;"></i></button>
         </div>
         <div class="scl" style="flex:1;overflow-y:auto;padding:20px 10px 20px 22px;display:flex;flex-direction:column;gap:22px;">
+          <div style="display:flex;gap:9px;padding:10px 12px;border-radius:6px;background:color-mix(in srgb, var(--brand) 7%, var(--color-surface,#fff));font-size:12px;line-height:1.5;color:{{ tText }};"><i class="ri-information-line" style="font-size:15px;color:var(--color-accent,var(--brand-ink,var(--brand)));flex-shrink:0;"></i><span>Mặc định của website đặt ở Cài đặt › Giao diện trang quản trị. Lựa chọn ở đây chỉ áp cho riêng bạn; bấm "Về mặc định" để dùng lại mặc định. Màu trang quản trị do nền tảng đặt chung, không đổi ở đây.</span></div>
           <div>
-            <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:3px;">Loại tài khoản</div>
-            <div style="font-size:12px;color:{{ tMuted }};margin-bottom:11px;">Xem thử menu theo loại quản trị.</div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;"><sc-for list="{{ czPlane }}" as="o" hint-placeholder-count="3"><button style="{{ o.style }}" onClick="{{ o.onClick }}"><i class="{{ o.icon }}" style="font-size:16px;"></i>{{ o.label }}</button></sc-for></div>
-          </div>
-          <div>
-            <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:3px;">Màu thương hiệu</div>
-            <div style="font-size:12px;color:{{ tMuted }};margin-bottom:11px;">Áp cho nút, liên kết, menu, thanh cuộn…</div>
-            <div style="display:flex;flex-wrap:wrap;gap:10px;">
-              <sc-for list="{{ czBrand }}" as="b" hint-placeholder-count="6">
-                <button onClick="{{ b.click }}" title="{{ b.label }}" aria-label="Màu {{ b.label }}" aria-pressed="{{ b.pressed }}" style="width:32px;height:32px;border-radius:50%;border:0;cursor:pointer;padding:0;background:{{ b.solid }};box-shadow:{{ b.ring }};display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;transition:box-shadow .15s;"><sc-if value="{{ b.on }}"><i class="ri-check-line" style="color:#fff;font-size:15px;"></i></sc-if></button>
-              </sc-for>
-            </div>
+            <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:3px;">Cỡ chữ</div>
+            <div style="font-size:12px;color:{{ tMuted }};margin-bottom:11px;">Chữ lớn tăng 2px cho phần nội dung của mọi màn.</div>
+            <div role="group" aria-label="Cỡ chữ" style="display:flex;gap:8px;flex-wrap:wrap;"><button class="rgc" aria-pressed="{{ czFsN }}" onClick="{{ onFsNormal }}" style="min-height:40px;font-size:13px;">Bình thường</button><button class="rgc" aria-pressed="{{ czFsL }}" onClick="{{ onFsLarge }}" style="min-height:40px;font-size:15px;">Lớn</button></div>
           </div>
           <div>
             <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:3px;">Bố cục</div>
@@ -839,6 +868,11 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                 <sc-if value="{{ cz.scD.on }}"><span style="position:absolute;top:6px;right:6px;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--brand-solid,var(--brand));color:#fff;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.3);z-index:5;"><i class="ri-check-line" style="font-size:12px;"></i></span></sc-if>
                 <span style="{{ cz.scD.l }}">Tối</span>
               </button>
+              <button style="{{ cz.scA.w }}" onClick="{{ cz.scA.click }}">
+                <div style="display:flex;height:68px;border-radius:6px;overflow:hidden;border:1px solid {{ tCardBorder }};"><div style="flex:1;background:#f4f5fa;"></div><div style="flex:1;background:#0f1729;"></div></div>
+                <sc-if value="{{ cz.scA.on }}"><span style="position:absolute;top:6px;right:6px;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--brand-solid,var(--brand));color:#fff;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.3);z-index:5;"><i class="ri-check-line" style="font-size:12px;"></i></span></sc-if>
+                <span style="{{ cz.scA.l }}">Theo máy</span>
+              </button>
             </div>
           </div>
           <div>
@@ -866,7 +900,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
           </div>
           <div>
             <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:3px;">Vị trí bố cục</div>
-            <div style="font-size:12px;color:{{ tMuted }};margin-bottom:11px;">Topbar cố định hay cuộn theo trang.</div>
+            <div style="font-size:12px;color:{{ tMuted }};margin-bottom:11px;">Thanh trên cùng cố định hay cuộn theo trang.</div>
             <div style="display:flex;flex-wrap:wrap;gap:10px;">
               <button style="{{ cz.posF.w }}" onClick="{{ cz.posF.click }}">
                 <div style="display:flex;flex-direction:column;height:68px;border-radius:6px;overflow:hidden;border:1px solid {{ tCardBorder }};background:#f4f5fa;">
@@ -888,7 +922,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
           </div>
           <sc-if value="{{ isHorizontal }}"><div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:-12px;padding:9px 11px;border-radius:6px;background:{{ tHover }};font-size:12px;line-height:1.5;color:{{ tText }};"><i class="ri-information-line" style="font-size:14px;flex-shrink:0;margin-top:1px;"></i>Kích thước và màu Sidebar chỉ áp dụng cho bố cục Dọc và 2 cột.</div></sc-if>
           <div style="{{ czSidebarSectStyle }}" aria-disabled="{{ czSbDisabled }}">
-            <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:4px;">Kích thước Sidebar</div>
+            <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:4px;">Độ rộng thanh bên</div>
               <div style="font-size:12px;line-height:1.45;color:{{ tMuted }};margin-bottom:11px;">{{ czSizeNote }}</div>
             <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
               <button style="{{ cz.szD.w }}" onClick="{{ cz.szD.click }}">
@@ -908,7 +942,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                 <span style="{{ cz.szS.l }}">Thu nhỏ</span>
               </button>
             </div>
-            <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:11px;">Màu Sidebar</div>
+            <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:11px;">Màu thanh bên</div>
             <div style="display:flex;flex-wrap:wrap;gap:10px;">
               <button style="{{ cz.sbL.w }}" onClick="{{ cz.sbL.click }}">
                 <div style="display:flex;height:68px;border-radius:6px;overflow:hidden;border:1px solid {{ tCardBorder }};background:#fff;"><div style="width:36%;background:#f4f6f9;border-right:1px solid #e9ebec;"></div><div style="flex:1;background:#f4f5fa;"></div></div>
@@ -923,12 +957,12 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
               <button style="{{ cz.sbG.w }}" onClick="{{ cz.sbG.click }}">
                 <div style="display:flex;height:68px;border-radius:6px;overflow:hidden;border:1px solid {{ tCardBorder }};background:#fff;"><div style="width:36%;background:linear-gradient(165deg, var(--brand-solid,var(--brand)), color-mix(in srgb, var(--brand-solid,var(--brand)) 82%, #000) 42%, color-mix(in srgb, var(--brand-solid,var(--brand)) 60%, #000));"></div><div style="flex:1;background:#f4f5fa;"></div></div>
                 <sc-if value="{{ cz.sbG.on }}"><span style="position:absolute;top:6px;right:6px;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--brand-solid,var(--brand));color:#fff;border:2px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,0.3);z-index:5;"><i class="ri-check-line" style="font-size:12px;"></i></span></sc-if>
-                <span style="{{ cz.sbG.l }}">Gradient</span>
+                <span style="{{ cz.sbG.l }}">Chuyển màu</span>
               </button>
             </div>
           </div>
           <div>
-            <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:11px;">Màu Topbar</div>
+            <div style="font-size:13px;font-weight:600;color:{{ tHeading }};margin-bottom:11px;">Màu thanh trên cùng</div>
             <div style="display:flex;flex-wrap:wrap;gap:10px;">
               <button style="{{ cz.tbL.w }}" onClick="{{ cz.tbL.click }}">
                 <div style="display:flex;flex-direction:column;height:68px;border-radius:6px;overflow:hidden;border:1px solid {{ tCardBorder }};background:#fff;"><div style="height:22px;background:#fff;border-bottom:1px solid #e9ebec;"></div><div style="flex:1;display:flex;"><div style="width:26%;background:color-mix(in srgb, var(--brand-solid,var(--brand)) 72%, #0b1d45);"></div><div style="flex:1;background:#f4f5fa;"></div></div></div>
@@ -944,7 +978,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
           </div>
         </div>
         <div style="display:flex;gap:10px;padding:14px 20px;border-top:1px solid {{ tLine }};background:{{ tCard }};">
-          <button style="flex:1;min-height:40px;padding:9px;border:1px solid {{ tCardBorder }};border-radius:7px;background:transparent;font:inherit;font-size:13px;font-weight:500;color:{{ tText }};cursor:pointer;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onResetCustomizer }}"><i class="ri-refresh-line" style="font-size:15px;margin-right:5px;"></i>Đặt lại</button>
+          <button style="flex:1;min-height:40px;padding:9px;border:1px solid {{ tCardBorder }};border-radius:7px;background:transparent;font:inherit;font-size:13px;font-weight:500;color:{{ tText }};cursor:pointer;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onResetCustomizer }}"><i class="ri-refresh-line" style="font-size:15px;margin-right:5px;"></i>Về mặc định</button>
           <button style="flex:1;min-height:40px;padding:9px;border:0;border-radius:7px;background:var(--brand-solid,var(--brand));color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;" style-hover="filter:brightness(0.95);" onClick="{{ onToggleCustomizer }}">Xong</button>
         </div>
       </aside>
@@ -984,7 +1018,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                   <div style="margin-top:16px;"><button onClick="{{ onChangePw }}" style="{{ acctSaveBtnStyle }}">Đổi mật khẩu</button></div>
                   <div style="height:1px;background:{{ tLine }};margin:24px 0;"></div>
                   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span style="font-size:13.5px;font-weight:500;color:{{ tHeading }};">Bật xác thực 2 lớp (2FA)</span><span style="font-size:12px;color:{{ tMuted }};">{{ twofaHint }}</span></div>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span style="font-size:13.5px;font-weight:500;color:{{ tHeading }};">Bật xác thực 2 lớp</span><span style="font-size:12px;color:{{ tMuted }};">{{ twofaHint }}</span></div>
                     <span class="{{ twofaClass }}" onClick="{{ onToggle2fa }}"><span></span></span>
                   </div>
                   <div style="height:1px;background:{{ tLine }};margin:24px 0;"></div>
@@ -1061,7 +1095,7 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
     </div>
 </section>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:880}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:880},&quot;plane&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;tenant&quot;,&quot;platform&quot;,&quot;shop&quot;],&quot;default&quot;:&quot;tenant&quot;,&quot;tsType&quot;:&quot;'tenant'|'platform'|'shop'&quot;,&quot;label&quot;:&quot;Mặt (xem thử: tenant = Website · platform = Nền tảng · shop = TMĐT — Để sau)&quot;},&quot;accountType&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;site&quot;,&quot;ecom&quot;,&quot;saas&quot;],&quot;default&quot;:&quot;site&quot;,&quot;tsType&quot;:&quot;'site'|'ecom'|'saas'&quot;,&quot;label&quot;:&quot;Loại tài khoản (mặt Website)&quot;},&quot;brandPreview&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;options&quot;:[&quot;#2050a0&quot;,&quot;#0e7490&quot;,&quot;#15803d&quot;,&quot;#4338ca&quot;,&quot;#9d174d&quot;,&quot;#334155&quot;],&quot;default&quot;:&quot;#2050a0&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Màu thương hiệu (xem thử — bản thật ở Cài đặt nền tảng › Thương hiệu trắng)&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Hiện ghi chú thiết kế&quot;}}">
 class Component extends DCLogic {
   constructor(props) {
     super(props);
@@ -1070,7 +1104,7 @@ class Component extends DCLogic {
       sidebarColor: 'dark', topbarColor: 'light', width: 'fluid', layoutPosition: 'fixed', brandColor: '#2050a0',
       customizerOpen: false, plane: 'tenant',
       activeMenu: 'dashboard', openGroup: 'posts', settingsSection: 'general', settingsDirty: {}, pendingSection: null, settingsValues: {}, settingsDraft: {}, embedDirty: {}, secretShow: {}, secGroup: {}, cLang: 'vi', pickerFor: null, savedAt: {}, secSearch: '', pendingNav: false, saveSig: { integrations: 0, floating: 0 }, resetSig: { integrations: 0, floating: 0 }, toast: null,
-      twoColGroup: 'tg-content', drop: null, hVisible: 8,
+      twoColGroup: '', drop: null, hVisible: 8,
       fxList: [{ c: 'USD', rate: '25.400' }], fxAdd: '', ccyAsk: null,
       site: 'anvinh', search: '', lang: 'vi',
       siteLangs: ['vi', 'en', 'zh'], pubLangs: ['vi', 'en'], defLang: 'vi',
@@ -1079,9 +1113,12 @@ class Component extends DCLogic {
       pwCur: '', pwNew: '', pwConfirm: '', twofaOn: false, killedSessions: [],
       prefLang: 'vi', prefTz: 'Asia/Ho_Chi_Minh', prefEmailNotif: true,
       screenLocked: false, lockInput: '', lockErr: false, logoutAsk: false, loggedOut: false,
+      helpOpen: false, searchFull: false, siteQ: '', userLangOpen: false, setList: true, advOpen: false, embedInvalid: {},
       range: '7d', rangeFrom: null, rangeTo: null, rangeDraftFrom: '', rangeDraftTo: '', rangeErr: '', chartW: 0
     };
     Object.assign(this.state, this.loadUi());
+    // Tweak "Mặt" (xem thử prototype): đè lựa chọn đã lưu. Bản thật: mặt theo tên miền đang mở.
+    if (Component.UI_OK().plane.indexOf(props.plane) >= 0) { this.state.plane = props.plane; this.state.activeMenu = props.plane === 'platform' ? 'p-dashboard' : 'dashboard'; }
     if (this.state.plane === 'platform') this.state.settingsSection = 'p-general';
   }
   // Bảng màu thương hiệu (Đợt C, 01/10/2026): [màu gốc, tên, --brand-solid, --brand-ink Sáng]. Tối: color-mix(oklab, gốc 38%, #e6eeff).
@@ -1089,8 +1126,8 @@ class Component extends DCLogic {
   static PAL() { return [ ['#2050a0', 'Bảo Sơn', '#2050a0', '#2050a0'], ['#0e7490', 'Xanh cổ vịt', '#00657f', '#05708c'], ['#15803d', 'Xanh lá', '#056b30', '#0a7636'], ['#4338ca', 'Chàm', '#4338ca', '#4338ca'], ['#9d174d', 'Mận', '#9d174d', '#9d174d'], ['#334155', 'Than chì', '#334155', '#334155'] ]; }
   // Q5: lưu 9 thuộc tính Tùy biến vào localStorage['bs-ui'] (có version). Bản thật lưu phía server theo người dùng.
   // RIÊNG plane: chỉ là bộ chọn xem thử của prototype; bản thật lấy theo tài khoản đăng nhập, không lưu theo trình duyệt.
-  static UI_DEF() { return { plane: 'tenant', brandColor: '#2050a0', layout: 'vertical', scheme: 'light', width: 'fluid', layoutPosition: 'fixed', sidebarSize: 'default', sidebarColor: 'dark', topbarColor: 'light' }; }
-  static UI_OK() { return { plane: ['tenant', 'shop', 'platform'], brandColor: Component.PAL().map(p => p[0]), layout: ['vertical', 'horizontal', 'twocolumn'], scheme: ['light', 'dark'], width: ['fluid', 'boxed'], layoutPosition: ['fixed', 'scrollable'], sidebarSize: ['default', 'small'], sidebarColor: ['light', 'dark', 'gradient'], topbarColor: ['light', 'dark'] }; }
+  static UI_DEF() { return { plane: 'tenant', brandColor: '#2050a0', layout: 'vertical', scheme: 'light', width: 'fluid', layoutPosition: 'fixed', sidebarSize: 'default', sidebarColor: 'dark', topbarColor: 'light', fontSize: 'normal' }; }
+  static UI_OK() { return { plane: ['tenant', 'shop', 'platform'], brandColor: Component.PAL().map(p => p[0]), layout: ['vertical', 'horizontal', 'twocolumn'], scheme: ['light', 'dark', 'auto'], fontSize: ['normal', 'large'], width: ['fluid', 'boxed'], layoutPosition: ['fixed', 'scrollable'], sidebarSize: ['default', 'small'], sidebarColor: ['light', 'dark', 'gradient'], topbarColor: ['light', 'dark'] }; }
   loadUi() {
     const D = Component.UI_DEF(), OK = Component.UI_OK(), out = Object.assign({}, D);
     let raw = null; try { raw = localStorage.getItem('bs-ui'); } catch (e) {}
@@ -1127,12 +1164,16 @@ class Component extends DCLogic {
       fr.querySelectorAll('[data-sticky-savebar]').forEach(b => { const r = b.getBoundingClientRect(); if (r.height < 1 || r.width < 1) return; if (r.top < fb.bottom - 1 && r.bottom > fb.bottom - 80 && r.right > fb.right - 80) lift = Math.max(lift, Math.round(fb.bottom - r.top + 16)); });
       if (lift !== this._fabLift) { this._fabLift = lift; fr.style.setProperty('--fab-bottom', lift + 'px'); } } catch (e) {} }
   fabSchedule() { this.fabSync(); try { if (this._fabRaf) cancelAnimationFrame(this._fabRaf); this._fabRaf = requestAnimationFrame(() => this.fabSync()); } catch (e) {} }
-  componentDidUpdate() { this.fabSchedule(); }
-  syncScheme() { try { var m = this.state.scheme === 'dark' ? 'dark' : 'light'; document.documentElement.setAttribute('data-bs-theme', m); localStorage.setItem('bs-scheme', m); } catch (e) {} }
+  isDark() { const s = this.state.scheme; if (s === 'dark') return true; if (s !== 'auto') return false; try { return window.matchMedia('(prefers-color-scheme: dark)').matches; } catch (e) { return false; } }
+  syncScheme() { try { var m = this.isDark() ? 'dark' : 'light'; document.documentElement.setAttribute('data-bs-theme', m); localStorage.setItem('bs-scheme', m); } catch (e) {} }
   componentDidMount() {
     this.syncScheme(); this._raf = 0; this.syncW();
     this._fabScroll = () => this.fabSchedule(); try { document.addEventListener('scroll', this._fabScroll, true); window.addEventListener('resize', this._fabScroll); } catch (e) {} this.fabSchedule();
     this._cfgReady = () => this.forceUpdate(); document.addEventListener('bs-ai-quota-ready', this._cfgReady); document.addEventListener('bs-platform-ready', this._cfgReady);
+    try { this._mq = window.matchMedia('(prefers-color-scheme: dark)'); this._mqFn = () => { if (this.state.scheme === 'auto') { this.syncScheme(); this.forceUpdate(); } }; this._mq.addEventListener('change', this._mqFn); } catch (e) {}
+    // Ctrl/⌘+K = phím tắt phụ của ô tìm; Esc đóng tìm toàn màn / Trợ giúp.
+    this._kb2 = (e) => { const k = (e.key || '').toLowerCase(); if ((e.metaKey || e.ctrlKey) && k === 'k') { e.preventDefault(); if (this._searchEl && this._searchEl.offsetParent) this._searchEl.focus(); else this.setState({ searchFull: true, drop: null }); return; } if (k === 'escape') { if (this.state.searchFull) this.setState({ searchFull: false }); else if (this.state.helpOpen) this.setState({ helpOpen: false }); } };
+    try { window.addEventListener('keydown', this._kb2); } catch (e) {}
     this._key = (e) => { const k = (e.key || '').toLowerCase(); if ((e.metaKey || e.ctrlKey) && k === 's') { if (!this.onDirtyScreen()) return; e.preventDefault(); if (!this.anyUnsaved()) return; if (this.state.activeMenu === 'menus') { try { document.dispatchEvent(new CustomEvent('bs-embed-cmd', { detail: { id: 'menus', act: 'save' } })); } catch (er) {} return; } if (this._saveNow) this._saveNow(); } };
     this._bu = (e) => { if (this.anyUnsaved()) { e.preventDefault(); e.returnValue = ''; return ''; } };
     this._esc = (e) => { if ((e.key || '') !== 'Escape') return; const S = this.state; if (S.railOpen) { this.setState({ railOpen: false }); return; } if (S.infoFor) { this.setState({ infoFor: null }); return; } if (S.langPanel) { this.setState({ langPanel: false }); return; } if (S.drop) { this.setState({ drop: null }); return; } if (S.customizerOpen) { this.setState({ customizerOpen: false }); return; } if (S.mobileNavOpen) this.setState({ mobileNavOpen: false }); };
@@ -1182,9 +1223,12 @@ class Component extends DCLogic {
     if (!h) return;
     var parts = h.split('/'); var menu = parts[0]; var sec = parts[1] || '';
     var plane = menu.indexOf('p-') === 0 ? 'platform' : this.state.plane;
+    // L1-C-06: hash lạ (#profile) → bỏ qua, giữ màn đang mở.
+    var all = [].concat(this.tenantMenu(), this.platformMenu(), this.shopMenu());
+    if (['settings', 'p-settings', 'p-plans'].indexOf(menu) < 0 && !all.some(it => it.k === menu || (it.c && it.c.some(c => c.k === menu)))) return;
     var st = { drop: null };
     if (plane !== this.state.plane) { this.applyPlane(plane); st.plane = plane; }
-    if (menu === 'settings' || menu === 'p-settings') { st.activeMenu = menu; if (sec) st.settingsSection = sec; }
+    if (menu === 'settings' || menu === 'p-settings') { st.activeMenu = menu; if (sec) { st.settingsSection = sec; st.setList = false; } }
     else st.activeMenu = menu;
     this.setState(st);
   }
@@ -1213,7 +1257,10 @@ class Component extends DCLogic {
     this._navSecShown = sec;
   }
   componentDidUpdate(pp, ps) {
-    this.syncScheme(); this.saveUi();
+    this.syncScheme(); this.saveUi(); this.fabSchedule();
+    // Tweak "Mặt" đổi lúc chạy (runtime không truyền prevProps — tự giữ bản trước, LESSONS).
+    const p0 = this.props || {}, p1 = this._pp || {}; this._pp = Object.assign({}, p0);
+    if (p0.plane !== p1.plane && Component.UI_OK().plane.indexOf(p0.plane) >= 0 && p0.plane !== this.state.plane) this.setPlane(p0.plane);
     if (this._navSecShown !== this.state.settingsSection && this._navSecPending !== this.state.settingsSection) {
       this._navSecPending = this.state.settingsSection;
       requestAnimationFrame(() => requestAnimationFrame(() => this.centerSecTab()));
@@ -1226,10 +1273,10 @@ class Component extends DCLogic {
       if (this._pendShown && this._dialog) { try { var b = this._dialog.querySelectorAll('button'); if (b.length) b[b.length - 1].focus(); } catch (e) {} }
     }
   }
-  onSettingsScreen() { const am = this.state.activeMenu; return am === 'settings' || am === 'p-settings'; }
+  onSettingsScreen() { const am = this.state.activeMenu; return am === 'settings' || am === 'p-settings' || am === 'p-plans'; }
   onDirtyScreen() { return this.onSettingsScreen() || this.state.activeMenu === 'menus'; }
   navGuard(fn) { if (this.onDirtyScreen() && this.anyUnsaved()) { this._pendingRun = fn; this.setState({ pendingNav: true, drop: null }); return true; } return false; }
-  go(k, parent) { const run = () => this.setState({ activeMenu: k, openGroup: parent || '', drop: null, mobileNavOpen: false, railOpen: false, pendingNav: false }); if (k !== this.state.activeMenu && this.navGuard(run)) return; run(); }
+  go(k, parent) { const run = () => this.setState({ activeMenu: k, openGroup: parent || '', drop: null, mobileNavOpen: false, railOpen: false, pendingNav: false, setList: true, helpOpen: false }); if (k !== this.state.activeMenu && this.navGuard(run)) return; run(); }
   selectMenu(k, hasChildren) { if (hasChildren) { this.openTop(k); } else { this.go(k, ''); } }
   toggleDrop(name) { this.setState(s => ({ drop: s.drop === name ? null : name })); }
   closeDrops() { this.setState({ drop: null }); }
@@ -1255,68 +1302,87 @@ class Component extends DCLogic {
   toggleScheme() { this.setState(s => ({ scheme: s.scheme === 'dark' ? 'light' : 'dark' })); }
   switchPlane() { this.setPlane(this.state.plane === 'tenant' ? 'platform' : 'tenant'); }
   setPlane(p) { if (p === this.state.plane) return; if (this.navGuard(() => this.applyPlane(p))) return; this.applyPlane(p); }
-  applyPlane(p) { this.setState({ pendingNav: false, settingsSection: p === 'platform' ? 'p-general' : 'general', settingsDirty: {}, settingsDraft: {}, embedDirty: {}, pendingSection: null, plane: p, activeMenu: p === 'platform' ? 'p-tenants' : 'dashboard', drop: null, openGroup: p === 'platform' ? '' : (p === 'shop' ? 'products' : 'posts'), twoColGroup: p === 'platform' ? 'pg-main' : (p === 'shop' ? 'sg-sales' : 'tg-content'), mobileNavOpen: false }); }
-  resetCustomizer() { if (this.state.plane !== 'tenant') this.setPlane('tenant'); try { localStorage.removeItem('bs-ui'); } catch (e) {} this._uiLast = ''; this.setState({ layout: 'vertical', scheme: 'light', sidebarSize: 'default', sidebarColor: 'dark', topbarColor: 'light', width: 'fluid', layoutPosition: 'fixed', brandColor: '#2050a0' }); }
+  applyPlane(p) { this.setState({ pendingNav: false, settingsSection: p === 'platform' ? 'p-general' : 'general', settingsDirty: {}, settingsDraft: {}, embedDirty: {}, pendingSection: null, plane: p, activeMenu: p === 'platform' ? 'p-dashboard' : 'dashboard', drop: null, openGroup: p === 'platform' ? '' : (p === 'shop' ? 'products' : 'posts'), twoColGroup: '', mobileNavOpen: false }); }
+  resetCustomizer() { try { localStorage.removeItem('bs-ui'); } catch (e) {} this._uiLast = ''; this.setState({ layout: 'vertical', scheme: 'light', sidebarSize: 'default', sidebarColor: 'dark', topbarColor: 'light', width: 'fluid', layoutPosition: 'fixed', brandColor: '#2050a0', fontSize: 'normal' }); this.notify('Đã về mặc định của website'); }
 
+  // Loại nội dung đọc từ dữ liệu (repo: bảng content_sections theo sort_order; prefix = permission_prefix, mặc định 'entries').
+  // Trang không gắn taxonomy → không có Chuyên mục. Section 'products' cũ bị AdminNav bỏ qua: Sản phẩm là module catalog.
+  static CONTENT_TYPES() { return [
+    { k: 'pages', l: 'Trang', i: 'ri-file-text-line', tax: false },
+    { k: 'posts', l: 'Tin tức', i: 'ri-newspaper-line', tax: true },
+    { k: 'services', l: 'Dịch vụ', i: 'ri-briefcase-line', tax: true },
+    { k: 'projects', l: 'Dự án', i: 'ri-folder-2-line', tax: true }
+  ]; }
+  // AdminNav::reviewQueue — Hộp duyệt chỉ hiện khi website bật quy trình VÀ người dùng duyệt được (entries.review|approve).
+  // null = ẩn mục; 0 = hiện mục, không hiện số. D0-4b nối Tweak quy trình + nhóm quyền vào đây.
+  reviewQueue() { const p = this.props || {}; if (p.workflowOn === false || p.canReview === false) return null; return typeof p.reviewCount === 'number' ? p.reviewCount : 3; }
+  // MỘT nguồn menu cho cả 3 kiểu bố cục (dọc · ngang · 2 cột). Mỗi mục: perm = khóa quyền (PermissionRegistry; 'a|b' = một trong hai),
+  // mod = khóa module (entitlement), pend = chưa có trong AdminNav/PlatformNav (Chờ backend), prop = khóa quyền đề xuất.
+  // D0-4a chưa ẩn theo quyền — D0-4b lọc theo perm/mod.
   tenantMenu() {
-    // Chuẩn theo AdminNav.php (repo BSWebSaaS): Dashboard → loại nội dung (nhóm mở rộng
-    // {Thêm mới · Danh sách · [Chuyên mục]}; Trang không có Chuyên mục vì không gắn taxonomy) →
-    // Sản phẩm (catalog, cũng dạng nhóm) → tính năng (Thư viện · Liên hệ · Trình đơn · Người dùng)
-    // → Cài đặt (nhóm tab). Không có các mục ngoài AdminNav (đã bỏ Hộp duyệt/Phân quyền/Tên miền/
-    // Thông báo/Gói & tính năng). Header chỉ để gom nhóm hiển thị.
-    const kids = (k, cats) => { const c = [ { k: k + '.create', l: 'Thêm mới' }, { k: k + '.list', l: 'Danh sách' } ]; if (cats) c.push({ k: k + '.cats', l: 'Chuyên mục' }); return c; };
-    return [
-      { k: 'dashboard', l: 'Tổng quan', i: 'ri-dashboard-2-line' },
-      { h: 'Nội dung' },
-      { k: 'pages', l: 'Trang', i: 'ri-file-text-line', c: kids('pages', false) },
-      { k: 'posts', l: 'Tin tức', i: 'ri-newspaper-line', c: kids('posts', true) },
-      { k: 'services', l: 'Dịch vụ', i: 'ri-briefcase-line', c: kids('services', true) },
-      { k: 'projects', l: 'Dự án', i: 'ri-folder-2-line', c: kids('projects', true) },
-      { k: 'catalog', l: 'Sản phẩm', i: 'ri-box-3-line', c: kids('catalog', true) },
+    const kids = (t) => { const p = t.prefix || 'entries'; const c = [ { k: t.k + '.create', l: 'Thêm mới', perm: p + '.create' }, { k: t.k + '.list', l: 'Danh sách', perm: p + '.view' } ]; if (t.tax) c.push({ k: t.k + '.cats', l: 'Chuyên mục', perm: 'taxonomies.manage' }); return c; };
+    const rq = this.reviewQueue();
+    const M = [ { k: 'dashboard', l: 'Tổng quan', i: 'ri-dashboard-2-line', perm: null }, { h: 'Nội dung' } ]
+      .concat(Component.CONTENT_TYPES().map(t => ({ k: t.k, l: t.l, i: t.i, perm: (t.prefix || 'entries') + '.view', mod: null, c: kids(t) })));
+    M.push({ k: 'catalog', l: 'Sản phẩm', i: 'ri-box-3-line', perm: 'catalog.view', mod: 'catalog', c: [ { k: 'catalog.create', l: 'Thêm mới', perm: 'catalog.manage' }, { k: 'catalog.list', l: 'Danh sách', perm: 'catalog.view' }, { k: 'catalog.cats', l: 'Chuyên mục', perm: 'taxonomies.manage' } ] });
+    if (rq !== null) M.push({ k: 'review', l: 'Hộp duyệt', i: 'ri-inbox-archive-line', perm: 'entries.review|entries.approve', mod: 'workflow', b: rq > 0 ? String(rq) : '', bc: 'info' });
+    M.push(
       { h: 'Công cụ' },
-      { k: 'media', l: 'Thư viện', i: 'ri-image-2-line' },
-      { k: 'contacts', l: 'Liên hệ', i: 'ri-mail-line', b: '12', bc: 'info' },
-      { k: 'menus', l: 'Trình đơn', i: 'ri-node-tree' },
+      { k: 'media', l: 'Thư viện ảnh & tệp', i: 'ri-image-2-line', perm: 'media.view', mod: 'media' },
+      { k: 'contacts', l: 'Khách liên hệ', i: 'ri-mail-line', perm: 'forms.view', mod: 'contacts', b: '12', bc: 'info' },
+      { k: 'forms', l: 'Biểu mẫu', i: 'ri-survey-line', perm: 'forms.manage', mod: 'contacts', pend: true },
+      { k: 'menus', l: 'Trình đơn', i: 'ri-node-tree', perm: 'menus.manage', mod: 'menus' },
       { h: 'Hệ thống' },
-      { k: 'users', l: 'Người dùng', i: 'ri-team-line' },
-      { k: 'settings', l: 'Cài đặt', i: 'ri-settings-4-line' }
-    ];
+      { k: 'users', l: 'Thành viên', i: 'ri-team-line', perm: 'users.manage', mod: 'users' },
+      { k: 'roles', l: 'Nhóm quyền', i: 'ri-shield-user-line', perm: 'roles.manage', mod: null, pend: true },
+      { k: 'activity', l: 'Nhật ký hoạt động', i: 'ri-history-line', perm: 'activity.view', mod: null, pend: true, prop: true },
+      { k: 'settings', l: 'Cài đặt', i: 'ri-settings-4-line', perm: 'settings.manage', mod: 'settings' }
+    );
+    return M;
   }
   platformMenu() {
-    // Chuẩn theo PlatformNav.php: đúng 4 mục leaf (gate theo quyền platform / super_admin).
+    // PlatformNav.php có 4 mục (tenants · sites · audit · settings chỉ super_admin); còn lại Chờ backend.
+    // Mặt Nền tảng chạy ở tên miền riêng — không có nút chuyển mặt cho người dùng thật.
     return [
-      { k: 'p-tenants', l: 'Khách hàng', i: 'ri-building-2-line' },
-      { k: 'p-sites', l: 'Website', i: 'ri-window-line' },
-      { k: 'p-audit', l: 'Nhật ký hệ thống', i: 'ri-file-shield-2-line' },
-      { k: 'p-settings', l: 'Cài đặt', i: 'ri-settings-3-line' }
+      { k: 'p-dashboard', l: 'Tổng quan', i: 'ri-dashboard-2-line', perm: null, pend: true },
+      { h: 'Khách & website' },
+      { k: 'p-tenants', l: 'Khách hàng', i: 'ri-building-2-line', perm: 'platform.tenants.view' },
+      { k: 'p-sites', l: 'Website', i: 'ri-window-line', perm: 'platform.sites.view' },
+      { h: 'Gói dịch vụ' },
+      { k: 'p-plans', l: 'Gói & tính năng', i: 'ri-price-tag-3-line', perm: 'platform.billing.manage|platform.entitlements.manage', pend: true },
+      { k: 'p-sitetypes', l: 'Loại website', i: 'ri-layout-masonry-line', perm: 'platform.site_types.manage', pend: true, prop: true },
+      { h: 'Vận hành' },
+      { k: 'p-staff', l: 'Nhân sự vận hành', i: 'ri-user-star-line', perm: 'platform.staff.manage', pend: true, prop: true },
+      { k: 'p-audit', l: 'Nhật ký hệ thống', i: 'ri-file-shield-2-line', perm: 'platform.audit.view' },
+      { k: 'p-impersonate', l: 'Đăng nhập hỗ trợ', i: 'ri-login-circle-line', perm: 'platform.sites.impersonate', pend: true },
+      { k: 'p-settings', l: 'Cài đặt nền tảng', i: 'ri-settings-3-line', perm: 'super_admin' }
     ];
   }
   shopMenu() {
-    // Phiên bản "Site TMĐT đầy đủ": khi catalog phát triển thành sàn bán hàng. Mở rộng từ
-    // AdminNav (catalog) theo module Sales dự kiến: Sản phẩm/Kho/Đơn hàng/Khách hàng/Khuyến mã + Báo cáo;
-    // gating theo entitlement catalog + quyền orders.*/customers.* khi ship.
-    const kids = (k, arr) => arr.map((x, idx) => ({ k: k + '.' + idx, l: x }));
+    // Mặt TMĐT — Để sau: giữ menu đã vẽ khi catalog thành sàn bán hàng (module Sales dự kiến). Khóa quyền orders.* / buyers.* là đề xuất.
+    const kids = (k, arr, perm) => arr.map((x, idx) => ({ k: k + '.' + idx, l: x, perm: perm }));
     return [
-      { k: 'dashboard', l: 'Tổng quan', i: 'ri-dashboard-2-line' },
+      { k: 'dashboard', l: 'Tổng quan', i: 'ri-dashboard-2-line', perm: null },
       { h: 'Nội dung' },
-      { k: 'pages', l: 'Trang', i: 'ri-file-text-line', c: [ { k: 'pages.create', l: 'Thêm mới' }, { k: 'pages.list', l: 'Danh sách' } ] },
-      { k: 'posts', l: 'Tin tức', i: 'ri-newspaper-line', c: [ { k: 'posts.create', l: 'Thêm mới' }, { k: 'posts.list', l: 'Danh sách' }, { k: 'posts.cats', l: 'Chuyên mục' } ] },
+      { k: 'pages', l: 'Trang', i: 'ri-file-text-line', perm: 'entries.view', c: [ { k: 'pages.create', l: 'Thêm mới', perm: 'entries.create' }, { k: 'pages.list', l: 'Danh sách', perm: 'entries.view' } ] },
+      { k: 'posts', l: 'Tin tức', i: 'ri-newspaper-line', perm: 'entries.view', c: [ { k: 'posts.create', l: 'Thêm mới', perm: 'entries.create' }, { k: 'posts.list', l: 'Danh sách', perm: 'entries.view' }, { k: 'posts.cats', l: 'Chuyên mục', perm: 'taxonomies.manage' } ] },
       { h: 'Bán hàng' },
-      { k: 'products', l: 'Sản phẩm', i: 'ri-box-3-line', c: kids('products', ['Thêm mới', 'Danh sách', 'Chuyên mục', 'Thẻ', 'Thuộc tính & Biến thể']) },
-      { k: 'inventory', l: 'Kho hàng', i: 'ri-archive-2-line', b: '3', bc: 'warn' },
-      { k: 'orders', l: 'Đơn hàng', i: 'ri-shopping-bag-3-line', b: '8', bc: 'info', c: kids('orders', ['Tất cả', 'Chờ xử lý', 'Đang giao', 'Hoàn thành', 'Trả / Hủy']) },
-      { k: 'customers', l: 'Khách hàng', i: 'ri-user-heart-line', c: kids('customers', ['Danh sách', 'Nhóm khách hàng', 'Đánh giá']) },
-      { k: 'promotions', l: 'Khuyến mãi', i: 'ri-price-tag-3-line', c: kids('promotions', ['Mã giảm giá', 'Chương trình KM', 'Flash sale']) },
+      { k: 'products', l: 'Sản phẩm', i: 'ri-box-3-line', perm: 'catalog.view', mod: 'catalog', c: kids('products', ['Thêm mới', 'Danh sách', 'Chuyên mục', 'Thẻ', 'Thuộc tính & Biến thể'], 'catalog.manage') },
+      { k: 'inventory', l: 'Kho hàng', i: 'ri-archive-2-line', b: '3', bc: 'warn', perm: 'inventory.view', pend: true, prop: true },
+      { k: 'orders', l: 'Đơn hàng', i: 'ri-shopping-bag-3-line', b: '8', bc: 'info', perm: 'orders.view', pend: true, prop: true, c: kids('orders', ['Tất cả', 'Chờ xử lý', 'Đang giao', 'Hoàn thành', 'Trả / Hủy'], 'orders.view') },
+      { k: 'buyers', l: 'Người mua', i: 'ri-user-heart-line', perm: 'buyers.view', pend: true, prop: true, c: kids('buyers', ['Danh sách', 'Nhóm người mua', 'Đánh giá'], 'buyers.view') },
+      { k: 'promotions', l: 'Khuyến mãi', i: 'ri-price-tag-3-line', perm: 'promotions.manage', pend: true, prop: true, c: kids('promotions', ['Mã giảm giá', 'Chương trình KM', 'Flash sale'], 'promotions.manage') },
       { h: 'Công cụ' },
-      { k: 'media', l: 'Thư viện', i: 'ri-image-2-line' },
-      { k: 'contacts', l: 'Liên hệ', i: 'ri-mail-line' },
-      { k: 'menus', l: 'Trình đơn', i: 'ri-node-tree' },
-      { k: 'reports', l: 'Báo cáo', i: 'ri-line-chart-line', c: kids('reports', ['Doanh thu', 'Bán chạy', 'Tồn kho']) },
+      { k: 'media', l: 'Thư viện ảnh & tệp', i: 'ri-image-2-line', perm: 'media.view', mod: 'media' },
+      { k: 'contacts', l: 'Khách liên hệ', i: 'ri-mail-line', perm: 'forms.view', mod: 'contacts' },
+      { k: 'menus', l: 'Trình đơn', i: 'ri-node-tree', perm: 'menus.manage', mod: 'menus' },
+      { k: 'reports', l: 'Báo cáo', i: 'ri-line-chart-line', perm: 'reports.view', pend: true, prop: true, c: kids('reports', ['Doanh thu', 'Bán chạy', 'Tồn kho'], 'reports.view') },
       { h: 'Hệ thống' },
-      { k: 'users', l: 'Người dùng', i: 'ri-team-line' },
-      { k: 'settings', l: 'Cài đặt', i: 'ri-settings-4-line' }
+      { k: 'users', l: 'Thành viên', i: 'ri-team-line', perm: 'users.manage', mod: 'users' },
+      { k: 'settings', l: 'Cài đặt', i: 'ri-settings-4-line', perm: 'settings.manage', mod: 'settings' }
     ];
   }
+  menuItem(key) { for (const it of this.currentMenu()) { if (it.h) continue; if (it.k === key) return it; if (it.c) for (const c of it.c) if (c.k === key) return Object.assign({ parent: it }, c); } return null; }
   currentMenu() { return this.state.plane === 'platform' ? this.platformMenu() : (this.state.plane === 'shop' ? this.shopMenu() : this.tenantMenu()); }
   menuTrail(key) {
     let group = null;
@@ -1347,81 +1413,85 @@ class Component extends DCLogic {
     this.setState({ settingsSection: k, pendingSection: null });
   }
   siteRole() { var m = { anvinh: 'owner', greenfarm: 'admin', medilab: 'editor' }; return this.state.plane === 'platform' ? 'owner' : (m[this.state.site] || 'owner'); }
-  settingsGroups() {
+  settingsGroups(withHidden) {
     var role = this.siteRole();
-    var G0 = this.settingsGroupsAll();
-    return G0.map(g => ({ h: g.h, items: g.items.filter(it => !it.roles || it.roles.indexOf(role) >= 0) })).filter(g => g.items.length);
+    var G0 = this.settingsGroupsAll().filter(g => withHidden || !g.hidden);
+    return G0.map(g => ({ h: g.h, hidden: !!g.hidden, items: g.items.filter(it => !it.roles || it.roles.indexOf(role) >= 0).map(it => g.hidden ? Object.assign({ hidden: true }, it) : it) })).filter(g => g.items.length);
   }
+  // Cài đặt chỉ hiện với settings.manage (perm trên từng mục; Tên miền = domains.manage). Giữ khóa mục cũ cho hash #settings/<mục> và panel nhúng.
+  // Không có Quy trình duyệt (owner 30/09: nền tảng cấp ở Nền tảng › Website › chi tiết). Bảo mật cá nhân ở Tài khoản của tôi.
   settingsGroupsAll() {
     if (this.state.plane === 'platform') return [
       { h: 'Nền tảng', items: [
-        { k: 'p-general', l: 'Thông tin nền tảng', i: 'ri-information-2-line', desc: 'Tên nền tảng, tên miền gốc và thông tin liên hệ hiển thị cho khách hàng.' },
-        { k: 'p-branding', l: 'Thương hiệu trắng', i: 'ri-palette-line', desc: 'Logo và màu mặc định áp cho website khách hàng khi họ chưa tự cấu hình.' }
+        { k: 'p-general', l: 'Thông tin', i: 'ri-information-2-line', perm: 'super_admin', desc: 'Tên nền tảng, tên miền gốc và thông tin liên hệ khách hàng nhìn thấy.' },
+        { k: 'p-branding', l: 'Thương hiệu trắng', i: 'ri-palette-line', perm: 'super_admin', desc: 'Logo và màu trang quản trị cho cả nền tảng — một màu chung, tự chỉnh đậm nhạt cho dễ đọc.' }
       ] },
       { h: 'Vận hành', items: [
-        { k: 'p-plans', l: 'Gói & Giới hạn', i: 'ri-price-tag-3-line', desc: 'Số website, dung lượng lưu trữ và tính năng mở theo từng gói dịch vụ.' },
-        { k: 'p-mail', l: 'Email hệ thống', i: 'ri-mail-send-line', desc: 'Máy chủ gửi dùng chung: SMTP mật khẩu, OAuth2 hoặc API dịch vụ. Bắt buộc cấu hình.', embed: 'platform-send', dot: true },
-        { k: 'p-mail-tpl', l: 'Mẫu email hệ thống', i: 'ri-mail-settings-line', desc: 'Nội dung mẫu email dùng chung cho Site, TMĐT và SaaS — khách hàng tự cấu hình riêng thì dùng bản của họ, còn lại dùng bản này.', embed: 'platform-tpl', dot: true },
-        { k: 'p-social', l: 'Đăng nhập nhanh', i: 'ri-shield-user-line', desc: 'Kết nối ứng dụng Google và Facebook dùng chung cho mọi website, và chính sách liên kết khi email trùng tài khoản đã có. Bắt buộc cấu hình.', embed: 'social-saas', dot: true }
+        { k: 'p-mail', l: 'Email hệ thống', i: 'ri-mail-send-line', perm: 'super_admin', desc: 'Cách nền tảng gửi thư cho mọi khách hàng: chọn dịch vụ gửi thư và đăng nhập một lần. Bắt buộc cấu hình.', embed: 'platform-send', dot: true },
+        { k: 'p-mail-tpl', l: 'Mẫu email', i: 'ri-mail-settings-line', perm: 'super_admin', desc: 'Thư mẫu dùng chung cho mọi loại website — khách tự soạn riêng thì dùng bản của họ.', embed: 'platform-tpl', dot: true },
+        { k: 'p-social', l: 'Đăng nhập nhanh', i: 'ri-shield-user-line', perm: 'super_admin', desc: 'Cho khách của mọi website đăng nhập bằng Google, Facebook, và cách xử lý khi email trùng tài khoản đã có. Bắt buộc cấu hình.', embed: 'social-saas', dot: true }
       ] },
       { h: 'Nâng cao', items: [
-        { k: 'p-security', l: 'Bảo mật & Nhật ký', i: 'ri-lock-2-line', desc: 'Chính sách mật khẩu, thời gian phiên đăng nhập và lưu nhật ký hệ thống.', roles: ['owner'] }
+        { k: 'p-security', l: 'Bảo mật & Nhật ký', i: 'ri-lock-2-line', perm: 'super_admin', desc: 'Độ dài mật khẩu, thời gian tự đăng xuất và thời gian giữ nhật ký hệ thống.', roles: ['owner'] }
+      ] },
+      // Gói & tính năng: rời Cài đặt, thành mục menu (D4-2 vẽ lại) — tạm mở phần đã vẽ.
+      { h: '', hidden: true, items: [
+        { k: 'p-plans', l: 'Gói & tính năng', i: 'ri-price-tag-3-line', perm: 'platform.billing.manage|platform.entitlements.manage', desc: 'Số website, dung lượng và tính năng mở theo từng gói. Bản đầy đủ: D4-2.' }
       ] }
     ];
     const shop = this.state.plane === 'shop';
     const G = [
       { h: 'Chung', items: [
-        { k: 'general', l: 'Thông tin chung', i: 'ri-information-2-line', desc: 'Tên website, mô tả, ngôn ngữ, múi giờ và thông tin liên hệ hiển thị công khai.' },
-        { k: 'appearance', l: 'Thương hiệu & Giao diện', i: 'ri-palette-line', desc: 'Logo, favicon, màu thương hiệu và giao diện hiển thị của website.' },
-        { k: 'langs', l: 'Ngôn ngữ website', i: 'ri-translate-2', desc: 'Chọn ngôn ngữ dùng trong quản trị, ngôn ngữ hiện trên website và ngôn ngữ chính.' }
+        { k: 'general', l: 'Thông tin chung', i: 'ri-information-2-line', perm: 'settings.manage', desc: 'Tên website, mô tả, múi giờ và thông tin liên hệ khách nhìn thấy.' },
+        { k: 'appearance', l: 'Giao diện website', i: 'ri-palette-line', perm: 'settings.manage', desc: 'Logo, biểu tượng trên thẻ trình duyệt, màu và phông chữ của website.' },
+        { k: 'admin-ui', l: 'Giao diện trang quản trị', i: 'ri-layout-4-line', perm: 'settings.manage', desc: 'Kiểu menu mặc định cho mọi thành viên. Mỗi người vẫn chọn riêng ở menu tài khoản › Giao diện.' },
+        { k: 'langs', l: 'Ngôn ngữ website', i: 'ri-translate-2', perm: 'settings.manage', desc: 'Chọn ngôn ngữ dùng khi soạn, ngôn ngữ hiện trên website và ngôn ngữ chính.' }
+      ] },
+      { h: 'Nội dung', items: [
+        { k: 'permalinks', l: 'Đường dẫn', i: 'ri-links-line', perm: 'settings.manage', desc: 'Cách đặt địa chỉ trang, bài viết và sản phẩm trên website.' },
+        { k: 'catalog', l: 'Sản phẩm', i: 'ri-box-3-line', perm: 'settings.manage', mod: 'catalog', desc: 'Cách hiện giá, tồn kho và nút đặt hàng của sản phẩm.' }
       ] },
       { h: 'Tiếp thị & Kết nối', items: [
-        { k: 'seo', l: 'SEO & Chia sẻ', i: 'ri-search-eye-line', desc: 'Thẻ mô tả, ảnh chia sẻ mạng xã hội, sitemap và robots.' },
-        { k: 'integrations', l: 'Tích hợp & Theo dõi', i: 'ri-plug-2-line', desc: 'Google Analytics, Pixel, GTM và chat trực tuyến (Zalo OA, Messenger).', embed: 'integrations', dot: true },
-        { k: 'floating', l: 'Nút liên hệ nổi', i: 'ri-customer-service-2-line', desc: 'Nút gọi nhanh, Zalo, Messenger nổi ở góc màn hình storefront.', embed: 'floating' }
+        { k: 'seo', l: 'SEO & Chia sẻ', i: 'ri-search-eye-line', perm: 'settings.manage', desc: 'Mô tả mặc định khi website hiện trên Google và ảnh khi chia sẻ lên mạng xã hội.' },
+        { k: 'redirects', l: 'Chuyển hướng', i: 'ri-route-line', perm: 'settings.manage', desc: 'Đưa khách từ địa chỉ cũ sang địa chỉ mới để không lạc trang khi bạn đổi đường dẫn.' },
+        { k: 'integrations', l: 'Tích hợp & Theo dõi', i: 'ri-plug-2-line', perm: 'settings.manage', desc: 'Google Analytics đo lượt xem, Facebook Pixel đo quảng cáo, chat Zalo và Messenger.', embed: 'integrations', dot: true },
+        { k: 'floating', l: 'Nút liên hệ nổi', i: 'ri-customer-service-2-line', perm: 'settings.manage', desc: 'Nút gọi, Zalo, Messenger nổi ở góc màn hình website.', embed: 'floating' }
       ] }
     ];
     if (shop) G.push({ h: 'Bán hàng', items: [
-      { k: 'payment', l: 'Thanh toán', i: 'ri-bank-card-line', desc: 'Cổng thanh toán, chuyển khoản và thanh toán khi nhận hàng (COD).' },
-      { k: 'shipping', l: 'Vận chuyển', i: 'ri-truck-line', desc: 'Đơn vị vận chuyển, biểu phí và khu vực giao hàng.' },
-      { k: 'tax', l: 'Thuế', i: 'ri-percent-line', desc: 'Thuế suất và cách hiển thị giá gồm/chưa gồm thuế.' }
+      { k: 'payment', l: 'Thanh toán', i: 'ri-bank-card-line', perm: 'settings.manage', desc: 'Cổng thanh toán, chuyển khoản và thanh toán khi nhận hàng.' },
+      { k: 'shipping', l: 'Vận chuyển', i: 'ri-truck-line', perm: 'settings.manage', desc: 'Đơn vị vận chuyển, biểu phí và khu vực giao hàng.' },
+      { k: 'tax', l: 'Thuế', i: 'ri-percent-line', perm: 'settings.manage', desc: 'Thuế suất và cách hiển thị giá gồm hoặc chưa gồm thuế.' }
     ] });
     G.push({ h: 'Hệ thống', items: [
-      { k: 'domain', l: 'Tên miền & SSL', i: 'ri-global-line', desc: 'Tên miền chính, tên miền phụ và chứng chỉ SSL cho website.', roles: ['owner', 'admin'] },
-      { k: 'email', l: 'Email', i: 'ri-mail-send-line', desc: 'Cách website gửi thư đi, mẫu thư tự động và chữ ký chung — máy chủ, bảo mật, xác thực tên miền do nền tảng lo.', embed: 'email', dot: true, roles: ['owner', 'admin'] },
-      { k: 'social', l: 'Đăng nhập nhanh', i: 'ri-shield-user-line', desc: 'Cho phép khách đăng nhập bằng Google, Facebook và cách liên kết khi email trùng tài khoản đã có.', embed: 'social', roles: ['owner', 'admin'] },
-      { k: 'quota', l: 'Gói & mức dùng', i: 'ri-sparkling-2-line', desc: 'Hạn ngạch từ AI và lượt tạo ảnh của gói, mua thêm đúng loại đang thiếu hoặc nâng gói.', embed: 'quota', roles: ['owner', 'admin'] }
+      { k: 'domain', l: 'Tên miền', i: 'ri-global-line', perm: 'domains.manage', desc: 'Tên miền chính và tên miền phụ — kết nối bảo mật do nền tảng tự bật.', roles: ['owner', 'admin'] },
+      { k: 'email', l: 'Email', i: 'ri-mail-send-line', perm: 'settings.manage', desc: 'Cách website gửi thư đi, mẫu thư tự động và chữ ký chung — phần kỹ thuật do nền tảng lo.', embed: 'email', dot: true, roles: ['owner', 'admin'] },
+      { k: 'social', l: 'Đăng nhập nhanh', i: 'ri-shield-user-line', perm: 'settings.manage', desc: 'Cho khách đăng nhập bằng Google, Facebook và cách liên kết khi email trùng tài khoản đã có.', embed: 'social', roles: ['owner', 'admin'] },
+      { k: 'quota', l: 'Gói & mức dùng', i: 'ri-sparkling-2-line', perm: 'settings.manage', desc: 'Từ AI và lượt tạo ảnh còn lại của gói, mua thêm đúng loại đang thiếu hoặc nâng gói.', embed: 'quota', roles: ['owner', 'admin'] }
     ] });
-    G.push({ h: 'Nâng cao', items: [
-      { k: 'backup', l: 'Dữ liệu & Phục hồi', i: 'ri-history-line', desc: 'Đưa website về một thời điểm trước đó, xuất dữ liệu để lưu bản riêng hoặc nhập nội dung từ tệp.', roles: ['owner', 'admin'] },
-      { k: 'advanced', l: 'Bảo mật & Nâng cao', i: 'ri-lock-2-line', desc: 'Chế độ bảo trì, danh sách IP cho phép và mã nhúng nâng cao.', roles: ['owner'] }
+    G.push({ h: 'Nâng cao', fold: true, items: [
+      { k: 'advanced', l: 'Bảo mật & Nâng cao', i: 'ri-lock-2-line', perm: 'settings.manage', desc: 'Chế độ bảo trì, giới hạn nơi được vào trang quản trị và mã nhúng thêm vào website.', roles: ['owner'] },
+      { k: 'backup', l: 'Dữ liệu & Phục hồi', i: 'ri-history-line', perm: 'settings.manage', desc: 'Đưa website về một thời điểm trước đó, xuất dữ liệu để lưu bản riêng hoặc nhập nội dung từ tệp.', roles: ['owner', 'admin'] }
     ] });
     return G;
   }
   twoColDef() {
-    if (this.state.plane === 'platform') return [
-      { g: 'pg-main', i: 'ri-terminal-box-line', l: 'Nền tảng', items: [ { k: 'p-tenants', l: 'Khách hàng', i: 'ri-building-2-line' }, { k: 'p-sites', l: 'Website', i: 'ri-window-line' }, { k: 'p-audit', l: 'Nhật ký hệ thống', i: 'ri-file-shield-2-line' }, { k: 'p-settings', l: 'Cài đặt', i: 'ri-settings-3-line' } ] }
-    ];
-    if (this.state.plane === 'shop') return [
-      { g: 'sg-dash', i: 'ri-dashboard-2-line', l: 'Tổng quan', items: [ { k: 'dashboard', l: 'Tổng quan', i: 'ri-dashboard-2-line' } ] },
-      { g: 'sg-content', i: 'ri-file-text-line', l: 'Nội dung', items: [ { k: 'pages', l: 'Trang', i: 'ri-file-text-line' }, { k: 'posts', l: 'Tin tức', i: 'ri-newspaper-line' } ] },
-      { g: 'sg-sales', i: 'ri-shopping-bag-3-line', l: 'Bán hàng', items: [ { k: 'products', l: 'Sản phẩm', i: 'ri-box-3-line' }, { k: 'inventory', l: 'Kho hàng', i: 'ri-archive-2-line' }, { k: 'orders', l: 'Đơn hàng', i: 'ri-shopping-bag-3-line', b: '8' }, { k: 'customers', l: 'Khách hàng', i: 'ri-user-heart-line' }, { k: 'promotions', l: 'Khuyến mãi', i: 'ri-price-tag-3-line' } ] },
-      { g: 'sg-tools', i: 'ri-apps-2-line', l: 'Công cụ', items: [ { k: 'media', l: 'Thư viện', i: 'ri-image-2-line' }, { k: 'contacts', l: 'Liên hệ', i: 'ri-mail-line' }, { k: 'menus', l: 'Trình đơn', i: 'ri-node-tree' }, { k: 'reports', l: 'Báo cáo', i: 'ri-line-chart-line' } ] },
-      { g: 'sg-system', i: 'ri-settings-4-line', l: 'Hệ thống', items: [ { k: 'users', l: 'Người dùng', i: 'ri-team-line' }, { k: 'settings', l: 'Cài đặt', i: 'ri-settings-4-line' } ] }
-    ];
-    return [
-      { g: 'tg-dash', i: 'ri-dashboard-2-line', l: 'Tổng quan', items: [ { k: 'dashboard', l: 'Tổng quan', i: 'ri-dashboard-2-line' } ] },
-      { g: 'tg-content', i: 'ri-file-text-line', l: 'Nội dung', items: [ { k: 'pages', l: 'Trang', i: 'ri-file-text-line' }, { k: 'posts', l: 'Tin tức', i: 'ri-newspaper-line' }, { k: 'services', l: 'Dịch vụ', i: 'ri-briefcase-line' }, { k: 'projects', l: 'Dự án', i: 'ri-folder-2-line' }, { k: 'catalog', l: 'Sản phẩm', i: 'ri-box-3-line' } ] },
-      { g: 'tg-tools', i: 'ri-apps-2-line', l: 'Công cụ', items: [ { k: 'media', l: 'Thư viện', i: 'ri-image-2-line' }, { k: 'contacts', l: 'Liên hệ', i: 'ri-mail-line', b: '12' }, { k: 'menus', l: 'Trình đơn', i: 'ri-node-tree' } ] },
-      { g: 'tg-system', i: 'ri-settings-4-line', l: 'Hệ thống', items: [ { k: 'users', l: 'Người dùng', i: 'ri-team-line' }, { k: 'settings', l: 'Cài đặt', i: 'ri-settings-4-line' } ] }
-    ];
+    // Suy từ CÙNG nguồn menu (không còn danh sách riêng): mỗi tiêu đề nhóm = 1 ô ở thanh icon; mục đứng trước tiêu đề đầu tiên = ô riêng.
+    const GI = { 'Nội dung': 'ri-file-text-line', 'Bán hàng': 'ri-shopping-bag-3-line', 'Công cụ': 'ri-apps-2-line', 'Hệ thống': 'ri-settings-4-line', 'Khách & website': 'ri-building-2-line', 'Gói dịch vụ': 'ri-price-tag-3-line', 'Vận hành': 'ri-tools-line' };
+    const G = []; let cur = null;
+    this.currentMenu().forEach((it, n) => {
+      if (it.h) { cur = { g: 'g' + n, l: it.h, i: GI[it.h] || 'ri-folder-line', items: [] }; G.push(cur); return; }
+      if (!cur) { G.push({ g: 'g' + n, l: it.l, i: it.i, items: [it] }); return; }
+      cur.items.push(it);
+    });
+    return G;
   }
 
   renderVals() {
     const S = this.state;
     const PLAT = window.BSPLAT ? window.BSPLAT.get() : { name: 'Nền tảng', kit: 'SaaS Starter', version: '1.0', rootDomain: 'example.net', builtBy: { show: false, name: '', url: '#' }, logo: { sm: 'assets/logo-sm.png' } };
     const platSub = (n) => n + '.' + PLAT.rootDomain;
-    const dark = S.scheme === 'dark';
+    const dark = this.isDark();
     const winW = S.winW || 1440;
     const isMobile = winW < 1024; // Q2: ngưỡng admin 1024 (design system)
     const tablet = !isMobile && winW < 1280; // Q3: 1024–1279 luôn là rail, bỏ qua "Kích thước Sidebar"
@@ -1439,7 +1509,7 @@ class Component extends DCLogic {
 
     let sb;
     if (dark) sb = { bg: '#111a30', text: '#a9b4cc', active: '#ffffff', activeBg: 'rgba(143,176,236,0.14)', header: '#8e9ab5', logoBorder: 'rgba(255,255,255,0.06)', icon: '#a9b4cc', line: 'rgba(255,255,255,0.06)', edge: '#202b45' };
-    else if (S.sidebarColor === 'light') sb = { bg: '#ffffff', text: '#3c4765', active: 'var(--brand-ink,var(--brand))', activeBg: 'color-mix(in srgb, var(--brand) 10%, transparent)', header: '#5b6275', logoBorder: '#e9ecf4', icon: '#5b6275', line: '#e9ecf4', edge: '#e3e7f0' };
+    else if (S.sidebarColor === 'light') sb = { bg: 'var(--color-surface,#ffffff)', text: 'var(--color-body-text,#3c4765)', active: 'var(--color-accent,var(--brand-ink,var(--brand)))', activeBg: 'color-mix(in srgb, var(--brand) 10%, var(--color-surface,#fff))', header: 'var(--color-body-muted,#5b6275)', logoBorder: 'var(--color-border,#e9ecf4)', icon: 'var(--color-body-muted,#5b6275)', line: 'var(--color-border,#e9ecf4)', edge: 'var(--color-border-strong,#e3e7f0)' };
     else if (S.sidebarColor === 'gradient') sb = { bg: 'linear-gradient(165deg, var(--brand-solid,var(--brand)) 0%, color-mix(in srgb, var(--brand-solid,var(--brand)) 82%, #000) 42%, color-mix(in srgb, var(--brand-solid,var(--brand)) 60%, #000) 100%)', text: 'rgba(255,255,255,0.85)', active: '#ffffff', activeBg: 'rgba(255,255,255,0.12)', header: 'rgba(255,255,255,0.85)', logoBorder: 'rgba(255,255,255,0.1)', icon: 'rgba(255,255,255,0.85)', line: 'rgba(255,255,255,0.09)', edge: 'transparent' };
     else sb = { bg: 'color-mix(in srgb, var(--brand-solid,var(--brand)) 72%, #0b1d45)', text: 'rgba(255,255,255,0.86)', active: '#ffffff', activeBg: 'rgba(255,255,255,0.12)', header: 'rgba(255,255,255,0.78)', logoBorder: 'rgba(255,255,255,0.09)', icon: 'rgba(255,255,255,0.85)', line: 'rgba(255,255,255,0.08)', edge: 'transparent' };
 
@@ -1457,7 +1527,7 @@ class Component extends DCLogic {
     const twoColShow = isTwoCol && !fm;
     const hNavShow = isHorizontal && !fm;
 
-    const BRAND = S.brandColor || '#2050a0';
+    const BRAND = (Component.UI_OK().brandColor.indexOf(this.props.brandPreview) >= 0 ? this.props.brandPreview : null) || S.brandColor || '#2050a0'; // Tweak "Màu thương hiệu (xem thử)" — bản thật đặt ở Cài đặt nền tảng › Thương hiệu trắng
     // Bảng tĩnh token thương hiệu (AUDIT §4f Đợt A). Tính sẵn trong OKLCH (giữ sắc độ, chỉ hạ L tới khi vừa đạt), không tính lúc chạy.
     // solid = nền dưới chữ trắng / trắng .85 (kể cả chip phủ trắng .08) ≥ 4,5 · vạch vàng #e0b028 trên sidebar Đậm/Gradient ≥ 3.
     // ink = chữ/link trên #fff, #f4f5fa và nền brand 10% ≥ 4,5 (chế độ Sáng). Tối: giữ color-mix(oklab, brand 38%, #e6eeff), đã kiểm ≥ 4,5.
@@ -1465,7 +1535,7 @@ class Component extends DCLogic {
     const BRAND_TOKENS = {}; Component.PAL().forEach(p => { BRAND_TOKENS[p[0]] = { solid: p[2], ink: p[3] }; });
     const BT = BRAND_TOKENS[(BRAND || '').toLowerCase()] || { solid: BRAND, ink: BRAND };
     const bsTheme = dark ? 'dark' : 'light';
-    const frameStyle = 'position:relative;width:100%;height:100vh;overflow:hidden;--sticky-top:' + (S.layoutPosition === 'scrollable' && !isMobile ? '0px' : 'var(--topbar-h,70px)') + ';--brand:' + BRAND + ';--tx-star:' + (dark ? '#f7b84b' : '#b8860b') + ';--tx-danger:' + (dark ? '#ff7355' : '#bf371a') + ';--tx-warn:' + (dark ? '#f7b84b' : '#8a6200') + ';--tx-info:' + (dark ? '#8fb0ec' : '#2558b8') + ';--tx-ok:' + (dark ? '#2fd1b6' : '#047767') + ';--brand-solid:' + BT.solid + ';--brand-ink:' + (dark ? 'color-mix(in oklab, ' + BRAND + ' 38%, #e6eeff)' : BT.ink) + ';background:' + K.appBg + ';color:' + K.text + ';';
+    const frameStyle = 'position:relative;width:100%;height:100dvh;overflow:hidden;--fsp:' + (S.fontSize === 'large' ? '2px' : '0px') + ';--sticky-top:' + (S.layoutPosition === 'scrollable' && !isMobile ? '0px' : 'var(--topbar-h,70px)') + ';--brand:' + BRAND + ';--tx-star:' + (dark ? '#f7b84b' : '#b8860b') + ';--tx-danger:' + (dark ? '#ff7355' : '#bf371a') + ';--tx-warn:' + (dark ? '#f7b84b' : '#8a6200') + ';--tx-info:' + (dark ? '#8fb0ec' : '#2558b8') + ';--tx-ok:' + (dark ? '#2fd1b6' : '#047767') + ';--brand-solid:' + BT.solid + ';--brand-ink:' + (dark ? 'color-mix(in oklab, ' + BRAND + ' 38%, #e6eeff)' : BT.ink) + ';background:' + K.appBg + ';color:' + K.text + ';';
     const scrollable = S.layoutPosition === 'scrollable' && !isMobile;
     const mainColStyle = 'flex:1;min-width:0;display:flex;flex-direction:column;height:100%;overflow-y:auto;scroll-padding-top:var(--sticky-top,var(--topbar-h,70px));'; // P10: focus/neo không bị topbar dính che (cột này là phần tử cuộn của Shell)
     const contentScrollStyle = 'background:' + K.appBg + ';display:flex;flex-direction:column;flex:1 0 auto;';
@@ -1482,17 +1552,19 @@ class Component extends DCLogic {
       gap: 12, padX: 12, padY: 10, radius: 6, iconSize: 20,
       fontSize: 14.5, weight: 500, activeWeight: 600, childPadL: 22, childFontSize: 13.5,
       fg: sb.text, fgActive: sb.active, icon: sb.icon, iconActive: sb.active,
-      activeBar: navAccent ? '#e0b028' : 'var(--brand-ink,var(--brand))', activeBg: navAccent ? 'rgba(255,255,255,0.12)' : 'color-mix(in srgb, var(--brand) 9%, transparent)', hoverBg: navAccent ? 'rgba(255,255,255,0.06)' : 'color-mix(in srgb, var(--brand) 5%, transparent)', hoverFg: sb.active
+      activeBar: navAccent ? 'var(--color-brand-gold,#e0b028)' : 'var(--color-accent,var(--brand-ink,var(--brand)))', activeBg: navAccent ? 'rgba(255,255,255,0.12)' : 'color-mix(in srgb, var(--brand) 9%, transparent)', hoverBg: navAccent ? 'rgba(255,255,255,0.06)' : 'color-mix(in srgb, var(--brand) 5%, transparent)', hoverFg: sb.active
     };
     // Active-trail (đệ quy): con/cháu active ⇒ cha/ông cùng active.
+    const notesOn = this.props.showNotes !== false; // Tweak "Hiện ghi chú thiết kế"
     const containsActive = (it) => !!(it.c && it.c.some(c => c.k === S.activeMenu || containsActive(c)));
     const mkItem = (it) => {
       const hasChildren = !!it.c;
       const isOpen = hasChildren && S.openGroup === it.k;
       const trailActive = containsActive(it);
       const on = S.activeMenu === it.k || trailActive;
+      const barOn = S.activeMenu === it.k || (trailActive && !(isOpen && showLabels)); // cha của mục con đang hiện: chỉ chữ đậm, vạch nằm ở mục con
       const badgeStyle = it.bc === 'warn'
-        ? 'font-size:12px;font-weight:700;color:#212529;background:#f7b84b;padding:1px 7px;border-radius:20px;line-height:1.5;'
+        ? 'font-size:12px;font-weight:700;color:var(--color-heading,#212529);background:var(--color-admin-warning,#f7b84b);padding:1px 7px;border-radius:20px;line-height:1.5;'
         : navAccent
           ? 'font-size:12px;font-weight:700;color:#fff;background:rgba(0,0,0,0.22);padding:1px 7px;border-radius:20px;line-height:1.5;'
           : 'font-size:12px;font-weight:700;color:var(--brand-ink,var(--brand));background:color-mix(in srgb, var(--brand) 12%, transparent);padding:1px 7px;border-radius:20px;line-height:1.5;';
@@ -1501,8 +1573,8 @@ class Component extends DCLogic {
         // Flyout chỉ dùng cho rail thu gọn (tooltip + submenu). Sidebar đầy đủ đã mở accordion khi bấm
         // nên không cần flyout — tránh trùng lặp.
         showFlyout: small,
-        label: it.l, iconClass: it.i, ariaCur: (S.activeMenu === it.k) ? 'page' : undefined, ariaExp: hasChildren && showLabels ? String(!!isOpen) : undefined,
-        itemStyle: 'display:flex;align-items:center;gap:' + NAV.gap + 'px;width:100%;margin:0;padding:' + (small ? '11px 0' : (NAV.padY + 'px 20px')) + ';justify-content:' + (small ? 'center' : 'flex-start') + ';border:0;background:' + (on ? 'linear-gradient(to right,' + NAV.activeBar + ' 3px,transparent 3px),' + NAV.activeBg : 'transparent') + ';font:inherit;font-size:' + NAV.fontSize + 'px;font-weight:' + (on ? NAV.activeWeight : NAV.weight) + ';color:' + (on ? NAV.fgActive : NAV.fg) + ';cursor:pointer;transition:background .12s,color .12s;',
+        label: it.l, iconClass: it.i, ariaCur: barOn ? 'page' : undefined, ariaLabel: small ? it.l : undefined, titleTip: small ? it.l : undefined, pendShow: notesOn && !!it.pend && showLabels, ariaExp: hasChildren && showLabels ? String(!!isOpen) : undefined,
+        itemStyle: 'display:flex;align-items:center;gap:' + NAV.gap + 'px;width:100%;margin:0;padding:' + (small ? '11px 0' : (NAV.padY + 'px 20px')) + ';justify-content:' + (small ? 'center' : 'flex-start') + ';border:0;background:' + (barOn ? 'linear-gradient(to right,' + NAV.activeBar + ' 3px,transparent 3px),' + NAV.activeBg : 'transparent') + ';font:inherit;font-size:' + NAV.fontSize + 'px;font-weight:' + (on ? NAV.activeWeight : NAV.weight) + ';color:' + (on ? NAV.fgActive : NAV.fg) + ';cursor:pointer;transition:background .12s,color .12s;',
         hoverBg: NAV.hoverBg, hoverFg: NAV.hoverFg,
         iconStyle: 'font-size:' + NAV.iconSize + 'px;flex-shrink:0;',
         showBadge: !!it.b && showLabels, badgeText: it.b || '', badgeStyle: badgeStyle,
@@ -1512,10 +1584,10 @@ class Component extends DCLogic {
         children: (hasChildren ? it.c : []).map(c => {
           const ca = S.activeMenu === c.k;
           return { label: c.l, ariaCur: ca ? 'page' : undefined, onClick: () => this.go(c.k, it.k),
-            style: 'display:flex;align-items:center;gap:11px;width:100%;margin:0;padding:8px 20px 8px 24px;border:0;background:transparent;font:inherit;font-size:' + NAV.childFontSize + 'px;font-weight:' + (ca ? NAV.activeWeight : 400) + ';color:' + (ca ? NAV.fgActive : NAV.fg) + ';cursor:pointer;transition:background .12s,color .12s;',
+            style: 'display:flex;align-items:center;gap:11px;width:100%;margin:0;padding:8px 20px 8px 24px;border:0;background:' + (ca ? 'linear-gradient(to right,' + NAV.activeBar + ' 3px,transparent 3px),' + NAV.activeBg : 'transparent') + ';font:inherit;font-size:' + NAV.childFontSize + 'px;font-weight:' + (ca ? NAV.activeWeight : 400) + ';color:' + (ca ? NAV.fgActive : NAV.fg) + ';cursor:pointer;transition:background .12s,color .12s;',
             hoverBg: NAV.hoverBg, hoverFg: NAV.hoverFg,
             dotStyle: 'width:6px;height:1.5px;border-radius:2px;flex-shrink:0;background:currentColor;',
-            flyStyle: 'display:flex;align-items:center;gap:9px;width:100%;padding:8px 16px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:' + (ca ? '600' : '400') + ';color:' + (ca ? '#fff' : 'rgba(255,255,255,0.82)') + ';cursor:pointer;text-align:left;' };
+            flyStyle: 'display:flex;align-items:center;gap:9px;width:100%;padding:8px 16px;border:0;background:' + (ca ? 'linear-gradient(to right,var(--color-brand-gold,#e0b028) 3px,transparent 3px),rgba(255,255,255,0.12)' : 'transparent') + ';font:inherit;font-size:12.5px;font-weight:' + (ca ? '600' : '400') + ';color:' + (ca ? '#fff' : 'rgba(255,255,255,0.82)') + ';cursor:pointer;text-align:left;' };
         })
       };
     };
@@ -1527,29 +1599,34 @@ class Component extends DCLogic {
     });
 
     const railDef = this.twoColDef();
-    const activeG = railDef.find(g => g.g === S.twoColGroup) || railDef[0];
+    const hasK = (g, k) => g.items.some(it => it.k === k || (it.c && it.c.some(c => c.k === k)));
+    const activeG = railDef.find(g => g.g === S.twoColGroup) || railDef.find(g => hasK(g, S.activeMenu)) || railDef[0];
     const railGroups = railDef.map(g => {
-      const on = g.g === S.twoColGroup;
-      return { icon: g.i, label: g.l, onClick: () => this.setState(st => ({ twoColGroup: g.g, railOpen: tablet ? !(st.railOpen && st.twoColGroup === g.g) : st.railOpen })),
-        style: 'display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border:0;border-radius:10px;background:' + (on ? sb.activeBg : 'transparent') + ';color:' + (on ? sb.active : sb.icon) + ';cursor:pointer;transition:background .12s;' };
+      const open = activeG && g.g === activeG.g, cur = hasK(g, S.activeMenu);
+      return { icon: g.i, label: g.l, ariaPressed: String(!!open), onClick: () => this.setState(st => ({ twoColGroup: g.g, railOpen: tablet ? !(st.railOpen && activeG && activeG.g === g.g) : st.railOpen })),
+        style: 'display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border:0;border-radius:10px;background:' + (cur ? ((tablet && !S.railOpen) ? 'linear-gradient(to right,' + NAV.activeBar + ' 3px,transparent 3px),' : '') + sb.activeBg : (open ? NAV.hoverBg : 'transparent')) /* vạch ở ô nhóm chỉ khi cột phụ đang ẩn (1024–1279) — để đúng một vạch */ + ';color:' + (cur || open ? sb.active : sb.icon) + ';cursor:pointer;transition:background .12s;' };
     });
-    const twoColItems = (activeG ? activeG.items : []).map(c => {
-      const ca = S.activeMenu === c.k;
-      return { label: c.l, icon: c.i, onClick: () => this.selectMenu(c.k, false),
+    const tcRow = (c, parentK, child) => { const ca = S.activeMenu === c.k;
+      return { isRow: true, isSub: false, label: c.l, icon: c.i || '', hasIcon: !child, ariaCur: ca ? 'page' : undefined, onClick: () => this.go(c.k, parentK || ''), pendShow: notesOn && !!c.pend,
         showBadge: !!c.b, badgeText: c.b || '', badgeStyle: 'margin-left:auto;font-size:12px;font-weight:700;color:#fff;background:var(--brand-solid,var(--brand));padding:1px 7px;border-radius:20px;',
-        style2: 'display:flex;align-items:center;gap:11px;width:calc(100% - 24px);margin:1px 12px;padding:9px 13px;border:0;border-radius:7px;background:' + (ca ? sb.activeBg : 'transparent') + ';font:inherit;font-size:13.5px;font-weight:' + (ca ? '600' : '500') + ';color:' + (ca ? sb.active : sb.text) + ';cursor:pointer;' };
+        style2: 'display:flex;align-items:center;gap:11px;width:calc(100% - 24px);margin:1px 12px;padding:9px 13px 9px ' + (child ? '31px' : '13px') + ';border:0;border-radius:6px;background:' + (ca ? 'linear-gradient(to right,' + NAV.activeBar + ' 3px,transparent 3px),' + sb.activeBg : 'transparent') + ';font:inherit;font-size:13.5px;text-align:left;font-weight:' + (ca ? '600' : '500') + ';color:' + (ca ? sb.active : sb.text) + ';cursor:pointer;' }; };
+    const twoColItems = [];
+    (activeG ? activeG.items : []).forEach(it => {
+      if (it.c) { twoColItems.push({ isRow: false, isSub: true, label: it.l, icon: it.i, pendShow: notesOn && !!it.pend, subStyle: 'display:flex;align-items:center;gap:10px;margin:10px 12px 2px;padding:4px 13px;font-size:12px;font-weight:600;color:' + sb.header + ';' }); it.c.forEach(c => twoColItems.push(tcRow(c, it.k, true))); }
+      else twoColItems.push(tcRow(it, '', false));
     });
     const railStyle = ringOnDark + 'width:76px;flex-shrink:0;height:100%;display:flex;flex-direction:column;background:' + sb.bg + ';border-right:1px solid ' + sb.line + ';--sbThumb:' + sbThumb + ';';
     const secondaryStyle = (tablet ? 'position:absolute;left:76px;top:0;bottom:0;z-index:130;box-shadow:6px 0 34px rgba(15,18,30,0.32);' : '') + ringOnDark + 'width:236px;flex-shrink:0;height:100%;display:flex;flex-direction:column;background:' + (dark ? '#1a1e22' : (S.sidebarColor === 'light' ? '#fff' : 'color-mix(in srgb, var(--brand-solid,var(--brand)) 82%, #000)')) + ';border-right:1px solid ' + sb.line + ';--sbThumb:' + sbThumb + ';';
 
     const hFlat = menu.filter(it => !it.h);
-    const hItemStyle = (active) => 'display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:0;border-radius:6px;background:' + (active ? 'color-mix(in srgb, var(--brand) 10%, transparent)' : 'transparent') + ';font:inherit;font-size:13px;font-weight:' + (active ? '600' : '500') + ';color:' + (active ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;white-space:nowrap;';
-    const hChildRow = (ca) => 'display:flex;align-items:center;gap:9px;width:100%;padding:8px 12px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:13px;font-weight:' + (ca ? '600' : '400') + ';color:' + (ca ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;';
+    const hBar = 'linear-gradient(to right,var(--color-accent,var(--brand-ink,var(--brand))) 3px,transparent 3px),color-mix(in srgb, var(--brand) 10%, var(--color-surface,#fff))';
+    const hItemStyle = (active) => 'display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border:0;border-radius:6px;background:' + (active ? hBar : 'transparent') + ';font:inherit;font-size:13px;font-weight:' + (active ? '600' : '500') + ';color:' + (active ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;white-space:nowrap;';
+    const hChildRow = (ca) => 'display:flex;align-items:center;gap:9px;width:100%;padding:8px 12px;border:0;border-radius:6px;background:' + (ca ? hBar : 'transparent') + ';font:inherit;font-size:13px;font-weight:' + (ca ? '600' : '400') + ';color:' + (ca ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;';
     const mkHItem = (it) => {
       const hasChildren = !!it.c;
       const active = S.activeMenu === it.k || (hasChildren && it.c.some(c => c.k === S.activeMenu));
       const first = hasChildren ? it.c[0] : it;
-      return { label: it.l, icon: it.i, hasChildren: hasChildren, ariaCur: active ? 'page' : undefined, ariaPop: hasChildren ? 'true' : undefined, onClick: () => this.selectMenu(first.k, false), style: hItemStyle(active),
+      return { label: it.l, icon: it.i, hasChildren: hasChildren, ariaCur: S.activeMenu === it.k ? 'page' : undefined, ariaPop: hasChildren ? 'true' : undefined, onClick: () => this.selectMenu(first.k, false), style: hItemStyle(active),
         children: (hasChildren ? it.c : []).map(c => { const ca = S.activeMenu === c.k; return { label: c.l, ariaCur: ca ? 'page' : undefined, onClick: () => this.selectMenu(c.k, false), hstyle: hChildRow(ca), dotStyle: 'width:5px;height:5px;border-radius:50%;flex-shrink:0;background:' + (ca ? 'var(--brand)' : K.muted) + ';' }; }) };
     };
     const hAll = hFlat.map(mkHItem);
@@ -1557,10 +1634,10 @@ class Component extends DCLogic {
     const hVisibleItems = hAll.slice(0, nVis);
     const overflowRaw = hFlat.slice(nVis);
     const hasMore = overflowRaw.length > 0;
-    const hOverflowItems = overflowRaw.map(it => { const hasChildren = !!it.c; return { isParent: hasChildren, isLeaf: !hasChildren, label: it.l, icon: it.i, onClick: () => this.selectMenu(it.k, false),
-      rowStyle: 'display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:13px;font-weight:500;color:' + K.text + ';cursor:pointer;text-align:left;',
+    const hOverflowItems = overflowRaw.map(it => { const hasChildren = !!it.c; const la = S.activeMenu === it.k; return { isParent: hasChildren, isLeaf: !hasChildren, label: it.l, icon: it.i, onClick: () => this.selectMenu(it.k, false), ariaCur: la ? 'page' : undefined,
+      rowStyle: 'display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-radius:6px;background:' + (la ? hBar : 'transparent') + ';font:inherit;font-size:13px;font-weight:' + (la ? 600 : 500) + ';color:' + (la ? 'var(--color-accent,var(--brand-ink,var(--brand)))' : K.text) + ';cursor:pointer;text-align:left;',
       groupLabelStyle: 'display:flex;align-items:center;gap:10px;padding:10px 12px 4px;font-size:12px;font-weight:600;color:' + K.muted + ';',
-      children: (hasChildren ? it.c : []).map(c => { const ca = S.activeMenu === c.k; return { label: c.l, onClick: () => this.selectMenu(c.k, false), style: 'display:flex;align-items:center;gap:9px;width:100%;padding:7px 12px 7px 24px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:13px;font-weight:' + (ca ? '600' : '400') + ';color:' + (ca ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;' }; }) }; });
+      children: (hasChildren ? it.c : []).map(c => { const ca = S.activeMenu === c.k; return { label: c.l, ariaCur: ca ? 'page' : undefined, onClick: () => this.selectMenu(c.k, false), style: 'display:flex;align-items:center;gap:9px;width:100%;padding:7px 12px 7px 24px;border:0;border-radius:6px;background:' + (ca ? hBar : 'transparent') + ';font:inherit;font-size:13px;font-weight:' + (ca ? '600' : '400') + ';color:' + (ca ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;' }; }) }; });
     const hAllItems = hFlat.map(it => ({ label: it.l, icon: it.i, hasChildren: !!it.c }));
     const MORE = { vi: 'Khác', en: 'More', ja: 'その他', zh: '更多' };
     const moreLabel = MORE[S.lang] || 'Khác';
@@ -1571,7 +1648,8 @@ class Component extends DCLogic {
     const iconBtnStyle = 'position:relative;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:0;border-radius:8px;background:transparent;color:' + tb.text + ';cursor:pointer;transition:background .12s;';
     const hamburgerStyle = 'display:inline-flex;align-items:center;justify-content:center;gap:6px;flex-shrink:0;min-width:44px;height:44px;padding:0 ' + (isMobile ? '12px 0 10px' : '0') + ';border:0;border-radius:8px;background:transparent;font:inherit;font-size:14px;font-weight:600;line-height:1.3;color:' + tb.text + ';cursor:pointer;';
     const tbDarkBar = S.topbarColor === 'dark' && !dark;
-    const searchInputStyle = 'width:300px;padding:9px 14px 9px 36px;border:1px solid ' + (tbDarkBar ? 'rgba(255,255,255,0.24)' : K.cardBorder) + ';border-radius:8px;font:inherit;font-size:13px;color:' + tb.text + ';background:' + (tbDarkBar ? 'rgba(255,255,255,0.14)' : K.inputBg) + ';outline:none;--ph:' + (tbDarkBar ? 'rgba(255,255,255,0.72)' : '#9aa1ac') + ';';
+    const kbdOn = winW >= 1024 && !S.search;
+    const searchInputStyle = 'width:100%;min-width:0;height:40px;padding:9px ' + (kbdOn ? '64px' : '14px') + ' 9px 36px;border:1px solid ' + (tbDarkBar ? 'rgba(255,255,255,0.24)' : K.cardBorder) + ';border-radius:8px;font:inherit;font-size:14px;color:' + tb.text + ';background:' + (tbDarkBar ? 'rgba(255,255,255,0.14)' : K.inputBg) + ';outline:2px solid transparent;--ph:' + (tbDarkBar ? 'rgba(255,255,255,0.72)' : '#9aa1ac') + ';';
     const siteBtnStyle = 'display:flex;align-items:center;gap:9px;max-width:230px;padding:6px 10px;border:1px solid ' + (S.topbarColor === 'dark' && !dark ? 'rgba(255,255,255,0.16)' : K.cardBorder) + ';border-radius:9px;background:' + (S.topbarColor === 'dark' && !dark ? 'rgba(255,255,255,0.08)' : (dark ? K.inputBg : '#fff')) + ';cursor:pointer;';
     const userChipBg = (S.topbarColor === 'dark' || dark) ? 'rgba(255,255,255,0.08)' : '#f3f6f9';
     const userBtnStyle = 'display:flex;align-items:center;gap:9px;height:var(--topbar-h,70px);padding:0 ' + (isMobile ? '8px' : '16px') + ';border:0;background:' + userChipBg + ';cursor:pointer;transition:background .12s;';
@@ -1579,46 +1657,54 @@ class Component extends DCLogic {
 
     const planeIsTenant = S.plane === 'tenant';
     const SITES = [
-      { id: 'anvinh', name: 'An Vinh', domain: 'anvinh.com.vn', role: 'Chủ sở hữu', init: 'AV', mark: '#047767' },
-      { id: 'greenfarm', name: 'Green Farm Co.', domain: 'greenfarm.vn', role: 'Quản trị viên', init: 'GF', mark: 'var(--brand-solid,var(--brand))' },
-      { id: 'medilab', name: 'MediLab Clinic', domain: platSub('medilab'), role: 'Biên tập viên', init: 'ML', mark: '#2f69d4' }
+      { id: 'anvinh', name: 'An Vinh', domain: 'anvinh.com.vn', role: 'Chủ website', init: 'AV', mark: '#047767' },
+      { id: 'greenfarm', name: 'Green Farm Co.', domain: 'greenfarm.vn', role: 'Quản trị', init: 'GF', mark: 'var(--brand-solid,var(--brand))' },
+      { id: 'medilab', name: 'MediLab Clinic', domain: platSub('medilab'), role: 'Biên tập', init: 'ML', mark: '#2f69d4' }
     ];
     const curSite = SITES.find(s => s.id === S.site) || SITES[0];
-    const siteList = SITES.map(s => ({ name: s.name, domain: s.role + ' · ' + s.domain, init: s.init, mark: s.mark, active: s.id === S.site, onClick: () => this.setState({ site: s.id, drop: null }),
+    // Mỗi website quản trị ở tên miền riêng: chọn website khác = mở trang quản trị của website đó (chưa đăng nhập thì qua màn đăng nhập).
+    const SITE_LIMIT = 3; const siteRoom = SITES.length < SITE_LIMIT; const sq = (S.siteQ || '').trim().toLowerCase();
+    const siteList = SITES.filter(s => !sq || (s.name + ' ' + s.domain).toLowerCase().indexOf(sq) >= 0).map(s => ({ name: s.name, domain: s.role + ' · ' + s.domain, init: s.init, mark: s.mark, active: s.id === S.site, onClick: () => { const was = S.site; this.setState({ site: s.id, drop: null }); if (s.id !== was) this.notify('Đang mở trang quản trị ' + s.domain + ' — chưa đăng nhập ở đó thì qua màn đăng nhập'); },
       style: 'display:flex;align-items:center;gap:11px;width:100%;padding:9px 13px;border:0;background:' + (s.id === S.site ? K.hover : 'transparent') + ';font:inherit;cursor:pointer;text-align:left;' }));
 
     const LANGS = [ { c: 'EN', l: 'English', k: 'en', cc: 'us' }, { c: 'VI', l: 'Tiếng Việt', k: 'vi', cc: 'vn' }, { c: 'JA', l: '日本語', k: 'ja', cc: 'jp' }, { c: 'ZH', l: '中文', k: 'zh', cc: 'cn' } ];
-    const flagUrl = (cc) => 'https://flagcdn.com/w40/' + cc + '.png';
+    const flagUrl = () => '';
     const curLang = LANGS.find(l => l.k === S.lang) || LANGS[0];
-    const langList = LANGS.map(l => { const on = S.lang === l.k; return { label: l.l, flagEl: React.createElement('img', { src: flagUrl(l.cc), alt: '', style: { width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 } }), active: on, onClick: () => this.setState({ lang: l.k, drop: null }),
+    const langList = LANGS.map(l => { const on = S.lang === l.k; return { label: l.l, flagEl: null, _f: ({ src: flagUrl(l.cc), alt: '', style: { width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 } }), active: on, onClick: () => this.setState({ lang: l.k, drop: null }),
       style: 'display:flex;align-items:center;gap:11px;width:100%;padding:8px 11px;border:0;border-radius:7px;background:' + (on ? K.hover : 'transparent') + ';font:inherit;font-size:13px;font-weight:' + (on ? '600' : '400') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;' }; });
 
     const notifDefs = [
       { icon: 'ri-git-pull-request-line', tint: 'rgba(247,184,75,0.15)', tintFg: 'var(--tx-warn)', text: 'Thu Hà đã gửi “Bảng giá dịch vụ 2026” chờ bạn duyệt.', ago: '2 giờ trước', unread: true },
       { icon: 'ri-mail-line', tint: 'rgba(10,179,156,0.12)', tintFg: 'var(--tx-ok)', text: '3 lead mới từ biểu mẫu Liên hệ (An Vinh).', ago: '4 giờ trước', unread: true },
-      { icon: 'ri-user-add-line', tint: 'rgba(53,119,241,0.12)', tintFg: 'var(--tx-info)', text: 'Minh Trí đã chấp nhận lời mời làm Biên tập viên.', ago: 'Hôm qua', unread: false },
-      { icon: 'ri-global-line', tint: 'color-mix(in srgb, var(--brand) 10%, transparent)', tintFg: 'var(--brand-ink,var(--brand))', text: 'Tên miền medilab.vn đã xác minh TLS thành công.', ago: '2 ngày trước', unread: false }
+      { icon: 'ri-user-add-line', tint: 'rgba(53,119,241,0.12)', tintFg: 'var(--tx-info)', text: 'Minh Trí đã chấp nhận lời mời vào nhóm Biên tập.', ago: 'Hôm qua', unread: false },
+      { icon: 'ri-global-line', tint: 'color-mix(in srgb, var(--brand) 10%, transparent)', tintFg: 'var(--brand-ink,var(--brand))', text: 'Tên miền medilab.vn đã bật kết nối bảo mật.', ago: '2 ngày trước', unread: false }
     ];
     const notifList = notifDefs.map(n => ({ icon: n.icon, tint: n.tint, tintFg: n.tintFg, text: n.text, ago: n.ago, bg: n.unread ? (dark ? 'color-mix(in srgb, var(--brand) 14%, transparent)' : 'color-mix(in srgb, var(--brand) 4%, transparent)') : 'transparent' }));
 
+    const LANGS_UI = LANGS.slice().sort((x, y) => (x.k === 'vi' ? -1 : (y.k === 'vi' ? 1 : 0)));
+    const curLangUi = LANGS.find(l => l.k === S.lang) || LANGS_UI[0];
+    const schemeName = { light: 'Sáng', dark: 'Tối', auto: 'Theo máy' }[S.scheme] || 'Sáng';
     const userMenu = [
-      { isItem: true, icon: 'ri-user-3-line', label: 'Hồ sơ của tôi', color: K.text, iconColor: K.muted, onClick: () => this.openAcct('profile') },
-      { isItem: true, icon: 'ri-shield-keyhole-line', label: 'Bảo mật & 2FA', color: K.text, iconColor: K.muted, onClick: () => this.openAcct('security') },
-      { isItem: true, icon: 'ri-settings-3-line', label: 'Tùy chọn cá nhân', color: K.text, iconColor: K.muted, onClick: () => this.openAcct('prefs') },
+      { isItem: true, icon: 'ri-user-3-line', label: 'Tài khoản của tôi', onClick: () => this.openAcct('profile') },
+      { isItem: true, icon: 'ri-palette-line', label: 'Giao diện', meta: schemeName + (S.fontSize === 'large' ? ' · chữ lớn' : ''), hasMeta: true, onClick: () => this.setState({ customizerOpen: true, drop: null }) },
+      { isItem: true, icon: 'ri-translate-2', label: 'Ngôn ngữ giao diện', meta: curLangUi.l, hasMeta: true, ariaExp: String(!!S.userLangOpen), onClick: () => this.setState(st => ({ userLangOpen: !st.userLangOpen })) }
+    ].concat(S.userLangOpen ? LANGS_UI.map(l => ({ isItem: true, sub: true, icon: S.lang === l.k ? 'ri-check-line' : 'ri-checkbox-blank-circle-line', label: l.l, ariaCur: S.lang === l.k ? 'true' : undefined, onClick: () => this.setState({ lang: l.k, userLangOpen: false }) })) : []).concat([
       { isDiv: true },
-      { isItem: true, icon: 'ri-lock-2-line', label: 'Khóa màn hình', color: K.text, iconColor: K.muted, onClick: () => this.lockScreen() },
-      { isItem: true, icon: 'ri-logout-box-r-line', label: 'Đăng xuất', color: 'var(--tx-danger)', iconColor: 'var(--tx-danger)', onClick: () => this.askLogout() }
-    ];
+      { isItem: true, icon: 'ri-lock-2-line', label: 'Khóa màn hình', onClick: () => this.lockScreen() },
+      { isItem: true, icon: 'ri-logout-box-r-line', label: 'Đăng xuất', danger: true, onClick: () => this.askLogout() }
+    ]).map(u => u.isDiv ? u : Object.assign({ hasMeta: false, meta: '' }, u, {
+      style: 'display:flex;align-items:center;gap:11px;width:100%;min-height:40px;padding:8px 16px 8px ' + (u.sub ? '30px' : '16px') + ';border:0;background:transparent;font:inherit;font-size:13.5px;color:' + (u.danger ? 'var(--tx-danger)' : K.text) + ';cursor:pointer;text-align:left;',
+      iconColor: u.danger ? 'var(--tx-danger)' : (u.sub ? (S.lang === (LANGS.find(l => l.l === u.label) || {}).k ? 'var(--color-accent,var(--brand-ink,var(--brand)))' : 'transparent') : K.muted) }));
 
     // L1-14: kết quả mẫu theo plane (CLAUDE §7b) — console nền tảng không lộ nội dung của một website khách.
     const SR_T = { brand: 'color-mix(in srgb, var(--brand) 10%, transparent)', ok: 'rgba(10,179,156,0.12)', warn: 'rgba(247,184,75,0.15)', info: 'rgba(53,119,241,0.12)' };
     const SR_F = { brand: 'var(--brand-ink,var(--brand))', ok: 'var(--tx-ok)', warn: 'var(--tx-warn)', info: 'var(--tx-info)' };
     const SR = {
-      tenant: [ ['ri-pages-line', 'brand', 'Trang chủ', 'Trang · đã xuất bản'], ['ri-shopping-bag-3-line', 'ok', 'Máy lọc nước An Vinh Pro', 'Sản phẩm'], ['ri-mail-line', 'warn', 'Nguyễn Văn B — cần báo giá', 'Lead · mới'], ['ri-team-line', 'info', 'Thu Hà', 'Thành viên · Tác giả'] ],
-      shop: [ ['ri-shopping-bag-3-line', 'warn', 'Đơn hàng DH-10482 · 2.450.000 ₫', 'Đơn hàng · chờ xử lý'], ['ri-user-heart-line', 'info', 'Trần Thị Mai', 'Khách hàng · 6 đơn'], ['ri-box-3-line', 'ok', 'Máy lọc nước An Vinh Pro', 'Sản phẩm · còn 14'], ['ri-pages-line', 'brand', 'Trang chủ', 'Trang · đã xuất bản'] ],
+      tenant: [ ['ri-pages-line', 'brand', 'Trang chủ', 'Trang · đã đăng'], ['ri-shopping-bag-3-line', 'ok', 'Máy lọc nước An Vinh Pro', 'Sản phẩm'], ['ri-mail-line', 'warn', 'Nguyễn Văn B — cần báo giá', 'Lead · mới'], ['ri-team-line', 'info', 'Thu Hà', 'Thành viên · Tác giả'] ],
+      shop: [ ['ri-shopping-bag-3-line', 'warn', 'Đơn hàng DH-10482 · 2.450.000 ₫', 'Đơn hàng · chờ xử lý'], ['ri-user-heart-line', 'info', 'Trần Thị Mai', 'Người mua · 6 đơn'], ['ri-box-3-line', 'ok', 'Máy lọc nước An Vinh Pro', 'Sản phẩm · còn 14'], ['ri-pages-line', 'brand', 'Trang chủ', 'Trang · đã đăng'] ],
       platform: [ ['ri-building-2-line', 'brand', 'Cơ Khí Chính Xác An Vinh', 'Khách hàng · gói Cơ bản'], ['ri-window-line', 'ok', 'anvinh.vn', 'Website · đang chạy'], ['ri-window-line', 'warn', 'greenfarm.vn', 'Website · chờ xác minh tên miền'], ['ri-file-shield-2-line', 'info', 'Đổi gói dịch vụ — MediLab Clinic', 'Nhật ký hệ thống · hôm qua'] ]
     };
-    const searchResults = (SR[S.plane] || SR.tenant).map(r => ({ icon: r[0], tint: SR_T[r[1]], tintFg: SR_F[r[1]], title: r[2], kind: r[3] })).map(r => Object.assign({}, r, { onClick: () => this.setState({ drop: null }) }));
+    const searchResults = (SR[S.plane] || SR.tenant).map(r => ({ icon: r[0], tint: SR_T[r[1]], tintFg: SR_F[r[1]], title: r[2], kind: r[3] })).map(r => Object.assign({}, r, { onClick: () => this.setState({ drop: null, searchFull: false }) }));
 
     // L1-17: MỘT nguồn cho thẻ số liệu, badge và danh sách Hộp duyệt. "Chờ xử lý" = chờ duyệt + phản biện (mới nhất trước).
     const REVIEW = [
@@ -1687,7 +1773,8 @@ class Component extends DCLogic {
     const cardStyle0 = 'background:' + K.card + ';border:1px solid ' + K.cardBorder + ';border-radius:8px;box-shadow:0 1px 2px rgb(56 65 74/0.06);overflow:clip;';
     const chipA = 'padding:5px 11px;font-size:12px;font-weight:600;color:#fff;background:var(--brand-solid,var(--brand));border-radius:6px;cursor:pointer;';
     const chipB = 'padding:5px 11px;font-size:12px;font-weight:500;color:' + K.muted + ';background:transparent;border-radius:6px;cursor:pointer;';
-    const contentInnerStyle = 'padding:24px 24px 76px;width:100%;' + (boxed ? 'max-width:1180px;margin:0 auto;' : '');
+    // Chữ lớn: --fsp (+2px) đặt trên khung gốc cho màn nhúng theo chuẩn; nội dung của Shell (chữ viết px) phóng 16/14 — bỏ zoom khi màn nhúng đã dùng --fsp.
+    const contentInnerStyle = 'padding:24px 24px 76px;width:100%;' + (S.fontSize === 'large' ? 'zoom:1.143;' : '') + (boxed ? 'max-width:1180px;margin:0 auto;' : '');
 
     const optBtn = (on) => 'display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border:1.5px solid ' + (on ? 'var(--brand)' : K.cardBorder) + ';border-radius:8px;background:' + (on ? 'color-mix(in srgb, var(--brand) 6%, transparent)' : K.card) + ';font:inherit;font-size:12.5px;font-weight:' + (on ? '600' : '500') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;';
     const tWrap = (on) => 'position:relative;width:108px;display:flex;flex-direction:column;gap:6px;padding:5px;border:1.5px solid ' + (on ? 'var(--brand)' : K.cardBorder) + ';border-radius:10px;background:' + (on ? 'color-mix(in srgb, var(--brand) 6%, transparent)' : K.card) + ';cursor:pointer;transition:border-color .15s,background .15s;';
@@ -1700,6 +1787,7 @@ class Component extends DCLogic {
       lyT: opt(S.layout === 'twocolumn', { layout: 'twocolumn' }),
       scL: opt(S.scheme === 'light', { scheme: 'light' }),
       scD: opt(S.scheme === 'dark', { scheme: 'dark' }),
+      scA: opt(S.scheme === 'auto', { scheme: 'auto' }),
       wdF: opt(S.width === 'fluid', { width: 'fluid' }),
       wdB: opt(S.width === 'boxed', { width: 'boxed' }),
       posF: opt(S.layoutPosition === 'fixed', { layoutPosition: 'fixed' }),
@@ -1725,35 +1813,49 @@ class Component extends DCLogic {
     const builtByOn = !!(PLAT.builtBy && PLAT.builtBy.show) && ((S.settingsValues || {})['p-branding::Hiện dòng “Phát triển bởi” ở chân trang'] !== false);
     const sidebarLogo = React.createElement('img', { src: logoFull, alt: PLAT.name, style: { height: '42px', width: 'auto' } });
     const topbarLogo = React.createElement('img', { src: logoTopbar, alt: PLAT.name, style: { height: '34px', width: 'auto' } });
-    const topbarFlag = React.createElement('img', { src: flagUrl(curLang.cc), alt: '', style: { width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover', display: 'block', boxShadow: '0 0 0 1px rgba(0,0,0,0.06)' } });
+    const topbarFlag = null; // không dùng cờ cho ngôn ngữ (CLAUDE §2) — chọn ngôn ngữ ở menu người dùng
 
     // ---- \u0110i\u1ec1u h\u01b0\u1edbng n\u1ed9i dung + breadcrumb \u0111\u1ed9ng ----
     const am = S.activeMenu;
-    const showSettings = am === 'settings' || am === 'p-settings';
+    const showSettings = am === 'settings' || am === 'p-settings' || am === 'p-plans';
+    const setRoot = S.plane === 'platform' ? 'Cài đặt nền tảng' : 'Cài đặt';
+    const narrowSet = winW < 768; // mẫu 4: dưới 768px Cài đặt là danh sách trang, bấm mục → màn mục + "‹ Cài đặt"
+    const narrowList = showSettings && am !== 'p-plans' && narrowSet && S.setList !== false;
     const showDashboard = am === 'dashboard';
     const showMenus = am === 'menus';
     const showBlank = !showSettings && !showDashboard && !showMenus;
+    const _mi = showBlank ? this.menuItem(am) : null;
+    const blankNoteShow = !!_mi && this.props.showNotes !== false;
+    const blankPend = !!(_mi && (_mi.pend || (_mi.parent && _mi.parent.pend)));
+    const blankKeys = _mi ? ('Quyền: ' + (_mi.perm || 'mọi người dùng đã đăng nhập') + (_mi.prop ? ' (đề xuất)' : '') + ' · Module: ' + ((_mi.mod || (_mi.parent && _mi.parent.mod)) || 'lõi, không theo gói')) : '';
     const goDash = () => this.go('dashboard', '');
     let crumbs = [];
     if (showDashboard) crumbs = [];
-    else if (showSettings) { const _s = (this.settingsGroups().flatMap(g => g.items).find(x => x.k === (this.state.settingsSection || 'general'))) || null; crumbs = _s ? [{ label: 'Cài đặt' }, { label: _s.l, current: true }] : [{ label: 'Cài đặt', current: true }]; }
+    else if (am === 'p-plans') crumbs = [{ label: 'Gói & tính năng', current: true }];
+    else if (narrowList) crumbs = [{ label: setRoot, current: true }];
+    else if (showSettings) { const _s = (this.settingsGroups().flatMap(g => g.items).find(x => x.k === (this.state.settingsSection || 'general'))) || null; crumbs = _s ? [{ label: setRoot }, { label: _s.l, current: true }] : [{ label: setRoot, current: true }]; }
     else { const t = this.menuTrail(am); if (t) { crumbs.push({ label: t.item, current: !t.child }); if (t.child) crumbs.push({ label: t.child, current: true }); } }
     const crumbEls = crumbs.map((c, i) => ({ label: c.label, current: !!c.current, notCurrent: !c.current, sepShow: true }));
     const showCrumb = crumbs.length > 0;
     let pageTitle = 'Ch\u00e0o bu\u1ed5i s\u00e1ng, Ng\u1ecdc Anh';
-    if (showSettings) pageTitle = (this.settingsGroups().flatMap(g => g.items).find(x => x.k === (S.settingsSection || 'general')) || { l: 'C\u00e0i \u0111\u1eb7t' }).l;
+    if (am === 'p-plans') pageTitle = 'Gói & tính năng';
+    else if (narrowList) pageTitle = setRoot;
+    else if (showSettings) pageTitle = (this.settingsGroups().flatMap(g => g.items).find(x => x.k === (S.settingsSection || 'general')) || { l: 'C\u00e0i \u0111\u1eb7t' }).l;
     else if (!showDashboard) { const t = this.menuTrail(am); pageTitle = t ? (t.child || t.item) : ''; }
 
     // settings-shell: nh\u00f3m section-nav + section \u0111ang xem
-    const sgGroups = this.settingsGroups();
+    const sgGroups = this.settingsGroups(true);
     const flatSecs = []; sgGroups.forEach(g => g.items.forEach(it => flatSecs.push(it)));
-    const secKey = flatSecs.some(x => x.k === S.settingsSection) ? S.settingsSection : (flatSecs[0] || { k: 'general' }).k;
+    const secKey = am === 'p-plans' ? 'p-plans' : (flatSecs.some(x => x.k === S.settingsSection && !x.hidden) ? S.settingsSection : (flatSecs.find(x => !x.hidden) || { k: 'general' }).k);
     const q = (S.secSearch || '').trim().toLowerCase();
-    const settingsNav = sgGroups.map(g => ({ h: g.h, items: g.items.filter(it => !q || it.l.toLowerCase().indexOf(q) >= 0 || (it.desc || '').toLowerCase().indexOf(q) >= 0).map(it => {
+    const _navG = sgGroups.filter(g => !g.hidden).map(g => ({ h: g.h, items: g.items.filter(it => !q || it.l.toLowerCase().indexOf(q) >= 0 || (it.desc || '').toLowerCase().indexOf(q) >= 0).map(it => {
       const on = it.k === secKey;
       return { key: it.k, label: it.l, icon: it.i, dot: !!it.dot, on: on, off: !on,
-        onClick: (e) => { const el = e && e.currentTarget; this.trySwitchSection(it.k); if (el) this.centerTabEl(el); } };
+        onClick: (e) => { const el = e && e.currentTarget; this.trySwitchSection(it.k); this.setState({ setList: false }); if (el) this.centerTabEl(el); } };
     }) }));
+    // Nhóm "Nâng cao" gập mặc định; tự mở khi đang ở mục bên trong hoặc khi đang tìm.
+    const settingsNav = _navG.map(g => { const fold = g.h === 'Nâng cao'; const open = !fold || !!S.advOpen || !!q || g.items.some(it => it.on);
+      return { h: g.h, plain: !fold, fold: fold, exp: String(open), caret: open ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line', onToggle: () => this.setState(st => ({ advOpen: !st.advOpen })), items: open ? g.items : [] }; });
     const P = (l, icon, desc, on, badge) => ({ t: 'provider', l: l, icon: icon, desc: desc, v: on, badge: badge || '' });
     // Tiền tệ phụ để khách xem giá quy đổi (không phải tiền thanh toán) — gợi ý theo thị trường của từng ngôn ngữ.
     // Danh mục ISO 4217 rút gọn — admin chọn từ danh mục, không tự chế mã (cổng thanh toán và nguồn tỉ giá chỉ hiểu mã chuẩn).
@@ -1900,6 +2002,33 @@ class Component extends DCLogic {
         { t: 'toggle', l: 'Nhập cả thư viện ảnh', v: true, hint: 'Ảnh trùng tên sẽ được lưu thành bản mới, không ghi đè ảnh cũ.' },
         { t: 'note', tone: 'warn', l: 'Không nhập được đơn hàng, giao dịch và nhật ký. Trước khi ghi, hệ thống tạo một điểm an toàn và bạn có 24 giờ để hoàn tác toàn bộ lần nhập này.' }
       ],
+      'admin-ui': [
+        { t: 'subhead', l: 'Mặc định cho mọi thành viên' },
+        { t: 'select', l: 'Kiểu menu', v: 'Dọc', opts: ['Dọc', 'Ngang', '2 cột'] },
+        { t: 'select', l: 'Màu thanh bên', v: 'Đậm', opts: ['Đậm', 'Sáng', 'Chuyển màu'] },
+        { t: 'select', l: 'Chế độ màu', v: 'Theo máy', opts: ['Sáng', 'Tối', 'Theo máy'] },
+        { t: 'select', l: 'Cỡ chữ', v: 'Bình thường', opts: ['Bình thường', 'Lớn'] },
+        { t: 'note', tone: 'info', l: 'Màu trang quản trị do nền tảng đặt chung ở Thương hiệu trắng. Mỗi thành viên vẫn chọn riêng ở menu tài khoản › Giao diện — lựa chọn riêng đè lên mặc định này.' }
+      ],
+      permalinks: [
+        { t: 'subhead', l: 'Mẫu đường dẫn' },
+        { t: 'select', l: 'Bài viết', v: '/tin-tuc/ten-bai-viet', opts: ['/tin-tuc/ten-bai-viet', '/tin-tuc/chuyen-muc/ten-bai-viet', '/ten-bai-viet'] },
+        { t: 'select', l: 'Sản phẩm', v: '/san-pham/ten-san-pham', opts: ['/san-pham/ten-san-pham', '/san-pham/chuyen-muc/ten-san-pham'] },
+        { t: 'toggle', l: 'Tự chuyển địa chỉ cũ sang địa chỉ mới khi đổi đường dẫn', v: true, hint: 'Khách mở địa chỉ cũ vẫn tới đúng trang.' }
+      ],
+      catalog: [
+        { t: 'subhead', l: 'Hiển thị sản phẩm' },
+        { t: 'toggle', l: 'Hiện giá', v: true },
+        { t: 'toggle', l: 'Hiện số lượng còn', v: false },
+        { t: 'select', l: 'Khi hết hàng', v: 'Vẫn hiện, ghi “Hết hàng”', opts: ['Vẫn hiện, ghi “Hết hàng”', 'Ẩn sản phẩm'] },
+        { t: 'text', l: 'Chữ trên nút đặt hàng', v: 'Liên hệ báo giá', i18n: true, req: true, reqMsg: 'Nhập chữ cho nút, ví dụ “Liên hệ báo giá”.' }
+      ],
+      redirects: [
+        { t: 'subhead', l: 'Thêm chuyển hướng' },
+        { t: 'text', l: 'Từ địa chỉ cũ', v: '', ph: '/gioi-thieu-cu' },
+        { t: 'text', l: 'Sang địa chỉ mới', v: '', ph: '/gioi-thieu' },
+        { t: 'note', tone: 'info', l: 'Khi bạn đổi đường dẫn bài đã đăng, hệ thống tự thêm chuyển hướng — chỉ cần thêm tay cho địa chỉ từ website cũ.' }
+      ],
       general: [
         { t: 'subhead', l: 'Doanh nghiệp & thương hiệu' },
         { t: 'text', l: 'Tên công ty (pháp lý)', v: 'CÔNG TY TNHH CƠ KHÍ CHÍNH XÁC AN VINH', i18n: true, hint: 'Dùng cho hóa đơn, hợp đồng và dữ liệu doanh nghiệp gửi Google. Có bản riêng cho từng ngôn ngữ (thường viết không dấu).' },
@@ -1985,11 +2114,11 @@ class Component extends DCLogic {
 
         { t: 'text', l: 'Email gửi đi của bạn', v: 'no-reply@anvinh.vn', vt: 'email', req: true, hint: 'Nhập địa chỉ email đầy đủ. Chúng tôi tự nhận máy chủ gửi (SMTP), cổng và mã hóa cho hầu hết nhà cung cấp phổ biến.', when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
         { t: 'secret', l: 'Mật khẩu ứng dụng', v: '', ph: '••••••••••', req: true, hint: 'Hầu hết email (Gmail, Zoho, email tên miền…) đều cho tạo “mật khẩu ứng dụng” trong phần bảo mật. Dán vào đây — an toàn hơn mật khẩu đăng nhập.', when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
-        { t: 'note', tone: 'info', l: 'Máy chủ tự nhận theo email của bạn: smtp.anvinh.vn · cổng 587 · mã hóa TLS. Đúng với hầu hết trường hợp — chỉ mở “Máy chủ nâng cao” nếu nhà cung cấp yêu cầu thông số khác.', when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
+        { t: 'note', tone: 'info', l: 'Máy chủ tự nhận theo email của bạn: smtp.anvinh.vn · cổng 587 · có mã hóa. Đúng với hầu hết trường hợp — chỉ mở “Máy chủ nâng cao” nếu nhà cung cấp yêu cầu thông số khác.', when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
         { t: 'subhead', l: 'Máy chủ nâng cao (tùy chọn)', when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
         { t: 'text', l: 'Máy chủ SMTP', v: 'smtp.anvinh.vn', hint: 'Đã tự điền — chỉ đổi khi nhà cung cấp yêu cầu.', when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
-        { t: 'num', l: 'Cổng', v: '587', unit: 'port', min: 1, hint: '587 cho TLS, 465 cho SSL.', when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
-        { t: 'select', l: 'Mã hóa', v: 'TLS', opts: ['TLS', 'SSL', 'Không'], when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
+        { t: 'num', l: 'Cổng', v: '587', unit: 'port', min: 1, hint: 'Thường là 587; vài nhà cung cấp dùng 465.', when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
+        { t: 'select', l: 'Mã hóa', v: 'Tự động (nên dùng)', opts: ['Tự động (nên dùng)', 'Mã hóa ngay khi kết nối', 'Không mã hóa'], when: [{ l: 'Cách gửi thư đi', dv: 'inherit', is: 'own' }, { l: 'Nhà cung cấp email', dv: 'google', is: 'smtp' }] },
 
         { t: 'subhead', l: 'Người gửi khách nhìn thấy' },
         { t: 'text', l: 'Tên hiển thị', v: 'An Vinh', req: true, i18n: true, hint: 'Tên người gửi hiện trong hộp thư của khách — nên có bản theo từng ngôn ngữ.' },
@@ -2406,7 +2535,7 @@ class Component extends DCLogic {
         isPoints: f.t === 'points',
         points: restorePoints.map(p => ({ at: p.at, kind: p.kind, scope: p.size, isSafety: p.kind !== 'Tự động',
           onRestore: () => this.notify('Đang khôi phục về ' + p.at.toLowerCase() + ' — hệ thống đã tạo điểm an toàn trước khi ghi') })),
-        err: err, hasErr: !!err,
+        err: err, hasErr: !!err, ariaInv: err ? 'true' : undefined,
         fieldStyle: inputStyle + (err ? 'border-color:var(--tone-danger-fg);' : '') + (shared ? 'background:color-mix(in srgb, ' + K.muted + ' 7%, transparent);color:' + K.muted + ';' : ''),
         isShared: shared, ro: shared,
         sharedStyle: 'display:inline-flex;align-items:center;gap:4px;padding:1px 6px;border-radius:4px;font-size:12px;font-weight:700;flex-shrink:0;background:color-mix(in srgb, ' + K.muted + ' 12%, transparent);color:' + K.muted + ';',
@@ -2473,15 +2602,16 @@ class Component extends DCLogic {
     const onCancelSection = () => { dropSection(secKey);
       if (secKey === 'langs') { const b = S.langsSaved || { siteLangs: ['vi', 'en', 'zh'], pubLangs: ['vi', 'en'], defLang: 'vi' };
         this.setState({ siteLangs: b.siteLangs.slice(), pubLangs: b.pubLangs.slice(), defLang: b.defLang, cLang: b.defLang }); }
-      this.notify('Đã hoàn nguyên thay đổi'); };
-    const settingsActive = { label: secDef.l, icon: secDef.i, desc: secDef.desc, langBar: langBar,
-      navWrap: isMobile ? 'width:100%;flex-shrink:0;' : 'width:238px;flex-shrink:0;position:sticky;top:var(--sticky-top,0px);align-self:flex-start;',
-      navList: isMobile ? 'display:flex;align-items:center;gap:7px;overflow-x:auto;padding:2px;' : '',
+      this.notify('Đã bỏ thay đổi'); };
+    const settingsActive = { label: secDef.l, icon: secDef.i, desc: narrowList ? 'Chọn mục bạn muốn sửa.' : secDef.desc, langBar: langBar,
+      mainWrap: narrowList ? 'display:none;' : 'flex:1 1 300px;min-width:0;',
+      navWrap: am === 'p-plans' ? 'display:none;' : (narrowSet ? (narrowList ? 'width:100%;flex-shrink:0;' : 'display:none;') : 'width:' + (isMobile ? '220px' : '238px') + ';flex-shrink:0;position:sticky;top:var(--sticky-top,0px);align-self:flex-start;'),
+      navList: '',
       navListRef: (el) => { if (el) this._navListEl = el; },
-      navListClass: isMobile ? 'snav-row' : 'snav-col',
+      navListClass: 'snav-col',
       langMeta: isMobile ? 'display:flex;align-items:center;gap:9px;width:100%;justify-content:space-between;' : 'display:flex;align-items:center;gap:9px;margin-left:auto;flex-shrink:0;',
-      navHead: isMobile ? 'display:none;' : 'padding:11px 12px 5px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;',
-      navSearchWrap: isMobile ? 'display:none;' : 'display:flex;align-items:center;gap:8px;margin:2px 2px 8px;padding:0 11px;height:38px;border:1px solid ' + K.cardBorder + ';border-radius:6px;background:' + K.card + ';',
+      navHead: 'padding:11px 12px 5px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;',
+      navSearchWrap: 'display:flex;align-items:center;gap:8px;margin:2px 2px 8px;padding:0 11px;height:38px;border:1px solid ' + K.cardBorder + ';border-radius:6px;background:' + K.card + ';',
       groups: groupVals,
       groupsWrap: 'display:flex;flex-direction:column;gap:12px;max-width:1180px;',
       fieldsWrap: 'display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 18px;align-items:start;', isLink: !!secDef.link, link: secDef.link || '#', linkNote: secDef.linkNote || '', isEmbedIntegrations: secDef.embed === 'integrations', isEmbedFloating: secDef.embed === 'floating', isEmbed: !!secDef.embed, isLangs: secKey === 'langs', fields: secFields, hasFields: (secFields.length > 0) && !secDef.embed, dirty: secDirty, canSave: secDirty,
@@ -2557,7 +2687,10 @@ class Component extends DCLogic {
     const settingsBackToDash = goDash;
     const embK = (secDef && secDef.embed) ? secDef.embed : null;
     const curEmbedDirty = embK ? !!(S.embedDirty || {})[embK] : false;
-    const mkEmbedDirty = (id) => (d) => { if (!!(this.state.embedDirty || {})[id] !== !!d) this.setState(st => ({ embedDirty: Object.assign({}, st.embedDirty, { [id]: !!d }) })); };
+    // Hợp đồng nhúng (D0-3 A.4): onDirty(n) nhận SỐ thay đổi (true/false vẫn chạy = 1/0), onInvalid(n) số lỗi; Shell gửi bs-embed-cmd {act:'firstError'}.
+    const mkEmbedDirty = (id) => (d) => { const n = typeof d === 'number' ? Math.max(0, Math.round(d)) : (d ? 1 : 0); if ((Number((this.state.embedDirty || {})[id]) || 0) !== n) this.setState(st => ({ embedDirty: Object.assign({}, st.embedDirty, { [id]: n }) })); };
+    const mkEmbedInv = (id) => (d) => { const n = Math.max(0, Number(d) || 0); if ((Number((this.state.embedInvalid || {})[id]) || 0) !== n) this.setState(st => ({ embedInvalid: Object.assign({}, st.embedInvalid, { [id]: n }) })); };
+    const embInv = { ig: mkEmbedInv('integrations'), fc: mkEmbedInv('floating'), em: mkEmbedInv('email'), pt: mkEmbedInv('platform-tpl'), ps: mkEmbedInv('platform-send'), sl: mkEmbedInv('social'), sls: mkEmbedInv('social-saas') };
     const onEmbedDirtyIg = mkEmbedDirty('integrations');
     const onEmbedDirtyFc = mkEmbedDirty('floating');
     const onEmbedDirtyEm = mkEmbedDirty('email');
@@ -2569,7 +2702,17 @@ class Component extends DCLogic {
     const menusDirty = !!(S.embedDirty || {})['menus'];
     const bumpSig = (which, id) => { try { document.dispatchEvent(new CustomEvent('bs-embed-cmd', { detail: { id: id, act: which === 'saveSig' ? 'save' : 'reset' } })); } catch (e) {} this.setState(st => ({ [which]: Object.assign({}, st[which], { [id]: (st[which][id] || 0) + 1 }), embedDirty: Object.assign({}, st.embedDirty, { [id]: false }) })); };
     const onEmbedSave = () => { if (!embK) return; bumpSig('saveSig', embK); this.notify('Đã lưu cấu hình'); };
-    const onEmbedReset = () => { if (!embK) return; bumpSig('resetSig', embK); this.notify('Đã hoàn nguyên thay đổi'); };
+    const onEmbedReset = () => { if (!embK) return; bumpSig('resetSig', embK); this.notify('Đã bỏ thay đổi'); };
+    // Thanh Lưu dính đáy (mẫu 4): "N thay đổi chưa lưu · N lỗi · Xem lỗi đầu tiên · Bỏ thay đổi · Lưu".
+    const draftN = Object.keys(S.settingsDraft || {}).filter(k => k.indexOf(secKey + '::') === 0 && S.settingsDraft[k] !== (S.settingsValues || {})[k]).length;
+    const chgN = settingsActive.isEmbed ? (Number((S.embedDirty || {})[embK]) || 0) : (secDirty ? Math.max(1, draftN) : 0);
+    const errN = settingsActive.isEmbed ? (Number((S.embedInvalid || {})[embK]) || 0) : secErrCount;
+    const onFirstError = () => {
+      if (settingsActive.isEmbed) { try { document.dispatchEvent(new CustomEvent('bs-embed-cmd', { detail: { id: embK, act: 'firstError' } })); } catch (e) {} return; }
+      let eh = null, ch = null; visible.forEach(fd => { if (fd.t === 'subhead') { ch = fd.l; return; } if (eh === null && errOf(fd, baseOf(fd))) eh = ch || ''; });
+      if (eh) this.setState(st => ({ secGroup: Object.assign({}, st.secGroup, { [secKey]: eh }) }));
+      const tryFocus = (n) => { try { const f = document.querySelector('[data-set-form] [aria-invalid="true"]'); if (f) { f.focus(); return; } const m = document.querySelector('[data-set-form] [data-ferr]'); const lb = m && m.closest('label'); const c = lb && lb.querySelector('input,select,textarea,button'); if (c) { c.focus(); return; } } catch (e) {} if (n > 0) setTimeout(() => tryFocus(n - 1), 60); };
+      setTimeout(() => tryFocus(5), 30); };
     this._saveNow = () => { if (secDef && secDef.embed) { onEmbedSave(); } else { onSaveSection(); } };
     const dialogRef = (el) => { this._dialog = el; };
     const onDialogKey = (e) => { if (!e || !this._dialog) return; if (e.key === 'Escape') { e.preventDefault(); this._pendingRun = null; this.setState({ pendingSection: null, pendingNav: false }); return; }
@@ -2602,8 +2745,10 @@ class Component extends DCLogic {
       menusResetStyle: menusDirty ? settingsActive.resetBtnStyle : settingsActive.resetBtnStyleOff,
       onMenusSave: () => { if (!menusDirty) return; try { document.dispatchEvent(new CustomEvent('bs-embed-cmd', { detail: { id: 'menus', act: 'save' } })); } catch (e) {} },
       onMenusReset: () => { if (!menusDirty) return; try { document.dispatchEvent(new CustomEvent('bs-embed-cmd', { detail: { id: 'menus', act: 'reset' } })); } catch (e) {} },
-      settingsShowActions: showSettings && embK !== 'quota', secStamp, onRestoreDefaults, secHasErr: secErrCount > 0, secErrText: 'Còn ' + secErrCount + ' mục chưa hợp lệ', settingsNoChanges: !(settingsActive.isEmbed ? curEmbedDirty : settingsActive.dirty), settingsCantSave: !(settingsActive.isEmbed ? curEmbedDirty : settingsActive.dirty) || (!settingsActive.isEmbed && secErrCount > 0), settingsHasChanges: settingsActive.isEmbed ? curEmbedDirty : settingsActive.dirty,
-      onActionSave: settingsActive.isEmbed ? onEmbedSave : onSaveSection,
+      settingsShowActions: showSettings && embK !== 'quota', secStamp, onRestoreDefaults, secHasErr: secErrCount > 0, secErrText: 'Còn ' + secErrCount + ' mục chưa hợp lệ', settingsNoChanges: !(settingsActive.isEmbed ? curEmbedDirty : settingsActive.dirty), settingsCantSave: !chgN || errN > 0, settingsHasChanges: settingsActive.isEmbed ? curEmbedDirty : settingsActive.dirty,
+      onActionSave: () => { if (!chgN) return; if (errN > 0) { onFirstError(); return; } (settingsActive.isEmbed ? onEmbedSave : onSaveSection)(); },
+      saveBarShow: showSettings && embK !== 'quota' && !narrowList, sbHasChanges: chgN > 0, sbClean: chgN === 0, sbChangesText: chgN + ' thay đổi chưa lưu', sbHasErr: errN > 0, sbErrText: errN + ' lỗi', sbSaveAria: (!chgN || errN > 0) ? 'true' : undefined, onFirstError, embInv,
+      setBackShow: showSettings && narrowSet && !narrowList && am !== 'p-plans', onSetBack: () => this.setState({ setList: true }), setRootLabel: setRoot,
       toastMsg: S.toast, toastShow: !!S.toast, dialogRef, onDialogKey,
       pickerShow: !!S.pickerFor, pickerMulti: false, stopProp: (e) => { if (e && e.stopPropagation) e.stopPropagation(); },
       onPickerBackdrop: () => this.setState({ pickerFor: null }),
@@ -2616,7 +2761,7 @@ class Component extends DCLogic {
       slWrapStyle: 'margin:-22px;' + (secDef && secDef.embed === 'social' ? '' : 'display:none;'), onEmbedDirtySl,
       qtWrapStyle: 'margin:-22px;' + (secDef && secDef.embed === 'quota' ? '' : 'display:none;'),
       slsWrapStyle: 'margin:-22px;' + (secDef && secDef.embed === 'social-saas' ? '' : 'display:none;'), onEmbedDirtySls,
-      emAccType: S.plane === 'shop' ? 'ecom' : (S.plane === 'platform' ? 'platform' : 'site'), // Q7-B: console nền tảng luôn truyền platform
+      emAccType: S.plane === 'shop' ? 'ecom' : (S.plane === 'platform' ? 'platform' : (['site', 'ecom', 'saas'].indexOf(this.props.accountType) >= 0 ? this.props.accountType : 'site')), // Q7-B: console nền tảng luôn truyền platform
       onEmbedDirtyIg, onEmbedDirtyFc, saveSigIg: S.saveSig.integrations, saveSigFc: S.saveSig.floating, resetSigIg: S.resetSig.integrations, resetSigFc: S.resetSig.floating, pendingShow, pendingLabel, onSaveAndGo, onDiscardAndGo, onStayHere,
       frameStyle, isVertical, isHorizontal, isTwoCol, small, showLabels, vSidebarShow, twoColShow, hNavShow,
       sidebarStyle, sidebarLogoStyle, sbNavStyle, navItems, sidebarLogo, topbarLogo, topbarFlag, smLogo26, smLogo30,
@@ -2631,21 +2776,22 @@ class Component extends DCLogic {
         w.style.setProperty('--flyTop', top + 'px'); w.style.setProperty('--flyLeft', (r.right - over) + 'px'); w.style.setProperty('--flyGap', gap + 'px'); },
       sbLine: sb.line, sbActive: (!dark && S.sidebarColor === 'light') ? '#1f2b4d' : (dark ? K.heading : '#ffffff'),
       navHoverBg: NAV.hoverBg, navHoverFg: NAV.hoverFg,
+      blankNoteShow, blankPend, blankKeys,
       railStyle, secondaryStyle, railGroups, twoColItems, twoColTitle: activeG ? activeG.l : '',
       hNavStyle, hVisibleItems, hOverflowItems, hAllItems, hasMore, moreLabel, moreBtnStyle,
       setHNavWrap: (el) => this.setHNavWrap(el), setHMeas: (el) => this.setHMeas(el),
       topbarStyle, iconBtnStyle, hamburgerStyle, searchInputStyle, siteBtnStyle, userBtnStyle,
       tbText: tb.text, tbMuted: tb.muted, tbBg: tb.bg, showSearch: !isMobile,
       siteName: curSite.name, siteInit: curSite.init, siteMark: curSite.mark,
-      planeLabel: planeIsTenant ? 'Quản trị site' : 'Nền tảng · Operator',
-      roleLabel: planeIsTenant ? curSite.role : 'Super Admin',
+      planeLabel: S.plane === 'shop' ? 'Bán hàng — Để sau' : (planeIsTenant ? curSite.domain : 'Nền tảng · mọi khách hàng'),
+      roleLabel: planeIsTenant ? curSite.role : 'Quản trị nền tảng',
       planeIsTenant, planeIsPlatform: !planeIsTenant,
       siteList, onCreateSite: () => this.setState({ drop: null }),
       searchVal: S.search, onSearchChange: (e) => this.setState({ search: e && e.target ? e.target.value : '' }), onSearchFocus: () => this.setState({ drop: 'search' }),
       searchResults, langList, notifList, userMenu,
       schemeIcon: dark ? 'ri-sun-line' : 'ri-moon-line',
       onHamburger: () => { if (isMobile) { this.setState(s => ({ mobileNavOpen: !s.mobileNavOpen })); } else if (tablet && (isVertical || isTwoCol)) { this.setState(s => ({ railOpen: !s.railOpen })); } else { this.setState(s => ({ sidebarSize: s.sidebarSize === 'small' ? 'default' : 'small' })); } },
-      topbarWide: !isMobile, mobileNavShade: (isMobile && S.mobileNavOpen) || railOpen, onCloseMobileNav: () => this.setState({ mobileNavOpen: false, railOpen: false }), railSpacer: railOpen && isVertical, twoColSecShow: !tablet || railOpen, menuLabelShow: isMobile, hamburgerLabel: isMobile ? 'Mở menu' : (tablet ? (railOpen ? 'Thu gọn menu' : 'Mở rộng menu') : 'Thu gọn/mở rộng menu'), czSizeNote: 'Chỉ có hiệu lực khi màn hình rộng từ 1280px; hẹp hơn luôn thu gọn.', midGrid: isMobile ? '1fr' : '1.6fr 1fr',
+      topbarWide: !isMobile, mobileNavShade: (isMobile && S.mobileNavOpen) || railOpen, onCloseMobileNav: () => this.setState({ mobileNavOpen: false, railOpen: false }), railSpacer: railOpen && isVertical, twoColSecShow: !tablet || railOpen, menuLabelShow: isMobile, hamburgerLabel: isMobile ? 'Mở menu' : (tablet ? (railOpen ? 'Thu gọn menu' : 'Mở rộng menu') : 'Thu gọn/mở rộng menu'), czSizeNote: 'Chỉ có hiệu lực khi màn hình rộng từ 1280px; hẹp hơn luôn thu gọn.', midGrid: isMobile ? 'minmax(0,1fr)' : 'minmax(0,1.6fr) minmax(0,1fr)',
       onDropSite: () => this.toggleDrop('site'), siteOpen: S.drop === 'site',
       onDropLang: () => this.toggleDrop('lang'), langOpen: S.drop === 'lang',
       onDropNotif: () => this.toggleDrop('notif'), notifOpen: S.drop === 'notif',
@@ -2660,7 +2806,7 @@ class Component extends DCLogic {
       ...(() => {
         const acctInputStyle = 'width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid ' + K.cardBorder + ';border-radius:5px;font:inherit;font-size:13.5px;color:' + K.heading + ';background:' + K.card + ';outline:none;';
         const acctSaveBtnStyle = 'padding:9px 18px;border:0;border-radius:7px;background:var(--brand-solid,var(--brand));color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;';
-        const TABS = [ ['profile', 'Hồ sơ của tôi', 'ri-user-3-line'], ['security', 'Bảo mật & 2FA', 'ri-shield-keyhole-line'], ['prefs', 'Tùy chọn cá nhân', 'ri-settings-3-line'] ];
+        const TABS = [ ['profile', 'Hồ sơ của tôi', 'ri-user-3-line'], ['security', 'Bảo mật & xác thực 2 lớp', 'ri-shield-keyhole-line'], ['prefs', 'Tùy chọn cá nhân', 'ri-settings-3-line'] ];
         const acctTabs = TABS.map(t => { const on = S.acctModal === t[0];
           return { label: t[1], icon: t[2], onClick: () => this.setState({ acctModal: t[0] }),
             style: 'display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-radius:7px;background:' + (on ? K.hover : 'transparent') + ';font:inherit;font-size:13px;font-weight:' + (on ? '600' : '400') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;' }; });
@@ -2706,6 +2852,22 @@ class Component extends DCLogic {
       reviewBadge: reviewN + ' chờ xử lý', inboxMoreShow: inboxMore > 0, inboxMoreLabel: 'và ' + inboxMore + ' mục khác', cardStyle0, chipA, chipB, contentInnerStyle,
       customizerOpen: S.customizerOpen, onToggleCustomizer: () => this.setState(s => ({ customizerOpen: !s.customizerOpen, drop: null })), onResetCustomizer: () => this.resetCustomizer(),
       czPanelStyle, czTriggerStyle, cz: CZ, czPlane, czBrand, mainColStyle, contentScrollStyle,
+      notesOn: this.props.showNotes !== false,
+      searchInline: winW >= 640, searchIconOnly: winW < 640, kbdShow: kbdOn && winW >= 640, kbdLabel: (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '')) ? '⌘K' : 'Ctrl K', tbKbdBorder: tbDarkBar ? 'rgba(255,255,255,0.45)' : K.cardBorder,
+      setSearchEl: (el) => { this._searchEl = el; }, searchFullOpen: !!S.searchFull, onOpenSearchFull: () => this.setState({ searchFull: true, drop: null }), onCloseSearchFull: () => this.setState({ searchFull: false }),
+      setSearchFullEl: (el) => { if (el && el !== this._sfEl) { this._sfEl = el; setTimeout(() => { try { el.focus(); } catch (e) {} }, 0); } if (!el) this._sfEl = null; },
+      helpOpen: !!S.helpOpen, onOpenHelp: () => this.setState({ helpOpen: true, drop: null }), onCloseHelp: () => this.setState({ helpOpen: false }),
+      setHelpCloseEl: (el) => { if (el && el !== this._hcEl) { this._hcEl = el; setTimeout(() => { try { el.focus(); } catch (e) {} }, 0); } if (!el) this._hcEl = null; },
+      helpScreen: showDashboard ? 'Tổng quan' : (pageTitle || 'Tổng quan'),
+      helpTopics: ((showSettings ? [['Thay đổi có hiệu lực khi nào?', 'Ngay khi bạn bấm Lưu ở thanh dưới cùng. Chưa bấm Lưu thì website vẫn như cũ.'], ['Lỡ sửa sai thì sao?', 'Bấm “Bỏ thay đổi” để quay về bản đã lưu gần nhất.'], ['Ô bị báo lỗi ở đâu?', 'Bấm “Xem lỗi đầu tiên” — trang đưa bạn tới đúng ô cần sửa và nói cách sửa.']]
+        : showDashboard ? [['Màn này cho biết gì?', 'Tình hình website hôm nay: lượt xem, khách liên hệ mới và việc đang chờ bạn.'], ['Bắt đầu từ đâu?', 'Bấm “Thêm nội dung” để viết bài hoặc tạo trang mới.'], ['Tìm nhanh một mục?', 'Gõ vào ô tìm kiếm trên cùng, hoặc bấm Ctrl+K.']]
+        : showMenus ? [['Trình đơn là gì?', 'Danh sách liên kết ở đầu và chân website, ví dụ Trang chủ, Giới thiệu, Liên hệ.'], ['Khi nào khách thấy thay đổi?', 'Ngay sau khi bạn bấm Lưu.'], ['Lỡ xóa nhầm một mục?', 'Bấm “Bỏ thay đổi” trước khi lưu để lấy lại.']]
+        : [['Màn này dùng để làm gì?', 'Dòng mô tả dưới tiêu đề trang nói ngắn gọn việc làm được ở đây.'], ['Tìm nhanh một mục?', 'Gõ vào ô tìm kiếm trên cùng, hoặc bấm Ctrl+K.'], ['Cần người hướng dẫn?', 'Gọi, nhắn Zalo hoặc gửi email cho bộ phận hỗ trợ ở phần dưới.']]).map(x => ({ q: x[0], a: x[1] }))),
+      helpPhone: (window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).phone || '', helpTel: 'tel:' + String((window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).phone || '').replace(/\D/g, ''), helpZalo: (window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).zalo || '', helpZaloUrl: 'https://zalo.me/' + String((window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).zalo || '').replace(/\D/g, ''), helpEmail: (window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).email || '', helpMail: 'mailto:' + ((window.BSPLAT && window.BSPLAT.support ? window.BSPLAT.support() : { phone: '', zalo: '', email: '' }).email || ''),
+      helpBtnStyle: 'position:relative;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:38px;height:38px;padding:0 ' + (!isMobile ? '10px' : '0') + ';border:0;border-radius:6px;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:' + tb.text + ';cursor:pointer;white-space:nowrap;',
+      siteSwitchShow: planeIsTenant && (SITES.length >= 2 || siteRoom), siteCanCreate: siteRoom, siteLocked: !siteRoom, siteLockText: 'Gói hiện tại cho tối đa ' + SITE_LIMIT + ' website. Cần thêm? Liên hệ hỗ trợ.', siteSearchShow: SITES.length >= 6, siteQ: S.siteQ || '', onSiteQ: (e) => this.setState({ siteQ: e && e.target ? e.target.value : '' }),
+      siteOpenStr: String(S.drop === 'site'), userOpenStr: String(S.drop === 'user'),
+      czFsN: String(S.fontSize !== 'large'), czFsL: String(S.fontSize === 'large'), onFsNormal: () => this.setState({ fontSize: 'normal' }), onFsLarge: () => this.setState({ fontSize: 'large' }),
       czSbDisabled: isHorizontal ? 'true' : undefined, czSidebarSectStyle: isHorizontal ? 'opacity:0.4;pointer-events:none;' : ''
     };
   }

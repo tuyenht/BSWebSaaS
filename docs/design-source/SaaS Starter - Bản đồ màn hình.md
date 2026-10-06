@@ -12,12 +12,12 @@ D0-3 ready (05/10/2026): phần 1 `#thuat-ngu` · `#dinh-dang` · `#giong-van` �
 
 | # | Màn | Lượt | Mục menu | File thiết kế | Trạng thái |
 |---|---|---|---|---|---|
-| 1 | Admin Shell mặt site | D0-4a, D0-4b, D0-5 | (khung) | `Admin Shell.dc.html` | chờ thiết kế — menu cũ, thiếu Hộp duyệt · Quy trình duyệt · Sản phẩm trong Cài đặt |
-| 2 | Mặt Nền tảng chung Shell | D0-4a | (khung, mặt Nền tảng) | `Admin Shell.dc.html` (plane `platform`) | chờ thiết kế |
-| 3 | Tìm kiếm toàn cục | D0-4a | ô tìm trên thanh trên cùng | `Admin Shell.dc.html` | chờ thiết kế |
+| 1 | Admin Shell mặt site | D0-4a, D0-4b, D0-5 | (khung) | `Admin Shell.dc.html` | ready (khung, D0-4a 06/10) — menu một nguồn bám AdminNav.php + khóa quyền/module; D0-4b: ẩn theo quyền, registry màn |
+| 2 | Mặt Nền tảng chung Shell | D0-4a | (khung, mặt Nền tảng — tên miền riêng, không nút chuyển mặt) | `Admin Shell.dc.html` (plane `platform`) | ready (khung, D0-4a) |
+| 3 | Tìm kiếm toàn cục | D0-4a | ô tìm trên thanh trên cùng (Ctrl/⌘+K; dưới 640px kính lúp → tìm toàn màn) | `Admin Shell.dc.html` | ready (ô tìm + kết quả nhanh); trang kết quả: #60 |
 | 4 | Tổng quan theo vai trò | D2-5 | Tổng quan | `Admin Shell.dc.html` (bảng tin mẫu) | chờ thiết kế |
-| 5 | Tổng quan nền tảng | D4-1 | Nền tảng › Tổng quan | — | chờ thiết kế |
-| 6 | Tài khoản của tôi | D2-3 | menu người dùng › Tài khoản của tôi | `Admin Shell.dc.html` (hộp "Tài khoản của tôi") | chờ thiết kế — quyết định: trang riêng |
+| 5 | Tổng quan nền tảng | D4-1 | Nền tảng › Tổng quan | `Admin Shell.dc.html` (mục `p-dashboard`, khung trống) | chờ thiết kế |
+| 6 | Tài khoản của tôi | D2-3 | menu người dùng › Tài khoản của tôi (kèm Bảo mật cá nhân — chuyển từ Cài đặt › Bảo mật của repo) | `Admin Shell.dc.html` (hộp "Tài khoản của tôi") | chờ thiết kế — quyết định: trang riêng |
 | 7 | Thông báo | D2-4 | chuông › Thông báo | `Admin Shell.dc.html` (danh sách chuông) | chờ thiết kế |
 | 8 | Danh sách Trang | D1-3 | Trang › Danh sách | `Quản lý Trang - Options.dc.html` | ready (khuôn danh sách dùng chung) |
 | 9 | Danh sách Bài viết/Dịch vụ/Dự án | D1-3 | [loại nội dung] › Danh sách | `Quản lý Bài viết - Options.dc.html` | ready (khuôn danh sách dùng chung) |
@@ -36,34 +36,34 @@ D0-3 ready (05/10/2026): phần 1 `#thuat-ngu` · `#dinh-dang` · `#giong-van` �
 | 26 | Trình dựng biểu mẫu | D1-7 | Biểu mẫu | — | chờ thiết kế |
 | 27–30 | Thành viên · Nhóm quyền · Sửa nhóm · "Nhóm làm được gì" | D2-1 | Thành viên · Nhóm quyền | — | chờ thiết kế |
 | 31 | Lời mời thành viên | D2-2 | Thành viên › Lời mời | — | chờ thiết kế |
-| 32 | Khung Cài đặt (1 thanh Lưu) | D0-4a, D3 | Cài đặt | `Admin Shell.dc.html` | ready |
+| 32 | Khung Cài đặt (1 thanh Lưu dính đáy) | D0-4a, D3 | Cài đặt | `Admin Shell.dc.html` | ready — thanh Lưu "N thay đổi chưa lưu · N lỗi · Xem lỗi đầu tiên · Bỏ thay đổi · Lưu"; dưới 768px danh sách trang + "‹ Cài đặt"; nhóm Nâng cao gập |
 | 33 | Thông tin chung | D3-1 | Cài đặt › Chung › Thông tin chung | `Admin Shell.dc.html` (form chung) | chờ thiết kế — lệch đa ngữ/1 ngữ |
-| 34 | Giao diện website | D3-1 | Cài đặt › Chung › Giao diện website | `Admin Shell.dc.html` (mục "Thương hiệu & Giao diện") | chờ thiết kế — 6 màu tự do ≠ 5 quyết định |
-| 35 | Giao diện trang quản trị | — | Cài đặt › Chung › Giao diện trang quản trị | `Admin Shell.dc.html` (bộ tuỳ chỉnh giao diện) | ready |
+| 34 | Giao diện website | D3-1 | Cài đặt › Chung › Giao diện website | `Admin Shell.dc.html` (mục `appearance`) | chờ thiết kế — 6 màu tự do ≠ 5 quyết định |
+| 35 | Giao diện trang quản trị | — | Cài đặt › Chung › Giao diện trang quản trị (mặc định website) · menu người dùng › Giao diện (lựa chọn riêng, "Về mặc định") | `Admin Shell.dc.html` (mục `admin-ui` + bảng Giao diện) | ready (D0-4a) — không có ô màu; màu ở Cài đặt nền tảng › Thương hiệu trắng |
 | 36 | Ngôn ngữ website | D3-1 | Cài đặt › Chung › Ngôn ngữ website | `Admin Shell.dc.html` | chờ thiết kế — 3 tầng |
-| 37 | Đường dẫn | D3-1 | Cài đặt › Nội dung › Đường dẫn | — | chờ thiết kế |
+| 37 | Đường dẫn | D3-1 | Cài đặt › Nội dung › Đường dẫn | `Admin Shell.dc.html` (mục `permalinks`, khung) | chờ thiết kế |
 | 38 | SEO & Chia sẻ | D3-2 | Cài đặt › Tiếp thị & Kết nối › SEO & Chia sẻ | `Admin Shell.dc.html` (mục `seo`) + `content-seo.js` | ready |
-| 39 | Chuyển hướng | D3-2 | Cài đặt › Tiếp thị & Kết nối › Chuyển hướng | — | chờ thiết kế |
+| 39 | Chuyển hướng | D3-2 | Cài đặt › Tiếp thị & Kết nối › Chuyển hướng | `Admin Shell.dc.html` (mục `redirects`, khung) | chờ thiết kế |
 | 40 | Tích hợp & Theo dõi | D0-1, D3-2 | Cài đặt › Tiếp thị & Kết nối › Tích hợp & Theo dõi | `Integrations Panel.dc.html` | ready — hết bản trùng (D0-1 xoá `Website Config - Integrations`) |
 | 41 | Nút liên hệ nổi | D3-2 | Cài đặt › Tiếp thị & Kết nối › Nút liên hệ nổi | `Floating Contact Panel.dc.html` | ready |
 | 42 | Email | D3-2 | Cài đặt › Hệ thống › Email | `Email Settings.dc.html` | ready |
 | 43 | Đăng nhập nhanh | — | Cài đặt › Hệ thống › Đăng nhập nhanh | `Đăng nhập nhanh & Liên kết tài khoản.dc.html` | ready |
-| 44 | Tên miền | D3-2 | Cài đặt › Hệ thống › Tên miền | `Admin Shell.dc.html` (form chung) | chờ thiết kế |
-| 45 | Cài đặt Sản phẩm | D3-1 | Cài đặt › Nội dung › Sản phẩm | — | chờ thiết kế |
-| 46 | Quy trình duyệt (vận hành viên) | D0-5 | Cài đặt › Nội dung › Quy trình duyệt | `Quy trình duyệt.dc.html` | ready |
+| 44 | Tên miền | D3-2 | Cài đặt › Hệ thống › Tên miền (quyền `domains.manage`) | `Admin Shell.dc.html` (mục `domain`) | chờ thiết kế |
+| 45 | Cài đặt Sản phẩm | D3-1 | Cài đặt › Nội dung › Sản phẩm | `Admin Shell.dc.html` (mục `catalog`, khung) | chờ thiết kế |
+| 46 | Quy trình duyệt (vận hành viên) | D0-5, D4-1 | Nền tảng › Website › chi tiết › tab Quy trình duyệt | `Quy trình duyệt.dc.html` | ready — không còn trong Cài đặt website (owner 30/09) |
 | 47 | Gói & mức dùng (phía khách) | D3-2 | Cài đặt › Hệ thống › Gói & mức dùng | `Hạn ngạch AI và mua thêm.dc.html` (chỉ phần AI) | chờ thiết kế |
-| 48 | Bảo mật & Nâng cao | D3-2 | Cài đặt › Nâng cao › Bảo mật & Nâng cao | `Admin Shell.dc.html` (form chung) | chờ thiết kế |
+| 48 | Bảo mật & Nâng cao | D3-2 | Cài đặt › Nâng cao › Bảo mật & Nâng cao (nhóm gập) | `Admin Shell.dc.html` (mục `advanced`) | chờ thiết kế |
 | 49 | Dữ liệu & Phục hồi | D3-2 | Cài đặt › Nâng cao › Dữ liệu & Phục hồi | `Admin Shell.dc.html` | ready — owner chốt giữ hay hoãn build |
 | 50–51 | Nền tảng: Khách hàng · Website (+ tạo) | D4-1 | Nền tảng › Khách hàng · Website (+ Tạo website) | — | chờ thiết kế |
-| 52 | Gói & tính năng | D4-2 | Nền tảng › Gói & tính năng | `Admin Shell.dc.html` (mục `p-plans`) | chờ thiết kế — ≠ schema |
+| 52 | Gói & tính năng | D4-2 | Nền tảng › Gói & tính năng (rời Cài đặt nền tảng) | `Admin Shell.dc.html` (mục `p-plans`, tạm hiện phần đã vẽ) | chờ thiết kế — ≠ schema |
 | 53 | Loại website · Giao diện | D4-2 | Nền tảng › Loại website | — | chờ thiết kế |
 | 54 | Nhân sự vận hành | D4-3 | Nền tảng › Nhân sự vận hành | — | chờ thiết kế |
 | 55 | Nhật ký hệ thống | D4-3 | Nền tảng › Nhật ký hệ thống | — | chờ thiết kế |
 | 56 | Đăng nhập hỗ trợ | D4-3 | Nền tảng › Đăng nhập hỗ trợ | — | chờ thiết kế |
-| 57 | Cài đặt nền tảng | D4-3 | Nền tảng › Cài đặt nền tảng (Thông tin · Thương hiệu trắng · Email hệ thống · Mẫu email · Đăng nhập nhanh · Bảo mật) | `Admin Shell.dc.html` (`p-general` · `p-branding` · `p-mail` · `p-mail-tpl` · `p-social` · `p-security`), `Email Settings.dc.html` (platform), `Đăng nhập nhanh & Liên kết tài khoản.dc.html` (saas) | ready |
+| 57 | Cài đặt nền tảng | D4-3 | Nền tảng › Cài đặt nền tảng (Thông tin · Thương hiệu trắng · Email hệ thống · Mẫu email · Đăng nhập nhanh · Bảo mật & Nhật ký) | `Admin Shell.dc.html` (`p-general` · `p-branding` · `p-mail` · `p-mail-tpl` · `p-social` · `p-security`), `Email Settings.dc.html` (platform), `Đăng nhập nhanh & Liên kết tài khoản.dc.html` (saas) | ready |
 | 58–59 | Trang lỗi quản trị · website | D5-1 | Trang lỗi | — | chờ thiết kế |
 | 60 | Kết quả tìm kiếm | D5-1 | Kết quả tìm kiếm | — | chờ thiết kế |
-| 61 | Nhật ký hoạt động của website | D4-3 | Nhật ký hoạt động | — | chờ thiết kế |
+| 61 | Nhật ký hoạt động của website | D4-3 | Hệ thống › Nhật ký hoạt động (quyền đề xuất `activity.view`) | `Admin Shell.dc.html` (mục `activity`, khung) | chờ thiết kế — Chờ backend |
 | — | Khu đăng nhập | — | đăng nhập · quên/đặt lại mật khẩu · xác thực 2 lớp · mã qua email | — | giữ nguyên |
 | ⏸ | Bộ AI · mặt TMĐT · Khối tái dùng | — | Bộ AI · Đơn hàng · Khách hàng · Khuyến mãi · Kho · Báo cáo · Thanh toán · Vận chuyển · Thuế · Khối tái dùng | Bộ AI: `AI Writer Panel v2`, `Trợ lý viết nội dung AI v2 - Options`, `Nâng cấp nội dung`, `Hàng đợi ảnh`, `Kế hoạch nội dung SEO`, `Vận hành nội dung AI`, `Duyệt & xuất bản nội dung`, `Cài đặt nội dung AI`, `Cài đặt xuất bản tự động`, `Hạn ngạch AI và mua thêm` · Khối tái dùng: `Block Library - Options` · TMĐT: `Admin Shell.dc.html` (plane `shop`, chỉ menu) | để sau |
 
@@ -72,7 +72,7 @@ Không đánh số — Claude Code thêm số ở bản repo trước, rồi ch�
 
 | Màn | Mục menu | File thiết kế | Trạng thái |
 |---|---|---|---|
-| Trợ giúp | Trợ giúp (cùng một chỗ trên mọi màn — P4) | — | chờ thiết kế |
+| Trợ giúp | thanh trên cùng › Trợ giúp (cùng một chỗ trên mọi màn — P4) | `Admin Shell.dc.html` (panel Trợ giúp, `<x-bs-admin::help-panel>`) | ready (khung, D0-4a) — nội dung theo màn: registry D0-4b |
 
 ## Tài liệu đối chiếu (không nằm trong menu)
 | File | Vai trò |
