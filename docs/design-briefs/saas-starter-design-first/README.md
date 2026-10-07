@@ -10,7 +10,7 @@
 - Mỗi file trong `prompts/` = **1 chat mới** trong project Claude Design BSWebSaaS: trên trang copy bấm "1 · Chép tên chat" (dòng mở đầu bằng mã lượt) rồi "2 · Sao chép prompt", dán cả hai vào cùng ô, gửi. Không gộp 2 file vào 1 chat. Lượt dừng giữa chừng: owner gửi "Làm <mã> phần 2" trong CÙNG chat (riêng D5-2: mỗi phần một chat mới — prompt ghi rõ).
 - Mỗi file đã chứa sẵn phần **BỐI CẢNH CHUNG** (luật cứng + 12 tiêu chí dễ dùng + hợp đồng nhúng Admin Shell + mẫu README handoff). (prompt trong `prompts/fixes/` không có phần này, trừ prompt ghi "(chat mới)")
 - Xong mỗi lượt: chat báo "<mã> xong — gửi zip cho Claude Code." → owner export zip → Claude Code nhập vào `docs/design-source/` (`scripts/design_snapshot.py`), đối chiếu repo + 12 tiêu chí, kiểm hiển thị bằng Chromium thật (cả phần môi trường thiết kế không đo được: Safari, Firefox, cảm ứng) → đạt thì chép handoff vào `docs/design_handoff_<slug>/` + cập nhật sổ màn; chưa đạt thì viết prompt sửa ở `prompts/fixes/`.
-- Prompt sửa sau kiểm (`prompts/fixes/`; đã chạy: D0-2s → D0-2s5, D0-3s): dán vào chat ghi trong tiêu đề prompt. Prompt ghi "chat của lượt đó" thì chép KHÔNG kèm bối cảnh chung. Prompt ghi "(chat mới)" thì tệp đã có sẵn bối cảnh chung: chép cả tệp từ dòng 2 vào chat mới. Chat cũ đã quá dài mà prompt chưa ghi "chat mới" thì báo Claude Code viết lại bản tự đủ, không dán vào chat cũ. Tiến độ từng lượt xem ở trang copy, không ghi ở đây.
+- Prompt sửa sau kiểm (`prompts/fixes/`; đã chạy: D0-2s → D0-2s5, D0-3s): dán vào chat ghi trong tiêu đề prompt. Prompt ghi "chat của lượt đó" thì chép KHÔNG kèm bối cảnh chung. Prompt ghi "(chat mới)" thì tệp đã có sẵn bối cảnh chung: gửi như lượt thường: dòng 1 = tên chat (dòng `# …` dưới `═══ VIỆC CỦA LƯỢT NÀY ═══`), rồi từ `═══ BỐI CẢNH CHUNG` đến hết. Chat cũ đã quá dài mà prompt chưa ghi "chat mới" thì báo Claude Code viết lại bản tự đủ, không dán vào chat cũ. Tiến độ từng lượt xem ở trang copy, không ghi ở đây.
 
 ## Sóng (31 lượt)
 | Sóng | Lượt | Cần trước |
@@ -25,7 +25,7 @@
 Ngoài phạm vi: khu đăng nhập (giữ nguyên — trang lỗi D5-1 chỉ dẫn về đó) · bộ AI (module sau core v1; D0-6c chỉ sửa hiển thị) · mặt TMĐT · Khối tái dùng (ADR-20 Draft) · Builder v3 (track riêng).
 
 ## 12 tiêu chí dễ dùng (mọi màn phải đạt, ghi kết quả vào README handoff)
-1. Hiểu trong 5 giây — tiêu đề + 1 dòng mô tả + đúng 1 nút chính.
+1. Hiểu trong 5 giây — tiêu đề + 1 dòng mô tả; tối đa 1 nút chính và chỉ khi prompt ghi tên nút đó (Tổng quan không có).
 2. Việc chính xong trong ≤ 3 bước, không cần đọc hướng dẫn.
 3. Không thuật ngữ kỹ thuật trần; buộc phải có thì để trong "Nâng cao" kèm giải thích đời thường.
 4. Icon luôn kèm chữ (trừ vài icon rất quen, có tooltip + aria-label).
@@ -35,7 +35,7 @@ Ngoài phạm vi: khu đăng nhập (giữ nguyên — trang lỗi D5-1 chỉ d�
 8. Không cắt chữ — nút/chip/tab 1 dòng; không thanh cuộn ngang trong thẻ.
 9. Mọi việc trên màn làm trọn được ở điện thoại (360–390px) và máy tính bảng (768px); vùng bấm ≥ 44px, không gì nổi che nội dung. Bảng thiết bị: 360·390·768·1024·1240·1440 + xoay ngang, Chrome/Safari iOS/Firefox/Samsung Internet (bối cảnh chung, owner 30/09).
 10. Hai tầng người dùng: mặc định gọn cho người mới; người thạo có phím tắt, thao tác hàng loạt.
-11. Chế độ "Chữ lớn" không vỡ bố cục.
+11. Cỡ chữ theo người (Vừa · Lớn · Rất lớn · Cực lớn) không vỡ bố cục.
 12. Đúng Bảng thuật ngữ chung (lượt D0-3).
 
 ## Chất lượng hoàn thiện A–E (owner 06/10 — luật chung mọi dự án thiết kế, đi cùng 12 tiêu chí)

@@ -76,7 +76,7 @@ Claude Code đã đối chiếu:
 - `Quản lý Trang - Options.dc.html` (thiết kế owner duyệt) cũng chia 2 nhóm.
 - `Quản lý Bài viết - Options.dc.html` và `Sản phẩm - Danh sách.dc.html` lại dùng 1 nhóm "Cột hiển thị" với chữ "Luôn hiện" xen giữa các cột. Đây là thay đổi tự ý, trái luật (e) "giữ bố cục đã duyệt".
 
-Chỉ sửa `Quản lý Bài viết - Options.dc.html`, `Sản phẩm - Danh sách.dc.html`, `README - D1-3 Danh sách nội dung.md`, `TODO.md`, `LESSONS.md`.
+Chỉ sửa `Quản lý Bài viết - Options.dc.html`, `Sản phẩm - Danh sách.dc.html`, `content-workflow.js` (chỉ màu của trạng thái `scheduled`, mục 3), `README - D1-3 Danh sách nội dung.md`, `TODO.md`, `LESSONS.md`.
 
 1. **Menu "Cột" chia 2 nhóm, đúng như `Quản lý Trang - Options.dc.html` và màn đang chạy**, ở cả 2 tệp:
    - nhóm "Cột bắt buộc": các cột luôn hiện (Tiêu đề · Trạng thái · Hành động; Sản phẩm thì các cột tệp đang khóa — cột "Sản phẩm" — cộng Trạng thái · Hành động; cột giá / tồn kho ẩn theo chế độ Giới thiệu giữ cách đang có và ghi chú "Ẩn ở chế độ Giới thiệu"). Ô chọn đã tích nhưng mờ, có biểu tượng ổ khóa, không bấm được, `aria-disabled="true"`;
@@ -111,8 +111,8 @@ Chỉ sửa `Quản lý Bài viết - Options.dc.html`, `Sản phẩm - Danh sá
 
 Xong khi:
 (1) Bài viết, Trang, Sản phẩm: mở "Cột" thấy 2 nhóm "Cột bắt buộc" (mờ, có ổ khóa, không bấm được) và "Tùy chọn", có vạch ngăn; không còn chữ "Luôn hiện"; tắt một cột tùy chọn rồi tải lại vẫn nhớ.
-(2) Trang ở chế độ cây, 1280: kéo "Đội ngũ" lên 1/4 trên của "Dịch vụ" thì nhãn "Đặt trước "Dịch vụ" · cấp 1", dòng giữ chỗ không thụt; kéo vào nửa giữa "Dịch vụ" thì nhãn "Thành trang con của "Dịch vụ" · cấp 2 · đường dẫn mới /dich-vu/doi-ngu". Nhả ra đúng chỗ dòng giữ chỗ, có "Hoàn tác".
-(3) Menu "⋯" của dòng Trang có "Chuyển đến…". Kéo "Giới thiệu" vào trang con của chính nó: dòng giữ chỗ đỏ, nhả ra không đổi gì. Esc khi đang kéo trả về chỗ cũ. Xếp theo "Lượt xem": không có nút kéo, có câu "Sắp xếp theo «Thứ tự trên website» để kéo đổi vị trí".
+(2) Trang ở chế độ cây, 1280: kéo "Đội ngũ" lên 1/4 trên của "Dịch vụ" thì nhãn "Đặt trước "Dịch vụ" · cấp 1 · đường dẫn mới /doi-ngu", dòng giữ chỗ không thụt; kéo vào nửa giữa "Dịch vụ" thì nhãn "Thành trang con của "Dịch vụ" · cấp 2 · đường dẫn mới /dich-vu/doi-ngu". Nhả ra đúng chỗ dòng giữ chỗ, có "Hoàn tác".
+(3) Menu "⋯" của dòng Trang có "Chuyển đến…". Kéo "Giới thiệu" vào trang con của chính nó: dòng giữ chỗ đỏ, nhả ra không đổi gì. Esc khi đang kéo trả về chỗ cũ. Xếp theo "Lượt xem nhiều nhất": không có nút kéo, có câu "Sắp xếp theo «Thứ tự trên website» để kéo đổi vị trí".
 (4) "Đã hẹn giờ" ≥ 4,5:1 cả sáng lẫn tối.
 (5) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Cực lớn, đứng riêng và trong Shell (`#/site/posts.list`, `#/site/pages.list`, `#/site/catalog.list`), đạt cả 3 điều:
    - `scrollWidth = clientWidth`;

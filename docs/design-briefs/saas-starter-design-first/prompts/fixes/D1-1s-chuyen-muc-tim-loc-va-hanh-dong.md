@@ -74,7 +74,7 @@ Owner xem `Chuyên mục.dc.html` và chưa ưng ở 3 điểm:
 
 Owner cũng yêu cầu rà kỹ từng nút theo 12 tiêu chí và Chất lượng hoàn thiện A–E, kể cả quyền và quy trình duyệt. Claude Code đã dựng bản zip 23:44 trong Chromium, đối chiếu với repo và với `Trình đơn.dc.html` (màn cây đã chốt), và cho một người rà độc lập phản biện. Mỗi quyết định dưới đây đã qua phản biện; phần "vì" giải thích lý do để không đổi ngược lại.
 
-Owner đã duyệt 07/10 (21:2x) 4 thay đổi điều khiển đang có, nên KHÔNG hỏi lại và không ghi vào "Cần owner chốt": (1) 2 nút "Mở tất cả" / "Thu gọn tất cả" thành 1 nút tự đổi chữ; (2) "Đưa vào trong…" và "Đưa ra ngoài một cấp" gộp vào "Chuyển đến…" (phím Alt+→ / Alt+← giữ nguyên); (3) dãy chip ngôn ngữ trên dòng thành trạng thái bằng chữ ở đúng chỗ đó; (4) menu "⋯" của chuyên mục gốc: 6 mục khóa thành 1 dòng giải thích. README ghi 4 dòng này vào bảng quyết định với "Owner duyệt 07/10".
+Owner đã duyệt 07/10 (21:2x) 4 thay đổi điều khiển đang có, nên KHÔNG hỏi lại và không ghi vào "Cần owner chốt": (1) 2 nút "Mở tất cả" / "Thu gọn tất cả" thành 1 nút tự đổi chữ; (2) "Đưa vào trong…" và "Đưa ra ngoài một cấp" gộp vào "Chuyển đến…" (phím Alt+→ / Alt+← làm như Trình đơn — màn này chưa có thì THÊM); (3) dãy chip ngôn ngữ trên dòng thành trạng thái bằng chữ ở đúng chỗ đó; (4) menu "⋯" của chuyên mục gốc: 6 mục khóa thành 1 dòng giải thích. README ghi 4 dòng này vào bảng quyết định với "Owner duyệt 07/10".
 
 Cách sửa:
 - SỬA TẠI CHỖ: giữ panel Sửa/Thêm, hộp Xóa (đã tốt), dữ liệu mẫu, luật as-built, hộp "Chuyển đến…" sẵn có và câu lý do khóa đang hiện ngay dưới mục bị khóa trong menu.
@@ -126,7 +126,7 @@ Cách sửa:
    - Nút "⋯".
    - Khung 600–719px: trạng thái ngôn ngữ xuống dòng phụ dưới tên; "Sửa" và "+ Mục con" vẫn hiện (việc hay làm luôn hiện, theo bối cảnh chung).
    - **Dòng gốc** (Tin tức, Dịch vụ…): có Sửa, + Mục con, "N bài", "⋯"; không có tay cầm.
-3. **Menu "⋯"** gồm các nhóm cách nhau bằng vạch ngăn. Trên máy tính menu không lặp lại nút đã hiện sẵn trên dòng:
+3. **Menu "⋯"** gồm các nhóm cách nhau bằng vạch ngăn. Trên máy tính menu không lặp lại nút đã hiện sẵn trên dòng; riêng mục «Xem bài trong chuyên mục» đang có thì GIỮ trong menu (cùng việc với liên kết "N bài", không gỡ):
    - Xem trên website (mở tab mới) · Sao chép đường dẫn.
      - Sao chép xong có toast "Đã sao chép". Không chép được thì hiện ô chứa địa chỉ đã bôi đen sẵn.
      - Vì chủ shop hay dán link chuyên mục vào Zalo / Facebook.
@@ -149,7 +149,7 @@ Cách sửa:
    - **Điện thoại:** "⋯" mở bảng chọn trượt từ đáy, tiêu đề là tên chuyên mục. Thứ tự: Xem 24 bài | Xem trên website · Sao chép đường dẫn | Chuyển lên · Chuyển xuống · Chuyển đến… | Gộp… | Xóa…. Với gốc: + Mục con · Xem bài | nhóm Xem | dòng lý do.
 4. **Dòng trên điện thoại** (khung < 600px):
    - Tên + 1 dòng phụ "/kien-thuc · 24 bài". Dòng phụ chỉ thêm "· Thiếu JA" khi còn thiếu bản dịch, để không bị gãy.
-   - Nút chữ "Sửa" 44px + "+ Mục con" 44px HIỆN SẴN (trừ cấp 3) + nút "⋯" 44px, cùng một hàng gọn bên phải, giống thẻ Trang của D0-8 ("Sửa · Trang con · ⋮").
+   - Nút chữ "Sửa" 44px + "+ Mục con" 44px HIỆN SẴN (trừ cấp 3) + nút "⋯" 44px, cùng một hàng gọn bên phải, giống thẻ Trang của bản mẫu đã duyệt ở repo `docs/design-briefs/saas-starter-design-first/reference/d0-8/` ("Sửa · Trang con · ⋮").
    - Chạm vào chỗ trống của dòng cũng mở Sửa. Đo bản 23:44: chỉ chữ tên 21px bấm được, chạm chỗ trống của dòng không làm gì.
 5. **Đổi chỗ, đổi cha, gộp và xóa: chỉ hỏi khi có hệ quả thật, và nói bằng số.**
    - **Đổi thứ tự trong cùng cha** (kéo, Chuyển lên/xuống, Alt+↑/↓): làm ngay, không hỏi.
@@ -246,7 +246,7 @@ Cách sửa:
     - Ghi cho owner: chấm ngôn ngữ ở CLAUDE.md §3 chỉ khác nhau bằng màu, tooltip chỉ hiện khi rê chuột. Đề xuất thêm hình hoặc chữ ở một lượt component; owner chốt.
 
 Xong khi:
-(1) Tweak "Chỉ 1 chuyên mục" (thêm nếu chưa có): với 1 chuyên mục, ô tìm và chip vẫn hiện. Tìm "khuyen mai" ra "Khuyến mãi" có đường cha (không có gốc). Chip "Chưa có bài" ra đúng số. Khi đang lọc: có dải "Đang xem N / M… · Bỏ lọc", tay cầm ẩn, Chuyển lên khóa kèm lý do, "Chuyển đến…" vẫn dùng được.
+(1) Tweak "Chỉ 1 chuyên mục" (thêm nếu chưa có): với 1 chuyên mục, ô tìm và chip vẫn hiện. Tìm "gia cong" ra "Gia công CNC" với đường cha "Kiến thức gia công ›" (không có gốc); tìm "khuyen mai" ra "Khuyến mãi" (con trực tiếp của gốc nên không có đường cha). Chip "Chưa có bài" ra đúng số. Khi đang lọc: có dải "Đang xem N / M… · Bỏ lọc", tay cầm ẩn, Chuyển lên khóa kèm lý do, "Chuyển đến…" vẫn dùng được.
 (2) 1280: mỗi dòng không phải gốc thấy "Sửa", "+ Mục con" (trừ cấp 3), "N bài" (0 = "Chưa có bài"), trạng thái ngôn ngữ bằng chữ, "⋯". Menu đúng nhóm, đúng thứ tự, "Xóa…" cuối màu đỏ. Menu gốc chỉ có nhóm Xem + 1 dòng lý do. Tweak 8 ngôn ngữ: dòng không tràn, không cắt chữ.
 (3) 390: dòng = tên + dòng phụ không gãy + "Sửa" + "+ Mục con" (trừ cấp 3) + "⋯"; chạm chỗ trống của dòng mở Sửa; "⋯" là bảng trượt từ đáy. Quét vùng bấm ≥ 44px ở 390, 768 VÀ 1280 = 0 lỗi.
 (4) "Chuyển đến…" trên Tin tức không có "Cấp ngoài cùng"; trên Sản phẩm thì có. Alt+← ở cấp 2 báo "Đã ở cấp ngoài cùng của Tin tức".
