@@ -23,6 +23,8 @@ preamble = None
 prompts = []
 for f in files:
     text = f.read_text(encoding='utf-8')
+    # A line above the preamble is a note for the designbot (e.g. the D0-8 stop marker), never pasted.
+    text = text[text.index('═══ BỐI CẢNH CHUNG'):]
     head, body = text.split(MARK, 1)
     head = head + MARK
     if preamble is None:
@@ -390,6 +392,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       <li><b>Mở một cửa sổ chat MỚI</b> trong project Claude Design BSWebSaaS, dán và gửi. Không gộp 2 lượt vào 1 cửa sổ.</li>
       <li><b>Xong thì tích ô "Xong"</b> và gửi bản export cho Claude Code để đối chiếu với code trước khi build.</li>
     </ol>
+    <p class="hint">Bản 3.38 (07/10 22:xx) — KIỂM LẠI TOÀN BỘ 3 VÒNG trước khi chạy tiếp (owner duyệt): designbot DỪNG sau 7 prompt sửa để Claude Code kiểm 7 zip rồi mới chạy D0-8; sửa các chỗ không làm được hoặc tự gỡ nút đang có (Trình đơn giữ giới hạn cấp theo vị trí, Tổng quan giữ "Làm nhanh", Gói giữ các ô đang có + "Cần owner chốt"); D0-8: màu chữ "Hướng dẫn" đủ tương phản ở chế độ tối, nút menu / nút khóa ở đầu màn, Hoàn tác 10 giây; các lượt sau dùng 4 mức cỡ chữ và luật đầu màn + Hướng dẫn. Chuẩn tên biến thiết kế: <code>docs/notes/design-tokens.md</code>.</p>
     <p class="hint">Bản 3.37 (07/10 20:xx) — 7 PROMPT SỬA CHẠY Ở CHAT MỚI: chat cũ của D1-1, D1-6, D2-5, D1-2, D1-3, D2-1, D3-1 đã quá dài (186k–388k), designbot dừng đúng luật. Mỗi prompt sửa nay tự đủ: có bối cảnh chung, sửa trên tệp hiện có sau D0-7 (không theo trí nhớ chat cũ), giữ cỡ chữ <code>calc(… + var(--fsp))</code>. Thứ tự không đổi: 7 prompt sửa → D0-8 → D3-2. Không bấm "Continue here" ở chat cũ.</p>
     <p class="hint">Bản 3.36 (07/10 17:xx) — OWNER CHỐT BẢN MẪU MÀN TIN TỨC (đầu màn, Hướng dẫn, danh sách): lượt mới <b>D0-8</b> 3 phần, chạy sau D0-7 và 7 prompt sửa, trước D3-2. Phần 1 làm đúng bản mẫu (repo <code>reference/d0-8/</code>: guide.js + 2 tệp diff; đã qua 1 vòng phản biện Opus): một cụm [Hướng dẫn] + nút chính bên phải tiêu đề, điện thoại "Hướng dẫn" là nút tròn (?), thiếu chỗ thì cả cụm xuống hàng; bỏ nút "?" trên thanh đầu trang; bỏ 32px trống thừa trên danh sách; hướng dẫn theo nhóm quyền + chế độ duyệt, dải quyền tự ẩn; điện thoại / máy tính bảng dọc: Chọn tất cả + trạng thái không khung, tìm + Lọc + Sắp xếp 1 hàng, thẻ "Sửa" + ⋮ cùng hàng trạng thái, thẻ tới 899px; nhãn điều kiện lọc + sắp xếp; tab tự co, "Khác" ngay sau tab cuối. Phần 2 áp cho mọi màn danh sách, phần 3 viết hướng dẫn cho từng màn.</p>
     <p class="hint">Bản 3.35 (07/10 13:xx) — OWNER CHỐT SAU BẢN MẪU (Claude Code dựng thử màn Tin tức + Tài khoản trên Chromium, 8 khổ × 4 mức đạt): cỡ chữ mặc định <b>14px</b> (chú thích, diễn giải 12–13px, không dưới 12px), mỗi người tự chọn <b>Lớn · Rất lớn · Cực lớn</b> (16 / 18 / 20px), lưu theo tài khoản; nút <b>⋮ không chữ</b> (chú thích khi trỏ chuột + tên đọc được, trên điện thoại menu có dòng tiêu đề). <b>D0-7</b> viết lại theo đúng bản mẫu (tệp đổi tên <code>D0-7-co-chu-theo-nguoi-dung.md</code>); bối cảnh chung cả 31 prompt và các prompt sửa đổi theo ("Vừa" + "Cực lớn", bỏ "⋯ Khác", danh sách biểu tượng được đứng riêng). Runbook: D0-7 3 phần.</p>

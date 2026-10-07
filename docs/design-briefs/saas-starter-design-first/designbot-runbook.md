@@ -9,7 +9,7 @@ Vai trò: **người chuyển prompt và người kiểm bước đầu**. Khôn
 2. Chrome đang kết nối phải là cửa sổ đã đăng nhập claude.ai, đang mở project **BSWebSaaS** trong Claude Design. Không thấy thì dừng và báo owner.
 3. Tạo `/home/designbot/zips/` nếu chưa có. Nhật ký ghi ở `/home/designbot/zips/log.md`.
 4. **Chỉ làm 1 lần, khi `log.md` chưa có khối `## D0-1…D0-4at`:** các lượt D0-1 → D0-4a và hai prompt sửa D0-4as, D0-4at đã chạy xong (owner chạy tay) → ghi khối log `## D0-1…D0-4at · ĐẠT (owner chạy tay)`; rồi tải zip project (mục "Tải zip") với mã `D0-4at`, chưa chạy lượt mới. `log.md` đã có khối đó thì BỎ QUA bước này — không tải lại zip, không ghi lại khối.
-5. **Chạy tiếp từ đâu:** đọc `log.md`, lấy khối log cuối cùng của từng mã. Một mã là XONG khi có khối ĐẠT, hoặc có khối DỪNG mà prompt của lượt kế nêu rõ owner đã chốt chỗ dừng đó (ví dụ D3-1 DỪNG → prompt D0-7 ghi owner đã chốt). Lượt bắt đầu = mã ĐẦU TIÊN trong "Thứ tự lượt" chưa XONG; mã đã XONG thì không chạy lại. Gặp khối DỪNG chưa được chốt hoặc CHƯA ĐẠT thì dừng và báo owner. Riêng khối DỪNG có lý do "cần bản sửa tự đủ cho chat mới": nếu dòng 1 của tệp sửa mã đó nay ghi "(chat mới)" thì chỗ dừng đã được gỡ — mã đó CHƯA XONG, chạy nó từ đầu ở chat mới; ghi 1 dòng vào log.
+5. **Chạy tiếp từ đâu:** đọc `log.md`, lấy khối log cuối cùng của từng mã. Một mã là XONG khi có khối ĐẠT, hoặc có khối DỪNG mà prompt của lượt kế nêu rõ owner đã chốt chỗ dừng đó (ví dụ D3-1 DỪNG → prompt D0-7 ghi owner đã chốt). Lượt bắt đầu = mã ĐẦU TIÊN trong "Thứ tự lượt" chưa XONG; mã đã XONG thì không chạy lại. Gặp khối DỪNG chưa được chốt hoặc CHƯA ĐẠT thì dừng và báo owner (khối "Kiểm trước D0-8" theo luật riêng ở mục ⏸ dưới). Riêng khối DỪNG có lý do "cần bản sửa tự đủ cho chat mới": nếu dòng 1 của tệp sửa mã đó nay ghi "(chat mới)" thì chỗ dừng đã được gỡ — mã đó CHƯA XONG, chạy nó từ đầu ở chat mới; ghi 1 dòng vào log.
 
 ## Thứ tự lượt
 Chạy lần lượt, mỗi lượt một **chat mới** trong project:
@@ -21,7 +21,7 @@ Bạn luôn chạy **một chat một lúc**, nên mọi lượt đều là "ch�
 **⏸ KIỂM TRƯỚC D0-8** (owner chốt 07/10 22:0x): D0-8 sửa cùng tệp với 7 prompt sửa, nên Claude Code kiểm 7 zip sửa và gộp lỗi còn sót vào D0-8 trước khi D0-8 chạy.
 - Tới bước này (7 prompt sửa đã có khối log ĐẠT): mở `prompts/D0-8-*.md`. Có dòng bắt đầu bằng `Đã kiểm 7 prompt sửa:` thì ghi 1 dòng log "Kiểm trước D0-8: đã có" rồi chạy D0-8 như thường.
 - Chưa có dòng đó: ghi khối log `## Kiểm trước D0-8 · <HH:MM dd/mm> · DỪNG` với lý do "chờ Claude Code kiểm 7 zip sửa", báo owner một câu "7 prompt sửa xong — chờ Claude Code kiểm trước D0-8", rồi dừng. Không mở chat D0-8.
-- Lần chạy sau: khối DỪNG này được gỡ khi tệp D0-8 đã có dòng `Đã kiểm 7 prompt sửa:`.
+- Lần chạy sau: khối DỪNG này được gỡ khi tệp D0-8 đã có dòng `Đã kiểm 7 prompt sửa:`. Dòng đó do phiên Claude Code chính thêm ở DÒNG 1 của tệp, trên `═══ BỐI CẢNH CHUNG`, nên không bị dán vào chat (bước 2 dán từ `═══ BỐI CẢNH CHUNG`). Đây là ngoại lệ của bước 5: khối DỪNG này không chờ owner chốt.
 
 ## Mỗi lượt
 1. **Đọc lại tệp prompt ngay lúc chạy** (`prompts/<mã>-*.md`; prompt sửa ở `prompts/fixes/<mã>-*.md`). Tệp có thể vừa được sửa, không dùng bản nhớ từ trước. Đối chiếu mục "Cần trước" với `log.md`: lượt cần trước chưa đạt thì dừng và báo owner. Ngoại lệ: lượt cần trước ghi DỪNG nhưng prompt hiện tại nêu rõ owner đã chốt chỗ dừng đó (ví dụ D0-7 với D3-1) thì coi là đủ điều kiện; ghi 1 dòng vào log.

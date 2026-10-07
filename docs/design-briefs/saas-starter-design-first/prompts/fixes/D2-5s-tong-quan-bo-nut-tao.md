@@ -77,14 +77,13 @@ Các phương án đã cân nhắc:
 
 Cả hai bị loại: vẫn là thêm nút tạo trên Tổng quan, và "Viết bài mới" không nói viết bài loại nào khi website có Tin tức, Dịch vụ, Dự án. Việc cần làm trên Tổng quan đã có các dòng "Việc cần làm", mỗi dòng 1 nút đi thẳng tới chỗ làm.
 
-Chỉ sửa `Tổng quan.dc.html`, `README - D2-5 Tổng quan.md`, `TODO.md`, `LESSONS.md`. Riêng mục 2 được sửa thêm `Quản lý Bài viết - Options.dc.html` (chỉ chỗ nhận bộ lọc người viết khi mở màn) và `Admin Shell.dc.html` (chỉ chỗ chuyển tiếp tham số `author` cho danh sách bài).
+Chỉ sửa `Tổng quan.dc.html`, `README - D2-5 Tổng quan.md`, `TODO.md`, `LESSONS.md`. Riêng mục 2 được sửa thêm `Quản lý Bài viết - Options.dc.html` (chỉ chỗ nhận bộ lọc người viết và chuyên mục khi mở màn) và `Admin Shell.dc.html` (chỉ chỗ chuyển tiếp tham số `author` và `cat` cho danh sách bài).
 
 1. **Bỏ nút "Viết bài mới" ở đầu trang**, với MỌI nhóm quyền. Đầu trang chỉ còn tiêu đề "Tổng quan" + 1 dòng mô tả + dải "Chờ backend" về số mẫu.
 2. **Khối Người viết:** bỏ "Viết bài mới". Thay bằng liên kết chữ "Xem bài của tôi". Liên kết mở danh sách bài, nơi đã có nút "Thêm …", với bộ lọc "Người viết: <tên mình>" đã bật sẵn. Nối đủ 3 chỗ, dùng MỘT tên tham số `author` (cùng tên với `?author=` của màn đang chạy):
    - `Tổng quan.dc.html`: liên kết gửi `bs-goto` tới `posts.list` với `params: { author: 'toi' }`. Chỗ đang gửi `{ tac_gia: 'toi' }` đổi thành `{ author: 'toi' }`;
    - `Admin Shell.dc.html`: Shell hiện chỉ chuyển `slug` / `ma` / `parent` / `lang` từ `screenParams` cho màn nhúng. Thêm `author` theo đúng cách đó: `ctAuthor` lấy từ `screenParams.author`, và thuộc tính `author="{{ ctAuthor }}"` trên `dc-import` có `embed-id="content"`. Làm cùng lúc cho `cat` (liên kết "N bài" của Chuyên mục, D1-1s, gửi `params.cat` = đường dẫn chuyên mục): `ctCat` + `cat="{{ ctCat }}"`, và danh sách bật sẵn bộ lọc chuyên mục đang có (`catF`) kèm chip để bỏ. Không đổi gì khác trong Shell;
    - `Quản lý Bài viết - Options.dc.html` đã có bộ lọc "Người viết" (`authorF`) nhưng chưa nhận tham số khi mở màn. Nhận `author`: giá trị `toi` = CÙNG người mà Tổng quan đang đếm bài (`P.userName`, mặc định "Thu Hà"); dữ liệu mẫu của danh sách có ≥ 2 bài của người đó, để danh sách lọc ra không rỗng trong khi Tổng quan đếm N bài; bật sẵn bộ lọc và hiện chip "Người viết: …" để bỏ được. Màn đang chạy cũng lọc được qua `?author=` (`Entries/Index.php`, thuộc tính `creatorF`);
-   - không bật được bộ lọc thì KHÔNG dùng nhãn "Xem bài của tôi": ghi "Xem tất cả bài" và đưa vào mục "Cần owner chốt".
 3. **Câu khi chưa có bài:** 2 câu đang bảo người dùng "Bấm "Viết bài mới" ở đầu trang…" (khối Người viết và khối nội dung mới):
    - khối Người viết: "Bạn chưa có bài nào. Mở danh sách bài để viết bài đầu tiên." + liên kết "Mở danh sách bài" (đi tới `posts.list`, nơi có nút "Thêm …");
    - khối nội dung mới, với người có quyền viết: "Chưa có nội dung nào. Mở danh sách bài để bắt đầu." + cùng liên kết "Mở danh sách bài". Người không có quyền viết giữ câu "Website chưa đăng nội dung nào."

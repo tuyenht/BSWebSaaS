@@ -103,7 +103,7 @@ Chỉ sửa `Trình đơn.dc.html`, `README - D1-2 Trình đơn.md`, `TODO.md`, 
    - Khi đang tìm hoặc lọc, kéo thả tắt như luật đang có, và hiện câu lý do.
    Riêng Trình đơn:
    - số cấp tối đa GIỮ như màn đang có: theo từng vị trí trên website (`THEME.areas[…].dp`, mặc định `FALLBACK_DEPTH = 3`), trần cứng 5 cấp của repo (`MenuRules::MAX_DEPTH = 5`). Vượt giới hạn vị trí thì dòng giữ chỗ đỏ, nhãn dùng đúng câu đang có của `violatingArea()` ("“<vị trí>” chỉ dựng được N cấp"); giữ chip "Vượt cấp".
-   - Bỏ các ô "Thả vào đây" và vùng thả cuối danh sách đang có. Dòng giữ chỗ thay cho cả hai.
+   - Bỏ các ô "Thả vào đây" và vùng thả cuối danh sách đang có; dòng giữ chỗ thay cho cả hai (owner duyệt chuẩn kéo thả này 07/10 — không hỏi lại).
 2. **Hộp xác nhận (`askOn`) đúng chuẩn hộp thoại.** Esc đã đóng được hộp này (giữ nguyên), nhưng:
    - hộp không có `role="dialog"` hay tên đọc;
    - focus không vào hộp, Tab chạy ra ngoài, và khi đóng focus không về lại nút đã mở.

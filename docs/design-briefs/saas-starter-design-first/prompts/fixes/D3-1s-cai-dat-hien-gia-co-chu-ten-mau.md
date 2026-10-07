@@ -90,7 +90,7 @@ Chỉ sửa `Admin Shell.dc.html` (chỉ `FIELDS.catalog`, ô "Cỡ chữ" của
 3. **Không gắn cứng thương hiệu** (mục "Xong khi" (6) của D3-1 chưa đạt, còn 3 chỗ):
    - bảng màu `PAL()` có tên "Bảo Sơn" hiện trên màn: đổi thành tên màu trung tính "Xanh hoàng gia". Mã màu và thứ tự giữ nguyên;
    - ô "Tên công ty trên hóa đơn" ở phần Nền tảng (`FIELDS['p-general']`, là công ty vận hành nền tảng, không phải khách) đang gắn cứng "Công ty TNHH Quảng cáo Bảo Sơn": đọc từ cấu hình nền tảng `platform-config.js` như "Tên nền tảng" (`P0.name`). Nếu cấu hình chưa có trường tên pháp lý thì thêm `legalName` vào cấu hình mẫu, không ghi tên vào Shell;
-   - chú thích mã có chữ "Bảo Sơn" (không hiện trên màn; tìm theo chữ, nằm xa `PAL()`): đổi thành "màu mặc định của nền tảng".
+   - chú thích mã có chữ "Bảo Sơn" (không hiện trên màn; dòng chú thích ngay trên `PAL()`): đổi thành "màu mặc định của nền tảng".
 4. **Các sửa ngoài danh sách được phép mà chat đã tự khai ở D3-1** (nạp `content-ui.js` trong Shell, 3 kiểu ô mới trong `mapField`, phần kiểm lỗi): KHÔNG gỡ. README thêm mục "Sửa ngoài danh sách" nêu từng chỗ, lý do, và màn nào dùng, để Claude Code kiểm.
 5. README: ghi 3 quyết định của owner ở trên vào mục "Cần owner chốt" với trạng thái "Đã chốt 07/10".
 
