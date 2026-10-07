@@ -177,6 +177,84 @@ it('prints no brand palette when the brand seed is not a hex color', function ()
     app(Tenancy::class)->enter(1, function (): void {
         SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => 'rebeccapurple']]);
 
-        expect(array_filter(array_keys(app(ThemeResolver::class)->cssVariables()), fn (string $key): bool => str_starts_with($key, 'brand-')))->toBe([]);
+        expect(array_filter(array_keys(app(ThemeResolver::class)->cssVariables()), fn (string $key): bool => str_starts_with($key, 'brand-') || str_starts_with($key, 'color-brand-')))->toBe([]);
+    });
+});
+
+/*
+ * docs/notes/design-tokens.md §7: during the rename the storefront prints the standard names AND
+ * the old ones storefront.css still reads, each pair with the very same value.
+ */
+dataset('brand seeds', [
+    'the defaults' => [[]],
+    'a light brand on a dark ink' => [['primary' => '#f59e0b', 'ink' => '#0f172a', 'body' => '#334155']],
+    'a dark brand' => [['primary' => '#1e3a5f', 'surface' => '#fafafa']],
+]);
+
+it('prints every standard token name next to its old name, with the same value', function (array $seeds): void {
+    app(Tenancy::class)->enter(1, function () use ($seeds): void {
+        if ($seeds !== []) {
+            SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => $seeds]);
+        }
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect($variables['color-primary'])->toBe($variables['primary'])
+            ->and($variables['color-primary-text'])->toBe($variables['primary-text'])
+            ->and($variables['color-primary-on-dark'])->toBe($variables['primary-on-ink'])
+            ->and($variables['color-surface'])->toBe($variables['surface'])
+            ->and($variables['color-text'])->toBe($variables['body']);
+
+        foreach ([50, 100, 200, 300, 400, 500, 600, 700, 800, 900] as $step) {
+            expect($variables["color-brand-{$step}"])->toBe($variables["brand-{$step}"]);
+        }
+    });
+})->with('brand seeds');
+
+it('puts white or the ink colour on the brand fill, whichever reads better', function (string $primary, string $expected): void {
+    app(Tenancy::class)->enter(1, function () use ($primary, $expected): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => $primary, 'ink' => '#111111']]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect($variables['color-on-primary'])->toBe($expected)
+            ->and(ReadableColor::ratio($variables['color-on-primary'], $primary))->toBeGreaterThanOrEqual(ReadableColor::AA_NORMAL_TEXT);
+    });
+})->with([
+    'the default blue takes the dark ink (white reads 3.7:1 there)' => ['#3b82f6', '#111111'],
+    'an amber brand takes the dark ink' => ['#f59e0b', '#111111'],
+    'a navy brand takes white' => ['#1e3a5f', '#ffffff'],
+]);
+
+it('derives the standard names even when settings try to pin them', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => [
+            'primary' => '#f59e0b',
+            'color-primary-text' => '#f59e0b',
+            'color-on-primary' => '#ffffff',
+            'color-brand-500' => '#000000',
+        ]]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        expect($variables['color-primary-text'])->toBe($variables['primary-text'])->not->toBe('#f59e0b')
+            ->and($variables['color-on-primary'])->toBe('#111111')
+            ->and($variables['color-brand-500'])->toBe(BrandPalette::from('#f59e0b')[500]);
+    });
+});
+
+it('falls back to the ink and surface colours themselves when the brand seed is not a hex color', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        SiteSetting::query()->create(['group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => 'rebeccapurple', 'ink' => '#0f172a']]);
+
+        $variables = app(ThemeResolver::class)->cssVariables();
+
+        // The old names keep var(--ink) / var(--surface); the new ones carry the same colour without
+        // pointing back at an old name.
+        expect($variables['primary-text'])->toBe('var(--ink)')
+            ->and($variables['color-primary-text'])->toBe('#0f172a')
+            ->and($variables['primary-on-ink'])->toBe('var(--surface)')
+            ->and($variables['color-primary-on-dark'])->toBe('#ffffff')
+            ->and($variables['color-on-primary'])->toBe('#0f172a');
     });
 });

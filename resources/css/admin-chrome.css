@@ -1,77 +1,54 @@
 /*
- | ADMIN CHROME VARIABLES — the runtime theme-flip sheet for the admin shell.
+ | ADMIN CHROME — the runtime value switches for the admin shell.
  |
- | Names follow Velzon v4.4.4 (_root.scss / _variables-custom.scss); ★ marks our
- | extensions beyond the Velzon set. Values are OUR shipped light look — for the
- | sidebar zone that look is byte-for-byte Velzon's `data-sidebar="dark"` preset,
- | so adopting the Velzon names changes nothing visually. Deviations from the
- | reference are annotated `vz-ref:`.
+ | The tokens themselves (names, light values) live in app.css @theme, named per
+ | docs/notes/design-tokens.md. This sheet only RE-SETS the new names: the dark scheme,
+ | the topbar/sidebar presets (Velzon v4.4.4 attribute names on <html>) and the zone
+ | overrides. Never set an old (alias) name here — set the new one and the alias follows.
+ | Deviations from the Velzon reference values are annotated `vz-ref:`.
  |
  | INVARIANT (zone exclusivity): a variable flipped by a zone axis may only be
  | consumed inside that zone — topbar vars inside <header>, sidebar vars inside
  | <aside>. Deliberate exceptions, governed by the scheme axis instead: the
  | user-menu dropdown inside <header> (a popover keeps the scheme surface even
- | on a dark topbar) and --color-accent (brand accent never follows zone flips).
+ | on a dark topbar) and --color-primary-text (brand ink never follows zone flips).
  |
- | P4 appends the override blocks here — [data-bs-theme="dark"] (+ color-scheme),
- | [data-sidebar="..."], [data-topbar="dark"] — Velzon attribute names on <html>.
- | Tailwind utilities are minted from the @theme adapters in app.css; this file
- | is plain CSS on purpose so a theme flip never touches the compile surface.
+ | Plain CSS on purpose: a theme flip never touches the Tailwind compile surface.
  */
 
 :root {
-    /* ---- Topbar (flip axis: data-topbar) ---------------------------------- */
-    --vz-header-bg: #ffffff;
-    --vz-header-border: #e9ebec;
-    --vz-header-item-color: #495057;                   /* user name, search text */
-    --vz-header-item-sub-color: var(--color-body-muted); /* icon buttons + role line + platform nav links · 5.04 */
-    --vz-header-item-bg: #f3f6f9;                      /* item hover bg · vz-ref: rgba($secondary,.12) */
-    --vz-header-item-hover-color: #212529;             /* ★ platform nav link hover text */
-    --vz-header-brand-color: #343a40;                  /* ★ platform console brand name */
-    --vz-topbar-search-bg: #f3f3f9;                    /* vz-ref exact — clearly contrasts the white topbar (owner 06/07) */
-    --vz-topbar-search-color: #495057;
-    --vz-topbar-search-border: #f3f3f9;                /* ★ vz-ref: borderless search field — border blends into the fill */
-    --vz-topbar-search-placeholder-color: #878a99;     /* ★ placeholder + magnifier readable on the gray fill (was #ced4da, too faint) */
-    --vz-topbar-search-focus-bg: #ffffff;              /* ★ field brightens on focus */
-    --vz-topbar-search-focus-accent: var(--color-accent); /* ★ focus border + ring — zone-owned so a dark topbar can lighten it */
-    --vz-topbar-user-bg: color-mix(in oklab, var(--color-accent) 10%, transparent); /* user chip (initials) bg */
-    --vz-topbar-user-color: var(--color-accent);       /* ★ user chip initial letter */
-    --vz-topbar-user-block-bg: #f3f3f9;                /* ★ user SLAB (vz-ref .topbar-user) — same fill family as the search */
+    /* Per-user text size (docs/notes/design-tokens.md §2.4): 0rem · 0.125rem · 0.25rem · 0.375rem.
+       A length, not a bare 0: calc(0.875rem + 0) would be invalid. Outside the --text-*
+       namespace so Tailwind mints no class for it. */
+    --user-text-boost: 0rem;
+    --icon-sm: min(1.25rem, calc(1rem + var(--user-text-boost)));
+    --icon-md: min(1.5rem, calc(1.125rem + var(--user-text-boost)));
 
-    /* ---- Sidebar / vertical menu (flip axis: data-sidebar) ----------------
-       Default dark sidebar = Velzon variant-one $blue. Deliberately DECOUPLED from
-       the brand primary (#405189), which stays on buttons/links via --color-admin-primary. */
-    --vz-vertical-menu-bg: #405189;                            /* navy — matches the Velzon reference default sidebar; equals the brand primary; white text 7.6 clears AA with room */
-    --vz-vertical-menu-item-color: rgb(255 255 255 / 0.85);   /* 6.05 on #405189 · vz-ref: #abb9e8 = 3.93 FAIL. The current page is told apart by more than color: white ink + the active bg + an inset bar (layouts/app.blade.php) + aria-current. */
-    --vz-vertical-menu-item-hover-color: #ffffff;
-    --vz-vertical-menu-item-active-color: #ffffff;
-    --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.10); /* ★ also the brand-initials chip · vz-ref item-bg: rgba(#fff,.15) */
-    --vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15); /* current-page row · white on it 5.38 */
-    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.72);   /* group titles are text · 4.86 on #405189 (>=4.5) */
-    --vz-vertical-menu-brand-color: #ffffff;                   /* ★ text brand (Velzon swaps logo images instead) */
-
-    /* ---- Focus ring ★ (flip axis: data-bs-theme, through --color-accent) ---
+    /* ---- Focus ring ★ (flip axis: the scheme, through --color-primary-text) ---
        One keyboard-focus indicator for the whole admin (app.css :focus-visible): a 2px outline
-       2px off the element, in the accent — navy in light, #96a1c0 in dark. A zone painted in
-       navy or near-black re-points --focus-ring-color to its own ink (see .admin-sidebar). Kept
-       as three parts: a shorthand var would resolve on :root and freeze the root color. */
+       2px off the element, in --color-focus — navy in light, #96a1c0 in dark. A zone painted in
+       navy or near-black re-points --color-focus to its own ink (see .admin-sidebar). Kept as
+       three parts: a shorthand var would resolve on :root and freeze the root color. */
     --focus-ring-width: 2px;
     --focus-ring-offset: 2px;
-    --focus-ring-color: var(--color-accent);
-
-    /* ---- Footer (flip axis: data-bs-theme) -------------------------------- */
-    --vz-footer-color: var(--color-body-muted);        /* secondary text on the page bg — follows the scheme's muted ink · vz-ref: #98a6ad */
 
     /* Native UI (form controls, scrollbars) follows the scheme; the light
        declaration also opts out of mobile force-dark auto-inversion. */
     color-scheme: light;
 }
 
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --duration-fast: 0ms;
+        --duration-base: 0ms;
+    }
+}
+
 /* ============================ THEME FLIPS ===================================
  | The blocks below activate ONLY when the matching attribute is set on <html>
- | (P5 Customizer / SSR); with no attribute the sheet above renders today's
- | look unchanged. ORDER IS LOAD-BEARING (equal specificity, later wins):
- |   [data-bs-theme=dark] → [data-topbar=dark] → [data-sidebar=light]
+ | (Customizer / SSR); with no attribute the @theme values render today's look.
+ | ORDER IS LOAD-BEARING (equal specificity, later wins):
+ |   dark scheme → [data-topbar=dark] → [data-sidebar=light] → gradients
  | so an explicit topbar/sidebar variant beats the scheme's zone values.
  | AA (measured, WCAG): text ≥4.5 · icons/11px micro-labels ≥3.0. Deviations
  | from the Velzon reference values are AA bumps, noted `vz-ref:`.
@@ -80,13 +57,14 @@
  | band (node scripts/contrast-check.mjs measures all of it).
  ============================================================================ */
 
-/* Dark scheme — Velzon [data-bs-theme=dark]; --color-* (content plane) are ours,
-   AA-tuned against the Velzon dark anchors. */
-:root[data-bs-theme='dark'] {
+/* Dark scheme — data-theme="dark" (the standard name) or the Bootstrap attribute the app writes
+   today (next line); AA-tuned against the Velzon dark anchors. */
+:root[data-bs-theme='dark'], /* legacy-token-ok: AdminChromeResolver still writes this attribute */
+:root[data-theme='dark'] {
     color-scheme: dark;
 
-    /* content plane (ours) */
-    --color-body: #1a1d21;
+    /* content plane */
+    --color-bg: #1a1d21;
     --color-surface: #292e33;
     --color-surface-hover: #2f343a;
     --color-surface-muted: #24282d;                    /* zebra rows: between body and surface */
@@ -94,81 +72,88 @@
     --color-border-strong: #3a4149;
     --color-border-input: #71777f;                     /* form-field edge: the border family lightened to 3.03 on surface · 3.74 body */
     --color-border-soft: #2c3237;
-    --color-heading: #e9ecef;                          /* 14.26 body · 11.55 surface */
-    --color-body-text: #ced4da;                        /* 11.32 body · 9.17 surface */
-    --color-body-muted: #98a0ae;                       /* 5.20 surface · 6.42 body — cards expose muted
+    --color-text-strong: #e9ecef;                      /* 14.26 body · 11.55 surface */
+    --color-text: #ced4da;                             /* 11.32 body · 9.17 surface */
+    --color-text-muted: #98a0ae;                       /* 5.20 surface · 6.42 body — cards expose muted
                                                           text on --color-surface: #878a99 = 4.00 FAIL there */
-    --color-body-faint: #98a0ae;                       /* dark collapses muted/faint/placeholder to ONE
+    --color-text-faint: #98a0ae;                       /* dark collapses muted/faint/placeholder to ONE
                                                           secondary ink: the >=4.5-on-surface window is too
                                                           narrow for three gray steps */
-    --color-placeholder: var(--color-body-muted);      /* placeholder is text → reuse muted (5.20 surface) */
-    --color-ink-ghost: #4a5058;                        /* decorative/disabled glyphs — WCAG-exempt, dim on purpose */
-    --color-accent: #96a1c0;                           /* brand as ink (text/border/ring) · 5.32 surface · 6.57 body · 5.33 header */
-    --color-admin-success-text: #0db49d;               /* semantic ink, lightened: >=4.5 on surface, body and the 10% soft tints */
-    --color-admin-info-text: #39a8e8;
-    --color-admin-warning-text: var(--color-admin-warning); /* the fill itself reads 6.28+ here */
-    --color-admin-danger-text: #ff7355;
-    --color-admin-secondary-text: #6e9df5;             /* secondary as text/soft, lightened: 5.09 surface · 4.58 soft tint */
-    --color-admin-dark-text: #dce0e6;                  /* neutral "dark" soft as text on the dark tint: 10.46 */
+    --color-icon-ghost: #4a5058;                       /* decorative/disabled glyphs — WCAG-exempt, dim on purpose */
+    --color-primary-text: #96a1c0;                     /* brand as ink (text/border/ring) · 5.32 surface · 6.57 body · 5.33 header */
+    --color-success-text: #0db49d;                     /* status ink, lightened: >=4.5 on surface, body and the 10% soft tints */
+    --color-info-text: #39a8e8;
+    --color-warning-text: var(--color-warning-base);   /* the fill itself reads 6.28+ here */
+    --color-danger-text: #ff7355;
+    --color-secondary-text: #6e9df5;                   /* secondary as text/soft, lightened: 5.09 surface · 4.58 soft tint */
+    --color-admin-dark-text: #dce0e6;                  /* neutral "dark" soft as text on the dark tint: 10.46 · legacy-token-ok: no new name carries this value yet (app.css) */
 
     /* topbar (light variant under a dark scheme) */
-    --vz-header-bg: #292e32;
-    --vz-header-border: #292e32;
-    --vz-header-item-color: #e9ecef;                   /* 11.57 */
-    --vz-header-item-sub-color: var(--color-body-muted); /* icons + role line + platform links · 5.20 */
-    --vz-header-item-bg: #31363c;
-    --vz-header-item-hover-color: #ffffff;
-    --vz-header-brand-color: #e9ecef;
-    --vz-topbar-search-bg: #202328;
-    --vz-topbar-search-color: #ffffff;                 /* 15.76 */
-    --vz-topbar-search-border: #2a2f34;
-    --vz-topbar-search-focus-bg: #262a2f;
-    --vz-topbar-user-bg: #31373c;
-    --vz-topbar-user-color: #e9ecef;                   /* 10.16 */
-    --vz-topbar-user-block-bg: #202328;                /* user slab follows the dark search fill */
+    --color-topbar-bg: #292e32;
+    --color-topbar-border: #292e32;
+    --color-topbar-fg-strong: #e9ecef;                 /* 11.57 */
+    --color-topbar-hover: #31363c;
+    --color-topbar-fg-hover: #ffffff;
+    --color-topbar-brand: #e9ecef;
+    --color-topbar-search: #202328;
+    --color-topbar-search-fg: #ffffff;                 /* 15.76 */
+    --color-topbar-search-border: #2a2f34;
+    --color-topbar-search-focus: #262a2f;
+    --color-topbar-user: #31373c;
+    --color-topbar-user-fg: #e9ecef;                   /* 10.16 */
+    --color-topbar-user-block: #202328;                /* user slab follows the dark search fill */
 
     /* sidebar (dark preset under a dark scheme) */
-    --vz-vertical-menu-bg: #212529;
-    --vz-vertical-menu-item-color: #8f94a5;            /* 5.10 · vz-ref: #7c7f90 = 3.89 FAIL */
-    --vz-vertical-menu-title-color: var(--color-body-muted); /* group titles are text · 5.85 · reuse muted (#7d8294 = 4.03 was too tight) */
+    --color-sidebar-bg: #212529;
+    --color-sidebar-fg: #8f94a5;                       /* 5.10 · vz-ref: #7c7f90 = 3.89 FAIL */
+    --color-sidebar-title: var(--color-text-muted);    /* group titles are text · 5.85 · reuse muted (#7d8294 = 4.03 was too tight) */
 }
 
 /* Dark topbar — ONE block for both schemes (Velzon's light-scheme and
    dark-scheme dark-topbar values are identical: $dark-header-* ≡ $dark-header-*-dark). */
 :root[data-topbar='dark'] {
-    --vz-header-bg: var(--color-admin-primary);
-    --vz-header-border: var(--color-admin-primary);
-    --vz-header-item-color: rgb(255 255 255 / 0.85);   /* 6.05 effective */
-    --vz-header-item-sub-color: #bccdde;               /* icons + role line + platform links on navy · 4.68 (>=4.5) */
-    --vz-header-item-bg: #495c99;
-    --vz-topbar-search-bg: rgb(255 255 255 / 0.05);
-    --vz-topbar-search-color: #ffffff;                 /* 6.67 effective */
-    --vz-topbar-search-border: rgb(255 255 255 / 0.08); /* vz-ref: borderless field */
-    --vz-topbar-search-focus-bg: rgb(255 255 255 / 0.10);
-    --vz-topbar-search-placeholder-color: #e2e5ed;     /* default #ced4da = 4.46 marginal on the brand field */
-    --vz-topbar-search-focus-accent: #b0c4d9;          /* ring · 4.26 ≥3 */
-    --vz-topbar-user-block-bg: rgb(255 255 255 / 0.05); /* user slab follows the dark-topbar search fill */
-    --vz-topbar-user-bg: #52639c;
-    --vz-topbar-user-color: #ffffff;                   /* 5.80 */
+    --color-topbar-bg: var(--color-primary);
+    --color-topbar-border: var(--color-primary);
+    --color-topbar-fg-strong: rgb(255 255 255 / 0.85); /* 6.05 effective */
+    --color-topbar-fg: #bccdde;                        /* icons + role line + platform links on navy · 4.68 (>=4.5) */
+    --color-topbar-hover: #495c99;
+    --color-topbar-search: rgb(255 255 255 / 0.05);
+    --color-topbar-search-fg: #ffffff;                 /* 6.67 effective */
+    --color-topbar-search-border: rgb(255 255 255 / 0.08); /* vz-ref: borderless field */
+    --color-topbar-search-focus: rgb(255 255 255 / 0.10);
+    --color-topbar-search-placeholder: #e2e5ed;        /* default #ced4da = 4.46 marginal on the brand field */
+    --color-topbar-search-accent: #b0c4d9;             /* ring · 4.26 ≥3 */
+    --color-topbar-user-block: rgb(255 255 255 / 0.05); /* user slab follows the dark-topbar search fill */
+    --color-topbar-user: #52639c;
+    --color-topbar-user-fg: #ffffff;                   /* 5.80 */
 }
 
 /* Light sidebar — ONE merged block for both schemes (Velzon splits them only by
    a 4%-darken on the item color; we keep the darker, AA-safer value). */
 :root[data-sidebar='light'] {
-    --vz-vertical-menu-bg: #ffffff;
-    --vz-vertical-menu-item-color: #6c6f80;            /* darken($gray-600,10%) · 4.97 */
-    --vz-vertical-menu-item-hover-color: var(--color-admin-primary); /* 7.62 */
-    --vz-vertical-menu-item-active-color: var(--color-admin-primary);
-    --vz-vertical-menu-item-hover-bg: rgb(64 81 137 / 0.10);
-    --vz-vertical-menu-item-active-bg: rgb(64 81 137 / 0.15);
-    --vz-vertical-menu-title-color: #6c6f80;           /* 4.97 — group titles are text, like the items · vz-ref: #919da9 = 2.76 FAIL */
-    --vz-vertical-menu-brand-color: #343a40;           /* 11.51 */
+    --color-sidebar-bg: #ffffff;
+    --color-sidebar-fg: #6c6f80;                       /* darken($gray-600,10%) · 4.97 */
+    --color-sidebar-fg-hover: var(--color-primary);    /* 7.62 */
+    --color-sidebar-fg-active: var(--color-primary);
+    --color-sidebar-hover: rgb(64 81 137 / 0.10);
+    --color-sidebar-active: rgb(64 81 137 / 0.15);
+    --color-sidebar-title: #6c6f80;                    /* 4.97 — group titles are text, like the items · vz-ref: #919da9 = 2.76 FAIL */
+    --color-sidebar-brand: #343a40;                    /* 11.51 */
 }
 
 /* The sidebar zone rings focus in its active ink — white on the navy, dark and gradient
    presets, navy on the light one — never the page accent it would sit on. */
 .admin-sidebar {
-    --focus-ring-color: var(--color-sidebar-fg-active);
+    --color-focus: var(--color-sidebar-fg-active);
+
+    /* Bí danh — sẽ gỡ: an alias resolves where it is declared, so the old name is re-declared
+       on the zone that re-points its new name. */
+    --focus-ring-color: var(--color-focus);
+}
+
+/* Bí danh — sẽ gỡ: the old focus-ring name, one way (old → new). */
+:root {
+    --focus-ring-color: var(--color-focus);
 }
 
 /* Layout position — 'scrollable' lets the chrome scroll away with the page instead of
@@ -200,10 +185,6 @@
  |   All desktop rules gate at 64rem = Tailwind `lg`.
  ============================================================================ */
 
-:root {
-    --vz-boxed-width: 1300px; /* Velzon $boxed-layout-width */
-}
-
 /* ---- Sidebar color: gradients (flip axis: data-sidebar) --------------------
    The gradient paints .admin-sidebar directly (background-image over the bg-sidebar
    color — a linear-gradient can't ride background-color). `to right` = Velzon's
@@ -224,14 +205,14 @@
     background-image: linear-gradient(to right, #1a1d21, #405189); /* dark → primary */
 }
 :root[data-sidebar^='gradient'] {
-    --vz-vertical-menu-bg: #405189;                          /* base under the gradient image */
-    --vz-vertical-menu-item-color: rgb(255 255 255 / 0.85);  /* >=4.5 at every point of the deepened bands · vz-ref rgba(#fff,.5) */
-    --vz-vertical-menu-item-hover-color: #ffffff;
-    --vz-vertical-menu-item-active-color: #ffffff;
-    --vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.15);
-    --vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15);
-    --vz-vertical-menu-title-color: rgb(255 255 255 / 0.50); /* vz-ref — grandfathered */
-    --vz-vertical-menu-brand-color: #ffffff;
+    --color-sidebar-bg: #405189;                       /* base under the gradient image */
+    --color-sidebar-fg: rgb(255 255 255 / 0.85);       /* >=4.5 at every point of the deepened bands · vz-ref rgba(#fff,.5) */
+    --color-sidebar-fg-hover: #ffffff;
+    --color-sidebar-fg-active: #ffffff;
+    --color-sidebar-hover: rgb(255 255 255 / 0.15);
+    --color-sidebar-active: rgb(255 255 255 / 0.15);
+    --color-sidebar-title: rgb(255 255 255 / 0.50);    /* vz-ref — grandfathered */
+    --color-sidebar-brand: #ffffff;
 }
 
 /* ---- Sidebar background image (flip axis: data-sidebar-image) --------------
@@ -266,10 +247,10 @@
    the old Alpine `collapsed` toggle (the header button now flips this persisted axis). */
 @media (min-width: 64rem) {
     :root[data-sidebar-size='sm'] .admin-sidebar {
-        width: var(--spacing-sidebar-collapsed); /* 70px */
+        width: var(--sidebar-width-collapsed); /* 70px */
     }
     :root[data-sidebar-size='sm'] .admin-content {
-        padding-left: var(--spacing-sidebar-collapsed);
+        padding-left: var(--sidebar-width-collapsed);
     }
     :root[data-sidebar-size='sm'] .admin-sidebar .sidebar-label {
         display: none;
@@ -306,12 +287,12 @@
     :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > button > span.sidebar-label {
         display: block;
         position: absolute;
-        left: calc(var(--spacing-sidebar-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
+        left: calc(var(--sidebar-width-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
         top: 0;
         z-index: 50;
         width: 12rem;
         padding: 0.625rem 0.875rem;
-        background: var(--color-sidebar);
+        background: var(--color-sidebar-bg);
         color: var(--color-sidebar-fg-hover);
         border-radius: 0 0.25rem 0.25rem 0;
         box-shadow: var(--shadow-card);
@@ -321,13 +302,13 @@
     :root[data-sidebar-size='sm'] .admin-sidebar nav > ul > li:hover > div > ul {
         display: block !important;
         position: absolute;
-        left: calc(var(--spacing-sidebar-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
+        left: calc(var(--sidebar-width-collapsed) - 2px); /* overlap the rail edge 2px (same bg) so no seam breaks the hover */
         top: 2.35rem; /* overlaps the label box slightly (same bg) so hover can't drop through a seam */
         z-index: 50;
         width: 12rem;
         margin: 0;
         padding: 0.25rem 0.5rem 0.5rem !important;
-        background: var(--color-sidebar);
+        background: var(--color-sidebar-bg);
         border-radius: 0 0 0.25rem 0.25rem;
         box-shadow: var(--shadow-card);
     }
@@ -337,7 +318,7 @@
 }
 
 /* ---- Layout width boxed (flip axis: data-layout-width) — desktop only ------
-   Velzon boxed: the shell centers within 1300px on a darkened body. Our sidebar is
+   Velzon boxed: the shell centers within --container-boxed on a darkened body. Our sidebar is
    viewport-fixed, so in boxed it re-anchors to the centered box's left edge with
    max(0, half the gutter) — degrading to flush-left below the box width. (fluid is
    the default; no attribute, no rule.) */
@@ -347,14 +328,14 @@
     }
 
     :root[data-layout-width='boxed'] .admin-shell-wrapper {
-        max-width: var(--vz-boxed-width);
+        max-width: var(--container-boxed);
         margin-inline: auto;
-        background-color: var(--color-body);
+        background-color: var(--color-bg);
         box-shadow: var(--shadow-card);
     }
 
     :root[data-layout-width='boxed'] .admin-sidebar {
-        left: max(0px, calc((100% - var(--vz-boxed-width)) / 2));
+        left: max(0px, calc((100% - var(--container-boxed)) / 2));
     }
 }
 
