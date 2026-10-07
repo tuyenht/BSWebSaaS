@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<script src="./ai-quota.js"></script>
+<script src="./content-workflow.js"></script>
+<script src="./content-seo.js"></script>
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa)}a{color:var(--color-accent,#2050a0)}a:hover{color:var(--color-accent,#2050a0);text-decoration-thickness:2px}
+.spe{--fsp:0px;box-sizing:border-box;padding:24px;font-family:Inter,'Segoe UI',sans-serif;font-size:calc(14px + var(--fsp));line-height:1.5;color:var(--color-body-text,#3c4765);min-height:100dvh}
+.spe[data-fs="large"]{--fsp:2px}
+.spe *,.spe *::before,.spe *::after{box-sizing:border-box}
+.spe-imr[data-o="l"]{width:100%;height:auto}.spe-imr[data-o="p"]{height:100%;width:auto}
+.spe[data-emb="1"]{padding:0;min-height:0}
+@media (max-width:767px){.spe[data-emb="0"]{padding:12px}}
+.spe-in{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px;min-width:0}
+.spe-crumb{display:flex;align-items:center;gap:6px;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.spe-crumb a{color:var(--color-body-muted,#5b6275)}
+.spe-h1{margin:2px 0 0;font-size:calc(20px + var(--fsp));font-weight:600;line-height:1.3;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.spe-bar{position:sticky;top:var(--sticky-top,0px);z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 0;background:var(--color-body,#f4f5fa);border-bottom:1px solid var(--color-border,#e9ecf4)}
+.spe-bar .sp{flex:1 1 auto}
+.spe-acts{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px;min-width:0}
+@media (max-width:599px){.spe-acts{flex:1 1 100%}.spe-acts .sx-btn.pri{flex:1 1 auto}}
+.spe-cols{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.spe-main{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.spe-side{flex:1 1 300px;min-width:0;display:flex;flex-direction:column;gap:16px}
+.spe-bd{padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.spe-f2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}
+@container (max-width:520px){.spe-f2{grid-template-columns:minmax(0,1fr)}}
+.spe-lab{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 6px;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.spe-lab .sp{flex:1 1 auto}
+.spe-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.spe-pre{flex:0 0 auto;padding-right:2px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);white-space:nowrap}
+.spe .sx-search input{font-size:calc(16px + var(--fsp))}
+.spe-cur{flex:0 0 auto;padding-right:8px;font-weight:600;color:var(--color-body-muted,#5b6275)}
+.spe-lock .sx-in,.spe-lock .sx-search{opacity:.6}
+.spe-show{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:6px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.spe-show b{color:var(--color-heading,#1f2b4d);font-variant-numeric:tabular-nums}
+.spe-show .url{min-width:0;flex:1 1 200px;overflow-wrap:anywhere}
+.spe-fold{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 12px;border-radius:6px;border:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);font-size:calc(13px + var(--fsp))}
+.spe-fold>i{font-size:18px;color:var(--color-accent,#2050a0)}
+.spe-fold>span{flex:1 1 260px;min-width:0}
+.spe-imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:10px}
+.spe-im{position:relative;display:flex;flex-direction:column;gap:6px;min-width:0;padding:6px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff)}
+.spe-im[data-sel="1"]{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff))}
+.spe-im[data-over="1"]{border-style:dashed;border-color:var(--color-accent,#2050a0)}
+.spe-imb{display:block;width:100%;padding:0;border:0;border-radius:4px;background:transparent;cursor:pointer}
+.spe-imf{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:1/1;border-radius:4px;background:var(--color-surface-muted,#f8f9fb);overflow:hidden}
+.spe-imr{display:flex;align-items:center;justify-content:center;max-width:100%;max-height:100%;background:color-mix(in srgb,var(--color-accent,#2050a0) 14%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-size:22px}
+.spe-imn{font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spe-imc{position:absolute;top:10px;left:10px}
+.spe-imempty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:160px;padding:16px;border:1px dashed var(--color-border-input,#8a90a2);border-radius:6px;background:var(--color-surface-muted,#f8f9fb);text-align:center;color:var(--color-body-muted,#5b6275)}
+.spe-tb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px;border-radius:6px;background:var(--color-surface-muted,#f8f9fb);border:1px solid var(--color-border,#e9ecf4)}
+.spe-tb>span{flex:1 1 180px;min-width:0;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spe-tb strong{color:var(--color-heading,#1f2b4d)}
+.spe-more{display:flex;align-items:center;gap:10px;width:100%;min-height:48px;padding:10px 16px;box-sizing:border-box;border:1px dashed var(--color-border-input,#8a90a2);border-radius:6px;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer;text-align:left}
+.spe-more:hover{background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff))}
+.spe-more .ms{flex:1 1 auto;min-width:0;font-weight:400;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spe-kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;margin:0;font-size:calc(13px + var(--fsp))}
+.spe-kv dt{color:var(--color-body-muted,#5b6275)}
+.spe-kv dd{margin:0;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.spe-cl{max-height:300px;overflow-x:hidden;overflow-y:auto;border:1px solid var(--color-border,#e9ecf4);border-radius:4px}
+.spe-cr{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;min-height:44px;padding:4px 8px;border-bottom:1px solid var(--color-border,#e9ecf4);box-sizing:border-box}
+.spe-cr:last-child{border-bottom:0}
+.spe-cr label{display:flex;align-items:center;gap:8px;flex:1 1 140px;min-width:0;cursor:pointer;color:var(--color-body-text,#3c4765)}
+.spe-cr label>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spe-cr input{width:18px;height:18px;flex:0 0 auto;accent-color:var(--color-admin-primary,#2050a0)}
+.spe-cr[data-d="1"]{padding-left:28px}.spe-cr[data-d="2"]{padding-left:48px}
+.spe-cr .pth{color:var(--color-body-muted,#5b6275)}
+.spe-star{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 8px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:calc(12px + var(--fsp));color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap}
+@media (pointer:coarse){.spe-star,.spe-more{min-height:44px}}
+.spe-sw{display:flex;align-items:center;gap:12px;min-height:44px}
+.spe-sw .tx{flex:1 1 auto;min-width:0}
+.spe-sw .tx b{display:block;color:var(--color-heading,#1f2b4d);font-weight:600}
+.spe-sw .tx small{display:block;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.spe-ro{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:6px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 26%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-accent,#2050a0) 7%,var(--color-surface,#fff));color:var(--color-heading,#1f2b4d)}
+.spe-ro>i{font-size:18px;color:var(--color-accent,#2050a0);line-height:1.3}
+.spe-ro>div{flex:1 1 auto;min-width:0}
+.spe-dn{display:inline-flex;align-items:center;gap:4px;padding:0 6px;border-radius:4px;border:1px dashed var(--color-admin-warning-text,#906405);background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 10%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405);font-size:calc(12px + var(--fsp));font-weight:600;line-height:1.5;white-space:nowrap}
+.spe-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:48px 16px;text-align:center}
+.spe-state>i{font-size:36px;color:var(--color-body-muted,#5b6275)}
+.spe-state[data-k="plan"]>i{color:var(--color-brand-gold-text,#8a6200)}
+.spe-state[data-k="error"]>i{color:var(--color-admin-danger-text,#bf371a)}
+.spe-state h2{margin:0;font-size:calc(16px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.spe-state p{margin:0;max-width:48ch;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.spe-state .row{justify-content:center}
+.spe-sk{display:block;border-radius:4px;background:var(--color-surface-hover,#f1f3f9)}
+.spe-pop{position:absolute;top:calc(100% + 6px);right:0;z-index:60;width:248px;max-width:calc(100vw - 32px);padding:4px 0;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;box-shadow:0 10px 30px rgba(15,18,30,.18)}
+.spe-mi{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:8px 14px;border:0;background:transparent;font:inherit;color:var(--color-body-text,#3c4765);text-align:left;cursor:pointer}
+.spe-mi:hover{background:var(--color-surface-hover,#f1f3f9)}
+.spe-mi>i{font-size:16px;color:var(--color-body-muted,#5b6275)}
+.spe-mi .why{display:block;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.spe-mi[data-t="dan"],.spe-mi[data-t="dan"]>i{color:var(--color-admin-danger-text,#bf371a)}
+.spe-sep{height:1px;margin:4px 0;background:var(--color-border,#e9ecf4)}
+.spe-scrim{position:fixed;inset:0;z-index:25}
+.spe-pk{width:min(1020px,100%);height:min(660px,calc(100dvh - 32px));border-radius:8px;overflow:hidden;background:var(--color-surface,#fff);box-shadow:0 18px 50px rgba(0,0,0,.3)}
+@media (max-width:600px){.ov.pk{padding:0}.spe-pk{width:100%;height:100dvh;border-radius:0;padding-bottom:env(safe-area-inset-bottom)}}
+.spe-frames{display:flex;flex-direction:column;gap:8px;min-width:0;max-width:100%}
+@media (max-width:1199px){.spe-frames{display:none}}
+.spe-frh{font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.spe-frw{display:flex;gap:16px;align-items:flex-start;overflow-x:auto;padding-bottom:4px}
+.spe-frw iframe{flex:0 0 auto;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;background:var(--color-body,#f4f5fa)}
+.spe-tw{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));z-index:320;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);pointer-events:none}
+.spe-toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:8px 6px 8px 14px;border-radius:6px;background:var(--color-heading,#1f2b4d);color:var(--color-surface,#fff);font-size:calc(14px + var(--fsp));box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.spe-toast>i{font-size:18px}
+.spe-toast>span{min-width:0;text-wrap:pretty}
+.spe-undo{flex:0 0 auto;min-height:36px;padding:0 12px;border:1px solid color-mix(in srgb,var(--color-surface,#fff) 55%,transparent);border-radius:4px;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.spe-tx{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:0;border-radius:4px;background:transparent;color:inherit;cursor:pointer}
+@media (pointer:coarse){.spe-undo,.spe-tx{min-height:44px;min-width:44px}}
+@media (prefers-reduced-motion:no-preference){.spe-toast,.spe-pop{animation:speIn .16s ease-out}}
+@keyframes speIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div class="spe" data-cs="sup" data-emb="{{ embAttr }}" data-fs="{{ fsAttr }}" ref="{{ rootRef }}">
+<div class="spe-in">
+  <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}">
+    <div>
+      <nav class="spe-crumb" aria-label="Vị trí trang"><i class="ri-home-4-line" aria-hidden="true"></i><span>Trang chủ</span><i class="ri-arrow-right-s-line" aria-hidden="true"></i><a href="{{ listHref }}" onClick="{{ onBackLink }}">Sản phẩm</a><i class="ri-arrow-right-s-line" aria-hidden="true"></i><span>{{ crumbLast }}</span></nav>
+      <h1 class="spe-h1">{{ h1Text }}</h1>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showState }}">
+    <div class="cd">
+      <sc-if value="{{ isLoading }}">
+        <div class="spe-bd" aria-busy="true" aria-label="Đang mở sản phẩm">
+          <span class="spe-sk" style="height:20px;width:40%;"></span><span class="spe-sk" style="height:40px;"></span><span class="spe-sk" style="height:140px;"></span><span class="spe-sk" style="height:40px;width:60%;"></span><span class="spe-sk" style="height:220px;"></span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ notLoading }}">
+        <div class="spe-state" data-k="{{ stKey }}" role="{{ stRole }}">
+          <i class="{{ stIcon }}" aria-hidden="true"></i>
+          <h2>{{ stTitle }}</h2>
+          <p>{{ stText }}</p>
+          <div class="row">
+            <sc-if value="{{ stBtn }}"><button class="sx-btn {{ stBtnCls }}" onClick="{{ onStBtn }}"><i class="{{ stBtnIcon }}" aria-hidden="true"></i><span class="sx-t">{{ stBtnLabel }}</span></button></sc-if>
+            <sc-if value="{{ stBack }}"><button class="sx-btn" onClick="{{ onBack }}"><i class="ri-arrow-left-line" aria-hidden="true"></i><span class="sx-t">Về danh sách sản phẩm</span></button></sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showForm }}" hint-placeholder-val="{{ true }}">
+    <sc-if value="{{ readOnly }}">
+      <div class="spe-ro" role="note"><i class="ri-eye-line" aria-hidden="true"></i><div><b>Chỉ được xem.</b> Nhóm quyền “{{ roleName }}” không sửa được sản phẩm — cần sửa, nhờ Chủ website hoặc Quản trị. <sc-if value="{{ notesOn }}"><span class="spe-dn" title="routes/web.php:226 chặn hẳn người chỉ có catalog.view khỏi trình sửa">Chờ backend</span></sc-if></div></div>
+    </sc-if>
+
+    <div class="spe-bar">
+      <span class="sv" data-s="{{ svKey }}" role="status" aria-live="polite" title="Giờ theo múi giờ website"><i class="{{ svIcon }}" aria-hidden="true"></i>{{ svText }}</span>
+      <sc-if value="{{ svRetry }}"><button class="sx-btn sm" onClick="{{ onRetry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button></sc-if>
+      <span class="sp"></span>
+      <div class="spe-acts">
+        <sc-if value="{{ readOnly }}"><button class="sx-btn pri" onClick="{{ onBack }}"><i class="ri-arrow-left-line" aria-hidden="true"></i><span class="sx-t">Quay lại danh sách</span></button></sc-if>
+        <sc-if value="{{ canEdit }}">
+          <sc-if value="{{ showSecondary }}"><button class="sx-btn" aria-disabled="{{ busyA }}" onClick="{{ onSecondary }}"><i class="ri-save-3-line" aria-hidden="true"></i><span class="sx-t">{{ secondaryLabel }}</span></button></sc-if>
+          <sc-if value="{{ hasActMenu }}">
+            <div style="position:relative;">
+              <button class="sx-btn ic" aria-label="Thao tác khác" title="Thao tác khác" aria-haspopup="menu" aria-expanded="{{ actOpenA }}" onClick="{{ onActMenu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+              <sc-if value="{{ actOpen }}">
+                <div class="spe-pop" role="menu" aria-label="Thao tác khác">
+                  <sc-for list="{{ actItems }}" as="m" hint-placeholder-count="3">
+                    <sc-if value="{{ m.sep }}"><div class="spe-sep" role="separator"></div></sc-if>
+                    <sc-if value="{{ m.btn }}"><button class="spe-mi" role="menuitem" data-t="{{ m.t }}" onClick="{{ m.on }}"><i class="{{ m.icon }}" aria-hidden="true"></i><span>{{ m.label }}<span class="why">{{ m.why }}</span></span></button></sc-if>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-if>
+          <button class="sx-btn pri" aria-disabled="{{ busyA }}" onClick="{{ onPrimary }}"><i class="{{ primaryIcon }}" aria-hidden="true"></i><span class="sx-t">{{ primaryLabel }}</span></button>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{ multi }}">
+      <div class="lbw">
+        <div class="lb" role="group" aria-label="Bản nội dung đang sửa">
+          <div class="lb-l">
+            <i class="ri-translate-2 lb-ic" aria-hidden="true" title="Bản nội dung đang sửa — không đổi ngôn ngữ của trang quản trị"></i>
+            <sc-for list="{{ langPills }}" as="l" hint-placeholder-count="3"><button class="lb-pill" aria-pressed="{{ l.cur }}" data-x="{{ l.x }}" title="{{ l.stLabel }}" onClick="{{ l.pick }}"><span class="sx-dot" data-st="{{ l.st }}" aria-hidden="true"></span>{{ l.n }}<sc-if value="{{ l.src }}"><i class="ri-star-fill lb-star" aria-label="Bản nguồn" title="Bản nguồn — các bản khác dịch từ đây"></i></sc-if></button></sc-for>
+            <sc-if value="{{ hasMoreLangs }}"><button class="lb-pill lb-more" aria-expanded="{{ lbOpenA }}" aria-label="{{ moreLangAria }}" onClick="{{ onLbToggle }}">{{ moreLangN }}<i class="ri-arrow-down-s-line" aria-hidden="true"></i></button></sc-if>
+            <button class="lb-pill lb-sel" aria-expanded="{{ lbOpenA }}" aria-label="Đang sửa bản {{ curName }} — đổi bản" onClick="{{ onLbToggle }}"><span class="sx-dot" data-st="{{ curSt }}" aria-hidden="true"></span><span class="lb-nm">{{ curName }}</span><span class="lb-cd">{{ curCodeU }}</span><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+          </div>
+          <div class="lb-r">
+            <span class="lb-prog">{{ progText }}</span>
+            <sc-if value="{{ aiOn }}">
+              <span class="sx-chip lb-quota" data-t="gold" title="{{ quotaWhy }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>{{ quotaChip }}</span>
+              <span style="position:relative;display:inline-flex;"><button class="sx-btn sm ai lb-go" aria-disabled="{{ trOffA }}" aria-expanded="{{ trWhyOpenA }}" title="{{ trWhy }}" aria-label="{{ trLabel }}" onClick="{{ onTranslate }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i><span class="sx-t">{{ trLabel }}</span></button><sc-if value="{{ trWhyOpen }}"><div class="sx-pop r" role="note">{{ trWhy }}</div></sc-if></span>
+            </sc-if>
+            <sc-if value="{{ aiLocked }}"><button class="sx-btn sm lb-go" title="Gói hiện tại chưa có Dịch — xem gói nâng cấp" aria-label="Dịch — xem gói nâng cấp" onClick="{{ onUpsell }}"><i class="ri-lock-2-line" aria-hidden="true"></i><span class="sx-t">Dịch</span></button></sc-if>
+          </div>
+        </div>
+        <sc-if value="{{ lbOpen }}">
+          <div class="lb-panel" role="dialog" aria-label="Chọn bản nội dung">
+            <div style="padding:10px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);"><div style="font-weight:600;color:var(--color-heading,#1f2b4d);">Ngôn ngữ nội dung</div><div style="font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);">{{ progText }}</div></div>
+            <sc-if value="{{ lbSearch }}"><div style="padding:8px 12px;"><label class="sx-search" data-focus-wrap="true"><i class="ri-search-line" aria-hidden="true" style="color:var(--color-body-muted,#5b6275);"></i><input aria-label="Tìm ngôn ngữ" placeholder="Ví dụ: ja" value="{{ lbQ }}" onChange="{{ onLbQ }}"></label></div></sc-if>
+            <div role="menu" aria-label="Ngôn ngữ" style="max-height:240px;overflow:auto;">
+              <sc-for list="{{ panelLangs }}" as="l"><button class="lb-it" role="menuitemradio" aria-checked="{{ l.cur }}" onClick="{{ l.pick }}"><span class="sx-dot" data-st="{{ l.st }}" aria-hidden="true"></span><span style="min-width:0;"><span style="display:flex;align-items:center;gap:4px;font-weight:600;">{{ l.n }}<sc-if value="{{ l.src }}"><i class="ri-star-fill lb-star" aria-hidden="true"></i></sc-if></span><span style="display:block;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);">{{ l.stLabel }}</span></span><span style="font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);font-variant-numeric:tabular-nums;">{{ l.cnt }}</span></button></sc-for>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 12px;border-top:1px solid var(--color-border,#e9ecf4);">
+              <sc-if value="{{ aiOn }}"><button class="sx-btn sm ai" aria-disabled="{{ trAllOffA }}" title="{{ trAllWhy }}" onClick="{{ onTranslateAll }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i><span class="sx-t">{{ trAllLabel }}</span></button></sc-if>
+              <button class="sx-btn sm gho" onClick="{{ onManageLangs }}"><i class="ri-settings-3-line" aria-hidden="true"></i><span class="sx-t">Quản lý ngôn ngữ</span></button>
+            </div>
+          </div>
+        </sc-if>
+        <div class="lb-line" data-tone="{{ lineTone }}" role="status"><i class="{{ lineIcon }}" aria-hidden="true"></i><span>{{ lineText }}</span></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ jobOn }}">
+      <div class="jb" role="status" aria-live="polite"><span class="jb-ic" data-s="running"><i class="ri-loader-4-line" aria-hidden="true"></i></span><div style="min-width:0;"><div class="jb-t"><span>{{ jobTitle }}</span><span class="u">{{ jobUnit }}</span></div><div class="jb-s" data-s="running">Chỉ điền ô còn trống, không đè chữ bạn đã sửa. Hủy giữa chừng thì không trừ từ AI nào.</div></div><div class="jb-a"><button class="sx-btn sm" onClick="{{ onJobCancel }}"><i class="ri-close-line" aria-hidden="true"></i><span class="sx-t">Hủy</span></button></div><span class="jb-bar"><span style="width:{{ jobPct }}%;"></span></span></div>
+    </sc-if>
+
+    <div class="spe-cols">
+      <div class="spe-main">
+        <section class="cd" aria-labelledby="spe-h-name">
+          <div class="cd-h"><h2 id="spe-h-name" class="cd-t">Thông tin sản phẩm</h2></div>
+          <div class="cd-b">
+            <div class="lf">
+              <div class="lf-top"><label class="lf-lab" for="spe-name">Tên sản phẩm <span class="sx-req" aria-hidden="true">*</span></label><sc-if value="{{ multi }}"><span class="sx-chip" data-t="brand">{{ curCodeU }}</span></sc-if><span class="cnt" data-b="{{ mName.band }}"><i class="{{ mName.icon }}" aria-hidden="true"></i>{{ mName.text }}</span></div>
+              <input id="spe-name" class="sx-in" dir="{{ dirAttr }}" aria-required="true" aria-invalid="{{ eNameA }}" aria-describedby="spe-name-e" readOnly="{{ readOnly }}" maxLength="255" value="{{ fName }}" placeholder="{{ namePh }}" onChange="{{ onName }}">
+              <span class="trk" data-b="{{ mName.band }}" aria-hidden="true"><span class="zone" style="left:{{ mName.lo }}%;width:{{ mName.zw }}%;"></span><span class="fill" style="width:{{ mName.pct }}%;"></span><span class="tick" style="left:{{ mName.tick }}%;"></span></span>
+              <sc-if value="{{ eName }}"><p class="sx-err" id="spe-name-e"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ eNameT }}</span></p></sc-if>
+            </div>
+            <sc-if value="{{ more }}">
+              <div>
+                <label class="spe-lab" for="spe-slug">Đường dẫn<sc-if value="{{ multi }}"><span class="sx-chip" data-t="brand">{{ curCodeU }}</span></sc-if></label>
+                <div class="sx-search" data-focus-wrap="true" style="padding:0 12px 0 12px;gap:0;"><span class="spe-pre">{{ urlPrefix }}</span><input id="spe-slug" class="spe-mono" dir="ltr" spellcheck="false" aria-invalid="{{ eSlugA }}" aria-describedby="spe-slug-h" readOnly="{{ readOnly }}" value="{{ fSlug }}" placeholder="dao-phay-ngon-4-me-d10" onChange="{{ onSlug }}" onBlur="{{ onSlugBlur }}"></div>
+                <sc-if value="{{ eSlug }}"><p class="sx-err"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ eSlugT }}</span></p></sc-if>
+                <sc-if value="{{ slugRedirect }}"><p class="sx-err" style="color:var(--color-admin-warning-text,#906405);"><i class="ri-route-line" aria-hidden="true"></i><span>Sản phẩm đang đăng. Khi lưu, địa chỉ cũ <b>{{ slugOld }}</b> tự chuyển sang địa chỉ mới — khách và Google không bị lạc.</span></p></sc-if>
+                <div class="spe-show" id="spe-slug-h"><span class="url">{{ urlFull }}</span><sc-if value="{{ isPublished }}"><button class="sx-btn sm gho" onClick="{{ onView }}"><i class="ri-external-link-line" aria-hidden="true"></i><span class="sx-t">Xem trên website</span></button></sc-if></div>
+              </div>
+              <div class="lf">
+                <div class="lf-top"><label class="lf-lab" for="spe-exc">Tóm tắt</label><sc-if value="{{ multi }}"><span class="sx-chip" data-t="brand">{{ curCodeU }}</span></sc-if>
+                  <sc-if value="{{ aiOn }}"><button class="ai" aria-disabled="{{ sugOffA }}" title="{{ sugWhy }}" onClick="{{ onSuggest }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Gợi ý mô tả ngắn</button></sc-if>
+                  <sc-if value="{{ aiLocked }}"><button class="ai" title="Gói hiện tại chưa có AI — xem gói nâng cấp" onClick="{{ onUpsell }}"><i class="ri-lock-2-line" aria-hidden="true"></i>Gợi ý mô tả ngắn</button></sc-if>
+                  <span class="cnt" data-b="{{ mExc.band }}"><i class="{{ mExc.icon }}" aria-hidden="true"></i>{{ mExc.text }}</span></div>
+                <textarea id="spe-exc" class="sx-in" rows="3" dir="{{ dirAttr }}" readOnly="{{ readOnly }}" maxLength="255" value="{{ fExc }}" placeholder="Dao phay 4 me phủ AlTiN, cắt thép đến 45 HRC, bền gấp đôi dao thường." onChange="{{ onExc }}"></textarea>
+                <span class="trk" data-b="{{ mExc.band }}" aria-hidden="true"><span class="zone" style="left:{{ mExc.lo }}%;width:{{ mExc.zw }}%;"></span><span class="fill" style="width:{{ mExc.pct }}%;"></span><span class="tick" style="left:{{ mExc.tick }}%;"></span></span>
+                <p class="hint" style="margin:0;">Hiện dưới tên sản phẩm ở trang danh sách và khi chia sẻ.</p>
+                <sc-if value="{{ sugOn }}">
+                  <div class="cmp" role="group" aria-label="So sánh mô tả ngắn">
+                    <div><span class="k">Chữ hiện tại</span><span class="v">{{ sugCur }}</span></div>
+                    <div class="new"><span class="k">Gợi ý của AI · {{ sugLen }} ký tự</span><span class="v">{{ sugText }}</span></div>
+                  </div>
+                  <div class="row"><button class="sx-btn sm pri" onClick="{{ onSugUse }}"><i class="ri-check-line" aria-hidden="true"></i><span class="sx-t">Dùng gợi ý này</span></button><button class="sx-btn sm" onClick="{{ onSugKeep }}"><span class="sx-t">Giữ chữ hiện tại</span></button><span class="hint">Đã dùng {{ sugCost }} từ AI.</span></div>
+                </sc-if>
+                <sc-if value="{{ sugUndo }}"><div class="row"><span class="undo"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Đã dùng gợi ý AI<button class="sx-btn sm gho" onClick="{{ onSugUndo }}"><i class="ri-arrow-go-back-line" aria-hidden="true"></i><span class="sx-t">Hoàn tác gợi ý AI</span></button></span></div></sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </section>
+
+        <section class="cd {{ lockCls }}" aria-labelledby="spe-h-img">
+          <div class="cd-h"><h2 id="spe-h-img" class="cd-t">Ảnh sản phẩm</h2><sc-if value="{{ locked }}"><span class="sx-chip" title="{{ lockWhy }}"><i class="ri-lock-line" aria-hidden="true"></i>Chung</span></sc-if><span style="flex:1 1 auto;"></span><sc-if value="{{ canImg }}"><button class="sx-btn sm" onClick="{{ onPick }}"><i class="ri-image-add-line" aria-hidden="true"></i><span class="sx-t">Thêm ảnh</span></button></sc-if></div>
+          <div class="cd-b">
+            <sc-if value="{{ noImg }}">
+              <div class="spe-imempty"><i class="ri-image-add-line" aria-hidden="true" style="font-size:28px;"></i><span>Chưa có ảnh. Ảnh đầu tiên sẽ là ảnh đại diện — dùng ảnh thật của bạn, không tốn lượt tạo ảnh nào.</span><sc-if value="{{ canImg }}"><button class="sx-btn" onClick="{{ onPick }}"><i class="ri-image-add-line" aria-hidden="true"></i><span class="sx-t">Chọn ảnh</span></button></sc-if></div>
+            </sc-if>
+            <sc-if value="{{ hasImg }}">
+              <div class="spe-imgs" role="list" aria-label="Ảnh theo thứ tự hiện">
+                <sc-for list="{{ imgs }}" as="im" hint-placeholder-count="3">
+                  <div class="spe-im" role="listitem" data-sel="{{ im.selA }}" data-over="{{ im.overA }}" draggable="{{ im.drag }}" onDragStart="{{ im.onDragStart }}" onDragOver="{{ im.onDragOver }}" onDragLeave="{{ im.onDragLeave }}" onDrop="{{ im.onDrop }}" onDragEnd="{{ onImgDragEnd }}">
+                    <button class="spe-imb" aria-pressed="{{ im.selA2 }}" aria-label="{{ im.aria }}" onClick="{{ im.pick }}"><span class="spe-imf"><span class="spe-imr" data-o="{{ im.o }}" style="aspect-ratio:{{ im.r }};"><i class="ri-image-2-line" aria-hidden="true"></i></span></span></button>
+                    <sc-if value="{{ im.cover }}"><span class="sx-chip spe-imc" data-t="gold"><i class="ri-star-fill" aria-hidden="true"></i>Ảnh đại diện</span></sc-if>
+                    <span class="spe-imn" title="{{ im.f }}">{{ im.n }}. {{ im.f }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ imgSelOn }}">
+                <div class="spe-tb" role="toolbar" aria-label="Sắp xếp ảnh đang chọn">
+                  <span>Đang chọn: <strong>{{ imgSelName }}</strong></span>
+                  <button class="sx-btn sm" aria-disabled="{{ imgUpOff }}" title="{{ imgUpWhy }}" onClick="{{ onImgUp }}"><i class="ri-arrow-left-line" aria-hidden="true"></i><span class="sx-t">Chuyển lên</span></button>
+                  <button class="sx-btn sm" aria-disabled="{{ imgDownOff }}" title="{{ imgDownWhy }}" onClick="{{ onImgDown }}"><i class="ri-arrow-right-line" aria-hidden="true"></i><span class="sx-t">Chuyển xuống</span></button>
+                  <button class="sx-btn sm" aria-disabled="{{ imgCoverOff }}" title="{{ imgCoverWhy }}" onClick="{{ onImgCover }}"><i class="ri-star-line" aria-hidden="true"></i><span class="sx-t">Đặt làm ảnh đại diện</span></button>
+                  <button class="sx-btn sm dano" onClick="{{ onImgRemove }}"><i class="ri-close-circle-line" aria-hidden="true"></i><span class="sx-t">Bỏ khỏi sản phẩm</span></button>
+                </div>
+              </sc-if>
+              <p class="hint" style="margin:0;">{{ imgHint }}</p>
+            </sc-if>
+          </div>
+        </section>
+
+        <section class="cd {{ lockCls }}" aria-labelledby="spe-h-price">
+          <div class="cd-h"><h2 id="spe-h-price" class="cd-t">{{ priceHead }}</h2><sc-if value="{{ locked }}"><span class="sx-chip" title="{{ lockWhy }}"><i class="ri-lock-line" aria-hidden="true"></i>Chung</span></sc-if></div>
+          <div class="cd-b">
+            <sc-if value="{{ priceFolded }}">
+              <div class="spe-fold"><i class="ri-presentation-line" aria-hidden="true"></i><span>Website đang ở chế độ Giới thiệu — khách không thấy giá. Đổi ở Cài đặt › Sản phẩm. {{ foldKeep }}</span>
+                <sc-if value="{{ canSettings }}"><button class="sx-btn sm gho" onClick="{{ onGoSettings }}"><i class="ri-settings-3-line" aria-hidden="true"></i><span class="sx-t">Mở Cài đặt › Sản phẩm</span></button></sc-if>
+                <button class="sx-btn sm" aria-expanded="false" onClick="{{ onUnfold }}"><i class="ri-arrow-down-s-line" aria-hidden="true"></i><span class="sx-t">Mở khối giá</span></button></div>
+            </sc-if>
+            <sc-if value="{{ priceOpen }}">
+              <sc-if value="{{ introNote }}"><div class="spe-fold"><i class="ri-presentation-line" aria-hidden="true"></i><span>Chế độ Giới thiệu: giá nhập ở đây được giữ, khách chỉ thấy khi website chuyển sang Bán hàng.</span><button class="sx-btn sm gho" aria-expanded="true" onClick="{{ onFold }}"><i class="ri-arrow-up-s-line" aria-hidden="true"></i><span class="sx-t">Gập lại</span></button></div></sc-if>
+              <div class="spe-f2">
+                <div>
+                  <label class="spe-lab" for="spe-price">Giá bán</label>
+                  <div class="sx-search" data-focus-wrap="true" style="padding-right:4px;"><input id="spe-price" inputmode="numeric" autocomplete="off" aria-invalid="{{ ePriceA }}" aria-describedby="spe-price-h" disabled="{{ shDis }}" value="{{ fPrice }}" placeholder="1.250.000" onChange="{{ onPrice }}" style="text-align:right;font-variant-numeric:tabular-nums;"><span class="spe-cur">₫</span></div>
+                  <p class="sx-hint" id="spe-price-h">Để trống nếu chưa muốn hiện giá. Khách thấy: <b style="color:var(--color-heading,#1f2b4d);">{{ priceShow }}</b></p>
+                </div>
+                <sc-if value="{{ more }}">
+                  <div>
+                    <label class="spe-lab" for="spe-stock">Tồn kho</label>
+                    <input id="spe-stock" class="sx-in" inputmode="numeric" autocomplete="off" disabled="{{ shDis }}" aria-describedby="spe-stock-h" value="{{ fStock }}" placeholder="24" onChange="{{ onStock }}" style="font-size:calc(16px + var(--fsp));">
+                    <p class="sx-hint" id="spe-stock-h">{{ stockHint }}</p>
+                  </div>
+                </sc-if>
+              </div>
+              <sc-if value="{{ more }}">
+                <div>
+                  <div class="spe-lab" style="margin-bottom:8px;">Khuyến mãi</div>
+                  <div class="spe-f2">
+                    <div>
+                      <label class="spe-lab" for="spe-sale" style="font-weight:500;">Giá khuyến mãi</label>
+                      <div class="sx-search" data-focus-wrap="true" style="padding-right:4px;"><input id="spe-sale" inputmode="numeric" autocomplete="off" aria-invalid="{{ eSaleA }}" aria-describedby="spe-sale-e" disabled="{{ shDis }}" value="{{ fSale }}" placeholder="1.090.000" onChange="{{ onSale }}" style="text-align:right;font-variant-numeric:tabular-nums;"><span class="spe-cur">₫</span></div>
+                      <sc-if value="{{ eSale }}"><p class="sx-err" id="spe-sale-e"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ eSaleT }}</span></p></sc-if>
+                    </div>
+                    <div></div>
+                    <div>
+                      <label class="spe-lab" for="spe-from" style="font-weight:500;">Bắt đầu</label>
+                      <input id="spe-from" class="sx-in" type="datetime-local" disabled="{{ shDis }}" value="{{ fFrom }}" onChange="{{ onFrom }}">
+                    </div>
+                    <div>
+                      <label class="spe-lab" for="spe-to" style="font-weight:500;">Kết thúc</label>
+                      <input id="spe-to" class="sx-in" type="datetime-local" aria-invalid="{{ eDateA }}" aria-describedby="spe-to-e" disabled="{{ shDis }}" value="{{ fTo }}" onChange="{{ onTo }}">
+                      <sc-if value="{{ eDate }}"><p class="sx-err" id="spe-to-e"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ eDateT }}</span></p></sc-if>
+                    </div>
+                  </div>
+                  <p class="sx-hint">{{ saleHint }}</p>
+                </div>
+              </sc-if>
+            </sc-if>
+          </div>
+        </section>
+
+        <section class="cd" aria-labelledby="spe-h-desc">
+          <div class="cd-h"><h2 id="spe-h-desc" class="cd-t">Mô tả</h2><sc-if value="{{ multi }}"><span class="sx-chip" data-t="brand">{{ curCodeU }}</span></sc-if><span style="flex:1 1 auto;"></span>
+            <sc-if value="{{ aiOn }}"><button class="ai" aria-disabled="{{ newOffA }}" title="{{ newWhy }}" onClick="{{ onWriteNew }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>Viết mới</button></sc-if>
+            <sc-if value="{{ aiLocked }}"><button class="ai" title="Gói hiện tại chưa có AI — xem gói nâng cấp" onClick="{{ onUpsell }}"><i class="ri-lock-2-line" aria-hidden="true"></i>Viết mới</button></sc-if>
+            <sc-if value="{{ canEdit }}"><button class="sx-btn sm" onClick="{{ onSpec }}"><i class="ri-table-line" aria-hidden="true"></i><span class="sx-t">Chèn bảng thông số</span></button></sc-if>
+          </div>
+          <div class="spe-bd">
+            <sc-if value="{{ newHintOn }}"><p class="hint" style="margin:0;">{{ newHint }}</p></sc-if>
+            <sc-if value="{{ newUndo }}"><div class="row"><span class="undo"><i class="ri-sparkling-2-line" aria-hidden="true"></i>AI vừa viết mô tả<button class="sx-btn sm gho" onClick="{{ onNewUndo }}"><i class="ri-arrow-go-back-line" aria-hidden="true"></i><span class="sx-t">Hoàn tác gợi ý AI</span></button></span></div></sc-if>
+            <sc-if value="{{ rteOn }}">
+              <dc-import name="Trình soạn nội dung" value="{{ fBody }}" placeholder="Viết công dụng, ưu điểm và cách dùng. Bấm “Chèn bảng thông số” để thêm bảng kích thước, vật liệu." words-left="{{ wordsLeft }}" words-limit="{{ wordsLimit }}" can-ai="{{ aiOn }}" read-only="{{ readOnly }}" on-change="{{ onBody }}" on-spend="{{ onSpend }}" on-notify="{{ onNotify }}" hint-size="100%,460px"></dc-import>
+            </sc-if>
+          </div>
+        </section>
+
+        <button class="spe-more" aria-expanded="{{ moreA }}" onClick="{{ onMore }}"><i class="{{ moreIcon }}" aria-hidden="true"></i><span>{{ moreLabel }}</span><span class="ms">{{ moreSub }}</span></button>
+
+        <sc-if value="{{ more }}">
+          <section class="cd" aria-labelledby="spe-h-seo">
+            <div class="cd-h"><h2 id="spe-h-seo" class="cd-t">Hiện trên Google</h2><sc-if value="{{ multi }}"><span class="sx-chip" data-t="brand">{{ curCodeU }}</span></sc-if></div>
+            <div class="cd-b">
+              <div class="serp" aria-label="Xem trước kết quả trên Google">
+                <div class="serp-site"><span class="serp-fav" aria-hidden="true"><i class="ri-global-line"></i></span><div style="min-width:0;"><div class="serp-n">{{ siteName }}</div><div class="serp-u">{{ urlFull }}</div></div></div>
+                <p class="serp-t" dir="{{ dirAttr }}">{{ serpT }}</p>
+                <p class="serp-d" dir="{{ dirAttr }}">{{ serpD }}</p>
+              </div>
+              <div class="lf">
+                <div class="lf-top"><label class="lf-lab" for="spe-st">Tiêu đề trên Google</label><span class="cnt" data-b="{{ mSeoT.band }}"><i class="{{ mSeoT.icon }}" aria-hidden="true"></i>{{ mSeoT.text }}</span></div>
+                <input id="spe-st" class="sx-in" dir="{{ dirAttr }}" readOnly="{{ readOnly }}" value="{{ fSeoT }}" placeholder="{{ seoTPh }}" onChange="{{ onSeoT }}">
+                <span class="trk" data-b="{{ mSeoT.band }}" aria-hidden="true"><span class="zone" style="left:{{ mSeoT.lo }}%;width:{{ mSeoT.zw }}%;"></span><span class="fill" style="width:{{ mSeoT.pct }}%;"></span><span class="tick" style="left:{{ mSeoT.tick }}%;"></span></span>
+                <p class="hint" style="margin:0;">Để trống thì Google dùng tên sản phẩm.</p>
+              </div>
+              <div class="lf">
+                <div class="lf-top"><label class="lf-lab" for="spe-sd">Mô tả trên Google</label><span class="cnt" data-b="{{ mSeoD.band }}"><i class="{{ mSeoD.icon }}" aria-hidden="true"></i>{{ mSeoD.text }}</span></div>
+                <textarea id="spe-sd" class="sx-in" rows="3" dir="{{ dirAttr }}" readOnly="{{ readOnly }}" value="{{ fSeoD }}" placeholder="{{ seoDPh }}" onChange="{{ onSeoD }}"></textarea>
+                <span class="trk" data-b="{{ mSeoD.band }}" aria-hidden="true"><span class="zone" style="left:{{ mSeoD.lo }}%;width:{{ mSeoD.zw }}%;"></span><span class="fill" style="width:{{ mSeoD.pct }}%;"></span><span class="tick" style="left:{{ mSeoD.tick }}%;"></span></span>
+                <p class="hint" style="margin:0;">Để trống thì Google lấy tóm tắt hoặc đoạn đầu mô tả.</p>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+      </div>
+
+      <div class="spe-side">
+        <section class="cd" aria-labelledby="spe-h-pub">
+          <div class="cd-h"><h2 id="spe-h-pub" class="cd-t">Đăng</h2><span style="flex:1 1 auto;"></span><span class="sx-chip" data-t="{{ stChipT }}"><i class="{{ stChipIcon }}" aria-hidden="true"></i>{{ stChipLabel }}</span></div>
+          <div class="cd-b">
+            <dl class="spe-kv">
+              <dt>Ngày đăng</dt><dd>{{ pubText }}</dd>
+              <dt>Cập nhật</dt><dd>{{ updText }}</dd>
+              <dt>Khách thấy</dt><dd>{{ seeText }}</dd>
+            </dl>
+            <sc-if value="{{ isPublished }}"><button class="sx-btn sm" onClick="{{ onView }}"><i class="ri-external-link-line" aria-hidden="true"></i><span class="sx-t">Xem trên website</span></button></sc-if>
+          </div>
+        </section>
+
+        <sc-if value="{{ more }}">
+          <section class="cd {{ lockCls }}" aria-labelledby="spe-h-cat">
+            <div class="cd-h"><h2 id="spe-h-cat" class="cd-t">Chuyên mục</h2><sc-if value="{{ locked }}"><span class="sx-chip" title="{{ lockWhy }}"><i class="ri-lock-line" aria-hidden="true"></i>Chung</span></sc-if></div>
+            <div class="cd-b">
+              <label class="sx-search" data-focus-wrap="true"><i class="ri-search-line" aria-hidden="true" style="color:var(--color-body-muted,#5b6275);"></i><input type="search" aria-label="Tìm chuyên mục" placeholder="Ví dụ: mũi khoan" disabled="{{ shDis }}" value="{{ catQ }}" onChange="{{ onCatQ }}"></label>
+              <div class="spe-cl" role="group" aria-label="Chuyên mục của sản phẩm" aria-invalid="{{ eCatA }}" tabindex="-1" id="spe-cat">
+                <sc-for list="{{ catRows }}" as="c" hint-placeholder-count="6">
+                  <div class="spe-cr" data-d="{{ c.d }}">
+                    <label><input type="checkbox" checked="{{ c.on }}" disabled="{{ shDis }}" onChange="{{ c.toggle }}"><span title="{{ c.full }}"><sc-if value="{{ c.hasPath }}"><span class="pth">{{ c.path }}</span></sc-if>{{ c.n }}</span></label>
+                    <sc-if value="{{ c.isMain }}"><span class="sx-chip" data-t="gold"><i class="ri-star-fill" aria-hidden="true"></i>Mục chính</span></sc-if>
+                    <sc-if value="{{ c.canStar }}"><button class="spe-star" onClick="{{ c.star }}" aria-label="Đặt {{ c.n }} làm chuyên mục chính"><i class="ri-star-line" aria-hidden="true"></i>Đặt làm mục chính</button></sc-if>
+                  </div>
+                </sc-for>
+                <sc-if value="{{ catNone }}"><p class="hint" style="margin:0;padding:10px 12px;">Không có chuyên mục khớp “{{ catQ }}”.</p></sc-if>
+              </div>
+              <sc-if value="{{ eCat }}"><p class="sx-err"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ eCatT }}</span></p></sc-if>
+              <p class="hint" style="margin:0;">Mục chính (sao vàng) quyết định sản phẩm hiện ở trang nhóm nào. Đổi mục chính của sản phẩm đang đăng thì địa chỉ cũ tự chuyển sang địa chỉ mới.</p>
+              <div class="row"><sc-if value="{{ notesOn }}"><span class="spe-dn" title="Catalog/Editor.php mới sửa 1 chuyên mục; product_taxonomies đã có cột thứ tự">Nhiều chuyên mục: Chờ backend</span></sc-if><sc-if value="{{ canCats }}"><button class="sx-btn sm gho" onClick="{{ onGoCats }}"><i class="ri-folder-settings-line" aria-hidden="true"></i><span class="sx-t">Quản lý chuyên mục</span></button></sc-if></div>
+            </div>
+          </section>
+
+          <section class="cd {{ lockCls }}" aria-labelledby="spe-h-sku">
+            <div class="cd-h"><h2 id="spe-h-sku" class="cd-t">Mã &amp; nhãn</h2><sc-if value="{{ locked }}"><span class="sx-chip" title="{{ lockWhy }}"><i class="ri-lock-line" aria-hidden="true"></i>Chung</span></sc-if></div>
+            <div class="cd-b">
+              <div>
+                <label class="spe-lab" for="spe-sku">Mã SKU</label>
+                <input id="spe-sku" class="sx-in spe-mono" dir="ltr" autocomplete="off" spellcheck="false" aria-invalid="{{ eSkuA }}" aria-describedby="spe-sku-h" disabled="{{ shDis }}" value="{{ fSku }}" placeholder="AV-DP-D10" onChange="{{ onSku }}" onBlur="{{ onSkuBlur }}" style="font-size:calc(16px + var(--fsp));">
+                <sc-if value="{{ eSku }}"><p class="sx-err"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ eSkuT }}</span></p></sc-if>
+                <p class="sx-hint" id="spe-sku-h">Không bắt buộc. Mỗi mã chỉ dùng cho một sản phẩm, kể cả sản phẩm trong Thùng rác.</p>
+              </div>
+              <div class="spe-sw">
+                <span class="tx"><b id="spe-ft-l">Gắn nhãn “Nổi bật”</b><small>{{ featText }}</small></span>
+                <button class="dsw" role="switch" aria-checked="{{ featA }}" aria-labelledby="spe-ft-l" disabled="{{ shDis }}" onClick="{{ onFeat }}"></button>
+              </div>
+              <div class="spe-sw">
+                <span class="tx"><b id="spe-bs-l">Gắn nhãn “Bán chạy”</b><small>{{ bestText }}</small></span>
+                <button class="dsw" role="switch" aria-checked="{{ bestA }}" aria-labelledby="spe-bs-l" disabled="{{ shDis }}" onClick="{{ onBest }}"></button>
+              </div>
+            </div>
+          </section>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showFrames }}">
+    <div class="spe-frames">
+      <div class="spe-frh">Khung xem 390 và 768 px — cùng tệp, cùng dữ liệu</div>
+      <div class="spe-frw">
+        <iframe title="Xem ở 390 px" src="Sản phẩm - Trình sửa.dc.html#frame" loading="lazy" style="width:390px;height:900px;"></iframe>
+        <iframe title="Xem ở 768 px" src="Sản phẩm - Trình sửa.dc.html#frame" loading="lazy" style="width:768px;height:900px;"></iframe>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+<sc-if value="{{ actOpen }}"><div class="spe-scrim" onClick="{{ onCloseAct }}"></div></sc-if>
+<sc-if value="{{ lbOpen }}"><div class="spe-scrim" onClick="{{ onLbToggle }}"></div></sc-if>
+<sc-if value="{{ pickerOpen }}">
+  <div class="ov pk" onClick="{{ onPickClose }}">
+    <div class="spe-pk" role="dialog" aria-modal="true" aria-label="Chọn ảnh sản phẩm" onClick="{{ stop }}">
+      <dc-import name="MediaPicker" multiple="{{ true }}" start-tab="library" on-insert="{{ onPickInsert }}" on-close="{{ onPickClose }}" hint-size="100%,100%"></dc-import>
+    </div>
+  </div>
+</sc-if>
+<div class="spe-tw" role="status" aria-live="polite"><sc-if value="{{ showToast }}"><div class="spe-toast"><i class="{{ toastIcon }}" aria-hidden="true"></i><span>{{ toastMsg }}</span><sc-if value="{{ toastUndo }}"><button class="spe-undo" onClick="{{ onToastUndo }}">{{ toastUndoLabel }}</button></sc-if><button class="spe-tx" aria-label="Đóng thông báo" title="Đóng" onClick="{{ onToastClose }}"><i class="ri-close-line" aria-hidden="true"></i></button></div></sc-if></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Biên tập&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;,&quot;label&quot;:&quot;Nhóm quyền&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Giới thiệu&quot;,&quot;Bán hàng&quot;],&quot;default&quot;:&quot;Bán hàng&quot;,&quot;tsType&quot;:&quot;'Giới thiệu'|'Bán hàng'&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;,&quot;label&quot;:&quot;Chế độ sản phẩm&quot;},&quot;moduleOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;,&quot;label&quot;:&quot;Module Sản phẩm bật cho website&quot;},&quot;aiGranted&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;,&quot;label&quot;:&quot;Website được cấp AI&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;},&quot;langs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;3&quot;,&quot;8&quot;],&quot;default&quot;:&quot;3&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngôn ngữ&quot;,&quot;label&quot;:&quot;Số ngôn ngữ website bật&quot;},&quot;start&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;edit&quot;,&quot;new&quot;],&quot;default&quot;:&quot;edit&quot;,&quot;tsType&quot;:&quot;'edit'|'new'&quot;,&quot;section&quot;:&quot;Trạng thái&quot;,&quot;label&quot;:&quot;Mở để (edit = sửa · new = thêm)&quot;},&quot;screenState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Có dữ liệu&quot;,&quot;Đang tải&quot;,&quot;Lỗi&quot;],&quot;default&quot;:&quot;Có dữ liệu&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trạng thái&quot;,&quot;label&quot;:&quot;Trạng thái màn&quot;},&quot;saveError&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Không&quot;,&quot;Mất mạng&quot;,&quot;Chuyên mục không hợp lệ&quot;],&quot;default&quot;:&quot;Không&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trạng thái&quot;,&quot;label&quot;:&quot;Mô phỏng lỗi khi lưu&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Trạng thái&quot;,&quot;label&quot;:&quot;Hiện ghi chú thiết kế&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Trạng thái&quot;,&quot;label&quot;:&quot;Chữ lớn&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;ma&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;lang&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;langCodes&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;planKey&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;frames&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { f: null, base: '', key: '', cur: null, more: this.readMore(), priceOpen: false, selImg: -1, dragI: -1, overI: -1, pickerOpen: false, catQ: '', act: false, lbOpen: false, lbQ: '', trWhy: false, errs: {}, sv: 'idle', svAt: '', busy: false, toast: null, sug: null, sugUndo: null, newUndo: null, job: null, used: 5800, rteOn: true, stOver: null, slugTouched: false, big: false, failOnce: true, catFail: true };
+    this.rootRef = (el) => { this._root = el; };
+  }
+  static LANGS() { return { vi: 'Tiếng Việt', en: 'English', ja: '日本語', zh: '中文', ko: '한국어', th: 'ไทย', fr: 'Français', ar: 'العربية' }; }
+  static ORDER() { return ['vi', 'en', 'ja', 'zh', 'ko', 'th', 'fr', 'ar']; }
+  static NOW() { return Date.parse('2026-10-07T10:00:00'); }
+  static RESERVED() { return ['gioi-thieu', 'lien-he', 'trang-chu', 'tim-kiem', 'san-pham']; }
+  /* Kho mẫu dùng chung với "Sản phẩm - Danh sách" (cùng cửa sổ khi nhúng trong Shell) — giữ y hệt ở hai tệp. */
+  static seed() {
+    if (window.__bsCatalog) return window.__bsCatalog;
+    const A = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    const ulid = (n) => '01JB4M' + Array.from({ length: 20 }, (_, j) => A[(n * 7 + j * 13 + n * j * 3) % 32]).join('');
+    const cats = [['m', 'Máy phay', null, 'may-phay'], ['m1', 'Phay đứng', 'm', 'phay-dung'], ['m2', 'Phay ngang', 'm', 'phay-ngang'], ['m3', 'Trung tâm gia công', 'm', 'trung-tam-gia-cong'], ['t', 'Máy tiện', null, 'may-tien'], ['t1', 'Tiện CNC', 't', 'tien-cnc'], ['t2', 'Tiện cơ', 't', 'tien-co'], ['p', 'Phụ tùng', null, 'phu-tung'], ['pa', 'Dao cụ', 'p', 'dao-cu'], ['pa1', 'Dao phay ngón', 'pa', 'dao-phay-ngon'], ['pa2', 'Mũi khoan', 'pa', 'mui-khoan'], ['pb', 'Đồ gá', 'p', 'do-ga'], ['pc', 'Ê tô', 'p', 'e-to'], ['v', 'Vật tư tiêu hao', null, 'vat-tu-tieu-hao'], ['va', 'Dầu cắt gọt', 'v', 'dau-cat-got'], ['vb', 'Đá mài', 'v', 'da-mai'], ['x', 'Máy cũ đã qua sử dụng, thanh lý giá tốt cho xưởng nhỏ', null, 'may-cu-thanh-ly']].map(c => ({ k: c[0], n: c[1], p: c[2], slug: c[3] }));
+    const R = [
+      ['Máy phay CNC đứng VMC-850, bàn 1000×500 mm', 'may-phay-cnc-vmc-850', 'AV-VMC850', 'm1', 1180000000, 1090000000, '2026-10-01T08:00', '2026-10-31T23:59', 2, 1, 0, 'published', '2026-09-12T08:30', '2026-10-06T16:42', '4/3,1/1,3/4', { en: 'full', ja: 'ai', zh: 'miss' }],
+      ['Máy tiện CNC băng nghiêng CK-46', 'may-tien-cnc-ck-46', 'AV-CK46', 't1', null, null, '', '', null, 0, 1, 'published', '2026-08-20T09:00', '2026-10-05T11:20', '4/3', { en: 'full', ja: 'stale' }],
+      ['Dao phay ngón hợp kim 4 me D10', 'dao-phay-ngon-4-me-d10', 'AV-DP-D10', 'pa1', 385000, null, '', '', 140, 0, 1, 'published', '2026-07-02T10:00', '2026-10-04T09:05', '1/1', { en: 'full', ja: 'full' }],
+      ['Mũi khoan HSS-Co 5% D8.5 (hộp 10 cây)', 'mui-khoan-hss-co-d8-5', 'AV-MK-85', 'pa2', 1250000, 1090000, '2026-10-01T00:00', '2026-10-15T23:59', 0, 0, 0, 'published', '2026-06-15T08:00', '2026-10-03T14:10', '1/1', { en: 'miss' }],
+      ['Ê tô thủy lực mở nhanh 6 inch cho trung tâm gia công', 'e-to-thuy-luc-6-inch', 'AV-ETO6', 'pc', 6450000, null, '', '', 4, 0, 0, 'draft', '', '2026-10-07T08:15', '4/3', {}],
+      ['Dầu cắt gọt pha nước bán tổng hợp — can 18 lít', 'dau-cat-got-ban-tong-hop-18l', 'AV-DCG18', 'va', 2150000, null, '', '', 36, 1, 0, 'published', '2026-05-10T08:00', '2026-09-30T10:00', '3/4', { en: 'full', ja: 'full', zh: 'full' }],
+      ['Đá mài GC 200×20×31.75 — mẫu thử miễn phí', 'da-mai-gc-200-mau-thu', '', 'vb', 0, null, '', '', null, 0, 0, 'published', '2026-09-01T08:00', '2026-09-28T15:30', '', {}],
+      ['Máy phay ngang vạn năng X6132 đã qua sử dụng, còn 85%', 'may-phay-ngang-x6132-thanh-ly', 'AV-X6132-TL', 'x', 168000000, null, '', '', 1, 0, 0, 'archived', '2026-03-02T08:00', '2026-09-20T09:40', '4/3,4/3', { en: 'full' }],
+      ['Đồ gá kẹp nhanh 4 trục cho phay CNC', 'do-ga-kep-nhanh-4-truc', 'AV-DG4', 'pb', 12800000, null, '', '', 3, 1, 1, 'published', '2026-08-01T08:00', '2026-10-02T17:25', '1/1,1/1', { en: 'ai' }],
+      ['Trung tâm gia công 5 trục liên động UMC-500 kèm bộ đo dao tự động và băng tải phoi', 'trung-tam-gia-cong-5-truc-umc-500', 'AV-UMC500-5AX', 'm3', null, null, '', '', null, 0, 0, 'draft', '', '2026-10-06T09:10', '', {}],
+      ['Máy tiện cơ C6140 băng dài 1.5 m', 'may-tien-co-c6140', 'AV-C6140', 't2', 245000000, null, '', '', 0, 0, 0, 'published', '2026-04-11T08:00', '2026-09-18T08:00', '4/3', { en: 'full', ja: 'miss' }],
+      ['Bộ dao tiện gắn mảnh 12 cây cán 16', 'bo-dao-tien-gan-manh-12-cay', 'AV-DT12', 'pa', 2890000, null, '', '', 18, 0, 0, 'draft', '', '2026-10-07T09:40', '1/1', {}],
+      ['Ê tô cơ khí 4 inch (mẫu cũ)', 'e-to-co-khi-4-inch', 'AV-ETO4', 'pc', 1850000, null, '', '', 7, 0, 0, 'published', '2025-11-02T08:00', '2026-10-03T10:00', '1/1', { en: 'full' }, '2026-10-03T10:00'],
+      ['Mũi khoan tâm D3.15', 'mui-khoan-tam-d3-15', 'AV-MKT3', 'pa2', 95000, null, '', '', 50, 0, 0, 'draft', '', '2026-09-28T16:20', '', {}, '2026-09-28T16:20']
+    ];
+    const items = R.map((r, i) => ({ ma: ulid(i + 1), name: r[0], slug: r[1], sku: r[2], cat: r[3], cats: [r[3]], price: r[4], sale: r[5], saleFrom: r[6], saleTo: r[7], stock: r[8], featured: !!r[9], best: !!r[10], status: r[11], pubAt: r[12], upd: r[13], imgs: r[14] ? r[14].split(',').map((x, j) => ({ f: r[1] + '-' + (j + 1) + '.jpg', r: x })) : [], tr: r[15], trash: !!r[16], trashAt: r[16] || '' }));
+    window.__bsCatalog = { cats, items };
+    return window.__bsCatalog;
+  }
+
+  tw(k) { const D = { role: 'Biên tập', langs: '3', mode: 'Bán hàng', upsell: false, moduleOn: true, aiGranted: true, screenState: 'Có dữ liệu', saveError: 'Không', showNotes: true, embedded: false, start: 'edit' }; const v = this.props[k]; return (v === undefined || v === null || v === '') ? D[k] : v; }
+  langs() { const lc = this.props.langCodes; if (Array.isArray(lc) && lc.length) return lc.filter(c => Component.LANGS()[c]); return Component.ORDER().slice(0, Math.max(1, parseInt(this.tw('langs'), 10) || 1)); }
+  can(p) { const r = this.tw('role'); return window.BSCW && window.BSCW.can ? window.BSCW.can(r, p) : true; }
+  K() { return Component.seed(); }
+  readMore() { try { const u = JSON.parse(localStorage.getItem('bs-ui') || '{}'); return !!(u && u.editorMore); } catch (e) { return false; } }
+  writeMore(v) { try { const u = JSON.parse(localStorage.getItem('bs-ui') || '{}') || {}; u.editorMore = !!v; if (!u.version) u.version = 1; localStorage.setItem('bs-ui', JSON.stringify(u)); } catch (e) {} }
+  hashParams() { const o = {}; try { const h = (window.location.hash || '').replace(/^#/, ''); h.split('&').forEach(kv => { const p = kv.split('='); if (p[0]) o[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); }); } catch (e) {} return o; }
+  target() {
+    const emb = !!this.tw('embedded'), H = emb ? {} : this.hashParams();
+    if (emb) return { mode: this.tw('start') === 'new' ? 'new' : 'edit', ma: this.props.ma || '', lang: this.props.lang || '' };
+    if (H.new !== undefined) return { mode: 'new', ma: '', lang: '' };
+    if (H.ma) return { mode: 'edit', ma: H.ma, lang: H.lang || '' };
+    return this.tw('start') === 'new' ? { mode: 'new', ma: '', lang: '' } : { mode: 'edit', ma: this.props.ma || this.K().items[0].ma, lang: this.props.lang || '' };
+  }
+  blank() { return { ma: '', name: '', slug: '', sku: '', cat: '', cats: [], price: null, sale: null, saleFrom: '', saleTo: '', stock: null, featured: false, best: false, status: 'draft', pubAt: '', upd: '', imgs: [], tr: {}, trash: false, trashAt: '' }; }
+  /* nội dung theo ngôn ngữ: x.L[code] = {name, slug, excerpt, body, seoT, seoD}; bản nguồn nằm ở chính các trường của sản phẩm */
+  expand(it) {
+    const f = JSON.parse(JSON.stringify(it)); const src = this.langs()[0];
+    const body = it.body != null ? it.body : (it.name ? '<p>' + it.name + ' — hàng chính hãng, có sẵn tại xưởng, giao toàn quốc. Bảo hành 12 tháng, hỗ trợ lắp đặt và hướng dẫn vận hành.</p><h3>Thông số kỹ thuật</h3><table><tbody><tr><th>Thông số</th><th>Giá trị</th></tr><tr><td>Xuất xứ</td><td>Đài Loan</td></tr><tr><td>Bảo hành</td><td>12 tháng</td></tr></tbody></table>' : '');
+    f.L = it.L ? JSON.parse(JSON.stringify(it.L)) : {};
+    if (!f.L[src]) f.L[src] = { name: it.name, slug: it.slug, excerpt: it.excerpt || (it.name ? it.name + ' — hàng chính hãng, giao toàn quốc, bảo hành 12 tháng.' : ''), body, seoT: it.seoT || '', seoD: it.seoD || '' };
+    this.langs().slice(1).forEach(c => { if (f.L[c]) return; const s = (it.tr || {})[c] || 'empty'; const S = f.L[src];
+      f.L[c] = s === 'empty' ? { name: '', slug: '', excerpt: '', body: '', seoT: '', seoD: '' } : { name: this.fakeTr(S.name, c), slug: s === 'miss' ? '' : S.slug, excerpt: s === 'miss' ? '' : this.fakeTr(S.excerpt, c), body: s === 'miss' ? '' : this.fakeTr(S.body, c), seoT: '', seoD: '' };
+      f.L[c]._ai = s === 'ai'; f.L[c]._stale = s === 'stale'; });
+    return f;
+  }
+  fakeTr(t, c) { if (!t) return ''; const tag = { en: '[EN] ', ja: '[JA] ', zh: '[ZH] ', ko: '[KO] ', th: '[TH] ', fr: '[FR] ', ar: '[AR] ' }[c] || ''; return /^</.test(t) ? t.replace(/<p>/, '<p>' + tag) : tag + t; }
+  snapOf(f) { const o = Object.assign({}, f); delete o.upd; return JSON.stringify(o); }
+  load() {
+    const T = this.target(); const K = this.K(); const key = T.mode + ':' + T.ma;
+    let f = null, miss = false;
+    if (T.mode === 'new') f = this.expand(this.blank());
+    else { const it = K.items.find(x => x.ma === T.ma); if (it) f = this.expand(it); else miss = true; }
+    const langs = this.langs(); const cur = T.lang && langs.indexOf(T.lang) >= 0 ? T.lang : langs[0];
+    this.setState({ f, base: f ? this.snapOf(f) : '', key, cur, miss, errs: {}, sv: 'idle', selImg: -1, sug: null, sugUndo: null, newUndo: null, slugTouched: T.mode !== 'new', priceOpen: false, rteOn: true });
+  }
+  componentDidMount() {
+    this.load();
+    this._st = (e) => { if (!e.detail || e.detail.src === 'editor') return; this.forceUpdate(); }; document.addEventListener('bs-catalog-store', this._st);
+    this._cmd = (e) => { const d = (e && e.detail) || {}; if (d.id !== (this.props.embedId || 'catalog')) return; if (d.act === 'save') this.doSave(null); if (d.act === 'reset') this.load(); if (d.act === 'firstError') this.focusErr(); };
+    document.addEventListener('bs-embed-cmd', this._cmd);
+    this._hc = () => { if (!this.tw('embedded')) this.load(); }; window.addEventListener('hashchange', this._hc);
+    this._bu = (e) => { if (this.dirtyN() > 0) { e.preventDefault(); e.returnValue = ''; } }; window.addEventListener('beforeunload', this._bu);
+    this._esc = (e) => { if (e.key !== 'Escape') return; if (this.state.pickerOpen) this.closePicker(); else if (this.state.act) this.setState({ act: false }); else if (this.state.lbOpen) this.setState({ lbOpen: false }); else if (this.state.trWhy) this.setState({ trWhy: false }); };
+    window.addEventListener('keydown', this._esc);
+    try { const u = JSON.parse(localStorage.getItem('bs-ui') || '{}'); if (u && u.fontSize === 'large') this.setState({ big: true }); } catch (e) {}
+    this._pp = { ma: this.props.ma, start: this.props.start, lang: this.props.lang, langs: this.tw('langs') };
+  }
+  componentDidUpdate() {
+    const p = { ma: this.props.ma, start: this.props.start, lang: this.props.lang, langs: this.tw('langs') }, o = this._pp || {};
+    if (p.ma !== o.ma || p.start !== o.start || p.langs !== o.langs) { this._pp = p; this.load(); return; }
+    if (p.lang !== o.lang) { this._pp = p; if (p.lang && this.langs().indexOf(p.lang) >= 0) this.setState({ cur: p.lang }); }
+    const n = this.dirtyN(); if (n !== this._lastDirty) { this._lastDirty = n; if (this.props.onDirty) this.props.onDirty(n); }
+  }
+  componentWillUnmount() { document.removeEventListener('bs-catalog-store', this._st); document.removeEventListener('bs-embed-cmd', this._cmd); window.removeEventListener('hashchange', this._hc); window.removeEventListener('beforeunload', this._bu); window.removeEventListener('keydown', this._esc); ['_tt', '_auto', '_job', '_svt', '_lt'].forEach(k => clearTimeout(this[k])); clearInterval(this._jobI); }
+
+  dirtyN() {
+    const S = this.state; if (!S.f || !S.base) return 0; const a = JSON.parse(this.snapOf(S.f)), b = JSON.parse(S.base); let n = 0;
+    ['price', 'sale', 'saleFrom', 'saleTo', 'stock', 'sku', 'featured', 'best', 'cat', 'status'].forEach(k => { if (JSON.stringify(a[k]) !== JSON.stringify(b[k])) n++; });
+    if (JSON.stringify(a.imgs) !== JSON.stringify(b.imgs)) n++; if (JSON.stringify(a.cats) !== JSON.stringify(b.cats)) n++;
+    Object.keys(a.L || {}).forEach(c => ['name', 'slug', 'excerpt', 'body', 'seoT', 'seoD'].forEach(k => { if (((a.L[c] || {})[k] || '') !== (((b.L || {})[c] || {})[k] || '')) n++; }));
+    return n;
+  }
+  toast(msg, icon, undo, undoLabel) { clearTimeout(this._tt); this.setState({ toast: { msg, icon: icon || 'ri-check-line', undo: undo || null, ul: undoLabel || 'Hoàn tác' } }); this._tt = setTimeout(() => this.setState({ toast: null }), undo ? 8000 : 4500); }
+  goto(screen, params, force) {
+    if (this.tw('embedded')) { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen, params: params || {}, force: !!force } })); } catch (e) {} return; }
+    if (screen === 'catalog.list') { try { window.location.href = encodeURI('Sản phẩm - Danh sách.dc.html'); } catch (e) {} return; }
+    if (screen === 'catalog.edit') { try { window.location.hash = 'ma=' + encodeURIComponent(params.ma); } catch (e) {} return; }
+    this.toast('Trong Admin Shell, nút này mở ' + (screen === 'settings' ? 'Cài đặt' : 'trang liên quan') + '.', 'ri-information-line');
+  }
+  upd(fn, opts) { this.setState(s => { const f = JSON.parse(JSON.stringify(s.f)); fn(f, s); return Object.assign({ f, sv: 'dirty' }, opts || {}); }, () => this.armAuto()); }
+  armAuto() { clearTimeout(this._auto); const f = this.state.f; if (!f || f.status !== 'draft' || !this.can('catalog.manage')) return; this._auto = setTimeout(() => { if (this.dirtyN() > 0 && !Object.keys(this.validate(this.state.f, true)).length) this.doSave(null, true); }, 3000); }
+  fmt(n) { return Number(n).toLocaleString('vi-VN'); }
+  money(v) { const d = String(v || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '').slice(0, 13); return d === '' ? null : Number(d); }
+  ts(s) { return s ? Date.parse(s) : 0; }
+  dt(s) { if (!s) return ''; const d = new Date(Date.parse(s)); const p = (x) => String(x).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  nowStr() { const d = new Date(); const p = (x) => String(x).padStart(2, '0'); return '2026-10-07T' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  deacc(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd'); }
+  slugify(s) { return window.BSSEO ? window.BSSEO.slugify(s) : this.deacc(s).replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-'); }
+  catOf(k) { return this.K().cats.find(c => c.k === k); }
+  catPath(k) { const out = []; let c = this.catOf(k); while (c) { out.unshift(c.n); c = c.p ? this.catOf(c.p) : null; } return out.join(' › '); }
+  depth(k) { let d = 0, c = this.catOf(k); while (c && c.p) { d++; c = this.catOf(c.p); } return d; }
+  catTree() { const K = this.K(); const out = []; const walk = (p) => K.cats.filter(c => c.p === p).forEach(c => { out.push(c); walk(c.k); }); walk(null); return out; }
+  txt(html) { const d = document.createElement('div'); d.innerHTML = String(html || ''); return (d.textContent || '').replace(/\s+/g, ' ').trim(); }
+
+  validate(f, quiet) {
+    const e = {}, K = this.K(), src = this.langs()[0], S0 = f.L[src] || {};
+    if (!String(S0.name || '').trim()) e.name = 'Nhập tên sản phẩm, ví dụ “Dao phay ngón hợp kim 4 me D10”.';
+    if (f.sale != null) { if (f.price == null) e.sale = 'Nhập giá bán trước, rồi mới đặt giá khuyến mãi.'; else if (f.sale >= f.price) e.sale = 'Giá khuyến mãi cần thấp hơn giá bán (' + this.fmt(f.price) + ' ₫). Ví dụ ' + this.fmt(Math.round(f.price * 0.9 / 1000) * 1000) + ' ₫.'; }
+    if (f.saleFrom && f.saleTo && this.ts(f.saleTo) <= this.ts(f.saleFrom)) e.date = 'Ngày kết thúc cần sau ngày bắt đầu (' + this.dt(f.saleFrom) + ').';
+    const sku = String(f.sku || '').trim().toUpperCase();
+    if (sku) { const o = K.items.find(x => x.ma !== f.ma && String(x.sku || '').toUpperCase() === sku); if (o) e.sku = 'Mã “' + sku + '” đang dùng cho “' + o.name + '”' + (o.trash ? ' trong Thùng rác. Đổi mã khác, hoặc khôi phục sản phẩm đó rồi sửa ở đó.' : '. Mỗi mã chỉ dùng cho một sản phẩm — thêm hậu tố, ví dụ “' + sku + '-B”.'); }
+    this.langs().forEach(c => { const L = f.L[c] || {}; const s = String(L.slug || '').trim(); if (!s) return; let m = '';
+      if (Component.RESERVED().indexOf(s) >= 0) m = 'Đường dẫn “' + s + '” trùng một trang có sẵn của website. Thêm vài chữ cho khác, ví dụ “' + s + '-cnc”.';
+      else { const ct = K.cats.find(x => x.slug === s); if (ct) m = 'Đường dẫn “' + s + '” đang là của chuyên mục “' + ct.n + '”. Thêm vài chữ cho khác, ví dụ “' + s + '-cnc”.'; else { const p = K.items.find(x => x.ma !== f.ma && x.slug === s); if (p) m = 'Đường dẫn “' + s + '” đã dùng cho sản phẩm “' + p.name + '”' + (p.trash ? ' trong Thùng rác' : '') + '. Thêm vài chữ cho khác.'; } }
+      if (m && !e.slug) { e.slug = m; e.slugLang = c; } });
+    if (!quiet && this.tw('saveError') === 'Chuyên mục không hợp lệ' && this.state.catFail && f.cat) { const c = this.catOf(f.cat); e.cat = 'Chuyên mục “' + (c ? c.n : '') + '” vừa bị chuyển vào Thùng rác ở máy khác. Chọn chuyên mục khác rồi lưu lại.'; }
+    return e;
+  }
+  focusErr() {
+    const root = this._root || document; setTimeout(() => { const el = root.querySelector('[aria-invalid="true"]'); if (el && el.focus) { try { el.focus(); } catch (e) {} } }, 60);
+  }
+  doSave(nextStatus, auto) {
+    const S = this.state; if (!S.f || S.busy || !this.can('catalog.manage')) return;
+    const f = JSON.parse(JSON.stringify(S.f)); if (nextStatus) f.status = nextStatus;
+    const errs = this.validate(f);
+    if (Object.keys(errs).length) { if (auto) return; const need = errs.slug || errs.sale || errs.date || errs.sku || errs.cat; const n = Object.keys(errs).filter(k => k !== 'slugLang').length;
+      this.setState({ errs, sv: 'error', more: S.more || !!need, cur: errs.slugLang && !errs.name ? errs.slugLang : S.cur, priceOpen: S.priceOpen || !!(errs.sale || errs.date) }, () => this.focusErr()); if (need && !S.more) this.writeMore(true); this.toast('Chưa lưu — còn ' + n + ' ô cần sửa. Con trỏ đã đưa tới ô đầu tiên.', 'ri-error-warning-line'); return; }
+    this.setState({ busy: true, sv: 'saving', errs: {} });
+    clearTimeout(this._svt);
+    this._svt = setTimeout(() => {
+      if (this.tw('saveError') === 'Mất mạng' && this.state.failOnce) { this.setState({ busy: false, sv: 'offline', failOnce: false, retry: nextStatus || '_' }); this.toast('Chưa lưu được vì mất kết nối. Chữ bạn nhập vẫn còn — bấm Thử lại.', 'ri-wifi-off-line'); return; }
+      const K = this.K(), src = this.langs()[0], isNew = !f.ma;
+      if (isNew) { const A = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'; let u = '01JB'; for (let i = 0; i < 22; i++) u += A[Math.floor(Math.random() * 32)]; f.ma = u; }
+      if (f.status === 'published' && !f.pubAt) f.pubAt = this.nowStr();
+      f.upd = this.nowStr();
+      const S0 = f.L[src]; f.name = S0.name; f.slug = S0.slug || this.slugify(S0.name); S0.slug = f.slug; f.sku = String(f.sku || '').trim().toUpperCase();
+      f.tr = {}; this.langs().slice(1).forEach(c => { const L = f.L[c] || {}; const filled = ['name', 'slug', 'excerpt', 'body'].filter(k => String(L[k] || '').trim()).length; f.tr[c] = !filled ? 'empty' : (filled < 4 ? 'miss' : (L._ai ? 'ai' : (L._stale ? 'stale' : 'full'))); });
+      const rec = JSON.parse(JSON.stringify(f)); rec.body = S0.body; rec.excerpt = S0.excerpt; rec.seoT = S0.seoT; rec.seoD = S0.seoD;
+      const i = K.items.findIndex(x => x.ma === f.ma); if (i >= 0) K.items[i] = rec; else K.items.unshift(rec);
+      try { document.dispatchEvent(new CustomEvent('bs-catalog-store', { detail: { src: 'editor' } })); } catch (e) {}
+      const p = new Date(); const hh = String(p.getHours()).padStart(2, '0') + ':' + String(p.getMinutes()).padStart(2, '0');
+      this._lastDirty = -1;
+      this.setState({ f, base: this.snapOf(f), busy: false, sv: auto ? 'auto' : 'saved', svAt: hh, key: 'edit:' + f.ma, slugTouched: true, retry: null, catFail: this.tw('saveError') === 'Chuyên mục không hợp lệ' ? this.state.catFail : true });
+      const url = 'anvinh.vn/san-pham/' + f.slug;
+      if (!auto) this.toast(nextStatus === 'published' && S.f.status !== 'published' ? 'Đã đăng — khách thấy ngay ở ' + url + '.' : (f.status === 'published' ? 'Đã cập nhật — khách thấy thay đổi ngay.' : (nextStatus === 'archived' ? 'Đã gỡ khỏi website. Nội dung vẫn giữ nguyên.' : (nextStatus === 'draft' ? 'Đã đưa về Bản nháp — khách không còn thấy.' : 'Đã lưu nháp lúc ' + hh + '.'))), 'ri-check-line');
+      if (isNew && this.tw('embedded')) this.goto('catalog.edit', { ma: f.ma }, true);
+      else if (isNew) { try { history.replaceState(null, '', '#ma=' + f.ma); } catch (e) {} }
+    }, 700);
+  }
+
+  closePicker() { this.setState({ pickerOpen: false }); const el = this._pickOpener; this._pickOpener = null; if (el && el.focus) setTimeout(() => { try { el.focus(); } catch (e) {} }, 0); }
+
+  renderVals() {
+    const S = this.state, K = this.K(), emb = !!this.tw('embedded'), f = S.f;
+    const role = this.tw('role'), canView = this.can('catalog.view'), canManage = this.can('catalog.manage'), canSettings = this.can('settings.manage');
+    const sales = this.tw('mode') === 'Bán hàng', upsell = !!this.tw('upsell'), modOn = this.tw('moduleOn') !== false, notesOn = this.tw('showNotes') !== false;
+    const langs = this.langs(), multi = langs.length > 1, src = langs[0], LN = Component.LANGS(), cur = S.cur && langs.indexOf(S.cur) >= 0 ? S.cur : src;
+    const frameMode = (() => { try { return window.location.hash === '#frame'; } catch (e) { return false; } })();
+    const big = !emb && (this.props.bigText === true || S.big);
+    const isNew = !!(f && !f.ma);
+    const aiGranted = this.tw('aiGranted') !== false, aiOn = aiGranted && canManage, aiLocked = !aiGranted && upsell && canManage;
+    const PL = window.BSAI ? window.BSAI.plan(this.props.planKey) : { name: 'Cơ bản', words: 60000 };
+    const limit = PL.words, left = Math.max(0, limit - S.used);
+    const nf = (n) => Number(n).toLocaleString('vi-VN');
+
+    /* ---- trạng thái màn ---- */
+    let st = S.stOver || ({ 'Có dữ liệu': 'data', 'Đang tải': 'loading', 'Lỗi': 'error' }[this.tw('screenState')] || 'data');
+    if (!modOn) st = 'plan'; else if (!canView) st = 'noperm'; else if (st === 'data' && (S.miss || !f)) st = S.miss ? 'notfound' : 'loading'; else if (st === 'data' && f.trash) st = 'trash';
+    if (st === 'data' && isNew && !canManage) st = 'noperm';
+    const MOD = (window.BSAI && window.BSAI.MODULES && window.BSAI.MODULES.catalog) || { name: 'Sản phẩm', benefit: 'Giới thiệu sản phẩm có ảnh, giá và thông số — khách xem và gửi yêu cầu báo giá.' };
+    const back = () => this.goto('catalog.list', {}, false);
+    const STV = {
+      error: { icon: 'ri-wifi-off-line', title: 'Chưa mở được sản phẩm', text: 'Mạng chập chờn hoặc máy chủ đang bận. Không có gì bị mất — bấm Thử lại.', btn: 'Thử lại', bi: 'ri-refresh-line', cls: 'pri', run: () => { this.setState({ stOver: 'loading' }); clearTimeout(this._lt); this._lt = setTimeout(() => this.setState({ stOver: 'data' }), 900); }, back: true },
+      noperm: { icon: 'ri-lock-2-line', title: isNew ? 'Bạn chưa được thêm sản phẩm' : 'Bạn chưa được xem sản phẩm', text: 'Nhóm quyền “' + role + '” không có việc này. Cần làm, nhờ Chủ website thêm quyền cho bạn ở Thành viên.', btn: '', back: canView },
+      notfound: { icon: 'ri-search-eye-line', title: 'Không tìm thấy sản phẩm này', text: 'Có thể sản phẩm đã bị xóa vĩnh viễn hoặc địa chỉ bị gõ sai. Mở lại từ danh sách sản phẩm.', btn: '', back: true },
+      trash: { icon: 'ri-delete-bin-line', title: 'Sản phẩm này đang ở Thùng rác', text: canManage ? 'Khôi phục để sửa tiếp — sản phẩm về Bản nháp, mã SKU và đường dẫn giữ nguyên.' : 'Sản phẩm đã được chuyển vào Thùng rác.', btn: canManage ? 'Khôi phục' : '', bi: 'ri-arrow-go-back-line', cls: 'pri', run: () => { const it = K.items.find(x => x.ma === f.ma); if (it) { it.trash = false; it.trashAt = ''; it.status = 'draft'; } this.load(); try { document.dispatchEvent(new CustomEvent('bs-catalog-store', { detail: { src: 'editor' } })); } catch (e) {} this.toast('Đã khôi phục về Bản nháp.', 'ri-arrow-go-back-line'); }, back: true },
+      plan: upsell ? { icon: 'ri-vip-crown-2-line', title: MOD.name + ' chưa có trong gói của website', text: MOD.benefit, btn: 'Xem gói nâng cấp', bi: 'ri-arrow-right-up-line', cls: 'pri', run: () => this.goto('settings', { section: 'plan' }) } : { icon: 'ri-lock-2-line', title: 'Sản phẩm chưa bật cho website này', text: 'Chưa bật cho website này — liên hệ hỗ trợ để được bật.', btn: 'Liên hệ hỗ trợ', bi: 'ri-customer-service-2-line', cls: '', run: () => this.toast('Bản thật mở khung Trợ giúp với số điện thoại, Zalo và email của bộ phận hỗ trợ.', 'ri-customer-service-2-line') }
+    };
+    const SV = STV[st] || {};
+    const showForm = st === 'data' && !!f;
+    const base = { embAttr: emb ? '1' : '0', notEmb: !emb, fsAttr: big ? 'large' : 'normal', rootRef: this.rootRef, notesOn, roleName: role,
+      listHref: encodeURI('Sản phẩm - Danh sách.dc.html'), onBackLink: (e) => { if (emb) { e.preventDefault(); back(); } }, crumbLast: isNew ? 'Thêm mới' : 'Sửa', h1Text: isNew ? 'Thêm sản phẩm' : (canManage ? 'Sửa sản phẩm' : 'Xem sản phẩm'),
+      showState: st !== 'data', isLoading: st === 'loading', notLoading: st !== 'loading', stKey: st, stRole: st === 'error' ? 'alert' : 'status', stIcon: SV.icon || '', stTitle: SV.title || '', stText: SV.text || '', stBtn: !!SV.btn, stBtnCls: SV.cls || '', stBtnIcon: SV.bi || '', stBtnLabel: SV.btn || '', onStBtn: () => SV.run && SV.run(), stBack: !!SV.back, onBack: back,
+      showForm, showFrames: !emb && !frameMode && this.props.frames !== false, stop: (e) => e.stopPropagation() };
+    if (!showForm) return Object.assign(base, { showToast: !!S.toast, toastMsg: S.toast ? S.toast.msg : '', toastIcon: S.toast ? S.toast.icon : '', toastUndo: false, toastUndoLabel: '', onToastClose: () => this.setState({ toast: null }), pickerOpen: false, actOpen: false, lbOpen: false });
+
+    /* ---- biểu mẫu ---- */
+    const readOnly = !canManage, canEdit = canManage;
+    const L = f.L[cur] || {}, S0 = f.L[src] || {}, locked = multi && cur !== src, shDis = readOnly || locked;
+    const lockWhy = 'Dùng chung cho mọi ngôn ngữ — sửa ở bản ' + LN[src] + '.';
+    const E = S.errs || {};
+    const meter = (field, v) => { const M = window.BSSEO ? window.BSSEO.meter(field, String(v || '').length) : { band: 'empty', icon: '', text: '', lo: 0, hi: 0, pct: 0, tick: 0 }; return { band: M.band, icon: M.icon, text: M.text, lo: M.lo.toFixed(1), zw: (M.hi - M.lo).toFixed(1), pct: M.pct.toFixed(1), tick: M.tick.toFixed(1) }; };
+    const setL = (k, v, extra) => this.upd((x) => { x.L[cur] = Object.assign({}, x.L[cur], { [k]: v }); if (x.L[cur]._stale && k !== 'slug') x.L[cur]._stale = false; if (extra) extra(x); }, { errs: Object.assign({}, S.errs, { [k === 'name' ? 'name' : k]: undefined }) });
+    const isPub = f.status === 'published';
+    const slugNow = L.slug || (cur === src ? this.slugify(L.name || '') : '');
+    const base0 = S.base ? JSON.parse(S.base) : null; const oldSlug = base0 && base0.L && base0.L[cur] ? base0.L[cur].slug : '';
+    const urlPrefix = 'anvinh.vn/' + (cur === src ? '' : cur + '/') + 'san-pham/';
+    const urlFull = urlPrefix + (slugNow || 'duong-dan-san-pham');
+    const priceShow = f.price == null ? 'Liên hệ báo giá' : (f.price === 0 ? '0 ₫' : nf(f.price) + ' ₫');
+    const saleOn = f.sale != null && f.price != null && f.sale < f.price;
+
+    /* thanh ngôn ngữ */
+    const fieldsDone = (c) => { const X = f.L[c] || {}; return ['name', 'slug', 'excerpt', 'body', 'seoT', 'seoD'].filter(k => String(k === 'body' ? this.txt(X[k]) : (X[k] || '')).trim()).length; };
+    const lst = (c) => { if (c === src) return 'full'; const X = f.L[c] || {}; const core = ['name', 'slug', 'excerpt', 'body'].filter(k => String(k === 'body' ? this.txt(X[k]) : (X[k] || '')).trim()).length; if (!core) return 'empty'; if (X._stale) return 'stale'; if (core < 4) return 'miss'; return X._ai ? 'ai' : 'full'; };
+    const LBL = { full: 'Đủ nội dung', ai: 'AI vừa dịch, chưa kiểm', miss: 'Còn thiếu trường', stale: 'Lỗi thời so với bản nguồn', empty: 'Chưa có nội dung' };
+    const stLab = (c) => c === src ? 'Bản nguồn — các bản khác dịch từ đây' : LBL[lst(c)];
+    const pick = (c) => () => this.setState({ cur: c, lbOpen: false, lbQ: '', trWhy: false, sug: null });
+    const langPills = langs.map(c => ({ n: LN[c], cur: c === cur ? 'true' : 'false', x: (c === src || c === cur) ? 'false' : 'true', st: lst(c), stLabel: LN[c] + ': ' + stLab(c), src: c === src, pick: pick(c) }));
+    const nX = langPills.filter(p => p.x === 'true').length;
+    const lq = this.deacc(S.lbQ).trim();
+    const panelLangs = langs.filter(c => !lq || this.deacc(LN[c]).indexOf(lq) >= 0 || c.indexOf(lq) >= 0).map(c => ({ n: LN[c], cur: c === cur ? 'true' : 'false', st: lst(c), stLabel: stLab(c), src: c === src, cnt: c === src ? '' : fieldsDone(c) + '/6', pick: pick(c) }));
+    const done = langs.filter(c => lst(c) === 'full' || lst(c) === 'ai').length;
+    /* chi phí dịch theo số từ thật của bản nguồn ở các ô còn trống */
+    const KEYS = ['name', 'slug', 'excerpt', 'body', 'seoT', 'seoD'];
+    const gaps = (c) => KEYS.filter(k => k !== 'slug' && !String(k === 'body' ? this.txt((f.L[c] || {})[k]) : ((f.L[c] || {})[k] || '')).trim() && String(k === 'body' ? this.txt(S0[k]) : (S0[k] || '')).trim());
+    const costOf = (cs) => { const T = []; cs.forEach(c => gaps(c).forEach(k => T.push(k === 'body' ? this.txt(S0[k]) : S0[k]))); return T.length ? (window.BSAI ? window.BSAI.translateCost(T) : T.join(' ').split(/\s+/).length) : 0; };
+    const targets = cur === src ? langs.slice(1).filter(c => gaps(c).length) : (gaps(cur).length ? [cur] : []);
+    const allTargets = langs.slice(1).filter(c => gaps(c).length);
+    const trCost = costOf(targets), allCost = costOf(allTargets);
+    const trLabel = cur === src ? 'Dịch sang ' + Math.max(targets.length, langs.length - 1) + ' ngôn ngữ' : 'Dịch bản ' + LN[cur];
+    const trOff = !targets.length || trCost > left || !!S.job;
+    const trWhy = !targets.length ? 'Mọi ô đã có bản dịch.' : (trCost > left ? 'Cần khoảng ' + nf(trCost) + ' từ AI, website còn ' + nf(left) + '. ' + (upsell ? 'Mua thêm từ AI ở Cài đặt › Gói & mức dùng.' : 'Cần thêm? Liên hệ hỗ trợ.') : 'Chỉ điền ô còn trống của ' + targets.length + ' bản. Dùng khoảng ' + nf(trCost) + ' từ AI, còn lại ' + nf(left - trCost) + '.');
+    const runTr = (cs, cost) => { if (!cs.length || cost > left || S.job) return; const fill = () => { this.upd((x) => { cs.forEach(c => { const X = x.L[c] = Object.assign({ name: '', slug: '', excerpt: '', body: '', seoT: '', seoD: '' }, x.L[c]); KEYS.forEach(k => { if (k === 'slug') { if (!X.slug && S0.slug) X.slug = S0.slug; return; } const has = String(k === 'body' ? this.txt(X[k]) : (X[k] || '')).trim(); if (!has && String(S0[k] || '').trim()) X[k] = this.fakeTr(S0[k], c); }); X._ai = true; X._stale = false; }); }, { job: null, used: this.state.used + cost }); this.toast('Đã dịch ' + cs.length + ' bản — dùng ' + nf(cost) + ' từ AI. Sửa chỗ nào chưa ưng rồi bấm Lưu.', 'ri-sparkling-2-line'); };
+      this.setState({ job: { cs, cost, pct: 5 }, lbOpen: false }); clearInterval(this._jobI); this._jobI = setInterval(() => { const j = this.state.job; if (!j) { clearInterval(this._jobI); return; } if (j.pct >= 100) { clearInterval(this._jobI); fill(); return; } this.setState({ job: Object.assign({}, j, { pct: Math.min(100, j.pct + 19) }) }); }, 320); };
+    const pctLeft = limit ? left / limit : 0;
+    let line = { tone: 'src', icon: 'ri-information-line', text: 'Đây là bản nguồn — nhập đủ và chuẩn các trường có chip ' + src.toUpperCase() + ', rồi bấm Dịch để đổ sang ' + (langs.length - 1) + ' ngôn ngữ còn lại.' };
+    if (cur !== src) { const s = lst(cur); if (s === 'ai') line = { tone: 'ai', icon: 'ri-sparkling-2-line', text: 'Bản ' + LN[cur] + ' do AI dịch từ ' + LN[src] + ' — sửa chỗ nào chưa ưng rồi bấm Lưu.' }; else if (s === 'empty' || s === 'miss') line = { tone: 'warn', icon: 'ri-error-warning-line', text: s === 'empty' ? 'Bản ' + LN[cur] + ' chưa có nội dung — khách xem tiếng ' + LN[cur] + ' sẽ thấy bản ' + LN[src] + '. Bấm Dịch hoặc tự nhập.' : 'Bản ' + LN[cur] + ' còn thiếu ' + (6 - fieldsDone(cur)) + ' trường — bấm Dịch để điền ô còn trống.' }; else if (s === 'stale') line = { tone: 'danger', icon: 'ri-history-line', text: 'Bản ' + LN[cur] + ' cũ hơn bản nguồn — tên và mô tả bản ' + LN[src] + ' đã đổi sau lần dịch trước. Kiểm lại rồi bấm Lưu.' }; else line = { tone: 'src', icon: 'ri-checkbox-circle-line', text: 'Bản ' + LN[cur] + ' đã đủ nội dung. Ảnh, giá, mã và chuyên mục dùng chung — sửa ở bản ' + LN[src] + '.' }; }
+    if (aiOn && !left) line = { tone: 'danger', icon: 'ri-error-warning-line', text: 'Đã hết từ AI trong tháng này — nút Dịch tạm khóa. ' + (upsell ? 'Mua thêm từ AI hoặc nâng gói ở Cài đặt › Gói & mức dùng.' : 'Cần thêm? Liên hệ hỗ trợ.') };
+    else if (aiOn && pctLeft <= 0.2 && cur === src) line = { tone: 'warn', icon: 'ri-error-warning-line', text: 'Còn ' + nf(left) + ' từ AI (dưới 20%) — ' + (window.BSAI ? window.BSAI.enough(left, ['label']) : '') + '.' };
+
+    /* AI gợi ý mô tả ngắn */
+    const bodyTxt = this.txt(L.body);
+    const sugSrc = (L.name || '') + '. ' + bodyTxt;
+    const sugOff = !String(L.name || '').trim() && !bodyTxt;
+    const sugCost = 40;
+    const mkSug = () => { const first = bodyTxt.split(/(?<=[.!?])\s/)[0] || ''; let t = (L.name || '') + (first ? ' — ' + first.replace(/^.*?—\s*/, '') : ' — hàng chính hãng, giao toàn quốc, bảo hành 12 tháng.'); if (t.length > 190) t = t.slice(0, 187).replace(/\s\S*$/, '') + '…'; return t; };
+    /* AI viết mới (mô tả trống) */
+    const newCost = 420, newOff = !!bodyTxt || newCost > left;
+    const newWhy = bodyTxt ? 'Mô tả đã có chữ — bôi đen một đoạn trong ô soạn để nhờ AI viết lại đoạn đó.' : (newCost > left ? 'Cần khoảng ' + nf(newCost) + ' từ AI, website còn ' + nf(left) + '.' : 'AI viết mô tả + bảng thông số từ tên sản phẩm. Dùng khoảng ' + nf(newCost) + ' từ AI, còn lại ' + nf(left - newCost) + '. Chưa ưng thì Hoàn tác.');
+
+    /* ảnh */
+    const imgs = f.imgs || [];
+    const si = S.selImg >= 0 && S.selImg < imgs.length ? S.selImg : -1;
+    const canImg = canManage && !locked;
+    const moveImg = (from, to) => { if (to < 0 || to >= imgs.length || from === to) return; this.upd((x) => { const a = x.imgs; const [m] = a.splice(from, 1); a.splice(to, 0, m); }, { selImg: to }); };
+    const ratio = (r) => { const p = String(r || '4/3').split('/'); return (+p[0] || 4) / (+p[1] || 3); };
+    const imgV = imgs.map((im, i) => ({ f: im.f, n: String(i + 1), r: im.r || '4/3', o: ratio(im.r) >= 1 ? 'l' : 'p', cover: i === 0, selA: i === si ? '1' : '0', selA2: i === si ? 'true' : 'false', overA: S.overI === i ? '1' : '0', drag: canImg ? 'true' : 'false', aria: 'Ảnh ' + (i + 1) + ': ' + im.f + (i === 0 ? ' — ảnh đại diện' : '') + ' — bấm để chọn',
+      pick: () => canImg ? this.setState({ selImg: i === si ? -1 : i }) : null,
+      onDragStart: (e) => { if (!canImg) return; this.setState({ dragI: i }); try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); } catch (er) {} },
+      onDragOver: (e) => { if (this.state.dragI < 0) return; e.preventDefault(); if (this.state.overI !== i) this.setState({ overI: i }); },
+      onDragLeave: () => { if (this.state.overI === i) this.setState({ overI: -1 }); },
+      onDrop: (e) => { e.preventDefault(); const from = this.state.dragI; this.setState({ dragI: -1, overI: -1 }); if (from >= 0) moveImg(from, i); } }));
+
+    /* chuyên mục */
+    const cq = this.deacc(S.catQ).trim();
+    const crs = (cq ? K.cats.filter(c => this.deacc(c.n).indexOf(cq) >= 0) : this.catTree()).map(c => {
+      const on = (f.cats || []).indexOf(c.k) >= 0, isMain = f.cat === c.k;
+      return { n: c.n, d: cq ? '0' : String(Math.min(2, this.depth(c.k))), path: cq && c.p ? this.catPath(c.p) + ' › ' : '', hasPath: !!(cq && c.p), full: this.catPath(c.k), on, isMain: on && isMain, canStar: on && !isMain && !shDis,
+        toggle: () => this.upd((x) => { const a = x.cats || []; const i = a.indexOf(c.k); if (i >= 0) { a.splice(i, 1); if (x.cat === c.k) x.cat = a[0] || ''; } else { a.push(c.k); if (!x.cat) x.cat = c.k; } x.cats = a; }, { errs: Object.assign({}, S.errs, { cat: undefined }), catFail: false }),
+        star: () => this.upd((x) => { x.cat = c.k; const a = (x.cats || []).filter(k => k !== c.k); a.unshift(c.k); x.cats = a; }, { errs: Object.assign({}, S.errs, { cat: undefined }), catFail: false }) };
+    });
+
+    /* thao tác */
+    const st0 = f.status;
+    const actItems = [];
+    if (!isNew) {
+      if (st0 === 'published') { actItems.push({ btn: true, label: 'Gỡ khỏi website', icon: 'ri-archive-line', why: 'Khách không còn thấy; nội dung giữ nguyên', on: () => { this.setState({ act: false }); this.doSave('archived'); } }); actItems.push({ btn: true, label: 'Đưa về nháp', icon: 'ri-draft-line', why: 'Ẩn khỏi website để sửa tiếp', on: () => { this.setState({ act: false }); this.doSave('draft'); } }); }
+      if (st0 === 'archived') actItems.push({ btn: true, label: 'Đưa về nháp', icon: 'ri-draft-line', why: 'Chuyển về Bản nháp để sửa tiếp', on: () => { this.setState({ act: false }); this.doSave('draft'); } });
+      if (actItems.length) actItems.push({ sep: true });
+      actItems.push({ btn: true, label: 'Chuyển vào Thùng rác', icon: 'ri-delete-bin-line', t: 'dan', why: 'Có Hoàn tác 8 giây', on: () => { const it = K.items.find(x => x.ma === f.ma); this.setState({ act: false }); if (!it) return; it.trash = true; it.trashAt = this.nowStr(); try { document.dispatchEvent(new CustomEvent('bs-catalog-store', { detail: { src: 'editor' } })); } catch (e) {} this.load(); this.toast('Đã chuyển “' + it.name + '” vào Thùng rác.', 'ri-delete-bin-line', () => { it.trash = false; it.trashAt = ''; try { document.dispatchEvent(new CustomEvent('bs-catalog-store', { detail: { src: 'editor' } })); } catch (e) {} this.load(); }); } });
+    }
+    const primary = st0 === 'published' ? { l: 'Cập nhật', i: 'ri-refresh-line', run: () => this.doSave(null) } : { l: 'Đăng', i: 'ri-global-line', run: () => this.doSave('published') };
+    const nDirty = this.dirtyN();
+    const svMap = { idle: ['auto', 'ri-checkbox-circle-line', isNew ? 'Chưa lưu lần nào' : 'Đã lưu ' + this.dt(f.upd)], dirty: ['dirty', 'ri-error-warning-line', nDirty ? nDirty + ' thay đổi chưa lưu' + (st0 === 'draft' ? ' — tự lưu sau 3 giây' : ' — bấm Cập nhật để khách thấy') : 'Không có thay đổi'], saving: ['saving', 'ri-loader-4-line', 'Đang lưu…'], saved: ['saved', 'ri-checkbox-circle-line', 'Đã lưu lúc ' + S.svAt], auto: ['saved', 'ri-checkbox-circle-line', 'Đã tự lưu nháp lúc ' + S.svAt], error: ['error', 'ri-error-warning-line', 'Chưa lưu — còn ô cần sửa'], offline: ['offline', 'ri-wifi-off-line', 'Chưa lưu được — mất kết nối'] };
+    const svk = (S.sv === 'dirty' && !nDirty) ? (S.svAt ? 'saved' : 'idle') : S.sv; const SVv = svMap[svk] || svMap.idle;
+    const seoTPh = L.name || 'Dao phay ngón hợp kim 4 me D10';
+    const seoDPh = L.excerpt || (bodyTxt ? bodyTxt.slice(0, 155) : 'Dao phay 4 me phủ AlTiN, cắt thép đến 45 HRC, giao trong ngày tại TP. Hồ Chí Minh.');
+    const stockHint = f.stock == null ? 'Để trống: không theo dõi tồn kho. Nhập 0 khi hết hàng — website hiện “Hết hàng”.' : (f.stock === 0 ? 'Website hiện “Hết hàng”.' : 'Website hiện “Còn hàng”.');
+    const nowSale = saleOn && (!f.saleFrom || this.ts(f.saleFrom) <= Component.NOW()) && (!f.saleTo || this.ts(f.saleTo) >= Component.NOW());
+    const saleHint = 'Giờ của website (giờ Việt Nam, 24 giờ). ' + (saleOn ? (nowSale ? 'Đang áp dụng: khách thấy ' + nf(f.sale) + ' ₫, giá gốc gạch ngang.' : 'Chưa tới hoặc đã qua khoảng thời gian — khách thấy giá bán.') : 'Để trống ngày kết thúc nếu chưa biết khi nào dừng.');
+    const tr = S.toast;
+    const moreSub = 'Đường dẫn, tóm tắt, mã SKU, tồn kho, khuyến mãi, nhãn, chuyên mục, Google';
+
+    return Object.assign(base, {
+      readOnly, canEdit, multi, locked, lockCls: locked ? 'spe-lock' : '', lockWhy, shDis, canSettings, dirAttr: cur === 'ar' ? 'rtl' : 'ltr',
+      svKey: SVv[0], svIcon: SVv[1], svText: SVv[2], svRetry: S.sv === 'offline', onRetry: () => this.doSave(S.retry && S.retry !== '_' ? S.retry : null),
+      busyA: S.busy ? 'true' : 'false', showSecondary: st0 !== 'published', secondaryLabel: st0 === 'archived' ? 'Lưu' : 'Lưu nháp', onSecondary: () => this.doSave(null),
+      hasActMenu: actItems.length > 0, actOpen: !!S.act, actOpenA: S.act ? 'true' : 'false', onActMenu: () => this.setState({ act: !S.act }), onCloseAct: () => this.setState({ act: false }),
+      actItems: actItems.map(m => Object.assign({ btn: false, sep: false, t: '', why: '' }, m)), primaryLabel: primary.l, primaryIcon: primary.i, onPrimary: primary.run,
+      langPills, hasMoreLangs: nX > 0, moreLangN: '+' + nX, moreLangAria: 'Thêm ' + nX + ' ngôn ngữ', curName: LN[cur], curCodeU: cur.toUpperCase(), curSt: lst(cur),
+      lbOpen: !!S.lbOpen, lbOpenA: S.lbOpen ? 'true' : 'false', onLbToggle: () => this.setState({ lbOpen: !S.lbOpen, lbQ: '' }), lbSearch: langs.length >= 6, lbQ: S.lbQ, onLbQ: (e) => this.setState({ lbQ: e.target.value }), panelLangs,
+      progText: done + '/' + langs.length + ' bản đủ nội dung',
+      aiOn, aiLocked, onUpsell: () => this.goto('settings', { section: 'plan' }),
+      quotaChip: 'Còn ' + nf(left) + ' từ AI', quotaWhy: 'Gói ' + PL.name + ': ' + nf(limit) + ' từ/tháng · đã dùng ' + nf(S.used) + ' · còn ' + nf(left) + ' — ' + (window.BSAI ? window.BSAI.enough(left, ['label', 'post']) : ''),
+      trLabel, trOffA: trOff ? 'true' : 'false', trWhy, trWhyOpen: !!S.trWhy, trWhyOpenA: S.trWhy ? 'true' : 'false', onTranslate: () => { if (trOff) { this.setState({ trWhy: !S.trWhy }); return; } runTr(targets, trCost); },
+      trAllLabel: 'Dịch ' + allTargets.length + ' bản còn thiếu', trAllOffA: (!allTargets.length || allCost > left) ? 'true' : 'false', trAllWhy: allTargets.length ? 'Dùng khoảng ' + nf(allCost) + ' từ AI' : 'Mọi bản đã đủ', onTranslateAll: () => runTr(allTargets, allCost),
+      onManageLangs: () => { this.setState({ lbOpen: false }); this.goto('settings', { section: 'languages' }); },
+      lineTone: line.tone, lineIcon: line.icon, lineText: line.text,
+      jobOn: !!S.job, jobTitle: S.job ? 'Đang dịch ' + S.job.cs.length + ' bản' : '', jobUnit: S.job ? 'khoảng ' + nf(S.job.cost) + ' từ AI' : '', jobPct: S.job ? String(S.job.pct) : '0', onJobCancel: () => { clearInterval(this._jobI); this.setState({ job: null }); this.toast('Đã hủy — không trừ từ AI nào.', 'ri-close-line'); },
+      fName: L.name || '', namePh: cur === src ? 'Dao phay ngón hợp kim 4 me D10' : (S0.name || ''), mName: meter('title', L.name), eName: !!E.name, eNameA: E.name ? 'true' : 'false', eNameT: E.name || '',
+      onName: (e) => { const v = e.target.value; setL('name', v, (x) => { if (!S.slugTouched && cur === src) x.L[cur].slug = this.slugify(v); }); },
+      more: !!S.more, moreA: S.more ? 'true' : 'false', moreIcon: S.more ? 'ri-subtract-line' : 'ri-add-line', moreLabel: S.more ? 'Ẩn bớt tùy chọn' : 'Thêm tùy chọn', moreSub: S.more ? 'Lần sau mở trình sửa sẽ nhớ lựa chọn này' : moreSub, onMore: () => { const v = !S.more; this.writeMore(v); this.setState({ more: v }); },
+      urlPrefix, fSlug: L.slug || '', eSlug: !!E.slug && E.slugLang === cur, eSlugA: E.slug && E.slugLang === cur ? 'true' : 'false', eSlugT: E.slug || '',
+      onSlug: (e) => { const v = e.target.value.toLowerCase().replace(/\s+/g, '-'); this.setState({ slugTouched: true }); setL('slug', v); }, onSlugBlur: () => { const v = this.slugify(L.slug || ''); if (v !== (L.slug || '')) setL('slug', v); },
+      slugRedirect: isPub && !!oldSlug && !!L.slug && oldSlug !== L.slug, slugOld: urlPrefix + oldSlug, urlFull, isPublished: isPub && !isNew,
+      onView: () => this.toast('Bản thật mở ' + urlFull + ' ở thẻ mới.', 'ri-external-link-line'),
+      fExc: L.excerpt || '', mExc: meter('excerpt', L.excerpt), onExc: (e) => setL('excerpt', e.target.value.slice(0, 255)),
+      sugOffA: (sugOff || sugCost > left) ? 'true' : 'false', sugWhy: sugOff ? 'Cần có tên hoặc mô tả để AI tóm tắt — không trừ từ AI nào.' : 'Tóm tắt 120–200 ký tự từ tên và đoạn đầu mô tả. Dùng khoảng ' + sugCost + ' từ AI.',
+      onSuggest: () => { if (sugOff) { this.toast('Cần có tên hoặc mô tả để AI tóm tắt — không trừ từ AI nào.', 'ri-information-line'); return; } const t = mkSug(); if (!String(L.excerpt || '').trim()) { const prev = L.excerpt || ''; setL('excerpt', t); this.setState({ used: S.used + sugCost, sugUndo: { lang: cur, prev } }); this.toast('AI đã điền tóm tắt — dùng ' + sugCost + ' từ AI.', 'ri-sparkling-2-line'); } else this.setState({ sug: { lang: cur, text: t }, used: S.used + sugCost }); },
+      sugOn: !!(S.sug && S.sug.lang === cur), sugCur: L.excerpt || '', sugText: S.sug ? S.sug.text : '', sugLen: S.sug ? String(S.sug.text.length) : '0', sugCost: String(sugCost),
+      onSugUse: () => { const prev = L.excerpt || ''; setL('excerpt', S.sug.text); this.setState({ sug: null, sugUndo: { lang: cur, prev } }); }, onSugKeep: () => this.setState({ sug: null }),
+      sugUndo: !!(S.sugUndo && S.sugUndo.lang === cur), onSugUndo: () => { const p = S.sugUndo.prev; setL('excerpt', p); this.setState({ sugUndo: null }); },
+      noImg: !imgs.length, hasImg: imgs.length > 0, imgs: imgV, canImg, onPick: (e) => { this._pickOpener = e && e.currentTarget; this.setState({ pickerOpen: true }); },
+      onImgDragEnd: () => this.setState({ dragI: -1, overI: -1 }),
+      imgSelOn: si >= 0 && canImg, imgSelName: si >= 0 ? 'Ảnh ' + (si + 1) + '/' + imgs.length + ' · ' + imgs[si].f : '',
+      imgUpOff: si <= 0 ? 'true' : 'false', imgUpWhy: si <= 0 ? 'Ảnh này đã đứng đầu' : 'Đưa ảnh lên trước một vị trí', onImgUp: () => si > 0 && moveImg(si, si - 1),
+      imgDownOff: si < 0 || si >= imgs.length - 1 ? 'true' : 'false', imgDownWhy: si >= imgs.length - 1 ? 'Ảnh này đã đứng cuối' : 'Đưa ảnh ra sau một vị trí', onImgDown: () => si >= 0 && si < imgs.length - 1 && moveImg(si, si + 1),
+      imgCoverOff: si <= 0 ? 'true' : 'false', imgCoverWhy: si === 0 ? 'Ảnh này đang là ảnh đại diện' : 'Đưa ảnh lên đầu làm ảnh đại diện', onImgCover: () => si > 0 && moveImg(si, 0),
+      onImgRemove: () => { if (si < 0) return; const prev = JSON.parse(JSON.stringify(imgs)); const name = imgs[si].f; this.upd((x) => { x.imgs.splice(si, 1); }, { selImg: -1 }); this.toast('Đã bỏ “' + name + '” khỏi sản phẩm. Ảnh vẫn còn trong Thư viện.', 'ri-close-circle-line', () => this.upd((x) => { x.imgs = prev; })); },
+      imgHint: canImg ? 'Ảnh đầu tiên là ảnh đại diện. Kéo để đổi thứ tự, hoặc bấm chọn một ảnh rồi dùng Chuyển lên / Chuyển xuống.' : (locked ? lockWhy : 'Ảnh hiện theo thứ tự này trên website.'),
+      pickerOpen: !!S.pickerOpen, onPickClose: () => this.closePicker(),
+      onPickInsert: (items) => { const add = (items || []).map((it, j) => { const w = it.w || it.width, h = it.h || it.height; return { f: it.name || it.n || it.title || ('anh-' + (imgs.length + j + 1) + '.jpg'), r: w && h ? w + '/' + h : '4/3' }; }); this.closePicker(); if (add.length) { this.upd((x) => { x.imgs = (x.imgs || []).concat(add); }); this.toast('Đã thêm ' + add.length + ' ảnh' + (imgs.length ? '.' : ' — ảnh đầu là ảnh đại diện.'), 'ri-image-add-line'); } },
+      priceHead: sales ? 'Giá & tồn kho' : 'Giá', priceFolded: !sales && !S.priceOpen, priceOpen: sales || S.priceOpen, introNote: !sales, onUnfold: () => this.setState({ priceOpen: true }), onFold: () => this.setState({ priceOpen: false }),
+      foldKeep: f.price != null ? 'Giá đã nhập (' + priceShow + ') vẫn được giữ.' : 'Giá đã nhập vẫn được giữ khi đổi chế độ.', onGoSettings: () => this.goto('settings', { section: 'catalog' }),
+      fPrice: f.price == null ? '' : nf(f.price), ePriceA: 'false', priceShow, onPrice: (e) => { const v = this.money(e.target.value); this.upd((x) => { x.price = v; }, { errs: Object.assign({}, S.errs, { sale: undefined }) }); },
+      fStock: f.stock == null ? '' : String(f.stock), stockHint, onStock: (e) => { const d = String(e.target.value || '').replace(/\D/g, '').slice(0, 7); this.upd((x) => { x.stock = d === '' ? null : Number(d); }); },
+      fSale: f.sale == null ? '' : nf(f.sale), eSale: !!E.sale, eSaleA: E.sale ? 'true' : 'false', eSaleT: E.sale || '',
+      onSale: (e) => { const v = this.money(e.target.value); const err = v != null ? (f.price == null ? 'Nhập giá bán trước, rồi mới đặt giá khuyến mãi.' : (v >= f.price ? 'Giá khuyến mãi cần thấp hơn giá bán (' + nf(f.price) + ' ₫). Ví dụ ' + nf(Math.round(f.price * 0.9 / 1000) * 1000) + ' ₫.' : undefined)) : undefined; this.upd((x) => { x.sale = v; }, { errs: Object.assign({}, S.errs, { sale: err }) }); },
+      fFrom: f.saleFrom || '', fTo: f.saleTo || '', eDate: !!E.date, eDateA: E.date ? 'true' : 'false', eDateT: E.date || '',
+      onFrom: (e) => { const v = e.target.value; const err = v && f.saleTo && this.ts(f.saleTo) <= this.ts(v) ? 'Ngày kết thúc cần sau ngày bắt đầu (' + this.dt(v) + ').' : undefined; this.upd((x) => { x.saleFrom = v; }, { errs: Object.assign({}, S.errs, { date: err }) }); },
+      onTo: (e) => { const v = e.target.value; const err = v && f.saleFrom && this.ts(v) <= this.ts(f.saleFrom) ? 'Ngày kết thúc cần sau ngày bắt đầu (' + this.dt(f.saleFrom) + ').' : undefined; this.upd((x) => { x.saleTo = v; }, { errs: Object.assign({}, S.errs, { date: err }) }); },
+      saleHint,
+      newOffA: newOff ? 'true' : 'false', newWhy, newHintOn: aiOn && !!bodyTxt && !readOnly, newHint: 'Viết mới chỉ dùng khi mô tả còn trống. Mô tả đã có chữ — bôi đen một đoạn trong ô soạn để nhờ AI viết lại đoạn đó.',
+      onWriteNew: () => { if (newOff) { this.toast(newWhy, 'ri-information-line'); return; } const nm = L.name || 'Sản phẩm'; const html = '<p>' + nm + ' phù hợp cho xưởng gia công cơ khí cần độ chính xác và độ bền cao. Hàng chính hãng, có sẵn tại kho, giao toàn quốc.</p><h3>Ưu điểm</h3><ul><li>Vận hành ổn định, ít phải bảo trì.</li><li>Dễ thay thế phụ tùng, có hướng dẫn tiếng Việt.</li><li>Bảo hành 12 tháng, hỗ trợ kỹ thuật tại xưởng.</li></ul><h3>Thông số kỹ thuật</h3><table><tbody><tr><th>Thông số</th><th>Giá trị</th></tr><tr><td>Xuất xứ</td><td>Đài Loan</td></tr><tr><td>Bảo hành</td><td>12 tháng</td></tr></tbody></table>'; const prev = L.body || ''; setL('body', html); this.setState({ used: S.used + newCost, newUndo: { lang: cur, prev }, rteOn: false }, () => setTimeout(() => this.setState({ rteOn: true }), 0)); this.toast('AI đã viết mô tả — dùng ' + nf(newCost) + ' từ AI. Sửa chỗ nào chưa ưng.', 'ri-sparkling-2-line'); },
+      newUndo: !!(S.newUndo && S.newUndo.lang === cur), onNewUndo: () => { const p = S.newUndo.prev; setL('body', p); this.setState({ newUndo: null, rteOn: false }, () => setTimeout(() => this.setState({ rteOn: true }), 0)); },
+      onSpec: () => { const tbl = '<h3>Thông số kỹ thuật</h3><table><tbody><tr><th>Thông số</th><th>Giá trị</th></tr><tr><td>Kích thước</td><td>&nbsp;</td></tr><tr><td>Vật liệu</td><td>&nbsp;</td></tr><tr><td>Khối lượng</td><td>&nbsp;</td></tr><tr><td>Xuất xứ</td><td>&nbsp;</td></tr><tr><td>Bảo hành</td><td>&nbsp;</td></tr></tbody></table><p></p>'; setL('body', (L.body || '') + tbl); this.setState({ rteOn: false }, () => setTimeout(() => this.setState({ rteOn: true }), 0)); this.toast('Đã chèn bảng thông số ở cuối mô tả — điền giá trị vào từng ô.', 'ri-table-line'); },
+      rteOn: !!S.rteOn, fBody: L.body || '', wordsLeft: left, wordsLimit: limit, onBody: (html) => { if (html === (L.body || '')) return; setL('body', html); }, onSpend: (w) => this.setState({ used: this.state.used + (w || 0) }), onNotify: (m, i) => this.toast(m, i || 'ri-information-line'),
+      siteName: 'Cơ Khí Chính Xác An Vinh', serpT: (L.seoT || L.name || 'Tên sản phẩm').slice(0, 60) + ((L.seoT || L.name || '').length > 60 ? ' …' : ''), serpD: (() => { const d = L.seoD || L.excerpt || bodyTxt || 'Mô tả ngắn sẽ hiện ở đây.'; return d.length > 160 ? d.slice(0, 157) + '…' : d; })(),
+      fSeoT: L.seoT || '', seoTPh, mSeoT: meter('seoTitle', L.seoT || L.name), onSeoT: (e) => setL('seoT', e.target.value),
+      fSeoD: L.seoD || '', seoDPh, mSeoD: meter('seoDesc', L.seoD || L.excerpt), onSeoD: (e) => setL('seoD', e.target.value),
+      stChipT: st0 === 'published' ? 'ok' : (st0 === 'archived' ? '' : 'brand'), stChipIcon: { published: 'ri-global-line', draft: 'ri-draft-line', archived: 'ri-archive-line' }[st0], stChipLabel: { published: 'Đã đăng', draft: 'Bản nháp', archived: 'Đã gỡ khỏi website' }[st0],
+      pubText: f.pubAt ? this.dt(f.pubAt) + ' (ghi lần đăng đầu)' : 'Chưa đăng lần nào — tự ghi khi bấm Đăng lần đầu', updText: f.upd ? this.dt(f.upd) : 'Chưa lưu lần nào',
+      seeText: st0 === 'published' ? (sales ? 'Có — kèm giá ' + (nowSale ? nf(f.sale) + ' ₫ (khuyến mãi)' : priceShow) : 'Có — không kèm giá, nút “Liên hệ báo giá”') : 'Chưa — sản phẩm không hiện trên website',
+      catQ: S.catQ, onCatQ: (e) => this.setState({ catQ: e.target.value }), catRows: crs, catNone: !crs.length, eCat: !!E.cat, eCatA: E.cat ? 'true' : 'false', eCatT: E.cat || '', canCats: this.can('taxonomies.manage'), onGoCats: () => this.goto('catalog.cats', {}),
+      fSku: f.sku || '', eSku: !!E.sku, eSkuA: E.sku ? 'true' : 'false', eSkuT: E.sku || '', onSku: (e) => { const v = e.target.value.toUpperCase().replace(/\s+/g, '-').slice(0, 64); this.upd((x) => { x.sku = v; }, { errs: Object.assign({}, S.errs, { sku: undefined }) }); },
+      onSkuBlur: () => { const e2 = this.validate(this.state.f, true); this.setState({ errs: Object.assign({}, this.state.errs, { sku: e2.sku }) }); },
+      featA: f.featured ? 'true' : 'false', featText: f.featured ? 'Đang bật — sản phẩm mang nhãn “Nổi bật”' : 'Đang tắt', onFeat: () => !shDis && this.upd((x) => { x.featured = !x.featured; }),
+      bestA: f.best ? 'true' : 'false', bestText: f.best ? 'Đang bật — sản phẩm mang nhãn “Bán chạy”' : 'Đang tắt', onBest: () => !shDis && this.upd((x) => { x.best = !x.best; }),
+      showToast: !!tr, toastMsg: tr ? tr.msg : '', toastIcon: tr ? tr.icon : '', toastUndo: !!(tr && tr.undo), toastUndoLabel: tr ? tr.ul : '',
+      onToastUndo: () => { const t = this.state.toast; clearTimeout(this._tt); this.setState({ toast: null }); if (t && t.undo) t.undo(); }, onToastClose: () => { clearTimeout(this._tt); this.setState({ toast: null }); }
+    });
+  }
+}
+</script>
+</body>
+</html>

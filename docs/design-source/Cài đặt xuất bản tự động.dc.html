@@ -402,7 +402,7 @@ class Component extends DCLogic {
     const capHigh = c.cap > capMax;
 
     const cell = (code, ri) => {
-      if (code === 'always') return {
+      if (code === 'always') return { locked: true, editable: false, lockIcon: 'ri-check-double-line', title: 'Chủ website luôn có toàn quyền — không thể bỏ' };
       if (code.indexOf('never') === 0) {
         const T = { never_auto: 'Biên tập viên không được tự bật chế độ tự đăng cho cả website', never_ymyl: 'Bài có giá và bài sức khoẻ cần người có quyền cao hơn xác nhận', never_settings: 'Chỉ chủ website và quản lý nội dung được đổi cài đặt này', never_ai: 'Trợ lý AI không bao giờ được tự duyệt bài có giá hay bài sức khoẻ', never_ai2: 'Trợ lý AI không được đổi cài đặt' };
         return { locked: true, editable: false, lockIcon: 'ri-close-line', title: T[code] || 'Không mở được' };
@@ -418,7 +418,7 @@ class Component extends DCLogic {
     };
 
     return {
-      s6Frames: (typeof location === 'undefined' || location.hash !== '#frame') && this.props.showFrames !== false, locked: true, editable: false, lockIcon: 'ri-check-double-line', title: 'Chủ website luôn có toàn quyền — không thể bỏ' };
+      s6Frames: (typeof location === 'undefined' || location.hash !== '#frame') && this.props.showFrames !== false && !this.props.embedded,
       masterOn: c.master, masterOff: !c.master, masterText: c.master ? 'Đang bật' : 'Đang tắt',
       masterTitle: c.master ? 'Tắt tự đăng — mọi bài chờ bạn duyệt, kế hoạch và hàng đợi vẫn chạy' : 'Bật tự đăng cho bài đạt cổng chất lượng',
       onMaster: () => {

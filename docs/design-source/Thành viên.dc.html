@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./content-workflow.js"></script>
+<script src="./ai-quota.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765)}
+a{color:var(--color-accent,#2050a0);text-decoration:none}a:hover{color:var(--color-accent,#2050a0);text-decoration:underline}
+.tv-root{font-size:calc(14px + var(--fsp));line-height:1.5;--fsp:0px}
+.tv-root[data-big="1"]{--fsp:2px}
+.tv-c{container:tv/inline-size;display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1440px;margin:0 auto;box-sizing:border-box;min-height:100dvh}
+.tv-c[data-emb="1"]{padding:0;max-width:none;min-height:0}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.sx-btn{white-space:nowrap}
+.tv-h1{margin:0;font-size:calc(20px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4}
+.tv-desc{margin:4px 0 0;color:var(--color-body-muted,#5b6275);max-width:72ch;text-wrap:pretty}
+.tv-top{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px 16px}
+.tv-top>div:first-child{flex:1 1 320px;min-width:0}
+.tv-top>.tv-tr{flex:0 0 auto}
+.tv-al{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 12px;padding:12px 16px;border-radius:6px;border:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff)}
+.tv-al>i{font-size:calc(18px + var(--fsp));line-height:1.3}
+.tv-al>div{flex:1 1 240px;min-width:0}
+.tv-al b{color:var(--color-heading,#1f2b4d)}
+.tv-al[data-k="warn"]{border-color:color-mix(in srgb,var(--color-admin-warning-text,#906405) 40%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 12%,var(--color-surface,#fff))}
+.tv-al[data-k="warn"]>i{color:var(--color-admin-warning-text,#906405)}
+.tv-al[data-k="info"]{border-color:color-mix(in srgb,var(--color-admin-info-text,#026fa2) 35%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-admin-info,#299cdb) 8%,var(--color-surface,#fff))}
+.tv-al[data-k="info"]>i{color:var(--color-admin-info-text,#026fa2)}
+.tv-al[data-k="danger"]{border-color:color-mix(in srgb,var(--color-admin-danger-text,#bf371a) 35%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-admin-danger,#f06548) 8%,var(--color-surface,#fff))}
+.tv-al[data-k="danger"]>i{color:var(--color-admin-danger-text,#bf371a)}
+.tv-tabs{display:flex;gap:4px;border-bottom:1px solid var(--color-border,#e9ecf4);overflow-x:auto;scrollbar-width:none}
+.tv-tab{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:0;border-bottom:2px solid transparent;background:transparent;font:inherit;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap}
+.tv-tab[aria-selected="true"]{color:var(--color-accent,#2050a0);border-bottom-color:var(--color-accent,#2050a0);font-weight:600}
+.tv-tab b{font-weight:600;padding:0 6px;border-radius:10px;background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765);font-size:calc(12px + var(--fsp))}
+@media (pointer:coarse){.tv-tab{min-height:44px}}
+.tv-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.tv-bar .sx-search{flex:1 1 260px;max-width:420px}
+.tv-fl{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:calc(13px + var(--fsp))}
+.tv-fchip{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 4px 0 10px;border-radius:16px;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-weight:600;max-width:100%}
+.tv-fchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.tv-fchip button{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}
+@media (pointer:coarse){.tv-fchip{min-height:44px}.tv-fchip button{width:40px;height:40px}}
+.tv-lnk{border:0;background:transparent;padding:0 2px;font:inherit;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap}
+.tv-lnk:hover{text-decoration:underline}
+.tv-muted{color:var(--color-body-muted,#5b6275)}
+.tv-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);min-width:0}
+.tv-bulk{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff));border-radius:6px 6px 0 0}
+.tv-bulk>b{color:var(--color-heading,#1f2b4d)}
+.tv-skip{flex:1 1 100%;margin:0;font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765);display:flex;gap:6px;align-items:flex-start}
+.tv-shb{overflow-x:hidden}
+.tv-row{display:grid;grid-template-columns:32px minmax(0,1.6fr) minmax(0,1.5fr) minmax(0,1.7fr) 170px 210px;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.tv-row>*{min-width:0}
+.tv-head{padding-top:8px;padding-bottom:8px;background:var(--color-surface-muted,#f8f9fb);font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.tv-ck{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;cursor:pointer}
+.tv-ck input{width:18px;height:18px;margin:0;accent-color:var(--color-admin-primary,#2050a0)}
+@media (pointer:coarse){.tv-ck{width:44px;height:44px}}
+.tv-who{display:flex;align-items:center;gap:10px;min-width:0}
+.tv-who>div{min-width:0}
+.tv-nm{font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.tv-em{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);overflow-wrap:anywhere}
+.tv-em2{display:none}
+.tv-roles{display:flex;flex-wrap:wrap;gap:4px}
+.tv-role{display:inline-flex;align-items:center;min-height:24px;max-width:100%;padding:2px 8px;border-radius:12px;border:1px solid var(--color-border-strong,#e3e7f0);background:var(--color-surface-muted,#f8f9fb);font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-body-text,#3c4765)}
+.tv-role span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tv-act{display:flex;gap:8px;justify-content:flex-end;align-items:center}
+.tv-why{display:flex;gap:6px;align-items:flex-start;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);max-width:240px}
+.tv-you{display:inline-flex;align-items:center;gap:4px;min-height:22px;padding:0 8px;border-radius:11px;background:color-mix(in srgb,var(--color-brand-gold,#e0b028) 20%,var(--color-surface,#fff));color:var(--color-brand-gold-text,#8a6200);font-size:calc(12px + var(--fsp));font-weight:600;margin-left:6px}
+.tv-sk{height:14px;border-radius:4px;background:var(--color-surface-hover,#f1f3f9)}
+@container tv (max-width:1023px){
+ .tv-row{grid-template-columns:32px minmax(0,1.6fr) minmax(0,1.6fr) 160px 200px}
+ .tv-row>.tv-emc{display:none}.tv-em2{display:block}
+}
+@container tv (max-width:767px){
+ .tv-head{display:none}
+ .tv-row{grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"ck who st" "ck rl rl" "ck act act";gap:4px 10px;padding:12px}
+ .tv-row>.tv-ckc{grid-area:ck;align-self:start}
+ .tv-row>.tv-whoc{grid-area:who}
+ .tv-row>.tv-stc{grid-area:st;align-self:start}
+ .tv-row>.tv-rlc{grid-area:rl}
+ .tv-row>.tv-actc{grid-area:act}
+ .tv-act{justify-content:stretch;margin-top:4px}.tv-act>.sx-btn:first-child{flex:1 1 auto}
+ .tv-why{max-width:none}
+ .avi{display:none}
+}
+.tv-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px;padding:10px 16px}
+.tv-pp{display:flex;align-items:center;gap:8px;font-size:calc(13px + var(--fsp))}
+.tv-pp select{min-height:36px;padding:0 8px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-heading,#1f2b4d);font:inherit}
+@media (pointer:coarse){.tv-pp select{min-height:44px}}
+.tv-pg{display:flex;flex-wrap:wrap;gap:4px}
+.tv-pg button{min-width:36px;min-height:36px;padding:0 10px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-heading,#1f2b4d);font:inherit;cursor:pointer;white-space:nowrap}
+.tv-pg button[aria-current="page"]{background:var(--color-admin-primary,#2050a0);border-color:var(--color-admin-primary,#2050a0);color:var(--color-on-solid,#fff);font-weight:600}
+.tv-pg button[disabled]{opacity:.6;cursor:not-allowed}
+@media (pointer:coarse){.tv-pg button{min-width:44px;min-height:44px}}
+.tv-empty{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:20px 16px}
+.tv-empty p{margin:0;max-width:62ch;text-wrap:pretty}
+.tv-h2{margin:0;font-size:calc(16px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4}
+.tv-ovc{position:fixed;inset:0;z-index:79;background:transparent;border:0;padding:0;cursor:default}
+.tv-menu{position:fixed;z-index:85;min-width:240px;max-width:min(320px,calc(100vw - 24px));max-height:min(420px,calc(100dvh - 24px));overflow:auto;padding:6px;background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 8px 24px rgba(15,23,41,.18)}
+.tv-mh{padding:6px 10px 4px;font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275);overflow-wrap:anywhere}
+.tv-mi{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px;border:0;border-radius:4px;background:transparent;font:inherit;color:var(--color-heading,#1f2b4d);text-align:left;cursor:pointer;white-space:nowrap}
+.tv-mi:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tv-mi[data-danger="true"]{color:var(--color-admin-danger-text,#bf371a)}
+.tv-mi[aria-disabled="true"]{color:var(--color-body-muted,#5b6275);cursor:not-allowed}
+.tv-mi i{font-size:calc(17px + var(--fsp))}
+.tv-mwhy{margin:0 10px 6px 37px;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);white-space:normal}
+.tv-sep{height:1px;margin:6px 4px;background:var(--color-border,#e9ecf4)}
+.tv-fo{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 10px;border-radius:4px;cursor:pointer}
+.tv-fo:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tv-fo input{width:18px;height:18px;margin:0;accent-color:var(--color-admin-primary,#2050a0)}
+.tv-fo span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tv-fo b{font-weight:400;color:var(--color-body-muted,#5b6275)}
+.tv-mf{display:flex;justify-content:space-between;gap:8px;padding:8px 4px 2px;border-top:1px solid var(--color-border,#e9ecf4);margin-top:6px}
+@media (pointer:coarse){.tv-mi,.tv-fo{min-height:44px}}
+@media (max-width:599px){.tv-menu{left:0 !important;right:0 !important;top:auto !important;bottom:0 !important;max-width:none;max-height:80dvh;border-radius:12px 12px 0 0;padding:8px 8px max(8px,env(safe-area-inset-bottom))}}
+.tv-ov{position:fixed;inset:0;z-index:69;background:rgba(15,23,41,.45)}
+.tv-ov2{position:fixed;inset:0;z-index:89;background:rgba(15,23,41,.45)}
+.tv-sheet{position:fixed;z-index:70;top:0;right:0;bottom:0;width:min(520px,100vw);background:var(--color-surface,#fff);box-shadow:-8px 0 32px rgba(15,23,41,.2);display:flex;flex-direction:column}
+.tv-shh{display:flex;align-items:flex-start;gap:12px;padding:16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.tv-shh>div{flex:1 1 auto;min-width:0}
+.tv-shb{flex:1 1 auto;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.tv-shf{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--color-border,#e9ecf4)}
+@media (max-width:479px){.tv-shf .sx-btn{flex:1 1 auto}}
+.tv-ro{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;padding:10px 12px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:4px}
+.tv-ro:has(input:checked){border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff))}
+.tv-ro input{width:18px;height:18px;margin:2px 0 0;accent-color:var(--color-admin-primary,#2050a0)}
+.tv-ro label{display:contents;cursor:pointer}
+.tv-ro .t{font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.tv-ro .d{grid-column:2;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tv-ro .x{grid-column:2;justify-self:start}
+.tv-pv{display:flex;flex-direction:column;gap:6px;padding:12px;border-radius:6px;background:var(--color-surface-muted,#f8f9fb)}
+.tv-pvl{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.tv-pvl b{color:var(--color-heading,#1f2b4d)}
+.tv-err{margin:0;display:flex;gap:6px;align-items:flex-start;color:var(--color-admin-danger-text,#bf371a);font-size:calc(13px + var(--fsp))}
+.tv-dlg{position:fixed;z-index:90;left:50%;top:50%;transform:translate(-50%,-50%);width:min(480px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;background:var(--color-surface,#fff);border-radius:6px;box-shadow:0 12px 40px rgba(15,23,41,.25);padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;text-align:center}
+.tv-dlg .ic{font-size:44px;line-height:1}
+.tv-dlg .ic.dan{color:var(--color-admin-danger-text,#bf371a)}
+.tv-dlg .ic.inf{color:var(--color-admin-info-text,#026fa2)}
+.tv-dlg h2{margin:0;font-size:calc(18px + var(--fsp));color:var(--color-heading,#1f2b4d);line-height:1.4;overflow-wrap:anywhere}
+.tv-dlg p{margin:0;text-wrap:pretty}
+.tv-dlgb{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px}
+@media (max-width:479px){.tv-dlgb .sx-btn{flex:1 1 100%}}
+.tv-toastw{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:95;width:min(560px,calc(100vw - 24px))}
+.tv-toast{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px;border-radius:6px;background:var(--color-heading,#1f2b4d);color:var(--color-surface,#fff);box-shadow:0 8px 24px rgba(15,23,41,.25)}
+.tv-toast span{flex:1 1 220px;min-width:0}
+.tv-toast button{min-height:36px;padding:0 12px;border:1px solid currentColor;border-radius:4px;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+@media (pointer:coarse){.tv-toast button{min-height:44px}}
+.tv-frames{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;padding:16px}
+.tv-frames figure{margin:0;display:flex;flex-direction:column;gap:6px;max-width:100%}
+.tv-frames iframe{border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;background:var(--color-body,#f4f5fa);max-width:100%}
+.tv-frames figcaption{font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.sx-chip[data-t="neu"]{background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765)}
+.tv-pend{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.tv-pend>i{color:var(--color-admin-warning-text,#906405)}
+.tv-pend b{color:var(--color-heading,#1f2b4d)}
+.tv-ihd{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 16px}
+.tv-stabs{display:flex;flex-wrap:wrap;gap:6px}
+.tv-stab{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:18px;background:var(--color-surface,#fff);font:inherit;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap}
+.tv-stab[aria-pressed="true"]{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-weight:600}
+.tv-stab b{font-weight:600}
+@media (pointer:coarse){.tv-stab{min-height:44px}}
+.tv-irow{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(0,1.4fr) minmax(0,1fr) 132px 150px 200px;gap:12px;align-items:center;padding:10px 16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.tv-irow>*{min-width:0}
+.tv-ie{font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.tv-ism{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);overflow-wrap:anywhere}
+.tv-imsg{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tv-imeta,.tv-istc,.tv-icardm{display:none}
+.tv-iexpc{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.tv-iactc{display:flex;flex-direction:column;align-items:stretch;gap:4px}
+.tv-iactc .tv-why{max-width:none}
+@container tv (max-width:1023px){
+ .tv-irow{grid-template-columns:minmax(0,1.8fr) minmax(0,1.3fr) 128px 140px 190px}
+ .tv-irow>.tv-ibyc{display:none}.tv-imeta{display:block}
+}
+@container tv (max-width:767px){
+ .tv-irow{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"em st" "mt mt" "act act";gap:4px 10px;padding:12px}
+ .tv-irow>.tv-iemc{grid-area:em}
+ .tv-irow>.tv-istc{display:block;grid-area:st;align-self:start}
+ .tv-irow>.tv-irlc,.tv-irow>.tv-isentc,.tv-irow>.tv-iexpc,.tv-imeta,.tv-imsg{display:none}
+ .tv-irow>.tv-icardm{display:block;grid-area:mt}
+ .tv-irow>.tv-iactc{grid-area:act}
+}
+.tv-inv{position:fixed;z-index:70;left:50%;top:50%;transform:translate(-50%,-50%);width:min(600px,calc(100vw - 32px));max-height:calc(100dvh - 32px);display:flex;flex-direction:column;background:var(--color-surface,#fff);border-radius:6px;box-shadow:0 12px 40px rgba(15,23,41,.25);box-sizing:border-box}
+.tv-invh{display:flex;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.tv-invh>div{flex:1 1 auto;min-width:0}
+.tv-invb{flex:1 1 auto;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:16px;min-height:0}
+.tv-invf{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 12px;padding:12px 20px;padding-bottom:max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--color-border,#e9ecf4)}
+.tv-invf .tv-why{flex:1 1 200px;max-width:none;margin:0}
+textarea.sx-in{resize:vertical;min-height:64px;font:inherit;line-height:1.5;box-sizing:border-box}
+.tv-fs{border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:column;gap:8px}
+.tv-fs legend{padding:0}
+.tv-cnt{margin-left:auto;font-weight:400;color:var(--color-body-muted,#5b6275)}
+.tv-addr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;margin-top:8px}
+.tv-res{display:flex;flex-direction:column;gap:8px}
+.tv-resr{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 10px;padding:10px 12px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:4px}
+.tv-resr>i{font-size:calc(18px + var(--fsp));line-height:1.3}
+.tv-resr>b{color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.tv-resr>span{grid-column:2;font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765)}
+.tv-resr[data-k="ok"]>i{color:var(--color-admin-success-text,#047767)}
+.tv-resr[data-k="warn"]>i{color:var(--color-admin-warning-text,#906405)}
+.tv-resr[data-k="err"]>i{color:var(--color-admin-danger-text,#bf371a)}
+.tv-line{display:flex;gap:6px;align-items:flex-start;margin:0;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+@media (max-width:599px){.tv-inv{left:0;top:0;transform:none;width:100vw;height:100dvh;max-height:none;border-radius:0}.tv-invh{padding-top:max(16px,env(safe-area-inset-top))}.tv-invh,.tv-invb,.tv-invf{padding-left:16px;padding-right:16px}.tv-invf .sx-btn{flex:1 1 auto}}
+</style>
+</helmet>
+<div class="tv-root" data-big="{{ bigA }}">
+<div class="tv-c" data-emb="{{ embA }}">
+  <div class="tv-top">
+    <div>
+      <sc-if value="{{ showHead }}" hint-placeholder-val="{{ true }}">
+        <h1 class="tv-h1">Thành viên</h1>
+        <p class="tv-desc">Người cùng quản trị website và nhóm quyền của từng người. Người thuộc nhiều nhóm được làm mọi việc của các nhóm đó.</p>
+      </sc-if>
+    </div>
+    <sc-if value="{{ inviteShow }}" hint-placeholder-val="{{ true }}"><div class="tv-tr"><button class="sx-btn pri" aria-disabled="{{ invHdrLockA }}" onClick="{{ onInvite }}"><i class="ri-user-add-line" aria-hidden="true"></i><span class="sx-t">Mời thành viên</span></button></div></sc-if>
+  </div>
+
+  <sc-if value="{{ impShow }}" hint-placeholder-val="{{ false }}">
+    <div class="tv-al" data-k="warn" role="note"><i class="ri-user-shared-line" aria-hidden="true"></i><div><b>Nhân viên hỗ trợ đang đăng nhập thay thành viên.</b> Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên. Mời, đổi nhóm và xóa khỏi website đều đang khóa.</div></div>
+  </sc-if>
+
+  <sc-if value="{{ stNoPerm }}" hint-placeholder-val="{{ false }}">
+    <div class="tv-card"><div class="tv-empty"><i class="ri-lock-2-line" aria-hidden="true" style="font-size:32px;color:var(--color-body-muted,#5b6275);"></i><h2 class="tv-h2">Bạn chưa có quyền quản lý thành viên</h2><p>Nhóm "{{ roleName }}" không có việc "Thành viên · Quản lý". Nhờ Chủ website hoặc Quản trị cấp thêm cho bạn.</p><button class="sx-btn" onClick="{{ goHome }}"><i class="ri-home-4-line" aria-hidden="true"></i><span class="sx-t">Về Tổng quan</span></button></div></div>
+  </sc-if>
+  <sc-if value="{{ stPlan }}" hint-placeholder-val="{{ false }}">
+    <div class="tv-card"><div class="tv-empty"><i class="ri-lock-2-line" aria-hidden="true" style="font-size:32px;color:var(--color-body-muted,#5b6275);"></i>
+      <sc-if value="{{ upsellOn }}"><h2 class="tv-h2">Gói hiện tại chưa có Thành viên</h2><p>Mời đồng nghiệp cùng viết bài, mỗi người một nhóm quyền riêng.</p><button class="sx-btn" onClick="{{ goPlan }}"><span class="sx-t">Xem gói nâng cấp</span></button></sc-if>
+      <sc-if value="{{ upsellOff }}"><h2 class="tv-h2">Thành viên</h2><p>Chưa bật cho website này — liên hệ hỗ trợ.</p></sc-if>
+    </div></div>
+  </sc-if>
+  <sc-if value="{{ stLoading }}" hint-placeholder-val="{{ false }}">
+    <div class="tv-card" aria-busy="true" aria-label="Đang tải danh sách thành viên"><sc-for list="{{ skRows }}" as="s" hint-placeholder-count="6"><div class="tv-row"><div class="tv-sk" style="width:18px;"></div><div class="tv-sk" style="width:70%;"></div><div class="tv-sk tv-emc" style="width:80%;"></div><div class="tv-sk" style="width:60%;"></div><div class="tv-sk" style="width:70%;"></div><div class="tv-sk" style="width:80px;"></div></div></sc-for></div>
+  </sc-if>
+  <sc-if value="{{ stError }}" hint-placeholder-val="{{ false }}">
+    <div class="tv-al" data-k="danger" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><div><b>Chưa tải được danh sách thành viên.</b> Mạng chậm hoặc máy chủ đang bận — không có gì bị thay đổi.</div><button class="sx-btn" onClick="{{ onRetry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button></div>
+  </sc-if>
+
+  <sc-if value="{{ stData }}" hint-placeholder-val="{{ true }}">
+    <div class="tv-tabs" role="tablist" aria-label="Thành viên và lời mời">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="2"><button class="tv-tab" role="tab" aria-selected="{{ t.onA }}" onClick="{{ t.pick }}">{{ t.n }} <b>{{ t.count }}</b></button></sc-for>
+    </div>
+    <sc-if value="{{ limShow }}" hint-placeholder-val="{{ false }}">
+      <div class="tv-al" data-k="{{ limK }}" role="note"><i class="ri-mail-forbid-line" aria-hidden="true"></i><div><b>{{ limTitle }}</b> {{ limText }}</div></div>
+    </sc-if>
+    <div class="tv-bar">
+      <label class="sx-search"><i class="ri-search-line" aria-hidden="true"></i><span class="vh">{{ searchLab }}</span><input type="search" placeholder="{{ searchPh }}" value="{{ q }}" onInput="{{ onQ }}"></label>
+      <button class="sx-btn" aria-haspopup="dialog" aria-expanded="{{ fltOpenA }}" onClick="{{ openFilter }}"><i class="ri-shield-user-line" aria-hidden="true"></i><span class="sx-t">Nhóm quyền</span><sc-if value="{{ fltCountShow }}"><span class="sx-chip" data-t="brand">{{ fltCount }}</span></sc-if><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+    </div>
+    <sc-if value="{{ filterLine }}" hint-placeholder-val="{{ false }}">
+      <div class="tv-fl" role="status"><span class="tv-muted">Đang lọc:</span>
+        <sc-for list="{{ fchips }}" as="f"><span class="tv-fchip"><span title="{{ f.n }}">{{ f.n }}</span><button aria-label="{{ f.aria }}" title="{{ f.aria }}" onClick="{{ f.rm }}"><i class="ri-close-line" aria-hidden="true"></i></button></span></sc-for>
+        <button class="tv-lnk" onClick="{{ clearFilter }}">Bỏ lọc</button><span class="tv-muted">· Khớp {{ matchN }} / {{ totalN }}</span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ vMem }}" hint-placeholder-val="{{ true }}">
+    <sc-if value="{{ pendShow }}" hint-placeholder-val="{{ false }}">
+      <p class="tv-pend" style="margin:0;"><i class="ri-mail-send-line" aria-hidden="true"></i><span><b>{{ pendText }}</b> — người được mời chỉ vào danh sách này sau khi nhận lời mời.</span><button class="tv-lnk" onClick="{{ goInv }}">Xem</button></p>
+    </sc-if>
+    <div class="tv-card">
+      <sc-if value="{{ bulkShow }}" hint-placeholder-val="{{ false }}">
+        <div class="tv-bulk" role="region" aria-label="Thao tác với người đã chọn">
+          <b>Đã chọn {{ selN }}</b>
+          <button class="sx-btn sm" aria-disabled="{{ bulkGrpLockA }}" onClick="{{ bulkGroups }}"><i class="ri-shield-user-line" aria-hidden="true"></i><span class="sx-t">Đổi nhóm ({{ okN }})</span></button>
+          <button class="sx-btn sm dano" aria-disabled="{{ bulkGrpLockA }}" onClick="{{ bulkRemove }}"><i class="ri-user-unfollow-line" aria-hidden="true"></i><span class="sx-t">Xóa khỏi website ({{ okN }})</span></button>
+          <button class="tv-lnk" onClick="{{ clearSel }}">Bỏ chọn</button>
+          <sc-if value="{{ skipShow }}"><p class="tv-skip" role="status"><i class="ri-information-line" aria-hidden="true"></i><span>{{ skipText }}</span></p></sc-if>
+          <sc-if value="{{ notes }}"><p class="tv-skip"><span class="sx-note"><i class="ri-tools-line" aria-hidden="true"></i>Chờ backend</span><span>Gán và xóa nhiều người một lần — repo mới đổi được từng người một.</span></p></sc-if>
+        </div>
+      </sc-if>
+      <div role="table" aria-label="Danh sách thành viên">
+        <div class="tv-row tv-head" role="row">
+          <span role="columnheader"><label class="tv-ck"><input type="checkbox" checked="{{ allOn }}" onChange="{{ toggleAllSel }}" aria-label="Chọn mọi người ở trang này"></label></span>
+          <span role="columnheader">Tên</span><span role="columnheader" class="tv-emc">Email</span><span role="columnheader">Nhóm quyền</span><span role="columnheader">Trạng thái</span><span role="columnheader"><span class="vh">Hành động</span></span>
+        </div>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+          <div class="tv-row" role="row">
+            <div role="cell" class="tv-ckc"><label class="tv-ck"><input type="checkbox" checked="{{ r.sel }}" onChange="{{ r.toggleSel }}" aria-label="{{ r.selAria }}"></label></div>
+            <div role="cell" class="tv-whoc"><div class="tv-who"><span class="avi" aria-hidden="true">{{ r.ini }}</span><div><div class="tv-nm">{{ r.name }}<sc-if value="{{ r.you }}"><span class="tv-you">Bạn</span></sc-if></div><div class="tv-em tv-em2">{{ r.email }}</div></div></div></div>
+            <div role="cell" class="tv-emc tv-em">{{ r.email }}</div>
+            <div role="cell" class="tv-rlc"><div class="tv-roles"><sc-for list="{{ r.roles }}" as="g"><span class="tv-role" title="{{ g }}"><span>{{ g }}</span></span></sc-for></div></div>
+            <div role="cell" class="tv-stc"><span class="sx-chip" data-t="{{ r.stT }}"><i class="{{ r.stIcon }}" aria-hidden="true"></i>{{ r.stLabel }}</span></div>
+            <div role="cell" class="tv-actc">
+              <sc-if value="{{ r.can }}"><div class="tv-act">
+                <button class="sx-btn sm" aria-disabled="{{ impA }}" aria-label="{{ r.editAria }}" onClick="{{ r.edit }}"><i class="ri-shield-user-line" aria-hidden="true"></i><span class="sx-t">Sửa nhóm</span></button>
+                <button class="sx-btn sm ic" aria-haspopup="menu" aria-label="{{ r.menuAria }}" title="{{ r.menuAria }}" onClick="{{ r.menu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+              </div></sc-if>
+              <sc-if value="{{ r.cannot }}"><p class="tv-why" style="margin:0;"><i class="ri-lock-2-line" aria-hidden="true"></i><span>{{ r.why }}</span></p></sc-if>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}"><div class="tv-empty"><p>Không có ai khớp bộ lọc đang chọn.</p><button class="sx-btn" onClick="{{ clearFilter }}"><span class="sx-t">Bỏ lọc</span></button></div></sc-if>
+        <sc-if value="{{ onlyYou }}" hint-placeholder-val="{{ false }}"><div class="tv-empty"><h2 class="tv-h2">Website mới có mình bạn</h2><p>Mời đồng nghiệp để cùng viết bài và trả lời khách. Mỗi người chỉ làm được việc của nhóm quyền bạn chọn.</p><sc-if value="{{ inviteShow }}"><button class="sx-btn pri" aria-disabled="{{ invHdrLockA }}" onClick="{{ onInvite }}"><i class="ri-user-add-line" aria-hidden="true"></i><span class="sx-t">Mời thành viên</span></button></sc-if></div></sc-if>
+      </div>
+      <div class="tv-foot">
+        <label class="tv-pp">Dòng/trang <select value="{{ perPage }}" onChange="{{ onPerPage }}"><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label>
+        <nav class="tv-pg" aria-label="Phân trang">
+          <button disabled="{{ prevDis }}" onClick="{{ prevPage }}" aria-label="Trang trước">‹ Trước</button>
+          <sc-for list="{{ pages }}" as="pg"><button aria-current="{{ pg.cur }}" onClick="{{ pg.go }}" aria-label="{{ pg.aria }}">{{ pg.n }}</button></sc-for>
+          <button disabled="{{ nextDis }}" onClick="{{ nextPage }}" aria-label="Trang sau">Sau ›</button>
+        </nav>
+      </div>
+    </div>
+    <sc-if value="{{ notes }}"><div class="tv-fl"><span class="sx-note"><i class="ri-tools-line" aria-hidden="true"></i>Chờ backend</span><span class="tv-muted">Tìm kiếm và phân trang làm ở máy chủ — repo đang tải cả danh sách một lần.</span></div></sc-if>
+    </sc-if>
+
+    <sc-if value="{{ vInv }}" hint-placeholder-val="{{ false }}">
+    <div class="tv-ihd">
+      <div class="tv-stabs" role="group" aria-label="Trạng thái lời mời">
+        <sc-for list="{{ istabs }}" as="t" hint-placeholder-count="4"><button class="tv-stab" data-focus-kind="outline" aria-pressed="{{ t.onA }}" onClick="{{ t.pick }}">{{ t.n }} <b>{{ t.count }}</b></button></sc-for>
+      </div>
+      <span class="tv-ism">{{ quotaLine }}</span>
+    </div>
+    <sc-if value="{{ invNoPerm }}" hint-placeholder-val="{{ false }}">
+      <p class="tv-line"><i class="ri-lock-2-line" aria-hidden="true"></i><span>Nhóm "{{ roleName }}" xem được lời mời nhưng chưa có việc "Mời thành viên" — không gửi, gửi lại hay hủy được. Nhờ Chủ website cấp thêm nếu cần.</span></p>
+    </sc-if>
+    <sc-if value="{{ invCanAct }}" hint-placeholder-val="{{ true }}">
+      <p class="tv-line"><i class="ri-information-line" aria-hidden="true"></i><span>Gửi lại tạo liên kết mới — liên kết trong thư trước không dùng được nữa, hạn mới là 7 ngày từ lúc gửi lại.</span></p>
+    </sc-if>
+    <div class="tv-card">
+      <sc-if value="{{ invHasRows }}" hint-placeholder-val="{{ true }}">
+      <div role="table" aria-label="Danh sách lời mời">
+        <div class="tv-irow tv-head" role="row">
+          <span role="columnheader">Email</span><span role="columnheader" class="tv-irlc">Nhóm quyền</span><span role="columnheader" class="tv-ibyc">Người mời</span><span role="columnheader" class="tv-isentc">Gửi lúc</span><span role="columnheader" class="tv-iexpc">{{ expHead }}</span><span role="columnheader"><span class="vh">Hành động</span></span>
+        </div>
+        <sc-for list="{{ irows }}" as="r" hint-placeholder-count="4">
+          <div class="tv-irow" role="row">
+            <div role="cell" class="tv-iemc"><div class="tv-ie">{{ r.email }}</div><div class="tv-ism tv-imeta">Mời bởi {{ r.by }}</div><sc-if value="{{ r.msgShow }}"><div class="tv-ism tv-imsg" title="{{ r.msg }}">Lời nhắn: {{ r.msg }}</div></sc-if></div>
+            <div role="cell" class="tv-istc"><span class="sx-chip" data-t="{{ r.stT }}"><i class="{{ r.stIcon }}" aria-hidden="true"></i>{{ r.stLabel }}</span></div>
+            <div role="cell" class="tv-irlc"><div class="tv-roles"><sc-for list="{{ r.roles }}" as="g"><span class="tv-role" title="{{ g }}"><span>{{ g }}</span></span></sc-for></div></div>
+            <div role="cell" class="tv-ibyc tv-ism">{{ r.by }}</div>
+            <div role="cell" class="tv-isentc tv-ism">{{ r.sent }}</div>
+            <div role="cell" class="tv-iexpc tv-ism"><span>{{ r.exp }}</span><sc-if value="{{ r.soonShow }}"><span class="sx-chip" data-t="warn"><i class="ri-time-line" aria-hidden="true"></i>{{ r.soon }}</span></sc-if></div>
+            <div role="cell" class="tv-icardm tv-ism">{{ r.meta }}</div>
+            <div role="cell" class="tv-iactc">
+              <sc-if value="{{ r.actResend }}"><div class="tv-act">
+                <button class="sx-btn sm" aria-disabled="{{ r.rsLockA }}" aria-label="{{ r.rsAria }}" onClick="{{ r.resend }}"><i class="ri-mail-send-line" aria-hidden="true"></i><span class="sx-t">{{ r.rsLabel }}</span></button>
+                <button class="sx-btn sm ic" aria-haspopup="menu" aria-label="{{ r.menuAria }}" title="{{ r.menuAria }}" onClick="{{ r.menu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+              </div></sc-if>
+              <sc-if value="{{ r.actReinvite }}"><div class="tv-act"><button class="sx-btn sm" aria-disabled="{{ r.riLockA }}" aria-label="{{ r.riAria }}" onClick="{{ r.reinvite }}"><i class="ri-user-add-line" aria-hidden="true"></i><span class="sx-t">Mời lại</span></button></div></sc-if>
+              <sc-if value="{{ r.actView }}"><div class="tv-act"><button class="tv-lnk" onClick="{{ r.viewMem }}" aria-label="{{ r.viewAria }}">Xem thành viên</button></div></sc-if>
+              <sc-if value="{{ r.whyShow }}"><p class="tv-why" style="margin:0;"><i class="ri-lock-2-line" aria-hidden="true"></i><span>{{ r.why }}</span></p></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+      <sc-if value="{{ invEmptyAll }}" hint-placeholder-val="{{ false }}"><div class="tv-empty"><h2 class="tv-h2">Chưa có lời mời nào</h2><p>Mời đồng nghiệp bằng email. Họ nhận một thư có nút "Nhận lời mời", hiệu lực 7 ngày.</p><sc-if value="{{ inviteShow }}"><button class="sx-btn pri" aria-disabled="{{ invHdrLockA }}" onClick="{{ onInvite }}"><i class="ri-user-add-line" aria-hidden="true"></i><span class="sx-t">Mời thành viên</span></button></sc-if></div></sc-if>
+      <sc-if value="{{ invEmptyTab }}" hint-placeholder-val="{{ false }}"><div class="tv-empty"><p>{{ invEmptyText }}</p></div></sc-if>
+      <sc-if value="{{ invNoMatch }}" hint-placeholder-val="{{ false }}"><div class="tv-empty"><p>Không có lời mời nào khớp bộ lọc đang chọn.</p><button class="sx-btn" onClick="{{ clearFilter }}"><span class="sx-t">Bỏ lọc</span></button></div></sc-if>
+      <div class="tv-foot">
+        <label class="tv-pp">Dòng/trang <select value="{{ perPage }}" onChange="{{ onPerPage }}"><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label>
+        <nav class="tv-pg" aria-label="Phân trang lời mời">
+          <button disabled="{{ iPrevDis }}" onClick="{{ iPrev }}" aria-label="Trang trước">‹ Trước</button>
+          <button disabled="{{ iNextDis }}" onClick="{{ iNext }}" aria-label="Trang sau">Sau ›</button>
+        </nav>
+      </div>
+    </div>
+    <sc-if value="{{ notes }}"><div class="tv-fl"><span class="sx-note"><i class="ri-tools-line" aria-hidden="true"></i>Chờ backend</span><span class="tv-muted">Danh sách lời mời theo trạng thái + tìm ở máy chủ (bảng invitations đã có chỉ mục site_id, created_at). Repo chưa có màn danh sách lời mời.</span></div></sc-if>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{ framesShow }}" hint-placeholder-val="{{ false }}">
+    <section class="tv-card" aria-label="Khung xem điện thoại và máy tính bảng"><div class="tv-frames">
+      <figure><iframe src="Thành viên.dc.html#frame" width="390" height="760" title="Thành viên ở 390px" loading="lazy"></iframe><figcaption>390 × 760 — thẻ gọn: tên + trạng thái · email, nhóm · Sửa nhóm + ⋯</figcaption></figure>
+      <figure><iframe src="Thành viên.dc.html#frame" width="768" height="760" title="Thành viên ở 768px" loading="lazy"></iframe><figcaption>768 × 760 — bảng rút gọn, email dưới tên</figcaption></figure>
+    </div></section>
+  </sc-if>
+</div>
+
+<sc-if value="{{ menuShow }}" hint-placeholder-val="{{ false }}">
+  <button class="tv-ovc" aria-label="Đóng" tabindex="-1" onClick="{{ closeMenu }}"></button>
+  <div class="tv-menu" role="{{ menuRole }}" aria-label="{{ menuTitle }}" style="top:{{ menuTop }};bottom:{{ menuBottom }};right:{{ menuRight }};">
+    <div class="tv-mh">{{ menuTitle }}</div>
+    <sc-if value="{{ isRowMenu }}">
+      <sc-for list="{{ menuItems }}" as="m">
+        <sc-if value="{{ m.sep }}"><div class="tv-sep" role="separator"></div></sc-if>
+        <sc-if value="{{ m.item }}"><button class="tv-mi" role="menuitem" data-danger="{{ m.dangerA }}" aria-disabled="{{ m.lockA }}" onClick="{{ m.act }}" ref="{{ m.ref }}"><i class="{{ m.icon }}" aria-hidden="true"></i><span>{{ m.label }}</span></button><sc-if value="{{ m.whyShow }}"><p class="tv-mwhy">{{ m.why }}</p></sc-if></sc-if>
+      </sc-for>
+    </sc-if>
+    <sc-if value="{{ isFilter }}">
+      <sc-for list="{{ fopts }}" as="o"><label class="tv-fo"><input type="checkbox" checked="{{ o.on }}" onChange="{{ o.toggle }}" ref="{{ o.ref }}"><span title="{{ o.n }}">{{ o.n }}</span><b>{{ o.count }}</b></label></sc-for>
+      <div class="tv-mf"><button class="sx-btn sm gho" onClick="{{ clearGroups }}"><span class="sx-t">Bỏ lọc</span></button><button class="sx-btn sm pri" onClick="{{ closeMenu }}"><span class="sx-t">Xong</span></button></div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<sc-if value="{{ pnShow }}" hint-placeholder-val="{{ false }}">
+  <div class="tv-ov" onClick="{{ closePanel }}"></div>
+  <div class="tv-sheet" role="dialog" aria-modal="true" aria-labelledby="tv-pnt">
+    <div class="tv-shh"><div><h2 class="tv-h2" id="tv-pnt">{{ pnTitle }}</h2><p class="tv-muted" style="margin:2px 0 0;">{{ pnSub }}</p></div><button class="sx-btn ic gho" aria-label="Đóng" title="Đóng" onClick="{{ closePanel }}" ref="{{ pnFocusRef }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+    <div class="tv-shb">
+      <p class="tv-muted" style="margin:0;">Chỉ hiện nhóm bạn gán được — nhóm thấp hơn cấp của bạn ({{ roleName }}) và không có việc bạn không có.</p>
+      <fieldset style="border:0;margin:0;padding:0;min-width:0;display:flex;flex-direction:column;gap:8px;"><legend class="vh">Nhóm quyền</legend>
+        <sc-for list="{{ pnRoles }}" as="g" hint-placeholder-count="5">
+          <div class="tv-ro"><label><input type="checkbox" checked="{{ g.on }}" onChange="{{ g.toggle }}"><span class="t">{{ g.n }}</span></label><span class="d">{{ g.d }}</span><button class="tv-lnk x" onClick="{{ g.explain }}" aria-label="{{ g.xAria }}">Xem chi tiết</button></div>
+        </sc-for>
+      </fieldset>
+      <sc-if value="{{ pnErrShow }}"><p class="tv-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ pnErr }}</span></p></sc-if>
+      <div class="tv-pv" role="status" aria-live="polite">
+        <b style="color:var(--color-heading,#1f2b4d);">{{ pvTitle }}</b>
+        <sc-if value="{{ pvNone }}"><span class="tv-muted">Chưa đổi gì.</span></sc-if>
+        <sc-if value="{{ pvAddShow }}"><div class="tv-pvl"><span class="sx-chip" data-t="ok"><i class="ri-add-circle-line" aria-hidden="true"></i>Thêm</span><b>{{ pvAdd }}</b></div></sc-if>
+        <sc-if value="{{ pvRemShow }}"><div class="tv-pvl"><span class="sx-chip" data-t="danger"><i class="ri-indeterminate-circle-line" aria-hidden="true"></i>Bớt</span><b>{{ pvRem }}</b></div></sc-if>
+        <span class="tv-muted">Áp dụng ngay khi lưu và ghi vào nhật ký hoạt động.</span>
+      </div>
+    </div>
+    <div class="tv-shf"><button class="sx-btn" onClick="{{ closePanel }}"><span class="sx-t">Hủy</span></button><button class="sx-btn pri" aria-disabled="{{ impA }}" onClick="{{ savePanel }}"><i class="ri-save-3-line" aria-hidden="true"></i><span class="sx-t">{{ pnSave }}</span></button></div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgShow }}" hint-placeholder-val="{{ false }}">
+  <div class="tv-ov2" onClick="{{ closeDlg }}"></div>
+  <div class="tv-dlg" role="alertdialog" aria-modal="true" aria-labelledby="tv-dlgt" aria-describedby="tv-dlgd">
+    <i class="{{ dlgIcon }}" aria-hidden="true"></i>
+    <h2 id="tv-dlgt">{{ dlgTitle }}</h2>
+    <p id="tv-dlgd">{{ dlgBody }}</p>
+    <div class="tv-dlgb">
+      <button class="sx-btn" onClick="{{ closeDlg }}" ref="{{ dlgFocusRef }}"><span class="sx-t">{{ dlgCancel }}</span></button>
+      <sc-if value="{{ dlgOkShow }}"><button class="{{ dlgOkClass }}" onClick="{{ dlgOk }}"><i class="{{ dlgOkIcon }}" aria-hidden="true"></i><span class="sx-t">{{ dlgOkLabel }}</span></button></sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ invShow }}" hint-placeholder-val="{{ false }}">
+  <div class="tv-ov" onClick="{{ closeInv }}"></div>
+  <div class="tv-inv" role="dialog" aria-modal="true" aria-labelledby="tv-invt">
+    <div class="tv-invh"><div><h2 class="tv-h2" id="tv-invt">Mời thành viên</h2><p class="tv-muted" style="margin:2px 0 0;">Người được mời nhận một thư có nút "Nhận lời mời". Lời mời có hiệu lực 7 ngày.</p></div><button class="sx-btn ic gho" aria-label="Đóng" title="Đóng" onClick="{{ closeInv }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+    <sc-if value="{{ invForm }}">
+      <div class="tv-invb">
+        <div>
+          <label class="sx-lab" for="tv-iem">Email người được mời <span class="sx-req" aria-hidden="true">*</span><span class="vh">(bắt buộc)</span></label>
+          <textarea id="tv-iem" class="sx-in" rows="2" inputmode="email" autocomplete="off" spellcheck="false" placeholder="ha.vu@anvinh.vn" value="{{ invText }}" onInput="{{ onInvText }}" onBlur="{{ onInvBlur }}" aria-invalid="{{ invEmailInvA }}" aria-describedby="tv-iemh" ref="{{ invEmailRef }}"></textarea>
+          <sc-if value="{{ invEmailErrShow }}"><p class="sx-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ invEmailErr }}</span></p></sc-if>
+          <p class="sx-hint" id="tv-iemh">Dán được nhiều địa chỉ, cách nhau bằng dấu phẩy hoặc xuống dòng — mỗi địa chỉ nhận một lời mời riêng.</p>
+          <sc-if value="{{ invAddrShow }}"><div class="tv-addr" aria-live="polite"><span class="sx-chip" data-t="brand"><i class="ri-mail-line" aria-hidden="true"></i>{{ invAddrText }}</span><sc-if value="{{ invMultiNote }}"><span class="sx-note"><i class="ri-tools-line" aria-hidden="true"></i>Chờ backend</span><span class="tv-ism">Repo nhận từng địa chỉ một — màn gửi lần lượt rồi báo kết quả từng địa chỉ.</span></sc-if></div></sc-if>
+        </div>
+        <fieldset class="tv-fs" aria-describedby="tv-irh">
+          <legend class="sx-lab">Nhóm quyền <span class="sx-req" aria-hidden="true">*</span><span class="vh">(bắt buộc)</span></legend>
+          <p class="sx-hint" id="tv-irh" style="margin:0;">Chọn một hoặc nhiều nhóm. Chỉ hiện nhóm bạn gán được — thấp hơn nhóm "{{ roleName }}" của bạn.</p>
+          <sc-for list="{{ invRoles }}" as="g" hint-placeholder-count="4">
+            <div class="tv-ro"><label><input type="checkbox" checked="{{ g.on }}" onChange="{{ g.toggle }}"><span class="t">{{ g.n }}</span></label><span class="d">{{ g.d }}</span><button class="tv-lnk x" onClick="{{ g.explain }}" aria-label="{{ g.xAria }}">Xem chi tiết</button></div>
+          </sc-for>
+          <sc-if value="{{ invRoleErrShow }}"><p class="sx-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>Chọn ít nhất 1 nhóm quyền — người không có nhóm nào sẽ không làm được việc gì.</span></p></sc-if>
+        </fieldset>
+        <div>
+          <label class="sx-lab" for="tv-imsg">Lời nhắn <span class="tv-muted" style="font-weight:400;">(không bắt buộc)</span><span class="tv-cnt">{{ invMsgN }}/500</span></label>
+          <textarea id="tv-imsg" class="sx-in" rows="3" maxlength="500" placeholder="Chị Tâm phụ trách mục Tin tức giúp em nhé." value="{{ invMsg }}" onInput="{{ onInvMsg }}" aria-describedby="tv-imsgh"></textarea>
+          <p class="sx-hint" id="tv-imsgh">Lời nhắn nằm trong thư mời, ngay dưới tên bạn.</p>
+        </div>
+        <p class="tv-line"><i class="ri-time-line" aria-hidden="true"></i><span>Lời mời có hiệu lực 7 ngày. Đã có tài khoản thì người nhận đăng nhập rồi tham gia; chưa có thì tạo tài khoản ngay ở trang nhận lời mời.</span></p>
+        <p class="tv-line"><i class="ri-mail-line" aria-hidden="true"></i><span>{{ invQuota }}</span></p>
+      </div>
+      <div class="tv-invf">
+        <sc-if value="{{ invWhyShow }}"><p class="tv-why" id="tv-invwhy" role="status"><i class="ri-information-line" aria-hidden="true"></i><span>{{ invWhy }}</span></p></sc-if>
+        <button class="sx-btn" onClick="{{ closeInv }}"><span class="sx-t">Hủy</span></button>
+        <button class="sx-btn pri" aria-disabled="{{ invLockA }}" aria-describedby="tv-invwhy" onClick="{{ sendInv }}"><i class="{{ invBtnIcon }}" aria-hidden="true"></i><span class="sx-t">{{ invBtnLabel }}</span></button>
+      </div>
+    </sc-if>
+    <sc-if value="{{ invResShow }}">
+      <div class="tv-invb" role="status" aria-live="polite">
+        <h3 class="tv-h2" style="margin:0;">{{ resTitle }}</h3>
+        <div class="tv-res"><sc-for list="{{ resRows }}" as="x"><div class="tv-resr" data-k="{{ x.k }}"><i class="{{ x.icon }}" aria-hidden="true"></i><b>{{ x.email }}</b><span>{{ x.text }}</span></div></sc-for></div>
+      </div>
+      <div class="tv-invf">
+        <button class="sx-btn" onClick="{{ invAgain }}"><i class="ri-user-add-line" aria-hidden="true"></i><span class="sx-t">Mời thêm</span></button>
+        <button class="sx-btn pri" onClick="{{ closeInv }}" ref="{{ resFocusRef }}"><span class="sx-t">Xong</span></button>
+      </div>
+    </sc-if>
+  </div>
+</sc-if>
+
+<sc-if value="{{ xShow }}" hint-placeholder-val="{{ false }}">
+  <dc-import name="Nhóm quyền" explain="{{ xName }}" on-close="{{ closeX }}" role="{{ roleName }}" plan-key="{{ planKey }}" upsell="{{ upsellOn }}" catalog-on="{{ catalogOn }}" show-frames="{{ false }}" hint-size="0px,0px"></dc-import>
+</sc-if>
+
+<div class="tv-toastw" role="status" aria-live="polite">
+  <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}"><div class="tv-toast"><span>{{ toastText }}</span><sc-if value="{{ toastReload }}"><button onClick="{{ onReload }}">Tải lại</button></sc-if><button onClick="{{ closeToast }}" aria-label="Đóng thông báo">Đóng</button></div></sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Quản trị&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Người xem&quot;},&quot;noInvitePerm&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Người xem&quot;},&quot;impersonating&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Người xem&quot;},&quot;planKey&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;free&quot;,&quot;basic&quot;,&quot;pro&quot;,&quot;ent&quot;],&quot;default&quot;:&quot;pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Gói&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói&quot;},&quot;usersOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói&quot;},&quot;catalogOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói&quot;},&quot;tab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;thanh-vien&quot;,&quot;loi-moi&quot;],&quot;default&quot;:&quot;thanh-vien&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;dataState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Có dữ liệu&quot;,&quot;Trống&quot;,&quot;Đang tải&quot;,&quot;Lỗi&quot;],&quot;default&quot;:&quot;Có dữ liệu&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;sent24&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;12&quot;,&quot;48&quot;,&quot;50&quot;],&quot;default&quot;:&quot;12&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;failSave&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;nhom&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;}}">
+const TV_CUSTOM = {
+  'Trợ lý chủ website': { level: 80, perms: ['entries.view', 'entries.create', 'entries.edit.own', 'entries.edit.any', 'entries.delete.own', 'entries.delete.any', 'entries.submit', 'entries.review', 'entries.approve', 'entries.publish', 'media.view', 'media.upload', 'media.delete', 'taxonomies.manage', 'menus.manage', 'forms.view', 'forms.manage', 'catalog.view', 'catalog.manage', 'settings.manage', 'users.invite', 'users.manage'] },
+  'Người duyệt bài': { level: 40, perms: ['entries.view', 'entries.review', 'entries.approve', 'entries.publish', 'media.view', 'menus.manage', 'catalog.view'] },
+  'Cộng tác viên dịch thuật — bản tiếng Nhật và tiếng Trung': { level: 25, perms: ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit', 'media.view'] },
+  'Nhóm A': { level: 15, perms: ['entries.view', 'forms.view'] }
+};
+const TV_SHORT = { 'entries.view': 'Xem bài', 'entries.create': 'Viết bài', 'entries.edit.own': 'Sửa bài của mình', 'entries.edit.any': 'Sửa mọi bài', 'entries.delete.own': 'Xóa bài của mình', 'entries.delete.any': 'Xóa mọi bài', 'entries.submit': 'Gửi duyệt', 'entries.review': 'Phản biện', 'entries.approve': 'Duyệt', 'entries.publish': 'Đăng', 'media.view': 'Xem ảnh', 'media.upload': 'Tải ảnh lên', 'media.delete': 'Xóa ảnh', 'taxonomies.manage': 'Quản lý chuyên mục', 'menus.manage': 'Sửa trình đơn', 'domains.manage': 'Đổi tên miền', 'settings.manage': 'Cài đặt website', 'forms.view': 'Xem khách liên hệ', 'forms.manage': 'Xử lý khách liên hệ', 'catalog.view': 'Xem sản phẩm', 'catalog.manage': 'Quản lý sản phẩm', 'users.invite': 'Mời thành viên', 'users.manage': 'Quản lý thành viên', 'roles.manage': 'Quản lý nhóm quyền' };
+const TV_TYP = ['settings.manage', 'users.manage', 'entries.publish', 'entries.approve', 'entries.edit.any', 'catalog.manage', 'entries.review', 'entries.create', 'entries.edit.own', 'media.upload', 'forms.manage', 'entries.submit', 'entries.view', 'media.view', 'forms.view', 'catalog.view'];
+const TV_SEED = [
+  { ma: '01J9TV0AN7Q2', name: 'Nguyễn Văn An', email: 'an.nguyen@anvinh.vn', roles: ['Chủ website'], st: 'active' },
+  { ma: '01J9TV1NG4K8', name: 'Trần Thị Bích Ngọc', email: 'ngoc.tran@anvinh.vn', roles: ['Quản trị'], st: 'active' },
+  { ma: '01J9TV2HU9M3', name: 'Phạm Quốc Huy', email: 'huy.pham@anvinh.vn', roles: ['Quản trị'], st: 'active' },
+  { ma: '01J9TV3TR2P6', name: 'Lê Minh Trí', email: 'tri.le@anvinh.vn', roles: ['Biên tập'], st: 'active' },
+  { ma: '01J9TV4NA5R1', name: 'Hoàng Ngọc Anh', email: 'ngocanh.hoang@anvinh.vn', roles: ['Biên tập', 'Người duyệt bài'], st: 'active' },
+  { ma: '01J9TV5HA8S4', name: 'Vũ Thu Hà', email: 'ha.vu@anvinh.vn', roles: ['Người viết'], st: 'active' },
+  { ma: '01J9TV6MP1T7', name: 'Đặng Thị Mai Phương', email: 'maiphuong.dang.bienphiendich@anvinh.vn', roles: ['Người viết', 'Cộng tác viên dịch thuật — bản tiếng Nhật và tiếng Trung'], st: 'active' },
+  { ma: '01J9TV7LO3V2', name: 'Bùi Văn Long', email: 'long.bui@anvinh.vn', roles: ['Cộng tác viên'], st: 'active' },
+  { ma: '01J9TV8GB6W5', name: 'Trịnh Gia Bảo', email: 'bao.trinh@anvinh.vn', roles: ['Người viết', 'Người duyệt bài'], st: 'active' }
+];
+/* D2-2: lời mời (bảng invitations + invitation_roles). Giờ mẫu tính từ TV_NOW; "day" = số thư đã gửi tới địa chỉ đó trong 24 giờ qua. */
+const TV_NOW = new Date(2026, 9, 7, 10, 0).getTime();
+const TV_HR = 3600000, TV_DAY = 86400000, TV_VALID = 7 * TV_DAY, TV_COOL = 60000, TV_SITE_MAX = 50, TV_ADDR_MAX = 3;
+const TV_INV_SEED = [
+  { ma: '01J9IV0TA1A2', email: 'tam.ngo@gmail.com', roles: ['Người viết'], by: '01J9TV1NG4K8', sent: -1.75 * TV_HR, day: 2, msg: 'Chị Tâm phụ trách mục Tin tức và Sự kiện giúp em nhé.' },
+  { ma: '01J9IV1TH3B4', email: 'thu.mai@gmail.com', roles: ['Cộng tác viên dịch thuật — bản tiếng Nhật và tiếng Trung'], by: '01J9TV0AN7Q2', sent: -0.4 * TV_HR, day: 3 },
+  { ma: '01J9IV2KL5C6', email: 'khanhlinh.tonnu.hoangphuongthao@gmail.com', roles: ['Chỉ xem'], by: '01J9TV2HU9M3', sent: -(6 * TV_DAY + 4 * TV_HR), day: 0 },
+  { ma: '01J9IV3MC7D8', email: 'minh.chau@anvinh.vn', roles: ['Trợ lý chủ website'], by: '01J9TV0AN7Q2', sent: -18 * TV_HR, day: 1 },
+  { ma: '01J9IV4QD9E1', email: 'quang.do@anvinh.vn', roles: ['Biên tập'], by: '01J9TV1NG4K8', sent: -15 * TV_DAY, day: 0 },
+  { ma: '01J9IV5ML2F3', email: 'my.ly@gmail.com', roles: ['Cộng tác viên'], by: null, sent: -12 * TV_DAY, day: 0 },
+  { ma: '01J9IV6DV4G5', email: 'dat.vo@gmail.com', roles: ['Người viết'], by: '01J9TV2HU9M3', sent: -6 * TV_DAY, day: 0, revoked: -4 * TV_DAY },
+  { ma: '01J9IV7HV6H7', email: 'ha.vu@anvinh.vn', roles: ['Người viết'], by: '01J9TV1NG4K8', sent: -19 * TV_DAY, day: 0, accepted: -18 * TV_DAY },
+  { ma: '01J9IV8BT8J9', email: 'bao.trinh@anvinh.vn', roles: ['Người viết', 'Người duyệt bài'], by: '01J9TV0AN7Q2', sent: -22 * TV_DAY, day: 0, accepted: -21.5 * TV_DAY }
+];
+const TV_IST = { pending: ['Đang chờ', 'warn', 'ri-mail-send-line'], expired: ['Hết hạn', 'danger', 'ri-time-line'], revoked: ['Đã hủy', 'neu', 'ri-close-circle-line'], accepted: ['Đã nhận', 'ok', 'ri-checkbox-circle-line'] };
+/* Câu lỗi theo InvitationRejectedException::reason — lang/vi.json rbac.invitation.error_* (câu repo đã đổi sang "nhóm quyền"). */
+const TV_ERR = {
+  no_roles: 'Hãy chọn ít nhất một nhóm quyền.',
+  already_member: 'Người này đã là thành viên của website.',
+  resend_too_soon: 'Vừa gửi lời mời tới địa chỉ này. Hãy đợi một phút rồi gửi lại.',
+  address_daily_limit: 'Địa chỉ này đã nhận đủ số thư mời cho phép trong 24 giờ qua. Hãy nhắc người nhận xem cả mục Thư rác, hoặc gửi lại sau.',
+  daily_limit: 'Website đã gửi nhiều lời mời trong 24 giờ qua. Hãy thử lại sau.',
+  invalid: 'Lời mời này vừa được nhận hoặc đã hủy. Hãy tải lại danh sách.'
+};
+const TV_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const TV_ME = { 'Chủ website': '01J9TV0AN7Q2', 'Quản trị': '01J9TV1NG4K8' };
+const TV_IMP = 'Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên.';
+const TV_ST = { active: ['Đang hoạt động', 'ok', 'ri-checkbox-circle-line'], pending: ['Chờ nhận lời mời', 'warn', 'ri-mail-send-line'], expired: ['Lời mời hết hạn', 'danger', 'ri-time-line'] };
+
+class Component extends DCLogic {
+  state = { members: null, q: '', tab: 'all', groups: null, sel: [], page: 1, per: 10, menu: null, pn: null, dlg: null, xName: null, toast: null, dataOverride: null, view: null, ist: 'pending', ipage: 1, invites: null, inv: null, invDraft: null, sentN: 0, addrAdd: {} };
+
+  componentDidMount() {
+    this._onReady = () => this.forceUpdate();
+    document.addEventListener('bs-cw-ready', this._onReady);
+    this._t0 = Date.now();
+    this._tick = setInterval(() => { const n = this.now(); if ((this.state.invites || []).some(v => !v.accAt && !v.revAt && n - v.sentAt < TV_COOL + 1000)) this.forceUpdate(); }, 1000);
+    this._onKey = (e) => { if (e.key !== 'Escape' || this.state.xName) return; if (this.state.menu) this.closeMenu(); else if (this.state.dlg) this.closeDlg(); else if (this.state.inv) this.closeInv(); else if (this.state.pn) this.closePanel(); };
+    document.addEventListener('keydown', this._onKey);
+    this._onCmd = (e) => { const d = (e && e.detail) || {}; if (!this.props.embedded || (d.id && d.id !== (this.props.embedId || 'users'))) return; if (d.act === 'save' && this.state.pn) this.savePanel(); if (d.act === 'reset' && this.state.pn) this.setState({ pn: null }); };
+    document.addEventListener('bs-embed-cmd', this._onCmd);
+    this._onUnload = (e) => { if (this.dirtyN() > 0) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', this._onUnload);
+    this._pp = Object.assign({}, this.props);
+  }
+  componentWillUnmount() { document.removeEventListener('bs-cw-ready', this._onReady); document.removeEventListener('keydown', this._onKey); document.removeEventListener('bs-embed-cmd', this._onCmd); window.removeEventListener('beforeunload', this._onUnload); clearTimeout(this._tt); clearTimeout(this._st); clearInterval(this._tick); }
+  componentDidUpdate() {
+    const p0 = this._pp || {}, p = this.props;
+    if (p.nhom !== p0.nhom) this.setState({ groups: null, page: 1 });
+    if (p.dataState !== p0.dataState) this.setState({ dataOverride: null, members: null, sel: [], invites: null });
+    if (p.tab !== p0.tab) this.setState({ view: null, ipage: 1 });
+    if (p.sent24 !== p0.sent24) this.setState({ sentN: 0 });
+    this._pp = Object.assign({}, p);
+    const n = this.dirtyN(); if (this._ld !== n) { this._ld = n; if (typeof p.onDirty === 'function') p.onDirty(n); }
+  }
+  dirtyN() { const iv = this.state.inv; if (iv && !iv.res && (iv.text.trim() || iv.msg.trim())) return 1; const pn = this.state.pn; if (!pn) return 0; const a = pn.roles.slice().sort().join('|'), b = pn.init.slice().sort().join('|'); return a === b ? 0 : 1; }
+
+  ctx() {
+    const B = window.BSCW, A = window.BSAI;
+    const roleName = this.props.role ?? 'Quản trị';
+    const R = B ? B.role(roleName) : { level: 70, perms: [] };
+    const all = B ? B.PERMS : [];
+    const vp = (R.perms === '*' ? all.slice() : R.perms.slice()).filter(p => !(p === 'users.invite' && (this.props.noInvitePerm ?? false)));
+    return { B, roleName, ceiling: R.level, vp, canManage: vp.indexOf('users.manage') >= 0, imp: !!(this.props.impersonating ?? false), upsell: !!(this.props.upsell ?? false), modOn: this.props.usersOn ?? true, me: TV_ME[roleName] || null };
+  }
+  roleDef(name) { const B = window.BSCW; if (B && B.ROLES[name]) { const r = B.ROLES[name]; return { name, sys: true, level: r.level, perms: r.perms === '*' ? B.PERMS.slice() : r.perms.slice() }; } const c = TV_CUSTOM[name]; return c ? { name, sys: false, level: c.level, perms: c.perms.slice() } : { name, sys: false, level: 1, perms: [] }; }
+  roleNames() { const B = window.BSCW; return (B ? Object.keys(B.ROLES) : []).concat(Object.keys(TV_CUSTOM)).map(n => this.roleDef(n)).sort((a, b) => b.level - a.level).map(r => r.name); }
+  maxLevel(m) { return Math.max.apply(null, m.roles.map(n => this.roleDef(n).level).concat([0])); }
+  canTouch(m, c) { return m.ma !== c.me && this.maxLevel(m) < c.ceiling; }
+  assignable(c) { return this.roleNames().map(n => this.roleDef(n)).filter(r => r.level < c.ceiling && r.perms.every(p => c.vp.indexOf(p) >= 0)); }
+  effective(names) { const s = new Set(); names.forEach(n => this.roleDef(n).perms.forEach(p => s.add(p))); return s; }
+  typical(r) { const B = window.BSCW; if (B && r.perms.length >= B.PERMS.length) return 'Mọi việc trên website'; const got = TV_TYP.filter(p => r.perms.indexOf(p) >= 0); const top = got.slice(0, 3).map(p => TV_SHORT[p]); const rest = r.perms.length - top.length; return 'Làm được: ' + top.join(', ') + (rest > 0 ? ' và ' + rest + ' việc khác' : ''); }
+  dataState() { return this.state.dataOverride || (this.props.dataState ?? 'Có dữ liệu'); }
+  members(c) { if (this.state.members) return this.state.members; if (this.dataState() === 'Trống') return TV_SEED.filter(m => m.ma === (c.me || TV_SEED[0].ma)); return TV_SEED.map(m => Object.assign({}, m, { roles: m.roles.slice() })); }
+  groups() { if (this.state.groups) return this.state.groups; return this.props.nhom ? [this.props.nhom] : []; }
+  first(n) { const p = String(n).trim().split(/\s+/); return p[p.length - 1]; }
+
+  showToast(text, reload) { clearTimeout(this._tt); this.setState({ toast: { text, reload: !!reload } }); this._tt = setTimeout(() => this.setState({ toast: null }), 7000); }
+  openMenu(e, m) { const el = e && e.currentTarget; const rc = el ? el.getBoundingClientRect() : { bottom: 120, top: 100, right: 400 }; const up = rc.bottom > window.innerHeight - 300; this._mOpener = el; this._mFocus = true; this.setState({ menu: Object.assign({ top: up ? 'auto' : (rc.bottom + 4) + 'px', bottom: up ? (window.innerHeight - rc.top + 4) + 'px' : 'auto', right: Math.max(8, window.innerWidth - rc.right) + 'px' }, m) }); }
+  closeMenu() { const o = this._mOpener; this.setState({ menu: null }); if (o) setTimeout(() => { try { o.focus(); } catch (e) {} }, 0); }
+  openDlg(d) { this._dOpener = document.activeElement; this._dFocus = true; this.setState({ dlg: d, menu: null }); }
+  closeDlg() { const o = this._dOpener; this.setState({ dlg: null }); if (o) setTimeout(() => { try { o.focus(); } catch (e) {} }, 0); }
+  openPanel(list) { const c = this.ctx(); if (c.imp) { this.showToast(TV_IMP); return; } this._pOpener = document.activeElement; this._pFocus = true; const init = list.length === 1 ? list[0].roles.slice() : []; this.setState({ pn: { mas: list.map(m => m.ma), roles: init.slice(), init, err: '' }, menu: null }); }
+  closePanel() { const o = this._pOpener; this.setState({ pn: null }); if (o) setTimeout(() => { try { o.focus(); } catch (e) {} }, 0); }
+  savePanel() {
+    const c = this.ctx(), pn = this.state.pn; if (!pn) return; if (c.imp) { this.showToast(TV_IMP); return; }
+    if (!pn.roles.length) { this.setState({ pn: Object.assign({}, pn, { err: 'Chọn ít nhất một nhóm quyền — người không có nhóm nào sẽ không làm được việc gì.' }) }); return; }
+    if (this.props.failSave ?? false) { this.setState({ pn: null }); this.showToast('Người này không còn là thành viên của website. Hãy tải lại trang.', true); return; }
+    const ms = this.members(c).map(m => pn.mas.indexOf(m.ma) >= 0 ? Object.assign({}, m, { roles: pn.roles.slice() }) : m);
+    const one = pn.mas.length === 1 ? ms.find(m => m.ma === pn.mas[0]) : null;
+    this.setState({ members: ms, pn: null, sel: [] });
+    this.showToast(one ? 'Đã đổi nhóm của ' + one.name + ' — áp dụng ngay.' : 'Đã đổi nhóm cho ' + pn.mas.length + ' người — áp dụng ngay.');
+  }
+  askRemove(list) {
+    const c = this.ctx(); if (c.imp) { this.showToast(TV_IMP); return; }
+    const one = list.length === 1 ? list[0] : null;
+    this.openDlg({ icon: 'ic dan ri-user-unfollow-line', title: one ? 'Xóa ' + one.name + ' khỏi website?' : 'Xóa ' + list.length + ' người khỏi website?',
+      body: (one ? this.first(one.name) + ' sẽ' : list.length + ' người này sẽ') + ' không đăng nhập được vào website này nữa. Bài đã viết vẫn giữ nguyên. Việc này không vào Thùng rác — muốn cho vào lại thì mời lại.',
+      cancel: 'Hủy', ok: one ? 'Xóa khỏi website' : 'Xóa ' + list.length + ' người khỏi website', danger: true,
+      onOk: () => { const mas = list.map(m => m.ma); this.setState({ members: this.members(c).filter(m => mas.indexOf(m.ma) < 0), dlg: null, sel: [] }); this.showToast(one ? 'Đã xóa ' + one.name + ' khỏi website. Muốn cho vào lại thì bấm "Mời thành viên".' : 'Đã xóa ' + list.length + ' người khỏi website.'); } });
+  }
+
+  renderVals() {
+    const S = this.state, P = this.props, c = this.ctx(), emb = !!P.embedded;
+    const ds = this.dataState();
+    const stNoPerm = !c.canManage, stPlan = !stNoPerm && !c.modOn, stLoading = !stNoPerm && !stPlan && (ds === 'Đang tải' || !c.B), stError = !stNoPerm && !stPlan && !stLoading && ds === 'Lỗi';
+    const stData = !stNoPerm && !stPlan && !stLoading && !stError;
+    const all = this.members(c), groups = this.groups(), q = S.q.trim().toLowerCase();
+    const inTab = (m) => m.st === 'active';
+    const inQ = (m) => !q || (m.name + ' ' + m.email).toLowerCase().indexOf(q) >= 0;
+    const inG = (m) => !groups.length || m.roles.some(r => groups.indexOf(r) >= 0);
+    const shown = all.filter(m => inTab(m) && inQ(m) && inG(m));
+    const per = S.per, pages = Math.max(1, Math.ceil(shown.length / per)), page = Math.min(S.page, pages);
+    const pageRows = shown.slice((page - 1) * per, page * per);
+    const view = S.view || ((P.tab ?? 'thanh-vien') === 'loi-moi' ? 'inv' : 'mem');
+    const nowMs = this.now(), invAll = this.invites(c), hasInv = c.vp.indexOf('users.invite') >= 0, full = this.siteFull(), sentSite = this.siteSent();
+    const istOf = (v) => this.ist(v, nowMs), invByS = (k) => invAll.filter(v => istOf(v) === k);
+    const pendN = invByS('pending').length, iTab = S.ist;
+    const invTabRows = invByS(iTab).sort((a, b) => b.sentAt - a.sentAt);
+    const invShownAll = invTabRows.filter(v => (!q || v.email.indexOf(q) >= 0) && (!groups.length || v.roles.some(r => groups.indexOf(r) >= 0)));
+    const ipg = Math.max(1, Math.min(S.ipage, Math.ceil(invShownAll.length / per) || 1));
+    const assignNames = this.assignable(c).map(r => r.name);
+    const reopen = this.reopenAt();
+    const irows = invShownAll.slice((ipg - 1) * per, ipg * per).map(v => {
+      const k = istOf(v), st = TV_IST[k], by = this.byName(v.by, c), live = k === 'pending' || k === 'expired';
+      const left = v.expAt - nowMs, soon = k === 'pending' && left < 2 * TV_DAY, hrs = Math.max(1, Math.round(left / TV_HR));
+      const soonTxt = hrs < 24 ? 'Còn ' + hrs + ' giờ' : 'Còn ' + Math.floor(hrs / 24) + ' ngày';
+      const exp = this.fmt(k === 'accepted' ? v.accAt : k === 'revoked' ? v.revAt : v.expAt);
+      const expLab = { pending: 'hết hạn ', expired: 'hết hạn ', revoked: 'hủy ', accepted: 'nhận ' }[k];
+      const grant = v.roles.every(r => assignNames.indexOf(r) >= 0);
+      const coolLeft = TV_COOL - (nowMs - v.sentAt), cool = live && coolLeft > 0, coolS = Math.ceil(coolLeft / 1000);
+      let why = '';
+      if (live && hasInv) { if (c.imp) why = TV_IMP; else if (!grant) why = 'Lời mời có nhóm ngang hoặc cao hơn bạn — nhờ ' + (by === 'Bạn' || by === 'Người đã rời website' ? 'Chủ website' : by) + ' gửi lại.'; else if (full) why = 'Đã đủ ' + TV_SITE_MAX + ' thư mời trong 24 giờ qua — gửi lại được sau ' + reopen + '.'; }
+      if (k === 'revoked' && hasInv && c.imp) why = TV_IMP;
+      return {
+        email: v.email, roles: v.roles, by, msg: v.msg, msgShow: !!v.msg, sent: this.fmt(v.sentAt), exp, soonShow: soon, soon: soonTxt,
+        stLabel: st[0], stT: st[1], stIcon: st[2],
+        meta: v.roles.join(', ') + ' · mời bởi ' + by + ' · gửi ' + this.fmt(v.sentAt) + ' · ' + expLab + exp + (soon ? ' (' + soonTxt.toLowerCase() + ')' : ''),
+        actResend: live && hasInv, rsLockA: (why || cool) ? 'true' : 'false', rsLabel: cool ? 'Gửi lại sau ' + coolS + ' giây' : 'Gửi lại',
+        rsAria: (cool ? 'Gửi lại sau ' + coolS + ' giây' : 'Gửi lại lời mời tới ' + v.email) + ' — liên kết cũ sẽ hết hiệu lực',
+        resend: () => { if (why) { this.showToast(why); return; } this.resend(v); },
+        menuAria: 'Thêm hành động cho lời mời gửi tới ' + v.email,
+        menu: (e) => this.openMenu(e, { kind: 'row', title: v.email, items: [
+          { label: 'Nhóm này làm được gì?', icon: 'ri-file-list-3-line', act: () => { this.setState({ menu: null }); this.openX(v.roles[0]); } },
+          { sep: true },
+          { label: 'Hủy lời mời…', icon: 'ri-mail-close-line', danger: true, lock: c.imp ? TV_IMP : '', act: () => { if (c.imp) return; this.setState({ menu: null }); this.askRevoke(v); } }
+        ] }),
+        actReinvite: k === 'revoked' && hasInv, riLockA: (c.imp || full) ? 'true' : 'false', riAria: 'Mời lại ' + v.email,
+        reinvite: () => this.openInv({ text: v.email, roles: v.roles.filter(r => assignNames.indexOf(r) >= 0), msg: v.msg || '' }),
+        actView: k === 'accepted', viewAria: 'Xem ' + v.email + ' trong danh sách thành viên', viewMem: () => this.setState({ view: 'mem', q: v.email, groups: [], page: 1 }),
+        whyShow: !!why, why
+      };
+    });
+    const IV = S.inv, ipr = IV ? this.parse(IV.text) : { valid: [], bad: [] };
+    const invEmailErr = !IV ? '' : ipr.bad.length ? '"' + ipr.bad[0] + '" chưa đúng dạng email — cần có @ và tên miền, ví dụ ha.vu@anvinh.vn.' + (ipr.bad.length > 1 ? ' Còn ' + (ipr.bad.length - 1) + ' địa chỉ khác cũng chưa đúng.' : '') : (!ipr.valid.length ? 'Nhập email của người được mời, ví dụ ha.vu@anvinh.vn.' : '');
+    const invEmailErrShow = !!IV && (IV.blur || IV.tried) && !!invEmailErr;
+    const invWhy = !IV ? '' : c.imp ? TV_IMP : full ? this.dailyMsg() : (!ipr.valid.length && !IV.roles.length) ? 'Nhập email và chọn ít nhất 1 nhóm' : ipr.bad.length ? 'Sửa địa chỉ email chưa đúng' : !ipr.valid.length ? 'Nhập ít nhất 1 email' : !IV.roles.length ? 'Chọn ít nhất 1 nhóm' : '';
+    const invRoles = IV ? this.assignable(c).map(r => ({ n: r.name, d: this.typical(r), on: IV.roles.indexOf(r.name) >= 0, xAria: 'Xem chi tiết nhóm ' + r.name, explain: () => this.openX(r.name), toggle: () => this.setState(s => ({ inv: Object.assign({}, s.inv, { roles: s.inv.roles.indexOf(r.name) >= 0 ? s.inv.roles.filter(x => x !== r.name) : s.inv.roles.concat([r.name]) }) })) })) : [];
+    const resList = IV && IV.res ? IV.res : [];
+    const resOk = resList.filter(r => r.code === 'ok').length;
+    const why = (m) => m.ma === c.me ? 'Đây là bạn — đổi nhóm của mình ở trang Tài khoản của tôi hoặc nhờ người cấp cao hơn.' : 'Người này cùng cấp hoặc cao hơn bạn.';
+    const rows = pageRows.map(m => {
+      const can = this.canTouch(m, c), st = TV_ST[m.st];
+      return {
+        name: m.name, email: m.email, roles: m.roles, you: m.ma === c.me, ini: m.name.trim().split(/\s+/).slice(-2).map(w => w[0]).join('').toUpperCase(),
+        stLabel: st[0], stT: st[1], stIcon: st[2], can, cannot: !can, why: why(m),
+        sel: S.sel.indexOf(m.ma) >= 0, selAria: 'Chọn ' + m.name, editAria: 'Sửa nhóm của ' + m.name, menuAria: 'Thêm hành động cho ' + m.name,
+        toggleSel: () => this.setState(s => ({ sel: s.sel.indexOf(m.ma) >= 0 ? s.sel.filter(x => x !== m.ma) : s.sel.concat([m.ma]) })),
+        edit: () => this.openPanel([m]),
+        menu: (e) => {
+          const items = [];
+          if (m.st !== 'active') items.push({ label: 'Gửi lại lời mời', icon: 'ri-mail-send-line', lock: c.imp ? TV_IMP : '', act: () => { if (c.imp) return; this.setState({ menu: null }); this.showToast('Đã gửi lại lời mời tới ' + m.email + '. Lời mời có hạn 7 ngày.'); } });
+          items.push({ label: 'Nhóm của người này làm được gì?', icon: 'ri-file-list-3-line', act: () => { this.setState({ menu: null }); this.openX(m.roles[0]); } });
+          items.push({ sep: true });
+          items.push({ label: 'Xóa khỏi website…', icon: 'ri-user-unfollow-line', danger: true, lock: c.imp ? TV_IMP : '', act: () => { if (c.imp) return; this.setState({ menu: null }); this.askRemove([m]); } });
+          this.openMenu(e, { kind: 'row', title: m.name, items });
+        }
+      };
+    });
+    const selM = all.filter(m => S.sel.indexOf(m.ma) >= 0), okM = selM.filter(m => this.canTouch(m, c)), skipM = selM.filter(m => !this.canTouch(m, c));
+    const skipText = skipM.length ? 'Bỏ qua ' + skipM.length + ' người: ' + skipM.map(m => m.name + (m.ma === c.me ? ' (là bạn)' : ' (cùng cấp hoặc cao hơn bạn)')).join('; ') + '.' : '';
+    const tabs = [['mem', 'Thành viên', all.length], ['inv', 'Lời mời', pendN]].map(t => ({ n: t[1], count: String(t[2]), onA: view === t[0] ? 'true' : 'false', pick: () => this.setState({ view: t[0], page: 1, ipage: 1 }) }));
+    const istabs = [['pending', 'Đang chờ'], ['expired', 'Hết hạn'], ['revoked', 'Đã hủy'], ['accepted', 'Đã nhận']].map(t => ({ n: t[1], count: String(invByS(t[0]).length), onA: iTab === t[0] ? 'true' : 'false', pick: () => this.setState({ ist: t[0], ipage: 1 }) }));
+    const pageOn = pageRows.filter(m => true);
+    const allOn = pageOn.length > 0 && pageOn.every(m => S.sel.indexOf(m.ma) >= 0);
+    const fopts = this.roleNames().map((n, i) => ({ n, count: String((view === 'inv' ? invTabRows : all).filter(m => m.roles.indexOf(n) >= 0).length), on: groups.indexOf(n) >= 0, toggle: () => { const g = this.groups(); this.setState({ groups: g.indexOf(n) >= 0 ? g.filter(x => x !== n) : g.concat([n]), page: 1 }); }, ref: (el) => { if (el && i === 0 && this._mFocus) { this._mFocus = false; el.focus(); } } }));
+    const M = S.menu;
+    const menuItems = M && M.items ? M.items.map((m, i) => ({ sep: !!m.sep, item: !m.sep, label: m.label || '', icon: m.icon || '', dangerA: m.danger ? 'true' : 'false', lockA: m.lock ? 'true' : 'false', whyShow: !!m.lock, why: m.lock || '', act: m.act || (() => {}), ref: (el) => { if (el && i === 0 && this._mFocus) { this._mFocus = false; el.focus(); } } })) : [];
+    // panel
+    const pn = S.pn;
+    const pnList = pn ? all.filter(m => pn.mas.indexOf(m.ma) >= 0) : [];
+    const assign = this.assignable(c);
+    const pnRoles = pn ? assign.map(r => ({ n: r.name, d: this.typical(r), on: pn.roles.indexOf(r.name) >= 0, xAria: 'Xem chi tiết nhóm ' + r.name, toggle: () => this.setState(s => ({ pn: Object.assign({}, s.pn, { err: '', roles: s.pn.roles.indexOf(r.name) >= 0 ? s.pn.roles.filter(x => x !== r.name) : s.pn.roles.concat([r.name]) }) })), explain: () => this.openX(r.name) })) : [];
+    let pvAdd = '', pvRem = '', pvTitle = '';
+    if (pn) {
+      if (pnList.length === 1) { const a = this.effective(pn.init), b = this.effective(pn.roles); pvAdd = Array.from(b).filter(p => !a.has(p)).map(p => TV_SHORT[p]).join(', '); pvRem = Array.from(a).filter(p => !b.has(p)).map(p => TV_SHORT[p]).join(', '); pvTitle = 'Sau khi đổi, ' + this.first(pnList[0].name) + ' sẽ:'; }
+      else { pvTitle = 'Mỗi người trong ' + pnList.length + ' người sẽ có đúng các nhóm đã chọn.'; const b = this.effective(pn.roles); pvAdd = b.size ? Array.from(b).filter(p => TV_TYP.indexOf(p) >= 0).slice(0, 6).map(p => TV_SHORT[p]).join(', ') : ''; }
+    }
+    const D = S.dlg;
+    const framesOn = !emb && (P.showFrames ?? true) && !/frame/.test(location.hash || '');
+    return {
+      bigA: ((P.bigText ?? false) || (!emb && this.uiBig())) ? '1' : '0', embA: emb ? '1' : '0', showHead: !emb, roleName: c.roleName, notes: (P.showNotes ?? true),
+      inviteShow: stData && c.vp.indexOf('users.invite') >= 0, impA: c.imp ? 'true' : 'false', impShow: c.imp && !stNoPerm,
+      onInvite: () => this.openInv(), invHdrLockA: (c.imp || full) ? 'true' : 'false',
+      vMem: view === 'mem', vInv: view === 'inv', istabs, irows, expHead: { pending: 'Hết hạn', expired: 'Hết hạn lúc', revoked: 'Hủy lúc', accepted: 'Nhận lúc' }[iTab],
+      pendShow: view === 'mem' && pendN > 0, pendText: pendN + ' lời mời đang chờ', goInv: () => this.setState({ view: 'inv', ist: 'pending', ipage: 1 }),
+      quotaLine: 'Đã gửi ' + sentSite + ' / ' + TV_SITE_MAX + ' thư mời trong 24 giờ qua', invNoPerm: !hasInv, invCanAct: hasInv && !c.imp,
+      invHasRows: invShownAll.length > 0, invEmptyAll: invAll.length === 0, invEmptyTab: invAll.length > 0 && invTabRows.length === 0,
+      invEmptyText: { pending: 'Không có lời mời nào đang chờ.', expired: 'Không có lời mời nào hết hạn.', revoked: 'Chưa hủy lời mời nào.', accepted: 'Chưa có ai nhận lời mời.' }[iTab],
+      invNoMatch: invTabRows.length > 0 && invShownAll.length === 0,
+      iPrevDis: ipg <= 1, iNextDis: ipg * per >= invShownAll.length, iPrev: () => this.setState({ ipage: Math.max(1, ipg - 1) }), iNext: () => this.setState({ ipage: ipg + 1 }),
+      limShow: hasInv && !c.imp && sentSite >= TV_SITE_MAX - 10, limK: full ? 'danger' : 'warn',
+      limTitle: full ? 'Website đã gửi đủ ' + TV_SITE_MAX + ' thư mời trong 24 giờ qua.' : 'Hôm nay còn gửi được ' + (TV_SITE_MAX - sentSite) + ' thư mời.',
+      limText: full ? 'Mời và Gửi lại mở lại lúc ' + reopen + '. Lời mời đã gửi vẫn dùng được.' : 'Tối đa ' + TV_SITE_MAX + ' thư mỗi 24 giờ, kể cả thư gửi lại.',
+      searchLab: view === 'inv' ? 'Tìm theo email' : 'Tìm theo tên hoặc email', searchPh: view === 'inv' ? 'tam.ngo@gmail.com' : 'Thu Hà hoặc ha.vu@anvinh.vn',
+      invShow: !!IV, invForm: !!IV && !IV.res, invResShow: !!(IV && IV.res),
+      invText: IV ? IV.text : '', onInvText: (e) => this.setInv({ text: e.target.value }), onInvBlur: () => this.setInv({ blur: true }),
+      invEmailInvA: invEmailErrShow ? 'true' : 'false', invEmailErrShow, invEmailErr,
+      invEmailRef: (el) => { if (el && this._iFocus) { this._iFocus = false; el.focus(); } },
+      invAddrShow: ipr.valid.length > 0, invAddrText: ipr.valid.length === 1 ? '1 địa chỉ' : ipr.valid.length + ' địa chỉ — mỗi địa chỉ một lời mời', invMultiNote: (P.showNotes ?? true) && ipr.valid.length > 1,
+      invRoles, invRoleErrShow: !!(IV && IV.tried && !IV.roles.length),
+      invMsg: IV ? IV.msg : '', invMsgN: String(IV ? IV.msg.length : 0), onInvMsg: (e) => this.setInv({ msg: String(e.target.value).slice(0, 500) }),
+      invQuota: 'Hôm nay website còn gửi được ' + Math.max(0, TV_SITE_MAX - sentSite) + ' thư mời (tối đa ' + TV_SITE_MAX + ' thư mỗi 24 giờ; mỗi địa chỉ tối đa ' + TV_ADDR_MAX + ' thư).',
+      invWhyShow: !!invWhy, invWhy, invLockA: (invWhy || (IV && IV.busy)) ? 'true' : 'false',
+      invBtnLabel: IV && IV.busy ? 'Đang gửi…' : 'Mời vào website', invBtnIcon: IV && IV.busy ? 'ri-loader-4-line' : 'ri-mail-send-line',
+      sendInv: () => this.sendInv(), closeInv: () => this.closeInv(), invAgain: () => this.invAgain(),
+      resTitle: 'Đã gửi ' + resOk + ' / ' + resList.length + ' lời mời',
+      resRows: resList.map(r => ({ email: r.email, k: r.code === 'ok' ? 'ok' : r.code === 'already_member' ? 'warn' : 'err', icon: r.code === 'ok' ? 'ri-checkbox-circle-line' : 'ri-error-warning-line', text: r.code === 'ok' ? this.sentMsg(r.email) : this.errMsg(r.code) })),
+      resFocusRef: (el) => { if (el && this._rFocus) { this._rFocus = false; el.focus(); } },
+      stNoPerm, stPlan, stLoading, stError, stData, upsellOn: c.upsell, upsellOff: !c.upsell, skRows: [1, 2, 3, 4, 5, 6],
+      goHome: () => { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: 'dashboard' } })); } catch (e) {} },
+      goPlan: () => { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: 'settings', section: 'plan' } })); } catch (e) {} this.showToast('Mở Cài đặt › Gói & mức dùng.'); },
+      onRetry: () => this.setState({ dataOverride: 'Có dữ liệu' }),
+      tabs, q: S.q, onQ: (e) => this.setState({ q: e.target.value, page: 1, ipage: 1 }),
+      fltOpenA: M && M.kind === 'filter' ? 'true' : 'false', fltCountShow: groups.length > 0, fltCount: String(groups.length),
+      openFilter: (e) => this.openMenu(e, { kind: 'filter', title: 'Lọc theo nhóm quyền' }),
+      filterLine: !!q || groups.length > 0,
+      fchips: groups.map(n => ({ n, aria: 'Bỏ lọc nhóm ' + n, rm: () => this.setState({ groups: this.groups().filter(x => x !== n), page: 1 }) })).concat(q ? [{ n: '"' + S.q.trim() + '"', aria: 'Bỏ từ khóa tìm', rm: () => this.setState({ q: '' }) }] : []),
+      clearFilter: () => this.setState({ q: '', groups: [], page: 1, ipage: 1 }), matchN: String(view === 'inv' ? invShownAll.length : shown.length), totalN: String(view === 'inv' ? invTabRows.length : all.length),
+      bulkShow: S.sel.length > 0, selN: String(S.sel.length), okN: String(okM.length), bulkGrpLockA: (c.imp || !okM.length) ? 'true' : 'false',
+      bulkGroups: () => { if (c.imp) { this.showToast(TV_IMP); return; } if (okM.length) this.openPanel(okM); },
+      bulkRemove: () => { if (c.imp) { this.showToast(TV_IMP); return; } if (okM.length) this.askRemove(okM); },
+      clearSel: () => this.setState({ sel: [] }), skipShow: !!skipText, skipText,
+      allOn, toggleAllSel: () => this.setState(s => ({ sel: allOn ? s.sel.filter(x => !pageOn.some(m => m.ma === x)) : Array.from(new Set(s.sel.concat(pageOn.map(m => m.ma)))) })),
+      rows, noMatch: shown.length === 0 && all.length > 1, onlyYou: all.length <= 1 && !q && !groups.length,
+      perPage: String(per), onPerPage: (e) => this.setState({ per: Number(e.target.value) || 10, page: 1, ipage: 1 }),
+      pages: Array.from({ length: pages }, (_, i) => ({ n: String(i + 1), cur: i + 1 === page ? 'page' : 'false', aria: 'Trang ' + (i + 1), go: () => this.setState({ page: i + 1 }) })),
+      prevDis: page <= 1, nextDis: page >= pages, prevPage: () => this.setState({ page: Math.max(1, page - 1) }), nextPage: () => this.setState({ page: Math.min(pages, page + 1) }),
+      framesShow: framesOn,
+      menuShow: !!M, menuRole: M && M.kind === 'filter' ? 'dialog' : 'menu', menuTitle: M ? M.title : '', menuTop: M ? M.top : 'auto', menuBottom: M ? M.bottom : 'auto', menuRight: M ? M.right : '8px',
+      isRowMenu: !!(M && M.kind === 'row'), isFilter: !!(M && M.kind === 'filter'), menuItems, fopts, clearGroups: () => this.setState({ groups: [], page: 1 }), closeMenu: () => this.closeMenu(),
+      pnShow: !!pn, pnTitle: pn ? (pnList.length === 1 ? 'Sửa nhóm: ' + pnList[0].name : 'Đổi nhóm cho ' + pnList.length + ' người') : '', pnSub: pn ? (pnList.length === 1 ? pnList[0].email : pnList.map(m => m.name).join(', ')) : '',
+      pnRoles, pnErrShow: !!(pn && pn.err), pnErr: pn ? pn.err : '', pnSave: pnList.length > 1 ? 'Lưu cho ' + pnList.length + ' người' : 'Lưu nhóm', savePanel: () => this.savePanel(), closePanel: () => this.closePanel(),
+      pnFocusRef: (el) => { if (el && this._pFocus) { this._pFocus = false; el.focus(); } },
+      pvTitle, pvNone: !!pn && !pvAdd && !pvRem, pvAddShow: !!pvAdd, pvAdd, pvRemShow: !!pvRem, pvRem,
+      dlgShow: !!D, dlgIcon: D ? D.icon : '', dlgTitle: D ? D.title : '', dlgBody: D ? D.body : '', dlgNote: !!(D && D.note), dlgCancel: D ? D.cancel : 'Hủy', dlgOkShow: !!(D && D.ok), dlgOkLabel: D ? (D.ok || '') : '', dlgOkIcon: D ? (D.okIcon || 'ri-user-unfollow-line') : '', dlgOkClass: D && D.danger ? 'sx-btn dan' : 'sx-btn pri',
+      dlgOk: () => { if (D && D.onOk) D.onOk(); }, closeDlg: () => this.closeDlg(), dlgFocusRef: (el) => { if (el && this._dFocus) { this._dFocus = false; el.focus(); } },
+      xShow: !!S.xName, xName: S.xName || '', closeX: () => this.closeX(), planKey: P.planKey ?? 'pro', catalogOn: P.catalogOn ?? true,
+      toastShow: !!S.toast, toastText: S.toast ? S.toast.text : '', toastReload: !!(S.toast && S.toast.reload), closeToast: () => this.setState({ toast: null }), onReload: () => { this.setState({ toast: null, members: null, invites: null, sel: [], dataOverride: 'Đang tải' }); setTimeout(() => this.setState({ dataOverride: 'Có dữ liệu' }), 600); }
+    };
+  }
+  uiBig() { try { const r = JSON.parse(localStorage.getItem('bs-ui') || 'null'); return !!(r && r.fontSize === 'large'); } catch (e) { return false; } }
+  openX(name) { this._xOpener = document.activeElement; this.setState({ xName: name }); }
+  closeX() { const o = this._xOpener; this.setState({ xName: null }); if (o) setTimeout(() => { try { o.focus(); } catch (e) {} }, 0); }
+  now() { return TV_NOW + (Date.now() - (this._t0 || Date.now())); }
+  fmt(ms) { const d = new Date(ms), p = (n) => String(n).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  reopenAt() { const d = new Date(TV_NOW - 20.3 * TV_HR + TV_DAY), p = (n) => String(n).padStart(2, '0'); return p(d.getHours()) + ':' + p(d.getMinutes()); }
+  invites() { if (this.state.invites) return this.state.invites; if (this.dataState() === 'Trống') return []; return TV_INV_SEED.map(s => ({ ma: s.ma, email: s.email, roles: s.roles.slice(), by: s.by, msg: s.msg || '', sentAt: TV_NOW + s.sent, expAt: TV_NOW + s.sent + TV_VALID, revAt: s.revoked != null ? TV_NOW + s.revoked : null, accAt: s.accepted != null ? TV_NOW + s.accepted : null })); }
+  ist(v, n) { return v.accAt ? 'accepted' : v.revAt ? 'revoked' : v.expAt <= n ? 'expired' : 'pending'; }
+  siteSent() { return Number(this.props.sent24 ?? '12') + (this.state.sentN || 0); }
+  siteFull() { return this.siteSent() >= TV_SITE_MAX; }
+  dailyMsg() { return 'Website đã gửi đủ ' + TV_SITE_MAX + ' thư mời trong 24 giờ qua. Hãy thử lại sau ' + this.reopenAt() + '.'; }
+  sentMsg(email) { return 'Đã gửi lời mời tới ' + email + '. Lời mời có hiệu lực trong 7 ngày.'; }
+  errMsg(code) { return code === 'daily_limit' ? this.dailyMsg() : (TV_ERR[code] || TV_ERR.invalid); }
+  seedDay(email) { return this.dataState() === 'Trống' ? 0 : TV_INV_SEED.filter(s => s.email === email).reduce((a, s) => a + s.day, 0); }
+  byName(ma, c) { if (!ma) return 'Người đã rời website'; if (ma === 'me' || ma === c.me) return 'Bạn'; const m = TV_SEED.find(x => x.ma === ma); return m ? m.name : 'Người đã rời website'; }
+  parse(text) { const seen = {}, valid = [], bad = []; String(text || '').split(/[\s,;]+/).map(t => t.trim().toLowerCase()).filter(Boolean).forEach(t => { if (seen[t]) return; seen[t] = 1; (TV_EMAIL.test(t) ? valid : bad).push(t); }); return { valid, bad }; }
+  /* Thứ tự kiểm theo InviteMember::handle: no_roles → already_member → resend_too_soon → address_daily_limit → daily_limit. Mời lại địa chỉ đang chờ = làm mới dòng cũ. */
+  sendMany(list, roles, msg) {
+    const c = this.ctx(), n = this.now(), mem = this.members(c);
+    const inv = this.invites(c).map(v => Object.assign({}, v));
+    let sentN = this.state.sentN || 0; const addrAdd = Object.assign({}, this.state.addrAdd || {});
+    const base = Number(this.props.sent24 ?? '12');
+    const out = list.map(email => {
+      if (!roles.length) return { email, code: 'no_roles' };
+      if (mem.some(m => m.email.toLowerCase() === email)) return { email, code: 'already_member' };
+      const open = inv.find(v => v.email === email && !v.accAt && !v.revAt);
+      if (open && n - open.sentAt < TV_COOL) return { email, code: 'resend_too_soon' };
+      if (this.seedDay(email) + (addrAdd[email] || 0) >= TV_ADDR_MAX) return { email, code: 'address_daily_limit' };
+      if (base + sentN >= TV_SITE_MAX) return { email, code: 'daily_limit' };
+      sentN++; addrAdd[email] = (addrAdd[email] || 0) + 1;
+      if (open) Object.assign(open, { sentAt: n, expAt: n + TV_VALID, roles: roles.slice(), msg: msg || '', by: c.me || 'me' });
+      else { this._seq = (this._seq || 0) + 1; inv.unshift({ ma: '01J9IVN' + String(this._seq).padStart(5, '0'), email, roles: roles.slice(), by: c.me || 'me', msg: msg || '', sentAt: n, expAt: n + TV_VALID, revAt: null, accAt: null }); }
+      return { email, code: 'ok' };
+    });
+    this.setState({ invites: inv, sentN, addrAdd });
+    return out;
+  }
+  resend(v) { const c = this.ctx(); if (c.imp) { this.showToast(TV_IMP); return; } const r = this.sendMany([v.email], v.roles, v.msg)[0]; this.showToast(r.code === 'ok' ? 'Đã gửi lại lời mời tới ' + v.email + '. Liên kết trong thư trước không dùng được nữa. Lời mời có hiệu lực trong 7 ngày.' : this.errMsg(r.code)); }
+  askRevoke(v) {
+    const c = this.ctx(); if (c.imp) { this.showToast(TV_IMP); return; }
+    this.openDlg({ icon: 'ic dan ri-mail-close-line', title: 'Hủy lời mời gửi tới ' + v.email + '?', body: 'Liên kết trong thư mời sẽ không dùng được nữa, ngay lập tức. Không hoàn tác được — muốn mời lại thì gửi lời mời mới.', cancel: 'Giữ lời mời', ok: 'Hủy lời mời', okIcon: 'ri-mail-close-line', danger: true,
+      onOk: () => { if (this.props.failSave ?? false) { this.setState({ dlg: null }); this.showToast(TV_ERR.invalid, true); return; } const n = this.now(); this.setState({ invites: this.invites(c).map(x => x.ma === v.ma ? Object.assign({}, x, { revAt: n }) : x), dlg: null }); this.showToast('Đã hủy lời mời gửi tới ' + v.email + '. Liên kết trong thư không dùng được nữa.'); } });
+  }
+  openInv(pre) {
+    const c = this.ctx(); if (c.imp) { this.showToast(TV_IMP); return; } if (this.siteFull()) { this.showToast(this.dailyMsg()); return; }
+    this._iOpener = document.activeElement; this._iFocus = true;
+    const d = pre || this.state.invDraft || { text: '', roles: [], msg: '' };
+    this.setState({ inv: { text: d.text, roles: d.roles.slice(), msg: d.msg, blur: false, tried: false, busy: false, res: null }, invDraft: null, menu: null });
+  }
+  setInv(p) { this.setState(s => ({ inv: s.inv ? Object.assign({}, s.inv, p) : s.inv })); }
+  closeInv() {
+    const iv = this.state.inv, o = this._iOpener; clearTimeout(this._st);
+    const keep = !!(iv && !iv.res && (iv.text.trim() || iv.msg.trim() || iv.roles.length));
+    this.setState({ inv: null, invDraft: keep ? { text: iv.text, roles: iv.roles.slice(), msg: iv.msg } : null });
+    if (keep && (iv.text.trim() || iv.msg.trim())) this.showToast('Đã giữ lại email và lời nhắn — bấm "Mời thành viên" để gửi tiếp.');
+    if (o) setTimeout(() => { try { o.focus(); } catch (e) {} }, 0);
+  }
+  sendInv() {
+    const iv = this.state.inv, c = this.ctx(); if (!iv || iv.busy) return;
+    if (c.imp) { this.showToast(TV_IMP); return; } if (this.siteFull()) { this.showToast(this.dailyMsg()); return; }
+    const pr = this.parse(iv.text);
+    if (!pr.valid.length || pr.bad.length || !iv.roles.length) { this.setInv({ tried: true, blur: true }); return; }
+    this.setInv({ busy: true }); clearTimeout(this._st);
+    this._st = setTimeout(() => {
+      const cur = this.state.inv; if (!cur) return;
+      const res = this.sendMany(pr.valid, cur.roles, cur.msg.trim());
+      if (res.length === 1 && res[0].code === 'ok') { const o = this._iOpener; this.setState({ inv: null, invDraft: null }); this.showToast(this.sentMsg(res[0].email)); if (o) setTimeout(() => { try { o.focus(); } catch (e) {} }, 0); }
+      else { this._rFocus = true; this.setInv({ busy: false, res }); }
+    }, 700);
+  }
+  invAgain() { const iv = this.state.inv; if (!iv) return; const retry = (iv.res || []).filter(r => r.code !== 'ok' && r.code !== 'already_member').map(r => r.email); this._iFocus = true; this.setState({ inv: { text: retry.join('\n'), roles: iv.roles.slice(), msg: iv.msg, blur: false, tried: false, busy: false, res: null } }); }
+}
+</script>
+</body>
+</html>

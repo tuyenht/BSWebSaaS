@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./platform-config.js"></script>
+<script src="./ai-quota.js"></script>
+<script src="./content-workflow.js"></script>
+<script src="./content-ui.js"></script>
+<script src="./shell-screens.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765)}
+a{color:var(--color-accent,#2050a0)}a:hover{color:var(--color-heading,#1f2b4d)}
+.tq{container-type:inline-size;container-name:tqo;min-height:100dvh;box-sizing:border-box;font-size:calc(14px + var(--fsp));line-height:1.5;color:var(--color-body-text,#3c4765);background:var(--color-body,#f4f5fa)}
+.tq *{box-sizing:border-box}
+.tq[data-fs="l"]{--fsp:2px}
+.tq[data-emb="1"]{min-height:0;background:transparent}
+.tq-wrap{container-type:inline-size;container-name:tq;max-width:1280px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+@container tqo (max-width:599px){.tq-wrap{padding:16px 12px}}
+.tq[data-emb="1"] .tq-wrap{padding:0;max-width:none}
+.tq-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px 16px}
+.tq-ht{flex:1 1 320px;min-width:0}
+.tq-h1{margin:0;font-size:calc(22px + var(--fsp));font-weight:600;line-height:1.4;color:var(--color-heading,#1f2b4d)}
+.tq-desc{margin:4px 0 0;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.tq-desc strong{color:var(--color-body-text,#3c4765);font-weight:600}
+.tq-ha{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;max-width:100%}
+.tq-notes{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tq-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@container tq (min-width:600px){.tq-stats[data-n="3"],.tq-stats[data-n="5"]{grid-template-columns:repeat(6,minmax(0,1fr))}.tq-stats[data-n="3"]>*{grid-column:span 2}.tq-stats[data-n="5"]>*{grid-column:span 2}.tq-stats[data-n="5"]>:nth-child(n+4){grid-column:span 3}}
+@container tq (min-width:900px){.tq-stats[data-n="4"]{grid-template-columns:repeat(4,minmax(0,1fr))}.tq-stats[data-n="5"]{grid-template-columns:repeat(5,minmax(0,1fr))}.tq-stats[data-n="5"]>*,.tq-stats[data-n="5"]>:nth-child(n+4){grid-column:auto}}
+@container tq (max-width:599px){.tq-stats[data-n="3"]>:last-child,.tq-stats[data-n="5"]>:last-child{grid-column:1/-1}}
+@container tq (max-width:599px){.tq-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.tq-ha{width:100%}.tq-ha .sx-btn{flex:1 1 auto}}
+.tq-stat{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%;height:100%;padding:16px;border:0;border-radius:6px;background:transparent;font:inherit;color:inherit;text-align:left}
+button.tq-stat{cursor:pointer}
+button.tq-stat:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tq-sl{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;width:100%}
+.tq-lab{min-width:0;font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275);line-height:1.4}
+.tq-ic{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 auto;border-radius:6px;background:color-mix(in srgb,var(--brand,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-size:calc(18px + var(--fsp))}
+.tq-ic[data-off="1"]{background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-muted,#5b6275)}
+.tq-val{font-size:calc(24px + var(--fsp));font-weight:700;line-height:1.3;color:var(--color-heading,#1f2b4d)}
+.tq-sub{font-size:calc(13px + var(--fsp));line-height:1.5;color:var(--color-body-muted,#5b6275)}
+.tq-errt{display:flex;align-items:flex-start;gap:6px;font-size:calc(13px + var(--fsp));line-height:1.5;color:var(--color-admin-danger-text,#bf371a)}
+.vh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.tq-mid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@container tq (min-width:900px){.tq-mid[data-chart="1"]{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}}
+.tq-aside{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:16px;align-content:start}
+.tq-duo{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+@container tq (min-width:720px){.tq-duo{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tq-todo{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.tq-todo:first-child{border-top:0}
+@container (max-width:519px){.tq-todo{grid-template-columns:auto minmax(0,1fr)}.tq-todo>.sx-btn{grid-column:1/-1;width:100%}}
+.tq-tic{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;flex:0 0 auto;border-radius:50%;font-size:calc(17px + var(--fsp));background:color-mix(in srgb,var(--brand,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0)}
+.tq-tic[data-t="info"]{background:color-mix(in srgb,var(--color-admin-info,#299cdb) 12%,var(--color-surface,#fff));color:var(--color-admin-info-text,#026fa2)}
+.tq-tic[data-t="warn"]{background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 18%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405)}
+.tq-tic[data-t="danger"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+.tq-tic[data-t="ok"]{background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,var(--color-surface,#fff));color:var(--color-admin-success-text,#047767)}
+.tq-tt{font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.45}
+.tq-ts{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);line-height:1.5;overflow-wrap:anywhere}
+.tq-start{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:16px}
+.tq-ring{position:relative;width:64px;height:64px;flex:0 0 auto}
+.tq-ring svg{display:block;transform:rotate(-90deg)}
+.tq-ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:calc(14px + var(--fsp));font-weight:700;color:var(--color-heading,#1f2b4d)}
+.tq-ring-bg{stroke:var(--color-surface-hover,#e9ecf4)}
+.tq-ring-fg{stroke:var(--brand-solid,var(--color-admin-primary,#2050a0))}
+.tq-steps{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:12px}
+.tq-step{display:flex;flex-direction:column;align-items:flex-start;gap:8px;padding:12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);min-width:0}
+.tq-step .sx-btn{max-width:100%}
+.tq-hdr-r{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:auto}
+.tq-chh{position:relative}
+.tq-rgs{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.tq-rg{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 10px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-text,#3c4765);white-space:nowrap;cursor:pointer}
+.tq-rg:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tq-rg[aria-pressed="true"]{background:var(--color-admin-primary,#2050a0);border-color:transparent;color:var(--color-white,#fff)}
+@media (pointer:coarse){.tq-rg,.tq-tab{min-height:44px}}
+.tq-pop{position:absolute;top:calc(100% - 4px);right:16px;z-index:30;width:min(300px,calc(100cqw - 32px));display:flex;flex-direction:column;gap:12px;padding:14px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;box-shadow:0 10px 30px rgb(20 22 30 / .16)}
+.tq-pop-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+.tq-pop label{display:flex;flex-direction:column;gap:4px;font-size:calc(13px + var(--fsp));font-weight:500;color:var(--color-body-text,#3c4765)}
+.tq-pop input{min-height:40px;padding:6px 8px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;min-width:0}
+.tq-pop-f{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.tq-chart{display:grid;grid-template-columns:44px minmax(0,1fr);gap:8px}
+.tq-ax{position:relative;height:180px}
+.tq-ax>span{position:absolute;right:0;transform:translateY(50%);font-size:12px;line-height:1.3;color:var(--color-body-muted,#5b6275);white-space:nowrap}
+.tq-plot{position:relative;height:180px;display:flex;align-items:flex-end}
+.tq-grid{position:absolute;left:0;right:0;height:0;border-top:1px solid var(--color-border,#e9ecf4)}
+.tq-col{position:relative;z-index:1;flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
+.tq-bar{width:100%;max-width:34px;border-radius:3px 3px 0 0;background:var(--brand-solid,var(--color-admin-primary,#2050a0))}
+.tq-bv{font-size:12px;font-weight:600;line-height:1.3;color:var(--color-heading,#1f2b4d);white-space:nowrap}
+.tq-avg{position:absolute;left:0;right:0;z-index:2;height:0;border-top:1px dashed var(--color-body-muted,#5b6275);pointer-events:none}
+.tq-avg>span{position:absolute;right:0;bottom:3px;padding:0 4px;border-radius:3px;background:var(--color-surface,#fff);font-size:12px;font-weight:600;line-height:1.3;color:var(--color-body-muted,#5b6275);white-space:nowrap}
+.tq-xl{position:relative;height:18px;margin:6px 0 0 52px}
+.tq-xl>span{position:absolute;top:0;text-align:center;font-size:12px;line-height:18px;color:var(--color-body-muted,#5b6275);white-space:nowrap}
+.tq-sum{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tq-sum b{color:var(--color-heading,#1f2b4d);font-weight:600}
+.tq-state{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:8px 0}
+.tq-tabs{display:flex;flex-wrap:wrap;gap:4px;padding:0 12px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.tq-tab{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 8px;border:0;border-bottom:2px solid transparent;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275);white-space:nowrap;cursor:pointer}
+.tq-tab[aria-selected="true"]{color:var(--color-accent,#2050a0);border-bottom-color:var(--color-accent,#2050a0)}
+.tq-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--color-surface-hover,#f1f3f9);font-size:12px;font-weight:700;color:var(--color-body-text,#3c4765)}
+.tq-li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:10px 12px;padding:10px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.tq-li:first-child{border-top:0}
+@container (max-width:439px){.tq-li{grid-template-columns:auto minmax(0,1fr)}.tq-li>.sx-btn{grid-column:2;justify-self:start}}
+.tq-lb{min-width:0;display:flex;flex-direction:column;gap:4px}
+.tq-lt{font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.tq-lm{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tq-reason{font-size:calc(13px + var(--fsp));line-height:1.5;color:var(--color-body-text,#3c4765);overflow-wrap:anywhere}
+.tq-empty{margin:0;padding:16px;color:var(--color-body-muted,#5b6275)}
+.tq-pad{padding:12px 16px 0;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tq-foot{display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.tq-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr));gap:10px}
+.tq-tile{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-height:44px;padding:12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);font:inherit;text-align:left;cursor:pointer;min-width:0}
+.tq-tile:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tq-tn{font-size:calc(22px + var(--fsp));font-weight:700;line-height:1.3;color:var(--color-heading,#1f2b4d)}
+.tq-h4{margin:0;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.tq-box{border:1px solid var(--color-border,#e9ecf4);border-radius:6px}
+.tq-qa{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));gap:8px}
+.tq-qa .sx-btn{width:100%;justify-content:flex-start}
+.tq-hl{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;color:var(--color-body-text,#3c4765);text-decoration:none;min-width:0}
+.tq-hl:hover{background:var(--color-surface-hover,#f1f3f9);color:var(--color-heading,#1f2b4d)}
+.tq-hl i{font-size:calc(17px + var(--fsp));color:var(--color-accent,#2050a0)}
+.tq-hl span{flex:1 1 auto;min-width:0}
+.tq-hl strong{font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere;text-align:right}
+.tq-linkbtn{align-self:flex-start;min-height:44px;padding:0 4px;border:0;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-accent,#2050a0);text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+.tq-tl{list-style:none;margin:0;padding:16px;display:flex;flex-direction:column}
+.tq-tl li{position:relative;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding-bottom:14px}
+.tq-tl li:last-child{padding-bottom:0}
+.tq-tl li::before{content:"";position:absolute;left:13px;top:28px;bottom:2px;border-left:1px solid var(--color-border,#e9ecf4)}
+.tq-tl li:last-child::before{display:none}
+.tq-av{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--color-surface-hover,#f1f3f9);font-size:12px;font-weight:700;color:var(--color-body-text,#3c4765)}
+.tq-tw{font-size:calc(14px + var(--fsp));line-height:1.5;color:var(--color-body-text,#3c4765);overflow-wrap:anywhere}
+.tq-tw b{font-weight:600;color:var(--color-heading,#1f2b4d)}
+.tq-skel{display:flex;flex-direction:column;gap:16px}
+.tq-frames{display:none;flex-direction:column;gap:12px;margin-top:8px}
+@container tqo (min-width:1240px){.tq-frames{display:flex}}
+.tq-frow{display:flex;gap:24px;align-items:flex-start}
+.tq-frow figure{margin:0;display:flex;flex-direction:column;gap:6px}
+.tq-frow figcaption{font-size:13px;font-weight:600;color:var(--color-body-muted,#5b6275)}
+.tq-frow iframe{border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;background:var(--color-body,#f4f5fa)}
+.tq-tst .tst{pointer-events:auto}
+.tq-tst .tst-b{margin-left:auto;min-height:36px;padding:0 8px;border:0;background:transparent;font:inherit;font-weight:600;color:var(--color-accent,#2050a0);text-decoration:underline;cursor:pointer;white-space:nowrap}
+</style>
+</helmet>
+<div class="tq" data-emb="{{ embAttr }}" data-fs="{{ fsAttr }}">
+  <div class="tq-wrap">
+    <div class="tq-head">
+      <div class="tq-ht">
+        <h1 class="tq-h1">Tổng quan</h1>
+        <p class="tq-desc">Đây là tình hình <strong>{{ siteName }}</strong> hôm nay.</p>
+      </div>
+      <sc-if value="{{ canCreate }}" hint-placeholder-val="{{ true }}"><div class="tq-ha"><button type="button" class="sx-btn pri" data-focus-kind="solid" onClick="{{ onWrite }}"><i class="ri-add-line" aria-hidden="true"></i><span class="sx-t">Viết bài mới</span></button></div></sc-if>
+    </div>
+    <sc-if value="{{ notes }}"><div class="tq-notes"><span class="sx-note">Chờ backend</span><span>Mọi con số là số mẫu: repo chưa có bộ đếm theo website, chưa đo dung lượng thư viện đã dùng và lượt xem (README › Việc cho backend).</span></div></sc-if>
+
+    <sc-if value="{{ loadingAll }}"><div class="tq-skel" aria-busy="true">
+      <span class="vh" role="status">Đang tải Tổng quan…</span>
+      <div class="tq-stats" data-n="{{ statN }}"><sc-for list="{{ metrics }}" as="s" hint-placeholder-count="4"><div class="sx-card"><div class="tq-stat"><span class="sx-sk" style="height:14px;width:60%;"></span><span class="sx-sk" style="height:30px;width:45%;"></span><span class="sx-sk" style="height:12px;width:80%;"></span></div></div></sc-for></div>
+      <sc-if value="{{ chartShow }}"><div class="sx-card"><div class="sx-cb"><span class="sx-sk" style="height:18px;width:40%;"></span><span class="sx-sk" style="height:180px;"></span></div></div></sc-if>
+      <div class="tq-duo"><sc-for list="{{ skCards }}" as="s" hint-placeholder-count="2"><div class="sx-card"><div class="sx-cb"><span class="sx-sk" style="height:18px;width:50%;"></span><span class="sx-sk" style="height:14px;width:90%;"></span><span class="sx-sk" style="height:14px;width:75%;"></span><span class="sx-sk" style="height:14px;width:82%;"></span></div></div></sc-for></div>
+    </div></sc-if>
+
+    <sc-if value="{{ ready }}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ todoShow }}"><section class="sx-card" aria-labelledby="tq-h-todo">
+        <div class="sx-ch"><h2 id="tq-h-todo" class="sx-h3">Việc cần làm hôm nay</h2><span class="sx-chip" data-t="warn"><i class="ri-checkbox-multiple-line" aria-hidden="true"></i>{{ todoCount }}</span></div>
+        <div>
+          <sc-for list="{{ todo }}" as="t" hint-placeholder-count="2"><div class="tq-todo">
+            <span class="tq-tic" data-t="{{ t.tone }}" aria-hidden="true"><i class="{{ t.icon }}"></i></span>
+            <div style="min-width:0;display:flex;flex-direction:column;gap:2px;"><div class="tq-tt">{{ t.text }}</div><div class="tq-ts">{{ t.sub }}</div><sc-if value="{{ t.noteShow }}"><span class="sx-note" style="align-self:flex-start;">Chờ backend</span></sc-if></div>
+            <button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ t.go }}" title="{{ t.btn }}"><span class="sx-t el">{{ t.btn }}</span><i class="ri-arrow-right-line" aria-hidden="true"></i></button>
+          </div></sc-for>
+        </div>
+      </section></sc-if>
+
+      <sc-if value="{{ startShow }}"><section class="sx-card" aria-labelledby="tq-h-start">
+        <div class="sx-ch"><h2 id="tq-h-start" class="sx-h3">Bắt đầu với website của bạn</h2><sc-if value="{{ notes }}"><span class="sx-note">Chờ backend</span></sc-if><div class="tq-hdr-r"><button type="button" class="sx-btn gho" data-focus-kind="ghost" onClick="{{ onHideStart }}"><i class="ri-eye-off-line" aria-hidden="true"></i><span class="sx-t">Ẩn danh sách này</span></button></div></div>
+        <div class="sx-cb">
+          <div class="tq-start">
+            <div class="tq-ring" role="img" aria-label="{{ startAria }}"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle class="tq-ring-bg" cx="32" cy="32" r="26" fill="none" stroke-width="7"></circle><circle class="tq-ring-fg" cx="32" cy="32" r="26" fill="none" stroke-width="7" stroke-linecap="round" stroke-dasharray="{{ ringDash }}"></circle></svg><b aria-hidden="true">{{ startFrac }}</b></div>
+            <div style="min-width:0;"><div class="tq-tt">{{ startTitle }}</div><div class="tq-ts">Mỗi việc vài phút. Làm xong việc nào, việc đó tự ẩn khỏi danh sách.</div></div>
+          </div>
+          <div class="tq-steps">
+            <sc-for list="{{ startSteps }}" as="f" hint-placeholder-count="5"><div class="tq-step">
+              <div class="tq-tt">{{ f.title }}</div>
+              <div class="tq-ts">{{ f.sub }}</div>
+              <button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ f.go }}" title="{{ f.btn }}"><span class="sx-t el">{{ f.btn }}</span><i class="ri-arrow-right-line" aria-hidden="true"></i></button>
+            </div></sc-for>
+          </div>
+        </div>
+      </section></sc-if>
+
+      <div class="tq-stats" data-n="{{ statN }}">
+        <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="4"><div class="sx-card">
+          <sc-if value="{{ m.ok }}"><button type="button" class="tq-stat" data-focus-kind="ghost" onClick="{{ m.go }}" aria-label="{{ m.aria }}">
+            <span class="tq-sl"><span class="tq-lab">{{ m.label }}</span><span class="tq-ic" aria-hidden="true"><i class="{{ m.icon }}"></i></span></span>
+            <span class="tq-val" aria-hidden="true">{{ m.val }}</span>
+            <span class="tq-sub" aria-hidden="true">{{ m.sub }}</span>
+            <sc-if value="{{ m.warn }}"><span class="sx-chip" data-t="warn" aria-hidden="true"><i class="ri-error-warning-line"></i>Sắp đầy</span></sc-if>
+          </button></sc-if>
+          <sc-if value="{{ m.loading }}"><div class="tq-stat" aria-busy="true"><span class="vh" role="status">Đang tải {{ m.label }}</span><span class="sx-sk" style="height:14px;width:60%;"></span><span class="sx-sk" style="height:30px;width:45%;"></span><span class="sx-sk" style="height:12px;width:80%;"></span></div></sc-if>
+          <sc-if value="{{ m.err }}"><div class="tq-stat">
+            <span class="tq-lab">{{ m.label }}</span>
+            <span class="tq-errt" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>Chưa tải được số này. Các thẻ khác vẫn đúng.</span></span>
+            <button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ m.retry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button>
+          </div></sc-if>
+          <sc-if value="{{ m.lock }}"><div class="tq-stat">
+            <span class="tq-sl"><span class="tq-lab">{{ m.label }}</span><span class="tq-ic" data-off="1" aria-hidden="true"><i class="ri-lock-line"></i></span></span>
+            <span class="tq-sub">{{ m.lockText }}</span>
+            <sc-if value="{{ m.up }}"><button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ onUpgrade }}" title="Xem gói nâng cấp"><span class="sx-t el">Xem gói nâng cấp</span></button></sc-if>
+          </div></sc-if>
+        </div></sc-for>
+      </div>
+
+      <div class="tq-mid" data-chart="{{ chartAttr }}">
+        <sc-if value="{{ chartShow }}"><section class="sx-card" aria-labelledby="tq-h-chart">
+          <div class="sx-ch tq-chh" data-dz="range">
+            <div style="flex:1 1 200px;min-width:0;"><h2 id="tq-h-chart" class="sx-h3">Lượt xem website</h2><div class="tq-sub">{{ rangeLabel }} · đơn vị trục: {{ unitWord }}</div></div>
+            <div class="tq-rgs" role="group" aria-label="Khoảng thời gian của biểu đồ">
+              <sc-for list="{{ rangeChips }}" as="c" hint-placeholder-count="3"><button type="button" class="tq-rg" aria-pressed="{{ c.pressed }}" data-focus-kind="{{ c.fk }}" onClick="{{ c.onClick }}">{{ c.label }}</button></sc-for>
+              <button type="button" class="tq-rg" ref="{{ setRangeBtn }}" aria-haspopup="dialog" aria-expanded="{{ rangeOpenStr }}" aria-pressed="{{ customPressed }}" data-focus-kind="{{ customFk }}" onClick="{{ onRangeToggle }}"><i class="ri-calendar-2-line" aria-hidden="true"></i>Chọn ngày</button>
+            </div>
+            <sc-if value="{{ rangeOpen }}"><div class="tq-pop pop" role="dialog" aria-label="Chọn khoảng ngày" onKeyDown="{{ onPopKey }}">
+              <div class="tq-tt">Chọn khoảng ngày</div>
+              <div class="tq-pop-g">
+                <label>Từ ngày<input ref="{{ setFromEl }}" type="date" min="{{ rangeMin }}" max="{{ rangeMax }}" value="{{ draftFrom }}" onChange="{{ onFrom }}"></label>
+                <label>Đến ngày<input type="date" min="{{ rangeMin }}" max="{{ rangeMax }}" value="{{ draftTo }}" onChange="{{ onTo }}"></label>
+              </div>
+              <div class="tq-ts" role="status">{{ rangeHint }}</div>
+              <div class="tq-pop-f">
+                <button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ onRangeClose }}">Hủy</button>
+                <button type="button" class="sx-btn pri" data-focus-kind="solid" onClick="{{ onRangeApply }}">Áp dụng</button>
+              </div>
+            </div></sc-if>
+          </div>
+          <div class="sx-cb">
+            <sc-if value="{{ chartLoading }}"><div aria-busy="true"><span class="vh" role="status">Đang tải biểu đồ…</span><span class="sx-sk" style="height:180px;"></span></div></sc-if>
+            <sc-if value="{{ chartErr }}"><div class="tq-state">
+              <span class="tq-errt" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>Chưa tải được lượt xem — có thể do mạng chậm. Số liệu không mất, bấm Thử lại.</span></span>
+              <button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ onChartRetry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button>
+            </div></sc-if>
+            <sc-if value="{{ chartEmpty }}"><div class="tq-state"><span class="tq-ic" data-off="1" aria-hidden="true"><i class="ri-bar-chart-2-line"></i></span><div class="tq-tt">Chưa có lượt xem nào</div><div class="tq-ts">Số liệu hiện ở đây sau khi website có khách ghé thăm.</div></div></sc-if>
+            <sc-if value="{{ chartOk }}"><div role="img" aria-label="{{ chartAria }}">
+              <div class="tq-chart">
+                <div class="tq-ax" aria-hidden="true"><sc-for list="{{ ticks }}" as="k" hint-placeholder-count="3"><span style="bottom:{{ k.b }};">{{ k.t }}</span></sc-for></div>
+                <div class="tq-plot" ref="{{ setPlotRef }}" style="gap:{{ chartGap }};">
+                  <sc-for list="{{ ticks }}" as="k" hint-placeholder-count="3"><div class="tq-grid" aria-hidden="true" style="bottom:{{ k.b }};"></div></sc-for>
+                  <sc-if value="{{ avgShow }}"><div class="tq-avg" aria-hidden="true" style="bottom:{{ avgB }};"><span>{{ avgLabel }}</span></div></sc-if>
+                  <sc-for list="{{ bars }}" as="b" hint-placeholder-count="7"><div class="tq-col" aria-hidden="true" title="{{ b.title }}"><sc-if value="{{ b.showV }}"><span class="tq-bv">{{ b.v }}</span></sc-if><div class="tq-bar" style="height:{{ b.h }};"></div></div></sc-for>
+                </div>
+              </div>
+              <div class="tq-xl" aria-hidden="true"><sc-for list="{{ xLabs }}" as="x" hint-placeholder-count="2"><span style="left:{{ x.left }};width:{{ x.w }};">{{ x.t }}</span></sc-for></div>
+            </div>
+            <div class="tq-sum"><span>Cao nhất <b>{{ sumMax }}</b> lượt ({{ sumMaxDay }})</span><span>Trung bình <b>{{ sumAvg }}</b> lượt mỗi {{ unit }}</span><span>Tổng <b>{{ sumAll }}</b> lượt</span></div></sc-if>
+          </div>
+        </section></sc-if>
+
+        <div class="tq-aside">
+          <sc-if value="{{ quickShow }}"><section class="sx-card" aria-labelledby="tq-h-quick">
+            <div class="sx-ch"><h2 id="tq-h-quick" class="sx-h3">Làm nhanh</h2></div>
+            <div class="sx-cb"><div class="tq-qa"><sc-for list="{{ quick }}" as="q" hint-placeholder-count="4"><button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ q.go }}" title="{{ q.label }}"><i class="{{ q.icon }}" aria-hidden="true"></i><span class="sx-t el">{{ q.label }}</span></button></sc-for></div></div>
+          </section></sc-if>
+          <section class="sx-card" aria-labelledby="tq-h-help">
+            <div class="sx-ch"><h2 id="tq-h-help" class="sx-h3">Cần giúp?</h2><sc-if value="{{ notes }}"><span class="sx-note">Chờ backend · D4-3</span></sc-if></div>
+            <div class="sx-cb" style="gap:8px;">
+              <div class="tq-ts">Gọi, nhắn Zalo hoặc gửi email — đội hỗ trợ trả lời trong giờ hành chính. Câu hỏi thường gặp của từng màn nằm ở nút Trợ giúp trên thanh trên cùng.</div>
+              <a class="tq-hl" data-focus-kind="outline" href="{{ helpTel }}"><i class="ri-phone-line" aria-hidden="true"></i><span>Gọi tổng đài</span><strong>{{ helpPhone }}</strong></a>
+              <a class="tq-hl" data-focus-kind="outline" href="{{ helpZaloUrl }}" target="_blank" rel="noopener"><i class="ri-chat-3-line" aria-hidden="true"></i><span>Nhắn Zalo</span><strong>{{ helpZalo }}</strong></a>
+              <a class="tq-hl" data-focus-kind="outline" href="{{ helpMail }}"><i class="ri-mail-line" aria-hidden="true"></i><span>Gửi email</span><strong>{{ helpEmail }}</strong></a>
+              <sc-if value="{{ restoreStartShow }}"><button type="button" class="tq-linkbtn" onClick="{{ onShowStart }}">Hiện lại danh sách Bắt đầu</button></sc-if>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <div class="tq-duo">
+        <sc-if value="{{ revShow }}"><section class="sx-card" aria-labelledby="tq-h-rev">
+          <div class="sx-ch"><h2 id="tq-h-rev" class="sx-h3">Duyệt bài</h2><span class="sx-chip" data-t="warn"><i class="ri-time-line" aria-hidden="true"></i>{{ revBadge }}</span></div>
+          <div class="tq-tabs" role="tablist" aria-label="Việc duyệt bài">
+            <sc-for list="{{ revTabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" class="tq-tab" id="{{ t.id }}" aria-selected="{{ t.sel }}" aria-controls="tq-rev-panel" tabindex="{{ t.ti }}" onClick="{{ t.onClick }}" onKeyDown="{{ onTabKey }}">{{ t.label }}<span class="tq-cnt">{{ t.n }}</span></button></sc-for>
+          </div>
+          <div role="tabpanel" id="tq-rev-panel" aria-labelledby="{{ revTabId }}">
+            <sc-if value="{{ revNoteShow }}"><div class="tq-pad"><span class="sx-note">Chờ backend</span> Repo chưa có việc giao bài cho từng người duyệt.</div></sc-if>
+            <sc-for list="{{ revItems }}" as="w" hint-placeholder-count="3"><div class="tq-li">
+              <span class="tq-tic" data-t="{{ w.tone }}" aria-hidden="true"><i class="{{ w.icon }}"></i></span>
+              <div class="tq-lb"><div class="tq-lt">{{ w.title }}</div><div class="tq-lm"><span class="sx-chip" data-t="{{ w.chipT }}"><i class="{{ w.chipI }}" aria-hidden="true"></i>{{ w.chip }}</span><span>{{ w.meta }}</span></div></div>
+              <button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ w.go }}" aria-label="{{ w.btnAria }}"><span class="sx-t">{{ w.btn }}</span></button>
+            </div></sc-for>
+            <sc-if value="{{ revEmpty }}"><p class="tq-empty">{{ revEmptyText }}</p></sc-if>
+          </div>
+          <div class="tq-foot"><button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ revFootGo }}"><span class="sx-t">{{ revFoot }}</span><i class="ri-arrow-right-line" aria-hidden="true"></i></button></div>
+        </section></sc-if>
+
+        <sc-if value="{{ wrShow }}"><section class="sx-card" aria-labelledby="tq-h-wr">
+          <div class="sx-ch"><h2 id="tq-h-wr" class="sx-h3">Bài của tôi</h2></div>
+          <div class="sx-cb">
+            <div class="tq-tiles"><sc-for list="{{ wrTiles }}" as="t" hint-placeholder-count="3"><button type="button" class="tq-tile" data-focus-kind="outline" onClick="{{ t.go }}" aria-label="{{ t.aria }}"><span class="tq-tn" aria-hidden="true">{{ t.n }}</span><span class="sx-chip" data-t="{{ t.chipT }}" aria-hidden="true"><i class="{{ t.icon }}"></i>{{ t.label }}</span></button></sc-for></div>
+            <sc-if value="{{ wrRetShow }}"><div style="display:flex;flex-direction:column;gap:8px;">
+              <h3 class="tq-h4">Bị trả lại — cần sửa</h3>
+              <div class="tq-box"><sc-for list="{{ wrRet }}" as="w" hint-placeholder-count="1"><div class="tq-li">
+                <span class="tq-tic" data-t="danger" aria-hidden="true"><i class="ri-arrow-go-back-line"></i></span>
+                <div class="tq-lb"><div class="tq-lt">{{ w.title }}</div><div class="tq-reason">Lý do: {{ w.reason }}</div><div class="tq-lm"><span>{{ w.meta }}</span></div></div>
+                <button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ w.go }}" aria-label="{{ w.btnAria }}"><span class="sx-t">Sửa bài</span></button>
+              </div></sc-for></div>
+            </div></sc-if>
+            <sc-if value="{{ wrEmpty }}"><div class="tq-ts">Bạn chưa có bài nào. Bấm "Viết bài mới" ở đầu trang để viết bài đầu tiên.</div></sc-if>
+          </div>
+          <div class="tq-foot"><button type="button" class="sx-btn gho" data-focus-kind="ghost" onClick="{{ wrAll }}"><span class="sx-t">Xem tất cả bài của tôi</span><i class="ri-arrow-right-line" aria-hidden="true"></i></button></div>
+        </section></sc-if>
+
+        <sc-if value="{{ recShow }}"><section class="sx-card" aria-labelledby="tq-h-rec">
+          <div class="sx-ch"><h2 id="tq-h-rec" class="sx-h3">{{ recTitle }}</h2></div>
+          <div>
+            <sc-for list="{{ recent }}" as="w" hint-placeholder-count="5"><div class="tq-li">
+              <span class="tq-tic" aria-hidden="true"><i class="{{ w.icon }}"></i></span>
+              <div class="tq-lb"><div class="tq-lt">{{ w.title }}</div><div class="tq-lm"><span class="sx-chip" data-t="{{ w.chipT }}"><i class="{{ w.chipI }}" aria-hidden="true"></i>{{ w.chip }}</span><span>{{ w.meta }}</span></div></div>
+              <button type="button" class="sx-btn" data-focus-kind="outline" onClick="{{ w.go }}" aria-label="{{ w.btnAria }}"><span class="sx-t">{{ w.btn }}</span></button>
+            </div></sc-for>
+            <sc-if value="{{ recEmpty }}"><p class="tq-empty">{{ recEmptyText }}</p></sc-if>
+          </div>
+          <div class="tq-foot"><button type="button" class="sx-btn gho" data-focus-kind="ghost" onClick="{{ recAll }}"><span class="sx-t">Xem tất cả nội dung</span><i class="ri-arrow-right-line" aria-hidden="true"></i></button></div>
+        </section></sc-if>
+
+        <sc-if value="{{ actShow }}"><section class="sx-card" aria-labelledby="tq-h-act">
+          <div class="sx-ch"><h2 id="tq-h-act" class="sx-h3">Hoạt động gần đây</h2><sc-if value="{{ notes }}"><span class="sx-note">Chờ backend · D0-4a</span></sc-if></div>
+          <ol class="tq-tl">
+            <sc-for list="{{ acts }}" as="a" hint-placeholder-count="5"><li><span class="tq-av" aria-hidden="true">{{ a.init }}</span><div style="min-width:0;"><div class="tq-tw"><b>{{ a.who }}</b> {{ a.what }}</div><div class="tq-ts">{{ a.when }}</div></div></li></sc-for>
+          </ol>
+          <div class="tq-foot"><button type="button" class="sx-btn gho" data-focus-kind="ghost" onClick="{{ actAll }}"><span class="sx-t">Xem nhật ký hoạt động</span><i class="ri-arrow-right-line" aria-hidden="true"></i></button></div>
+        </section></sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ framesShow }}"><section class="tq-frames" aria-label="Khung xem điện thoại và máy tính bảng">
+      <h2 class="sx-h3">Khung xem 390 · 768</h2>
+      <div class="tq-frow">
+        <figure><figcaption>Điện thoại 390px</figcaption><iframe title="Tổng quan ở 390px" src="Tổng quan.dc.html#frame" width="390" height="844" loading="lazy"></iframe></figure>
+        <figure><figcaption>Máy tính bảng 768px</figcaption><iframe title="Tổng quan ở 768px" src="Tổng quan.dc.html#frame" width="768" height="1024" loading="lazy"></iframe></figure>
+      </div>
+    </section></sc-if>
+  </div>
+</div>
+<div class="tst-wrap tq-tst" role="status" aria-live="polite">
+  <sc-if value="{{ toastShow }}"><div class="tst"><i class="tst-ic ri-checkbox-circle-line" data-t="ok" aria-hidden="true"></i><span style="min-width:0;">{{ toastText }}</span><sc-if value="{{ toastUndo }}"><button type="button" class="tst-b" onClick="{{ onUndo }}">Hoàn tác</button></sc-if></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;,&quot;Tùy chỉnh · Chỉ duyệt bài&quot;,&quot;Tùy chỉnh · Chăm sóc khách&quot;],&quot;default&quot;:&quot;Chủ website&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Nhóm quyền (BSCW.ROLES + 2 nhóm tùy chỉnh mẫu)&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;},&quot;workflow&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Không duyệt — đăng thẳng&quot;,&quot;Duyệt trước khi đăng&quot;,&quot;Quy trình biên tập&quot;],&quot;default&quot;:&quot;Không duyệt — đăng thẳng&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Chế độ duyệt&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;},&quot;planKey&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;free&quot;,&quot;basic&quot;,&quot;pro&quot;,&quot;ent&quot;],&quot;default&quot;:&quot;basic&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Gói (dung lượng thư viện theo BSAI.PLAN_FEATURES)&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;},&quot;moduleOff&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;catalog&quot;,&quot;media&quot;,&quot;contacts&quot;,&quot;menus&quot;,&quot;users&quot;],&quot;default&quot;:&quot;none&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Tắt module cho website&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;},&quot;freshSite&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Website mới tinh (hiện Bắt đầu)&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;startDone&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[0,1,3,5],&quot;default&quot;:1,&quot;tsType&quot;:&quot;number&quot;,&quot;label&quot;:&quot;Bắt đầu: số việc đã xong&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;sim&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Có dữ liệu&quot;,&quot;Đang tải&quot;,&quot;Lỗi từng thẻ&quot;],&quot;default&quot;:&quot;Có dữ liệu&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;label&quot;:&quot;Trạng thái tải&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;bigData&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Website lớn (số rút gọn K/Tr)&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Hiện ghi chú thiết kế&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;label&quot;:&quot;Chữ lớn&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;perms&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;userName&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;siteName&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  /* Nhóm tùy chỉnh mẫu (Tweak) — chỉ có danh sách quyền, không có tên trong BSCW.ROLES → khối hiện đúng theo QUYỀN, không theo tên nhóm. */
+  static CUSTOM() { return {
+    'Tùy chỉnh · Chỉ duyệt bài': ['entries.view', 'entries.review', 'entries.approve', 'media.view'],
+    'Tùy chỉnh · Chăm sóc khách': ['entries.view', 'forms.view', 'forms.manage', 'media.view']
+  }; }
+  static WFN() { return ['Không duyệt — đăng thẳng', 'Duyệt trước khi đăng', 'Quy trình biên tập']; }
+  /* Chuyển nguyên từ Admin Shell (dayData) — lượt xem mẫu 01/08/2025 → 17/07/2026. Chờ backend. */
+  static dayData() {
+    if (Component._dd) return Component._dd;
+    const out = [], t0 = Date.UTC(2025, 7, 1), t1 = Date.UTC(2026, 6, 17);
+    for (let t = t0, i = 0; t <= t1; t += 864e5, i++) { const d = new Date(t), wd = d.getUTCDay();
+      const v = Math.round((3000 + i * 4 + 700 * Math.sin(i / 4.3) + 420 * Math.sin(i / 17 + 1) + (wd === 0 ? -1300 : (wd === 6 ? -500 : 0))) / 10) * 10;
+      out.push({ iso: d.toISOString().slice(0, 10), d: d.getUTCDate(), m: d.getUTCMonth() + 1, y: d.getUTCFullYear(), v: Math.max(400, v) }); }
+    Component._dd = out; return out;
+  }
+  static RETURNED() { return [{ type: 'posts', slug: '/tin-tuc/sai-so-gia-cong', reason: 'Bổ sung bảng dung sai theo ISO 2768 và ghi nguồn số liệu ở cuối bài.', by: 'Ngọc Anh', ago: 'hôm qua' }]; }
+  static SEED() { return [['posts', '/tin-tuc/bang-gia-tien-cnc', '2 giờ trước'], ['services', '/dich-vu/anod-hoa-ma-kem', '5 giờ trước'], ['projects', '/du-an/chi-tiet-dung-sai-y-te', 'hôm qua'], ['posts', '/tin-tuc/hoi-cho-co-khi-ha-noi-2026', '3 ngày trước']]; }
+
+  state = { range: '7d', rFrom: '', rTo: '', drop: null, draftFrom: '', draftTo: '', rangeErr: '', boot: true, retry: {}, fixed: {}, revTab: 'queue', hideStart: false, toast: null, plotW: 0 };
+
+  componentDidMount() {
+    try { const u = JSON.parse(localStorage.getItem('bs-ui') || '{}') || {}; this._bigLS = u.fontSize === 'large'; if (u.dashStartHidden) this.setState({ hideStart: true }); } catch (e) {}
+    this._inFrame = /#frame/.test(location.hash || '');
+    this._bt = setTimeout(() => this.setState({ boot: false }), 450);
+    this._kho = () => this.forceUpdate();
+    ['bs-cw-store', 'bs-cw-ready', 'bs-platform-ready', 'bs-screens-ready'].forEach(ev => document.addEventListener(ev, this._kho));
+    let n = 0; this._poll = setInterval(() => { n++; if ((window.BSCW && window.BSUI && window.BSAI) || n > 40) { clearInterval(this._poll); this.seed(); this.forceUpdate(); } }, 100);
+    this._esc = (e) => { if (e.key === 'Escape' && this.state.drop) { this.setState({ drop: null }); this.backFocus(); } };
+    window.addEventListener('keydown', this._esc);
+    this._out = (e) => { if (!this.state.drop) return; const t = e.target; if (t && t.closest && t.closest('[data-dz]')) return; this.setState({ drop: null }); };
+    document.addEventListener('mousedown', this._out, true);
+    /* Hợp đồng nhúng §13: màn chỉ đọc, không có thay đổi chưa lưu — trả lời lệnh của Shell bằng onDirty(0). */
+    this._cmd = (e) => { const d = (e && e.detail) || {}; if (d.id && d.id !== (this.props.embedId || 'dashboard')) return; if (this.props.onDirty) this.props.onDirty(0); };
+    document.addEventListener('bs-embed-cmd', this._cmd);
+    if (this.props.onDirty) this.props.onDirty(0);
+  }
+  componentWillUnmount() {
+    clearTimeout(this._bt); clearInterval(this._poll); clearTimeout(this._tt); (this._rt || []).forEach(clearTimeout);
+    ['bs-cw-store', 'bs-cw-ready', 'bs-platform-ready', 'bs-screens-ready'].forEach(ev => document.removeEventListener(ev, this._kho));
+    window.removeEventListener('keydown', this._esc); document.removeEventListener('mousedown', this._out, true); document.removeEventListener('bs-embed-cmd', this._cmd);
+    try { if (this._ro) this._ro.disconnect(); } catch (e) {}
+  }
+  /* Đứng riêng: gieo 4 bài "chờ duyệt" vào kho dùng chung để xem được hàng chờ. Khi nhúng, đọc đúng kho của Shell (số khớp menu Hộp duyệt). */
+  /* Gieo khi BẬT quy trình, trả về Bản nháp khi TẮT (đứng riêng). */
+  seed() {
+    const K = window.BSCW && window.BSCW.store; if (!K || this.props.embedded) return;
+    const on = this.wfName() !== Component.WFN()[0]; if (on === !!this._seeded) return; this._seeded = on;
+    Component.SEED().forEach(s => { const r = K.get(s[0], s[1]); if (!r) return;
+      if (on && r.st === 'draft') K.patch(s[0], s[1], { st: 'pending', sentAgo: s[2] }, 'dashboard');
+      else if (!on && r.st === 'pending' && r.sentAgo === s[2]) K.patch(s[0], s[1], { st: 'draft', sentAgo: '' }, 'dashboard'); });
+  }
+  componentDidUpdate() { if (window.BSCW && this.props.workflow !== this._wfPrev) { this._wfPrev = this.props.workflow; this.seed(); } }
+  roleLabel() { return this.props.role || 'Chủ website'; }
+  permsArr() { if (Array.isArray(this.props.perms)) return this.props.perms; return Component.CUSTOM()[this.roleLabel()] || null; }
+  can(expr) {
+    if (!expr) return true; const CW = window.BSCW, ps = this.permsArr();
+    if (ps) { const I = (CW && CW.IMPLIES) || {}, all = ps.slice(); ps.forEach(p => (I[p] || []).forEach(x => all.push(x))); return String(expr).split('|').some(p => all.indexOf(p) >= 0); }
+    return !!(CW && CW.has && CW.has(this.roleLabel(), expr));
+  }
+  wfName() { const N = Component.WFN(), A = window.BSAI; let w = N.indexOf(this.props.workflow) >= 0 ? this.props.workflow : N[0];
+    if (w === N[2] && A && A.feature && !A.feature('workflow.editorial', this.props.planKey || 'basic')) w = N[1]; return w; }
+  modOn(m) { return (this.props.moduleOff || 'none') !== m; }
+  title(screen) { const B = window.BSSCREENS; const r = B && B.resolve(screen, { pages: 'Trang', posts: 'Tin tức', services: 'Dịch vụ', projects: 'Dự án' }); return r ? r.title : screen; }
+  goto(screen, params) {
+    document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: screen, params: params || {} } }));
+    if (!this.props.embedded) this.toast('Trong trang quản trị, nút này mở màn "' + this.title(screen) + '".');
+  }
+  toast(text, undo) { clearTimeout(this._tt); this.setState({ toast: { text: text, undo: undo || null } }); this._tt = setTimeout(() => this.setState({ toast: null }), 8000); }
+  saveUi(patch) { try { const u = JSON.parse(localStorage.getItem('bs-ui') || '{}') || {}; localStorage.setItem('bs-ui', JSON.stringify(Object.assign(u, patch))); } catch (e) {} }
+  setHideStart(v) { this.setState({ hideStart: v }); this.saveUi({ dashStartHidden: v }); }
+  retry(k) { this._rt = this._rt || []; this.setState(s => ({ retry: Object.assign({}, s.retry, { [k]: true }) }));
+    this._rt.push(setTimeout(() => this.setState(s => ({ retry: Object.assign({}, s.retry, { [k]: false }), fixed: Object.assign({}, s.fixed, { [k]: true }) })), 700)); }
+  backFocus() { const b = this._rangeBtn; if (b) setTimeout(() => { try { b.focus(); } catch (e) {} }, 0); }
+  setPlotRef(el) { if (el === this._plot) return; try { if (this._ro) this._ro.disconnect(); } catch (e) {} this._plot = el; if (!el) return;
+    const upd = () => { const w = Math.round(el.clientWidth); if (w && w !== this.state.plotW) this.setState({ plotW: w }); };
+    try { this._ro = new ResizeObserver(upd); this._ro.observe(el); } catch (e) {} upd(); }
+  textW(s) { const C = Component; C._tw = C._tw || {}; if (C._tw[s] != null) return C._tw[s];
+    try { C._cx = C._cx || document.createElement('canvas').getContext('2d'); C._cx.font = '600 12px Inter, sans-serif'; return (C._tw[s] = C._cx.measureText(s).width); } catch (e) { return s.length * 7; } }
+
+  renderVals() {
+    const P = this.props, S = this.state, CW = window.BSCW, K = CW && CW.store, UI = window.BSUI, A = window.BSAI, PL = window.BSPLAT;
+    const emb = !!P.embedded, notes = P.showNotes !== false, fresh = !!P.freshSite, big = !!P.bigData, upsell = !!P.upsell, plan = P.planKey || 'basic';
+    const sim = P.sim || 'Có dữ liệu', loadingAll = sim === 'Đang tải' || S.boot, errSim = sim === 'Lỗi từng thẻ';
+    const fmt = (n, max) => (UI && UI.fmtCompact) ? UI.fmtCompact(n, { locale: 'vi', max: max }) : String(n);
+    const full = (n) => (UI && UI.fmtNum) ? UI.fmtNum(n, 'vi') : Number(n).toLocaleString('vi-VN');
+    const go = (s, p) => () => this.goto(s, p);
+    const can = (x) => this.can(x);
+    const wf = this.wfName(), wfOn = wf !== Component.WFN()[0];
+    const me = P.userName || 'Thu Hà', role = this.roleLabel();
+    const uiOf = (st) => (CW && CW.ui) ? CW.ui(st, wf) : { label: st, icon: 'ri-draft-line' };
+    const chipT = (st) => st === 'published' ? 'ok' : st === 'scheduled' ? 'info' : (st === 'pending' || st === 'reviewing' || st === 'copyedit') ? 'warn' : '';
+    const meta = (t) => (K ? K.meta(t) : { label: t, icon: 'ri-file-line' });
+    const lockText = (m) => upsell ? (((A && A.MODULES && A.MODULES[m]) ? A.MODULES[m].benefit : 'Có trong gói cao hơn.') + ' Có trong gói cao hơn.') : 'Chưa bật cho website này — liên hệ hỗ trợ.';
+
+    /* ---- dữ liệu (kho dùng chung BSCW.store; website mới: chỉ có Trang chủ mẫu) ---- */
+    const types = K ? K.types() : [];
+    let rows = [];
+    if (K) types.forEach(t => K.list(t).forEach(r => { if (!r.trashed) rows.push(r); }));
+    if (fresh) rows = rows.filter(r => r.type === 'pages' && r.slug === '/').map(r => Object.assign({}, r, { st: 'draft', author: 'Ngọc Anh' }));
+    const isPub = (r) => r.st === 'published';
+    const pg = rows.filter(r => r.type === 'pages'), ps = rows.filter(r => r.type !== 'pages');
+    const N = big ? { pages: 1284, pagesPub: 1206, posts: 12480, postsPub: 11902, prod: 3450, prodPub: 3311, ct: 2315, ctPrev: 2140, unread: 128 }
+      : fresh ? { pages: pg.length, pagesPub: 0, posts: 0, postsPub: 0, prod: 0, prodPub: 0, ct: 0, ctPrev: 0, unread: 0 }
+      : { pages: pg.length, pagesPub: pg.filter(isPub).length, posts: ps.length, postsPub: ps.filter(isPub).length, prod: 48, prodPub: 41, ct: 37, ctPrev: 34, unread: 3 };
+    const stLimit = (A && A.feature && A.feature('media.storage_mb', plan)) || 2000;
+    const stUsed = fresh ? Math.round(stLimit * 0.01) : Math.round(stLimit * (big ? 0.86 : 0.62)), stPct = Math.round(stUsed / stLimit * 100);
+
+    /* ---- thẻ số liệu (theo quyền + module) ---- */
+    const card = (k, o) => { const ld = !!S.retry[k], er = errSim && o.errable && !S.fixed[k] && !ld;
+      return Object.assign({ k: k, ok: !o.lockOn && !ld && !er, loading: ld, err: er, lock: !!o.lockOn, up: !!o.lockOn && upsell, warn: false, retry: () => this.retry(k) }, o); };
+    const metrics = [];
+    if (can('entries.view')) {
+      metrics.push(card('pages', { label: 'Trang', icon: 'ri-file-text-line', val: fmt(N.pages), sub: fmt(N.pagesPub) + ' đang hiện trên website', aria: 'Trang: ' + full(N.pages) + ', ' + full(N.pagesPub) + ' đang hiện trên website. Mở danh sách Trang', go: go('pages.list') }));
+      metrics.push(card('posts', { label: 'Bài viết', icon: 'ri-article-line', val: fmt(N.posts), sub: fmt(N.postsPub) + ' đã đăng · Tin tức, Dịch vụ, Dự án', aria: 'Bài viết: ' + full(N.posts) + ', ' + full(N.postsPub) + ' đã đăng. Mở danh sách Tin tức', go: go('posts.list') }));
+    }
+    if (can('catalog.view')) metrics.push(card('catalog', { label: 'Sản phẩm', icon: 'ri-box-3-line', lockOn: !this.modOn('catalog'), lockText: lockText('catalog'), val: fmt(N.prod), sub: fmt(N.prodPub) + ' đang bán trên website', aria: 'Sản phẩm: ' + full(N.prod) + ', ' + full(N.prodPub) + ' đang bán. Mở danh sách Sản phẩm', go: go('catalog.list') }));
+    if (can('forms.view')) { const dl = N.ct - N.ctPrev;
+      metrics.push(card('contacts', { label: 'Khách liên hệ · 7 ngày', icon: 'ri-mail-line', errable: true, lockOn: !this.modOn('contacts'), lockText: lockText('contacts'), val: fmt(N.ct), sub: fresh ? 'Chưa có khách nào gửi' : ((dl >= 0 ? 'Tăng ' : 'Giảm ') + fmt(Math.abs(dl)) + ' so với 7 ngày trước'), aria: 'Khách liên hệ 7 ngày qua: ' + full(N.ct) + (fresh ? '' : ', ' + (dl >= 0 ? 'tăng ' : 'giảm ') + full(Math.abs(dl)) + ' so với 7 ngày trước') + '. Mở Khách liên hệ', go: go('contacts') })); }
+    if (can('settings.manage')) { const gb = (mb) => fmt(Math.round(mb / 100) / 10) + ' GB';
+      metrics.push(card('storage', { label: 'Dung lượng thư viện', icon: 'ri-hard-drive-2-line', lockOn: !this.modOn('media'), lockText: lockText('media'), val: fmt(stPct) + '%', warn: stPct >= 80, sub: gb(stUsed) + ' / ' + gb(stLimit) + ' của gói', aria: 'Dung lượng thư viện đã dùng ' + full(stPct) + ' phần trăm: ' + gb(stUsed) + ' trên ' + gb(stLimit) + (stPct >= 80 ? ', sắp đầy' : '') + '. Mở Thư viện ảnh và tệp', go: go('media') })); }
+
+    /* ---- hàng chờ duyệt, bị trả lại, hẹn giờ ---- */
+    const isReviewer = wfOn && can('entries.approve|entries.review');
+    const isWriter = can('entries.edit.own') && !can('entries.edit.any');
+    const queue = (isReviewer && K && !fresh) ? K.queue(wf, role) : [];
+    const returned = (isWriter && wfOn && K && !fresh) ? Component.RETURNED().map(x => { const r = K.get(x.type, x.slug); return r && r.st === 'draft' && r.author === me ? Object.assign({}, r, x) : null; }).filter(Boolean) : [];
+    const sched = fresh ? [] : rows.filter(r => r.st === 'scheduled');
+
+    /* ---- 1 · Việc cần làm hôm nay ---- */
+    const todo = [];
+    if (!fresh && can('forms.view') && this.modOn('contacts') && N.unread > 0) todo.push({ icon: 'ri-mail-unread-line', tone: 'info', text: fmt(N.unread) + ' khách liên hệ chưa xem', sub: 'Mới nhất: Trần Văn Hùng hỏi báo giá phay CNC · 25 phút trước', btn: 'Xem khách liên hệ', go: go('contacts') });
+    if (isReviewer && queue.length) todo.push({ icon: 'ri-inbox-archive-line', tone: 'warn', text: fmt(queue.length) + ' bài đang chờ bạn duyệt', sub: 'Lâu nhất: «' + queue[queue.length - 1].name + '»', btn: 'Mở Hộp duyệt', go: go('review') });
+    if (returned.length) todo.push({ icon: 'ri-arrow-go-back-line', tone: 'danger', text: fmt(returned.length) + ' bài của bạn bị trả lại', sub: '«' + returned[0].name + '» — ' + returned[0].reason, btn: 'Sửa bài', go: go(returned[0].type + '.edit', { ma: returned[0].ma }) });
+    if (!fresh && can('domains.manage')) todo.push({ icon: 'ri-global-line', tone: 'danger', text: 'Tên miền anvinh.vn chưa trỏ về website', sub: 'Sửa trước 14/10/2026 — sau ngày này khách gõ anvinh.vn sẽ không thấy website.', btn: 'Sửa tên miền', go: go('settings', { section: 'domain' }), noteShow: notes });
+    todo.forEach(t => { t.noteShow = !!t.noteShow; });
+
+    /* ---- 3 · Bắt đầu (website mới tinh) ---- */
+    const homeMa = K ? K.maOf('pages', '/') : '';
+    const STEPS = [
+      ['general', 'Điền thông tin chung', 'Tên website, số điện thoại, địa chỉ khách nhìn thấy.', 'Điền thông tin', 'settings', { section: 'general' }, 'settings.manage'],
+      ['logo', 'Tải logo lên', 'Logo hiện ở đầu website và khi chia sẻ lên mạng xã hội.', 'Tải logo', 'settings', { section: 'appearance' }, 'settings.manage'],
+      ['langs', 'Chọn ngôn ngữ', 'Ngôn ngữ chính và các bản dịch khách được xem.', 'Chọn ngôn ngữ', 'settings', { section: 'langs' }, 'settings.manage'],
+      ['home', 'Sửa trang chủ', 'Thay chữ và ảnh mẫu bằng nội dung của bạn.', 'Sửa trang chủ', 'pages.edit', { ma: homeMa }, 'entries.edit.any|entries.edit.own'],
+      ['menus', 'Sắp xếp trình đơn', 'Chọn các mục hiện ở đầu và chân website.', 'Sửa trình đơn', 'menus', {}, 'menus.manage'],
+      ['domain', 'Gắn tên miền riêng', 'Khách mở website bằng tên miền của bạn, ví dụ anvinh.vn.', 'Gắn tên miền', 'settings', { section: 'domain' }, 'domains.manage']
+    ].filter(x => can(x[6]));
+    const DONE_ORDER = ['langs', 'general', 'logo', 'home', 'menus', 'domain'];
+    const nDone = Math.max(0, Math.min(6, Number(P.startDone == null ? 1 : P.startDone) || 0));
+    const doneKeys = DONE_ORDER.slice(0, nDone);
+    const stepsLeft = STEPS.filter(x => doneKeys.indexOf(x[0]) < 0), stepsDone = STEPS.length - stepsLeft.length;
+    const startOk = fresh && can('settings.manage') && STEPS.length > 0 && stepsLeft.length > 0;
+    const startShow = startOk && !S.hideStart;
+    const C = 2 * Math.PI * 26, frac = STEPS.length ? stepsDone / STEPS.length : 0;
+
+    /* ---- 2 · biểu đồ (chuyển từ Shell; một đơn vị cho trục + nhãn theo số lớn nhất — BSUI.fmtCompact) ---- */
+    const chartShow = can('settings.manage|entries.edit.any');
+    const DD = Component.dayData(), p2 = (n) => (n < 10 ? '0' : '') + n, mul = big ? 40 : 1;
+    const dmy = (x) => p2(x.d) + '/' + p2(x.m) + '/' + x.y, rangeTxt = (a, b) => a.y === b.y ? p2(a.d) + '/' + p2(a.m) + '–' + dmy(b) : dmy(a) + '–' + dmy(b);
+    let cols = [], rFrom, rTo, unit = 'ngày';
+    if (S.range === 'year') { const mm = {}; DD.forEach(x => { const k = x.y + '-' + p2(x.m); (mm[k] = mm[k] || { m: x.m, y: x.y, v: 0 }).v += x.v * mul; });
+      cols = Object.keys(mm).sort().map(k => ({ t: 'Th' + mm[k].m, v: mm[k].v, full: 'tháng ' + mm[k].m + '/' + mm[k].y })); rFrom = DD[0]; rTo = DD[DD.length - 1]; unit = 'tháng'; }
+    else { let sl; if (S.range === 'custom') { const a = DD.findIndex(x => x.iso === S.rFrom), b = DD.findIndex(x => x.iso === S.rTo); sl = (a >= 0 && b >= a) ? DD.slice(a, b + 1) : DD.slice(DD.length - 7); } else sl = DD.slice(DD.length - (S.range === '30d' ? 30 : 7));
+      cols = sl.map(x => ({ t: x.d + '/' + x.m, v: x.v * mul, full: dmy(x) })); rFrom = sl[0]; rTo = sl[sl.length - 1]; }
+    const rangeLabel = rangeTxt(rFrom, rTo), nC = cols.length;
+    const vMax = Math.max.apply(null, cols.map(c => c.v)), vSum = cols.reduce((a, c) => a + c.v, 0), vAvg = Math.round(vSum / nC);
+    const pw = Math.pow(10, Math.floor(Math.log10(vMax))), top = Math.ceil(vMax / pw * 2) / 2 * pw;
+    const plotW = S.plotW || 480, gap = nC <= 12 ? (plotW / nC > 52 ? 10 : 4) : (plotW / nC > 14 ? 3 : 1), colW = (plotW - (nC - 1) * gap) / nC, pitch = colW + gap, barMax = 156;
+    const lab = (v) => fmt(v, top);
+    const showAll = nC <= 12 && cols.every(c => this.textW(lab(c.v)) <= Math.min(34, colW) - 0.25);
+    let maxShown = false;
+    const bars = cols.map(c => { const isMax = !maxShown && c.v === vMax; if (isMax) maxShown = true;
+      return { v: lab(c.v), showV: showAll || isMax, h: Math.max(2, Math.round(c.v / top * barMax)) + 'px', title: c.full + ': ' + full(c.v) + ' lượt' }; });
+    const ticks = [top, top / 2, 0].map(t => ({ t: t === 0 ? '0' : lab(t), b: Math.round(t / top * barMax) + 'px' }));
+    const xLw = Math.max.apply(null, cols.map(c => c.t.length)) * 7 + 10, xBox = (i) => Math.max(0, Math.min(plotW - xLw, i * pitch + colW / 2 - xLw / 2));
+    const xIdx = [0]; if (nC > 1) { const lastL = xBox(nC - 1); let prevL = xBox(0); const step = Math.max(1, Math.ceil((xLw + 6) / pitch));
+      for (let i = step; i < nC - 1; i += step) { const l = xBox(i); if (l >= prevL + xLw + 6 && l + xLw + 6 <= lastL) { xIdx.push(i); prevL = l; } } xIdx.push(nC - 1); }
+    const xLabs = xIdx.map(i => ({ t: cols[i].t, left: Math.round(xBox(i)) + 'px', w: xLw + 'px' }));
+    const unitWord = top >= 1e9 ? 'Tỷ = tỷ lượt' : top >= 1e6 ? 'Tr = triệu lượt' : top >= 1e3 ? 'K = nghìn lượt' : 'lượt';
+    const maxCol = cols.find(c => c.v === vMax) || cols[0];
+    const chartAria = 'Lượt xem website ' + rangeLabel + ': ' + nC + ' cột theo ' + unit + ', cao nhất ' + full(vMax) + ' lượt vào ' + maxCol.full + ', trung bình ' + full(vAvg) + ' lượt mỗi ' + unit + ', tổng ' + full(vSum) + ' lượt.';
+    const rMin = DD[DD.length - 90].iso, rMax = DD[DD.length - 1].iso;
+    const chips = [['7d', '7 ngày'], ['30d', '30 ngày'], ['year', 'Năm']].map(c => ({ label: c[1], pressed: String(S.range === c[0]), fk: S.range === c[0] ? 'solid' : 'outline', onClick: () => this.setState({ range: c[0], drop: null }) }));
+    const chartLoading = !!S.retry.chart, chartErr = errSim && !S.fixed.chart && !chartLoading, chartEmpty = !chartLoading && !chartErr && fresh, chartOk = !chartLoading && !chartErr && !fresh;
+
+    /* ---- 4 · Người duyệt ---- */
+    const typeIcon = (t) => meta(t).icon || 'ri-file-line';
+    const qItem = (r) => ({ title: r.name, icon: typeIcon(r.type), tone: 'warn', chip: uiOf(r.st).label, chipI: uiOf(r.st).icon || 'ri-time-line', chipT: chipT(r.st), meta: meta(r.type).label + ' · ' + r.author + ' · ' + (r.sentAgo || 'vừa gửi'), btn: 'Đọc và duyệt', btnAria: 'Đọc và duyệt «' + r.name + '»', go: go('review', { ma: r.ma }) });
+    const assigned = (isReviewer && !fresh) ? queue.filter(r => r.author !== me).slice(0, 2) : [];
+    const sItem = (r) => ({ title: r.name, icon: typeIcon(r.type), tone: 'info', chip: uiOf('scheduled').label, chipI: uiOf('scheduled').icon || 'ri-calendar-schedule-line', chipT: 'info', meta: meta(r.type).label + ' · đăng lúc ' + (r.schedText || ''), btn: 'Sửa', btnAria: 'Sửa «' + r.name + '»', go: go(r.type + '.edit', { ma: r.ma }) });
+    const RT = [['queue', 'Chờ duyệt', queue], ['mine', 'Giao cho tôi', assigned], ['sched', 'Đã hẹn giờ', sched]];
+    const revTab = RT.some(t => t[0] === S.revTab) ? S.revTab : 'queue', curT = RT.find(t => t[0] === revTab);
+    const revItems = curT[2].slice(0, 3).map(r => revTab === 'sched' ? sItem(r) : qItem(r));
+    const revTabs = RT.map(t => ({ id: 'tq-tab-' + t[0], label: t[1], n: fmt(t[2].length), sel: String(t[0] === revTab), ti: t[0] === revTab ? '0' : '-1', key: t[0], onClick: () => this.setState({ revTab: t[0] }) }));
+    const revFootMap = { queue: ['Mở Hộp duyệt', go('review')], mine: ['Mở Hộp duyệt', go('review')], sched: ['Xem bài đã hẹn giờ', go('posts.list', { trang_thai: 'scheduled' })] };
+
+    /* ---- 5 · Người viết ---- */
+    const mine = rows.filter(r => r.author === me);
+    const retSlugs = returned.map(r => r.slug), waitSt = ['pending', 'reviewing', 'copyedit'];
+    const TL = [['draft', mine.filter(r => r.st === 'draft' && retSlugs.indexOf(r.slug) < 0).length]];
+    if (wfOn) TL.push(['pending', mine.filter(r => waitSt.indexOf(r.st) >= 0).length]);
+    TL.push(['scheduled', mine.filter(r => r.st === 'scheduled').length], ['published', mine.filter(r => r.st === 'published').length]);
+    const wrTiles = TL.map(t => ({ n: fmt(t[1]), label: uiOf(t[0]).label, icon: uiOf(t[0]).icon || 'ri-draft-line', chipT: chipT(t[0]), aria: uiOf(t[0]).label + ': ' + full(t[1]) + ' bài của tôi. Mở danh sách', go: go('posts.list', { tac_gia: 'toi', trang_thai: t[0] }) }));
+    if (returned.length) wrTiles.push({ n: fmt(returned.length), label: 'Bị trả lại', icon: 'ri-arrow-go-back-line', chipT: 'danger', aria: 'Bị trả lại: ' + full(returned.length) + ' bài. Mở danh sách', go: go('posts.list', { tac_gia: 'toi', trang_thai: 'tra-lai' }) });
+    const wrRet = returned.map(r => ({ title: r.name, reason: r.reason, meta: r.by + ' trả lại ' + r.ago, btnAria: 'Sửa bài «' + r.name + '»', go: go(r.type + '.edit', { ma: r.ma }) }));
+
+    /* ---- 6 · Nội dung gần đây / mới đăng (chỉ xem: không nút tạo) ---- */
+    const editor = can('entries.create|entries.edit.own|entries.edit.any');
+    const ts = (s) => { const m = /(\d+)\/(\d+)\/(\d+)\s*·\s*(\d+):(\d+)/.exec(s || ''); return m ? Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]) : 0; };
+    const recRows = rows.filter(r => editor || isPub(r)).sort((a, b) => ts(b.updated) - ts(a.updated)).slice(0, 5);
+    const canEditRow = (r) => can('entries.edit.any') || (can('entries.edit.own') && r.author === me);
+    const recent = recRows.map(r => { const ed = canEditRow(r);
+      return { title: r.name, icon: typeIcon(r.type), chip: uiOf(r.st).label, chipI: uiOf(r.st).icon || 'ri-draft-line', chipT: chipT(r.st), meta: meta(r.type).label + ' · ' + r.author + ' · ' + (r.updated || '').replace(' · ', ' lúc '), btn: ed ? 'Sửa' : 'Xem', btnAria: (ed ? 'Sửa «' : 'Xem «') + r.name + '»', go: ed ? go(r.type + '.edit', { ma: r.ma }) : go(r.type + '.list') }; });
+
+    /* ---- 7 · Làm nhanh (chỉ nút bấm được) · Cần giúp · Hoạt động ---- */
+    const quick = [
+      ['Thêm trang', 'ri-file-add-line', 'pages.create', null, 'entries.create', null],
+      ['Thêm sản phẩm', 'ri-box-3-line', 'catalog.create', null, 'catalog.manage', 'catalog'],
+      ['Tải ảnh lên', 'ri-upload-2-line', 'media', { tai_len: 1 }, 'media.upload', 'media'],
+      ['Mời thành viên', 'ri-user-add-line', 'users', { tab: 'loi-moi' }, 'users.invite', 'users'],
+      ['Sửa trình đơn', 'ri-menu-2-line', 'menus', null, 'menus.manage', 'menus']
+    ].filter(q => can(q[4]) && (!q[5] || this.modOn(q[5]))).map(q => ({ label: q[0], icon: q[1], go: go(q[2], q[3] || {}) }));
+    const sup = (PL && PL.support) ? PL.support() : { phone: '', zalo: '', email: '' };
+    const acts = (fresh ? [['Hệ thống', 'tạo website từ khuôn "Doanh nghiệp"', 'hôm nay lúc 08:12']] : [
+      ['Thu Hà', 'gửi duyệt bài «Bảng giá gia công tiện CNC tham khảo»', 'hôm nay lúc 10:24'],
+      ['Minh Trí', 'đăng bài «An Vinh đầu tư máy phay 5 trục mới»', 'hôm nay lúc 09:05'],
+      ['Ngọc Anh', 'đổi logo website', 'hôm qua lúc 16:40'],
+      ['Ngọc Anh', 'mời lethu@anvinh.vn vào nhóm Người viết', 'hôm qua lúc 15:12'],
+      ['Hệ thống', 'tự đăng bài hẹn giờ «Quy trình kiểm tra chất lượng tại An Vinh»', '05/10/2026 lúc 08:00']
+    ]).map(a => ({ who: a[0], what: a[1], when: a[2], init: a[0] === 'Hệ thống' ? 'HT' : a[0].split(' ').map(w => w[0]).join('').slice(-2).toUpperCase() }));
+    const actShow = can('activity.view');
+    const revShow = isReviewer, wrShow = isWriter, recShow = can('entries.view');
+    const skCards = [revShow, wrShow, recShow, actShow].filter(Boolean).map((x, i) => ({ i: i }));
+
+    const bigOn = !!P.bigText || (!emb && !!this._bigLS);
+    return {
+      embAttr: emb ? '1' : '0', fsAttr: bigOn ? 'l' : '', siteName: P.siteName || 'Cơ Khí Chính Xác An Vinh', notes,
+      canCreate: can('entries.create'), onWrite: go('posts.create'),
+      loadingAll, ready: !loadingAll, skCards,
+      todo, todoShow: todo.length > 0, todoCount: fmt(todo.length) + ' việc',
+      startShow, startSteps: stepsLeft.map(x => ({ title: x[1], sub: x[2], btn: x[3], go: go(x[4], x[5]) })),
+      startTitle: 'Đã xong ' + fmt(stepsDone) + '/' + fmt(STEPS.length) + ' việc', startFrac: fmt(stepsDone) + '/' + fmt(STEPS.length), startAria: 'Tiến độ bắt đầu: đã xong ' + stepsDone + ' trên ' + STEPS.length + ' việc',
+      ringDash: (C * frac).toFixed(1) + ' ' + C.toFixed(1),
+      onHideStart: () => { this.setHideStart(true); this.toast('Đã ẩn danh sách Bắt đầu. Mở lại ở thẻ "Cần giúp?".', () => this.setHideStart(false)); },
+      restoreStartShow: startOk && !!S.hideStart, onShowStart: () => this.setHideStart(false),
+      metrics, statN: String(metrics.length), onUpgrade: go('settings', { section: 'quota' }),
+      chartShow, chartAttr: chartShow ? '1' : '0', chartLoading, chartErr, chartEmpty, chartOk, onChartRetry: () => this.retry('chart'),
+      rangeLabel, unitWord, unit, rangeChips: chips, customPressed: String(S.range === 'custom'), customFk: S.range === 'custom' ? 'solid' : 'outline',
+      rangeOpen: S.drop === 'range', rangeOpenStr: String(S.drop === 'range'), rangeMin: rMin, rangeMax: rMax, draftFrom: S.draftFrom, draftTo: S.draftTo,
+      rangeHint: S.rangeErr || ('Chọn trong 90 ngày gần nhất (' + dmy(DD[DD.length - 90]) + '–' + dmy(DD[DD.length - 1]) + ').'),
+      setRangeBtn: this._srb || (this._srb = (el) => { if (el) this._rangeBtn = el; }),
+      setFromEl: this._sfe || (this._sfe = (el) => { if (el && el !== this._fromEl) { this._fromEl = el; setTimeout(() => { try { el.focus(); } catch (e) {} }, 0); } if (!el) this._fromEl = null; }),
+      onRangeToggle: () => this.setState(s => s.drop === 'range' ? { drop: null } : { drop: 'range', rangeErr: '', draftFrom: s.rFrom || rFrom.iso, draftTo: s.rTo || rTo.iso }),
+      onRangeClose: () => { this.setState({ drop: null }); this.backFocus(); },
+      onFrom: (e) => this.setState({ draftFrom: e && e.target ? e.target.value : '', rangeErr: '' }),
+      onTo: (e) => this.setState({ draftTo: e && e.target ? e.target.value : '', rangeErr: '' }),
+      onRangeApply: () => { const a = S.draftFrom, b = S.draftTo;
+        if (!a || !b) { this.setState({ rangeErr: 'Chọn đủ "Từ ngày" và "Đến ngày".' }); return; }
+        if (a > b) { this.setState({ rangeErr: '"Từ ngày" cần trước "Đến ngày" — đổi lại một trong hai ô.' }); return; }
+        if (a < rMin || b > rMax) { this.setState({ rangeErr: 'Chỉ xem được 90 ngày gần nhất, từ ' + dmy(DD[DD.length - 90]) + '.' }); return; }
+        this.setState({ range: 'custom', rFrom: a, rTo: b, drop: null }); this.backFocus(); },
+      onPopKey: (e) => { if (e.key === 'Tab') { const box = e.currentTarget, f = box.querySelectorAll('input,button'); if (!f.length) return; const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } } },
+      setPlotRef: this._spr || (this._spr = (el) => this.setPlotRef(el)),
+      chartGap: gap + 'px', ticks, bars, xLabs, chartAria, avgShow: !showAll, avgB: Math.round(vAvg / top * barMax) + 'px', avgLabel: 'TB ' + lab(vAvg) + '/' + unit,
+      sumMax: lab(vMax), sumMaxDay: maxCol.full, sumAvg: lab(vAvg), sumAll: fmt(vSum),
+      quick, quickShow: quick.length > 0,
+      helpPhone: sup.phone, helpTel: 'tel:' + String(sup.phone || '').replace(/\s/g, ''), helpZalo: sup.zalo, helpZaloUrl: 'https://zalo.me/' + String(sup.zalo || '').replace(/\s/g, ''), helpEmail: sup.email, helpMail: 'mailto:' + (sup.email || ''),
+      revShow, revBadge: fmt(queue.length) + ' chờ duyệt', revTabs, revItems, revTabId: 'tq-tab-' + revTab, revNoteShow: notes && revTab === 'mine',
+      revEmpty: revItems.length === 0, revEmptyText: revTab === 'queue' ? 'Không có bài nào chờ bạn duyệt.' : revTab === 'mine' ? 'Chưa có bài nào được giao cho bạn.' : 'Chưa có bài nào hẹn giờ đăng.',
+      revFoot: revFootMap[revTab][0], revFootGo: revFootMap[revTab][1],
+      onTabKey: (e) => { const k = e.key; if (['ArrowRight', 'ArrowLeft', 'Home', 'End'].indexOf(k) < 0) return; e.preventDefault(); const ids = RT.map(t => t[0]); let i = ids.indexOf(revTab);
+        i = k === 'Home' ? 0 : k === 'End' ? ids.length - 1 : (i + (k === 'ArrowRight' ? 1 : -1) + ids.length) % ids.length;
+        const box = e.currentTarget.parentElement; this.setState({ revTab: ids[i] }, () => { const b = box && box.querySelectorAll('[role=tab]')[i]; if (b) b.focus(); }); },
+      wrShow, wrTiles, wrRet, wrRetShow: wrRet.length > 0, wrEmpty: mine.length === 0, wrAll: go('posts.list', { tac_gia: 'toi' }),
+      recShow, recTitle: editor ? 'Nội dung gần đây' : 'Nội dung mới đăng', recent, recEmpty: recent.length === 0,
+      recEmptyText: editor ? 'Chưa có nội dung nào. Bấm "Viết bài mới" ở đầu trang để bắt đầu.' : 'Website chưa đăng nội dung nào.', recAll: go('posts.list'),
+      actShow, acts, actAll: go('activity'),
+      framesShow: !emb && !this._inFrame,
+      toastShow: !!S.toast, toastText: S.toast ? S.toast.text : '', toastUndo: !!(S.toast && S.toast.undo),
+      onUndo: () => { const u = S.toast && S.toast.undo; clearTimeout(this._tt); this.setState({ toast: null }); if (u) u(); }
+    };
+  }
+}
+</script>
+</body>
+</html>

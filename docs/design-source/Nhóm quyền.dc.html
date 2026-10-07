@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./content-workflow.js"></script>
+<script src="./ai-quota.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765)}
+a{color:var(--color-accent,#2050a0);text-decoration:none}a:hover{color:var(--color-accent,#2050a0);text-decoration:underline}
+.nq-root{font-size:calc(14px + var(--fsp));line-height:1.5;--fsp:0px}
+.nq-root[data-big="1"]{--fsp:2px}
+.nq-c{container:nq/inline-size;display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1440px;margin:0 auto;box-sizing:border-box;min-height:100dvh}
+.nq-c[data-emb="1"]{padding:0;max-width:none;min-height:0}
+.nq-c .sx-in{box-sizing:border-box}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.nq-h1{margin:0;font-size:calc(20px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4}
+.nq-desc{margin:4px 0 0;color:var(--color-body-muted,#5b6275);max-width:72ch;text-wrap:pretty}
+.nq-top{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px 16px}
+.nq-top>div:first-child{flex:1 1 320px;min-width:0}
+.nq-top>.nq-tr{flex:0 0 auto;position:relative}
+.sx-btn{white-space:nowrap}
+.nq-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.nq-bar .sx-search{flex:1 1 260px;max-width:420px}
+.nq-chips{display:flex;flex-wrap:wrap;gap:8px}
+.nq-chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border:1px solid var(--color-border-input,#8a90a2);border-radius:18px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:calc(13px + var(--fsp));cursor:pointer;white-space:nowrap}
+.nq-chip[aria-pressed="true"]{background:var(--color-admin-primary,#2050a0);border-color:var(--color-admin-primary,#2050a0);color:var(--color-on-solid,#fff);font-weight:600}
+.nq-chip b{font-weight:600}
+@media (pointer:coarse){.nq-chip{min-height:44px}}
+.nq-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);min-width:0}
+.nq-ch{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.nq-h2{margin:0;font-size:calc(16px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4}
+.nq-cb{padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.nq-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1.2fr) 120px minmax(0,2fr) auto;gap:12px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.nq-row:last-child{border-bottom:0}
+.nq-head{padding-top:10px;padding-bottom:10px;background:var(--color-surface-muted,#f8f9fb);font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.nq-row>*{min-width:0}
+.nq-nm{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.nq-nmb{border:0;background:transparent;padding:0;font:inherit;font-weight:600;color:var(--color-heading,#1f2b4d);text-align:left;cursor:pointer;overflow-wrap:anywhere}
+.nq-nmb:hover{color:var(--color-accent,#2050a0);text-decoration:underline}
+.nq-sub{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.nq-mm{display:none}
+.nq-ty{font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765)}
+.nq-lnk{border:0;background:transparent;padding:0 2px;font:inherit;color:var(--color-accent,#2050a0);cursor:pointer;white-space:nowrap}
+.nq-lnk:hover{text-decoration:underline}
+.nq-act{display:flex;gap:8px;justify-content:flex-end}
+.nq-why{display:flex;gap:6px;align-items:flex-start;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+@container nq (max-width:1023px){.nq-row{grid-template-columns:minmax(0,2fr) minmax(0,1.2fr) 110px auto}.nq-row>.nq-ty{grid-column:1/-2;grid-row:2}.nq-head>:nth-child(4){display:none}}
+@container nq (max-width:767px){
+ .nq-head{display:none}
+ .nq-row{grid-template-columns:minmax(0,1fr);gap:6px;padding:12px}
+ .nq-row>.nq-lv,.nq-row>.nq-mc{display:none}
+ .nq-row>.nq-ty{grid-column:auto;grid-row:auto}
+ .nq-mm{display:block;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+ .nq-act{justify-content:stretch;margin-top:4px}.nq-act>.sx-btn:first-child{flex:1 1 auto}
+}
+.nq-empty{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:20px 16px}
+.nq-empty p{margin:0;max-width:62ch;text-wrap:pretty}
+.nq-al{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 12px;padding:12px 16px;border-radius:6px;border:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff)}
+.nq-al>i{font-size:calc(18px + var(--fsp));line-height:1.3}
+.nq-al>div{flex:1 1 240px;min-width:0}
+.nq-al[data-k="warn"]{border-color:color-mix(in srgb,var(--color-admin-warning-text,#906405) 40%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 12%,var(--color-surface,#fff))}
+.nq-al[data-k="warn"]>i{color:var(--color-admin-warning-text,#906405)}
+.nq-al[data-k="info"]{border-color:color-mix(in srgb,var(--color-admin-info-text,#026fa2) 35%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-admin-info,#299cdb) 8%,var(--color-surface,#fff))}
+.nq-al[data-k="info"]>i{color:var(--color-admin-info-text,#026fa2)}
+.nq-al[data-k="danger"]{border-color:color-mix(in srgb,var(--color-admin-danger-text,#bf371a) 35%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-admin-danger,#f06548) 8%,var(--color-surface,#fff))}
+.nq-al[data-k="danger"]>i{color:var(--color-admin-danger-text,#bf371a)}
+.nq-al b{color:var(--color-heading,#1f2b4d)}
+.nq-sk{height:14px;border-radius:4px;background:var(--color-surface-hover,#f1f3f9)}
+.nq-back{display:inline-flex;align-items:center;gap:4px;min-height:36px;border:0;background:transparent;padding:0;font:inherit;color:var(--color-accent,#2050a0);cursor:pointer}
+@media (pointer:coarse){.nq-back{min-height:44px}}
+.nq-f2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+@container nq (max-width:767px){.nq-f2{grid-template-columns:minmax(0,1fr)}}
+.nq-cnt{margin-left:auto;font-weight:400;color:var(--color-body-muted,#5b6275);font-size:calc(12px + var(--fsp))}
+.nq-opts{display:flex;flex-direction:column;gap:6px}
+.nq-opt{display:flex;align-items:center;gap:10px;min-height:40px;padding:4px 12px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:4px;cursor:pointer}
+.nq-opt:has(input:checked){border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff))}
+.nq-opt input{width:18px;height:18px;margin:0;flex:0 0 auto;accent-color:var(--color-admin-primary,#2050a0)}
+@media (pointer:coarse){.nq-opt{min-height:44px}}
+.nq-ar{border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);min-width:0}
+.nq-arh{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:8px 12px;background:var(--color-surface-muted,#f8f9fb);border-bottom:1px solid var(--color-border,#e9ecf4);border-radius:6px 6px 0 0}
+.nq-arn{font-weight:600;color:var(--color-heading,#1f2b4d)}
+.nq-art{display:none;align-items:center;gap:8px;flex:1 1 auto;min-height:44px;border:0;background:transparent;padding:0;font:inherit;font-weight:600;color:var(--color-heading,#1f2b4d);text-align:left;cursor:pointer}
+.nq-art i{font-size:calc(18px + var(--fsp));transition:transform .15s}
+.nq-ar[data-open="true"] .nq-art i{transform:rotate(90deg)}
+.nq-all{display:inline-flex;align-items:center;gap:8px;min-height:36px;margin-left:auto;font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap}
+.nq-all input{width:18px;height:18px;margin:0;accent-color:var(--color-admin-primary,#2050a0)}
+.nq-cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0}
+.nq-cell{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-right:1px solid var(--color-border,#e9ecf4);border-bottom:1px solid var(--color-border,#e9ecf4);min-width:0}
+.nq-ck{display:flex;align-items:flex-start;gap:10px;cursor:pointer;min-height:24px}
+.nq-in{width:18px;height:18px;margin:2px 0 0;flex:0 0 auto;accent-color:var(--color-admin-primary,#2050a0);cursor:pointer}
+.nq-cl{font-weight:600;color:var(--color-heading,#1f2b4d)}
+.nq-cd{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);line-height:1.45}
+.nq-lk{display:flex;align-items:flex-start;gap:10px;width:100%;min-height:24px;border:0;background:transparent;padding:0;font:inherit;text-align:left;cursor:pointer;color:inherit}
+.nq-lk .nq-ico{font-size:20px;line-height:1;color:var(--color-body-muted,#5b6275);flex:0 0 auto}
+.nq-ro .nq-ico{font-size:20px;line-height:1;flex:0 0 auto}
+.nq-ro{display:flex;align-items:flex-start;gap:10px}
+.nq-ico.on{color:var(--color-admin-primary,#2050a0)}
+.nq-ico.off{color:var(--color-body-muted,#5b6275)}
+.nq-note{margin:0;padding:6px 8px;border-radius:4px;background:var(--color-surface-muted,#f8f9fb);font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765)}
+.nq-tags{display:flex;flex-wrap:wrap;gap:4px}
+.nq-arnote{margin:0;padding:8px 12px;font-size:calc(13px + var(--fsp));color:var(--color-admin-warning-text,#906405);background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 12%,var(--color-surface,#fff));display:flex;gap:6px}
+.nq-mod{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+@container nq (max-width:767px){
+ .nq-arn{display:none}.nq-art{display:inline-flex}
+ .nq-ar[data-open="false"] .nq-body{display:none}
+ .nq-ar[data-open="false"] .nq-arh{border-bottom:0;border-radius:6px}
+ .nq-all{margin-left:0;min-height:44px}
+ .nq-cells{grid-template-columns:minmax(0,1fr)}
+ .nq-cell{border-right:0}
+ .nq-ck{flex-direction:row-reverse;justify-content:space-between;align-items:center;min-height:44px}
+ .nq-in{appearance:none;-webkit-appearance:none;position:relative;width:44px;height:24px;margin:0;border-radius:12px;border:1px solid var(--color-border-input,#8a90a2);background:var(--color-surface-hover,#f1f3f9)}
+ .nq-in::before{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--color-body-muted,#5b6275);transition:transform .15s}
+ .nq-in:checked{background:var(--color-admin-primary,#2050a0);border-color:var(--color-admin-primary,#2050a0)}
+ .nq-in:checked::before{transform:translateX(20px);background:var(--color-on-solid,#fff)}
+}
+@media (prefers-reduced-motion:reduce){.nq-in::before,.nq-art i{transition:none}}
+.nq-pv{display:flex;flex-direction:column;gap:8px}
+.nq-pvl{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.nq-pvl>b{color:var(--color-heading,#1f2b4d);min-width:0}
+.nq-savebar{position:sticky;bottom:0;z-index:5;display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:8px 12px;padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom));background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 -1px 2px rgba(56,65,74,.10)}
+.nq-savebar .nq-st{flex:1 1 220px;min-width:0;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+@container nq (max-width:479px){.nq-savebar .sx-btn{flex:1 1 auto}}
+.nq-ov{position:fixed;inset:0;z-index:80;background:rgba(15,23,41,.45)}
+.nq-ovc{position:fixed;inset:0;z-index:79;background:transparent;border:0;padding:0;cursor:default}
+.nq-menu{position:fixed;z-index:85;min-width:240px;max-width:min(320px,calc(100vw - 24px));padding:6px;background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 8px 24px rgba(15,23,41,.18)}
+.nq-mi{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:0 10px;border:0;border-radius:4px;background:transparent;font:inherit;color:var(--color-heading,#1f2b4d);text-align:left;cursor:pointer;white-space:nowrap}
+.nq-mi:hover{background:var(--color-surface-hover,#f1f3f9)}
+.nq-mi[data-danger="true"]{color:var(--color-admin-danger-text,#bf371a)}
+.nq-mi[aria-disabled="true"]{color:var(--color-body-muted,#5b6275);cursor:not-allowed}
+.nq-mi i{font-size:calc(17px + var(--fsp))}
+.nq-mwhy{margin:0 10px 6px 37px;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);white-space:normal}
+.nq-sep{height:1px;margin:6px 4px;background:var(--color-border,#e9ecf4)}
+.nq-mh{padding:6px 10px 4px;font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+@media (pointer:coarse){.nq-mi{min-height:44px}}
+@media (max-width:599px){.nq-menu{left:0 !important;right:0 !important;top:auto !important;bottom:0 !important;max-width:none;border-radius:12px 12px 0 0;padding:8px 8px max(8px,env(safe-area-inset-bottom))}}
+.nq-dlg{position:fixed;z-index:90;left:50%;top:50%;transform:translate(-50%,-50%);width:min(480px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;background:var(--color-surface,#fff);border-radius:6px;box-shadow:0 12px 40px rgba(15,23,41,.25);padding:24px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;text-align:center}
+.nq-dlg .ic{font-size:44px;line-height:1}
+.nq-dlg h2{margin:0;font-size:calc(18px + var(--fsp));color:var(--color-heading,#1f2b4d);line-height:1.4}
+.nq-dlg p{margin:0;text-wrap:pretty}
+.nq-dlgb{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px}
+@media (max-width:479px){.nq-dlgb .sx-btn{flex:1 1 100%}}
+.nq-sheet{position:fixed;z-index:90;top:0;right:0;bottom:0;width:min(480px,100vw);background:var(--color-surface,#fff);box-shadow:-8px 0 32px rgba(15,23,41,.2);display:flex;flex-direction:column}
+.nq-shh{display:flex;align-items:flex-start;gap:12px;padding:16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.nq-shh>div{flex:1 1 auto;min-width:0}
+.nq-shb{flex:1 1 auto;overflow:auto;overflow-x:hidden;padding:16px;display:flex;flex-direction:column;gap:16px}
+.nq-shf{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom));border-top:1px solid var(--color-border,#e9ecf4)}
+.nq-xl{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.nq-xl li{display:flex;gap:8px;align-items:flex-start}
+.nq-xl li i{font-size:calc(17px + var(--fsp));line-height:1.3}
+.nq-xl li[data-ok="true"] i{color:var(--color-admin-success-text,#047767)}
+.nq-xl li[data-ok="false"]{color:var(--color-body-muted,#5b6275)}
+.nq-h3{margin:0 0 6px;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.nq-toastw{position:fixed;left:50%;bottom:max(16px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:95;width:min(560px,calc(100vw - 24px))}
+.nq-toast{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px;border-radius:6px;background:var(--color-heading,#1f2b4d);color:var(--color-surface,#fff);box-shadow:0 8px 24px rgba(15,23,41,.25)}
+.nq-toast span{flex:1 1 220px;min-width:0}
+.nq-toast button{min-height:36px;padding:0 12px;border:1px solid currentColor;border-radius:4px;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+@media (pointer:coarse){.nq-toast button{min-height:44px}}
+.nq-frames{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.nq-frames figure{margin:0;display:flex;flex-direction:column;gap:6px;max-width:100%}
+.nq-frames iframe{border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;background:var(--color-body,#f4f5fa);max-width:100%}
+.nq-frames figcaption{font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+</style>
+</helmet>
+<div class="nq-root" data-big="{{ bigA }}">
+<sc-if value="{{ mainShow }}" hint-placeholder-val="{{ true }}">
+<div class="nq-c" data-emb="{{ embA }}">
+
+  <sc-if value="{{ impShow }}" hint-placeholder-val="{{ false }}">
+    <div class="nq-al" data-k="warn" role="note"><i class="ri-user-shared-line" aria-hidden="true"></i><div><b>Nhân viên hỗ trợ đang đăng nhập thay thành viên.</b> Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên. Bạn vẫn xem được mọi nhóm.</div></div>
+  </sc-if>
+
+  <sc-if value="{{ isList }}" hint-placeholder-val="{{ true }}">
+    <div class="nq-top">
+      <div>
+        <sc-if value="{{ showHead }}" hint-placeholder-val="{{ true }}">
+          <h1 class="nq-h1">Nhóm quyền</h1>
+          <p class="nq-desc">Mỗi nhóm là một bộ việc được làm trên website. Người thuộc nhiều nhóm được làm mọi việc của các nhóm đó.</p>
+        </sc-if>
+      </div>
+      <sc-if value="{{ createShow }}" hint-placeholder-val="{{ true }}">
+        <div class="nq-tr">
+          <button class="sx-btn pri" aria-haspopup="menu" aria-expanded="{{ createOpenA }}" aria-disabled="{{ createLockA }}" onClick="{{ onCreate }}"><i class="ri-add-line" aria-hidden="true"></i><span class="sx-t">Tạo nhóm</span><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ stNoPerm }}" hint-placeholder-val="{{ false }}">
+      <div class="nq-card"><div class="nq-empty"><i class="ri-lock-2-line" aria-hidden="true" style="font-size:32px;color:var(--color-body-muted,#5b6275);"></i><h2 class="nq-h2">Bạn chưa có quyền quản lý nhóm quyền</h2><p>Nhóm "{{ roleName }}" không có việc "Nhóm quyền · Quản lý". Nhờ Chủ website hoặc Quản trị cấp thêm cho bạn.</p><button class="sx-btn" onClick="{{ goHome }}"><i class="ri-home-4-line" aria-hidden="true"></i><span class="sx-t">Về Tổng quan</span></button></div></div>
+    </sc-if>
+    <sc-if value="{{ stLoading }}" hint-placeholder-val="{{ false }}">
+      <div class="nq-card" aria-busy="true" aria-label="Đang tải danh sách nhóm"><sc-for list="{{ skRows }}" as="s" hint-placeholder-count="5"><div class="nq-row"><div class="nq-sk" style="width:70%;"></div><div class="nq-sk" style="width:60%;"></div><div class="nq-sk" style="width:50%;"></div><div class="nq-sk" style="width:80%;"></div><div class="nq-sk" style="width:64px;"></div></div></sc-for></div>
+    </sc-if>
+    <sc-if value="{{ stError }}" hint-placeholder-val="{{ false }}">
+      <div class="nq-al" data-k="danger" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><div><b>Chưa tải được danh sách nhóm.</b> Mạng chậm hoặc máy chủ đang bận — dữ liệu của bạn không bị mất.</div><button class="sx-btn" onClick="{{ onRetry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button></div>
+    </sc-if>
+
+    <sc-if value="{{ stData }}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ planLockShow }}" hint-placeholder-val="{{ false }}">
+        <div class="nq-al" data-k="info" role="note"><i class="ri-lock-2-line" aria-hidden="true"></i>
+          <sc-if value="{{ upsellOn }}" hint-placeholder-val="{{ false }}"><div><b>Gói hiện tại chưa có nhóm tự tạo.</b> Tạo nhóm riêng cho đúng việc từng người, ví dụ người chỉ duyệt bài mà không sửa bài.<sc-if value="{{ hasCustom }}"> Nhóm đã có vẫn sửa, xóa được.</sc-if></div><button class="sx-btn" onClick="{{ goPlan }}"><span class="sx-t">Xem gói nâng cấp</span></button></sc-if>
+          <sc-if value="{{ upsellOff }}" hint-placeholder-val="{{ true }}"><div><b>Nhóm tự tạo chưa bật cho website này</b> — liên hệ hỗ trợ.<sc-if value="{{ hasCustom }}"> Nhóm đã có vẫn sửa, xóa được.</sc-if></div></sc-if>
+        </div>
+      </sc-if>
+
+      <div class="nq-bar">
+        <label class="sx-search"><i class="ri-search-line" aria-hidden="true"></i><span class="vh">Tìm nhóm quyền</span><input type="search" placeholder="Biên tập" value="{{ q }}" onInput="{{ onQ }}"></label>
+        <div class="nq-chips" role="group" aria-label="Lọc theo loại nhóm">
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="3"><button class="nq-chip" aria-pressed="{{ c.onA }}" onClick="{{ c.pick }}">{{ c.n }} <b>{{ c.count }}</b></button></sc-for>
+        </div>
+      </div>
+      <sc-if value="{{ filterShow }}" hint-placeholder-val="{{ false }}">
+        <div class="nq-why" role="status"><span>Khớp {{ matchN }} / {{ totalN }} nhóm.</span><button class="nq-lnk" onClick="{{ clearFilter }}">Bỏ lọc</button></div>
+      </sc-if>
+
+      <div class="nq-card">
+        <div role="table" aria-label="Danh sách nhóm quyền">
+          <div class="nq-row nq-head" role="row"><span role="columnheader">Tên nhóm</span><span role="columnheader">Vị trí cấp</span><span role="columnheader">Thành viên</span><span role="columnheader">Việc tiêu biểu</span><span role="columnheader"><span class="vh">Hành động</span></span></div>
+          <sc-for list="{{ rows }}" as="r" hint-placeholder-count="6">
+            <div class="nq-row" role="row">
+              <div role="cell" class="nq-name">
+                <div class="nq-nm"><button class="nq-nmb" onClick="{{ r.open }}">{{ r.name }}</button>
+                  <sc-if value="{{ r.sys }}"><span class="sx-chip" data-t="brand"><i class="ri-lock-2-line" aria-hidden="true"></i>Hệ thống</span></sc-if>
+                  <sc-if value="{{ r.cust }}"><span class="sx-chip" data-t="gold"><i class="ri-user-settings-line" aria-hidden="true"></i>Tùy chỉnh</span></sc-if>
+                </div>
+                <sc-if value="{{ r.fromShow }}"><div class="nq-sub">Tạo từ: {{ r.from }}</div></sc-if>
+                <div class="nq-mm">{{ r.metaM }}</div>
+              </div>
+              <div role="cell" class="nq-lv">{{ r.pos }}</div>
+              <div role="cell" class="nq-mc"><button class="nq-lnk" onClick="{{ r.goMembers }}">{{ r.membersText }}</button></div>
+              <div role="cell" class="nq-ty">{{ r.typical }} <button class="nq-lnk" onClick="{{ r.explain }}" aria-label="{{ r.explainAria }}">Xem đủ</button></div>
+              <div role="cell" class="nq-act">
+                <button class="sx-btn sm" onClick="{{ r.open }}" aria-label="{{ r.openAria }}"><i class="{{ r.openIcon }}" aria-hidden="true"></i><span class="sx-t">{{ r.openLabel }}</span></button>
+                <button class="sx-btn sm ic" aria-haspopup="menu" aria-label="{{ r.menuAria }}" title="{{ r.menuAria }}" onClick="{{ r.menu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+              </div>
+            </div>
+          </sc-for>
+          <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}">
+            <div class="nq-empty"><p>Không có nhóm nào khớp "{{ q }}".</p><button class="sx-btn" onClick="{{ clearFilter }}"><span class="sx-t">Bỏ lọc</span></button></div>
+          </sc-if>
+        </div>
+      </div>
+
+      <sc-if value="{{ emptyCustom }}" hint-placeholder-val="{{ false }}">
+        <div class="nq-card"><div class="nq-empty">
+          <h2 class="nq-h2">Chưa có nhóm tự tạo</h2>
+          <p>6 nhóm mặc định đủ cho phần lớn website. Tạo nhóm riêng khi cần một bộ việc khác — ví dụ người chỉ duyệt bài, không sửa bài.</p>
+          <sc-if value="{{ emptyBtn }}"><button class="sx-btn pri" aria-disabled="{{ createLockA }}" onClick="{{ onCreate }}"><i class="ri-add-line" aria-hidden="true"></i><span class="sx-t">Tạo nhóm</span></button></sc-if>
+        </div></div>
+      </sc-if>
+      <sc-if value="{{ notes }}" hint-placeholder-val="{{ true }}">
+        <div class="nq-why"><span class="sx-note"><i class="ri-tools-line" aria-hidden="true"></i>Chờ backend</span><span>Xóa nhóm tự tạo vào Thùng rác + "Hoàn tác" — bảng nhóm quyền dùng chung mọi website, cách làm cần hội đồng chốt.</span></div>
+      </sc-if>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{ isEdit }}" hint-placeholder-val="{{ false }}">
+    <div class="nq-top">
+      <div>
+        <button class="nq-back" onClick="{{ onBack }}"><i class="ri-arrow-left-s-line" aria-hidden="true"></i>Quay lại Nhóm quyền</button>
+        <sc-if value="{{ edH1 }}"><h1 class="nq-h1">{{ edTitle }}</h1></sc-if>
+        <sc-if value="{{ edH2 }}"><h2 class="nq-h1">{{ edTitle }}</h2></sc-if>
+        <p class="nq-desc">{{ edDesc }}</p>
+      </div>
+      <div class="nq-tr"><button class="sx-btn" onClick="{{ edExplain }}"><i class="ri-file-list-3-line" aria-hidden="true"></i><span class="sx-t">Nhóm này làm được gì?</span></button></div>
+    </div>
+
+    <sc-if value="{{ roShow }}">
+      <div class="nq-al" data-k="info" role="note"><i class="ri-lock-2-line" aria-hidden="true"></i><div>{{ roText }}</div>
+        <sc-if value="{{ dupShow }}"><button class="sx-btn" aria-disabled="{{ dupLockA }}" onClick="{{ onDupCur }}"><i class="ri-file-copy-line" aria-hidden="true"></i><span class="sx-t">Nhân bản để tùy chỉnh</span></button></sc-if>
+      </div>
+      <sc-if value="{{ dupWhyShow }}"><p class="nq-why" role="note"><i class="ri-lock-2-line" aria-hidden="true"></i><span>{{ dupWhy }}</span></p></sc-if>
+    </sc-if>
+
+    <sc-if value="{{ rwShow }}">
+      <section class="nq-card" aria-labelledby="nq-hinfo">
+        <div class="nq-ch"><h2 class="nq-h2" id="nq-hinfo">Thông tin nhóm</h2><sc-if value="{{ fromShow }}"><span class="sx-chip" data-t="gold"><i class="ri-git-branch-line" aria-hidden="true"></i>Tạo từ: {{ edFrom }}</span></sc-if></div>
+        <div class="nq-cb nq-f2">
+          <div>
+            <label class="sx-lab" for="nq-name">Tên nhóm <span class="sx-req" aria-hidden="true">*</span><span class="vh">(bắt buộc)</span><span class="nq-cnt">{{ nameLen }}/60</span></label>
+            <input id="nq-name" class="sx-in" type="text" maxlength="60" placeholder="Người duyệt bài" value="{{ edName }}" aria-invalid="{{ nameInvA }}" aria-describedby="nq-nameh" onInput="{{ onName }}" onBlur="{{ onNameBlur }}" ref="{{ nameRef }}">
+            <sc-if value="{{ nameErrShow }}"><p class="sx-err" id="nq-nameh" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ nameErr }}</span></p></sc-if>
+            <sc-if value="{{ nameHintShow }}"><p class="sx-hint" id="nq-nameh">Đặt theo việc người trong nhóm làm, từ 1 đến 60 ký tự, không trùng nhóm khác.</p></sc-if>
+          </div>
+          <fieldset style="border:0;margin:0;padding:0;min-width:0;">
+            <legend class="sx-lab">Vị trí cấp</legend>
+            <div class="nq-opts">
+              <sc-for list="{{ levelOpts }}" as="o" hint-placeholder-count="4"><label class="nq-opt"><input type="radio" name="nq-lv" checked="{{ o.on }}" onChange="{{ o.pick }}"><span>{{ o.label }}</span></label></sc-for>
+            </div>
+            <p class="sx-hint">Người ở nhóm cấp cao hơn mới gán, sửa hoặc xóa được nhóm này. Bạn chỉ chọn được vị trí dưới cấp của mình ({{ roleName }}).</p>
+          </fieldset>
+        </div>
+      </section>
+    </sc-if>
+
+    <section class="nq-card" aria-labelledby="nq-hperm">
+      <div class="nq-ch"><h2 class="nq-h2" id="nq-hperm">Việc được làm</h2>
+        <label class="sx-search" style="flex:1 1 220px;max-width:340px;"><i class="ri-search-line" aria-hidden="true"></i><span class="vh">Tìm việc</span><input type="search" placeholder="Duyệt" value="{{ permQ }}" onInput="{{ onPermQ }}"></label>
+      </div>
+      <div class="nq-cb">
+        <p class="nq-why" style="margin:0;"><span>Tick việc lớn thì "Xem" của khu vực đó tự tick. Ô có <i class="ri-lock-2-fill" aria-hidden="true"></i><span class="vh">ổ khóa</span> là việc bạn không đổi được — bấm vào để xem lý do.</span></p>
+        <sc-for list="{{ areas }}" as="a" hint-placeholder-count="4">
+          <div class="nq-ar" data-open="{{ a.openA }}" role="group" aria-label="{{ a.n }}">
+            <div class="nq-arh">
+              <span class="nq-arn">{{ a.n }} <span class="nq-cnt">{{ a.countText }}</span></span>
+              <button class="nq-art" aria-expanded="{{ a.openA }}" onClick="{{ a.toggleOpen }}"><i class="ri-arrow-right-s-line" aria-hidden="true"></i><span>{{ a.n }}</span><span class="nq-cnt">{{ a.countText }}</span></button>
+              <sc-if value="{{ a.allShow }}"><label class="nq-all"><input type="checkbox" checked="{{ a.allOn }}" onChange="{{ a.toggleAll }}" aria-label="{{ a.allAria }}">Chọn cả hàng</label></sc-if>
+            </div>
+            <div class="nq-body">
+              <sc-if value="{{ a.modOff }}"><div class="nq-mod"><i class="ri-lock-2-line" aria-hidden="true"></i><span>{{ a.modText }}</span></div></sc-if>
+              <sc-if value="{{ a.noteShow }}"><p class="nq-arnote" role="status"><i class="ri-information-line" aria-hidden="true"></i><span>{{ a.note }}</span></p></sc-if>
+              <div class="nq-cells">
+                <sc-for list="{{ a.cells }}" as="c">
+                  <div class="nq-cell">
+                    <sc-if value="{{ c.free }}"><label class="nq-ck"><input class="nq-in" type="checkbox" checked="{{ c.on }}" onChange="{{ c.toggle }}" aria-describedby="{{ c.did }}"><span style="min-width:0;flex:1 1 auto;"><span class="nq-cl">{{ c.l }}</span><span class="nq-cd" id="{{ c.did }}" style="display:block;">{{ c.d }}</span></span></label></sc-if>
+                    <sc-if value="{{ c.lock }}"><button class="nq-lk" aria-expanded="{{ c.lkA }}" aria-label="{{ c.lkAria }}" onClick="{{ c.openLk }}"><i class="{{ c.ico }}" aria-hidden="true"></i><span style="min-width:0;flex:1 1 auto;"><span class="nq-cl">{{ c.l }} <i class="ri-lock-2-fill" aria-hidden="true" style="font-size:12px;color:var(--color-body-muted,#5b6275);"></i></span><span class="nq-cd" style="display:block;">{{ c.d }}</span></span></button>
+                      <sc-if value="{{ c.lkOpen }}"><p class="nq-note" role="note">{{ c.why }}</p></sc-if></sc-if>
+                    <sc-if value="{{ c.ro }}"><div class="nq-ro"><i class="{{ c.ico }}" aria-hidden="true"></i><span style="min-width:0;"><span class="nq-cl">{{ c.l }}</span><span class="vh">{{ c.roState }}</span><span class="nq-cd" style="display:block;">{{ c.d }}</span></span></div></sc-if>
+                    <sc-if value="{{ c.changed }}"><div class="nq-tags"><span class="sx-chip" data-t="info"><i class="ri-edit-circle-line" aria-hidden="true"></i>Đã đổi</span></div></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ permNoMatch }}"><p class="nq-why">Không có việc nào khớp "{{ permQ }}". <button class="nq-lnk" onClick="{{ clearPermQ }}">Bỏ lọc</button></p></sc-if>
+      </div>
+    </section>
+
+    <sc-if value="{{ rwShow }}">
+      <section class="nq-card" aria-labelledby="nq-hpv">
+        <div class="nq-ch"><h2 class="nq-h2" id="nq-hpv">Xem trước khi lưu</h2></div>
+        <div class="nq-cb nq-pv" role="status" aria-live="polite">
+          <sc-if value="{{ pvNone }}"><p style="margin:0;" class="nq-why">Chưa đổi việc nào so với {{ pvBaseName }}.</p></sc-if>
+          <sc-if value="{{ pvAddShow }}"><div class="nq-pvl"><span class="sx-chip" data-t="ok"><i class="ri-add-circle-line" aria-hidden="true"></i>Thêm</span><b>{{ pvAdd }}</b></div></sc-if>
+          <sc-if value="{{ pvRemShow }}"><div class="nq-pvl"><span class="sx-chip" data-t="danger"><i class="ri-indeterminate-circle-line" aria-hidden="true"></i>Bớt</span><b>{{ pvRem }}</b></div></sc-if>
+          <sc-if value="{{ pvKeepShow }}"><div class="nq-pvl"><span class="sx-chip" data-t="brand"><i class="ri-lock-2-line" aria-hidden="true"></i>Giữ nguyên</span><span>{{ pvKeep }} — bạn không có các việc này nên không thêm, không bỏ được.</span></div></sc-if>
+          <sc-if value="{{ pvDropShow }}"><div class="nq-pvl"><span class="sx-chip" data-t="warn"><i class="ri-error-warning-line" aria-hidden="true"></i>Bỏ khi lưu</span><span>{{ pvDrop }} — khu vực này đang tắt theo gói của website.</span></div></sc-if>
+          <div class="nq-pvl"><i class="ri-team-line" aria-hidden="true"></i><span>{{ pvAffect }}</span></div>
+          <p class="nq-why" style="margin:0;"><i class="ri-history-line" aria-hidden="true"></i><span>Mọi thay đổi được ghi vào nhật ký hoạt động, kèm việc thêm và bớt.</span></p>
+        </div>
+      </section>
+      <div class="nq-savebar">
+        <span class="nq-st" role="status">{{ saveStatus }}</span>
+        <button class="sx-btn" onClick="{{ onBack }}"><span class="sx-t">Hủy</span></button>
+        <button class="sx-btn pri" aria-disabled="{{ saveLockA }}" onClick="{{ onSave }}"><i class="ri-save-3-line" aria-hidden="true"></i><span class="sx-t">{{ saveLabel }}</span></button>
+      </div>
+    </sc-if>
+  </sc-if>
+
+  <sc-if value="{{ framesShow }}" hint-placeholder-val="{{ false }}">
+    <section class="nq-card" aria-label="Khung xem điện thoại và máy tính bảng"><div class="nq-ch"><h2 class="nq-h2">Khung xem 390 · 768</h2></div>
+      <div class="nq-cb nq-frames">
+        <figure><iframe src="Nhóm quyền.dc.html#frame" width="390" height="760" title="Nhóm quyền ở 390px" loading="lazy"></iframe><figcaption>390 × 760 — thẻ gọn, ma trận thành công tắc theo khu vực</figcaption></figure>
+        <figure><iframe src="Nhóm quyền.dc.html#frame" width="768" height="760" title="Nhóm quyền ở 768px" loading="lazy"></iframe><figcaption>768 × 760 — bảng rút gọn</figcaption></figure>
+      </div>
+    </section>
+  </sc-if>
+</div>
+</sc-if>
+
+<sc-if value="{{ menuShow }}" hint-placeholder-val="{{ false }}">
+  <button class="nq-ovc" aria-label="Đóng menu" tabindex="-1" onClick="{{ closeMenu }}"></button>
+  <div class="nq-menu" role="menu" aria-label="{{ menuTitle }}" style="top:{{ menuTop }};bottom:{{ menuBottom }};right:{{ menuRight }};">
+    <div class="nq-mh">{{ menuTitle }}</div>
+    <sc-for list="{{ menuItems }}" as="m" hint-placeholder-count="3">
+      <sc-if value="{{ m.sep }}"><div class="nq-sep" role="separator"></div></sc-if>
+      <sc-if value="{{ m.head }}"><div class="nq-mh" role="presentation">{{ m.label }}</div></sc-if>
+      <sc-if value="{{ m.item }}"><button class="nq-mi" role="menuitem" data-danger="{{ m.dangerA }}" aria-disabled="{{ m.lockA }}" onClick="{{ m.act }}" ref="{{ m.ref }}"><i class="{{ m.icon }}" aria-hidden="true"></i><span>{{ m.label }}</span><sc-if value="{{ m.sub }}"><i class="ri-arrow-right-s-line" aria-hidden="true" style="margin-left:auto;"></i></sc-if></button>
+        <sc-if value="{{ m.whyShow }}"><p class="nq-mwhy">{{ m.why }}</p></sc-if></sc-if>
+    </sc-for>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgShow }}" hint-placeholder-val="{{ false }}">
+  <div class="nq-ov" onClick="{{ closeDlg }}"></div>
+  <div class="nq-dlg" role="alertdialog" aria-modal="true" aria-labelledby="nq-dlgt" aria-describedby="nq-dlgd">
+    <i class="{{ dlgIcon }}" aria-hidden="true"></i>
+    <h2 id="nq-dlgt">{{ dlgTitle }}</h2>
+    <p id="nq-dlgd">{{ dlgBody }}</p>
+    <div class="nq-dlgb">
+      <button class="sx-btn" onClick="{{ closeDlg }}" ref="{{ dlgFocusRef }}"><span class="sx-t">{{ dlgCancel }}</span></button>
+      <sc-if value="{{ dlgOkShow }}"><button class="{{ dlgOkClass }}" onClick="{{ dlgOk }}"><span class="sx-t">{{ dlgOkLabel }}</span></button></sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ xShow }}" hint-placeholder-val="{{ false }}">
+  <div class="nq-ov" onClick="{{ closeExplain }}"></div>
+  <div class="nq-sheet" role="dialog" aria-modal="true" aria-labelledby="nq-xt">
+    <div class="nq-shh"><div><h2 class="nq-h2" id="nq-xt">Nhóm "{{ xName }}" làm được gì?</h2><p class="nq-sub" style="margin:2px 0 0;">{{ xMeta }}</p></div>
+      <button class="sx-btn ic gho" aria-label="Đóng" title="Đóng" onClick="{{ closeExplain }}" ref="{{ xFocusRef }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+    <div class="nq-shb">
+      <sc-for list="{{ xAreas }}" as="xa" hint-placeholder-count="4">
+        <div><h3 class="nq-h3">{{ xa.n }}</h3>
+          <sc-if value="{{ xa.off }}"><p class="nq-why" style="margin:0;"><i class="ri-lock-2-line" aria-hidden="true"></i><span>{{ xa.offText }}</span></p></sc-if>
+          <ul class="nq-xl"><sc-for list="{{ xa.items }}" as="it"><li data-ok="{{ it.okA }}"><i class="{{ it.icon }}" aria-hidden="true"></i><span>{{ it.t }}</span></li></sc-for></ul>
+        </div>
+      </sc-for>
+    </div>
+    <div class="nq-shf">
+      <sc-if value="{{ xEditShow }}"><button class="sx-btn" onClick="{{ xEdit }}"><i class="ri-pencil-line" aria-hidden="true"></i><span class="sx-t">Sửa nhóm</span></button></sc-if>
+      <button class="sx-btn pri" onClick="{{ closeExplain }}"><span class="sx-t">Đóng</span></button>
+    </div>
+  </div>
+</sc-if>
+
+<div class="nq-toastw" role="status" aria-live="polite">
+  <sc-if value="{{ toastShow }}" hint-placeholder-val="{{ false }}"><div class="nq-toast"><span>{{ toastText }}</span><sc-if value="{{ toastUndo }}"><button onClick="{{ onUndo }}">Hoàn tác</button></sc-if><button onClick="{{ closeToast }}" aria-label="Đóng thông báo">Đóng</button></div></sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Quản trị&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Người xem&quot;},&quot;missingPerms&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Người xem&quot;},&quot;impersonating&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Người xem&quot;},&quot;planKey&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;free&quot;,&quot;basic&quot;,&quot;pro&quot;,&quot;ent&quot;],&quot;default&quot;:&quot;pro&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Gói&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói&quot;},&quot;catalogOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Gói&quot;},&quot;dataState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Có dữ liệu&quot;,&quot;Trống&quot;,&quot;Đang tải&quot;,&quot;Lỗi&quot;],&quot;default&quot;:&quot;Có dữ liệu&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;failSave&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;nhom&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;che&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;explain&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;()=&gt;void&quot;}}">
+const NQ_AREAS = [
+  { k: 'content', n: 'Nội dung', perms: [
+    ['entries.view', 'Xem', 'Xem mọi bài trong trang quản trị, kể cả bản nháp.', 'Được xem mọi bài, kể cả bản nháp', 'Không được xem bài trong trang quản trị', 'Xem bài'],
+    ['entries.create', 'Tạo', 'Viết bài mới và lưu nháp.', 'Được viết bài mới', 'Không được viết bài mới', 'Viết bài'],
+    ['entries.edit.own', 'Sửa bài của mình', 'Sửa bài do chính người này viết.', 'Được sửa bài của mình', 'Không được sửa bài của mình', 'Sửa bài của mình'],
+    ['entries.edit.any', 'Sửa mọi bài', 'Sửa bài của bất kỳ ai — gồm cả bài của mình.', 'Được sửa bài của mọi người', 'Không được sửa bài người khác', 'Sửa mọi bài'],
+    ['entries.delete.own', 'Xóa bài của mình', 'Chuyển bài của mình vào Thùng rác.', 'Được xóa bài của mình', 'Không được xóa bài của mình', 'Xóa bài của mình'],
+    ['entries.delete.any', 'Xóa mọi bài', 'Chuyển bài của bất kỳ ai vào Thùng rác — gồm cả bài của mình.', 'Được xóa bài của mọi người', 'Không được xóa bài người khác', 'Xóa mọi bài'],
+    ['entries.submit', 'Gửi duyệt', 'Gửi bài cho người duyệt khi website bật duyệt bài.', 'Được gửi bài đi duyệt', 'Không được gửi bài đi duyệt', 'Gửi duyệt'],
+    ['entries.review', 'Phản biện', 'Đọc bài đang chờ, trả lại kèm lý do hoặc chuyển bước.', 'Được trả lại bài kèm lý do', 'Không được trả lại bài', 'Phản biện'],
+    ['entries.approve', 'Duyệt', 'Duyệt đăng bài đang chờ và gỡ bài khỏi website.', 'Được duyệt đăng bài', 'Không được duyệt bài', 'Duyệt'],
+    ['entries.publish', 'Đăng', 'Đăng thẳng, hẹn giờ đăng và đổi cách hiển thị.', 'Được đăng và hẹn giờ đăng', 'Không được tự đăng bài', 'Đăng']] },
+  { k: 'media', n: 'Thư viện ảnh & tệp', mod: 'media', perms: [
+    ['media.view', 'Xem', 'Xem và chọn ảnh, tệp đã có.', 'Được xem và dùng ảnh, tệp đã có', 'Không được mở thư viện ảnh', 'Xem ảnh'],
+    ['media.upload', 'Tải lên', 'Tải ảnh và tệp mới lên thư viện.', 'Được tải ảnh, tệp lên', 'Không được tải ảnh lên', 'Tải ảnh lên'],
+    ['media.delete', 'Xóa', 'Chuyển ảnh, tệp vào Thùng rác.', 'Được xóa ảnh, tệp', 'Không được xóa ảnh, tệp', 'Xóa ảnh']] },
+  { k: 'tax', n: 'Chuyên mục', perms: [['taxonomies.manage', 'Quản lý', 'Thêm, sửa, sắp xếp và xóa chuyên mục.', 'Được quản lý chuyên mục', 'Không được sửa chuyên mục', 'Quản lý chuyên mục']] },
+  { k: 'menus', n: 'Trình đơn', mod: 'menus', perms: [['menus.manage', 'Quản lý', 'Sắp xếp liên kết ở đầu và chân website.', 'Được sắp xếp trình đơn', 'Không được sửa trình đơn', 'Sửa trình đơn']] },
+  { k: 'domains', n: 'Tên miền', perms: [['domains.manage', 'Quản lý', 'Gắn và đổi địa chỉ website.', 'Được đổi tên miền', 'Không được đổi tên miền', 'Đổi tên miền']] },
+  { k: 'settings', n: 'Cài đặt website', perms: [['settings.manage', 'Quản lý', 'Đổi thông tin, giao diện, ngôn ngữ và kết nối của website.', 'Được đổi cài đặt website', 'Không được đổi cài đặt website', 'Cài đặt website']] },
+  { k: 'forms', n: 'Khách liên hệ', mod: 'contacts', perms: [
+    ['forms.view', 'Xem', 'Xem yêu cầu khách gửi từ biểu mẫu.', 'Được xem khách liên hệ', 'Không được xem khách liên hệ', 'Xem khách liên hệ'],
+    ['forms.manage', 'Quản lý', 'Đổi trạng thái, xóa liên hệ và sửa biểu mẫu.', 'Được xử lý khách liên hệ', 'Không được xử lý khách liên hệ', 'Xử lý khách liên hệ']] },
+  { k: 'catalog', n: 'Sản phẩm', mod: 'catalog', perms: [
+    ['catalog.view', 'Xem', 'Xem danh sách sản phẩm.', 'Được xem sản phẩm', 'Không được xem sản phẩm', 'Xem sản phẩm'],
+    ['catalog.manage', 'Quản lý', 'Thêm, sửa, đăng và xóa sản phẩm.', 'Được quản lý sản phẩm', 'Không được sửa sản phẩm', 'Quản lý sản phẩm']] },
+  { k: 'users', n: 'Thành viên', mod: 'users', perms: [
+    ['users.invite', 'Mời', 'Gửi lời mời người mới vào website.', 'Được mời thành viên mới', 'Không được mời thành viên', 'Mời thành viên'],
+    ['users.manage', 'Quản lý', 'Đổi nhóm quyền và xóa người khỏi website.', 'Được đổi nhóm, xóa thành viên', 'Không được đổi nhóm thành viên', 'Quản lý thành viên']] },
+  { k: 'roles', n: 'Nhóm quyền', perms: [['roles.manage', 'Quản lý', 'Tạo, sửa và xóa nhóm tự tạo.', 'Được quản lý nhóm quyền', 'Không được sửa nhóm quyền', 'Quản lý nhóm quyền']] }
+];
+const NQ_P = {}; NQ_AREAS.forEach(a => a.perms.forEach(p => { NQ_P[p[0]] = { k: p[0], l: p[1], d: p[2], can: p[3], cannot: p[4], s: p[5], area: a }; }));
+const NQ_ALL = Object.keys(NQ_P);
+const NQ_TYP = ['settings.manage', 'users.manage', 'entries.publish', 'entries.approve', 'entries.edit.any', 'catalog.manage', 'entries.review', 'entries.create', 'entries.edit.own', 'media.upload', 'forms.manage', 'entries.submit', 'entries.view', 'media.view', 'forms.view', 'catalog.view'];
+const NQ_SEED = [
+  { name: 'Trợ lý chủ website', level: 80, from: 'Quản trị', perms: NQ_ALL.filter(p => p !== 'roles.manage' && p !== 'domains.manage'), members: 0, invites: 0 },
+  { name: 'Người duyệt bài', level: 40, from: 'Biên tập', perms: ['entries.view', 'entries.review', 'entries.approve', 'entries.publish', 'media.view', 'menus.manage', 'catalog.view'], members: 2, invites: 0 },
+  { name: 'Cộng tác viên dịch thuật — bản tiếng Nhật và tiếng Trung', level: 25, from: 'Cộng tác viên', perms: ['entries.view', 'entries.create', 'entries.edit.own', 'entries.submit', 'media.view'], members: 1, invites: 1 },
+  { name: 'Nhóm A', level: 15, from: null, perms: ['entries.view', 'forms.view'], members: 0, invites: 0 }
+];
+const NQ_SYSN = { 'Chủ website': 1, 'Quản trị': 2, 'Biên tập': 2, 'Người viết': 3, 'Cộng tác viên': 1, 'Chỉ xem': 0 };
+const NQ_SYSI = { 'Người viết': 1, 'Chỉ xem': 1 };
+const NQ_GAPS = [80, 60, 40, 25, 15, 5];
+const NQ_IMP = 'Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên.';
+const NQ_RESERVED_EXTRA = ['owner', 'admin', 'editor', 'author', 'contributor', 'viewer', 'super_admin', 'support', 'billing'];
+
+class Component extends DCLogic {
+  state = { view: 'list', ed: null, q: '', chip: 'all', custom: null, menu: null, dlg: null, xRole: null, toast: null, lk: null, open: {}, permQ: '', note: null, dataOverride: null, nameTouched: false };
+
+  componentDidMount() {
+    this._onReady = () => this.forceUpdate();
+    document.addEventListener('bs-cw-ready', this._onReady);
+    this._onKey = (e) => { if (e.key !== 'Escape') return; if (this.state.menu) this.closeMenu(); else if (this.state.dlg) this.closeDlg(); else if (this.state.xRole || this.props.explain) this.closeExplain(); };
+    document.addEventListener('keydown', this._onKey);
+    this._onCmd = (e) => { const d = (e && e.detail) || {}; if (!this.props.embedded || (d.id && d.id !== (this.props.embedId || 'roles'))) return; if (d.act === 'save' && this.state.view === 'edit') this.save(); if (d.act === 'reset' && this.state.view === 'edit') this.backToList(true); };
+    document.addEventListener('bs-embed-cmd', this._onCmd);
+    this._onUnload = (e) => { if (this.dirtyN() > 0) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', this._onUnload);
+    this._pp = Object.assign({}, this.props);
+    if (this.props.nhom || this.props.che) this.syncFromProps();
+  }
+  componentWillUnmount() {
+    document.removeEventListener('bs-cw-ready', this._onReady); document.removeEventListener('keydown', this._onKey);
+    document.removeEventListener('bs-embed-cmd', this._onCmd); window.removeEventListener('beforeunload', this._onUnload);
+    clearTimeout(this._tt);
+  }
+  componentDidUpdate() {
+    const p0 = this._pp || {}, p = this.props;
+    if (p.nhom !== p0.nhom || p.che !== p0.che) { this._pp = Object.assign({}, p); this.syncFromProps(); }
+    else if (p.dataState !== p0.dataState) { this._pp = Object.assign({}, p); this.setState({ dataOverride: null, custom: null }); }
+    else this._pp = Object.assign({}, p);
+    const n = this.dirtyN();
+    if (this._lastDirty !== n) { this._lastDirty = n; if (typeof p.onDirty === 'function') p.onDirty(n); }
+  }
+  syncFromProps() {
+    const p = this.props, che = p.che || '', nhom = p.nhom || '';
+    if (!che) { if (this.state.view !== 'list') this.setState({ view: 'list', ed: null }); return; }
+    const all = this.allRoles();
+    if (che === 'moi') { const src = nhom ? all.find(r => r.name === nhom) : null; this.startNew(src, true); return; }
+    const r = all.find(x => x.name === nhom); if (r) this.openRole(r, true);
+  }
+
+  // ---- mô hình ----
+  ctx() {
+    const B = window.BSCW, A = window.BSAI;
+    const roleName = this.props.role ?? 'Quản trị';
+    const R = B ? B.role(roleName) : { level: 70, perms: NQ_ALL };
+    let vp = R.perms === '*' ? NQ_ALL.slice() : R.perms.slice();
+    if (this.props.missingPerms ?? false) vp = vp.filter(p => p !== 'menus.manage' && p !== 'domains.manage');
+    const catalogOn = this.props.catalogOn ?? true;
+    const siteCeil = NQ_ALL.filter(p => catalogOn || NQ_P[p].area.k !== 'catalog');
+    const grant = vp.filter(p => siteCeil.indexOf(p) >= 0);
+    const planKey = this.props.planKey ?? 'pro';
+    const feat = A && A.feature ? !!A.feature('rbac.custom_roles', planKey) : true;
+    const imp = !!(this.props.impersonating ?? false);
+    return { B, roleName, ceiling: R.level, vp, siteCeil, grant, feat, imp, catalogOn, canManage: vp.indexOf('roles.manage') >= 0, upsell: !!(this.props.upsell ?? false) };
+  }
+  dataState() { return this.state.dataOverride || (this.props.dataState ?? 'Có dữ liệu'); }
+  customList() { if (this.state.custom) return this.state.custom; return this.dataState() === 'Trống' ? [] : NQ_SEED.map(r => Object.assign({}, r, { perms: r.perms.slice() })); }
+  allRoles() {
+    const B = window.BSCW, out = [];
+    if (B) Object.keys(B.ROLES).forEach(n => { const r = B.ROLES[n]; out.push({ name: n, sys: true, level: r.level, perms: r.perms === '*' ? NQ_ALL.slice() : r.perms.slice(), members: NQ_SYSN[n] || 0, invites: NQ_SYSI[n] || 0 }); });
+    return out.concat(this.customList().map(r => Object.assign({ sys: false }, r))).sort((a, b) => b.level - a.level || (a.sys ? -1 : 1));
+  }
+  sysLadder() { const B = window.BSCW; if (!B) return []; return Object.keys(B.ROLES).map(n => ({ n, l: B.ROLES[n].level })).sort((a, b) => b.l - a.l); }
+  posText(level, sys, name) {
+    const L = this.sysLadder();
+    if (sys) { const i = L.findIndex(x => x.n === name); return i <= 0 ? 'Cao nhất' : 'Dưới ' + L[i - 1].n; }
+    const eq = L.find(x => x.l === level); if (eq) return 'Ngang ' + eq.n;
+    const up = L.filter(x => x.l > level).pop(), lo = L.find(x => x.l < level);
+    if (!up) return 'Trên ' + (lo ? lo.n : '');
+    if (!lo) return 'Dưới ' + up.n;
+    return 'Giữa ' + up.n + ' và ' + lo.n;
+  }
+  covers(r, c) { return r.perms.every(p => c.vp.indexOf(p) >= 0); }
+  assignable(r, c) { return r.level < c.ceiling && this.covers(r, c); }
+  manageable(r, c) { return !r.sys && r.level < c.ceiling; }
+  withImplied(list) { const I = (window.BSCW && window.BSCW.IMPLIES) || {}; const s = new Set(list); list.forEach(p => (I[p] || []).forEach(q => s.add(q))); return Array.from(s); }
+  impliersOn(p, sel) { const I = (window.BSCW && window.BSCW.IMPLIES) || {}; return sel.filter(q => (I[q] || []).indexOf(p) >= 0); }
+  typical(r) { if (r.perms.length >= NQ_ALL.length) return 'Mọi việc trên website'; const got = NQ_TYP.filter(p => r.perms.indexOf(p) >= 0); const top = got.slice(0, 3).map(p => NQ_P[p].s); const rest = r.perms.length - top.length; return top.join(' · ') + (rest > 0 ? ' · +' + rest + ' việc' : ''); }
+  membersText(r) { return r.members + ' thành viên' + (r.invites ? ' · ' + r.invites + ' lời mời' : ''); }
+
+  // ---- điều hướng ----
+  goto(params) { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: 'roles', params: params || {}, force: true } })); } catch (e) {} }
+  openRole(r, fromProps) {
+    const c = this.ctx();
+    const mode = (this.manageable(r, c) && !c.imp) ? 'edit' : 'view';
+    const sel = r.perms.slice();
+    this.setState({ view: 'edit', ed: { mode, origName: r.sys ? null : r.name, role: r, from: r.from || null, name: r.name, level: r.level, sel, base: sel.slice(), current: sel.slice(), init: { name: r.name, level: r.level, sel: sel.slice() }, err: '' }, permQ: '', note: null, lk: null, open: {}, menu: null });
+    if (this.props.embedded && !fromProps) this.goto({ nhom: r.name, che: mode === 'edit' ? 'sua' : 'xem' });
+    this.scrollTop();
+  }
+  startNew(src, fromProps) {
+    const c = this.ctx();
+    if (!c.feat || c.imp) return;
+    const lvlFrom = src ? src.level : 20;
+    const lv = NQ_GAPS.filter(g => g < c.ceiling && g < lvlFrom)[0] || NQ_GAPS.filter(g => g < c.ceiling).slice(-1)[0] || 5;
+    const sel = src ? this.withImplied(src.perms).filter(p => c.grant.indexOf(p) >= 0) : ['entries.view'];
+    const name = src ? (src.name + ' (bản sao)').slice(0, 60) : '';
+    this.setState({ view: 'edit', ed: { mode: 'new', origName: null, role: null, from: src ? src.name : null, name, level: lv, sel, base: src ? src.perms.slice() : [], current: [], init: { name, level: lv, sel: sel.slice() }, err: '' }, permQ: '', note: null, lk: null, open: {}, menu: null });
+    if (this.props.embedded && !fromProps) this.goto({ che: 'moi', nhom: src ? src.name : '' });
+    this.scrollTop();
+    setTimeout(() => { if (this._nameEl) this._nameEl.focus(); }, 60);
+  }
+  scrollTop() { try { window.scrollTo(0, 0); } catch (e) {} }
+  backToList(force) {
+    if (!force && this.dirtyN() > 0) {
+      this.openDlg({ icon: 'ri-error-warning-line', iconColor: 'warn', title: 'Bỏ thay đổi chưa lưu?', body: 'Bạn đã đổi ' + this.dirtyN() + ' chỗ trong nhóm này. Quay lại danh sách thì các thay đổi đó mất.', cancel: 'Ở lại', ok: 'Bỏ thay đổi', danger: true, onOk: () => this.backToList(true) });
+      return;
+    }
+    this.setState({ view: 'list', ed: null, dlg: null, note: null, lk: null });
+    if (this.props.embedded) this.goto({});
+  }
+  dirtyN() {
+    const ed = this.state.ed; if (!ed || ed.mode === 'view') return 0;
+    const a = new Set(ed.sel), b = new Set(ed.init.sel); let n = 0;
+    a.forEach(p => { if (!b.has(p)) n++; }); b.forEach(p => { if (!a.has(p)) n++; });
+    if (ed.name !== ed.init.name) n++; if (ed.level !== ed.init.level) n++;
+    return n;
+  }
+
+  // ---- sửa ma trận ----
+  setEd(patch) { this.setState(s => ({ ed: Object.assign({}, s.ed, patch) })); }
+  toggle(p) {
+    const ed = this.state.ed, c = this.ctx(); if (!ed || ed.mode === 'view' || c.imp) return;
+    let sel = ed.sel.slice();
+    if (sel.indexOf(p) >= 0) {
+      const by = this.impliersOn(p, sel).filter(q => q !== p);
+      if (by.length) { this.setState({ note: { area: NQ_P[p].area.k, text: 'Chưa bỏ được "' + NQ_P[p].l + '": đang tick ' + by.map(q => NQ_P[q].l).join(', ') + ' — các việc này cần quyền Xem. Bỏ các việc đó trước.' } }); return; }
+      sel = sel.filter(x => x !== p);
+    } else {
+      sel = this.withImplied(sel.concat([p])).filter(x => c.grant.indexOf(x) >= 0 || ed.sel.indexOf(x) >= 0);
+    }
+    this.setState({ ed: Object.assign({}, ed, { sel }), note: null });
+  }
+  toggleAll(area) {
+    const ed = this.state.ed, c = this.ctx(); if (!ed || ed.mode === 'view' || c.imp) return;
+    const free = area.perms.map(p => p[0]).filter(p => c.grant.indexOf(p) >= 0);
+    const allOn = free.every(p => ed.sel.indexOf(p) >= 0);
+    let sel = allOn ? ed.sel.filter(p => free.indexOf(p) < 0) : this.withImplied(ed.sel.concat(free));
+    this.setState({ ed: Object.assign({}, ed, { sel }), note: null });
+  }
+  finalSet(ed, c) {
+    const untouch = ed.current.filter(p => c.siteCeil.indexOf(p) >= 0 && c.grant.indexOf(p) < 0);
+    const norm = this.withImplied(ed.sel).filter(p => c.grant.indexOf(p) >= 0);
+    return { final: Array.from(new Set(norm.concat(untouch))), untouch, dropped: ed.current.filter(p => c.siteCeil.indexOf(p) < 0) };
+  }
+  validateName(name, ed) {
+    const t = String(name || '').trim(), f = t.toLowerCase();
+    if (!t.length || t.length > 60) return this.reasonText('name_invalid');
+    const sysNames = Object.keys((window.BSCW && window.BSCW.ROLES) || {}), plat = (window.BSCW && window.BSCW.platformRoleNames) ? window.BSCW.platformRoleNames() : [];
+    const hit = sysNames.concat(plat).concat(NQ_RESERVED_EXTRA).find(n => n.toLowerCase() === f);
+    if (hit) return this.reasonText('name_reserved', { name: t });
+    const taken = this.customList().find(r => r.name.toLowerCase() === f && r.name !== ed.origName);
+    if (taken) return this.reasonText('name_taken', { name: taken.name });
+    return '';
+  }
+  reasonText(code, o) {
+    o = o || {};
+    return ({
+      custom_roles_disabled: 'Gói hiện tại chưa có nhóm tự tạo nên chưa tạo nhóm mới được. Nhóm đã có vẫn sửa, xóa được.',
+      name_invalid: 'Tên nhóm cần từ 1 đến 60 ký tự, ví dụ "Người duyệt bài".',
+      name_reserved: '"' + o.name + '" là tên nhóm có sẵn của hệ thống. Hãy đặt tên khác, ví dụ "' + o.name + ' tin tức".',
+      name_taken: 'Website đã có nhóm "' + o.name + '". Hãy đặt tên khác — chữ hoa hay chữ thường đều tính là trùng.',
+      level_invalid: 'Vị trí cấp phải thấp hơn cấp của bạn. Hãy chọn một vị trí trong danh sách.',
+      in_use: 'Nhóm "' + o.name + '" còn ' + o.members + ' thành viên và ' + o.invites + ' lời mời đang chờ. Chuyển họ sang nhóm khác hoặc hủy lời mời rồi xóa lại.'
+    })[code] || '';
+  }
+  save() {
+    const ed = this.state.ed, c = this.ctx(); if (!ed || ed.mode === 'view') return;
+    if (c.imp) { this.showToast(NQ_IMP); return; }
+    if (ed.mode === 'new' && !c.feat) { this.showToast(this.reasonText('custom_roles_disabled')); return; }
+    const err = this.validateName(ed.name, ed);
+    if (err) { this.setState({ ed: Object.assign({}, ed, { err }), nameTouched: true }); setTimeout(() => { if (this._nameEl) this._nameEl.focus(); }, 30); return; }
+    if (!(ed.level < c.ceiling && ed.level >= 1)) { this.showToast(this.reasonText('level_invalid')); return; }
+    if (this.props.failSave ?? false) { this.showToast('Chưa lưu được — mạng chậm hoặc máy chủ đang bận. Nhóm và các việc bạn đã tick vẫn còn nguyên, bấm Lưu lại để thử.'); return; }
+    const fs = this.finalSet(ed, c), name = ed.name.trim();
+    const list = this.customList().slice();
+    if (ed.mode === 'new') list.push({ name, level: ed.level, from: ed.from, perms: fs.final, members: 0, invites: 0 });
+    else { const i = list.findIndex(r => r.name === ed.origName); if (i >= 0) list[i] = Object.assign({}, list[i], { name, level: ed.level, perms: fs.final }); }
+    const affected = ed.role ? ed.role.members : 0;
+    this.setState({ custom: list, view: 'list', ed: null, note: null });
+    if (this.props.embedded) this.goto({});
+    this.showToast(ed.mode === 'new' ? 'Đã tạo nhóm "' + name + '". Gán nhóm cho người ở trang Thành viên.' : 'Đã lưu nhóm "' + name + '" — áp dụng ngay cho ' + affected + ' thành viên.');
+  }
+
+  // ---- danh sách: menu, xóa, nhân bản ----
+  openMenu(e, items, title) {
+    const el = e && e.currentTarget; const rc = el ? el.getBoundingClientRect() : { bottom: 100, top: 80, right: 300 };
+    const up = rc.bottom > window.innerHeight - 280;
+    this._menuOpener = el; this._menuFocus = true;
+    this.setState({ menu: { items, title, top: up ? 'auto' : (rc.bottom + 4) + 'px', bottom: up ? (window.innerHeight - rc.top + 4) + 'px' : 'auto', right: Math.max(8, window.innerWidth - rc.right) + 'px' } });
+  }
+  closeMenu() { const o = this._menuOpener; this.setState({ menu: null }); if (o) setTimeout(() => { try { o.focus(); } catch (e) {} }, 0); }
+  rowMenu(e, r) {
+    const c = this.ctx(), items = [];
+    items.push({ label: 'Nhóm này làm được gì?', icon: 'ri-file-list-3-line', act: () => { this.setState({ menu: null }); this.openExplain(r.name); } });
+    if (c.canManage && this.assignable(r, c)) {
+      const lock = c.imp ? NQ_IMP : (!c.feat ? (c.upsell ? 'Gói hiện tại chưa có nhóm tự tạo — mở "Xem gói nâng cấp" ở đầu trang.' : 'Nhóm tự tạo chưa bật cho website này — liên hệ hỗ trợ.') : '');
+      items.push({ label: 'Nhân bản', icon: 'ri-file-copy-line', lock, act: () => { if (lock) return; this.setState({ menu: null }); this.startNew(r); } });
+    }
+    if (!r.sys && this.manageable(r, c)) {
+      items.push({ sep: true });
+      items.push({ label: 'Xóa…', icon: 'ri-delete-bin-line', danger: true, lock: c.imp ? NQ_IMP : '', act: () => { if (c.imp) return; this.setState({ menu: null }); this.askDelete(r); } });
+    }
+    this.openMenu(e, items, r.name);
+  }
+  createMenu(e) {
+    const c = this.ctx();
+    if (c.imp) { this.showToast(NQ_IMP); return; }
+    if (!c.feat) { this.showToast(c.upsell ? 'Gói hiện tại chưa có nhóm tự tạo. Bấm "Xem gói nâng cấp" để xem gói có tính năng này.' : 'Nhóm tự tạo chưa bật cho website này — liên hệ hỗ trợ.'); return; }
+    const items = [{ label: 'Nhóm trống', icon: 'ri-file-add-line', act: () => { this.setState({ menu: null }); this.startNew(null); } }, { sep: true }, { head: 'Từ nhóm có sẵn' }];
+    this.allRoles().filter(r => this.assignable(r, c)).forEach(r => items.push({ label: 'Từ: ' + r.name, icon: r.sys ? 'ri-shield-user-line' : 'ri-user-settings-line', act: () => { this.setState({ menu: null }); this.startNew(r); } }));
+    this.openMenu(e, items, 'Tạo nhóm');
+  }
+  askDelete(r) {
+    if (r.members > 0 || r.invites > 0) {
+      this.openDlg({ icon: 'ri-error-warning-line', iconColor: 'warn', title: 'Chưa xóa được nhóm này', body: this.reasonText('in_use', { name: r.name, members: r.members, invites: r.invites }), cancel: 'Đóng', ok: 'Mở Thành viên', onOk: () => { this.setState({ dlg: null }); this.goMembers(r.name); } });
+      return;
+    }
+    const list = this.customList(), i = list.findIndex(x => x.name === r.name);
+    const next = list.filter(x => x.name !== r.name);
+    this._undo = { list, i };
+    this.setState({ custom: next });
+    this.showToast('Đã chuyển nhóm "' + r.name + '" vào Thùng rác.', true);
+  }
+  goMembers(name) { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: 'users', params: { nhom: name } } })); } catch (e) {} if (!this.props.embedded) this.showToast('Mở trang Thành viên, lọc nhóm "' + name + '".'); }
+
+  // ---- hộp thoại / bảng / toast ----
+  openDlg(d) { this._dlgOpener = document.activeElement; this._dlgFocus = true; this.setState({ dlg: d, menu: null }); }
+  closeDlg() { const o = this._dlgOpener; this.setState({ dlg: null }); if (o) setTimeout(() => { try { o.focus(); } catch (e) {} }, 0); }
+  openExplain(name) { this._xOpener = document.activeElement; this._xFocus = true; this.setState({ xRole: name }); }
+  closeExplain() { const o = this._xOpener; this.setState({ xRole: null }); if (typeof this.props.onClose === 'function') this.props.onClose(); if (o) setTimeout(() => { try { o.focus(); } catch (e) {} }, 0); }
+  showToast(text, undo) { clearTimeout(this._tt); this.setState({ toast: { text, undo: !!undo } }); this._tt = setTimeout(() => this.setState({ toast: null }), undo ? 8000 : 6000); }
+
+  explainData(name, c) {
+    const r = this.allRoles().find(x => x.name === name); if (!r) return null;
+    const areas = NQ_AREAS.map(a => {
+      const off = a.mod === 'catalog' && !c.catalogOn;
+      return { n: a.n, off, offText: a.n + ' đang tắt theo gói của website — nhóm chưa dùng được các việc dưới đây.', items: a.perms.map(p => { const sup = { 'entries.edit.own': 'entries.edit.any', 'entries.delete.own': 'entries.delete.any' }[p[0]]; const viaAny = sup && r.perms.indexOf(p[0]) < 0 && r.perms.indexOf(sup) >= 0; const ok = r.perms.indexOf(p[0]) >= 0 || viaAny; return { t: viaAny ? p[3] + ' (nằm trong "' + NQ_P[sup].l + '")' : (ok ? p[3] : p[4]), okA: ok ? 'true' : 'false', icon: ok ? 'ri-checkbox-circle-fill' : 'ri-close-circle-line' }; }) };
+    });
+    return { r, areas, meta: (r.sys ? 'Nhóm hệ thống' : 'Nhóm tự tạo') + ' · ' + this.posText(r.level, r.sys, r.name) + ' · ' + this.membersText(r) };
+  }
+
+  renderVals() {
+    const S = this.state, P = this.props, c = this.ctx();
+    const emb = !!P.embedded, explainOnly = !!P.explain;
+    const ds = this.dataState();
+    const all = this.allRoles();
+    const custom = all.filter(r => !r.sys);
+    const stNoPerm = !c.canManage, stLoading = !stNoPerm && (ds === 'Đang tải' || !c.B), stError = !stNoPerm && !stLoading && ds === 'Lỗi';
+    const stData = !stNoPerm && !stLoading && !stError;
+    const q = S.q.trim().toLowerCase();
+    const byChip = all.filter(r => S.chip === 'all' || (S.chip === 'sys' ? r.sys : !r.sys));
+    const shown = byChip.filter(r => !q || r.name.toLowerCase().indexOf(q) >= 0);
+    const rows = shown.map(r => {
+      const canEdit = this.manageable(r, c) && !c.imp;
+      const pos = this.posText(r.level, r.sys, r.name);
+      return {
+        name: r.name, sys: r.sys, cust: !r.sys, fromShow: !r.sys && !!r.from, from: r.from || '',
+        pos, membersText: this.membersText(r), metaM: pos + ' · ' + this.membersText(r), typical: this.typical(r),
+        openLabel: canEdit ? 'Sửa' : 'Xem', openIcon: canEdit ? 'ri-pencil-line' : 'ri-eye-line', openAria: (canEdit ? 'Sửa nhóm ' : 'Xem nhóm ') + r.name,
+        menuAria: 'Thêm hành động cho nhóm ' + r.name, explainAria: 'Xem đủ việc nhóm ' + r.name + ' làm được',
+        open: () => this.openRole(r), menu: (e) => this.rowMenu(e, r), explain: () => this.openExplain(r.name), goMembers: () => this.goMembers(r.name)
+      };
+    });
+    const chips = [['all', 'Tất cả', all.length], ['sys', 'Mặc định', all.length - custom.length], ['cust', 'Tự tạo', custom.length]].map(x => ({ n: x[1], count: String(x[2]), onA: S.chip === x[0] ? 'true' : 'false', pick: () => this.setState({ chip: x[0] }) }));
+    const createLock = c.imp || !c.feat;
+
+    // ---- trình sửa ----
+    const ed = S.ed, isEdit = S.view === 'edit' && !!ed && stData;
+    let areas = [], pv = {}, levelOpts = [], edTitle = '', edDesc = '', roText = '', permNoMatch = false;
+    if (isEdit) {
+      const ro = ed.mode === 'view';
+      const pq = S.permQ.trim().toLowerCase();
+      const fs = this.finalSet(ed, c);
+      areas = NQ_AREAS.map(a => {
+        const modOff = a.mod === 'catalog' && !c.catalogOn;
+        const match = (p) => !pq || (a.n + ' ' + p[1] + ' ' + p[2]).toLowerCase().indexOf(pq) >= 0;
+        const cells = a.perms.filter(match).map(p => {
+          const k = p[0], locked = !ro && !modOff && c.vp.indexOf(k) < 0;
+          const free = !ro && !modOff && !locked;
+          const on = ro ? ed.sel.indexOf(k) >= 0 : (locked ? ed.current.indexOf(k) >= 0 : (modOff ? ed.current.indexOf(k) >= 0 : ed.sel.indexOf(k) >= 0));
+          const baseOn = ed.base.indexOf(k) >= 0;
+          const lkKey = a.k + ':' + k;
+          const why = modOff ? (a.n + ' đang tắt theo gói của website. Khi lưu, việc này ' + (on ? 'bị bỏ khỏi nhóm.' : 'không thêm được.')) : ('Bạn không có việc "' + a.n + ' · ' + p[1] + '" nên không cấp hoặc bỏ được. Khi lưu, nhóm giữ nguyên như hiện tại (' + (on ? 'có' : 'không có') + ' việc này).');
+          return {
+            free, lock: locked || (modOff && !ro), ro: ro, on, l: p[1], d: p[2], did: 'nqd-' + k.replace(/\./g, '-'),
+            ico: 'nq-ico ' + (on ? 'on ri-checkbox-fill' : 'off ri-checkbox-blank-line'), roState: on ? '— có' : '— không có',
+            changed: !ro && (ed.from || ed.mode === 'edit') && on !== baseOn,
+            lkOpen: S.lk === lkKey, lkA: S.lk === lkKey ? 'true' : 'false', why, lkAria: a.n + ' · ' + p[1] + (on ? ' — có' : ' — không có') + ', đã khóa. Bấm để xem lý do.',
+            toggle: () => this.toggle(k), openLk: () => this.setState({ lk: S.lk === lkKey ? null : lkKey })
+          };
+        });
+        const freeKeys = a.perms.map(p => p[0]).filter(k => !ro && !modOff && c.vp.indexOf(k) >= 0);
+        const onN = a.perms.filter(p => (ro || modOff || c.vp.indexOf(p[0]) < 0 ? ed.current.concat(ro ? ed.sel : []) : ed.sel).indexOf(p[0]) >= 0).length;
+        const isOpen = S.open[a.k] ?? (pq ? true : a.k === 'content');
+        return {
+          n: a.n, cells, hide: !cells.length, countText: onN + '/' + a.perms.length,
+          allShow: freeKeys.length > 1, allOn: freeKeys.length > 0 && freeKeys.every(k => ed.sel.indexOf(k) >= 0), allAria: 'Chọn cả hàng ' + a.n,
+          openA: isOpen ? 'true' : 'false', toggleOpen: () => this.setState(s => ({ open: Object.assign({}, s.open, { [a.k]: !isOpen }) })),
+          toggleAll: () => this.toggleAll(a), modOff: modOff, modText: c.upsell ? (a.n + ' chưa có trong gói hiện tại — các việc dưới đây khóa "Ngoài gói".') : (a.n + ' chưa bật cho website này — các việc dưới đây khóa "Ngoài gói".'),
+          noteShow: !!(S.note && S.note.area === a.k), note: S.note && S.note.area === a.k ? S.note.text : ''
+        };
+      }).filter(a => !a.hide);
+      permNoMatch = !!pq && !areas.length;
+      const lbl = (k) => NQ_P[k].area.k === 'content' ? NQ_P[k].s : NQ_P[k].s;
+      const added = fs.final.filter(p => ed.base.indexOf(p) < 0), removed = ed.base.filter(p => fs.final.indexOf(p) < 0 && fs.dropped.indexOf(p) < 0);
+      const affected = ed.role && !ed.role.sys ? ed.role.members : 0;
+      pv = {
+        none: !added.length && !removed.length && !fs.dropped.length, baseName: ed.mode === 'edit' ? 'bản đã lưu' : (ed.from ? 'nhóm "' + ed.from + '"' : 'nhóm trống'),
+        add: added.map(lbl).join(', '), rem: removed.map(lbl).join(', '), keep: fs.untouch.map(lbl).join(', '), drop: fs.dropped.map(lbl).join(', '),
+        affect: ed.mode === 'edit' ? (affected ? 'Ảnh hưởng tới ' + affected + ' thành viên' + (ed.role.invites ? ' và ' + ed.role.invites + ' lời mời đang chờ' : '') + ' — áp dụng ngay khi lưu.' : 'Chưa có thành viên nào trong nhóm.') : 'Nhóm mới chưa có ai — gán nhóm cho người ở trang Thành viên sau khi lưu.',
+        added, removed, fs
+      };
+      const opts = NQ_GAPS.filter(g => g < c.ceiling); if (opts.indexOf(ed.level) < 0) opts.push(ed.level); opts.sort((a, b) => b - a);
+      levelOpts = opts.map(g => ({ label: this.posText(g, false), on: ed.level === g, pick: () => this.setEd({ level: g }) }));
+      if (ed.mode === 'new') { edTitle = 'Tạo nhóm'; edDesc = ed.from ? 'Bắt đầu từ các việc của nhóm "' + ed.from + '" — đổi tên, vị trí cấp và việc được làm rồi bấm Lưu.' : 'Đặt tên, chọn vị trí cấp và tick việc người trong nhóm được làm.'; }
+      else if (ed.mode === 'edit') { edTitle = 'Sửa nhóm: ' + ed.init.name; edDesc = 'Đổi tên, vị trí cấp hoặc việc được làm. Lưu xong áp dụng ngay cho mọi thành viên trong nhóm.'; }
+      else { edTitle = 'Nhóm ' + ed.role.name + ' (chỉ xem)'; edDesc = this.posText(ed.role.level, ed.role.sys, ed.role.name) + ' · ' + this.membersText(ed.role); }
+      if (ro) roText = c.imp ? NQ_IMP : (ed.role.sys ? 'Nhóm hệ thống chỉ xem được — không sửa, xóa hay đổi tên. Muốn khác đi một chút? Nhân bản để tạo nhóm riêng dựa trên nhóm này.' : 'Nhóm này ngang hoặc cao hơn cấp của bạn nên bạn chỉ xem được.');
+    }
+    const ro = isEdit && ed.mode === 'view';
+    const dupAllowed = ro && c.canManage && ed.role && this.assignable(ed.role, c);
+    const dupLock = dupAllowed && (c.imp || !c.feat);
+    const dupWhy = !dupLock ? '' : (c.imp ? NQ_IMP : (c.upsell ? 'Gói hiện tại chưa có nhóm tự tạo — xem gói nâng cấp ở trang Nhóm quyền.' : 'Nhóm tự tạo chưa bật cho website này — liên hệ hỗ trợ.'));
+    const nameErr = isEdit ? (ed.err || '') : '';
+
+    // ---- menu / hộp thoại / bảng giải thích ----
+    const M = S.menu;
+    const menuItems = M ? M.items.map((m, i) => ({
+      sep: !!m.sep, head: !!m.head, item: !m.sep && !m.head, label: m.head || m.label || '', icon: m.icon || '', dangerA: m.danger ? 'true' : 'false', lockA: m.lock ? 'true' : 'false',
+      whyShow: !!m.lock, why: m.lock || '', sub: false, act: m.act || (() => {}),
+      ref: (el) => { if (el && i === 0 && this._menuFocus) { this._menuFocus = false; el.focus(); } }
+    })).concat([]) : [];
+    const heads = M ? M.items.filter(m => m.head) : [];
+    if (heads.length) { /* tiêu đề nhóm trong menu: dùng dòng ngăn + mục "Từ: …" để đọc rõ */ }
+    const D = S.dlg;
+    const xName = explainOnly ? P.explain : S.xRole;
+    const X = xName ? this.explainData(xName, c) : null;
+    const xEditable = X && !explainOnly && !X.r.sys && this.manageable(X.r, c) && !c.imp && c.canManage;
+    const framesOn = !emb && !explainOnly && (P.showFrames ?? true) && !/frame/.test(location.hash || '');
+
+    return {
+      bigA: (P.bigText ?? false) ? '1' : '0', embA: emb ? '1' : '0', mainShow: !explainOnly,
+      impShow: c.imp && !stNoPerm, roleName: c.roleName, notes: (P.showNotes ?? true),
+      isList: S.view === 'list' || !isEdit, showHead: !emb, createShow: c.canManage && stData, createLockA: createLock ? 'true' : 'false', createOpenA: M && M.title === 'Tạo nhóm' ? 'true' : 'false',
+      onCreate: (e) => this.createMenu(e),
+      stNoPerm, stLoading, stError, stData, skRows: [1, 2, 3, 4, 5], onRetry: () => this.setState({ dataOverride: 'Có dữ liệu' }), goHome: () => { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: 'dashboard' } })); } catch (e) {} },
+      planLockShow: !c.feat, upsellOn: c.upsell, upsellOff: !c.upsell, hasCustom: custom.length > 0, goPlan: () => { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: 'settings', section: 'plan' } })); } catch (e) {} this.showToast('Mở Cài đặt › Gói & mức dùng.'); },
+      q: S.q, onQ: (e) => this.setState({ q: e.target.value }), chips, filterShow: !!q || S.chip !== 'all', matchN: String(shown.length), totalN: String(all.length),
+      clearFilter: () => this.setState({ q: '', chip: 'all' }), rows, noMatch: shown.length === 0 && all.length > 0,
+      emptyCustom: custom.length === 0 && (S.chip !== 'sys') && !q, emptyBtn: c.feat,
+      isEdit, edH1: !emb, edH2: emb, edTitle, edDesc, onBack: () => this.backToList(false), edExplain: () => this.openExplain(ed && ed.role ? ed.role.name : (ed && ed.from) || 'Chỉ xem'),
+      roShow: ro, roText, dupShow: dupAllowed, dupLockA: dupLock ? 'true' : 'false', dupWhyShow: !!dupWhy, dupWhy, onDupCur: () => { if (dupLock) return; this.startNew(ed.role); },
+      rwShow: isEdit && !ro, fromShow: isEdit && !!ed.from && ed.mode === 'new', edFrom: isEdit ? (ed.from || '') : '',
+      edName: isEdit ? ed.name : '', nameLen: String(isEdit ? ed.name.length : 0), nameInvA: nameErr ? 'true' : 'false', nameErr, nameErrShow: !!nameErr, nameHintShow: !nameErr,
+      onName: (e) => this.setEd({ name: e.target.value, err: '' }), onNameBlur: () => { const e2 = this.validateName(this.state.ed.name, this.state.ed); this.setEd({ err: e2 }); },
+      nameRef: (el) => { this._nameEl = el; }, levelOpts,
+      permQ: S.permQ, onPermQ: (e) => this.setState({ permQ: e.target.value }), clearPermQ: () => this.setState({ permQ: '' }), areas, permNoMatch,
+      pvNone: !!pv.none, pvBaseName: pv.baseName || '', pvAddShow: !!pv.add, pvAdd: pv.add || '', pvRemShow: !!pv.rem, pvRem: pv.rem || '', pvKeepShow: !!pv.keep, pvKeep: pv.keep || '', pvDropShow: !!pv.drop, pvDrop: pv.drop || '', pvAffect: pv.affect || '',
+      saveStatus: c.imp ? NQ_IMP : (this.dirtyN() ? this.dirtyN() + ' thay đổi chưa lưu' : 'Chưa có thay đổi'), saveLockA: c.imp ? 'true' : 'false', saveLabel: isEdit && ed.mode === 'new' ? 'Tạo nhóm' : 'Lưu nhóm', onSave: () => this.save(),
+      framesShow: framesOn,
+      menuShow: !!M, menuTitle: M ? M.title : '', menuTop: M ? M.top : 'auto', menuBottom: M ? M.bottom : 'auto', menuRight: M ? M.right : '8px', menuItems, closeMenu: () => this.closeMenu(),
+      dlgShow: !!D, dlgIcon: D ? ('ic ' + D.icon) : '', dlgTitle: D ? D.title : '', dlgBody: D ? D.body : '', dlgCancel: D ? D.cancel : 'Hủy', dlgOkShow: !!(D && D.ok), dlgOkLabel: D ? (D.ok || '') : '', dlgOkClass: D && D.danger ? 'sx-btn dan' : 'sx-btn pri',
+      dlgOk: () => { const f = D && D.onOk; if (f) f(); else this.closeDlg(); }, closeDlg: () => this.closeDlg(),
+      dlgFocusRef: (el) => { if (el && this._dlgFocus) { this._dlgFocus = false; el.focus(); } },
+      xShow: !!X, xName: X ? X.r.name : '', xMeta: X ? X.meta : '', xAreas: X ? X.areas : [], xEditShow: !!xEditable, xEdit: () => { const r = X.r; this.setState({ xRole: null }); this.openRole(r); }, closeExplain: () => this.closeExplain(),
+      xFocusRef: (el) => { if (el && (this._xFocus || explainOnly) && !this._xFocused) { this._xFocus = false; this._xFocused = explainOnly; el.focus(); } },
+      toastShow: !!S.toast, toastText: S.toast ? S.toast.text : '', toastUndo: !!(S.toast && S.toast.undo), closeToast: () => this.setState({ toast: null }),
+      onUndo: () => { const u = this._undo; if (u) { this.setState({ custom: u.list, toast: null }); this._undo = null; this.showToast('Đã khôi phục nhóm.'); } }
+    };
+  }
+}
+</script>
+</body>
+</html>

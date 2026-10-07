@@ -162,6 +162,34 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
   .sp-foot .sp-btn,.sp-foot .sp-pri{flex:1 1 140px;}
 }
 @media (pointer:coarse){.sp-btn,.sp-pri,.sp-tab,.sp-sel,.sp-item{min-height:44px;}}
+/* D1-4d · thay đổi của bài đang đăng + so sánh */
+.hd-chg-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.hd-chg-d{padding:0 16px 12px;font-size:13px;line-height:1.55;color:var(--color-body-muted,#5b6275)}
+.hd-cr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.hd-cr-t{flex:1 1 280px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.hd-cr-t b{font-size:14px;font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.hd-cr-m{font-size:13px;line-height:1.5;color:var(--color-body-muted,#5b6275);overflow-wrap:anywhere}
+.hd-cr-a{display:flex;flex-wrap:wrap;gap:8px;flex:0 1 auto;max-width:100%}
+.hd-cr-a .sp-btn,.hd-cr-a .sp-pri{white-space:nowrap}
+.hd-kind{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;padding:2px 8px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;background:color-mix(in srgb,var(--color-admin-secondary-text,#2f69d4) 10%,var(--color-surface,#fff));color:var(--color-admin-secondary-text,#2f69d4)}
+.hd-why{font-size:13px;color:var(--color-body-muted,#5b6275);display:flex;gap:6px;align-items:flex-start}
+.hd-note{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;border:1px dashed var(--color-border-input,#878a99);font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275)}
+.hd-ov{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:rgba(33,37,41,.5)}
+.hd-dlg{display:flex;flex-direction:column;width:min(820px,100%);max-height:min(760px,100%);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);border-radius:8px;box-shadow:0 22px 60px -20px rgba(0,0,0,.4);overflow:hidden}
+.hd-dlg.s{width:min(480px,100%)}
+.hd-dh{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.hd-dh h2{margin:0;font-size:16px;font-weight:700;line-height:1.4;color:var(--color-heading,#1f2b4d);flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.hd-db{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding:12px 16px;display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.55;overflow-wrap:anywhere}
+.hd-df{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.hd-fld{min-width:0;display:flex;flex-direction:column;gap:3px;padding:8px 10px;border-radius:4px;border:1px solid color-mix(in srgb,var(--color-admin-warning-text,#8a5a00) 40%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-admin-warning-text,#8a5a00) 8%,var(--color-surface,#fff))}
+.hd-lab{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--color-body-muted,#5b6275)}
+.hd-loc{display:inline-flex;padding:1px 8px;border-radius:20px;font-size:12px;font-weight:600;background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-text,#3c4765)}
+.hd-new{color:var(--color-heading,#1f2b4d)}
+.hd-old{font-size:13px;color:var(--color-body-muted,#5b6275)}
+.hd-li{display:flex;align-items:flex-start;gap:8px}.hd-li i{margin-top:3px;color:var(--color-body-muted,#5b6275)}
+.hd-ta{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:14px;line-height:1.5;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);resize:vertical}
+.hd-err{display:flex;gap:6px;align-items:flex-start;font-size:13px;color:var(--color-admin-danger-text,#c0392b)}
+@media (max-width:600px){.hd-cr-a{flex:1 1 100%}.hd-cr-a .sp-btn,.hd-cr-a .sp-pri{flex:1 1 auto;justify-content:center}.hd-ov{padding:0}.hd-dlg{width:100%;max-height:none;height:100dvh;border-radius:0;padding-bottom:env(safe-area-inset-bottom)}.hd-dlg.s{height:auto;max-height:90dvh;border-radius:12px 12px 0 0;margin-top:auto}.hd-df .sp-btn,.hd-df .sp-pri{flex:1 1 auto;justify-content:center}}
 </style>
 </helmet>
 
@@ -215,6 +243,23 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
       <span style="display:flex;align-items:center;gap:9px;"><i class="ri-error-warning-line" style="font-size:20px;color:var(--color-admin-danger-text,#f06548);"></i><span class="sp-t">Chưa tải được hộp duyệt</span></span>
       <span style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.7;max-width:560px;">Máy chủ chưa trả lời. Không có bài nào bị mất, bạn bấm thử lại sau vài giây.</span>
       <button class="sp-pri" onClick="{{ onReload }}"><i class="ri-refresh-line" style="font-size:16px;"></i>Thử lại</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ chgOn }}" hint-placeholder-val="{{ false }}">
+    <div class="sp-card" role="region" aria-labelledby="hd-chg-t">
+      <div class="sp-h hd-chg-h"><span class="sp-t" id="hd-chg-t">Thay đổi của bài đang đăng</span><span class="sp-cnt">{{ chgCount }}</span><sc-if value="{{ notesOn }}"><span class="hd-note" title="Hộp duyệt của repo chưa liệt kê thay đổi chờ (entry_drafts) — xem Việc cho backend"><i class="ri-server-line" aria-hidden="true"></i>Chờ backend</span></sc-if></div>
+      <div class="hd-chg-d">Bài đã có trên website — khách vẫn thấy bản cũ cho tới khi thay đổi được duyệt đăng.</div>
+      <sc-for list="{{ chgRows }}" as="cr" hint-placeholder-count="1">
+        <div class="hd-cr">
+          <div class="hd-cr-t"><span class="hd-kind"><i class="ri-git-pull-request-line" aria-hidden="true"></i>Thay đổi của bài đang đăng</span><b>{{ cr.title }}</b><span class="hd-cr-m">{{ cr.meta }}</span></div>
+          <div class="hd-cr-a">
+            <button class="sp-btn" onClick="{{ cr.onView }}" aria-label="{{ cr.aView }}"><i class="ri-git-commit-line" style="font-size:15px;" aria-hidden="true"></i>So sánh</button>
+            <sc-if value="{{ cr.can }}"><button class="sp-btn" onClick="{{ cr.onReturn }}"><i class="ri-reply-line" style="font-size:15px;" aria-hidden="true"></i>Trả lại</button><button class="sp-pri" onClick="{{ cr.onApprove }}"><i class="ri-check-double-line" style="font-size:15px;" aria-hidden="true"></i>Duyệt đăng</button></sc-if>
+          </div>
+          <sc-if value="{{ cr.cannot }}"><span class="hd-why" style="flex:1 1 100%;"><i class="ri-lock-line" aria-hidden="true" style="margin-top:3px;"></i>Cần quyền duyệt đăng để xử lý thay đổi này.</span></sc-if>
+        </div>
+      </sc-for>
     </div>
   </sc-if>
 
@@ -531,6 +576,23 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
     </div>
   </sc-if>
 
+  <sc-if value="{{ chgDlgOn }}" hint-placeholder-val="{{ false }}">
+    <div class="hd-ov" onClick="{{ onChgClose }}">
+      <div class="hd-dlg {{ chgDlgSize }}" role="{{ chgDlgRole }}" aria-modal="true" aria-labelledby="hd-dlg-t" onClick="{{ chgStop }}" onKeyDown="{{ chgTrap }}">
+        <div class="hd-dh"><h2 id="hd-dlg-t">{{ chgDlgTitle }}</h2><button class="sp-btn sp-sm" id="hd-dlg-x" onClick="{{ onChgClose }}" aria-label="Đóng (Esc)"><i class="ri-close-line" style="font-size:16px;" aria-hidden="true"></i>Đóng</button></div>
+        <div class="hd-db">
+          <sc-for list="{{ chgDlgLines }}" as="dl" hint-placeholder-count="1"><div class="hd-li"><i class="{{ dl.icon }}" aria-hidden="true"></i><span>{{ dl.text }}</span></div></sc-for>
+          <sc-if value="{{ chgDlgDiff }}"><sc-for list="{{ chgDiff }}" as="df" hint-placeholder-count="2"><div class="hd-fld"><span class="hd-lab"><span class="hd-loc">{{ df.locName }}</span>{{ df.lab }}</span><span class="hd-new">{{ df.now }}</span><span class="hd-old">Khách đang thấy: {{ df.was }}</span></div></sc-for></sc-if>
+          <sc-if value="{{ chgDlgRet }}"><label for="hd-note" style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);">Ghi chú cho {{ chgDlgBy }} <span style="color:var(--color-admin-danger-text,#c0392b);">*</span></label><textarea id="hd-note" class="hd-ta" rows="3" value="{{ chgNote }}" onInput="{{ onChgNote }}" aria-invalid="{{ chgNoteErrA }}" placeholder="Đoạn giá năm 2026 chưa đúng, sửa lại theo bảng giá mới"></textarea><sc-if value="{{ chgNoteErr }}"><span class="hd-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true" style="margin-top:3px;"></i>Cần ghi chú để người viết biết sửa gì, ví dụ “Sửa lại đoạn giá năm 2026”.</span></sc-if></sc-if>
+        </div>
+        <div class="hd-df">
+          <sc-if value="{{ chgDlgActs }}"><button class="sp-btn" onClick="{{ onChgToReturn }}"><i class="ri-reply-line" style="font-size:15px;" aria-hidden="true"></i>Trả lại</button><button class="sp-pri" onClick="{{ onChgToApprove }}"><i class="ri-check-double-line" style="font-size:15px;" aria-hidden="true"></i>Duyệt đăng</button></sc-if>
+          <sc-if value="{{ chgDlgOk }}"><button class="sp-btn" onClick="{{ onChgClose }}">Hủy</button><button class="sp-pri" onClick="{{ onChgOk }}"><i class="{{ chgOkIcon }}" style="font-size:15px;" aria-hidden="true"></i>{{ chgOkLabel }}</button></sc-if>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
   <sc-if value="{{ toastOn }}">
     <div class="sp-toast" role="status" aria-live="polite" style="position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:9px;padding:11px 16px;border-radius:4px;background:#1f2b4d;color:#fff;font-size:13px;box-shadow:0 5px 20px rgba(56,65,74,.3);max-width:calc(100vw - 32px);">
       <i class="{{ toastIcon }}" style="font-size:16px;"></i><span>{{ toast }}</span>
@@ -540,13 +602,14 @@ a{color:var(--color-accent,#2050a0);text-decoration:none;}a:hover{color:var(--co
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Biên tập&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Dữ liệu từ DB&quot;},&quot;loadState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Bình thường&quot;,&quot;Đang tải&quot;,&quot;Lỗi tải&quot;],&quot;default&quot;:&quot;Bình thường&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trường hợp đặc biệt&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Biên tập&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Dữ liệu từ DB&quot;},&quot;loadState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Bình thường&quot;,&quot;Đang tải&quot;,&quot;Lỗi tải&quot;],&quot;default&quot;:&quot;Bình thường&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trường hợp đặc biệt&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ghi chú&quot;}}">
 class Component extends DCLogic {
   constructor(p) {
     super(p);
     this._sid = 'hop-duyet-' + Math.random().toString(36).slice(2, 7); this._pp = Object.assign({}, p);
     const fromKho = !!(p.embedded && window.BSCW && window.BSCW.store);
     const items0 = fromKho ? this.fromStore(p) : this.seed();
+    setTimeout(() => this.chgSeed(), 0);
     this.state = {
       tab: 'mine', shown: 5, items: items0, cur: fromKho ? (items0[0] ? items0[0].id : null) : 1, mobileDetail: false,
       q: '', sec: '', picked: [], logShown: 3, fold: this.loadFold(),
@@ -684,8 +747,44 @@ class Component extends DCLogic {
   words(it) {
     return (it.body || []).join(' ').split(/\s+/).filter(Boolean).length;
   }
+  /* ---------- D1-4d · Thay đổi của bài đang đăng (BSCW.drafts — repo: entry_drafts; Hộp duyệt repo chưa liệt kê: Chờ backend) ---------- */
+  chgSeed() {
+    const C = window.BSCW; if (this.props.embedded || !C || !C.drafts || this._chgSeeded) return; this._chgSeeded = true;
+    if (C.drafts.list('submitted').length) return;
+    const live = { VI: { title: 'Gia công CNC cho linh kiện ô tô', excerpt: 'Nhận gia công CNC linh kiện ô tô theo bản vẽ, dung sai ±0,01 mm.', body: '<p>Bảng giá năm 2025 áp dụng từ tháng 1.</p>' }, EN: { title: 'CNC machining for automotive parts', excerpt: 'Custom CNC machining to drawing, ±0.01 mm tolerance.', body: '<p>2025 price list.</p>' } };
+    const data = { VI: { title: 'Gia công CNC cho linh kiện ô tô — bảng giá 2026', excerpt: 'Nhận gia công CNC linh kiện ô tô theo bản vẽ, dung sai ±0,01 mm, giao trong 5 ngày.', body: '<p>Bảng giá năm 2026 áp dụng từ tháng 10.</p>' }, EN: { title: 'CNC machining for automotive parts — 2026 prices', excerpt: 'Custom CNC machining to drawing, ±0.01 mm tolerance.', body: '<p>2026 price list.</p>' } };
+    C.drafts.put('posts', '/tin-tuc/gia-cong-cnc-linh-kien-o-to', { title: data.VI.title, by: 'Chị Lan', at: '10:32', byRole: 'Người viết', state: 'submitted', locs: ['VI', 'EN'], data: data, live: live, slug: '/tin-tuc/gia-cong-cnc-linh-kien-o-to', kindLabel: 'Tin tức' }, this._sid);
+  }
+  chgLocName(c) { return ({ VI: 'Tiếng Việt', EN: 'English', JA: '日本語', ZH: '中文 (简体)', KO: '한국어', FR: 'Français', DE: 'Deutsch', AR: 'العربية' })[c] || c; }
+  chgStrip(h) { return String(h || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/\s+/g, ' ').trim(); }
+  chgDiffOf(r) {
+    const out = [], F = [['title', 'Tiêu đề'], ['slug', 'Đường dẫn'], ['excerpt', 'Mô tả ngắn'], ['metaTitle', 'Tiêu đề trên Google'], ['metaDesc', 'Mô tả trên Google'], ['body', 'Nội dung']];
+    const D = r.data || {}, L = r.live || {};
+    Object.keys(D).forEach(c => { const a = L[c] || {}, b = D[c] || {}; F.forEach(f => { const x = f[0] === 'body' ? this.chgStrip(a.body) : String(a[f[0]] || '').trim(), y = f[0] === 'body' ? this.chgStrip(b.body) : String(b[f[0]] || '').trim(); if (x !== y) out.push({ loc: c, locName: this.chgLocName(c), lab: f[1], was: x ? (x.length > 200 ? x.slice(0, 200) + '…' : x) : '(trống)', now: y ? (y.length > 200 ? y.slice(0, 200) + '…' : y) : '(trống)' }); }); });
+    return out;
+  }
+  chgList() { const C = window.BSCW; return (C && C.drafts) ? C.drafts.list('submitted') : []; }
+  chgFind(key) { return this.chgList().filter(r => r.type + '|' + r.key === key)[0] || null; }
+  chgOpen(key, mode) { this._chgOpener = document.activeElement; this.setState({ chgDlg: { key: key, mode: mode }, chgNote: '', chgNoteErr: false }, () => setTimeout(() => { const el = document.getElementById(mode === 'return' ? 'hd-note' : 'hd-dlg-x'); if (el) el.focus(); }, 30)); }
+  chgClose() { const o = this._chgOpener; this._chgOpener = null; this.setState({ chgDlg: null, chgNote: '', chgNoteErr: false }, () => { try { if (o && o.isConnected) o.focus(); } catch (e) {} }); }
+  chgOk() {
+    const g = this.state.chgDlg, r = g ? this.chgFind(g.key) : null, C = window.BSCW; if (!r || !C) { this.chgClose(); return; }
+    if (g.mode === 'return') {
+      const n = String(this.state.chgNote || '').trim(); if (!n) { this.setState({ chgNoteErr: true }); return; }
+      C.drafts.put(r.type, r.key, { state: 'returned', note: n, returnedBy: C.drafts.person(this.role()), returnedAt: this.hm() }, this._sid);
+      this.setState({ chgDlg: null }); this.notify('Đã trả lại thay đổi kèm ghi chú — ' + r.by + ' sửa tiếp được. Khách vẫn thấy bản cũ.', 'ri-reply-line'); return;
+    }
+    C.drafts.del(r.type, r.key, this._sid);
+    if (C.store && r.slug && C.store.get(r.type, r.slug)) C.store.patch(r.type, r.slug, { name: (r.data && r.data.VI && r.data.VI.title) || r.title }, this._sid);
+    this.setState({ chgDlg: null }); this.notify('Đã duyệt đăng thay đổi — khách thấy ngay: ' + (r.locs || []).map(c => this.chgLocName(c)).join(', ') + '.', 'ri-check-double-line');
+  }
+  hm() { const d = new Date(), p = (n) => (n < 10 ? '0' : '') + n; return p(d.getHours()) + ':' + p(d.getMinutes()); }
+  chgTrapKey(e) { if (!e) return; if (e.key === 'Escape') { e.stopPropagation(); this.chgClose(); return; } if (e.key !== 'Tab') return; const f = [].slice.call(e.currentTarget.querySelectorAll('button,textarea,[href]')).filter(x => !x.disabled && x.offsetParent !== null); if (!f.length) return; const a = f[0], z = f[f.length - 1]; if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); } }
   componentDidMount() {
-    this._onCw = () => this.forceUpdate();
+    setTimeout(() => { this.chgSeed(); this.forceUpdate(); }, 60);
+    this._onChg = (e) => { const d = (e && e.detail) || {}; if (d.act === 'draft' || d.act === 'draft-del') this.forceUpdate(); };
+    document.addEventListener('bs-cw-store', this._onChg);
+    this._onCw = () => { this.chgSeed(); this.forceUpdate(); };
     document.addEventListener('bs-cw-ready', this._onCw);
     this._onKey = (e) => {
       if (e.key !== 'Escape') return;
@@ -726,6 +825,7 @@ class Component extends DCLogic {
     document.removeEventListener('keydown', this._onKey);
     document.removeEventListener('keydown', this._onNav);
     document.removeEventListener('bs-cw-store', this._onStore);
+    document.removeEventListener('bs-cw-store', this._onChg);
   }
   /* Gập/mở từng thẻ trường — mặc định mở thứ phải đọc, gập hai thẻ tra cứu.
      Ghi nhớ theo người dùng để lần sau mở đúng như họ để lại. */
@@ -917,7 +1017,21 @@ class Component extends DCLogic {
     const SEO = window.BSSEO;
     const mtr = (field, txt) => { const len = (txt || '').length; if (!SEO) return { band: 'empty', len: len, lo: 0, zw: 0, pct: 0, text: '', icon: '' }; const r = SEO.meter(field, len); return Object.assign({}, r, { zw: Math.max(0, r.hi - r.lo), text: r.text || r.note || '' }); };
     const seoFields = cur ? this.seoFieldsOf(cur, mtr) : [];
+    /* D1-4d */
+    const cwX = this.cw(), canAp = !!(cwX && cwX.can(this.role(), 'entries.approve')), chgL = this.chgList();
+    const chgRows = chgL.map(r => { const k = r.type + '|' + r.key, df = this.chgDiffOf(r); return { title: r.title, meta: (r.kindLabel ? r.kindLabel + ' · ' : '') + r.by + ' · ' + r.at + ' · ' + df.length + ' chỗ sửa · ' + (r.locs || []).map(c => this.chgLocName(c)).join(', '), can: canAp, cannot: !canAp, onView: () => this.chgOpen(k, 'view'), onReturn: () => this.chgOpen(k, 'return'), onApprove: () => this.chgOpen(k, 'approve'), aView: 'So sánh thay đổi của “' + r.title + '”' }; });
+    const cg = this.state.chgDlg || null, cr0 = cg ? this.chgFind(cg.key) : null, cMode = cg ? cg.mode : '';
+    const cLocs = cr0 ? (cr0.locs || []).map(c => this.chgLocName(c)).join(', ') : '';
+    const chgDlgLines = !cr0 ? [] : (cMode === 'view' ? [{ icon: 'ri-information-line', text: cr0.by + ' sửa lúc ' + cr0.at + ' · ' + cLocs + '. Dòng trên là bản mới, dòng dưới là bản khách đang thấy.' }] : (cMode === 'approve' ? [{ icon: 'ri-global-line', text: 'Sẽ lên website: ' + cLocs + '.' }, { icon: 'ri-eye-line', text: 'Khách thấy ngay sau khi bấm. Bản đang trên website được giữ trong Lịch sử phiên bản để khôi phục.' }] : [{ icon: 'ri-information-line', text: 'Thay đổi trở lại cho ' + cr0.by + ' sửa tiếp. Khách vẫn thấy bản cũ.' }]));
     return {
+      chgOn: chgRows.length > 0, chgCount: chgRows.length, chgRows: chgRows, notesOn: this.props.showNotes !== false,
+      chgDlgOn: !!cr0, chgDlgSize: cMode === 'view' ? '' : 's', chgDlgRole: cMode === 'view' ? 'dialog' : 'alertdialog',
+      chgDlgTitle: !cr0 ? '' : (cMode === 'view' ? 'So sánh: ' + cr0.title : (cMode === 'approve' ? 'Duyệt đăng thay đổi?' : 'Trả lại thay đổi')),
+      chgDlgLines: chgDlgLines, chgDlgDiff: cMode === 'view', chgDiff: cr0 ? this.chgDiffOf(cr0) : [], chgDlgRet: cMode === 'return', chgDlgBy: cr0 ? cr0.by : '',
+      chgNote: this.state.chgNote || '', onChgNote: (e) => this.setState({ chgNote: e && e.target ? e.target.value : '', chgNoteErr: false }), chgNoteErr: !!this.state.chgNoteErr, chgNoteErrA: this.state.chgNoteErr ? 'true' : 'false',
+      chgDlgActs: cMode === 'view' && canAp, chgDlgOk: cMode === 'approve' || cMode === 'return', chgOkLabel: cMode === 'return' ? 'Trả lại' : 'Duyệt đăng', chgOkIcon: cMode === 'return' ? 'ri-reply-line' : 'ri-check-double-line',
+      onChgClose: () => this.chgClose(), onChgOk: () => this.chgOk(), onChgToReturn: () => this.setState(s => ({ chgDlg: Object.assign({}, s.chgDlg, { mode: 'return' }) }), () => setTimeout(() => { const el = document.getElementById('hd-note'); if (el) el.focus(); }, 30)), onChgToApprove: () => this.setState(s => ({ chgDlg: Object.assign({}, s.chgDlg, { mode: 'approve' }) })),
+      chgStop: (e) => { if (e) e.stopPropagation(); }, chgTrap: (e) => this.chgTrapKey(e),
       wrapCls: this.props.embedded ? 'emb' : '',
       mDesc: mtr('excerpt', cur ? cur.desc : ''), seoFields: seoFields, mInvalid: this.state.err ? 'true' : 'false',
       isLoading: st === 'Đang tải',

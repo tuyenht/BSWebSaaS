@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./platform-config.js"></script>
+<script src="./content-ui.js"></script>
+<script src="./content-workflow.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765)}
+a{color:var(--color-accent,#2050a0)}a:hover{color:var(--color-heading,#1f2b4d)}
+.ac-c{container-type:inline-size;container-name:ac;min-height:100dvh;box-sizing:border-box;font-size:calc(14px + var(--fsp));line-height:1.5;color:var(--color-body-text,#3c4765);background:var(--color-body,#f4f5fa)}
+.ac-c *{box-sizing:border-box}
+.ac-c[data-fs="l"]{--fsp:2px}
+.ac-c[data-emb="1"]{min-height:0;background:transparent}
+.ac-wrap{max-width:1120px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+.ac-c[data-emb="1"] .ac-wrap{padding:0;max-width:none}
+@container ac (max-width:599px){.ac-wrap{padding:16px 12px}}
+.ac-h1{margin:0;font-size:calc(20px + var(--fsp));font-weight:600;line-height:1.4;color:var(--color-heading,#1f2b4d)}
+.ac-desc{margin:4px 0 0;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.ac-id{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:16px}
+.ac-idt{flex:1 1 220px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ac-nm{font-size:calc(16px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.ac-mut{color:var(--color-body-muted,#5b6275);overflow-wrap:anywhere}
+.ac-chips{display:flex;flex-wrap:wrap;gap:6px;flex:0 0 auto;max-width:100%}
+.ac-av{width:48px;height:48px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;font-weight:700;font-size:calc(16px + var(--fsp));background:color-mix(in srgb,var(--color-accent,#2050a0) 14%,var(--color-surface,#fff));color:var(--color-accent,#2050a0)}
+.ac-av.lg{width:72px;height:72px;font-size:calc(22px + var(--fsp))}
+.ac-body{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+@container ac (min-width:760px){.ac-body{grid-template-columns:220px minmax(0,1fr)}}
+.ac-nav{display:none;flex-direction:column;gap:2px;padding:8px;position:sticky;top:16px}
+.ac-sel{display:block}
+@container ac (min-width:760px){.ac-nav{display:flex}.ac-sel{display:none}}
+.ac-nav button{position:relative;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:0;border-radius:4px;background:transparent;color:var(--color-body-text,#3c4765);font:inherit;font-size:calc(14px + var(--fsp));text-align:left;white-space:nowrap;cursor:pointer}
+.ac-nav button i{font-size:calc(17px + var(--fsp))}
+.ac-nav button:hover{background:var(--color-surface-hover,#f1f3f9)}
+.ac-nav button[aria-selected="true"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-weight:600}
+.ac-nav button[aria-selected="true"]::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--color-accent,#2050a0)}
+.ac-udot{margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-admin-warning-text,#906405)}
+.ac-udot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--color-admin-warning,#f7b84b)}
+.ac-pane{display:flex;flex-direction:column;gap:16px;min-width:0}
+.ac-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.ac-sv{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);display:inline-flex;align-items:center;gap:6px}
+.ac-sv[data-k="ok"]{color:var(--color-admin-success-text,#047767)}
+.ac-sv[data-k="bad"]{color:var(--color-admin-danger-text,#bf371a)}
+@container (max-width:479px){.ac-foot>.sx-btn{flex:1 1 100%}}
+.ac-why{flex:1 1 100%;display:flex;gap:6px;align-items:flex-start;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.ac-pw{display:flex;align-items:stretch;min-height:40px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff)}
+.ac-pw:has([aria-invalid="true"]){border-color:var(--color-admin-danger-text,#bf371a)}
+.ac-pw:has(input[disabled]){opacity:.6;background:var(--color-surface-muted,#f8f9fb)}
+.ac-pw input{flex:1 1 auto;min-width:0;border:0;background:transparent;padding:8px 12px;font:inherit;font-size:calc(14px + var(--fsp));color:var(--color-heading,#1f2b4d)}
+.ac-pw .sx-btn{min-height:38px;width:44px;border-radius:0 4px 4px 0}
+.ac-meter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin-top:8px}
+.ac-meter i{height:4px;border-radius:2px;background:var(--color-border-strong,#e3e7f0)}
+.ac-meter[data-s="1"] i:nth-child(-n+1){background:var(--color-admin-danger,#f06548)}
+.ac-meter[data-s="2"] i:nth-child(-n+2){background:var(--color-admin-warning,#f7b84b)}
+.ac-meter[data-s="3"] i:nth-child(-n+3){background:var(--color-admin-success,#0ab39c)}
+.ac-meter[data-s="4"] i{background:var(--color-admin-success,#0ab39c)}
+.ac-stx{display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:calc(13px + var(--fsp));line-height:1.5}
+.ac-stx[data-s="1"]{color:var(--color-admin-danger-text,#bf371a)}
+.ac-stx[data-s="2"]{color:var(--color-admin-warning-text,#906405)}
+.ac-stx[data-s="3"],.ac-stx[data-s="4"]{color:var(--color-admin-success-text,#047767)}
+.ac-step{display:flex;flex-direction:column;gap:12px}
+.ac-qrw{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.ac-qr{width:168px;height:168px;flex:0 0 auto;border:1px dashed var(--color-border-input,#8a90a2);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--color-body-muted,#5b6275);background:var(--color-surface-muted,#f8f9fb);font-size:calc(13px + var(--fsp))}
+.ac-qr i{font-size:56px;color:var(--color-heading,#1f2b4d)}
+.ac-qrt{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.ac-key{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.ac-mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(14px + var(--fsp));color:var(--color-heading,#1f2b4d);letter-spacing:.04em;overflow-wrap:anywhere}
+.ac-codes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface-muted,#f8f9fb);list-style:none;margin:0}
+@container (min-width:560px){.ac-codes{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.ac-ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.ac-tfa{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px}
+.ac-tfa>div{flex:1 1 260px;min-width:0}
+.ac-sep{height:1px;background:var(--color-border,#e9ecf4);margin:0}
+.ac-ses{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.ac-sic{width:40px;height:40px;flex:0 0 auto;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface-hover,#f1f3f9);color:var(--color-heading,#1f2b4d);font-size:20px}
+.ac-sm{flex:1 1 200px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ac-st{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.ac-sn{font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+@container (max-width:599px){.ac-ses .ac-sb{flex:1 1 100%}}
+.ac-langs{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
+@container (min-width:520px){.ac-langs{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.ac-langs .sx-opt{align-items:center}
+.ac-langs img{width:22px;height:22px;border-radius:50%;object-fit:cover;flex:0 0 auto}
+.ac-fl{display:flex;flex-direction:column;gap:8px;min-width:0}
+.ac-sw{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ac-sw>span{min-width:0}
+.ac-ph{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:16px;border:1px dashed var(--color-border-input,#8a90a2);border-radius:6px;background:var(--color-surface-muted,#f8f9fb)}
+.ac-nt{display:flex;flex-direction:column;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;overflow:hidden}
+.ac-nt-hd,.ac-nt-r{display:grid;grid-template-columns:minmax(0,1fr) 136px 124px 56px;gap:12px;align-items:center;padding:10px 12px}
+.ac-nt-hd{background:var(--color-surface-muted,#f8f9fb);font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.ac-nt-g{padding:8px 12px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb)}
+.ac-nt-g span{display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--color-heading,#1f2b4d)}
+.ac-nt-r{border-top:1px solid var(--color-border,#e9ecf4)}
+.ac-nt-n{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ac-nt-l{font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.ac-nt-d{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);overflow-wrap:anywhere}
+.ac-nt-lk{display:inline-flex;align-items:flex-start;gap:4px;font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765)}
+.ac-nt-nt{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.ac-nt-c{display:flex;align-items:center;gap:8px;min-width:0}
+.ac-nt-cl{display:none}
+.ac-nt-s{min-width:0;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);white-space:nowrap}
+.ac-nt-z{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.ac-nt-zm{display:none;margin:0;align-items:center;gap:6px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+@container (max-width:679px){.ac-nt-hd{display:none}.ac-nt-r{grid-template-columns:minmax(0,1fr);gap:8px}.ac-nt-c{justify-content:space-between;min-height:44px}.ac-nt-cl{display:inline}.ac-nt-z{display:none}.ac-nt-zm{display:flex}}
+.ac-sel select,.ac-tz{display:block;width:100%;min-height:44px;padding:8px 12px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-heading,#1f2b4d);font:inherit;font-size:calc(14px + var(--fsp))}
+.ac-skc{padding:16px;display:flex;flex-direction:column;gap:12px}
+.ac-lk{opacity:.6}
+.ac-ov{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,18,30,.45)}
+.ac-dlg{width:min(480px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:var(--color-surface,#fff);border-radius:6px;box-shadow:0 20px 50px rgba(15,18,30,.3);container-type:inline-size}
+.ac-dh{display:flex;align-items:flex-start;gap:12px;padding:20px 20px 0}
+.ac-dh h2{margin:0;font-size:calc(17px + var(--fsp));font-weight:600;line-height:1.4;color:var(--color-heading,#1f2b4d)}
+.ac-dic{width:40px;height:40px;flex:0 0 auto;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:20px;background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,var(--color-surface,#fff));color:var(--color-accent,#2050a0)}
+.ac-dic[data-k="danger"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+.ac-db{padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.ac-df{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:12px 20px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+@media (max-width:599px){.ac-ov{align-items:flex-end;padding:0}.ac-dlg{width:100%;max-height:92dvh;border-radius:12px 12px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)}.ac-df .sx-btn{flex:1 1 0}}
+.ac-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:220;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:6px;background:var(--color-heading,#1f2b4d);color:var(--color-surface,#fff);font-size:calc(14px + var(--fsp));box-shadow:0 5px 15px rgba(30,32,37,.2)}
+.ac-frames{display:flex;flex-direction:column;gap:12px}
+.ac-frames iframe{display:block;border:0;background:var(--color-body,#f4f5fa)}
+@media (prefers-reduced-motion:reduce){.ac-c *{transition:none !important;animation:none !important}}
+.ac-c[data-motion="reduce"] *{transition:none !important;animation:none !important}
+</style>
+</helmet>
+<div class="ac-c" data-fs="{{ fsAttr }}" data-emb="{{ embAttr }}" data-motion="{{ motionAttr }}" ref="{{ rootRef }}" data-screen-label="Tài khoản của tôi">
+  <div class="ac-wrap">
+    <sc-if value="{{ ownHeader }}" hint-placeholder-val="{{ true }}">
+      <header>
+        <h1 class="ac-h1">Tài khoản của tôi</h1>
+        <p class="ac-desc">Hồ sơ, mật khẩu, xác thực 2 lớp, thiết bị đang đăng nhập và tùy chọn giao diện của riêng bạn.</p>
+      </header>
+    </sc-if>
+
+    <div class="sx-card ac-id">
+      <span class="ac-av" aria-hidden="true">{{ initials }}</span>
+      <div class="ac-idt">
+        <span class="ac-nm">{{ shownName }}</span>
+        <span class="ac-mut">{{ email }}</span>
+      </div>
+      <div class="ac-chips">
+        <span class="sx-chip" data-t="brand"><i class="ri-shield-user-line"></i>{{ roleLabel }}</span>
+        <span class="sx-chip"><i class="{{ planeIcon }}"></i>{{ planeLabel }}</span>
+      </div>
+    </div>
+
+    <sc-if value="{{ ro }}">
+      <div class="sx-al" data-k="warning" role="note" id="ac-lockwhy" style="display:flex;gap:8px;align-items:flex-start;"><i class="ri-lock-2-line" style="font-size:18px;line-height:1.3;"></i><span><strong>Chỉ xem.</strong> Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên.</span></div>
+    </sc-if>
+    <sc-if value="{{ need2fa }}">
+      <div class="sx-al" data-k="warning" role="note" style="display:flex;gap:8px;align-items:flex-start;"><i class="ri-shield-keyhole-line" style="font-size:18px;line-height:1.3;"></i><span><strong>Cần bật xác thực 2 lớp trước khi làm việc trên nền tảng.</strong> Đây là yêu cầu bắt buộc với nhân sự nền tảng. Làm theo 3 bước ở thẻ "Xác thực 2 lớp" bên dưới, mất khoảng 2 phút.</span></div>
+    </sc-if>
+
+    <sc-if value="{{ isLoading }}">
+      <div class="ac-body" aria-busy="true" aria-label="Đang tải tài khoản">
+        <div class="sx-card ac-skc"><span class="sx-sk" style="height:36px;"></span><span class="sx-sk" style="height:36px;"></span><span class="sx-sk" style="height:36px;"></span></div>
+        <div class="sx-card ac-skc"><span class="sx-sk" style="height:20px;width:40%;"></span><span class="sx-sk" style="height:40px;"></span><span class="sx-sk" style="height:40px;"></span><span class="sx-sk" style="height:40px;width:60%;"></span></div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isError }}">
+      <div class="sx-card" role="alert">
+        <div class="sx-cb" style="align-items:flex-start;">
+          <div style="display:flex;gap:10px;align-items:flex-start;"><span class="ac-dic" data-k="danger"><i class="ri-wifi-off-line"></i></span><div><h2 class="sx-h3">Chưa tải được thông tin tài khoản</h2><p class="sx-rule">Kết nối tới máy chủ đang chậm hoặc bị ngắt. Kiểm tra mạng rồi bấm Thử lại — không có gì bị mất.</p></div></div>
+          <button type="button" class="sx-btn pri" onClick="{{ onRetry }}"><i class="ri-refresh-line"></i><span class="sx-t">Thử lại</span></button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isReady }}" hint-placeholder-val="{{ true }}">
+      <div class="ac-body">
+        <nav class="sx-card ac-nav" role="tablist" aria-orientation="vertical" aria-label="Mục tài khoản" onKeyDown="{{ onTabKey }}">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+            <button type="button" role="tab" id="{{ t.tid }}" aria-selected="{{ t.sel }}" aria-controls="ac-panel" tabindex="{{ t.ti }}" onClick="{{ t.go }}"><i class="{{ t.icon }}"></i><span>{{ t.label }}</span><sc-if value="{{ t.unsaved }}"><span class="ac-udot">Chưa lưu</span></sc-if></button>
+          </sc-for>
+        </nav>
+        <div class="ac-pane">
+          <label class="ac-sel"><span class="sx-lab">Mục</span>
+            <select value="{{ tab }}" onChange="{{ onTabSelect }}" aria-label="Chọn mục tài khoản">
+              <option value="profile">Hồ sơ</option>
+              <option value="security">Bảo mật</option>
+              <option value="sessions">Phiên đăng nhập</option>
+              <option value="linked">Tài khoản liên kết</option>
+              <option value="prefs">Tùy chọn</option>
+            </select>
+          </label>
+          <div id="ac-panel" role="tabpanel" aria-labelledby="{{ panelLabel }}" class="ac-pane">
+
+            <sc-if value="{{ tabProfile }}">
+              <section class="sx-card" aria-labelledby="ac-h-prof">
+                <div class="sx-ch"><h2 class="sx-h3" id="ac-h-prof">Hồ sơ</h2><sc-if value="{{ notes }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend: chức danh, số điện thoại</span></sc-if></div>
+                <div class="sx-cb">
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;">
+                    <span class="ac-av lg" aria-hidden="true">{{ initials }}</span>
+                    <div style="flex:1 1 220px;min-width:0;"><div class="sx-sub" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">Ảnh đại diện <span class="sx-chip"><i class="ri-time-line"></i>Để sau</span></div><p class="sx-rule">Đang dùng chữ cái đầu của họ tên. Tải ảnh lên sẽ có ở bản sau.</p></div>
+                  </div>
+                  <div class="sx-f2">
+                    <div class="sx-span" style="grid-column:1/-1;">
+                      <label class="sx-lab" for="ac-name">Họ tên <span class="sx-req" aria-hidden="true">*</span><span class="sr">(bắt buộc)</span></label>
+                      <input id="ac-name" class="sx-in" data-err="name" autocomplete="name" maxlength="140" value="{{ prof.name }}" onChange="{{ onName }}" onBlur="{{ onBlurName }}" placeholder="Nguyễn Ngọc Anh" aria-invalid="{{ errName }}" aria-describedby="ac-name-h" disabled="{{ ro }}">
+                      <sc-if value="{{ hasErrName }}"><p class="sx-err" id="ac-name-h"><i class="ri-error-warning-line"></i>{{ errNameText }}</p></sc-if>
+                      <sc-if value="{{ noErrName }}"><p class="sx-hint" id="ac-name-h">Hiện ở góc trên và trong nhật ký hoạt động. {{ nameCount }}</p></sc-if>
+                    </div>
+                    <div>
+                      <label class="sx-lab" for="ac-title">Chức danh</label>
+                      <input id="ac-title" class="sx-in" data-err="title" autocomplete="organization-title" value="{{ prof.title }}" onChange="{{ onTitle }}" onBlur="{{ onBlurTitle }}" placeholder="Trưởng phòng kinh doanh" aria-invalid="{{ errTitle }}" aria-describedby="ac-title-h" disabled="{{ ro }}">
+                      <sc-if value="{{ hasErrTitle }}"><p class="sx-err" id="ac-title-h"><i class="ri-error-warning-line"></i>{{ errTitleText }}</p></sc-if>
+                      <sc-if value="{{ noErrTitle }}"><p class="sx-hint" id="ac-title-h">Đồng nghiệp thấy trong danh sách thành viên.</p></sc-if>
+                    </div>
+                    <div>
+                      <label class="sx-lab" for="ac-phone">Số điện thoại</label>
+                      <input id="ac-phone" class="sx-in" data-err="phone" type="tel" inputmode="tel" autocomplete="tel" value="{{ prof.phone }}" onChange="{{ onPhone }}" onBlur="{{ onBlurPhone }}" placeholder="0901 234 567" aria-invalid="{{ errPhone }}" aria-describedby="ac-phone-h" disabled="{{ ro }}">
+                      <sc-if value="{{ hasErrPhone }}"><p class="sx-err" id="ac-phone-h"><i class="ri-error-warning-line"></i>{{ errPhoneText }}</p></sc-if>
+                      <sc-if value="{{ noErrPhone }}"><p class="sx-hint" id="ac-phone-h">Để đồng nghiệp gọi khi cần. Không bắt buộc.</p></sc-if>
+                    </div>
+                  </div>
+                  <div class="ac-sep"></div>
+                  <div>
+                    <div class="sx-lab" id="ac-email-l" style="gap:8px;">Email đăng nhập <sc-if value="{{ notes }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend</span><span class="sx-note" data-k="owner"><i class="ri-question-line"></i>Cần owner chốt</span></sc-if></div>
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;">
+                      <span class="ac-mono" style="letter-spacing:0;flex:1 1 200px;min-width:0;" aria-labelledby="ac-email-l">{{ email }}</span>
+                      <button type="button" class="sx-btn" onClick="{{ onOpenEmail }}" aria-disabled="{{ roAttr }}" aria-describedby="{{ lockDesc }}"><i class="ri-mail-settings-line"></i><span class="sx-t">Đổi email</span></button>
+                    </div>
+                    <p class="sx-hint">Email này dùng để đăng nhập mọi website bạn tham gia và để nhận lời mời. Đổi email cần mật khẩu và mã xác minh gửi tới địa chỉ mới.</p>
+                  </div>
+                </div>
+                <div class="ac-foot">
+                  <button type="button" class="sx-btn pri" onClick="{{ onSaveProfile }}" aria-disabled="{{ profBtnDis }}" aria-describedby="{{ lockDesc }}"><i class="ri-save-3-line"></i><span class="sx-t">{{ profBtnLabel }}</span></button>
+                  <sc-if value="{{ profDirty }}"><button type="button" class="sx-btn gho" onClick="{{ onResetProfile }}"><i class="ri-arrow-go-back-line"></i><span class="sx-t">Bỏ thay đổi</span></button></sc-if>
+                  <span class="ac-sv" role="status" aria-live="polite" data-k="{{ profSvK }}"><i class="{{ profSvIcon }}"></i>{{ profSvText }}</span>
+                  <sc-if value="{{ profFail }}"><button type="button" class="sx-btn sm" onClick="{{ onSaveProfile }}"><i class="ri-refresh-line"></i><span class="sx-t">Thử lại</span></button></sc-if>
+                  <sc-if value="{{ ro }}"><span class="ac-why"><i class="ri-lock-2-line"></i>Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên.</span></sc-if>
+                </div>
+              </section>
+            </sc-if>
+
+            <sc-if value="{{ tabSecurity }}">
+              <section class="sx-card" aria-labelledby="ac-h-pw">
+                <div class="sx-ch"><h2 class="sx-h3" id="ac-h-pw">Đổi mật khẩu</h2></div>
+                <div class="sx-cb">
+                  <sc-if value="{{ pwDone }}"><div class="sx-al" data-k="success" role="status" style="display:flex;gap:8px;align-items:flex-start;"><i class="ri-checkbox-circle-line" style="font-size:18px;line-height:1.3;"></i><span>{{ pwDoneText }}</span></div></sc-if>
+                  <div>
+                    <label class="sx-lab" for="ac-pw-cur">Mật khẩu hiện tại <span class="sx-req" aria-hidden="true">*</span></label>
+                    <div class="ac-pw" data-focus-wrap="true">
+                      <input id="ac-pw-cur" data-err="pwcur" type="{{ pwCurType }}" autocomplete="current-password" value="{{ pw.cur }}" onChange="{{ onPwCur }}" aria-invalid="{{ errPwCur }}" aria-describedby="ac-pw-cur-h" disabled="{{ ro }}">
+                      <button type="button" class="sx-btn gho ic" onClick="{{ onShowCur }}" aria-pressed="{{ showCurP }}" aria-label="{{ showCurL }}" title="{{ showCurL }}" disabled="{{ ro }}"><i class="{{ showCurI }}"></i></button>
+                    </div>
+                    <sc-if value="{{ hasErrPwCur }}"><p class="sx-err" id="ac-pw-cur-h"><i class="ri-error-warning-line"></i>{{ errPwCurText }}</p></sc-if>
+                  </div>
+                  <div class="sx-f2">
+                    <div>
+                      <label class="sx-lab" for="ac-pw-new">Mật khẩu mới <span class="sx-req" aria-hidden="true">*</span></label>
+                      <div class="ac-pw" data-focus-wrap="true">
+                        <input id="ac-pw-new" data-err="pwnew" type="{{ pwNewType }}" autocomplete="new-password" value="{{ pw.nw }}" onChange="{{ onPwNew }}" onBlur="{{ onBlurPwNew }}" aria-invalid="{{ errPwNew }}" aria-describedby="ac-pw-new-h ac-pw-new-s" disabled="{{ ro }}">
+                        <button type="button" class="sx-btn gho ic" onClick="{{ onShowNew }}" aria-pressed="{{ showNewP }}" aria-label="{{ showNewL }}" title="{{ showNewL }}" disabled="{{ ro }}"><i class="{{ showNewI }}"></i></button>
+                      </div>
+                      <sc-if value="{{ hasStrength }}">
+                        <div class="ac-meter" data-s="{{ stS }}" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                        <p class="ac-stx" id="ac-pw-new-s" data-s="{{ stS }}" aria-live="polite"><i class="{{ stIcon }}"></i><span><strong>{{ stLabel }}</strong> — {{ stTip }}</span></p>
+                      </sc-if>
+                      <sc-if value="{{ hasErrPwNew }}"><p class="sx-err" id="ac-pw-new-h"><i class="ri-error-warning-line"></i>{{ errPwNewText }}</p></sc-if>
+                      <sc-if value="{{ noErrPwNew }}"><p class="sx-hint" id="ac-pw-new-h">Ít nhất 10 ký tự. Dễ nhớ mà khó đoán: ghép 3–4 từ, ví dụ "mua-ca-phe-luc-7-gio".</p></sc-if>
+                    </div>
+                    <div>
+                      <label class="sx-lab" for="ac-pw-cf">Nhập lại mật khẩu mới <span class="sx-req" aria-hidden="true">*</span></label>
+                      <div class="ac-pw" data-focus-wrap="true">
+                        <input id="ac-pw-cf" data-err="pwcf" type="{{ pwCfType }}" autocomplete="new-password" value="{{ pw.cf }}" onChange="{{ onPwCf }}" onBlur="{{ onBlurPwCf }}" aria-invalid="{{ errPwCf }}" aria-describedby="ac-pw-cf-h" disabled="{{ ro }}">
+                        <button type="button" class="sx-btn gho ic" onClick="{{ onShowCf }}" aria-pressed="{{ showCfP }}" aria-label="{{ showCfL }}" title="{{ showCfL }}" disabled="{{ ro }}"><i class="{{ showCfI }}"></i></button>
+                      </div>
+                      <sc-if value="{{ hasErrPwCf }}"><p class="sx-err" id="ac-pw-cf-h"><i class="ri-error-warning-line"></i>{{ errPwCfText }}</p></sc-if>
+                    </div>
+                  </div>
+                  <p class="sx-rule" style="display:flex;gap:6px;align-items:flex-start;"><i class="ri-information-line"></i><span>Mọi thiết bị khác sẽ tự đăng xuất. Thiết bị bạn đang dùng vẫn giữ đăng nhập.</span></p>
+                </div>
+                <div class="ac-foot">
+                  <button type="button" class="sx-btn pri" onClick="{{ onChangePw }}" aria-disabled="{{ pwBtnDis }}" aria-describedby="{{ lockDesc }}"><i class="ri-lock-password-line"></i><span class="sx-t">{{ pwBtnLabel }}</span></button>
+                  <span class="ac-sv" role="status" aria-live="polite" data-k="{{ pwSvK }}">{{ pwSvText }}</span>
+                  <sc-if value="{{ ro }}"><span class="ac-why"><i class="ri-lock-2-line"></i>Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên.</span></sc-if>
+                </div>
+              </section>
+
+              <section class="sx-card" aria-labelledby="ac-h-tfa">
+                <div class="sx-ch">
+                  <h2 class="sx-h3" id="ac-h-tfa">Xác thực 2 lớp</h2>
+                  <sc-if value="{{ tfaOn }}"><span class="sx-chip" data-t="ok"><i class="ri-shield-check-line"></i>Đang bật</span></sc-if>
+                  <sc-if value="{{ tfaOff }}"><span class="sx-chip" data-t="warn"><i class="ri-shield-line"></i>Chưa bật</span></sc-if>
+                  <sc-if value="{{ isPlat }}"><span class="sx-chip" data-t="brand"><i class="ri-lock-2-line"></i>Bắt buộc với nhân sự nền tảng</span></sc-if>
+                </div>
+                <div class="sx-cb">
+                  <p class="sx-rule" style="color:var(--color-body-text,#3c4765);">Thêm một lớp khóa bằng điện thoại: mỗi lần đăng nhập, ngoài mật khẩu bạn nhập thêm mã 6 số hiện trên ứng dụng xác thực của điện thoại. Kẻ gian biết mật khẩu cũng không vào được.</p>
+
+                  <sc-if value="{{ tfaIdle }}">
+                    <div class="ac-tfa">
+                      <div><div class="sx-sub">Bạn cần</div><p class="sx-rule">Một điện thoại có ứng dụng xác thực miễn phí, ví dụ Google Authenticator hoặc Microsoft Authenticator.</p></div>
+                      <button type="button" class="sx-btn pri" onClick="{{ onStartTfa }}" aria-disabled="{{ roAttr }}" aria-describedby="{{ lockDesc }}"><i class="ri-shield-keyhole-line"></i><span class="sx-t">Bật xác thực 2 lớp</span></button>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ tfaStep1 }}">
+                    <div class="ac-step">
+                      <span class="sx-chip" data-t="brand" style="align-self:flex-start;">Bước 1/3 · Quét mã</span>
+                      <div class="ac-qrw">
+                        <div class="ac-qr" role="img" aria-label="Mã QR để quét bằng ứng dụng xác thực"><i class="ri-qr-code-line"></i>Mã QR</div>
+                        <div class="ac-qrt">
+                          <ol class="ac-ol">
+                            <li>Mở ứng dụng xác thực trên điện thoại.</li>
+                            <li>Chọn "Thêm tài khoản" rồi "Quét mã QR".</li>
+                            <li>Hướng camera vào mã bên cạnh.</li>
+                          </ol>
+                          <div class="sx-sub">Không quét được? Nhập khóa này vào ứng dụng:</div>
+                          <div class="ac-key"><span class="ac-mono">{{ tfaKey }}</span><button type="button" class="sx-btn sm" onClick="{{ onCopyKey }}"><i class="ri-file-copy-line"></i><span class="sx-t">Sao chép khóa</span></button></div>
+                        </div>
+                      </div>
+                      <div class="sx-row">
+                        <button type="button" class="sx-btn pri" onClick="{{ onTfaNext }}"><span class="sx-t">Tiếp tục</span><i class="ri-arrow-right-line"></i></button>
+                        <button type="button" class="sx-btn gho" onClick="{{ onTfaCancel }}"><span class="sx-t">Hủy</span></button>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ tfaStep2 }}">
+                    <div class="ac-step">
+                      <span class="sx-chip" data-t="brand" style="align-self:flex-start;">Bước 2/3 · Nhập mã</span>
+                      <div style="max-width:320px;">
+                        <label class="sx-lab" for="ac-tfa-code">Mã 6 số trên ứng dụng</label>
+                        <input id="ac-tfa-code" class="sx-in ac-mono" inputmode="numeric" autocomplete="one-time-code" maxlength="7" value="{{ tfaCode }}" onChange="{{ onTfaCode }}" onKeyDown="{{ onTfaCodeKey }}" placeholder="123 456" aria-invalid="{{ errTfa }}" aria-describedby="ac-tfa-h">
+                        <sc-if value="{{ hasErrTfa }}"><p class="sx-err" id="ac-tfa-h"><i class="ri-error-warning-line"></i>{{ errTfaText }}</p></sc-if>
+                        <sc-if value="{{ noErrTfa }}"><p class="sx-hint" id="ac-tfa-h">Mã đổi sau mỗi 30 giây — nhập mã đang hiện.</p></sc-if>
+                      </div>
+                      <div class="sx-row">
+                        <button type="button" class="sx-btn pri" onClick="{{ onTfaConfirm }}" aria-disabled="{{ tfaBusyAttr }}"><span class="sx-t">{{ tfaConfirmLabel }}</span></button>
+                        <button type="button" class="sx-btn gho" onClick="{{ onTfaBack }}"><i class="ri-arrow-left-line"></i><span class="sx-t">Quay lại</span></button>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ tfaStep3 }}">
+                    <div class="ac-step">
+                      <span class="sx-chip" data-t="ok" style="align-self:flex-start;"><i class="ri-shield-check-line"></i>Bước 3/3 · Lưu mã khôi phục</span>
+                      <div class="sx-al" data-k="warning" style="display:flex;gap:8px;align-items:flex-start;"><i class="ri-alert-line" style="font-size:18px;line-height:1.3;"></i><span>Lưu các mã khôi phục này ở nơi an toàn — mỗi mã dùng một lần nếu bạn mất thiết bị. Mã chỉ hiện một lần này.</span></div>
+                      <ul class="ac-codes ac-mono" aria-label="8 mã khôi phục">
+                        <sc-for list="{{ codes }}" as="cd" hint-placeholder-count="8"><li>{{ cd }}</li></sc-for>
+                      </ul>
+                      <div class="sx-row">
+                        <button type="button" class="sx-btn" onClick="{{ onDlCodes }}"><i class="ri-download-2-line"></i><span class="sx-t">Tải xuống</span></button>
+                        <button type="button" class="sx-btn" onClick="{{ onCopyCodes }}"><i class="ri-file-copy-line"></i><span class="sx-t">{{ copyCodesLabel }}</span></button>
+                      </div>
+                      <label class="sx-check"><input type="checkbox" checked="{{ codesKept }}" onChange="{{ onCodesKept }}"><span>Tôi đã lưu 8 mã này ở nơi an toàn</span></label>
+                      <div class="sx-row"><button type="button" class="sx-btn pri" onClick="{{ onTfaDone }}" aria-disabled="{{ doneDis }}" aria-describedby="ac-done-h"><span class="sx-t">Xong</span></button><span class="sx-hint" id="ac-done-h" style="margin:0;">{{ doneHint }}</span></div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ tfaActive }}">
+                    <div class="ac-tfa">
+                      <div><div class="sx-sub">Bật từ {{ tfaSince }}</div><p class="sx-rule">Mã khôi phục: còn {{ codesLeft }}/8 mã chưa dùng. Hết mã hoặc lộ mã thì tạo lại bộ mới.</p></div>
+                      <button type="button" class="sx-btn" onClick="{{ onOpenRegen }}" aria-disabled="{{ roAttr }}" aria-describedby="{{ lockDesc }}"><i class="ri-refresh-line"></i><span class="sx-t">Tạo lại mã khôi phục</span></button>
+                    </div>
+                    <sc-if value="{{ notes }}"><span class="sx-note" style="align-self:flex-start;"><i class="ri-tools-line"></i>Chờ backend: tạo lại mã khôi phục · nhập lại mật khẩu khi tắt hoặc tạo lại mã</span></sc-if>
+                    <sc-if value="{{ canDisable }}">
+                      <div class="ac-sep"></div>
+                      <div class="ac-tfa">
+                        <div><div class="sx-sub">Tắt xác thực 2 lớp</div><p class="sx-rule">Tài khoản chỉ còn mật khẩu bảo vệ. Cần nhập lại mật khẩu; hệ thống gửi cảnh báo tới chuông và email của bạn.</p></div>
+                        <button type="button" class="sx-btn dano" onClick="{{ onOpenDisable }}" aria-disabled="{{ roAttr }}" aria-describedby="{{ lockDesc }}"><i class="ri-shield-cross-line"></i><span class="sx-t">Tắt xác thực 2 lớp</span></button>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{ isPlat }}"><p class="sx-rule" style="display:flex;gap:6px;align-items:flex-start;"><i class="ri-lock-2-line"></i><span>Nhân sự nền tảng không tắt được xác thực 2 lớp. Mất điện thoại thì đăng nhập bằng mã khôi phục, rồi bật lại trên điện thoại mới.</span></p></sc-if>
+                  </sc-if>
+                  <sc-if value="{{ ro }}"><span class="ac-why"><i class="ri-lock-2-line"></i>Không làm được việc này khi nhân viên hỗ trợ đang đăng nhập thay thành viên.</span></sc-if>
+                </div>
+              </section>
+            </sc-if>
+
+            <sc-if value="{{ tabSessions }}">
+              <section class="sx-card" aria-labelledby="ac-h-ses">
+                <div class="sx-ch" style="justify-content:space-between;">
+                  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;"><h2 class="sx-h3" id="ac-h-ses">Phiên đăng nhập</h2><sc-if value="{{ notes }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend</span></sc-if></div>
+                  <button type="button" class="sx-btn dano sm" onClick="{{ onOutAll }}" aria-disabled="{{ outAllDis }}" aria-describedby="ac-ses-why"><i class="ri-logout-box-r-line"></i><span class="sx-t">Đăng xuất mọi thiết bị khác</span></button>
+                </div>
+                <p class="sx-rule" id="ac-ses-why" style="padding:12px 16px 0;">{{ sesIntro }}</p>
+                <div role="list" style="margin-top:8px;">
+                  <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="3">
+                    <div class="ac-ses" role="listitem">
+                      <span class="ac-sic" aria-hidden="true"><i class="{{ s.icon }}"></i></span>
+                      <div class="ac-sm">
+                        <div class="ac-st"><span class="ac-sn">{{ s.device }}</span><sc-if value="{{ s.cur }}"><span class="sx-chip" data-t="ok"><i class="ri-checkbox-circle-line"></i>Thiết bị này</span></sc-if></div>
+                        <span class="ac-mut" style="font-size:calc(13px + var(--fsp));">{{ s.meta }}</span>
+                      </div>
+                      <sc-if value="{{ s.canOut }}"><button type="button" class="sx-btn sm ac-sb" onClick="{{ s.out }}" aria-disabled="{{ roAttr }}" aria-describedby="{{ lockDesc }}" aria-label="{{ s.outL }}"><i class="ri-logout-box-r-line"></i><span class="sx-t">Đăng xuất thiết bị này</span></button></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ sesOnlyMe }}"><div class="ac-foot"><span class="ac-sv" data-k="ok"><i class="ri-checkbox-circle-line"></i>Chỉ còn thiết bị này đang đăng nhập.</span></div></sc-if>
+              </section>
+            </sc-if>
+
+            <sc-if value="{{ tabLinked }}">
+              <section class="sx-card" aria-labelledby="ac-h-lk">
+                <div class="sx-ch"><h2 class="sx-h3" id="ac-h-lk">Tài khoản liên kết</h2></div>
+                <div class="sx-cb">
+                  <p class="sx-rule">Đăng nhập nhanh bằng Google hoặc Facebook thay cho gõ mật khẩu. Bỏ liên kết lúc nào cũng được; mật khẩu vẫn dùng bình thường.</p>
+                  <div ref="{{ linkedRef }}" class="{{ linkedCls }}" aria-describedby="{{ lockDesc }}">
+                    <dc-import name="Đăng nhập nhanh &amp; Liên kết tài khoản" screen="profile" embedded="{{ true }}" embed-id="social-me" account-type="{{ accType }}" hint-size="100%,260px"></dc-import>
+                  </div>
+                </div>
+              </section>
+            </sc-if>
+
+            <sc-if value="{{ tabPrefs }}">
+              <section class="sx-card" aria-labelledby="ac-h-ui">
+                <div class="sx-ch"><h2 class="sx-h3" id="ac-h-ui">Giao diện của riêng bạn</h2><span class="ac-sv" role="status" aria-live="polite" data-k="ok">{{ prefSv }}</span></div>
+                <div class="sx-cb">
+                  <p class="sx-rule">Chỉ đổi trang quản trị bạn đang thấy; khách xem website không bị ảnh hưởng. Đổi là áp dụng ngay, cùng chỗ với menu tài khoản › Giao diện.</p>
+                  <fieldset style="border:0;margin:0;padding:0;min-width:0;">
+                    <legend class="sx-lab" style="padding:0;gap:8px;">Ngôn ngữ giao diện <sc-if value="{{ notes }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend: lưu theo tài khoản</span></sc-if></legend>
+                    <div class="ac-langs">
+                      <label class="sx-opt"><input type="radio" name="ac-uil" value="vi" checked="{{ lgVi }}" onChange="{{ onLgVi }}" disabled="{{ ro }}"><img src="assets/flags/vi.svg" alt=""><span lang="vi" style="color:var(--color-heading,#1f2b4d);font-weight:500;">Tiếng Việt</span></label>
+                      <label class="sx-opt"><input type="radio" name="ac-uil" value="en" checked="{{ lgEn }}" onChange="{{ onLgEn }}" disabled="{{ ro }}"><img src="assets/flags/en.svg" alt=""><span lang="en" style="color:var(--color-heading,#1f2b4d);font-weight:500;">English</span></label>
+                      <label class="sx-opt"><input type="radio" name="ac-uil" value="ja" checked="{{ lgJa }}" onChange="{{ onLgJa }}" disabled="{{ ro }}"><img src="assets/flags/ja.svg" alt=""><span lang="ja" style="color:var(--color-heading,#1f2b4d);font-weight:500;">日本語</span></label>
+                      <label class="sx-opt"><input type="radio" name="ac-uil" value="zh" checked="{{ lgZh }}" onChange="{{ onLgZh }}" disabled="{{ ro }}"><img src="assets/flags/zh.svg" alt=""><span lang="zh" style="color:var(--color-heading,#1f2b4d);font-weight:500;">中文</span></label>
+                    </div>
+                    <p class="sx-hint">Cùng lựa chọn với nút ngôn ngữ trên thanh trên cùng. Nội dung website đổi ở Cài đặt › Ngôn ngữ website.</p>
+                  </fieldset>
+                  <div class="sx-f2">
+                    <div class="ac-fl">
+                      <span class="sx-lab" id="ac-l-sch" style="margin:0;">Sáng / tối</span>
+                      <div class="sx-seg" role="radiogroup" aria-labelledby="ac-l-sch">
+                        <button type="button" role="radio" aria-checked="{{ schL }}" onClick="{{ onSchL }}"><i class="ri-sun-line"></i>Sáng</button>
+                        <button type="button" role="radio" aria-checked="{{ schD }}" onClick="{{ onSchD }}"><i class="ri-moon-line"></i>Tối</button>
+                        <button type="button" role="radio" aria-checked="{{ schA }}" onClick="{{ onSchA }}"><i class="ri-computer-line"></i>Theo máy</button>
+                      </div>
+                    </div>
+                    <div class="ac-fl">
+                      <span class="sx-lab" id="ac-l-fs" style="margin:0;">Cỡ chữ</span>
+                      <div class="sx-seg" role="radiogroup" aria-labelledby="ac-l-fs" aria-describedby="ac-fs-h">
+                        <button type="button" role="radio" aria-checked="{{ fsN }}" onClick="{{ onFsN }}">Bình thường</button>
+                        <button type="button" role="radio" aria-checked="{{ fsL }}" onClick="{{ onFsL }}" style="font-size:calc(15px + var(--fsp));">Lớn</button>
+                      </div>
+                      <p class="sx-hint" id="ac-fs-h" style="margin:0;">Lớn: mọi chữ trong trang quản trị to thêm 2px.</p>
+                    </div>
+                    <div class="ac-fl">
+                      <span class="sx-lab" id="ac-l-mo" style="margin:0;">Giảm chuyển động</span>
+                      <div class="sx-seg" role="radiogroup" aria-labelledby="ac-l-mo" aria-describedby="ac-mo-h">
+                        <button type="button" role="radio" aria-checked="{{ moA }}" onClick="{{ onMoA }}">Theo máy</button>
+                        <button type="button" role="radio" aria-checked="{{ moR }}" onClick="{{ onMoR }}">Luôn giảm</button>
+                        <button type="button" role="radio" aria-checked="{{ moF }}" onClick="{{ onMoF }}">Không giảm</button>
+                      </div>
+                      <p class="sx-hint" id="ac-mo-h" style="margin:0;">Theo máy: làm theo cài đặt "Giảm chuyển động" của điện thoại hoặc máy tính.</p>
+                    </div>
+                    <div class="ac-fl">
+                      <div class="ac-sw">
+                        <span><span class="sx-lab" id="ac-l-hc" style="margin:0;">Tương phản cao · {{ hcState }}</span><span class="sx-hint" style="display:block;margin:2px 0 0;">Chữ và đường viền đậm hơn, dễ đọc khi màn hình chói.</span></span>
+                        <button type="button" class="dsw" role="switch" aria-checked="{{ hcOn }}" aria-labelledby="ac-l-hc" onClick="{{ onHc }}" disabled="{{ ro }}"></button>
+                      </div>
+                      <sc-if value="{{ notes }}"><span class="sx-note" style="align-self:flex-start;"><i class="ri-tools-line"></i>Chờ backend: bộ màu tương phản cao</span></sc-if>
+                    </div>
+                  </div>
+                  <div class="ac-sep"></div>
+                  <div>
+                    <label class="sx-lab" for="ac-tz" style="gap:8px;">Múi giờ <sc-if value="{{ notes }}"><span class="sx-note" data-k="owner"><i class="ri-question-line"></i>Cần owner chốt</span></sc-if></label>
+                    <select id="ac-tz" class="ac-tz" value="{{ tz }}" onChange="{{ onTz }}" aria-describedby="ac-tz-h" disabled="{{ ro }}" style="max-width:420px;">
+                      <option value="site">Theo website — (GMT+7) Hà Nội, TP. Hồ Chí Minh</option>
+                      <option value="Asia/Bangkok">(GMT+7) Bangkok</option>
+                      <option value="Asia/Singapore">(GMT+8) Singapore</option>
+                      <option value="Asia/Tokyo">(GMT+9) Tokyo</option>
+                    </select>
+                    <p class="sx-hint" id="ac-tz-h">{{ tzHint }}</p>
+                  </div>
+                </div>
+              </section>
+              <section class="sx-card" aria-labelledby="ac-h-ntf">
+                <div class="sx-ch"><h2 class="sx-h3" id="ac-h-ntf">Thông báo</h2><span class="ac-sv" role="status" aria-live="polite" data-k="ok">{{ ntfSv }}</span></div>
+                <div class="sx-cb">
+                  <p class="sx-rule">Chọn việc nào báo qua chuông, việc nào gửi thêm email. Đổi là áp dụng ngay. Cảnh báo bảo mật luôn bật, để người sửa trộm tài khoản không tắt được cảnh báo trước.</p>
+                  <sc-if value="{{ ro }}"><p class="ac-why" style="margin:0;"><i class="ri-user-shared-line" aria-hidden="true"></i><span>Đang đăng nhập hỗ trợ — tùy chọn thông báo của thành viên không đổi được.</span></p></sc-if>
+                  <sc-if value="{{ ntfPlat }}">
+                    <div class="sx-al" data-k="info" style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:flex-start;"><i class="ri-information-line" style="font-size:18px;"></i><span style="flex:1 1 240px;min-width:0;">Mặt Nền tảng chưa có kho thông báo riêng. Chuông đang hiện các loại đề xuất: website mới, tên miền lỗi hàng loạt, gói sắp hết hạn, phiên hỗ trợ.</span><sc-if value="{{ notes }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend</span><span class="sx-note" data-k="owner"><i class="ri-question-line"></i>Cần owner chốt danh sách loại</span></sc-if></div>
+                  </sc-if>
+                  <sc-if value="{{ ntfSite }}">
+                    <div class="ac-nt" role="table" aria-label="Loại thông báo và kênh nhận">
+                      <div class="ac-nt-hd" role="row"><span role="columnheader">Loại thông báo</span><span role="columnheader">Trong ứng dụng</span><span role="columnheader">Email</span><span role="columnheader">Zalo</span></div>
+                      <sc-for list="{{ ntfGroups }}" as="g" hint-placeholder-count="4">
+                        <div class="ac-nt-g" role="row"><span role="rowheader"><i class="{{ g.icon }}" aria-hidden="true"></i>{{ g.label }}</span></div>
+                        <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="2">
+                          <div class="ac-nt-r" role="row">
+                            <div class="ac-nt-n" role="cell">
+                              <span class="ac-nt-l">{{ r.label }}</span>
+                              <span class="ac-nt-d">{{ r.desc }}</span>
+                              <sc-if value="{{ r.locked }}"><span class="ac-nt-lk"><i class="ri-lock-line" aria-hidden="true"></i>Luôn bật cả hai kênh — không tắt được.</span></sc-if>
+                              <sc-if value="{{ r.extra }}"><span class="ac-nt-d">{{ r.extra }}</span></sc-if>
+                              <sc-if value="{{ r.hasNotes }}"><span class="ac-nt-nt"><sc-for list="{{ r.notes }}" as="x" hint-placeholder-count="1"><span class="sx-note" data-k="{{ x.k }}"><i class="{{ x.i }}"></i>{{ x.t }}</span></sc-for></span></sc-if>
+                            </div>
+                            <div class="ac-nt-c" role="cell">
+                              <span class="ac-nt-s"><span class="ac-nt-cl">Trong ứng dụng · </span>{{ r.inState }}</span>
+                              <sc-if value="{{ r.locked }}"><button type="button" class="dsw" role="switch" aria-checked="true" disabled="{{ true }}" aria-label="{{ r.inAria }}"></button></sc-if>
+                              <sc-if value="{{ r.free }}"><button type="button" class="dsw" role="switch" aria-checked="{{ r.inOn }}" aria-label="{{ r.inAria }}" onClick="{{ r.onIn }}" disabled="{{ ro }}"></button></sc-if>
+                            </div>
+                            <div class="ac-nt-c" role="cell">
+                              <span class="ac-nt-s"><span class="ac-nt-cl">Email · </span>{{ r.mailState }}</span>
+                              <sc-if value="{{ r.locked }}"><button type="button" class="dsw" role="switch" aria-checked="true" disabled="{{ true }}" aria-label="{{ r.mailAria }}"></button></sc-if>
+                              <sc-if value="{{ r.free }}"><button type="button" class="dsw" role="switch" aria-checked="{{ r.mailOn }}" aria-label="{{ r.mailAria }}" onClick="{{ r.onMail }}" disabled="{{ ro }}"></button></sc-if>
+                            </div>
+                            <div class="ac-nt-z" role="cell">Để sau</div>
+                          </div>
+                        </sc-for>
+                      </sc-for>
+                    </div>
+                    <p class="ac-nt-zm"><i class="ri-chat-3-line" aria-hidden="true"></i>Báo qua Zalo: Để sau.</p>
+                    <div class="ac-sw">
+                      <span><span class="sx-lab" id="ac-l-dg" style="margin:0;gap:8px;">Gom email thành 1 thư mỗi ngày · {{ digState }} <sc-if value="{{ notes }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend</span></sc-if></span><span class="sx-hint" style="display:block;margin:2px 0 0;">Thư bảo mật và tên miền vẫn gửi ngay, không chờ gom.</span></span>
+                      <button type="button" class="dsw" role="switch" aria-checked="{{ digOn }}" aria-labelledby="ac-l-dg" onClick="{{ onDig }}" disabled="{{ ro }}"></button>
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;"><span class="sx-hint" style="margin:0;flex:1 1 220px;">Thông báo trong ứng dụng được giữ 90 ngày, sau đó tự xóa.</span><button type="button" class="sx-btn gho" onClick="{{ onOpenNtf }}"><i class="ri-notification-3-line"></i>Mở trang Thông báo</button></div>
+                  </sc-if>
+                </div>
+              </section>
+            </sc-if>
+
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ framesShow }}">
+      <section class="ac-frames" aria-label="Xem ở điện thoại và máy tính bảng">
+        <h2 class="sx-h3">Xem ở 390px và 768px</h2>
+        <div class="fr-row">
+          <div class="fr" style="width:min(392px,100%);"><div class="fr-cap"><i class="ri-smartphone-line"></i>390 × 844</div><iframe title="Khung 390px" src="{{ frameSrc }}" style="width:390px;max-width:100%;height:844px;"></iframe></div>
+          <div class="fr" style="width:min(770px,100%);"><div class="fr-cap"><i class="ri-tablet-line"></i>768 × 1024</div><iframe title="Khung 768px" src="{{ frameSrc }}" style="width:768px;max-width:100%;height:1024px;"></iframe></div>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ dlgEmail }}">
+    <div class="ac-ov" onClick="{{ onDlgBackdrop }}">
+      <div class="ac-dlg" role="dialog" aria-modal="true" aria-labelledby="ac-dt-em" onClick="{{ stop }}" onKeyDown="{{ onDlgKey }}" ref="{{ dlgRef }}">
+        <div class="ac-dh"><span class="ac-dic"><i class="ri-mail-settings-line"></i></span><div><h2 id="ac-dt-em">Đổi email đăng nhập</h2><p class="sx-rule">{{ emStepText }}</p></div></div>
+        <sc-if value="{{ emS1 }}">
+          <div class="ac-db">
+            <div><label class="sx-lab" for="ac-em-new">Email mới</label><input id="ac-em-new" class="sx-in" type="email" inputmode="email" autocomplete="email" placeholder="ten@congty.vn" value="{{ em.nw }}" onChange="{{ onEmNew }}" aria-invalid="{{ errEmNew }}" aria-describedby="ac-em-new-h" data-first="1">
+              <sc-if value="{{ hasErrEmNew }}"><p class="sx-err" id="ac-em-new-h"><i class="ri-error-warning-line"></i>{{ errEmNewText }}</p></sc-if></div>
+            <div><label class="sx-lab" for="ac-em-pw">Mật khẩu hiện tại</label><div class="ac-pw" data-focus-wrap="true"><input id="ac-em-pw" type="password" autocomplete="current-password" value="{{ em.pw }}" onChange="{{ onEmPw }}" aria-invalid="{{ errEmPw }}" aria-describedby="ac-em-pw-h"></div>
+              <sc-if value="{{ hasErrEmPw }}"><p class="sx-err" id="ac-em-pw-h"><i class="ri-error-warning-line"></i>{{ errEmPwText }}</p></sc-if></div>
+            <p class="sx-rule">Địa chỉ cũ nhận thư báo kèm nút "Không phải tôi" để chặn ngay nếu không phải bạn đổi.</p>
+          </div>
+          <div class="ac-df"><button type="button" class="sx-btn" onClick="{{ onDlgClose }}"><span class="sx-t">Hủy</span></button><button type="button" class="sx-btn pri" onClick="{{ onEmSend }}" aria-disabled="{{ emBusyAttr }}"><i class="ri-send-plane-line"></i><span class="sx-t">{{ emSendLabel }}</span></button></div>
+        </sc-if>
+        <sc-if value="{{ emS2 }}">
+          <div class="ac-db">
+            <div><label class="sx-lab" for="ac-em-code">Mã 6 số trong thư</label><input id="ac-em-code" class="sx-in ac-mono" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123 456" value="{{ em.code }}" onChange="{{ onEmCode }}" aria-invalid="{{ errEmCode }}" aria-describedby="ac-em-code-h" data-first="1" style="max-width:220px;">
+              <sc-if value="{{ hasErrEmCode }}"><p class="sx-err" id="ac-em-code-h"><i class="ri-error-warning-line"></i>{{ errEmCodeText }}</p></sc-if>
+              <sc-if value="{{ noErrEmCode }}"><p class="sx-hint" id="ac-em-code-h">Không thấy thư? Xem thư mục Quảng cáo hoặc Thư rác, rồi bấm Gửi lại mã.</p></sc-if></div>
+            <div class="sx-row"><button type="button" class="sx-btn gho sm" onClick="{{ onEmResend }}"><i class="ri-mail-send-line"></i><span class="sx-t">Gửi lại mã</span></button></div>
+          </div>
+          <div class="ac-df"><button type="button" class="sx-btn" onClick="{{ onEmBack }}"><i class="ri-arrow-left-line"></i><span class="sx-t">Quay lại</span></button><button type="button" class="sx-btn pri" onClick="{{ onEmConfirm }}" aria-disabled="{{ emBusyAttr }}"><span class="sx-t">{{ emConfirmLabel }}</span></button></div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ dlgPw }}">
+    <div class="ac-ov" onClick="{{ onDlgBackdrop }}">
+      <div class="ac-dlg" role="dialog" aria-modal="true" aria-labelledby="ac-dt-pw" onClick="{{ stop }}" onKeyDown="{{ onDlgKey }}" ref="{{ dlgRef }}">
+        <div class="ac-dh"><span class="ac-dic" data-k="{{ dlgIconK }}"><i class="{{ dlgIcon }}"></i></span><div><h2 id="ac-dt-pw">{{ dlgTitle }}</h2><p class="sx-rule">{{ dlgBody }}</p></div></div>
+        <sc-if value="{{ dlgAsk }}">
+          <div class="ac-db">
+            <div><label class="sx-lab" for="ac-dlg-pw">Nhập lại mật khẩu để xác nhận là bạn</label><div class="ac-pw" data-focus-wrap="true"><input id="ac-dlg-pw" type="password" autocomplete="current-password" value="{{ dlgPwVal }}" onChange="{{ onDlgPw }}" onKeyDown="{{ onDlgPwKey }}" aria-invalid="{{ errDlg }}" aria-describedby="ac-dlg-h"></div>
+              <sc-if value="{{ hasErrDlg }}"><p class="sx-err" id="ac-dlg-h"><i class="ri-error-warning-line"></i>{{ errDlgText }}</p></sc-if></div>
+          </div>
+          <div class="ac-df"><button type="button" class="sx-btn" onClick="{{ onDlgClose }}" data-first="1"><span class="sx-t">Hủy</span></button><button type="button" class="{{ dlgGoCls }}" onClick="{{ onDlgGo }}" aria-disabled="{{ dlgBusyAttr }}"><i class="{{ dlgIcon }}"></i><span class="sx-t">{{ dlgGoLabel }}</span></button></div>
+        </sc-if>
+        <sc-if value="{{ dlgCodes }}">
+          <div class="ac-db">
+            <div class="sx-al" data-k="warning">Bộ mã cũ không dùng được nữa. Lưu 8 mã mới ở nơi an toàn — mã chỉ hiện một lần này.</div>
+            <ul class="ac-codes ac-mono" aria-label="8 mã khôi phục mới"><sc-for list="{{ codes }}" as="cd" hint-placeholder-count="8"><li>{{ cd }}</li></sc-for></ul>
+            <div class="sx-row"><button type="button" class="sx-btn" onClick="{{ onDlCodes }}" data-first="1"><i class="ri-download-2-line"></i><span class="sx-t">Tải xuống</span></button><button type="button" class="sx-btn" onClick="{{ onCopyCodes }}"><i class="ri-file-copy-line"></i><span class="sx-t">{{ copyCodesLabel }}</span></button></div>
+          </div>
+          <div class="ac-df"><button type="button" class="sx-btn pri" onClick="{{ onDlgClose }}"><span class="sx-t">Xong</span></button></div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <div role="status" aria-live="polite" style="position:fixed;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">{{ toastText }}</div>
+  <sc-if value="{{ toastShow }}"><div class="ac-toast" aria-hidden="true"><i class="ri-checkbox-circle-line"></i><span>{{ toastText }}</span></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;plane&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Website&quot;,&quot;Nền tảng&quot;],&quot;default&quot;:&quot;Website&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;twofa&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chưa bật&quot;,&quot;Đã bật&quot;],&quot;default&quot;:&quot;Chưa bật&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;impersonating&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;simState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Bình thường&quot;,&quot;Đang tải&quot;,&quot;Lỗi tải&quot;,&quot;Vừa lưu&quot;],&quot;default&quot;:&quot;Bình thường&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;saveFail&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;profile&quot;,&quot;security&quot;,&quot;sessions&quot;,&quot;linked&quot;,&quot;prefs&quot;],&quot;default&quot;:&quot;profile&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Chủ website&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;onPref&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(k:string,v:string)=&gt;void&quot;},&quot;scheme&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;fontSize&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;motion&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;contrast&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;uiLang&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = this.init();
+  tw(k) { return this.props ? this.props[k] : undefined; }
+  isPlat() { const p = this.tw('plane'); return p === 'platform' || p === 'Nền tảng'; }
+  ro() { return !this.isPlat() && !!this.tw('impersonating'); }
+  user() {
+    const root = (window.BSPLAT && window.BSPLAT.rootDomain) ? window.BSPLAT.rootDomain() : 'example.net';
+    return this.isPlat()
+      ? { name: 'Trần Minh Quân', title: 'Trưởng nhóm vận hành', phone: '0912 345 678', email: 'quan.tran@' + root }
+      : { name: 'Nguyễn Ngọc Anh', title: 'Quản trị viên', phone: '0909 123 456', email: 'ngocanh@anvinh.vn' };
+  }
+  readUi() {
+    const o = { scheme: 'light', fontSize: 'normal', motion: 'auto', contrast: 'normal' };
+    try { const r = JSON.parse(localStorage.getItem('bs-ui') || 'null'); if (r && r.version === 1) ['scheme', 'fontSize', 'motion', 'contrast'].forEach(k => { if (typeof r[k] === 'string') o[k] = r[k]; }); else { const m = localStorage.getItem('bs-scheme'); if (m === 'dark' || m === 'light') o.scheme = m; } } catch (e) {}
+    if (this.props && this.props.bigText) o.fontSize = 'large';
+    return o;
+  }
+  init() {
+    const u = this.user(), plat = this.isPlat();
+    const tfaOn = this.tw('twofa') === 'Đã bật';
+    const tabs = ['profile', 'security', 'sessions', 'linked', 'prefs'];
+    let tab = tabs.indexOf(this.tw('startTab')) >= 0 ? this.tw('startTab') : 'profile';
+    if (plat && !tfaOn) tab = 'security';
+    const saved = { name: u.name, title: u.title, phone: u.phone };
+    return {
+      tab, simOver: null, prof: Object.assign({}, saved), profSaved: saved, touched: {}, profSt: this.tw('simState') === 'Vừa lưu' ? 'saved' : '', profAt: this.now(),
+      email: u.email, pw: { cur: '', nw: '', cf: '' }, pwShow: {}, pwTouched: {}, pwSubmit: false, pwErrCur: '', pwSt: '', pwDone: '',
+      tfa: tfaOn, tfaSince: '03/10/2026', tfaStep: 0, tfaCode: '', tfaErr: '', tfaBusy: false, codes: [], codesKept: false, codesLeft: 8, copied: false,
+      dlg: null, dlgPw: '', dlgErr: '', dlgBusy: false, dlgPhase: 'ask', em: { nw: '', pw: '', code: '' }, emErr: {}, emStep: 1, emBusy: false,
+      killed: [], ui: this.readUi(), lang: (this.props && this.props.uiLang) || 'vi', tz: 'site', prefSv: '', toast: ''
+    };
+  }
+  now() { try { return new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date()); } catch (e) { return '14:32'; } }
+  notify(t) { this.setState({ toast: t }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 3200); }
+  componentDidMount() {
+    this._pp = Object.assign({}, this.props);
+    this._cmd = (e) => { const d = (e && e.detail) || {}; if (d.id && d.id !== (this.props.embedId || 'account')) return; if (d.act === 'save') this.saveProfile(); if (d.act === 'reset') this.resetProfile(); };
+    document.addEventListener('bs-embed-cmd', this._cmd);
+    this._cwr = () => this.forceUpdate(); document.addEventListener('bs-cw-ready', this._cwr); /* D2-4: bảng thông báo đọc BSCW */
+    this._bu = (e) => { if (this.dirtyN() > 0) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', this._bu);
+    this._esc = (e) => { if (e.key === 'Escape' && this.state.dlg) { e.stopPropagation(); this.closeDlg(); } };
+    document.addEventListener('keydown', this._esc, true);
+    if (!this.props.embedded) this.applyUi(this.state.ui);
+    this.reportDirty();
+  }
+  componentWillUnmount() { document.removeEventListener('bs-embed-cmd', this._cmd); window.removeEventListener('beforeunload', this._bu); document.removeEventListener('keydown', this._esc, true); clearTimeout(this._tt); clearTimeout(this._t1); clearTimeout(this._t2); }
+  componentDidUpdate() {
+    const pp = this._pp || {}, p = this.props;
+    if (pp.plane !== p.plane || pp.twofa !== p.twofa) { const n = this.init(); n.ui = this.state.ui; this.setState(n); }
+    if (pp.simState !== p.simState) this.setState({ simOver: null, profSt: p.simState === 'Vừa lưu' ? 'saved' : this.state.profSt });
+    if (pp.startTab !== p.startTab && p.startTab) this.setState({ tab: p.startTab });
+    if (pp.bigText !== p.bigText && !p.embedded) this.setPref('fontSize', p.bigText ? 'large' : 'normal', true);
+    if (pp.uiLang !== p.uiLang && p.uiLang) this.setState({ lang: p.uiLang });
+    this._pp = Object.assign({}, p);
+    this.reportDirty();
+    if (this._focusNext) { const sel = this._focusNext; this._focusNext = null; setTimeout(() => { const r = this._root || document; const el = r.querySelector(sel); if (el) try { el.focus(); } catch (e) {} }, 30); }
+  }
+  dirtyN() { const S = this.state; let n = 0; ['name', 'title', 'phone'].forEach(k => { if ((S.prof[k] || '') !== (S.profSaved[k] || '')) n++; }); if (S.pw.cur || S.pw.nw || S.pw.cf) n++; return n; }
+  reportDirty() { const n = this.dirtyN(); if (n !== this._lastDirty) { this._lastDirty = n; if (typeof this.props.onDirty === 'function') try { this.props.onDirty(n); } catch (e) {} } }
+  profErrs() {
+    const p = this.state.prof, e = {}; const nm = (p.name || '').trim();
+    if (!nm) e.name = 'Nhập họ tên để đồng nghiệp nhận ra bạn, ví dụ Nguyễn Ngọc Anh.';
+    else if (nm.length > 120) e.name = 'Họ tên tối đa 120 ký tự — bớt ' + (nm.length - 120) + ' ký tự.';
+    if ((p.title || '').trim().length > 80) e.title = 'Chức danh tối đa 80 ký tự — bớt ' + ((p.title || '').trim().length - 80) + ' ký tự.';
+    const ph = (p.phone || '').replace(/\D/g, '');
+    if ((p.phone || '').trim() && !/^0\d{9}$/.test(ph)) e.phone = 'Số điện thoại cần 10 số, bắt đầu bằng 0, ví dụ 0901 234 567.';
+    return e;
+  }
+  setProf(k, v) { this.setState(s => ({ prof: Object.assign({}, s.prof, { [k]: v }), profSt: s.profSt === 'saved' || s.profSt === 'fail' ? '' : s.profSt })); }
+  saveProfile() {
+    const S = this.state; if (this.ro() || S.profSt === 'saving') return;
+    const e = this.profErrs(); const ks = Object.keys(e);
+    if (ks.length) { this.setState({ touched: { name: 1, title: 1, phone: 1 }, tab: 'profile' }); this._focusNext = '[data-err="' + ks[0] + '"]'; this.forceUpdate(); return; }
+    if (this.dirtyN() === 0 || ['name', 'title', 'phone'].every(k => (S.prof[k] || '') === (S.profSaved[k] || ''))) { this.notify('Không có thay đổi nào cần lưu.'); return; }
+    this.setState({ profSt: 'saving' });
+    clearTimeout(this._t1); this._t1 = setTimeout(() => {
+      if (this.props.saveFail) { this.setState({ profSt: 'fail' }); return; }
+      const clean = { name: this.state.prof.name.trim(), title: (this.state.prof.title || '').trim(), phone: (this.state.prof.phone || '').trim() };
+      this.setState({ prof: clean, profSaved: Object.assign({}, clean), profSt: 'saved', profAt: this.now(), touched: {} }); this.notify('Đã lưu hồ sơ.');
+    }, 700);
+  }
+  resetProfile() { this.setState(s => ({ prof: Object.assign({}, s.profSaved), touched: {}, profSt: '', pw: { cur: '', nw: '', cf: '' }, pwTouched: {}, pwSubmit: false, pwErrCur: '' })); }
+  strength(p) {
+    if (!p) return 0; if (this.breached(p)) return 1; if (p.length < 10) return 1;
+    let s = 1; if (p.length >= 14) s++; if (/\d/.test(p) && /[^\d]/.test(p)) s++; if (/[^\w\s]|_/.test(p) || (/[A-Z]/.test(p) && /[a-z]/.test(p))) s++; return Math.min(4, s);
+  }
+  breached(p) { return ['1234567890', '12345678910', '0123456789', 'matkhau123', 'password123', 'qwertyuiop', 'abc1234567', 'iloveyou123'].indexOf(String(p).toLowerCase()) >= 0; }
+  pwErrs() {
+    const S = this.state, p = S.pw, e = {}; const T = S.pwTouched, sub = S.pwSubmit;
+    if ((sub) && !p.cur) e.cur = 'Nhập mật khẩu bạn đang dùng.';
+    else if (S.pwErrCur) e.cur = S.pwErrCur;
+    if ((sub || T.nw) && p.nw.length < 10) e.nw = p.nw.length ? 'Mật khẩu mới cần ít nhất 10 ký tự — còn thiếu ' + (10 - p.nw.length) + ' ký tự.' : 'Nhập mật khẩu mới, ít nhất 10 ký tự.';
+    else if ((sub || T.nw) && this.breached(p.nw)) e.nw = 'Mật khẩu này đã bị lộ trên mạng nên dễ bị đoán. Chọn mật khẩu khác, ví dụ ghép vài từ bạn dễ nhớ.';
+    else if ((sub || T.nw) && p.cur && p.nw === p.cur) e.nw = 'Mật khẩu mới cần khác mật khẩu hiện tại.';
+    if ((sub || T.cf) && p.cf !== p.nw) e.cf = p.cf ? 'Hai mật khẩu chưa khớp. Gõ lại cho giống ô Mật khẩu mới.' : 'Nhập lại mật khẩu mới để chắc là bạn gõ đúng.';
+    return e;
+  }
+  setPw(k, v) { this.setState(s => ({ pw: Object.assign({}, s.pw, { [k]: v }), pwErrCur: k === 'cur' ? '' : s.pwErrCur, pwDone: '' })); }
+  changePw() {
+    if (this.ro() || this.state.pwSt === 'saving') return;
+    this.setState({ pwSubmit: true, pwErrCur: '' }, () => {
+      const e = this.pwErrs(); const ks = Object.keys(e);
+      if (ks.length) { this._focusNext = '[data-err="pw' + ks[0] + '"]'; this.forceUpdate(); return; }
+      this.setState({ pwSt: 'saving' });
+      clearTimeout(this._t2); this._t2 = setTimeout(() => {
+        if (this.state.pw.cur === 'sai') { this.setState({ pwSt: '', pwErrCur: 'Mật khẩu hiện tại chưa đúng. Gõ lại, hoặc đăng xuất rồi bấm "Quên mật khẩu" ở trang đăng nhập.' }); this._focusNext = '[data-err="pwcur"]'; this.forceUpdate(); return; }
+        if (this.props.saveFail) { this.setState({ pwSt: 'fail' }); return; }
+        const others = this.sesAll().filter(s => !s.cur).length;
+        this.setState(s => ({ pw: { cur: '', nw: '', cf: '' }, pwTouched: {}, pwSubmit: false, pwSt: '', pwShow: {}, killed: s.killed.concat(this.sesAll().filter(x => !x.cur).map(x => x.id)),
+          pwDone: 'Đã đổi mật khẩu.' + (others ? ' ' + others + ' thiết bị khác đã tự đăng xuất.' : '') }));
+        this.notify('Đã đổi mật khẩu.');
+      }, 700);
+    });
+  }
+  genCodes(seed) { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let x = seed * 7919 + 13; const out = []; for (let i = 0; i < 8; i++) { let a = ''; for (let j = 0; j < 8; j++) { x = (x * 1103515245 + 12345) % 2147483648; a += A[x % A.length]; if (j === 3) a += '-'; } out.push(a); } return out; }
+  codesText() { return 'Mã khôi phục — ' + this.state.email + '\nMỗi mã dùng một lần.\n\n' + this.state.codes.join('\n') + '\n'; }
+  copy(text, ok) { const done = (r) => { if (r === false) this.notify('Trình duyệt chặn sao chép — bôi đen các mã rồi chép tay.'); else ok(); }; try { if (window.BSUI && window.BSUI.copy) { window.BSUI.copy(text).then(done); return; } navigator.clipboard.writeText(text).then(() => done(true), () => done(false)); } catch (e) { done(false); } }
+  download() { try { const b = new Blob([this.codesText()], { type: 'text/plain;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'ma-khoi-phuc.txt'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500); this.notify('Đã tải xuống tệp ma-khoi-phuc.txt.'); } catch (e) { this.notify('Chưa tải được — bấm Sao chép rồi dán vào ghi chú.'); } }
+  tfaConfirm() {
+    const c = this.state.tfaCode.replace(/\s/g, '');
+    if (!/^\d{6}$/.test(c)) { this.setState({ tfaErr: 'Mã gồm đúng 6 số, ví dụ 123 456.' }); this._focusNext = '#ac-tfa-code'; return; }
+    this.setState({ tfaBusy: true });
+    setTimeout(() => {
+      if (c === '000000') { this.setState({ tfaBusy: false, tfaErr: 'Mã không hợp lệ. Mở ứng dụng và nhập 6 số đang hiện — mã đổi sau mỗi 30 giây.' }); this._focusNext = '#ac-tfa-code'; this.forceUpdate(); return; }
+      this.setState({ tfaBusy: false, tfa: true, tfaStep: 3, tfaCode: '', tfaErr: '', codes: this.genCodes(1), codesKept: false, codesLeft: 8, copied: false, tfaSince: this.today() });
+      this.notify('Đã bật xác thực 2 lớp.');
+    }, 600);
+  }
+  today() { try { return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date()); } catch (e) { return '07/10/2026'; } }
+  openDlg(kind, opener) { if (this.ro()) return; this._opener = opener || document.activeElement; this.setState({ dlg: kind, dlgPw: '', dlgErr: '', dlgBusy: false, dlgPhase: 'ask', em: { nw: '', pw: '', code: '' }, emErr: {}, emStep: 1, emBusy: false, copied: false }); this._focusNext = '.ac-dlg [data-first="1"]'; }
+  closeDlg() { const o = this._opener; this.setState({ dlg: null }); setTimeout(() => { try { if (o && o.focus) o.focus(); } catch (e) {} }, 30); }
+  dlgGo() {
+    const S = this.state; if (S.dlgBusy) return;
+    if (!S.dlgPw) { this.setState({ dlgErr: 'Nhập mật khẩu bạn đang dùng.' }); this._focusNext = '#ac-dlg-pw'; return; }
+    this.setState({ dlgBusy: true });
+    setTimeout(() => {
+      if (this.state.dlgPw === 'sai') { this.setState({ dlgBusy: false, dlgErr: 'Mật khẩu chưa đúng. Gõ lại — chú ý chữ hoa và bộ gõ tiếng Việt.' }); this._focusNext = '#ac-dlg-pw'; this.forceUpdate(); return; }
+      if (this.state.dlg === 'disable') { this.setState({ tfa: false, tfaStep: 0, dlgBusy: false }); this.closeDlg(); this.notify('Đã tắt xác thực 2 lớp. Đã gửi cảnh báo tới chuông và email của bạn.'); return; }
+      this.setState({ dlgBusy: false, dlgPhase: 'codes', codes: this.genCodes(Date.now() % 997), codesLeft: 8, copied: false }); this._focusNext = '.ac-dlg [data-first="1"]'; this.forceUpdate();
+    }, 600);
+  }
+  emSend() {
+    const S = this.state, e = {}; const v = (S.em.nw || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) e.nw = 'Email chưa đúng dạng, ví dụ ten@congty.vn.';
+    else if (v.toLowerCase() === S.email.toLowerCase()) e.nw = 'Đây là email bạn đang dùng. Nhập địa chỉ mới.';
+    if (!S.em.pw) e.pw = 'Nhập mật khẩu bạn đang dùng để xác nhận là bạn.';
+    else if (S.em.pw === 'sai') e.pw = 'Mật khẩu chưa đúng. Gõ lại — chú ý chữ hoa và bộ gõ tiếng Việt.';
+    if (Object.keys(e).length) { this.setState({ emErr: e }); this._focusNext = e.nw ? '#ac-em-new' : '#ac-em-pw'; return; }
+    this.setState({ emBusy: true }); setTimeout(() => { this.setState({ emBusy: false, emStep: 2, emErr: {} }); this._focusNext = '#ac-em-code'; this.forceUpdate(); }, 600);
+  }
+  emConfirm() {
+    const c = (this.state.em.code || '').replace(/\s/g, '');
+    if (!/^\d{6}$/.test(c)) { this.setState({ emErr: { code: 'Mã gồm đúng 6 số, ví dụ 123 456.' } }); this._focusNext = '#ac-em-code'; return; }
+    if (c === '000000') { this.setState({ emErr: { code: 'Mã chưa đúng. Mở thư mới nhất gửi tới ' + this.state.em.nw.trim() + ' và nhập 6 số trong thư.' } }); this._focusNext = '#ac-em-code'; return; }
+    this.setState({ emBusy: true }); setTimeout(() => { const nw = this.state.em.nw.trim(); this.setState({ emBusy: false, email: nw }); this.closeDlg(); this.notify('Đã đổi email đăng nhập. Đã gửi thư báo tới địa chỉ cũ.'); }, 600);
+  }
+  sesAll() {
+    const site = this.isPlat() ? 'Trang quản trị nền tảng' : 'Cơ Khí Chính Xác An Vinh';
+    return [
+      { id: 'a', icon: 'ri-computer-line', device: 'Máy tính Windows', browser: 'Chrome', site, where: 'Hà Nội', last: 'Đang hoạt động', cur: true },
+      { id: 'b', icon: 'ri-smartphone-line', device: 'iPhone', browser: 'Safari', site, where: 'TP. Hồ Chí Minh', last: 'Hoạt động 2 giờ trước' },
+      { id: 'c', icon: 'ri-macbook-line', device: 'Máy tính Mac', browser: 'Chrome', site: this.isPlat() ? site : 'Nội Thất Minh Phát', where: 'Đà Nẵng', last: 'Hoạt động hôm qua lúc 21:15' },
+      { id: 'd', icon: 'ri-android-line', device: 'Điện thoại Android', browser: 'Samsung Internet', site, where: 'Hải Phòng', last: 'Hoạt động 03/10/2026 lúc 08:40' }
+    ];
+  }
+  outSes(ids, label) { if (this.ro()) return; this.setState(s => ({ killed: s.killed.concat(ids) })); this.notify(label); }
+  getPref(k) { const p = this.props; if (p.embedded) { const m = { scheme: p.scheme, fontSize: p.fontSize, motion: p.motion, contrast: p.contrast }; if (m[k] != null) return m[k]; } return this.state.ui[k]; }
+  setPref(k, v, silent) {
+    if (this.ro() && !silent) return;
+    const ui = Object.assign({}, this.state.ui, { [k]: v });
+    this.setState({ ui, prefSv: silent ? this.state.prefSv : 'Đã lưu — áp dụng ngay' });
+    if (this.props.embedded && typeof this.props.onPref === 'function') { try { this.props.onPref(k, v); } catch (e) {} return; }
+    try { let o = null; try { o = JSON.parse(localStorage.getItem('bs-ui') || 'null'); } catch (e) {} if (!o || o.version !== 1) o = { version: 1 }; o[k] = v; localStorage.setItem('bs-ui', JSON.stringify(o)); } catch (e) {}
+    this.applyUi(ui);
+  }
+  applyUi(ui) {
+    try { const dark = ui.scheme === 'dark' || (ui.scheme === 'auto' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches); document.documentElement.setAttribute('data-bs-theme', dark ? 'dark' : 'light'); localStorage.setItem('bs-scheme', dark ? 'dark' : 'light'); } catch (e) {}
+  }
+  setLang(k) { if (this.ro()) return; this.setState({ lang: k, prefSv: 'Đã lưu — áp dụng ngay' }); if (this.props.embedded && typeof this.props.onPref === 'function') { try { this.props.onPref('lang', k); } catch (e) {} } }
+  tabKey(e) {
+    const T = ['profile', 'security', 'sessions', 'linked', 'prefs']; const i = T.indexOf(this.state.tab); let n = -1;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') n = (i + 1) % T.length; else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') n = (i + T.length - 1) % T.length; else if (e.key === 'Home') n = 0; else if (e.key === 'End') n = T.length - 1;
+    if (n < 0) return; e.preventDefault(); this.setState({ tab: T[n] }); this._focusNext = '#ac-tab-' + T[n];
+  }
+  trap(e) {
+    if (e.key !== 'Tab') return; const d = e.currentTarget; const f = Array.prototype.filter.call(d.querySelectorAll('button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])'), el => !el.disabled && el.offsetParent !== null);
+    if (!f.length) return; const a = f[0], z = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+  }
+  /* D2-4 · Tùy chọn thông báo: bảng loại × kênh đọc BSCW.notices.KINDS (= NotificationKinds::all); chỉ hiện loại nhóm quyền này nhận được (dòng tên miền cần domains.manage). */
+  ntfGroups(ro, notes) {
+    const N = window.BSCW && window.BSCW.notices; if (!N || !N.KINDS) return [];
+    const role = (this.props && this.props.role) || 'Chủ website';
+    const ok = () => this.setState({ ntfSv: 'Đã lưu — áp dụng ngay' });
+    return N.GROUPS.map(g => ({ icon: g.icon, label: g.l, rows: N.KINDS.filter(K => K.g === g.k && N.gets(role, K.k) && (notes || K.backend !== 'proposed')).map(K => {
+      const inOn = N.pref(K.k, 'in_app'), mailOn = N.pref(K.k, 'mail'), nt = [];
+      if (notes && K.backend === 'unsent') nt.push({ k: '', i: 'ri-tools-line', t: 'Chờ backend: loại có nhưng chưa phát' });
+      if (notes && K.backend === 'proposed') nt.push({ k: '', i: 'ri-tools-line', t: 'Chờ backend: loại mới' });
+      if (notes && K.backend === 'sent' && !K.mailSent && !K.locked) nt.push({ k: '', i: 'ri-tools-line', t: 'Chờ backend: chưa gửi thư cho loại này' });
+      if (notes && K.owner) nt.push({ k: 'owner', i: 'ri-question-line', t: 'Cần owner chốt: thêm thư cho khách liên hệ' });
+      return { label: K.l, desc: K.d, locked: !!K.locked, free: !K.locked, hasNotes: nt.length > 0, notes: nt,
+        extra: K.k === 'lead.new' ? 'Mỗi biểu mẫu đã gửi thư báo riêng tới email nhận của biểu mẫu — bật Email ở đây là nhận thêm một thư.' : '',
+        inOn: String(!!inOn), mailOn: String(!!mailOn), inState: K.locked ? 'Luôn bật' : (inOn ? 'Đang bật' : 'Đang tắt'), mailState: K.locked ? 'Luôn bật' : (mailOn ? 'Đang bật' : 'Đang tắt'),
+        inAria: 'Trong ứng dụng: ' + K.l, mailAria: 'Email: ' + K.l,
+        onIn: () => { if (ro) return; N.setPref(K.k, 'in_app', !inOn, 'acct'); ok(); }, onMail: () => { if (ro) return; N.setPref(K.k, 'mail', !mailOn, 'acct'); ok(); } };
+    }) })).filter(g => g.rows.length);
+  }
+  renderVals() {
+    const S = this.state, P = this.props || {}, plat = this.isPlat(), ro = this.ro(), notes = P.showNotes !== false;
+    const sim = S.simOver || (P.simState === 'Đang tải' ? 'loading' : P.simState === 'Lỗi tải' ? 'error' : 'ok');
+    const words = (S.prof.name || '').trim().split(/\s+/).filter(Boolean);
+    const initials = (words.length >= 2 ? words[words.length - 2][0] + words[words.length - 1][0] : (words[0] || '?').slice(0, 2)).toUpperCase();
+    const pe = this.profErrs(), T = S.touched;
+    const show = (k) => !!(T[k] && pe[k]);
+    const dirtyProf = ['name', 'title', 'phone'].some(k => (S.prof[k] || '') !== (S.profSaved[k] || ''));
+    const pwe = this.pwErrs(), st = this.strength(S.pw.nw);
+    const ST = [null, ['Yếu', S.pw.nw && this.breached(S.pw.nw) ? 'mật khẩu này đã bị lộ, chọn mật khẩu khác.' : 'thêm ký tự cho đủ 10.', 'ri-error-warning-line'], ['Trung bình', 'thêm số hoặc ký tự như - _ ! để mạnh hơn.', 'ri-alert-line'], ['Mạnh', 'dùng được.', 'ri-checkbox-circle-line'], ['Rất mạnh', 'rất khó đoán.', 'ri-shield-check-line']];
+    const TABS = [['profile', 'Hồ sơ', 'ri-user-3-line'], ['security', 'Bảo mật', 'ri-shield-keyhole-line'], ['sessions', 'Phiên đăng nhập', 'ri-computer-line'], ['linked', 'Tài khoản liên kết', 'ri-links-line'], ['prefs', 'Tùy chọn', 'ri-settings-3-line']];
+    const sesL = this.sesAll().filter(s => s.cur || S.killed.indexOf(s.id) < 0);
+    const others = sesL.filter(s => !s.cur);
+    const sessions = sesL.map(s => ({ icon: s.icon, device: s.device, cur: !!s.cur, canOut: !s.cur, meta: [s.browser, s.site, s.where, s.last].join(' · '), outL: 'Đăng xuất ' + s.device + ' (' + s.browser + ')', out: () => this.outSes([s.id], 'Đã đăng xuất ' + s.device + '.') }));
+    const sch = this.getPref('scheme'), fs = this.getPref('fontSize'), mo = this.getPref('motion') || 'auto', hc = this.getPref('contrast') === 'high';
+    const tzName = { site: 'múi giờ của website (GMT+7)', 'Asia/Bangkok': 'Bangkok (GMT+7)', 'Asia/Singapore': 'Singapore (GMT+8)', 'Asia/Tokyo': 'Tokyo (GMT+9)' }[S.tz];
+    const tzTime = (() => { try { return new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric', hour12: false, timeZone: S.tz === 'site' ? 'Asia/Ho_Chi_Minh' : S.tz }).format(new Date()); } catch (e) { return '14:32 07/10/2026'; } })();
+    const roAttr = ro ? 'true' : undefined, lockDesc = ro ? 'ac-lockwhy' : undefined;
+    const tfaStep = S.tfaStep;
+    const dlgKind = S.dlg;
+    const frameOk = !P.embedded && P.showFrames !== false && (function () { try { return window.location.hash !== '#frame'; } catch (e) { return false; } })();
+    const profSv = S.profSt === 'saving' ? ['', 'ri-loader-4-line', 'Đang lưu…'] : S.profSt === 'saved' ? ['ok', 'ri-checkbox-circle-line', 'Đã lưu lúc ' + S.profAt] : S.profSt === 'fail' ? ['bad', 'ri-wifi-off-line', 'Chưa lưu được vì mất kết nối. Chữ bạn nhập vẫn còn — bấm Thử lại.'] : dirtyProf ? ['', 'ri-edit-line', 'Có thay đổi chưa lưu'] : ['', 'ri-checkbox-circle-line', 'Đã lưu'];
+    return {
+      fsAttr: !P.embedded && fs === 'large' ? 'l' : 'n', embAttr: P.embedded ? '1' : '0', motionAttr: mo,
+      rootRef: this._rr || (this._rr = (el) => { this._root = el; }),
+      ownHeader: !P.embedded, initials, shownName: (S.profSaved.name || '').trim() || 'Chưa có tên', email: S.email,
+      roleLabel: plat ? 'Quản trị nền tảng' : (P.role || 'Quản trị viên'), planeLabel: plat ? 'Nền tảng ' + ((window.BSPLAT && window.BSPLAT.name) ? window.BSPLAT.name() : '') : 'Website: Cơ Khí Chính Xác An Vinh', planeIcon: plat ? 'ri-server-line' : 'ri-global-line',
+      ro, roAttr, lockDesc, notes, isPlat: plat, need2fa: plat && !S.tfa && sim === 'ok',
+      isLoading: sim === 'loading', isError: sim === 'error', isReady: sim === 'ok',
+      onRetry: () => { this.setState({ simOver: 'loading' }); setTimeout(() => this.setState({ simOver: 'ok' }), 700); },
+      tab: S.tab, panelLabel: 'ac-tab-' + S.tab, onTabKey: (e) => this.tabKey(e), onTabSelect: (e) => this.setState({ tab: e.target.value }),
+      tabs: TABS.map(t => ({ tid: 'ac-tab-' + t[0], label: t[1], icon: t[2], sel: String(S.tab === t[0]), ti: S.tab === t[0] ? '0' : '-1', unsaved: (t[0] === 'profile' && dirtyProf) || (t[0] === 'security' && !!(S.pw.cur || S.pw.nw || S.pw.cf)), go: () => this.setState({ tab: t[0] }) })),
+      tabProfile: S.tab === 'profile', tabSecurity: S.tab === 'security', tabSessions: S.tab === 'sessions', tabLinked: S.tab === 'linked', tabPrefs: S.tab === 'prefs',
+      prof: S.prof, nameCount: (S.prof.name || '').trim().length + '/120 ký tự.',
+      onName: (e) => this.setProf('name', e.target.value), onTitle: (e) => this.setProf('title', e.target.value), onPhone: (e) => this.setProf('phone', e.target.value),
+      onBlurName: () => this.setState(s => ({ touched: Object.assign({}, s.touched, { name: 1 }) })), onBlurTitle: () => this.setState(s => ({ touched: Object.assign({}, s.touched, { title: 1 }) })), onBlurPhone: () => this.setState(s => ({ touched: Object.assign({}, s.touched, { phone: 1 }) })),
+      errName: show('name') ? 'true' : undefined, hasErrName: show('name'), noErrName: !show('name'), errNameText: pe.name || '',
+      errTitle: show('title') ? 'true' : undefined, hasErrTitle: show('title'), noErrTitle: !show('title'), errTitleText: pe.title || '',
+      errPhone: show('phone') ? 'true' : undefined, hasErrPhone: show('phone'), noErrPhone: !show('phone'), errPhoneText: pe.phone || '',
+      onOpenEmail: (e) => this.openDlg('email', e.currentTarget),
+      onSaveProfile: () => this.saveProfile(), onResetProfile: () => this.resetProfile(), profDirty: dirtyProf && !ro,
+      profBtnDis: (ro || S.profSt === 'saving') ? 'true' : undefined, profBtnLabel: S.profSt === 'saving' ? 'Đang lưu…' : 'Lưu hồ sơ',
+      profSvK: profSv[0], profSvIcon: profSv[1], profSvText: profSv[2], profFail: S.profSt === 'fail',
+      pw: S.pw, pwDone: !!S.pwDone, pwDoneText: S.pwDone,
+      pwCurType: S.pwShow.cur ? 'text' : 'password', pwNewType: S.pwShow.nw ? 'text' : 'password', pwCfType: S.pwShow.cf ? 'text' : 'password',
+      onShowCur: () => this.setState(s => ({ pwShow: Object.assign({}, s.pwShow, { cur: !s.pwShow.cur }) })), onShowNew: () => this.setState(s => ({ pwShow: Object.assign({}, s.pwShow, { nw: !s.pwShow.nw }) })), onShowCf: () => this.setState(s => ({ pwShow: Object.assign({}, s.pwShow, { cf: !s.pwShow.cf }) })),
+      showCurP: String(!!S.pwShow.cur), showCurL: S.pwShow.cur ? 'Ẩn mật khẩu' : 'Hiện mật khẩu', showCurI: S.pwShow.cur ? 'ri-eye-off-line' : 'ri-eye-line',
+      showNewP: String(!!S.pwShow.nw), showNewL: S.pwShow.nw ? 'Ẩn mật khẩu' : 'Hiện mật khẩu', showNewI: S.pwShow.nw ? 'ri-eye-off-line' : 'ri-eye-line',
+      showCfP: String(!!S.pwShow.cf), showCfL: S.pwShow.cf ? 'Ẩn mật khẩu' : 'Hiện mật khẩu', showCfI: S.pwShow.cf ? 'ri-eye-off-line' : 'ri-eye-line',
+      onPwCur: (e) => this.setPw('cur', e.target.value), onPwNew: (e) => this.setPw('nw', e.target.value), onPwCf: (e) => this.setPw('cf', e.target.value),
+      onBlurPwNew: () => { if (S.pw.nw) this.setState(s => ({ pwTouched: Object.assign({}, s.pwTouched, { nw: 1 }) })); }, onBlurPwCf: () => { if (S.pw.cf) this.setState(s => ({ pwTouched: Object.assign({}, s.pwTouched, { cf: 1 }) })); },
+      errPwCur: pwe.cur ? 'true' : undefined, hasErrPwCur: !!pwe.cur, errPwCurText: pwe.cur || '',
+      errPwNew: pwe.nw ? 'true' : undefined, hasErrPwNew: !!pwe.nw, noErrPwNew: !pwe.nw, errPwNewText: pwe.nw || '',
+      errPwCf: pwe.cf ? 'true' : undefined, hasErrPwCf: !!pwe.cf, errPwCfText: pwe.cf || '',
+      hasStrength: !!S.pw.nw, stS: String(st), stLabel: st ? ST[st][0] : '', stTip: st ? ST[st][1] : '', stIcon: st ? ST[st][2] : '',
+      onChangePw: () => this.changePw(), pwBtnDis: (ro || S.pwSt === 'saving') ? 'true' : undefined, pwBtnLabel: S.pwSt === 'saving' ? 'Đang đổi…' : 'Đổi mật khẩu',
+      pwSvK: S.pwSt === 'fail' ? 'bad' : '', pwSvText: S.pwSt === 'fail' ? 'Chưa đổi được vì mất kết nối. Chữ bạn nhập vẫn còn — bấm Đổi mật khẩu lần nữa.' : '',
+      tfaOn: S.tfa, tfaOff: !S.tfa, tfaIdle: !S.tfa && tfaStep === 0, tfaStep1: !S.tfa && tfaStep === 1, tfaStep2: !S.tfa && tfaStep === 2, tfaStep3: S.tfa && tfaStep === 3, tfaActive: S.tfa && tfaStep !== 3,
+      tfaKey: 'JBSW Y3DP EHPK 3PXP', onCopyKey: () => this.copy('JBSWY3DPEHPK3PXP', () => this.notify('Đã sao chép khóa.')),
+      onStartTfa: () => { if (ro) return; this.setState({ tfaStep: 1 }); }, onTfaNext: () => { this.setState({ tfaStep: 2, tfaErr: '' }); this._focusNext = '#ac-tfa-code'; }, onTfaCancel: () => this.setState({ tfaStep: 0, tfaCode: '', tfaErr: '' }), onTfaBack: () => this.setState({ tfaStep: 1, tfaErr: '' }),
+      tfaCode: S.tfaCode, onTfaCode: (e) => this.setState({ tfaCode: e.target.value, tfaErr: '' }), onTfaCodeKey: (e) => { if (e.key === 'Enter') this.tfaConfirm(); },
+      errTfa: S.tfaErr ? 'true' : undefined, hasErrTfa: !!S.tfaErr, noErrTfa: !S.tfaErr, errTfaText: S.tfaErr,
+      onTfaConfirm: () => { if (!S.tfaBusy) this.tfaConfirm(); }, tfaBusyAttr: S.tfaBusy ? 'true' : undefined, tfaConfirmLabel: S.tfaBusy ? 'Đang kiểm tra…' : 'Xác nhận và bật',
+      codes: S.codes, onDlCodes: () => this.download(), onCopyCodes: () => this.copy(this.codesText(), () => { this.setState({ copied: true }); this.notify('Đã sao chép 8 mã khôi phục.'); }), copyCodesLabel: S.copied ? 'Đã sao chép' : 'Sao chép',
+      codesKept: S.codesKept, onCodesKept: (e) => this.setState({ codesKept: !!e.target.checked }), doneDis: S.codesKept ? undefined : 'true', doneHint: S.codesKept ? '' : 'Đánh dấu ô "Tôi đã lưu" ở trên để xong.',
+      onTfaDone: () => { if (!S.codesKept) return; this.setState({ tfaStep: 0, codes: [] }); this.notify('Xác thực 2 lớp đã sẵn sàng.'); },
+      tfaSince: S.tfaSince, codesLeft: S.codesLeft, canDisable: !plat,
+      onOpenRegen: (e) => this.openDlg('regen', e.currentTarget), onOpenDisable: (e) => this.openDlg('disable', e.currentTarget),
+      sessions, sesOnlyMe: others.length === 0, outAllDis: (ro || others.length === 0) ? 'true' : undefined,
+      sesIntro: others.length ? 'Thấy thiết bị lạ? Đăng xuất thiết bị đó rồi đổi mật khẩu ở mục Bảo mật. Thiết bị bị đăng xuất cần đăng nhập lại.' : 'Không còn thiết bị nào khác để đăng xuất.',
+      onOutAll: () => { if (ro || !others.length) return; this.outSes(others.map(s => this.sesAll().find(x => x.device === s.device).id), 'Đã đăng xuất ' + others.length + ' thiết bị khác.'); },
+      accType: plat ? 'platform' : 'site', linkedCls: ro ? 'ac-lk' : '',
+      linkedRef: this._lr || (this._lr = (el) => { this._linked = el; if (el) el.inert = this.ro(); }),
+      prefSv: S.prefSv, lgVi: S.lang === 'vi', lgEn: S.lang === 'en', lgJa: S.lang === 'ja', lgZh: S.lang === 'zh',
+      onLgVi: () => this.setLang('vi'), onLgEn: () => this.setLang('en'), onLgJa: () => this.setLang('ja'), onLgZh: () => this.setLang('zh'),
+      schL: String(sch === 'light'), schD: String(sch === 'dark'), schA: String(sch === 'auto'), onSchL: () => this.setPref('scheme', 'light'), onSchD: () => this.setPref('scheme', 'dark'), onSchA: () => this.setPref('scheme', 'auto'),
+      fsN: String(fs !== 'large'), fsL: String(fs === 'large'), onFsN: () => this.setPref('fontSize', 'normal'), onFsL: () => this.setPref('fontSize', 'large'),
+      moA: String(mo === 'auto'), moR: String(mo === 'reduce'), moF: String(mo === 'full'), onMoA: () => this.setPref('motion', 'auto'), onMoR: () => this.setPref('motion', 'reduce'), onMoF: () => this.setPref('motion', 'full'),
+      hcOn: String(hc), hcState: hc ? 'Đang bật' : 'Đang tắt', onHc: () => this.setPref('contrast', hc ? 'normal' : 'high'),
+      tz: S.tz, onTz: (e) => { if (!ro) this.setState({ tz: e.target.value, prefSv: 'Đã lưu — áp dụng ngay' }); }, tzHint: 'Giờ trong trang quản trị đang hiện theo ' + tzName + ': ' + tzTime + '.',
+      ntfPlat: plat, ntfSite: !plat, ntfGroups: this.ntfGroups(ro, notes), ntfSv: S.ntfSv || '',
+      digOn: String(!!(window.BSCW && window.BSCW.notices && window.BSCW.notices.digest())), digState: (window.BSCW && window.BSCW.notices && window.BSCW.notices.digest()) ? 'Đang bật' : 'Đang tắt',
+      onDig: () => { const N = window.BSCW && window.BSCW.notices; if (ro || !N) return; N.digest(!N.digest(), 'acct'); this.setState({ ntfSv: 'Đã lưu — áp dụng ngay' }); },
+      onOpenNtf: () => { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: 'notifications', params: {} } })); } catch (e) {} if (!P.embedded) this.notify('Trong trang quản trị, nút này mở trang Thông báo.'); },
+      framesShow: frameOk && sim === 'ok', frameSrc: (function () { try { return window.location.pathname.split('/').pop() + '#frame'; } catch (e) { return '#frame'; } })(),
+      dlgEmail: dlgKind === 'email', dlgPw: dlgKind === 'disable' || dlgKind === 'regen',
+      stop: (e) => e.stopPropagation(), onDlgBackdrop: () => this.closeDlg(), onDlgClose: () => this.closeDlg(), onDlgKey: (e) => this.trap(e),
+      dlgRef: this._dr || (this._dr = (el) => { this._dlgEl = el; }),
+      emS1: S.emStep === 1, emS2: S.emStep === 2, em: S.em,
+      emStepText: S.emStep === 1 ? 'Bước 1/2 · Nhập email mới và mật khẩu. Hệ thống gửi mã 6 số tới email mới.' : 'Bước 2/2 · Đã gửi mã 6 số tới ' + (S.em.nw || '').trim() + '.',
+      onEmNew: (e) => this.setState({ em: Object.assign({}, S.em, { nw: e.target.value }), emErr: Object.assign({}, S.emErr, { nw: '' }) }), onEmPw: (e) => this.setState({ em: Object.assign({}, S.em, { pw: e.target.value }), emErr: Object.assign({}, S.emErr, { pw: '' }) }), onEmCode: (e) => this.setState({ em: Object.assign({}, S.em, { code: e.target.value }), emErr: {} }),
+      errEmNew: S.emErr.nw ? 'true' : undefined, hasErrEmNew: !!S.emErr.nw, errEmNewText: S.emErr.nw || '',
+      errEmPw: S.emErr.pw ? 'true' : undefined, hasErrEmPw: !!S.emErr.pw, errEmPwText: S.emErr.pw || '',
+      errEmCode: S.emErr.code ? 'true' : undefined, hasErrEmCode: !!S.emErr.code, noErrEmCode: !S.emErr.code, errEmCodeText: S.emErr.code || '',
+      onEmSend: () => { if (!S.emBusy) this.emSend(); }, onEmConfirm: () => { if (!S.emBusy) this.emConfirm(); }, onEmBack: () => this.setState({ emStep: 1, emErr: {} }), onEmResend: () => this.notify('Đã gửi lại mã tới ' + (S.em.nw || '').trim() + '.'),
+      emBusyAttr: S.emBusy ? 'true' : undefined, emSendLabel: S.emBusy ? 'Đang gửi…' : 'Gửi mã xác minh', emConfirmLabel: S.emBusy ? 'Đang đổi…' : 'Xác nhận đổi email',
+      dlgAsk: S.dlgPhase === 'ask', dlgCodes: S.dlgPhase === 'codes',
+      dlgTitle: dlgKind === 'disable' ? 'Tắt xác thực 2 lớp?' : (S.dlgPhase === 'codes' ? 'Mã khôi phục mới' : 'Tạo lại mã khôi phục?'),
+      dlgBody: dlgKind === 'disable' ? 'Tài khoản chỉ còn mật khẩu bảo vệ. Hệ thống ghi lại việc này và gửi cảnh báo tới chuông và email của bạn. Muốn bật lại phải quét mã QR từ đầu.' : (S.dlgPhase === 'codes' ? '8 mã cũ đã ngừng dùng.' : '8 mã cũ sẽ ngừng dùng ngay, kể cả mã bạn đã in hoặc chép. Không hoàn tác được.'),
+      dlgIcon: dlgKind === 'disable' ? 'ri-shield-cross-line' : 'ri-refresh-line', dlgIconK: dlgKind === 'disable' ? 'danger' : '',
+      dlgGoCls: dlgKind === 'disable' ? 'sx-btn dan' : 'sx-btn pri', dlgGoLabel: S.dlgBusy ? 'Đang kiểm tra…' : (dlgKind === 'disable' ? 'Tắt xác thực 2 lớp' : 'Tạo 8 mã mới'),
+      dlgPwVal: S.dlgPw, onDlgPw: (e) => this.setState({ dlgPw: e.target.value, dlgErr: '' }), onDlgPwKey: (e) => { if (e.key === 'Enter') this.dlgGo(); }, onDlgGo: () => this.dlgGo(), dlgBusyAttr: S.dlgBusy ? 'true' : undefined,
+      errDlg: S.dlgErr ? 'true' : undefined, hasErrDlg: !!S.dlgErr, errDlgText: S.dlgErr,
+      toastShow: !!S.toast, toastText: S.toast
+    };
+  }
+}
+</script>
+</body>
+</html>

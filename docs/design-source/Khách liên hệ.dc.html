@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./content-workflow.js"></script>
+<script src="./content-ui.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765)}
+a{color:var(--color-accent,#2050a0);text-decoration:none}a:hover{color:var(--color-accent,#2050a0);text-decoration:underline}
+.kl-root{font-size:calc(14px + var(--fsp));line-height:1.5}
+.kl-root[data-big="1"]{--fsp:2px}
+.kl-c{container:kl/inline-size;display:flex;flex-direction:column;gap:16px;padding:24px;max-width:1440px;margin:0 auto;box-sizing:border-box;min-height:100dvh}
+.kl-c[data-emb="1"]{padding:0;max-width:none;min-height:0}
+.kl-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px 16px}
+.kl-hl{flex:1 1 320px;min-width:0}
+.kl-h1{margin:0;font-size:calc(20px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4}
+.kl-desc{margin:4px 0 0;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.kl-acts{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.kl-c[data-emb="0"] .kl-acts{margin-top:2px}
+.kl-notes{display:flex;flex-wrap:wrap;gap:6px}
+.kl-card{background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15);min-width:0}
+.kl-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.kl-tabs{display:flex;align-items:flex-end;gap:2px;padding:4px 8px 0;border-bottom:1px solid var(--color-border,#e9ecf4);overflow-x:auto;scrollbar-width:none}
+.kl-tabs::-webkit-scrollbar{display:none}
+.kl-tab{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 10px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));color:var(--color-body-text,#3c4765);white-space:nowrap;cursor:pointer}
+.kl-tab[aria-selected="true"]{color:var(--color-accent,#2050a0);border-bottom-color:var(--color-accent,#2050a0);font-weight:600}
+.kl-n{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765);font-size:calc(12px + var(--fsp));font-weight:600;font-variant-numeric:tabular-nums}
+.kl-n[data-hot="1"]{background:var(--color-admin-primary,#2050a0);color:var(--color-white,#fff)}
+.kl-tools{display:flex;flex-wrap:wrap;gap:8px;padding:12px}
+.kl-tools .sx-search{flex:1 1 220px;min-width:0}
+.kl-fb{position:relative;flex:0 0 auto}
+.kl-fb .sx-btn .kl-n{margin-left:2px}
+.kl-pop{position:absolute;top:calc(100% + 6px);z-index:60;width:300px;max-width:calc(100cqw - 24px);background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;box-shadow:0 8px 24px rgba(15,23,41,.16);display:flex;flex-direction:column}
+.kl-pop.l{left:0}.kl-pop.r{right:0}
+.kl-pop-b{padding:8px 12px;display:flex;flex-direction:column;gap:2px;max-height:320px;overflow:auto}
+.kl-pop-f{display:flex;gap:8px;justify-content:flex-end;padding:8px 12px;border-top:1px solid var(--color-border,#e9ecf4)}
+.kl-ck{display:flex;align-items:center;gap:10px;min-height:40px;cursor:pointer;color:var(--color-heading,#1f2b4d)}
+.kl-ck input{width:18px;height:18px;margin:0;flex:0 0 auto;accent-color:var(--color-admin-primary,#2050a0)}
+.kl-ck span{flex:1 1 auto;min-width:0}
+.kl-ck em{font-style:normal;color:var(--color-body-muted,#5b6275);font-variant-numeric:tabular-nums}
+.kl-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:4px 0 8px}
+.kl-act{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;padding:0 12px 12px;font-size:calc(13px + var(--fsp))}
+.kl-fc{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 4px 0 10px;border:1px solid var(--color-border-input,#8a90a2);border-radius:16px;background:var(--color-surface,#fff);font:inherit;font-size:calc(13px + var(--fsp));color:var(--color-heading,#1f2b4d);cursor:pointer;max-width:100%}
+.kl-fc i{font-size:calc(16px + var(--fsp))}
+.kl-match{margin-left:auto;color:var(--color-body-muted,#5b6275);white-space:nowrap}
+.kl-bulk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--color-border,#e9ecf4);background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff))}
+.kl-bulk b{color:var(--color-heading,#1f2b4d)}
+.kl-selall{display:flex;align-items:center;gap:8px;padding:0 12px;min-height:44px;border-top:1px solid var(--color-border,#e9ecf4);font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);cursor:pointer}
+.kl-selall input{width:18px;height:18px;margin:0;accent-color:var(--color-admin-primary,#2050a0)}
+.kl-row{display:flex;align-items:stretch;border-top:1px solid var(--color-border,#e9ecf4);position:relative}
+.kl-row[data-on="1"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff))}
+.kl-row[data-on="1"]::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--color-accent,#2050a0)}
+.kl-pick{display:flex;align-items:flex-start;justify-content:center;padding-top:13px;width:44px;flex:0 0 44px;cursor:pointer}
+.kl-pick input{width:18px;height:18px;margin:0;accent-color:var(--color-admin-primary,#2050a0)}
+.kl-open{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;padding:10px 12px 10px 4px;border:0;background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.kl-row[data-pick="0"] .kl-open{padding-left:16px}
+@media (hover:hover){.kl-open:hover{background:var(--color-surface-hover,#f1f3f9)}}
+.kl-l1{display:flex;gap:8px;align-items:baseline;min-width:0}
+.kl-name{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--color-heading,#1f2b4d)}
+.kl-row[data-unread="1"] .kl-name{font-weight:700}
+.kl-time{flex:0 0 auto;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);white-space:nowrap}
+.kl-l2{font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765);overflow-wrap:anywhere}
+.kl-l3{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.kl-l3 .d::before{content:"·";margin-right:8px}
+.kl-msg{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.kl-st{display:inline-flex;align-items:center;gap:4px;min-height:22px;padding:0 8px;border-radius:11px;font-size:calc(12px + var(--fsp));font-weight:600;white-space:nowrap;line-height:1.4}
+.kl-st i{font-size:calc(13px + var(--fsp))}
+.kl-st[data-st="new"]{background:color-mix(in srgb,var(--color-admin-info,#299cdb) 12%,var(--color-surface,#fff));color:var(--color-admin-info-text,#026fa2)}
+.kl-st[data-st="read"]{background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765)}
+.kl-st[data-st="archived"]{background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,var(--color-surface,#fff));color:var(--color-admin-success-text,#047767)}
+.kl-st[data-st="spam"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+.kl-st[data-st="trash"]{background:transparent;border:1px dashed var(--color-border-input,#8a90a2);color:var(--color-body-muted,#5b6275)}
+.kl-more{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;padding:12px;border-top:1px solid var(--color-border,#e9ecf4);font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.kl-detail{display:flex;flex-direction:column;min-width:0}
+.kl-back{display:flex;align-items:center;gap:8px;padding:8px 8px 0}
+.kl-dh{display:flex;flex-direction:column;gap:8px;padding:16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.kl-h2{margin:0;font-size:calc(18px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;overflow-wrap:anywhere}
+.kl-dl1{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.kl-flag{display:flex;align-items:flex-start;gap:6px;font-size:calc(13px + var(--fsp));color:var(--color-admin-danger-text,#bf371a);font-weight:600}
+.kl-flag.off{color:var(--color-body-text,#3c4765);font-weight:400}
+.kl-cta{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.kl-cta .kl-sp{flex:1 1 auto}
+.kl-read{padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0}
+.kl-stbox{display:flex;flex-direction:column;gap:6px}
+.kl-kv{margin:0;display:grid;grid-template-columns:minmax(0,1fr)}
+.kl-kv>div{display:grid;grid-template-columns:150px minmax(0,1fr);gap:2px 12px;padding:8px 0;border-top:1px solid var(--color-border,#e9ecf4)}
+.kl-kv>div:first-child{border-top:0}
+.kl-kv dt{color:var(--color-body-muted,#5b6275)}
+.kl-kv dd{margin:0;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere;white-space:pre-wrap}
+.kl-kv dd.e{color:var(--color-body-muted,#5b6275);font-style:italic}
+.kl-cons{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;background:var(--color-surface-muted,#f8f9fb)}
+.kl-cons>i{font-size:calc(18px + var(--fsp));color:var(--color-admin-success-text,#047767);line-height:1.3}
+.kl-cons p{margin:0;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.kl-cons small{display:block;margin-top:4px;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.kl-tech summary{cursor:pointer;min-height:40px;display:flex;align-items:center;gap:6px;color:var(--color-accent,#2050a0);font-weight:500}
+.kl-ph{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:48px 16px;color:var(--color-body-muted,#5b6275)}
+.kl-ph i{font-size:calc(32px + var(--fsp));color:var(--color-body-faint,#c3c8d4)}
+.kl-mbar{position:sticky;bottom:0;z-index:5;display:flex;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:var(--color-surface,#fff);border-top:1px solid var(--color-border,#e9ecf4);border-radius:0 0 6px 6px}
+.kl-mbar .sx-btn{min-height:48px}
+.kl-mbar .kl-big{flex:1 1 auto;min-width:0}
+.kl-state{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:32px 24px;max-width:640px}
+.kl-state h2{margin:0;font-size:calc(18px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.kl-state p{margin:0;text-wrap:pretty}
+.kl-state ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.kl-state .ic{font-size:calc(32px + var(--fsp));color:var(--color-accent,#2050a0)}
+.kl-sk{display:block;height:12px;border-radius:4px;background:var(--color-surface-hover,#e9ecf4)}
+.kl-skrow{display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.kl-mwrap{position:fixed;inset:0;z-index:65}
+.kl-menu{position:fixed;z-index:66;min-width:240px;max-width:min(320px,calc(100vw - 32px));background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;box-shadow:0 8px 24px rgba(15,23,41,.16);padding:6px 0;display:flex;flex-direction:column}
+.kl-mwrap[data-sheet="1"]{background:rgba(15,23,41,.45)}
+.kl-mwrap[data-sheet="1"] .kl-menu{top:auto !important;right:0 !important;left:0;bottom:0;max-width:none;border-radius:12px 12px 0 0;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+.kl-mh{padding:6px 16px 8px;font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.kl-mi{display:flex;gap:10px;align-items:center;min-height:44px;padding:0 16px;border:0;background:transparent;font:inherit;text-align:left;color:var(--color-heading,#1f2b4d);cursor:pointer;white-space:nowrap}
+.kl-mi:hover{background:var(--color-surface-hover,#f1f3f9)}
+.kl-mi i{font-size:calc(17px + var(--fsp))}
+.kl-mi.dgr{color:var(--color-admin-danger-text,#bf371a)}
+.kl-mi .sx-note{margin-left:auto}
+.kl-sep{height:1px;background:var(--color-border,#e9ecf4);margin:6px 0}
+.kl-ov{position:fixed;inset:0;z-index:70;background:rgba(15,23,41,.5);display:flex;align-items:center;justify-content:center;padding:16px}
+.kl-dlg{width:min(520px,100%);max-height:calc(100dvh - 32px);overflow:auto;background:var(--color-surface,#fff);border-radius:6px;box-shadow:0 12px 32px rgba(15,23,41,.24);display:flex;flex-direction:column}
+.kl-dh2{display:flex;align-items:flex-start;gap:8px;padding:16px 16px 0}
+.kl-dh2 h2{flex:1 1 auto;margin:0;font-size:calc(18px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4}
+.kl-db{padding:16px;display:flex;flex-direction:column;gap:14px}
+.kl-df{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--color-border,#e9ecf4)}
+.kl-sw{text-align:center;align-items:center}
+.kl-sw .kl-swi{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:calc(32px + var(--fsp));color:var(--color-admin-danger-text,#bf371a);background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,var(--color-surface,#fff));margin:24px auto 0}
+.kl-sw .kl-df{justify-content:center;border-top:0}
+.kl-pw{display:flex;gap:8px}
+.kl-pw .sx-in{flex:1 1 auto;min-width:0}
+.kl-radio{display:flex;flex-direction:column;gap:8px}
+.kl-toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:80;display:flex;align-items:center;gap:12px;max-width:min(560px,calc(100vw - 32px));padding:10px 12px 10px 16px;border-radius:6px;background:var(--color-heading,#1f2b4d);color:var(--color-surface,#fff);box-shadow:0 8px 24px rgba(15,23,41,.24)}
+.kl-toast[data-up="1"]{bottom:calc(88px + env(safe-area-inset-bottom))}
+.kl-toast .sx-btn{background:transparent;border-color:color-mix(in srgb,var(--color-surface,#fff) 55%,transparent);color:var(--color-surface,#fff);--focus-ring-color:var(--color-surface,#fff)}
+@container kl (min-width:940px){
+  .kl-grid{grid-template-columns:minmax(340px,400px) minmax(0,1fr)}
+  .kl-back,.kl-mbar{display:none !important}
+  .kl-detail{position:sticky;top:calc(var(--sticky-top,0px) + 16px);height:calc(100vh - var(--sticky-top,0px) - 32px);height:calc(100dvh - var(--sticky-top,0px) - 32px);min-height:440px}
+  .kl-read{flex:1 1 auto;min-height:0;overflow:auto}
+}
+@container kl (max-width:939.98px){
+  .kl-c[data-open="1"] .kl-list{display:none}
+  .kl-c[data-open="0"] .kl-detail{display:none}
+  .kl-cta{display:none}
+}
+@container kl (max-width:520px){
+  .kl-kv>div{grid-template-columns:minmax(0,1fr)}
+  .kl-tools .kl-fb{flex:1 1 0}
+  .kl-tools .kl-fb>.sx-btn{width:100%}
+  .kl-acts{width:100%}
+  .kl-acts>.sx-btn:not(.ic){flex:1 1 auto}
+  .kl-match{margin-left:0;width:100%}
+}
+@media (max-width:599px){.kl-ov:not(.sw){align-items:flex-end;padding:0}.kl-ov:not(.sw) .kl-dlg{width:100%;border-radius:12px 12px 0 0;max-height:92dvh}}
+@media (pointer:coarse){.kl-ck,.kl-mi{min-height:44px}}
+@media (prefers-reduced-motion:reduce){.kl-root *{transition:none !important}}
+</style>
+</helmet>
+<div class="kl-root" data-big="{{ bigA }}">
+<div class="kl-c" data-emb="{{ embA }}" data-open="{{ openA }}">
+
+  <div class="kl-head">
+    <sc-if value="{{ standalone }}" hint-placeholder-val="{{ true }}">
+      <div class="kl-hl">
+        <h1 class="kl-h1">Khách liên hệ</h1>
+        <p class="kl-desc">Yêu cầu khách gửi từ biểu mẫu trên website. Mở một liên hệ để gọi, nhắn Zalo hoặc gửi email cho khách.</p>
+      </div>
+    </sc-if>
+    <sc-if value="{{ showHeadActs }}" hint-placeholder-val="{{ true }}">
+      <div class="kl-acts">
+        <button class="sx-btn gho" onClick="{{ goForms }}"><i class="ri-survey-line" aria-hidden="true"></i><span class="sx-t">Biểu mẫu</span></button>
+        <sc-if value="{{ manage }}" hint-placeholder-val="{{ true }}">
+          <button class="sx-btn" onClick="{{ openExport }}"><i class="ri-download-2-line" aria-hidden="true"></i><span class="sx-t">Tải danh sách về máy</span></button>
+          <button class="sx-btn ic" aria-label="Việc khác với danh sách" title="Việc khác với danh sách" aria-haspopup="menu" aria-expanded="{{ headMenuA }}" onClick="{{ openHeadMenu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+        </sc-if>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ notes }}" hint-placeholder-val="{{ true }}">
+    <div class="kl-notes" aria-label="Ghi chú thiết kế">
+      <span class="sx-note">Chờ backend: tìm, lọc khoảng ngày, chọn nhiều, Thùng rác, tải danh sách, thời hạn lưu giữ</span>
+      <span class="sx-note" data-k="owner">Cần owner chốt chữ: Mới · Đã xem · Đã xử lý · Thư rác (repo đang dùng chữ khác — README › Chuỗi cần dịch)</span>
+      <sc-if value="{{ viewerNote }}" hint-placeholder-val="{{ false }}"><span class="sx-note" data-k="owner">Cần owner chốt: nhóm "Chỉ xem" có quyền forms.view nên đọc được dữ liệu cá nhân của khách (PermissionRegistry.php:207)</span></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ formOffBand }}" hint-placeholder-val="{{ false }}">
+    <div class="sx-al" data-k="warning" role="status" style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;">
+      <i class="ri-pause-circle-line" aria-hidden="true" style="font-size:18px;"></i>
+      <span style="flex:1 1 260px;min-width:0;">Biểu mẫu "Liên hệ" đang tắt — khách không gửi được yêu cầu mới. Liên hệ đã nhận vẫn còn đủ.</span>
+      <sc-if value="{{ manage }}" hint-placeholder-val="{{ true }}"><button class="sx-btn sm" onClick="{{ turnFormOn }}"><i class="ri-play-circle-line" aria-hidden="true"></i><span class="sx-t">Bật lại</span></button></sc-if>
+      <sc-if value="{{ notManage }}" hint-placeholder-val="{{ false }}"><span>Nhờ người quản trị bật lại ở mục Biểu mẫu.</span></sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ vsLocked }}" hint-placeholder-val="{{ false }}">
+    <div class="kl-card"><div class="kl-state">
+      <i class="ri-lock-line ic" aria-hidden="true"></i>
+      <sc-if value="{{ upsell }}" hint-placeholder-val="{{ false }}">
+        <h2>Khách liên hệ chưa có trong gói của website</h2>
+        <p>Nâng gói để nhận yêu cầu từ biểu mẫu trên website, gọi lại khách chỉ với một chạm và nhận thư báo khi có khách mới.</p>
+        <button class="sx-btn pri" onClick="{{ goPlans }}"><i class="ri-vip-crown-line" aria-hidden="true"></i><span class="sx-t">Xem gói nâng cấp</span></button>
+      </sc-if>
+      <sc-if value="{{ noUpsell }}" hint-placeholder-val="{{ true }}">
+        <h2>Chưa bật cho website này</h2>
+        <p>Mục Khách liên hệ chưa được bật. Liên hệ bộ phận hỗ trợ nếu bạn cần dùng.</p>
+        <button class="sx-btn" onClick="{{ goHelp }}"><i class="ri-customer-service-2-line" aria-hidden="true"></i><span class="sx-t">Liên hệ hỗ trợ</span></button>
+      </sc-if>
+    </div></div>
+  </sc-if>
+
+  <sc-if value="{{ vsNoPerm }}" hint-placeholder-val="{{ false }}">
+    <div class="kl-card"><div class="kl-state">
+      <i class="ri-shield-keyhole-line ic" aria-hidden="true"></i>
+      <h2>Bạn chưa có quyền xem khách liên hệ</h2>
+      <p>Nhóm quyền "{{ roleName }}" không xem được mục này. Nhóm xem được: {{ viewRoles }}. Nhờ chủ website đổi nhóm quyền nếu bạn cần.</p>
+      <button class="sx-btn pri" onClick="{{ goHome }}"><i class="ri-home-4-line" aria-hidden="true"></i><span class="sx-t">Về Tổng quan</span></button>
+    </div></div>
+  </sc-if>
+
+  <sc-if value="{{ vsError }}" hint-placeholder-val="{{ false }}">
+    <div class="kl-card"><div class="kl-state" role="alert">
+      <i class="ri-wifi-off-line ic" aria-hidden="true"></i>
+      <h2>Chưa tải được danh sách liên hệ</h2>
+      <p>Mạng đang chập chờn hoặc hệ thống bận. Kiểm tra kết nối rồi bấm "Thử lại" — không mất dữ liệu nào.</p>
+      <button class="sx-btn pri" onClick="{{ retry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button>
+    </div></div>
+  </sc-if>
+
+  <sc-if value="{{ vsEmpty }}" hint-placeholder-val="{{ false }}">
+    <div class="kl-card"><div class="kl-state">
+      <i class="ri-mail-open-line ic" aria-hidden="true"></i>
+      <h2>Chưa có khách nào liên hệ</h2>
+      <p>Biểu mẫu "Liên hệ" đã có sẵn trên trang Liên hệ của website. Khi khách gửi:</p>
+      <ol>
+        <li>Yêu cầu hiện ở đây, kèm cách liên hệ khách để lại.</li>
+        <li>Thư báo gửi tới email nhận thông báo của biểu mẫu.</li>
+      </ol>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <a class="sx-btn pri" href="https://anvinh.vn/lien-he" target="_blank" rel="noopener"><i class="ri-external-link-line" aria-hidden="true"></i><span class="sx-t">Xem trang Liên hệ</span></a>
+        <button class="sx-btn" onClick="{{ goForms }}"><i class="ri-survey-line" aria-hidden="true"></i><span class="sx-t">Đặt biểu mẫu vào trang khác</span></button>
+      </div>
+    </div></div>
+  </sc-if>
+
+  <sc-if value="{{ vsList }}" hint-placeholder-val="{{ true }}">
+  <div class="kl-grid">
+    <section class="kl-card kl-list" aria-label="Danh sách liên hệ">
+      <div class="kl-tabs" role="tablist" aria-label="Lọc theo trạng thái">
+        <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="6">
+          <button class="kl-tab" role="tab" aria-selected="{{ t.onA }}" onClick="{{ t.go }}">{{ t.l }}<sc-if value="{{ t.hasN }}" hint-placeholder-val="{{ true }}"><span class="kl-n" data-hot="{{ t.hot }}">{{ t.n }}</span></sc-if></button>
+        </sc-for>
+      </div>
+      <div class="kl-tools">
+        <label class="sx-search" data-focus-wrap="true">
+          <i class="ri-search-line" aria-hidden="true" style="color:var(--color-body-muted,#5b6275);"></i>
+          <input type="search" ref="{{ searchRef }}" value="{{ q }}" onInput="{{ onQ }}" placeholder="Nguyễn Văn An · 0912 345 678" aria-label="Tìm theo tên, email hoặc số điện thoại">
+          <kbd aria-hidden="true">/</kbd>
+        </label>
+        <div class="kl-fb" data-kl-pop="1">
+          <button class="sx-btn" aria-haspopup="true" aria-expanded="{{ popFormA }}" onClick="{{ togFormPop }}"><i class="ri-survey-line" aria-hidden="true"></i><span class="sx-t">Biểu mẫu</span><sc-if value="{{ formFilterOn }}" hint-placeholder-val="{{ false }}"><span class="kl-n" data-hot="1">{{ formFilterN }}</span></sc-if><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+          <sc-if value="{{ popForm }}" hint-placeholder-val="{{ false }}">
+            <div class="kl-pop l" role="group" aria-label="Lọc theo biểu mẫu">
+              <div class="kl-pop-b">
+                <sc-for list="{{ formOpts }}" as="f" hint-placeholder-count="3">
+                  <label class="kl-ck"><input type="checkbox" checked="{{ f.on }}" onChange="{{ f.tog }}"><span>{{ f.name }}</span><em>{{ f.n }}</em></label>
+                </sc-for>
+              </div>
+              <div class="kl-pop-f"><button class="sx-btn gho sm" onClick="{{ clearForm }}">Bỏ lọc</button><button class="sx-btn pri sm" onClick="{{ closePop }}">Xong</button></div>
+            </div>
+          </sc-if>
+        </div>
+        <div class="kl-fb" data-kl-pop="1">
+          <button class="sx-btn" aria-haspopup="true" aria-expanded="{{ popDateA }}" onClick="{{ togDatePop }}"><i class="ri-calendar-line" aria-hidden="true"></i><span class="sx-t">{{ dateBtn }}</span><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+          <sc-if value="{{ popDate }}" hint-placeholder-val="{{ false }}">
+            <div class="kl-pop r" role="group" aria-label="Lọc theo thời gian gửi">
+              <div class="kl-pop-b">
+                <sc-for list="{{ dateOpts }}" as="d" hint-placeholder-count="5">
+                  <label class="kl-ck"><input type="radio" name="kl-date" checked="{{ d.on }}" onChange="{{ d.pick }}"><span>{{ d.l }}</span><em>{{ d.n }}</em></label>
+                </sc-for>
+                <sc-if value="{{ dateCustom }}" hint-placeholder-val="{{ false }}">
+                  <div class="kl-dates">
+                    <label><span class="sx-lab">Từ ngày</span><input class="sx-in" type="date" value="{{ dFrom }}" onChange="{{ onFrom }}"></label>
+                    <label><span class="sx-lab">Đến ngày</span><input class="sx-in" type="date" value="{{ dTo }}" onChange="{{ onTo }}"></label>
+                  </div>
+                </sc-if>
+              </div>
+              <div class="kl-pop-f"><button class="sx-btn gho sm" onClick="{{ clearDate }}">Bỏ lọc</button><button class="sx-btn pri sm" onClick="{{ closePop }}">Xong</button></div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <sc-if value="{{ hasActive }}" hint-placeholder-val="{{ false }}">
+        <div class="kl-act">
+          <span style="color:var(--color-body-muted,#5b6275);">Đang lọc:</span>
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="1">
+            <button class="kl-fc" onClick="{{ c.x }}" aria-label="{{ c.aria }}"><span class="sx-t" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ c.l }}</span><i class="ri-close-line" aria-hidden="true"></i></button>
+          </sc-for>
+          <button class="sx-btn gho sm" onClick="{{ clearAll }}">Bỏ lọc</button>
+          <span class="kl-match">Khớp {{ matchN }} / {{ totalN }}</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ bulkOn }}" hint-placeholder-val="{{ false }}">
+        <div class="kl-bulk" role="region" aria-label="Thao tác với các liên hệ đã chọn">
+          <b>Đã chọn {{ pickN }}</b>
+          <button class="sx-btn sm" aria-disabled="{{ bRead.offA }}" title="{{ bRead.why }}" onClick="{{ bRead.go }}"><i class="ri-mail-open-line" aria-hidden="true"></i><span class="sx-t">Đã xem ({{ bRead.n }})</span></button>
+          <button class="sx-btn sm" aria-disabled="{{ bDone.offA }}" title="{{ bDone.why }}" onClick="{{ bDone.go }}"><i class="ri-check-double-line" aria-hidden="true"></i><span class="sx-t">Đã xử lý ({{ bDone.n }})</span></button>
+          <button class="sx-btn sm" aria-disabled="{{ bRac.offA }}" title="{{ bRac.why }}" onClick="{{ bRac.go }}"><i class="ri-spam-2-line" aria-hidden="true"></i><span class="sx-t">Là thư rác ({{ bRac.n }})</span></button>
+          <button class="sx-btn gho sm" onClick="{{ unpick }}">Bỏ chọn</button>
+          <sc-if value="{{ bulkSkip }}" hint-placeholder-val="{{ false }}"><span style="flex:1 1 100%;font-size:13px;color:var(--color-body-muted,#5b6275);">{{ bulkSkipTxt }}</span></sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ vsLoading }}" hint-placeholder-val="{{ false }}">
+        <div aria-busy="true" aria-label="Đang tải danh sách liên hệ">
+          <sc-for list="{{ skRows }}" as="s" hint-placeholder-count="6"><div class="kl-skrow"><span class="kl-sk" style="width:55%;"></span><span class="kl-sk" style="width:80%;"></span><span class="kl-sk" style="width:40%;"></span></div></sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ listReady }}" hint-placeholder-val="{{ true }}">
+        <sc-if value="{{ showSelAll }}" hint-placeholder-val="{{ false }}">
+          <label class="kl-selall"><input type="checkbox" checked="{{ allPicked }}" onChange="{{ pickAll }}"><span>Chọn tất cả {{ shownN }} liên hệ đang hiện</span></label>
+        </sc-if>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+          <div class="kl-row" data-on="{{ r.onA }}" data-unread="{{ r.unreadA }}" data-pick="{{ pickA }}">
+            <sc-if value="{{ manage }}" hint-placeholder-val="{{ true }}">
+              <label class="kl-pick"><input type="checkbox" checked="{{ r.picked }}" onChange="{{ r.tog }}" aria-label="{{ r.pickAria }}"></label>
+            </sc-if>
+            <button class="kl-open" data-ma="{{ r.ma }}" aria-current="{{ r.cur }}" onClick="{{ r.open }}">
+              <span class="kl-l1"><span class="kl-name" title="{{ r.name }}">{{ r.name }}</span><span class="kl-time">{{ r.ago }}</span></span>
+              <span class="kl-l2">{{ r.contact }}</span>
+              <span class="kl-l3"><span class="kl-st" data-st="{{ r.stKey }}"><i class="{{ r.stIcon }}" aria-hidden="true"></i>{{ r.stLabel }}</span><span>{{ r.form }}</span><span class="d">{{ r.page }}</span><sc-if value="{{ r.flagged }}" hint-placeholder-val="{{ false }}"><span class="d" style="color:var(--color-admin-danger-text,#bf371a);"><i class="ri-shield-flash-line" aria-hidden="true"></i> Bộ lọc tự động cho là thư rác</span></sc-if></span>
+              <span class="kl-msg">{{ r.msg }}</span>
+            </button>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noMatch }}" hint-placeholder-val="{{ false }}">
+          <div class="kl-ph" style="border-top:1px solid var(--color-border,#e9ecf4);">
+            <i class="ri-search-eye-line" aria-hidden="true"></i>
+            <span>{{ noMatchTxt }}</span>
+            <sc-if value="{{ hasActive }}" hint-placeholder-val="{{ false }}"><button class="sx-btn" onClick="{{ clearAll }}">Bỏ lọc</button></sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ moreOn }}" hint-placeholder-val="{{ true }}">
+          <div class="kl-more"><span>Đang hiện {{ shownN }} / {{ matchN }}</span><button class="sx-btn" onClick="{{ loadMore }}"><i class="ri-arrow-down-line" aria-hidden="true"></i><span class="sx-t">Tải thêm</span></button></div>
+        </sc-if>
+      </sc-if>
+    </section>
+
+    <section class="kl-card kl-detail" aria-label="Chi tiết liên hệ">
+      <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ true }}">
+        <div class="kl-back"><button class="sx-btn gho" ref="{{ backRef }}" onClick="{{ back }}"><i class="ri-arrow-left-line" aria-hidden="true"></i><span class="sx-t">Quay lại danh sách</span></button></div>
+        <div class="kl-dh">
+          <h2 class="kl-h2">{{ d.name }}</h2>
+          <div class="kl-dl1"><span class="kl-st" data-st="{{ d.stKey }}"><i class="{{ d.stIcon }}" aria-hidden="true"></i>{{ d.stLabel }}</span><span>Gửi qua biểu mẫu "{{ d.form }}"</span><span>{{ d.ago }}</span></div>
+          <sc-if value="{{ d.flagged }}" hint-placeholder-val="{{ false }}">
+            <div class="kl-flag"><i class="ri-shield-flash-line" aria-hidden="true"></i><span>Bộ lọc tự động cho là thư rác</span></div>
+          </sc-if>
+          <sc-if value="{{ d.flaggedOff }}" hint-placeholder-val="{{ false }}">
+            <div class="kl-flag off"><i class="ri-shield-flash-line" aria-hidden="true" style="color:var(--color-admin-danger-text,#bf371a);"></i><span>Bộ lọc tự động cho là thư rác — đã đánh dấu "Không phải thư rác".</span></div>
+          </sc-if>
+          <div class="kl-cta">
+            <sc-if value="{{ d.hasPhone }}" hint-placeholder-val="{{ true }}">
+              <a class="sx-btn pri" href="{{ d.tel }}"><i class="ri-phone-line" aria-hidden="true"></i><span class="sx-t">Gọi {{ d.phone }}</span></a>
+              <a class="sx-btn" href="{{ d.zalo }}" target="_blank" rel="noopener"><i class="ri-chat-3-line" aria-hidden="true"></i><span class="sx-t">Nhắn Zalo</span></a>
+            </sc-if>
+            <sc-if value="{{ d.hasEmail }}" hint-placeholder-val="{{ true }}">
+              <a class="sx-btn" href="{{ d.mailto }}"><i class="ri-mail-send-line" aria-hidden="true"></i><span class="sx-t">Gửi email</span></a>
+            </sc-if>
+            <span class="kl-sp"></span>
+            <sc-if value="{{ manage }}" hint-placeholder-val="{{ true }}">
+              <button class="sx-btn ic" aria-label="Việc khác với liên hệ này" title="Việc khác với liên hệ này" aria-haspopup="menu" aria-expanded="{{ detMenuA }}" onClick="{{ openDetMenu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+            </sc-if>
+          </div>
+          <sc-if value="{{ d.noContact }}" hint-placeholder-val="{{ false }}"><span style="font-size:13px;color:var(--color-body-muted,#5b6275);">Khách không để lại số điện thoại hay email.</span></sc-if>
+        </div>
+        <div class="kl-read">
+          <sc-if value="{{ d.inTrash }}" hint-placeholder-val="{{ false }}">
+            <div class="sx-al" data-k="warning" style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;"><span style="flex:1 1 240px;">Liên hệ này đang ở Thùng rác — tự xóa hẳn sau 30 ngày.</span><sc-if value="{{ manage }}" hint-placeholder-val="{{ true }}"><button class="sx-btn sm" onClick="{{ restoreSel }}"><i class="ri-arrow-go-back-line" aria-hidden="true"></i><span class="sx-t">Khôi phục</span></button></sc-if><sc-if value="{{ notes }}" hint-placeholder-val="{{ true }}"><span class="sx-note">Chờ backend</span></sc-if></div>
+          </sc-if>
+          <sc-if value="{{ d.canStatus }}" hint-placeholder-val="{{ true }}">
+            <div class="kl-stbox">
+              <span class="sx-lab" id="kl-stlab">Trạng thái xử lý</span>
+              <div class="sx-seg" role="radiogroup" aria-labelledby="kl-stlab" style="align-self:flex-start;">
+                <sc-for list="{{ segs }}" as="s" hint-placeholder-count="3">
+                  <button role="radio" aria-checked="{{ s.onA }}" onClick="{{ s.go }}"><i class="{{ s.icon }}" aria-hidden="true"></i>{{ s.l }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ d.isRacSt }}" hint-placeholder-val="{{ false }}">
+            <div class="sx-al" data-k="danger" style="display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;">
+              <i class="ri-spam-2-line" aria-hidden="true" style="font-size:18px;"></i>
+              <span style="flex:1 1 240px;min-width:0;">Liên hệ này đang ở Thư rác — không gửi thư báo, tự dọn sau 30 ngày.</span>
+              <sc-if value="{{ manage }}" hint-placeholder-val="{{ true }}"><button class="sx-btn sm" onClick="{{ notRac }}"><i class="ri-mail-check-line" aria-hidden="true"></i><span class="sx-t">Không phải thư rác</span></button></sc-if>
+            </div>
+          </sc-if>
+          <dl class="kl-kv">
+            <sc-for list="{{ d.kv }}" as="k" hint-placeholder-count="5">
+              <div><dt>{{ k.k }}</dt><sc-if value="{{ k.has }}" hint-placeholder-val="{{ true }}"><dd>{{ k.v }}</dd></sc-if><sc-if value="{{ k.empty }}" hint-placeholder-val="{{ false }}"><dd class="e">Khách không điền</dd></sc-if></div>
+            </sc-for>
+            <div><dt>Trang gửi</dt><dd><a href="{{ d.pageHref }}" target="_blank" rel="noopener">{{ d.page }} <i class="ri-external-link-line" aria-hidden="true"></i></a></dd></div>
+            <div><dt>Thời gian gửi</dt><dd>{{ d.when }}</dd></div>
+          </dl>
+          <div class="kl-cons" role="note" aria-label="Đồng ý của khách">
+            <i class="ri-shield-check-line" aria-hidden="true"></i>
+            <div>
+              <p>Khách đã đồng ý: «{{ d.consent }}» — lúc {{ d.when }}</p>
+              <small>Chỉ đọc. Câu lưu đúng nguyên văn khách đã tick lúc gửi, không đổi khi câu mới được cập nhật.</small>
+            </div>
+          </div>
+          <details class="kl-tech">
+            <summary><i class="ri-information-line" aria-hidden="true"></i>Thông tin thêm về lần gửi</summary>
+            <dl class="kl-kv">
+              <div><dt>Thiết bị</dt><dd>{{ d.ua }}</dd></div>
+              <div><dt>Địa chỉ mạng</dt><dd>{{ d.ip }}<br><span style="font-size:13px;color:var(--color-body-muted,#5b6275);">Số nhận diện mạng của máy khách (IP) — dùng để chặn thư rác.</span></dd></div>
+            </dl>
+          </details>
+        </div>
+        <div class="kl-mbar">
+          <sc-if value="{{ d.hasPhone }}" hint-placeholder-val="{{ true }}">
+            <a class="sx-btn pri kl-big" href="{{ d.tel }}"><i class="ri-phone-line" aria-hidden="true"></i><span class="sx-t el">Gọi {{ d.phone }}</span></a>
+            <a class="sx-btn" href="{{ d.zalo }}" target="_blank" rel="noopener" aria-label="Nhắn Zalo cho khách"><i class="ri-chat-3-line" aria-hidden="true"></i><span class="sx-t">Zalo</span></a>
+          </sc-if>
+          <sc-if value="{{ d.mailBig }}" hint-placeholder-val="{{ false }}">
+            <a class="sx-btn pri kl-big" href="{{ d.mailto }}"><i class="ri-mail-send-line" aria-hidden="true"></i><span class="sx-t el">Gửi email cho khách</span></a>
+          </sc-if>
+          <sc-if value="{{ d.mailSmall }}" hint-placeholder-val="{{ true }}">
+            <a class="sx-btn" href="{{ d.mailto }}" aria-label="Gửi email cho khách"><i class="ri-mail-send-line" aria-hidden="true"></i><span class="sx-t">Email</span></a>
+          </sc-if>
+          <sc-if value="{{ manage }}" hint-placeholder-val="{{ true }}">
+            <button class="sx-btn ic" aria-label="Việc khác với liên hệ này" title="Việc khác với liên hệ này" aria-haspopup="menu" onClick="{{ openDetMenu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+          </sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ noSel }}" hint-placeholder-val="{{ false }}">
+        <div class="kl-ph"><i class="ri-mail-line" aria-hidden="true"></i><span>Chọn một liên hệ ở cột trái để đọc.</span></div>
+      </sc-if>
+    </section>
+  </div>
+  </sc-if>
+  <sc-if value="{{ showFrames }}" hint-placeholder-val="{{ false }}">
+    <section aria-label="Khung xem điện thoại và máy tính bảng" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;padding-top:8px;border-top:1px dashed var(--color-border-strong,#e3e7f0);">
+      <figure style="margin:0;display:flex;flex-direction:column;gap:6px;"><figcaption style="font-size:13px;color:var(--color-body-muted,#5b6275);">Điện thoại 390 × 844</figcaption><iframe src="Khách liên hệ.dc.html#frame" title="Khách liên hệ ở bề rộng 390px" loading="lazy" style="width:390px;height:844px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe></figure>
+      <figure style="margin:0;display:flex;flex-direction:column;gap:6px;"><figcaption style="font-size:13px;color:var(--color-body-muted,#5b6275);">Máy tính bảng 768 × 1024</figcaption><iframe src="Khách liên hệ.dc.html#frame" title="Khách liên hệ ở bề rộng 768px" loading="lazy" style="width:768px;height:1024px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:8px;background:var(--color-body,#f4f5fa);"></iframe></figure>
+    </section>
+  </sc-if>
+</div>
+
+<sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="kl-mwrap" data-sheet="{{ menuSheetA }}" onMouseDown="{{ menuBg }}">
+    <div class="kl-menu" role="menu" aria-label="{{ menuTitle }}" ref="{{ menuRef }}" style="top:{{ menuTop }};bottom:{{ menuBottom }};right:{{ menuRight }};" onMouseDown="{{ stop }}" onKeyDown="{{ menuKey }}">
+      <sc-if value="{{ menuSheet }}" hint-placeholder-val="{{ false }}"><div class="kl-mh">{{ menuTitle }}</div></sc-if>
+      <sc-for list="{{ menuItems }}" as="m" hint-placeholder-count="3">
+        <sc-if value="{{ m.sep }}" hint-placeholder-val="{{ false }}"><div class="kl-sep" role="separator"></div></sc-if>
+        <sc-if value="{{ m.item }}" hint-placeholder-val="{{ true }}"><button class="{{ m.cls }}" role="menuitem" onClick="{{ m.go }}"><i class="{{ m.icon }}" aria-hidden="true"></i><span>{{ m.l }}</span><sc-if value="{{ m.note }}" hint-placeholder-val="{{ false }}"><span class="sx-note">Chờ backend</span></sc-if></button></sc-if>
+      </sc-for>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgExport }}" hint-placeholder-val="{{ false }}">
+  <div class="kl-ov" onMouseDown="{{ dlgBg }}">
+    <div class="kl-dlg" role="dialog" aria-modal="true" aria-labelledby="kl-ex-h" ref="{{ dlgRef }}" onMouseDown="{{ stop }}" onKeyDown="{{ dlgKey }}">
+      <div class="kl-dh2"><h2 id="kl-ex-h">Tải danh sách về máy</h2><button class="sx-btn gho ic" aria-label="Đóng" title="Đóng" onClick="{{ closeDlg }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+      <div class="kl-db">
+        <div class="sx-al" data-k="warning">Tệp chứa dữ liệu cá nhân của {{ exN }} khách (họ tên, email, số điện thoại, nội dung). Chỉ lưu ở máy của bạn, không chuyển cho người ngoài.</div>
+        <p style="margin:0;">Tệp CSV mở được bằng Excel, gồm {{ exN }} liên hệ đang khớp bộ lọc hiện tại.</p>
+        <sc-if value="{{ exPwMode }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <label class="sx-lab" for="kl-pw">Nhập lại mật khẩu của bạn <span class="sx-req" aria-hidden="true">*</span></label>
+            <div class="kl-pw" data-focus-wrap="true">
+              <input id="kl-pw" class="sx-in" type="{{ pwType }}" autocomplete="current-password" ref="{{ firstRef }}" value="{{ pw }}" onInput="{{ onPw }}" onBlur="{{ pwBlur }}" aria-invalid="{{ pwInvA }}" aria-describedby="kl-pw-h">
+              <button class="sx-btn" type="button" onClick="{{ togPw }}" aria-pressed="{{ pwShowA }}"><i class="{{ pwIcon }}" aria-hidden="true"></i><span class="sx-t">{{ pwBtn }}</span></button>
+            </div>
+            <sc-if value="{{ pwHasErr }}" hint-placeholder-val="{{ false }}"><p class="sx-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i>{{ pwErr }}</p></sc-if>
+            <p class="sx-hint" id="kl-pw-h">Giống bước "Xuất dữ liệu" ở Cài đặt — để chắc chắn đúng là bạn.</p>
+          </div>
+          <button class="sx-btn gho sm" style="align-self:flex-start;" onClick="{{ use2fa }}">Dùng mã xác thực 2 lớp thay mật khẩu</button>
+        </sc-if>
+        <sc-if value="{{ ex2faMode }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <label class="sx-lab" for="kl-code">Mã 6 số trong ứng dụng xác thực <span class="sx-req" aria-hidden="true">*</span></label>
+            <input id="kl-code" class="sx-in" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123 456" ref="{{ firstRef }}" value="{{ code }}" onInput="{{ onCode }}" onBlur="{{ pwBlur }}" aria-invalid="{{ pwInvA }}" style="max-width:220px;">
+            <sc-if value="{{ pwHasErr }}" hint-placeholder-val="{{ false }}"><p class="sx-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i>{{ pwErr }}</p></sc-if>
+          </div>
+          <button class="sx-btn gho sm" style="align-self:flex-start;" onClick="{{ usePw }}">Dùng mật khẩu</button>
+        </sc-if>
+        <p class="sx-hint" style="margin:0;"><i class="ri-file-list-3-line" aria-hidden="true"></i> Lần tải này được ghi vào Nhật ký hoạt động: ai tải, lúc nào, bao nhiêu dòng.</p>
+        <sc-if value="{{ notes }}" hint-placeholder-val="{{ true }}"><span class="sx-note">Chờ backend: xuất CSV, xác nhận lại mật khẩu / mã 2 lớp, ghi nhật ký</span></sc-if>
+      </div>
+      <div class="kl-df">
+        <button class="sx-btn" ref="{{ cancelRef }}" onClick="{{ closeDlg }}">Hủy</button>
+        <button class="sx-btn pri" aria-disabled="{{ busyA }}" onClick="{{ doExport }}"><i class="{{ exIcon }}" aria-hidden="true"></i><span class="sx-t">{{ exBtn }}</span></button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgRet }}" hint-placeholder-val="{{ false }}">
+  <div class="kl-ov" onMouseDown="{{ dlgBg }}">
+    <div class="kl-dlg" role="dialog" aria-modal="true" aria-labelledby="kl-rt-h" ref="{{ dlgRef }}" onMouseDown="{{ stop }}" onKeyDown="{{ dlgKey }}">
+      <div class="kl-dh2"><h2 id="kl-rt-h">Thời hạn lưu giữ liên hệ</h2><button class="sx-btn gho ic" aria-label="Đóng" title="Đóng" onClick="{{ closeDlg }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+      <div class="kl-db">
+        <p style="margin:0;">Liên hệ cũ hơn thời hạn này tự xóa hẳn, để website chỉ giữ dữ liệu cá nhân trong thời gian cần thiết.</p>
+        <div class="kl-radio" role="radiogroup" aria-label="Tự xóa liên hệ cũ sau">
+          <sc-for list="{{ retOpts }}" as="o" hint-placeholder-count="4">
+            <label class="sx-opt"><input type="radio" name="kl-ret" checked="{{ o.on }}" onChange="{{ o.pick }}" ref="{{ o.ref }}"><span><b style="color:var(--color-heading,#1f2b4d);">{{ o.l }}</b><br><span style="font-size:13px;color:var(--color-body-muted,#5b6275);">{{ o.h }}</span></span></label>
+          </sc-for>
+        </div>
+        <sc-if value="{{ retNone }}" hint-placeholder-val="{{ false }}">
+          <div class="sx-al" data-k="warning" role="status"><b>Dữ liệu cá nhân sẽ được giữ mãi.</b> Luật Bảo vệ dữ liệu cá nhân yêu cầu chỉ giữ trong thời gian cần thiết — nên chọn một thời hạn.</div>
+        </sc-if>
+        <p class="sx-hint" style="margin:0;"><i class="ri-spam-2-line" aria-hidden="true"></i> Thư rác luôn tự dọn sau 30 ngày.</p>
+        <sc-if value="{{ notes }}" hint-placeholder-val="{{ true }}"><div class="kl-notes"><span class="sx-note">Chờ backend: tự xóa theo lịch</span><span class="sx-note" data-k="owner">Cần owner chốt: luật sư xác nhận thời hạn trước khi build</span></div></sc-if>
+      </div>
+      <div class="kl-df">
+        <button class="sx-btn" ref="{{ cancelRef }}" onClick="{{ closeDlg }}">Hủy</button>
+        <button class="sx-btn pri" onClick="{{ saveRet }}"><i class="ri-save-3-line" aria-hidden="true"></i><span class="sx-t">Lưu thời hạn</span></button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dlgDel }}" hint-placeholder-val="{{ false }}">
+  <div class="kl-ov sw" onMouseDown="{{ dlgBg }}">
+    <div class="kl-dlg kl-sw" role="alertdialog" aria-modal="true" aria-labelledby="kl-dl-h" aria-describedby="kl-dl-d" ref="{{ dlgRef }}" onMouseDown="{{ stop }}" onKeyDown="{{ dlgKey }}">
+      <div class="kl-swi"><i class="ri-delete-bin-6-line" aria-hidden="true"></i></div>
+      <div class="kl-db">
+        <h2 id="kl-dl-h" style="margin:0;font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere;">Xóa hẳn liên hệ của {{ delName }}?</h2>
+        <p id="kl-dl-d" style="margin:0;text-wrap:pretty;">Liên hệ bị xóa ngay, không vào Thùng rác và <b>không hoàn tác được</b>. Nhật ký chỉ ghi "đã xóa 1 liên hệ theo yêu cầu", không kèm thông tin của khách.</p>
+        <sc-if value="{{ notes }}" hint-placeholder-val="{{ true }}"><span class="sx-note" style="align-self:center;">Chờ backend: xóa hẳn + dòng nhật ký không có dữ liệu cá nhân</span></sc-if>
+      </div>
+      <div class="kl-df">
+        <button class="sx-btn" ref="{{ cancelRef }}" onClick="{{ closeDlg }}">Hủy</button>
+        <button class="sx-btn dan" onClick="{{ doDel }}"><i class="ri-delete-bin-6-line" aria-hidden="true"></i><span class="sx-t">Xóa hẳn liên hệ này</span></button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<div aria-live="polite" role="status" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">{{ liveTxt }}</div>
+<sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
+  <div class="kl-toast" data-up="{{ toastUp }}"><i class="{{ toastIcon }}" aria-hidden="true"></i><span style="flex:1 1 auto;min-width:0;">{{ toastMsg }}</span><sc-if value="{{ toastUndo }}" hint-placeholder-val="{{ false }}"><button class="sx-btn sm" onClick="{{ undo }}">Hoàn tác</button></sc-if></div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Chủ website&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;},&quot;moduleOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;},&quot;viewState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Có dữ liệu&quot;,&quot;Chưa có liên hệ&quot;,&quot;Đang tải&quot;,&quot;Lỗi&quot;,&quot;Không có quyền&quot;,&quot;Khóa theo gói&quot;],&quot;default&quot;:&quot;Có dữ liệu&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;formOff&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Trạng thái&quot;},&quot;notes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;ma&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;langCodes&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;}}">
+class Component extends DCLogic {
+  static NOW = new Date('2026-10-07T09:30:00+07:00');
+  static FORMS = [
+    { key: 'contact', ma: '01J8ZQ3K5V7N2C4M6P8R0T1W3Y', name: 'Liên hệ', page: '/lien-he' },
+    { key: 'quote', ma: '01J9B4D6F8H0J2K4M6N8P0Q2R4', name: 'Yêu cầu báo giá' },
+    { key: 'booking', ma: '01J9C5E7G9J1K3M5P7R9T1V3X5', name: 'Đặt lịch tư vấn' }
+  ];
+  static ST = {
+    new: { l: 'Mới', icon: 'ri-mail-unread-line' },
+    read: { l: 'Đã xem', icon: 'ri-mail-open-line' },
+    archived: { l: 'Đã xử lý', icon: 'ri-check-double-line' },
+    spam: { l: 'Thư rác', icon: 'ri-spam-2-line' },
+    trash: { l: 'Trong Thùng rác', icon: 'ri-delete-bin-line' }
+  };
+  static seed() {
+    const NM = ['Nguyễn Văn An', 'Trần Thị Bích Ngọc', 'Lê Hoàng Phúc', 'Phạm Minh Tuấn', 'Võ Thị Thu Hà', 'Đặng Quốc Bảo', 'Bùi Thị Mai Anh', 'Hồ Ngọc Hân', 'Phòng Mua hàng — Công ty TNHH Cơ khí Chính xác Thành Đạt Phát', 'Ngô Thanh Sơn', 'Dương Thị Lan', 'Huỳnh Tấn Lộc', 'Trịnh Văn Khải', 'Lý Gia Hân', 'Phan Đức Thắng', 'Mai Xuân Trường', 'Châu Ngọc Diệp', 'Tạ Quang Vinh', 'Kiều Thị Phương', 'Lâm Chí Thanh'];
+    const MC = ['Cho tôi hỏi bên mình có nhận gia công trục inox số lượng 50 cái không? Cần giao trước 30/10.', 'Tôi cần tư vấn làm khuôn ép nhựa cho vỏ hộp điện, gọi lại giúp tôi sau 17 giờ.', 'Xưởng mình ở đâu, cuối tuần tôi muốn qua xem máy trực tiếp được không?', 'Bên mình có xuất hóa đơn đỏ không? Công ty tôi cần đặt hàng định kỳ mỗi tháng.', 'Tôi gửi bản vẽ qua email được không, file khá nặng (khoảng 40 MB).\nCần báo giá gấp trong tuần này.'];
+    const MQ = ['Báo giá giúp tôi bánh răng côn theo bản vẽ, cần trong 3 tuần.', 'Cần gia công 200 bích nối theo mẫu cũ, có thể lấy mẫu tại xưởng.', 'Xin báo giá phay CNC vỏ nhôm hộp điều khiển, có anod màu đen.', 'Báo giá trục vít me bi dài 1.200 mm, độ chính xác cấp C5.'];
+    const MAT = ['Inox 304', 'Nhôm 6061', 'Thép C45', 'Đồng thau'], QTY = ['50 cái', '200 cái', '1.000 cái', '10 bộ'];
+    const PG = ['/bao-gia', '/dich-vu/gia-cong-cnc', '/dich-vu/lam-khuon-mau'];
+    const UA = ['Chrome trên Android', 'Safari trên iPhone', 'Chrome trên Windows', 'Cốc Cốc trên Windows'];
+    const A = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    const NEWC = 'Tôi đồng ý để website lưu họ tên, email, số điện thoại và nội dung trên để liên hệ lại với tôi.';
+    const OLDC = 'Tôi đồng ý cho website dùng thông tin trên để liên hệ với tôi.';
+    const plain = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+    const out = [];
+    for (let i = 0; i < 58; i++) {
+      let ma = '01JA', x = ((i + 1) * 2654435761) >>> 0; for (let k = 0; k < 22; k++) { x = (Math.imul(x, 1103515245) + 12345) >>> 0; ma += A[x >>> 27]; }
+      const form = (i % 3 === 0 || i === 1) ? 'contact' : 'quote';
+      const nm = NM[i % NM.length];
+      const ps = plain(nm).split(' ').filter(Boolean);
+      const email = nm.indexOf('Công ty') >= 0 ? 'muahang@thanhdatphat.com.vn' : (ps[ps.length - 1] + '.' + ps[0] + (i % 4 === 1 ? '@yahoo.com' : '@gmail.com'));
+      const d9 = String(10000000 + ((i * 7919 * 13 + 4823411) % 89999999));
+      const phone = '09' + d9.slice(0, 2) + ' ' + d9.slice(2, 5) + ' ' + d9.slice(5, 8);
+      const mode = i % 7 === 4 ? 'email' : (i % 5 === 2 ? 'phone' : 'both');
+      const mins = i === 0 ? 6 : i === 1 ? 38 : i === 2 ? 95 : (i - 2) * 15 * 60 + (i * 37 % 60);
+      const t = new Date(Component.NOW.getTime() - mins * 60000);
+      let st = i < 12 ? 'new' : (i % 4 === 0 ? 'archived' : 'read'), autoRac = false;
+      const r = { ma, form, name: nm, email: mode === 'phone' ? '' : email, phone: mode === 'email' ? '' : phone, t, page: form === 'contact' ? '/lien-he' : PG[i % 3], msg: form === 'contact' ? MC[i % MC.length] : MQ[i % MQ.length], extra: form === 'quote' ? [['Vật liệu', MAT[i % 4]], ['Số lượng', QTY[i % 4]]] : null, ip: '113.161.' + (i * 7 % 255) + '.' + (i * 13 % 255), ua: UA[i % 4], consent: t < new Date('2026-09-10T00:00:00+07:00') ? OLDC : NEWC, trash: false };
+      if (i === 14) { Object.assign(r, { name: 'SEO VIP 2026', email: 'top1google@seo-vip.biz', phone: '', msg: 'Dịch vụ đưa website lên top 1 Google trong 7 ngày, giá chỉ 499.000 ₫/tháng. Bấm vào đường dẫn để nhận ưu đãi…', ua: 'Trình duyệt không rõ' }); st = 'spam'; autoRac = true; }
+      if (i === 23) { Object.assign(r, { name: 'Nhận vay nhanh', email: 'vaynhanh247@mail.ru', phone: '', msg: 'Vay tiền trực tuyến duyệt trong 5 phút, không cần thế chấp, nhận tiền ngay…' }); st = 'spam'; autoRac = true; }
+      if (i === 31) { Object.assign(r, { name: 'Phòng kinh doanh Data Việt', msg: 'Bán dữ liệu 20.000 số điện thoại khách hàng ngành cơ khí, giá rẻ.' }); st = 'spam'; }
+      if (i === 19) { autoRac = true; st = 'read'; }
+      r.status = st; r.autoRac = autoRac;
+      out.push(r);
+    }
+    return out;
+  }
+
+  state = { rows: Component.seed(), tab: 'all', q: '', forms: [], date: 'all', dFrom: '', dTo: '', pop: null, shown: 15, sel: null, mob: false, picked: {}, toast: null, dlg: null, pw: '', code: '', pwErr: '', pwTouched: false, pwShow: false, mode2fa: false, busy: false, menu: null, ret: '24', retDraft: '24', vs: null, formOn: false, big: false };
+
+  tw(k, d) { const v = this.props[k]; return (v === undefined || v === null || v === '') ? d : v; }
+  roleName() { return this.tw('role', 'Chủ website'); }
+  can(p) { const B = window.BSCW; return B && B.can ? B.can(this.roleName(), p) : true; }
+
+  componentDidMount() {
+    try { const u = JSON.parse(localStorage.getItem('bs-ui') || '{}'); if (u && u.fontSize === 'large') this.setState({ big: true }); } catch (e) {}
+    this._ready = () => this.forceUpdate();
+    ['bs-ui-ready', 'bs-cw-ready'].forEach(n => document.addEventListener(n, this._ready));
+    this._key = (e) => {
+      if (e.key === 'Escape') {
+        if (this.state.dlg) { e.preventDefault(); this.closeDlg(); return; }
+        if (this.state.menu) { e.preventDefault(); this.closeMenu(); return; }
+        if (this.state.pop) { this.setState({ pop: null }); return; }
+      }
+      if (e.key === '/' && !this.state.dlg) { const a = document.activeElement; if (a && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) return; if (this._search) { e.preventDefault(); this._search.focus(); } }
+    };
+    this._out = (e) => { if (!this.state.pop) return; const t = e.target; if (t && t.closest && t.closest('[data-kl-pop]')) return; this.setState({ pop: null }); };
+    this._cmd = (e) => { const d = (e && e.detail) || {}; if (d.id && d.id !== this.tw('embedId', 'contacts')) return; };
+    window.addEventListener('keydown', this._key); document.addEventListener('mousedown', this._out, true); document.addEventListener('bs-embed-cmd', this._cmd);
+    this._pma = this.props.ma; if (this.props.ma) this.openRow(this.props.ma, { noGoto: true });
+    this._pvs = this.props.viewState; this._pfo = this.props.formOff;
+    this._pfm = this.props.formMa; this.applyFormMa();
+    const od = this.props.onDirty; if (typeof od === 'function') od(0);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('keydown', this._key); document.removeEventListener('mousedown', this._out, true); document.removeEventListener('bs-embed-cmd', this._cmd);
+    ['bs-ui-ready', 'bs-cw-ready'].forEach(n => document.removeEventListener(n, this._ready));
+    clearTimeout(this._tt); clearTimeout(this._bt);
+  }
+  componentDidUpdate() {
+    if (this.props.ma !== this._pma) { this._pma = this.props.ma; if (this.props.ma && this.props.ma !== this.state.sel) this.openRow(this.props.ma, { noGoto: true }); else if (!this.props.ma && this.state.mob) this.setState({ mob: false }); }
+    if (this.props.viewState !== this._pvs) { this._pvs = this.props.viewState; this.setState({ vs: null }); }
+    if (this.props.formMa !== this._pfm) { this._pfm = this.props.formMa; this.applyFormMa(); }
+    if (this.props.formOff !== this._pfo) { this._pfo = this.props.formOff; this.setState({ formOn: false }); }
+  }
+
+  applyFormMa() { const f = Component.FORMS.find(x => x.ma === this.props.formMa); if (f) this.setState({ forms: [f.key], shown: 15, tab: 'all' }); }
+  goto(screen, params) { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen, params: params || {}, force: true } })); }
+  toast(msg, undo, icon) { clearTimeout(this._tt); this.setState({ toast: { msg, undo: undo || null, icon: icon || 'ri-checkbox-circle-line' } }); this._tt = setTimeout(() => this.setState({ toast: null }), 8000); }
+
+  openRow(ma, opt) {
+    const r = this.state.rows.find(x => x.ma === ma); if (!r) return;
+    const patch = { sel: ma, mob: true, menu: null };
+    if (r.status === 'new' && this.can('forms.manage')) patch.rows = this.state.rows.map(x => x.ma === ma ? Object.assign({}, x, { status: 'read' }) : x);
+    this.setState(patch, () => { if (this._back && this._back.offsetParent) this._back.focus(); });
+    if (this.tw('embedded', false) && !(opt && opt.noGoto)) { this._pma = ma; this.goto('contacts', { ma }); }
+  }
+  back() {
+    const ma = this.state.sel;
+    this.setState({ mob: false }, () => { const b = this._root().querySelector('[data-ma="' + ma + '"]'); if (b) b.focus(); });
+    if (this.tw('embedded', false)) { this._pma = ''; this.goto('contacts', {}); }
+  }
+  _root() { return (this._search && this._search.closest('.kl-root')) || document; }
+
+  setStatus(mas, st, label) {
+    const prev = {}; let n = 0;
+    const rows = this.state.rows.map(x => { if (mas.indexOf(x.ma) < 0 || x.status === st) return x; prev[x.ma] = x.status; n++; return Object.assign({}, x, { status: st }); });
+    if (!n) return 0;
+    this.setState({ rows });
+    this.toast(label.replace('{n}', n), () => this.setState(s => ({ rows: s.rows.map(x => prev[x.ma] ? Object.assign({}, x, { status: prev[x.ma] }) : x), toast: null })));
+    return n;
+  }
+  closeMenu() { const b = this._menuBtn; this.setState({ menu: null }, () => { if (b && b.isConnected) b.focus(); }); }
+  openMenu(id, e) {
+    const b = e.currentTarget, rc = b.getBoundingClientRect();
+    this._menuBtn = b;
+    const up = rc.bottom + 240 > window.innerHeight && rc.top > 240;
+    this.setState({ menu: { id, top: up ? null : Math.round(rc.bottom + 6), bottom: up ? Math.round(window.innerHeight - rc.top + 6) : null, right: Math.max(8, Math.round(window.innerWidth - rc.right)), sheet: window.innerWidth < 600 } }, () => { const m = this._menu; const f = m && m.querySelector('[role=menuitem]'); if (f) f.focus(); });
+  }
+  openDlg(dlg, extra) {
+    this._dlgFrom = document.activeElement;
+    this.setState(Object.assign({ dlg, menu: null, pw: '', code: '', pwErr: '', pwTouched: false, pwShow: false, mode2fa: false, busy: false }, extra || {}), () => setTimeout(() => { const f = (dlg === 'export' && this._first) || (dlg === 'ret' && this._retFirst) || this._cancel; if (f) f.focus(); }, 0));
+    const od = this.props.onDirty; if (typeof od === 'function') od(0);
+  }
+  closeDlg() { const f = this._dlgFrom; this.setState({ dlg: null, busy: false }); clearTimeout(this._bt); setTimeout(() => { if (f && f.isConnected) f.focus(); }, 0); }
+  trap(e) {
+    if (e.key !== 'Tab' || !this._dlg) return;
+    const els = Array.from(this._dlg.querySelectorAll('button,a[href],input,select,textarea,summary,[tabindex]:not([tabindex="-1"])')).filter(x => !x.disabled && x.offsetParent !== null);
+    if (!els.length) return; const a = els[0], z = els[els.length - 1];
+    if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+  }
+  pwCheck(s) { s = s || this.state; if (s.mode2fa) { const c = (s.code || '').replace(/\s/g, ''); return /^\d{6}$/.test(c) ? '' : 'Mã cần đủ 6 số, ví dụ 123 456 — xem trong ứng dụng xác thực trên điện thoại.'; } return s.pw ? (s.pw === 'sai' ? 'Mật khẩu chưa đúng. Kiểm tra phím viết hoa rồi nhập lại.' : '') : 'Nhập mật khẩu đăng nhập của bạn để tiếp tục.'; }
+
+  renderVals() {
+    const S = this.state, C = Component;
+    const embedded = !!this.tw('embedded', false);
+    const notes = this.tw('notes', true) !== false;
+    const roleName = this.roleName();
+    const view = this.can('forms.view'), manage = view && this.can('forms.manage');
+    const big = !!this.tw('bigText', false) || S.big;
+    const upsell = !!this.tw('upsell', false);
+    const moduleOn = this.tw('moduleOn', true) !== false;
+    const VS = { 'Có dữ liệu': 'data', 'Chưa có liên hệ': 'empty', 'Đang tải': 'loading', 'Lỗi': 'error', 'Không có quyền': 'noperm', 'Khóa theo gói': 'locked' };
+    let vs = S.vs || VS[this.tw('viewState', 'Có dữ liệu')] || 'data';
+    if (!moduleOn) vs = 'locked'; else if (!view) vs = 'noperm';
+    const formOffBand = !!this.tw('formOff', false) && !S.formOn && (vs === 'data' || vs === 'empty');
+    const BS = window.BSUI, NOW = C.NOW;
+    const ago = (t) => BS && BS.fmtAgo ? BS.fmtAgo(t, { now: NOW }) : t.toLocaleString('vi-VN');
+    const when = (t) => BS && BS.fmtDate ? BS.fmtDate(t, null, true) : t.toLocaleString('vi-VN');
+    const fName = (k) => (C.FORMS.find(f => f.key === k) || {}).name || k;
+    const stKey = (r) => r.trash ? 'trash' : r.status;
+    const plain = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').toLowerCase();
+    const digits = (s) => String(s || '').replace(/\D/g, '');
+
+    const all = S.rows;
+    const qn = plain(S.q.trim()), qd = digits(S.q);
+    const DAY = 86400000;
+    const startToday = new Date('2026-10-07T00:00:00+07:00').getTime();
+    const inDate = (r, k) => {
+      k = k || S.date; const t = r.t.getTime();
+      if (k === 'today') return t >= startToday;
+      if (k === '7') return t >= NOW.getTime() - 7 * DAY;
+      if (k === '30') return t >= NOW.getTime() - 30 * DAY;
+      if (k === 'custom') { const a = S.dFrom ? new Date(S.dFrom + 'T00:00:00+07:00').getTime() : -Infinity, b = S.dTo ? new Date(S.dTo + 'T23:59:59+07:00').getTime() : Infinity; return t >= a && t <= b; }
+      return true;
+    };
+    const mQ = (r) => !qn || plain(r.name).indexOf(qn) >= 0 || plain(r.email).indexOf(qn) >= 0 || (qd.length >= 3 && digits(r.phone).indexOf(qd) >= 0);
+    const mF = (r) => !S.forms.length || S.forms.indexOf(r.form) >= 0;
+    const base = all.filter(r => mQ(r) && mF(r) && inDate(r));
+    const inTab = (r, t) => t === 'trash' ? r.trash : (!r.trash && (t === 'all' ? r.status !== 'spam' : r.status === t));
+    const TABS = [['all', 'Tất cả'], ['new', 'Mới'], ['read', 'Đã xem'], ['archived', 'Đã xử lý'], ['spam', 'Thư rác'], ['trash', 'Thùng rác']];
+    const tabs = TABS.map(([k, l]) => { const n = base.filter(r => inTab(r, k)).length; return { l, n: String(n), hasN: k !== 'all' && (k === 'new' ? n > 0 : true), hot: (k === 'new' && n > 0) ? '1' : '0', onA: S.tab === k ? 'true' : 'false', go: () => this.setState({ tab: k, shown: 15, picked: {} }) }; });
+    const list = base.filter(r => inTab(r, S.tab));
+    const totalN = all.filter(r => inTab(r, S.tab)).length;
+    const shownRows = list.slice(0, S.shown);
+    let sel = S.sel && all.find(r => r.ma === S.sel);
+    if (!sel && shownRows.length) sel = shownRows[0];
+
+    const rows = shownRows.map(r => {
+      const k = stKey(r);
+      return { ma: r.ma, name: r.name, ago: ago(r.t), contact: [r.phone, r.email].filter(Boolean).join(' · ') || 'Không để lại cách liên hệ', form: fName(r.form), page: r.page, msg: r.msg.replace(/\n/g, ' '), stKey: k, stLabel: C.ST[k].l, stIcon: C.ST[k].icon, flagged: r.autoRac && r.status !== 'spam', onA: sel && sel.ma === r.ma ? '1' : '0', cur: sel && sel.ma === r.ma ? 'true' : undefined, unreadA: r.status === 'new' ? '1' : '0', picked: !!S.picked[r.ma], pickAria: 'Chọn liên hệ của ' + r.name, tog: () => this.setState(s => { const p = Object.assign({}, s.picked); if (p[r.ma]) delete p[r.ma]; else p[r.ma] = true; return { picked: p }; }), open: () => this.openRow(r.ma) };
+    });
+
+    const pickedRows = all.filter(r => S.picked[r.ma] && !r.trash);
+    const mkB = (pred, st, verb, done) => { const t = pickedRows.filter(pred); const n = t.length, skip = pickedRows.length - n; return { n: String(n), skip, offA: n ? 'false' : 'true', why: n ? (skip ? 'Bỏ qua ' + skip + ' liên hệ đã ở trạng thái này' : '') : 'Các liên hệ đã chọn đều đã ở trạng thái này', go: () => { if (!n) return; this.setStatus(t.map(x => x.ma), st, done); this.setState({ picked: {} }); } }; };
+    const bRead = mkB(r => r.status === 'new' || r.status === 'archived', 'read', 'Đã xem', 'Đã đánh dấu {n} liên hệ là "Đã xem"');
+    const bDone = mkB(r => r.status === 'new' || r.status === 'read', 'archived', 'Đã xử lý', 'Đã chuyển {n} liên hệ sang "Đã xử lý"');
+    const bRac = mkB(r => r.status !== 'spam', 'spam', 'Là thư rác', 'Đã chuyển {n} liên hệ vào Thư rác');
+    const maxSkip = Math.max(bRead.skip, bDone.skip, bRac.skip);
+
+    const chips = [];
+    S.forms.forEach(k => chips.push({ l: 'Biểu mẫu: ' + fName(k), aria: 'Bỏ lọc biểu mẫu ' + fName(k), x: () => this.setState(s => ({ forms: s.forms.filter(x => x !== k), shown: 15 })) }));
+    const DL = { all: 'Mọi lúc', today: 'Hôm nay', '7': '7 ngày qua', '30': '30 ngày qua', custom: 'Tùy chọn' };
+    const fmtD = (s) => s ? s.split('-').reverse().join('/') : '…';
+    const dateLbl = S.date === 'custom' ? fmtD(S.dFrom) + ' – ' + fmtD(S.dTo) : DL[S.date];
+    if (S.date !== 'all') chips.push({ l: 'Thời gian: ' + dateLbl, aria: 'Bỏ lọc thời gian', x: () => this.setState({ date: 'all', dFrom: '', dTo: '', shown: 15 }) });
+    if (S.q.trim()) chips.push({ l: 'Tìm: "' + S.q.trim() + '"', aria: 'Bỏ từ khóa tìm', x: () => this.setState({ q: '', shown: 15 }) });
+    const preF = all.filter(r => mQ(r) && inDate(r) && inTab(r, S.tab));
+    const formOpts = C.FORMS.map(f => ({ name: f.name, n: String(preF.filter(r => r.form === f.key).length), on: S.forms.indexOf(f.key) >= 0, tog: () => this.setState(s => ({ forms: s.forms.indexOf(f.key) >= 0 ? s.forms.filter(x => x !== f.key) : s.forms.concat(f.key), shown: 15 })) }));
+    const preD = all.filter(r => mQ(r) && mF(r) && inTab(r, S.tab));
+    const dateOpts = ['all', 'today', '7', '30', 'custom'].map(k => ({ l: DL[k], n: k === 'custom' ? '' : String(preD.filter(r => inDate(r, k)).length), on: S.date === k, pick: () => this.setState({ date: k, shown: 15 }) }));
+
+    let d = {};
+    if (sel) {
+      const k = stKey(sel), tel = digits(sel.phone);
+      const kv = [['Họ tên', sel.name], ['Điện thoại', sel.phone], ['Email', sel.email]].concat(sel.extra || []).concat([['Nội dung', sel.msg]]).map(([a, b]) => ({ k: a, v: b, has: !!b, empty: !b }));
+      d = { name: sel.name, stKey: k, stLabel: C.ST[k].l, stIcon: C.ST[k].icon, form: fName(sel.form), ago: ago(sel.t), when: when(sel.t), page: sel.page, pageHref: 'https://anvinh.vn' + sel.page, consent: sel.consent, ua: sel.ua, ip: sel.ip, kv,
+        flagged: sel.autoRac && sel.status === 'spam', flaggedOff: sel.autoRac && sel.status !== 'spam',
+        hasPhone: !!sel.phone, hasEmail: !!sel.email, noContact: !sel.phone && !sel.email, mailBig: !sel.phone && !!sel.email, mailSmall: !!sel.phone && !!sel.email,
+        phone: sel.phone, tel: 'tel:' + tel, zalo: 'https://zalo.me/' + tel, mailto: 'mailto:' + sel.email + '?subject=' + encodeURIComponent('Trả lời yêu cầu qua biểu mẫu ' + fName(sel.form)),
+        canStatus: manage && !sel.trash && sel.status !== 'spam', isRacSt: !sel.trash && sel.status === 'spam', inTrash: sel.trash };
+    }
+    const segs = [['new', 'Mới', 'ri-mail-unread-line'], ['read', 'Đã xem', 'ri-mail-open-line'], ['archived', 'Đã xử lý', 'ri-check-double-line']].map(([k, l, icon]) => ({ l, icon, onA: sel && sel.status === k ? 'true' : 'false', go: () => sel && this.setStatus([sel.ma], k, 'Đã chuyển sang "' + l + '"') }));
+
+    const menu = S.menu;
+    let menuItems = [], menuTitle = '';
+    if (menu && menu.id === 'det' && sel) {
+      menuTitle = 'Việc khác với liên hệ này';
+      if (!sel.trash && sel.status !== 'spam') menuItems.push({ item: true, sep: false, cls: 'kl-mi', icon: 'ri-spam-2-line', l: 'Là thư rác', go: () => { this.closeMenu(); this.setStatus([sel.ma], 'spam', 'Đã chuyển vào Thư rác'); } });
+      if (!sel.trash && sel.status === 'spam') menuItems.push({ item: true, sep: false, cls: 'kl-mi', icon: 'ri-mail-check-line', l: 'Không phải thư rác', go: () => { this.closeMenu(); this.setStatus([sel.ma], 'read', 'Đã đưa về "Đã xem"'); } });
+      if (menuItems.length) menuItems.push({ sep: true, item: false });
+      if (!sel.trash) menuItems.push({ item: true, sep: false, cls: 'kl-mi dgr', icon: 'ri-delete-bin-line', l: 'Chuyển vào Thùng rác', note: notes, go: () => { this.closeMenu(); const ma = sel.ma; this.setState(s => ({ rows: s.rows.map(x => x.ma === ma ? Object.assign({}, x, { trash: true }) : x), mob: false })); this.toast('Đã chuyển 1 liên hệ vào Thùng rác', () => this.setState(s => ({ rows: s.rows.map(x => x.ma === ma ? Object.assign({}, x, { trash: false }) : x), toast: null })), 'ri-delete-bin-line'); } });
+      menuItems.push({ item: true, sep: false, cls: 'kl-mi dgr', icon: 'ri-delete-bin-6-line', l: 'Xóa theo yêu cầu của khách…', go: () => this.openDlg('del', { delMa: sel.ma }) });
+    }
+    if (menu && menu.id === 'head') {
+      menuTitle = 'Việc khác với danh sách';
+      menuItems = [{ item: true, sep: false, cls: 'kl-mi', icon: 'ri-time-line', l: 'Thời hạn lưu giữ liên hệ…', note: notes, go: () => this.openDlg('ret', { retDraft: S.ret }) }];
+    }
+
+    const exN = list.length;
+    const pwErrNow = S.pwTouched ? this.pwCheck() : '';
+    const RET = [['12', 'Tự xóa sau 12 tháng', 'Hợp với website nhận nhiều liên hệ, ít khi xem lại.'], ['24', 'Tự xóa sau 24 tháng (nên dùng)', 'Đủ lâu để chăm sóc khách cũ, vẫn gọn dữ liệu.'], ['36', 'Tự xóa sau 36 tháng', 'Khi bạn cần xem lại lịch sử khách lâu hơn.'], ['none', 'Không tự xóa', 'Giữ mọi liên hệ cho tới khi bạn tự xóa.']];
+    const retOpts = RET.map(([k, l, h], i) => ({ l, h, on: S.retDraft === k, pick: () => this.setState({ retDraft: k }), ref: i === 0 ? (el) => { this._retFirstAny = el; } : undefined }));
+    const viewRoles = window.BSCW && window.BSCW.ROLES ? Object.keys(window.BSCW.ROLES).filter(k => window.BSCW.can(k, 'forms.view')).join(', ') : 'Chủ website, Quản trị, Biên tập, Chỉ xem';
+    const listOn = vs === 'data' || vs === 'loading';
+    const T = S.toast;
+
+    return {
+      showFrames: !embedded && !/frame/.test(location.hash) && window.innerWidth >= 1240,
+      bigA: big ? '1' : '0', embA: embedded ? '1' : '0', openA: S.mob && sel ? '1' : '0',
+      standalone: !embedded, showHeadActs: vs === 'data' || vs === 'empty', manage, notManage: !manage, notes, viewerNote: view && !manage, roleName, viewRoles,
+      formOffBand, turnFormOn: () => { this.setState({ formOn: true }); this.toast('Đã bật lại biểu mẫu "Liên hệ" — khách gửi được ngay'); },
+      upsell, noUpsell: !upsell, vsLocked: vs === 'locked', vsNoPerm: vs === 'noperm', vsError: vs === 'error', vsEmpty: vs === 'empty', vsList: listOn, vsLoading: vs === 'loading', listReady: vs === 'data',
+      goPlans: () => this.goto('settings', { section: 'plan' }), goHelp: () => document.dispatchEvent(new CustomEvent('bs-help')), goHome: () => this.goto('dashboard'),
+      goForms: () => { if (embedded) this.goto('forms'); else window.open('Biểu mẫu.dc.html', '_self'); },
+      retry: () => { this.setState({ vs: 'loading' }); clearTimeout(this._bt); this._bt = setTimeout(() => this.setState({ vs: 'data' }), 900); },
+      skRows: [1, 2, 3, 4, 5, 6],
+      tabs, q: S.q, onQ: (e) => this.setState({ q: e.target.value, shown: 15 }), searchRef: (el) => { this._search = el; },
+      popForm: S.pop === 'form', popFormA: S.pop === 'form' ? 'true' : 'false', togFormPop: () => this.setState(s => ({ pop: s.pop === 'form' ? null : 'form' })),
+      popDate: S.pop === 'date', popDateA: S.pop === 'date' ? 'true' : 'false', togDatePop: () => this.setState(s => ({ pop: s.pop === 'date' ? null : 'date' })),
+      closePop: () => this.setState({ pop: null }), clearForm: () => this.setState({ forms: [], shown: 15 }), clearDate: () => this.setState({ date: 'all', dFrom: '', dTo: '', shown: 15 }),
+      formOpts, formFilterOn: S.forms.length > 0, formFilterN: String(S.forms.length), dateOpts, dateBtn: S.date === 'all' ? 'Thời gian' : dateLbl, dateCustom: S.date === 'custom', dFrom: S.dFrom, dTo: S.dTo,
+      onFrom: (e) => this.setState({ dFrom: e.target.value, shown: 15 }), onTo: (e) => this.setState({ dTo: e.target.value, shown: 15 }),
+      hasActive: chips.length > 0, chips, clearAll: () => this.setState({ forms: [], date: 'all', dFrom: '', dTo: '', q: '', shown: 15 }), matchN: String(list.length), totalN: String(totalN),
+      bulkOn: manage && pickedRows.length > 0, pickN: String(pickedRows.length), bRead, bDone, bRac, bulkSkip: maxSkip > 0, bulkSkipTxt: 'Số trong ngoặc là số liên hệ nút đó làm được — liên hệ đã ở trạng thái đó sẽ được bỏ qua.', unpick: () => this.setState({ picked: {} }),
+      showSelAll: manage && shownRows.length > 0, allPicked: shownRows.length > 0 && shownRows.every(r => S.picked[r.ma]), pickAll: () => this.setState(s => { const on = shownRows.every(r => s.picked[r.ma]); const p = {}; if (!on) shownRows.forEach(r => { p[r.ma] = true; }); return { picked: p }; }),
+      pickA: manage ? '1' : '0', rows, shownN: String(shownRows.length), noMatch: vs === 'data' && list.length === 0,
+      noMatchTxt: S.tab === 'trash' && !chips.length ? 'Thùng rác trống.' : (chips.length ? 'Không có liên hệ nào khớp bộ lọc.' : 'Chưa có liên hệ nào ở mục này.'),
+      moreOn: list.length > S.shown, loadMore: () => this.setState(s => ({ shown: s.shown + 15 })),
+      hasSel: !!sel && vs === 'data', noSel: !sel && vs === 'data', d, segs, backRef: (el) => { this._back = el; }, back: () => this.back(),
+      notRac: () => sel && this.setStatus([sel.ma], 'read', 'Đã đưa về "Đã xem" — không phải thư rác'),
+      restoreSel: () => { if (!sel) return; const ma = sel.ma; this.setState(s => ({ rows: s.rows.map(x => x.ma === ma ? Object.assign({}, x, { trash: false }) : x) })); this.toast('Đã khôi phục 1 liên hệ'); },
+      openDetMenu: (e) => this.openMenu('det', e), openHeadMenu: (e) => this.openMenu('head', e), detMenuA: menu && menu.id === 'det' ? 'true' : 'false', headMenuA: menu && menu.id === 'head' ? 'true' : 'false',
+      menuOpen: !!menu && menuItems.length > 0, menuItems, menuTitle, menuSheet: !!(menu && menu.sheet), menuSheetA: menu && menu.sheet ? '1' : '0', menuTop: menu && menu.top != null ? menu.top + 'px' : 'auto', menuBottom: menu && menu.bottom != null ? menu.bottom + 'px' : 'auto', menuRight: menu ? menu.right + 'px' : '0px',
+      menuRef: (el) => { this._menu = el; }, menuBg: () => this.closeMenu(), stop: (e) => e.stopPropagation(),
+      menuKey: (e) => { if (!this._menu) return; const its = Array.from(this._menu.querySelectorAll('[role=menuitem]')); const i = its.indexOf(document.activeElement); if (e.key === 'ArrowDown') { e.preventDefault(); its[(i + 1) % its.length].focus(); } else if (e.key === 'ArrowUp') { e.preventDefault(); its[(i - 1 + its.length) % its.length].focus(); } else if (e.key === 'Tab') { this.closeMenu(); } },
+      openExport: () => this.openDlg('export'),
+      dlgExport: S.dlg === 'export', dlgRet: S.dlg === 'ret', dlgDel: S.dlg === 'del', dlgRef: (el) => { this._dlg = el; }, cancelRef: (el) => { this._cancel = el; }, firstRef: (el) => { this._first = el; }, dlgKey: (e) => this.trap(e), dlgBg: () => this.closeDlg(), closeDlg: () => this.closeDlg(),
+      exN: String(exN), exPwMode: !S.mode2fa, ex2faMode: S.mode2fa, pw: S.pw, code: S.code, pwType: S.pwShow ? 'text' : 'password', pwShowA: S.pwShow ? 'true' : 'false', pwIcon: S.pwShow ? 'ri-eye-off-line' : 'ri-eye-line', pwBtn: S.pwShow ? 'Ẩn' : 'Hiện',
+      togPw: () => this.setState(s => ({ pwShow: !s.pwShow })), onPw: (e) => this.setState({ pw: e.target.value }), onCode: (e) => this.setState({ code: e.target.value }), pwBlur: () => this.setState({ pwTouched: true }),
+      use2fa: () => this.setState({ mode2fa: true, pwTouched: false }, () => setTimeout(() => this._first && this._first.focus(), 0)), usePw: () => this.setState({ mode2fa: false, pwTouched: false }, () => setTimeout(() => this._first && this._first.focus(), 0)),
+      pwErr: pwErrNow, pwHasErr: !!pwErrNow, pwInvA: pwErrNow ? 'true' : 'false', busyA: S.busy ? 'true' : 'false', exIcon: S.busy ? 'ri-loader-4-line' : 'ri-download-2-line', exBtn: S.busy ? 'Đang chuẩn bị tệp…' : 'Tải tệp về máy (' + exN + ')',
+      doExport: () => { if (S.busy) return; const err = this.pwCheck(); if (err) { this.setState({ pwTouched: true }, () => this._first && this._first.focus()); return; } this.setState({ busy: true }); this._bt = setTimeout(() => { this.closeDlg(); this.toast('Đã tải "lien-he-07-10-2026.csv" (' + exN + ' liên hệ) — mở được bằng Excel. Đã ghi vào Nhật ký hoạt động.', null, 'ri-download-2-line'); }, 900); },
+      retOpts: retOpts.map((o, i) => Object.assign(o, { ref: i === 0 ? (el) => { this._retFirst = el; } : undefined })), retNone: S.retDraft === 'none',
+      saveRet: () => { const k = S.retDraft; this.setState({ ret: k }); this.closeDlg(); this.toast(k === 'none' ? 'Đã lưu: không tự xóa liên hệ cũ' : 'Đã lưu: liên hệ cũ hơn ' + k + ' tháng sẽ tự xóa'); },
+      delName: (all.find(r => r.ma === S.delMa) || {}).name || '',
+      doDel: () => { const ma = S.delMa; this.setState(s => ({ rows: s.rows.filter(x => x.ma !== ma), sel: null, mob: false })); this.closeDlg(); this.toast('Đã xóa hẳn 1 liên hệ theo yêu cầu của khách', null, 'ri-delete-bin-6-line'); },
+      toastOn: !!T, toastMsg: T ? T.msg : '', toastIcon: T ? T.icon : '', toastUndo: !!(T && T.undo), undo: () => { if (T && T.undo) T.undo(); }, toastUp: S.mob && sel ? '1' : '0', liveTxt: T ? T.msg : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -13,180 +13,289 @@
 
 <link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
 <script src="./ai-quota.js"></script>
 <style>
-.pe-tb{width:32px;height:32px;min-width:32px;border:0;border-radius:4px;background:transparent;color:var(--color-body-text,#3c4765);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:15px;}
-.pe-tb:hover{background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);}
-.pe-tb-txt{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 9px;border:0;border-radius:4px;background:transparent;color:var(--color-body-text,#3c4765);cursor:pointer;font:inherit;font-size:13px;}
-.pe-tb-txt:hover{background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);}
-.pe-tb-sep{width:1px;height:20px;background:var(--color-border-strong,#e9ebec);margin:0 5px;flex:0 0 auto;}
-.pe-rte{outline:none;}
+.rte-wrap{position:relative;font-family:Inter,'Segoe UI',sans-serif;--fsp:0px;}
+.rte-wrap input:not([type="color"]){background-color:var(--color-surface,#fff);}
+.rte-wrap[data-fs="l"]{--fsp:2px;}
+.rte-frame{border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;background:var(--color-surface,#fff);}
+.rte-frame[data-full="1"]{position:fixed;inset:16px;z-index:250;display:flex;flex-direction:column;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.3);}
+@media (max-width:599px){.rte-frame[data-full="1"]{inset:0;border-radius:0;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);}}
+.rte-tbw{container-type:inline-size;container-name:rtetb;position:relative;z-index:61;display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);border-radius:8px 8px 0 0;}
+.rte-tbs{position:relative;flex:1 1 auto;min-width:0;}
+.rte-tb{display:flex;align-items:center;flex-wrap:wrap;gap:2px 0;}
+.rte-g{display:inline-flex;align-items:center;gap:2px;flex:0 0 auto;}
+.rte-g+.rte-g{border-left:1px solid var(--color-border-strong,#e9ebec);margin-left:4px;padding-left:4px;}
+.pe-tb{width:32px;height:32px;min-width:32px;border:0;border-radius:4px;background:transparent;color:var(--color-body-text,#3c4765);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:calc(15px + var(--fsp));padding:0;}
+.pe-tb:hover,.pe-tb-txt:hover{background:var(--color-surface-hover,#f3f6f9);color:var(--color-accent,#2050a0);}
+.pe-tb[aria-pressed="true"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,transparent);color:var(--color-accent,#2050a0);}
+.pe-tb-txt{display:inline-flex;align-items:center;gap:5px;height:32px;padding:0 9px;border:0;border-radius:4px;background:transparent;color:var(--color-body-text,#3c4765);cursor:pointer;font:inherit;font-size:calc(13px + var(--fsp));white-space:nowrap;flex:0 0 auto;}
+.pe-tb-txt i{font-size:calc(15px + var(--fsp));}
+.rte-tgl{color:var(--color-body-muted,#5b6275);}
+.rte-arr{display:none;position:absolute;top:0;bottom:0;z-index:2;width:44px;border:0;padding:0;cursor:pointer;align-items:center;color:var(--color-heading,#1f2b4d);font-size:20px;}
+.rte-arr.l{left:0;justify-content:flex-start;background:linear-gradient(90deg,var(--color-surface-muted,#f8f9fb) 55%,transparent);}
+.rte-arr.r{right:0;justify-content:flex-end;background:linear-gradient(270deg,var(--color-surface-muted,#f8f9fb) 55%,transparent);}
+.rte-dd{position:absolute;top:calc(100% + 5px);left:0;z-index:60;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;padding:4px 0;max-width:90cqw;}
+.rte-dd-i{display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:38px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765);cursor:pointer;text-align:left;white-space:nowrap;}
+.rte-dd-i:hover{background:var(--color-surface-hover,#f3f6f9);}
+.rte-dd-i i{font-size:15px;color:var(--color-body-muted,#5b6275);}
+@container rtetb (max-width:599px){
+  .rte-tb{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;}
+  .rte-tb::-webkit-scrollbar{display:none;}
+  .rte-arr{display:flex;}
+  .pe-tb{width:44px;height:44px;min-width:44px;font-size:calc(18px + var(--fsp));}
+  .pe-tb-txt{height:44px;padding:0 10px;}
+  .rte-g+.rte-g{margin-left:2px;padding-left:2px;}
+  .rte-dd{display:none;}
+  .rte-tgl{padding:0 8px;}
+  .rte-tgl i{display:none;}
+}
+.rte-scrim{position:fixed;inset:0;z-index:300;background:rgba(15,23,41,.45);}
+.rte-sheet{position:fixed;left:0;right:0;bottom:0;z-index:301;max-height:75dvh;overflow:auto;overscroll-behavior:contain;background:var(--color-surface,#fff);border-radius:12px 12px 0 0;box-shadow:0 -8px 30px rgba(15,23,41,.25);padding-bottom:env(safe-area-inset-bottom,0px);font-size:calc(14px + var(--fsp));color:var(--color-body-text,#3c4765);}
+.rte-sh-h{position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:8px;padding:6px 6px 6px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff);}
+.rte-sh-t{flex:1 1 auto;min-width:0;font-weight:600;font-size:calc(15px + var(--fsp));color:var(--color-heading,#1f2b4d);}
+.rte-sh-x{width:44px;height:44px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);font-size:20px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}
+.rte-sh-i{display:flex;align-items:center;gap:12px;width:100%;box-sizing:border-box;min-height:48px;padding:0 16px;border:0;background:transparent;font:inherit;color:var(--color-body-text,#3c4765);text-align:left;cursor:pointer;}
+.rte-sh-i:hover{background:var(--color-surface-hover,#f3f6f9);}
+.rte-sh-i i{font-size:18px;color:var(--color-body-muted,#5b6275);}
+.rte-sw{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;}
+.rte-sheet .rte-sw{grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:6px;}
+.rte-sheet .rte-sw button{min-height:44px;}
+@keyframes rteUp{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+@media (prefers-reduced-motion:no-preference){.rte-sheet,.rte-aip[data-sheet="1"]{animation:rteUp .2s ease-out;}}
+.rte-aip{position:absolute;z-index:90;width:min(460px,calc(100% - 16px));box-sizing:border-box;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);font-size:calc(13px + var(--fsp));}
+.rte-aip[data-sheet="f"]{position:fixed;z-index:260;}
+.rte-aip[data-sheet="1"]{position:fixed;left:0!important;right:0;top:auto!important;bottom:0;width:auto;z-index:301;max-height:60dvh;overflow:auto;overscroll-behavior:contain;border-radius:12px 12px 0 0;padding-bottom:env(safe-area-inset-bottom,0px);}
+.rte-aip[data-sheet="1"] button{min-height:44px!important;}
+@media (pointer:coarse),(max-width:599px){.rte-bub{min-height:44px!important;}}
+.rte-foot{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;padding:9px 20px;border-top:1px solid var(--color-border,#e9ecf4);font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);}
+.pe-rte{outline:2px solid transparent;color:var(--color-body-text,#3c4765);font-size:calc(14px + var(--fsp));line-height:1.7;}
 .pe-rte:empty:before{content:attr(data-placeholder);color:var(--color-body-muted,#5b6275);}
-.pe-rte h2{font-size:20px;font-weight:600;color:var(--color-heading,#1f2b4d);margin:18px 0 8px;}
-.pe-rte h3{font-size:16.5px;font-weight:600;color:var(--color-heading,#1f2b4d);margin:14px 0 6px;}
-.pe-rte h4{font-size:14.5px;font-weight:600;color:var(--color-body-text,#3c4765);margin:12px 0 5px;}
-.pe-rte h5{font-size:13.5px;font-weight:600;color:var(--color-body-text,#3c4765);margin:10px 0 4px;}
-.pe-rte p{margin:0 0 12px;line-height:1.7;}
-.pe-rte ul,.pe-rte ol{margin:0 0 12px;padding-left:22px;line-height:1.7;}
-.pe-rte li{margin-bottom:4px;}
-.pe-rte blockquote{margin:0 0 12px;padding:8px 14px;border-left:3px solid #2050a0;background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-text,#3c4765);}
-.pe-rte table{border-collapse:collapse;width:100%;margin:0 0 12px;font-size:13.5px;}
-.pe-rte td,.pe-rte th{border:1px solid var(--color-border-strong,#e9ebec);padding:7px 10px;}
-.pe-rte hr{border:0;border-top:1px solid var(--color-border-strong,#e9ebec);margin:18px 0;}
-.pe-rte img{max-width:100%;border-radius:6px;}
+.pe-rte h2{font-size:calc(26px + var(--fsp));font-weight:800;color:var(--color-heading,#1f2b4d);margin:0 0 12px;line-height:1.2;}
+.pe-rte h3{font-size:calc(19px + var(--fsp));font-weight:700;color:var(--color-heading,#1f2b4d);margin:20px 0 8px;}
+.pe-rte h4{font-size:calc(16px + var(--fsp));font-weight:700;color:var(--color-heading,#1f2b4d);margin:16px 0 6px;}
+.pe-rte h5{font-size:calc(14px + var(--fsp));font-weight:700;color:var(--color-body-text,#3c4765);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.02em;}
+.pe-rte p{margin:0 0 12px;}
+.pe-rte ul,.pe-rte ol{margin:0 0 12px;padding-left:22px;}
+.pe-rte li{margin:4px 0;}
+.pe-rte blockquote{margin:14px 0;padding:10px 18px;border-left:3px solid var(--color-accent,#2050a0);background:var(--color-surface-muted,#f5f7fb);color:var(--color-body-text,#3c4765);font-style:italic;border-radius:0 8px 8px 0;}
+.pe-rte a{color:var(--color-accent,#2050a0);text-decoration:underline;}
+.pe-rte img{max-width:100%;border-radius:8px;}
+.pe-rte table{border-collapse:collapse;width:100%;margin:0 0 12px;}
+.pe-rte td,.pe-rte th{border:1px solid var(--color-border-strong,#e9ebec);padding:7px 10px;font-size:calc(13.5px + var(--fsp));}
+.pe-rte hr{border:0;border-top:1px solid var(--color-border-strong,#e9ebec);margin:16px 0;}
 .pe-rte figure{margin:0 0 12px;}
 .pe-rte .pe-video{cursor:pointer;}
-.rte-wrap{container-type:inline-size;}
 </style>
 </helmet>
-<div class="rte-wrap" style="font-family:Inter,'Segoe UI',sans-serif;">
-  <div style="{{ frameStyle }}">
-    <div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding:7px 10px;border-bottom:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
-      <div style="position:relative;">
-        <button title="Kiểu đoạn" class="pe-tb-txt" onMouseDown="{{ keep }}" onClick="{{ onTogglePara }}"><i class="ri-paragraph" style="font-size:15px;"></i>Kiểu<i class="{{ paraArrow }}" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i></button>
-        <sc-if value="{{ paraMenuOpen }}">
-          <div style="position:absolute;top:calc(100% + 5px);left:0;z-index:60;width:190px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;padding:4px 0;">
-            <sc-for list="{{ paraItems }}" as="pa" hint-placeholder-count="6">
-              <button style="display:flex;align-items:center;gap:9px;width:100%;box-sizing:border-box;min-height:38px;padding:8px 12px;border:0;background:transparent;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);cursor:pointer;text-align:left;" style-hover="background:var(--color-surface-hover,#f3f6f9);" onMouseDown="{{ keep }}" onClick="{{ pa.on }}"><i class="{{ pa.icon }}" style="font-size:15px;color:var(--color-body-muted,#5b6275);"></i>{{ pa.label }}</button>
-            </sc-for>
-          </div>
-        </sc-if>
-      </div>
-      <span class="pe-tb-sep"></span>
-      <button title="Đậm (Ctrl+B)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.bold }}" aria-label="Đậm (Ctrl+B)"><i class="ri-bold"></i></button>
-      <button title="Nghiêng (Ctrl+I)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.italic }}" aria-label="Nghiêng (Ctrl+I)"><i class="ri-italic"></i></button>
-      <button title="Gạch chân (Ctrl+U)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.underline }}" aria-label="Gạch chân (Ctrl+U)"><i class="ri-underline"></i></button>
-      <span class="pe-tb-sep"></span>
-      <button title="Danh sách" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.ul }}" aria-label="Danh sách"><i class="ri-list-unordered"></i></button>
-      <button title="Danh sách đánh số" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.ol }}" aria-label="Danh sách đánh số"><i class="ri-list-ordered-2"></i></button>
-      <span class="pe-tb-sep"></span>
-      <button title="Chèn liên kết" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.link }}" aria-label="Chèn liên kết"><i class="ri-link"></i></button>
-      <button title="Xóa liên kết" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.unlink }}" aria-label="Xóa liên kết"><i class="ri-link-unlink"></i></button>
-      <span class="pe-tb-sep"></span>
-      <button title="Xóa định dạng" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.clear }}" aria-label="Xóa định dạng"><i class="ri-format-clear"></i></button>
-      <button title="Hoàn tác (Ctrl+Z)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.undo }}" aria-label="Hoàn tác (Ctrl+Z)"><i class="ri-arrow-go-back-line"></i></button>
-      <button title="Làm lại (Ctrl+Y)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.redo }}" aria-label="Làm lại (Ctrl+Y)"><i class="ri-arrow-go-forward-line"></i></button>
-      <sc-if value="{{ toolbarFull }}">
-        <span class="pe-tb-sep"></span>
-        <button title="Gạch ngang" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.strike }}" aria-label="Gạch ngang"><i class="ri-strikethrough"></i></button>
-        <button title="Chỉ số trên" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.sup }}" aria-label="Chỉ số trên"><i class="ri-superscript"></i></button>
-        <button title="Chỉ số dưới" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.sub }}" aria-label="Chỉ số dưới"><i class="ri-subscript"></i></button>
-        <div style="position:relative;">
-          <button title="Cỡ chữ" class="pe-tb-txt" onMouseDown="{{ keep }}" onClick="{{ onToggleSize }}"><i class="ri-font-size-2" style="font-size:15px;"></i><i class="{{ sizeArrow }}" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i></button>
-          <sc-if value="{{ sizeMenuOpen }}">
-            <div style="position:absolute;top:calc(100% + 5px);left:0;z-index:60;width:170px;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;padding:4px 0;">
-              <sc-for list="{{ sizeItems }}" as="sz" hint-placeholder-count="6">
-                <button style="{{ sz.style }}" style-hover="background:var(--color-surface-hover,#f3f6f9);" onMouseDown="{{ keep }}" onClick="{{ sz.on }}">{{ sz.label }}</button>
-              </sc-for>
-            </div>
-          </sc-if>
-        </div>
-        <div style="position:relative;">
-          <button title="Màu chữ" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onToggleColor }}" aria-label="Màu chữ"><i class="ri-font-color"></i></button>
-          <sc-if value="{{ colorMenuOpen }}">
-            <div style="position:absolute;top:calc(100% + 5px);left:0;z-index:60;width:296px;max-width:90cqw;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 10px 30px rgba(30,32,37,0.18);overflow:hidden;">
+<div class="rte-wrap" ref="{{ wrapRef }}" data-fs="{{ fsAttr }}">
+  <div class="rte-frame" data-focus-wrap="" data-full="{{ fullAttr }}">
+    <div class="rte-tbw" ref="{{ tbwRef }}">
+      <div class="rte-tbs">
+        <sc-if value="{{ arrL }}" hint-placeholder-val="{{ false }}"><button type="button" class="rte-arr l" title="Xem các nút phía trước" aria-label="Cuộn thanh công cụ sang trái" onMouseDown="{{ keep }}" onClick="{{ onArrL }}"><i class="ri-arrow-left-s-line"></i></button></sc-if>
+        <div class="rte-tb" role="toolbar" aria-label="Định dạng nội dung" ref="{{ tbRef }}" onScroll="{{ onTbScroll }}">
+          <span class="rte-g" role="group" aria-label="Kiểu chữ" style="position:relative;">
+            <button type="button" title="Kiểu chữ — đoạn văn, tiêu đề, trích dẫn" class="pe-tb-txt" aria-haspopup="true" aria-expanded="{{ paraExp }}" onMouseDown="{{ keep }}" onClick="{{ onTogglePara }}"><i class="ri-paragraph"></i>Kiểu<i class="{{ paraArrow }}" style="color:var(--color-body-muted,#5b6275);"></i></button>
+            <sc-if value="{{ paraDrop }}">
+              <div class="rte-dd" style="width:200px;">
+                <sc-for list="{{ paraItems }}" as="pa" hint-placeholder-count="6">
+                  <button type="button" class="rte-dd-i" onMouseDown="{{ keep }}" onClick="{{ pa.on }}"><i class="{{ pa.icon }}"></i>{{ pa.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+          </span>
+          <span class="rte-g" role="group" aria-label="Đậm, nghiêng">
+            <button type="button" title="Đậm (Ctrl+B)" aria-label="Đậm (Ctrl+B)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.bold }}"><i class="ri-bold"></i></button>
+            <button type="button" title="Nghiêng (Ctrl+I)" aria-label="Nghiêng (Ctrl+I)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.italic }}"><i class="ri-italic"></i></button>
+          </span>
+          <span class="rte-g" role="group" aria-label="Danh sách">
+            <button type="button" title="Danh sách gạch đầu dòng (Ctrl+Shift+8) — bấm lần nữa để bỏ" aria-label="Danh sách gạch đầu dòng (Ctrl+Shift+8) — bấm lần nữa để bỏ" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.ul }}"><i class="ri-list-unordered"></i></button>
+            <button type="button" title="Danh sách đánh số (Ctrl+Shift+7) — bấm lần nữa để bỏ" aria-label="Danh sách đánh số (Ctrl+Shift+7) — bấm lần nữa để bỏ" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.ol }}"><i class="ri-list-ordered-2"></i></button>
+          </span>
+          <span class="rte-g" role="group" aria-label="Liên kết">
+            <button type="button" title="Chèn liên kết (Ctrl+K)" aria-label="Chèn liên kết (Ctrl+K)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.link }}"><i class="ri-link"></i></button>
+          </span>
+          <span class="rte-g" role="group" aria-label="Ảnh">
+            <button type="button" title="Chèn ảnh — chọn từ Thư viện hoặc tải ảnh mới lên" aria-label="Chèn ảnh — chọn từ Thư viện hoặc tải ảnh mới lên" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onOpenImg }}"><i class="ri-image-add-line"></i></button>
+          </span>
+          <span class="rte-g" role="group" aria-label="Video">
+            <button type="button" title="Chèn video — YouTube, Vimeo hoặc tệp MP4" aria-label="Chèn video — YouTube, Vimeo hoặc tệp MP4" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.video }}"><i class="ri-video-add-line"></i></button>
+          </span>
+          <span class="rte-g" role="group" aria-label="Hoàn tác">
+            <button type="button" title="Hoàn tác (Ctrl+Z)" aria-label="Hoàn tác (Ctrl+Z)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.undo }}"><i class="ri-arrow-go-back-line"></i></button>
+            <button type="button" title="Làm lại (Ctrl+Y)" aria-label="Làm lại (Ctrl+Y)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.redo }}"><i class="ri-arrow-go-forward-line"></i></button>
+          </span>
+          <sc-if value="{{ toolbarFull }}" hint-placeholder-val="{{ false }}">
+            <span class="rte-g" role="group" aria-label="Định dạng thêm">
+              <button type="button" title="Gạch chân (Ctrl+U)" aria-label="Gạch chân (Ctrl+U)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.underline }}"><i class="ri-underline"></i></button>
+              <button type="button" title="Gạch ngang" aria-label="Gạch ngang" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.strike }}"><i class="ri-strikethrough"></i></button>
+              <button type="button" title="Chỉ số trên (X²)" aria-label="Chỉ số trên (X²)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.sup }}"><i class="ri-superscript"></i></button>
+              <button type="button" title="Chỉ số dưới (X₂)" aria-label="Chỉ số dưới (X₂)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.sub }}"><i class="ri-subscript"></i></button>
+            </span>
+            <span class="rte-g" role="group" aria-label="Cỡ chữ và màu">
+              <span style="position:relative;display:inline-flex;">
+                <button type="button" title="Cỡ chữ — bôi đen chữ trước" aria-label="Cỡ chữ" class="pe-tb-txt" aria-haspopup="true" aria-expanded="{{ sizeExp }}" onMouseDown="{{ keep }}" onClick="{{ onToggleSize }}"><i class="ri-font-size-2"></i><i class="{{ sizeArrow }}" style="color:var(--color-body-muted,#5b6275);"></i></button>
+                <sc-if value="{{ sizeDrop }}">
+                  <div class="rte-dd" style="width:180px;">
+                    <sc-for list="{{ sizeItems }}" as="sz" hint-placeholder-count="5">
+                      <button type="button" style="{{ sz.style }}" style-hover="background:var(--color-surface-hover,#f3f6f9);" onMouseDown="{{ keep }}" onClick="{{ sz.on }}">{{ sz.label }}</button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </span>
+              <span style="position:relative;display:inline-flex;">
+                <button type="button" title="Màu chữ và màu nền" aria-label="Màu chữ và màu nền" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onToggleColor }}" aria-haspopup="true" aria-expanded="{{ colorExp }}"><i class="ri-font-color"></i></button>
+                <sc-if value="{{ colorDrop }}">
+                  <div class="rte-dd" style="width:296px;padding:0;">
               <div style="display:flex;">
-                <button style="{{ colorTabTextStyle }}" onMouseDown="{{ keep }}" onClick="{{ onColorText }}">Chữ hiển thị</button>
-                <button style="{{ colorTabBgStyle }}" onMouseDown="{{ keep }}" onClick="{{ onColorBg }}">Màu nền</button>
+                <button type="button" style="{{ colorTabTextStyle }}" aria-pressed="{{ colorTabTextOn }}" onMouseDown="{{ keep }}" onClick="{{ onColorText }}">Chữ hiển thị</button>
+                <button type="button" style="{{ colorTabBgStyle }}" aria-pressed="{{ colorTabBgOn }}" onMouseDown="{{ keep }}" onClick="{{ onColorBg }}">Màu nền</button>
               </div>
               <div style="padding:10px;">
-                <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:4px;">
+                <div class="rte-sw">
                   <sc-for list="{{ colorItems }}" as="co" hint-placeholder-count="40">
-                    <button style="{{ co.bg }}" onMouseDown="{{ keep }}" onClick="{{ co.on }}"></button>
+                    <button type="button" title="{{ co.label }}" aria-label="{{ co.label }}" style="{{ co.bg }}" onMouseDown="{{ keep }}" onClick="{{ co.on }}"></button>
                   </sc-for>
                 </div>
                 <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
-                  <label title="Màu tùy chọn" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;cursor:pointer;"><i class="ri-palette-line" style="font-size:16px;color:var(--color-accent,#2050a0);"></i><input type="color" onChange="{{ onCustomColor }}" style="width:0;height:0;opacity:0;position:absolute;"></label>
+                  <label title="Chọn màu tùy chọn" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;cursor:pointer;"><i class="ri-palette-line" style="font-size:16px;color:var(--color-accent,#2050a0);"></i><input type="color" aria-label="Chọn màu tùy chọn" onChange="{{ onCustomColor }}" style="width:1px;height:1px;opacity:0;position:absolute;"></label>
                   <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Chọn màu tùy chọn</span>
                 </div>
               </div>
-            </div>
+                  </div>
+                </sc-if>
+              </span>
+            </span>
+            <span class="rte-g" role="group" aria-label="Căn lề">
+              <button type="button" title="Căn trái" aria-label="Căn trái" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignL }}"><i class="ri-align-left"></i></button>
+              <button type="button" title="Căn giữa" aria-label="Căn giữa" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignC }}"><i class="ri-align-center"></i></button>
+              <button type="button" title="Căn phải" aria-label="Căn phải" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignR }}"><i class="ri-align-right"></i></button>
+              <button type="button" title="Căn đều 2 bên" aria-label="Căn đều 2 bên" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.justify }}"><i class="ri-align-justify"></i></button>
+            </span>
+            <span class="rte-g" role="group" aria-label="Thụt lề">
+              <button type="button" title="Giảm thụt lề" aria-label="Giảm thụt lề" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.outdent }}"><i class="ri-indent-decrease"></i></button>
+              <button type="button" title="Tăng thụt lề" aria-label="Tăng thụt lề" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.indent }}"><i class="ri-indent-increase"></i></button>
+            </span>
+            <span class="rte-g" role="group" aria-label="Bỏ định dạng">
+              <button type="button" title="Bỏ liên kết" aria-label="Bỏ liên kết" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.unlink }}"><i class="ri-link-unlink"></i></button>
+              <button type="button" title="Xóa định dạng (Ctrl+\)" aria-label="Xóa định dạng (Ctrl+\)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.clear }}"><i class="ri-format-clear"></i></button>
+            </span>
+            <span class="rte-g" role="group" aria-label="Chèn khác">
+              <button type="button" title="Chèn bảng" aria-label="Chèn bảng" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.table }}"><i class="ri-table-2"></i></button>
+              <button type="button" title="Đường kẻ ngang" aria-label="Đường kẻ ngang" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.hr }}"><i class="ri-separator"></i></button>
+              <button type="button" title="Ký tự đặc biệt (Ω)" aria-label="Ký tự đặc biệt (Ω)" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.char }}"><i class="ri-omega"></i></button>
+            </span>
+            <span class="rte-g" role="group" aria-label="Chế độ xem">
+              <button type="button" title="Xem / sửa HTML" aria-label="Xem / sửa HTML" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onToggleSource }}" aria-pressed="{{ sourcePressed }}"><i class="ri-code-s-slash-line"></i></button>
+              <button type="button" title="{{ rteFullTitle }}" aria-label="{{ rteFullTitle }}" aria-pressed="{{ rteFullPressed }}" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onToggleRteFull }}"><i class="{{ rteFullIcon }}"></i></button>
+            </span>
           </sc-if>
         </div>
-        <span class="pe-tb-sep"></span>
-        <button title="Căn trái" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignL }}" aria-label="Căn trái"><i class="ri-align-left"></i></button>
-        <button title="Căn giữa" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignC }}" aria-label="Căn giữa"><i class="ri-align-center"></i></button>
-        <button title="Căn phải" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.alignR }}" aria-label="Căn phải"><i class="ri-align-right"></i></button>
-        <button title="Căn đều 2 bên" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.justify }}" aria-label="Căn đều 2 bên"><i class="ri-align-justify"></i></button>
-        <span class="pe-tb-sep"></span>
-        <button title="Giảm thụt lề" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.outdent }}" aria-label="Giảm thụt lề"><i class="ri-indent-decrease"></i></button>
-        <button title="Tăng thụt lề" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.indent }}" aria-label="Tăng thụt lề"><i class="ri-indent-increase"></i></button>
-        <span class="pe-tb-sep"></span>
-        <button title="Chèn ảnh — mở bảng thuộc tính ảnh" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onOpenImg }}" aria-label="Chèn ảnh — mở bảng thuộc tính ảnh"><i class="ri-image-add-line"></i></button>
-        <button title="Chèn video" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.video }}" aria-label="Chèn video"><i class="ri-video-add-line"></i></button>
-        <button title="Chèn bảng" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.table }}" aria-label="Chèn bảng"><i class="ri-table-2"></i></button>
-        <button title="Đường kẻ ngang" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.hr }}" aria-label="Đường kẻ ngang"><i class="ri-separator"></i></button>
-        <button title="Ký tự đặc biệt" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ rte.char }}" aria-label="Ký tự đặc biệt"><i class="ri-omega"></i></button>
-        <span class="pe-tb-sep"></span>
-        <button title="Xem / sửa HTML" class="pe-tb" style="{{ sourceBtnStyle }}" onMouseDown="{{ keep }}" onClick="{{ onToggleSource }}" aria-label="Xem / sửa HTML"><i class="ri-code-s-slash-line"></i></button>
-        <button title="Toàn màn hình" class="pe-tb" onMouseDown="{{ keep }}" onClick="{{ onToggleRteFull }}" aria-label="Toàn màn hình"><i class="{{ rteFullIcon }}"></i></button>
-      </sc-if>
-      <span style="margin-left:auto;"></span>
-      <button title="Thu gọn / mở rộng thanh công cụ" class="pe-tb-txt" style="color:var(--color-body-muted,#5b6275);" onMouseDown="{{ keep }}" onClick="{{ onToggleToolbar }}"><i class="{{ toolbarToggleIcon }}" style="font-size:15px;"></i>{{ toolbarToggleLabel }}</button>
+        <sc-if value="{{ arrR }}" hint-placeholder-val="{{ false }}"><button type="button" class="rte-arr r" title="Xem thêm nút phía sau" aria-label="Cuộn thanh công cụ sang phải" onMouseDown="{{ keep }}" onClick="{{ onArrR }}"><i class="ri-arrow-right-s-line"></i></button></sc-if>
+      </div>
+      <button type="button" class="pe-tb-txt rte-tgl" title="{{ toolbarToggleTitle }}" aria-expanded="{{ tbExpanded }}" onMouseDown="{{ keep }}" onClick="{{ onToggleToolbar }}"><i class="{{ toolbarToggleIcon }}"></i>{{ toolbarToggleLabel }}</button>
     </div>
 
     <div style="padding:16px 20px;position:relative;">
       <div style="display:{{ editorDisp }};">
-        <div ref="{{ bodyRef }}" class="pe-rte" contentEditable="{{ editable }}" spellCheck="{{ false }}" suppressContentEditableWarning="{{ true }}" data-placeholder="{{ rtePlaceholder }}" onInput="{{ onContentInput }}" onKeyDown="{{ onKey }}" onMouseUp="{{ onSelChange }}" onKeyUp="{{ onSelChange }}" onPaste="{{ onPaste }}" onClick="{{ onBodyClick }}" onScroll="{{ onBodyScroll }}" style="min-height:{{ editorMinH }};max-height:{{ editorMaxH }};overflow:auto;overscroll-behavior:contain;font-size:14px;color:var(--color-body-text,#3c4765);line-height:1.7;"></div>
+        <div ref="{{ bodyRef }}" class="pe-rte" role="textbox" aria-multiline="true" aria-label="Nội dung" contentEditable="{{ editable }}" spellCheck="{{ false }}" suppressContentEditableWarning="{{ true }}" data-placeholder="{{ rtePlaceholder }}" onInput="{{ onContentInput }}" onKeyDown="{{ onKey }}" onMouseUp="{{ onSelChange }}" onKeyUp="{{ onSelChange }}" onTouchEnd="{{ onTouchSel }}" onPaste="{{ onPaste }}" onClick="{{ onBodyClick }}" onScroll="{{ onBodyScroll }}" style="min-height:{{ editorMinH }};max-height:{{ editorMaxH }};overflow:auto;overscroll-behavior:contain;"></div>
       </div>
       <sc-if value="{{ aiBubbleOn }}" hint-placeholder-val="{{ false }}">
         <div style="{{ aiBubbleStyle }}">
-          <button disabled="{{ aiBlocked }}" title="{{ aiBubbleTitle }}" style="{{ aiBubbleBtnStyle }}" onMouseDown="{{ keep }}" onClick="{{ onAiRewrite }}"><i class="ri-sparkling-2-line" style="font-size:15px;"></i>Viết lại<span style="font-weight:400;color:var(--color-body-muted,#5b6275);margin-left:4px;">{{ aiSelWords }}</span></button>
+          <button type="button" class="rte-bub" disabled="{{ aiBlocked }}" title="{{ aiBubbleTitle }}" style="{{ aiBubbleBtnStyle }}" onMouseDown="{{ keep }}" onClick="{{ onAiRewrite }}"><i class="ri-sparkling-2-line" style="font-size:15px;"></i>Viết lại<span style="font-weight:400;color:var(--color-body-muted,#5b6275);margin-left:4px;">{{ aiSelWords }}</span></button>
         </div>
       </sc-if>
       <sc-if value="{{ rteSource }}">
-        <textarea value="{{ sourceHtml }}" onChange="{{ onSourceInput }}" spellCheck="{{ false }}" style="width:100%;box-sizing:border-box;min-height:{{ editorMinH }};max-height:{{ editorMaxH }};padding:14px 16px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;background:var(--color-surface-muted,#f8f9fb);font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;color:var(--color-heading,#1f2b4d);outline:none;resize:vertical;" style-focus="border-color:#2050a0;background:var(--color-surface,#fff);box-shadow:0 0 0 3px rgba(32,80,160,0.12);"></textarea>
+        <textarea aria-label="Mã HTML của nội dung" value="{{ sourceHtml }}" onChange="{{ onSourceInput }}" spellCheck="{{ false }}" style="width:100%;box-sizing:border-box;min-height:{{ editorMinH }};max-height:{{ editorMaxH }};padding:14px 16px;border:1px solid var(--color-border-input,#8a90a2);border-radius:8px;background:var(--color-surface-muted,#f8f9fb);font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.6;color:var(--color-heading,#1f2b4d);resize:vertical;"></textarea>
       </sc-if>
     </div>
 
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 20px;border-top:1px solid #f4f5f7;font-size:12px;color:var(--color-body-muted,#5b6275);">
+    <div class="rte-foot">
       <span title="{{ quotaTitle }}" style="{{ quotaStyle }}"><i class="ri-sparkling-2-line" style="font-size:13px;"></i>{{ quotaChip }}</span>
       <span style="width:1px;height:14px;background:var(--color-border-strong,#e9ebec);"></span>
       <span style="display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap;">
         <sc-for list="{{ tagPath }}" as="tg" hint-placeholder-count="3">
-          <button title="{{ tg.title }}" style="{{ tg.style }}" onMouseDown="{{ keep }}" onClick="{{ tg.on }}">{{ tg.name }}</button>
+          <button type="button" title="{{ tg.title }}" style="{{ tg.style }}" onMouseDown="{{ keep }}" onClick="{{ tg.on }}">{{ tg.name }}</button>
         </sc-for>
       </span>
-      <span style="margin-left:auto;display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:0.03em;"><span>Ký tự: <strong style="color:var(--color-body-muted,#5b6275);font-weight:600;font-variant-numeric:tabular-nums;">{{ charCount }}</strong></span><span style="color:#e2e5ea;">·</span><span>Từ: <strong style="color:var(--color-body-muted,#5b6275);font-weight:600;font-variant-numeric:tabular-nums;">{{ wordCount }}</strong></span><span style="color:#e2e5ea;">·</span><span>Đọc: <strong style="color:var(--color-body-muted,#5b6275);font-weight:600;">{{ readMin }} phút</strong></span></span>
+      <span style="margin-left:auto;display:inline-flex;align-items:center;gap:10px;text-transform:uppercase;letter-spacing:0.03em;"><span>Ký tự: <strong style="color:var(--color-body-muted,#5b6275);font-weight:600;font-variant-numeric:tabular-nums;">{{ charCount }}</strong></span><span aria-hidden="true" style="color:var(--color-border-strong,#e2e5ea);">·</span><span>Từ: <strong style="color:var(--color-body-muted,#5b6275);font-weight:600;font-variant-numeric:tabular-nums;">{{ wordCount }}</strong></span><span aria-hidden="true" style="color:var(--color-border-strong,#e2e5ea);">·</span><span>Đọc: <strong style="color:var(--color-body-muted,#5b6275);font-weight:600;">{{ readMin }} phút</strong></span></span>
     </div>
   </div>
 
-  <sc-if value="{{ aiPanelOn }}">
-    <div style="position:fixed;inset:0;z-index:330;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;">
-      <div style="position:absolute;inset:0;background:rgba(52,58,64,0.5);" onClick="{{ onAiClose }}"></div>
-      <div style="position:relative;z-index:1;width:560px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);overflow:hidden;">
-        <div style="display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid var(--color-border,#e9ecf4);">
-          <span style="width:34px;height:34px;border-radius:8px;background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;"><i class="ri-sparkling-2-line"></i></span>
-          <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
-            <span style="font-size:14.5px;font-weight:600;color:var(--color-heading,#1f2b4d);">Viết lại đoạn đã chọn</span>
-            <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Chữ hiện tại vẫn giữ nguyên cho tới khi bạn bấm thay.</span>
-          </span>
-          <button title="Đóng" style="border:0;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;font-size:18px;line-height:1;" onClick="{{ onAiClose }}" aria-label="Đóng"><i class="ri-close-line"></i></button>
+  <sc-if value="{{ sheetOn }}" hint-placeholder-val="{{ false }}">
+    <div class="rte-scrim" onMouseDown="{{ keep }}" onClick="{{ onCloseMenus }}"></div>
+    <div class="rte-sheet" role="dialog" aria-modal="true" aria-label="{{ sheetTitle }}">
+      <div class="rte-sh-h"><span class="rte-sh-t">{{ sheetTitle }}</span><button type="button" class="rte-sh-x" title="Đóng (Esc)" aria-label="Đóng" onMouseDown="{{ keep }}" onClick="{{ onCloseMenus }}"><i class="ri-close-line"></i></button></div>
+      <sc-if value="{{ paraSheet }}">
+        <div style="padding:4px 0;">
+          <sc-for list="{{ paraItems }}" as="pa" hint-placeholder-count="6">
+            <button type="button" class="rte-sh-i" onMouseDown="{{ keep }}" onClick="{{ pa.on }}"><i class="{{ pa.icon }}"></i>{{ pa.label }}</button>
+          </sc-for>
         </div>
-        <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px;">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <sc-for list="{{ aiModes }}" as="m" hint-placeholder-count="5">
-              <button title="{{ m.title }}" style="{{ m.style }}" onClick="{{ m.on }}"><i class="{{ m.icon }}" style="font-size:14px;"></i>{{ m.label }}</button>
-            </sc-for>
+      </sc-if>
+      <sc-if value="{{ sizeSheet }}">
+        <div style="padding:4px 0;">
+          <sc-for list="{{ sizeItems }}" as="sz" hint-placeholder-count="5">
+            <button type="button" class="rte-sh-i" onMouseDown="{{ keep }}" onClick="{{ sz.on }}">{{ sz.label }}</button>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ colorSheet }}">
+        <div>
+              <div style="display:flex;">
+                <button type="button" style="{{ colorTabTextStyle }}" aria-pressed="{{ colorTabTextOn }}" onMouseDown="{{ keep }}" onClick="{{ onColorText }}">Chữ hiển thị</button>
+                <button type="button" style="{{ colorTabBgStyle }}" aria-pressed="{{ colorTabBgOn }}" onMouseDown="{{ keep }}" onClick="{{ onColorBg }}">Màu nền</button>
+              </div>
+              <div style="padding:10px;">
+                <div class="rte-sw">
+                  <sc-for list="{{ colorItems }}" as="co" hint-placeholder-count="40">
+                    <button type="button" title="{{ co.label }}" aria-label="{{ co.label }}" style="{{ co.bg }}" onMouseDown="{{ keep }}" onClick="{{ co.on }}"></button>
+                  </sc-for>
+                </div>
+                <div style="margin-top:10px;display:flex;align-items:center;gap:8px;">
+                  <label title="Chọn màu tùy chọn" style="position:relative;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;cursor:pointer;"><i class="ri-palette-line" style="font-size:16px;color:var(--color-accent,#2050a0);"></i><input type="color" aria-label="Chọn màu tùy chọn" onChange="{{ onCustomColor }}" style="width:1px;height:1px;opacity:0;position:absolute;"></label>
+                  <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">Chọn màu tùy chọn</span>
+                </div>
+              </div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ aiPanelOn }}" hint-placeholder-val="{{ false }}">
+    <div class="rte-aip" ref="{{ aipRef }}" role="dialog" aria-label="Viết lại đoạn đã chọn" data-sheet="{{ aiSheet }}" style="top:{{ aiTop }}px;left:{{ aiLeft }}px;">
+      <div style="display:flex;align-items:center;gap:10px;padding:12px 8px 12px 14px;border-bottom:1px solid var(--color-border,#e9ecf4);">
+        <span style="width:32px;height:32px;border-radius:8px;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;"><i class="ri-sparkling-2-line"></i></span>
+        <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;">
+          <span style="font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);">Viết lại đoạn đã chọn</span>
+          <span style="font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);">Chữ hiện tại giữ nguyên tới khi bạn bấm thay.</span>
+        </span>
+        <button type="button" title="Đóng (Esc)" aria-label="Đóng" style="width:40px;height:40px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;font-size:18px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;" onClick="{{ onAiClose }}"><i class="ri-close-line"></i></button>
+      </div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <sc-for list="{{ aiModes }}" as="m" hint-placeholder-count="5">
+            <button type="button" title="{{ m.title }}" aria-pressed="{{ m.pressed }}" style="{{ m.style }}" onClick="{{ m.on }}"><i class="{{ m.icon }}" style="font-size:14px;"></i>{{ m.label }}</button>
+          </sc-for>
+        </div>
+        <div style="padding:8px 10px;background:var(--color-surface-muted,#f8f9fb);border:1px dashed var(--color-border-strong,#e3e6ea);border-radius:6px;">
+          <div style="font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;">Đoạn hiện tại</div>
+          <div style="color:var(--color-body-text,#3c4765);line-height:1.6;max-height:88px;overflow:auto;">{{ aiCurrent }}</div>
+        </div>
+        <sc-if value="{{ aiHasResult }}">
+          <div style="padding:8px 10px;background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent);border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 25%,transparent);border-radius:6px;" aria-live="polite">
+            <div style="font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;">Phương án AI · {{ aiModeLabel }}</div>
+            <div style="color:var(--color-heading,#1f2b4d);line-height:1.6;max-height:150px;overflow:auto;">{{ aiSuggestion }}</div>
           </div>
-          <div style="padding:10px 12px;background:var(--color-surface-muted,#f8f9fb);border:1px dashed #e3e6ea;border-radius:6px;">
-            <div style="font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;">Đoạn hiện tại</div>
-            <div style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.6;max-height:88px;overflow:auto;">{{ aiCurrent }}</div>
-          </div>
-          <sc-if value="{{ aiHasResult }}">
-            <div style="padding:10px 12px;background:rgba(32,80,160,0.05);border:1px solid rgba(32,80,160,0.2);border-radius:6px;">
-              <div style="font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:4px;">Phương án AI · {{ aiModeLabel }}</div>
-              <div style="font-size:13px;color:var(--color-heading,#1f2b4d);line-height:1.6;max-height:150px;overflow:auto;">{{ aiSuggestion }}</div>
-            </div>
-          </sc-if>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
-          <span style="flex:1 1 160px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ aiSpent }}</span>
-          <button style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onAiClose }}">Hủy</button>
-          <button style="{{ aiApplyStyle }}" onClick="{{ onAiApply }}"><i class="ri-check-line"></i>Thay đoạn này</button>
-        </div>
+        </sc-if>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);border-radius:0 0 8px 8px;">
+        <span style="flex:1 1 160px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ aiSpent }}</span>
+        <button type="button" style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-weight:500;cursor:pointer;" onClick="{{ onAiClose }}">Hủy</button>
+        <button type="button" style="{{ aiApplyStyle }}" aria-disabled="{{ aiApplyDis }}" onClick="{{ onAiApply }}"><i class="ri-check-line"></i>Thay đoạn này</button>
       </div>
     </div>
   </sc-if>
@@ -226,11 +335,11 @@
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;">
             <label style="font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);">Mô tả ảnh — cho SEO và người khiếm thị</label>
-            <input value="{{ imgAlt }}" onChange="{{ onImgAlt }}" placeholder="Máy phay CNC 5 trục đang gia công chi tiết thép" style="width:100%;box-sizing:border-box;min-height:38px;padding:9px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);">
+            <input aria-label="Mô tả ảnh" value="{{ imgAlt }}" onChange="{{ onImgAlt }}" placeholder="Máy phay CNC 5 trục đang gia công chi tiết thép" style="width:100%;box-sizing:border-box;min-height:38px;padding:9px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);">
           </div>
           <div style="display:flex;flex-direction:column;gap:6px;">
             <label style="font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);">Chú thích dưới ảnh — không bắt buộc</label>
-            <input value="{{ imgCaption }}" onChange="{{ onImgCaption }}" placeholder="Ảnh: xưởng An Vinh, tháng 7/2026" style="width:100%;box-sizing:border-box;min-height:38px;padding:9px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);">
+            <input aria-label="Chú thích dưới ảnh" value="{{ imgCaption }}" onChange="{{ onImgCaption }}" placeholder="Ảnh: công trình hoàn thiện, tháng 7/2026" style="width:100%;box-sizing:border-box;min-height:38px;padding:9px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);">
           </div>
           <div style="display:flex;gap:16px;flex-wrap:wrap;">
             <div style="display:flex;flex-direction:column;gap:6px;flex:1 1 240px;min-width:0;">
@@ -251,9 +360,9 @@
             </div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;flex:0 0 auto;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);flex:0 0 auto;">
           <span style="flex:1 1 150px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">Bấm vào ảnh trong bài để mở lại bảng này.</span>
-          <sc-if value="{{ imgEdit }}"><button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border-radius:4px;border:1px solid #f7d3ce;background:var(--color-surface,#fff);color:var(--color-admin-danger-text,#f06548);font:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;" onClick="{{ onImgRemove }}"><i class="ri-delete-bin-line"></i>Xóa ảnh</button></sc-if>
+          <sc-if value="{{ imgEdit }}"><button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border-radius:4px;border:1px solid var(--color-admin-danger-text,#bf371a);background:var(--color-surface,#fff);color:var(--color-admin-danger-text,#f06548);font:inherit;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;" onClick="{{ onImgRemove }}"><i class="ri-delete-bin-line"></i>Xóa ảnh</button></sc-if>
           <button style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onImgClose }}">Hủy</button>
           <button style="{{ imgSaveStyle }}" onClick="{{ onImgSave }}"><i class="ri-check-line"></i>{{ imgSaveLabel }}</button>
         </div>
@@ -285,9 +394,9 @@
         <div style="padding:16px 18px;display:flex;flex-direction:column;gap:14px;">
           <div style="display:flex;flex-direction:column;gap:6px;">
             <label style="font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);">Liên kết video</label>
-            <input ref="{{ vidInputRef }}" value="{{ vidUrl }}" onChange="{{ onVidUrl }}" onKeyDown="{{ onVidKey }}" placeholder="https://www.youtube.com/watch?v=…" style="width:100%;box-sizing:border-box;min-height:40px;padding:9px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.15);">
+            <input ref="{{ vidInputRef }}" aria-label="Liên kết video" value="{{ vidUrl }}" onChange="{{ onVidUrl }}" onKeyDown="{{ onVidKey }}" placeholder="https://www.youtube.com/watch?v=…" style="width:100%;box-sizing:border-box;min-height:40px;padding:9px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);">
             <sc-if value="{{ vidOk }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-admin-success-text,#0ab39c);"><i class="ri-checkbox-circle-line"></i>Nhận ra: {{ vidName }}</span></sc-if>
-            <sc-if value="{{ vidBad }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#f7b84b;"><i class="ri-error-warning-line"></i>Chưa nhận ra liên kết — dán địa chỉ đầy đủ bắt đầu bằng https://</span></sc-if>
+            <sc-if value="{{ vidBad }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-admin-warning-text,#906405);"><i class="ri-error-warning-line"></i>Chưa nhận ra liên kết — dán địa chỉ đầy đủ bắt đầu bằng https://</span></sc-if>
           </div>
           <div style="display:flex;flex-direction:column;gap:2px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;">
             <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;">
@@ -295,20 +404,20 @@
                 <span style="font-size:13px;color:var(--color-heading,#1f2b4d);">Tự động phát khi mở trang</span>
                 <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">Trình duyệt chỉ cho tự phát khi video <b>tắt tiếng</b> — nền tảng tự bật tắt tiếng giúp bạn.</span>
               </span>
-              <sc-if value="{{ vidAutoplay }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#2050a0;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidAutoplayOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
-              <sc-if value="{{ vidAutoplayOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#ced4da;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidAutoplayOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
+              <sc-if value="{{ vidAutoplay }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:var(--color-admin-primary,#2050a0);position:relative;cursor:pointer;padding:0;" aria-label="Tự động phát khi mở trang" onClick="{{ onVidAutoplayOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
+              <sc-if value="{{ vidAutoplayOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:var(--color-border-input,#8a90a2);position:relative;cursor:pointer;padding:0;" aria-label="Tự động phát khi mở trang" onClick="{{ onVidAutoplayOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
             </div>
             <div style="height:1px;background:var(--color-border,#e9ecf4);"></div>
             <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;">
               <span style="font-size:13px;color:var(--color-heading,#1f2b4d);flex:1;">Phát lại liên tục</span>
-              <sc-if value="{{ vidLoop }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#2050a0;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidLoopOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
-              <sc-if value="{{ vidLoopOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#ced4da;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidLoopOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
+              <sc-if value="{{ vidLoop }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:var(--color-admin-primary,#2050a0);position:relative;cursor:pointer;padding:0;" aria-label="Phát lại liên tục" onClick="{{ onVidLoopOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
+              <sc-if value="{{ vidLoopOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:var(--color-border-input,#8a90a2);position:relative;cursor:pointer;padding:0;" aria-label="Phát lại liên tục" onClick="{{ onVidLoopOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
             </div>
             <div style="height:1px;background:var(--color-border,#e9ecf4);"></div>
             <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;">
               <span style="font-size:13px;color:var(--color-heading,#1f2b4d);flex:1;">Hiện thanh điều khiển</span>
-              <sc-if value="{{ vidControls }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#2050a0;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidControlsOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
-              <sc-if value="{{ vidControlsOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:#ced4da;position:relative;cursor:pointer;padding:0;" onClick="{{ onVidControlsOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
+              <sc-if value="{{ vidControls }}"><button role="switch" aria-checked="true" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:var(--color-admin-primary,#2050a0);position:relative;cursor:pointer;padding:0;" aria-label="Hiện thanh điều khiển" onClick="{{ onVidControlsOff }}"><span style="position:absolute;top:2px;left:20px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
+              <sc-if value="{{ vidControlsOff }}"><button role="switch" aria-checked="false" style="flex-shrink:0;width:40px;height:22px;border-radius:11px;border:0;background:var(--color-border-input,#8a90a2);position:relative;cursor:pointer;padding:0;" aria-label="Hiện thanh điều khiển" onClick="{{ onVidControlsOn }}"><span style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--color-surface,#fff);"></span></button></sc-if>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
@@ -320,9 +429,9 @@
             </span>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px 18px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);">
           <span style="flex:1 1 170px;min-width:0;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.45;">Khung soạn thảo hiện thẻ xem trước — bấm vào thẻ để sửa lại thuộc tính. Video phát thật khi xem trang.</span>
-          <sc-if value="{{ vidEdit }}"><button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border-radius:4px;border:1px solid #f7d3ce;background:var(--color-surface,#fff);color:var(--color-admin-danger-text,#f06548);font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onVidRemove }}"><i class="ri-delete-bin-line"></i>Xóa video</button></sc-if>
+          <sc-if value="{{ vidEdit }}"><button style="display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 13px;border-radius:4px;border:1px solid var(--color-admin-danger-text,#bf371a);background:var(--color-surface,#fff);color:var(--color-admin-danger-text,#f06548);font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onVidRemove }}"><i class="ri-delete-bin-line"></i>Xóa video</button></sc-if>
           <button style="min-height:38px;padding:8px 15px;border-radius:4px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:13px;font-weight:500;cursor:pointer;" onClick="{{ onVidClose }}">Hủy</button>
           <button style="{{ vidInsertStyle }}" onClick="{{ onVidInsert }}"><i class="ri-check-line"></i>{{ vidBtnLabel }}</button>
         </div>
@@ -336,7 +445,7 @@
       <div style="position:relative;z-index:1;width:480px;max-width:100%;background:var(--color-surface,#fff);border-radius:8px;box-shadow:0 12px 32px rgba(56,65,74,.22);padding:20px;">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><i class="ri-link" style="font-size:19px;color:var(--color-accent,#2050a0);"></i><span style="font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">Chèn liên kết</span></div>
         <div style="font-size:13px;color:var(--color-body-muted,#5b6275);line-height:1.6;margin-bottom:12px;">Dán địa chỉ trang muốn liên kết tới. Chữ đang bôi đen sẽ trở thành liên kết.</div>
-        <input value="{{ linkUrl }}" placeholder="https://anvinh.vn/lien-he" onChange="{{ onLinkUrl }}" onKeyDown="{{ onLinkKey }}" style="width:100%;box-sizing:border-box;min-height:42px;padding:10px 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);outline:none;" style-focus="border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,0.15);">
+        <input ref="{{ linkInputRef }}" aria-label="Địa chỉ liên kết" value="{{ linkVal }}" placeholder="https://tenmien.vn/lien-he" onChange="{{ onLinkInput }}" onKeyDown="{{ onLinkKey }}" style="width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;font:inherit;font-size:13.5px;color:var(--color-body-text,#3c4765);">
         <div style="{{ linkNoteStyle }}"><i class="{{ linkNoteIcon }}" style="font-size:14px;"></i>{{ linkNote }}</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:14px;">
           <button style="border:0;background:transparent;font:inherit;font-size:13.5px;color:var(--color-body-muted,#5b6275);cursor:pointer;padding:9px 4px;" style-hover="color:var(--color-accent,#2050a0);" onClick="{{ onLinkClose }}">Hủy</button>
@@ -353,31 +462,42 @@
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><i class="ri-omega" style="font-size:19px;color:var(--color-accent,#2050a0);"></i><span style="font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">Ký tự đặc biệt</span></div>
         <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;">
           <sc-for list="{{ chars }}" as="ch" hint-placeholder-count="32">
-            <button title="{{ ch.title }}" style="min-height:40px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:16px;color:var(--color-body-text,#3c4765);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);border-color:#2050a0;color:var(--color-accent,#2050a0);" onClick="{{ ch.on }}">{{ ch.c }}</button>
+            <button title="{{ ch.title }}" style="min-height:40px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:16px;color:var(--color-body-text,#3c4765);cursor:pointer;" style-hover="background:var(--color-surface-hover,#f3f6f9);border-color:var(--color-accent,#2050a0);color:var(--color-accent,#2050a0);" onClick="{{ ch.on }}">{{ ch.c }}</button>
           </sc-for>
         </div>
       </div>
     </div>
   </sc-if>
 
-  <sc-if value="{{ anyMenu }}"><div style="position:fixed;inset:0;z-index:55;" onClick="{{ onCloseMenus }}"></div></sc-if>
+  <sc-if value="{{ anyDrop }}"><div style="position:fixed;inset:0;z-index:55;" onMouseDown="{{ keep }}" onClick="{{ onCloseMenus }}"></div></sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:960,&quot;height&quot;:620},&quot;value&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;&lt;h2&gt;Gia công CNC theo yêu cầu&lt;/h2&gt;&lt;p&gt;Bôi đen một đoạn bất kỳ để nhờ AI viết lại, rút ngắn hoặc viết dễ hiểu hơn. Thanh công cụ này là bộ chuẩn dùng chung cho Bài viết, Trang và Sản phẩm.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Dán từ Word tự làm sạch định dạng thừa.&lt;/li&gt;&lt;li&gt;Ctrl+Z hoàn tác theo sổ riêng của trình soạn.&lt;/li&gt;&lt;/ul&gt;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;placeholder&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Viết nội dung ở đây. Bôi đen một đoạn để nhờ AI viết lại đoạn đó.&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;wordsLeft&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:54200,&quot;min&quot;:0,&quot;max&quot;:300000,&quot;unit&quot;:&quot;từ AI&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Hạn ngạch AI&quot;},&quot;wordsLimit&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:60000,&quot;min&quot;:1000,&quot;max&quot;:300000,&quot;unit&quot;:&quot;từ AI&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Hạn ngạch AI&quot;},&quot;canAi&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Phân quyền&quot;},&quot;readOnly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Phân quyền&quot;},&quot;onChange&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(html: string) =&gt; void&quot;},&quot;onSpend&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(words: number) =&gt; void&quot;},&quot;onNotify&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(msg: string, icon?: string) =&gt; void&quot;},&quot;onPickImage&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:960,&quot;height&quot;:620},&quot;value&quot;:{&quot;editor&quot;:null,&quot;default&quot;:&quot;&lt;h2&gt;Gia công CNC theo yêu cầu&lt;/h2&gt;&lt;p&gt;Bôi đen một đoạn bất kỳ để nhờ AI viết lại, rút ngắn hoặc viết dễ hiểu hơn. Thanh công cụ này là bộ chuẩn dùng chung cho Bài viết, Trang và Sản phẩm.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;Dán từ Word tự làm sạch định dạng thừa.&lt;/li&gt;&lt;li&gt;Ctrl+Z hoàn tác theo sổ riêng của trình soạn.&lt;/li&gt;&lt;/ul&gt;&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;placeholder&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Viết nội dung ở đây. Bôi đen một đoạn để nhờ AI viết lại đoạn đó.&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;wordsLeft&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:54200,&quot;min&quot;:0,&quot;max&quot;:300000,&quot;unit&quot;:&quot;từ AI&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Hạn ngạch AI&quot;},&quot;wordsLimit&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:60000,&quot;min&quot;:1000,&quot;max&quot;:300000,&quot;unit&quot;:&quot;từ AI&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Hạn ngạch AI&quot;},&quot;canAi&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Phân quyền&quot;},&quot;readOnly&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Phân quyền&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;onChange&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(html: string) =&gt; void&quot;},&quot;onSpend&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(words: number) =&gt; void&quot;},&quot;onNotify&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(msg: string, icon?: string) =&gt; void&quot;},&quot;onPickImage&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
 class Component extends DCLogic {
   constructor(props) {
     super(props);
     this.state = {
-      toolbarFull: true, rteFull: false, rteSource: false, sourceHtml: '',
+      toolbarFull: this.readTbPref(), narrow: false, arrL: false, arrR: false, fsL: false, rteFull: false, rteSource: false, sourceHtml: '',
       openMenu: null, colorTab: 'text', para: 'Đoạn văn', tags: ['body'],
       vid: null, mediaOpen: false, charOpen: false, link: null, img: null, imgPick: false,
       ai: null, selInfo: null,
       words: 0, chars: 0
     };
     this.hist = []; this.histAt = -1;
+    this.wrapRef = (el) => { this._wrap = el; };
+    this.aipRef = (el) => { this._aip = el; };
+    this.linkInputRef = (el) => { this._linkInput = el; };
+    this.tbRef = (el) => { this._tb = el; };
+    /* gắn lại ResizeObserver mỗi lần ref chạy (CLAUDE §11) */
+    this.tbwRef = (el) => {
+      if (this._ro) { try { this._ro.disconnect(); } catch (_) {} this._ro = null; }
+      this._tbw = el;
+      if (el && window.ResizeObserver) { this._ro = new ResizeObserver(() => this.schedMeasure()); this._ro.observe(el); }
+      if (el) this.schedMeasure();
+    };
     this.bodyRef = (el) => {
       const first = !this._body;
-      this._body = el;
+      this._body = el; if (el) el.__rte = this;
       if (el && (first || this._seed !== this.props.value)) {
         this._seed = this.props.value || '';
         el.innerHTML = this._seed;
@@ -417,8 +537,94 @@ class Component extends DCLogic {
       e.preventDefault(); this.vidRemove(target);
     };
     document.addEventListener('keydown', this._delKey, true);
+    /* bôi đen bằng chạm / bàn phím / chuột đều gọi được AI (§15) */
+    this._selCh = () => {
+      clearTimeout(this._selT);
+      this._selT = setTimeout(() => {
+        const s = window.getSelection && window.getSelection();
+        if (s && s.rangeCount && this._body && this._body.contains(s.getRangeAt(0).commonAncestorContainer)) this.onSelChange();
+      }, 120);
+    };
+    document.addEventListener('selectionchange', this._selCh);
+    this._esc = (e) => {
+      if (e.key !== 'Escape') return;
+      const S = this.state;
+      if (S.openMenu) { this.closeMenus(); return; }
+      if (S.ai) { this.setState({ ai: null }); if (this._body) this._body.focus(); return; }
+      if (S.charOpen) { this.clearMark(); this.setState({ charOpen: false }); return; }
+      if (S.link != null) { this.setState({ link: null }); return; }
+      if (S.vid) { this.vidClose(); return; }
+      if (S.imgPick) { this.setState({ imgPick: false }); return; }
+      if (S.img) { this.imgClose(); return; }
+      if (S.rteFull) this.setState({ rteFull: false });
+    };
+    document.addEventListener('keydown', this._esc);
+    /* bấm ra ngoài popup AI → đóng (máy tính); ngăn đáy điện thoại đóng bằng nút Đóng / Esc */
+    this._outAi = (e) => {
+      if (!this.state.ai || this.state.narrow || !this._aip) return;
+      if (this._aip.contains(e.target)) return;
+      this.setState({ ai: null });
+    };
+    document.addEventListener('mousedown', this._outAi, true);
+    this._rsz = () => this.schedMeasure();
+    window.addEventListener('resize', this._rsz);
+    this._stor = (e) => { if (!e || e.key === 'bs-ui') this.applyFs(); };
+    window.addEventListener('storage', this._stor);
+    this.applyFs();
+  }
+  /* Chữ lớn (+2px): đọc prop bigText hoặc bs-ui.fontSize; nằm trong Admin Shell thì Shell đã phóng chữ, không cộng thêm */
+  applyFs() {
+    let big = this.props.bigText === true;
+    if (!big) { try { const o = JSON.parse(localStorage.getItem('bs-ui') || 'null'); big = !!(o && o.fontSize === 'large'); } catch (_) {} }
+    if (this._wrap && this._wrap.closest && this._wrap.closest('[data-brand-scope]')) big = false;
+    if (big !== this.state.fsL) this.setState({ fsL: big });
+  }
+  /* Nhớ thanh gọn / đầy đủ theo người dùng: prototype lưu trong bs-ui.editorToolbar; bản thật ở users.preferences (Chờ backend) */
+  readTbPref() { try { const o = JSON.parse(localStorage.getItem('bs-ui') || 'null'); return !!(o && o.editorToolbar === 'full'); } catch (_) { return false; } }
+  saveTbPref(full) { try { let o = null; try { o = JSON.parse(localStorage.getItem('bs-ui') || 'null'); } catch (_) {} if (!o || typeof o !== 'object') o = { version: 1 }; o.editorToolbar = full ? 'full' : 'compact'; localStorage.setItem('bs-ui', JSON.stringify(o)); } catch (_) {} }
+  schedMeasure() { if (this._mq) cancelAnimationFrame(this._mq); this._mq = requestAnimationFrame(() => { this._mq = null; this.measureTb(); }); }
+  measureTb() {
+    const w = this._tbw, b = this._tb; if (!w || !b) return;
+    const narrow = w.clientWidth < 600;
+    const arrL = narrow && b.scrollLeft > 4;
+    const arrR = narrow && b.scrollLeft + b.clientWidth < b.scrollWidth - 4;
+    const S = this.state;
+    if (narrow !== S.narrow || arrL !== S.arrL || arrR !== S.arrR) this.setState({ narrow: narrow, arrL: arrL, arrR: arrR });
+  }
+  scrollTb(dir) { const b = this._tb; if (!b) return; const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; try { b.scrollBy({ left: dir * Math.max(120, b.clientWidth * 0.7), behavior: reduce ? 'auto' : 'smooth' }); } catch (_) { b.scrollLeft += dir * 160; } setTimeout(() => this.measureTb(), 320); }
+  /* vị trí con trỏ theo số ký tự — dùng để giữ con trỏ sau Hoàn tác / Làm lại / sửa HTML */
+  caretOff() { const el = this._body, s = window.getSelection && window.getSelection(); if (!el || !s || !s.rangeCount) return null; const r = s.getRangeAt(0); if (!el.contains(r.startContainer)) return null; const pre = document.createRange(); pre.selectNodeContents(el); pre.setEnd(r.startContainer, r.startOffset); return pre.toString().length; }
+  setCaretOff(n) {
+    const el = this._body; if (!el || n == null) return;
+    let left = n, node = null, last = null; const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    while ((node = w.nextNode())) { last = node; if (left <= node.data.length) break; left -= node.data.length; }
+    try { const r = document.createRange(); if (node) r.setStart(node, left); else if (last) r.setStart(last, last.data.length); else r.setStart(el, 0); r.collapse(true); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); this._keep = r.cloneRange(); } catch (_) {}
+  }
+  selOff() { const el = this._body, s = window.getSelection && window.getSelection(); if (!el || !s || !s.rangeCount) return null; const r = s.getRangeAt(0); if (!el.contains(r.startContainer) || !el.contains(r.endContainer)) return null; const a = document.createRange(); a.selectNodeContents(el); a.setEnd(r.startContainer, r.startOffset); const b = document.createRange(); b.selectNodeContents(el); b.setEnd(r.endContainer, r.endOffset); return { s: a.toString().length, e: b.toString().length }; }
+  posAt(n) { const el = this._body; let left = n, node = null, last = null; const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); while ((node = w.nextNode())) { last = node; if (left <= node.data.length) return [node, left]; left -= node.data.length; } return last ? [last, last.data.length] : [el, 0]; }
+  setSelOff(s, e) { const el = this._body; if (!el) return; try { const a = this.posAt(s), b = e === s ? a : this.posAt(e); const r = document.createRange(); r.setStart(a[0], a[1]); r.setEnd(b[0], b[1]); const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); this._keep = r.cloneRange(); } catch (_) {} }
+  /* Về từ hộp thoại có ô nhập: lựa chọn sống đã rời vùng soạn, el.focus() lại đặt con trỏ về đầu bài → phục hồi BẮT BUỘC từ _keep */
+  forceRestore() { const el = this._body, s = window.getSelection && window.getSelection(); if (!el || !s || !this._keep || !el.contains(this._keep.commonAncestorContainer)) return; el.focus(); try { s.removeAllRanges(); s.addRange(this._keep); } catch (_) {} }
+  stripDanger(h) { const box = document.createElement('div'); box.innerHTML = h; box.querySelectorAll('script,iframe,form,object,embed,style,meta,link').forEach(n => n.remove()); box.querySelectorAll('*').forEach(n => Array.prototype.slice.call(n.attributes).forEach(a => { if (/^on/i.test(a.name) || (/^(href|src)$/i.test(a.name) && /^\s*javascript:/i.test(a.value))) n.removeAttribute(a.name); })); return box.innerHTML; }
+  unlink() {
+    if (this.ro()) return;
+    const el = this._body; if (!el) return;
+    el.focus(); this.restoreRange();
+    const s = window.getSelection && window.getSelection();
+    if (s && s.rangeCount && s.isCollapsed) {
+      let n = s.getRangeAt(0).startContainer; if (n && n.nodeType === 3) n = n.parentNode;
+      const a = n && n.closest ? n.closest('a') : null;
+      if (!a || !el.contains(a)) { this.notify('Đặt con trỏ vào liên kết hoặc bôi đen đoạn có liên kết trước.', 'ri-information-line'); return; }
+      const off = this.caretOff(); clearTimeout(this._t); this.push();
+      const f = document.createDocumentFragment(); while (a.firstChild) f.appendChild(a.firstChild); a.parentNode.replaceChild(f, a);
+      el.normalize(); this.setCaretOff(off);
+      this.push(); this.emit(); this.readTags(); this.closeMenus(); return;
+    }
+    this.cmd('unlink');
   }
   componentDidUpdate(prev) {
+    this.schedMeasure();
+    if (prev.bigText !== this.props.bigText) this.applyFs();
     if (prev.value !== this.props.value && this._body && this.props.value !== this._body.innerHTML) {
       this._seed = this.props.value || '';
       this._body.innerHTML = this._seed;
@@ -426,7 +632,7 @@ class Component extends DCLogic {
       this.count();
     }
   }
-  componentWillUnmount() { clearTimeout(this._t); document.removeEventListener('click', this._vidClick, true); document.removeEventListener('keydown', this._delKey, true); }
+  componentWillUnmount() { clearTimeout(this._t); clearTimeout(this._selT); if (this._mq) cancelAnimationFrame(this._mq); if (this._ro) { try { this._ro.disconnect(); } catch (_) {} } document.removeEventListener('click', this._vidClick, true); document.removeEventListener('keydown', this._delKey, true); document.removeEventListener('selectionchange', this._selCh); document.removeEventListener('keydown', this._esc); document.removeEventListener('mousedown', this._outAi, true); window.removeEventListener('resize', this._rsz); window.removeEventListener('storage', this._stor); }
 
   /* ---- cơ bản ---- */
   html() { return this._body ? this._body.innerHTML : (this.props.value || ''); }
@@ -455,18 +661,23 @@ class Component extends DCLogic {
     }
   }
 
-  push() { if (!this._body) return; const h = this._body.innerHTML; if (this.hist[this.histAt] === h) return; this.hist = this.hist.slice(0, this.histAt + 1); this.hist.push(h); if (this.hist.length > 80) this.hist.shift(); this.histAt = this.hist.length - 1; }
-  undo() { if (!this._body || this.histAt <= 0) { this.notify('Không còn bước nào để hoàn tác.', 'ri-information-line'); return; } this.histAt--; this._body.innerHTML = this.hist[this.histAt]; this.emit(); this.count(); this.setState({ ai: null, selInfo: null }); }
-  redo() { if (!this._body || this.histAt >= this.hist.length - 1) return; this.histAt++; this._body.innerHTML = this.hist[this.histAt]; this.emit(); this.count(); this.setState({ ai: null, selInfo: null }); }
+  /* Ảnh chụp lịch sử không bao giờ chứa dấu chèn tạm #rte-mark — nếu không, Hoàn tác trả về HTML có thẻ thừa */
+  push() { if (!this._body) return; const h = this._body.innerHTML.replace(/<span id="rte-mark"><\/span>/g, ''); if (this.hist[this.histAt] === h) return; this.hist = this.hist.slice(0, this.histAt + 1); this.hist.push(h); if (this.hist.length > 80) this.hist.shift(); this.histAt = this.hist.length - 1; }
+  undo() { if (!this._body) return; clearTimeout(this._t); this.push(); if (this.histAt <= 0) { this.notify('Không còn bước nào để hoàn tác.', 'ri-information-line'); return; } const off = this.caretOff(); this.histAt--; this._body.innerHTML = this.hist[this.histAt]; this._body.focus(); this.setCaretOff(off); this.emit(); this.count(); this.readTags(); this.setState({ ai: null, selInfo: null }); }
+  redo() { if (!this._body) return; clearTimeout(this._t); this.push(); if (this.histAt >= this.hist.length - 1) { this.notify('Không còn bước nào để làm lại.', 'ri-information-line'); return; } const off = this.caretOff(); this.histAt++; this._body.innerHTML = this.hist[this.histAt]; this._body.focus(); this.setCaretOff(off); this.emit(); this.count(); this.readTags(); this.setState({ ai: null, selInfo: null }); }
 
   cmd(c, v, css) {
     if (this.ro()) return;
     const el = this._body; if (!el) return;
-    this.push();
+    clearTimeout(this._t); this.push();
     el.focus(); this.restoreRange();
+    /* Chrome hay dời con trỏ sau formatBlock / danh sách (về đầu khối hoặc ra giữa hai khối → bấm lần 2 không gỡ được danh sách).
+       Lệnh không đổi chữ thì ghi vị trí theo số ký tự trước và đặt lại sau. */
+    const keepSel = !/^(insertText|insertHTML|createLink)$/.test(c), o = keepSel ? this.selOff() : null, len0 = el.textContent.length;
     try { document.execCommand('styleWithCSS', false, !!css); document.execCommand(c, false, v); } catch (_) {}
     if (c === 'insertUnorderedList' || c === 'insertOrderedList') this.fixLists();
     this.fixDivs();
+    if (o && el.textContent.length === len0) this.setSelOff(o.s, o.e);
     this.push(); this.emit(); this.count(); this.closeMenus(); this.readTags();
   }
   /* Chrome hay bọc <ul>/<ol> trong <p> → danh sách nhảy lung tung. Kéo list ra ngoài. */
@@ -565,10 +776,16 @@ class Component extends DCLogic {
   setSize(px) {
     if (this.ro()) return;
     const el = this._body; if (!el) { this.closeMenus(); return; }
-    el.focus(); this.restoreRange(); this.push();
+    el.focus(); this.restoreRange();
+    const s0 = window.getSelection && window.getSelection();
+    if (!s0 || !s0.rangeCount || s0.isCollapsed || !el.contains(s0.getRangeAt(0).commonAncestorContainer)) { this.closeMenus(); this.notify('Hãy bôi đen chữ cần đổi cỡ trước.', 'ri-information-line'); return; }
+    clearTimeout(this._t); this.push();
     try {
+      document.execCommand('styleWithCSS', false, false);
       document.execCommand('fontSize', false, '7');
-      el.querySelectorAll('font[size="7"]').forEach(f => { const sp = document.createElement('span'); sp.style.fontSize = px + 'px'; sp.innerHTML = f.innerHTML; f.parentNode.replaceChild(sp, f); });
+      const spans = [];
+      el.querySelectorAll('font[size="7"]').forEach(f => { const sp = document.createElement('span'); sp.style.fontSize = px + 'px'; while (f.firstChild) sp.appendChild(f.firstChild); f.parentNode.replaceChild(sp, f); spans.push(sp); });
+      if (spans.length) { const r = document.createRange(); r.setStartBefore(spans[0]); r.setEndAfter(spans[spans.length - 1]); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); this._keep = r.cloneRange(); }
     } catch (_) {}
     this.push(); this.emit(); this.closeMenus();
   }
@@ -603,12 +820,17 @@ class Component extends DCLogic {
     this._t = setTimeout(() => { this.fixDivs(); this.push(); this.emit(); this.count(); }, 400);
   }
   onKey(e) {
-    const m = e.ctrlKey || e.metaKey;
-    if (m && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo(); }
-    else if (m && e.key.toLowerCase() === 'y') { e.preventDefault(); this.redo(); }
-    else if (m && e.key.toLowerCase() === 'b') { e.preventDefault(); this.cmd('bold'); }
-    else if (m && e.key.toLowerCase() === 'i') { e.preventDefault(); this.cmd('italic'); }
-    else if (m && e.key.toLowerCase() === 'u') { e.preventDefault(); this.cmd('underline'); }
+    const m = e.ctrlKey || e.metaKey, k = (e.key || '').toLowerCase();
+    if (!m) return;
+    if (k === 'z') { e.preventDefault(); if (e.shiftKey) this.redo(); else this.undo(); }
+    else if (k === 'y') { e.preventDefault(); this.redo(); }
+    else if (!e.shiftKey && k === 'b') { e.preventDefault(); this.cmd('bold'); }
+    else if (!e.shiftKey && k === 'i') { e.preventDefault(); this.cmd('italic'); }
+    else if (!e.shiftKey && k === 'u') { e.preventDefault(); this.cmd('underline'); }
+    else if (!e.shiftKey && k === 'k') { e.preventDefault(); this.openLink(); }
+    else if (e.shiftKey && e.code === 'Digit8') { e.preventDefault(); this.cmd('insertUnorderedList'); }
+    else if (e.shiftKey && e.code === 'Digit7') { e.preventDefault(); this.cmd('insertOrderedList'); }
+    else if (e.key === '\\' || e.code === 'Backslash') { e.preventDefault(); this.clearFormat(); }
   }
   sanitize(html) {
     const box = document.createElement('div'); box.innerHTML = html;
@@ -660,7 +882,32 @@ class Component extends DCLogic {
     const si = this.state.selInfo;
     if (!si) { this.notify('Hãy bôi đen đoạn muốn viết lại trước.', 'ri-information-line'); return; }
     if (this.props.canAi === false) { this.notify('Vai trò của bạn chưa được dùng trợ lý AI.', 'ri-lock-line'); return; }
-    this.setState({ ai: { text: si.text, mode: null, out: '', spent: 0 } });
+    const pos = this.aiPos();
+    this.setState({ ai: { text: si.text, mode: null, out: '', spent: 0, top: pos.top, left: pos.left, fixed: pos.fixed } }, () => {
+      setTimeout(() => {
+        const p = this._aip; if (!p) return;
+        if (this.state.narrow) this.keepSelVisible(p.getBoundingClientRect().height);
+        const f = p.querySelector('button[aria-pressed]'); if (f && !this.state.narrow) { try { f.focus({ preventScroll: true }); } catch (_) {} }
+      }, 60);
+    });
+  }
+  /* Máy tính: popup ngay dưới đoạn bôi đen (tọa độ theo khung .rte-wrap, hoặc theo màn hình khi đang toàn màn hình).
+     Điện thoại: ngăn trượt từ đáy (CSS), đoạn đang sửa được cuộn lên phía trên ngăn. */
+  aiPos() {
+    const w = this._wrap, r = this._selRange; if (!w || !r) return { top: 0, left: 0, fixed: false };
+    const rb = r.getBoundingClientRect();
+    if (this.state.rteFull) { const pw = Math.min(460, window.innerWidth - 16); return { top: Math.round(Math.min(rb.bottom + 8, window.innerHeight - 320)), left: Math.round(Math.max(8, Math.min(rb.left, window.innerWidth - pw - 8))), fixed: true }; }
+    const wb = w.getBoundingClientRect(), pw = Math.min(460, wb.width - 16);
+    return { top: Math.round(rb.bottom - wb.top + 8), left: Math.round(Math.max(8, Math.min(rb.left - wb.left, wb.width - pw - 8))), fixed: false };
+  }
+  keepSelVisible(sheetH) {
+    const r = this._selRange, b = this._body; if (!r || !b) return;
+    const rb = r.getBoundingClientRect(), limit = window.innerHeight - sheetH - 12;
+    if (rb.bottom <= limit) return;
+    let d = rb.bottom - limit;
+    const can = Math.max(0, Math.min(d, rb.top - b.getBoundingClientRect().top - 8, b.scrollHeight - b.clientHeight - b.scrollTop));
+    if (can > 0) { b.scrollTop += can; d -= can; }
+    if (d > 0) window.scrollBy(0, d);
   }
   aiRun(mode) {
     const A = this.state.ai; if (!A) return;
@@ -688,8 +935,24 @@ class Component extends DCLogic {
   }
 
   /* ---- liên kết ---- */
-  openLink() { if (this.ro()) return; this.saveRange(); this.setState({ link: 'https://', openMenu: null }); }
-  linkOk() { const v = String(this.state.link || '').trim(); if (!/^https?:\/\/.+\..+/.test(v)) return; this.setState({ link: null }, () => this.cmd('createLink', v)); }
+  openLink() {
+    if (this.ro()) return; this.saveRange();
+    let href = 'https://';
+    const r = this._keep; if (r) { let n = r.startContainer; if (n && n.nodeType === 3) n = n.parentNode; const a = n && n.closest ? n.closest('a') : null; if (a && this._body && this._body.contains(a)) href = a.getAttribute('href') || href; }
+    this.setState({ link: href, openMenu: null }, () => setTimeout(() => { const i = this._linkInput; if (i) { i.focus(); const v = i.value || ''; try { i.setSelectionRange(v.length, v.length); } catch (_) {} } }, 30));
+  }
+  linkOk() {
+    const v = String(this.state.link || '').trim(); if (!/^https?:\/\/.+\..+/.test(v)) return;
+    this.setState({ link: null }, () => {
+      const el = this._body; if (!el) return;
+      this.forceRestore();
+      const s = window.getSelection(), r = s && s.rangeCount ? s.getRangeAt(0) : null;
+      let a = null; if (r) { let n = r.startContainer; if (n && n.nodeType === 3) n = n.parentNode; a = n && n.closest ? n.closest('a') : null; if (a && !el.contains(a)) a = null; }
+      if (r && r.collapsed && a) { clearTimeout(this._t); this.push(); a.setAttribute('href', v); this.push(); this.emit(); this.notify('Đã đổi địa chỉ liên kết', 'ri-link'); return; }
+      if (r && r.collapsed) { const q = v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); this.cmd('insertHTML', '<a href="' + q + '">' + q + '</a>'); return; }
+      this.cmd('createLink', v);
+    });
+  }
 
   /* ---- video ---- */
   vidParse(raw) {
@@ -724,14 +987,18 @@ class Component extends DCLogic {
   }
   insertBlock(html) {
     const el = this._body; if (!el) return;
-    this.push();
-    const frag = (() => { const h = document.createElement('div'); h.innerHTML = html; const f = document.createDocumentFragment(); while (h.firstChild) f.appendChild(h.firstChild); return f; })();
+    clearTimeout(this._t); this.push();
+    const h = document.createElement('div'); h.innerHTML = html;
+    const nodes = Array.prototype.slice.call(h.childNodes);
+    const frag = document.createDocumentFragment(); nodes.forEach(n => frag.appendChild(n));
     const mark = document.getElementById('rte-mark');
-    const top = this.topBlockOf(mark || null);
-    if (top) el.insertBefore(frag, top.nextSibling);
-    else el.appendChild(frag);
+    const top = mark && el.contains(mark) ? this.topBlockOf(mark) : null;
+    if (top) el.insertBefore(frag, top.nextSibling); else el.appendChild(frag);
     this.clearMark();
-    this.push(); this.emit(); this.count();
+    /* con trỏ đặt vào đoạn trống ngay sau khối vừa chèn — không nhảy về đầu bài */
+    const last = nodes[nodes.length - 1];
+    if (last && last.nodeType === 1 && last.tagName === 'P') { try { el.focus(); const r = document.createRange(); r.setStart(last, 0); r.collapse(true); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); this._keep = r.cloneRange(); } catch (_) {} }
+    this.push(); this.emit(); this.count(); this.readTags();
   }
   insertAtMark(html) { this.insertBlock(html); }
   openVideo(node) {
@@ -823,7 +1090,7 @@ class Component extends DCLogic {
   imgClose() { this._imgNode = null; this.clearMark(); this.setState({ img: null, imgPick: false }); }
   imgCard(I) {
     const esc = (s) => String(s == null ? '' : s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
-    const bg = I.bg ? esc(I.bg) : 'linear-gradient(135deg,#e9ecf3,#d5dae6)';
+    const bg = I.bg ? esc(I.bg) : 'linear-gradient(135deg,var(--color-surface-muted,#e9ecf3),var(--color-border-strong,#d5dae6))';
     const w = this.imgWidth(I.size);
     const al = I.align === 'left' ? 'left' : (I.align === 'right' ? 'right' : 'center');
     const cap = String(I.caption || '').trim();
@@ -894,9 +1161,9 @@ class Component extends DCLogic {
         return '<div class="pe-video" contenteditable="false" data-url="' + name + '" data-kind="file" data-autoplay="0" data-loop="0" data-controls="1" data-ratio="16/9" style="position:relative;margin:0 0 14px;border-radius:6px;overflow:hidden;background:#212529;padding-bottom:56.25%;"><span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.92);color:var(--color-heading,#212529);display:flex;align-items:center;justify-content:center;font-size:25px;"><i class="ri-play-fill"></i></span><span style="position:absolute;left:12px;bottom:11px;padding:4px 9px;border-radius:4px;background:rgba(0,0,0,.55);color:#fff;font-size:12px;font-weight:500;">' + name + '</span><span class="pe-video-del" title="Xóa" style="position:absolute;top:10px;right:10px;padding:5px 9px;border-radius:4px;background:rgba(255,255,255,.94);color:var(--color-admin-danger-text,#f06548);font-size:12px;font-weight:600;"><i class="ri-delete-bin-line"></i> Xóa</span></div>';
       }
       if (it.mediaType && it.mediaType !== 'image') {
-        return '<p><a href="#" title="' + name + '" style="display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface-muted,#fcfcfd);color:var(--color-accent,#2050a0);text-decoration:none;font-weight:500;"><i class="' + esc(it.icon || 'ri-attachment-2') + '" style="font-size:17px;color:' + esc(it.iconColor || '#878a99') + ';"></i>' + name + (it.size ? ' <span style="color:var(--color-body-muted,#5b6275);font-weight:400;">· ' + it.size + ' MB</span>' : '') + '</a></p>';
+        return '<p><a href="#" title="' + name + '" style="display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface-muted,#fcfcfd);color:var(--color-accent,#2050a0);text-decoration:none;font-weight:500;"><i class="' + esc(it.icon || 'ri-attachment-2') + '" style="font-size:17px;color:' + esc(it.iconColor || 'var(--color-body-muted,#5b6275)') + ';"></i>' + name + (it.size ? ' <span style="color:var(--color-body-muted,#5b6275);font-weight:400;">· ' + it.size + ' MB</span>' : '') + '</a></p>';
       }
-      const bg = it.bg ? esc(it.bg) : 'linear-gradient(135deg,#e9ecf3,#d5dae6)';
+      const bg = it.bg ? esc(it.bg) : 'linear-gradient(135deg,var(--color-surface-muted,#e9ecf3),var(--color-border-strong,#d5dae6))';
       /* dùng đúng một khuôn ảnh với bảng thuộc tính → ảnh nào cũng bấm vào sửa lại được */
       return this.imgCard({ name: it.name || 'anh.jpg', bg: it.bg || '', ratio: ratio, alt: it.name || '', caption: '', size: 'full', align: 'center' });;
     }).join('') + '<p><br></p>';
@@ -907,8 +1174,8 @@ class Component extends DCLogic {
 
   /* ---- HTML nguồn ---- */
   toggleSource() {
-    if (!this.state.rteSource) this.setState({ rteSource: true, sourceHtml: this.html().replace(/>\s+</g, '>\n<').trim(), openMenu: null, selInfo: null });
-    else { const h = this.state.sourceHtml; this.setState({ rteSource: false }, () => { if (this._body) { this._body.innerHTML = h; this.hist = [h]; this.histAt = 0; this.emit(); this.count(); } }); }
+    if (!this.state.rteSource) { clearTimeout(this._t); this.push(); this.setState({ rteSource: true, sourceHtml: this.html().replace(/>\s+</g, '>\n<').trim(), openMenu: null, selInfo: null }); }
+    else { const h = this.stripDanger(this.state.sourceHtml); this.setState({ rteSource: false }, () => { if (this._body) { this._body.innerHTML = h; this.fixDivs(); this.push(); this.emit(); this.count(); this._body.focus(); } }); }
   }
 
   renderVals() {
@@ -925,29 +1192,31 @@ class Component extends DCLogic {
     const MODES = [['rewrite', 'Viết lại', 'ri-magic-line'], ['short', 'Ngắn gọn', 'ri-scissors-cut-line'], ['longer', 'Dài hơn', 'ri-text-wrap'], ['simple', 'Dễ hiểu', 'ri-lightbulb-line'], ['formal', 'Trang trọng', 'ri-quill-pen-line']];
     const A = S.ai, si = S.selInfo, V = S.vid || { url: '', controls: true, ratio: '16/9' };
     const I = S.img || {};
-    const segS = (on) => 'min-height:34px;padding:7px 12px;border-radius:4px;border:1px solid ' + (on ? '#2050a0' : '#e9ebec') + ';background:' + (on ? 'rgba(32,80,160,0.06)' : '#fff') + ';font:inherit;font-size:12.5px;font-weight:600;color:' + (on ? '#2050a0' : '#3c4765') + ';cursor:pointer;white-space:nowrap;';
-    const segI = (on) => 'width:40px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;border:1px solid ' + (on ? '#2050a0' : '#e9ebec') + ';background:' + (on ? 'rgba(32,80,160,0.06)' : '#fff') + ';color:' + (on ? '#2050a0' : '#878a99') + ';cursor:pointer;';
+    const ACC = 'var(--color-accent,#2050a0)', BOR = 'var(--color-border-strong,#e9ebec)', SUR = 'var(--color-surface,#fff)', TXT = 'var(--color-body-text,#3c4765)', MUT = 'var(--color-body-muted,#5b6275)', TINT = 'color-mix(in srgb,var(--color-accent,#2050a0) 8%,var(--color-surface,#fff))', SOLID = 'background:var(--color-admin-primary,#2050a0);color:#fff;cursor:pointer;', OFF = 'background:var(--color-border,#e9ecf4);color:var(--color-body-muted,#5b6275);cursor:not-allowed;';
+    const segS = (on) => 'min-height:36px;padding:7px 12px;border-radius:4px;border:1px solid ' + (on ? ACC : BOR) + ';background:' + (on ? TINT : SUR) + ';font:inherit;font-size:12.5px;font-weight:600;color:' + (on ? ACC : TXT) + ';cursor:pointer;white-space:nowrap;';
+    const segI = (on) => 'width:40px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;border:1px solid ' + (on ? ACC : BOR) + ';background:' + (on ? TINT : SUR) + ';color:' + (on ? ACC : MUT) + ';cursor:pointer;';
     const VP = this.vidParse(V.url);
     const vidOk = !!(VP.kind && VP.kind !== 'bad');
     const linkVal = S.link == null ? '' : S.link;
     const linkOk = /^https?:\/\/.+\..+/.test(String(linkVal).trim());
     const aiCost = this.aiCost();
     return {
-      frameStyle: S.rteFull
-        ? 'position:fixed;inset:16px;z-index:250;display:flex;flex-direction:column;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;box-shadow:0 24px 60px rgba(0,0,0,.3);overflow:auto;'
-        : 'border:1px solid var(--color-border-strong,#e9ebec);border-radius:8px;background:var(--color-surface,#fff);overflow:visible;',
+      fullAttr: S.rteFull ? '1' : '0', fsAttr: S.fsL ? 'l' : 'n',
+      wrapRef: this.wrapRef, tbwRef: this.tbwRef, tbRef: this.tbRef, aipRef: this.aipRef, linkInputRef: this.linkInputRef,
+      onTbScroll: () => this.schedMeasure(), arrL: S.arrL, arrR: S.arrR, onArrL: () => this.scrollTb(-1), onArrR: () => this.scrollTb(1),
+      onTouchSel: () => setTimeout(() => this.onSelChange(), 30),
       keep: (e) => this.keep(e),
       bodyRef: this.bodyRef, editable: !ro && !S.rteSource,
       editorDisp: S.rteSource ? 'none' : 'block',
-      editorMinH: S.rteFull ? '56vh' : '300px',
-      editorMaxH: S.rteFull ? 'calc(100vh - 236px)' : (this.props.maxHeight || '520px'),
+      editorMinH: S.rteFull ? '56dvh' : '300px',
+      editorMaxH: S.rteFull ? 'calc(100dvh - 236px)' : (this.props.maxHeight || '520px'),
       onBodyScroll: () => this.onBodyScroll(),
       rtePlaceholder: this.props.placeholder || 'Viết nội dung ở đây. Bôi đen một đoạn để nhờ AI viết lại đoạn đó.',
       onContentInput: () => this.onContentInput(), onKey: (e) => this.onKey(e), onPaste: (e) => this.onPaste(e),
       onSelChange: () => this.onSelChange(), onBodyClick: () => this.readTags(),
 
       paraArrow: S.openMenu === 'para' ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line',
-      paraMenuOpen: S.openMenu === 'para',
+      paraDrop: S.openMenu === 'para' && !S.narrow, paraExp: String(S.openMenu === 'para'),
       onTogglePara: () => { this.saveRange(); this.setState(s => ({ openMenu: s.openMenu === 'para' ? null : 'para' })); },
       paraItems: PARA.map(([tag, label, icon]) => ({ label: label, icon: icon, on: () => this.setPara(tag, label) })),
 
@@ -955,7 +1224,7 @@ class Component extends DCLogic {
         bold: R('bold'), italic: R('italic'), underline: R('underline'), strike: R('strikeThrough'),
         sup: R('superscript'), sub: R('subscript'),
         ul: R('insertUnorderedList'), ol: R('insertOrderedList'),
-        link: () => this.openLink(), unlink: R('unlink'), clear: () => this.clearFormat(), quote: () => this.quote(),
+        link: () => this.openLink(), unlink: () => this.unlink(), clear: () => this.clearFormat(), quote: () => this.quote(),
         undo: () => this.undo(), redo: () => this.redo(),
         alignL: R('justifyLeft'), alignC: R('justifyCenter'), alignR: R('justifyRight'), justify: R('justifyFull'),
         outdent: () => this.indentBlock(-1), indent: () => this.indentBlock(1),
@@ -968,39 +1237,44 @@ class Component extends DCLogic {
       aiBlocked: !!si && (!canAi || ro || left <= 0),
       aiBubbleStyle: 'position:absolute;z-index:80;top:' + ((si && si.top) || 0) + 'px;left:' + (20 + ((si && si.left) || 0)) + 'px;',
       aiBubbleTitle: !si ? '' : (!canAi ? 'Vai trò của bạn chưa được dùng trợ lý AI' : (ro ? 'Nội dung này bạn chỉ được xem' : (left <= 0 ? 'Hết từ AI trong tháng này — mua thêm hoặc nâng gói' : ('Dùng khoảng ' + this.nfm(aiCost) + ' từ AI')))),
-      aiBubbleBtnStyle: 'display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border-radius:6px;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;' + ((!canAi || ro || left <= 0) ? 'border:1px solid var(--color-border,#e9ecf4);background:var(--color-body,#f4f5fa);color:var(--color-body-muted,#5b6275);cursor:not-allowed;' : 'border:1px solid rgba(32,80,160,0.28);background:var(--color-surface,#fff);box-shadow:0 6px 18px rgba(56,65,74,0.20);color:var(--color-accent,#2050a0);cursor:pointer;'),
+      aiBubbleBtnStyle: 'display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:0 12px;border-radius:6px;font:inherit;font-size:12.5px;font-weight:600;white-space:nowrap;' + ((!canAi || ro || left <= 0) ? 'border:1px solid var(--color-border,#e9ecf4);background:var(--color-body,#f4f5fa);color:var(--color-body-muted,#5b6275);cursor:not-allowed;' : 'border:1px solid rgba(32,80,160,0.28);background:var(--color-surface,#fff);box-shadow:0 6px 18px rgba(56,65,74,0.20);color:var(--color-accent,#2050a0);cursor:pointer;'),
       aiSelWords: si ? (this.wc(si.text) + ' từ') : '',
-      aiPanelOn: !!A, onAiClose: () => this.setState({ ai: null }),
+      aiPanelOn: !!A, onAiClose: () => { this.setState({ ai: null }); if (this._body) this._body.focus(); },
+      aiTop: A ? (A.top || 0) : 0, aiLeft: A ? (A.left || 0) : 0, aiSheet: S.narrow ? '1' : (A && A.fixed ? 'f' : '0'), aiApplyDis: String(!(A && A.out)),
       aiCurrent: A ? A.text : '', aiHasResult: !!(A && A.out), aiSuggestion: A ? A.out : '',
       aiModeLabel: A && A.mode ? ({ rewrite: 'Viết lại', short: 'Ngắn gọn', longer: 'Dài hơn', simple: 'Dễ hiểu', formal: 'Trang trọng' }[A.mode]) : '',
       aiModes: MODES.map(([k, l, i]) => ({
         label: l, icon: i, title: 'Dùng khoảng ' + this.nfm(aiCost) + ' từ AI',
-        style: 'display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:7px 11px;border-radius:20px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid ' + (A && A.mode === k ? '#2050a0' : '#e9ebec') + ';background:' + (A && A.mode === k ? 'rgba(32,80,160,.08)' : '#fff') + ';color:' + (A && A.mode === k ? '#2050a0' : '#3c4765') + ';',
+        pressed: String(!!(A && A.mode === k)),
+        style: 'display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:7px 11px;border-radius:20px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;border:1px solid ' + (A && A.mode === k ? ACC : BOR) + ';background:' + (A && A.mode === k ? TINT : SUR) + ';color:' + (A && A.mode === k ? ACC : TXT) + ';',
         on: () => this.aiRun(k)
       })),
       aiSpent: A ? (A.spent ? ('Đã dùng ' + this.nfm(A.spent) + ' từ AI · còn ' + this.nfm(left) + ' từ') : ('Chọn một cách viết — mỗi lần chạy dùng khoảng ' + this.nfm(aiCost) + ' từ AI')) : '',
-      aiApplyStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (A && A.out ? 'background:#2050a0;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
+      aiApplyStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (A && A.out ? SOLID : OFF),
       onAiApply: () => { if (A && A.out) this.aiApply(); },
 
       toolbarFull: S.toolbarFull,
-      onToggleToolbar: () => this.setState(s => ({ toolbarFull: !s.toolbarFull, openMenu: null })),
+      onToggleToolbar: () => { const nx = !S.toolbarFull; this.saveTbPref(nx); this.setState({ toolbarFull: nx, openMenu: null }); },
+      tbExpanded: String(!!S.toolbarFull),
+      toolbarToggleTitle: S.toolbarFull ? 'Thu gọn — chỉ giữ các nút hay dùng' : 'Thêm công cụ — gạch chân, cỡ chữ, màu, căn lề, bảng, HTML…',
       toolbarToggleIcon: S.toolbarFull ? 'ri-contract-left-right-line' : 'ri-expand-left-right-line',
       toolbarToggleLabel: S.toolbarFull ? 'Thu gọn' : 'Thêm công cụ',
 
       sizeArrow: S.openMenu === 'size' ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line',
-      sizeMenuOpen: S.openMenu === 'size',
+      sizeDrop: S.openMenu === 'size' && !S.narrow, sizeExp: String(S.openMenu === 'size'),
       onToggleSize: () => { this.saveRange(); this.setState(s => ({ openMenu: s.openMenu === 'size' ? null : 'size' })); },
       sizeItems: SIZES.map(([px, label]) => ({ label: label + ' · ' + px + 'px', style: 'display:block;width:100%;box-sizing:border-box;min-height:36px;padding:7px 12px;border:0;background:transparent;text-align:left;cursor:pointer;font:inherit;color:var(--color-body-text,#3c4765);font-size:' + Math.min(px, 18) + 'px;', on: () => this.setSize(px) })),
 
-      colorMenuOpen: S.openMenu === 'color',
+      colorDrop: S.openMenu === 'color' && !S.narrow, colorExp: String(S.openMenu === 'color'),
+      colorTabTextOn: String(S.colorTab === 'text'), colorTabBgOn: String(S.colorTab === 'bg'),
       onToggleColor: () => { this.saveRange(); this.setState(s => ({ openMenu: s.openMenu === 'color' ? null : 'color' })); },
-      colorTabTextStyle: 'flex:1;min-height:36px;border:0;border-bottom:2px solid ' + (S.colorTab === 'text' ? '#2050a0' : 'transparent') + ';background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:600;color:' + (S.colorTab === 'text' ? '#2050a0' : '#878a99') + ';cursor:pointer;',
-      colorTabBgStyle: 'flex:1;min-height:36px;border:0;border-bottom:2px solid ' + (S.colorTab === 'bg' ? '#2050a0' : 'transparent') + ';background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:600;color:' + (S.colorTab === 'bg' ? '#2050a0' : '#878a99') + ';cursor:pointer;',
+      colorTabTextStyle: 'flex:1;min-height:44px;border:0;border-bottom:2px solid ' + (S.colorTab === 'text' ? ACC : 'transparent') + ';background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:600;color:' + (S.colorTab === 'text' ? ACC : MUT) + ';cursor:pointer;',
+      colorTabBgStyle: 'flex:1;min-height:44px;border:0;border-bottom:2px solid ' + (S.colorTab === 'bg' ? ACC : 'transparent') + ';background:var(--color-surface,#fff);font:inherit;font-size:13px;font-weight:600;color:' + (S.colorTab === 'bg' ? ACC : MUT) + ';cursor:pointer;',
       onColorText: () => this.setState({ colorTab: 'text' }), onColorBg: () => this.setState({ colorTab: 'bg' }),
-      colorItems: COLORS.map(hex => ({ bg: 'width:100%;aspect-ratio:1;min-height:20px;border:1px solid rgba(0,0,0,.08);border-radius:4px;cursor:pointer;background:' + hex + ';', on: () => this.applyColor(hex) })),
+      colorItems: COLORS.map(hex => ({ label: (S.colorTab === 'bg' ? 'Màu nền ' : 'Màu chữ ') + hex, bg: 'width:100%;aspect-ratio:1;min-height:20px;border:1px solid rgba(0,0,0,.08);border-radius:4px;cursor:pointer;background:' + hex + ';', on: () => this.applyColor(hex) })),
       onCustomColor: (e) => { const v = e && e.target ? e.target.value : ''; if (v) this.applyColor(v); },
 
-      sourceBtnStyle: S.rteSource ? 'background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);' : '',
+      sourcePressed: String(!!S.rteSource), rteFullPressed: String(!!S.rteFull), rteFullTitle: S.rteFull ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình',
       onToggleSource: () => this.toggleSource(), rteSource: S.rteSource, sourceHtml: S.sourceHtml,
       onSourceInput: (e) => this.setState({ sourceHtml: e.target.value }),
       rteFullIcon: S.rteFull ? 'ri-fullscreen-exit-line' : 'ri-fullscreen-line',
@@ -1008,7 +1282,7 @@ class Component extends DCLogic {
 
       tagPath: (S.tags || []).map((name, i) => ({
         name: name, title: 'Chọn trọn thẻ <' + name + '>',
-        style: 'border:1px solid ' + (i === S.tags.length - 1 ? '#ced4da' : 'transparent') + ';background:' + (i === S.tags.length - 1 ? '#eef1f8' : 'transparent') + ';color:' + (i === S.tags.length - 1 ? '#2050a0' : '#878a99') + ';border-radius:3px;padding:2px 6px;font:inherit;font-size:12px;font-family:ui-monospace,Menlo,monospace;cursor:pointer;',
+        style: 'border:1px solid ' + (i === S.tags.length - 1 ? BOR : 'transparent') + ';background:' + (i === S.tags.length - 1 ? TINT : 'transparent') + ';color:' + (i === S.tags.length - 1 ? ACC : MUT) + ';border-radius:3px;padding:2px 6px;font:inherit;font-size:12px;font-family:ui-monospace,Menlo,monospace;cursor:pointer;',
         on: () => this.selectTag(i)
       })),
       charCount: this.nfm(S.chars), wordCount: this.nfm(S.words), readMin: Math.max(1, Math.round(S.words / 200)),
@@ -1020,9 +1294,9 @@ class Component extends DCLogic {
       onLinkInput: (e) => this.setState({ link: e.target.value }),
       onLinkKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.linkOk(); } else if (e.key === 'Escape') this.setState({ link: null }); },
       linkNote: !String(linkVal).trim() || linkVal === 'https://' ? 'Dán địa chỉ trang muốn liên kết tới.' : (linkOk ? 'Địa chỉ hợp lệ.' : 'Địa chỉ phải bắt đầu bằng https:// và có tên miền.'),
-      linkNoteStyle: 'display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:' + (!String(linkVal).trim() || linkVal === 'https://' ? '#adb5bd' : (linkOk ? '#0ab39c' : '#c9412a')) + ';',
+      linkNoteStyle: 'display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:' + (!String(linkVal).trim() || linkVal === 'https://' ? MUT : (linkOk ? 'var(--color-admin-success-text,#047767)' : 'var(--color-admin-danger-text,#bf371a)')) + ';',
       linkNoteIcon: !String(linkVal).trim() || linkVal === 'https://' ? 'ri-information-line' : (linkOk ? 'ri-checkbox-circle-line' : 'ri-error-warning-line'),
-      linkOkStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (linkOk ? 'background:#2050a0;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
+      linkOkStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (linkOk ? SOLID : OFF),
       onLinkOk: () => { if (linkOk) this.linkOk(); }, onLinkClose: () => this.setState({ link: null }),
 
       mediaOpen: S.mediaOpen, onCloseMedia: () => { this.clearMark(); this.setState({ mediaOpen: false }); },
@@ -1032,7 +1306,7 @@ class Component extends DCLogic {
       imgOpen: !!S.img, imgEdit: !!I.edit,
       imgTitle: I.edit ? 'Thuộc tính ảnh' : 'Chèn ảnh vào bài',
       imgNameText: I.name || 'Chưa chọn ảnh nào — bấm một trong hai nút bên',
-      imgThumbStyle: 'width:132px;flex:0 0 auto;aspect-ratio:' + (I.ratio || '16/9') + ';border-radius:6px;border:1px solid rgba(0,0,0,0.06);background:' + (I.bg || '#f3f6f9') + ';',
+      imgThumbStyle: 'width:132px;flex:0 0 auto;aspect-ratio:' + (I.ratio || '16/9') + ';border-radius:6px;border:1px solid rgba(0,0,0,0.06);background:' + (I.bg || 'var(--color-surface-hover,#f3f6f9)') + ';',
       imgAlt: I.alt || '', onImgAlt: (e) => this.imgSet('alt', e.target.value),
       imgCaption: I.caption || '', onImgCaption: (e) => this.imgSet('caption', e.target.value),
       imgSizes: this.IMG_SIZES.map(([k, lb, w]) => ({ label: lb, title: 'Rộng ' + w + ' khung bài', style: segS(I.size === k), on: () => this.imgSet('size', k) })),
@@ -1042,7 +1316,7 @@ class Component extends DCLogic {
       onImgPicked: (p) => this.imgPicked(p), onImgPickClose: () => this.setState({ imgPick: false }),
       onImgClose: () => this.imgClose(), onImgSave: () => this.imgSave(), onImgRemove: () => this.imgRemove(),
       imgSaveLabel: I.edit ? 'Lưu thay đổi' : 'Chèn ảnh',
-      imgSaveStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;' + (I.name ? 'background:#2050a0;color:#fff;cursor:pointer;' : 'background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
+      imgSaveStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;white-space:nowrap;' + (I.name ? SOLID : OFF),
 
       vidOpen: !!S.vid, vidUrl: V.url, onVidUrl: (e) => this.vidSet('url', e.target.value),
       vidInputRef: (el) => { this._vidInput = el; },
@@ -1060,12 +1334,14 @@ class Component extends DCLogic {
       vidTitle: V.edit ? 'Sửa video' : 'Chèn video', vidBtnLabel: V.edit ? 'Lưu thay đổi' : 'Chèn video',
       vidEdit: !!V.edit, onVidRemove: () => this.vidRemove(this._vidNode),
       onVidClose: () => this.vidClose(), onVidInsert: () => { if (vidOk) this.vidInsert(); },
-      vidInsertStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (vidOk ? 'background:#2050a0;color:#fff;cursor:pointer;' : 'background:#eef0f3;color:var(--color-body-muted,#5b6275);cursor:not-allowed;'),
+      vidInsertStyle: 'display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:8px 15px;border-radius:4px;border:0;font:inherit;font-size:13px;font-weight:600;' + (vidOk ? SOLID : OFF),
 
       charOpen: S.charOpen, onCharClose: () => { this.clearMark(); this.setState({ charOpen: false }); },
-      chars: CHARS.map(c => ({ c: c, title: 'Chèn ' + c, on: () => { this.setState({ charOpen: false }, () => this.cmd('insertText', c)); } })),
+      chars: CHARS.map(c => ({ c: c, title: 'Chèn ' + c, on: () => { this.setState({ charOpen: false }, () => { this.forceRestore(); this.cmd('insertText', c); }); } })),
 
-      anyMenu: !!S.openMenu, onCloseMenus: () => this.closeMenus()
+      anyDrop: !!S.openMenu && !S.narrow, onCloseMenus: () => this.closeMenus(),
+      sheetOn: !!S.openMenu && S.narrow, paraSheet: S.openMenu === 'para', sizeSheet: S.openMenu === 'size', colorSheet: S.openMenu === 'color',
+      sheetTitle: ({ para: 'Kiểu chữ', size: 'Cỡ chữ', color: 'Màu chữ và màu nền' })[S.openMenu] || ''
     };
   }
   hsl(h, s, l) { s /= 100; l /= 100; const a = s * Math.min(l, 1 - l); const f = (n) => { const k = (n + h / 30) % 12; const c = l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1))); return ('0' + Math.round(255 * c).toString(16)).slice(-2); }; return '#' + f(0) + f(8) + f(4); }

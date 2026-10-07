@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./content-workflow.js"></script>
+<script src="./ai-quota.js"></script>
+<script src="./platform-config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765)}
+a{color:var(--color-accent,#2050a0)}a:hover{color:var(--color-heading,#1f2b4d)}
+.tv-c{container-type:inline-size;container-name:tv;min-height:100dvh;box-sizing:border-box}
+.tv-c[data-fs="l"]{--fsp:2px}
+.tv-c .sx-in,.tv-c textarea{box-sizing:border-box}
+.tv-c[data-emb="1"]{min-height:0}
+.tv{max-width:1440px;margin:0 auto;padding:24px;box-sizing:border-box;font-size:calc(14px + var(--fsp));line-height:1.5;display:flex;flex-direction:column;gap:16px}
+.tv-c[data-emb="1"] .tv{padding:0;max-width:none}
+.tv-hd{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:flex-start}
+.tv-hl{flex:1 1 320px;min-width:0}
+.tv-hr{flex:0 0 auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tv-c[data-emb="1"] .tv-hr{margin-left:auto}
+.tv-h1{margin:0 0 4px;font-size:calc(20px + var(--fsp));font-weight:600;line-height:1.35;color:var(--color-heading,#1f2b4d)}
+.tv-desc{margin:0;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.tv-st{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:12px 16px}
+.tv-stl{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.tv-stt{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:calc(14px + var(--fsp));color:var(--color-heading,#1f2b4d)}
+.tv-stt b{font-weight:600}
+.tv-bar{height:8px;border-radius:4px;background:var(--color-surface-hover,#e9ecf4);overflow:hidden}
+.tv-bar>span{display:block;height:100%;border-radius:4px;background:var(--color-admin-primary,#2050a0)}
+.tv-st[data-lv="warn"] .tv-bar>span{background:var(--color-admin-warning,#f7b84b)}
+.tv-st[data-lv="full"] .tv-bar>span{background:var(--color-admin-danger,#f06548)}
+.tv-sts{font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tv-st[data-lv="warn"] .tv-sts{color:var(--color-admin-warning-text,#906405);font-weight:600}
+.tv-st[data-lv="full"] .tv-sts{color:var(--color-admin-danger-text,#bf371a);font-weight:600}
+.tv-full{display:flex;flex-direction:column;gap:8px}
+.tv-full .acts{display:flex;flex-wrap:wrap;gap:8px}
+.tv-body{display:grid;grid-template-columns:232px minmax(0,1fr);gap:16px;align-items:start}
+.tv-fcol{padding:8px;display:flex;flex-direction:column;gap:2px;position:sticky;top:var(--sticky-top,16px)}
+.tv-fh{display:flex;align-items:center;gap:8px;padding:4px 8px 6px;font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.tv-fr{position:relative;display:flex;align-items:center;gap:2px;border-radius:4px}
+.tv-fb{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:8px;min-height:40px;padding:6px 8px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));color:var(--color-body-text,#3c4765);text-align:left;cursor:pointer}
+.tv-fb:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tv-fb[aria-current="true"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);font-weight:600;box-shadow:inset 3px 0 0 var(--color-accent,#2050a0)}
+.tv-fb i{font-size:calc(17px + var(--fsp));flex:0 0 auto}
+.tv-fb .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tv-fb .n{flex:0 0 auto;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);font-variant-numeric:tabular-nums}
+.tv-fr .sx-btn{flex:0 0 auto}
+.tv-fsep{height:1px;background:var(--color-border,#e9ecf4);margin:6px 4px}
+.tv-fnew{display:flex;flex-direction:column;gap:6px;padding:6px 4px}
+.tv-fnew .row{display:flex;gap:6px}
+.tv-fsel{display:none;gap:8px;align-items:flex-end}
+.tv-fsel .sx-in{flex:1 1 auto;min-width:0;min-height:44px}
+.tv-main{container-type:inline-size;container-name:tvm;min-width:0;display:flex;flex-direction:column}
+.tv-tb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.tv-tb .sx-search{flex:1 1 220px;min-width:0;max-width:420px}
+.tv-sels{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.tv-sort{width:auto;min-width:0;max-width:220px}
+.tv-tabs{display:flex;gap:24px;border-bottom:1px solid var(--color-border-strong,#e3e7f0);overflow-x:auto;scrollbar-width:none}
+.tv-tab{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 4px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));font-weight:500;color:var(--color-body-muted,#5b6275);white-space:nowrap;cursor:pointer}
+.tv-tab i{font-size:calc(17px + var(--fsp))}
+.tv-tab:hover{color:var(--color-heading,#1f2b4d)}
+.tv-tab[aria-selected="true"]{color:var(--color-accent,#2050a0);border-bottom-color:var(--color-accent,#2050a0);font-weight:600}
+.tv-tabn{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765);font-size:calc(12px + var(--fsp));font-weight:600}
+.tv-uppan{overflow:hidden}
+.tv-upto{display:flex;align-items:center;gap:6px;margin:0;padding:12px 18px 0;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tv-upto b{color:var(--color-heading,#1f2b4d);font-weight:600}
+html[data-tv-lock] ,html[data-tv-lock] body{overflow:hidden!important}
+.tv-sp{flex:1 1 auto}
+.tv-tb .tv-sp{display:none}
+.tv-main .tv-tb .sx-search{flex:1 1 100%;max-width:none}
+.tv-main .tv-tb .tv-sels{flex:1 1 0;min-width:0;flex-wrap:wrap}
+.tv-main .tv-tb .tv-sels .tv-sort{flex:1 1 150px;min-width:0;max-width:220px;display:block}
+.tv-main .tv-tb .sx-seg{flex:0 0 auto;margin-left:auto;align-self:flex-start}
+@container tvm (min-width:900px){.tv-main .tv-tb .sx-search{flex:1 1 240px}.tv-main .tv-tb .tv-sels{flex:0 1 auto;flex-wrap:nowrap}.tv-main .tv-tb .tv-sels .tv-sort{flex:0 1 auto}}
+@container tvm (max-width:599px){.tv-main .tv-tb{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.tv-main .tv-tb .sx-search{grid-column:1/-1}.tv-main .tv-tb .tv-sels{display:contents}.tv-main .tv-tb .tv-sels .tv-sort{max-width:none;width:100%}.tv-main .tv-tb .sx-seg{justify-self:end;margin-left:0}}
+.tv-vb{min-width:40px;justify-content:center}
+.tv-vb i{font-size:calc(17px + var(--fsp))}
+.tv-gw .tv-grid{grid-template-columns:repeat(auto-fill,minmax(176px,1fr));gap:16px}
+.tv-gw .tv-tile{border:0;border-radius:8px;background:transparent;overflow:visible}
+.tv-gw .tv-tile[data-sel="1"]{box-shadow:none}
+.tv-gw .tv-th{aspect-ratio:1/1;padding:0;border-radius:8px;background:var(--color-surface-muted,#f8f9fb);box-shadow:0 1px 2px rgba(56,65,74,.15);outline-offset:2px}
+.tv-gw .tv-tile[data-sel="1"] .tv-th{box-shadow:0 0 0 3px var(--color-accent,#2050a0)}
+.tv-gw .tv-th .tv-img{width:100%!important;height:100%!important;max-width:none;max-height:none;aspect-ratio:auto!important;border-radius:0;box-shadow:none;transition:transform .2s}
+@media (hover:hover){.tv-gw .tv-th:hover .tv-img{transform:scale(1.03)}}
+.tv-gw .tv-th .tv-pdf{flex:1;align-self:stretch;justify-content:center;padding-bottom:40px;background:color-mix(in srgb,var(--color-admin-danger,#f06548) 6%,var(--color-surface,#fff))}
+.tv-gw .tv-th .tv-pdf i{font-size:48px}
+.tv-cap{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:1px;padding:28px 10px 8px;text-align:left;background:linear-gradient(to top,rgba(10,14,28,.82),rgba(10,14,28,.55) 55%,rgba(10,14,28,0));pointer-events:none}
+.tv-cap .tv-nm{color:var(--color-white,#fff);font-size:calc(13px + var(--fsp));font-weight:600}
+.tv-cap .tv-mt{color:var(--color-white,#fff);opacity:.9;font-size:calc(12px + var(--fsp))}
+.tv-use{position:absolute;top:8px;left:8px;display:inline-flex;align-items:center;gap:4px;max-width:calc(100% - 56px);height:24px;padding:0 8px;border-radius:12px;background:color-mix(in srgb,var(--color-surface,#fff) 94%,transparent);box-shadow:0 1px 2px rgba(56,65,74,.15);font-size:calc(12px + var(--fsp));font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--color-body-text,#3c4765)}
+.tv-use i{font-size:13px}
+.tv-use[data-t="ok"]{color:var(--color-admin-success-text,#047767)}
+.tv-use[data-t="warn"]{color:var(--color-admin-warning-text,#906405)}
+.tv-use[data-t="danger"]{color:var(--color-admin-danger-text,#bf371a)}
+.tv-gw .tv-ck{top:8px;left:auto;right:8px;width:28px;height:28px;border-radius:50%;border:2px solid var(--color-white,#fff);background:rgba(10,14,28,.35);box-shadow:0 1px 3px rgba(10,14,28,.35);box-sizing:border-box}
+.tv-gw .tv-ck input{position:absolute;inset:-8px;width:auto;height:auto;margin:0;opacity:0;cursor:pointer}
+.tv-gw .tv-ck i{font-size:16px;color:var(--color-white,#fff);opacity:0;pointer-events:none}
+.tv-gw .tv-ck[data-on="1"]{background:var(--color-admin-primary,#2050a0)}
+.tv-gw .tv-ck[data-on="1"] i{opacity:1}
+.tv-gw .tv-ck:has(input:focus-visible){outline:2px solid var(--focus-ring-color,#2050a0);outline-offset:2px}
+.tv-gw .tv-ord{padding:8px 0 0}
+.tv-fcol{padding:8px 8px 12px}
+.tv-fh{padding:6px 10px 8px;font-size:calc(12px + var(--fsp));letter-spacing:.02em;color:var(--color-body-muted,#5b6275)}
+.tv-fb{min-height:38px;padding:6px 10px}
+.tv-fbadge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-admin-primary,#2050a0);color:var(--color-white,#fff);font-size:calc(12px + var(--fsp));font-weight:600}
+.tv-chips{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:8px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tv-chip{display:inline-flex;align-items:center;gap:4px;min-height:28px;max-width:100%;padding:0 4px 0 10px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:14px;background:var(--color-surface,#fff);color:var(--color-heading,#1f2b4d);font:inherit;font-size:calc(13px + var(--fsp));white-space:nowrap;cursor:pointer}
+.tv-chip i{font-size:16px;color:var(--color-body-muted,#5b6275)}
+.tv-chip:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tv-bulk{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff))}
+.tv-bulk .cnt{font-weight:600;color:var(--color-accent,#2050a0);margin-right:auto}
+.tv-notes{display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px 0}
+.tv-trl{display:flex;align-items:flex-start;gap:8px;margin:12px 16px 0}
+.tv-gw{padding:16px}
+.tv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px}
+.tv-tile{position:relative;display:flex;flex-direction:column;min-width:0;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);overflow:hidden}
+.tv-tile[data-sel="1"]{border-color:var(--color-accent,#2050a0);box-shadow:0 0 0 1px var(--color-accent,#2050a0)}
+.tv-tile[data-drag="1"]{opacity:.5}
+.tv-tile[data-drop="1"]{box-shadow:0 0 0 2px var(--color-accent,#2050a0)}
+.tv-th{position:relative;display:flex;align-items:center;justify-content:center;aspect-ratio:4/3;width:100%;padding:8px;border:0;background:var(--color-surface-muted,#f8f9fb);cursor:pointer;box-sizing:border-box;overflow:hidden}
+.tv-img{display:block;max-width:100%;max-height:100%;border-radius:2px;box-shadow:0 1px 2px rgba(56,65,74,.15)}
+.tv-img[data-o="l"],.tv-img[data-o="s"]{width:100%;height:auto}
+.tv-img[data-o="p"],.tv-img[data-o="s"]{height:100%;width:auto}
+.tv-pdf{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--color-admin-danger-text,#bf371a);font-size:calc(12px + var(--fsp));font-weight:700}
+.tv-pdf i{font-size:40px;line-height:1}
+.tv-ck{position:absolute;top:6px;left:6px;z-index:2;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:4px;background:color-mix(in srgb,var(--color-surface,#fff) 92%,transparent);box-shadow:0 1px 2px rgba(56,65,74,.15);cursor:pointer}
+.tv-ck input{width:18px;height:18px;margin:0;accent-color:var(--color-admin-primary,#2050a0);cursor:pointer}
+.tv-tbx{display:flex;flex-direction:column;gap:4px;padding:8px 10px 10px;min-width:0}
+.tv-nm{display:flex;min-width:0;font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.tv-nm>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.tv-nm>span:last-child{flex:0 0 auto}
+.tv-mt{font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tv-tbx .sx-chip{align-self:flex-start}
+.tv-ord{display:flex;gap:4px;padding:0 10px 10px}
+.tv-ord .sx-btn{flex:1 1 0}
+.tv-list{display:flex;flex-direction:column}
+.tv-row{display:grid;grid-template-columns:32px 48px minmax(0,1fr) 120px 88px 140px 96px auto;align-items:center;gap:12px;min-height:60px;padding:6px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.tv-row.h{min-height:0;padding:8px 16px;border-top:0;font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275);background:var(--color-surface-muted,#f8f9fb)}
+.tv-row[data-sel="1"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff))}
+@media (hover:hover){.tv-row:not(.h):hover{background:var(--color-surface-muted,#f8f9fb)}}
+.tv-row .ck{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px}
+.tv-row .ck input{width:18px;height:18px;margin:0;accent-color:var(--color-admin-primary,#2050a0)}
+.tv-row .th{width:48px;height:48px;padding:3px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface-muted,#f8f9fb);display:flex;align-items:center;justify-content:center;box-sizing:border-box;cursor:pointer;overflow:hidden}
+.tv-row .th i{font-size:22px;color:var(--color-admin-danger-text,#bf371a)}
+.tv-row .mn{display:flex;flex-direction:column;gap:2px;min-width:0}
+.tv-row .nmb{border:0;background:transparent;padding:0;font:inherit;text-align:left;cursor:pointer;min-width:0}
+.tv-row .sub{display:none;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tv-row .c{font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tv-row .c.r{text-align:right}
+.tv-box{padding:40px 16px;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.tv-box h2{margin:0;font-size:calc(16px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.tv-box p{margin:0;max-width:540px;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.tv-bic{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:50%;font-size:calc(26px + var(--fsp));background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0)}
+.tv-bic[data-t="danger"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+.tv-box .dz{width:100%;max-width:560px;box-sizing:border-box}
+.tv-skg{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:12px;padding:16px}
+.tv-skg>div{display:flex;flex-direction:column;gap:8px}
+.tv-foot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding:10px 16px;border-top:1px solid var(--color-border,#e9ecf4);font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tv-dzo{position:fixed;inset:0;z-index:330;display:flex;align-items:center;justify-content:center;padding:24px;background:color-mix(in srgb,var(--color-admin-primary,#2050a0) 18%,rgba(15,18,30,.45));pointer-events:none}
+.tv-dzo>div{display:flex;flex-direction:column;align-items:center;gap:10px;padding:32px 40px;border:3px dashed var(--color-accent,#2050a0);border-radius:8px;background:var(--color-surface,#fff);text-align:center;color:var(--color-heading,#1f2b4d);font-size:calc(16px + var(--fsp));font-weight:600}
+.tv-dzo i{font-size:40px;color:var(--color-accent,#2050a0)}
+.tv-pk{width:min(1020px,100%);height:min(660px,100%);border-radius:8px;overflow:hidden;box-shadow:0 18px 50px rgba(15,18,30,.3)}
+@media (max-width:599px){.ov.tv-pko{padding:0}.tv-pk{width:100%;height:100dvh;border-radius:0}}
+.tv-drw{width:min(520px,100%);container-type:inline-size;overflow:hidden}
+.tv-drw .drw-b{overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain;scrollbar-width:thin}
+.ov[data-tv-ov="drw"]{overflow:hidden!important}
+.tv-pv{display:flex;align-items:center;justify-content:center;height:min(260px,40dvh);padding:12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface-muted,#f8f9fb);box-sizing:border-box}
+.tv-pv .tv-pdf i{font-size:64px}
+.tv-dnm{margin:0;font-size:calc(15px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere}
+.tv-f{display:flex;flex-direction:column;min-width:0}
+.tv-cnt{margin-left:auto;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);font-variant-numeric:tabular-nums;font-weight:500}
+.tv-cnt[data-over="1"]{color:var(--color-admin-danger-text,#bf371a);font-weight:600}
+.tv-lb{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff)}
+.tv-pills{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0;flex-wrap:wrap}
+.tv-lbi{color:var(--color-body-muted,#5b6275);font-size:18px;flex:0 0 auto;padding:0 2px}
+.tv-pill{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:18px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:calc(13px + var(--fsp));white-space:nowrap;cursor:pointer;flex:0 0 auto}
+.tv-pill:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tv-pill[aria-pressed="true"]{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-weight:600}
+.tv-star{color:var(--color-brand-gold,#e0b028);font-size:13px}
+.tv-lbr{display:flex;align-items:center;gap:8px;flex:0 0 auto;padding-left:8px;border-left:1px solid var(--color-border,#e9ecf4)}
+.tv-lpop{left:0;right:auto;width:260px;padding:6px}
+.tv-li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;min-height:44px;padding:6px 10px;border:0;border-radius:4px;background:transparent;font:inherit;text-align:left;cursor:pointer;color:var(--color-body-text,#3c4765)}
+.tv-li:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tv-li[aria-current="true"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,var(--color-surface,#fff))}
+.tv-li small{display:block;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tv-cp{display:flex;align-items:center;gap:6px;min-height:40px;padding:0 4px 0 12px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface-muted,#f8f9fb)}
+.tv-cp input{flex:1 1 auto;min-width:0;min-height:38px;border:0;outline:0;background:transparent;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(13px + var(--fsp));color:var(--color-heading,#1f2b4d)}
+.tv-kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px;margin:0;font-size:calc(13px + var(--fsp))}
+.tv-kv dt{color:var(--color-body-muted,#5b6275)}
+.tv-kv dd{margin:0;color:var(--color-heading,#1f2b4d);text-align:right;overflow-wrap:anywhere}
+.tv-sec{display:flex;flex-direction:column;gap:8px;padding-top:12px;border-top:1px solid var(--color-border,#e9ecf4)}
+.tv-sec h3{margin:0;display:flex;align-items:center;gap:8px;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.tv-ug{display:flex;flex-direction:column;gap:4px}
+.tv-ug>span{font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.tv-ui{display:flex;align-items:center;gap:8px;width:100%;min-height:40px;padding:6px 8px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:calc(13px + var(--fsp));color:var(--color-heading,#1f2b4d);text-align:left;cursor:pointer}
+.tv-ui:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tv-ui .t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tv-ui .cd{flex:0 0 auto;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tv-mi{display:flex;align-items:flex-start;gap:10px;width:100%;min-height:40px;padding:8px 10px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));color:var(--color-body-text,#3c4765);text-align:left;cursor:pointer;line-height:1.45}
+.tv-mi i{font-size:calc(17px + var(--fsp));line-height:1.3;flex:0 0 auto}
+.tv-mi:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tv-mi[data-danger="1"]{color:var(--color-admin-danger-text,#bf371a)}
+.tv-mi[aria-disabled="true"]{cursor:not-allowed;color:var(--color-body-muted,#5b6275)}
+.tv-why{display:block;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tv-msep{height:1px;background:var(--color-border,#e9ecf4);margin:4px 0}
+.tv-menu{width:260px;padding:6px}
+.tv-fs{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;min-width:0}
+.tv-fs legend{padding:0;margin:0 0 4px;font-weight:600;color:var(--color-heading,#1f2b4d)}
+.tv-fs .sx-check .n{margin-left:auto;color:var(--color-body-muted,#5b6275);font-variant-numeric:tabular-nums}
+.tv-fs .sx-check>span:first-of-type{flex:1 1 auto;display:flex;gap:8px}
+.tv-cf{max-width:460px;text-align:left}
+.tv-cf h2{margin:0 0 6px;font-size:calc(18px + var(--fsp));font-weight:600;line-height:1.4;color:var(--color-heading,#1f2b4d);text-align:center;overflow-wrap:anywhere}
+.tv-cf p{margin:0;text-align:center;color:var(--color-body-text,#3c4765)}
+.tv-cf .cf-f .sx-btn{max-width:100%}
+.tv-cf .cf-f .sx-btn .sx-t{overflow:hidden;text-overflow:ellipsis}
+.tv-mv{display:flex;flex-direction:column;gap:6px}
+.tv-fr2{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;padding:16px 24px 24px;border-top:1px dashed var(--color-border-strong,#e3e7f0)}
+.tv-fr2 figure{margin:0;display:flex;flex-direction:column;gap:6px;max-width:100%}
+.tv-fr2 figcaption{font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.tv-fr2 iframe{border:1px solid var(--color-border-strong,#e3e7f0);border-radius:8px;background:var(--color-body,#f4f5fa);height:844px;max-width:100%}
+@media (pointer:coarse){.tv-fb,.tv-mi,.tv-ui{min-height:44px}.tv-ck{width:44px;height:44px}.tv-row .ck{width:44px;height:44px}.tv-pill{height:44px}.tv-chip{min-height:44px}}
+@container tv (max-width:767px){
+ .tv{padding:16px 12px}
+ .tv-body{grid-template-columns:minmax(0,1fr)}
+ .tv-fcol{display:none}
+ .tv-fsel{display:flex}
+ .tv-hr{width:100%}
+ .tv-hr .sx-btn.pri{flex:1 1 auto}
+}
+@container tvm (max-width:599px){
+ .tv-tb{padding:12px}
+ .tv-tb .sx-search{max-width:none;flex-basis:100%}
+ .tv-sels{flex:1 1 100%}
+ .tv-sort{flex:1 1 0;max-width:none}
+ .tv-gw{padding:12px}
+ .tv-grid,.tv-skg,.tv-gw .tv-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .tv-gw .tv-ck{width:32px;height:32px}
+ .tv-skg{padding:12px}
+ .tv-row{grid-template-columns:auto 48px minmax(0,1fr) auto;gap:8px 10px;padding:8px 12px}
+ .tv-row.h{display:none}
+ .tv-row .c{display:none}
+ .tv-row .sub{display:block}
+ .tv-bulk{padding:8px 12px}
+ .tv-bulk .cnt{flex:1 1 100%}
+ .tv-bulk .sx-btn{flex:1 1 auto}
+ .tv-chips{padding:8px 12px}
+}
+@container tvm (min-width:600px) and (max-width:899px){.tv-row{grid-template-columns:32px 48px minmax(0,1fr) 88px 140px auto}.tv-row .c.dm,.tv-row .c.dt{display:none}}
+@media (prefers-reduced-motion:reduce){.tv-c *{transition:none!important;animation:none!important}}
+</style>
+</helmet>
+<div class="tv-c" ref="{{ rootRef }}" data-fs="{{ fsAttr }}" data-emb="{{ embAttr }}" onDragEnter="{{ onPageDragEnter }}" onDragOver="{{ onPageDragOver }}" onDragLeave="{{ onPageDragLeave }}" onDrop="{{ onPageDrop }}">
+<main class="tv">
+  <div class="tv-hd">
+    <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}">
+      <div class="tv-hl">
+        <h1 class="tv-h1">Thư viện ảnh &amp; tệp</h1>
+        <p class="tv-desc">Mọi ảnh và tệp đã tải lên — dùng lại cho nhiều bài, sản phẩm mà không phải tải lại.</p>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+    <div class="tv-tabs" role="tablist" aria-label="Thư viện ảnh và tệp">
+      <button type="button" role="tab" class="tv-tab" id="tv-tab-up" aria-selected="{{ tabUpStr }}" aria-controls="h-dz" tabindex="{{ tabUpIdx }}" onClick="{{ onTabUp }}" onKeyDown="{{ onTabKey }}"><i class="ri-upload-2-line" aria-hidden="true"></i><span>Tải lên tệp mới</span></button>
+      <button type="button" role="tab" class="tv-tab" id="tv-tab-lib" aria-selected="{{ tabLibStr }}" aria-controls="tv-pan-lib" tabindex="{{ tabLibIdx }}" onClick="{{ onTabLib }}" onKeyDown="{{ onTabKey }}"><i class="ri-image-2-line" aria-hidden="true"></i><span>Thư viện ảnh</span><span class="tv-tabn">{{ libN }}</span></button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ tabUp }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card tv-uppan" id="h-dz" role="tabpanel" aria-labelledby="tv-tab-up">
+      <sc-if value="{{ upFull }}">
+        <div class="tv-box">
+          <span class="tv-bic" data-t="danger"><i class="ri-hard-drive-2-line" aria-hidden="true"></i></span>
+          <h2>Đã hết dung lượng — chưa tải thêm được</h2>
+          <p>{{ fullText }}</p>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center">
+            <button type="button" class="sx-btn pri" onClick="{{ goTrash }}"><i class="ri-delete-bin-line" aria-hidden="true"></i><span class="sx-t">Dọn Thùng rác</span></button>
+            <button type="button" class="sx-btn" onClick="{{ onUpsell }}"><i class="{{ upsellIcon }}" aria-hidden="true"></i><span class="sx-t">{{ upsellText }}</span></button>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ upOk }}">
+        <p class="tv-upto"><i class="ri-folder-3-line" aria-hidden="true"></i><span>Tệp tải lên sẽ vào: <b>{{ upTo }}</b></span></p>
+        <dc-import name="MediaPicker" bare="{{ true }}" multiple="{{ true }}" start-tab="upload" drop-files="{{ pickDrop }}" upload-demo="{{ pickDemo }}" on-uploaded="{{ onUploaded }}" hint-size="100%,460px"></dc-import>
+      </sc-if>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ showStorage }}" hint-placeholder-val="{{ true }}">
+    <section class="sx-card tv-st" data-lv="{{ stLv }}" aria-label="Dung lượng đã dùng">
+      <div class="tv-stl">
+        <div class="tv-stt"><i class="{{ stIcon }}" aria-hidden="true"></i><span>Đã dùng <b>{{ usedText }}</b> / {{ limitText }}</span><sc-if value="{{ notes }}"><span class="sx-note">Chờ backend: dung lượng theo gói chưa áp</span></sc-if></div>
+        <div class="tv-bar" role="progressbar" aria-label="Dung lượng đã dùng" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ stPct }}" aria-valuetext="{{ stAria }}"><span style="width:{{ stPct }}%"></span></div>
+        <span class="tv-sts">{{ stText }}</span>
+      </div>
+      <sc-if value="{{ stFull }}">
+        <div class="tv-full sx-al" data-k="danger" role="alert" id="tv-full" tabindex="-1" style="flex:1 1 320px">
+          <span><b>Đã hết dung lượng — chưa tải thêm được.</b> {{ fullText }}</span>
+          <div class="acts">
+            <button type="button" class="sx-btn sm" onClick="{{ goTrash }}"><i class="ri-delete-bin-line" aria-hidden="true"></i><span class="sx-t">Dọn Thùng rác</span></button>
+            <button type="button" class="sx-btn sm" onClick="{{ onUpsell }}"><i class="{{ upsellIcon }}" aria-hidden="true"></i><span class="sx-t">{{ upsellText }}</span></button>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ roInfo }}" hint-placeholder-val="{{ false }}">
+    <p class="sx-al" data-k="info" style="margin:0;display:flex;gap:8px;align-items:flex-start"><i class="ri-eye-line" aria-hidden="true" style="font-size:18px"></i><span>{{ roText }}</span></p>
+  </sc-if>
+
+  <sc-if value="{{ stLoading }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card" aria-busy="true" aria-label="Đang tải thư viện">
+      <div class="tv-tb"><span class="sx-sk" style="width:260px;height:40px"></span><span class="sx-sk" style="width:80px;height:40px"></span></div>
+      <div class="tv-skg">
+        <sc-for list="{{ skel }}" as="s" hint-placeholder-count="8"><div><span class="sx-sk" style="aspect-ratio:4/3;width:100%"></span><span class="sx-sk" style="height:14px;width:80%"></span><span class="sx-sk" style="height:12px;width:50%"></span></div></sc-for>
+      </div>
+      <p role="status" style="margin:0;padding:0 16px 14px;font-size:13px;color:var(--color-body-muted,#5b6275)">Đang tải ảnh và tệp…</p>
+    </section>
+  </sc-if>
+
+  <sc-if value="{{ stError }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card"><div class="tv-box">
+      <span class="tv-bic" data-t="danger"><i class="ri-wifi-off-line" aria-hidden="true"></i></span>
+      <h2>Chưa tải được thư viện</h2>
+      <p role="alert">Có thể mạng vừa bị ngắt. Ảnh và tệp của bạn vẫn an toàn — bấm Thử lại.</p>
+      <button type="button" class="sx-btn pri" onClick="{{ onRetry }}"><i class="ri-refresh-line" aria-hidden="true"></i><span class="sx-t">Thử lại</span></button>
+    </div></section>
+  </sc-if>
+
+  <sc-if value="{{ stNoPerm }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card"><div class="tv-box">
+      <span class="tv-bic"><i class="ri-lock-2-line" aria-hidden="true"></i></span>
+      <h2>Bạn chưa có quyền xem Thư viện ảnh &amp; tệp</h2>
+      <p>{{ noPermText }}</p>
+      <button type="button" class="sx-btn" onClick="{{ goHome }}"><i class="ri-arrow-left-line" aria-hidden="true"></i><span class="sx-t">Về Tổng quan</span></button>
+    </div></section>
+  </sc-if>
+
+  <sc-if value="{{ stLocked }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card"><div class="tv-box">
+      <span class="tv-bic"><i class="ri-lock-2-line" aria-hidden="true"></i></span>
+      <h2>{{ lockTitle }}</h2>
+      <p>{{ lockText }}</p>
+      <button type="button" class="sx-btn pri" onClick="{{ onUpsell }}"><i class="{{ upsellIcon }}" aria-hidden="true"></i><span class="sx-t">{{ upsellText }}</span></button>
+    </div></section>
+  </sc-if>
+
+  <sc-if value="{{ stEmpty }}" hint-placeholder-val="{{ false }}">
+    <section class="sx-card"><div class="tv-box">
+      <span class="tv-bic"><i class="ri-image-add-line" aria-hidden="true"></i></span>
+      <h2>Thư viện chưa có ảnh nào</h2>
+      <p>Tải ảnh sản phẩm, ảnh xưởng hay bảng giá PDF lên một lần, rồi chọn lại ở bất cứ bài hay sản phẩm nào.</p>
+      <sc-if value="{{ canUp }}">
+        <div class="dz" data-over="{{ pageOverStr }}">
+          <button type="button" class="sx-btn pri" aria-disabled="{{ upDisStr }}" onClick="{{ onUpload }}"><i class="ri-upload-2-line" aria-hidden="true"></i><span class="sx-t">Tải ảnh đầu tiên</span></button>
+          <span class="tv-sts">hoặc kéo thả tệp vào đây · JPG, PNG, WebP, GIF, PDF · tối đa 10 MB mỗi tệp</span>
+        </div>
+      </sc-if>
+    </div></section>
+  </sc-if>
+
+  <sc-if value="{{ stData }}" hint-placeholder-val="{{ true }}">
+    <div class="tv-body" id="tv-pan-lib" role="tabpanel" aria-labelledby="tv-tab-lib">
+      <nav class="sx-card tv-fcol" aria-label="Thư mục">
+        <div class="tv-fh"><i class="ri-folder-3-line" aria-hidden="true"></i><span style="flex:1">Thư mục</span></div>
+        <sc-for list="{{ fTop }}" as="f" hint-placeholder-count="1">
+          <div class="tv-fr"><button type="button" class="tv-fb" aria-current="{{ f.cur }}" onClick="{{ f.go }}"><i class="{{ f.icon }}" aria-hidden="true"></i><span class="nm">{{ f.name }}</span><span class="n">{{ f.n }}</span></button></div>
+        </sc-for>
+        <sc-for list="{{ fList }}" as="f" hint-placeholder-count="5">
+          <div class="tv-fr">
+            <sc-if value="{{ f.renaming }}">
+              <div class="tv-fnew" style="flex:1"><label class="sx-lab" for="tv-ren" style="margin:0">Tên mới</label><input id="tv-ren" class="sx-in" type="text" maxlength="80" value="{{ renVal }}" onInput="{{ onRenIn }}" onKeyDown="{{ onRenKey }}" aria-invalid="{{ renInv }}"><sc-if value="{{ renErrShow }}"><p class="sx-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ renErr }}</span></p></sc-if><div class="row"><button type="button" class="sx-btn sm" onClick="{{ onRenCancel }}"><span class="sx-t">Hủy</span></button><button type="button" class="sx-btn sm pri" onClick="{{ onRenOk }}"><span class="sx-t">Lưu tên</span></button></div></div>
+            </sc-if>
+            <sc-if value="{{ f.plain }}">
+              <button type="button" class="tv-fb" aria-current="{{ f.cur }}" onClick="{{ f.go }}"><i class="{{ f.icon }}" aria-hidden="true"></i><span class="nm" title="{{ f.name }}">{{ f.name }}</span><span class="n">{{ f.n }}</span></button>
+              <sc-if value="{{ f.canEdit }}"><button type="button" class="sx-btn sm ic gho tv-fm" aria-label="{{ f.menuLabel }}" title="{{ f.menuLabel }}" aria-haspopup="menu" aria-expanded="{{ f.menuStr }}" onClick="{{ f.onMenu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button></sc-if>
+              <sc-if value="{{ f.popOpen }}">
+                <div class="sx-pop r tv-menu" role="menu" aria-label="{{ f.menuLabel }}" data-tv-pop="fmenu">
+                  <sc-for list="{{ fMenu }}" as="it"><sc-if value="{{ it.sep }}"><div class="tv-msep" role="separator"></div></sc-if><sc-if value="{{ it.item }}"><button type="button" role="menuitem" class="tv-mi" data-danger="{{ it.danger }}" aria-disabled="{{ it.dis }}" onClick="{{ it.run }}"><i class="{{ it.i }}" aria-hidden="true"></i><span><span>{{ it.l }}</span><sc-if value="{{ it.hasWhy }}"><span class="tv-why">{{ it.why }}</span></sc-if></span></button></sc-if></sc-for>
+                </div>
+              </sc-if>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-for list="{{ fBottom }}" as="f" hint-placeholder-count="2">
+          <div class="tv-fr"><button type="button" class="tv-fb" aria-current="{{ f.cur }}" onClick="{{ f.go }}"><i class="{{ f.icon }}" aria-hidden="true"></i><span class="nm">{{ f.name }}</span><span class="n">{{ f.n }}</span></button></div>
+        </sc-for>
+        <sc-if value="{{ canUp }}">
+          <div class="tv-fsep"></div>
+          <sc-if value="{{ newOpen }}">
+            <div class="tv-fnew"><label class="sx-lab" for="tv-newf" style="margin:0">Tên thư mục</label><input id="tv-newf" class="sx-in" type="text" maxlength="80" placeholder="Ảnh công trình" value="{{ newVal }}" onInput="{{ onNewIn }}" onKeyDown="{{ onNewKey }}" aria-invalid="{{ newInv }}"><sc-if value="{{ newErrShow }}"><p class="sx-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ newErr }}</span></p></sc-if><div class="row"><button type="button" class="sx-btn sm" onClick="{{ onNewCancel }}"><span class="sx-t">Hủy</span></button><button type="button" class="sx-btn sm pri" onClick="{{ onNewOk }}"><span class="sx-t">Tạo thư mục</span></button></div></div>
+          </sc-if>
+          <sc-if value="{{ newClosed }}"><button type="button" class="sx-btn sm gho" style="justify-content:flex-start" onClick="{{ onNewOpen }}"><i class="ri-folder-add-line" aria-hidden="true"></i><span class="sx-t">Thư mục mới</span></button></sc-if>
+          <sc-if value="{{ notes }}"><p style="margin:6px 4px 0"><span class="sx-note" id="h-tr">Chờ backend: đổi tên, sắp xếp, xóa thư mục</span></p></sc-if>
+        </sc-if>
+      </nav>
+
+      <section class="sx-card tv-main" aria-label="{{ mainLabel }}">
+        <div class="tv-fsel" style="padding:12px 12px 0">
+          <div style="flex:1 1 auto;min-width:0"><label class="sx-lab" for="tv-fsel">Thư mục</label><select id="tv-fsel" class="sx-in" value="{{ folder }}" onChange="{{ onFolderSel }}"><sc-for list="{{ fOpts }}" as="o"><option value="{{ o.k }}">{{ o.l }}</option></sc-for></select></div>
+          <sc-if value="{{ canUp }}"><button type="button" class="sx-btn ic" aria-label="Việc với thư mục" title="Việc với thư mục" onClick="{{ onFSheet }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button></sc-if>
+        </div>
+        <sc-if value="{{ newNarrow }}"><div class="tv-fnew" style="padding:8px 12px 0"><label class="sx-lab" for="tv-newf" style="margin:0">Tên thư mục mới</label><input id="tv-newf" class="sx-in" type="text" maxlength="80" placeholder="Ảnh công trình" value="{{ newVal }}" onInput="{{ onNewIn }}" onKeyDown="{{ onNewKey }}" aria-invalid="{{ newInv }}"><sc-if value="{{ newErrShow }}"><p class="sx-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ newErr }}</span></p></sc-if><div class="row"><button type="button" class="sx-btn" onClick="{{ onNewCancel }}"><span class="sx-t">Hủy</span></button><button type="button" class="sx-btn pri" onClick="{{ onNewOk }}"><span class="sx-t">Tạo thư mục</span></button></div></div></sc-if>
+        <sc-if value="{{ renNarrow }}"><div class="tv-fnew" style="padding:8px 12px 0"><label class="sx-lab" for="tv-ren" style="margin:0">Tên mới của thư mục</label><input id="tv-ren" class="sx-in" type="text" maxlength="80" value="{{ renVal }}" onInput="{{ onRenIn }}" onKeyDown="{{ onRenKey }}" aria-invalid="{{ renInv }}"><sc-if value="{{ renErrShow }}"><p class="sx-err" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i><span>{{ renErr }}</span></p></sc-if><div class="row"><button type="button" class="sx-btn" onClick="{{ onRenCancel }}"><span class="sx-t">Hủy</span></button><button type="button" class="sx-btn pri" onClick="{{ onRenOk }}"><span class="sx-t">Lưu tên</span></button></div></div></sc-if>
+        <div class="tv-tb">
+          <label class="sx-search"><i class="ri-search-line" aria-hidden="true"></i><input type="search" aria-label="Tìm theo tên tệp hoặc mô tả ảnh" placeholder="may-phay-cnc" value="{{ q }}" onInput="{{ onQ }}" data-tv-q="1"></label>
+          <div class="tv-sels">
+            <select class="sx-in tv-sort" aria-label="Sắp xếp" value="{{ sort }}" onChange="{{ onSort }}"><sc-for list="{{ sortOpts }}" as="o"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select>
+            <select class="sx-in tv-sort" aria-label="Loại tệp" value="{{ typeVal }}" onChange="{{ onTypeSel }}"><sc-for list="{{ typeOpts }}" as="o"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select>
+            <select class="sx-in tv-sort" aria-label="Định dạng" value="{{ fmtVal }}" onChange="{{ onFmtSel }}"><sc-for list="{{ fmtOpts }}" as="o"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select>
+          </div>
+          <span class="tv-sp"></span>
+          <div class="sx-seg" role="radiogroup" aria-label="Kiểu xem">
+            <button type="button" role="radio" class="tv-vb" aria-checked="{{ isGridStr }}" aria-label="Dạng lưới" title="Dạng lưới" onClick="{{ onGrid }}"><i class="ri-grid-line" aria-hidden="true"></i></button>
+            <button type="button" role="radio" class="tv-vb" aria-checked="{{ isListStr }}" aria-label="Dạng danh sách" title="Dạng danh sách" onClick="{{ onList }}"><i class="ri-list-check" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <sc-if value="{{ hasChips }}">
+          <div class="tv-chips" role="status" aria-live="polite"><span>Đang lọc:</span><sc-for list="{{ chips }}" as="c"><button type="button" class="tv-chip" onClick="{{ c.rm }}" aria-label="{{ c.aria }}">{{ c.l }}<i class="ri-close-line" aria-hidden="true"></i></button></sc-for><button type="button" class="sx-btn sm gho" onClick="{{ onClearAll }}"><span class="sx-t">Bỏ lọc</span></button><span style="margin-left:auto">{{ matchText }}</span></div>
+        </sc-if>
+        <sc-if value="{{ hasSel }}">
+          <div class="tv-bulk" role="region" aria-label="Thao tác với tệp đã chọn">
+            <span class="cnt" role="status" aria-live="polite">Đã chọn {{ selN }}</span>
+            <sc-for list="{{ bulk }}" as="b"><button type="button" class="{{ b.cls }}" onClick="{{ b.run }}"><i class="{{ b.i }}" aria-hidden="true"></i><span class="sx-t">{{ b.l }}</span></button></sc-for>
+            <button type="button" class="sx-btn sm gho" onClick="{{ onSelNone }}"><span class="sx-t">Bỏ chọn</span></button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ inTrash }}">
+          <p class="sx-al tv-trl" data-k="warning"><i class="ri-time-line" aria-hidden="true" style="font-size:18px"></i><span style="flex:1;min-width:0">Tự xóa vĩnh viễn sau 15 ngày. Tệp trong Thùng rác không còn hiện trên website.</span><sc-if value="{{ canPurgeAll }}"><button type="button" class="sx-btn sm dano" onClick="{{ onPurgeAll }}"><i class="ri-delete-bin-2-line" aria-hidden="true"></i><span class="sx-t">Dọn sạch Thùng rác</span></button></sc-if></p>
+        </sc-if>
+        <sc-if value="{{ notesManual }}"><div class="tv-notes"><span class="sx-note">Chờ backend: lưu thứ tự thủ công (cột có, chưa build)</span></div></sc-if>
+
+        <sc-if value="{{ emptyKind }}">
+          <div class="tv-box">
+            <span class="tv-bic"><i class="{{ emptyIcon }}" aria-hidden="true"></i></span>
+            <h2>{{ emptyTitle }}</h2>
+            <p>{{ emptyText }}</p>
+            <sc-if value="{{ emptyBtnShow }}"><button type="button" class="{{ emptyBtnCls }}" onClick="{{ emptyBtnRun }}"><i class="{{ emptyBtnIcon }}" aria-hidden="true"></i><span class="sx-t">{{ emptyBtn }}</span></button></sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showGrid }}">
+          <div class="tv-gw"><div class="tv-grid" role="list" aria-label="{{ mainLabel }}">
+            <sc-for list="{{ rows }}" as="it" hint-placeholder-count="12">
+              <div class="tv-tile" role="listitem" data-sel="{{ it.selA }}" data-drag="{{ it.dragA }}" data-drop="{{ it.dropA }}" draggable="{{ it.draggable }}" onDragStart="{{ it.onDS }}" onDragOver="{{ it.onDO }}" onDrop="{{ it.onDrop }}" onDragEnd="{{ it.onDE }}">
+                <button type="button" class="tv-th" onClick="{{ it.onOpen }}" aria-label="{{ it.openLabel }}" title="{{ it.name }}">
+                  <sc-if value="{{ it.isImg }}"><span class="tv-img" data-o="{{ it.o }}" style="aspect-ratio:{{ it.ar }};background:{{ it.bg }}"></span></sc-if>
+                  <sc-if value="{{ it.isPdf }}"><span class="tv-pdf"><i class="ri-file-pdf-2-line" aria-hidden="true"></i>PDF</span></sc-if>
+                  <span class="tv-use" data-t="{{ it.chipT }}"><i class="{{ it.chipI }}" aria-hidden="true"></i>{{ it.chip }}</span>
+                  <span class="tv-cap"><span class="tv-nm"><span>{{ it.base }}</span><span>{{ it.ext }}</span></span><span class="tv-mt">{{ it.meta }}</span></span>
+                </button>
+                <sc-if value="{{ canPick }}"><label class="tv-ck" title="{{ it.ckLabel }}" data-on="{{ it.selA }}"><input type="checkbox" checked="{{ it.sel }}" onChange="{{ it.onSel }}" aria-label="{{ it.ckLabel }}"><i class="ri-check-line" aria-hidden="true"></i></label></sc-if>
+                <sc-if value="{{ manual }}"><div class="tv-ord"><button type="button" class="sx-btn sm" aria-disabled="{{ it.upDis }}" aria-label="{{ it.upLabel }}" title="{{ it.upLabel }}" onClick="{{ it.onUp }}"><i class="ri-arrow-up-line" aria-hidden="true"></i><span class="sx-t">Lên</span></button><button type="button" class="sx-btn sm" aria-disabled="{{ it.dnDis }}" aria-label="{{ it.dnLabel }}" title="{{ it.dnLabel }}" onClick="{{ it.onDn }}"><i class="ri-arrow-down-line" aria-hidden="true"></i><span class="sx-t">Xuống</span></button></div></sc-if>
+              </div>
+            </sc-for>
+          </div></div>
+        </sc-if>
+
+        <sc-if value="{{ showList }}">
+          <div class="tv-list" role="table" aria-label="{{ mainLabel }}">
+            <div class="tv-row h" role="row"><span role="columnheader"><sc-if value="{{ canPick }}"><label class="ck"><input type="checkbox" checked="{{ allSel }}" onChange="{{ onSelAll }}" aria-label="Chọn tất cả tệp đang hiện"></label></sc-if></span><span role="columnheader"></span><span role="columnheader">Tên tệp</span><span role="columnheader" class="c dm">Kích thước</span><span role="columnheader" class="c r">Dung lượng</span><span role="columnheader" class="c">Nơi dùng</span><span role="columnheader" class="c dt">Ngày tải</span><span role="columnheader"></span></div>
+            <sc-for list="{{ rows }}" as="it" hint-placeholder-count="8">
+              <div class="tv-row" role="row" data-sel="{{ it.selA }}">
+                <span role="cell"><sc-if value="{{ canPick }}"><label class="ck"><input type="checkbox" checked="{{ it.sel }}" onChange="{{ it.onSel }}" aria-label="{{ it.ckLabel }}"></label></sc-if></span>
+                <span role="cell"><button type="button" class="th" onClick="{{ it.onOpen }}" aria-label="{{ it.openLabel }}"><sc-if value="{{ it.isImg }}"><span class="tv-img" data-o="{{ it.o }}" style="aspect-ratio:{{ it.ar }};background:{{ it.bg }}"></span></sc-if><sc-if value="{{ it.isPdf }}"><i class="ri-file-pdf-2-line" aria-hidden="true"></i></sc-if></button></span>
+                <span role="cell" class="mn"><button type="button" class="nmb" onClick="{{ it.onOpen }}"><span class="tv-nm" title="{{ it.name }}"><span>{{ it.base }}</span><span>{{ it.ext }}</span></span></button><span class="sub">{{ it.meta }} · {{ it.chip }}</span></span>
+                <span role="cell" class="c dm">{{ it.dims }}</span>
+                <span role="cell" class="c r">{{ it.sizeT }}</span>
+                <span role="cell" class="c"><span class="sx-chip" data-t="{{ it.chipT }}"><i class="{{ it.chipI }}" aria-hidden="true"></i>{{ it.chip }}</span></span>
+                <span role="cell" class="c dt">{{ it.at }}</span>
+                <span role="cell"><button type="button" class="sx-btn sm" onClick="{{ it.onOpen }}"><span class="sx-t">Chi tiết</span></button></span>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ showFoot }}"><p class="tv-foot" style="margin:0"><span>{{ footText }}</span><sc-if value="{{ canPick }}"><span style="margin-left:auto">{{ footTip }}</span></sc-if></p></sc-if>
+      </section>
+    </div>
+  </sc-if>
+</main>
+
+<sc-if value="{{ showFrames }}" hint-placeholder-val="{{ false }}">
+  <section class="tv-fr2" aria-label="Khung xem điện thoại và máy tính bảng">
+    <figure><figcaption>390 px — điện thoại</figcaption><iframe title="Thư viện ở 390px" src="{{ frameSrc }}" style="width:390px" loading="lazy"></iframe></figure>
+    <figure><figcaption>768 px — máy tính bảng</figcaption><iframe title="Thư viện ở 768px" src="{{ frameSrc }}" style="width:768px" loading="lazy"></iframe></figure>
+  </section>
+</sc-if>
+
+<sc-if value="{{ pageOver }}" hint-placeholder-val="{{ false }}">
+  <div class="tv-dzo" aria-hidden="true"><div><i class="ri-upload-cloud-2-line"></i><span>Thả tệp vào đây để tải lên</span><span class="tv-sts" style="font-weight:500">{{ dropTo }}</span></div></div>
+</sc-if>
+
+<sc-if value="{{ pickOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov tv-pko" data-tv-ov="pick" onClick="{{ onPickBg }}">
+    <div class="tv-pk" role="dialog" aria-modal="true" aria-label="Tải ảnh lên" onClick="{{ stop }}">
+      <dc-import name="MediaPicker" multiple="{{ true }}" start-tab="upload" start-source="device" drop-files="{{ pickDrop }}" upload-demo="{{ pickDemo }}" on-uploaded="{{ onUploaded }}" on-close="{{ onPickClose }}" on-insert="{{ onPickClose }}" hint-size="100%,100%"></dc-import>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ dOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov right" data-tv-ov="drw" onClick="{{ onDClose }}">
+    <div class="drw tv-drw" role="dialog" aria-modal="true" aria-labelledby="tv-d-t" onClick="{{ stop }}" id="h-dr">
+      <div class="drw-h">
+        <h2 id="tv-d-t" style="margin:0;flex:1;min-width:0;font-size:calc(17px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)">{{ dTitle }}</h2>
+        <sc-if value="{{ dMenuShow }}">
+          <div style="position:relative">
+            <button type="button" class="sx-btn ic tv-dm" aria-label="Việc khác với tệp này" title="Việc khác" aria-haspopup="menu" aria-expanded="{{ dMenuStr }}" onClick="{{ onDMenu }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+            <sc-if value="{{ dMenuOpen }}">
+              <div class="sx-pop r tv-menu" role="menu" aria-label="Việc khác với tệp này" data-tv-pop="dmenu">
+                <sc-for list="{{ dMenu }}" as="it"><sc-if value="{{ it.sep }}"><div class="tv-msep" role="separator"></div></sc-if><sc-if value="{{ it.item }}"><button type="button" role="menuitem" class="tv-mi" data-danger="{{ it.danger }}" onClick="{{ it.run }}"><i class="{{ it.i }}" aria-hidden="true"></i><span>{{ it.l }}</span></button></sc-if></sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+        <button type="button" class="sx-btn ic gho" aria-label="Đóng" title="Đóng (Esc)" onClick="{{ onDClose }}"><i class="ri-close-line" aria-hidden="true"></i></button>
+      </div>
+      <div class="drw-b">
+        <div class="tv-pv"><sc-if value="{{ d.isImg }}"><span class="tv-img" data-o="{{ d.o }}" style="aspect-ratio:{{ d.ar }};background:{{ d.bg }}" role="img" aria-label="{{ d.altShow }}"></span></sc-if><sc-if value="{{ d.isPdf }}"><span class="tv-pdf"><i class="ri-file-pdf-2-line" aria-hidden="true"></i>PDF · {{ d.pages }}</span></sc-if></div>
+        <p class="tv-dnm">{{ d.name }}</p>
+        <sc-if value="{{ d.trashed }}"><p class="sx-al" data-k="warning" style="margin:0">{{ d.trashText }}</p></sc-if>
+
+        <sc-if value="{{ dAltShow }}">
+          <sc-if value="{{ multiLang }}">
+            <div class="tv-f">
+              <div class="tv-lb">
+                <div class="tv-pills">
+                  <i class="ri-translate-2 tv-lbi" title="Bản nội dung đang sửa — đổi bản ở đây" aria-hidden="true"></i>
+                  <sc-for list="{{ pills }}" as="p"><button type="button" class="tv-pill" aria-pressed="{{ p.on }}" title="{{ p.tip }}" onClick="{{ p.run }}"><span class="sx-dot" data-st="{{ p.st }}" aria-hidden="true"></span><span>{{ p.nm }}</span><sc-if value="{{ p.star }}"><i class="ri-star-fill tv-star" aria-label="Ngôn ngữ nguồn"></i></sc-if></button></sc-for>
+                  <sc-if value="{{ moreShow }}"><button type="button" class="tv-pill tv-lmore" aria-haspopup="true" aria-expanded="{{ langOpenStr }}" onClick="{{ onLangMore }}" aria-label="Các bản ngôn ngữ khác"><span>+{{ moreN }}</span><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button></sc-if>
+                </div>
+                <sc-if value="{{ aiShow }}">
+                  <div class="tv-lbr">
+                    <span class="sx-chip" data-t="gold" title="{{ quotaTip }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i>{{ quotaText }}</span>
+                    <button type="button" class="sx-btn sm ai" aria-disabled="{{ trDis }}" title="{{ trTip }}" onClick="{{ onTranslate }}"><i class="ri-sparkling-2-line" aria-hidden="true"></i><span class="sx-t">{{ trLabel }}</span></button>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ aiLocked }}">
+                  <div class="tv-lbr"><button type="button" class="sx-btn sm" onClick="{{ onUpsell }}" title="Dịch tự động mô tả ảnh có trong gói cao hơn"><i class="ri-lock-2-line" aria-hidden="true"></i><span class="sx-t">Dịch — Xem gói nâng cấp</span></button></div>
+                </sc-if>
+                <sc-if value="{{ langOpen }}">
+                  <div class="sx-pop tv-lpop" data-tv-pop="lang" role="dialog" aria-label="Chọn bản ngôn ngữ">
+                    <p style="margin:2px 8px 6px;font-size:12px;color:var(--color-body-muted,#5b6275)">{{ langProg }}</p>
+                    <sc-if value="{{ langSearch }}"><label class="sx-search" style="margin:0 4px 6px"><i class="ri-search-line" aria-hidden="true"></i><input type="search" aria-label="Tìm ngôn ngữ" placeholder="English hoặc en" value="{{ langQ }}" onInput="{{ onLangQ }}"></label></sc-if>
+                    <sc-for list="{{ langList }}" as="g"><button type="button" class="tv-li" aria-current="{{ g.cur }}" onClick="{{ g.run }}"><span class="sx-dot" data-st="{{ g.st }}" aria-hidden="true"></span><span><b>{{ g.nm }}</b><small>{{ g.stl }}</small></span><sc-if value="{{ g.star }}"><i class="ri-star-fill tv-star" aria-label="Ngôn ngữ nguồn"></i></sc-if></button></sc-for>
+                    <div class="tv-msep"></div>
+                    <button type="button" class="tv-mi" onClick="{{ goLangs }}"><i class="ri-settings-3-line" aria-hidden="true"></i><span>Quản lý ngôn ngữ</span></button>
+                  </div>
+                </sc-if>
+              </div>
+              <p class="lb-line" data-tone="{{ lineTone }}"><i class="{{ lineIcon }}" aria-hidden="true"></i><span>{{ lineText }}</span></p>
+            </div>
+          </sc-if>
+
+          <div class="tv-f">
+            <label class="sx-lab" for="tv-alt">Mô tả ảnh <sc-if value="{{ multiLang }}"><span class="lc">{{ curCd }}</span></sc-if><sc-if value="{{ notesLang }}"><span class="sx-note">Chờ backend: mô tả theo từng ngôn ngữ</span></sc-if><span class="tv-cnt" data-over="{{ altOver }}" aria-live="polite">{{ altCount }}</span></label>
+            <textarea id="tv-alt" class="sx-in" rows="3" maxlength="188" dir="{{ fDir }}" placeholder="{{ altPh }}" value="{{ fAlt }}" onInput="{{ onAlt }}" aria-describedby="tv-alt-h" readonly="{{ roField }}"></textarea>
+            <p class="sx-hint" id="tv-alt-h">Mô tả ảnh giúp Google và người khiếm thị hiểu ảnh — đổi ở đây là đổi cho mọi nơi dùng ảnh này.</p>
+          </div>
+          <div class="tv-f">
+            <label class="sx-lab" for="tv-ttl">Tiêu đề ảnh <sc-if value="{{ multiLang }}"><span class="lc">{{ curCd }}</span></sc-if><sc-if value="{{ notes }}"><span class="sx-note">Chờ backend</span></sc-if></label>
+            <input id="tv-ttl" class="sx-in" type="text" maxlength="120" dir="{{ fDir }}" placeholder="{{ ttlPh }}" value="{{ fTtl }}" onInput="{{ onTtl }}" readonly="{{ roField }}">
+            <p class="sx-hint">Hiện khi khách rê chuột lên ảnh trên website. Để trống cũng được.</p>
+          </div>
+        </sc-if>
+
+        <div class="tv-f">
+          <label class="sx-lab" for="tv-url">Địa chỉ tệp</label>
+          <div class="tv-cp" data-focus-wrap="true"><input id="tv-url" type="text" readonly="{{ true }}" value="{{ d.url }}" dir="ltr" onFocus="{{ selAll }}"><button type="button" class="sx-btn sm" onClick="{{ onCopy }}"><i class="{{ copyIcon }}" aria-hidden="true"></i><span class="sx-t">{{ copyText }}</span></button></div>
+          <p class="sx-hint">Dán vào email hay mạng xã hội để chia sẻ tệp này.</p>
+        </div>
+
+        <dl class="tv-kv">
+          <dt>Kích thước</dt><dd>{{ d.dims }}</dd>
+          <dt>Dung lượng</dt><dd>{{ d.sizeT }}</dd>
+          <dt>Định dạng</dt><dd>{{ d.fmt }}</dd>
+          <dt>Thư mục</dt><dd>{{ d.folderName }}</dd>
+          <dt>Người tải</dt><dd>{{ d.by }}</dd>
+          <dt>Ngày tải</dt><dd>{{ d.at }}</dd>
+        </dl>
+
+        <div class="tv-sec">
+          <h3><i class="ri-links-line" aria-hidden="true"></i>{{ d.useTitle }}</h3>
+          <sc-if value="{{ d.noUse }}"><p class="sx-hint" style="margin:0">Chưa có sản phẩm hay bài nào dùng tệp này.</p></sc-if>
+          <sc-for list="{{ d.groups }}" as="g">
+            <div class="tv-ug"><span>{{ g.l }} · {{ g.n }}</span><sc-for list="{{ g.items }}" as="u"><button type="button" class="tv-ui" onClick="{{ u.go }}"><i class="{{ u.i }}" aria-hidden="true"></i><span class="t">{{ u.t }}</span><span class="cd">{{ u.cd }}</span><i class="ri-arrow-right-s-line" aria-hidden="true"></i></button></sc-for></div>
+          </sc-for>
+          <p class="sx-hint" style="margin:0"><i class="ri-information-line" aria-hidden="true"></i> Ảnh chèn thẳng trong thân bài chưa được đếm.</p>
+        </div>
+
+        <sc-if value="{{ dReplaceShow }}">
+          <div class="tv-sec">
+            <h3><i class="ri-image-edit-line" aria-hidden="true"></i>Thay tệp<sc-if value="{{ notes }}"><span class="sx-note">Chờ backend</span></sc-if></h3>
+            <p class="sx-hint" style="margin:0">Giữ nguyên mô tả và mọi nơi đang dùng — các nơi đó tự đổi theo tệp mới.</p>
+            <button type="button" class="sx-btn" style="align-self:flex-start" onClick="{{ onReplace }}"><i class="ri-upload-2-line" aria-hidden="true"></i><span class="sx-t">Thay tệp…</span></button>
+          </div>
+        </sc-if>
+      </div>
+      <div class="drw-f">
+        <sc-if value="{{ d.trashed }}">
+          <sc-if value="{{ canDel }}"><button type="button" class="sx-btn pri" onClick="{{ onRestoreOne }}"><i class="ri-arrow-go-back-line" aria-hidden="true"></i><span class="sx-t">Khôi phục</span></button></sc-if>
+        </sc-if>
+        <sc-if value="{{ d.live }}">
+          <span role="status" aria-live="polite" style="margin-right:auto;align-self:center;font-size:13px;color:var(--color-body-muted,#5b6275)">{{ saveState }}</span>
+          <button type="button" class="sx-btn" onClick="{{ onDClose }}"><span class="sx-t">Đóng</span></button>
+          <sc-if value="{{ canUp }}"><button type="button" class="sx-btn pri" aria-disabled="{{ saveDis }}" onClick="{{ onSave }}"><i class="{{ saveIcon }}" aria-hidden="true"></i><span class="sx-t">{{ saveLabel }}</span></button></sc-if>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ fltOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov sheet" data-tv-ov="flt" onClick="{{ onFltClose }}">
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="tv-flt-t" onClick="{{ stop }}" style="width:min(440px,100%)">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="dlg-h"><h2 id="tv-flt-t" style="margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d)">Lọc và sắp xếp</h2><button type="button" class="sx-btn ic gho" aria-label="Đóng" title="Đóng" onClick="{{ onFltClose }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+      <div class="dlg-b">
+        <sc-for list="{{ fltGroups }}" as="g">
+          <fieldset class="tv-fs"><legend>{{ g.l }}</legend>
+            <sc-for list="{{ g.opts }}" as="o"><label class="sx-check"><input type="checkbox" checked="{{ o.on }}" onChange="{{ o.tg }}"><span>{{ o.l }}</span><span class="n">{{ o.n }}</span></label></sc-for>
+          </fieldset>
+        </sc-for>
+        <div class="tv-f"><label class="sx-lab" for="tv-sort2">Sắp xếp</label><select id="tv-sort2" class="sx-in" value="{{ sort }}" onChange="{{ onSort }}"><sc-for list="{{ sortOpts }}" as="o"><option value="{{ o.v }}">{{ o.l }}</option></sc-for></select></div>
+      </div>
+      <div class="dlg-f"><button type="button" class="sx-btn" onClick="{{ onClearAll }}"><span class="sx-t">Bỏ lọc</span></button><button type="button" class="sx-btn pri" onClick="{{ onFltClose }}"><span class="sx-t">Xong · {{ matchShort }}</span></button></div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ fSheetOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov sheet" data-tv-ov="fsheet" onClick="{{ closeFSheet }}">
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="tv-fs-t" onClick="{{ stop }}">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="dlg-h"><h2 id="tv-fs-t" style="margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere">{{ fSheetTitle }}</h2><button type="button" class="sx-btn ic gho" aria-label="Đóng" title="Đóng" onClick="{{ closeFSheet }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+      <div class="dlg-b" role="menu" aria-label="{{ fSheetTitle }}" style="gap:2px">
+        <sc-for list="{{ fSheetMenu }}" as="it"><sc-if value="{{ it.sep }}"><div class="tv-msep" role="separator"></div></sc-if><sc-if value="{{ it.item }}"><button type="button" role="menuitem" class="tv-mi" data-danger="{{ it.danger }}" aria-disabled="{{ it.dis }}" onClick="{{ it.run }}"><i class="{{ it.i }}" aria-hidden="true"></i><span><span>{{ it.l }}</span><sc-if value="{{ it.hasWhy }}"><span class="tv-why">{{ it.why }}</span></sc-if></span></button></sc-if></sc-for>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ mvOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov sheet" data-tv-ov="mv" onClick="{{ closeMv }}">
+    <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="tv-mv-t" onClick="{{ stop }}" style="width:min(480px,100%)">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="dlg-h"><h2 id="tv-mv-t" style="margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d)">{{ mvTitle }}</h2><button type="button" class="sx-btn ic gho" aria-label="Đóng" title="Đóng" onClick="{{ closeMv }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+      <div class="dlg-b"><div class="tv-mv" role="radiogroup" aria-label="Thư mục đích">
+        <sc-for list="{{ mvOpts }}" as="o"><label class="sx-opt"><input type="radio" name="tv-mv" checked="{{ o.on }}" onChange="{{ o.pick }}"><span style="min-width:0;flex:1"><span style="font-weight:600;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere">{{ o.l }}</span><span class="tv-why">{{ o.sub }}</span></span></label></sc-for>
+      </div></div>
+      <div class="dlg-f"><button type="button" class="sx-btn" onClick="{{ closeMv }}"><span class="sx-t">Hủy</span></button><button type="button" class="sx-btn pri" aria-disabled="{{ mvDis }}" onClick="{{ onMvGo }}"><span class="sx-t el">{{ mvBtn }}</span></button></div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ askOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="ov" data-tv-ov="ask">
+    <div class="cf tv-cf" role="alertdialog" aria-modal="true" aria-labelledby="tv-ask-t" aria-describedby="tv-ask-d">
+      <div style="text-align:center"><span class="cf-ic" data-t="{{ askTone }}"><i class="{{ askIcon }}" aria-hidden="true"></i></span></div>
+      <h2 id="tv-ask-t">{{ askTitle }}</h2>
+      <p id="tv-ask-d">{{ askText }}</p>
+      <div class="cf-f">
+        <button type="button" class="sx-btn" id="tv-ask-no" onClick="{{ askNo }}"><span class="sx-t">{{ askNoL }}</span></button>
+        <button type="button" class="{{ askYesCls }}" title="{{ askYesL }}" onClick="{{ askYes }}"><i class="{{ askYesI }}" aria-hidden="true"></i><span class="sx-t">{{ askYesL }}</span></button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<div class="tst-wrap" role="status" aria-live="polite">
+  <sc-if value="{{ toastShow }}">
+    <div class="tst"><i class="{{ toastIcon }} tst-ic" data-t="{{ toastT }}" aria-hidden="true"></i><span style="flex:1;min-width:0">{{ toastText }}</span>
+      <sc-if value="{{ toastUndo }}"><button type="button" class="sx-btn sm gho" onClick="{{ onUndo }}"><span class="sx-t">Hoàn tác</span></button></sc-if>
+      <button type="button" class="sx-btn sm ic gho" aria-label="Đóng thông báo" title="Đóng" onClick="{{ closeToast }}"><i class="ri-close-line" aria-hidden="true"></i></button>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;tabs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;upload&quot;,&quot;library&quot;],&quot;default&quot;:&quot;both&quot;,&quot;tsType&quot;:&quot;'both'|'upload'|'library'&quot;,&quot;section&quot;:&quot;Gọi từ màn khác&quot;,&quot;label&quot;:&quot;Tab hiện (cả hai · chỉ Tải lên · chỉ Thư viện)&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;library&quot;,&quot;upload&quot;],&quot;default&quot;:&quot;library&quot;,&quot;tsType&quot;:&quot;'library'|'upload'&quot;,&quot;section&quot;:&quot;Gọi từ màn khác&quot;,&quot;label&quot;:&quot;Tab mở sẵn&quot;},&quot;siteRole&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Chủ website&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Nhóm quyền&quot;},&quot;langCount&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;3&quot;,&quot;8&quot;],&quot;default&quot;:&quot;3&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Số ngôn ngữ&quot;},&quot;screenState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;data&quot;,&quot;empty&quot;,&quot;loading&quot;,&quot;error&quot;,&quot;noperm&quot;],&quot;default&quot;:&quot;data&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Trạng thái màn&quot;},&quot;storage&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;ok&quot;,&quot;warn&quot;,&quot;full&quot;],&quot;default&quot;:&quot;warn&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Dung lượng (312 · 412 · 500 MB)&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;},&quot;aiOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Website được cấp AI&quot;},&quot;moduleOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Module Thư viện bật&quot;},&quot;uploadDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;,&quot;label&quot;:&quot;Hộp tải lên có 4 tệp mẫu&quot;},&quot;notes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;,&quot;label&quot;:&quot;Hiện ghi chú thiết kế&quot;},&quot;frames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;,&quot;label&quot;:&quot;Khung xem 390 · 768&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;,&quot;label&quot;:&quot;Chữ lớn&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;role&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;langCodes&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;}}">
+class Component extends DCLogic {
+  static LANGS() { return { vi: 'Tiếng Việt', en: 'English', ja: '日本語', zh: '中文', ko: '한국어', th: 'ไทย', fr: 'Français', ar: 'العربية' }; }
+  static ORDER() { return ['vi', 'en', 'ja', 'zh', 'ko', 'th', 'fr', 'ar']; }
+  static FOLDERS() { return [{ k: 'f-sp', name: 'Sản phẩm' }, { k: 'f-bn', name: 'Banner trang chủ' }, { k: 'f-bv', name: 'Ảnh bài viết' }, { k: 'f-td', name: 'Tài liệu & bảng giá' }, { k: 'f-sk', name: 'Ảnh sự kiện 2026' }]; }
+  static TR() { return {
+    'Máy phay CNC đứng VMC-850 trong xưởng An Vinh, nhìn từ phía trước': ['VMC-850 vertical CNC milling machine in the An Vinh workshop, front view', 'アンヴィン工場の立形CNCフライス盤VMC-850（正面）'],
+    'Máy tiện CNC CK6140 đang gia công trục thép': ['CK6140 CNC lathe machining a steel shaft', '鋼シャフトを加工中のCNC旋盤CK6140'] }; }
+  static SEED() {
+    const P = (g, t, cd, type, slug) => ({ g, t, cd, type, slug });
+    const I = (k, name, folder, w, h, kb, hue, by, at, alt, uses, o) => Object.assign({ k, name, folder, w, h, size: kb * 1024, hue, by, at, alt: alt ? { vi: alt } : {}, title: {}, uses: uses || [], trashed: null, ord: 0, hash: (k.charCodeAt(1) * 7919 + k.length * 131).toString(16).slice(-4) }, o || {});
+    const U3 = [P('product', 'Máy phay CNC đứng VMC-850', 'AV-VMC850', 'catalog', ''), P('cover', 'Gia công CNC là gì? Ưu điểm cho xưởng nhỏ', 'gia-cong-cnc-la-gi', 'posts', 'gia-cong-cnc-la-gi'), P('content', 'Trang Giới thiệu xưởng', 'gioi-thieu', 'pages', 'gioi-thieu')];
+    const arr = [
+      I('a01', 'may-phay-cnc-dung-vmc850.jpg', 'f-sp', 1600, 1067, 412, 220, 'Ngọc Anh', '02/10/2026', 'Máy phay CNC đứng VMC-850 trong xưởng An Vinh, nhìn từ phía trước', U3),
+      I('a02', 'may-tien-cnc-ck6140.jpg', 'f-sp', 1200, 1200, 356, 30, 'Ngọc Anh', '02/10/2026', 'Máy tiện CNC CK6140 đang gia công trục thép', [P('product', 'Máy tiện CNC CK6140', 'AV-CK6140', 'catalog', '')]),
+      I('a03', 'dao-phay-ngon-carbide-d10.png', 'f-sp', 1080, 1350, 288, 150, 'Minh Tuấn', '30/09/2026', 'Dao phay ngón carbide đường kính 10 mm', [P('product', 'Dao phay ngón carbide D10', 'AV-DP-D10', 'catalog', '')]),
+      I('a04', 'mui-khoan-hss-bo-19-chi-tiet.jpg', 'f-sp', 1600, 1067, 302, 265, 'Minh Tuấn', '30/09/2026', '', []),
+      I('a05', 'e-to-kep-chinh-xac-6-inch.jpg', 'f-sp', 1200, 1200, 198, 95, 'Minh Tuấn', '29/09/2026', 'Ê tô kẹp chính xác 6 inch', [P('product', 'Ê tô kẹp chính xác 6 inch', 'AV-ET6', 'catalog', '')]),
+      I('a06', 'do-ga-phay-van-nang.webp', 'f-sp', 1600, 900, 164, 180, 'Thu Hà', '28/09/2026', '', []),
+      I('a07', 'trung-tam-gia-cong-5-truc-hmc630-ban-chup-tai-hoi-cho-co-khi-2026.jpg', 'f-sp', 2000, 1333, 1880, 315, 'Thu Hà', '25/09/2026', 'Trung tâm gia công 5 trục HMC-630 tại hội chợ cơ khí', [P('product', 'Trung tâm gia công 5 trục HMC-630', 'AV-HMC630', 'catalog', ''), P('cover', 'Hội chợ cơ khí 2026: 5 điểm đáng chú ý', 'hoi-cho-co-khi-2026', 'posts', 'hoi-cho-co-khi-2026')]),
+      I('a08', 'dau-cat-got-ban-tong-hop-20l.jpg', 'f-sp', 1080, 1350, 240, 45, 'Minh Tuấn', '24/09/2026', '', [P('product', 'Dầu cắt gọt bán tổng hợp 20 lít', 'AV-DCG20', 'catalog', '')]),
+      I('a09', 'banner-trang-chu-mua-thu.jpg', 'f-bn', 1920, 640, 520, 12, 'Ngọc Anh', '01/10/2026', 'Xưởng gia công cơ khí chính xác — nhận đơn từ 1 chi tiết', [P('content', 'Trang chủ', 'trang-chu', 'pages', 'trang-chu')]),
+      I('a10', 'banner-khuyen-mai-thang-10.webp', 'f-bn', 1920, 640, 310, 330, 'Ngọc Anh', '01/10/2026', '', []),
+      I('a11', 'logo-an-vinh-nen-trong.png', 'f-bn', 600, 200, 24, 240, 'Ngọc Anh', '15/09/2026', 'Logo Cơ khí Chính xác An Vinh', [P('content', 'Trang Liên hệ', 'lien-he', 'pages', 'lien-he')]),
+      I('a12', 'banner-tuyen-dung-tho-cnc.gif', 'f-bn', 1200, 628, 880, 60, 'Thu Hà', '20/09/2026', '', []),
+      I('a13', 'xuong-may-buoi-sang.jpg', 'f-bv', 1600, 1067, 455, 200, 'Thu Hà', '27/09/2026', 'Xưởng máy buổi sáng, ánh nắng qua mái tôn', [P('cover', 'Một ngày ở xưởng An Vinh', 'mot-ngay-o-xuong', 'posts', 'mot-ngay-o-xuong')]),
+      I('a14', 'ky-su-kiem-tra-ban-ve.jpg', 'f-bv', 1080, 1350, 380, 280, 'Thu Hà', '27/09/2026', '', []),
+      I('a15', 'chi-tiet-truc-sau-gia-cong.jpg', 'f-bv', 1200, 1200, 290, 160, 'Minh Tuấn', '22/09/2026', 'Chi tiết trục thép sau khi gia công, bề mặt bóng', [P('content', 'Gia công CNC là gì? Ưu điểm cho xưởng nhỏ', 'gia-cong-cnc-la-gi', 'posts', 'gia-cong-cnc-la-gi')]),
+      I('a16', 'doi-ngu-an-vinh-2026.jpg', 'f-bv', 2000, 1125, 690, 20, 'Ngọc Anh', '18/09/2026', '', []),
+      I('a17', 'bang-gia-gia-cong-2026.pdf', 'f-td', null, null, 1240, 0, 'Ngọc Anh', '01/10/2026', '', [P('content', 'Bảng giá gia công', 'bang-gia', 'pages', 'bang-gia')], { pdf: 4 }),
+      I('a18', 'catalogue-san-pham-an-vinh.pdf', 'f-td', null, null, 6420, 0, 'Ngọc Anh', '12/09/2026', '', [], { pdf: 24 }),
+      I('a19', 'anh-chup-man-hinh-2026-10-01.png', null, 1440, 900, 210, 210, 'Minh Tuấn', '01/10/2026', '', []),
+      I('a20', 'IMG_20260928_093512.jpg', null, 3024, 4032, 2950, 120, 'Thu Hà', '28/09/2026', '', []),
+      I('a21', 'z5123456789-hop-dong-mau.jpg', null, 1080, 1440, 340, 300, 'Thu Hà', '26/09/2026', '', []),
+      I('t01', 'banner-he-2025.jpg', 'f-bn', 1920, 640, 498, 75, 'Ngọc Anh', '02/06/2025', '', [], { trashed: 3 }),
+      I('t02', 'anh-cu-xuong-2019.jpg', 'f-bv', 1600, 1067, 610, 190, 'Minh Tuấn', '10/03/2019', '', [], { trashed: 10 }),
+      I('t03', 'may-tien-cu-thanh-ly.jpg', 'f-sp', 1200, 1200, 340, 35, 'Minh Tuấn', '04/04/2024', 'Máy tiện cũ thanh lý', [], { trashed: 14 })
+    ];
+    arr.forEach((x, i) => { x.ord = i; });
+    return arr;
+  }
+
+  tabsMode() { const t = this.tw('tabs'); return t === 'upload' || t === 'library' ? t : 'both'; }
+  allowUp() { return this.can('media.upload') && this.tabsMode() !== 'library'; }
+  state = { tab: (this.props && (this.props.tabs === 'upload' || (this.props.startTab === 'upload' && this.props.tabs !== 'library'))) ? 'up' : 'lib', upDrop: null, items: Component.SEED(), folders: Component.FOLDERS(), folder: 'all', q: '', fk: [], ff: [], fu: [], sort: 'new', view: 'grid', sel: [], dk: null, draft: null, lang: null, langOpen: false, langQ: '', dMenu: false, menuF: null, ren: null, newF: null, mv: null, ask: null, flt: false, fSheet: false, toast: null, pick: null, over: false, w: 1200, stOver: null, quota: null, copied: false, saving: false, savedAt: null, dragK: null, dropK: null, extraMB: 0 };
+
+  tw(k) { return (this.props || {})[k]; }
+  isFrame() { try { return /[?&]frame=1/.test(location.search); } catch (e) { return false; } }
+  roleName() { const r = this.tw('role') || this.tw('siteRole'); return (window.BSCW && window.BSCW.ROLES && window.BSCW.ROLES[r]) ? r : 'Chủ website'; }
+  can(p) { return window.BSCW && window.BSCW.can ? window.BSCW.can(this.roleName(), p) : true; }
+  langs() { const lc = this.tw('langCodes'); const O = Component.ORDER(); if (Array.isArray(lc) && lc.length) return lc.filter(c => Component.LANGS()[c]); const n = parseInt(this.tw('langCount') || '3', 10) || 3; return O.slice(0, Math.max(1, Math.min(8, n))); }
+  defLang() { return this.langs()[0] || 'vi'; }
+  fmt(n) { return Math.round(n).toLocaleString('vi-VN'); }
+  fsize(b) { if (b >= 1048576) return (b / 1048576).toFixed(1).replace('.', ',') + ' MB'; return Math.max(1, Math.round(b / 1024)) + ' KB'; }
+  words(s) { return String(s || '').trim().split(/\s+/).filter(Boolean).length; }
+  quotaLeft() { if (this.state.quota != null) return this.state.quota; const P = window.BSAI && window.BSAI.plan ? window.BSAI.plan() : null; return Math.round(((P && P.words) || 60000) * 0.31); }
+  ext(n) { const i = n.lastIndexOf('.'); return i > 0 ? n.slice(i + 1).toLowerCase() : ''; }
+  isPdf(it) { return this.ext(it.name) === 'pdf'; }
+  live() { return this.state.items.filter(x => x.trashed == null); }
+  trash() { return this.state.items.filter(x => x.trashed != null); }
+  folderName(k) { if (!k) return 'Chưa phân loại'; const f = this.state.folders.find(x => x.k === k); return f ? f.name : 'Chưa phân loại'; }
+  slugOf(n) { const i = n.lastIndexOf('.'); return (i > 0 ? n.slice(0, i) : n).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+  urlOf(it) { const P = window.BSPLAT || {}; const val = (v) => { try { v = typeof v === 'function' ? v.call(P) : v; } catch (e) { v = null; } return typeof v === 'string' && v ? v : null; };
+    const dom = val(P.siteDomain) || val(P.rootDomain) || this.tw('siteDomain') || 'tenmien.vn'; return 'https://files.' + dom + '/an-vinh/library/' + this.slugOf(it.name) + '-' + it.hash + '.' + this.ext(it.name); }
+  storage() {
+    const lim = 500, mode = this.tw('storage') || 'warn', base = mode === 'full' ? 500 : mode === 'ok' ? 312 : 412;
+    const used = Math.min(lim, Math.round((base + this.state.extraMB) * 10) / 10);
+    return { lim, used, pct: Math.min(100, Math.round(used / lim * 100)), lv: used >= lim ? 'full' : used / lim >= 0.8 ? 'warn' : 'ok' };
+  }
+  trashMB() { return Math.round(this.trash().reduce((a, x) => a + x.size, 0) / 1048576 * 10) / 10; }
+
+  /* ---- toast + focus ---- */
+  toast(text, t, undo) { clearTimeout(this._tt); this._undo = undo || null; this.setState({ toast: { text, t: t || 'ok', undo: !!undo } }); this._tt = setTimeout(() => this.setState({ toast: null }), 8000); }
+  remember() { this._ret = document.activeElement; }
+  restore() { const el = this._ret; this._ret = null; setTimeout(() => { try { if (el && document.contains(el)) el.focus(); } catch (e) {} }, 30); }
+  focusIn(sel) { setTimeout(() => { const r = this._root || document; const el = r.querySelector(sel) || document.querySelector(sel); if (el) try { el.focus(); } catch (e) {} }, 40); }
+  goto(screen, params) { if (this.tw('embedded')) { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen, params: params || {} } })); } catch (e) {} } else this.toast('Bản thật mở: ' + screen + (params && (params.slug || params.code) ? ' · ' + (params.slug || params.code) : ''), 'info'); }
+  upsell() { if (this.tw('upsell')) this.goto('settings', { section: 'quota' }); else this.toast('Bản thật mở khung liên hệ hỗ trợ.', 'info'); }
+  openAsk(o) { this.remember(); this.setState({ ask: o, menuF: null, dMenu: false, fSheet: false }, () => this.focusIn('#tv-ask-no')); }
+
+  /* ---- Thùng rác ---- */
+  usesOf(keys) { return keys.reduce((a, k) => { const it = this.state.items.find(x => x.k === k); return a + (it ? it.uses.length : 0); }, 0); }
+  trashKeys(keys, fromDetail) {
+    const run = () => {
+      const prev = this.state.items, n = keys.length, nUse = this.usesOf(keys);
+      this.setState(s => ({ items: s.items.map(x => keys.indexOf(x.k) >= 0 ? Object.assign({}, x, { trashed: 0, wasUses: x.uses, uses: [] }) : x), sel: [], ask: null, dk: fromDetail ? null : s.dk, draft: fromDetail ? null : s.draft }));
+      if (fromDetail) this.restore();
+      this.toast('Đã chuyển ' + n + ' tệp vào Thùng rác' + (nUse ? ' — ' + nUse + ' nơi không còn hiện ảnh.' : '.'), 'ok', () => this.setState({ items: prev }));
+    };
+    const nUse = this.usesOf(keys);
+    if (!nUse) { run(); return; }
+    const one = keys.length === 1;
+    this.openAsk({ tone: 'warn', icon: 'ri-error-warning-line', title: one ? 'Chuyển ảnh đang dùng vào Thùng rác?' : 'Chuyển ' + keys.length + ' tệp vào Thùng rác?',
+      text: one ? 'Ảnh đang dùng ở ' + nUse + ' nơi — chuyển vào Thùng rác thì ' + nUse + ' nơi đó mất ảnh trên website. Sản phẩm sẽ hiện "Ảnh không còn trong thư viện". Khôi phục được trong 15 ngày.' : 'Có tệp đang dùng ở tổng ' + nUse + ' nơi — chuyển vào Thùng rác thì ' + nUse + ' nơi đó mất ảnh trên website. Khôi phục được trong 15 ngày.',
+      yes: 'Chuyển vào Thùng rác', yesCls: 'sx-btn dan', yesI: 'ri-delete-bin-line', no: 'Hủy', run });
+  }
+  restoreKeys(keys, fromDetail) {
+    const prev = this.state.items;
+    this.setState(s => ({ items: s.items.map(x => keys.indexOf(x.k) >= 0 ? Object.assign({}, x, { trashed: null, uses: x.wasUses || x.uses }) : x), sel: [], dk: fromDetail ? null : s.dk }));
+    if (fromDetail) this.restore();
+    this.toast('Đã khôi phục ' + keys.length + ' tệp về thư mục cũ.', 'ok', () => this.setState({ items: prev }));
+  }
+  purgeKeys(keys, all) {
+    const n = keys.length, mb = Math.round(keys.reduce((a, k) => { const it = this.state.items.find(x => x.k === k); return a + (it ? it.size : 0); }, 0) / 1048576 * 10) / 10;
+    this.openAsk({ tone: 'danger', icon: 'ri-delete-bin-2-line', title: all ? 'Dọn sạch Thùng rác?' : 'Xóa vĩnh viễn ' + n + ' tệp?',
+      text: 'Xóa vĩnh viễn ' + n + ' tệp (' + String(mb).replace('.', ',') + ' MB) — không khôi phục được. Ảnh nằm trong bộ ảnh sản phẩm cũng bị gỡ khỏi sản phẩm đó.',
+      yes: 'Xóa vĩnh viễn ' + n + ' tệp', yesCls: 'sx-btn dan', yesI: 'ri-delete-bin-2-line', no: 'Hủy',
+      run: () => { this.setState(s => ({ items: s.items.filter(x => keys.indexOf(x.k) < 0), sel: [], ask: null, dk: null, extraMB: s.extraMB - (this.tw('storage') === 'full' ? 0 : 0) - mb })); this.restore(); this.toast('Đã xóa vĩnh viễn ' + n + ' tệp, giải phóng ' + String(mb).replace('.', ',') + ' MB.', 'ok'); } });
+  }
+
+  /* ---- thư mục ---- */
+  fCount(k) { const L = this.live(); if (k === 'all') return L.length; if (k === 'none') return L.filter(x => !x.folder).length; if (k === 'trash') return this.trash().length; return L.filter(x => x.folder === k).length; }
+  validName(v, exceptK) { const s = String(v || '').trim(); if (!s) return 'Nhập tên thư mục, ví dụ "Ảnh công trình".'; if (this.state.folders.some(f => f.k !== exceptK && f.name.toLowerCase() === s.toLowerCase())) return 'Đã có thư mục "' + s + '" — đặt tên khác.'; return null; }
+  createFolder() { const N = this.state.newF; if (N == null) return; const e = this.validName(N.v); if (e) { this.setState({ newF: { v: N.v, err: true } }); this.focusIn('#tv-newf'); return; } const k = 'f' + Date.now().toString(36); this.setState(s => ({ folders: s.folders.concat([{ k, name: N.v.trim() }]), newF: null, folder: k, sel: [] })); this.toast('Đã tạo thư mục "' + N.v.trim() + '".', 'ok'); }
+  renameFolder() { const R = this.state.ren; if (!R) return; const e = this.validName(R.v, R.k); if (e) { this.setState({ ren: Object.assign({}, R, { err: true }) }); this.focusIn('#tv-ren'); return; } const old = this.folderName(R.k); this.setState(s => ({ folders: s.folders.map(f => f.k === R.k ? Object.assign({}, f, { name: R.v.trim() }) : f), ren: null })); this.toast('Đã đổi tên "' + old + '" thành "' + R.v.trim() + '".', 'ok'); }
+  moveFolder(k, d) { const F = this.state.folders.slice(), i = F.findIndex(f => f.k === k), j = i + d; if (i < 0 || j < 0 || j >= F.length) return; const t = F[i]; F[i] = F[j]; F[j] = t; this.setState({ folders: F, menuF: null, fSheet: false }); this.toast(d < 0 ? 'Đã chuyển thư mục lên.' : 'Đã chuyển thư mục xuống.', 'ok'); }
+  deleteFolder(k) {
+    const name = this.folderName(k), n = this.fCount(k);
+    const run = () => { const prevF = this.state.folders, prevI = this.state.items; this.setState(s => ({ folders: s.folders.filter(f => f.k !== k), items: s.items.map(x => x.folder === k ? Object.assign({}, x, { folder: null }) : x), folder: s.folder === k ? 'all' : s.folder, ask: null, menuF: null, fSheet: false })); this.restore(); this.toast('Đã xóa thư mục "' + name + '"' + (n ? ', ' + n + ' tệp về Tất cả ảnh (Chưa phân loại).' : '.'), 'ok', () => this.setState({ folders: prevF, items: prevI })); };
+    if (!n) { this.remember(); run(); return; }
+    this.openAsk({ tone: 'warn', icon: 'ri-folder-reduce-line', title: 'Xóa thư mục "' + name + '"?', text: 'Thư mục có ' + n + ' tệp. Tệp không bị xóa — chúng về Tất cả ảnh, nằm ở mục Chưa phân loại. Nơi đang dùng ảnh vẫn giữ nguyên.', yes: 'Xóa thư mục và đưa ' + n + ' tệp về Tất cả ảnh', yesCls: 'sx-btn dan', yesI: 'ri-folder-reduce-line', no: 'Hủy', run });
+  }
+  folderMenu(k) {
+    const F = this.state.folders, i = F.findIndex(f => f.k === k);
+    const I = (l, ic, run, dis, why, danger) => ({ item: true, sep: false, l, i: ic, dis: dis ? 'true' : 'false', why: dis ? why : '', hasWhy: !!(dis && why), danger: danger ? '1' : '0', run: dis ? () => {} : run });
+    const SEP = { sep: true, item: false };
+    return [I('Đổi tên', 'ri-pencil-line', () => { this.setState({ ren: { k, v: this.folderName(k) }, menuF: null, fSheet: false }, () => this.focusIn('#tv-ren')); }),
+      I('Tải ảnh lên vào đây', 'ri-upload-2-line', () => { this.setState({ menuF: null, fSheet: false, folder: k }); this.openPick(); }, !this.canUpNow(), 'Đã hết dung lượng.'),
+      SEP,
+      I('Chuyển lên', 'ri-arrow-up-line', () => this.moveFolder(k, -1), i <= 0, 'Đang ở đầu danh sách.'),
+      I('Chuyển xuống', 'ri-arrow-down-line', () => this.moveFolder(k, 1), i >= F.length - 1, 'Đang ở cuối danh sách.'),
+      SEP,
+      I('Xóa thư mục', 'ri-folder-reduce-line', () => this.deleteFolder(k), false, '', true)];
+  }
+
+  /* ---- tải lên ---- */
+  canUpNow() { return this.allowUp() && this.storage().lv !== 'full'; }
+  openPick(files) { if (!this.allowUp()) return; this.setState({ tab: 'up', upDrop: files || null, sel: [], menuF: null, fSheet: false }); this.focusIn('#tv-tab-up'); }
+  openPickOld(files) { if (!this.can('media.upload')) return; if (this.storage().lv === 'full') { this.toast('Đã hết dung lượng — dọn Thùng rác hoặc nâng dung lượng rồi tải lên lại.', 'err'); this.focusIn('#tv-full'); return; } this.remember(); this._added = 0; this.setState({ pick: { drop: files || null } }); }
+  closePick() { const n = this._added || 0; this.setState({ pick: null }); this.restore(); if (n) this.toast('Đã thêm ' + n + ' tệp vào ' + (['all', 'none', 'trash'].indexOf(this.state.folder) >= 0 ? 'Thư viện' : 'thư mục "' + this.folderName(this.state.folder) + '"') + '.', 'ok'); }
+  addUploaded(f) {
+    this._added = (this._added || 0) + 1;
+    const fd = ['all', 'none', 'trash'].indexOf(this.state.folder) >= 0 ? null : this.state.folder;
+    const d = new Date(), at = ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear();
+    const k = 'n' + Date.now().toString(36) + Math.round(Math.random() * 99);
+    this.toast('Đã thêm "' + f.name + '" vào Thư viện ảnh.', 'ok');
+    this.setState(s => ({ items: [{ k, name: f.name, folder: fd, w: f.w, h: f.h, size: f.size || 300 * 1024, hue: 205, by: 'Bạn', at, alt: {}, title: {}, uses: [], trashed: null, ord: -1, hash: k.slice(-4) }].concat(s.items), extraMB: s.extraMB + (f.size || 0) / 1048576, folder: s.folder === 'trash' ? 'all' : s.folder }));
+  }
+
+  /* ---- chi tiết ---- */
+  openDetail(k) { const it = this.state.items.find(x => x.k === k); if (!it) return; this.remember(); this.setState({ dk: k, draft: { alt: Object.assign({}, it.alt), title: Object.assign({}, it.title), st: {} }, init: JSON.stringify({ alt: it.alt, title: it.title }), lang: this.defLang(), langOpen: false, dMenu: false, copied: false, savedAt: null }, () => this.focusIn('#h-dr .drw-h .sx-btn.gho')); }
+  dirty() { const D = this.state.draft; if (!D || !this.state.dk) return 0; return JSON.stringify({ alt: D.alt, title: D.title }) !== this.state.init ? 1 : 0; }
+  closeDetail(force) {
+    if (!force && this.dirty()) { this.openAsk({ tone: 'warn', icon: 'ri-error-warning-line', title: 'Đóng mà chưa lưu?', text: 'Mô tả ảnh bạn vừa sửa sẽ mất.', yes: 'Bỏ thay đổi', yesCls: 'sx-btn pri', yesI: 'ri-close-line', no: 'Tiếp tục sửa', keepRet: true, run: () => { this.setState({ dk: null, draft: null, ask: null }); this.restore(); } }); return; }
+    this.setState({ dk: null, draft: null, langOpen: false, dMenu: false }); this.restore();
+  }
+  setDraft(fn) { this.setState(s => { if (!s.draft) return null; const d = JSON.parse(JSON.stringify(s.draft)); fn(d, s); return { draft: d, savedAt: null }; }); }
+  saveDetail() {
+    if (!this.dirty() || this.state.saving) return; this.setState({ saving: true }); clearTimeout(this._sv);
+    this._sv = setTimeout(() => { const D = this.state.draft, k = this.state.dk; this.setState(s => ({ items: s.items.map(x => x.k === k ? Object.assign({}, x, { alt: D.alt, title: D.title }) : x), init: JSON.stringify({ alt: D.alt, title: D.title }), saving: false, savedAt: 'Đã lưu — đổi cho mọi nơi dùng ảnh này' })); }, 600);
+  }
+  translate() {
+    const D = this.state.draft; if (!D) return; const src = this.defLang(), cur = this.state.lang, L = this.langs(), sa = (D.alt[src] || '').trim(), TR = Component.TR();
+    const targets = (cur === src ? L.filter(c => c !== src) : [cur]).filter(c => !(D.alt[c] || '').trim());
+    const cost = Math.ceil(Math.max(1, this.words(sa)) * 1.15) * targets.length; if (!sa || !targets.length || cost > this.quotaLeft()) return;
+    this.setDraft(d => { targets.forEach(c => { const t = TR[sa]; d.alt[c] = t && c === 'en' ? t[0] : t && c === 'ja' ? t[1] : sa; d.st[c] = 'ai'; }); });
+    this.setState({ quota: this.quotaLeft() - cost }); this.toast('Đã dịch ' + targets.length + ' bản, dùng ' + this.fmt(cost) + ' từ AI — chỉ điền ô còn trống.', 'ok');
+  }
+  copyUrl(u) { const done = () => { this.setState({ copied: true }); clearTimeout(this._cp); this._cp = setTimeout(() => this.setState({ copied: false }), 2000); this.toast('Đã sao chép địa chỉ tệp.', 'ok'); }; try { if (window.BSUI && window.BSUI.copy) { window.BSUI.copy(u); done(); return; } navigator.clipboard.writeText(u).then(done, done); } catch (e) { done(); } }
+
+  /* ---- vòng đời ---- */
+  componentDidMount() {
+    this._kd = (e) => {
+      const S = this.state;
+      if (e.key === 'Escape') {
+        if (S.pick) return;
+        if (S.ask) { this.setState({ ask: null }); if (!S.ask.keepRet) this.restore(); }
+        else if (S.langOpen) this.setState({ langOpen: false });
+        else if (S.dMenu) this.setState({ dMenu: false });
+        else if (S.mv) { this.setState({ mv: null }); this.restore(); }
+        else if (S.flt) { this.setState({ flt: false }); this.restore(); }
+        else if (S.fSheet) { this.setState({ fSheet: false }); this.restore(); }
+        else if (S.menuF) { this.setState({ menuF: null }); this.restore(); }
+        else if (S.ren) this.setState({ ren: null });
+        else if (S.newF != null) this.setState({ newF: null });
+        else if (S.dk) this.closeDetail();
+        else return;
+        e.preventDefault(); return;
+      }
+      if (e.key === '/' && !S.dk && !/^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || '')) { const q = (this._root || document).querySelector('[data-tv-q]'); if (q) { e.preventDefault(); q.focus(); } return; }
+      if (e.key === 'Tab') {
+        const r = this._root; if (!r || S.pick) return; const ovs = r.querySelectorAll('[data-tv-ov]'); const ov = ovs[ovs.length - 1]; if (!ov) return;
+        const f = Array.prototype.filter.call(ov.querySelectorAll('button,input,select,textarea,[tabindex]:not([tabindex="-1"])'), el => !el.disabled && el.offsetParent !== null);
+        if (!f.length) return; const a = f[0], z = f[f.length - 1];
+        if (!ov.contains(document.activeElement)) { e.preventDefault(); a.focus(); }
+        else if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); }
+        else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
+      }
+    };
+    document.addEventListener('keydown', this._kd);
+    this._md = (e) => { const t = e.target; if (!t || !t.closest) return; if (this.state.menuF && !t.closest('[data-tv-pop="fmenu"]') && !t.closest('.tv-fm')) this.setState({ menuF: null }); if (this.state.dMenu && !t.closest('[data-tv-pop="dmenu"]') && !t.closest('.tv-dm')) this.setState({ dMenu: false }); if (this.state.langOpen && !t.closest('[data-tv-pop="lang"]') && !t.closest('.tv-lmore')) this.setState({ langOpen: false }); };
+    document.addEventListener('mousedown', this._md);
+    this._bu = (e) => { if (this.dirty()) { e.preventDefault(); e.returnValue = ''; } };
+    window.addEventListener('beforeunload', this._bu);
+    this._cmd = (e) => { const d = e.detail || {}; if (d.id !== this.tw('embedId')) return; if (d.act === 'save') this.saveDetail(); if (d.act === 'reset' && this.state.dk) this.setState({ dk: null, draft: null }); };
+    document.addEventListener('bs-embed-cmd', this._cmd);
+    try { const raw = localStorage.getItem('bs-ui'); const o = raw ? JSON.parse(raw) : null; this._bsBig = !!(o && o.fontSize === 'large'); } catch (e) {}
+    this.forceUpdate();
+  }
+  componentWillUnmount() { this.lockScroll(false); document.removeEventListener('keydown', this._kd); document.removeEventListener('mousedown', this._md); window.removeEventListener('beforeunload', this._bu); document.removeEventListener('bs-embed-cmd', this._cmd); if (this._ro) this._ro.disconnect(); clearTimeout(this._tt); clearTimeout(this._sv); clearTimeout(this._rt); clearTimeout(this._cp); }
+  lockScroll(on) {
+    if (on === !!this._locked) return; this._locked = on;
+    if (on) {
+      this._lockEls = []; let el = this._root && this._root.parentElement;
+      while (el && el !== document.body && el !== document.documentElement) { const cs = getComputedStyle(el); if (/(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight) { this._lockEls.push([el, el.style.overflow]); el.style.overflow = 'hidden'; } el = el.parentElement; }
+      document.documentElement.setAttribute('data-tv-lock', '1');
+    } else { (this._lockEls || []).forEach(p => { p[0].style.overflow = p[1]; }); this._lockEls = []; document.documentElement.removeAttribute('data-tv-lock'); }
+  }
+  componentDidUpdate(pp) { if (pp && (pp.startTab !== this.props.startTab || pp.tabs !== this.props.tabs)) { const t = this.props.tabs === 'upload' ? 'up' : this.props.tabs === 'library' ? 'lib' : (this.props.startTab === 'upload' ? 'up' : 'lib'); if (t !== this.state.tab) this.setState({ tab: t }); }
+    const S = this.state; this.lockScroll(!!(S.dk || S.ask || S.mv || S.fSheet)); const d = this.dirty(); if (d !== this._lastDirty) { this._lastDirty = d; const f = this.tw('onDirty'); if (typeof f === 'function') f(d); } }
+  measure() { const r = this._root; if (!r) return; const w = r.clientWidth; if (Math.abs(w - this.state.w) > 1) this.setState({ w }); }
+  setRoot(el) { if (el === this._root) return; if (this._ro) { this._ro.disconnect(); this._ro = null; } this._root = el; if (el && window.ResizeObserver) { this._ro = new ResizeObserver(() => this.measure()); this._ro.observe(el); } if (el) setTimeout(() => this.measure(), 0); }
+
+  renderVals() {
+    const S = this.state, L = this.langs(), src = this.defLang(), LN = Component.LANGS();
+    const emb = !!this.tw('embedded'), frame = this.isFrame(), notes = this.tw('notes') !== false, upsell = !!this.tw('upsell');
+    const canView = this.can('media.view'), canUp = this.can('media.upload'), canDel = this.can('media.delete');
+    const ST = this.storage(), full = ST.lv === 'full';
+    const aiGranted = this.tw('aiOn') !== false;
+    let st = S.stOver || this.tw('screenState') || 'data';
+    if (this.tw('moduleOn') === false) st = 'locked'; else if (!canView || st === 'noperm') st = 'noperm'; else if (st === 'data' && !this.live().length && !this.trash().length) st = 'empty';
+    const narrow = S.w < 768;
+    const MODI = (window.BSAI && window.BSAI.MODULES && window.BSAI.MODULES.media) || { name: 'Thư viện ảnh & tệp', benefit: '' };
+
+    /* thư mục */
+    const fItem = (k, name, icon) => ({ k, name, icon, n: String(this.fCount(k)), cur: String(S.folder === k), go: () => this.setState({ folder: k, sel: [], ren: null }) });
+    const fTop = [fItem('all', 'Tất cả ảnh', 'ri-stack-line')];
+    const fList = S.folders.map(f => Object.assign(fItem(f.k, f.name, S.folder === f.k ? 'ri-folder-open-line' : 'ri-folder-3-line'), { renaming: !!(S.ren && S.ren.k === f.k) && !narrow, plain: !(S.ren && S.ren.k === f.k && !narrow), canEdit: canUp, menuLabel: 'Việc với thư mục ' + f.name, menuStr: String(S.menuF === f.k), popOpen: S.menuF === f.k && !narrow, onMenu: () => { if (S.menuF === f.k) { this.setState({ menuF: null }); return; } this.remember(); this.setState({ menuF: f.k }, () => this.focusIn('[data-tv-pop="fmenu"] .tv-mi:not([aria-disabled="true"])')); } }));
+    const fBottom = [fItem('none', 'Chưa phân loại', 'ri-inbox-line'), fItem('trash', 'Thùng rác', 'ri-delete-bin-line')];
+    const fOpts = [{ k: 'all', l: 'Tất cả ảnh (' + this.fCount('all') + ')' }].concat(S.folders.map(f => ({ k: f.k, l: f.name + ' (' + this.fCount(f.k) + ')' })), [{ k: 'none', l: 'Chưa phân loại (' + this.fCount('none') + ')' }, { k: 'trash', l: 'Thùng rác (' + this.fCount('trash') + ')' }]);
+    const isUserF = S.folders.some(f => f.k === S.folder);
+    const fMenu = S.menuF ? this.folderMenu(S.menuF) : [];
+    const I = (l, ic, run, dis, why) => ({ item: true, sep: false, l, i: ic, dis: dis ? 'true' : 'false', why: dis ? why : '', hasWhy: !!(dis && why), danger: '0', run: dis ? () => {} : run });
+    const fSheetMenu = S.fSheet ? [I('Thư mục mới', 'ri-folder-add-line', () => { this.setState({ fSheet: false, newF: { v: '' } }, () => this.focusIn('#tv-newf')); })].concat(isUserF ? [{ sep: true, item: false }].concat(this.folderMenu(S.folder)) : []) : [];
+
+    /* lọc */
+    const inTrash = S.folder === 'trash';
+    const inFolder = (x) => S.folder === 'all' ? x.trashed == null : S.folder === 'none' ? (x.trashed == null && !x.folder) : inTrash ? x.trashed != null : (x.trashed == null && x.folder === S.folder);
+    const q = S.q.trim().toLowerCase();
+    const base = S.items.filter(x => inFolder(x) && (!q || x.name.toLowerCase().indexOf(q) >= 0 || Object.keys(x.alt).some(c => (x.alt[c] || '').toLowerCase().indexOf(q) >= 0)));
+    const KIND = [['img', 'Ảnh', x => !this.isPdf(x)], ['pdf', 'Tài liệu PDF', x => this.isPdf(x)]];
+    const FMT = ['jpg', 'png', 'webp', 'gif', 'pdf'].map(f => [f, f.toUpperCase(), x => { const e = this.ext(x.name); return f === 'jpg' ? (e === 'jpg' || e === 'jpeg') : e === f; }]);
+    const USE = [['used', 'Đang dùng', x => x.uses.length > 0], ['unused', 'Chưa dùng', x => !x.uses.length]];
+    const pass = (x, skip) => (skip === 'k' || !S.fk.length || KIND.some(k => S.fk.indexOf(k[0]) >= 0 && k[2](x))) && (skip === 'f' || !S.ff.length || FMT.some(k => S.ff.indexOf(k[0]) >= 0 && k[2](x))) && (skip === 'u' || !S.fu.length || USE.some(k => S.fu.indexOf(k[0]) >= 0 && k[2](x)));
+    let list = base.filter(x => pass(x));
+    const by = { new: (a, b) => a.ord - b.ord, old: (a, b) => b.ord - a.ord, az: (a, b) => a.name.localeCompare(b.name), size: (a, b) => b.size - a.size, manual: (a, b) => a.ord - b.ord }[S.sort];
+    list = list.slice().sort(by || ((a, b) => a.ord - b.ord));
+    const tg = (key, v) => () => this.setState(s => { const a = s[key].slice(), i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); return { [key]: a }; });
+    const grp = (l, key, defs, skip) => ({ l, opts: defs.map(d => ({ l: d[1], on: S[key].indexOf(d[0]) >= 0, n: String(base.filter(x => pass(x, skip) && d[2](x)).length), tg: tg(key, d[0]) })) });
+    const fltGroups = [grp('Loại tệp', 'fk', KIND, 'k'), grp('Định dạng', 'ff', FMT, 'f')].concat(inTrash ? [] : [grp('Tình trạng', 'fu', USE, 'u')]);
+    const chips = [].concat(S.fk.map(v => ({ l: 'Loại: ' + KIND.find(k => k[0] === v)[1], aria: 'Bỏ lọc ' + KIND.find(k => k[0] === v)[1], rm: tg('fk', v) })), S.ff.map(v => ({ l: 'Định dạng: ' + v.toUpperCase(), aria: 'Bỏ lọc định dạng ' + v.toUpperCase(), rm: tg('ff', v) })), S.fu.map(v => ({ l: USE.find(k => k[0] === v)[1], aria: 'Bỏ lọc ' + USE.find(k => k[0] === v)[1], rm: tg('fu', v) })), q ? [{ l: 'Tên: "' + S.q.trim() + '"', aria: 'Bỏ tìm kiếm', rm: () => this.setState({ q: '' }) }] : []);
+    const fCount = S.fk.length + S.ff.length + S.fu.length;
+    const SORTS = [['new', 'Mới nhất'], ['old', 'Cũ nhất'], ['az', 'Tên A → Z'], ['size', 'Dung lượng lớn → nhỏ'], ['manual', 'Thứ tự thủ công']];
+
+    /* chọn */
+    const canPick = inTrash ? canDel : (canUp || canDel);
+    const vis = list.map(x => x.k), selV = S.sel.filter(k => vis.indexOf(k) >= 0), selN = selV.length;
+    const bulk = [];
+    if (selN) {
+      if (inTrash) { if (canDel) { bulk.push({ cls: 'sx-btn sm', i: 'ri-arrow-go-back-line', l: 'Khôi phục (' + selN + ')', run: () => this.restoreKeys(selV) }); bulk.push({ cls: 'sx-btn sm dano', i: 'ri-delete-bin-2-line', l: 'Xóa vĩnh viễn (' + selN + ')', run: () => this.purgeKeys(selV) }); } }
+      else { if (canUp) bulk.push({ cls: 'sx-btn sm', i: 'ri-folder-transfer-line', l: 'Di chuyển (' + selN + ')', run: () => { this.remember(); this.setState({ mv: { keys: selV, to: null } }, () => this.focusIn('[data-tv-ov="mv"] input')); } }); if (canDel) bulk.push({ cls: 'sx-btn sm dano', i: 'ri-delete-bin-line', l: 'Chuyển vào Thùng rác (' + selN + ')', run: () => this.trashKeys(selV) }); }
+    }
+    const manual = S.sort === 'manual' && !inTrash && canUp;
+    const rows = list.map((x, i) => {
+      const pdf = this.isPdf(x), sel = S.sel.indexOf(x.k) >= 0, ar = x.w && x.h ? x.w + '/' + x.h : '1/1', o = !x.w ? 's' : x.w > x.h * 1.05 ? 'l' : x.h > x.w * 1.05 ? 'p' : 's';
+      const dot = x.name.lastIndexOf('.'), dims = x.w ? x.w + ' × ' + x.h : (x.pdf ? x.pdf + ' trang' : '—');
+      const left = x.trashed != null ? 15 - x.trashed : null;
+      const chip = left != null ? 'Còn ' + left + ' ngày' : x.uses.length ? 'Dùng ở ' + x.uses.length + ' nơi' : 'Chưa dùng';
+      return { k: x.k, name: x.name, base: dot > 0 ? x.name.slice(0, dot) : x.name, ext: dot > 0 ? x.name.slice(dot) : '', isPdf: pdf, isImg: !pdf, ar, o,
+        bg: 'linear-gradient(135deg,oklch(86% 0.05 ' + x.hue + '),oklch(62% 0.08 ' + ((x.hue + 40) % 360) + '))',
+        meta: dims + ' · ' + this.fsize(x.size), dims, sizeT: this.fsize(x.size), at: x.at, chip,
+        chipT: left != null ? (left <= 2 ? 'danger' : 'warn') : x.uses.length ? 'ok' : 'neutral', chipI: left != null ? 'ri-time-line' : x.uses.length ? 'ri-links-line' : 'ri-subtract-line',
+        sel, selA: sel ? '1' : '0', ckLabel: (sel ? 'Bỏ chọn ' : 'Chọn ') + x.name, openLabel: 'Xem chi tiết ' + x.name,
+        onSel: () => this.setState(s => ({ sel: sel ? s.sel.filter(k => k !== x.k) : s.sel.concat([x.k]) })), onOpen: () => this.openDetail(x.k),
+        upDis: String(i === 0), dnDis: String(i === list.length - 1), upLabel: 'Chuyển ' + x.name + ' lên', dnLabel: 'Chuyển ' + x.name + ' xuống',
+        onUp: () => { if (i > 0) this.swap(x.k, list[i - 1].k); }, onDn: () => { if (i < list.length - 1) this.swap(x.k, list[i + 1].k); },
+        draggable: manual && !narrow ? 'true' : 'false', dragA: S.dragK === x.k ? '1' : '0', dropA: S.dropK === x.k ? '1' : '0',
+        onDS: (e) => { if (!manual) return; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', x.name); } catch (er) {} this.setState({ dragK: x.k }); },
+        onDO: (e) => { if (!manual || !this.state.dragK || this.state.dragK === x.k) return; e.preventDefault(); e.stopPropagation(); if (this.state.dropK !== x.k) this.setState({ dropK: x.k }); },
+        onDrop: (e) => { if (!manual || !this.state.dragK) return; e.preventDefault(); e.stopPropagation(); const dk = this.state.dragK; this.setState({ dragK: null, dropK: null }); if (dk !== x.k) this.swap(dk, x.k); },
+        onDE: () => this.setState({ dragK: null, dropK: null }) };
+    });
+
+    /* trống trong lưới */
+    let emptyKind = false, eT = '', eX = '', eI = 'ri-image-line', eB = '', eBR = null, eBC = 'sx-btn pri', eBI = 'ri-upload-2-line';
+    if (!list.length) {
+      emptyKind = true;
+      if (base.length && (fCount || q)) { eT = 'Không có tệp nào khớp'; eX = 'Có ' + base.length + ' tệp ở đây nhưng không tệp nào khớp bộ lọc đang chọn.'; eI = 'ri-filter-off-line'; eB = 'Bỏ lọc'; eBR = () => this.setState({ fk: [], ff: [], fu: [], q: '' }); eBC = 'sx-btn'; eBI = 'ri-close-line'; }
+      else if (inTrash) { eT = 'Thùng rác trống'; eX = 'Tệp bạn chuyển vào Thùng rác nằm ở đây 15 ngày rồi tự xóa vĩnh viễn. Khôi phục được trước khi hết hạn.'; eI = 'ri-delete-bin-line'; }
+      else if (q) { eT = 'Không có tệp tên "' + S.q.trim() + '"'; eX = 'Thử từ khóa ngắn hơn, ví dụ "may-phay".'; eI = 'ri-search-line'; eB = 'Bỏ lọc'; eBR = () => this.setState({ q: '' }); eBC = 'sx-btn'; eBI = 'ri-close-line'; }
+      else { eT = S.folder === 'none' ? 'Mọi tệp đều đã có thư mục' : 'Thư mục "' + this.folderName(S.folder) + '" chưa có tệp nào'; eX = S.folder === 'none' ? 'Tệp chưa xếp vào thư mục nào sẽ hiện ở đây.' : 'Tải ảnh lên thẳng vào thư mục này, hoặc chọn tệp ở Tất cả ảnh rồi bấm Di chuyển.'; eI = 'ri-folder-open-line'; if (canUp && S.folder !== 'none') { eB = 'Tải ảnh lên vào thư mục này'; eBR = () => this.openPick(); } }
+    }
+
+    /* chi tiết */
+    const it = S.dk ? S.items.find(x => x.k === S.dk) : null; let dv = { dOpen: false };
+    if (it && S.draft) {
+      const D = S.draft, cur = S.lang || src, isSrc = cur === src, tr = it.trashed != null, pdf = this.isPdf(it);
+      const pst = (c) => { const v = (D.alt[c] || '').trim(); if (!v) return c === src ? 'miss' : 'empty'; return D.st[c] === 'ai' ? 'ai' : 'full'; };
+      const vis2 = L.length <= 3 ? L : [src].concat(cur !== src ? [cur] : []), rest = L.filter(c => vis2.indexOf(c) < 0);
+      const pills = vis2.map(c => ({ nm: L.length > 3 && S.w < 600 ? c.toUpperCase() : LN[c], st: pst(c), on: String(c === cur), star: c === src, tip: LN[c] + ' — ' + ({ full: 'đã có mô tả', ai: 'AI vừa dịch, chưa kiểm', miss: 'còn thiếu mô tả', empty: 'chưa có mô tả' })[pst(c)] + (c === src ? ' · ngôn ngữ nguồn' : ''), run: () => this.setState({ lang: c, langOpen: false }) }));
+      const lq = S.langQ.trim().toLowerCase();
+      const langList = L.filter(c => !lq || LN[c].toLowerCase().indexOf(lq) >= 0 || c.indexOf(lq) >= 0).map(c => ({ nm: LN[c], st: pst(c), stl: ({ full: 'đã có mô tả', ai: 'AI vừa dịch, chưa kiểm', miss: 'còn thiếu mô tả', empty: 'chưa có mô tả' })[pst(c)] + (c === src ? ' · nguồn' : '') + (c === 'ar' ? ' · viết phải sang trái' : ''), star: c === src, cur: String(c === cur), run: () => { this.setState({ lang: c, langOpen: false, langQ: '' }); this.focusIn('#tv-alt'); } }));
+      const sa = (D.alt[src] || '').trim(), targets = (isSrc ? L.filter(c => c !== src) : [cur]).filter(c => !(D.alt[c] || '').trim());
+      const cost = Math.ceil(Math.max(1, this.words(sa)) * 1.15) * targets.length, left = this.quotaLeft();
+      const trLabel = isSrc ? 'Dịch sang ' + (L.length - 1) + ' ngôn ngữ' : 'Dịch bản ' + LN[cur];
+      let trDis = false, trTip;
+      if (!sa) { trDis = true; trTip = 'Nhập mô tả ở bản ' + LN[src] + ' trước để có nguồn dịch.'; }
+      else if (!targets.length) { trDis = true; trTip = 'Mọi bản đã có mô tả — chỉ điền ô còn trống, không đè chữ bạn đã sửa.'; }
+      else if (cost > left) { trDis = true; trTip = 'Cần khoảng ' + cost + ' từ AI, còn ' + this.fmt(left) + '. ' + (upsell ? 'Mua thêm ở Cài đặt › Gói & mức dùng.' : 'Cần thêm? Liên hệ hỗ trợ.'); }
+      else trTip = 'Dùng khoảng ' + cost + ' từ AI cho ' + targets.length + ' bản · còn ' + this.fmt(left - cost) + ' từ sau khi chạy. Chỉ điền ô còn trống.';
+      const cs = pst(cur);
+      let lineTone = 'src', lineIcon = 'ri-information-line', lineText = 'Đây là bản nguồn — viết mô tả chuẩn rồi bấm Dịch để điền sẵn ' + (L.length - 1) + ' ngôn ngữ còn lại.';
+      if (!aiGranted) lineText = 'Đây là bản nguồn — viết mô tả ở đây, các bản khác tự nhập.';
+      if (!isSrc && cs === 'ai') { lineTone = 'ai'; lineIcon = 'ri-sparkling-2-line'; lineText = 'Bản ' + LN[cur] + ' do AI dịch từ ' + LN[src] + ' — sửa chỗ nào chưa ưng rồi bấm Lưu.'; }
+      else if (!isSrc && cs === 'empty') { lineTone = 'warn'; lineIcon = 'ri-error-warning-line'; lineText = 'Bản ' + LN[cur] + ' chưa có mô tả — ' + (aiGranted ? 'bấm Dịch hoặc tự nhập.' : 'nhập mô tả bằng ' + LN[cur] + '.'); }
+      else if (!isSrc) lineText = 'Bản ' + LN[cur] + ' đã có mô tả.';
+      const altV = D.alt[cur] || '', ttlV = D.title[cur] || '';
+      const groups = [['product', 'Sản phẩm', 'ri-shopping-bag-3-line'], ['cover', 'Ảnh đại diện', 'ri-image-line'], ['content', 'Trong nội dung', 'ri-file-text-line']].map(g => {
+        const items = it.uses.filter(u => u.g === g[0]).map(u => ({ t: u.t, cd: u.type === 'catalog' ? u.cd : '/' + u.slug, i: g[2], go: () => { this.closeDetail(true); if (u.type === 'catalog') this.goto('catalog.list', { code: u.cd }); else this.goto(u.type + '.edit', { slug: u.slug }); } }));
+        return { l: g[1], n: String(items.length), items };
+      }).filter(g => g.items.length);
+      const dMenu = [];
+      if (!tr) {
+        dMenu.push({ item: true, sep: false, l: 'Tải xuống', i: 'ri-download-2-line', danger: '0', run: () => { this.setState({ dMenu: false }); this.toast('Bản thật tải ' + it.name + ' về máy.', 'info'); } });
+        if (canUp) dMenu.push({ item: true, sep: false, l: 'Di chuyển sang thư mục…', i: 'ri-folder-transfer-line', danger: '0', run: () => { this.setState({ dMenu: false, mv: { keys: [it.k], to: null } }, () => this.focusIn('[data-tv-ov="mv"] input')); } });
+        if (canDel) { dMenu.push({ sep: true, item: false }); dMenu.push({ item: true, sep: false, l: 'Chuyển vào Thùng rác', i: 'ri-delete-bin-line', danger: '1', run: () => { this.setState({ dMenu: false }); if (this.dirty()) this.setState({ draft: JSON.parse(JSON.stringify(Object.assign({}, S.draft, { alt: it.alt, title: it.title }))) }); this.trashKeys([it.k], true); } }); }
+      } else if (canDel) dMenu.push({ item: true, sep: false, l: 'Xóa vĩnh viễn', i: 'ri-delete-bin-2-line', danger: '1', run: () => { this.setState({ dMenu: false }); this.purgeKeys([it.k]); } });
+      const dirty = this.dirty();
+      dv = { dOpen: true, dTitle: tr ? 'Tệp trong Thùng rác' : pdf ? 'Chi tiết tệp' : 'Chi tiết ảnh',
+        d: { name: it.name, isImg: !pdf, isPdf: pdf, pages: (it.pdf || 1) + ' trang', ar: it.w ? it.w + '/' + it.h : '1/1', o: !it.w ? 's' : it.w > it.h * 1.05 ? 'l' : it.h > it.w * 1.05 ? 'p' : 's', bg: 'linear-gradient(135deg,oklch(86% 0.05 ' + it.hue + '),oklch(62% 0.08 ' + ((it.hue + 40) % 360) + '))',
+          altShow: it.alt[src] || it.name, url: this.urlOf(it), dims: it.w ? it.w + ' × ' + it.h + ' điểm ảnh' : (it.pdf ? it.pdf + ' trang' : '—'), sizeT: this.fsize(it.size), fmt: this.ext(it.name).toUpperCase(), folderName: this.folderName(it.folder), by: it.by, at: it.at,
+          trashed: tr, live: !tr, trashText: tr ? 'Tệp này đang trong Thùng rác, không hiện trên website. Tự xóa vĩnh viễn sau ' + (15 - it.trashed) + ' ngày nữa.' : '',
+          useTitle: tr ? 'Từng dùng ở ' + ((it.wasUses || []).length) + ' nơi' : 'Đang dùng ở ' + it.uses.length + ' nơi', noUse: !groups.length, groups },
+        dAltShow: !pdf, dReplaceShow: !tr && canUp, dMenuShow: dMenu.length > 0, dMenu, dMenuOpen: !!S.dMenu, dMenuStr: String(!!S.dMenu), onDMenu: () => this.setState({ dMenu: !S.dMenu }, () => { if (!S.dMenu) this.focusIn('[data-tv-pop="dmenu"] .tv-mi'); }),
+        multiLang: L.length > 1, pills, moreShow: rest.length > 0, moreN: rest.length, langOpen: !!S.langOpen, langOpenStr: String(!!S.langOpen), onLangMore: () => this.setState({ langOpen: !S.langOpen }),
+        langSearch: L.length >= 6, langQ: S.langQ, onLangQ: (e) => this.setState({ langQ: e.target.value }), langList, langProg: L.filter(c => pst(c) === 'full' || pst(c) === 'ai').length + '/' + L.length + ' bản có mô tả',
+        goLangs: () => { this.setState({ langOpen: false }); this.goto('settings', { section: 'languages' }); },
+        aiShow: aiGranted && L.length > 1 && !tr && canUp, aiLocked: !aiGranted && upsell && L.length > 1 && !tr && canUp,
+        quotaText: 'Còn ' + this.fmt(left) + ' từ AI', quotaTip: 'Gói ' + ((window.BSAI && window.BSAI.plan && window.BSAI.plan().name) || 'đang dùng') + ' · còn ' + this.fmt(left) + ' từ AI trong tháng — đủ dịch khoảng ' + this.fmt(left / 14) + ' mô tả ảnh.',
+        trLabel, trTip, trDis: String(trDis), onTranslate: () => { if (!trDis) this.translate(); },
+        lineTone, lineIcon, lineText, curCd: cur.toUpperCase(), fDir: cur === 'ar' ? 'rtl' : 'ltr', notesLang: notes && L.length > 1 && !isSrc,
+        fAlt: altV, altCount: altV.length + '/188', altOver: altV.length > 150 ? '1' : '0', altPh: isSrc ? 'Máy phay CNC đứng trong xưởng, nhìn từ phía trước' : (cur === 'en' ? 'Vertical CNC milling machine in the workshop' : LN[cur]),
+        onAlt: (e) => { const v = e.target.value.slice(0, 188); this.setDraft((d, s) => { const c = s.lang || src; d.alt[c] = v; if (d.st[c] === 'ai') d.st[c] = 'edited'; }); },
+        fTtl: ttlV, ttlPh: isSrc ? 'Máy phay CNC VMC-850' : (cur === 'en' ? 'VMC-850 CNC mill' : LN[cur]), onTtl: (e) => { const v = e.target.value; this.setDraft((d, s) => { d.title[s.lang || src] = v; }); },
+        roField: tr || !canUp,
+        copyText: S.copied ? 'Đã sao chép' : 'Sao chép', copyIcon: S.copied ? 'ri-check-line' : 'ri-file-copy-line', onCopy: () => this.copyUrl(this.urlOf(it)), selAll: (e) => { try { e.target.select(); } catch (x) {} },
+        onReplace: () => this.openAsk({ tone: 'warn', icon: 'ri-image-edit-line', title: 'Thay tệp cho "' + it.name + '"?', text: (it.uses.length ? it.uses.length + ' nơi đang dùng ảnh này tự đổi theo tệp mới. ' : '') + 'Địa chỉ tệp sẽ đổi — chỗ nào ngoài website đang dùng địa chỉ cũ cần dán lại.', yes: 'Chọn tệp thay thế', yesCls: 'sx-btn pri', yesI: 'ri-upload-2-line', no: 'Hủy', keepRet: true,
+          run: () => { const nh = Math.random().toString(16).slice(2, 6); this.setState(s => ({ ask: null, items: s.items.map(x => x.k === it.k ? Object.assign({}, x, { hash: nh, hue: (x.hue + 60) % 360 }) : x) })); this.toast('Đã thay tệp — ' + (it.uses.length ? it.uses.length + ' nơi dùng ảnh tự đổi theo. ' : '') + 'Địa chỉ tệp đã đổi.', 'ok'); } }),
+        saveState: S.saving ? 'Đang lưu…' : S.savedAt ? S.savedAt : dirty ? 'Có thay đổi chưa lưu' : '', saveDis: String(!dirty || S.saving), saveIcon: S.saving ? 'ri-loader-4-line' : 'ri-save-3-line', saveLabel: S.saving ? 'Đang lưu…' : 'Lưu', onSave: () => this.saveDetail(),
+        onRestoreOne: () => this.restoreKeys([it.k], true), onDClose: () => this.closeDetail() };
+    }
+
+    /* di chuyển */
+    const M = S.mv; let mvv = { mvOpen: false };
+    if (M) {
+      const opts = [{ k: null, l: 'Chưa phân loại', sub: 'Không thuộc thư mục nào — vẫn hiện ở Tất cả ảnh' }].concat(S.folders.map(f => ({ k: f.k, l: f.name, sub: this.fCount(f.k) + ' tệp' }))).map(o => ({ l: o.l, sub: o.sub, on: M.to === (o.k || '_'), pick: () => this.setState({ mv: Object.assign({}, M, { to: o.k || '_' }) }) }));
+      const to = M.to === '_' ? null : M.to, n = M.keys.length;
+      mvv = { mvOpen: true, mvTitle: 'Di chuyển ' + n + ' tệp vào…', mvOpts: opts, mvDis: String(!M.to), mvBtn: !M.to ? 'Chọn thư mục' : 'Chuyển ' + n + ' tệp vào ' + (to ? this.folderName(to) : 'Chưa phân loại'),
+        onMvGo: () => { if (!M.to) return; const prev = S.items; this.setState(s => ({ items: s.items.map(x => M.keys.indexOf(x.k) >= 0 ? Object.assign({}, x, { folder: to }) : x), mv: null, sel: [] })); this.restore(); this.toast('Đã chuyển ' + n + ' tệp vào ' + (to ? '"' + this.folderName(to) + '"' : 'Chưa phân loại') + '.', 'ok', () => this.setState({ items: prev })); },
+        closeMv: () => { this.setState({ mv: null }); this.restore(); } };
+    }
+
+    const A = S.ask && !S.ask.prompt ? S.ask : null, T = S.toast;
+    const usedT = String(ST.used).replace('.', ',') + ' MB', limT = ST.lim + ' MB', tmb = this.trashMB();
+    const pctText = ST.lv === 'full' ? 'Đã dùng hết ' + limT + '.' : ST.lv === 'warn' ? 'Sắp đầy — còn ' + String(Math.round((ST.lim - ST.used) * 10) / 10).replace('.', ',') + ' MB. Dọn Thùng rác để có thêm chỗ.' : 'Còn ' + String(Math.round((ST.lim - ST.used) * 10) / 10).replace('.', ',') + ' MB.';
+    const showFrames = this.tw('frames') !== false && !frame && !emb;
+    const TM = this.tabsMode(), allowUp = canUp && TM !== 'library', allowLib = TM !== 'upload';
+    const tabUp = (S.tab === 'up' || !allowLib) && allowUp && (st === 'data' || st === 'empty');
+    const okSt = st === 'data' || st === 'empty';
+
+    return Object.assign({
+      rootRef: (el) => this.setRoot(el), fsAttr: (this.tw('bigText') || (!emb && this._bsBig)) ? 'l' : 'n', embAttr: emb ? '1' : '0', notEmb: !emb, notes,
+      showFrames, frameSrc: encodeURI('Thư viện ảnh & tệp.dc.html') + '?frame=1', stop: (e) => e.stopPropagation(),
+      showUpBtn: canUp && okSt, upDisStr: String(full), upTip: full ? 'Đã hết dung lượng — dọn Thùng rác hoặc nâng dung lượng trước' : 'Tải ảnh hoặc tệp PDF lên Thư viện (kéo thả tệp vào trang cũng được)', onUpload: () => this.openPick(),
+      showStorage: okSt, stLv: ST.lv === 'ok' ? 'ok' : ST.lv, stIcon: ST.lv === 'full' ? 'ri-error-warning-fill' : ST.lv === 'warn' ? 'ri-alert-line' : 'ri-hard-drive-2-line', usedText: usedT, limitText: limT, stPct: ST.pct, stAria: usedT + ' trên ' + limT, stText: pctText, stFull: full && canUp,
+      fullText: 'Thùng rác đang giữ ' + String(tmb).replace('.', ',') + ' MB — dọn để có chỗ ngay, hoặc ' + (upsell ? 'nâng dung lượng.' : 'liên hệ hỗ trợ để tăng dung lượng.'),
+      goTrash: () => this.setState({ folder: 'trash', sel: [] }), onUpsell: () => this.upsell(), upsellText: upsell ? 'Xem gói nâng cấp' : 'Liên hệ hỗ trợ', upsellIcon: upsell ? 'ri-vip-crown-line' : 'ri-customer-service-2-line',
+      roInfo: okSt && !canUp && !canDel, roText: 'Bạn đang xem ở chế độ chỉ xem — nhóm quyền "' + this.roleName() + '" không tải lên hay xóa được tệp. Bấm vào ảnh để xem chi tiết và sao chép địa chỉ.',
+      stLoading: st === 'loading', stError: st === 'error', stNoPerm: st === 'noperm' || (okSt && TM === 'upload' && !canUp), stLocked: st === 'locked', stEmpty: st === 'empty' && !tabUp && allowLib, stData: st === 'data' && !tabUp && allowLib,
+      showTabs: okSt && allowUp && allowLib, tabUp, tabUpStr: String(tabUp), tabLibStr: String(!tabUp), tabUpIdx: tabUp ? '0' : '-1', tabLibIdx: tabUp ? '-1' : '0', libN: String(this.live().length),
+      onTabUp: () => this.openPick(), onTabLib: () => this.setState({ tab: 'lib', upDrop: null }),
+      onTabKey: (e) => { if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'Home' || e.key === 'End') { e.preventDefault(); const up = !tabUp; this.setState({ tab: up ? 'up' : 'lib', upDrop: null }); this.focusIn(up ? '#tv-tab-up' : '#tv-tab-lib'); } },
+      upFull: tabUp && full, upOk: tabUp && !full, upTo: ['all', 'none', 'trash'].indexOf(S.folder) >= 0 ? 'Tất cả ảnh (Chưa phân loại)' : 'thư mục "' + this.folderName(S.folder) + '"',
+      typeVal: S.fu.length === 1 ? S.fu[0] : S.fk.length === 1 ? S.fk[0] : 'all', fmtVal: S.ff.length === 1 ? S.ff[0] : 'all',
+      typeOpts: [['all', 'Tất cả loại tệp'], ['img', 'Hình ảnh'], ['pdf', 'Tài liệu PDF'], ['used', 'Đã dùng'], ['unused', 'Chưa dùng']].map(o => ({ v: o[0], l: o[1] })),
+      fmtOpts: [['all', 'Mọi định dạng'], ['jpg', 'JPG'], ['png', 'PNG'], ['webp', 'WebP'], ['gif', 'GIF'], ['pdf', 'PDF']].map(o => ({ v: o[0], l: o[1] })),
+      onTypeSel: (e) => { const v = e.target.value; this.setState({ fk: (v === 'img' || v === 'pdf') ? [v] : [], fu: (v === 'used' || v === 'unused') ? [v] : [] }); },
+      onFmtSel: (e) => { const v = e.target.value; this.setState({ ff: v === 'all' ? [] : [v] }); }, skel: [1, 2, 3, 4, 5, 6, 7, 8],
+      onRetry: () => { this.setState({ stOver: 'loading' }); clearTimeout(this._rt); this._rt = setTimeout(() => this.setState({ stOver: 'data' }), 700); },
+      noPermText: 'Nhóm quyền "' + this.roleName() + '" chưa được xem thư viện. Hỏi chủ website nếu bạn cần dùng ảnh.', goHome: () => this.goto('dashboard'),
+      lockTitle: MODI.name, lockText: upsell ? (MODI.benefit || 'Tính năng này có trong gói cao hơn.') : 'Chưa bật cho website này — liên hệ hỗ trợ.',
+      canUp, canDel, canPick, pageOverStr: String(!!S.over),
+      fTop, fList, fBottom, fMenu, renVal: S.ren ? S.ren.v : '', renInv: String(!!(S.ren && S.ren.err)), renErrShow: !!(S.ren && S.ren.err && this.validName(S.ren.v, S.ren.k)), renErr: S.ren ? (this.validName(S.ren.v, S.ren.k) || '') : '',
+      onRenIn: (e) => this.setState({ ren: Object.assign({}, S.ren, { v: e.target.value }) }), onRenKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.renameFolder(); } }, onRenCancel: () => this.setState({ ren: null }), onRenOk: () => this.renameFolder(),
+      newNarrow: S.newF != null && narrow, renNarrow: !!S.ren && narrow,
+      newOpen: S.newF != null && !narrow, newClosed: S.newF == null || narrow, newVal: S.newF ? S.newF.v : '', newInv: String(!!(S.newF && S.newF.err)), newErrShow: !!(S.newF && S.newF.err && this.validName(S.newF.v)), newErr: S.newF ? (this.validName(S.newF.v) || '') : '',
+      onNewOpen: () => this.setState({ newF: { v: '' } }, () => this.focusIn('#tv-newf')), onNewIn: (e) => this.setState({ newF: { v: e.target.value, err: S.newF && S.newF.err } }), onNewKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.createFolder(); } }, onNewCancel: () => this.setState({ newF: null }), onNewOk: () => this.createFolder(),
+      folder: S.folder, fOpts, onFolderSel: (e) => this.setState({ folder: e.target.value, sel: [] }),
+      onFSheet: () => { this.remember(); this.setState({ fSheet: true }, () => this.focusIn('[data-tv-ov="fsheet"] .tv-mi')); }, fSheetOpen: !!S.fSheet, fSheetTitle: isUserF ? 'Thư mục "' + this.folderName(S.folder) + '"' : 'Thư mục', fSheetMenu, closeFSheet: () => { this.setState({ fSheet: false }); this.restore(); },
+      mainLabel: inTrash ? 'Thùng rác' : S.folder === 'all' ? 'Tất cả ảnh' : this.folderName(S.folder),
+      q: S.q, onQ: (e) => this.setState({ q: e.target.value }), onFilter: () => { this.remember(); this.setState({ flt: true }, () => this.focusIn('[data-tv-ov="flt"] input')); }, fCount: String(fCount), fCountShow: fCount > 0, fCountAria: 'đang bật ' + fCount + ' điều kiện lọc',
+      sort: S.sort, sortOpts: SORTS.map(s => ({ v: s[0], l: s[1] })), onSort: (e) => this.setState({ sort: e.target.value }),
+      isGridStr: String(S.view === 'grid'), isListStr: String(S.view === 'list'), onGrid: () => this.setState({ view: 'grid' }), onList: () => this.setState({ view: 'list' }),
+      hasChips: chips.length > 0, chips, onClearAll: () => this.setState({ fk: [], ff: [], fu: [], q: '' }), matchText: 'Khớp ' + list.length + ' / ' + base.length, matchShort: 'Khớp ' + list.length,
+      fltOpen: !!S.flt, fltGroups, onFltClose: () => { this.setState({ flt: false }); this.restore(); },
+      hasSel: selN > 0, selN: String(selN), bulk, onSelNone: () => this.setState({ sel: [] }), allSel: selN > 0 && selN === list.length, onSelAll: () => this.setState({ sel: selN === list.length ? [] : vis.slice() }),
+      inTrash, canPurgeAll: inTrash && canDel && this.trash().length > 0, onPurgeAll: () => this.purgeKeys(this.trash().map(x => x.k), true),
+      notesManual: notes && manual, manual,
+      emptyKind, emptyTitle: eT, emptyText: eX, emptyIcon: eI, emptyBtnShow: !!eB, emptyBtn: eB, emptyBtnRun: eBR, emptyBtnCls: eBC, emptyBtnIcon: eBI,
+      showGrid: list.length > 0 && S.view === 'grid', showList: list.length > 0 && S.view === 'list', rows,
+      showFoot: list.length > 0, footText: list.length + ' tệp' + (inTrash ? ' trong Thùng rác' : '') + ' · ' + this.fsize(list.reduce((a, x) => a + x.size, 0)), footTip: narrow ? '' : 'Phím tắt: / để tìm',
+      pageOver: !!S.over, dropTo: ['all', 'none', 'trash'].indexOf(S.folder) >= 0 ? 'Vào Tất cả ảnh' : 'Vào thư mục "' + this.folderName(S.folder) + '"',
+      onPageDragEnter: (e) => { if (!this.isFileDrag(e) || !canUp || !okSt || S.pick || tabUp) return; e.preventDefault(); if (full) return; if (!S.over) this.setState({ over: true }); },
+      onPageDragOver: (e) => { if (!this.isFileDrag(e) || !canUp || !okSt || S.pick || tabUp) return; e.preventDefault(); },
+      onPageDragLeave: (e) => { if (!S.over) return; if (e.relatedTarget && this._root && this._root.contains(e.relatedTarget)) return; this.setState({ over: false }); },
+      onPageDrop: (e) => { if (!this.isFileDrag(e) || !canUp || !okSt || S.pick || tabUp) return; e.preventDefault(); this.setState({ over: false }); const fl = Array.prototype.slice.call((e.dataTransfer && e.dataTransfer.files) || []); if (fl.length) this.openPick(fl); },
+      pickOpen: !!S.pick, pickDrop: S.upDrop || null, pickDemo: this.tw('uploadDemo') !== false, onUploaded: (f) => this.addUploaded(f), onPickClose: () => this.closePick(), onPickBg: () => this.closePick(),
+      askOpen: !!A, askTitle: A ? A.title : '', askText: A ? A.text : '', askTone: A ? A.tone : 'warn', askIcon: A ? A.icon : '', askYesL: A ? A.yes : '', askNoL: A ? A.no : '', askYesCls: A ? A.yesCls : 'sx-btn pri', askYesI: A ? A.yesI : '',
+      askYes: () => { const r = A && A.run; if (r) r(); else this.setState({ ask: null }); }, askNo: () => { this.setState({ ask: null }); if (!(A && A.keepRet)) this.restore(); },
+      toastShow: !!T, toastText: T ? T.text : '', toastT: T ? T.t : 'ok', toastIcon: T ? (T.t === 'err' ? 'ri-error-warning-line' : T.t === 'info' ? 'ri-information-line' : 'ri-checkbox-circle-line') : '', toastUndo: !!(T && T.undo),
+      onUndo: () => { const u = this._undo; this._undo = null; this.setState({ toast: null }); if (u) { u(); this.toast('Đã hoàn tác.', 'info'); } }, closeToast: () => this.setState({ toast: null })
+    }, dv, mvv);
+  }
+  isFileDrag(e) { try { const t = e.dataTransfer && e.dataTransfer.types; return !!t && Array.prototype.indexOf.call(t, 'Files') >= 0; } catch (x) { return false; } }
+  swap(a, b) { const prev = this.state.items; this.setState(s => { const A = s.items.find(x => x.k === a), B = s.items.find(x => x.k === b); if (!A || !B) return null; const oa = A.ord, ob = B.ord; return { items: s.items.map(x => x.k === a ? Object.assign({}, x, { ord: ob }) : x.k === b ? Object.assign({}, x, { ord: oa }) : x) }; }); this.toast('Đã đổi thứ tự.', 'ok', () => this.setState({ items: prev })); }
+}
+</script>
+</body>
+</html>

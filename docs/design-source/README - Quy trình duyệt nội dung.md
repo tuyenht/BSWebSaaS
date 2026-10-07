@@ -30,7 +30,7 @@ BSCW.planName(key)           // tên gói lấy từ window.BSAI (ai-quota.js)
 ```
 
 Đã kiểm với **2 → 6 bước** và tên bước dài bằng 2 mẫu thử trong `BSCW.DEMO_WF`
-(`Duyệt nhanh (2 bước)`, `Quy trình toà soạn (6 bước)` — đánh dấu `demo: true`, **không** có trong repo,
+(`Duyệt nhanh (2 bước)`, `Quy trình tòa soạn (6 bước)` — đánh dấu `demo: true`, **không** có trong repo,
 chỉ để stress-test giao diện; khi hiện thực hoá thì bỏ khỏi danh sách chọn).
 
 ## 2. Ánh xạ data-model

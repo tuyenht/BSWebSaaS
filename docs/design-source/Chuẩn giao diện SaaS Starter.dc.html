@@ -595,6 +595,95 @@ a:hover{color:var(--color-accent,#2050a0);text-decoration:underline}
       </div>
     </sc-for>
   </div>
+  <article id="co-gian-tuong-tac" class="sx-card" aria-labelledby="h-dli">
+    <div class="sx-ch"><h3 id="h-dli" class="sx-h3">Danh sách co giãn · bản tương tác</h3><span class="sx-chip" data-t="new">MỚI</span><code class="sx-code">&lt;x-bs-admin::data-list&gt;</code></div>
+    <div class="sx-cb">
+      <p class="sx-rule">Bấm thử trên từng thẻ: đổi trạng thái (chip ⌄), sửa / thêm bản ngôn ngữ (nhóm chip mã), tab + "Khác", Lọc, Sắp xếp, Chọn nhiều, Hẹn giờ đăng, Chuyển vào Thùng rác + Hoàn tác. Nút đổi theo nhóm quyền: không có quyền thì ẩn; có quyền nhưng đang bị chặn thì khóa kèm 1 câu lý do hiện sẵn. Từ 1024px dùng bảng đủ cột — màn chạy thật: <a href="Qu%E1%BA%A3n%20l%C3%BD%20B%C3%A0i%20vi%E1%BA%BFt%20-%20Options.dc.html">Quản lý Bài viết - Options</a> (mọi loại nội dung).</p>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;"><span class="sx-lab" style="margin:0;">Mẫu</span><div class="sx-seg" role="radiogroup" aria-label="Mẫu danh sách"><sc-for list="{{ dliTypeOpts }}" as="o" hint-placeholder-count="3"><button role="radio" aria-checked="{{ o.on }}" onClick="{{ o.pick }}">{{ o.l }}</button></sc-for></div></div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;"><span class="sx-lab" style="margin:0;">Xem như</span><div class="sx-seg" role="radiogroup" aria-label="Xem như nhóm quyền"><sc-for list="{{ dliRoleOpts }}" as="o" hint-placeholder-count="3"><button role="radio" aria-checked="{{ o.on }}" onClick="{{ o.pick }}">{{ o.l }}</button></sc-for></div></div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;"><span class="sx-lab" style="margin:0;">Website bật</span><div class="sx-seg" role="radiogroup" aria-label="Số ngôn ngữ website bật"><sc-for list="{{ dliLangOpts }}" as="o" hint-placeholder-count="2"><button role="radio" aria-checked="{{ o.on }}" onClick="{{ o.pick }}">{{ o.l }}</button></sc-for></div></div>
+      </div>
+      <div class="fr-row">
+        <sc-for list="{{ dliFrames }}" as="fr" hint-placeholder-count="2">
+          <div class="fr dli-fr" data-dli="{{ fr.w }}" style="width:{{ fr.w }}px;">
+            <div class="fr-cap"><i class="ri-device-line" aria-hidden="true"></i>{{ fr.lab }}</div>
+            <div class="dli">
+              <div class="dli-tabs" role="tablist" aria-label="Lọc theo trạng thái">
+                <sc-for list="{{ fr.tabs }}" as="t" hint-placeholder-count="3"><button class="dli-tab" role="tab" aria-selected="{{ t.on }}" onClick="{{ t.pick }}">{{ t.l }}<span class="n">{{ t.n }}</span></button></sc-for>
+                <button class="dli-tab more" aria-haspopup="menu" aria-expanded="{{ fr.tabMoreOpen }}" aria-selected="{{ fr.tabMoreOn }}" onClick="{{ fr.openTabMore }}">{{ fr.tabMoreL }}<sc-if value="{{ fr.tabMoreOn }}" hint-placeholder-val="{{ false }}"><span class="n">{{ fr.tabMoreN }}</span></sc-if><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+              </div>
+              <div class="dli-tools">
+                <div class="sx-search"><i class="ri-search-line" aria-hidden="true" style="color:var(--color-body-muted,#5b6275);"></i><input type="search" aria-label="{{ dliSearchAria }}" placeholder="{{ dliSearchPh }}" value="{{ dliQ }}" onChange="{{ dliOnQ }}"><sc-if value="{{ dliHasQ }}" hint-placeholder-val="{{ false }}"><button class="sx-btn sm ic gho" aria-label="Bỏ từ khóa" title="Bỏ từ khóa" onClick="{{ dliClearQ }}"><i class="ri-close-line" aria-hidden="true"></i></button></sc-if></div>
+                <button class="sx-btn" aria-haspopup="dialog" aria-expanded="{{ fr.fltOpen }}" onClick="{{ fr.openFlt }}"><i class="ri-filter-3-line" aria-hidden="true"></i><span class="sx-t">Lọc</span><sc-if value="{{ dliHasF }}" hint-placeholder-val="{{ false }}"><span class="dli-cnt">{{ dliNF }}</span></sc-if></button>
+                <button class="sx-btn" aria-haspopup="menu" aria-expanded="{{ fr.sortOpen }}" aria-label="Sắp xếp: {{ dliSortL }}" onClick="{{ fr.openSort }}"><i class="ri-arrow-up-down-line" aria-hidden="true"></i><span class="sx-t el">{{ fr.sortBtnL }}</span></button>
+                <sc-if value="{{ dliCanSel }}" hint-placeholder-val="{{ true }}"><button class="sx-btn" aria-pressed="{{ dliSelMode }}" onClick="{{ dliToggleSel }}"><i class="ri-checkbox-multiple-line" aria-hidden="true"></i><span class="sx-t">{{ dliSelBtnL }}</span></button></sc-if>
+              </div>
+              <sc-if value="{{ dliHasChips }}" hint-placeholder-val="{{ false }}">
+                <div class="dli-chips"><span>Đang lọc:</span><sc-for list="{{ dliChips }}" as="c"><span class="dli-fc">{{ c.l }}<button aria-label="Bỏ lọc {{ c.l }}" title="Bỏ lọc" onClick="{{ c.drop }}"><i class="ri-close-line" aria-hidden="true"></i></button></span></sc-for><button class="sx-btn sm gho" onClick="{{ dliClearF }}">Bỏ lọc</button><span class="dli-match" role="status">{{ dliMatch }}</span></div>
+              </sc-if>
+              <sc-if value="{{ dliSelMode }}" hint-placeholder-val="{{ false }}">
+                <div class="dli-sel" role="region" aria-label="Thao tác với các dòng đã chọn">
+                  <strong aria-live="polite">Đã chọn {{ dliNSel }}</strong>
+                  <button class="sx-btn sm gho" aria-disabled="{{ dliAllOn }}" onClick="{{ dliSelAll }}"><span class="sx-t">{{ dliSelAllL }}</span></button>
+                  <sc-if value="{{ dliHasPub }}" hint-placeholder-val="{{ true }}"><button class="sx-btn sm out" aria-disabled="{{ dliPubOff }}" onClick="{{ dliBulkPub }}"><i class="{{ dliPubIc }}" aria-hidden="true"></i><span class="sx-t">{{ dliPubL }}</span></button></sc-if>
+                  <sc-if value="{{ dliHasTrash }}" hint-placeholder-val="{{ true }}"><button class="sx-btn sm dano" aria-disabled="{{ dliTrashOff }}" onClick="{{ dliBulkTrash }}"><i class="ri-delete-bin-line" aria-hidden="true"></i><span class="sx-t">{{ dliTrashL }}</span></button></sc-if>
+                  <button class="sx-btn sm gho end" onClick="{{ dliToggleSel }}"><span class="sx-t">Xong</span></button>
+                  <sc-if value="{{ dliHasWhy }}" hint-placeholder-val="{{ false }}"><p class="why">{{ dliWhy }}</p></sc-if>
+                </div>
+              </sc-if>
+              <sc-if value="{{ fr.empty }}" hint-placeholder-val="{{ false }}"><div class="dli-empty"><span>{{ dliEmptyText }}</span><sc-if value="{{ dliEmptyBtn }}" hint-placeholder-val="{{ true }}"><button class="sx-btn" onClick="{{ dliResetAll }}"><span class="sx-t">Bỏ lọc và tìm kiếm</span></button></sc-if></div></sc-if>
+              <div class="{{ dliCls }}" role="list" aria-label="{{ dliListAria }}">
+                <sc-for list="{{ fr.rows }}" as="p" hint-placeholder-count="4">
+                  <div class="dli-row" role="listitem">
+                    <input class="dli-ck" type="checkbox" aria-label="Chọn {{ p.t }}" checked="{{ p.selOn }}" onChange="{{ p.selToggle }}">
+                    <span class="dli-th" aria-hidden="true"><i class="ri-image-line"></i></span>
+                    <div class="dli-main"><a class="dli-tl" href="#co-gian-tuong-tac" title="{{ p.t }}">{{ p.t }}</a><span class="dli-sub" title="{{ p.sub }}">{{ p.sub }}</span></div>
+                    <div class="dli-state">
+                      <sc-if value="{{ p.stBtn }}" hint-placeholder-val="{{ true }}"><button class="dli-sb" data-s="{{ p.s }}" aria-haspopup="menu" aria-expanded="{{ p.stOpen }}" aria-label="Trạng thái: {{ p.sl }} — bấm để đổi" title="Bấm để đổi trạng thái" onClick="{{ p.openSt }}">{{ p.sl }}<i class="ri-arrow-down-s-line" aria-hidden="true"></i></button></sc-if>
+                      <sc-if value="{{ p.stTxt }}" hint-placeholder-val="{{ false }}"><span class="dli-sb" data-s="{{ p.s }}">{{ p.sl }}</span></sc-if>
+                      <span class="dli-date" title="{{ p.dateFull }}"><i class="{{ p.dateIc }}" aria-hidden="true"></i>{{ p.date }}</span>
+                    </div>
+                    <div class="dli-attr">
+                      <sc-if value="{{ p.hasLock }}" hint-placeholder-val="{{ false }}"><span class="dli-u lock"><i class="{{ p.lockIc }}" aria-hidden="true"></i><span class="tx">{{ p.lockText }}</span></span></sc-if>
+                      <sc-for list="{{ p.units }}" as="u"><span class="dli-u {{ u.k }}" title="{{ u.tip }}"><i class="{{ u.ic }}" aria-hidden="true"></i><span class="tx">{{ u.t }}</span></span></sc-for>
+                      <sc-if value="{{ p.hasLangs }}" hint-placeholder-val="{{ true }}"><button class="dli-lb" aria-haspopup="menu" aria-expanded="{{ p.lgOpen }}" aria-label="{{ p.langAria }}" title="{{ p.langTip }}" onClick="{{ p.openLg }}"><span class="lcs"><sc-for list="{{ p.langs }}" as="l"><span class="{{ l.cls }}">{{ l.c }}</span></sc-for></span><i class="ri-arrow-down-s-line" aria-hidden="true" style="color:var(--color-body-muted,#5b6275);"></i></button></sc-if>
+                      <span class="dli-u"><span class="avi" aria-hidden="true">{{ p.ini }}</span><span class="tx">{{ p.au }}</span></span>
+                    </div>
+                    <div class="dli-acts">
+                      <sc-if value="{{ p.canEdit }}" hint-placeholder-val="{{ true }}"><button class="sx-btn sm out main" aria-label="Sửa {{ p.t }}"><i class="ri-pencil-line" aria-hidden="true"></i><span class="sx-t">Sửa</span></button></sc-if>
+                      <sc-if value="{{ p.editLocked }}" hint-placeholder-val="{{ false }}"><button class="sx-btn sm out main" aria-disabled="true" aria-label="Sửa {{ p.t }} — {{ p.lockText }}"><i class="ri-lock-2-line" aria-hidden="true"></i><span class="sx-t">Sửa</span></button></sc-if>
+                      <sc-if value="{{ p.viewMain }}" hint-placeholder-val="{{ false }}"><button class="sx-btn sm out main" aria-label="{{ p.viewAria }}" title="{{ p.viewTip }}"><i class="{{ p.viewIc }}" aria-hidden="true"></i><span class="sx-t">Xem</span></button></sc-if>
+                      <button class="sx-btn sm ic gho more" aria-haspopup="menu" aria-expanded="{{ p.mvOpen }}" aria-label="Thêm thao tác cho {{ p.t }}" title="Thêm thao tác" onClick="{{ p.openMv }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+              <div class="dli-msg" role="status" aria-live="polite"><span>{{ fr.msg }}</span><sc-if value="{{ fr.hasUndo }}" hint-placeholder-val="{{ false }}"><button class="sx-btn sm gho" onClick="{{ dliUndo }}"><i class="ri-arrow-go-back-line" aria-hidden="true"></i><span class="sx-t">Hoàn tác</span></button></sc-if></div>
+            </div>
+            <sc-if value="{{ fr.open }}" hint-placeholder-val="{{ false }}">
+              <div class="dli-bg" onClick="{{ dliClose }}"></div>
+              <div class="dli-m" role="{{ fr.mRole }}" aria-label="{{ fr.mTitle }}" data-dlim="1" style="--mx:{{ fr.mx }}px;--my:{{ fr.my }}px;" onKeyDown="{{ dliKey }}">
+                <span class="grab" aria-hidden="true"></span>
+                <div class="dli-mh">{{ fr.mTitle }}</div>
+                <sc-for list="{{ fr.items }}" as="it">
+                  <sc-if value="{{ it.sep }}" hint-placeholder-val="{{ false }}"><div class="dli-msep" role="separator"></div></sc-if>
+                  <sc-if value="{{ it.hd }}" hint-placeholder-val="{{ false }}"><div class="dli-mh" style="padding-top:10px;">{{ it.l }}</div></sc-if>
+                  <sc-if value="{{ it.btn }}" hint-placeholder-val="{{ true }}"><button class="{{ it.cls }}" role="menuitem" aria-disabled="{{ it.off }}" onClick="{{ it.on }}"><i class="{{ it.ic }}" aria-hidden="true"></i><span><span class="lb">{{ it.l }}</span><sc-if value="{{ it.hasWhy }}" hint-placeholder-val="{{ false }}"><span class="why">{{ it.why }}</span></sc-if></span></button></sc-if>
+                  <sc-if value="{{ it.chk }}" hint-placeholder-val="{{ false }}"><button class="dli-mi" role="menuitemcheckbox" aria-checked="{{ it.on2 }}" onClick="{{ it.on }}"><span class="bx" aria-hidden="true"><sc-if value="{{ it.on2 }}" hint-placeholder-val="{{ false }}"><i class="ri-check-line" style="font-size:14px;"></i></sc-if></span><span>{{ it.l }}<span class="ct">{{ it.n }}</span></span></button></sc-if>
+                </sc-for>
+                <sc-if value="{{ fr.isSched }}" hint-placeholder-val="{{ false }}">
+                  <div class="dli-mb"><label for="dli-when-{{ fr.w }}">Thời điểm đăng</label><input id="dli-when-{{ fr.w }}" class="sx-in" type="datetime-local" value="{{ dliWhen }}" onChange="{{ dliOnWhen }}"><p class="hint">Tự đăng đúng giờ này, theo {{ tzText }}.</p></div>
+                  <div class="dli-mf"><button class="sx-btn" onClick="{{ dliClose }}"><span class="sx-t">Hủy</span></button><button class="sx-btn pri" onClick="{{ fr.doSched }}"><i class="ri-time-line" aria-hidden="true"></i><span class="sx-t">Hẹn giờ đăng</span></button></div>
+                </sc-if>
+                <sc-if value="{{ fr.fltOpen }}" hint-placeholder-val="{{ false }}"><div class="dli-mf"><button class="sx-btn gho" onClick="{{ dliClearF }}"><span class="sx-t">Bỏ lọc</span></button><button class="sx-btn pri" onClick="{{ dliClose }}"><span class="sx-t">Xong · {{ dliMatch }}</span></button></div></sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </article>
   <div class="sx-grid">
     <article class="sx-card sx-span" aria-labelledby="h-wt">
       <div class="sx-ch"><h3 id="h-wt" class="sx-h3">Bảng dữ liệu rộng</h3><span class="sx-chip" data-t="info">Có sẵn · thêm cột dính</span><code class="sx-code">&lt;x-bs-admin::table sticky-first&gt;</code></div>
@@ -830,15 +919,34 @@ a:hover{color:var(--color-accent,#2050a0);text-decoration:underline}
       <div class="sx-ch"><h3 id="h-ca" class="sx-h3">Chọn chuyên mục có mục chính</h3><span class="sx-chip" data-t="new">MỚI</span><code class="sx-code">&lt;x-bs-admin::category-picker&gt;</code></div>
       <div class="sx-cb">
         <p class="sx-rule">Mục đầu tiên được tích tự thành mục chính (sao vàng + chữ "Mục chính"). Bỏ tích mục chính thì sao tự chuyển sang mục còn lại. Chuyên mục chính quyết định bài thuộc mục nào; đường dẫn mặc định không có chuyên mục — chỉ khi mục đó chọn kiểu theo chuyên mục thì thêm đường dẫn của chuyên mục chính.</p>
-        <ul style="margin:0;padding:0;list-style:none;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;">
+        <p class="sx-rule" style="margin:0;">D1-4b: ô tìm luôn hiện; danh sách là cây thụt lề, đang tìm thì thành danh sách phẳng có đường cha phía trước. "+ Thêm chuyên mục mới" chỉ hiện với người có quyền quản lý chuyên mục. Bài thuộc loại nội dung đang bật quy trình duyệt: chuyên mục của loại khác khóa kèm lý do ngay tại dòng.</p>
+        <div class="sx-row" style="flex-wrap:wrap;gap:8px;">
+          <span class="sx-hint" style="margin:0;">Xem như:</span>
+          <button class="sx-btn sm" aria-pressed="{{ catAsEd }}" onClick="{{ catSetEd }}">Biên tập</button>
+          <button class="sx-btn sm" aria-pressed="{{ catAsWr }}" onClick="{{ catSetWr }}">Người viết</button>
+          <span class="sx-hint" style="margin:0 0 0 8px;">Duyệt trước khi đăng (Tin tức):</span>
+          <button class="sx-btn sm" aria-pressed="{{ catGov }}" onClick="{{ catGovOn }}">Đang bật</button>
+          <button class="sx-btn sm" aria-pressed="{{ catGovOff }}" onClick="{{ catGovOffFn }}">Đang tắt</button>
+        </div>
+        <div class="sx-search"><i class="ri-search-line" aria-hidden="true"></i><input class="sPlain" value="{{ catQ }}" onInput="{{ onCatQ }}" placeholder="Phay CNC" aria-label="Tìm chuyên mục"></div>
+        <ul style="margin:0;padding:0;list-style:none;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;max-height:320px;overflow-y:auto;">
           <sc-for list="{{ cats }}" as="c" hint-placeholder-count="4">
-            <li style="display:flex;align-items:center;gap:8px;padding:2px 8px 2px 12px;border-bottom:1px solid var(--color-border,#e9ecf4);">
-              <label class="sx-check" style="flex:1 1 auto;min-width:0;"><input type="checkbox" checked="{{ c.on }}" onChange="{{ c.toggle }}"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ c.n }}">{{ c.n }}</span></label>
+            <li style="display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;padding:2px 8px 2px {{ c.pad }}px;border-bottom:1px solid var(--color-border,#e9ecf4);">
+              <sc-if value="{{ c.free }}" hint-placeholder-val="{{ true }}"><label class="sx-check" style="flex:1 1 auto;min-width:0;"><input type="checkbox" checked="{{ c.on }}" onChange="{{ c.toggle }}"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ c.full }}"><sc-if value="{{ c.hasPath }}" hint-placeholder-val="{{ false }}"><span style="color:var(--color-body-muted,#5b6275);">{{ c.path }}</span></sc-if>{{ c.n }}</span></label></sc-if>
+              <sc-if value="{{ c.locked }}" hint-placeholder-val="{{ false }}"><label class="sx-check" style="flex:1 1 auto;min-width:0;"><input type="checkbox" disabled="{{ true }}" aria-describedby="{{ c.whyId }}"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--color-body-muted,#5b6275);" title="{{ c.full }}"><i class="ri-lock-line" aria-hidden="true"></i> {{ c.n }}</span></label></sc-if>
+              <sc-if value="{{ c.other }}" hint-placeholder-val="{{ false }}"><span class="sx-chip">{{ c.tl }}</span></sc-if>
               <sc-if value="{{ c.star }}" hint-placeholder-val="{{ false }}"><span class="sx-chip" data-t="gold"><i class="ri-star-fill" aria-hidden="true" style="color:var(--color-brand-gold,#e0b028);"></i>Mục chính</span></sc-if>
               <sc-if value="{{ c.canStar }}" hint-placeholder-val="{{ false }}"><button class="sx-btn sm gho" onClick="{{ c.makeStar }}" aria-label="Đặt {{ c.n }} làm mục chính"><i class="ri-star-line" aria-hidden="true"></i><span class="sx-t">Đặt làm chính</span></button></sc-if>
+              <sc-if value="{{ c.locked }}" hint-placeholder-val="{{ false }}"><span id="{{ c.whyId }}" class="sx-hint" style="flex:1 0 100%;margin:0 0 6px;">{{ c.why }}</span></sc-if>
+              <sc-if value="{{ c.moveNote }}" hint-placeholder-val="{{ false }}"><span class="sx-hint" style="flex:1 0 100%;margin:0 0 6px;">Chọn mục này làm mục chính thì bài chuyển sang {{ c.tl }}.</span></sc-if>
             </li>
           </sc-for>
+          <sc-if value="{{ catNone }}" hint-placeholder-val="{{ false }}"><li class="sx-hint" style="padding:12px;margin:0;">Không có chuyên mục nào khớp "{{ catQ }}".</li></sc-if>
         </ul>
+        <sc-if value="{{ catCanAdd }}" hint-placeholder-val="{{ true }}">
+          <sc-if value="{{ catAddOff }}" hint-placeholder-val="{{ true }}"><button class="sx-btn sm gho" style="align-self:flex-start;" onClick="{{ catAddOpen }}"><i class="ri-add-line" aria-hidden="true"></i><span class="sx-t">Thêm chuyên mục mới</span></button></sc-if>
+          <sc-if value="{{ catAddOn }}" hint-placeholder-val="{{ false }}"><div class="sx-row" style="gap:8px;flex-wrap:wrap;"><input class="sx-in" style="flex:1 1 200px;min-width:0;" value="{{ catNew }}" onInput="{{ onCatNew }}" placeholder="Bảo trì máy" aria-label="Tên chuyên mục mới"><button class="sx-btn sm pri" onClick="{{ catAddDo }}"><i class="ri-check-line" aria-hidden="true"></i><span class="sx-t">Thêm và chọn</span></button><button class="sx-btn sm" onClick="{{ catAddCancel }}"><span class="sx-t">Hủy</span></button></div></sc-if>
+        </sc-if>
         <p class="sx-hint" style="margin:0;">Đường dẫn bài: <span style="font-family:ui-monospace,Menlo,monospace;word-break:break-all;">{{ catPath }}</span></p>
         <p class="sx-hint" style="margin:-12px 0 0;">Nếu mục này chọn kiểu theo chuyên mục: <span style="font-family:ui-monospace,Menlo,monospace;word-break:break-all;">{{ catPathCat }}</span></p>
       </div>
@@ -1676,6 +1784,35 @@ const BLADE = [
 ];
 const BT_ST = { co: ['ok', 'Có sẵn'], sua: ['info', 'Có sẵn · cần sửa'], ds: ['warn', 'Có ở DS, chưa có Blade'], blade: ['warn', 'Có ở Blade, chưa có DS'], moi: ['new', 'MỚI'] };
 
+/* Danh sách co giãn · bản tương tác (D1-3 phần 3, chuyển từ "Danh sách co giãn" #5a). ME = người đang đăng nhập (mô phỏng). */
+const DLI_ME = 'Ngọc Lan';
+const DLI_LN = { VI: 'Tiếng Việt', EN: 'English', JA: '日本語', ZH: '中文' };
+const DLI_ALL = ['VI', 'EN', 'JA', 'ZH'];
+const DLI_ST = { draft: 'Bản nháp', pending: 'Chờ duyệt', published: 'Đã đăng', scheduled: 'Đã hẹn giờ', private: 'Không công khai', archived: 'Đã gỡ khỏi website' };
+const DLI_D = {
+  post: [
+    { t: 'Dung sai ±0,01 mm: khi nào cần và chi phí tăng bao nhiêu', sub: '/tin-tuc/dung-sai-0-01-mm', s: 'published', au: 'Ngọc Lan', cat: 'Kỹ thuật gia công', langs: ['VI', 'EN'], date: ['h', 'Sửa 6 ngày trước', 'Sửa lúc 28/09/2026 10:20'] },
+    { t: 'An Vinh nhận chứng nhận ISO 9001:2015 cho xưởng Tân Bình', sub: '/tin-tuc/an-vinh-iso-9001-2015', s: 'pending', au: 'Trần Minh Anh', cat: 'Tin công ty', langs: ['VI'], lock: 'Trần Minh Anh', date: ['h', 'Sửa hôm qua', 'Sửa lúc 03/10/2026 14:02'] },
+    { t: 'Hướng dẫn gửi bản vẽ để nhận báo giá trong 2 giờ', sub: '/huong-dan/gui-ban-ve-bao-gia', s: 'scheduled', au: 'Ngọc Lan', cat: 'Hướng dẫn', langs: ['VI', 'EN', 'JA'], date: ['s', 'Đăng 15/10 08:00', 'Sẽ đăng lúc 15/10/2026 08:00'] },
+    { t: 'So sánh nhôm 6061 và 7075 cho chi tiết máy', sub: '/tin-tuc/so-sanh-nhom-6061-7075', s: 'draft', au: 'Hoàng Văn Bảo', cat: 'Kỹ thuật gia công', langs: ['VI'], date: ['h', 'Sửa hôm nay', 'Sửa lúc 04/10/2026 07:55'] },
+    { t: 'Bảo trì máy CNC: lịch kiểm tra 6 tháng', sub: '/tin-tuc/bao-tri-may-cnc', s: 'draft', au: 'Ngọc Lan', cat: 'Hướng dẫn', langs: ['VI'], date: ['h', 'Sửa hôm nay', 'Sửa lúc 04/10/2026 09:10'] }
+  ],
+  product: [
+    { t: 'Trục truyền động thép C45 mạ crom cứng Ø25 × 600 mm', sub: 'AV-TR-25600', s: 'published', au: 'Ngọc Lan', cat: 'Trục & bạc', langs: ['VI', 'EN', 'JA'], units: [['price', '', '1.250.000 ₫', 'Giá bán'], ['', 'ri-stack-line', 'Còn 48', 'Tồn kho']], date: ['h', 'Sửa 2 ngày trước', 'Sửa lúc 02/10/2026 11:30'] },
+    { t: 'Bạc đồng thau đúc theo bản vẽ', sub: 'AV-BD-001', s: 'published', au: 'Trần Minh Anh', cat: 'Trục & bạc', langs: ['VI', 'EN'], lock: 'Trần Minh Anh', units: [['price', '', 'Liên hệ báo giá', 'Chưa đặt giá — website hiện “Liên hệ báo giá”'], ['', 'ri-stack-line', 'Đặt theo đơn', 'Tồn kho']], date: ['h', 'Sửa 9 ngày trước', 'Sửa lúc 25/09/2026 15:10'] },
+    { t: 'Bánh răng côn module 2, 30 răng', sub: 'AV-BR-M230', s: 'published', au: 'Ngọc Lan', cat: 'Bánh răng', langs: ['VI'], units: [['price', '', '680.000 ₫', 'Giá khuyến mãi'], ['old', '', '850.000 ₫', 'Giá gốc'], ['warn', 'ri-error-warning-line', 'Còn 3 — sắp hết', 'Tồn kho']], date: ['h', 'Sửa hôm qua', 'Sửa lúc 03/10/2026 17:45'] },
+    { t: 'Đồ gá kẹp phôi phay CNC 4 trục', sub: 'AV-DG-4X', s: 'draft', au: 'Hoàng Văn Bảo', cat: 'Đồ gá', langs: ['VI'], units: [['price', '', '4.200.000 ₫', 'Giá bán'], ['danger', 'ri-close-circle-line', 'Hết hàng', 'Tồn kho']], date: ['h', 'Sửa hôm nay', 'Sửa lúc 04/10/2026 08:05'] }
+  ],
+  page: [
+    { t: 'Giới thiệu công ty', sub: '/gioi-thieu', s: 'published', au: 'Ngọc Lan', langs: ['VI', 'EN', 'JA'], date: ['h', 'Sửa 6 ngày trước', 'Sửa lúc 28/09/2026 16:05'] },
+    { t: 'Bảng giá gia công cơ khí chính xác theo bản vẽ cho khách hàng doanh nghiệp năm 2026', sub: '/bang-gia-gia-cong-co-khi-chinh-xac-theo-ban-ve', s: 'pending', au: 'Trần Minh Anh', langs: ['VI'], lock: 'Trần Minh Anh', date: ['h', 'Sửa hôm qua', 'Sửa lúc 03/10/2026 09:12'] },
+    { t: 'Tuyển dụng thợ tiện CNC', sub: '/tuyen-dung', s: 'scheduled', au: 'Ngọc Lan', langs: ['VI', 'EN'], date: ['s', 'Đăng 15/10 08:00', 'Sẽ đăng lúc 15/10/2026 08:00'] },
+    { t: 'Chính sách bảo mật', sub: '/chinh-sach-bao-mat', s: 'private', au: 'Hoàng Văn Bảo', langs: ['VI'], date: ['h', 'Sửa 12 ngày trước', 'Sửa lúc 22/09/2026 10:00'] },
+    { t: 'Liên hệ', sub: '/lien-he', s: 'draft', au: 'Hoàng Văn Bảo', langs: ['VI'], date: ['h', 'Sửa hôm nay', 'Sửa lúc 04/10/2026 08:40'] }
+  ]
+};
+const DLI_INI = n => { const w = String(n).split(' '); return (w[0][0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase(); };
+
 class Component extends DCLogic {
   state = this.initState();
   initState() {
@@ -1700,7 +1837,8 @@ class Component extends DCLogic {
       sel: ['b1', 'b2', 'b4'], pop: null, viewAs: 'editor', bulkRows: BULK0.slice(), goPop: null, lk: null, treeBtnMsg: '', tab: 'content', fSheet: null,
       tree: TREE0, treeSel: 't6', treeMsg: '', dragId: null, dragOver: null,
       slug: 'bang-gia-gia-cong-cnc-2026', slugOrig: 'bang-gia-gia-cong-cnc-2026', slugPub: true, slugWarn: '',
-      cats: [{ id: 'c1', n: 'Dịch vụ gia công', s: 'dich-vu-gia-cong', on: true, star: true }, { id: 'c2', n: 'Tin tức', s: 'tin-tuc', on: true, star: false }, { id: 'c3', n: 'Tuyển dụng', s: 'tuyen-dung', on: false, star: false }, { id: 'c4', n: 'Khuyến mãi và chương trình ưu đãi cho khách hàng doanh nghiệp', s: 'khuyen-mai', on: false, star: false }],
+      cats: [{ id: 'c1', n: 'Dịch vụ gia công', s: 'dich-vu-gia-cong', on: true, star: true }, { id: 'c1a', p: 'c1', n: 'Phay CNC', s: 'phay-cnc', on: false, star: false }, { id: 'c1b', p: 'c1a', n: 'Phay CNC 5 trục', s: 'phay-cnc-5-truc', on: false, star: false }, { id: 'c2', n: 'Tin tức', s: 'tin-tuc', on: true, star: false }, { id: 'c3', n: 'Tuyển dụng', s: 'tuyen-dung', on: false, star: false }, { id: 'c4', n: 'Khuyến mãi và chương trình ưu đãi cho khách hàng doanh nghiệp', s: 'khuyen-mai', on: false, star: false }, { id: 'o1', n: 'Gia công theo bản vẽ', s: 'phay-theo-ban-ve', on: false, star: false, other: 'Dịch vụ' }, { id: 'o2', n: 'Khuôn ép nhựa', s: 'khuon-ep-nhua', on: false, star: false, other: 'Dự án' }],
+      catQ: '', catWr: false, catGov: true, catAdd: false, catNew: '',
       money: '1.250.000', moneyErr: '', prov: 'TP. Hồ Chí Minh', ward: 'Phường Tây Thạnh', street: 'Lô C3, Khu công nghiệp Tân Bình', addrErr: '',
       ch: [
         { k: 'title', n: 'Tiêu đề trang chủ', v: 'Cơ khí chính xác An Vinh', orig: 'Cơ khí chính xác An Vinh', st: 'clean', prev: 'clean' },
@@ -1960,7 +2098,163 @@ class Component extends DCLogic {
     const full = U ? U.fmtDate(t, SITE_TZ, true) : '';
     return { agoIso: t.toISOString(), agoText: U && U.fmtAgo ? U.fmtAgo(t, { tz: SITE_TZ }) : '5 phút trước', agoFull: full, agoAria: 'Sửa lúc ' + full, chartShort: U && U.fmtCompact ? U.fmtCompact(1234567) : '', chartFull: U && U.fmtNum ? U.fmtNum(1234567) : '' };
   }
-  renderVals() { try { return this._rv(); } catch (e) { console.warn('Chuẩn giao diện: ' + (e && e.message)); return {}; } }
+  renderVals() { let o = {}; try { o = this._rv(); } catch (e) { console.warn('Chuẩn giao diện: ' + (e && e.message)); } try { Object.assign(o, this._dli()); } catch (e) { console.warn('Danh sách co giãn: ' + (e && e.message)); } return o; }
+  /* Danh sách co giãn · bản tương tác — quyền theo TỪNG dòng (BSCW): không có quyền → ẩn nút; có quyền nhưng bị chặn → khóa + 1 câu lý do hiện sẵn. */
+  _dli() {
+    const s = this.state, W = window.BSCW;
+    const t = s.dliType || 'post', roleL = s.dliRole || 'Biên tập', nL = s.dliLang || 4, multi = nL > 1;
+    const can = p => (W ? W.can(roleL, p) : roleL === 'Biên tập');
+    const noun = { post: 'bài', product: 'sản phẩm', page: 'trang' }[t];
+    const stL = k => { const u = W && W.ui ? W.ui(k) : null; return (u && u.label) || DLI_ST[k] || k; };
+    const sts = s.dliSt || {}, trash = s.dliTrash || {}, m = s.dliM || null, msgs = s.dliMsg || {};
+    const LANGS = DLI_ALL.slice(0, nL);
+    const base = DLI_D[t].map((p, i) => {
+      const key = t + i, st = sts[key] || p.s, mine = p.au === DLI_ME;
+      const editOk = can('entries.edit.any') || (can('entries.edit.own') && mine);
+      const delOk = can('entries.delete.any') || (can('entries.delete.own') && mine);
+      const lock = p.lock && p.lock !== DLI_ME && editOk ? p.lock : null;
+      return Object.assign({}, p, { key, i, st, mine, editOk, delOk, lock, trashed: !!trash[key] });
+    });
+    const tab = s.dliTab || 'all', q = (s.dliQ || '').trim().toLowerCase(), f = Object.assign({ lang: [], au: [], cat: [] }, s.dliF || {}), sort = s.dliSort || 'upd', selMode = !!s.dliSelMode, sel = s.dliSel || {};
+    const TABS = [['all', 'Tất cả'], ['published', stL('published')], ['pending', stL('pending')], ['draft', stL('draft')], ['scheduled', stL('scheduled')], ['private', stL('private')], ['trash', 'Thùng rác']];
+    const tabN = k => k === 'all' ? base.filter(p => !p.trashed).length : (k === 'trash' ? base.filter(p => p.trashed).length : base.filter(p => !p.trashed && p.st === k).length);
+    const pass = p => (tab === 'trash' ? p.trashed : (!p.trashed && (tab === 'all' || p.st === tab)))
+      && (!q || p.t.toLowerCase().indexOf(q) >= 0 || p.sub.toLowerCase().indexOf(q) >= 0)
+      && (!f.lang.length || !multi || f.lang.every(c => p.langs.indexOf(c) >= 0))
+      && (!f.au.length || f.au.indexOf(p.au) >= 0) && (!f.cat.length || f.cat.indexOf(p.cat) >= 0);
+    const SORTS = [['upd', 'Mới sửa gần đây'], ['az', 'Tên A → Z']].concat(t === 'product' ? [['price', 'Giá thấp → cao']] : []);
+    const priceOf = p => { const u = (p.units || []).find(x => x[0] === 'price'); const n = u ? parseInt(String(u[2]).replace(/\D/g, ''), 10) : NaN; return isNaN(n) ? Infinity : n; };
+    let vis = base.filter(pass);
+    if (sort === 'az') vis = vis.slice().sort((a, b) => a.t.localeCompare(b.t, 'vi'));
+    if (sort === 'price') vis = vis.slice().sort((a, b) => priceOf(a) - priceOf(b));
+    const togF = (g, v) => this.setState(x => { const cur = Object.assign({ lang: [], au: [], cat: [] }, x.dliF || {}); cur[g] = cur[g].indexOf(v) >= 0 ? cur[g].filter(y => y !== v) : cur[g].concat([v]); return { dliF: cur }; });
+    const nF = f.lang.length + f.au.length + f.cat.length;
+    const fGroups = [].concat(multi ? [['lang', 'Có bản ngôn ngữ', LANGS.map(c => [c, DLI_LN[c], base.filter(p => p.langs.indexOf(c) >= 0).length])]] : [])
+      .concat([['au', 'Người tạo', ['Ngọc Lan', 'Trần Minh Anh', 'Hoàng Văn Bảo'].map(n => [n, n, base.filter(p => p.au === n).length]).filter(x => x[2])]])
+      .concat(t === 'page' ? [] : [['cat', 'Chuyên mục', Array.from(new Set(base.map(p => p.cat))).map(c => [c, c, base.filter(p => p.cat === c).length])]]);
+    const say = (w, text, undo) => { this._dliUndo = undo || null; this.setState(x => ({ dliMsg: { [w]: { t: text, undo: !!undo } }, dliM: null })); clearTimeout(this._dliT); if (undo) this._dliT = setTimeout(() => { this._dliUndo = null; this.setState(x => ({ dliMsg: {} })); }, 8000); };
+    const doTrash = (w, rows) => { const ks = rows.map(p => p.key); this.setState(x => { const o = Object.assign({}, x.dliTrash || {}), sl = Object.assign({}, x.dliSel || {}); ks.forEach(k => { o[k] = 1; delete sl[k]; }); return { dliTrash: o, dliSel: sl }; });
+      say(w, rows.length === 1 ? 'Đã chuyển “' + rows[0].t + '” vào Thùng rác.' : 'Đã chuyển ' + rows.length + ' ' + noun + ' vào Thùng rác.', () => this.setState(x => { const o = Object.assign({}, x.dliTrash || {}); ks.forEach(k => delete o[k]); return { dliTrash: o, dliMsg: { [w]: { t: 'Đã hoàn tác — ' + rows.length + ' ' + noun + ' trở lại danh sách.', undo: false } } }; })); };
+    const restore = (w, p) => { this.setState(x => { const o = Object.assign({}, x.dliTrash || {}); delete o[p.key]; return { dliTrash: o }; }); say(w, 'Đã khôi phục “' + p.t + '”.'); };
+    const setSt = (w, p, k) => { this.setState(x => ({ dliSt: Object.assign({}, x.dliSt || {}, { [p.key]: k }) })); say(w, 'Đã chuyển “' + p.t + '” sang “' + stL(k) + '”.'); };
+    const tier = (W && W.tier1 ? W.tier1(roleL) : []).filter(it => it.allowed);
+    const open = (w, i, kind, e) => {
+      if (m && m.w === w && m.i === i && m.kind === kind) { this.setState({ dliM: null }); return; }
+      const b = e && e.currentTarget; if (b) this._dliOp = b;
+      let mx = 8, my = 8;
+      if (b) { const fr = b.closest('[data-dli]'), br = b.getBoundingClientRect(), fb = fr.getBoundingClientRect(); const mh = 280;
+        my = br.bottom - fb.top + 6; if (my + mh > fb.height - 8) my = Math.max(8, br.top - fb.top - mh - 6); mx = Math.max(8, Math.min(br.left - fb.left, fb.width - 308)); }
+      this.setState({ dliM: { w, i, kind, mx: Math.round(mx), my: Math.round(my) } });
+      setTimeout(() => { const el = document.querySelector('[data-dlim] .dli-mi:not([aria-disabled="true"]), [data-dlim] input'); if (el) el.focus(); }, 0);
+    };
+    const close = () => { this.setState({ dliM: null }); const o = this._dliOp; setTimeout(() => { try { if (o && o.isConnected) o.focus(); } catch (e) {} }, 0); };
+    const blank = { sep: false, hd: false, btn: false, chk: false, hasWhy: false, why: '', off: false, cls: 'dli-mi', ic: '', l: '', n: '', on2: false, on: () => {} };
+    const tidy = a => { const o = []; a.forEach(x => { if (x.sep && (!o.length || o[o.length - 1].sep)) return; o.push(x); }); while (o.length && o[o.length - 1].sep) o.pop(); return o.map(x => Object.assign({}, blank, x)); };
+    /* hàng loạt: mỗi nút đếm dòng làm được + lý do dòng bị bỏ qua */
+    const selRows = base.filter(p => sel[p.key] && pass(p));
+    const pubMode = can('entries.publish') ? 'pub' : (can('entries.submit') ? 'sub' : null);
+    const why = {}; const addWhy = (act, r) => { (why[act] = why[act] || {})[r] = (why[act][r] || 0) + 1; };
+    const pubOk = selRows.filter(p => { const r = !p.editOk ? 'của người khác' : (p.lock ? p.lock + ' đang sửa' : (pubMode === 'pub' ? (p.st === 'published' ? 'đã đăng' : true) : (p.st === 'draft' ? true : 'không phải bản nháp'))); if (r !== true) addWhy('pub', r); return r === true; });
+    const trOk = selRows.filter(p => { const r = !p.delOk ? 'của người khác' : (p.lock ? p.lock + ' đang sửa' : true); if (r !== true) addWhy('tr', r); return r === true; });
+    const pubLab = pubMode === 'pub' ? 'Đăng' : 'Gửi duyệt';
+    const whyTxt = (act, lab, n) => { const o = why[act]; if (!o) return ''; const k = Object.keys(o); const tot = k.reduce((a, x) => a + o[x], 0); return '“' + lab + '” bỏ qua ' + tot + ' ' + noun + ': ' + k.map(x => o[x] + ' ' + x).join(', ') + '.'; };
+    const whyAll = [pubMode && tab !== 'trash' ? whyTxt('pub', pubLab) : '', tab !== 'trash' ? whyTxt('tr', 'Chuyển vào Thùng rác') : ''].filter(Boolean).join(' ');
+    const canSel = can('entries.edit.own') || can('entries.edit.any');
+    const frames = [{ w: 390, lab: '390 px · điện thoại' }, { w: 768, lab: '768 px · máy tính bảng' }].map(fr => {
+      const w = fr.w, isO = (i, k) => !!(m && m.w === w && m.i === i && m.kind === k);
+      const rows = vis.map(p => {
+        const live = p.st === 'published', viewL = live ? 'Xem trên website' : 'Xem trước';
+        return { t: p.t, sub: p.sub, s: p.st, sl: stL(p.st), date: p.date[1], dateFull: p.date[2], dateIc: p.date[0] === 's' ? 'ri-time-line' : 'ri-history-line',
+          au: p.au, ini: DLI_INI(p.au), units: (p.units || (p.cat ? [['', 'ri-folder-2-line', p.cat, 'Chuyên mục chính']] : [])).map(u => ({ k: u[0], ic: u[1], t: u[2], tip: u[3] })),
+          hasLangs: multi, langs: LANGS.map(c => ({ c, cls: p.langs.indexOf(c) >= 0 ? 'lc on' : 'lc off' })),
+          langAria: 'Có bản ' + LANGS.filter(c => p.langs.indexOf(c) >= 0).join(', ') + ' — bấm để ' + (p.editOk ? 'sửa hoặc thêm bản' : 'xem bản ngôn ngữ'), langTip: p.editOk ? 'Sửa hoặc thêm bản ngôn ngữ' : 'Xem bản ngôn ngữ',
+          stBtn: !p.trashed && p.editOk && !p.lock && tier.length > 0, stTxt: !(!p.trashed && p.editOk && !p.lock && tier.length > 0),
+          hasLock: !!p.lock || (!p.editOk && !p.trashed), lockIc: p.lock ? 'ri-lock-2-line' : 'ri-eye-line', lockText: p.lock ? p.lock + ' đang sửa' : 'Chỉ xem',
+          canEdit: p.editOk && !p.lock && !p.trashed, editLocked: !!p.lock && !p.trashed, viewMain: !p.editOk || p.trashed,
+          viewIc: live ? 'ri-external-link-line' : 'ri-eye-line', viewAria: viewL + ' ' + p.t, viewTip: live ? 'Mở trên website' : 'Xem trước — khách chưa thấy',
+          stOpen: isO(p.i, 'st'), lgOpen: isO(p.i, 'lg'), mvOpen: isO(p.i, 'mv'),
+          openSt: e => open(w, p.i, 'st', e), openLg: e => open(w, p.i, 'lg', e), openMv: e => open(w, p.i, 'mv', e),
+          selOn: !!sel[p.key], selToggle: () => this.setState(x => { const o = Object.assign({}, x.dliSel || {}); if (o[p.key]) delete o[p.key]; else o[p.key] = 1; return { dliSel: o }; }) };
+      });
+      const visT = w < 400 ? ['all', 'published'] : (w < 600 ? ['all', 'published', 'draft'] : ['all', 'published', 'pending', 'draft', 'scheduled']);
+      const tabs = TABS.filter(x => visT.indexOf(x[0]) >= 0).map(x => ({ l: x[1], n: tabN(x[0]), on: tab === x[0], pick: () => this.setState({ dliTab: x[0], dliM: null, dliSel: {} }) }));
+      const inMore = visT.indexOf(tab) < 0, curT = TABS.find(x => x[0] === tab);
+      let items = [], mTitle = '', mRole = 'menu', isSched = false, doSched = () => {};
+      if (m && m.w === w && m.i < 0) {
+        if (m.kind === 'tab') { mTitle = 'Trạng thái khác'; items = TABS.filter(x => visT.indexOf(x[0]) < 0).map(x => ({ btn: true, cls: 'dli-mi' + (tab === x[0] ? ' cur' : ''), ic: x[0] === 'trash' ? 'ri-delete-bin-line' : (tab === x[0] ? 'ri-check-line' : 'ri-circle-line'), l: x[1] + ' (' + tabN(x[0]) + ')', on: () => this.setState({ dliTab: x[0], dliM: null, dliSel: {} }) })); }
+        if (m.kind === 'sort') { mTitle = 'Sắp xếp'; items = SORTS.map(o => ({ btn: true, cls: 'dli-mi' + (sort === o[0] ? ' cur' : ''), ic: sort === o[0] ? 'ri-check-line' : 'ri-circle-line', l: o[1], on: () => this.setState({ dliSort: o[0], dliM: null }) })); }
+        if (m.kind === 'flt') { mTitle = 'Lọc ' + noun; mRole = 'dialog'; fGroups.forEach((g, gi) => { if (gi) items.push({ sep: true }); items.push({ hd: true, l: g[1] }); g[2].forEach(o => items.push({ chk: true, l: o[1], n: o[2], on2: f[g[0]].indexOf(o[0]) >= 0, on: () => togF(g[0], o[0]) })); }); }
+      }
+      const p = m && m.w === w && m.i >= 0 ? base[m.i] : null;
+      if (p) {
+        if (m.kind === 'st') {
+          mTitle = 'Chuyển trạng thái · ' + p.t;
+          items = tier.map(it => ({ btn: true, l: it.label, ic: it.key === p.st ? 'ri-check-line' : 'ri-circle-line', cls: 'dli-mi' + (it.key === p.st ? ' cur' : ''),
+            on: () => { if (it.key === 'scheduled') { open(w, p.i, 'sched'); return; } setSt(w, p, it.key); } }));
+        } else if (m.kind === 'sched') {
+          mTitle = 'Hẹn giờ đăng · ' + p.t; mRole = 'dialog'; isSched = true;
+          doSched = () => { this.setState(x => ({ dliSt: Object.assign({}, x.dliSt || {}, { [p.key]: 'scheduled' }) })); const v = s.dliWhen || '2026-10-15T08:00'; const mm = v.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); say(w, 'Đã hẹn giờ đăng “' + p.t + '” lúc ' + (mm ? mm[3] + '/' + mm[2] + '/' + mm[1] + ' ' + mm[4] + ':' + mm[5] : v) + '.'); };
+        } else if (m.kind === 'lg') {
+          mTitle = 'Bản ngôn ngữ · ' + p.t;
+          items = LANGS.filter(c => p.langs.indexOf(c) >= 0 || p.editOk).map(c => { const has = p.langs.indexOf(c) >= 0, nm = DLI_LN[c] || c, blocked = !!p.lock;
+            return { btn: true, ic: has ? (p.editOk ? 'ri-pencil-line' : 'ri-eye-line') : 'ri-add-line', l: has ? ((p.editOk ? 'Sửa bản ' : 'Xem bản ') + nm) : ('Thêm bản ' + nm), off: blocked && p.editOk,
+              hasWhy: (blocked && p.editOk) || !has, why: blocked && p.editOk ? p.lock + ' đang sửa — mở lại sau' : 'AI dịch sẵn các ô còn trống — sửa lại rồi Lưu',
+              on: () => { if (blocked && p.editOk) return; say(w, has ? 'Mở bản ' + nm + ' của “' + p.t + '”.' : 'Đã tạo bản ' + nm + ' cho “' + p.t + '” — kiểm lại rồi Lưu.'); } }; });
+        } else {
+          mTitle = 'Thao tác khác · ' + p.t;
+          const live = p.st === 'published';
+          items = p.trashed ? [
+            p.delOk ? { btn: true, ic: 'ri-arrow-go-back-line', l: 'Khôi phục', on: () => restore(w, p) } : null,
+            { sep: true },
+            p.delOk ? { btn: true, cls: 'dli-mi dan', ic: 'ri-delete-bin-2-line', l: 'Xóa vĩnh viễn…', hasWhy: true, why: 'Hỏi xác nhận trước — không khôi phục được', on: () => say(w, 'Mở hộp xác nhận “Xóa vĩnh viễn ' + p.t + '?” — nút Hủy được chọn sẵn.') } : null
+          ] : [
+            { btn: true, ic: live ? 'ri-external-link-line' : 'ri-eye-line', l: live ? 'Xem trên website' : 'Xem trước', on: () => say(w, 'Mở “' + p.t + '” trong thẻ mới.') },
+            { btn: true, ic: 'ri-link', l: 'Sao chép đường dẫn', on: () => say(w, 'Đã sao chép đường dẫn ' + p.sub + '.') },
+            { sep: true },
+            p.editOk ? { btn: true, ic: 'ri-edit-2-line', l: 'Sửa nhanh tiêu đề & đường dẫn', off: !!p.lock, hasWhy: !!p.lock, why: p.lock ? p.lock + ' đang sửa' : '', on: () => { if (!p.lock) say(w, 'Mở panel Sửa nhanh cho “' + p.t + '”.'); } } : null,
+            can('entries.create') ? { btn: true, ic: 'ri-file-copy-line', l: 'Nhân bản', on: () => say(w, 'Đã nhân bản “' + p.t + '” thành bản nháp.') } : null,
+            { sep: true },
+            p.delOk ? { btn: true, cls: 'dli-mi dan', ic: 'ri-delete-bin-line', l: 'Chuyển vào Thùng rác', off: !!p.lock, hasWhy: !!p.lock, why: p.lock ? p.lock + ' đang sửa' : '', on: () => { if (!p.lock) doTrash(w, [p]); } } : null
+          ].filter(Boolean);
+        }
+      }
+      const msg = msgs[w] || null;
+      return Object.assign(fr, { rows, empty: rows.length === 0, tabs, tabMoreOn: inMore, tabMoreL: inMore && curT ? curT[1] : 'Khác', tabMoreN: inMore ? tabN(tab) : 0,
+        tabMoreOpen: isO(-1, 'tab'), openTabMore: e => open(w, -1, 'tab', e), fltOpen: isO(-1, 'flt'), openFlt: e => open(w, -1, 'flt', e), sortOpen: isO(-1, 'sort'), openSort: e => open(w, -1, 'sort', e),
+        sortBtnL: w < 600 ? 'Sắp xếp' : (SORTS.find(o => o[0] === sort) || SORTS[0])[1],
+        open: !!(m && m.w === w), items: tidy(items), mTitle, mRole, isSched, doSched, mx: m ? m.mx : 0, my: m ? m.my : 0, msg: msg ? msg.t : '', hasUndo: !!(msg && msg.undo) });
+    });
+    const allOn = vis.length > 0 && vis.every(p => sel[p.key]);
+    const isTrashTab = tab === 'trash';
+    return {
+      dliFrames: frames, dliClose: close, dliCls: 'dli-L' + (t === 'page' ? ' np' : '') + (selMode ? ' sm' : ''), dliListAria: 'Danh sách ' + noun,
+      dliSearchPh: t === 'product' ? 'Ví dụ: AV-TR-25600' : (t === 'page' ? 'Ví dụ: giới thiệu' : 'Ví dụ: dung sai'), dliSearchAria: 'Tìm ' + noun + (t === 'product' ? ' theo tên hoặc mã' : ' theo tiêu đề hoặc đường dẫn'),
+      dliQ: s.dliQ || '', dliHasQ: !!(s.dliQ || ''), dliOnQ: e => this.setState({ dliQ: e.target.value }), dliClearQ: () => this.setState({ dliQ: '' }),
+      dliHasF: nF > 0, dliNF: nF, dliSortL: (SORTS.find(o => o[0] === sort) || SORTS[0])[1],
+      dliChips: [].concat(f.lang.map(c => ({ l: 'Có bản ' + c, drop: () => togF('lang', c) })), f.au.map(n => ({ l: n, drop: () => togF('au', n) })), f.cat.map(c => ({ l: c, drop: () => togF('cat', c) }))),
+      dliHasChips: nF > 0 || !!q, dliMatch: 'Khớp ' + vis.length + ' / ' + base.length,
+      dliClearF: () => this.setState({ dliF: { lang: [], au: [], cat: [] } }), dliResetAll: () => this.setState({ dliF: { lang: [], au: [], cat: [] }, dliQ: '', dliTab: 'all' }),
+      dliEmptyText: isTrashTab && !q && !nF ? 'Thùng rác trống. ' + noun.charAt(0).toUpperCase() + noun.slice(1) + ' chuyển vào đây được giữ 30 ngày.' : 'Không có ' + noun + ' nào khớp.', dliEmptyBtn: !(isTrashTab && !q && !nF),
+      dliCanSel: canSel, dliSelMode: selMode && canSel, dliSelBtnL: selMode ? 'Đang chọn' : 'Chọn', dliToggleSel: () => this.setState({ dliSelMode: !selMode, dliSel: {} }),
+      dliNSel: selRows.length, dliAllOn: allOn, dliSelAllL: 'Chọn tất cả ' + vis.length, dliSelAll: () => { if (allOn) return; this.setState({ dliSel: vis.reduce((o, p) => Object.assign(o, { [p.key]: 1 }), {}) }); },
+      dliHasPub: !!pubMode && !isTrashTab, dliPubL: pubLab + ' (' + pubOk.length + ')', dliPubIc: pubMode === 'pub' ? 'ri-send-plane-line' : 'ri-inbox-unarchive-line', dliPubOff: pubOk.length === 0,
+      dliBulkPub: () => { if (!pubOk.length) return; const k = pubMode === 'pub' ? 'published' : 'pending'; this.setState(x => { const o = Object.assign({}, x.dliSt || {}); pubOk.forEach(p => { o[p.key] = k; }); return { dliSt: o, dliSel: {} }; }); say(390, 'Đã “' + pubLab + '” ' + pubOk.length + ' ' + noun + '.'); this.setState(x => ({ dliMsg: { 390: x.dliMsg[390], 768: x.dliMsg[390] } })); },
+      dliHasTrash: !isTrashTab && (can('entries.delete.own') || can('entries.delete.any')), dliTrashL: 'Chuyển vào Thùng rác (' + trOk.length + ')', dliTrashOff: trOk.length === 0,
+      dliBulkTrash: () => { if (!trOk.length) return; doTrash(390, trOk); this.setState(x => ({ dliMsg: { 390: x.dliMsg[390], 768: x.dliMsg[390] } })); },
+      dliHasWhy: !!whyAll, dliWhy: whyAll,
+      dliUndo: () => { const u = this._dliUndo; this._dliUndo = null; clearTimeout(this._dliT); if (u) u(); },
+      dliWhen: s.dliWhen || '2026-10-15T08:00', dliOnWhen: e => this.setState({ dliWhen: e.target.value }),
+      dliKey: e => {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return; e.preventDefault();
+        const it = Array.from(e.currentTarget.querySelectorAll('.dli-mi')); const i = it.indexOf(document.activeElement);
+        const n = e.key === 'ArrowDown' ? Math.min(it.length - 1, i + 1) : Math.max(0, i - 1); if (it[n]) it[n].focus();
+      },
+      dliTypeOpts: [['post', 'Bài viết'], ['product', 'Sản phẩm'], ['page', 'Trang']].map(o => ({ l: o[1], on: t === o[0], pick: () => this.setState({ dliType: o[0], dliM: null, dliSel: {}, dliF: { lang: [], au: [], cat: [] }, dliMsg: {} }) })),
+      dliRoleOpts: ['Biên tập', 'Người viết', 'Chỉ xem'].map(r => ({ l: r === 'Biên tập' ? 'Biên tập — mọi ' + noun : (r === 'Người viết' ? 'Người viết — ' + noun + ' của mình' : 'Chỉ xem'), on: roleL === r, pick: () => this.setState({ dliRole: r, dliM: null, dliSel: {}, dliSelMode: false, dliMsg: {} }) })),
+      dliLangOpts: [[4, '4 ngôn ngữ'], [1, '1 ngôn ngữ']].map(o => ({ l: o[1], on: nL === o[0], pick: () => this.setState({ dliLang: o[0], dliM: null }) }))
+    };
+  }
   _rv() {
     const s = this.state, U = window.BSUI, A = window.BSAI, W = window.BSCW, P = window.BSPLAT;
     const nfm = v => Math.round(v).toLocaleString('vi-VN').replace(/,/g, '.');
@@ -2178,9 +2472,21 @@ class Component extends DCLogic {
       copySlug: () => this.copyOr('https://anvinh.vn/' + s.slug, '.sl-full', 'Đã sao chép địa chỉ.') };
 
     /* categories */
-    const cats = s.cats.map(c => ({ id: 'cat-' + c.id, n: c.n, on: c.on, star: c.star, canStar: c.on && !c.star,
+    /* D1-4b · #h-ca: cây thụt lề · đang tìm = phẳng + đường cha · loại khác khóa khi loại hiện tại bật duyệt (Editor.php::keepsGovernedSection) · Thêm chỉ với taxonomies.manage */
+    const _cq = String(s.catQ || '').trim().toLowerCase();
+    const _cfold = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
+    const _cby = {}; s.cats.forEach(c => { _cby[c.id] = c; });
+    const _clvl = (c) => { let n = 0, x = c; while (x && x.p && _cby[x.p] && n < 6) { n++; x = _cby[x.p]; } return n; };
+    const _cpath = (c) => { const a = []; let x = c && c.p ? _cby[c.p] : null; while (x && a.length < 6) { a.unshift(x.n); x = x.p ? _cby[x.p] : null; } return a.length ? a.join(' › ') + ' › ' : ''; };
+    const _cvis = s.cats.filter(c => !_cq || _cfold(c.n).indexOf(_cfold(_cq)) >= 0);
+    const cats = _cvis.map(c => { const lock = !!c.other && s.catGov; return { id: 'cat-' + c.id, n: c.n, on: c.on, star: c.star, canStar: c.on && !c.star && !lock,
+      pad: _cq ? 12 : 12 + _clvl(c) * 20, path: _cq ? _cpath(c) : '', hasPath: !!_cq && !!_cpath(c), full: _cpath(c) + c.n,
+      other: !!c.other, tl: c.other || '', locked: lock, free: !lock, whyId: 'cat-why-' + c.id, moveNote: !!c.other && !s.catGov && c.on,
+      why: 'Chuyên mục này sẽ đưa bài ra khỏi quy trình duyệt của Tin tức — bài Tin tức chỉ chọn được chuyên mục của Tin tức.',
       toggle: () => this.setState(st => { let a = st.cats.map(x => x.id === c.id ? Object.assign({}, x, { on: !x.on, star: x.on ? false : x.star }) : Object.assign({}, x)); if (!a.some(x => x.star)) { const f = a.find(x => x.on); if (f) f.star = true; } return { cats: a }; }),
-      makeStar: () => this.setState(st => ({ cats: st.cats.map(x => Object.assign({}, x, { star: x.id === c.id })) })) }));
+      makeStar: () => this.setState(st => ({ cats: st.cats.map(x => Object.assign({}, x, { star: x.id === c.id })) })) }; });
+    const catCanAdd = !s.catWr, catAddDo = () => { const n = String(this.state.catNew || '').trim(); if (!n) return; const id = 'n' + Date.now(); this.setState(st => ({ cats: st.cats.concat([{ id: id, n: n, s: n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, '-'), on: true, star: !st.cats.some(x => x.star) }]), catAdd: false, catNew: '' })); };
+    const catVals = { catQ: s.catQ, onCatQ: (e) => this.setState({ catQ: e.target.value }), catNone: cats.length === 0, catAsEd: !s.catWr, catAsWr: !!s.catWr, catSetEd: () => this.setState({ catWr: false }), catSetWr: () => this.setState({ catWr: true, catAdd: false }), catGov: !!s.catGov, catGovOff: !s.catGov, catGovOn: () => this.setState({ catGov: true }), catGovOffFn: () => this.setState({ catGov: false }), catCanAdd: catCanAdd, catAddOn: catCanAdd && !!s.catAdd, catAddOff: catCanAdd && !s.catAdd, catAddOpen: () => this.setState({ catAdd: true }), catAddCancel: () => this.setState({ catAdd: false, catNew: '' }), catNew: s.catNew, onCatNew: (e) => this.setState({ catNew: e.target.value }), catAddDo: catAddDo };
     const pc = s.cats.find(c => c.star);
     const catPath = 'anvinh.vn/bang-gia-gia-cong-cnc-2026';
     const catPathCat = 'anvinh.vn/' + (pc ? pc.s : '…') + '/bang-gia-gia-cong-cnc-2026';
@@ -2368,7 +2674,7 @@ class Component extends DCLogic {
       copyDomain: () => this.copyOr('anvinh.vn', '#cp-domain', 'Đã sao chép tên miền.'),
       usage, steps, stepText, timeline: timeline.map(t => Object.assign(t, { ini: t.who === 'Hệ thống' ? '' : t.who })), loadMore: () => this.toast({ tone: 'info', text: 'Đã tải thêm 10 mục cũ hơn.' }),
       ringItems, ringText: nDone + '/' + ringItems.length, ringDash, ringAria: 'Hoàn thiện website: ' + nDone + ' trên ' + ringItems.length + ' việc',
-      cats, catPath, catPathCat, roleNames: roleNames.map(n => ({ n })), perms, permHas: roleNames.length > 0, permNone: roleNames.length === 0,
+      cats, catPath, catPathCat, ...catVals, roleNames: roleNames.map(n => ({ n })), perms, permHas: roleNames.length > 0, permNone: roleNames.length === 0,
       chRows, dirty, isDirty: dirty > 0, dirtyText: dirty + ' thay đổi chưa lưu', saveAll, discardAll,
       qWords, quotaImg,
       supPhone: sup.phone, supTel: 'tel:' + String(sup.phone).replace(/\s/g, ''), supZalo: sup.zalo, supZaloHref: 'https://zalo.me/' + String(sup.zalo).replace(/\s/g, ''), supEmail: sup.email, supMail: 'mailto:' + sup.email,

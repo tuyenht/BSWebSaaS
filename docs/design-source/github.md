@@ -2,13 +2,62 @@ repo: tuyenht/BSWebSaaS
 branch: main
 
 ## Last sync
-date: 2026-10-06T09:46:29Z
+date: 2026-10-07T00:46:07Z
+
+### Updated in this project
+- D2-5: `Tổng quan.dc.html` theo quyền — repo chỉ có `Admin/Livewire/Dashboard.php` (tiêu đề + view); nhóm / quyền `PermissionRegistry.php`, giới hạn dung lượng `FeatureRegistry` (`media.storage_mb`); số đếm Chờ backend.
+
+## Sync history
+
+### 2026-10-07T00:13:47Z
+- D2-4: chuông Shell + `Thông báo.dc.html` + mục Thông báo của `Tài khoản của tôi.dc.html` theo `Notifications/Registry/NotificationKinds.php` (11 loại), `Models/SiteNotification.php` (`summary()` `.change`), `Support/{NotificationFeed,NotificationPreferences,Notify}.php`, `Console/PruneSiteNotifications.php` (90 ngày), câu `lang/vi.json:860–884` → `BSCW.notices`.
+
+## Sync history
+
+### 2026-10-07T00:02:48Z
+- D2-2: hộp Mời + tab Lời mời trong `Thành viên.dc.html` theo `Rbac/Actions/{InviteMember,AcceptInvitation,RevokeInvitation}.php`, `create_invitations_tables.php`, câu `lang/vi.json:812–842` (`rbac.invitation.*`, 10 mã lỗi).
+
+## Sync history
+
+### (trước)
+date: 2026-10-06T23:29:47Z
+
+### Updated in this project
+- D1-4d: thay đổi chờ của bài đang công khai trong `Page Editor - Options.dc.html` + thẻ thay đổi ở `Hộp duyệt.dc.html` theo `Cms/Actions/{SaveEntryDraft,ApplyEntryDraftTransition,ApplyEntryDraft,DiscardEntryDraft}.php`, `Models/EntryDraft.php` (`version()`), `Exceptions/EntryDraftRejectedException.php` (9 REASONS) → `lang/vi.json:763–771` vào `BSCW.CHANGE_ERR`.
+
+## Sync history
+
+### 2026-10-06T22:56:36Z
+
+### Updated in this project
+- D2-1: `Nhóm quyền.dc.html` + `Thành viên.dc.html` theo `Rbac/Support/{CustomRoleRules,RoleHierarchyGuard}.php`, `RoleChangeRejectedException.php` (6 mã), `PermissionRegistry.php:71–84` (`IMPLIES` → `BSCW.IMPLIES`), `Users/Index.php`.
+
+## Sync history
+
+### 2026-10-06T22:06:46Z
+
+### Updated in this project
+- D1-7: `Khách liên hệ.dc.html` + `Biểu mẫu.dc.html` theo `Admin/Livewire/Forms/{Inbox,Detail}.php`, `create_forms_tables.php` (6 loại ô, trạng thái, is_spam, cascade), `Forms/Actions/EnsureContactForm.php` (ô consent).
+
+## Sync history
+
+### 2026-10-06T18:48:46Z
+
+### Updated in this project
+- D2-3: `Tài khoản của tôi.dc.html` theo `Admin/Livewire/Settings.php` (tên ≤120, đổi mật khẩu, 2 lớp QR → mã → mã khôi phục, tắt 2 lớp, gỡ liên kết, khóa khi đăng nhập hỗ trợ), `AppServiceProvider.php:40` (≥10 ký tự, không bị lộ), `lang/vi.json` 97/116/212/553.
+
+### 2026-10-06T16:51:37Z
+
+### Updated in this project
+- D1-6: `Thư viện ảnh & tệp.dc.html` theo `Media/Library.php`, `UploadMedia.php` (MIME_EXT, MAX_KB), `MediaRejectedException.php` (16 REASONS + KEYS), `config/media.php` (trash 15 ngày), `Media.php` (ALT_MAX_LENGTH 188); câu lỗi `lang/*.json:345–361` viết lại đời thường trong `MediaPicker.dc.html`.
+
+### 2026-10-06T09:46:29Z
 
 ### Updated in this project
 - D0-4b: nhóm quyền nền tảng (`PermissionRegistry.php` platformRoles) vào `content-workflow.js`; tính năng gói (`FeatureRegistry.php`) + module (`ModuleCatalog.php`) vào `ai-quota.js`; Admin Shell ẩn/khóa menu theo Tweak.
 - Registry màn `shell-screens.js` + điều hướng `bs-goto` / hash `#/<mặt>/<màn>`.
 
-## Sync history
+## Sync history (cũ)
 
 ### 2026-10-06T07:46:22Z
 
@@ -69,6 +118,9 @@ date: 2026-10-06T09:46:29Z
 | Admin Shell — ẩn/khóa theo nhóm quyền · gói · module (Tweaks D0-4b) | `app/Modules/Rbac/Registry/PermissionRegistry.php`, `app/Modules/Tenancy/Registry/FeatureRegistry.php`, `app/Modules/Tenancy/Registry/ModuleCatalog.php` |
 | Trạng thái nội dung (mọi màn) | `database/migrations/2000_01_01_000000_create_content_tables.php`, `database/migrations/2012_01_01_000000_expand_entry_status_and_add_view_count.php` |
 | Thành viên (+ lời mời) | `app/Modules/Admin/Livewire/Users/Index.php`, `app/Modules/Admin/Livewire/AcceptInvitation.php` |
+| Tài khoản của tôi | `app/Modules/Admin/Livewire/Settings.php`, `app/Providers/AppServiceProvider.php`, `app/Modules/Identity/Http/Middleware/EnsureTwoFactorEnabled.php` |
+| Thông báo (chuông · trang · Tùy chọn) | `app/Modules/Notifications/Registry/NotificationKinds.php`, `app/Modules/Notifications/Support/NotificationFeed.php`, `app/Modules/Notifications/Support/NotificationPreferences.php`, `app/Modules/Notifications/Models/SiteNotification.php`, `lang/vi.json` (`notifications.*`) |
+| Tổng quan (mặt Website) | `app/Modules/Admin/Livewire/Dashboard.php`, `app/Modules/Rbac/Registry/PermissionRegistry.php`, `app/Modules/Tenancy/Registry/FeatureRegistry.php` |
 | Thư viện ảnh & tệp · Trình chọn ảnh | `app/Modules/Admin/Livewire/Media/Library.php` |
 | Khách liên hệ (hộp thư · chi tiết) | `app/Modules/Admin/Livewire/Forms/Inbox.php`, `app/Modules/Admin/Livewire/Forms/Detail.php` |
 | Sản phẩm (danh sách · trình sửa) | `app/Modules/Admin/Livewire/Catalog/Index.php`, `app/Modules/Admin/Livewire/Catalog/Editor.php` |

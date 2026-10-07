@@ -80,22 +80,21 @@ File liên quan: `Page Editor - Options.dc.html`, `Quản lý Bài viết - Opti
 
 ## CHƯA LÀM
 - **Writer bước "Kiểm định" phải chấm theo `BSSEO.audit`** (hiện vẫn dùng bộ tiêu chí riêng), và nút
-  "Tự chỉnh N chỗ" chỉ sửa mục còn đỏ theo đúng danh sách đó.
-- **Trang: ô mô tả ảnh đại diện** — `imgAlt` mới sửa được qua nút "Tự sửa" trong bảng kiểm, chưa có ô nhập
-  ở thẻ ảnh đại diện (Bài viết đã có).
-- Chốt: nhóm 1 còn đỏ thì **chặn nút Đăng** hay chỉ cảnh báo như hiện nay.
-- **Kiểm lại luồng "Việc lớn → Trợ lý viết" bằng tay** (tôi đã sửa 6 lỗi ghép nối, xem mục 0c) — đặc biệt
+  "Tự chỉnh N chỗ" chỉ sửa mục còn đỏ theo đúng danh sách đó. → chuyển TODO.md "· bộ AI (sau core v1)" (D1-4c).
+- ~~**Trang: ô mô tả ảnh đại diện**~~ → ĐÃ ĐÓNG D1-4c (07/10): ô "Mô tả ảnh" (`featuredAlt`, image-field của D1-4b) có cho cả Trang.
+- ~~Chốt: nhóm 1 còn đỏ thì **chặn nút Đăng** hay chỉ cảnh báo~~ → ĐÃ ĐÓNG D1-4c: chỉ cảnh báo (dải vàng "Chưa đạt N mục SEO bắt buộc — vẫn đăng được" trong thẻ Đăng), không chặn — người mới không bị kẹt.
+- **Kiểm lại luồng "Việc lớn → Trợ lý viết" bằng tay** (→ TODO.md "· bộ AI (sau core v1)", D1-4c) (tôi đã sửa 6 lỗi ghép nối, xem mục 0c) — đặc biệt
   bước cuối "Chèn N phần": phải thấy tiêu đề/mô tả/nội dung đổi thật, và hộp hỏi trước khi ghi đè.
-- Audit "Nâng cấp bài này" đã áp 8 điểm (xem cuối file). Còn 2 điểm chưa làm: **xem trước phần sẽ thêm
+- (→ TODO.md "· bộ AI (sau core v1)", D1-4c) Audit "Nâng cấp bài này" đã áp 8 điểm (xem cuối file). Còn 2 điểm chưa làm: **xem trước phần sẽ thêm
   trước khi chèn** (nhóm "Thêm phần còn thiếu") và **tiến trình từng việc khi chạy** (hiện chạy 1 nhịp).
-- **Phân vai hai công cụ AI cho thân bài** (đã chốt hướng, chưa dựng):
+- ~~**Phân vai hai công cụ AI cho thân bài**~~ → ĐÃ ĐÓNG ở khuôn D1-4c: `openBodyAi()` là cửa duy nhất (có chữ → Nâng cấp nội dung; trống → AI Writer Panel v2); việc "Viết lại toàn bài" trong hộp Nâng cấp mở AI Writer với nội dung hiện tại làm nguyên liệu (`source-text/heads/words`). Bài viết dùng chung khuôn từ D1-4b nên cũng có Writer. Hướng đã chốt:
   · `Nâng cấp nội dung.dc.html` = cửa duy nhất khi bài ĐÃ có chữ (việc nhỏ, checkbox, chi phí, giữ/hoàn tác).
   · `AI Writer Panel v2.dc.html` = xưởng viết khi bài TRỐNG, và khi chọn việc lớn "Viết lại toàn bài"
     (mở Writer với nội dung hiện tại làm nguyên liệu thay vì chạy im lặng).
   · Bài trống → nút "Viết bài bằng AI" mở thẳng Writer (không hiện 3 việc nhỏ).
   · Cả Bài viết và Page Editor dùng đúng cặp này; Bài viết hiện CHƯA mount Writer.
 - **Page Editor mount hộp `Nâng cấp nội dung.dc.html`**: ĐÃ XONG ở lượt này (xem mục 0-seo) — panel
-  "AI giúp gì cho bài này?" cũ vẫn còn, cần chốt bỏ hay giữ song song.
+  "AI giúp gì cho bài này?" cũ vẫn còn, cần chốt bỏ hay giữ song song. → ĐÃ ĐÓNG D1-4c: panel cũ không còn cửa mở; `openBodyAi()` là cửa duy nhất.
 - **Áp `content-ui.js` vào 4 màn** (Bài viết, Trang, thêm/sửa bài, thêm/sửa trang): thay style lặp bằng
   BSUI.* để "sửa một chỗ, đổi mọi chỗ"; kèm trang chuẩn `Chuẩn giao diện nội dung.dc.html` (specimen:
   token + pattern + quyết định lấy ưu điểm của từng màn) — CHƯA dựng.
@@ -105,7 +104,7 @@ File liên quan: `Page Editor - Options.dc.html`, `Quản lý Bài viết - Opti
 - Chuẩn hoá cặp theo các câu trả lời (3)–(10).
 - Audit responsive cho các khối mới (checklist SEO, banner blockers, danh sách trạng thái/bước duyệt,
   select vai trò/quy trình ở Page Editor, khung soạn có max-height).
-- Việc treo cũ: kiểm các lời gọi AI viết tiêu đề/mô tả đã dùng `aiSeoKw()` (từ khoá) làm nguồn chưa.
+- ~~Việc treo cũ: kiểm các lời gọi AI viết tiêu đề/mô tả đã dùng `aiSeoKw()`~~ → ĐÃ ĐÓNG D1-4c: `aiMakeField`, `aiMake`, `aiBest`, gợi ý tiêu đề/mô tả đều lấy `aiSeoKw()` (từ khóa chính, thiếu thì suy từ tiêu đề).
 
 ## Bẫy đã mắc — đừng lặp lại
 - **Sửa file `.dc.html` tên tiếng Việt bằng regex**: `run_script` không mở được đường dẫn có dấu →
