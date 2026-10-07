@@ -5,7 +5,7 @@ Sửa thêm trên bản D1-1 đã xuất zip, trong cùng chat. Sửa xong thì 
 Owner xem `Chuyên mục.dc.html` và chưa ưng ở 3 điểm:
 - chưa có tìm kiếm và bộ lọc;
 - thao tác hay dùng phải thấy và bấm được ngay;
-- chỉ thao tác nâng cao mới vào menu "⋯ Khác".
+- chỉ thao tác nâng cao mới vào menu "⋯".
 
 Owner cũng yêu cầu rà kỹ từng nút theo 12 tiêu chí và Chất lượng hoàn thiện A–E, kể cả quyền và quy trình duyệt. Claude Code đã dựng bản zip 23:44 trong Chromium, đối chiếu với repo và với `Trình đơn.dc.html` (màn cây đã chốt), và cho một người rà độc lập phản biện. Mỗi quyết định dưới đây đã qua phản biện; phần "vì" giải thích lý do để không đổi ngược lại.
 
@@ -55,11 +55,11 @@ Cách sửa:
    - **Nút "Sửa"** có chữ, HIỆN SẴN.
    - **Nút "+ Mục con"** có chữ, thay nút "+" chỉ có biểu tượng.
      - Mục cấp 3 không có nút này, chỗ trống giữ nguyên để cột thẳng hàng.
-     - Lý do nằm ở mục khóa trong "⋯ Khác", vì 1 nút khóa lặp trên mọi dòng cấp 3 là nhiễu.
-   - Nút "⋯ Khác".
-   - Khung 600–719px: "+ Mục con" chuyển lên đầu menu "⋯ Khác", "Sửa" vẫn hiện.
-   - **Dòng gốc** (Tin tức, Dịch vụ…): có Sửa, + Mục con, "N bài", "⋯ Khác"; không có tay cầm.
-3. **Menu "⋯ Khác"** gồm các nhóm cách nhau bằng vạch ngăn. Trên máy tính menu không lặp lại nút đã hiện sẵn trên dòng:
+     - Lý do nằm ở mục khóa trong "⋯", vì 1 nút khóa lặp trên mọi dòng cấp 3 là nhiễu.
+   - Nút "⋯".
+   - Khung 600–719px: "+ Mục con" chuyển lên đầu menu "⋯", "Sửa" vẫn hiện.
+   - **Dòng gốc** (Tin tức, Dịch vụ…): có Sửa, + Mục con, "N bài", "⋯"; không có tay cầm.
+3. **Menu "⋯"** gồm các nhóm cách nhau bằng vạch ngăn. Trên máy tính menu không lặp lại nút đã hiện sẵn trên dòng:
    - Xem trên website (mở tab mới) · Sao chép đường dẫn.
      - Sao chép xong có toast "Đã sao chép". Không chép được thì hiện ô chứa địa chỉ đã bôi đen sẵn.
      - Vì chủ shop hay dán link chuyên mục vào Zalo / Facebook.
@@ -79,10 +79,10 @@ Cách sửa:
      - Hộp gộp không có lựa chọn "Xóa theo".
    - Xóa…: luôn cuối, chữ và biểu tượng màu đỏ (token danger, đo tương phản ≥ 4,5:1 cả sáng lẫn tối).
    - **Chuyên mục gốc:** menu chỉ có nhóm Xem + 1 dòng chữ "Chuyên mục gốc của Tin tức: luôn ở cấp 1, không chuyển, gộp hay xóa được — đổi tên thì bấm Sửa." Bỏ 6 mục khóa đang hiện, vì lặp cùng một lý do 6 lần.
-   - **Điện thoại:** "⋯ Khác" mở bảng chọn trượt từ đáy, tiêu đề là tên chuyên mục. Thứ tự: + Mục con · Xem 24 bài | Xem trên website · Sao chép đường dẫn | Chuyển lên · Chuyển xuống · Chuyển đến… | Gộp… | Xóa…. Với gốc: + Mục con · Xem bài | nhóm Xem | dòng lý do.
+   - **Điện thoại:** "⋯" mở bảng chọn trượt từ đáy, tiêu đề là tên chuyên mục. Thứ tự: + Mục con · Xem 24 bài | Xem trên website · Sao chép đường dẫn | Chuyển lên · Chuyển xuống · Chuyển đến… | Gộp… | Xóa…. Với gốc: + Mục con · Xem bài | nhóm Xem | dòng lý do.
 4. **Dòng trên điện thoại** (khung < 600px):
    - Tên + 1 dòng phụ "/kien-thuc · 24 bài". Dòng phụ chỉ thêm "· Thiếu JA" khi còn thiếu bản dịch, để không bị gãy.
-   - Nút chữ "Sửa" 44px HIỆN SẴN + nút "⋯ Khác" 44px.
+   - Nút chữ "Sửa" 44px HIỆN SẴN + nút "⋯" 44px.
    - Chạm vào chỗ trống của dòng cũng mở Sửa. Đo bản 23:44: chỉ chữ tên 21px bấm được, chạm chỗ trống của dòng không làm gì.
 5. **Đổi chỗ, đổi cha, gộp và xóa: chỉ hỏi khi có hệ quả thật, và nói bằng số.**
    - **Đổi thứ tự trong cùng cha** (kéo, Chuyển lên/xuống, Alt+↑/↓): làm ngay, không hỏi.
@@ -125,7 +125,7 @@ Cách sửa:
      - Mọi nút ghi (Thêm, Lưu, + Mục con, Chuyển…, Gộp, Xóa, kéo) khóa, kèm câu repo `admin.support.locked`.
    - Sản phẩm khi module tắt theo gói: dùng trạng thái khóa theo gói đã có.
 7. **Panel Sửa / Thêm** (giữ bố cục):
-   - Thanh ngôn ngữ đang cắt chữ "Tiếng" ở panel 480px: hiện đủ tên, hoặc mã + chấm. Không cắt chữ ở 360 và ở cỡ chữ Rất lớn (CLAUDE.md §4: không bao giờ để pill bị cắt nửa chữ).
+   - Thanh ngôn ngữ đang cắt chữ "Tiếng" ở panel 480px: hiện đủ tên, hoặc mã + chấm. Không cắt chữ ở 360 và ở cỡ chữ Cực lớn (CLAUDE.md §4: không bao giờ để pill bị cắt nửa chữ).
    - Hộp vàng "Đổi đường dẫn… tự tạo chuyển hướng" chỉ hiện khi ô Đường dẫn ĐÃ khác bản đã lưu.
    - Khi Sửa, đổi tên KHÔNG tự đổi đường dẫn; muốn đổi thì bấm "Tạo lại từ tên".
    - Ô "Chuyên mục cha":
@@ -172,7 +172,7 @@ Cách sửa:
    - Khi đang tìm hoặc lọc, kéo thả tắt như luật đang có, và hiện câu lý do.
 11. **README** thêm mục "D1-1s", gồm:
     - bảng quyết định: từng nút / chức năng · chọn gì · phương án bỏ · lý do;
-    - bảng hành động 3 cột: hiện sẵn · trong "⋯ Khác" · điện thoại;
+    - bảng hành động 3 cột: hiện sẵn · trong "⋯" · điện thoại;
     - bảng quyền: có quyền · không quyền · phiên hỗ trợ · khóa theo gói;
     - kết quả 12 tiêu chí và A–E kèm số đo;
     - Việc cho backend: lọc bài theo từng chuyên mục; xem trước số bài đổi địa chỉ và số bài chưa đăng khi chuyển; kiểm quyền 2 loại khi chuyển bài; mã `workflow_governed` chặn bài rời loại đang bật quy trình duyệt.
@@ -180,13 +180,13 @@ Cách sửa:
 
 Xong khi:
 (1) Với 1 chuyên mục, ô tìm và chip vẫn hiện. Tìm "khuyen mai" ra "Khuyến mãi" có đường cha (không có gốc). Chip "Chưa có bài" ra đúng số. Khi đang lọc: có dải "Đang xem N / M… · Bỏ lọc", tay cầm ẩn, Chuyển lên khóa kèm lý do, "Chuyển đến…" vẫn dùng được.
-(2) 1280: mỗi dòng không phải gốc thấy "Sửa", "+ Mục con" (trừ cấp 3), "N bài" (0 = "Chưa có bài"), trạng thái ngôn ngữ bằng chữ, "⋯ Khác". Menu đúng nhóm, đúng thứ tự, "Xóa…" cuối màu đỏ. Menu gốc chỉ có nhóm Xem + 1 dòng lý do. Tweak 8 ngôn ngữ: dòng không tràn, không cắt chữ.
-(3) 390: dòng = tên + dòng phụ không gãy + "Sửa" + "⋯ Khác"; chạm chỗ trống của dòng mở Sửa; "⋯ Khác" là bảng trượt từ đáy. Quét vùng bấm ≥ 44px ở 390 VÀ ở 768 cảm ứng = 0 lỗi.
+(2) 1280: mỗi dòng không phải gốc thấy "Sửa", "+ Mục con" (trừ cấp 3), "N bài" (0 = "Chưa có bài"), trạng thái ngôn ngữ bằng chữ, "⋯". Menu đúng nhóm, đúng thứ tự, "Xóa…" cuối màu đỏ. Menu gốc chỉ có nhóm Xem + 1 dòng lý do. Tweak 8 ngôn ngữ: dòng không tràn, không cắt chữ.
+(3) 390: dòng = tên + dòng phụ không gãy + "Sửa" + "⋯"; chạm chỗ trống của dòng mở Sửa; "⋯" là bảng trượt từ đáy. Quét vùng bấm ≥ 44px ở 390 VÀ ở 768 cảm ứng = 0 lỗi.
 (4) "Chuyển đến…" trên Tin tức không có "Cấp ngoài cùng"; trên Sản phẩm thì có. Alt+← ở cấp 2 báo "Đã ở cấp ngoài cùng của Tin tức".
 (5) Tweak đường dẫn phẳng: đổi cha không hỏi, có toast "Hoàn tác". Tweak đường dẫn có chuyên mục: hỏi kèm số bài đổi địa chỉ. Tweak Tin tức BẬT quy trình duyệt: "Chuyển đến…" / Gộp / Xóa → mọi chỗ của Dịch vụ khóa kèm lý do, "Bỏ gắn" khóa, kéo sang loại khác bị từ chối. Tweak Tin tức TẮT quy trình: chuyển sang Dịch vụ được, hộp xác nhận đủ các dòng ở mục 5 kèm số, xong có toast "Mở Chuyên mục Dịch vụ".
 (6) Tweak "Người viết": trạng thái không có quyền. Phiên hỗ trợ: mọi nút ghi khóa kèm câu khóa, ô tìm vẫn gõ được. Lưu hỏng: chữ đã gõ còn nguyên, có "Thử lại". `taxonomy_invalid`: có "Tải lại".
-(7) Bàn phím: Esc đóng panel và focus về đúng nút. Alt+↑ đổi chỗ. Panel có thay đổi chưa lưu mà bấm Esc thì có câu hỏi "Bỏ thay đổi chưa lưu?". Thanh ngôn ngữ trong panel không cắt chữ ở 360 và ở cỡ chữ Rất lớn.
-(8) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Rất lớn, đứng riêng và trong Shell, đạt cả 3 điều:
+(7) Bàn phím: Esc đóng panel và focus về đúng nút. Alt+↑ đổi chỗ. Panel có thay đổi chưa lưu mà bấm Esc thì có câu hỏi "Bỏ thay đổi chưa lưu?". Thanh ngôn ngữ trong panel không cắt chữ ở 360 và ở cỡ chữ Cực lớn.
+(8) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Cực lớn, đứng riêng và trong Shell, đạt cả 3 điều:
    - `scrollWidth = clientWidth`;
    - tương phản chữ ≥ 4,5:1, phần giao diện và focus ≥ 3:1, ở cả sáng lẫn tối;
    - mở lại tệp và Admin Shell: console 0 lỗi.

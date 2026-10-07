@@ -16,7 +16,7 @@ Claude Code đã dựng bản 01:06 bằng Chromium ở khổ 1280 và 390, so v
 - Panel Chi tiết chỉ có 1 thanh cuộn ở phần giữa, và trang phía sau bị khóa cuộn.
 - Ô "Địa chỉ tệp" ra đúng `https://files.<tên miền>/…`.
 - "Di chuyển sang thư mục…" có đích "Chưa phân loại". Việc này thay cho "Đưa ra ngoài thư mục" của repo.
-- Phân quyền: `media.view` chỉ xem; `media.upload` mới có tab tải lên; `media.delete` mới có ô chọn để xóa và "⋯ Khác" của thư mục.
+- Phân quyền: `media.view` chỉ xem; `media.upload` mới có tab tải lên; `media.delete` mới có ô chọn để xóa và "⋯" của thư mục.
 - Các phần khác của bản mới:
   - thanh dung lượng + "Dọn Thùng rác";
   - cột thư mục có số đếm;
@@ -53,7 +53,7 @@ Xong khi:
 (2) Tweak "Nhiều ảnh": chân lưới có "Ảnh / trang 24 · 48 · 96" + số trang. Đổi ô chọn thì về trang 1. Ở 390, chân trang không tràn và vùng bấm ≥ 44px.
 (3) Chế độ Danh sách có cột Loại.
 (4) Mọi phần trong danh sách ĐÃ ĐẠT vẫn còn y như bản 01:06. Ở 390 vẫn đủ 3 ô chọn riêng, không có nút "Lọc".
-(5) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Rất lớn, đứng riêng và trong Shell (`#/site/media`), đạt cả 3 điều:
+(5) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Cực lớn, đứng riêng và trong Shell (`#/site/media`), đạt cả 3 điều:
    - `scrollWidth = clientWidth`;
    - tương phản ≥ 4,5:1 cả sáng lẫn tối;
    - mở lại tệp và Admin Shell: console 0 lỗi.
