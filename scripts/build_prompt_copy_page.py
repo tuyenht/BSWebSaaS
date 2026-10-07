@@ -32,12 +32,15 @@ for f in files:
     pid, name = title.split(' · ', 1)
     prompts.append({'id': pid, 'name': name, 'file': f.name, 'body': body.strip()})
 
-# Corrective prompts written after auditing a turn's export. They go into the SAME chat as that
-# turn, which already holds the shared context, so they are copied without the preamble.
+# Corrective prompts written after auditing a turn's export. Most go into the SAME chat as that
+# turn, which already holds the shared context, so they are copied without the preamble. One marked
+# "(chat mới)" carries the preamble itself, because the turn's old chat grew too long.
 fixes = []
 for f in sorted((SRC / 'fixes').glob('*.md')):
     title, body = f.read_text(encoding='utf-8').split('\n', 1)
     pid, name = title.lstrip('# ').strip().split(' · ', 1)
+    if name.endswith('(chat mới)'):
+        assert body.split(MARK, 1)[0] + MARK == preamble, f'preamble drift in fixes/{f.name}'
     fixes.append({'id': pid, 'name': name, 'file': 'fixes/' + f.name, 'body': body.strip()})
 
 # Corrective prompts the owner has already run, with the day they ran it. Their cards fold away
@@ -387,6 +390,7 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
       <li><b>Mở một cửa sổ chat MỚI</b> trong project Claude Design BSWebSaaS, dán và gửi. Không gộp 2 lượt vào 1 cửa sổ.</li>
       <li><b>Xong thì tích ô "Xong"</b> và gửi bản export cho Claude Code để đối chiếu với code trước khi build.</li>
     </ol>
+    <p class="hint">Bản 3.37 (07/10 20:xx) — 7 PROMPT SỬA CHẠY Ở CHAT MỚI: chat cũ của D1-1, D1-6, D2-5, D1-2, D1-3, D2-1, D3-1 đã quá dài (186k–388k), designbot dừng đúng luật. Mỗi prompt sửa nay tự đủ: có bối cảnh chung, sửa trên tệp hiện có sau D0-7 (không theo trí nhớ chat cũ), giữ cỡ chữ <code>calc(… + var(--fsp))</code>. Thứ tự không đổi: 7 prompt sửa → D0-8 → D3-2. Không bấm "Continue here" ở chat cũ.</p>
     <p class="hint">Bản 3.36 (07/10 17:xx) — OWNER CHỐT BẢN MẪU MÀN TIN TỨC (đầu màn, Hướng dẫn, danh sách): lượt mới <b>D0-8</b> 3 phần, chạy sau D0-7 và 7 prompt sửa, trước D3-2. Phần 1 làm đúng bản mẫu (repo <code>reference/d0-8/</code>: guide.js + 2 tệp diff; đã qua 1 vòng phản biện Opus): một cụm [Hướng dẫn] + nút chính bên phải tiêu đề, điện thoại "Hướng dẫn" là nút tròn (?), thiếu chỗ thì cả cụm xuống hàng; bỏ nút "?" trên thanh đầu trang; bỏ 32px trống thừa trên danh sách; hướng dẫn theo nhóm quyền + chế độ duyệt, dải quyền tự ẩn; điện thoại / máy tính bảng dọc: Chọn tất cả + trạng thái không khung, tìm + Lọc + Sắp xếp 1 hàng, thẻ "Sửa" + ⋮ cùng hàng trạng thái, thẻ tới 899px; nhãn điều kiện lọc + sắp xếp; tab tự co, "Khác" ngay sau tab cuối. Phần 2 áp cho mọi màn danh sách, phần 3 viết hướng dẫn cho từng màn.</p>
     <p class="hint">Bản 3.35 (07/10 13:xx) — OWNER CHỐT SAU BẢN MẪU (Claude Code dựng thử màn Tin tức + Tài khoản trên Chromium, 8 khổ × 4 mức đạt): cỡ chữ mặc định <b>14px</b> (chú thích, diễn giải 12–13px, không dưới 12px), mỗi người tự chọn <b>Lớn · Rất lớn · Cực lớn</b> (16 / 18 / 20px), lưu theo tài khoản; nút <b>⋮ không chữ</b> (chú thích khi trỏ chuột + tên đọc được, trên điện thoại menu có dòng tiêu đề). <b>D0-7</b> viết lại theo đúng bản mẫu (tệp đổi tên <code>D0-7-co-chu-theo-nguoi-dung.md</code>); bối cảnh chung cả 31 prompt và các prompt sửa đổi theo ("Vừa" + "Cực lớn", bỏ "⋯ Khác", danh sách biểu tượng được đứng riêng). Runbook: D0-7 3 phần.</p>
     <p class="hint">Bản 3.34 (07/10 11:xx) — CHUẨN THIẾT KẾ MỚI (owner 07/10) + CỠ CHỮ THEO NGƯỜI, qua 1 vòng phản biện Opus: lượt mới <b>D0-7</b> 3 phần (cỡ chữ 4 mức Nhỏ · Vừa mặc định 16/14px · Lớn · Rất lớn, lưu theo tài khoản, mặc định theo website; bỏ cách phóng <code>zoom</code> cũ; chữ to không bị cắt; vùng bấm ≥ 44px cả máy tính; "⋯ Khác"; phần 2–3 cho mọi chữ theo cỡ — hiện chỉ 481/≈2.900 khai báo đi theo). Thanh đầu trang chờ owner chốt riêng. Prompt sửa <b>D3-1s</b> (Hiện giá tham khảo chỉ ở Giới thiệu, giữ nhóm Hiển thị, Cỡ chữ = mặc định website, tên pháp lý nền tảng đọc từ cấu hình). Bối cảnh chung cả 31 prompt: đo từ 320px, cỡ Vừa ≥ 16/14px, icon có chữ, "⋯ Khác". Runbook: D3-1 → D0-7 → 7 prompt sửa → D3-2.</p>
