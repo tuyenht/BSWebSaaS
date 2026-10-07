@@ -106,6 +106,34 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
 @media (max-width:1023px),(max-height:480px){[data-brand-scope]{--topbar-h:56px;}}
 .pop{--focus-ring-color:var(--brand-ink,var(--brand));--focus-inner:var(--color-surface);max-width:calc(100vw - 16px);max-height:calc(100vh - var(--topbar-h,70px) - 16px);max-height:calc(100dvh - var(--topbar-h,70px) - 16px);overflow-y:auto!important;overscroll-behavior:contain;}
 @media (max-width:519px){.pop{position:fixed!important;left:8px!important;right:8px!important;width:auto!important;top:calc(var(--topbar-h,70px) + 8px)!important;}}
+.ntf-badge{position:absolute;top:6px;right:3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--color-admin-danger-solid,#d0472b);color:var(--color-on-solid,#fff);font-size:12px;font-weight:700;line-height:1;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid transparent;box-sizing:border-box;}
+.pop.ntf-pop{display:flex;flex-direction:column;overflow:hidden!important;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;box-shadow:0 12px 34px rgba(30,32,37,.22);font-size:14px;line-height:1.5;}
+.ntf-h{display:flex;align-items:center;gap:8px;padding:8px 8px 8px 16px;border-bottom:1px solid var(--color-border,#e9ecf4);flex:0 0 auto;}
+.ntf-ht{font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);margin-right:auto;}
+.ntf-tools{display:flex;justify-content:flex-end;padding:4px 8px;border-bottom:1px solid var(--color-border,#e9ecf4);flex:0 0 auto;}
+.ntf-list{flex:1 1 auto;min-height:0;max-height:440px;overflow-y:auto;overscroll-behavior:contain;}
+.ntf-day{padding:6px 16px;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);background:var(--color-surface-muted,#f8f9fb);border-top:1px solid var(--color-border,#e9ecf4);}
+.ntf-day:first-child{border-top:0;}
+.ntf-it{display:flex;gap:12px;width:100%;padding:12px 16px;border:0;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff);font:inherit;text-align:left;cursor:pointer;color:inherit;}
+.ntf-day+.ntf-it{border-top:0;}
+.ntf-it[data-unread="1"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,var(--color-surface,#fff));}
+.ntf-it:hover{background:var(--color-surface-hover,#f1f3f9);}
+.ntf-ic{width:34px;height:34px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;font-size:17px;}
+.ntf-ic[data-t="warn"]{background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 18%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405);}
+.ntf-ic[data-t="ok"]{background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 14%,var(--color-surface,#fff));color:var(--color-admin-success-text,#047767);}
+.ntf-ic[data-t="danger"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 14%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a);}
+.ntf-ic[data-t="info"]{background:color-mix(in srgb,var(--color-admin-info,#299cdb) 14%,var(--color-surface,#fff));color:var(--color-admin-info-text,#026fa2);}
+.ntf-ic[data-t="brand"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);}
+.ntf-m{display:flex;flex-direction:column;min-width:0;flex:1 1 auto;}
+.ntf-tx{font-size:14px;line-height:1.45;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere;}
+.ntf-it[data-unread="1"] .ntf-tx{font-weight:600;}
+.ntf-meta{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;margin-top:4px;font-size:12px;color:var(--color-body-muted,#5b6275);}
+.ntf-new{display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--color-accent,#2050a0);}
+.ntf-new::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--color-accent,#2050a0);}
+.ntf-act{margin-left:auto;display:inline-flex;align-items:center;font-size:13px;font-weight:600;color:var(--color-accent,#2050a0);white-space:nowrap;}
+.ntf-f{padding:8px;border-top:1px solid var(--color-border,#e9ecf4);flex:0 0 auto;}
+.ntf-empty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:28px 16px;text-align:center;color:var(--color-body-muted,#5b6275);}
+@media (max-width:599px){.pop.ntf-pop{position:fixed!important;inset:0!important;left:0!important;right:0!important;top:0!important;width:auto!important;max-width:none!important;max-height:none!important;height:100dvh;border:0;border-radius:0;z-index:400!important;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);}.ntf-list{max-height:none;}.ntf-it{min-height:64px;}}
 </style>
 </helmet>
 <section style="font-family:Inter,'Segoe UI',sans-serif;font-size:14px;line-height:1.5;">
@@ -227,13 +255,15 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
               <button style="{{ iconBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onToggleScheme }}" aria-label="{{ schemeTip }}" title="{{ schemeTip }}"><i class="{{ schemeIcon }}" style="font-size:19px;"></i></button>
               </sc-if>
               <div data-dz="notif" style="position:relative;">
-                <button style="{{ iconBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onDropNotif }}" title="Thông báo" aria-label="Thông báo — 4 mới"><i class="ri-notification-3-line" style="font-size:19px;"></i><span style="position:absolute;top:6px;right:6px;min-width:15px;height:15px;padding:0 3px;border-radius:8px;background:#c2391b;color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid {{ tbBg }};">4</span></button>
-                <sc-if value="{{ notifOpen }}"><div class="pop" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:340px;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:10px;box-shadow:0 12px 34px rgba(30,32,37,0.22);overflow:hidden;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:linear-gradient(135deg,var(--brand-solid,var(--brand)),#4c5fa3);"><span style="font-size:14px;font-weight:600;color:#fff;">Thông báo</span><span style="font-size:12px;font-weight:600;color:#fff;background:rgba(255,255,255,0.2);padding:2px 8px;border-radius:20px;">4 mới</span></div>
-                  <div class="scl" style="max-height:300px;overflow-y:auto;">
-                    <sc-for list="{{ notifList }}" as="n" hint-placeholder-count="4"><button style="display:flex;gap:11px;width:100%;padding:12px 16px;border:0;border-bottom:1px solid {{ tLine }};background:{{ n.bg }};font:inherit;cursor:pointer;text-align:left;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ n.onClick }}"><span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;background:{{ n.tint }};color:{{ n.tintFg }};flex-shrink:0;"><i class="{{ n.icon }}" style="font-size:16px;"></i></span><span style="display:flex;flex-direction:column;gap:3px;min-width:0;"><span style="font-size:12.5px;color:{{ tText }};line-height:1.4;">{{ n.text }}</span><span style="font-size:12px;color:{{ tMuted }};">{{ n.ago }}</span></span></button></sc-for>
+                <button style="{{ iconBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onDropNotif }}" title="Thông báo" aria-label="{{ ntfAria }}" aria-expanded="{{ ntfExp }}" aria-haspopup="dialog"><i class="ri-notification-3-line" style="font-size:19px;"></i><sc-if value="{{ ntfHasBadge }}"><span class="ntf-badge" style="border-color:{{ tbBg }};" aria-hidden="true">{{ ntfBadge }}</span></sc-if></button>
+                <sc-if value="{{ notifOpen }}"><div class="pop ntf-pop" role="dialog" aria-label="Thông báo" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:380px;">
+                  <div class="ntf-h"><span class="ntf-ht">Thông báo</span><sc-if value="{{ ntfHasUnread }}"><span class="sx-chip" data-t="brand">{{ ntfUnreadLabel }}</span></sc-if><sc-if value="{{ ntfPlatNote }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend</span></sc-if><button type="button" class="sx-btn sm gho ic ntf-x" onClick="{{ onCloseNotif }}" aria-label="Đóng thông báo" title="Đóng"><i class="ri-close-line"></i></button></div>
+                  <sc-if value="{{ ntfHasUnread }}"><div class="ntf-tools"><button type="button" class="sx-btn sm gho" onClick="{{ onNtfAllRead }}" aria-disabled="{{ ntfAllDis }}" title="{{ ntfAllWhy }}"><i class="ri-check-double-line"></i>Đánh dấu đã đọc tất cả</button></div></sc-if>
+                  <div class="ntf-list">
+                    <sc-if value="{{ ntfEmpty }}"><div class="ntf-empty"><i class="ri-notification-off-line" style="font-size:28px;" aria-hidden="true"></i><span>Bạn chưa có thông báo mới.</span></div></sc-if>
+                    <sc-for list="{{ ntfDays }}" as="d" hint-placeholder-count="1"><div class="ntf-day">{{ d.label }}</div><sc-for list="{{ d.items }}" as="n" hint-placeholder-count="3"><button type="button" class="ntf-it" data-unread="{{ n.unreadA }}" onClick="{{ n.onClick }}"><span class="ntf-ic" data-t="{{ n.tone }}" aria-hidden="true"><i class="{{ n.icon }}"></i></span><span class="ntf-m"><span class="ntf-tx">{{ n.text }}</span><span class="ntf-meta"><sc-if value="{{ n.unread }}"><span class="ntf-new">Chưa đọc</span></sc-if><span>{{ n.ago }}</span><span class="ntf-act">{{ n.act }}<i class="ri-arrow-right-s-line" aria-hidden="true"></i></span></span></span></button></sc-for></sc-for>
                   </div>
-                  <div style="padding:10px;"><button style="width:100%;padding:8px;border:1px solid {{ tPanelBorder }};border-radius:7px;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--brand-ink,var(--brand));cursor:pointer;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onAllNotif }}">Xem tất cả thông báo</button></div>
+                  <div class="ntf-f"><button type="button" class="sx-btn w100" onClick="{{ onAllNotif }}">Xem tất cả thông báo</button></div>
                 </div></sc-if>
               </div>
               <sc-if value="{{ impChip }}">
@@ -298,7 +328,6 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                   <sc-if value="{{ showCrumb }}"><div style="display:flex;align-items:center;gap:6px;font-size:12px;color:{{ tMuted }};flex-wrap:wrap;"><i class="ri-home-4-line" style="font-size:14px;cursor:pointer;" onClick="{{ goDash }}"></i><sc-for list="{{ crumbEls }}" as="c" hint-placeholder-count="2"><i class="ri-arrow-right-s-line" style="font-size:13px;"></i><sc-if value="{{ c.current }}"><span style="color:{{ tText }};font-weight:500;">{{ c.label }}</span></sc-if><sc-if value="{{ c.link }}"><button onClick="{{ c.onClick }}" style="min-height:24px;padding:0;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:2px;">{{ c.label }}</button></sc-if><sc-if value="{{ c.plain }}"><span>{{ c.label }}</span></sc-if></sc-for></div></sc-if>
                   <sc-if value="{{ hdrShow }}" hint-placeholder-val="{{ true }}"><h1 style="margin:0;font-size:22px;font-weight:600;letter-spacing:-0.01em;color:{{ tHeading }};line-height:1.4;">{{ pageTitle }}</h1></sc-if>
                   <sc-if value="{{ scrDescShow }}"><div style="font-size:13px;color:{{ tMuted }};max-width:640px;line-height:1.55;">{{ scrDesc }}</div></sc-if>
-                  <sc-if value="{{ showDashboard }}"><div style="font-size:12.5px;color:{{ tMuted }};">Đây là tình hình <strong style="color:{{ tText }};font-weight:600;">{{ siteName }}</strong> hôm nay.</div></sc-if>
                   <sc-if value="{{ showSettings }}"><div style="font-size:12.5px;color:{{ tMuted }};max-width:640px;line-height:1.55;">{{ settingsActive.desc }}</div></sc-if>
                 </div>
                 
@@ -308,103 +337,12 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                   <button style="{{ menusResetStyle }}" disabled="{{ menusNoChanges }}" onClick="{{ onMenusReset }}">Bỏ thay đổi</button>
                   <button style="{{ menusSaveStyle }}" disabled="{{ menusNoChanges }}" onClick="{{ onMenusSave }}"><i class="ri-save-3-line" style="font-size:15px;"></i>Lưu thay đổi</button>
                 </div></sc-if>
-                <sc-if value="{{ showDashboard }}"><div style="display:flex;align-items:center;gap:8px;">
-                  <div style="position:relative;">
-                    <button type="button" aria-haspopup="dialog" aria-expanded="{{ rangeOpenStr }}" aria-label="Khoảng ngày của biểu đồ: {{ rangeLabel }}" style="display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:8px 12px;border:1px solid {{ tCardBorder }};border-radius:6px;background:{{ tCard }};font:inherit;font-size:13px;font-weight:500;color:{{ tText }};cursor:pointer;white-space:nowrap;" onClick="{{ onRangeToggle }}"><i class="ri-calendar-2-line" style="font-size:15px;color:{{ tMuted }};"></i>{{ rangeLabel }}<i class="ri-arrow-down-s-line" style="font-size:15px;color:{{ tMuted }};"></i></button>
-                    <sc-if value="{{ rangeOpen }}"><div class="pop" role="dialog" aria-label="Chọn khoảng ngày" style="position:absolute;top:calc(100% + 8px);right:0;z-index:80;width:288px;display:flex;flex-direction:column;gap:12px;padding:14px;background:{{ tPanel }};border:1px solid {{ tPanelBorder }};border-radius:8px;box-shadow:0 10px 30px rgba(20,22,30,0.16);">
-                      <div style="font-size:13px;font-weight:600;color:{{ tHeading }};">Chọn khoảng ngày</div>
-                      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                        <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:{{ tMuted }};">Từ ngày<input class="sInput" type="date" min="{{ rangeMin }}" max="{{ rangeMax }}" value="{{ rangeDraftFrom }}" onChange="{{ onRangeFrom }}" style="min-height:36px;padding:6px 8px;border:1px solid var(--color-border-input,#6b7896);border-radius:4px;background:{{ tCard }};color:{{ tText }};font:inherit;font-size:13px;min-width:0;"></label>
-                        <label style="display:flex;flex-direction:column;gap:5px;font-size:12px;color:{{ tMuted }};">Đến ngày<input class="sInput" type="date" min="{{ rangeMin }}" max="{{ rangeMax }}" value="{{ rangeDraftTo }}" onChange="{{ onRangeTo }}" style="min-height:36px;padding:6px 8px;border:1px solid var(--color-border-input,#6b7896);border-radius:4px;background:{{ tCard }};color:{{ tText }};font:inherit;font-size:13px;min-width:0;"></label>
-                      </div>
-                      <div style="font-size:12px;line-height:1.4;color:{{ rangeHintColor }};">{{ rangeHint }}</div>
-                      <div style="display:flex;justify-content:flex-end;gap:8px;">
-                        <button type="button" style="min-height:36px;padding:7px 12px;border:1px solid {{ tCardBorder }};border-radius:6px;background:transparent;font:inherit;font-size:13px;color:{{ tText }};cursor:pointer;" onClick="{{ onCloseDrops }}">Hủy</button>
-                        <button type="button" style="min-height:36px;padding:7px 14px;border:0;border-radius:6px;background:var(--brand-solid,var(--brand));color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;" onClick="{{ onRangeApply }}">Áp dụng</button>
-                      </div>
-                    </div></sc-if>
-                  </div>
-                  <button style="display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border:0;border-radius:6px;background:var(--brand-solid,var(--brand));color:#fff;font:inherit;font-size:13px;font-weight:500;cursor:pointer;box-shadow:0 1px 2px rgb(56 65 74/0.15);" style-hover="filter:brightness(0.95);" onClick="{{ onStub }}"><i class="ri-add-line" style="font-size:16px;"></i>Thêm nội dung</button>
-                </div></sc-if>
 
               </div>
 
-              <sc-if value="{{ freshShow }}"><div style="{{ cardStyle }}margin-bottom:16px;display:flex;flex-direction:column;gap:14px;">
-                <div style="display:flex;flex-direction:column;gap:4px;"><div style="font-size:16px;font-weight:600;color:{{ tHeading }};">Bắt đầu với website của bạn</div><div style="font-size:14px;color:{{ tMuted }};line-height:1.5;">Website mới chưa có nội dung. Làm lần lượt các việc dưới đây — mỗi việc vài phút.</div></div>
-                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:10px;">
-                  <sc-for list="{{ freshSteps }}" as="f" hint-placeholder-count="4"><button data-focus-kind="outline" onClick="{{ f.onClick }}" style="display:flex;align-items:flex-start;gap:11px;min-height:64px;padding:12px;border:1px solid {{ tCardBorder }};border-radius:6px;background:{{ tCard }};font:inherit;text-align:left;cursor:pointer;" style-hover="border-color:var(--color-accent,#2050a0);"><span style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:color-mix(in srgb, var(--brand) 10%, var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-size:13px;font-weight:700;flex-shrink:0;">{{ f.n }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span style="font-size:14px;font-weight:600;color:{{ tHeading }};">{{ f.title }}</span><span style="font-size:13px;color:{{ tMuted }};line-height:1.45;">{{ f.sub }}</span></span></button></sc-for>
-                </div>
-              </div></sc-if>
-              <sc-if value="{{ showDashboard }}"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(184px,1fr));gap:16px;margin-bottom:16px;">
-                <sc-for list="{{ metrics }}" as="m" hint-placeholder-count="4">
-                  <div style="{{ cardStyle }}">
-                    <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-                      <div style="display:flex;flex-direction:column;gap:9px;min-width:0;">
-                        <span style="font-size:12px;font-weight:600;letter-spacing:0.02em;text-transform:uppercase;color:{{ tMuted }};white-space:nowrap;">{{ m.label }}</span>
-                        <span style="font-size:23px;font-weight:700;color:{{ tHeading }};line-height:1.3;">{{ m.value }}</span>
-                      </div>
-                      <span style="display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:11px;background:{{ m.tintBg }};color:{{ m.tint }};flex-shrink:0;"><i class="{{ m.icon }}" style="font-size:21px;"></i></span>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:6px;margin-top:12px;font-size:12px;"><span style="{{ m.deltaStyle }}"><i class="{{ m.deltaIcon }}" style="font-size:13px;"></i>{{ m.delta }}</span><span style="color:{{ tMuted }};">{{ m.sub }}</span></div>
-                  </div>
-                </sc-for>
-              </div>
-
-              <div style="display:grid;grid-template-columns:{{ midGrid }};gap:16px;margin-bottom:16px;">
-                <div style="{{ cardStyle }}">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;"><span style="font-size:15px;font-weight:600;color:{{ tHeading }};">Lượt xem nội dung</span><div role="group" aria-label="Khoảng thời gian của biểu đồ" style="display:flex;gap:4px;"><sc-for list="{{ rangeChips }}" as="c" hint-placeholder-count="3"><button type="button" class="rgc" aria-pressed="{{ c.pressed }}" onClick="{{ c.onClick }}">{{ c.label }}</button></sc-for></div></div>
-                  <div ref="{{ setChartRef }}" role="img" aria-label="{{ chartAria }}" style="position:relative;display:flex;align-items:flex-end;gap:{{ chartGap }};height:180px;">
-                    <sc-if value="{{ chartAvgShow }}"><div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:{{ chartAvgBottom }};border-top:1px dashed var(--color-body-muted,#5b6275);pointer-events:none;z-index:1;"><span style="position:absolute;right:0;bottom:3px;padding:0 4px;font-size:12px;line-height:1.3;font-weight:600;color:var(--color-body-muted,#5b6275);background:{{ tCard }};border-radius:3px;white-space:nowrap;">{{ chartAvgLabel }}</span></div></sc-if>
-                    <sc-for list="{{ bars }}" as="b" hint-placeholder-count="7">
-                      <div style="flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%;">
-                        <sc-if value="{{ b.showV }}"><span class="{{ b.vCls }}">{{ b.v }}</span></sc-if>
-                        <div style="width:100%;max-width:34px;height:{{ b.hpx }};background:var(--brand-solid,var(--brand));border-radius:3px 3px 0 0;" title="{{ b.title }}"></div>
-                      </div>
-                    </sc-for>
-                  </div>
-                  <div aria-hidden="true" style="position:relative;height:18px;margin-top:6px;">
-                    <sc-for list="{{ xLabs }}" as="x" hint-placeholder-count="2"><span style="position:absolute;top:0;left:{{ x.left }};width:{{ x.w }};text-align:center;font-size:12px;line-height:18px;color:{{ tMuted }};white-space:nowrap;">{{ x.t }}</span></sc-for>
-                  </div>
-                </div>
-                <div style="{{ cardStyle }}">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><span style="font-size:15px;font-weight:600;color:{{ tHeading }};">Hộp duyệt</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;color:var(--tx-warn);background:rgba(247,184,75,0.15);padding:3px 9px;border-radius:20px;"><i class="ri-time-line" style="font-size:13px;"></i>{{ reviewBadge }}</span></div>
-                  <div style="display:flex;flex-direction:column;gap:2px;">
-                    <sc-for list="{{ inbox }}" as="w" hint-placeholder-count="3">
-                      <button style="display:flex;align-items:center;gap:11px;padding:10px 8px;border:0;border-radius:7px;background:transparent;font:inherit;cursor:pointer;text-align:left;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onStub }}">
-                        <span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:{{ w.tint }};color:{{ w.tintFg }};flex-shrink:0;"><i class="{{ w.icon }}" style="font-size:15px;"></i></span>
-                        <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;"><span style="font-size:12.5px;font-weight:500;color:{{ tHeading }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ w.title }}</span><span style="font-size:12px;color:{{ tMuted }};">{{ w.meta }}</span></span>
-                        <span style="{{ w.stStyle }}"><i class="{{ w.stIcon }}" aria-hidden="true" style="font-size:13px;"></i>{{ w.stLabel }}</span>
-                      </button>
-                    </sc-for>
-                    <sc-if value="{{ inboxMoreShow }}"><button type="button" style="align-self:flex-start;min-height:32px;padding:6px 8px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--brand-ink,var(--brand));cursor:pointer;text-decoration:underline;text-underline-offset:2px;" onClick="{{ onStub }}">{{ inboxMoreLabel }}</button></sc-if>
-                  </div>
-                  <button style="width:100%;margin-top:12px;padding:8px;border:1px solid {{ tCardBorder }};border-radius:7px;background:transparent;font:inherit;font-size:12.5px;font-weight:500;color:var(--brand-ink,var(--brand));cursor:pointer;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onStub }}">Mở hộp duyệt</button>
-                </div>
-              </div>
-
-              <div style="{{ cardStyle0 }}">
-                <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid {{ tLine }};"><span style="font-size:15px;font-weight:600;color:{{ tHeading }};">Nội dung gần đây</span><button style="font:inherit;font-size:12.5px;font-weight:500;color:var(--brand-ink,var(--brand));background:transparent;border:0;cursor:pointer;" onClick="{{ onStub }}">Xem tất cả</button></div>
-                <div class="sh-rt"><table style="width:100%;border-collapse:collapse;font-size:13px;">
-                  <thead><tr>
-                    <th style="text-align:left;padding:10px 20px;font-size:12px;font-weight:600;color:{{ tMuted }};border-bottom:1px solid {{ tLine }};text-transform:uppercase;letter-spacing:0.02em;">Tiêu đề</th>
-                    <th style="text-align:left;padding:10px 12px;font-size:12px;font-weight:600;color:{{ tMuted }};border-bottom:1px solid {{ tLine }};text-transform:uppercase;letter-spacing:0.02em;">Loại</th>
-                    <th style="text-align:left;padding:10px 12px;font-size:12px;font-weight:600;color:{{ tMuted }};border-bottom:1px solid {{ tLine }};text-transform:uppercase;letter-spacing:0.02em;">Trạng thái</th>
-                    <th style="text-align:left;padding:10px 12px;font-size:12px;font-weight:600;color:{{ tMuted }};border-bottom:1px solid {{ tLine }};text-transform:uppercase;letter-spacing:0.02em;">Người tạo</th>
-                    <th style="text-align:right;padding:10px 20px;font-size:12px;font-weight:600;color:{{ tMuted }};border-bottom:1px solid {{ tLine }};text-transform:uppercase;letter-spacing:0.02em;">Cập nhật</th>
-                  </tr></thead>
-                  <tbody>
-                    <sc-for list="{{ recent }}" as="r" hint-placeholder-count="5">
-                      <tr style="cursor:pointer;" style-hover="background:rgba(120,130,150,0.12);" onClick="{{ onStub }}">
-                        <td style="padding:11px 20px;border-bottom:1px solid {{ tLine }};font-weight:500;color:{{ tHeading }};">{{ r.name }}</td>
-                        <td style="padding:11px 12px;border-bottom:1px solid {{ tLine }};color:{{ tMuted }};">{{ r.type }}</td>
-                        <td style="padding:11px 12px;border-bottom:1px solid {{ tLine }};"><span style="{{ r.stStyle }}"><i class="{{ r.stIcon }}" aria-hidden="true" style="font-size:13px;"></i>{{ r.stLabel }}</span></td>
-                        <td style="padding:11px 12px;border-bottom:1px solid {{ tLine }};"><span style="display:inline-flex;align-items:center;gap:8px;"><span style="{{ r.avStyle }}">{{ r.init }}</span><span style="color:{{ tText }};">{{ r.creator }}</span></span></td>
-                        <td style="padding:11px 20px;border-bottom:1px solid {{ tLine }};text-align:right;color:{{ tMuted }};white-space:nowrap;">{{ r.updated }}</td>
-                      </tr>
-                    </sc-for>
-                  </tbody>
-                </table></div>
-              </div></sc-if>
+              <sc-if value="{{ mDash }}">
+                <dc-import name="Tổng quan" embedded="{{ true }}" embed-id="dashboard" role="{{ roleName }}" workflow="{{ wfName }}" plan-key="{{ planK }}" upsell="{{ upsellOn }}" module-off="{{ dashModOff }}" fresh-site="{{ dashFresh }}" show-notes="{{ acctNotes }}" big-text="{{ dashBig }}" site-name="{{ siteName }}" on-dirty="{{ onEmbedDirtyDb }}" hint-size="100%,900px"></dc-import>
+              </sc-if>
 
               <div style="{{ settingsPaneStyle }}">
                 <sc-if value="{{ pickerShow }}">
@@ -791,13 +729,40 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
                 <dc-import name="Quản lý Trang - Options" embedded="{{ true }}" embed-id="pages-list" role="{{ roleName }}" workflow="{{ wfName }}" lang-codes="{{ langCodes }}" upsell="{{ upsellOn }}" hint-size="100%,900px"></dc-import>
               </sc-if>
               <sc-if value="{{ mPageEd }}">
-                <dc-import name="Page Editor - Options" embedded="{{ true }}" embed-id="page-editor" start="{{ ctStart }}" slug="{{ ctSlug }}" role="{{ roleName }}" workflow="{{ wfName }}" lang-codes="{{ langCodes }}" plan-key="{{ planK }}" upsell="{{ upsellOn }}" on-dirty="{{ onEmbedDirtyPe }}" hint-size="100%,900px"></dc-import>
+                <dc-import name="Page Editor - Options" embedded="{{ true }}" embed-id="page-editor" kind="{{ ctType }}" start="{{ ctStart }}" slug="{{ ctSlug }}" ma="{{ ctMa }}" parent="{{ ctParent }}" lang="{{ ctLang }}" role="{{ roleName }}" workflow="{{ wfName }}" lang-codes="{{ langCodes }}" plan-key="{{ planK }}" upsell="{{ upsellOn }}" on-dirty="{{ onEmbedDirtyPe }}" hint-size="100%,900px"></dc-import>
               </sc-if>
               <sc-if value="{{ mCats }}">
                 <dc-import name="Chuyên mục" embedded="{{ true }}" embed-id="taxonomy" content-type="{{ catType }}" role="{{ roleName }}" lang-codes="{{ langCodes }}" upsell="{{ upsellOn }}" catalog-on="{{ catalogOnCats }}" big-text="{{ catsBig }}" on-dirty="{{ onEmbedDirtyTx }}" hint-size="100%,720px"></dc-import>
               </sc-if>
+              <sc-if value="{{ mMedia }}">
+                <dc-import name="Thư viện ảnh &amp; tệp" embedded="{{ true }}" embed-id="media" role="{{ roleName }}" lang-codes="{{ langCodes }}" upsell="{{ upsellOn }}" on-dirty="{{ onEmbedDirtyMd }}" hint-size="100%,900px"></dc-import>
+              </sc-if>
+              <sc-if value="{{ mContacts }}">
+                <dc-import name="Khách liên hệ" embedded="{{ true }}" embed-id="contacts" role="{{ roleName }}" lang-codes="{{ langCodes }}" upsell="{{ upsellOn }}" ma="{{ ctMa }}" form-ma="{{ ctForm }}" on-dirty="{{ onEmbedDirtyKl }}" hint-size="100%,900px"></dc-import>
+              </sc-if>
+              <sc-if value="{{ mForms }}">
+                <dc-import name="Biểu mẫu" embedded="{{ true }}" embed-id="forms" role="{{ roleName }}" lang-codes="{{ langCodes }}" upsell="{{ upsellOn }}" ma="{{ ctMa }}" on-dirty="{{ onEmbedDirtyFm }}" hint-size="100%,900px"></dc-import>
+              </sc-if>
+              <sc-if value="{{ mCatList }}">
+                <dc-import name="Sản phẩm - Danh sách" embedded="{{ true }}" embed-id="catalog-list" role="{{ roleName }}" lang-codes="{{ langCodes }}" upsell="{{ upsellOn }}" module-on="{{ catModOn }}" on-dirty="{{ onEmbedDirtyCl }}" hint-size="100%,900px"></dc-import>
+              </sc-if>
+              <sc-if value="{{ mCatEd }}">
+                <dc-import name="Sản phẩm - Trình sửa" embedded="{{ true }}" embed-id="catalog" start="{{ ctStart }}" ma="{{ ctMa }}" lang="{{ ctLang }}" role="{{ roleName }}" lang-codes="{{ langCodes }}" plan-key="{{ planK }}" upsell="{{ upsellOn }}" module-on="{{ catModOn }}" on-dirty="{{ onEmbedDirtyCe }}" hint-size="100%,900px"></dc-import>
+              </sc-if>
               <sc-if value="{{ mWorkflow }}">
                 <dc-import name="Quy trình duyệt" embedded="{{ true }}" embed-id="workflow" viewer="Vận hành nền tảng" on-dirty="{{ onEmbedDirtyWf }}" hint-size="100%,720px"></dc-import>
+              </sc-if>
+              <sc-if value="{{ mRoles }}">
+                <dc-import name="Nhóm quyền" embedded="{{ true }}" embed-id="roles" role="{{ roleName }}" plan-key="{{ planK }}" upsell="{{ upsellOn }}" impersonating="{{ acctImp }}" nhom="{{ rqNhom }}" che="{{ rqChe }}" show-frames="{{ false }}" on-dirty="{{ onEmbedDirtyNq }}" hint-size="100%,900px"></dc-import>
+              </sc-if>
+              <sc-if value="{{ mUsers }}">
+                <dc-import name="Thành viên" embedded="{{ true }}" embed-id="users" role="{{ roleName }}" plan-key="{{ planK }}" upsell="{{ upsellOn }}" impersonating="{{ acctImp }}" nhom="{{ rqNhom }}" tab="{{ rqTab }}" show-frames="{{ false }}" on-dirty="{{ onEmbedDirtyTv }}" hint-size="100%,900px"></dc-import>
+              </sc-if>
+              <sc-if value="{{ mAccount }}">
+                <dc-import name="Tài khoản của tôi" embedded="{{ true }}" embed-id="account" plane="{{ acctPlane }}" twofa="{{ acctTwofa }}" impersonating="{{ acctImp }}" role="{{ roleName }}" start-tab="{{ acctTab }}" scheme="{{ uiScheme }}" font-size="{{ uiFontSize }}" motion="{{ uiMotion }}" contrast="{{ uiContrast }}" ui-lang="{{ uiLangK }}" on-pref="{{ onAcctPref }}" on-dirty="{{ onEmbedDirtyAc }}" show-notes="{{ acctNotes }}" hint-size="100%,900px"></dc-import>
+              </sc-if>
+              <sc-if value="{{ mNotif }}">
+                <dc-import name="Thông báo" embedded="{{ true }}" embed-id="notifications" plane="{{ acctPlane }}" role="{{ roleName }}" workflow="{{ ntfWf }}" impersonating="{{ acctImp }}" tab="{{ ntfTab }}" show-notes="{{ acctNotes }}" on-dirty="{{ onEmbedDirtyNt }}" hint-size="100%,800px"></dc-import>
               </sc-if>
               <sc-if value="{{ mStd }}">
                 <dc-import name="Chuẩn giao diện SaaS Starter" embedded="{{ true }}" theme="{{ bsTheme }}" hint-size="100%,1200px"></dc-import>
@@ -1072,76 +1037,6 @@ a{color:var(--brand-ink,var(--brand));text-decoration:none;}a:hover{color:color-
       </aside>
       <sc-if value="{{ toastShow }}"><div role="status" aria-live="polite" style="position:absolute;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:300;display:flex;align-items:center;gap:9px;padding:11px 17px;border-radius:7px;max-width:calc(100% - 32px);background:#212529;color:#fff;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,0.25);"><i class="ri-checkbox-circle-fill" style="font-size:17px;color:#0ab39c;"></i>{{ toastMsg }}</div></sc-if>
 
-      <sc-if value="{{ acctShow }}">
-        <div style="position:fixed;inset:0;z-index:240;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(15,18,30,0.45);" onClick="{{ onAcctBackdrop }}">
-          <div role="dialog" aria-modal="true" aria-label="Tài khoản của tôi" onClick="{{ stopProp }}" style="width:100%;max-width:760px;height:min(580px,100%);border-radius:10px;background:{{ tCard }};box-shadow:0 20px 50px rgba(15,18,30,0.3);overflow:hidden;display:flex;flex-direction:column;container-type:inline-size;">
-            <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid {{ tLine }};flex-shrink:0;">
-              <div style="display:flex;align-items:center;gap:11px;min-width:0;"><span style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:50%;background:#e0e7ff;color:#4338ca;font-size:14px;font-weight:700;flex-shrink:0;">NA</span><div style="min-width:0;"><div style="font-size:15px;font-weight:600;color:{{ tHeading }};">Ngọc Anh</div><div style="font-size:12px;color:{{ tMuted }};">ngocanh@anvinh.vn</div></div></div>
-              <button onClick="{{ onCloseAcct }}" style="width:32px;height:32px;flex-shrink:0;border:0;border-radius:6px;background:transparent;color:{{ tMuted }};cursor:pointer;" style-hover="background:{{ tHover }};" aria-label="Đóng" title="Đóng"><i class="ri-close-line" style="font-size:18px;"></i></button>
-            </div>
-            <div style="display:flex;flex:1;min-height:0;">
-              <div style="width:212px;flex-shrink:0;border-right:1px solid {{ tLine }};padding:10px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;">
-                <sc-for list="{{ acctTabs }}" as="tb" hint-placeholder-count="3">
-                  <button onClick="{{ tb.onClick }}" style="{{ tb.style }}"><i class="{{ tb.icon }}" style="font-size:16px;width:18px;flex-shrink:0;"></i>{{ tb.label }}</button>
-                </sc-for>
-              </div>
-              <div class="scl" style="flex:1;min-width:0;overflow-y:auto;padding:22px 26px;">
-                <sc-if value="{{ acctIsProfile }}">
-                  <div class="acct-grid">
-                    <div style="grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">Họ tên</span><input class="sInput" value="{{ acctName }}" onChange="{{ onAcctName }}" style="{{ acctInputStyle }}"></div>
-                    <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">Chức danh</span><input class="sInput" value="{{ acctTitle }}" onChange="{{ onAcctTitle }}" style="{{ acctInputStyle }}"></div>
-                    <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">Số điện thoại</span><input class="sInput" value="{{ acctPhone }}" onChange="{{ onAcctPhone }}" style="{{ acctInputStyle }}"></div>
-                    <div style="grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;"><span style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:500;color:{{ tHeading }};">Email đăng nhập<span style="display:inline-flex;align-items:center;gap:4px;padding:1px 7px;border-radius:20px;background:color-mix(in srgb, {{ tMuted }} 12%, transparent);color:{{ tMuted }};font-size:12px;font-weight:600;"><i class="ri-lock-2-line" style="font-size:12px;"></i>Chung</span></span><input class="sInput" value="ngocanh@anvinh.vn" disabled="{{ true }}" style="{{ acctInputStyle }}opacity:.65;cursor:not-allowed;"><span style="font-size:12px;color:{{ tMuted }};">Cần đổi email đăng nhập? Liên hệ quản trị viên site để cập nhật.</span></div>
-                  </div>
-                  <div style="margin-top:20px;"><button onClick="{{ onSaveProfile }}" style="{{ acctSaveBtnStyle }}">Lưu thay đổi</button></div>
-                </sc-if>
-                <sc-if value="{{ acctIsSecurity }}">
-                  <div style="font-size:12.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:{{ tMuted }};margin-bottom:10px;">Đổi mật khẩu</div>
-                  <div class="acct-grid">
-                    <div style="grid-column:1 / -1;display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">Mật khẩu hiện tại</span><input type="password" class="sInput" value="{{ pwCur }}" onChange="{{ onPwCur }}" style="{{ acctInputStyle }}"></div>
-                    <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">Mật khẩu mới</span><input type="password" class="sInput" value="{{ pwNew }}" onChange="{{ onPwNew }}" style="{{ acctInputStyle }}"></div>
-                    <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">Xác nhận mật khẩu mới</span><input type="password" class="sInput" value="{{ pwConfirm }}" onChange="{{ onPwConfirm }}" style="{{ acctInputStyle }}"></div>
-                  </div>
-                  <div style="margin-top:6px;font-size:12px;color:{{ tMuted }};">Tối thiểu 8 ký tự.</div>
-                  <div style="margin-top:16px;"><button onClick="{{ onChangePw }}" style="{{ acctSaveBtnStyle }}">Đổi mật khẩu</button></div>
-                  <div style="height:1px;background:{{ tLine }};margin:24px 0;"></div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span style="font-size:13.5px;font-weight:500;color:{{ tHeading }};">Bật xác thực 2 lớp</span><span style="font-size:12px;color:{{ tMuted }};">{{ twofaHint }}</span></div>
-                    <span class="{{ twofaClass }}" onClick="{{ onToggle2fa }}"><span></span></span>
-                  </div>
-                  <div style="height:1px;background:{{ tLine }};margin:24px 0;"></div>
-                  <dc-import name="Đăng nhập nhanh &amp; Liên kết tài khoản" screen="profile" embedded="{{ true }}" embed-id="social-me" hint-size="100%,240px"></dc-import>
-                  <div style="height:1px;background:{{ tLine }};margin:24px 0;"></div>
-                  <div style="font-size:12.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:{{ tMuted }};margin-bottom:10px;">Phiên đăng nhập đang hoạt động</div>
-                  <div style="display:flex;flex-direction:column;gap:8px;">
-                    <sc-for list="{{ sessionRows }}" as="sess" hint-placeholder-count="2">
-                      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid {{ tLine }};border-radius:7px;">
-                        <div style="display:flex;align-items:center;gap:10px;min-width:0;"><i class="ri-device-line" style="font-size:17px;color:{{ tMuted }};flex-shrink:0;"></i><div style="min-width:0;"><div style="font-size:13px;font-weight:500;color:{{ tHeading }};">{{ sess.device }}</div><div style="font-size:12px;color:{{ tMuted }};">{{ sess.loc }}</div></div></div>
-                        <sc-if value="{{ sess.cur }}"><span style="font-size:12px;font-weight:600;color:var(--tx-ok);flex-shrink:0;">Hiện tại</span></sc-if>
-                        <sc-if value="{{ sess.canKill }}"><button onClick="{{ sess.onKill }}" style="flex-shrink:0;border:1px solid {{ tCardBorder }};border-radius:6px;background:transparent;color:var(--tx-danger);font:inherit;font-size:12px;font-weight:500;padding:6px 10px;cursor:pointer;">Đăng xuất</button></sc-if>
-                      </div>
-                    </sc-for>
-                  </div>
-                </sc-if>
-                <sc-if value="{{ acctIsPrefs }}">
-                  <div style="display:flex;align-items:flex-start;gap:8px;padding:10px 12px;margin-bottom:14px;border-radius:6px;background:color-mix(in srgb, var(--brand) 8%, transparent);"><i class="ri-information-line" style="font-size:15px;color:var(--brand-ink,var(--brand));flex-shrink:0;margin-top:1px;"></i><span style="font-size:12px;color:{{ tHeading }};line-height:1.5;">Đây là ngôn ngữ hiển thị giao diện quản trị cho riêng bạn — khác với ngôn ngữ nội dung website, vốn do gói dịch vụ của từng khách hàng quyết định (quản lý ở Cài đặt › Ngôn ngữ website).</span></div>
-                  <div class="acct-grid">
-                    <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">Ngôn ngữ giao diện quản trị</span><select value="{{ prefLang }}" onChange="{{ onPrefLang }}" style="{{ acctInputStyle }}"><option value="vi">Tiếng Việt</option><option value="en">English</option><option value="ja">日本語</option><option value="zh">中文</option></select></div>
-                    <div style="display:flex;flex-direction:column;gap:6px;"><span style="font-size:13px;font-weight:500;color:{{ tHeading }};">Múi giờ</span><select value="{{ prefTz }}" onChange="{{ onPrefTz }}" style="{{ acctInputStyle }}"><option value="Asia/Ho_Chi_Minh">(GMT+7) Hà Nội, TP.HCM</option><option value="Asia/Tokyo">(GMT+9) Tokyo</option><option value="Asia/Bangkok">(GMT+7) Bangkok</option></select></div>
-                  </div>
-                  <div style="height:1px;background:{{ tLine }};margin:20px 0;"></div>
-                  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;">
-                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0;"><span style="font-size:13.5px;font-weight:500;color:{{ tHeading }};">Nhận thông báo qua email</span><span style="font-size:12px;color:{{ tMuted }};">Lead mới, mời cộng tác, cảnh báo bảo mật.</span></div>
-                    <span class="{{ prefNotifClass }}" onClick="{{ onPrefNotif }}"><span></span></span>
-                  </div>
-                  <div style="margin-top:20px;"><button onClick="{{ onSavePrefs }}" style="{{ acctSaveBtnStyle }}">Lưu tùy chọn</button></div>
-                </sc-if>
-              </div>
-            </div>
-          </div>
-        </div>
-      </sc-if>
-
       <sc-if value="{{ logoutAskShow }}">
         <div style="position:fixed;inset:0;z-index:250;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(15,18,30,0.45);">
           <div role="dialog" aria-modal="true" aria-label="Đăng xuất" style="width:100%;max-width:400px;border-radius:10px;background:{{ tCard }};box-shadow:0 20px 50px rgba(15,18,30,0.3);overflow:hidden;">
@@ -1199,9 +1094,6 @@ class Component extends DCLogic {
       site: 'anvinh', search: '', lang: 'vi',
       siteLangs: ['vi', 'en', 'zh'], pubLangs: ['vi', 'en'], defLang: 'vi',
       winW: (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1440, mobileNavOpen: false, isFullscreen: false, fsOk: false, searchCollapsed: false,
-      acctModal: null, acctDraft: { name: 'Ngọc Anh', title: 'Quản trị viên', phone: '0909 123 456' }, acctSaved: {},
-      pwCur: '', pwNew: '', pwConfirm: '', twofaOn: false, killedSessions: [],
-      prefLang: 'vi', prefTz: 'Asia/Ho_Chi_Minh', prefEmailNotif: true,
       screenLocked: false, lockInput: '', lockErr: false, logoutAsk: false, loggedOut: false,
       helpOpen: false, searchFull: false, siteQ: '', userLangOpen: false, setList: true, advOpen: false, embedInvalid: {},
       range: '7d', rangeFrom: null, rangeTo: null, rangeDraftFrom: '', rangeDraftTo: '', rangeErr: '', chartW: 0
@@ -1222,8 +1114,8 @@ class Component extends DCLogic {
   static PAL() { return [ ['#2050a0', 'Bảo Sơn', '#2050a0', '#2050a0'], ['#0e7490', 'Xanh cổ vịt', '#00657f', '#05708c'], ['#15803d', 'Xanh lá', '#056b30', '#0a7636'], ['#4338ca', 'Chàm', '#4338ca', '#4338ca'], ['#9d174d', 'Mận', '#9d174d', '#9d174d'], ['#334155', 'Than chì', '#334155', '#334155'] ]; }
   // Q5: lưu 9 thuộc tính Tùy biến vào localStorage['bs-ui'] (có version). Bản thật lưu phía server theo người dùng.
   // RIÊNG plane: chỉ là bộ chọn xem thử của prototype; bản thật lấy theo tài khoản đăng nhập, không lưu theo trình duyệt.
-  static UI_DEF() { return { plane: 'tenant', brandColor: '#2050a0', layout: 'vertical', scheme: 'light', width: 'fluid', layoutPosition: 'fixed', sidebarSize: 'default', sidebarColor: 'dark', topbarColor: 'light', fontSize: 'normal' }; }
-  static UI_OK() { return { plane: ['tenant', 'shop', 'platform'], brandColor: Component.PAL().map(p => p[0]), layout: ['vertical', 'horizontal', 'twocolumn'], scheme: ['light', 'dark', 'auto'], fontSize: ['normal', 'large'], width: ['fluid', 'boxed'], layoutPosition: ['fixed', 'scrollable'], sidebarSize: ['default', 'small'], sidebarColor: ['light', 'dark', 'gradient'], topbarColor: ['light', 'dark'] }; }
+  static UI_DEF() { return { plane: 'tenant', brandColor: '#2050a0', layout: 'vertical', scheme: 'light', width: 'fluid', layoutPosition: 'fixed', sidebarSize: 'default', sidebarColor: 'dark', topbarColor: 'light', fontSize: 'normal', motion: 'auto', contrast: 'normal' }; }
+  static UI_OK() { return { plane: ['tenant', 'shop', 'platform'], brandColor: Component.PAL().map(p => p[0]), layout: ['vertical', 'horizontal', 'twocolumn'], scheme: ['light', 'dark', 'auto'], fontSize: ['normal', 'large'], motion: ['auto', 'reduce', 'full'], contrast: ['normal', 'high'], width: ['fluid', 'boxed'], layoutPosition: ['fixed', 'scrollable'], sidebarSize: ['default', 'small'], sidebarColor: ['light', 'dark', 'gradient'], topbarColor: ['light', 'dark'] }; }
   loadUi() {
     const D = Component.UI_DEF(), OK = Component.UI_OK(), out = Object.assign({}, D);
     let raw = null; try { raw = localStorage.getItem('bs-ui'); } catch (e) {}
@@ -1372,7 +1264,6 @@ class Component extends DCLogic {
     const rec = SC ? SC.resolve(screen, this.typesMap()) : null;
     const shopKnown = S.plane === 'shop' && !!this.menuItem(screen, true);
     if (!rec && !shopKnown) { this.notify('Không tìm thấy trang này'); return; }
-    if (rec && rec.kind === 'modal') { this.openAcct('profile'); return; }
     const pl = rec && rec.plane === 'platform' && S.plane !== 'platform' ? 'platform' : (rec && rec.plane === 'site' && S.plane === 'platform' ? 'tenant' : null);
     const sec = (screen === 'settings' || screen === 'p-settings') ? (params.section || '') : '';
     const p2 = Object.assign({}, params); delete p2.section;
@@ -1401,7 +1292,6 @@ class Component extends DCLogic {
     const okPlane = rec && (rec.plane === '*' || (rec.plane === 'platform') === (plane === 'platform'));
     const special = ['settings', 'p-settings', 'p-plans'].indexOf(key) >= 0;
     if (!(okPlane && (rec.plane === '*' || special || rawHas(plane) || !rec.menu)) && !(plane === 'shop' && rawHas('shop'))) { toDash(); return; }
-    if (rec && rec.kind === 'modal') { this.openAcct('profile'); return; }
     const run = () => { if (plane !== this.state.plane) this.applyPlane(plane); this.applyAt(key, P.section, P.params); };
     if (key !== S.activeMenu && this.navGuard(run)) return; run();
   }
@@ -1467,24 +1357,11 @@ class Component extends DCLogic {
   selectMenu(k, hasChildren) { if (hasChildren) { this.openTop(k); } else { this.go(k, ''); } }
   toggleDrop(name) { this.setState(s => ({ drop: s.drop === name ? null : name })); }
   closeDrops() { this.setState({ drop: null }); }
-  openAcct(tab) { this.setState({ acctModal: tab, drop: null }); }
-  closeAcct() { this.setState({ acctModal: null }); }
-  setAcctDraft(k, v) { this.setState(st => ({ acctDraft: Object.assign({}, st.acctDraft, { [k]: v }) })); }
-  saveProfile() { this.setState({ acctSaved: Object.assign({}, this.state.acctDraft) }); this.notify('Đã lưu hồ sơ cá nhân'); }
-  changePassword() {
-    const S = this.state;
-    if (String(S.pwNew || '').length < 8) { this.notify('Mật khẩu mới cần ít nhất 8 ký tự'); return; }
-    if (S.pwNew !== S.pwConfirm) { this.notify('Xác nhận mật khẩu chưa khớp'); return; }
-    this.setState({ pwCur: '', pwNew: '', pwConfirm: '' }); this.notify('Đã đổi mật khẩu');
-  }
-  toggle2fa() { this.setState(st => ({ twofaOn: !st.twofaOn })); this.notify(this.state.twofaOn ? 'Đã tắt xác thực 2 lớp' : 'Đã bật xác thực 2 lớp — quét mã trong ứng dụng Authenticator của bạn'); }
-  killSession(id) { this.setState(st => ({ killedSessions: st.killedSessions.concat([id]) })); this.notify('Đã đăng xuất khỏi thiết bị đó'); }
-  savePrefs() { this.notify('Đã lưu tùy chọn cá nhân'); }
   lockScreen() { this.setState({ screenLocked: true, drop: null, lockInput: '', lockErr: false }); }
   unlockScreen() { if (!String(this.state.lockInput || '').trim()) { this.setState({ lockErr: true }); return; } this.setState({ screenLocked: false, lockInput: '', lockErr: false }); }
   askLogout() { this.setState({ logoutAsk: true, drop: null }); }
   cancelLogout() { this.setState({ logoutAsk: false }); }
-  confirmLogout() { this.setState({ logoutAsk: false, loggedOut: true, acctModal: null }); }
+  confirmLogout() { this.setState({ logoutAsk: false, loggedOut: true }); }
   reLogin() { this.setState({ loggedOut: false }); }
   switchPlane() { this.setPlane(this.state.plane === 'tenant' ? 'platform' : 'tenant'); }
   setPlane(p) { if (p === this.state.plane) return; if (this.navGuard(() => this.applyPlane(p))) return; this.applyPlane(p); }
@@ -1886,19 +1763,19 @@ class Component extends DCLogic {
     const langList = LANG_ORDER.map(l => { const on = S.lang === l.k; const fl = langFlagMode && !!FLAG[l.k]; return { name: l.l, lang: l.k, code: l.c, on: on, cur: on ? 'true' : undefined, hasFlag: fl, noFlag: !fl, flagEl: fl ? flagImg(l.k, 22) : null, onClick: () => { this.setState({ lang: l.k, drop: null }); const tr = this._popTrig; setTimeout(() => { try { if (tr && tr.isConnected) tr.focus(); } catch (x) {} }, 0); },
       style: 'display:flex;align-items:center;gap:11px;width:100%;min-height:44px;padding:8px 10px;border:0;border-radius:7px;background:' + (on ? K.hover : 'transparent') + ';font:inherit;font-size:13.5px;font-weight:' + (on ? '600' : '400') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;' }; });
 
-    const notifDefs = [
-      { icon: 'ri-git-pull-request-line', tint: 'rgba(247,184,75,0.15)', tintFg: 'var(--tx-warn)', go: 'review', text: 'Thu Hà đã gửi “Bảng giá dịch vụ 2026” chờ bạn duyệt.', ago: '2 giờ trước', unread: true },
-      { icon: 'ri-mail-line', tint: 'rgba(10,179,156,0.12)', tintFg: 'var(--tx-ok)', go: 'contacts', text: '3 lead mới từ biểu mẫu Liên hệ (An Vinh).', ago: '4 giờ trước', unread: true },
-      { icon: 'ri-user-add-line', tint: 'rgba(53,119,241,0.12)', tintFg: 'var(--tx-info)', go: 'users', text: 'Minh Trí đã chấp nhận lời mời vào nhóm Biên tập.', ago: 'Hôm qua', unread: false },
-      { icon: 'ri-global-line', tint: 'color-mix(in srgb, var(--brand) 10%, transparent)', tintFg: 'var(--brand-ink,var(--brand))', go: 'settings', goP: { section: 'domain' }, text: 'Tên miền medilab.vn đã bật kết nối bảo mật.', ago: '2 ngày trước', unread: false }
-    ];
-    const notifList = notifDefs.map(n => ({ onClick: () => { this.setState({ drop: null }); this.goScreen(n.go, n.goP); }, icon: n.icon, tint: n.tint, tintFg: n.tintFg, text: n.text, ago: n.ago, bg: n.unread ? (dark ? 'color-mix(in srgb, var(--brand) 14%, transparent)' : 'color-mix(in srgb, var(--brand) 4%, transparent)') : 'transparent' }));
+    /* D2-4 · chuông: đọc BSCW.notices.feed (thông báo của website đang mở — không gộp nhiều website); 8 mục gần nhất nhóm theo ngày; bấm = bs-goto đúng màn + đánh dấu đã đọc. */
+    const NTF = window.BSCW && window.BSCW.notices; const ntfImp = S.plane !== 'platform' && !!this.tw('impersonating');
+    const ntfAll = (NTF && NTF.feed) ? NTF.feed({ role: this.roleName(), wf: this.wfMode(), plane: S.plane === 'platform' ? 'platform' : 'site', notes: this.props.showNotes !== false }) : [];
+    const ntfUnread = ntfAll.filter(x => x.unread).length;
+    const ntfDays = []; ntfAll.slice(0, 8).forEach(x => { let d = ntfDays[ntfDays.length - 1]; if (!d || d.label !== x.day) { d = { label: x.day, items: [] }; ntfDays.push(d); }
+      d.items.push({ text: x.text, icon: x.icon, tone: x.tone, ago: x.ago, act: x.act, unread: x.unread, unreadA: x.unread ? '1' : '0', onClick: () => { if (!ntfImp && x.unread && NTF) NTF.markRead(x.id, 'shell'); this.setState({ drop: null }); this.goScreen(x.go, x.params || {}); } }); });
+    const notifList = ntfDays;
 
     const LANGS_UI = LANGS.slice().sort((x, y) => (x.k === 'vi' ? -1 : (y.k === 'vi' ? 1 : 0)));
     const curLangUi = LANGS.find(l => l.k === S.lang) || LANGS_UI[0];
     const schemeName = { light: 'Sáng', dark: 'Tối', auto: 'Theo máy' }[S.scheme] || 'Sáng';
     const userMenu = [
-      { isItem: true, icon: 'ri-user-3-line', label: 'Tài khoản của tôi', onClick: () => this.openAcct('profile') },
+      { isItem: true, icon: 'ri-user-3-line', label: 'Tài khoản của tôi', onClick: () => { this.setState({ drop: null }); document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: 'account' } })); } },
       { isItem: true, icon: 'ri-palette-line', label: 'Giao diện', meta: schemeName + (S.fontSize === 'large' ? ' · chữ lớn' : ''), hasMeta: true, onClick: () => this.setState({ customizerOpen: true, drop: null }) },
       { isItem: true, icon: 'ri-translate-2', label: 'Ngôn ngữ giao diện', meta: curLangUi.l, hasMeta: true, ariaExp: String(!!S.userLangOpen), onClick: () => this.setState(st => ({ userLangOpen: !st.userLangOpen })) }
     ].concat(S.userLangOpen ? LANGS_UI.map(l => ({ isItem: true, sub: true, icon: S.lang === l.k ? 'ri-check-line' : 'ri-checkbox-blank-circle-line', label: l.l, lang: l.k, hasFlag: langFlagMode && !!FLAG[l.k], flagEl: langFlagMode ? flagImg(l.k, 20) : null, meta: langFlagMode ? '' : l.c, hasMeta: !langFlagMode, ariaCur: S.lang === l.k ? 'true' : undefined, onClick: () => this.setState({ lang: l.k, userLangOpen: false }) })) : []).concat([
@@ -2000,7 +1877,7 @@ class Component extends DCLogic {
     const chipA = 'padding:5px 11px;font-size:12px;font-weight:600;color:#fff;background:var(--brand-solid,var(--brand));border-radius:6px;cursor:pointer;';
     const chipB = 'padding:5px 11px;font-size:12px;font-weight:500;color:' + K.muted + ';background:transparent;border-radius:6px;cursor:pointer;';
     // Chữ lớn: --fsp (+2px) đặt trên khung gốc cho màn nhúng theo chuẩn; nội dung của Shell (chữ viết px) phóng 16/14 — bỏ zoom khi màn nhúng đã dùng --fsp.
-    const contentInnerStyle = 'padding:24px 24px 76px;width:100%;' + (S.fontSize === 'large' ? 'zoom:1.143;' : '') + (boxed ? 'max-width:1180px;margin:0 auto;' : '');
+    const contentInnerStyle = 'padding:24px 24px 76px;width:100%;' + (S.fontSize === 'large' && S.activeMenu !== 'account' && S.activeMenu !== 'notifications' && S.activeMenu !== 'dashboard' /* D2-5: Tổng quan dùng --fsp */ && !/^(?!catalog\.)[a-z0-9_-]+\.list$/.test(S.activeMenu || '') ? 'zoom:1.143;' : '') /* D2-3: Tài khoản dùng --fsp · D1-3: danh sách nội dung dùng --fsp */ + (boxed ? 'max-width:1180px;margin:0 auto;' : '');
 
     const optBtn = (on) => 'display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;border:1.5px solid ' + (on ? 'var(--brand)' : K.cardBorder) + ';border-radius:8px;background:' + (on ? 'color-mix(in srgb, var(--brand) 6%, transparent)' : K.card) + ';font:inherit;font-size:12.5px;font-weight:' + (on ? '600' : '500') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;';
     const tWrap = (on) => 'position:relative;width:108px;display:flex;flex-direction:column;gap:6px;padding:5px;border:1.5px solid ' + (on ? 'var(--brand)' : K.cardBorder) + ';border-radius:10px;background:' + (on ? 'color-mix(in srgb, var(--brand) 6%, transparent)' : K.card) + ';cursor:pointer;transition:border-color .15s,background .15s;';
@@ -2062,7 +1939,11 @@ class Component extends DCLogic {
     const mCats = mountOn && !!_cmM && SCR.dc === 'Chuyên mục';
     const catType = _cmM ? (_cmM[1] === 'catalog' ? 'products' : _cmM[1]) : '';
     const mReview = mountOn && am === 'review';
+    const mMedia = mountOn && am === 'media'; /* D1-6 */
+    const mContacts = mountOn && am === 'contacts', mForms = mountOn && am === 'forms'; /* D1-7 */
+    const mCatList = mountOn && SCR.dc === 'Sản phẩm - Danh sách', mCatEd = mountOn && SCR.dc === 'Sản phẩm - Trình sửa'; /* D1-5 */
     const mStd = mountOn && am === 'ui-standard';
+    const mAccount = mountOn && am === 'account'; /* D2-3 */
     const showBlank = !showSettings && !showDashboard && !mountOn;
     const _mi = showBlank ? (_miF || _miR) : null;
     const blankNoteShow = !!_mi && this.props.showNotes !== false;
@@ -2986,7 +2867,7 @@ class Component extends DCLogic {
     const onEmbedDirtySl = mkEmbedDirty('social');
     const onEmbedDirtySls = mkEmbedDirty('social-saas');
     const onEmbedDirtyMn = mkEmbedDirty('menus');
-    const onEmbedDirtyCt = mkEmbedDirty('content'), onEmbedDirtyPe = mkEmbedDirty('page-editor'), onEmbedDirtyWf = mkEmbedDirty('workflow'), onEmbedDirtyTx = mkEmbedDirty('taxonomy');
+    const onEmbedDirtyCt = mkEmbedDirty('content'), onEmbedDirtyPe = mkEmbedDirty('page-editor'), onEmbedDirtyWf = mkEmbedDirty('workflow'), onEmbedDirtyTx = mkEmbedDirty('taxonomy'), onEmbedDirtyAc = mkEmbedDirty('account'), onEmbedDirtyMd = mkEmbedDirty('media'), onEmbedDirtyCl = mkEmbedDirty('catalog-list'), onEmbedDirtyCe = mkEmbedDirty('catalog');
     /* D0-5: cụm Lưu của Shell cho màn mount có shellSave (Trình đơn · Quy trình duyệt) — màn toàn trang tự giữ thanh thao tác của mình */
     const mSaveId = (mountOn && SCR.shellSave && SCR.embedId) ? SCR.embedId : 'menus';
     const mEmbId = this.mountEmbedId();
@@ -3030,8 +2911,8 @@ class Component extends DCLogic {
       navEmpty: sgGroups.every(g => g.items.every(it => q && it.l.toLowerCase().indexOf(q) < 0 && (it.desc || '').toLowerCase().indexOf(q) < 0)), settingsBackToDash, onMarkDirty, onSaveSection, onCancelSection,
       settingsSaveStyle: ((settingsActive.isEmbed ? curEmbedDirty : settingsActive.dirty) && !(!settingsActive.isEmbed && secErrCount > 0)) ? settingsActive.saveBtnStyle : settingsActive.saveBtnStyleOff,
       settingsResetStyle: (settingsActive.isEmbed ? curEmbedDirty : settingsActive.dirty) ? settingsActive.resetBtnStyle : settingsActive.resetBtnStyleOff,
-      showMenus, menusMounted, menusHidden: !showMenus, onEmbedDirtyMn, onEmbedDirtyCt, onEmbedDirtyPe, onEmbedDirtyWf, onEmbedDirtyTx, mCats, catType, catalogOnCats: true, catsBig: false, mReview, mStd, mContent, mPages, mPageEd, mWorkflow, roleName: this.roleName(), hdrShow, scrDescShow, scrDesc,
-      ctType: _ctM ? _ctM[1] : '', ctStart: SCR && SCR.start ? SCR.start : 'list', ctSlug: (S.screenParams || {}).slug || '', wfName: this.wfMode(), langCodes: (S.siteLangs || []).slice(), planK: this.planKey(), upsellOn: upsell,
+      showMenus, menusMounted, menusHidden: !showMenus, onEmbedDirtyMn, onEmbedDirtyCt, onEmbedDirtyPe, onEmbedDirtyWf, onEmbedDirtyTx, onEmbedDirtyMd, mMedia, mContacts, mForms, ctForm: (S.screenParams || {}).form || '', onEmbedDirtyKl: mkEmbedDirty('contacts'), onEmbedDirtyFm: mkEmbedDirty('forms'), mCatList, mCatEd, onEmbedDirtyCl, onEmbedDirtyCe, catModOn: this.modOn('catalog'), mCats, catType, catalogOnCats: true, catsBig: false, mReview, mStd, mAccount, onEmbedDirtyAc, acctPlane: S.plane === 'platform' ? 'platform' : 'tenant', acctTwofa: S.plane === 'platform' ? 'Đã bật' : 'Chưa bật', acctImp: impOn, acctTab: (S.screenParams || {}).tab || '', acctNotes: this.props.showNotes !== false, uiScheme: S.scheme, uiFontSize: S.fontSize, uiMotion: S.motion || 'auto', uiContrast: S.contrast || 'normal', uiLangK: S.lang, onAcctPref: this._acctPref || (this._acctPref = (k, v) => { if (k === 'lang') this.setState({ lang: v }); else if (['scheme', 'fontSize', 'motion', 'contrast'].indexOf(k) >= 0) this.setState({ [k]: v }); }), mContent, mPages, mPageEd, mWorkflow, roleName: this.roleName(), hdrShow, scrDescShow, scrDesc,
+      ctType: _ctM ? _ctM[1] : '', ctStart: SCR && SCR.start ? SCR.start : 'list', ctSlug: (S.screenParams || {}).slug || '', ctMa: (S.screenParams || {}).ma || '', ctParent: (S.screenParams || {}).parent || '', ctLang: (S.screenParams || {}).lang || '', wfName: this.wfMode(), langCodes: (S.siteLangs || []).slice(), planK: this.planKey(), upsellOn: upsell,
       cardBtn3Show: !!C.b3, cardBtn3Text: C.b3 || '', cardBtn3Icon: C.b3i || '', cardBtn3Click: C.b3c || null, mediaPickShow: S.pickerFor === '__media',
       cardKind, cardIcon: C.icon, cardTitle: C.title, cardText: C.text, cardDataShow: !!C.data, cardData: C.data, cardFeatShow: featOff, cardFeatText: featText,
       cardBtnShow: !!C.btn, cardBtnText: C.btn, cardBtnIcon: C.btnIcon, cardBtnClick: C.btnClick, cardBtn2Show: !!C.btn2, cardTurnShow: !!C.turn, cardTurn: C.turn,
@@ -3042,6 +2923,12 @@ class Component extends DCLogic {
       onImpBack: () => { this.applyPlane('platform'); this.setState({ activeMenu: 'p-impersonate', impEnded: true }); this.notify('Đã kết thúc phiên hỗ trợ — về Nền tảng › Đăng nhập hỗ trợ'); },
       onSearchKey: (e) => { if (e && e.key === 'Enter') { e.preventDefault(); searchAll(); } }, onSearchAll: searchAll, searchNone: searchResults.length === 0,
       onAllNotif: () => { this.setState({ drop: null }); this.goScreen('notifications'); },
+      ntfAria: 'Thông báo — ' + (ntfUnread ? ntfUnread + ' chưa đọc' : 'không có thông báo chưa đọc'), ntfExp: String(S.drop === 'notif'), ntfHasBadge: ntfUnread > 0, ntfBadge: NTF && NTF.badge ? NTF.badge(ntfUnread) : String(ntfUnread),
+      ntfHasUnread: ntfUnread > 0, ntfUnreadLabel: (NTF && NTF.badge ? NTF.badge(ntfUnread) : ntfUnread) + ' chưa đọc', ntfPlatNote: S.plane === 'platform' && this.props.showNotes !== false, ntfEmpty: ntfAll.length === 0, ntfDays,
+      ntfAllDis: ntfImp ? 'true' : undefined, ntfAllWhy: ntfImp ? 'Đang đăng nhập hỗ trợ — không đánh dấu đã đọc thay thành viên' : 'Đánh dấu đã đọc tất cả',
+      onCloseNotif: () => this.setState({ drop: null }),
+      onNtfAllRead: () => { if (ntfImp) { this.notify('Đang đăng nhập hỗ trợ — không đánh dấu đã đọc thay thành viên'); return; } const n = NTF ? NTF.markAll(ntfAll.filter(x => x.unread).map(x => x.id), 'shell') : 0; this.notify('Đã đánh dấu đã đọc ' + n + ' thông báo'); },
+      mDash: mountOn && am === 'dashboard', dashModOff: this.tw('moduleOff') || 'none', dashFresh: !!this.tw('freshSite'), dashBig: S.fontSize === 'large', onEmbedDirtyDb: this._dbDirty || (this._dbDirty = mkEmbedDirty('dashboard')), /* D2-5 */ mNotif: mountOn && am === 'notifications', ntfWf: this.wfMode(), ntfTab: (S.screenParams || {}).tab || '', onEmbedDirtyNt: this._ntDirty || (this._ntDirty = mkEmbedDirty('notifications')),
       siteUpShow: upsell, onSiteUpgrade: () => { this.setState({ drop: null }); this.goScreen('settings', { section: 'quota' }); },
       menusShowActions: showMenus || mWorkflow, menusHasChanges: menusDirty, menusNoChanges: !menusDirty,
       menusHasErr: (Number((S.embedInvalid || {})[mSaveId]) || 0) > 0, menusErrText: (Number((S.embedInvalid || {})[mSaveId]) || 0) + ' lỗi',
@@ -3107,34 +2994,7 @@ class Component extends DCLogic {
       onStub: () => this.setState({ drop: null }),
       tAppBg: K.appBg, tText: K.text, tHeading: K.heading, tMuted: K.muted, tCard: K.card, tCardBorder: K.cardBorder, tLine: K.line, tHover: K.hover, tPanel: K.panel, tPanelBorder: K.panelBorder,
       ...(() => {
-        const acctInputStyle = 'width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid ' + K.cardBorder + ';border-radius:5px;font:inherit;font-size:13.5px;color:' + K.heading + ';background:' + K.card + ';outline:none;';
-        const acctSaveBtnStyle = 'padding:9px 18px;border:0;border-radius:7px;background:var(--brand-solid,var(--brand));color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;';
-        const TABS = [ ['profile', 'Hồ sơ của tôi', 'ri-user-3-line'], ['security', 'Bảo mật & xác thực 2 lớp', 'ri-shield-keyhole-line'], ['prefs', 'Tùy chọn cá nhân', 'ri-settings-3-line'] ];
-        const acctTabs = TABS.map(t => { const on = S.acctModal === t[0];
-          return { label: t[1], icon: t[2], onClick: () => this.setState({ acctModal: t[0] }),
-            style: 'display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border:0;border-radius:7px;background:' + (on ? K.hover : 'transparent') + ';font:inherit;font-size:13px;font-weight:' + (on ? '600' : '400') + ';color:' + (on ? 'var(--brand-ink,var(--brand))' : K.text) + ';cursor:pointer;text-align:left;' }; });
-        const SESS = [ { id: 's1', device: 'Chrome trên Windows', loc: 'Hà Nội, Việt Nam', cur: true }, { id: 's2', device: 'Safari trên iPhone', loc: 'TP. Hồ Chí Minh, Việt Nam', cur: false }, { id: 's3', device: 'Chrome trên macOS', loc: 'Đà Nẵng, Việt Nam', cur: false } ];
-        const sessionRows = SESS.filter(s => s.cur || S.killedSessions.indexOf(s.id) < 0).map(s => ({ device: s.device, loc: s.loc, cur: s.cur, canKill: !s.cur, onKill: () => this.killSession(s.id) }));
         return {
-          acctShow: !!S.acctModal, acctTabs,
-          acctIsProfile: S.acctModal === 'profile', acctIsSecurity: S.acctModal === 'security', acctIsPrefs: S.acctModal === 'prefs',
-          onCloseAcct: () => this.closeAcct(), onAcctBackdrop: () => this.closeAcct(),
-          acctInputStyle, acctSaveBtnStyle,
-          acctName: S.acctDraft.name, onAcctName: (e) => this.setAcctDraft('name', e.target.value),
-          acctTitle: S.acctDraft.title, onAcctTitle: (e) => this.setAcctDraft('title', e.target.value),
-          acctPhone: S.acctDraft.phone, onAcctPhone: (e) => this.setAcctDraft('phone', e.target.value),
-          onSaveProfile: () => this.saveProfile(),
-          pwCur: S.pwCur, onPwCur: (e) => this.setState({ pwCur: e.target.value }),
-          pwNew: S.pwNew, onPwNew: (e) => this.setState({ pwNew: e.target.value }),
-          pwConfirm: S.pwConfirm, onPwConfirm: (e) => this.setState({ pwConfirm: e.target.value }),
-          onChangePw: () => this.changePassword(),
-          twofaClass: 'dsw' + (S.twofaOn ? ' on' : ''), onToggle2fa: () => this.toggle2fa(),
-          twofaHint: S.twofaOn ? 'Đã bật — bảo vệ bằng mã từ ứng dụng Authenticator.' : 'Bảo vệ tài khoản bằng mã từ ứng dụng xác thực.',
-          sessionRows,
-          prefLang: S.prefLang, onPrefLang: (e) => this.setState({ prefLang: e.target.value }),
-          prefTz: S.prefTz, onPrefTz: (e) => this.setState({ prefTz: e.target.value }),
-          prefNotifClass: 'dsw' + (S.prefEmailNotif ? ' on' : ''), onPrefNotif: () => this.setState({ prefEmailNotif: !S.prefEmailNotif }),
-          onSavePrefs: () => this.savePrefs(),
           logoutAskShow: !!S.logoutAsk, onCancelLogout: () => this.cancelLogout(), onConfirmLogout: () => this.confirmLogout(),
           lockShow: !!S.screenLocked, lockInput: S.lockInput, onLockInput: (e) => this.setState({ lockInput: e.target.value, lockErr: false }),
           lockErr: !!S.lockErr, lockBorder: S.lockErr ? '#f2836f' : 'rgba(255,255,255,.18)',
@@ -3152,6 +3012,8 @@ class Component extends DCLogic {
       onRangeFrom: (e) => this.setState({ rangeDraftFrom: e && e.target ? e.target.value : '', rangeErr: '' }),
       onRangeTo: (e) => this.setState({ rangeDraftTo: e && e.target ? e.target.value : '', rangeErr: '' }),
       onRangeApply: () => { const a = S.rangeDraftFrom, b = S.rangeDraftTo; if (!a || !b) { this.setState({ rangeErr: 'Chọn đủ ngày bắt đầu và ngày kết thúc.' }); return; } if (a < rMin || b > rMax) { this.setState({ rangeErr: 'Chỉ có số liệu trong 90 ngày gần nhất. Chọn ngày trong khoảng này.' }); return; } if (a > b) { this.setState({ rangeErr: 'Ngày bắt đầu phải trước ngày kết thúc.' }); return; } this.setState({ range: null, rangeFrom: a, rangeTo: b, drop: null }); },
+      /* D2-1: Nhóm quyền + Thành viên (params: nhom = tên nhóm, che = sua|xem|moi — không id số) */
+      mRoles: mountOn && am === 'roles', mUsers: mountOn && am === 'users', rqNhom: (S.screenParams || {}).nhom || '', rqTab: (S.screenParams || {}).tab || 'thanh-vien', rqChe: (S.screenParams || {}).che || '', onEmbedDirtyNq: mkEmbedDirty('roles'), onEmbedDirtyTv: mkEmbedDirty('users'),
       reviewBadge: reviewN + ' chờ xử lý', inboxMoreShow: inboxMore > 0, inboxMoreLabel: 'và ' + inboxMore + ' mục khác', cardStyle0, chipA, chipB, contentInnerStyle,
       customizerOpen: S.customizerOpen, onToggleCustomizer: () => this.setState(s => ({ customizerOpen: !s.customizerOpen, drop: null })), onResetCustomizer: () => this.resetCustomizer(),
       czPanelStyle, cz: CZ, mainColStyle, contentScrollStyle,

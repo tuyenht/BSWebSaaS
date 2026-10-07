@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<script src="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/_ds_bundle.js"></script>
+<script src="./platform-config.js"></script>
+<script src="./content-workflow.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa);font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765)}
+a{color:var(--color-accent,#2050a0)}a:hover{color:var(--color-heading,#1f2b4d)}
+.tb-c{min-height:100dvh;box-sizing:border-box;font-size:calc(14px + var(--fsp));line-height:1.5;color:var(--color-body-text,#3c4765);background:var(--color-body,#f4f5fa)}
+.tb-c *{box-sizing:border-box}
+.tb-c[data-fs="l"]{--fsp:2px}
+.tb-c[data-emb="1"]{min-height:0;background:transparent}
+.tb-wrap{container-type:inline-size;container-name:tb;max-width:960px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:16px}
+.tb-c[data-emb="1"] .tb-wrap{padding:0;max-width:none}
+@container tb (max-width:599px){.tb-wrap{padding:16px 12px}}
+.tb-c[data-emb="1"] .tb-wrap{padding:0}
+.tb-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px 16px}
+.tb-ht{flex:1 1 320px;min-width:0}
+.tb-h1{margin:0;font-size:calc(20px + var(--fsp));font-weight:600;line-height:1.4;color:var(--color-heading,#1f2b4d)}
+.tb-desc{margin:4px 0 0;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.tb-ha{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;max-width:100%}
+.tb-ha .sx-btn{max-width:100%}
+@container tb (max-width:519px){.tb-ha{flex:1 1 100%}.tb-ha .sx-btn{flex:1 1 100%;min-width:0}.tb-ha .sx-btn.pri{order:-1}}
+.tb-card{overflow:hidden}
+.tb-bar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 16px;padding:8px 16px 0;border-bottom:1px solid var(--color-border,#e9ecf4)}
+.tb-bar .dli-tabs{flex:1 1 100%;border-bottom:0;overflow-x:auto;scrollbar-width:none}
+.tb-bar .dli-tabs::-webkit-scrollbar{display:none}
+.tb-bar .sx-search{flex:1 1 100%;min-width:0;margin:0 0 8px}
+.tb-bar .sx-search input{font-size:calc(16px + var(--fsp))}
+
+.tb-notes{display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px 0}
+.tb-ret{display:flex;align-items:center;gap:6px;padding:8px 16px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tb-day{margin:0;padding:8px 16px;font-size:calc(13px + var(--fsp));font-weight:600;line-height:1.5;color:var(--color-body-muted,#5b6275);background:var(--color-surface-muted,#f8f9fb);border-top:1px solid var(--color-border,#e9ecf4)}
+.tb-row{display:grid;grid-template-columns:40px minmax(0,1fr) auto;gap:12px;align-items:start;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4);cursor:pointer;background:var(--color-surface,#fff);transition:background-color .15s}
+.tb-row[data-unread="1"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,var(--color-surface,#fff))}
+.tb-row:hover{background:var(--color-surface-hover,#f1f3f9)}
+.tb-ic{width:40px;height:40px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:calc(19px + var(--fsp));flex:0 0 auto}
+.tb-ic[data-t="warn"]{background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 18%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405)}
+.tb-ic[data-t="ok"]{background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 14%,var(--color-surface,#fff));color:var(--color-admin-success-text,#047767)}
+.tb-ic[data-t="danger"]{background:color-mix(in srgb,var(--color-admin-danger,#f06548) 14%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+.tb-ic[data-t="info"]{background:color-mix(in srgb,var(--color-admin-info,#299cdb) 14%,var(--color-surface,#fff));color:var(--color-admin-info-text,#026fa2)}
+.tb-ic[data-t="brand"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,var(--color-surface,#fff));color:var(--color-accent,#2050a0)}
+.tb-m{min-width:0}
+.tb-tx{margin:0;color:var(--color-heading,#1f2b4d);overflow-wrap:anywhere;text-wrap:pretty}
+.tb-row[data-unread="1"] .tb-tx{font-weight:600}
+.tb-q{margin:6px 0 0;padding:6px 10px;border-radius:4px;background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-text,#3c4765);font-size:calc(13px + var(--fsp));overflow-wrap:anywhere}
+.tb-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin-top:4px;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tb-new{display:inline-flex;align-items:center;gap:4px;font-weight:600;color:var(--color-accent,#2050a0)}
+.tb-new::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--color-accent,#2050a0)}
+.tb-deny{display:flex;align-items:flex-start;gap:6px;margin-top:6px;font-size:calc(13px + var(--fsp));color:var(--color-admin-warning-text,#906405)}
+.tb-ra{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.tb-ra .sx-btn{max-width:220px}
+@container tb (max-width:599px){.tb-row{grid-template-columns:36px minmax(0,1fr);gap:8px 12px;padding:12px}.tb-ic{width:36px;height:36px}.tb-ra{grid-column:2;flex-direction:row;align-items:center;flex-wrap:wrap}.tb-ra .sx-btn{max-width:none}.tb-ra .sx-btn:first-child{flex:1 1 auto;min-width:0}}
+.tb-foot{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 16px 16px;border-top:1px solid var(--color-border,#e9ecf4);font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);text-align:center}
+.tb-empty{margin:16px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px 16px;text-align:center;border:1px dashed var(--color-border-strong,#e3e7f0);border-radius:6px}
+.tb-empty>i{font-size:calc(32px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.tb-et{margin:0;font-size:calc(16px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d);line-height:1.4;overflow-wrap:anywhere}
+.tb-ed{margin:0;max-width:52ch;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.tb-sk{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.tb-err{margin:16px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.tb-err>span{flex:1 1 240px;min-width:0}
+.tb-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:220;max-width:calc(100vw - 32px);display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:10px 16px;border-radius:6px;background:var(--color-heading,#1f2b4d);color:var(--color-surface,#fff);font-size:calc(14px + var(--fsp));box-shadow:0 5px 15px rgba(30,32,37,.2)}
+.tb-undo{min-height:32px;padding:0 10px;border:1px solid currentColor;border-radius:4px;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap;--focus-ring-color:var(--color-surface,#fff);--focus-inner:transparent}
+@media (pointer:coarse){.tb-undo{min-height:44px}}
+.tb-frames{display:flex;flex-direction:column;gap:12px}
+.tb-frames iframe{display:block;border:0;background:var(--color-body,#f4f5fa)}
+@media (prefers-reduced-motion:reduce){.tb-c *{transition:none !important;animation:none !important}}
+</style>
+</helmet>
+<div class="tb-c" data-fs="{{ fsAttr }}" data-emb="{{ embAttr }}" data-screen-label="Thông báo">
+  <div class="tb-wrap">
+    <div class="tb-head">
+      <sc-if value="{{ ownHeader }}" hint-placeholder-val="{{ true }}">
+        <header class="tb-ht">
+          <h1 class="tb-h1">Thông báo</h1>
+          <p class="tb-desc">Việc cần bạn chú ý trên website này: bài chờ duyệt, khách liên hệ, cảnh báo bảo mật và tên miền.</p>
+        </header>
+      </sc-if>
+      <div class="tb-ha">
+        <button type="button" class="sx-btn" onClick="{{ onPrefs }}"><i class="ri-settings-3-line"></i><span class="sx-t el">Tùy chọn thông báo</span></button>
+        <button type="button" class="sx-btn pri" onClick="{{ onAllRead }}" aria-disabled="{{ allReadDis }}" aria-describedby="{{ allReadWhyId }}"><i class="ri-check-double-line"></i><span class="sx-t el">Đánh dấu đã đọc tất cả</span></button>
+      </div>
+    </div>
+
+    <sc-if value="{{ isPlat }}">
+      <div class="sx-al" data-k="info" style="display:flex;flex-wrap:wrap;gap:6px 10px;align-items:flex-start;"><i class="ri-information-line" style="font-size:18px;"></i><span style="flex:1 1 260px;min-width:0;">Đây là chuông của mặt Nền tảng. Nền tảng chưa có kho thông báo riêng — các loại dưới đây là đề xuất.</span><sc-if value="{{ notes }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend</span><span class="sx-note" data-k="owner"><i class="ri-question-line"></i>Cần owner chốt danh sách loại</span></sc-if></div>
+    </sc-if>
+    <sc-if value="{{ ro }}">
+      <div class="sx-al" data-k="warning" id="tb-rowhy" style="display:flex;gap:8px;align-items:flex-start;"><i class="ri-user-shared-line" style="font-size:18px;"></i><span>Bạn đang đăng nhập dưới tên thành viên để hỗ trợ: xem được thông báo, nhưng không đánh dấu đã đọc thay họ.</span></div>
+    </sc-if>
+
+    <section class="sx-card tb-card" aria-label="Danh sách thông báo">
+      <div class="tb-bar">
+        <div class="dli-tabs" role="tablist" aria-label="Lọc thông báo" onKeyDown="{{ onTabKey }}">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="6">
+            <button type="button" class="dli-tab" role="tab" id="{{ t.tid }}" aria-selected="{{ t.sel }}" aria-controls="tb-panel" tabindex="{{ t.ti }}" onClick="{{ t.go }}">{{ t.label }}<span class="n">{{ t.n }}</span></button>
+          </sc-for>
+        </div>
+        <label class="sx-search" data-focus-wrap="true">
+          <i class="ri-search-line" aria-hidden="true" style="color:var(--color-body-muted,#5b6275);"></i>
+          <input type="search" value="{{ q }}" onInput="{{ onQ }}" onKeyDown="{{ onQKey }}" placeholder="Anh Nam, máy phay 5 trục…" aria-label="Tìm theo nội dung hoặc người liên quan">
+          <sc-if value="{{ hasQ }}"><button type="button" class="sx-btn sm gho ic" onClick="{{ onClearQ }}" aria-label="Bỏ tìm" title="Bỏ tìm"><i class="ri-close-line"></i></button></sc-if>
+        </label>
+      </div>
+      <sc-if value="{{ notes }}">
+        <div class="tb-notes"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend: lọc theo nhóm, chưa đọc và tìm ở máy chủ (bản thử lọc trong 20 mục đã tải)</span></div>
+      </sc-if>
+      <div class="tb-ret"><i class="ri-time-line" aria-hidden="true"></i><span>Thông báo được giữ 90 ngày, sau đó tự xóa.</span></div>
+
+      <div id="tb-panel" role="tabpanel" aria-labelledby="{{ panelLabel }}">
+        <sc-if value="{{ isLoading }}">
+          <div aria-busy="true" aria-label="Đang tải thông báo">
+            <sc-for list="{{ skRows }}" as="k" hint-placeholder-count="4">
+              <div class="tb-sk"><span class="sx-sk" style="width:40px;height:40px;border-radius:50%;"></span><span style="display:flex;flex-direction:column;gap:8px;"><span class="sx-sk" style="height:14px;width:{{ k.w }};"></span><span class="sx-sk" style="height:12px;width:40%;"></span></span></div>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isError }}">
+          <div class="sx-al tb-err" data-k="danger" role="alert"><i class="ri-wifi-off-line" style="font-size:18px;"></i><span>Chưa tải được thông báo vì mất kết nối với máy chủ. Kiểm tra mạng rồi bấm Thử lại.</span><button type="button" class="sx-btn" onClick="{{ onRetry }}"><i class="ri-refresh-line"></i>Thử lại</button></div>
+        </sc-if>
+        <sc-if value="{{ isEmpty }}">
+          <div class="tb-empty">
+            <i class="{{ emptyIcon }}" aria-hidden="true"></i>
+            <p class="tb-et">{{ emptyTitle }}</p>
+            <p class="tb-ed">{{ emptyDesc }}</p>
+            <sc-if value="{{ emptyBtn }}"><button type="button" class="sx-btn" onClick="{{ onEmptyBtn }}">{{ emptyBtnLabel }}</button></sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ hasList }}">
+          <sc-for list="{{ days }}" as="d" hint-placeholder-count="2">
+            <section aria-label="{{ d.label }}">
+              <h2 class="tb-day">{{ d.label }}</h2>
+              <sc-for list="{{ d.items }}" as="n" hint-placeholder-count="3">
+                <div class="tb-row" data-unread="{{ n.unreadA }}" onClick="{{ n.open }}">
+                  <span class="tb-ic" data-t="{{ n.tone }}" aria-hidden="true"><i class="{{ n.icon }}"></i></span>
+                  <div class="tb-m">
+                    <p class="tb-tx">{{ n.text }}</p>
+                    <sc-if value="{{ n.hasNote }}"><p class="tb-q">{{ n.noteText }}</p></sc-if>
+                    <div class="tb-meta">
+                      <sc-if value="{{ n.unread }}"><span class="tb-new">Chưa đọc</span></sc-if>
+                      <span>{{ n.meta }}</span>
+                      <sc-if value="{{ n.unsent }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend: loại có nhưng chưa phát</span></sc-if>
+                      <sc-if value="{{ n.proposed }}"><span class="sx-note"><i class="ri-tools-line"></i>Chờ backend: loại đề xuất</span></sc-if>
+                    </div>
+                    <sc-if value="{{ n.denied }}"><p class="tb-deny" style="margin-bottom:0;"><i class="ri-lock-line" aria-hidden="true"></i><span>Nhóm quyền của bạn đã đổi, không còn làm được việc này. Bấm vẫn mở trang để xem lý do.</span></p></sc-if>
+                  </div>
+                  <div class="tb-ra" onClick="{{ stop }}">
+                    <button type="button" class="sx-btn sm" onClick="{{ n.open }}" aria-label="{{ n.actAria }}"><span class="sx-t el">{{ n.act }}</span><i class="ri-arrow-right-s-line" aria-hidden="true"></i></button>
+                    <sc-if value="{{ n.canRead }}"><button type="button" class="sx-btn sm gho" onClick="{{ n.read }}" aria-label="{{ n.readAria }}"><i class="ri-check-line"></i><span class="sx-t">Đã đọc</span></button></sc-if>
+                  </div>
+                </div>
+              </sc-for>
+            </section>
+          </sc-for>
+          <div class="tb-foot">
+            <sc-if value="{{ hasMore }}"><button type="button" class="sx-btn" onClick="{{ onMore }}"><i class="ri-arrow-down-line"></i>Tải thêm</button></sc-if>
+            <span>{{ footText }}</span>
+          </div>
+        </sc-if>
+      </div>
+    </section>
+
+    <sc-if value="{{ framesShow }}">
+      <section class="tb-frames" aria-label="Xem ở điện thoại và máy tính bảng">
+        <h2 class="sx-h3">Xem ở 390px và 768px</h2>
+        <div class="fr-row">
+          <div class="fr" style="width:min(392px,100%);"><div class="fr-cap"><i class="ri-smartphone-line"></i>390 × 844</div><iframe title="Khung 390px" src="{{ frameSrc }}" style="width:390px;max-width:100%;height:844px;"></iframe></div>
+          <div class="fr" style="width:min(770px,100%);"><div class="fr-cap"><i class="ri-tablet-line"></i>768 × 1024</div><iframe title="Khung 768px" src="{{ frameSrc }}" style="width:768px;max-width:100%;height:1024px;"></iframe></div>
+        </div>
+      </section>
+    </sc-if>
+  </div>
+  <span id="tb-allwhy" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">{{ allReadWhy }}</span>
+  <div role="status" aria-live="polite" style="position:fixed;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">{{ toastText }}</div>
+  <sc-if value="{{ toastShow }}"><div class="tb-toast"><i class="ri-checkbox-circle-line" aria-hidden="true"></i><span aria-hidden="true">{{ toastText }}</span><sc-if value="{{ toastUndo }}"><button type="button" class="tb-undo" onClick="{{ onUndo }}">Hoàn tác</button></sc-if></div></sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Chủ website&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;workflow&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Không duyệt — đăng thẳng&quot;,&quot;Duyệt trước khi đăng&quot;,&quot;Quy trình biên tập&quot;],&quot;default&quot;:&quot;Duyệt trước khi đăng&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;plane&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Website&quot;,&quot;Nền tảng&quot;],&quot;default&quot;:&quot;Website&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;simState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Bình thường&quot;,&quot;Đang tải&quot;,&quot;Lỗi tải&quot;,&quot;Trống&quot;],&quot;default&quot;:&quot;Bình thường&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;impersonating&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Mô phỏng&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;showFrames&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;tab&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'all', q: '', shown: 8, simOver: null, toast: '', undo: null };
+  tw(k) { return (this.props || {})[k]; }
+  role() { const r = this.tw('role'); return (window.BSCW && window.BSCW.ROLES && window.BSCW.ROLES[r]) ? r : 'Chủ website'; }
+  isPlat() { const p = this.tw('plane'); return p === 'platform' || p === 'Nền tảng'; }
+  ro() { return !this.isPlat() && !!this.tw('impersonating'); }
+  wf() { return this.tw('workflow') || 'Duyệt trước khi đăng'; }
+  notes() { return this.tw('showNotes') !== false; }
+  big() { if (this.tw('bigText')) return true; try { const r = JSON.parse(localStorage.getItem('bs-ui') || 'null'); return !!(r && r.fontSize === 'large'); } catch (e) { return false; } }
+  N() { return window.BSCW && window.BSCW.notices; }
+  feed() { const N = this.N(); if (!N || !N.feed) return []; return N.feed({ role: this.role(), wf: this.wf(), plane: this.isPlat() ? 'platform' : 'site', notes: this.notes() }); }
+  norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'd').toLowerCase(); }
+  tabFromParam(v) { return { 'tat-ca': 'all', 'chua-doc': 'unread', 'duyet-bai': 'workflow', 'khach-lien-he': 'lead', 'bao-mat': 'security', 'he-thong': 'system' }[v] || null; }
+  notify(t, undo) { this.setState({ toast: t, undo: undo || null }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '', undo: null }), undo ? 8000 : 3200); }
+  componentDidMount() {
+    this._sid = 'ntf-page-' + Math.random().toString(36).slice(2);
+    this._pp = Object.assign({}, this.props);
+    this._st = () => this.forceUpdate();
+    document.addEventListener('bs-cw-store', this._st); document.addEventListener('bs-cw-ready', this._st);
+    this._cmd = (e) => { const d = (e && e.detail) || {}; if (d.id && d.id !== (this.props.embedId || 'notifications')) return; /* màn không có gì để lưu: save / reset không làm gì */ };
+    document.addEventListener('bs-embed-cmd', this._cmd);
+    const t = this.tabFromParam(this.props.tab); if (t) this.setState({ tab: t });
+    if (typeof this.props.onDirty === 'function') { try { this.props.onDirty(0); } catch (e) {} }
+  }
+  componentWillUnmount() { document.removeEventListener('bs-cw-store', this._st); document.removeEventListener('bs-cw-ready', this._st); document.removeEventListener('bs-embed-cmd', this._cmd); clearTimeout(this._tt); clearTimeout(this._lt); }
+  componentDidUpdate() {
+    const pp = this._pp || {}, p = this.props;
+    if (pp.tab !== p.tab) { const t = this.tabFromParam(p.tab); if (t) this.setState({ tab: t, shown: 8 }); }
+    if (pp.simState !== p.simState || pp.role !== p.role || pp.plane !== p.plane) this.setState({ simOver: null, shown: 8 });
+    this._pp = Object.assign({}, p);
+  }
+  goto(screen, params, what) {
+    try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: screen, params: params || {} } })); } catch (e) {}
+    if (!this.props.embedded) this.notify('Trong trang quản trị, nút này mở: ' + what + '.');
+  }
+  open(x) { const N = this.N(); if (!this.ro() && x.unread && N) N.markRead(x.id, this._sid); this.goto(x.go, x.params, x.act); }
+  read(x) { const N = this.N(); if (this.ro() || !N) return; N.markRead(x.id, this._sid); this.notify('Đã đánh dấu đã đọc.', [x.id]); }
+  allRead(list) {
+    if (this.ro()) { this.notify('Đang đăng nhập hỗ trợ — không đánh dấu đã đọc thay thành viên.'); return; }
+    const ids = list.filter(x => x.unread).map(x => x.id);
+    if (!ids.length) { this.notify('Không còn thông báo chưa đọc.'); return; }
+    const N = this.N(); const n = N ? N.markAll(ids, this._sid) : 0;
+    this.notify('Đã đánh dấu đã đọc ' + n + ' thông báo.', ids);
+  }
+  undo() { const N = this.N(); const ids = this.state.undo; if (N && ids) N.restore(ids, this._sid); this.setState({ toast: 'Đã hoàn tác.', undo: null }); clearTimeout(this._tt); this._tt = setTimeout(() => this.setState({ toast: '' }), 2500); }
+  setTab(k) { this.setState({ tab: k, shown: 8 }); }
+  tabKey(e, keys) {
+    const i = keys.indexOf(this.state.tab); let n = -1;
+    if (e.key === 'ArrowRight') n = (i + 1) % keys.length; else if (e.key === 'ArrowLeft') n = (i + keys.length - 1) % keys.length; else if (e.key === 'Home') n = 0; else if (e.key === 'End') n = keys.length - 1;
+    if (n < 0) return; e.preventDefault(); this.setTab(keys[n]);
+    setTimeout(() => { const el = document.getElementById('tb-tab-' + keys[n]); if (el) el.focus(); }, 30);
+  }
+  renderVals() {
+    const S = this.state, P = this.props || {}, plat = this.isPlat(), ro = this.ro(), notes = this.notes(), role = this.role();
+    const can = (p) => !window.BSCW || !window.BSCW.has || window.BSCW.has(role, p);
+    const sim = S.simOver || ({ 'Đang tải': 'loading', 'Lỗi tải': 'error', 'Trống': 'empty' }[P.simState] || 'ok');
+    const all = sim === 'ok' ? this.feed() : [];
+    const TABS = plat ? [['all', 'Tất cả'], ['unread', 'Chưa đọc']] : [['all', 'Tất cả'], ['unread', 'Chưa đọc'], ['workflow', 'Duyệt bài'], ['lead', 'Khách liên hệ'], ['security', 'Bảo mật'], ['system', 'Hệ thống']];
+    const keys = TABS.map(t => t[0]);
+    const tab = keys.indexOf(S.tab) >= 0 ? S.tab : 'all';
+    const inTab = (t, x) => t === 'all' || (t === 'unread' ? x.unread : x.group === t);
+    const qRaw = S.q || '', qn = this.norm(qRaw.trim());
+    const inT = all.filter(x => inTab(tab, x));
+    const list = qn ? inT.filter(x => this.norm(x.hay).indexOf(qn) >= 0) : inT;
+    const vis = list.slice(0, S.shown);
+    const days = [];
+    vis.forEach(x => {
+      let d = days[days.length - 1]; if (!d || d.label !== x.day) { d = { label: x.day, items: [] }; days.push(d); }
+      d.items.push({ text: x.text, icon: x.icon, tone: x.tone, hasNote: !!x.note, noteText: (x.group === 'workflow' ? 'Lý do: ' : '') + x.note, unread: x.unread, unreadA: x.unread ? '1' : '0',
+        meta: x.groupLabel + ' · ' + x.ago, act: x.act, actAria: x.act + ': ' + x.text, readAria: 'Đánh dấu đã đọc: ' + x.text,
+        unsent: notes && x.backend === 'unsent', proposed: notes && x.backend === 'proposed' && !plat, denied: !!x.denied, canRead: x.unread && !ro,
+        open: () => this.open(x), read: () => this.read(x) });
+    });
+    const wfOff = this.wf() === 'Không duyệt — đăng thẳng';
+    let E = null;
+    if (sim === 'ok' && !list.length) {
+      if (qn) E = { i: 'ri-search-line', t: 'Không có thông báo nào khớp «' + qRaw.trim() + '»', d: 'Thử từ ngắn hơn, tên người liên quan hoặc một phần tiêu đề bài.', b: 'Bỏ tìm', go: () => this.setState({ q: '', shown: 8 }) };
+      else if (tab === 'all') E = { i: 'ri-notification-off-line', t: 'Bạn chưa có thông báo mới.', d: 'Khi có bài chờ duyệt, khách liên hệ hay cảnh báo tên miền, thông báo hiện ở đây và trên chuông.', b: 'Tùy chọn thông báo', go: () => this.goto('account', { tab: 'prefs' }, 'Tài khoản của tôi › Tùy chọn') };
+      else if (tab === 'unread') E = { i: 'ri-check-double-line', t: 'Bạn đã đọc hết thông báo.', d: 'Thông báo đã đọc vẫn nằm ở tab Tất cả trong 90 ngày.', b: 'Xem tất cả', go: () => this.setTab('all') };
+      else if (tab === 'workflow') E = wfOff ? { i: 'ri-send-plane-line', t: 'Website đang đăng thẳng, không qua bước duyệt.', d: 'Thông báo duyệt bài chỉ có khi website bật bước duyệt trước khi đăng.', b: 'Xem tất cả', go: () => this.setTab('all') }
+        : (can('entries.review|entries.approve') ? { i: 'ri-git-pull-request-line', t: 'Chưa có bài nào cần bạn để ý.', d: 'Khi có người gửi bài chờ duyệt, thông báo hiện ở đây.', b: 'Mở Hộp duyệt', go: () => this.goto('review', {}, 'Hộp duyệt') }
+        : { i: 'ri-git-pull-request-line', t: 'Chưa có tin gì về bài của bạn.', d: 'Khi bài của bạn được đăng hoặc bị trả lại để sửa, thông báo hiện ở đây.', b: 'Xem tất cả', go: () => this.setTab('all') });
+      else if (tab === 'lead') E = can('forms.view') ? { i: 'ri-mail-line', t: 'Chưa có khách liên hệ mới.', d: 'Khách gửi biểu mẫu trên website là bạn nhận thông báo ngay.', b: 'Mở Khách liên hệ', go: () => this.goto('contacts', {}, 'Khách liên hệ') }
+        : { i: 'ri-lock-line', t: 'Nhóm quyền của bạn không xem khách liên hệ.', d: 'Vì vậy bạn không nhận loại thông báo này. Cần xem thì nhờ Chủ website đổi nhóm quyền.', b: 'Xem tất cả', go: () => this.setTab('all') };
+      else if (tab === 'security') E = { i: 'ri-shield-check-line', t: 'Không có cảnh báo bảo mật nào.', d: 'Hệ thống báo ngay khi xác thực 2 lớp bị tắt, có người đăng nhập hỗ trợ hoặc tên miền bị lấy lại.', b: 'Mở Bảo mật tài khoản', go: () => this.goto('account', { tab: 'security' }, 'Tài khoản của tôi › Bảo mật') };
+      else E = can('domains.manage') ? { i: 'ri-checkbox-circle-line', t: 'Mọi thứ đang ổn.', d: 'Tab này thường trống: hệ thống chỉ báo khi tên miền có vấn đề hoặc thư viện sắp đầy.', b: 'Mở Tên miền', go: () => this.goto('settings', { section: 'domain' }, 'Cài đặt › Tên miền') }
+        : { i: 'ri-checkbox-circle-line', t: 'Mọi thứ đang ổn.', d: 'Tab này thường trống: hệ thống chỉ báo khi thư viện sắp đầy hoặc website có việc cần chú ý.', b: 'Xem tất cả', go: () => this.setTab('all') };
+    }
+    const unreadAll = all.filter(x => x.unread).length;
+    const allDis = ro || unreadAll === 0;
+    const frameOk = !P.embedded && P.showFrames !== false && (function () { try { return window.location.hash !== '#frame'; } catch (e) { return false; } })();
+    return {
+      fsAttr: !P.embedded && this.big() ? 'l' : 'n', embAttr: P.embedded ? '1' : '0', ownHeader: !P.embedded, isPlat: plat, ro, notes,
+      onPrefs: () => this.goto('account', { tab: 'prefs' }, 'Tài khoản của tôi › Tùy chọn › Thông báo'),
+      onAllRead: () => this.allRead(all), allReadDis: allDis ? 'true' : undefined, allReadWhyId: allDis ? 'tb-allwhy' : undefined,
+      allReadWhy: ro ? 'Đang đăng nhập hỗ trợ — không đánh dấu đã đọc thay thành viên.' : (unreadAll === 0 ? 'Không còn thông báo chưa đọc.' : ''),
+      tabs: TABS.map(t => ({ tid: 'tb-tab-' + t[0], label: t[1], n: String(all.filter(x => inTab(t[0], x)).length), sel: String(tab === t[0]), ti: tab === t[0] ? '0' : '-1', go: () => this.setTab(t[0]) })),
+      onTabKey: (e) => this.tabKey(e, keys), panelLabel: 'tb-tab-' + tab,
+      q: qRaw, hasQ: !!qRaw, onQ: (e) => this.setState({ q: e.target.value, shown: 8 }), onQKey: (e) => { if (e.key === 'Escape' && this.state.q) { e.stopPropagation(); this.setState({ q: '', shown: 8 }); } }, onClearQ: () => this.setState({ q: '', shown: 8 }),
+      isLoading: sim === 'loading', isError: sim === 'error', isEmpty: !!E || sim === 'empty', hasList: sim === 'ok' && list.length > 0,
+      skRows: [{ w: '78%' }, { w: '62%' }, { w: '70%' }, { w: '54%' }],
+      onRetry: () => { this.setState({ simOver: 'loading' }); clearTimeout(this._lt); this._lt = setTimeout(() => this.setState({ simOver: 'ok' }), 700); },
+      emptyIcon: E ? E.i : 'ri-notification-off-line', emptyTitle: E ? E.t : 'Bạn chưa có thông báo mới.', emptyDesc: E ? E.d : 'Khi có bài chờ duyệt, khách liên hệ hay cảnh báo tên miền, thông báo hiện ở đây và trên chuông.',
+      emptyBtn: true, emptyBtnLabel: E ? E.b : 'Tùy chọn thông báo', onEmptyBtn: E ? E.go : () => this.goto('account', { tab: 'prefs' }, 'Tài khoản của tôi › Tùy chọn'),
+      days, hasMore: list.length > S.shown, onMore: () => this.setState(s => ({ shown: s.shown + 8 })),
+      footText: list.length > S.shown ? ('Đang hiện ' + vis.length + ' / ' + list.length + ' thông báo') : ('Đã hiện hết thông báo trong 90 ngày qua (' + list.length + ').'),
+      stop: (e) => e.stopPropagation(),
+      framesShow: frameOk, frameSrc: (function () { try { return window.location.pathname.split('/').pop() + '#frame'; } catch (e) { return '#frame'; } })(),
+      toastShow: !!S.toast, toastText: S.toast, toastUndo: !!S.undo, onUndo: () => this.undo()
+    };
+  }
+}
+</script>
+</body>
+</html>

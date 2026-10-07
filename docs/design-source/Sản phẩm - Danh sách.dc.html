@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/fonts/inter.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/colors.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/typography.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/tokens/shape.css">
+<link rel="stylesheet" href="_ds/bssaas-adminkit-design-system-60ba9c0b-5497-49a2-b7c1-ba0772d8cf30/styles.css">
+<link rel="stylesheet" href="admin-base.css">
+<link rel="stylesheet" href="admin-components.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.9.1/fonts/remixicon.css" rel="stylesheet">
+<script>try{var m=localStorage.getItem('bs-scheme');if(m&&!document.documentElement.getAttribute('data-bs-theme'))document.documentElement.setAttribute('data-bs-theme',m)}catch(e){}</script>
+<script src="./ai-quota.js"></script>
+<script src="./content-workflow.js"></script>
+<style>
+body{margin:0;background:var(--color-body,#f4f5fa)}a{color:var(--color-accent,#2050a0)}a:hover{color:var(--color-accent,#2050a0);text-decoration-thickness:2px}
+.spw{--fsp:0px;box-sizing:border-box;padding:24px;font-family:Inter,'Segoe UI',sans-serif;min-height:100dvh}
+.spw[data-fs="large"]{--fsp:2px}
+.spw[data-emb="1"]{padding:0;min-height:0}
+@media (max-width:767px){.spw[data-emb="0"]{padding:12px}}
+.ql{container:ql/inline-size;max-width:1440px;margin:0 auto;display:flex;flex-direction:column;gap:16px;min-width:0;font-size:calc(14px + var(--fsp));line-height:1.5;color:var(--color-body-text,#3c4765)}
+.ql-head{display:flex;flex-wrap:wrap;align-items:flex-start;gap:12px 16px}
+.ql-hl{flex:1 1 320px;min-width:0}
+.ql-crumb{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.ql-h1{margin:0;font-size:calc(20px + var(--fsp));font-weight:600;line-height:1.3;color:var(--color-heading,#1f2b4d)}
+.ql-desc{margin:4px 0 0;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.ql-add{flex:0 0 auto}
+.ql[data-emb="0"] .ql-add{margin-top:24px}
+.ql[data-emb="1"] .ql-add{margin-left:auto}
+@container ql (max-width:599px){.ql-add{flex:1 1 100%;margin-top:0!important}}
+.ql-role{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:9px 14px;border-radius:6px;border:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff);font-size:calc(13px + var(--fsp))}
+.ql-role>i{font-size:16px;color:var(--color-accent,#2050a0)}
+.ql-rchip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:12px;background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-size:calc(12px + var(--fsp));font-weight:700;white-space:nowrap}
+.ql-rtx{flex:1 1 260px;min-width:0}
+.ql-mode{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.ql-dn{display:inline-flex;align-items:center;margin-left:6px;padding:0 6px;border-radius:4px;border:1px dashed var(--color-admin-warning-text,#906405);background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 10%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405);font-size:calc(12px + var(--fsp));font-weight:600;line-height:1.5;white-space:nowrap;vertical-align:middle}
+.ql-card{display:flex;flex-direction:column;min-width:0;background:var(--color-surface,#fff);border:1px solid var(--color-border,#e9ecf4);border-radius:6px;box-shadow:0 1px 2px rgba(56,65,74,.15)}
+.ql-tabbar{display:flex;align-items:flex-end;gap:2px;padding:4px 12px 0;border-bottom:1px solid var(--color-border,#e9ecf4);min-width:0}
+.ql-tabs{display:flex;align-items:flex-end;gap:2px;flex:1 1 auto;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain}
+.ql-tabs::-webkit-scrollbar{display:none}
+.ql-tab{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 10px;border:0;border-bottom:2px solid transparent;margin-bottom:-1px;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));font-weight:500;color:var(--color-body-muted,#5b6275);white-space:nowrap;flex:0 0 auto;cursor:pointer}
+.ql-tab:hover{color:var(--color-heading,#1f2b4d)}
+.ql-tab>i{font-size:calc(15px + var(--fsp))}
+.ql-tab[aria-selected="true"]{color:var(--color-accent,#2050a0);border-bottom-color:var(--color-accent,#2050a0);font-weight:600}
+.ql-tab .n{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-text,#3c4765);font-size:calc(12px + var(--fsp));font-weight:600;font-variant-numeric:tabular-nums}
+.ql-tab[aria-selected="true"] .n{background:color-mix(in srgb,var(--color-accent,#2050a0) 12%,var(--color-surface,#fff));color:var(--color-accent,#2050a0)}
+.ql-tab.tr[aria-selected="true"]{color:var(--color-admin-danger-text,#bf371a);border-bottom-color:var(--color-admin-danger-text,#bf371a)}
+.ql-tab.tr[aria-selected="true"] .n{background:color-mix(in srgb,var(--color-admin-danger-text,#bf371a) 10%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+@container ql (max-width:767px){.ql-tabbar{padding:4px 4px 0}.ql-tab{padding:0 8px}}
+.ql-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px}
+.ql-search{flex:1 1 220px;max-width:360px;min-width:0}
+.ql-search input{font-size:calc(16px + var(--fsp))}
+.ql-fb{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-left:auto}
+.ql-cmp{display:none;align-items:center;gap:8px;margin-left:auto}
+.ql-pw{position:relative}
+.ql .sx-btn[aria-expanded="true"],.ql .sx-btn[data-act="1"],.ql .sx-btn[aria-pressed="true"]{border-color:var(--color-accent,#2050a0);color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 7%,var(--color-surface,#fff))}
+.ql-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-admin-primary,#2050a0);color:white;font-size:calc(12px + var(--fsp));font-weight:700}
+@container ql (max-width:1023px){.ql-fb{display:none}.ql-cmp{display:flex}.ql-search{max-width:none}}
+@container ql (max-width:767px){.ql-colw{display:none}.ql-tools{padding:12px}}
+@container ql (max-width:599px){.ql-search{flex-basis:100%}.ql-cmp{flex:1 1 100%;flex-wrap:wrap;margin-left:0}.ql-cmp>*{flex:1 1 auto;min-width:0}.ql-cmp .sx-btn{width:100%;padding:0 8px}.ql-cmp .sx-t{overflow:hidden;text-overflow:ellipsis}}
+.ql-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:70;min-width:240px;max-width:min(320px,calc(100vw - 32px));padding:4px 0;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;box-shadow:0 10px 30px rgba(15,18,30,.18);text-align:left;font-size:calc(14px + var(--fsp));font-weight:400;color:var(--color-body-text,#3c4765);white-space:normal}
+.ql-pop.r{left:auto;right:0}
+.ql-ph{display:flex;flex-wrap:wrap;align-items:center;padding:8px 14px 4px;font-size:calc(12px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.ql-pt{padding:4px 14px 8px;font-size:calc(13px + var(--fsp));color:var(--color-body-text,#3c4765)}
+.ql-mi{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:8px 14px;border:0;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.ql-mi:hover{background:var(--color-surface-hover,#f1f3f9)}
+.ql-mi>i{flex:0 0 auto;font-size:calc(16px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.ql-mi .tx{flex:1 1 auto;min-width:0}
+.ql-mi .ct{margin-left:auto;padding-left:8px;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ql-mi .why{display:block;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.ql-mi[data-t="dan"],.ql-mi[data-t="dan"]>i{color:var(--color-admin-danger-text,#bf371a)}
+.ql-mi[aria-disabled="true"]{cursor:not-allowed;color:var(--color-body-muted,#5b6275)}
+.ql-mi[aria-checked="true"],.ql-mi[aria-pressed="true"]{font-weight:600;color:var(--color-accent,#2050a0)}
+.ql-mi[aria-checked="true"]>i{color:var(--color-accent,#2050a0)}
+.ql-mi[data-d="1"]{padding-left:34px}.ql-mi[data-d="2"]{padding-left:54px}
+.ql-box{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;flex:0 0 auto;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);color:transparent;font-size:14px}
+.ql-box .ri-subtract-line{display:none}
+[aria-pressed="true"]>.ql-box,[aria-checked="true"]>.ql-box,[aria-checked="mixed"]>.ql-box{background:var(--color-admin-primary,#2050a0);border-color:var(--color-admin-primary,#2050a0);color:white}
+[aria-checked="mixed"]>.ql-box .ri-check-line{display:none}[aria-checked="mixed"]>.ql-box .ri-subtract-line{display:inline}
+.ql-rad{display:inline-flex;width:18px;height:18px;flex:0 0 auto;border:1px solid var(--color-border-input,#8a90a2);border-radius:50%;background:var(--color-surface,#fff)}
+[aria-checked="true"]>.ql-rad{border:6px solid var(--color-admin-primary,#2050a0)}
+.ql-sep{height:1px;margin:4px 0;background:var(--color-border,#e9ecf4)}
+.ql-pf{display:flex;align-items:center;gap:8px;margin-top:4px;padding:8px 14px;border-top:1px solid var(--color-border,#e9ecf4)}
+.ql-pf .sx-btn:last-child{margin-left:auto}
+.ql-pscroll{max-height:300px;overflow:auto;overscroll-behavior:contain}
+.ql-scrim{position:fixed;inset:0;z-index:60;background:transparent}
+@container ql (max-width:767px){
+ .ql-scrim{background:rgba(15,18,30,.45)}
+ .ql-pop,.ql-pop.r{position:fixed;left:0;right:0;top:auto;bottom:0;z-index:80;min-width:0;max-width:none;max-height:75dvh;overflow:auto;border-radius:12px 12px 0 0;border-width:1px 0 0;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+ .ql-mi{min-height:48px}.ql-pscroll{max-height:none}.ql-pf .sx-btn{flex:1 1 0;min-height:44px}
+}
+.ql-fl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:0 16px 12px;font-size:calc(13px + var(--fsp))}
+.ql-fl .lbl{color:var(--color-body-muted,#5b6275)}
+.ql-chip{display:inline-flex;align-items:center;gap:2px;max-width:100%;min-height:28px;padding:0 2px 0 10px;border-radius:14px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 26%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-weight:500;white-space:nowrap}
+.ql-chip>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ql-chip>button{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex:0 0 auto;border:0;border-radius:50%;background:transparent;color:inherit;cursor:pointer}
+@media (pointer:coarse){.ql-chip>button{width:44px;height:44px}}
+.ql-match{margin-left:auto;color:var(--color-body-muted,#5b6275)}.ql-match strong{color:var(--color-body-text,#3c4765);font-weight:600}
+.ql-note{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0 16px 12px;padding:9px 12px;border-radius:6px;border:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);font-size:calc(13px + var(--fsp))}
+.ql-note>i{color:var(--color-admin-info-text,#026fa2);font-size:16px}
+.ql-note>span:first-of-type{flex:1 1 240px;min-width:0}
+.ql-bulk{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 16px 12px;padding:8px 12px;border-radius:6px;border:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 24%,var(--color-surface,#fff));background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff))}
+.ql-bn{font-weight:600;color:var(--color-accent,#2050a0);white-space:nowrap}
+.ql-bacts{display:flex;flex-wrap:wrap;gap:8px}
+.ql-bx{margin-left:auto}
+.ql-bskip{flex:1 1 100%;display:flex;align-items:flex-start;gap:6px;font-size:calc(13px + var(--fsp))}
+.ql-bskip>i{color:var(--color-admin-info-text,#026fa2);font-size:16px;line-height:1.3}
+@container ql (max-width:767px){.ql-bulk{order:4;position:sticky;bottom:0;z-index:50;margin:0;border-radius:0;border-width:1px 0 0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--color-surface,#fff);box-shadow:0 -4px 12px rgba(15,18,30,.12)}.ql-bacts{flex:1 1 100%}.ql-bacts .sx-btn{flex:1 1 auto;min-height:44px}.ql-t{order:3}.ql-foot{order:5}}
+.ql-t{min-width:0}
+.ql-r{display:flex;align-items:center;min-width:0;border-top:1px solid var(--color-border,#e9ecf4)}
+@media (hover:hover){.ql-r:hover{background:var(--color-surface-muted,#f8f9fb)}}
+.ql-r[data-sel="1"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 5%,var(--color-surface,#fff))}
+.ql-hd{border-top:0;background:var(--color-surface-muted,#f8f9fb);font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.ql-r>div{box-sizing:border-box;min-width:0;padding:10px 8px}
+.ql-hd>div{padding:6px 8px;white-space:nowrap}
+.ql-r>.c-chk{flex:0 0 52px;padding-left:12px}
+.ql-r>.c-main{flex:1 1 auto}
+.ql-r>.c-cat{flex:0 0 150px}.ql-r>.c-price{flex:0 0 156px;text-align:right}.ql-r>.c-stock{flex:0 0 118px}.ql-r>.c-badge{flex:0 0 124px}.ql-r>.c-st{flex:0 0 184px}.ql-r>.c-act{flex:0 0 150px;padding-right:16px}
+.ql-hd>.c-act{text-align:right}
+.ql[data-hide~="cat"] .c-cat,.ql[data-hide~="price"] .c-price,.ql[data-hide~="stock"] .c-stock,.ql[data-hide~="badge"] .c-badge,.ql[data-hide~="chk"] .c-chk{display:none}
+.ql-sb{display:inline-flex;align-items:center;gap:4px;min-height:32px;padding:0 4px;margin-left:-4px;border:0;border-radius:4px;background:transparent;font:inherit;font-weight:600;color:inherit;cursor:pointer}
+.ql-hd>.c-price .ql-sb{margin-left:0;margin-right:-4px}
+.ql-sb[data-a="1"]{color:var(--color-accent,#2050a0)}
+.ql-sb>i{font-size:14px}
+.ql-ck{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border:0;border-radius:4px;background:transparent;cursor:pointer}
+@media (pointer:coarse){.ql-ck{width:44px;height:44px}}
+.c-main{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"th tl" "th sub";column-gap:12px;row-gap:2px;align-items:center}
+.ql-hd>.c-main{display:block}
+.ql-th{grid-area:th;display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:4px;background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,var(--color-surface,#fff));color:var(--color-accent,#2050a0);font-size:20px;overflow:hidden}
+.ql-th[data-img="0"]{background:transparent;border:1px dashed var(--color-border-input,#8a90a2);color:var(--color-body-muted,#5b6275)}
+.ql-tl{grid-area:tl;display:flex;align-items:center;gap:4px;min-width:0}
+.ql-name{min-width:0;max-width:100%;padding:0;border:0;background:transparent;font:inherit;font-weight:600;color:var(--color-heading,#1f2b4d);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;border-radius:2px}
+.ql-name:hover{color:var(--color-accent,#2050a0);text-decoration:underline;text-underline-offset:3px}
+.ql-qe{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer}
+.ql-qe:hover{background:var(--color-surface-hover,#f1f3f9);color:var(--color-accent,#2050a0)}
+@media (pointer:coarse){.ql-qe{width:44px;height:44px}}
+.ql-in{flex:1 1 auto;min-width:0;width:100%;min-height:32px;padding:4px 8px;border:1px solid var(--color-border-input,#8a90a2);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:calc(16px + var(--fsp));font-weight:500;color:var(--color-heading,#1f2b4d)}
+.ql-in.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(14px + var(--fsp))}
+.ql-in[aria-invalid="true"]{border-color:var(--color-admin-danger-text,#bf371a)}
+.ql-sub{grid-area:sub;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0;position:relative}
+.ql-sku{display:inline-flex;align-items:center;gap:4px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(12px + var(--fsp));color:var(--color-body-text,#3c4765);white-space:nowrap}
+.ql-sku[data-none="1"]{font-family:inherit;color:var(--color-body-muted,#5b6275)}
+.ql-slug{min-width:0;max-width:100%;padding:0;border:0;background:transparent;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:2px}
+button.ql-slug{cursor:text}button.ql-slug:hover{color:var(--color-accent,#2050a0)}
+.ql-ierr{flex:1 1 100%;display:flex;align-items:flex-start;gap:4px;font-size:calc(13px + var(--fsp));color:var(--color-admin-danger-text,#bf371a)}
+.ql-lcs{display:inline-flex;flex-wrap:nowrap;flex:0 0 auto;gap:4px;position:relative}
+.ql-lc{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 6px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:calc(12px + var(--fsp));font-weight:700;line-height:1;color:var(--color-heading,#1f2b4d);cursor:pointer}
+.ql-lc::before{content:"";width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:var(--color-admin-success,#0ab39c)}
+.ql-lc[data-s="ai"]::before{background:var(--color-admin-info,#299cdb)}
+.ql-lc[data-s="miss"]::before{background:var(--color-admin-warning,#f7b84b)}
+.ql-lc[data-s="stale"]::before{background:var(--color-admin-danger,#f06548)}
+.ql-lc[data-s="empty"]{border-style:dashed;border-color:var(--color-border-input,#8a90a2);background:transparent;color:var(--color-body-muted,#5b6275)}
+.ql-lc[data-s="empty"]::before{width:6px;height:6px;background:transparent;border:1px dashed var(--color-border-input,#8a90a2)}
+.ql-lc:hover{border-color:var(--color-accent,#2050a0)}
+.ql-star{font-size:11px;color:var(--color-brand-gold,#e0b028)}
+@media (pointer:coarse){.ql-lc{height:32px;padding:0 8px}}
+.ql-sub>.m{display:none;font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);white-space:nowrap}
+.ql-sub>.m::before{content:"·";padding-right:8px}
+.ql-sub>.m:empty{display:none!important}
+.ql-ell{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sp-pr{display:block;font-weight:700;color:var(--color-heading,#1f2b4d);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sp-pr[data-k="ask"]{font-weight:500;color:var(--color-body-muted,#5b6275)}
+.sp-old{display:block;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275);text-decoration:line-through;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sp-stk{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sp-stk[data-k="out"]{color:var(--color-admin-danger-text,#bf371a);font-weight:600}
+.sp-stk[data-k="low"]{color:var(--color-admin-warning-text,#906405);font-weight:600}
+.sp-stk[data-k="none"]{color:var(--color-body-muted,#5b6275)}
+.sp-tags{display:flex;flex-wrap:wrap;gap:4px}
+.sp-tag{display:inline-flex;align-items:center;gap:4px;min-height:22px;padding:0 8px;border-radius:11px;font-size:calc(12px + var(--fsp));font-weight:600;white-space:nowrap}
+.sp-tag[data-k="featured"]{background:color-mix(in srgb,var(--color-brand-gold,#e0b028) 18%,var(--color-surface,#fff));color:var(--color-brand-gold-text,#8a6200)}
+.sp-tag[data-k="best"]{background:color-mix(in srgb,var(--color-admin-secondary-text,#2f69d4) 6%,var(--color-surface,#fff));color:var(--color-admin-secondary-text,#2f69d4)}
+.sp-none{color:var(--color-body-muted,#5b6275)}
+.ql-stw{position:relative;display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.ql-st{--c:var(--color-body-text,#3c4765);display:inline-flex;align-items:center;gap:5px;max-width:100%;min-height:28px;padding:2px 8px;border:1px solid transparent;border-radius:14px;background:color-mix(in srgb,var(--c) 11%,var(--color-surface,#fff));font:inherit;font-size:calc(13px + var(--fsp));font-weight:600;line-height:1.4;color:var(--c);white-space:nowrap;cursor:pointer}
+.ql-st>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ql-st>i{flex:0 0 auto;font-size:calc(14px + var(--fsp))}
+.ql-st .ql-car{font-size:14px;opacity:.8}
+button.ql-st:hover{border-color:var(--c)}
+span.ql-st{cursor:default}
+@media (pointer:coarse){button.ql-st{min-height:44px}}
+.ql-st[data-s="published"],.ql-dot[data-s="published"]{--c:var(--color-admin-success-text,#047767)}
+.ql-st[data-s="draft"],.ql-dot[data-s="draft"]{--c:var(--color-admin-dark-text,#212529)}
+.ql-st[data-s="archived"],.ql-dot[data-s="archived"]{--c:var(--color-body-muted,#5b6275)}
+.ql-st[data-s="trash"]{--c:var(--color-admin-danger-text,#bf371a)}
+.ql-dot{--c:var(--color-body-text,#3c4765);width:8px;height:8px;border-radius:50%;flex:0 0 auto;background:var(--c)}
+.ql-stm{max-width:100%;font-size:calc(12px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.ql-acts{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.ql-acts .ql-main{min-width:0;max-width:150px}
+.ql-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:48px 16px;text-align:center}
+.ql-sti{font-size:36px;color:var(--color-body-muted,#5b6275)}
+.ql-state[data-k="plan"] .ql-sti{color:var(--color-brand-gold-text,#8a6200)}
+.ql-state[data-k="error"] .ql-sti{color:var(--color-admin-danger-text,#bf371a)}
+.ql-stt{margin:0;font-size:calc(16px + var(--fsp));font-weight:600;color:var(--color-heading,#1f2b4d)}
+.ql-stp{margin:0;max-width:46ch;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+.ql-skr{display:flex;align-items:center;gap:16px;padding:16px;border-top:1px solid var(--color-border,#e9ecf4)}
+.ql-skr:first-child{border-top:0}
+.ql-sk{display:block;height:14px;border-radius:4px;background:var(--color-surface-hover,#f1f3f9)}
+.ql-sk.w0{flex:0 0 52px;height:52px}.ql-sk.w2{flex:1 1 auto;max-width:420px}.ql-sk.w3{flex:0 0 96px;margin-left:auto}
+.ql-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;padding:12px 16px;border-top:1px solid var(--color-border,#e9ecf4);font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275)}
+.ql-pp{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px}
+.ql-pp>span:first-child{margin-right:4px}
+.ql-ppb,.ql-pgb{display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:36px;padding:0 8px;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer}
+.ql-ppb[aria-pressed="true"]{border-color:var(--color-accent,#2050a0);color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,var(--color-surface,#fff));font-weight:600}
+.ql-pg{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.ql-pgb[aria-current="page"]{background:var(--color-admin-primary,#2050a0);border-color:var(--color-admin-primary,#2050a0);color:white;font-weight:600}
+.ql-pgb[aria-disabled="true"]{opacity:.5;cursor:not-allowed}
+@media (pointer:coarse){.ql-ppb,.ql-pgb{min-width:44px;height:44px}}
+@container ql (max-width:1279px){.ql-r>.c-badge{display:none}.ql-sub>.m-badge{display:inline-flex}}
+@container ql (max-width:1099px){.ql-r>.c-cat{display:none}.ql-sub>.m-cat{display:inline}}
+@container ql (max-width:899px){.ql-r>.c-stock{display:none}.ql-sub>.m-stock{display:inline}.ql-r>.c-st{flex-basis:160px}}
+@container ql (max-width:767px){
+ .ql-t{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:8px 12px 12px}
+ .ql-r.ql-hd{display:none}
+ .ql-r{display:grid;grid-template-columns:44px 48px minmax(0,1fr) auto;grid-template-areas:"chk th tl st" "sub sub sub sub" "act act act act";align-items:start;column-gap:8px;row-gap:8px;padding:10px 12px 12px 4px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px}
+ .ql[data-hide~="chk"] .ql-r{grid-template-columns:0 48px minmax(0,1fr) auto;column-gap:0;padding-left:12px}
+ .ql[data-hide~="chk"] .ql-th{margin-right:8px}
+ .ql-r>div{padding:0}
+ .ql-r>.c-chk{grid-area:chk;margin-top:2px}
+ .ql-r>.c-main{display:contents}
+ .ql-th{width:48px;height:48px;font-size:18px}
+ .ql-qe,.ql-sub>.ql-slug{display:none}
+ .ql-tl{align-self:center}
+ .ql-name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4}
+ .ql-sub{padding-left:8px}
+ .ql[data-hide~="chk"] .ql-sub{padding-left:0}
+ .ql-sub>.m-price{display:inline;color:var(--color-heading,#1f2b4d);font-weight:700}
+ .ql-sub>.m-cat,.ql-sub>.m-stock{display:inline}
+ .ql-sub>.m{white-space:normal;max-width:100%;overflow-wrap:anywhere}
+ .ql-sub>.m-badge{display:inline-flex}
+ .ql-sub>.ql-lcs{order:9}
+ .ql-r>.c-cat,.ql-r>.c-price,.ql-r>.c-stock,.ql-r>.c-badge{display:none}
+ .ql-r>.c-st{grid-area:st}
+ .ql-stm{display:none}
+ .ql-r>.c-act{grid-area:act;padding:0 0 0 8px}
+ .ql[data-hide~="chk"] .ql-r>.c-act{padding-left:0}
+ .ql-acts{justify-content:stretch}
+ .ql-acts .ql-main{flex:1 1 auto;max-width:none;min-height:44px}
+ .ql-acts .sx-btn{min-height:44px}.ql-acts .sx-btn.ic{width:44px}
+ .ql-foot{flex-direction:column;align-items:stretch}
+ .ql-pg{justify-content:center}
+}
+@container ql (min-width:600px) and (max-width:767px){.ql-t{grid-template-columns:repeat(2,minmax(0,1fr))}.ql-empty{grid-column:1/-1}}
+.ql-frames{display:flex;flex-direction:column;gap:8px;min-width:0;max-width:100%}
+@media (max-width:1199px){.ql-frames{display:none}}
+.ql-frh{font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+.ql-frw{display:flex;gap:16px;align-items:flex-start;overflow-x:auto;padding-bottom:4px}
+.ql-frw iframe{flex:0 0 auto;border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;background:var(--color-body,#f4f5fa)}
+.ql-cft{margin:0;font-size:calc(17px + var(--fsp));font-weight:600;line-height:1.4;color:var(--color-heading,#1f2b4d)}
+.ql-cfd{margin:8px 0 0;color:var(--color-body-text,#3c4765);text-wrap:pretty}
+.dlg .ql-cfd{margin:0}
+.ql-x{margin-left:auto}
+.ql-clist{max-height:min(320px,50dvh);overflow:auto;border:1px solid var(--color-border,#e9ecf4);border-radius:4px}
+.ql-path{color:var(--color-body-muted,#5b6275);font-weight:400}
+.ql-tw{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));z-index:320;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);pointer-events:none}
+.ql-tw[data-up="1"]{bottom:calc(132px + env(safe-area-inset-bottom))}
+.ql-toast{pointer-events:auto;display:flex;align-items:center;gap:10px;padding:8px 6px 8px 14px;border-radius:6px;background:var(--color-heading,#1f2b4d);color:var(--color-surface,#fff);font-size:calc(14px + var(--fsp));box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.ql-toast>i{font-size:18px}
+.ql-tm{min-width:0;text-wrap:pretty}
+.ql-undo{flex:0 0 auto;min-height:36px;padding:0 12px;border:1px solid color-mix(in srgb,var(--color-surface,#fff) 55%,transparent);border-radius:4px;background:transparent;color:inherit;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.ql-tx{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:0;border-radius:4px;background:transparent;color:inherit;cursor:pointer}
+@media (pointer:coarse){.ql-undo,.ql-tx{min-height:44px;min-width:44px}}
+@media (prefers-reduced-motion:no-preference){.ql-pop,.ql-toast{animation:qlIn .16s ease-out}}
+@keyframes qlIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div class="spw" data-emb="{{ embAttr }}" data-fs="{{ fsAttr }}">
+  <div class="ql" data-emb="{{ embAttr }}" data-hide="{{ hideAttr }}">
+    <div class="ql-head">
+      <sc-if value="{{ notEmb }}" hint-placeholder-val="{{ true }}">
+        <div class="ql-hl">
+          <nav class="ql-crumb" aria-label="Vị trí trang"><i class="ri-home-4-line" aria-hidden="true"></i><span>Trang chủ</span><i class="ri-arrow-right-s-line" aria-hidden="true"></i><span>Sản phẩm</span></nav>
+          <h1 class="ql-h1">Sản phẩm</h1>
+          <p class="ql-desc">Mọi sản phẩm của website: tìm theo tên hoặc mã SKU, đổi trạng thái, giá và chuyên mục ngay tại dòng.</p>
+        </div>
+      </sc-if>
+      <sc-if value="{{ canAddTop }}" hint-placeholder-val="{{ true }}">
+        <button class="sx-btn pri ql-add" onClick="{{ onAdd }}"><i class="ri-add-line" aria-hidden="true"></i><span class="sx-t">Thêm sản phẩm</span></button>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ showRoleBar }}" hint-placeholder-val="{{ true }}">
+      <div class="ql-role">
+        <i class="ri-shield-user-line" aria-hidden="true"></i>
+        <span class="ql-rchip">{{ roleName }}</span>
+        <span class="ql-rtx">{{ roleText }}</span>
+        <span class="ql-mode">
+          <span class="sx-chip" data-t="brand"><i class="{{ modeIcon }}" aria-hidden="true"></i>{{ modeLabel }}</span>
+          <span>{{ modeText }}</span>
+          <sc-if value="{{ canSettings }}"><button class="sx-btn sm gho" onClick="{{ onGoSettings }}"><i class="ri-settings-3-line" aria-hidden="true"></i><span class="sx-t">Đổi ở Cài đặt › Sản phẩm</span></button></sc-if>
+        </span>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showStatePanel }}">
+      <div class="ql-card">
+        <sc-if value="{{ isLoading }}">
+          <div aria-busy="true" aria-label="Đang tải danh sách sản phẩm">
+            <sc-for list="{{ skRows }}" as="k" hint-placeholder-count="6"><div class="ql-skr"><span class="ql-sk w0"></span><span class="ql-sk w2"></span><span class="ql-sk w3"></span></div></sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ notLoading }}">
+          <div class="ql-state" data-k="{{ stateKey }}" role="{{ stateRole }}">
+            <i class="{{ stateIcon }} ql-sti" aria-hidden="true"></i>
+            <h2 class="ql-stt">{{ stateTitle }}</h2>
+            <p class="ql-stp">{{ stateText }}</p>
+            <sc-if value="{{ stateBtn }}"><button class="sx-btn {{ stateBtnCls }}" onClick="{{ onStateBtn }}"><i class="{{ stateBtnIcon }}" aria-hidden="true"></i><span class="sx-t">{{ stateBtnLabel }}</span></button></sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showData }}" hint-placeholder-val="{{ true }}">
+    <div class="ql-card">
+      <div class="ql-tabbar">
+        <div class="ql-tabs" role="tablist" aria-label="Lọc theo trạng thái">
+          <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="4">
+            <button class="ql-tab" role="tab" aria-selected="{{ t.sel }}" onClick="{{ t.on }}"><i class="{{ t.icon }}" aria-hidden="true"></i><span>{{ t.label }}</span><span class="n">{{ t.count }}</span></button>
+          </sc-for>
+          <sc-if value="{{ showTrashTab }}" hint-placeholder-val="{{ true }}">
+            <button class="ql-tab tr" role="tab" aria-selected="{{ trashTab.sel }}" onClick="{{ trashTab.on }}" style="margin-left:auto;"><i class="ri-delete-bin-line" aria-hidden="true"></i><span>Thùng rác</span><span class="n">{{ trashTab.count }}</span></button>
+          </sc-if>
+        </div>
+      </div>
+      <div class="ql-tools">
+        <label class="sx-search ql-search" data-focus-wrap="true"><i class="ri-search-line" aria-hidden="true" style="color:var(--color-body-muted,#5b6275);"></i><input type="search" aria-label="Tìm theo tên hoặc mã SKU" placeholder="Ví dụ: dao phay hoặc AV-DP-D10" value="{{ q }}" onChange="{{ onSearch }}"></label>
+        <div class="ql-fb">
+          <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+            <div class="ql-pw">
+              <button class="sx-btn" data-act="{{ f.actA }}" aria-haspopup="true" aria-expanded="{{ f.open }}" onClick="{{ f.on }}"><i class="{{ f.icon }}" aria-hidden="true"></i><span class="sx-t">{{ f.label }}</span><sc-if value="{{ f.hasCount }}"><span class="ql-cnt">{{ f.count }}</span></sc-if><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+              <sc-if value="{{ f.open }}">
+                <div class="ql-pop r" role="group" aria-label="{{ f.head }}">
+                  <div class="ql-ph">{{ f.head }}</div>
+                  <div class="ql-pscroll">
+                    <sc-for list="{{ f.items }}" as="it" hint-placeholder-count="3">
+                      <button class="ql-mi" aria-pressed="{{ it.checked }}" data-d="{{ it.depth }}" onClick="{{ it.on }}"><span class="ql-box" aria-hidden="true"><i class="ri-check-line"></i></span><span class="tx">{{ it.label }}</span><span class="ct">{{ it.count }}</span></button>
+                    </sc-for>
+                  </div>
+                  <div class="ql-pf"><button class="sx-btn sm gho" onClick="{{ f.onReset }}">Bỏ lọc</button><button class="sx-btn sm pri" onClick="{{ onPopClose }}">Xong</button></div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div class="ql-cmp">
+          <div class="ql-pw">
+            <button class="sx-btn" data-act="{{ fAll.actA }}" aria-haspopup="true" aria-expanded="{{ fAll.open }}" onClick="{{ fAll.on }}"><i class="ri-filter-3-line" aria-hidden="true"></i><span class="sx-t">Lọc</span><sc-if value="{{ fAll.hasCount }}"><span class="ql-cnt">{{ fAll.count }}</span></sc-if></button>
+            <sc-if value="{{ fAll.open }}">
+              <div class="ql-pop" role="group" aria-label="Lọc danh sách">
+                <div class="ql-pscroll">
+                  <sc-for list="{{ filters }}" as="f" hint-placeholder-count="2">
+                    <div class="ql-ph">{{ f.head }}</div>
+                    <sc-for list="{{ f.items }}" as="it" hint-placeholder-count="3">
+                      <button class="ql-mi" aria-pressed="{{ it.checked }}" data-d="{{ it.depth }}" onClick="{{ it.on }}"><span class="ql-box" aria-hidden="true"><i class="ri-check-line"></i></span><span class="tx">{{ it.label }}</span><span class="ct">{{ it.count }}</span></button>
+                    </sc-for>
+                  </sc-for>
+                </div>
+                <div class="ql-pf"><button class="sx-btn sm gho" onClick="{{ onClearAll }}">Bỏ lọc</button><button class="sx-btn sm pri" onClick="{{ onPopClose }}">Xong</button></div>
+              </div>
+            </sc-if>
+          </div>
+          <div class="ql-pw">
+            <button class="sx-btn" aria-haspopup="true" aria-expanded="{{ sortOpen }}" onClick="{{ onSortPop }}"><i class="ri-arrow-up-down-line" aria-hidden="true"></i><span class="sx-t">Sắp xếp</span></button>
+            <sc-if value="{{ sortOpen }}">
+              <div class="ql-pop r" role="menu" aria-label="Sắp xếp">
+                <div class="ql-ph">Sắp xếp theo</div>
+                <sc-for list="{{ sortOpts }}" as="o" hint-placeholder-count="4">
+                  <button class="ql-mi" role="menuitemradio" aria-checked="{{ o.on }}" onClick="{{ o.set }}"><i class="{{ o.icon }}" aria-hidden="true"></i><span class="tx">{{ o.label }}</span></button>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ canSelect }}"><button class="sx-btn" aria-pressed="{{ selPageOn }}" onClick="{{ onSelPage }}"><i class="ri-checkbox-multiple-line" aria-hidden="true"></i><span class="sx-t">{{ selPageLabel }}</span></button></sc-if>
+        </div>
+        <div class="ql-pw ql-colw">
+          <button class="sx-btn" aria-haspopup="true" aria-expanded="{{ colsOpen }}" onClick="{{ onColsPop }}"><i class="ri-layout-column-line" aria-hidden="true"></i><span class="sx-t">Cột</span></button>
+          <sc-if value="{{ colsOpen }}">
+            <div class="ql-pop r" role="group" aria-label="Chọn cột hiển thị">
+              <div class="ql-ph">Cột hiển thị</div>
+              <sc-for list="{{ colItems }}" as="c" hint-placeholder-count="5">
+                <button class="ql-mi" aria-pressed="{{ c.on }}" aria-disabled="{{ c.lock }}" onClick="{{ c.toggle }}"><span class="ql-box" aria-hidden="true"><i class="ri-check-line"></i></span><span class="tx">{{ c.label }}<sc-if value="{{ c.hasWhy }}"><span class="why">{{ c.why }}</span></sc-if></span><sc-if value="{{ c.fixed }}"><span class="ct"><i class="ri-lock-line" aria-hidden="true"></i> Luôn hiện</span></sc-if></button>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <sc-if value="{{ hasFilter }}">
+        <div class="ql-fl">
+          <span class="lbl">Đang lọc:</span>
+          <sc-for list="{{ chips }}" as="c" hint-placeholder-count="1">
+            <span class="ql-chip"><span title="{{ c.label }}">{{ c.label }}</span><button aria-label="{{ c.aria }}" title="Bỏ điều kiện này" onClick="{{ c.on }}"><i class="ri-close-line" aria-hidden="true"></i></button></span>
+          </sc-for>
+          <button class="sx-btn sm gho" onClick="{{ onClearAll }}">Bỏ lọc</button>
+          <span class="ql-match" role="status">Khớp <strong>{{ matchCount }}</strong> / {{ baseCount }} sản phẩm</span>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isTrashTab }}">
+        <div class="ql-note"><i class="ri-time-line" aria-hidden="true"></i><span>Sản phẩm trong Thùng rác tự xóa vĩnh viễn sau 30 ngày. Khôi phục để đưa về Bản nháp — mã SKU và đường dẫn vẫn giữ nguyên.</span><sc-if value="{{ notesOn }}"><span class="ql-dn" title="Repo chưa có lệnh tự dọn Thùng rác của sản phẩm (chỉ ảnh &amp; tệp có media:purge-trash)">Chờ backend</span></sc-if></div>
+      </sc-if>
+      <sc-if value="{{ bulkOn }}">
+        <div class="ql-bulk" role="region" aria-label="Thao tác với các sản phẩm đã chọn">
+          <span class="ql-bn" aria-live="polite">Đã chọn {{ bulkCount }} sản phẩm</span>
+          <div class="ql-bacts">
+            <sc-for list="{{ bulkActs }}" as="b" hint-placeholder-count="3">
+              <button class="sx-btn sm {{ b.cls }}" aria-disabled="{{ b.dis }}" title="{{ b.title }}" onClick="{{ b.on }}"><i class="{{ b.icon }}" aria-hidden="true"></i><span class="sx-t">{{ b.label }}</span></button>
+            </sc-for>
+          </div>
+          <button class="sx-btn sm gho ql-bx" onClick="{{ onClearSel }}"><i class="ri-close-line" aria-hidden="true"></i><span class="sx-t">Bỏ chọn</span></button>
+          <sc-if value="{{ bulkHasSkip }}"><div class="ql-bskip"><i class="ri-information-line" aria-hidden="true"></i><span>{{ bulkSkip }}</span></div></sc-if>
+        </div>
+      </sc-if>
+      <div class="ql-t" role="table" aria-label="Danh sách sản phẩm" aria-rowcount="{{ matchCount }}">
+        <div class="ql-r ql-hd" role="row">
+          <div class="c-chk" role="columnheader"><button class="ql-ck" role="checkbox" aria-checked="{{ hdChecked }}" aria-label="Chọn mọi dòng ở trang này" onClick="{{ onHeaderToggle }}"><span class="ql-box" aria-hidden="true"><i class="ri-check-line"></i><i class="ri-subtract-line"></i></span></button></div>
+          <div class="c-main" role="columnheader" aria-sort="{{ sortUI.name.aria }}"><button class="ql-sb" data-a="{{ sortUI.name.a }}" onClick="{{ sortUI.name.on }}">Sản phẩm<i class="{{ sortUI.name.icon }}" aria-hidden="true"></i></button></div>
+          <div class="c-cat" role="columnheader">Chuyên mục chính</div>
+          <div class="c-price" role="columnheader" aria-sort="{{ sortUI.price.aria }}"><button class="ql-sb" data-a="{{ sortUI.price.a }}" onClick="{{ sortUI.price.on }}">Giá<i class="{{ sortUI.price.icon }}" aria-hidden="true"></i></button></div>
+          <div class="c-stock" role="columnheader" aria-sort="{{ sortUI.stock.aria }}"><button class="ql-sb" data-a="{{ sortUI.stock.a }}" onClick="{{ sortUI.stock.on }}">Tồn kho<i class="{{ sortUI.stock.icon }}" aria-hidden="true"></i></button></div>
+          <div class="c-badge" role="columnheader">Nhãn</div>
+          <div class="c-st" role="columnheader" aria-sort="{{ sortUI.upd.aria }}"><button class="ql-sb" data-a="{{ sortUI.upd.a }}" onClick="{{ sortUI.upd.on }}">{{ stHead }}<i class="{{ sortUI.upd.icon }}" aria-hidden="true"></i></button></div>
+          <div class="c-act" role="columnheader">Hành động</div>
+        </div>
+        <sc-for list="{{ rows }}" as="r" hint-placeholder-count="8">
+          <div class="ql-r" role="row" data-sel="{{ r.selA }}">
+            <div class="c-chk" role="cell"><button class="ql-ck" role="checkbox" aria-checked="{{ r.checked }}" aria-label="{{ r.ckLabel }}" onClick="{{ r.onToggle }}"><span class="ql-box" aria-hidden="true"><i class="ri-check-line"></i></span></button></div>
+            <div class="c-main" role="cell">
+              <span class="ql-th" data-img="{{ r.imgA }}" title="{{ r.thumbTitle }}" aria-hidden="true"><i class="{{ r.thumbIcon }}"></i></span>
+              <div class="ql-tl">
+                <sc-if value="{{ r.editingName }}"><input class="ql-in" aria-label="Tên sản phẩm mới" value="{{ draft }}" autoFocus="{{ true }}" onChange="{{ onEditChange }}" onBlur="{{ onCommitName }}" onKeyDown="{{ onEditKey }}"></sc-if>
+                <sc-if value="{{ r.notEditingName }}">
+                  <button class="ql-name" title="{{ r.name }}" onClick="{{ r.onOpen }}">{{ r.name }}</button>
+                  <sc-if value="{{ r.canQuick }}"><button class="ql-qe" title="Sửa nhanh tên" aria-label="{{ r.quickAria }}" onClick="{{ r.onQuick }}"><i class="ri-pencil-line" aria-hidden="true"></i></button></sc-if>
+                </sc-if>
+              </div>
+              <div class="ql-sub">
+                <span class="ql-sku" data-none="{{ r.skuNone }}" title="Mã SKU">{{ r.skuText }}</span>
+                <sc-if value="{{ r.editingSlug }}"><input class="ql-in mono" aria-label="Đường dẫn mới" aria-invalid="{{ slugErrOn }}" value="{{ draft }}" autoFocus="{{ true }}" onChange="{{ onEditChange }}" onBlur="{{ onCommitSlug }}" onKeyDown="{{ onSlugKey }}"><sc-if value="{{ slugErrOn }}"><span class="ql-ierr" role="alert"><i class="ri-error-warning-line" aria-hidden="true"></i>{{ slugErr }}</span></sc-if></sc-if>
+                <sc-if value="{{ r.slugBtn }}"><button class="ql-slug" title="{{ r.slugTitle }}" onClick="{{ r.onEditSlug }}">{{ r.slugText }}</button></sc-if>
+                <sc-if value="{{ r.slugStatic }}"><span class="ql-slug" title="{{ r.slugText }}">{{ r.slugText }}</span></sc-if>
+                <sc-if value="{{ multiLang }}">
+                  <span class="ql-lcs">
+                    <sc-for list="{{ r.langs }}" as="lg" hint-placeholder-count="2">
+                      <button class="ql-lc" data-s="{{ lg.s }}" aria-haspopup="menu" aria-expanded="{{ lg.open }}" aria-label="{{ lg.aria }}" title="{{ lg.aria }}" onClick="{{ lg.on }}">{{ lg.code }}<sc-if value="{{ lg.src }}"><i class="ri-star-fill ql-star" aria-hidden="true"></i></sc-if></button>
+                    </sc-for>
+                    <sc-if value="{{ r.lmOpen }}">
+                      <div class="ql-pop" role="menu" aria-label="{{ r.lmTitle }}">
+                        <div class="ql-ph">{{ r.lmTitle }}</div>
+                        <div class="ql-pt">{{ r.lmState }}</div>
+                        <sc-if value="{{ r.lmCan }}"><button class="ql-mi" role="menuitem" onClick="{{ r.lmOn }}"><i class="{{ r.lmIcon }}" aria-hidden="true"></i><span class="tx">{{ r.lmAct }}</span></button></sc-if>
+                      </div>
+                    </sc-if>
+                  </span>
+                </sc-if>
+                <sc-if value="{{ r.hasMPrice }}"><span class="m m-price">{{ r.mPrice }}</span><span class="m m-stock">{{ r.mStock }}</span></sc-if><span class="m m-cat">{{ r.catName }}</span><sc-if value="{{ r.hasMBadge }}"><span class="m m-badge">{{ r.mBadge }}</span></sc-if>
+              </div>
+            </div>
+            <div class="c-cat" role="cell"><span class="ql-ell" title="{{ r.catPath }}">{{ r.catName }}</span></div>
+            <div class="c-price" role="cell" title="{{ r.prTip }}"><span class="sp-pr" data-k="{{ r.prKind }}">{{ r.prMain }}</span><sc-if value="{{ r.prHasOld }}"><span class="sp-old">{{ r.prOld }}</span></sc-if></div>
+            <div class="c-stock" role="cell"><span class="sp-stk" data-k="{{ r.stkKind }}"><i class="{{ r.stkIcon }}" aria-hidden="true"></i>{{ r.stkText }}</span></div>
+            <div class="c-badge" role="cell">
+              <span class="sp-tags"><sc-for list="{{ r.badges }}" as="b"><span class="sp-tag" data-k="{{ b.k }}"><i class="{{ b.icon }}" aria-hidden="true"></i>{{ b.l }}</span></sc-for><sc-if value="{{ r.noBadge }}"><span class="sp-none">—</span></sc-if></span>
+            </div>
+            <div class="c-st" role="cell">
+              <div class="ql-stw">
+                <sc-if value="{{ r.stBtn }}"><button class="ql-st" data-s="{{ r.st }}" aria-haspopup="menu" aria-expanded="{{ r.stOpenA }}" aria-label="{{ r.stAria }}" title="Bấm để đổi trạng thái" onClick="{{ r.onSt }}"><i class="{{ r.stIcon }}" aria-hidden="true"></i><span>{{ r.stLabel }}</span><i class="ri-arrow-down-s-line ql-car" aria-hidden="true"></i></button></sc-if>
+                <sc-if value="{{ r.stStatic }}"><span class="ql-st" data-s="{{ r.st }}"><i class="{{ r.stIcon }}" aria-hidden="true"></i><span>{{ r.stLabel }}</span></span></sc-if>
+                <span class="ql-stm" title="{{ r.updFull }}">{{ r.updText }}</span>
+                <sc-if value="{{ r.stOpen }}">
+                  <div class="ql-pop" role="menu" aria-label="Đổi trạng thái">
+                    <div class="ql-ph">Đổi trạng thái</div>
+                    <sc-for list="{{ r.stItems }}" as="si" hint-placeholder-count="2">
+                      <button class="ql-mi" role="menuitem" onClick="{{ si.on }}"><span class="ql-dot" data-s="{{ si.s }}" aria-hidden="true"></span><span class="tx">{{ si.label }}<span class="why">{{ si.why }}</span></span></button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+            <div class="c-act" role="cell">
+              <div class="ql-acts">
+                <sc-if value="{{ r.showEdit }}"><button class="sx-btn sm ql-main" aria-label="{{ r.editAria }}" onClick="{{ r.onOpen }}"><i class="{{ r.editIcon }}" aria-hidden="true"></i><span class="sx-t">{{ r.editLabel }}</span></button></sc-if>
+                <sc-if value="{{ r.showRestore }}"><button class="sx-btn sm ql-main" onClick="{{ r.onRestore }}"><i class="ri-arrow-go-back-line" aria-hidden="true"></i><span class="sx-t">Khôi phục</span></button></sc-if>
+                <sc-if value="{{ r.hasMore }}">
+                  <div class="ql-pw">
+                    <button class="sx-btn sm ic" aria-label="{{ r.moreAria }}" title="Thao tác khác" aria-haspopup="menu" aria-expanded="{{ r.moreOpenA }}" onClick="{{ r.onMore }}"><i class="ri-more-2-fill" aria-hidden="true"></i></button>
+                    <sc-if value="{{ r.moreOpen }}">
+                      <div class="ql-pop r" role="menu" aria-label="{{ r.moreAria }}">
+                        <sc-for list="{{ r.moreItems }}" as="m" hint-placeholder-count="4">
+                          <sc-if value="{{ m.sep }}"><div class="ql-sep" role="separator"></div></sc-if>
+                          <sc-if value="{{ m.btn }}"><button class="ql-mi" role="menuitem" data-t="{{ m.t }}" onClick="{{ m.on }}"><i class="{{ m.icon }}" aria-hidden="true"></i><span class="tx">{{ m.label }}<sc-if value="{{ m.hasWhy }}"><span class="why">{{ m.why }}</span></sc-if></span></button></sc-if>
+                        </sc-for>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noMatch }}">
+          <div class="ql-empty" role="row"><div role="cell" class="ql-state">
+            <i class="{{ emptyIcon }} ql-sti" aria-hidden="true"></i>
+            <p class="ql-stp">{{ emptyText }}</p>
+            <sc-if value="{{ hasFilter }}"><button class="sx-btn" onClick="{{ onClearAll }}"><i class="ri-filter-off-line" aria-hidden="true"></i><span class="sx-t">Bỏ lọc</span></button></sc-if>
+          </div></div>
+        </sc-if>
+      </div>
+      <div class="ql-foot">
+        <span>{{ footerText }}</span>
+        <div class="ql-pp" role="group" aria-label="Số dòng mỗi trang"><span>Dòng/trang</span><sc-for list="{{ perPageOpts }}" as="o" hint-placeholder-count="3"><button class="ql-ppb" aria-pressed="{{ o.on }}" onClick="{{ o.set }}">{{ o.n }}</button></sc-for></div>
+        <nav class="ql-pg" aria-label="Chuyển trang">
+          <button class="ql-pgb" aria-label="Trang trước" title="Trang trước" aria-disabled="{{ prevDis }}" onClick="{{ onPrev }}"><i class="ri-arrow-left-s-line" aria-hidden="true"></i></button>
+          <sc-for list="{{ pager }}" as="pg" hint-placeholder-count="1"><button class="ql-pgb" aria-current="{{ pg.cur }}" aria-label="{{ pg.aria }}" onClick="{{ pg.on }}">{{ pg.label }}</button></sc-for>
+          <button class="ql-pgb" aria-label="Trang sau" title="Trang sau" aria-disabled="{{ nextDis }}" onClick="{{ onNext }}"><i class="ri-arrow-right-s-line" aria-hidden="true"></i></button>
+        </nav>
+      </div>
+    </div>
+    </sc-if>
+    <sc-if value="{{ popOpen }}"><div class="ql-scrim" onClick="{{ onPopClose }}"></div></sc-if>
+
+    <sc-if value="{{ showFrames }}">
+      <div class="ql-frames">
+        <div class="ql-frh">Khung xem 390 và 768 px — cùng tệp, cùng dữ liệu</div>
+        <div class="ql-frw">
+          <iframe title="Xem ở 390 px" src="Sản phẩm - Danh sách.dc.html#frame" loading="lazy" style="width:390px;height:860px;"></iframe>
+          <iframe title="Xem ở 768 px" src="Sản phẩm - Danh sách.dc.html#frame" loading="lazy" style="width:768px;height:860px;"></iframe>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ cfOpen }}">
+    <div class="ov" onClick="{{ onCfCancel }}">
+      <div class="cf" role="alertdialog" aria-modal="true" aria-labelledby="sp-cf-t" aria-describedby="sp-cf-d" onClick="{{ stop }}">
+        <span class="cf-ic" data-t="danger" aria-hidden="true"><i class="ri-delete-bin-2-line"></i></span>
+        <h2 id="sp-cf-t" class="ql-cft">{{ cfTitle }}</h2>
+        <p id="sp-cf-d" class="ql-cfd">{{ cfText }}</p>
+        <div class="cf-f"><button class="sx-btn" ref="{{ cfRef }}" onClick="{{ onCfCancel }}">Hủy</button><button class="sx-btn dan" onClick="{{ onCfOk }}"><i class="ri-delete-bin-2-line" aria-hidden="true"></i><span class="sx-t">{{ cfOk }}</span></button></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ catOpen }}">
+    <div class="ov sheet" onClick="{{ onCatCancel }}">
+      <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="sp-cat-t" onClick="{{ stop }}" style="width:min(520px,100%);">
+        <span class="grab" aria-hidden="true"></span>
+        <div class="dlg-h"><h2 id="sp-cat-t" class="ql-cft">{{ catTitle }}</h2><button class="sx-btn sm ic gho ql-x" aria-label="Đóng" title="Đóng" onClick="{{ onCatCancel }}"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+        <div class="dlg-b">
+          <p class="ql-cfd">{{ catFor }}</p>
+          <label class="sx-search" data-focus-wrap="true"><i class="ri-search-line" aria-hidden="true" style="color:var(--color-body-muted,#5b6275);"></i><input type="search" ref="{{ catRef }}" aria-label="Tìm chuyên mục" placeholder="Ví dụ: mũi khoan" value="{{ catQ }}" onChange="{{ onCatQ }}"></label>
+          <div class="ql-clist" role="radiogroup" aria-label="Chuyên mục chính">
+            <sc-for list="{{ catItems }}" as="c" hint-placeholder-count="6">
+              <button class="ql-mi" role="radio" aria-checked="{{ c.on }}" data-d="{{ c.depth }}" onClick="{{ c.pick }}"><span class="ql-rad" aria-hidden="true"></span><span class="tx"><sc-if value="{{ c.hasPath }}"><span class="ql-path">{{ c.path }}</span></sc-if>{{ c.n }}</span><span class="ct">{{ c.count }}</span></button>
+            </sc-for>
+            <sc-if value="{{ catNone }}"><p class="ql-pt">Không có chuyên mục khớp “{{ catQ }}”.</p></sc-if>
+          </div>
+          <p class="ql-cfd" style="font-size:calc(13px + var(--fsp));color:var(--color-body-muted,#5b6275);">{{ catNote }}</p>
+        </div>
+        <div class="dlg-f"><button class="sx-btn" onClick="{{ onCatCancel }}">Hủy</button><button class="sx-btn pri" aria-disabled="{{ catOkDis }}" onClick="{{ onCatOk }}"><i class="ri-folder-transfer-line" aria-hidden="true"></i><span class="sx-t">{{ catOkLabel }}</span></button></div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div class="ql-tw" data-up="{{ toastUp }}" role="status" aria-live="polite"><sc-if value="{{ showToast }}"><div class="ql-toast"><i class="{{ toastIcon }}" aria-hidden="true"></i><span class="ql-tm">{{ toastMsg }}</span><sc-if value="{{ toastUndo }}"><button class="ql-undo" onClick="{{ onToastUndo }}">Hoàn tác</button></sc-if><button class="ql-tx" aria-label="Đóng thông báo" title="Đóng" onClick="{{ onToastClose }}"><i class="ri-close-line" aria-hidden="true"></i></button></div></sc-if></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;role&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Chủ website&quot;,&quot;Quản trị&quot;,&quot;Biên tập&quot;,&quot;Người viết&quot;,&quot;Cộng tác viên&quot;,&quot;Chỉ xem&quot;],&quot;default&quot;:&quot;Biên tập&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;,&quot;label&quot;:&quot;Nhóm quyền&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Giới thiệu&quot;,&quot;Bán hàng&quot;],&quot;default&quot;:&quot;Bán hàng&quot;,&quot;tsType&quot;:&quot;'Giới thiệu'|'Bán hàng'&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;,&quot;label&quot;:&quot;Chế độ sản phẩm&quot;},&quot;moduleOn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;,&quot;label&quot;:&quot;Module Sản phẩm bật cho website&quot;},&quot;upsell&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Quyền &amp; gói&quot;,&quot;label&quot;:&quot;Lời mời nâng gói&quot;},&quot;langs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1&quot;,&quot;3&quot;,&quot;8&quot;],&quot;default&quot;:&quot;3&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngôn ngữ&quot;,&quot;label&quot;:&quot;Số ngôn ngữ website bật&quot;},&quot;screenState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Có dữ liệu&quot;,&quot;Trống&quot;,&quot;Đang tải&quot;,&quot;Lỗi&quot;],&quot;default&quot;:&quot;Có dữ liệu&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Trạng thái&quot;,&quot;label&quot;:&quot;Trạng thái màn&quot;},&quot;showNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Trạng thái&quot;,&quot;label&quot;:&quot;Hiện ghi chú thiết kế&quot;},&quot;bigText&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Trạng thái&quot;,&quot;label&quot;:&quot;Chữ lớn&quot;},&quot;embedded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;embedId&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n:number)=&gt;void&quot;},&quot;langCodes&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;string[]&quot;},&quot;frames&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;}}">
+class Component extends DCLogic {
+  state = { tab: 'all', q: '', fCat: [], fTag: [], fStock: [], sort: 'upd', per: 20, page: 1, sel: {}, pop: null, hide: [], ed: null, draft: '', slugErr: '', toast: null, cf: null, cat: null, catQ: '', stOver: null, big: false, v: 0 };
+
+  static LANGS() { return { vi: 'Tiếng Việt', en: 'English', ja: '日本語', zh: '中文', ko: '한국어', th: 'ไทย', fr: 'Français', ar: 'العربية' }; }
+  static ORDER() { return ['vi', 'en', 'ja', 'zh', 'ko', 'th', 'fr', 'ar']; }
+  static NOW() { return Date.parse('2026-10-07T10:00:00'); }
+  static RESERVED() { return ['gioi-thieu', 'lien-he', 'trang-chu', 'tim-kiem', 'san-pham']; }
+  /* Kho mẫu dùng chung với "Sản phẩm - Trình sửa" (cùng cửa sổ khi nhúng trong Shell) — giữ y hệt ở hai tệp. */
+  static seed() {
+    if (window.__bsCatalog) return window.__bsCatalog;
+    const A = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+    const ulid = (n) => '01JB4M' + Array.from({ length: 20 }, (_, j) => A[(n * 7 + j * 13 + n * j * 3) % 32]).join('');
+    const cats = [['m', 'Máy phay', null, 'may-phay'], ['m1', 'Phay đứng', 'm', 'phay-dung'], ['m2', 'Phay ngang', 'm', 'phay-ngang'], ['m3', 'Trung tâm gia công', 'm', 'trung-tam-gia-cong'], ['t', 'Máy tiện', null, 'may-tien'], ['t1', 'Tiện CNC', 't', 'tien-cnc'], ['t2', 'Tiện cơ', 't', 'tien-co'], ['p', 'Phụ tùng', null, 'phu-tung'], ['pa', 'Dao cụ', 'p', 'dao-cu'], ['pa1', 'Dao phay ngón', 'pa', 'dao-phay-ngon'], ['pa2', 'Mũi khoan', 'pa', 'mui-khoan'], ['pb', 'Đồ gá', 'p', 'do-ga'], ['pc', 'Ê tô', 'p', 'e-to'], ['v', 'Vật tư tiêu hao', null, 'vat-tu-tieu-hao'], ['va', 'Dầu cắt gọt', 'v', 'dau-cat-got'], ['vb', 'Đá mài', 'v', 'da-mai'], ['x', 'Máy cũ đã qua sử dụng, thanh lý giá tốt cho xưởng nhỏ', null, 'may-cu-thanh-ly']].map(c => ({ k: c[0], n: c[1], p: c[2], slug: c[3] }));
+    const R = [
+      ['Máy phay CNC đứng VMC-850, bàn 1000×500 mm', 'may-phay-cnc-vmc-850', 'AV-VMC850', 'm1', 1180000000, 1090000000, '2026-10-01T08:00', '2026-10-31T23:59', 2, 1, 0, 'published', '2026-09-12T08:30', '2026-10-06T16:42', '4/3,1/1,3/4', { en: 'full', ja: 'ai', zh: 'miss' }],
+      ['Máy tiện CNC băng nghiêng CK-46', 'may-tien-cnc-ck-46', 'AV-CK46', 't1', null, null, '', '', null, 0, 1, 'published', '2026-08-20T09:00', '2026-10-05T11:20', '4/3', { en: 'full', ja: 'stale' }],
+      ['Dao phay ngón hợp kim 4 me D10', 'dao-phay-ngon-4-me-d10', 'AV-DP-D10', 'pa1', 385000, null, '', '', 140, 0, 1, 'published', '2026-07-02T10:00', '2026-10-04T09:05', '1/1', { en: 'full', ja: 'full' }],
+      ['Mũi khoan HSS-Co 5% D8.5 (hộp 10 cây)', 'mui-khoan-hss-co-d8-5', 'AV-MK-85', 'pa2', 1250000, 1090000, '2026-10-01T00:00', '2026-10-15T23:59', 0, 0, 0, 'published', '2026-06-15T08:00', '2026-10-03T14:10', '1/1', { en: 'miss' }],
+      ['Ê tô thủy lực mở nhanh 6 inch cho trung tâm gia công', 'e-to-thuy-luc-6-inch', 'AV-ETO6', 'pc', 6450000, null, '', '', 4, 0, 0, 'draft', '', '2026-10-07T08:15', '4/3', {}],
+      ['Dầu cắt gọt pha nước bán tổng hợp — can 18 lít', 'dau-cat-got-ban-tong-hop-18l', 'AV-DCG18', 'va', 2150000, null, '', '', 36, 1, 0, 'published', '2026-05-10T08:00', '2026-09-30T10:00', '3/4', { en: 'full', ja: 'full', zh: 'full' }],
+      ['Đá mài GC 200×20×31.75 — mẫu thử miễn phí', 'da-mai-gc-200-mau-thu', '', 'vb', 0, null, '', '', null, 0, 0, 'published', '2026-09-01T08:00', '2026-09-28T15:30', '', {}],
+      ['Máy phay ngang vạn năng X6132 đã qua sử dụng, còn 85%', 'may-phay-ngang-x6132-thanh-ly', 'AV-X6132-TL', 'x', 168000000, null, '', '', 1, 0, 0, 'archived', '2026-03-02T08:00', '2026-09-20T09:40', '4/3,4/3', { en: 'full' }],
+      ['Đồ gá kẹp nhanh 4 trục cho phay CNC', 'do-ga-kep-nhanh-4-truc', 'AV-DG4', 'pb', 12800000, null, '', '', 3, 1, 1, 'published', '2026-08-01T08:00', '2026-10-02T17:25', '1/1,1/1', { en: 'ai' }],
+      ['Trung tâm gia công 5 trục liên động UMC-500 kèm bộ đo dao tự động và băng tải phoi', 'trung-tam-gia-cong-5-truc-umc-500', 'AV-UMC500-5AX', 'm3', null, null, '', '', null, 0, 0, 'draft', '', '2026-10-06T09:10', '', {}],
+      ['Máy tiện cơ C6140 băng dài 1.5 m', 'may-tien-co-c6140', 'AV-C6140', 't2', 245000000, null, '', '', 0, 0, 0, 'published', '2026-04-11T08:00', '2026-09-18T08:00', '4/3', { en: 'full', ja: 'miss' }],
+      ['Bộ dao tiện gắn mảnh 12 cây cán 16', 'bo-dao-tien-gan-manh-12-cay', 'AV-DT12', 'pa', 2890000, null, '', '', 18, 0, 0, 'draft', '', '2026-10-07T09:40', '1/1', {}],
+      ['Ê tô cơ khí 4 inch (mẫu cũ)', 'e-to-co-khi-4-inch', 'AV-ETO4', 'pc', 1850000, null, '', '', 7, 0, 0, 'published', '2025-11-02T08:00', '2026-10-03T10:00', '1/1', { en: 'full' }, '2026-10-03T10:00'],
+      ['Mũi khoan tâm D3.15', 'mui-khoan-tam-d3-15', 'AV-MKT3', 'pa2', 95000, null, '', '', 50, 0, 0, 'draft', '', '2026-09-28T16:20', '', {}, '2026-09-28T16:20']
+    ];
+    const items = R.map((r, i) => ({ ma: ulid(i + 1), name: r[0], slug: r[1], sku: r[2], cat: r[3], cats: [r[3]], price: r[4], sale: r[5], saleFrom: r[6], saleTo: r[7], stock: r[8], featured: !!r[9], best: !!r[10], status: r[11], pubAt: r[12], upd: r[13], imgs: r[14] ? r[14].split(',').map((x, j) => ({ f: r[1] + '-' + (j + 1) + '.jpg', r: x })) : [], tr: r[15], trash: !!r[16], trashAt: r[16] || '' }));
+    window.__bsCatalog = { cats, items };
+    return window.__bsCatalog;
+  }
+
+  tw(k) { const D = { role: 'Biên tập', langs: '3', mode: 'Bán hàng', upsell: false, moduleOn: true, screenState: 'Có dữ liệu', showNotes: true, embedded: false }; const v = this.props[k]; return (v === undefined || v === null || v === '') ? D[k] : v; }
+  langs() { const lc = this.props.langCodes; if (Array.isArray(lc) && lc.length) return lc.filter(c => Component.LANGS()[c]); return Component.ORDER().slice(0, Math.max(1, parseInt(this.tw('langs'), 10) || 1)); }
+  can(p) { const r = this.tw('role'); return window.BSCW && window.BSCW.can ? window.BSCW.can(r, p) : true; }
+  K() { return Component.seed(); }
+  emit() { try { document.dispatchEvent(new CustomEvent('bs-catalog-store', { detail: { src: 'list' } })); } catch (e) {} this.setState(s => ({ v: s.v + 1 })); }
+  goto(screen, params, force) {
+    if (this.tw('embedded')) { try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen, params: params || {}, force: !!force } })); } catch (e) {} return; }
+    if (screen === 'catalog.edit' || screen === 'catalog.create') { const h = screen === 'catalog.edit' ? '#ma=' + encodeURIComponent(params.ma) + (params.lang ? '&lang=' + params.lang : '') : '#new'; try { window.location.href = encodeURI('Sản phẩm - Trình sửa.dc.html') + h; } catch (e) {} return; }
+    this.toast('Trong Admin Shell, nút này mở ' + (screen === 'settings' ? 'Cài đặt' : 'trang liên quan') + '.', 'ri-information-line');
+  }
+
+  componentDidMount() {
+    this._st = (e) => { if (!e.detail || e.detail.src !== 'list') this.forceUpdate(); }; document.addEventListener('bs-catalog-store', this._st);
+    this._cmd = (e) => { const d = (e && e.detail) || {}; if (d.id !== (this.props.embedId || 'catalog-list')) return; if (d.act === 'save') this.toast('Danh sách lưu ngay khi bạn đổi từng dòng — không còn gì chưa lưu.', 'ri-check-line'); };
+    document.addEventListener('bs-embed-cmd', this._cmd);
+    this._esc = (e) => { if (e.key !== 'Escape') return; if (this.state.cf) this.closeCf(); else if (this.state.cat) this.closeCat(); else if (this.state.pop) this.closePop(); else if (this.state.ed) this.setState({ ed: null, slugErr: '' }); };
+    window.addEventListener('keydown', this._esc);
+    try { const u = JSON.parse(localStorage.getItem('bs-ui') || '{}'); if (u && u.fontSize === 'large') this.setState({ big: true }); } catch (e) {}
+    if (this.props.onDirty) this.props.onDirty(0);
+  }
+  componentWillUnmount() { document.removeEventListener('bs-catalog-store', this._st); document.removeEventListener('bs-embed-cmd', this._cmd); window.removeEventListener('keydown', this._esc); clearTimeout(this._tt); clearTimeout(this._lt); }
+
+  remember() { try { this._opener = document.activeElement; } catch (e) {} }
+  giveBack() { const el = this._opener; this._opener = null; if (el && el.focus) setTimeout(() => { try { el.focus(); } catch (e) {} }, 0); }
+  openPop(k) { if (this.state.pop === k) { this.closePop(); return; } this.remember(); this.setState({ pop: k }); }
+  closePop() { this.setState({ pop: null }); this.giveBack(); }
+  closeCf() { this.setState({ cf: null }); this.giveBack(); }
+  closeCat() { this.setState({ cat: null, catQ: '' }); this.giveBack(); }
+  toast(msg, icon, undo) { clearTimeout(this._tt); this.setState({ toast: { msg, icon: icon || 'ri-check-line', undo: undo || null } }); this._tt = setTimeout(() => this.setState({ toast: null }), undo ? 8000 : 4500); }
+
+  fmt(n) { return Number(n).toLocaleString('vi-VN') + ' ₫'; }
+  ts(s) { return s ? Date.parse(s) : 0; }
+  dt(s) { if (!s) return ''; const d = new Date(Date.parse(s)); const p = (x) => String(x).padStart(2, '0'); return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+  saleOn(it) { const N = Component.NOW(); return it.sale != null && it.price != null && it.sale < it.price && (!it.saleFrom || this.ts(it.saleFrom) <= N) && (!it.saleTo || this.ts(it.saleTo) >= N); }
+  shown(it) { return this.saleOn(it) ? it.sale : it.price; }
+  deacc(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd'); }
+  slugify(s) { return this.deacc(s).replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-'); }
+  catOf(k) { return this.K().cats.find(c => c.k === k); }
+  catPath(k) { const out = []; let c = this.catOf(k); while (c) { out.unshift(c.n); c = c.p ? this.catOf(c.p) : null; } return out.join(' › '); }
+  subtree(k) { const K = this.K(); const out = [k]; const walk = (p) => K.cats.filter(c => c.p === p).forEach(c => { out.push(c.k); walk(c.k); }); walk(k); return out; }
+  depth(k) { let d = 0, c = this.catOf(k); while (c && c.p) { d++; c = this.catOf(c.p); } return d; }
+  catTree() { const K = this.K(); const out = []; const walk = (p) => K.cats.filter(c => c.p === p).forEach(c => { out.push(c); walk(c.k); }); walk(null); return out; }
+  stockKind(it) { if (it.stock == null) return 'none'; if (it.stock === 0) return 'out'; if (it.stock <= 5) return 'low'; return 'in'; }
+  stockText(it) { const k = this.stockKind(it); return k === 'none' ? 'Không theo dõi' : (k === 'out' ? 'Hết hàng' : 'Còn ' + it.stock.toLocaleString('vi-VN')); }
+
+  snap(mas) { const K = this.K(); return mas.map(ma => { const it = K.items.find(x => x.ma === ma); return it ? JSON.parse(JSON.stringify(it)) : null; }).filter(Boolean); }
+  restoreSnap(arr) { const K = this.K(); arr.forEach(o => { const i = K.items.findIndex(x => x.ma === o.ma); if (i >= 0) K.items[i] = o; else K.items.push(o); }); this.emit(); }
+  stamp(it) { it.upd = '2026-10-07T10:' + String(10 + (this._n = (this._n || 0) + 1) % 49).padStart(2, '0'); }
+  setStatus(mas, to) {
+    const K = this.K(); const before = this.snap(mas); let n = 0;
+    mas.forEach(ma => { const it = K.items.find(x => x.ma === ma); if (!it || it.trash || it.status === to) return; it.status = to; if (to === 'published' && !it.pubAt) it.pubAt = '2026-10-07T10:00'; this.stamp(it); n++; });
+    this.emit();
+    const one = mas.length === 1 ? K.items.find(x => x.ma === mas[0]) : null;
+    const what = one ? '“' + one.name + '”' : n + ' sản phẩm';
+    const msg = to === 'published' ? 'Đã đăng ' + what + ' — khách thấy ngay.' : (to === 'archived' ? 'Đã gỡ ' + what + ' khỏi website. Nội dung vẫn giữ nguyên.' : 'Đã đưa ' + what + ' về Bản nháp — khách không còn thấy.');
+    this.toast(msg, 'ri-check-line', () => this.restoreSnap(before));
+  }
+  toTrash(mas) {
+    const K = this.K(); const before = this.snap(mas);
+    mas.forEach(ma => { const it = K.items.find(x => x.ma === ma); if (it) { it.trash = true; it.trashAt = '2026-10-07T10:00'; } });
+    const sel = Object.assign({}, this.state.sel); mas.forEach(m => delete sel[m]); this.setState({ sel, pop: null }); this.emit();
+    const one = mas.length === 1 ? K.items.find(x => x.ma === mas[0]) : null;
+    this.toast('Đã chuyển ' + (one ? '“' + one.name + '”' : mas.length + ' sản phẩm') + ' vào Thùng rác.', 'ri-delete-bin-line', () => this.restoreSnap(before));
+  }
+  restore(mas) {
+    const K = this.K(); const before = this.snap(mas);
+    mas.forEach(ma => { const it = K.items.find(x => x.ma === ma); if (it) { it.trash = false; it.trashAt = ''; it.status = 'draft'; this.stamp(it); } });
+    const sel = Object.assign({}, this.state.sel); mas.forEach(m => delete sel[m]); this.setState({ sel }); this.emit();
+    this.toast('Đã khôi phục ' + (mas.length === 1 ? '1 sản phẩm' : mas.length + ' sản phẩm') + ' về Bản nháp.', 'ri-arrow-go-back-line', () => this.restoreSnap(before));
+  }
+  askPurge(mas) {
+    const K = this.K(); const one = mas.length === 1 ? K.items.find(x => x.ma === mas[0]) : null;
+    this.remember();
+    this.setState({ pop: null, cf: { title: one ? 'Xóa vĩnh viễn “' + one.name + '”?' : 'Xóa vĩnh viễn ' + mas.length + ' sản phẩm?', text: 'Không khôi phục được. Ảnh, giá và mọi bản ngôn ngữ của ' + (one ? 'sản phẩm này' : mas.length + ' sản phẩm này') + ' bị xóa. Mã SKU và đường dẫn sẽ được giải phóng để dùng cho sản phẩm khác.', ok: one ? 'Xóa vĩnh viễn' : 'Xóa vĩnh viễn ' + mas.length + ' sản phẩm', run: () => { K.items = K.items.filter(x => mas.indexOf(x.ma) < 0); const sel = Object.assign({}, this.state.sel); mas.forEach(m => delete sel[m]); this.setState({ sel }); this.emit(); this.toast('Đã xóa vĩnh viễn ' + (one ? '“' + one.name + '”' : mas.length + ' sản phẩm') + '.', 'ri-delete-bin-2-line'); } } }, () => setTimeout(() => { try { this._cfBtn && this._cfBtn.focus(); } catch (e) {} }, 30));
+  }
+  toggleFlag(ma, k) { const K = this.K(); const it = K.items.find(x => x.ma === ma); if (!it) return; const before = this.snap([ma]); it[k] = !it[k]; this.stamp(it); this.setState({ pop: null }); this.emit(); const L = k === 'featured' ? 'Nổi bật' : 'Bán chạy'; this.toast((it[k] ? 'Đã gắn nhãn “' + L + '” cho ' : 'Đã bỏ nhãn “' + L + '” khỏi ') + '“' + it.name + '”.', 'ri-price-tag-3-line', () => this.restoreSnap(before)); }
+  openCat(mas) { const K = this.K(); const one = mas.length === 1 ? K.items.find(x => x.ma === mas[0]) : null; this.remember(); this.setState({ pop: null, cat: { mas, pick: one ? one.cat : null }, catQ: '' }, () => setTimeout(() => { try { this._catIn && this._catIn.focus(); } catch (e) {} }, 30)); }
+  applyCat() {
+    const C = this.state.cat; if (!C || !C.pick) return; const K = this.K(); const before = this.snap(C.mas); let n = 0, pub = 0;
+    C.mas.forEach(ma => { const it = K.items.find(x => x.ma === ma); if (!it || it.cat === C.pick) return; it.cat = C.pick; it.cats = [C.pick].concat((it.cats || []).filter(k => k !== C.pick && k !== before.find(b => b.ma === ma).cat)); this.stamp(it); n++; if (it.status === 'published') pub++; });
+    this.setState({ cat: null, catQ: '' }); this.giveBack(); this.emit();
+    const c = this.catOf(C.pick);
+    this.toast(n ? 'Đã đổi chuyên mục chính của ' + n + ' sản phẩm sang “' + c.n + '”.' + (pub ? ' ' + pub + ' sản phẩm đang đăng tự chuyển khách từ địa chỉ cũ sang địa chỉ mới.' : '') : 'Các sản phẩm đã chọn vốn ở “' + c.n + '” — không có gì thay đổi.', 'ri-folder-transfer-line', n ? () => this.restoreSnap(before) : null);
+  }
+  slugTaken(slug, ma) {
+    const K = this.K();
+    if (Component.RESERVED().indexOf(slug) >= 0) return 'Đường dẫn “' + slug + '” trùng một trang có sẵn của website. Thêm vài chữ cho khác, ví dụ “' + slug + '-cnc”.';
+    const c = K.cats.find(x => x.slug === slug); if (c) return 'Đường dẫn “' + slug + '” đang là của chuyên mục “' + c.n + '”. Thêm vài chữ cho khác, ví dụ “' + slug + '-cnc”.';
+    const p = K.items.find(x => x.slug === slug && x.ma !== ma); if (p) return 'Đường dẫn “' + slug + '” đã dùng cho sản phẩm “' + p.name + '”' + (p.trash ? ' trong Thùng rác' : '') + '. Thêm vài chữ cho khác.';
+    return '';
+  }
+
+  renderVals() {
+    const S = this.state, K = this.K(), emb = !!this.tw('embedded');
+    const role = this.tw('role'), canView = this.can('catalog.view'), canManage = this.can('catalog.manage'), canSettings = this.can('settings.manage');
+    const sales = this.tw('mode') === 'Bán hàng', upsell = !!this.tw('upsell'), modOn = this.tw('moduleOn') !== false, notesOn = this.tw('showNotes') !== false;
+    const langs = this.langs(), multi = langs.length > 1, src = langs[0], LN = Component.LANGS();
+    const frameMode = (() => { try { return window.location.hash === '#frame'; } catch (e) { return false; } })();
+    const big = !emb && (this.props.bigText === true || S.big);
+
+    /* ---- trạng thái màn ---- */
+    let st = S.stOver || ({ 'Có dữ liệu': 'data', 'Trống': 'empty', 'Đang tải': 'loading', 'Lỗi': 'error' }[this.tw('screenState')] || 'data');
+    if (!modOn) st = 'plan'; else if (!canView) st = 'noperm';
+    const live = K.items.filter(x => !x.trash), trash = K.items.filter(x => x.trash);
+    if (st === 'data' && !live.length && !trash.length) st = 'empty';
+    const MOD = (window.BSAI && window.BSAI.MODULES && window.BSAI.MODULES.catalog) || { name: 'Sản phẩm', benefit: 'Giới thiệu sản phẩm có ảnh, giá và thông số — khách xem và gửi yêu cầu báo giá.' };
+    const STATES = {
+      loading: {},
+      error: { icon: 'ri-wifi-off-line', title: 'Chưa tải được danh sách sản phẩm', text: 'Mạng chập chờn hoặc máy chủ đang bận. Sản phẩm của bạn không mất — bấm Thử lại.', btn: 'Thử lại', bi: 'ri-refresh-line', cls: 'pri', run: () => { this.setState({ stOver: 'loading' }); clearTimeout(this._lt); this._lt = setTimeout(() => this.setState({ stOver: 'data' }), 900); } },
+      empty: { icon: 'ri-box-3-line', title: 'Chưa có sản phẩm nào', text: canManage ? 'Thêm sản phẩm đầu tiên — chỉ cần tên, ảnh và giá; mô tả, chuyên mục và các tùy chọn khác thêm sau cũng được.' : 'Website chưa có sản phẩm nào. Khi Chủ website thêm sản phẩm, bạn sẽ thấy ở đây.', btn: canManage ? 'Thêm sản phẩm đầu tiên' : '', bi: 'ri-add-line', cls: 'pri', run: () => this.goto('catalog.create', {}, true) },
+      noperm: { icon: 'ri-lock-2-line', title: 'Bạn chưa được xem sản phẩm', text: 'Nhóm quyền “' + role + '” không có việc với sản phẩm. Cần xem hoặc sửa, nhờ Chủ website thêm quyền cho bạn ở Thành viên.', btn: 'Về Tổng quan', bi: 'ri-home-4-line', cls: '', run: () => this.goto('dashboard', {}) },
+      plan: upsell ? { icon: 'ri-vip-crown-2-line', title: MOD.name + ' chưa có trong gói của website', text: MOD.benefit, btn: 'Xem gói nâng cấp', bi: 'ri-arrow-right-up-line', cls: 'pri', run: () => this.goto('settings', { section: 'plan' }) } : { icon: 'ri-lock-2-line', title: 'Sản phẩm chưa bật cho website này', text: 'Chưa bật cho website này — liên hệ hỗ trợ để được bật.', btn: 'Liên hệ hỗ trợ', bi: 'ri-customer-service-2-line', cls: '', run: () => this.toast('Bản thật mở khung Trợ giúp với số điện thoại, Zalo và email của bộ phận hỗ trợ.', 'ri-customer-service-2-line') }
+    };
+    const SV = STATES[st] || {};
+
+    /* ---- tab + lọc ---- */
+    const tabDefs = [['all', 'Tất cả', 'ri-list-check'], ['published', 'Đã đăng', 'ri-global-line'], ['draft', 'Bản nháp', 'ri-draft-line'], ['archived', 'Đã gỡ khỏi website', 'ri-archive-line']];
+    const isTrash = S.tab === 'trash' && canManage;
+    const tabBase = isTrash ? trash : live.filter(x => S.tab === 'all' || S.tab === 'trash' || x.status === S.tab);
+    const qn = this.deacc(S.q).trim();
+    const qHit = (x) => !qn || this.deacc(x.name).indexOf(qn) >= 0 || this.deacc(x.sku).indexOf(qn) >= 0;
+    const catSet = S.fCat.length ? [].concat(...S.fCat.map(k => this.subtree(k))) : null;
+    const pass = (x, skip) => qHit(x) && (skip === 'cat' || !catSet || catSet.indexOf(x.cat) >= 0) && (skip === 'tag' || !S.fTag.length || S.fTag.some(t => x[t])) && (skip === 'stock' || !sales || !S.fStock.length || S.fStock.indexOf(this.stockKind(x) === 'low' ? 'in' : this.stockKind(x)) >= 0);
+    const toggleIn = (key, v) => this.setState(s => { const a = s[key].slice(); const i = a.indexOf(v); if (i >= 0) a.splice(i, 1); else a.push(v); return { [key]: a, page: 1, sel: {} }; });
+    const filters = [];
+    filters.push({ key: 'cat', head: 'Chuyên mục', icon: 'ri-folder-3-line', items: this.catTree().map(c => ({ label: c.n, depth: String(Math.min(2, this.depth(c.k))), checked: S.fCat.indexOf(c.k) >= 0, count: String(tabBase.filter(x => pass(x, 'cat') && this.subtree(c.k).indexOf(x.cat) >= 0).length), on: () => toggleIn('fCat', c.k) })), n: S.fCat.length, reset: () => this.setState({ fCat: [], page: 1 }) });
+    filters.push({ key: 'tag', head: 'Nhãn', icon: 'ri-price-tag-3-line', items: [['featured', 'Nổi bật'], ['best', 'Bán chạy']].map(t => ({ label: t[1], depth: '0', checked: S.fTag.indexOf(t[0]) >= 0, count: String(tabBase.filter(x => pass(x, 'tag') && x[t[0]]).length), on: () => toggleIn('fTag', t[0]) })), n: S.fTag.length, reset: () => this.setState({ fTag: [], page: 1 }) });
+    if (sales) filters.push({ key: 'stock', head: 'Tồn kho', icon: 'ri-stack-line', items: [['in', 'Còn hàng'], ['out', 'Hết hàng'], ['none', 'Không theo dõi']].map(t => ({ label: t[1], depth: '0', checked: S.fStock.indexOf(t[0]) >= 0, count: String(tabBase.filter(x => pass(x, 'stock') && (this.stockKind(x) === 'low' ? 'in' : this.stockKind(x)) === t[0]).length), on: () => toggleIn('fStock', t[0]) })), n: S.fStock.length, reset: () => this.setState({ fStock: [], page: 1 }) });
+    const fv = filters.map(f => ({ head: f.head, icon: f.icon, items: f.items, label: f.head, open: S.pop === 'f-' + f.key, on: () => this.openPop('f-' + f.key), hasCount: f.n > 0, count: String(f.n), actA: f.n ? '1' : '0', onReset: f.reset }));
+    const nF = S.fCat.length + S.fTag.length + (sales ? S.fStock.length : 0);
+    const chips = [];
+    S.fCat.forEach(k => { const c = this.catOf(k); chips.push({ label: 'Chuyên mục: ' + (c ? c.n : k), aria: 'Bỏ lọc chuyên mục ' + (c ? c.n : k), on: () => toggleIn('fCat', k) }); });
+    S.fTag.forEach(t => chips.push({ label: 'Nhãn: ' + (t === 'featured' ? 'Nổi bật' : 'Bán chạy'), aria: 'Bỏ lọc nhãn', on: () => toggleIn('fTag', t) }));
+    if (sales) S.fStock.forEach(t => chips.push({ label: 'Tồn kho: ' + ({ in: 'Còn hàng', out: 'Hết hàng', none: 'Không theo dõi' })[t], aria: 'Bỏ lọc tồn kho', on: () => toggleIn('fStock', t) }));
+    if (S.q.trim()) chips.unshift({ label: 'Từ khóa: ' + S.q.trim(), aria: 'Bỏ từ khóa', on: () => this.setState({ q: '', page: 1 }) });
+    const hasFilter = chips.length > 0;
+    const clearAll = () => this.setState({ q: '', fCat: [], fTag: [], fStock: [], page: 1, pop: null });
+
+    /* ---- sắp xếp ---- */
+    let sort = S.sort; if (!sales && /price|stock/.test(sort)) sort = 'upd';
+    const big0 = (v, dir) => v == null ? (dir > 0 ? Infinity : -Infinity) : v;
+    const cmp = {
+      upd: (a, b) => this.ts(isTrash ? b.trashAt : b.upd) - this.ts(isTrash ? a.trashAt : a.upd),
+      name: (a, b) => a.name.localeCompare(b.name, 'vi'),
+      priceAsc: (a, b) => big0(this.shown(a), 1) - big0(this.shown(b), 1),
+      priceDesc: (a, b) => big0(this.shown(b), -1) - big0(this.shown(a), -1),
+      stockAsc: (a, b) => big0(a.stock, 1) - big0(b.stock, 1)
+    }[sort];
+    const matched = tabBase.filter(x => pass(x)).sort(cmp);
+    const pages = Math.max(1, Math.ceil(matched.length / S.per)), page = Math.min(S.page, pages);
+    const pageRows = matched.slice((page - 1) * S.per, page * S.per);
+    const sortSet = (k) => () => this.setState({ sort: k, pop: null, page: 1 });
+    const sortOpts = [['upd', isTrash ? 'Mới chuyển vào Thùng rác trước' : 'Cập nhật gần nhất', 'ri-time-line'], ['name', 'Tên A → Z', 'ri-sort-alphabet-asc']].concat(sales ? [['priceAsc', 'Giá thấp → cao', 'ri-sort-number-asc'], ['priceDesc', 'Giá cao → thấp', 'ri-sort-number-desc'], ['stockAsc', 'Tồn kho ít nhất trước', 'ri-stack-line']] : []).map(o => ({ label: o[1], icon: o[2], on: sort === o[0], set: sortSet(o[0]) }));
+    const sUI = (keys, next) => { const a = keys.indexOf(sort) >= 0; return { a: a ? '1' : '0', aria: a ? (sort === 'priceDesc' || sort === 'upd' ? 'descending' : 'ascending') : 'none', icon: a ? (sort === 'priceDesc' || sort === 'upd' ? 'ri-arrow-down-line' : 'ri-arrow-up-line') : 'ri-arrow-up-down-line', on: () => this.setState({ sort: next(sort), page: 1 }) }; };
+    const sortUI = { name: sUI(['name'], s => s === 'name' ? 'upd' : 'name'), price: sUI(['priceAsc', 'priceDesc'], s => s === 'priceAsc' ? 'priceDesc' : (s === 'priceDesc' ? 'upd' : 'priceAsc')), stock: sUI(['stockAsc'], s => s === 'stockAsc' ? 'upd' : 'stockAsc'), upd: sUI(['upd'], () => 'upd') };
+
+    /* ---- chọn nhiều ---- */
+    const canSelect = canManage;
+    const selMas = Object.keys(S.sel).filter(m => S.sel[m] && matched.some(x => x.ma === m));
+    const selItems = selMas.map(m => K.items.find(x => x.ma === m)).filter(Boolean);
+    const pageAll = pageRows.length && pageRows.every(x => S.sel[x.ma]), pageSome = pageRows.some(x => S.sel[x.ma]);
+    const togglePage = () => this.setState(s => { const sel = Object.assign({}, s.sel); pageRows.forEach(x => { if (pageAll) delete sel[x.ma]; else sel[x.ma] = true; }); return { sel }; });
+    let bulkActs = [], skip = [];
+    if (isTrash) {
+      bulkActs = [{ label: 'Khôi phục (' + selMas.length + ')', icon: 'ri-arrow-go-back-line', cls: '', dis: false, title: 'Đưa về Bản nháp', on: () => this.restore(selMas) }, { label: 'Xóa vĩnh viễn (' + selMas.length + ')', icon: 'ri-delete-bin-2-line', cls: 'dano', dis: false, title: 'Không khôi phục được — sẽ hỏi lại', on: () => this.askPurge(selMas) }];
+    } else if (selMas.length) {
+      const toPub = selItems.filter(x => x.status !== 'published'), toArc = selItems.filter(x => x.status === 'published');
+      if (selItems.length - toPub.length) skip.push('Đăng bỏ qua ' + (selItems.length - toPub.length) + ' sản phẩm đã đăng');
+      if (selItems.length - toArc.length) skip.push('Gỡ khỏi website bỏ qua ' + (selItems.length - toArc.length) + ' sản phẩm chưa đăng');
+      bulkActs = [
+        { label: 'Đăng (' + toPub.length + ')', icon: 'ri-global-line', cls: 'out', dis: !toPub.length, title: toPub.length ? 'Đăng ' + toPub.length + ' sản phẩm — khách thấy ngay' : 'Mọi sản phẩm đã chọn đều đang đăng', on: () => toPub.length && this.setStatus(toPub.map(x => x.ma), 'published') },
+        { label: 'Gỡ khỏi website (' + toArc.length + ')', icon: 'ri-archive-line', cls: '', dis: !toArc.length, title: toArc.length ? 'Khách không còn thấy; nội dung vẫn giữ' : 'Không có sản phẩm nào đang đăng trong số đã chọn', on: () => toArc.length && this.setStatus(toArc.map(x => x.ma), 'archived') },
+        { label: 'Đổi chuyên mục (' + selItems.length + ')', icon: 'ri-folder-transfer-line', cls: '', dis: false, title: 'Chọn chuyên mục chính mới cho ' + selItems.length + ' sản phẩm', on: () => this.openCat(selMas) },
+        { label: 'Chuyển vào Thùng rác (' + selItems.length + ')', icon: 'ri-delete-bin-line', cls: 'dano', dis: false, title: 'Làm ngay, có Hoàn tác 8 giây', on: () => this.toTrash(selMas) }
+      ];
+    }
+
+    /* ---- dòng ---- */
+    const hide = S.hide.slice(); if (!sales) hide.push('price', 'stock'); if (!canSelect) hide.push('chk');
+    const rows = pageRows.map(x => {
+      const c = this.catOf(x.cat), ed = S.ed && S.ed.ma === x.ma ? S.ed.k : null;
+      const saleOn = this.saleOn(x), ask = x.price == null;
+      const prMain = ask ? 'Liên hệ báo giá' : this.fmt(this.shown(x));
+      const badges = [x.featured ? { k: 'featured', l: 'Nổi bật', icon: 'ri-star-line' } : null, x.best ? { k: 'best', l: 'Bán chạy', icon: 'ri-fire-line' } : null].filter(Boolean);
+      const stk = this.stockKind(x);
+      const stLbl = isTrash ? 'Trong Thùng rác' : ({ published: 'Đã đăng', draft: 'Bản nháp', archived: 'Đã gỡ khỏi website' })[x.status];
+      const stIcon = isTrash ? 'ri-delete-bin-line' : ({ published: 'ri-global-line', draft: 'ri-draft-line', archived: 'ri-archive-line' })[x.status];
+      const T = { published: [['archived', 'Gỡ khỏi website', 'Khách không còn thấy; nội dung giữ nguyên'], ['draft', 'Đưa về nháp', 'Ẩn khỏi website để sửa tiếp']], draft: [['published', 'Đăng', 'Khách thấy ngay trên website'], ['archived', 'Gỡ khỏi website', 'Giữ lại, không hiện trên website']], archived: [['published', 'Đăng', 'Hiện lại trên website'], ['draft', 'Đưa về nháp', 'Chuyển về Bản nháp để sửa tiếp']] }[x.status] || [];
+      const days = isTrash ? Math.max(0, 30 - Math.floor((Component.NOW() - this.ts(x.trashAt)) / 86400000)) : 0;
+      const pubUrl = 'anvinh.vn/san-pham/' + x.slug;
+      const more = [];
+      if (isTrash) { more.push({ btn: true, label: 'Xóa vĩnh viễn…', icon: 'ri-delete-bin-2-line', t: 'dan', why: 'Không khôi phục được — sẽ hỏi lại', on: () => this.askPurge([x.ma]) }); }
+      else {
+        if (x.status === 'published') more.push({ btn: true, label: 'Xem trên website', icon: 'ri-external-link-line', why: pubUrl, on: () => { this.setState({ pop: null }); this.toast('Bản thật mở ' + pubUrl + ' ở thẻ mới.', 'ri-external-link-line'); } });
+        if (canManage) {
+          more.push({ btn: true, label: 'Sửa đường dẫn', icon: 'ri-link', on: () => this.setState({ pop: null, ed: { ma: x.ma, k: 'slug' }, draft: x.slug, slugErr: '' }) });
+          more.push({ sep: true });
+          more.push({ btn: true, label: x.featured ? 'Bỏ nhãn “Nổi bật”' : 'Gắn nhãn “Nổi bật”', icon: 'ri-star-line', on: () => this.toggleFlag(x.ma, 'featured') });
+          more.push({ btn: true, label: x.best ? 'Bỏ nhãn “Bán chạy”' : 'Gắn nhãn “Bán chạy”', icon: 'ri-fire-line', on: () => this.toggleFlag(x.ma, 'best') });
+          more.push({ btn: true, label: 'Đổi chuyên mục…', icon: 'ri-folder-transfer-line', on: () => this.openCat([x.ma]) });
+          more.push({ sep: true });
+          more.push({ btn: true, label: 'Chuyển vào Thùng rác', icon: 'ri-delete-bin-line', t: 'dan', why: 'Có Hoàn tác 8 giây', on: () => this.toTrash([x.ma]) });
+        }
+      }
+      const lk = S.pop && S.pop.indexOf('lg:' + x.ma + ':') === 0 ? S.pop.split(':')[2] : null;
+      const lstat = (code) => code === src ? 'full' : ((x.tr || {})[code] || 'empty');
+      const LBL = { full: 'Đủ nội dung', ai: 'AI vừa dịch, chưa kiểm', miss: 'Còn thiếu trường', stale: 'Lỗi thời so với bản nguồn', empty: 'Chưa có nội dung' };
+      const lmSt = lk ? lstat(lk) : 'full';
+      const open = (lang) => () => { this.setState({ pop: null }); this.goto('catalog.edit', lang && lang !== src ? { ma: x.ma, lang } : { ma: x.ma }); };
+      return {
+        ma: x.ma, name: x.name, selA: S.sel[x.ma] ? '1' : '0', checked: S.sel[x.ma] ? 'true' : 'false', ckLabel: 'Chọn ' + x.name, onToggle: () => this.setState(s => { const sel = Object.assign({}, s.sel); if (sel[x.ma]) delete sel[x.ma]; else sel[x.ma] = true; return { sel }; }),
+        imgA: x.imgs.length ? '1' : '0', thumbIcon: x.imgs.length ? 'ri-image-2-line' : 'ri-image-add-line', thumbTitle: x.imgs.length ? x.imgs.length + ' ảnh — ảnh đầu là ảnh đại diện' : 'Chưa có ảnh',
+        editingName: ed === 'name', notEditingName: ed !== 'name', canQuick: canManage && !isTrash, quickAria: 'Sửa nhanh tên ' + x.name, onQuick: () => this.setState({ ed: { ma: x.ma, k: 'name' }, draft: x.name, slugErr: '' }),
+        onOpen: isTrash ? () => this.toast('Sản phẩm đang ở Thùng rác — bấm Khôi phục để sửa tiếp.', 'ri-information-line') : open(null),
+        skuText: x.sku || 'Chưa có SKU', skuNone: x.sku ? '0' : '1',
+        editingSlug: ed === 'slug', slugBtn: ed !== 'slug' && canManage && !isTrash, slugStatic: ed !== 'slug' && !(canManage && !isTrash), slugText: '/san-pham/' + x.slug, slugTitle: 'Bấm để sửa đường dẫn — ' + pubUrl, onEditSlug: () => this.setState({ ed: { ma: x.ma, k: 'slug' }, draft: x.slug, slugErr: '' }),
+        langs: langs.map(code => ({ code: code.toUpperCase(), s: lstat(code), src: code === src, open: lk === code ? 'true' : 'false', aria: LN[code] + ': ' + (code === src ? 'bản nguồn' : LBL[lstat(code)].toLowerCase()) + ' — bấm để ' + (canManage ? 'sửa' : 'xem'), on: () => this.openPop('lg:' + x.ma + ':' + code) })),
+        lmOpen: !!lk, lmTitle: lk ? LN[lk] : '', lmState: lk ? (lk === src ? 'Bản nguồn — các bản khác dịch từ đây.' : LBL[lmSt]) : '',
+        lmCan: !!lk && !isTrash && (canManage || lmSt !== 'empty'), lmIcon: canManage ? (lmSt === 'empty' ? 'ri-add-line' : 'ri-pencil-line') : 'ri-eye-line', lmAct: lk ? (canManage ? (lmSt === 'empty' ? 'Thêm bản ' : 'Sửa bản ') : 'Xem bản ') + LN[lk] : '', lmOn: open(lk),
+        catName: c ? c.n : 'Chưa có chuyên mục', catPath: c ? this.catPath(c.k) : '',
+        prKind: ask ? 'ask' : 'v', prMain, prHasOld: saleOn, prOld: saleOn ? this.fmt(x.price) : '', prTip: saleOn ? 'Giá khuyến mãi tới ' + this.dt(x.saleTo) + ' — giá gốc ' + this.fmt(x.price) : (ask ? 'Chưa nhập giá — website hiện nút “Liên hệ báo giá”' : ''),
+        mPrice: sales ? (saleOn ? prMain + ' (gốc ' + this.fmt(x.price) + ')' : prMain) : '',
+        stkKind: stk, stkIcon: { out: 'ri-close-circle-line', low: 'ri-error-warning-line', in: 'ri-checkbox-circle-line', none: 'ri-subtract-line' }[stk], stkText: this.stockText(x), mStock: sales ? this.stockText(x) : '',
+        badges, noBadge: !badges.length, hasMBadge: badges.length > 0, hasMPrice: sales, mBadge: badges.map(b => b.l).join(', '),
+        st: isTrash ? 'trash' : x.status, stLabel: stLbl, stIcon, stAria: 'Trạng thái: ' + stLbl + ' — bấm để đổi', stBtn: canManage && !isTrash, stStatic: !(canManage && !isTrash), stOpen: S.pop === 'st:' + x.ma, stOpenA: S.pop === 'st:' + x.ma ? 'true' : 'false',
+        stItems: T.map(t => ({ s: t[0], label: t[1], why: t[2], on: () => { this.setState({ pop: null }); this.setStatus([x.ma], t[0]); } })),
+        updText: isTrash ? 'Còn ' + days + ' ngày trước khi tự xóa' : 'Cập nhật ' + this.dt(x.upd), updFull: isTrash ? 'Chuyển vào Thùng rác lúc ' + this.dt(x.trashAt) : 'Cập nhật lần cuối ' + this.dt(x.upd),
+        onSt: () => this.openPop('st:' + x.ma),
+        showEdit: !isTrash, editLabel: canManage ? 'Sửa' : 'Xem', editIcon: canManage ? 'ri-pencil-line' : 'ri-eye-line', editAria: (canManage ? 'Sửa ' : 'Xem ') + x.name,
+        showRestore: isTrash, onRestore: () => this.restore([x.ma]),
+        hasMore: more.length > 0, moreItems: more.map(m => Object.assign({ btn: false, sep: false, t: '', hasWhy: !!m.why, why: m.why || '' }, m)), moreOpen: S.pop === 'more:' + x.ma, moreOpenA: S.pop === 'more:' + x.ma ? 'true' : 'false', moreAria: 'Thao tác khác cho ' + x.name, onMore: () => this.openPop('more:' + x.ma)
+      };
+    });
+    const cnt = (k) => String(live.filter(x => k === 'all' || x.status === k).length);
+    const tabs = tabDefs.map(t => ({ label: t[1], icon: t[2], count: cnt(t[0]), sel: S.tab === t[0] ? 'true' : 'false', on: () => this.setState({ tab: t[0], page: 1, sel: {}, pop: null }) }));
+    const colItems = [{ label: 'Sản phẩm', fixed: true, lock: 'true', on: 'true', hasWhy: false, why: '', toggle: () => {} }]
+      .concat([['cat', 'Chuyên mục chính'], ['price', 'Giá'], ['stock', 'Tồn kho'], ['badge', 'Nhãn']].map(c => { const off = !sales && (c[0] === 'price' || c[0] === 'stock'); return { label: c[1], fixed: false, lock: off ? 'true' : 'false', on: (!off && S.hide.indexOf(c[0]) < 0) ? 'true' : 'false', hasWhy: off, why: off ? 'Ẩn ở chế độ Giới thiệu' : '', toggle: () => { if (off) return; this.setState(s => { const h = s.hide.slice(); const i = h.indexOf(c[0]); if (i >= 0) h.splice(i, 1); else h.push(c[0]); return { hide: h }; }); } }; }))
+      .concat([{ label: 'Trạng thái', fixed: true, lock: 'true', on: 'true', hasWhy: false, why: '', toggle: () => {} }]);
+
+    /* ---- hộp đổi chuyên mục ---- */
+    const C = S.cat, cq = this.deacc(S.catQ).trim();
+    const catItems = C ? (cq ? K.cats.filter(c => this.deacc(c.n).indexOf(cq) >= 0).map(c => ({ c, depth: '0', path: c.p ? this.catPath(c.p) + ' › ' : '' })) : this.catTree().map(c => ({ c, depth: String(Math.min(2, this.depth(c.k))), path: '' }))).map(o => ({ n: o.c.n, depth: o.depth, path: o.path, hasPath: !!o.path, on: C.pick === o.c.k ? 'true' : 'false', count: String(live.filter(x => x.cat === o.c.k).length), pick: () => this.setState(s => ({ cat: Object.assign({}, s.cat, { pick: o.c.k }) })) })) : [];
+    const cOne = C && C.mas.length === 1 ? K.items.find(x => x.ma === C.mas[0]) : null;
+    const cPub = C ? C.mas.filter(m => { const it = K.items.find(x => x.ma === m); return it && it.status === 'published'; }).length : 0;
+
+    const st2 = st === 'data';
+    const footFrom = matched.length ? (page - 1) * S.per + 1 : 0, footTo = Math.min(matched.length, page * S.per);
+    const ROLE_TEXT = canManage ? 'Bạn được thêm, sửa, đăng và chuyển sản phẩm vào Thùng rác.' : 'Bạn chỉ xem được sản phẩm — bấm “Xem” để mở chi tiết, không sửa được.';
+    return {
+      embAttr: emb ? '1' : '0', notEmb: !emb, fsAttr: big ? 'large' : 'normal', hideAttr: hide.join(' '), notesOn,
+      canAddTop: canManage && (st2 || st === 'empty'), onAdd: () => this.goto('catalog.create', {}, true),
+      showRoleBar: st2 || st === 'empty', roleName: role, roleText: ROLE_TEXT,
+      modeIcon: sales ? 'ri-shopping-bag-3-line' : 'ri-presentation-line', modeLabel: sales ? 'Chế độ Bán hàng' : 'Chế độ Giới thiệu', modeText: sales ? 'Khách thấy giá và tình trạng còn hàng.' : 'Khách không thấy giá — mỗi sản phẩm có nút “Liên hệ báo giá”.',
+      canSettings, onGoSettings: () => this.goto('settings', { section: 'catalog' }),
+      showStatePanel: !st2, isLoading: st === 'loading', notLoading: st !== 'loading', skRows: [1, 2, 3, 4, 5, 6],
+      stateKey: st, stateRole: st === 'error' ? 'alert' : 'status', stateIcon: SV.icon || '', stateTitle: SV.title || '', stateText: SV.text || '', stateBtn: !!SV.btn, stateBtnCls: SV.cls || '', stateBtnIcon: SV.bi || '', stateBtnLabel: SV.btn || '', onStateBtn: () => SV.run && SV.run(),
+      showData: st2, tabs, showTrashTab: canManage, trashTab: { sel: isTrash ? 'true' : 'false', count: String(trash.length), on: () => this.setState({ tab: 'trash', page: 1, sel: {}, pop: null }) },
+      q: S.q, onSearch: (e) => this.setState({ q: e.target.value, page: 1 }),
+      filters: fv, fAll: { open: S.pop === 'fAll', on: () => this.openPop('fAll'), hasCount: nF > 0, count: String(nF), actA: nF ? '1' : '0' },
+      sortOpen: S.pop === 'sort', onSortPop: () => this.openPop('sort'), sortOpts, sortUI, stHead: isTrash ? 'Thùng rác' : 'Trạng thái',
+      canSelect, selPageOn: pageAll ? 'true' : 'false', selPageLabel: pageAll ? 'Bỏ chọn trang' : 'Chọn cả trang', onSelPage: togglePage,
+      colsOpen: S.pop === 'cols', onColsPop: () => this.openPop('cols'), colItems,
+      hasFilter, chips, onClearAll: clearAll, matchCount: String(matched.length), baseCount: String(tabBase.length),
+      isTrashTab: isTrash,
+      bulkOn: canSelect && selMas.length > 0, bulkCount: String(selMas.length), bulkActs: bulkActs.map(b => Object.assign({}, b, { dis: b.dis ? 'true' : 'false' })), bulkHasSkip: skip.length > 0, bulkSkip: skip.join(' · ') + '.', onClearSel: () => this.setState({ sel: {} }),
+      hdChecked: pageAll ? 'true' : (pageSome ? 'mixed' : 'false'), onHeaderToggle: togglePage,
+      rows, multiLang: multi, draft: S.draft, slugErrOn: !!S.slugErr, slugErr: S.slugErr,
+      onEditChange: (e) => this.setState({ draft: e.target.value, slugErr: '' }),
+      onEditKey: (e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { e.stopPropagation(); this.setState({ ed: null }); } },
+      onSlugKey: (e) => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') { e.stopPropagation(); this.setState({ ed: null, slugErr: '' }); } },
+      onCommitName: () => { const E = this.state.ed; if (!E) return; const it = K.items.find(x => x.ma === E.ma); const v = this.state.draft.trim(); if (!v) { this.setState({ ed: null }); this.toast('Tên không được để trống — giữ tên cũ.', 'ri-information-line'); return; } if (it && v !== it.name) { const before = this.snap([it.ma]); it.name = v; this.stamp(it); this.setState({ ed: null }); this.emit(); this.toast('Đã đổi tên sản phẩm.', 'ri-check-line', () => this.restoreSnap(before)); } else this.setState({ ed: null }); },
+      onCommitSlug: () => { const E = this.state.ed; if (!E) return; const it = K.items.find(x => x.ma === E.ma); const v = this.slugify(this.state.draft); if (!v) { this.setState({ slugErr: 'Đường dẫn cần ít nhất 1 chữ hoặc số, ví dụ “dao-phay-d10”.' }); return; } const err = this.slugTaken(v, E.ma); if (err) { this.setState({ slugErr: err, draft: v }); return; } if (it && v !== it.slug) { const before = this.snap([it.ma]); const pub = it.status === 'published'; it.slug = v; this.stamp(it); this.setState({ ed: null, slugErr: '' }); this.emit(); this.toast('Đã đổi đường dẫn thành /san-pham/' + v + '.' + (pub ? ' Địa chỉ cũ tự chuyển sang địa chỉ mới.' : ''), 'ri-link', () => this.restoreSnap(before)); } else this.setState({ ed: null, slugErr: '' }); },
+      noMatch: st2 && !matched.length, emptyIcon: isTrash ? 'ri-delete-bin-line' : 'ri-search-eye-line',
+      emptyText: hasFilter ? 'Không có sản phẩm nào khớp điều kiện lọc.' : (isTrash ? 'Thùng rác trống.' : 'Chưa có sản phẩm nào ở mục này.'),
+      footerText: matched.length ? 'Hiện ' + footFrom + '–' + footTo + ' trong ' + matched.length + ' sản phẩm' : '0 sản phẩm',
+      perPageOpts: [10, 20, 50].map(n => ({ n: String(n), on: S.per === n ? 'true' : 'false', set: () => this.setState({ per: n, page: 1 }) })),
+      pager: Array.from({ length: pages }, (_, i) => ({ label: String(i + 1), cur: i + 1 === page ? 'page' : 'false', aria: 'Trang ' + (i + 1), on: () => this.setState({ page: i + 1 }) })),
+      prevDis: page <= 1 ? 'true' : 'false', nextDis: page >= pages ? 'true' : 'false', onPrev: () => page > 1 && this.setState({ page: page - 1 }), onNext: () => page < pages && this.setState({ page: page + 1 }),
+      popOpen: !!S.pop, onPopClose: () => this.closePop(),
+      showFrames: !emb && !frameMode && this.props.frames !== false,
+      cfOpen: !!S.cf, cfTitle: S.cf ? S.cf.title : '', cfText: S.cf ? S.cf.text : '', cfOk: S.cf ? S.cf.ok : '', cfRef: (el) => { this._cfBtn = el; }, onCfCancel: () => this.closeCf(), onCfOk: () => { const f = this.state.cf; this.setState({ cf: null }); this.giveBack(); if (f && f.run) f.run(); }, stop: (e) => e.stopPropagation(),
+      catOpen: !!C, catTitle: C ? (cOne ? 'Đổi chuyên mục chính' : 'Đổi chuyên mục chính cho ' + C.mas.length + ' sản phẩm') : '', catFor: cOne ? '“' + cOne.name + '”' : (C ? 'Mọi sản phẩm đã chọn chuyển sang cùng một chuyên mục chính.' : ''),
+      catQ: S.catQ, onCatQ: (e) => this.setState({ catQ: e.target.value }), catRef: (el) => { this._catIn = el; }, catItems, catNone: !!C && !catItems.length,
+      catNote: 'Chuyên mục chính quyết định sản phẩm hiện ở trang nhóm nào trên website.' + (cPub ? ' ' + cPub + ' sản phẩm đang đăng: địa chỉ cũ tự chuyển sang địa chỉ mới.' : ''),
+      catOkDis: C && C.pick ? 'false' : 'true', catOkLabel: C && C.mas.length > 1 ? 'Đổi chuyên mục (' + C.mas.length + ')' : 'Đổi chuyên mục', onCatCancel: () => this.closeCat(), onCatOk: () => this.applyCat(),
+      showToast: !!S.toast, toastMsg: S.toast ? S.toast.msg : '', toastIcon: S.toast ? S.toast.icon : '', toastUndo: !!(S.toast && S.toast.undo), toastUp: canSelect && selMas.length ? '1' : '0',
+      onToastUndo: () => { const t = this.state.toast; clearTimeout(this._tt); this.setState({ toast: null }); if (t && t.undo) { t.undo(); this.toast('Đã hoàn tác.', 'ri-arrow-go-back-line'); } }, onToastClose: () => { clearTimeout(this._tt); this.setState({ toast: null }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

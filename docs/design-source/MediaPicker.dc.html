@@ -39,8 +39,11 @@
   .mp-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;}
   .mp-gridpad{padding:12px!important;}
   .mp-tool{padding:10px 12px!important;}
-  .mp-tool>div:first-child{flex:1 1 100%!important;}
-  .mp-tool select{flex:1 1 40%;min-height:44px;font-size:16px!important;}
+  .mp-tool{flex-wrap:nowrap!important;}
+  .mp-tool>div:first-child{min-width:0!important;}
+  .mp-tool>select{display:none!important;}
+  .mp-fbtn{display:inline-flex!important;}
+  .mp-fsh select{min-height:44px;font-size:16px!important;}
   .mp-root input,.mp-root textarea{font-size:16px!important;}
   .mp-tool button,.mp-open,.mp-detail button{min-width:44px!important;min-height:44px!important;}
   .mp-lcol{display:none!important;}
@@ -52,10 +55,45 @@
   .mp-foot>.mp-fsel{flex:1 1 100%!important;}
 }
 @container (max-width:599px){.mp-root{height:100%;border-radius:0!important;border:0!important;}}
+.mp-root[data-bare="1"]{height:auto!important;min-height:420px;max-height:none!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+.mp-root[data-bare="1"] .mp-scroll{overflow:visible!important}
+.mp-fbtn{display:none;align-items:center;gap:6px;flex:0 0 auto;min-height:44px;padding:0 12px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:14px;font-weight:500;cursor:pointer;white-space:nowrap}
+.mp-fbadge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-admin-primary,#2050a0);color:var(--color-white,#fff);font-size:12px;font-weight:600}
+.mp-fsh-ov{position:absolute;inset:0;z-index:9;display:flex;align-items:flex-end;background:rgba(15,18,30,.45)}
+.mp-fsh{width:100%;max-height:85%;overflow:auto;background:var(--color-surface,#fff);border-radius:12px 12px 0 0;display:flex;flex-direction:column;gap:12px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));box-sizing:border-box}
+.mp-fsh-h{display:flex;align-items:center;gap:8px}
+.mp-fsh-h h2{margin:0;flex:1;min-width:0;font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d)}
+.mp-fsh label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d)}
+.mp-fsh select{padding:8px 10px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;font:inherit;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff)}
+.mp-fsh-f{display:flex;gap:8px;padding-top:4px}
+.mp-fsh-f button{flex:1 1 0;min-height:44px;border-radius:4px;font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.mp-up{display:flex;align-items:flex-start;gap:12px;padding:10px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff)}
+.mp-up[data-st="err"]{border-color:color-mix(in srgb,var(--color-admin-danger,#f06548) 40%,transparent);background:color-mix(in srgb,var(--color-admin-danger,#f06548) 4%,var(--color-surface,#fff))}
+.mp-upth{width:38px;height:38px;border-radius:6px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--color-surface-hover,#f1f3f9);color:var(--color-body-muted,#5b6275)}
+.mp-up[data-st="err"] .mp-upth{color:var(--color-admin-danger-text,#bf371a)}
+.mp-up[data-st="done"] .mp-upth{color:var(--color-admin-success-text,#047767)}
+.mp-upr{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:13px;color:var(--color-body-text,#3c4765)}
+.mp-upnm{display:flex;min-width:0;flex:1 1 auto}
+.mp-upnm>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.mp-upnm>span:last-child{flex:0 0 auto}
+.mp-ups{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;white-space:nowrap}
+.mp-up[data-st="run"] .mp-ups{color:var(--color-body-muted,#5b6275)}
+.mp-up[data-st="done"] .mp-ups{color:var(--color-admin-success-text,#047767)}
+.mp-up[data-st="err"] .mp-ups{color:var(--color-admin-danger-text,#bf371a)}
+.mp-upbar{height:5px;border-radius:5px;background:var(--color-border,#e9ecf4);margin-top:6px;overflow:hidden}
+.mp-upbar>span{display:block;height:100%;background:var(--color-admin-primary,#2050a0);border-radius:5px;transition:width .2s}
+.mp-upmsg{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--color-admin-danger-text,#bf371a)}
+.mp-upx{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:4px;min-width:32px;min-height:32px;padding:0 8px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);font:inherit;font-size:13px;cursor:pointer}
+.mp-upx:hover{background:var(--color-surface-hover,#f1f3f9)}
+.mp-upx.rt{border-color:var(--color-border-input,#878a99);color:var(--color-accent,#2050a0);font-weight:600}
+.mp-dz[data-over="true"]{border-color:var(--color-accent,#2050a0)!important;background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent)!important}
+@media (pointer:coarse){.mp-upx{min-width:44px;min-height:44px}}
+@media (prefers-reduced-motion:reduce){.mp-upbar>span{transition:none}}
 </style>
 </helmet>
-<div class="mp-root" style="width:100%;max-height:100%;display:flex;flex-direction:column;background:var(--color-surface,#ffffff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;overflow:hidden;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);box-shadow:0 24px 60px -22px rgba(56,65,74,0.4);">
+<div class="mp-root" data-bare="{{ bareAttr }}" style="width:100%;max-height:100%;display:flex;flex-direction:column;background:var(--color-surface,#ffffff);border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;overflow:hidden;font-family:Inter,'Segoe UI',sans-serif;color:var(--color-body-text,#3c4765);box-shadow:0 24px 60px -22px rgba(56,65,74,0.4);">
 
+  <sc-if value="{{ notBare }}" hint-placeholder-val="{{ true }}">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 20px 9px;flex-shrink:0;">
     <div style="display:flex;align-items:center;gap:12px;">
       <div style="width:34px;height:34px;border-radius:9px;background:color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent);display:flex;align-items:center;justify-content:center;"><i class="ri-image-add-line" style="font-size:19px;color:var(--color-accent,#2050a0);"></i></div>
@@ -66,11 +104,14 @@
     </div>
   </div>
 
+  <sc-if value="{{ showTabBar }}" hint-placeholder-val="{{ true }}">
   <div class="mp-tabs" style="display:flex;gap:24px;padding:0 20px;border-bottom:1px solid var(--color-border-strong,#e9ebec);overflow-x:auto;flex-shrink:0;background:var(--color-surface,#fff);">
     <sc-for list="{{ topTabs }}" as="t" hint-placeholder-count="2">
       <button onClick="{{ t.onClick }}" style="{{ t.style }}"><i class="{{ t.icon }}" style="{{ t.iconStyle }}"></i>{{ t.label }}<sc-if value="{{ t.showBadge }}"><span style="{{ t.badgeStyle }}">{{ t.badge }}</span></sc-if></button>
     </sc-for>
   </div>
+  </sc-if>
+  </sc-if>
 
   <div style="display:flex;flex-direction:row;flex:1;min-height:0;min-width:0;">
     <div class="mp-scroll" style="flex:1;min-width:0;overflow:auto;background:var(--color-surface,#fff);display:flex;flex-direction:column;">
@@ -78,7 +119,7 @@
       <sc-if value="{{ showSources }}">
         <div class="mp-srcpad" style="padding:18px;flex:1 1 auto;display:flex;min-height:0;box-sizing:border-box;overflow:hidden;">
           <div class="mp-scroll mp-srcbox" style="flex:1;min-height:0;border:2px dashed var(--color-border-strong,var(--color-border-strong,#dfe3ea));border-radius:6px;background:var(--color-surface-muted,#fbfcfd);padding:24px 22px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;overflow:auto;">
-            <div class="mp-mob" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;"><button type="button" onClick="{{ openCamera }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:88px;padding:12px 8px;border:0;border-radius:6px;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;"><i class="ri-camera-line" style="font-size:24px;" aria-hidden="true"></i>Chụp ảnh</button><button type="button" onClick="{{ openDevice }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:88px;padding:12px 8px;border:1px solid var(--color-border-input,#878a99);border-radius:6px;background:var(--color-surface,#fff);color:var(--color-accent,#2050a0);font:inherit;font-size:14px;font-weight:600;cursor:pointer;"><i class="ri-image-line" style="font-size:24px;" aria-hidden="true"></i>Ảnh trong máy</button><div style="grid-column:1/-1;font-size:13px;color:var(--color-body-muted,#5b6275);">Hoặc lấy từ nguồn khác — vuốt ngang để xem hết</div></div>
+            <div class="mp-mob" style="grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;"><button type="button" onClick="{{ openCamera }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:88px;padding:12px 8px;border:0;border-radius:6px;background:var(--color-admin-primary,#2050a0);color:var(--color-white,#fff);font:inherit;font-size:14px;font-weight:600;cursor:pointer;"><i class="ri-camera-line" style="font-size:24px;" aria-hidden="true"></i>Chụp ảnh</button><button type="button" onClick="{{ openDevice }}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:88px;padding:12px 8px;border:1px solid var(--color-border-input,#878a99);border-radius:6px;background:var(--color-surface,#fff);color:var(--color-accent,#2050a0);font:inherit;font-size:14px;font-weight:600;cursor:pointer;"><i class="ri-image-line" style="font-size:24px;" aria-hidden="true"></i>Ảnh trong máy</button><div style="grid-column:1/-1;font-size:13px;color:var(--color-body-muted,#5b6275);">Hoặc lấy từ nguồn khác — vuốt ngang để xem hết</div></div>
             <div class="mp-dnd" style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px;margin-bottom:16px;">
               <div style="width:46px;height:46px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent);display:flex;align-items:center;justify-content:center;"><i class="ri-upload-cloud-2-line" style="font-size:22px;color:var(--color-accent,#2050a0);"></i></div>
               <div style="font-size:15px;font-weight:600;color:var(--color-heading,#1f2b4d);">Kéo &amp; thả ảnh vào đây</div>
@@ -117,14 +158,14 @@
               <i class="ri-link" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--color-body-muted,#5b6275);font-size:15px;"></i>
               <input value="{{ urlValue }}" onInput="{{ onUrlInput }}" onKeyDown="{{ onUrlKey }}" placeholder="https://vi-du.com/anh-san-pham.jpg" style="width:100%;box-sizing:border-box;padding:10px 12px 10px 35px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);">
             </div>
-            <button onClick="{{ onUrlPreview }}" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:8px;border:0;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ri-refresh-line" style="font-size:14px;"></i>Tải xem trước</button>
+            <button onClick="{{ onUrlPreview }}" style="display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:8px;border:0;background:var(--color-admin-primary,#2050a0);color:var(--color-white,#fff);font:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;"><i class="ri-refresh-line" style="font-size:14px;"></i>Tải xem trước</button>
           </div>
           <sc-if value="{{ urlErr }}"><div style="font-size:12px;color:var(--color-admin-danger-text,#f06548);display:flex;align-items:center;gap:5px;"><i class="ri-error-warning-line"></i>{{ urlErr }}</div></sc-if>
           <sc-if value="{{ urlHasPreview }}">
             <div style="border:1px solid var(--color-border,#e9ecf4);border-radius:13px;overflow:hidden;background:var(--color-surface,#fff);">
               <div style="aspect-ratio:16/9;position:relative;background:var(--color-body,#f4f5fa);">
                 <div style="position:absolute;inset:0;{{ urlPrev.thumbStyle }}"></div>
-                <span style="position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--color-admin-success-text,#0ab39c);background:#ffffffe6;padding:4px 9px;border-radius:20px;font-weight:600;"><i class="ri-checkbox-circle-fill"></i>Đã chọn để chèn</span>
+                <span style="position:absolute;top:10px;right:10px;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--color-admin-success-text,#0ab39c);background:color-mix(in srgb,var(--color-surface,#fff) 90%,transparent);padding:4px 9px;border-radius:20px;font-weight:600;"><i class="ri-checkbox-circle-fill"></i>Đã chọn để chèn</span>
               </div>
               <div style="padding:13px 15px;display:flex;flex-direction:column;gap:10px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
@@ -157,46 +198,48 @@
       </sc-if>
 
       <sc-if value="{{ isDevice }}">
-        <div style="padding:24px;">
-          <div style="border:2px dashed var(--color-border-strong,#ced4da);border-radius:14px;background:var(--color-surface-muted,#f8f9fb);padding:40px 24px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;">
-            <div style="width:64px;height:64px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent);display:flex;align-items:center;justify-content:center;"><i class="ri-upload-cloud-2-line" style="font-size:30px;color:var(--color-accent,#2050a0);"></i></div>
-            <div>
-              <div style="font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">Kéo &amp; thả ảnh vào đây</div>
-              <div style="font-size:13px;color:var(--color-body-muted,#5b6275);margin-top:3px;">hoặc chọn tệp từ thiết bị của bạn</div>
+        <div style="padding:20px;display:flex;flex-direction:column;gap:16px;">
+          <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" ref="{{ fileRef }}" onChange="{{ onFiles }}" style="display:none" aria-hidden="true" tabindex="-1">
+          <div class="mp-dz" data-over="{{ dzOver }}" onDragOver="{{ onDzOver }}" onDragLeave="{{ onDzLeave }}" onDrop="{{ onDzDrop }}" style="border:2px dashed var(--color-border-strong,#ced4da);border-radius:6px;background:var(--color-surface-muted,#f8f9fb);padding:28px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;">
+            <div style="width:56px;height:56px;border-radius:50%;background:color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent);display:flex;align-items:center;justify-content:center;"><i class="ri-upload-cloud-2-line" style="font-size:26px;color:var(--color-accent,#2050a0);" aria-hidden="true"></i></div>
+            <div class="mp-dnd" style="display:flex;flex-direction:column;gap:3px;">
+              <div style="font-size:16px;font-weight:600;color:var(--color-heading,#1f2b4d);">Kéo &amp; thả tệp vào đây</div>
+              <div style="font-size:13px;color:var(--color-body-muted,#5b6275);">hoặc chọn tệp từ máy của bạn</div>
             </div>
-            <button style="display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;border:0;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;"><i class="ri-folder-open-line" style="font-size:15px;"></i>Chọn tệp</button>
-            <div style="font-size:12px;color:var(--color-body-muted,#5b6275);">JPG, PNG, WEBP, GIF · tối đa 10MB mỗi tệp</div>
+            <button type="button" onClick="{{ pickFiles }}" style="display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 18px;border-radius:4px;border:0;background:var(--color-admin-primary,#2050a0);color:var(--color-white,#fff);font:inherit;font-size:14px;font-weight:600;cursor:pointer;"><i class="ri-folder-open-line" style="font-size:16px;" aria-hidden="true"></i>Chọn tệp</button>
+            <div style="font-size:13px;color:var(--color-body-muted,#5b6275);">JPG, PNG, WebP, GIF hoặc PDF · tối đa 10 MB mỗi tệp</div>
           </div>
-          <div style="margin-top:20px;display:flex;flex-direction:column;gap:9px;">
-            <div style="font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);letter-spacing:.05em;">Đang tải lên · 2 tệp</div>
-            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:10px;">
-              <div style="width:38px;height:38px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,oklch(86% 0.05 40),oklch(68% 0.06 70));"></div>
-              <div style="flex:1;min-width:0;">
-                <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--color-body-text,#3c4765);"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">banner-mua-he-2026.jpg</span><span style="color:var(--color-body-muted,#5b6275);flex-shrink:0;">62%</span></div>
-                <div style="height:5px;border-radius:5px;background:var(--color-border,#e9ecf4);margin-top:6px;overflow:hidden;"><div style="width:62%;height:100%;background:var(--color-admin-primary,#2050a0);border-radius:5px;"></div></div>
-              </div>
+          <sc-if value="{{ hasUploads }}">
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span role="status" aria-live="polite" style="font-size:13px;font-weight:600;color:var(--color-heading,#1f2b4d);flex:1;min-width:0;">{{ upHead }}</span><sc-if value="{{ upHasDone }}"><button type="button" class="mp-upx" onClick="{{ clearDone }}">Ẩn tệp đã xong</button></sc-if></div>
+              <sc-for list="{{ uploads }}" as="u" hint-placeholder-count="2">
+                <div class="mp-up" data-st="{{ u.st }}">
+                  <span class="mp-upth" aria-hidden="true"><i class="{{ u.icon }}"></i></span>
+                  <div style="flex:1 1 auto;min-width:0;">
+                    <div class="mp-upr"><span class="mp-upnm" title="{{ u.name }}"><span>{{ u.base }}</span><span>{{ u.ext }}</span></span><span class="mp-ups"><i class="{{ u.stIcon }}" aria-hidden="true"></i>{{ u.stText }}</span></div>
+                    <sc-if value="{{ u.running }}"><div class="mp-upbar" role="progressbar" aria-label="{{ u.name }}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ u.pct }}"><span style="width:{{ u.pct }}%"></span></div></sc-if>
+                    <sc-if value="{{ u.isErr }}"><p class="mp-upmsg">{{ u.msg }}</p></sc-if>
+                    <sc-if value="{{ u.isDone }}"><p style="margin:2px 0 0;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ u.meta }}</p></sc-if>
+                  </div>
+                  <sc-if value="{{ u.canRetry }}"><button type="button" class="mp-upx rt" onClick="{{ u.onRetry }}"><i class="ri-refresh-line" aria-hidden="true"></i>Thử lại</button></sc-if>
+                  <button type="button" class="mp-upx" onClick="{{ u.onRemove }}" aria-label="{{ u.rmLabel }}" title="{{ u.rmLabel }}"><i class="ri-close-line" aria-hidden="true"></i></button>
+                </div>
+              </sc-for>
             </div>
-            <div style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--color-border,#e9ecf4);border-radius:10px;">
-              <div style="width:38px;height:38px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,oklch(85% 0.05 200),oklch(67% 0.06 240));"></div>
-              <div style="flex:1;min-width:0;">
-                <div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--color-body-text,#3c4765);"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">san-pham-noi-bat.png</span><span style="color:var(--color-admin-success-text,#0ab39c);flex-shrink:0;display:inline-flex;align-items:center;gap:3px;"><i class="ri-checkbox-circle-fill"></i>Xong</span></div>
-                <div style="height:5px;border-radius:5px;background:var(--color-border,#e9ecf4);margin-top:6px;overflow:hidden;"><div style="width:100%;height:100%;background:var(--color-admin-success,#0ab39c);border-radius:5px;"></div></div>
-              </div>
-            </div>
-          </div>
+          </sc-if>
         </div>
       </sc-if>
 
       <sc-if value="{{ isCamera }}">
         <div style="padding:24px;display:flex;flex-direction:column;align-items:center;gap:18px;">
-          <div style="width:100%;max-width:520px;aspect-ratio:16/10;border-radius:14px;background:radial-gradient(circle at 50% 40%,#2b3138,#16191d);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-            <div style="position:absolute;inset:0;background-image:linear-gradient(#ffffff10 1px,transparent 1px),linear-gradient(90deg,#ffffff10 1px,transparent 1px);background-size:32px 32px;"></div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:#8b93a1;z-index:1;"><i class="ri-camera-lens-line" style="font-size:44px;"></i><span style="font-size:13px;">Đang xem trước máy ảnh…</span></div>
-            <span style="position:absolute;top:12px;left:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#fff;background:color-mix(in srgb,var(--color-admin-danger,#f06548) 60%,transparent);padding:4px 9px;border-radius:20px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-surface,#fff);"></span>LIVE</span>
+          <div style="width:100%;max-width:520px;aspect-ratio:16/10;border-radius:14px;background:radial-gradient(circle at 50% 40%,var(--mp-cam-1,#2b3138),var(--mp-cam-2,#16191d));position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+            <div style="position:absolute;inset:0;background-image:linear-gradient(color-mix(in srgb,var(--color-white,#fff) 6%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--color-white,#fff) 6%,transparent) 1px,transparent 1px);background-size:32px 32px;"></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--mp-cam-ink,#8b93a1);z-index:1;"><i class="ri-camera-lens-line" style="font-size:44px;"></i><span style="font-size:13px;">Đang xem trước máy ảnh…</span></div>
+            <span style="position:absolute;top:12px;left:14px;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--color-white,#fff);background:color-mix(in srgb,var(--color-admin-danger,#f06548) 60%,transparent);padding:4px 9px;border-radius:20px;"><span style="width:7px;height:7px;border-radius:50%;background:var(--color-surface,#fff);"></span>LIVE</span>
           </div>
           <div style="display:flex;align-items:center;gap:22px;">
             <button style="width:42px;height:42px;border-radius:50%;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font-size:18px;cursor:pointer;" title="Đổi camera" aria-label="Đổi camera"><i class="ri-camera-switch-line"></i></button>
-            <button style="width:64px;height:64px;border-radius:50%;border:4px solid color-mix(in srgb,var(--color-accent,#2050a0) 20%,transparent);background:var(--color-admin-primary,#2050a0);color:#fff;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Chụp" aria-label="Chụp"><i class="ri-camera-fill"></i></button>
+            <button style="width:64px;height:64px;border-radius:50%;border:4px solid color-mix(in srgb,var(--color-accent,#2050a0) 20%,transparent);background:var(--color-admin-primary,#2050a0);color:var(--color-white,#fff);font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Chụp" aria-label="Chụp"><i class="ri-camera-fill"></i></button>
             <button style="width:42px;height:42px;border-radius:50%;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font-size:18px;cursor:pointer;" title="Bộ đếm giờ" aria-label="Bộ đếm giờ"><i class="ri-timer-line"></i></button>
           </div>
           <div style="width:100%;max-width:520px;">
@@ -238,8 +281,8 @@
               <div style="font-size:17px;font-weight:600;color:var(--color-heading,#1f2b4d);">Kết nối {{ cloud.name }}</div>
               <div style="font-size:13px;color:var(--color-body-muted,#5b6275);margin-top:4px;max-width:320px;">Đăng nhập để duyệt và chọn ảnh trực tiếp từ {{ cloud.name }} của bạn.</div>
             </div>
-            <button onClick="{{ cloud.onConnect }}" style="display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:9px;border:0;color:#fff;font:inherit;font-size:14px;font-weight:600;cursor:pointer;background:{{ cloud.color }};"><i class="ri-links-line" style="font-size:16px;"></i>Kết nối tài khoản</button>
-            <div style="font-size:12px;color:var(--color-body-muted,#5b6275);display:inline-flex;align-items:center;gap:5px;"><i class="ri-lock-2-line"></i>Kết nối an toàn qua OAuth</div>
+            <button onClick="{{ cloud.onConnect }}" style="display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:9px;border:0;color:var(--color-white,#fff);font:inherit;font-size:14px;font-weight:600;cursor:pointer;background:{{ cloud.color }};"><i class="ri-links-line" style="font-size:16px;"></i>Kết nối tài khoản</button>
+            <div style="font-size:12px;color:var(--color-body-muted,#5b6275);display:inline-flex;align-items:center;gap:5px;"><i class="ri-lock-2-line"></i>Kết nối an toàn — bạn đăng nhập ở trang của {{ cloud.name }}, chúng tôi không thấy mật khẩu</div>
           </div>
         </sc-if>
       </sc-if>
@@ -278,7 +321,7 @@
             <sc-for list="{{ unsplashItems }}" as="item" hint-placeholder-count="9">
               <div onClick="{{ item.onToggle }}" style="position:relative;break-inside:avoid;margin-bottom:10px;border-radius:10px;overflow:hidden;cursor:pointer;">
                 <div style="{{ item.thumbStyle }}"></div>
-                <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 9px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.6));font-size:12px;color:#fff;">{{ item.author }}</div>
+                <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 9px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.6));font-size:12px;color:var(--color-white,#fff);">{{ item.author }}</div>
                 <span style="{{ item.checkStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
                 <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid var(--color-accent,#2050a0);border-radius:10px;pointer-events:none;"></div></sc-if>
               </div>
@@ -301,10 +344,10 @@
                 <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--color-body-muted,#5b6275);min-width:0;">
                   <i class="ri-link" style="flex-shrink:0;"></i>
                   <span style="color:var(--color-accent,#2050a0);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">/{{ nfSlug }}</span>
-                  <button onClick="{{ editNfSlug }}" title="Sửa slug" style="border:0;background:transparent;color:var(--color-body-muted,#5b6275);font-size:12px;cursor:pointer;padding:0;flex-shrink:0;" aria-label="Sửa slug"><i class="ri-pencil-line"></i></button>
+                  <button onClick="{{ editNfSlug }}" title="Sửa đường dẫn" style="border:0;background:transparent;color:var(--color-body-muted,#5b6275);font-size:12px;cursor:pointer;padding:0;flex-shrink:0;" aria-label="Sửa đường dẫn"><i class="ri-pencil-line"></i></button>
                 </div>
-                <sc-if value="{{ nfSlugFallback }}"><div style="font-size:12px;color:var(--color-admin-warning-text,#906405);line-height:1.4;">Tên không chuyển được sang chữ Latinh — dùng slug tự sinh, có thể sửa.</div></sc-if>
-                <button onClick="{{ createFolder }}" style="padding:7px;border-radius:7px;border:0;background:var(--color-admin-primary,#2050a0);color:#fff;font:inherit;font-size:12px;font-weight:600;cursor:pointer;">Tạo thư mục</button>
+                <sc-if value="{{ nfSlugFallback }}"><div style="font-size:12px;color:var(--color-admin-warning-text,#906405);line-height:1.4;">Tên không chuyển được sang chữ không dấu — đã tạo đường dẫn tự động, sửa được.</div></sc-if>
+                <button onClick="{{ createFolder }}" style="padding:7px;border-radius:7px;border:0;background:var(--color-admin-primary,#2050a0);color:var(--color-white,#fff);font:inherit;font-size:12px;font-weight:600;cursor:pointer;">Tạo thư mục</button>
               </div>
             </sc-if>
           </div>
@@ -315,6 +358,7 @@
                 <i class="ri-search-line" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--color-body-muted,#5b6275);font-size:15px;"></i>
                 <input onInput="{{ onSearch }}" aria-label="Tìm ảnh theo tên" placeholder="banner-mua-he" style="width:100%;box-sizing:border-box;padding:8px 12px 8px 34px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:13px;color:var(--color-body-text,#3c4765);">
               </div>
+              <button type="button" class="mp-fbtn" onClick="{{ openFilter }}" aria-haspopup="dialog" aria-label="{{ fBtnLabel }}"><i class="ri-filter-3-line" aria-hidden="true"></i>Lọc<sc-if value="{{ fCountShow }}"><span class="mp-fbadge">{{ fCount }}</span></sc-if></button>
               <select onChange="{{ onSort }}" value="{{ sort }}" style="padding:8px 10px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);background:var(--color-surface,#fff);cursor:pointer;">
                 <option value="recent">Mới nhất</option>
                 <option value="oldest">Cũ nhất</option>
@@ -366,9 +410,9 @@
                     <div draggable="true" onDragStart="{{ item.onDragStart }}" onDragOver="{{ item.allowDrop }}" onDrop="{{ item.onDrop }}" onClick="{{ item.onToggle }}" style="position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;cursor:pointer;border:1px solid var(--color-border,#e9ecf4);background:var(--color-body,#f4f5fa);">
                       <div style="{{ item.thumbStyle }}"></div>
                       <sc-if value="{{ item.showIcon }}"><span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><i class="{{ item.fileIcon }}" style="font-size:34px;color:{{ item.fileIconColor }};"></i></span></sc-if>
-                      <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 8px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.55));font-size:12px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ item.name }}</div>
+                      <div style="position:absolute;left:0;right:0;bottom:0;padding:14px 8px 6px;background:linear-gradient(transparent,rgba(0,0,0,0.55));font-size:12px;color:var(--color-white,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ item.name }}</div>
                       <span style="{{ item.checkStyle }}"><sc-if value="{{ item.selected }}"><i class="ri-check-line"></i></sc-if></span>
-                      <button class="mp-open" onClick="{{ item.onOpen }}" style="position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:6px;border:0;background:rgba(0,0,0,0.32);color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Chi tiết" aria-label="Chi tiết"><i class="ri-information-line"></i></button>
+                      <button class="mp-open" onClick="{{ item.onOpen }}" style="position:absolute;top:7px;left:7px;width:22px;height:22px;border-radius:6px;border:0;background:rgba(0,0,0,0.32);color:var(--color-white,#fff);font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Chi tiết" aria-label="Chi tiết"><i class="ri-information-line"></i></button>
                       <sc-if value="{{ item.selected }}"><div style="position:absolute;inset:0;border:2.5px solid var(--color-accent,#2050a0);border-radius:11px;pointer-events:none;"></div></sc-if>
                     </div>
                   </sc-for>
@@ -420,8 +464,9 @@
             <div style="display:flex;justify-content:space-between;font-size:12.5px;"><span style="color:var(--color-body-muted,#5b6275);">Thư mục</span><span style="color:var(--color-body-text,#3c4765);">{{ detail.folderLabel }}</span></div>
           </div>
           <div>
-            <label style="display:block;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);margin-bottom:6px;">Văn bản thay thế (ALT)</label>
-            <textarea style="width:100%;box-sizing:border-box;min-height:64px;padding:9px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);resize:vertical;" placeholder="Mô tả ảnh cho SEO &amp; trợ năng…">{{ detail.alt }}</textarea>
+            <label for="mp-alt" style="display:block;font-size:12px;font-weight:600;color:var(--color-body-muted,#5b6275);margin-bottom:6px;">Mô tả ảnh</label>
+            <textarea id="mp-alt" maxlength="188" style="width:100%;box-sizing:border-box;min-height:64px;padding:9px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:8px;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);resize:vertical;" placeholder="Máy phay CNC đứng trong xưởng, nhìn từ phía trước">{{ detail.alt }}</textarea>
+            <div style="font-size:12px;color:var(--color-body-muted,#5b6275);margin-top:4px;line-height:1.5;">Mô tả ảnh giúp Google và người khiếm thị hiểu ảnh — đổi ở đây là đổi cho mọi nơi dùng ảnh này.</div>
           </div>
           <button style="display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:8px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:12.5px;cursor:pointer;"><i class="ri-save-line"></i>Lưu thông tin</button>
         </div>
@@ -429,6 +474,7 @@
     </sc-if>
   </div>
 
+  <sc-if value="{{ notBare }}" hint-placeholder-val="{{ true }}">
   <div class="mp-foot" style="display:flex;align-items:center;gap:14px;padding:12px 18px;border-top:1px solid var(--color-border,#e9ecf4);flex-shrink:0;background:var(--color-surface,#fff);">
     <sc-if value="{{ hasSelection }}">
       <div class="mp-fsel" style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
@@ -446,13 +492,73 @@
     <button onClick="{{ onClose }}" style="padding:9px 16px;border-radius:8px;border:1px solid var(--color-border-strong,#e9ebec);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);font:inherit;font-size:13px;font-weight:500;cursor:pointer;">Hủy</button>
     <button onClick="{{ onInsert }}" style="{{ insertBtnStyle }}"><i class="ri-check-line" style="font-size:15px;"></i>{{ insertLabel }}</button>
   </div>
+  </sc-if>
+
+  <sc-if value="{{ filterOpen }}">
+    <div class="mp-fsh-ov" onClick="{{ closeFilter }}">
+      <div class="mp-fsh" role="dialog" aria-modal="true" aria-labelledby="mp-fsh-t" onClick="{{ stop }}">
+        <div class="mp-fsh-h"><h2 id="mp-fsh-t">Lọc ảnh</h2><button type="button" class="mp-upx" onClick="{{ closeFilter }}" aria-label="Đóng" title="Đóng" style="min-width:44px;min-height:44px;font-size:18px;"><i class="ri-close-line" aria-hidden="true"></i></button></div>
+        <label>Sắp xếp<select onChange="{{ onSort }}" value="{{ sort }}"><option value="recent">Mới nhất</option><option value="oldest">Cũ nhất</option><option value="nameAsc">Tên A→Z</option><option value="nameDesc">Tên Z→A</option><option value="sizeDesc">Kích thước lớn → nhỏ</option><option value="sizeAsc">Kích thước nhỏ → lớn</option><option value="ext">Theo đuôi tệp</option></select></label>
+        <label>Loại tệp<select onChange="{{ onType }}" value="{{ typeFilter }}"><option value="all">Tất cả loại tệp</option><option value="image">Hình ảnh</option><option value="video">Video</option><option value="audio">Âm thanh</option><option value="doc">Tài liệu</option><option value="used">Đã dùng trong bài</option><option value="unused">Chưa sử dụng</option></select></label>
+        <label>Định dạng<select onChange="{{ onFilter }}" value="{{ filter }}"><option value="all">Mọi định dạng</option><option value="jpg">JPG</option><option value="png">PNG</option><option value="mp4">MP4</option><option value="pdf">PDF</option><option value="xlsx">XLSX</option><option value="mp3">MP3</option></select></label>
+        <div class="mp-fsh-f"><button type="button" onClick="{{ clearFilter }}" style="border:1px solid var(--color-border-input,#878a99);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765);">Bỏ lọc</button><button type="button" onClick="{{ closeFilter }}" style="border:0;background:var(--color-admin-primary,#2050a0);color:var(--color-white,#fff);">Xong · {{ libCount }} ảnh</button></div>
+      </div>
+    </div>
+  </sc-if>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1020,&quot;height&quot;:660},&quot;multiple&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;upload&quot;,&quot;library&quot;],&quot;default&quot;:&quot;upload&quot;,&quot;tsType&quot;:&quot;'upload'|'library'&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1020,&quot;height&quot;:660},&quot;multiple&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;},&quot;startTab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;upload&quot;,&quot;library&quot;],&quot;default&quot;:&quot;upload&quot;,&quot;tsType&quot;:&quot;'upload'|'library'&quot;,&quot;section&quot;:&quot;Tab&quot;,&quot;label&quot;:&quot;Tab mở sẵn&quot;},&quot;tabs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;both&quot;,&quot;upload&quot;,&quot;library&quot;],&quot;default&quot;:&quot;both&quot;,&quot;tsType&quot;:&quot;'both'|'upload'|'library'&quot;,&quot;section&quot;:&quot;Tab&quot;,&quot;label&quot;:&quot;Tab hiện (cả hai · chỉ tải lên · chỉ thư viện)&quot;},&quot;startSource&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;&quot;,&quot;device&quot;],&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;''|'device'&quot;,&quot;section&quot;:&quot;Tải lên&quot;},&quot;uploadDemo&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Tải lên&quot;},&quot;bare&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;boolean&quot;},&quot;dropFiles&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;File[]&quot;},&quot;onUploaded&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(f:{name:string,size:number,w:number,h:number})=&gt;void&quot;},&quot;onInsert&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(items:any[])=&gt;void&quot;},&quot;onClose&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;()=&gt;void&quot;}}">
 class Component extends DCLogic {
   state = { tab:(this.props&&this.props.startTab)||'upload', src:null, view:'grid', sort:'recent', filter:'all', typeFilter:'all', urlValue:'', urlErr:null, urlItem:null, urlSaveCopy:true, newFolderOpen:false, nfName:'', search:'', folder:'all', selected:[], detail:null, dragId:null, conn:{ dropbox:true, gdrive:true, onedrive:true, box:false } };
 
-  constructor(...a){ super(...a); const t=this.props.tab; if(t==='library'||t==='upload') this.state=Object.assign({},this.state,{tab:t}); this.seed(); }
+  constructor(...a){ super(...a); const t=this.props.tab; if(t==='library'||t==='upload') this.state=Object.assign({},this.state,{tab:t});
+    const tm=this.props.tabs; if(tm==='upload'||tm==='library') this.state=Object.assign({},this.state,{tab:tm});
+    const ss=this.props.startSource; if(ss==='device') this.state=Object.assign({},this.state,{tab:'upload',src:'device'});
+    this.state=Object.assign({},this.state,{filterOpen:false,dzOver:false,uploads:(this.props.uploadDemo===true)?Component.SAMPLE():[]});
+    this._upT={}; this.seed(); }
+
+  /* 16 mã lỗi của MediaRejectedException::REASONS + 1 câu chung (media.err_unexpected). Câu đời thường + cách sửa — bản dịch EN/JA/ZH ở README D1-6 › Chuỗi cần dịch. */
+  static ERR(){ return {
+    unsupported_type:'Định dạng này chưa nhận được — chỉ nhận ảnh JPG, PNG, WebP, GIF hoặc tệp PDF. Hãy lưu lại sang JPG hoặc PNG rồi tải lên.',
+    unsupported_svg:'Ảnh SVG chưa nhận được — chỉ nhận JPG, PNG, WebP, GIF hoặc PDF. Hãy xuất logo sang PNG rồi tải lên.',
+    too_large:'Tệp nặng {size}, quá mức 10 MB. Hãy nén ảnh hoặc giảm kích thước rồi tải lên lại.',
+    image_too_large:'Ảnh lớn hơn 10 MB. Hãy giảm kích thước ảnh (ví dụ còn 2000 điểm ảnh chiều ngang) rồi tải lên lại.',
+    file_invalid:'Tệp bị hỏng hoặc chưa lưu trọn nên không mở được. Hãy mở thử tệp trên máy, lưu lại rồi tải lên lần nữa.',
+    upload_session_invalid:'Lần tải này để quá lâu nên đã dừng. Bấm Thử lại để tải tệp lên lần nữa.',
+    upload_missing:'Tệp chưa tới được máy chủ, có thể do mạng chập chờn. Bấm Thử lại khi mạng ổn.',
+    storage_failed:'Chưa lưu được tệp — không phải lỗi của bạn. Bấm Thử lại sau ít phút.',
+    url_invalid:'Địa chỉ ảnh chưa đúng. Dán địa chỉ bắt đầu bằng https:// và kết thúc bằng .jpg, .png, .webp hoặc .gif.',
+    host_unresolvable:'Không tìm thấy trang web của địa chỉ này. Kiểm tra lại chính tả địa chỉ.',
+    private_address:'Địa chỉ này chỉ mở được trong mạng riêng của bạn. Hãy tải ảnh về máy rồi tải lên từ máy.',
+    redirect_invalid:'Địa chỉ này dẫn sang một trang không phải ảnh. Mở ảnh trên trình duyệt, chép đúng địa chỉ của ảnh rồi dán lại.',
+    too_many_redirects:'Địa chỉ này chuyển qua quá nhiều trang. Mở ảnh trên trình duyệt, chép địa chỉ cuối cùng rồi dán lại.',
+    fetch_failed:'Trang chứa ảnh không cho lấy ảnh này. Hãy tải ảnh về máy rồi tải lên từ máy.',
+    fetch_unreachable:'Chưa mở được địa chỉ này. Kiểm tra lại địa chỉ hoặc thử lại sau ít phút.',
+    empty_response:'Địa chỉ này không có ảnh nào. Kiểm tra lại địa chỉ ảnh.',
+    not_an_image:'Địa chỉ này không phải ảnh JPG, PNG, WebP hoặc GIF. Chép đúng địa chỉ của ảnh rồi dán lại.',
+    unexpected:'Chưa tải được tệp này. Bấm Thử lại; nếu vẫn chưa được, hãy liên hệ hỗ trợ.' }; }
+  static RETRY(){ return ['upload_session_invalid','upload_missing','storage_failed','fetch_unreachable','unexpected']; }
+  /* Tweak uploadDemo: 4 tệp mẫu của "Xong khi (3)" — 1 SVG, 1 tệp 12 MB, 1 ảnh hỏng, 1 ảnh đạt. */
+  static SAMPLE(){ return [
+    { k:'s1', name:'logo-an-vinh.svg', size:48*1024, st:'err', code:'unsupported_svg', pct:0 },
+    { k:'s2', name:'anh-toan-canh-xuong-gia-cong-ban-goc-chua-nen.jpg', size:12.4*1048576, st:'err', code:'too_large', pct:0 },
+    { k:'s3', name:'may-tien-cnc-bi-loi.jpg', size:0, st:'err', code:'file_invalid', pct:0 },
+    { k:'s4', name:'may-phay-cnc-dung-vmc850-mat-truoc.jpg', size:1.8*1048576, st:'done', pct:100, w:1600, h:1067 } ]; }
+  fmtSize(b){ if(b>=1048576) return (b/1048576).toFixed(1).replace('.',',')+' MB'; return Math.max(1,Math.round(b/1024))+' KB'; }
+  classify(f){ const ext=((f.name||'').split('.').pop()||'').toLowerCase();
+    if((f.size||0)>10*1048576) return 'too_large';
+    if(ext==='svg') return 'unsupported_svg';
+    if(['jpg','jpeg','png','webp','gif','pdf'].indexOf(ext)<0) return 'unsupported_type';
+    if(!f.size||/(-|_)(hong|loi|broken)(\.|-|_)/i.test(f.name)) return 'file_invalid';
+    return null; }
+  addFiles(list){ const arr=Array.prototype.slice.call(list||[]); if(!arr.length) return;
+    const rows=arr.map((f,i)=>{ const code=this.classify(f); return { k:'u'+Date.now().toString(36)+i, name:f.name, size:f.size||0, st:code?'err':'run', code, pct:0 }; });
+    this.setState(s=>({ uploads:rows.concat(s.uploads), src:'device', tab:'upload' }), ()=>rows.forEach(r=>{ if(r.st==='run') this.runUp(r.k); })); }
+  runUp(k){ clearInterval(this._upT[k]); const step=()=>{ let fin=null;
+      this.setState(s=>({ uploads:s.uploads.map(u=>{ if(u.k!==k) return u; const p=Math.min(100,u.pct+22+Math.round(Math.random()*18)); if(p>=100){ fin=u; return Object.assign({},u,{pct:100,st:'done',w:1600,h:1067}); } return Object.assign({},u,{pct:p}); }) }), ()=>{ if(fin){ clearInterval(this._upT[k]); delete this._upT[k]; if(this.props.onUploaded) this.props.onUploaded({ name:fin.name, size:fin.size, w:1600, h:1067 }); } }); };
+    this._upT[k]=setInterval(step,320); }
+  componentDidMount(){ const d=this.props.dropFiles; if(d&&d.length) this.addFiles(d); this._kd=(e)=>{ if(e.key==='Escape'&&this.state.filterOpen){ e.preventDefault(); e.stopPropagation(); this.setState({filterOpen:false}); } }; document.addEventListener('keydown',this._kd,true); }
+  componentWillUnmount(){ document.removeEventListener('keydown',this._kd,true); Object.keys(this._upT||{}).forEach(k=>clearInterval(this._upT[k])); }
 
   seed(){
     this.folderLabels = { all:'Tất cả ảnh', products:'Sản phẩm', posts:'Bài viết', banners:'Banner', avatars:'Ảnh đại diện' };
@@ -469,25 +575,25 @@ class Component extends DCLogic {
 
     const xf=(name,folder,mt,type,size,icon,c,w,h)=>({ id:'lib-'+(n++), name, folder, mediaType:mt, type, size, w:w||null, h:h||null, icon, iconColor:c, used:(n%2===0), bg:null });
     this.library.push(
-      xf('video-gioi-thieu.mp4','posts','video','mp4',24.6,'ri-film-line','#299cdb',1920,1080),
-      xf('quang-cao-tet.mp4','banners','video','mp4',18.2,'ri-film-line','#299cdb',1920,1080),
-      xf('huong-dan-su-dung.pdf','posts','doc','pdf',1.4,'ri-file-pdf-2-line','#f06548'),
-      xf('bao-gia-2026.xlsx','products','doc','xlsx',0.3,'ri-file-excel-2-line','#0ab39c'),
-      xf('nhac-nen-quang-cao.mp3','banners','audio','mp3',3.8,'ri-music-2-line','#8b5cf6')
+      xf('video-gioi-thieu.mp4','posts','video','mp4',24.6,'ri-film-line','var(--color-admin-info,#299cdb)',1920,1080),
+      xf('quang-cao-tet.mp4','banners','video','mp4',18.2,'ri-film-line','var(--color-admin-info,#299cdb)',1920,1080),
+      xf('huong-dan-su-dung.pdf','posts','doc','pdf',1.4,'ri-file-pdf-2-line','var(--color-admin-danger,#f06548)'),
+      xf('bao-gia-2026.xlsx','products','doc','xlsx',0.3,'ri-file-excel-2-line','var(--color-admin-success,#0ab39c)'),
+      xf('nhac-nen-quang-cao.mp3','banners','audio','mp3',3.8,'ri-music-2-line','var(--mp-c-audio,#8b5cf6)')
     );
 
-    this.clouds={ dropbox:{name:'Dropbox',color:'#0061FF',icon:'ri-dropbox-fill'}, gdrive:{name:'Google Drive',color:'#1a73e8',icon:'ri-drive-fill'}, onedrive:{name:'OneDrive',color:'#0364B7',icon:'ri-microsoft-fill'}, box:{name:'Box',color:'#0061D5',icon:'ri-inbox-archive-line'} };
+    this.clouds={ dropbox:{name:'Dropbox',color:'var(--mp-c-dropbox,#0061FF)',icon:'ri-dropbox-fill'}, gdrive:{name:'Google Drive',color:'var(--mp-c-gdrive,#1a73e8)',icon:'ri-drive-fill'}, onedrive:{name:'OneDrive',color:'var(--mp-c-onedrive,#0364B7)',icon:'ri-microsoft-fill'}, box:{name:'Box',color:'var(--mp-c-box,#0061D5)',icon:'ri-inbox-archive-line'} };
     const fnames=['Chiến dịch 2026','Ảnh sản phẩm','Tư liệu thiết kế'];
     const files=['banner-trang-chu','san-pham-moi','anh-doi-ngu','landing-hero','uu-dai-thang'];
     let ci=0;
-    for(const key in this.clouds){ const c=this.clouds[key]; c.tintBg=c.color+'1a'; c.crumb='Trang chủ / '+c.name;
+    for(const key in this.clouds){ const c=this.clouds[key]; c.tintBg='color-mix(in srgb,'+c.color+' 10%,transparent)'; c.crumb='Trang chủ / '+c.name;
       c.rows=[ ...fnames.map((fn,i)=>({id:key+'-fold-'+i,kind:'folder',name:fn,meta:(3+i*2)+' mục'})),
         ...files.map((fb,i)=>{ const h=(ci*55+i*44)%360; return {id:key+'-file-'+i,kind:'file',name:fb+'.jpg',meta:((i+2)*0.4).toFixed(1)+' MB',bg:grad(h),w:1600,h:1067,size:+((i+2)*0.4).toFixed(1),type:'jpg',folder:c.name}; }) ]; ci++; }
 
     this.gphotos=[ {month:'Tháng 6, 2026', items:this.mkPool('gp6',9,'Google Photos')}, {month:'Tháng 5, 2026', items:this.mkPool('gp5',6,'Google Photos')} ];
 
     const authors=['An Nguyễn','M. Rivera','K. Sato','L. Costa','P. Ivanov','J. Kim','T. Bảo','S. Diallo','R. Mehta','C. Dubois','E. Rossi','H. Tran'];
-    this.unsplashItems=Array.from({length:12},(_,i)=>{ const h=hues[i%hues.length]; const hh=[150,190,240,120,170,210,140,200,260,110][i%10]; return {id:'uns-'+i, author:'📷 '+authors[i], bg:grad(h), h:hh, w:800, size:null, type:'jpg', folder:'Unsplash', name:'unsplash-'+i+'.jpg'}; });
+    this.unsplashItems=Array.from({length:12},(_,i)=>{ const h=hues[i%hues.length]; const hh=[150,190,240,120,170,210,140,200,260,110][i%10]; return {id:'uns-'+i, author:authors[i], bg:grad(h), h:hh, w:800, size:null, type:'jpg', folder:'Unsplash', name:'unsplash-'+i+'.jpg'}; });
     this.unsplashChips=['Thiên nhiên','Sản phẩm','Văn phòng','Ẩm thực','Công nghệ','Kiến trúc'];
 
     this.index={};
@@ -517,7 +623,7 @@ class Component extends DCLogic {
   previewUrl(){
     const v=(this.state.urlValue||'').trim();
     if(!/^https?:\/\/\S+\.(jpe?g|png|webp|gif|avif)(\?\S*)?$/i.test(v)){
-      this.setState({urlErr:'Liên kết chưa hợp lệ — cần là URL ảnh công khai (jpg, png, webp, gif).'});
+      this.setState({urlErr:Component.ERR().url_invalid});
       return;
     }
     const seg=v.split('?')[0].split('/').pop()||'anh-tu-url.jpg';
@@ -530,13 +636,13 @@ class Component extends DCLogic {
   reorder(target){ const s=this.state; if(s.sort!=='recent'||!s.dragId){ this.setState({dragId:null}); return; } const a=this.library; const fi=a.findIndex(x=>x.id===s.dragId); const ti=a.findIndex(x=>x.id===target); if(fi<0||ti<0||fi===ti){ this.setState({dragId:null}); return; } const [m]=a.splice(fi,1); a.splice(ti,0,m); this.setState({dragId:null}); }
 
   tile(it){ const sel=this.state.selected.includes(it.id);
-    const bg=it.bg||((it.iconColor||'var(--color-body-muted,#5b6275)')+'14');
+    const bg=it.bg||('color-mix(in srgb,'+(it.iconColor||'var(--color-body-muted,#5b6275)')+' 8%,transparent)');
     return { id:it.id, name:it.name, author:it.author, selected:sel,
       showIcon:!it.bg, fileIcon:it.icon||'ri-file-line', fileIconColor:it.iconColor||'var(--color-body-muted,#5b6275)',
       thumbBoxStyle:`background:${bg};background-size:cover;display:flex;align-items:center;justify-content:center;`,
       thumbStyle:`position:absolute;inset:0;background:${bg};background-size:cover;`,
-      checkStyle:`position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${sel?'var(--color-accent,#2050a0)':'rgba(255,255,255,0.9)'};background:${sel?'var(--color-admin-primary,#2050a0)':'rgba(0,0,0,0.18)'};box-shadow:0 1px 3px rgba(0,0,0,0.3);`,
-      rowCheckStyle:`width:22px;height:22px;flex-shrink:0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${sel?'var(--color-accent,#2050a0)':'var(--color-border-input,#878a99)'};background:${sel?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};`,
+      checkStyle:`position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--color-white,#fff);border:1.5px solid ${sel?'var(--color-accent,#2050a0)':'rgba(255,255,255,0.9)'};background:${sel?'var(--color-admin-primary,#2050a0)':'rgba(0,0,0,0.18)'};box-shadow:0 1px 3px rgba(0,0,0,0.3);`,
+      rowCheckStyle:`width:22px;height:22px;flex-shrink:0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--color-white,#fff);border:1.5px solid ${sel?'var(--color-accent,#2050a0)':'var(--color-border-input,#878a99)'};background:${sel?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};`,
       rowStyle:`display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:9px;cursor:pointer;background:${sel?'color-mix(in srgb,var(--color-accent,#2050a0) 3.1%,transparent)':'transparent'};`,
       dimsText: it.w? `${it.w} × ${it.h}` : '—', sizeText: it.size!=null? it.size+' MB':'—', typeBadge:(it.type||'IMG').toUpperCase(),
       onToggle:()=>this.toggle(it.id), onOpen:(e)=>{ e.stopPropagation(); this.openDetail(it.id); },
@@ -549,23 +655,23 @@ class Component extends DCLogic {
       countStyle:`font-size:12px;color:${active?'var(--color-accent,#2050a0)':'var(--color-body-faint,#adb5bd)'};` }; }
 
   renderVals(){
-    const S=this.state; const tab=S.tab; const src=S.src;
+    const S=this.state; const tabsMode=(this.props.tabs==='upload'||this.props.tabs==='library')?this.props.tabs:'both'; const tab=tabsMode==='both'?S.tab:tabsMode; const src=S.src;
     const isUpload=tab==='upload', isLibrary=tab==='library';
     const showSources=isUpload && !src;
     const inSource=isUpload && !!src;
 
-    const tabDefs=[ {key:'upload',icon:'ri-upload-2-line',label:'Tải lên tệp mới'}, {key:'library',icon:'ri-image-2-line',label:'Thư viện ảnh'} ];
+    const tabDefs=[ {key:'upload',icon:'ri-upload-2-line',label:'Tải lên tệp mới'}, {key:'library',icon:'ri-image-2-line',label:'Thư viện ảnh'} ].filter(t=>tabsMode==='both'||t.key===tabsMode);
     const topTabs=tabDefs.map(t=>{ const active=tab===t.key; return { ...t, onClick:()=>this.setTab(t.key),
       style:`display:inline-flex;align-items:center;gap:8px;padding:12px 4px;border:0;font:inherit;font-size:13.5px;white-space:nowrap;cursor:pointer;flex-shrink:0;background:transparent;color:${active?'var(--color-accent,#2050a0)':'var(--color-body-muted,#5b6275)'};font-weight:${active?600:500};box-shadow:${active?'inset 0 -2.5px 0 var(--color-accent,#2050a0)':'none'};`,
       iconStyle:`font-size:16px;color:${active?'var(--color-accent,#2050a0)':'var(--color-body-faint,#adb5bd)'};`,
       showBadge:t.key==='library', badge:this.library.length,
       badgeStyle:`font-size:12px;font-weight:600;padding:1.5px 7px;border-radius:10px;background:${active?'color-mix(in srgb,var(--color-accent,#2050a0) 7.8%,transparent)':'var(--color-body,#f4f5fa)'};color:${active?'var(--color-accent,#2050a0)':'var(--color-body-muted,#5b6275)'};` }; });
 
-    const srcDefs=[ {key:'device',icon:'ri-computer-line',label:'Thiết bị của tôi',color:'var(--color-accent,#2050a0)'}, {key:'camera',icon:'ri-camera-line',label:'Máy ảnh',color:'#0ab39c'}, {key:'dropbox',icon:'ri-dropbox-fill',label:'Dropbox',color:'#0061FF'}, {key:'gdrive',icon:'ri-drive-fill',label:'Google Drive',color:'#1a73e8'}, {key:'gphotos',icon:'ri-google-fill',label:'Google Photos',color:'#EA4335'}, {key:'onedrive',icon:'ri-microsoft-fill',label:'OneDrive',color:'#0364B7'}, {key:'unsplash',icon:'ri-camera-lens-line',label:'Unsplash',color:'#111827'}, {key:'box',icon:'ri-inbox-archive-line',label:'Box',color:'#0061D5'} ];
+    const srcDefs=[ {key:'device',icon:'ri-computer-line',label:'Thiết bị của tôi',color:'var(--color-accent,#2050a0)'}, {key:'camera',icon:'ri-camera-line',label:'Máy ảnh',color:'var(--color-admin-success,#0ab39c)'}, {key:'dropbox',icon:'ri-dropbox-fill',label:'Dropbox',color:'var(--mp-c-dropbox,#0061FF)'}, {key:'gdrive',icon:'ri-drive-fill',label:'Google Drive',color:'var(--mp-c-gdrive,#1a73e8)'}, {key:'gphotos',icon:'ri-google-fill',label:'Google Photos',color:'var(--mp-c-gphotos,#EA4335)'}, {key:'onedrive',icon:'ri-microsoft-fill',label:'OneDrive',color:'var(--mp-c-onedrive,#0364B7)'}, {key:'unsplash',icon:'ri-camera-lens-line',label:'Unsplash',color:'var(--mp-c-unsplash,#111827)'}, {key:'box',icon:'ri-inbox-archive-line',label:'Box',color:'var(--mp-c-box,#0061D5)'} ];
     const connectedMap={ dropbox:!!S.conn.dropbox, gdrive:!!S.conn.gdrive, onedrive:!!S.conn.onedrive, box:!!S.conn.box, gphotos:true };
     const sources=srcDefs.map(d=>({ ...d, tint:'color-mix(in srgb,'+d.color+' 10%,transparent)', onOpen:()=>this.openSrc(d.key), showDot: (d.key in connectedMap) && connectedMap[d.key] }));
 
-    const urlDef={key:'url',icon:'ri-link',label:'Ảnh từ URL',color:'#6559cc'};
+    const urlDef={key:'url',icon:'ri-link',label:'Ảnh từ URL',color:'var(--mp-c-url,#6559cc)'};
     let srcHeader=null;
     if(inSource){ const d=srcDefs.find(x=>x.key===src)||urlDef; const conn=(src in connectedMap)?connectedMap[src]:null;
       srcHeader={ name:d.label, icon:d.icon, color:d.color, tint:'color-mix(in srgb,'+d.color+' 10%,transparent)', onBack:()=>this.backToSources(), showChip: conn===true }; }
@@ -588,11 +694,11 @@ class Component extends DCLogic {
       cloud={ name:c.name, color:c.color, tintBg:c.tintBg, icon:c.icon, crumb:c.crumb, onConnect:()=>this.connect(src),
         rows:c.rows.map(r=>({ id:r.id, name:r.name, meta:r.meta, isFolder:r.kind==='folder', isFile:r.kind==='file', selected:S.selected.includes(r.id),
           thumbStyle:r.bg?`background:${r.bg};background-size:cover;`:'', onToggle:r.kind==='file'?()=>this.toggle(r.id):()=>{},
-          checkStyle:`width:20px;height:20px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${S.selected.includes(r.id)?'var(--color-accent,#2050a0)':'var(--color-border-input,#878a99)'};background:${S.selected.includes(r.id)?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};` })) };
+          checkStyle:`width:20px;height:20px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--color-white,#fff);border:1.5px solid ${S.selected.includes(r.id)?'var(--color-accent,#2050a0)':'var(--color-border-input,#878a99)'};background:${S.selected.includes(r.id)?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};` })) };
       cloudConnected=conn; cloudDisconnected=!conn; }
 
     let detail=null; if(S.detail && this.index[S.detail]){ const it=this.index[S.detail];
-      const dbg=it.bg||((it.iconColor||'var(--color-body-muted,#5b6275)')+'14');
+      const dbg=it.bg||('color-mix(in srgb,'+(it.iconColor||'var(--color-body-muted,#5b6275)')+' 8%,transparent)');
       detail={ name:it.name, showIcon:!it.bg, fileIcon:it.icon||'ri-file-line', fileIconColor:it.iconColor||'var(--color-body-muted,#5b6275)', thumbStyle:`background:${dbg};background-size:cover;`, dimsText: it.w?`${it.w} × ${it.h} px`:'—', sizeText: it.size!=null? it.size+' MB':'—', typeText:(it.type||'IMG').toUpperCase(), folderLabel: this.folderLabels[it.folder]||it.folder||'—', alt: it.name.replace(/\.[a-z0-9]+$/i,'').replace(/[-_]/g,' ') }; }
 
     const selCount=S.selected.length; const hasSelection=selCount>0;
@@ -603,7 +709,27 @@ class Component extends DCLogic {
 
     const vb=(active)=>`width:34px;height:32px;border:0;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;background:${active?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};color:${active?'var(--color-surface,#fff)':'var(--color-body-muted,#5b6275)'};`;
 
+    const ERRS=Component.ERR(), RT=Component.RETRY();
+    const uploads=S.uploads.map(u=>{ const dot=u.name.lastIndexOf('.'); const base=dot>0?u.name.slice(0,dot):u.name, ext=dot>0?u.name.slice(dot):'';
+      const isPdf=/\.pdf$/i.test(u.name); const msg=u.code?(ERRS[u.code]||ERRS.unexpected).replace('{size}',this.fmtSize(u.size)):'';
+      return { k:u.k, name:u.name, base, ext, st:u.st, pct:u.pct, running:u.st==='run', isErr:u.st==='err', isDone:u.st==='done', msg,
+        icon: u.st==='err'?'ri-error-warning-line':(isPdf?'ri-file-pdf-2-line':'ri-image-line'),
+        stIcon: u.st==='err'?'ri-close-circle-line':u.st==='done'?'ri-checkbox-circle-fill':'ri-loader-4-line',
+        stText: u.st==='err'?'Chưa tải được':u.st==='done'?'Xong':(u.pct+'%'),
+        meta: this.fmtSize(u.size)+(u.w?' · '+u.w+' × '+u.h+' điểm ảnh':'')+' · đã vào Thư viện',
+        canRetry: u.st==='err' && RT.indexOf(u.code)>=0, onRetry:()=>{ this.setState(s=>({uploads:s.uploads.map(x=>x.k===u.k?Object.assign({},x,{st:'run',code:null,pct:0}):x)}),()=>this.runUp(u.k)); },
+        rmLabel: (u.st==='run'?'Dừng tải ':'Bỏ khỏi danh sách ')+u.name,
+        onRemove:()=>{ clearInterval(this._upT[u.k]); delete this._upT[u.k]; this.setState(s=>({uploads:s.uploads.filter(x=>x.k!==u.k)})); } }; });
+    const nErr=S.uploads.filter(u=>u.st==='err').length, nDone=S.uploads.filter(u=>u.st==='done').length, nRun=S.uploads.filter(u=>u.st==='run').length;
+    const upHead=[nRun?('Đang tải '+nRun+' tệp'):'', nDone?(nDone+' tệp xong'):'', nErr?(nErr+' tệp chưa tải được'):''].filter(Boolean).join(' · ');
+    const fCount=(S.sort!=='recent'?1:0)+(S.typeFilter!=='all'?1:0)+(S.filter!=='all'?1:0);
     return {
+      uploads, hasUploads:uploads.length>0, upHead, upHasDone:nDone>0, clearDone:()=>this.setState(s=>({uploads:s.uploads.filter(x=>x.st!=='done')})),
+      fileRef:(el)=>{ this._fi=el; }, pickFiles:()=>{ if(this._fi) this._fi.click(); }, onFiles:(e)=>{ this.addFiles(e.target.files); try{ e.target.value=''; }catch(x){} },
+      dzOver:String(!!S.dzOver), onDzOver:(e)=>{ e.preventDefault(); if(!S.dzOver) this.setState({dzOver:true}); }, onDzLeave:()=>this.setState({dzOver:false}), onDzDrop:(e)=>{ e.preventDefault(); this.setState({dzOver:false}); this.addFiles(e.dataTransfer&&e.dataTransfer.files); },
+      filterOpen:!!S.filterOpen, openFilter:()=>this.setState({filterOpen:true}), closeFilter:()=>this.setState({filterOpen:false}), stop:(e)=>e.stopPropagation(),
+      clearFilter:()=>this.setState({sort:'recent',typeFilter:'all',filter:'all'}), fCount, fCountShow:fCount>0, fBtnLabel:'Lọc và sắp xếp'+(fCount?' — đang bật '+fCount:''), libCount:libItems.length,
+      bareAttr: this.props.bare ? '1' : '0', notBare: !this.props.bare, showTabBar: tabDefs.length>1,
       topTabs, showSources, inSource, srcHeader, sources, openCamera:()=>this.openSrc('camera'), openDevice:()=>this.openSrc('device'),
       isDevice:inSource && src==='device', isCamera:inSource && src==='camera', isCloud, isGphotos:inSource && src==='gphotos', isUnsplash:inSource && src==='unsplash', isUrl:inSource && src==='url', isLibrary,
       urlValue:S.urlValue, urlErr:S.urlErr, urlHasPreview:!!S.urlItem, urlNoPreview:!S.urlItem,
@@ -612,7 +738,7 @@ class Component extends DCLogic {
       onUrlKey:(e)=>{ if(e.key==='Enter') this.previewUrl(); },
       onUrlPreview:()=>this.previewUrl(),
       saveCopyOn:S.urlSaveCopy, toggleSaveCopy:()=>this.setState(s=>({urlSaveCopy:!s.urlSaveCopy})),
-      saveCopyBoxStyle:`width:19px;height:19px;flex-shrink:0;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;border:1.5px solid ${S.urlSaveCopy?'var(--color-accent,#2050a0)':'var(--color-border-input,#878a99)'};background:${S.urlSaveCopy?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};`,
+      saveCopyBoxStyle:`width:19px;height:19px;flex-shrink:0;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--color-white,#fff);border:1.5px solid ${S.urlSaveCopy?'var(--color-accent,#2050a0)':'var(--color-border-input,#878a99)'};background:${S.urlSaveCopy?'var(--color-admin-primary,#2050a0)':'var(--color-surface,#fff)'};`,
       cloud, cloudConnected, cloudDisconnected,
       folders:this.folderKeys.map(k=>this.folderItem(k)),
       newFolderOpen:S.newFolderOpen, nfName:S.nfName,
@@ -631,7 +757,7 @@ class Component extends DCLogic {
       detail, detailOpen:!!detail, closeDetail:()=>this.closeDetail(),
       hasSelection, noSelection:!hasSelection, selCount, selItems, clearSel:()=>this.clearSel(),
       insertLabel: hasSelection? `Chèn ${selCount} ảnh` : 'Chèn ảnh',
-      insertBtnStyle:`display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;border:0;font:inherit;font-size:13px;font-weight:600;cursor:${hasSelection?'pointer':'not-allowed'};background:${hasSelection?'var(--color-admin-primary,#2050a0)':'var(--color-border-input,#878a99)'};color:#fff;`,
+      insertBtnStyle:`display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;border:0;font:inherit;font-size:13px;font-weight:600;cursor:${hasSelection?'pointer':'not-allowed'};background:${hasSelection?'var(--color-admin-primary,#2050a0)':'var(--color-border-input,#878a99)'};color:var(--color-white,#fff);`,
       onClose:()=>{ if(this.props.onClose) this.props.onClose(); try{ document.dispatchEvent(new CustomEvent('bs-media',{detail:{act:'close'}})); }catch(e){} },
       onInsert:()=>{ if(!hasSelection) return; const items=S.selected.map(id=>this.index[id]).filter(Boolean); if(this.props.onInsert) this.props.onInsert(items); try{ document.dispatchEvent(new CustomEvent('bs-media',{detail:{act:'insert',items:items.map(x=>({name:x.name,bg:x.bg,w:x.w,h:x.h}))}})); }catch(e){} },
     };

@@ -457,7 +457,7 @@ class Component extends DCLogic {
       const addon = (b.addon || 0) + (extra || 0);
       const planLeft = Math.max(0, b.limit - b.used);
       const addonLeft = Math.max(0, addon - Math.max(0, b.used - b.limit));
-      return {
+      return { addon: addon, planLeft: planLeft, addonLeft: addonLeft, left: planLeft + addonLeft, total: b.limit + addon, limit: b.limit, bought: extra || 0 };
     };
     const W = book(q, BT.w), I = book(iq, BT.i);
 
@@ -506,7 +506,7 @@ class Component extends DCLogic {
 
     const ask = S.ask;
     return {
-      s6Frames: (typeof location === 'undefined' || location.hash !== '#frame') && this.props.showFrames !== false, addon: addon, planLeft: planLeft, addonLeft: addonLeft, left: planLeft + addonLeft, total: b.limit + addon, limit: b.limit, bought: extra || 0 };
+      s6Frames: (typeof location === 'undefined' || location.hash !== '#frame') && this.props.showFrames !== false && !this.props.embedded,
       showHead: !this.props.embedded,
       planChip: noPlan ? 'Gói Miễn phí' : ('Gói ' + curPlan.name + ' · ' + this.n(effPrice(curPlan)) + ' ₫/tháng'),
       planChipTitle: noPlan

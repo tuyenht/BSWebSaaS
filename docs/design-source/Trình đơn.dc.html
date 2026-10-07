@@ -34,9 +34,9 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 .mn-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 12px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12.5px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .mn-btn:hover{background:var(--color-surface-hover,#f3f6f9);}
 .mn-btn:disabled{opacity:.55;cursor:not-allowed;background:var(--color-surface,#fff);}
-.mn-ai{border-color:rgba(32,80,160,.28);background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);font-weight:600;}
-.mn-ai:hover{background:rgba(32,80,160,.16);}
-.mn-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:#2050a0;font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
+.mn-ai{border-color:color-mix(in srgb,var(--color-accent,#2050a0) 28%,transparent);background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);font-weight:600;}
+.mn-ai:hover{background:color-mix(in srgb,var(--color-accent,#2050a0) 16%,transparent);}
+.mn-pri{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 15px;border:0;border-radius:4px;background:var(--color-admin-primary,#2050a0);font:inherit;font-size:13px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;}
 .mn-pri:hover{filter:brightness(.95);}
 .mn-pri:disabled{background:var(--color-border-strong,#e9ebec);color:var(--color-body-muted,#5b6275);cursor:not-allowed;filter:none;}
 .mn-hit{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:0;border-radius:4px;background:transparent;color:var(--color-body-muted,#5b6275);cursor:pointer;flex-shrink:0;}
@@ -46,17 +46,16 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 .mn-chip{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;height:19px;padding:0 7px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.02em;white-space:nowrap;}
 .mn-lg{background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);border:1px solid var(--color-border,#e9ecf4);}
 .mn-inp{width:100%;box-sizing:border-box;min-height:38px;padding:8px 11px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:13px;color:var(--color-heading,#1f2b4d);outline:none;}
-.mn-inp:focus{border-color:#2050a0;box-shadow:0 0 0 3px rgba(32,80,160,.14);}
 .mn-inp:disabled{background:var(--color-surface-muted,#f8f9fb);color:var(--color-body-muted,#5b6275);cursor:not-allowed;}
 .mn-tab{display:inline-flex;align-items:center;gap:5px;min-height:32px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;}
 .mn-tab:hover{background:var(--color-surface-hover,#f3f6f9);}
-.mn-tab.on{border-color:#2050a0;background:rgba(32,80,160,.08);font-weight:600;color:var(--color-accent,#2050a0);}
-.mn-sw{position:relative;width:38px;height:22px;border-radius:20px;background:#dfe2e6;flex-shrink:0;transition:background .15s;}
-.mn-sw.on{background:#2050a0;}
+.mn-tab.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);font-weight:600;color:var(--color-accent,#2050a0);}
+.mn-sw{position:relative;width:38px;height:22px;border-radius:20px;background:var(--color-border-input,#878a99);flex-shrink:0;transition:background .15s;}
+.mn-sw.on{background:var(--color-admin-primary,#2050a0);}
 .mn-kn{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--color-surface,#fff);box-shadow:0 1px 2px rgba(56,65,74,.3);transition:left .15s;}
 .mn-sw.on .mn-kn{left:19px;}
 .mn-swrap{display:flex;align-items:center;gap:10px;min-height:44px;border:0;background:transparent;padding:0;font:inherit;cursor:pointer;text-align:left;}
-.mn-grip{display:inline-flex;align-items:center;justify-content:center;width:20px;height:32px;color:#dee2e6;cursor:grab;flex-shrink:0;}
+.mn-grip{display:inline-flex;align-items:center;justify-content:center;width:20px;height:32px;color:var(--color-body-muted,#5b6275);cursor:grab;flex-shrink:0;}
 .mn-grip:hover{color:var(--color-body-muted,#5b6275);}
 /* Điện thoại: kéo–thả HTML5 không chạy bằng ngón tay và dễ chạm nhầm khi cuộn →
    thay tay cầm kéo bằng nút Sắp xếp mở đúng menu Lên/Xuống/Vào trong/Ra ngoài. */
@@ -65,14 +64,18 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 .mn-touch .mn-grip{display:none!important;}
 .mn-touch .mn-hit,.mn-touch .mn-pi,.mn-touch .mn-btn,.mn-touch .mn-name,.mn-touch select,.mn-touch .mn-swrap{min-height:44px!important;}
 .mn-touch .mn-hit{min-width:44px!important;}
-.mn-touch .mn-item{padding-top:3px;padding-bottom:3px;}
+.mn-touch .mn-item{padding-top:3px;padding-bottom:3px;gap:8px;}
+/* D1-2: chip lọc, ô tìm và nút dòng ≥44px, cách nhau ≥8px khi dùng ngón tay — ở MỌI bề rộng */
+.mn-touch .mn-tab,.mn-touch .mn-sl,.mn-touch .mn-tsearch input{min-height:44px!important;}
 @media (pointer:coarse){
+  .mn-tab,.mn-sl,.mn-tsearch input{min-height:44px!important;}
+  .mn-item{gap:8px;}
   .mn-grip{display:none!important;}
   .mn-hit,.mn-pi,.mn-btn,.mn-name,select,.mn-swrap{min-height:44px!important;}
   .mn-hit{min-width:44px!important;}
 }
 .mn-item{position:relative;display:flex;align-items:center;gap:5px;padding:6px 10px 6px 6px;flex-wrap:nowrap;}
-.mn-item:hover{background:#fbfcfd;}
+.mn-item:hover{background:var(--color-surface-muted,#f8f9fb);}
 .mn-name{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:6px;border:0;background:transparent;font:inherit;color:var(--color-heading,#1f2b4d);cursor:pointer;padding:7px 4px;border-radius:4px;text-align:left;overflow:hidden;}
 .mn-name:hover{color:var(--color-accent,#2050a0);}
 .mn-src{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;flex:0 0 auto;}
@@ -83,11 +86,11 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 .mn-pk{display:flex;align-items:center;gap:9px;width:100%;padding:8px 10px;border:0;border-top:1px solid var(--color-border-soft,#f6f7f9);background:transparent;font:inherit;font-size:12.5px;color:var(--color-body-text,#3c4765);cursor:pointer;text-align:left;}
 .mn-pk:hover{background:var(--color-surface-muted,#f8f9fb);}
 .mn-pk:disabled{cursor:not-allowed;background:var(--color-surface,#fff);}
-.mn-cb{width:17px;height:17px;border:1.5px solid #ccd0d8;border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);color:#fff;font-size:12px;}
-.mn-cb.on{border-color:#2050a0;background:#2050a0;}
+.mn-cb{width:17px;height:17px;border:1.5px solid var(--color-border-input,#878a99);border-radius:3px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:var(--color-surface,#fff);color:#fff;font-size:12px;}
+.mn-cb.on{border-color:var(--color-admin-primary,#2050a0);background:var(--color-admin-primary,#2050a0);}
 .mn-sl{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:500;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;}
 .mn-sl:hover{background:var(--color-surface-hover,#f3f6f9);}
-.mn-sl.on{border-color:#2050a0;background:rgba(32,80,160,.08);color:var(--color-accent,#2050a0);font-weight:600;}
+.mn-sl.on{border-color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);color:var(--color-accent,#2050a0);font-weight:600;}
 .mn-grid{display:grid;grid-template-columns:262px minmax(0,1fr) 288px;gap:16px;align-items:start;}
 /* D0-6a: co theo khung chứa (màn còn được nhúng trong Shell), không theo cửa sổ */
 @container (max-width:1210px){.mn-grid{grid-template-columns:262px minmax(0,1fr);}.mn-colR{grid-column:2;}}
@@ -132,6 +135,13 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
     </div>
     </sc-if>
 
+    <sc-if value="{{ notesOn }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;align-items:flex-start;gap:8px;padding:9px 12px;border:1px dashed var(--color-border-input,#878a99);border-radius:6px;background:var(--color-surface,#fff);">
+      <i class="ri-sticky-note-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;margin-top:1px;" aria-hidden="true"></i>
+      <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;text-wrap:pretty;"><b style="font-weight:600;color:var(--color-body-text,#3c4765);">Ghi chú thiết kế · Chờ backend:</b> số cấp riêng từng vị trí, biểu tượng, mô tả và bảng lớn, khối tự dựng, nút nổi bật, nhãn có hạn, chỉ máy tính / điện thoại, ẩn mục bằng tay, tự thêm trang mới, nhân bản, liên kết hệ thống ngoài Trang chủ, mã nhúng, Thùng rác 30 ngày, nút Dịch. Chi tiết ở README - D1-2 Trình đơn.</span>
+    </div>
+    </sc-if>
+
     <sc-if value="{{ multiLocale }}" hint-placeholder-val="{{ true }}">
     <div class="mn-card mn-bar">
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;flex-wrap:nowrap;overflow:hidden;">
@@ -144,7 +154,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
         </span>
         <div class="mn-pills" style="display:flex;align-items:center;gap:6px;min-width:0;flex:0 1 auto;overflow:hidden;">
           <sc-for list="{{ langPills }}" as="lp" hint-placeholder-count="3">
-            <button onClick="{{ lp.onClick }}" title="{{ lp.title }}" style="{{ lp.style }}"><span style="{{ lp.dot }}"></span><span style="{{ lp.nameStyle }}">{{ lp.name }}</span><sc-if value="{{ lp.isDef }}"><i class="ri-star-fill" style="font-size:12px;color:#f7b84b;"></i></sc-if></button>
+            <button onClick="{{ lp.onClick }}" title="{{ lp.title }}" style="{{ lp.style }}"><span style="{{ lp.dot }}"></span><span style="{{ lp.nameStyle }}">{{ lp.name }}</span><sc-if value="{{ lp.isDef }}"><i class="ri-star-fill" style="font-size:12px;color:var(--color-admin-warning,#f7b84b);" aria-label="Ngôn ngữ mặc định"></i></sc-if></button>
           </sc-for>
           <sc-if value="{{ moreOn }}" hint-placeholder-val="{{ false }}">
             <button onClick="{{ onOpenLangs }}" title="Xem tất cả ngôn ngữ đang soạn" style="display:inline-flex;align-items:center;gap:5px;min-height:34px;padding:0 11px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:20px;background:var(--color-surface,#fff);font:inherit;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;">{{ moreLabel }}<i class="ri-arrow-down-s-line" style="font-size:14px;"></i></button>
@@ -179,6 +189,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
           <i class="{{ q.icon }}" style="font-size:15px;color:{{ q.color }};flex-shrink:0;"></i>
           <span style="flex:1 1 260px;min-width:0;font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.6;text-wrap:pretty;">{{ q.text }}</span>
           <sc-if value="{{ q.goOn }}"><button class="mn-btn" onClick="{{ q.onGo }}"><i class="ri-focus-3-line" style="font-size:14px;"></i>Xem mục</button></sc-if>
+          <sc-if value="{{ q.srcOn }}"><button class="mn-btn" onClick="{{ q.onSrc }}"><i class="ri-external-link-line" style="font-size:14px;"></i>{{ q.srcLabel }}</button></sc-if>
           <button class="mn-btn" onClick="{{ q.onFix }}" title="{{ q.fixTitle }}"><i class="{{ q.fixIcon }}" style="font-size:14px;"></i>{{ q.fix }}</button>
           <sc-if value="{{ q.dismissOn }}"><button class="mn-hit" style="width:32px;height:32px;" onClick="{{ q.onDismiss }}" title="{{ q.dismissTitle }}" aria-label="{{ q.dismissTitle }}"><i class="ri-close-line" style="font-size:15px;"></i></button></sc-if>
         </div>
@@ -222,22 +233,46 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
           <div style="padding:10px 14px;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;border-bottom:1px solid var(--color-border-soft,#f6f7f9);text-wrap:pretty;">{{ areaIntro }}</div>
           <sc-for list="{{ areas }}" as="a" hint-placeholder-count="6">
             <sc-if value="{{ a.headOn }}">
-              <div style="padding:9px 14px 3px;border-top:1px solid var(--color-border-soft,#f6f7f9);font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#c3c7cf;">{{ a.headLabel }}</div>
+              <div style="padding:9px 14px 3px;border-top:1px solid var(--color-border-soft,#f6f7f9);font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">{{ a.headLabel }}</div>
             </sc-if>
             <div style="display:flex;flex-direction:column;gap:5px;padding:5px 14px 9px;">
               <span style="display:flex;align-items:center;gap:6px;" title="{{ a.desc }}">
                 <i class="{{ a.icon }}" style="font-size:14px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
                 <span style="font-size:12px;font-weight:600;color:var(--color-heading,#1f2b4d);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ a.label }}</span>
-                <sc-if value="{{ a.warnOn }}"><i class="ri-subtract-line" style="font-size:13px;color:#ced4da;margin-left:auto;flex-shrink:0;" title="Chưa dùng trình đơn nào"></i></sc-if>
+                <sc-if value="{{ a.warnOn }}"><i class="ri-subtract-line" style="font-size:13px;color:var(--color-body-muted,#5b6275);margin-left:auto;flex-shrink:0;" title="Chưa dùng trình đơn nào"></i></sc-if>
               </span>
               <sc-if value="{{ devOn }}">
-                <button onClick="{{ a.onCopyCode }}" title="{{ a.codeTitle }}" style="display:flex;align-items:center;gap:4px;align-self:flex-start;max-width:100%;padding:1px 6px;border:1px solid #f4f5fa;border-radius:4px;background:#fbfcfd;font:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:#b6bac2;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.code }}<i class="ri-file-copy-line" style="font-size:12px;flex-shrink:0;"></i></button>
+                <button onClick="{{ a.onCopyCode }}" title="{{ a.codeTitle }}" style="display:flex;align-items:center;gap:4px;align-self:flex-start;max-width:100%;padding:1px 6px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface-muted,#f8f9fb);font:inherit;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--color-body-muted,#5b6275);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ a.code }}<i class="ri-file-copy-line" style="font-size:12px;flex-shrink:0;"></i></button>
               </sc-if>
               <select class="mn-inp" style="min-height:36px;font-size:12.5px;" value="{{ a.value }}" onChange="{{ a.onChange }}" title="{{ a.title }}">
                 <sc-for list="{{ a.options }}" as="o" hint-placeholder-count="3">
                   <option value="{{ o.value }}">{{ o.label }}</option>
                 </sc-for>
               </select>
+              <sc-if value="{{ a.langOn }}">
+                <div style="display:flex;flex-direction:column;margin-top:2px;padding:0 10px;border:1px solid var(--color-border,#e9ecf4);border-radius:4px;background:var(--color-surface-muted,#f8f9fb);">
+                  <sc-for list="{{ a.langs }}" as="lg" hint-placeholder-count="2">
+                    <sc-if value="{{ lg.sep }}"><span style="height:1px;background:var(--color-border,#e9ecf4);"></span></sc-if>
+                    <div style="display:flex;flex-direction:column;gap:6px;padding:8px 0;min-width:0;">
+                      <span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;">
+                        <span style="font-size:12px;font-weight:600;color:var(--color-heading,#1f2b4d);">{{ lg.name }}</span>
+                        <sc-if value="{{ lg.isNone }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405);" title="{{ lg.noneText }}"><i class="ri-error-warning-line" style="font-size:12px;" aria-hidden="true"></i>{{ lg.chipText }}</span></sc-if>
+                        <sc-if value="{{ lg.pubNoteOn }}"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);">chưa hiển thị ra ngoài</span></sc-if>
+                      </span>
+                      <sc-if value="{{ lg.isShared }}"><span style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.5;text-wrap:pretty;"><i class="ri-links-line" style="font-size:13px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:2px;" aria-hidden="true"></i>{{ lg.sharedText }}</span></sc-if>
+                      <sc-if value="{{ lg.noteOn }}"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.5;padding-left:19px;text-wrap:pretty;">{{ lg.note }}</span></sc-if>
+                      <sc-if value="{{ lg.isOwn }}"><span style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--color-body-text,#3c4765);line-height:1.5;text-wrap:pretty;"><i class="ri-file-copy-2-line" style="font-size:13px;color:var(--color-accent,#2050a0);flex-shrink:0;margin-top:2px;" aria-hidden="true"></i>{{ lg.ownText }}</span></sc-if>
+                      <sc-if value="{{ lg.isNone }}">
+                        <span style="display:flex;align-items:flex-start;gap:6px;font-size:12px;color:var(--color-admin-warning-text,#906405);line-height:1.5;text-wrap:pretty;"><i class="ri-translate-2" style="font-size:13px;flex-shrink:0;margin-top:2px;" aria-hidden="true"></i>{{ lg.noneText }}</span>
+                        <button class="mn-btn" style="justify-content:center;min-height:34px;font-size:12px;" onClick="{{ lg.onShare }}" title="{{ lg.shareTitle }}"><i class="ri-links-line" style="font-size:14px;"></i>Dùng trình đơn chung</button>
+                      </sc-if>
+                      <select class="mn-inp" style="min-height:34px;font-size:12px;" value="{{ lg.value }}" onChange="{{ lg.onChange }}" title="{{ lg.selLabel }}" aria-label="{{ lg.selLabel }}">
+                        <sc-for list="{{ lg.options }}" as="o" hint-placeholder-count="3"><option value="{{ o.value }}">{{ o.label }}</option></sc-for>
+                      </select>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
             </div>
           </sc-for>
           <div style="display:flex;flex-direction:column;gap:9px;padding:8px 12px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
@@ -259,7 +294,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
               <button class="mn-swrap" onClick="{{ onToggleAuto }}"><span class="mn-sw"><span class="mn-kn"></span></span><span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);line-height:1.5;">Tự thêm trang mới vào cuối trình đơn</span></button>
             </sc-if>
             <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;text-wrap:pretty;padding-left:52px;margin:-2px 0 6px;">{{ autoAddNote }}</span>
-            <span style="display:flex;flex-direction:column;gap:7px;padding:9px 11px;border-radius:4px;background:#fbfcfd;">
+            <span style="display:flex;flex-direction:column;gap:7px;padding:9px 11px;border-radius:4px;background:var(--color-surface-muted,#f8f9fb);">
               <sc-for list="{{ autoAlways }}" as="a" hint-placeholder-count="3">
                 <span style="display:flex;align-items:flex-start;gap:8px;">
                   <i class="ri-checkbox-circle-fill" style="font-size:14px;color:var(--color-admin-success-text,#0ab39c);flex-shrink:0;margin-top:1px;"></i>
@@ -290,29 +325,29 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
           </div>
 
           <sc-if value="{{ trashOpenOn }}" hint-placeholder-val="{{ false }}">
-            <div style="border-bottom:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
+            <div style="border-bottom:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);">
               <div style="display:flex;align-items:center;gap:8px;padding:10px 14px 6px;">
                 <i class="ri-delete-bin-line" style="font-size:14px;color:var(--color-body-muted,#5b6275);"></i>
                 <span style="flex:1 1 auto;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;">Mục đã gỡ được giữ 30 ngày rồi mới xóa hẳn.</span>
                 <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onTrash }}" title="Đóng thùng rác" aria-label="Đóng thùng rác"><i class="ri-close-line" style="font-size:15px;"></i></button>
               </div>
               <sc-for list="{{ trashList }}" as="t" hint-placeholder-count="1">
-                <div style="display:flex;align-items:center;gap:9px;padding:8px 14px;border-top:1px solid #f4f5fa;">
+                <div style="display:flex;align-items:center;gap:9px;padding:8px 14px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
                   <i class="{{ t.icon }}" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>
                   <span style="display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto;">
                     <span style="font-size:12.5px;color:var(--color-heading,#1f2b4d);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.label }}</span>
                     <span style="font-size:12px;color:var(--color-body-muted,#5b6275);">{{ t.meta }}</span>
                   </span>
-                  <button class="mn-btn" onClick="{{ t.onRestore }}"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Lấy lại</button>
+                  <button class="mn-btn" onClick="{{ t.onRestore }}"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Khôi phục</button>
                 </div>
               </sc-for>
             </div>
           </sc-if>
 
           <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--color-border,#e9ecf4);flex-wrap:wrap;">
-            <div style="display:flex;align-items:center;gap:7px;flex:1 1 190px;min-width:0;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);" data-focus-wrap="">
+            <div class="mn-tsearch" style="display:flex;align-items:center;gap:7px;flex:1 1 190px;min-width:0;padding:0 10px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;background:var(--color-surface,#fff);" data-focus-wrap="">
               <i class="ri-search-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);"></i>
-              <input value="{{ treeQuery }}" onChange="{{ onTreeQuery }}" placeholder="Tìm mục trong trình đơn…" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);" />
+              <input value="{{ treeQuery }}" onChange="{{ onTreeQuery }}" aria-label="Tìm mục trong trình đơn" placeholder="Tìm mục trong trình đơn…" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);" />
             </div>
             <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
               <button class="{{ f.cls }}" onClick="{{ f.onClick }}" title="{{ f.title }}"><i class="{{ f.icon }}" style="font-size:13px;"></i>{{ f.label }}</button>
@@ -328,7 +363,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
           </sc-if>
 
           <sc-if value="{{ dragOn }}" hint-placeholder-val="{{ false }}">
-            <div style="position:sticky;top:var(--sticky-top,0px);z-index:15;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid rgba(32,80,160,.2);background:rgba(32,80,160,.08);">
+            <div style="position:sticky;top:var(--sticky-top,0px);z-index:15;display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid color-mix(in srgb,var(--color-accent,#2050a0) 20%,transparent);background:color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent);">
               <i class="ri-drag-move-2-line" style="font-size:15px;color:var(--color-accent,#2050a0);flex-shrink:0;"></i>
               <span style="font-size:12px;color:var(--color-accent,#2050a0);line-height:1.55;text-wrap:pretty;">{{ dragHint }}</span>
             </div>
@@ -336,7 +371,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 
           <sc-if value="{{ emptyOn }}" hint-placeholder-val="{{ false }}">
             <div style="padding:34px 20px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;">
-              <i class="ri-node-tree" style="font-size:26px;color:#ced4da;"></i>
+              <i class="ri-node-tree" style="font-size:26px;color:var(--color-body-faint,#adb5bd);"></i>
               <span style="font-size:13px;font-weight:600;color:var(--color-body-text,#3c4765);">{{ emptyTitle }}</span>
               <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;max-width:340px;text-wrap:pretty;">{{ emptyText }}</span>
             </div>
@@ -355,19 +390,19 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
               <button class="mn-name" onClick="{{ r.onSelect }}" title="Mở phần chỉnh sửa mục này">
                 <span style="{{ r.labelStyle }}">{{ r.label }}</span>
                 <sc-if value="{{ r.pathOn }}"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;flex:0 0 auto;">{{ r.pathText }}</span></sc-if>
-                <sc-if value="{{ r.unsavedOn }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#a9750a);" title="Mục này đã sửa nhưng chưa lưu"><i class="ri-circle-fill" style="font-size:12px;"></i><span class="mn-flagt">Chưa lưu</span></span></sc-if>
-                <sc-if value="{{ r.mtOn }}"><span class="mn-chip" style="background:rgba(41,156,219,.14);color:var(--color-admin-info-text,#1d7fb8);" title="Nhãn này do AI dịch, bạn chưa kiểm lại"><i class="ri-sparkling-2-line" style="font-size:12px;"></i><span class="mn-flagt">AI dịch</span></span></sc-if>
+                <sc-if value="{{ r.unsavedOn }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,transparent);color:var(--color-admin-warning-text,#a9750a);" title="Mục này đã sửa nhưng chưa lưu"><i class="ri-circle-fill" style="font-size:12px;"></i><span class="mn-flagt">Chưa lưu</span></span></sc-if>
+                <sc-if value="{{ r.mtOn }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-admin-info,#299cdb) 14%,transparent);color:var(--color-admin-info-text,#1d7fb8);" title="Nhãn này do AI dịch, bạn chưa kiểm lại"><i class="ri-sparkling-2-line" style="font-size:12px;"></i><span class="mn-flagt">AI dịch</span></span></sc-if>
                 <sc-if value="{{ r.hiddenOn }}"><span class="mn-chip" style="background:var(--color-surface-hover,#f3f6f9);color:var(--color-body-muted,#5b6275);" title="{{ r.hiddenTitle }}"><i class="ri-eye-off-line" style="font-size:12px;"></i><span class="mn-flagt">{{ r.hiddenLabel }}</span></span></sc-if>
-                <sc-if value="{{ r.ctaOn }}"><span class="mn-chip" style="background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);" title="Hiển thị như nút nổi bật"><i class="ri-cursor-fill" style="font-size:12px;"></i><span class="mn-flagt">Nút nổi bật</span></span></sc-if>
-                <sc-if value="{{ r.badgeOn }}"><span class="mn-chip" style="background:#f06548;color:#fff;" title="{{ r.badgeTitle }}">{{ r.badgeText }}</span></sc-if>
+                <sc-if value="{{ r.ctaOn }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);" title="Hiển thị như nút nổi bật"><i class="ri-cursor-fill" style="font-size:12px;"></i><span class="mn-flagt">Nút nổi bật</span></span></sc-if>
+                <sc-if value="{{ r.badgeOn }}"><span class="mn-chip" style="background:var(--color-admin-danger-solid,#d0472b);color:#fff;" title="{{ r.badgeTitle }}">{{ r.badgeText }}</span></sc-if>
                 <sc-if value="{{ r.badgeExpOn }}"><span class="mn-chip mn-lg" title="{{ r.badgeExpTitle }}"><i class="ri-time-line" style="font-size:12px;"></i><span class="mn-flagt">Nhãn hết hạn</span></span></sc-if>
-                <sc-if value="{{ r.overDeepOn }}"><span class="mn-chip" style="background:rgba(240,101,72,.12);color:var(--color-admin-danger-text,#d84a2f);" title="{{ r.overDeepTitle }}"><i class="ri-node-tree" style="font-size:12px;"></i><span class="mn-flagt">Vượt cấp</span></span></sc-if>
-                <sc-if value="{{ r.megaRowOn }}"><span class="mn-chip" style="background:rgba(32,80,160,.10);color:var(--color-accent,#2050a0);" title="{{ r.megaRowTitle }}"><i class="ri-layout-grid-line" style="font-size:12px;"></i><span class="mn-flagt">{{ r.megaRowLabel }}</span></span></sc-if>
+                <sc-if value="{{ r.overDeepOn }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,transparent);color:var(--color-admin-danger-text,#d84a2f);" title="{{ r.overDeepTitle }}"><i class="ri-node-tree" style="font-size:12px;"></i><span class="mn-flagt">Vượt cấp</span></span></sc-if>
+                <sc-if value="{{ r.megaRowOn }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-accent,#2050a0) 10%,transparent);color:var(--color-accent,#2050a0);" title="{{ r.megaRowTitle }}"><i class="ri-layout-grid-line" style="font-size:12px;"></i><span class="mn-flagt">{{ r.megaRowLabel }}</span></span></sc-if>
                 <sc-if value="{{ r.descRowOn }}"><span class="mn-chip mn-lg" title="{{ r.descRowTitle }}"><i class="ri-text" style="font-size:12px;"></i><span class="mn-flagt">Có mô tả</span></span></sc-if>
                 <sc-if value="{{ r.onlyOn }}"><span class="mn-chip mn-lg" title="{{ r.onlyTitle }}"><i class="ri-device-line" style="font-size:12px;"></i><span class="mn-flagt">{{ r.onlyLabel }}</span></span></sc-if>
-                <sc-if value="{{ r.fixedOn }}"><span class="mn-chip" style="background:rgba(10,179,156,.12);color:var(--color-admin-success-text,#0a8f7f);" title="{{ r.fixedTitle }}"><i class="ri-check-line" style="font-size:12px;"></i><span class="mn-flagt">Đã tự sửa đường dẫn</span></span></sc-if>
-                <sc-if value="{{ r.draftOn }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#a9750a);" title="{{ r.draftTitle }}"><i class="ri-eye-off-line" style="font-size:12px;"></i><span class="mn-flagt">Trang chưa đăng</span></span></sc-if>
-                <sc-if value="{{ r.brokenOn }}"><span class="mn-chip" style="background:rgba(240,101,72,.12);color:var(--color-admin-danger-text,#d84a2f);" title="{{ r.brokenTitle }}"><i class="ri-error-warning-line" style="font-size:12px;"></i><span class="mn-flagt">Trang không còn</span></span></sc-if>
+                <sc-if value="{{ r.fixedOn }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-admin-success,#0ab39c) 12%,transparent);color:var(--color-admin-success-text,#0a8f7f);" title="{{ r.fixedTitle }}"><i class="ri-check-line" style="font-size:12px;"></i><span class="mn-flagt">Đã tự sửa đường dẫn</span></span></sc-if>
+                <sc-if value="{{ r.srcWarnOn }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,var(--color-surface,#fff));color:var(--color-admin-warning-text,#906405);" title="{{ r.srcTitle }}" aria-label="{{ r.srcAria }}"><i class="ri-eye-off-line" style="font-size:12px;" aria-hidden="true"></i><span class="mn-flagt">{{ r.srcLabel }}</span></span></sc-if>
+                <sc-if value="{{ r.srcBadOn }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-admin-danger,#f06548) 12%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a);" title="{{ r.srcTitle }}" aria-label="{{ r.srcAria }}"><i class="ri-error-warning-line" style="font-size:12px;" aria-hidden="true"></i><span class="mn-flagt">{{ r.srcLabel }}</span></span></sc-if>
               </button>
               <span class="mn-src">{{ r.srcText }}</span>
               <button class="mn-hit" onClick="{{ r.onUp }}" disabled="{{ r.moveOff }}" title="{{ r.upTitle }}" aria-label="{{ r.upTitle }}"><i class="ri-arrow-up-s-line" style="font-size:17px;"></i></button>
@@ -377,6 +412,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
               <sc-if value="{{ r.menuOn }}" hint-placeholder-val="{{ false }}">
                 <div class="mn-pop" onClick="{{ stop }}">
                   <button class="mn-pi" onClick="{{ r.onSelect }}"><i class="ri-pencil-line" style="font-size:15px;"></i>Sửa nhãn &amp; tùy chọn</button>
+                  <sc-if value="{{ r.srcGoOn }}"><button class="mn-pi" onClick="{{ r.onSrcGo }}"><i class="ri-external-link-line" style="font-size:15px;"></i>{{ r.srcGoLabel }}</button></sc-if>
                   <button class="mn-pi" onClick="{{ r.onToggleHide }}"><i class="{{ r.hideIcon }}" style="font-size:15px;"></i>{{ r.hideLabel }}</button>
                   <div style="height:1px;margin:5px 0;background:var(--color-body,#f4f5fa);"></div>
                   <button class="mn-pi" onClick="{{ r.onIn }}" disabled="{{ r.inOff }}" title="{{ r.inTitle }}"><i class="ri-indent-increase" style="font-size:15px;"></i>Thành mục con<span style="margin-left:auto;font-size:12px;color:var(--color-body-muted,#5b6275);">Alt →</span></button>
@@ -384,7 +420,8 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
                   <button class="mn-pi" onClick="{{ r.onDup }}"><i class="ri-file-copy-line" style="font-size:15px;"></i>Nhân bản</button>
                   <div style="height:1px;margin:5px 0;background:var(--color-body,#f4f5fa);"></div>
                   <button class="mn-pi" onClick="{{ r.onRevert }}" disabled="{{ r.revertOff }}" title="{{ r.revertTitle }}"><i class="ri-history-line" style="font-size:15px;"></i>Đưa về như lần lưu</button>
-                  <button class="mn-pi" style="color:var(--color-admin-danger-text,#d84a2f);" onClick="{{ r.onDel }}"><i class="ri-delete-bin-line" style="font-size:15px;"></i>Gỡ khỏi trình đơn</button>
+                  <div style="height:1px;margin:5px 0;background:var(--color-body,#f4f5fa);"></div>
+                  <button class="mn-pi" style="color:var(--color-admin-danger-text,#bf371a);" onClick="{{ r.onDel }}"><i class="ri-delete-bin-line" style="font-size:15px;color:var(--color-admin-danger-text,#bf371a);"></i>Gỡ khỏi trình đơn</button>
                 </div>
               </sc-if>
             </div>
@@ -394,7 +431,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
             </sc-if>
 
             <sc-if value="{{ r.editOn }}" hint-placeholder-val="{{ false }}">
-              <div style="padding:14px 16px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:#fbfcfd;">
+              <div style="padding:14px 16px 16px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface-muted,#f8f9fb);">
                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;">
                   <label style="display:flex;flex-direction:column;gap:6px;min-width:0;">
                     <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Nhãn hiển thị<span class="mn-chip mn-lg">{{ locCode }}</span></span>
@@ -411,7 +448,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
                   <div style="display:flex;flex-direction:column;gap:6px;min-width:0;">
                     <span style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Mô tả ngắn<span class="mn-chip mn-lg">{{ locCode }}</span><span style="margin-left:auto;font-size:12px;color:{{ edDescCountColor }};font-weight:400;">{{ edDescCount }}</span></span>
                     <span style="display:flex;flex-direction:column;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);overflow:hidden;" data-focus-wrap="">
-                      <span style="display:flex;align-items:center;gap:2px;padding:4px 5px;border-bottom:1px solid #f4f5fa;background:#fbfcfd;">
+                      <span style="display:flex;align-items:center;gap:2px;padding:4px 5px;border-bottom:1px solid var(--color-border-soft,#f6f7f9);background:var(--color-surface-muted,#f8f9fb);">
                         <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescBold }}" title="Chữ đậm (Ctrl+B)" aria-label="Chữ đậm (Ctrl+B)"><i class="ri-bold" style="font-size:15px;"></i></button>
                         <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescItalic }}" title="Chữ nghiêng (Ctrl+I)" aria-label="Chữ nghiêng (Ctrl+I)"><i class="ri-italic" style="font-size:15px;"></i></button>
                         <button class="mn-hit" style="width:28px;height:28px;" onClick="{{ onDescLink }}" title="Chèn liên kết" aria-label="Chèn liên kết"><i class="ri-link" style="font-size:15px;"></i></button>
@@ -439,7 +476,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
                           <span style="display:flex;flex-direction:column;gap:8px;margin-top:9px;max-height:230px;overflow:auto;">
                             <sc-for list="{{ iconGroups }}" as="ig" hint-placeholder-count="3">
                               <span style="display:flex;flex-direction:column;gap:6px;">
-                                <span style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#c3c7cf;">{{ ig.g }}</span>
+                                <span style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-body-muted,#5b6275);">{{ ig.g }}</span>
                                 <span style="display:flex;flex-wrap:wrap;gap:6px;">
                                   <sc-for list="{{ ig.icons }}" as="ic" hint-placeholder-count="12">
                                     <button style="{{ ic.style }}" onClick="{{ ic.onClick }}" title="{{ ic.title }}" aria-label="{{ ic.title }}"><i class="{{ ic.cls }}"></i></button>
@@ -450,7 +487,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
                             <sc-if value="{{ iconEmptyOn }}"><span style="padding:14px 4px;text-align:center;font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Không có biểu tượng nào khớp — thử từ khác như “giao hàng”, “bảo hành”.</span></sc-if>
                           </span>
                           <span style="display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid var(--color-border-soft,#f6f7f9);">
-                            <span style="flex:1 1 auto;font-size:12px;color:#c3c7cf;">{{ iconCountText }}</span>
+                            <span style="flex:1 1 auto;font-size:12px;color:var(--color-body-muted,#5b6275);">{{ iconCountText }}</span>
                             <sc-if value="{{ iconNoneOn }}"><button class="mn-btn" style="min-height:30px;font-size:12px;" onClick="{{ onEdIconClear }}"><i class="ri-close-line" style="font-size:14px;"></i>Bỏ biểu tượng</button></sc-if>
                           </span>
                         </span>
@@ -527,7 +564,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
           </sc-if>
 
           <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid var(--color-border,#e9ecf4);">
-            <i class="ri-keyboard-line" style="font-size:14px;color:#ced4da;flex-shrink:0;"></i>
+            <i class="ri-keyboard-line" style="font-size:14px;color:var(--color-body-faint,#adb5bd);flex-shrink:0;"></i>
             <span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.6;">Kéo bằng chuột, hoặc dùng nút mũi tên và phím Alt + mũi tên khi đang mở một mục. Ctrl+Z hoàn tác.</span>
           </div>
         </div>
@@ -537,6 +574,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
           <div class="mn-h" style="flex-wrap:wrap;">
             <span class="mn-t">Khách sẽ thấy</span>
             <span style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-shrink:1;min-width:0;flex-wrap:wrap;">
+              <sc-if value="{{ embSiteOn }}" hint-placeholder-val="{{ false }}"><button class="mn-btn" onClick="{{ onOpenSite }}"><i class="ri-external-link-line" style="font-size:15px;"></i><span class="mn-blab">Xem trên website</span></button></sc-if>
               <sc-for list="{{ devices }}" as="d" hint-placeholder-count="2">
                 <button class="{{ d.cls }}" onClick="{{ d.onClick }}" title="{{ d.title }}"><i class="{{ d.icon }}" style="font-size:14px;"></i>{{ d.label }}</button>
               </sc-for>
@@ -544,13 +582,13 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
           </div>
           <div style="padding:16px;">
             <sc-if value="{{ pcOn }}" hint-placeholder-val="{{ true }}">
-              <div style="position:relative;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;">
+              <div style="position:relative;display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:12px 14px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;">
                 <span style="font-size:13px;font-weight:700;color:#0f172a;letter-spacing:-.2px;margin-right:8px;">An Vinh</span>
                 <sc-for list="{{ preview }}" as="p" hint-placeholder-count="5">
                   <span style="{{ p.wrapStyle }}">
                     <button onClick="{{ p.onClick }}" style="{{ p.style }}"><sc-if value="{{ p.iconOn }}"><i class="{{ p.icon }}" style="font-size:15px;"></i></sc-if>{{ p.label }}<sc-if value="{{ p.badgeOn }}"><span style="display:inline-flex;align-items:center;height:15px;padding:0 5px;border-radius:20px;background:#f06548;font-size:12px;font-weight:700;color:#fff;">{{ p.badgeText }}</span></sc-if><sc-if value="{{ p.hasKids }}"><i class="{{ p.chev }}" style="font-size:14px;"></i></sc-if></button>
                     <sc-if value="{{ p.openOn }}">
-                      <span style="position:absolute;top:100%;left:0;z-index:10;display:flex;flex-direction:column;min-width:186px;padding:5px 0;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 6px 18px rgba(56,65,74,.18);">
+                      <span style="position:absolute;top:100%;left:0;z-index:10;display:flex;flex-direction:column;min-width:186px;padding:5px 0;border:1px solid #e2e8f0;border-radius:6px;background:#fff;box-shadow:0 6px 18px rgba(56,65,74,.18);">
                         <sc-for list="{{ p.kids }}" as="k" hint-placeholder-count="3">
                           <span style="display:flex;flex-direction:column;gap:2px;padding:8px 13px;">
                             <span style="font-size:12.5px;color:#334155;white-space:nowrap;">{{ k.label }}</span>
@@ -567,7 +605,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
                     <sc-if value="{{ p.megaOn }}">
                       <span style="{{ p.megaStyle }}">
                         <sc-if value="{{ p.megaIntroOn }}">
-                          <span style="display:flex;flex-direction:column;gap:8px;padding-right:18px;border-right:1px solid var(--color-border,#e9ecf4);">
+                          <span style="display:flex;flex-direction:column;gap:8px;padding-right:18px;border-right:1px solid #e2e8f0;">
                             <span style="font-size:16px;font-weight:700;color:#0f172a;letter-spacing:-.2px;">{{ p.megaTitle }}</span>
                             <span style="font-size:12px;color:#475569;line-height:1.75;text-wrap:pretty;">{{ p.megaDesc }}</span>
                           </span>
@@ -595,8 +633,8 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
               </sc-if>
             </sc-if>
             <sc-if value="{{ mbOn }}" hint-placeholder-val="{{ false }}">
-              <div style="width:100%;max-width:300px;margin:0 auto;border:1px solid var(--color-border,#e9ecf4);border-radius:8px;overflow:hidden;">
-                <div style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid var(--color-border,#e9ecf4);"><i class="ri-menu-2-line" style="font-size:16px;color:#334155;"></i><span style="font-size:13px;font-weight:700;color:#0f172a;">An Vinh</span></div>
+              <div style="width:100%;max-width:300px;margin:0 auto;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden;background:#fff;">
+                <div style="display:flex;align-items:center;gap:8px;padding:11px 13px;border-bottom:1px solid #e2e8f0;"><i class="ri-menu-2-line" style="font-size:16px;color:#334155;"></i><span style="font-size:13px;font-weight:700;color:#0f172a;">An Vinh</span></div>
                 <sc-for list="{{ previewMobile }}" as="p" hint-placeholder-count="6">
                   <div style="{{ p.style }}">{{ p.label }}<sc-if value="{{ p.hasKids }}"><i class="ri-arrow-right-s-line" style="font-size:15px;color:#94a3b8;margin-left:auto;"></i></sc-if></div>
                 </sc-for>
@@ -628,8 +666,11 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 
           <sc-if value="{{ urlTabOn }}" hint-placeholder-val="{{ false }}">
             <div style="padding:4px 12px 14px;display:flex;flex-direction:column;gap:10px;">
-              <input class="mn-inp" value="{{ newLabel }}" onChange="{{ onNewLabel }}" placeholder="Nhãn hiển thị, ví dụ: Bảng giá" />
-              <input class="mn-inp" value="{{ newUrl }}" onChange="{{ onNewUrl }}" placeholder="https://… · /duong-dan · số điện thoại · email" />
+              <label style="display:flex;flex-direction:column;gap:6px;min-width:0;"><span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Nhãn hiển thị</span>
+              <input class="mn-inp" value="{{ newLabel }}" onChange="{{ onNewLabel }}" placeholder="Ví dụ: Bảng giá" /></label>
+              <label style="display:flex;flex-direction:column;gap:6px;min-width:0;"><span style="font-size:12px;font-weight:600;color:var(--color-body-text,#3c4765);">Địa chỉ</span>
+              <input class="mn-inp" value="{{ newUrl }}" onChange="{{ onNewUrl }}" placeholder="Ví dụ: /bang-gia" /></label>
+              <sc-if value="{{ urlEmptyOn }}" hint-placeholder-val="{{ true }}"><span style="font-size:12px;color:var(--color-body-muted,#5b6275);line-height:1.55;text-wrap:pretty;">Dán địa chỉ web (https://…), đường dẫn bắt đầu bằng /, số điện thoại hoặc email.</span></sc-if>
               <sc-if value="{{ urlHintOn }}"><span style="font-size:12px;color:{{ urlHintColor }};line-height:1.55;text-wrap:pretty;">{{ urlHint }}</span></sc-if>
               <button class="mn-btn" style="justify-content:center;" onClick="{{ onAddUrl }}" disabled="{{ addUrlOff }}"><i class="ri-add-line" style="font-size:15px;"></i>Thêm liên kết</button>
             </div>
@@ -637,9 +678,9 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 
           <sc-if value="{{ listTabOn }}" hint-placeholder-val="{{ true }}">
             <div style="padding:0 12px 10px;">
-              <div style="display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--color-border-strong,#e9ebec);border-radius:4px;background:var(--color-surface,#fff);" data-focus-wrap="">
+              <div class="mn-tsearch" style="display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--color-border-input,#878a99);border-radius:4px;background:var(--color-surface,#fff);" data-focus-wrap="">
                 <i class="ri-search-line" style="font-size:15px;color:var(--color-body-muted,#5b6275);"></i>
-                <input value="{{ search }}" onChange="{{ onSearch }}" placeholder="{{ searchPh }}" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);" />
+                <input value="{{ search }}" onChange="{{ onSearch }}" aria-label="{{ searchPh }}" placeholder="{{ searchPh }}" style="flex:1 1 auto;min-width:0;min-height:36px;border:0;outline:none;background:transparent;font:inherit;font-size:12.5px;color:var(--color-heading,#1f2b4d);" />
               </div>
             </div>
             <div style="max-height:300px;overflow:auto;border-top:1px solid var(--color-border,#e9ecf4);">
@@ -653,7 +694,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
                     <span style="font-size:12px;color:var(--color-body-muted,#5b6275);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ s.meta }}</span>
                   </span>
                   <sc-if value="{{ s.used }}"><span class="mn-chip mn-lg">Đã có</span></sc-if>
-                  <sc-if value="{{ s.draft }}"><span class="mn-chip" style="background:rgba(247,184,75,.16);color:var(--color-admin-warning-text,#a9750a);">Chưa đăng</span></sc-if>
+                  <sc-if value="{{ s.draft }}"><span class="mn-chip" style="background:color-mix(in srgb,var(--color-admin-warning,#f7b84b) 16%,transparent);color:var(--color-admin-warning-text,#a9750a);">Chưa đăng</span></sc-if>
                 </button>
               </sc-for>
               <sc-if value="{{ srcEmpty }}" hint-placeholder-val="{{ false }}">
@@ -672,7 +713,7 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
 
   <sc-if value="{{ barOn }}" hint-placeholder-val="{{ false }}">
     <div data-sticky-savebar="" style="position:sticky;bottom:0;z-index:5;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 24px;border-top:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff);box-shadow:0 -1px 2px rgba(56,65,74,.08);">
-      <i class="ri-error-warning-line" style="font-size:16px;color:#f7b84b;flex-shrink:0;"></i>
+      <i class="ri-error-warning-line" style="font-size:16px;color:var(--color-admin-warning-text,#906405);flex-shrink:0;"></i>
       <span style="font-size:12.5px;color:var(--color-body-text,#3c4765);line-height:1.6;">{{ dirtyText }}</span>
       <span style="flex:1 1 auto;"></span>
       <button class="mn-btn" onClick="{{ onReset }}" title="Trả toàn bộ trình đơn về đúng lần lưu gần nhất"><i class="ri-arrow-go-back-line" style="font-size:14px;"></i>Bỏ mọi thay đổi</button>
@@ -700,22 +741,22 @@ input::placeholder{color:var(--color-body-muted,#5b6275);}
         <div style="{{ g.style }}"><i class="{{ g.icon }}" style="font-size:15px;color:var(--color-body-muted,#5b6275);flex-shrink:0;"></i>{{ g.label }}</div>
       </sc-for>
       <sc-if value="{{ ghostCountOn }}">
-        <div style="padding:5px 12px;border-top:1px solid var(--color-border,#e9ecf4);background:rgba(32,80,160,.06);font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);">{{ ghostCount }}</div>
+        <div style="padding:5px 12px;border-top:1px solid var(--color-border,#e9ecf4);background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,transparent);font-size:12px;font-weight:600;color:var(--color-accent,#2050a0);">{{ ghostCount }}</div>
       </sc-if>
     </div>
   </sc-if>
 
   <sc-if value="{{ toastOn }}" hint-placeholder-val="{{ false }}">
-    <div role="status" aria-live="polite" style="position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:11px;padding:11px 16px;border-radius:6px;background:#1f2b4d;color:#fff;box-shadow:0 6px 20px rgba(56,65,74,.3);max-width:min(560px,calc(100vw - 32px));">
+    <div role="status" aria-live="polite" style="position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:11px;padding:11px 16px;border-radius:6px;background:var(--color-heading,#1f2b4d);color:var(--color-surface,#fff);box-shadow:0 6px 20px rgba(56,65,74,.3);max-width:min(560px,calc(100vw - 32px));">
       <i class="{{ toastIcon }}" style="font-size:16px;flex-shrink:0;"></i>
       <span style="font-size:12.5px;line-height:1.6;">{{ toastText }}</span>
-      <sc-if value="{{ toastUndoOn }}"><button onClick="{{ onUndo }}" style="min-height:30px;padding:0 10px;border:1px solid rgba(255,255,255,.28);border-radius:4px;background:transparent;font:inherit;font-size:12px;font-weight:600;color:#fff;cursor:pointer;white-space:nowrap;">Hoàn tác</button></sc-if>
+      <sc-if value="{{ toastUndoOn }}"><button onClick="{{ onUndo }}" style="min-height:30px;padding:0 10px;border:1px solid currentColor;border-radius:4px;background:transparent;font:inherit;font-size:12px;font-weight:600;color:inherit;cursor:pointer;white-space:nowrap;">Hoàn tác</button></sc-if>
     </div>
   </sc-if>
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;siteLangs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1 ngôn ngữ&quot;,&quot;3 ngôn ngữ&quot;,&quot;8 ngôn ngữ&quot;],&quot;default&quot;:&quot;3 ngôn ngữ&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngữ cảnh website&quot;},&quot;quotaState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Còn nhiều&quot;,&quot;Sắp hết&quot;,&quot;Đã hết&quot;],&quot;default&quot;:&quot;Còn nhiều&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngữ cảnh website&quot;},&quot;showPreview&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Nhúng vào Admin Shell&quot;},&quot;embedId&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;menus&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Nhúng vào Admin Shell&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(dirty: boolean) =&gt; void&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;siteLangs&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;1 ngôn ngữ&quot;,&quot;3 ngôn ngữ&quot;,&quot;8 ngôn ngữ&quot;],&quot;default&quot;:&quot;3 ngôn ngữ&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngữ cảnh website&quot;},&quot;quotaState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Còn nhiều&quot;,&quot;Sắp hết&quot;,&quot;Đã hết&quot;],&quot;default&quot;:&quot;Còn nhiều&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Ngữ cảnh website&quot;},&quot;showPreview&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiển thị&quot;},&quot;embedded&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Nhúng vào Admin Shell&quot;},&quot;embedId&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;menus&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Nhúng vào Admin Shell&quot;},&quot;designNotes&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Hiện ghi chú thiết kế&quot;},&quot;onDirty&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n: number) =&gt; void&quot;},&quot;onInvalid&quot;:{&quot;editor&quot;:null,&quot;tsType&quot;:&quot;(n: number) =&gt; void&quot;}}">
 /* Trình đơn — mô hình (CLAUDE.md §1)
    Thực thể: Menu {id,name,items} · Vị trí {header,footer,mobile} → trỏ tới đúng 1 menu ·
    Mục {kind,ref,label(i18n),url,hidden,blank,cta,children}.
@@ -787,7 +828,7 @@ class Component extends DCLogic {
   ICON_GROUPS = [
     { g: 'Hay dùng', list: [
       ['ri-home-4-line', 'trang chủ nhà home'], ['ri-information-line', 'giới thiệu thông tin về chúng tôi'],
-      ['ri-building-2-line', 'công ty toà nhà trụ sở'], ['ri-building-4-line', 'nhà máy xưởng sản xuất'],
+      ['ri-building-2-line', 'công ty tòa nhà trụ sở'], ['ri-building-4-line', 'nhà máy xưởng sản xuất'],
       ['ri-tools-line', 'dịch vụ gia công sửa chữa kỹ thuật'], ['ri-hammer-line', 'thi công lắp đặt sửa'],
       ['ri-box-3-line', 'sản phẩm hàng hóa'], ['ri-price-tag-3-line', 'bảng giá báo giá khuyến mãi'],
       ['ri-newspaper-line', 'tin tức bài viết blog'], ['ri-phone-line', 'điện thoại gọi hotline'],
@@ -880,7 +921,7 @@ class Component extends DCLogic {
     cat: [
       { ref: 'c-cnc', label: 'Gia công CNC', meta: 'Chuyên mục dịch vụ · 14 bài', sum: 'Tiện, phay, mài chi tiết chính xác theo bản vẽ' },
       { ref: 'c-laser', label: 'Cắt laser CNC', meta: 'Chuyên mục dịch vụ · 9 bài', sum: 'Cắt tấm thép, inox, nhôm dày tới 20mm' },
-      { ref: 'c-mold', label: 'Chế tạo khuôn mẫu', meta: 'Chuyên mục dịch vụ · 6 bài', sum: 'Thiết kế và chế tạo khuôn nhựa, khuôn dập' },
+      { ref: 'c-mold', label: 'Chế tạo khuôn mẫu', meta: 'Chuyên mục dịch vụ · 6 bài', sum: 'Thiết kế và chế tạo khuôn nhựa, khuôn dập', noLoc: ['JA'] },
       { ref: 'c-news', label: 'Tin tức', meta: 'Chuyên mục tin tức · 22 bài' },
       { ref: 'c-tech', label: 'Kiến thức kỹ thuật', meta: 'Chuyên mục tin tức · 31 bài' }
     ],
@@ -902,7 +943,8 @@ class Component extends DCLogic {
     prod: [
       { ref: 'g-shaft', label: 'Trục truyền động', meta: 'Nhóm sản phẩm · 18 mã' },
       { ref: 'g-gear', label: 'Sản phẩm', meta: 'Nhóm sản phẩm · 26 mã' },
-      { ref: 'g-plate', label: 'Chi tiết dạng tấm', meta: 'Nhóm sản phẩm · 11 mã' }
+      { ref: 'g-plate', label: 'Chi tiết dạng tấm', meta: 'Nhóm sản phẩm · 11 mã' },
+      { ref: 'g-bevel', label: 'Bánh răng côn', meta: 'Nhóm sản phẩm · 4 mã', draft: true }
     ]
   };
   KIND = {
@@ -943,10 +985,15 @@ class Component extends DCLogic {
       { id: 'foot', key: 'trinh-don-chan-trang', name: 'Trình đơn chân trang', items: [
         this.mk('page', 'p-policy', 'Chính sách bảo hành', '/chinh-sach-bao-hanh'),
         this.mk('page', 'p-qc', 'Kiểm tra chất lượng', '/kiem-tra-chat-luong', { broken: true }),
-        this.mk('url', '', 'Fanpage', 'https://facebook.com/anvinh.cokhi', { blank: true, label: { VI: 'Fanpage', EN: 'Fanpage', JA: 'Fanpage' } })
+        this.mk('url', '', 'Fanpage', 'https://facebook.com/anvinh.cokhi', { blank: true, label: { VI: 'Fanpage', EN: 'Fanpage', JA: 'Fanpage' } }),
+        this.mk('prod', 'g-bevel', 'Bánh răng côn', '/san-pham/banh-rang-con', { label: { VI: 'Bánh răng côn', EN: 'Bevel gears' } }),
+        this.mk('prod', 'g-old', 'Phụ tùng thay thế', '/san-pham/phu-tung-thay-the', { broken: true, label: { VI: 'Phụ tùng thay thế', EN: 'Spare parts' } })
       ] }
     ];
-    const slots = { topbar: '', primary: 'main', handheld: '@same', 'footer-1': 'foot', 'footer-2': '', 'footer-bottom': '', sidebar: '', social: '', 'my-account': '' };
+    const slots = { topbar: '', primary: 'main', handheld: '@same', 'footer-1': 'foot', 'footer-2': '', 'footer-bottom': '', sidebar: '', social: '', 'my-account': '',
+      /* menu_assignments theo ngôn ngữ (D1-2): vị trí × ngôn ngữ → 1 trình đơn. '@shared' = gán cùng trình đơn của bản nguồn,
+         <mã trình đơn> = trình đơn riêng, không có dòng = chưa gán (website hiện bản nguồn bằng nhãn bản nguồn). */
+      __loc: { primary: { EN: '@shared', JA: '@shared' }, 'footer-1': { EN: '@shared', JA: '@shared' } } };
     this.state = {
       menus: menus, slots: slots, saved: JSON.stringify({ menus: menus, slots: slots }),
       past: [], future: [], cur: 'main', loc: this.defLang,
@@ -1110,7 +1157,7 @@ class Component extends DCLogic {
     return b;
   }
   badgeExpired(it) { const b = it && it.badge; return !!(b && b.t && b.u && new Date(b.u + 'T23:59:59') < this.today()); }
-  /* Thùng rác 30 ngày (§12): gỡ mục không phải là mất — vẫn lấy lại được sau khi đóng tab. */
+  /* Thùng rác 30 ngày (§12): gỡ mục không phải là mất — vẫn khôi phục được sau khi đóng tab. */
   remove(id) {
     const c = this.ctx(id); if (!c) return;
     const kids = this.count(c.it.children);
@@ -1118,9 +1165,9 @@ class Component extends DCLogic {
       const snapshot = this.clone(c.it), menuId = this.state.cur;
       this.mutate(m => { const x = this.ctx(id, m.items); if (!x) return false; x.list.splice(x.i, 1); });
       this.setState(st => ({ sel: null, ask: null, rowMenu: null, trash: [{ it: snapshot, menu: menuId, at: this.today().getTime() }].concat(st.trash || []).slice(0, 50) }));
-      this.toast('Đã gỡ “' + this.lbl(c.it) + '” — giữ trong thùng rác 30 ngày, lấy lại được bất cứ lúc nào.', 'ri-delete-bin-line', true);
+      this.toast('Đã gỡ “' + this.lbl(c.it) + '” — giữ trong Thùng rác 30 ngày, khôi phục được bất cứ lúc nào.', 'ri-delete-bin-line', true);
     };
-    if (kids) this.setState({ rowMenu: null, ask: { title: 'Gỡ mục này và ' + kids + ' mục con?', body: '“' + this.lbl(c.it) + '” cùng ' + kids + ' mục bên trong sẽ biến mất khỏi trình đơn. Trang và nội dung vẫn còn nguyên — chỉ là khách không còn lối vào từ trình đơn. Cả khối được giữ trong thùng rác 30 ngày, lấy lại lúc nào cũng được.', ok: 'Gỡ tất cả', run: run } });
+    if (kids) this.setState({ rowMenu: null, ask: { title: 'Gỡ mục này và ' + kids + ' mục con?', body: '“' + this.lbl(c.it) + '” cùng ' + kids + ' mục bên trong sẽ biến mất khỏi trình đơn. Trang và nội dung vẫn còn nguyên — chỉ là khách không còn lối vào từ trình đơn. Cả khối được giữ trong thùng rác 30 ngày, khôi phục lúc nào cũng được.', ok: 'Gỡ tất cả', run: run } });
     else run();
   }
   dup(id) {
@@ -1258,7 +1305,7 @@ class Component extends DCLogic {
     const re = (x) => { x.id = 'i' + (++this._seq); (x.children || []).forEach(re); }; re(node);
     this.mutate((m, menus) => { const tgt = menus.find(x => x.id === t.menu) || m; tgt.items.push(node); });
     this.setState(st => ({ trash: (st.trash || []).filter((_, i) => i !== idx) }));
-    this.toast('Đã lấy lại “' + this.lbl(node) + '” — nằm ở cuối trình đơn.', 'ri-arrow-go-back-line', true);
+    this.toast('Đã khôi phục “' + this.lbl(node) + '” — nằm ở cuối trình đơn.', 'ri-arrow-go-back-line', true);
   }
   dupMenu(id) {
     const m = this.state.menus.find(x => x.id === id); if (!m) return;
@@ -1274,7 +1321,8 @@ class Component extends DCLogic {
   delMenu(id) {
     const m = this.state.menus.find(x => x.id === id); if (!m) return;
     const usedIn = this.areasOf().filter(a => this.menuAt(a.k) === id);
-    if (usedIn.length) { this.toast('“' + m.name + '” đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).join(', ') + ' — chọn trình đơn khác cho chỗ đó trước đã.', 'ri-error-warning-line'); return; }
+    const lu = this.locUse(id);
+    if (usedIn.length || lu.length) { this.toast('“' + m.name + '” đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).concat(lu.map(x => x.a.l.toLowerCase() + ' (' + this.locName(x.c) + ')')).join(', ') + ' — chọn trình đơn khác cho chỗ đó trước đã.', 'ri-error-warning-line'); return; }
     this.setState({ ask: { title: 'Xóa “' + m.name + '”?', body: 'Cách sắp xếp ' + this.count(m.items) + ' mục trong trình đơn này sẽ mất. Trang và nội dung vẫn còn nguyên, và bạn hoàn tác lại được ngay sau đó.', ok: 'Xóa trình đơn', run: () => {
       this.mutate((cm, menus) => { const i = menus.findIndex(x => x.id === id); if (i < 0) return false; menus.splice(i, 1); });
       this.setState(st => ({ cur: st.cur === id ? ((st.menus.find(x => x.id !== id) || {}).id || st.cur) : st.cur, ask: null }));
@@ -1312,6 +1360,74 @@ class Component extends DCLogic {
     this.mutate((m, menus) => { menus.push({ id: id, key: key, name: 'Trình đơn mới', items: [] }); });
     this._focusRename = true;
     this.setState({ cur: id, renaming: id, renameVal: 'Trình đơn mới' });
+  }
+
+  // ---------- nguồn của mục: website tự ẩn mục khách không mở được (MenuResolver) ----------
+  KW = { page: 'Trang', cat: 'Chuyên mục', prod: 'Sản phẩm' };
+  srcState(it) {
+    const kw = this.KW[it.kind]; if (!kw) return null;
+    if (it.broken) return { k: 'gone', label: kw + ' không còn', kw: kw, locs: [] };
+    const s = this.src(it); if (!s) return null;
+    if (s.draft) return { k: 'draft', label: kw + ' chưa đăng', kw: kw, locs: [] };
+    const miss = (s.noLoc || []).filter(c => this.codes().indexOf(c) >= 0);
+    if (miss.length) return { k: 'noloc', label: kw + ' chưa có bản ' + this.locName(miss[0]) + (miss.length > 1 ? ' +' + (miss.length - 1) : ''), kw: kw, locs: miss };
+    return null;
+  }
+  autoHidden(it) { const ss = this.srcState(it); return !!ss && (ss.k !== 'noloc' || ss.locs.indexOf(this.state.loc) >= 0); }
+  /* Tới nguồn bằng đường dẫn công khai (không id) — Shell đổi màn qua bs-goto. */
+  goSrc(it) {
+    const s = this.src(it), path = it.url || (s && s.meta) || '';
+    const screen = it.kind === 'page' ? 'pages.edit' : (it.kind === 'cat' ? 'posts.cats' : 'catalog.list');
+    const name = (s && s.label) || this.lbl(it, this.defLang);
+    try { document.dispatchEvent(new CustomEvent('bs-goto', { detail: { screen: screen, params: { slug: path } } })); } catch (e) {}
+    if (!this.props.embedded) this.toast('Mở ' + (this.KW[it.kind] || '').toLowerCase() + ' “' + name + '” (' + path + ') ở màn của nó.', 'ri-external-link-line');
+  }
+
+  // ---------- trình đơn theo ngôn ngữ (menu_assignments: vị trí × ngôn ngữ) ----------
+  locOf(areaK, c) {
+    const v = ((this.state.slots.__loc || {})[areaK] || {})[c];
+    if (!v) return '@none';
+    if (v !== '@shared' && !this.state.menus.some(m => m.id === v)) return '@none';
+    return v;
+  }
+  locUse(id) {
+    const o = [], L = this.state.slots.__loc || {}, codes = this.codes();
+    this.areasOf().forEach(a => { if (!this.menuAt(a.k) || this.state.slots[a.k] === '@same') return; Object.keys(L[a.k] || {}).forEach(c => { if (codes.indexOf(c) >= 0 && L[a.k][c] === id) o.push({ a: a, c: c }); }); });
+    return o;
+  }
+  defLow() { const n = this.locName(this.defLang); return this.defLang === 'VI' ? n.charAt(0).toLowerCase() + n.slice(1) : n; }
+  setLocs(list, v) {
+    this.mutate((m, menus, slots) => {
+      const L = this.clone(slots.__loc || {});
+      list.forEach(x => { L[x.a] = Object.assign({}, L[x.a]); if (v === '@none') delete L[x.a][x.c]; else L[x.a][x.c] = v; });
+      slots.__loc = L;
+    });
+  }
+  setLoc(areaK, c, v) {
+    if (v === '@copy') { this.copyForLoc(areaK, c); return; }
+    if (this.locOf(areaK, c) === v) return;
+    const a = this.areasOf().find(x => x.k === areaK), ln = this.locName(c);
+    this.setLocs([{ a: areaK, c: c }], v);
+    const own = this.state.menus.find(m => m.id === v);
+    this.toast(a.l + ' · bản ' + ln + ': ' + (v === '@shared' ? 'dùng trình đơn chung, nhãn theo ' + ln : (v === '@none' ? 'chưa gán — website sẽ hiện trình đơn ' + this.defLow() + ' bằng ' + this.defLow() : 'dùng trình đơn riêng “' + (own ? own.name : '') + '”')) + ' — bấm Lưu để khách thấy.', 'ri-translate-2', true);
+  }
+  shareAll(list) {
+    const n = list.length; this.setLocs(list.map(x => ({ a: x.a.k, c: x.c })), '@shared');
+    this.toast('Đã gán trình đơn chung cho ' + n + ' chỗ chưa gán — nhãn theo từng ngôn ngữ. Bấm Lưu để khách thấy.', 'ri-links-line', true);
+  }
+  /* "Dùng trình đơn riêng" = sao chép trình đơn đang gán rồi Dịch các nhãn còn trống của bản đó (chỉ điền ô trống — §9). */
+  copyForLoc(areaK, c) {
+    const base = this.state.menus.find(m => m.id === this.menuAt(areaK)); if (!base) return;
+    const nid = 'm' + Date.now(), copy = this.clone(base);
+    copy.id = nid; copy.name = base.name + ' — ' + this.locName(c); copy.key = this.uniqueKey(this.slugify(copy.name), nid);
+    const re = (x) => { x.id = 'i' + (++this._seq); (x.children || []).forEach(re); }; copy.items.forEach(re);
+    let n = 0; this.walk(copy.items, it => { if (!(it.label || {})[c]) n++; });
+    const cost = this.trCost(n), can = n > 0 && cost <= this.aiLeft();
+    if (can) this.walk(copy.items, it => { if (!(it.label || {})[c]) { const vi = (it.label || {})[this.defLang] || ''; it.label = Object.assign({}, it.label, { [c]: (this.TR[c] && this.TR[c][vi]) || vi }); it.mt = true; } });
+    this.mutate((m, menus, slots) => { menus.push(copy); const L = this.clone(slots.__loc || {}); L[areaK] = Object.assign({}, L[areaK], { [c]: nid }); slots.__loc = L; });
+    this.setState(s => ({ cur: nid, loc: c, sel: null, aiUsed: s.aiUsed + (can ? cost : 0) }));
+    const nfm = (v) => (window.BSAI ? window.BSAI.nfm(v) : String(v));
+    this.toast('Đã tạo “' + copy.name + '” cho bản ' + this.locName(c) + (can ? ' và dịch ' + n + ' nhãn · dùng ' + nfm(cost) + ' từ AI' : (n ? ' — chưa đủ từ AI để dịch, nhập nhãn hoặc mua thêm từ AI' : '')) + '. Sửa rồi bấm Lưu.', 'ri-file-copy-2-line', true);
   }
 
   // ---------- chưa lưu (đếm theo mục thật — §7c) ----------
@@ -1407,16 +1523,16 @@ class Component extends DCLogic {
     const stat = {};
     codes.forEach(c => { let done = 0, mt = 0; this.walk(items, it => { if ((it.label || {})[c]) { done++; if (it.mt && c !== DEF) mt++; } }); stat[c] = { done: c === DEF ? total : done, total: total, mt: mt }; });
     const kindOf = (c) => { const s = stat[c]; if (c === DEF) return 'ok'; if (!s.done) return 'empty'; if (s.done < s.total) return 'part'; return s.mt ? 'mt' : 'ok'; };
-    const DOT = { empty: { css: 'border:1.5px dashed #adb5bd;background:transparent;', l: 'chưa có nội dung' }, mt: { css: 'background:#299cdb;', l: 'AI vừa dịch, chưa kiểm' }, part: { css: 'background:#f7b84b;', l: 'còn thiếu nhãn' }, ok: { css: 'background:#0ab39c;', l: 'đủ nội dung' } };
+    const DOT = { empty: { css: 'border:1.5px dashed var(--color-body-muted,#5b6275);background:transparent;', l: 'chưa có nội dung' }, mt: { css: 'background:var(--color-admin-info,#299cdb);', l: 'AI vừa dịch, chưa kiểm' }, part: { css: 'background:var(--color-admin-warning,#f7b84b);', l: 'còn thiếu nhãn' }, ok: { css: 'background:var(--color-admin-success,#0ab39c);', l: 'đủ nội dung' } };
     const fit = [DEF, S.loc].filter((v, i, a) => a.indexOf(v) === i).concat(codes.filter(c => c !== DEF && c !== S.loc).slice(0, 2)).filter((v, i, a) => a.indexOf(v) === i);
     const langPills = codes.filter(c => fit.indexOf(c) >= 0).map(c => {
       const on = c === S.loc, k = kindOf(c);
       return {
         name: this.locName(c), isDef: c === DEF, onClick: () => this.setState({ loc: c, sel: null, rowMenu: null }),
         title: this.locName(c) + ' — ' + DOT[k].l + ' · ' + stat[c].done + '/' + stat[c].total + ' nhãn' + (this.isPub(c) ? '' : ' · chưa hiển thị ra ngoài'),
-        style: 'display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border:1px solid ' + (on ? '#2050a0' : '#e9ebec') + ';border-radius:20px;background:' + (on ? 'rgba(32,80,160,.07)' : '#fff') + ';font:inherit;cursor:pointer;white-space:nowrap;',
+        style: 'display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:0 12px;border:1px solid ' + (on ? 'var(--color-accent,#2050a0)' : 'var(--color-border-strong,#e9ebec)') + ';border-radius:20px;background:' + (on ? 'color-mix(in srgb,var(--color-accent,#2050a0) 7%,transparent)' : 'var(--color-surface,#fff)') + ';font:inherit;cursor:pointer;white-space:nowrap;',
         dot: 'width:8px;height:8px;border-radius:50%;flex-shrink:0;' + DOT[k].css,
-        nameStyle: 'font-size:12.5px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? '#1f2b4d' : '#3c4765') + ';'
+        nameStyle: 'font-size:12.5px;font-weight:' + (on ? 600 : 500) + ';color:' + (on ? 'var(--color-heading,#1f2b4d)' : 'var(--color-body-text,#3c4765)') + ';'
       };
     });
     const miss = this.missing(), cost = this.trCost(miss.length), left = this.aiLeft();
@@ -1425,13 +1541,13 @@ class Component extends DCLogic {
     const trOff = !miss.length || cost > left;
     const curStat = stat[S.loc], curKind = kindOf(S.loc);
     let note;
-    if (out) note = { t: 'Đã hết từ AI trong tháng — mua thêm từ AI hoặc nâng gói để dịch tiếp. Bạn vẫn tự nhập nhãn được bình thường.', i: 'ri-error-warning-line', fg: '#d84a2f', bg: 'rgba(240,101,72,.07)' };
-    else if (low) note = { t: 'Sắp hết từ AI — còn ' + nfm(left) + ' từ (' + enough + ').', i: 'ri-error-warning-line', fg: '#b57d0a', bg: 'rgba(247,184,75,.09)' };
-    else if (onDefault) note = { t: 'Đây là bản nguồn — đặt tên mục thật rõ ở đây, rồi bấm Dịch để đổ sang ' + (codes.length - 1) + ' ngôn ngữ còn lại.', i: 'ri-information-line', fg: '#5e6a85', bg: '#f8f9fb' };
-    else if (curKind === 'mt') note = { t: 'Bản ' + this.locName(S.loc) + ' do AI dịch từ ' + this.locName(DEF) + ' — sửa chỗ nào chưa ưng rồi bấm Lưu.', i: 'ri-sparkling-2-line', fg: '#1d7fb8', bg: 'rgba(41,156,219,.07)' };
-    else if (curKind === 'empty') note = { t: 'Bản ' + this.locName(S.loc) + ' chưa có nhãn nào — bấm Dịch để lấy từ ' + this.locName(DEF) + ', hoặc tự nhập.', i: 'ri-translate-2', fg: '#b57d0a', bg: 'rgba(247,184,75,.09)' };
-    else if (curKind === 'part') note = { t: 'Bản ' + this.locName(S.loc) + ' còn ' + (curStat.total - curStat.done) + ' nhãn trống — bấm Dịch để đổ nốt.', i: 'ri-error-warning-line', fg: '#b57d0a', bg: 'rgba(247,184,75,.09)' };
-    else note = { t: 'Bản ' + this.locName(S.loc) + ' đã đủ nhãn' + (this.isPub(S.loc) ? ' và đang hiển thị cho khách.' : ' nhưng chưa hiển thị ra ngoài — bật ở Cài đặt › Ngôn ngữ website.'), i: 'ri-check-line', fg: '#0a8f7f', bg: 'rgba(10,179,156,.07)' };
+    if (out) note = { t: 'Đã hết từ AI trong tháng — mua thêm từ AI hoặc nâng gói để dịch tiếp. Bạn vẫn tự nhập nhãn được bình thường.', i: 'ri-error-warning-line', fg: 'var(--color-admin-danger-text,#bf371a)', bg: 'color-mix(in srgb,var(--color-admin-danger,#f06548) 7%,transparent)' };
+    else if (low) note = { t: 'Sắp hết từ AI — còn ' + nfm(left) + ' từ (' + enough + ').', i: 'ri-error-warning-line', fg: 'var(--color-admin-warning-text,#906405)', bg: 'color-mix(in srgb,var(--color-admin-warning,#f7b84b) 9%,transparent)' };
+    else if (onDefault) note = { t: 'Đây là bản nguồn — đặt tên mục thật rõ ở đây, rồi bấm Dịch để đổ sang ' + (codes.length - 1) + ' ngôn ngữ còn lại.', i: 'ri-information-line', fg: 'var(--color-body-muted,#5b6275)', bg: 'var(--color-surface-muted,#f8f9fb)' };
+    else if (curKind === 'mt') note = { t: 'Bản ' + this.locName(S.loc) + ' do AI dịch từ ' + this.locName(DEF) + ' — sửa chỗ nào chưa ưng rồi bấm Lưu.', i: 'ri-sparkling-2-line', fg: 'var(--color-admin-info-text,#026fa2)', bg: 'color-mix(in srgb,var(--color-admin-info,#299cdb) 7%,transparent)' };
+    else if (curKind === 'empty') note = { t: 'Bản ' + this.locName(S.loc) + ' chưa có nhãn nào — bấm Dịch để lấy từ ' + this.locName(DEF) + ', hoặc tự nhập.', i: 'ri-translate-2', fg: 'var(--color-admin-warning-text,#906405)', bg: 'color-mix(in srgb,var(--color-admin-warning,#f7b84b) 9%,transparent)' };
+    else if (curKind === 'part') note = { t: 'Bản ' + this.locName(S.loc) + ' còn ' + (curStat.total - curStat.done) + ' nhãn trống — bấm Dịch để đổ nốt.', i: 'ri-error-warning-line', fg: 'var(--color-admin-warning-text,#906405)', bg: 'color-mix(in srgb,var(--color-admin-warning,#f7b84b) 9%,transparent)' };
+    else note = { t: 'Bản ' + this.locName(S.loc) + ' đã đủ nhãn' + (this.isPub(S.loc) ? ' và đang hiển thị cho khách.' : ' nhưng chưa hiển thị ra ngoài — bật ở Cài đặt › Ngôn ngữ website.'), i: 'ri-check-line', fg: 'var(--color-admin-success-text,#047767)', bg: 'color-mix(in srgb,var(--color-admin-success,#0ab39c) 7%,transparent)' };
 
     // --- máy soát: mỗi vấn đề một hàng, có đường xử lý ngay ---
     const usedRefs = {}; this.walk(items, it => { if (it.ref) usedRefs[it.ref] = true; });
@@ -1440,29 +1556,42 @@ class Component extends DCLogic {
     const focus = (id) => () => { const c = this.ctx(id); const fold = Object.assign({}, S.fold); let p = c && c.parent; while (p) { delete fold[p.id]; const pc = this.ctx(p.id); p = pc ? pc.parent : null; } this.setState({ sel: id, fold: fold, filter: 'all', tq: '' }); };
     rowsAll.forEach(x => {
       const it = x.it;
-      if (it.broken) issues.push({ id: 'b' + it.id, icon: 'ri-close-circle-line', color: '#f06548', text: '“' + (this.lbl(it) || this.lbl(it, DEF)) + '” trỏ tới một trang đã bị xóa — khách bấm vào sẽ không xem được gì.', go: it.id, fix: 'Gỡ mục này', fixIcon: 'ri-delete-bin-line', fixTitle: 'Gỡ khỏi trình đơn (hoàn tác được)', run: () => this.remove(it.id) });
-      const s = this.src(it);
-      if (s && s.draft && !it.hidden) issues.push({ id: 'd' + it.id, icon: 'ri-eye-off-line', color: '#f7b84b', text: '“' + (this.lbl(it) || this.lbl(it, DEF)) + '” trỏ tới trang chưa đăng — nên ẩn mục này cho tới khi trang lên sóng.', go: it.id, fix: 'Ẩn mục này', fixIcon: 'ri-eye-off-line', fixTitle: 'Ẩn khỏi trình đơn cho tới khi trang được đăng', run: () => { this.setField(it.id, 'hidden', true); this.toast('Đã ẩn mục — bật lại bất cứ lúc nào.', 'ri-eye-off-line', true); } });
+      const ss = this.srcState(it), nm0 = '“' + (this.lbl(it) || this.lbl(it, DEF)) + '”', kwl = ss ? ss.kw.toLowerCase() : '';
+      if (ss && ss.k === 'gone') issues.push({ id: 'b' + it.id, icon: 'ri-close-circle-line', color: 'var(--color-admin-danger-text,#bf371a)', text: nm0 + ' trỏ tới ' + kwl + ' đã bị xóa — website đang tự ẩn mục này, khách không thấy.', go: it.id, fix: 'Gỡ mục này', fixIcon: 'ri-delete-bin-line', fixTitle: 'Gỡ khỏi trình đơn — giữ trong Thùng rác 30 ngày', run: () => this.remove(it.id) });
+      if (ss && ss.k === 'draft' && !it.hidden) issues.push({ id: 'd' + it.id, icon: 'ri-eye-off-line', color: 'var(--color-admin-warning-text,#906405)', text: nm0 + ' trỏ tới ' + kwl + ' chưa đăng — website đang tự ẩn mục này cho tới khi ' + kwl + ' được đăng.', go: it.id, srcOn: true, srcLabel: 'Mở ' + kwl, onSrc: () => this.goSrc(it), fix: 'Giữ ẩn cả sau khi đăng', fixIcon: 'ri-eye-off-line', fixTitle: 'Mục vẫn ẩn khi ' + kwl + ' đã đăng — bật lại bất cứ lúc nào', run: () => { this.setField(it.id, 'hidden', true); this.toast('Mục sẽ vẫn ẩn sau khi ' + kwl + ' được đăng — bật lại bất cứ lúc nào.', 'ri-eye-off-line', true); } });
+      if (ss && ss.k === 'noloc' && !it.hidden) issues.push({ id: 'l' + it.id, icon: 'ri-translate-2', color: 'var(--color-admin-warning-text,#906405)', text: nm0 + ' trỏ tới chuyên mục chưa có bản ' + ss.locs.map(c => this.locName(c)).join(', ') + ' — website đang tự ẩn mục này ở bản đó cho tới khi chuyên mục được dịch.', go: it.id, fix: 'Mở chuyên mục', fixIcon: 'ri-external-link-line', fixTitle: 'Thêm bản dịch cho chuyên mục ở màn Chuyên mục', run: () => this.goSrc(it) });
       /* Bảng lớn trỏ sang Thư viện khối: khối biến mất hoặc còn nháp thì khách thấy bảng trống.
          Trình đơn không tự sửa được — chỉ dẫn thẳng sang chỗ dựng khối. */
       if (it.mega && it.megaKind === 'block' && !it.hidden) {
         const nm = '“' + (this.lbl(it) || this.lbl(it, DEF)) + '”';
         const bl = this.blockOf(it.megaBlock);
-        if (!bl) issues.push({ id: 'mb' + it.id, icon: 'ri-layout-masonry-line', color: '#f06548', text: nm + ' bật bảng lớn dùng khối tự dựng nhưng chưa chọn được khối — khách mở ra sẽ thấy bảng trống.', go: it.id, fix: 'Mở Thư viện khối', fixIcon: 'ri-layout-masonry-line', fixTitle: 'Dựng khối ở vùng “Bảng lớn trình đơn” rồi quay lại chọn', run: () => this.openBlocks() });
-        else if (bl.status !== 'published') issues.push({ id: 'mb' + it.id, icon: 'ri-layout-masonry-line', color: '#f7b84b', text: 'Khối “' + bl.name + '” dùng cho ' + nm + ' còn nháp — bảng lớn sẽ trống cho tới khi khối được xuất bản.', go: it.id, fix: 'Mở Thư viện khối', fixIcon: 'ri-layout-masonry-line', fixTitle: 'Xuất bản khối này ở Thư viện khối', run: () => this.openBlocks() });
+        if (!bl) issues.push({ id: 'mb' + it.id, icon: 'ri-layout-masonry-line', color: 'var(--color-admin-danger-text,#bf371a)', text: nm + ' bật bảng lớn dùng khối tự dựng nhưng chưa chọn được khối — khách mở ra sẽ thấy bảng trống.', go: it.id, fix: 'Mở Thư viện khối', fixIcon: 'ri-layout-masonry-line', fixTitle: 'Dựng khối ở vùng “Bảng lớn trình đơn” rồi quay lại chọn', run: () => this.openBlocks() });
+        else if (bl.status !== 'published') issues.push({ id: 'mb' + it.id, icon: 'ri-layout-masonry-line', color: 'var(--color-admin-warning-text,#906405)', text: 'Khối “' + bl.name + '” dùng cho ' + nm + ' còn nháp — bảng lớn sẽ trống cho tới khi khối được đăng.', go: it.id, fix: 'Mở Thư viện khối', fixIcon: 'ri-layout-masonry-line', fixTitle: 'Đăng khối này ở Thư viện khối', run: () => this.openBlocks() });
       }
     });
     this.state.menus.forEach(m => {
-      const has = this.areasOf().some(sl => this.menuAt(sl.k) === m.id);
-      if (!has && !S.dismissed['slot-' + m.id]) issues.push({ id: 'slot' + m.id, icon: 'ri-layout-top-line', color: '#f7b84b', text: '“' + m.name + '” chưa gắn vào chỗ nào nên khách không nhìn thấy trình đơn này.', fix: 'Gắn vào chân trang', fixIcon: 'ri-layout-bottom-line', fixTitle: 'Cho trình đơn này hiển thị ở chân trang — cột 1', run: () => this.setSlot('footer-1', m.id) });
+      const has = this.areasOf().some(sl => this.menuAt(sl.k) === m.id) || this.locUse(m.id).length > 0;
+      if (!has && !S.dismissed['slot-' + m.id]) issues.push({ id: 'slot' + m.id, icon: 'ri-layout-top-line', color: 'var(--color-admin-warning-text,#906405)', text: '“' + m.name + '” chưa gắn vào chỗ nào nên khách không nhìn thấy trình đơn này.', fix: 'Gắn vào chân trang', fixIcon: 'ri-layout-bottom-line', fixTitle: 'Cho trình đơn này hiển thị ở chân trang — cột 1', run: () => this.setSlot('footer-1', m.id) });
     
     });
+    /* Ngôn ngữ chưa gán trình đơn (vd. vừa bật thêm) → website hiện bản nguồn bằng nhãn bản nguồn (MenuResolver.php:68-83). */
+    if (multi) {
+      const un = [];
+      this.areasOf().forEach(a => { if (!this.menuAt(a.k) || S.slots[a.k] === '@same') return; codes.filter(c => c !== DEF && this.locOf(a.k, c) === '@none').forEach(c => un.push({ a: a, c: c })); });
+      if (un.length) {
+        const ls = [], as = []; un.forEach(x => { if (ls.indexOf(x.c) < 0) ls.push(x.c); if (as.indexOf(x.a.l) < 0) as.push(x.a.l); });
+        issues.push({ id: 'loc', icon: 'ri-translate-2', color: 'var(--color-admin-warning-text,#906405)',
+          text: ls.length + ' ngôn ngữ chưa gán trình đơn (' + ls.map(c => this.locName(c)).join(', ') + ') ở ' + as.map(x => x.toLowerCase()).join(', ') + ' — website đang hiện trình đơn ' + this.defLow() + ' bằng ' + this.defLow() + ' cho khách xem các bản đó.',
+          srcOn: true, srcLabel: 'Xem vị trí', onSrc: () => this.setState(st => ({ fold2: Object.assign({}, st.fold2, { areas: false }) })),
+          fix: 'Dùng trình đơn chung', fixIcon: 'ri-links-line', fixTitle: 'Gán cùng trình đơn cho ' + un.length + ' chỗ — nhãn theo từng ngôn ngữ, nhãn trống lấy tên hiện tại của trang nguồn', run: () => this.shareAll(un) });
+      }
+    }
     if (OD.n && OD.area) {
       const A = OD.area, first = this.ctx(OD.ids[0]), par = first ? first.parent : null;
       // Lối thoát phải hiệu lực ở ĐÚNG vị trí đang siết: bảng lớn chỉ khi chỗ đó bung được panel.
       const useMega = !!(A.mg && par && !par.mega);
       issues.push({
-        id: 'deep', icon: 'ri-node-tree', color: '#f06548',
+        id: 'deep', icon: 'ri-node-tree', color: 'var(--color-admin-danger-text,#bf371a)',
         text: OD.n + ' mục nằm sâu quá mức “' + A.l + '” dựng được (' + (A.dp || 3) + ' cấp)'
           + (A.mg ? '' : ' và chỗ đó không bung được bảng lớn')
           + ' — khách vào chỗ đó sẽ không thấy những mục này.',
@@ -1478,18 +1607,18 @@ class Component extends DCLogic {
       });
     }
     const topN = items.length;
-    if (topN > 7 && !S.dismissed.crowd) issues.push({ id: 'crowd', icon: 'ri-alert-line', color: '#f7b84b', text: 'Trình đơn có ' + topN + ' mục ở cấp ngoài cùng — thanh đầu trang dễ tràn trên màn hình nhỏ. Gom bớt vào mục con sẽ dễ nhìn hơn.', fix: 'Để sau', fixIcon: 'ri-close-line', fixTitle: 'Bỏ qua nhắc này trong phiên làm việc', run: () => this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { crowd: true }) })) });
+    if (topN > 7 && !S.dismissed.crowd) issues.push({ id: 'crowd', icon: 'ri-alert-line', color: 'var(--color-admin-warning-text,#906405)', text: 'Trình đơn có ' + topN + ' mục ở cấp ngoài cùng — thanh đầu trang dễ tràn trên màn hình nhỏ. Gom bớt vào mục con sẽ dễ nhìn hơn.', fix: 'Để sau', fixIcon: 'ri-close-line', fixTitle: 'Bỏ qua nhắc này trong phiên làm việc', run: () => this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { crowd: true }) })) });
     const newPages = this.SOURCES.page.filter(p => !usedRefs[p.ref] && !p.draft).slice(0, 2);
     // Trang chưa đưa vào trình đơn là GỢI Ý, không phải lỗi: nhiều trang (chính sách, cảm ơn)
     // cố tình không nằm trong trình đơn → xếp hạng nhẹ và bỏ qua được hẳn.
-    if (newPages.length && !S.dismissed.newpages) issues.push({ id: 'new', icon: 'ri-lightbulb-flash-line', color: '#299cdb', tip: true, text: newPages.length + ' trang chưa có trong “' + menu.name + '”: ' + newPages.map(p => p.label).join(', ') + '.', fix: 'Thêm vào cuối', fixIcon: 'ri-add-line', fixTitle: 'Thêm các trang này vào cuối trình đơn', run: () => { this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { newpages: true }) })); this.add(newPages.map(p => this.mk('page', p.ref, p.label, p.meta)), 'Đã thêm ' + newPages.length + ' trang vào cuối trình đơn.'); }, dismiss: () => this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { newpages: true }) })) });
+    if (newPages.length && !S.dismissed.newpages) issues.push({ id: 'new', icon: 'ri-lightbulb-flash-line', color: 'var(--color-admin-info-text,#026fa2)', tip: true, text: newPages.length + ' trang chưa có trong “' + menu.name + '”: ' + newPages.map(p => p.label).join(', ') + '.', fix: 'Thêm vào cuối', fixIcon: 'ri-add-line', fixTitle: 'Thêm các trang này vào cuối trình đơn', run: () => { this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { newpages: true }) })); this.add(newPages.map(p => this.mk('page', p.ref, p.label, p.meta)), 'Đã thêm ' + newPages.length + ' trang vào cuối trình đơn.'); }, dismiss: () => this.setState(st => ({ dismissed: Object.assign({}, st.dismissed, { newpages: true }) })) });
     /* Chỉ nhắc dịch khi bản thiếu ĐANG hiển thị cho khách: bản chưa công khai (JA) thì không ai
        xem được, nhắc chỉ gây nhiễu. Nói rõ khách nào chịu ảnh hưởng, không nói chung chung. */
     const missPub = miss.filter(x => this.isPub(x.c));
     const pubLangs = [];
     missPub.forEach(x => { if (pubLangs.indexOf(x.c) < 0) pubLangs.push(x.c); });
     if (multi && missPub.length && !S.dismissed.tr) issues.push({
-      id: 'tr', icon: 'ri-translate-2', color: '#299cdb', tip: true,
+      id: 'tr', icon: 'ri-translate-2', color: 'var(--color-admin-info-text,#026fa2)', tip: true,
       text: missPub.length + ' nhãn chưa có bản ' + pubLangs.map(c => this.locName(c)).join(', ') + ' — khách xem bản đó sẽ thấy trống hoặc thấy tiếng Việt.',
       fix: 'Dịch ngay', fixIcon: 'ri-sparkling-2-line',
       fixTitle: trOff ? 'Không đủ từ AI cho lần chạy này' : ('Dùng khoảng ' + nfm(cost) + ' từ AI'),
@@ -1499,7 +1628,7 @@ class Component extends DCLogic {
 
     // --- lọc & tìm trong cây ---
     const q = S.tq.trim().toLowerCase();
-    const issueIds = {}; rowsAll.forEach(x => { const s = this.src(x.it); if (x.it.broken || (s && s.draft) || overIds[x.it.id]) issueIds[x.it.id] = true; });
+    const issueIds = {}; rowsAll.forEach(x => { if (this.srcState(x.it) || overIds[x.it.id]) issueIds[x.it.id] = true; });
     const hiddenIds = {}; rowsAll.forEach(x => { if (x.it.hidden) hiddenIds[x.it.id] = true; });
     const untrIds = {}; rowsAll.forEach(x => { if (!this.lbl(x.it)) untrIds[x.it.id] = true; });
     const filtering = !!q || S.filter !== 'all';
@@ -1526,16 +1655,16 @@ class Component extends DCLogic {
       // Đang kéo mục cha → cả nhánh con mờ theo, cho thấy rõ "cả khối cùng đi".
       let inDrag = S.drag === it.id;
       if (!inDrag && S.drag) { let q = x.parent; while (q) { if (q.id === S.drag) inDrag = true; const qc = this.ctx(q.id); q = qc ? qc.parent : null; } }
-      const s = this.src(it);
+      const s = this.src(it), ss = this.srcState(it);
       const unsaved = D.changed.indexOf(it.id) >= 0 || D.added.indexOf(it.id) >= 0;
       return {
         // Khoảng trống chèn thật (như Page Builder v3) — hàng không nhảy, mắt thấy đúng chỗ sẽ nằm.
         slotBeforeOn: !!(over && S.over.pos === 'before'),
         slotAfterOn: !!(over && S.over.pos === 'after'),
-        slotStyle: 'height:38px;margin:3px 12px 3px ' + (12 + (filtering ? 0 : x.depth * 22)) + 'px;border:1.5px dashed #2050a0;border-radius:6px;background:rgba(32,80,160,.06);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:500;color:var(--color-accent,#2050a0);',
+        slotStyle: 'height:38px;margin:3px 12px 3px ' + (12 + (filtering ? 0 : x.depth * 22)) + 'px;border:1.5px dashed var(--color-accent,#2050a0);border-radius:6px;background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,transparent);display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;font-weight:500;color:var(--color-accent,#2050a0);',
         onSlotOver: (e) => { if (e && e.preventDefault) e.preventDefault(); },
         onSlotDrop: (e) => { if (e && e.preventDefault) e.preventDefault(); const d = S.drag, pos = S.over ? S.over.pos : 'after'; this.setState({ drag: null, over: null, ghost: null, ghostRows: [] }); this.drop(d, it.id, pos); },
-        wrap: 'background:' + (over && S.over.pos === 'in' ? 'rgba(32,80,160,.09)' : (S.sel === it.id ? 'rgba(32,80,160,.05)' : 'transparent')) + ';opacity:' + (inDrag ? '.4' : '1') + ';border-top:1px solid var(--color-border-soft,#f6f7f9);box-shadow:' + (over && S.over.pos === 'in' ? 'inset 0 0 0 2px #2050a0' : 'none') + ';border-radius:' + (over && S.over.pos === 'in' ? '6px' : '0') + ';',
+        wrap: 'background:' + (over && S.over.pos === 'in' ? 'color-mix(in srgb,var(--color-accent,#2050a0) 9%,transparent)' : (S.sel === it.id ? 'color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent)' : 'transparent')) + ';opacity:' + (inDrag ? '.4' : '1') + ';border-top:1px solid var(--color-border-soft,#f6f7f9);box-shadow:' + (over && S.over.pos === 'in' ? 'inset 0 0 0 2px var(--color-accent,#2050a0)' : 'none') + ';border-radius:' + (over && S.over.pos === 'in' ? '6px' : '0') + ';',
         drag: !filtering, gripOn: !filtering,
         // setTimeout: đặt state sau khi trình duyệt đã chụp ảnh kéo, nếu không hàng biến mất giữa chừng.
         rowRef: (el) => { this._rowEls = this._rowEls || {}; if (el) this._rowEls[it.id] = el; },
@@ -1572,11 +1701,11 @@ class Component extends DCLogic {
         chev: folded ? 'ri-arrow-right-s-line' : 'ri-arrow-down-s-line',
         foldTitle: folded ? 'Mở ' + kids + ' mục con' : 'Thu gọn ' + kids + ' mục con',
         onFold: () => this.setState(st => ({ fold: Object.assign({}, st.fold, { [it.id]: !st.fold[it.id] }) })),
-        icon: it.icon || this.KIND[it.kind].icon, iconColor: (it.hidden || parentHidden) ? '#ced4da' : (it.icon ? '#2050a0' : '#878a99'),
+        icon: it.icon || this.KIND[it.kind].icon, iconColor: (it.hidden || parentHidden) ? 'var(--color-body-muted,#5b6275)' : (it.icon ? 'var(--color-accent,#2050a0)' : 'var(--color-body-muted,#5b6275)'),
         onlyOn: !!it.only, onlyLabel: it.only === 'pc' ? 'Chỉ máy tính' : 'Chỉ điện thoại',
         onlyTitle: it.only === 'pc' ? 'Mục này chỉ hiện trên máy tính' : 'Mục này chỉ hiện trên điện thoại',
         label: label || 'Chưa có nhãn ' + S.loc,
-        labelStyle: 'flex:1 1 auto;min-width:5.5em;font-size:13px;font-weight:' + (x.depth && !filtering ? 400 : 500) + ';color:' + (label ? ((it.hidden || parentHidden) ? '#878a99' : '#1f2b4d') : '#adb5bd') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (label ? '' : 'font-style:italic;'),
+        labelStyle: 'flex:1 1 auto;min-width:5.5em;font-size:13px;font-weight:' + (x.depth && !filtering ? 400 : 500) + ';color:' + (label ? ((it.hidden || parentHidden) ? 'var(--color-body-muted,#5b6275)' : 'var(--color-heading,#1f2b4d)') : 'var(--color-body-muted,#5b6275)') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + (label ? '' : 'font-style:italic;'),
         pathOn: filtering && !!pathOf(x), pathText: pathOf(x),
         unsavedOn: unsaved,
         mtOn: !!it.mt && !onDefault && !!label,
@@ -1594,8 +1723,10 @@ class Component extends DCLogic {
         megaRowTitle: it.megaKind === 'block' ? 'Bảng lớn dùng khối tự dựng ở Thư viện khối' : ('Mở dạng bảng lớn ' + (it.cols || 3) + ' cột'),
         descRowOn: !!this.dscText(it), descRowTitle: this.dscText(it),
         fixedOn: !!it.fixed, fixedTitle: 'Trang này đã đổi đường dẫn, hệ thống tự cập nhật liên kết nên khách không gặp trang lỗi.',
-        draftOn: !!(s && s.draft), draftTitle: 'Trang nguồn chưa đăng — khách bấm vào sẽ không xem được.',
-        brokenOn: !!it.broken, brokenTitle: 'Trang nguồn đã bị xóa — hãy gỡ mục này hoặc trỏ sang trang khác.',
+        srcWarnOn: !!(ss && ss.k !== 'gone'), srcBadOn: !!(ss && ss.k === 'gone'), srcLabel: ss ? ss.label : '',
+        srcTitle: ss ? (ss.k === 'draft' ? 'Website đang tự ẩn mục này cho tới khi ' + ss.kw.toLowerCase() + ' được đăng — khách không thấy.' : (ss.k === 'noloc' ? 'Website đang tự ẩn mục này ở bản ' + ss.locs.map(c => this.locName(c)).join(', ') + ' — khách xem bản đó không thấy.' : 'Website đang tự ẩn mục này — khách không thấy. Gỡ mục hoặc trỏ sang ' + ss.kw.toLowerCase() + ' khác.')) : '',
+        srcAria: ss ? ss.label + ' — website đang tự ẩn mục này' : '',
+        srcGoOn: !!this.KW[it.kind] && !it.broken, srcGoLabel: 'Mở ' + (this.KW[it.kind] || '').toLowerCase(), onSrcGo: () => { this.setState({ rowMenu: null }); this.goSrc(it); },
         srcText: this.KIND[it.kind].src,
         onSelect: () => this.setState(st => ({ sel: st.sel === it.id ? null : it.id, rowMenu: null })),
         moveOff: filtering,
@@ -1623,7 +1754,7 @@ class Component extends DCLogic {
     const selSrc = sel ? this.src(sel) : null;
 
     // --- xem trước ---
-    const vis = (arr, dev) => (arr || []).filter(it => !it.hidden && it.only !== (dev === 'pc' ? 'mb' : 'pc'));
+    const vis = (arr, dev) => (arr || []).filter(it => !it.hidden && !this.autoHidden(it) && it.only !== (dev === 'pc' ? 'mb' : 'pc'));
     const preview = vis(items, 'pc').map(it => {
       const kids = vis(it.children, 'pc').map(k => ({ label: this.lbl(k) || this.lbl(k, DEF), desc: this.dscText(k) || this.dscText(k, DEF), descOn: !!(this.dscText(k) || this.dscText(k, DEF)) }));
       const nc = Math.max(2, Math.min(4, it.cols || 3));
@@ -1643,7 +1774,7 @@ class Component extends DCLogic {
       // Bảng lớn trải ngang cả thanh (như mega menu thật), không neo theo một mục → không bao giờ tràn thẻ.
       wrapStyle: (open && it.mega) ? 'position:static;' : 'position:relative;',
       megaRowChip: it.megaKind === 'block' ? 'Khối tự dựng' : 'Bảng lớn',
-      megaStyle: 'position:absolute;top:100%;left:0;right:0;width:auto;box-sizing:border-box;z-index:10;display:grid;grid-template-columns:' + ((this.dscText(it) || this.dscText(it, DEF)) ? 'minmax(0,1.15fr) ' : '') + 'repeat(' + cols.length + ',minmax(0,1fr));gap:18px 20px;margin-top:6px;padding:18px 20px;border:1px solid var(--color-border,#e9ecf4);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 8px 24px rgba(56,65,74,.16);',
+      megaStyle: 'position:absolute;top:100%;left:0;right:0;width:auto;box-sizing:border-box;z-index:10;display:grid;grid-template-columns:' + ((this.dscText(it) || this.dscText(it, DEF)) ? 'minmax(0,1.15fr) ' : '') + 'repeat(' + cols.length + ',minmax(0,1fr));gap:18px 20px;margin-top:6px;padding:18px 20px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;box-shadow:0 8px 24px rgba(56,65,74,.16);',
       megaCols: cols,
       kids: kids,
       onClick: (e) => { e.stopPropagation(); this.setState(st => ({ pvOpen: st.pvOpen === it.id ? null : it.id })); },
@@ -1654,7 +1785,7 @@ class Component extends DCLogic {
     });
     const previewMobile = [];
     const mbCap = (this.areasOf().find(a => a.k === 'handheld') || { dp: 4 }).dp - 1;
-    this.walk(items, (it, d) => { if (it.hidden || d > mbCap || it.only === 'pc') return; let ph = false; const c = this.ctx(it.id); let p = c ? c.parent : null; while (p) { if (p.hidden) ph = true; const pc = this.ctx(p.id); p = pc ? pc.parent : null; } if (ph) return;
+    this.walk(items, (it, d) => { if (it.hidden || this.autoHidden(it) || d > mbCap || it.only === 'pc') return; let ph = false; const c = this.ctx(it.id); let p = c ? c.parent : null; while (p) { if (p.hidden || this.autoHidden(p)) ph = true; const pc = this.ctx(p.id); p = pc ? pc.parent : null; } if (ph) return;
       previewMobile.push({ label: this.lbl(it) || this.lbl(it, DEF), hasKids: vis(it.children, 'mb').length > 0, style: 'display:flex;align-items:center;gap:8px;padding:' + (d ? '10px 14px 10px ' + (16 + d * 14) + 'px' : '12px 14px') + ';border-bottom:1px solid #f1f5f9;font-size:' + (d ? '12.5' : '13') + 'px;font-weight:' + (d ? 400 : 500) + ';color:' + (d ? '#475569' : '#0f172a') + ';' }); });
     const chars = vis(items, 'pc').reduce((a, it) => a + (this.lbl(it) || this.lbl(it, DEF)).length + 4, 8);
 
@@ -1675,7 +1806,7 @@ class Component extends DCLogic {
       pageStyle: this.props.embedded ? 'display:flex;flex-direction:column;container-type:inline-size;' : 'min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;container-type:inline-size;',
       onPageClick: () => { if (S.rowMenu || S.pvOpen) this.setState({ rowMenu: null, pvOpen: null }); },
       stop: (e) => e.stopPropagation(),
-      headerOn: !this.props.embedded,
+      headerOn: !this.props.embedded, embSiteOn: !!this.props.embedded, notesOn: this.props.designNotes !== false,
       onOpenSite: () => this.toast('Mở website ở tab mới để xem trình đơn đang chạy.', 'ri-external-link-line'),
       onSave: () => this.save(), saveOff: D.n === 0,
       saveLabel: D.n ? ('Lưu ' + D.n + ' thay đổi — hiệu lực ngay') : 'Lưu — hiệu lực ngay',
@@ -1684,9 +1815,9 @@ class Component extends DCLogic {
       multiLocale: multi, locCode: S.loc, sharedLocked: !onDefault,
       langPills: langPills, moreOn: codes.length - langPills.length > 0, moreLabel: '+' + (codes.length - langPills.length),
       onOpenLangs: () => this.toast('Website đang bật ' + codes.length + ' ngôn ngữ — quản lý ở Cài đặt › Ngôn ngữ website.', 'ri-translate-2'),
-      progIcon: curKind === 'ok' ? 'ri-check-line' : 'ri-time-line', progColor: curKind === 'ok' ? '#0ab39c' : '#f7b84b',
+      progIcon: curKind === 'ok' ? 'ri-check-line' : 'ri-time-line', progColor: curKind === 'ok' ? 'var(--color-admin-success-text,#047767)' : 'var(--color-admin-warning-text,#906405)',
       progText: curStat.done + '/' + curStat.total + ' nhãn đã có',
-      quotaText: 'Còn ' + nfm(left) + ' từ AI', quotaColor: out ? '#d84a2f' : (low ? '#b57d0a' : '#878a99'),
+      quotaText: 'Còn ' + nfm(left) + ' từ AI', quotaColor: out ? 'var(--color-admin-danger-text,#bf371a)' : (low ? 'var(--color-admin-warning-text,#906405)' : 'var(--color-body-muted,#5b6275)'),
       quotaTitle: 'Gói ' + (window.BSAI ? window.BSAI.plan().name : 'Cơ bản') + ' · đã dùng ' + nfm(this.aiLimit() - left) + '/' + nfm(this.aiLimit()) + ' từ AI trong tháng — ' + enough,
       onTranslate: () => this.translate(), trOff: trOff,
       trLabel: onDefault ? ('Dịch sang ' + (codes.length - 1) + ' ngôn ngữ') : ('Dịch bản ' + this.locName(S.loc)),
@@ -1701,7 +1832,7 @@ class Component extends DCLogic {
         return 'Cần bạn xem — ' + bad + ' việc' + (tip ? ' · ' + tip + ' gợi ý' : '');
       })(),
       checkIcon: issues.some(q => !q.tip) ? 'ri-error-warning-line' : (issues.length ? 'ri-lightbulb-flash-line' : 'ri-shield-check-line'),
-      checkColor: issues.some(q => !q.tip) ? '#f7b84b' : (issues.length ? '#299cdb' : '#0ab39c'),
+      checkColor: issues.some(q => !q.tip) ? 'var(--color-admin-warning-text,#906405)' : (issues.length ? 'var(--color-admin-info-text,#026fa2)' : 'var(--color-admin-success-text,#047767)'),
       /* Mặc định: có lỗi thật thì bung (phải xử lý mới hết), chỉ còn gợi ý thì gập cho gọn.
          Người dùng bấm một lần là quyền của họ được giữ nguyên. */
       cCheckOn: (S.fold2 || {}).check === undefined ? issues.some(q => !q.tip) : !S.fold2.check,
@@ -1716,6 +1847,7 @@ class Component extends DCLogic {
         goOn: !!q2.go, onGo: q2.go ? focus(q2.go) : () => {},
         fix: q2.fix, fixIcon: q2.fixIcon, fixTitle: q2.fixTitle, onFix: q2.run,
         dismissOn: !!q2.dismiss, onDismiss: q2.dismiss || (() => {}),
+        srcOn: !!q2.srcOn, srcLabel: q2.srcLabel || '', onSrc: q2.onSrc || (() => {}),
         dismissTitle: 'Bỏ qua gợi ý này — không hiện lại trong phiên làm việc'
       })),
 
@@ -1733,11 +1865,11 @@ class Component extends DCLogic {
         let fixed = 0, broken = 0, draft = 0;
         this.state.menus.forEach(m => this.walk(m.items, it => {
           if (it.fixed) fixed++;
-          const s = this.src(it); if (it.broken) broken++; else if (s && s.draft) draft++;
+          if (this.srcState(it)) broken++;
         }));
         return [
           { t: 'Trang đổi địa chỉ — liên kết tự sửa theo', s: fixed ? 'Đã tự sửa ' + fixed + ' liên kết, khách không gặp trang lỗi' : 'Chưa có liên kết nào phải sửa' },
-          { t: 'Trang bị xóa hoặc chưa đăng — báo ngay ở khung “Cần bạn xem”', s: (broken + draft) ? 'Đang có ' + (broken + draft) + ' mục cần bạn xử lý' : 'Hiện không có mục nào hỏng' },
+          { t: 'Nguồn chưa đăng, đã xóa hoặc chưa dịch — website tự ẩn mục và báo ở khung “Cần bạn xem”', s: (broken + draft) ? 'Đang có ' + (broken + draft) + ' mục cần bạn xử lý' : 'Hiện không có mục nào hỏng' },
           { t: 'Mọi thay đổi đều hoàn tác được, mục đã gỡ giữ 30 ngày', s: (S.trash || []).length ? 'Thùng rác đang giữ ' + S.trash.length + ' mục' : 'Thùng rác đang trống' }
         ];
       })(),
@@ -1755,7 +1887,7 @@ class Component extends DCLogic {
         const as = this.areasOf(), on = as.filter(a => !!this.menuAt(a.k)).length;
         return on + '/' + as.length + ' đã đặt';
       })(),
-      areaIntro: 'Mỗi chỗ chỉ nhận một trình đơn. Chỗ để trống thì khách không thấy gì ở đó.',
+      areaIntro: multi ? 'Mỗi chỗ nhận một trình đơn cho từng ngôn ngữ. Chỗ để trống thì khách không thấy gì ở đó.' : 'Mỗi chỗ chỉ nhận một trình đơn. Chỗ để trống thì khách không thấy gì ở đó.',
       areaFoot: 'Mã dưới mỗi chỗ là mã vị trí do giao diện đăng ký — đây là mã duy nhất bạn cần khi lập trình giao diện. Trình đơn không có mã riêng để gõ: muốn chèn một trình đơn vào giữa trang, dùng khối “Trình đơn” trong Trình dựng trang rồi chọn theo tên. Giao diện khác sẽ có nhiều hoặc ít chỗ hơn.',
       areaAdvOn: !!S.areaAdv,
       areaAdvLabel: S.areaAdv ? 'Ẩn bớt' : ('Còn ' + this.areasOf().filter(a => a.adv).length + ' chỗ ít dùng'),
@@ -1774,23 +1906,45 @@ class Component extends DCLogic {
           onCopyCode: () => this.copyArea(a),
           title: eff ? (a.l + ' đang dùng “' + ((S.menus.find(m => m.id === eff) || {}).name || '') + '”' + (raw === '@same' ? ' (đồng bộ theo ' + same.l.toLowerCase() + ')' : '') + ' — chọn trình đơn khác để đổi') : (a.l + ' chưa hiển thị trình đơn nào'),
           options: opts.concat(S.menus.map(m => ({ value: m.id, label: m.name + ' (' + this.count(m.items) + ' mục)' }))),
-          onChange: (e) => this.setSlot(a.k, e.target.value)
+          onChange: (e) => this.setSlot(a.k, e.target.value),
+          langOn: multi && !!eff && raw !== '@same',
+          langs: (multi && eff && raw !== '@same') ? codes.filter(c => c !== DEF).map((c, li) => {
+            const v = this.locOf(a.k, c), effM = S.menus.find(m => m.id === eff), ln = this.locName(c);
+            const own = (v !== '@shared' && v !== '@none') ? S.menus.find(m => m.id === v) : null;
+            let empty = 0; if (v === '@shared' && effM) this.walk(effM.items, it => { if (!(it.label || {})[c]) empty++; });
+            return {
+              sep: li > 0, name: ln, isShared: v === '@shared', isOwn: !!own, isNone: v === '@none', pubNoteOn: !this.isPub(c),
+              sharedText: 'Dùng trình đơn chung — nhãn theo ' + ln,
+              noteOn: empty > 0, note: empty + ' nhãn ' + ln + ' còn trống — website lấy tên hiện tại của trang nguồn.',
+              ownText: 'Dùng trình đơn riêng: “' + (own ? own.name : '') + '”',
+              noneText: 'Chưa gán — website đang hiện trình đơn ' + this.defLow() + ' bằng ' + this.defLow(),
+              chipText: 'theo ' + this.locName(DEF),
+              shareTitle: 'Gán cùng trình đơn “' + ((effM || {}).name || '') + '” cho bản ' + ln + ' — nhãn theo ' + ln,
+              value: v, selLabel: 'Trình đơn cho bản ' + ln + ' ở ' + a.l.toLowerCase(),
+              options: [{ value: '@shared', label: 'Dùng trình đơn chung' }]
+                .concat(S.menus.filter(m => m.id !== eff).map(m => ({ value: m.id, label: 'Trình đơn riêng: ' + m.name })))
+                .concat([{ value: '@copy', label: 'Sao chép thành trình đơn riêng rồi Dịch' }, { value: '@none', label: 'Chưa gán (theo ' + this.locName(DEF) + ')' }]),
+              onChange: (e) => this.setLoc(a.k, c, e.target.value),
+              onShare: () => this.setLoc(a.k, c, '@shared')
+            };
+          }) : []
         };
       }),
       menuCountText: S.menus.length + ' trình đơn',
       menuList: S.menus.map(m => {
         const on = m.id === S.cur;
-        const usedIn = this.areasOf().filter(a => this.menuAt(a.k) === m.id);
+        const usedIn = this.areasOf().filter(a => this.menuAt(a.k) === m.id), lu = this.locUse(m.id);
+        const useList = usedIn.map(a => a.l.toLowerCase()).concat(lu.map(x => x.a.l.toLowerCase() + ' (' + this.locName(x.c) + ')'));
         return {
           name: m.name, count: this.count(m.items) + ' mục',
-          useText: usedIn.length ? ('Đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).join(' · ')) : 'Chưa dùng ở chỗ nào — khách không nhìn thấy',
-          useIcon: usedIn.length ? 'ri-checkbox-circle-line' : 'ri-error-warning-line',
-          useColor: usedIn.length ? '#0a8f7f' : '#a9750a',
+          useText: useList.length ? ('Đang dùng ở ' + useList.join(' · ')) : 'Chưa dùng ở chỗ nào — khách không nhìn thấy',
+          useIcon: useList.length ? 'ri-checkbox-circle-line' : 'ri-error-warning-line',
+          useColor: useList.length ? 'var(--color-admin-success-text,#047767)' : 'var(--color-admin-warning-text,#906405)',
           onDup: (e) => { e.stopPropagation(); this.dupMenu(m.id); },
           dupTitle: 'Nhân bản thành bản nháp để sửa lớn mà không đụng bản đang chạy',
-          onDel: (e) => { e.stopPropagation(); this.delMenu(m.id); }, delOff: S.menus.length < 2 || usedIn.length > 0,
-          delTitle: S.menus.length < 2 ? 'Website cần ít nhất một trình đơn' : (usedIn.length ? ('Đang dùng ở ' + usedIn.map(a => a.l.toLowerCase()).join(', ') + ' — đổi chỗ đó sang trình đơn khác trước') : 'Xóa trình đơn này'),
-          wrap: 'display:flex;flex-direction:column;gap:8px;padding:11px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);border-left:3px solid ' + (on ? '#2050a0' : 'transparent') + ';background:' + (on ? 'rgba(32,80,160,.05)' : 'transparent') + ';cursor:pointer;user-select:none;',
+          onDel: (e) => { e.stopPropagation(); this.delMenu(m.id); }, delOff: S.menus.length < 2 || useList.length > 0,
+          delTitle: S.menus.length < 2 ? 'Website cần ít nhất một trình đơn' : (useList.length ? ('Đang dùng ở ' + useList.join(', ') + ' — đổi chỗ đó sang trình đơn khác trước') : 'Xóa trình đơn này'),
+          wrap: 'display:flex;flex-direction:column;gap:8px;padding:11px 12px;border-top:1px solid var(--color-border-soft,#f6f7f9);border-left:3px solid ' + (on ? 'var(--color-accent,#2050a0)' : 'transparent') + ';background:' + (on ? 'color-mix(in srgb,var(--color-accent,#2050a0) 5%,transparent)' : 'transparent') + ';cursor:pointer;user-select:none;',
           nameStyle: 'width:100%;min-height:22px;border:0;background:transparent;padding:0;font:inherit;font-size:13px;font-weight:' + (on ? 600 : 500) + ';color:var(--color-heading,#1f2b4d);cursor:pointer;text-align:left;line-height:1.4;text-wrap:pretty;',
           selTitle: m.name + ' — mở để sắp xếp các mục bên trong',
           onSelect: () => this.setState({ cur: m.id, sel: null, picked: {}, filter: 'all', tq: '' }),
@@ -1865,11 +2019,11 @@ class Component extends DCLogic {
         const gw = Math.min(S.ghostW || 420, 420, vw - 24);
         const horiz = (cx + 14 + gw <= vw - 8) ? ('left:' + Math.max(8, cx + 14) + 'px;') : ('right:' + Math.max(8, vw - cx + 14) + 'px;');
         const vert = (cy > vh / 2) ? ('bottom:' + Math.max(8, vh - cy + 12) + 'px;') : ('top:' + Math.max(8, cy + 12) + 'px;');
-        return 'position:fixed;' + horiz + vert + 'z-index:200;pointer-events:none;width:' + gw + 'px;max-height:' + (vh - 24) + 'px;box-sizing:border-box;border:1px solid #cbd2da;border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 12px 28px rgba(56,65,74,.30);overflow:hidden;';
+        return 'position:fixed;' + horiz + vert + 'z-index:200;pointer-events:none;width:' + gw + 'px;max-height:' + (vh - 24) + 'px;box-sizing:border-box;border:1px solid var(--color-border-strong,#e9ebec);border-radius:6px;background:var(--color-surface,#fff);box-shadow:0 12px 28px rgba(56,65,74,.30);overflow:hidden;';
       })(),
       ghostRows: (S.ghostRows || []).map(g => ({
         label: g.label, icon: g.icon,
-        style: 'display:flex;align-items:center;gap:8px;padding:9px 12px 9px ' + (12 + g.depth * 22) + 'px;border-top:' + (g.depth ? '1px solid #f6f7f9' : '0') + ';font-size:13px;font-weight:' + (g.depth ? 400 : 500) + ';color:var(--color-heading,#1f2b4d);background:var(--color-surface,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+        style: 'display:flex;align-items:center;gap:8px;padding:9px 12px 9px ' + (12 + g.depth * 22) + 'px;border-top:' + (g.depth ? '1px solid var(--color-border-soft,#f6f7f9)' : '0') + ';font-size:13px;font-weight:' + (g.depth ? 400 : 500) + ';color:var(--color-heading,#1f2b4d);background:var(--color-surface,#fff);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
       })),
       ghostCountOn: (S.ghostRows || []).length > 1,
       ghostCount: ((S.ghostRows || []).length - 1) + ' mục con đi cùng',
@@ -1886,12 +2040,12 @@ class Component extends DCLogic {
         return 'Thả ra: đặt ' + what + ' ' + (S.over.pos === 'before' ? 'ngay trên' : 'ngay dưới') + ' “' + nm + '”, cùng cấp với nó.';
       })(),
       endZoneOn: !filtering && !!S.drag,
-      endZoneStyle: 'display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 14px 14px;padding:14px;border:1.5px dashed ' + (S.over && S.over.id === '@end' ? '#2050a0' : '#dde1e6') + ';border-radius:6px;background:' + (S.over && S.over.id === '@end' ? 'rgba(32,80,160,.06)' : '#fbfcfd') + ';font-size:12px;color:' + (S.over && S.over.id === '@end' ? '#2050a0' : '#adb5bd') + ';',
+      endZoneStyle: 'display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 14px 14px;padding:14px;border:1.5px dashed ' + (S.over && S.over.id === '@end' ? 'var(--color-accent,#2050a0)' : 'var(--color-border-strong,#e9ebec)') + ';border-radius:6px;background:' + (S.over && S.over.id === '@end' ? 'color-mix(in srgb,var(--color-accent,#2050a0) 6%,transparent)' : 'var(--color-surface-muted,#f8f9fb)') + ';font-size:12px;color:' + (S.over && S.over.id === '@end' ? 'var(--color-accent,#2050a0)' : 'var(--color-body-muted,#5b6275)') + ';',
       onEndOver: (e) => { e.preventDefault(); if (!S.over || S.over.id !== '@end') this.setState({ over: { id: '@end', pos: 'after' } }); },
       onEndDrop: (e) => { e.preventDefault(); const d = S.drag; this.setState({ drag: null, over: null, ghost: null, ghostRows: [] }); if (d) this.moveEnd(d); },
       depthNoteOn: rowsAll.some(x => x.depth >= LIM.n - 1),
-      depthNoteBg: OD.n ? 'rgba(240,101,72,.07)' : '#fffaf0',
-      depthNoteFg: OD.n ? '#d84a2f' : '#b57d0a',
+      depthNoteBg: OD.n ? 'color-mix(in srgb,var(--color-admin-danger,#f06548) 7%,transparent)' : 'color-mix(in srgb,var(--color-admin-warning,#f7b84b) 8%,transparent)',
+      depthNoteFg: OD.n ? 'var(--color-admin-danger-text,#bf371a)' : 'var(--color-admin-warning-text,#906405)',
       depthNoteIcon: OD.n ? 'ri-error-warning-line' : 'ri-information-line',
       depthNote: OD.n
         ? (OD.n + ' mục đang nằm sâu quá mức ' + (OD.area ? '“' + OD.area.l + '” ' : '') + 'dựng được (' + (OD.area ? OD.area.dp : LIM.n) + ' cấp) nên khách sẽ không thấy. Xử lý ở khung “Cần bạn xem” phía trên.')
@@ -1918,7 +2072,7 @@ class Component extends DCLogic {
       // Mô tả trình đơn KHÔNG phải meta description — không giới hạn cứng, chỉ gợi ý độ dài
       // theo chỗ nó hiện ra: dòng phụ dưới tên mục thì phải rất ngắn, đoạn dẫn bảng lớn được dài hơn.
       edDescCount: sel ? (this.dscText(sel).length + ' ký tự' + (this.dscText(sel).length > this.dscMax(sel) ? ' — dài hơn mức gợi ý (' + this.dscMax(sel) + ')' : '')) : '',
-      edDescCountColor: sel && this.dscText(sel).length > this.dscMax(sel) ? '#d99e28' : '#adb5bd',
+      edDescCountColor: sel && this.dscText(sel).length > this.dscMax(sel) ? 'var(--color-admin-warning-text,#906405)' : 'var(--color-body-muted,#5b6275)',
       descRef: (el) => {
         this._descEl = el; if (!el) return;
         const key = (S.sel || '') + '|' + S.loc;
@@ -1984,7 +2138,7 @@ class Component extends DCLogic {
         const qq = (S.iconQ || '').trim().toLowerCase();
         const mk = (ic) => ({
           cls: ic.i, title: ic.kw.split(' ').slice(0, 4).join(', '),
-          style: 'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid ' + (sel && sel.icon === ic.i ? '#2050a0' : '#e9ecf4') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'rgba(32,80,160,.08)' : '#fff') + ';color:' + (sel && sel.icon === ic.i ? '#2050a0' : '#3c4765') + ';font-size:17px;cursor:pointer;',
+          style: 'display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid ' + (sel && sel.icon === ic.i ? 'var(--color-accent,#2050a0)' : 'var(--color-border,#e9ecf4)') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent)' : 'var(--color-surface,#fff)') + ';color:' + (sel && sel.icon === ic.i ? 'var(--color-accent,#2050a0)' : 'var(--color-body-text,#3c4765)') + ';font-size:17px;cursor:pointer;',
           onClick: () => { this.setField(S.sel, 'icon', ic.i); this.setState({ iconOpen: false }); }
         });
         if (qq) { const hit = this.ICONS.filter(ic => ic.kw.indexOf(qq) >= 0); return hit.length ? [{ g: hit.length + ' biểu tượng khớp', icons: hit.map(mk) }] : []; }
@@ -1994,7 +2148,7 @@ class Component extends DCLogic {
       iconCountText: this.ICONS.length + ' biểu tượng',
       iconList: this.ICONS.filter(ic => { const qq = (S.iconQ || '').trim().toLowerCase(); return !qq || ic.kw.indexOf(qq) >= 0; }).map(ic => ({
         cls: ic.i, title: ic.kw.split(' ').slice(0, 3).join(', '),
-        style: 'display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid ' + (sel && sel.icon === ic.i ? '#2050a0' : '#e9ecf4') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'rgba(32,80,160,.08)' : '#fff') + ';color:' + (sel && sel.icon === ic.i ? '#2050a0' : '#3c4765') + ';font-size:17px;cursor:pointer;',
+        style: 'display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid ' + (sel && sel.icon === ic.i ? 'var(--color-accent,#2050a0)' : 'var(--color-border,#e9ecf4)') + ';border-radius:4px;background:' + (sel && sel.icon === ic.i ? 'color-mix(in srgb,var(--color-accent,#2050a0) 8%,transparent)' : 'var(--color-surface,#fff)') + ';color:' + (sel && sel.icon === ic.i ? 'var(--color-accent,#2050a0)' : 'var(--color-body-text,#3c4765)') + ';font-size:17px;cursor:pointer;',
         onClick: () => { this.setField(S.sel, 'icon', ic.i); this.setState({ iconOpen: false }); }
       })),
       iconNoneOn: !!(sel && sel.icon),
@@ -2037,8 +2191,8 @@ class Component extends DCLogic {
       srcRows: srcList.map(x => ({
         label: x.label, meta: x.meta, used: !!usedRefs[x.ref] && !x.group, draft: !!x.draft,
         iconOn: !!x.icon, icon: x.icon || '',
-        title: (usedRefs[x.ref] && !x.group) ? 'Đã có trong trình đơn này — thêm nữa sẽ trùng mục' : (x.draft ? 'Trang chưa đăng — thêm được, nhưng nên ẩn cho tới khi đăng' : 'Chọn để thêm vào trình đơn'),
-        labelStyle: 'font-size:12.5px;color:' + (usedRefs[x.ref] ? '#adb5bd' : '#1f2b4d') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
+        title: (usedRefs[x.ref] && !x.group) ? 'Đã có trong trình đơn này — thêm nữa sẽ trùng mục' : (x.draft ? 'Trang chưa đăng — thêm được; website tự ẩn mục này cho tới khi trang được đăng' : 'Chọn để thêm vào trình đơn'),
+        labelStyle: 'font-size:12.5px;color:' + (usedRefs[x.ref] ? 'var(--color-body-muted,#5b6275)' : 'var(--color-heading,#1f2b4d)') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
         on: !!S.picked[x.ref], off: !S.picked[x.ref],
         onClick: () => this.setState(st => ({ picked: Object.assign({}, st.picked, { [x.ref]: !st.picked[x.ref] }) }))
       })),
@@ -2049,9 +2203,9 @@ class Component extends DCLogic {
       newUrl: S.newUrl, onNewUrl: (e) => this.setState({ newUrl: e.target.value }),
       onAddUrl: () => this.addUrl(),
       addUrlOff: !S.newLabel.trim() || !this.normUrl(S.newUrl).ok,
-      urlHintOn: !!S.newUrl.trim(),
+      urlHintOn: !!S.newUrl.trim(), urlEmptyOn: !S.newUrl.trim(),
       urlHint: S.newUrl.trim() ? (this.normUrl(S.newUrl).ok ? ('Sẽ lưu thành: ' + this.normUrl(S.newUrl).url + (this.normUrl(S.newUrl).note ? ' — ' + this.normUrl(S.newUrl).note : '')) : this.normUrl(S.newUrl).msg) : '',
-      urlHintColor: S.newUrl.trim() && !this.normUrl(S.newUrl).ok ? '#d84a2f' : '#adb5bd',
+      urlHintColor: S.newUrl.trim() && !this.normUrl(S.newUrl).ok ? 'var(--color-admin-danger-text,#bf371a)' : 'var(--color-body-muted,#5b6275)',
 
       barOn: D.n > 0 && !this.props.embedded,
       dirtyText: 'Chưa lưu: ' + D.text,
