@@ -105,7 +105,7 @@ Cách sửa:
        - Khi Dịch vụ đang bật quy trình duyệt: "K bài chưa đăng sẽ bắt đầu từ bước đầu của quy trình Dịch vụ; bài đã đăng vẫn hiện trên website." Repo: `app/Modules/Cms/Support/EntryWorkflowResolver.php::originFor`.
        - Làm xong, dòng rời khỏi cây này: toast "Đã chuyển sang Dịch vụ · Mở Chuyên mục Dịch vụ", focus về dòng kế tiếp.
      - Việc cho backend:
-       - `MoveTaxonomy` / `DeleteTaxonomy` hiện cho vượt bằng `$evenIfSectionChanges` dù loại đang bật quy trình duyệt. Phải từ chối bằng mã mới `workflow_governed`, không vượt được; thêm câu cho mã này vào README mục Chuỗi cần dịch.
+       - ĐÃ LÀM (PR #207, 07/10): `MoveTaxonomy` / `DeleteTaxonomy` từ chối bằng mã `workflow_governed` khi loại đang bật quy trình duyệt, kể cả khi đã xác nhận; không vượt được. Còn thiếu câu riêng cho mã này ở màn Chuyên mục: thêm vào README mục Chuỗi cần dịch.
        - Số N, K cần truy vấn xem trước.
    - **Chuyên mục không qua quy trình duyệt** (repo không có trạng thái cho chuyên mục): mọi thay đổi có hiệu lực ngay và ghi nhật ký. Ghi dòng này vào README phần luật.
    - **Lỗi:**
@@ -153,7 +153,24 @@ Cách sửa:
      - Tắt chuyển động khi `prefers-reduced-motion`.
    - Viền focus và các phần giao diện có nghĩa (chip, nút viền) tương phản ≥ 3:1.
 9. **Sản phẩm** dùng đúng màn này: chữ "sản phẩm" ở mọi chỗ ("Chưa có sản phẩm", "Xem 12 sản phẩm"); không có gốc; "Cấp ngoài cùng" có trong "Chuyển đến…"; không có dòng quyền / quy trình duyệt.
-10. **README** thêm mục "D1-1s", gồm:
+10. **Kéo thả trong cây: chuẩn chung cho Chuyên mục, Trình đơn và danh sách Trang** (owner 07/10). Người kéo phải thấy rõ mục sẽ nằm cùng cấp, vào trong hay ra ngoài; nhả ra là đúng ngay, không phải thử lại nhiều lần. Hiện 3 màn kéo thả 3 kiểu khác nhau, nên dùng đúng một kiểu này:
+   - **Dòng giữ chỗ = kết quả.** Khi kéo, một dòng giữ chỗ (viền nét đứt màu nhấn, cao bằng một dòng thật) hiện đúng vị trí và đúng thụt lề mà mục sẽ nằm khi nhả. Các dòng khác dịch ra nhường chỗ trong 150 ms (tắt khi máy đặt giảm chuyển động). Nhả ra thì mục nằm đúng chỗ dòng giữ chỗ, không nhảy đi đâu khác.
+   - **Ba vùng trên mỗi dòng đích:**
+     - 1/4 trên: cùng cấp, đặt trước dòng đó;
+     - 1/2 giữa: vào trong, thành mục con. Dòng cha được viền nhấn và nền nhạt; nếu đang thu gọn thì tự mở sau 0,6 giây giữ chuột;
+     - 1/4 dưới: cùng cấp, đặt sau dòng đó.
+   - **Ra ngoài một cấp:** đang ở dưới mục con cuối cùng của một nhóm, kéo sang trái quá 1 bậc thụt lề thì dòng giữ chỗ lùi ra 1 cấp, thành cùng cấp với cha.
+   - **Nhãn đi theo con trỏ, nói kết quả bằng lời:**
+     - "Đặt trước "Giới thiệu" · cấp 1";
+     - "Thành mục con của "Giới thiệu" · cấp 2";
+     - "Ra ngoài nhóm "Dịch vụ" · cấp 1".
+     Vùng `aria-live` đọc đúng câu đó.
+   - **Chỗ không được thả:** quá số cấp tối đa, thả vào chính nó hay mục con của nó, hoặc bài đang theo quy trình duyệt rời loại nội dung. Khi đó dòng giữ chỗ đỏ, nhãn nêu lý do ("Tối đa 3 cấp"); nhả ra không đổi gì và báo lý do.
+   - **Trong lúc kéo:** đến gần mép trên hay dưới thì tự cuộn; Esc hủy kéo, mục về chỗ cũ.
+   - **Sau khi nhả:** dòng vừa chuyển sáng nhẹ 1 giây, và có thông báo "Đã chuyển "X" vào trong "Y" · Hoàn tác".
+   - **Không bắt buộc phải kéo:** vẫn giữ ↑ ↓ và "Chuyển đến…" (chọn chỗ đích trong cây, có ô tìm), cho điện thoại, bàn phím và người lớn tuổi.
+   - Khi đang tìm hoặc lọc, kéo thả tắt như luật đang có, và hiện câu lý do.
+11. **README** thêm mục "D1-1s", gồm:
     - bảng quyết định: từng nút / chức năng · chọn gì · phương án bỏ · lý do;
     - bảng hành động 3 cột: hiện sẵn · trong "⋯" · điện thoại;
     - bảng quyền: có quyền · không quyền · phiên hỗ trợ · khóa theo gói;
@@ -174,5 +191,6 @@ Xong khi:
    - tương phản chữ ≥ 4,5:1, phần giao diện và focus ≥ 3:1, ở cả sáng lẫn tối;
    - mở lại tệp và Admin Shell: console 0 lỗi.
    Tệp đo tạm chỉ đặt trong `_audit/tmp/`.
+(9) Kéo "Khuyến mãi" lên nửa giữa dòng "Tin tức": dòng giữ chỗ thụt vào 1 bậc, nhãn "Thành mục con của "Tin tức" · cấp 2"; nhả ra đúng chỗ đó, có "Hoàn tác". Kéo một mục cấp 3 vào trong một mục cấp 3: dòng giữ chỗ đỏ, nhãn "Tối đa 3 cấp", nhả ra không đổi gì. Esc trong lúc kéo trả mục về chỗ cũ.
 
 Xuất zip project gửi Claude Code kiểm. Xong thì báo owner đúng một câu: "D1-1s xong — gửi zip cho Claude Code."

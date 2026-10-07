@@ -71,6 +71,13 @@ Sửa kèm từ kiểm zip D0-6b (Claude Code, 06/10 — D0-6b đạt co giãn v
 Sửa kèm theo nhận xét owner 06/10 về màn Chuyên mục (hành động trên dòng, cây, quyền — luật chung ở bối cảnh, mục "Hành động trên dòng, cây và quyền"): Tên miền: mỗi tên miền chỉ hiện sẵn nút BƯỚC KẾ TIẾP theo trạng thái ("Kiểm tra" → "Bật kết nối bảo mật" → "Đặt làm tên miền chính"); "⋯": Xem bảng trỏ tên miền · | "Gỡ tên miền…" (cuối, đỏ, hộp nhắc xóa bản ghi đã trỏ). Gỡ tên miền chính theo đúng luật đã có ở mục 1 (tên miền phụ thành chính): hộp xác nhận nói rõ tên nào sẽ thành chính.
 Được sửa: `Tên miền.dc.html` (mới) · `Chuyển hướng.dc.html` (mới) · `Admin Shell.dc.html` (chỉ `FIELDS.seo` · `advanced` · `backup` + nhúng 2 panel mới, gỡ form `domain` cũ) · `Hạn ngạch AI và mua thêm.dc.html` · `Email Settings.dc.html` · `Đăng nhập nhanh & Liên kết tài khoản.dc.html` · `Integrations Panel.dc.html` · `Floating Contact Panel.dc.html` · `shell-screens.js` (chỉ THÊM) · `SaaS Starter - Bản đồ màn hình.md` (dòng 38–44, 47–49) · `TODO.md` · `LESSONS.md` · README mới `README - D3-2 Cài đặt Tiếp thị, Hệ thống & Nâng cao.md`. Không sửa màn khác, `admin-base.css`, `admin-components.css`, trang chuẩn, CLAUDE.md.
 Sắp hết lượt: xong mục 1 + 2 trước; mục 3–7 ghi TODO.md "D3-2 phần 2" rồi báo owner; owner gửi "Làm D3-2 phần 2" trong cùng chat.
+Sửa kèm từ kiểm theo bộ tiêu chí chung (Claude Code, 07/10, zip D3-1 08:41 dựng trong Chromium):
+- **Tên miền:** mục `domain` cũ trong Shell còn câu "Trỏ bản ghi A về 103.28.36.12 hoặc CNAME về …" và nút "Kiểm tra DNS". Câu này trái luồng owner đã chốt (một địa chỉ đích chung, không bắt khách ghi dãy số IP). Khi viết lại thành `Tên miền.dc.html`, xóa hẳn câu và nút cũ khỏi FIELDS của Shell, không để sót bản cũ.
+- **Email gửi đi:** câu "chúng tôi tự thêm bản ghi SPF, DKIM và DMARC" chuyển vào khối "Nâng cao". Ngoài khối đó chỉ nói đời thường: "Hệ thống tự thêm các dòng xác thực để thư không vào hộp thư rác."
+- **SEO:** "Ảnh chia sẻ (OG image)" → "Ảnh hiện khi chia sẻ lên Facebook, Zalo". Đủ 2 dòng "robots.txt tùy chỉnh" và "Tạo sitemap.xml tự động" vào khối "Nâng cao", mỗi dòng 1 câu đời thường.
+- **Ô "Tìm trong cài đặt…"** chưa có tên đọc: thêm `aria-label="Tìm trong cài đặt"`.
+- Với 2 việc này, ngoài danh sách "Được sửa", được sửa thêm trong Admin Shell đúng 2 chỗ: câu SPF / DKIM / DMARC nếu nó nằm trong `FIELDS.email`, và thuộc tính của ô "Tìm trong cài đặt".
+
 Xong khi:
 (1) Tên miền: thêm `shop.vidu.vn` không `www` → bảng trỏ đúng 2 dòng `shop` / `www.shop` (`www.shop` nhãn "để chuyển hướng"); "Đặt làm tên miền chính" khóa tới khi đã bật kết nối bảo mật; Tweak gói tên miền 1 + đã có 1 → nút thêm khóa + lý do.
 (2) Đủ 5 trạng thái (a)–(e) và tranh chấp TXT ở cả 2 phía; README đủ 10 mã lỗi.
@@ -81,5 +88,6 @@ Xong khi:
 (7) README có Việc cho backend, Cần owner chốt (giá / mua thêm AI, ứng dụng chung cho thư), Kiểm hiển thị, 12 tiêu chí; TODO ghi "D4-1" là lượt kế tiếp.
 (8) Sửa kèm: trong Shell (`#/site/settings/email` · `social` · `integrations` · `floating`), cả sáng và tối (bs-ui scheme), mọi chữ có nghĩa ≥ 4,5:1 — kể cả tên nhà cung cấp email ở chế độ tối.
 (9) Tên miền: mỗi trạng thái chỉ 1 nút bước kế tiếp hiện sẵn; "Gỡ tên miền…" cuối "⋯" màu đỏ; gỡ tên miền chính thì hộp xác nhận nói tên nào thành chính.
+(10) Sửa kèm theo bộ tiêu chí chung: grep Shell 0 "bản ghi A" · "103.28.36.12" · "Kiểm tra DNS"; "SPF" · "DKIM" · "DMARC" · "robots.txt" · "sitemap.xml" · "OG" chỉ nằm trong khối "Nâng cao"; ô "Tìm trong cài đặt" có `aria-label`.
 Gọi ready_for_verification, sửa hết lỗi verifier báo. Verifier không trả kết quả (Shell ≈340 KB, Email ≈210 KB, công cụ chụp quá giờ) thì không chờ: ghi [CHƯA KIỂM ĐƯỢC] vào dòng Verifier của README, Claude Code kiểm bằng zip.
 Xuất zip project gửi Claude Code kiểm. Xong thì báo owner đúng một câu: "D3-2 xong — gửi zip cho Claude Code."
