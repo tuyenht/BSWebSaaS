@@ -78,6 +78,17 @@ Kiểm thêm theo nhận xét owner 06/10 về màn Chuyên mục (luật chung 
 Sửa kèm từ kiểm zip D2-5 08:07 (Claude Code, 07/10 — gom 12 lượt D1-2 → D2-5; console 0 lỗi ở 22 màn, 18 mục menu Shell mở đúng màn thật). Sửa tại chỗ, đo ở 390 cảm ứng: (a) `Quản lý Bài viết - Options` và `Sản phẩm - Danh sách`: trong thẻ gọn, chip trạng thái bấm đổi được (đang cao 28px) và chip ngôn ngữ VI/EN (32px) có vùng bấm ≥ 44px; liên kết đường dẫn dưới tiêu đề (cao 14px) thôi là liên kết riêng — chạm cả thẻ hoặc nút "Sửa" đã đủ; (b) `Trình đơn`: nhãn mục trong cây đang cao 35–37px khi cảm ứng → ≥ 44px (D1-2 "Xong khi" về vùng bấm chưa đạt); (c) `Nhóm quyền`: liên kết "Xem đủ" (20px) và tên nhóm bấm được (21px) → ≥ 44px hoặc gộp vào nút "Xem" của thẻ; (d) thanh ngôn ngữ trong `Page Editor - Options` và panel `Chuyên mục` cắt tên thành "Tiếng…" ở 390 — CLAUDE.md §4 cấm cắt nửa chữ: khung hẹp thì hiện mã "VI" + chấm, đủ chỗ mới hiện tên đầy đủ (sửa ở component dùng chung để mọi màn hưởng); (e) `Quản lý Trang - Options` (chỉ để đối chiếu từ D1-3) tràn ngang 750px ở 390 → chuyển vào `_archive/` và gỡ khỏi Bản đồ nếu không màn nào import nó, còn đang import thì sửa tràn.
 Được sửa: các `.dc.html` trong Bản đồ (chỉ sửa lỗi, trừ các tệp chỉ đo ở trên) · `shell-screens.js` · `content-workflow.js` / `content-ui.js` (chỉ nhãn sai thuật ngữ, giữ khóa) · `SaaS Starter - Bản đồ màn hình.md` · `TODO.md` · `LESSONS.md` · README mới `README - D5-2 QA liền mạch.md`. Lỗi ở `admin-base.css`, `admin-components.css` hay trang chuẩn: không sửa, ghi Cần owner chốt. Không sửa CLAUDE.md.
 Sắp hết lượt trong một phần: chốt luồng hoặc lô đang làm, ghi phần còn lại vào dòng TODO.md "D5-2 — tiến độ", xuất zip, báo owner "D5-2 phần N dừng ở … — mở chat mới, gửi 'Làm D5-2 phần N'".
+Sửa kèm từ kiểm theo bộ tiêu chí chung (Claude Code, 07/10, zip D3-1 08:41; đo trong Shell ở 360 / 768 / 1280 / 1440 × sáng-chữ thường / tối-Chữ lớn = 240 lần đo; không màn nào tràn ngang, mọi màn đúng 1 h1, console 0 lỗi):
+- **Tương phản dưới 4,5:1 ở `Trình soạn nội dung.dc.html`** (chế độ sáng): "Bản nguồn" 2,35:1 · "Đăng" 3,19:1 (4,42:1 ở chế độ tối) · "Còn 18.500 từ AI" 3,43:1. Nếu đó là nút bị khóa thì phải có `aria-disabled="true"` và câu lý do; nếu không khóa thì nâng tương phản bằng token.
+- **Mã SKU** (Sản phẩm, danh sách và trình sửa): thêm gợi ý đời thường "Mã hàng của riêng bạn để tra cứu, ví dụ MT-850".
+- **Vùng bấm:**
+  - mục con trên menu trái đang cao 36px;
+  - đường dẫn điều hướng (breadcrumb) và liên kết chân trang cao 15–24px.
+  Đo lại bằng chế độ chạm thật (`pointer: coarse`): `admin-components.css` đã đặt ô nhập 44px khi chạm. Chỗ còn thiếu thì thêm luật chạm ngay trong tệp màn hoặc Shell. Nếu chỉ sửa được trong `admin-components.css` thì ghi "Cần owner chốt" như luật của lượt này.
+- **`Quy trình duyệt.dc.html`** (mục Quy trình của nền tảng):
+  - chip quyền đang hiện khóa thô `entries.approve` · `entries.submit` · `entries.review` (`qd-chip perm`). Hiện tên quyền bằng lời như ở Nhóm quyền ("Duyệt bài", "Gửi duyệt"…); giữ nguyên khóa trong `content-workflow.js`;
+  - 3 hộp thoại (`role="dialog"`) chưa có tên: thêm `aria-labelledby` trỏ vào tiêu đề. Mở thì focus vào hộp, Tab chỉ chạy trong hộp, Esc đóng, đóng thì focus về đúng nút đã mở.
+
 Xong khi:
 (1) Phần 1: README có bảng 10 luồng × số bước × đạt / chưa và 12 việc × số bước × chỗ lưỡng lự; mọi việc chính ≤ 3 bước, hoặc có dòng Cần owner chốt.
 (2) Phần 2: "Từ không dùng" ra 0 (đã bỏ `data-term-bad`); bảng "Soát bằng mắt" đủ; mọi grep ở mục 4 ra 0; mọi lô tràn có `sw ≤ vw` — lô lỗi ghi tệp + bề rộng.
@@ -85,5 +96,6 @@ Xong khi:
 (4) Mọi lỗi đã sửa có dòng "tệp · chỗ · trước → sau"; dòng TODO.md "D5-2 — tiến độ" ghi phần đã xong.
 (5) Bảng "Hành động trên dòng, cây và quyền" có đủ mọi màn danh sách / bảng / cây / lưới trong Bản đồ, mỗi ô đạt hoặc có TODO kèm lý do.
 (6) Sửa kèm từ kiểm zip D2-5: quét vùng bấm ≥ 44px ở 390 cảm ứng trên Quản lý Bài viết, Sản phẩm - Danh sách, Trình đơn, Nhóm quyền = 0 lỗi; thanh ngôn ngữ không còn "Tiếng…" ở 390; `Quản lý Trang - Options` không còn tràn (hoặc đã vào `_archive/`).
+(7) Sửa kèm theo bộ tiêu chí chung: 3 chữ ở Trình soạn nội dung ≥ 4,5:1 (hoặc đúng là nút khóa có `aria-disabled` + lý do); Mã SKU có gợi ý; quét vùng bấm ở chế độ chạm cho menu trái, breadcrumb, chân trang: mọi chỗ ≥ 44px; Quy trình duyệt: 0 khóa quyền thô trên màn, 3 hộp thoại có tên đọc, giữ focus trong hộp, Esc đóng, trả focus về nút đã mở.
 Gọi ready_for_verification cuối mỗi phần, sửa hết lỗi verifier báo. Verifier không trả kết quả (công cụ chụp quá giờ) thì không chờ: ghi [CHƯA KIỂM ĐƯỢC] vào dòng Verifier của README, Claude Code kiểm bằng zip.
 Xuất zip project gửi Claude Code kiểm sau MỖI phần. Xong thì báo owner đúng một câu: "D5-2 phần N xong — gửi zip cho Claude Code." (phần 3: "D5-2 xong — gửi zip cho Claude Code.")

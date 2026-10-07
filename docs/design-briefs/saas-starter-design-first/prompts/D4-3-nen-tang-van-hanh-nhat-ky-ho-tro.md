@@ -72,6 +72,8 @@ README — Việc cho backend: nút + route console, thanh, danh sách phiên h�
 Sửa kèm theo nhận xét owner 06/10 về màn Chuyên mục (hành động trên dòng, cây, quyền — luật chung ở bối cảnh, mục "Hành động trên dòng, cây và quyền"): (a) Nhật ký: thêm ô tìm chữ tự do (IP, nội dung chi tiết, tên) cạnh 4 bộ lọc. (b) Nhân sự vận hành: ô tìm tên / email + chip theo 3 nhóm LUÔN hiện; dòng hiện sẵn "Đổi nhóm"; "⋯": Gửi lại lời mời (khi còn chờ) · | "Gỡ quyền…" (cuối, đỏ) — khóa + lý do ở chính mình và ở Quản trị nền tảng cuối cùng.
 Được sửa: `Đăng nhập hỗ trợ.dc.html` · `Nhật ký.dc.html` · `Nhân sự vận hành.dc.html` (mới) · `Admin Shell.dc.html` (chỉ khe thanh + `FIELDS` `p-general` · `p-branding` · `p-security`) · `Website nền tảng.dc.html` (chỉ thay 2 thẻ "Chờ thiết kế · D4-3") · `shell-screens.js` · `SaaS Starter - Bản đồ màn hình.md` (dòng 54–57, 61) · `TODO.md` · `LESSONS.md` · README mới `README - D4-3 Nền tảng vận hành.md`. Không sửa màn khác, `admin-base.css`, `admin-components.css`, trang chuẩn, CLAUDE.md.
 Sắp hết lượt: xong mục 1 + 3 trước; mục 2 + 4 ghi TODO.md "D4-3 phần 2" rồi báo owner; owner gửi "Làm D4-3 phần 2" trong cùng chat.
+Sửa kèm từ kiểm theo bộ tiêu chí chung (Claude Code, 07/10): `p-security` có dòng "Mã hóa bản lưu khi nghỉ (at-rest)". Đổi thành lời thường "Mã hóa các bản sao lưu đang cất giữ", bỏ "(at-rest)".
+
 Xong khi:
 (1) Tweak Nhân viên thanh toán: không có "Đăng nhập dưới tên khách hàng" ở đâu; hộp thiếu lý do → câu reason_required; danh sách chọn tài khoản không có nhân sự nền tảng.
 (2) Thanh: đếm ngược, 2 phút cuối "Sắp hết giờ", "Quay lại quản trị" về chi tiết website; 390 gọn 1 dòng không che nội dung.
@@ -82,5 +84,6 @@ Xong khi:
 (7) `_audit/harness.html`: `H.layouts(['Đăng nhập hỗ trợ.dc.html','Nhật ký.dc.html','Nhân sự vận hành.dc.html'], [360,390,768,1024,1440])` × chữ thường + Chữ lớn (bật Chữ lớn qua Tweak / `bs-ui` trước khi gọi), đứng riêng; trong Shell thanh ở `H.mk('f',390,800,0,0,'../Admin Shell.dc.html')` — `scrollWidth = clientWidth` (không sửa tệp trong `_audit/`).
 (8) README có Việc cho backend, Cần owner chốt, Kiểm hiển thị, 12 tiêu chí; TODO ghi "D5-1" là lượt kế tiếp.
 (9) Nhật ký có ô tìm chữ tự do; Nhân sự vận hành có ô tìm + chip nhóm, "Gỡ quyền…" cuối "⋯" màu đỏ, khóa kèm lý do ở chính mình.
+(10) `p-security`: 0 "at-rest".
 Gọi ready_for_verification, sửa hết lỗi verifier báo. Verifier không trả kết quả (Shell ≈340 KB, công cụ chụp quá giờ) thì không chờ: ghi [CHƯA KIỂM ĐƯỢC] vào dòng Verifier của README, Claude Code kiểm bằng zip.
 Xuất zip project gửi Claude Code kiểm. Xong thì báo owner đúng một câu: "D4-3 xong — gửi zip cho Claude Code."
