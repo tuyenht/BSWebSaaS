@@ -19,7 +19,7 @@ D0-4b → D0-5 → D0-6a → D0-6b → D0-6c → D1-1 → D1-6 → D1-2 → D2-3
 Bạn luôn chạy **một chat một lúc**, nên mọi lượt đều là "chạy một mình": đoạn "CHẠY SONG SONG …" trong prompt **không áp** (prompt tự ghi "chạy một mình thì bỏ qua đoạn này"). Đoạn "Đầu lượt — gộp luồng phụ" sẽ không thấy mục cần gộp và tự bỏ qua. Vẫn dán nguyên văn cả hai đoạn, không xóa.
 
 ## Mỗi lượt
-1. **Đọc lại tệp prompt ngay lúc chạy** (`prompts/<mã>-*.md`). Tệp có thể vừa được sửa, không dùng bản nhớ từ trước. Đối chiếu mục "Cần trước" với `log.md`: lượt cần trước chưa đạt thì dừng và báo owner. Ngoại lệ: lượt cần trước ghi DỪNG nhưng prompt hiện tại nêu rõ owner đã chốt chỗ dừng đó (ví dụ D0-7 với D3-1) thì coi là đủ điều kiện; ghi 1 dòng vào log.
+1. **Đọc lại tệp prompt ngay lúc chạy** (`prompts/<mã>-*.md`; prompt sửa ở `prompts/fixes/<mã>-*.md`). Tệp có thể vừa được sửa, không dùng bản nhớ từ trước. Đối chiếu mục "Cần trước" với `log.md`: lượt cần trước chưa đạt thì dừng và báo owner. Ngoại lệ: lượt cần trước ghi DỪNG nhưng prompt hiện tại nêu rõ owner đã chốt chỗ dừng đó (ví dụ D0-7 với D3-1) thì coi là đủ điều kiện; ghi 1 dòng vào log.
 2. **Mở chat mới** trong project BSWebSaaS. Nội dung gửi:
    - dòng 1: tên chat = dòng `# <mã> · <tên>` ngay dưới `═══ VIỆC CỦA LƯỢT NÀY ═══`, bỏ dấu `#` và phần trong ngoặc tròn;
    - xuống dòng, rồi **toàn bộ tệp prompt nguyên văn**, từ `═══ BỐI CẢNH CHUNG` đến hết.
