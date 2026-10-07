@@ -94,11 +94,11 @@
 + .ql-msel:hover{color:var(--color-heading,#1f2b4d)}
 + .ql-mstw{flex:0 1 auto;min-width:0;margin-left:auto}
 + .ql .ql-mst{max-width:100%;min-height:44px;padding:0 0 0 10px;border:0;border-radius:6px;background:transparent;font-weight:600;color:var(--color-heading,#1f2b4d)}
-+ .ql .ql-mst:hover{background:transparent;color:var(--color-admin-primary,#2050a0)}
++ .ql .ql-mst:hover{background:transparent;color:var(--color-accent,#2050a0)}
 + .ql-mst>i:first-child{color:var(--color-body-muted,#5b6275)}
 + .ql-mst .n{font-weight:500;color:var(--color-body-muted,#5b6275)}
 + .ql-mst .n::before{content:"· "}
-+ .ql .ql-mst[data-on="1"]{color:var(--color-admin-primary,#2050a0)}
++ .ql .ql-mst[data-on="1"]{color:var(--color-accent,#2050a0)}
 + .ql-mst[data-on="1"]>i:first-child,.ql-mst[data-on="1"] .n{color:inherit}
 + .ql .ql-tools{flex-wrap:nowrap;padding:8px 12px 12px}
 + .ql .ql-search{flex:1 1 auto;flex-basis:auto;max-width:none;min-width:0;min-height:44px}
@@ -136,7 +136,7 @@
 +.ql .ql-fl{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:0 16px 12px}
 +.ql-flh{display:flex;align-items:center;gap:8px;min-height:44px}
 +.ql .ql-match{margin-left:0;flex:1 1 auto;font-size:calc(14px + var(--fsp))}
-+.ql-flx{flex:0 0 auto;min-height:44px;padding:0 4px;border:0;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-admin-primary,#2050a0);cursor:pointer}
++.ql-flx{flex:0 0 auto;min-height:44px;padding:0 4px;border:0;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-accent,#2050a0);cursor:pointer}
 +.ql-flx:hover{text-decoration:underline}
 +.ql-chips{display:flex;flex-wrap:wrap;gap:8px}
 +.ql .ql-chip{position:relative;display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:36px;margin:4px 0;padding:0 10px 0 12px;border-radius:18px;font:inherit;font-size:calc(13px + var(--fsp));font-weight:500;cursor:pointer;white-space:nowrap}
@@ -151,7 +151,7 @@
 +.ql .ql-chip>.ql-ci{font-size:calc(15px + var(--fsp));opacity:.85}
 +/* nút xóa trong ô tìm (thay nút xóa riêng của từng trình duyệt — Firefox không có) */
 +.ql-search input[type="search"]::-webkit-search-cancel-button{display:none}
-+.ql-sclr{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:40px;height:40px;margin-right:-2px;border:0;border-radius:50%;background:transparent;color:var(--color-body-muted,#5b6275);font-size:calc(18px + var(--fsp));cursor:pointer}
++.ql-sclr{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:44px;height:44px;margin-right:-2px;border:0;border-radius:50%;background:transparent;color:var(--color-body-muted,#5b6275);font-size:calc(18px + var(--fsp));cursor:pointer}
 +.ql-sclr:hover{color:var(--color-heading,#1f2b4d)}
 +.ql-sclr:focus-visible{outline:2px solid var(--focus-ring-color,var(--color-admin-primary,#2050a0));outline-offset:-2px}
 +/* ô thông tin rỗng (không có lượt xem, không có bước duyệt…) ẩn hẳn — tránh dấu "· ·" thừa */

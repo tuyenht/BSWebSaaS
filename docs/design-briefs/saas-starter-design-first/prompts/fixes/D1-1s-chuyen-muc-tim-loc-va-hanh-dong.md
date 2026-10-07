@@ -53,7 +53,7 @@ CHẤT LƯỢNG HOÀN THIỆN (owner 06/10 — áp mọi màn, cùng mức với
  C. Bàn phím & trình đọc màn hình (WCAG 2.2 AA): thứ tự Tab theo thứ tự đọc; Esc đóng hộp thoại; mở hộp thì focus vào trong, đóng thì trả focus về nút đã mở; đúng 1 h1 và cấp tiêu đề đúng; ô nhập có nhãn thật; toast và trạng thái lưu có `aria-live`; hộp thoại có tên.
  D. Chế độ tối & trình duyệt: chế độ tối chỉ dùng token — nền trắng / tối viết thẳng dưới chữ theo token là LỖI (Claude Code đo 06/10: Email 1,12:1, Trình đơn 1,16:1). Ô chọn, ô tích, ô ngày trông giống nhau trên Chrome, Safari, Firefox (vẽ trạng thái đóng, giữ bộ chọn gốc trên điện thoại). Chữ tiếng Việt có dấu hiện đúng cả khi rơi về font dự phòng. Nhãn dài hơn 40% (bản dịch) không vỡ bố cục.
  E. Đo thật, không tự khai: trước khi ghi "đạt", đo trong `_audit/harness.html` bằng getComputedStyle — (1) tương phản mọi chữ có nghĩa ở CẢ sáng lẫn tối (`data-bs-theme="dark"`) ≥ 4,5:1 (chữ ≥ 24px hoặc ≥ 18,66px đậm: ≥ 3:1); (2) vùng bấm ≥ 44px ở 390; (3) Tab / Esc / trả focus của mọi hộp thoại; (4) mở lại từng tệp đã sửa và Admin Shell — console 0 lỗi (nhất là "logic class eval FAILED": sửa JS xong phải chạy lại). Tệp đo / ảnh tạm chỉ đặt trong `_audit/tmp/`, không tạo thư mục mới ở gốc project; xóa sạch `_audit/tmp/` trước khi xuất zip (mỗi zip đang mang thêm khoảng 14 MB tệp tạm). Không đo được thì ghi [CHƯA KIỂM ĐƯỢC] kèm lý do, không ghi "đạt". README có mục "Kết quả Chất lượng hoàn thiện" (A–E: đạt/chưa + số đo).
-Nhúng & điều hướng: panel Cài đặt tuân hợp đồng nhúng §13 (embedded · onDirty · embedId · bs-embed-cmd — không tự vẽ header/nút Lưu); màn toàn trang (danh sách, trình soạn, hộp thư, thư viện) nhận embedded nhưng chỉ ẩn phần trùng Shell (breadcrumb, tiêu đề trang, khung 100vh), GIỮ thanh thao tác + nút quy trình của chính màn, báo onDirty, nhận bs-embed-cmd {act:'save'}; đăng ký vào registry màn của Admin Shell (sau D0-4b) với trạng thái "ready", chuyển màn bằng sự kiện bs-goto {screen, params}; cập nhật dòng tương ứng trong `SaaS Starter - Bản đồ màn hình.md`. Gắn màn mới vào Shell: ngoài registry còn phải thêm khối gắn trong `Admin Shell.dc.html` (1 `<sc-if>` + `dc-import … embedded` + cờ và props của nó, theo mẫu khối "Chuyên mục" của D1-1) — được sửa Admin Shell CHỈ cho khối này, kể cả khi dòng "Được sửa" ghi không sửa Admin Shell.
+Nhúng & điều hướng: panel Cài đặt tuân hợp đồng nhúng §13 (embedded · onDirty · embedId · bs-embed-cmd — không tự vẽ header/nút Lưu); màn toàn trang (danh sách, trình soạn, hộp thư, thư viện) nhận embedded nhưng chỉ ẩn phần trùng Shell (breadcrumb, tiêu đề trang, khung 100vh), GIỮ thanh thao tác + nút quy trình của chính màn, báo onDirty, nhận bs-embed-cmd {act:'save'}; đăng ký vào registry màn của Admin Shell (sau D0-4b) với trạng thái "ready", chuyển màn bằng sự kiện bs-goto {screen, params}; cập nhật dòng tương ứng trong `SaaS Starter - Bản đồ màn hình.md`. Gắn màn mới vào Shell: ngoài registry còn phải thêm khối gắn trong `Admin Shell.dc.html` (1 `<sc-if>` + `dc-import … embedded` + cờ và props của nó, theo mẫu khối "Chuyên mục" của D1-1) — được sửa Admin Shell CHỈ cho khối này, kể cả khi dòng "Được sửa" ghi không sửa Admin Shell. Từ D0-8 trở đi (Shell đã có cụm đầu màn "Hướng dẫn" + nút chính): màn nhúng có nút tạo chính thì báo nút đó qua `bs-embed-hdr {id, primary: {label, title, icon?, menu?, locked?} | null}` để Shell vẽ, không tự vẽ nút chính ở đầu màn; màn mới có danh sách `help` trong registry và một bộ bước trong `GUIDES` của `guide.js` (cách làm ở D0-8 phần 3).
 Giao nộp: 1 file .dc.html mỗi màn (hoặc gộp có anchor) + README handoff theo mẫu: Tổng quan · File · Mức hoàn thiện · Màn & trạng thái · Tương tác · Ánh xạ dữ liệu (file:dòng repo) · Quyền & gói (ai thấy gì) · Token · Icon · Chuỗi cần dịch · Kết quả 12 tiêu chí dễ dùng · Kết quả Chất lượng hoàn thiện (A–E) · Kiểm hiển thị (bề rộng × trình duyệt) · Việc cho backend.
 Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm nào thì lượt này làm theo prompt (owner đã duyệt) và ghi 1 dòng LESSONS.md nêu điểm khác để owner sửa CLAUDE.md; bài học mới cũng ghi 1 dòng vào LESSONS.md. Làm xong gọi ready_for_verification và sửa hết lỗi verifier báo. Lượt này làm ĐÚNG MỘT việc bên dưới.
 ═══ VIỆC CỦA LƯỢT NÀY ═══
@@ -74,6 +74,8 @@ Owner xem `Chuyên mục.dc.html` và chưa ưng ở 3 điểm:
 
 Owner cũng yêu cầu rà kỹ từng nút theo 12 tiêu chí và Chất lượng hoàn thiện A–E, kể cả quyền và quy trình duyệt. Claude Code đã dựng bản zip 23:44 trong Chromium, đối chiếu với repo và với `Trình đơn.dc.html` (màn cây đã chốt), và cho một người rà độc lập phản biện. Mỗi quyết định dưới đây đã qua phản biện; phần "vì" giải thích lý do để không đổi ngược lại.
 
+Owner đã duyệt 07/10 (21:2x) 4 thay đổi điều khiển đang có, nên KHÔNG hỏi lại và không ghi vào "Cần owner chốt": (1) 2 nút "Mở tất cả" / "Thu gọn tất cả" thành 1 nút tự đổi chữ; (2) "Đưa vào trong…" và "Đưa ra ngoài một cấp" gộp vào "Chuyển đến…" (phím Alt+→ / Alt+← giữ nguyên); (3) dãy chip ngôn ngữ trên dòng thành trạng thái bằng chữ ở đúng chỗ đó; (4) menu "⋯" của chuyên mục gốc: 6 mục khóa thành 1 dòng giải thích. README ghi 4 dòng này vào bảng quyết định với "Owner duyệt 07/10".
+
 Cách sửa:
 - SỬA TẠI CHỖ: giữ panel Sửa/Thêm, hộp Xóa (đã tốt), dữ liệu mẫu, luật as-built, hộp "Chuyển đến…" sẵn có và câu lý do khóa đang hiện ngay dưới mục bị khóa trong menu.
 - Chỉ sửa `Chuyên mục.dc.html`, `README - D1-1 Chuyên mục.md`, `TODO.md`, `LESSONS.md`.
@@ -81,12 +83,12 @@ Cách sửa:
 1. **Thanh công cụ trên cây.** Luôn hiện, kể cả khi chỉ có 1 chuyên mục; chỉ ẩn khi cây trống (đã có trạng thái "Tạo chuyên mục đầu tiên"). Cách cư xử chép theo Trình đơn: một nút "Bỏ lọc" xóa cả chữ tìm lẫn chip; một dải ghi chú dưới thanh khi đang lọc. Vùng bấm: mọi ô, chip, nút ≥ 44px ở MỌI bề rộng, cả chuột lẫn cảm ứng.
    - **Ô tìm** "Tìm chuyên mục…" (có tên cho trình đọc màn hình):
      - Khớp tên ở mọi ngôn ngữ đang bật và đường dẫn.
-     - Không phân biệt dấu, và "đ" khớp "d": "khuyen mai" ra "Khuyến mãi", "dao tao" ra "Đào tạo".
+     - Không phân biệt dấu, và "đ" khớp "d": "khuyen mai" ra "Khuyến mãi", "gia cong" ra "Gia công CNC" và "Kiến thức gia công".
      - Khớp ở ngôn ngữ khác thì ghi thêm dòng nhỏ "EN: Machining…".
      - Kết quả là danh sách phẳng; mỗi dòng có đường cha phía trước, không tính gốc ("Kiến thức gia công ›"); tô đậm phần chữ khớp.
      - Không có kết quả thì hiện "Không có chuyên mục nào khớp "…"" + nút "Bỏ lọc".
    - **Chip lọc nhanh**, chọn 1; mỗi chip có biểu tượng + chữ + số, số tính trên cả cây:
-     - "Tất cả 8" · "Chưa có bài 1" · "Chưa dịch 3".
+     - "Tất cả" · "Chưa có bài" · "Chưa dịch", số đếm đúng theo dữ liệu mẫu (ví dụ 3 ngôn ngữ: "Chưa dịch" gồm cả bản lỗi thời).
      - "Chưa dịch" gồm bản trống, thiếu trường, lỗi thời và AI vừa dịch chưa kiểm. Ẩn chip này khi website có 1 ngôn ngữ.
      - Vì sao không dùng "Lọc ▾" nhiều nhóm và không lọc theo Cấp: cây chỉ có 2 câu hỏi thật ("mục nào trống?", "mục nào chưa dịch?"); 1 chạm dễ hơn mở bảng chọn; cấp đã thấy qua thụt lề.
    - **Bên trái thanh:** "8 chuyên mục".
@@ -122,14 +124,14 @@ Cách sửa:
      - Mục cấp 3 không có nút này, chỗ trống giữ nguyên để cột thẳng hàng.
      - Lý do nằm ở mục khóa trong "⋯", vì 1 nút khóa lặp trên mọi dòng cấp 3 là nhiễu.
    - Nút "⋯".
-   - Khung 600–719px: "+ Mục con" chuyển lên đầu menu "⋯", "Sửa" vẫn hiện.
+   - Khung 600–719px: trạng thái ngôn ngữ xuống dòng phụ dưới tên; "Sửa" và "+ Mục con" vẫn hiện (việc hay làm luôn hiện, theo bối cảnh chung).
    - **Dòng gốc** (Tin tức, Dịch vụ…): có Sửa, + Mục con, "N bài", "⋯"; không có tay cầm.
 3. **Menu "⋯"** gồm các nhóm cách nhau bằng vạch ngăn. Trên máy tính menu không lặp lại nút đã hiện sẵn trên dòng:
    - Xem trên website (mở tab mới) · Sao chép đường dẫn.
      - Sao chép xong có toast "Đã sao chép". Không chép được thì hiện ô chứa địa chỉ đã bôi đen sẵn.
      - Vì chủ shop hay dán link chuyên mục vào Zalo / Facebook.
    - Chuyển lên (Alt+↑) · Chuyển xuống (Alt+↓) · Chuyển đến…
-     - "Chuyển đến…" thay cả "Đưa vào trong…" lẫn "Đưa ra ngoài một cấp", và dùng lại hộp chọn chỗ đã có.
+     - "Chuyển đến…" thay cả "Đưa vào trong…" lẫn "Đưa ra ngoài một cấp", và dùng lại hộp chọn chỗ đã có (hiện tiêu đề `Đưa "{{ mvName }}" vào trong…`, đổi thành tiêu đề bên dưới).
      - Tiêu đề hộp "Chuyển "Vật liệu" đến đâu?". Chỗ đặt liệt kê theo cây.
      - Trên màn của một loại nội dung, chỗ cao nhất là "Ngay dưới Tin tức". "Cấp ngoài cùng" CHỈ có ở Sản phẩm.
        - Vì chuyên mục ra khỏi gốc thì không thuộc loại nào: không màn nào hiện nó, và bài của nó rơi khỏi mọi danh sách.
@@ -144,10 +146,10 @@ Cách sửa:
      - Hộp gộp không có lựa chọn "Xóa theo".
    - Xóa…: luôn cuối, chữ và biểu tượng màu đỏ (token danger, đo tương phản ≥ 4,5:1 cả sáng lẫn tối).
    - **Chuyên mục gốc:** menu chỉ có nhóm Xem + 1 dòng chữ "Chuyên mục gốc của Tin tức: luôn ở cấp 1, không chuyển, gộp hay xóa được — đổi tên thì bấm Sửa." Bỏ 6 mục khóa đang hiện, vì lặp cùng một lý do 6 lần.
-   - **Điện thoại:** "⋯" mở bảng chọn trượt từ đáy, tiêu đề là tên chuyên mục. Thứ tự: + Mục con · Xem 24 bài | Xem trên website · Sao chép đường dẫn | Chuyển lên · Chuyển xuống · Chuyển đến… | Gộp… | Xóa…. Với gốc: + Mục con · Xem bài | nhóm Xem | dòng lý do.
+   - **Điện thoại:** "⋯" mở bảng chọn trượt từ đáy, tiêu đề là tên chuyên mục. Thứ tự: Xem 24 bài | Xem trên website · Sao chép đường dẫn | Chuyển lên · Chuyển xuống · Chuyển đến… | Gộp… | Xóa…. Với gốc: + Mục con · Xem bài | nhóm Xem | dòng lý do.
 4. **Dòng trên điện thoại** (khung < 600px):
    - Tên + 1 dòng phụ "/kien-thuc · 24 bài". Dòng phụ chỉ thêm "· Thiếu JA" khi còn thiếu bản dịch, để không bị gãy.
-   - Nút chữ "Sửa" 44px HIỆN SẴN + nút "⋯" 44px.
+   - Nút chữ "Sửa" 44px + "+ Mục con" 44px HIỆN SẴN (trừ cấp 3) + nút "⋯" 44px, cùng một hàng gọn bên phải, giống thẻ Trang của D0-8 ("Sửa · Trang con · ⋮").
    - Chạm vào chỗ trống của dòng cũng mở Sửa. Đo bản 23:44: chỉ chữ tên 21px bấm được, chạm chỗ trống của dòng không làm gì.
 5. **Đổi chỗ, đổi cha, gộp và xóa: chỉ hỏi khi có hệ quả thật, và nói bằng số.**
    - **Đổi thứ tự trong cùng cha** (kéo, Chuyển lên/xuống, Alt+↑/↓): làm ngay, không hỏi.
@@ -232,7 +234,7 @@ Cách sửa:
      Vùng `aria-live` đọc đúng câu đó.
    - **Chỗ không được thả:** quá số cấp tối đa, thả vào chính nó hay mục con của nó, hoặc bài đang theo quy trình duyệt rời loại nội dung. Khi đó dòng giữ chỗ đỏ, nhãn nêu lý do ("Tối đa 3 cấp"); nhả ra không đổi gì và báo lý do.
    - **Trong lúc kéo:** đến gần mép trên hay dưới thì tự cuộn; Esc hủy kéo, mục về chỗ cũ.
-   - **Sau khi nhả:** dòng vừa chuyển sáng nhẹ 1 giây, và có thông báo "Đã chuyển "X" vào trong "Y" · Hoàn tác".
+   - **Sau khi nhả:** dòng vừa chuyển sáng nhẹ 1 giây, và có thông báo "Đã chuyển "X" vào trong "Y" · Hoàn tác", đứng ≥ 10 giây, dừng đếm khi rê chuột hoặc focus vào (thông báo có "Hoàn tác" đang có của màn — ví dụ 4,2 giây ở Trình đơn, 8 giây ở danh sách — nâng lên cùng mức).
    - **Không bắt buộc phải kéo:** vẫn giữ ↑ ↓ và "Chuyển đến…" (chọn chỗ đích trong cây, có ô tìm), cho điện thoại, bàn phím và người lớn tuổi.
    - Khi đang tìm hoặc lọc, kéo thả tắt như luật đang có, và hiện câu lý do.
 11. **README** thêm mục "D1-1s", gồm:
@@ -244,9 +246,9 @@ Cách sửa:
     - Ghi cho owner: chấm ngôn ngữ ở CLAUDE.md §3 chỉ khác nhau bằng màu, tooltip chỉ hiện khi rê chuột. Đề xuất thêm hình hoặc chữ ở một lượt component; owner chốt.
 
 Xong khi:
-(1) Với 1 chuyên mục, ô tìm và chip vẫn hiện. Tìm "khuyen mai" ra "Khuyến mãi" có đường cha (không có gốc). Chip "Chưa có bài" ra đúng số. Khi đang lọc: có dải "Đang xem N / M… · Bỏ lọc", tay cầm ẩn, Chuyển lên khóa kèm lý do, "Chuyển đến…" vẫn dùng được.
+(1) Tweak "Chỉ 1 chuyên mục" (thêm nếu chưa có): với 1 chuyên mục, ô tìm và chip vẫn hiện. Tìm "khuyen mai" ra "Khuyến mãi" có đường cha (không có gốc). Chip "Chưa có bài" ra đúng số. Khi đang lọc: có dải "Đang xem N / M… · Bỏ lọc", tay cầm ẩn, Chuyển lên khóa kèm lý do, "Chuyển đến…" vẫn dùng được.
 (2) 1280: mỗi dòng không phải gốc thấy "Sửa", "+ Mục con" (trừ cấp 3), "N bài" (0 = "Chưa có bài"), trạng thái ngôn ngữ bằng chữ, "⋯". Menu đúng nhóm, đúng thứ tự, "Xóa…" cuối màu đỏ. Menu gốc chỉ có nhóm Xem + 1 dòng lý do. Tweak 8 ngôn ngữ: dòng không tràn, không cắt chữ.
-(3) 390: dòng = tên + dòng phụ không gãy + "Sửa" + "⋯"; chạm chỗ trống của dòng mở Sửa; "⋯" là bảng trượt từ đáy. Quét vùng bấm ≥ 44px ở 390, 768 VÀ 1280 = 0 lỗi.
+(3) 390: dòng = tên + dòng phụ không gãy + "Sửa" + "+ Mục con" (trừ cấp 3) + "⋯"; chạm chỗ trống của dòng mở Sửa; "⋯" là bảng trượt từ đáy. Quét vùng bấm ≥ 44px ở 390, 768 VÀ 1280 = 0 lỗi.
 (4) "Chuyển đến…" trên Tin tức không có "Cấp ngoài cùng"; trên Sản phẩm thì có. Alt+← ở cấp 2 báo "Đã ở cấp ngoài cùng của Tin tức".
 (5) Tweak đường dẫn phẳng: đổi cha không hỏi, có toast "Hoàn tác". Tweak đường dẫn có chuyên mục: hỏi kèm số bài đổi địa chỉ. Tweak Tin tức BẬT quy trình duyệt: "Chuyển đến…" / Gộp / Xóa → mọi chỗ của Dịch vụ khóa kèm lý do, "Bỏ gắn" khóa, kéo sang loại khác bị từ chối. Tweak Tin tức TẮT quy trình: chuyển sang Dịch vụ được, hộp xác nhận đủ các dòng ở mục 5 kèm số, xong có toast "Mở Chuyên mục Dịch vụ".
 (6) Tweak "Người viết": trạng thái không có quyền. Phiên hỗ trợ: mọi nút ghi khóa kèm câu khóa, ô tìm vẫn gõ được. Lưu hỏng: chữ đã gõ còn nguyên, có "Thử lại". `taxonomy_invalid`: có "Tải lại".
@@ -256,6 +258,6 @@ Xong khi:
    - tương phản chữ ≥ 4,5:1, phần giao diện và focus ≥ 3:1, ở cả sáng lẫn tối;
    - mở lại tệp và Admin Shell: console 0 lỗi.
    Tệp đo tạm chỉ đặt trong `_audit/tmp/`.
-(9) Kéo "Khuyến mãi" lên nửa giữa dòng "Tin tức": dòng giữ chỗ thụt vào 1 bậc, nhãn "Thành mục con của "Tin tức" · cấp 2"; nhả ra đúng chỗ đó, có "Hoàn tác". Kéo một mục cấp 3 vào trong một mục cấp 3: dòng giữ chỗ đỏ, nhãn "Tối đa 3 cấp", nhả ra không đổi gì. Esc trong lúc kéo trả mục về chỗ cũ.
+(9) Kéo "Khuyến mãi" lên nửa giữa dòng "Tin công ty": dòng giữ chỗ thụt vào 1 bậc, nhãn "Thành mục con của "Tin công ty" · cấp 3"; nhả ra đúng chỗ đó, có "Hoàn tác". Kéo một mục cấp 3 vào trong một mục cấp 3: dòng giữ chỗ đỏ, nhãn "Tối đa 3 cấp", nhả ra không đổi gì. Esc trong lúc kéo trả mục về chỗ cũ.
 
 Xuất zip project gửi Claude Code kiểm. Xong thì báo owner đúng một câu: "D1-1s xong — gửi zip cho Claude Code."
