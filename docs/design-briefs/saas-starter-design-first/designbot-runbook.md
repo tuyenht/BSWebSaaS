@@ -14,7 +14,7 @@ Vai trò: **người chuyển prompt và người kiểm bước đầu**. Khôn
 ## Thứ tự lượt
 Chạy lần lượt, mỗi lượt một **chat mới** trong project:
 
-D0-4b → D0-5 → D0-6a → D0-6b → D0-6c → D1-1 → D1-6 → D1-2 → D2-3 → D1-3 → D1-4a → D1-4b → D1-5 → D1-7 → D1-4c → D2-1 → D1-4d → D2-2 → D2-4 → D2-5 → D3-1 → **D0-7** (3 phần, cùng chat) → **7 prompt sửa theo thứ tự D1-1s · D1-6s · D2-5s · D1-2s · D1-3s · D2-1s · D3-1s** (mỗi prompt dán vào chat của lượt ghi trong tiêu đề, làm như mục "Prompt sửa từ Claude Code") → D3-2 → D4-1 → D4-3 → D4-2 → D5-1 → D5-2
+D0-4b → D0-5 → D0-6a → D0-6b → D0-6c → D1-1 → D1-6 → D1-2 → D2-3 → D1-3 → D1-4a → D1-4b → D1-5 → D1-7 → D1-4c → D2-1 → D1-4d → D2-2 → D2-4 → D2-5 → D3-1 → **D0-7** (3 phần, cùng chat) → **7 prompt sửa theo thứ tự D1-1s · D1-6s · D2-5s · D1-2s · D1-3s · D2-1s · D3-1s** (mỗi prompt dán vào chat của lượt ghi trong tiêu đề, làm như mục "Prompt sửa từ Claude Code") → **D0-8** (3 phần, cùng chat; owner chốt 07/10) → D3-2 → D4-1 → D4-3 → D4-2 → D5-1 → D5-2
 
 Bạn luôn chạy **một chat một lúc**, nên mọi lượt đều là "chạy một mình": đoạn "CHẠY SONG SONG …" trong prompt **không áp** (prompt tự ghi "chạy một mình thì bỏ qua đoạn này"). Đoạn "Đầu lượt — gộp luồng phụ" sẽ không thấy mục cần gộp và tự bỏ qua. Vẫn dán nguyên văn cả hai đoạn, không xóa.
 

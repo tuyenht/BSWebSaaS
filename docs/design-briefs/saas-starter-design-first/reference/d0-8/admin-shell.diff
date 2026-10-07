@@ -1,0 +1,102 @@
+--- Admin Shell.dc.html (sau D0-7 phần 1)
++++ Admin Shell.dc.html (bản mẫu D0-8)
+@@ -23,7 +23,7 @@
+ <script src="./ai-quota.js"></script>
+ <script src="./platform-config.js"></script>
+ <script src="./content-workflow.js"></script>
+-<script src="./shell-screens.js"></script>
++<script src="./shell-screens.js"></script><script src="./guide.js"></script>
+ <script src="./content-ui.js"></script>
+ <style>
+ body{margin:0;background:#e9eaf0;font-size:calc(14px + var(--fsp, 0px));}
+@@ -135,6 +135,28 @@
+ .ntf-f{padding:8px;border-top:1px solid var(--color-border,#e9ecf4);flex:0 0 auto;}
+ .ntf-empty{display:flex;flex-direction:column;align-items:center;gap:6px;padding:28px 16px;text-align:center;color:var(--color-body-muted,#5b6275);}
+ @media (max-width:599px){.pop.ntf-pop{position:fixed!important;inset:0!important;left:0!important;right:0!important;top:0!important;width:auto!important;max-width:none!important;max-height:none!important;height:100dvh;border:0;border-radius:0;z-index:400!important;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px);}.ntf-list{max-height:none;}.ntf-it{min-height:64px;}}
++/* Đầu màn (owner 07/10 17:24, phương án B): MỘT cụm thao tác bên phải tiêu đề = [Hướng dẫn] (nút chữ không viền) + nút chính của màn;
++   hàng đường dẫn chỉ còn đường dẫn. Hàng tiêu đề tự xuống dòng: tiêu đề không bị bẻ, thiếu chỗ thì cả cụm xuống hàng, căn phải.
++   Điện thoại (< 600px): "Hướng dẫn" thu thành nút tròn (?) — biểu tượng ai cũng hiểu, có chú thích + tên cho trình đọc màn hình. */
++.hdr-row{display:flex!important;flex-wrap:wrap!important;align-items:center!important;column-gap:12px;row-gap:9px}
++.hdr-l{display:contents!important}
++.hdr-l>*{flex:0 0 100%;order:1}
++.hdr-l>h1{flex:1 1 auto;width:auto;min-width:0;order:2}
++.hdr-l>:last-child:not(h1){order:4;max-width:none!important}   /* mô tả luôn xuống hàng riêng (max-width cũ 640px làm nó chen lên hàng tiêu đề) */
++.hdr-act{order:3;display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px;margin-left:auto}
++.hdr-act:empty{display:none}
++.hdr-act>div{margin-top:0!important}
++.hdr-act .sx-btn{min-height:44px}
++.hdr-hbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:0 12px;border:0;border-radius:6px;background:transparent;font:inherit;font-size:calc(14px + var(--fsp,0px));font-weight:600;color:var(--color-admin-primary,#2050a0);cursor:pointer;white-space:nowrap}
++.hdr-hbtn i{font-size:calc(18px + var(--fsp,0px))}
++.hdr-hbtn:hover{background:var(--color-surface-hover,#f1f3f9)}
++.hdr-hbtn:focus-visible{outline:2px solid var(--focus-ring-color,var(--color-admin-primary,#2050a0));outline-offset:2px}
++@media (max-width:599px){
++ .hdr-hbtn{width:44px;padding:0;border:1px solid var(--color-border-input,#8a93a8);border-radius:22px}
++ .hdr-hbtn i{font-size:calc(20px + var(--fsp,0px))}
++ .hdr-hbtn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
++}
++
+ </style>
+ </helmet>
+ <section style="font-family:Inter,'Segoe UI',sans-serif;font-size:calc(14px + var(--fsp, 0px));line-height:1.5;">
+@@ -243,7 +265,7 @@
+             </div>
+             <div ref="{{ setTbRight }}" style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+               <sc-if value="{{ searchIconOnly }}"><button style="{{ iconBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onOpenSearchFull }}" aria-label="Tìm kiếm" title="Tìm kiếm"><i class="ri-search-line" style="font-size:calc(19px + var(--fsp, 0px));"></i></button></sc-if>
+-              <button style="{{ helpBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onOpenHelp }}" aria-label="Trợ giúp" title="Trợ giúp" aria-haspopup="dialog"><i class="ri-question-line" style="font-size:calc(19px + var(--fsp, 0px));"></i><sc-if value="{{ helpLabel }}"><span>Trợ giúp</span></sc-if></button>
++              <!-- Nút "?" Trợ giúp đã bỏ (owner 07/10): Hướng dẫn nằm cạnh tiêu đề màn -->
+               <sc-if value="{{ tbTools }}">
+               <div data-dz="lang" style="position:relative;">
+                 <button style="{{ langBtnStyle }}" style-hover="{{ tbHover }}" onClick="{{ onLangOpen }}" aria-haspopup="true" aria-expanded="{{ langOpenStr }}" aria-label="{{ langTip }}" title="{{ langTip }}"><sc-if value="{{ langFaceFlag }}">{{ langFlagEl }}</sc-if><sc-if value="{{ langFaceCode }}"><i class="ri-translate-2" style="font-size:calc(17px + var(--fsp, 0px));"></i><span style="font-size:calc(12px + var(--fsp, 0px));font-weight:700;letter-spacing:0.02em;">{{ langCode }}</span></sc-if></button>
+@@ -324,20 +346,20 @@
+ 
+           <div class="scl" style="{{ contentScrollStyle }}">
+             <div style="{{ contentInnerStyle }}">
+-              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
+-                <div style="display:flex;flex-direction:column;gap:9px;flex:1 1 320px;min-width:0;">
+-                  <sc-if value="{{ showCrumb }}"><div style="display:flex;align-items:center;gap:6px;font-size:calc(12px + var(--fsp, 0px));color:{{ tMuted }};flex-wrap:wrap;"><i class="ri-home-4-line" style="font-size:calc(14px + var(--fsp, 0px));cursor:pointer;" onClick="{{ goDash }}"></i><sc-for list="{{ crumbEls }}" as="c" hint-placeholder-count="2"><i class="ri-arrow-right-s-line" style="font-size:calc(13px + var(--fsp, 0px));"></i><sc-if value="{{ c.current }}"><span style="color:{{ tText }};font-weight:500;">{{ c.label }}</span></sc-if><sc-if value="{{ c.link }}"><button onClick="{{ c.onClick }}" style="min-height:24px;padding:0;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:2px;">{{ c.label }}</button></sc-if><sc-if value="{{ c.plain }}"><span>{{ c.label }}</span></sc-if></sc-for></div></sc-if>
++              <div class="hdr-row" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
++                <div class="hdr-l" style="display:flex;flex-direction:column;gap:9px;flex:1 1 320px;min-width:0;">
++                  <sc-if value="{{ showCrumb }}"><div class="hdr-crumb" style="display:flex;align-items:center;gap:6px;font-size:calc(12px + var(--fsp, 0px));color:{{ tMuted }};flex-wrap:wrap;"><i class="ri-home-4-line" style="font-size:calc(14px + var(--fsp, 0px));cursor:pointer;" onClick="{{ goDash }}"></i><sc-for list="{{ crumbEls }}" as="c" hint-placeholder-count="2"><i class="ri-arrow-right-s-line" style="font-size:calc(13px + var(--fsp, 0px));"></i><sc-if value="{{ c.current }}"><span style="color:{{ tText }};font-weight:500;">{{ c.label }}</span></sc-if><sc-if value="{{ c.link }}"><button onClick="{{ c.onClick }}" style="min-height:24px;padding:0;border:0;background:transparent;font:inherit;color:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:2px;">{{ c.label }}</button></sc-if><sc-if value="{{ c.plain }}"><span>{{ c.label }}</span></sc-if></sc-for></div></sc-if>
+                   <sc-if value="{{ hdrShow }}" hint-placeholder-val="{{ true }}"><h1 style="margin:0;font-size:calc(22px + var(--fsp, 0px));font-weight:600;letter-spacing:-0.01em;color:{{ tHeading }};line-height:1.4;">{{ pageTitle }}</h1></sc-if>
+                   <sc-if value="{{ scrDescShow }}"><div style="font-size:calc(13px + var(--fsp, 0px));color:{{ tMuted }};max-width:640px;line-height:1.55;">{{ scrDesc }}</div></sc-if>
+                   <sc-if value="{{ showSettings }}"><div style="font-size:calc(12.5px + var(--fsp, 0px));color:{{ tMuted }};max-width:640px;line-height:1.55;">{{ settingsActive.desc }}</div></sc-if>
+                 </div>
+                 
+-                <sc-if value="{{ menusShowActions }}"><div style="display:flex;align-items:center;gap:10px;flex:0 1 auto;min-width:0;flex-wrap:wrap;margin-top:22px;">
++                <div class="hdr-act"><sc-if value="{{ hdrShow }}"><button type="button" class="hdr-hbtn" data-guide-open="1" aria-haspopup="dialog" aria-expanded="false" aria-label="Hướng dẫn cho màn này" title="Hướng dẫn cho màn này, theo đúng quyền của bạn"><i class="ri-question-line" aria-hidden="true"></i><span>Hướng dẫn</span></button></sc-if><sc-if value="{{ hdrPri }}"><button type="button" class="sx-btn pri" data-hdr-primary="1" title="{{ hdrPriTitle }}" onClick="{{ onHdrPri }}"><i class="{{ hdrPriIcon }}" aria-hidden="true"></i><span class="sx-t">{{ hdrPriLabel }}</span></button></sc-if><sc-if value="{{ menusShowActions }}"><div style="display:flex;align-items:center;gap:10px;flex:0 1 auto;min-width:0;flex-wrap:wrap;margin-top:22px;">
+                   <sc-if value="{{ menusHasChanges }}"><span style="display:inline-flex;align-items:center;gap:6px;font-size:calc(12px + var(--fsp, 0px));color:var(--tone-warn-fg);white-space:nowrap;"><i class="ri-error-warning-line" style="font-size:calc(15px + var(--fsp, 0px));"></i>Chưa lưu</span></sc-if>
+                   <sc-if value="{{ menusHasErr }}"><span role="status" style="display:inline-flex;align-items:center;gap:6px;font-size:calc(12px + var(--fsp, 0px));font-weight:600;color:var(--color-admin-danger-text,#bf371a);white-space:nowrap;"><i class="ri-close-circle-line" style="font-size:calc(15px + var(--fsp, 0px));"></i>{{ menusErrText }}</span><button type="button" data-focus-kind="ghost" onClick="{{ onMenusFirstError }}" style="min-height:36px;padding:0 6px;border:0;border-radius:4px;background:transparent;font:inherit;font-size:calc(12px + var(--fsp, 0px));font-weight:600;color:var(--color-accent,#2050a0);text-decoration:underline;cursor:pointer;white-space:nowrap;">Xem lỗi đầu tiên</button></sc-if>
+                   <button style="{{ menusResetStyle }}" disabled="{{ menusNoChanges }}" onClick="{{ onMenusReset }}">Bỏ thay đổi</button>
+                   <button style="{{ menusSaveStyle }}" disabled="{{ menusNoChanges }}" onClick="{{ onMenusSave }}"><i class="ri-save-3-line" style="font-size:calc(15px + var(--fsp, 0px));"></i>Lưu thay đổi</button>
+-                </div></sc-if>
++                </div></sc-if></div>
+ 
+               </div>
+ 
+@@ -1237,7 +1259,7 @@
+     this._scrReady = () => { if (this._hashPending) { this._hashPending = false; this.applyHash(); } this.forceUpdate(); }; document.addEventListener('bs-screens-ready', this._scrReady);
+     // D0-4b: bs-goto {screen, params} = cách DUY NHẤT để chuyển màn. Khóa lạ ngoài screen/params (ví dụ region của Trình đơn) gom vào params.
+     this._goto = (e) => { const d = (e && e.detail) || {}; const params = Object.assign({}, d.params || {}); Object.keys(d).forEach(k => { if (k !== 'screen' && k !== 'params' && k !== 'force') params[k] = d[k]; }); this.goScreen(d.screen, params, !!d.force); };
+-    document.addEventListener('bs-goto', this._goto);
++    document.addEventListener('bs-goto', this._goto); this._hdr = (e) => { const d = (e && e.detail) || {}; if (!d.id) return; const cur = this.state.embHdr || {}; if (cur.id === d.id && JSON.stringify(cur.primary || null) === JSON.stringify(d.primary || null)) return; this.setState({ embHdr: { id: d.id, primary: d.primary || null } }); }; document.addEventListener('bs-embed-hdr', this._hdr);
+     // D0-5: kho bài dùng chung (BSCW.store) đổi → vẽ lại số đếm Hộp duyệt trên menu.
+     this._kho = () => this.forceUpdate(); document.addEventListener('bs-cw-store', this._kho);
+     try { const P = window.__bsShellPerf || (window.__bsShellPerf = {}); P.mount = performance.now(); requestAnimationFrame(() => requestAnimationFrame(() => { P.paint = performance.now(); })); } catch (e) {}
+@@ -1258,7 +1280,7 @@
+     try { document.addEventListener('bs-embed-dirty', this._embed); } catch (e) {}
+     this._outside = (e) => { const S0 = this.state; if (!S0.drop && !S0.langPanel && !S0.infoFor) return; const t = e.target; if (t && t.closest && t.closest('[data-dz]')) return; this.setState({ drop: null, langPanel: false, infoFor: null }); };
+     try { window.addEventListener('keydown', this._key); window.addEventListener('keydown', this._esc); document.addEventListener('mousedown', this._outside, true); window.addEventListener('beforeunload', this._bu); } catch (e) {} try { window.addEventListener('resize', this._onResize = () => { this.syncW(); this.scheduleRecalc(); this.fitSearchSoon(); }); } catch (e) {} try { document.addEventListener('fullscreenchange', this._onFs = () => this.setState({ isFullscreen: !!document.fullscreenElement })); const fsApi = typeof document.documentElement.requestFullscreen === 'function'; if (fsApi !== this.state.fsOk) this.setState({ fsOk: fsApi }); /* có API = trình duyệt hỗ trợ (iPhone không có → ẩn); khung nhúng chặn thì báo lúc bấm */ } catch (e) {} this.scheduleRecalc(); this.revealNavSoon(); }
+-  componentWillUnmount() { try { document.removeEventListener('bs-goto', this._goto); document.removeEventListener('bs-cw-store', this._kho); document.removeEventListener('bs-screens-ready', this._scrReady); document.removeEventListener('bs-cw-ready', this._cfgReady); } catch (e) {} try { window.removeEventListener('hashchange', this._hash); document.removeEventListener('bs-media', this._media); document.removeEventListener('bs-embed-dirty', this._embed); window.removeEventListener('resize', this._onResize); document.removeEventListener('fullscreenchange', this._onFs); window.removeEventListener('keydown', this._key); window.removeEventListener('keydown', this._esc); document.removeEventListener('mousedown', this._outside, true); window.removeEventListener('beforeunload', this._bu); clearTimeout(this._toastT); } catch (e) {} }
++  componentWillUnmount() { try { document.removeEventListener('bs-goto', this._goto); document.removeEventListener('bs-embed-hdr', this._hdr); document.removeEventListener('bs-cw-store', this._kho); document.removeEventListener('bs-screens-ready', this._scrReady); document.removeEventListener('bs-cw-ready', this._cfgReady); } catch (e) {} try { window.removeEventListener('hashchange', this._hash); document.removeEventListener('bs-media', this._media); document.removeEventListener('bs-embed-dirty', this._embed); window.removeEventListener('resize', this._onResize); document.removeEventListener('fullscreenchange', this._onFs); window.removeEventListener('keydown', this._key); window.removeEventListener('keydown', this._esc); document.removeEventListener('mousedown', this._outside, true); window.removeEventListener('beforeunload', this._bu); clearTimeout(this._toastT); } catch (e) {} }
+   // Cuộn thanh bên tới mục đang chọn khi nạp/đổi trang — chỉ khi mục đang ngoài tầm nhìn.
+   revealNavSoon() { const S = this.state, w = S.winW || 1440; const k = [S.activeMenu, S.layout, S.plane, !!S.mobileNavOpen, !!S.railOpen, w >= 1280 ? 2 : (w >= 1024 ? 1 : 0)].join('|'); if (this._revealK === k) return; this._revealK = k; try { cancelAnimationFrame(this._revealRaf); this._revealRaf = requestAnimationFrame(() => requestAnimationFrame(() => this.revealNav())); (this._revealT || []).forEach(clearTimeout); this._revealT = [150, 400, 900].map(ms => setTimeout(() => this.revealNav(), ms)); /* template vẽ trễ hơn logic — thử lại, mỗi lượt chỉ cuộn khi mục còn ngoài tầm nhìn */ } catch (e) {} }
+   revealNav() { [this._sbNav, this._sbSec].forEach(c => { if (!c || !c.isConnected) return; const a = c.querySelector('[aria-current="page"]'); if (!a) return; const cr = c.getBoundingClientRect(), ar = a.getBoundingClientRect(); if (cr.height < 1 || (ar.top >= cr.top && ar.bottom <= cr.bottom)) return; c.scrollTop += (ar.top - cr.top) - Math.max(0, (cr.height - ar.height) / 2); }); }
+@@ -3086,6 +3108,8 @@
+       onNtfAllRead: () => { if (ntfImp) { this.notify('Đang đăng nhập hỗ trợ — không đánh dấu đã đọc thay thành viên'); return; } const n = NTF ? NTF.markAll(ntfAll.filter(x => x.unread).map(x => x.id), 'shell') : 0; this.notify('Đã đánh dấu đã đọc ' + n + ' thông báo'); },
+       mDash: mountOn && am === 'dashboard', dashModOff: this.tw('moduleOff') || 'none', dashFresh: !!this.tw('freshSite'), dashBig: S.fontSize === 'xl' || S.fontSize === 'xxl', onEmbedDirtyDb: this._dbDirty || (this._dbDirty = mkEmbedDirty('dashboard')), /* D2-5 */ mNotif: mountOn && am === 'notifications', ntfWf: this.wfMode(), ntfTab: (S.screenParams || {}).tab || '', onEmbedDirtyNt: this._ntDirty || (this._ntDirty = mkEmbedDirty('notifications')),
+       siteUpShow: upsell, onSiteUpgrade: () => { this.setState({ drop: null }); this.goScreen('settings', { section: 'quota' }); },
++      hdrPri: !!(mountOn && SCR && S.embHdr && S.embHdr.primary && S.embHdr.id === SCR.embedId), hdrPriLabel: (S.embHdr && S.embHdr.primary && S.embHdr.primary.label) || '', hdrPriTitle: (S.embHdr && S.embHdr.primary && S.embHdr.primary.title) || '', hdrPriIcon: (S.embHdr && S.embHdr.primary && S.embHdr.primary.icon) || 'ri-add-line',
++      onHdrPri: () => { const id = S.embHdr && S.embHdr.id; if (id) { try { document.dispatchEvent(new CustomEvent('bs-embed-cmd', { detail: { id: id, act: 'add' } })); } catch (e) {} } },
+       menusShowActions: showMenus || mWorkflow, menusHasChanges: menusDirty, menusNoChanges: !menusDirty,
+       menusHasErr: (Number((S.embedInvalid || {})[mSaveId]) || 0) > 0, menusErrText: (Number((S.embedInvalid || {})[mSaveId]) || 0) + ' lỗi',
+       onMenusFirstError: () => { try { document.dispatchEvent(new CustomEvent('bs-embed-cmd', { detail: { id: mSaveId, act: 'firstError' } })); } catch (e) {} },
