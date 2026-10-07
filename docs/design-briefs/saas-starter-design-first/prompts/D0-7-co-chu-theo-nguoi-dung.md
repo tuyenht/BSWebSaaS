@@ -79,7 +79,7 @@ Claude Code đã đo bản D3-1 08:41:
 
 PHẦN 1 — token, lưu lựa chọn, Shell, màn mẫu Tin tức
 Được sửa: `Admin Shell.dc.html` (bộ cỡ chữ, cỡ chữ của Shell, Tweak, bảng Giao diện; thanh đầu trang chỉ cỡ chữ và mục 5) · `admin-components.css` · `admin-base.css` · `Tài khoản của tôi.dc.html` (chỉ phần Cỡ chữ) · `Quản lý Bài viết - Options.dc.html` (chỉ mục 6) · `TODO.md` · `LESSONS.md` · README mới `README - D0-7 Cỡ chữ.md`.
-1. **Mức:** `bs-ui.fontSize` nhận `md · lg · xl · xxl` (mặc định `md`) ↔ `--fsp` 0 / 2 / 4 / 6px. Giá trị cũ: `normal` → `md`, `large` → `lg` (đúng cỡ người đó đang dùng); giá trị lạ → `md`. Tweak "Chữ lớn" bật → `xxl`. `:where(:root){--fsp:0px}` giữ nguyên.
+1. **Mức:** `bs-ui.fontSize` nhận `md · lg · xl · xxl` (mặc định `md`) ↔ `--fsp` 0 / 2 / 4 / 6px. Giá trị cũ: `normal` → `md`, `large` → `lg` (đúng cỡ người đó đang dùng); giá trị lạ → `md`. `:where(:root){--fsp:0px}` giữ nguyên. Tweak "Chữ lớn" cũ bị BỎ, thay bằng đúng 1 Tweak "Cỡ chữ" 4 mức (mục 8) — không để 2 Tweak cùng tồn tại.
 2. **Shell theo mức:** mọi `font-size:<N>px` trong Shell, kể cả chuỗi style ghép trong JS (`NAV.fontSize`, `NAV.childFontSize`), đổi thành `calc(<N>px + var(--fsp, 0px))`. Riêng 4 nút xem trước trong nhóm "Cỡ chữ" giữ cỡ cố định 14 / 16 / 18 / 20px để thấy trước. **Bỏ hẳn nhánh `zoom:1.143`** (phần 2–3 cho mọi màn theo `--fsp`). `dashBig` = mức `xl` / `xxl`. Dòng phụ của mục "Giao diện" trong menu tài khoản: "· chữ lớn" / "· chữ rất lớn" / "· chữ cực lớn", mức Vừa không ghi.
 3. **Ô nhập khi chạm** (`admin-base.css`): `font-size: max(16px, calc(14px + var(--fsp, 0px))) !important` thay `16px` cứng (iPhone tự phóng to nếu ô nhỏ hơn 16px; ô vẫn to theo mức).
 4. **Chọn và lưu — 2 chỗ, cùng 1 giá trị:**
