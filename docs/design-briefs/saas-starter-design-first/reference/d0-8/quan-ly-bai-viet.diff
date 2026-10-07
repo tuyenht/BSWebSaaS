@@ -1,0 +1,466 @@
+--- Quản lý Bài viết - Options.dc.html (sau D0-7 phần 1)
++++ Quản lý Bài viết - Options.dc.html (bản mẫu D0-8)
+@@ -109,7 +109,7 @@
+ .ql-desc{margin:4px 0 0;color:var(--color-body-muted,#5b6275);text-wrap:pretty}
+ .ql-add{flex:0 0 auto}
+ .ql[data-emb="0"] .ql-add{margin-top:24px}
+-.ql[data-emb="1"] .ql-add{margin-left:auto}
++.ql[data-emb="1"] .ql-add{display:none} /* nút chính nằm ở tiêu đề màn của Shell */
+ @container ql (max-width:599px){.ql-add{flex:1 1 100%;margin-top:0!important}}
+ .ql-role{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:9px 14px;border-radius:6px;border:1px solid var(--color-border,#e9ecf4);background:var(--color-surface,#fff);font-size:calc(13px + var(--fsp))}
+ .ql-role[data-gov="1"]{background:color-mix(in srgb,var(--color-accent,#2050a0) 6%,var(--color-surface,#fff));border-color:color-mix(in srgb,var(--color-accent,#2050a0) 24%,var(--color-surface,#fff))}
+@@ -131,7 +131,7 @@
+ .ql-tab.tr[aria-selected="true"] .n{background:color-mix(in srgb,var(--color-admin-danger-text,#bf371a) 10%,var(--color-surface,#fff));color:var(--color-admin-danger-text,#bf371a)}
+ .ql-tmore-w{position:relative;flex:0 0 auto;display:none}
+ @container ql (max-width:1279px){.ql-tab.lo{display:none}.ql-tmore-w{display:block}.ql-tabbar>.ql-tab.tr{display:none}.ql-tabs{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;overscroll-behavior-x:contain}.ql-tabs::-webkit-scrollbar{display:none}}
+-@container ql (max-width:767px){.ql-tabbar{padding:4px 4px 0}.ql-tabs{overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}.ql-tabs::-webkit-scrollbar{display:none}.ql-tab{padding:0 8px}}
++@container ql (max-width:899px){.ql-tabbar{padding:4px 4px 0}.ql-tabs{overflow-x:auto;scrollbar-width:none;overscroll-behavior-x:contain}.ql-tabs::-webkit-scrollbar{display:none}.ql-tab{padding:0 8px}}
+ .ql-tools{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 16px}
+ .ql-search{flex:1 1 220px;max-width:360px;min-width:0}
+ .ql-search input[type="search"]::-webkit-search-cancel-button{cursor:pointer}
+@@ -141,7 +141,7 @@
+ .ql .sx-btn[aria-expanded="true"],.ql .sx-btn[data-act="1"],.ql .sx-btn[aria-pressed="true"]{border-color:var(--color-accent,#2050a0);color:var(--color-accent,#2050a0);background:color-mix(in srgb,var(--color-accent,#2050a0) 7%,var(--color-surface,#fff))}
+ .ql-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--color-admin-primary,#2050a0);color:white;font-size:calc(12px + var(--fsp));font-weight:700}
+ @container ql (max-width:1023px){.ql-fb{display:none}.ql-cmp{display:flex}.ql-search{max-width:none}}
+-@container ql (max-width:767px){.ql-colw{display:none}.ql-tools{padding:12px}}
++@container ql (max-width:899px){.ql-colw{display:none}.ql-tools{padding:12px}}
+ @container ql (max-width:599px){.ql-search{flex-basis:100%}.ql-cmp{flex:1 1 100%;margin-left:0}.ql-cmp>*{flex:1 1 0;min-width:0}.ql-cmp .sx-btn{width:100%;padding:0 8px}}
+ .ql-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:70;min-width:240px;max-width:min(320px,calc(100vw - 32px));padding:4px 0;background:var(--color-surface,#fff);border:1px solid var(--color-border-strong,#e3e7f0);border-radius:6px;box-shadow:0 10px 30px rgba(15,18,30,.18);text-align:left;font-size:calc(14px + var(--fsp));font-weight:400;color:var(--color-body-text,#3c4765);white-space:normal}
+ .ql-pop.r{left:auto;right:0}
+@@ -168,7 +168,7 @@
+ .ql-pf .sx-btn:last-child{margin-left:auto}
+ .ql-pscroll{max-height:300px;overflow:auto;overscroll-behavior:contain}
+ .ql-scrim{position:fixed;inset:0;z-index:60;background:transparent}
+-@container ql (max-width:767px){
++@container ql (max-width:899px){
+  .ql-scrim{background:rgba(15,18,30,.45)}
+  .ql-pop,.ql-pop.r{position:fixed;left:0;right:0;top:auto;bottom:0;z-index:80;min-width:0;max-width:none;max-height:75dvh;overflow:auto;border-radius:12px 12px 0 0;border-width:1px 0 0;padding:8px 0 calc(8px + env(safe-area-inset-bottom))}
+  .ql-mi{min-height:48px}.ql-pscroll{max-height:none}.ql-pf .sx-btn{flex:1 1 0;min-height:44px}
+@@ -189,7 +189,7 @@
+ .ql-bx{margin-left:auto}
+ .ql-bskip{flex:1 1 100%;display:flex;align-items:flex-start;gap:6px;font-size:calc(13px + var(--fsp))}
+ .ql-bskip>i{color:var(--color-admin-info-text,#026fa2);font-size:16px;line-height:1.3}
+-@container ql (max-width:767px){.ql-bulk{order:4;position:sticky;bottom:0;z-index:50;margin:0;border-radius:0;border-width:1px 0 0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--color-surface,#fff);box-shadow:0 -4px 12px rgba(15,18,30,.12)}.ql-bacts{order:3;flex:1 1 100%}.ql-bacts .sx-btn{flex:1 1 auto;min-height:44px}.ql-t{order:3}.ql-foot{order:5}}
++@container ql (max-width:899px){.ql-bulk{order:4;position:sticky;bottom:0;z-index:50;margin:0;border-radius:0;border-width:1px 0 0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--color-surface,#fff);box-shadow:0 -4px 12px rgba(15,18,30,.12)}.ql-bacts{order:3;flex:1 1 100%}.ql-bacts .sx-btn{flex:1 1 auto;min-height:44px}.ql-t{order:3}.ql-foot{order:5}}
+ .ql-t{min-width:0}
+ .ql-r{display:flex;align-items:center;min-width:0;border-top:1px solid var(--color-border,#e9ecf4)}
+ .ql-r:hover{background:var(--color-surface-muted,#f8f9fb)}
+@@ -287,7 +287,7 @@
+ @container ql (max-width:1279px){.ql-r>.c-au{display:none}.ql-sub>.m-au{display:inline}}
+ @container ql (max-width:1099px){.ql-r>.c-views,.ql-r>.c-step{display:none}.ql-sub>.m-views,.ql-sub>.m-step{display:inline}}
+ @container ql (max-width:899px){.ql-r>.c-cat{display:none}.ql-sub>.m-cat{display:inline}.ql-r>.c-st{flex-basis:150px}}
+-@container ql (max-width:767px){
++@container ql (max-width:899px){
+  .ql-t{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:8px 12px 12px}
+  .ql-r.ql-hd{display:none}
+  .ql-sub>.ql-slug{flex:1 1 100%}
+@@ -315,7 +315,7 @@
+  .ql-pg{justify-content:center}
+  .ql-r[data-depth="1"] .ql-tl,.ql-r[data-depth="2"] .ql-tl,.ql-r[data-depth="3"] .ql-tl{padding-left:0}
+ }
+-@container ql (min-width:600px) and (max-width:767px){.ql-t{grid-template-columns:repeat(2,minmax(0,1fr))}.ql-empty{grid-column:1/-1}}
++@container ql (min-width:600px) and (max-width:899px){.ql-t{grid-template-columns:repeat(2,minmax(0,1fr))}.ql-empty{grid-column:1/-1}}
+ .ql-frames{display:flex;flex-direction:column;gap:8px}
+ .ql-frh{font-size:calc(13px + var(--fsp));font-weight:600;color:var(--color-body-muted,#5b6275)}
+ .ql-frw{display:flex;gap:16px;align-items:flex-start;overflow-x:auto;padding-bottom:4px}
+@@ -343,12 +343,12 @@
+ .ql-r>.c-cat .ql-ell{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+ .ql-acts{gap:8px}
+ .ql-mh{display:none}
+-@container ql (max-width:767px){.ql-mh{display:block}}
++@container ql (max-width:899px){.ql-mh{display:block}}
+ .ql-name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4}
+ .ql-acts .sx-btn.sm{position:relative;min-height:40px}
+ .ql-acts .sx-btn.sm.ic{width:40px}
+ .ql-acts .sx-btn.sm::before{content:"";position:absolute;inset:-2px}
+-@container ql (max-width:767px){
++@container ql (max-width:899px){
+  .ql-r{grid-template-columns:44px minmax(0,1fr);grid-template-areas:"chk tl" "sub sub" "st st" "act act"}
+  .ql[data-hide~="chk"] .ql-r{grid-template-columns:0 minmax(0,1fr)}
+  .ql-name{-webkit-line-clamp:3}
+@@ -359,6 +359,103 @@
+  .ql-sub>.m{min-width:0;white-space:normal;overflow-wrap:anywhere}
+  .ql-tabs{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent)}
+ }
++/* Bản thử 07/10 chiều — thanh công cụ điện thoại (khung danh sách ≤ 767px, nơi bảng thành thẻ):
++   hàng 1 KHÔNG khung (owner 15:12: bớt ô cho đỡ rối) = ô tick "Chọn tất cả" sát lề trái + nút "Trạng thái" gom mọi trạng thái;
++   hàng 2 = ô tìm + Lọc + Sắp xếp chỉ có biểu tượng (có tên cho trình đọc màn hình, Lọc có số điều kiện đang dùng). */
++.ql-mbar{display:none}
++.ql-cntb{display:none}
++@container ql (max-width:899px){
++ .ql .ql-tabbar{display:none}
++ .ql .ql-mbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 12px 0}
++ .ql-msel{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:0 10px 0 0;margin:0;border:0;border-radius:6px;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));font-weight:500;color:var(--color-body-text,#3c4765);cursor:pointer;white-space:nowrap;flex:0 0 auto}
++ .ql-msel:hover{color:var(--color-heading,#1f2b4d)}
++ .ql-mstw{flex:0 1 auto;min-width:0;margin-left:auto}
++ .ql .ql-mst{max-width:100%;min-height:44px;padding:0 0 0 10px;border:0;border-radius:6px;background:transparent;font-weight:600;color:var(--color-heading,#1f2b4d)}
++ .ql .ql-mst:hover{background:transparent;color:var(--color-admin-primary,#2050a0)}
++ .ql-mst>i:first-child{color:var(--color-body-muted,#5b6275)}
++ .ql-mst .n{font-weight:500;color:var(--color-body-muted,#5b6275)}
++ .ql-mst .n::before{content:"· "}
++ .ql .ql-mst[data-on="1"]{color:var(--color-admin-primary,#2050a0)}
++ .ql-mst[data-on="1"]>i:first-child,.ql-mst[data-on="1"] .n{color:inherit}
++ .ql .ql-tools{flex-wrap:nowrap;padding:8px 12px 12px}
++ .ql .ql-search{flex:1 1 auto;flex-basis:auto;max-width:none;min-width:0;min-height:44px}
++ .ql .ql-cmp{flex:0 0 auto;flex-wrap:nowrap;margin-left:0}
++ .ql .ql-cmp>*{flex:0 0 auto;min-width:0}
++ .ql .ql-cmp .sx-btn{position:relative;width:44px;min-width:44px;min-height:44px;padding:0}
++ .ql .ql-cmp .sx-btn>.sx-t,.ql .ql-cmp .ql-selb{display:none}
++ .ql .ql-cmp .sx-btn i{font-size:calc(19px + var(--fsp))}
++ .ql .ql-cntb{display:inline-flex;position:absolute;top:-7px;right:-7px}
++}
++/* Viền focus cho 2 nút không khung ở hàng trên (bàn phím) */
++.ql .ql-msel:focus-visible,.ql .ql-mst:focus-visible{outline:2px solid var(--focus-ring-color,var(--color-admin-primary,#2050a0));outline-offset:2px;box-shadow:none}
++/* Thẻ điện thoại (owner 15:14: nút "Sửa" kéo hết ngang chưa ưng): trạng thái bên trái, "Sửa" gọn có chữ + ⋮ bên phải cùng một hàng — bớt 1 hàng mỗi thẻ.
++   Khung danh sách hẹp (≤ 299px, tức điện thoại 320px) thì thao tác xuống hàng riêng nhưng vẫn gọn bên phải, không kéo ngang. */
++@container ql (max-width:899px){
++ .ql-r{grid-template-columns:44px minmax(0,1fr) auto;grid-template-areas:"chk tl tl" "sub sub sub" "st st act";align-items:center}
++ .ql[data-hide~="chk"] .ql-r{grid-template-columns:0 minmax(0,1fr) auto}
++ .ql-r>.c-chk{align-self:start}
++ .ql-r>.c-tl,.ql-r>.c-sub{align-self:start}
++ .ql-r>.c-st{min-width:0}
++ .ql-r>.c-act{justify-self:end;padding-left:8px!important}
++ .ql-acts{justify-content:flex-end;flex-wrap:nowrap}
++ .ql-acts .ql-main{flex:0 0 auto;max-width:none;padding:0 14px}
++}
++@container ql (max-width:299px){
++ .ql-r{grid-template-areas:"chk tl tl" "sub sub sub" "st st st" "act act act"}
++}
++/* Trang có 3 nút (Sửa · Trang con · ⋮) — không đủ chỗ cạnh trạng thái: thao tác xuống hàng riêng, gọn bên phải */
++@container ql (max-width:899px){
++ .ql[data-type="pages"] .ql-r{grid-template-areas:"chk tl tl" "sub sub sub" "st st st" "act act act"}
++ .ql-sub>.ql-slug{white-space:normal;overflow-wrap:anywhere;text-overflow:clip;min-width:0}
++}
++/* Bản thử 07/10 15:3x — đang lọc / sắp xếp phải nhìn thấy: dòng "Tìm thấy N trong M" + "Bỏ lọc"; mỗi điều kiện là 1 nhãn bấm trọn để bỏ
++   (vùng bấm 44px); nhãn "Sắp xếp: …" khi khác mặc định, màu trung tính để phân biệt với điều kiện lọc. */
++.ql .ql-fl{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:0 16px 12px}
++.ql-flh{display:flex;align-items:center;gap:8px;min-height:44px}
++.ql .ql-match{margin-left:0;flex:1 1 auto;font-size:calc(14px + var(--fsp))}
++.ql-flx{flex:0 0 auto;min-height:44px;padding:0 4px;border:0;background:transparent;font:inherit;font-size:calc(14px + var(--fsp));font-weight:600;color:var(--color-admin-primary,#2050a0);cursor:pointer}
++.ql-flx:hover{text-decoration:underline}
++.ql-chips{display:flex;flex-wrap:wrap;gap:8px}
++.ql .ql-chip{position:relative;display:inline-flex;align-items:center;gap:6px;max-width:100%;min-height:36px;margin:4px 0;padding:0 10px 0 12px;border-radius:18px;font:inherit;font-size:calc(13px + var(--fsp));font-weight:500;cursor:pointer;white-space:nowrap}
++.ql .ql-chip::before{content:"";position:absolute;inset:-4px 0}
++.ql .ql-chip>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
++.ql .ql-chip>i{font-size:calc(16px + var(--fsp));flex:0 0 auto}
++.ql .ql-chip:hover{background:color-mix(in srgb,var(--color-accent,#2050a0) 16%,var(--color-surface,#fff))}
++.ql .ql-chip[data-k="sort"]{border-color:var(--color-border-input,#8a90a2);background:var(--color-surface,#fff);color:var(--color-body-text,#3c4765)}
++.ql .ql-chip[data-k="sort"]:hover{background:var(--color-surface-hover,#f1f3f9)}
++.ql .ql-chip:focus-visible,.ql .ql-flx:focus-visible{outline:2px solid var(--focus-ring-color,var(--color-admin-primary,#2050a0));outline-offset:2px}
++@container ql (max-width:899px){.ql .ql-fl{padding:0 12px 8px}}
++.ql .ql-chip>.ql-ci{font-size:calc(15px + var(--fsp));opacity:.85}
++/* nút xóa trong ô tìm (thay nút xóa riêng của từng trình duyệt — Firefox không có) */
++.ql-search input[type="search"]::-webkit-search-cancel-button{display:none}
++.ql-sclr{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:40px;height:40px;margin-right:-2px;border:0;border-radius:50%;background:transparent;color:var(--color-body-muted,#5b6275);font-size:calc(18px + var(--fsp));cursor:pointer}
++.ql-sclr:hover{color:var(--color-heading,#1f2b4d)}
++.ql-sclr:focus-visible{outline:2px solid var(--focus-ring-color,var(--color-admin-primary,#2050a0));outline-offset:-2px}
++/* ô thông tin rỗng (không có lượt xem, không có bước duyệt…) ẩn hẳn — tránh dấu "· ·" thừa */
++.ql-sub>.m[data-v=""]{display:none!important}
++/* Máy tính bảng dọc (khung 600–899px): thẻ 2 cột như điện thoại nhưng Lọc / Sắp xếp có chữ vì đủ chỗ */
++@container ql (min-width:600px) and (max-width:899px){
++ .ql .ql-cmp .sx-btn{width:auto;padding:0 14px}
++ .ql .ql-cmp .sx-btn>.sx-t{display:inline}
++ .ql .ql-cntb{display:none!important}
++}
++/* mục đang chọn trong menu một lựa chọn: dấu ✓ (không chỉ dựa vào màu) */
++.ql-pop .ql-mi[aria-checked="true"]>.tx::after{content:"✓";position:static;margin-left:8px;font-weight:700}
++/* Máy tính (≥ 1024px): nút Sắp xếp có chữ hiện cạnh các nút lọc — để chọn được cả cách không có cột (Mới sửa gần đây) */
++@container ql (min-width:1024px){.ql .ql-cmp{display:flex;margin-left:0}.ql .ql-cmp>.ql-pw:first-child,.ql .ql-cmp .ql-selb{display:none}}
++/* Thanh tab tự co — hiện/ẩn theo kết quả đo (data-more / data-trash); data-m="1" = đang đo, hiện tạm tất cả */
++.ql .ql-tab.lo{display:none}
++.ql .ql-tmore-w{display:none}
++.ql .ql-tabbar[data-more="1"] .ql-tmore-w{display:block}
++.ql .ql-tabbar>.ql-tab.tr{display:inline-flex}
++.ql .ql-tabbar[data-trash="0"]>.ql-tab.tr{display:none}
++.ql .ql-tabbar[data-m="1"] .ql-tab.lo,.ql .ql-tabbar[data-m="1"]>.ql-tab.tr{display:inline-flex!important}
++.ql .ql-tabbar[data-m="1"] .ql-tmore-w{display:block!important}
++.ql .ql-tabs{overflow:visible;flex:0 1 auto}
++.ql .ql-tabbar>.ql-tab.tr{margin-left:auto}
++/* Nhúng trong Shell: đầu màn do Shell vẽ → khối đầu rỗng không chiếm khoảng cách; dải quyền đã ẩn thì không để lại khoảng trống (trước: thừa 32px) */
++.ql[data-emb="1"]>.ql-head{display:none}
++.ql>.ql-role.bg-rb-gone{margin-bottom:-16px!important}
+ </style>
+ <script src="./content-ui.js"></script>
+ </helmet>
+@@ -407,7 +504,7 @@
+         </sc-if>
+         <sc-if value="{{ showData }}" hint-placeholder-val="{{ true }}">
+         <div class="ql-card">
+-          <div class="ql-tabbar" role="tablist" aria-label="Lọc theo trạng thái">
++          <div class="ql-tabbar" role="tablist" aria-label="Lọc theo trạng thái" data-more="{{ moreTab.showA }}" data-trash="{{ trashTab.showA }}">
+             <div class="ql-tabs" role="presentation">
+               <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="5">
+                 <button class="ql-tab {{ t.cls }}" role="tab" aria-selected="{{ t.sel }}" onClick="{{ t.on }}"><i class="{{ t.icon }}" aria-hidden="true"></i><span>{{ t.label }}</span><span class="n">{{ t.count }}</span></button>
+@@ -416,7 +513,7 @@
+             <div class="ql-tmore-w" role="presentation">
+               <button class="ql-tab ql-tmore" data-on="{{ moreTab.selA }}" aria-haspopup="menu" aria-expanded="{{ moreTab.open }}" onClick="{{ moreTab.on }}"><i class="ri-more-2-line" aria-hidden="true"></i><span>{{ moreTab.label }}</span><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+               <sc-if value="{{ moreTab.open }}">
+-                <div class="ql-pop r" role="menu" aria-label="Trạng thái khác">
++                <div class="ql-pop {{ moreTab.popCls }}" role="menu" aria-label="Trạng thái khác">
+                   <div class="ql-ph">Trạng thái khác</div>
+                   <sc-for list="{{ moreTab.items }}" as="it" hint-placeholder-count="3">
+                     <button class="ql-mi" role="menuitemradio" aria-checked="{{ it.sel }}" onClick="{{ it.on }}"><i class="{{ it.icon }}" aria-hidden="true"></i><span class="tx">{{ it.label }}</span><span class="ct">{{ it.count }}</span></button>
+@@ -426,8 +523,22 @@
+             </div>
+             <button class="ql-tab tr" role="tab" aria-selected="{{ trashTab.sel }}" onClick="{{ trashTab.on }}"><i class="ri-delete-bin-line" aria-hidden="true"></i><span>Thùng rác</span><span class="n">{{ trashTab.count }}</span></button>
+           </div>
++          <div class="ql-mbar">
++            <sc-if value="{{ canSelect }}"><button class="ql-msel" role="checkbox" aria-checked="{{ hdChecked }}" aria-label="{{ mSelAria }}" onClick="{{ onHeaderToggle }}"><span class="ql-box" aria-hidden="true"><i class="ri-check-line"></i><i class="ri-subtract-line"></i></span><span>Chọn tất cả</span></button></sc-if>
++            <div class="ql-pw ql-mstw">
++              <button class="sx-btn ql-mst" data-on="{{ mSt.actA }}" aria-haspopup="menu" aria-expanded="{{ mSt.open }}" aria-label="{{ mSt.aria }}" onClick="{{ mSt.on }}"><i class="ri-flag-line" aria-hidden="true"></i><span class="sx-t el">{{ mSt.label }}</span><span class="n">{{ mSt.count }}</span><i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
++              <sc-if value="{{ mSt.open }}">
++                <div class="ql-pop r" role="menu" aria-label="Trạng thái">
++                  <div class="ql-ph">Trạng thái</div>
++                  <sc-for list="{{ mSt.items }}" as="it" hint-placeholder-count="5">
++                    <button class="ql-mi" role="menuitemradio" aria-checked="{{ it.sel }}" onClick="{{ it.on }}"><i class="{{ it.icon }}" aria-hidden="true"></i><span class="tx">{{ it.label }}</span><span class="ct">{{ it.count }}</span></button>
++                  </sc-for>
++                </div>
++              </sc-if>
++            </div>
++          </div>
+           <div class="ql-tools">
+-            <label class="sx-search ql-search"><i class="ri-search-line" aria-hidden="true"></i><input type="search" aria-label="{{ searchLabel }}" placeholder="{{ searchPh }}" value="{{ searchVal }}" onChange="{{ onSearch }}"></label>
++            <label class="sx-search ql-search"><i class="ri-search-line" aria-hidden="true"></i><input type="search" aria-label="{{ searchLabel }}" placeholder="{{ searchPh }}" value="{{ searchVal }}" onChange="{{ onSearch }}"><sc-if value="{{ searchOn }}"><button type="button" class="ql-sclr" aria-label="Xóa từ khóa tìm" title="Xóa từ khóa tìm" onClick="{{ onSearchClear }}"><i class="ri-close-circle-fill" aria-hidden="true"></i></button></sc-if></label>
+             <div class="ql-fb">
+               <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3">
+                 <div class="ql-pw">
+@@ -448,7 +559,7 @@
+             </div>
+             <div class="ql-cmp">
+               <div class="ql-pw">
+-                <button class="sx-btn" data-act="{{ fAll.actA }}" aria-haspopup="true" aria-expanded="{{ fAll.open }}" onClick="{{ fAll.on }}"><i class="ri-filter-3-line" aria-hidden="true"></i><span class="sx-t">{{ fAll.label }}</span></button>
++                <button class="sx-btn" data-act="{{ fAll.actA }}" aria-haspopup="true" aria-expanded="{{ fAll.open }}" aria-label="{{ fAll.aria }}" title="Lọc" onClick="{{ fAll.on }}"><i class="ri-filter-3-line" aria-hidden="true"></i><span class="sx-t">{{ fAll.label }}</span><sc-if value="{{ fAll.hasN }}"><span class="ql-cnt ql-cntb" aria-hidden="true">{{ fAll.n }}</span></sc-if></button>
+                 <sc-if value="{{ fAll.open }}">
+                   <div class="ql-pop" role="group" aria-label="Lọc danh sách">
+                     <div class="ql-pscroll">
+@@ -464,7 +575,7 @@
+                 </sc-if>
+               </div>
+               <div class="ql-pw">
+-                <button class="sx-btn" aria-haspopup="true" aria-expanded="{{ sortOpen }}" onClick="{{ onSortPop }}"><i class="ri-arrow-up-down-line" aria-hidden="true"></i><span class="sx-t">Sắp xếp</span></button>
++                <button class="sx-btn" data-act="{{ sortActA }}" aria-haspopup="true" aria-expanded="{{ sortOpen }}" aria-label="{{ sortAria }}" title="Sắp xếp" onClick="{{ onSortPop }}"><i class="ri-arrow-up-down-line" aria-hidden="true"></i><span class="sx-t">Sắp xếp</span></button>
+                 <sc-if value="{{ sortOpen }}">
+                   <div class="ql-pop" role="menu" aria-label="Sắp xếp">
+                     <div class="ql-ph">Sắp xếp theo</div>
+@@ -474,7 +585,7 @@
+                   </div>
+                 </sc-if>
+               </div>
+-              <sc-if value="{{ canSelect }}"><button class="sx-btn" aria-pressed="{{ selPageOn }}" onClick="{{ onSelPage }}"><i class="ri-checkbox-multiple-line" aria-hidden="true"></i><span class="sx-t">{{ selPageLabel }}</span></button></sc-if>
++              <sc-if value="{{ canSelect }}"><button class="sx-btn ql-selb" aria-pressed="{{ selPageOn }}" onClick="{{ onSelPage }}"><i class="ri-checkbox-multiple-line" aria-hidden="true"></i><span class="sx-t">{{ selPageLabel }}</span></button></sc-if>
+             </div>
+             <div class="ql-pw ql-colw">
+               <button class="sx-btn" aria-haspopup="true" aria-expanded="{{ colsOpen }}" onClick="{{ onColsPop }}"><i class="ri-layout-column-line" aria-hidden="true"></i><span class="sx-t">Cột</span></button>
+@@ -488,14 +599,14 @@
+               </sc-if>
+             </div>
+           </div>
+-          <sc-if value="{{ hasFilter }}">
+-            <div class="ql-fl">
+-              <span class="lbl">Đang lọc:</span>
+-              <sc-for list="{{ chips }}" as="c" hint-placeholder-count="1">
+-                <span class="ql-chip"><span title="{{ c.label }}">{{ c.label }}</span><button aria-label="{{ c.aria }}" title="Bỏ điều kiện này" onClick="{{ c.on }}"><i class="ri-close-line" aria-hidden="true"></i></button></span>
+-              </sc-for>
+-              <button class="sx-btn sm gho" onClick="{{ onClearAll }}">Bỏ lọc</button>
+-              <span class="ql-match">Khớp <strong>{{ matchCount }}</strong> / {{ baseCount }} {{ unit }}</span>
++          <sc-if value="{{ flOn }}">
++            <div class="ql-fl" role="group" aria-label="Đang lọc và sắp xếp">
++              <sc-if value="{{ hasFilter }}"><div class="ql-flh"><span class="ql-match" role="status">Tìm thấy <strong>{{ matchCount }}</strong> trong {{ baseCount }} {{ unit }}</span><button class="ql-flx" onClick="{{ onClearAll }}">Bỏ lọc</button></div></sc-if>
++              <div class="ql-chips">
++                <sc-for list="{{ flChips }}" as="c" hint-placeholder-count="2">
++                  <button class="ql-chip" data-k="{{ c.k }}" aria-label="{{ c.aria }}" title="{{ c.aria }}" onClick="{{ c.on }}"><i class="{{ c.icon }} ql-ci" aria-hidden="true"></i><span>{{ c.label }}</span><i class="ri-close-line" aria-hidden="true"></i></button>
++                </sc-for>
++              </div>
+             </div>
+           </sc-if>
+           <sc-if value="{{ treeFlatNote }}">
+@@ -560,7 +671,7 @@
+                         </sc-if>
+                       </span>
+                     </sc-if>
+-                    <span class="m m-cat">{{ r.catText }}</span><span class="m m-step">{{ r.stepText }}</span><span class="m m-views">{{ r.viewsText }}</span><span class="m m-au">{{ r.author }}</span><span class="m m-upd">{{ r.updText }}</span>
++                    <span class="m m-cat" data-v="{{ r.catText }}">{{ r.catText }}</span><span class="m m-step" data-v="{{ r.stepText }}">{{ r.stepText }}</span><span class="m m-views" data-v="{{ r.viewsText }}">{{ r.viewsText }}</span><span class="m m-au" data-v="{{ r.author }}">{{ r.author }}</span><span class="m m-upd" data-v="{{ r.updText }}">{{ r.updText }}</span>
+                   </div>
+                 </div>
+                 <div class="c-cat" role="cell"><span class="ql-ell" title="{{ r.catText }}">{{ r.catText }}</span></div>
+@@ -713,7 +824,7 @@
+       screen: 'list',
+       posts: (window.BSCW && window.BSCW.store) ? this.fromStore(props) : [], loaded: !!(window.BSCW && window.BSCW.store),
+       search: '', tab: 'all', catF: [], authorF: [], transF: [], openFilter: null, imgRatio: '16/9',
+-      sortKey: this.ctype(props) === 'pages' ? 'order' : 'name', sortDir: 'asc', selected: {}, statusMenu: null, editSlug: null, noteFor: null,
++      sortKey: this.ctype(props) === 'pages' ? 'order' : 'updated', sortDir: this.ctype(props) === 'pages' ? 'asc' : 'desc', selected: {}, statusMenu: null, editSlug: null, noteFor: null,
+       page: 1, perPage: 20, toast: null, toastIcon: 'ri-checkbox-circle-line', seq: 0,
+       edit: null, draft: '',
+       cur: null, curId: null, lang: 'VI', dirty: false, isNew: false,
+@@ -789,14 +900,16 @@
+     return Math.round(dd / 365) + ' năm trước';
+   }
+   componentDidMount() {
++    if (window.ResizeObserver) { this._tro = new ResizeObserver(() => this.measureTabs()); if (this._ql) this._tro.observe(this._ql); }
++    requestAnimationFrame(() => this.measureTabs());
+     this._lastPosts = this.state.posts;
+     this._store = (e) => { const d = (e && e.detail) || {}; if (d.src === this._sid || !this.useStore()) return; if (d.type && d.type !== this.ctype()) return; const posts = this.fromStore(); this._lastPosts = posts; this.setState({ posts: posts }); };
+     document.addEventListener('bs-cw-store', this._store);
+     if (!this.state.loaded) document.addEventListener('bs-cw-ready', () => this.reloadType(), { once: true });
+     if (this.props.embedded) {
+-      this._cmd = (e) => { const d = (e && e.detail) || {}; if (!d.id || d.id !== this.props.embedId) return; if (d.act === 'save' && this.state.screen === 'edit') this.save('draft'); };
++      this._cmd = (e) => { const d = (e && e.detail) || {}; if (!d.id || d.id !== this.props.embedId) return; if (d.act === 'save' && this.state.screen === 'edit') this.save('draft'); if (d.act === 'add' && this.state.screen !== 'edit') this.onAddClick(); };
+       document.addEventListener('bs-embed-cmd', this._cmd);
+-      this.applyStart();
++      this.applyStart(); this.pubHdr();
+     }
+     this._bu = (e) => { if (this.state.dirty) { e.preventDefault(); e.returnValue = ''; } };
+     window.addEventListener('beforeunload', this._bu);
+@@ -809,18 +922,44 @@
+     document.addEventListener('keydown', this._esc);
+   }
+   componentWillUnmount() {
++    if (this._tro) { try { this._tro.disconnect(); } catch (_) {} }
+     window.removeEventListener('beforeunload', this._bu);
+     window.removeEventListener('resize', this._rs);
+     document.removeEventListener('keydown', this._esc);
+     if (this._store) document.removeEventListener('bs-cw-store', this._store);
+     if (this._cmd) document.removeEventListener('bs-embed-cmd', this._cmd);
+     if (this.props.embedded && typeof this.props.onDirty === 'function') this.props.onDirty(0);
++    if (this.props.embedded) { try { document.dispatchEvent(new CustomEvent('bs-embed-hdr', { detail: { id: this.props.embedId, primary: null } })); } catch (e) {} }
+     if (this._ro) { try { this._ro.disconnect(); } catch (_) {} }
+     if (this._qro) { try { this._qro.disconnect(); } catch (_) {} } clearTimeout(this._rt);
+     cancelAnimationFrame(this._raf); clearTimeout(this._t); clearTimeout(this._auto); clearTimeout(this._h);
+   }
+ 
+   /* ---------- đo thật thanh ngôn ngữ (§4, §11) ---------- */
++  /* Đo bề rộng thật của từng tab (hiện tạm tất cả trong cùng một nhịp, chưa vẽ ra màn) → số tab vừa 1 dòng. */
++  measureTabs() {
++    const q = this._ql, bar = q && q.querySelector('.ql-tabbar'); if (!bar || !bar.offsetWidth) return;
++    bar.setAttribute('data-m', '1');
++    const tabEls = Array.prototype.slice.call(bar.querySelectorAll('.ql-tabs > .ql-tab')), ws = tabEls.map(t => t.offsetWidth);
++    const tr = bar.querySelector(':scope > .ql-tab.tr'), mo = bar.querySelector('.ql-tmore');
++    const trW = tr ? tr.offsetWidth : 0, moW = mo ? mo.offsetWidth : 0, cs = getComputedStyle(bar);
++    const avail = bar.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
++    bar.removeAttribute('data-m');
++    const GAP = 32, g = 2, sum = (n) => ws.slice(0, n).reduce((a, w) => a + w + g, 0);
++    const padL = parseFloat(cs.paddingLeft);
++    let fit = ws.length, trashFit = true;
++    if (sum(ws.length) + GAP + trW > avail) {
++      const room = (t) => avail - GAP - moW - g - (t ? trW + g : 0);
++      fit = 0; while (fit < ws.length && sum(fit + 1) <= room(true)) fit++;
++      if (fit < 2) { trashFit = false; fit = 0; while (fit < ws.length && sum(fit + 1) <= room(false)) fit++; }
++      fit = Math.max(1, fit);
++    }
++    /* đổi cỡ chữ không đổi bề rộng thanh → theo dõi cả tab đầu để đo lại */
++    if (this._tro && tabEls[0] && this._troEl !== tabEls[0]) { this._troEl = tabEls[0]; this._tro.observe(tabEls[0]); }
++    /* "Khác" đứng ngay sau tab cuối bên trái; menu mở sang phải, gần mép phải thì mở sang trái cho khỏi tràn */
++    const moreR = padL + sum(fit) + 320 > bar.clientWidth;
++    if (fit !== this.state.tabFit || trashFit !== this.state.trashFit || moreR !== !!this.state.moreR) this.setState({ tabFit: fit, trashFit: trashFit, moreR: moreR });
++  }
+   measureBar() {
+     cancelAnimationFrame(this._raf);
+     const token = (this._mt = (this._mt || 0) + 1);
+@@ -843,11 +982,20 @@
+       if (mode !== this.state.barMode || visN !== this.state.visN) this.setState({ barMode: mode, visN: visN }, () => this.measureBar());
+     });
+   }
++  /* Nhúng trong Shell: nút chính của màn (Viết bài mới…) nằm ở tiêu đề màn của Shell, bên phải tiêu đề + mô tả.
++     Màn báo nút cho Shell qua bs-embed-hdr {id, primary:{label,title}|null}; Shell bấm thì gửi bs-embed-cmd {act:'add'}. */
++  pubHdr() {
++    const pri = (this.state.screen !== 'edit' && this.can('entries.create')) ? { label: this.addLabel(), title: 'Bắt đầu ' + this.unit() + ' mới' } : null;
++    const k = JSON.stringify(pri); if (k === this._hdrK) return; this._hdrK = k;
++    try { document.dispatchEvent(new CustomEvent('bs-embed-hdr', { detail: { id: this.props.embedId, primary: pri } })); } catch (e) {}
++  }
+   componentDidUpdate() {
++    this.measureTabs();
+     const pp = this._pp || {}, p = this.props; this._pp = Object.assign({}, p);
+     if (this.useStore() && this.state.posts !== this._lastPosts) { this._lastPosts = this.state.posts; window.BSCW.store.replace(this.ctype(), this.state.posts, this._sid); }
+     if (this.ctype(pp) !== this.ctype(p) || (!p.embedded && pp.dataSize !== p.dataSize)) { this.reloadType(); return; }
+     if (p.embedded) {
++      this.pubHdr();
+       const dn = this.state.screen === 'edit' && this.state.dirty ? 1 : 0;
+       if (dn !== this._embDirty) { this._embDirty = dn; if (typeof p.onDirty === 'function') p.onDirty(dn); }
+       if (pp.start !== p.start || pp.slug !== p.slug) this.applyStart();
+@@ -949,7 +1097,7 @@
+     this.padStore(this.props);
+     const M = window.BSCW.store.meta(this.ctype()); this.CAT_TREE = M.cats || []; this.CATS = this.CAT_TREE.filter(c => c[1] === 0).map(c => c[0]);
+     const posts = this.fromStore(); this._lastPosts = posts;
+-    this.setState({ posts: posts, loaded: true, page: 1, tab: 'all', search: '', transF: [], selected: {}, catF: [], tplF: [], authorF: [], pop: null, sortKey: this.ctype() === 'pages' ? 'order' : 'name', sortDir: 'asc' }, () => { if (this.props.embedded) this.applyStart(); });
++    this.setState({ posts: posts, loaded: true, page: 1, tab: 'all', search: '', transF: [], selected: {}, catF: [], tplF: [], authorF: [], pop: null, sortKey: this.ctype() === 'pages' ? 'order' : 'updated', sortDir: this.ctype() === 'pages' ? 'asc' : 'desc' }, () => { if (this.props.embedded) this.applyStart(); });
+   }
+   setSearch(v) { this.setState({ search: v, page: 1 }); }
+   /* Đổi tab (kể cả Thùng rác) → bỏ chọn hết, như repo (Entries/Index.php:119-125). */
+@@ -1788,11 +1936,21 @@
+     const tabDefs = [{ key: 'all', label: 'Tất cả', icon: 'ri-list-check' }]
+       .concat(this.can('entries.edit.any') ? [] : [{ key: 'mine', label: u.charAt(0).toUpperCase() + u.slice(1) + ' của tôi', icon: 'ri-user-3-line' }])
+       .concat(stateKeys.map(k => ({ key: k, label: ui(k).label, icon: ui(k).icon || 'ri-circle-line' })));
+-    const tabs = tabDefs.map(d => ({ label: d.label, icon: d.icon, count: this.nfm(cnt[d.key] || 0), cls: COMMON[d.key] ? '' : 'lo', sel: S.tab === d.key, on: () => this.setTab(d.key) }));
+-    const lo = tabDefs.filter(d => !COMMON[d.key]).concat([{ key: 'trash', label: 'Thùng rác', icon: 'ri-delete-bin-line' }]);
++    /* Thanh tab tự co (owner 07/10 16:12): hiện vừa đủ tab trên 1 dòng (tab hay dùng trước), "Thùng rác" bên phải, luôn chừa ≥ 32px giữa hai nhóm;
++       tab không đủ chỗ vào "Khác" — quá hẹp thì cả "Thùng rác". Số tab vừa (S.tabFit) do measureTabs() đo bề rộng thật. */
++    const barDefs = tabDefs.filter(d => COMMON[d.key]).concat(tabDefs.filter(d => !COMMON[d.key]));
++    const fit = Math.min(S.tabFit == null ? barDefs.length : S.tabFit, barDefs.length), trashIn = S.trashFit !== false;
++    const tabs = barDefs.map((d, i) => ({ label: d.label, icon: d.icon, count: this.nfm(cnt[d.key] || 0), cls: i < fit ? '' : 'lo', sel: S.tab === d.key, on: () => this.setTab(d.key) }));
++    const lo = barDefs.slice(fit).concat(trashIn ? [] : [{ key: 'trash', label: 'Thùng rác', icon: 'ri-delete-bin-line' }]);
+     const loAct = lo.filter(d => d.key === S.tab)[0];
+-    const moreTab = { open: P === 'tabs', label: loAct ? loAct.label : 'Khác', selA: loAct ? '1' : '0', on: () => this.togglePop('tabs'), items: lo.map(d => ({ label: d.label, icon: d.icon, count: this.nfm(cnt[d.key] || 0), sel: S.tab === d.key, on: () => this.setTab(d.key) })) };
+-    const trashTab = { sel: S.tab === 'trash', count: this.nfm(trashN), on: () => this.setTab('trash') };
++    const moreTab = { showA: lo.length ? '1' : '0', popCls: S.moreR ? 'r' : '', open: P === 'tabs', label: loAct ? loAct.label : 'Khác', selA: loAct ? '1' : '0', on: () => this.togglePop('tabs'), items: lo.map(d => ({ label: d.label, icon: d.icon, count: this.nfm(cnt[d.key] || 0), sel: S.tab === d.key, on: () => this.setTab(d.key) })) };
++    const trashTab = { showA: trashIn ? '1' : '0', sel: S.tab === 'trash', count: this.nfm(trashN), on: () => this.setTab('trash') };
++    /* Điện thoại: mọi trạng thái gom vào một nút gọn bên phải (máy tính vẫn là các tab). Nút ghi trạng thái ĐANG XEM + số bài; tên "Trạng thái" là tiêu đề menu và tên cho trình đọc màn hình. */
++    const mAll = tabs.concat([{ label: 'Thùng rác', icon: 'ri-delete-bin-line', count: trashTab.count, sel: trashTab.sel, on: trashTab.on }]);
++    const mCur = mAll.filter(t => t.sel)[0] || mAll[0], mIsAll = mCur === mAll[0];
++    const mSt = { open: P === 'mst', on: () => this.togglePop('mst'), label: mCur.label, count: mCur.count, actA: mIsAll ? '0' : '1',
++      aria: 'Trạng thái: ' + mCur.label + ', ' + mCur.count + ' ' + u + '. Bấm để chọn trạng thái khác',
++      items: mAll.map(t => ({ label: t.label, icon: t.icon, count: t.count, sel: t.sel, on: t.on })) };
+     /* ---- tìm + lọc ---- */
+     const qRaw = S.search.trim(), q = this.fold(qRaw);
+     const base = S.tab === 'trash' ? all.filter(p => p.trashed) : (S.tab === 'all' ? live : (S.tab === 'mine' ? live.filter(p => this.owns(p)) : live.filter(p => p.st === S.tab)));
+@@ -1892,15 +2050,20 @@
+     if (multiLang) filters.push(mkF('trans', 'Bản dịch', 'Tình trạng bản dịch', 'ri-translate-2', 'transF', ['full', 'partial', 'none'].map(k => ({ v: k, label: TR[k], count: live.filter(p => this.transStateOf(p) === k).length }))));
+     filters.push(mkF('author', pages ? 'Người tạo' : 'Người viết', pages ? 'Lọc theo người tạo' : 'Lọc theo người viết', 'ri-user-3-line', 'authorF', authors.map(a => ({ v: a, label: a + (a === this.ME ? ' (bạn)' : ''), count: live.filter(p => p.author === a).length }))));
+     const fN = (pages ? S.tplF.length : S.catF.length) + (multiLang ? S.transF.length : 0) + S.authorF.length;
+-    const fAll = { open: P === 'fall', label: fN ? ('Lọc (' + fN + ')') : 'Lọc', actA: fN ? '1' : '0', on: () => this.togglePop('fall') };
++    const fAll = { open: P === 'fall', label: fN ? ('Lọc (' + fN + ')') : 'Lọc', actA: fN ? '1' : '0', on: () => this.togglePop('fall'), n: fN, hasN: fN > 0, aria: fN ? ('Lọc, đang dùng ' + fN + ' điều kiện') : 'Lọc' };
+     const chips = [];
+-    if (qRaw) chips.push({ label: 'Tìm: “' + qRaw + '”', aria: 'Bỏ tìm “' + qRaw + '”', on: () => this.setSearch('') });
+-    (pages ? S.tplF : S.catF).forEach(c => chips.push({ label: (pages ? 'Mẫu: ' : 'Chuyên mục: ') + c, aria: 'Bỏ lọc ' + c, on: () => this.toggleIn(pages ? 'tplF' : 'catF', c) }));
+-    if (multiLang) S.transF.forEach(k => chips.push({ label: 'Bản dịch: ' + TR[k], aria: 'Bỏ lọc ' + TR[k], on: () => this.toggleIn('transF', k) }));
+-    S.authorF.forEach(a => chips.push({ label: (pages ? 'Người tạo: ' : 'Người viết: ') + a, aria: 'Bỏ lọc ' + a, on: () => this.toggleIn('authorF', a) }));
++    /* Từ khóa tìm đã hiện trong ô tìm (có nút xóa) → không lặp thành nhãn. Nhãn = biểu tượng + giá trị cho gọn; tên đầy đủ ở aria-label. */
++    (pages ? S.tplF : S.catF).forEach(c => chips.push({ label: c, icon: pages ? 'ri-layout-4-line' : 'ri-price-tag-3-line', aria: 'Bỏ lọc ' + (pages ? 'mẫu trang ' : 'chuyên mục ') + '“' + c + '”', on: () => this.toggleIn(pages ? 'tplF' : 'catF', c) }));
++    if (multiLang) S.transF.forEach(k => chips.push({ label: TR[k], icon: 'ri-translate-2', aria: 'Bỏ lọc bản dịch “' + TR[k] + '”', on: () => this.toggleIn('transF', k) }));
++    S.authorF.forEach(a => chips.push({ label: a, icon: 'ri-user-3-line', aria: 'Bỏ lọc ' + (pages ? 'người tạo ' : 'người viết ') + '“' + a + '”', on: () => this.toggleIn('authorF', a) }));
+     /* ---- sắp xếp, cột ---- */
+     const SO = (pages ? [['order', 'Thứ tự trên website', 'ri-node-tree']] : []).concat([['name', 'Tiêu đề (A–Z)', 'ri-sort-alphabet-asc'], ['updated', 'Mới sửa gần đây', 'ri-history-line'], ['status', 'Trạng thái', 'ri-flag-line'], ['views', 'Lượt xem nhiều nhất', 'ri-eye-line'], ['author', pages ? 'Người tạo' : 'Người viết', 'ri-user-3-line']]);
+     const sortOpts = SO.map(s => ({ label: s[1], icon: s[2], on: sortKey === s[0], set: () => this.setSort(s[0]) }));
++    /* Cách sắp xếp đang dùng phải thấy được: khác mặc định → nút Sắp xếp sáng + nhãn "Sắp xếp: …" bấm để về mặc định. */
++    const defKey = pages ? 'order' : 'updated', defDir = pages ? 'asc' : 'desc', natDir = (k) => (k === 'updated' || k === 'views') ? 'desc' : 'asc';
++    const soLabel = (k, d) => k === 'name' ? (d === 'asc' ? 'Tiêu đề (A–Z)' : 'Tiêu đề (Z–A)') : k === 'updated' ? (d === 'desc' ? 'Mới sửa gần đây' : 'Sửa lâu nhất trước') : k === 'views' ? (d === 'desc' ? 'Lượt xem nhiều nhất' : 'Lượt xem ít nhất') : ((SO.filter(s => s[0] === k)[0] || [k, k])[1] + (d !== natDir(k) ? ' (ngược lại)' : ''));
++    const sortNon = sortKey !== defKey || S.sortDir !== defDir;
++    const flChips = chips.concat(sortNon ? [{ label: soLabel(sortKey, S.sortDir), icon: 'ri-arrow-up-down-line', aria: 'Bỏ sắp xếp “' + soLabel(sortKey, S.sortDir) + '”, về mặc định “' + soLabel(defKey, defDir) + '”', k: 'sort', on: () => this.setState({ sortKey: defKey, sortDir: defDir, page: 1 }) }] : []);
+     const mkSort = (k) => { const a = sortKey === k; return { a: a ? '1' : '0', aria: a ? (S.sortDir === 'asc' ? 'ascending' : 'descending') : 'none', icon: a ? (S.sortDir === 'asc' ? 'ri-arrow-up-line' : 'ri-arrow-down-line') : 'ri-expand-up-down-line', on: () => this.sortBy(k) }; };
+     const hide = S.hideCols || [];
+     const COLS = [['main', 'Tiêu đề', true], ['cat', pages ? 'Mẫu trang' : 'Chuyên mục'], governed ? ['step', 'Bước duyệt'] : null, ['st', 'Trạng thái', true], ['views', 'Lượt xem'], ['au', pages ? 'Người tạo' : 'Người viết'], ['act', 'Hành động', true]].filter(Boolean);
+@@ -1928,7 +2091,9 @@
+     };
+     const sm = SM[sk] || {};
+     const roleTxt = governed ? ('Website đang dùng “' + W.name + '”: ' + u + ' đi qua các bước duyệt trước khi lên website.') : ('Website đang đăng thẳng, không qua bước duyệt.');
+-    const perm = (this.can('entries.publish') ? 'Được đăng' : (this.can('entries.approve') ? 'Được duyệt đăng' : (this.can('entries.submit') ? 'Được gửi duyệt' : 'Chỉ xem'))) + ' · ' + (this.can('entries.edit.any') ? 'sửa được mọi ' + u : (this.can('entries.edit.own') ? 'chỉ sửa ' + u + ' của mình' : 'không sửa ' + u));
++    const subTr = governed ? (W.transitions.filter(x => W.states[x.from] && W.states[x.from].initial && !(W.states[x.to] || {}).published)[0] || null) : null;
++    /* Tên việc lấy từ chính nút của quy trình: «Gửi biên tập» → "Được gửi biên tập"; có quy trình thì nói "duyệt đăng", không nói "đăng". */
++    const perm = (governed ? (this.can('entries.approve') ? 'Được duyệt đăng' : (subTr && this.can(subTr.perm) ? 'Được ' + subTr.label.charAt(0).toLowerCase() + subTr.label.slice(1) : 'Chỉ xem')) : (this.can('entries.publish') ? 'Được đăng' : (this.can('entries.submit') ? 'Được gửi duyệt' : 'Chỉ xem'))) + ' · ' + (this.can('entries.edit.any') ? 'sửa được mọi ' + u : (this.can('entries.edit.own') ? 'chỉ sửa ' + u + ' của mình' : 'không sửa ' + u));
+     const pgBuild = (cur, last) => { const o = []; if (last <= 7) { for (let i = 1; i <= last; i++) o.push(i); } else { o.push(1); const l = Math.max(2, cur - 1), r = Math.min(last - 1, cur + 1); if (l > 2) o.push('…'); for (let i = l; i <= r; i++) o.push(i); if (r < last - 1) o.push('…'); o.push(last); } return o; };
+     const cf = S.confirm, sr = S.schedRow, srRow = sr ? all.find(x => x.id === sr.id) : null;
+     return {
+@@ -1939,12 +2104,12 @@
+       govAttr: governed ? '1' : '0', roleLabel: this.roleLabel(), roleBarText: roleTxt, permSummary: perm, notesOn: notes, unit: u,
+       showStatePanel: sk !== 'data', showData: sk === 'data', isLoading: sk === 'loading', notLoading: sk !== 'loading', stateKey: sk, skRows: [1, 2, 3, 4, 5, 6],
+       stateIcon: sm.icon || '', stateTitle: sm.title || '', stateText: sm.text || '', stateBtn: !!sm.btn, stateBtnLabel: sm.btn || '', stateBtnCls: sm.cls || '', stateBtnIcon: sm.bi || '', onStateBtn: sm.on || (() => {}),
+-      tabs: tabs, moreTab: moreTab, trashTab: trashTab,
++      tabs: tabs, moreTab: moreTab, trashTab: trashTab, mSt: mSt, mSelAria: 'Chọn tất cả ' + pageIds.length + ' ' + u + ' trên trang này',
+       searchLabel: 'Tìm ' + tl + ' theo tiêu đề hoặc đường dẫn', searchPh: pages ? 'Ví dụ: lịch sử' : 'Ví dụ: bảng giá', searchVal: S.search, onSearch: (e) => this.setSearch(e.target.value),
+       filters: filters, fAll: fAll, sortOpen: P === 'sort', onSortPop: () => this.togglePop('sort'), sortOpts: sortOpts,
+       canSelect: canSelect, selPageOn: allSel, selPageLabel: allSel ? 'Bỏ chọn' : 'Chọn', onSelPage: () => this.toggleSelAll(pageIds),
+       colsOpen: P === 'cols', onColsPop: () => this.togglePop('cols'), colItems: colItems,
+-      chips: chips, hasFilter: chips.length > 0, onClearAll: () => this.clearAll(), matchCount: this.nfm(total), baseCount: this.nfm(base.length),
++      chips: chips, flChips: flChips, flOn: flChips.length > 0 || filtering, hasFilter: filtering, searchOn: !!S.search, onSearchClear: () => this.setSearch(''), sortActA: sortNon ? '1' : '0', sortAria: sortNon ? ('Sắp xếp, đang theo “' + soLabel(sortKey, S.sortDir) + '”') : ('Sắp xếp, đang theo “' + soLabel(defKey, defDir) + '”'), onClearAll: () => this.clearAll(), matchCount: this.nfm(total), baseCount: this.nfm(base.length),
+       treeFlatNote: pages && !treeMode && (filtering || S.tab !== 'all' || sortKey !== 'order') && !trA,
+       treeFlatText: (filtering || S.tab !== 'all') ? 'Đang tìm hoặc lọc nên trang hiện thành danh sách phẳng, có trang cha phía trước. Kéo-thả để đổi thứ tự tạm tắt — bỏ lọc để sắp xếp lại.' : 'Đang sắp xếp khác “Thứ tự trên website” nên trang hiện phẳng và kéo-thả tạm tắt. Chọn lại thứ tự ở Sắp xếp để đổi thứ tự.',
+       isTrashTab: trA, trashNote: u.charAt(0).toUpperCase() + u.slice(1) + ' trong Thùng rác tự xóa vĩnh viễn sau 30 ngày. Khôi phục để đưa về danh sách.',
