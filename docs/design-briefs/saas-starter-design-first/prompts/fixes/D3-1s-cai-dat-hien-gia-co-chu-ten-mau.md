@@ -10,7 +10,7 @@ Owner chốt 07/10 cho 2 câu "Cần owner chốt" của D3-1 và cho chỗ desi
   - gắn "Chờ backend": khóa cài đặt `catalog.show_reference_price`; trang khách đọc khóa này khi ở chế độ Giới thiệu. Ghi vào "Việc cho backend".
 - **(a) Nhóm "Hiển thị"** của Giao diện website (chế độ tối của website, thanh thông báo): giữ nguyên chỗ cũ, không chuyển.
 - **(b) Ô "Cỡ chữ"** ở Giao diện trang quản trị: đây là **mặc định của website**. Mỗi thành viên vẫn tự chọn đè lên (D0-7).
-  - Đổi lựa chọn thành 4 mức đúng như D0-7: "Nhỏ · Vừa (mặc định) · Lớn · Rất lớn". Ô đang chọn "Vừa (mặc định)".
+  - Đổi lựa chọn thành 4 mức đúng như D0-7: "Vừa (mặc định) · Lớn · Rất lớn · Cực lớn". Ô đang chọn "Vừa (mặc định)".
   - Gợi ý dưới ô: "Áp cho thành viên chưa tự chọn cỡ chữ. Mỗi người vẫn đổi được ở menu tài khoản › Giao diện."
   - Repo: tầng mặc định của website là `site_settings` nhóm `admin_theme` (`AdminChromeResolver`).
 
@@ -30,7 +30,7 @@ Xong khi:
 (2) Giao diện trang quản trị: "Cỡ chữ" có 4 mức, mặc định "Vừa", có gợi ý về lựa chọn riêng.
 (3) Grep `Admin Shell.dc.html`: 0 "Bảo Sơn".
 (4) README có mục "Sửa ngoài danh sách" và 3 quyết định "Đã chốt 07/10".
-(5) `_audit/harness.html` ở 320 / 390 / 768 / 1024 / 1440 × cỡ chữ Vừa và Rất lớn × sáng + tối, trong Shell (`#/site/settings`), đạt cả 3 điều:
+(5) `_audit/harness.html` ở 320 / 390 / 768 / 1024 / 1440 × cỡ chữ Vừa và Cực lớn × sáng + tối, trong Shell (`#/site/settings`), đạt cả 3 điều:
    - `scrollWidth = clientWidth`;
    - tương phản ≥ 4,5:1;
    - console 0 lỗi.

@@ -19,10 +19,10 @@ Luật cứng:
 - Đích build: Livewire 4 + Blade + Tailwind 4 + <x-bs-admin::*> (tên nhóm component owner chốt 04/10); icon Remix inline-SVG (prototype dùng CDN được, README liệt kê tên icon). Không Bootstrap, không Flux.
 - Mỗi màn đủ trạng thái: trống · đang tải · lỗi (có "Thử lại") · không có quyền · khóa theo gói · thành công. Không ngõ cụt.
 - HIỂN THỊ ĐẠT TRÊN MỌI THIẾT BỊ (owner 30/09 — mọi màn, kể cả màn quản trị và nền tảng; màn đẹp trên máy tính mà vỡ trên điện thoại = CHƯA XONG):
-  · Kiểm ở 320 · 360 · 390 · 768 · 1024 · 1280 · 1440px + điện thoại xoay ngang (844×390) × sáng + tối × cỡ chữ "Vừa" (mặc định) + "Rất lớn" (+ "Nhỏ" ở 1280) + phóng to trình duyệt 200%; WCAG 2.2 AA.
+  · Kiểm ở 320 · 360 · 390 · 768 · 1024 · 1280 · 1440px + điện thoại xoay ngang (844×390) × sáng + tối × cỡ chữ "Vừa" (mặc định) + "Cực lớn" + phóng to trình duyệt 200%; WCAG 2.2 AA.
   · Trình duyệt: Chrome/Edge, Safari iPhone/iPad, Firefox, Samsung Internet. Chiều cao dùng 100dvh (không 100vh); chừa safe-area (tai thỏ, thanh home). CSS mới (container query, :has, subgrid) phải chạy trên Safari iOS 16+, không thì có dự phòng.
   · Bố cục co theo KHUNG CHỨA (container query trên khung màn — màn còn được nhúng trong Shell), không theo cửa sổ. Quy tắc cho bề rộng hẹp phải THẮNG quy tắc rộng — kiểm độ ưu tiên CSS (lỗi thật: `Quy trình duyệt` ở 390px, nút "Đổi quy trình" không rộng hết vì `.qd-c4 .qd-btn{width:auto}` đè `.qd-btn{width:100%}`).
-  · Bảng/hàng nhiều cột dưới 768px → THẺ GỌN, KHÔNG xếp mỗi cột thành một dòng: dòng 1 tên + trạng thái/công tắc bên phải · dòng 2 thông tin phụ nối bằng "·" · dòng 3 hành động (1 nút chính rộng hết, nút phụ vào menu "⋯ Khác"); khoảng cách dọc trong thẻ ≤ 12px. Công tắc luôn đứng cạnh tên việc nó bật/tắt, nhãn nói rõ việc ("Duyệt trước khi đăng · Đang bật"). 768–1023px: 2 cột hoặc bảng rút gọn, không phải 1 cột dài. Bảng dữ liệu thật sự cần nhiều cột thì cuộn TRONG khung bảng + cột tên dính trái (ngoại lệ có chủ đích của tiêu chí 8, chỉ cho bảng dữ liệu — thẻ và khung đọc vẫn không cuộn ngang); trang không bao giờ cuộn ngang.
+  · Bảng/hàng nhiều cột dưới 768px → THẺ GỌN, KHÔNG xếp mỗi cột thành một dòng: dòng 1 tên + trạng thái/công tắc bên phải · dòng 2 thông tin phụ nối bằng "·" · dòng 3 hành động (1 nút chính rộng hết, nút phụ vào menu "⋯"); khoảng cách dọc trong thẻ ≤ 12px. Công tắc luôn đứng cạnh tên việc nó bật/tắt, nhãn nói rõ việc ("Duyệt trước khi đăng · Đang bật"). 768–1023px: 2 cột hoặc bảng rút gọn, không phải 1 cột dài. Bảng dữ liệu thật sự cần nhiều cột thì cuộn TRONG khung bảng + cột tên dính trái (ngoại lệ có chủ đích của tiêu chí 8, chỉ cho bảng dữ liệu — thẻ và khung đọc vẫn không cuộn ngang); trang không bao giờ cuộn ngang.
   · Điện thoại: hộp thoại/bảng chọn = trượt từ đáy hoặc toàn màn; thanh Lưu dính đáy không che nội dung và ô đang nhập (bàn phím ảo); menu trái thành ngăn kéo; không gì chỉ hiện khi rê chuột (hover) — phải bấm được; vùng bấm ≥ 44px, cách nhau ≥ 8px.
   · Canvas giao nộp: mỗi màn có khung xem 390 và 768 cạnh khung máy tính; README có bảng "Kiểm hiển thị" (bề rộng × trình duyệt → đạt/chưa + lý do).
 - Không hiện mã số nội bộ (id) — chỉ tên, đường dẫn, mã công khai. Không gắn cứng thương hiệu (tên nền tảng/website/"Phát triển bởi" lấy từ cấu hình).
@@ -31,24 +31,24 @@ Luật cứng:
 - Dữ liệu động: nhóm quyền, quyền, loại nội dung, ngôn ngữ, gói, bước duyệt đều đọc từ registry/bảng — chịu được 1–20 mục, tên dài. Nhóm quyền, gói, chế độ duyệt, số ngôn ngữ mô phỏng bằng Tweaks đọc registry thật (LESSONS #18) — không bịa cờ kiểu canPublish.
 - Hành động nguy hiểm: chuyển vào Thùng rác thì KHÔNG hỏi — làm ngay + toast "Hoàn tác" 8 giây; chỉ hỏi khi kéo theo mục khác ("Xóa mục này và 3 mục con") hoặc không hoàn tác được (xóa vĩnh viễn, tắt ngôn ngữ, đổi tên miền): hộp xác nhận giữa màn kiểu SweetAlert2, nút Hủy được focus, nút làm ghi đúng việc sẽ xảy ra.
 - Mẫu DANH SÁCH dùng chung (đã có thiết kế; chuẩn đầy đủ = mẫu 1 của `Chuẩn giao diện SaaS Starter.dc.html` từ D0-3, phần build còn thiếu ghi ở đó): lấy khuôn của `Quản lý Bài viết - Options` (`Quản lý Trang - Options` chỉ để đối chiếu; code: `app/Modules/Admin/Livewire/Entries/Index.php`) — tiêu đề + 1 dòng mô tả + 1 nút chính · tab trạng thái có số đếm + tab Thùng rác · ô tìm + các nút lọc (danh sách tick có số; chân "Bỏ lọc" · "Xong") · dòng "Đang lọc: <chip ×> … Bỏ lọc · Khớp N / M" · chọn cột (cột bắt buộc khóa) · thanh "Đã chọn N": mỗi nút hàng loạt ghi số dòng nó làm được ("Đăng (3)"), dòng không làm được thì bỏ qua và nói lý do · dòng có tiêu đề + đường dẫn sửa tại chỗ, trạng thái bấm đổi được (chỉ các bước quy trình + quyền cho phép — BSCW) + "Hẹn giờ đăng", mã ngôn ngữ bấm để sửa bản dịch, người tạo (chữ cái đầu) · chân bảng "Dòng/trang" 10/20/50 + số trang. Màn danh sách mới CHỈ thêm cột/bộ lọc riêng của nó, không chế khuôn khác. Ngoại lệ phân trang: danh sách không giới hạn (nhật ký hệ thống, khách hàng/website của nền tảng) giữ "Dòng/trang" nhưng thay số trang bằng "‹ Trước · Sau ›" và không hiện tổng; dòng thông báo/hộp thư dạng dòng thời gian dùng "Tải thêm".
-- Hành động trên dòng, cây và quyền (owner 06/10 — mọi danh sách, bảng, cây, lưới): (a) thao tác hay dùng hiện sẵn trên dòng, có chữ; thao tác hiếm / nâng cao / nguy hiểm vào menu "⋯ Khác", các nhóm cách nhau bằng vạch ngăn, "Chuyển vào Thùng rác" hoặc "Xóa…" luôn đứng cuối, màu đỏ; dưới 768px khung chứa, dòng thành thẻ gọn: tiêu đề + 1 dòng phụ + "⋯" (mở bảng chọn trượt từ đáy), chạm thẻ là làm việc chính. (b) Cây (Chuyên mục, Trình đơn, Trang cha-con): ô tìm + chip lọc nhanh LUÔN hiện, như `Trình đơn.dc.html`; khi đang tìm hoặc lọc thì kết quả là danh sách phẳng có đường cha phía trước ("Tin tức › Sự kiện ›"), kéo-thả tắt kèm lý do. (c) Quyền: người KHÔNG có quyền làm việc đó thì ẩn nút; có quyền nhưng đang bị chặn (bước quy trình duyệt, phiên hỗ trợ, người khác đang sửa, đã tới giới hạn) thì hiện nút khóa + 1 câu lý do đọc được bằng chạm và bàn phím, không chỉ nằm trong title khi rê chuột; ngoài gói thì theo công tắc "Lời mời nâng gói". Đổi Tweak nhóm quyền / chế độ duyệt / gói phải đổi đúng bộ nút. (d) Bài thuộc loại nội dung đang BẬT quy trình duyệt không được rời loại đó (owner chốt 07/10): đổi chuyên mục chính, chuyển / gộp / xóa chuyên mục kèm bài sang loại khác → chỗ đích của loại khác khóa + lý do, không có nút xác nhận để vượt. Loại không bật quy trình thì cho chuyển, hộp xác nhận nói trước hệ quả quyền / quy trình duyệt bằng số. (e) Màn ĐÃ có thiết kế (owner 07/10 về D1-6: "đang tốt mà chỉnh không tốt hơn mà lại còn kém hơn"): GIỮ bố cục, tab, ô lọc / ô chọn, nút và vị trí đang có. Chỉ THÊM phần còn thiếu theo các luật trên. Không gộp nhiều ô lọc thành 1 nút "Lọc" trên máy tính, không bỏ tab, không dời nút chính ra chỗ khác. Chỗ nào bản mới ưu việt hơn sau khi so kỹ thì cũng GIỮ. README ghi bảng "Màn đang chạy · Bản mới · Giữ bản nào · Vì sao". Muốn bớt hoặc đổi chỗ một điều khiển có sẵn thì ghi "Cần owner chốt", không tự làm.
+- Hành động trên dòng, cây và quyền (owner 06/10 — mọi danh sách, bảng, cây, lưới): (a) thao tác hay dùng hiện sẵn trên dòng, có chữ; thao tác hiếm / nâng cao / nguy hiểm vào menu "⋯" (biểu tượng + chú thích "Thao tác khác", không thêm chữ), các nhóm cách nhau bằng vạch ngăn, "Chuyển vào Thùng rác" hoặc "Xóa…" luôn đứng cuối, màu đỏ; dưới 768px khung chứa, dòng thành thẻ gọn: tiêu đề + 1 dòng phụ + "⋯" (mở bảng chọn trượt từ đáy), chạm thẻ là làm việc chính. (b) Cây (Chuyên mục, Trình đơn, Trang cha-con): ô tìm + chip lọc nhanh LUÔN hiện, như `Trình đơn.dc.html`; khi đang tìm hoặc lọc thì kết quả là danh sách phẳng có đường cha phía trước ("Tin tức › Sự kiện ›"), kéo-thả tắt kèm lý do. (c) Quyền: người KHÔNG có quyền làm việc đó thì ẩn nút; có quyền nhưng đang bị chặn (bước quy trình duyệt, phiên hỗ trợ, người khác đang sửa, đã tới giới hạn) thì hiện nút khóa + 1 câu lý do đọc được bằng chạm và bàn phím, không chỉ nằm trong title khi rê chuột; ngoài gói thì theo công tắc "Lời mời nâng gói". Đổi Tweak nhóm quyền / chế độ duyệt / gói phải đổi đúng bộ nút. (d) Bài thuộc loại nội dung đang BẬT quy trình duyệt không được rời loại đó (owner chốt 07/10): đổi chuyên mục chính, chuyển / gộp / xóa chuyên mục kèm bài sang loại khác → chỗ đích của loại khác khóa + lý do, không có nút xác nhận để vượt. Loại không bật quy trình thì cho chuyển, hộp xác nhận nói trước hệ quả quyền / quy trình duyệt bằng số. (e) Màn ĐÃ có thiết kế (owner 07/10 về D1-6: "đang tốt mà chỉnh không tốt hơn mà lại còn kém hơn"): GIỮ bố cục, tab, ô lọc / ô chọn, nút và vị trí đang có. Chỉ THÊM phần còn thiếu theo các luật trên. Không gộp nhiều ô lọc thành 1 nút "Lọc" trên máy tính, không bỏ tab, không dời nút chính ra chỗ khác. Chỗ nào bản mới ưu việt hơn sau khi so kỹ thì cũng GIỮ. README ghi bảng "Màn đang chạy · Bản mới · Giữ bản nào · Vì sao". Muốn bớt hoặc đổi chỗ một điều khiển có sẵn thì ghi "Cần owner chốt", không tự làm.
 TIÊU CHÍ DỄ DÙNG — kiểm từng màn trước khi giao, ghi kết quả (đạt/chưa + lý do) vào README:
  1. Hiểu trong 5 giây: tiêu đề + 1 dòng mô tả nói màn này để làm gì; người mới biết bấm gì tiếp. Tối đa 1 nút chính nổi bật, và CHỈ khi prompt ghi tên nút đó hoặc màn có đúng 1 việc chính (danh sách → "Thêm …", biểu mẫu → "Lưu"). Màn tổng quan, bảng điều khiển, trang trạng thái: không nút chính ở đầu trang. Không tự thêm nút tạo hay nút chính mà prompt không ghi (owner 07/10, màn Tổng quan).
  2. Việc chính của màn xong trong ≤ 3 bước từ menu, không cần đọc hướng dẫn.
  3. Không thuật ngữ kỹ thuật trần (SMTP, OAuth, DNS, CNAME, SSL, API, webhook, token, slug, meta, robots…). Buộc phải có thì để trong khối "Nâng cao" và kèm 1 câu giải thích đời thường. Tên thương hiệu quen (Google, Zalo, Facebook) giữ nguyên nhưng nói rõ công dụng ("Facebook Pixel — đo hiệu quả quảng cáo Facebook").
- 4. Icon luôn kèm chữ hiện trên màn (owner 07/10). Chỉ được đứng một mình: nút đóng ✕, kính lúp NẰM TRONG ô tìm, mũi tên quay lại, nút hiện/ẩn mật khẩu, mũi tên trước/sau, mũi tên mở/gập trên một dòng đã có tên, nút xóa chữ trong ô — mỗi nút có aria-label và vùng bấm đủ cỡ. Tooltip không thay được chữ. Chuông, nút thêm, nút menu đều phải có chữ. Menu thao tác hiếm viết "⋯ Khác", không để "⋯" trơn.
+ 4. Icon kèm chữ hiện trên màn, trừ biểu tượng ai cũng hiểu (owner 07/10): đóng ✕, tìm, quay lại, mũi tên trước/sau và mở/gập, hiện/ẩn mật khẩu, xóa chữ trong ô, ☰ menu, chuông (kèm số), ảnh đại diện tài khoản, sáng/tối, cờ ngôn ngữ, toàn màn hình, (?) trợ giúp, định dạng chữ quen như Word (B, I, U, danh sách, liên kết), bút chì sửa nhanh ngay cạnh chữ nó sửa, và nút ⋮ / ⋯ menu thao tác khác (KHÔNG thêm chữ "Khác"). Biểu tượng đứng riêng phải có chú thích khi trỏ chuột (`title`) + `aria-label` nói rõ việc ("Thao tác khác cho “<tên>”") + vùng bấm ≥ 44px; trên điện thoại (không có chú thích khi trỏ) menu bật lên có dòng tiêu đề nói rõ đang thao tác với gì. Thao tác đổi dữ liệu (Lưu, Đăng, Xóa, Gửi duyệt…), việc riêng của sản phẩm (Hẹn giờ, Dịch, Duyệt) và nút lọc luôn có chữ.
  5. Ô nhập có gợi ý bằng ví dụ thật; lỗi nói cách sửa ("Số điện thoại cần 10 số, ví dụ 0901 234 567"), không nói lỗi kỹ thuật.
  6. Không mất việc: tự lưu nháp, chặn rời trang khi chưa lưu, xóa = vào Thùng rác kèm toast "Hoàn tác"; hộp xác nhận nói rõ hệ quả bằng số ("Xóa mục này và 3 mục con"). Backend hiện chỉ có Thùng rác cho bài, trang, sản phẩm, ảnh & tệp — loại khác mà màn cần Thùng rác thì VẪN vẽ, ghi "Chờ backend" + mục Việc cho backend (không tự bỏ).
  7. Trạng thái luôn có màu + hình + chữ — không bao giờ chỉ dùng màu.
  8. Không cắt chữ: nhãn nút, chip, tab, nút lọc luôn 1 dòng (dài thì "…" + tooltip) — nút KHÔNG bao giờ xuống 2 dòng; nhãn ô nhập được xuống dòng nhưng không bị che. Không thanh cuộn ngang trong thẻ/khung đọc.
  9. Điện thoại & máy tính bảng: MỌI việc trên màn làm trọn được ở 360–390px và 768px, việc hay làm (trả lời khách liên hệ, duyệt bài, đăng tin nhanh, xem thông báo) thuận tay nhất; vùng bấm ≥ 44px; không thành phần nổi nào che nút Lưu hay nội dung.
 10. Hai tầng người dùng: mặc định gọn cho người mới (tùy chọn nâng cao gập lại); người thạo có phím tắt, thao tác hàng loạt, lọc nhanh — nhưng không làm rối tầng người mới.
-11. Cỡ chữ 4 mức (owner 07/10): Nhỏ · Vừa (mặc định) · Lớn · Rất lớn, mỗi người tự chọn, lưu theo tài khoản. MỌI chữ đi theo token cỡ chữ của Shell (`calc(<cỡ>px + var(--fsp))`), không cỡ px cố định; ở "Rất lớn" và 320px không vỡ, không tràn, vùng bấm vẫn ≥ 44px.
+11. Cỡ chữ theo người (owner 07/10): mặc định "Vừa" = chữ nội dung 14px, chú thích / diễn giải 12–13px (không chữ nào dưới 12px); mỗi người tự chọn Lớn · Rất lớn · Cực lớn (+2 / +4 / +6px), lưu theo tài khoản. MỌI chữ đi theo token cỡ chữ của Shell (`calc(<cỡ>px + var(--fsp))`), không cỡ px cố định; ở "Cực lớn" và 320px không vỡ, không tràn, vùng bấm vẫn ≥ 44px.
 12. Dùng đúng từ trong "Bảng thuật ngữ" của Chuẩn giao diện (D0-3): cùng một việc luôn cùng một từ ở mọi màn.
 CHẤT LƯỢNG HOÀN THIỆN (owner 06/10 — áp mọi màn, cùng mức với 12 tiêu chí trên; đích: đẹp · hiện đại · trực quan; người mới, người không rành CNTT, người lớn tuổi dùng được mà không cần đọc hướng dẫn; đẹp trên mọi thiết bị và trình duyệt):
  A. Đẹp & nhất quán: khoảng cách theo thang 4/8px, cỡ chữ theo thang của DS (không thêm cỡ lẻ mới); mỗi vùng tối đa 1 nút chính, không tự thêm; căn thẳng hàng; cùng một việc = cùng component, cùng vị trí ở mọi màn. Chuyển động 150–250ms và tắt khi `prefers-reduced-motion`; nội dung không giật khi tải (giữ chỗ cho ảnh, số đếm); khung đang tải hiện trong 300ms.
- B. Người lớn tuổi & người mới: ở cỡ "Vừa": chữ nội dung ≥ 16px, chữ phụ và chú thích ≥ 14px, giãn dòng ≥ 1,5 (owner 07/10); nhãn ô luôn hiện (không chỉ có placeholder); mặc định hợp lý — để nguyên vẫn chạy đúng; chỗ khó hiểu có nút (?) giải thích 1 câu đời thường. Không việc nào CHỈ làm được bằng kéo-thả, nhấn giữ, vuốt, nhấp đúp hay rê chuột — luôn có nút làm được việc đó. Mọi thao tác có phản hồi trong 1 giây ("Đang lưu…", toast), chặn bấm 2 lần. Không giới hạn thời gian ngầm: sắp hết phiên đăng nhập thì báo trước và cho gia hạn. Mạng chậm / mất mạng: báo bằng lời thường, giữ chữ đã nhập, có "Thử lại".
- Hành động chia 2 tầng (owner 06/10): việc hay làm (Sửa, Thêm mục con, xem số liệu, Lưu) HIỆN SẴN, có chữ; việc ít làm / nâng cao / nguy hiểm vào menu "⋯ Khác" theo nhóm có vạch ngăn, Xóa đứng cuối màu đỏ — không việc hay làm nào chỉ nằm trong "⋯". Mọi danh sách và cây có ô tìm + Lọc LUÔN hiện, không đợi nhiều mục mới hiện.
+ B. Người lớn tuổi & người mới: ở cỡ mặc định "Vừa": chữ nội dung 14px, chú thích và diễn giải 12–13px, không chữ nào dưới 12px, giãn dòng ≥ 1,5; người cần chữ to tự chọn Lớn / Rất lớn / Cực lớn trong Tài khoản (owner 07/10); nhãn ô luôn hiện (không chỉ có placeholder); mặc định hợp lý — để nguyên vẫn chạy đúng; chỗ khó hiểu có nút (?) giải thích 1 câu đời thường. Không việc nào CHỈ làm được bằng kéo-thả, nhấn giữ, vuốt, nhấp đúp hay rê chuột — luôn có nút làm được việc đó. Mọi thao tác có phản hồi trong 1 giây ("Đang lưu…", toast), chặn bấm 2 lần. Không giới hạn thời gian ngầm: sắp hết phiên đăng nhập thì báo trước và cho gia hạn. Mạng chậm / mất mạng: báo bằng lời thường, giữ chữ đã nhập, có "Thử lại".
+ Hành động chia 2 tầng (owner 06/10): việc hay làm (Sửa, Thêm mục con, xem số liệu, Lưu) HIỆN SẴN, có chữ; việc ít làm / nâng cao / nguy hiểm vào menu "⋯" (biểu tượng + chú thích) theo nhóm có vạch ngăn, Xóa đứng cuối màu đỏ — không việc hay làm nào chỉ nằm trong "⋯". Mọi danh sách và cây có ô tìm + Lọc LUÔN hiện, không đợi nhiều mục mới hiện.
  C. Bàn phím & trình đọc màn hình (WCAG 2.2 AA): thứ tự Tab theo thứ tự đọc; Esc đóng hộp thoại; mở hộp thì focus vào trong, đóng thì trả focus về nút đã mở; đúng 1 h1 và cấp tiêu đề đúng; ô nhập có nhãn thật; toast và trạng thái lưu có `aria-live`; hộp thoại có tên.
  D. Chế độ tối & trình duyệt: chế độ tối chỉ dùng token — nền trắng / tối viết thẳng dưới chữ theo token là LỖI (Claude Code đo 06/10: Email 1,12:1, Trình đơn 1,16:1). Ô chọn, ô tích, ô ngày trông giống nhau trên Chrome, Safari, Firefox (vẽ trạng thái đóng, giữ bộ chọn gốc trên điện thoại). Chữ tiếng Việt có dấu hiện đúng cả khi rơi về font dự phòng. Nhãn dài hơn 40% (bản dịch) không vỡ bố cục.
  E. Đo thật, không tự khai: trước khi ghi "đạt", đo trong `_audit/harness.html` bằng getComputedStyle — (1) tương phản mọi chữ có nghĩa ở CẢ sáng lẫn tối (`data-bs-theme="dark"`) ≥ 4,5:1 (chữ ≥ 24px hoặc ≥ 18,66px đậm: ≥ 3:1); (2) vùng bấm ≥ 44px ở 390; (3) Tab / Esc / trả focus của mọi hộp thoại; (4) mở lại từng tệp đã sửa và Admin Shell — console 0 lỗi (nhất là "logic class eval FAILED": sửa JS xong phải chạy lại). Tệp đo / ảnh tạm chỉ đặt trong `_audit/tmp/`, không tạo thư mục mới ở gốc project; xóa sạch `_audit/tmp/` trước khi xuất zip (mỗi zip đang mang thêm khoảng 14 MB tệp tạm). Không đo được thì ghi [CHƯA KIỂM ĐƯỢC] kèm lý do, không ghi "đạt". README có mục "Kết quả Chất lượng hoàn thiện" (A–E: đạt/chưa + số đo).
@@ -57,85 +57,66 @@ Giao nộp: 1 file .dc.html mỗi màn (hoặc gộp có anchor) + README handof
 Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm nào thì lượt này làm theo prompt (owner đã duyệt) và ghi 1 dòng LESSONS.md nêu điểm khác để owner sửa CLAUDE.md; bài học mới cũng ghi 1 dòng vào LESSONS.md. Làm xong gọi ready_for_verification và sửa hết lỗi verifier báo. Lượt này làm ĐÚNG MỘT việc bên dưới.
 ═══ VIỆC CỦA LƯỢT NÀY ═══
 
-# D0-7 · Cỡ chữ 4 mức theo từng người + menu "⋯ Khác" (chạy 3 phần, cùng chat)
+# D0-7 · Cỡ chữ theo từng người — mặc định 14px, 4 mức (chạy 3 phần, cùng chat)
 Cần trước: D3-1 đã xuất zip. Log ghi D3-1 DỪNG vì chờ owner chốt "Hiện giá"; owner đã chốt 07/10, phần còn lại làm ở D3-1s, nên D3-1 coi như đủ điều kiện. Lượt này chạy TRƯỚC các prompt sửa D1-1s → D3-1s và trước D3-2, để mọi lượt sau làm trên nền mới.
 
-Owner chốt 07/10:
-- Cỡ chữ "vừa phải trung bình" làm mặc định; ai cần nhỏ hoặc lớn thì tự chọn; lựa chọn áp cho toàn bộ trang quản trị và được lưu, lần sau không phải chỉnh lại.
-- Bộ tiêu chí thiết kế chung mới: ở cỡ mặc định, chữ nội dung ≥ 16px và chữ phụ ≥ 14px; vùng bấm ≥ 44 × 44px; icon phải kèm chữ (tiêu chí 4); menu thao tác hiếm viết "⋯ Khác".
-- Mức "Nhỏ" thấp hơn chuẩn. Đây là lựa chọn riêng của người dùng (owner cho phép), không bao giờ là mặc định.
-- Thanh đầu trang KHÔNG làm ở lượt này: các nút trên đó owner đã chốt giữ ngày 06/10, việc thêm chữ hay dời nút chờ owner quyết riêng. Không đổi chỗ, không gom nút nào trên thanh đầu trang.
+Owner chốt 07/10 (bản cuối, sau khi xem bản mẫu màn Tin tức do Claude Code dựng):
+- Mặc định chữ nội dung **14px**, đúng cỡ hôm nay. Chú thích, diễn giải, nhãn phụ được nhỏ hơn chút: **12–13px, không chữ nào dưới 12px**.
+- Mỗi người tự chọn to hơn; lựa chọn áp cho toàn bộ trang quản trị và được lưu, lần sau không phải chỉnh lại.
+- 4 mức: **Vừa (mặc định) · Lớn · Rất lớn · Cực lớn** = chữ nội dung 14 / 16 / 18 / 20px (`--fsp` 0 / 2 / 4 / 6px). Không có mức nhỏ hơn mặc định.
+- Nút ⋮ / ⋯ (menu thao tác khác) đứng riêng, KHÔNG thêm chữ "Khác" (owner: "thêm chữ vào thì xấu quá, biểu tượng và tooltip là được rồi"): chú thích khi trỏ chuột `title="Thao tác khác"` + `aria-label="Thao tác khác cho “<tên dòng>”"`; trên điện thoại (không có chú thích khi trỏ) menu bật lên có dòng tiêu đề "Thao tác khác cho “<tên dòng>”". Tab "Khác" gom tab phụ ở hàng tab là một tab có chữ như các tab khác — giữ nguyên.
+- Thanh đầu trang giữ bố cục owner chốt 06/10 (biểu tượng + chú thích, "Trợ giúp" có chữ). Lượt này chỉ cho chữ trên đó theo mức và sửa 1 lỗi đệm nút "Menu" (mục 5). Không đổi chỗ, không thêm, không bớt nút.
 
-Claude Code đã đo bản D3-1 08:41 bằng Chromium:
-- `body{font-size:14px}`. Bộ đổi cỡ có 2 mức (`fontSize: 'normal' | 'large'`).
-- Trong khoảng 2.900 khai báo cỡ chữ, chỉ 481 chỗ theo `var(--fsp)`. Màn chưa theo `--fsp` hiện được Shell phóng bằng `zoom:1.143` khi bật "Chữ lớn" (Shell, dòng gắn `S.fontSize === 'large' … 'zoom:1.143;'`); mở riêng thì không đổi cỡ.
-- Cách `zoom` không mở rộng được lên 4 mức. Đo ở hệ số 1,43: panel Chi tiết ảnh cao 1.087px trên màn 760px, tràn ra ngoài; Trình đơn rộng 400px trên màn 360px. Vì vậy mỗi chữ phải theo token.
-- `admin-components.css` đặt `:where(:root){--fsp:0px}`, Shell chỉ đặt `--fsp` trên khung của nó, nên màn mở riêng luôn ở cỡ nhỏ nhất.
-- `admin-base.css` ép ô nhập 16px khi chạm (`font-size: 16px !important`), nên ở mức Lớn / Rất lớn nhãn ô to hơn chữ trong ô.
-- Có khoảng 76 hộp cao cố định 20–39px chứa chữ (badge, nhãn…); `.tp-clip{height:20px;overflow:hidden}` sẽ cắt dấu tiếng Việt khi chữ to.
-- `.sx-btn.sm` cao 32px; nút và ô nhập 40px trên máy tính.
+Bản mẫu đã kiểm (Claude Code, Chromium, 07/10): làm trên bản sao zip D3-1 08:41 cho Admin Shell + Tin tức › Danh sách + Tài khoản của tôi. 6 khổ 320–1440 × 4 mức + giá trị cũ: không cuộn ngang, không chữ chồng chữ, nút trên dòng vùng bấm 44px, console 0 lỗi; chọn mức ở Tài khoản → mở lại vẫn nhớ; viền nhóm nút cỡ chữ 3,19:1 (sáng) / 3,65:1 (tối). Phần 1 làm lại ĐÚNG như bản mẫu, rồi phần 2–3 mở rộng cho mọi màn.
 
-PHẦN 1 — token, lưu lựa chọn, Shell
-Được sửa: `Admin Shell.dc.html` (bộ cỡ chữ, khung, Tweak, bảng Giao diện; KHÔNG sửa thanh đầu trang) · `admin-components.css` · `admin-base.css` · `Tài khoản của tôi.dc.html` (chỉ phần Giao diện) · `TODO.md` · `LESSONS.md` · README mới `README - D0-7 Cỡ chữ.md`.
-1. **Cỡ chữ 4 mức:**
-   - Các mức:
-     - Nhỏ: `--fsp: 0px`, đúng cỡ hôm nay;
-     - **Vừa (mặc định)**: `--fsp: 2px`, chữ nội dung 16px, chữ phụ 14px;
-     - Lớn: `--fsp: 4px`;
-     - Rất lớn: `--fsp: 6px`.
-   - `bs-ui.fontSize` nhận `sm · md · lg · xl`, mặc định `md`. Giá trị cũ `normal` / `large` hay giá trị lạ đều về `md`.
-   - Mặc định của chính token, để màn mở riêng cũng ở "Vừa": `:where(:root){--fsp:2px}`.
-   - **Bỏ hẳn nhánh `zoom:1.143`** của Shell. Mọi màn chỉ đổi cỡ qua `--fsp`. Phần 2 và 3 làm cho mọi màn theo `--fsp`.
-   - Ô nhập khi chạm: `font-size: max(16px, calc(14px + var(--fsp)))`, để không nhỏ hơn 16px (iPhone tự phóng to nếu nhỏ hơn) và vẫn lớn theo mức.
-2. **Chữ to không bị cắt:**
-   - hộp chứa chữ dùng `min-height`, không dùng `height` cố định;
-   - `line-height` ≥ 1,3 cho nhãn một dòng, ≥ 1,5 cho đoạn văn;
-   - không dùng `overflow:hidden` theo chiều dọc trên chữ (sửa `.tp-clip` và các badge, nhãn cao cố định);
-   - biểu tượng to theo chữ đứng cạnh, tối đa 24px.
-3. **Vùng bấm ≥ 44 × 44px ở mọi thiết bị**, cả máy tính. Hình nút được nhỏ hơn (ví dụ `.sx-btn.sm` 32px) nếu vùng bấm được nới bằng phần đệm hoặc `::before`, và hai vùng bấm cạnh nhau cách ≥ 8px.
-4. **Chọn và lưu:**
-   - Nơi chọn: menu tài khoản › "Giao diện" › "Cỡ chữ": 4 nút có chữ, nút đang chọn có dấu ✓, xem trước ngay khi bấm.
-   - Thay dòng "Chữ lớn tăng 2px cho phần nội dung của mọi màn" bằng "Cỡ chữ áp cho mọi màn quản trị, lưu theo tài khoản của bạn." Có nút "Về mặc định của website".
-   - Lưu theo tài khoản; prototype giữ `bs-ui`.
-   - Thứ tự áp dụng: lựa chọn của chính người đó › mặc định của website (Cài đặt › Giao diện trang quản trị › "Cỡ chữ", D3-1s) › "Vừa".
-   - README mục "Việc cho backend":
-     - thêm trục `text_size` (`md` · `sm` · `lg` · `xl`, `md` là mặc định) vào `AdminChromeResolver::FIELDS` và `ATTRIBUTES`, cùng `ThemePreferenceController`. Repo đã lưu tùy chọn theo người ở `users.preferences.theme`, mặc định của website ở `site_settings` nhóm `admin_theme`;
-     - cho trục này chạy cả ở trang nền tảng (hiện trang nền tảng chỉ nhận trục `scheme`);
-     - bản build: cỡ gốc theo % của trình duyệt (87,5 / 100 / 112,5 / 125%) và mọi cỡ chữ dùng `rem`, để cỡ chữ của máy và phóng to trình duyệt vẫn cộng thêm.
-5. **"⋯ Khác"** trong component menu thao tác chung (`admin-components.css` + Shell):
-   - nút hiện "⋯ Khác", có `aria-label` "Thao tác khác cho <tên dòng>";
-   - không dùng chữ "Thêm", vì "Thêm" đang là nút tạo mới;
-   - ở thẻ điện thoại, nút nằm ở dòng hành động.
-6. **Tweak:** "Cỡ chữ" 4 mức thay cho Tweak "Chữ lớn". `_audit/harness.html` nhận `size=sm|md|lg|xl`.
+Claude Code đã đo bản D3-1 08:41:
+- `body{font-size:14px}`. Bộ đổi cỡ có 2 mức (`fontSize: 'normal' | 'large'`, "Lớn" = +2px).
+- Trong khoảng 2.900 khai báo cỡ chữ, chỉ 481 chỗ theo `var(--fsp)`. Màn chưa theo `--fsp` được Shell phóng bằng `zoom:1.143` khi bật "Chữ lớn"; mở riêng thì không đổi cỡ. Cách `zoom` không mở rộng lên 4 mức được (đo ở 1,43: panel Chi tiết ảnh cao 1.087px trên màn 760px; Trình đơn rộng 400px trên màn 360px), nên mỗi chữ phải theo token.
+- Thanh bên và thanh đầu trang của Shell viết cỡ px cố định (12–15px), nên không to theo mức.
+- `admin-base.css` ép ô nhập 16px khi chạm (`font-size: 16px !important`), nên ở mức to chữ trong ô nhỏ hơn nhãn.
+- Khoảng 76 hộp cao cố định 20–39px chứa chữ; `.tp-clip{height:20px;overflow:hidden}` cắt dấu tiếng Việt khi chữ to. `.sx-btn.sm` cao 32px.
+- Nút "Menu" trên điện thoại đệm `'12px 0 10px'` (3 giá trị → lề phải 0), chữ "Menu" dính nút tìm.
+
+PHẦN 1 — token, lưu lựa chọn, Shell, màn mẫu Tin tức
+Được sửa: `Admin Shell.dc.html` (bộ cỡ chữ, cỡ chữ của Shell, Tweak, bảng Giao diện; thanh đầu trang chỉ cỡ chữ và mục 5) · `admin-components.css` · `admin-base.css` · `Tài khoản của tôi.dc.html` (chỉ phần Cỡ chữ) · `Quản lý Bài viết - Options.dc.html` (chỉ mục 6) · `TODO.md` · `LESSONS.md` · README mới `README - D0-7 Cỡ chữ.md`.
+1. **Mức:** `bs-ui.fontSize` nhận `md · lg · xl · xxl` (mặc định `md`) ↔ `--fsp` 0 / 2 / 4 / 6px. Giá trị cũ: `normal` → `md`, `large` → `lg` (đúng cỡ người đó đang dùng); giá trị lạ → `md`. Tweak "Chữ lớn" bật → `xxl`. `:where(:root){--fsp:0px}` giữ nguyên.
+2. **Shell theo mức:** mọi `font-size:<N>px` trong Shell, kể cả chuỗi style ghép trong JS (`NAV.fontSize`, `NAV.childFontSize`), đổi thành `calc(<N>px + var(--fsp, 0px))`. Riêng 4 nút xem trước trong nhóm "Cỡ chữ" giữ cỡ cố định 14 / 16 / 18 / 20px để thấy trước. **Bỏ hẳn nhánh `zoom:1.143`** (phần 2–3 cho mọi màn theo `--fsp`). `dashBig` = mức `xl` / `xxl`. Dòng phụ của mục "Giao diện" trong menu tài khoản: "· chữ lớn" / "· chữ rất lớn" / "· chữ cực lớn", mức Vừa không ghi.
+3. **Ô nhập khi chạm** (`admin-base.css`): `font-size: max(16px, calc(14px + var(--fsp, 0px))) !important` thay `16px` cứng (iPhone tự phóng to nếu ô nhỏ hơn 16px; ô vẫn to theo mức).
+4. **Chọn và lưu — 2 chỗ, cùng 1 giá trị:**
+   - Menu tài khoản › "Giao diện" › "Cỡ chữ": nhóm 4 nút "Vừa · Lớn · Rất lớn · Cực lớn" (`role="radiogroup"`, `aria-pressed`), khung viền `var(--color-border-input)` (≥ 3:1), nút cao 44px, chữ mỗi nút đúng cỡ mức đó. Câu dưới tiêu đề: "Chỉ áp cho riêng bạn, trên mọi màn, và được nhớ cho lần sau. Mặc định: Vừa." Nút "Về mặc định" đưa về `md`.
+   - Tài khoản của tôi › Tùy chọn › "Cỡ chữ": cùng 4 nút (sx-seg, mỗi nút cao 44px), câu gợi ý "Áp cho mọi màn của trang quản trị, chỉ cho riêng bạn, và được nhớ cho lần sau. Mặc định: Vừa." `data-fs` của màn nhận `md · lg · xl · xxl` khi mở riêng.
+   - Thứ tự áp: lựa chọn của người đó › mặc định của website (Cài đặt › Giao diện trang quản trị › "Cỡ chữ", D3-1s) › Vừa.
+   - README "Việc cho backend": trục `text_size` (`md · lg · xl · xxl`, mặc định `md`) trong `AdminChromeResolver::FIELDS` + `ATTRIBUTES` và `ThemePreferenceController` (theo người ở `users.preferences.theme`, mặc định website ở `site_settings` nhóm `admin_theme`); chạy cả trang nền tảng (hiện chỉ nhận `scheme`); bản build: cỡ gốc theo % trình duyệt (100 / 112,5 / 125 / 137,5%) + mọi cỡ chữ dùng `rem`, để cỡ chữ của máy và phóng to trình duyệt vẫn cộng thêm.
+5. **Nút "Menu" điện thoại** (lỗi có sẵn): đệm `'0 12px 0 10px'`; dưới 360px ở mức Rất lớn / Cực lớn ẩn chữ "Menu", giữ `aria-label="Mở menu"`. Không đổi gì khác trên thanh đầu trang.
+6. **Màn mẫu Tin tức › Danh sách** (khối CSS `.ql`, đúng như bản mẫu):
+   - cột Chuyên mục và tiêu đề bài xuống tối đa 2 dòng (`-webkit-line-clamp:2`) thay "…";
+   - nút "Sửa" + ⋮ trên dòng: hình 40px, vùng bấm 44px (`::before` nới 2px mỗi phía), cách nhau 8px;
+   - dưới 768px khung chứa, thẻ dùng lưới `"chk tl" "sub sub" "st st" "act act"`: tiêu đề chiếm cả hàng (tối đa 3 dòng), trạng thái xuống hàng riêng, dòng phụ được xuống dòng; 3 nút Lọc / Sắp xếp / Chọn chung 1 hàng khi đủ chỗ (bỏ `width:100%` của "Chọn", `min-width:max-content`, chật thì xuống hàng); mép phải hàng tab mờ dần (`mask-image`) báo còn tab;
+   - menu ⋮ trên điện thoại có dòng tiêu đề "Thao tác khác cho “<tên bài>”" (ẩn trên máy tính).
+7. **Chữ to không bị cắt, vùng bấm đủ:** hộp chứa chữ dùng `min-height` thay `height` cố định; `line-height` ≥ 1,3 nhãn một dòng, ≥ 1,5 đoạn văn; không `overflow:hidden` theo chiều dọc trên chữ (sửa `.tp-clip` và badge, nhãn cao cố định); biểu tượng to theo chữ đứng cạnh, tối đa 24px. Vùng bấm ≥ 44 × 44px ở mọi thiết bị, cả máy tính; hình nút được nhỏ hơn nếu nới bằng đệm hoặc `::before`; 2 vùng bấm cạnh nhau cách ≥ 8px, hoặc sát nhau khi mỗi vùng đủ 44px.
+8. **Tweak:** "Cỡ chữ" 4 mức thay Tweak "Chữ lớn". `_audit/harness.html` nhận `size=md|lg|xl|xxl`.
 
 PHẦN 2 — gửi "Làm D0-7 phần 2" trong cùng chat
-Được sửa: `Admin Shell.dc.html` (phần chữ còn lại, trừ thanh đầu trang) · `Trình đơn.dc.html` · `Email Settings.dc.html` · `Kế hoạch nội dung SEO.dc.html` · `MediaPicker.dc.html` · `Cài đặt nội dung AI.dc.html` · `Hộp duyệt.dc.html` · `TODO.md` · `LESSONS.md` · README D0-7.
-7. Mọi khai báo cỡ chữ cho CHỮ đổi thành `calc(<cỡ cũ>px + var(--fsp))`. Cỡ của biểu tượng trang trí và ảnh giữ nguyên. Áp luật mục 2 và 3 cho các hộp chứa chữ trong các tệp này.
-8. Mọi menu thao tác trên dòng, thẻ, cây và lưới trong các tệp này dùng "⋯ Khác". Nội dung menu, thứ tự và vạch ngăn giữ nguyên.
-9. Làm theo từng tệp. Xong mỗi tệp:
-   - mở lại tệp đó, đứng riêng và trong Shell: console 0 lỗi;
-   - ở 390 với mức "Rất lớn": không tràn ngang, chữ không bị cắt.
-   Rồi mới sang tệp kế. Một chỗ sửa sai có thể làm hỏng cả màn.
+Được sửa: `Trình đơn.dc.html` · `Email Settings.dc.html` · `Kế hoạch nội dung SEO.dc.html` · `MediaPicker.dc.html` · `Cài đặt nội dung AI.dc.html` · `Hộp duyệt.dc.html` · `TODO.md` · `LESSONS.md` · README D0-7.
+9. Mọi khai báo cỡ chữ cho CHỮ đổi thành `calc(<cỡ cũ>px + var(--fsp))`, giữ đúng cỡ hôm nay ở mức Vừa; chữ đang dưới 12px nâng lên 12px. Cỡ của biểu tượng trang trí và ảnh giữ nguyên. Áp mục 7 cho các hộp chứa chữ.
+10. Nút ⋮ / ⋯ của mọi menu thao tác (dòng, thẻ, cây, lưới): biểu tượng đứng riêng + `title="Thao tác khác"` + `aria-label="Thao tác khác cho “<tên>”"` + vùng bấm 44px; menu trên điện thoại có dòng tiêu đề như mục 6. Nút nào đang ghi "⋯ Khác" thì bỏ chữ "Khác". Nội dung menu, thứ tự và vạch ngăn giữ nguyên.
+11. Làm theo từng tệp. Xong mỗi tệp: mở lại đứng riêng và trong Shell, console 0 lỗi; ở 390 mức "Cực lớn" không tràn ngang, chữ không bị cắt. Rồi mới sang tệp kế — một chỗ sửa sai có thể làm hỏng cả màn.
 
 PHẦN 3 — gửi "Làm D0-7 phần 3" trong cùng chat
-Được sửa: mọi `.dc.html` có trong registry `shell-screens.js` mà phần 2 chưa làm · `content-ui.js` / `content-workflow.js` (chỉ cỡ chữ) · `TODO.md` · `LESSONS.md` · README D0-7.
-10. Làm như mục 7, 8, 9 cho các tệp còn lại. Trong số đó có cả các màn đã theo `--fsp` một phần nhưng còn chỗ cố định: Chuyên mục, Thư viện ảnh & tệp, Thành viên, Nhóm quyền, Sản phẩm, Khách liên hệ, Biểu mẫu, Tổng quan, Đường dẫn, Tài khoản của tôi, Thông báo, Trình soạn nội dung…
-11. Nút, chip, tab vẫn 1 dòng (dài thì "…" + tên đầy đủ khi trỏ hoặc chạm giữ). Bảng chuyển sang thẻ sớm hơn nếu cần. Không tràn ngang ở 320px.
+Được sửa: mọi `.dc.html` có trong registry `shell-screens.js` mà phần 1–2 chưa làm · `content-ui.js` / `content-workflow.js` (chỉ cỡ chữ và nút ⋮) · `TODO.md` · `LESSONS.md` · README D0-7.
+12. Làm như mục 9, 10, 11 cho các tệp còn lại. Trong số đó có cả các màn đã theo `--fsp` một phần nhưng còn chỗ cố định: Chuyên mục, Thư viện ảnh & tệp, Thành viên, Nhóm quyền, Sản phẩm, Khách liên hệ, Biểu mẫu, Tổng quan, Đường dẫn, Tài khoản của tôi, Thông báo, Trình soạn nội dung…
+13. Nút, chip, tab vẫn 1 dòng (dài thì "…" + tên đầy đủ khi trỏ hoặc chạm giữ). Chữ trong ô bảng và tiêu đề dòng được xuống 2 dòng thay "…". Bảng chuyển sang thẻ sớm hơn nếu cần. Không tràn ngang ở 320px.
 
 Xong khi:
-(1) Phần 1:
-   - 4 mức đổi được ở menu tài khoản; tải lại vẫn nhớ;
-   - mặc định "Vừa": chữ nội dung 16px, chữ phụ 14px, đo bằng getComputedStyle, cả trong Shell lẫn khi mở màn riêng;
-   - giá trị cũ `large` về `md`;
-   - grep Shell 0 "zoom:1.143".
-(2) Phần 1: ô nhập khi chạm ≥ 16px ở mọi mức; `.tp-clip` và các badge không cắt dấu ở mức "Rất lớn"; vùng bấm ≥ 44px ở 1280 và 390.
-(3) Phần 2 và 3: ở mức "Rất lớn", trong Shell, ≥ 95% số phần tử có chữ to hơn mức "Nhỏ" ít nhất 5px. README liệt kê các chỗ cố ý giữ cỡ, kèm lý do.
-(4) Phần 3: grep MỌI `.dc.html` trong registry: không còn nút menu thao tác chỉ có "⋯"; mọi nút đó có chữ "Khác".
-(5) Mỗi tệp đã sửa: console 0 lỗi khi mở riêng và trong Shell; ở 390 mức "Rất lớn" không tràn ngang. Ma trận đầy đủ (320–1440 × 4 mức × sáng / tối) do Claude Code đo bằng zip, không cần làm trong chat. Tệp đo tạm chỉ ở `_audit/tmp/`, xóa sạch trước khi xuất zip.
+(1) Phần 1: 4 mức đổi được ở menu tài khoản và ở Tài khoản của tôi, 2 chỗ luôn cùng giá trị; tải lại vẫn nhớ; mặc định: chữ nội dung 14px và không chữ nào dưới 12px (getComputedStyle, trong Shell và khi mở màn riêng); giá trị cũ `normal` → 14px, `large` → 16px; grep Shell 0 "zoom:1.143".
+(2) Phần 1: Tin tức › Danh sách trong Shell ở 320 · 390 · 768 · 1024 · 1366 · 1440 × 4 mức: không cuộn ngang, chữ không chồng, không cắt; nút trên dòng vùng bấm 44px; thanh bên và thanh đầu trang to theo mức (chữ menu bên 14,5 → 20,5px); ô nhập khi chạm ≥ 16px ở mọi mức; `.tp-clip` và badge không cắt dấu ở mức "Cực lớn".
+(3) Phần 2 và 3: ở mức "Cực lớn", trong Shell, ≥ 95% số phần tử có chữ to hơn mức "Vừa" ít nhất 5px. README liệt kê các chỗ cố ý giữ cỡ, kèm lý do.
+(4) Phần 3: grep MỌI `.dc.html` trong registry: mọi nút ⋮ / ⋯ có `title` và `aria-label` "Thao tác khác cho …"; 0 nút ghi "⋯ Khác"; 0 cỡ chữ dưới 12px.
+(5) Mỗi tệp đã sửa: console 0 lỗi khi mở riêng và trong Shell; ở 390 mức "Cực lớn" không tràn ngang. Ma trận đầy đủ (320–1440 × 4 mức × sáng / tối) do Claude Code đo bằng zip, không cần làm trong chat. Tệp đo tạm chỉ ở `_audit/tmp/`, xóa sạch trước khi xuất zip.
 (6) README có:
    - "Việc cho backend" (trục `text_size` trong FIELDS + ATTRIBUTES, trang nền tảng, `rem` cho bản build);
    - dòng "Phóng to chữ mặc định của trình duyệt ×2: [CHƯA KIỂM ĐƯỢC] trong prototype dùng px — bản build dùng rem";
-   - dòng "Mức Nhỏ thấp hơn chuẩn 16/14px: lựa chọn riêng của người dùng, owner cho phép (07/10)".
+   - dòng "Mặc định 14px, chú thích 12–13px: owner chốt 07/10, người cần chữ to tự chọn tới 20px".
 
 Gọi ready_for_verification cuối mỗi phần, sửa hết lỗi verifier báo. Verifier không trả kết quả (Shell ≈ 440 KB) thì ghi [CHƯA KIỂM ĐƯỢC], không ép.
 Xuất zip project gửi Claude Code kiểm sau MỖI phần. Xong thì báo owner đúng một câu: "D0-7 phần <số> xong — gửi zip cho Claude Code."

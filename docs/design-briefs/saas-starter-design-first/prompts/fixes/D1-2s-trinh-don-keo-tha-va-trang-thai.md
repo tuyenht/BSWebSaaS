@@ -11,7 +11,7 @@ Claude Code đã dựng màn bằng Chromium (zip D3-1 08:41) và đọc mã.
 **GIỮ nguyên, không đổi chỗ:**
 - thanh tìm + chip "Tất cả · Cần xem · Đang ẩn";
 - "Thu gọn hết", Hoàn tác / Làm lại, Ctrl+Z;
-- nút ↑ ↓ và "⋯ Khác" trên từng dòng;
+- nút ↑ ↓ và "⋯" trên từng dòng;
 - nhãn loại ("Trang", "Sản phẩm", "Liên kết") và nhãn lỗi ("Trang không còn"…);
 - "Gỡ khỏi trình đơn" (vào Thùng rác 30 ngày, đứng cuối, màu đỏ).
 
@@ -67,7 +67,7 @@ Xong khi:
 (3) Hộp xác nhận: trình đọc màn hình đọc được tên hộp; Esc vẫn đóng; Tab không thoát ra ngoài hộp; đóng xong focus về đúng nút. Ở 360, nút "Xem trên website" có tên đọc.
 (4) Tweak "Trạng thái màn": đủ Đang tải · Lỗi tải · Lưu lỗi · Không có quyền · Phiên hỗ trợ. Chip "Cần xem" có "Gỡ N mục không còn"; gỡ xong có "Hoàn tác".
 (5) Không có ô chọn trên dòng. Mọi nút chỉ có biểu tượng đều có tên đọc. Ở 390, mọi vùng bấm ≥ 44px.
-(6) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Rất lớn, đứng riêng và trong Shell (`#/site/menus`), đạt cả 3 điều:
+(6) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Cực lớn, đứng riêng và trong Shell (`#/site/menus`), đạt cả 3 điều:
    - `scrollWidth = clientWidth`;
    - tương phản ≥ 4,5:1 cả sáng lẫn tối;
    - mở lại tệp và Admin Shell: console 0 lỗi.

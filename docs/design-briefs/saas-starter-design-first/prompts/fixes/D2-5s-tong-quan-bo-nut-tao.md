@@ -30,6 +30,6 @@ Chỉ sửa `Tổng quan.dc.html`, `README - D2-5 Tổng quan.md`, `TODO.md`, `L
 Xong khi:
 (1) Tweak cả 6 nhóm quyền × (không duyệt / duyệt trước khi đăng): đầu trang 0 nút; cả màn 0 nút tạo, chỉ còn nút đi tới việc của "Việc cần làm" và "Bắt đầu"; Người viết có liên kết "Xem bài của tôi"; bấm vào mở danh sách bài có sẵn chip "Người viết: …" (trong Shell).
 (2) Grep `Tổng quan.dc.html`: 0 "Viết bài mới".
-(3) `_audit/harness.html` ở 320 / 360 / 390 / 768 / 1024 / 1440 × cỡ chữ Vừa và Rất lớn, đứng riêng và trong Shell: `scrollWidth = clientWidth`; mở lại tệp và Admin Shell: console 0 lỗi. Xóa sạch `_audit/tmp/` trước khi xuất zip.
+(3) `_audit/harness.html` ở 320 / 360 / 390 / 768 / 1024 / 1440 × cỡ chữ Vừa và Cực lớn, đứng riêng và trong Shell: `scrollWidth = clientWidth`; mở lại tệp và Admin Shell: console 0 lỗi. Xóa sạch `_audit/tmp/` trước khi xuất zip.
 
 Xuất zip project gửi Claude Code kiểm. Xong thì báo owner đúng một câu: "D2-5s xong — gửi zip cho Claude Code."

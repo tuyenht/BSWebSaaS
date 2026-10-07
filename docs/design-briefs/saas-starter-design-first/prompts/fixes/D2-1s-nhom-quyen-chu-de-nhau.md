@@ -24,7 +24,7 @@ Xong khi:
 (1) Đứng riêng và trong Shell (`#/site/roles`) ở 1024 / 1280 / 1440 / 1920: không ô chữ nào đè ô bên cạnh. Đo bằng hộp chữ của từng ô, không đo bằng mắt.
 (2) Tweak dữ liệu dài (thêm 1 nhóm có 128 thành viên và 12 lời mời): ô xuống dòng gọn, không đè, không tràn ngang.
 (3) "Xem đủ" ≥ 44px ở 390 và 768.
-(4) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Rất lớn, đạt cả 3 điều:
+(4) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Cực lớn, đạt cả 3 điều:
    - `scrollWidth = clientWidth`;
    - tương phản ≥ 4,5:1 cả sáng lẫn tối;
    - console 0 lỗi.
