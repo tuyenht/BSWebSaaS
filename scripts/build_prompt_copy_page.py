@@ -59,6 +59,7 @@ VERIFIED = {
     'D1-2': _Z25, 'D2-3': _Z25, 'D1-3': _Z25, 'D1-4a': _Z25, 'D1-4b': _Z25, 'D1-5': _Z25, 'D1-7': _Z25,
     'D1-4c': _Z25, 'D2-1': _Z25, 'D1-4d': _Z25, 'D2-2': _Z25, 'D2-4': _Z25,
     'D2-5': 'zip 08:07 07/10 — còn prompt sửa D2-5s',
+    'D0-7': 'zip 19:17 07/10 — Claude Code đo 18 màn trong Shell × 390 / 1366 × Vừa / Cực lớn: mặc định 14px, không chữ < 12px, 96–100% chữ to thêm ≥ 5px, không cuộn ngang, console 0 lỗi; việc sót chuyển vào D0-8',
 }
 # A round that ran but is blocked or not yet audited: shown on its card, box stays open.
 STATUS = {'D3-1': 'Đã chạy, zip 08:41. Owner chốt 07/10: "Hiện giá tham khảo" chỉ ở chế độ Giới thiệu, giữ nhóm Hiển thị, Cỡ chữ = mặc định của website — làm ở prompt sửa D3-1s sau D0-7.', 'D0-7': 'Lượt mới 07/10, owner duyệt bản mẫu màn Tin tức: mặc định 14px (chú thích 12–13px), mỗi người chọn Lớn / Rất lớn / Cực lớn, lưu theo tài khoản; nút ⋮ không chữ, có chú thích. 3 phần cùng chat, chạy ngay sau D3-1, trước các prompt sửa. Thanh đầu trang giữ bố cục 06/10.', 'D0-8': 'Lượt mới 07/10 chiều, owner duyệt bản mẫu màn Tin tức: một cụm [Hướng dẫn] + nút chính bên phải tiêu đề (phương án B), Hướng dẫn theo quyền, khuôn danh sách điện thoại / máy tính bảng, nhãn lọc + sắp xếp, tab tự co. 3 phần cùng chat, chạy sau D0-7 và 7 prompt sửa, trước D3-2.'}
