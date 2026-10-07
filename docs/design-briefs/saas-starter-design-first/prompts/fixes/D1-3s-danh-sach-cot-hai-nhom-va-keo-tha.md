@@ -49,7 +49,7 @@ Xong khi:
 (2) Trang ở chế độ cây, 1280: kéo "Đội ngũ" lên 1/4 trên của "Dịch vụ" thì nhãn "Đặt trước "Dịch vụ" · cấp 1", dòng giữ chỗ không thụt; kéo vào nửa giữa "Dịch vụ" thì nhãn "Thành trang con của "Dịch vụ" · cấp 2 · đường dẫn mới /dich-vu/doi-ngu". Nhả ra đúng chỗ dòng giữ chỗ, có "Hoàn tác".
 (3) Kéo "Giới thiệu" vào trang con của chính nó: dòng giữ chỗ đỏ, nhả ra không đổi gì. Esc khi đang kéo trả về chỗ cũ. Xếp theo "Lượt xem": không có nút kéo, có câu "Xếp theo cây để kéo đổi vị trí".
 (4) "Đã hẹn giờ" ≥ 4,5:1 cả sáng lẫn tối.
-(5) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, chữ thường và Chữ lớn, đứng riêng và trong Shell (`#/site/posts.list`, `#/site/pages.list`, `#/site/catalog.list`), đạt cả 3 điều:
+(5) `_audit/harness.html` ở 360 / 390 / 768 / 1024 / 1440, cỡ chữ Vừa và Rất lớn, đứng riêng và trong Shell (`#/site/posts.list`, `#/site/pages.list`, `#/site/catalog.list`), đạt cả 3 điều:
    - `scrollWidth = clientWidth`;
    - tương phản ≥ 4,5:1 cả sáng lẫn tối;
    - mở lại tệp và Admin Shell: console 0 lỗi.
