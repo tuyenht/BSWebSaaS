@@ -8,8 +8,8 @@ Vai trò: **người chuyển prompt và người kiểm bước đầu**. Khôn
 1. Đọc `README.md` cùng thư mục: cách dùng gói, phần 2, prompt sửa.
 2. Chrome đang kết nối phải là cửa sổ đã đăng nhập claude.ai, đang mở project **BSWebSaaS** trong Claude Design. Không thấy thì dừng và báo owner.
 3. Tạo `/home/designbot/zips/` nếu chưa có. Nhật ký ghi ở `/home/designbot/zips/log.md`.
-4. Các lượt D0-1 → D0-4a và hai prompt sửa D0-4as, D0-4at đã chạy xong (owner chạy tay). Ghi một khối log `## D0-1…D0-4at · ĐẠT (owner chạy tay)` để mục "Cần trước" của các lượt sau đối chiếu được.
-5. Việc 0: tải zip project ngay (mục "Tải zip") với mã `D0-4at`, chưa chạy lượt mới.
+4. **Chỉ làm 1 lần, khi `log.md` chưa có khối `## D0-1…D0-4at`:** các lượt D0-1 → D0-4a và hai prompt sửa D0-4as, D0-4at đã chạy xong (owner chạy tay) → ghi khối log `## D0-1…D0-4at · ĐẠT (owner chạy tay)`; rồi tải zip project (mục "Tải zip") với mã `D0-4at`, chưa chạy lượt mới. `log.md` đã có khối đó thì BỎ QUA bước này — không tải lại zip, không ghi lại khối.
+5. **Chạy tiếp từ đâu:** đọc `log.md`, lấy khối log cuối cùng của từng mã. Một mã là XONG khi có khối ĐẠT, hoặc có khối DỪNG mà prompt của lượt kế nêu rõ owner đã chốt chỗ dừng đó (ví dụ D3-1 DỪNG → prompt D0-7 ghi owner đã chốt). Lượt bắt đầu = mã ĐẦU TIÊN trong "Thứ tự lượt" chưa XONG; mã đã XONG thì không chạy lại. Gặp khối DỪNG chưa được chốt hoặc CHƯA ĐẠT thì dừng và báo owner.
 
 ## Thứ tự lượt
 Chạy lần lượt, mỗi lượt một **chat mới** trong project:
