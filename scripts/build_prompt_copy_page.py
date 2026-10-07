@@ -48,6 +48,20 @@ CHAT_NAMES = {'D0-2s5': 'Focus 1b finalization'}
 PAIRS = {'D0-6c': 'D0-6b', 'D1-6': 'D1-1', 'D2-3': 'D1-2', 'D1-7': 'D1-4b', 'D2-1': 'D1-4c', 'D2-2': 'D1-4d', 'D4-2': 'D4-3'}
 PARTNER = {**PAIRS, **{m: s for s, m in PAIRS.items()}}
 FIXES_RUN = {'D0-2s': '04/10', 'D0-2s2': '05/10', 'D0-2s3': '05/10', 'D0-2s4': '05/10', 'D0-3s': '06/10', 'D0-2s5': '06/10', 'D0-4as': '06/10', 'D0-4at': '06/10'}
+# Rounds Claude Code has audited from a real zip (rendered in Chromium) and imported into
+# docs/design-source. Ticked on every device and cannot be unticked; the text says which zip proved it.
+_Z25 = 'kiểm trong zip D2-5 08:07 07/10 (22 màn, console, tràn ngang, vùng bấm, tương phản) — phần sót đã chuyển vào D5-2'
+VERIFIED = {
+    'D0-1': 'zip 04/10', 'D0-2': 'zip 06/10 09:1x (qua D0-2s → D0-2s5)', 'D0-3': 'zip 06/10 09:1x (qua D0-3s)',
+    'D0-4a': 'zip 11:53 06/10 (+ D0-4as, D0-4at)', 'D0-4b': 'zip 17:23 06/10', 'D0-5': 'zip 20:13 06/10',
+    'D0-6a': 'zip 21:38 06/10', 'D0-6b': 'zip 22:11 06/10', 'D0-6c': 'zip 23:04 06/10',
+    'D1-1': 'zip 23:44 06/10 — còn prompt sửa D1-1s', 'D1-6': 'zip 01:06 07/10 — còn prompt sửa D1-6s',
+    'D1-2': _Z25, 'D2-3': _Z25, 'D1-3': _Z25, 'D1-4a': _Z25, 'D1-4b': _Z25, 'D1-5': _Z25, 'D1-7': _Z25,
+    'D1-4c': _Z25, 'D2-1': _Z25, 'D1-4d': _Z25, 'D2-2': _Z25, 'D2-4': _Z25,
+    'D2-5': 'zip 08:07 07/10 — còn prompt sửa D2-5s',
+}
+# A round that ran but is blocked or not yet audited: shown on its card, box stays open.
+STATUS = {'D3-1': 'Designbot DỪNG 08:42 07/10: chat tự bỏ công tắc "Hiện giá" ở Cài đặt › Sản phẩm — chờ owner chốt; zip D3-1 08:41 chưa kiểm xong.'}
 
 WAVES = [
     ('D0', 'Nền', 'Làm trước mọi thứ: dọn project, chuẩn giao diện (component + mẫu trang + thuật ngữ + tiêu chí dễ dùng), Shell v2 + registry màn, nối màn đã có, rồi rà & sửa hiển thị điện thoại/máy tính bảng cho mọi màn đã có (D0-6a/6b/6c).', 'Bắt đầu được ngay'),
@@ -165,6 +179,20 @@ def chat_name(p):
     n = CHAT_NAMES.get(p['id'])
     return f' <span class="file">· chat: “{e(n)}”</span>' if n else ''
 
+def done_box(p):
+    if p['id'] in VERIFIED:
+        return f'''<label class="done" title="Claude Code đã kiểm bằng zip thật"><input type="checkbox" id="done-{p['id']}" data-done="{p['id']}" data-verified="1" checked disabled><span>Đã kiểm</span></label>'''
+    return f'''<label class="done"><input type="checkbox" id="done-{p['id']}" data-done="{p['id']}"><span>Xong</span></label>'''
+
+
+def status_line(p):
+    if p['id'] in VERIFIED:
+        return f'<p class="vline ok">✓ Claude Code đã kiểm · {e(VERIFIED[p["id"]])}</p>'
+    if p['id'] in STATUS:
+        return f'<p class="vline warn">⚠ {e(STATUS[p["id"]])}</p>'
+    return ''
+
+
 def fix_card(p, ran):
     return f'''
 <article class="card{'' if ran else ' is-next'}" data-id="{p['id']}">
@@ -204,9 +232,9 @@ for wid, wname, wdesc, wneed in WAVES:
         cards.append(f'''
 <article class="card" data-id="{p['id']}" data-par="{PARTNER.get(p['id'], '')}">
   <div class="card-head">
-    <label class="done"><input type="checkbox" id="done-{p['id']}" data-done="{p['id']}"><span>Xong</span></label>
+    {done_box(p)}
     <span class="pid">{p['id']}</span><span class="next-tag" hidden>Lượt tiếp theo</span>
-    <h3>{e(p['name'])}</h3>{par_tag(p)}
+    <h3>{e(p['name'])}</h3>{par_tag(p)}{status_line(p)}
     <span class="btns"><button type="button" class="btn-copy btn-title" data-title="{e(chat_title(p))}">1 · Chép tên chat</button>
     <button type="button" class="btn-copy" data-copy="{body_id}">2 · Sao chép prompt</button></span>
   </div>
@@ -231,7 +259,7 @@ page = f'''<title>Gói prompt SaaS Starter</title>
 <style>
 :root {{
   --canvas:#f3f3f9; --surface:#ffffff; --surface-2:#f8f9fb; --border:#e9ebec; --line:#eff2f7;
-  --heading:#343a40; --text:#495057; --muted:#6b6e7f; --brand:#405189; --brand-soft:rgba(64,81,137,.10);
+  --heading:#343a40; --text:#495057; --muted:#6b6e7f; --brand:#405189; --brand-soft:rgba(64,81,137,.10); --ok:#0a7a4b; --warn:#8a5200;
   --ok:#0a6d60; --ok-bg:rgba(10,179,156,.14); --warn:#8a5f18; --warn-bg:rgba(247,184,75,.20);
   --bad:#c0432c; --bad-bg:rgba(240,101,72,.14); --info:#22688f; --info-bg:rgba(41,156,219,.14);
   --neutral:#5c5f6e; --neutral-bg:#eef0f4; --shadow:0 1px 2px rgba(56,65,74,.15); --code:#f4f6fa;
@@ -239,7 +267,7 @@ page = f'''<title>Gói prompt SaaS Starter</title>
 @media (prefers-color-scheme: dark) {{
   :root:not([data-theme="light"]) {{
     color-scheme:dark; --canvas:#1a1d21; --surface:#292e33; --surface-2:#24282d; --border:#3a4149; --line:#32383e;
-    --heading:#e9ecef; --text:#ced4da; --muted:#98a0ae; --brand:#96a1c0; --brand-soft:rgba(150,161,192,.16);
+    --heading:#e9ecef; --text:#ced4da; --muted:#98a0ae; --brand:#96a1c0; --brand-soft:rgba(150,161,192,.16); --ok:#5fd3a0; --warn:#f0b45a;
     --ok:#5fd1bf; --ok-bg:rgba(10,179,156,.18); --warn:#f3c77a; --warn-bg:rgba(247,184,75,.16);
     --bad:#f4927c; --bad-bg:rgba(240,101,72,.18); --info:#7cc3ea; --info-bg:rgba(41,156,219,.18);
     --neutral:#b5bcc8; --neutral-bg:#32383e; --shadow:0 1px 2px rgba(0,0,0,.4); --code:#202428;
@@ -247,7 +275,7 @@ page = f'''<title>Gói prompt SaaS Starter</title>
 }}
 :root[data-theme="dark"] {{
   color-scheme:dark; --canvas:#1a1d21; --surface:#292e33; --surface-2:#24282d; --border:#3a4149; --line:#32383e;
-  --heading:#e9ecef; --text:#ced4da; --muted:#98a0ae; --brand:#96a1c0; --brand-soft:rgba(150,161,192,.16);
+  --heading:#e9ecef; --text:#ced4da; --muted:#98a0ae; --brand:#96a1c0; --brand-soft:rgba(150,161,192,.16); --ok:#5fd3a0; --warn:#f0b45a;
   --ok:#5fd1bf; --ok-bg:rgba(10,179,156,.18); --warn:#f3c77a; --warn-bg:rgba(247,184,75,.16);
   --bad:#f4927c; --bad-bg:rgba(240,101,72,.18); --info:#7cc3ea; --info-bg:rgba(41,156,219,.18);
   --neutral:#b5bcc8; --neutral-bg:#32383e; --shadow:0 1px 2px rgba(0,0,0,.4); --code:#202428;
@@ -309,6 +337,9 @@ td.mod {{ color:var(--muted); font-weight:600; width:110px; }}
 .done {{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; color:var(--muted); cursor:pointer; white-space:nowrap; min-height:34px; }}
 .howto {{ margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; }}
 .howto li {{ padding-left:2px; }}
+.vline {{ grid-column:1 / -1; margin:0; font-size:13px; line-height:1.5; }}
+.vline.ok {{ color:var(--ok); }}
+.vline.warn {{ color:var(--warn); font-weight:600; }}
 .pid {{ font:500 12px/1 "JetBrains Mono",ui-monospace,monospace; color:var(--muted); }}
 .done input {{ width:20px; height:20px; accent-color:var(--brand); margin:0; cursor:pointer; }}
 .sr {{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }}
@@ -425,6 +456,8 @@ code {{ font:12px "JetBrains Mono",ui-monospace,monospace; background:var(--code
   var done = {{}};
   try {{ done = JSON.parse(localStorage.getItem(KEY) || '{{}}') || {{}}; }} catch (err) {{ done = {{}}; }}
   var boxes = Array.prototype.slice.call(document.querySelectorAll('[data-done]'));
+  // Audited rounds are done on every browser, whatever this browser saved earlier.
+  boxes.forEach(function (b) {{ if (b.hasAttribute('data-verified')) done[b.getAttribute('data-done')] = true; }});
   function paint() {{
     var n = 0;
     boxes.forEach(function (b) {{
