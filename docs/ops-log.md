@@ -7,6 +7,16 @@
 
 ## 2026
 
+### 2026-10-07 — Thêm 4 GB swap (`/swapfile2`) vì tab Chrome của designbot bị tắt do hết bộ nhớ
+
+- **Sự cố:** tab Claude Design của designbot hiện "Aw, Snap! Error code: 9". Nhật ký kernel ghi `Out of memory: Killed process … (chrome)`, UID 1000 = `designbot`. Hôm nay bị 5 lần: 00:40, 02:27, 05:23, 06:48, 23:24. RAM riêng của tab lúc bị tắt là 3,3–4,4 GB. Lúc đó swap 2 GB đã dùng 1,5 GB; dev, prod và các phiên Claude dùng thường trực khoảng 2 GB.
+- **Thao tác:** `23:5x (+07)`, owner duyệt trong phiên ("thêm swap").
+  - `fallocate -l 4G /swapfile2 && chmod 600 /swapfile2 && mkswap /swapfile2 && swapon /swapfile2`
+  - Thêm dòng `/swapfile2 none swap sw 0 0` vào `/etc/fstab` (bản sao lưu `/etc/fstab.bak-20261007`), rồi `systemctl daemon-reload`.
+  - Không `swapoff` tệp cũ, vì làm vậy sẽ đẩy 1,5 GB đang ở swap về RAM. Giữ `vm.swappiness=10`. Không khởi động lại dịch vụ nào.
+- **Sau thao tác:** swap tổng 6 GB (`/swapfile` 2 GB + `/swapfile2` 4 GB); ổ `/` còn khoảng 60 GB trống.
+- **Gỡ:** `swapoff /swapfile2 && rm /swapfile2`, rồi xóa dòng `/swapfile2` trong `/etc/fstab`.
+
 ### 2026-10-06 — Cài màn hình ảo + Google Chrome cho "designbot" (thử cho Claude Code điều khiển Claude Design)
 
 - **Cài:** `2026-10-06 ~13:55 (+07)` — owner chạy `bash /root/designbot-setup.sh` (Claude Code soạn; lệnh cài trực tiếp của Claude Code bị bộ kiểm soát quyền chặn). Owner duyệt trong phiên: "cài tự động cho tôi mọi thứ phù hợp".
