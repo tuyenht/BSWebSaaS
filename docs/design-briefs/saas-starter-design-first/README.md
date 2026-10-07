@@ -10,7 +10,7 @@
 - Mỗi file trong `prompts/` = **1 chat mới** trong project Claude Design BSWebSaaS: trên trang copy bấm "1 · Chép tên chat" (dòng mở đầu bằng mã lượt) rồi "2 · Sao chép prompt", dán cả hai vào cùng ô, gửi. Không gộp 2 file vào 1 chat. Lượt dừng giữa chừng: owner gửi "Làm <mã> phần 2" trong CÙNG chat (riêng D5-2: mỗi phần một chat mới — prompt ghi rõ).
 - Mỗi file đã chứa sẵn phần **BỐI CẢNH CHUNG** (luật cứng + 12 tiêu chí dễ dùng + hợp đồng nhúng Admin Shell + mẫu README handoff). (prompt trong `prompts/fixes/` không có phần này)
 - Xong mỗi lượt: chat báo "<mã> xong — gửi zip cho Claude Code." → owner export zip → Claude Code nhập vào `docs/design-source/` (`scripts/design_snapshot.py`), đối chiếu repo + 12 tiêu chí, kiểm hiển thị bằng Chromium thật (cả phần môi trường thiết kế không đo được: Safari, Firefox, cảm ứng) → đạt thì chép handoff vào `docs/design_handoff_<slug>/` + cập nhật sổ màn; chưa đạt thì viết prompt sửa ở `prompts/fixes/`.
-- Prompt sửa sau kiểm (`prompts/fixes/`; đã chạy: D0-2s → D0-2s5, D0-3s): chép KHÔNG kèm bối cảnh chung; dán vào chat ghi trong tiêu đề prompt (chat của lượt đó, hoặc chat mới nếu prompt ghi vậy; chat đã quá dài thì luôn mở chat mới). Tiến độ từng lượt xem ở trang copy, không ghi ở đây.
+- Prompt sửa sau kiểm (`prompts/fixes/`; đã chạy: D0-2s → D0-2s5, D0-3s): dán vào chat ghi trong tiêu đề prompt. Prompt ghi "chat của lượt đó" thì chép KHÔNG kèm bối cảnh chung. Prompt ghi "(chat mới)" thì tệp đã có sẵn bối cảnh chung: chép cả tệp từ dòng 2 vào chat mới. Chat cũ đã quá dài mà prompt chưa ghi "chat mới" thì báo Claude Code viết lại bản tự đủ, không dán vào chat cũ. Tiến độ từng lượt xem ở trang copy, không ghi ở đây.
 
 ## Sóng (31 lượt)
 | Sóng | Lượt | Cần trước |

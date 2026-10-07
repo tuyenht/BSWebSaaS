@@ -9,12 +9,12 @@ Vai trò: **người chuyển prompt và người kiểm bước đầu**. Khôn
 2. Chrome đang kết nối phải là cửa sổ đã đăng nhập claude.ai, đang mở project **BSWebSaaS** trong Claude Design. Không thấy thì dừng và báo owner.
 3. Tạo `/home/designbot/zips/` nếu chưa có. Nhật ký ghi ở `/home/designbot/zips/log.md`.
 4. **Chỉ làm 1 lần, khi `log.md` chưa có khối `## D0-1…D0-4at`:** các lượt D0-1 → D0-4a và hai prompt sửa D0-4as, D0-4at đã chạy xong (owner chạy tay) → ghi khối log `## D0-1…D0-4at · ĐẠT (owner chạy tay)`; rồi tải zip project (mục "Tải zip") với mã `D0-4at`, chưa chạy lượt mới. `log.md` đã có khối đó thì BỎ QUA bước này — không tải lại zip, không ghi lại khối.
-5. **Chạy tiếp từ đâu:** đọc `log.md`, lấy khối log cuối cùng của từng mã. Một mã là XONG khi có khối ĐẠT, hoặc có khối DỪNG mà prompt của lượt kế nêu rõ owner đã chốt chỗ dừng đó (ví dụ D3-1 DỪNG → prompt D0-7 ghi owner đã chốt). Lượt bắt đầu = mã ĐẦU TIÊN trong "Thứ tự lượt" chưa XONG; mã đã XONG thì không chạy lại. Gặp khối DỪNG chưa được chốt hoặc CHƯA ĐẠT thì dừng và báo owner.
+5. **Chạy tiếp từ đâu:** đọc `log.md`, lấy khối log cuối cùng của từng mã. Một mã là XONG khi có khối ĐẠT, hoặc có khối DỪNG mà prompt của lượt kế nêu rõ owner đã chốt chỗ dừng đó (ví dụ D3-1 DỪNG → prompt D0-7 ghi owner đã chốt). Lượt bắt đầu = mã ĐẦU TIÊN trong "Thứ tự lượt" chưa XONG; mã đã XONG thì không chạy lại. Gặp khối DỪNG chưa được chốt hoặc CHƯA ĐẠT thì dừng và báo owner. Riêng khối DỪNG có lý do "cần bản sửa tự đủ cho chat mới": nếu dòng 1 của tệp sửa mã đó nay ghi "(chat mới)" thì chỗ dừng đã được gỡ — mã đó CHƯA XONG, chạy nó từ đầu ở chat mới; ghi 1 dòng vào log.
 
 ## Thứ tự lượt
 Chạy lần lượt, mỗi lượt một **chat mới** trong project:
 
-D0-4b → D0-5 → D0-6a → D0-6b → D0-6c → D1-1 → D1-6 → D1-2 → D2-3 → D1-3 → D1-4a → D1-4b → D1-5 → D1-7 → D1-4c → D2-1 → D1-4d → D2-2 → D2-4 → D2-5 → D3-1 → **D0-7** (3 phần, cùng chat) → **7 prompt sửa theo thứ tự D1-1s · D1-6s · D2-5s · D1-2s · D1-3s · D2-1s · D3-1s** (mỗi prompt dán vào chat của lượt ghi trong tiêu đề, làm như mục "Prompt sửa từ Claude Code") → **D0-8** (3 phần, cùng chat; owner chốt 07/10) → D3-2 → D4-1 → D4-3 → D4-2 → D5-1 → D5-2
+D0-4b → D0-5 → D0-6a → D0-6b → D0-6c → D1-1 → D1-6 → D1-2 → D2-3 → D1-3 → D1-4a → D1-4b → D1-5 → D1-7 → D1-4c → D2-1 → D1-4d → D2-2 → D2-4 → D2-5 → D3-1 → **D0-7** (3 phần, cùng chat) → **7 prompt sửa theo thứ tự D1-1s · D1-6s · D2-5s · D1-2s · D1-3s · D2-1s · D3-1s** (mỗi prompt một **chat mới**, vì chat cũ của 7 lượt đó đã quá dài; gửi như bước 2 và làm như mục "Prompt sửa từ Claude Code") → **D0-8** (3 phần, cùng chat; owner chốt 07/10) → D3-2 → D4-1 → D4-3 → D4-2 → D5-1 → D5-2
 
 Bạn luôn chạy **một chat một lúc**, nên mọi lượt đều là "chạy một mình": đoạn "CHẠY SONG SONG …" trong prompt **không áp** (prompt tự ghi "chạy một mình thì bỏ qua đoạn này"). Đoạn "Đầu lượt — gộp luồng phụ" sẽ không thấy mục cần gộp và tự bỏ qua. Vẫn dán nguyên văn cả hai đoạn, không xóa.
 
@@ -54,7 +54,8 @@ Trong Claude Design: Share → Download project (zip cả project). Chuyển t�
 ## Prompt sửa từ Claude Code
 Owner gõ `Đọc và làm theo <đường dẫn tệp trong prompts/fixes/>`, hoặc prompt sửa tới lượt trong thứ tự chạy ở đầu tệp:
 - Dòng 1 của tệp (`# <mã> · <tên>`) cho biết chat nào nhận. Tiêu đề hoặc đầu tệp ghi rõ chat cần dán, ví dụ "dán vào chat D0-4b" hoặc "chat mới".
-- Dán phần **từ dòng 2 trở đi**, nguyên văn. Prompt sửa **không** kèm bối cảnh chung. Riêng trường hợp "chat mới" thì dòng đầu là tên chat như bước 2.
+- Dán phần **từ dòng 2 trở đi**, nguyên văn. Prompt sửa dán vào chat cũ **không** kèm bối cảnh chung.
+- Tệp ghi "(chat mới)": tệp đã có bối cảnh chung từ dòng 2. Gửi đúng như bước 2: dòng 1 = tên chat (dòng `# <mã> · <tên>` ngay dưới `═══ VIỆC CỦA LƯỢT NÀY ═══`, bỏ `#` và phần trong ngoặc tròn), xuống dòng, rồi từ `═══ BỐI CẢNH CHUNG` đến hết. Không mở hay bấm "Continue here" ở chat cũ của lượt đó.
 - Chat cần dán đã quá dài (Claude Design hiện "Start a new chat to save … tokens of context") mà prompt sửa không ghi "chat mới": **không** tự chuyển sang chat mới, vì prompt sửa thiếu bối cảnh. Ghi DỪNG vào log với lý do "cần bản sửa tự đủ cho chat mới" để Claude Code viết lại.
 - Kiểm "Xong khi" của prompt sửa, tải zip mã `<mã>`, ghi log, rồi quay lại lượt đang dở.
 
