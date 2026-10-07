@@ -75,6 +75,12 @@ final class ThemeResolver
      * from settings; a seed that is not a hex color (a name, rgb()) cannot be measured, so the role
      * falls back to the ink color. `brand-50` … `brand-900` are the brand palette (BrandPalette).
      *
+     * The standard names (docs/notes/design-tokens.md §7) are printed next to the old ones that
+     * storefront.css still reads, with the same values: `color-primary`, `color-primary-text`,
+     * `color-primary-on-dark`, `color-surface`, `color-text`, `color-brand-*`, plus
+     * `color-on-primary` — white or the ink color on the brand fill, whichever reads better. A new
+     * name never points back at an old one, so a fallback is the color itself, not `var(--ink)`.
+     *
      * @return array<string, string>
      */
     public function cssVariables(): array
@@ -82,24 +88,47 @@ final class ThemeResolver
         $variables = $this->tokens();
         $page = ReadableColor::mix($variables['surface'], $variables['ink'], self::PAGE_SURFACE_SHARE);
         $backgrounds = $page === null ? [$variables['surface']] : [$variables['surface'], $page];
-        $variables['primary-text'] = ReadableColor::onAll($variables['primary'], $backgrounds) ?? 'var(--ink)';
+        $primaryText = ReadableColor::onAll($variables['primary'], $backgrounds);
+        $variables['primary-text'] = $primaryText ?? 'var(--ink)';
         // Brand color made readable as TEXT on the dark surface (--ink): footer NAP link + hover,
         // sub-menu, secondary hero CTA. Lightened (hue kept) until >=4.5 on --ink — a light brand
         // (amber) is unchanged, a dark brand is lifted. Companion to --primary-text (light bg).
-        $variables['primary-on-ink'] = ReadableColor::onAll($variables['primary'], [$variables['ink']]) ?? 'var(--surface)';
+        $primaryOnDark = ReadableColor::onAll($variables['primary'], [$variables['ink']]);
+        $variables['primary-on-ink'] = $primaryOnDark ?? 'var(--surface)';
+
+        $variables['color-primary'] = $variables['primary'];
+        $variables['color-on-primary'] = $this->textOnFill($variables['primary'], $variables['ink']);
+        $variables['color-primary-text'] = $primaryText ?? $variables['ink'];
+        $variables['color-primary-on-dark'] = $primaryOnDark ?? $variables['surface'];
+        $variables['color-surface'] = $variables['surface'];
+        $variables['color-text'] = $variables['body'];
 
         // Tints, fills and dark accents of the brand (--brand-50 … --brand-900), derived — like the
         // roles above, a same-named key in settings never wins. A non-hex brand yields no palette.
         foreach (array_keys($variables) as $key) {
-            if (str_starts_with($key, 'brand-')) {
+            if (str_starts_with($key, 'brand-') || str_starts_with($key, 'color-brand-')) {
                 unset($variables[$key]);
             }
         }
         foreach (BrandPalette::from($variables['primary']) ?? [] as $step => $color) {
             $variables["brand-{$step}"] = $color;
+            $variables["color-brand-{$step}"] = $color;
         }
 
         return $variables;
+    }
+
+    /**
+     * White or the ink color as text on the brand fill — whichever contrasts more (a tie keeps the
+     * ink, the pairing storefront.css has always used). A seed that cannot be measured (not hex)
+     * keeps the ink unless white is the only one that can be measured.
+     */
+    private function textOnFill(string $fill, string $ink): string
+    {
+        $white = ReadableColor::ratio('#ffffff', $fill);
+        $dark = ReadableColor::ratio($ink, $fill);
+
+        return $white !== null && ($dark === null || $white > $dark) ? '#ffffff' : $ink;
     }
 
     private function safeKey(string $key): bool

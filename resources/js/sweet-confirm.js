@@ -35,8 +35,8 @@ async function bsConfirm(opts = {}) {
         showCancelButton: true,
         confirmButtonText: opts.confirm ?? 'OK',
         cancelButtonText: opts.cancel ?? 'Cancel',
-        confirmButtonColor: adminColor(danger ? '--color-admin-danger' : '--color-admin-primary', danger ? '#f06548' : '#405189'),
-        cancelButtonColor: adminColor('--color-body-faint', '#adb5bd'),
+        confirmButtonColor: adminColor(danger ? '--color-danger-base' : '--color-primary', danger ? '#f06548' : '#405189'),
+        cancelButtonColor: adminColor('--color-text-faint', '#adb5bd'),
         reverseButtons: true, // Cancel on the left, primary action on the right (platform norm)
         focusCancel: danger, // a destructive dialog opens focused on Cancel, not the delete button
     });

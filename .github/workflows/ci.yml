@@ -116,6 +116,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The merge commit plus its base parent: the legacy-token check diffs against HEAD^1.
+          fetch-depth: 2
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -136,6 +139,13 @@ jobs:
       # fails if any checked text/border/focus pair drops below its threshold. Pure Node, no deps.
       - name: Contrast tokens (WCAG AA)
         run: node scripts/contrast-check.mjs
+
+      # New lines in resources/ and module Blade must use the standard token names
+      # (docs/notes/design-tokens.md §7); lines already on main are left to move over as touched.
+      # A pull request checks out its merge commit, whose first parent is the base branch.
+      - name: No old token names in new lines
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-legacy-tokens.mjs HEAD^1
 
   cwv:
     name: Core Web Vitals + a11y (Lighthouse · axe)

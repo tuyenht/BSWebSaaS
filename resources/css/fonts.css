@@ -49,51 +49,9 @@
     --font-stack: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
 
     --ui-weight: 400;
-    --ui-heading-weight: 700;
+    --ui-heading-weight: 700; /* source of --font-weight-heading (app.css); CJK bumps below */
 
-    /* Body */
-    --vz-body-font-family: var(--font-stack);
-    --vz-body-font-size: 0.875rem; /* 14px */
-    --vz-body-font-weight: 400;
-    --vz-body-line-height: 1.5;
-    --vz-body-color: #212529;
-    --vz-body-bg: #f3f3f9;
-
-    /* Font families — all reference --font-stack */
-    --vz-font-family-primary: var(--font-stack);
-    --vz-font-family-secondary: var(--font-stack);
-    --vz-headings-font-family: var(--font-stack);
-
-    /* Weights */
-    --vz-font-weight-light: 300;
-    --vz-font-weight-normal: 400;
-    --vz-font-weight-medium: 500;
-    --vz-font-weight-semibold: 600;
-    --vz-font-weight-bold: 700;
-
-    /* Sizes — Velzon fs-10 .. fs-48 utility scale */
-    --vz-font-10: 0.625rem;
-    --vz-font-11: 0.6875rem;
-    --vz-font-12: 0.75rem;
-    --vz-font-13: 0.8125rem;
-    --vz-font-14: 0.875rem;
-    --vz-font-15: 0.9375rem;
-    --vz-font-16: 1rem;
-    --vz-font-17: 1.0625rem;
-    --vz-font-18: 1.125rem;
-    --vz-font-19: 1.1875rem;
-    --vz-font-20: 1.25rem;
-    --vz-font-21: 1.3125rem;
-    --vz-font-22: 1.375rem;
-    --vz-font-23: 1.4375rem;
-    --vz-font-24: 1.5rem;
-    --vz-font-36: 2.25rem;
-    --vz-font-48: 3rem;
-
-    /* Headings */
-    --vz-headings-color: #495057;
-    --vz-headings-font-weight: 500;
-    --vz-headings-line-height: 1.2;
+    /* Sizes, weights and colours are role tokens in app.css (docs/notes/design-tokens.md §2.4). */
 }
 
 html,

@@ -43,7 +43,7 @@ it('titles every Customizer group in the muted role', function (): void {
 it('rings focus in the white ink of the navy Customizer header, not the navy accent', function (): void {
     $html = $this->actingAs(shellOwner())->get('http://demo.test/admin')->assertOk()->getContent();
 
-    expect((string) $html)->toMatch('/<header class="[^"]*bg-admin-primary[^"]*text-white[^"]*\[--focus-ring-color:currentColor\]/');
+    expect((string) $html)->toMatch('/<header class="[^"]*bg-primary[^"]*text-white[^"]*\[--color-focus:currentColor\]/');
 });
 
 it('heads a list table in the muted role', function (): void {

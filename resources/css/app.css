@@ -1,9 +1,9 @@
 @import 'tailwindcss';
 
-/* Antigravity font system (SSOT): --font-stack + --vz-* typography tokens, self-hosted. */
+/* Antigravity font system (SSOT): --font-stack + the heading weight per script, self-hosted. */
 @import './fonts.css';
 
-/* Admin chrome runtime variables (--vz-* Velzon-mirror sheet; theme flips live there). */
+/* Admin chrome value switches (dark scheme, topbar/sidebar presets, zone overrides). */
 @import './admin-chrome.css';
 
 /* Scan module Blade + bundled theme Blade + framework/runtime views so utility classes aren't purged. */
@@ -16,46 +16,26 @@
 @source not '../../docs';
 
 /*
- | Admin design tokens — the Velzon visual language expressed as Tailwind 4 tokens
- | (design source only; no Bootstrap/SCSS imported). Brand semantics are admin-namespaced
- | (--color-admin-*) so they NEVER leak into the storefront's per-site --color-primary
- | (ThemeResolver). Typography is single-sourced from the Antigravity font system
- | (resources/css/fonts.css, imported in Phase 3): --font-stack + --vz-* tokens, with
- | body size = --vz-body-font-size (14px). Fallbacks keep this file valid before Phase 3.
+ | Admin design tokens — names follow docs/notes/design-tokens.md: tier 1 source values, tier 2
+ | roles, tier 3 component zones. The values here are the light look; admin-chrome.css re-sets the
+ | NEW names for the dark scheme, the topbar/sidebar presets and zone overrides. The storefront
+ | loads its own stylesheet (storefront.css) with per-site values, so nothing here leaks there.
+ | The old names are one-way aliases at the end of the block ("Bí danh — sẽ gỡ").
  */
 @theme {
     /* Typography — SSOT is fonts.css --font-stack (Inter + on-demand CJK). */
     --font-sans: var(--font-stack, ui-sans-serif, system-ui, sans-serif);
-    --text-base: var(--vz-body-font-size, 0.875rem); /* 14px, single-sourced */
+    --text-base: 0.875rem; /* 14px — Tailwind's text-base, re-pointed long before the role names */
 
-    /* Admin brand — fixed platform identity, separate from per-site storefront brand. */
-    --color-admin-primary: #405189;
-    --color-admin-secondary: #3577f1;
-    --color-admin-success: #0ab39c;
-    --color-admin-info: #299cdb;
-    --color-admin-warning: #f7b84b;
-    --color-admin-danger: #f06548;
-    --color-admin-light: #f3f6f9;
-    --color-admin-dark: #212529;
+    /* ---- Tier 1 · source hues ------------------------------------------------------------
+       The base of each status hue: icons, borders and the 10% soft tints. */
+    --color-success-base: #0ab39c;
+    --color-info-base: #299cdb;
+    --color-warning-base: #f7b84b;
+    --color-danger-base: #f06548;
+    --color-secondary-base: #3577f1;              /* the secondary hue as a tint source; its fill is --color-secondary */
 
-    /* Semantic tiers — the same hue and chroma (OKLCH), lightness moved until the pair clears
-       WCAG AA. The base colors above stay for tints, icons and borders.
-       *-solid: the fill under white text (>=4.5:1), in both schemes.
-       *-text: the hue as text and in the soft style (>=4.5:1 on white, the page background and
-       their 10% soft tints); the dark scheme remaps it to a lighter step (admin-chrome.css).
-       Warning keeps its fill and takes dark text (#212529) instead of a darker solid. */
-    --color-admin-success-solid: #038573;
-    --color-admin-info-solid: #057db6;
-    --color-admin-danger-solid: #d0472b;
-    --color-admin-secondary-solid: #2f69d4;      /* fill under white text: white 5.14:1 — one value shared with -text (light), no near-duplicate */
-    --color-admin-success-text: #047767;
-    --color-admin-info-text: #026fa2;
-    --color-admin-warning-text: #906405;
-    --color-admin-danger-text: #bf371a;
-    --color-admin-secondary-text: #2f69d4;        /* = secondary-solid: text/soft/outline · 5.14 white · 4.65 page · 4.55 soft tint (dark step in admin-chrome) */
-    --color-admin-dark-text: #212529;             /* neutral "dark" badge/soft as text (dark step in admin-chrome) */
-
-    /* Velzon gray scale (neutral). */
+    /* Velzon gray scale (neutral) — replaces Tailwind's gray-* values on purpose; kept as is. */
     --color-gray-100: #f3f6f9;
     --color-gray-200: #eff2f7;
     --color-gray-300: #e9ebec;
@@ -66,20 +46,8 @@
     --color-gray-800: #343a40;
     --color-gray-900: #212529;
 
-    /* Admin page background — dedup: single-sourced from fonts.css --vz-body-bg. */
-    --color-body: var(--vz-body-bg, #f3f3f9);
-
-    /* Subtle card shadow (Velzon). */
-    --shadow-card: 0 1px 2px rgb(56 65 74 / 0.15);
-
-    /* Admin layout dimensions. */
-    --spacing-sidebar: 250px;
-    --spacing-sidebar-collapsed: 70px;
-    --spacing-header: 70px;
-
-    /* Semantic roles — content plane (flips with [data-bs-theme=dark], P4).
-       Values live HERE: these roles are ours — the Velzon/Bootstrap equivalents
-       carry different values, so borrowing those names would lie. */
+    /* ---- Tier 2 · roles (the dark scheme re-sets them in admin-chrome.css) ---------------- */
+    --color-bg: #f3f3f9;                         /* page background */
     --color-surface: #ffffff;                    /* card/popover/panel bg */
     --color-surface-hover: #f3f6f9;              /* item hover / soft fill on a surface (gray-100) */
     --color-surface-muted: oklch(98.5% 0.002 247.839); /* zebra rows, muted panels (gray-50) */
@@ -88,56 +56,157 @@
     --color-border-input: #878a99;               /* form-field edge — 3:1 against the field and the page
                                                     (WCAG 1.4.11): 3.43 white · 3.10 page bg (gray-600) */
     --color-border-soft: #f3f6f9;                /* hairline list dividers (gray-100) */
-    --color-heading: #343a40;                    /* page/card/section headings (gray-800) */
-    --color-body-text: #495057;                  /* base text (gray-700) */
-    --color-body-muted: #6b6e7f;                 /* secondary text a reader needs — breadcrumb, footer,
+    --color-text-strong: #343a40;                /* page/card/section headings (gray-800) */
+    --color-text: #495057;                       /* base text (gray-700) */
+    --color-text-muted: #6b6e7f;                 /* secondary text a reader needs — breadcrumb, footer,
                                                     unselected tab, column header · 5.04 on white, 4.56 on
                                                     the page bg (#6c6f80 misses there: 4.4988) */
-    --color-body-faint: #adb5bd;                 /* decorative detail only, never text a reader needs
+    --color-text-faint: #adb5bd;                 /* decorative detail only, never text a reader needs
                                                     (gray-500 · 2.07 on white) */
-    --color-placeholder: var(--color-body-muted); /* placeholder is text → reuse muted (>=4.5); entered text stays #495057 */
-    --color-ink-ghost: #e9ebec;                  /* decorative/empty-state glyphs — WCAG-exempt (gray-300) */
-    /* The brand navy wherever it is INK — text, border, focus ring. A fill under white text keeps
-       --color-admin-primary. The dark scheme remaps THIS (admin-chrome.css), never the brand:
-       #405189 on the dark surface #292e33 reads 1.8:1. */
-    --color-accent: var(--color-admin-primary);
+    --color-placeholder: var(--color-text-muted); /* placeholder is text → reuse muted (>=4.5); entered text stays #495057 */
+    --color-icon-ghost: #e9ebec;                 /* decorative/empty-state glyphs — WCAG-exempt (gray-300) */
 
-    /* Semantic roles — zone adapters. Values single-sourced in admin-chrome.css
-       (Velzon-named, runtime-flippable); these lines only mint the utilities. */
-    --color-sidebar: var(--vz-vertical-menu-bg);
-    --color-sidebar-fg: var(--vz-vertical-menu-item-color);
-    --color-sidebar-fg-hover: var(--vz-vertical-menu-item-hover-color);
-    --color-sidebar-fg-active: var(--vz-vertical-menu-item-active-color);
-    --color-sidebar-hover: var(--vz-vertical-menu-item-hover-bg);
-    --color-sidebar-active: var(--vz-vertical-menu-item-active-bg);
-    --color-sidebar-title: var(--vz-vertical-menu-title-color);
-    --color-sidebar-brand: var(--vz-vertical-menu-brand-color);
-    --color-topbar: var(--vz-header-bg);
-    --color-topbar-border: var(--vz-header-border);
-    --color-topbar-fg: var(--vz-header-item-sub-color);
-    --color-topbar-fg-strong: var(--vz-header-item-color);
-    --color-topbar-fg-hover: var(--vz-header-item-hover-color);
-    --color-topbar-hover: var(--vz-header-item-bg);
-    --color-topbar-brand: var(--vz-header-brand-color);
-    --color-topbar-search: var(--vz-topbar-search-bg);
-    --color-topbar-search-fg: var(--vz-topbar-search-color);
-    --color-topbar-search-border: var(--vz-topbar-search-border);
-    --color-topbar-search-placeholder: var(--vz-topbar-search-placeholder-color);
-    --color-topbar-search-focus: var(--vz-topbar-search-focus-bg);
-    --color-topbar-search-accent: var(--vz-topbar-search-focus-accent);
-    --color-topbar-user-block: var(--vz-topbar-user-block-bg);
-    --color-topbar-user: var(--vz-topbar-user-bg);
-    --color-topbar-user-fg: var(--vz-topbar-user-color);
-    --color-footer: var(--vz-footer-color);
+    /* Brand. --color-primary is the FILL (buttons, badges) under --color-on-primary. Wherever the
+       brand is INK — text, border, focus ring — use --color-primary-text: the dark scheme re-sets
+       it, never the fill (#405189 on the dark surface #292e33 reads 1.8:1). */
+    --color-primary: #405189;
+    --color-on-primary: #ffffff;
+    --color-primary-text: var(--color-primary);
+    --color-primary-soft: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    --color-focus: var(--color-primary-text);     /* keyboard focus ring (:focus-visible below) */
+
+    /* Status — the same hue and chroma (OKLCH), lightness moved until the pair clears WCAG AA.
+       Fill (--color-success…): under white text (>=4.5:1), in both schemes.
+       -text: the hue as text and in the soft style (>=4.5:1 on white, the page background and
+       their 10% soft tints); the dark scheme re-sets it to a lighter step (admin-chrome.css).
+       Warning keeps its base as the fill and takes dark text (--color-on-warning) instead. */
+    --color-success: #038573;
+    --color-info: #057db6;
+    --color-danger: #d0472b;
+    --color-warning: var(--color-warning-base);
+    --color-on-warning: var(--color-gray-900);
+    --color-success-text: #047767;
+    --color-info-text: #026fa2;
+    --color-warning-text: #906405;
+    --color-danger-text: #bf371a;
+    --color-success-soft: color-mix(in oklab, var(--color-success-base) 10%, transparent);
+    --color-info-soft: color-mix(in oklab, var(--color-info-base) 10%, transparent);
+    --color-warning-soft: color-mix(in oklab, var(--color-warning-base) 10%, transparent);
+    --color-danger-soft: color-mix(in oklab, var(--color-danger-base) 10%, transparent);
+    --color-secondary: #2f69d4;                   /* fill under white text: white 5.14:1 */
+    --color-secondary-text: #2f69d4;              /* text/soft/outline · 4.65 page · 4.55 soft tint (dark step in admin-chrome) */
+
+    /* ---- Tier 3 · component zones (presets and the dark scheme re-set them in admin-chrome.css)
+       Sidebar default = the navy preset (data-sidebar="dark"). */
+    --color-sidebar-bg: #405189;                  /* white text 7.6 clears AA with room */
+    --color-sidebar-fg: rgb(255 255 255 / 0.85);  /* 6.05 on the navy. The current page is told apart by more
+                                                     than color: white ink + the active bg + an inset bar
+                                                     (layouts/app.blade.php) + aria-current. */
+    --color-sidebar-fg-hover: #ffffff;
+    --color-sidebar-fg-active: #ffffff;
+    --color-sidebar-hover: rgb(255 255 255 / 0.10); /* also the brand-initials chip */
+    --color-sidebar-active: rgb(255 255 255 / 0.15); /* current-page row · white on it 5.38 */
+    --color-sidebar-title: rgb(255 255 255 / 0.72); /* group titles are text · 4.86 on the navy (>=4.5) */
+    --color-sidebar-brand: #ffffff;               /* text brand */
+    --color-topbar-bg: #ffffff;
+    --color-topbar-border: #e9ebec;
+    --color-topbar-fg: var(--color-text-muted);   /* icon buttons + role line + platform nav links · 5.04 */
+    --color-topbar-fg-strong: #495057;            /* user name, search text */
+    --color-topbar-fg-hover: #212529;             /* platform nav link hover text */
+    --color-topbar-hover: #f3f6f9;                /* item hover bg */
+    --color-topbar-brand: #343a40;                /* platform console brand name */
+    --color-topbar-search: #f3f3f9;               /* clearly contrasts the white topbar (owner 06/07) */
+    --color-topbar-search-fg: #495057;
+    --color-topbar-search-border: #f3f3f9;        /* borderless search field — the border blends into the fill */
+    --color-topbar-search-placeholder: #878a99;   /* placeholder + magnifier readable on the gray fill */
+    --color-topbar-search-focus: #ffffff;         /* the field brightens on focus */
+    --color-topbar-search-accent: var(--color-primary-text); /* focus border + ring — zone-owned so a dark topbar can lighten it */
+    --color-topbar-user: color-mix(in oklab, var(--color-primary-text) 10%, transparent); /* user chip (initials) bg */
+    --color-topbar-user-block: #f3f3f9;           /* user slab — same fill family as the search */
+    --color-topbar-user-fg: var(--color-primary-text); /* user chip initial letter */
+    --color-footer-fg: var(--color-text-muted);   /* secondary text on the page bg — follows the scheme's muted ink */
+
+    /* ---- Shadow, layout, layers, motion ----------------------------------------------------- */
+    --shadow-card: 0 1px 2px rgb(56 65 74 / 0.15); /* subtle card shadow; menus and dialogs use shadow-md / shadow-lg */
+    --sidebar-width: 250px;
+    --sidebar-width-collapsed: 70px;
+    --topbar-height: 70px;
+    --container-boxed: 1300px;                    /* data-layout-width="boxed" */
+    --z-sticky: 10;
+    --z-dropdown: 20;
+    --z-overlay: 30;
+    --z-modal: 40;
+    --z-toast: 50;
+    --duration-fast: 150ms;
+    --duration-base: 200ms;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+    /* ---- Bí danh — sẽ gỡ ---------------------------------------------------------------------
+       Old names, one way only (old → new), kept until nothing reads them (docs/notes/design-
+       tokens.md §6–7). Never set one in a value switch: set the new name and the alias follows.
+       scripts/check-legacy-tokens.mjs rejects new lines that use them. */
+    --color-admin-primary: var(--color-primary);
+    --color-admin-secondary: var(--color-secondary-base);
+    --color-admin-success: var(--color-success-base);
+    --color-admin-info: var(--color-info-base);
+    --color-admin-warning: var(--color-warning-base);
+    --color-admin-danger: var(--color-danger-base);
+    --color-admin-light: var(--color-gray-100);
+    --color-admin-dark: var(--color-gray-900);
+    --color-admin-success-solid: var(--color-success);
+    --color-admin-info-solid: var(--color-info);
+    --color-admin-danger-solid: var(--color-danger);
+    --color-admin-secondary-solid: var(--color-secondary);
+    --color-admin-success-text: var(--color-success-text);
+    --color-admin-info-text: var(--color-info-text);
+    --color-admin-warning-text: var(--color-warning-text);
+    --color-admin-danger-text: var(--color-danger-text);
+    --color-admin-secondary-text: var(--color-secondary-text);
+    /* Not an alias yet: its new name (--color-text-strong) carries another value (#343a40, dark
+       #e9ecef), so the neutral "dark" badge keeps its own until it moves over — a visible change. */
+    --color-admin-dark-text: #212529;
+    --color-body: var(--color-bg);
+    --color-heading: var(--color-text-strong);
+    --color-body-text: var(--color-text);
+    --color-body-muted: var(--color-text-muted);
+    --color-body-faint: var(--color-text-faint);
+    --color-ink-ghost: var(--color-icon-ghost);
+    --color-accent: var(--color-primary-text);
+    --color-sidebar: var(--color-sidebar-bg);
+    --color-topbar: var(--color-topbar-bg);
+    --color-footer: var(--color-footer-fg);
+    --spacing-sidebar: var(--sidebar-width);
+    --spacing-sidebar-collapsed: var(--sidebar-width-collapsed);
+    --spacing-header: var(--topbar-height);
 }
 
-/* Dense-table font sizes (Velzon fs-* scale, sourced from fonts.css). */
+/* Text roles (docs/notes/design-tokens.md §2.4). Inline, so the per-user boost (admin-chrome.css)
+   resolves on the element that uses the class: a preview frame with its own --user-text-boost
+   still re-sizes. The role names never collide with Tailwind's sizes (xs, sm, base…), so the
+   text-sm… already in use keep their look. */
+@theme inline {
+    --text-caption: calc(0.75rem + var(--user-text-boost));
+    --text-caption--line-height: 1.5;
+    --text-small: calc(0.8125rem + var(--user-text-boost));
+    --text-small--line-height: 1.5;
+    --text-body: calc(0.875rem + var(--user-text-boost));
+    --text-body--line-height: 1.5;
+    --text-lead: calc(1rem + var(--user-text-boost));
+    --text-lead--line-height: 1.5;
+    --text-heading: calc(1.125rem + var(--user-text-boost));
+    --text-heading--line-height: 1.4;
+    --text-title: calc(1.375rem + var(--user-text-boost));
+    --text-title--line-height: 1.3;
+    --font-weight-heading: var(--ui-heading-weight);
+}
+
+/* Dense-table font sizes (Velzon fs-* scale): the caption and small roles. */
 @layer utilities {
     .fs-12 {
-        font-size: var(--vz-font-12, 0.75rem);
+        font-size: calc(0.75rem + var(--user-text-boost));
     }
     .fs-13 {
-        font-size: var(--vz-font-13, 0.8125rem);
+        font-size: calc(0.8125rem + var(--user-text-boost));
     }
 }
 
@@ -152,7 +221,7 @@
    focus (the topbar's inset rings) still can. The sign-in pages keep auth.css. */
 @layer base {
     :where(.admin-shell) :focus-visible {
-        outline: var(--focus-ring-width) solid var(--focus-ring-color);
+        outline: var(--focus-ring-width) solid var(--color-focus);
         outline-offset: var(--focus-ring-offset);
     }
 }
@@ -161,7 +230,7 @@
    (WCAG 2.4.11) — keep its height clear. Zero specificity: a topbar that scrolls away resets
    it (admin-chrome.css). */
 :where(:root:has(> body.admin-shell)) {
-    scroll-padding-top: var(--spacing-header);
+    scroll-padding-top: var(--topbar-height);
 }
 
 /* Every admin form field draws its edge in the input-border role. Views style fields inline with
@@ -222,7 +291,7 @@ button:not(:disabled) {
     background: var(--color-surface-muted);
     border-top: 1px solid var(--color-border);
     border-radius: 0 0 0.25rem 0.25rem;
-    color: var(--color-body-muted);
+    color: var(--color-text-muted);
     font-size: 0.75rem;
 }
 .jodit-status-bar__item {

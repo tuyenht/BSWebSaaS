@@ -76,8 +76,8 @@ it('paints gradient menu text at the alphas the check above assumes', function (
     preg_match("/:root\\[data-sidebar\\^='gradient'\\] \\{(.*?)\\}/s", $css, $block);
 
     expect($block[1] ?? '')
-        ->toContain('--vz-vertical-menu-item-color: rgb(255 255 255 / 0.85);')
-        ->toContain('--vz-vertical-menu-item-active-color: #ffffff;')
-        ->toContain('--vz-vertical-menu-item-active-bg: rgb(255 255 255 / 0.15);')
-        ->toContain('--vz-vertical-menu-item-hover-bg: rgb(255 255 255 / 0.15);');
+        ->toContain('--color-sidebar-fg: rgb(255 255 255 / 0.85);')
+        ->toContain('--color-sidebar-fg-active: #ffffff;')
+        ->toContain('--color-sidebar-active: rgb(255 255 255 / 0.15);')
+        ->toContain('--color-sidebar-hover: rgb(255 255 255 / 0.15);');
 });

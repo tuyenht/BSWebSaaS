@@ -47,6 +47,22 @@ it('sanitizes a malicious token value (no CSS breakout)', function (): void {
     expect($html)->not->toContain('display:none')->toContain('--primary:#3b82f6'); // rejected → default
 });
 
+it('prints the standard token names next to the old ones storefront.css still reads', function (): void {
+    app(Tenancy::class)->enter(1, fn () => SiteSetting::create([
+        'group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => '#1e3a5f', 'surface' => '#fafafa', 'body' => '#222222'],
+    ]));
+
+    $html = renderHome(1);
+
+    expect($html)->toContain('--primary:#1e3a5f;')->toContain('--color-primary:#1e3a5f;')
+        ->toContain('--surface:#fafafa;')->toContain('--color-surface:#fafafa;')
+        ->toContain('--body:#222222;')->toContain('--color-text:#222222;')
+        ->toContain('--color-on-primary:#ffffff;') // white reads on this navy, the ink does not
+        ->toMatch('/--primary-text:(#[0-9a-f]{6});.*--color-primary-text:\1;/')
+        ->toMatch('/--primary-on-ink:(#[0-9a-f]{6});.*--color-primary-on-dark:\1;/')
+        ->toMatch('/--brand-500:(#[0-9a-f]{6});.*--color-brand-500:\1;/');
+});
+
 it('prints the derived, readable brand text color next to the brand seed', function (): void {
     app(Tenancy::class)->enter(1, fn () => SiteSetting::create([
         'group_name' => 'theme', 'key' => 'tokens', 'value' => ['primary' => '#f59e0b'],

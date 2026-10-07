@@ -8,10 +8,11 @@
  * text on its background must reach 4.5:1 (WCAG 1.4.3); borders, focus rings and icons 3:1 (1.4.11).
  * Gradients are sampled at 101 points and the worst point is reported.
  *
- * ROWS below say which token each piece of the UI paints with, as the Blade markup uses it today —
+ * ROWS below say which token each piece of the UI paints with, by the standard names of
+ * docs/notes/design-tokens.md (the old names Blade may still use are one-way aliases of these) —
  * when a component switches tokens, update its row here in the same change. The storefront's
- * --primary-text is computed in PHP (ThemeResolver + ReadableColor, pinned by their Pest tests); the
- * storefront section mirrors that derivation.
+ * --color-primary-text / --color-primary-on-dark / --color-on-primary are computed in PHP
+ * (ThemeResolver + ReadableColor, pinned by their Pest tests); the storefront section mirrors that.
  *
  * Usage: node scripts/contrast-check.mjs
  * Exit code 1 when a checked pair falls below its minimum; "Theo dõi" (watch-list) rows are
@@ -76,11 +77,13 @@ const sheets = ['resources/css/fonts.css', 'resources/css/admin-chrome.css', 're
 const allRules = sheets.flat();
 const themeRules = allRules.filter((rule) => rule.selector === '@theme');
 const rootRules = allRules.filter((rule) => rule.selector === ':root');
-const overrideRules = allRules.filter((rule) => rule.selector.startsWith(':root[') && !rule.selector.includes(' '));
+// A value switch may name one state twice (the dark scheme answers to data-theme and data-bs-theme).
+const selectorList = (selector) => selector.split(',').map((part) => part.trim());
+const overrideRules = allRules.filter((rule) => selectorList(rule.selector).every((part) => part.startsWith(':root[') && !part.includes(' ')));
 
 const overrideSelectors = (state) => {
     const active = [];
-    if (state.scheme === 'dark') active.push(":root[data-bs-theme='dark']");
+    if (state.scheme === 'dark') active.push(":root[data-theme='dark']");
     if (state.topbar === 'dark') active.push(":root[data-topbar='dark']");
     if (state.sidebar === 'light') active.push(":root[data-sidebar='light']");
     if (state.sidebar?.startsWith('gradient')) active.push(":root[data-sidebar^='gradient']");
@@ -95,7 +98,7 @@ function scopeFor(state) {
     themeRules.forEach(apply);
     rootRules.forEach(apply);
     const active = overrideSelectors(state);
-    overrideRules.filter((rule) => active.includes(rule.selector)).forEach(apply); // source order
+    overrideRules.filter((rule) => selectorList(rule.selector).some((part) => active.includes(part))).forEach(apply); // source order
     if (state.zone) {
         allRules.filter((rule) => rule.selector === state.zone).forEach(apply);
     }
@@ -295,83 +298,83 @@ const both = ['light', 'dark'];
 // no token-driven color yet (it counts as failing until one exists).
 const ROWS = [
     // The brand navy as text, border or ring in the dark scheme.
-    { item: 'Primary làm chữ/viền', role: 'Nút outline/ghost primary — chữ + viền', fg: '--color-accent', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Primary làm chữ/viền', role: 'Nút soft primary — chữ', fg: '--color-accent', bg: ['--color-surface', ['--color-admin-primary', 0.1]], min: 4.5 },
-    { item: 'Primary làm chữ/viền', role: 'Tab đang chọn — chữ + gạch chân', fg: '--color-accent', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Primary làm chữ/viền', role: 'Ô nhập — viền khi focus', fg: '--color-accent', bg: ['--color-surface'], min: 3 },
+    { item: 'Primary làm chữ/viền', role: 'Nút outline/ghost primary — chữ + viền', fg: '--color-primary-text', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Primary làm chữ/viền', role: 'Nút soft primary — chữ', fg: '--color-primary-text', bg: ['--color-surface', ['--color-primary', 0.1]], min: 4.5 },
+    { item: 'Primary làm chữ/viền', role: 'Tab đang chọn — chữ + gạch chân', fg: '--color-primary-text', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Primary làm chữ/viền', role: 'Ô nhập — viền khi focus', fg: '--color-primary-text', bg: ['--color-surface'], min: 3 },
 
     // Secondary text.
-    { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên thẻ', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên nền trang', fg: '--color-body-muted', bg: ['--color-body'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Footer', fg: '--vz-footer-color', bg: ['--color-body'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Breadcrumb + phụ đề (page-header, trang Nội dung)', fg: '--color-body-muted', bg: ['--color-body'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Tab chưa chọn (x-bs-admin::tabs, trang Nội dung)', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Đầu cột bảng — x-bs-admin::table', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Đầu cột bảng — thead nền surface-muted (7 trang danh sách) · bộ đếm Jodit', fg: '--color-body-muted', bg: ['--color-surface-muted'], min: 4.5 },
-    { item: 'Chữ phụ', role: 'Tiêu đề nhóm Customizer', fg: '--color-body-muted', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên thẻ', fg: '--color-text-muted', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên nền trang', fg: '--color-text-muted', bg: ['--color-bg'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Footer', fg: '--color-footer-fg', bg: ['--color-bg'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Breadcrumb + phụ đề (page-header, trang Nội dung)', fg: '--color-text-muted', bg: ['--color-bg'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Tab chưa chọn (x-bs-admin::tabs, trang Nội dung)', fg: '--color-text-muted', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Đầu cột bảng — x-bs-admin::table', fg: '--color-text-muted', bg: ['--color-surface'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Đầu cột bảng — thead nền surface-muted (7 trang danh sách) · bộ đếm Jodit', fg: '--color-text-muted', bg: ['--color-surface-muted'], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Tiêu đề nhóm Customizer', fg: '--color-text-muted', bg: ['--color-surface'], min: 4.5 },
 
-    // Semantic colors.
+    // Status colors: -text on the page / card and on the 10% soft tint of the base hue.
     ...['success', 'info', 'warning', 'danger'].flatMap((hue) => [
-        { item: 'Màu ngữ nghĩa', role: `${hue} — chữ (thẻ / nền trang)`, fg: `--color-admin-${hue}-text`, bgs: [['--color-surface'], ['--color-body']], min: 4.5 },
-        { item: 'Màu ngữ nghĩa', role: `${hue} — kiểu soft (badge / alert / nút; chữ + viền outline)`, fg: `--color-admin-${hue}-text`, bgs: [['--color-surface', [`--color-admin-${hue}`, 0.1]], ['--color-body', [`--color-admin-${hue}`, 0.1]]], min: 4.5 },
-        { item: 'Màu ngữ nghĩa', role: `${hue} — alert: nút đóng (icon)`, fg: `--color-admin-${hue}-text`, bgs: [['--color-surface', [`--color-admin-${hue}`, 0.1]], ['--color-body', [`--color-admin-${hue}`, 0.1]]], min: 3 },
+        { item: 'Màu ngữ nghĩa', role: `${hue} — chữ (thẻ / nền trang)`, fg: `--color-${hue}-text`, bgs: [['--color-surface'], ['--color-bg']], min: 4.5 },
+        { item: 'Màu ngữ nghĩa', role: `${hue} — kiểu soft (badge / alert / nút; chữ + viền outline)`, fg: `--color-${hue}-text`, bgs: [['--color-surface', [`--color-${hue}-base`, 0.1]], ['--color-bg', [`--color-${hue}-base`, 0.1]]], min: 4.5 },
+        { item: 'Màu ngữ nghĩa', role: `${hue} — alert: nút đóng (icon)`, fg: `--color-${hue}-text`, bgs: [['--color-surface', [`--color-${hue}-base`, 0.1]], ['--color-bg', [`--color-${hue}-base`, 0.1]]], min: 3 },
     ]),
     ...['success', 'info', 'danger'].map((hue) => (
-        { item: 'Màu ngữ nghĩa', role: `${hue} solid — chữ trắng (nút, badge${hue === 'danger' ? ', số đếm sidebar' : ''})`, fg: WHITE, bg: [`--color-admin-${hue}-solid`], min: 4.5 }
+        { item: 'Màu ngữ nghĩa', role: `${hue} solid — chữ trắng (nút, badge${hue === 'danger' ? ', số đếm sidebar' : ''})`, fg: WHITE, bg: [`--color-${hue}`], min: 4.5 }
     )),
-    { item: 'Màu ngữ nghĩa', role: 'warning solid — chữ (nút, badge)', fg: '--color-admin-dark', bg: ['--color-admin-warning'], min: 4.5 },
+    { item: 'Màu ngữ nghĩa', role: 'warning solid — chữ (nút, badge)', fg: '--color-on-warning', bg: ['--color-warning'], min: 4.5 },
 
     // The input's own boundary, against its fill and against the page around it.
-    { item: 'Viền ô nhập', role: 'Viền ô nhập (input / select / textarea)', fg: '--color-border-input', bgs: [['--color-surface'], ['--color-body']], min: 3 },
+    { item: 'Viền ô nhập', role: 'Viền ô nhập (input / select / textarea)', fg: '--color-border-input', bgs: [['--color-surface'], ['--color-bg']], min: 3 },
 
     // Focus indicators.
-    { item: 'Focus', role: 'Vòng focus — nút', fg: '--focus-ring-color', bgs: [['--color-surface'], ['--color-body']], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — tab', fg: '--focus-ring-color', bg: ['--color-surface'], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — ô nhập', fg: '--focus-ring-color', bg: ['--color-surface'], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — link / mục sidebar', state: { zone: '.admin-sidebar' }, fg: '--focus-ring-color', bg: ['--vz-vertical-menu-bg'], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — mục sidebar sáng', state: { zone: '.admin-sidebar', sidebar: 'light' }, fg: '--focus-ring-color', bg: ['--vz-vertical-menu-bg'], min: 3 },
-    { item: 'Focus', role: 'Vòng focus — header Customizer (nền navy, theo chữ trắng)', fg: WHITE, bg: ['--color-admin-primary'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — nút', fg: '--color-focus', bgs: [['--color-surface'], ['--color-bg']], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — tab', fg: '--color-focus', bg: ['--color-surface'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — ô nhập', fg: '--color-focus', bg: ['--color-surface'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — link / mục sidebar', state: { zone: '.admin-sidebar' }, fg: '--color-focus', bg: ['--color-sidebar-bg'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — mục sidebar sáng', state: { zone: '.admin-sidebar', sidebar: 'light' }, fg: '--color-focus', bg: ['--color-sidebar-bg'], min: 3 },
+    { item: 'Focus', role: 'Vòng focus — header Customizer (nền navy, theo chữ trắng)', fg: WHITE, bg: ['--color-primary'], min: 3 },
 
     // Sidebar ink (default dark sidebar; the dark scheme swaps in its own sidebar values).
-    { item: 'Sidebar', role: 'Sidebar — mục thường', fg: '--vz-vertical-menu-item-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
-    { item: 'Sidebar', role: 'Sidebar — mục đang chọn (chữ trên nền active)', fg: '--vz-vertical-menu-item-active-color', bg: ['--vz-vertical-menu-bg', '--vz-vertical-menu-item-active-bg'], min: 4.5 },
-    { item: 'Sidebar', role: 'Sidebar — vạch chỉ báo mục đang chọn', fg: '--vz-vertical-menu-item-active-color', bgs: [['--vz-vertical-menu-bg'], ['--vz-vertical-menu-bg', '--vz-vertical-menu-item-active-bg']], min: 3 },
-    { item: 'Sidebar', role: 'Sidebar sáng — mục thường', state: { sidebar: 'light' }, fg: '--vz-vertical-menu-item-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
-    { item: 'Sidebar', role: 'Sidebar sáng — tiêu đề nhóm', state: { sidebar: 'light' }, fg: '--vz-vertical-menu-title-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
-    { item: 'Sidebar', role: 'Sidebar sáng — mục đang chọn (chữ trên nền active)', state: { sidebar: 'light' }, fg: '--vz-vertical-menu-item-active-color', bg: ['--vz-vertical-menu-bg', '--vz-vertical-menu-item-active-bg'], min: 4.5 },
-    { item: 'Sidebar', role: 'Sidebar sáng — vạch chỉ báo mục đang chọn', state: { sidebar: 'light' }, fg: '--vz-vertical-menu-item-active-color', bgs: [['--vz-vertical-menu-bg'], ['--vz-vertical-menu-bg', '--vz-vertical-menu-item-active-bg']], min: 3 },
+    { item: 'Sidebar', role: 'Sidebar — mục thường', fg: '--color-sidebar-fg', bg: ['--color-sidebar-bg'], min: 4.5 },
+    { item: 'Sidebar', role: 'Sidebar — mục đang chọn (chữ trên nền active)', fg: '--color-sidebar-fg-active', bg: ['--color-sidebar-bg', '--color-sidebar-active'], min: 4.5 },
+    { item: 'Sidebar', role: 'Sidebar — vạch chỉ báo mục đang chọn', fg: '--color-sidebar-fg-active', bgs: [['--color-sidebar-bg'], ['--color-sidebar-bg', '--color-sidebar-active']], min: 3 },
+    { item: 'Sidebar', role: 'Sidebar sáng — mục thường', state: { sidebar: 'light' }, fg: '--color-sidebar-fg', bg: ['--color-sidebar-bg'], min: 4.5 },
+    { item: 'Sidebar', role: 'Sidebar sáng — tiêu đề nhóm', state: { sidebar: 'light' }, fg: '--color-sidebar-title', bg: ['--color-sidebar-bg'], min: 4.5 },
+    { item: 'Sidebar', role: 'Sidebar sáng — mục đang chọn (chữ trên nền active)', state: { sidebar: 'light' }, fg: '--color-sidebar-fg-active', bg: ['--color-sidebar-bg', '--color-sidebar-active'], min: 4.5 },
+    { item: 'Sidebar', role: 'Sidebar sáng — vạch chỉ báo mục đang chọn', state: { sidebar: 'light' }, fg: '--color-sidebar-fg-active', bgs: [['--color-sidebar-bg'], ['--color-sidebar-bg', '--color-sidebar-active']], min: 3 },
 
     // Gradient sidebars, every point of the band.
     ...['gradient', 'gradient-2', 'gradient-3', 'gradient-4'].flatMap((variant) => [
-        { item: 'Sidebar gradient', role: `${variant} — mục thường (mọi điểm của dải)`, state: { sidebar: variant }, fg: '--vz-vertical-menu-item-color', bg: [{ gradient: variant }], min: 4.5 },
-        { item: 'Sidebar gradient', role: `${variant} — mục đang chọn, chữ trên nền active (mọi điểm của dải)`, state: { sidebar: variant }, fg: '--vz-vertical-menu-item-active-color', bg: [{ gradient: variant }, '--vz-vertical-menu-item-active-bg'], min: 4.5 },
+        { item: 'Sidebar gradient', role: `${variant} — mục thường (mọi điểm của dải)`, state: { sidebar: variant }, fg: '--color-sidebar-fg', bg: [{ gradient: variant }], min: 4.5 },
+        { item: 'Sidebar gradient', role: `${variant} — mục đang chọn, chữ trên nền active (mọi điểm của dải)`, state: { sidebar: variant }, fg: '--color-sidebar-fg-active', bg: [{ gradient: variant }, '--color-sidebar-active'], min: 4.5 },
     ]),
 
     // Modal close button (an icon: 3:1).
-    { item: 'Modal', role: 'Modal — nút đóng (icon)', fg: '--color-body-muted', bg: ['--color-surface'], min: 3 },
+    { item: 'Modal', role: 'Modal — nút đóng (icon)', fg: '--color-text-muted', bg: ['--color-surface'], min: 3 },
 
-    // Secondary role (button + badge): the -solid fill under white, the -text as ink / soft / outline.
-    { item: 'Secondary', role: 'Secondary solid — chữ trắng (nút, badge)', fg: WHITE, bg: ['--color-admin-secondary-solid'], min: 4.5 },
-    { item: 'Secondary', role: 'Secondary — chữ / soft / outline (nút, badge)', fg: '--color-admin-secondary-text', bgs: [['--color-surface'], ['--color-surface', ['--color-admin-secondary', 0.1]]], min: 4.5 },
+    // Secondary role (button + badge): the fill under white, the -text as ink / soft / outline.
+    { item: 'Secondary', role: 'Secondary solid — chữ trắng (nút, badge)', fg: WHITE, bg: ['--color-secondary'], min: 4.5 },
+    { item: 'Secondary', role: 'Secondary — chữ / soft / outline (nút, badge)', fg: '--color-secondary-text', bgs: [['--color-surface'], ['--color-surface', ['--color-secondary-base', 0.1]]], min: 4.5 },
 
     // Topbar text (role line under the name + platform nav links) and the icon focus rings kept in
     // item 1 (ring-topbar-fg) — measured on the light topbar AND the dark (navy) topbar.
-    { item: 'Topbar', role: 'Dòng vai trò + link platform — topbar sáng', fg: '--vz-header-item-sub-color', bg: ['--vz-header-bg'], min: 4.5 },
-    { item: 'Topbar', role: 'Dòng vai trò + link platform — topbar tối (navy)', state: { topbar: 'dark' }, fg: '--vz-header-item-sub-color', bg: ['--vz-header-bg'], min: 4.5 },
-    { item: 'Topbar', role: 'Vòng focus icon (ring-topbar-fg) — topbar sáng', fg: '--color-topbar-fg', bg: ['--vz-header-bg'], min: 3 },
-    { item: 'Topbar', role: 'Vòng focus icon (ring-topbar-fg) — topbar tối (navy)', state: { topbar: 'dark' }, fg: '--color-topbar-fg', bg: ['--vz-header-bg'], min: 3 },
+    { item: 'Topbar', role: 'Dòng vai trò + link platform — topbar sáng', fg: '--color-topbar-fg', bg: ['--color-topbar-bg'], min: 4.5 },
+    { item: 'Topbar', role: 'Dòng vai trò + link platform — topbar tối (navy)', state: { topbar: 'dark' }, fg: '--color-topbar-fg', bg: ['--color-topbar-bg'], min: 4.5 },
+    { item: 'Topbar', role: 'Vòng focus icon (ring-topbar-fg) — topbar sáng', fg: '--color-topbar-fg', bg: ['--color-topbar-bg'], min: 3 },
+    { item: 'Topbar', role: 'Vòng focus icon (ring-topbar-fg) — topbar tối (navy)', state: { topbar: 'dark' }, fg: '--color-topbar-fg', bg: ['--color-topbar-bg'], min: 3 },
 
     // Placeholder (input) — now the muted role token, on the card and the page.
-    { item: 'Chữ phụ', role: 'Placeholder ô nhập (là chữ)', fg: '--color-placeholder', bgs: [['--color-surface'], ['--color-body']], min: 4.5 },
+    { item: 'Chữ phụ', role: 'Placeholder ô nhập (là chữ)', fg: '--color-placeholder', bgs: [['--color-surface'], ['--color-bg']], min: 4.5 },
 
     // Sidebar group title (default navy sidebar in light, #212529 sidebar in the dark scheme).
-    { item: 'Sidebar', role: 'Sidebar (navy / tối) — tiêu đề nhóm', fg: '--vz-vertical-menu-title-color', bg: ['--vz-vertical-menu-bg'], min: 4.5 },
+    { item: 'Sidebar', role: 'Sidebar (navy / tối) — tiêu đề nhóm', fg: '--color-sidebar-title', bg: ['--color-sidebar-bg'], min: 4.5 },
 
-    // Avatar / settings-shell active — the accent role now (item 2), on the primary soft tint.
-    { item: 'Primary làm chữ/viền', role: 'Avatar / mục đang chọn settings-shell — chữ accent', fg: '--color-accent', bg: ['--color-surface', ['--color-admin-primary', 0.1]], min: 4.5 },
+    // Avatar / settings-shell active — the brand ink on the primary soft tint.
+    { item: 'Primary làm chữ/viền', role: 'Avatar / mục đang chọn settings-shell — chữ màu thương hiệu', fg: '--color-primary-text', bg: ['--color-surface', ['--color-primary', 0.1]], min: 4.5 },
 
-    // Badge "dark" soft — the neutral dark-text tier.
-    { item: 'Màu ngữ nghĩa', role: 'Badge "dark" soft — chữ', fg: '--color-admin-dark-text', bg: ['--color-surface', ['--color-admin-dark', 0.1]], min: 4.5 },
+    // Badge "dark" soft — the neutral dark-text tier (no standard name with its value yet, app.css).
+    { item: 'Màu ngữ nghĩa', role: 'Badge "dark" soft — chữ', fg: '--color-admin-dark-text', bg: ['--color-surface', ['--color-gray-900', 0.1]], min: 4.5 },
 ];
 
 // ── Storefront --primary-text ───────────────────────────────────────────────────────────────
@@ -403,8 +406,15 @@ function readableOn(color, backgrounds, minimum = 4.5) {
 // storefront.css: body { background: color-mix(in srgb, var(--surface) 97%, var(--ink)) }
 const storefrontPage = (seed) => hex(mix(parseColor(seed.surface, {}), parseColor(seed.ink, {}), pageShare, 1 - pageShare, 'srgb'));
 const storefrontPrimaryText = (seed) => readableOn(seed.primary, [seed.surface, storefrontPage(seed)]);
-// Mirrors ThemeResolver's --primary-on-ink: the brand lightened (hue kept) until it reads on --ink.
+// Mirrors ThemeResolver's --color-primary-on-dark (old --primary-on-ink): the brand lightened (hue
+// kept) until it reads on the dark ink.
 const storefrontPrimaryOnInk = (seed) => readableOn(seed.primary, [seed.ink]);
+// Mirrors ThemeResolver::textOnFill(): --color-on-primary is white or the ink, whichever reads better
+// on the brand fill (a tie keeps the ink).
+const storefrontOnPrimary = (seed) => {
+    const fill = parseColor(seed.primary, {});
+    return ratio(rgba(255, 255, 255), fill) > ratio(parseColor(seed.ink, {}), fill) ? WHITE : seed.ink;
+};
 
 // ── Report ──────────────────────────────────────────────────────────────────────────────────────
 // Truncated to 2 decimals before comparing, as axe-core does: 4.4988 is a fail, not a rounded 4.50.
@@ -437,15 +447,16 @@ for (const row of ROWS) {
     lines.push(`| ${row.item} | ${row.role} | ${row.min} | ${cell(results[0], row.min, row.none)} | ${cell(results[1], row.min, row.none)} |`);
 }
 
-lines.push('', `**Storefront — chữ màu thương hiệu** (\`--primary-text\` cho chữ trên nền sáng: thẻ = \`--surface\`, nền trang = \`color-mix(in srgb, --surface ${pageShare * 100}%, --ink)\`; \`--primary\` giữ cho chữ trên nền tối \`--ink\`: footer, menu con, CTA phụ)`, '');
-lines.push('| Bộ màu | `--primary` | `--primary-text` | trên `--surface` | trên nền trang | `--primary-on-ink` | trên `--ink` |', '|---|---|---|---|---|---|---|');
+lines.push('', `**Storefront — chữ màu thương hiệu** (\`--color-primary-text\` cho chữ trên nền sáng: thẻ = \`--color-surface\`, nền trang = \`color-mix(in srgb, --surface ${pageShare * 100}%, --ink)\`; \`--color-primary-on-dark\` cho chữ trên nền tối \`--ink\`: footer, menu con, CTA phụ; \`--color-on-primary\` cho chữ trên nền \`--color-primary\`. Tên cũ \`--primary-text\` · \`--primary-on-ink\` mang đúng giá trị đó.)`, '');
+lines.push('| Bộ màu | `--color-primary` | `--color-primary-text` | trên `--color-surface` | trên nền trang | `--color-primary-on-dark` | trên `--ink` | `--color-on-primary` | trên `--color-primary` |', '|---|---|---|---|---|---|---|---|---|');
 for (const seed of SEEDS) {
     const text = storefrontPrimaryText(seed);
     const onInk = storefrontPrimaryOnInk(seed);
+    const onPrimary = storefrontOnPrimary(seed);
     const measureOn = (fg, background) => ({ value: ratio(parseColor(fg, {}), parseColor(background, {})), fg, bg: background });
-    const results = [measureOn(text, seed.surface), measureOn(text, storefrontPage(seed)), measureOn(onInk, seed.ink)];
+    const results = [measureOn(text, seed.surface), measureOn(text, storefrontPage(seed)), measureOn(onInk, seed.ink), measureOn(onPrimary, seed.primary)];
     if (results.some((result) => !passes(result, 4.5))) failures++;
-    lines.push(`| ${seed.name} | \`${seed.primary}\` | \`${text}\` | ${cell(results[0], 4.5)} | ${cell(results[1], 4.5)} | \`${onInk}\` | ${cell(results[2], 4.5)} |`);
+    lines.push(`| ${seed.name} | \`${seed.primary}\` | \`${text}\` | ${cell(results[0], 4.5)} | ${cell(results[1], 4.5)} | \`${onInk}\` | ${cell(results[2], 4.5)} | \`${onPrimary}\` | ${cell(results[3], 4.5)} |`);
 }
 
 lines.push('', '**Storefront — placeholder** (chữ ví dụ trong ô = `color-mix(--body 80%, white)`; hướng dẫn đặt ở dòng gợi ý dưới ô, KHÔNG trong placeholder). Đo trên `--surface`.', '');
