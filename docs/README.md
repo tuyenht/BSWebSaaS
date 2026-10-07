@@ -10,6 +10,7 @@
 | `saas-starter-screen-map.md` | Sổ đăng ký màn hình SaaS Starter: thiết kế / handoff / code / prompt — thước đo "đủ 100%" | Mỗi khi nhận handoff hoặc build xong một màn |
 | `notes/` | Quyết định chi tiết theo chủ đề (normative) — vd `section-style-system.md`, `data-platform-standards.md` | Theo quyết định owner |
 | `notes/admin-ux-conventions.md` | Bản sao luật UX của project thiết kế (CLAUDE.md §0–§15 + LESSONS phía thiết kế) để bản port Livewire trích dẫn | Chủ sở hữu luật là project thiết kế; đồng bộ khi nhận export mới |
+| `notes/design-tokens.md` | Chuẩn tên biến thiết kế (màu, cỡ chữ, khoảng cách…) cho trang quản trị và website khách: 3 tầng theo Tailwind 4, bảng tên cũ → tên mới, cách đổi tông bằng một màu (owner chốt 07/10) | Trước mọi CSS mới, khi chuyển màn thiết kế sang code |
 | `adr/` | Bản chi tiết ADR-19..22 (Draft). Chỉ mục chính thức vẫn ở `design.md` | Theo từng ADR |
 | `builder_v3_spec.md`, `builder_v3_section_catalog.md`, `reusable_blocks_spec.md`, `tracking_*.md`, `admin-architecture-decision.md` | Spec theo mạch (Builder v3, khối tái dùng, tracking, admin) | Theo mạch |
 | `design-briefs/` | Brief và bộ prompt gửi Claude Design (đã được owner duyệt) | Khi đặt thiết kế mới |

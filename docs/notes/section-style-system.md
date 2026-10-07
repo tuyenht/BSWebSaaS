@@ -35,6 +35,8 @@
 | Gradient | `--gradient-1..3` sinh từ brand (brand→đậm · brand→accent · dark→brand) | |
 | Motion | `--motion-duration` (0.5s) · `--motion-distance` (24px) | 1 công tắc site tắt toàn bộ motion |
 
+> **Tên token (07/10/2026):** theo chuẩn chung `docs/notes/design-tokens.md`: giữ các tên vai trò trong bảng trên; `--brand-50..900` đổi thành `--color-brand-50..900` (bí danh tên cũ trong thời gian chuyển). Mật độ khoảng cách và thời lượng hiệu ứng đang chờ owner chốt lại theo chuẩn thiết kế 06–07/10 (§9 của tài liệu đó).
+
 **Hai tầng token (chốt 23/09/2026 — khớp as-built `ThemeResolver`):**
 - **Seed = giá trị LƯU per-site** (`site_settings` group `theme` key `tokens`) — contract bền: đổi tên seed = migrate data mọi tenant ⇒ tên giữ nguyên as-built: `primary` (màu thương hiệu — nguồn duy nhất của `--brand-50..900` + gradient) · `surface` (nền) · `ink` (gần-đen: heading, nền tối header/footer, chữ đặt trên nền `primary`) · `body` (màu chữ nội dung dài, mềm hơn `ink`) · `font` (fallback cho tới khi thêm cặp seed `font-heading`/`font-body` — additive). Seed do operator/seeder hoặc panel "Giao diện" (5 quyết định bên dưới) ghi; KHÔNG phải knob per-section.
 - **Role = tên trong bảng trên** (`--color-*`, `--brand-*`, `--space-*`, `--radius-*`…) — CSS nội bộ SINH từ seed (`color-mix()` / palette generator) ⇒ đổi tên tự do, KHÔNG đụng data. Utility class + preset CHỈ tiêu thụ role, không đọc seed trực tiếp (`storefront.css` hiện còn đọc seed trực tiếp — chuyển sang role trong PR 1a.1 phần còn lại).
