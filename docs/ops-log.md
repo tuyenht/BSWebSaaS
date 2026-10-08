@@ -7,6 +7,18 @@
 
 ## 2026
 
+### 2026-10-08 — Nâng RAM 8 → 12 GB, khởi động lại máy lần đầu kể từ 17/07; công cụ dọn dẹp và lệnh vào phòng
+
+- **Lý do:** từ khi có Chrome của designbot và trình duyệt kiểm màn hình, nhu cầu bộ nhớ lúc đỉnh lên khoảng 11 GB trên máy 8 GB (đêm 07/10 chỉ còn trống 127 MB, swap 2 GB đầy; ngày 08/10 dùng 3,5 GB swap). CPU không nghẽn (bận trung bình 6–20% mỗi ngày, mẫu 10 phút cao nhất 64%), giữ 6 nhân.
+- **Nâng (owner, khoảng 17:00 +07):** RAM 8 → 12 GB tại nhà cung cấp, máy khởi động lại. Trước đó đã kiểm: 7 dịch vụ prod đặt `unless-stopped`, ảnh còn đủ, Docker bật cùng máy.
+- **Hậu kiểm 17:06:** `free` 11.960 MB, swap 0 / 6 GB; 7 dịch vụ prod tự lên, 4 dịch vụ có kiểm sức khoẻ đều `healthy`; `/` → 200, `/lien-he` → 200, `/up` → 200; dịch vụ dev lên (`bsweb_dev_horizon` vẫn báo `unhealthy` như trước, do phép kiểm của nó). `/tmp` tự sạch khi khởi động: ổ từ 42 GB xuống 29 GB đã dùng.
+- **Phát hiện về ổ:** trình duyệt kiểm màn hình (Chromium bản snap, chạy ẩn) để lại một hồ sơ tạm mỗi lần mở trong `/tmp/snap-private-tmp/snap.chromium/tmp/` — 12 GB sau 5 ngày, 3–5 GB mỗi ngày có kiểm. Luật dọn `/tmp` của hệ thống không tới được thư mục này (`/usr/lib/tmpfiles.d/snapd.conf` loại trừ nó).
+- **Thêm trên host (owner duyệt 08/10):**
+  - `/usr/local/sbin/bsweb-daily-housekeeping` — xoá hồ sơ tạm nói trên khi quá 2 ngày; lưu lịch sử các tệp chỉ dẫn của Claude Code (chỉ trên máy). **Chưa đặt lịch chạy**: việc đặt lịch do owner làm. Gỡ: xoá tệp này và dòng lịch tương ứng.
+  - `/root/.local/bin/ccd` — lệnh vào phòng tmux của tài khoản `designbot`. Gỡ: xoá tệp.
+  - `/root/.local/bin/claude-room` (lệnh `cc`): khớp đúng tên phòng tmux (`-t "=tên"`), và gõ lại lệnh mở Claude khi phòng còn mà shell của phòng không chạy gì. Bản trước: `claude-room.bak-20261008` cùng thư mục.
+- **Theo dõi:** 12 GB chỉ dư khoảng 1 GB so với đỉnh đã đo; mỗi lúc chỉ một trình duyệt kiểm màn hình. Xét nâng 16 GB nếu trong 7 ngày swap dùng quá 1 GB hoặc bộ nhớ trống dưới 1,5 GB.
+
 ### 2026-10-07 — Thêm 4 GB swap (`/swapfile2`) vì tab Chrome của designbot bị tắt do hết bộ nhớ
 
 - **Sự cố:** tab Claude Design của designbot hiện "Aw, Snap! Error code: 9". Nhật ký kernel ghi `Out of memory: Killed process … (chrome)`, UID 1000 = `designbot`. Hôm nay bị 5 lần: 00:40, 02:27, 05:23, 06:48, 23:24. RAM riêng của tab lúc bị tắt là 3,3–4,4 GB. Lúc đó swap 2 GB đã dùng 1,5 GB; dev, prod và các phiên Claude dùng thường trực khoảng 2 GB.
