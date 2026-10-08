@@ -35,6 +35,7 @@ use App\Modules\Admin\Navigation\AdminNav;
 use App\Modules\Admin\Navigation\PlatformNav;
 use App\Modules\Admin\Support\AdminPlane;
 use App\Modules\Admin\Support\TenantMailer;
+use App\Modules\Admin\Theme\AdminBrandColor;
 use App\Modules\Admin\Theme\AdminChromeResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Contracts\TenantMailConfigurator;
@@ -164,6 +165,9 @@ final class AdminServiceProvider extends ServiceProvider
             $user = Auth::user();
             $user = $user instanceof User ? $user : null;
             $view->with('chrome', app(AdminChromeResolver::class)->attributes($user));
+            // The platform's admin brand colour (one table, resources/admin-brands.json) as the
+            // :root tokens the layout prints in its head.
+            $view->with('brandTokens', AdminBrandColor::cssVariables(config('admin.brand.color')));
 
             // Primary-role label (highest level) for the topbar user area. Role slugs have no
             // display map, so headline() renders "super_admin" → "Super Admin". Roles are

@@ -130,3 +130,35 @@ it('applies the new axes when a user pins them', function (): void {
         ->assertSee('data-sidebar-size="sm"', false)
         ->assertSee('data-sidebar-image="img-3"', false);
 });
+
+it('prints the platform brand colour as one :root block in the head, not on <html>', function (): void {
+    config(['admin.brand.color' => 'green']);
+
+    $html = $this->actingAs(themeMember())->get('http://a.test/admin/content')->assertOk()->getContent();
+    $head = (string) strstr((string) $html, '</head>', true);
+
+    expect(substr_count($head, '--color-primary:'))->toBe(1)
+        ->and($head)->toContain('<style>:root{--color-primary-base:#15803d;--color-primary:#056b30;--color-primary-text:#0a7636;--color-brand-50:')
+        ->and((string) $html)->not->toMatch('/<html[^>]*style=/');
+});
+
+it('prints the default brand colour for an unknown key', function (): void {
+    config(['admin.brand.color' => '"><script>alert(1)</script>']);
+
+    $this->actingAs(themeMember())->get('http://a.test/admin/content')
+        ->assertOk()
+        ->assertSee('<style>:root{--color-primary-base:#2050a0;--color-primary:#2050a0;--color-primary-text:#2050a0;', false)
+        ->assertDontSee('alert(1)', false);
+});
+
+it('prints the brand colour on the platform console too', function (): void {
+    config(['admin.brand.color' => 'plum']);
+    $host = (string) config('tenancy.platform_host');
+    $operator = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('super_admin'));
+    app(PlatformAccess::class)->forgetMemo();
+
+    $this->actingAs($operator->fresh())->get("http://{$host}/tenants")
+        ->assertOk()
+        ->assertSee('--color-primary:#9d174d;', false);
+});

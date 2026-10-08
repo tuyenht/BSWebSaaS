@@ -9,6 +9,9 @@ return [
         // Legal/company name + site shown in the copyright footer (the name links here).
         'company' => env('ADMIN_BRAND_COMPANY', 'BaoSon Ads'),
         'company_url' => env('ADMIN_BRAND_URL', 'https://baoson.net'),
+        // The admin brand colour: a key of resources/admin-brands.json, the one table of colours
+        // the platform may choose (AdminBrandColor). An unknown key falls back to the default.
+        'color' => env('ADMIN_BRAND_COLOR', 'bao-son'),
         // Brand mark assets (ADR-12 white-label). Empty env → falsy → the initials fallback
         // in <x-admin::brand-logo> kicks in. dark/light = the full logo for light/dark
         // surfaces; sm = the compact mark for the collapsed sidebar rail.

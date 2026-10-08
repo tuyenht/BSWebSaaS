@@ -1,0 +1,14 @@
+{
+    "about": "The admin brand colours the platform may choose (config admin.brand.color). One row per colour: brand = the base hue (tints), solid = the fill under white text, ink = the brand as text, border and focus ring in the light scheme. The dark scheme's ink is derived in CSS: color-mix(in oklab, brand 38%, #e6eeff). Values from the approved design table (docs/design-source/AUDIT.md, 9 colours x 20 roles, all WCAG AA). The first row is the default.",
+    "brands": [
+        { "key": "bao-son", "name": "Bảo Sơn", "brand": "#2050a0", "solid": "#2050a0", "ink": "#2050a0" },
+        { "key": "navy", "name": "Navy", "brand": "#405189", "solid": "#405189", "ink": "#405189" },
+        { "key": "blue", "name": "Xanh dương", "brand": "#2f6fd0", "solid": "#1859b9", "ink": "#2465c5" },
+        { "key": "cyan", "name": "Xanh cổ vịt", "brand": "#0e7490", "solid": "#00657f", "ink": "#05708c" },
+        { "key": "teal", "name": "Mòng két", "brand": "#0f766e", "solid": "#036861", "ink": "#0b746c" },
+        { "key": "green", "name": "Xanh lá", "brand": "#15803d", "solid": "#056b30", "ink": "#0a7636" },
+        { "key": "indigo", "name": "Chàm", "brand": "#4338ca", "solid": "#4338ca", "ink": "#4338ca" },
+        { "key": "violet", "name": "Tím than", "brand": "#5b3fb3", "solid": "#5b3fb3", "ink": "#5b3fb3" },
+        { "key": "plum", "name": "Mận", "brand": "#9d174d", "solid": "#9d174d", "ink": "#9d174d" }
+    ]
+}
