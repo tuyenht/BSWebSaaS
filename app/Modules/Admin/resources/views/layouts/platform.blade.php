@@ -12,6 +12,7 @@
     <link rel="icon" href="/favicon.ico" sizes="any">
     @include('admin::partials.theme-boot')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('admin::partials.brand-tokens')
     @livewireStyles
 </head>
 <body class="admin-shell min-h-full bg-body font-sans text-base text-body-text antialiased">
