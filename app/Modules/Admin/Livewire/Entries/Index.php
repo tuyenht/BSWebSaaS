@@ -722,8 +722,8 @@ final class Index extends Component
     }
 
     /**
-     * The eager load of each row's primary category alone (id + path: what the category limits
-     * read), so a per-row "may change" check costs no query per row.
+     * The eager load of each row's primary category alone, so a per-row "may change" check costs
+     * no query per row.
      *
      * @return array<string, Closure(Relation<*, *, *>): void>
      */
@@ -731,7 +731,10 @@ final class Index extends Component
     {
         return ['taxonomies' => static function (Relation $primary): void {
             if ($primary instanceof BelongsToMany) {
-                $primary->wherePivot('position', 0)->select(['taxonomies.id', 'taxonomies.path']);
+                // What the limits read (id, path) and what the section of a post is derived from
+                // (parent_id, vocabulary): an action run on these rows asks for its workflow.
+                $primary->wherePivot('position', 0)
+                    ->select(['taxonomies.id', 'taxonomies.parent_id', 'taxonomies.vocabulary', 'taxonomies.path']);
             }
         }];
     }
@@ -815,11 +818,25 @@ final class Index extends Component
                 ->orWhere('slug', 'ilike', "%{$term}%"));
         }
 
+        $user = $this->actingUser();
+        $scopes = app(CategoryScopes::class);
+        // Whether this member has category limits here rides along on the rows' own query, so a
+        // member without limits costs the list nothing more.
+        $scopes->selectHasLimits($query, $user);
+
         $base = $query->with([
             'translations:id,entry_id,locale,title,slug,status',
             'routes:id,entry_id,locale,path',
             'author:id,ulid,name',
-        ])->when($type === 'post', fn (Builder $posts) => $posts->with(self::primaryCategoryOnly()))->get();
+        ])->get();
+
+        $limited = false;
+        if ($base->isNotEmpty()) {
+            $limited = $scopes->learnHasLimits($user, $base->first()->getAttribute(CategoryScopes::HAS_LIMITS)) && $scopes->isLimited($user);
+            if ($limited && $type === 'post') {
+                $base->load(self::primaryCategoryOnly());
+            }
+        }
 
         $facets = [
             'lang' => $this->langFacet($base, $locales),
@@ -834,25 +851,23 @@ final class Index extends Component
             ? $this->buildTree($filtered, $locale)
             : $this->sortFlat($filtered, $locale);
 
-        $user = $this->actingUser();
         $rows = $this->paginate($ordered);
 
         // Which rows this person may change at all, as far as their category limits go (the
         // primary category is loaded above, so this costs no query per row). Every action still
         // asks the policy itself; this only lets a row show its actions locked, with the reason.
-        $scopes = app(CategoryScopes::class);
         $pageUlids = [];
         $rowCovered = [];
         foreach ($rows->items() as $item) {
             $pageUlids[] = $item['entry']->ulid;
-            $rowCovered[$item['entry']->ulid] = $scopes->coversEntry($user, $item['entry']);
+            $rowCovered[$item['entry']->ulid] = ! $limited || $scopes->coversEntry($user, $item['entry']);
         }
 
         return view('admin::livewire.entries.index', [
             'rows' => $rows,
             'pageUlids' => $pageUlids,
             'rowCovered' => $rowCovered,
-            'scopeRefusal' => $scopes->isLimited($user) ? $scopes->refusal($user) : null,
+            'scopeRefusal' => $limited ? $scopes->refusal($user) : null,
             'counts' => $this->counts($type, $section),
             'facets' => $facets,
             'activeChips' => $this->activeChips($facets),
