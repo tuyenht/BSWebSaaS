@@ -10,6 +10,7 @@ use App\Modules\Cms\Enums\CategoryChildrenOnDelete;
 use App\Modules\Cms\Enums\CategoryItemsOnDelete;
 use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
+use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\MenuItem;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
@@ -40,6 +41,11 @@ use Illuminate\Support\Facades\DB;
  * permissions and approval workflow (section_changed). Posts whose section runs an active approval
  * workflow never leave it this way, confirmed or not (workflow_governed): the editor refuses the same
  * re-filing post by post, and a category change must not be the way around it.
+ *
+ * Members limited to a deleted category (member_category_scopes) never end up limited to nothing —
+ * which reads as "every category": with a target their limit moves onto it, without one (items
+ * detached, or a whole branch deleted with nothing to move onto) the delete is refused
+ * (has_scoped_members) until someone changes those members' limits.
  *
  * Every address that stops existing answers with a 301: each deleted category page (per language)
  * points to the target's page, else the nearest remaining category above, else the home page; posts
@@ -91,6 +97,10 @@ final readonly class DeleteTaxonomy
                 throw new TaxonomyChangeRejectedException('section_bound');
             }
             $targetId = $this->targetId($deleted, $items, $target);
+            $scoped = $this->scopedMembers($deleted);
+            if ($scoped > 0 && $targetId === null) {
+                throw new TaxonomyChangeRejectedException('has_scoped_members');
+            }
             $leaving = $this->leavingSection($deleted, $targetId);
             // Every deleted category shares one section (a nested section root is refused above as
             // section_bound), so the first one answers for all: one workflow lookup, not one per row.
@@ -134,6 +144,10 @@ final readonly class DeleteTaxonomy
                 ->whereIn('routable_id', $deleted)
                 ->update(['routable_id' => $targetId]);
 
+            // Members limited to a deleted category keep their limit on the target (never "every
+            // category" by accident): the rows must be gone before the RESTRICT foreign key is checked.
+            $scopesMoved = $scoped === 0 || $targetId === null ? 0 : $this->moveScopes($deleted, $targetId);
+
             // The category rows go last; their translations, routes and (now empty) pivot rows cascade.
             $count = Cast::int(Taxonomy::query()->whereKey($deleted)->delete());
 
@@ -150,6 +164,7 @@ final readonly class DeleteTaxonomy
                     'routes_moved' => $routesMoved,
                     'redirects' => $retired->count(),
                     'menu_links' => $menuLinks,
+                    'scopes_moved' => $scopesMoved,
                 ],
             ]);
 
@@ -188,6 +203,38 @@ final readonly class DeleteTaxonomy
         }
 
         return $target->id;
+    }
+
+    /**
+     * How many member limits name one of the categories being deleted.
+     *
+     * @param  list<int>  $deleted
+     */
+    private function scopedMembers(array $deleted): int
+    {
+        return MemberCategoryScope::query()->where('site_id', $this->site->id())->whereIn('taxonomy_id', $deleted)->count();
+    }
+
+    /**
+     * Point every member limit on a deleted category at the target instead; a member who already
+     * has the target keeps that one row. Returns the members' limits that moved.
+     *
+     * @param  list<int>  $deleted
+     */
+    private function moveScopes(array $deleted, int $targetId): int
+    {
+        $site = $this->site->id();
+        $placeholders = implode(', ', array_fill(0, count($deleted), '?'));
+
+        DB::insert(<<<SQL
+            INSERT INTO member_category_scopes (site_id, user_id, taxonomy_id, created_at)
+            SELECT DISTINCT site_id, user_id, CAST(? AS bigint), now()
+            FROM member_category_scopes
+            WHERE site_id = ? AND taxonomy_id IN ({$placeholders})
+            ON CONFLICT (site_id, user_id, taxonomy_id) DO NOTHING
+            SQL, [$targetId, $site, ...$deleted]);
+
+        return Cast::int(MemberCategoryScope::query()->where('site_id', $site)->whereIn('taxonomy_id', $deleted)->delete());
     }
 
     /**
