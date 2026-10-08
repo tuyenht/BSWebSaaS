@@ -8,6 +8,7 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Identity\Models\User;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -313,8 +314,11 @@ final class ReviewInbox extends Component
         // with its relations. The ceiling keeps a neglected queue from turning every render
         // into an OOM; crossing it is the signal to move search + type filtering into SQL and
         // page this properly (ADR-18).
-        $entries = Entry::query()
-            ->whereIn('workflow_state', $keys)
+        // A member limited to some categories reviews only posts filed inside them.
+        $query = Entry::query()->whereIn('workflow_state', $keys);
+        app(CategoryScopes::class)->whereCovered($query, $this->actor());
+
+        $entries = $query
             ->with(['translations', 'author', 'taxonomies.translations'])
             ->orderByDesc('updated_at')
             ->orderByDesc('id')

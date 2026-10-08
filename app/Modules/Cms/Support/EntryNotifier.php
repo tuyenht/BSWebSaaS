@@ -8,6 +8,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Support\Notify;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Tells the right people when an entry moves (design.md §15.4): reviewers or publishers when
@@ -23,10 +24,23 @@ use App\Modules\Notifications\Support\Notify;
  */
 final class EntryNotifier
 {
-    /** Waiting for review: everyone on the site holding $permission (the one who can act on it). */
+    /**
+     * Waiting for review: everyone on the site holding $permission (the one who can act on it) whose
+     * category limits reach the post — and, for a change that re-files it, its new category too:
+     * the same people the review queue shows it to (CategoryScopes).
+     */
     public function awaitingReview(Entry $entry, string $locale, User $actor, string $permission, ?EntryDraft $change = null): void
     {
-        Notify::holdersOf($permission, 'workflow.pending_review', $this->facts($entry, $locale, $actor, $change), $actor);
+        $categories = [$entry->type === 'post' ? $entry->primaryCategory()?->id : null];
+        $target = $change !== null ? ($change->content['shared']['primary_category_id'] ?? null) : null;
+        if (is_int($target)) {
+            $categories[] = $target;
+        }
+
+        Notify::holdersOf(
+            $permission, 'workflow.pending_review', $this->facts($entry, $locale, $actor, $change), $actor,
+            fn (Builder $members) => app(CategoryScopes::class)->whereMayWriteIn($members, ...$categories),
+        );
     }
 
     public function published(Entry $entry, string $locale, User $actor, ?EntryDraft $change = null): void
