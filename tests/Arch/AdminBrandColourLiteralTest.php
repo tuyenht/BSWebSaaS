@@ -29,7 +29,7 @@ function adminBrandLiteralPattern(): string
 {
     $alternatives = [];
     foreach (adminBrandLiterals() as $hex) {
-        $alternatives[] = preg_quote($hex, '/').'(?![0-9a-f])';
+        $alternatives[] = preg_quote($hex, '/').'(?:[0-9a-f]{2})?(?![0-9a-f])';
         $channels = array_map('hexdec', str_split(substr($hex, 1), 2));
         $alternatives[] = '(?<![\d.])'.implode('(?:\s*,\s*|\s+)', $channels).'(?![\d.])';
     }
@@ -66,7 +66,7 @@ it('copies no brand table colour into an admin view, stylesheet or script', func
     $pattern = adminBrandLiteralPattern();
     $files = [];
     foreach (File::allFiles(base_path('app')) as $file) {
-        if (str_ends_with($file->getFilename(), '.blade.php')) {
+        if (str_ends_with($file->getFilename(), '.php')) {
             $files[] = 'app/'.$file->getRelativePathname();
         }
     }
