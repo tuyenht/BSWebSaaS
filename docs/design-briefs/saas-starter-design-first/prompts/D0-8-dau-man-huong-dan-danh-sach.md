@@ -59,7 +59,7 @@ Không sửa CLAUDE.md (chỉ owner sửa). Prompt khác CLAUDE.md ở điểm n
 ═══ VIỆC CỦA LƯỢT NÀY ═══
 
 # D0-8 · Đầu màn, Hướng dẫn theo quyền và khuôn danh sách mới (chạy 3 phần, cùng chat)
-Cần trước: D0-7 (đủ 3 phần), 7 prompt sửa D1-1s · D1-6s · D2-5s · D1-2s · D1-3s · D2-1s · D3-1s và D1-1t đã chạy, VÀ tệp này có dòng `Đã kiểm 7 prompt sửa:` ở đầu (Claude Code thêm sau khi kiểm 7 zip; thiếu thì dừng theo "⏸ KIỂM TRƯỚC D0-8" của runbook). Lượt này chạy TRƯỚC D3-2, để D3-2 → D5-2 làm trên nền mới.
+Cần trước: D0-7 (đủ 3 phần), 7 prompt sửa D1-1s · D1-6s · D2-5s · D1-2s · D1-3s · D2-1s · D3-1s và D1-1t đã chạy. Claude Code đã kiểm 7 zip sửa (08/10); việc kiểm dòng mở khóa do runbook làm trước khi dán, chat này không cần kiểm lại. Lượt này chạy TRƯỚC D3-2, để D3-2 → D5-2 làm trên nền mới.
 
 Owner chốt 07/10 chiều, sau khi xem và chỉnh từng điểm trên bản mẫu màn Tin tức do Claude Code dựng và đo bằng Chromium:
 - **Đầu màn (phương án B, owner duyệt 07/10 17:24):** MỘT cụm thao tác bên phải tiêu đề, cùng hàng tiêu đề: `[(?) Hướng dẫn]` (nút chữ, không viền) + nút chính duy nhất của màn ("Viết bài mới", "Thêm trang"…). Hàng đường dẫn chỉ còn đường dẫn. Điện thoại: "Hướng dẫn" thu thành nút tròn (?) có viền. Thiếu chỗ thì cả cụm xuống hàng dưới tiêu đề, căn phải; tiêu đề không bị bẻ chữ. Bỏ nút "?" Trợ giúp trên thanh đầu trang (các nút khác trên thanh đầu trang giữ nguyên như 06/10).
