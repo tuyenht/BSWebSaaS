@@ -11,6 +11,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
@@ -123,6 +124,27 @@ it('mails a link to the invitation page on the site’s own host', function (): 
             && str_starts_with((string) $mail->actionUrl, 'http://a.test/admin/invitations/')
             && str_contains(implode(' ', $mail->introLines), 'Chỉ xem');   // role by its label, never `viewer`
     });
+});
+
+it('keeps names and the personal message as plain text in the invitation mail', function (): void {
+    // The mail carries the platform's sender name: an inviter must not be able to dress it up
+    // with a heading of their own or a link whose target the reader cannot see.
+    $mail = new MemberInvitationNotification(
+        acceptUrl: 'http://a.test/admin/invitations/token',
+        siteName: 'Shop *A*',
+        inviterName: '# System notice',
+        roles: [['name' => 'viewer', 'system' => true]],
+        personalMessage: '[Sign in here](https://evil.test) to confirm',
+        expiresOn: '15/10/2026',
+    )->toMail(new AnonymousNotifiable);
+
+    expect((string) $mail->render())
+        ->not->toMatch('/<a[^>]+evil\.test/')
+        ->not->toMatch('/<h1[^>]*>\s*System notice/')
+        ->not->toMatch('/<em[^>]*>A</')
+        ->toContain('# System notice')
+        ->toContain('Shop *A*')
+        ->toContain('[Sign in here](https://evil.test) to confirm');
 });
 
 it('offers a new address the create-account form', function (): void {
