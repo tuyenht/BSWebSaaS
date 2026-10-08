@@ -24,14 +24,9 @@ use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
-use App\Modules\Identity\Models\User;
-use App\Modules\Rbac\Support\PlatformAccess;
-use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 
 /**
  * Delete a category. Nothing filed under it or below it is lost by accident — the caller decides:
@@ -79,8 +74,6 @@ final readonly class DeleteTaxonomy
         private EntryWorkflowResolver $workflows,
         private CurrentSite $site,
         private CategoryScopes $scopes,
-        private PlatformAccess $platform,
-        private RoleHierarchyGuard $levels,
         private CategoryLimitGuard $limits,
     ) {}
 
@@ -239,33 +232,13 @@ final readonly class DeleteTaxonomy
     /**
      * Moving a limit onto the target can widen it (a sub-category merged into its parent hands the
      * member the parent's whole branch), so only someone who could set those limits by hand may
-     * cause it: the signed-in person holds `users.manage` and a role level strictly above every
-     * member concerned (a platform super_admin may). Without a signed-in person nobody vouches for
-     * it, so it is refused too.
+     * cause it — the same rule as a move (CategoryLimitGuard::mayChangeLimitsOf).
      *
      * @param  list<int>  $deleted
      */
     private function mayMoveLimits(array $deleted): bool
     {
-        $actor = Auth::user();
-        if (! $actor instanceof User) {
-            return false;
-        }
-        if ($this->platform->isSuperAdmin($actor)) {
-            return true;
-        }
-        if (! Gate::forUser($actor)->allows('users.manage')) {
-            return false;
-        }
-
-        $own = $this->levels->maxLevel($actor);
-        foreach ($this->scopes->membersLimitedTo($deleted) as $member) {
-            if ($member['level'] >= $own) {
-                return false;
-            }
-        }
-
-        return true;
+        return $this->limits->mayChangeLimitsOf($this->scopes->membersLimitedTo($deleted));
     }
 
     /**
@@ -286,6 +259,10 @@ final readonly class DeleteTaxonomy
      */
     private function moveScopes(array $deleted, int $targetId): int
     {
+        // The members' own limits lock, after the tree lock as everywhere else: a member leaving
+        // the site or promoted right now is either seen gone here, or clears the moved row after.
+        $this->scopes->lockMembers(array_column($this->scopes->membersLimitedTo($deleted), 'id'));
+
         $site = $this->site->id();
         $placeholders = implode(', ', array_fill(0, count($deleted), '?'));
 
