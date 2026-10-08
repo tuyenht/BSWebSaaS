@@ -9,6 +9,7 @@ use App\Modules\Cms\Console\PruneEntryRevisions;
 use App\Modules\Cms\Console\PublishDueEntries;
 use App\Modules\Cms\Console\RebuildTaxonomyPaths;
 use App\Modules\Cms\Console\SnapshotPublishedEntries;
+use App\Modules\Cms\Listeners\ForgetMemberCategoryScopes;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Navigation\MenuTargets;
@@ -16,8 +17,11 @@ use App\Modules\Cms\Observers\EntryObserver;
 use App\Modules\Cms\Policies\EntryPolicy;
 use App\Modules\Cms\Routing\CategoryDependents;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Rbac\Events\SiteMembershipChanged;
 use App\Modules\Theme\Components\ComponentRegistry;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -35,6 +39,10 @@ final class CmsServiceProvider extends ServiceProvider
         // category); scoped so the memo is flushed between Octane operations and never leaks across
         // requests, yet is shared within a request so bulk route-sync doesn't re-resolve per entry.
         $this->app->scoped(SectionResolver::class);
+
+        // CategoryScopes memoizes per request which categories a member may write in; scoped for the
+        // same reason — a limit read in one request must never answer for another.
+        $this->app->scoped(CategoryScopes::class);
 
         // Menu link kinds other modules register at boot (Catalog → `product`). Boot-time closures
         // only, no request state — shared across Octane requests like the ComponentRegistry.
@@ -63,6 +71,9 @@ final class CmsServiceProvider extends ServiceProvider
 
         // Purging an entry drops its block image usage rows (polymorphic, no FK cascade).
         Entry::observe(EntryObserver::class);
+
+        // A member's category limits on a site follow their roles there (left the site, or never limited).
+        Event::listen(SiteMembershipChanged::class, ForgetMemberCategoryScopes::class);
 
         // Module commands aren't auto-discovered like app/Console/Commands.
         if ($this->app->runningInConsole()) {
