@@ -13,6 +13,7 @@ use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
+use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
@@ -38,7 +39,8 @@ use Illuminate\Support\Facades\DB;
  * rewritten and — where the permalink presets carry the category chain — the posts and products
  * filed under the branch follow, each with a 301 (CategoryRelinker), in the same transaction.
  *
- * Who may manage categories (`taxonomies.manage`) is the caller's check. Runs inside the tenant
+ * Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context.
  */
 final readonly class MoveTaxonomy
@@ -51,6 +53,7 @@ final readonly class MoveTaxonomy
         private SectionResolver $sections,
         private EntryWorkflowResolver $workflows,
         private CurrentSite $site,
+        private CategoryLimitGuard $limits,
     ) {}
 
     /**
@@ -62,6 +65,7 @@ final readonly class MoveTaxonomy
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
             $parent = $parent === null ? null : $this->reload($parent, 'parent_invalid');
+            $this->limits->move($taxonomy, $parent);
 
             $branch = TaxonomyTree::branchOf($taxonomy->id);
             $oldParent = $taxonomy->parent_id;

@@ -21,6 +21,7 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
+use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
@@ -62,7 +63,8 @@ use Illuminate\Support\Facades\Gate;
  * the target category when there is one; with no target they stay, and the website stops showing
  * a link whose target is gone.
  *
- * Who may manage categories (`taxonomies.manage`) is the caller's check. Runs inside the tenant
+ * Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context. Returns the counts the screen reports.
  */
 final readonly class DeleteTaxonomy
@@ -79,6 +81,7 @@ final readonly class DeleteTaxonomy
         private CategoryScopes $scopes,
         private PlatformAccess $platform,
         private RoleHierarchyGuard $levels,
+        private CategoryLimitGuard $limits,
     ) {}
 
     /**
@@ -96,6 +99,7 @@ final readonly class DeleteTaxonomy
         return DB::transaction(function () use ($taxonomy, $items, $target, $children, $evenIfSectionChanges): array {
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
+            $this->limits->delete($taxonomy, $items === CategoryItemsOnDelete::Reassign ? $target?->id : null);
 
             $branch = TaxonomyTree::branchOf($taxonomy->id);
             $childIds = array_keys(array_filter($branch, static fn (int $depth): bool => $depth === 1));

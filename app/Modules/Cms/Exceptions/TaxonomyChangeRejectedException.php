@@ -12,7 +12,8 @@ use DomainException;
  * key, one of: taxonomy_invalid · vocabulary_invalid · name_invalid · slug_invalid · slug_taken ·
  * locale_invalid · template_invalid · parent_invalid · depth_exceeded · vocabulary_mismatch ·
  * target_invalid · has_children · has_items · section_bound · section_changed · workflow_governed ·
- * path_taken · has_scoped_members.
+ * path_taken · has_scoped_members · outside_category_limits (a member limited to some categories
+ * reached outside them).
  */
 final class TaxonomyChangeRejectedException extends DomainException
 {

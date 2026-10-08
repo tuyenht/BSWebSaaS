@@ -14,6 +14,7 @@ use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
@@ -26,7 +27,8 @@ use Illuminate\Support\Facades\DB;
  * category or below it follows, each with its own 301 (CategoryRelinker), in the same transaction.
  * The templates are set to exactly what the data says (null = the theme's default layout).
  *
- * Who may manage categories (`taxonomies.manage`) is the caller's check. Runs inside the tenant
+ * Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context.
  */
 final readonly class UpdateTaxonomy
@@ -38,6 +40,7 @@ final readonly class UpdateTaxonomy
         private RouteSync $routes,
         private CategoryRelinker $relinker,
         private CurrentSite $site,
+        private CategoryLimitGuard $limits,
     ) {}
 
     /**
@@ -51,6 +54,7 @@ final readonly class UpdateTaxonomy
         return DB::transaction(function () use ($taxonomy, $data, $listTemplate, $detailTemplate): Taxonomy {
             $this->lockTree($this->site->id());
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
+            $this->limits->change($taxonomy);
 
             /** @var array<string, TaxonomyTranslation> $existing */
             $existing = $taxonomy->translations()->get()->keyBy('locale')->all();
