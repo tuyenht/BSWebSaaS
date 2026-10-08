@@ -134,6 +134,8 @@ Cách khai báo:
 
 - **Một nguồn:** một màu thương hiệu.
   - Trang quản trị: màu của nền tảng, sau này là ô "màu trang quản trị" ở Cài đặt nền tảng › Nhận diện (D4-3).
+    - Bảng 9 màu được duyệt nằm ở `resources/admin-brands.json` (màu gốc, nền dưới chữ trắng, mực chữ chế độ sáng; mực chế độ tối = `color-mix(in oklab, gốc 38%, #e6eeff)` trong CSS). PHP (`AdminBrandColor`) và `scripts/contrast-check.mjs` cùng đọc bảng này.
+    - Nền tảng chọn bằng khóa `config('admin.brand.color')` (`ADMIN_BRAND_COLOR`, mặc định `bao-son`); khóa lạ về mặc định.
   - Website khách: khóa `primary` trong `site_settings` (giữ nguyên, không migration).
 - **Tính bằng PHP, in một khối `<style>:root{…}</style>` ở đầu trang**, không in vào thuộc tính `style` của `<html>` (thuộc tính đó thắng cả khối chế độ tối):
   - `BrandPalette` sinh `--color-brand-50…900`;
