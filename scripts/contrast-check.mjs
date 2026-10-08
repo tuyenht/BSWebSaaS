@@ -387,6 +387,7 @@ const ROWS = [
     { item: 'Topbar', role: 'Topbar tối — chữ ô tìm (cả khi focus)', state: { topbar: 'dark' }, fg: '--color-topbar-search-fg', bgs: [['--color-topbar-bg', '--color-topbar-search'], ['--color-topbar-bg', '--color-topbar-search-focus']], min: 4.5 },
     { item: 'Topbar', role: 'Topbar tối — viền ô tìm khi focus', state: { topbar: 'dark' }, fg: '--color-topbar-search-accent', bg: ['--color-topbar-bg', '--color-topbar-search-focus'], min: 3 },
     { item: 'Topbar', role: 'Topbar sáng — chữ ô tìm', fg: '--color-topbar-search-fg', bg: ['--color-topbar-bg', '--color-topbar-search'], min: 4.5 },
+    { item: 'Topbar', role: 'Topbar sáng — chữ gợi ý ô tìm', fg: '--color-topbar-search-placeholder', bg: ['--color-topbar-bg', '--color-topbar-search'], min: 4.5 },
 
     // Placeholder (input) — now the muted role token, on the card and the page.
     { item: 'Chữ phụ', role: 'Placeholder ô nhập (là chữ)', fg: '--color-placeholder', bgs: [['--color-surface'], ['--color-bg']], min: 4.5 },

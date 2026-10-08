@@ -65,7 +65,7 @@
                                                     the page bg */
     --color-text-faint: #adb5bd;                 /* decorative detail only, never text a reader needs
                                                     (gray-500 · 2.07 on white) */
-    --color-placeholder: var(--color-text-muted); /* placeholder is text → reuse muted (>=4.5); entered text stays #495057 */
+    --color-placeholder: var(--color-text-muted); /* placeholder is text → reuse muted (>=4.5) */
     --color-icon-ghost: #e9ebec;                 /* decorative/empty-state glyphs — WCAG-exempt (gray-300) */
 
     /* Brand — ONE source: resources/admin-brands.json. These three are only the BUILD-TIME
@@ -129,7 +129,7 @@
     --color-topbar-search: #f3f3f9;               /* clearly contrasts the white topbar (owner 06/07) */
     --color-topbar-search-fg: var(--color-text);
     --color-topbar-search-border: #f3f3f9;        /* borderless search field — the border blends into the fill */
-    --color-topbar-search-placeholder: #878a99;   /* placeholder + magnifier readable on the gray fill */
+    --color-topbar-search-placeholder: var(--color-text-muted); /* placeholder is text: >=4.5 on the gray fill */
     --color-topbar-search-focus: #ffffff;         /* the field brightens on focus */
     --color-topbar-search-accent: var(--color-primary-text); /* focus border + ring — zone-owned so a dark topbar can lighten it */
     --color-topbar-user: color-mix(in oklab, var(--color-primary-text) 10%, transparent); /* user chip (initials) bg */
@@ -173,8 +173,8 @@
     --color-admin-warning-text: var(--color-warning-text);
     --color-admin-danger-text: var(--color-danger-text);
     --color-admin-secondary-text: var(--color-secondary-text);
-    /* Not an alias yet: its new name (--color-text-strong) carries another value (#343a40, dark
-       #e9ecef), so the neutral "dark" badge keeps its own until it moves over — a visible change. */
+    /* Not an alias yet: its new name (--color-text-strong) now carries the heading ink, so the
+       neutral "dark" badge keeps its own value until it moves over — a visible change. */
     --color-admin-dark-text: #212529;
     --color-body: var(--color-bg);
     --color-heading: var(--color-text-strong);

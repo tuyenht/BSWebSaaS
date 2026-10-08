@@ -107,7 +107,7 @@
     /* sidebar (dark preset under a dark scheme) — a fixed night navy, not the brand */
     --color-sidebar-bg: #111a30;
     --color-sidebar-fg: #a9b4cc;                       /* 8.9 */
-    --color-sidebar-active: rgb(143 176 236 / 0.14);
+    --color-sidebar-active: color-mix(in srgb, var(--color-primary-on-dark) 14%, transparent);
     --color-sidebar-title: #8e9ab5;                    /* group titles are text · 6.3 */
 }
 
