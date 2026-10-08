@@ -19,12 +19,18 @@ use App\Modules\Cms\Routing\CategoryChange;
 use App\Modules\Cms\Routing\CategoryRelinker;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Routing\SectionResolver;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
+use App\Modules\Identity\Models\User;
+use App\Modules\Rbac\Support\PlatformAccess;
+use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Delete a category. Nothing filed under it or below it is lost by accident — the caller decides:
@@ -45,7 +51,9 @@ use Illuminate\Support\Facades\DB;
  * Members limited to a deleted category (member_category_scopes) never end up limited to nothing —
  * which reads as "every category": with a target their limit moves onto it, without one (items
  * detached, or a whole branch deleted with nothing to move onto) the delete is refused
- * (has_scoped_members) until someone changes those members' limits.
+ * (has_scoped_members) until someone changes those members' limits. Moving a limit can widen it,
+ * so it is also refused unless the signed-in person could set those limits themselves (see
+ * mayMoveLimits); limitedMembers() names the members concerned for the dialog.
  *
  * Every address that stops existing answers with a 301: each deleted category page (per language)
  * points to the target's page, else the nearest remaining category above, else the home page; posts
@@ -68,6 +76,9 @@ final readonly class DeleteTaxonomy
         private SectionResolver $sections,
         private EntryWorkflowResolver $workflows,
         private CurrentSite $site,
+        private CategoryScopes $scopes,
+        private PlatformAccess $platform,
+        private RoleHierarchyGuard $levels,
     ) {}
 
     /**
@@ -98,7 +109,7 @@ final readonly class DeleteTaxonomy
             }
             $targetId = $this->targetId($deleted, $items, $target);
             $scoped = $this->scopedMembers($deleted);
-            if ($scoped > 0 && $targetId === null) {
+            if ($scoped > 0 && ($targetId === null || ! $this->mayMoveLimits($deleted))) {
                 throw new TaxonomyChangeRejectedException('has_scoped_members');
             }
             $leaving = $this->leavingSection($deleted, $targetId);
@@ -203,6 +214,54 @@ final readonly class DeleteTaxonomy
         }
 
         return $target->id;
+    }
+
+    /**
+     * The members limited to $taxonomy — or, with its sub-categories deleted too, to anything in its
+     * branch — whose limits a delete would have to move: for the dialog to name before deleting.
+     *
+     * @return list<array{id: int, name: string}>
+     */
+    public function limitedMembers(Taxonomy $taxonomy, ?CategoryChildrenOnDelete $children = null): array
+    {
+        $deleted = $children === CategoryChildrenOnDelete::Delete ? array_keys(TaxonomyTree::branchOf($taxonomy->id)) : [$taxonomy->id];
+
+        return array_map(
+            static fn (array $member): array => ['id' => $member['id'], 'name' => $member['name']],
+            $this->scopes->membersLimitedTo($deleted),
+        );
+    }
+
+    /**
+     * Moving a limit onto the target can widen it (a sub-category merged into its parent hands the
+     * member the parent's whole branch), so only someone who could set those limits by hand may
+     * cause it: the signed-in person holds `users.manage` and a role level strictly above every
+     * member concerned (a platform super_admin may). Without a signed-in person nobody vouches for
+     * it, so it is refused too.
+     *
+     * @param  list<int>  $deleted
+     */
+    private function mayMoveLimits(array $deleted): bool
+    {
+        $actor = Auth::user();
+        if (! $actor instanceof User) {
+            return false;
+        }
+        if ($this->platform->isSuperAdmin($actor)) {
+            return true;
+        }
+        if (! Gate::forUser($actor)->allows('users.manage')) {
+            return false;
+        }
+
+        $own = $this->levels->maxLevel($actor);
+        foreach ($this->scopes->membersLimitedTo($deleted) as $member) {
+            if ($member['level'] >= $own) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

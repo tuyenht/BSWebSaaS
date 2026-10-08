@@ -14,6 +14,9 @@ use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
+use App\Modules\Identity\Support\SupportSession;
+use App\Modules\Rbac\Actions\AssignRole;
+use App\Modules\Rbac\Actions\RevokeRole;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
@@ -441,6 +444,9 @@ it('moves limits on every deleted category onto the merge target, once per membe
     csLimit(1, $lan, $jobs, $it);
     csLimit(1, $minh, $it, $news);
 
+    $owner = csMember(1, 'owner');
+    $this->actingAs($owner);
+
     $result = csIn(1, fn (): array => app(DeleteTaxonomy::class)->handle($jobs, CategoryItemsOnDelete::Reassign, $news, CategoryChildrenOnDelete::Delete));
 
     expect($result['categories'])->toBe(2)
@@ -457,4 +463,177 @@ it('deletes a category below a scoped one without touching the limit', function 
 
     expect(csDeleteRefusal(fn () => app(DeleteTaxonomy::class)->handle($it)))->toBeNull()
         ->and(csRows(1, $member))->toBe([$jobs->id]);
+});
+
+it('moves limits onto a merge target only for someone who could set those limits by hand', function (): void {
+    $lan = csMember(1, 'editor');
+    $jobs = csCategory(1, 'Tuyển dụng');
+    $it = csCategory(1, 'Kỹ thuật', $jobs);
+    csLimit(1, $lan, $it);
+    $manager = csMember(1, 'cat_manager', 60, ['taxonomies.manage', 'entries.view']);        // no users.manage
+    $peer = csMember(1, 'hr_lead', 50, ['users.manage', 'taxonomies.manage', 'entries.view']); // same level as Lan
+    $owner = csMember(1, 'owner');
+
+    $refusals = [];
+    foreach ([null, $manager, $peer] as $actor) {
+        $actor === null ? auth()->logout() : $this->actingAs($actor);
+        $refusals[] = csDeleteRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs));
+    }
+
+    expect($refusals)->toBe(['has_scoped_members', 'has_scoped_members', 'has_scoped_members'])
+        ->and(csRows(1, $lan))->toBe([$it->id])
+        ->and(csIn(1, fn () => app(DeleteTaxonomy::class)->limitedMembers($it)))->toBe([['id' => $lan->id, 'name' => $lan->name]]);
+
+    $this->actingAs($owner);
+    expect(csDeleteRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs)))->toBeNull()
+        ->and(csRows(1, $lan))->toBe([$jobs->id]);
+});
+
+it('lets a platform super_admin move limits onto a merge target', function (): void {
+    $lan = csMember(1, 'editor');
+    $jobs = csCategory(1, 'Tuyển dụng');
+    $it = csCategory(1, 'Kỹ thuật', $jobs);
+    csLimit(1, $lan, $it);
+    $staff = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
+    $this->actingAs($staff);
+
+    expect(csDeleteRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs)))->toBeNull()
+        ->and(csRows(1, $lan))->toBe([$jobs->id]);
+});
+
+it('re-reads the member under the lock, so a promotion that lands while limits are being set wins', function (): void {
+    csFeatureOn(1);
+    $owner = csMember(1, 'owner');
+    $member = csMember(1, 'editor');
+    $admin = csRole(1, 'admin');
+    $news = csCategory(1, 'Tin tức');
+
+    // The promotion commits while the setter waits for the member's lock: it is granted the moment
+    // that lock is taken, before anything the change depends on is read.
+    $promoted = false;
+    DB::listen(function ($query) use (&$promoted, $member, $admin): void {
+        if (! $promoted && str_contains($query->sql, 'pg_advisory_xact_lock') && str_starts_with((string) ($query->bindings[0] ?? ''), 'category_scopes:')) {
+            $promoted = true;
+            $member->assignRole($admin);
+        }
+    });
+
+    expect(csSet(1, $owner, $member, [$news]))->toBe('target_exempt')
+        ->and($promoted)->toBeTrue()
+        ->and(csRows(1, $member))->toBe([]);
+});
+
+it('takes the member\'s limits lock when a role change may clear the limits', function (): void {
+    $owner = csMember(1, 'owner');
+    $member = csMember(1, 'editor');
+    csRole(1, 'author');
+    $news = csCategory(1, 'Tin tức');
+    csLimit(1, $member, $news);
+
+    $locks = [];
+    DB::listen(function ($query) use (&$locks): void {
+        if (str_contains($query->sql, 'pg_advisory_xact_lock')) {
+            $locks[] = (string) ($query->bindings[0] ?? '');
+        }
+    });
+    csIn(1, fn () => Livewire::actingAs($owner->fresh())->test(Index::class)->call('changeRole', $member->ulid, 'author'));
+
+    expect($locks)->toContain('category_scopes:1:'.$member->id);
+});
+
+it('leaves limits alone for a role granted or revoked on another site', function (): void {
+    $member = csMember(1, 'editor');
+    app(Tenancy::class)->enter(2, fn () => $member->assignRole(csRole(2, 'editor')));
+    $newsA = csCategory(1, 'Tin tức A');
+    $newsB = csCategory(2, 'Tin tức B');
+    csLimit(1, $member, $newsA);
+    csLimit(2, $member, $newsB);
+    $staff = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
+    $adminB = csRole(2, 'admin');
+    $editorB = csRole(2, 'editor');
+
+    // Working on site 1, a platform super_admin grants and revokes site 2 roles: neither site's limits move.
+    csIn(1, function () use ($staff, $member, $adminB, $editorB): void {
+        app(AssignRole::class)->handle($staff, $member, $adminB);
+        app(RevokeRole::class)->handle($staff, $member, $editorB);
+    });
+
+    expect(csRows(1, $member))->toBe([$newsA->id])
+        ->and(csRows(2, $member))->toBe([$newsB->id]);
+});
+
+it('grants and revokes a platform role without announcing a site membership', function (): void {
+    $staff = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('super_admin'));
+    $helper = User::factory()->create();
+    $support = app(PlatformAccess::class)->onPlatform(fn () => Role::query()->withoutGlobalScopes()->where('site_id', 0)->where('name', 'support')->firstOrFail());
+
+    app(PlatformAccess::class)->onPlatform(fn () => app(AssignRole::class)->handle($staff, $helper, $support));
+    $held = app(PlatformAccess::class)->onPlatform(fn () => $helper->fresh()?->roles()->pluck('name')->all());
+    app(PlatformAccess::class)->onPlatform(fn () => app(RevokeRole::class)->handle($staff, $helper, $support));
+
+    expect($held)->toBe(['support'])
+        ->and(app(PlatformAccess::class)->onPlatform(fn () => $helper->fresh()?->roles()->count()))->toBe(0);
+});
+
+it('refuses to set limits during a support session', function (): void {
+    csFeatureOn(1);
+    $owner = csMember(1, 'owner');
+    $editor = csMember(1, 'editor');
+    $news = csCategory(1, 'Tin tức');
+    $staff = User::factory()->create();
+    app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole('support'));
+
+    $session = app('session')->driver();
+    request()->setLaravelSession($session);
+    auth()->login($owner);
+    app(SupportSession::class)->start($staff, $owner, 1, 'Kiểm tra', now()->addMinutes(30));
+    try {
+        $refusal = csSet(1, $owner, $editor, [$news]);
+    } finally {
+        $session->flush();
+        auth()->logout();
+    }
+
+    expect($refusal)->toBe('denied')
+        ->and(csRows(1, $editor))->toBe([]);
+});
+
+it('takes ids as a form sends them and audits only a real change', function (): void {
+    csFeatureOn(1);
+    $owner = csMember(1, 'owner');
+    $editor = csMember(1, 'editor');
+    $news = csCategory(1, 'Tin tức');
+
+    $set = fn (array $ids) => csIn(1, fn () => app(SetMemberCategoryScopes::class)->handle($owner->fresh() ?? $owner, $editor->fresh() ?? $editor, $ids));
+    $set([(string) $news->id, $news->id]);
+    $set([(string) $news->id]);
+
+    expect(csRows(1, $editor))->toBe([$news->id])
+        ->and(AuditLog::query()->where('action', 'cms.category_scopes.changed')->count())->toBe(1);
+});
+
+it('answers a limited member\'s misses without a query per category', function (): void {
+    $member = csMember(1, 'editor');
+    $jobs = csCategory(1, 'Tuyển dụng');
+    $others = array_map(fn (int $i): Taxonomy => csCategory(1, "Khác {$i}"), range(1, 6));
+    csLimit(1, $member, $jobs);
+
+    [$answers, $queries] = csIn(1, function () use ($member, $others): array {
+        $scopes = app(CategoryScopes::class);
+        $answers = [];
+        $queries = countQueries(function () use ($scopes, $member, $others, &$answers): void {
+            foreach ($others as $other) {
+                $answers[] = $scopes->covers($member, $other);
+            }
+        });
+
+        return [$answers, $queries];
+    });
+
+    // The member's rows, their role level, and once the site's categories without a path.
+    expect($answers)->toBe(array_fill(0, 6, false))
+        ->and($queries)->toBeLessThanOrEqual(4);
 });

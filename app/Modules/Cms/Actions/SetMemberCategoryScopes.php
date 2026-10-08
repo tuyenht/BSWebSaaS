@@ -9,6 +9,7 @@ use App\Modules\Cms\Exceptions\CategoryScopeRejectedException;
 use App\Modules\Cms\Models\MemberCategoryScope;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Support\CategoryScopes;
+use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -44,7 +45,7 @@ final readonly class SetMemberCategoryScopes
     ) {}
 
     /**
-     * @param  list<int>  $taxonomyIds  the categories the member may write in; [] = every category
+     * @param  list<int|string>  $taxonomyIds  the categories the member may write in (ids as a form sends them); [] = every category
      *
      * @throws AuthorizationException
      * @throws CategoryScopeRejectedException
@@ -59,32 +60,37 @@ final readonly class SetMemberCategoryScopes
         if ($actor->id === $target->id) {
             throw new AuthorizationException('Nobody sets their own category limits.');
         }
-        if ($target->roles()->doesntExist()) {
-            throw new CategoryScopeRejectedException('not_member');
-        }
-        if (! $this->platform->isSuperAdmin($actor) && $this->levels->maxLevel($target) >= $this->levels->maxLevel($actor)) {
-            throw new AuthorizationException('Category limits are set only for members below your own level.');
-        }
 
-        $ids = array_values(array_unique($taxonomyIds));
+        // Ids from a form arrive as strings: normalise them once, here at the boundary.
+        $ids = array_values(array_unique(array_map(static fn (mixed $id): int => Cast::int($id), $taxonomyIds)));
         // Clearing (back to every category) stays possible when the plan no longer includes the feature.
         if ($ids !== [] && ! $this->entitlement->featureEnabled('rbac.category_scopes')) {
             throw new CategoryScopeRejectedException('category_scopes_disabled');
         }
-        if ($ids !== [] && $this->scopes->isExempt($target)) {
-            throw new CategoryScopeRejectedException('target_exempt');
-        }
-        $this->assertCategories($ids);
         $this->assertWithinOwnScope($actor, $ids);
 
         $siteId = $this->site->id();
-        DB::transaction(function () use ($target, $ids, $siteId): void {
-            DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['category_scopes:'.$siteId.':'.$target->id]);
+        DB::transaction(function () use ($actor, $target, $ids, $siteId): void {
+            // The category tree first (a category being deleted right now is refused cleanly, never
+            // left to the foreign key), then the member's own limits lock, which a role change
+            // takes too (ForgetMemberCategoryScopes). Everything the change depends on is read
+            // after both: a promotion committed a moment ago is seen here, not missed.
+            TaxonomyTree::lock($siteId);
+            $this->scopes->lockMember($target);
+            $this->scopes->forget();
+
+            $this->assertTarget($actor, $target, $ids);
+            $this->assertCategories($ids);
 
             $before = array_map(
                 static fn (mixed $id): int => Cast::int($id),
                 MemberCategoryScope::query()->where('site_id', $siteId)->where('user_id', $target->id)->orderBy('taxonomy_id')->pluck('taxonomy_id')->all(),
             );
+            $after = $ids;
+            sort($after);
+            if ($after === $before) {
+                return;   // nothing changes: nothing written, nothing audited
+            }
 
             MemberCategoryScope::query()
                 ->where('site_id', $siteId)
@@ -96,16 +102,34 @@ final readonly class SetMemberCategoryScopes
             }
             $this->scopes->forget();
 
-            $after = $ids;
-            sort($after);
-            if ($after !== $before) {
-                Audit::record('cms.category_scopes.changed', [
-                    'auditable_type' => User::class,
-                    'auditable_id' => $target->id,
-                    'meta' => ['before' => $before, 'after' => $after],
-                ]);
-            }
+            Audit::record('cms.category_scopes.changed', [
+                'auditable_type' => User::class,
+                'auditable_id' => $target->id,
+                'meta' => ['before' => $before, 'after' => $after],
+            ]);
         });
+    }
+
+    /**
+     * The target as they are now, read under the lock: still a member here, strictly below the
+     * actor, and — when limits are being set — not someone who is never limited.
+     *
+     * @param  list<int>  $ids
+     *
+     * @throws AuthorizationException
+     * @throws CategoryScopeRejectedException
+     */
+    private function assertTarget(User $actor, User $target, array $ids): void
+    {
+        if ($target->roles()->doesntExist()) {
+            throw new CategoryScopeRejectedException('not_member');
+        }
+        if (! $this->platform->isSuperAdmin($actor) && $this->levels->maxLevel($target) >= $this->levels->maxLevel($actor)) {
+            throw new AuthorizationException('Category limits are set only for members below your own level.');
+        }
+        if ($ids !== [] && $this->scopes->isExempt($target)) {
+            throw new CategoryScopeRejectedException('target_exempt');
+        }
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Modules\Cms\Taxonomy;
 
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Shared\Support\Cast;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Reads a category tree through `parent_id` — the source of truth; the ltree `path` only mirrors it
@@ -16,6 +17,16 @@ final class TaxonomyTree
 {
     /** Hard stop for a walk over data a loop could have corrupted — far beyond any real tree. */
     private const int WALK_LIMIT = 32;
+
+    /**
+     * Serialise changes to a site's category tree until the surrounding transaction ends: the
+     * category actions take it before their checks, and so does anything that must not race a
+     * category being deleted (setting member limits on it).
+     */
+    public static function lock(int $siteId): void
+    {
+        DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['taxonomies:'.$siteId]);
+    }
 
     /**
      * The ids above a category, root first, the category itself excluded.
