@@ -13,7 +13,7 @@ use DomainException;
  * locale_invalid · template_invalid · parent_invalid · depth_exceeded · vocabulary_mismatch ·
  * target_invalid · has_children · has_items · section_bound · section_changed · workflow_governed ·
  * path_taken · has_scoped_members · outside_category_limits (a member limited to some categories
- * reached outside them).
+ * reached outside them) · changes_member_limits (a move would change another member's limits).
  */
 final class TaxonomyChangeRejectedException extends DomainException
 {

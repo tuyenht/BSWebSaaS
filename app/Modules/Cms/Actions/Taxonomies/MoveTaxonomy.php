@@ -39,7 +39,9 @@ use Illuminate\Support\Facades\DB;
  * rewritten and — where the permalink presets carry the category chain — the posts and products
  * filed under the branch follow, each with a 301 (CategoryRelinker), in the same transaction.
  *
- * Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * A move that takes the branch into or out of a limited member's reach changes that member's
+ * limits, so it needs someone who could set them by hand (changes_member_limits,
+ * CategoryLimitGuard::reach). Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
  * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context.
  */
@@ -66,6 +68,13 @@ final readonly class MoveTaxonomy
             $taxonomy = $this->reload($taxonomy, 'taxonomy_invalid');
             $parent = $parent === null ? null : $this->reload($parent, 'parent_invalid');
             $this->limits->move($taxonomy, $parent);
+            if ($parent?->id !== $taxonomy->parent_id) {
+                // Taking the branch into or out of a limited member's reach changes their limits.
+                $this->limits->reach(
+                    TaxonomyTree::ancestorsOf($taxonomy->id),
+                    $parent === null ? [] : [...TaxonomyTree::ancestorsOf($parent->id), $parent->id],
+                );
+            }
 
             $branch = TaxonomyTree::branchOf($taxonomy->id);
             $oldParent = $taxonomy->parent_id;

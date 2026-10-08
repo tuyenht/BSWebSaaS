@@ -14,6 +14,7 @@ use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Query\JoinClause;
@@ -41,6 +42,9 @@ final class CategoryScopes
 {
     /** Members holding a role at or above this level on the site are never limited. */
     public const int EXEMPT_LEVEL = 70;
+
+    /** The column selectHasLimits() adds to a list's rows. */
+    public const string HAS_LIMITS = 'viewer_has_limits';
 
     /** @var array<string, array{roots: list<int>, reach: array<int, true>}> */
     private array $rows = [];
@@ -226,24 +230,32 @@ final class CategoryScopes
      */
     public function membersLimitedTo(array $taxonomyIds): array
     {
-        if ($taxonomyIds === []) {
+        $site = $this->site->id();
+
+        return $this->membersWithLevels(fn (Builder $members) => $members->whereExists(fn (QueryBuilder $limit) => $limit->selectRaw('1')
+            ->from('member_category_scopes')
+            ->where('member_category_scopes.site_id', $site)
+            ->whereColumn('member_category_scopes.user_id', 'users.id')
+            ->whereIn('member_category_scopes.taxonomy_id', $taxonomyIds)), $taxonomyIds !== []);
+    }
+
+    /**
+     * Users picked by $where, by name, with the highest role level each holds on this site.
+     *
+     * @param  Closure(Builder<User>): mixed  $where
+     * @return list<array{id: int, name: string, level: int}>
+     */
+    private function membersWithLevels(Closure $where, bool $any): array
+    {
+        if (! $any) {
             return [];
         }
 
-        $site = $this->site->id();
-        $members = User::query()
-            ->whereExists(fn (QueryBuilder $limit) => $limit->selectRaw('1')
-                ->from('member_category_scopes')
-                ->where('member_category_scopes.site_id', $site)
-                ->whereColumn('member_category_scopes.user_id', 'users.id')
-                ->whereIn('member_category_scopes.taxonomy_id', $taxonomyIds))
-            ->withMax('roles', 'level')
-            ->orderBy('name')
-            ->orderBy('id')
-            ->get(['id', 'name']);
+        $members = User::query();
+        $where($members);
 
         $found = [];
-        foreach ($members as $member) {
+        foreach ($members->withMax('roles', 'level')->orderBy('name')->orderBy('id')->get(['id', 'name']) as $member) {
             $found[] = [
                 'id' => $member->id,
                 'name' => $member->name,
@@ -262,6 +274,80 @@ final class CategoryScopes
     public function lockMember(User $user): void
     {
         DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['category_scopes:'.$this->key($user)]);
+    }
+
+    /**
+     * Add to a list's own query whether $user has limit rows on this site (column HAS_LIMITS), so
+     * the list learns it without a query of its own; hand the value to learnHasLimits().
+     *
+     * @param  Builder<Entry>  $rows
+     */
+    public function selectHasLimits(Builder $rows, User $user): void
+    {
+        $rows->select($rows->getModel()->qualifyColumn('*'))->selectRaw(
+            'exists(select 1 from member_category_scopes where member_category_scopes.site_id = ? and member_category_scopes.user_id = ?) as '.self::HAS_LIMITS,
+            [$this->site->id(), $user->getKey()],
+        );
+    }
+
+    /**
+     * Take the HAS_LIMITS value a list read: a member without rows is remembered as not limited
+     * for this request (no query of the reader's own). Returns whether rows exist.
+     */
+    public function learnHasLimits(User $user, mixed $hasLimits): bool
+    {
+        $has = $hasLimits === true || $hasLimits === 1 || $hasLimits === '1' || $hasLimits === 't' || $hasLimits === 'true';
+        if (! $has) {
+            $this->rows[$this->key($user)] ??= ['roots' => [], 'reach' => []];
+        }
+
+        return $has;
+    }
+
+    /**
+     * The members limited on this site whose reach a category move changes: their limits cover the
+     * moved branch before ($before: the ids above it now) but not after ($after: the new parent and
+     * the ids above it), or the other way round. Members whose limits sit inside the branch move
+     * with it and are not concerned.
+     *
+     * @param  list<int>  $before
+     * @param  list<int>  $after
+     * @return list<array{id: int, name: string, level: int}>
+     */
+    public function membersReachChangedBy(array $before, array $after): array
+    {
+        $ids = array_values(array_unique([...$before, ...$after]));
+        if ($ids === []) {
+            return [];
+        }
+
+        $reach = [];
+        foreach (DB::table('member_category_scopes')->where('site_id', $this->site->id())->whereIn('taxonomy_id', $ids)->get(['user_id', 'taxonomy_id']) as $row) {
+            $user = Cast::int($row->user_id);
+            $taxonomy = Cast::int($row->taxonomy_id);
+            $reach[$user] ??= [false, false];
+            $reach[$user][0] = $reach[$user][0] || in_array($taxonomy, $before, true);
+            $reach[$user][1] = $reach[$user][1] || in_array($taxonomy, $after, true);
+        }
+
+        $changed = array_keys(array_filter($reach, static fn (array $sides): bool => $sides[0] !== $sides[1]));
+
+        return $this->membersWithLevels(fn (Builder $members) => $members->whereKey($changed), $changed !== []);
+    }
+
+    /**
+     * Serialise every change to these members' limits (see lockMember()), in id order so two
+     * callers never wait on each other in a circle.
+     *
+     * @param  list<int>  $userIds
+     */
+    public function lockMembers(array $userIds): void
+    {
+        $userIds = array_values(array_unique($userIds));
+        sort($userIds);
+        foreach ($userIds as $id) {
+            DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['category_scopes:'.$this->site->id().':'.$id]);
+        }
     }
 
     /** Forget what was read, so a change written in this request is seen by the next check. */
