@@ -31,3 +31,33 @@ it('touches member category limits only through the reader and the known writers
 
     expect($offenders)->toBe([]);
 });
+
+/*
+ * Every road that files an entry under categories on a person's behalf goes through
+ * EntryCategoryWriter, which applies that person's category limits. Only the trait that defines
+ * assignCategories(), the writer, the product editor (product categories are not limited) and the
+ * provisioning seeders (they act for nobody) may call it. Adding a caller means checking it applies
+ * the limits — or routing it through the writer.
+ */
+it('files entries under categories only through the writer that applies category limits', function (): void {
+    $allowed = [
+        'app/Modules/Cms/Concerns/HasCategoryTaxonomies.php',                          // the definition
+        'app/Modules/Cms/Support/EntryCategoryWriter.php',                             // applies the limits
+        'app/Modules/Admin/Livewire/Catalog/Editor.php',                               // products: not limited
+        'app/Modules/Provisioning/Actions/SeedAnVinhContent.php',                      // seeder, no person
+        'app/Modules/Provisioning/Actions/PromoteAnVinhProductPostsToCatalog.php',     // seeder, no person
+    ];
+
+    $offenders = [];
+
+    foreach (Finder::create()->files()->in(app_path())->name('*.php') as $file) {
+        if (str_contains($file->getContents(), 'assignCategories(')) {
+            $rel = str_replace(base_path().'/', '', (string) $file->getRealPath());
+            if (! in_array($rel, $allowed, true)) {
+                $offenders[] = $rel;
+            }
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});

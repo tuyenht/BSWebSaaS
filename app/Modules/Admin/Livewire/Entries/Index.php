@@ -14,6 +14,7 @@ use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
@@ -22,9 +23,12 @@ use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -587,7 +591,8 @@ final class Index extends Component
 
     private function mayDuplicate(Entry $entry, User $user): bool
     {
-        return ! $entry->trashed() && $user->can('create', Entry::class);
+        return ! $entry->trashed() && $user->can('create', Entry::class)
+            && app(CategoryScopes::class)->coversEntry($user, $entry);
     }
 
     /**
@@ -707,7 +712,28 @@ final class Index extends Component
      */
     private function selectedEntries(): EloquentCollection
     {
-        return Entry::withTrashed()->whereIn('ulid', $this->selected)->orderBy('id')->lockForUpdate()->get();
+        // For a member limited to some categories every rule reads the row's primary category:
+        // load it with the rows rather than once per row.
+        $limited = app(CategoryScopes::class)->isLimited($this->actingUser());
+
+        return Entry::withTrashed()->whereIn('ulid', $this->selected)->orderBy('id')->lockForUpdate()
+            ->when($limited, fn (Builder $rows) => $rows->with(self::primaryCategoryOnly()))
+            ->get();
+    }
+
+    /**
+     * The eager load of each row's primary category alone (id + path: what the category limits
+     * read), so a per-row "may change" check costs no query per row.
+     *
+     * @return array<string, Closure(Relation<*, *, *>): void>
+     */
+    private static function primaryCategoryOnly(): array
+    {
+        return ['taxonomies' => static function (Relation $primary): void {
+            if ($primary instanceof BelongsToMany) {
+                $primary->wherePivot('position', 0)->select(['taxonomies.id', 'taxonomies.path']);
+            }
+        }];
     }
 
     /*
@@ -793,7 +819,7 @@ final class Index extends Component
             'translations:id,entry_id,locale,title,slug,status',
             'routes:id,entry_id,locale,path',
             'author:id,ulid,name',
-        ])->get();
+        ])->when($type === 'post', fn (Builder $posts) => $posts->with(self::primaryCategoryOnly()))->get();
 
         $facets = [
             'lang' => $this->langFacet($base, $locales),
@@ -811,14 +837,22 @@ final class Index extends Component
         $user = $this->actingUser();
         $rows = $this->paginate($ordered);
 
+        // Which rows this person may change at all, as far as their category limits go (the
+        // primary category is loaded above, so this costs no query per row). Every action still
+        // asks the policy itself; this only lets a row show its actions locked, with the reason.
+        $scopes = app(CategoryScopes::class);
         $pageUlids = [];
+        $rowCovered = [];
         foreach ($rows->items() as $item) {
             $pageUlids[] = $item['entry']->ulid;
+            $rowCovered[$item['entry']->ulid] = $scopes->coversEntry($user, $item['entry']);
         }
 
         return view('admin::livewire.entries.index', [
             'rows' => $rows,
             'pageUlids' => $pageUlids,
+            'rowCovered' => $rowCovered,
+            'scopeRefusal' => $scopes->isLimited($user) ? $scopes->refusal($user) : null,
             'counts' => $this->counts($type, $section),
             'facets' => $facets,
             'activeChips' => $this->activeChips($facets),

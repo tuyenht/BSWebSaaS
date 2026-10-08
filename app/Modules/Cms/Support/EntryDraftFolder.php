@@ -45,7 +45,7 @@ final readonly class EntryDraftFolder
             return false;
         }
 
-        $applied = $this->applier->apply($entry, $change, lenient: true);
+        $applied = $this->applier->apply($entry, $change, lenient: true, actor: $actor);
         $change->delete();
 
         EntryDraftAudit::record(EntryDraftAudit::FOLDED, $entry, $actor, $applied['locales'], $change->workflow_state, [

@@ -732,6 +732,7 @@
     "entries.bulk_sent": ":count 件を承認申請しました。",
     "entries.bulk_skipped": ":count 件はスキップしました（すでにその状態、下書きではない、ゴミ箱内、または変更する権限がありません）。",
     "entries.category_governed": "この記事は承認フロー「:workflow」の対象のため、別の種別へ移動できません。どうしても移動が必要な場合は、管理者にこの種別のフロー停止を依頼してください。",
+    "entries.category_scope_only": "投稿を書けるのは次のカテゴリーだけです：:categories。",
     "entries.bulk_governed": ":count 件は承認フローの対象のため、そのままにしました。各記事を開いて承認してください。",
     "entries.bulk_failed": ":count 件は実行できませんでした。各項目を開いて原因をご確認ください。",
     "entries.bulk_skipped_trash": ":count 件はスキップしました（ゴミ箱にない、または変更する権限がありません）。",
