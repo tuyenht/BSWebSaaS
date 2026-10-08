@@ -37,7 +37,9 @@ use RuntimeException;
  * MAY this person make this move on THIS entry? The engine checks only the move's permission,
  * because it knows nothing of entries. Sending for review is also working on the entry, so a
  * move guarded by entries.submit additionally needs EntryPolicy::submit (the right to edit this
- * entry). The actions enforce it, and the button lists and the hand-off list filter by it, from
+ * entry). And every move — send, approve, return, publish — needs the entry inside the person's
+ * category limits (CategoryScopes): an approver limited to Tuyển dụng decides only Tuyển dụng
+ * posts. The actions enforce it, and the button lists and the hand-off list filter by it, from
  * this one definition.
  */
 final readonly class EntryWorkflowResolver
@@ -48,6 +50,7 @@ final readonly class EntryWorkflowResolver
     public function __construct(
         private SectionResolver $sections,
         private WorkflowEngine $engine,
+        private CategoryScopes $scopes,
     ) {}
 
     public function forEntry(Entry $entry): ?Workflow
@@ -139,8 +142,32 @@ final readonly class EntryWorkflowResolver
      */
     public function mayApply(WorkflowTransition $transition, Entry $entry, User $actor): bool
     {
-        return $transition->required_permission !== self::SUBMIT_PERMISSION
-            || Gate::forUser($actor)->allows('submit', $entry);
+        if ($transition->required_permission === self::SUBMIT_PERMISSION) {
+            return Gate::forUser($actor)->allows('submit', $entry);   // submit includes the limits (update)
+        }
+
+        // A platform super_admin is never limited (CategoryScopes::isExempt), as at every gate.
+        return $this->scopes->coversEntry($actor, $entry);
+    }
+
+    /**
+     * Refuse moving on a pending change that would file its post under a category outside the
+     * actor's limits — the entry's own category is mayApply()'s business. Call it inside the row
+     * lock, next to authorizeMove().
+     *
+     * @throws AuthorizationException
+     */
+    public function authorizeChangeTarget(EntryDraft $change, Entry $entry, User $actor): void
+    {
+        $target = $change->content['shared']['primary_category_id'] ?? null;
+        if ($entry->type !== 'post' || ! is_int($target)) {
+            return;
+        }
+
+        $response = Gate::forUser($actor)->inspect('fileUnder', [Entry::class, 'post', $target]);
+        if ($response->denied()) {
+            throw new AuthorizationException($response->message());
+        }
     }
 
     /**
@@ -148,9 +175,10 @@ final readonly class EntryWorkflowResolver
      * engine's permission check plus mayApply(), as one query for lists of people (a hand-off
      * picker) that must not run the gate member by member. The policy's edit rule is restated
      * here in SQL: entries.edit.any, or entries.edit.own while being the entry's author (an entry
-     * with no author: edit.any only). User::holdingPermission() honours the team (site) on both
-     * the role and the direct grant. A platform super_admin passes the gate through
-     * Gate::before without holding the grants, so is listed only as far as their grants reach.
+     * with no author: edit.any only), and so are the category limits (CategoryScopes::whereMayWriteIn).
+     * User::holdingPermission() honours the team (site) on both the role and the direct grant. A
+     * platform super_admin passes the gate through Gate::before without holding the grants, so is
+     * listed only as far as their grants reach.
      *
      * @param  iterable<WorkflowTransition>  $transitions
      * @return Builder<User>|null null when no transition is given (nobody can make a move that does not exist)
@@ -169,8 +197,12 @@ final readonly class EntryWorkflowResolver
         unset($permissions[self::SUBMIT_PERMISSION]);
         $others = array_keys($permissions);
         $authorId = $entry->author_id;
+        $primary = $entry->type === 'post' ? $entry->primaryCategory()?->id : null;
 
-        return User::query()->where(function (Builder $members) use ($others, $sends, $authorId): void {
+        $members = User::query();
+        $this->scopes->whereMayWriteIn($members, $primary);
+
+        return $members->where(function (Builder $members) use ($others, $sends, $authorId): void {
             if ($others !== []) {
                 $members->orWhere(fn (Builder $holder) => $holder->holdingPermission($others));
             }

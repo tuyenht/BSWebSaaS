@@ -56,7 +56,7 @@ final readonly class ApplyEntryDraftTransition
      * @throws EntryNotGovernedException no workflow governs this entry (apply with ApplyEntryDraft)
      * @throws EntryDraftRejectedException not_live · change_stale · content_invalid · category_governed · slug_taken
      * @throws InvalidTransitionException unknown move, wrong origin, or a missing required note
-     * @throws AuthorizationException the actor lacks the move's permission, or sends a change to an entry they may not edit
+     * @throws AuthorizationException the actor lacks the move's permission, sends a change to an entry they may not edit, or the entry or the change's category lies outside their category limits
      */
     public function handle(
         Entry $entry,
@@ -90,6 +90,8 @@ final readonly class ApplyEntryDraftTransition
 
                 // Sending a change on is working on its entry: the same per-entry rule as the entry's own moves.
                 $this->workflows->authorizeMove($workflow, $transitionKey, $entry, $actor);
+                // A change may re-file the post: whoever moves it on must be able to write there too.
+                $this->workflows->authorizeChangeTarget($change, $entry, $actor);
 
                 $destination = $this->engine->apply(
                     $workflow, $transitionKey, $this->workflows->changeOriginFor($workflow, $change), $actor,
@@ -120,7 +122,7 @@ final readonly class ApplyEntryDraftTransition
     /** Write the change onto the website, keep what went live, and close the change. */
     private function applyLive(Entry $entry, EntryDraft $change, User $actor, WorkflowState $destination): void
     {
-        $applied = $this->applier->apply($entry, $change);
+        $applied = $this->applier->apply($entry, $change, actor: $actor);
 
         // What visitors now see is kept in the approver's name: every language when a shared
         // field changed (it is part of every language's page), otherwise the languages changed.

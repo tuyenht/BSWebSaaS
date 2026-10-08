@@ -6,6 +6,8 @@ namespace App\Modules\Notifications\Support;
 
 use App\Modules\Identity\Models\User;
 use App\Modules\Notifications\Messages\SiteNotice;
+use Closure;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Notification;
 
 /**
@@ -16,16 +18,21 @@ use Illuminate\Support\Facades\Notification;
 final class Notify
 {
     /**
-     * Everyone on the current site who holds $permission (through any of their roles).
+     * Everyone on the current site who holds $permission (through any of their roles) — narrowed
+     * further by $among when only some holders may act on this subject.
      *
      * @param  array<string, mixed>  $data
+     * @param  (Closure(Builder<User>): void)|null  $among
      */
-    public static function holdersOf(string $permission, string $kind, array $data, ?User $except = null): void
+    public static function holdersOf(string $permission, string $kind, array $data, ?User $except = null, ?Closure $among = null): void
     {
         // A permission a site has not been synced with yet has no holders: nobody to tell.
-        $users = User::query()->holdingPermission($permission)
-            ->when($except instanceof User, fn ($query) => $query->whereKeyNot($except?->getKey()))
-            ->get();
+        $holders = User::query()->holdingPermission($permission)
+            ->when($except instanceof User, fn ($query) => $query->whereKeyNot($except?->getKey()));
+        if ($among !== null) {
+            $among($holders);
+        }
+        $users = $holders->get();
 
         Notification::send($users, new SiteNotice($kind, $data));
     }
