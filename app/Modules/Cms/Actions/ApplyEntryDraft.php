@@ -59,6 +59,12 @@ final readonly class ApplyEntryDraft
                 Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
                 $entry->refresh();
 
+                // Judged again on the row as it is now: someone may have re-filed the post while
+                // this waited, outside the publisher's category limits.
+                if (! Gate::forUser($actor)->allows('publish', $entry)) {
+                    throw new AuthorizationException(__('entries.err_publish_forbidden'));
+                }
+
                 // Read under the lock: a workflow switched on a moment ago must not be skipped.
                 if ($this->workflows->forEntry($entry) !== null) {
                     throw new EntryDraftRejectedException('workflow_governed');

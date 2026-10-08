@@ -180,10 +180,13 @@ final readonly class EntryWorkflowResolver
      * platform super_admin passes the gate through Gate::before without holding the grants, so is
      * listed only as far as their grants reach.
      *
+     * For a pending change ($change) that re-files the post, the members' limits must reach its new
+     * category too, as authorizeChangeTarget() requires of the one who moves it.
+     *
      * @param  iterable<WorkflowTransition>  $transitions
      * @return Builder<User>|null null when no transition is given (nobody can make a move that does not exist)
      */
-    public function membersWhoMayApply(iterable $transitions, Entry $entry): ?Builder
+    public function membersWhoMayApply(iterable $transitions, Entry $entry, ?EntryDraft $change = null): ?Builder
     {
         $permissions = [];
         foreach ($transitions as $transition) {
@@ -197,10 +200,14 @@ final readonly class EntryWorkflowResolver
         unset($permissions[self::SUBMIT_PERMISSION]);
         $others = array_keys($permissions);
         $authorId = $entry->author_id;
-        $primary = $entry->type === 'post' ? $entry->primaryCategory()?->id : null;
+        $categories = [$entry->type === 'post' ? $entry->primaryCategory()?->id : null];
+        $target = $change !== null ? ($change->content['shared']['primary_category_id'] ?? null) : null;
+        if ($entry->type === 'post' && is_int($target)) {
+            $categories[] = $target;
+        }
 
         $members = User::query();
-        $this->scopes->whereMayWriteIn($members, $primary);
+        $this->scopes->whereMayWriteIn($members, ...$categories);
 
         return $members->where(function (Builder $members) use ($others, $sends, $authorId): void {
             if ($others !== []) {
