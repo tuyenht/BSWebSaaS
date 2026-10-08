@@ -86,6 +86,12 @@ final readonly class SaveEntryDraft
             Entry::withTrashed()->whereKey($entry->id)->lockForUpdate()->firstOrFail();
             $entry->refresh();
 
+            // Judged again on the row as it is now: someone may have re-filed the post while this
+            // waited, outside the actor's category limits.
+            if (! Gate::forUser($actor)->allows('update', $entry)) {
+                throw new AuthorizationException(__('entries.err_update_forbidden'));
+            }
+
             if ($entry->status !== 'published' || $entry->trashed()) {
                 throw new EntryDraftRejectedException('not_live');
             }
