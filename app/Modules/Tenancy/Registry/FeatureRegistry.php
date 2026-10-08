@@ -41,6 +41,9 @@ final class FeatureRegistry
             // Whether the site may create its own roles (fork a system role or start blank). The
             // six system roles stay available and locked either way.
             'rbac.custom_roles' => ['name' => 'Nhóm quyền tùy chỉnh', 'kind' => 'boolean', 'default' => false, 'scope' => 'site'],
+            // Whether the site's managers may limit a member to some categories. Gates only CHANGING
+            // the limits: limits already set keep applying when the feature is off (fail-closed).
+            'rbac.category_scopes' => ['name' => 'Giới hạn chuyên mục theo thành viên', 'kind' => 'boolean', 'default' => false, 'scope' => 'site'],
         ];
     }
 
