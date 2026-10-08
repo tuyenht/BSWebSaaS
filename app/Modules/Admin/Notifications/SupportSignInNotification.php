@@ -9,6 +9,7 @@ use App\Modules\Audit\Facades\Audit;
 use App\Modules\Notifications\Channels\SiteDatabaseChannel;
 use App\Modules\Notifications\Contracts\ToSiteDatabase;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\MailText;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -69,14 +70,8 @@ final class SupportSignInNotification extends Notification implements ShouldQueu
         return (new MailMessage)
             ->subject(__('notifications.mail.support_sign_in_subject'))
             ->greeting(__('rbac.invitation.mail_greeting'))
-            ->line(__('notifications.mail.support_sign_in_intro', array_map(self::plain(...), $this->facts())))
+            ->line(__('notifications.mail.support_sign_in_intro', array_map(MailText::plain(...), $this->facts())))
             ->line(__('notifications.mail.support_sign_in_action'));
-    }
-
-    /** A name or reason stays text in the mail — never a Markdown link or emphasis. */
-    private static function plain(string $text): string
-    {
-        return (string) preg_replace('/([\\`*_{}\[\]()#+!|<>~-])/', '\\\\$1', $text);
     }
 
     /**

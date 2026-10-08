@@ -7,6 +7,7 @@ namespace App\Modules\Admin\Notifications;
 use App\Modules\Admin\Notifications\Concerns\QueuesTenantMail;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Rbac\Support\RoleLabel;
+use App\Modules\Shared\Support\MailText;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -76,16 +77,16 @@ final class MemberInvitationNotification extends Notification implements ShouldQ
             ->subject(__('rbac.invitation.mail_subject', ['site' => $this->siteName]))
             ->greeting(__('rbac.invitation.mail_greeting'))
             ->line(__('rbac.invitation.mail_intro', [
-                'inviter' => $this->inviterName,
-                'site' => $this->siteName,
+                'inviter' => MailText::plain($this->inviterName),
+                'site' => MailText::plain($this->siteName),
                 'roles' => implode(', ', array_map(
-                    static fn (array $role): string => RoleLabel::forName($role['name'], $role['system']),
+                    static fn (array $role): string => MailText::plain(RoleLabel::forName($role['name'], $role['system'])),
                     $this->roles,
                 )),
             ]));
 
         if ($this->personalMessage !== null) {
-            $mail->line('“'.$this->personalMessage.'”');
+            $mail->line('“'.MailText::plain($this->personalMessage).'”');
         }
 
         return $mail

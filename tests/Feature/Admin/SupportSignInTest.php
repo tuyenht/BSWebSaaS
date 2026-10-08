@@ -444,6 +444,15 @@ it('keeps names and reasons as plain text in the owner mail', function (): void 
     expect($html)->not->toContain('href="https://evil.test"')->not->toContain('<strong>gấp</strong>');
 });
 
+it('shows comparison signs and ampersands in the owner mail as they were typed', function (): void {
+    $owner = supportMember(1, 'owner');
+
+    $html = (string) app(Tenancy::class)->enter(1, fn () => (new SupportSignInNotification('Staff', 'Owner', 'price < 5 & stock > 0', '30/09/2026 21:00'))
+        ->forCurrentSite()->toMail($owner)->render());
+
+    expect($html)->toContain('price &lt; 5 &amp; stock &gt; 0')->not->toContain('&amp;lt;');
+});
+
 it('names a staff member without a name as support staff, never by their email', function (): void {
     $staff = User::factory()->create(['name' => '', 'email' => 'nv@platform.test']);
 

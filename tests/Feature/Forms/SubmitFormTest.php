@@ -175,6 +175,34 @@ it('sets reply-to to the lead email so the recipient replies to the customer', f
         ->and($mail->replyTo[0][1])->toBe('Khách A');
 });
 
+it('shows what a visitor typed as plain text in the lead mail, never as a link, an image or bold type', function (): void {
+    $form = contactForm();
+    $typed = [
+        'name' => 'Khach *A*',
+        'email' => 'khach@example.test',
+        'phone' => '0901-234-567',
+        'message' => '[Click here](https://evil.test) ![x](https://evil.test/a.png) **urgent** 1 < 2 & `code`',
+    ];
+    $submission = app(Tenancy::class)->enter(1, fn () => $form->submissions()->create([
+        'name' => $typed['name'],
+        'email' => $typed['email'],
+        'data' => $typed,
+    ]));
+
+    $html = (string) new NewLeadNotification($submission, $form)->toMail(new AnonymousNotifiable)->render();
+
+    expect($html)
+        ->not->toMatch('/<a[^>]+evil\.test/')
+        ->not->toMatch('/<img[^>]+evil\.test/')
+        ->not->toMatch('/<strong[^>]*>urgent/')
+        ->not->toMatch('/<em[^>]*>A</')
+        ->not->toMatch('/<code[^>]*>code/')
+        // The recipient still reads every character the visitor typed.
+        ->toContain('Khach *A*')
+        ->toContain('0901-234-567')
+        ->toContain('[Click here](https://evil.test) ![x](https://evil.test/a.png) **urgent** 1 &lt; 2 &amp; `code`');
+});
+
 it('does not notify when the form has no recipients', function (): void {
     $form = contactForm(notify: []);
 

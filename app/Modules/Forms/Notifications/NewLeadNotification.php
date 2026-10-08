@@ -5,6 +5,7 @@ namespace App\Modules\Forms\Notifications;
 use App\Modules\Forms\Models\Form;
 use App\Modules\Forms\Models\FormSubmission;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\MailText;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -35,7 +36,7 @@ final class NewLeadNotification extends Notification
         $mail = (new MailMessage)
             ->subject(__('forms.lead_email_subject', ['form' => $formName]))
             ->greeting(Cast::string(config('admin.brand.name')))
-            ->line(__('forms.lead_email_intro', ['form' => $formName]));
+            ->line(__('forms.lead_email_intro', ['form' => MailText::plain($formName)]));
 
         // Reply-To the lead's own address, so a recipient can reply straight to the customer
         // (the From is the platform/tenant sender, which a reply would otherwise hit).
@@ -45,7 +46,8 @@ final class NewLeadNotification extends Notification
         }
 
         foreach ($this->leadLines() as $label => $value) {
-            $mail->line("**{$label}:** {$value}");
+            // What a visitor typed is shown as typed — never as a link, an image or a heading.
+            $mail->line("**{$label}:** ".MailText::plain($value));
         }
 
         return $mail->line(__('forms.lead_email_outro'));
