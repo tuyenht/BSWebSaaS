@@ -14,12 +14,12 @@ Vai trò: **người chuyển prompt và người kiểm bước đầu**. Khôn
 ## Thứ tự lượt
 Chạy lần lượt, mỗi lượt một **chat mới** trong project:
 
-D0-4b → D0-5 → D0-6a → D0-6b → D0-6c → D1-1 → D1-6 → D1-2 → D2-3 → D1-3 → D1-4a → D1-4b → D1-5 → D1-7 → D1-4c → D2-1 → D1-4d → D2-2 → D2-4 → D2-5 → D3-1 → **D0-7** (3 phần, cùng chat) → **7 prompt sửa theo thứ tự D1-1s · D1-6s · D2-5s · D1-2s · D1-3s · D2-1s · D3-1s** (mỗi prompt một **chat mới**, vì chat cũ của 7 lượt đó đã quá dài; gửi như bước 2 và làm như mục "Prompt sửa từ Claude Code") → **⏸ KIỂM TRƯỚC D0-8** (điểm dừng, xem dưới) → **D0-8** (3 phần, cùng chat; owner chốt 07/10) → D3-2 → D4-1 → D4-3 → D4-2 → D5-1 → D5-2
+D0-4b → D0-5 → D0-6a → D0-6b → D0-6c → D1-1 → D1-6 → D1-2 → D2-3 → D1-3 → D1-4a → D1-4b → D1-5 → D1-7 → D1-4c → D2-1 → D1-4d → D2-2 → D2-4 → D2-5 → D3-1 → **D0-7** (3 phần, cùng chat) → **7 prompt sửa theo thứ tự D1-1s · D1-6s · D2-5s · D1-2s · D1-3s · D2-1s · D3-1s** (mỗi prompt một **chat mới**, vì chat cũ của 7 lượt đó đã quá dài; gửi như bước 2 và làm như mục "Prompt sửa từ Claude Code") → **⏸ KIỂM TRƯỚC D0-8** (điểm dừng, xem dưới) → **D1-1t** (`prompts/fixes/D1-1t-*.md`, **chat mới**, owner duyệt 08/10) → **D0-8** (3 phần, cùng chat; owner chốt 07/10) → D3-2 → D4-1 → D4-3 → D4-2 → D5-1 → D5-2
 
 Bạn luôn chạy **một chat một lúc**, nên mọi lượt đều là "chạy một mình": đoạn "CHẠY SONG SONG …" trong prompt **không áp** (prompt tự ghi "chạy một mình thì bỏ qua đoạn này"). Đoạn "Đầu lượt — gộp luồng phụ" sẽ không thấy mục cần gộp và tự bỏ qua. Vẫn dán nguyên văn cả hai đoạn, không xóa.
 
-**⏸ KIỂM TRƯỚC D0-8** (owner chốt 07/10 22:0x): D0-8 sửa cùng tệp với 7 prompt sửa, nên Claude Code kiểm 7 zip sửa và gộp lỗi còn sót vào D0-8 trước khi D0-8 chạy.
-- Tới bước này (7 prompt sửa đã có khối log ĐẠT): mở `prompts/D0-8-*.md`. Có dòng bắt đầu bằng `Đã kiểm 7 prompt sửa:` thì ghi 1 dòng log "Kiểm trước D0-8: đã có" rồi chạy D0-8 như thường.
+**⏸ KIỂM TRƯỚC D0-8** (owner chốt 07/10 22:0x): D0-8 sửa cùng tệp với 7 prompt sửa, nên Claude Code kiểm 7 zip sửa, gộp lỗi còn sót vào D1-1t / D0-8, rồi mới cho chạy tiếp.
+- Tới bước này (7 prompt sửa đã có khối log ĐẠT): mở `prompts/D0-8-*.md`. Có dòng bắt đầu bằng `Đã kiểm 7 prompt sửa:` thì ghi 1 dòng log "Kiểm trước D0-8: đã có" rồi chạy tiếp theo thứ tự: D1-1t (chat mới, như mục "Prompt sửa từ Claude Code") rồi D0-8.
 - Chưa có dòng đó: ghi khối log `## Kiểm trước D0-8 · <HH:MM dd/mm> · DỪNG` với lý do "chờ Claude Code kiểm 7 zip sửa", báo owner một câu "7 prompt sửa xong — chờ Claude Code kiểm trước D0-8", rồi dừng. Không mở chat D0-8.
 - Lần chạy sau: khối DỪNG này được gỡ khi tệp D0-8 đã có dòng `Đã kiểm 7 prompt sửa:`. Dòng đó do phiên Claude Code chính thêm ở DÒNG 1 của tệp, trên `═══ BỐI CẢNH CHUNG`, nên không bị dán vào chat (bước 2 dán từ `═══ BỐI CẢNH CHUNG`). Đây là ngoại lệ của bước 5: khối DỪNG này không chờ owner chốt.
 
