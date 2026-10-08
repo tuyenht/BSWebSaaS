@@ -133,6 +133,64 @@ it('blocks an IPv4-mapped IPv6 literal smuggling a private address', function ()
     Http::assertNothingSent();
 });
 
+it('blocks addresses that are neither private nor public, and IPv6 forms that carry one', function (string $url): void {
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(ExternalImageFetcher::class)->handle($url, 'An Vinh')))
+        ->toThrow(MediaRejectedException::class, 'private_address');
+    Http::assertNothingSent();
+})->with([
+    'carrier-grade NAT' => 'http://100.64.0.1/x.jpg',
+    'cloud metadata in the shared range' => 'http://100.100.100.200/x.jpg',
+    'protocol assignments' => 'http://192.0.0.8/x.jpg',
+    'benchmarking' => 'http://198.18.0.1/x.jpg',
+    'documentation' => 'http://203.0.113.9/x.jpg',
+    'NAT64 carrying loopback' => 'http://[64:ff9b::7f00:1]/x.jpg',
+    'NAT64 carrying cloud metadata' => 'http://[64:ff9b::a9fe:a9fe]/x.jpg',
+    '6to4 carrying loopback' => 'http://[2002:7f00:1::]/x.jpg',
+]);
+
+it('still fetches from a public IPv6 literal', function (): void {
+    $url = 'https://[2606:4700:4700::1111]/anh.png';
+    Http::fake([$url => Http::response(externalPngBytes(), 200)]);
+
+    $result = app(Tenancy::class)->enter(1, fn (): array => app(ExternalImageFetcher::class)->handle($url, 'An Vinh'));
+
+    expect($result['mime'])->toBe('image/png');
+});
+
+it('refuses a host cURL would read as an IPv4 number, even when DNS vouches for it', function (string $host): void {
+    // cURL connects to the number itself (0x7f.0.0.1 = loopback) and ignores the pinned answer,
+    // so a resolver answering for such a name — a wildcard search domain — must not get a say.
+    $fetcher = new class(app(CurrentSite::class)) extends ExternalImageFetcher
+    {
+        #[Override]
+        protected function resolveHostIps(string $host): array
+        {
+            return ['93.184.216.34']; // a public answer: the case the IP check alone would pass
+        }
+    };
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => $fetcher->handle("http://{$host}/x.jpg", 'An Vinh')))
+        ->toThrow(MediaRejectedException::class, 'url_invalid');
+    Http::assertNothingSent();
+})->with(['0x7f.0.0.1', '0X7F.0.0.1', '2130706433', '127.1', '0177.0.0.1', '0x7f000001', '127.0.0.1.', '169.254.169.254.']);
+
+it('still fetches from an ordinary hostname that has digits in it', function (): void {
+    $url = 'https://cdn2.images123.example.com/anh.png';
+    Http::fake([$url => Http::response(externalPngBytes(), 200)]);
+    $fetcher = new class(app(CurrentSite::class)) extends ExternalImageFetcher
+    {
+        #[Override]
+        protected function resolveHostIps(string $host): array
+        {
+            return ['93.184.216.34'];
+        }
+    };
+
+    $result = app(Tenancy::class)->enter(1, fn (): array => $fetcher->handle($url, 'An Vinh'));
+
+    expect($result['mime'])->toBe('image/png');
+});
+
 it('answers a link that cannot be reached as the link\'s problem, not a server error', function (): void {
     Http::fake([PUBLIC_IMG => fn () => throw new ConnectionException('cURL error 28: Operation timed out')]);
 
