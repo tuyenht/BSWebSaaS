@@ -61,3 +61,28 @@ it('files entries under categories only through the writer that applies category
 
     expect($offenders)->toBe([]);
 });
+
+/*
+ * The same writer, reached around assignCategories(): writing the entries' taxonomy pivot directly
+ * (sync, attach, detach…) would file a post without the category limits. Only the trait's own
+ * sync() and the copy's facet terms (never a category) may.
+ */
+it('writes the entry taxonomy pivot directly only in the known places', function (): void {
+    $allowed = [
+        'app/Modules/Cms/Concerns/HasCategoryTaxonomies.php',   // assignCategories() itself
+        'app/Modules/Cms/Actions/DuplicateEntry.php',           // copies facet terms only (positions ≥ FACET_POSITION_BASE)
+    ];
+
+    $offenders = [];
+
+    foreach (Finder::create()->files()->in(app_path())->name('*.php') as $file) {
+        if (preg_match('/->(taxonomies|sectors)\(\)\s*->\s*(sync|syncWithoutDetaching|syncWithPivotValues|attach|detach|toggle|updateExistingPivot)\(|\$relation->sync\(/', $file->getContents()) === 1) {
+            $rel = str_replace(base_path().'/', '', (string) $file->getRealPath());
+            if (! in_array($rel, $allowed, true)) {
+                $offenders[] = $rel;
+            }
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});
