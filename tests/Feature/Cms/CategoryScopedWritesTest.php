@@ -127,6 +127,21 @@ function cwCategoriesOf(Entry $entry): array
         ->where('entry_id', $entry->id)->where('position', '<', Entry::FACET_POSITION_BASE)->orderBy('position')->pluck('taxonomy_id')->all()));
 }
 
+/**
+ * The next time the entry's row is locked, re-file it under $category first — as if someone else
+ * did it while the caller waited for the lock.
+ */
+function cwRefileOnLock(Entry $entry, Taxonomy $category): void
+{
+    $done = false;
+    DB::listen(function ($query) use (&$done, $entry, $category): void {
+        if (! $done && str_contains($query->sql, 'for update') && str_contains($query->sql, '"entries"')) {
+            $done = true;
+            DB::table('entry_taxonomies')->where('entry_id', $entry->id)->where('position', 0)->update(['taxonomy_id' => $category->id]);
+        }
+    });
+}
+
 function cwStatus(Entry $entry): ?string
 {
     return app(Tenancy::class)->enter(1, fn (): ?string => Entry::withTrashed()->whereKey($entry->id)->value('status'));
@@ -496,10 +511,11 @@ it('lists posts for a limited member on a flat query budget', function (): void 
     $unlimited = $list($chief);
     $limited = $list($lan);
 
-    // The primary categories load with the rows; a limited member adds only their limits, their
-    // role level and the categories without a path — never a query per row.
-    expect($limited)->toBeLessThanOrEqual($unlimited + 4)
-        ->and($unlimited)->toBeLessThanOrEqual(30);
+    // A member without limits pays nothing for them (the list learns it from its own query). A
+    // limited one adds a flat five — their limits, their role level, the rows' primary categories,
+    // the names in the refusal sentence and the categories without a path — never one per row.
+    expect($unlimited)->toBeLessThanOrEqual(16)
+        ->and($limited)->toBeLessThanOrEqual($unlimited + 5);
 });
 
 it('opens a post in the editor for a limited member on a flat query budget', function (): void {
@@ -520,4 +536,183 @@ it('opens a post in the editor for a limited member on a flat query budget', fun
     $limited = $open($lan);
 
     expect($limited)->toBeLessThanOrEqual($unlimited + 4);
+});
+
+// ── Review follow-ups ─────────────────────────────────────────────────────────────────────────
+
+it('clears the workflow stage when a post in a governed sub-category goes back to draft in bulk, limited or not', function (): void {
+    [$jobs, $it] = cwTree();
+    cwSection('tuyen-dung', $jobs);
+    app(Tenancy::class)->enter(1, fn () => app(InstantiateWorkflow::class)->handle('admin_approval', 'tuyen-dung', active: true));
+    $lan = cwMember('editor');
+    $chief = cwMember('editor');
+    cwLimit($lan, $jobs);
+
+    $stages = [];
+    foreach ([$lan, $chief] as $who) {
+        $post = cwEntry($who, 'published', $it);
+        app(Tenancy::class)->enter(1, fn () => Entry::query()->whereKey($post->id)->update(['workflow_state' => 'published']));
+        app()->forgetScopedInstances();   // a fresh request: nothing resolved for this category yet
+
+        app(Tenancy::class)->enter(1, fn () => Livewire::actingAs($who)->test(Index::class, ['section' => 'tuyen-dung'])
+            ->set('selected', [$post->ulid])->call('bulkDraft'));
+
+        $stages[] = app(Tenancy::class)->enter(1, fn (): array => Entry::query()->whereKey($post->id)->first(['status', 'workflow_state'])?->only(['status', 'workflow_state']) ?? []);
+    }
+
+    expect($stages)->toBe([['status' => 'draft', 'workflow_state' => null], ['status' => 'draft', 'workflow_state' => null]]);
+});
+
+it('lets a category move change a limited member\'s reach only for someone who could set that limit', function (): void {
+    [$jobs, $it, $news] = cwTree();
+    $events = cwCategory('Sự kiện');
+    $lan = cwMember('author');
+    cwLimit($lan, $jobs);
+    $manager = cwMember('editor');   // taxonomies.manage, no users.manage
+    $owner = cwMember('owner');
+
+    $this->actingAs($manager);
+    $into = cwRefusal(fn () => app(MoveTaxonomy::class)->handle($news, $jobs, 0));     // Tin tức would come under Lan's limit
+    $outOf = cwRefusal(fn () => app(MoveTaxonomy::class)->handle($it, null, 0));       // Kỹ thuật would leave it
+    $nobody = cwRefusal(fn () => app(MoveTaxonomy::class)->handle($events, $news, 0)); // nobody's reach changes
+
+    $this->actingAs($owner);
+    $byOwner = cwRefusal(fn () => app(MoveTaxonomy::class)->handle($news, $jobs, 0));
+
+    expect([$into, $outOf, $nobody, $byOwner])->toBe(['changes_member_limits', 'changes_member_limits', null, null])
+        ->and(app(Tenancy::class)->enter(1, fn () => Taxonomy::query()->whereKey($news->id)->value('parent_id')))->toBe($jobs->id);
+});
+
+it('adds no query to the posts list of a member who is not limited', function (): void {
+    [, , $news] = cwTree();
+    cwSection('tin-tuc', $news);
+    $chief = cwMember('editor');
+    foreach (range(1, 4) as $i) {
+        cwEntry($chief, 'draft', $news);
+    }
+    $this->actingAs($chief)->get('http://a.test/admin/content?section=tin-tuc')->assertOk();   // warm the caches
+    app()->forgetScopedInstances();
+
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+    $this->actingAs($chief)->get('http://a.test/admin/content?section=tin-tuc')->assertOk();
+    $queries = array_map(fn (array $q): string => $q['query'], DB::getQueryLog());
+    DB::disableQueryLog();
+
+    // Neither the reader's own query nor the rows' primary categories: the list learns that this
+    // member has no limits from its own entries query.
+    expect(array_values(array_filter($queries, fn (string $q): bool => str_contains($q, 'root_id') || str_contains($q, '"taxonomies"."path"'))))->toBe([])
+        ->and(count($queries))->toBeLessThanOrEqual(19);
+});
+
+it('re-checks the limits on the locked row before saving a pending change', function (): void {
+    [$jobs, , $news] = cwTree();
+    $lan = cwMember('author');
+    cwLimit($lan, $jobs);
+    $post = cwEntry($lan, 'published', $jobs);
+    app(Tenancy::class)->enter(1, fn () => app(SaveEntryDraft::class)->handle($post, $lan, 'vi', ['title' => 'Lần một']));
+
+    cwRefileOnLock($post, $news);   // someone re-files the post while this save waits for the row
+
+    expect(cwRefusal(fn () => app(SaveEntryDraft::class)->handle(Entry::query()->findOrFail($post->id), $lan, 'vi', ['title' => 'Lần hai'])))->toBe('denied')
+        ->and(app(Tenancy::class)->enter(1, fn () => EntryDraft::query()->sole()->content['locales']['vi']['title']))->toBe('Lần một');
+});
+
+it('re-checks the limits on the locked row before putting a change online', function (): void {
+    [$jobs, $it, $news] = cwTree();
+    $author = cwMember('author');
+    $lan = cwMember('editor');
+    cwLimit($lan, $jobs);
+    $post = cwEntry($author, 'published', $jobs);
+    $change = app(Tenancy::class)->enter(1, fn (): EntryDraft => app(SaveEntryDraft::class)->handle($post, $author, 'vi', ['title' => 'Mới'], ['primary_category_id' => $it->id]));
+
+    cwRefileOnLock($post, $news);
+
+    expect(cwRefusal(fn () => app(ApplyEntryDraft::class)->handle(Entry::query()->findOrFail($post->id), $lan, $change->version())))->toBe('denied')
+        ->and(cwCategoriesOf($post))->toBe([$jobs->id]);   // refused whole: the change's category was not written
+});
+
+it('lists as hand-off candidates for a pending change only members whose limits reach its new category too', function (): void {
+    [$jobs, $it] = cwTree();
+    $hr = cwCategory('Nhân sự', $jobs);
+    cwSection('tuyen-dung', $jobs);
+    app(Tenancy::class)->enter(1, fn () => app(InstantiateWorkflow::class)->handle('admin_approval', 'tuyen-dung', active: true));
+    $author = cwMember('author');
+    $itOnly = cwMember('editor');
+    $chief = cwMember('editor');
+    cwLimit($itOnly, $it);
+    $post = cwEntry($author, 'published', $it);
+
+    $ids = app(Tenancy::class)->enter(1, function () use ($post, $author, $hr): array {
+        $change = app(SaveEntryDraft::class)->handle($post, $author, 'vi', ['title' => 'Sang nhân sự'], ['primary_category_id' => $hr->id]);
+        $resolver = app(EntryWorkflowResolver::class);
+        $entry = Entry::query()->findOrFail($post->id);
+        $workflow = $resolver->forEntry($entry);
+
+        return $resolver->membersWhoMayApply($workflow->transitions->where('key', 'approve'), $entry, $change)?->pluck('id')->all() ?? [];
+    });
+
+    expect($ids)->toContain($chief->id)->not->toContain($itOnly->id);
+});
+
+it('refuses a limited member every list action on a post outside their limits, and allows an unlimited one', function (): void {
+    [$jobs, , $news] = cwTree();
+    cwSection('tin-tuc', $news);
+    $lan = cwMember('editor');
+    $chief = cwMember('editor');
+    cwLimit($lan, $jobs);
+
+    $run = function (User $who, int $answer) use ($news): array {
+        $draft = cwEntry(null, 'draft', $news);
+        $live = cwEntry(null, 'published', $news);
+        $quick = cwEntry(null, 'draft', $news);
+        $binned = cwEntry(null, 'draft', $news);
+        app(Tenancy::class)->enter(1, fn () => Entry::query()->whereKey($binned->id)->first()?->delete());
+
+        return app(Tenancy::class)->enter(1, function () use ($who, $answer, $draft, $live, $quick, $binned): array {
+            $list = fn () => Livewire::actingAs($who)->test(Index::class, ['section' => 'tin-tuc']);
+            $list()->set('selected', [$draft->ulid])->call('bulkPublish');
+            $list()->set('selected', [$live->ulid])->call('bulkDraft');
+            $list()->call('saveTitle', $quick->ulid, 'Tên mới')->assertStatus($answer);
+            $list()->set('tab', 'trash')->call('restore', $binned->ulid)->assertStatus($answer);
+
+            return [
+                Entry::query()->whereKey($draft->id)->value('status'),
+                Entry::query()->whereKey($live->id)->value('status'),
+                Entry::query()->whereKey($quick->id)->first()?->translationFor('vi')?->title === 'Tên mới',
+                Entry::withTrashed()->whereKey($binned->id)->first()?->trashed(),
+            ];
+        });
+    };
+
+    expect($run($lan, 403))->toBe(['draft', 'published', false, true])
+        ->and($run($chief, 200))->toBe(['published', 'draft', true, false]);
+});
+
+it('takes each member\'s limits lock before moving their limits onto a merge target', function (): void {
+    [$jobs, $it] = cwTree();
+    $lan = cwMember('author');
+    cwLimit($lan, $it);
+    $this->actingAs(cwMember('owner'));
+
+    $locks = [];
+    DB::listen(function ($query) use (&$locks): void {
+        if (str_contains($query->sql, 'pg_advisory_xact_lock')) {
+            $locks[] = (string) ($query->bindings[0] ?? '');
+        }
+    });
+
+    expect(cwRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs)))->toBeNull()
+        ->and($locks)->toContain('category_scopes:1:'.$lan->id);
+});
+
+it('does not count members who are never limited against someone merging their old limit', function (): void {
+    [$jobs, $it] = cwTree();
+    $lan = cwMember('author');
+    $otherAdmin = cwMember('admin');
+    cwLimit($lan, $it);
+    cwLimit($otherAdmin, $it);   // left over, ignored: an admin is never limited
+    $this->actingAs(cwMember('admin'));
+
+    expect(cwRefusal(fn () => app(DeleteTaxonomy::class)->handle($it, CategoryItemsOnDelete::Reassign, $jobs)))->toBeNull();
 });
