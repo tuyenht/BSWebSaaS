@@ -10,7 +10,12 @@
  *
  * ROWS below say which token each piece of the UI paints with, by the standard names of
  * docs/notes/design-tokens.md (the old names Blade may still use are one-way aliases of these) —
- * when a component switches tokens, update its row here in the same change. The storefront's
+ * when a component switches tokens, update its row here in the same change.
+ *
+ * The admin brand comes from ONE table, resources/admin-brands.json (the admin layouts print the
+ * platform's row over the app.css @theme default at runtime). Every row below is measured for EVERY
+ * colour of that table, in both schemes; the full table is printed for the default colour and a
+ * summary (worst ratio per colour) for all of them. The storefront's
  * --color-primary-text / --color-primary-on-dark / --color-on-primary are computed in PHP
  * (ThemeResolver + ReadableColor, pinned by their Pest tests); the storefront section mirrors that.
  *
@@ -81,6 +86,14 @@ const rootRules = allRules.filter((rule) => rule.selector === ':root');
 const selectorList = (selector) => selector.split(',').map((part) => part.trim());
 const overrideRules = allRules.filter((rule) => selectorList(rule.selector).every((part) => part.startsWith(':root[') && !part.includes(' ')));
 
+// The admin brand table: each colour's row is what AdminBrandColor prints into :root at runtime.
+const BRANDS = JSON.parse(read('resources/admin-brands.json')).brands;
+const brandScope = (brand) => ({
+    '--color-primary-base': brand.brand,
+    '--color-primary': brand.solid,
+    '--color-primary-text': brand.ink,
+});
+
 const overrideSelectors = (state) => {
     const active = [];
     if (state.scheme === 'dark') active.push(":root[data-theme='dark']");
@@ -97,6 +110,7 @@ function scopeFor(state) {
     });
     themeRules.forEach(apply);
     rootRules.forEach(apply);
+    if (state.brand) Object.assign(scope, brandScope(state.brand)); // the runtime :root block
     const active = overrideSelectors(state);
     overrideRules.filter((rule) => selectorList(rule.selector).some((part) => active.includes(part))).forEach(apply); // source order
     if (state.zone) {
@@ -303,6 +317,11 @@ const ROWS = [
     { item: 'Primary làm chữ/viền', role: 'Tab đang chọn — chữ + gạch chân', fg: '--color-primary-text', bg: ['--color-surface'], min: 4.5 },
     { item: 'Primary làm chữ/viền', role: 'Ô nhập — viền khi focus', fg: '--color-primary-text', bg: ['--color-surface'], min: 3 },
 
+    // The brand fill and the brand ink where the approved brand table measures them.
+    { item: 'Primary', role: 'Nút chính / badge — chữ trên nền --color-primary', fg: '--color-on-primary', bg: ['--color-primary'], min: 4.5 },
+    { item: 'Primary làm chữ/viền', role: 'Link — trên thẻ và nền trang', fg: '--color-primary-text', bgs: [['--color-surface'], ['--color-bg']], min: 4.5 },
+    { item: 'Primary làm chữ/viền', role: 'Mục đang chọn (nền brand 10%) — trên thẻ và nền trang', fg: '--color-primary-text', bgs: [['--color-surface', '--color-primary-soft'], ['--color-bg', '--color-primary-soft']], min: 4.5 },
+
     // Secondary text.
     { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên thẻ', fg: '--color-text-muted', bg: ['--color-surface'], min: 4.5 },
     { item: 'Chữ phụ', role: 'Chữ phụ (muted) trên nền trang', fg: '--color-text-muted', bg: ['--color-bg'], min: 4.5 },
@@ -363,6 +382,11 @@ const ROWS = [
     { item: 'Topbar', role: 'Dòng vai trò + link platform — topbar tối (navy)', state: { topbar: 'dark' }, fg: '--color-topbar-fg', bg: ['--color-topbar-bg'], min: 4.5 },
     { item: 'Topbar', role: 'Vòng focus icon (ring-topbar-fg) — topbar sáng', fg: '--color-topbar-fg', bg: ['--color-topbar-bg'], min: 3 },
     { item: 'Topbar', role: 'Vòng focus icon (ring-topbar-fg) — topbar tối (navy)', state: { topbar: 'dark' }, fg: '--color-topbar-fg', bg: ['--color-topbar-bg'], min: 3 },
+    { item: 'Topbar', role: 'Topbar tối — tên người dùng trên khối người dùng', state: { topbar: 'dark' }, fg: '--color-topbar-fg-strong', bg: ['--color-topbar-bg', '--color-topbar-user-block'], min: 4.5 },
+    { item: 'Topbar', role: 'Topbar tối — chữ cái avatar', state: { topbar: 'dark' }, fg: '--color-topbar-user-fg', bg: ['--color-topbar-bg', '--color-topbar-user-block', '--color-topbar-user'], min: 4.5 },
+    { item: 'Topbar', role: 'Topbar tối — chữ ô tìm (cả khi focus)', state: { topbar: 'dark' }, fg: '--color-topbar-search-fg', bgs: [['--color-topbar-bg', '--color-topbar-search'], ['--color-topbar-bg', '--color-topbar-search-focus']], min: 4.5 },
+    { item: 'Topbar', role: 'Topbar tối — viền ô tìm khi focus', state: { topbar: 'dark' }, fg: '--color-topbar-search-accent', bg: ['--color-topbar-bg', '--color-topbar-search-focus'], min: 3 },
+    { item: 'Topbar', role: 'Topbar sáng — chữ ô tìm', fg: '--color-topbar-search-fg', bg: ['--color-topbar-bg', '--color-topbar-search'], min: 4.5 },
 
     // Placeholder (input) — now the muted role token, on the card and the page.
     { item: 'Chữ phụ', role: 'Placeholder ô nhập (là chữ)', fg: '--color-placeholder', bgs: [['--color-surface'], ['--color-bg']], min: 4.5 },
@@ -441,10 +465,31 @@ const lines = [
     '|---|---|---|---|---|',
 ];
 
+const [defaultBrand] = BRANDS;
 for (const row of ROWS) {
-    const results = both.map((scheme) => (row.fg === null ? null : measure(row, { scheme })));
-    if (results.some((result) => !passes(result, row.min))) failures++;
+    const results = both.map((scheme) => (row.fg === null ? null : measure(row, { scheme, brand: defaultBrand })));
     lines.push(`| ${row.item} | ${row.role} | ${row.min} | ${cell(results[0], row.min, row.none)} | ${cell(results[1], row.min, row.none)} |`);
+}
+
+// Every colour of the brand table, every row, both schemes (the default colour included: its
+// failures are counted here, once).
+lines.push('', `**Màu thương hiệu trang quản trị** — mọi cặp ở trên, đo lại cho từng màu của \`resources/admin-brands.json\` (${BRANDS.length} màu). Ô = tỉ lệ thấp nhất trong các cặp chữ (≥ 4.5) và các cặp viền / vòng focus / icon (≥ 3).`, '');
+lines.push('| Màu | `--color-primary` (solid) | `--color-primary-text` sáng | chữ — Sáng | viền/icon — Sáng | chữ — Tối | viền/icon — Tối | Cặp chưa đạt |', '|---|---|---|---|---|---|---|---|');
+for (const brand of BRANDS) {
+    const worst = { light: { 4.5: null, 3: null }, dark: { 4.5: null, 3: null } };
+    const failed = [];
+    for (const row of ROWS) {
+        for (const scheme of both) {
+            const result = row.fg === null ? null : measure(row, { scheme, brand });
+            if (!passes(result, row.min)) failed.push(`${row.role} (${scheme === 'light' ? 'Sáng' : 'Tối'}${result ? ` ${shown(result.value).toFixed(2)}` : ''})`);
+            if (result === null) continue;
+            const bucket = row.min >= 4.5 ? 4.5 : 3;
+            if (!worst[scheme][bucket] || result.value < worst[scheme][bucket].value) worst[scheme][bucket] = result;
+        }
+    }
+    failures += failed.length;
+    const ratioCell = (result, min) => (result ? `${passes(result, min) ? '✅' : '❌'} ${shown(result.value).toFixed(2)}` : '—');
+    lines.push(`| ${brand.name} (\`${brand.key}\`) | \`${brand.solid}\` | \`${brand.ink}\` | ${ratioCell(worst.light[4.5], 4.5)} | ${ratioCell(worst.light[3], 3)} | ${ratioCell(worst.dark[4.5], 4.5)} | ${ratioCell(worst.dark[3], 3)} | ${failed.length ? failed.join('; ') : '0'} |`);
 }
 
 lines.push('', `**Storefront — chữ màu thương hiệu** (\`--color-primary-text\` cho chữ trên nền sáng: thẻ = \`--color-surface\`, nền trang = \`color-mix(in srgb, --surface ${pageShare * 100}%, --ink)\`; \`--color-primary-on-dark\` cho chữ trên nền tối \`--ink\`: footer, menu con, CTA phụ; \`--color-on-primary\` cho chữ trên nền \`--color-primary\`. Tên cũ \`--primary-text\` · \`--primary-on-ink\` mang đúng giá trị đó.)`, '');
