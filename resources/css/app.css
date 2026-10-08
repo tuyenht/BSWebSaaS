@@ -20,6 +20,7 @@
  | roles, tier 3 component zones. The values here are the light look; admin-chrome.css re-sets the
  | NEW names for the dark scheme, the topbar/sidebar presets and zone overrides. The storefront
  | loads its own stylesheet (storefront.css) with per-site values, so nothing here leaks there.
+ | The neutrals are the approved "Bảo Sơn Hoàng gia" look (docs/design-source/admin-base.css).
  | The old names are one-way aliases at the end of the block ("Bí danh — sẽ gỡ").
  */
 @theme {
@@ -47,32 +48,41 @@
     --color-gray-900: #212529;
 
     /* ---- Tier 2 · roles (the dark scheme re-sets them in admin-chrome.css) ---------------- */
-    --color-bg: #f3f3f9;                         /* page background */
+    --color-bg: #f4f5fa;                         /* page background */
     --color-surface: #ffffff;                    /* card/popover/panel bg */
-    --color-surface-hover: #f3f6f9;              /* item hover / soft fill on a surface (gray-100) */
+    --color-surface-hover: #f1f3f9;              /* item hover / soft fill on a surface */
     --color-surface-muted: oklch(98.5% 0.002 247.839); /* zebra rows, muted panels (gray-50) */
-    --color-border: #eff2f7;                     /* generic divider (gray-200) */
-    --color-border-strong: #e9ebec;              /* emphasized rules (gray-300) — decorative, not a field edge */
-    --color-border-input: #878a99;               /* form-field edge — 3:1 against the field and the page
-                                                    (WCAG 1.4.11): 3.43 white · 3.10 page bg (gray-600) */
+    --color-border: #e9ecf4;                     /* generic divider */
+    --color-border-strong: #e3e7f0;              /* emphasized rules — decorative, not a field edge */
+    --color-border-input: #878d9f;               /* form-field edge — 3:1 against the field and the page
+                                                    (WCAG 1.4.11): 3.31 white · 3.04 page bg. The design's
+                                                    #8a90a2 reads 2.92 on the page, so one step darker. */
     --color-border-soft: #f3f6f9;                /* hairline list dividers (gray-100) */
-    --color-text-strong: #343a40;                /* page/card/section headings (gray-800) */
-    --color-text: #495057;                       /* base text (gray-700) */
-    --color-text-muted: #6b6e7f;                 /* secondary text a reader needs — breadcrumb, footer,
-                                                    unselected tab, column header · 5.04 on white, 4.56 on
-                                                    the page bg (#6c6f80 misses there: 4.4988) */
+    --color-text-strong: #1f2b4d;                /* page/card/section headings · 13.9 on white */
+    --color-text: #3c4765;                       /* base text · 9.2 on white */
+    --color-text-muted: #5b6275;                 /* secondary text a reader needs — breadcrumb, footer,
+                                                    unselected tab, column header · 6.1 on white, 5.5 on
+                                                    the page bg */
     --color-text-faint: #adb5bd;                 /* decorative detail only, never text a reader needs
                                                     (gray-500 · 2.07 on white) */
     --color-placeholder: var(--color-text-muted); /* placeholder is text → reuse muted (>=4.5); entered text stays #495057 */
     --color-icon-ghost: #e9ebec;                 /* decorative/empty-state glyphs — WCAG-exempt (gray-300) */
 
-    /* Brand. --color-primary is the FILL (buttons, badges) under --color-on-primary. Wherever the
-       brand is INK — text, border, focus ring — use --color-primary-text: the dark scheme re-sets
-       it, never the fill (#405189 on the dark surface #292e33 reads 1.8:1). */
-    --color-primary: #405189;
+    /* Brand — ONE source: resources/admin-brands.json. These three are only the BUILD-TIME
+       default (its first row, "bao-son"); the admin layouts print the platform's row over them in
+       a :root block at runtime (AdminBrandColor), with the --color-brand-50…900 palette.
+       --color-primary-base is the hue for tints, --color-primary the FILL (buttons, badges) under
+       --color-on-primary. Wherever the brand is INK — text, border, focus ring — use
+       --color-primary-text: the dark scheme re-sets it, never the fill (a dark fill on the dark
+       surface would read under 2:1). */
+    --color-primary-base: #2050a0;
+    --color-primary: #2050a0;
+    --color-primary-text: #2050a0;
     --color-on-primary: #ffffff;
-    --color-primary-text: var(--color-primary);
-    --color-primary-soft: color-mix(in oklab, var(--color-primary) 10%, transparent);
+    --color-primary-soft: color-mix(in oklab, var(--color-primary-base) 10%, transparent);
+    /* The brand as ink on a dark surface (the dark scheme's --color-primary-text) — the approved
+       rule of the brand table, derived from the base hue in CSS. */
+    --color-primary-on-dark: color-mix(in oklab, var(--color-primary-base) 38%, #e6eeff);
     --color-focus: var(--color-primary-text);     /* keyboard focus ring (:focus-visible below) */
 
     /* Status — the same hue and chroma (OKLCH), lightness moved until the pair clears WCAG AA.
@@ -97,26 +107,27 @@
     --color-secondary-text: #2f69d4;              /* text/soft/outline · 4.65 page · 4.55 soft tint (dark step in admin-chrome) */
 
     /* ---- Tier 3 · component zones (presets and the dark scheme re-set them in admin-chrome.css)
-       Sidebar default = the navy preset (data-sidebar="dark"). */
-    --color-sidebar-bg: #405189;                  /* white text 7.6 clears AA with room */
-    --color-sidebar-fg: rgb(255 255 255 / 0.85);  /* 6.05 on the navy. The current page is told apart by more
+       Sidebar default = the dark preset (data-sidebar="dark"): the brand fill deepened towards
+       night navy, as the approved design paints it. */
+    --color-sidebar-bg: color-mix(in srgb, var(--color-primary) 72%, #0b1d45); /* white text >= 6.8 for every table colour */
+    --color-sidebar-fg: rgb(255 255 255 / 0.85);  /* >= 5.9 on it. The current page is told apart by more
                                                      than color: white ink + the active bg + an inset bar
                                                      (layouts/app.blade.php) + aria-current. */
     --color-sidebar-fg-hover: #ffffff;
     --color-sidebar-fg-active: #ffffff;
     --color-sidebar-hover: rgb(255 255 255 / 0.10); /* also the brand-initials chip */
     --color-sidebar-active: rgb(255 255 255 / 0.15); /* current-page row · white on it 5.38 */
-    --color-sidebar-title: rgb(255 255 255 / 0.72); /* group titles are text · 4.86 on the navy (>=4.5) */
+    --color-sidebar-title: rgb(255 255 255 / 0.72); /* group titles are text · >= 5.1 on it (>=4.5) */
     --color-sidebar-brand: #ffffff;               /* text brand */
     --color-topbar-bg: #ffffff;
-    --color-topbar-border: #e9ebec;
-    --color-topbar-fg: var(--color-text-muted);   /* icon buttons + role line + platform nav links · 5.04 */
-    --color-topbar-fg-strong: #495057;            /* user name, search text */
-    --color-topbar-fg-hover: #212529;             /* platform nav link hover text */
+    --color-topbar-border: var(--color-border);
+    --color-topbar-fg: var(--color-text-muted);   /* icon buttons + role line + platform nav links · 6.1 */
+    --color-topbar-fg-strong: var(--color-text);  /* user name, search text */
+    --color-topbar-fg-hover: var(--color-text-strong); /* platform nav link hover text */
     --color-topbar-hover: #f3f6f9;                /* item hover bg */
-    --color-topbar-brand: #343a40;                /* platform console brand name */
+    --color-topbar-brand: var(--color-text-strong); /* platform console brand name */
     --color-topbar-search: #f3f3f9;               /* clearly contrasts the white topbar (owner 06/07) */
-    --color-topbar-search-fg: #495057;
+    --color-topbar-search-fg: var(--color-text);
     --color-topbar-search-border: #f3f3f9;        /* borderless search field — the border blends into the fill */
     --color-topbar-search-placeholder: #878a99;   /* placeholder + magnifier readable on the gray fill */
     --color-topbar-search-focus: #ffffff;         /* the field brightens on focus */

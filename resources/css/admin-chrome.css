@@ -26,8 +26,8 @@
 
     /* ---- Focus ring ★ (flip axis: the scheme, through --color-primary-text) ---
        One keyboard-focus indicator for the whole admin (app.css :focus-visible): a 2px outline
-       2px off the element, in --color-focus — navy in light, #96a1c0 in dark. A zone painted in
-       navy or near-black re-points --color-focus to its own ink (see .admin-sidebar). Kept as
+       2px off the element, in --color-focus — the brand ink, light or dark. A zone painted in the
+       brand or near-black re-points --color-focus to its own ink (see .admin-sidebar). Kept as
        three parts: a shorthand var would resolve on :root and freeze the root color. */
     --focus-ring-width: 2px;
     --focus-ring-offset: 2px;
@@ -52,35 +52,36 @@
  | so an explicit topbar/sidebar variant beats the scheme's zone values.
  | AA (measured, WCAG): text ≥4.5 · icons/11px micro-labels ≥3.0. Deviations
  | from the Velzon reference values are AA bumps, noted `vz-ref:`.
- | The default dark sidebar (#405189 navy) is AA-clean: item white/.85 = 6.05,
- | title white/.60 = 3.9; so are the gradient sidebars at every point of their
- | band (node scripts/contrast-check.mjs measures all of it).
+ | Brand-coloured values derive from the brand tokens (--color-primary-base / --color-primary,
+ | printed per platform from resources/admin-brands.json), never a copied hex:
+ | node scripts/contrast-check.mjs measures every pair for every colour of that table.
  ============================================================================ */
 
 /* Dark scheme — data-theme="dark" (the standard name) or the Bootstrap attribute the app writes
-   today (next line); AA-tuned against the Velzon dark anchors. */
+   today (next line). The approved night-navy surfaces of "Bảo Sơn Hoàng gia"
+   (docs/design-source/admin-base.css); every pair AA. */
 :root[data-bs-theme='dark'], /* legacy-token-ok: AdminChromeResolver still writes this attribute */
 :root[data-theme='dark'] {
     color-scheme: dark;
 
     /* content plane */
-    --color-bg: #1a1d21;
-    --color-surface: #292e33;
-    --color-surface-hover: #2f343a;
-    --color-surface-muted: #24282d;                    /* zebra rows: between body and surface */
-    --color-border: #32383e;
-    --color-border-strong: #3a4149;
-    --color-border-input: #71777f;                     /* form-field edge: the border family lightened to 3.03 on surface · 3.74 body */
-    --color-border-soft: #2c3237;
-    --color-text-strong: #e9ecef;                      /* 14.26 body · 11.55 surface */
-    --color-text: #ced4da;                             /* 11.32 body · 9.17 surface */
-    --color-text-muted: #98a0ae;                       /* 5.20 surface · 6.42 body — cards expose muted
-                                                          text on --color-surface: #878a99 = 4.00 FAIL there */
-    --color-text-faint: #98a0ae;                       /* dark collapses muted/faint/placeholder to ONE
+    --color-bg: #0f1729;
+    --color-surface: #16203a;
+    --color-surface-hover: #1d2845;
+    --color-surface-muted: #131c33;                    /* zebra rows: between body and surface */
+    --color-border: #202b45;
+    --color-border-strong: #24304d;
+    --color-border-input: #6b7896;                     /* form-field edge · 3.7 on the card */
+    --color-border-soft: #1b2642;
+    --color-text-strong: #eef2fa;                      /* 14.4 on the card */
+    --color-text: #c5cde0;                             /* 10.1 on the card */
+    --color-text-muted: #9aa5bf;                       /* 6.5 on the card */
+    --color-text-faint: #9aa5bf;                       /* dark collapses muted/faint/placeholder to ONE
                                                           secondary ink: the >=4.5-on-surface window is too
                                                           narrow for three gray steps */
     --color-icon-ghost: #4a5058;                       /* decorative/disabled glyphs — WCAG-exempt, dim on purpose */
-    --color-primary-text: #96a1c0;                     /* brand as ink (text/border/ring) · 5.32 surface · 6.57 body · 5.33 header */
+    --color-primary-text: var(--color-primary-on-dark); /* brand as ink (text/border/ring): the table's
+                                                          dark rule, >= 6.9 on the card and the page */
     --color-success-text: #0db49d;                     /* status ink, lightened: >=4.5 on surface, body and the 10% soft tints */
     --color-info-text: #39a8e8;
     --color-warning-text: var(--color-warning-base);   /* the fill itself reads 6.28+ here */
@@ -88,61 +89,62 @@
     --color-secondary-text: #6e9df5;                   /* secondary as text/soft, lightened: 5.09 surface · 4.58 soft tint */
     --color-admin-dark-text: #dce0e6;                  /* neutral "dark" soft as text on the dark tint: 10.46 · legacy-token-ok: no new name carries this value yet (app.css) */
 
-    /* topbar (light variant under a dark scheme) */
-    --color-topbar-bg: #292e32;
-    --color-topbar-border: #292e32;
-    --color-topbar-fg-strong: #e9ecef;                 /* 11.57 */
-    --color-topbar-hover: #31363c;
+    /* topbar (light variant under a dark scheme) — a fixed night navy, not the brand */
+    --color-topbar-bg: #16203a;
+    --color-topbar-border: #202b45;
+    --color-topbar-fg-strong: #eef2fa;                 /* 14.4 */
+    --color-topbar-hover: rgb(255 255 255 / 0.08);
     --color-topbar-fg-hover: #ffffff;
-    --color-topbar-brand: #e9ecef;
-    --color-topbar-search: #202328;
-    --color-topbar-search-fg: #ffffff;                 /* 15.76 */
-    --color-topbar-search-border: #2a2f34;
-    --color-topbar-search-focus: #262a2f;
-    --color-topbar-user: #31373c;
-    --color-topbar-user-fg: #e9ecef;                   /* 10.16 */
-    --color-topbar-user-block: #202328;                /* user slab follows the dark search fill */
+    --color-topbar-brand: #eef2fa;
+    --color-topbar-search: #0f1729;
+    --color-topbar-search-fg: #ffffff;
+    --color-topbar-search-border: #24304d;
+    --color-topbar-search-focus: #131c33;
+    --color-topbar-user: #24304d;
+    --color-topbar-user-fg: #eef2fa;
+    --color-topbar-user-block: rgb(255 255 255 / 0.08); /* user slab */
 
-    /* sidebar (dark preset under a dark scheme) */
-    --color-sidebar-bg: #212529;
-    --color-sidebar-fg: #8f94a5;                       /* 5.10 · vz-ref: #7c7f90 = 3.89 FAIL */
-    --color-sidebar-title: var(--color-text-muted);    /* group titles are text · 5.85 · reuse muted (#7d8294 = 4.03 was too tight) */
+    /* sidebar (dark preset under a dark scheme) — a fixed night navy, not the brand */
+    --color-sidebar-bg: #111a30;
+    --color-sidebar-fg: #a9b4cc;                       /* 8.9 */
+    --color-sidebar-active: rgb(143 176 236 / 0.14);
+    --color-sidebar-title: #8e9ab5;                    /* group titles are text · 6.3 */
 }
 
-/* Dark topbar — ONE block for both schemes (Velzon's light-scheme and
-   dark-scheme dark-topbar values are identical: $dark-header-* ≡ $dark-header-*-dark). */
+/* Dark topbar — ONE block for both schemes: the brand fill, white ink on it (the table's solid
+   keeps white and white/.85 >= 4.5 for every colour, the white/.08 chip included). */
 :root[data-topbar='dark'] {
     --color-topbar-bg: var(--color-primary);
     --color-topbar-border: var(--color-primary);
-    --color-topbar-fg-strong: rgb(255 255 255 / 0.85); /* 6.05 effective */
-    --color-topbar-fg: #bccdde;                        /* icons + role line + platform links on navy · 4.68 (>=4.5) */
-    --color-topbar-hover: #495c99;
+    --color-topbar-fg-strong: rgb(255 255 255 / 0.85);
+    --color-topbar-fg: rgb(255 255 255 / 0.85);        /* icons + role line + platform links */
+    --color-topbar-hover: rgb(255 255 255 / 0.14);
     --color-topbar-search: rgb(255 255 255 / 0.05);
-    --color-topbar-search-fg: #ffffff;                 /* 6.67 effective */
+    --color-topbar-search-fg: #ffffff;
     --color-topbar-search-border: rgb(255 255 255 / 0.08); /* vz-ref: borderless field */
     --color-topbar-search-focus: rgb(255 255 255 / 0.10);
     --color-topbar-search-placeholder: #e2e5ed;        /* default #ced4da = 4.46 marginal on the brand field */
-    --color-topbar-search-accent: #b0c4d9;             /* ring · 4.26 ≥3 */
-    --color-topbar-user-block: rgb(255 255 255 / 0.05); /* user slab follows the dark-topbar search fill */
-    --color-topbar-user: #52639c;
-    --color-topbar-user-fg: #ffffff;                   /* 5.80 */
+    --color-topbar-search-accent: #ffffff;             /* ring: white on a dark zone, as the design rings it */
+    --color-topbar-user-block: rgb(255 255 255 / 0.08); /* user slab */
+    --color-topbar-user: rgb(255 255 255 / 0.08);      /* avatar on the slab: white initial >= 4.7 */
+    --color-topbar-user-fg: #ffffff;
 }
 
-/* Light sidebar — ONE merged block for both schemes (Velzon splits them only by
-   a 4%-darken on the item color; we keep the darker, AA-safer value). */
+/* Light sidebar — ONE merged block for both schemes: a white zone, so its ink stays the light
+   one (the brand FILL as text: the table's solid reads >= 4.5 on white and on its 15% tint). */
 :root[data-sidebar='light'] {
     --color-sidebar-bg: #ffffff;
-    --color-sidebar-fg: #6c6f80;                       /* darken($gray-600,10%) · 4.97 */
-    --color-sidebar-fg-hover: var(--color-primary);    /* 7.62 */
+    --color-sidebar-fg: #3c4765;                       /* 9.2 */
+    --color-sidebar-fg-hover: var(--color-primary);
     --color-sidebar-fg-active: var(--color-primary);
-    --color-sidebar-hover: rgb(64 81 137 / 0.10);
-    --color-sidebar-active: rgb(64 81 137 / 0.15);
-    --color-sidebar-title: #6c6f80;                    /* 4.97 — group titles are text, like the items · vz-ref: #919da9 = 2.76 FAIL */
-    --color-sidebar-brand: #343a40;                    /* 11.51 */
+    --color-sidebar-hover: color-mix(in srgb, var(--color-primary-base) 10%, transparent);
+    --color-sidebar-active: color-mix(in srgb, var(--color-primary-base) 15%, transparent);
+    --color-sidebar-title: #5b6275;                    /* 6.1 — group titles are text, like the items */
+    --color-sidebar-brand: #1f2b4d;                    /* 13.9 */
 }
 
-/* The sidebar zone rings focus in its active ink — white on the navy, dark and gradient
-   presets, navy on the light one — never the page accent it would sit on. */
+/* The sidebar zone rings focus in its active ink — white on the brand, dark and gradient
+   presets, the brand on the light one — never the page accent it would sit on. */
 .admin-sidebar {
     --color-focus: var(--color-sidebar-fg-active);
 
@@ -188,12 +190,12 @@
 /* ---- Sidebar color: gradients (flip axis: data-sidebar) --------------------
    The gradient paints .admin-sidebar directly (background-image over the bg-sidebar
    color — a linear-gradient can't ride background-color). `to right` = Velzon's
-   90° L→R. Item ink is white at 85%, like the navy sidebar. The light stops of the
+   90° L→R. Item ink is white at 85%, like the dark sidebar. The light stops of the
    Velzon bands (#0ab39c, #299cdb, #3577f1: white/.85 read 1.6–3.6 there) are darkened
    in OKLCH — same hue, lightness down just far enough that resting white/.85 and the
    active row (white on white/.15) clear 4.5 at EVERY point of the band. */
 :root[data-sidebar='gradient'] .admin-sidebar {
-    background-image: linear-gradient(to right, #405189, #056d5e); /* primary → success, deepened (vz-ref #0ab39c) */
+    background-image: linear-gradient(to right, var(--color-primary), #056d5e); /* brand → success, deepened (vz-ref #0ab39c) */
 }
 :root[data-sidebar='gradient-2'] .admin-sidebar {
     background-image: linear-gradient(to right, #036797, #185ad2); /* info → secondary, deepened (vz-ref #299cdb → #3577f1) */
@@ -202,10 +204,10 @@
     background-image: linear-gradient(to right, #036797, #056d5e); /* info → success, deepened (vz-ref #299cdb → #0ab39c) */
 }
 :root[data-sidebar='gradient-4'] .admin-sidebar {
-    background-image: linear-gradient(to right, #1a1d21, #405189); /* dark → primary */
+    background-image: linear-gradient(to right, #1a1d21, var(--color-primary)); /* dark → brand */
 }
 :root[data-sidebar^='gradient'] {
-    --color-sidebar-bg: #405189;                       /* base under the gradient image */
+    --color-sidebar-bg: var(--color-primary);          /* base under the gradient image */
     --color-sidebar-fg: rgb(255 255 255 / 0.85);       /* >=4.5 at every point of the deepened bands · vz-ref rgba(#fff,.5) */
     --color-sidebar-fg-hover: #ffffff;
     --color-sidebar-fg-active: #ffffff;

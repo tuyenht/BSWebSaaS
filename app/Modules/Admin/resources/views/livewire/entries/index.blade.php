@@ -285,7 +285,7 @@
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.titleInput.focus(); $refs.titleInput.select() })"
                                             title="{{ __('entries.edit_name_hint') }}"
-                                            class="group relative -mx-1 rounded py-0.5 pl-1 pr-5 text-left font-medium text-body-text transition-colors hover:bg-[#eef2fb] hover:text-accent">{{ $t?->title ?? __('entries.untitled') }}
+                                            class="group relative -mx-1 rounded py-0.5 pl-1 pr-5 text-left font-medium text-text transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $t?->title ?? __('entries.untitled') }}
                                             <x-bs-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1.5 top-1/2 size-3 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
                                         </button>
                                         <input type="text" x-show="editing" x-cloak x-ref="titleInput" x-model="value"
@@ -310,7 +310,7 @@
                                         <button type="button" x-show="!editing"
                                             @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
                                             title="{{ $path }} · {{ __('entries.edit_hint') }}"
-                                            class="group relative -mx-1 truncate rounded py-0.5 pl-1 pr-4 text-body-muted transition-colors hover:bg-[#eef2fb] hover:text-accent">{{ $path ?? '—' }}
+                                            class="group relative -mx-1 truncate rounded py-0.5 pl-1 pr-4 text-text-muted transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}
                                             <x-bs-admin::icon name="ri-pencil" class="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-accent opacity-0 transition-opacity group-hover:opacity-100" />
                                         </button>
                                         <span x-show="editing" x-cloak class="flex w-full items-center gap-0.5">
