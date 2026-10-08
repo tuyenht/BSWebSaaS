@@ -14,6 +14,7 @@ use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
+use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
@@ -739,6 +740,7 @@ final class Editor extends Component
                 'required', 'integer',
                 Rule::exists('taxonomies', 'id')->where('vocabulary', 'post_cat'),
                 $this->keepsGovernedSection(...),
+                $this->staysInCategoryLimits(...),
             ];
         }
 
@@ -775,6 +777,22 @@ final class Editor extends Component
     }
 
     /**
+     * A member limited to some categories files a post only inside them (EntryPolicy::fileUnder):
+     * said on the field here; EntryCategoryWriter refuses the write itself whatever the form sends.
+     */
+    private function staysInCategoryLimits(string $attribute, mixed $value, Closure $fail): void
+    {
+        if (! is_numeric($value)) {
+            return;   // `required` / `integer` report it
+        }
+
+        $response = Gate::inspect('fileUnder', [Entry::class, 'post', (int) $value]);
+        if ($response->denied()) {
+            $fail((string) $response->message());
+        }
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function messages(): array
@@ -793,6 +811,9 @@ final class Editor extends Component
 
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);
+            // Opening the editor needs only `create`; what is saved must lie inside the member's
+            // category limits (a page has no category, so a limited member writes no page).
+            $this->authorize('fileUnder', [Entry::class, $this->type, $this->type === 'post' ? $this->categoryId : null]);
             $entry = Entry::query()->create([
                 'type' => $this->type,
                 'status' => 'draft',
@@ -831,7 +852,7 @@ final class Editor extends Component
         app(EntryBlockMediaReconciler::class)->reconcile($entry);
 
         if ($this->type === 'post') {
-            $entry->assignCategories($this->categoryId !== null ? [$this->categoryId] : []);
+            app(EntryCategoryWriter::class)->assign($entry, $this->categoryId !== null ? [$this->categoryId] : [], $this->user());
         }
 
         // A save on live content is what visitors now see: keep that version (skipped when unchanged).

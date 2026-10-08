@@ -732,6 +732,7 @@
     "entries.bulk_sent": "Đã gửi duyệt :count bài.",
     "entries.bulk_skipped": ":count bài được bỏ qua — đã ở trạng thái đó, không phải bản nháp, đang ở Thùng rác, hoặc bạn không có quyền thay đổi bài đó.",
     "entries.category_governed": "Bài này đang theo quy trình duyệt “:workflow” nên không chuyển sang thể loại khác được. Nhờ người quản trị tắt quy trình cho thể loại này nếu thật sự cần chuyển.",
+    "entries.category_scope_only": "Bạn chỉ được viết bài trong: :categories.",
     "entries.bulk_governed": ":count bài đang theo quy trình duyệt nên giữ nguyên — mở từng bài để duyệt.",
     "entries.bulk_failed": ":count bài không thực hiện được — mở từng bài để xem vì sao.",
     "entries.bulk_skipped_trash": ":count bài được bỏ qua — không nằm trong Thùng rác, hoặc bạn không có quyền thay đổi bài đó.",

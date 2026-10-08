@@ -12,7 +12,9 @@ use App\Modules\Cms\Models\EntryDraft;
 use App\Modules\Cms\Models\EntryTranslation;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Identity\Models\User;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Auth\Access\AuthorizationException;
 
 /**
  * Writes a pending change's content onto its entry (design.md §8): the primary category first, so
@@ -39,6 +41,7 @@ final readonly class EntryDraftApplier
         private EntryWorkflowResolver $workflows,
         private RouteSync $routes,
         private SiteLocale $siteLocales,
+        private EntryCategoryWriter $categories,
     ) {}
 
     /**
@@ -50,12 +53,17 @@ final readonly class EntryDraftApplier
      * `all_locales` is true when a field every language shares (template, cover, meta, category)
      * changed — the caller then records every language's revision.
      *
+     * $actor is the person whose decision puts the change in: a new primary category must lie
+     * inside their category limits as well (the current one is their policy check's business), and
+     * secondary categories outside them stay (EntryCategoryWriter). Null when no person acts.
+     *
      * @return AppliedChange
      *
      * @throws EntryDraftRejectedException content_invalid|category_governed|locale_disabled (strict only)
+     * @throws AuthorizationException the new category lies outside the actor's limits (strict only)
      * @throws RouteConflictException a new address of live content belongs to other content
      */
-    public function apply(Entry $entry, EntryDraft $change, bool $lenient = false): array
+    public function apply(Entry $entry, EntryDraft $change, bool $lenient = false, ?User $actor = null): array
     {
         $shared = $change->content['shared'] ?? [];
         $locales = $change->content['locales'];
@@ -63,8 +71,8 @@ final readonly class EntryDraftApplier
 
         $categoryChanged = false;
         try {
-            $categoryChanged = $this->applyCategory($entry, $shared['primary_category_id'] ?? null);
-        } catch (EntryDraftRejectedException $refused) {
+            $categoryChanged = $this->applyCategory($entry, $shared['primary_category_id'] ?? null, $actor);
+        } catch (EntryDraftRejectedException|AuthorizationException $refused) {
             if (! $lenient) {
                 throw $refused;
             }
@@ -157,8 +165,9 @@ final readonly class EntryDraftApplier
      * Categories are replaced as the editor replaces them (the primary one only).
      *
      * @throws EntryDraftRejectedException see assertCategory()
+     * @throws AuthorizationException the category lies outside the actor's limits
      */
-    private function applyCategory(Entry $entry, mixed $categoryId): bool
+    private function applyCategory(Entry $entry, mixed $categoryId, ?User $actor): bool
     {
         if ($entry->type !== 'post' || ! is_int($categoryId) || $categoryId <= 0) {
             return false;
@@ -169,8 +178,7 @@ final readonly class EntryDraftApplier
         }
 
         $this->assertCategory($entry, $categoryId);
-        $entry->assignCategories([$categoryId]);
-        $entry->unsetRelation('taxonomies');
+        $this->categories->assign($entry, [$categoryId], $actor);
 
         return true;
     }

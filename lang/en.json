@@ -732,6 +732,7 @@
     "entries.bulk_sent": "Sent :count items for review.",
     "entries.bulk_skipped": ":count skipped — already in that state, not a draft, in the Trash, or not yours to change.",
     "entries.category_governed": "This post follows the “:workflow” approval workflow, so it cannot be moved to another content type. Ask an administrator to switch the workflow off for this type if it really must move.",
+    "entries.category_scope_only": "You can only write posts in: :categories.",
     "entries.bulk_governed": ":count follow an approval workflow and were left as they were — open each to review.",
     "entries.bulk_failed": ":count could not be done — open each to see why.",
     "entries.bulk_skipped_trash": ":count skipped — not in the Trash, or not yours to change.",

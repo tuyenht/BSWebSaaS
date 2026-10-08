@@ -44,7 +44,7 @@ final readonly class ApplyEntryDraft
      * @param  string  $seenVersion  EntryDraft::version() of the change the publisher was shown
      * @return list<string> the languages written, in order
      *
-     * @throws AuthorizationException the actor may not publish
+     * @throws AuthorizationException the actor may not publish, or the change files the post outside their category limits
      * @throws EntryDraftRejectedException workflow_governed · not_live · change_stale · content_invalid · category_governed · slug_taken
      */
     public function handle(Entry $entry, User $actor, string $seenVersion): array
@@ -73,7 +73,7 @@ final readonly class ApplyEntryDraft
                     throw new EntryDraftRejectedException('change_stale');
                 }
 
-                $applied = $this->applier->apply($entry, $change);
+                $applied = $this->applier->apply($entry, $change, actor: $actor);
 
                 if ($applied['all_locales']) {
                     $this->revisions->forAllLocales($entry, RevisionKind::Edit, $actor);

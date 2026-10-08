@@ -3,7 +3,9 @@
 namespace App\Modules\Cms\Policies;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Identity\Models\User;
+use Illuminate\Auth\Access\Response;
 
 /**
  * Defense layer #2 (RBAC) for content entries — design.md §15.1/§15.4. Maps the
@@ -12,9 +14,17 @@ use App\Modules\Identity\Models\User;
  * short-circuits every gate via RbacServiceProvider's Gate::before, so it is not
  * re-checked here. Per-site authority is enforced upstream by the spatie team
  * context (team = site_id), so these checks are already scoped to the current site.
+ *
+ * Category limits (CategoryScopes) come on top of every write: a member limited to some categories
+ * may change only posts whose PRIMARY category lies inside them, and no page (a page has no
+ * category). They hold whether or not the site's plan still includes the feature. Viewing is never
+ * limited. A new entry has no stored category yet, so `create` only opens the editor; where the
+ * category is chosen, `fileUnder` judges it.
  */
 final class EntryPolicy
 {
+    public function __construct(private readonly CategoryScopes $scopes) {}
+
     public function viewAny(User $user): bool
     {
         return $user->can('entries.view');
@@ -30,16 +40,32 @@ final class EntryPolicy
         return $user->can('entries.create');
     }
 
+    /**
+     * May the member file content of $type under $categoryId (a post's chosen primary category; a
+     * page has none)? Asked where the category is set — a new entry's first save, a move to another
+     * category, a copy — with the sentence a limited member sees when the answer is no.
+     */
+    public function fileUnder(User $user, string $type, ?int $categoryId): Response
+    {
+        $inside = $type === 'post'
+            ? $this->scopes->coversId($user, $categoryId)
+            : ! $this->scopes->isLimited($user);
+
+        return $inside ? Response::allow() : Response::deny($this->scopes->refusal($user));
+    }
+
     public function update(User $user, Entry $entry): bool
     {
-        return $user->can('entries.edit.any')
-            || ($user->can('entries.edit.own') && $this->owns($user, $entry));
+        return ($user->can('entries.edit.any')
+            || ($user->can('entries.edit.own') && $this->owns($user, $entry)))
+            && $this->scopes->coversEntry($user, $entry);
     }
 
     public function delete(User $user, Entry $entry): bool
     {
-        return $user->can('entries.delete.any')
-            || ($user->can('entries.delete.own') && $this->owns($user, $entry));
+        return ($user->can('entries.delete.any')
+            || ($user->can('entries.delete.own') && $this->owns($user, $entry)))
+            && $this->scopes->coversEntry($user, $entry);
     }
 
     /** Restore from Trash — same authority as delete (you can undo what you could remove). */
@@ -66,10 +92,13 @@ final class EntryPolicy
         return $user->can('entries.submit') && $this->update($user, $entry);
     }
 
-    /** Publish straight through (workflow Tầng-1): only grants carrying entries.publish. */
-    public function publish(User $user): bool
+    /**
+     * Publish straight through (workflow Tầng-1), and the other status moves of this entry (draft,
+     * private, schedule): only grants carrying entries.publish, inside the member's category limits.
+     */
+    public function publish(User $user, Entry $entry): bool
     {
-        return $user->can('entries.publish');
+        return $user->can('entries.publish') && $this->scopes->coversEntry($user, $entry);
     }
 
     /**

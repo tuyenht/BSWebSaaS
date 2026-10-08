@@ -119,7 +119,7 @@ it('opens the inbox for review or approve rights, and for nobody else', function
         grantRole($viewer, 'viewer', ['entries.view']);
         grantRole($author, 'author', ['entries.create', 'entries.edit.own', 'entries.submit']);
 
-        $policy = new EntryPolicy;
+        $policy = app(EntryPolicy::class);
 
         // Approving is not editing and not merely reading the list.
         expect($policy->review($reviewer->fresh()))->toBeTrue()

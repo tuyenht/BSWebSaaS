@@ -66,7 +66,7 @@ final readonly class SaveEntryDraft
      * @param  array<string, mixed>  $text
      * @param  array<string, mixed>  $shared
      *
-     * @throws AuthorizationException the actor may not edit this entry
+     * @throws AuthorizationException the actor may not edit this entry, or files it outside their category limits
      * @throws EntryDraftRejectedException locale_disabled · not_live · change_locked · content_invalid · category_governed
      */
     public function handle(Entry $entry, User $actor, string $locale, array $text, array $shared = []): EntryDraft
@@ -107,7 +107,7 @@ final readonly class SaveEntryDraft
                 array_intersect_key($text, array_flip(EntryDraft::LOCALE_FIELDS)),
             );
 
-            $sharedNow['primary_category_id'] = $this->category($entry, $sharedNow['primary_category_id'] ?? null);
+            $sharedNow['primary_category_id'] = $this->category($entry, $actor, $sharedNow['primary_category_id'] ?? null);
             $readable = $this->writer->read(['v' => RecordEntryRevision::FORMAT] + $sharedNow + $textNow)
                 ?? throw new EntryDraftRejectedException('content_invalid');
             // Stored as the editor stores a body: each block's type and props, nothing else.
@@ -146,11 +146,13 @@ final readonly class SaveEntryDraft
 
     /**
      * The change's primary category: none for a page; for a post, one of the site's post
-     * categories that keeps it under its approval workflow, or none while the live post has none.
+     * categories that keeps it under its approval workflow and lies inside the actor's category
+     * limits, or none while the live post has none.
      *
      * @throws EntryDraftRejectedException content_invalid · category_governed
+     * @throws AuthorizationException the category lies outside the actor's limits
      */
-    private function category(Entry $entry, mixed $categoryId): ?int
+    private function category(Entry $entry, User $actor, mixed $categoryId): ?int
     {
         if ($entry->type !== 'post') {
             return null;
@@ -167,6 +169,13 @@ final readonly class SaveEntryDraft
 
         if ($entry->primaryCategory()?->id !== $categoryId) {
             $this->applier->assertCategory($entry, $categoryId);
+        }
+
+        // Checked on every save, not only a new pick: a change that someone else re-filed outside
+        // this member's limits is not theirs to carry on with.
+        $response = Gate::forUser($actor)->inspect('fileUnder', [Entry::class, 'post', $categoryId]);
+        if ($response->denied()) {
+            throw new AuthorizationException($response->message());
         }
 
         return $categoryId;

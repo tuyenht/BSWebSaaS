@@ -4,14 +4,19 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Support;
 
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\Taxonomy;
+use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\SiteLocale;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -50,6 +55,7 @@ final class CategoryScopes
         private readonly CurrentSite $site,
         private readonly RoleHierarchyGuard $levels,
         private readonly PlatformAccess $platform,
+        private readonly SiteLocale $locales,
     ) {}
 
     /** Is the member never limited on this site, rows or not (super_admin, or level ≥ EXEMPT_LEVEL)? */
@@ -90,6 +96,101 @@ final class CategoryScopes
     public function covers(User $user, ?Taxonomy $primary): bool
     {
         return $this->coversId($user, $primary?->id);
+    }
+
+    /**
+     * May the member write this entry? A post: when its primary category is covered. A page (no
+     * category at all): only a member who is not limited.
+     */
+    public function coversEntry(User $user, Entry $entry): bool
+    {
+        if (! $this->isLimited($user)) {
+            return true;
+        }
+
+        return $entry->type === 'post' && $this->covers($user, $entry->primaryCategory());
+    }
+
+    /**
+     * The sentence a limited member sees when a write falls outside their limits, naming the
+     * categories they may write in (in the site's default language).
+     */
+    public function refusal(User $user): string
+    {
+        $roots = $this->rootIds($user) ?? [];
+        $locale = $this->locales->default();
+        $names = [];
+        foreach (TaxonomyTranslation::query()->whereIn('taxonomy_id', $roots)->orderBy('taxonomy_id')->get(['taxonomy_id', 'locale', 'name']) as $translation) {
+            if (! isset($names[$translation->taxonomy_id]) || $translation->locale === $locale) {
+                $names[$translation->taxonomy_id] = $translation->name;
+            }
+        }
+
+        return __('entries.category_scope_only', ['categories' => implode(', ', $names)]);
+    }
+
+    /**
+     * Narrow a query of users (`users`) to those who may write in every one of $categoryIds on this
+     * site — the SQL form of coversId() for lists of people (approvers, who hears of a post): no
+     * limits here, a role at or above EXEMPT_LEVEL, or limits reaching each category (a null id —
+     * content without a category — reaches no limited member). A platform super_admin is matched
+     * only as far as their roles here reach, like every other member list.
+     *
+     * @param  Builder<User>  $members
+     */
+    public function whereMayWriteIn(Builder $members, ?int ...$categoryIds): void
+    {
+        $site = $this->site->id();
+        $userKey = $members->getModel()->getQualifiedKeyName();
+        $reachable = ! in_array(null, $categoryIds, true);
+
+        $members->where(function (Builder $who) use ($site, $userKey, $categoryIds, $reachable): void {
+            $who->whereNotExists(fn (QueryBuilder $limit) => $limit->selectRaw('1')
+                ->from('member_category_scopes')
+                ->where('member_category_scopes.site_id', $site)
+                ->whereColumn('member_category_scopes.user_id', $userKey))
+                ->orWhereHas('roles', fn (Builder $role) => $role->where('level', '>=', self::EXEMPT_LEVEL));
+
+            if ($reachable && $categoryIds !== []) {
+                $who->orWhere(function (Builder $limited) use ($site, $userKey, $categoryIds): void {
+                    foreach ($categoryIds as $categoryId) {
+                        $limited->whereExists(fn (QueryBuilder $limit) => $limit->selectRaw('1')
+                            ->from('member_category_scopes as mcs')
+                            ->join('taxonomies as root', fn (JoinClause $join) => $join
+                                ->on('root.id', '=', 'mcs.taxonomy_id')->on('root.site_id', '=', 'mcs.site_id'))
+                            ->join('taxonomies as cat', 'cat.site_id', '=', 'mcs.site_id')
+                            ->where('mcs.site_id', $site)
+                            ->whereColumn('mcs.user_id', $userKey)
+                            ->where('cat.id', $categoryId)
+                            ->where(fn (QueryBuilder $reach) => $reach->whereColumn('cat.id', 'root.id')->orWhereRaw('cat.path <@ root.path')));
+                    }
+                });
+            }
+        });
+    }
+
+    /**
+     * Narrow a query of entries (`entries`) to those the member may write — the SQL form of
+     * coversEntry() for queues of work. Nothing changes for a member who is not limited.
+     *
+     * @param  Builder<Entry>  $entries
+     */
+    public function whereCovered(Builder $entries, User $user): void
+    {
+        $allowed = $this->allowedTaxonomyIds($user);
+        if ($allowed === null) {
+            return;
+        }
+
+        $site = $this->site->id();
+        $entryKey = $entries->getModel()->getQualifiedKeyName();
+        $entries->where($entries->getModel()->qualifyColumn('type'), 'post')
+            ->whereExists(fn (QueryBuilder $primary) => $primary->selectRaw('1')
+                ->from('entry_taxonomies')
+                ->where('entry_taxonomies.site_id', $site)
+                ->whereColumn('entry_taxonomies.entry_id', $entryKey)
+                ->where('entry_taxonomies.position', 0)
+                ->whereIn('entry_taxonomies.taxonomy_id', $allowed));
     }
 
     /** covers() for a category known only by id (a picked category, a pending change's target). */
