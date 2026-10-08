@@ -11,8 +11,8 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
+use App\Modules\Cms\Taxonomy\TaxonomyTree;
 use App\Modules\Shared\Support\Cast;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Shared steps of the actions that change a site's categories. Callers run inside a transaction and
@@ -26,7 +26,7 @@ trait EditsTaxonomyTree
      */
     private function lockTree(int $siteId): void
     {
-        DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['taxonomies:'.$siteId]);
+        TaxonomyTree::lock($siteId);
     }
 
     /**

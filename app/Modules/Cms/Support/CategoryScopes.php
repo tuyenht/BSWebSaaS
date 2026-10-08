@@ -11,6 +11,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Rbac\Support\RoleHierarchyGuard;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -41,6 +42,9 @@ final class CategoryScopes
 
     /** @var array<string, bool> */
     private array $exempt = [];
+
+    /** @var array<int, array<int, true>> per site: category id => true for each category without a path */
+    private array $pathless = [];
 
     public function __construct(
         private readonly CurrentSite $site,
@@ -104,7 +108,59 @@ final class CategoryScopes
         }
 
         // A category whose ltree path is missing is not reached above: walk its parents instead.
+        // Only such a category is walked — any other miss is a real "no", answered without a query.
+        if (! isset($this->pathless()[$primaryId])) {
+            return false;
+        }
+
         return array_intersect(TaxonomyTree::ancestorsOf($primaryId), $read['roots']) !== [];
+    }
+
+    /**
+     * The members limited to one of $taxonomyIds on this site, with the highest role level each
+     * holds here (0 for none), by name.
+     *
+     * @param  list<int>  $taxonomyIds
+     * @return list<array{id: int, name: string, level: int}>
+     */
+    public function membersLimitedTo(array $taxonomyIds): array
+    {
+        if ($taxonomyIds === []) {
+            return [];
+        }
+
+        $site = $this->site->id();
+        $members = User::query()
+            ->whereExists(fn (QueryBuilder $limit) => $limit->selectRaw('1')
+                ->from('member_category_scopes')
+                ->where('member_category_scopes.site_id', $site)
+                ->whereColumn('member_category_scopes.user_id', 'users.id')
+                ->whereIn('member_category_scopes.taxonomy_id', $taxonomyIds))
+            ->withMax('roles', 'level')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get(['id', 'name']);
+
+        $found = [];
+        foreach ($members as $member) {
+            $found[] = [
+                'id' => $member->id,
+                'name' => $member->name,
+                'level' => Cast::int($member->getAttribute('roles_max_level')),
+            ];
+        }
+
+        return $found;
+    }
+
+    /**
+     * Serialise every change to the member's limits on this site (setting them, clearing them on a
+     * role change) until the surrounding transaction ends. Call it inside a transaction, before
+     * reading what the change depends on.
+     */
+    public function lockMember(User $user): void
+    {
+        DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['category_scopes:'.$this->key($user)]);
     }
 
     /** Forget what was read, so a change written in this request is seen by the next check. */
@@ -112,6 +168,26 @@ final class CategoryScopes
     {
         $this->rows = [];
         $this->exempt = [];
+        $this->pathless = [];
+    }
+
+    /**
+     * The site's categories whose ltree path is not written yet (normally none), read once per
+     * request and only when a limited member's check misses.
+     *
+     * @return array<int, true>
+     */
+    private function pathless(): array
+    {
+        $site = $this->site->id();
+        if (! isset($this->pathless[$site])) {
+            $this->pathless[$site] = [];
+            foreach (Taxonomy::query()->whereNull('path')->pluck('id') as $id) {
+                $this->pathless[$site][Cast::int($id)] = true;
+            }
+        }
+
+        return $this->pathless[$site];
     }
 
     /**

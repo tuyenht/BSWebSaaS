@@ -39,7 +39,8 @@ final readonly class RevokeRole
                 'meta' => ['role' => $role->name, 'role_id' => $role->getKey()],
             ]);
 
-            if ($role->site_id !== null) {
+            // Platform roles sit at site 0: they make nobody a member of a site.
+            if ($role->site_id !== null && $role->site_id > 0) {
                 event(new SiteMembershipChanged($target, $role->site_id));
             }
         });
