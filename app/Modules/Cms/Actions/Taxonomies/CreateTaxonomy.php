@@ -10,6 +10,7 @@ use App\Modules\Cms\Data\TaxonomyData;
 use App\Modules\Cms\Exceptions\TaxonomyChangeRejectedException;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
+use App\Modules\Cms\Taxonomy\CategoryLimitGuard;
 use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Cms\Taxonomy\TaxonomyRules;
 use App\Modules\Cms\Taxonomy\TaxonomyTree;
@@ -25,7 +26,8 @@ use Illuminate\Support\Facades\DB;
  * page at `/{slug}`. The tree may not grow past TaxonomyRules::MAX_DEPTH levels, and the structural
  * `path` is written with the row.
  *
- * Who may manage categories (`taxonomies.manage`) is the caller's check. Runs inside the tenant
+ * Who may manage categories (`taxonomies.manage`) is the caller's check; a member limited to some
+ * categories stays inside them (CategoryLimitGuard, outside_category_limits). Runs inside the tenant
  * context.
  */
 final readonly class CreateTaxonomy
@@ -37,6 +39,7 @@ final readonly class CreateTaxonomy
         private RouteSync $routes,
         private TaxonomyPaths $paths,
         private CurrentSite $site,
+        private CategoryLimitGuard $limits,
     ) {}
 
     /**
@@ -68,6 +71,7 @@ final readonly class CreateTaxonomy
                 }
                 $parentId = $parent->id;
             }
+            $this->limits->create($vocabulary, $parent);
 
             $last = Taxonomy::query()
                 ->where('vocabulary', $vocabulary)
