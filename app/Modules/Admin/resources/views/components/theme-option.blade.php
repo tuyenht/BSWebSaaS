@@ -3,7 +3,7 @@
     (Velzon's card-radio pattern). The canvas, bar and non-brand gradient colours inside the
     thumbnail are DELIBERATE literals: each card illustrates one fixed choice, so it must NOT
     repaint with the live light/dark scheme. The brand colour reads the token ($brand below), so
-    a palette change repaints the swatches that show it.
+    the platform's brand colour repaints the swatches that show it.
 
     $axis:   scheme|sidebar|topbar     $value: the axis value this card selects
     $name:   radio group name          $label: visible caption
@@ -12,11 +12,11 @@
 --}}
 @props(['axis', 'value', 'name', 'label', 'store' => false])
 @php
-    // The admin brand is token-driven (--color-admin-primary, resources/css/app.css) — read it
-    // here instead of duplicating its hex so a palette change never leaves a stale swatch.
-    $brand = 'var(--color-admin-primary)';
+    // The admin brand is token-driven (--color-primary, one table: resources/admin-brands.json) —
+    // read it here instead of duplicating its hex so a brand change never leaves a stale swatch.
+    $brand = 'var(--color-primary)';
     $isDarkScheme = $axis === 'scheme' && $value === 'dark';
-    $canvas = $isDarkScheme ? '#212529' : '#ffffff';
+    $canvas = $isDarkScheme ? '#0f1729' : '#ffffff';
     $bar = $isDarkScheme ? 'rgb(255 255 255 / 0.14)' : '#eff2f7';
     $sidebar = match (true) {
         $axis === 'sidebar' && $value === 'light' => '#ffffff',
@@ -24,8 +24,8 @@
         $axis === 'sidebar' && $value === 'gradient-2' => 'linear-gradient(to right, #299cdb, #3577f1)',
         $axis === 'sidebar' && $value === 'gradient-3' => 'linear-gradient(to right, #299cdb, #0ab39c)',
         $axis === 'sidebar' && $value === 'gradient-4' => "linear-gradient(to right, #1a1d21, {$brand})",
-        $isDarkScheme => 'rgb(255 255 255 / 0.08)',
-        default => $brand,
+        $isDarkScheme => '#111a30',
+        default => "color-mix(in srgb, {$brand} 72%, #0b1d45)", // the dark sidebar preset (app.css)
     };
     $topbar = $axis === 'topbar' && $value === 'dark' ? $brand : $canvas;
 @endphp
