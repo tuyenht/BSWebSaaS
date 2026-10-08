@@ -1,0 +1,43 @@
+Copyright (c) 2026 Bảo Sơn (baoson.net). All rights reserved.
+
+PROPRIETARY SOFTWARE — NO LICENCE GRANTED
+
+This repository and everything in it — source code, database schema, designs,
+documentation, prompts and every other file (the "Software") — is the property
+of Bảo Sơn (the "Owner").
+
+No licence or other right to the Software is granted to anyone, expressly or
+by implication. Without the Owner's prior written permission you may not:
+
+  - use, run, host or deploy the Software, in whole or in part;
+  - copy, modify, merge, translate or create derivative works from it;
+  - publish, distribute, sublicense, rent, lend or sell it;
+  - use it, or any part of it, to train, fine-tune or evaluate a machine-learning
+    model, or include it in a dataset made for that purpose.
+
+Being able to read this repository grants no right beyond what the terms of
+service of the platform hosting it strictly require of the Owner (viewing the
+repository on that platform, and forking it on that platform only). A fork or
+copy made under those terms stays subject to this notice.
+
+Third-party components included in or required by the Software remain under
+their own licences, which apply to those components only.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. IN NO EVENT SHALL THE OWNER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM THE SOFTWARE OR ITS USE.
+
+Requests for permission: contact the Owner through baoson.net.
+
+--------------------------------------------------------------------------------
+
+Bản quyền (c) 2026 Bảo Sơn (baoson.net). Bảo lưu mọi quyền.
+
+PHẦN MỀM THUỘC SỞ HỮU RIÊNG — KHÔNG CẤP PHÉP SỬ DỤNG
+
+Toàn bộ kho mã này (mã nguồn, cấu trúc cơ sở dữ liệu, thiết kế, tài liệu, câu
+lệnh mẫu và mọi tệp khác) là tài sản của Bảo Sơn. Không ai được sử dụng, chạy,
+triển khai, sao chép, sửa đổi, phát hành, phân phối, bán, hoặc dùng để huấn
+luyện mô hình máy học, toàn bộ hay một phần, nếu chưa có văn bản chấp thuận
+của chủ sở hữu. Việc đọc được kho mã này không tạo ra bất kỳ quyền nào khác.
+Bản tiếng Anh ở trên là bản có hiệu lực khi hai bản khác nhau.
