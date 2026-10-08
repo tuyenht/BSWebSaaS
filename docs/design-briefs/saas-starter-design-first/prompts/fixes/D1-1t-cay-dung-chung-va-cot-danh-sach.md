@@ -105,7 +105,7 @@ PHẦN 1 — Shell, cây và kéo thả (mục 0–3b). Xong phần 1: kiểm "X
    - Đầu cây có dải quyền cùng kiểu dải quyền của danh sách bài:
      - chip nhóm quyền + "Bạn được thêm, sửa, sắp xếp và xóa chuyên mục.";
      - bên phải chữ phụ "Người viết, Cộng tác viên, Chỉ xem: chỉ chọn chuyên mục khi viết bài" (Sản phẩm: "… khi thêm sản phẩm").
-   - Nhãn "Ghi chú thiết kế / Chờ backend" của màn gom thành MỘT dòng thu gọn (`<details>`): "Ghi chú thiết kế · N việc chờ backend", bấm mới mở. Bỏ nhãn "Cần owner chốt: đếm theo chuyên mục chính hay mọi chuyên mục". Owner chốt 08/10: đếm theo MỌI chuyên mục bài được gắn, vì repo không có "chuyên mục chính" (`entry_taxonomies` không có cột đó). Thêm câu này vào README.
+   - Nhãn "Ghi chú thiết kế / Chờ backend" của màn gom thành MỘT dòng thu gọn (`<details>`): "Ghi chú thiết kế · N việc chờ backend", bấm mới mở. Bỏ nhãn "Cần owner chốt: đếm theo chuyên mục chính hay mọi chuyên mục". Owner chốt 08/10 (10:13): cột "Bài" = số bài có chuyên mục CHÍNH là đúng chuyên mục đó, không cộng mục con. Chuyên mục chính là chuyên mục đứng đầu của bài (vị trí 0 trong `entry_taxonomies`); trang chuyên mục trên website (`StorefrontController.php:224`) và bộ lọc Chuyên mục của danh sách bài (`Entries/Index.php:867`) đều đếm đúng như vậy, nên số trên màn khớp số bài khách thấy. Thêm câu này vào README.
 
 2. **Phân cấp nhìn rõ (Chuyên mục VÀ danh sách Trang ở chế độ cây; với Trang chỉ THÊM, không gỡ hay dời nút nào).**
    - **Đường nối cha – con:**
