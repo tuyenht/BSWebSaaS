@@ -3,6 +3,7 @@ paths:
   - ".github/workflows/**"
   - ".lighthouserc.cjs"
   - "scripts/**"
+  - "tests/**"
 ---
 
 # CI workflows

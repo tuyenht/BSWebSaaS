@@ -10,7 +10,7 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
      ```bash
      gh run list --workflow ci.yml --commit <full sha> --json event,status,conclusion,url
      ```
-     It must list at least one run with `event` `schedule` or `workflow_dispatch`, and every run listed must be `completed` + `success`. An empty list, or a run that failed, was cancelled or is still going, means not deployable yet.
+     It must list at least one run with `event` `schedule` or `workflow_dispatch` — or `push`, for a commit from before 10/2026, when every merge still started a full run on `main` — and every run listed must be `completed` + `success`. An empty list, or a run that failed, was cancelled or is still going, means not deployable yet.
    - No run, and the commit is the head of `main` — start one and wait for it:
      ```bash
      gh workflow run ci.yml --ref main
