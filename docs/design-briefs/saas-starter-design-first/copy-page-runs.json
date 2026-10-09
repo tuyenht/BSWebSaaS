@@ -20,7 +20,8 @@
   "SG2": "08/10",
   "D2-1u": "08/10",
   "SG3": "08/10",
-  "SG4": "09/10"
+  "SG4": "09/10",
+  "SG5": "09/10"
  },
  "verified": {
   "D0-1": "zip 04/10",
@@ -53,6 +54,7 @@
   "D4-1": "zip 12:28 08/10 — 5/8 đạt; thẻ điện thoại, bẫy Tab, Hướng dẫn mặt Nền tảng vào SG1",
   "D4-3": "zip 12:54 08/10 — 9/10 đạt, không mất gì; bảng Đăng nhập hỗ trợ lệch cột, thanh phiên trên điện thoại vào SG1",
   "D4-2": "zip 13:13 08/10 — 6/8 đạt; \"Dùng thử\", cuộn ngang Sửa gói vào SG1",
-  "D5-1": "zip 13:40 08/10 — 5/7 đạt, Shell không mất gì; trang lỗi tên miền chưa gắn là ngõ cụt, vùng bấm nhỏ vào SG1"
+  "D5-1": "zip 13:40 08/10 — 5/7 đạt, Shell không mất gì; trang lỗi tên miền chưa gắn là ngõ cụt, vùng bấm nhỏ vào SG1",
+  "D5-2": "zip 10:16 09/10 (phần 3) — Claude Code dựng hình 126 lượt mở màn, console 0 lỗi, không mất nút nào; 4/7 mục sửa kèm đạt, 2 một phần, 1 chưa; phần sót vào SG5"
  }
 }
