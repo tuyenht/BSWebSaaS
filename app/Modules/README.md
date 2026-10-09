@@ -52,6 +52,8 @@ Shared            (interface + tiện ích thuần — không phụ thuộc modu
             ├─ Storefront   (mặt phẳng public)
             └─ Admin        (mặt phẳng admin — hub: dùng mọi module bên dưới)
        └─ Provisioning (genesis — ráp mọi module theo từng site)
+       └─ Monitoring   (thư báo lỗi production cho người vận hành; chỉ dùng Shared + Tenancy\Context,
+                        KHÔNG module nào phụ thuộc nó — nối từ bootstrap/app.php)
 ```
 
 Nợ khái niệm (không phải chu trình code, ghi để không tăng thêm): bảng `workflow_log.entry_id` có FK
