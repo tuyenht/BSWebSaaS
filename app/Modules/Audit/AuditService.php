@@ -6,6 +6,7 @@ use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Identity\Models\User;
 use App\Modules\Identity\Support\SupportSession;
 use App\Modules\Shared\Support\ConcurrencyError;
+use App\Modules\Shared\Support\RequestId;
 use App\Modules\Tenancy\Context\CurrentSite;
 use Illuminate\Support\Facades\Auth;
 use Throwable;
@@ -28,9 +29,6 @@ use Throwable;
  */
 final class AuditService
 {
-    /** A request id is kept only when it looks like one (uuid, ray id…); it comes from the client. */
-    private const string REQUEST_ID_PATTERN = '/\A[A-Za-z0-9._-]{1,128}\z/';
-
     /**
      * @param  array<string, mixed>  $context  optional overrides: site_id, actor_id,
      *                                         actor_label, auditable_type, auditable_id, meta
@@ -45,7 +43,8 @@ final class AuditService
             $support = app(SupportSession::class)->current();
 
             $entry = new AuditLog([
-                'request_id' => $this->requestId($request->headers->get('X-Request-Id')),
+                // Kept only when it looks like one (uuid, ray id…): it comes from the client.
+                'request_id' => RequestId::accept($request->headers->get(RequestId::HEADER)),
                 'actor_id' => $context['actor_id'] ?? $user?->getAuthIdentifier(),
                 'actor_label' => $context['actor_label'] ?? ($user instanceof User ? $user->email : null),
                 'impersonator_id' => $support['staff_id'] ?? null,
@@ -71,10 +70,5 @@ final class AuditService
 
             report($e); // best-effort — swallow so the caller's flow is never blocked
         }
-    }
-
-    private function requestId(?string $header): ?string
-    {
-        return $header !== null && preg_match(self::REQUEST_ID_PATTERN, $header) === 1 ? $header : null;
     }
 }
