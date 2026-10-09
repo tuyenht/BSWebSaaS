@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Modules\Identity\Models\User;
+use App\Modules\Monitoring\Support\ErrorEvent;
 use App\Modules\Tenancy\Http\Middleware\SetCurrentSite;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +22,24 @@ use Symfony\Component\Mime\Email;
 function monitoringMailText(Email $mail): string
 {
     return $mail->getHeaders()->toString()."\n".$mail->getSubject()."\n".$mail->getTextBody();
+}
+
+/**
+ * The queued notice jobs as the queue backend stores them (serialized), then sent the way the
+ * `monitoring` queue's worker sends them. Returns the stored form.
+ */
+function monitoringQueuedThenSent(): string
+{
+    $jobs = queuedMonitoringNotices();
+
+    foreach ($jobs as $job) {
+        expect(array_keys($job->event))->toBe(array_keys((new ErrorEvent('f', ErrorEvent::KIND_OTHER, 0, ''))->toArray()));
+    }
+
+    $stored = serialize($jobs);
+    sendMonitoringNotices();
+
+    return $stored;
 }
 
 beforeEach(function (): void {
@@ -56,9 +75,15 @@ it('mails the route pattern, never the path, the query, the body or the message'
         ])
         ->assertStatus(500);
 
+    $stored = monitoringQueuedThenSent();
     $mails = monitoringMails();
     expect($mails)->toHaveCount(1);
     $text = monitoringMailText($mails[0]);
+
+    // The queued payload holds no more than the mail: none of the request's own data either.
+    foreach (['RESETTOKEN987654', 'INVITE555', 'Sup3rSecret', 'khach@example.com', '0912345678901', 'Order for', $user->email, 'http://'] as $secret) {
+        expect($stored)->not->toContain($secret);
+    }
 
     expect($text)
         ->toContain('monitoring.probe')
@@ -85,7 +110,10 @@ it('mails the route pattern, never the path, the query, the body or the message'
 it('mails only the SQLSTATE of a database error, never the SQL or its bindings', function (): void {
     $this->get('http://a.test/__monitoring-sql')->assertStatus(500);
 
+    $stored = monitoringQueuedThenSent();
     $mails = monitoringMails();
+    expect($stored)->not->toContain('binding-secret@example.com')
+        ->not->toContain('monitoring_no_such_table');
     expect($mails)->toHaveCount(1);
     $text = monitoringMailText($mails[0]);
 
@@ -102,6 +130,7 @@ it('leaves out a request id that does not look like one', function (): void {
         ->post('http://a.test/__monitoring-probe/abc')
         ->assertStatus(500);
 
+    monitoringQueuedThenSent();
     $text = monitoringMailText(monitoringMails()[0]);
 
     expect($text)
@@ -113,6 +142,7 @@ it('leaves out a request id that does not look like one', function (): void {
 it('names the platform, not a site, for an error outside any site', function (): void {
     $this->get('http://platform.invalid/__monitoring-platform')->assertStatus(500);
 
+    monitoringQueuedThenSent();
     $text = monitoringMailText(monitoringMails()[0]);
 
     expect($text)

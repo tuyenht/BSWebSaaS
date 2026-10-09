@@ -14,7 +14,6 @@ use WeakMap;
  * - which exceptions were already counted (a failed job or command is counted by its own event,
  *   and the same exception reaching report() a moment later must not count twice);
  * - the job or command being run, to name it in a notice;
- * - the notices waiting to be sent after the response;
  * - a re-entry guard, so a failure inside the reporter can never report itself.
  */
 final class ReportScope
@@ -27,9 +26,6 @@ final class ReportScope
     private ?string $job = null;
 
     private ?string $command = null;
-
-    /** @var list<array{event: ErrorEvent, reason: string, count: int}> */
-    private array $pending = [];
 
     public function __construct()
     {
@@ -79,22 +75,5 @@ final class ReportScope
     public function command(): ?string
     {
         return $this->command;
-    }
-
-    /** Queue a notice; true when it is the first one waiting (the caller then arranges the send). */
-    public function queue(ErrorEvent $event, string $reason, int $count): bool
-    {
-        $this->pending[] = ['event' => $event, 'reason' => $reason, 'count' => $count];
-
-        return count($this->pending) === 1;
-    }
-
-    /** @return list<array{event: ErrorEvent, reason: string, count: int}> */
-    public function takePending(): array
-    {
-        $pending = $this->pending;
-        $this->pending = [];
-
-        return $pending;
     }
 }

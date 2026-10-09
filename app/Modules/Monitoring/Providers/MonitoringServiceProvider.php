@@ -14,7 +14,6 @@ use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
-use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
@@ -52,12 +51,6 @@ final class MonitoringServiceProvider extends ServiceProvider
         ));
 
         Event::listen(JobProcessed::class, fn () => self::reporter(fn (ErrorReporter $reporter) => $reporter->jobFinished()));
-
-        // A queue worker sends a job's notices before it takes the next job. The listener must
-        // return nothing: `false` from a Looping listener pauses the worker.
-        Event::listen(Looping::class, function (): void {
-            self::reporter(fn (ErrorReporter $reporter) => $reporter->flush());
-        });
 
         if ($this->app->runningInConsole()) {
             $this->commands([SendDailySummary::class, PingHeartbeat::class]);

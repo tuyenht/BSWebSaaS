@@ -3,6 +3,7 @@
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Identity\Models\User;
+use App\Modules\Monitoring\Jobs\SendErrorNotice;
 use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
@@ -11,6 +12,7 @@ use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Mail\Transport\ArrayTransport;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
@@ -169,7 +171,9 @@ function fakePwnedVerifier(bool $compromised = false): void
 |--------------------------------------------------------------------------
 | Turn the notices on for one test: a recipient, a sender on the `monitoring` mailer with the
 | array transport (nothing leaves the box), and a Valkey key prefix of its own so the counters of
-| one test never meet another's. Returns that prefix; forgetMonitoringKeys() removes its keys.
+| one test never meet another's. The notice jobs are held by a queue fake (only those: every other
+| job runs as usual) and sendMonitoringNotices() plays the `monitoring` queue's worker. Returns the
+| prefix; forgetMonitoringKeys() removes its keys.
 */
 function enableMonitoring(): string
 {
@@ -183,8 +187,40 @@ function enableMonitoring(): string
         'mail.mailers.monitoring.from' => ['address' => 'alerts@platform.example.test', 'name' => 'Platform alerts'],
     ]);
     Mail::purge('monitoring');
+    fakeMonitoringQueue();
 
     return $prefix;
+}
+
+/** Hold the notice jobs, each after the serialize round trip a real queue gives it. */
+function fakeMonitoringQueue(): void
+{
+    Queue::fake([SendErrorNotice::class])->serializeAndRestore();
+}
+
+/** @return list<SendErrorNotice> the notice jobs queued since the last send */
+function queuedMonitoringNotices(): array
+{
+    $jobs = [];
+
+    foreach (Queue::pushed(SendErrorNotice::class)->all() as $job) {
+        if ($job instanceof SendErrorNotice) {
+            $jobs[] = $job;
+        }
+    }
+
+    return $jobs;
+}
+
+/** What the `monitoring` queue's worker does: run each queued notice job once. */
+function sendMonitoringNotices(): void
+{
+    $jobs = queuedMonitoringNotices();
+    fakeMonitoringQueue(); // a fresh list: a notice is sent once
+
+    foreach ($jobs as $job) {
+        app()->call([$job, 'handle']);
+    }
 }
 
 function forgetMonitoringKeys(string $prefix): void

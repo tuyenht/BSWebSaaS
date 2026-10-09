@@ -210,6 +210,23 @@ return [
             'timeout' => 60,
             'nice' => 0,
         ],
+
+        // Error notices (App\Modules\Monitoring\Jobs\SendErrorNotice) on a queue of their own, so a
+        // backlog on `default` never delays them and a slow mail host never holds `default` jobs.
+        // Defaults apply to every environment.
+        'supervisor-monitoring' => [
+            'connection' => 'redis',
+            'queue' => ['monitoring'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 1,
+            'timeout' => 30,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
