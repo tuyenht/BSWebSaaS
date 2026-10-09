@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -29,3 +30,16 @@ Schedule::command('cms:prune-revisions')->daily()->withoutOverlapping();
 // Customers' own domains expire and get pointed elsewhere: mark the failing ones, stop serving a
 // domain that has been failing for 30 days, drop the ones never pointed here (design.md §28).
 Schedule::command('domains:recheck')->daily()->withoutOverlapping();
+
+// Error notices: the morning summary of the counting day that just closed, at a local time set
+// explicitly (the app clock stays UTC). Mails only when there is something to say.
+Schedule::command('monitoring:summary')
+    ->dailyAt(Cast::string(config('monitoring.summary_at'), '08:00'))
+    ->timezone(Cast::string(config('monitoring.timezone'), 'Asia/Ho_Chi_Minh'))
+    ->withoutOverlapping();
+
+// The scheduler's heartbeat: a data-free ping an outside watcher expects every 5 minutes. Only
+// when an address is configured.
+Schedule::command('monitoring:heartbeat')
+    ->everyFiveMinutes()
+    ->when(fn (): bool => filled(config('monitoring.heartbeat_url')));
