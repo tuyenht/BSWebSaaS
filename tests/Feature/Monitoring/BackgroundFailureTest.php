@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Modules\Monitoring\ErrorReporter;
 use App\Modules\Monitoring\Support\DayWindow;
 use App\Modules\Monitoring\Support\ErrorCounter;
 use Illuminate\Bus\Queueable;
@@ -67,7 +66,7 @@ it('reports a failed job once, by class, with the site it ran for', function ():
     } catch (RuntimeException $e) {
         report($e); // what the queue worker does right after the job-failed event
     }
-    app(ErrorReporter::class)->flush();
+    sendMonitoringNotices();
 
     $mails = monitoringMails();
     $text = (string) $mails[0]->getSubject()."\n".$mails[0]->getTextBody();
@@ -89,7 +88,7 @@ it('reports a failed scheduled command once, by name, without its arguments', fu
     // What schedule:run does when a command fails: the event, then the handler's report.
     event(new ScheduledTaskFailed($task, $e));
     report($e);
-    app(ErrorReporter::class)->flush();
+    sendMonitoringNotices();
 
     $mails = monitoringMails();
     $text = (string) $mails[0]->getSubject()."\n".$mails[0]->getTextBody();
@@ -107,7 +106,7 @@ it('counts a command failure once when its own process already reported the exce
     // The child process: the command starts, throws, and its exception is reported there.
     event(new CommandStarting('entries:publish-due', new ArrayInput([]), new NullOutput));
     report(new RuntimeException('inside the command'));
-    app(ErrorReporter::class)->flush();
+    sendMonitoringNotices();
 
     // The parent (schedule:run) sees the non-zero exit code a moment later, in another process.
     app()->forgetScopedInstances();
@@ -115,7 +114,7 @@ it('counts a command failure once when its own process already reported the exce
     $e = new Exception('Scheduled command failed with exit code [1].');
     event(new ScheduledTaskFailed($task, $e));
     report($e);
-    app(ErrorReporter::class)->flush();
+    sendMonitoringNotices();
 
     $mails = monitoringMails();
 

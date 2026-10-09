@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Monitoring;
 
+use App\Modules\Monitoring\Jobs\SendErrorNotice;
 use App\Modules\Monitoring\Support\ErrorCounter;
 use App\Modules\Monitoring\Support\ErrorEvent;
 use App\Modules\Monitoring\Support\EventCapture;
@@ -12,6 +13,7 @@ use App\Modules\Monitoring\Support\ReportScope;
 use Closure;
 use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Console\Scheduling\Event as ScheduledEvent;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Application;
 use Illuminate\Queue\Events\JobFailed;
@@ -27,21 +29,18 @@ use Throwable;
  *
  * Containment comes first: nothing here may change a response, raise, report itself, or run SQL.
  * Every entry point is guarded; a failure inside is written to the log with a plain call and
- * dropped. The notice is sent after the response (app terminating) — or, in a queue worker, before
- * it takes the next job — directly on the monitoring mailer, never through the queue (a dead
- * Horizon must not hide its own fault).
+ * dropped. The notice itself is sent by a queued job (Jobs\SendErrorNotice, on the `monitoring`
+ * queue): a send waits on the mail host, and that wait must not hold a web worker. A dead Horizon
+ * holds the notices back; the daily summary, sent by the scheduler, still covers them.
  */
 final readonly class ErrorReporter
 {
-    /** Queue workers live for many jobs: they send between jobs instead of at process end. */
-    private const array WORKER_COMMANDS = ['queue:work', 'horizon:work'];
-
     public function __construct(
         private Application $app,
         private ReportScope $scope,
         private EventCapture $capture,
         private ErrorCounter $counter,
-        private NoticeMailer $mailer,
+        private Dispatcher $bus,
     ) {}
 
     /** The exception handler's report hook (bootstrap/app.php): Laravel's ignore list already ran. */
@@ -108,21 +107,15 @@ final readonly class ErrorReporter
         $this->scope->setJob(null);
     }
 
-    /** Send the notices waiting in this request, job or command. */
-    public function flush(): void
-    {
-        foreach ($this->scope->takePending() as $notice) {
-            try {
-                $this->mailer->sendNotice($notice['event'], $notice['reason'], $notice['count']);
-            } catch (Throwable $e) {
-                self::quietLog('notice not sent', $e);
-            }
-        }
-    }
-
     private function count(ErrorEvent $event, bool $commandFailure = false): void
     {
         ['first' => $first, 'count' => $count] = $this->counter->record($event, $commandFailure);
+
+        // The notice job's own fault is counted (the summary lists it) but never mailed through
+        // another notice job: that could only go round in a circle.
+        if ($event->job === SendErrorNotice::class) {
+            return;
+        }
 
         $milestones = config('monitoring.milestones', []);
         $reason = match (true) {
@@ -135,10 +128,19 @@ final readonly class ErrorReporter
             return;
         }
 
-        if ($this->scope->queue($event, $reason, $count) && ! $this->app->runningConsoleCommand(...self::WORKER_COMMANDS)) {
-            // After the response has left (Octane, FPM) or when the command ends. The closure keeps
-            // this request's scope: Octane may forget the scoped binding before it runs.
-            $this->app->terminating(fn () => $this->flush());
+        $this->dispatchNotice($event, $reason, $count);
+    }
+
+    /**
+     * Hand the notice to the `monitoring` queue on Valkey — one push, no SQL — with only the
+     * event's allow-listed fields. A failure to push is logged and dropped, never raised.
+     */
+    private function dispatchNotice(ErrorEvent $event, string $reason, int $count): void
+    {
+        try {
+            $this->bus->dispatch(new SendErrorNotice($event->toArray(), $reason, $count));
+        } catch (Throwable $e) {
+            self::quietLog('notice not queued', $e);
         }
     }
 

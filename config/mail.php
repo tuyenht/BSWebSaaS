@@ -52,7 +52,7 @@ return [
         // Platform error notices (config/monitoring.php). Built only from MONITORING_MAIL_*, never
         // touched by the per-tenant mail settings, and never a fallback for the default mailer:
         // with no host or sender here no notice is sent at all. A short timeout, because a notice
-        // is sent directly, not through the queue.
+        // is sent by the `monitoring` queue's worker and that worker waits on the mail host.
         'monitoring' => [
             'transport' => 'smtp',
             'scheme' => env('MONITORING_MAIL_SCHEME') ?: null, // `smtps` for port 465, else empty
