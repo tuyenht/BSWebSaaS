@@ -25,7 +25,12 @@ final readonly class EventCapture
 {
     public function __construct(private Application $app) {}
 
-    public function fromThrowable(Throwable $e, ?string $job, ?string $command): ErrorEvent
+    /**
+     * A fault on the report path. Inside a job, $jobSiteId (the job's own site id) names the site
+     * when no site context is open any more — a job's tenant middleware closes it before the
+     * worker reports.
+     */
+    public function fromThrowable(Throwable $e, ?string $job, ?string $command, ?int $jobSiteId = null): ErrorEvent
     {
         [$file, $line] = $this->firstApplicationFrame($e);
         $request = $this->httpRequest();
@@ -45,6 +50,7 @@ final readonly class EventCapture
             request: $request,
             job: $job,
             command: $command,
+            jobSiteId: $jobSiteId,
         );
     }
 
@@ -90,6 +96,7 @@ final readonly class EventCapture
         ?string $job,
         ?string $command,
         ?int $siteId = null,
+        ?int $jobSiteId = null,
     ): ErrorEvent {
         $route = $request?->route();
         $route = $route instanceof Route ? $route : null;
@@ -102,7 +109,7 @@ final readonly class EventCapture
             kind: $kind,
             occurredAt: now()->getTimestamp(),
             environment: (string) $this->app->environment(),
-            siteId: $siteId ?? ($current->hasId() ? $current->id() : $host?->siteId),
+            siteId: $siteId ?? ($current->hasId() ? $current->id() : ($jobSiteId ?? $host?->siteId)),
             host: $host?->primaryHost,
             routeName: $route?->getName(),
             routePattern: $route?->uri(),

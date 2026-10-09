@@ -14,6 +14,7 @@ use Illuminate\Console\Events\ScheduledTaskFailed;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Queue\Events\JobReleasedAfterException;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\ServiceProvider;
@@ -48,6 +49,10 @@ final class MonitoringServiceProvider extends ServiceProvider
 
         Event::listen(JobProcessing::class, fn (JobProcessing $event) => self::reporter(
             fn (ErrorReporter $reporter) => $reporter->jobStarting($event->job),
+        ));
+
+        Event::listen(JobReleasedAfterException::class, fn (JobReleasedAfterException $event) => self::reporter(
+            fn (ErrorReporter $reporter) => $reporter->jobReleased($event),
         ));
 
         Event::listen(JobProcessed::class, fn () => self::reporter(fn (ErrorReporter $reporter) => $reporter->jobFinished()));

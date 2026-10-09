@@ -17,6 +17,7 @@ use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Queue\Job;
 use Illuminate\Foundation\Application;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobReleasedAfterException;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -52,13 +53,28 @@ final readonly class ErrorReporter
             }
 
             $this->scope->markCounted($e);
-            $this->count($this->capture->fromThrowable($e, $this->scope->job(), $this->scope->command()));
+            $this->count($this->capture->fromThrowable($e, $this->scope->job(), $this->scope->command(), $this->scope->jobSiteId()));
 
             // A console command's own process: tell the scheduler watching its exit code that the
             // fault is already counted (it runs in another process — no shared memory).
             $command = $this->scope->command();
             if ($command !== null && $this->scope->job() === null && $this->app->runningInConsole()) {
                 $this->counter->markCommandReported($command);
+            }
+        });
+    }
+
+    /**
+     * The worker released a job to try it again after this exception. A job is counted once, when
+     * it fails for good (jobFailed), so the attempt's exception — which the worker reports a moment
+     * later — is marked as already handled. A fault that a later attempt gets past is what retries
+     * are for, and is not a failure.
+     */
+    public function jobReleased(JobReleasedAfterException $event): void
+    {
+        $this->guarded(function () use ($event): void {
+            if ($event->exception instanceof Throwable) {
+                $this->scope->markCounted($event->exception);
             }
         });
     }
@@ -98,7 +114,7 @@ final readonly class ErrorReporter
 
     public function jobStarting(Job $job): void
     {
-        $this->guarded(fn () => $this->scope->setJob($job->resolveName()));
+        $this->guarded(fn () => $this->scope->setJob($job->resolveName(), self::siteOfJob($job)));
     }
 
     /** A job ran to the end (a job run inline inside a request must not name the rest of it). */
@@ -165,7 +181,7 @@ final readonly class ErrorReporter
     }
 
     /**
-     * The site a failed job ran for: its own `siteId` (or `tenantSiteId`) property, read straight
+     * The site a job runs for: its own `siteId` (or `tenantSiteId`) property, read straight
      * from the serialized command as a plain integer. Unserializing would restore models — SQL —
      * and nothing else of the payload is looked at. No such property (or an encrypted job) = none.
      */
