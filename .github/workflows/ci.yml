@@ -16,8 +16,9 @@ on:
     - cron: '30 19 * * *'
   workflow_dispatch:
 
-# A newer push to a pull request cancels that pull request's older run. Nightly and manual runs
-# are never cancelled by a newer one: each is the evidence for one commit.
+# A newer push to a pull request cancels that pull request's older run. A nightly or manual run
+# is never stopped once it has started; a second one for the same ref waits its turn, and a third
+# replaces the one still waiting.
 concurrency:
   group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -69,8 +70,8 @@ jobs:
           while IFS= read -r -d '' path; do
             count=$((count + 1))
             case "${path}" in
-              # Documents: read by people and by Claude, never by the app, the build or a test.
-              # (Tailwind skips docs/ — resources/css/app.css; .claude/settings.json is config.)
+              # Documents: read by people and by Claude, never by the app, a test or a CI step.
+              # (.claude/settings.json is config, so it is not on this line.)
               docs/*|plans/*.md|.claude/*.md|CLAUDE.md|README.md|LICENSE)
                 ;;
               # The local wrapper around the admin a11y scan lives with the files `cwv` runs.
