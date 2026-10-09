@@ -11,6 +11,9 @@ use App\Modules\Monitoring\Support\ErrorEvent;
 use App\Modules\Monitoring\Support\ReportScope;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Contracts\Debug\ExceptionHandler;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
@@ -199,6 +202,62 @@ it('runs no SQL while reporting, even with a signed-in user and a current site',
         ->and($sendQueries)->toBe(0)
         ->and((string) monitoringMails()[0]->getTextBody())->toContain((string) $user->getKey())
         ->and((string) monitoringMails()[0]->getTextBody())->not->toContain($user->email);
+});
+
+it('runs no SQL in the report hook of a real request, and never loads a signed-in user itself', function (): void {
+    $user = User::factory()->create();
+    $inHook = false;
+    $hookQueries = 0;
+    $hookRuns = 0;
+
+    DB::listen(function () use (&$inHook, &$hookQueries): void {
+        if ($inHook) {
+            $hookQueries++;
+        }
+    });
+
+    // Report callbacks run in the order they were added: this one runs right after the monitoring
+    // hook and before Laravel's own log context (which reads the user), closing the window.
+    app(ExceptionHandler::class)->reportable(function (Throwable $e) use (&$inHook, &$hookRuns): void {
+        if ($inHook) {
+            $hookRuns++;
+        }
+        $inHook = false;
+    });
+
+    // The window opens at the throw: what runs next, up to the callback above, is the report hook.
+    Route::middleware('web')->get('/__monitoring-session-only', function () use (&$inHook): never {
+        $inHook = true;
+        throw new RuntimeException('the request never asked who is signed in');
+    });
+    Route::middleware('web')->get('/__monitoring-user-loaded', function () use (&$inHook): never {
+        auth()->user();
+        $inHook = true;
+        throw new RuntimeException('the request loaded the signed-in user');
+    });
+
+    // The session holds the sign-in; the guard starts empty and only the request may load the user.
+    $session = [Auth::guard('web')->getName() => $user->getKey()];
+    Auth::forgetGuards();
+
+    $sessionOnly = $this->withSession($session)->get('/__monitoring-session-only');
+    $sessionOnlyQueries = $hookQueries;
+    $sessionOnlyEvent = queuedMonitoringNotices()[0]->event;
+
+    Auth::forgetGuards();
+    $hookQueries = 0;
+    $loaded = $this->withSession($session)->get('/__monitoring-user-loaded');
+    $loadedEvent = queuedMonitoringNotices()[1]->event;
+
+    expect($sessionOnly->getStatusCode())->toBe(500)
+        ->and($loaded->getStatusCode())->toBe(500)
+        ->and($hookRuns)->toBe(2)
+        ->and($sessionOnlyQueries)->toBe(0)
+        ->and($hookQueries)->toBe(0)
+        ->and($sessionOnlyEvent['routePattern'])->toBe('__monitoring-session-only')
+        ->and($sessionOnlyEvent['userId'])->toBeNull()
+        ->and($loadedEvent['routePattern'])->toBe('__monitoring-user-loaded')
+        ->and($loadedEvent['userId'])->toBe($user->getKey());
 });
 
 it('swallows its own failure: the response is unchanged and it does not report itself', function (): void {
