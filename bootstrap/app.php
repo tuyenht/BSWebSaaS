@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AddSecurityHeaders;
 use App\Modules\Identity\Http\Middleware\EnsureTwoFactorEnabled;
+use App\Modules\Monitoring\ErrorReporter;
 use App\Modules\Rbac\Http\Middleware\EnsurePlatformAccess;
 use App\Modules\Rbac\Http\Middleware\EnsureTenantMember;
 use App\Modules\Tenancy\Http\Middleware\EnsureModuleEnabled;
@@ -67,4 +68,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        // Production error notices (app/Modules/Monitoring): count the fault and tell the operator.
+        // Runs after Laravel's own ignore list (404, validation…); never returns false, so the
+        // normal log entry is still written; never lets its own failure out.
+        $exceptions->report(function (Throwable $e): void {
+            try {
+                app(ErrorReporter::class)->report($e);
+            } catch (Throwable) {
+                // the reporter guards itself; this only catches a failure to build it
+            }
+        });
     })->create();

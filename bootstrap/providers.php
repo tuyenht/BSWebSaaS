@@ -6,6 +6,7 @@ use App\Modules\Cms\Providers\CmsServiceProvider;
 use App\Modules\Forms\Providers\FormsServiceProvider;
 use App\Modules\Identity\Providers\IdentityServiceProvider;
 use App\Modules\Media\Providers\MediaServiceProvider;
+use App\Modules\Monitoring\Providers\MonitoringServiceProvider;
 use App\Modules\Notifications\Providers\NotificationsServiceProvider;
 use App\Modules\Provisioning\Providers\ProvisioningServiceProvider;
 use App\Modules\Rbac\Providers\RbacServiceProvider;
@@ -28,4 +29,5 @@ return [
     MediaServiceProvider::class,
     CatalogServiceProvider::class,
     AdminServiceProvider::class,
+    MonitoringServiceProvider::class,
 ];

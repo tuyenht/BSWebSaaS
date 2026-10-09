@@ -49,6 +49,25 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        // Platform error notices (config/monitoring.php). Built only from MONITORING_MAIL_*, never
+        // touched by the per-tenant mail settings, and never a fallback for the default mailer:
+        // with no host or sender here no notice is sent at all. A short timeout, because a notice
+        // is sent directly, not through the queue.
+        'monitoring' => [
+            'transport' => 'smtp',
+            'scheme' => env('MONITORING_MAIL_SCHEME') ?: null, // `smtps` for port 465, else empty
+            'host' => env('MONITORING_MAIL_HOST'),
+            'port' => env('MONITORING_MAIL_PORT') ?: 587,
+            'username' => env('MONITORING_MAIL_USERNAME'),
+            'password' => env('MONITORING_MAIL_PASSWORD'),
+            'timeout' => 5,
+            'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
+            'from' => [
+                'address' => env('MONITORING_MAIL_FROM_ADDRESS'),
+                'name' => env('MONITORING_MAIL_FROM_NAME'),
+            ],
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

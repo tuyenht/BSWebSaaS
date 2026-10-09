@@ -8,8 +8,14 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
+use Illuminate\Mail\Transport\ArrayTransport;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
+use Symfony\Component\Mailer\SentMessage;
+use Symfony\Component\Mime\Email;
 use Tests\TestCase;
 
 uses(TestCase::class)->in('Feature', 'Arch', 'Concurrency');
@@ -155,4 +161,69 @@ function fakePwnedVerifier(bool $compromised = false): void
             return ! $this->compromised;
         }
     });
+}
+
+/*
+|--------------------------------------------------------------------------
+| Error-notice helpers (Monitoring module)
+|--------------------------------------------------------------------------
+| Turn the notices on for one test: a recipient, a sender on the `monitoring` mailer with the
+| array transport (nothing leaves the box), and a Valkey key prefix of its own so the counters of
+| one test never meet another's. Returns that prefix; forgetMonitoringKeys() removes its keys.
+*/
+function enableMonitoring(): string
+{
+    $prefix = 'monitoring-test:'.Str::lower(Str::random(12)).':';
+
+    config([
+        'monitoring.to' => 'owner@example.test',
+        'monitoring.key_prefix' => $prefix,
+        'mail.mailers.monitoring.transport' => 'array',
+        'mail.mailers.monitoring.host' => 'smtp.example.test',
+        'mail.mailers.monitoring.from' => ['address' => 'alerts@platform.example.test', 'name' => 'Platform alerts'],
+    ]);
+    Mail::purge('monitoring');
+
+    return $prefix;
+}
+
+function forgetMonitoringKeys(string $prefix): void
+{
+    $connectionPrefix = (string) config('database.redis.options.prefix');
+
+    try {
+        $keys = Redis::keys($prefix.'*');
+    } catch (Throwable) {
+        return; // a test that broke the connection on purpose wrote nothing
+    }
+
+    foreach (is_array($keys) ? $keys : [] as $key) {
+        Redis::del(Str::after((string) $key, $connectionPrefix));
+    }
+}
+
+/**
+ * The notices the `monitoring` mailer actually handed to its transport.
+ *
+ * @return list<Email>
+ */
+function monitoringMails(string $mailer = 'monitoring'): array
+{
+    $transport = Mail::mailer($mailer)->getSymfonyTransport();
+
+    if (! $transport instanceof ArrayTransport) {
+        return [];
+    }
+
+    $mails = [];
+
+    foreach ($transport->messages() as $sent) {
+        $message = $sent instanceof SentMessage ? $sent->getOriginalMessage() : null;
+
+        if ($message instanceof Email) {
+            $mails[] = $message;
+        }
+    }
+
+    return $mails;
 }

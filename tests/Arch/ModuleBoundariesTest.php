@@ -92,6 +92,28 @@ arch('Identity module does not depend on Rbac')
     ->expect('App\\Modules\\Identity')
     ->not->toUse('App\\Modules\\Rbac');
 
+// Error notices sit beside everything and under nothing: Monitoring reads the current site through
+// Tenancy\Context and uses the Shared helpers, nothing else of ours — so a fault in any module can
+// be reported without that module knowing Monitoring exists, and Monitoring can never pull a
+// feature module (or its SQL) onto the report path.
+arch('Monitoring depends only on Shared and Tenancy\\Context')
+    ->expect('App\\Modules\\Monitoring')
+    ->not->toUse([
+        ...$namespacesExcept(['Monitoring', 'Shared', 'Tenancy']),
+        ...collect(scandir("{$modulesPath}/Tenancy") ?: [])
+            ->filter(fn (string $entry): bool => ! in_array($entry, ['.', '..', 'Context'], true) && is_dir("{$modulesPath}/Tenancy/{$entry}"))
+            ->map(fn (string $entry): string => "App\\Modules\\Tenancy\\{$entry}")
+            ->all(),
+    ]);
+
+// Nothing depends on Monitoring: it is wired only from bootstrap/app.php (the report hook) and
+// its own service provider. One rule per namespace (see the note above the Tenancy\Models rules).
+foreach ([...$namespacesExcept(['Monitoring']), 'App\\Http', 'App\\Console', 'App\\Providers'] as $namespace) {
+    arch("{$namespace} does not depend on Monitoring")
+        ->expect($namespace)
+        ->not->toUse('App\\Modules\\Monitoring');
+}
+
 // The two public delivery planes are independent: the storefront never reaches into admin.
 arch('Storefront module does not depend on Admin')
     ->expect('App\\Modules\\Storefront')
