@@ -4,9 +4,30 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 
 ## Before
 
-1. Merge to `origin/main` first, with **the commit's CI green**. Deploy a pinned SHA — `main` moves fast because parallel sessions push to it.
-   - Check the exact commit: `gh run list --commit <full sha> --json status,conclusion` must show `completed` + `success` and nothing else.
-   - PRs merged in a burst cancel each other's runs on `main`, so a commit in the middle of a burst has a cancelled run and is not deployable — take the last commit of the burst, once its run is green.
+1. Merge to `origin/main` first. Deploy a pinned SHA — `main` moves fast because parallel sessions push to it — and only one with **a full CI run green on that exact commit**.
+   - A merge starts no run. A pull request's own run does not count: it ran on the branch's commits (a rebase merge gives `main` new SHAs) and may have skipped jobs. Full runs are the nightly one (`schedule`, 02:30 Vietnam time, on the head of `main` at that time) and the ones started by hand (`workflow_dispatch`).
+   - Check the exact commit:
+     ```bash
+     gh run list --workflow ci.yml --commit <full sha> --json event,status,conclusion,url
+     ```
+     It must list at least one run with `event` `schedule` or `workflow_dispatch`, and every run listed must be `completed` + `success`. An empty list, or a run that failed, was cancelled or is still going, means not deployable yet.
+   - No run, and the commit is the head of `main` — start one and wait for it:
+     ```bash
+     gh workflow run ci.yml --ref main
+     gh run list --workflow ci.yml --event workflow_dispatch --limit 1 --json databaseId,headSha,status
+     gh run watch <databaseId> --exit-status
+     ```
+     `headSha` must be the SHA you mean to deploy. If `main` moved in between, the run is on the newer head: deploy that one, or use the next step.
+   - No run, and the commit is behind the head of `main` — deploy the head instead when you can. Otherwise run CI on a throwaway branch that points at the commit, then remove it (`gh workflow run` takes a branch or a tag, not a SHA):
+     ```bash
+     git push origin <full sha>:refs/heads/ci-check-<short sha>
+     gh workflow run ci.yml --ref ci-check-<short sha>
+     gh run list --workflow ci.yml --commit <full sha> --json databaseId,event,status,conclusion
+     gh run watch <databaseId> --exit-status
+     git push origin --delete ci-check-<short sha>
+     ```
+     This needs a commit whose own `ci.yml` has the manual trigger (any commit from 10/2026 on).
+   - A full run takes about ten minutes. Start it before the other steps here, not after.
 2. If another session may deploy too, tell it first so two deploys don't overlap.
 3. Read the delta: `git -C /opt/bswebsaas/prod fetch origin && git -C /opt/bswebsaas/prod diff --stat HEAD <sha>`. Look for migrations, routes/middleware, config, events, Blade views and front-end assets.
 4. Migrations in the delta → dump first:

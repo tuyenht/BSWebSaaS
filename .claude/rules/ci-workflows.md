@@ -13,3 +13,6 @@ paths:
 - CommonJS config files are named `.cjs`: `package.json` is `"type": "module"`, so a `.js` `module.exports` silently loads as `{}`.
 - `actions/upload-artifact@v4` skips dot-prefixed paths unless `include-hidden-files: true`. Optional steps (reports, uploads) get `continue-on-error: true`.
 - Workflow changes are proven on the PR's own run; never merge before it is green.
+- When CI runs: on a pull request (jobs chosen by the `changes` job from the changed paths), every night on the head of `main` (every job) and by hand (`gh workflow run ci.yml --ref <branch>`, every job). A merge to `main` starts no run; a deploy needs a full run on the exact commit (`docs/runbooks/prod-deploy.md`).
+- The `changes` job skips work only for paths it names: documents skip every job; the four Pest suites and the host-side `scripts/*.py` / `scripts/*.sh` skip `cwv` only. Any other path runs everything. Before a job, script or test starts reading a path on that list (a test that reads `docs/`, a CI step that runs a `scripts/*.sh`), take the path off the list in the same commit.
+- A new job gets `needs: changes`, an `if:` that skips only on a literal `'false'` output (`!cancelled() && needs.changes.outputs.<name> != 'false'`) and a `timeout-minutes`.

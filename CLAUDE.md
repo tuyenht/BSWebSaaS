@@ -97,6 +97,7 @@ Every table/list/query. Target 10,000+ **sites** × 100M+ rows; the isolation ke
 - `frontend`: Vite + Tailwind build · `scripts/contrast-check.mjs` (admin token pairs ≥ WCAG AA).
 - `cwv`: Lighthouse on `/`, `/lien-he`, `/tin-tuc` of a measurement site — LCP ≤ 1.5s + JS ≤ 30KB (median of 3; the overall score only warns) + axe WCAG 2A/AA with 0 violations; then the admin screens are rendered without login and scanned by axe in jsdom (structural; known debt in `scripts/admin-preview/axe-allowlist.json`, any new violation fails).
 - Arch tests: every tenant model uses BelongsToSite · Entry actions through EntryPolicy (+ admin entry components authorize) · workflow transitions only through the engine · acyclic module boundaries (Tenancy is the base).
+- When it runs: a pull request runs the jobs its changed paths call for (documents only → none; no path that can change a rendered page → no `cwv`; anything else, or any doubt → all three). Every job runs nightly on `main` and on a manual run; a merge to `main` starts no run (`.claude/rules/ci-workflows.md`).
 
 **Tier 2 · manual, by touched area (not merge-blocking — paste the output before reporting done, §10.4):**
 - Mutation baseline classes → `.claude/rules/mutation-baseline.md` (widen the list and raise `--min` over time, never lower).

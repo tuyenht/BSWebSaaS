@@ -1,22 +1,120 @@
 name: CI
 
+# When it runs (Actions minutes are billed, so nothing runs twice for the same change):
+#   - pull request to main: the jobs its changed paths call for (see the `changes` job);
+#   - every night on main's head: every job. This is the run that catches what per-PR scoping
+#     cannot — two pull requests green alone and red together, a path wrongly classed as a
+#     document, a dependency or runner image that moved;
+#   - by hand, on any branch or tag: every job (`gh workflow run ci.yml --ref <branch>`).
+# A merge to main starts no run of its own. A deploy needs a full run on the exact commit
+# (docs/runbooks/prod-deploy.md).
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    # 02:30 in Vietnam (UTC+7). Off the hour: GitHub delays schedules queued at :00.
+    - cron: '30 19 * * *'
+  workflow_dispatch:
 
+# A newer push to a pull request cancels that pull request's older run. Nightly and manual runs
+# are never cancelled by a newer one: each is the evidence for one commit.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Runners are pinned, not `ubuntu-latest`: GitHub moves that label to Ubuntu 26 from 19/10/2026,
 # which would change the OS under every job (chrome, setup-php, postgres service) in one silent
 # jump. Move the pin deliberately, in its own commit, once a run on the new image is green.
+#
+# Every job has a timeout: the default is six hours, all of them billed if a step hangs.
 jobs:
+  # Pull requests only: says which of the jobs below this change needs. Plain git on the checked-out
+  # merge commit — no third-party action.
+  #   code  = 'false' → only documents changed: nothing below runs, and this job is the green result.
+  #   pages = 'false' → nothing that can change a rendered page: the `cwv` job is skipped.
+  # Fail closed: the jobs below skip only on a literal 'false'. If this job fails, or does not run
+  # (nightly, manual), its outputs are empty and everything runs. A path this list does not name
+  # counts as code that can change a page.
+  changes:
+    name: Changed paths (decides which jobs run)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+      pages: ${{ steps.classify.outputs.pages }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The merge commit plus its parents: HEAD^1 is the base branch, HEAD^2 the pull request.
+          fetch-depth: 2
+
+      - name: Classify the changed paths
+        id: classify
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Not a merge commit → stop here (the step fails, so every job runs).
+          git rev-parse --verify --quiet 'HEAD^2' > /dev/null
+
+          # --no-renames: a file moved out of app/ into docs/ still lists its old path.
+          # -z: paths with Vietnamese letters arrive as they are, not quoted.
+          git diff --name-only -z --no-renames 'HEAD^1' HEAD > "${RUNNER_TEMP}/changed-paths"
+
+          code=false
+          pages=false
+          count=0
+          while IFS= read -r -d '' path; do
+            count=$((count + 1))
+            case "${path}" in
+              # Documents: read by people and by Claude, never by the app, the build or a test.
+              # (Tailwind skips docs/ — resources/css/app.css; .claude/settings.json is config.)
+              docs/*|plans/*.md|.claude/*.md|CLAUDE.md|README.md|LICENSE)
+                ;;
+              # The local wrapper around the admin a11y scan lives with the files `cwv` runs.
+              scripts/admin-preview/*)
+                code=true
+                pages=true
+                ;;
+              # Code no page is rendered from: the four Pest suites (`cwv` runs tests/Tools only)
+              # and the host-side Python and shell tools.
+              tests/Unit/*|tests/Feature/*|tests/Arch/*|tests/Concurrency/*|scripts/*.py|scripts/*.sh)
+                code=true
+                ;;
+              *)
+                code=true
+                pages=true
+                ;;
+            esac
+          done < "${RUNNER_TEMP}/changed-paths"
+
+          # No changed path at all is not "documents only".
+          if [ "${count}" -eq 0 ]; then
+            code=true
+            pages=true
+          fi
+
+          echo "code=${code}" >> "${GITHUB_OUTPUT}"
+          echo "pages=${pages}" >> "${GITHUB_OUTPUT}"
+
+          if [ "${code}" = false ]; then
+            verdict="Documents only (${count} paths): guardrails, frontend build and page checks are not needed."
+          elif [ "${pages}" = false ]; then
+            verdict="Code that renders no page (${count} paths): guardrails and frontend build run, page checks are not needed."
+          else
+            verdict="Code (${count} paths): every job runs."
+          fi
+          echo "${verdict}"
+          echo "${verdict}" >> "${GITHUB_STEP_SUMMARY}"
+
   guardrails:
     name: Guardrails (pint · phpstan · pest · migrate)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -112,7 +210,10 @@ jobs:
 
   frontend:
     name: Frontend build (Vite + Tailwind)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.code != 'false' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -149,7 +250,10 @@ jobs:
 
   cwv:
     name: Core Web Vitals + a11y (Lighthouse · axe)
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.pages != 'false' }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
 
     services:
       postgres:
