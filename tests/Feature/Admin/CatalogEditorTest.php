@@ -384,7 +384,7 @@ it('reorders and removes gallery images across saves without tripping the unique
     });
 });
 
-it('rejects gallery ids from another site (RLS-scoped exists rule)', function (): void {
+it('rejects gallery ids from another site (RLS-scoped exists rule), exactly as it rejects an unknown id', function (): void {
     $editor = User::factory()->create();
     $foreignMedia = app(Tenancy::class)->enter(2, fn (): int => seedCatalogMedia('c'));
 
@@ -392,14 +392,17 @@ it('rejects gallery ids from another site (RLS-scoped exists rule)', function ()
         grantRole($editor, 'cat-manager', ['catalog.view', 'catalog.manage', 'media.view']);
 
         // Injected straight into the wire payload — the pickImage path never allows it, so the
-        // validation rule is the net that must hold.
-        Livewire::actingAs($editor->fresh())
-            ->test(Editor::class)
-            ->set('name', 'Sản phẩm')
-            ->set('slug', 'san-pham')
-            ->set('imageMediaIds', [$foreignMedia])
-            ->call('save')
-            ->assertHasErrors('imageMediaIds.0');
+        // validation rule is the net that must hold. The same error for both ids: the answer must
+        // not tell whether an id exists on another site.
+        foreach ([$foreignMedia, 9_000_000_000_000_000] as $id) {
+            Livewire::actingAs($editor->fresh())
+                ->test(Editor::class)
+                ->set('name', 'Sản phẩm')
+                ->set('slug', 'san-pham')
+                ->set('imageMediaIds', [$id])
+                ->call('save')
+                ->assertHasErrors(['imageMediaIds.0' => 'exists']);
+        }
 
         expect(Product::query()->count())->toBe(0);
     });

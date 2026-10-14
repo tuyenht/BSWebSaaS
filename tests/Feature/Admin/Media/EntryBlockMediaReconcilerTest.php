@@ -6,6 +6,7 @@ use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
 use App\Modules\Tenancy\Context\Tenancy;
+use Illuminate\Support\Facades\DB;
 
 /*
  * Slice 2 — usage tracking. A block image is a media_id buried in blocks[].props, which no indexed
@@ -80,6 +81,51 @@ it('clears content rows when no block images remain', function (): void {
         $entry->translations()->where('locale', 'vi')->update(['body' => ['blocks' => [['type' => 'richtext', 'props' => ['heading' => 'x']]]]]);
         app(EntryBlockMediaReconciler::class)->reconcile($entry);
         expect(contentMediaIds($entry))->toBe([]);
+    });
+});
+
+it('records usage only for media this site can see, skipping another site\'s id and an unknown id alike', function (): void {
+    // The foreign-key check on mediables.media_id ignores RLS: without the filter, another site's
+    // id would be written (a stray row) while an unknown id fails the insert — a way to learn
+    // whether an id exists on some other site. Both must end the same way: skipped, no error.
+    $foreignId = app(Tenancy::class)->enter(2, fn (): int => (int) reconcilerMedia('theirs', 'c')->id);
+    $unknownId = 9_000_000_000_000_000;
+
+    $outcomes = app(Tenancy::class)->enter(1, function () use ($foreignId, $unknownId): array {
+        $mine = reconcilerMedia('mine', 'a');
+        $outcomes = [];
+
+        foreach (['foreign' => $foreignId, 'unknown' => $unknownId] as $label => $id) {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => "t-{$label}", 'status' => 'draft',
+                'body' => ['blocks' => [
+                    ['type' => 'hero', 'props' => ['image_url' => $mine->id]],
+                    ['type' => 'about', 'props' => ['image_url' => $id]],
+                ]]]);
+
+            app(EntryBlockMediaReconciler::class)->reconcile($entry);
+            $outcomes[$label] = contentMediaIds($entry) === [$mine->id];
+        }
+
+        return $outcomes;
+    });
+
+    expect($outcomes)->toBe(['foreign' => true, 'unknown' => true])
+        // Checked without RLS: no row anywhere points at the other site's media.
+        ->and(DB::connection('pgsql_admin')->table('mediables')->where('media_id', $foreignId)->count())->toBe(0);
+});
+
+it('keeps usage for this site\'s media while it sits in the Trash', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $m = reconcilerMedia('a', 'a');
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft',
+            'body' => ['blocks' => [['type' => 'hero', 'props' => ['image_url' => $m->id]]]]]);
+
+        $m->delete();   // Trash: still this site's media, restorable — the usage must still show
+        app(EntryBlockMediaReconciler::class)->reconcile($entry);
+
+        expect(contentMediaIds($entry))->toBe([$m->id]);
     });
 });
 
