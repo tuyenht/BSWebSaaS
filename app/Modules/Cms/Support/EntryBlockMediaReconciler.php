@@ -3,7 +3,9 @@
 namespace App\Modules\Cms\Support;
 
 use App\Modules\Cms\Models\Entry;
+use App\Modules\Media\Models\Media;
 use App\Modules\Media\Models\Mediable;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Theme\Components\ComponentRegistry;
 use App\Modules\Theme\Components\SchemaImages;
 use Illuminate\Database\Eloquent\Builder;
@@ -14,7 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
  * scale (a media_id buried in blocks[].props can't be found by an indexed query otherwise).
  *
  * Reconciled on save: collects every media_id referenced by an image prop across ALL locale bodies,
- * then upserts/prunes the entry's content rows to match. It runs inside the request transaction (the
+ * keeps those that name this site's media, then upserts/prunes the entry's content rows to match. It runs inside the request transaction (the
  * save), so the usage index never drifts from the content. Lives in Cms, which already depends on
  * Media and Theme, so every Cms write path that changes a body (the editor save, a revision restore)
  * reconciles through this one class.
@@ -25,7 +27,7 @@ final readonly class EntryBlockMediaReconciler
 
     public function reconcile(Entry $entry): void
     {
-        $mediaIds = $this->blockMediaIds($entry);
+        $mediaIds = $this->visibleMediaIds($this->blockMediaIds($entry));
 
         // Prune content rows this entry no longer references, then upsert the current set (idempotent).
         // Empty set (no block images) → the when() is skipped, so every content row is pruned.
@@ -44,6 +46,30 @@ final readonly class EntryBlockMediaReconciler
                 'collection' => 'content',
             ]);
         }
+    }
+
+    /**
+     * The ids that name media of the current site — Trash included, so a restorable media keeps
+     * its usage. A body is client-written, so it may hold any id: the foreign key on
+     * mediables.media_id is checked without RLS, so another site's id would be recorded while an
+     * unknown one fails the insert, telling the writer which ids exist elsewhere. Both are
+     * skipped alike. One query (RLS + the site scope).
+     *
+     * @param  list<int>  $ids
+     * @return list<int>
+     */
+    private function visibleMediaIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $visible = [];
+        foreach (Media::withTrashed()->whereIn('id', $ids)->pluck('id') as $id) {
+            $visible[] = Cast::int($id);
+        }
+
+        return $visible;
     }
 
     /**
