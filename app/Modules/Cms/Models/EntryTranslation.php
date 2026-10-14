@@ -8,8 +8,9 @@ use App\Modules\Tenancy\Concerns\BelongsToSite;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * Per-locale content. body = Page-JSON ({"blocks":[…]}) for a page, or {"html":…}
- * for a post. slug is localized; the full resolved path lives in routes.
+ * Per-locale content. body = Page-JSON ({"blocks":[…]}) for a page or a post; a
+ * formatted post body is a single `html` block, sanitized on every write. slug is
+ * localized; the full resolved path lives in routes.
  *
  * @property int $site_id
  * @property int $entry_id
