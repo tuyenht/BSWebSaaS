@@ -16,7 +16,7 @@
 | `design-briefs/` | Brief và bộ prompt gửi Claude Design (đã được owner duyệt) | Khi đặt thiết kế mới |
 | `design-source/` | Bản export đầy đủ dự án Claude Design (màn `.dc.html`, script dùng chung, token, ghi chú của dự án thiết kế) — nguồn sự thật về giao diện; mỗi lần export mới = 1 commit, `git diff` thấy đúng phần đổi | Khi owner gửi file .zip export |
 | `design_handoff_<slug>/` | Handoff thiết kế đã nhận: `.dc.html` + `README.md` — port 1:1 (CLAUDE.md §8) | Khi nhận export từ Claude Design |
-| `runbooks/` | Quy trình vận hành (deploy ứng dụng prod, deploy media worker, backup/restore DB) | Khi quy trình đổi |
+| `runbooks/` | Quy trình vận hành (deploy ứng dụng prod, deploy media worker, backup/restore DB, sổ tay sự cố máy chủ một trang) | Khi quy trình đổi |
 | `archive/` | Tài liệu hết vai trò, giữ làm lịch sử — KHÔNG phải nguồn sự thật | Chỉ thêm |
 
 `plans/` (ở gốc repo) bị `.gitignore` — là **nháp cục bộ** (kế hoạch đang làm, báo cáo phiên). Thứ gì cần bền
