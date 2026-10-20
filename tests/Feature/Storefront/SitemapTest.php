@@ -424,3 +424,21 @@ it('rebuilds the page plan when the cached value is malformed', function (): voi
     expect(sitemapUrlBlocks($this->get('http://anvinh.test/sitemap-1.xml')->assertOk()->getContent()))
         ->toBe(array_slice($full, 0, 3));
 });
+
+it('lets one request build the page plan while the others wait, then answers 503 with Retry-After', function (): void {
+    sitemapSeedAnVinh();
+    config(['cms.sitemap.max_urls' => 3, 'cms.sitemap.plan_lock_wait' => 0]);
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+
+    // A peer request holds the build lock and has not cached a plan yet.
+    $lock = cache()->lock('sitemap-plan:v1:'.$site->id.':3:lock', 30);
+    expect($lock->get())->toBeTrue();
+
+    $this->get('http://anvinh.test/sitemap-1.xml')->assertStatus(503)->assertHeader('Retry-After', '30');
+    $this->get('http://anvinh.test/sitemap.xml')->assertStatus(503);
+
+    // Once the peer is done, the next request builds (and caches) the plan itself.
+    $lock->release();
+    $this->get('http://anvinh.test/sitemap-1.xml')->assertOk();
+    expect(cache()->lock('sitemap-plan:v1:'.$site->id.':3:lock', 30)->get())->toBeTrue();
+});

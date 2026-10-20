@@ -10,9 +10,12 @@ use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Carbon\CarbonInterface;
+use Closure;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
 
 /**
  * The routes of the current site a visitor can actually open, read in (path, id) keyset order
@@ -97,29 +100,63 @@ final readonly class SitemapRoutes
      */
     public function plan(): array
     {
-        $plan = $this->cachedPlan();
-        if ($plan !== null) {
-            return $plan;
-        }
-
-        $max = $this->maxUrls();
-        $plan = $this->boundaries($max);
-        // At least a minute: a TTL of 0 would run the whole-site pass on every page request.
-        Cache::put($this->planKey($max), $plan, max(60, Cast::int(config('cms.sitemap.plan_ttl'), 3600)));
-
-        return $plan;
+        return $this->cachedPlan() ?? $this->build(fn (array $cached): bool => true);
     }
 
     /**
-     * The plan rebuilt now, replacing a cached one — for a cached plan the site has outgrown.
+     * The plan rebuilt now, replacing a cached one-page plan the site has outgrown.
      *
      * @return list<array{0: string, 1: int}>
      */
     public function freshPlan(): array
     {
-        Cache::forget($this->planKey($this->maxUrls()));
+        $cached = $this->cachedPlan();
 
-        return $this->plan();
+        return $cached !== null && count($cached) > 1
+            ? $cached
+            : $this->build(fn (array $cached): bool => count($cached) > 1);
+    }
+
+    /**
+     * Builds and caches the plan under a per-site lock, so the requests that find it missing at
+     * TTL expiry (a crawler fetches the index and its pages in parallel) run the whole-site pass
+     * once between them: 8-10 s per million routes, measured. A request that waited out the lock
+     * reuses what the peer cached when $usable accepts it; one still waiting after
+     * `plan_lock_wait` seconds gets a 503 with Retry-After, which crawlers retry. The lock
+     * expires on its own after the 30 s request ceiling should its holder die mid-pass. That
+     * ceiling caps an in-request build at roughly 2.5M listed routes per site; past it the plan
+     * must be built off-request (a queued per-site job) — an index does not help, the pass is the
+     * per-route visibility checks (an index on (site_id, path, id) measured no faster).
+     *
+     * @param  Closure(list<array{0: string, 1: int}>): bool  $usable
+     * @return list<array{0: string, 1: int}>
+     */
+    private function build(Closure $usable): array
+    {
+        $max = $this->maxUrls();
+        $key = $this->planKey($max);
+        $lock = Cache::lock($key.':lock', 30);
+
+        try {
+            $lock->block(max(0, Cast::int(config('cms.sitemap.plan_lock_wait'), 10)));
+        } catch (LockTimeoutException) {
+            throw new ServiceUnavailableHttpException(30);
+        }
+
+        try {
+            $cached = $this->cachedPlan(); // a peer may have built it while we waited
+            if ($cached !== null && $usable($cached)) {
+                return $cached;
+            }
+
+            $plan = $this->boundaries($max);
+            // At least a minute: a TTL of 0 would run the whole-site pass on every page request.
+            Cache::put($key, $plan, max(60, Cast::int(config('cms.sitemap.plan_ttl'), 3600)));
+
+            return $plan;
+        } finally {
+            $lock->release();
+        }
     }
 
     /**
