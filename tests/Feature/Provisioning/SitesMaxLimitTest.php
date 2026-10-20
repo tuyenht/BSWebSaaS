@@ -154,6 +154,8 @@ it('frees the slot of a deleted website', function (): void {
 
 it('refuses through site:provision with a plain-language message', function (): void {
     smProvision('Alpha', 'a1.test');
+    // A missing translation would echo the key back and still match the output below.
+    expect(__('provisioning.sites_limit_reached'))->not->toBe('provisioning.sites_limit_reached');
 
     $this->artisan('site:provision', ['--name' => 'A2', '--host' => 'a2.test', '--tenant' => 'Alpha', '--owner-email' => 'owner@a2.test'])
         ->expectsQuestion('Owner password (leave blank to auto-generate)', '')
