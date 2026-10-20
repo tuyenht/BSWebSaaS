@@ -74,20 +74,27 @@ final readonly class ProvisionSite
         $domain = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
 
         if ($domain === null) {
-            $tenant = $data->tenantId !== null
-                ? Tenant::query()->findOrFail($data->tenantId)
-                : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
+            [$site, $tenant] = DB::transaction(function () use ($data): array {
+                // Resolved inside the transaction so a refusal below also undoes a customer it created.
+                $tenant = $data->tenantId !== null
+                    ? Tenant::query()->findOrFail($data->tenantId)
+                    : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
 
-            $site = DB::transaction(function () use ($tenant, $data): Site {
                 // Serialize a customer's new websites: two concurrent provisions must not both pass
                 // the limit. Lock first, then count (a soft-deleted website frees its slot).
                 Tenant::query()->whereKey($tenant->id)->lockForUpdate()->firstOrFail(['id']);
 
                 // A run for the same hostname may have finished while this one waited on the lock:
-                // that makes this a re-run, which is never refused.
+                // that makes this a re-run, never refused by the limit — but only of this
+                // customer's own website, as for a hostname found before the lock.
                 $raced = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
                 if ($raced !== null) {
-                    return $raced->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+                    $site = $raced->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+                    if ($site->tenant_id !== $tenant->id) {
+                        throw new HostnameOwnedByAnotherTenantException($data->hostname);
+                    }
+
+                    return [$site, $tenant];
                 }
 
                 $count = Site::query()->where('tenant_id', $tenant->id)->count();
@@ -111,7 +118,7 @@ final readonly class ProvisionSite
                     'verified_at' => now(),
                 ]);
 
-                return $site;
+                return [$site, $tenant];
             });
             // The host may be remembered as unknown from a request made before it existed.
             $this->sites->forget($data->hostname);

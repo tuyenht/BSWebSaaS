@@ -4,8 +4,10 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
+use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\Tenant;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 
 /*
@@ -111,4 +113,62 @@ it('refuses through site:provision with a plain-language message and fails', fun
         ->assertFailed();
 
     expect(guardFootprint())->toBe($before);
+});
+
+/**
+ * Race: the hostname is free at the first lookup, then another run (for $ownerTenantId, else a new
+ * customer) commits it before this run takes its customer's lock. Committed on its own connection
+ * right after that first lookup, so the re-check under the lock (READ COMMITTED) sees it, as a
+ * real concurrent run would. Injecting at the lock instead would block on the lock it waits for.
+ */
+function raceHostnameBeforeLock(string $host, ?int $ownerTenantId = null): void
+{
+    $fired = false;
+    DB::listen(function (QueryExecuted $query) use (&$fired, $host, $ownerTenantId): void {
+        $sql = strtolower($query->sql);
+        if ($fired || $query->connectionName === 'pgsql_admin' || ! str_contains($sql, 'from "domains"') || ! in_array($host, $query->bindings, true)) {
+            return;
+        }
+        $fired = true;
+
+        $tenantId = $ownerTenantId ?? Tenant::on('pgsql_admin')->create(['name' => 'Racer'])->id;
+        $site = Site::on('pgsql_admin')->create(['tenant_id' => $tenantId, 'name' => 'Racer', 'status' => 'active']);
+        Domain::on('pgsql_admin')->create([
+            'site_id' => $site->id, 'hostname' => $host, 'kind' => 'subdomain',
+            'is_primary' => true, 'verified_at' => now(),
+        ]);
+    });
+}
+
+it('refuses a hostname another customer took between the first lookup and the lock, writing nothing', function (): void {
+    provisionGuarded('Alpha', 'alpha.test', 'owner@alpha.test');
+    raceHostnameBeforeLock('raced.test');
+
+    expect(fn () => provisionGuarded('Alpha', 'raced.test', 'intruder@example.test'))
+        ->toThrow(HostnameOwnedByAnotherTenantException::class);
+
+    $racer = Site::query()->where('name', 'Racer')->sole();
+    expect(User::query()->where('email', 'intruder@example.test')->exists())->toBeFalse()
+        ->and(DB::connection('pgsql_admin')->table('tenant_users')->where('tenant_id', $racer->tenant_id)->exists())->toBeFalse()
+        ->and(Site::query()->where('tenant_id', $racer->tenant_id)->count())->toBe(1);
+});
+
+it('creates no customer when the raced hostname belongs to another customer', function (): void {
+    raceHostnameBeforeLock('raced.test');
+
+    expect(fn () => provisionGuarded('Fresh Co', 'raced.test', 'owner@fresh.test'))
+        ->toThrow(HostnameOwnedByAnotherTenantException::class);
+
+    expect(Tenant::query()->where('name', 'Fresh Co')->exists())->toBeFalse()
+        ->and(guardFootprint()['tenant_users'])->toBe(0);
+});
+
+it('still continues a raced hostname of the same customer as a re-run', function (): void {
+    $alpha = provisionGuarded('Alpha', 'alpha.test', 'owner@alpha.test');
+    raceHostnameBeforeLock('raced.test', $alpha->tenant_id);
+
+    $site = provisionGuarded('Alpha', 'raced.test', 'owner@alpha.test');
+
+    expect($site->tenant_id)->toBe($alpha->tenant_id)
+        ->and($site->name)->toBe('Racer');
 });
