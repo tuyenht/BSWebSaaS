@@ -2,6 +2,7 @@
 
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\Domain;
@@ -268,27 +269,30 @@ it('refuses a hostname a website cannot use, and creates nothing', function (str
     'underscore' => ['my_shop.test'],
 ]);
 
-it('keeps ProvisionSite itself refusing another customer for an existing website', function (Closure $choice, string $reason): void {
+it('keeps ProvisionSite itself refusing another customer for an existing website', function (Closure $choice, Closure $refusal): void {
     $site = tselSeed('Alpha', 'a1.test');
     $beta = Tenant::query()->create(['name' => 'Beta']);
 
-    expect(fn () => app(ProvisionSite::class)->handle($choice($beta)))
-        ->toThrow(function (TenantSelectionException $e) use ($reason): void {
-            expect($e->reason)->toBe($reason);
-        });
+    expect(fn () => app(ProvisionSite::class)->handle($choice($beta)))->toThrow($refusal);
 
     expect(Tenant::query()->count())->toBe(2)
         ->and(Site::query()->sole()->tenant_id)->toBe($site->tenant_id)
         ->and(tselMemberships('owner@a1.test'))->toBe([$site->tenant_id]);
 })->with([
-    'another customer by id' => [fn (Tenant $beta): ProvisionSiteData => tselRerun(tenantId: $beta->id), 'mismatch'],
-    'a new customer' => [fn (Tenant $beta): ProvisionSiteData => tselRerun(newTenantName: 'Gamma'), 'host_taken'],
+    'another customer by id' => [
+        fn (Tenant $beta): ProvisionSiteData => tselRerun(tenantId: $beta->id),
+        fn (HostnameOwnedByAnotherTenantException $e) => expect($e->hostname)->toBe('a1.test'),
+    ],
+    'a new customer' => [
+        fn (Tenant $beta): ProvisionSiteData => tselRerun(newTenantName: 'Gamma'),
+        fn (TenantSelectionException $e) => expect($e->reason)->toBe('host_taken'),
+    ],
 ]);
 
 it('refuses a DTO re-run under another customer name instead of minting that customer', function (): void {
     tselSeed('Alpha', 'a1.test');
 
-    expect(fn () => tselSeed('Alpha Typo', 'a1.test'))->toThrow(TenantSelectionException::class);
+    expect(fn () => tselSeed('Alpha Typo', 'a1.test'))->toThrow(HostnameOwnedByAnotherTenantException::class);
 
     expect(Tenant::query()->pluck('name')->all())->toBe(['Alpha'])
         ->and(tselMemberships('owner@a1.test'))->toHaveCount(1);
