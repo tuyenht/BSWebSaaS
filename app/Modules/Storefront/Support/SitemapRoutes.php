@@ -100,14 +100,13 @@ final readonly class SitemapRoutes
             ->select(['path', 'id'])
             ->selectRaw('row_number() over (order by path, id) as position');
 
-        return DB::query()
+        return array_values(DB::query()
             ->fromSub($numbered->toBase(), 'listed')
             ->whereRaw('(position - 1) % ? = 0', [$max])
             ->orderBy('position')
             ->get(['path', 'id'])
             ->map(fn (object $row): array => [Cast::string($row->path), Cast::int($row->id)])
-            ->values()
-            ->all();
+            ->all());
     }
 
     /** @return Builder<SiteRoute> */
