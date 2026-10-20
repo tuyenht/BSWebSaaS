@@ -4,15 +4,24 @@ declare(strict_types=1);
 
 namespace App\Modules\Provisioning\Console;
 
+use App\Modules\Provisioning\Actions\FindTenant;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
+use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Models\Domain;
+use App\Modules\Tenancy\Models\Tenant;
 use Illuminate\Console\Command;
 
 /**
  * Provision a site end-to-end (idempotent). The owner password is typed at a secret
  * prompt — never an argument.
+ *
+ * A NEW website names its customer explicitly: `--tenant` (ulid, or exact name) for one that
+ * exists, `--new-tenant` to create one — never by default, so a typo or a missing flag cannot mint
+ * a customer with a fresh plan quota. A re-run for an existing hostname needs neither: the website
+ * stays with its own customer.
  */
 final class ProvisionSiteCommand extends Command
 {
@@ -20,7 +29,8 @@ final class ProvisionSiteCommand extends Command
     protected $signature = 'site:provision
         {--name= : Site name}
         {--host= : Primary hostname (e.g. anvinh.test)}
-        {--tenant= : Tenant name (defaults to the site name)}
+        {--tenant= : Existing customer, by ulid or exact name (required for a new website unless --new-tenant)}
+        {--new-tenant= : Create a new customer with this name for the website (prints its ulid)}
         {--owner-email= : Owner email}
         {--owner-name=Owner : Owner display name}
         {--locale=vi : Default locale}';
@@ -28,7 +38,10 @@ final class ProvisionSiteCommand extends Command
     #[\Override]
     protected $description = 'Provision a site end-to-end (idempotent).';
 
-    public function handle(ProvisionSite $action): int
+    /** `tenants.name` is a varchar(255). */
+    private const int TENANT_NAME_MAX = 255;
+
+    public function handle(ProvisionSite $action, FindTenant $find): int
     {
         $name = $this->stringOption('name');
         $host = $this->stringOption('host');
@@ -40,12 +53,19 @@ final class ProvisionSiteCommand extends Command
             return self::FAILURE;
         }
 
-        $tenant = $this->stringOption('tenant');
+        try {
+            $customer = $this->customer($host, $find);
+        } catch (TenantSelectionException $e) {
+            return $this->refuse($e);
+        }
+
         $secret = $this->secret('Owner password (leave blank to auto-generate)');
 
         try {
             $site = $action->handle(new ProvisionSiteData(
-                tenantName: $tenant !== '' ? $tenant : $name,
+                tenantName: $customer['name'],
+                tenantId: $customer['id'],
+                newTenantName: $customer['new'],
                 siteName: $name,
                 hostname: $host,
                 ownerEmail: $ownerEmail,
@@ -57,11 +77,63 @@ final class ProvisionSiteCommand extends Command
             $this->error(Cast::string(__('provisioning.sites_limit_reached', ['count' => $e->count, 'limit' => $e->limit])));
 
             return self::FAILURE;
+        } catch (TenantSelectionException $e) {
+            return $this->refuse($e);
         }
 
-        $this->info("Provisioned site #{$site->id} ({$host}) — status {$site->status}.");
+        $tenantUlid = Cast::string(Tenant::query()->whereKey($site->tenant_id)->value('ulid'));
+        if ($customer['new'] !== null) {
+            $this->info("Created customer {$tenantUlid} ({$customer['new']}). Use --tenant={$tenantUlid} for their next website.");
+        }
+        $this->info("Provisioned site #{$site->id} ({$host}) for customer {$tenantUlid} — status {$site->status}.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Which customer the website goes to, from the flags — before the password prompt, so a wrong
+     * choice fails fast. An existing hostname keeps its own customer (ProvisionSite checks a flag
+     * that names another).
+     *
+     * @return array{id: int|null, name: string, new: string|null}
+     */
+    private function customer(string $host, FindTenant $find): array
+    {
+        $reference = trim($this->stringOption('tenant'));
+        $newName = trim($this->stringOption('new-tenant'));
+
+        if ($reference !== '' && $newName !== '') {
+            throw TenantSelectionException::bothGiven();
+        }
+
+        if ($newName !== '') {
+            if (mb_strlen($newName) > self::TENANT_NAME_MAX) {
+                throw TenantSelectionException::nameTooLong(self::TENANT_NAME_MAX);
+            }
+
+            return ['id' => null, 'name' => $newName, 'new' => $newName];
+        }
+
+        if ($reference !== '') {
+            $tenant = $find->handle($reference);
+
+            return ['id' => $tenant->id, 'name' => $tenant->name, 'new' => null];
+        }
+
+        $existing = Domain::query()->where('hostname', $host)->whereNotNull('verified_at')->first();
+        $site = $existing?->site;
+        if ($site === null) {
+            throw TenantSelectionException::required();
+        }
+
+        return ['id' => $site->tenant_id, 'name' => '', 'new' => null];
+    }
+
+    private function refuse(TenantSelectionException $e): int
+    {
+        $this->error(Cast::string(__($e->translationKey(), $e->replace)));
+
+        return self::FAILURE;
     }
 
     private function stringOption(string $key): string

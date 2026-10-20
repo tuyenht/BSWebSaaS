@@ -17,6 +17,7 @@ use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
+use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
@@ -50,6 +51,10 @@ use Spatie\Permission\PermissionRegistrar;
  * website not soft-deleted counts, whatever its status — suspended, archived, and one left at
  * `provisioning` by a run that failed midway. Re-running for a website that already exists (same
  * hostname) creates nothing and is never refused, which is also how a failed run is finished.
+ *
+ * Which customer: an existing website always stays with its own (TenantSelectionException when the
+ * caller named another); a new website goes to the customer the caller chose by id, or to a new
+ * customer only when one is asked for explicitly (`newTenantName`), created atomically with it.
  */
 final readonly class ProvisionSite
 {
@@ -68,24 +73,28 @@ final readonly class ProvisionSite
     public function handle(ProvisionSiteData $data): Site
     {
         // 1) Global rows (no RLS): tenant, site, primary domain, owner, membership.
-        $tenant = $data->tenantId !== null
-            ? Tenant::query()->findOrFail($data->tenantId)
-            : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
-
         // Only a live domain identifies a site: a name merely waiting on a site is not one.
         $domain = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
 
         if ($domain === null) {
-            $site = DB::transaction(function () use ($tenant, $data): Site {
+            $site = DB::transaction(function () use ($data): Site {
+                // A new customer is created here, in the same transaction as its first website, so
+                // a run that fails before the website exists leaves no empty customer behind.
+                $tenant = $this->tenantForNewSite($data);
+
                 // Serialize a customer's new websites: two concurrent provisions must not both pass
                 // the limit. Lock first, then count (a soft-deleted website frees its slot).
                 Tenant::query()->whereKey($tenant->id)->lockForUpdate()->firstOrFail(['id']);
 
                 // A run for the same hostname may have finished while this one waited on the lock:
-                // that makes this a re-run, which is never refused.
+                // that makes this a re-run, which is never refused — for the website's own customer.
                 $raced = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
                 if ($raced !== null) {
-                    return $raced->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+                    $site = $raced->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+                    // Throws (rolling back a customer just created above) when it is not this site's.
+                    $this->tenantOfExistingSite($site, $data);
+
+                    return $site;
                 }
 
                 $count = Site::query()->where('tenant_id', $tenant->id)->count();
@@ -111,10 +120,12 @@ final readonly class ProvisionSite
 
                 return $site;
             });
+            $tenant = Tenant::query()->findOrFail($site->tenant_id);
             // The host may be remembered as unknown from a request made before it existed.
             $this->sites->forget($data->hostname);
         } else {
             $site = $domain->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+            $tenant = $this->tenantOfExistingSite($site, $data);
         }
 
         // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
@@ -206,6 +217,42 @@ final readonly class ProvisionSite
         ]);
 
         return $site->refresh();
+    }
+
+    /** The customer a NEW website goes to: one created on request, one chosen by id, or (DTO callers) by name. */
+    private function tenantForNewSite(ProvisionSiteData $data): Tenant
+    {
+        if ($data->newTenantName !== null) {
+            return Tenant::query()->create(['name' => $data->newTenantName]);
+        }
+
+        return $data->tenantId !== null
+            ? Tenant::query()->findOrFail($data->tenantId)
+            : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
+    }
+
+    /**
+     * A website that already exists keeps its own customer: a re-run never moves it, never mints a
+     * customer for it, and never makes its owner a member of another customer. A caller that named a
+     * different customer (or asked for a new one) is told so instead of being silently ignored.
+     */
+    private function tenantOfExistingSite(Site $site, ProvisionSiteData $data): Tenant
+    {
+        $tenant = Tenant::query()->findOrFail($site->tenant_id);
+
+        if ($data->newTenantName !== null) {
+            throw TenantSelectionException::hostTaken($data->hostname, $tenant->ulid);
+        }
+
+        $chosenOther = $data->tenantId !== null
+            ? $data->tenantId !== $tenant->id
+            : $data->tenantName !== $tenant->name;
+
+        if ($chosenOther) {
+            throw TenantSelectionException::mismatch($data->hostname, $tenant->ulid);
+        }
+
+        return $tenant;
     }
 
     /**

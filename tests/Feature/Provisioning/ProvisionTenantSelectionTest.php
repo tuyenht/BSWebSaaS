@@ -1,0 +1,267 @@
+<?php
+
+use App\Modules\Provisioning\Actions\ProvisionSite;
+use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\TenantSelectionException;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Models\Domain;
+use App\Modules\Tenancy\Models\Plan;
+use App\Modules\Tenancy\Models\PlanFeature;
+use App\Modules\Tenancy\Models\Site;
+use App\Modules\Tenancy\Models\Tenant;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
+
+/*
+ * Which customer a website goes to. `tenants.name` is not unique, so site:provision never guesses:
+ * a NEW website names an existing customer (ulid or exact name) or asks for a new one explicitly;
+ * anything else is refused in plain words before a row is written — a typo must not mint a
+ * customer with a fresh `sites.max` quota. An existing website always keeps its own customer.
+ */
+
+const TSEL_PROMPT = 'Owner password (leave blank to auto-generate)';
+
+beforeEach(function (): void {
+    DB::connection('pgsql_admin')->statement(
+        'truncate tenant_probes, site_profile_translations, site_profiles, site_settings,
+         site_locales, site_modules, site_features, content_sections, domains, sites, tenants,
+         tenant_users, users restart identity cascade'
+    );
+    DB::connection('pgsql_admin')->statement('delete from plans');
+    truncateRbac();
+});
+
+/** Provision through the DTO (find-or-create by name), as seeders and tests do. */
+function tselSeed(string $tenant, string $host): Site
+{
+    return app(ProvisionSite::class)->handle(new ProvisionSiteData(
+        tenantName: $tenant,
+        siteName: $host,
+        hostname: $host,
+        ownerEmail: 'owner@'.$host,
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-password',
+    ));
+}
+
+/** Let $tenant have up to $limit websites. */
+function tselGrant(Tenant $tenant, int $limit): void
+{
+    $plan = Plan::query()->create(['key' => 'p'.$limit.strtolower(Str::random(6)), 'name' => 'Plan '.$limit, 'is_active' => true, 'sort_order' => 1]);
+    PlanFeature::query()->create(['plan_id' => $plan->id, 'feature_key' => 'sites.max', 'value' => $limit]);
+    $tenant->forceFill(['plan_id' => $plan->id])->save();
+}
+
+/**
+ * @param  array<string, string>  $options
+ * @return array<string, string>
+ */
+function tselArgs(string $host, array $options = []): array
+{
+    return ['--name' => $host, '--host' => $host, '--owner-email' => 'owner@'.$host] + $options;
+}
+
+/** @return list<int> */
+function tselMemberships(string $email): array
+{
+    return DB::table('tenant_users')
+        ->join('users', 'users.id', '=', 'tenant_users.user_id')
+        ->where('users.email', $email)
+        ->orderBy('tenant_id')
+        ->pluck('tenant_id')
+        ->map(fn (mixed $id): int => Cast::int($id))
+        ->values()
+        ->all();
+}
+
+it('refuses a new website that names no customer, and creates nothing', function (): void {
+    $this->artisan('site:provision', tselArgs('new.test'))
+        ->expectsOutputToContain(__('provisioning.tenant_required'))
+        ->assertFailed();
+
+    expect(Tenant::query()->count())->toBe(0)
+        ->and(Site::query()->count())->toBe(0);
+});
+
+it('refuses --tenant and --new-tenant together', function (): void {
+    $this->artisan('site:provision', tselArgs('new.test', ['--tenant' => 'Alpha', '--new-tenant' => 'Alpha']))
+        ->expectsOutputToContain(__('provisioning.tenant_both'))
+        ->assertFailed();
+
+    expect(Tenant::query()->count())->toBe(0);
+});
+
+it('creates a customer only with --new-tenant, and prints its ulid', function (): void {
+    $this->artisan('site:provision', tselArgs('new.test', ['--new-tenant' => '  Công ty Mới  ']))
+        ->expectsQuestion(TSEL_PROMPT, '')
+        ->expectsOutputToContain('Created customer ')
+        ->assertSuccessful();
+
+    $tenant = Tenant::query()->sole();
+    $site = Site::query()->sole();
+
+    expect($tenant->name)->toBe('Công ty Mới')
+        ->and($site->tenant_id)->toBe($tenant->id)
+        ->and(tselMemberships('owner@new.test'))->toBe([$tenant->id]);
+
+    $this->artisan('site:provision', tselArgs('new.test'))
+        ->expectsQuestion(TSEL_PROMPT, '')
+        ->expectsOutputToContain("for customer {$tenant->ulid}")
+        ->assertSuccessful();
+});
+
+it('refuses a new customer name longer than the column holds', function (): void {
+    $this->artisan('site:provision', tselArgs('new.test', ['--new-tenant' => str_repeat('a', 256)]))
+        ->expectsOutputToContain(__('provisioning.tenant_name_too_long', ['max' => 255]))
+        ->assertFailed();
+
+    expect(Tenant::query()->count())->toBe(0);
+});
+
+it('adds a website to an existing customer found by :dataset', function (Closure $reference): void {
+    $first = tselSeed('Alpha', 'a1.test');
+    $tenant = Tenant::query()->findOrFail($first->tenant_id);
+    tselGrant($tenant, 2);
+
+    $this->artisan('site:provision', tselArgs('a2.test', ['--tenant' => $reference($tenant)]))
+        ->expectsQuestion(TSEL_PROMPT, '')
+        ->expectsOutputToContain("for customer {$tenant->ulid}")
+        ->assertSuccessful();
+
+    expect(Tenant::query()->count())->toBe(1)
+        ->and(Site::query()->where('tenant_id', $tenant->id)->count())->toBe(2);
+})->with([
+    'ulid' => [fn (Tenant $t): string => $t->ulid],
+    'lowercase ulid' => [fn (Tenant $t): string => strtolower($t->ulid)],
+    'exact name' => [fn (Tenant $t): string => $t->name],
+]);
+
+it('refuses an unknown customer name or ulid without creating one', function (string $reference): void {
+    tselSeed('Alpha', 'a1.test');
+
+    $this->artisan('site:provision', tselArgs('b1.test', ['--tenant' => $reference]))
+        ->expectsOutputToContain(__('provisioning.tenant_not_found', ['reference' => $reference]))
+        ->assertFailed();
+
+    expect(Tenant::query()->count())->toBe(1)
+        ->and(Site::query()->count())->toBe(1);
+})->with([
+    'name' => ['Alhpa'],
+    'ulid' => [(string) Str::ulid()],
+]);
+
+it('suggests, but never picks, a customer whose name differs only in letter case', function (): void {
+    $site = tselSeed('An Vinh', 'anvinh.test');
+    $tenant = Tenant::query()->findOrFail($site->tenant_id);
+
+    $this->artisan('site:provision', tselArgs('b1.test', ['--tenant' => 'an vinh']))
+        ->expectsOutputToContain(__('provisioning.tenant_did_you_mean', [
+            'reference' => 'an vinh',
+            'candidates' => "{$tenant->ulid} \"An Vinh\"",
+        ]))
+        ->assertFailed();
+
+    expect(Tenant::query()->count())->toBe(1)
+        ->and(Site::query()->count())->toBe(1);
+});
+
+it('refuses a name two customers share, listing both ulids', function (): void {
+    $one = Tenant::query()->create(['name' => 'Twin']);
+    $two = Tenant::query()->create(['name' => 'Twin']);
+
+    $this->artisan('site:provision', tselArgs('b1.test', ['--tenant' => 'Twin']))
+        ->expectsOutputToContain(__('provisioning.tenant_ambiguous', [
+            'reference' => 'Twin',
+            'candidates' => "{$one->ulid} \"Twin\", {$two->ulid} \"Twin\"",
+        ]))
+        ->assertFailed();
+
+    expect(Site::query()->count())->toBe(0);
+});
+
+it('does not find a soft-deleted customer', function (): void {
+    $tenant = Tenant::query()->create(['name' => 'Gone']);
+    $tenant->delete();
+
+    $this->artisan('site:provision', tselArgs('b1.test', ['--tenant' => $tenant->ulid]))
+        ->expectsOutputToContain(__('provisioning.tenant_not_found', ['reference' => $tenant->ulid]))
+        ->assertFailed();
+});
+
+it('re-runs an existing website for its own customer without any flag', function (): void {
+    $site = tselSeed('Alpha', 'a1.test');
+
+    $this->artisan('site:provision', tselArgs('a1.test'))
+        ->expectsQuestion(TSEL_PROMPT, '')
+        ->assertSuccessful();
+
+    expect(Tenant::query()->count())->toBe(1)
+        ->and(Site::query()->count())->toBe(1)
+        ->and(tselMemberships('owner@a1.test'))->toBe([$site->tenant_id]);
+});
+
+it('refuses a re-run that names another customer, and keeps the owner out of it', function (): void {
+    $site = tselSeed('Alpha', 'a1.test');
+    $owner = Tenant::query()->findOrFail($site->tenant_id);
+    $other = Tenant::query()->create(['name' => 'Beta']);
+
+    $this->artisan('site:provision', tselArgs('a1.test', ['--tenant' => 'Beta']))
+        ->expectsQuestion(TSEL_PROMPT, '')
+        ->expectsOutputToContain(__('provisioning.tenant_mismatch', ['host' => 'a1.test', 'tenant' => $owner->ulid]))
+        ->assertFailed();
+
+    expect(Site::query()->sole()->tenant_id)->toBe($owner->id)
+        ->and(tselMemberships('owner@a1.test'))->toBe([$owner->id])
+        ->and(Site::query()->where('tenant_id', $other->id)->count())->toBe(0);
+});
+
+it('refuses --new-tenant for a hostname that already has a website, creating no customer', function (): void {
+    $site = tselSeed('Alpha', 'a1.test');
+    $owner = Tenant::query()->findOrFail($site->tenant_id);
+
+    $this->artisan('site:provision', tselArgs('a1.test', ['--new-tenant' => 'Alpha 2']))
+        ->expectsQuestion(TSEL_PROMPT, '')
+        ->expectsOutputToContain(__('provisioning.tenant_host_taken', ['host' => 'a1.test', 'tenant' => $owner->ulid]))
+        ->assertFailed();
+
+    expect(Tenant::query()->count())->toBe(1)
+        ->and(tselMemberships('owner@a1.test'))->toBe([$owner->id]);
+});
+
+it('refuses a DTO re-run under another customer name instead of minting that customer', function (): void {
+    tselSeed('Alpha', 'a1.test');
+
+    expect(fn () => tselSeed('Alpha Typo', 'a1.test'))->toThrow(TenantSelectionException::class);
+
+    expect(Tenant::query()->pluck('name')->all())->toBe(['Alpha'])
+        ->and(tselMemberships('owner@a1.test'))->toHaveCount(1);
+});
+
+it('leaves no new customer behind when its first website fails to be created', function (): void {
+    Event::listen('eloquent.creating: '.Domain::class, function (): never {
+        throw new RuntimeException('domain insert failed');
+    });
+
+    expect(fn () => app(ProvisionSite::class)->handle(new ProvisionSiteData(
+        tenantName: 'Fresh',
+        newTenantName: 'Fresh',
+        siteName: 'Fresh',
+        hostname: 'fresh.test',
+        ownerEmail: 'owner@fresh.test',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-password',
+    )))->toThrow(RuntimeException::class, 'domain insert failed');
+
+    expect(Tenant::query()->count())->toBe(0)
+        ->and(Site::query()->count())->toBe(0);
+});
+
+it('explains every refusal in each interface language', function (string $locale): void {
+    app()->setLocale($locale);
+
+    foreach (['required', 'both', 'not_found', 'ambiguous', 'did_you_mean', 'name_too_long', 'mismatch', 'host_taken'] as $reason) {
+        $key = 'provisioning.tenant_'.$reason;
+        expect(__($key))->not->toBe($key);
+    }
+})->with(['en', 'vi', 'ja', 'zh']);

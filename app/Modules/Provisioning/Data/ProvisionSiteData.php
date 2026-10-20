@@ -14,6 +14,12 @@ final readonly class ProvisionSiteData
      * @param  list<string>  $locales  enabled locales (the default must be included)
      * @param  list<string>  $modules  entitled module keys
      * @param  array<string, mixed>  $profile  optional site_profiles column values
+     * @param  ?int  $tenantId  the existing customer a NEW website goes to (wins over $tenantName)
+     * @param  ?string  $newTenantName  create a new customer with this name for a NEW website
+     *                                  (wins over both; refused when the hostname already has a website)
+     *
+     * $tenantName alone (find-or-create by name) is kept for seeders and tests: names are not unique,
+     * so operator-facing callers pass $tenantId or $newTenantName (see site:provision).
      */
     public function __construct(
         public string $tenantName,
@@ -27,5 +33,6 @@ final readonly class ProvisionSiteData
         public array $modules = [],
         public ?int $tenantId = null,
         public array $profile = [],
+        public ?string $newTenantName = null,
     ) {}
 }
