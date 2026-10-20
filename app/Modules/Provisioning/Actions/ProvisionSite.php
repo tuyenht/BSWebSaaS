@@ -79,7 +79,14 @@ final readonly class ProvisionSite
             $site = DB::transaction(function () use ($tenant, $data): Site {
                 // Serialize a customer's new websites: two concurrent provisions must not both pass
                 // the limit. Lock first, then count (a soft-deleted website frees its slot).
-                Tenant::query()->whereKey($tenant->id)->lockForUpdate()->value('id');
+                Tenant::query()->whereKey($tenant->id)->lockForUpdate()->firstOrFail(['id']);
+
+                // A run for the same hostname may have finished while this one waited on the lock:
+                // that makes this a re-run, which is never refused.
+                $raced = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
+                if ($raced !== null) {
+                    return $raced->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+                }
 
                 $count = Site::query()->where('tenant_id', $tenant->id)->count();
                 $limit = (int) $this->entitlement->tenantFeatureValue($tenant->id, 'sites.max');

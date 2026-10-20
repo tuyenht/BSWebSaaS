@@ -61,7 +61,12 @@ it('locks the customer before counting its websites and reading its limit', func
     $limit = $at(fn (string $sql): bool => str_contains($sql, 'from "plan_features"')
         || (str_contains($sql, '"plan_id"') && str_contains($sql, 'from "tenants"') && ! str_contains($sql, 'for update')));
 
+    // The hostname is looked up again under the lock, so a run that finished meanwhile is a re-run.
+    $recheck = collect($queries)->keys()->first(fn (int $i): bool => $i > $lock
+        && str_contains($queries[$i], 'from "domains"') && str_contains($queries[$i], '"hostname"'));
+
     expect($lock)->toBeGreaterThanOrEqual(0)
-        ->and($count)->toBeGreaterThan($lock)
+        ->and($recheck)->toBeInt()
+        ->and($count)->toBeGreaterThan($recheck)
         ->and($limit)->toBeGreaterThan($lock);
 });
