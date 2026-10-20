@@ -4,83 +4,107 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Http\Controllers;
 
-use App\Modules\Catalog\Models\Product;
 use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\PathBuilder;
-use App\Modules\Tenancy\Context\SiteLocale;
-use Illuminate\Database\Eloquent\Builder;
+use App\Modules\Storefront\Support\SitemapRoutes;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Tenant-scoped sitemap.xml: emits a valid XML urlset for every route on this site a visitor
- * can actually open. Runs inside the tenant context (SetCurrentSite + RLS) so BelongsToSite
- * global scopes ensure no cross-tenant leakage. Locale-prefixed absolute URLs are built by the
- * shared PathBuilder (the same chokepoint used by the storefront controller).
+ * Tenant-scoped sitemap.xml: lists every route on this site a visitor can actually open (the
+ * filter lives in SitemapRoutes). Runs inside the tenant context (SetCurrentSite + RLS) so
+ * BelongsToSite global scopes ensure no cross-tenant leakage. Locale-prefixed absolute URLs are
+ * built by the shared PathBuilder (the same chokepoint used by the storefront controller).
  *
- * A route is listed only when the storefront would render it — a URL that 404s costs the site
- * crawl budget and shows up as an error in Google Search Console:
- *  - its language is one the site has made public;
- *  - an entry route: the entry is published (soft-deletes respected) AND its translation in the
- *    route's language is published;
- *  - a category route: the category has a translation in the route's language;
- *  - a product route: the product is published (soft-deletes respected) and has a translation in
- *    the route's language. Cms's SiteRoute stays Catalog-agnostic (no product relation), so the
- *    Storefront matches product_id against a Catalog subquery here.
+ * sitemaps.org caps one file at `cms.sitemap.max_urls` (50,000) URLs:
+ *  - at or under it, /sitemap.xml is a single <urlset> — read with LIMIT max + 1, so a small
+ *    site needs no count, no cache and no second query;
+ *  - over it, /sitemap.xml is a <sitemapindex> of /sitemap-{n}.xml, each a keyset slice of at
+ *    most max URLs. n is the page position, never a route id; out of range → 404.
  *
  * This request is its own hot path — queries here are not subject to the per-page hot-path
- * Query Budget, but N+1 is still avoided: one query for all routes, the checks being correlated
+ * Query Budget, but N+1 is still avoided: one query per file, the checks being correlated
  * subqueries rather than id lists loaded into PHP.
  */
 final readonly class SitemapController
 {
+    private const string XMLNS = 'http://www.sitemaps.org/schemas/sitemap/0.9';
+
     public function __construct(
         private PathBuilder $paths,
-        private SiteLocale $locales,
+        private SitemapRoutes $routes,
     ) {}
 
     public function __invoke(Request $request): Response
     {
-        $routes = SiteRoute::query()
-            ->whereIn('locale', $this->locales->public())
-            ->where(function (Builder $query): void {
-                $query->whereHas('entry', fn (Builder $entry) => $entry
-                    ->where('status', 'published')
-                    ->whereHas('translations', fn (Builder $translation) => $translation
-                        ->whereColumn('entry_translations.locale', 'routes.locale')
-                        ->where('entry_translations.status', 'published')))
-                    ->orWhereHas('taxonomy', fn (Builder $taxonomy) => $taxonomy
-                        ->whereHas('translations', fn (Builder $translation) => $translation
-                            ->whereColumn('taxonomy_translations.locale', 'routes.locale')))
-                    ->orWhereIn('product_id', Product::query()
-                        ->select('products.id')
-                        ->where('status', 'published')
-                        ->whereHas('translations', fn (Builder $translation) => $translation
-                            ->whereColumn('product_translations.locale', 'routes.locale')));
-            })
-            ->orderBy('path')
-            ->get(['path', 'locale', 'updated_at']);
+        $max = $this->routes->maxUrls();
+        $plan = $this->routes->cachedPlan();
 
-        $base = $request->getScheme().'://'.$request->getHost();
+        if ($plan === null || count($plan) <= 1) {
+            $routes = $this->routes->slice(null, $max + 1);
+            if ($routes->count() <= $max) {
+                return $this->urlset($request, $routes);
+            }
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>'
-            .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+            $plan = $this->routes->plan();
+            if (count($plan) <= 1) {
+                // The site shrank between the two reads: still one file.
+                return $this->urlset($request, $routes->take($max));
+            }
+        }
+
+        $base = $this->base($request);
+        $xml = '<?xml version="1.0" encoding="UTF-8"?><sitemapindex xmlns="'.self::XMLNS.'">';
+        foreach (array_keys($plan) as $i) {
+            $xml .= '<sitemap><loc>'.$this->escape($base.'/sitemap-'.($i + 1).'.xml').'</loc></sitemap>';
+        }
+
+        return $this->xml($xml.'</sitemapindex>');
+    }
+
+    public function page(Request $request, string $page): Response
+    {
+        $plan = $this->routes->plan();
+        $n = (int) $page;
+
+        // A site that fits in one file has no numbered pages: /sitemap.xml is all of it.
+        abort_if(count($plan) <= 1 || $n < 1 || $n > count($plan), 404);
+
+        return $this->urlset($request, $this->routes->slice($plan[$n - 1], $this->routes->maxUrls()));
+    }
+
+    /**
+     * @param  Collection<int, SiteRoute>  $routes
+     */
+    private function urlset(Request $request, Collection $routes): Response
+    {
+        $base = $this->base($request);
+        $xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="'.self::XMLNS.'">';
 
         foreach ($routes as $route) {
-            $loc = htmlspecialchars(
-                $base.$this->paths->publicUrl($route->path, $route->locale),
-                ENT_XML1 | ENT_QUOTES,
-                'UTF-8',
-            );
-            $xml .= '<url><loc>'.$loc.'</loc>';
+            $xml .= '<url><loc>'.$this->escape($base.$this->paths->publicUrl($route->path, $route->locale)).'</loc>';
             if ($route->updated_at !== null) {
-                $xml .= '<lastmod>'.htmlspecialchars((string) $route->updated_at->toAtomString(), ENT_XML1 | ENT_QUOTES, 'UTF-8').'</lastmod>';
+                $xml .= '<lastmod>'.$this->escape((string) $route->updated_at->toAtomString()).'</lastmod>';
             }
             $xml .= '</url>';
         }
 
-        $xml .= '</urlset>';
+        return $this->xml($xml.'</urlset>');
+    }
 
+    private function base(Request $request): string
+    {
+        return $request->getScheme().'://'.$request->getHost();
+    }
+
+    private function escape(string $value): string
+    {
+        return htmlspecialchars($value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+    }
+
+    private function xml(string $xml): Response
+    {
         return response($xml, 200, ['Content-Type' => 'application/xml']);
     }
 }
