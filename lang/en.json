@@ -969,7 +969,7 @@
     "monitoring.mail.summary.failed_job_line": ":job: :count jobs",
     "monitoring.mail.summary.commands": "Scheduled commands that failed:",
     "monitoring.mail.summary.command_line": ":command: :count times",
-    "provisioning.sites_limit_reached": "This customer already has :count websites and their plan allows :limit. To add another, move them to a plan that allows more websites, or delete a website they no longer use.",
+    "provisioning.sites_limit_reached": "Website limit reached: this customer's plan allows :limit and they already have :count. To add another website, move them to a plan that allows more, or delete a website they no longer use.",
     "validation.attributes": {
         "email": "email",
         "password": "password",

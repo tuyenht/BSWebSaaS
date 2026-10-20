@@ -969,7 +969,7 @@
     "monitoring.mail.summary.failed_job_line": ":job: :count 件",
     "monitoring.mail.summary.commands": "失敗した定期コマンド:",
     "monitoring.mail.summary.command_line": ":command: :count 回",
-    "provisioning.sites_limit_reached": "このお客様はすでに :count 件のウェブサイトをお持ちで、現在のプランの上限は :limit 件です。追加するには、より多くのウェブサイトを利用できるプランに変更するか、使っていないウェブサイトを削除してください。",
+    "provisioning.sites_limit_reached": "ウェブサイト数の上限に達しました。このお客様のプランの上限は :limit 件で、すでに :count 件あります。追加するには、より多く利用できるプランに変更するか、使っていないウェブサイトを削除してください。",
     "validation.attributes": {
         "email": "メールアドレス",
         "password": "パスワード",

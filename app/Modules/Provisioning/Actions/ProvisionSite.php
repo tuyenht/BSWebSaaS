@@ -46,8 +46,10 @@ use Spatie\Permission\PermissionRegistrar;
  * (RLS) config + RBAC inside the tenant context, then flip the site to 'active'.
  *
  * The single path that creates a website, so the customer-wide `sites.max` holds whoever calls it:
- * a NEW website past the customer's plan limit is refused (SiteLimitReachedException). Re-running
- * for a website that already exists creates nothing and is never refused.
+ * a NEW website past the customer's plan limit is refused (SiteLimitReachedException). Every
+ * website not soft-deleted counts, whatever its status — suspended, archived, and one left at
+ * `provisioning` by a run that failed midway. Re-running for a website that already exists (same
+ * hostname) creates nothing and is never refused, which is also how a failed run is finished.
  */
 final readonly class ProvisionSite
 {
