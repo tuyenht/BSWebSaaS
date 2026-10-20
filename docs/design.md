@@ -528,6 +528,7 @@ workflow_log(id, site_id, workflow_id NULL, entry_id, locale NULL, target ∈ {e
 - SSR HTML đầy đủ (khác site client-render → tốt cho Google + bot Zalo/Facebook).
 - Schema JSON-LD tự sinh: Organization, **LocalBusiness** (từ `site_profiles`), Product + AggregateRating, Article, BreadcrumbList, **FAQPage** (từ post category=faq).
 - Sitemap.xml + image sitemap + hreflang (chỉ locale đã publish) + `robots.txt` + **`llms.txt`** (AEO).
+  - *As-built (sitemap index):* ≤ `cms.sitemap.max_urls` (50.000, trần chuẩn sitemaps.org) URL → `/sitemap.xml` là một `<urlset>`; vượt → `<sitemapindex>` trỏ `/sitemap-{n}.xml` (n = thứ tự trang, không phải id), mỗi trang là lát keyset `(path, id)`. Con trỏ đầu trang = "page plan" cache theo site `cms.sitemap.plan_ttl` (1 giờ, không bust khi đăng bài → trang có thể trễ tối đa TTL). `robots.txt` vẫn trỏ `/sitemap.xml`. Website nhiều ngôn ngữ cần index `(site_id, path, id)` để trang không phải sort toàn site (chưa có — COUNCIL).
 - **OG/Zalo preview per-page** (og:title/description/image đúng kích thước) — quan trọng cho thị trường VN.
 - Meta SEO per-entry per-locale (ở `entry_translations`); slug bản địa hóa qua `routes`; 301 tự động khi đổi slug.
 

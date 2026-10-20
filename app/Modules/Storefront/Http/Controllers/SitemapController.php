@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Storefront\Http\Controllers;
 
-use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Storefront\Support\SitemapRoutes;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -43,7 +41,7 @@ final readonly class SitemapController
 
         if ($plan === null || count($plan) <= 1) {
             $routes = $this->routes->slice(null, $max + 1);
-            if ($routes->count() <= $max) {
+            if (count($routes) <= $max) {
                 return $this->urlset($request, $routes);
             }
 
@@ -55,7 +53,7 @@ final readonly class SitemapController
             }
             if (count($plan) <= 1) {
                 // The site shrank between the two reads: still one file.
-                return $this->urlset($request, $routes->take($max));
+                return $this->urlset($request, array_slice($routes, 0, $max));
             }
         }
 
@@ -79,23 +77,23 @@ final readonly class SitemapController
         // A page the cached plan still lists but the site no longer fills (it shrank): a urlset
         // must hold at least one <url>, so it is gone rather than empty.
         $routes = $this->routes->slice($plan[$n - 1], $this->routes->maxUrls(), $plan[$n] ?? null);
-        abort_if($routes->isEmpty(), 404);
+        abort_if($routes === [], 404);
 
         return $this->urlset($request, $routes);
     }
 
     /**
-     * @param  Collection<int, SiteRoute>  $routes
+     * @param  list<array{path: string, locale: string, lastmod: string|null}>  $routes
      */
-    private function urlset(Request $request, Collection $routes): Response
+    private function urlset(Request $request, array $routes): Response
     {
         $base = $this->base($request);
         $xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="'.self::XMLNS.'">';
 
         foreach ($routes as $route) {
-            $xml .= '<url><loc>'.$this->escape($base.$this->paths->publicUrl($route->path, $route->locale)).'</loc>';
-            if ($route->updated_at !== null) {
-                $xml .= '<lastmod>'.$this->escape((string) $route->updated_at->toAtomString()).'</lastmod>';
+            $xml .= '<url><loc>'.$this->escape($base.$this->paths->publicUrl($route['path'], $route['locale'])).'</loc>';
+            if ($route['lastmod'] !== null) {
+                $xml .= '<lastmod>'.$this->escape($route['lastmod']).'</lastmod>';
             }
             $xml .= '</url>';
         }

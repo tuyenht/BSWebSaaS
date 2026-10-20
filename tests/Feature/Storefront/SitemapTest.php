@@ -152,6 +152,23 @@ function sitemapIndexLocs(string $xml): array
     return $matches[1];
 }
 
+it('renders a small site byte for byte as before the index existed', function (): void {
+    app(ProvisionSite::class)->handle(new ProvisionSiteData(
+        tenantName: 'Other Co', siteName: 'Other Co', hostname: 'other.test',
+        ownerEmail: 'owner@other.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
+    ));
+    DB::connection('pgsql_admin')->statement("update routes set updated_at = '2026-01-02 03:04:05+00'");
+
+    // Golden output of the pre-index controller (81a0d4d) for the same fixture.
+    expect($this->get('http://other.test/sitemap.xml')->assertOk()->getContent())->toBe(
+        '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+        .'<url><loc>http://other.test/</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>'
+        .'<url><loc>http://other.test/lien-he</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>'
+        .'<url><loc>http://other.test/tin-tuc</loc><lastmod>2026-01-02T03:04:05+00:00</lastmod></url>'
+        .'</urlset>'
+    );
+});
+
 it('keeps a site at or under the limit on a single urlset with no pages', function (): void {
     sitemapSeedAnVinh();
 

@@ -9,8 +9,8 @@ use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteLocale;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -53,19 +53,40 @@ final readonly class SitemapRoutes
      * (exclusive) when given. Bounding a page by the next page's cursor keeps a URL from being
      * listed twice when routes before it were removed while the plan was cached.
      *
+     * Rows are streamed as plain arrays rather than hydrated models: a 50,000-URL page would
+     * otherwise hold 50,000 SiteRoute objects (and their Carbon dates) at once. lastmod still goes
+     * through the model's own datetime cast, so the output format is the model's.
+     *
      * @param  array{0: string, 1: int}|null  $from
      * @param  array{0: string, 1: int}|null  $to
-     * @return Collection<int, SiteRoute>
+     * @return list<array{path: string, locale: string, lastmod: string|null}>
      */
-    public function slice(?array $from, int $limit, ?array $to = null): Collection
+    public function slice(?array $from, int $limit, ?array $to = null): array
     {
-        return $this->listed()
+        $this->withoutJit();
+
+        $rows = $this->listed()
             ->when($from !== null, fn (Builder $query) => $query->whereRaw('(routes.path, routes.id) >= (?, ?)', $from))
             ->when($to !== null, fn (Builder $query) => $query->whereRaw('(routes.path, routes.id) < (?, ?)', $to))
             ->orderBy('routes.path')
             ->orderBy('routes.id')
             ->limit($limit)
-            ->get(['id', 'path', 'locale', 'updated_at']);
+            ->select(['routes.path', 'routes.locale', 'routes.updated_at'])
+            ->toBase()
+            ->cursor();
+
+        $cast = new SiteRoute;
+        $slice = [];
+        foreach ($rows as $row) {
+            $updated = $cast->setRawAttributes(['updated_at' => $row->updated_at])->getAttribute('updated_at');
+            $slice[] = [
+                'path' => Cast::string($row->path),
+                'locale' => Cast::string($row->locale),
+                'lastmod' => $updated instanceof CarbonInterface ? $updated->toAtomString() : null,
+            ];
+        }
+
+        return $slice;
     }
 
     /**
@@ -133,6 +154,8 @@ final readonly class SitemapRoutes
     /** @return list<array{0: string, 1: int}> */
     private function boundaries(int $max): array
     {
+        $this->withoutJit();
+
         $numbered = $this->listed()
             ->select(['routes.path', 'routes.id'])
             ->selectRaw('row_number() over (order by routes.path, routes.id) as position');
@@ -144,6 +167,18 @@ final readonly class SitemapRoutes
             ->get(['path', 'id'])
             ->map(fn (object $row): array => [Cast::string($row->path), Cast::int($row->id)])
             ->all());
+    }
+
+    /**
+     * The listing filter is correlated subqueries over the whole site: on a big site the planner's
+     * cost estimate crosses jit_above_cost and JIT compilation alone adds ~0.4 s per query while
+     * saving nothing (measured at 120k routes). SET LOCAL ends with the tenant transaction.
+     */
+    private function withoutJit(): void
+    {
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('SET LOCAL jit = off');
+        }
     }
 
     /** @return Builder<SiteRoute> */
