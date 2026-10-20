@@ -47,7 +47,12 @@ final readonly class SitemapController
                 return $this->urlset($request, $routes);
             }
 
+            // The probe proved more than one file; a one-page plan still cached from when the
+            // site was small is stale, so rebuild it rather than truncate the sitemap.
             $plan = $this->routes->plan();
+            if (count($plan) <= 1) {
+                $plan = $this->routes->freshPlan();
+            }
             if (count($plan) <= 1) {
                 // The site shrank between the two reads: still one file.
                 return $this->urlset($request, $routes->take($max));
@@ -71,7 +76,7 @@ final readonly class SitemapController
         // A site that fits in one file has no numbered pages: /sitemap.xml is all of it.
         abort_if(count($plan) <= 1 || $n < 1 || $n > count($plan), 404);
 
-        return $this->urlset($request, $this->routes->slice($plan[$n - 1], $this->routes->maxUrls()));
+        return $this->urlset($request, $this->routes->slice($plan[$n - 1], $this->routes->maxUrls(), $plan[$n] ?? null));
     }
 
     /**

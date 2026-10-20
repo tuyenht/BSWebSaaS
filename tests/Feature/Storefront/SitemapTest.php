@@ -1,6 +1,7 @@
 <?php
 
 use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Actions\SeedAnVinhContent;
@@ -249,4 +250,61 @@ it('robots.txt keeps pointing at /sitemap.xml when the site is split', function 
 
     expect($this->get('http://anvinh.test/robots.txt')->assertOk()->getContent())
         ->toContain('Sitemap: http://anvinh.test/sitemap.xml');
+});
+
+it('never lists a URL twice across pages when content is unpublished while the page plan is cached', function (): void {
+    sitemapSeedAnVinh();
+    $full = sitemapUrlBlocks($this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent());
+    $max = 3;
+    config(['cms.sitemap.max_urls' => $max]);
+    $pages = count(sitemapIndexLocs($this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent()));
+    expect($pages)->toBe((int) ceil(count($full) / $max));
+
+    // The plan is cached; unpublishing a page shifts every later route one slot to the left.
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, fn () => Entry::query()
+        ->whereHas('translations', fn ($translation) => $translation->where('slug', 'gioi-thieu'))
+        ->update(['status' => 'draft']));
+
+    $locs = [];
+    foreach (range(1, $pages) as $n) {
+        $xml = $this->get("http://anvinh.test/sitemap-{$n}.xml")->assertOk()->getContent();
+        expect(count(sitemapUrlBlocks($xml)))->toBeLessThanOrEqual($max);
+        preg_match_all('#<loc>([^<]*)</loc>#', $xml, $matches);
+        $locs = [...$locs, ...$matches[1]];
+    }
+
+    expect($locs)->not->toContain('http://anvinh.test/gioi-thieu')
+        ->and(array_unique($locs))->toHaveCount(count($locs));
+});
+
+it('rebuilds a cached one-page plan once the site outgrows a single file', function (): void {
+    sitemapSeedAnVinh();
+    $count = count(sitemapUrlBlocks($this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent()));
+    config(['cms.sitemap.max_urls' => $count]);
+
+    // A probe of a page that does not exist yet caches the one-page plan of the small site.
+    $this->get('http://anvinh.test/sitemap-1.xml')->assertNotFound();
+
+    // One more listed route takes the site over the limit while that plan is still cached.
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    app(Tenancy::class)->enter($site->id, function (): void {
+        SiteSetting::query()->updateOrCreate(
+            ['group_name' => 'permalinks', 'key' => 'products'],
+            ['value' => ['pattern' => 'base', 'base' => 'san-pham']],
+        );
+        $product = Product::query()->create(['status' => 'published', 'published_at' => now()]);
+        $product->translations()->create(['locale' => 'vi', 'name' => 'Mới', 'slug' => 'san-pham-moi']);
+        app(RouteSync::class)->syncProduct($product->id, null, 'vi', 'san-pham-moi');
+    });
+
+    $index = $this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent();
+    expect(sitemapIndexLocs($index))->toBe(['http://anvinh.test/sitemap-1.xml', 'http://anvinh.test/sitemap-2.xml']);
+
+    $blocks = [
+        ...sitemapUrlBlocks($this->get('http://anvinh.test/sitemap-1.xml')->assertOk()->getContent()),
+        ...sitemapUrlBlocks($this->get('http://anvinh.test/sitemap-2.xml')->assertOk()->getContent()),
+    ];
+    expect($blocks)->toHaveCount($count + 1)
+        ->and(implode('', $blocks))->toContain('san-pham-moi');
 });

@@ -49,15 +49,19 @@ final readonly class SitemapRoutes
     }
 
     /**
-     * Up to $limit listed routes in (path, id) order, starting at $from (inclusive) when given.
+     * Up to $limit listed routes in (path, id) order, from $from (inclusive) up to $to
+     * (exclusive) when given. Bounding a page by the next page's cursor keeps a URL from being
+     * listed twice when routes before it were removed while the plan was cached.
      *
      * @param  array{0: string, 1: int}|null  $from
+     * @param  array{0: string, 1: int}|null  $to
      * @return Collection<int, SiteRoute>
      */
-    public function slice(?array $from, int $limit): Collection
+    public function slice(?array $from, int $limit, ?array $to = null): Collection
     {
         return $this->listed()
             ->when($from !== null, fn (Builder $query) => $query->whereRaw('(path, id) >= (?, ?)', $from))
+            ->when($to !== null, fn (Builder $query) => $query->whereRaw('(path, id) < (?, ?)', $to))
             ->orderBy('path')
             ->orderBy('id')
             ->limit($limit)
@@ -76,10 +80,22 @@ final readonly class SitemapRoutes
 
         /** @var list<array{0: string, 1: int}> */
         return Cache::remember(
-            'sitemap-plan:v1:'.$this->site->id().':'.$max,
+            $this->planKey($max),
             Cast::int(config('cms.sitemap.plan_ttl'), 3600),
             fn (): array => $this->boundaries($max),
         );
+    }
+
+    /**
+     * The plan rebuilt now, replacing a cached one — for a cached plan the site has outgrown.
+     *
+     * @return list<array{0: string, 1: int}>
+     */
+    public function freshPlan(): array
+    {
+        Cache::forget($this->planKey($this->maxUrls()));
+
+        return $this->plan();
     }
 
     /**
@@ -90,7 +106,12 @@ final readonly class SitemapRoutes
     public function cachedPlan(): ?array
     {
         /** @var list<array{0: string, 1: int}>|null */
-        return Cache::get('sitemap-plan:v1:'.$this->site->id().':'.$this->maxUrls());
+        return Cache::get($this->planKey($this->maxUrls()));
+    }
+
+    private function planKey(int $max): string
+    {
+        return 'sitemap-plan:v1:'.$this->site->id().':'.$max;
     }
 
     /** @return list<array{0: string, 1: int}> */
