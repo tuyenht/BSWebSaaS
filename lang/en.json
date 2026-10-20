@@ -969,6 +969,7 @@
     "monitoring.mail.summary.failed_job_line": ":job: :count jobs",
     "monitoring.mail.summary.commands": "Scheduled commands that failed:",
     "monitoring.mail.summary.command_line": ":command: :count times",
+    "provisioning.hostname_owned_by_another_tenant": "The address :host already belongs to another customer's website, so nothing was changed. Check --host, or pass --tenant with the exact name of the customer who owns it.",
     "validation.attributes": {
         "email": "email",
         "password": "password",
