@@ -28,7 +28,8 @@ final class FeatureRegistry
         return [
             // Whether a site may run the multi-stage editorial workflow (vs the simple gate).
             'workflow.editorial' => ['name' => 'Quy trình biên tập đa cấp', 'kind' => 'boolean', 'default' => false, 'scope' => 'site'],
-            // Max sites a tenant may provision (0 = unset → caller treats as its own baseline).
+            // Max websites a tenant may have (soft-deleted ones excluded); 0 = no new website.
+            // Checked by ProvisionSite when a website is created, so one already above the limit stays.
             'sites.max' => ['name' => 'Số site tối đa', 'kind' => 'limit', 'default' => 1, 'scope' => 'tenant'],
             // Media storage ceiling in megabytes.
             'media.storage_mb' => ['name' => 'Dung lượng media (MB)', 'kind' => 'limit', 'default' => 500, 'scope' => 'site'],

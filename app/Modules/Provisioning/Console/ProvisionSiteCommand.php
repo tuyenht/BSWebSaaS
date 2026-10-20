@@ -6,6 +6,8 @@ namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Console\Command;
 
 /**
@@ -41,15 +43,21 @@ final class ProvisionSiteCommand extends Command
         $tenant = $this->stringOption('tenant');
         $secret = $this->secret('Owner password (leave blank to auto-generate)');
 
-        $site = $action->handle(new ProvisionSiteData(
-            tenantName: $tenant !== '' ? $tenant : $name,
-            siteName: $name,
-            hostname: $host,
-            ownerEmail: $ownerEmail,
-            ownerName: $this->stringOption('owner-name') ?: 'Owner',
-            ownerPassword: is_string($secret) && $secret !== '' ? $secret : null,
-            defaultLocale: $this->stringOption('locale') ?: 'vi',
-        ));
+        try {
+            $site = $action->handle(new ProvisionSiteData(
+                tenantName: $tenant !== '' ? $tenant : $name,
+                siteName: $name,
+                hostname: $host,
+                ownerEmail: $ownerEmail,
+                ownerName: $this->stringOption('owner-name') ?: 'Owner',
+                ownerPassword: is_string($secret) && $secret !== '' ? $secret : null,
+                defaultLocale: $this->stringOption('locale') ?: 'vi',
+            ));
+        } catch (SiteLimitReachedException $e) {
+            $this->error(Cast::string(__('provisioning.sites_limit_reached', ['count' => $e->count, 'limit' => $e->limit])));
+
+            return self::FAILURE;
+        }
 
         $this->info("Provisioned site #{$site->id} ({$host}) — status {$site->status}.");
 

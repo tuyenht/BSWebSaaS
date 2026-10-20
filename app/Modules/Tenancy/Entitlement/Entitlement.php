@@ -7,6 +7,7 @@ use App\Modules\Tenancy\Models\PlanFeature;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\SiteFeature;
 use App\Modules\Tenancy\Models\SiteModule;
+use App\Modules\Tenancy\Models\Tenant;
 use App\Modules\Tenancy\Registry\FeatureRegistry;
 use App\Modules\Tenancy\Registry\ModuleCatalog;
 
@@ -93,13 +94,29 @@ final class Entitlement
             }
         }
 
-        // Else the tenant's plan grant. sites/tenants are global (D6) so this join is context-free;
-        // plan_id may be null (no plan) → fall through to the default.
+        // Else the tenant's plan grant. sites/tenants are global (D6) so this join is context-free.
         $planId = Site::query()
             ->whereKey($current->id())
             ->join('tenants', 'sites.tenant_id', '=', 'tenants.id')
             ->value('tenants.plan_id');
 
+        return $this->planValue($planId, $key);
+    }
+
+    /**
+     * The value a customer's plan gives a feature, with no website involved — for a customer-wide
+     * limit checked before the customer's next website exists (`sites.max`). Resolution order:
+     * the tenant's plan grant (plan_features) → registry default. tenants/plans are global (D6),
+     * so this needs no site context; plan_id may be null (no plan) → the default.
+     */
+    public function tenantFeatureValue(int $tenantId, string $key): bool|int
+    {
+        return $this->planValue(Tenant::query()->whereKey($tenantId)->value('plan_id'), $key);
+    }
+
+    /** What plan $planId grants for $key, or the registry default when no plan or no grant. */
+    private function planValue(mixed $planId, string $key): bool|int
+    {
         if ($planId !== null) {
             $grant = PlanFeature::query()->where('plan_id', $planId)->where('feature_key', $key)->first();
             if ($grant !== null) {

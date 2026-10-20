@@ -16,11 +16,13 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Entitlement\Entitlement;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
@@ -31,6 +33,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Tenancy\Models\SiteType;
 use App\Modules\Tenancy\Models\Tenant;
 use App\Modules\Tenancy\Registry\ModuleCatalog;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
@@ -41,6 +44,10 @@ use Spatie\Permission\PermissionRegistrar;
  *
  * Order respects the defense layers: global identity/site rows first, then per-site
  * (RLS) config + RBAC inside the tenant context, then flip the site to 'active'.
+ *
+ * The single path that creates a website, so the customer-wide `sites.max` holds whoever calls it:
+ * a NEW website past the customer's plan limit is refused (SiteLimitReachedException). Re-running
+ * for a website that already exists creates nothing and is never refused.
  */
 final readonly class ProvisionSite
 {
@@ -53,6 +60,7 @@ final readonly class ProvisionSite
         private RouteSync $routes,
         private TaxonomyPaths $paths,
         private SiteResolver $sites,
+        private Entitlement $entitlement,
     ) {}
 
     public function handle(ProvisionSiteData $data): Site
@@ -66,19 +74,34 @@ final readonly class ProvisionSite
         $domain = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
 
         if ($domain === null) {
-            $site = Site::query()->create([
-                'tenant_id' => $tenant->id,
-                'name' => $data->siteName,
-                'status' => 'provisioning',
-            ]);
-            Domain::query()->create([
-                'site_id' => $site->id,
-                'hostname' => $data->hostname,
-                'kind' => 'subdomain',
-                'is_primary' => true,
-                // A platform subdomain is ours by construction: verified from birth.
-                'verified_at' => now(),
-            ]);
+            $site = DB::transaction(function () use ($tenant, $data): Site {
+                // Serialize a customer's new websites: two concurrent provisions must not both pass
+                // the limit. Lock first, then count (a soft-deleted website frees its slot).
+                Tenant::query()->whereKey($tenant->id)->lockForUpdate()->value('id');
+
+                $count = Site::query()->where('tenant_id', $tenant->id)->count();
+                $limit = (int) $this->entitlement->tenantFeatureValue($tenant->id, 'sites.max');
+
+                if ($count >= $limit) {
+                    throw new SiteLimitReachedException($count, $limit);
+                }
+
+                $site = Site::query()->create([
+                    'tenant_id' => $tenant->id,
+                    'name' => $data->siteName,
+                    'status' => 'provisioning',
+                ]);
+                Domain::query()->create([
+                    'site_id' => $site->id,
+                    'hostname' => $data->hostname,
+                    'kind' => 'subdomain',
+                    'is_primary' => true,
+                    // A platform subdomain is ours by construction: verified from birth.
+                    'verified_at' => now(),
+                ]);
+
+                return $site;
+            });
             // The host may be remembered as unknown from a request made before it existed.
             $this->sites->forget($data->hostname);
         } else {
