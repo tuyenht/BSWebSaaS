@@ -10,7 +10,8 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Shared\Support\Cast;
-use App\Modules\Tenancy\Models\Domain;
+use App\Modules\Tenancy\Context\SiteResolver;
+use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\Tenant;
 use Illuminate\Console\Command;
 
@@ -120,8 +121,10 @@ final class ProvisionSiteCommand extends Command
             return ['id' => $tenant->id, 'name' => $tenant->name, 'new' => null];
         }
 
-        $existing = Domain::query()->where('hostname', $host)->whereNotNull('verified_at')->first();
-        $site = $existing?->site;
+        // Hostname → site only through SiteResolver (design.md §5, §28). A stale miss just asks the
+        // operator to name the customer; ProvisionSite re-checks the domain under its own lock.
+        $resolved = app(SiteResolver::class)->resolve($host);
+        $site = $resolved === null ? null : Site::query()->find($resolved->siteId, ['id', 'tenant_id']);
         if ($site === null) {
             throw TenantSelectionException::required();
         }
