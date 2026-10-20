@@ -76,7 +76,12 @@ final readonly class SitemapController
         // A site that fits in one file has no numbered pages: /sitemap.xml is all of it.
         abort_if(count($plan) <= 1 || $n < 1 || $n > count($plan), 404);
 
-        return $this->urlset($request, $this->routes->slice($plan[$n - 1], $this->routes->maxUrls(), $plan[$n] ?? null));
+        // A page the cached plan still lists but the site no longer fills (it shrank): a urlset
+        // must hold at least one <url>, so it is gone rather than empty.
+        $routes = $this->routes->slice($plan[$n - 1], $this->routes->maxUrls(), $plan[$n] ?? null);
+        abort_if($routes->isEmpty(), 404);
+
+        return $this->urlset($request, $routes);
     }
 
     /**

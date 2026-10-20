@@ -60,10 +60,10 @@ final readonly class SitemapRoutes
     public function slice(?array $from, int $limit, ?array $to = null): Collection
     {
         return $this->listed()
-            ->when($from !== null, fn (Builder $query) => $query->whereRaw('(path, id) >= (?, ?)', $from))
-            ->when($to !== null, fn (Builder $query) => $query->whereRaw('(path, id) < (?, ?)', $to))
-            ->orderBy('path')
-            ->orderBy('id')
+            ->when($from !== null, fn (Builder $query) => $query->whereRaw('(routes.path, routes.id) >= (?, ?)', $from))
+            ->when($to !== null, fn (Builder $query) => $query->whereRaw('(routes.path, routes.id) < (?, ?)', $to))
+            ->orderBy('routes.path')
+            ->orderBy('routes.id')
             ->limit($limit)
             ->get(['id', 'path', 'locale', 'updated_at']);
     }
@@ -76,14 +76,17 @@ final readonly class SitemapRoutes
      */
     public function plan(): array
     {
-        $max = $this->maxUrls();
+        $plan = $this->cachedPlan();
+        if ($plan !== null) {
+            return $plan;
+        }
 
-        /** @var list<array{0: string, 1: int}> */
-        return Cache::remember(
-            $this->planKey($max),
-            Cast::int(config('cms.sitemap.plan_ttl'), 3600),
-            fn (): array => $this->boundaries($max),
-        );
+        $max = $this->maxUrls();
+        $plan = $this->boundaries($max);
+        // At least a minute: a TTL of 0 would run the whole-site pass on every page request.
+        Cache::put($this->planKey($max), $plan, max(60, Cast::int(config('cms.sitemap.plan_ttl'), 3600)));
+
+        return $plan;
     }
 
     /**
@@ -99,14 +102,27 @@ final readonly class SitemapRoutes
     }
 
     /**
-     * The cached plan when one exists, without building it.
+     * The cached plan when one exists, without building it. A value of any other shape (a
+     * failed write, an older format) counts as no plan, so it is rebuilt instead of reaching SQL.
      *
      * @return list<array{0: string, 1: int}>|null
      */
     public function cachedPlan(): ?array
     {
-        /** @var list<array{0: string, 1: int}>|null */
-        return Cache::get($this->planKey($this->maxUrls()));
+        $cached = Cache::get($this->planKey($this->maxUrls()));
+        if (! is_array($cached) || $cached === []) {
+            return null;
+        }
+
+        $plan = [];
+        foreach ($cached as $cursor) {
+            if (! is_array($cursor) || ! is_string($cursor[0] ?? null) || ! is_int($cursor[1] ?? null)) {
+                return null;
+            }
+            $plan[] = [$cursor[0], $cursor[1]];
+        }
+
+        return $plan;
     }
 
     private function planKey(int $max): string
@@ -118,8 +134,8 @@ final readonly class SitemapRoutes
     private function boundaries(int $max): array
     {
         $numbered = $this->listed()
-            ->select(['path', 'id'])
-            ->selectRaw('row_number() over (order by path, id) as position');
+            ->select(['routes.path', 'routes.id'])
+            ->selectRaw('row_number() over (order by routes.path, routes.id) as position');
 
         return array_values(DB::query()
             ->fromSub($numbered->toBase(), 'listed')
