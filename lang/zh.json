@@ -969,6 +969,7 @@
     "monitoring.mail.summary.failed_job_line": ":job：:count 个",
     "monitoring.mail.summary.commands": "失败的定时命令：",
     "monitoring.mail.summary.command_line": ":command：:count 次",
+    "provisioning.hostname_owned_by_another_tenant": "地址 :host 已属于另一位客户的网站，因此未做任何更改。请检查 --host，或通过 --tenant 传入拥有该地址的客户的准确名称。",
     "provisioning.sites_limit_reached": "已达网站数量上限：该客户的套餐最多允许 :limit 个，已有 :count 个。如需新增网站，请将其换到允许更多网站的套餐。",
     "validation.attributes": {
         "email": "邮箱",
