@@ -16,6 +16,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
@@ -38,6 +39,7 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Genesis: provision a site end-to-end and leave it active. Idempotent (anchored on
  * the unique primary domain), so it is safe for An Vinh and for site #2..#10000.
+ * A re-run must name the site's own customer (HostnameOwnedByAnotherTenantException).
  *
  * Order respects the defense layers: global identity/site rows first, then per-site
  * (RLS) config + RBAC inside the tenant context, then flip the site to 'active'.
@@ -58,14 +60,14 @@ final readonly class ProvisionSite
     public function handle(ProvisionSiteData $data): Site
     {
         // 1) Global rows (no RLS): tenant, site, primary domain, owner, membership.
-        $tenant = $data->tenantId !== null
-            ? Tenant::query()->findOrFail($data->tenantId)
-            : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
-
         // Only a live domain identifies a site: a name merely waiting on a site is not one.
         $domain = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
 
         if ($domain === null) {
+            $tenant = $data->tenantId !== null
+                ? Tenant::query()->findOrFail($data->tenantId)
+                : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
+
             $site = Site::query()->create([
                 'tenant_id' => $tenant->id,
                 'name' => $data->siteName,
@@ -83,6 +85,7 @@ final readonly class ProvisionSite
             $this->sites->forget($data->hostname);
         } else {
             $site = $domain->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+            $tenant = $this->ownTenant($site, $data);
         }
 
         // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
@@ -174,6 +177,28 @@ final readonly class ProvisionSite
         ]);
 
         return $site->refresh();
+    }
+
+    /**
+     * A re-run continues an existing site, so the input must name that site's own customer: by id
+     * when given (it wins over the name), else by exact name. Anything else — another customer, an
+     * unknown name, a removed customer — is refused before any write, or the owner would become an
+     * owner of another customer's website. Returns the site's tenant, never a lookup by name (names
+     * are not unique).
+     */
+    private function ownTenant(Site $site, ProvisionSiteData $data): Tenant
+    {
+        $tenant = $site->tenant;
+
+        $named = $tenant !== null && ($data->tenantId !== null
+            ? $tenant->id === $data->tenantId
+            : $tenant->name === $data->tenantName);
+
+        if (! $named) {
+            throw new HostnameOwnedByAnotherTenantException($data->hostname);
+        }
+
+        return $tenant;
     }
 
     /**
