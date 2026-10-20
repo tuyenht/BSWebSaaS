@@ -978,6 +978,7 @@
     "provisioning.tenant_name_too_long": "Tên khách hàng dài quá: tối đa :max ký tự.",
     "provisioning.tenant_mismatch": "Website :host đã có và thuộc khách hàng :tenant, không phải khách hàng bạn chọn. Chạy lại với --tenant=:tenant, hoặc bỏ --tenant.",
     "provisioning.tenant_host_taken": "Website :host đã có (thuộc khách hàng :tenant), nên chưa tạo khách hàng mới nào. Để hoàn tất website đó, chạy lại với --tenant=:tenant, hoặc bỏ --new-tenant.",
+    "provisioning.host_invalid": "\":host\" không phải tên miền dùng được cho website. Chỉ dùng chữ, số và dấu gạch ngang, có ít nhất hai phần, ví dụ shop.example.vn.",
     "validation.attributes": {
         "email": "email",
         "password": "mật khẩu",

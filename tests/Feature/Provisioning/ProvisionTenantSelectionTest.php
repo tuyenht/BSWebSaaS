@@ -45,6 +45,21 @@ function tselSeed(string $tenant, string $host): Site
     ));
 }
 
+/** A DTO re-run of a1.test that chooses its customer by id or asks for a new one, as site:provision does. */
+function tselRerun(?int $tenantId = null, ?string $newTenantName = null): ProvisionSiteData
+{
+    return new ProvisionSiteData(
+        tenantName: '',
+        siteName: 'A1',
+        hostname: 'a1.test',
+        ownerEmail: 'owner@a1.test',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-password',
+        tenantId: $tenantId,
+        newTenantName: $newTenantName,
+    );
+}
+
 /** Let $tenant have up to $limit websites. */
 function tselGrant(Tenant $tenant, int $limit): void
 {
@@ -201,13 +216,13 @@ it('re-runs an existing website for its own customer without any flag', function
         ->and(tselMemberships('owner@a1.test'))->toBe([$site->tenant_id]);
 });
 
-it('refuses a re-run that names another customer, and keeps the owner out of it', function (): void {
+it('refuses a re-run that names another customer before asking for a password', function (): void {
     $site = tselSeed('Alpha', 'a1.test');
     $owner = Tenant::query()->findOrFail($site->tenant_id);
     $other = Tenant::query()->create(['name' => 'Beta']);
 
+    // No expectsQuestion: the refusal comes before the password prompt.
     $this->artisan('site:provision', tselArgs('a1.test', ['--tenant' => 'Beta']))
-        ->expectsQuestion(TSEL_PROMPT, '')
         ->expectsOutputToContain(__('provisioning.tenant_mismatch', ['host' => 'a1.test', 'tenant' => $owner->ulid]))
         ->assertFailed();
 
@@ -221,13 +236,54 @@ it('refuses --new-tenant for a hostname that already has a website, creating no 
     $owner = Tenant::query()->findOrFail($site->tenant_id);
 
     $this->artisan('site:provision', tselArgs('a1.test', ['--new-tenant' => 'Alpha 2']))
-        ->expectsQuestion(TSEL_PROMPT, '')
         ->expectsOutputToContain(__('provisioning.tenant_host_taken', ['host' => 'a1.test', 'tenant' => $owner->ulid]))
         ->assertFailed();
 
     expect(Tenant::query()->count())->toBe(1)
         ->and(tselMemberships('owner@a1.test'))->toBe([$owner->id]);
 });
+
+it('re-runs a website named in another spelling of its hostname, without a second website', function (): void {
+    $site = tselSeed('Alpha', 'a1.test');
+
+    $this->artisan('site:provision', ['--name' => 'A1', '--host' => ' A1.Test. ', '--owner-email' => 'owner@a1.test'])
+        ->expectsQuestion(TSEL_PROMPT, '')
+        ->expectsOutputToContain("Provisioned site #{$site->id} (a1.test)")
+        ->assertSuccessful();
+
+    expect(Site::query()->count())->toBe(1)
+        ->and(Domain::query()->pluck('hostname')->all())->toBe(['a1.test']);
+});
+
+it('refuses a hostname a website cannot use, and creates nothing', function (string $host): void {
+    $this->artisan('site:provision', tselArgs($host, ['--new-tenant' => 'Alpha']))
+        ->expectsOutputToContain(__('provisioning.host_invalid', ['host' => $host]))
+        ->assertFailed();
+
+    expect(Tenant::query()->count())->toBe(0)
+        ->and(Site::query()->count())->toBe(0);
+})->with([
+    'single label' => ['localhost'],
+    'ip address' => ['127.0.0.1'],
+    'underscore' => ['my_shop.test'],
+]);
+
+it('keeps ProvisionSite itself refusing another customer for an existing website', function (Closure $choice, string $reason): void {
+    $site = tselSeed('Alpha', 'a1.test');
+    $beta = Tenant::query()->create(['name' => 'Beta']);
+
+    expect(fn () => app(ProvisionSite::class)->handle($choice($beta)))
+        ->toThrow(function (TenantSelectionException $e) use ($reason): void {
+            expect($e->reason)->toBe($reason);
+        });
+
+    expect(Tenant::query()->count())->toBe(2)
+        ->and(Site::query()->sole()->tenant_id)->toBe($site->tenant_id)
+        ->and(tselMemberships('owner@a1.test'))->toBe([$site->tenant_id]);
+})->with([
+    'another customer by id' => [fn (Tenant $beta): ProvisionSiteData => tselRerun(tenantId: $beta->id), 'mismatch'],
+    'a new customer' => [fn (Tenant $beta): ProvisionSiteData => tselRerun(newTenantName: 'Gamma'), 'host_taken'],
+]);
 
 it('refuses a DTO re-run under another customer name instead of minting that customer', function (): void {
     tselSeed('Alpha', 'a1.test');
@@ -264,4 +320,5 @@ it('explains every refusal in each interface language', function (string $locale
         $key = 'provisioning.tenant_'.$reason;
         expect(__($key))->not->toBe($key);
     }
+    expect(__('provisioning.host_invalid'))->not->toBe('provisioning.host_invalid');
 })->with(['en', 'vi', 'ja', 'zh']);

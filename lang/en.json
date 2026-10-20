@@ -978,6 +978,7 @@
     "provisioning.tenant_name_too_long": "The customer name is too long: :max characters at most.",
     "provisioning.tenant_mismatch": "The website :host already exists and belongs to customer :tenant, not the one you chose. Run again with --tenant=:tenant, or without --tenant.",
     "provisioning.tenant_host_taken": "The website :host already exists (customer :tenant), so no new customer was created. To finish that website, run again with --tenant=:tenant, or without --new-tenant.",
+    "provisioning.host_invalid": "\":host\" is not a hostname a website can use. Use letters, digits and hyphens, with at least two parts, e.g. shop.example.vn.",
     "validation.attributes": {
         "email": "email",
         "password": "password",

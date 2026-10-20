@@ -45,11 +45,20 @@ final class ProvisionSiteCommand extends Command
     public function handle(ProvisionSite $action, FindTenant $find): int
     {
         $name = $this->stringOption('name');
-        $host = $this->stringOption('host');
+        $rawHost = trim($this->stringOption('host'));
         $ownerEmail = $this->stringOption('owner-email');
 
-        if ($name === '' || $host === '' || $ownerEmail === '') {
+        if ($name === '' || $rawHost === '' || $ownerEmail === '') {
             $this->error('--name, --host and --owner-email are required.');
+
+            return self::FAILURE;
+        }
+
+        // The spelling SiteResolver matches (lower-case, no trailing dot), so `A1.test.` is the same
+        // website as `a1.test` rather than a second one.
+        $host = SiteResolver::normalize($rawHost);
+        if ($host === null) {
+            $this->error(Cast::string(__('provisioning.host_invalid', ['host' => $rawHost])));
 
             return self::FAILURE;
         }
@@ -93,8 +102,8 @@ final class ProvisionSiteCommand extends Command
 
     /**
      * Which customer the website goes to, from the flags — before the password prompt, so a wrong
-     * choice fails fast. An existing hostname keeps its own customer (ProvisionSite checks a flag
-     * that names another).
+     * choice fails fast. An existing hostname keeps its own customer: a flag naming another one is
+     * refused here, and again by ProvisionSite under its lock (the authority; this is the early answer).
      *
      * @return array{id: int|null, name: string, new: string|null}
      */
@@ -107,7 +116,12 @@ final class ProvisionSiteCommand extends Command
             throw TenantSelectionException::bothGiven();
         }
 
+        $owner = $this->ownerOf($host);
+
         if ($newName !== '') {
+            if ($owner !== null) {
+                throw TenantSelectionException::hostTaken($host, $owner->ulid);
+            }
             if (mb_strlen($newName) > self::TENANT_NAME_MAX) {
                 throw TenantSelectionException::nameTooLong(self::TENANT_NAME_MAX);
             }
@@ -117,19 +131,30 @@ final class ProvisionSiteCommand extends Command
 
         if ($reference !== '') {
             $tenant = $find->handle($reference);
+            if ($owner !== null && $owner->id !== $tenant->id) {
+                throw TenantSelectionException::mismatch($host, $owner->ulid);
+            }
 
             return ['id' => $tenant->id, 'name' => $tenant->name, 'new' => null];
         }
 
-        // Hostname → site only through SiteResolver (design.md §5, §28). A stale miss just asks the
-        // operator to name the customer; ProvisionSite re-checks the domain under its own lock.
-        $resolved = app(SiteResolver::class)->resolve($host);
-        $site = $resolved === null ? null : Site::query()->find($resolved->siteId, ['id', 'tenant_id']);
-        if ($site === null) {
+        if ($owner === null) {
             throw TenantSelectionException::required();
         }
 
-        return ['id' => $site->tenant_id, 'name' => '', 'new' => null];
+        return ['id' => $owner->id, 'name' => $owner->name, 'new' => null];
+    }
+
+    /**
+     * The customer whose website already runs on $host, if any. Hostname → site only through
+     * SiteResolver (design.md §5, §28); a stale miss just asks the operator to name the customer.
+     */
+    private function ownerOf(string $host): ?Tenant
+    {
+        $resolved = app(SiteResolver::class)->resolve($host);
+        $site = $resolved === null ? null : Site::query()->find($resolved->siteId, ['id', 'tenant_id']);
+
+        return $site === null ? null : Tenant::query()->find($site->tenant_id, ['id', 'ulid', 'name']);
     }
 
     private function refuse(TenantSelectionException $e): int
