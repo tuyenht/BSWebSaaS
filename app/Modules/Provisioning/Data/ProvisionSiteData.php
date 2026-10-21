@@ -28,4 +28,10 @@ final readonly class ProvisionSiteData
         public ?int $tenantId = null,
         public array $profile = [],
     ) {}
+
+    /** The same inputs under another hostname (every other field carried over by name). */
+    public function withHostname(string $hostname): self
+    {
+        return new self(...['hostname' => $hostname] + get_object_vars($this));
+    }
 }

@@ -971,6 +971,8 @@
     "monitoring.mail.summary.command_line": ":command：:count 次",
     "provisioning.hostname_owned_by_another_tenant": "地址 :host 已属于另一位客户的网站，因此未做任何更改。请检查 --host，或通过 --tenant 传入拥有该地址的客户的准确名称。",
     "provisioning.sites_limit_reached": "已达网站数量上限：该客户的套餐最多允许 :limit 个，已有 :count 个。如需新增网站，请将其换到允许更多网站的套餐。",
+    "provisioning.hostname_awaiting_another_site": "地址 :host 正在连接到另一个网站并等待 DNS 检查，因此未做任何更改。请选择其他地址，或先将其从该网站移除（site:domain）。",
+    "provisioning.host_invalid": "\":host\" 不是网站可用的主机名。请使用字母、数字和连字符，并至少包含两部分，例如 shop.example.vn。",
     "validation.attributes": {
         "email": "邮箱",
         "password": "密码",

@@ -971,6 +971,8 @@
     "monitoring.mail.summary.command_line": ":command: :count times",
     "provisioning.hostname_owned_by_another_tenant": "The address :host already belongs to another customer's website, so nothing was changed. Check --host, or pass --tenant with the exact name of the customer who owns it.",
     "provisioning.sites_limit_reached": "Website limit reached: this customer's plan allows :limit and they already have :count. To add another website, move them to a plan that allows more.",
+    "provisioning.hostname_awaiting_another_site": "The address :host is already being connected to another website and is waiting for its DNS check, so nothing was changed. Choose another address, or remove it from that website first (site:domain).",
+    "provisioning.host_invalid": "\":host\" is not a hostname a website can use. Use letters, digits and hyphens, with at least two parts, e.g. shop.example.vn.",
     "validation.attributes": {
         "email": "email",
         "password": "password",

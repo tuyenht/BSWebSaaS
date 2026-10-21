@@ -16,6 +16,8 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\HostnameAwaitingAnotherSiteException;
+use App\Modules\Provisioning\Exceptions\HostnameInvalidException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Rbac\Models\Permission;
@@ -52,6 +54,13 @@ use Spatie\Permission\PermissionRegistrar;
  * website not soft-deleted counts, whatever its status — suspended, archived, and one left at
  * `provisioning` by a run that failed midway. Re-running for a website that already exists (same
  * hostname) creates nothing and is never refused, which is also how a failed run is finished.
+ *
+ * The hostname is taken in the spelling SiteResolver matches, whoever built the input; one it can
+ * never match is refused (HostnameInvalidException). A NEW website never takes a name another website
+ * is still waiting to verify (HostnameAwaitingAnotherSiteException): the name is inserted verified,
+ * and only a verified name is unique. A `site:domain attach` committing that name in the instant
+ * between this check and the insert is not serialized against it (a residual race: an advisory lock
+ * on the name shared with AttachDomain would close it).
  */
 final readonly class ProvisionSite
 {
@@ -69,6 +78,13 @@ final readonly class ProvisionSite
 
     public function handle(ProvisionSiteData $data): Site
     {
+        // The spelling SiteResolver matches (lower-case, no trailing dot), whoever builds the input:
+        // `A1.test.` is the website `a1.test`, not a second one no request ever reaches.
+        $hostname = SiteResolver::normalize($data->hostname) ?? throw new HostnameInvalidException($data->hostname);
+        if ($hostname !== $data->hostname) {
+            $data = $data->withHostname($hostname);
+        }
+
         // 1) Global rows (no RLS): tenant, site, primary domain, owner, membership.
         // Only a live domain identifies a site: a name merely waiting on a site is not one.
         $domain = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
@@ -95,6 +111,12 @@ final readonly class ProvisionSite
                     }
 
                     return [$site, $tenant];
+                }
+
+                // Only a verified name is unique: one another website still waits to verify is not
+                // free. Inserting it verified here would leave that website unable to ever verify it.
+                if (Domain::query()->where('hostname', $data->hostname)->exists()) {
+                    throw new HostnameAwaitingAnotherSiteException($data->hostname);
                 }
 
                 $count = Site::query()->where('tenant_id', $tenant->id)->count();

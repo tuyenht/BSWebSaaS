@@ -971,6 +971,8 @@
     "monitoring.mail.summary.command_line": ":command: :count lần",
     "provisioning.hostname_owned_by_another_tenant": "Tên miền :host đã thuộc website của một khách hàng khác nên chưa có gì thay đổi. Hãy kiểm tra lại --host, hoặc truyền --tenant đúng tên khách hàng đang sở hữu tên miền này.",
     "provisioning.sites_limit_reached": "Đã đạt số website tối đa: gói của khách hàng này cho phép :limit, khách đã có :count. Muốn thêm website, hãy chuyển khách sang gói cho phép nhiều hơn.",
+    "provisioning.hostname_awaiting_another_site": "Tên miền :host đang được gắn vào một website khác và chờ kiểm tra DNS nên chưa có gì thay đổi. Hãy chọn tên miền khác, hoặc gỡ nó khỏi website kia trước (site:domain).",
+    "provisioning.host_invalid": "\":host\" không phải tên miền dùng được cho website. Chỉ dùng chữ, số và dấu gạch ngang, có ít nhất hai phần, ví dụ shop.example.vn.",
     "validation.attributes": {
         "email": "email",
         "password": "mật khẩu",

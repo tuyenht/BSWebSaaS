@@ -6,6 +6,8 @@ namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\HostnameAwaitingAnotherSiteException;
+use App\Modules\Provisioning\Exceptions\HostnameInvalidException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Shared\Support\Cast;
@@ -60,6 +62,14 @@ final class ProvisionSiteCommand extends Command
             return self::FAILURE;
         } catch (SiteLimitReachedException $e) {
             $this->error(Cast::string(__('provisioning.sites_limit_reached', ['count' => $e->count, 'limit' => $e->limit])));
+
+            return self::FAILURE;
+        } catch (HostnameAwaitingAnotherSiteException $e) {
+            $this->error(Cast::string(__('provisioning.hostname_awaiting_another_site', ['host' => $e->hostname])));
+
+            return self::FAILURE;
+        } catch (HostnameInvalidException $e) {
+            $this->error(Cast::string(__('provisioning.host_invalid', ['host' => $e->hostname])));
 
             return self::FAILURE;
         }
