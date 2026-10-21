@@ -31,7 +31,7 @@ beforeEach(function (): void {
 function identitySite(): int
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'Danh Tính', siteName: 'Danh Tính', hostname: 'danhtinh.test',
+        tenantName: 'Danh Tính', siteName: 'Danh Tính', hostname: 'danhtinh.platform.test',
         ownerEmail: 'owner@danhtinh.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
 
@@ -123,6 +123,6 @@ it('tells search engines about the site’s social profiles', function (): void 
         SiteProfile::query()->firstOrFail()->update(['social_links' => ['facebook' => 'https://facebook.com/comau']]);
     });
 
-    expect($this->get('http://danhtinh.test/')->assertOk()->getContent())
+    expect($this->get('http://danhtinh.platform.test/')->assertOk()->getContent())
         ->toContain('"sameAs":["https://facebook.com/comau"]');
 });

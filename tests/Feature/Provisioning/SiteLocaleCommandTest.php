@@ -27,11 +27,11 @@ beforeEach(function (): void {
     truncateRbac();
 });
 
-/** A freshly provisioned site on grant.test: Vietnamese is its only (default) language. */
+/** A freshly provisioned site on grant.platform.test: Vietnamese is its only (default) language. */
 function grantSite(): int
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'Cấp Ngôn Ngữ', siteName: 'Cấp Ngôn Ngữ', hostname: 'grant.test',
+        tenantName: 'Cấp Ngôn Ngữ', siteName: 'Cấp Ngôn Ngữ', hostname: 'grant.platform.test',
         ownerEmail: 'owner@grant.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
 
@@ -49,7 +49,7 @@ function grantSiteLocales(int $siteId): array
 it('starts a website with one language, so a second one needs a grant', function (): void {
     $siteId = grantSite();
 
-    $this->artisan('site:locale', ['host' => 'grant.test', 'locale' => 'en'])
+    $this->artisan('site:locale', ['host' => 'grant.platform.test', 'locale' => 'en'])
         ->expectsOutputToContain('limit_reached')
         ->assertFailed();
 
@@ -59,7 +59,7 @@ it('starts a website with one language, so a second one needs a grant', function
 it('grants more languages per site and switches one on for editors first, then for visitors', function (): void {
     $siteId = grantSite();
 
-    $this->artisan('site:locale', ['host' => 'grant.test', 'locale' => 'en', '--limit' => '3'])->assertSuccessful();
+    $this->artisan('site:locale', ['host' => 'grant.platform.test', 'locale' => 'en', '--limit' => '3'])->assertSuccessful();
 
     expect(app(Tenancy::class)->enter($siteId, fn (): mixed => SiteFeature::query()->firstWhere('feature_key', 'locales.max')?->value))
         ->toBe(3)
@@ -68,17 +68,17 @@ it('grants more languages per site and switches one on for editors first, then f
             'vi' => ['enabled' => true, 'public' => true],
         ]);
 
-    $this->artisan('site:locale', ['host' => 'grant.test', 'locale' => 'en', '--public' => true])->assertSuccessful();
+    $this->artisan('site:locale', ['host' => 'grant.platform.test', 'locale' => 'en', '--public' => true])->assertSuccessful();
     expect(grantSiteLocales($siteId)['en'])->toBe(['enabled' => true, 'public' => true]);
 
     // Re-running without a flag keeps what visitors see; --hide and --off take it away step by step.
-    $this->artisan('site:locale', ['host' => 'grant.test', 'locale' => 'en'])->assertSuccessful();
+    $this->artisan('site:locale', ['host' => 'grant.platform.test', 'locale' => 'en'])->assertSuccessful();
     expect(grantSiteLocales($siteId)['en'])->toBe(['enabled' => true, 'public' => true]);
 
-    $this->artisan('site:locale', ['host' => 'grant.test', 'locale' => 'en', '--hide' => true])->assertSuccessful();
+    $this->artisan('site:locale', ['host' => 'grant.platform.test', 'locale' => 'en', '--hide' => true])->assertSuccessful();
     expect(grantSiteLocales($siteId)['en'])->toBe(['enabled' => true, 'public' => false]);
 
-    $this->artisan('site:locale', ['host' => 'grant.test', 'locale' => 'en', '--off' => true])->assertSuccessful();
+    $this->artisan('site:locale', ['host' => 'grant.platform.test', 'locale' => 'en', '--off' => true])->assertSuccessful();
     expect(grantSiteLocales($siteId)['en'])->toBe(['enabled' => false, 'public' => false]);
 
     expect(AuditLog::query()->where('site_id', $siteId)->where('action', 'provisioning.site.locale_changed')->count())->toBe(5)
@@ -88,7 +88,7 @@ it('grants more languages per site and switches one on for editors first, then f
 it('keeps the default language on and public', function (): void {
     $siteId = grantSite();
 
-    $this->artisan('site:locale', ['host' => 'grant.test', 'locale' => 'vi', '--hide' => true])
+    $this->artisan('site:locale', ['host' => 'grant.platform.test', 'locale' => 'vi', '--hide' => true])
         ->expectsOutputToContain('default_locked')
         ->assertFailed();
 
@@ -98,7 +98,7 @@ it('keeps the default language on and public', function (): void {
 it('lists the languages and the limit when given only a host', function (): void {
     grantSite();
 
-    $this->artisan('site:locale', ['host' => 'grant.test'])
+    $this->artisan('site:locale', ['host' => 'grant.platform.test'])
         ->expectsOutputToContain('Language limit: 1')
         ->assertSuccessful();
 });
@@ -109,8 +109,8 @@ it('refuses an unknown host, a limit below one and contradictory flags', functio
     $this->artisan('site:locale', $arguments)->assertFailed();
 })->with([
     'unknown host' => [['host' => 'nowhere.test', 'locale' => 'en']],
-    'limit zero' => [['host' => 'grant.test', '--limit' => '0']],
-    'limit not a number' => [['host' => 'grant.test', '--limit' => 'many']],
-    'public and hide' => [['host' => 'grant.test', 'locale' => 'en', '--public' => true, '--hide' => true]],
-    'flag without a language' => [['host' => 'grant.test', '--public' => true]],
+    'limit zero' => [['host' => 'grant.platform.test', '--limit' => '0']],
+    'limit not a number' => [['host' => 'grant.platform.test', '--limit' => 'many']],
+    'public and hide' => [['host' => 'grant.platform.test', 'locale' => 'en', '--public' => true, '--hide' => true]],
+    'flag without a language' => [['host' => 'grant.platform.test', '--public' => true]],
 ]);

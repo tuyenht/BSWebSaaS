@@ -16,7 +16,9 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\HostnameNotPlatformSubdomainException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
+use App\Modules\Provisioning\Exceptions\HostnamePendingVerificationException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Rbac\Models\Permission;
@@ -24,7 +26,9 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
@@ -60,6 +64,11 @@ use Spatie\Permission\PermissionRegistrar;
  * customer only when one is asked for explicitly (`newTenantName`), created atomically with it and
  * refused when a customer already carries that name in any letter case (checked under a lock on the
  * name, so two runs at once cannot both create it) unless `allowSameName` says it is a different one.
+ *
+ * A NEW website starts on a platform subdomain ({slug}.{base}), verified from birth because the
+ * platform owns the name. Any other name is refused (HostnameNotPlatformSubdomainException): a
+ * customer's domain is attached afterwards and proven by DNS or TXT (design.md §28). Nor may it
+ * start on a name a website is still proving (HostnamePendingVerificationException).
  */
 final readonly class ProvisionSite
 {
@@ -78,12 +87,30 @@ final readonly class ProvisionSite
 
     public function handle(ProvisionSiteData $data): Site
     {
+        // The stored form, so `AV1.example.net.` re-runs the site of `av1.example.net`.
+        try {
+            $hostname = DomainName::parse($data->hostname);
+        } catch (DomainChangeRejectedException) {
+            throw new HostnameNotPlatformSubdomainException($data->hostname);
+        }
+
         // 1) Global rows (no RLS): tenant, site, primary domain, owner, membership.
         // Only a live domain identifies a site: a name merely waiting on a site is not one.
-        $domain = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
+        $domain = Domain::query()->where('hostname', $hostname)->whereNotNull('verified_at')->first();
 
         if ($domain === null) {
-            [$site, $tenant] = DB::transaction(function () use ($data): array {
+            // A new site is verified from birth, so only a name the platform owns may start one;
+            // any other name is proven through the verification flow (design.md §28).
+            if (! DomainName::isPlatformSubdomain($hostname)) {
+                throw new HostnameNotPlatformSubdomainException($hostname);
+            }
+            // Nor one a website is still proving (attached before its base became a platform base):
+            // verifying it here would take it from them. A live row is a re-run, settled under the lock.
+            if (Domain::query()->where('hostname', $hostname)->whereNull('verified_at')->exists()) {
+                throw new HostnamePendingVerificationException($hostname);
+            }
+
+            [$site, $tenant] = DB::transaction(function () use ($data, $hostname): array {
                 // A new customer is created here, in the same transaction as its first website, so
                 // a refusal below or a run that fails before the website exists leaves no customer behind.
                 $tenant = $this->tenantForNewSite($data);
@@ -95,11 +122,11 @@ final readonly class ProvisionSite
                 // A run for the same hostname may have finished while this one waited on the lock:
                 // that makes this a re-run, never refused by the limit — but only of this
                 // customer's own website, as for a hostname found before the lock.
-                $raced = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
+                $raced = Domain::query()->where('hostname', $hostname)->whereNotNull('verified_at')->first();
                 if ($raced !== null) {
-                    $site = $raced->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+                    $site = $raced->site ?? throw new \RuntimeException("Domain {$hostname} has no site.");
                     if ($site->tenant_id !== $tenant->id) {
-                        throw new HostnameOwnedByAnotherTenantException($data->hostname);
+                        throw new HostnameOwnedByAnotherTenantException($hostname);
                     }
 
                     return [$site, $tenant];
@@ -120,7 +147,7 @@ final readonly class ProvisionSite
                 try {
                     Domain::query()->create([
                         'site_id' => $site->id,
-                        'hostname' => $data->hostname,
+                        'hostname' => $hostname,
                         'kind' => 'subdomain',
                         'is_primary' => true,
                         // A platform subdomain is ours by construction: verified from birth.
@@ -129,16 +156,16 @@ final readonly class ProvisionSite
                 } catch (UniqueConstraintViolationException) {
                     // Another customer's run committed this name after the re-check (each run locks only
                     // its own customer, so they do not serialize): refuse in plain words, not a stack trace.
-                    throw new HostnameOwnedByAnotherTenantException($data->hostname);
+                    throw new HostnameOwnedByAnotherTenantException($hostname);
                 }
 
                 return [$site, $tenant];
             });
             // The host may be remembered as unknown from a request made before it existed.
-            $this->sites->forget($data->hostname);
+            $this->sites->forget($hostname);
         } else {
-            $site = $domain->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
-            $tenant = $this->tenantOfExistingSite($site, $data);
+            $site = $domain->site ?? throw new \RuntimeException("Domain {$hostname} has no site.");
+            $tenant = $this->tenantOfExistingSite($site, $data, $hostname);
         }
 
         // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
@@ -226,7 +253,7 @@ final readonly class ProvisionSite
             'site_id' => $site->id,
             'auditable_type' => $site::class,
             'auditable_id' => $site->id,
-            'meta' => ['hostname' => $data->hostname, 'owner' => $data->ownerEmail],
+            'meta' => ['hostname' => $hostname, 'owner' => $data->ownerEmail],
         ]);
 
         return $site->refresh();
@@ -259,14 +286,14 @@ final readonly class ProvisionSite
      * A website that already exists keeps its own customer: a caller that asked for a NEW customer
      * is told which one owns it (nothing minted); anything else must name the owner (ownTenant).
      */
-    private function tenantOfExistingSite(Site $site, ProvisionSiteData $data): Tenant
+    private function tenantOfExistingSite(Site $site, ProvisionSiteData $data, string $hostname): Tenant
     {
         $owner = $site->tenant;
         if ($data->newTenantName !== null && $owner !== null) {
-            throw TenantSelectionException::hostTaken($data->hostname, $owner->ulid);
+            throw TenantSelectionException::hostTaken($hostname, $owner->ulid);
         }
 
-        return $this->ownTenant($site, $data);
+        return $this->ownTenant($site, $data, $hostname);
     }
 
     /**
@@ -276,7 +303,7 @@ final readonly class ProvisionSite
      * owner of another customer's website. Returns the site's tenant, never a lookup by name (names
      * are not unique).
      */
-    private function ownTenant(Site $site, ProvisionSiteData $data): Tenant
+    private function ownTenant(Site $site, ProvisionSiteData $data, string $hostname): Tenant
     {
         $tenant = $site->tenant;
 
@@ -285,7 +312,7 @@ final readonly class ProvisionSite
             : $tenant->name === $data->tenantName);
 
         if (! $named) {
-            throw new HostnameOwnedByAnotherTenantException($data->hostname);
+            throw new HostnameOwnedByAnotherTenantException($hostname);
         }
 
         return $tenant;

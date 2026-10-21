@@ -7,11 +7,15 @@ namespace App\Modules\Provisioning\Console;
 use App\Modules\Provisioning\Actions\FindTenant;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\HostnameNotPlatformSubdomainException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
+use App\Modules\Provisioning\Exceptions\HostnamePendingVerificationException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Context\SiteResolver;
+use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\Tenant;
 use Illuminate\Console\Command;
@@ -30,7 +34,7 @@ final class ProvisionSiteCommand extends Command
     #[\Override]
     protected $signature = 'site:provision
         {--name= : Site name}
-        {--host= : Primary hostname (e.g. anvinh.test)}
+        {--host= : Platform subdomain, e.g. shop.example.net (attach a customer domain afterwards with site:domain)}
         {--tenant= : Existing customer, by ulid or exact name (required unless --new-tenant; also required on a re-run)}
         {--new-tenant= : Create a new customer with this name for the website (prints its ulid)}
         {--allow-same-name : With --new-tenant: create it even if a customer with that name already exists}
@@ -56,13 +60,20 @@ final class ProvisionSiteCommand extends Command
             return self::FAILURE;
         }
 
-        // The spelling SiteResolver matches (lower-case, no trailing dot), so `A1.test.` is the same
-        // website as `a1.test` rather than a second one.
-        $host = SiteResolver::normalize($rawHost);
-        if ($host === null) {
+        // The stored spelling (DomainName::parse, as ProvisionSite stores it), so `A1.example.net.` is
+        // the same website as `a1.example.net` rather than a second one.
+        try {
+            $host = DomainName::parse($rawHost);
+        } catch (DomainChangeRejectedException) {
             $this->error(Cast::string(__('provisioning.host_invalid', ['host' => $rawHost])));
 
             return self::FAILURE;
+        }
+
+        // A new website may only start on a platform subdomain: say so before asking anything. A
+        // hostname that already runs a website is a re-run (ProvisionSite settles both, under its lock).
+        if ($this->ownerOf($host) === null && ! DomainName::isPlatformSubdomain($host)) {
+            return $this->notPlatformSubdomain($host);
         }
 
         try {
@@ -86,6 +97,12 @@ final class ProvisionSiteCommand extends Command
                 ownerPassword: is_string($secret) && $secret !== '' ? $secret : null,
                 defaultLocale: $this->stringOption('locale') ?: 'vi',
             ));
+        } catch (HostnameNotPlatformSubdomainException $e) {
+            return $this->notPlatformSubdomain($e->hostname);
+        } catch (HostnamePendingVerificationException $e) {
+            $this->error(Cast::string(__('provisioning.hostname_pending_verification', ['host' => $e->hostname])));
+
+            return self::FAILURE;
         } catch (HostnameOwnedByAnotherTenantException $e) {
             $this->error(Cast::string(__('provisioning.hostname_owned_by_another_tenant', ['host' => $e->hostname])));
 
@@ -169,6 +186,16 @@ final class ProvisionSiteCommand extends Command
         $site = $resolved === null ? null : Site::query()->find($resolved->siteId, ['id', 'tenant_id']);
 
         return $site === null ? null : Tenant::query()->find($site->tenant_id, ['id', 'ulid', 'name']);
+    }
+
+    private function notPlatformSubdomain(string $host): int
+    {
+        $this->error(Cast::string(__('provisioning.hostname_not_platform_subdomain', [
+            'host' => $host,
+            'base' => Cast::string(config('tenancy.primary_base')),
+        ])));
+
+        return self::FAILURE;
     }
 
     private function refuse(TenantSelectionException $e): int

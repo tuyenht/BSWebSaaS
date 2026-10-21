@@ -34,7 +34,7 @@ beforeEach(function (): void {
 function seedStorefrontProduct(string $slug, string $status = 'published'): string
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.test',
+        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
 
@@ -60,12 +60,12 @@ it('renders a published product detail page at its base-pinned route within budg
     expect(seedStorefrontProduct('jig-vf7'))->toBe('/san-pham/jig-vf7');
 
     $count = countQueries(function (): void {
-        $html = $this->get('http://anvinh.test/san-pham/jig-vf7')->assertOk()->getContent();
+        $html = $this->get('http://anvinh.platform.test/san-pham/jig-vf7')->assertOk()->getContent();
 
         expect($html)
             ->toContain('<h1 class="product__title">Jig kiểm VF7</h1>')
             ->toContain('Đồ gá kiểm tra cụm taplo')                                          // description HTML rendered
-            ->toContain('<link rel="canonical" href="http://anvinh.test/san-pham/jig-vf7">') // canonical from the stored route
+            ->toContain('<link rel="canonical" href="http://anvinh.platform.test/san-pham/jig-vf7">') // canonical from the stored route
             ->toContain('property="og:type" content="product"');
     });
 
@@ -77,14 +77,14 @@ it('404s a product route whose product is not published (visibility enforced at 
     expect(seedStorefrontProduct('jig-draft', 'draft'))->toBe('/san-pham/jig-draft');
 
     // The route exists (syncProduct is status-agnostic) but the storefront load filters published.
-    $this->get('http://anvinh.test/san-pham/jig-draft')->assertNotFound();
+    $this->get('http://anvinh.platform.test/san-pham/jig-draft')->assertNotFound();
 });
 
 /** Provision + wire the catalog index at /san-pham (products section + list route) with N products. */
 function seedCatalogIndex(int $productCount = 2): void
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.test',
+        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
 
@@ -113,7 +113,7 @@ function seedCatalogIndex(int $productCount = 2): void
 it('lists published products at the catalog category index (/san-pham)', function (): void {
     seedCatalogIndex(2);
 
-    $html = $this->get('http://anvinh.test/san-pham')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/san-pham')->assertOk()->getContent();
 
     // The catalog category renders products (not entries), each linking to its base-pinned route.
     expect($html)
@@ -133,7 +133,7 @@ it('emits Product JSON-LD on the detail page — name, text description, url, br
         );
     });
 
-    $html = $this->get('http://anvinh.test/san-pham/jig-vf7')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/san-pham/jig-vf7')->assertOk()->getContent();
 
     expect($html)->toContain('"@type":"Product"');
 
@@ -145,7 +145,7 @@ it('emits Product JSON-LD on the detail page — name, text description, url, br
     expect($productLd)->not->toBeNull();
     expect($productLd['name'])->toBe('Jig kiểm VF7');
     expect($productLd['description'])->toBe('Đồ gá kiểm tra cụm taplo.'); // stripped to plain text
-    expect($productLd['url'])->toBe('http://anvinh.test/san-pham/jig-vf7');
+    expect($productLd['url'])->toBe('http://anvinh.platform.test/san-pham/jig-vf7');
     expect($productLd['brand'])->toBe(['@type' => 'Brand', 'name' => 'Cơ Khí Chính Xác An Vinh']);
     expect($productLd)->not->toHaveKey('offers'); // brochure catalog — nothing is sold online
 });
@@ -165,6 +165,6 @@ it('opens a product the admin has just published — page and catalog link alike
             ->assertHasNoErrors();
     });
 
-    $this->get('http://anvinh.test/san-pham/jig-han-khung-moi')->assertOk()->assertSee('Jig hàn khung mới');
-    expect($this->get('http://anvinh.test/san-pham')->assertOk()->getContent())->toContain('href="/san-pham/jig-han-khung-moi"');
+    $this->get('http://anvinh.platform.test/san-pham/jig-han-khung-moi')->assertOk()->assertSee('Jig hàn khung mới');
+    expect($this->get('http://anvinh.platform.test/san-pham')->assertOk()->getContent())->toContain('href="/san-pham/jig-han-khung-moi"');
 });

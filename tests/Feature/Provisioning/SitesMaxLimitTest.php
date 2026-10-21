@@ -63,28 +63,28 @@ function smRefusal(Closure $provision): SiteLimitReachedException
 }
 
 it('creates a website while the customer is under its limit', function (): void {
-    $site = smProvision('Alpha', 'a1.test');
+    $site = smProvision('Alpha', 'a1.platform.test');
 
     expect($site->status)->toBe('active')
         ->and(Site::query()->where('tenant_id', $site->tenant_id)->count())->toBe(1);
 });
 
 it('refuses a new website once the customer holds the default limit of one, leaving no trace', function (): void {
-    smProvision('Alpha', 'a1.test');
+    smProvision('Alpha', 'a1.platform.test');
 
-    $refusal = smRefusal(fn () => smProvision('Alpha', 'a2.test'));
+    $refusal = smRefusal(fn () => smProvision('Alpha', 'a2.platform.test'));
 
     expect($refusal->count)->toBe(1)
         ->and($refusal->limit)->toBe(1)
         ->and(Site::query()->count())->toBe(1)
-        ->and(Domain::query()->where('hostname', 'a2.test')->exists())->toBeFalse();
+        ->and(Domain::query()->where('hostname', 'a2.platform.test')->exists())->toBeFalse();
 });
 
 it('refuses a new website for a customer chosen by id too', function (): void {
-    $first = smProvision('Alpha', 'a1.test');
+    $first = smProvision('Alpha', 'a1.platform.test');
 
     smRefusal(fn () => app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'ignored', siteName: 'A2', hostname: 'a2.test',
+        tenantName: 'ignored', siteName: 'A2', hostname: 'a2.platform.test',
         ownerEmail: 'owner@a2.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
         tenantId: $first->tenant_id,
     )));
@@ -95,9 +95,9 @@ it('refuses a new website for a customer chosen by id too', function (): void {
 it('lets a plan that raises the limit create more websites, up to the new limit', function (): void {
     smGrant('Alpha', 2);
 
-    smProvision('Alpha', 'a1.test');
-    smProvision('Alpha', 'a2.test');
-    $refusal = smRefusal(fn () => smProvision('Alpha', 'a3.test'));
+    smProvision('Alpha', 'a1.platform.test');
+    smProvision('Alpha', 'a2.platform.test');
+    $refusal = smRefusal(fn () => smProvision('Alpha', 'a3.platform.test'));
 
     expect($refusal->count)->toBe(2)
         ->and($refusal->limit)->toBe(2)
@@ -106,30 +106,30 @@ it('lets a plan that raises the limit create more websites, up to the new limit'
 
 it('does not count another customer\'s websites', function (): void {
     smGrant('Beta', 3);
-    smProvision('Beta', 'b1.test');
-    smProvision('Beta', 'b2.test');
-    smProvision('Beta', 'b3.test');
+    smProvision('Beta', 'b1.platform.test');
+    smProvision('Beta', 'b2.platform.test');
+    smProvision('Beta', 'b3.platform.test');
 
-    $site = smProvision('Alpha', 'a1.test');
+    $site = smProvision('Alpha', 'a1.platform.test');
 
     expect($site->status)->toBe('active')
         ->and(Site::query()->count())->toBe(4);
 });
 
 it('never refuses re-running provisioning for a website that already exists', function (): void {
-    $first = smProvision('Alpha', 'a1.test');
+    $first = smProvision('Alpha', 'a1.platform.test');
 
-    $again = smProvision('Alpha', 'a1.test');
+    $again = smProvision('Alpha', 'a1.platform.test');
 
     expect($again->id)->toBe($first->id)
         ->and(Site::query()->count())->toBe(1);
 });
 
 it('ignores a per-website override: the limit is the plan\'s alone', function (): void {
-    $first = smProvision('Alpha', 'a1.test');
+    $first = smProvision('Alpha', 'a1.platform.test');
     app(Tenancy::class)->enter($first->id, fn () => SiteFeature::query()->create(['feature_key' => 'sites.max', 'value' => 99]));
 
-    smRefusal(fn () => smProvision('Alpha', 'a2.test'));
+    smRefusal(fn () => smProvision('Alpha', 'a2.platform.test'));
 
     expect(Site::query()->count())->toBe(1);
 });
@@ -137,7 +137,7 @@ it('ignores a per-website override: the limit is the plan\'s alone', function ()
 it('refuses every new website when the plan grants zero', function (): void {
     smGrant('Alpha', 0);
 
-    $refusal = smRefusal(fn () => smProvision('Alpha', 'a1.test'));
+    $refusal = smRefusal(fn () => smProvision('Alpha', 'a1.platform.test'));
 
     expect($refusal->count)->toBe(0)
         ->and($refusal->limit)->toBe(0)
@@ -145,19 +145,19 @@ it('refuses every new website when the plan grants zero', function (): void {
 });
 
 it('frees the slot of a deleted website', function (): void {
-    smProvision('Alpha', 'a1.test')->delete();
+    smProvision('Alpha', 'a1.platform.test')->delete();
 
-    $site = smProvision('Alpha', 'a2.test');
+    $site = smProvision('Alpha', 'a2.platform.test');
 
     expect($site->status)->toBe('active');
 });
 
 it('refuses through site:provision with a plain-language message', function (): void {
-    smProvision('Alpha', 'a1.test');
+    smProvision('Alpha', 'a1.platform.test');
     // A missing translation would echo the key back and still match the output below.
     expect(__('provisioning.sites_limit_reached'))->not->toBe('provisioning.sites_limit_reached');
 
-    $this->artisan('site:provision', ['--name' => 'A2', '--host' => 'a2.test', '--tenant' => 'Alpha', '--owner-email' => 'owner@a2.test'])
+    $this->artisan('site:provision', ['--name' => 'A2', '--host' => 'a2.platform.test', '--tenant' => 'Alpha', '--owner-email' => 'owner@a2.test'])
         ->expectsQuestion('Owner password (leave blank to auto-generate)', '')
         ->expectsOutputToContain(__('provisioning.sites_limit_reached', ['count' => 1, 'limit' => 1]))
         ->assertFailed();

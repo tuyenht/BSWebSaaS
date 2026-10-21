@@ -29,7 +29,7 @@ function orgProvision(): void
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'Org Test',
         siteName: 'Org Test',
-        hostname: 'org.test',
+        hostname: 'org.platform.test',
         ownerEmail: 'owner@org.test',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-password',
@@ -62,7 +62,7 @@ it('emits Organization JSON-LD with name, telephone, and addressRegion when bran
     orgProvision();
     orgSeedBrand();
 
-    $html = $this->get('http://org.test/')->assertOk()->getContent();
+    $html = $this->get('http://org.platform.test/')->assertOk()->getContent();
 
     expect($html)
         ->toContain('"@type":"Organization"')
@@ -78,7 +78,7 @@ it('emits email, legalName, streetAddress, and addressLocality in Organization J
     orgProvision();
     orgSeedBrand();
 
-    $html = $this->get('http://org.test/')->assertOk()->getContent();
+    $html = $this->get('http://org.platform.test/')->assertOk()->getContent();
 
     expect($html)
         ->toContain('"email":"test@example.vn"')
@@ -99,7 +99,7 @@ it('omits null fields — legalName and address absent when not present in brand
         );
     });
 
-    $html = $this->get('http://org.test/')->assertOk()->getContent();
+    $html = $this->get('http://org.platform.test/')->assertOk()->getContent();
 
     expect($html)
         ->toContain('"@type":"Organization"')
@@ -125,7 +125,7 @@ it('falls back to combined address field when split NAP keys are absent', functi
         );
     });
 
-    $html = $this->get('http://org.test/')->assertOk()->getContent();
+    $html = $this->get('http://org.platform.test/')->assertOk()->getContent();
 
     expect($html)
         ->toContain('"@type":"Organization"')
@@ -137,7 +137,7 @@ it('emits no Organization JSON-LD and no error when no brand setting exists', fu
     // ProvisionSite does not seed a brand setting; StorefrontController::brand() returns null.
     orgProvision();
 
-    $html = $this->get('http://org.test/')->assertOk()->getContent();
+    $html = $this->get('http://org.platform.test/')->assertOk()->getContent();
 
     expect($html)->not->toContain('"@type":"Organization"');
 });
@@ -147,7 +147,7 @@ it('adds no DB query for Organization JSON-LD — budget unchanged', function ()
     orgSeedBrand();
 
     $count = countQueries(function (): void {
-        $html = $this->get('http://org.test/')->assertOk()->getContent();
+        $html = $this->get('http://org.platform.test/')->assertOk()->getContent();
 
         // Confirm the block is present inside the query-counted closure.
         expect($html)

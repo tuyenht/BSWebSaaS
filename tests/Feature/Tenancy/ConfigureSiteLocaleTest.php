@@ -35,7 +35,7 @@ beforeEach(function (): void {
 function localeSite(): int
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'Ngôn Ngữ', siteName: 'Ngôn Ngữ', hostname: 'ngonngu.test',
+        tenantName: 'Ngôn Ngữ', siteName: 'Ngôn Ngữ', hostname: 'ngonngu.platform.test',
         ownerEmail: 'owner@ngonngu.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
 

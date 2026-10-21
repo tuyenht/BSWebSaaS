@@ -303,7 +303,10 @@ jobs:
       # not secrets.
       AUTH_PASSWORD_PEPPER: test-only-pepper-not-a-secret
       SETTINGS_ENCRYPTION_KEY: test-only-settings-key-32bytes!!
-      CWV_HOST: cwv-ci.test
+      CWV_HOST: cwv-ci.platform.test
+      # site:provision only starts a site on a platform subdomain; same neutral base as phpunit.xml.
+      BASE_DOMAINS: platform.test
+      PRIMARY_BASE: platform.test
       CWV_PORT: 8099
 
     steps:

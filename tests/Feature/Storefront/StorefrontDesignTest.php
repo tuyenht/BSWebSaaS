@@ -35,7 +35,7 @@ function designProvision(): void
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'An Vinh',
         siteName: 'An Vinh',
-        hostname: 'anvinh.test',
+        hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-password',
@@ -93,7 +93,7 @@ it('BreadcrumbList JSON-LD is valid decodable JSON on a post page', function ():
     designProvision();
     designPublishPost('Bài kiểm tra JSON-LD', 'bai-kiem-tra-json-ld');
 
-    $html = $this->get('http://anvinh.test/tin-tuc/bai-kiem-tra-json-ld')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-kiem-tra-json-ld')->assertOk()->getContent();
 
     // Extract the first application/ld+json script block.
     $matched = preg_match(
@@ -122,7 +122,7 @@ it('BreadcrumbList JSON-LD is valid decodable JSON on a post page', function ():
 it('renders a branded Vietnamese 404 page (no English dead-end)', function (): void {
     designProvision();
 
-    $response = $this->get('http://anvinh.test/khong-ton-tai-xyz');
+    $response = $this->get('http://anvinh.platform.test/khong-ton-tai-xyz');
     $response->assertNotFound();
 
     $html = $response->getContent();
@@ -142,10 +142,10 @@ it('every storefront page has exactly one h1 element', function (): void {
     designPublishPost('Bài đầu tiên', 'bai-dau-tien');
 
     $pages = [
-        'home page' => 'http://anvinh.test/',
-        'contact page' => 'http://anvinh.test/lien-he',
-        'category list' => 'http://anvinh.test/tin-tuc',
-        'post detail' => 'http://anvinh.test/tin-tuc/bai-dau-tien',
+        'home page' => 'http://anvinh.platform.test/',
+        'contact page' => 'http://anvinh.platform.test/lien-he',
+        'category list' => 'http://anvinh.platform.test/tin-tuc',
+        'post detail' => 'http://anvinh.platform.test/tin-tuc/bai-dau-tien',
     ];
 
     foreach ($pages as $label => $url) {
@@ -163,10 +163,10 @@ it('every storefront layout renders a footer contentinfo landmark', function ():
     designPublishPost('Post footer test', 'post-footer-test');
 
     $urls = [
-        'http://anvinh.test/',
-        'http://anvinh.test/lien-he',
-        'http://anvinh.test/tin-tuc',
-        'http://anvinh.test/tin-tuc/post-footer-test',
+        'http://anvinh.platform.test/',
+        'http://anvinh.platform.test/lien-he',
+        'http://anvinh.platform.test/tin-tuc',
+        'http://anvinh.platform.test/tin-tuc/post-footer-test',
     ];
 
     foreach ($urls as $url) {
@@ -203,7 +203,7 @@ it('emits og:image for a post that has a featured image in meta', function (): v
         app(PublishEntry::class)->handle($post->fresh(), 'vi', $owner->fresh());
     });
 
-    $html = $this->get('http://anvinh.test/tin-tuc/post-with-image')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/tin-tuc/post-with-image')->assertOk()->getContent();
 
     // The og:image should point at the R2 key resolved via MediaUrlResolver (any non-empty URL).
     expect($html)

@@ -32,9 +32,9 @@ function errorBrandProvision(string $siteName, string $hostname): void
 }
 
 it('names the requested site on its 404 page, not another tenant', function (): void {
-    errorBrandProvision('Nội Thất Hoà Phát', 'hoaphat.test');
+    errorBrandProvision('Nội Thất Hoà Phát', 'hoaphat.platform.test');
 
-    $html = $this->get('http://hoaphat.test/khong-ton-tai')->assertNotFound()->getContent();
+    $html = $this->get('http://hoaphat.platform.test/khong-ton-tai')->assertNotFound()->getContent();
 
     expect($html)
         ->toContain('Nội Thất Hoà Phát')
