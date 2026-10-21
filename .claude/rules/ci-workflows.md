@@ -24,7 +24,7 @@ paths:
 
 ## Dependabot (`.github/dependabot.yml`)
 
-- npm and composer ignore every semver-major, and the rule also blocks security pull requests: an advisory fixed only in a new major stays an alert. Do that major as planned work. GitHub Actions take majors, one pull request each.
+- npm and composer ignore every semver-major. Expect an advisory fixed only in a new major to stay an alert with no pull request (the docs mark `ignore` as applying to security updates too; not yet seen on a real run). Do that major as planned work. GitHub Actions take majors, one pull request each.
 - Every Dependabot pull request runs all three jobs (lockfiles, manifests and workflows fall under the `changes` catch-all). Never add a lockfile or manifest to the skip list to save minutes.
 - Dependabot never edits `overrides:` in `pnpm-workspace.yaml` (dependabot-core#16529). Remove an override by hand once its parent ships the fix, and check that no override pins a direct dependency a Dependabot pull request bumps.
 - Keep `pnpm-lock.yaml` a single YAML document. Adding `devEngines.packageManager` or `configDependencies` makes pnpm 11 write a second document, and the dependency graph then reads only the first: alerts disappear without a warning (dependabot-core#14919).
