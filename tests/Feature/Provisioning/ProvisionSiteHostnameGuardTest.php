@@ -114,6 +114,15 @@ it('refuses every name while no platform base is configured', function (): void 
     expect(hostFootprint()['sites'])->toBe(0);
 });
 
+it('accepts a special-use single-label base but never a public one', function (): void {
+    config(['tenancy.base_domains' => ['test', 'net'], 'tenancy.primary_base' => 'test']);
+
+    $site = provisionHost('Alpha', 'alpha.test');
+
+    expect(Domain::query()->where('site_id', $site->id)->sole()->hostname)->toBe('alpha.test')
+        ->and(fn () => provisionHost('Beta', 'customer.net'))->toThrow(HostnameNotPlatformSubdomainException::class);
+});
+
 it('accepts a subdomain of any configured base', function (): void {
     config(['tenancy.base_domains' => ['platform.test', 'second.test']]);
 
