@@ -972,6 +972,7 @@
     "provisioning.hostname_not_platform_subdomain": "Địa chỉ :host không phải tên miền phụ của nền tảng nên chưa có gì thay đổi. Website mới bắt đầu bằng một tên dạng ten-website.:base; tên miền riêng của khách hàng được gắn sau bằng site:domain và phải được xác minh trước khi chạy.",
     "provisioning.hostname_pending_verification": "Đang có một website chờ xác minh quyền sở hữu địa chỉ :host nên không thể dùng địa chỉ này cho website mới, chưa có gì thay đổi. Hãy chọn địa chỉ khác.",
     "provisioning.hostname_owned_by_another_tenant": "Tên miền :host đã thuộc website của một khách hàng khác nên chưa có gì thay đổi. Hãy kiểm tra lại --host, hoặc truyền --tenant đúng tên khách hàng đang sở hữu tên miền này.",
+    "provisioning.hostname_reserved_label": "Tên :label được giữ cho các dịch vụ của nền tảng nên chưa có gì thay đổi. Hãy chọn tên khác cho website này, ví dụ ten-website.:base.",
     "provisioning.sites_limit_reached": "Đã đạt số website tối đa: gói của khách hàng này cho phép :limit, khách đã có :count. Muốn thêm website, hãy chuyển khách sang gói cho phép nhiều hơn.",
     "provisioning.tenant_required": "Hãy chọn khách hàng cho website mới: --tenant=<mã ulid hoặc tên chính xác> cho khách hàng đã có, hoặc --new-tenant=\"Tên khách hàng\" để tạo khách hàng mới.",
     "provisioning.tenant_both": "Chỉ dùng một trong hai: --tenant (khách hàng đã có) hoặc --new-tenant (khách hàng mới).",

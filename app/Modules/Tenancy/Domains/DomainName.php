@@ -58,19 +58,39 @@ final class DomainName
 
     /**
      * A name the platform hands out to a new site, so it is the platform's by construction and may
-     * be verified from birth: exactly one label under a platform base (`{slug}.{base}`), never `www`
-     * and never one of the platform's own hosts (console, target, media…). Anything else — a
-     * customer's domain above all — must be proven through the normal verification flow.
+     * be verified from birth: exactly one plain ASCII label under a platform base (`{slug}.{base}`),
+     * never `www`, never punycode (`xn--`, which can render as a look-alike of a reserved name),
+     * never a reserved label (`tenancy.reserved_labels`) and never one of the platform's own hosts
+     * (console, target, media…). Anything else — a customer's domain above all — must be proven
+     * through the normal verification flow.
      */
     public static function isPlatformSubdomain(string $host): bool
     {
         $label = strstr($host, '.', true);
 
-        if ($label === false || $label === '' || $label === 'www' || in_array($host, self::serviceHosts(), true)) {
+        if ($label === false || $label === '' || $label === 'www' || str_starts_with($label, 'xn--')
+            || in_array($host, self::serviceHosts(), true) || self::reservedLabel($host) !== null) {
             return false;
         }
 
         return in_array(substr($host, strlen($label) + 1), self::bases(), true);
+    }
+
+    /**
+     * The label of a `{label}.{base}` name when that label is kept for the platform's own services
+     * (`tenancy.reserved_labels`), else null — so a refusal can name it.
+     */
+    public static function reservedLabel(string $host): ?string
+    {
+        $label = strstr($host, '.', true);
+
+        if ($label === false || ! in_array(substr($host, strlen($label) + 1), self::bases(), true)) {
+            return null;
+        }
+
+        $reserved = config('tenancy.reserved_labels');
+
+        return is_array($reserved) && in_array($label, $reserved, true) ? $label : null;
     }
 
     /**
