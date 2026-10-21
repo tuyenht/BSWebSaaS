@@ -329,6 +329,32 @@ it('refuses a DTO re-run under another customer name instead of minting that cus
         ->and(tselMemberships('owner@a1.test'))->toHaveCount(1);
 });
 
+it('keeps ProvisionSite itself refusing a new customer under a name one already has', function (): void {
+    $existing = Tenant::query()->create(['name' => 'An Vinh']);
+    $data = fn (bool $allow): ProvisionSiteData => new ProvisionSiteData(
+        tenantName: 'an vinh',
+        newTenantName: 'an vinh',
+        allowSameName: $allow,
+        siteName: 'Second',
+        hostname: 'second.test',
+        ownerEmail: 'owner@second.test',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-password',
+    );
+
+    expect(fn () => app(ProvisionSite::class)->handle($data(false)))->toThrow(
+        fn (TenantSelectionException $e) => expect($e->reason)->toBe('name_exists')
+            ->and($e->replace['candidates'])->toContain($existing->ulid),
+    );
+    expect(Tenant::query()->count())->toBe(1)
+        ->and(Site::query()->count())->toBe(0);
+
+    $site = app(ProvisionSite::class)->handle($data(true));
+
+    expect(Tenant::query()->count())->toBe(2)
+        ->and($site->tenant_id)->not->toBe($existing->id);
+});
+
 it('leaves no new customer behind when its first website fails to be created', function (): void {
     Event::listen('eloquent.creating: '.Domain::class, function (): never {
         throw new RuntimeException('domain insert failed');
@@ -349,11 +375,10 @@ it('leaves no new customer behind when its first website fails to be created', f
 });
 
 it('explains every refusal in each interface language', function (string $locale): void {
-    app()->setLocale($locale);
+    // Read the file itself: __() falls back to English, so a key missing from vi.json would still translate.
+    $lines = json_decode(Cast::string(file_get_contents(lang_path($locale.'.json'))), true);
+    $keys = is_array($lines) ? array_keys($lines) : [];
+    $reasons = ['required', 'both', 'not_found', 'ambiguous', 'did_you_mean', 'name_too_long', 'name_exists', 'mismatch', 'host_taken'];
 
-    foreach (['required', 'both', 'not_found', 'ambiguous', 'did_you_mean', 'name_too_long', 'name_exists', 'mismatch', 'host_taken'] as $reason) {
-        $key = 'provisioning.tenant_'.$reason;
-        expect(__($key))->not->toBe($key);
-    }
-    expect(__('provisioning.host_invalid'))->not->toBe('provisioning.host_invalid');
+    expect($keys)->toContain('provisioning.host_invalid', ...array_map(fn (string $r): string => 'provisioning.tenant_'.$r, $reasons));
 })->with(['en', 'vi', 'ja', 'zh']);

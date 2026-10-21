@@ -56,7 +56,9 @@ use Spatie\Permission\PermissionRegistrar;
  *
  * Which customer: an existing website always stays with its own (HostnameOwnedByAnotherTenantException
  * when the caller named another, TenantSelectionException when it asked for a new one); a new website goes to the customer the caller chose by id, or to a new
- * customer only when one is asked for explicitly (`newTenantName`), created atomically with it.
+ * customer only when one is asked for explicitly (`newTenantName`), created atomically with it and
+ * refused when a customer already carries that name in any letter case (checked under a lock on the
+ * name, so two runs at once cannot both create it) unless `allowSameName` says it is a different one.
  */
 final readonly class ProvisionSite
 {
@@ -70,6 +72,7 @@ final readonly class ProvisionSite
         private TaxonomyPaths $paths,
         private SiteResolver $sites,
         private Entitlement $entitlement,
+        private FindTenant $find,
     ) {}
 
     public function handle(ProvisionSiteData $data): Site
@@ -226,6 +229,17 @@ final readonly class ProvisionSite
     private function tenantForNewSite(ProvisionSiteData $data): Tenant
     {
         if ($data->newTenantName !== null) {
+            if (! $data->allowSameName) {
+                // site:provision checks this before asking anything; two runs at once both pass that check,
+                // so the second waits here for the first to commit and then sees its customer.
+                $folded = mb_strtolower(trim($data->newTenantName));
+                DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['tenant_name:'.$folded]);
+                $namesakes = $this->find->namesakes($data->newTenantName);
+                if ($namesakes !== '') {
+                    throw TenantSelectionException::nameExists($data->newTenantName, $namesakes);
+                }
+            }
+
             return Tenant::query()->create(['name' => $data->newTenantName]);
         }
 

@@ -78,6 +78,7 @@ final class ProvisionSiteCommand extends Command
                 tenantName: $customer['name'],
                 tenantId: $customer['id'],
                 newTenantName: $customer['new'],
+                allowSameName: $this->option('allow-same-name') === true,
                 siteName: $name,
                 hostname: $host,
                 ownerEmail: $ownerEmail,

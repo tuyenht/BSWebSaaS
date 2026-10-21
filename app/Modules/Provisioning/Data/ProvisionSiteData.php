@@ -17,6 +17,7 @@ final readonly class ProvisionSiteData
      * @param  ?int  $tenantId  the existing customer a NEW website goes to (wins over $tenantName)
      * @param  ?string  $newTenantName  create a new customer with this name for a NEW website
      *                                  (wins over both; refused when the hostname already has a website)
+     * @param  bool  $allowSameName  with $newTenantName: create it even if a customer already has that name
      *
      * $tenantName alone (find-or-create by name) is kept for seeders and tests: names are not unique,
      * so operator-facing callers pass $tenantId or $newTenantName (see site:provision).
@@ -34,5 +35,6 @@ final readonly class ProvisionSiteData
         public ?int $tenantId = null,
         public array $profile = [],
         public ?string $newTenantName = null,
+        public bool $allowSameName = false,
     ) {}
 }
