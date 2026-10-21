@@ -84,7 +84,9 @@ final readonly class BlockRenderer
             /** @var array<string, mixed> $resolved */
             $resolved = SchemaImages::replace($props, $component->schema(), $urls);
 
-            $html .= $this->views->make($component->view(), $component->data($resolved))->render();
+            /** @var view-string $view a theme section view (ComponentRegistry) */
+            $view = $component->view();
+            $html .= $this->views->make($view, $component->data($resolved))->render();
         }
 
         return $html;
