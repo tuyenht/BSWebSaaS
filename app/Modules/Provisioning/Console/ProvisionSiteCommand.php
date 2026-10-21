@@ -31,7 +31,7 @@ final class ProvisionSiteCommand extends Command
     protected $signature = 'site:provision
         {--name= : Site name}
         {--host= : Primary hostname (e.g. anvinh.test)}
-        {--tenant= : Existing customer, by ulid or exact name (required for a new website unless --new-tenant)}
+        {--tenant= : Existing customer, by ulid or exact name (required unless --new-tenant; a re-run names the website's own customer)}
         {--new-tenant= : Create a new customer with this name for the website (prints its ulid)}
         {--allow-same-name : With --new-tenant: create it even if a customer with that name already exists}
         {--owner-email= : Owner email}
@@ -109,8 +109,9 @@ final class ProvisionSiteCommand extends Command
 
     /**
      * Which customer the website goes to, from the flags — before the password prompt, so a wrong
-     * choice fails fast. An existing hostname keeps its own customer: a flag naming another one is
-     * refused here, and again by ProvisionSite under its lock (the authority; this is the early answer).
+     * choice fails fast. An existing hostname keeps its own customer and a re-run must name it: no flag,
+     * or a flag naming another one, is refused here, and again by ProvisionSite under its lock (the
+     * authority; this is the early answer).
      *
      * @return array{id: int|null, name: string, new: string|null}
      */
@@ -151,11 +152,11 @@ final class ProvisionSiteCommand extends Command
             return ['id' => $tenant->id, 'name' => $tenant->name, 'new' => null];
         }
 
-        if ($owner === null) {
-            throw TenantSelectionException::required();
-        }
-
-        return ['id' => $owner->id, 'name' => $owner->name, 'new' => null];
+        // Never default to the hostname's own customer: a mistyped --host would then attach this owner
+        // to another customer's website. A re-run names its customer like a first run does.
+        throw $owner === null
+            ? TenantSelectionException::required()
+            : TenantSelectionException::rerunNeedsTenant($host, $owner->ulid);
     }
 
     /**

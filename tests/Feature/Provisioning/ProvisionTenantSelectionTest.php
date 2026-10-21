@@ -121,7 +121,7 @@ it('creates a customer only with --new-tenant, and prints its ulid', function ()
         ->and($site->tenant_id)->toBe($tenant->id)
         ->and(tselMemberships('owner@new.test'))->toBe([$tenant->id]);
 
-    $this->artisan('site:provision', tselArgs('new.test'))
+    $this->artisan('site:provision', tselArgs('new.test', ['--tenant' => $tenant->ulid]))
         ->expectsQuestion(TSEL_PROMPT, '')
         ->expectsOutputToContain("for customer {$tenant->ulid}")
         ->assertSuccessful();
@@ -236,16 +236,33 @@ it('does not find a soft-deleted customer', function (): void {
         ->assertFailed();
 });
 
-it('re-runs an existing website for its own customer without any flag', function (): void {
+it('re-runs an existing website for its own customer named by ulid', function (): void {
     $site = tselSeed('Alpha', 'a1.test');
+    $owner = Tenant::query()->findOrFail($site->tenant_id);
 
-    $this->artisan('site:provision', tselArgs('a1.test'))
+    $this->artisan('site:provision', tselArgs('a1.test', ['--tenant' => $owner->ulid]))
         ->expectsQuestion(TSEL_PROMPT, '')
         ->assertSuccessful();
 
     expect(Tenant::query()->count())->toBe(1)
         ->and(Site::query()->count())->toBe(1)
         ->and(tselMemberships('owner@a1.test'))->toBe([$site->tenant_id]);
+});
+
+it('refuses a re-run that names no customer, before asking for a password, naming the owner', function (): void {
+    $site = tselSeed('Beta', 'beta.test');
+    $owner = Tenant::query()->findOrFail($site->tenant_id);
+    $roles = DB::table('model_has_roles')->count();
+
+    // An operator setting up Alpha mistypes --host as Beta's website: never default to Beta.
+    $this->artisan('site:provision', ['--name' => 'Alpha', '--host' => 'beta.test', '--owner-email' => 'owner@alpha.test'])
+        ->expectsOutputToContain(__('provisioning.tenant_rerun_needs_tenant', ['host' => 'beta.test', 'tenant' => $owner->ulid]))
+        ->assertFailed();
+
+    expect(tselMemberships('owner@alpha.test'))->toBe([])
+        ->and(DB::table('model_has_roles')->count())->toBe($roles)
+        ->and(Tenant::query()->count())->toBe(1)
+        ->and(Site::query()->count())->toBe(1);
 });
 
 it('refuses a re-run that names another customer before asking for a password', function (): void {
@@ -277,8 +294,9 @@ it('refuses --new-tenant for a hostname that already has a website, creating no 
 
 it('re-runs a website named in another spelling of its hostname, without a second website', function (): void {
     $site = tselSeed('Alpha', 'a1.test');
+    $owner = Tenant::query()->findOrFail($site->tenant_id);
 
-    $this->artisan('site:provision', ['--name' => 'A1', '--host' => ' A1.Test. ', '--owner-email' => 'owner@a1.test'])
+    $this->artisan('site:provision', ['--name' => 'A1', '--host' => ' A1.Test. ', '--owner-email' => 'owner@a1.test', '--tenant' => $owner->ulid])
         ->expectsQuestion(TSEL_PROMPT, '')
         ->expectsOutputToContain("Provisioned site #{$site->id} (a1.test)")
         ->assertSuccessful();
@@ -378,7 +396,7 @@ it('explains every refusal in each interface language', function (string $locale
     // Read the file itself: __() falls back to English, so a key missing from vi.json would still translate.
     $lines = json_decode(Cast::string(file_get_contents(lang_path($locale.'.json'))), true);
     $keys = is_array($lines) ? array_keys($lines) : [];
-    $reasons = ['required', 'both', 'not_found', 'ambiguous', 'did_you_mean', 'name_too_long', 'name_exists', 'mismatch', 'host_taken'];
+    $reasons = ['required', 'both', 'not_found', 'ambiguous', 'did_you_mean', 'name_too_long', 'name_exists', 'mismatch', 'host_taken', 'rerun_needs_tenant'];
 
     expect($keys)->toContain('provisioning.host_invalid', ...array_map(fn (string $r): string => 'provisioning.tenant_'.$r, $reasons));
 })->with(['en', 'vi', 'ja', 'zh']);

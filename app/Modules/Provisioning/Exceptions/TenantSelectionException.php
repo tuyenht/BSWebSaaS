@@ -68,6 +68,12 @@ final class TenantSelectionException extends DomainException
         return new self('host_taken', ['host' => $hostname, 'tenant' => $ownerUlid]);
     }
 
+    /** A re-run for a hostname that already has a website named no customer; it must name the owner. */
+    public static function rerunNeedsTenant(string $hostname, string $ownerUlid): self
+    {
+        return new self('rerun_needs_tenant', ['host' => $hostname, 'tenant' => $ownerUlid]);
+    }
+
     public function translationKey(): string
     {
         return 'provisioning.tenant_'.$this->reason;
