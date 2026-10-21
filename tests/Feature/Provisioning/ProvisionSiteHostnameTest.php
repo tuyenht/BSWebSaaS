@@ -102,7 +102,7 @@ it('refuses a waiting hostname through site:provision in plain words and fails',
     $this->artisan('site:provision', [
         '--name' => 'Alpha',
         '--host' => 'shop.example.vn',
-        '--tenant' => 'Alpha',
+        '--new-tenant' => 'Alpha',
         '--owner-email' => 'owner@alpha.test',
     ])
         ->expectsQuestion('Owner password (leave blank to auto-generate)', '')
@@ -151,10 +151,9 @@ it('refuses an unusable hostname through site:provision in plain words and fails
     $this->artisan('site:provision', [
         '--name' => 'Alpha',
         '--host' => 'bad_host.test',
-        '--tenant' => 'Alpha',
+        '--new-tenant' => 'Alpha',
         '--owner-email' => 'owner@alpha.test',
     ])
-        ->expectsQuestion('Owner password (leave blank to auto-generate)', '')
         ->expectsOutput(__('provisioning.host_invalid', ['host' => 'bad_host.test']))
         ->assertFailed();
 

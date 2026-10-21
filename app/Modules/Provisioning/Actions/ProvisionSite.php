@@ -20,6 +20,7 @@ use App\Modules\Provisioning\Exceptions\HostnameAwaitingAnotherSiteException;
 use App\Modules\Provisioning\Exceptions\HostnameInvalidException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
+use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
@@ -55,6 +56,12 @@ use Spatie\Permission\PermissionRegistrar;
  * `provisioning` by a run that failed midway. Re-running for a website that already exists (same
  * hostname) creates nothing and is never refused, which is also how a failed run is finished.
  *
+ * Which customer: an existing website always stays with its own (HostnameOwnedByAnotherTenantException
+ * when the caller named another, TenantSelectionException when it asked for a new one); a new website goes to the customer the caller chose by id, or to a new
+ * customer only when one is asked for explicitly (`newTenantName`), created atomically with it and
+ * refused when a customer already carries that name in any letter case (checked under a lock on the
+ * name, so two runs at once cannot both create it) unless `allowSameName` says it is a different one.
+ *
  * The hostname is taken in the spelling SiteResolver matches, whoever built the input; one it can
  * never match is refused (HostnameInvalidException). A NEW website never takes a name another website
  * is still waiting to verify (HostnameAwaitingAnotherSiteException): the name is inserted verified,
@@ -74,6 +81,7 @@ final readonly class ProvisionSite
         private TaxonomyPaths $paths,
         private SiteResolver $sites,
         private Entitlement $entitlement,
+        private FindTenant $find,
     ) {}
 
     public function handle(ProvisionSiteData $data): Site
@@ -91,10 +99,9 @@ final readonly class ProvisionSite
 
         if ($domain === null) {
             [$site, $tenant] = DB::transaction(function () use ($data): array {
-                // Resolved inside the transaction so a refusal below also undoes a customer it created.
-                $tenant = $data->tenantId !== null
-                    ? Tenant::query()->findOrFail($data->tenantId)
-                    : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
+                // A new customer is created here, in the same transaction as its first website, so
+                // a refusal below or a run that fails before the website exists leaves no customer behind.
+                $tenant = $this->tenantForNewSite($data);
 
                 // Serialize a customer's new websites: two concurrent provisions must not both pass
                 // the limit. Lock first, then count (a soft-deleted website frees its slot).
@@ -146,7 +153,7 @@ final readonly class ProvisionSite
             $this->sites->forget($data->hostname);
         } else {
             $site = $domain->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
-            $tenant = $this->ownTenant($site, $data);
+            $tenant = $this->tenantOfExistingSite($site, $data);
         }
 
         // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
@@ -238,6 +245,43 @@ final readonly class ProvisionSite
         ]);
 
         return $site->refresh();
+    }
+
+    /** The customer a NEW website goes to: one created on request, one chosen by id, or (DTO callers) by name. */
+    private function tenantForNewSite(ProvisionSiteData $data): Tenant
+    {
+        if ($data->newTenantName !== null) {
+            if (! $data->allowSameName) {
+                // site:provision checks this before asking anything; two runs at once both pass that check,
+                // so the second waits here for the first to commit and then sees its customer.
+                $folded = mb_strtolower(trim($data->newTenantName));
+                DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['tenant_name:'.$folded]);
+                $namesakes = $this->find->namesakes($data->newTenantName);
+                if ($namesakes !== '') {
+                    throw TenantSelectionException::nameExists($data->newTenantName, $namesakes);
+                }
+            }
+
+            return Tenant::query()->create(['name' => $data->newTenantName]);
+        }
+
+        return $data->tenantId !== null
+            ? Tenant::query()->findOrFail($data->tenantId)
+            : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
+    }
+
+    /**
+     * A website that already exists keeps its own customer: a caller that asked for a NEW customer
+     * is told which one owns it (nothing minted); anything else must name the owner (ownTenant).
+     */
+    private function tenantOfExistingSite(Site $site, ProvisionSiteData $data): Tenant
+    {
+        $owner = $site->tenant;
+        if ($data->newTenantName !== null && $owner !== null) {
+            throw TenantSelectionException::hostTaken($data->hostname, $owner->ulid);
+        }
+
+        return $this->ownTenant($site, $data);
     }
 
     /**
