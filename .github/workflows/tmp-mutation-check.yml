@@ -37,6 +37,10 @@ jobs:
           - { id: M14-new-tenant-reuses-by-name, file: app/Modules/Provisioning/Actions/ProvisionSite.php, old: "return Tenant::query()->create(['name' => $data->newTenantName]);", new: "return Tenant::query()->firstOrCreate(['name' => $data->newTenantName]);" }
           - { id: M15-action-other-customer-accepted, file: app/Modules/Provisioning/Actions/ProvisionSite.php, old: 'if (! $named) {', new: 'if (false) {' }
           - { id: M16-vi-translation-missing, file: lang/vi.json, old: '"provisioning.tenant_name_exists":', new: '"provisioning.tenant_name_exists_x":' }
+          - { id: M17-action-namesake-dropped, file: app/Modules/Provisioning/Actions/ProvisionSite.php, old: 'if (! $data->allowSameName) {', new: 'if (false) {' }
+          - { id: M18-action-override-ignored, file: app/Modules/Provisioning/Actions/ProvisionSite.php, old: 'if (! $data->allowSameName) {', new: 'if (true) {' }
+          - { id: M19-command-override-not-passed, file: app/Modules/Provisioning/Console/ProvisionSiteCommand.php, old: "allowSameName: $this->option('allow-same-name') === true,", new: '' }
+          - { id: M20-ja-mismatch-missing, file: lang/ja.json, old: '"provisioning.tenant_mismatch":', new: '"provisioning.tenant_mismatch_x":' }
 
     services:
       postgres:
