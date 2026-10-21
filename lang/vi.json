@@ -970,6 +970,9 @@
     "monitoring.mail.summary.commands": "Lệnh định kỳ bị lỗi:",
     "monitoring.mail.summary.command_line": ":command: :count lần",
     "provisioning.hostname_owned_by_another_tenant": "Tên miền :host đã thuộc website của một khách hàng khác nên chưa có gì thay đổi. Hãy kiểm tra lại --host, hoặc truyền --tenant đúng tên khách hàng đang sở hữu tên miền này.",
+    "provisioning.hostname_invalid": "“:host” không phải địa chỉ web hợp lệ nên chưa có gì thay đổi. Hãy kiểm tra lại --host (ví dụ :example).",
+    "provisioning.hostname_not_platform_subdomain": "Địa chỉ :host không phải tên miền phụ của nền tảng (một tên đứng trước tên miền nền tảng, ví dụ :example) nên chưa có gì thay đổi. Tên miền riêng của khách hãy gắn ở màn Tên miền của website sau khi website đã được tạo.",
+    "provisioning.hostname_pending_elsewhere": "Đang có một website chờ xác minh quyền sở hữu địa chỉ :host nên không dùng địa chỉ này cho website mới được, chưa có gì thay đổi. Hãy chọn địa chỉ khác.",
     "provisioning.sites_limit_reached": "Đã đạt số website tối đa: gói của khách hàng này cho phép :limit, khách đã có :count. Muốn thêm website, hãy chuyển khách sang gói cho phép nhiều hơn.",
     "validation.attributes": {
         "email": "email",

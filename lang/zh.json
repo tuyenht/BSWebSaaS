@@ -970,6 +970,9 @@
     "monitoring.mail.summary.commands": "失败的定时命令：",
     "monitoring.mail.summary.command_line": ":command：:count 次",
     "provisioning.hostname_owned_by_another_tenant": "地址 :host 已属于另一位客户的网站，因此未做任何更改。请检查 --host，或通过 --tenant 传入拥有该地址的客户的准确名称。",
+    "provisioning.hostname_invalid": "“:host”不是有效的网址，因此未做任何更改。请检查 --host（例如 :example）。",
+    "provisioning.hostname_not_platform_subdomain": "地址 :host 不是平台的子域名（即平台域名前加一个名称，例如 :example），因此未做任何更改。客户自己的域名请在网站创建后，于该网站的“域名”页面中添加。",
+    "provisioning.hostname_pending_elsewhere": "已有网站正在验证地址 :host 的所有权，因此不能将其用于新网站，未做任何更改。请选择其他地址。",
     "provisioning.sites_limit_reached": "已达网站数量上限：该客户的套餐最多允许 :limit 个，已有 :count 个。如需新增网站，请将其换到允许更多网站的套餐。",
     "validation.attributes": {
         "email": "邮箱",

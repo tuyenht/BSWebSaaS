@@ -16,6 +16,7 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\HostnameNotProvisionableException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Rbac\Models\Permission;
@@ -23,7 +24,9 @@ use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Domains\DomainName;
 use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
@@ -52,6 +55,9 @@ use Spatie\Permission\PermissionRegistrar;
  * website not soft-deleted counts, whatever its status — suspended, archived, and one left at
  * `provisioning` by a run that failed midway. Re-running for a website that already exists (same
  * hostname) creates nothing and is never refused, which is also how a failed run is finished.
+ *
+ * A new website's hostname must be a platform subdomain ({slug}.{base}) that no website is waiting
+ * to prove (HostnameNotProvisionableException); a customer's own domain goes through AttachDomain.
  */
 final readonly class ProvisionSite
 {
@@ -67,14 +73,28 @@ final readonly class ProvisionSite
         private Entitlement $entitlement,
     ) {}
 
+    /**
+     * @throws HostnameNotProvisionableException a new website on a name the platform does not own
+     * @throws HostnameOwnedByAnotherTenantException
+     * @throws SiteLimitReachedException
+     */
     public function handle(ProvisionSiteData $data): Site
     {
+        // Stored, looked up and audited in one spelling (lower-case, punycode, no scheme or path).
+        try {
+            $hostname = DomainName::parse($data->hostname);
+        } catch (DomainChangeRejectedException) {
+            throw new HostnameNotProvisionableException($data->hostname, 'invalid');
+        }
+
         // 1) Global rows (no RLS): tenant, site, primary domain, owner, membership.
         // Only a live domain identifies a site: a name merely waiting on a site is not one.
-        $domain = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
+        $domain = Domain::query()->where('hostname', $hostname)->whereNotNull('verified_at')->first();
 
         if ($domain === null) {
-            [$site, $tenant] = DB::transaction(function () use ($data): array {
+            $this->assertProvisionable($hostname);
+
+            [$site, $tenant] = DB::transaction(function () use ($data, $hostname): array {
                 // Resolved inside the transaction so a refusal below also undoes a customer it created.
                 $tenant = $data->tenantId !== null
                     ? Tenant::query()->findOrFail($data->tenantId)
@@ -87,11 +107,11 @@ final readonly class ProvisionSite
                 // A run for the same hostname may have finished while this one waited on the lock:
                 // that makes this a re-run, never refused by the limit — but only of this
                 // customer's own website, as for a hostname found before the lock.
-                $raced = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
+                $raced = Domain::query()->where('hostname', $hostname)->whereNotNull('verified_at')->first();
                 if ($raced !== null) {
-                    $site = $raced->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+                    $site = $raced->site ?? throw new \RuntimeException("Domain {$hostname} has no site.");
                     if ($site->tenant_id !== $tenant->id) {
-                        throw new HostnameOwnedByAnotherTenantException($data->hostname);
+                        throw new HostnameOwnedByAnotherTenantException($hostname);
                     }
 
                     return [$site, $tenant];
@@ -111,20 +131,20 @@ final readonly class ProvisionSite
                 ]);
                 Domain::query()->create([
                     'site_id' => $site->id,
-                    'hostname' => $data->hostname,
+                    'hostname' => $hostname,
                     'kind' => 'subdomain',
                     'is_primary' => true,
-                    // A platform subdomain is ours by construction: verified from birth.
+                    // A platform subdomain (assertProvisionable) is ours: verified from birth.
                     'verified_at' => now(),
                 ]);
 
                 return [$site, $tenant];
             });
             // The host may be remembered as unknown from a request made before it existed.
-            $this->sites->forget($data->hostname);
+            $this->sites->forget($hostname);
         } else {
-            $site = $domain->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
-            $tenant = $this->ownTenant($site, $data);
+            $site = $domain->site ?? throw new \RuntimeException("Domain {$hostname} has no site.");
+            $tenant = $this->ownTenant($site, $data, $hostname);
         }
 
         // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
@@ -212,10 +232,32 @@ final readonly class ProvisionSite
             'site_id' => $site->id,
             'auditable_type' => $site::class,
             'auditable_id' => $site->id,
-            'meta' => ['hostname' => $data->hostname, 'owner' => $data->ownerEmail],
+            'meta' => ['hostname' => $hostname, 'owner' => $data->ownerEmail],
         ]);
 
         return $site->refresh();
+    }
+
+    /**
+     * A NEW website's primary domain is stamped verified from birth, which is only true of a name
+     * the platform owns: one label under a platform base domain. A customer's own domain must be
+     * attached and proved instead (AttachDomain → CheckDomain) — provisioning it here would take
+     * it from whoever is proving it and block them for good. A name a site is still waiting on is
+     * refused too (a base added after a customer attached a name under it). Checked before any
+     * write; a re-run of an existing website skips this — its domain is already live.
+     *
+     * @throws HostnameNotProvisionableException
+     */
+    private function assertProvisionable(string $hostname): void
+    {
+        if (! DomainName::isPlatformSubdomain($hostname)) {
+            throw new HostnameNotProvisionableException($hostname, 'not_platform_subdomain');
+        }
+
+        // Only a WAITING row: a live one is a re-run (or a concurrent run), settled under the lock.
+        if (Domain::query()->where('hostname', $hostname)->whereNull('verified_at')->exists()) {
+            throw new HostnameNotProvisionableException($hostname, 'pending_elsewhere');
+        }
     }
 
     /**
@@ -225,7 +267,7 @@ final readonly class ProvisionSite
      * owner of another customer's website. Returns the site's tenant, never a lookup by name (names
      * are not unique).
      */
-    private function ownTenant(Site $site, ProvisionSiteData $data): Tenant
+    private function ownTenant(Site $site, ProvisionSiteData $data, string $hostname): Tenant
     {
         $tenant = $site->tenant;
 
@@ -234,7 +276,7 @@ final readonly class ProvisionSite
             : $tenant->name === $data->tenantName);
 
         if (! $named) {
-            throw new HostnameOwnedByAnotherTenantException($data->hostname);
+            throw new HostnameOwnedByAnotherTenantException($hostname);
         }
 
         return $tenant;

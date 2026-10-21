@@ -47,6 +47,11 @@
         <server name="ARGON_THREADS" value="1" force="true"/>
         <env name="BROADCAST_CONNECTION" value="null" force="true"/>
         <server name="BROADCAST_CONNECTION" value="null" force="true"/>
+        <!-- Platform base domain for tests: every `{slug}.test` a test provisions is a platform
+             subdomain (ProvisionSite refuses any other name). Tests that attach a customer's own
+             domain set tenancy.base_domains themselves. Forced so a local .env cannot change it. -->
+        <env name="BASE_DOMAINS" value="test" force="true"/>
+        <server name="BASE_DOMAINS" value="test" force="true"/>
         <env name="CACHE_STORE" value="array" force="true"/>
         <server name="CACHE_STORE" value="array" force="true"/>
         <!-- Gate #1 tests run on REAL PostgreSQL (RLS cannot be proven on sqlite).

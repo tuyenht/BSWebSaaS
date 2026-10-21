@@ -303,6 +303,9 @@ jobs:
       # not secrets.
       AUTH_PASSWORD_PEPPER: test-only-pepper-not-a-secret
       SETTINGS_ENCRYPTION_KEY: test-only-settings-key-32bytes!!
+      # site:provision only creates a website on a platform subdomain ({slug}.{base}), so the
+      # measurement host sits under a base this job declares (same base phpunit.xml uses).
+      BASE_DOMAINS: test
       CWV_HOST: cwv-ci.test
       CWV_PORT: 8099
 

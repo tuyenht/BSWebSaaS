@@ -970,6 +970,9 @@
     "monitoring.mail.summary.commands": "Scheduled commands that failed:",
     "monitoring.mail.summary.command_line": ":command: :count times",
     "provisioning.hostname_owned_by_another_tenant": "The address :host already belongs to another customer's website, so nothing was changed. Check --host, or pass --tenant with the exact name of the customer who owns it.",
+    "provisioning.hostname_invalid": "“:host” is not a valid web address, so nothing was changed. Check --host (for example :example).",
+    "provisioning.hostname_not_platform_subdomain": "The address :host is not one of the platform's own subdomains (one name in front of a platform domain, such as :example), so nothing was changed. A customer's own domain is added on the website's Domains screen once the website exists.",
+    "provisioning.hostname_pending_elsewhere": "A website is still proving it owns the address :host, so it cannot be used for a new website and nothing was changed. Choose another address.",
     "provisioning.sites_limit_reached": "Website limit reached: this customer's plan allows :limit and they already have :count. To add another website, move them to a plan that allows more.",
     "validation.attributes": {
         "email": "email",
