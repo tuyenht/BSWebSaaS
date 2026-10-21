@@ -19,6 +19,7 @@ use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Provisioning\Exceptions\HostnameNotPlatformSubdomainException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\HostnamePendingVerificationException;
+use App\Modules\Provisioning\Exceptions\HostnameReservedLabelException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Rbac\Models\Permission;
@@ -101,7 +102,11 @@ final readonly class ProvisionSite
             // A new site is verified from birth, so only a name the platform owns may start one;
             // any other name is proven through the verification flow (design.md §28).
             if (! DomainName::isPlatformSubdomain($hostname)) {
-                throw new HostnameNotPlatformSubdomainException($hostname);
+                $label = DomainName::reservedLabel($hostname);
+
+                throw $label !== null
+                    ? new HostnameReservedLabelException($hostname, $label)
+                    : new HostnameNotPlatformSubdomainException($hostname);
             }
             // Nor one a website is still proving (attached before its base became a platform base):
             // verifying it here would take it from them. A live row is a re-run, settled under the lock.

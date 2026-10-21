@@ -11,12 +11,13 @@ use DomainException;
  * site's first domain is verified from birth, which only a name the platform owns may be; any
  * other name — a customer's domain, perhaps one another site is waiting to verify — must be proven
  * through `site:domain … attach` (design.md §28). Nothing is written. Its own type so no broad
- * `catch (RuntimeException)` swallows it; the caller explains it in plain words.
+ * `catch (RuntimeException)` swallows it; the caller explains it in plain words. Not final: a
+ * reserved label is the same refusal with a more precise reason (HostnameReservedLabelException).
  */
-final class HostnameNotPlatformSubdomainException extends DomainException
+class HostnameNotPlatformSubdomainException extends DomainException
 {
-    public function __construct(public readonly string $hostname)
+    public function __construct(public readonly string $hostname, ?string $message = null)
     {
-        parent::__construct("The hostname {$hostname} is not a platform subdomain.");
+        parent::__construct($message ?? "The hostname {$hostname} is not a platform subdomain.");
     }
 }
