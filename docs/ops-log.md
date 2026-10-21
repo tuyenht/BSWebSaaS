@@ -7,6 +7,17 @@
 
 ## 2026
 
+### 2026-10-09 — Tắt dịch vụ in (đóng cổng 631); lệnh đo mức dùng và lệnh vào phòng
+
+- **Dịch vụ in (08/10 22:17 +07, owner duyệt trong phiên):** bản snap `cups` (đi kèm Chromium dùng để kiểm màn hình) nghe cổng 631 trên mọi địa chỉ của máy; máy không in gì. Thao tác: `snap stop --disable cups`. Chọn tắt thay vì gỡ, vì gỡ thì snapd cài lại nó cho Chromium.
+- **Hậu kiểm:** `ss -tlnH 'sport = :631'` không còn dòng nào; `snap services cups` báo cả hai dịch vụ `disabled` / `inactive` (xem lại 09/10 11:20: vẫn vậy); Chromium kiểm màn hình vẫn mở được; website prod vẫn trả lời. Quay lui: `snap start --enable cups`.
+- **Theo dõi:** sau mỗi lần snap tự cập nhật, xem lại `snap services cups`.
+- **Thêm trên host 09/10 (owner duyệt):**
+  - `/root/.local/bin/cc-usage` — in mức dùng Claude Code theo ngày, theo dự án và theo phòng, đọc từ nhật ký hội thoại trên máy (chỉ đọc số token). Gỡ: xoá tệp.
+  - `/root/.local/bin/claude-room` (lệnh `cc`): khi mở lại một phòng thì chọn hội thoại mới nhất mang tên phòng đó, để sau `/clear` không mở nhầm hội thoại cũ. Bản trước: `claude-room.bak-20261009` cùng thư mục.
+  - `/root/.local/bin/claude-context-reminder` — nhắc khi hội thoại dài hoặc nghỉ lâu. **Chưa đăng ký** vào cấu hình: việc đăng ký do owner làm. Gỡ: xoá tệp.
+  - Chỉ dẫn cấp người dùng của Claude Code (`~/.claude/CLAUDE.md`, `~/.claude/rules/model-routing.md`): thêm phần giữ hội thoại gọn và một dòng chọn mô hình. Bản trước: các tệp `.bak-20261009` cùng thư mục.
+
 ### 2026-10-08 — Nâng RAM 8 → 12 GB, khởi động lại máy lần đầu kể từ 17/07; công cụ dọn dẹp và lệnh vào phòng
 
 - **Lý do:** từ khi có Chrome của designbot và trình duyệt kiểm màn hình, nhu cầu bộ nhớ lúc đỉnh lên khoảng 11 GB trên máy 8 GB (đêm 07/10 chỉ còn trống 127 MB, swap 2 GB đầy; ngày 08/10 dùng 3,5 GB swap). CPU không nghẽn (bận trung bình 6–20% mỗi ngày, mẫu 10 phút cao nhất 64%), giữ 6 nhân.
