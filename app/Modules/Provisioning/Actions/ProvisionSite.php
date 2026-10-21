@@ -39,6 +39,7 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Tenancy\Models\SiteType;
 use App\Modules\Tenancy\Models\Tenant;
 use App\Modules\Tenancy\Registry\ModuleCatalog;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -143,14 +144,20 @@ final readonly class ProvisionSite
                     'name' => $data->siteName,
                     'status' => 'provisioning',
                 ]);
-                Domain::query()->create([
-                    'site_id' => $site->id,
-                    'hostname' => $hostname,
-                    'kind' => 'subdomain',
-                    'is_primary' => true,
-                    // A platform subdomain is ours by construction: verified from birth.
-                    'verified_at' => now(),
-                ]);
+                try {
+                    Domain::query()->create([
+                        'site_id' => $site->id,
+                        'hostname' => $hostname,
+                        'kind' => 'subdomain',
+                        'is_primary' => true,
+                        // A platform subdomain is ours by construction: verified from birth.
+                        'verified_at' => now(),
+                    ]);
+                } catch (UniqueConstraintViolationException) {
+                    // Another customer's run committed this name after the re-check (each run locks only
+                    // its own customer, so they do not serialize): refuse in plain words, not a stack trace.
+                    throw new HostnameOwnedByAnotherTenantException($hostname);
+                }
 
                 return [$site, $tenant];
             });

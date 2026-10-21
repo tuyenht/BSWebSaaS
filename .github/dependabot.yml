@@ -1,0 +1,82 @@
+# Dependabot: tells us when a dependency fix lands, as a pull request to main.
+#
+# Security updates are switched on in the repository settings, not here (Settings → Advanced
+# Security → Dependabot alerts + Dependabot security updates). This file shapes both kinds of PR.
+#
+# Never a major for npm or composer (CLAUDE.md §1): both ignore semver-major. The ignore rule also
+# applies to security pull requests, so an advisory fixed only in a new major (basic-ftp 6.x,
+# uuid 11.x) gets an alert but no pull request. That is the point: a major is a planned upgrade.
+# GitHub Actions are the exception (see their entry).
+#
+# Each pull request runs every CI job: lockfiles, manifests and workflows all fall under the
+# `changes` job's catch-all. Version updates are grouped and weekly to keep that to a few runs.
+version: 2
+
+updates:
+  # pnpm 11 (package.json `packageManager`). Overrides live in pnpm-workspace.yaml, which Dependabot
+  # does not edit: a version update never moves an override, so drop each override by hand once its
+  # parent ships the fix.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:41'
+      timezone: Asia/Ho_Chi_Minh
+    # Version updates wait three days after a release (a hijacked release is usually pulled within
+    # hours). Security updates never wait.
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+    groups:
+      # @lhci/cli is 0.x: a minor bump (0.15 → 0.16) can break, and it is the release that clears
+      # the uuid and basic-ftp advisories. It arrives on its own so the cwv job vouches for it alone.
+      lhci:
+        applies-to: version-updates
+        patterns: ['@lhci/*']
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+        exclude-patterns: ['@lhci/*']
+
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '07:41'
+      timezone: Asia/Ho_Chi_Minh
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+    groups:
+      composer-minor-patch:
+        applies-to: version-updates
+        update-types: [minor, patch]
+
+  # Actions are referenced by major tag (actions/checkout@v4), so every real update is a major:
+  # ignoring majors here would mean no pull request at all. Each major comes alone, once a month,
+  # and the pull request's own CI run (every job) proves it before anyone merges.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      time: '07:41'
+      timezone: Asia/Ho_Chi_Minh
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'ci(deps)'
