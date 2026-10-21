@@ -31,7 +31,7 @@ final class ProvisionSiteCommand extends Command
     protected $signature = 'site:provision
         {--name= : Site name}
         {--host= : Primary hostname (e.g. anvinh.test)}
-        {--tenant= : Existing customer, by ulid or exact name (required unless --new-tenant; a re-run names the website's own customer)}
+        {--tenant= : Existing customer, by ulid or exact name (required unless --new-tenant; also required on a re-run)}
         {--new-tenant= : Create a new customer with this name for the website (prints its ulid)}
         {--allow-same-name : With --new-tenant: create it even if a customer with that name already exists}
         {--owner-email= : Owner email}
