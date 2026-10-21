@@ -148,7 +148,7 @@ final class DomainName
     }
 
     /**
-     * @param  list<mixed>  $candidates
+     * @param  array<mixed>  $candidates
      * @return list<string>
      */
     private static function hosts(array $candidates): array
