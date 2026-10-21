@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Tenancy\Domains\DomainName;
+
 return [
 
     /*
@@ -40,7 +42,8 @@ return [
     |
     | Names kept for the platform's own services, whether or not the service runs yet
     | (admin., api., mail., sgtm. per ADR-22…): a site provisioned on one would hand a
-    | customer a name the platform needs. The defaults ALWAYS apply; TENANCY_RESERVED_LABELS
+    | customer a name the platform needs. The defaults (DomainName::RESERVED_LABELS) ALWAYS apply,
+| even with a stale config cache; TENANCY_RESERVED_LABELS
     | (comma-separated) only adds to them, so a typo in an env file can never drop `admin`.
     | Whole-label match: `admins` or `my-admin` stay free. Generic shop words (shop, store,
     | blog) and environment words (demo, staging) are left to customers on purpose.
@@ -48,21 +51,7 @@ return [
 
     'reserved_labels' => array_values(array_unique(array_filter(
         array_map(fn (string $label): string => strtolower(trim($label)), [
-            // Control plane and sign-in
-            'admin', 'administrator', 'api', 'app', 'auth', 'account', 'accounts', 'console',
-            'dashboard', 'id', 'login', 'logout', 'oauth', 'panel', 'platform', 'portal', 'root',
-            'signin', 'signup', 'sso', 'system',
-            // Media and static files
-            'assets', 'cdn', 'companion', 'files', 'images', 'img', 'media', 'static', 'upload', 'uploads',
-            // First-party tracking (ADR-22)
-            'analytics', 'collect', 'events', 'gtm', 'sgtm', 'track', 'tracking',
-            // Mail and DNS
-            'autoconfig', 'autodiscover', 'dns', 'email', 'imap', 'mail', 'mx', 'ns', 'ns1', 'ns2',
-            'ns3', 'ns4', 'pop', 'pop3', 'smtp', 'webmail',
-            // Operations
-            'ci', 'db', 'ftp', 'git', 'horizon', 'logs', 'metrics', 'monitor', 'sftp', 'ssh', 'status', 'vpn',
-            // Money and support
-            'billing', 'docs', 'help', 'invoice', 'pay', 'payment', 'payments', 'support',
+            ...DomainName::RESERVED_LABELS,
             ...explode(',', (string) env('TENANCY_RESERVED_LABELS', '')),
         ]),
         fn (string $label): bool => $label !== '' && ! str_contains($label, '.'),

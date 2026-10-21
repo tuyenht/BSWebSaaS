@@ -127,6 +127,14 @@ it('refuses a label added in config', function (): void {
     expect(fn () => reservedProvision('partners.platform.test'))->toThrow(HostnameReservedLabelException::class);
 });
 
+it('keeps the default labels when the config key is missing, as in a stale config cache', function (?array $configured): void {
+    config(['tenancy.reserved_labels' => $configured]);
+
+    expect(DomainName::reservedLabel('admin.platform.test'))->toBe('admin')
+        ->and(DomainName::reservedLabel('website.platform.test'))->toBe('website')
+        ->and(fn () => reservedProvision('admin.platform.test'))->toThrow(HostnameReservedLabelException::class);
+})->with(['missing' => [null], 'emptied' => [[]]]);
+
 it('refuses a punycode label, so a look-alike of a reserved name cannot start a site', function (): void {
     // Cyrillic "а" + "dmin": shown by some browsers as admin.platform.test.
     $punycode = DomainName::parse("\u{0430}dmin.platform.test");

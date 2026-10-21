@@ -14,6 +14,31 @@ use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 final class DomainName
 {
     /**
+     * Labels kept for the platform's own services under every platform base. They always apply,
+     * whatever `tenancy.reserved_labels` holds (that key only adds to them), so a stale config
+     * cache or a runtime config change can never switch the check off.
+     */
+    public const RESERVED_LABELS = [
+        // Control plane and sign-in
+        'admin', 'administrator', 'api', 'app', 'auth', 'account', 'accounts', 'console',
+        'dashboard', 'id', 'login', 'logout', 'oauth', 'panel', 'platform', 'portal', 'root',
+        'signin', 'signup', 'sso', 'system',
+        // Media and static files
+        'assets', 'cdn', 'companion', 'files', 'images', 'img', 'media', 'static', 'upload', 'uploads',
+        // First-party tracking (ADR-22)
+        'analytics', 'collect', 'events', 'gtm', 'sgtm', 'track', 'tracking',
+        // Mail and DNS (dns1/dns2 are the platform's own name servers)
+        'autoconfig', 'autodiscover', 'dns', 'email', 'imap', 'mail', 'mx', 'ns', 'ns1', 'ns2',
+        'ns3', 'ns4', 'dns1', 'dns2', 'mta-sts', 'pop', 'pop3', 'smtp', 'webmail', 'wpad',
+        // Hosts the web server already answers itself (Caddyfile)
+        'website', 'default', 'master',
+        // Operations
+        'ci', 'db', 'ftp', 'git', 'horizon', 'logs', 'metrics', 'monitor', 'sftp', 'ssh', 'status', 'vpn',
+        // Money and support
+        'billing', 'docs', 'help', 'invoice', 'pay', 'payment', 'payments', 'support',
+    ];
+
+    /**
      * The stored form: lower-case ASCII (punycode for names with diacritics), no scheme, port,
      * path or trailing dot. People paste whole addresses, so `https://Công-Ty.vn/lien-he` is fine.
      *
@@ -88,9 +113,11 @@ final class DomainName
             return null;
         }
 
-        $reserved = config('tenancy.reserved_labels');
+        $added = config('tenancy.reserved_labels');
 
-        return is_array($reserved) && in_array($label, $reserved, true) ? $label : null;
+        return in_array($label, self::RESERVED_LABELS, true) || (is_array($added) && in_array($label, $added, true))
+            ? $label
+            : null;
     }
 
     /**
