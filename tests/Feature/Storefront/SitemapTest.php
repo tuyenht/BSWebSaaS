@@ -458,3 +458,23 @@ it('answers 503 at once by default instead of holding a pooled connection while 
 
     $lock->release();
 });
+
+it('serves the last built plan instead of a 503 while another request rebuilds an expired one', function (): void {
+    sitemapSeedAnVinh();
+    config(['cms.sitemap.max_urls' => 3]);
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+    $key = 'sitemap-plan:v1:'.$site->id.':3';
+
+    $index = $this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent();
+    $page2 = $this->get('http://anvinh.test/sitemap-2.xml')->assertOk()->getContent();
+
+    // The plan's TTL ran out and a peer request holds the lock while it rebuilds.
+    cache()->forget($key);
+    $lock = cache()->lock($key.':lock', 30);
+    expect($lock->get())->toBeTrue();
+
+    expect($this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent())->toBe($index);
+    expect($this->get('http://anvinh.test/sitemap-2.xml')->assertOk()->getContent())->toBe($page2);
+
+    $lock->release();
+});

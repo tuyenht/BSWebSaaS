@@ -123,7 +123,10 @@ final readonly class SitemapRoutes
      * TTL expiry (a crawler fetches the index and its pages in parallel) run the whole-site pass
      * once between them: 8-10 s per million routes, measured. A request that finds the lock taken
      * waits `plan_lock_wait` seconds (default 0) and reuses what the peer cached when $usable
-     * accepts it, else gets a 503 with Retry-After, which crawlers retry. Waiting is off by
+     * accepts it. Failing that it serves the last plan built for the site, kept TTL x 24 so an
+     * expired plan still answers while it is rebuilt (pages stay correct: each is bounded by the
+     * next cursor and an emptied one 404s); only with no usable plan at all does it get a 503
+     * with Retry-After, which crawlers retry. Waiting is off by
      * default because it happens inside the tenant transaction: each waiter pins a PgBouncer
      * server connection from the pool every tenant shares, while a 503 frees it at once. The lock
      * expires on its own after the 30 s request ceiling should its holder die mid-pass. That
@@ -143,6 +146,11 @@ final readonly class SitemapRoutes
         try {
             $lock->block(max(0, Cast::int(config('cms.sitemap.plan_lock_wait'), 0)));
         } catch (LockTimeoutException) {
+            $stale = $this->readPlan($this->staleKey($max));
+            if ($stale !== null && $usable($stale)) {
+                return $stale;
+            }
+
             throw new ServiceUnavailableHttpException(30);
         }
 
@@ -154,7 +162,9 @@ final readonly class SitemapRoutes
 
             $plan = $this->boundaries($max);
             // At least a minute: a TTL of 0 would run the whole-site pass on every page request.
-            Cache::put($key, $plan, max(60, Cast::int(config('cms.sitemap.plan_ttl'), 3600)));
+            $ttl = max(60, Cast::int(config('cms.sitemap.plan_ttl'), 3600));
+            Cache::put($key, $plan, $ttl);
+            Cache::put($this->staleKey($max), $plan, $ttl * 24);
 
             return $plan;
         } finally {
@@ -170,7 +180,13 @@ final readonly class SitemapRoutes
      */
     public function cachedPlan(): ?array
     {
-        $cached = Cache::get($this->planKey($this->maxUrls()));
+        return $this->readPlan($this->planKey($this->maxUrls()));
+    }
+
+    /** @return list<array{0: string, 1: int}>|null */
+    private function readPlan(string $key): ?array
+    {
+        $cached = Cache::get($key);
         if (! is_array($cached) || $cached === []) {
             return null;
         }
@@ -189,6 +205,11 @@ final readonly class SitemapRoutes
     private function planKey(int $max): string
     {
         return 'sitemap-plan:v1:'.$this->site->id().':'.$max;
+    }
+
+    private function staleKey(int $max): string
+    {
+        return $this->planKey($max).':stale';
     }
 
     /** @return list<array{0: string, 1: int}> */
