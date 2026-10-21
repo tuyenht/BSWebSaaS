@@ -7,6 +7,7 @@ namespace App\Modules\Provisioning\Console;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
+use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Shared\Support\Cast;
 use Illuminate\Console\Command;
 
@@ -55,6 +56,10 @@ final class ProvisionSiteCommand extends Command
             ));
         } catch (HostnameOwnedByAnotherTenantException $e) {
             $this->error(Cast::string(__('provisioning.hostname_owned_by_another_tenant', ['host' => $e->hostname])));
+
+            return self::FAILURE;
+        } catch (SiteLimitReachedException $e) {
+            $this->error(Cast::string(__('provisioning.sites_limit_reached', ['count' => $e->count, 'limit' => $e->limit])));
 
             return self::FAILURE;
         }
