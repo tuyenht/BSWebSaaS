@@ -16,11 +16,19 @@ use App\Modules\Cms\Taxonomy\TaxonomyPaths;
 use App\Modules\Forms\Actions\EnsureContactForm;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\HostnameNotPlatformSubdomainException;
+use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
+use App\Modules\Provisioning\Exceptions\HostnamePendingVerificationException;
+use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
+use App\Modules\Provisioning\Exceptions\TenantSelectionException;
 use App\Modules\Rbac\Models\Permission;
 use App\Modules\Rbac\Models\Role;
 use App\Modules\Rbac\Registry\PermissionRegistry;
 use App\Modules\Tenancy\Context\SiteResolver;
 use App\Modules\Tenancy\Context\Tenancy;
+use App\Modules\Tenancy\Domains\DomainName;
+use App\Modules\Tenancy\Entitlement\Entitlement;
+use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
@@ -31,6 +39,8 @@ use App\Modules\Tenancy\Models\SiteSetting;
 use App\Modules\Tenancy\Models\SiteType;
 use App\Modules\Tenancy\Models\Tenant;
 use App\Modules\Tenancy\Registry\ModuleCatalog;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Spatie\Permission\PermissionRegistrar;
@@ -38,9 +48,27 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Genesis: provision a site end-to-end and leave it active. Idempotent (anchored on
  * the unique primary domain), so it is safe for An Vinh and for site #2..#10000.
+ * A re-run must name the site's own customer (HostnameOwnedByAnotherTenantException).
  *
  * Order respects the defense layers: global identity/site rows first, then per-site
  * (RLS) config + RBAC inside the tenant context, then flip the site to 'active'.
+ *
+ * The single path that creates a website, so the customer-wide `sites.max` holds whoever calls it:
+ * a NEW website past the customer's plan limit is refused (SiteLimitReachedException). Every
+ * website not soft-deleted counts, whatever its status — suspended, archived, and one left at
+ * `provisioning` by a run that failed midway. Re-running for a website that already exists (same
+ * hostname) creates nothing and is never refused, which is also how a failed run is finished.
+ *
+ * Which customer: an existing website always stays with its own (HostnameOwnedByAnotherTenantException
+ * when the caller named another, TenantSelectionException when it asked for a new one); a new website goes to the customer the caller chose by id, or to a new
+ * customer only when one is asked for explicitly (`newTenantName`), created atomically with it and
+ * refused when a customer already carries that name in any letter case (checked under a lock on the
+ * name, so two runs at once cannot both create it) unless `allowSameName` says it is a different one.
+ *
+ * A NEW website starts on a platform subdomain ({slug}.{base}), verified from birth because the
+ * platform owns the name. Any other name is refused (HostnameNotPlatformSubdomainException): a
+ * customer's domain is attached afterwards and proven by DNS or TXT (design.md §28). Nor may it
+ * start on a name a website is still proving (HostnamePendingVerificationException).
  */
 final readonly class ProvisionSite
 {
@@ -53,36 +81,91 @@ final readonly class ProvisionSite
         private RouteSync $routes,
         private TaxonomyPaths $paths,
         private SiteResolver $sites,
+        private Entitlement $entitlement,
+        private FindTenant $find,
     ) {}
 
     public function handle(ProvisionSiteData $data): Site
     {
-        // 1) Global rows (no RLS): tenant, site, primary domain, owner, membership.
-        $tenant = $data->tenantId !== null
-            ? Tenant::query()->findOrFail($data->tenantId)
-            : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
+        // The stored form, so `AV1.example.net.` re-runs the site of `av1.example.net`.
+        try {
+            $hostname = DomainName::parse($data->hostname);
+        } catch (DomainChangeRejectedException) {
+            throw new HostnameNotPlatformSubdomainException($data->hostname);
+        }
 
+        // 1) Global rows (no RLS): tenant, site, primary domain, owner, membership.
         // Only a live domain identifies a site: a name merely waiting on a site is not one.
-        $domain = Domain::query()->where('hostname', $data->hostname)->whereNotNull('verified_at')->first();
+        $domain = Domain::query()->where('hostname', $hostname)->whereNotNull('verified_at')->first();
 
         if ($domain === null) {
-            $site = Site::query()->create([
-                'tenant_id' => $tenant->id,
-                'name' => $data->siteName,
-                'status' => 'provisioning',
-            ]);
-            Domain::query()->create([
-                'site_id' => $site->id,
-                'hostname' => $data->hostname,
-                'kind' => 'subdomain',
-                'is_primary' => true,
-                // A platform subdomain is ours by construction: verified from birth.
-                'verified_at' => now(),
-            ]);
+            // A new site is verified from birth, so only a name the platform owns may start one;
+            // any other name is proven through the verification flow (design.md §28).
+            if (! DomainName::isPlatformSubdomain($hostname)) {
+                throw new HostnameNotPlatformSubdomainException($hostname);
+            }
+            // Nor one a website is still proving (attached before its base became a platform base):
+            // verifying it here would take it from them. A live row is a re-run, settled under the lock.
+            if (Domain::query()->where('hostname', $hostname)->whereNull('verified_at')->exists()) {
+                throw new HostnamePendingVerificationException($hostname);
+            }
+
+            [$site, $tenant] = DB::transaction(function () use ($data, $hostname): array {
+                // A new customer is created here, in the same transaction as its first website, so
+                // a refusal below or a run that fails before the website exists leaves no customer behind.
+                $tenant = $this->tenantForNewSite($data);
+
+                // Serialize a customer's new websites: two concurrent provisions must not both pass
+                // the limit. Lock first, then count (a soft-deleted website frees its slot).
+                Tenant::query()->whereKey($tenant->id)->lockForUpdate()->firstOrFail(['id']);
+
+                // A run for the same hostname may have finished while this one waited on the lock:
+                // that makes this a re-run, never refused by the limit — but only of this
+                // customer's own website, as for a hostname found before the lock.
+                $raced = Domain::query()->where('hostname', $hostname)->whereNotNull('verified_at')->first();
+                if ($raced !== null) {
+                    $site = $raced->site ?? throw new \RuntimeException("Domain {$hostname} has no site.");
+                    if ($site->tenant_id !== $tenant->id) {
+                        throw new HostnameOwnedByAnotherTenantException($hostname);
+                    }
+
+                    return [$site, $tenant];
+                }
+
+                $count = Site::query()->where('tenant_id', $tenant->id)->count();
+                $limit = (int) $this->entitlement->tenantFeatureValue($tenant->id, 'sites.max');
+
+                if ($count >= $limit) {
+                    throw new SiteLimitReachedException($count, $limit);
+                }
+
+                $site = Site::query()->create([
+                    'tenant_id' => $tenant->id,
+                    'name' => $data->siteName,
+                    'status' => 'provisioning',
+                ]);
+                try {
+                    Domain::query()->create([
+                        'site_id' => $site->id,
+                        'hostname' => $hostname,
+                        'kind' => 'subdomain',
+                        'is_primary' => true,
+                        // A platform subdomain is ours by construction: verified from birth.
+                        'verified_at' => now(),
+                    ]);
+                } catch (UniqueConstraintViolationException) {
+                    // Another customer's run committed this name after the re-check (each run locks only
+                    // its own customer, so they do not serialize): refuse in plain words, not a stack trace.
+                    throw new HostnameOwnedByAnotherTenantException($hostname);
+                }
+
+                return [$site, $tenant];
+            });
             // The host may be remembered as unknown from a request made before it existed.
-            $this->sites->forget($data->hostname);
+            $this->sites->forget($hostname);
         } else {
-            $site = $domain->site ?? throw new \RuntimeException("Domain {$data->hostname} has no site.");
+            $site = $domain->site ?? throw new \RuntimeException("Domain {$hostname} has no site.");
+            $tenant = $this->tenantOfExistingSite($site, $data, $hostname);
         }
 
         // Functional shape (design.md §15.2): GĐ1 ships only `corporate`. Stamp it idempotently so a
@@ -170,10 +253,69 @@ final readonly class ProvisionSite
             'site_id' => $site->id,
             'auditable_type' => $site::class,
             'auditable_id' => $site->id,
-            'meta' => ['hostname' => $data->hostname, 'owner' => $data->ownerEmail],
+            'meta' => ['hostname' => $hostname, 'owner' => $data->ownerEmail],
         ]);
 
         return $site->refresh();
+    }
+
+    /** The customer a NEW website goes to: one created on request, one chosen by id, or (DTO callers) by name. */
+    private function tenantForNewSite(ProvisionSiteData $data): Tenant
+    {
+        if ($data->newTenantName !== null) {
+            if (! $data->allowSameName) {
+                // site:provision checks this before asking anything; two runs at once both pass that check,
+                // so the second waits here for the first to commit and then sees its customer.
+                $folded = mb_strtolower(trim($data->newTenantName));
+                DB::select('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['tenant_name:'.$folded]);
+                $namesakes = $this->find->namesakes($data->newTenantName);
+                if ($namesakes !== '') {
+                    throw TenantSelectionException::nameExists($data->newTenantName, $namesakes);
+                }
+            }
+
+            return Tenant::query()->create(['name' => $data->newTenantName]);
+        }
+
+        return $data->tenantId !== null
+            ? Tenant::query()->findOrFail($data->tenantId)
+            : Tenant::query()->firstOrCreate(['name' => $data->tenantName]);
+    }
+
+    /**
+     * A website that already exists keeps its own customer: a caller that asked for a NEW customer
+     * is told which one owns it (nothing minted); anything else must name the owner (ownTenant).
+     */
+    private function tenantOfExistingSite(Site $site, ProvisionSiteData $data, string $hostname): Tenant
+    {
+        $owner = $site->tenant;
+        if ($data->newTenantName !== null && $owner !== null) {
+            throw TenantSelectionException::hostTaken($hostname, $owner->ulid);
+        }
+
+        return $this->ownTenant($site, $data, $hostname);
+    }
+
+    /**
+     * A re-run continues an existing site, so the input must name that site's own customer: by id
+     * when given (it wins over the name), else by exact name. Anything else — another customer, an
+     * unknown name, a removed customer — is refused before any write, or the owner would become an
+     * owner of another customer's website. Returns the site's tenant, never a lookup by name (names
+     * are not unique).
+     */
+    private function ownTenant(Site $site, ProvisionSiteData $data, string $hostname): Tenant
+    {
+        $tenant = $site->tenant;
+
+        $named = $tenant !== null && ($data->tenantId !== null
+            ? $tenant->id === $data->tenantId
+            : $tenant->name === $data->tenantName);
+
+        if (! $named) {
+            throw new HostnameOwnedByAnotherTenantException($hostname);
+        }
+
+        return $tenant;
     }
 
     /**

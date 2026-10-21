@@ -1,2 +1,9 @@
 allowBuilds:
   chromedriver: true
+
+# Security pins for dev-only tooling (lhci / axe / concurrently), never the storefront bundle.
+# Only patched versions inside the package's own major; drop each once its parent ships the fix.
+overrides:
+  # GHSA-ph9p-34f9-6g65 (high) + GHSA-52f5-9888-hmc6 (low), via @lhci/cli and inquirer > external-editor.
+  # Callers use only fileSync({postfix}) / tmpNameSync(), unchanged in 0.2.x; 0.2.7 is already in the tree (selenium-webdriver).
+  'tmp@<0.2.6': 0.2.7

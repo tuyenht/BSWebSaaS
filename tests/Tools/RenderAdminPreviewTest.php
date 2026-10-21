@@ -39,7 +39,7 @@ const ADMIN_PREVIEW_SCREENS = [
     'gallery' => '/admin/_gallery',
 ];
 
-const ADMIN_PREVIEW_HOST = 'preview.test';
+const ADMIN_PREVIEW_HOST = 'preview.platform.test';
 
 beforeEach(function (): void {
     DB::connection('pgsql_admin')->statement(

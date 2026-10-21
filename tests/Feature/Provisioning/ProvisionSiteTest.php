@@ -39,7 +39,7 @@ function provisionAnVinh(): Site
     return app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'An Vinh',
         siteName: 'An Vinh',
-        hostname: 'anvinh.test',
+        hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test',
         ownerName: 'An Vinh Owner',
         ownerPassword: 'a-strong-password',
@@ -53,7 +53,7 @@ it('provisions a full, active site stack', function (): void {
     $tenancy = app(Tenancy::class);
 
     expect($site->status)->toBe('active')
-        ->and(Domain::query()->where('hostname', 'anvinh.test')->where('site_id', $site->id)->exists())->toBeTrue()
+        ->and(Domain::query()->where('hostname', 'anvinh.platform.test')->where('site_id', $site->id)->exists())->toBeTrue()
         ->and($tenancy->enter($site->id, fn () => SiteModule::query()->where('enabled', true)->pluck('module_key')->sort()->values()->all()))->toBe(collect(ModuleCatalog::modulesFor('corporate'))->sort()->values()->all())
         ->and($tenancy->enter($site->id, fn () => SiteLocale::query()->where('is_default', true)->pluck('locale')->all()))->toBe(['vi'])
         ->and($tenancy->enter($site->id, fn () => SiteLocale::query()->orderBy('locale')->pluck('locale')->all()))->toBe(['en', 'ja', 'vi']);
@@ -80,7 +80,7 @@ it('is idempotent — re-running provisions nothing new', function (): void {
 
     expect($second->id)->toBe($first->id)
         ->and(Site::query()->count())->toBe(1)
-        ->and(Domain::query()->where('hostname', 'anvinh.test')->count())->toBe(1)
+        ->and(Domain::query()->where('hostname', 'anvinh.platform.test')->count())->toBe(1)
         ->and(User::query()->where('email', 'owner@anvinh.test')->count())->toBe(1);
 });
 
@@ -167,7 +167,7 @@ it('isolates the provisioned site from another tenant', function (): void {
     $other = app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'Other Co',
         siteName: 'Other',
-        hostname: 'other.test',
+        hostname: 'other.platform.test',
         ownerEmail: 'owner@other.test',
         ownerName: 'Other Owner',
         ownerPassword: 'another-password',

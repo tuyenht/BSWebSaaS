@@ -44,7 +44,7 @@ beforeEach(function (): void {
 function seedPrecisionSite(): Site
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.test',
+        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
 
@@ -494,7 +494,7 @@ it('re-seeding after the catalog promotion keeps product URLs and the permalink 
     });
 
     // End-to-end: the live URL still serves the product after the re-seed.
-    $this->get('http://anvinh.test/san-pham/truc-may-cnc')->assertOk();
+    $this->get('http://anvinh.platform.test/san-pham/truc-may-cnc')->assertOk();
 });
 
 it('re-seeding after promotion and a trash purge does not resurrect product-posts', function (): void {

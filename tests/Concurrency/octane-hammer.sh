@@ -17,6 +17,9 @@ PORT="${HAMMER_PORT:-8088}"
 REQUESTS="${HAMMER_REQUESTS:-200}"
 CONCURRENCY="${HAMMER_CONCURRENCY:-24}"
 BASE="http://127.0.0.1:${PORT}"
+# ProvisionSite only starts a site on a platform subdomain: provision and serve both sites under
+# the same neutral base the Pest suite uses, whatever the container's .env says.
+export BASE_DOMAINS=platform.test PRIMARY_BASE=platform.test
 
 # The storefront renders through Vite: without the built manifest every request is a 500.
 # Say so up front instead of reporting 200 failures.
@@ -41,8 +44,8 @@ quietly php artisan rbac:sync
 php artisan tinker --execute '
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
-app(ProvisionSite::class)->handle(new ProvisionSiteData(tenantName:"An Vinh",siteName:"An Vinh",hostname:"anvinh.test",ownerEmail:"o@anvinh.test",ownerName:"Owner-Alpha",ownerPassword:"x"));
-app(ProvisionSite::class)->handle(new ProvisionSiteData(tenantName:"Other",siteName:"Other Co",hostname:"other.test",ownerEmail:"o@other.test",ownerName:"Owner-Beta",ownerPassword:"x"));
+app(ProvisionSite::class)->handle(new ProvisionSiteData(tenantName:"An Vinh",siteName:"An Vinh",hostname:"anvinh.platform.test",ownerEmail:"o@anvinh.test",ownerName:"Owner-Alpha",ownerPassword:"x"));
+app(ProvisionSite::class)->handle(new ProvisionSiteData(tenantName:"Other",siteName:"Other Co",hostname:"other.platform.test",ownerEmail:"o@other.test",ownerName:"Owner-Beta",ownerPassword:"x"));
 '
 
 echo "▶ booting Octane (frankenphp) on :${PORT}…"
@@ -75,8 +78,8 @@ export BASE FAILS LEAKS
 
 echo "▶ storefront: ${REQUESTS} interleaved requests at ${CONCURRENCY}-way concurrency…"
 seq 1 "${REQUESTS}" | xargs -P "${CONCURRENCY}" -I{} bash -c '
-    if (( {} % 2 == 0 )); then probe {} anvinh.test / "An Vinh" "Other Co"
-    else                       probe {} other.test  / "Other Co" "An Vinh"; fi
+    if (( {} % 2 == 0 )); then probe {} anvinh.platform.test / "An Vinh" "Other Co"
+    else                       probe {} other.platform.test  / "Other Co" "An Vinh"; fi
 '
 
 echo "▶ support sign-in: staff enter each site as its owner, two browsers, interleaved…"
@@ -89,7 +92,7 @@ use App\Modules\Tenancy\Models\Site;
 $staff = new User;
 $staff->forceFill(["name" => "Hammer Staff", "email" => "staff@platform.test", "password" => "x", "email_verified_at" => now()])->save();
 app(PlatformAccess::class)->onPlatform(fn () => $staff->assignRole("support"));
-foreach (["anvinh.test" => "o@anvinh.test", "other.test" => "o@other.test"] as $host => $owner) {
+foreach (["anvinh.platform.test" => "o@anvinh.test", "other.platform.test" => "o@other.test"] as $host => $owner) {
     $site = Site::query()->findOrFail(Domain::query()->where("hostname", $host)->value("site_id"));
     $member = User::query()->where("email", $owner)->firstOrFail();
     echo "LINK ".$host." ".app(SupportSignIn::class)->issue($staff, $site, $member, "hammer", 15, "octane-hammer").PHP_EOL;
@@ -98,7 +101,7 @@ foreach (["anvinh.test" => "o@anvinh.test", "other.test" => "o@other.test"] as $
 
 JAR_A="$(mktemp)"
 JAR_B="$(mktemp)"
-for pair in "anvinh.test:${JAR_A}" "other.test:${JAR_B}"; do
+for pair in "anvinh.platform.test:${JAR_A}" "other.platform.test:${JAR_B}"; do
     host=${pair%%:*}
     jar=${pair#*:}
     token=$(awk -v h="${host}" '$2 == h { print $3 }' <<<"${LINKS}")
@@ -111,8 +114,8 @@ done
 export JAR_A JAR_B
 
 seq 1 "${REQUESTS}" | xargs -P "${CONCURRENCY}" -I{} bash -c '
-    if (( {} % 2 == 0 )); then probe {} anvinh.test /admin Owner-Alpha Owner-Beta "${JAR_A}"
-    else                       probe {} other.test  /admin Owner-Beta Owner-Alpha "${JAR_B}"; fi
+    if (( {} % 2 == 0 )); then probe {} anvinh.platform.test /admin Owner-Alpha Owner-Beta "${JAR_A}"
+    else                       probe {} other.platform.test  /admin Owner-Beta Owner-Alpha "${JAR_B}"; fi
 '
 
 if [[ -s "${FAILS}" ]]; then

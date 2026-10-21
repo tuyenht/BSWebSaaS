@@ -32,7 +32,7 @@ function provisionAnVinhSite(): Site
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'An Vinh',
         siteName: 'An Vinh',
-        hostname: 'anvinh.test',
+        hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-password',
@@ -66,32 +66,32 @@ it('sets <html lang> to the locale being viewed', function (): void {
     $site = provisionBilingual();
     seedAboutPage($site->id);
 
-    expect($this->get('http://anvinh.test/gioi-thieu')->getContent())->toContain('<html lang="vi">');
-    expect($this->get('http://anvinh.test/en/about')->getContent())->toContain('<html lang="en">');
+    expect($this->get('http://anvinh.platform.test/gioi-thieu')->getContent())->toContain('<html lang="vi">');
+    expect($this->get('http://anvinh.platform.test/en/about')->getContent())->toContain('<html lang="en">');
 });
 
 it('emits one absolute hreflang per published locale + x-default (vi view)', function (): void {
     $site = provisionBilingual();
     seedAboutPage($site->id);
 
-    $html = $this->get('http://anvinh.test/gioi-thieu')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<link rel="alternate" hreflang="vi" href="http://anvinh.test/gioi-thieu">')
-        ->toContain('<link rel="alternate" hreflang="en" href="http://anvinh.test/en/about">')
-        ->toContain('<link rel="alternate" hreflang="x-default" href="http://anvinh.test/gioi-thieu">');
+        ->toContain('<link rel="alternate" hreflang="vi" href="http://anvinh.platform.test/gioi-thieu">')
+        ->toContain('<link rel="alternate" hreflang="en" href="http://anvinh.platform.test/en/about">')
+        ->toContain('<link rel="alternate" hreflang="x-default" href="http://anvinh.platform.test/gioi-thieu">');
 });
 
 it('emits reciprocal hreflang from the en view (back to vi + self en)', function (): void {
     $site = provisionBilingual();
     seedAboutPage($site->id);
 
-    $html = $this->get('http://anvinh.test/en/about')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/en/about')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('hreflang="vi" href="http://anvinh.test/gioi-thieu"')
-        ->toContain('hreflang="en" href="http://anvinh.test/en/about"')
-        ->toContain('hreflang="x-default" href="http://anvinh.test/gioi-thieu"')
+        ->toContain('hreflang="vi" href="http://anvinh.platform.test/gioi-thieu"')
+        ->toContain('hreflang="en" href="http://anvinh.platform.test/en/about"')
+        ->toContain('hreflang="x-default" href="http://anvinh.platform.test/gioi-thieu"')
         ->toContain('<html lang="en">');
 });
 
@@ -105,10 +105,10 @@ it('omits hreflang for a locale the page is not published in', function (): void
         SiteRoute::query()->create(['locale' => 'vi', 'path' => '/chinh-sach', 'entry_id' => $entry->id]);
     });
 
-    $html = $this->get('http://anvinh.test/chinh-sach')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/chinh-sach')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('hreflang="vi" href="http://anvinh.test/chinh-sach"')
+        ->toContain('hreflang="vi" href="http://anvinh.platform.test/chinh-sach"')
         ->toContain('hreflang="x-default"')
         ->not->toContain('hreflang="en"');   // page has no en translation → no en hreflang
 });
@@ -116,7 +116,7 @@ it('omits hreflang for a locale the page is not published in', function (): void
 it('self-references hreflang on a single-locale page', function (): void {
     provisionAnVinhSite();   // pure vi site (hot-path shape)
 
-    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
 
     expect($html)->toContain('<html lang="vi">')
         ->toContain('hreflang="vi"')

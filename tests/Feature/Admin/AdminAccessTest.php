@@ -28,7 +28,7 @@ beforeEach(function (): void {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'An Vinh',
         siteName: 'An Vinh',
-        hostname: 'anvinh.test',
+        hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test',
         ownerName: 'An Vinh Owner',
         ownerPassword: 'a-strong-password',
@@ -38,11 +38,11 @@ beforeEach(function (): void {
 });
 
 it('redirects an admin-plane guest to the tenant login', function (): void {
-    $this->get('http://anvinh.test/admin')->assertRedirect('http://anvinh.test/admin/login');
+    $this->get('http://anvinh.platform.test/admin')->assertRedirect('http://anvinh.platform.test/admin/login');
 });
 
 it('keeps the crawler-reachable login page out of search indexes', function (): void {
-    $this->get('http://anvinh.test/admin/login')
+    $this->get('http://anvinh.platform.test/admin/login')
         ->assertOk()
         ->assertSee('<meta name="robots" content="noindex, nofollow">', false);
 });
@@ -73,7 +73,7 @@ it('rejects bad credentials without authenticating', function (): void {
 it('shows the dashboard shell and the dynamic "Trang" nav to the owner', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
-    $this->actingAs($owner)->get('http://anvinh.test/admin')
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin')
         ->assertOk()
         ->assertSee(__('admin.dashboard'))
         ->assertSee(__('section.pages')); // the Pages section label, in the request's locale
@@ -83,7 +83,7 @@ it('hides the "Trang" nav from a member without entries.view (entitlement ∩ RB
     $member = User::factory()->create();
     app(Tenancy::class)->enter(1, fn () => grantRole($member, 'media-only', ['media.view']));
 
-    $this->actingAs($member)->get('http://anvinh.test/admin')
+    $this->actingAs($member)->get('http://anvinh.platform.test/admin')
         ->assertOk()
         ->assertSee(__('admin.dashboard'))
         // No entries.view → the Pages section is filtered out. Assert its section-scoped links are
@@ -106,8 +106,8 @@ it('logs out and returns to the tenant login', function (): void {
     // Real logout with CSRF on: seed the session token and post it back.
     $this->actingAs($owner)
         ->withSession(['_token' => 'admin-logout-token'])
-        ->post('http://anvinh.test/admin/logout', ['_token' => 'admin-logout-token'])
-        ->assertRedirect('http://anvinh.test/admin/login');
+        ->post('http://anvinh.platform.test/admin/logout', ['_token' => 'admin-logout-token'])
+        ->assertRedirect('http://anvinh.platform.test/admin/login');
 
     $this->assertGuest();
 });
@@ -133,7 +133,7 @@ it('opens the admin in the site default locale when nothing is chosen', function
 
     // No session locale → SetLocale resolves the CURRENT SITE's default (An Vinh = vi), not the app
     // default (en) — a fresh operator gets an admin in the tenant's language.
-    $this->actingAs($owner)->get('http://anvinh.test/admin')->assertOk();
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin')->assertOk();
 
     expect(app()->getLocale())->toBe('vi');
 });
@@ -141,7 +141,7 @@ it('opens the admin in the site default locale when nothing is chosen', function
 it('lets an explicit session locale override the site default', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
-    $this->actingAs($owner)->withSession(['locale' => 'en'])->get('http://anvinh.test/admin')->assertOk();
+    $this->actingAs($owner)->withSession(['locale' => 'en'])->get('http://anvinh.platform.test/admin')->assertOk();
 
     expect(app()->getLocale())->toBe('en');
 });

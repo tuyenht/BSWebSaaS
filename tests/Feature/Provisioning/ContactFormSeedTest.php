@@ -23,7 +23,7 @@ beforeEach(function (): void {
     truncateRbac();
 });
 
-function provisionForForm(string $host = 'anvinh.test', string $email = 'owner@anvinh.test'): Site
+function provisionForForm(string $host = 'anvinh.platform.test', string $email = 'owner@anvinh.test'): Site
 {
     return app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'An Vinh',
@@ -52,7 +52,7 @@ it('seeds a contact form with its fields and the owner as the notify recipient',
 it('embeds the form block on the provisioned /lien-he page', function (): void {
     provisionForForm();
 
-    $html = $this->get('http://anvinh.test/lien-he')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/lien-he')->assertOk()->getContent();
 
     expect($html)
         ->toContain('action="/forms/contact"')

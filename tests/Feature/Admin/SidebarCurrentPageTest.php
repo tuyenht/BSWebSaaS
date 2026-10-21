@@ -20,7 +20,7 @@ beforeEach(function (): void {
     truncateRbac();
 
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'Demo', siteName: 'Demo', hostname: 'demo.test',
+        tenantName: 'Demo', siteName: 'Demo', hostname: 'demo.platform.test',
         ownerEmail: 'owner@demo.test', ownerName: 'Demo Owner',
         ownerPassword: 'a-strong-password', locales: ['vi'], modules: ['cms', 'media'],
     ));
@@ -39,14 +39,14 @@ function sidebarOwner(): User
 }
 
 it('marks the current page link, and only it, as the current page', function (): void {
-    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.test/admin')->assertOk()->getContent());
+    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.platform.test/admin')->assertOk()->getContent());
 
     expect(substr_count($sidebar, 'aria-current="page"'))->toBe(1)
-        ->and($sidebar)->toMatch('/<a href="http:\/\/demo\.test\/admin"\s+wire:navigate\s+aria-label="[^"]*"\s+aria-current="page"/');
+        ->and($sidebar)->toMatch('/<a href="http:\/\/demo\.platform\.test\/admin"\s+wire:navigate\s+aria-label="[^"]*"\s+aria-current="page"/');
 });
 
 it('marks a page inside a group on its own link, and the group row by shape only', function (): void {
-    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.test/admin/settings/security')->assertOk()->getContent());
+    $sidebar = sidebarOf((string) $this->actingAs(sidebarOwner())->get('http://demo.platform.test/admin/settings/security')->assertOk()->getContent());
 
     expect(substr_count($sidebar, 'aria-current="page"'))->toBe(1)
         ->and($sidebar)->toMatch('/<a href="[^"]*\/admin\/settings\/security"\s+wire:navigate\s+aria-current="page"/')

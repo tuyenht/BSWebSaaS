@@ -30,7 +30,7 @@ beforeEach(function (): void {
 function publicLocaleSite(bool $englishPublic, string $englishStatus = 'published'): int
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'Lang', siteName: 'Lang', hostname: 'lang.test',
+        tenantName: 'Lang', siteName: 'Lang', hostname: 'lang.platform.test',
         ownerEmail: 'owner@lang.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
     $site = Site::query()->firstWhere('name', 'Lang');
@@ -53,53 +53,53 @@ function publicLocaleSite(bool $englishPublic, string $englishStatus = 'publishe
 it('404s the prefix of a language that is enabled but not public yet', function (): void {
     publicLocaleSite(englishPublic: false);
 
-    $this->get('http://lang.test/en/about-us')->assertNotFound();
-    $this->get('http://lang.test/ve-chung-toi')->assertOk();
+    $this->get('http://lang.platform.test/en/about-us')->assertNotFound();
+    $this->get('http://lang.platform.test/ve-chung-toi')->assertOk();
 });
 
 it('serves the prefix once the language is public', function (): void {
     publicLocaleSite(englishPublic: true);
 
-    expect($this->get('http://lang.test/en/about-us')->assertOk()->getContent())->toContain('About us');
+    expect($this->get('http://lang.platform.test/en/about-us')->assertOk()->getContent())->toContain('About us');
 });
 
 it('leaves a not-yet-public language out of hreflang', function (): void {
     publicLocaleSite(englishPublic: false);
 
-    expect($this->get('http://lang.test/ve-chung-toi')->assertOk()->getContent())
-        ->toContain('<link rel="alternate" hreflang="vi" href="http://lang.test/ve-chung-toi">')
+    expect($this->get('http://lang.platform.test/ve-chung-toi')->assertOk()->getContent())
+        ->toContain('<link rel="alternate" hreflang="vi" href="http://lang.platform.test/ve-chung-toi">')
         ->not->toContain('hreflang="en"');
 });
 
 it('lists a public language in hreflang', function (): void {
     publicLocaleSite(englishPublic: true);
 
-    expect($this->get('http://lang.test/ve-chung-toi')->assertOk()->getContent())
-        ->toContain('<link rel="alternate" hreflang="en" href="http://lang.test/en/about-us">');
+    expect($this->get('http://lang.platform.test/ve-chung-toi')->assertOk()->getContent())
+        ->toContain('<link rel="alternate" hreflang="en" href="http://lang.platform.test/en/about-us">');
 });
 
 it('keeps a not-yet-public language out of the sitemap', function (): void {
     publicLocaleSite(englishPublic: false);
 
-    expect($this->get('http://lang.test/sitemap.xml')->assertOk()->getContent())
-        ->toContain('<loc>http://lang.test/ve-chung-toi</loc>')
+    expect($this->get('http://lang.platform.test/sitemap.xml')->assertOk()->getContent())
+        ->toContain('<loc>http://lang.platform.test/ve-chung-toi</loc>')
         ->not->toContain('/en/about-us');
 });
 
 it('lists a public language in the sitemap', function (): void {
     publicLocaleSite(englishPublic: true);
 
-    expect($this->get('http://lang.test/sitemap.xml')->assertOk()->getContent())
-        ->toContain('<loc>http://lang.test/en/about-us</loc>');
+    expect($this->get('http://lang.platform.test/sitemap.xml')->assertOk()->getContent())
+        ->toContain('<loc>http://lang.platform.test/en/about-us</loc>');
 });
 
 it('never lists a draft translation in the sitemap, even of a published page', function (): void {
     publicLocaleSite(englishPublic: true, englishStatus: 'draft');
 
     // The storefront 404s the draft translation, so the sitemap must not advertise it.
-    $this->get('http://lang.test/en/about-us')->assertNotFound();
+    $this->get('http://lang.platform.test/en/about-us')->assertNotFound();
 
-    expect($this->get('http://lang.test/sitemap.xml')->assertOk()->getContent())
-        ->toContain('<loc>http://lang.test/ve-chung-toi</loc>')
+    expect($this->get('http://lang.platform.test/sitemap.xml')->assertOk()->getContent())
+        ->toContain('<loc>http://lang.platform.test/ve-chung-toi</loc>')
         ->not->toContain('/en/about-us');
 });

@@ -22,7 +22,7 @@ beforeEach(function (): void {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'An Vinh',
         siteName: 'An Vinh',
-        hostname: 'anvinh.test',
+        hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test',
         ownerName: 'An Vinh Owner',
         ownerPassword: 'a-strong-password',
@@ -34,7 +34,7 @@ beforeEach(function (): void {
 it('shows the component gallery to an authed admin (non-production)', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
-    $this->actingAs($owner)->get('http://anvinh.test/admin/_gallery')
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin/_gallery')
         ->assertOk()
         ->assertSee('Component Gallery')
         ->assertSee('Buttons')
@@ -47,13 +47,13 @@ it('returns 404 for the gallery in production', function (): void {
     $this->app->detectEnvironment(fn (): string => 'production');
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
-    $this->actingAs($owner)->get('http://anvinh.test/admin/_gallery')->assertNotFound();
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin/_gallery')->assertNotFound();
 });
 
 it('renders the shell brand (from config), search and footer', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
-    $this->actingAs($owner)->get('http://anvinh.test/admin/_gallery')
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin/_gallery')
         ->assertOk()
         ->assertSee(config('admin.brand.name'))
         ->assertSee('brand-logo', false) // config-driven logo replaces the text name+tagline in the shell (name lives in its alt)
@@ -64,7 +64,7 @@ it('renders the shell brand (from config), search and footer', function (): void
 it('renders button + badge variants with Velzon-mirrored admin tokens', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
-    $this->actingAs($owner)->get('http://anvinh.test/admin/_gallery')
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin/_gallery')
         ->assertOk()
         ->assertSee('bg-admin-primary')      // solid
         ->assertSee('bg-admin-danger')       // danger solid
@@ -75,7 +75,7 @@ it('renders button + badge variants with Velzon-mirrored admin tokens', function
 it('renders the new presentational primitives (alert, avatar, page-header, pagination)', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
-    $this->actingAs($owner)->get('http://anvinh.test/admin/_gallery')
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin/_gallery')
         ->assertOk()
         ->assertSee('Alerts')
         ->assertSee('Avatars')
@@ -87,7 +87,7 @@ it('renders the new presentational primitives (alert, avatar, page-header, pagin
 it('renders the interactive primitives (dropdown, tabs, tooltip, modal) with a11y roles', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
-    $this->actingAs($owner)->get('http://anvinh.test/admin/_gallery')
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin/_gallery')
         ->assertOk()
         ->assertSee('Dropdown')
         ->assertSee('Tabs')

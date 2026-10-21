@@ -63,7 +63,8 @@
   website (#163, lệnh `site:feature`), danh mục gói + đổi gói của khách (#165, lệnh `platform:plan`) và công tắc nền tảng
   "Lời mời nâng gói" (mặc định tắt, chưa màn nào đọc); chưa lên prod. Còn: màn D4-1 tab Tính năng và D4-2 (kèm đếm khách bị
   ảnh hưởng, nguồn "theo gói / ghi đè", tên + lợi ích theo ngôn ngữ, nối công tắc vào trạng thái khoá của từng màn);
-  `sites.max` và `media.storage_mb` chưa có chỗ nào kiểm.
+  `media.storage_mb` chưa có chỗ nào kiểm. `sites.max` kiểm khi tạo website (nhánh `feat/enforce-sites-max`, chưa ghép; `site:provision` chọn khách tường minh — PR xếp chồng trên nhánh đó; còn
+  COUNCIL: index `sites(tenant_id)` và có cho ghi đè theo khách hàng hay không).
 - **Builder v3:** danh mục section v3.1 chờ phía thiết kế; PR 1a.1: bộ sinh bảng màu `--brand-50..900` ✅ 26/09 (chưa stylesheet nào đọc) — còn thang spacing + chuyển website sang các vai màu.
 - **Đa ngôn ngữ giao diện:** vi/en/ja/zh đủ khoá (24/09), CI chặn lệch bằng `lang:check`. Trang 404 chung còn chỉ tiếng Việt → thiết kế ở D5-1.
 - **Còn mở (nhỏ, chưa gấp):** xem trước ngôn ngữ chưa công khai (câu hỏi cho D3-1) · nhập lại mật khẩu trước khi tắt 2 lớp (làm cùng D2-3) · `tenant_users` chưa có chỗ đọc (chốt ở D4-1) · prod trả header `x-powered-by: PHP/…` ra ngoài (mặc định `expose_php` của image, repo không có cấu hình tắt; tắt = đổi image + dựng lại container prod, làm cùng lần đổi runtime kế tiếp theo `runbooks/prod-deploy.md`). (Trần thư mời theo từng địa chỉ: ✅ ≤ 3 thư / địa chỉ / site / 24 giờ — v2.26.) (Sitemap > 50.000 địa chỉ: ✅ `/sitemap.xml` thành `<sitemapindex>` gồm các trang keyset `/sitemap-{n}.xml`, không đổi schema — design §18; mốc tiếp: site > ~2,5 triệu route thì dựng page plan bằng job theo site.)
