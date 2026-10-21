@@ -442,3 +442,19 @@ it('lets one request build the page plan while the others wait, then answers 503
     $this->get('http://anvinh.test/sitemap-1.xml')->assertOk();
     expect(cache()->lock('sitemap-plan:v1:'.$site->id.':3:lock', 30)->get())->toBeTrue();
 });
+
+it('answers 503 at once by default instead of holding a pooled connection while another request builds the plan', function (): void {
+    sitemapSeedAnVinh();
+    config(['cms.sitemap.max_urls' => 3]);
+    $site = Site::query()->firstWhere('name', 'An Vinh');
+
+    $lock = cache()->lock('sitemap-plan:v1:'.$site->id.':3:lock', 30);
+    expect($lock->get())->toBeTrue();
+
+    $started = microtime(true);
+    $this->get('http://anvinh.test/sitemap-1.xml')->assertStatus(503)->assertHeader('Retry-After', '30');
+    // One lock retry interval (250 ms) at most — never the old 10 s wait inside the tenant transaction.
+    expect(microtime(true) - $started)->toBeLessThan(2.0);
+
+    $lock->release();
+});

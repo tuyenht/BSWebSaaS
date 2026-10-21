@@ -56,8 +56,9 @@ final readonly class SitemapRoutes
      * (exclusive) when given. Bounding a page by the next page's cursor keeps a URL from being
      * listed twice when routes before it were removed while the plan was cached.
      *
-     * Rows are streamed as plain arrays rather than hydrated models: a 50,000-URL page would
-     * otherwise hold 50,000 SiteRoute objects (and their Carbon dates) at once. lastmod still goes
+     * Rows are read as plain arrays rather than hydrated models: a 50,000-URL page would
+     * otherwise hold 50,000 SiteRoute objects (and their Carbon dates) at once. PDO still buffers
+     * the whole result set client-side, so this saves the models, not the transfer. lastmod goes
      * through the model's own datetime cast, so the output format is the model's.
      *
      * @param  array{0: string, 1: int}|null  $from
@@ -120,9 +121,11 @@ final readonly class SitemapRoutes
     /**
      * Builds and caches the plan under a per-site lock, so the requests that find it missing at
      * TTL expiry (a crawler fetches the index and its pages in parallel) run the whole-site pass
-     * once between them: 8-10 s per million routes, measured. A request that waited out the lock
-     * reuses what the peer cached when $usable accepts it; one still waiting after
-     * `plan_lock_wait` seconds gets a 503 with Retry-After, which crawlers retry. The lock
+     * once between them: 8-10 s per million routes, measured. A request that finds the lock taken
+     * waits `plan_lock_wait` seconds (default 0) and reuses what the peer cached when $usable
+     * accepts it, else gets a 503 with Retry-After, which crawlers retry. Waiting is off by
+     * default because it happens inside the tenant transaction: each waiter pins a PgBouncer
+     * server connection from the pool every tenant shares, while a 503 frees it at once. The lock
      * expires on its own after the 30 s request ceiling should its holder die mid-pass. That
      * ceiling caps an in-request build at roughly 2.5M listed routes per site; past it the plan
      * must be built off-request (a queued per-site job) — an index does not help, the pass is the
@@ -138,7 +141,7 @@ final readonly class SitemapRoutes
         $lock = Cache::lock($key.':lock', 30);
 
         try {
-            $lock->block(max(0, Cast::int(config('cms.sitemap.plan_lock_wait'), 10)));
+            $lock->block(max(0, Cast::int(config('cms.sitemap.plan_lock_wait'), 0)));
         } catch (LockTimeoutException) {
             throw new ServiceUnavailableHttpException(30);
         }
