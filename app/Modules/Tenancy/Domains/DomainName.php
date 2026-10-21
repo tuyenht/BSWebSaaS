@@ -13,9 +13,6 @@ use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
  */
 final class DomainName
 {
-    /** Single-label names reserved for testing (RFC 6761), the only ones allowed as a base. */
-    private const array SPECIAL_USE_BASES = ['test', 'localhost', 'example', 'invalid'];
-
     /**
      * The stored form: lower-case ASCII (punycode for names with diacritics), no scheme, port,
      * path or trailing dot. People paste whole addresses, so `https://Công-Ty.vn/lien-he` is fine.
@@ -103,31 +100,16 @@ final class DomainName
     }
 
     /**
-     * The platform base domains (`tenancy.base_domains` plus `tenancy.primary_base`). A base of a
-     * single label is kept only when it is a special-use name that never exists on the internet
-     * (RFC 6761: `test` for dev and CI fixtures); a public one such as `net` would make every
-     * `customer.net` a platform subdomain.
+     * The platform base domains (`tenancy.base_domains` plus `tenancy.primary_base`).
      *
      * @return list<string>
      */
     private static function bases(): array
     {
-        $candidates = [
+        return self::hosts([
             ...(is_array($bases = config('tenancy.base_domains')) ? $bases : []),
             config('tenancy.primary_base'),
-        ];
-
-        $special = [];
-
-        foreach ($candidates as $candidate) {
-            $name = is_string($candidate) ? rtrim(strtolower(trim($candidate)), '.') : '';
-
-            if (in_array($name, self::SPECIAL_USE_BASES, true)) {
-                $special[] = $name;
-            }
-        }
-
-        return array_values(array_unique([...self::hosts($candidates), ...$special]));
+        ]);
     }
 
     /**

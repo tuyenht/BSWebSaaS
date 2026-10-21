@@ -29,7 +29,7 @@ beforeEach(function (): void {
 function seedAnVinhStorefront(): void
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.test',
+        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
     $site = Site::query()->firstWhere('name', 'An Vinh');
@@ -40,7 +40,7 @@ it('lists the projects at /du-an within budget', function (): void {
     seedAnVinhStorefront();
 
     $count = countQueries(function (): void {
-        $html = $this->get('http://anvinh.test/du-an')->assertOk()->getContent();
+        $html = $this->get('http://anvinh.platform.test/du-an')->assertOk()->getContent();
 
         expect($html)
             ->toContain('class="category__title">Dự án')
@@ -72,7 +72,7 @@ it('links a category card to the post STORED route, not a hardcoded category pre
             ->update(['path' => '/day-chuyen-lap-rap-tu-dong']);
     });
 
-    $html = $this->get('http://anvinh.test/du-an')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/du-an')->assertOk()->getContent();
 
     expect($html)
         ->toContain('href="/day-chuyen-lap-rap-tu-dong"')
@@ -82,7 +82,7 @@ it('links a category card to the post STORED route, not a hardcoded category pre
 it('renders a project detail with breadcrumb JSON-LD', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/du-an/day-chuyen-lap-rap-tu-dong')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/du-an/day-chuyen-lap-rap-tu-dong')->assertOk()->getContent();
 
     expect($html)
         ->toContain('<title>Dây chuyền lắp ráp tự động</title>')
@@ -96,7 +96,7 @@ it('lists the services at /dich-vu within budget', function (): void {
     seedAnVinhStorefront();
 
     $count = countQueries(function (): void {
-        $html = $this->get('http://anvinh.test/dich-vu')->assertOk()->getContent();
+        $html = $this->get('http://anvinh.platform.test/dich-vu')->assertOk()->getContent();
 
         expect($html)
             ->toContain('class="category__title">Dịch vụ')
@@ -110,7 +110,7 @@ it('lists the services at /dich-vu within budget', function (): void {
 it('renders a service detail page with breadcrumb', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/dich-vu/thiet-ke-jig-do-ga')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/dich-vu/thiet-ke-jig-do-ga')->assertOk()->getContent();
 
     expect($html)
         ->toContain('<title>Thiết kế Jig &amp; Đồ gá</title>')
@@ -123,7 +123,7 @@ it('renders a service detail page with breadcrumb', function (): void {
 it('lists the products at /san-pham', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/san-pham')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/san-pham')->assertOk()->getContent();
 
     expect($html)
         ->toContain('class="category__title">Sản phẩm')
@@ -134,7 +134,7 @@ it('lists the products at /san-pham', function (): void {
 it('renders a product detail page with breadcrumb', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/san-pham/truc-may-cnc')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/san-pham/truc-may-cnc')->assertOk()->getContent();
 
     expect($html)
         ->toContain('<title>Trục máy CNC</title>')
@@ -146,7 +146,7 @@ it('renders a product detail page with breadcrumb', function (): void {
 it('renders /gioi-thieu with about content', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/gioi-thieu')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/gioi-thieu')->assertOk()->getContent();
 
     expect($html)
         ->toContain('<title>Giới thiệu</title>')
@@ -160,7 +160,7 @@ it('renders /gioi-thieu with about content', function (): void {
 it('renders /doi-tac with partner names and testimonials', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/doi-tac')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/doi-tac')->assertOk()->getContent();
 
     expect($html)
         ->toContain('<title>Đối tác</title>')
@@ -172,7 +172,7 @@ it('renders /doi-tac with partner names and testimonials', function (): void {
 it('renders /lien-he with real NAP', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/lien-he')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/lien-he')->assertOk()->getContent();
 
     expect($html)
         ->toContain('0915 66 83 83')
@@ -182,7 +182,7 @@ it('renders /lien-he with real NAP', function (): void {
 it('renders the home page with An Vinh heading and resolved media URLs in entry_grid cards', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
 
     // Hero heading
     expect($html)->toContain('Cơ Khí Chính Xác An Vinh');
@@ -203,7 +203,7 @@ it('renders the home page with An Vinh heading and resolved media URLs in entry_
 it('news posts are listed at /tin-tuc', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/tin-tuc')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/tin-tuc')->assertOk()->getContent();
 
     expect($html)
         ->toContain('class="category__title">Tin tức')
@@ -213,7 +213,7 @@ it('news posts are listed at /tin-tuc', function (): void {
 it('emits og:image from brand setting on the home page', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
 
     // SeedAnVinhContent writes og_image (KEY_ABOUT at w=1280) to the brand site setting;
     // head.blade.php emits <meta property="og:image"> when data_get($brand,'og_image') is set.
@@ -223,7 +223,7 @@ it('emits og:image from brand setting on the home page', function (): void {
 it('category list /san-pham has non-empty meta description via brand fallback', function (): void {
     seedAnVinhStorefront();
 
-    $html = $this->get('http://anvinh.test/san-pham')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/san-pham')->assertOk()->getContent();
 
     // renderCategory passes no seo description; the head partial falls back to brand.description.
     // The tag must exist and its content must not be empty.

@@ -66,7 +66,7 @@ function gridSeedProject(string $email): void
 }
 
 it('maps a published project card and excludes drafts', function (): void {
-    $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
+    $site = gridProvision('Grid Co', 'grid.platform.test', 'owner@grid.test');
 
     app(Tenancy::class)->enter($site->id, function (): void {
         gridSeedProject('owner@grid.test');
@@ -85,7 +85,7 @@ it('maps a published project card and excludes drafts', function (): void {
 });
 
 it('clamps limit and returns empty for an unknown slug', function (): void {
-    $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
+    $site = gridProvision('Grid Co', 'grid.platform.test', 'owner@grid.test');
 
     app(Tenancy::class)->enter($site->id, function (): void {
         gridSeedProject('owner@grid.test');
@@ -101,8 +101,8 @@ it('clamps limit and returns empty for an unknown slug', function (): void {
 });
 
 it('isolates the grid between sites (RLS)', function (): void {
-    $siteA = gridProvision('Site A', 'a.test', 'owner@a.test');
-    gridProvision('Site B', 'b.test', 'owner@b.test');
+    $siteA = gridProvision('Site A', 'a.platform.test', 'owner@a.test');
+    gridProvision('Site B', 'b.platform.test', 'owner@b.test');
 
     app(Tenancy::class)->enter($siteA->id, fn () => gridSeedProject('owner@a.test'));
 
@@ -114,7 +114,7 @@ it('isolates the grid between sites (RLS)', function (): void {
 });
 
 it('resolves the grid in a fixed query count as cards scale (no N+1)', function (): void {
-    $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
+    $site = gridProvision('Grid Co', 'grid.platform.test', 'owner@grid.test');
 
     app(Tenancy::class)->enter($site->id, function (): void {
         $owner = User::query()->firstWhere('email', 'owner@grid.test');
@@ -148,7 +148,7 @@ it('resolves the grid in a fixed query count as cards scale (no N+1)', function 
 
 it('resolves a media storage key to a width-sized URL; leaves glyphs and absolute URLs untouched', function (): void {
     config(['media.driver' => 'cloudflare', 'media.cloudflare.base' => 'https://files.test']);
-    $site = gridProvision('Grid Co', 'grid.test', 'owner@grid.test');
+    $site = gridProvision('Grid Co', 'grid.platform.test', 'owner@grid.test');
 
     app(Tenancy::class)->enter($site->id, function (): void {
         $owner = User::query()->firstWhere('email', 'owner@grid.test');

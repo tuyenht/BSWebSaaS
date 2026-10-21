@@ -51,10 +51,10 @@ function guardFootprint(): array
 }
 
 it('still re-runs a site for its own customer, by name and by id', function (): void {
-    $site = provisionGuarded('Beta', 'beta.test', 'owner@beta.test');
+    $site = provisionGuarded('Beta', 'beta.platform.test', 'owner@beta.test');
 
-    $byName = provisionGuarded('Beta', 'beta.test', 'owner@beta.test');
-    $byId = provisionGuarded('ignored', 'beta.test', 'owner@beta.test', tenantId: $site->tenant_id);
+    $byName = provisionGuarded('Beta', 'beta.platform.test', 'owner@beta.test');
+    $byId = provisionGuarded('ignored', 'beta.platform.test', 'owner@beta.test', tenantId: $site->tenant_id);
 
     expect($byName->id)->toBe($site->id)
         ->and($byId->id)->toBe($site->id)
@@ -63,11 +63,11 @@ it('still re-runs a site for its own customer, by name and by id', function (): 
 });
 
 it('refuses a hostname of another customer named by tenant name, writing nothing', function (): void {
-    provisionGuarded('Alpha', 'alpha.test', 'owner@alpha.test');
-    provisionGuarded('Beta', 'beta.test', 'owner@beta.test');
+    provisionGuarded('Alpha', 'alpha.platform.test', 'owner@alpha.test');
+    provisionGuarded('Beta', 'beta.platform.test', 'owner@beta.test');
     $before = guardFootprint();
 
-    expect(fn () => provisionGuarded('Alpha', 'beta.test', 'intruder@example.test'))
+    expect(fn () => provisionGuarded('Alpha', 'beta.platform.test', 'intruder@example.test'))
         ->toThrow(HostnameOwnedByAnotherTenantException::class);
 
     expect(guardFootprint())->toBe($before)
@@ -75,10 +75,10 @@ it('refuses a hostname of another customer named by tenant name, writing nothing
 });
 
 it('refuses a hostname of another customer named by an unknown tenant name, creating no customer', function (): void {
-    provisionGuarded('Beta', 'beta.test', 'owner@beta.test');
+    provisionGuarded('Beta', 'beta.platform.test', 'owner@beta.test');
     $before = guardFootprint();
 
-    expect(fn () => provisionGuarded('Typo Co', 'beta.test', 'owner@beta.test'))
+    expect(fn () => provisionGuarded('Typo Co', 'beta.platform.test', 'owner@beta.test'))
         ->toThrow(HostnameOwnedByAnotherTenantException::class);
 
     expect(guardFootprint())->toBe($before)
@@ -86,30 +86,30 @@ it('refuses a hostname of another customer named by an unknown tenant name, crea
 });
 
 it('refuses a hostname of another customer named by tenant id, writing nothing', function (): void {
-    $alpha = provisionGuarded('Alpha', 'alpha.test', 'owner@alpha.test');
-    provisionGuarded('Beta', 'beta.test', 'owner@beta.test');
+    $alpha = provisionGuarded('Alpha', 'alpha.platform.test', 'owner@alpha.test');
+    provisionGuarded('Beta', 'beta.platform.test', 'owner@beta.test');
     $before = guardFootprint();
 
     // The name matches B: the explicit id wins and names A, so this is still refused.
-    expect(fn () => provisionGuarded('Beta', 'beta.test', 'owner@alpha.test', tenantId: $alpha->tenant_id))
+    expect(fn () => provisionGuarded('Beta', 'beta.platform.test', 'owner@alpha.test', tenantId: $alpha->tenant_id))
         ->toThrow(HostnameOwnedByAnotherTenantException::class);
 
     expect(guardFootprint())->toBe($before);
 });
 
 it('refuses through site:provision with a plain-language message and fails', function (): void {
-    provisionGuarded('Alpha', 'alpha.test', 'owner@alpha.test');
-    provisionGuarded('Beta', 'beta.test', 'owner@beta.test');
+    provisionGuarded('Alpha', 'alpha.platform.test', 'owner@alpha.test');
+    provisionGuarded('Beta', 'beta.platform.test', 'owner@beta.test');
     $before = guardFootprint();
 
     $this->artisan('site:provision', [
         '--name' => 'Alpha',
-        '--host' => 'beta.test',
+        '--host' => 'beta.platform.test',
         '--tenant' => 'Alpha',
         '--owner-email' => 'intruder@example.test',
     ])
         ->expectsQuestion('Owner password (leave blank to auto-generate)', '')
-        ->expectsOutput(__('provisioning.hostname_owned_by_another_tenant', ['host' => 'beta.test']))
+        ->expectsOutput(__('provisioning.hostname_owned_by_another_tenant', ['host' => 'beta.platform.test']))
         ->assertFailed();
 
     expect(guardFootprint())->toBe($before);
@@ -141,10 +141,10 @@ function raceHostnameBeforeLock(string $host, ?int $ownerTenantId = null): void
 }
 
 it('refuses a hostname another customer took between the first lookup and the lock, writing nothing', function (): void {
-    provisionGuarded('Alpha', 'alpha.test', 'owner@alpha.test');
-    raceHostnameBeforeLock('raced.test');
+    provisionGuarded('Alpha', 'alpha.platform.test', 'owner@alpha.test');
+    raceHostnameBeforeLock('raced.platform.test');
 
-    expect(fn () => provisionGuarded('Alpha', 'raced.test', 'intruder@example.test'))
+    expect(fn () => provisionGuarded('Alpha', 'raced.platform.test', 'intruder@example.test'))
         ->toThrow(HostnameOwnedByAnotherTenantException::class);
 
     $racer = Site::query()->where('name', 'Racer')->sole();
@@ -154,9 +154,9 @@ it('refuses a hostname another customer took between the first lookup and the lo
 });
 
 it('creates no customer when the raced hostname belongs to another customer', function (): void {
-    raceHostnameBeforeLock('raced.test');
+    raceHostnameBeforeLock('raced.platform.test');
 
-    expect(fn () => provisionGuarded('Fresh Co', 'raced.test', 'owner@fresh.test'))
+    expect(fn () => provisionGuarded('Fresh Co', 'raced.platform.test', 'owner@fresh.test'))
         ->toThrow(HostnameOwnedByAnotherTenantException::class);
 
     expect(Tenant::query()->where('name', 'Fresh Co')->exists())->toBeFalse()
@@ -164,10 +164,10 @@ it('creates no customer when the raced hostname belongs to another customer', fu
 });
 
 it('still continues a raced hostname of the same customer as a re-run', function (): void {
-    $alpha = provisionGuarded('Alpha', 'alpha.test', 'owner@alpha.test');
-    raceHostnameBeforeLock('raced.test', $alpha->tenant_id);
+    $alpha = provisionGuarded('Alpha', 'alpha.platform.test', 'owner@alpha.test');
+    raceHostnameBeforeLock('raced.platform.test', $alpha->tenant_id);
 
-    $site = provisionGuarded('Alpha', 'raced.test', 'owner@alpha.test');
+    $site = provisionGuarded('Alpha', 'raced.platform.test', 'owner@alpha.test');
 
     expect($site->tenant_id)->toBe($alpha->tenant_id)
         ->and($site->name)->toBe('Racer');

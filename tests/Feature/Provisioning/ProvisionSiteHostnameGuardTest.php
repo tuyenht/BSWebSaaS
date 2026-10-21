@@ -44,7 +44,7 @@ function provisionHost(string $tenantName, string $host, string $ownerEmail = 'o
     ));
 }
 
-/** @return array{sites: int, tenants: int, domains: int, users: int, tenant_users: int} */
+/** @return array{sites: int, tenants: int, domains: int, users: int, tenant_users: int, model_has_roles: int} */
 function hostFootprint(): array
 {
     $admin = DB::connection('pgsql_admin');
@@ -55,6 +55,7 @@ function hostFootprint(): array
         'domains' => $admin->table('domains')->count(),
         'users' => $admin->table('users')->count(),
         'tenant_users' => $admin->table('tenant_users')->count(),
+        'model_has_roles' => $admin->table('model_has_roles')->count(),
     ];
 }
 
@@ -114,13 +115,14 @@ it('refuses every name while no platform base is configured', function (): void 
     expect(hostFootprint()['sites'])->toBe(0);
 });
 
-it('accepts a special-use single-label base but never a public one', function (): void {
+it('never treats a single-label base as a platform base', function (): void {
     config(['tenancy.base_domains' => ['test', 'net'], 'tenancy.primary_base' => 'test']);
 
-    $site = provisionHost('Alpha', 'alpha.test');
+    foreach (['alpha.test', 'customer.net'] as $host) {
+        expect(fn () => provisionHost('Alpha', $host))->toThrow(HostnameNotPlatformSubdomainException::class);
+    }
 
-    expect(Domain::query()->where('site_id', $site->id)->sole()->hostname)->toBe('alpha.test')
-        ->and(fn () => provisionHost('Beta', 'customer.net'))->toThrow(HostnameNotPlatformSubdomainException::class);
+    expect(hostFootprint()['sites'])->toBe(0);
 });
 
 it('accepts a subdomain of any configured base', function (): void {

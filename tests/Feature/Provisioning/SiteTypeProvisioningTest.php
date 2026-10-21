@@ -30,7 +30,7 @@ function provisionCorporate(): Site
     return app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'Corp Co',
         siteName: 'Corp',
-        hostname: 'corp.test',
+        hostname: 'corp.platform.test',
         ownerEmail: 'owner@corp.test',
         ownerName: 'Corp Owner',
         ownerPassword: 'a-strong-password',

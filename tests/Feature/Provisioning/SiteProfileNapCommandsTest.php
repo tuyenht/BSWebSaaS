@@ -32,7 +32,7 @@ beforeEach(function (): void {
 function napSite(): int
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'Nap', siteName: 'Nap', hostname: 'nap.test',
+        tenantName: 'Nap', siteName: 'Nap', hostname: 'nap.platform.test',
         ownerEmail: 'owner@nap.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
     $site = Site::query()->firstWhere('name', 'Nap')->id;

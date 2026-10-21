@@ -20,7 +20,7 @@ beforeEach(function (): void {
     truncateRbac();
 
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'Demo', siteName: 'Demo', hostname: 'demo.test',
+        tenantName: 'Demo', siteName: 'Demo', hostname: 'demo.platform.test',
         ownerEmail: 'owner@demo.test', ownerName: 'Demo Owner',
         ownerPassword: 'a-strong-password', locales: ['vi'], modules: ['cms', 'media'],
     ));
@@ -32,7 +32,7 @@ function shellOwner(): User
 }
 
 it('titles every Customizer group in the muted role', function (): void {
-    $html = $this->actingAs(shellOwner())->get('http://demo.test/admin')->assertOk()->getContent();
+    $html = $this->actingAs(shellOwner())->get('http://demo.platform.test/admin')->assertOk()->getContent();
 
     preg_match_all('/<legend class="([^"]*)"/', (string) $html, $legends);
 
@@ -41,13 +41,13 @@ it('titles every Customizer group in the muted role', function (): void {
 });
 
 it('rings focus in the white ink of the navy Customizer header, not the navy accent', function (): void {
-    $html = $this->actingAs(shellOwner())->get('http://demo.test/admin')->assertOk()->getContent();
+    $html = $this->actingAs(shellOwner())->get('http://demo.platform.test/admin')->assertOk()->getContent();
 
     expect((string) $html)->toMatch('/<header class="[^"]*bg-primary[^"]*text-white[^"]*\[--color-focus:currentColor\]/');
 });
 
 it('heads a list table in the muted role', function (): void {
-    $html = $this->actingAs(shellOwner())->get('http://demo.test/admin/users')->assertOk()->getContent();
+    $html = $this->actingAs(shellOwner())->get('http://demo.platform.test/admin/users')->assertOk()->getContent();
 
     expect((string) $html)->toMatch('/<thead class="[^"]*text-body-muted[^"]*">/')
         ->not->toMatch('/<thead class="[^"]*text-body-faint/');

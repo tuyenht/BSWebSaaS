@@ -31,7 +31,7 @@ beforeEach(function (): void {
 function sitemapSeedAnVinh(): void
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.test',
+        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
     $site = Site::query()->firstWhere('name', 'An Vinh');
@@ -41,7 +41,7 @@ function sitemapSeedAnVinh(): void
 it('GET /sitemap.xml returns 200 application/xml with a valid urlset', function (): void {
     sitemapSeedAnVinh();
 
-    $response = $this->get('http://anvinh.test/sitemap.xml')->assertOk();
+    $response = $this->get('http://anvinh.platform.test/sitemap.xml')->assertOk();
 
     expect($response->headers->get('Content-Type'))->toContain('application/xml');
 
@@ -55,21 +55,21 @@ it('GET /sitemap.xml returns 200 application/xml with a valid urlset', function 
 it('sitemap contains expected An Vinh paths as absolute URLs', function (): void {
     sitemapSeedAnVinh();
 
-    $xml = $this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent();
+    $xml = $this->get('http://anvinh.platform.test/sitemap.xml')->assertOk()->getContent();
 
     // Top-level pages and taxonomy list routes seeded by ProvisionSite + SeedAnVinhContent
     expect($xml)
-        ->toContain('<loc>http://anvinh.test/</loc>')
-        ->toContain('<loc>http://anvinh.test/gioi-thieu</loc>')
-        ->toContain('<loc>http://anvinh.test/san-pham</loc>')
-        ->toContain('<loc>http://anvinh.test/du-an</loc>')
-        ->toContain('<loc>http://anvinh.test/dich-vu</loc>')
-        ->toContain('<loc>http://anvinh.test/tin-tuc</loc>')
-        ->toContain('<loc>http://anvinh.test/lien-he</loc>')
-        ->toContain('<loc>http://anvinh.test/doi-tac</loc>');
+        ->toContain('<loc>http://anvinh.platform.test/</loc>')
+        ->toContain('<loc>http://anvinh.platform.test/gioi-thieu</loc>')
+        ->toContain('<loc>http://anvinh.platform.test/san-pham</loc>')
+        ->toContain('<loc>http://anvinh.platform.test/du-an</loc>')
+        ->toContain('<loc>http://anvinh.platform.test/dich-vu</loc>')
+        ->toContain('<loc>http://anvinh.platform.test/tin-tuc</loc>')
+        ->toContain('<loc>http://anvinh.platform.test/lien-he</loc>')
+        ->toContain('<loc>http://anvinh.platform.test/doi-tac</loc>');
 
     // At least one detail URL (post routes under a category prefix)
-    expect($xml)->toContain('<loc>http://anvinh.test/du-an/day-chuyen-lap-rap-tu-dong</loc>');
+    expect($xml)->toContain('<loc>http://anvinh.platform.test/du-an/day-chuyen-lap-rap-tu-dong</loc>');
 });
 
 it('sitemap is RLS-scoped: a second site does not see the first site routes', function (): void {
@@ -78,28 +78,28 @@ it('sitemap is RLS-scoped: a second site does not see the first site routes', fu
     // Provision a second tenant — default ProvisionSite only (no An Vinh content),
     // so it has / and /lien-he and /tin-tuc but NOT /san-pham, /du-an, /dich-vu, etc.
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'Other Co', siteName: 'Other Co', hostname: 'other.test',
+        tenantName: 'Other Co', siteName: 'Other Co', hostname: 'other.platform.test',
         ownerEmail: 'owner@other.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
 
     // An Vinh's sitemap has /san-pham (seeded only for site 1)
-    $anVinhXml = $this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent();
+    $anVinhXml = $this->get('http://anvinh.platform.test/sitemap.xml')->assertOk()->getContent();
     expect($anVinhXml)->toContain('/san-pham');
 
     // Other Co's sitemap must NOT contain /san-pham (RLS prevents cross-tenant leak)
-    $otherXml = $this->get('http://other.test/sitemap.xml')->assertOk()->getContent();
+    $otherXml = $this->get('http://other.platform.test/sitemap.xml')->assertOk()->getContent();
     expect($otherXml)->not->toContain('/san-pham');
 });
 
 it('GET /robots.txt returns 200 with a per-host Sitemap: directive', function (): void {
     sitemapSeedAnVinh();
 
-    $body = $this->get('http://anvinh.test/robots.txt')->assertOk()->getContent();
+    $body = $this->get('http://anvinh.platform.test/robots.txt')->assertOk()->getContent();
 
     expect($body)
         ->toContain('User-agent: *')
         ->toContain('Disallow:')
-        ->toContain('Sitemap: http://anvinh.test/sitemap.xml');
+        ->toContain('Sitemap: http://anvinh.platform.test/sitemap.xml');
 });
 
 it('sitemap includes published catalog product routes and excludes drafts', function (): void {
@@ -122,7 +122,7 @@ it('sitemap includes published catalog product routes and excludes drafts', func
         app(RouteSync::class)->syncProduct($draft->id, null, 'vi', 'khuon-nhap');
     });
 
-    $xml = $this->get('http://anvinh.test/sitemap.xml')->assertOk()->getContent();
+    $xml = $this->get('http://anvinh.platform.test/sitemap.xml')->assertOk()->getContent();
 
     expect($xml)
         ->toContain('truc-cnc-live')    // published product route present in the sitemap

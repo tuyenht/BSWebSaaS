@@ -28,7 +28,7 @@ beforeEach(function (): void {
     $this->artisan('rbac:sync')->assertSuccessful();
 
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.test',
+        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test', ownerName: 'An Vinh Owner',
         ownerPassword: 'a-strong-password', locales: ['vi'], modules: ['cms', 'media'],
     ));

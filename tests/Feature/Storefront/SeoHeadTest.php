@@ -33,7 +33,7 @@ function seoProvision(): void
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
         tenantName: 'An Vinh',
         siteName: 'An Vinh',
-        hostname: 'anvinh.test',
+        hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test',
         ownerName: 'Owner',
         ownerPassword: 'a-strong-password',
@@ -70,7 +70,7 @@ function seoPublishPost(string $title, string $slug): void
 it('emits canonical + Open Graph (website) on the home page', function (): void {
     seoProvision();
 
-    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
 
     expect($html)
         ->toContain('<link rel="canonical"')
@@ -85,10 +85,10 @@ it('emits canonical + OG article + BreadcrumbList on a post, no extra queries', 
     seoPublishPost('Bài viết đầu tiên', 'bai-viet-dau-tien');
 
     $count = countQueries(function (): void {
-        $html = $this->get('http://anvinh.test/tin-tuc/bai-viet-dau-tien')->assertOk()->getContent();
+        $html = $this->get('http://anvinh.platform.test/tin-tuc/bai-viet-dau-tien')->assertOk()->getContent();
 
         expect($html)
-            ->toContain('<link rel="canonical" href="http://anvinh.test/tin-tuc/bai-viet-dau-tien">')
+            ->toContain('<link rel="canonical" href="http://anvinh.platform.test/tin-tuc/bai-viet-dau-tien">')
             ->toContain('property="og:type" content="article"')
             ->toContain('application/ld+json')
             ->toContain('"@type":"BreadcrumbList"')
@@ -105,10 +105,10 @@ it('emits canonical + OG website + BreadcrumbList on a category list', function 
     seoProvision();
     seoPublishPost('Bài một', 'bai-mot');
 
-    $html = $this->get('http://anvinh.test/tin-tuc')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/tin-tuc')->assertOk()->getContent();
 
     expect($html)
-        ->toContain('<link rel="canonical" href="http://anvinh.test/tin-tuc">')
+        ->toContain('<link rel="canonical" href="http://anvinh.platform.test/tin-tuc">')
         ->toContain('property="og:type" content="website"')
         ->toContain('"@type":"BreadcrumbList"')
         ->toContain('"name":"Tin tức"');
@@ -134,16 +134,16 @@ it('self-canonicals a paginated category page with ?page=N', function (): void {
     });
 
     // Page 2 self-canonicals to itself (not page 1) so the deeper page stays indexable.
-    $html = $this->get('http://anvinh.test/tin-tuc?page=2')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/tin-tuc?page=2')->assertOk()->getContent();
 
-    expect($html)->toContain('<link rel="canonical" href="http://anvinh.test/tin-tuc?page=2">');
+    expect($html)->toContain('<link rel="canonical" href="http://anvinh.platform.test/tin-tuc?page=2">');
 });
 
 it('uses the tenant brand favicon when set, and the platform file only as fallback', function (): void {
     seoProvision();
 
     // No brand favicon yet → platform fallback.
-    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
     expect($html)->toContain('<link rel="icon" href="/favicon.ico"');
 
     // A tenant that sets brand.favicon gets its own icon — no platform branding leak.
@@ -155,7 +155,7 @@ it('uses the tenant brand favicon when set, and the platform file only as fallba
         );
     });
 
-    $html = $this->get('http://anvinh.test/')->assertOk()->getContent();
+    $html = $this->get('http://anvinh.platform.test/')->assertOk()->getContent();
     expect($html)->toContain('<link rel="icon" href="https://files.example.test/an-vinh/brand/logo-64.png"');
     expect($html)->not->toContain('<link rel="icon" href="/favicon.ico"');
 });

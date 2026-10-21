@@ -26,7 +26,7 @@ beforeEach(function (): void {
     $this->artisan('rbac:sync')->assertSuccessful();
 
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.test',
+        tenantName: 'An Vinh', siteName: 'An Vinh', hostname: 'anvinh.platform.test',
         ownerEmail: 'owner@anvinh.test', ownerName: 'An Vinh Owner',
         ownerPassword: 'a-strong-password', locales: ['vi'], modules: ['cms', 'media'],
     ));
@@ -79,6 +79,6 @@ it('gates the catalog index route — 200 with catalog.view, 403 without', funct
         grantRole($noperm, 'no-catalog', ['entries.view']);
     });
 
-    $this->actingAs($viewer->fresh())->get('http://anvinh.test/admin/catalog')->assertOk();
-    $this->actingAs($noperm->fresh())->get('http://anvinh.test/admin/catalog')->assertForbidden();
+    $this->actingAs($viewer->fresh())->get('http://anvinh.platform.test/admin/catalog')->assertOk();
+    $this->actingAs($noperm->fresh())->get('http://anvinh.platform.test/admin/catalog')->assertForbidden();
 });

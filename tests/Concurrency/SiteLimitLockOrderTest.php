@@ -32,7 +32,7 @@ function slProvision(string $host): void
 }
 
 it('locks the customer before counting its websites and reading its limit', function (): void {
-    slProvision('lock1.test');
+    slProvision('lock1.platform.test');
 
     /** @var list<string> $queries */
     $queries = [];
@@ -41,7 +41,7 @@ it('locks the customer before counting its websites and reading its limit', func
     });
 
     try {
-        slProvision('lock2.test');
+        slProvision('lock2.platform.test');
     } catch (SiteLimitReachedException) {
         // Expected at the default limit of one: the order up to the refusal is what matters.
     }

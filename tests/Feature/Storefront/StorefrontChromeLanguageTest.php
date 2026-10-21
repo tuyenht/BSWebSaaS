@@ -30,7 +30,7 @@ beforeEach(function (): void {
 function chromeLanguageSite(): void
 {
     app(ProvisionSite::class)->handle(new ProvisionSiteData(
-        tenantName: 'Chrome', siteName: 'Chrome', hostname: 'chrome.test',
+        tenantName: 'Chrome', siteName: 'Chrome', hostname: 'chrome.platform.test',
         ownerEmail: 'owner@chrome.test', ownerName: 'Owner', ownerPassword: 'a-strong-password',
     ));
     $site = Site::query()->firstWhere('name', 'Chrome');
@@ -56,7 +56,7 @@ it('speaks the page language in the footer and links home in it', function (): v
     chromeLanguageSite();
     $year = date('Y');
 
-    expect($this->get('http://chrome.test/en/about')->assertOk()->getContent())
+    expect($this->get('http://chrome.platform.test/en/about')->assertOk()->getContent())
         ->toContain('<p class="site-footer__heading">Navigation</p>')
         ->toContain('Business registration no.: 0100000001')
         ->toContain('Hotline: <a href="tel:0901234567">')
@@ -65,7 +65,7 @@ it('speaks the page language in the footer and links home in it', function (): v
         ->not->toContain('Bảo lưu mọi quyền')
         ->not->toContain('Điều hướng');
 
-    expect($this->get('http://chrome.test/gioi-thieu')->assertOk()->getContent())
+    expect($this->get('http://chrome.platform.test/gioi-thieu')->assertOk()->getContent())
         ->toContain('<p class="site-footer__heading">Điều hướng</p>')
         ->toContain('GPĐKKD: 0100000001')
         ->toContain("© {$year} Xưởng Mẫu. Bảo lưu mọi quyền.")
@@ -75,7 +75,7 @@ it('speaks the page language in the footer and links home in it', function (): v
 it('keeps the footer free of inline script, fixed years and hardcoded colours', function (): void {
     chromeLanguageSite();
 
-    expect($this->get('http://chrome.test/gioi-thieu')->assertOk()->getContent())
+    expect($this->get('http://chrome.platform.test/gioi-thieu')->assertOk()->getContent())
         ->not->toContain('onmouseover')
         ->not->toContain('onmouseout')
         ->not->toContain('2024–')

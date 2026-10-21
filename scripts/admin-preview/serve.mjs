@@ -18,7 +18,7 @@ const repo = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const SCREENS = process.env.ADMIN_PREVIEW_DIR || join(repo, 'storage/app/admin-preview');
 const PUBLIC = join(repo, 'public');
 const LIVEWIRE_DIST = join(repo, 'vendor/livewire/livewire/dist');
-const HOST_TOKEN = 'preview.test';
+const HOST_TOKEN = 'preview.platform.test';
 const PORT = Number(process.env.PORT || 8098);
 const TYPES = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ico': 'image/x-icon', '.json': 'application/json', '.map': 'application/json' };
 

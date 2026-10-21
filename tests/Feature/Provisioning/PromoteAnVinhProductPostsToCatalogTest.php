@@ -116,7 +116,7 @@ function seedAnVinhProductPosts(string $hostname, int $count = 2, string $status
 }
 
 it('promotes product-posts to Product rows at the identical route, with no redirect', function (): void {
-    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-a.test', 2);
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-a.platform.test', 2);
 
     $summary = app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
 
@@ -155,12 +155,12 @@ it('promotes product-posts to Product rows at the identical route, with no redir
     });
 
     // End-to-end proof the URL truly still resolves — same path, now serving the product.
-    $html = $this->get("http://anvinh-promo-a.test/san-pham/{$slugs[0]}")->assertOk()->getContent();
+    $html = $this->get("http://anvinh-promo-a.platform.test/san-pham/{$slugs[0]}")->assertOk()->getContent();
     expect($html)->toContain('Jig kiểm số 1');
 });
 
 it('is idempotent — a second run creates no duplicates', function (): void {
-    ['site' => $site] = seedAnVinhProductPosts('anvinh-promo-b.test', 2);
+    ['site' => $site] = seedAnVinhProductPosts('anvinh-promo-b.platform.test', 2);
 
     app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
     $secondSummary = app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
@@ -176,7 +176,7 @@ it('is idempotent — a second run creates no duplicates', function (): void {
 });
 
 it('updates an existing Product by slug instead of duplicating it', function (): void {
-    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-c.test', 1);
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-c.platform.test', 1);
     $slug = $slugs[0];
 
     // Simulate a Product that already exists at the target slug (e.g. a prior partial run).
@@ -199,7 +199,7 @@ it('updates an existing Product by slug instead of duplicating it', function ():
 });
 
 it('dry-run computes the summary but writes nothing', function (): void {
-    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-d.test', 2);
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-d.platform.test', 2);
 
     $summary = app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle(dryRun: true));
 
@@ -228,7 +228,7 @@ it('dry-run computes the summary but writes nothing', function (): void {
 });
 
 it('leaves the promoted post recoverable in Trash (restorable, not purged)', function (): void {
-    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-e.test', 1);
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-e.platform.test', 1);
     $slug = $slugs[0];
 
     app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
@@ -246,7 +246,7 @@ it('leaves the promoted post recoverable in Trash (restorable, not purged)', fun
 });
 
 it('maps entry status/published_at onto the product 1:1 for a draft post', function (): void {
-    ['site' => $site] = seedAnVinhProductPosts('anvinh-promo-f.test', 1, status: 'draft');
+    ['site' => $site] = seedAnVinhProductPosts('anvinh-promo-f.platform.test', 1, status: 'draft');
 
     app(Tenancy::class)->enter($site->id, fn (): array => app(PromoteAnVinhProductPostsToCatalog::class)->handle());
 
@@ -258,16 +258,16 @@ it('maps entry status/published_at onto the product 1:1 for a draft post', funct
 });
 
 it('the console command previews with --dry-run then applies for real, idempotently', function (): void {
-    ['site' => $site] = seedAnVinhProductPosts('anvinh-promo-cmd.test', 1);
+    ['site' => $site] = seedAnVinhProductPosts('anvinh-promo-cmd.platform.test', 1);
 
-    $this->artisan('anvinh:promote-products', ['--host' => 'anvinh-promo-cmd.test', '--dry-run' => true])
+    $this->artisan('anvinh:promote-products', ['--host' => 'anvinh-promo-cmd.platform.test', '--dry-run' => true])
         ->assertSuccessful();
 
     app(Tenancy::class)->enter($site->id, function (): void {
         expect(Product::query()->count())->toBe(0);
     });
 
-    $this->artisan('anvinh:promote-products', ['--host' => 'anvinh-promo-cmd.test'])
+    $this->artisan('anvinh:promote-products', ['--host' => 'anvinh-promo-cmd.platform.test'])
         ->assertSuccessful();
 
     app(Tenancy::class)->enter($site->id, function (): void {
@@ -275,7 +275,7 @@ it('the console command previews with --dry-run then applies for real, idempoten
     });
 
     // Re-run is a safe no-op — no duplicates, command still succeeds.
-    $this->artisan('anvinh:promote-products', ['--host' => 'anvinh-promo-cmd.test'])
+    $this->artisan('anvinh:promote-products', ['--host' => 'anvinh-promo-cmd.platform.test'])
         ->assertSuccessful();
 
     app(Tenancy::class)->enter($site->id, function (): void {
@@ -289,7 +289,7 @@ it('the console command fails cleanly for an unknown host', function (): void {
 });
 
 it('records a 301 when a source post lived at a different path than the product', function (): void {
-    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-g.test', 1);
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-g.platform.test', 1);
     $slug = $slugs[0];
 
     // A tenant whose product-posts were NOT category-pinned (flat-era history): the live route
@@ -314,17 +314,17 @@ it('records a 301 when a source post lived at a different path than the product'
     });
 
     // End-to-end: the old URL 301s to the product, which serves 200.
-    $this->get("http://anvinh-promo-g.test/{$slug}")
+    $this->get("http://anvinh-promo-g.platform.test/{$slug}")
         ->assertStatus(301)
-        ->assertRedirect("http://anvinh-promo-g.test/san-pham/{$slug}");
-    $this->get("http://anvinh-promo-g.test/san-pham/{$slug}")->assertOk();
+        ->assertRedirect("http://anvinh-promo-g.platform.test/san-pham/{$slug}");
+    $this->get("http://anvinh-promo-g.platform.test/san-pham/{$slug}")->assertOk();
 });
 
 it('rolls the whole run back at a lock conflict instead of reporting it as one failed post', function (): void {
     // A lock conflict in a post's savepoint leaves the caller's transaction aborted (Laravel
     // rethrows it without rolling the savepoint back): the next posts could not run, and COMMIT
     // would silently undo the ones listed as promoted. A trigger raises the real SQLSTATE.
-    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-conflict.test', 2);
+    ['site' => $site, 'slugs' => $slugs] = seedAnVinhProductPosts('anvinh-promo-conflict.platform.test', 2);
 
     $admin = DB::connection('pgsql_admin');
     $admin->unprepared(<<<'SQL'
