@@ -4,6 +4,8 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
 use App\Modules\Provisioning\Exceptions\HostnameNotPlatformSubdomainException;
+use App\Modules\Provisioning\Exceptions\HostnamePendingVerificationException;
+use App\Modules\Shared\Support\Cast;
 use App\Modules\Tenancy\Models\Domain;
 use App\Modules\Tenancy\Models\Site;
 use App\Modules\Tenancy\Models\Tenant;
@@ -158,12 +160,13 @@ it('still re-runs a site on a verified customer domain it already proved', funct
 it('refuses through site:provision with a plain-language message and fails', function (): void {
     $before = hostFootprint();
 
+    // Refused before the password prompt (no question is expected), whatever customer it names.
     $this->artisan('site:provision', [
         '--name' => 'Alpha',
-        '--host' => 'customer-b.com',
+        '--host' => 'Customer-B.com.',
+        '--new-tenant' => 'Alpha',
         '--owner-email' => 'intruder@example.test',
     ])
-        ->expectsQuestion('Owner password (leave blank to auto-generate)', '')
         ->expectsOutput(__('provisioning.hostname_not_platform_subdomain', [
             'host' => 'customer-b.com',
             'base' => 'platform.test',
@@ -172,3 +175,53 @@ it('refuses through site:provision with a plain-language message and fails', fun
 
     expect(hostFootprint())->toBe($before);
 });
+
+/** A name Beta's website attached and is still proving, before its base became a platform base. */
+function pendingUnderNewBase(): void
+{
+    $waiting = provisionHost('Beta', 'beta.platform.test', 'owner@beta.test');
+    Domain::on('pgsql_admin')->create([
+        'site_id' => $waiting->id, 'hostname' => 'shop.newbase.test', 'kind' => 'custom',
+        'is_primary' => false, 'is_redirect' => false,
+    ]);
+    config(['tenancy.base_domains' => ['platform.test', 'newbase.test']]);
+}
+
+it('refuses a platform subdomain another website is still proving, writing nothing', function (): void {
+    pendingUnderNewBase();
+    $before = hostFootprint();
+
+    expect(fn () => provisionHost('Alpha', 'Shop.NewBase.test', 'intruder@example.test'))
+        ->toThrow(fn (HostnamePendingVerificationException $e) => expect($e->hostname)->toBe('shop.newbase.test'));
+
+    $row = Domain::query()->where('hostname', 'shop.newbase.test')->sole();
+    expect(hostFootprint())->toBe($before)
+        ->and(Tenant::query()->where('name', 'Alpha')->exists())->toBeFalse()
+        ->and($row->verified_at)->toBeNull()
+        ->and($row->site_id)->not->toBeNull();
+});
+
+it('explains a name another website is still proving through site:provision', function (): void {
+    pendingUnderNewBase();
+    $before = hostFootprint();
+
+    $this->artisan('site:provision', [
+        '--name' => 'Alpha',
+        '--host' => 'shop.newbase.test',
+        '--new-tenant' => 'Alpha',
+        '--owner-email' => 'intruder@example.test',
+    ])
+        ->expectsQuestion('Owner password (leave blank to auto-generate)', '')
+        ->expectsOutput(__('provisioning.hostname_pending_verification', ['host' => 'shop.newbase.test']))
+        ->assertFailed();
+
+    expect(hostFootprint())->toBe($before);
+});
+
+it('explains both refusals in each interface language', function (string $locale): void {
+    // Read the file itself: __() falls back to English, so a missing key would still translate.
+    $lines = json_decode(Cast::string(file_get_contents(lang_path($locale.'.json'))), true);
+
+    expect(is_array($lines) ? array_keys($lines) : [])
+        ->toContain('provisioning.hostname_not_platform_subdomain', 'provisioning.hostname_pending_verification');
+})->with(['en', 'vi', 'ja', 'zh']);

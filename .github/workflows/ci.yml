@@ -353,6 +353,7 @@ jobs:
         run: |
           php artisan site:provision \
             --name="CWV CI" \
+            --new-tenant="CWV CI" \
             --host="${CWV_HOST}" \
             --owner-email="cwv-ci@example.test" \
             --no-interaction
