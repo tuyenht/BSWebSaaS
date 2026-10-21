@@ -977,6 +977,7 @@
     "provisioning.tenant_ambiguous": "有多个客户名为“:reference”：:candidates。请用正确客户的 --tenant=<ULID> 重新运行。",
     "provisioning.tenant_did_you_mean": "没有名称完全为“:reference”的客户。您是否要找：:candidates？请用该客户的 --tenant=<ULID> 重新运行。",
     "provisioning.tenant_name_too_long": "客户名称太长：最多 :max 个字符。",
+    "provisioning.tenant_name_exists": "已存在名为「:name」的客户：:candidates。如要为该客户添加此网站，请使用 --tenant=<ulid> 重新运行。仅当这是同名的另一个客户时，才添加 --allow-same-name。",
     "provisioning.tenant_mismatch": "网站 :host 已存在，属于客户 :tenant，而不是您选择的客户。请用 --tenant=:tenant 重新运行，或去掉 --tenant。",
     "provisioning.tenant_host_taken": "网站 :host 已存在（属于客户 :tenant），因此没有创建新客户。要完成该网站，请用 --tenant=:tenant 重新运行，或去掉 --new-tenant。",
     "provisioning.host_invalid": "“:host”不是网站可用的主机名。只能使用字母、数字和连字符，并至少包含两部分，例如 shop.example.vn。",

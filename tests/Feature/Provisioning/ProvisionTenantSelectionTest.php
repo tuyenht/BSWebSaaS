@@ -70,8 +70,8 @@ function tselGrant(Tenant $tenant, int $limit): void
 }
 
 /**
- * @param  array<string, string>  $options
- * @return array<string, string>
+ * @param  array<string, string|bool>  $options
+ * @return array<string, string|bool>
  */
 function tselArgs(string $host, array $options = []): array
 {
@@ -133,6 +133,37 @@ it('refuses a new customer name longer than the column holds', function (): void
         ->assertFailed();
 
     expect(Tenant::query()->count())->toBe(0);
+});
+
+it('refuses --new-tenant for a name a customer already has, in any letter case', function (string $typed): void {
+    $existing = tselSeed('An Vinh', 'anvinh.test');
+    $tenant = Tenant::query()->findOrFail($existing->tenant_id);
+    tselGrant($tenant, 1);
+
+    // The copy-pasted --new-tenant of a second website: no second "An Vinh" with a fresh quota.
+    $this->artisan('site:provision', tselArgs('b1.test', ['--new-tenant' => $typed]))
+        ->expectsOutputToContain(__('provisioning.tenant_name_exists', [
+            'name' => $typed,
+            'candidates' => "{$tenant->ulid} \"An Vinh\"",
+        ]))
+        ->assertFailed();
+
+    expect(Tenant::query()->count())->toBe(1)
+        ->and(Site::query()->count())->toBe(1);
+})->with([
+    'same name' => ['An Vinh'],
+    'other letter case' => ['an vinh'],
+]);
+
+it('creates a second customer of the same name only with --allow-same-name', function (): void {
+    $existing = Tenant::query()->create(['name' => 'Twin Co']);
+
+    $this->artisan('site:provision', tselArgs('new.test', ['--new-tenant' => 'Twin Co', '--allow-same-name' => true]))
+        ->expectsQuestion(TSEL_PROMPT, '')
+        ->assertSuccessful();
+
+    expect(Tenant::query()->where('name', 'Twin Co')->count())->toBe(2)
+        ->and(Site::query()->sole()->tenant_id)->not->toBe($existing->id);
 });
 
 it('adds a website to an existing customer found by :dataset', function (Closure $reference): void {
@@ -320,7 +351,7 @@ it('leaves no new customer behind when its first website fails to be created', f
 it('explains every refusal in each interface language', function (string $locale): void {
     app()->setLocale($locale);
 
-    foreach (['required', 'both', 'not_found', 'ambiguous', 'did_you_mean', 'name_too_long', 'mismatch', 'host_taken'] as $reason) {
+    foreach (['required', 'both', 'not_found', 'ambiguous', 'did_you_mean', 'name_too_long', 'name_exists', 'mismatch', 'host_taken'] as $reason) {
         $key = 'provisioning.tenant_'.$reason;
         expect(__($key))->not->toBe($key);
     }

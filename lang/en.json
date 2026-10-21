@@ -977,6 +977,7 @@
     "provisioning.tenant_ambiguous": "Several customers are named \":reference\": :candidates. Run again with --tenant=<ulid> of the right one.",
     "provisioning.tenant_did_you_mean": "No customer is named exactly \":reference\". Did you mean: :candidates? Run again with --tenant=<ulid> of that customer.",
     "provisioning.tenant_name_too_long": "The customer name is too long: :max characters at most.",
+    "provisioning.tenant_name_exists": "A customer named \":name\" already exists: :candidates. To add this website to them, run again with --tenant=<ulid>. Only if this is a different customer with the same name, add --allow-same-name.",
     "provisioning.tenant_mismatch": "The website :host already exists and belongs to customer :tenant, not the one you chose. Run again with --tenant=:tenant, or without --tenant.",
     "provisioning.tenant_host_taken": "The website :host already exists (customer :tenant), so no new customer was created. To finish that website, run again with --tenant=:tenant, or without --new-tenant.",
     "provisioning.host_invalid": "\":host\" is not a hostname a website can use. Use letters, digits and hyphens, with at least two parts, e.g. shop.example.vn.",

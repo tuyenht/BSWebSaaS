@@ -50,6 +50,12 @@ final class TenantSelectionException extends DomainException
         return new self('name_too_long', ['max' => $max]);
     }
 
+    /** A new customer was asked for, but customers with that name (in any letter case) already exist. */
+    public static function nameExists(string $name, string $candidates): self
+    {
+        return new self('name_exists', ['name' => $name, 'candidates' => $candidates]);
+    }
+
     /** The hostname already has a website, owned by another customer than the one chosen. */
     public static function mismatch(string $hostname, string $ownerUlid): self
     {

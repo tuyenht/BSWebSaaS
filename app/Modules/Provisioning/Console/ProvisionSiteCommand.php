@@ -33,6 +33,7 @@ final class ProvisionSiteCommand extends Command
         {--host= : Primary hostname (e.g. anvinh.test)}
         {--tenant= : Existing customer, by ulid or exact name (required for a new website unless --new-tenant)}
         {--new-tenant= : Create a new customer with this name for the website (prints its ulid)}
+        {--allow-same-name : With --new-tenant: create it even if a customer with that name already exists}
         {--owner-email= : Owner email}
         {--owner-name=Owner : Owner display name}
         {--locale=vi : Default locale}';
@@ -129,6 +130,12 @@ final class ProvisionSiteCommand extends Command
             }
             if (mb_strlen($newName) > self::TENANT_NAME_MAX) {
                 throw TenantSelectionException::nameTooLong(self::TENANT_NAME_MAX);
+            }
+            // A copy-pasted --new-tenant would otherwise mint the same customer twice, each with its own
+            // sites.max quota. Two real customers may share a name, so this only asks to be confirmed.
+            $namesakes = $this->option('allow-same-name') === true ? '' : $find->namesakes($newName);
+            if ($namesakes !== '') {
+                throw TenantSelectionException::nameExists($newName, $namesakes);
             }
 
             return ['id' => null, 'name' => $newName, 'new' => $newName];

@@ -48,6 +48,17 @@ final readonly class FindTenant
     }
 
     /**
+     * Customers already carrying $name in any letter case, as "ULID \"name\"" ('' when none): a new
+     * customer under the same name is usually the same customer typed twice, not a second one.
+     */
+    public function namesakes(string $name): string
+    {
+        $same = $this->candidates(Tenant::query()->whereRaw('lower(name) = lower(?)', [trim($name)]));
+
+        return $same->isEmpty() ? '' : $this->describe($same);
+    }
+
+    /**
      * @param  Builder<Tenant>  $query
      * @return Collection<int, Tenant>
      */
