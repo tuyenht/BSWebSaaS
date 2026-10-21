@@ -174,8 +174,7 @@ it('still continues a raced hostname of the same customer as a re-run', function
 });
 
 it('refuses in plain words a hostname another customer commits after the re-check, writing nothing', function (): void {
-    $alpha = provisionGuarded('Alpha', 'alpha.test', 'owner@alpha.test');
-
+    // A customer with room under sites.max (none yet), so the run reaches the domain insert.
     // Another customer's run commits the same new hostname after this run's re-check under its own
     // customer's lock (the two locks do not serialize them): this run's insert then hits the unique name.
     $fired = false;
@@ -194,10 +193,11 @@ it('refuses in plain words a hostname another customer commits after the re-chec
         ]);
     });
 
-    expect(fn () => provisionGuarded('Alpha', 'late.test', 'intruder@example.test'))
+    expect(fn () => provisionGuarded('Fresh Co', 'late.test', 'owner@fresh.test'))
         ->toThrow(HostnameOwnedByAnotherTenantException::class);
 
     expect($fired)->toBeTrue()
-        ->and(Site::query()->where('tenant_id', $alpha->tenant_id)->count())->toBe(1)
-        ->and(User::query()->where('email', 'intruder@example.test')->exists())->toBeFalse();
+        ->and(Tenant::query()->where('name', 'Fresh Co')->exists())->toBeFalse()
+        ->and(Site::query()->where('name', 'Fresh Co')->exists())->toBeFalse()
+        ->and(User::query()->where('email', 'owner@fresh.test')->exists())->toBeFalse();
 });
