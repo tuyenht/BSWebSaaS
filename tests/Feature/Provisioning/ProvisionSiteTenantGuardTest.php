@@ -102,14 +102,16 @@ it('refuses through site:provision with a plain-language message and fails', fun
     provisionGuarded('Beta', 'beta.test', 'owner@beta.test');
     $before = guardFootprint();
 
+    $owner = Tenant::query()->where('name', 'Beta')->sole();
+
+    // Refused before the password prompt; the message names the ulid of the customer that owns it.
     $this->artisan('site:provision', [
         '--name' => 'Alpha',
         '--host' => 'beta.test',
         '--tenant' => 'Alpha',
         '--owner-email' => 'intruder@example.test',
     ])
-        ->expectsQuestion('Owner password (leave blank to auto-generate)', '')
-        ->expectsOutput(__('provisioning.hostname_owned_by_another_tenant', ['host' => 'beta.test']))
+        ->expectsOutputToContain(__('provisioning.tenant_mismatch', ['host' => 'beta.test', 'tenant' => $owner->ulid]))
         ->assertFailed();
 
     expect(guardFootprint())->toBe($before);
