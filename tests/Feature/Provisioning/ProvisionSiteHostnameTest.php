@@ -171,3 +171,35 @@ it('explains both refusals in every interface language', function (string $key):
     'provisioning.hostname_awaiting_another_site',
     'provisioning.host_invalid',
 ]);
+
+it('carries every other input over when the hostname is re-spelled', function (): void {
+    // Every property set to a value that differs from its default, so a field left out of
+    // withHostname() (falling back to its default) shows up here.
+    $data = new ProvisionSiteData(
+        tenantName: 'Tenant',
+        siteName: 'Site',
+        hostname: 'A1.TEST.',
+        ownerEmail: 'owner@a1.test',
+        ownerName: 'Owner',
+        ownerPassword: 'a-strong-password',
+        defaultLocale: 'en',
+        locales: ['en', 'vi'],
+        modules: ['cms'],
+        tenantId: 7,
+        profile: ['phone' => '0900000000'],
+        newTenantName: 'New Co',
+        allowSameName: true,
+    );
+
+    $copy = $data->withHostname('a1.test');
+
+    expect($copy->hostname)->toBe('a1.test')
+        ->and(array_diff_key(get_object_vars($copy), ['hostname' => true]))
+        ->toBe(array_diff_key(get_object_vars($data), ['hostname' => true]));
+
+    foreach ((new ReflectionMethod(ProvisionSiteData::class, '__construct'))->getParameters() as $parameter) {
+        if ($parameter->isDefaultValueAvailable()) {
+            expect(get_object_vars($data)[$parameter->getName()])->not->toBe($parameter->getDefaultValue());
+        }
+    }
+});

@@ -38,9 +38,26 @@ final readonly class ProvisionSiteData
         public bool $allowSameName = false,
     ) {}
 
-    /** The same inputs under another hostname (every other field carried over by name). */
+    /**
+     * The same inputs under another hostname. A new field must be carried over here too
+     * (ProvisionSiteHostnameTest compares every property).
+     */
     public function withHostname(string $hostname): self
     {
-        return new self(...['hostname' => $hostname] + get_object_vars($this));
+        return new self(
+            tenantName: $this->tenantName,
+            siteName: $this->siteName,
+            hostname: $hostname,
+            ownerEmail: $this->ownerEmail,
+            ownerName: $this->ownerName,
+            ownerPassword: $this->ownerPassword,
+            defaultLocale: $this->defaultLocale,
+            locales: $this->locales,
+            modules: $this->modules,
+            tenantId: $this->tenantId,
+            profile: $this->profile,
+            newTenantName: $this->newTenantName,
+            allowSameName: $this->allowSameName,
+        );
     }
 }
