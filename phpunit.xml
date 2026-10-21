@@ -69,6 +69,12 @@
         <server name="PULSE_ENABLED" value="false" force="true"/>
         <env name="TELESCOPE_ENABLED" value="false" force="true"/>
         <server name="TELESCOPE_ENABLED" value="false" force="true"/>
+        <!-- Fixtures provision sites on {slug}.test, so `test` is the platform base under test
+             (ProvisionSite only starts a site on a platform subdomain). -->
+        <env name="BASE_DOMAINS" value="test" force="true"/>
+        <server name="BASE_DOMAINS" value="test" force="true"/>
+        <env name="PRIMARY_BASE" value="test" force="true"/>
+        <server name="PRIMARY_BASE" value="test" force="true"/>
         <env name="NIGHTWATCH_ENABLED" value="false" force="true"/>
         <server name="NIGHTWATCH_ENABLED" value="false" force="true"/>
     </php>

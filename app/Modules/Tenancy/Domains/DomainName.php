@@ -57,6 +57,23 @@ final class DomainName
     }
 
     /**
+     * A name the platform hands out to a new site, so it is the platform's by construction and may
+     * be verified from birth: exactly one label under a platform base (`{slug}.{base}`), never `www`
+     * and never one of the platform's own hosts (console, target, media…). Anything else — a
+     * customer's domain above all — must be proven through the normal verification flow.
+     */
+    public static function isPlatformSubdomain(string $host): bool
+    {
+        $label = strstr($host, '.', true);
+
+        if ($label === false || $label === '' || $label === 'www' || in_array($host, self::serviceHosts(), true)) {
+            return false;
+        }
+
+        return in_array(substr($host, strlen($label) + 1), self::bases(), true);
+    }
+
+    /**
      * The other spelling of a name: `www.example.com` for `example.com`, `www.shop.example.com`
      * for `shop.example.com`, and the reverse.
      */
@@ -79,18 +96,46 @@ final class DomainName
      */
     private static function platformHosts(): array
     {
-        $hosts = [];
+        return array_values(array_unique([...self::serviceHosts(), ...self::bases()]));
+    }
 
-        $candidates = [
-            config('tenancy.platform_host'),
-            config('tenancy.custom_domains.target'),
+    /**
+     * The platform base domains (`tenancy.base_domains` plus `tenancy.primary_base`).
+     *
+     * @return list<string>
+     */
+    private static function bases(): array
+    {
+        return self::hosts([
             ...(is_array($bases = config('tenancy.base_domains')) ? $bases : []),
             config('tenancy.primary_base'),
-        ];
+        ]);
+    }
+
+    /**
+     * The hosts the platform itself serves on: its console, the host customers point at, the
+     * app URL, the sign-in callback and media.
+     *
+     * @return list<string>
+     */
+    private static function serviceHosts(): array
+    {
+        $candidates = [config('tenancy.platform_host'), config('tenancy.custom_domains.target')];
 
         foreach ([config('app.url'), config('admin.oauth_callback_url'), config('media.cloudflare.base'), config('media.imgproxy.base')] as $url) {
             $candidates[] = is_string($url) ? parse_url($url, PHP_URL_HOST) : null;
         }
+
+        return self::hosts($candidates);
+    }
+
+    /**
+     * @param  list<mixed>  $candidates
+     * @return list<string>
+     */
+    private static function hosts(array $candidates): array
+    {
+        $hosts = [];
 
         foreach ($candidates as $candidate) {
             $host = is_string($candidate) ? SiteResolver::normalize($candidate) : null;

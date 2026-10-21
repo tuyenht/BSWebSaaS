@@ -6,6 +6,7 @@ namespace App\Modules\Provisioning\Console;
 
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Provisioning\Exceptions\HostnameNotPlatformSubdomainException;
 use App\Modules\Provisioning\Exceptions\HostnameOwnedByAnotherTenantException;
 use App\Modules\Provisioning\Exceptions\SiteLimitReachedException;
 use App\Modules\Shared\Support\Cast;
@@ -20,7 +21,7 @@ final class ProvisionSiteCommand extends Command
     #[\Override]
     protected $signature = 'site:provision
         {--name= : Site name}
-        {--host= : Primary hostname (e.g. anvinh.test)}
+        {--host= : Platform subdomain, e.g. shop.example.net (attach a customer domain afterwards with site:domain)}
         {--tenant= : Tenant name (defaults to the site name)}
         {--owner-email= : Owner email}
         {--owner-name=Owner : Owner display name}
@@ -54,6 +55,13 @@ final class ProvisionSiteCommand extends Command
                 ownerPassword: is_string($secret) && $secret !== '' ? $secret : null,
                 defaultLocale: $this->stringOption('locale') ?: 'vi',
             ));
+        } catch (HostnameNotPlatformSubdomainException $e) {
+            $this->error(Cast::string(__('provisioning.hostname_not_platform_subdomain', [
+                'host' => $e->hostname,
+                'base' => Cast::string(config('tenancy.primary_base')),
+            ])));
+
+            return self::FAILURE;
         } catch (HostnameOwnedByAnotherTenantException $e) {
             $this->error(Cast::string(__('provisioning.hostname_owned_by_another_tenant', ['host' => $e->hostname])));
 

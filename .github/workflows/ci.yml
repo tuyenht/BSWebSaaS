@@ -304,6 +304,9 @@ jobs:
       AUTH_PASSWORD_PEPPER: test-only-pepper-not-a-secret
       SETTINGS_ENCRYPTION_KEY: test-only-settings-key-32bytes!!
       CWV_HOST: cwv-ci.test
+      # site:provision only starts a site on a platform subdomain: cwv-ci.test is one under `test`.
+      BASE_DOMAINS: test
+      PRIMARY_BASE: test
       CWV_PORT: 8099
 
     steps:

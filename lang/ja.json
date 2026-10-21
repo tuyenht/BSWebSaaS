@@ -969,6 +969,7 @@
     "monitoring.mail.summary.failed_job_line": ":job: :count 件",
     "monitoring.mail.summary.commands": "失敗した定期コマンド:",
     "monitoring.mail.summary.command_line": ":command: :count 回",
+    "provisioning.hostname_not_platform_subdomain": "アドレス :host はプラットフォームのサブドメインではないため、何も変更されていません。新しいウェブサイトは your-site.:base のような名前で始めます。お客様独自のドメインは後から site:domain で追加し、公開前に確認されます。",
     "provisioning.hostname_owned_by_another_tenant": "アドレス :host は既に別のお客様のウェブサイトに属しているため、何も変更されていません。--host を確認するか、所有しているお客様の正確な名前を --tenant に指定してください。",
     "provisioning.sites_limit_reached": "ウェブサイト数の上限に達しました。このお客様のプランの上限は :limit 件で、すでに :count 件あります。追加するには、より多く利用できるプランに変更してください。",
     "validation.attributes": {

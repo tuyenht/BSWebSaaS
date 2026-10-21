@@ -969,6 +969,7 @@
     "monitoring.mail.summary.failed_job_line": ":job: :count jobs",
     "monitoring.mail.summary.commands": "Scheduled commands that failed:",
     "monitoring.mail.summary.command_line": ":command: :count times",
+    "provisioning.hostname_not_platform_subdomain": "The address :host is not a platform subdomain, so nothing was changed. A new website starts on a name like your-site.:base; attach the customer's own domain afterwards with site:domain, where it is verified before it goes live.",
     "provisioning.hostname_owned_by_another_tenant": "The address :host already belongs to another customer's website, so nothing was changed. Check --host, or pass --tenant with the exact name of the customer who owns it.",
     "provisioning.sites_limit_reached": "Website limit reached: this customer's plan allows :limit and they already have :count. To add another website, move them to a plan that allows more.",
     "validation.attributes": {
