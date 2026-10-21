@@ -172,3 +172,32 @@ it('still continues a raced hostname of the same customer as a re-run', function
     expect($site->tenant_id)->toBe($alpha->tenant_id)
         ->and($site->name)->toBe('Racer');
 });
+
+it('refuses in plain words a hostname another customer commits after the re-check, writing nothing', function (): void {
+    $alpha = provisionGuarded('Alpha', 'alpha.test', 'owner@alpha.test');
+
+    // Another customer's run commits the same new hostname after this run's re-check under its own
+    // customer's lock (the two locks do not serialize them): this run's insert then hits the unique name.
+    $fired = false;
+    DB::listen(function (QueryExecuted $query) use (&$fired): void {
+        $sql = strtolower($query->sql);
+        if ($fired || $query->connectionName === 'pgsql_admin' || ! str_contains($sql, 'count(') || ! str_contains($sql, 'from "sites"')) {
+            return;
+        }
+        $fired = true;
+
+        $tenant = Tenant::on('pgsql_admin')->create(['name' => 'Racer']);
+        $site = Site::on('pgsql_admin')->create(['tenant_id' => $tenant->id, 'name' => 'Racer', 'status' => 'active']);
+        Domain::on('pgsql_admin')->create([
+            'site_id' => $site->id, 'hostname' => 'late.test', 'kind' => 'subdomain',
+            'is_primary' => true, 'verified_at' => now(),
+        ]);
+    });
+
+    expect(fn () => provisionGuarded('Alpha', 'late.test', 'intruder@example.test'))
+        ->toThrow(HostnameOwnedByAnotherTenantException::class);
+
+    expect($fired)->toBeTrue()
+        ->and(Site::query()->where('tenant_id', $alpha->tenant_id)->count())->toBe(1)
+        ->and(User::query()->where('email', 'intruder@example.test')->exists())->toBeFalse();
+});
