@@ -1,0 +1,135 @@
+# TEMPORARY (PR #267): hand-mutation evidence for the tenant-selection tests, which were written
+# alongside the code and never run red first. Each job applies ONE mutation and must see the
+# provisioning tests fail; `baseline` must pass. Removed in the next commit.
+name: tmp-mutation-check
+
+on:
+  push:
+    branches: [claude/peaceful-tesla-hhbz1d]
+    paths: [.github/workflows/tmp-mutation-check.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  mutate:
+    name: ${{ matrix.id }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { id: baseline, file: '', old: '', new: '' }
+          - { id: M01-ambiguous-picks-first, file: app/Modules/Provisioning/Actions/FindTenant.php, old: 'if ($exact->count() === 1) {', new: 'if ($exact->isNotEmpty()) {' }
+          - { id: M02-case-match-auto-picked, file: app/Modules/Provisioning/Actions/FindTenant.php, old: 'throw TenantSelectionException::didYouMean($reference, $this->describe($similar));', new: 'return $similar->firstOrFail();' }
+          - { id: M03-ulid-case-sensitive, file: app/Modules/Provisioning/Actions/FindTenant.php, old: "where('ulid', strtoupper($reference))", new: "where('ulid', $reference)" }
+          - { id: M04-soft-deleted-found, file: app/Modules/Provisioning/Actions/FindTenant.php, old: "Tenant::query()->where('ulid'", new: "Tenant::withTrashed()->where('ulid'" }
+          - { id: M05-no-customer-falls-back-to-name, file: app/Modules/Provisioning/Console/ProvisionSiteCommand.php, old: 'throw TenantSelectionException::required();', new: "return ['id' => null, 'name' => $this->stringOption('name'), 'new' => null];" }
+          - { id: M06-both-flags-accepted, file: app/Modules/Provisioning/Console/ProvisionSiteCommand.php, old: "if ($reference !== '' && $newName !== '') {", new: 'if (false) {' }
+          - { id: M07-no-early-mismatch, file: app/Modules/Provisioning/Console/ProvisionSiteCommand.php, old: 'if ($owner !== null && $owner->id !== $tenant->id) {', new: 'if (false) {' }
+          - { id: M08-no-early-host-taken, file: app/Modules/Provisioning/Console/ProvisionSiteCommand.php, old: "if ($owner !== null) {\n                throw TenantSelectionException::hostTaken", new: "if (false) {\n                throw TenantSelectionException::hostTaken" }
+          - { id: M09-name-length-unchecked, file: app/Modules/Provisioning/Console/ProvisionSiteCommand.php, old: 'if (mb_strlen($newName) > self::TENANT_NAME_MAX) {', new: 'if (false) {' }
+          - { id: M10-namesake-unchecked, file: app/Modules/Provisioning/Console/ProvisionSiteCommand.php, old: 'if ($namesakes !== '''') {', new: 'if (false) {' }
+          - { id: M11-override-ignored, file: app/Modules/Provisioning/Console/ProvisionSiteCommand.php, old: "$this->option('allow-same-name') === true ? '' :", new: '' }
+          - { id: M12-host-not-normalized, file: app/Modules/Provisioning/Console/ProvisionSiteCommand.php, old: '$host = SiteResolver::normalize($rawHost);', new: "$host = $rawHost === '' ? null : $rawHost;" }
+          - { id: M13-action-host-taken-dropped, file: app/Modules/Provisioning/Actions/ProvisionSite.php, old: 'if ($data->newTenantName !== null && $owner !== null) {', new: 'if (false) {' }
+          - { id: M14-new-tenant-reuses-by-name, file: app/Modules/Provisioning/Actions/ProvisionSite.php, old: "return Tenant::query()->create(['name' => $data->newTenantName]);", new: "return Tenant::query()->firstOrCreate(['name' => $data->newTenantName]);" }
+          - { id: M15-action-other-customer-accepted, file: app/Modules/Provisioning/Actions/ProvisionSite.php, old: 'if (! $named) {', new: 'if (false) {' }
+          - { id: M16-vi-translation-missing, file: lang/vi.json, old: '"provisioning.tenant_name_exists":', new: '"provisioning.tenant_name_exists_x":' }
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: bswebsaas
+          POSTGRES_USER: bsweb
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bsweb -d bswebsaas"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      valkey:
+        image: valkey/valkey:8.1-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: bswebsaas
+      DB_USERNAME: app_user
+      DB_PASSWORD: app_secret
+      DB_ADMIN_HOST: 127.0.0.1
+      DB_ADMIN_PORT: 5432
+      DB_ADMIN_USERNAME: bsweb
+      DB_ADMIN_PASSWORD: secret
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+      MUT_FILE: ${{ matrix.file }}
+      MUT_OLD: ${{ matrix.old }}
+      MUT_NEW: ${{ matrix.new }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql, pgsql, redis, intl, zip, bcmath, gd, pcntl, sodium, pdo_sqlite, sqlite3
+          ini-values: upload_max_filesize=12M, post_max_size=16M, memory_limit=512M
+          coverage: none
+          tools: composer:v2
+
+      - uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-interaction --no-progress --prefer-dist
+
+      - run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan migrate --database=pgsql_admin --force
+
+      - name: Apply the mutation (exactly one occurrence)
+        if: matrix.file != ''
+        run: |
+          python3 - <<'EOF'
+          import os
+          p, old, new = os.environ['MUT_FILE'], os.environ['MUT_OLD'], os.environ['MUT_NEW']
+          s = open(p).read()
+          n = s.count(old)
+          assert n == 1, f'{p}: expected 1 occurrence, found {n}'
+          open(p, 'w').write(s.replace(old, new, 1))
+          print(f'mutated {p}')
+          EOF
+          git diff --stat
+
+      - name: Provisioning tests
+        id: pest
+        continue-on-error: true
+        run: vendor/bin/pest tests/Feature/Provisioning tests/Arch/HostResolutionChokepointTest.php
+
+      - name: Verdict
+        run: |
+          outcome='${{ steps.pest.outcome }}'
+          if [ '${{ matrix.id }}' = baseline ]; then
+            [ "$outcome" = success ] && echo 'BASELINE GREEN' || { echo 'BASELINE RED'; exit 1; }
+          else
+            [ "$outcome" = failure ] && echo 'MUTANT KILLED' || { echo 'MUTANT SURVIVED'; exit 1; }
+          fi
