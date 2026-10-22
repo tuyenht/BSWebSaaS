@@ -90,6 +90,7 @@ it('never lets a customer attach a name that belongs to the platform', function 
     'the host customers point at' => ['target.platform.test'],
     'a platform base domain' => ['platform.test'],
     'any name under a base domain' => ['someone-else.platform.test'],
+    'a reserved label under a base domain' => ['admin.platform.test'],
 ]);
 
 // ── Attaching ───────────────────────────────────────────────────────────────────────────────

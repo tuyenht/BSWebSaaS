@@ -1,5 +1,7 @@
 <?php
 
+use App\Modules\Tenancy\Domains\DomainName;
+
 return [
 
     /*
@@ -32,6 +34,28 @@ return [
     ))),
 
     'primary_base' => env('PRIMARY_BASE', 'baoson.net'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reserved labels (never a new site's {slug} under a platform base)
+    |--------------------------------------------------------------------------
+    |
+    | Names kept for the platform's own services, whether or not the service runs yet
+    | (admin., api., mail., sgtm. per ADR-22…): a site provisioned on one would hand a
+    | customer a name the platform needs. The defaults (DomainName::RESERVED_LABELS) ALWAYS apply,
+| even with a stale config cache; TENANCY_RESERVED_LABELS
+    | (comma-separated) only adds to them, so a typo in an env file can never drop `admin`.
+    | Whole-label match: `admins` or `my-admin` stay free. Generic shop words (shop, store,
+    | blog) and environment words (demo, staging) are left to customers on purpose.
+    */
+
+    'reserved_labels' => array_values(array_unique(array_filter(
+        array_map(fn (string $label): string => strtolower(trim($label)), [
+            ...DomainName::RESERVED_LABELS,
+            ...explode(',', (string) env('TENANCY_RESERVED_LABELS', '')),
+        ]),
+        fn (string $label): bool => $label !== '' && ! str_contains($label, '.'),
+    ))),
 
     /*
     |--------------------------------------------------------------------------

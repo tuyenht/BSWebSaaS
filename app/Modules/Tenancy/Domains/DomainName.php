@@ -14,6 +14,31 @@ use App\Modules\Tenancy\Exceptions\DomainChangeRejectedException;
 final class DomainName
 {
     /**
+     * Labels kept for the platform's own services under every platform base. They always apply,
+     * whatever `tenancy.reserved_labels` holds (that key only adds to them), so a stale config
+     * cache or a runtime config change can never switch the check off.
+     */
+    public const RESERVED_LABELS = [
+        // Control plane and sign-in
+        'admin', 'administrator', 'api', 'app', 'auth', 'account', 'accounts', 'console',
+        'dashboard', 'id', 'login', 'logout', 'oauth', 'panel', 'platform', 'portal', 'root',
+        'signin', 'signup', 'sso', 'system',
+        // Media and static files
+        'assets', 'cdn', 'companion', 'files', 'images', 'img', 'media', 'static', 'upload', 'uploads',
+        // First-party tracking (ADR-22)
+        'analytics', 'collect', 'events', 'gtm', 'sgtm', 'track', 'tracking',
+        // Mail and DNS (dns1/dns2 are the platform's own name servers)
+        'autoconfig', 'autodiscover', 'dns', 'email', 'imap', 'mail', 'mx', 'ns', 'ns1', 'ns2',
+        'ns3', 'ns4', 'dns1', 'dns2', 'mta-sts', 'pop', 'pop3', 'smtp', 'webmail', 'wpad',
+        // Hosts the web server already answers itself (Caddyfile)
+        'website', 'default', 'master',
+        // Operations
+        'ci', 'db', 'ftp', 'git', 'horizon', 'logs', 'metrics', 'monitor', 'sftp', 'ssh', 'status', 'vpn',
+        // Money and support
+        'billing', 'docs', 'help', 'invoice', 'pay', 'payment', 'payments', 'support',
+    ];
+
+    /**
      * The stored form: lower-case ASCII (punycode for names with diacritics), no scheme, port,
      * path or trailing dot. People paste whole addresses, so `https://Công-Ty.vn/lien-he` is fine.
      *
@@ -58,19 +83,41 @@ final class DomainName
 
     /**
      * A name the platform hands out to a new site, so it is the platform's by construction and may
-     * be verified from birth: exactly one label under a platform base (`{slug}.{base}`), never `www`
-     * and never one of the platform's own hosts (console, target, media…). Anything else — a
-     * customer's domain above all — must be proven through the normal verification flow.
+     * be verified from birth: exactly one plain ASCII label under a platform base (`{slug}.{base}`),
+     * never `www`, never punycode (`xn--`, which can render as a look-alike of a reserved name),
+     * never a reserved label (`tenancy.reserved_labels`) and never one of the platform's own hosts
+     * (console, target, media…). Anything else — a customer's domain above all — must be proven
+     * through the normal verification flow.
      */
     public static function isPlatformSubdomain(string $host): bool
     {
         $label = strstr($host, '.', true);
 
-        if ($label === false || $label === '' || $label === 'www' || in_array($host, self::serviceHosts(), true)) {
+        if ($label === false || $label === '' || $label === 'www' || str_starts_with($label, 'xn--')
+            || in_array($host, self::serviceHosts(), true) || self::reservedLabel($host) !== null) {
             return false;
         }
 
         return in_array(substr($host, strlen($label) + 1), self::bases(), true);
+    }
+
+    /**
+     * The label of a `{label}.{base}` name when that label is kept for the platform's own services
+     * (`tenancy.reserved_labels`), else null — so a refusal can name it.
+     */
+    public static function reservedLabel(string $host): ?string
+    {
+        $label = strstr($host, '.', true);
+
+        if ($label === false || ! in_array(substr($host, strlen($label) + 1), self::bases(), true)) {
+            return null;
+        }
+
+        $added = config('tenancy.reserved_labels');
+
+        return in_array($label, self::RESERVED_LABELS, true) || (is_array($added) && in_array($label, $added, true))
+            ? $label
+            : null;
     }
 
     /**

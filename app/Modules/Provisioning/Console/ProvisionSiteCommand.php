@@ -188,12 +188,15 @@ final class ProvisionSiteCommand extends Command
         return $site === null ? null : Tenant::query()->find($site->tenant_id, ['id', 'ulid', 'name']);
     }
 
+    /** A reserved label (admin., api., mail.…) is named, so the operator knows to pick another slug. */
     private function notPlatformSubdomain(string $host): int
     {
-        $this->error(Cast::string(__('provisioning.hostname_not_platform_subdomain', [
-            'host' => $host,
-            'base' => Cast::string(config('tenancy.primary_base')),
-        ])));
+        $base = Cast::string(config('tenancy.primary_base'));
+        $label = DomainName::reservedLabel($host);
+
+        $this->error(Cast::string($label !== null
+            ? __('provisioning.hostname_reserved_label', ['label' => $label, 'base' => $base])
+            : __('provisioning.hostname_not_platform_subdomain', ['host' => $host, 'base' => $base])));
 
         return self::FAILURE;
     }
