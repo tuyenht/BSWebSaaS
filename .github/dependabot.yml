@@ -6,6 +6,9 @@
 # Never a major for npm or composer (CLAUDE.md §1): both ignore semver-major. The ignore rule also
 # applies to security pull requests, so an advisory fixed only in a new major (basic-ftp 6.x,
 # uuid 11.x) gets an alert but no pull request. That is the point: a major is a planned upgrade.
+# The ignore rule only covers the packages a pull request is about: a composer group update runs
+# with --with-all-dependencies and moved indirect packages across a major (guzzle 7 → 8). The
+# `conflict` block in composer.json holds those; lift an entry there when its major is planned.
 # GitHub Actions are the exception (see their entry).
 #
 # Each pull request runs every CI job: lockfiles, manifests and workflows all fall under the
@@ -65,6 +68,10 @@ updates:
       # to download a new binary and the server never comes up. Drop this once the image is rebuilt.
       - dependency-name: 'laravel/octane'
         versions: ['>=2.22']
+      # Boost 2.5+ needs laravel/roster 1.x (a major of an indirect dev package). Drop this once that
+      # upgrade is agreed.
+      - dependency-name: 'laravel/boost'
+        versions: ['>=2.5']
     groups:
       composer-minor-patch:
         applies-to: version-updates
