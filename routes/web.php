@@ -301,6 +301,12 @@ Route::post('/forms/{key}', FormSubmissionController::class)
 Route::get('/sitemap.xml', SitemapController::class)
     ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
 
+// Numbered pages of a site over the 50,000-URL limit, listed by /sitemap.xml's <sitemapindex>.
+// {page} is a position (1, 2, …), never a route id; a leading zero falls through to a 404.
+Route::get('/sitemap-{page}.xml', [SitemapController::class, 'page'])
+    ->where('page', '[1-9][0-9]{0,5}')
+    ->middleware([ServeOnPrimaryDomain::class, SetCurrentSite::class, 'site.active']);
+
 Route::get('/robots.txt', function (Request $request) {
     $sitemap = $request->getScheme().'://'.$request->getHost().'/sitemap.xml';
 

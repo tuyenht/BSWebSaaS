@@ -1,0 +1,266 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Modules\Storefront\Support;
+
+use App\Modules\Catalog\Models\Product;
+use App\Modules\Cms\Models\SiteRoute;
+use App\Modules\Shared\Support\Cast;
+use App\Modules\Tenancy\Context\CurrentSite;
+use App\Modules\Tenancy\Context\SiteLocale;
+use Carbon\CarbonInterface;
+use Closure;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\ServiceUnavailableHttpException;
+
+/**
+ * The routes of the current site a visitor can actually open, read in (path, id) keyset order
+ * for sitemap.xml and its numbered pages.
+ *
+ * A route is listed only when the storefront would render it — a URL that 404s costs the site
+ * crawl budget and shows up as an error in Google Search Console:
+ *  - its language is one the site has made public;
+ *  - an entry route: the entry is published (soft-deletes respected) AND its translation in the
+ *    route's language is published;
+ *  - a category route: the category has a translation in the route's language;
+ *  - a product route: the product is published (soft-deletes respected) and has a translation in
+ *    the route's language. Cms's SiteRoute stays Catalog-agnostic (no product relation), so the
+ *    Storefront matches product_id against a Catalog subquery here.
+ *
+ * Pages of a site over the limit are keyset slices: page n starts at the n-th cursor of a page
+ * plan — the (path, id) of every max-th listed route, found by one window-function pass that
+ * returns only the boundaries. The plan is cached per site for `cms.sitemap.plan_ttl` seconds,
+ * so the whole-site pass runs once per TTL, never per request; nothing busts it on publish, so a
+ * page can lag the content by up to the TTL (a sitemap is a crawl hint — the urls themselves
+ * stay correct). The cursor ids live only server-side; page numbers are positions, not ids.
+ */
+final readonly class SitemapRoutes
+{
+    public function __construct(
+        private SiteLocale $locales,
+        private CurrentSite $site,
+    ) {}
+
+    /** URLs per file: config, clamped to the sitemaps.org ceiling of 50,000. */
+    public function maxUrls(): int
+    {
+        return min(50000, max(1, Cast::int(config('cms.sitemap.max_urls'), 50000)));
+    }
+
+    /**
+     * Up to $limit listed routes in (path, id) order, from $from (inclusive) up to $to
+     * (exclusive) when given. Bounding a page by the next page's cursor keeps a URL from being
+     * listed twice when routes before it were removed while the plan was cached.
+     *
+     * Rows are read as plain arrays rather than hydrated models: a 50,000-URL page would
+     * otherwise hold 50,000 SiteRoute objects (and their Carbon dates) at once. PDO still buffers
+     * the whole result set client-side, so this saves the models, not the transfer. lastmod goes
+     * through the model's own datetime cast, so the output format is the model's.
+     *
+     * @param  array{0: string, 1: int}|null  $from
+     * @param  array{0: string, 1: int}|null  $to
+     * @return list<array{path: string, locale: string, lastmod: string|null}>
+     */
+    public function slice(?array $from, int $limit, ?array $to = null): array
+    {
+        $this->withoutJit();
+
+        $rows = $this->listed()
+            ->when($from !== null, fn (Builder $query) => $query->whereRaw('(routes.path, routes.id) >= (?, ?)', $from))
+            ->when($to !== null, fn (Builder $query) => $query->whereRaw('(routes.path, routes.id) < (?, ?)', $to))
+            ->orderBy('routes.path')
+            ->orderBy('routes.id')
+            ->limit($limit)
+            ->select(['routes.path', 'routes.locale', 'routes.updated_at'])
+            ->toBase()
+            ->cursor();
+
+        $cast = new SiteRoute;
+        $slice = [];
+        foreach ($rows as $row) {
+            $updated = $cast->setRawAttributes(['updated_at' => $row->updated_at])->getAttribute('updated_at');
+            $slice[] = [
+                'path' => Cast::string($row->path),
+                'locale' => Cast::string($row->locale),
+                'lastmod' => $updated instanceof CarbonInterface ? $updated->toAtomString() : null,
+            ];
+        }
+
+        return $slice;
+    }
+
+    /**
+     * The start cursor of every page, cached per site. A one-entry plan means the site fits in
+     * a single file.
+     *
+     * @return list<array{0: string, 1: int}>
+     */
+    public function plan(): array
+    {
+        return $this->cachedPlan() ?? $this->build(fn (array $cached): bool => true);
+    }
+
+    /**
+     * The plan rebuilt now, replacing a cached one-page plan the site has outgrown.
+     *
+     * @return list<array{0: string, 1: int}>
+     */
+    public function freshPlan(): array
+    {
+        $cached = $this->cachedPlan();
+
+        return $cached !== null && count($cached) > 1
+            ? $cached
+            : $this->build(fn (array $cached): bool => count($cached) > 1);
+    }
+
+    /**
+     * Builds and caches the plan under a per-site lock, so the requests that find it missing at
+     * TTL expiry (a crawler fetches the index and its pages in parallel) run the whole-site pass
+     * once between them: 8-10 s per million routes, measured. A request that finds the lock taken
+     * waits `plan_lock_wait` seconds (default 0) and reuses what the peer cached when $usable
+     * accepts it. Failing that it serves the last plan built for the site, kept TTL x 24 so an
+     * expired plan still answers while it is rebuilt (pages stay correct: each is bounded by the
+     * next cursor and an emptied one 404s); only with no usable plan at all does it get a 503
+     * with Retry-After, which crawlers retry. Waiting is off by
+     * default because it happens inside the tenant transaction: each waiter pins a PgBouncer
+     * server connection from the pool every tenant shares, while a 503 frees it at once. The lock
+     * expires on its own after the 30 s request ceiling should its holder die mid-pass. That
+     * ceiling caps an in-request build at roughly 2.5M listed routes per site; past it the plan
+     * must be built off-request (a queued per-site job) — an index does not help, the pass is the
+     * per-route visibility checks (an index on (site_id, path, id) measured no faster).
+     *
+     * @param  Closure(list<array{0: string, 1: int}>): bool  $usable
+     * @return list<array{0: string, 1: int}>
+     */
+    private function build(Closure $usable): array
+    {
+        $max = $this->maxUrls();
+        $key = $this->planKey($max);
+        $lock = Cache::lock($key.':lock', 30);
+
+        try {
+            $lock->block(max(0, Cast::int(config('cms.sitemap.plan_lock_wait'), 0)));
+        } catch (LockTimeoutException) {
+            $stale = $this->readPlan($this->staleKey($max));
+            if ($stale !== null && $usable($stale)) {
+                return $stale;
+            }
+
+            throw new ServiceUnavailableHttpException(30);
+        }
+
+        try {
+            $cached = $this->cachedPlan(); // a peer may have built it while we waited
+            if ($cached !== null && $usable($cached)) {
+                return $cached;
+            }
+
+            $plan = $this->boundaries($max);
+            // At least a minute: a TTL of 0 would run the whole-site pass on every page request.
+            $ttl = max(60, Cast::int(config('cms.sitemap.plan_ttl'), 3600));
+            Cache::put($key, $plan, $ttl);
+            Cache::put($this->staleKey($max), $plan, $ttl * 24);
+
+            return $plan;
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * The cached plan when one exists, without building it. A value of any other shape (a
+     * failed write, an older format) counts as no plan, so it is rebuilt instead of reaching SQL.
+     *
+     * @return list<array{0: string, 1: int}>|null
+     */
+    public function cachedPlan(): ?array
+    {
+        return $this->readPlan($this->planKey($this->maxUrls()));
+    }
+
+    /** @return list<array{0: string, 1: int}>|null */
+    private function readPlan(string $key): ?array
+    {
+        $cached = Cache::get($key);
+        if (! is_array($cached) || $cached === []) {
+            return null;
+        }
+
+        $plan = [];
+        foreach ($cached as $cursor) {
+            if (! is_array($cursor) || ! is_string($cursor[0] ?? null) || ! is_int($cursor[1] ?? null)) {
+                return null;
+            }
+            $plan[] = [$cursor[0], $cursor[1]];
+        }
+
+        return $plan;
+    }
+
+    private function planKey(int $max): string
+    {
+        return 'sitemap-plan:v1:'.$this->site->id().':'.$max;
+    }
+
+    private function staleKey(int $max): string
+    {
+        return $this->planKey($max).':stale';
+    }
+
+    /** @return list<array{0: string, 1: int}> */
+    private function boundaries(int $max): array
+    {
+        $this->withoutJit();
+
+        $numbered = $this->listed()
+            ->select(['routes.path', 'routes.id'])
+            ->selectRaw('row_number() over (order by routes.path, routes.id) as position');
+
+        return array_values(DB::query()
+            ->fromSub($numbered->toBase(), 'listed')
+            ->whereRaw('(position - 1) % ? = 0', [$max])
+            ->orderBy('position')
+            ->get(['path', 'id'])
+            ->map(fn (object $row): array => [Cast::string($row->path), Cast::int($row->id)])
+            ->all());
+    }
+
+    /**
+     * The listing filter is correlated subqueries over the whole site: on a big site the planner's
+     * cost estimate crosses jit_above_cost and JIT compilation alone adds ~0.4 s per query while
+     * saving nothing (measured at 120k routes). SET LOCAL ends with the tenant transaction.
+     */
+    private function withoutJit(): void
+    {
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('SET LOCAL jit = off');
+        }
+    }
+
+    /** @return Builder<SiteRoute> */
+    private function listed(): Builder
+    {
+        return SiteRoute::query()
+            ->whereIn('locale', $this->locales->public())
+            ->where(function (Builder $query): void {
+                $query->whereHas('entry', fn (Builder $entry) => $entry
+                    ->where('status', 'published')
+                    ->whereHas('translations', fn (Builder $translation) => $translation
+                        ->whereColumn('entry_translations.locale', 'routes.locale')
+                        ->where('entry_translations.status', 'published')))
+                    ->orWhereHas('taxonomy', fn (Builder $taxonomy) => $taxonomy
+                        ->whereHas('translations', fn (Builder $translation) => $translation
+                            ->whereColumn('taxonomy_translations.locale', 'routes.locale')))
+                    ->orWhereIn('product_id', Product::query()
+                        ->select('products.id')
+                        ->where('status', 'published')
+                        ->whereHas('translations', fn (Builder $translation) => $translation
+                            ->whereColumn('product_translations.locale', 'routes.locale')));
+            });
+    }
+}
