@@ -370,7 +370,7 @@ jobs:
       # "session not created" on some future runner image, for reasons nothing here would explain.
       - name: Install a Chrome + matching chromedriver pair
         id: chrome
-        uses: browser-actions/setup-chrome@v1
+        uses: browser-actions/setup-chrome@v2
         with:
           chrome-version: stable
           install-chromedriver: true
