@@ -70,7 +70,7 @@ final readonly class WorkflowEngine
      * $target records WHAT moved, so the trail can tell a live entry leaving the site apart from a
      * pending change to it passing through the same stages. The engine does not interpret it.
      *
-     * @param  self::TARGET_*  $target
+     * @param  string  $target  self::TARGET_ENTRY or self::TARGET_CHANGE, checked here at run time
      *
      * @throws \InvalidArgumentException an unknown $target (a programming error, never user input)
      * @throws InvalidTransitionException unknown edge, wrong origin, or a missing required note

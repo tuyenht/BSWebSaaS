@@ -61,6 +61,10 @@ updates:
     ignore:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
+      # Octane 2.22 needs FrankenPHP >= 1.13 and the app image ships 1.12.4: octane:start then tries
+      # to download a new binary and the server never comes up. Drop this once the image is rebuilt.
+      - dependency-name: 'laravel/octane'
+        versions: ['>=2.22']
     groups:
       composer-minor-patch:
         applies-to: version-updates

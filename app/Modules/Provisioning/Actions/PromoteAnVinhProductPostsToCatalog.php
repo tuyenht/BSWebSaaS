@@ -197,10 +197,8 @@ final readonly class PromoteAnVinhProductPostsToCatalog
             ->with('translations', function (Relation $query) use ($locale): void {
                 $query->where('locale', $locale);
             })
-            ->with('taxonomies', function (Relation $query): void {
-                if ($query instanceof BelongsToMany) {
-                    $query->orderByPivot('position');
-                }
+            ->with('taxonomies', function (BelongsToMany $query): void {
+                $query->orderByPivot('position');
             })
             ->get()
             ->filter(fn (Entry $entry): bool => $entry->primaryCategory()?->id === $taxonomyId)

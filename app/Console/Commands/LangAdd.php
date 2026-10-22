@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Console\Command;
 
 /**
@@ -21,8 +22,8 @@ class LangAdd extends Command
 
     public function handle(): int
     {
-        $code = (string) $this->argument('code');
-        $base = (string) $this->option('base');
+        $code = Cast::string($this->argument('code'));
+        $base = Cast::string($this->option('base'));
         $dir = lang_path();
         $baseFile = $dir.DIRECTORY_SEPARATOR.$base.'.json';
         $target = $dir.DIRECTORY_SEPARATOR.$code.'.json';

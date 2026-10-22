@@ -28,6 +28,7 @@ final readonly class PageRenderer
      */
     public function render(string $type, ?string $templateOverride, string $title, array $body, array $seo = [], ?string $categoryTemplate = null, array $extra = []): string
     {
+        /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor($type, $templateOverride, $categoryTemplate);
 
         return $this->views->make($layout, [
@@ -51,6 +52,7 @@ final readonly class PageRenderer
      */
     public function renderCategory(?string $listTemplate, string $title, array $posts, array $pagination = [], array $seo = [], array $extra = []): string
     {
+        /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('category', null, $listTemplate);
 
         return $this->views->make($layout, [
@@ -75,6 +77,7 @@ final readonly class PageRenderer
      */
     public function renderProduct(string $name, string $descriptionHtml, array $images, array $seo = [], array $extra = []): string
     {
+        /** @var view-string $layout a theme layout name (TemplateResolver) */
         $layout = $this->templates->layoutFor('product');
 
         return $this->views->make($layout, [

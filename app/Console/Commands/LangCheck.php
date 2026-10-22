@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Modules\Shared\Support\Cast;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
 
@@ -21,7 +22,7 @@ class LangCheck extends Command
 
     public function handle(): int
     {
-        $base = (string) $this->option('base');
+        $base = Cast::string($this->option('base'));
         $dir = lang_path();
         $files = glob($dir.DIRECTORY_SEPARATOR.'*.json') ?: [];
 
