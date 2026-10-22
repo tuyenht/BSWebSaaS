@@ -46,7 +46,7 @@ jobs:
       pages: ${{ steps.classify.outputs.pages }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The merge commit plus its parents: HEAD^1 is the base branch, HEAD^2 the pull request.
           fetch-depth: 2
@@ -162,7 +162,7 @@ jobs:
       SESSION_DRIVER: redis
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
@@ -217,7 +217,7 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The merge commit plus its base parent: the legacy-token check diffs against HEAD^1.
           fetch-depth: 2
@@ -310,7 +310,7 @@ jobs:
       CWV_PORT: 8099
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
