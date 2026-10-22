@@ -30,6 +30,10 @@ final class SyncRbac extends Command
     public function handle(PermissionRegistrar $registrar): int
     {
         try {
+            // findOrCreate reads the cached catalog: after migrate:fresh or a restored backup that cache
+            // still lists rows the tables no longer hold, so nothing would be created and the role sync
+            // below would fail on a missing permission.
+            $registrar->forgetCachedPermissions();
             $registrar->setPermissionsTeamId(PermissionRegistry::PLATFORM_TEAM_ID);
 
             foreach (PermissionRegistry::permissions() as $name) {
