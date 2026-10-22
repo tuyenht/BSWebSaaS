@@ -133,12 +133,14 @@ docker compose restart horizon                                  # after Job/List
 
 ## 8. Workflow per issue
 
+0. **Look for parallel work first:** fetch `origin`, list the open PRs and remote branches that touch the files you will change (`gh pr list --search`, `git log origin/main..origin/<branch> -- <path>`), and build on the newest `main`. A brief from the owner names such PRs when it knows them. Several sessions often run at once; skipping this produced duplicate PRs on the same file.
 1. Read the relevant `docs/design.md` section (referenced by the issue).
 2. **Classify (§10.1)** → ACT or COUNCIL. COUNCIL-class or non-trivial: restate the problem + edge cases + implicit assumptions, then wait for approval.
 3. **Tests first** (or alongside) — correct behavior + security invariants.
 4. Minimal implementation until green.
 5. Guardrails (§6) green.
 6. Small commit, clear message; one thing per PR. The dev tree is shared with parallel sessions: `git add <paths>` (never `-A`) and check `git diff --cached --name-only`.
+7. **Done means proposed:** a finished branch gets its PR (or is merged) before the session reports done; a pushed branch with no PR is not done. A session that queues follow-ups for parallel or cloud runs sends at most one task per file at a time.
 
 **UI without a design handoff = don't build it** (owner, every session): still do the backend + tests (ACT), mark the UI `⏸ awaiting design`, and output a self-contained Claude Design prompt (recipe: `docs/README.md`). With a handoff, port it 1:1. Small edits to an already-designed screen (one button/column): ask the owner — existing tokens or Claude Design.
 
