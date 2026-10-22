@@ -144,14 +144,16 @@ function raceHostnameBeforeLock(string $host, ?int $ownerTenantId = null): void
 
 it('refuses a hostname another customer took between the first lookup and the lock, writing nothing', function (): void {
     provisionGuarded('Alpha', 'alpha.platform.test', 'owner@alpha.test');
+    $before = guardFootprint();
     raceHostnameBeforeLock('raced.platform.test');
 
     expect(fn () => provisionGuarded('Alpha', 'raced.platform.test', 'intruder@example.test'))
         ->toThrow(HostnameOwnedByAnotherTenantException::class);
 
     $racer = Site::query()->where('name', 'Racer')->sole();
-    expect(User::query()->where('email', 'intruder@example.test')->exists())->toBeFalse()
-        ->and(DB::connection('pgsql_admin')->table('tenant_users')->where('tenant_id', $racer->tenant_id)->exists())->toBeFalse()
+    // Only the racer's own customer is new: no membership or role was granted on any customer.
+    expect(guardFootprint())->toBe([...$before, 'tenants' => $before['tenants'] + 1])
+        ->and(User::query()->where('email', 'intruder@example.test')->exists())->toBeFalse()
         ->and(Site::query()->where('tenant_id', $racer->tenant_id)->count())->toBe(1);
 });
 
@@ -179,6 +181,7 @@ it('refuses in plain words a hostname another customer commits after the re-chec
     // A customer with room under sites.max (none yet), so the run reaches the domain insert.
     // Another customer's run commits the same new hostname after this run's re-check under its own
     // customer's lock (the two locks do not serialize them): this run's insert then hits the unique name.
+    $before = guardFootprint();
     $fired = false;
     DB::listen(function (QueryExecuted $query) use (&$fired): void {
         $sql = strtolower($query->sql);
@@ -199,6 +202,7 @@ it('refuses in plain words a hostname another customer commits after the re-chec
         ->toThrow(HostnameOwnedByAnotherTenantException::class);
 
     expect($fired)->toBeTrue()
+        ->and(guardFootprint())->toBe([...$before, 'tenants' => $before['tenants'] + 1])
         ->and(Tenant::query()->where('name', 'Fresh Co')->exists())->toBeFalse()
         ->and(Site::query()->where('name', 'Fresh Co')->exists())->toBeFalse()
         ->and(User::query()->where('email', 'owner@fresh.test')->exists())->toBeFalse();
