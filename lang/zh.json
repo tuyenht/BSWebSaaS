@@ -39,6 +39,7 @@
     "entries.edit_action": "编辑",
     "entries.block_unsupported": "不支持「:type」区块。",
     "entries.slug_conflict": "该路径已被其他内容使用。",
+    "entries.slug_untranslatable": "无法将此名称自动转换为路径，请自行输入路径，例如 page-name。",
     "entries.slug_format": "路径只能包含小写字母、数字和连字符。",
     "entries.slug_too_long": "路径过长（最多 :max 个字符）。",
     "entries.title_too_long": "标题过长（最多 :max 个字符）。",

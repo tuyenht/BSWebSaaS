@@ -7,8 +7,8 @@ namespace App\Modules\Cms\Actions\Menus;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Cms\Exceptions\MenuChangeRejectedException;
 use App\Modules\Cms\Models\Menu;
+use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
-use Illuminate\Support\Str;
 
 /**
  * Create a menu or rename one. A new menu gets a stable handle from its name (unique per site,
@@ -56,7 +56,7 @@ final readonly class SaveMenu
 
     private function uniqueHandle(string $name): string
     {
-        $base = Str::limit(Str::slug($name), 60, '') ?: 'menu';
+        $base = Slugger::make($name, max: 60) ?: 'menu';
         $taken = Menu::query()->where('handle', 'like', $base.'%')->pluck('handle')->all();
 
         $handle = $base;

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Modules\Cms\Taxonomy;
 
+use App\Modules\Shared\Support\Slugger;
 use Illuminate\Support\Facades\View;
-use Illuminate\Support\Str;
 
 /**
  * The category rules the write path (Cms\Actions\Taxonomies) enforces, in one place so the screen
@@ -48,10 +48,10 @@ final class TaxonomyRules
         return strlen($slug) <= self::SLUG_MAX && preg_match(self::SLUG_PATTERN, $slug) === 1 ? $slug : null;
     }
 
-    /** A slug made from a name (Vietnamese marks dropped), '' when the name has no Latin letters or digits. */
-    public static function slugFrom(string $name): string
+    /** A slug made from a name in any writing system, '' when nothing usable is left. */
+    public static function slugFrom(string $name, ?string $locale = null): string
     {
-        return trim(Str::limit(Str::slug($name), self::SLUG_MAX, ''), '-');
+        return Slugger::make($name, $locale, self::SLUG_MAX);
     }
 
     /**

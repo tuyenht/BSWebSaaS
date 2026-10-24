@@ -39,6 +39,7 @@
     "entries.edit_action": "編集",
     "entries.block_unsupported": "ブロック「:type」はサポートされていません。",
     "entries.slug_conflict": "このパスは他のコンテンツで既に使用されています。",
+    "entries.slug_untranslatable": "この名前から自動でパスを作れませんでした。パスを直接入力してください。例: page-name",
     "entries.slug_format": "パスは半角小文字・数字・ハイフンのみ使用できます。",
     "entries.slug_too_long": "パスが長すぎます（最大 :max 文字）。",
     "entries.title_too_long": "タイトルが長すぎます（最大 :max 文字）。",
