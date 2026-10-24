@@ -54,4 +54,6 @@ it('says when the person must type the path', function (string $text, ?string $l
     'emoji only has no letters' => ['🎉', null, false],
     'blank' => ['   ', null, false],
     'kanji without ja locale' => ['製品', null, false],
+    'kanji with kana and no locale' => ['製品カタログ', null, true],
+    'chinese with no locale' => ['产品图片', null, false],
 ]);

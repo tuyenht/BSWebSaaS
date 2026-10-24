@@ -53,12 +53,13 @@ final class MediaFolder extends Model
 
     /**
      * Force a candidate to the ASCII [a-z0-9-] shape, then make it unique within the site by
-     * appending -2, -3… (WP-style). Empty after sanitizing → the name-based fallback.
+     * appending -2, -3… (WP-style). Empty after sanitizing, or the name itself when its Latin
+     * reading would be wrong (kanji in Japanese) → the name-based fallback, as the preview showed.
      */
     public function uniqueSlug(string $candidate, string $name): string
     {
         $base = Slugger::make($candidate);
-        if ($base === '') {
+        if ($base === '' || ($candidate === $name && Slugger::needsManualInput($name))) {
             $base = $this->suggestSlugBase($name)['slug'];
         }
 

@@ -40,7 +40,8 @@ final class Slugger
 
     /**
      * Whether the person has to type the path themselves: the text has letters but none survive, or
-     * Japanese text with kanji (ICU reads kanji as Chinese, which would give a wrong path).
+     * Japanese text with kanji (ICU reads kanji as Chinese, which would give a wrong path). Kana next
+     * to kanji marks the text as Japanese even when no locale is known, as for a folder name.
      */
     public static function needsManualInput(string $text, ?string $locale = null): bool
     {
@@ -48,8 +49,12 @@ final class Slugger
             return false;
         }
 
-        if ($locale !== null && str_starts_with(strtolower($locale), 'ja') && preg_match('/\p{Han}/u', $text) === 1) {
-            return true;
+        if (preg_match('/\p{Han}/u', $text) === 1) {
+            $japanese = ($locale !== null && str_starts_with(strtolower($locale), 'ja'))
+                || preg_match('/[\p{Hiragana}\p{Katakana}]/u', $text) === 1;
+            if ($japanese) {
+                return true;
+            }
         }
 
         return preg_match('/\p{L}/u', $text) === 1 && self::make($text, $locale) === '';
