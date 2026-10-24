@@ -12,6 +12,7 @@ use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
 use App\Modules\Shared\Support\RichTextSanitizer;
+use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
@@ -250,6 +251,24 @@ final class Editor extends Component
         ];
     }
 
+    /** A blank link is made from the name (any writing system) and made free; a typed link is kept. */
+    private function fillBlankSlug(): void
+    {
+        if (trim($this->slug) !== '') {
+            return;
+        }
+
+        $this->slug = Slugger::fromTitle(
+            $this->name,
+            $this->locale,
+            fn (string $candidate): bool => ProductTranslation::query()
+                ->where('locale', $this->locale)
+                ->where('slug', $candidate)
+                ->when($this->productId !== null, fn ($q) => $q->where('product_id', '!=', $this->productId))
+                ->exists(),
+        );
+    }
+
     /**
      * Validate + persist the product, its default-locale translation, category, gallery and — when
      * it is live — its public address; returns it. Runs inside save()'s transaction.
@@ -273,6 +292,7 @@ final class Editor extends Component
         // against the site's media (non-numeric junk becomes 0 and fails the exists rule).
         $this->imageMediaIds = $this->normalizeIds($this->imageMediaIds);
 
+        $this->fillBlankSlug();
         $this->validate();
 
         $attributes = [

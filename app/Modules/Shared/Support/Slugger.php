@@ -39,6 +39,37 @@ final class Slugger
     }
 
     /**
+     * A link for a blank slug field: made from the title/name, then made free by appending -2, -3…
+     * An empty string when the text leaves nothing usable (only symbols): the caller then reports
+     * the missing slug instead of inventing one.
+     *
+     * @param  \Closure(string): bool  $taken  whether a candidate path is already in use
+     */
+    public static function fromTitle(string $title, ?string $locale, \Closure $taken): string
+    {
+        // Leave room for a "-NN" suffix inside the 200-character column.
+        $base = self::make($title, $locale, 190);
+        if ($base === '') {
+            return '';
+        }
+
+        return self::free($base, $taken);
+    }
+
+    /** Appends -2, -3… to $base until $taken says the candidate is free. */
+    public static function free(string $base, \Closure $taken): string
+    {
+        $candidate = $base;
+        $n = 1;
+        while ($taken($candidate)) {
+            $n++;
+            $candidate = $base.'-'.$n;
+        }
+
+        return $candidate;
+    }
+
+    /**
      * Whether the person has to type the path themselves: the text has letters but none survive, or
      * Japanese text with kanji (ICU reads kanji as Chinese, which would give a wrong path). Kana next
      * to kanji marks the text as Japanese even when no locale is known, as for a folder name.
