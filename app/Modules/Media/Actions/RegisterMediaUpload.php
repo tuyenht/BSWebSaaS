@@ -36,14 +36,18 @@ final readonly class RegisterMediaUpload
 
         // 1) Cross-tenant guard — the temp key MUST have been issued to the current site (presign
         // recorded it). A client replaying another site's temp key cannot register its object.
-        $owner = Cache::pull(PresignMediaUpload::ownershipKey($tempKey));
+        $ownershipKey = PresignMediaUpload::ownershipKey($tempKey);
+        $owner = Cache::get($ownershipKey);
         // Cache may return the site_id as a string; a missing/forged key normalizes to 0 (never a
         // real site_id) → rejected. site_id is never 0, so this is a safe equality.
         $ownerId = is_numeric($owner) ? (int) $owner : 0;
         if ($ownerId !== $this->current->id()) {
-            $disk->delete($tempKey);
+            // The key came from the client: it may name another site's file, so storage is never
+            // touched here (abandoned staging objects expire through the `_incoming/` lifecycle),
+            // and the real owner's claim stays in the cache so a replay cannot spoil its upload.
             throw new MediaRejectedException('upload_session_invalid');
         }
+        Cache::forget($ownershipKey);
         if (! $disk->exists($tempKey)) {
             throw new MediaRejectedException('upload_missing');
         }

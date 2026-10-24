@@ -25,6 +25,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use RuntimeException;
 
@@ -386,7 +387,13 @@ trait WithMediaLibraryPicker
 
     public string $pickerUrlInput = '';
 
-    /** @var array{tempKey: string, url: string, filename: string, mime: string, size: int, width: int|null, height: int|null}|null */
+    /**
+     * Set only by the server's URL fetch. Locked because its tempKey is deleted from storage when
+     * the preview is dropped: a client able to write it could name any site's file.
+     *
+     * @var array{tempKey: string, url: string, filename: string, mime: string, size: int, width: int|null, height: int|null}|null
+     */
+    #[Locked]
     public ?array $pickerUrlPreview = null;
 
     /** "Lưu bản sao vào Thư viện ảnh" — default ON (hotlinks die when the origin deletes them). */
