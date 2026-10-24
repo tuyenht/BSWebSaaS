@@ -50,7 +50,7 @@ it('finalizes a valid upload: copies temp→content-hash key + stamps the site',
     Storage::disk('r2')->assertMissing($tempKey);
 });
 
-it('rejects a temp key issued to ANOTHER site (cross-tenant guard) + deletes the object', function (): void {
+it('rejects a temp key issued to ANOTHER site without touching its object or its claim', function (): void {
     $tempKey = '_incoming/b/01xyz.png';
     stageUpload(2, $tempKey, pngContent()); // owned by site 2
 
@@ -58,7 +58,21 @@ it('rejects a temp key issued to ANOTHER site (cross-tenant guard) + deletes the
         ->toThrow(MediaRejectedException::class, 'upload_session_invalid');
 
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
-    Storage::disk('r2')->assertMissing($tempKey);
+    Storage::disk('r2')->assertExists($tempKey);
+
+    // The real owner can still finish its own upload after the replay.
+    $media = app(Tenancy::class)->enter(2, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'x.png'));
+    expect($media->site_id)->toBe(2);
+});
+
+it('never deletes a stored file named as the temp key of an unclaimed upload', function (): void {
+    $foreign = 'b/library/logo-ab12.png'; // another site's live library file
+    Storage::disk('r2')->put($foreign, pngContent());
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($foreign, 'x.png')))
+        ->toThrow(MediaRejectedException::class, 'upload_session_invalid');
+
+    Storage::disk('r2')->assertExists($foreign);
 });
 
 it('rejects a spoofed file by sniffing magic bytes (PHP in a .png) + writes no row', function (): void {

@@ -12,6 +12,7 @@ use App\Modules\Rbac\Context\TeamContext;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 
 /*
@@ -780,4 +781,24 @@ it('translates every picker string in all four admin languages', function (): vo
         $missing = array_values(array_diff($pickerKeys, array_keys($pack)));
         expect($missing)->toBe([]);
     }
+});
+
+it('refuses a client-written URL preview, so closing the picker cannot delete another site\'s file', function (): void {
+    $user = pickerManager();
+    Storage::fake('r2');
+    $foreign = 'b/library/logo-ab12.png';
+    Storage::disk('r2')->put($foreign, pickerPng());
+
+    app(Tenancy::class)->enter(1, function () use ($user, $foreign): void {
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
+
+        expect(fn () => $component->set('pickerUrlPreview', [
+            'tempKey' => $foreign, 'url' => 'https://example.com/x.png', 'filename' => 'x.png',
+            'mime' => 'image/png', 'size' => 10, 'width' => null, 'height' => null,
+        ]))->toThrow(CannotUpdateLockedPropertyException::class);
+
+        $component->call('closeImagePicker');
+    });
+
+    Storage::disk('r2')->assertExists($foreign);
 });
