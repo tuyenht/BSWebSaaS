@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Modules\Tenancy\Actions;
 
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Exceptions\PlanChangeRejectedException;
 use App\Modules\Tenancy\Models\Plan;
 use Illuminate\Support\Str;
@@ -45,7 +46,7 @@ final readonly class SavePlan
 
     private function freeKey(string $name): string
     {
-        $base = Str::slug($name);
+        $base = Slugger::make($name);
         $base = $base === '' ? 'plan' : $base;
 
         $key = $base;

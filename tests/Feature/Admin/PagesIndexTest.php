@@ -517,6 +517,35 @@ it('slugifies a Vietnamese slug server-side', function (): void {
     });
 });
 
+it('reads a Chinese slug out in Latin letters', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        $page = makePageEntry($editor, 'Trang', 'trang', 'draft');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('saveSlug', $page->ulid, '产品图片');
+
+        expect($page->translationFor('vi')->fresh()->slug)->toBe('chan-pin-tu-pian');
+    });
+});
+
+it('tells the editor to type the path when a name has no Latin reading', function (): void {
+    $editor = User::factory()->create();
+
+    app(Tenancy::class)->enter(1, function () use ($editor): void {
+        grantRole($editor, 'editor', ['entries.view', 'entries.edit.any']);
+        $page = makePageEntry($editor, 'Trang', 'trang', 'draft');
+
+        Livewire::actingAs($editor->fresh())->test(Index::class)
+            ->call('saveSlug', $page->ulid, 'រូបភាពផលិតផល')
+            ->assertDispatched('bs-toast', text: __('entries.slug_untranslatable'));
+
+        expect($page->translationFor('vi')->fresh()->slug)->toBe('trang');
+    });
+});
+
 it('never moves a live child when the slug of its trashed parent is edited inline', function (): void {
     $editor = User::factory()->create();
 

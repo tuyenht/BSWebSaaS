@@ -8,11 +8,11 @@ use App\Modules\Cms\Support\CategoryScopes;
 use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\Cast;
+use App\Modules\Shared\Support\Slugger;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Str;
 
 /**
  * Duplicates an entry as a fresh DRAFT (design §3a "Nhân bản"). The copy is a single node —
@@ -100,9 +100,9 @@ final class DuplicateEntry
     /** Appends a suffix until the slug is free for this locale (site-scoped by RLS). */
     private function uniqueSlug(string $slug, string $locale): string
     {
-        // The marker reads in the translation's language; a script with no Latin form (ja, zh)
-        // keeps the plain "copy".
-        $marker = Str::slug(__('entries.copy_slug', [], $locale)) ?: 'copy';
+        // The marker reads in the translation's language (any script, through Slugger); "copy" when
+        // the word leaves nothing usable.
+        $marker = Slugger::make(__('entries.copy_slug', [], $locale), $locale) ?: 'copy';
         $base = $slug === '' ? $marker : $slug.'-'.$marker;
         $candidate = $base;
         $n = 1;

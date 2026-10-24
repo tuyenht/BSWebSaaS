@@ -39,6 +39,7 @@
     "entries.edit_action": "Edit",
     "entries.block_unsupported": "The \":type\" block is not supported.",
     "entries.slug_conflict": "This path is already used by other content.",
+    "entries.slug_untranslatable": "Could not turn this name into a plain-letter path. Please type the path yourself, for example page-name.",
     "entries.slug_format": "The path may contain only lowercase letters, numbers, and hyphens.",
     "entries.slug_too_long": "The path is too long (at most :max characters).",
     "entries.title_too_long": "The title is too long (at most :max characters).",

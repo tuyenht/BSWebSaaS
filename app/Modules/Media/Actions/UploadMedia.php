@@ -5,9 +5,9 @@ namespace App\Modules\Media\Actions;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Shared\Support\Slugger;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
  * Securely ingest an uploaded file into the media library (design.md §2.5 / §16 / ADR-17). The
@@ -71,7 +71,7 @@ final class UploadMedia
 
         // 5) Opaque content-hash storage key (ADR-17) — unique within the site (MediaKey extends the
         // hash suffix only on a collision). Anti-enumerate waived (public media); cache-bust + uniqueness.
-        $slug = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'tep';
+        $slug = Slugger::make(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'tep';
         $key = MediaKey::unique($siteName, $collection, $slug, $hash, $ext);
 
         // 6) Store the single master (private; the public URL is derived, never stored).

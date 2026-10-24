@@ -39,6 +39,7 @@
     "entries.edit_action": "Sửa",
     "entries.block_unsupported": "Khối \":type\" không được hỗ trợ.",
     "entries.slug_conflict": "Đường dẫn này đã được dùng cho nội dung khác.",
+    "entries.slug_untranslatable": "Không tự đổi được tên này sang chữ không dấu — hãy gõ đường dẫn, ví dụ ten-bai-viet.",
     "entries.slug_format": "Đường dẫn chỉ gồm chữ thường, số và dấu gạch nối.",
     "entries.slug_too_long": "Đường dẫn dài quá (tối đa :max ký tự).",
     "entries.title_too_long": "Tiêu đề dài quá (tối đa :max ký tự).",

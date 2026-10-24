@@ -5,12 +5,12 @@ namespace App\Modules\Media\Actions;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
+use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\CurrentSite;
 use App\Modules\Tenancy\Context\SiteDirectory;
 use finfo;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
  * Finalizes a presigned direct-to-R2 upload (DAM P1). The browser PUT the bytes straight to R2 under
@@ -91,7 +91,7 @@ final readonly class RegisterMediaUpload
         }
 
         // 7) Final opaque content-hash key (unique within the site) + R2-internal copy, drop temp.
-        $slug = Str::slug(pathinfo($filename, PATHINFO_FILENAME)) ?: 'tep';
+        $slug = Slugger::make(pathinfo($filename, PATHINFO_FILENAME)) ?: 'tep';
         $finalKey = MediaKey::unique($siteName, $collection, $slug, $hash, $ext);
         // copy() returns bool on this disk ('throw' => false) — unchecked failure would persist
         // a row whose object never existed: an unrenderable orphan the picker shows as broken.

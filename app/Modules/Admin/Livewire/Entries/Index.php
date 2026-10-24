@@ -19,6 +19,7 @@ use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Validation\EntryContentRules;
 use App\Modules\Identity\Models\User;
 use App\Modules\Shared\Support\ConcurrencyError;
+use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Context\SiteTime;
 use App\Modules\Tenancy\Models\ContentSection;
@@ -35,7 +36,6 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
@@ -337,8 +337,13 @@ final class Index extends Component
             return;
         }
 
-        $slug = Str::slug($value);
-        if ($slug === '' || $slug === $translation->slug || ! $this->passesContentRule('slug', $slug)) {
+        $slug = Slugger::make($value, $locale, PHP_INT_MAX);
+        if ($slug === '') {
+            $this->toast(__('entries.slug_untranslatable'));
+
+            return;
+        }
+        if ($slug === $translation->slug || ! $this->passesContentRule('slug', $slug)) {
             return;
         }
 
