@@ -104,14 +104,10 @@ final class DuplicateEntry
         // the word leaves nothing usable.
         $marker = Slugger::make(__('entries.copy_slug', [], $locale), $locale) ?: 'copy';
         $base = $slug === '' ? $marker : $slug.'-'.$marker;
-        $candidate = $base;
-        $n = 1;
 
-        while (EntryTranslation::query()->where('locale', $locale)->where('slug', $candidate)->exists()) {
-            $n++;
-            $candidate = $base.'-'.$n;
-        }
-
-        return $candidate;
+        return Slugger::free(
+            $base,
+            fn (string $candidate): bool => EntryTranslation::query()->where('locale', $locale)->where('slug', $candidate)->exists(),
+        );
     }
 }

@@ -21,6 +21,7 @@ use App\Modules\Identity\Models\User;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaLibraryUrls;
 use App\Modules\Media\Services\MediaUrlResolver;
+use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\SiteLocale;
 use App\Modules\Tenancy\Models\ContentSection;
 use App\Modules\Theme\Components\ComponentRegistry;
@@ -804,9 +805,33 @@ final class Editor extends Component
         ];
     }
 
+    /**
+     * A blank link is made from the title (any writing system) and made free for this language; a
+     * link the person typed is never touched. A title with nothing usable leaves it blank, so
+     * validation asks for the link.
+     */
+    private function fillBlankSlug(): void
+    {
+        if (trim($this->slug) !== '') {
+            return;
+        }
+
+        $ownId = $this->ulid !== null ? $this->resolveOrFail($this->ulid)->id : null;
+        $this->slug = Slugger::fromTitle(
+            $this->title,
+            $this->locale,
+            fn (string $candidate): bool => EntryTranslation::query()
+                ->where('locale', $this->locale)
+                ->where('slug', $candidate)
+                ->when($ownId !== null, fn ($q) => $q->where('entry_id', '!=', $ownId))
+                ->exists(),
+        );
+    }
+
     /** Validate + persist the entry and its translation (+ category for posts); returns it. */
     private function persist(): Entry
     {
+        $this->fillBlankSlug();
         $this->validate();
 
         if ($this->ulid === null) {
