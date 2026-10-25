@@ -7,10 +7,10 @@ use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
 use App\Modules\Tenancy\Context\Tenancy;
-use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\UnableToCopyFile;
 
 /*
  * RegisterMediaUpload (DAM P1) — the REAL gate of the presigned direct-to-R2 flow. After the browser
@@ -153,22 +153,19 @@ it('throws when the temp key has no ownership record (expired/forged)', function
 });
 
 it('writes NO row when the storage copy fails (orphan guard)', function (): void {
+    $fake = Storage::fake('r2');
     $tempKey = '_incoming/a/01fail.png';
-    Cache::put(PresignMediaUpload::ownershipKey($tempKey), 1, now()->addMinutes(5));
+    stageUpload(1, $tempKey, pngContent());
 
-    // copy() returns bool on the r2 disk ('throw' => false) — a silent false here used to
-    // persist a row whose object never existed (renders as a broken thumb in the picker).
-    $disk = Mockery::mock(Filesystem::class);
-    $disk->shouldReceive('exists')->with($tempKey)->andReturnTrue();
-    $disk->shouldReceive('size')->with($tempKey)->andReturn(strlen(pngContent()));
-    $disk->shouldReceive('get')->with($tempKey)->andReturn(pngContent());
-    $disk->shouldReceive('copy')->once()->andReturnFalse();
-    $disk->shouldReceive('delete')->never(); // the temp object must survive for a retry
-    Storage::shouldReceive('disk')->with('r2')->andReturn($disk);
+    // A failed copy used to persist a row whose object never existed (a broken thumb in the picker).
+    $driver = Mockery::mock(League\Flysystem\Filesystem::class, [$fake->getAdapter()])->makePartial();
+    $driver->shouldReceive('copy')->once()->andThrow(UnableToCopyFile::fromLocationTo($tempKey, 'a/library/fail.png'));
+    Storage::set('r2', new FilesystemAdapter($driver, $fake->getAdapter(), ['throw' => false]));
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'fail.png')))
         ->toThrow(MediaRejectedException::class, 'storage_failed');
 
+    $fake->assertExists($tempKey); // the temp object must survive for a retry
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });
 

@@ -16,6 +16,7 @@ import { publicKey, typeOf } from './keys.js';
 
 const ALLOWED_WIDTHS = new Set([320, 640, 960, 1280, 1600, 2048]);
 const CACHE_CONTROL = 'public, max-age=31536000, immutable';
+const RASTER = new Set(['image/avif', 'image/webp', 'image/jpeg', 'image/png', 'image/gif']);
 const ORIGIN_PREFIX = '/__origin/'; // internal raw path — source for cf.image, avoids a fetch loop
 // Sent on every response: no sniffing, and a sandbox so even a mislabelled body can never run script
 // or reach this origin's cookies.
@@ -68,9 +69,12 @@ export default {
     });
     if (!resp.ok) return serveRaw(env, key, type); // transform failed → L2: serve the master, image survives
 
-    const outType = (resp.headers.get('Content-Type') || '').split(';')[0].trim();
+    // Only raster output we asked for or that cf.image passes through; anything else (an svg, a
+    // body that is not an image) falls back to the master under its extension's type.
+    const outType = (resp.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+    if (!RASTER.has(outType)) return serveRaw(env, key, type);
     const headers = new Headers();
-    headers.set('Content-Type', outType.startsWith('image/') ? outType : `image/${format}`);
+    headers.set('Content-Type', outType);
     headers.set('Cache-Control', CACHE_CONTROL);
     headers.set('Vary', 'Accept');
     for (const [k, v] of Object.entries(SAFETY_HEADERS)) headers.set(k, v);

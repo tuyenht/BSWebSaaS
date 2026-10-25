@@ -14,6 +14,7 @@ use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use League\Flysystem\FilesystemException;
+use LogicException;
 
 /**
  * Finalizes a presigned direct-to-R2 upload (DAM P1). The browser PUT the bytes straight to R2 under
@@ -133,15 +134,13 @@ final readonly class RegisterMediaUpload
     private function copyAs(Filesystem $disk, string $from, string $to, string $mime): bool
     {
         if (! $disk instanceof FilesystemAdapter) {
-            return $disk->copy($from, $to);
+            throw new LogicException('Media storage must be a Flysystem-backed disk to replace object headers on copy.');
         }
 
         try {
             $disk->getDriver()->copy($from, $to, MediaKey::objectOptions($mime) + ['MetadataDirective' => 'REPLACE']);
-        } catch (FilesystemException $e) {
-            report($e);
-
-            return false;
+        } catch (FilesystemException) {
+            return false; // the disk is configured not to report; the caller turns this into storage_failed
         }
 
         return true;

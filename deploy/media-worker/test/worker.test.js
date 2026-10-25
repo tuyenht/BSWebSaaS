@@ -75,6 +75,19 @@ test('a transformed image keeps only an image type and the safety headers', asyn
   }
 });
 
+test('a transform that returns svg or html falls back to the master with its extension type', async () => {
+  const realFetch = globalThis.fetch;
+  try {
+    for (const t of ['image/svg+xml', 'text/html']) {
+      globalThis.fetch = async () => new Response('<svg onload=alert(1)>', { headers: { 'Content-Type': t } });
+      const res = await get('/a/library/x-1a2b.jpg?w=320', env({ 'a/library/x-1a2b.jpg': 'x' }));
+      assert.equal(res.headers.get('Content-Type'), 'image/jpeg', t);
+    }
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
 test('writes are refused', async () => {
   const res = await worker.fetch(new Request('https://files.example.test/a/x.jpg', { method: 'PUT', body: 'x' }), env({}));
   assert.equal(res.status, 405);
