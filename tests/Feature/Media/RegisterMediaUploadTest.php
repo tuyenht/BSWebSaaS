@@ -10,6 +10,7 @@ use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\Filesystem;
 use League\Flysystem\UnableToCopyFile;
 
 /*
@@ -158,7 +159,7 @@ it('writes NO row when the storage copy fails (orphan guard)', function (): void
     stageUpload(1, $tempKey, pngContent());
 
     // A failed copy used to persist a row whose object never existed (a broken thumb in the picker).
-    $driver = Mockery::mock(League\Flysystem\Filesystem::class, [$fake->getAdapter()])->makePartial();
+    $driver = Mockery::mock(Filesystem::class, [$fake->getAdapter()])->makePartial();
     $driver->shouldReceive('copy')->once()->andThrow(UnableToCopyFile::fromLocationTo($tempKey, 'a/library/fail.png'));
     Storage::set('r2', new FilesystemAdapter($driver, $fake->getAdapter(), ['throw' => false]));
 
@@ -214,7 +215,7 @@ it('stores the master with headers from the sniffed type, never the ones the upl
 
     // Record what the final copy asks the storage driver for, then let the real copy run.
     $seen = [];
-    $driver = Mockery::mock(League\Flysystem\Filesystem::class, [$fake->getAdapter()])->makePartial();
+    $driver = Mockery::mock(Filesystem::class, [$fake->getAdapter()])->makePartial();
     $driver->shouldReceive('copy')->andReturnUsing(function (string $from, string $to, array $config = []) use (&$seen, $fake): void {
         $seen[] = $config;
         $fake->getDriver()->copy($from, $to, $config);
