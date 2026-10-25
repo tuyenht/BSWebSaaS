@@ -5,9 +5,8 @@ namespace App\Modules\Media\Actions;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Support\MediaKey;
-use App\Modules\Shared\Support\Slugger;
+use App\Modules\Media\Support\MediaKeyPrefix;
 use App\Modules\Tenancy\Context\CurrentSite;
-use App\Modules\Tenancy\Context\SiteDirectory;
 use finfo;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
@@ -25,7 +24,7 @@ final readonly class RegisterMediaUpload
 {
     public function __construct(
         private CurrentSite $current,
-        private SiteDirectory $sites,
+        private MediaKeyPrefix $prefix,
     ) {}
 
     public function handle(string $tempKey, string $filename, ?int $createdBy = null, ?int $width = null, ?int $height = null, string $collection = 'library'): Media
@@ -72,7 +71,6 @@ final readonly class RegisterMediaUpload
 
         // 5) Full SHA-256 — the dedup column (separate from the short cache-bust suffix in the key).
         $hash = hash('sha256', $contents);
-        $siteName = $this->sites->nameOfCurrent($this->current);
 
         // 6) Dedup within (site, collection, hash) — return the master, drop the temp object.
         // withTrashed: the UNIQUE(site,collection,hash) index doesn't know about soft-deletes,
@@ -94,9 +92,9 @@ final readonly class RegisterMediaUpload
             return $existing;
         }
 
-        // 7) Final opaque content-hash key (unique within the site) + R2-internal copy, drop temp.
-        $slug = Slugger::make(pathinfo($filename, PATHINFO_FILENAME)) ?: 'tep';
-        $finalKey = MediaKey::unique($siteName, $collection, $slug, $hash, $ext);
+        // 7) Final site-code content-hash key (stem unique within the site) + R2-internal copy, drop temp.
+        $slug = MediaKey::slugFromFilename($filename);
+        $finalKey = MediaKey::unique($this->prefix->forNewObject(), $slug, $hash, $ext);
         // copy() returns bool on this disk ('throw' => false) — unchecked failure would persist
         // a row whose object never existed: an unrenderable orphan the picker shows as broken.
         if (! $disk->copy($tempKey, $finalKey)) {

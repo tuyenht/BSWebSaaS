@@ -2,20 +2,38 @@
 
 namespace App\Modules\Media\Support;
 
+use App\Modules\Media\Exceptions\MediaKeyRejectedException;
 use App\Modules\Media\Models\Media;
-use Illuminate\Support\Str;
+use App\Modules\Shared\Support\Slugger;
 use RuntimeException;
 
 /**
- * Builds the opaque content-hash storage key (ADR-17): {tenant}/{collection}/{slug}-{hashN}.{ext}.
- * Media is public, so anti-enumeration is intentionally NOT a goal — the hash suffix is purely for
- * cache-busting (different content → different key → CDN serves fresh) and key uniqueness. It starts
- * short (config('media.url_hash_length'), default 4) and extends only on the rare same-site collision,
- * so URLs stay clean without ever overwriting another object. NOTE this is SEPARATE from the full
- * 64-hex media.hash column used for dedup — shortening this suffix never affects dedup.
+ * Builds the storage key of a new media object (ADR-17): {code}/{slug}-{hashN}.{ext}, or
+ * {code}/{yyyy}/{mm}/{slug}-{hashN}.{ext} when the site has year/month folders (MediaKeyPrefix).
+ * {code} is the site's permanent code (sites.code), unique across websites, so two sites can never
+ * share a key; the database refuses a key under another site's code. The collection is a column,
+ * not part of the key. Keys written before site codes keep their legacy layout until re-keyed.
+ *
+ * Media is public, so anti-enumeration is intentionally NOT a goal — the hash suffix is for
+ * cache-busting (different content → different key → the CDN serves fresh) and uniqueness. It starts
+ * at config('media.url_hash_length') (never below 4) and grows only when the stem {slug}-{hashN} is
+ * already taken in the site under ANY extension, so `x-ab12.jpg` and `x-ab12.png` never coexist.
+ * This is SEPARATE from the full 64-hex media.hash column used for dedup.
  */
 final class MediaKey
 {
+    /** Extensions a site-code key may carry; the stem check looks for every one of them. */
+    public const array EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'pdf'];
+
+    /** The shortest hash suffix, whatever the configuration says. */
+    public const int MIN_HASH_LENGTH = 4;
+
+    /** {code}/ or {code}/{yyyy}/{mm}/ — what MediaKeyPrefix hands out. */
+    public const string PREFIX_PATTERN = '#^[0-9a-hjkmnp-tv-z]{8}/(?:[0-9]{4}/(?:0[1-9]|1[0-2])/)?$#';
+
+    /** A link-path slug: lowercase ASCII words joined by single dashes — never a dot or a slash. */
+    public const string SLUG_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
+
     /** The configured media storage disk (filesystems.php), as a string (config() returns mixed). */
     public static function disk(): string
     {
@@ -46,34 +64,57 @@ final class MediaKey
         }
     }
 
-    public static function unique(string $siteName, string $collection, string $slug, string $hash, string $ext): string
+    /** The slug part of a new key, from the uploaded file's name ('tep' when nothing usable is left). */
+    public static function slugFromFilename(string $filename): string
     {
-        $configured = config('media.url_hash_length', 4);
-        // 0 = no suffix at all (clean {slug}.{ext}); collisions still extend up from there.
-        $start = is_int($configured) ? max(0, $configured) : 4;
+        $slug = Slugger::make(pathinfo($filename, PATHINFO_FILENAME));
 
-        for ($len = $start; $len <= 64; $len++) {
-            $key = self::compose($siteName, $collection, $slug, substr($hash, 0, $len), $ext);
-
-            // RLS scopes the lookup to the current site (storage_key is unique within a site).
-            if (! Media::query()->where('storage_key', $key)->exists()) {
-                return $key;
-            }
-        }
-
-        // Unreachable in practice (the full 64-hex hash is already unique within the site).
-        return self::compose($siteName, $collection, $slug, $hash, $ext);
+        return preg_match(self::SLUG_PATTERN, $slug) === 1 ? $slug : 'tep';
     }
 
     /**
-     * Compose the key. An empty hash part (length 0) → a clean {slug}.{ext} (no dash). The tenant
-     * prefix is dropped in standalone (non-SaaS) mode → {collection}/{slug}.{ext}.
+     * A key under $prefix whose stem ({prefix}{slug}-{hashN}) no row of the current site uses with
+     * any extension. RLS and the BelongsToSite scope keep the lookup inside the site; withTrashed,
+     * because a row in the trash still owns its key (the UNIQUE index covers it).
      */
-    private static function compose(string $siteName, string $collection, string $slug, string $hashPart, string $ext): string
+    public static function unique(string $prefix, string $slug, string $hash, string $ext): string
     {
-        $suffix = $hashPart === '' ? '' : "-{$hashPart}";
-        $prefix = config('media.tenant_prefix', true) ? Str::slug($siteName).'/' : '';
+        if (preg_match(self::PREFIX_PATTERN, $prefix) !== 1) {
+            throw MediaKeyRejectedException::malformed('key prefix', $prefix);
+        }
+        if (preg_match(self::SLUG_PATTERN, $slug) !== 1) {
+            throw MediaKeyRejectedException::malformed('slug', $slug);
+        }
+        if (! in_array($ext, self::EXTENSIONS, true)) {
+            throw MediaKeyRejectedException::malformed('extension', $ext);
+        }
+        if (preg_match('/^[0-9a-f]{'.self::MIN_HASH_LENGTH.',64}$/', $hash) !== 1) {
+            throw MediaKeyRejectedException::malformed('content hash', $hash);
+        }
 
-        return "{$prefix}{$collection}/{$slug}{$suffix}.{$ext}";
+        $configured = config('media.url_hash_length', self::MIN_HASH_LENGTH);
+        $start = is_int($configured) ? max(self::MIN_HASH_LENGTH, $configured) : self::MIN_HASH_LENGTH;
+
+        for ($len = min($start, strlen($hash)); $len <= strlen($hash); $len++) {
+            $stem = $prefix.$slug.'-'.substr($hash, 0, $len);
+
+            if (! self::stemTaken($stem)) {
+                return "{$stem}.{$ext}";
+            }
+        }
+
+        // Unreachable in practice: the full 64-hex content hash is already unique within the site.
+        throw new RuntimeException("No free media key for stem {$prefix}{$slug}.");
+    }
+
+    /**
+     * Exact keys over the closed extension list, not `LIKE '{stem}.%'`: the lookup stays on the
+     * UNIQUE (site_id, storage_key) index instead of scanning every key of the site.
+     */
+    private static function stemTaken(string $stem): bool
+    {
+        $keys = array_map(fn (string $ext): string => "{$stem}.{$ext}", self::EXTENSIONS);
+
+        return Media::query()->withTrashed()->whereIn('storage_key', $keys)->exists();
     }
 }

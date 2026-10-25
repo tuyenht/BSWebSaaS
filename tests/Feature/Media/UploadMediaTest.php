@@ -31,14 +31,13 @@ function pngBytes(): string
 it('stores a valid image as a single R2 master + a media row stamped to the site', function (): void {
     $media = app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle(
         UploadedFile::fake()->createWithContent('Ảnh Sản Phẩm.png', pngBytes()),
-        'An Vinh',
     ));
 
     expect($media->site_id)->toBe(1)
         ->and($media->mime)->toBe('image/png')
         ->and($media->disk)->toBe('r2')
         ->and(strlen($media->hash))->toBe(64)                       // full SHA-256
-        ->and($media->storage_key)->toStartWith('an-vinh/library/') // {tenant=slug(name)}/{collection}/
+        ->and($media->storage_key)->toMatch('#^'.siteCode(1).'/anh-san-pham-[0-9a-f]{4}\.png$#') // {site code}/{slug}-{hash4}
         ->and($media->width)->toBe(1)->and($media->height)->toBe(1);
 
     Storage::disk('r2')->assertExists($media->storage_key);
@@ -46,8 +45,8 @@ it('stores a valid image as a single R2 master + a media row stamped to the site
 
 it('dedups identical content within a site (one master, one R2 object)', function (): void {
     [$first, $second, $count] = app(Tenancy::class)->enter(1, function (): array {
-        $a = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('a.png', pngBytes()), 'An Vinh');
-        $b = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', pngBytes()), 'An Vinh');
+        $a = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('a.png', pngBytes()));
+        $b = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', pngBytes()));
 
         return [$a->id, $b->id, Media::query()->count()];
     });
@@ -60,11 +59,11 @@ it('restores a trashed master and heals a missing object on re-upload of the sam
     // UNIQUE(site,collection,hash) insert into a dead-end, and dedup must put the bytes back
     // when the row's object is gone instead of pinning the hash to a dead key.
     [$firstId, $secondId, $stillTrashed, $key] = app(Tenancy::class)->enter(1, function (): array {
-        $a = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('a.png', pngBytes()), 'An Vinh');
+        $a = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('a.png', pngBytes()));
         $a->delete(); // Thùng rác
         Storage::disk('r2')->delete($a->storage_key); // and the object is gone too
 
-        $b = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', pngBytes()), 'An Vinh');
+        $b = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', pngBytes()));
 
         return [$a->id, $b->id, $b->trashed(), $a->storage_key];
     });
@@ -80,13 +79,12 @@ it('rejects a spoofed extension by sniffing magic bytes (PHP in a .jpg)', functi
     file_put_contents($path, '<?php echo "pwned"; ?>');
     $spoofed = new UploadedFile($path, 'evil.jpg', 'image/jpeg', null, true);
 
-    app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle($spoofed, 'An Vinh'));
+    app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle($spoofed));
 })->throws(MediaRejectedException::class, 'unsupported_type');
 
 it('rejects a file over the size limit', function (): void {
     app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle(
         UploadedFile::fake()->create('huge.jpg', 11 * 1024), // 11MB > 10MB
-        'An Vinh',
     ));
 })->throws(MediaRejectedException::class, 'too_large');
 
@@ -98,7 +96,6 @@ it('throws on an R2 write failure (no orphan media row)', function (): void {
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(UploadMedia::class)->handle(
         UploadedFile::fake()->createWithContent('a.png', pngBytes()),
-        'An Vinh',
     )))->toThrow(MediaRejectedException::class, 'storage_failed');
 
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
