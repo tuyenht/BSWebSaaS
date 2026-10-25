@@ -62,7 +62,7 @@ final class UploadMedia
                 $existing->restore();
             }
             $disk = Storage::disk(MediaKey::disk());
-            if (! $disk->exists($existing->storage_key) && ! $disk->put($existing->storage_key, $contents)) {
+            if (! $disk->exists($existing->storage_key) && ! $disk->put($existing->storage_key, $contents, MediaKey::objectOptions($mime))) {
                 throw new MediaRejectedException('storage_failed');
             }
 
@@ -77,7 +77,7 @@ final class UploadMedia
         // 6) Store the single master (private; the public URL is derived, never stored).
         // Laravel's filesystem does NOT throw by default — put() returns false on failure. Guard it,
         // or a failed write would still create a media row pointing at a missing object (broken image).
-        if (! Storage::disk(MediaKey::disk())->put($key, $contents)) {
+        if (! Storage::disk(MediaKey::disk())->put($key, $contents, MediaKey::objectOptions($mime))) {
             throw new MediaRejectedException('storage_failed');
         }
 

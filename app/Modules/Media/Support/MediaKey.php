@@ -25,6 +25,23 @@ final class MediaKey
     }
 
     /**
+     * Object headers for a stored master, written by the server from the sniffed MIME. A presigned
+     * upload lets the client choose the temporary object's Content-Type, so a copy must REPLACE the
+     * metadata, never carry it over; a PDF is always a download, never rendered inline.
+     *
+     * @return array<string, string>
+     */
+    public static function objectOptions(string $mime): array
+    {
+        $options = ['mimetype' => $mime, 'ContentType' => $mime];
+        if ($mime === 'application/pdf') {
+            $options['ContentDisposition'] = 'attachment';
+        }
+
+        return $options;
+    }
+
+    /**
      * Fail LOUD + EARLY when the configured media disk is an S3-family (r2/s3) disk with no bucket —
      * i.e. its credentials are missing from .env. Without this, Storage::disk() throws a cryptic
      * "bucket must be string, null given" TypeError deep in the adapter (which is exactly how a

@@ -5,8 +5,10 @@ use App\Modules\Media\Actions\RegisterMediaUpload;
 use App\Modules\Media\Actions\UploadMedia;
 use App\Modules\Media\Exceptions\MediaRejectedException;
 use App\Modules\Media\Models\Media;
+use App\Modules\Media\Support\MediaKey;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Contracts\Filesystem\Filesystem;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 
@@ -206,4 +208,31 @@ it('self-heals a master whose object went missing when the same bytes are re-upl
     expect($secondId)->toBe($firstId);
     Storage::disk('r2')->assertExists($key);
     Storage::disk('r2')->assertMissing('_incoming/a/01heal2.png');
+});
+
+it('stores the master with headers from the sniffed type, never the ones the uploader set', function (): void {
+    $fake = Storage::fake('r2');
+    $tempKey = '_incoming/a/01html.png';
+    stageUpload(1, $tempKey, pngContent());
+
+    // Record what the final copy asks the storage driver for, then let the real copy run.
+    $seen = [];
+    $driver = Mockery::mock(League\Flysystem\Filesystem::class, [$fake->getAdapter()])->makePartial();
+    $driver->shouldReceive('copy')->andReturnUsing(function (string $from, string $to, array $config = []) use (&$seen, $fake): void {
+        $seen[] = $config;
+        $fake->getDriver()->copy($from, $to, $config);
+    });
+    Storage::set('r2', new FilesystemAdapter($driver, $fake->getAdapter(), ['throw' => false]));
+
+    $media = app(Tenancy::class)->enter(1, fn () => app(RegisterMediaUpload::class)->handle($tempKey, 'trang.png'));
+
+    expect($seen)->toHaveCount(1)
+        ->and($seen[0])->toMatchArray(['MetadataDirective' => 'REPLACE', 'ContentType' => 'image/png'])
+        ->and($media->storage_key)->toEndWith('.png');
+});
+
+it('marks a stored pdf as a download', function (): void {
+    expect(MediaKey::objectOptions('application/pdf'))
+        ->toMatchArray(['ContentType' => 'application/pdf', 'ContentDisposition' => 'attachment'])
+        ->and(MediaKey::objectOptions('image/webp'))->not->toHaveKey('ContentDisposition');
 });
