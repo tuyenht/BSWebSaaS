@@ -77,6 +77,14 @@ function seedTenancy(): void
     ]);
 }
 
+/** The permanent media prefix code the database issued to a site (read on the privileged connection). */
+function siteCode(int $siteId): string
+{
+    $code = DB::connection('pgsql_admin')->table('sites')->where('id', $siteId)->value('code');
+
+    return is_string($code) ? $code : '';
+}
+
 /*
 |--------------------------------------------------------------------------
 | RBAC reset helper (P0.3)

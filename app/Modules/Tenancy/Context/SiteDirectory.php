@@ -35,12 +35,27 @@ final readonly class SiteDirectory
     }
 
     /**
-     * The stored name of the current site, exactly as saved ('' when unset) — media storage keys
-     * are prefixed with it, so it is never trimmed or replaced by a display name. Takes the context
-     * rather than an id: it reads the current site's own row.
+     * The stored name of the current site, exactly as saved ('' when unset) — the `_incoming/`
+     * staging keys and the legacy media key layout use its slug, so it is never trimmed or replaced
+     * by a display name. Takes the context rather than an id: it reads the current site's own row.
      */
     public function nameOfCurrent(CurrentSite $current): string
     {
         return Cast::string(Site::query()->whereKey($current->id())->value('name'));
+    }
+
+    /**
+     * The current site's permanent code, the prefix of every media key it writes ('' only if the
+     * row is missing — the column is NOT NULL).
+     */
+    public function codeOfCurrent(CurrentSite $current): string
+    {
+        return Cast::string(Site::query()->whereKey($current->id())->value('code'));
+    }
+
+    /** Whether $code is held by any website, soft-deleted ones included (codes are never reissued). */
+    public function isSiteCode(string $code): bool
+    {
+        return Site::query()->withTrashed()->where('code', $code)->exists();
     }
 }
