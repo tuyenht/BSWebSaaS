@@ -189,6 +189,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        // New codes would be drawn on the next up(), stranding every key already filed under an old one.
+        if (DB::selectOne("SELECT 1 FROM media m JOIN sites s ON m.storage_key LIKE s.code || '/%' LIMIT 1") !== null) {
+            throw new RuntimeException(
+                'Media rows are filed under site codes; dropping sites.code would orphan them. '.
+                'Restore the pre-migration dump instead of rolling back.'
+            );
+        }
+
         DB::statement('DROP TRIGGER IF EXISTS media_storage_key_prefix_guard ON media');
         DB::statement('DROP FUNCTION IF EXISTS media_storage_key_prefix_guard()');
         DB::statement('DROP INDEX CONCURRENTLY IF EXISTS '.self::LEGACY_KEY_INDEX);

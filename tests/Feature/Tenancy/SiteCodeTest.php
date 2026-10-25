@@ -114,6 +114,30 @@ it('never issues a code that a storage key from before site codes starts with', 
     expect($next)->toMatch(SITE_CODE_PATTERN)->not->toBe($first);
 });
 
+it('refuses to roll back while a media key is filed under a site code', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2036_01_01_000000_add_code_to_sites.php');
+    $admin = DB::connection('pgsql_admin');
+    $code = $admin->table('sites')->where('id', 1)->value('code');
+    $key = "{$code}/anh-abcd.png";
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $admin->table('media')->insert([
+            'site_id' => 1, 'ulid' => (string) Str::ulid(), 'collection' => 'library', 'hash' => str_repeat('b', 64),
+            'storage_key' => $key, 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        expect(fn () => $migration->down())->toThrow(RuntimeException::class, 'filed under site codes')
+            ->and($admin->table('sites')->where('id', 1)->value('code'))->toBe($code);
+    } finally {
+        $admin->table('media')->where('storage_key', $key)->delete();
+        DB::setDefaultConnection($original);
+    }
+});
+
 it('refuses a code chosen by the caller when a site is created through the model', function (): void {
     $create = fn () => Site::query()->create([
         'ulid' => (string) Str::ulid(), 'tenant_id' => 1, 'name' => 'Công ty D', 'status' => 'active', 'code' => 'abcdefgh',
