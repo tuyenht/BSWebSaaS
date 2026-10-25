@@ -120,3 +120,31 @@ it('builds slugs without dots, and refuses a prefix or slug that is not of the k
 it('checks the stem against every extension an upload can be stored with', function (): void {
     expect(array_values(array_diff(array_values(UploadMedia::MIME_EXT), MediaKey::EXTENSIONS)))->toBe([]);
 });
+
+it('accepts every key layout the application writes as a clean relative path, and nothing unclean', function (): void {
+    $clean = [
+        siteCode(1).'/anh-ab12.png',
+        siteCode(1).'/2026/04/bang-gia-ab12c.webp',
+        'an-vinh/hero/hero-home-7ca90eafe212.jpg',
+        'a/library/anh-aaaaaaaaaaaa.png',
+    ];
+    $refused = array_filter(
+        array_map(withSiteCodes(...), uncleanMediaKeys()),
+        function (string $key): bool {
+            try {
+                MediaKey::assertCleanPath($key);
+            } catch (MediaKeyRejectedException) {
+                return true;
+            }
+
+            return false;
+        },
+    );
+
+    foreach ($clean as $key) {
+        MediaKey::assertCleanPath($key);
+    }
+
+    expect(array_keys($refused))->toBe(array_keys(uncleanMediaKeys()))
+        ->and(uploadAs(1, 'ảnh.png', codeKeyPng('clean'))->storage_key)->toMatch(MediaKey::CLEAN_PATH_PATTERN);
+});

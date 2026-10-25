@@ -10,7 +10,8 @@ use Illuminate\Support\Str;
  * The database itself refuses a media row whose storage key sits under ANOTHER website's code, even
  * if application code got the key wrong. The rule runs only when a key is written (insert, or an
  * update that changes the key or the site), so rows that predate site codes keep working until they
- * are re-keyed. Staging keys (`_incoming/…`) are never a media row's key.
+ * are re-keyed. A key must be a clean relative path (storage rewrites any other one, possibly into
+ * another site's folder), and a legacy key may not be held by two websites.
  */
 
 beforeEach(fn () => seedTenancy());
@@ -51,11 +52,61 @@ it('refuses a key under another site\'s code, on insert and on update', function
         ->and(prefixRuleState($update))->toBe('23514');
 });
 
-it('refuses the code alone and staging keys', function (string $key): void {
-    $key = str_replace('{own}', siteCode(1), $key);
+it('refuses a key that is not a clean relative path, whatever its first segment', function (string $key): void {
+    expect(prefixRuleState(fn () => mediaRowFor(1, withSiteCodes($key))))->toBe('23514')
+        ->and(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
+})->with(uncleanMediaKeys());
 
-    expect(prefixRuleState(fn () => mediaRowFor(1, $key)))->toBe('23514');
-})->with(['bare code' => '{own}/', 'staging' => '_incoming/a/01abc.png', 'empty' => '']);
+it('refuses an unclean key on the privileged connection and on update too', function (): void {
+    $own = mediaRowFor(1, siteCode(1).'/anh-abcd.png');
+
+    $insert = fn () => DB::connection('pgsql_admin')->table('media')->insert([
+        'site_id' => 1, 'ulid' => (string) Str::ulid(), 'collection' => 'library', 'hash' => str_repeat('c', 64),
+        'storage_key' => './'.siteCode(2).'/anh-abcd.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $update = fn () => app(Tenancy::class)->enter(1, fn () => Media::query()->whereKey($own->id)->update(['storage_key' => siteCode(2).'\\anh-abcd.png']));
+
+    expect(prefixRuleState($insert))->toBe('23514')
+        ->and(prefixRuleState($update))->toBe('23514');
+});
+
+it('refuses a key whose first segment looks like a website code but is not the site\'s own', function (): void {
+    $alphabet = '0123456789abcdefghjkmnpqrstvwxyz';
+    do {
+        $unissued = '';
+        for ($i = 0; $i < 8; $i++) {
+            $unissued .= $alphabet[random_int(0, 31)];
+        }
+    } while (DB::connection('pgsql_admin')->table('sites')->where('code', $unissued)->exists());
+
+    // A legacy name-slug key with the code shape would sit in the namespace of a code issued later.
+    expect(prefixRuleState(fn () => mediaRowFor(1, "{$unissued}/library/anh-abcd.png")))->toBe('23514');
+});
+
+it('refuses a legacy key that another website already holds', function (): void {
+    $key = 'a-vinh/library/anh-aaaaaaaaaaaa.jpg';
+    mediaRowFor(1, $key);
+
+    expect(prefixRuleState(fn () => mediaRowFor(2, $key)))->toBe('23514')
+        ->and(app(Tenancy::class)->enter(2, fn () => Media::query()->count()))->toBe(0);
+});
+
+it('keeps the legacy-key rule within one site: same-site writes still work', function (): void {
+    $legacy = mediaRowFor(1, 'a-vinh/library/anh-aaaaaaaaaaaa.jpg');
+
+    $again = prefixRuleState(fn () => mediaRowFor(1, 'a-vinh/library/anh-aaaaaaaaaaaa.jpg'));
+    $rekeyed = app(Tenancy::class)->enter(1, function () use ($legacy): string {
+        Media::query()->whereKey($legacy->id)->update(['storage_key' => 'a-vinh/library/anh-bbbbbbbbbbbb.jpg']);
+
+        return (string) Media::query()->whereKey($legacy->id)->value('storage_key');
+    });
+    $other = mediaRowFor(2, 'b-vinh/library/anh-aaaaaaaaaaaa.jpg');
+
+    expect($again)->toBe('23505')            // the site's own unique key, not the cross-site rule
+        ->and($rekeyed)->toBe('a-vinh/library/anh-bbbbbbbbbbbb.jpg')
+        ->and($other->exists)->toBeTrue();
+});
 
 it('also refuses the foreign key on the privileged connection', function (): void {
     $insert = fn () => DB::connection('pgsql_admin')->table('media')->insert([

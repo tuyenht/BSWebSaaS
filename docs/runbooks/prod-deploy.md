@@ -42,6 +42,8 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 
 1. `git -C /opt/bswebsaas/prod merge --ff-only <sha>`. Prod carries only untracked files, never commits; if it is not a fast-forward, stop.
 2. Migrations: `docker exec bsweb_prod_app php artisan migrate --database=pgsql_admin --force`.
+   - `2036_01_01_000000_add_code_to_sites` must run as a superuser or BYPASSRLS role (`media` has FORCE ROW LEVEL SECURITY); it aborts otherwise. Check the admin connection first: `SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user`. It also aborts on a storage key that is not a clean relative path; list those first with `SELECT site_id, storage_key FROM media WHERE storage_key !~ '^[A-Za-z0-9][A-Za-z0-9._-]*(/[A-Za-z0-9][A-Za-z0-9._-]*)+$'`.
+   - A website's code (`sites.code`, the prefix of its media keys) is freed if its `sites` row is ever hard-deleted, and may be issued again. Hard-deleting a site must therefore purge its R2 prefix `{code}/` too.
 3. Front-end: in `/opt/bswebsaas/prod`, run `pnpm install --frozen-lockfile` (only if the lockfile changed), then `pnpm run build`.
    - `public/build` is gitignored, and Tailwind emits only the classes it saw at build time.
    - Skip this step and new screens ship with stale CSS — silently.

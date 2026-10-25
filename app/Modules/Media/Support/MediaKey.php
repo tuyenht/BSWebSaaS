@@ -31,6 +31,15 @@ final class MediaKey
     /** {code}/ or {code}/{yyyy}/{mm}/ — what MediaKeyPrefix hands out. */
     public const string PREFIX_PATTERN = '#^[0-9a-hjkmnp-tv-z]{8}/(?:[0-9]{4}/(?:0[1-9]|1[0-2])/)?$#';
 
+    /**
+     * A clean relative path: ASCII segments that start with a letter or digit, joined by single
+     * slashes — so no `.`/`..`/empty/`_` segment, no leading or trailing slash, no backslash, space
+     * or control character. Storage (Flysystem) rewrites any other path (`\` → `/`, `.` and empty
+     * segments dropped, `..` resolved), so only a clean key can be judged by its first segment. The
+     * trigger on media applies the same pattern (`D`: `$` must not match before a final newline).
+     */
+    public const string CLEAN_PATH_PATTERN = '#^[A-Za-z0-9][A-Za-z0-9._-]*(?:/[A-Za-z0-9][A-Za-z0-9._-]*)+$#D';
+
     /** A link-path slug: lowercase ASCII words joined by single dashes — never a dot or a slash. */
     public const string SLUG_PATTERN = '/^[a-z0-9]+(?:-[a-z0-9]+)*$/';
 
@@ -61,6 +70,14 @@ final class MediaKey
                 "Media storage '{$disk}' is not configured (the R2 bucket/keys are missing from .env). ".
                 'Run `php artisan env:check`.'
             );
+        }
+    }
+
+    /** Refuses a storage key that is not a clean relative path (CLEAN_PATH_PATTERN). */
+    public static function assertCleanPath(string $key): void
+    {
+        if (preg_match(self::CLEAN_PATH_PATTERN, $key) !== 1) {
+            throw MediaKeyRejectedException::malformed('storage key', $key);
         }
     }
 
@@ -99,7 +116,10 @@ final class MediaKey
             $stem = $prefix.$slug.'-'.substr($hash, 0, $len);
 
             if (! self::stemTaken($stem)) {
-                return "{$stem}.{$ext}";
+                $key = "{$stem}.{$ext}";
+                self::assertCleanPath($key);
+
+                return $key;
             }
         }
 

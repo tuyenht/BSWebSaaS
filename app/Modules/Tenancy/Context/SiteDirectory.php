@@ -53,9 +53,9 @@ final readonly class SiteDirectory
         return Cast::string(Site::query()->whereKey($current->id())->value('code'));
     }
 
-    /** Whether $code is held by any website, soft-deleted ones included (codes are never reissued). */
-    public function isSiteCode(string $code): bool
+    /** Whether $value has the shape of a site code, issued or not (Site::CODE_PATTERN). */
+    public function isCodeShaped(string $value): bool
     {
-        return Site::query()->withTrashed()->where('code', $code)->exists();
+        return preg_match(Site::CODE_PATTERN, $value) === 1;
     }
 }

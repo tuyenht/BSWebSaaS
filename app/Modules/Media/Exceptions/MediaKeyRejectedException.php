@@ -18,8 +18,8 @@ final class MediaKeyRejectedException extends RuntimeException
         return new self("Not a valid media {$what}: \"{$value}\".");
     }
 
-    public static function foreignSite(string $key): self
+    public static function notOwnCode(string $key): self
     {
-        return new self("Media storage key \"{$key}\" belongs to another website.");
+        return new self("Media storage key \"{$key}\" starts with a website code that is not the current website's.");
     }
 }

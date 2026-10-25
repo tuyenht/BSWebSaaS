@@ -74,50 +74,53 @@ it('never issues a soft-deleted site\'s code again', function (): void {
     expect(sqlStateOf($reuse))->toBe('23505');   // unique_violation: the index covers deleted rows
 });
 
-it('skips a candidate held by a soft-deleted site, a legacy key segment or a collection name', function (string $taken): void {
+it('skips a candidate held by a soft-deleted site', function (): void {
     $admin = DB::connection('pgsql_admin');
 
-    [$first, $next] = $admin->transaction(function () use ($admin, $taken): array {
+    [$first, $next] = $admin->transaction(function () use ($admin): array {
         $first = codeAfterSeed($admin, 0.25);
-
-        match ($taken) {
-            'site' => $admin->table('sites')->where('id', 2)->update(['code' => $first, 'deleted_at' => now()]),
-            'segment' => $admin->table('media')->insert([
-                'site_id' => 1, 'ulid' => (string) Str::ulid(), 'collection' => 'library', 'hash' => str_repeat('a', 64),
-                'storage_key' => "{$first}/library/anh.png", 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1,
-                'created_at' => now(), 'updated_at' => now(),
-            ]),
-            'collection' => $admin->table('media')->insert([
-                'site_id' => 1, 'ulid' => (string) Str::ulid(), 'collection' => $first, 'hash' => str_repeat('b', 64),
-                'storage_key' => 'a/other/anh.png', 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1,
-                'created_at' => now(), 'updated_at' => now(),
-            ]),
-        };
+        $admin->table('sites')->where('id', 2)->update(['code' => $first, 'deleted_at' => now()]);
 
         return [$first, codeAfterSeed($admin, 0.25)];
     });
 
     expect($next)->toMatch(SITE_CODE_PATTERN)->not->toBe($first);
-})->with(['site', 'segment', 'collection']);
+});
 
-it('skips a candidate equal to the link-path slug of any site name', function (): void {
-    [$dbOnly, $issued, $first] = DB::transaction(function (): array {
-        $first = codeAfterSeed(DB::connection(), 0.5);
-        // lower(name) differs from the code, so only the application's Str::slug check catches it.
-        DB::connection('pgsql_admin')->table('sites')->insert([
-            'ulid' => (string) Str::ulid(), 'tenant_id' => 1, 'name' => strtoupper($first).'!', 'status' => 'active',
-            'deleted_at' => now(),
+it('never issues a code that a storage key from before site codes starts with', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2036_01_01_000000_add_code_to_sites.php');
+    $admin = DB::connection('pgsql_admin');
+    $first = codeAfterSeed($admin, 0.25);
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        $admin->table('media')->insert([
+            'site_id' => 1, 'ulid' => (string) Str::ulid(), 'collection' => 'library', 'hash' => str_repeat('a', 64),
+            'storage_key' => "{$first}/library/anh.png", 'disk' => 'r2', 'mime' => 'image/png', 'size' => 1,
+            'created_at' => now(), 'updated_at' => now(),
         ]);
-        $dbOnly = codeAfterSeed(DB::connection(), 0.5);
+        $migration->up();   // freezes the segment into the generator; media is never scanned again
+        $next = codeAfterSeed($admin, 0.25);
+    } finally {
+        $admin->table('media')->where('storage_key', "{$first}/library/anh.png")->delete();
+        $migration->down();
+        $migration->up();
+        DB::setDefaultConnection($original);
+    }
 
-        DB::statement('select setseed(?)', [0.5]);
+    expect($next)->toMatch(SITE_CODE_PATTERN)->not->toBe($first);
+});
 
-        return [$dbOnly, Site::freshCode(), $first];
-    });
+it('refuses a code chosen by the caller when a site is created through the model', function (): void {
+    $create = fn () => Site::query()->create([
+        'ulid' => (string) Str::ulid(), 'tenant_id' => 1, 'name' => 'Công ty D', 'status' => 'active', 'code' => 'abcdefgh',
+    ]);
 
-    expect($dbOnly)->toBe($first)          // the database alone would hand it out…
-        ->and($issued)->toMatch(SITE_CODE_PATTERN)
-        ->and($issued)->not->toBe($first); // …the model's generator does not
+    expect($create)->toThrow(SiteCodeIsPermanentException::class)
+        ->and(DB::connection('pgsql_admin')->table('sites')->where('name', 'Công ty D')->exists())->toBeFalse();
 });
 
 it('does not let the application role change a code, while other columns stay writable', function (): void {

@@ -76,7 +76,7 @@ it('reads optional year and month folders in a site-code key', function (): void
 });
 
 it('refuses a key under another site\'s code, a staging key, or a malformed site-code key', function (string $key): void {
-    $key = str_replace(['{own}', '{other}'], [siteCode(1), siteCode(2)], $key);
+    $key = withSiteCodes($key);
 
     expect(fn () => app(Tenancy::class)->enter(1, fn () => app(EnsureMediaFromKey::class)->handle($key)))
         ->toThrow(MediaKeyRejectedException::class);
@@ -89,3 +89,19 @@ it('refuses a key under another site\'s code, a staging key, or a malformed site
     'no hash' => '{own}/anh.png',
     'unknown type' => '{own}/anh-ab12.exe',
 ]);
+
+it('refuses a key that is not a clean relative path before it reaches the database', function (string $key): void {
+    $key = withSiteCodes($key);
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(EnsureMediaFromKey::class)->handle($key)))
+        ->toThrow(MediaKeyRejectedException::class, 'Not a valid media storage key');
+
+    expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
+})->with(uncleanMediaKeys());
+
+it('refuses a legacy-looking key whose first segment has the shape of a website code', function (): void {
+    $key = (siteCode(1) === 'zzzzzzzz' ? 'yyyyyyyy' : 'zzzzzzzz').'/library/anh-aaaaaaaaaaaa.png';
+
+    expect(fn () => app(Tenancy::class)->enter(1, fn () => app(EnsureMediaFromKey::class)->handle($key)))
+        ->toThrow(MediaKeyRejectedException::class, 'not the current website');
+});

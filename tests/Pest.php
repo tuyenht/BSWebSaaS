@@ -85,6 +85,42 @@ function siteCode(int $siteId): string
     return is_string($code) ? $code : '';
 }
 
+/**
+ * Storage keys that are not clean relative paths ({own}/{other} = the codes of sites 1/2). Storage
+ * rewrites several of them to a path under site 2's code, so the database and the application must
+ * both refuse every one, whatever its first segment looks like.
+ *
+ * @return array<string, string>
+ */
+function uncleanMediaKeys(): array
+{
+    return [
+        'dot segment before another code' => './{other}/anh-abcd.png',
+        'backslash after another code' => '{other}\anh-abcd.png',
+        'parent segment' => 'a/../{other}/anh-abcd.png',
+        'parent segment after own code' => '{own}/../{other}/anh-abcd.png',
+        'dot segment' => '{own}/./anh-abcd.png',
+        'empty segment' => '{own}//anh-abcd.png',
+        'leading slash' => '/{own}/anh-abcd.png',
+        'trailing slash' => '{own}/anh-abcd.png/',
+        'bare code' => '{own}/',
+        'single segment' => 'anh-abcd.png',
+        'staging' => '_incoming/a/01abc.png',
+        'empty' => '',
+        'leading space' => ' {own}/anh-abcd.png',
+        'final newline' => "{own}/anh-abcd.png\n",
+        'tab' => "{own}/anh\tabcd.png",
+        'escape character' => "{own}/anh\x1babcd.png",
+        'non-ascii letter' => 'a/library/ảnh-abcd.png',
+    ];
+}
+
+/** $key with {own}/{other} replaced by the codes of sites 1 and 2. */
+function withSiteCodes(string $key): string
+{
+    return str_replace(['{own}', '{other}'], [siteCode(1), siteCode(2)], $key);
+}
+
 /*
 |--------------------------------------------------------------------------
 | RBAC reset helper (P0.3)

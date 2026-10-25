@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
@@ -41,40 +40,33 @@ final class Site extends Model
     protected static function booted(): void
     {
         self::creating(function (Site $site): void {
-            $code = $site->getAttribute('code');
-            if (! is_string($code) || $code === '') {
-                $site->setAttribute('code', self::freshCode());
+            if ($site->getAttribute('code') !== null) {
+                throw SiteCodeIsPermanentException::chosen();
             }
+            $site->setAttribute('code', self::freshCode());
         });
 
         self::updating(function (Site $site): void {
             if ($site->isDirty('code')) {
-                throw new SiteCodeIsPermanentException;
+                throw SiteCodeIsPermanentException::changed();
             }
         });
     }
 
     /**
-     * A code no site holds (soft-deleted ones included) that is not a collection name, not the first
-     * segment of an existing storage key, and — the check the database cannot do itself — not the
-     * Str::slug of any site's name, the prefix of the legacy key layout. The database draws the
-     * candidates (generate_site_code(), also the column default).
+     * A code no site holds (soft-deleted ones included) and that no storage key existing before site
+     * codes starts with: the database draws it (generate_site_code(), also the column default), so the
+     * model knows its code without reading the row back.
      */
     public static function freshCode(): string
     {
-        $nameSlugs = [];
-        foreach (self::query()->withTrashed()->toBase()->pluck('name') as $name) {
-            $nameSlugs[Str::slug(Cast::string($name))] = true;
+        $code = Cast::string(DB::scalar('select generate_site_code()'));
+
+        if (preg_match(self::CODE_PATTERN, $code) !== 1) {
+            throw new RuntimeException('Could not draw a free website code.');
         }
 
-        for ($attempt = 0; $attempt < 16; $attempt++) {
-            $code = Cast::string(DB::scalar('select generate_site_code()'));
-            if (preg_match(self::CODE_PATTERN, $code) === 1 && ! isset($nameSlugs[$code])) {
-                return $code;
-            }
-        }
-
-        throw new RuntimeException('Could not draw a free website code.');
+        return $code;
     }
 
     /** @return HasMany<Domain, $this> */

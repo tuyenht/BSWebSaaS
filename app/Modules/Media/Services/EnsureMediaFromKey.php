@@ -16,13 +16,14 @@ use App\Modules\Tenancy\Context\SiteDirectory;
  *
  * Metadata is DERIVED from the key. Two layouts are read:
  * - site-code keys `{code}/[{yyyy}/{mm}/]{slug}-{hashN}.{ext}` — only under the CURRENT site's code
- *   (another website's code is refused), collection `library`;
+ *   (any other code-shaped first segment is refused), collection `library`;
  * - legacy keys `{name-slug}/{collection}/{slug}-{hash}.{ext}`, read as before so An Vinh's seeded
  *   images keep resolving until they are re-keyed (the database still accepts a legacy key whose
- *   first segment is no website's code).
- * Staging keys (`_incoming/…`) are never a media row. The stored `hash` is synthetic (sha256 of the
- * key) because the original bytes aren't at hand; it only needs to be unique, which the storage_key
- * already is. size is 0 (unknown without fetching the object). An existing master for the key is
+ *   first segment is not code-shaped and that no other website holds).
+ * Every key must be a clean relative path (MediaKey::assertCleanPath), the rule the database applies
+ * too, so staging keys (`_incoming/…`), `.`/`..`/empty segments and backslashes are refused.
+ * The stored `hash` is synthetic (sha256 of the key) because the original bytes aren't at hand; it
+ * only needs to be unique, which the storage_key already is. size is 0 (unknown without fetching the object). An existing master for the key is
  * returned untouched — a real upload is never clobbered.
  */
 final readonly class EnsureMediaFromKey
@@ -61,19 +62,18 @@ final readonly class EnsureMediaFromKey
      */
     private function deriveFromKey(string $storageKey): array
     {
+        MediaKey::assertCleanPath($storageKey);
+
         $segments = explode('/', $storageKey);
         $first = $segments[0];
-
-        if ($first === '' || str_starts_with($first, '_')) {
-            throw MediaKeyRejectedException::malformed('storage key', $storageKey);
-        }
 
         if ($first === $this->sites->codeOfCurrent($this->current)) {
             return $this->deriveFromSiteCodeKey($storageKey, array_slice($segments, 1));
         }
 
-        if (preg_match('/^[0-9a-hjkmnp-tv-z]{8}$/', $first) === 1 && $this->sites->isSiteCode($first)) {
-            throw MediaKeyRejectedException::foreignSite($storageKey);
+        // Another website's code, or one that could be issued later: never a key of this site.
+        if ($this->sites->isCodeShaped($first)) {
+            throw MediaKeyRejectedException::notOwnCode($storageKey);
         }
 
         return $this->deriveFromLegacyKey($storageKey, $segments);
