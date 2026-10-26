@@ -39,7 +39,7 @@ it('draws the brand navy ink through the accent role', function (): void {
         ->toContain('border-accent')
         ->toContain('text-accent')
         ->and((string) $this->blade('<x-bs-admin::tabs :tabs="[\'a\' => \'Một\']" />'))->toContain('border-accent text-accent')
-        ->and((string) $this->blade('<x-bs-admin::input name="email" />'))->toContain('focus:border-accent');
+        ->and((string) $this->blade('<x-bs-admin::input name="email" />'))->toContain('focus:border-primary-text');
 });
 
 it('keeps the brand navy as the fill under white text', function (): void {

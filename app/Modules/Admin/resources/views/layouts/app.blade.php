@@ -15,7 +15,7 @@
     @include('admin::partials.brand-tokens')
     @livewireStyles
 </head>
-<body class="admin-shell min-h-full bg-body font-sans text-base text-body-text antialiased">
+<body class="admin-shell min-h-full bg-bg font-sans text-base text-text antialiased">
 <div x-data="{ open: false }" class="admin-shell-wrapper min-h-screen">
 
     {{-- Mobile overlay --}}

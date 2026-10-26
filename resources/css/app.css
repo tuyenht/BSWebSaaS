@@ -176,7 +176,6 @@
     /* Not an alias yet: its new name (--color-text-strong) now carries the heading ink, so the
        neutral "dark" badge keeps its own value until it moves over — a visible change. */
     --color-admin-dark-text: #212529;
-    --color-body: var(--color-bg);
     --color-heading: var(--color-text-strong);
     --color-body-text: var(--color-text);
     --color-body-muted: var(--color-text-muted);
@@ -194,7 +193,8 @@
 /* Text roles (docs/notes/design-tokens.md §2.4). Inline, so the per-user boost (admin-chrome.css)
    resolves on the element that uses the class: a preview frame with its own --user-text-boost
    still re-sizes. The role names never collide with Tailwind's sizes (xs, sm, base…), so the
-   text-sm… already in use keep their look. */
+   text-sm… already in use keep their look. A colour token of the same name would win the class,
+   so no role may share its name with a colour (the old heading alias still does, until it goes). */
 @theme inline {
     --text-caption: calc(0.75rem + var(--user-text-boost));
     --text-caption--line-height: 1.5;
@@ -209,6 +209,14 @@
     --text-title: calc(1.375rem + var(--user-text-boost));
     --text-title--line-height: 1.3;
     --font-weight-heading: var(--ui-heading-weight);
+
+    /* Control sizes (docs/notes/design-tokens.md §2.5), one place for every button and field: a main
+       button or input is 40px at the default text size and 44px from the next size up; a button on
+       a list row or inline is 36 / 40 / 44px. Each text-size step adds 0.125rem of boost, so
+       boost × 2 is one 4px step. The touch area stays 44px through a transparent extension. */
+    --spacing-control: calc(2.5rem + min(0.25rem, var(--user-text-boost) * 2));
+    --spacing-control-row: calc(2.25rem + min(0.5rem, var(--user-text-boost) * 2));
+    --spacing-hit: 2.75rem;
 }
 
 /* Dense-table font sizes (Velzon fs-* scale): the caption and small roles. */
@@ -218,6 +226,18 @@
     }
     .fs-13 {
         font-size: calc(0.8125rem + var(--user-text-boost));
+    }
+}
+
+/* Touch area of at least --spacing-hit around a control drawn smaller (a 36px row button): a
+   transparent ::after grows on each side by half the shortfall, so the layout does not move. */
+@utility hit-area {
+    position: relative;
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: min(0px, calc((100% - var(--spacing-hit)) / 2));
     }
 }
 
