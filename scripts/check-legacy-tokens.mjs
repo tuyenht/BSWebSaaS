@@ -65,7 +65,8 @@ const edge = (body) => new RegExp(`(?<![\\w-])(?:${body})(?![\\w-])`, 'g');
 const PATTERNS = [
     { kind: 'biến', regex: edge(`--(?:${OLD_PROPERTIES.join('|')})`) },
     { kind: 'thuộc tính', regex: edge(OLD_ATTRIBUTES.join('|')) },
-    { kind: 'class', regex: edge(`-?(?:${COLOR_UTILITIES})-(?:${OLD_COLOR_KEYS.join('|')})(?:\\/\\d+)?`) },
+    // `text-body` is the body text-size role once the --color-body alias is gone; `bg-body` stays old.
+    { kind: 'class', regex: edge(`(?!text-body(?![\\w-]))-?(?:${COLOR_UTILITIES})-(?:${OLD_COLOR_KEYS.join('|')})(?:\\/\\d+)?`) },
     { kind: 'class', regex: edge(`-?(?:${SPACING_UTILITIES})-(?:${OLD_SPACING_KEYS.join('|')})`) },
 ];
 

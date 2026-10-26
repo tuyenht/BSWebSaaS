@@ -117,6 +117,7 @@ Cách khai báo:
 | Bóng | `--shadow-card` (giữ tên đang có) cho thẻ trang quản trị. Menu thả, hộp thoại dùng `shadow-md` / `shadow-lg` có sẵn của Tailwind. Website khách: `--shadow-soft/medium` (ADR-04). |
 | Chuyển động | `--duration-fast` 150ms · `--duration-base` 200ms · `--ease-standard` `cubic-bezier(.2,0,0,1)`; giảm chuyển động thì về 0. Website khách: `--motion-duration` (ADR-04, §9). |
 | Lớp chồng | `--z-sticky` 10 · `--z-dropdown` 20 · `--z-overlay` 30 · `--z-modal` 40 · `--z-toast` 50 |
+| Cỡ điều khiển | `--spacing-control` nút chính, ô nhập: 40 ở chữ Vừa, 44 từ Lớn · `--spacing-control-row` nút trên hàng / trong dòng: 36 · 40 · 44 · `--spacing-hit` vùng bấm 44 (phần trong suốt). Suy ra từ `--user-text-boost`; canvas thiết kế dùng cùng tên (`admin-base.css`). Lớp sinh sẵn: `min-h-control`, `min-h-control-row`, `size-control`… |
 | Khung | `--sidebar-width` 250px · `--sidebar-width-collapsed` 70px · `--topbar-height` 70px · `--container-boxed` 1300px |
 
 ## 3. Quy về thang khi chuyển thiết kế sang code
@@ -185,7 +186,7 @@ Cách khai báo:
 | `--primary-on-ink` · `--surface` · `--body` · `--font` (website khách) | `--color-primary-on-dark` · `--color-surface` · `--color-text` · `--font-body` |
 | `--brand-50` … `--brand-900` (website khách, ADR-04) | `--color-brand-50` … `--color-brand-900` |
 | `--color-on-solid` (thiết kế) | `--color-on-primary`. `--color-white` giữ nguyên (tên có sẵn của Tailwind). |
-| `--color-body` · `--vz-body-bg` | `--color-bg` |
+| `--color-body` (đã gỡ: Tailwind cho `text-body` nhận màu này thay vì cỡ chữ) · `--vz-body-bg` | `--color-bg` |
 | `--color-body-text` | `--color-text` |
 | `--color-heading` | `--color-text-strong` |
 | `--color-body-muted` · `--s-muted` | `--color-text-muted` |
