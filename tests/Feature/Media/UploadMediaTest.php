@@ -55,7 +55,7 @@ it('dedups identical content within a site (one master, one R2 object)', functio
     expect($second)->toBe($first)->and($count)->toBe(1);
 });
 
-it('restores a trashed master and heals a missing object on re-upload of the same bytes', function (): void {
+it('restores a trashed master and heals a missing object on re-upload by someone who may restore', function (): void {
     // Same two invariants as the presigned path: a soft-deleted master must not turn the
     // UNIQUE(site,collection,hash) insert into a dead-end, and dedup must put the bytes back
     // when the row's object is gone instead of pinning the hash to a dead key.
@@ -64,7 +64,7 @@ it('restores a trashed master and heals a missing object on re-upload of the sam
         $a->delete(); // Thùng rác
         Storage::disk('r2')->delete($a->storage_key); // and the object is gone too
 
-        $b = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', pngBytes()), 'An Vinh');
+        $b = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', pngBytes()), 'An Vinh', mayRestore: true);
 
         return [$a->id, $b->id, $b->trashed(), $a->storage_key];
     });
@@ -132,4 +132,24 @@ it('keeps the PHP upload ceiling at or above the media size cap (browser-upload 
 
     expect(uploadIniBytes('upload_max_filesize'))->toBeGreaterThanOrEqual($cap)
         ->and(uploadIniBytes('post_max_size'))->toBeGreaterThan($cap);
+});
+
+it('refuses to take a trashed master out of the Trash for an uploader who may not restore', function (): void {
+    // Uploading needs media.upload only; restoring from the Trash is a media.delete right. A
+    // re-upload of the same bytes must not become a back door around that.
+    [$reason, $stillTrashed] = app(Tenancy::class)->enter(1, function (): array {
+        $a = app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('a.png', pngBytes()), 'An Vinh');
+        $a->delete(); // Thùng rác
+
+        try {
+            app(UploadMedia::class)->handle(UploadedFile::fake()->createWithContent('b.png', pngBytes()), 'An Vinh');
+            $reason = null;
+        } catch (MediaRejectedException $e) {
+            $reason = $e->reason;
+        }
+
+        return [$reason, Media::query()->withTrashed()->whereKey($a->id)->first()?->trashed()];
+    });
+
+    expect($reason)->toBe('in_trash')->and($stillTrashed)->toBeTrue();
 });

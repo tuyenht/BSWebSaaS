@@ -351,6 +351,7 @@
     "media.err_upload_session_invalid": "Phiên tải lên không hợp lệ. Vui lòng thử lại.",
     "media.err_upload_missing": "Không tìm thấy tệp đã tải lên.",
     "media.err_storage_failed": "Không lưu được tệp lên kho lưu trữ. Vui lòng thử lại.",
+    "media.err_in_trash": "Tệp này đang nằm trong Thùng rác — nhờ người có quyền xóa (Quản trị) khôi phục.",
     "media.err_not_an_image": "Liên kết không trỏ tới một ảnh hợp lệ (JPG, PNG, WEBP, GIF).",
     "media.err_host_unresolvable": "Không tìm thấy tên miền của liên kết.",
     "media.err_private_address": "Liên kết trỏ tới địa chỉ nội bộ — không được phép.",
