@@ -158,3 +158,80 @@ it('ingests a multipart file via the local fallback → 200 {ulid} + a site-stam
         ->and($media->created_by)->toBe($editor->id);
     Storage::disk('r2')->assertExists($media->storage_key);
 });
+
+// ── a re-upload of a file in the Trash: restoring is a media.delete right, not an upload one ──
+/** A binned library master holding endpointPng()'s bytes, in site 1. */
+function trashedEndpointMaster(): Media
+{
+    return app(Tenancy::class)->enter(1, function (): Media {
+        $media = Media::query()->create([
+            'collection' => 'library',
+            'slug' => 'da-xoa',
+            'hash' => hash('sha256', endpointPng()),
+            'storage_key' => 'a/library/da-xoa.png',
+            'disk' => 'r2',
+            'original_filename' => 'da-xoa.png',
+            'mime' => 'image/png',
+            'size' => strlen(endpointPng()),
+        ]);
+        Storage::disk('r2')->put($media->storage_key, endpointPng());
+        $media->delete();
+
+        return $media;
+    });
+}
+
+function isTrashedInSiteOne(Media $media): ?bool
+{
+    return app(Tenancy::class)->enter(1, fn (): ?bool => Media::query()->withTrashed()->whereKey($media->id)->first()?->trashed());
+}
+
+it('refuses a register that would take a trashed file out of the Trash for an uploader without media.delete', function (): void {
+    $master = trashedEndpointMaster();
+    $tempKey = '_incoming/a/01again.png';
+    Storage::disk('r2')->put($tempKey, endpointPng());
+    Cache::put(PresignMediaUpload::ownershipKey($tempKey), 1, now()->addMinutes(5));
+
+    $this->actingAs(mediaMember(['media.view', 'media.upload']))
+        ->postJson('http://a.test/admin/media/register', ['tempKey' => $tempKey, 'filename' => 'lai.png'])
+        ->assertStatus(422)
+        ->assertExactJson(['message' => __('media.err_in_trash')]);
+
+    expect(isTrashedInSiteOne($master))->toBeTrue();
+});
+
+it('restores a trashed file on register for an uploader holding media.delete', function (): void {
+    $master = trashedEndpointMaster();
+    $tempKey = '_incoming/a/01again.png';
+    Storage::disk('r2')->put($tempKey, endpointPng());
+    Cache::put(PresignMediaUpload::ownershipKey($tempKey), 1, now()->addMinutes(5));
+
+    $this->actingAs(mediaMember(['media.view', 'media.upload', 'media.delete']))
+        ->postJson('http://a.test/admin/media/register', ['tempKey' => $tempKey, 'filename' => 'lai.png'])
+        ->assertOk()
+        ->assertExactJson(['ulid' => $master->ulid]);
+
+    expect(isTrashedInSiteOne($master))->toBeFalse();
+});
+
+it('refuses a local-fallback upload that would take a trashed file out of the Trash without media.delete', function (): void {
+    $master = trashedEndpointMaster();
+
+    $this->actingAs(mediaMember(['media.view', 'media.upload']))
+        ->post('http://a.test/admin/media/upload', ['file' => UploadedFile::fake()->createWithContent('lai.png', endpointPng())], ['Accept' => 'application/json'])
+        ->assertStatus(422)
+        ->assertExactJson(['message' => __('media.err_in_trash')]);
+
+    expect(isTrashedInSiteOne($master))->toBeTrue();
+});
+
+it('restores a trashed file on a local-fallback upload for an uploader holding media.delete', function (): void {
+    $master = trashedEndpointMaster();
+
+    $this->actingAs(mediaMember(['media.view', 'media.upload', 'media.delete']))
+        ->post('http://a.test/admin/media/upload', ['file' => UploadedFile::fake()->createWithContent('lai.png', endpointPng())], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertExactJson(['ulid' => $master->ulid]);
+
+    expect(isTrashedInSiteOne($master))->toBeFalse();
+});

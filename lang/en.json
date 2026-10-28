@@ -351,6 +351,7 @@
     "media.err_upload_session_invalid": "This upload session is no longer valid. Please try again.",
     "media.err_upload_missing": "The uploaded file could not be found.",
     "media.err_storage_failed": "The file could not be saved to storage. Please try again.",
+    "media.err_in_trash": "This file is in the Trash — ask someone who can delete files (an administrator) to restore it.",
     "media.err_not_an_image": "The link does not point to a valid image (JPG, PNG, WEBP, GIF).",
     "media.err_host_unresolvable": "The link's domain could not be found.",
     "media.err_private_address": "The link points to a private address, which is not allowed.",

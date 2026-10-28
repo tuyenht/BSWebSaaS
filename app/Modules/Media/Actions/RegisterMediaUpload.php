@@ -28,7 +28,12 @@ final readonly class RegisterMediaUpload
         private SiteDirectory $sites,
     ) {}
 
-    public function handle(string $tempKey, string $filename, ?int $createdBy = null, ?int $width = null, ?int $height = null, string $collection = 'library'): Media
+    /**
+     * @param  bool  $mayRestore  whether the uploader may take a file back out of the Trash (the
+     *                            media.delete right, resolved by the caller). The action holds no user
+     *                            of its own, so the caller decides; false refuses with `in_trash`.
+     */
+    public function handle(string $tempKey, string $filename, ?int $createdBy = null, ?int $width = null, ?int $height = null, string $collection = 'library', bool $mayRestore = false): Media
     {
         MediaKey::assertConfigured(); // fail loud + clean if the R2 disk has no bucket/creds (.env drift)
 
@@ -77,13 +82,18 @@ final readonly class RegisterMediaUpload
         // 6) Dedup within (site, collection, hash) — return the master, drop the temp object.
         // withTrashed: the UNIQUE(site,collection,hash) index doesn't know about soft-deletes,
         // so a trashed master would turn the insert below into a guaranteed violation —
-        // re-uploading a binned file RESTORES its master instead of dead-ending. And a master
+        // re-uploading a binned file RESTORES its master instead of dead-ending — for someone allowed
+        // to restore from the Trash; anyone else is told so (row stays binned). And a master
         // whose object went missing (an interrupted past finalize) self-heals: these are the
         // same bytes, copied back under the row's existing storage_key — otherwise dedup would
         // pin that hash to a dead key forever and re-uploading could never fix the broken image.
         $existing = Media::query()->withTrashed()->where('collection', $collection)->where('hash', $hash)->first();
         if ($existing instanceof Media) {
             if ($existing->trashed()) {
+                if (! $mayRestore) {
+                    $disk->delete($tempKey);
+                    throw new MediaRejectedException('in_trash');
+                }
                 $existing->restore();
             }
             if (! $disk->exists($existing->storage_key) && ! $disk->copy($tempKey, $existing->storage_key)) {

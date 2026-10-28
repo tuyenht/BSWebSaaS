@@ -351,6 +351,7 @@
     "media.err_upload_session_invalid": "上传会话无效，请重试。",
     "media.err_upload_missing": "找不到已上传的文件。",
     "media.err_storage_failed": "文件无法保存到存储空间，请重试。",
+    "media.err_in_trash": "此文件在回收站中——请有删除权限的人（管理员）将其恢复。",
     "media.err_not_an_image": "该链接未指向有效的图片（JPG、PNG、WEBP、GIF）。",
     "media.err_host_unresolvable": "找不到该链接的域名。",
     "media.err_private_address": "该链接指向内部地址，不允许使用。",
