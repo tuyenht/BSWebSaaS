@@ -705,6 +705,7 @@ it('403s opening the trash view without media.delete and lists nothing trashed',
 
     app(Tenancy::class)->enter(1, function () use ($user): void {
         seedPickerMedia('an')->delete();
+        seedPickerMedia('live'); // one live file, so the count below tells live from trashed
 
         Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
             ->call('openPickerTrash')->assertStatus(403);
@@ -712,7 +713,7 @@ it('403s opening the trash view without media.delete and lists nothing trashed',
         // The library this actor does see holds no trashed file, and not even the trash count.
         $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
         expect($component->instance()->pickerTrash)->toBeFalse()
-            ->and($component->instance()->mediaPickerState()['page']->total())->toBe(0)
+            ->and($component->instance()->mediaPickerState()['page']->total())->toBe(1)
             ->and($component->instance()->mediaPickerState()['trashTotal'])->toBe(0);
     });
 });
@@ -740,6 +741,21 @@ it('refuses the trash list itself when the trash flag is on without media.delete
         $component->instance()->pickerTrash = true; // as if a future server path forgot the gate
 
         expect(fn () => $component->instance()->mediaPickerState())
+            ->toThrow(HttpException::class);
+    });
+});
+
+it('refuses selecting a trashed file when the trash flag is on without media.delete', function (): void {
+    $user = pickerManager(); // media.view only
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $binned = seedPickerMedia('an');
+        $binned->delete();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
+        $component->instance()->pickerTrash = true; // as if a future server path forgot the gate
+
+        expect(fn () => $component->instance()->togglePickerItem($binned->id))
             ->toThrow(HttpException::class);
     });
 });
