@@ -85,7 +85,7 @@
              @focusout="if ($event.relatedTarget && ! $root.contains($event.relatedTarget)) hide(false)">
             <button type="button" x-ref="button" data-fsec="{{ $section['key'] }}" data-act="{{ $section['on'] ? '1' : '0' }}"
                     @click="open ? hide() : show()"
-                    aria-haspopup="true" :aria-expanded="open ? 'true' : 'false'" aria-controls="lfs-{{ $uid }}-{{ $section['key'] }}"
+                    :aria-expanded="open ? 'true' : 'false'" aria-controls="lfs-{{ $uid }}-{{ $section['key'] }}"
                     class="{{ $pill }} {{ $pillState($section['on']) }}">
                 @if ($section['icon'] ?? null)
                     <x-bs-admin::icon :name="$section['icon']" class="{{ $pillIcon($section['on']) }}" />
@@ -173,7 +173,7 @@
                         {{-- the divider sits on a wrapper: a fieldset's own top border is cut by its legend --}}
                         <div @class(['border-t border-border' => ! $loop->first])>
                         <fieldset class="m-0 min-w-0 border-0 px-0 pb-2 pt-1">
-                            <legend data-sec tabindex="-1" class="flex flex-wrap items-baseline gap-x-2 px-4 pb-1 pt-3 text-small font-semibold text-heading outline-none">
+                            <legend data-sec tabindex="-1" class="flex flex-wrap items-baseline gap-x-2 px-4 pb-1 pt-3 text-small font-semibold text-heading">
                                 <span>{{ $section['label'] }}@if ($section['suffix'] !== '')<span x-show="cols === 1" class="font-normal">{{ $section['suffix'] }}</span>@endif</span>
                                 <span class="font-normal text-body-muted">{{ __($section['multiple'] ? 'admin.list.choose_many' : 'admin.list.choose_one') }}</span>
                             </legend>

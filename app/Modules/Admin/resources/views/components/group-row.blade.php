@@ -19,13 +19,15 @@
     // "Khác" opens with Enter, Space or ↓; ↑ ↓ move through it; Esc closes it and focus returns to it.
     $fmt = fn (?int $n): ?string => $n === null ? null : \Illuminate\Support\Number::format($n, locale: app()->getLocale());
     $setter = fn (string $key): string => '$set('.\Illuminate\Support\Js::from($model).', '.\Illuminate\Support\Js::from($key).')';
-    $menuId = 'gm-'.\Illuminate\Support\Str::random(8);
+    // Stable across re-renders, so a morph never rewrites aria-controls under an open menu
+    $menuId = 'gm-'.substr(md5($model), 0, 8);
 @endphp
 <nav aria-label="{{ $label }}"
     x-data="{
         over: [],
         open: false,
         left: 0,
+        stopMorph: null,
         fits() {
             const row = this.$refs.row, trash = row.querySelector(':scope > [data-trash]');
             if (row.scrollWidth > row.clientWidth) return false;
@@ -52,6 +54,11 @@
             this.over = over;
             if (! over.length) { more.hidden = true; this.open = false; }
         },
+        // A Livewire re-render morphs the row back to the server HTML (every group shown, Khác hidden): fit again after each one
+        watchMorph() {
+            try { this.stopMorph = this.$wire.interceptMessage(({ onSuccess }) => onSuccess(({ onMorphed }) => onMorphed(() => this.fit()))); } catch (e) {}
+        },
+        destroy() { this.stopMorph?.(); },
         items() { return [...this.$refs.menu.querySelectorAll('[role=menuitemradio]')].filter((el) => el.offsetParent !== null); },
         show(focusFirst = true) {
             this.left = this.$refs.more.offsetLeft;
@@ -66,7 +73,7 @@
         hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.moreButton.focus(); },
         step(d) { const f = this.items(), i = f.indexOf(document.activeElement); f[(i + d + f.length) % f.length]?.focus(); },
     }"
-    x-init="$nextTick(() => fit()); new ResizeObserver(() => fit()).observe($refs.row)"
+    x-init="$nextTick(() => fit()); new ResizeObserver(() => fit()).observe($refs.row); watchMorph()"
     @keydown.escape="hide()"
     @click.outside="hide(false)"
     {{ $attributes->merge(['class' => 'relative hidden min-w-0 border-b border-border min-[900px]:block']) }}
@@ -115,6 +122,7 @@
     <div x-show="open" x-cloak x-ref="menu" id="{{ $menuId }}" role="menu" aria-label="{{ __('admin.list.more_groups') }}"
          :style="{ insetInlineStart: left + 'px' }"
          @keydown.down.prevent="step(1)" @keydown.up.prevent="step(-1)"
+         @focusout="$event.relatedTarget && ! $refs.menu.contains($event.relatedTarget) && $event.relatedTarget !== $refs.moreButton && hide(false)"
          class="absolute top-full z-60 mt-1 min-w-55 max-w-[min(20rem,calc(100vw-1.5rem))] rounded-md border border-border-input bg-surface p-1 shadow-lg">
         @foreach ($groups as $group)
             @php $on = $group['key'] === $active; @endphp
