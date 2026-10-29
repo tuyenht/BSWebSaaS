@@ -84,6 +84,7 @@ it('gives every section its own light button from 1024px, marked when it filters
     expect($html)->toMatch('/data-fsec="status" data-act="0"/')
         ->and($html)->toMatch('/data-fsec="kind" data-act="1"/')
         ->and($html)->toContain('role="group" aria-label="Loại tệp"')
+        ->and($html)->not->toMatch('/data-fsec="[^"]+"[^>]*aria-haspopup/')
         ->and($html)->toContain(__('admin.list.choose_many'))
         ->and($html)->toContain(__('admin.list.choose_one'));
 });
@@ -215,13 +216,28 @@ it('puts More right after the last group and Trash at the far end', function ():
         ->and($html)->toMatch('/data-g="trash" data-pin="1"\s+data-trash/');
 });
 
+it('keeps the More menu id across renders and fits the row again after every Livewire update', function (): void {
+    $render = fn (): string => (string) $this->blade('<x-bs-admin::group-row :groups="$groups" active="used" model="group" label="Nhóm tệp" />', ['groups' => statusGroups()]);
+
+    preg_match('/aria-controls="(gm-[a-z0-9]{8})"/', $render(), $a);
+    preg_match('/aria-controls="(gm-[a-z0-9]{8})"/', $render(), $b);
+
+    expect($a[1])->toBe($b[1])
+        ->and($render())->toContain('onMorphed(() => this.fit())')
+        ->and($render())->toContain('@focusout=');
+});
+
 it('says what is filtered in plain words, with Clear and one removable chip per condition', function (): void {
     app()->setLocale('vi');
     $html = (string) $this->blade('<x-bs-admin::filter-status group="Tạm ngưng" summary="1 website" :chips="$chips" clear="clearFilters" />', [
         'chips' => [['label' => 'Người tạo: Minh Tuấn', 'remove' => "removeFilter('author')"]],
     ]);
 
-    expect($html)->toContain('role="status"')
+    preg_match('/<span role="status"[^>]*>(.*?)<\/span>\s*<span aria-hidden="true">·<\/span>\s*<button/s', $html, $live);
+
+    expect($live)->not->toBeEmpty()
+        ->and($live[1])->toContain('Tạm ngưng')
+        ->and($live[1])->not->toContain('<button')
         ->and($html)->toContain('<strong')
         ->and($html)->toContain('Tạm ngưng')
         ->and($html)->toContain('1 website')
