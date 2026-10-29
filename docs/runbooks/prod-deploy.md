@@ -45,7 +45,9 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 ## Deploy
 
 1. `git -C /opt/bswebsaas/prod merge --ff-only <sha>`. Prod carries only untracked files, never commits; if it is not a fast-forward, stop.
-2. Migrations: `docker exec bsweb_prod_app php artisan migrate --database=pgsql_admin --force`.
+2. Migrations, from `/opt/bswebsaas/prod`: `docker compose --profile ops run --rm --no-deps migrate`.
+   - This one-off container is the only app process that receives the superuser password (from `/opt/bswebsaas/secrets/db-admin.env`); the app, the queue and the scheduler never hold it.
+   - Any other superuser-only artisan command runs the same way: `docker compose --profile ops run --rm --no-deps migrate php artisan <command> --database=pgsql_admin`.
 3. Front-end: in `/opt/bswebsaas/prod`, run `pnpm install --frozen-lockfile` (only if the lockfile changed), then `pnpm run build`.
    - `public/build` is gitignored, and Tailwind emits only the classes it saw at build time.
    - Skip this step and new screens ship with stale CSS — silently.
@@ -70,11 +72,46 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 - The first `docker compose up -d` after the switch to `bsweb/app:prod` recreates app, horizon and scheduler (a few seconds of 502) — which is also what applies an edited `.env`.
 - PgBouncer is pinned by digest (1.25.2), not `:latest`. Changing that line changes the service's config, so the next `docker compose up -d` recreates the pgbouncer container once — a few seconds without database connections.
 - Scripts that read `.env` themselves (the backup and the restore drill) see an edit at their next run.
+- The superuser password is **not** in `.env`. It lives in `/opt/bswebsaas/secrets/db-admin.env` (`DB_ADMIN_PASSWORD` and `POSTGRES_PASSWORD`, the same value; root only), read by the `postgres` and `migrate` services alone.
+  - `DB_ADMIN_USERNAME` stays in `.env`: the postgres service, its healthcheck and every `psql -U "$POSTGRES_USER"` in the backup scripts need it.
+  - A production app process that loads the password anyway logs a critical line on boot: `docker logs --since 10m bsweb_prod_app 2>&1 | grep -c 'superuser database password'` should print 0.
+  - Postgres reads the file only to initialise an empty data directory, so a host without it keeps running; only `migrate` fails (it cannot sign in).
+
+### Moving the superuser password out of the app (once per host)
+
+Until this is done, `.env` holds `DB_ADMIN_PASSWORD` and the app containers can read it.
+
+1. Before pulling the commit that adds the `migrate` service: create the secret file and give the superuser a new password (the old one has been inside the app containers, so moving it without changing it keeps any past leak valid).
+   ```bash
+   install -d -m 700 /opt/bswebsaas/secrets
+   export NEWPW="$(openssl rand -hex 32)"
+   ( umask 077 && printf 'DB_ADMIN_PASSWORD=%s\nPOSTGRES_PASSWORD=%s\n' "$NEWPW" "$NEWPW" > /opt/bswebsaas/secrets/db-admin.env )
+   printf '%s\n' "SET log_statement = 'none';" "SET log_min_error_statement = 'panic';" \
+     '\set pw `printenv NEWPW`' "ALTER ROLE CURRENT_USER PASSWORD :'pw';" \
+     | docker exec -i -e NEWPW bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d postgres -X -q -v ON_ERROR_STOP=1'
+   unset NEWPW
+   ```
+   The password never appears in a process list, on screen or in the Postgres log (the two `SET` lines keep this one statement out of it). Nothing running uses the superuser over the network, so the site is unaffected; the backup scripts sign in over the container's local socket.
+2. Deploy the commit (`merge --ff-only`), remove the line from `.env` (`sed -i '/^DB_ADMIN_PASSWORD=/d' /opt/bswebsaas/prod/.env`) and drop the config cache built with it: `docker exec bsweb_prod_app php artisan config:clear`. Without that, the containers recreated in step 3 boot from a cache that still holds the old password.
+3. `docker compose up -d` in `/opt/bswebsaas/prod`: recreates `postgres` (it now reads the secret file) and app, horizon and scheduler (they now start without the password). A few seconds without database connections.
+4. Only now: `docker exec bsweb_prod_app php artisan optimize`, `docker exec bsweb_prod_app php artisan octane:reload`, `docker restart bsweb_prod_horizon bsweb_prod_scheduler`. Running `optimize` before step 3 would copy the password back into the config cache.
+5. Prove the superuser still works where it should: `docker compose --profile ops run --rm --no-deps migrate php artisan migrate:status --database=pgsql_admin`.
+6. Run the check under "After", then a restore drill (`prod-db-backup-restore.md`) to confirm the backups still sign in.
+
+Rollback (any step): `printf '\n' >> /opt/bswebsaas/prod/.env && grep '^DB_ADMIN_PASSWORD=' /opt/bswebsaas/secrets/db-admin.env >> /opt/bswebsaas/prod/.env`, check out the previous commit, `docker compose up -d`, then `optimize` → `octane:reload` → `docker restart bsweb_prod_horizon bsweb_prod_scheduler` (the cache from step 4 has no password, so the old in-container migrate command would fail to sign in). Use the NEW password: the old one no longer works.
 
 ## After
 
 - Check from the host: `docker exec bsweb_prod_app curl -sI -H 'Host: <domain>' http://localhost:80/<path>`. Octane listens on :80.
 - Errors go to the container's stderr: `docker logs --since 10m bsweb_prod_app`. `storage/logs/laravel.log` is not written.
+- No app process holds the superuser password: in the process environment, `/app/.env` or the config cache. The check prints only SET or nothing, never a value; expect `env= dotenv-lines=0` and `config-cache=unset` for each container:
+  ```bash
+  for c in bsweb_prod_app bsweb_prod_horizon bsweb_prod_scheduler; do
+    printf '%s: ' "$c"
+    docker exec "$c" sh -c 'echo "env=${DB_ADMIN_PASSWORD:+SET} dotenv-lines=$(grep -c "^DB_ADMIN_PASSWORD=." /app/.env)"'
+    docker exec "$c" php -r '$c = @include "/app/bootstrap/cache/config.php"; echo "config-cache=", empty($c["database"]["connections"]["pgsql_admin"]["password"]) ? "unset" : "SET", PHP_EOL;'
+  done
+  ```
 - Rollback:
   1. `git -C /opt/bswebsaas/prod reset --hard <previous-sha>`.
   2. `pnpm run build` → `optimize` → `octane:reload` → restart horizon.
