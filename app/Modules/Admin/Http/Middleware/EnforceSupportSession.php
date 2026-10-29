@@ -54,7 +54,7 @@ final readonly class EnforceSupportSession
     }
 
     /**
-     * @param  array{staff_id: int, staff_label: string, reason: string, site_id: int, expires_at: int}  $session
+     * @param  array{staff_id: int, staff_label: string, reason: string, site_id: int, expires_at: int, session_ulid: string|null}  $session
      */
     private function whyEnd(array $session): ?string
     {

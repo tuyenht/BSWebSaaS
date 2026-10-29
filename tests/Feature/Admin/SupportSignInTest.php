@@ -334,6 +334,14 @@ it('leaves the session code empty on rows written outside a support session', fu
         ->and(AuditLog::query()->whereNotNull('support_session_ulid')->count())->toBe(0);
 });
 
+it('takes a session code from the caller only on the row that issues the link', function (): void {
+    $owner = supportMember(1, 'owner');
+
+    asMember($owner, false, fn () => Audit::record('cms.entry.published', ['support_session_ulid' => '01JBZ00000000000000000000A']));
+
+    expect(AuditLog::query()->sole()->support_session_ulid)->toBeNull();
+});
+
 it('writes no session code, never an empty one, for a link issued before codes existed', function (): void {
     $owner = supportMember(1, 'owner');
     $token = supportToken(platformStaff('support'), $owner);
