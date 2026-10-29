@@ -92,11 +92,11 @@ Until this is done, `.env` holds `DB_ADMIN_PASSWORD` and the app containers can 
    unset NEWPW
    ```
    The password never appears in a process list, on screen or in the Postgres log (the two `SET` lines keep this one statement out of it). Nothing running uses the superuser over the network, so the site is unaffected; the backup scripts sign in over the container's local socket.
-2. Deploy the commit (`merge --ff-only`), remove the line from `.env` (`sed -i '/^DB_ADMIN_PASSWORD=/d' /opt/bswebsaas/prod/.env`) and drop the config cache built with it: `docker exec bsweb_prod_app php artisan config:clear`. Without that, the containers recreated in step 3 boot from a cache that still holds the old password.
+2. Run Deploy steps 1–3 only (merge, migrations through the `migrate` service, front-end build); steps 4–5 wait for step 4 here. Then remove the line from `.env` (`sed -i '/^DB_ADMIN_PASSWORD=/d' /opt/bswebsaas/prod/.env`) and drop the config cache built with it: `docker exec bsweb_prod_app php artisan config:clear`. Without that, the containers recreated in step 3 boot from a cache that still holds the old password.
 3. `docker compose up -d` in `/opt/bswebsaas/prod`: recreates `postgres` (it now reads the secret file) and app, horizon and scheduler (they now start without the password). A few seconds without database connections.
-4. Only now: `docker exec bsweb_prod_app php artisan optimize`, `docker exec bsweb_prod_app php artisan octane:reload`, `docker restart bsweb_prod_horizon bsweb_prod_scheduler`. Running `optimize` before step 3 would copy the password back into the config cache.
+4. Only now: `docker exec bsweb_prod_app php artisan optimize`, `docker exec bsweb_prod_app php artisan octane:reload`, `docker restart bsweb_prod_horizon bsweb_prod_scheduler`. Running `optimize` before step 3 would copy the password back into the config cache: the old containers still carry it in their environment. Then Deploy steps 6–7 if the delta calls for them.
 5. Prove the superuser still works where it should: `docker compose --profile ops run --rm --no-deps migrate php artisan migrate:status --database=pgsql_admin`.
-6. Run the check under "After", then a restore drill (`prod-db-backup-restore.md`) to confirm the backups still sign in.
+6. Run the check under "After", then a restore drill (`prod-db-backup-restore.md`) to confirm the backups still sign in. Record the new secret file in `docs/ops-log.md`.
 
 Rollback (any step): `printf '\n' >> /opt/bswebsaas/prod/.env && grep '^DB_ADMIN_PASSWORD=' /opt/bswebsaas/secrets/db-admin.env >> /opt/bswebsaas/prod/.env`, check out the previous commit, `docker compose up -d`, then `optimize` → `octane:reload` → `docker restart bsweb_prod_horizon bsweb_prod_scheduler` (the cache from step 4 has no password, so the old in-container migrate command would fail to sign in). Use the NEW password: the old one no longer works.
 
