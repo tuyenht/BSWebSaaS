@@ -83,11 +83,11 @@
     <x-bs-admin::card title="List tools">
         @php
             $gallerySections = [
-                ['key' => 'status', 'label' => 'Trạng thái', 'model' => 'galleryStatus', 'options' => [
+                ['key' => 'status', 'label' => 'Trạng thái', 'model' => 'galleryStatus', 'icon' => 'ri-inbox-archive', 'value' => $galleryStatus, 'options' => [
                     ['value' => 'live', 'label' => 'Tệp đang có', 'count' => 21],
                     ['value' => 'trash', 'label' => 'Thùng rác', 'count' => 3],
                 ]],
-                ['key' => 'kind', 'label' => 'Loại tệp', 'model' => 'galleryKinds', 'multiple' => true, 'options' => [
+                ['key' => 'kind', 'label' => 'Loại tệp', 'model' => 'galleryKinds', 'multiple' => true, 'icon' => 'ri-image-2', 'value' => $galleryKinds, 'options' => [
                     ['value' => 'image', 'label' => 'Ảnh', 'count' => 19],
                     ['value' => 'pdf', 'label' => 'Tài liệu PDF', 'count' => 2],
                 ]],

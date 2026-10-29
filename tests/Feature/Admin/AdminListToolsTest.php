@@ -43,8 +43,9 @@ it('offers one choice as radios and several as checkboxes, bound live with their
     app()->setLocale('vi');
     $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => filterSections()]);
 
-    expect(substr_count($html, 'type="radio"'))->toBe(2)
-        ->and(substr_count($html, 'type="checkbox"'))->toBe(2)
+    // once in each section's own panel (from 1024px) and once in the Filter sheet (below 1024px)
+    expect(substr_count($html, 'type="radio"'))->toBe(4)
+        ->and(substr_count($html, 'type="checkbox"'))->toBe(4)
         ->and($html)->toContain('wire:model.live="status"')
         ->and($html)->toContain('wire:model.live="kinds"')
         ->and($html)->toContain('1.234')
@@ -72,6 +73,54 @@ it('ties the Filter button to its dialog and draws the filter icon', function ()
         ->and($html)->toContain('id="'.$m[1].'"')
         ->and($html)->toContain('role="dialog"')
         ->and($html)->toContain('M10 18H14V16H10V18ZM3 6V8H21V6H3ZM6 13H18V11H6V13Z');
+});
+
+it('gives every section its own light button from 1024px, marked when it filters', function (): void {
+    app()->setLocale('vi');
+    $sections = filterSections();
+    $sections[1]['value'] = ['pdf'];
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect($html)->toMatch('/data-fsec="status" data-act="0"/')
+        ->and($html)->toMatch('/data-fsec="kind" data-act="1"/')
+        ->and($html)->toContain('role="group" aria-label="Loại tệp"')
+        ->and($html)->toContain(__('admin.list.choose_many'))
+        ->and($html)->toContain(__('admin.list.choose_one'));
+});
+
+it('opens the Filter sheet as a named modal dialog that can be closed by its own button', function (): void {
+    app()->setLocale('vi');
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => filterSections()]);
+
+    expect($html)->toContain('aria-modal="true"')
+        ->and($html)->toContain(__('admin.list.filter_panel_title'))
+        ->and($html)->toContain('aria-label="'.__('admin.list.close_filter_panel').'"')
+        ->and($html)->toContain('aria-label="'.__('admin.list.filter_sections').'"');
+});
+
+it('says in words what each section is set to, in the two-column list of sections', function (): void {
+    app()->setLocale('vi');
+    $sections = filterSections();
+    $sections[1]['value'] = ['image', 'pdf'];
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect($html)->toContain('aria-label="Đi tới phần Trạng thái: Tệp đang có"')
+        ->and($html)->toContain('aria-label="Đi tới phần Loại tệp: Ảnh, Tài liệu PDF"')
+        ->and($html)->toContain(': Tệp đang có')
+        ->and($html)->toContain(' · 2 đã chọn');
+});
+
+it('says All, dimmed, for a section with nothing chosen and shortens long choices', function (): void {
+    app()->setLocale('vi');
+    $many = ['key' => 'fmt', 'label' => 'Định dạng', 'model' => 'formats', 'multiple' => true, 'value' => ['jpg', 'png', 'webp', 'gif', 'pdf'], 'options' => [
+        ['value' => 'jpg', 'label' => 'JPG'], ['value' => 'png', 'label' => 'PNG'], ['value' => 'webp', 'label' => 'WEBP'],
+        ['value' => 'gif', 'label' => 'GIF'], ['value' => 'pdf', 'label' => 'PDF'],
+    ]];
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => [...filterSections(), $many]]);
+
+    expect($html)->toContain('aria-label="Đi tới phần Loại tệp: Tất cả"')
+        ->and($html)->toMatch('/data-all[^>]*>\s*Tất cả/')
+        ->and($html)->toContain('aria-label="Đi tới phần Định dạng: JPG, PNG, WEBP và 2 mục khác"');
 });
 
 /**
