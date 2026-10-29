@@ -7,6 +7,35 @@
 
 ## 2026
 
+### 2026-10-29 — Gỡ ClaudeKit khỏi cấu hình Claude Code (quay lại được); MEMORY.md tiếng Anh
+
+- **Owner duyệt trong phiên (29/10, "Làm cả hai"):** gỡ bộ ClaudeKit khỏi `~/.claude` của root theo cách quay lại được. Lý do: 0 lần dùng skill của kit trong 30 ngày; tốn khoảng 8K token mỗi phiên và mỗi tác tử phụ; `scout-block` chặn `vendor/bin/pest`, `phpstan` và `pint`; `session-init` chèn thông tin sai ("monorepo, pnpm").
+- **Đã làm:**
+  - sao lưu `settings.json`, `metadata.json`, `.ck.json`, `CLAUDE.md`, `rules/`, `agents/` vào `~/.claude/backup-ck-261029/pre/`;
+  - gỡ 12 hook của kit khỏi `settings.json`; giữ `review-loop.py`, `claude-context-reminder`, `claude-helper-gate-v2`, hook làm mới hạn mức và `statusline.cjs`;
+  - thêm `permissions.deny` cho Read, dạng tuyệt đối `//**/…` (phủ cả ổ đĩa, gồm `.env` của bản prod): `.env*`, `*.pem`, `*.key`, `~/.ssh/**`, `.credentials.json`, `~/.claude.json` và `~/.bashrc`. Đã thử với tệp giả: dạng `**/…` chặn trong thư mục dự án; dạng `//**/…` chặn được cả ở `/opt/bswebsaas/` (ngoài dự án). Việc dạng `**/…` không phủ ngoài dự án là theo tài liệu Claude Code; phép thử trực tiếp bị bộ phân loại an toàn từ chối, vì nó không cho nới luật chặn, kể cả để thử. Đọc lại nhật ký 30 ngày: không có lần Read nào vào `.env` thật. Thư mục scratchpad riêng của phiên được Claude Code miễn trừ;
+  - `mv` (không xóa) 13 tác tử, 6 tệp luật, 96 mục trong `skills/` (84 skill, các tệp phụ và `.venv`), 20 mục trong `hooks/` (13 tệp hook và 7 thư mục / tệp dữ liệu), thư mục trống `agent-memory/researcher`, `output-styles`, `scripts`, `.ckignore` và `session-states` sang `~/.claude/backup-ck-261029/moved/` (507 MB);
+  - chuyển luật của owner trong tệp kit sang `~/.claude/CLAUDE.md`, mục "Decisions and reviews";
+  - tạo tác tử `~/.claude/agents/reviewer.md` thay `code-reviewer`; hook review-loop nhận tên có chữ "review".
+- **Giữ nguyên:**
+  - `hooks/lib/` và `.ck.json`, vì thanh trạng thái và hook hạn mức cần chúng; `metadata.json` giữ để quay lại (không tệp nào đang đọc nó);
+  - `agents/export-checker.md`;
+  - `rules/model-routing.md`, `rules/design-quality-bar.md`;
+  - `skills/synced`;
+- **Gỡ gói npm toàn cục (owner duyệt riêng, 29/10):** `npm rm -g claudekit-cli` (bản 4.4.0, gỡ 206 gói, gồm lệnh `/usr/bin/ck`). Hậu kiểm: `which ck` không còn kết quả; `npm ls -g` không còn claudekit. Cài lại: `npm i -g claudekit-cli@4.4.0`.
+- **Hậu kiểm:** `settings.json` là JSON hợp lệ; cả 7 đường dẫn hook đều tồn tại; `statusline.cjs` hiện được ô 5 giờ / tuần; hook hạn mức thoát mã 0; `review-loop.py` biên dịch được. Không mã dự án nào trỏ tới tệp đã chuyển. Còn lại vô hại: khoảng 75 mục `skillOverrides` trong `.claude/settings.local.json` của dự án ghi tên skill đã gỡ. Soát độc lập (Opus, chỉ đọc) xác nhận các điểm trên. Theo kết quả soát: sửa dòng nhắc trong `review-loop.py` (trước nhắc `bk-review`, không có trên máy) để trỏ tới tác tử `reviewer`, bản cũ ở `pre/review-loop.py.bak`; bổ sung 4 luật còn sót vào `~/.claude/CLAUDE.md`.
+- **Đường lùi** (`B=~/.claude/backup-ck-261029`):
+  1. chép `$B/pre/settings.json` và `$B/pre/CLAUDE.md` về `~/.claude/`, rồi thêm lại khối `permissions.deny` (bản `pre` không có khối này);
+  2. với `agents`, `rules`, `skills`, `hooks`: `mv $B/moved/<thư mục>/* $B/moved/<thư mục>/.[!.]* ~/.claude/<thư mục>/`. Không `mv` cả thư mục, vì thư mục đích vẫn còn và không trống;
+  3. `mv $B/moved/{output-styles,scripts,.ckignore,session-states} ~/.claude/`;
+  4. các dòng quyền đã bỏ nằm ở `$B/pre/settings.local.removed-allow.txt`; `review-loop.py` cũ ở `$B/pre/review-loop.py.bak`;
+  5. cài lại `npm i -g claudekit-cli@4.4.0`. Cách khác: cài lại gói rồi chạy `ck init -g` (ghi đè `settings.json`).
+- **MEMORY.md của dự án:** viết lại chỉ mục bằng tiếng Anh, chia nhóm (17,8K ký tự; Claude Code nạp tối đa 25K). 3 mục đã có bản thay thế được chuyển sang `ARCHIVE.md`. Bản cũ ở `~/.claude/backup-ck-261029/memory-index/MEMORY.md.bak`.
+- **Chặn đọc bản sao cấu hình (owner duyệt, 29/10):** thêm `Read(~/.claude/settings.json.bak*)` và `Read(~/.claude/backup-*/**/settings.json)`, vì các bản sao còn khối `env` chứa token. Đã thử với tệp giả: bị chặn.
+- **Dọn thêm:** bỏ 10 quyền `Bash(ck …)` trong `~/.claude/settings.local.json` (`ck init *` được duyệt sẵn có thể cài lại kit) và quyền chạy python của `.venv` kit trong `.claude/settings.local.json` của dự án.
+- **Đo ngay sau khi gỡ (29/10 22:49):** phiên mới không tương tác (`claude -p "Reply with the single word OK" --max-turns 1`), ngữ cảnh ở bước đầu trên Haiku là 49,6K token; cùng phép đo ngày 08/10 là 62,5K. Trên Sonnet là 48,8K.
+- **Theo dõi:** các phiên đang chạy nhận cấu hình hook mới ngay (nhật ký hook sau 15:13 UTC chỉ còn hook hạn mức). Ngày 31/10–01/11, đo lại bằng `cc-usage 7` và số token ở bước đầu phiên.
+
 ### 2026-10-27 — Ổ đĩa 99%: dọn 27,3 GB đồ đo cũ; cài image Playwright (WebKit + Firefox)
 
 - **Sự cố:** lúc 08:1x +07, `/` đã dùng 95G / 96G (99%), còn khoảng 1,7 GB, trên máy dùng chung với prod. Phần lớn là ảnh chụp và bản giải nén thiết kế của các lượt đo cũ trong `plans/reports/d1-261019/` (38 GB).
