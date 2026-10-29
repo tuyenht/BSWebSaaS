@@ -63,7 +63,7 @@ final readonly class SupportSignInController
         Auth::login($member);
         $request->session()->regenerate();
 
-        $this->support->start($staff, $member, $this->current->id(), $link['reason'], now()->addMinutes($link['minutes']));
+        $this->support->start($staff, $member, $this->current->id(), $link['reason'], now()->addMinutes($link['minutes']), $link['session_ulid']);
         Audit::record('support.session.entered', ['meta' => ['reason' => $link['reason'], 'minutes' => $link['minutes']]]);
         $this->tellOwners($staff, $member, $link['reason']);
 

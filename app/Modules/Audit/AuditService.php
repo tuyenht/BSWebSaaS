@@ -15,7 +15,8 @@ use Throwable;
  * Audit trail (design.md §29). Best-effort: records every sensitive action
  * (role/permission/entitlement/domain/billing) and never lets its own failure break the
  * business flow. Actor + site + request-id are resolved from context, and during a
- * support session the staff member behind the member's account (impersonator_*).
+ * support session the staff member behind the member's account (impersonator_*) and the
+ * session's code (support_session_ulid).
  *
  * The insert runs in its own savepoint: every tenant request is one PostgreSQL transaction,
  * and a failed statement aborts it — swallowing the error alone would leave the caller's next
@@ -31,7 +32,8 @@ final class AuditService
 {
     /**
      * @param  array<string, mixed>  $context  optional overrides: site_id, actor_id,
-     *                                         actor_label, auditable_type, auditable_id, meta
+     *                                         actor_label, auditable_type, auditable_id, meta,
+     *                                         support_session_ulid (the console's "issued" row)
      */
     public function record(string $action, array $context = []): void
     {
@@ -49,6 +51,7 @@ final class AuditService
                 'actor_label' => $context['actor_label'] ?? ($user instanceof User ? $user->email : null),
                 'impersonator_id' => $support['staff_id'] ?? null,
                 'impersonator_label' => $support['staff_label'] ?? null,
+                'support_session_ulid' => $context['support_session_ulid'] ?? $support['session_ulid'] ?? null,
                 'site_id' => $context['site_id'] ?? ($current->hasId() ? $current->id() : null),
                 'action' => $action,
                 'auditable_type' => $context['auditable_type'] ?? null,
