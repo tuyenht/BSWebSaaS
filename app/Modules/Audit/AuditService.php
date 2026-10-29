@@ -33,7 +33,7 @@ final class AuditService
     /**
      * @param  array<string, mixed>  $context  optional overrides: site_id, actor_id,
      *                                         actor_label, auditable_type, auditable_id, meta,
-     *                                         support_session_ulid (the console's "issued" row)
+     *                                         support_session_ulid (read only on support.session.issued)
      */
     public function record(string $action, array $context = []): void
     {
@@ -51,7 +51,10 @@ final class AuditService
                 'actor_label' => $context['actor_label'] ?? ($user instanceof User ? $user->email : null),
                 'impersonator_id' => $support['staff_id'] ?? null,
                 'impersonator_label' => $support['staff_label'] ?? null,
-                'support_session_ulid' => $context['support_session_ulid'] ?? $support['session_ulid'] ?? null,
+                // The caller names the code only on the console's "issued" row; everywhere else it comes
+                // from the session itself, so no caller can stamp a row with another session's code.
+                'support_session_ulid' => ($action === 'support.session.issued' ? $context['support_session_ulid'] ?? null : null)
+                    ?? $support['session_ulid'] ?? null,
                 'site_id' => $context['site_id'] ?? ($current->hasId() ? $current->id() : null),
                 'action' => $action,
                 'auditable_type' => $context['auditable_type'] ?? null,
