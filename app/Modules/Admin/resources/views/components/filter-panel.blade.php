@@ -29,7 +29,8 @@
     // stays inside the sheet.
     $label ??= __('admin.list.filter');
     $name = $active > 0 ? __('admin.list.filter_active', ['n' => $active]) : $label;
-    $uid = \Illuminate\Support\Str::random(8);
+    // stable across renders: a live update that renamed the radio groups could drop the checked state and focus
+    $uid = substr(md5(implode('|', array_map(fn (array $s): string => $s['key'].':'.$s['model'], $sections))), 0, 8);
     $panelId = 'lf-'.$uid;
     $fmt = fn (int $n): string => \Illuminate\Support\Number::format($n, locale: app()->getLocale());
     $view = [];
@@ -38,16 +39,18 @@
         $value = $section['value'] ?? null;
         $default = (string) ($section['default'] ?? ($multiple ? '' : ($section['options'][0]['value'] ?? '')));
         $chosen = array_map('strval', is_array($value) ? $value : ($value === null || $value === '' ? [] : [$value]));
-        if (! $multiple && $chosen === [] && $default !== '') {
+        if (! $multiple && $chosen === []) {
             $chosen = [$default];
         }
-        $labels = array_values(array_map(
-            fn (array $o): string => $o['label'],
-            array_filter($section['options'], fn (array $o): bool => in_array((string) $o['value'], $chosen, true)),
-        ));
+        // a chosen value missing from the options (a stale link, a removed tag) is still named, by its raw value
+        $optionLabels = array_column($section['options'], 'label', 'value');
+        $labels = array_values(array_filter(array_map(
+            fn (string $v): string => (string) ($optionLabels[$v] ?? $v),
+            $chosen,
+        ), fn (string $l): bool => $l !== ''));
         $view[] = $section + [
             'multiple' => $multiple,
-            'on' => $multiple ? $labels !== [] : $chosen[0] !== $default,
+            'on' => $multiple ? $chosen !== [] : $chosen[0] !== $default,
             'all' => $multiple && $labels === [],
             'summary' => match (true) {
                 ! $multiple => $labels[0] ?? '',
@@ -117,11 +120,11 @@
              // the current section is the last whose heading has passed the top of the right column; a section reached by a
              // tap stays current until the user scrolls, since the last ones cannot scroll up to the top
              mark() { if (Date.now() - this.prog > 250) this.pin = null; if (this.pin !== null) { this.cur = this.pin; return; } const top = this.$refs.scroll.getBoundingClientRect().top + 12; let c = 0; this.heads().forEach((h, i) => { if (h.getBoundingClientRect().top <= top) c = i; }); this.cur = c; },
-             focusables() { return [...this.$refs.panel.querySelectorAll('input:not([disabled]),button:not([disabled])')].filter((el) => el.getClientRects().length && ! (el.type === 'radio' && ! el.checked && this.$refs.panel.querySelector(`input[type=radio][name='${el.name}']:checked`))); },
+             focusables() { return [...this.$refs.panel.querySelectorAll('input:not([disabled]),button:not([disabled])')].filter((el) => el.getClientRects().length && ! (el.type === 'radio' && ! el.checked && this.$refs.panel.querySelector(`input[type=radio][name='${CSS.escape(el.name)}']:checked`))); },
              trap(e) { const f = this.focusables(); if (! f.length) return; const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (! e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } },
          }"
          @keydown.escape.prevent.stop="hide()"
-         @resize.window="open && decide()">
+         @resize.window="open && (window.innerWidth >= 1024 ? hide(false) : decide())">
         <button type="button" x-ref="button"
                 @click="open ? hide() : show()"
                 :aria-expanded="open ? 'true' : 'false'" aria-controls="{{ $panelId }}"
