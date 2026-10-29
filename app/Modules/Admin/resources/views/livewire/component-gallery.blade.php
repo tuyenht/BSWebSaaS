@@ -79,6 +79,27 @@
         </div>
     </x-bs-admin::card>
 
+    {{-- List tools: search + Filter --}}
+    <x-bs-admin::card title="List tools">
+        @php
+            $gallerySections = [
+                ['key' => 'status', 'label' => 'Trạng thái', 'model' => 'galleryStatus', 'options' => [
+                    ['value' => 'live', 'label' => 'Tệp đang có', 'count' => 21],
+                    ['value' => 'trash', 'label' => 'Thùng rác', 'count' => 3],
+                ]],
+                ['key' => 'kind', 'label' => 'Loại tệp', 'model' => 'galleryKinds', 'multiple' => true, 'options' => [
+                    ['value' => 'image', 'label' => 'Ảnh', 'count' => 19],
+                    ['value' => 'pdf', 'label' => 'Tài liệu PDF', 'count' => 2],
+                ]],
+            ];
+            $galleryActive = ($galleryStatus !== 'live' ? 1 : 0) + count($galleryKinds);
+        @endphp
+        <div class="flex items-center gap-3">
+            <div class="min-w-0 flex-1"><x-bs-admin::search label="Tìm theo tên tệp" wire:model.live.debounce.300ms="gallerySearch" /></div>
+            <x-bs-admin::filter-panel :sections="$gallerySections" :active="$galleryActive" clear="clearGalleryFilters" />
+        </div>
+    </x-bs-admin::card>
+
     {{-- Table (mirrors the dashboard "Hoạt động gần đây") --}}
     <x-bs-admin::card title="Hoạt động gần đây">
         <x-bs-admin::table>

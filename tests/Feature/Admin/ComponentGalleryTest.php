@@ -84,6 +84,16 @@ it('renders the new presentational primitives (alert, avatar, page-header, pagin
         ->assertSee('aria-current="page"', false); // pagination current page
 });
 
+it('renders the list tools (search field and Filter panel)', function (): void {
+    $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
+
+    $this->actingAs($owner)->get('http://anvinh.platform.test/admin/_gallery')
+        ->assertOk()
+        ->assertSee('aria-label="Tìm theo tên tệp"', false)
+        ->assertSee('wire:model.live="galleryKinds"', false)
+        ->assertSee('role="dialog"', false);
+});
+
 it('renders the interactive primitives (dropdown, tabs, tooltip, modal) with a11y roles', function (): void {
     $owner = User::query()->firstWhere('email', 'owner@anvinh.test');
 
