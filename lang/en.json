@@ -480,6 +480,7 @@
     "admin.list.filter_active": "Filter (:n on)",
     "admin.list.clear_filters": "Clear filters",
     "admin.list.close_filters": "Close",
+    "admin.list.more_groups": "More",
     "admin.dismiss": "Dismiss",
     "admin.breadcrumb": "Breadcrumb",
     "admin.media": "Media",

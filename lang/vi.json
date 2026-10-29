@@ -480,6 +480,7 @@
     "admin.list.filter_active": "Lọc (đang bật :n điều kiện)",
     "admin.list.clear_filters": "Bỏ lọc",
     "admin.list.close_filters": "Đóng",
+    "admin.list.more_groups": "Khác",
     "admin.dismiss": "Đóng",
     "admin.breadcrumb": "Đường dẫn",
     "admin.media": "Thư viện",

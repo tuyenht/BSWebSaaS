@@ -480,6 +480,7 @@
     "admin.list.filter_active": "筛选（已启用 :n 个条件）",
     "admin.list.clear_filters": "清除筛选",
     "admin.list.close_filters": "关闭",
+    "admin.list.more_groups": "更多",
     "admin.dismiss": "关闭",
     "admin.breadcrumb": "面包屑导航",
     "admin.media": "媒体",

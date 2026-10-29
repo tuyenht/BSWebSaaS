@@ -480,6 +480,7 @@
     "admin.list.filter_active": "絞り込み（:n 件の条件）",
     "admin.list.clear_filters": "絞り込みを解除",
     "admin.list.close_filters": "閉じる",
+    "admin.list.more_groups": "その他",
     "admin.dismiss": "閉じる",
     "admin.breadcrumb": "パンくずリスト",
     "admin.media": "メディア",

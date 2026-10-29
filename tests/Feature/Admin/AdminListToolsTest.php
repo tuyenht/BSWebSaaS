@@ -73,3 +73,39 @@ it('ties the Filter button to its dialog and draws the filter icon', function ()
         ->and($html)->toContain('role="dialog"')
         ->and($html)->toContain('M10 18H14V16H10V18ZM3 6V8H21V6H3ZM6 13H18V11H6V13Z');
 });
+
+/**
+ * @return list<array{key: string, label: string, icon?: string|null, count?: int|null, trash?: bool}>
+ */
+function statusGroups(): array
+{
+    return [
+        ['key' => 'all', 'label' => 'Tất cả', 'count' => 1234],
+        ['key' => 'used', 'label' => 'Đang dùng', 'count' => 10],
+        ['key' => 'unused', 'label' => 'Chưa dùng', 'count' => 9],
+        ['key' => 'trash', 'label' => 'Thùng rác', 'count' => 3, 'trash' => true],
+    ];
+}
+
+it('offers status groups as pressed buttons that set the host property, never as tabs', function (): void {
+    app()->setLocale('vi');
+    $html = (string) $this->blade('<x-bs-admin::group-row :groups="$groups" active="used" model="group" label="Nhóm tệp" />', ['groups' => statusGroups()]);
+
+    expect($html)->toContain('<nav aria-label="Nhóm tệp"')
+        ->and($html)->not->toContain('role="tab')
+        ->and(substr_count($html, 'aria-pressed="true"'))->toBe(1)
+        ->and(substr_count($html, 'aria-pressed="false"'))->toBe(3)
+        ->and($html)->toContain('wire:click="$set(&#039;group&#039;, &#039;unused&#039;)"')
+        ->and($html)->toContain('1.234');
+});
+
+it('keeps the chosen group and Trash in the row when groups overflow into More', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::group-row :groups="$groups" active="used" model="group" label="Nhóm tệp" />', ['groups' => statusGroups()]);
+
+    expect($html)->toMatch('/data-g="all" data-pin="0"/')
+        ->and($html)->toMatch('/data-g="used" data-pin="1"/')
+        ->and($html)->toMatch('/data-g="unused" data-pin="0"/')
+        ->and($html)->toMatch('/data-g="trash" data-pin="1"/')
+        ->and(substr_count($html, 'role="menuitemradio"'))->toBe(4)
+        ->and($html)->toContain('aria-haspopup="menu"');
+});
