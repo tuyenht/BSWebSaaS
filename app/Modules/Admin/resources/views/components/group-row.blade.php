@@ -9,7 +9,8 @@
     // groups live at the top of the Filter panel. Groups filter the same records, so they are
     // aria-pressed buttons, never ARIA tabs; the chosen one is underlined and bold, not only coloured.
     // One line that never wraps or scrolls sideways: groups that do not fit move into "Khác ▾",
-    // last first, while the chosen group and Trash always stay in the row.
+    // last first, while the chosen group and Trash always stay in the row. "Khác" sits right after
+    // the last group and Trash at the far end, at least 2rem apart; the menu never leaves the row.
     //
     // $groups: list<array{key: string, label: string, icon?: string|null, count?: int|null, trash?: bool}>
     // $active: the chosen group's key. $model: the host Livewire property a click sets.
@@ -25,17 +26,25 @@
         over: [],
         open: false,
         left: 0,
+        fits() {
+            const row = this.$refs.row, trash = row.querySelector(':scope > [data-trash]');
+            if (row.scrollWidth > row.clientWidth) return false;
+            if (! trash) return true;
+            const before = [...row.children].filter((el) => el !== trash && ! el.hidden && el.offsetLeft < trash.offsetLeft);
+            const end = Math.max(0, ...before.map((el) => el.offsetLeft + el.offsetWidth));
+            return trash.offsetLeft - end >= 2 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+        },
         fit() {
             const row = this.$refs.row, more = this.$refs.more;
             const items = [...row.querySelectorAll(':scope > [data-g]')];
             items.forEach((el) => { el.hidden = false; });
             more.hidden = true;
             const over = [];
-            if (row.scrollWidth > row.clientWidth) {
+            if (! this.fits()) {
                 more.hidden = false;
                 const movable = items.filter((el) => el.dataset.pin !== '1').reverse();
                 for (const el of movable) {
-                    if (row.scrollWidth <= row.clientWidth) break;
+                    if (this.fits()) break;
                     el.hidden = true;
                     over.unshift(el.dataset.g);
                 }
@@ -44,7 +53,16 @@
             if (! over.length) { more.hidden = true; this.open = false; }
         },
         items() { return [...this.$refs.menu.querySelectorAll('[role=menuitemradio]')].filter((el) => el.offsetParent !== null); },
-        show(focusFirst = true) { this.left = this.$refs.more.offsetLeft; this.open = true; if (focusFirst) this.$nextTick(() => this.items()[0]?.focus()); },
+        show(focusFirst = true) {
+            this.left = this.$refs.more.offsetLeft;
+            this.open = true;
+            // x-show reveals the menu a moment after open turns true, so wait until it is on screen to measure and focus
+            this.whenShown(() => {
+                this.left = Math.max(0, Math.min(this.left, this.$root.clientWidth - this.$refs.menu.offsetWidth));
+                if (focusFirst) this.items()[0]?.focus();
+            });
+        },
+        whenShown(fn, tries = 20) { this.$refs.menu.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
         hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.moreButton.focus(); },
         step(d) { const f = this.items(), i = f.indexOf(document.activeElement); f[(i + d + f.length) % f.length]?.focus(); },
     }"
@@ -54,9 +72,22 @@
     {{ $attributes->merge(['class' => 'relative hidden min-w-0 border-b border-border min-[900px]:block']) }}
 >
     <div x-ref="row" class="flex min-w-0 flex-nowrap items-end gap-1 overflow-hidden px-3 pt-1">
-        @foreach ($groups as $group)
+        @foreach ([...array_filter($groups, fn (array $g): bool => ! ($g['trash'] ?? false)), null, ...array_filter($groups, fn (array $g): bool => $g['trash'] ?? false)] as $group)
+            @if ($group === null)
+                <div x-ref="more" hidden class="relative shrink-0">
+                    <button type="button" x-ref="moreButton"
+                            aria-haspopup="menu" aria-controls="{{ $menuId }}" :aria-expanded="open ? 'true' : 'false'"
+                            @click="open ? hide() : show()"
+                            @keydown.down.prevent="show()"
+                            class="-mb-px inline-flex min-h-control items-center gap-1 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-body-muted transition-colors hover:text-heading pointer-coarse:min-h-hit">
+                        <span>{{ __('admin.list.more_groups') }}</span>
+                        <x-bs-admin::icon name="chevron-down" class="size-4 shrink-0" />
+                    </button>
+                </div>
+                @continue
+            @endif
             @php $on = $group['key'] === $active; @endphp
-            <button type="button" data-g="{{ $group['key'] }}" data-pin="{{ $on || ($group['trash'] ?? false) ? '1' : '0' }}"
+            <button type="button" data-g="{{ $group['key'] }}" data-pin="{{ $on || ($group['trash'] ?? false) ? '1' : '0' }}" @if ($group['trash'] ?? false) data-trash @endif
                     aria-pressed="{{ $on ? 'true' : 'false' }}"
                     wire:click="{{ $setter($group['key']) }}"
                     @class([
@@ -79,17 +110,6 @@
                 @endif
             </button>
         @endforeach
-
-        <div x-ref="more" hidden class="relative shrink-0">
-            <button type="button" x-ref="moreButton"
-                    aria-haspopup="menu" aria-controls="{{ $menuId }}" :aria-expanded="open ? 'true' : 'false'"
-                    @click="open ? hide() : show()"
-                    @keydown.down.prevent="show()"
-                    class="-mb-px inline-flex min-h-control items-center gap-1 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-body-muted transition-colors hover:text-heading pointer-coarse:min-h-hit">
-                <span>{{ __('admin.list.more_groups') }}</span>
-                <x-bs-admin::icon name="chevron-down" class="size-4 shrink-0" />
-            </button>
-        </div>
     </div>
 
     <div x-show="open" x-cloak x-ref="menu" id="{{ $menuId }}" role="menu" aria-label="{{ __('admin.list.more_groups') }}"

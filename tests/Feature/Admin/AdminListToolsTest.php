@@ -110,6 +110,14 @@ it('keeps the chosen group and Trash in the row when groups overflow into More',
         ->and($html)->toContain('aria-haspopup="menu"');
 });
 
+it('puts More right after the last group and Trash at the far end', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::group-row :groups="$groups" active="all" model="group" label="Nhóm tệp" />', ['groups' => array_reverse(statusGroups())]);
+
+    expect(strpos($html, 'data-g="all"'))->toBeLessThan(strpos($html, 'aria-haspopup="menu"'))
+        ->and(strpos($html, 'aria-haspopup="menu"'))->toBeLessThan(strpos($html, 'data-g="trash"'))
+        ->and($html)->toMatch('/data-g="trash" data-pin="1"\s+data-trash/');
+});
+
 it('says what is filtered in plain words, with Clear and one removable chip per condition', function (): void {
     app()->setLocale('vi');
     $html = (string) $this->blade('<x-bs-admin::filter-status group="Tạm ngưng" summary="1 website" :chips="$chips" clear="clearFilters" />', [
