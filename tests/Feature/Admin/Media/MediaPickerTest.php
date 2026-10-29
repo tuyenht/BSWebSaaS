@@ -782,6 +782,32 @@ it('refuses a pasted-URL copy that would take a trashed file out of the Trash wi
     });
 });
 
+it('drops a refused URL preview so a second insert does not hit the deleted staged bytes', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        Http::fake(['https://93.184.216.34/a.jpg' => Http::response(pickerPng(), 200)]);
+        $binned = seedPickerMedia('png', ['hash' => hash('sha256', pickerPng()), 'mime' => 'image/png']);
+        $binned->delete();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')->call('previewPickerUrl');
+        $tempKey = $component->instance()->pickerUrlPreview['tempKey'];
+
+        $component->call('insertPicked')
+            ->assertSee(__('media.err_in_trash'))
+            ->assertSet('pickerUrlPreview', null)
+            ->assertSet('pickerUrlInput', 'https://93.184.216.34/a.jpg'); // kept, so a re-preview is one tap
+        Storage::disk('r2')->assertMissing($tempKey);
+
+        $component->call('insertPicked')
+            ->assertDontSee(__('media.err_upload_missing'))
+            ->assertSet('imageMediaIds', []);
+    });
+});
+
 it('restores a trashed file from a pasted-URL copy for someone holding media.delete', function (): void {
     $user = pickerManager(['media.upload', 'media.delete']);
 
