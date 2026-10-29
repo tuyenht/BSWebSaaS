@@ -37,7 +37,7 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
    chmod 600 /opt/bswebsaas/db-backups/prod-predeploy-<sha>-<timestamp>.sql.gz
    ```
    Nightly backups and restore: `prod-db-backup-restore.md`.
-5. A migration that makes a column NOT NULL fails, and changes nothing, while a row still holds NULL. Count those rows on prod before step 2 of the deploy; any above 0 stops the deploy. Read-only, for example `audit_logs.created_at`:
+5. A migration that makes a column NOT NULL fails while a row still holds NULL. It runs outside a transaction, so it may leave its unvalidated check constraint behind; that is harmless, and the next run reuses it. Count those rows on prod before step 2 of the deploy; any above 0 stops the deploy. Read-only, for example `audit_logs.created_at`:
    ```bash
    docker exec bsweb_prod_pg sh -c 'psql -U "$POSTGRES_USER" -d bswebsaas -tAc "SELECT count(*) FROM audit_logs WHERE created_at IS NULL"'
    ```
