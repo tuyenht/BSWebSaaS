@@ -93,11 +93,25 @@
                 ]],
             ];
             $galleryActive = ($galleryStatus !== 'live' ? 1 : 0) + count($galleryKinds);
+            $galleryGroups = [
+                ['key' => 'all', 'label' => 'Tất cả', 'count' => 1234],
+                ['key' => 'image', 'label' => 'Ảnh', 'count' => 980],
+                ['key' => 'document', 'label' => 'Tài liệu', 'count' => 120],
+                ['key' => 'video', 'label' => 'Video', 'count' => 64],
+                ['key' => 'used', 'label' => 'Đang dùng', 'count' => 870],
+                ['key' => 'unused', 'label' => 'Chưa dùng', 'count' => 364],
+                ['key' => 'recent', 'label' => 'Mới tải lên', 'count' => 12],
+                ['key' => 'trash', 'label' => 'Thùng rác', 'icon' => 'ri-delete-bin', 'count' => 3, 'trash' => true],
+            ];
+            $galleryGroupLabel = collect($galleryGroups)->firstWhere('key', $galleryGroup)['label'] ?? null;
         @endphp
+        <x-bs-admin::group-row :groups="$galleryGroups" :active="$galleryGroup" model="galleryGroup" label="Nhóm tệp" class="-mx-4 mb-2" />
         <div class="flex items-center gap-3">
             <div class="min-w-0 flex-1"><x-bs-admin::search label="Tìm theo tên tệp" wire:model.live.debounce.300ms="gallerySearch" /></div>
             <x-bs-admin::filter-panel :sections="$gallerySections" :active="$galleryActive" clear="clearGalleryFilters" />
         </div>
+        <x-bs-admin::filter-status class="-mx-3 mt-2" :group="$galleryGroup === 'all' ? null : $galleryGroupLabel" :summary="$galleryGroup === 'all' && $galleryActive === 0 ? null : '12 tệp'"
+            :chips="array_map(fn (string $k): array => ['label' => $k === 'pdf' ? 'Tài liệu PDF' : 'Ảnh', 'remove' => '$set(\'galleryKinds\', [])'], $galleryKinds)" clear="clearGalleryFilters" />
     </x-bs-admin::card>
 
     {{-- Table (mirrors the dashboard "Hoạt động gần đây") --}}
