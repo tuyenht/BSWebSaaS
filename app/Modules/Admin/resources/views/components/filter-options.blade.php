@@ -15,10 +15,10 @@
                name="{{ $name }}"
                value="{{ $option['value'] }}"
                wire:model.live="{{ $section['model'] }}"
-               class="size-4.5 shrink-0 accent-accent">
+               class="size-4.5 shrink-0 accent-primary-text">
         <span class="min-w-0 flex-1 [overflow-wrap:anywhere]">{{ $option['label'] }}</span>
         @if (isset($option['count']))
-            <span class="shrink-0 text-small font-normal text-body-muted">{{ \Illuminate\Support\Number::format($option['count'], locale: app()->getLocale()) }}</span>
+            <span class="shrink-0 text-small font-normal text-text-muted">{{ \Illuminate\Support\Number::format($option['count'], locale: app()->getLocale()) }}</span>
         @endif
     </label>
 @endforeach

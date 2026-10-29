@@ -22,7 +22,7 @@
         @if ($group !== null || $summary !== null)
             <span role="status" class="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
                 @if ($group !== null)
-                    <strong class="min-w-0 font-semibold text-heading">{{ $group }}</strong>
+                    <strong class="min-w-0 font-semibold text-text-strong">{{ $group }}</strong>
                 @endif
                 @if ($summary !== null)
                     @if ($group !== null)<span aria-hidden="true">·</span>@endif
@@ -33,14 +33,14 @@
         @if ($clear)
             @if ($group !== null || $summary !== null)<span aria-hidden="true">·</span>@endif
             <button type="button" wire:click="{{ $clear }}"
-                    class="inline-flex min-h-control items-center px-1 text-accent underline pointer-coarse:min-h-hit">{{ __('admin.list.clear_filters') }}</button>
+                    class="inline-flex min-h-control items-center px-1 text-primary-text underline pointer-coarse:min-h-hit">{{ __('admin.list.clear_filters') }}</button>
         @endif
         @foreach ($chips as $chip)
             <span class="inline-flex min-h-8 min-w-0 max-w-full items-center gap-1 rounded-full border border-border-input bg-surface ps-2.5 text-small">
                 <span class="min-w-0">{{ $chip['label'] }}</span>
                 <button type="button" wire:click="{{ $chip['remove'] }}"
                         aria-label="{{ __('admin.list.remove_filter', ['name' => $chip['label']]) }}" title="{{ __('admin.list.remove_filter', ['name' => $chip['label']]) }}"
-                        class="hit-area inline-flex size-8 shrink-0 items-center justify-center rounded-full text-body-muted hover:text-heading">
+                        class="hit-area inline-flex size-8 shrink-0 items-center justify-center rounded-full text-text-muted hover:text-text-strong">
                     <x-bs-admin::icon name="ri-close" class="size-3.5" />
                 </button>
             </span>

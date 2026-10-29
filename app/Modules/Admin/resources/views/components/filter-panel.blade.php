@@ -65,9 +65,9 @@
             },
         ];
     }
-    $pill = 'hit-area group inline-flex min-h-control items-center gap-1.5 rounded-full border px-3.5 text-body font-medium transition-colors pointer-coarse:min-h-hit aria-expanded:border-accent aria-expanded:bg-admin-primary/12 aria-expanded:text-accent';
-    $pillState = fn (bool $on): string => $on ? 'border-accent bg-admin-primary/12 text-accent' : 'border-transparent bg-admin-primary/7 text-text hover:bg-admin-primary/12';
-    $pillIcon = fn (bool $on): string => 'size-4 shrink-0 group-aria-expanded:text-accent '.($on ? 'text-accent' : 'text-body-muted');
+    $pill = 'hit-area group inline-flex min-h-control items-center gap-1.5 rounded-full border px-3.5 text-body font-medium transition-colors pointer-coarse:min-h-hit aria-expanded:border-primary-text aria-expanded:bg-primary/12 aria-expanded:text-primary-text';
+    $pillState = fn (bool $on): string => $on ? 'border-primary-text bg-primary/12 text-primary-text' : 'border-transparent bg-primary/7 text-text hover:bg-primary/12';
+    $pillIcon = fn (bool $on): string => 'size-4 shrink-0 group-aria-expanded:text-primary-text '.($on ? 'text-primary-text' : 'text-text-muted');
 @endphp
 <div {{ $attributes->merge(['class' => 'flex min-w-0 shrink-0 flex-wrap items-center gap-2']) }}>
     @foreach ($view as $section)
@@ -95,9 +95,9 @@
             </button>
             <div x-show="open" x-cloak x-ref="panel" id="lfs-{{ $uid }}-{{ $section['key'] }}" role="group" aria-label="{{ $section['label'] }}"
                  class="absolute start-0 top-full z-60 mt-1.5 flex max-h-[min(27.5rem,70vh)] w-max min-w-60 max-w-[min(20rem,calc(100vw-2rem))] flex-col rounded-md border border-border bg-surface py-1 shadow-lg">
-                <p class="m-0 flex flex-wrap items-baseline gap-x-2 px-4 pb-1 pt-2.5 text-small font-semibold text-heading">
+                <p class="m-0 flex flex-wrap items-baseline gap-x-2 px-4 pb-1 pt-2.5 text-small font-semibold text-text-strong">
                     <span>{{ $section['label'] }}</span>
-                    <span class="font-normal text-body-muted">{{ __($section['multiple'] ? 'admin.list.choose_many' : 'admin.list.choose_one') }}</span>
+                    <span class="font-normal text-text-muted">{{ __($section['multiple'] ? 'admin.list.choose_many' : 'admin.list.choose_one') }}</span>
                 </p>
                 <div class="min-h-0 overflow-y-auto overscroll-contain">
                     <x-bs-admin::filter-options :section="$section" :name="'lfs-'.$uid.'-'.$section['key']" />
@@ -133,7 +133,7 @@
             <x-bs-admin::icon name="ri-filter-3" class="{{ $pillIcon($active > 0) }}" />
             <span data-lf-text>{{ $label }}</span>
             @if ($active > 0)
-                <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-admin-primary px-1.5 text-caption font-bold leading-5 text-white">{{ $active }}</span>
+                <span class="inline-flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-caption font-bold leading-5 text-white">{{ $active }}</span>
             @endif
         </button>
 
@@ -143,10 +143,10 @@
              @keydown.tab="trap($event)"
              class="fixed inset-x-0 bottom-0 z-60 flex max-h-[75dvh] flex-col rounded-t-xl border-t border-border bg-surface text-body shadow-lg">
             <div class="flex shrink-0 items-center gap-2 border-b border-border py-1 pe-1 ps-3.5">
-                <p id="{{ $panelId }}-t" class="m-0 min-w-0 flex-1 text-[calc(1rem+var(--user-text-boost))] font-semibold leading-snug text-heading">{{ __('admin.list.filter_panel_title') }}</p>
+                <p id="{{ $panelId }}-t" class="m-0 min-w-0 flex-1 text-[calc(1rem+var(--user-text-boost))] font-semibold leading-snug text-text-strong">{{ __('admin.list.filter_panel_title') }}</p>
                 <button type="button" @click="hide()"
                         aria-label="{{ __('admin.list.close_filter_panel') }}" title="{{ __('admin.list.close_filter_panel') }}"
-                        class="inline-flex size-hit shrink-0 items-center justify-center rounded text-body-muted hover:bg-surface-hover hover:text-heading">
+                        class="inline-flex size-hit shrink-0 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text-strong">
                     <x-bs-admin::icon name="ri-close" class="size-5" />
                 </button>
             </div>
@@ -156,12 +156,12 @@
                     @foreach ($view as $i => $section)
                         <button type="button" @click="go({{ $i }})" :aria-current="cur === {{ $i }} ? 'true' : null"
                                 aria-label="{{ __('admin.list.go_to_section', ['name' => $section['label']]) }}{{ $section['summary'] !== '' ? ': '.$section['summary'] : '' }}"
-                                class="group flex min-h-hit w-full flex-col items-start justify-center gap-0.5 rounded px-3 py-2 text-start transition-colors hover:bg-surface-hover aria-[current=true]:bg-admin-primary/10 aria-[current=true]:font-semibold aria-[current=true]:text-accent">
+                                class="group flex min-h-hit w-full flex-col items-start justify-center gap-0.5 rounded px-3 py-2 text-start transition-colors hover:bg-surface-hover aria-[current=true]:bg-primary/10 aria-[current=true]:font-semibold aria-[current=true]:text-primary-text">
                             <span class="min-w-0 max-w-full [overflow-wrap:anywhere]">{{ $section['label'] }}</span>
                             @if ($section['summary'] !== '')
                                 <span @if ($section['all']) data-all @endif @class([
-                                    'min-w-0 max-w-full text-small font-normal [overflow-wrap:anywhere] group-aria-[current=true]:text-accent',
-                                    'text-body-muted' => $section['all'],
+                                    'min-w-0 max-w-full text-small font-normal [overflow-wrap:anywhere] group-aria-[current=true]:text-primary-text',
+                                    'text-text-muted' => $section['all'],
                                     'text-text' => ! $section['all'],
                                 ])>{{ $section['summary'] }}</span>
                             @endif
@@ -173,9 +173,9 @@
                         {{-- the divider sits on a wrapper: a fieldset's own top border is cut by its legend --}}
                         <div @class(['border-t border-border' => ! $loop->first])>
                         <fieldset class="m-0 min-w-0 border-0 px-0 pb-2 pt-1">
-                            <legend data-sec tabindex="-1" class="flex flex-wrap items-baseline gap-x-2 px-4 pb-1 pt-3 text-small font-semibold text-heading">
+                            <legend data-sec tabindex="-1" class="flex flex-wrap items-baseline gap-x-2 px-4 pb-1 pt-3 text-small font-semibold text-text-strong">
                                 <span>{{ $section['label'] }}@if ($section['suffix'] !== '')<span x-show="cols === 1" class="font-normal">{{ $section['suffix'] }}</span>@endif</span>
-                                <span class="font-normal text-body-muted">{{ __($section['multiple'] ? 'admin.list.choose_many' : 'admin.list.choose_one') }}</span>
+                                <span class="font-normal text-text-muted">{{ __($section['multiple'] ? 'admin.list.choose_many' : 'admin.list.choose_one') }}</span>
                             </legend>
                             <x-bs-admin::filter-options :section="$section" :name="$panelId.'-'.$section['key']" />
                         </fieldset>
