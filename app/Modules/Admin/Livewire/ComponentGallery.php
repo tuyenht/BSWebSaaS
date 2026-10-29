@@ -22,10 +22,13 @@ final class ComponentGallery extends Component
 
     public string $gallerySearch = '';
 
+    public string $galleryGroup = 'all';
+
     public function clearGalleryFilters(): void
     {
         $this->galleryStatus = 'live';
         $this->galleryKinds = [];
+        $this->galleryGroup = 'all';
     }
 
     public function mount(): void
