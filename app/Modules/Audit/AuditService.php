@@ -30,10 +30,13 @@ use Throwable;
  */
 final class AuditService
 {
+    /** The console row that issues a support sign-in link: the only row whose caller names the session code. */
+    public const string SUPPORT_SESSION_ISSUED = 'support.session.issued';
+
     /**
      * @param  array<string, mixed>  $context  optional overrides: site_id, actor_id,
      *                                         actor_label, auditable_type, auditable_id, meta,
-     *                                         support_session_ulid (read only on support.session.issued)
+     *                                         support_session_ulid (read only on SUPPORT_SESSION_ISSUED)
      */
     public function record(string $action, array $context = []): void
     {
@@ -53,7 +56,7 @@ final class AuditService
                 'impersonator_label' => $support['staff_label'] ?? null,
                 // The caller names the code only on the console's "issued" row; everywhere else it comes
                 // from the session itself, so no caller can stamp a row with another session's code.
-                'support_session_ulid' => ($action === 'support.session.issued' ? $context['support_session_ulid'] ?? null : null)
+                'support_session_ulid' => ($action === self::SUPPORT_SESSION_ISSUED ? $context['support_session_ulid'] ?? null : null)
                     ?? $support['session_ulid'] ?? null,
                 'site_id' => $context['site_id'] ?? ($current->hasId() ? $current->id() : null),
                 'action' => $action,

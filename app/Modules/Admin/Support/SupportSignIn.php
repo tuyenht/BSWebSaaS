@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Admin\Support;
 
+use App\Modules\Audit\AuditService;
 use App\Modules\Audit\Facades\Audit;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Support\PlatformAccess;
@@ -75,7 +76,7 @@ final readonly class SupportSignIn
             'session_ulid' => $sessionUlid,
         ], self::TOKEN_TTL);
 
-        Audit::record('support.session.issued', [
+        Audit::record(AuditService::SUPPORT_SESSION_ISSUED, [
             'site_id' => $siteId,
             'support_session_ulid' => $sessionUlid,
             'meta' => ['member' => $member->getAttribute('email'), 'reason' => $reason, 'minutes' => $minutes],
