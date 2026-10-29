@@ -86,7 +86,7 @@
                             aria-haspopup="menu" aria-controls="{{ $menuId }}" :aria-expanded="open ? 'true' : 'false'"
                             @click="open ? hide() : show()"
                             @keydown.down.prevent="show()"
-                            class="-mb-px inline-flex min-h-control items-center gap-1 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-body-muted transition-colors hover:text-heading pointer-coarse:min-h-hit">
+                            class="-mb-px inline-flex min-h-control items-center gap-1 whitespace-nowrap border-b-2 border-transparent px-2.5 text-body font-medium text-text-muted transition-colors hover:text-text-strong pointer-coarse:min-h-hit">
                         <span>{{ __('admin.list.more_groups') }}</span>
                         <x-bs-admin::icon name="chevron-down" class="size-4 shrink-0" />
                     </button>
@@ -100,9 +100,9 @@
                     @class([
                         '-mb-px inline-flex min-h-control shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-body transition-colors pointer-coarse:min-h-hit',
                         'ms-auto' => $group['trash'] ?? false,
-                        'border-transparent font-medium text-body-muted hover:text-heading' => ! $on,
-                        'border-accent font-bold text-accent' => $on && ! ($group['trash'] ?? false),
-                        'border-admin-danger-text font-bold text-admin-danger-text' => $on && ($group['trash'] ?? false),
+                        'border-transparent font-medium text-text-muted hover:text-text-strong' => ! $on,
+                        'border-primary-text font-bold text-primary-text' => $on && ! ($group['trash'] ?? false),
+                        'border-danger-text font-bold text-danger-text' => $on && ($group['trash'] ?? false),
                     ])>
                 @if ($group['icon'] ?? null)
                     <x-bs-admin::icon :name="$group['icon']" class="size-4 shrink-0" />
@@ -112,7 +112,7 @@
                     <span @class([
                         'inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-caption font-semibold leading-normal',
                         'bg-surface-hover text-text' => ! $on,
-                        'bg-admin-primary/10 text-accent' => $on,
+                        'bg-primary/10 text-primary-text' => $on,
                     ])>{{ $n }}</span>
                 @endif
             </button>
@@ -131,12 +131,12 @@
                     wire:click="{{ $setter($group['key']) }}" @click="hide()"
                     @class([
                         'flex min-h-control w-full items-center gap-2 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover pointer-coarse:min-h-hit',
-                        'font-bold text-accent' => $on,
+                        'font-bold text-primary-text' => $on,
                         'text-text' => ! $on,
                     ])>
                 <span class="min-w-0 flex-1">{{ $group['label'] }}</span>
                 @if (($n = $fmt($group['count'] ?? null)) !== null)
-                    <span class="shrink-0 text-small text-body-muted">{{ $n }}</span>
+                    <span class="shrink-0 text-small text-text-muted">{{ $n }}</span>
                 @endif
             </button>
         @endforeach
