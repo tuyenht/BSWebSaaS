@@ -7,6 +7,13 @@
 
 ## 2026
 
+### 2026-10-27 — Ổ đĩa 99%: dọn 27,3 GB đồ đo cũ; cài image Playwright (WebKit + Firefox)
+
+- **Sự cố:** lúc 08:1x +07, `/` đã dùng 95G / 96G (99%), còn khoảng 1,7 GB, trên máy dùng chung với prod. Phần lớn là ảnh chụp và bản giải nén thiết kế của các lượt đo cũ trong `plans/reports/d1-261019/` (38 GB).
+- **Xử lý (owner chọn cách A trong phiên):** xóa các tệp cũ hơn 3 ngày, giữ báo cáo, số liệu, script và giàn đo đang dùng. Lấy lại 27,3 GB, ổ còn 70%. Chi tiết: `plans/reports/disk-cleanup-261027-0820-d1-261019-old-shots-report.md`.
+- **Cài thêm (owner duyệt 27/10 08:17):** image Docker `mcr.microsoft.com/playwright:v1.64.0-noble` (3,59 GB), dùng để đo giao diện trên WebKit (gần Safari) và Firefox. Không cài gói hệ thống nào lên host. Gỡ: `docker rmi mcr.microsoft.com/playwright:v1.64.0-noble`.
+- **Theo dõi:** `df -h /`. Thư mục đo mới cộng thêm khoảng 0,6–0,8 GB mỗi đợt; dọn định kỳ đồ đo cũ hơn 7 ngày.
+
 ### 2026-10-09 — Tắt dịch vụ in (đóng cổng 631); lệnh đo mức dùng và lệnh vào phòng
 
 - **Dịch vụ in (08/10 22:17 +07, owner duyệt trong phiên):** bản snap `cups` (đi kèm Chromium dùng để kiểm màn hình) nghe cổng 631 trên mọi địa chỉ của máy; máy không in gì. Thao tác: `snap stop --disable cups`. Chọn tắt thay vì gỡ, vì gỡ thì snapd cài lại nó cho Chromium.
