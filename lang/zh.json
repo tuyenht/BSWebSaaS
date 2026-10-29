@@ -481,6 +481,7 @@
     "admin.list.clear_filters": "清除筛选",
     "admin.list.close_filters": "关闭",
     "admin.list.more_groups": "更多",
+    "admin.list.remove_filter": "移除筛选条件「:name」",
     "admin.dismiss": "关闭",
     "admin.breadcrumb": "面包屑导航",
     "admin.media": "媒体",

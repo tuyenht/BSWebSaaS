@@ -109,3 +109,32 @@ it('keeps the chosen group and Trash in the row when groups overflow into More',
         ->and(substr_count($html, 'role="menuitemradio"'))->toBe(4)
         ->and($html)->toContain('aria-haspopup="menu"');
 });
+
+it('says what is filtered in plain words, with Clear and one removable chip per condition', function (): void {
+    app()->setLocale('vi');
+    $html = (string) $this->blade('<x-bs-admin::filter-status group="Tạm ngưng" summary="1 website" :chips="$chips" clear="clearFilters" />', [
+        'chips' => [['label' => 'Người tạo: Minh Tuấn', 'remove' => "removeFilter('author')"]],
+    ]);
+
+    expect($html)->toContain('role="status"')
+        ->and($html)->toContain('<strong')
+        ->and($html)->toContain('Tạm ngưng')
+        ->and($html)->toContain('1 website')
+        ->and($html)->toContain('wire:click="clearFilters"')
+        ->and($html)->toContain('aria-label="'.__('admin.list.remove_filter', ['name' => 'Người tạo: Minh Tuấn']).'"')
+        ->and(strpos($html, 'clearFilters'))->toBeLessThan(strpos($html, 'Người tạo: Minh Tuấn'));
+});
+
+it('shows no status line while every group and condition is off', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::filter-status summary="12 tệp" clear="clearFilters" />');
+
+    expect(trim($html))->toBe('');
+});
+
+it('never starts the status line with a separator', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::filter-status :chips="$chips" clear="clearFilters" />', [
+        'chips' => [['label' => 'Ảnh', 'remove' => "removeFilter('kind')"]],
+    ]);
+
+    expect($html)->not->toContain('<span aria-hidden="true">·</span>');
+});

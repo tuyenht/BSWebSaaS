@@ -481,6 +481,7 @@
     "admin.list.clear_filters": "絞り込みを解除",
     "admin.list.close_filters": "閉じる",
     "admin.list.more_groups": "その他",
+    "admin.list.remove_filter": "条件「:name」を解除",
     "admin.dismiss": "閉じる",
     "admin.breadcrumb": "パンくずリスト",
     "admin.media": "メディア",

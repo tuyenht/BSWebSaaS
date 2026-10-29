@@ -481,6 +481,7 @@
     "admin.list.clear_filters": "Bỏ lọc",
     "admin.list.close_filters": "Đóng",
     "admin.list.more_groups": "Khác",
+    "admin.list.remove_filter": "Bỏ điều kiện :name",
     "admin.dismiss": "Đóng",
     "admin.breadcrumb": "Đường dẫn",
     "admin.media": "Thư viện",

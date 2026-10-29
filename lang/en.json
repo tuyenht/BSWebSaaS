@@ -481,6 +481,7 @@
     "admin.list.clear_filters": "Clear filters",
     "admin.list.close_filters": "Close",
     "admin.list.more_groups": "More",
+    "admin.list.remove_filter": "Remove filter :name",
     "admin.dismiss": "Dismiss",
     "admin.breadcrumb": "Breadcrumb",
     "admin.media": "Media",
