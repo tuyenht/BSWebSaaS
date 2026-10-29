@@ -241,6 +241,19 @@
     }
 }
 
+/* A box that draws one control around a bare field (the list search: icon + input inside a
+   bordered label) carries the shared focus ring on the box, not on the field inside it. */
+@utility focus-ring-within {
+    &:has(:focus-visible) {
+        outline: var(--focus-ring-width) solid var(--color-focus);
+        outline-offset: var(--focus-ring-offset);
+    }
+
+    & :focus-visible {
+        outline: none;
+    }
+}
+
 /* Hide Alpine-controlled elements until Alpine initializes (avoids first-paint flash). */
 [x-cloak] {
     display: none !important;
