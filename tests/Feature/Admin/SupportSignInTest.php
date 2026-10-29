@@ -342,6 +342,14 @@ it('takes a session code from the caller only on the row that issues the link', 
     expect(AuditLog::query()->sole()->support_session_ulid)->toBeNull();
 });
 
+it('keeps the session\'s own code when a caller names another one inside a support session', function (): void {
+    $owner = supportMember(1, 'owner');
+
+    asMember($owner, true, fn () => Audit::record('cms.entry.published', ['support_session_ulid' => '01JBZ00000000000000000000A']), sessionUlid: '01JBZ00000000000000000000B');
+
+    expect(AuditLog::query()->sole()->support_session_ulid)->toBe('01JBZ00000000000000000000B');
+});
+
 it('writes no session code, never an empty one, for a link issued before codes existed', function (): void {
     $owner = supportMember(1, 'owner');
     $token = supportToken(platformStaff('support'), $owner);
@@ -363,14 +371,14 @@ it('routes Livewire updates through the support-session check', function (): voi
 // ── locks ───────────────────────────────────────────────────────────────────────────
 
 /** Run $action as $member of site 1 — inside a support session, or as the member themselves. */
-function asMember(User $member, bool $support, Closure $action, int $site = 1): mixed
+function asMember(User $member, bool $support, Closure $action, int $site = 1, ?string $sessionUlid = null): mixed
 {
     $session = app('session')->driver();
     $session->flush();
     request()->setLaravelSession($session);
     auth()->login($member);
     if ($support) {
-        app(SupportSession::class)->start(platformStaff('support'), $member, $site, 'Kiểm tra', now()->addMinutes(30));
+        app(SupportSession::class)->start(platformStaff('support'), $member, $site, 'Kiểm tra', now()->addMinutes(30), $sessionUlid);
     }
 
     try {
