@@ -523,11 +523,15 @@ trait WithMediaLibraryPicker
                     mayRestore: Gate::allows('media.delete'),
                 );
             } catch (MediaRejectedException $e) {
+                // Register may already have deleted the staged bytes: drop the preview so a second
+                // "Chèn" asks for a fresh preview instead of failing on a missing upload.
+                $this->discardStagedUrlPreview();
                 $this->addError('pickerUrlInput', $e->userMessage());
 
                 return;
             } catch (RuntimeException $e) {
                 report($e);
+                $this->discardStagedUrlPreview();
                 $this->addError('pickerUrlInput', __('media.err_unexpected'));
 
                 return;
