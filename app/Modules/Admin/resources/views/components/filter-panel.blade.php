@@ -30,7 +30,9 @@
 <div
     x-data="{
         open: false,
-        show() { this.open = true; this.$nextTick(() => this.focusables()[0]?.focus()); },
+        // x-show reveals the panel a moment after open turns true, so wait until it is on screen before focusing
+        show() { this.open = true; this.whenShown(() => this.focusables()[0]?.focus()); },
+        whenShown(fn, tries = 20) { this.$refs.panel.getClientRects().length || ! tries ? fn() : setTimeout(() => this.whenShown(fn, tries - 1), 16); },
         hide(back = true) { if (! this.open) return; this.open = false; if (back) this.$refs.button.focus(); },
         focusables() { return [...this.$refs.panel.querySelectorAll('input:not([disabled]),button:not([disabled])')].filter((el) => el.offsetParent !== null && ! (el.type === 'radio' && ! el.checked && this.$refs.panel.querySelector(`input[type=radio][name='${el.name}']:checked`))); },
         trap(e) { const f = this.focusables(); if (! f.length) return; const first = f[0], last = f[f.length - 1]; if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); } else if (! e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); } },
