@@ -14,6 +14,7 @@ use App\Modules\Tenancy\Domains\DnsLookup;
 use App\Modules\Tenancy\Domains\SystemDnsLookup;
 use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -47,6 +48,8 @@ final class TenancyServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $this->warnWhenAdminCredentialsLoaded();
+
         if (config('tenancy.assert', 'strict') === 'off') {
             return;
         }
@@ -61,5 +64,25 @@ final class TenancyServiceProvider extends ServiceProvider
                 throw new RuntimeException('Tenant query executed outside a transaction — SET LOCAL site_id is not active.');
             }
         });
+    }
+
+    /**
+     * In production the superuser password belongs only to the one-off migrate container: code
+     * running in the app, the queue or the scheduler must not be able to rewrite the audit log or
+     * switch off row-level security. Logged, never thrown, so a misconfigured host keeps serving.
+     */
+    public function warnWhenAdminCredentialsLoaded(): void
+    {
+        if (! $this->app->isProduction() || config('tenancy.privileged_ops') === true) {
+            return;
+        }
+
+        $password = config('database.connections.pgsql_admin.password');
+        $url = config('database.connections.pgsql_admin.url');
+        $urlPassword = is_string($url) && $url !== '' ? parse_url($url, PHP_URL_PASS) : null;
+
+        if ((is_string($password) && $password !== '') || (is_string($urlPassword) && $urlPassword !== '')) {
+            Log::critical('The superuser database password is loaded in a production app process; keep it only in the migrate service (docs/runbooks/prod-deploy.md).');
+        }
     }
 }

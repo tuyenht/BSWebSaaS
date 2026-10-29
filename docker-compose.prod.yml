@@ -11,7 +11,8 @@ name: bsweb-prod
 # to the host); ONLY Caddy takes the public 80/443. The runtime image is built from the same
 # Dockerfile as dev but carries its own tag, bsweb/app:prod: a dev rebuild must never change
 # what prod starts on (docs/runbooks/prod-deploy.md). Prod CODE + DATA are isolated by the bind
-# mount + this project's own volumes/DB. Secrets come from ./.env via ${...}, never written here.
+# mount + this project's own volumes/DB. Secrets come from ./.env via ${...}, never written here;
+# the superuser password alone comes from a file outside the checkout (postgres + migrate).
 
 services:
   app:
@@ -91,7 +92,12 @@ services:
     environment:
       POSTGRES_DB: ${DB_DATABASE:-bswebsaas}
       POSTGRES_USER: ${DB_ADMIN_USERNAME:-bsweb}
-      POSTGRES_PASSWORD: ${DB_ADMIN_PASSWORD:?set DB_ADMIN_PASSWORD in prod/.env}
+    # The superuser password lives outside the checkout, so the app containers (which mount the
+    # checkout and read ./.env) never hold it. Postgres reads it only to initialise an empty data
+    # directory; an existing cluster starts without the file, so a host that lacks it keeps running.
+    env_file:
+      - path: ${DB_ADMIN_ENV_FILE:-/opt/bswebsaas/secrets/db-admin.env}
+        required: false
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
       - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -102,6 +108,27 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+
+  # One-off privileged container: the only app process that gets the superuser password. Runs
+  # migrations (and other superuser-only artisan commands) and exits:
+  #   docker compose --profile ops run --rm --no-deps migrate
+  #   docker compose --profile ops run --rm --no-deps migrate php artisan migrate:status --database=pgsql_admin
+  # APP_CONFIG_CACHE points away from bootstrap/cache/config.php, which is built without the password.
+  migrate:
+    image: bsweb/app:prod
+    profiles: [ops]
+    command: php artisan migrate --database=pgsql_admin --force
+    volumes:
+      - ./:/app
+    env_file:
+      - .env
+      - ${DB_ADMIN_ENV_FILE:-/opt/bswebsaas/secrets/db-admin.env}
+    environment:
+      APP_CONFIG_CACHE: /tmp/no-config-cache.php
+      PRIVILEGED_DB_OPS: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   pgbouncer:
     # PgBouncer 1.25.2, pinned by digest: `:latest` would move on the next pull.
