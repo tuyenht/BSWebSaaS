@@ -205,13 +205,14 @@ docker exec bsweb_prod_pg sh -c '
 zcat "$DEST" | docker exec -i bsweb_prod_pg sh -c \
   'PGPASSWORD="$POSTGRES_PASSWORD" psql -U "$POSTGRES_USER" -d bswebsaas --quiet -v ON_ERROR_STOP=1 --single-transaction'
 
-# 5. Restart the existing containers (start, never run/up: those create containers from the
-#    bsweb/app:dev tag, which may point at a different build than prod runs — prod-deploy.md)
+# 5. Restart the existing containers (start, not up: up would recreate them and apply any
+#    unreviewed .env or image change in the middle of a restore — prod-deploy.md)
 docker compose -p bsweb-prod start app horizon scheduler
 
 # 6. Re-apply anything the dump predates (migration role — see CLAUDE.md §7); a no-op when the
 #    dump came from the same code
-docker exec bsweb_prod_app php artisan migrate --database=pgsql_admin --force
+#    The superuser password is only in the one-off migrate container (prod-deploy.md)
+(cd /opt/bswebsaas/prod && docker compose --profile ops run --rm --no-deps migrate)
 
 # 7. Verify — as the superuser: the app role sees 0 rows without a tenant context (RLS fail-closed),
 #    so a tinker count would read 0 even after a good restore
