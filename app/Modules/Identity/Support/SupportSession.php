@@ -24,7 +24,8 @@ final class SupportSession
 {
     private const string KEY = 'support_session';
 
-    public function start(User $staff, User $member, int $siteId, string $reason, CarbonInterface $expiresAt): void
+    /** $sessionUlid: the code the link was issued with; null for a link issued before codes existed. */
+    public function start(User $staff, User $member, int $siteId, string $reason, CarbonInterface $expiresAt, ?string $sessionUlid = null): void
     {
         $this->session()?->put(self::KEY, [
             'staff_id' => Cast::int($staff->getKey()),
@@ -33,11 +34,12 @@ final class SupportSession
             'reason' => $reason,
             'site_id' => $siteId,
             'expires_at' => $expiresAt->getTimestamp(),
+            'session_ulid' => $sessionUlid,
         ]);
     }
 
     /**
-     * @return array{staff_id: int, staff_label: string, reason: string, site_id: int, expires_at: int}|null
+     * @return array{staff_id: int, staff_label: string, reason: string, site_id: int, expires_at: int, session_ulid: string|null}|null
      */
     public function current(): ?array
     {
@@ -61,6 +63,7 @@ final class SupportSession
             'reason' => Cast::string($value['reason'] ?? null),
             'site_id' => Cast::int($value['site_id'] ?? null),
             'expires_at' => Cast::int($value['expires_at'] ?? null),
+            'session_ulid' => Cast::string($value['session_ulid'] ?? null) ?: null,
         ];
     }
 

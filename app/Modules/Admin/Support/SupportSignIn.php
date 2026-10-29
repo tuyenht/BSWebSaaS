@@ -25,6 +25,8 @@ use Illuminate\Validation\ValidationException;
  *  - The same rules are checked when the link is issued and again when it is redeemed: the staff
  *    member holds platform.sites.impersonate, the site is active, its owner allows support
  *    sign-in, and the target is a member of the site — never the staff member, never platform staff.
+ *  - Each link starts a session with its own code (a ulid): the "issued" row carries it, the link
+ *    hands it to SupportSession, and every row of the session then carries it too.
  */
 final readonly class SupportSignIn
 {
@@ -62,6 +64,7 @@ final readonly class SupportSignIn
         $this->tenancy->enter($siteId, fn () => $this->assertTarget($staff, $member));
 
         $token = Str::random(48);
+        $sessionUlid = (string) Str::ulid();
         Cache::put(self::CACHE_PREFIX.hash('sha256', $token), [
             'staff_id' => Cast::int($staff->getKey()),
             'member_id' => Cast::int($member->getKey()),
@@ -69,10 +72,12 @@ final readonly class SupportSignIn
             'reason' => $reason,
             'minutes' => $minutes,
             'ua' => hash('sha256', $userAgent),
+            'session_ulid' => $sessionUlid,
         ], self::TOKEN_TTL);
 
         Audit::record('support.session.issued', [
             'site_id' => $siteId,
+            'support_session_ulid' => $sessionUlid,
             'meta' => ['member' => $member->getAttribute('email'), 'reason' => $reason, 'minutes' => $minutes],
         ]);
 
@@ -80,9 +85,10 @@ final readonly class SupportSignIn
     }
 
     /**
-     * The link's facts — once — when it was made for this site and this browser.
+     * The link's facts — once — when it was made for this site and this browser. A link issued
+     * before sessions had codes has none: session_ulid is null, never ''.
      *
-     * @return array{staff_id: int, member_id: int, reason: string, minutes: int}|null
+     * @return array{staff_id: int, member_id: int, reason: string, minutes: int, session_ulid: string|null}|null
      */
     public function redeem(string $token, int $siteId, string $userAgent): ?array
     {
@@ -103,6 +109,7 @@ final readonly class SupportSignIn
             'member_id' => Cast::int($data['member_id'] ?? null),
             'reason' => Cast::string($data['reason'] ?? null),
             'minutes' => Cast::int($data['minutes'] ?? null),
+            'session_ulid' => Cast::string($data['session_ulid'] ?? null) ?: null,
         ];
     }
 
