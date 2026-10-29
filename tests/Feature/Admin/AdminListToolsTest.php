@@ -123,6 +123,54 @@ it('says All, dimmed, for a section with nothing chosen and shortens long choice
         ->and($html)->toContain('aria-label="Đi tới phần Định dạng: JPG, PNG, WEBP và 2 mục khác"');
 });
 
+it('keeps the same ids across renders, so a live update never renames the radio groups', function (): void {
+    $render = fn (): string => (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => filterSections()]);
+
+    preg_match('/aria-controls="(lf-[A-Za-z0-9]{8})"/', $render(), $a);
+    preg_match('/aria-controls="(lf-[A-Za-z0-9]{8})"/', $render(), $b);
+
+    expect($a[1])->toBe($b[1]);
+});
+
+it('gives the section panel and the sheet their own radio group names', function (): void {
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => filterSections()]);
+
+    preg_match_all('/type="radio"\s+name="([^"]+)"/', $html, $m);
+
+    expect(array_values(array_unique($m[1])))->toHaveCount(2);
+});
+
+it('shows the chosen one-choice value after the section name when the list has one column', function (): void {
+    app()->setLocale('vi');
+    $sections = filterSections();
+    $sections[0]['value'] = 'trash';
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect($html)->toMatch('/<span x-show="cols === 1"[^>]*>: Thùng rác<\/span>/')
+        ->and($html)->toMatch('/data-fsec="status" data-act="1"/');
+});
+
+it('copes with a one-choice section whose first option is an empty "all" value', function (): void {
+    app()->setLocale('vi');
+    $site = ['key' => 'site', 'label' => 'Website', 'model' => 'site', 'options' => [
+        ['value' => '', 'label' => 'Mọi website'], ['value' => 'av', 'label' => 'An Vinh'],
+    ]];
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => [$site]]);
+
+    expect($html)->toMatch('/data-fsec="site" data-act="0"/')
+        ->and($html)->toContain('aria-label="Đi tới phần Website: Mọi website"');
+});
+
+it('still names and marks a chosen value that is not among the options', function (): void {
+    app()->setLocale('vi');
+    $sections = filterSections();
+    $sections[1]['value'] = ['svg'];
+    $html = (string) $this->blade('<x-bs-admin::filter-panel :sections="$sections" />', ['sections' => $sections]);
+
+    expect($html)->toMatch('/data-fsec="kind" data-act="1"/')
+        ->and($html)->toContain('aria-label="Đi tới phần Loại tệp: svg"');
+});
+
 /**
  * @return list<array{key: string, label: string, icon?: string|null, count?: int|null, trash?: bool}>
  */
