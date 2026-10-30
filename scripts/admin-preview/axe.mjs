@@ -26,7 +26,7 @@ const { default: axe } = await import('axe-core');
 const doc = boot.window.document; // axe validates the context against THIS window's Node class
 
 const DIR = process.env.ADMIN_PREVIEW_DIR ?? 'storage/app/admin-preview';
-const SCREENS = ['dashboard', 'list', 'form', 'gallery'];
+const SCREENS = ['dashboard', 'list', 'form', 'gallery', 'audit', 'audit-detail'];
 const THEMES = ['light', 'dark'];
 const ALLOWLIST = JSON.parse(readFileSync(new URL('./axe-allowlist.json', import.meta.url), 'utf8'));
 
