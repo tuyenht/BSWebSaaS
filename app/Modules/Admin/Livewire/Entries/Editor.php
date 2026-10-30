@@ -11,8 +11,10 @@ use App\Modules\Cms\Exceptions\RouteConflictException;
 use App\Modules\Cms\Exceptions\WorkflowGovernedException;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Cms\Models\EntryTranslation;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Support\EntryBlockMediaReconciler;
 use App\Modules\Cms\Support\EntryCategoryWriter;
 use App\Modules\Cms\Support\EntryWorkflowResolver;
@@ -35,10 +37,13 @@ use App\Modules\Workflow\Services\WorkflowTrail;
 use Carbon\CarbonInterface;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -806,33 +811,86 @@ final class Editor extends Component
     }
 
     /**
-     * A blank link is made from the title (any writing system) and made free for this language; a
-     * link the person typed is never touched. A title with nothing usable leaves it blank, so
-     * validation asks for the link.
+     * A blank link is made from the title (any writing system) and made free for this language: no
+     * other page's link and no other route (a category, a product, an old address) may already
+     * hold the public path it would get. A link the person typed is never touched. A title with
+     * nothing usable leaves it blank, so validation asks for the link. Returns whether it filled one.
      */
-    private function fillBlankSlug(): void
+    private function fillBlankSlug(): bool
     {
         if (trim($this->slug) !== '') {
-            return;
+            return false;
         }
 
         $ownId = $this->ulid !== null ? $this->resolveOrFail($this->ulid)->id : null;
+        $prefix = $this->publicPathPrefix();
+
         $this->slug = Slugger::fromTitle(
             $this->title,
             $this->locale,
-            fn (string $candidate): bool => EntryTranslation::query()
-                ->where('locale', $this->locale)
-                ->where('slug', $candidate)
-                ->when($ownId !== null, fn ($q) => $q->where('entry_id', '!=', $ownId))
-                ->exists(),
+            fn (string $base): array => [
+                ...Slugger::takenAmong(
+                    EntryTranslation::query()
+                        ->where('locale', $this->locale)
+                        ->when($ownId !== null, fn ($q) => $q->where('entry_id', '!=', $ownId)),
+                    'slug',
+                    $base,
+                ),
+                ...Slugger::takenAmong(
+                    SiteRoute::query()
+                        ->where('locale', $this->locale)
+                        ->when($ownId !== null, fn ($q) => $q->where(
+                            fn ($own) => $own->whereNull('entry_id')->orWhere('entry_id', '!=', $ownId),
+                        )),
+                    'path',
+                    $base,
+                    $prefix,
+                ),
+            ],
         );
+
+        return $this->slug !== '';
+    }
+
+    /**
+     * The part of the public path that comes before the slug, composed by PathBuilder for this
+     * entry and its picked category exactly as publishing will ('/' for a flat page).
+     */
+    private function publicPathPrefix(): string
+    {
+        $entry = $this->ulid !== null ? $this->resolveOrFail($this->ulid) : new Entry(['type' => $this->type]);
+
+        if ($this->type === 'post') {
+            $category = $this->categoryId !== null
+                ? Taxonomy::query()->with('translations')->find($this->categoryId)
+                : null;
+            $categories = new EloquentCollection;
+            if ($category instanceof Taxonomy) {
+                $category->setRelation('pivot', (new Pivot)->forceFill(['position' => 0]));
+                $categories->push($category);
+            }
+            $entry->setRelation('taxonomies', $categories);
+        }
+
+        $path = app(PathBuilder::class)->forEntry($entry, $this->locale, 'x');
+
+        return str_ends_with($path, 'x') ? substr($path, 0, -1) : '/';
     }
 
     /** Validate + persist the entry and its translation (+ category for posts); returns it. */
     private function persist(): Entry
     {
-        $this->fillBlankSlug();
-        $this->validate();
+        $filled = $this->fillBlankSlug();
+        try {
+            $this->validate();
+        } catch (ValidationException $e) {
+            // A link made for a save that failed must not stay behind: it would pin the old title.
+            if ($filled) {
+                $this->slug = '';
+            }
+
+            throw $e;
+        }
 
         if ($this->ulid === null) {
             $this->authorize('create', Entry::class);

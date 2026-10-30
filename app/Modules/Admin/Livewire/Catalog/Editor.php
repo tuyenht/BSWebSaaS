@@ -6,8 +6,10 @@ use App\Modules\Admin\Livewire\Concerns\WithMediaLibraryPicker;
 use App\Modules\Catalog\Models\Product;
 use App\Modules\Catalog\Models\ProductTranslation;
 use App\Modules\Cms\Exceptions\RouteConflictException;
+use App\Modules\Cms\Models\SiteRoute;
 use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Models\TaxonomyTranslation;
+use App\Modules\Cms\Routing\PathBuilder;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Media\Models\Media;
 use App\Modules\Media\Services\MediaUrlResolver;
@@ -18,6 +20,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Locked;
@@ -251,22 +254,48 @@ final class Editor extends Component
         ];
     }
 
-    /** A blank link is made from the name (any writing system) and made free; a typed link is kept. */
-    private function fillBlankSlug(): void
+    /**
+     * A blank link is made from the name (any writing system) and made free: no other product link
+     * in this language and no other route may hold the public path it would get. A typed link is
+     * kept. Returns whether it filled one.
+     */
+    private function fillBlankSlug(): bool
     {
         if (trim($this->slug) !== '') {
-            return;
+            return false;
         }
+
+        $category = $this->categoryId !== null
+            ? Taxonomy::query()->with('translations')->find($this->categoryId)
+            : null;
+        $path = app(PathBuilder::class)->forProduct($category, 'x', $this->locale);
+        $prefix = str_ends_with($path, 'x') ? substr($path, 0, -1) : '/';
 
         $this->slug = Slugger::fromTitle(
             $this->name,
             $this->locale,
-            fn (string $candidate): bool => ProductTranslation::query()
-                ->where('locale', $this->locale)
-                ->where('slug', $candidate)
-                ->when($this->productId !== null, fn ($q) => $q->where('product_id', '!=', $this->productId))
-                ->exists(),
+            fn (string $base): array => [
+                ...Slugger::takenAmong(
+                    ProductTranslation::query()
+                        ->where('locale', $this->locale)
+                        ->when($this->productId !== null, fn ($q) => $q->where('product_id', '!=', $this->productId)),
+                    'slug',
+                    $base,
+                ),
+                ...Slugger::takenAmong(
+                    SiteRoute::query()
+                        ->where('locale', $this->locale)
+                        ->when($this->productId !== null, fn ($q) => $q->where(
+                            fn ($own) => $own->whereNull('product_id')->orWhere('product_id', '!=', $this->productId),
+                        )),
+                    'path',
+                    $base,
+                    $prefix,
+                ),
+            ],
         );
+
+        return $this->slug !== '';
     }
 
     /**
@@ -292,8 +321,17 @@ final class Editor extends Component
         // against the site's media (non-numeric junk becomes 0 and fails the exists rule).
         $this->imageMediaIds = $this->normalizeIds($this->imageMediaIds);
 
-        $this->fillBlankSlug();
-        $this->validate();
+        $filled = $this->fillBlankSlug();
+        try {
+            $this->validate();
+        } catch (ValidationException $e) {
+            // A link made for a save that failed must not stay behind: it would pin the old name.
+            if ($filled) {
+                $this->slug = '';
+            }
+
+            throw $e;
+        }
 
         $attributes = [
             'sku' => $this->sku,

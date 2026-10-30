@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Modules\Shared\Support;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Transliterator;
 
@@ -40,33 +41,75 @@ final class Slugger
 
     /**
      * A link for a blank slug field: made from the title/name, then made free by appending -2, -3…
-     * An empty string when the text leaves nothing usable (only symbols): the caller then reports
-     * the missing slug instead of inventing one.
+     * An empty string when the text leaves nothing usable (only symbols) or its Latin reading
+     * would be wrong (kanji in Japanese): the caller then reports the missing slug instead of
+     * inventing one.
      *
-     * @param  \Closure(string): bool  $taken  whether a candidate path is already in use
+     * @param  \Closure(string): array<array-key, string>  $takenAmong  the candidates among `$base` and `$base-N` already in use
      */
-    public static function fromTitle(string $title, ?string $locale, \Closure $taken): string
+    public static function fromTitle(string $title, ?string $locale, \Closure $takenAmong): string
     {
+        if (self::needsManualInput($title, $locale)) {
+            return '';
+        }
+
         // Leave room for a "-NN" suffix inside the 200-character column.
         $base = self::make($title, $locale, 190);
         if ($base === '') {
             return '';
         }
 
-        return self::free($base, $taken);
+        return self::free($base, $takenAmong);
     }
 
-    /** Appends -2, -3… to $base until $taken says the candidate is free. */
-    public static function free(string $base, \Closure $taken): string
+    /**
+     * $base itself when free, else the lowest free `$base-N` (N from 2). One call to $takenAmong
+     * answers for every candidate, so the cost does not grow with the number already taken.
+     *
+     * @param  \Closure(string): array<array-key, string>  $takenAmong  given $base, the used values among `$base` and `$base-N`
+     */
+    public static function free(string $base, \Closure $takenAmong): string
     {
-        $candidate = $base;
-        $n = 1;
-        while ($taken($candidate)) {
-            $n++;
-            $candidate = $base.'-'.$n;
+        $taken = array_flip(array_map(strval(...), array_values($takenAmong($base))));
+
+        if (! isset($taken[$base])) {
+            return $base;
         }
 
-        return $candidate;
+        $n = 2;
+        while (isset($taken[$base.'-'.$n])) {
+            $n++;
+        }
+
+        return $base.'-'.$n;
+    }
+
+    /**
+     * The values of $column (with $prefix removed) that equal `$prefix$base` or start with
+     * `$prefix$base-`: one query, for [free()]. The LIKE pattern is escaped, so a '%' or '_' in the
+     * text matches only itself.
+     *
+     * @param  Builder<*>  $query  already narrowed to the rows that count (language, other owners…)
+     * @return list<string>
+     */
+    public static function takenAmong(Builder $query, string $column, string $base, string $prefix = ''): array
+    {
+        $full = $prefix.$base;
+        $like = addcslashes($full.'-', '\\%_').'%';
+
+        $values = $query
+            ->where(fn (Builder $q) => $q->where($column, $full)->orWhere($column, 'like', $like))
+            ->pluck($column)
+            ->all();
+
+        $taken = [];
+        foreach ($values as $value) {
+            if (is_string($value) && str_starts_with($value, $prefix)) {
+                $taken[] = substr($value, strlen($prefix));
+            }
+        }
+
+        return $taken;
     }
 
     /**

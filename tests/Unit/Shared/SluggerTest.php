@@ -57,3 +57,23 @@ it('says when the person must type the path', function (string $text, ?string $l
     'kanji with kana and no locale' => ['製品カタログ', null, true],
     'chinese with no locale' => ['产品图片', null, false],
 ]);
+
+it('returns no link for Japanese kanji, which ICU would read as Chinese', function (): void {
+    $never = fn (): array => throw new RuntimeException('not asked');
+
+    expect(Slugger::fromTitle('会社案内', 'ja', $never))->toBe('')
+        ->and(Slugger::fromTitle('产品图片', 'zh', fn (): array => []))->toBe('chan-pin-tu-pian');
+});
+
+it('picks the lowest free number from one answer', function (): void {
+    $calls = 0;
+    $taken = function (string $base) use (&$calls): array {
+        $calls++;
+
+        return ['may', 'may-2', 'may-3', 'may-5'];
+    };
+
+    expect(Slugger::free('may', $taken))->toBe('may-4')
+        ->and(Slugger::free('khac', fn (): array => ['may']))->toBe('khac')
+        ->and($calls)->toBe(1);
+});
