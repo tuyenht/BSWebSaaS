@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -71,6 +72,7 @@ final class MediaUploadController
                 $this->actorId(),
                 $request->has('width') ? $request->integer('width') : null,
                 $request->has('height') ? $request->integer('height') : null,
+                mayRestore: $this->mayRestore(),
             );
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
@@ -95,7 +97,7 @@ final class MediaUploadController
                 return response()->json(['message' => __('media.err_file_invalid')], 422);
             }
 
-            $media = $upload->handle($file, 'library', $this->actorId());
+            $media = $upload->handle($file, 'library', $this->actorId(), $this->mayRestore());
         } catch (ValidationException $e) {
             return response()->json(['message' => $e->getMessage(), 'errors' => $e->errors()], 422);
         } catch (MediaRejectedException $e) {
@@ -113,6 +115,12 @@ final class MediaUploadController
         report($e);
 
         return response()->json(['message' => __('media.err_unexpected')], 500);
+    }
+
+    /** Re-uploading a file that sits in the Trash takes it back out: a media.delete right, like Restore. */
+    private function mayRestore(): bool
+    {
+        return Gate::allows('media.delete');
     }
 
     private function actorId(): ?int

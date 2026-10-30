@@ -184,7 +184,12 @@ trait WithMediaLibraryPicker
 
     public ?int $pickerFolderId = null;
 
-    /** Trash view (onlyTrashed) — a virtual "folder", not a media_folders row. */
+    /**
+     * Trash view (onlyTrashed) — a virtual "folder", not a media_folders row. Locked: only
+     * openPickerTrash() (gated to media.delete) may switch it on; a client write would list the
+     * trashed files to someone who may only view the library.
+     */
+    #[Locked]
     public bool $pickerTrash = false;
 
     /** @var list<int> */
@@ -272,10 +277,13 @@ trait WithMediaLibraryPicker
         $this->closePickerDetail();
     }
 
-    /** The virtual "Thùng rác" sidebar entry — shows onlyTrashed, swaps the bulk actions. */
+    /**
+     * The virtual "Thùng rác" sidebar entry — shows onlyTrashed, swaps the bulk actions. Gated to
+     * media.delete like every trash action (the sidebar entry is only rendered for that right).
+     */
     public function openPickerTrash(): void
     {
-        abort_unless(Gate::allows('media.view'), 403);
+        abort_unless(Gate::allows('media.delete'), 403);
 
         $this->pickerTrash = true;
         $this->pickerFolderId = null;
@@ -287,6 +295,7 @@ trait WithMediaLibraryPicker
     public function togglePickerItem(int $mediaId): void
     {
         abort_unless(Gate::allows('media.view'), 403);
+        abort_unless(! $this->pickerTrash || Gate::allows('media.delete'), 403);
 
         // Live library resolves live rows; the trash view resolves trashed rows. Either way the id
         // is re-checked against THIS site's scoped query — never trusted from the wire.
@@ -508,13 +517,21 @@ trait WithMediaLibraryPicker
             abort_unless(Gate::allows('media.upload'), 403);
 
             try {
-                $media = app(RegisterMediaUpload::class)->handle($preview['tempKey'], $preview['filename']);
+                $media = app(RegisterMediaUpload::class)->handle(
+                    $preview['tempKey'],
+                    $preview['filename'],
+                    mayRestore: Gate::allows('media.delete'),
+                );
             } catch (MediaRejectedException $e) {
+                // Register may already have deleted the staged bytes: drop the preview so a second
+                // "Chèn" asks for a fresh preview instead of failing on a missing upload.
+                $this->discardStagedUrlPreview();
                 $this->addError('pickerUrlInput', $e->userMessage());
 
                 return;
             } catch (RuntimeException $e) {
                 report($e);
+                $this->discardStagedUrlPreview();
                 $this->addError('pickerUrlInput', __('media.err_unexpected'));
 
                 return;
@@ -726,7 +743,7 @@ trait WithMediaLibraryPicker
             'detailUsages' => $detail === null ? [] : app(MediaUsageLocator::class)->usagesFor($detail, $this->pickerContentLocale()),
             'detailUploader' => $uploaderName,
             'contentLocale' => $this->pickerContentLocale(),
-            'trashTotal' => Media::onlyTrashed()->count(),
+            'trashTotal' => Gate::allows('media.delete') ? Media::onlyTrashed()->count() : 0,
         ];
     }
 
@@ -739,6 +756,9 @@ trait WithMediaLibraryPicker
     {
         // Trash view: onlyTrashed, flat (no folder), newest-binned first — a distinct surface.
         if ($this->pickerTrash) {
+            // Defence in depth behind the locked property: the trash list is a media.delete surface.
+            abort_unless(Gate::allows('media.delete'), 403);
+
             $query = Media::onlyTrashed();
             $term = trim($this->pickerSearch);
             if ($term !== '') {

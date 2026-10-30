@@ -14,6 +14,23 @@ use Livewire\Component;
 #[Layout('admin::layouts.app')]
 final class ComponentGallery extends Component
 {
+    /** Live values for the list-tools sample, so its radios and checkboxes really bind. */
+    public string $galleryStatus = 'live';
+
+    /** @var list<string> */
+    public array $galleryKinds = [];
+
+    public string $gallerySearch = '';
+
+    public string $galleryGroup = 'all';
+
+    public function clearGalleryFilters(): void
+    {
+        $this->galleryStatus = 'live';
+        $this->galleryKinds = [];
+        $this->galleryGroup = 'all';
+    }
+
     public function mount(): void
     {
         abort_if(app()->isProduction(), 404);
