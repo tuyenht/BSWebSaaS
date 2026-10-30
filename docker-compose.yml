@@ -63,7 +63,12 @@ services:
 
   # In-process scheduler (php artisan schedule:work) — runs the daily media:purge-trash job.
   # A long-running loop, so no host crontab is needed; restart-on-exit keeps it alive.
+  # Opt-in on dev (`docker compose --profile scheduler up -d scheduler`): dev and prod share one R2
+  # bucket, and the purge deletes the R2 object of every trashed row in the dev (= test) database.
+  # A legacy key is the site name + content hash, so the same file uploaded to a same-named site on
+  # dev and prod has the same key, and a dev purge would delete prod's file.
   scheduler:
+    profiles: ["scheduler"]
     image: bsweb/app:dev
     container_name: bsweb_dev_scheduler
     restart: unless-stopped
