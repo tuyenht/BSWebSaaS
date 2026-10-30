@@ -4,6 +4,7 @@
     'size' => 'md',
     'type' => 'button',
     'href' => null,
+    'icon' => false,
 ])
 @php
     // Mirrors Velzon .btn / .btn-soft-* / .btn-outline-* / .btn-ghost-*.
@@ -14,12 +15,20 @@
     // Semantic colors the same way: white text sits on the `*-solid` fill, the hue as text or
     // border is `*-text`; warning keeps its fill and takes dark text (white on it reads 1.8:1).
     // Keyboard focus is the shared focus ring (app.css :focus-visible), not a per-color ring.
-    $base = 'inline-flex items-center justify-center gap-2 rounded font-medium leading-none whitespace-nowrap transition-colors disabled:opacity-60 disabled:pointer-events-none';
+    // Heights come from the control-size tokens (app.css, docs/notes/design-tokens.md §2.5), which
+    // grow with the user's text size: md is a main button (40 → 44), sm a button on a list row or
+    // inline (36 → 44). The touch area stays 44 through hit-area. A long label wraps instead of
+    // running out of the button; `icon` makes a square button for a lone icon with an aria-label.
+    $base = 'hit-area inline-flex items-center justify-center gap-2 rounded font-medium leading-tight text-center transition-colors disabled:opacity-60 disabled:pointer-events-none';
 
-    $sizes = [
-        'sm' => 'px-2.5 py-1.5 text-xs',
-        'md' => 'px-3.5 py-2 text-sm',
-        'lg' => 'px-5 py-2.5 text-base',
+    $sizes = $icon ? [
+        'sm' => 'size-control-row shrink-0 text-caption',
+        'md' => 'size-control shrink-0 text-body',
+        'lg' => 'size-hit shrink-0 text-lead',
+    ] : [
+        'sm' => 'min-h-control-row px-2.5 py-1 text-caption',
+        'md' => 'min-h-control px-3.5 py-1.5 text-body',
+        'lg' => 'min-h-hit px-5 py-2 text-lead',
     ];
 
     $solid = [

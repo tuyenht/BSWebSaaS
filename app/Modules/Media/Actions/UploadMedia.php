@@ -32,7 +32,12 @@ final class UploadMedia
         'application/pdf' => 'pdf',
     ];
 
-    public function handle(UploadedFile $file, string $siteName, string $collection = 'library', ?int $createdBy = null): Media
+    /**
+     * @param  bool  $mayRestore  whether the uploader may take a file back out of the Trash (the
+     *                            media.delete right, resolved by the caller). The action holds no user
+     *                            of its own, so the caller decides; false refuses with `in_trash`.
+     */
+    public function handle(UploadedFile $file, string $siteName, string $collection = 'library', ?int $createdBy = null, bool $mayRestore = false): Media
     {
         MediaKey::assertConfigured(); // fail loud + clean if the R2 disk has no bucket/creds (.env drift)
 
@@ -54,11 +59,15 @@ final class UploadMedia
 
         // 4) Dedup within (site, collection, hash) — RLS-scoped; return the master, skip re-upload.
         // withTrashed: the UNIQUE index doesn't know about soft-deletes — re-uploading a binned
-        // file restores its master instead of dead-ending on the violation. Self-heal: if the
-        // master's object went missing, these same bytes go back under its key.
+        // file restores its master instead of dead-ending on the violation, but only for someone
+        // allowed to restore from the Trash; anyone else is told so, and the row stays binned.
+        // Self-heal: if the master's object went missing, these same bytes go back under its key.
         $existing = Media::query()->withTrashed()->where('collection', $collection)->where('hash', $hash)->first();
         if ($existing instanceof Media) {
             if ($existing->trashed()) {
+                if (! $mayRestore) {
+                    throw new MediaRejectedException('in_trash');
+                }
                 $existing->restore();
             }
             $disk = Storage::disk(MediaKey::disk());

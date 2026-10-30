@@ -25,6 +25,7 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\Site;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
@@ -246,7 +247,10 @@ it('ends the session when its time is up, on pages and on Livewire updates', fun
         : $this->withHeader('X-Livewire', '1')->post('http://a.test/livewire/update', [])->assertForbidden();
 
     $this->assertGuest();
-    expect(AuditLog::query()->where('action', 'support.session.ended')->value('meta'))->toBe(['why' => 'expired']);
+    $ended = AuditLog::query()->where('action', 'support.session.ended')->sole();
+    expect($ended->meta)->toBe(['why' => 'expired'])
+        ->and($ended->support_session_ulid)->not->toBeNull()
+        ->toBe(AuditLog::query()->where('action', 'support.session.entered')->sole()->support_session_ulid);
 })->with(['page', 'livewire']);
 
 it('ends the session at the next request once the owner turns support sign-in off', function (): void {
@@ -301,6 +305,64 @@ it('goes back to the console when the staff member leaves', function (): void {
     expect(AuditLog::query()->where('action', 'support.session.ended')->value('meta'))->toBe(['why' => 'left']);
 });
 
+it('ties every row of one support session to one session code, from the link to the exit', function (): void {
+    $owner = supportMember(1, 'owner');
+    $staff = platformStaff('support');
+
+    enterSupport($this, supportToken($staff, $owner))->assertStatus(303);
+    $this->post('http://a.test/admin/support/leave');
+    enterSupport($this, supportToken($staff, $owner))->assertStatus(303);
+
+    $rows = AuditLog::query()->orderBy('id')->get(['action', 'support_session_ulid'])
+        ->map(fn (AuditLog $row): array => [$row->action, $row->getAttribute('support_session_ulid')])->all();
+    [$first, $second] = [$rows[0][1], $rows[3][1]];
+
+    expect(array_column($rows, 0))->toBe(['support.session.issued', 'support.session.entered', 'support.session.ended', 'support.session.issued', 'support.session.entered'])
+        ->and($first)->toMatch('/^[0-9A-HJKMNP-TV-Z]{26}$/')
+        ->and(array_column(array_slice($rows, 0, 3), 1))->toBe([$first, $first, $first])
+        ->and($second)->toMatch('/^[0-9A-HJKMNP-TV-Z]{26}$/')->not->toBe($first)
+        ->and($rows[4][1])->toBe($second);
+});
+
+it('leaves the session code empty on rows written outside a support session', function (): void {
+    $owner = supportMember(1, 'owner');
+
+    asMember($owner, false, fn () => Audit::record('cms.entry.published'));
+    Audit::record('media.variant.built');
+
+    expect(AuditLog::query()->count())->toBe(2)
+        ->and(AuditLog::query()->whereNotNull('support_session_ulid')->count())->toBe(0);
+});
+
+it('takes a session code from the caller only on the row that issues the link', function (): void {
+    $owner = supportMember(1, 'owner');
+
+    asMember($owner, false, fn () => Audit::record('cms.entry.published', ['support_session_ulid' => '01JBZ00000000000000000000A']));
+
+    expect(AuditLog::query()->sole()->support_session_ulid)->toBeNull();
+});
+
+it('keeps the session\'s own code when a caller names another one inside a support session', function (): void {
+    $owner = supportMember(1, 'owner');
+
+    asMember($owner, true, fn () => Audit::record('cms.entry.published', ['support_session_ulid' => '01JBZ00000000000000000000A']), sessionUlid: '01JBZ00000000000000000000B');
+
+    expect(AuditLog::query()->sole()->support_session_ulid)->toBe('01JBZ00000000000000000000B');
+});
+
+it('writes no session code, never an empty one, for a link issued before codes existed', function (): void {
+    $owner = supportMember(1, 'owner');
+    $token = supportToken(platformStaff('support'), $owner);
+    $key = 'support-sign-in:'.hash('sha256', $token);
+    $link = Cache::get($key);
+    unset($link['session_ulid']);
+    Cache::put($key, $link, SupportSignIn::TOKEN_TTL);
+
+    enterSupport($this, $token)->assertStatus(303);
+
+    expect(AuditLog::query()->where('action', 'support.session.entered')->sole()->getAttribute('support_session_ulid'))->toBeNull();
+});
+
 it('routes Livewire updates through the support-session check', function (): void {
     expect(Route::getRoutes()->getByName('livewire.update')->gatherMiddleware())
         ->toContain(EnforceSupportSession::class);
@@ -309,14 +371,14 @@ it('routes Livewire updates through the support-session check', function (): voi
 // ── locks ───────────────────────────────────────────────────────────────────────────
 
 /** Run $action as $member of site 1 — inside a support session, or as the member themselves. */
-function asMember(User $member, bool $support, Closure $action, int $site = 1): mixed
+function asMember(User $member, bool $support, Closure $action, int $site = 1, ?string $sessionUlid = null): mixed
 {
     $session = app('session')->driver();
     $session->flush();
     request()->setLaravelSession($session);
     auth()->login($member);
     if ($support) {
-        app(SupportSession::class)->start(platformStaff('support'), $member, $site, 'Kiểm tra', now()->addMinutes(30));
+        app(SupportSession::class)->start(platformStaff('support'), $member, $site, 'Kiểm tra', now()->addMinutes(30), $sessionUlid);
     }
 
     try {
@@ -432,7 +494,13 @@ it('records the end of a support session that a new link replaces', function ():
     enterSupport($this, supportToken($staff, $owner))->assertStatus(303);
     enterSupport($this, supportToken($staff, $owner))->assertStatus(303);
 
-    expect(AuditLog::query()->where('action', 'support.session.ended')->value('meta'))->toBe(['why' => 'replaced']);
+    $code = fn (string $action): array => AuditLog::query()->where('action', $action)->orderBy('id')->pluck('support_session_ulid')->all();
+    [$old, $new] = $code('support.session.entered');
+
+    expect(AuditLog::query()->where('action', 'support.session.ended')->value('meta'))->toBe(['why' => 'replaced'])
+        ->and($old)->not->toBeNull()
+        ->and($new)->not->toBeNull()->not->toBe($old)
+        ->and($code('support.session.ended'))->toBe([$old]);
 });
 
 it('keeps names and reasons as plain text in the owner mail', function (): void {
