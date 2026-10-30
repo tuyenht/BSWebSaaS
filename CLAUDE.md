@@ -110,7 +110,7 @@ Every table/list/query. Target 10,000+ **sites** × 100M+ rows; the isolation ke
 No PHP on the host — everything runs through Docker. Tests/QA always use `run --rm` (a fresh process; `exec` into the Octane container can serve stale opcache).
 
 ```bash
-docker compose up -d        # PG17 + PgBouncer + Valkey + FrankenPHP/Octane + Horizon + scheduler
+docker compose up -d        # PG17 + PgBouncer + Valkey + FrankenPHP/Octane + Horizon (scheduler is opt-in: see docker-compose.yml)
 docker compose run --rm --no-deps app php artisan migrate --database=pgsql_admin --force   # privileged role only — never plain migrate
 docker compose run --rm --no-deps app vendor/bin/pest [path | --filter=name]
 docker compose run --rm --no-deps app vendor/bin/phpstan analyse --memory-limit=1G   # full run; single-file runs give false positives on Pest closures
