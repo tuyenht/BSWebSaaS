@@ -45,6 +45,7 @@ Prod is a separate git checkout, `/opt/bswebsaas/prod` (branch `main`), on the s
 ## Deploy
 
 1. `git -C /opt/bswebsaas/prod merge --ff-only <sha>`. Prod carries only untracked files, never commits; if it is not a fast-forward, stop.
+   - `composer.lock` in the delta → `docker exec bsweb_prod_app composer install --no-dev --optimize-autoloader --no-interaction`, then `docker exec bsweb_prod_app php artisan --version` shows the locked framework version. The checkout is mounted at `/app`, so its packages live there, not in the image; prod has no dev packages (30/10: `composer show` lists no `pestphp/pest`). Skip it and the new code runs on the old packages until the next install.
 2. Migrations, from `/opt/bswebsaas/prod`: `docker compose --profile ops run --rm --no-deps migrate`.
    - This one-off container is the only app process that receives the superuser password (from `/opt/bswebsaas/secrets/db-admin.env`); the app, the queue and the scheduler never hold it.
    - Any other superuser-only artisan command runs the same way: `docker compose --profile ops run --rm --no-deps migrate php artisan <command> --database=pgsql_admin`.
