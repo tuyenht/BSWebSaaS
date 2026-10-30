@@ -330,3 +330,30 @@ it('reads back only the base and its numbered copies, not every link that starts
 
     expect($taken)->toEqualCanonicalizing(['may-tien', 'may-tien-2']);
 });
+
+it('finds the next free number past the probed copies, and folds a stored link to lower case', function (): void {
+    [$past, $folded] = app(Tenancy::class)->enter(1, function (): array {
+        foreach (array_merge(['may-tien'], array_map(fn (int $n): string => 'may-tien-'.$n, range(2, Slugger::PROBE + 1))) as $slug) {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'Máy', 'slug' => $slug, 'body' => ['blocks' => []], 'status' => 'draft']);
+        }
+        $legacy = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+        $legacy->translations()->create(['locale' => 'vi', 'title' => 'Cũ', 'slug' => 'Bang-Gia', 'body' => ['blocks' => []], 'status' => 'draft']);
+
+        $taken = fn (string $base): array => Slugger::takenAmong(EntryTranslation::query()->where('locale', 'vi'), 'slug', $base);
+
+        return [Slugger::free('may-tien', $taken), Slugger::free('bang-gia', $taken)];
+    });
+
+    expect($past)->toBe('may-tien-'.(Slugger::PROBE + 2))->and($folded)->toBe('bang-gia-2');
+});
+
+it('never gives a flat page the link that publishing turns into the home page', function (): void {
+    $user = slugEditor();
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(EntryEditor::class)
+            ->set('title', 'Home')->set('slug', '')->call('save')
+            ->assertHasNoErrors()->assertSet('slug', 'home-2');
+    });
+});
