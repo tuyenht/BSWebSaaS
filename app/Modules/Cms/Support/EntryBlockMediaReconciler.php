@@ -16,10 +16,10 @@ use Illuminate\Database\Eloquent\Builder;
  * scale (a media_id buried in blocks[].props can't be found by an indexed query otherwise).
  *
  * Reconciled on save: collects every media_id referenced by an image prop across ALL locale bodies,
- * keeps those that name this site's media, then upserts/prunes the entry's content rows to match. It runs inside the request transaction (the
- * save), so the usage index never drifts from the content. Lives in Cms, which already depends on
- * Media and Theme, so every Cms write path that changes a body (the editor save, a revision restore)
- * reconciles through this one class.
+ * keeps those that name this site's media, then prunes the entry's content rows and adds the missing
+ * ones. It runs inside the request transaction (the save), so the usage index never drifts from the
+ * content. Lives in Cms, which already depends on Media and Theme, so every Cms write path that changes
+ * a body (the editor save, a revision restore) reconciles through this one class.
  */
 final readonly class EntryBlockMediaReconciler
 {
@@ -29,17 +29,29 @@ final readonly class EntryBlockMediaReconciler
     {
         $mediaIds = $this->visibleMediaIds($this->blockMediaIds($entry));
 
-        // Prune content rows this entry no longer references, then upsert the current set (idempotent).
-        // Empty set (no block images) → the when() is skipped, so every content row is pruned.
-        Mediable::query()
+        $rows = fn (): Builder => Mediable::query()
             ->where('mediable_type', 'entry')
             ->where('mediable_id', $entry->id)
-            ->where('collection', 'content')
-            ->when($mediaIds !== [], fn (Builder $query) => $query->whereNotIn('media_id', $mediaIds))
-            ->delete();
+            ->where('collection', 'content');
 
-        foreach ($mediaIds as $id) {
-            Mediable::query()->updateOrCreate([
+        // Prune content rows this entry no longer references, then add the missing ones (idempotent).
+        // Empty set (no block images) → the when() is skipped, so every content row is pruned.
+        $rows()->when($mediaIds !== [], fn (Builder $query) => $query->whereNotIn('media_id', $mediaIds))->delete();
+
+        if ($mediaIds === []) {
+            return;
+        }
+
+        // What is left is all still referenced: one read, then a createOrFirst (BelongsToSite stamps
+        // site_id; a concurrent save of the same row is absorbed) only for each image new to this body,
+        // so an unchanged save costs no write.
+        $recorded = [];
+        foreach ($rows()->pluck('media_id') as $id) {
+            $recorded[] = Cast::int($id);
+        }
+
+        foreach (array_diff($mediaIds, $recorded) as $id) {
+            Mediable::query()->createOrFirst([
                 'media_id' => $id,
                 'mediable_type' => 'entry',
                 'mediable_id' => $entry->id,

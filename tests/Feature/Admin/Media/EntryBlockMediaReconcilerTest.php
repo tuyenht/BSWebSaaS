@@ -84,6 +84,28 @@ it('clears content rows when no block images remain', function (): void {
     });
 });
 
+it('costs the same few queries however many images the body holds, writing only the rows that are new', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $media = array_map(fn (string $c): Media => reconcilerMedia("m-{$c}", $c), ['a', 'b', 'c', 'd', 'e']);
+        $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft', 'meta' => []]);
+        $entry->translations()->create(['locale' => 'vi', 'title' => 'T', 'slug' => 't', 'status' => 'draft',
+            'body' => ['blocks' => array_map(fn (Media $m): array => ['type' => 'hero', 'props' => ['image_url' => $m->id]], $media)]]);
+        $reconciler = app(EntryBlockMediaReconciler::class);
+        $reconciler->reconcile($entry);
+
+        // Unchanged body: read the bodies, the visible ids, prune, read what is recorded — nothing per image.
+        expect(countQueries(fn () => $reconciler->reconcile($entry)))->toBeLessThanOrEqual(4);
+
+        // One new image: the same reads plus one insert.
+        $extra = reconcilerMedia('m-f', 'f');
+        $entry->translations()->where('locale', 'vi')->update(['body' => ['blocks' => array_map(
+            fn (Media $m): array => ['type' => 'hero', 'props' => ['image_url' => $m->id]], [...$media, $extra],
+        )]]);
+        expect(countQueries(fn () => $reconciler->reconcile($entry)))->toBeLessThanOrEqual(5)
+            ->and(contentMediaIds($entry))->toBe(array_map(fn (Media $m): int => $m->id, [...$media, $extra]));
+    });
+});
+
 it('records usage only for media this site can see, skipping another site\'s id and an unknown id alike', function (): void {
     // The foreign-key check on mediables.media_id ignores RLS: without the filter, another site's
     // id would be written (a stray row) while an unknown id fails the insert — a way to learn
