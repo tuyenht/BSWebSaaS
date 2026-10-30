@@ -84,10 +84,13 @@ final class Slugger
         return $base.'-'.$n;
     }
 
+    /** How many numbered copies takenAmong() probes by equality before it falls back to one match. */
+    public const int PROBE = 50;
+
     /**
-     * The values of $column (with $prefix removed) that equal `$prefix$base` or start with
-     * `$prefix$base-`: one query, for [free()]. The LIKE pattern is escaped, so a '%' or '_' in the
-     * text matches only itself.
+     * The values of $column (with $prefix removed, lower-cased) among `$prefix$base` and
+     * `$prefix$base-<digits>`, for [free()]: one indexed query, a second one only when every
+     * probed copy is taken.
      *
      * @param  Builder<*>  $query  already narrowed to the rows that count (language, other owners…)
      * @return list<string>
@@ -95,20 +98,30 @@ final class Slugger
     public static function takenAmong(Builder $query, string $column, string $base, string $prefix = ''): array
     {
         $full = $prefix.$base;
-        // `$full` itself or `$full-<digits>`, nothing else: a site with thousands of `san-pham-…`
-        // links must not read them all back on every save. Regex metacharacters in the text are
-        // escaped so they match only themselves.
-        $numbered = '^'.preg_replace('/[\\\\.^$*+?()\\[\\]{}|-]/', '\\\\$0', $full).'-[0-9]+$';
 
-        $values = $query
-            ->where(fn (Builder $q) => $q->where($column, $full)->orWhere($column, '~', $numbered))
-            ->pluck($column)
-            ->all();
+        // Equality on `$full`, `$full-2` … `$full-50` uses the column's index (routes: the
+        // (site_id, locale, path) unique), so a save reads at most 50 rows however big the site is.
+        $probe = [$full];
+        for ($n = 2; $n <= self::PROBE; $n++) {
+            $probe[] = $full.'-'.$n;
+        }
+        $values = (clone $query)->whereIn($column, $probe)->pluck($column)->all();
 
+        // Every probed candidate is taken (rare): one match for the numbered copies beyond it, with
+        // the text's regex metacharacters escaped so they match only themselves.
+        if (count($values) >= self::PROBE) {
+            $numbered = '^'.preg_replace('/[\\\\.^$*+?()\\[\\]{}|-]/', '\\\\$0', $full).'-[0-9]+$';
+            $values = $query->where(fn (Builder $q) => $q->where($column, $full)->orWhere($column, '~', $numbered))
+                ->pluck($column)
+                ->all();
+        }
+
+        // The columns compare without case (citext); free() compares with isset, so fold here.
         $taken = [];
         foreach ($values as $value) {
-            if (is_string($value) && str_starts_with($value, $prefix)) {
-                $taken[] = substr($value, strlen($prefix));
+            $value = is_string($value) ? mb_strtolower($value) : null;
+            if ($value !== null && str_starts_with($value, mb_strtolower($prefix))) {
+                $taken[] = substr($value, strlen(mb_strtolower($prefix)));
             }
         }
 

@@ -812,8 +812,9 @@ final class Editor extends Component
 
     /**
      * A blank link is made from the title (any writing system) and made free for this language: no
-     * other page's link and no other route (a category, a product, an old address) may already
-     * hold the public path it would get. A link the person typed is never touched. A title with
+     * other page's link and no other route (a category, a product) may already hold the public path it would get, and a
+     * flat page is never given `home`, which publishing turns into the site's root. A link the
+     * person typed is never touched. A title with
      * nothing usable leaves it blank, so validation asks for the link. Returns whether it filled one.
      */
     private function fillBlankSlug(): bool
@@ -846,6 +847,7 @@ final class Editor extends Component
                     $base,
                     $prefix,
                 ),
+                ...($prefix === '/' ? [PathBuilder::HOME_SLUG] : []),
             ],
         );
 
