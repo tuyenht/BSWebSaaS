@@ -107,7 +107,7 @@ final class DuplicateEntry
 
         return Slugger::free(
             $base,
-            fn (string $candidate): bool => EntryTranslation::query()->where('locale', $locale)->where('slug', $candidate)->exists(),
+            fn (string $b): array => Slugger::takenAmong(EntryTranslation::query()->where('locale', $locale), 'slug', $b),
         );
     }
 }
