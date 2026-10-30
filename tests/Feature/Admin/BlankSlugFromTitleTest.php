@@ -10,6 +10,7 @@ use App\Modules\Cms\Models\Taxonomy;
 use App\Modules\Cms\Routing\RouteSync;
 use App\Modules\Identity\Models\User;
 use App\Modules\Rbac\Context\TeamContext;
+use App\Modules\Shared\Support\Slugger;
 use App\Modules\Tenancy\Context\Tenancy;
 use App\Modules\Tenancy\Models\ContentSection;
 use Illuminate\Support\Facades\DB;
@@ -315,4 +316,17 @@ it('treats a path owned by a category as taken when a product name would collide
             ->assertHasNoErrors()
             ->assertSet('slug', 'may-tien-2');
     });
+});
+
+it('reads back only the base and its numbered copies, not every link that starts with it', function (): void {
+    $taken = app(Tenancy::class)->enter(1, function (): array {
+        foreach (['may-tien', 'may-tien-2', 'may-tien-cnc', 'may-tien-2-truc'] as $slug) {
+            $entry = Entry::query()->create(['type' => 'page', 'status' => 'draft']);
+            $entry->translations()->create(['locale' => 'vi', 'title' => 'Máy', 'slug' => $slug, 'body' => ['blocks' => []], 'status' => 'draft']);
+        }
+
+        return Slugger::takenAmong(EntryTranslation::query()->where('locale', 'vi'), 'slug', 'may-tien');
+    });
+
+    expect($taken)->toEqualCanonicalizing(['may-tien', 'may-tien-2']);
 });

@@ -95,10 +95,13 @@ final class Slugger
     public static function takenAmong(Builder $query, string $column, string $base, string $prefix = ''): array
     {
         $full = $prefix.$base;
-        $like = addcslashes($full.'-', '\\%_').'%';
+        // `$full` itself or `$full-<digits>`, nothing else: a site with thousands of `san-pham-…`
+        // links must not read them all back on every save. Regex metacharacters in the text are
+        // escaped so they match only themselves.
+        $numbered = '^'.preg_replace('/[\\\\.^$*+?()\\[\\]{}|-]/', '\\\\$0', $full).'-[0-9]+$';
 
         $values = $query
-            ->where(fn (Builder $q) => $q->where($column, $full)->orWhere($column, 'like', $like))
+            ->where(fn (Builder $q) => $q->where($column, $full)->orWhere($column, '~', $numbered))
             ->pluck($column)
             ->all();
 
