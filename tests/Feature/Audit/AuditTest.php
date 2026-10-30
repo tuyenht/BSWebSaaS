@@ -5,9 +5,11 @@ use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Database\DeadlockException;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 /*
  * P0.7 — audit trail (design.md §29). Records sensitive actions with a ulid + action
@@ -134,6 +136,95 @@ it('adds and removes the impersonator columns reversibly', function (): void {
         ->and(Schema::hasColumns('audit_logs', $columns))->toBeTrue()
         ->and(DB::table('audit_logs')->select($columns)->sole())
         ->toEqual((object) ['impersonator_id' => null, 'impersonator_label' => null]);
+});
+
+it('adds and removes the support session column reversibly', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2037_01_01_000000_add_support_session_to_audit_logs.php');
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        $dropped = ! Schema::hasColumn('audit_logs', 'support_session_ulid');
+    } finally {
+        $migration->up();
+        $migration->up();   // re-runnable after a mid-run failure
+        DB::setDefaultConnection($original);
+    }
+
+    Audit::record('cms.entry.updated');
+
+    expect($dropped)->toBeTrue()
+        ->and(Schema::hasColumn('audit_logs', 'support_session_ulid'))->toBeTrue()
+        ->and(DB::table('audit_logs')->select('support_session_ulid')->sole())->toEqual((object) ['support_session_ulid' => null]);
+});
+
+it('refuses an audit row without a time, so paging by time never skips one', function (): void {
+    $insert = fn () => DB::transaction(fn () => DB::table('audit_logs')->insert(['ulid' => (string) Str::ulid(), 'action' => 'cms.entry.updated', 'meta' => '{}', 'created_at' => null]));
+
+    expect($insert)->toThrow(QueryException::class, 'created_at');
+});
+
+it('keeps the not-null time reversible and re-runnable', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2037_01_01_000100_require_created_at_on_audit_logs.php');
+    $nullable = fn (): mixed => DB::connection('pgsql_admin')->scalar("select is_nullable from information_schema.columns where table_name = 'audit_logs' and column_name = 'created_at'");
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        $before = $nullable();
+    } finally {
+        $migration->up();
+        $migration->up();
+        DB::setDefaultConnection($original);
+    }
+
+    expect($before)->toBe('YES')
+        ->and($nullable())->toBe('NO')
+        ->and(DB::connection('pgsql_admin')->scalar("select count(*) from pg_constraint where conrelid = 'audit_logs'::regclass and conname = 'audit_logs_created_at_not_null'"))->toBe(0);
+});
+
+it('lets the application add audit rows but never change or delete one', function (string $change): void {
+    Audit::record('cms.entry.updated');
+
+    $run = fn () => DB::transaction(fn () => $change === 'update'
+        ? DB::table('audit_logs')->update(['action' => 'rewritten'])
+        : DB::table('audit_logs')->delete());
+
+    expect($run)->toThrow(QueryException::class, 'permission denied')
+        ->and(AuditLog::query()->where('action', 'cms.entry.updated')->count())->toBe(1);
+})->with(['update', 'delete']);
+
+it('keeps the append-only grant reversible', function (): void {
+    /** @var Migration $migration */
+    $migration = require database_path('migrations/2037_01_01_000200_make_audit_logs_append_only_for_the_app.php');
+    $can = fn (string $privilege): bool => (bool) DB::connection('pgsql_admin')->scalar("select has_table_privilege('app_user', 'audit_logs', ?)", [$privilege]);
+
+    $original = DB::getDefaultConnection();
+    DB::setDefaultConnection('pgsql_admin');
+    try {
+        $migration->down();
+        $restored = $can('UPDATE') && $can('DELETE');
+    } finally {
+        $migration->up();
+        $migration->up();
+        DB::setDefaultConnection($original);
+    }
+
+    expect($restored)->toBeTrue()
+        ->and($can('UPDATE'))->toBeFalse()
+        ->and($can('DELETE'))->toBeFalse()
+        ->and($can('INSERT'))->toBeTrue()
+        ->and($can('SELECT'))->toBeTrue();
+});
+
+it('has no foreign key into or out of the audit log, so no cascade needs the revoked rights', function (): void {
+    $fks = DB::connection('pgsql_admin')->scalar("select count(*) from pg_constraint where contype = 'f' and (conrelid = 'audit_logs'::regclass or confrelid = 'audit_logs'::regclass)");
+
+    expect($fks)->toBe(0);
 });
 
 it('stays best-effort for a lock conflict outside any transaction, where nothing is left aborted', function (): void {

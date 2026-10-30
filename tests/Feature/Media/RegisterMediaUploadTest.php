@@ -170,7 +170,7 @@ it('writes NO row when the storage copy fails (orphan guard)', function (): void
     expect(app(Tenancy::class)->enter(1, fn () => Media::query()->count()))->toBe(0);
 });
 
-it('restores a trashed master when the same bytes are re-uploaded (no unique-violation dead-end)', function (): void {
+it('restores a trashed master when someone who may restore re-uploads the same bytes (no unique-violation dead-end)', function (): void {
     // The UNIQUE(site,collection,hash) index doesn't know about soft-deletes: without
     // withTrashed in the dedup, this second register is a guaranteed constraint violation —
     // an unrecoverable 500 for the user, since the media Trash has no restore UI yet.
@@ -180,7 +180,7 @@ it('restores a trashed master when the same bytes are re-uploaded (no unique-vio
         $first->delete(); // Thùng rác
 
         stageUpload(1, '_incoming/a/01bin2.png', pngContent());
-        $second = app(RegisterMediaUpload::class)->handle('_incoming/a/01bin2.png', 'bin-again.png');
+        $second = app(RegisterMediaUpload::class)->handle('_incoming/a/01bin2.png', 'bin-again.png', mayRestore: true);
 
         return [$first->id, $second->id, $second->trashed()];
     });
@@ -233,4 +233,26 @@ it('marks a stored pdf as a download', function (): void {
     expect(MediaKey::objectOptions('application/pdf'))
         ->toMatchArray(['ContentType' => 'application/pdf', 'ContentDisposition' => 'attachment'])
         ->and(MediaKey::objectOptions('image/webp'))->not->toHaveKey('ContentDisposition');
+});
+
+it('refuses to take a trashed master out of the Trash for an uploader who may not restore', function (): void {
+    // Restoring from the Trash is a media.delete right; registering only needs media.upload.
+    [$reason, $stillTrashed] = app(Tenancy::class)->enter(1, function (): array {
+        stageUpload(1, '_incoming/a/01keep1.png', pngContent());
+        $first = app(RegisterMediaUpload::class)->handle('_incoming/a/01keep1.png', 'bin.png');
+        $first->delete(); // Thùng rác
+
+        stageUpload(1, '_incoming/a/01keep2.png', pngContent());
+        try {
+            app(RegisterMediaUpload::class)->handle('_incoming/a/01keep2.png', 'bin-again.png');
+            $reason = null;
+        } catch (MediaRejectedException $e) {
+            $reason = $e->reason;
+        }
+
+        return [$reason, Media::query()->withTrashed()->whereKey($first->id)->first()?->trashed()];
+    });
+
+    expect($reason)->toBe('in_trash')->and($stillTrashed)->toBeTrue();
+    Storage::disk('r2')->assertMissing('_incoming/a/01keep2.png'); // the refused bytes are not kept
 });

@@ -15,7 +15,8 @@ use Throwable;
  * Audit trail (design.md §29). Best-effort: records every sensitive action
  * (role/permission/entitlement/domain/billing) and never lets its own failure break the
  * business flow. Actor + site + request-id are resolved from context, and during a
- * support session the staff member behind the member's account (impersonator_*).
+ * support session the staff member behind the member's account (impersonator_*) and the
+ * session's code (support_session_ulid).
  *
  * The insert runs in its own savepoint: every tenant request is one PostgreSQL transaction,
  * and a failed statement aborts it — swallowing the error alone would leave the caller's next
@@ -29,9 +30,13 @@ use Throwable;
  */
 final class AuditService
 {
+    /** The console row that issues a support sign-in link: the only row whose caller names the session code. */
+    public const string SUPPORT_SESSION_ISSUED = 'support.session.issued';
+
     /**
      * @param  array<string, mixed>  $context  optional overrides: site_id, actor_id,
-     *                                         actor_label, auditable_type, auditable_id, meta
+     *                                         actor_label, auditable_type, auditable_id, meta,
+     *                                         support_session_ulid (read only on SUPPORT_SESSION_ISSUED)
      */
     public function record(string $action, array $context = []): void
     {
@@ -49,6 +54,10 @@ final class AuditService
                 'actor_label' => $context['actor_label'] ?? ($user instanceof User ? $user->email : null),
                 'impersonator_id' => $support['staff_id'] ?? null,
                 'impersonator_label' => $support['staff_label'] ?? null,
+                // The caller names the code only on the console's "issued" row; everywhere else it comes
+                // from the session itself, so no caller can stamp a row with another session's code.
+                'support_session_ulid' => ($action === self::SUPPORT_SESSION_ISSUED ? $context['support_session_ulid'] ?? null : null)
+                    ?? $support['session_ulid'] ?? null,
                 'site_id' => $context['site_id'] ?? ($current->hasId() ? $current->id() : null),
                 'action' => $action,
                 'auditable_type' => $context['auditable_type'] ?? null,

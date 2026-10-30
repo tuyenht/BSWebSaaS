@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportLockedProperties\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /*
  * Media picker v2 (docs/design_handoff_media_picker, Phase 2) — the two-tab modal on the
@@ -690,11 +691,140 @@ it('403s restore/purge/empty without media.delete', function (): void {
         $media = seedPickerMedia('nope');
         $media->delete();
 
+        // The trash view itself is refused to this actor; a forged selection still cannot restore.
         Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
-            ->call('openPickerTrash')->set('pickerSelected', [$media->id])
+            ->set('pickerSelected', [$media->id])
             ->call('restorePickerSelection')->assertStatus(403);
 
         expect($media->fresh()?->trashed())->toBeTrue(); // untouched
+    });
+});
+
+it('403s opening the trash view without media.delete and lists nothing trashed', function (): void {
+    $user = pickerManager(['media.upload']); // may view + upload, may not delete
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        seedPickerMedia('an')->delete();
+        seedPickerMedia('live'); // one live file, so the count below tells live from trashed
+
+        Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery')
+            ->call('openPickerTrash')->assertStatus(403);
+
+        // The library this actor does see holds no trashed file, and not even the trash count.
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
+        expect($component->instance()->pickerTrash)->toBeFalse()
+            ->and($component->instance()->mediaPickerState()['page']->total())->toBe(1)
+            ->and($component->instance()->mediaPickerState()['trashTotal'])->toBe(0);
+    });
+});
+
+it('refuses a client write that switches on the trash view (locked property)', function (): void {
+    $user = pickerManager(); // media.view only
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        seedPickerMedia('an')->delete();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
+
+        expect(fn () => $component->set('pickerTrash', true))->toThrow(CannotUpdateLockedPropertyException::class);
+        expect($component->instance()->pickerTrash)->toBeFalse();
+    });
+});
+
+it('refuses the trash list itself when the trash flag is on without media.delete (defence in depth)', function (): void {
+    $user = pickerManager(); // media.view only
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        seedPickerMedia('an')->delete();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
+        $component->instance()->pickerTrash = true; // as if a future server path forgot the gate
+
+        expect(fn () => $component->instance()->mediaPickerState())
+            ->toThrow(HttpException::class);
+    });
+});
+
+it('refuses selecting a trashed file when the trash flag is on without media.delete', function (): void {
+    $user = pickerManager(); // media.view only
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        $binned = seedPickerMedia('an');
+        $binned->delete();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)->call('openImagePicker', 'gallery');
+        $component->instance()->pickerTrash = true; // as if a future server path forgot the gate
+
+        expect(fn () => $component->instance()->togglePickerItem($binned->id))
+            ->toThrow(HttpException::class);
+    });
+});
+
+it('refuses a pasted-URL copy that would take a trashed file out of the Trash without media.delete', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        Http::fake(['https://93.184.216.34/a.jpg' => Http::response(pickerPng(), 200)]);
+        $binned = seedPickerMedia('png', ['hash' => hash('sha256', pickerPng()), 'mime' => 'image/png']);
+        $binned->delete();
+
+        Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')->call('previewPickerUrl')
+            ->call('insertPicked')
+            ->assertHasErrors(['pickerUrlInput'])
+            ->assertSee(__('media.err_in_trash'))
+            ->assertNotDispatched('admin-editor-insert-image')
+            ->assertSet('imageMediaIds', []);
+
+        expect($binned->fresh()?->trashed())->toBeTrue();
+    });
+});
+
+it('drops a refused URL preview so a second insert does not hit the deleted staged bytes', function (): void {
+    $user = pickerManager(['media.upload']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        Http::fake(['https://93.184.216.34/a.jpg' => Http::response(pickerPng(), 200)]);
+        $binned = seedPickerMedia('png', ['hash' => hash('sha256', pickerPng()), 'mime' => 'image/png']);
+        $binned->delete();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')->call('previewPickerUrl');
+        $tempKey = $component->instance()->pickerUrlPreview['tempKey'];
+
+        $component->call('insertPicked')
+            ->assertSee(__('media.err_in_trash'))
+            ->assertSet('pickerUrlPreview', null)
+            ->assertSet('pickerUrlInput', 'https://93.184.216.34/a.jpg'); // kept, so a re-preview is one tap
+        Storage::disk('r2')->assertMissing($tempKey);
+
+        $component->call('insertPicked')
+            ->assertDontSee(__('media.err_upload_missing'))
+            ->assertSet('imageMediaIds', []);
+    });
+});
+
+it('restores a trashed file from a pasted-URL copy for someone holding media.delete', function (): void {
+    $user = pickerManager(['media.upload', 'media.delete']);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Storage::fake('r2');
+        Http::fake(['https://93.184.216.34/a.jpg' => Http::response(pickerPng(), 200)]);
+        $binned = seedPickerMedia('png', ['hash' => hash('sha256', pickerPng()), 'mime' => 'image/png']);
+        $binned->delete();
+
+        $component = Livewire::actingAs($user)->test(Editor::class)
+            ->call('openImagePicker', 'gallery')
+            ->set('pickerUrlInput', 'https://93.184.216.34/a.jpg')->call('previewPickerUrl')
+            ->call('insertPicked')
+            ->assertHasNoErrors();
+
+        expect($binned->fresh()?->trashed())->toBeFalse()
+            ->and($component->get('imageMediaIds'))->toBe([$binned->id]);
     });
 });
 

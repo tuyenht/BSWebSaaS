@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $ulid
  * @property string $action
  * @property int|null $site_id
+ * @property string|null $support_session_ulid
  * @property array<string, mixed> $meta
  */
 class AuditLog extends Model

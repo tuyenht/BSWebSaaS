@@ -19,6 +19,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Privileged database work (the migrate container)
+    |--------------------------------------------------------------------------
+    |
+    | Set only on the one-off container that runs migrations as the superuser.
+    | Anywhere else in production, a loaded superuser password is logged as
+    | critical on boot (TenancyServiceProvider).
+    */
+
+    'privileged_ops' => (bool) env('PRIVILEGED_DB_OPS', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Base domains (subdomain provisioning)
     |--------------------------------------------------------------------------
     |

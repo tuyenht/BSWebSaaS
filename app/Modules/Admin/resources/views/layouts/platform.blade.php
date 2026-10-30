@@ -15,7 +15,7 @@
     @include('admin::partials.brand-tokens')
     @livewireStyles
 </head>
-<body class="admin-shell min-h-full bg-body font-sans text-base text-body-text antialiased">
+<body class="admin-shell min-h-full bg-bg font-sans text-base text-text antialiased">
 <div class="flex min-h-screen flex-col">
     {{-- Topbar (platform console — no tenant sidebar; the settings shell carries the nav) --}}
     <header x-data="{ open: false }" class="sticky top-0 z-20 flex h-[var(--spacing-header)] items-center gap-3 border-b border-topbar-border bg-topbar px-4 shadow-card">

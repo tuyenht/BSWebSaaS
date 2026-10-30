@@ -123,7 +123,7 @@
             <x-bs-admin::card>
                 <x-slot:header>
                     <div class="flex min-w-0 flex-1 items-center gap-2">
-                        <x-bs-admin::button color="light" size="sm" class="lg:hidden" wire:click="closeReader">
+                        <x-bs-admin::button color="light" size="sm" class="shrink-0 lg:hidden" wire:click="closeReader">
                             <x-bs-admin::icon name="ri-arrow-left" class="size-4" />{{ __('admin.inbox.back') }}
                         </x-bs-admin::button>
                         <span class="min-w-0 truncate text-sm font-semibold text-heading">{{ $reader['title'] }}</span>
