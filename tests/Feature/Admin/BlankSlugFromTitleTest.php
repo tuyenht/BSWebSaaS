@@ -357,3 +357,25 @@ it('never gives a flat page the link that publishing turns into the home page', 
             ->assertHasNoErrors()->assertSet('slug', 'home-2');
     });
 });
+
+it('asks for a product link when the site writes in Japanese and the name has kanji, but reads kana', function (): void {
+    $user = slugEditor();
+    DB::connection('pgsql_admin')->table('site_locales')->where('site_id', 1)->update(['is_default' => false]);
+    DB::connection('pgsql_admin')->table('site_locales')->insert([
+        'site_id' => 1, 'locale' => 'ja', 'is_default' => true, 'enabled' => true,
+        'created_at' => now(), 'updated_at' => now(),
+    ]);
+
+    app(Tenancy::class)->enter(1, function () use ($user): void {
+        Livewire::actingAs($user)->test(ProductEditor::class)
+            ->assertSet('locale', 'ja')
+            ->set('name', '旋盤')->set('slug', '')->call('save')
+            ->assertHasErrors(['slug'])->assertSet('slug', '');
+
+        Livewire::actingAs($user)->test(ProductEditor::class)
+            ->set('name', 'カタログ')->set('slug', '')->call('save')
+            ->assertHasNoErrors()->assertSet('slug', 'katarogu');
+
+        expect(Product::query()->count())->toBe(1);
+    });
+});
