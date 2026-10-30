@@ -100,3 +100,16 @@ it('relates folder ↔ media in both directions', function (): void {
             ->and($media->folder?->is($folder))->toBeTrue();
     });
 });
+
+it('makes a folder path from a name in any script, numbered when taken, and keeps a typed one', function (): void {
+    app(Tenancy::class)->enter(1, function (): void {
+        $folder = new MediaFolder;
+        MediaFolder::query()->create(['name' => 'Sản phẩm', 'slug' => 'san-pham']);
+
+        expect($folder->suggestSlugBase('产品'))->toBe(['slug' => 'chan-pin', 'fallback' => false])
+            ->and($folder->uniqueSlug('Sản phẩm', 'Sản phẩm'))->toBe('san-pham-2')
+            ->and($folder->uniqueSlug('catalog', '製品カタログ'))->toBe('catalog')       // typed path kept
+            ->and($folder->uniqueSlug('製品カタログ', '製品カタログ'))->toMatch('/^thu-muc-\d+$/') // no Chinese reading
+            ->and($folder->uniqueSlug('!!!', 'Ảnh'))->toBe('anh');                         // nothing usable typed → from the name
+    });
+});
