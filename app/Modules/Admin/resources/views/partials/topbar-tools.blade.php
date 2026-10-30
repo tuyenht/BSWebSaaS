@@ -59,9 +59,10 @@
     <x-bs-admin::icon name="minimize" class="size-5" x-show="full" x-cloak />
 </button>
 
-{{-- Light / dark — shares the Customizer's scheme axis + adminTheme store --}}
+{{-- Light / dark — shares the Customizer's scheme axis + adminTheme store. The static name holds until Alpine sets the live one. --}}
 <button type="button" x-data
         @click="$store.adminTheme.set('scheme', $store.adminTheme.state.scheme === 'dark' ? 'light' : 'dark')"
+        aria-label="{{ __('admin.theme_dark') }}"
         :aria-label="$store.adminTheme.state.scheme === 'dark' ? @js(__('admin.theme_light')) : @js(__('admin.theme_dark'))"
         class="grid size-10 place-items-center rounded text-topbar-fg transition-colors hover:bg-topbar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-topbar-fg">
     <x-bs-admin::icon name="moon" class="size-5" x-show="$store.adminTheme.state.scheme !== 'dark'" />

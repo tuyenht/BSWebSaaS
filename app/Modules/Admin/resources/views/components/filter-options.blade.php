@@ -7,8 +7,19 @@
     // choice) or checkboxes (several) bound live to the host property, each with its count. $name keeps the radio
     // groups of the two surfaces apart, so checking one never unchecks the other's copy.
     //
-    // $section: array{key: string, model: string, multiple?: bool, options: list<array{value: string, label: string, count?: int|null}>}
+    // $section: array{key: string, model: string, multiple?: bool, options: list<array{value: string, label: string, count?: int|null}>,
+    //           search?: array{model: string, label: string, placeholder?: string},
+    //           range?: array{from: string, to: string, from_label: string, to_label: string}}
+    // search: a field above the options that narrows them (a long list such as websites); its host property is
+    //         bound with a short debounce and the host returns the matching options.
+    // range: two date fields below the options ("Từ ngày" · "Đến ngày"), each bound to its own host property.
 @endphp
+@if ($section['search'] ?? null)
+    <div class="px-4 pb-1 pt-1">
+        <x-bs-admin::search :label="$section['search']['label']" :placeholder="$section['search']['placeholder'] ?? null"
+                            wire:model.live.debounce.300ms="{{ $section['search']['model'] }}" />
+    </div>
+@endif
 @foreach ($section['options'] as $option)
     <label class="flex min-h-hit cursor-pointer items-center gap-2.5 px-4 py-1.5 text-body text-text hover:bg-surface-hover has-checked:font-bold pointer-coarse:min-h-12">
         <input type="{{ ($section['multiple'] ?? false) ? 'checkbox' : 'radio' }}"
@@ -22,3 +33,14 @@
         @endif
     </label>
 @endforeach
+@if ($section['range'] ?? null)
+    <div class="grid grid-cols-2 gap-2 px-4 pb-2 pt-1">
+        @foreach (['from', 'to'] as $end)
+            <label class="flex min-w-0 flex-col gap-1 text-small text-text-muted">
+                {{ $section['range'][$end.'_label'] }}
+                <input type="date" wire:model.live="{{ $section['range'][$end] }}"
+                       class="min-h-control w-full min-w-0 rounded border border-border-input bg-surface px-2 text-body text-text pointer-coarse:min-h-hit">
+            </label>
+        @endforeach
+    </div>
+@endif

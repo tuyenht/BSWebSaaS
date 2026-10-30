@@ -21,10 +21,12 @@
  * render with the real compiled CSS/JS, so build the front end first (pnpm run build).
  */
 
+use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Cms\Models\Entry;
 use App\Modules\Identity\Models\User;
 use App\Modules\Provisioning\Actions\ProvisionSite;
 use App\Modules\Provisioning\Data\ProvisionSiteData;
+use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Tenancy\Context\Tenancy;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
@@ -86,5 +88,25 @@ it('renders the admin screens to HTML for screenshotting', function (): void {
         file_put_contents($dir.'/'.$name.'.html', $html);
     }
 
-    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS));
+    // The platform Audit log, as a support operator, with a member's row and a support sign-in row.
+    DB::connection('pgsql_admin')->statement('truncate audit_logs restart identity cascade');
+    $this->artisan('rbac:sync')->assertSuccessful(); // the platform roles
+    $operator = User::factory()->create(['name' => 'Lê Hoàng Phúc']);
+    app(PlatformAccess::class)->onPlatform(fn () => $operator->assignRole('support'));
+    app(PlatformAccess::class)->forgetMemo();
+    $agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36';
+    AuditLog::query()->create(['action' => 'rbac.role.assigned', 'actor_id' => $owner->id, 'actor_label' => $owner->email, 'site_id' => 1,
+        'ip_address' => '113.161.72.18', 'user_agent' => $agent, 'meta' => ['role' => 'Biên tập viên']]);
+    $support = AuditLog::query()->create(['action' => 'cms.menu.saved', 'actor_id' => $owner->id, 'actor_label' => $owner->email, 'site_id' => 1,
+        'impersonator_id' => $operator->id, 'impersonator_label' => $operator->email, 'ip_address' => '14.232.10.5', 'user_agent' => $agent,
+        'meta' => ['name' => 'Trình đơn chính']]);
+    $this->flushSession(); // the owner's session would sign the operator out (session guard)
+    $platform = 'http://'.config('tenancy.platform_host');
+    foreach (['audit' => '/audit', 'audit-detail' => '/audit?open='.$support->ulid] as $name => $path) {
+        $html = $this->actingAs($operator)->get($platform.$path)->assertOk()->getContent();
+        // served by serve.mjs like the other screens, which rewrites only the preview host
+        file_put_contents($dir.'/'.$name.'.html', str_replace($platform, 'http://'.ADMIN_PREVIEW_HOST, $html));
+    }
+
+    expect(glob($dir.'/*.html'))->toHaveCount(count(ADMIN_PREVIEW_SCREENS) + 2);
 });
