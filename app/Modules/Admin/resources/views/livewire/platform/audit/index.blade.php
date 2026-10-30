@@ -181,7 +181,7 @@
                             close="closeDetail" :return-to="'audit-row-'.$openRow->ulid" :close-label="__('admin.audit.detail_close')"
                             wire:key="audit-detail-{{ $openRow->ulid }}">
             @if ($staff !== null)
-                <div role="note" class="flex items-start gap-2 rounded bg-admin-warning/10 px-3.5 py-3 text-admin-warning-text">
+                <div role="note" class="flex items-start gap-2 rounded bg-warning-soft px-3.5 py-3 text-warning-text">
                     <x-bs-admin::icon name="ri-user-shared" class="mt-0.5 size-5 shrink-0" />
                     <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('admin.audit.support_note', ['staff' => $staff, 'brand' => (string) config('admin.brand.name'), 'member' => $entries->member($openRow)]) }}@if ($reason !== null) {{ __('admin.audit.support_reason', ['reason' => $reason]) }}@endif</span>
                 </div>

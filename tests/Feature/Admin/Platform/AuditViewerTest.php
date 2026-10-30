@@ -8,7 +8,9 @@ use App\Modules\Rbac\Support\PlatformAccess;
 use App\Modules\Shared\Support\BoundedRead;
 use App\Modules\Tenancy\Models\Site;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 
@@ -243,6 +245,35 @@ it('says the search took too long instead of failing when the time limit is hit'
     Livewire::actingAs(auditOperator('support'))->test(Index::class)
         ->assertSee('Tìm lâu quá 3 giây nên đã dừng')
         ->assertSee('Thử lại');
+});
+
+it('reports any other failed read and offers to try again, keeping the filters', function (): void {
+    Exceptions::fake();
+    app()->instance(BoundedRead::class, new class extends BoundedRead
+    {
+        #[Override]
+        public function run(Closure $read, int $milliseconds = 3000): mixed
+        {
+            return parent::run(fn (): mixed => DB::select('select * from audit_table_that_does_not_exist'));
+        }
+    });
+
+    Livewire::actingAs(auditOperator('support'))->test(Index::class, ['q' => 'menu'])
+        ->assertSee('Đã có lỗi khi tải nhật ký')
+        ->assertSee('Thử lại')
+        ->assertSet('q', 'menu');
+
+    Exceptions::assertReported(QueryException::class);
+});
+
+it('narrows the website choices by name without diacritics and keeps a chosen website listed', function (): void {
+    $labels = fn ($page): array => array_column($page->viewData('siteChoices'), 'label');
+
+    $page = Livewire::actingAs(auditOperator('support'))->test(Index::class)->set('siteQuery', 'TAM DUC');
+    expect($labels($page))->toContain('Nha khoa Tâm Đức')->not->toContain('Cơ khí An Vinh');
+
+    $page->set('sites', [auditSiteUlid(2)]);
+    expect($labels($page))->toContain('Nha khoa Tâm Đức')->toContain('Cơ khí An Vinh');
 });
 
 it('shows a support row as the staff member on behalf of the member, with the reason', function (): void {

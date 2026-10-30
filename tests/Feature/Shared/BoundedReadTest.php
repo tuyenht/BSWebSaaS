@@ -25,6 +25,14 @@ it('keeps the limit inside its own transaction, never on the pooled connection',
         ->and(DB::selectOne('show statement_timeout')->statement_timeout)->toBe($before);
 });
 
+it('refuses to run inside an open transaction, where the limit would outlive the read', function (): void {
+    expect(fn () => DB::transaction(fn () => app(BoundedRead::class)->run(fn () => DB::select('select 1'))))
+        ->toThrow(LogicException::class);
+
+    expect(DB::transactionLevel())->toBe(0)
+        ->and(DB::selectOne('show statement_timeout')->statement_timeout)->not->toBe('3s');
+});
+
 it('folds in SQL exactly as in PHP', function (): void {
     $text = 'Nguyễn Đức ỸỶỰ Trình Đơn Ấp Ổ';
     $sql = DB::selectOne('select '.VietnameseFold::sql('?::text').' as folded', [$text])->folded;
