@@ -78,12 +78,12 @@
     <x-bs-admin::filter-status class="-mx-3 -mt-2" :chips="$chips" :clear="$chips === [] ? null : 'clearFilters'" />
 
     <div class="@container min-w-0 rounded-md border border-border bg-surface shadow-card">
-        <div aria-hidden="true" class="hidden items-center gap-3 rounded-t-md border-b border-border bg-surface-muted px-4 py-2 text-small font-semibold text-text-muted @min-[768px]:flex">
+        <div aria-hidden="true" class="hidden items-center gap-3 rounded-t-md border-b border-border bg-surface-muted px-4 py-2 text-small font-semibold text-text-muted @min-[48rem]:flex">
             <span class="w-33 shrink-0">{{ __('admin.audit.col_when') }}</span>
             <span class="min-w-50 flex-1">{{ __('admin.audit.col_what') }}</span>
-            <span class="w-57.5 shrink-0 @max-[1180px]:w-50">{{ __('admin.audit.col_who') }}</span>
+            <span class="w-57.5 shrink-0 @max-[73.75rem]:w-50">{{ __('admin.audit.col_who') }}</span>
             <span class="w-42.5 shrink-0">{{ __('admin.audit.col_site') }}</span>
-            <span class="hidden w-37.5 shrink-0 @min-[1181px]:block">{{ __('admin.audit.col_device') }}</span>
+            <span class="hidden w-37.5 shrink-0 @min-[73.8125rem]:block">{{ __('admin.audit.col_device') }}</span>
             <span class="w-5 shrink-0"></span>
         </div>
 
@@ -116,16 +116,16 @@
                     @endphp
                     <li wire:key="audit-{{ $row->ulid }}" class="border-b border-border last:border-b-0">
                         <button type="button" id="audit-row-{{ $row->ulid }}" wire:click="openDetail({{ Js::from($row->ulid) }})"
-                                class="flex w-full min-w-0 items-center gap-3 px-4 py-2.5 text-start text-body text-text transition-colors hover:bg-surface-hover @max-[767px]:flex-wrap @max-[767px]:gap-x-2 @max-[767px]:gap-y-0.5 @max-[767px]:p-3">
-                            <span class="w-33 shrink-0 tabular-nums @max-[767px]:order-2 @max-[767px]:w-auto @max-[767px]:text-small @max-[767px]:text-text-muted">{{ $time($row->created_at) }}</span>
-                            <span class="min-w-50 flex-1 @max-[767px]:order-1 @max-[767px]:min-w-0">
+                                class="flex w-full min-w-0 items-center gap-3 px-4 py-2.5 text-start text-body text-text transition-colors hover:bg-surface-hover @max-[47.9375rem]:flex-wrap @max-[47.9375rem]:gap-x-2 @max-[47.9375rem]:gap-y-0.5 @max-[47.9375rem]:p-3">
+                            <span class="w-33 shrink-0 tabular-nums @max-[47.9375rem]:order-2 @max-[47.9375rem]:w-auto @max-[47.9375rem]:text-small @max-[47.9375rem]:text-text-muted">{{ $time($row->created_at) }}</span>
+                            <span class="min-w-50 flex-1 @max-[47.9375rem]:order-1 @max-[47.9375rem]:min-w-0">
                                 <span class="block font-semibold leading-snug text-text-strong [overflow-wrap:anywhere]">{{ $what }}</span>
                                 @if ($target !== '')
-                                    <span class="block text-small text-text-muted [overflow-wrap:anywhere] @max-[767px]:hidden">{{ $target }}</span>
+                                    <span class="block text-small text-text-muted [overflow-wrap:anywhere] @max-[47.9375rem]:hidden">{{ $target }}</span>
                                 @endif
                             </span>
-                            <span class="contents @max-[767px]:order-3 @max-[767px]:flex @max-[767px]:basis-full @max-[767px]:flex-wrap @max-[767px]:items-center @max-[767px]:gap-x-1.5 @max-[767px]:text-small @max-[767px]:text-text-muted">
-                                <span class="{{ $cell }} w-57.5 @max-[1180px]:w-50 @max-[767px]:w-auto @max-[767px]:max-w-full @max-[767px]:shrink">
+                            <span class="contents @max-[47.9375rem]:order-3 @max-[47.9375rem]:flex @max-[47.9375rem]:basis-full @max-[47.9375rem]:flex-wrap @max-[47.9375rem]:items-center @max-[47.9375rem]:gap-x-1.5 @max-[47.9375rem]:text-small @max-[47.9375rem]:text-text-muted">
+                                <span class="{{ $cell }} w-57.5 @max-[73.75rem]:w-50 @max-[47.9375rem]:w-auto @max-[47.9375rem]:max-w-full @max-[47.9375rem]:shrink">
                                     <span class="inline-flex max-w-full flex-wrap items-center gap-x-1.5 gap-y-1">
                                         @if ($entries->isSupport($row))
                                             <x-bs-admin::badge color="warning" soft pill><x-bs-admin::icon name="ri-user-shared" class="size-3.5" />{{ __('admin.audit.support_badge') }}</x-bs-admin::badge>
@@ -133,13 +133,13 @@
                                         <span class="min-w-0">{{ $who }}</span>
                                     </span>
                                 </span>
-                                <span aria-hidden="true" class="hidden @max-[767px]:inline">·</span>
-                                <span class="{{ $cell }} w-42.5 @max-[767px]:w-auto">{{ $site($row) }}</span>
-                                <span aria-hidden="true" class="hidden @max-[767px]:inline">·</span>
-                                <span class="{{ $cell }} hidden w-37.5 @min-[1181px]:block @max-[767px]:block @max-[767px]:w-auto">{{ $row->ip_address ?? '—' }} · {{ $entries->device($row) }}</span>
+                                <span aria-hidden="true" class="hidden @max-[47.9375rem]:inline">·</span>
+                                <span class="{{ $cell }} w-42.5 @max-[47.9375rem]:w-auto">{{ $site($row) }}</span>
+                                <span aria-hidden="true" class="hidden @max-[47.9375rem]:inline">·</span>
+                                <span class="{{ $cell }} hidden w-37.5 @min-[73.8125rem]:block @max-[47.9375rem]:block @max-[47.9375rem]:w-auto">{{ $row->ip_address ?? '—' }} · {{ $entries->device($row) }}</span>
                             </span>
                             <span class="sr-only">{{ __('admin.audit.open_row') }}</span>
-                            <x-bs-admin::icon name="chevron-right" class="size-5 shrink-0 text-text-muted @max-[767px]:hidden" />
+                            <x-bs-admin::icon name="chevron-right" class="size-5 shrink-0 text-text-muted @max-[47.9375rem]:hidden" />
                         </button>
                     </li>
                 @endforeach
@@ -186,7 +186,7 @@
                     <span class="min-w-0 [overflow-wrap:anywhere]">{{ __('admin.audit.support_note', ['staff' => $staff, 'brand' => (string) config('admin.brand.name'), 'member' => $entries->member($openRow)]) }}@if ($reason !== null) {{ __('admin.audit.support_reason', ['reason' => $reason]) }}@endif</span>
                 </div>
             @endif
-            <dl class="m-0 grid grid-cols-[minmax(0,8.125rem)_minmax(0,1fr)] gap-x-4 gap-y-2 @max-[400px]:grid-cols-1 @max-[400px]:gap-y-0.5">
+            <dl class="m-0 grid grid-cols-[minmax(0,8.125rem)_minmax(0,1fr)] gap-x-4 gap-y-2 @max-[25rem]:grid-cols-1 @max-[25rem]:gap-y-0.5">
                 @foreach ([
                     'd_who' => $entries->who($openRow),
                     'd_site' => $site($openRow),
@@ -194,16 +194,16 @@
                     'd_ip' => $openRow->ip_address ?? '—',
                     'd_device' => $entries->device($openRow),
                 ] as $key => $value)
-                    <dt class="text-text-muted @max-[400px]:mt-2">{{ __('admin.audit.'.$key) }}</dt>
+                    <dt class="text-text-muted @max-[25rem]:mt-2">{{ __('admin.audit.'.$key) }}</dt>
                     <dd class="m-0 text-text-strong [overflow-wrap:anywhere]">{{ $value }}</dd>
                 @endforeach
             </dl>
             @if ($details !== [])
                 <div>
                     <h3 class="m-0 mb-1.5 text-small font-semibold text-text-strong">{{ __('admin.audit.d_detail') }}</h3>
-                    <dl class="m-0 grid grid-cols-[minmax(0,8.125rem)_minmax(0,1fr)] gap-x-4 gap-y-2 @max-[400px]:grid-cols-1 @max-[400px]:gap-y-0.5">
+                    <dl class="m-0 grid grid-cols-[minmax(0,8.125rem)_minmax(0,1fr)] gap-x-4 gap-y-2 @max-[25rem]:grid-cols-1 @max-[25rem]:gap-y-0.5">
                         @foreach ($details as $detail)
-                            <dt class="text-text-muted @max-[400px]:mt-2">{{ $detail['label'] }}</dt>
+                            <dt class="text-text-muted @max-[25rem]:mt-2">{{ $detail['label'] }}</dt>
                             <dd class="m-0 text-text-strong [overflow-wrap:anywhere]">{{ $detail['value'] }}</dd>
                         @endforeach
                     </dl>

@@ -66,8 +66,8 @@
                 </span>
             </div>
 
-            {{-- Milestone track (≥ 560px container) --}}
-            <ol class="hidden w-full items-start @[560px]:flex" aria-label="{{ __('admin.wfb.title') }}">
+            {{-- Milestone track (≥ 35rem container, so larger text switches earlier) --}}
+            <ol class="hidden w-full items-start @[35rem]:flex" aria-label="{{ __('admin.wfb.title') }}">
                 @foreach ($workflow['steps'] as $i => $step)
                     @php
                         $done = $step['state'] === 'done';
@@ -101,7 +101,7 @@
             </ol>
 
             {{-- Compact bar (narrow container) --}}
-            <div class="flex w-full flex-col gap-1.5 @[560px]:hidden">
+            <div class="flex w-full flex-col gap-1.5 @[35rem]:hidden">
                 <span class="flex h-1.5 overflow-hidden rounded-full bg-border-soft"><span class="block h-1.5 rounded-full bg-admin-primary" style="width: {{ $progress }}%"></span></span>
                 <span class="text-[11.5px] text-body-muted">
                     {{ __('admin.wfb.step_of', ['n' => $workflow['current']['index'] + 1, 'total' => $stepCount, 'label' => $workflow['current']['label']]) }}
@@ -135,15 +135,15 @@
                                     .($workflow['is_live'] && ! $action['to_published'] ? ' '.__('admin.wfb.tip_offline') : '');
                             @endphp
                             @if ($action['to_published'])
-                                <x-bs-admin::button color="primary" wire:click="applyTransition({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
+                                <x-bs-admin::button color="primary" wire:click="applyTransition({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[35rem]:w-full pointer-coarse:min-h-11">
                                     <x-bs-admin::icon name="ri-check-double" class="size-4" />{{ $action['label'] }}
                                 </x-bs-admin::button>
                             @elseif ($action['note'])
-                                <x-bs-admin::button color="danger" variant="outline" x-on:click="open({{ \Illuminate\Support\Js::from($action['key']) }})" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
+                                <x-bs-admin::button color="danger" variant="outline" x-on:click="open({{ \Illuminate\Support\Js::from($action['key']) }})" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[35rem]:w-full pointer-coarse:min-h-11">
                                     <x-bs-admin::icon name="ri-arrow-go-back" class="size-4" />{{ $action['label'] }}
                                 </x-bs-admin::button>
                             @else
-                                <x-bs-admin::button color="light" wire:click="applyTransition({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">
+                                <x-bs-admin::button color="light" wire:click="applyTransition({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" title="{{ $title }}" wire:key="wf-action-{{ $action['key'] }}" class="@max-[35rem]:w-full pointer-coarse:min-h-11">
                                     <x-bs-admin::icon name="ri-send-plane" class="size-4" />{{ $action['label'] }}
                                 </x-bs-admin::button>
                             @endif
@@ -256,8 +256,8 @@
                     </div>
                 </div>
                 <div class="flex flex-wrap justify-end gap-2 border-t border-border-soft bg-surface-muted px-4 py-3">
-                    <x-bs-admin::button color="light" x-on:click="close()" x-ref="cancel-{{ $action['key'] }}" class="@max-[560px]:w-full pointer-coarse:min-h-11">{{ __('admin.cancel') }}</x-bs-admin::button>
-                    <x-bs-admin::button color="danger" variant="outline" x-on:click="submit({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" class="@max-[560px]:w-full pointer-coarse:min-h-11">{{ $action['label'] }}</x-bs-admin::button>
+                    <x-bs-admin::button color="light" x-on:click="close()" x-ref="cancel-{{ $action['key'] }}" class="@max-[35rem]:w-full pointer-coarse:min-h-11">{{ __('admin.cancel') }}</x-bs-admin::button>
+                    <x-bs-admin::button color="danger" variant="outline" x-on:click="submit({{ \Illuminate\Support\Js::from($action['key']) }})" wire:loading.attr="disabled" class="@max-[35rem]:w-full pointer-coarse:min-h-11">{{ $action['label'] }}</x-bs-admin::button>
                 </div>
             </div>
         </div>
