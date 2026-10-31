@@ -33,7 +33,7 @@
      scroll. The page stays readable to screen readers (as in the design), so the menu button can
      still close it. Below 1024px the closed drawer is hidden by CSS (so it takes no focus before
      Alpine starts) and inert. Esc or the backdrop closes it and focus goes back to the menu
-     button. --}}
+     button, as it does whenever the menu closes; opening the theme panel closes it. --}}
 <div class="{{ $hasNav ? 'platform-shell ' : '' }}min-h-screen"
      x-data="{
         open: false,
@@ -52,6 +52,11 @@
                 lg.removeEventListener('change', sync);
                 xl.removeEventListener('change', sync);
             };
+            this.$watch('$store.adminTheme.open', (value) => {
+                if (value) {
+                    this.open = false;
+                }
+            });
             this.$watch('open', (value) => {
                 if (value) {
                     this.$nextTick(() => this.$refs.nav?.querySelector('a[href]')?.focus());
@@ -67,8 +72,10 @@
         toggle() {
             if (this.wide) {
                 this.$store.adminTheme.set('sidebar_size', this.expanded ? 'sm' : 'lg');
+            } else if (this.open) {
+                this.close();
             } else {
-                this.open = ! this.open;
+                this.open = true;
             }
         },
         close() {

@@ -83,7 +83,6 @@
     "auth.reset_email_intro": "我们收到了您账户的密码重置请求。",
     "auth.reset_email_outro": "如果您没有请求，请忽略此邮件。",
     "admin.welcome": "欢迎回来！",
-    "admin.open_menu": "打开菜单",
     "admin.collapse_menu": "折叠菜单",
     "admin.expand_menu": "展开菜单",
     "admin.search": "搜索",

@@ -83,7 +83,6 @@
     "auth.reset_email_intro": "Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.",
     "auth.reset_email_outro": "Nếu bạn không yêu cầu, hãy bỏ qua email này.",
     "admin.welcome": "Chào mừng trở lại!",
-    "admin.open_menu": "Mở menu",
     "admin.collapse_menu": "Thu gọn menu",
     "admin.expand_menu": "Mở rộng menu",
     "admin.search": "Tìm kiếm",
