@@ -1,7 +1,3 @@
-@php
-    // Status → soft badge tone; labels come from the catalog.status_* keys.
-    $statusColor = ['draft' => 'secondary', 'published' => 'success', 'archived' => 'warning'];
-@endphp
 <div class="catalog-index">
     <x-bs-admin::page-header :title="$showTrash ? __('catalog.trash_tab') : __('catalog.title')">
         <x-slot:actions>
@@ -60,7 +56,7 @@
                         <td>{{ $categoryName ?? '—' }}</td>
                         <td class="whitespace-nowrap">{{ $product->price !== null ? number_format($product->price, 0, ',', '.').' ₫' : '—' }}</td>
                         <td>
-                            <x-bs-admin::badge soft :color="$statusColor[$product->status] ?? 'secondary'">{{ __('catalog.status_'.$product->status) }}</x-bs-admin::badge>
+                            <x-bs-admin::status-pill :status="$product->status">{{ __('catalog.status_'.$product->status) }}</x-bs-admin::status-pill>
                         </td>
                         <td class="whitespace-nowrap text-body-muted">{{ $product->updated_at?->locale(app()->getLocale())->diffForHumans() }}</td>
                         <td class="whitespace-nowrap text-right">

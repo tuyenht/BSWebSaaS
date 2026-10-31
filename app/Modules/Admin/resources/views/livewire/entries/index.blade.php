@@ -25,7 +25,6 @@
             'scheduled' => __('entries.status_scheduled'),
             'private' => __('entries.status_private'),
         ];
-        $statusColor = ['published' => 'success', 'draft' => 'secondary', 'scheduled' => 'warning', 'private' => 'info', 'pending' => 'warning', 'archived' => 'dark'];
         $avatarPalette = [
             ['bg' => '#e0e7ff', 'fg' => '#4338ca'], ['bg' => '#fce7f3', 'fg' => '#be185d'],
             ['bg' => '#d1fae5', 'fg' => '#047857'], ['bg' => '#fef3c7', 'fg' => '#b45309'],
@@ -51,17 +50,6 @@
             'scheduled' => 'ri-calendar-schedule',
             'private' => 'ri-lock',
             default => 'ri-file-list-3',
-        };
-        // Gap 5: status dot colored from the same badge color NAME ($statusColor's values) —
-        // one source of truth instead of a parallel status→class map.
-        $dotClass = fn (string $color): string => match ($color) {
-            'success' => 'bg-admin-success',
-            'warning' => 'bg-admin-warning',
-            'info' => 'bg-admin-info',
-            'danger' => 'bg-admin-danger',
-            'dark' => 'bg-admin-dark',
-            'primary' => 'bg-admin-primary',
-            default => 'bg-admin-secondary',
         };
         // Footer pager (design lines 255-262): always renders — even a single page shows "[1]"
         // with dimmed arrows. Windowed to first, last, and current±1; any gap collapses to one
@@ -329,31 +317,20 @@
                             <td class="whitespace-nowrap align-top">
                                 @if ($canPublish && ! $entry->trashed())
                                     <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" class="relative inline-block">
-                                        <button type="button" @click="open = ! open" class="inline-flex items-center" aria-label="{{ __('entries.status_menu_label') }}">
-                                            <x-bs-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">
-                                                <span class="size-1.5 shrink-0 rounded-full {{ $dotClass($statusColor[$status] ?? 'secondary') }}"></span>
-                                                {{ __('entries.status_'.$status) }} <x-bs-admin::icon name="chevron-down" class="size-3" />
-                                            </x-bs-admin::badge>
-                                        </button>
+                                        <x-bs-admin::status-pill button :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
                                         <div x-show="open" x-cloak x-transition
                                             class="absolute left-0 z-30 mt-1 w-48 rounded-lg border border-border bg-surface p-1 shadow-lg">
                                             @foreach (['published', 'draft', 'private'] as $opt)
                                                 <button type="button" x-on:click="$wire.changeStatus(@js($entry->ulid), @js($opt)); open = false"
                                                     class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-hover">
-                                                    <x-bs-admin::badge soft :color="$statusColor[$opt]">
-                                                        <span class="size-1.5 shrink-0 rounded-full {{ $dotClass($statusColor[$opt]) }}"></span>
-                                                        {{ __('entries.status_'.$opt) }}
-                                                    </x-bs-admin::badge>
+                                                    <x-bs-admin::status-pill :status="$opt">{{ __('entries.status_'.$opt) }}</x-bs-admin::status-pill>
                                                     @if ($status === $opt)<x-bs-admin::icon name="ri-check" class="ml-auto size-3.5 text-accent" />@endif
                                                 </button>
                                             @endforeach
                                             <div class="mt-0.5 border-t border-border pt-0.5">
                                                 <button type="button" @click="sched = ! sched"
                                                     class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-surface-hover">
-                                                    <x-bs-admin::badge soft color="warning">
-                                                        <span class="size-1.5 shrink-0 rounded-full {{ $dotClass('warning') }}"></span>
-                                                        {{ __('entries.status_scheduled') }}
-                                                    </x-bs-admin::badge>
+                                                    <x-bs-admin::status-pill status="scheduled">{{ __('entries.status_scheduled') }}</x-bs-admin::status-pill>
                                                     <x-bs-admin::icon name="chevron-down" class="ml-auto size-3.5 text-placeholder transition-transform" ::class="sched && 'rotate-180'" />
                                                 </button>
                                                 <div x-show="sched" x-cloak class="px-2 pb-1.5 pt-1">
@@ -367,10 +344,7 @@
                                         </div>
                                     </div>
                                 @else
-                                    <x-bs-admin::badge soft :color="$statusColor[$status] ?? 'secondary'">
-                                        <span class="size-1.5 shrink-0 rounded-full {{ $dotClass($statusColor[$status] ?? 'secondary') }}"></span>
-                                        {{ __('entries.status_'.$status) }}
-                                    </x-bs-admin::badge>
+                                    <x-bs-admin::status-pill :status="$status">{{ __('entries.status_'.$status) }}</x-bs-admin::status-pill>
                                 @endif
                                 @if ($when)
                                     <div class="mt-1 flex items-center gap-1 text-[11px] text-placeholder">

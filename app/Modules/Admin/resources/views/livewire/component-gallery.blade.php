@@ -70,6 +70,22 @@
         </div>
     </x-bs-admin::card>
 
+    {{-- Record status pills: every status, then the menu trigger beside a row's buttons --}}
+    <x-bs-admin::card :title="__('entries.status_label')">
+        <div class="space-y-3">
+            <div class="flex flex-wrap items-center gap-2">
+                @foreach (['published', 'draft', 'scheduled', 'pending', 'private', 'archived'] as $status)
+                    <x-bs-admin::status-pill :status="$status">{{ __('entries.status_'.$status) }}</x-bs-admin::status-pill>
+                @endforeach
+            </div>
+            <div class="flex flex-wrap items-center gap-2" x-data="{ open: false }">
+                <x-bs-admin::status-pill button status="published" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true">{{ __('entries.status_published') }}</x-bs-admin::status-pill>
+                <x-bs-admin::button size="sm" variant="soft" color="secondary">{{ __('admin.view') }}</x-bs-admin::button>
+                <x-bs-admin::button size="sm" variant="soft" color="primary">{{ __('entries.edit_action') }}</x-bs-admin::button>
+            </div>
+        </div>
+    </x-bs-admin::card>
+
     {{-- Inputs --}}
     <x-bs-admin::card title="Inputs">
         <div class="grid gap-4 sm:grid-cols-2">
