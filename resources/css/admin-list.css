@@ -409,9 +409,23 @@
             margin: calc(var(--list-nlh) / 2 - var(--spacing-hit) / 2) -0.5rem 0 calc((1.125rem - var(--spacing-hit)) / 2);
         }
 
-        /* A quick-edit button makes the first title line as tall as the button. */
-        .list-r:has(.list-qe) > .list-c-chk {
-            margin-top: calc(max(var(--list-nlh), var(--list-qe-s)) / 2 - var(--spacing-hit) / 2);
+        /* The quick-edit button keeps its full hit area but no longer makes the title line taller. */
+        .list-qe {
+            margin-block: calc((var(--list-nlh) - var(--list-qe-s)) / 2);
+        }
+
+        /* One detail line: author · date · views. */
+        .list-m[data-for='au'] {
+            order: 1;
+        }
+
+        .list-m[data-for='views'] {
+            order: 3;
+        }
+
+        /* As in the design, a card names views only once there are some. */
+        .list-m[data-for='views'][data-empty] {
+            display: none;
         }
 
         .list-c-main {
@@ -432,7 +446,9 @@
         .list-c-act {
             order: 2;
             flex: 0 0 auto;
-            margin-inline-start: auto;
+            /* As in the design: the group runs into the card's 12px side padding, so the last
+               button's hit area reaches the card's edge. */
+            margin-inline: auto -0.75rem;
             align-self: center;
         }
 
@@ -443,6 +459,7 @@
 
         .list-m[data-for='when'] {
             display: inline;
+            order: 2;
         }
 
         .list-stw,
@@ -497,6 +514,11 @@
 
     /* ── From 900: a table on one grid ────────────────────────────────────────────────────── */
     @container list (width >= 56.25rem) {
+        /* From here the header's checkbox selects the page; the bar above the rows is not needed. */
+        .list-selbar {
+            display: none;
+        }
+
         .list-g {
             display: grid;
             grid-template-columns: [chk] 3.5rem [main] minmax(0, 1fr) [st] 10.75rem [act] auto [end];

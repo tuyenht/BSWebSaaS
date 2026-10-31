@@ -157,6 +157,36 @@ it('keeps meta text at 12px or more', function (): void {
     }
 });
 
+function listCssBand(string $from, string $to): string
+{
+    $css = listCss();
+    $start = strpos($css, $from);
+    $end = strpos($css, $to, (int) $start);
+    expect($start)->not->toBeFalse()->and($end)->not->toBeFalse();
+
+    return substr($css, (int) $start, (int) $end - (int) $start);
+}
+
+it('keeps a phone card to the name, one detail line and one row of status and buttons', function (): void {
+    $card = listCssBand('@container list (width < 37.5rem)', '@container list (37.5rem <= width < 56.25rem)');
+
+    expect($card)
+        // author · date · views, and no "no views yet" piece
+        ->toMatch("/\\.list-m\\[data-for='au'\\]\\s*\\{\\s*order: 1;/")
+        ->toMatch("/\\.list-m\\[data-for='when'\\]\\s*\\{\\s*display: inline;\\s*order: 2;/")
+        ->toMatch("/\\.list-m\\[data-for='views'\\]\\s*\\{\\s*order: 3;/")
+        ->toMatch("/\\.list-m\\[data-for='views'\\]\\[data-empty\\]\\s*\\{\\s*display: none;/")
+        // the quick-edit hit area does not make the title line taller
+        ->toContain('margin-block: calc((var(--list-nlh) - var(--list-qe-s)) / 2)')
+        // the button group runs into the card's side padding, as in the design
+        ->toContain('margin-inline: auto -0.75rem');
+});
+
+it('drops the select-all bar from 900, where the header box selects the page', function (): void {
+    expect(listCssBand('@container list (width >= 56.25rem)', '@container list (width >= 80rem)'))
+        ->toMatch('/\\.list-selbar\\s*\\{\\s*display: none;/');
+});
+
 describe('the posts and pages list on the shared row', function (): void {
     beforeEach(function (): void {
         truncateRbac();
@@ -192,10 +222,16 @@ describe('the posts and pages list on the shared row', function (): void {
                 ->assertSeeHtml('aria-label="'.e(__('admin.list.more_for', ['name' => 'Giới thiệu công ty'])).'"')
                 ->assertSeeHtml('aria-label="'.e(__('entries.quick_edit_named', ['title' => 'Giới thiệu công ty'])).'"')
                 ->assertSeeHtml('href="'.route('admin.entries.edit', ['ulid' => $entry->ulid]).'"')
-                ->assertSeeHtml(e(__('entries.action_duplicate')));
+                ->assertSeeHtml(e(__('entries.action_duplicate')))
+                ->assertSeeHtml('class="list-c list-c-act">'.e(__('admin.actions')).'</div>')
+                ->assertSeeHtml('data-for="views" data-empty="1"');
 
-            expect((string) file_get_contents(base_path('app/Modules/Admin/resources/views/livewire/entries/index.blade.php')))
-                ->not->toMatch('/\\btruncate\\b|line-clamp/');
+            $source = (string) file_get_contents(base_path('app/Modules/Admin/resources/views/livewire/entries/index.blade.php'));
+            expect($source)->not->toMatch('/\\btruncate\\b|line-clamp/')
+                // until the member picks columns, a phone-width list starts with path and languages off
+                ->and($source)->toContain('{ path: null, langs: null, creator: true }')
+                ->and($source)->toContain('this.cols.path = wide;')
+                ->and($source)->toContain('this.cols.langs = wide;');
         });
     });
 

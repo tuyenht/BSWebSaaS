@@ -98,10 +98,19 @@
             </button>
         </div>
 
-        {{-- Column visibility lives client-side (instant + persisted), so paging never resets it. --}}
+        {{-- Column visibility lives client-side (instant + persisted), so paging never resets it.
+             Until the user picks columns, a list narrower than 37.5rem (phone cards) starts with the path
+             and language chips off, so a card stays name + one detail line; "Cột" turns them back on. --}}
         <div x-data="{
-            cols: JSON.parse(localStorage.getItem('pagesCols')) || { path: true, langs: true, creator: true },
-            toggleCol(k) { this.cols[k] = !this.cols[k]; localStorage.setItem('pagesCols', JSON.stringify(this.cols)); },
+            cols: (() => { try { return JSON.parse(localStorage.getItem('pagesCols')) } catch (e) { return null } })() || { path: null, langs: null, creator: true },
+            init() {
+                if (this.cols.path !== null) { return }
+                const list = this.$el.querySelector('.list-rows') ?? this.$el;
+                const wide = list.clientWidth >= 37.5 * parseFloat(getComputedStyle(document.documentElement).fontSize);
+                this.cols.path = wide;
+                this.cols.langs = wide;
+            },
+            toggleCol(k) { this.cols[k] = !this.cols[k]; try { localStorage.setItem('pagesCols', JSON.stringify(this.cols)) } catch (e) {} },
         }">
             {{-- Toolbar: search · filters · column picker --}}
             <div class="mb-3 flex flex-wrap items-center gap-2">
@@ -130,7 +139,7 @@
                     <div x-show="open" x-cloak x-transition
                         class="absolute right-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1.5 shadow-lg">
                         <p class="px-2 pb-1 pt-1.5 text-xs font-semibold uppercase tracking-wide text-placeholder">{{ __('entries.cols_required') }}</p>
-                        @foreach ([__('entries.title_label'), __('entries.col_status'), __('entries.col_actions')] as $locked)
+                        @foreach ([__('entries.title_label'), __('entries.col_status'), __('admin.actions')] as $locked)
                             <label class="flex cursor-not-allowed items-center gap-2.5 rounded px-2 py-1.5 text-sm text-body-muted">
                                 <input type="checkbox" checked disabled class="size-4 rounded border-border-strong">
                                 {{ $locked }}
@@ -241,7 +250,7 @@
                     <x-bs-admin::list.cell head col="au" :sort="$ariaSort('creator')">
                         <x-bs-admin::list.sort :active="$sortKey === 'creator'" :dir="$sortDir" wire:click="sortBy('creator')">{{ __('entries.col_creator') }}</x-bs-admin::list.sort>
                     </x-bs-admin::list.cell>
-                    <x-bs-admin::list.cell head col="act">{{ __('entries.col_actions') }}</x-bs-admin::list.cell>
+                    <x-bs-admin::list.cell head col="act">{{ __('admin.actions') }}</x-bs-admin::list.cell>
                 </x-bs-admin::list.head>
 
                 @forelse ($rows as $row)
@@ -345,7 +354,7 @@
                                             @endforeach
                                         </span>
                                     </span>
-                                    <span class="list-m">{{ $entry->view_count > 0 ? __('entries.views_count', ['count' => number_format($entry->view_count)]) : __('entries.no_views') }}</span>
+                                    <span class="list-m" data-for="views"@unless ($entry->view_count > 0) data-empty="1"@endunless>{{ $entry->view_count > 0 ? __('entries.views_count', ['count' => number_format($entry->view_count)]) : __('entries.no_views') }}</span>
                                     @if ($creator)
                                         <span class="list-m" data-for="au">{{ $creator }}</span>
                                     @endif
