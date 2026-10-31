@@ -309,14 +309,14 @@
                                                 <button type="button" x-show="! editing"
                                                     @click="editing = true; cancel = false; $nextTick(() => { $refs.slugInput.focus(); $refs.slugInput.select() })"
                                                     title="{{ $path }} · {{ __('entries.edit_hint') }}"
-                                                    class="min-h-tap-cell rounded px-1 -mx-1 text-left font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
+                                                    class="min-h-(--list-qe-s) rounded px-1 -mx-1 text-left font-mono text-caption text-text-muted [overflow-wrap:anywhere] transition-colors hover:bg-primary-soft hover:text-primary-text">{{ $path ?? '—' }}</button>
                                                 <span x-show="editing" x-cloak class="inline-flex w-full items-center gap-0.5 font-mono text-caption">
                                                     <span class="whitespace-nowrap text-placeholder">{{ $slugPrefix }}</span>
                                                     <input type="text" x-ref="slugInput" x-model="value" aria-label="{{ __('entries.col_path') }}"
                                                         @keydown.enter.prevent="cancel = false; $el.blur()"
                                                         @keydown.escape="cancel = true; $el.blur()"
                                                         @blur="editing = false; if (! cancel) { $wire.saveSlug(@js($entry->ulid), value) }"
-                                                        class="min-h-tap-cell min-w-0 flex-1 rounded border border-primary-text bg-surface px-1">
+                                                        class="min-h-(--list-qe-s) min-w-0 flex-1 rounded border border-primary-text bg-surface px-1">
                                                 </span>
                                             </span>
                                         @else
@@ -332,7 +332,7 @@
                                                         ? __('entries.edit_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—'])
                                                         : __('entries.add_translation_hint', ['lang' => __('entries.language_'.$lc), 'title' => $t?->title ?? '—']);
                                                 @endphp
-                                                {{-- The code itself isn't clickable; hover reveals a floating Sửa/Thêm that opens the editor for that locale
+                                                {{-- The code itself isn't clickable; hover, keyboard focus (and always on touch) reveal a floating Sửa/Thêm that opens the editor for that locale
                                                      (not on a Trash row: the editor does not open trashed content). The popover is wrapped with a
                                                      padding-gap (not a margin) + pointer-events so the cursor can travel onto it without the hover dropping. --}}
                                                 <span class="group relative inline-flex">
@@ -342,7 +342,7 @@
                                                         'border border-dashed border-border-strong text-placeholder' => ! $has,
                                                     ])>{{ strtoupper($lc) }}</span>
                                                     @if ($canEdit && ! $trashed)
-                                                        <span class="pointer-events-none absolute bottom-full left-1/2 z-20 -translate-x-1/2 pb-1.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+                                                        <span class="pointer-events-none absolute bottom-full left-0 z-20 pb-1.5 opacity-0 transition-opacity group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100">
                                                             <a href="{{ route('admin.entries.edit', ['ulid' => $entry->ulid, 'locale' => $lc]) }}" wire:navigate title="{{ $langHint }}"
                                                                 class="inline-flex items-center gap-1 whitespace-nowrap rounded px-2 py-1 text-[11px] font-semibold text-on-primary shadow-lg {{ $has ? 'bg-primary' : 'bg-success' }}">
                                                                 <x-bs-admin::icon :name="$has ? 'ri-pencil' : 'ri-add'" class="size-3" />
@@ -368,8 +368,8 @@
                         <x-bs-admin::list.cell col="st">
                             <div class="list-stw">
                                 @if ($canPublish && ! $trashed)
-                                    <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" @keydown.escape="open = false; sched = false" class="relative inline-block">
-                                        <x-bs-admin::status-pill button :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
+                                    <div x-data="{ open: false, sched: false }" @click.outside="open = false; sched = false" @keydown.escape="if (open || sched) { open = false; sched = false; $refs.pill.focus() }" class="relative inline-block">
+                                        <x-bs-admin::status-pill button x-ref="pill" :status="$status" x-on:click="open = ! open" x-bind:aria-expanded="open.toString()" aria-haspopup="true" title="{{ __('entries.status_menu_label') }}">{{ __('entries.status_'.$status) }}<span class="sr-only"> · {{ __('entries.status_menu_label') }}</span></x-bs-admin::status-pill>
                                         <div x-show="open" x-cloak x-transition
                                             class="absolute left-0 z-30 mt-1 w-56 rounded-lg border border-border bg-surface p-1 shadow-lg">
                                             @foreach (['published', 'draft', 'private'] as $opt)
@@ -455,7 +455,7 @@
                     </x-bs-admin::list.row>
                 @empty
                     <x-bs-admin::list.row>
-                        <x-bs-admin::list.cell col="full">
+                        <x-bs-admin::list.cell col="full" aria-colspan="5">
                             @if ($tab === 'trash')
                                 {{ __('entries.trash_empty') }}
                             @elseif (trim($search) !== '')

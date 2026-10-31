@@ -7,7 +7,7 @@
     // per line to 900, a table with a header row from 900. Rows and header share one grid, so a
     // column header always stands over its cells. `select` is the select-all bar shown below 900,
     // where the header row (and its select-all box) is hidden. `data-hide="au"` drops the author
-    // column (its name moves into each row's meta line). Sizes live in the stylesheet only.
+    // column and its name in the row's meta line too. Sizes live in the stylesheet only.
 @endphp
 <div {{ $attributes->merge(['class' => 'list-rows']) }}>
     @isset($select)

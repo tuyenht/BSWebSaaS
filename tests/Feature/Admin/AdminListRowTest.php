@@ -301,4 +301,21 @@ describe('the posts and pages list on the shared row', function (): void {
                 ->assertDontSeeHtml('$wire.trash(');
         });
     });
+
+    it('gives a member who can publish the status menu and the ⋮, and the menu still changes the status', function (): void {
+        $user = User::factory()->create();
+
+        app(Tenancy::class)->enter(1, function () use ($user): void {
+            grantRole($user, 'editor', ['entries.view', 'entries.edit.any', 'entries.publish', 'entries.delete.any']);
+            $entry = listRowEntry($user, 'Bài chờ đăng', 'bai-cho-dang');
+
+            Livewire::actingAs($user->fresh())->test(Index::class)
+                ->assertSeeHtml('x-ref="pill"')
+                ->assertSeeHtml('aria-label="'.e(__('admin.list.more_for', ['name' => 'Bài chờ đăng'])).'"')
+                ->call('changeStatus', $entry->ulid, 'published')
+                ->assertDispatched('bs-toast');
+
+            expect($entry->fresh()->status)->toBe('published');
+        });
+    });
 });
