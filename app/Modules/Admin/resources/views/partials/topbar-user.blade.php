@@ -44,7 +44,7 @@
              configuration lives under the sidebar's Cài đặt group, not here. --}}
         @unless ($isPlatform)
             <a href="{{ route('admin.settings.security') }}" wire:navigate role="menuitem"
-               class="flex items-center gap-2.5 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
+               class="flex min-h-menu-row items-center gap-2.5 px-4 py-2 text-body text-text transition-colors hover:bg-surface-hover pointer-coarse:min-h-menu-row-touch">
                 <x-bs-admin::icon name="user" class="size-4 text-body-muted" />
                 {{ __('admin.settings_account') }}
             </a>
@@ -54,7 +54,7 @@
         <form method="POST" action="{{ \App\Modules\Admin\Support\AdminPlane::route('logout') }}" role="none">
             @csrf
             <button type="submit" role="menuitem"
-                    class="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-body-text transition-colors hover:bg-surface-hover">
+                    class="flex min-h-menu-row w-full items-center gap-2.5 px-4 py-2 text-body text-text transition-colors hover:bg-surface-hover pointer-coarse:min-h-menu-row-touch">
                 <x-bs-admin::icon name="logout" class="size-4 text-body-muted" />
                 {{ __('admin.logout') }}
             </button>

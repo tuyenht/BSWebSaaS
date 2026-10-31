@@ -131,7 +131,7 @@
                     x-show="over.includes(@js($group['key']))"
                     wire:click="{{ $setter($group['key']) }}" @click="hide()"
                     @class([
-                        'flex min-h-control w-full items-center gap-2 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover pointer-coarse:min-h-hit',
+                        'flex min-h-menu-row w-full items-center gap-2 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover pointer-coarse:min-h-menu-row-touch',
                         'font-bold text-primary-text' => $on,
                         'text-text' => ! $on,
                     ])>

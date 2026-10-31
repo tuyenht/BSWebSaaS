@@ -62,7 +62,7 @@
             <button type="button" role="menuitemradio" aria-checked="{{ $on ? 'true' : 'false' }}" tabindex="{{ $on || (! $anyOn && $loop->first) ? '0' : '-1' }}"
                     wire:click="{{ $set }}({{ \Illuminate\Support\Js::from($option['key']) }})" @click="hide()"
                     @class([
-                        'flex min-h-control w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover pointer-coarse:min-h-hit',
+                        'flex min-h-menu-row w-full items-center gap-2.5 rounded px-2.5 py-1.5 text-start text-body [overflow-wrap:anywhere] hover:bg-surface-hover pointer-coarse:min-h-menu-row-touch',
                         'font-bold text-primary-text' => $on,
                         'text-text' => ! $on,
                     ])>

@@ -220,6 +220,10 @@
     --spacing-control: calc(2.5rem + min(0.25rem, var(--user-text-boost) * 2));
     --spacing-control-row: calc(2.25rem + min(0.5rem, var(--user-text-boost) * 2));
     --spacing-hit: 2.75rem;
+    /* A row in a menu or an option list: 40 / 44 / 48 / 48px with a mouse across the four text
+       sizes, 48px on touch (`pointer-coarse:min-h-menu-row-touch`). */
+    --spacing-menu-row: calc(2.5rem + min(0.5rem, var(--user-text-boost) * 2));
+    --spacing-menu-row-touch: 3rem;
     /* A small target inside a list's name cell (the quick-edit ✎): 24px with a mouse at the default
        text size, 44px from the next size up; touch takes --spacing-hit. */
     --spacing-tap-cell: min(2.75rem, calc(1.5rem + var(--user-text-boost) * 10));
@@ -245,6 +249,26 @@
         position: absolute;
         inset: min(0px, calc((100% - var(--spacing-hit)) / 2));
     }
+}
+
+/* A pager link (the kit pagination and the posts list's keyset pager): drawn at the row-control size
+   (36 / 40 / 44px across the text sizes) at every pointer; on touch the shared transparent hit area
+   extends the target to 44px without changing what is drawn. */
+@utility pager-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--spacing-control-row);
+    min-height: var(--spacing-control-row);
+    padding-inline: 0.5rem;
+    border-radius: 0.25rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke;
+    transition-timing-function: var(--default-transition-timing-function);
+    transition-duration: var(--default-transition-duration);
+
+    @apply pointer-coarse:hit-area;
 }
 
 /* A box that draws one control around a bare field (the list search: icon + input inside a

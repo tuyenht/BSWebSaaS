@@ -112,7 +112,7 @@
                                 @if ($row['template'] !== null)
                                     @if ($row['active'] && $row['pending'] > 0)
                                         <button type="button" role="switch" aria-checked="true"
-                                                class="relative h-6 w-11 shrink-0 cursor-pointer rounded-full bg-admin-success transition-colors"
+                                                class="hit-area h-6 w-11 shrink-0 cursor-pointer rounded-full bg-success-base transition-colors"
                                                 title="{{ __('admin.wf.turn_off') }}"
                                                 x-on:click="$bsConfirm({
                                                     icon: 'warning',
@@ -124,7 +124,7 @@
                                         </button>
                                     @else
                                         <button type="button" role="switch" aria-checked="{{ $row['active'] ? 'true' : 'false' }}"
-                                                class="relative h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors {{ $row['active'] ? 'bg-admin-success' : 'bg-gray-300' }}"
+                                                class="hit-area h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors {{ $row['active'] ? 'bg-success-base' : 'bg-gray-300' }}"
                                                 title="{{ $row['active'] ? __('admin.wf.turn_off') : __('admin.wf.turn_on') }}"
                                                 wire:click="toggle(@js($row['key']))" wire:loading.attr="disabled">
                                             <span class="absolute top-0.5 size-5 rounded-full bg-white shadow {{ $row['active'] ? 'right-0.5' : 'left-0.5' }}"></span>
@@ -147,7 +147,7 @@
                         <h2 class="text-base font-semibold text-heading" x-text="row ? (@js(__('admin.wf.modal_title')) + ' — ' + row.label) : ''"></h2>
                         <p class="mt-0.5 text-sm text-body-muted">{{ __('admin.wf.modal_hint') }}</p>
                     </div>
-                    <button type="button" class="flex size-9 items-center justify-center rounded text-body-muted hover:bg-surface-hover" x-on:click="open = false" aria-label="{{ __('admin.close') }}">
+                    <button type="button" class="hit-area flex size-control shrink-0 items-center justify-center rounded text-text-muted hover:bg-surface-hover" x-on:click="open = false" aria-label="{{ __('admin.close') }}">
                         <x-bs-admin::icon name="x" class="size-5" />
                     </button>
                 </div>

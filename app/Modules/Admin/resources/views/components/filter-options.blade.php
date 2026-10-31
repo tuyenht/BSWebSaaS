@@ -28,7 +28,7 @@
 @endif
 @foreach ($section['options'] as $option)
     <label @class([
-        'flex min-h-hit cursor-pointer items-center gap-2.5 px-4 py-1.5 text-body text-text hover:bg-surface-hover has-checked:font-bold pointer-coarse:min-h-12',
+        'flex min-h-menu-row cursor-pointer items-center gap-2.5 px-4 py-1.5 text-body text-text hover:bg-surface-hover has-checked:font-bold pointer-coarse:min-h-menu-row-touch',
         'border-t border-border' => $option['divider'] ?? false,
     ])>
         <input type="{{ ($section['multiple'] ?? false) ? 'checkbox' : 'radio' }}"

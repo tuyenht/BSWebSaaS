@@ -221,7 +221,7 @@
                 <div class="flex items-center gap-2 border-b border-border-soft px-4 py-3.5">
                     <x-bs-admin::icon :name="$action['key'] === 'retract' ? 'ri-eye-off' : 'ri-arrow-go-back'" class="size-4 text-[#c0432c]" />
                     <span class="text-sm font-semibold text-heading">{{ $action['label'] }}</span>
-                    <button type="button" class="ml-auto flex size-9 items-center justify-center rounded text-body-muted hover:bg-surface-hover" x-on:click="close()" aria-label="{{ __('admin.close') }}">
+                    <button type="button" class="hit-area ml-auto flex size-control shrink-0 items-center justify-center rounded text-text-muted hover:bg-surface-hover" x-on:click="close()" aria-label="{{ __('admin.close') }}">
                         <x-bs-admin::icon name="ri-close" class="size-5" />
                     </button>
                 </div>

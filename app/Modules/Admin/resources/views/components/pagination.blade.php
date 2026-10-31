@@ -18,12 +18,13 @@
     $last = max(1, (int) $last);
     $from = max(1, $current - 2);
     $to = min($last, $current + 2);
-    $linkBase = 'inline-flex h-9 min-w-9 items-center justify-center rounded px-3 text-sm transition-colors';
-    $navlink = $linkBase.' text-body-muted hover:bg-surface-hover';
-    $disabled = $linkBase.' cursor-not-allowed text-ink-ghost';
+    // pager-link (app.css) is the size and shape, shared with the posts list's keyset pager.
+    $linkBase = 'pager-link';
+    $navlink = $linkBase.' text-text-muted hover:bg-surface-hover';
+    $disabled = $linkBase.' cursor-not-allowed text-icon-ghost';
 @endphp
 @if ($last > 1)
-    <nav aria-label="{{ __('admin.pagination.nav') }}" {{ $attributes->merge(['class' => 'flex items-center gap-1']) }}>
+    <nav aria-label="{{ __('admin.pagination.nav') }}" {{ $attributes->merge(['class' => 'flex flex-wrap items-center gap-2']) }}>
         @if ($current > 1)
             <a href="{{ $urlFor($current - 1) }}" @if ($paginator) wire:navigate @endif
                aria-label="{{ __('admin.pagination.previous') }}" class="{{ $navlink }}">
@@ -38,7 +39,7 @@
         @endif
         @for ($p = $from; $p <= $to; $p++)
             @if ($p === $current)
-                <span aria-current="page" class="{{ $linkBase }} bg-admin-primary font-medium text-white">{{ $p }}</span>
+                <span aria-current="page" class="{{ $linkBase }} bg-primary font-medium text-white">{{ $p }}</span>
             @else
                 <a href="{{ $urlFor($p) }}" @if ($paginator) wire:navigate @endif class="{{ $navlink }}">{{ $p }}</a>
             @endif
