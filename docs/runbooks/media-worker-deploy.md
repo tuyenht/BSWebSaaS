@@ -42,10 +42,16 @@ bucket's only reader.) Brief window where `files.baoson.net` 404s — fine, no l
 
 ## 3. Deploy the Worker (creates the route + R2 binding)
 ```bash
+node --test deploy/media-worker/test/worker.test.js   # must pass before every deploy
 cd deploy/media-worker
 wrangler deploy
 ```
 This binds `baoson-media` as `MEDIA` and routes `files.baoson.net/*` to the Worker.
+
+The Worker sends the Content-Type from the key's extension (jpg, jpeg, png, webp, gif, avif, pdf),
+never the object's stored metadata; every other extension and every key whose first segment starts
+with `_` (uploads in flight) is a 404. Responses carry `X-Content-Type-Options: nosniff` and a
+sandbox CSP; a PDF is `Content-Disposition: attachment`.
 
 ## 4. Enable Image Transformations on the zone
 Dashboard → `baoson.net` → **Speed → Optimization → Image Transformations → Enable** (covers
@@ -57,6 +63,7 @@ but returns the raw master (no resize).
 curl -I https://files.baoson.net/sites/1/media/about-bao-on.jpg            # 200 raw master (via Worker)
 curl -I "https://files.baoson.net/sites/1/media/about-bao-on.jpg?w=640"    # 200 transformed (smaller)
 curl -I "https://files.baoson.net/sites/1/media/about-bao-on.jpg?w=999"    # 400 invalid width (whitelist)
+curl -I https://files.baoson.net/_incoming/x.jpg                         # 404 uploads in flight are never public
 ```
 
 ## 6. Rollback
